@@ -5,7 +5,7 @@ import Switch from '@mui/material/Switch'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import type { SourceTypeKey } from '../../types/api'
-import { documentSourceTypeLabel } from '../../utils/labels'
+import { documentSourceTypeLabel } from './sources/sourceLabels'
 import { sameLibrarySourceOrigin, type GenericSourceValues } from '../../utils/librarySourceConfig'
 import FieldLabel from '../wizard/FieldLabel'
 

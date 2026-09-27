@@ -1,35 +1,11 @@
-import type { SourceTypeKey } from '../types/api'
-import {
-  confluenceCredentialsOf,
-  validateConfluenceValues,
-  type ConfluenceSourceValues,
-} from './confluenceSource'
-import { sourceConfigKind } from './labels'
-import { s3CredentialsOf, s3SettingsOf, validateS3Values, type S3SourceValues } from './s3Source'
-
-/** Raw, untyped field state as entered in LibraryCreatePage/EditLibrarySourceDialog. */
-export interface LibrarySourceFieldValues {
+/** The five generic connection fields - what the Pfad- und URL-Formulare edit (#1940). */
+export interface GenericSourceValues {
   sourcePath: string
   sourceUrl: string
   sourceProxy: string
   sourceCredentials: string
   sourceInsecureSsl: boolean
-  /** Only read for configKind 'confluence' (ADR-0023). */
-  confluence?: ConfluenceSourceValues
-  /** Only read for configKind 's3' (ADR-0027). */
-  s3?: S3SourceValues
-  /** Edit mode with a stored key (S3): the key fields may stay empty. */
-  s3CredentialsStored?: boolean
 }
-
-/**
- * The five generic fields alone - what the Pfad- and URL-Formulare edit (#1940). Confluence and S3
- * carry their own value shapes ({@link ConfluenceSourceValues}, {@link S3SourceValues}).
- */
-export type GenericSourceValues = Pick<
-  LibrarySourceFieldValues,
-  'sourcePath' | 'sourceUrl' | 'sourceProxy' | 'sourceCredentials' | 'sourceInsecureSsl'
->
 
 export const EMPTY_GENERIC_SOURCE_VALUES: GenericSourceValues = {
   sourcePath: '',
@@ -53,102 +29,72 @@ export interface LibrarySourceConfigPayload {
   sourceSettings?: Record<string, unknown>
 }
 
+/** The generic values of a stored library; credentials stay blank, they are never returned. */
+export function storedGenericSourceValues(library: {
+  sourcePath?: string | null
+  sourceUrl?: string | null
+  sourceProxy?: string | null
+  sourceInsecureSsl?: boolean | null
+}): GenericSourceValues {
+  return {
+    sourcePath: library.sourcePath ?? '',
+    sourceUrl: library.sourceUrl ?? '',
+    sourceProxy: library.sourceProxy ?? '',
+    sourceCredentials: '',
+    sourceInsecureSsl: Boolean(library.sourceInsecureSsl),
+  }
+}
+
+/** The two generic connection shapes: a server path, or an http(s) address with its options. */
+export type GenericSourceKind = 'path' | 'url'
+
 /**
- * Client-side validation shared by LibraryCreatePage and EditLibrarySourceDialog (#516/#542
- * review, nit 4 - both dialogs previously carried a byte-identical copy of this check). A
- * stricter server-side check always runs afterwards regardless
- * (KnowledgeLibraryService#validateConfigurationForType for saving, SourceConnectionTestService
- * for the connection test) - this is only the fast, obvious-typo rejection every entry point
- * wants before making a network call at all. Returns a German error message on the first
- * violation, or null if the typed fields are acceptable for sourceType.
+ * The fast, obvious-typo rejection before any network call; the connector validates again on the
+ * server. Returns a German message on the first violation, or null.
  */
-export function validateLibrarySourceFields(
-  sourceType: SourceTypeKey,
-  values: Pick<
-    LibrarySourceFieldValues,
-    'sourcePath' | 'sourceUrl' | 'confluence' | 's3' | 's3CredentialsStored'
-  >,
+export function validateGenericSource(
+  kind: GenericSourceKind,
+  values: Pick<GenericSourceValues, 'sourcePath' | 'sourceUrl'>,
 ): string | null {
-  const configKind = sourceConfigKind(sourceType)
-  if (configKind === 'confluence') {
-    return validateConfluenceValues(values.confluence)
-  }
-  if (configKind === 's3') {
-    return validateS3Values(values.s3, Boolean(values.s3CredentialsStored))
-  }
-  const trimmedPath = values.sourcePath.trim()
-  if (configKind === 'path' && !trimmedPath) {
-    return 'Verzeichnispfad ist erforderlich'
-  }
-  if (configKind === 'path' && !trimmedPath.startsWith('/')) {
-    return 'Verzeichnispfad muss ein absoluter Pfad sein, z. B. /data/dokumente'
+  if (kind === 'path') {
+    const trimmedPath = values.sourcePath.trim()
+    if (!trimmedPath) return 'Verzeichnispfad ist erforderlich'
+    if (!trimmedPath.startsWith('/')) {
+      return 'Verzeichnispfad muss ein absoluter Pfad sein, z. B. /data/dokumente'
+    }
+    return null
   }
   const trimmedUrl = values.sourceUrl.trim()
-  if (configKind === 'url' && !trimmedUrl) {
-    return 'Adresse (URL) ist erforderlich'
-  }
-  if (configKind === 'url' && trimmedUrl && !/^https?:\/\//i.test(trimmedUrl)) {
+  if (!trimmedUrl) return 'Adresse (URL) ist erforderlich'
+  if (!/^https?:\/\//i.test(trimmedUrl)) {
     return 'Adresse (URL) muss mit http:// oder https:// beginnen'
   }
   return null
 }
 
 /**
- * Derives the five typed source configuration fields to send in a LibraryRequest/
- * LibraryUpdateRequest body from raw field state (#516/#542 review, nit 4), mirroring
- * KnowledgeLibraryService#validateConfigurationForType's per-type shape: only the fields that
- * apply to sourceType are populated, everything else stays undefined so the backend's own
- * type-bound validation remains the single source of truth for what is allowed. Call {@link
- * validateLibrarySourceFields} first - this function does not itself reject anything.
+ * The request fields of a generic source: only those of its shape are populated, so the
+ * connector's own validation stays the single source of truth for what is allowed.
  */
-export function deriveLibrarySourceConfigPayload(
-  sourceType: SourceTypeKey,
-  values: LibrarySourceFieldValues,
+export function genericSourcePayload(
+  kind: GenericSourceKind,
+  values: GenericSourceValues,
 ): LibrarySourceConfigPayload {
-  const configKind = sourceConfigKind(sourceType)
-  if (configKind === 's3' && values.s3) {
-    const s3 = values.s3
-    return {
-      sourceUrl: s3.sourceUrl.trim(),
-      sourceProxy: s3.sourceProxy.trim() || undefined,
-      sourceCredentials: s3CredentialsOf(s3),
-      sourceInsecureSsl: s3.sourceInsecureSsl,
-      sourceSettings: s3SettingsOf(s3),
-    }
-  }
-  if (configKind === 'confluence' && values.confluence) {
-    const c = values.confluence
-    return {
-      sourceUrl: c.sourceUrl.trim(),
-      sourceProxy: c.sourceProxy.trim() || undefined,
-      sourceCredentials: confluenceCredentialsOf(c),
-      sourceInsecureSsl: c.sourceInsecureSsl,
-      sourceSettings: {
-        edition: c.edition ?? undefined,
-        spaces: c.spaces.map((space) => ({ key: space.key, name: space.name ?? null })),
-      },
-    }
+  if (kind === 'path') {
+    return { sourcePath: values.sourcePath.trim(), sourceInsecureSsl: false }
   }
   return {
-    sourcePath: configKind === 'path' ? values.sourcePath.trim() : undefined,
-    sourceUrl: configKind === 'url' ? values.sourceUrl.trim() : undefined,
-    sourceProxy:
-      configKind === 'url' && values.sourceProxy.trim() ? values.sourceProxy.trim() : undefined,
-    sourceCredentials:
-      configKind === 'url' && values.sourceCredentials.trim()
-        ? values.sourceCredentials.trim()
-        : undefined,
-    sourceInsecureSsl: configKind === 'url' ? values.sourceInsecureSsl : false,
+    sourceUrl: values.sourceUrl.trim(),
+    sourceProxy: values.sourceProxy.trim() || undefined,
+    sourceCredentials: values.sourceCredentials.trim() || undefined,
+    sourceInsecureSsl: values.sourceInsecureSsl,
   }
 }
 
 /**
  * Whether `previousUrl` and `nextUrl` name the same origin (scheme, host and port) - the frontend
- * counterpart of KnowledgeLibraryService#sameSourceOrigin (#542 review finding 1), used only to
- * phrase an accurate hint in EditLibrarySourceDialog about whether a stored credential survives a
- * URL edit. The backend re-derives this itself from the persisted value and is the only
- * authoritative check; a mismatch here (e.g. a stale client) only produces a wrong hint, never a
- * wrong outcome.
+ * counterpart of the backend's origin binding of stored credentials, used only to phrase an
+ * accurate hint; the backend re-derives it from the persisted value.
  */
 export function sameLibrarySourceOrigin(
   previousUrl: string | null | undefined,

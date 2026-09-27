@@ -386,6 +386,26 @@ describe('LibraryDetailPage', () => {
       ).toHaveLength(1)
     })
 
+    // ADR-0038: a type the backend has a connector for but this client no form - shown as not
+    // configurable, never with a Bearbeiten that would open an empty dialog.
+    it('shows a source type without a registered form as not configurable', async () => {
+      setLibraryState(
+        managerLibrary,
+        detailsOf(managerLibrary, { sourceType: 'PROBE', sourceUrl: 'https://quelle.local' }),
+      )
+      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+      const user = userEvent.setup()
+
+      await user.click(await screen.findByRole('tab', { name: 'Quelle' }))
+
+      expect(await screen.findByTestId('source-not-configurable')).toHaveTextContent(
+        'nicht konfigurierbar',
+      )
+      expect(
+        screen.queryByRole('button', { name: /^quellkonfiguration bearbeiten$/i }),
+      ).not.toBeInTheDocument()
+    })
+
     it('names the source type exactly once, as a badge', async () => {
       setLibraryState(
         managerLibrary,

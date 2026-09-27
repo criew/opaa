@@ -10,15 +10,10 @@ import { alpha } from '@mui/material/styles'
 import { useNavigate } from 'react-router'
 import PageHeading from '../components/a11y/PageHeading'
 import { blue } from '../theme/tokens'
-import ConfluenceSourceForm from '../components/library/ConfluenceSourceForm'
-import PathSourceForm from '../components/library/PathSourceForm'
-import S3SourceForm from '../components/library/S3SourceForm'
-import SourceConnectionTest from '../components/library/SourceConnectionTest'
-import UrlSourceForm from '../components/library/UrlSourceForm'
 import LibraryScheduleForm from '../components/library/LibraryScheduleForm'
 import SourceTypeIcon from '../components/library/sourceTypeIcon'
-import { EMPTY_CONFLUENCE_VALUES, type ConfluenceSourceValues } from '../utils/confluenceSource'
-import { EMPTY_S3_VALUES, type S3SourceValues } from '../utils/s3Source'
+import { registeredSourceTypes, sourceRegistration } from '../components/library/sources/registry'
+import type { SourceFormContext } from '../components/library/sources/types'
 import {
   scheduleUpdateFrom,
   scheduleValuesFrom,
@@ -40,19 +35,11 @@ import {
   applyPendingGrantsAfterCreation,
   type PendingGrant,
 } from '../components/assets/pendingGrants'
+import { capabilityMissingMessage } from '../utils/labels'
 import {
-  capabilityMissingMessage,
-  registeredSourceTypes,
-  sourceConfigKind,
-  documentSourceTypeDescription,
   documentSourceTypeLabel,
-} from '../utils/labels'
-import {
-  deriveLibrarySourceConfigPayload,
-  validateLibrarySourceFields,
-  EMPTY_GENERIC_SOURCE_VALUES,
-  type GenericSourceValues,
-} from '../utils/librarySourceConfig'
+  documentSourceTypeDescription,
+} from '../components/library/sources/sourceLabels'
 import type { Capability, SourceTypeKey, GroupListResponse, AssetOwnerType } from '../types/api'
 
 /**
@@ -64,8 +51,8 @@ const STEP_SOURCE = 'Quelle'
 const STEP_NAME = 'Name & Beschreibung'
 const STEP_SHARING = 'Freigaben'
 
-function stepsFor(sourceType: SourceTypeKey): string[] {
-  return sourceType === 'UPLOAD'
+function stepsFor(acceptsUploads: boolean): string[] {
+  return acceptsUploads
     ? [STEP_ART, STEP_NAME, STEP_SHARING]
     : [STEP_ART, STEP_SOURCE, STEP_NAME, STEP_SHARING]
 }
@@ -83,41 +70,6 @@ const stepHeadings: Record<string, string> = {
  * Instanz", und das Formular nennt deren ausgelieferten Wert.
  */
 const NEW_CONFLUENCE_RHYTHM: ConfluenceFullSyncRhythm = { intervalDays: null, defaultDays: null }
-
-/** Der Name, den die Quelle selbst schon hergibt - überschreibbar, nie erzwungen. */
-function nameFromSource(
-  sourceType: SourceTypeKey,
-  values: {
-    generic: GenericSourceValues
-    confluence: ConfluenceSourceValues
-    s3: S3SourceValues
-  },
-): string {
-  switch (sourceConfigKind(sourceType)) {
-    case 'confluence': {
-      const first = values.confluence.spaces[0]
-      if (!first) return ''
-      return values.confluence.spaces.length === 1 ? (first.name ?? first.key) : ''
-    }
-    case 's3': {
-      const first = values.s3.scopes.find((scope) => scope.bucket.trim() !== '')
-      return first ? first.bucket.trim() : ''
-    }
-    case 'path': {
-      const segments = values.generic.sourcePath.split(/[\\/]+/).filter(Boolean)
-      return segments.length > 0 ? segments[segments.length - 1] : ''
-    }
-    case 'url': {
-      try {
-        return new URL(values.generic.sourceUrl).hostname
-      } catch {
-        return ''
-      }
-    }
-    default:
-      return ''
-  }
-}
 
 /**
  * Der Anlage-Assistent für Wissensbibliotheken (#1942, Zielentwurf aus #1927). Jeder Schritt
@@ -146,9 +98,9 @@ export default function LibraryCreatePage() {
   const myGroups = useMyGroups()
 
   const [chosenType, setSourceType] = useState<SourceTypeKey>('UPLOAD')
-  const [generic, setGeneric] = useState<GenericSourceValues>(EMPTY_GENERIC_SOURCE_VALUES)
-  const [confluence, setConfluence] = useState<ConfluenceSourceValues>(EMPTY_CONFLUENCE_VALUES)
-  const [s3, setS3] = useState<S3SourceValues>(EMPTY_S3_VALUES)
+  // The entered values of every source form, by type key - a form keeps its values when another
+  // tile is chosen and chosen back.
+  const [sourceValues, setSourceValues] = useState<Record<SourceTypeKey, unknown>>({})
   const [schedule, setSchedule] = useState<LibraryScheduleValues>(() => scheduleValuesFrom(null))
   // Opt-out, not opt-in: whoever just configured a source expects content - the first run starts
   // right after creation unless switched off. Since #1942 for every connector type, not only
@@ -162,19 +114,24 @@ export default function LibraryCreatePage() {
   const { sourceTypes, error: sourceTypesError, loaded: sourceTypesLoaded } = useSourceTypes()
   const offeredTypes: SourceTypeKey[] = [
     ...registeredSourceTypes.filter((type) => sourceTypes.some((d) => d.type === type)),
-    ...sourceTypes.map((d) => d.type).filter((type) => sourceConfigKind(type) === undefined),
+    ...sourceTypes.map((d) => d.type).filter((type) => sourceRegistration(type) === undefined),
   ]
   const displayNameOf = (type: SourceTypeKey) =>
-    sourceConfigKind(type) !== undefined
+    sourceRegistration(type) !== undefined
       ? documentSourceTypeLabel(type)
       : (sourceTypes.find((d) => d.type === type)?.displayName ?? type)
+  const acceptsUploads = (type: SourceTypeKey) =>
+    sourceTypes.find((d) => d.type === type)?.uploads ?? type === 'UPLOAD'
+  const capabilityFor = (type: SourceTypeKey): Capability =>
+    acceptsUploads(type) ? 'CREATE_LIBRARY' : 'CREATE_CONNECTOR_LIBRARY'
 
   /** Die Begründung, warum diese Art hier nicht zu wählen ist - oder `null`, wenn sie es ist. */
   function missingFor(type: SourceTypeKey): string | null {
-    if (sourceConfigKind(type) === undefined) {
+    const registration = sourceRegistration(type)
+    if (registration === undefined || (!acceptsUploads(type) && !registration.configuration)) {
       return 'Für diese Quellart gibt es in dieser Oberfläche keine Eingabemaske.'
     }
-    const capability: Capability = type === 'UPLOAD' ? 'CREATE_LIBRARY' : 'CREATE_CONNECTOR_LIBRARY'
+    const capability = capabilityFor(type)
     return isMissing(capability) ? capabilityMissingMessage(capability) : null
   }
 
@@ -193,13 +150,26 @@ export default function LibraryCreatePage() {
       ? selectableTypes[0]
       : chosenType
 
-  const steps = stepsFor(sourceType)
+  const uploadLibrary = acceptsUploads(sourceType)
+  const steps = stepsFor(uploadLibrary)
   const currentStep = steps[Math.min(activeStep, steps.length - 1)]
-  const configKind = sourceConfigKind(sourceType)
-  const confluenceRhythm = configKind === 'confluence' ? NEW_CONFLUENCE_RHYTHM : undefined
+  const configuration = uploadLibrary
+    ? null
+    : (sourceRegistration(sourceType)?.configuration ?? null)
+  const valuesKey = configuration?.valuesKey ?? sourceType
+  const values: unknown = sourceValues[valuesKey] ?? configuration?.empty
+  const formContext: SourceFormContext = {
+    mode: 'create',
+    sourceType,
+    idPrefix: 'library-create',
+    credentialsStored: false,
+  }
+  const confluenceRhythm = configuration?.fullSyncRhythm ? NEW_CONFLUENCE_RHYTHM : undefined
+  // Without the list of source types nothing may be chosen - not even the upload library a stale
+  // default would otherwise let through.
+  const typesUnavailable = !sourceTypesLoaded || sourceTypesError != null
 
-  const requiredCapability: Capability =
-    sourceType === 'UPLOAD' ? 'CREATE_LIBRARY' : 'CREATE_CONNECTOR_LIBRARY'
+  const requiredCapability: Capability = capabilityFor(sourceType)
   const missingCapability = isMissing(requiredCapability)
     ? capabilityMissingMessage(requiredCapability)
     : null
@@ -243,19 +213,19 @@ export default function LibraryCreatePage() {
     stepHeadingRef.current?.focus()
   }, [activeStep])
 
+  /** The configuration whose form keeps its values under `key`. */
+  const configurationForValues = (key: string) =>
+    registeredSourceTypes
+      .map((type) => ({ type, registered: sourceRegistration(type)?.configuration }))
+      .find(({ type, registered }) => registered && (registered.valuesKey ?? type) === key)
+      ?.registered
+
   const isDirty =
     name.trim() !== '' ||
     description.trim() !== '' ||
-    generic.sourcePath !== '' ||
-    generic.sourceUrl !== '' ||
-    confluence.sourceUrl !== '' ||
-    confluence.sourceProxy !== '' ||
-    confluence.sourceInsecureSsl ||
-    s3.sourceUrl !== '' ||
-    s3.accessKey !== '' ||
-    s3.secretKey !== '' ||
-    s3.sessionToken !== '' ||
-    s3.scopes.some((scope) => scope.bucket !== '' || scope.prefix !== '') ||
+    Object.entries(sourceValues).some(([key, entered]) =>
+      Boolean(configurationForValues(key)?.isDirty(entered)),
+    ) ||
     pendingGrants.length > 0
 
   const handleCancel = async () => {
@@ -271,12 +241,12 @@ export default function LibraryCreatePage() {
   }
 
   const handleNext = () => {
-    if (currentStep === STEP_SOURCE) {
-      const validationError = validateLibrarySourceFields(sourceType, {
-        ...generic,
-        confluence,
-        s3,
-      })
+    if (currentStep === STEP_ART && typesUnavailable) {
+      setError(sourceTypesError ?? 'Die Quellarten werden noch geladen')
+      return
+    }
+    if (currentStep === STEP_SOURCE && configuration) {
+      const validationError = configuration.validate(values, formContext)
       if (validationError) {
         setError(validationError)
         return
@@ -288,7 +258,7 @@ export default function LibraryCreatePage() {
       }
       // Der Name kommt, wo die Quelle ihn hergibt, aus ihr - solange niemand selbst getippt hat.
       if (!nameTouched && name.trim() === '') {
-        setName(nameFromSource(sourceType, { generic, confluence, s3 }))
+        setName(configuration.nameFromSource(values))
       }
     }
     if (currentStep === STEP_NAME && name.trim() === '') {
@@ -316,13 +286,12 @@ export default function LibraryCreatePage() {
     setSubmitting(true)
     setError(null)
     try {
-      const source = deriveLibrarySourceConfigPayload(sourceType, { ...generic, confluence, s3 })
+      const source = configuration ? configuration.toPayload(values) : { sourceInsecureSsl: false }
       // #1942: Anlage und Zeitplan werden atomar gesetzt; eine Upload-Bibliothek bekommt gar
       // keinen (das Backend wiese alles außer DISABLED mit 400 ab).
-      const scheduled =
-        sourceType !== 'UPLOAD'
-          ? scheduleUpdateFrom(schedule, confluenceRhythm, 'create')
-          : undefined
+      const scheduled = !uploadLibrary
+        ? scheduleUpdateFrom(schedule, confluenceRhythm, 'create')
+        : undefined
       const sourceSettings =
         source.sourceSettings || scheduled?.sourceSettings
           ? { ...source.sourceSettings, ...scheduled?.sourceSettings }
@@ -339,7 +308,7 @@ export default function LibraryCreatePage() {
         ...(scheduled ? { schedule: scheduled.schedule } : {}),
       })
       await applyPendingGrantsAfterCreation('KNOWLEDGE_LIBRARY', libraryId, pendingGrants)
-      if (sourceType !== 'UPLOAD' && startFirstRun) {
+      if (!uploadLibrary && startFirstRun) {
         // Awaited so the run is already in the indexing store when the detail page mounts and its
         // progress strip picks it up. triggerIndexing never throws - a failure surfaces through
         // the global indexing snackbar, and the detail page still offers "Jetzt indizieren".
@@ -353,11 +322,9 @@ export default function LibraryCreatePage() {
   }
 
   const firstRunHint =
-    configKind === 'confluence'
-      ? 'Der erste Lauf ist ein Vollabgleich über alle ausgewählten Spaces; sein Stand bleibt auf der Detailseite sichtbar.'
-      : configKind === 's3'
-        ? 'Der erste Lauf ist ein Vollabgleich über alle Geltungsbereiche; sein Stand bleibt auf der Detailseite sichtbar.'
-        : 'Der erste Lauf liest die Quelle vollständig ein; sein Stand bleibt auf der Detailseite sichtbar.'
+    configuration?.firstRunHint ??
+    'Der erste Lauf liest die Quelle vollständig ein; sein Stand bleibt auf der Detailseite sichtbar.'
+  const SourceForm = configuration?.Form
 
   return (
     <Box sx={{ flexGrow: 1, overflowY: 'auto', p: { xs: 2.5, md: 5 } }}>
@@ -403,7 +370,7 @@ export default function LibraryCreatePage() {
           </Alert>
         )}
 
-        {currentStep === STEP_ART && sourceTypesLoaded && (
+        {currentStep === STEP_ART && sourceTypesLoaded && !sourceTypesError && (
           <Box
             role="radiogroup"
             aria-label="Art des Wissens wählen"
@@ -481,51 +448,18 @@ export default function LibraryCreatePage() {
 
         {currentStep === STEP_SOURCE && (
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, maxWidth: 640 }}>
-            {configKind === 'confluence' && (
-              <ConfluenceSourceForm
-                mode="create"
-                idPrefix="library-create-confluence"
-                values={confluence}
-                onChange={(patch) => {
-                  setConfluence((prev) => ({ ...prev, ...patch }))
+            {SourceForm && (
+              <SourceForm
+                values={values}
+                context={formContext}
+                onChange={(patch: object) => {
+                  setSourceValues((prev) => ({
+                    ...prev,
+                    [valuesKey]: { ...(values as object), ...patch },
+                  }))
                   setError(null)
                 }}
               />
-            )}
-
-            {configKind === 's3' && (
-              <S3SourceForm
-                mode="create"
-                idPrefix="library-create-s3"
-                values={s3}
-                onChange={(patch) => {
-                  setS3((prev) => ({ ...prev, ...patch }))
-                  setError(null)
-                }}
-              />
-            )}
-
-            {configKind === 'path' && (
-              <PathSourceForm
-                mode="create"
-                idPrefix="library-create"
-                values={generic}
-                onChange={(patch) => setGeneric((prev) => ({ ...prev, ...patch }))}
-              />
-            )}
-
-            {configKind === 'url' && (
-              <UrlSourceForm
-                mode="create"
-                sourceType={sourceType}
-                idPrefix="library-create"
-                values={generic}
-                onChange={(patch) => setGeneric((prev) => ({ ...prev, ...patch }))}
-              />
-            )}
-
-            {(configKind === 'path' || configKind === 'url') && (
-              <SourceConnectionTest sourceType={sourceType} values={generic} />
             )}
 
             {/* Zeitplan und Sofortstart gelten seit #1942 für jeden Konnektortyp, nicht mehr nur
@@ -564,7 +498,7 @@ export default function LibraryCreatePage() {
 
         {currentStep === STEP_NAME && (
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, maxWidth: 640 }}>
-            {configKind === 'none' && (
+            {uploadLibrary && (
               <Typography sx={{ fontSize: 13.5, color: 'text.secondary' }}>
                 Dokumente laden Sie nach dem Anlegen auf der Detailseite hoch — einzeln oder
                 gebündelt.
@@ -643,7 +577,11 @@ export default function LibraryCreatePage() {
             </Button>
           )}
           {activeStep < steps.length - 1 ? (
-            <Button variant="contained" onClick={handleNext}>
+            <Button
+              variant="contained"
+              onClick={handleNext}
+              disabled={currentStep === STEP_ART && typesUnavailable}
+            >
               Weiter
             </Button>
           ) : (

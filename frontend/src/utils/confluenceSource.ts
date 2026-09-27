@@ -104,3 +104,12 @@ export function validateConfluenceValues(
   }
   return null
 }
+
+/** Names a space the way the documents area does ("Name (KEY)"), the key alone without a name. */
+export function confluenceSpaceLabel(
+  key: string,
+  spaces: ConfluenceSpaceRef[] | null | undefined,
+): string {
+  const name = spaces?.find((space) => space.key === key)?.name
+  return name ? `${name} (${key})` : key
+}

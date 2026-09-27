@@ -473,7 +473,7 @@ export function resetIndexingState() {
 const INDEXING_POLL_STEPS = 5
 const TOTAL_DOCUMENTS = 42
 
-// Mirrors DocumentIndexingService#toIndexingSourceType's exact German 409 text for an UPLOAD
+// Mirrors DocumentIndexingService#executorFor's exact German 409 text for an UPLOAD
 // library (no run type at all). Duplicated as a literal - rather than imported from
 // stores/indexingStore.ts, which defines the same constant for triggerIndexing's own message
 // handling - to keep this mock module independent of application/store code.
@@ -589,7 +589,7 @@ export const handlers = [
         { status: 404 },
       )
     }
-    // Mirrors DocumentIndexingService#toIndexingSourceType ( review, finding 5): UPLOAD has no
+    // Mirrors DocumentIndexingService#executorFor ( review, finding 5): UPLOAD has no
     // run type at all - the library is a valid indexing target, it simply has nothing to run.
     if (library.sourceType === 'UPLOAD') {
       return HttpResponse.json(

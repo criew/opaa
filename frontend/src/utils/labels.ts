@@ -7,7 +7,6 @@ import type {
   GroupOrigin,
   GroupProviderResponse,
   DatePrecision,
-  SourceTypeKey,
   DocumentStatus,
   GroupKind,
   IndexingRunEventCategory,
@@ -255,100 +254,6 @@ const documentStatusLabels: Record<DocumentStatus, string> = {
 export function documentStatusLabel(status: DocumentStatus | string | undefined): string {
   if (!status) return ''
   return documentStatusLabels[status as DocumentStatus] ?? status
-}
-
-/**
- * Which configuration form the frontend renders for a source type (ADR-0038) - the per-connector
- * UI the backend's open type key is registered with:
- * - 'none': no source configuration fields (UPLOAD).
- * - 'path': a required, server-absolute directory path (FILESYSTEM).
- * - 'url': a required http(s) URL plus optional proxy/credentials/insecure-SSL (HTTP_DIRECTORY,
- *   RSS_FEED).
- * - 'confluence': address, edition-dependent credentials and a space selection (ADR-0023).
- * - 's3': endpoint, region and addressing style, a static key and one to fifty scopes (ADR-0027).
- */
-export type DocumentSourceConfigKind = 'none' | 'path' | 'url' | 'confluence' | 's3'
-
-/** The frontend half of a connector: its names, its sentence for the wizard tile, its form. */
-interface SourceTypeRegistration {
-  label: string
-  shortLabel: string
-  description: string
-  configKind: DocumentSourceConfigKind
-}
-
-/**
- * Every source type the frontend has a form for, in the order the wizard offers them. A type the
- * backend lists (GET /source-types) but this table lacks is shown under its own display name and
- * cannot be configured here.
- */
-const sourceTypeRegistrations: Record<SourceTypeKey, SourceTypeRegistration> = {
-  UPLOAD: {
-    label: 'Upload',
-    shortLabel: 'Upload',
-    description: 'Dateien auswählen oder hineinziehen; einzelne Dokumente pflegen.',
-    configKind: 'none',
-  },
-  FILESYSTEM: {
-    label: 'Dateisystem',
-    shortLabel: 'Dateisystem',
-    description: 'Ein Pfad im Hausnetz wird regelmäßig eingelesen.',
-    configKind: 'path',
-  },
-  HTTP_DIRECTORY: {
-    label: 'Webverzeichnis',
-    shortLabel: 'Web',
-    description: 'Eine interne Webadresse wird durchlaufen und indiziert.',
-    configKind: 'url',
-  },
-  RSS_FEED: {
-    label: 'RSS-Feed',
-    shortLabel: 'Feed',
-    description: 'Neue Beiträge werden laufend übernommen, Anhänge wahlweise.',
-    configKind: 'url',
-  },
-  CONFLUENCE: {
-    label: 'Confluence',
-    shortLabel: 'Confluence',
-    description: 'Ausgewählte Spaces eines Confluence (Cloud oder Data Center) werden eingelesen.',
-    configKind: 'confluence',
-  },
-  S3: {
-    label: 'S3-Objektspeicher',
-    shortLabel: 'S3',
-    description: 'Buckets und Präfixe eines S3-kompatiblen Objektspeichers werden eingelesen.',
-    configKind: 's3',
-  },
-}
-
-function registrationOf(sourceType: string | undefined): SourceTypeRegistration | undefined {
-  return sourceType ? sourceTypeRegistrations[sourceType] : undefined
-}
-
-export function documentSourceTypeLabel(sourceType: SourceTypeKey | undefined): string {
-  if (!sourceType) return ''
-  return registrationOf(sourceType)?.label ?? sourceType
-}
-
-/** The origin as a card badge shows it; tables and forms keep {@link documentSourceTypeLabel}. */
-export function documentSourceTypeShortLabel(sourceType: SourceTypeKey | undefined): string {
-  if (!sourceType) return ''
-  return registrationOf(sourceType)?.shortLabel ?? sourceType
-}
-
-export function documentSourceTypeDescription(sourceType: SourceTypeKey | undefined): string {
-  if (!sourceType) return ''
-  return registrationOf(sourceType)?.description ?? 'Weiterer Quellentyp.'
-}
-
-/** The source types with a registered form, in the wizard's order. */
-export const registeredSourceTypes: SourceTypeKey[] = Object.keys(sourceTypeRegistrations)
-
-/** The form a source type is configured with, undefined for a type the frontend has none for. */
-export function sourceConfigKind(
-  sourceType: SourceTypeKey | undefined,
-): DocumentSourceConfigKind | undefined {
-  return registrationOf(sourceType)?.configKind
 }
 
 // #513: German, understandable categories for a skipped/rejected item or error in a run's

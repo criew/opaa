@@ -10,7 +10,7 @@ import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
 
 const POLL_INTERVAL_MS = 2000
 
-// #500 review, finding 5: the exact German text DocumentIndexingService#toIndexingSourceType
+// #500 review, finding 5: the exact German text DocumentIndexingService#executorFor
 // sends for an UPLOAD library (no run type at all, 409) - matched here so triggerIndexing can show
 // this specific message instead of the generic failure one, and leave status untouched rather than
 // FAILED, since no run was ever started.

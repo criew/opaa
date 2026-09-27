@@ -113,6 +113,39 @@ describe('LibraryCreatePage (#596, #1942)', () => {
     useIndexingStore.setState({ triggerIndexing: mockTriggerIndexing })
   })
 
+  // ADR-0038: the tiles follow GET /source-types; a type without a form in this client is shown
+  // under its own name and locked, with the reason as text.
+  it('shows a source type the client has no form for as a locked tile with its reason', async () => {
+    mockListSourceTypes.mockResolvedValue([
+      ...mockSourceTypes,
+      {
+        type: 'PROBE',
+        displayName: 'Testquelle',
+        indexingRun: false,
+        uploads: false,
+        pushIntake: false,
+        browsable: false,
+      },
+    ])
+    await renderPage()
+
+    const tile = screen.getByRole('radio', { name: /Testquelle/ })
+    expect(tile).toBeDisabled()
+    expect(tile).toHaveTextContent(
+      'Für diese Quellart gibt es in dieser Oberfläche keine Eingabemaske.',
+    )
+    expect(screen.getByRole('radio', { name: /Upload/ })).toBeEnabled()
+  })
+
+  it('names a failed source-type list and does not go on with the upload library', async () => {
+    mockListSourceTypes.mockRejectedValue(new Error('Quellarten konnten nicht geladen werden'))
+    renderWithProviders(<LibraryCreatePage />, { withRouter: true })
+
+    expect(await screen.findByText('Quellarten konnten nicht geladen werden')).toBeInTheDocument()
+    expect(screen.queryByRole('radiogroup')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Weiter' })).toBeDisabled()
+  })
+
   // #1942: Jeder Schritt trägt den Namen des Reiters, den er in der Detailansicht bekommt - und
   // eine Upload-Bibliothek hat keine Quelle, also auch keinen Schritt dafür.
   it('names the steps after the tabs and drops "Quelle" for an upload library', async () => {

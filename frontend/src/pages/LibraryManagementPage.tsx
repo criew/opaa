@@ -7,13 +7,11 @@ import type { LibraryListResponse } from '../types/api'
 import { IDLE_RUN_STATE, useIndexingStore } from '../stores/indexingStore'
 import { useLibraryStore } from '../stores/libraryStore'
 import { fontFamily } from '../theme/tokens'
+import { assetReachLabel, assetRoleLabel, documentCountLabel } from '../utils/labels'
 import {
-  assetReachLabel,
-  assetRoleLabel,
-  documentCountLabel,
   documentSourceTypeLabel,
   documentSourceTypeShortLabel,
-} from '../utils/labels'
+} from '../components/library/sources/sourceLabels'
 import MetaBadge from '../components/MetaBadge'
 import OverviewPage, { OverviewCard, OverviewRowLink } from '../components/overview/OverviewPage'
 import SuccessionStateNote from '../components/succession/SuccessionStateNote'

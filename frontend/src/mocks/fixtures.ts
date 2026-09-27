@@ -1778,7 +1778,7 @@ export const mockLibraryDetails: Record<string, LibraryResponse> = {
     documentCount: 431,
     // #500 review, finding 5: unlike the other fixtures, this one is deliberately not UPLOAD - it
     // is the fixture the indexing-trigger tests use to exercise a successful run, since UPLOAD
-    // libraries have no run type at all (DocumentIndexingService#toIndexingSourceType, 409). Also
+    // libraries have no run type at all (DocumentIndexingService#executorFor, 409). Also
     // the fixture #479's connector-upload/-delete tests use.
     sourceType: 'FILESYSTEM',
     diagnosticsLocked: true,
@@ -2520,7 +2520,6 @@ export const mockUsers: UserInfo[] = [
   { id: 'demo-user', email: 'demo@opaa.local', displayName: 'Demo-Benutzer', systemRole: 'USER' },
 ]
 
-/** #1134: spaces the mock Confluence token may read (source of the wizard's space selection). */
 /**
  * The connectors the mock backend has (GET /api/v1/source-types, ADR-0038) - the six delivered
  * ones with their production abilities, ordered by key like the backend answers.
@@ -2530,6 +2529,7 @@ export const mockSourceTypes: SourceTypeDescriptor[] = [
     type: 'CONFLUENCE',
     displayName: 'Confluence',
     indexingRun: true,
+    uploads: false,
     pushIntake: true,
     browsable: true,
     fullSyncIntervalDefaultDays: 7,
@@ -2538,6 +2538,7 @@ export const mockSourceTypes: SourceTypeDescriptor[] = [
     type: 'FILESYSTEM',
     displayName: 'Dateisystem',
     indexingRun: true,
+    uploads: false,
     pushIntake: false,
     browsable: false,
   },
@@ -2545,6 +2546,7 @@ export const mockSourceTypes: SourceTypeDescriptor[] = [
     type: 'HTTP_DIRECTORY',
     displayName: 'Webverzeichnis',
     indexingRun: true,
+    uploads: false,
     pushIntake: false,
     browsable: false,
   },
@@ -2552,6 +2554,7 @@ export const mockSourceTypes: SourceTypeDescriptor[] = [
     type: 'RSS_FEED',
     displayName: 'RSS-Feed',
     indexingRun: true,
+    uploads: false,
     pushIntake: false,
     browsable: false,
   },
@@ -2559,6 +2562,7 @@ export const mockSourceTypes: SourceTypeDescriptor[] = [
     type: 'S3',
     displayName: 'S3-Objektspeicher',
     indexingRun: true,
+    uploads: false,
     pushIntake: true,
     browsable: true,
   },
@@ -2566,11 +2570,13 @@ export const mockSourceTypes: SourceTypeDescriptor[] = [
     type: 'UPLOAD',
     displayName: 'Upload',
     indexingRun: false,
+    uploads: true,
     pushIntake: false,
     browsable: false,
   },
 ]
 
+/** #1134: spaces the mock Confluence token may read (source of the wizard's space selection). */
 export const mockConfluenceSpaces: ConfluenceSpaceRef[] = [
   { key: 'BAU', name: 'Bauamt' },
   { key: 'HR', name: 'Personal und Organisation' },

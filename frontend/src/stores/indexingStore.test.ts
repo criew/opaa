@@ -93,11 +93,11 @@ describe('indexingStore', () => {
     expect(state.snackbar.message).toBe(UPLOAD_LIBRARY_INDEXING_ERROR)
   })
 
-  it("recognizes the UPLOAD library error by DocumentIndexingService#toIndexingSourceType's literal wording", async () => {
+  it("recognizes the UPLOAD library error by DocumentIndexingService#executorFor's literal wording", async () => {
     // Deliberately not comparing against UPLOAD_LIBRARY_INDEXING_ERROR: a drift between the
     // constant and the backend's actual German text (e.g. a missed umlaut fix) would otherwise
     // stay invisible - this test only passes if the constant still matches the real 409 message
-    // DocumentIndexingService#toIndexingSourceType sends.
+    // DocumentIndexingService#executorFor sends.
     mockTriggerIndexing.mockRejectedValueOnce(
       new Error('Für UPLOAD-Bibliotheken gibt es keinen Indizierungslauf'),
     )
