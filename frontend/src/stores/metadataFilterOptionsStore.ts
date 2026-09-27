@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import type { MetadataFilterOptionsResponse } from '../types/api'
-import { getMetadataFilterOptions } from '../services/queryApi'
+import { getMetadataFilterOptions } from '../services/searchApi'
 import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
 
 export interface MetadataFilterScope {

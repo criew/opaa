@@ -76,7 +76,7 @@ Integrationstests mit `@Testcontainers(disabledWithoutDocker = true)` werden ohn
 
 ## Repository-Praxis
 
-- **Reihenfolge für neue Endpunkte:** OpenAPI-Spezifikation; generierte Backend-DTOs; Domain-Enum-Mappings und Cleanup in `backend/build.gradle.kts`; `pnpm run generate:api-types`; API-Funktion im Themenmodul `frontend/src/services/<thema>Api.ts` und Store-Aktion; ein MSW-Handler im Themenmodul `frontend/src/mocks/<thema>Handlers.ts` (Fixtures in `<thema>Fixtures.ts`), registriert in `frontend/src/mocks/handlers.ts`. Das Thema folgt dem Tag der Spec-Datei.
+- **Reihenfolge für neue Endpunkte:** OpenAPI-Spezifikation; generierte Backend-DTOs; Domain-Enum-Mappings und Cleanup in `backend/build.gradle.kts`; `pnpm run generate:api-types`; API-Funktion im Themenmodul `frontend/src/services/<thema>Api.ts` und Store-Aktion; ein MSW-Handler im Themenmodul `frontend/src/mocks/<thema>Handlers.ts` (Fixtures in `<thema>Fixtures.ts`), registriert in `frontend/src/mocks/handlers.ts`. Das Thema ist der Tag der Operation, nicht die Spec-Datei: `search.yaml` trägt `query`, `search` und `search-admin` und landet in drei Modulen. Ein großes Thema darf nach Unterressource weiter geteilt werden (`libraryDocumentHandlers.ts`); nur der gemeinsame Kern (Client, Fehlerbehandlung, `getHealth`) bleibt in `frontend/src/services/api.ts`.
 - **Generierter Code wird niemals committet:** `build/generated/` und `frontend/src/types/generated/`.
 - **Abhängigkeitsversionen** leben nur in `backend/gradle/libs.versions.toml` und werden über `libs.*` referenziert.
 - **Liquibase:** Eine sequenziell nummerierte Change-Datei hinzufügen und in das Master-Changelog aufnehmen. Niemals ein ausgeführtes changeSet bearbeiten; `ddl-auto` ist `none`.

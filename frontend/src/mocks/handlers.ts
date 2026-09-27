@@ -2,6 +2,7 @@ import { healthHandlers } from './healthHandlers'
 import { indexingHandlers } from './indexingHandlers'
 import { libraryHandlers } from './libraryHandlers'
 import { queryHandlers } from './queryHandlers'
+import { searchHandlers } from './searchHandlers'
 import { chatHandlers } from './chatHandlers'
 import { spaceHandlers } from './spaceHandlers'
 import { assetHandlers } from './assetHandlers'
@@ -32,14 +33,17 @@ import { catalogHandlers } from './catalogHandlers'
 
 /**
  * All MSW handlers, one module per topic of the OpenAPI spec, for the browser worker and the test
- * server. MSW answers with the first matching handler, so the order is part of the contract: a
- * topic whose paths overlap with another's must stay ahead of it.
+ * server. No two topics share a method and path pattern, so the order of the modules below is free.
+ * MSW answers with the first match, so order matters inside a module: a literal segment stays ahead
+ * of a parameter at the same position (`GET /groups/selectable` before `GET /groups/:groupId`). A
+ * handler whose path could match another topic's belongs into that topic's module.
  */
 export const handlers = [
   ...healthHandlers,
   ...indexingHandlers,
   ...libraryHandlers,
   ...queryHandlers,
+  ...searchHandlers,
   ...chatHandlers,
   ...spaceHandlers,
   ...assetHandlers,
