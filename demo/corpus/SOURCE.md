@@ -97,7 +97,7 @@ sha256sum -c MANIFEST.sha256
 
 ## Umfang
 
-182 Dokumente über sieben Bibliotheken (Zielkorridor 150–300 laut Issue #711 für die
+185 Dokumente über sieben Bibliotheken (Zielkorridor 150–300 laut Issue #711 für die
 sechs fachlichen Bibliotheken; „Formattest auf S3" ist eine technische Schaubibliothek mit genau
 einem Dokument je unterstützter Endung, #1519):
 
@@ -108,7 +108,7 @@ einem Dokument je unterstützter Endung, #1519):
 | Satzungen & Gebührenordnungen | `satzungen-gebuehrenordnungen/` | 19 | `.pdf` |
 | Pressemitteilungen Stadt Rheinfurt | `pressemitteilungen/` | 28 | RSS-XML, HTML |
 | Interne Dienstanweisungen Meldewesen | `interne-dienstanweisungen-meldewesen/` | 26 | `.docx`, `.pdf`, `.pptx` (Ordner nach Aktenplan) |
-| Ratsinformationen Stadt Rheinfurt | `ratsinformationen/` | 12 | `.md`, `.txt` (ein Präfix je Jahrgang) |
+| Ratsinformationen Stadt Rheinfurt | `ratsinformationen/` | 15 | `.md`, `.txt`, `.eml` mit PDF-Anlagen (Präfixe Jahrgang/Gremium) |
 | Formattest auf S3 | `formate/` | 14 | je ein Dokument pro unterstützter Endung |
 
 Gesamtgröße rund 1,2 MB.
