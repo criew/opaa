@@ -149,6 +149,22 @@ describe('MessageBubble', () => {
     )
   })
 
+  it('carries the footnote numbers as marks, folding the rest into "+n"', () => {
+    const files = ['d1.md', 'd2.md', 'd3.md', 'd4.md', 'd5.md']
+    const msg: ChatMessage = {
+      id: 'marks',
+      role: 'assistant',
+      content: 'Beleg' + files.map((f, i) => `【source: k${i}#0 | ${f}】`).join('') + '.',
+      sources: files.map((fileName) => ({ ...citedSource, fileName })),
+      timestamp: new Date(),
+    }
+    render(<MessageBubble message={msg} />)
+
+    const button = screen.getByRole('button', { name: 'Belege anzeigen' })
+    expect(button).toHaveTextContent(/^123\+2Belege anzeigen$/)
+    expect(button).toHaveAccessibleDescription('5 Stellen in 5 Dokumenten')
+  })
+
   it('counts checked sources when the answer cites none', () => {
     const msg: ChatMessage = {
       id: '6',

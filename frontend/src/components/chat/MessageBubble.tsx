@@ -2,13 +2,12 @@ import { useCallback, useMemo, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import { alpha } from '@mui/material/styles'
 import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
 import Typography from '@mui/material/Typography'
 import TextSnippetOutlinedIcon from '@mui/icons-material/TextSnippetOutlined'
-import FormatQuoteOutlinedIcon from '@mui/icons-material/FormatQuoteOutlined'
 import type { ChatMessage } from '../../types/chat'
 import { blue } from '../../theme/tokens'
-import { buildCitationIndex, describeEvidenceSummary } from './citations'
+import { buildCitationIndex } from './citations'
+import EvidenceFooter from './EvidenceFooter'
 import MarkdownRenderer from './MarkdownRenderer'
 import SourceEvidenceDrawer from './SourceEvidenceDrawer'
 import DocumentTextPreviewDialog from '../DocumentTextPreviewDialog'
@@ -22,12 +21,11 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
   const isUser = message.role === 'user'
 
   // The answer's citation markers resolve to footnote numbers; the Belege themselves live only in
-  // the Belegfenster - under the answer stays a single "Belege anzeigen" with a count line.
+  // the Belegfenster - under the answer stays EvidenceFooter's "Belege anzeigen".
   const citations = useMemo(
     () => buildCitationIndex(message.content, message.sources),
     [message.content, message.sources],
   )
-  const evidenceSummary = describeEvidenceSummary(citations)
 
   const [evidenceOpen, setEvidenceOpen] = useState(false)
   // The Belege a clicked footnote covers - a range like "3–4" covers several documents.
@@ -155,35 +153,7 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
               </Typography>
             )}
 
-          {!isUser && evidenceSummary && (
-            <Box
-              sx={{
-                display: 'flex',
-                alignItems: 'center',
-                flexWrap: 'wrap',
-                columnGap: 1,
-                mt: 1.25,
-              }}
-            >
-              <Button
-                size="small"
-                variant="text"
-                aria-haspopup="dialog"
-                onClick={openAllEvidence}
-                startIcon={<FormatQuoteOutlinedIcon aria-hidden />}
-                sx={{ ml: -1, px: 1, fontSize: 12.5, fontWeight: 500 }}
-              >
-                Belege anzeigen
-              </Button>
-              <Typography
-                component="span"
-                data-testid="evidence-summary"
-                sx={{ fontSize: 11.5, color: 'text.secondary' }}
-              >
-                {evidenceSummary}
-              </Typography>
-            </Box>
-          )}
+          {!isUser && <EvidenceFooter citations={citations} onOpen={openAllEvidence} />}
           {!isUser && (
             <SourceEvidenceDrawer
               open={evidenceOpen}
