@@ -1,9 +1,9 @@
 package io.opaa.indexing.document;
 
-import io.opaa.indexing.format.DiscoveredAttachment;
-import io.opaa.indexing.format.DocumentFormatRegistry;
-import io.opaa.indexing.format.DocumentFormatRunner;
-import io.opaa.indexing.format.DocumentFormatSource;
+import io.opaa.format.DiscoveredAttachment;
+import io.opaa.format.DocumentFormatRegistry;
+import io.opaa.format.DocumentFormatRunner;
+import io.opaa.format.DocumentFormatSource;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;

@@ -20,25 +20,28 @@ import static org.mockito.Mockito.when;
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.opaa.api.types.DocumentStatus;
+import io.opaa.format.ChunkFormatMetadata;
+import io.opaa.format.DiscoveredAttachment;
+import io.opaa.format.DocumentFormat;
+import io.opaa.format.DocumentFormatRegistry;
+import io.opaa.format.DocumentFormatResult;
+import io.opaa.format.DocumentFormatSource;
+import io.opaa.format.DocumentProperties;
+import io.opaa.format.DocumentService;
+import io.opaa.format.chunk.ChunkMetadataKeys;
+import io.opaa.format.chunk.ChunkingService;
+import io.opaa.format.file.fallback.TikaFallbackFormat;
+import io.opaa.format.stream.confluencestorage.ConfluenceStorageFormat;
 import io.opaa.indexing.IndexingProperties;
 import io.opaa.indexing.attachment.AttachmentAccess;
 import io.opaa.indexing.attachment.AttachmentIndexer;
 import io.opaa.indexing.attachment.AttachmentLimits;
 import io.opaa.indexing.attachment.AttachmentSource;
-import io.opaa.indexing.chunk.ChunkingService;
 import io.opaa.indexing.chunk.EmbeddingRateEstimator;
 import io.opaa.indexing.chunk.FullTextChunkStore;
+import io.opaa.indexing.chunk.SourceChunkMetadataKeys;
 import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.indexing.chunk.VectorStoreWriter;
-import io.opaa.indexing.format.ChunkFormatMetadata;
-import io.opaa.indexing.format.DiscoveredAttachment;
-import io.opaa.indexing.format.DocumentFormat;
-import io.opaa.indexing.format.DocumentFormatRegistry;
-import io.opaa.indexing.format.DocumentFormatResult;
-import io.opaa.indexing.format.DocumentFormatSource;
-import io.opaa.indexing.format.DocumentProperties;
-import io.opaa.indexing.format.file.fallback.TikaFallbackFormat;
-import io.opaa.indexing.format.stream.confluencestorage.ConfluenceStorageFormat;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
@@ -162,6 +165,51 @@ class DocumentIngestServiceTest {
         new AttachmentLimits(0, 0),
         TestDocumentMetadataServices.returningEmpty(),
         TestDocumentMetadataServices.notExtracting());
+  }
+
+  /** A format declaring {@code passthroughKeys} as the chunk metadata it passes through. */
+  private record PassthroughDeclaringFormat(String id, Set<String> passthroughMetadataKeys)
+      implements DocumentFormat {
+
+    @Override
+    public short version() {
+      return 1;
+    }
+
+    @Override
+    public DocumentFormatResult run(DocumentFormatSource source) {
+      return DocumentFormatResult.chunked(List.of());
+    }
+  }
+
+  /**
+   * ADR-0024, Entscheidung 5: the schema chunk keys hang on the document and are written by
+   * storeChunks alone - a format declaring one as passthrough fails the construction.
+   */
+  @Test
+  void aFormatDeclaringACoreMetadataKeyAsPassthroughFailsFastAtConstruction() {
+    DocumentFormat overreaching =
+        new PassthroughDeclaringFormat("overreaching", Set.of("location", "doc_type"));
+    DocumentFormatRegistry registry =
+        new DocumentFormatRegistry(List.of(overreaching), overreaching);
+
+    assertThatThrownBy(() -> serviceWith(registry))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("overreaching")
+        .hasMessageContaining("doc_type");
+  }
+
+  @Test
+  void aFormatDeclaringALibraryFieldKeyAsPassthroughFailsFastAtConstruction() {
+    DocumentFormat overreaching =
+        new PassthroughDeclaringFormat("overreaching", Set.of("location", "lf_fassung"));
+    DocumentFormatRegistry registry =
+        new DocumentFormatRegistry(List.of(overreaching), overreaching);
+
+    assertThatThrownBy(() -> serviceWith(registry))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("overreaching")
+        .hasMessageContaining("lf_fassung");
   }
 
   private KnowledgeLibrary library() {
@@ -476,7 +524,7 @@ class DocumentIngestServiceTest {
           .thenReturn(
               List.of(
                   new org.springframework.ai.document.Document(
-                      "chunk1", Map.of(ChunkingService.LOCATION_METADATA_KEY, "S. 2"))));
+                      "chunk1", Map.of(ChunkMetadataKeys.LOCATION_METADATA_KEY, "S. 2"))));
 
       service.ingest(localFile(file), null);
 
@@ -493,7 +541,7 @@ class DocumentIngestServiceTest {
       assertThat(metadata).containsEntry("library_id", targetLibrary.getId().toString());
       assertThat(metadata)
           .containsEntry("organization_id", targetLibrary.getOrganizationId().toString());
-      assertThat(metadata).containsEntry(ChunkingService.LOCATION_METADATA_KEY, "S. 2");
+      assertThat(metadata).containsEntry(ChunkMetadataKeys.LOCATION_METADATA_KEY, "S. 2");
       // ingestion-pipelines.md, Querschnittsregel (d): every chunk names the verfahren that
       // produced it and the routing key actually used.
       assertThat(metadata)
@@ -598,11 +646,11 @@ class DocumentIngestServiceTest {
           .updateDocumentMetadata(
               existing.getId(),
               Map.of(
-                  ChunkingService.SOURCE_CONTAINER_METADATA_KEY,
+                  SourceChunkMetadataKeys.SOURCE_CONTAINER_METADATA_KEY,
                   "ENG",
                   "file_name",
                   "Abschnitt 1.1 (umbenannt)"),
-              Set.of(ChunkingService.SOURCE_HIERARCHY_METADATA_KEY));
+              Set.of(SourceChunkMetadataKeys.SOURCE_HIERARCHY_METADATA_KEY));
       verify(documentRepository, never()).save(any(Document.class));
       verify(documentRepository, never()).delete(any(Document.class));
     }
@@ -641,9 +689,9 @@ class DocumentIngestServiceTest {
           .updateDocumentMetadata(
               existing.getId(),
               Map.of(
-                  ChunkingService.SOURCE_CONTAINER_METADATA_KEY,
+                  SourceChunkMetadataKeys.SOURCE_CONTAINER_METADATA_KEY,
                   "ENG",
-                  ChunkingService.SOURCE_HIERARCHY_METADATA_KEY,
+                  SourceChunkMetadataKeys.SOURCE_HIERARCHY_METADATA_KEY,
                   "Handbuch / Kapitel 1",
                   "file_name",
                   "Abschnitt 1.1 (umbenannt)"),
@@ -684,8 +732,8 @@ class DocumentIngestServiceTest {
       verify(vectorStoreWriter)
           .updateDocumentMetadata(
               existing.getId(),
-              Map.of(ChunkingService.SOURCE_CONTAINER_METADATA_KEY, "ENG"),
-              Set.of(ChunkingService.SOURCE_HIERARCHY_METADATA_KEY));
+              Map.of(SourceChunkMetadataKeys.SOURCE_CONTAINER_METADATA_KEY, "ENG"),
+              Set.of(SourceChunkMetadataKeys.SOURCE_HIERARCHY_METADATA_KEY));
     }
 
     @Test
@@ -726,9 +774,9 @@ class DocumentIngestServiceTest {
           .updateDocumentMetadata(
               existing.getId(),
               Map.of(
-                  ChunkingService.SOURCE_CONTAINER_METADATA_KEY,
+                  SourceChunkMetadataKeys.SOURCE_CONTAINER_METADATA_KEY,
                   "ENG",
-                  ChunkingService.SOURCE_HIERARCHY_METADATA_KEY,
+                  SourceChunkMetadataKeys.SOURCE_HIERARCHY_METADATA_KEY,
                   "Handbuch / Kapitel 2"),
               Set.of());
       // Regression guard: chunks, then row context, then the change marker last - a skip check
@@ -1211,8 +1259,9 @@ class DocumentIngestServiceTest {
       // its source context must still land on the chunk (issue #1421: it is a document property,
       // not a format-conditioned one).
       assertThat(storedChunks().getFirst().getMetadata())
-          .containsEntry(ChunkingService.SOURCE_CONTAINER_METADATA_KEY, "ENG")
-          .containsEntry(ChunkingService.SOURCE_HIERARCHY_METADATA_KEY, "Handbuch / Abschnitt 1.1");
+          .containsEntry(SourceChunkMetadataKeys.SOURCE_CONTAINER_METADATA_KEY, "ENG")
+          .containsEntry(
+              SourceChunkMetadataKeys.SOURCE_HIERARCHY_METADATA_KEY, "Handbuch / Abschnitt 1.1");
     }
 
     @Test

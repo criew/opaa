@@ -1,5 +1,6 @@
 package io.opaa.indexing.metadata;
 
+import io.opaa.format.FormatMetadataField;
 import io.opaa.knowledge.Document;
 import java.util.ArrayList;
 import java.util.Collection;

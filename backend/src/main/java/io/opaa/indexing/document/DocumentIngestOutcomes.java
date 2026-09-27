@@ -1,5 +1,6 @@
 package io.opaa.indexing.document;
 
+import io.opaa.format.DocumentService;
 import io.opaa.indexing.job.IndexingEventCategory;
 import io.opaa.indexing.job.IndexingEventSink;
 import java.util.function.Supplier;

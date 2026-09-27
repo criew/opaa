@@ -1,11 +1,11 @@
 package io.opaa.query.retrieval.scope;
 
 import io.opaa.api.types.DatePrecision;
+import io.opaa.format.ChunkFormatMetadata;
+import io.opaa.format.FormatMetadataField;
 import io.opaa.indexing.chunk.VectorChunkStore;
-import io.opaa.indexing.format.ChunkFormatMetadata;
 import io.opaa.indexing.metadata.CoreMetadataChunkKeys;
 import io.opaa.indexing.metadata.FormatFieldCondition;
-import io.opaa.indexing.metadata.FormatMetadataField;
 import io.opaa.indexing.metadata.LibraryFieldCondition;
 import io.opaa.indexing.metadata.LibraryMetadataFieldKeys;
 import io.opaa.indexing.metadata.MetadataFilter;

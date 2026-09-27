@@ -2,22 +2,22 @@ package io.opaa.eval;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.opaa.indexing.format.DocumentFormat;
-import io.opaa.indexing.format.DocumentFormatRegistry;
-import io.opaa.indexing.format.file.fallback.TikaFallbackFormat;
-import io.opaa.indexing.format.file.html.HtmlDocumentFormat;
-import io.opaa.indexing.format.file.mail.MailDocumentFormat;
-import io.opaa.indexing.format.file.mail.MailProperties;
-import io.opaa.indexing.format.file.markdown.MarkdownDocumentFormat;
-import io.opaa.indexing.format.file.office.DocxDocumentFormat;
-import io.opaa.indexing.format.file.office.OdfProperties;
-import io.opaa.indexing.format.file.office.OdpDocumentFormat;
-import io.opaa.indexing.format.file.office.OdtDocumentFormat;
-import io.opaa.indexing.format.file.office.PptxDocumentFormat;
-import io.opaa.indexing.format.file.pdf.PdfDocumentFormat;
-import io.opaa.indexing.format.file.tabular.TabularDocumentFormat;
-import io.opaa.indexing.format.file.tabular.TabularProperties;
-import io.opaa.indexing.format.stream.confluencestorage.ConfluenceStorageFormat;
+import io.opaa.format.DocumentFormat;
+import io.opaa.format.DocumentFormatRegistry;
+import io.opaa.format.file.fallback.TikaFallbackFormat;
+import io.opaa.format.file.html.HtmlDocumentFormat;
+import io.opaa.format.file.mail.MailDocumentFormat;
+import io.opaa.format.file.mail.MailProperties;
+import io.opaa.format.file.markdown.MarkdownDocumentFormat;
+import io.opaa.format.file.office.DocxDocumentFormat;
+import io.opaa.format.file.office.OdfProperties;
+import io.opaa.format.file.office.OdpDocumentFormat;
+import io.opaa.format.file.office.OdtDocumentFormat;
+import io.opaa.format.file.office.PptxDocumentFormat;
+import io.opaa.format.file.pdf.PdfDocumentFormat;
+import io.opaa.format.file.tabular.TabularDocumentFormat;
+import io.opaa.format.file.tabular.TabularProperties;
+import io.opaa.format.stream.confluencestorage.ConfluenceStorageFormat;
 import java.time.Clock;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -293,9 +293,9 @@ class PipelinePathIsolationTest {
    * version bump on any one of them (not only {@code MarkdownDocumentFormat}, the only pipeline
    * this eval corpus actually routes through) would otherwise go unnoticed here and fail 70 minutes
    * into the nightly Docker regression job instead of in this Docker-free {@code check}. Builds the
-   * registry with the exact production wiring {@code
-   * IndexingConfiguration#documentPipelineRegistry} assembles - real pipeline instances, not a
-   * hand-maintained id/version list that could itself drift.
+   * registry with the exact production wiring {@code FormatConfiguration#documentPipelineRegistry}
+   * assembles - real pipeline instances, not a hand-maintained id/version list that could itself
+   * drift.
    */
   @Test
   void committedIngestionPipelineFingerprintsMatchTheRealRegistry() throws java.io.IOException {
@@ -332,7 +332,7 @@ class PipelinePathIsolationTest {
   }
 
   /**
-   * The exact set of pipeline beans {@code IndexingConfiguration} wires into {@code
+   * The exact set of pipeline beans {@code FormatConfiguration} wires into {@code
    * documentPipelineRegistry} - constructed directly rather than through a Spring context, since
    * every constructor here only stores its arguments (verified by reading each one) and this class
    * stays Docker-free by construction. A property record's compact constructor self-defaults on a

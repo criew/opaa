@@ -1,6 +1,6 @@
 package io.opaa.test;
 
-import io.opaa.indexing.document.DocumentService;
+import io.opaa.format.DocumentService;
 import io.opaa.llm.ActiveChatModelResolver;
 import java.lang.annotation.Documented;
 import java.lang.annotation.ElementType;

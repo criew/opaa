@@ -2,11 +2,12 @@ package io.opaa.indexing.metadata;
 
 import io.opaa.api.types.DatePrecision;
 import io.opaa.api.types.MetadataOrigin;
+import io.opaa.format.DocumentFormatRegistry;
+import io.opaa.format.DocumentFormatSource;
+import io.opaa.format.DocumentProperties;
+import io.opaa.format.FormatMetadataField;
 import io.opaa.indexing.chunk.ChunkContextPrefix;
 import io.opaa.indexing.chunk.VectorChunkStore;
-import io.opaa.indexing.format.DocumentFormatRegistry;
-import io.opaa.indexing.format.DocumentFormatSource;
-import io.opaa.indexing.format.DocumentProperties;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;

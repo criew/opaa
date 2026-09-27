@@ -2,9 +2,9 @@ package io.opaa.eval;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.opaa.indexing.format.DocumentFormatResult;
-import io.opaa.indexing.format.DocumentFormatSource;
-import io.opaa.indexing.format.file.markdown.MarkdownDocumentFormat;
+import io.opaa.format.DocumentFormatResult;
+import io.opaa.format.DocumentFormatSource;
+import io.opaa.format.file.markdown.MarkdownDocumentFormat;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;

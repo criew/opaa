@@ -13,10 +13,10 @@ import io.opaa.eval.EvaluationReport.ChunkCountInvariantResult;
 import io.opaa.eval.EvaluationReport.DatasetNotes;
 import io.opaa.eval.EvaluationReport.RunConfiguration;
 import io.opaa.eval.EvaluationReport.WorstQuery;
+import io.opaa.format.DocumentFormatRegistry;
+import io.opaa.format.DocumentFormatResult;
+import io.opaa.format.DocumentFormatSource;
 import io.opaa.indexing.IndexingProperties;
-import io.opaa.indexing.format.DocumentFormatRegistry;
-import io.opaa.indexing.format.DocumentFormatResult;
-import io.opaa.indexing.format.DocumentFormatSource;
 import io.opaa.indexing.job.DocumentIndexingService;
 import io.opaa.indexing.job.IndexingJob;
 import io.opaa.indexing.job.IndexingJobRepository;
@@ -82,8 +82,8 @@ import org.testcontainers.utility.DockerImageName;
  * eval/corpus/verwaltung/SOURCE.md} for how the corpus constructs those failure modes. Indexes the
  * frozen {@code eval/corpus/verwaltung} corpus through the production pipeline ({@link
  * io.opaa.indexing.document.DocumentIngestService} routed to {@link
- * io.opaa.indexing.format.file.markdown.MarkdownDocumentFormat} for this all-Markdown corpus since
- * #1103), then runs every case from {@code eval/golden/verwaltung.json} directly against {@link
+ * io.opaa.format.file.markdown.MarkdownDocumentFormat} for this all-Markdown corpus since #1103),
+ * then runs every case from {@code eval/golden/verwaltung.json} directly against {@link
  * VectorStore#similaritySearch}. No LLM — retrieval-only, per ADR-0011 decision 3.
  *
  * <p>Like both other harnesses, it additionally runs the <b>pipeline measurement path</b> (issue

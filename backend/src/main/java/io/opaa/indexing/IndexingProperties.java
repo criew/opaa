@@ -1,5 +1,6 @@
 package io.opaa.indexing;
 
+import io.opaa.format.chunk.ChunkSizing;
 import io.opaa.indexing.job.JobStatus;
 import java.time.Duration;
 import java.util.List;
@@ -58,7 +59,8 @@ public record IndexingProperties(
     ThreadPool threadPool,
     Duration staleJobTimeout,
     TargetValidation targetValidation,
-    int embeddingConcurrency) {
+    int embeddingConcurrency)
+    implements ChunkSizing {
 
   public IndexingProperties {
     if (chunkSize <= 0) {

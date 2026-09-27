@@ -1,12 +1,12 @@
 package io.opaa.indexing.source.filesystem;
 
 import io.opaa.api.types.IndexingRunMode;
+import io.opaa.format.DocumentService;
+import io.opaa.format.SupportedDocumentFormats;
 import io.opaa.indexing.FilesystemPathAllowlist;
 import io.opaa.indexing.document.DocumentIngest;
 import io.opaa.indexing.document.DocumentIngestResult;
 import io.opaa.indexing.document.DocumentIngestService;
-import io.opaa.indexing.document.DocumentService;
-import io.opaa.indexing.format.SupportedDocumentFormats;
 import io.opaa.indexing.job.IndexingEventCategory;
 import io.opaa.indexing.job.RejectedDocumentReporter;
 import io.opaa.indexing.source.IndexingRun;

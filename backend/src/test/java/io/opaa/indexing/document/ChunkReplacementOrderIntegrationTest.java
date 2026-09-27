@@ -5,6 +5,7 @@ import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.DocumentStatus;
 import io.opaa.api.types.SystemRole;
+import io.opaa.format.DocumentService;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;

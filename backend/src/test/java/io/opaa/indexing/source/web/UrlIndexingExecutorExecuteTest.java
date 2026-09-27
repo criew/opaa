@@ -19,10 +19,10 @@ import static org.mockito.Mockito.when;
 
 import com.sun.net.httpserver.HttpServer;
 import io.opaa.api.types.IndexingRunMode;
+import io.opaa.format.SupportedDocumentFormats;
 import io.opaa.indexing.document.DocumentIngestResult;
 import io.opaa.indexing.document.DocumentIngestService;
 import io.opaa.indexing.document.DocumentIngests;
-import io.opaa.indexing.format.SupportedDocumentFormats;
 import io.opaa.indexing.job.IndexingEventCategory;
 import io.opaa.indexing.job.IndexingJobService;
 import io.opaa.indexing.job.IndexingRunCost;

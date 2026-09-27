@@ -1,6 +1,6 @@
 package io.opaa.indexing.document;
 
-import io.opaa.indexing.format.DocumentProperties;
+import io.opaa.format.DocumentProperties;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.SourceDocumentContext;
 import io.opaa.knowledge.SourceType;

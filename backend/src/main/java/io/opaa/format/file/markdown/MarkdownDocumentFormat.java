@@ -1,0 +1,233 @@
+package io.opaa.format.file.markdown;
+
+import io.opaa.format.DocumentFormat;
+import io.opaa.format.DocumentFormatResult;
+import io.opaa.format.DocumentFormatSource;
+import io.opaa.format.DocumentProperties;
+import io.opaa.format.FormatAdmission;
+import io.opaa.format.chunk.MarkdownHeading;
+import io.opaa.format.shared.DocumentHeadText;
+import io.opaa.format.shared.DocumentTitleLine;
+import io.opaa.format.shared.HeadingSectionSplitter;
+import io.opaa.format.shared.SetextHeading;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import org.springframework.ai.document.Document;
+
+/**
+ * The Markdown pipeline (ingestion-pipelines.md, Teil 2): cuts along ATX headings level 1-3 via
+ * {@link HeadingSectionSplitter}, recognizing a heading line only outside a fenced code block, so a
+ * commented-out {@code #} line in an embedded snippet is not cut on.
+ *
+ * <p>A YAML frontmatter block at the very start, before any heading, is metadata and is dropped
+ * rather than becoming a headingless leading chunk; a {@code ---} anywhere else is content. Its
+ * fields are handed over uninterpreted via {@link DocumentProperties#frontmatter()} (ADR-0024). The
+ * evaluation corpus is entirely Markdown, so this pipeline's cut is also the eval domains'
+ * measurement contract.
+ */
+public class MarkdownDocumentFormat implements DocumentFormat {
+
+  static final String ID = "markdown";
+  static final short VERSION = 1;
+
+  /**
+   * Cutting stops at level 3, per the Teil 2 table; a deeper heading folds into its section's text.
+   */
+  private static final int MAX_CUTTING_LEVEL = 3;
+
+  private static final Pattern FENCE = Pattern.compile("^ {0,3}(```|~~~)");
+
+  private static final Pattern FRONTMATTER_DELIMITER = Pattern.compile("^-{3}[ \\t]*$");
+
+  private static final Pattern FRONTMATTER_ENTRY =
+      Pattern.compile("^([A-Za-z0-9_\\-]+)[ \\t]*:[ \\t]*(\\S.*?)[ \\t]*$");
+
+  @Override
+  public String id() {
+    return ID;
+  }
+
+  @Override
+  public short version() {
+    return VERSION;
+  }
+
+  /**
+   * Text-tolerant: Markdown is plain text by content, so only the file's own extension tells it
+   * apart from a {@code .txt}. Its canonical type is {@code text/markdown} all the same - that is
+   * what the preview and the download endpoint compare against, not what Tika detects.
+   */
+  @Override
+  public Set<FormatAdmission> admittedFormats() {
+    return Set.of(FormatAdmission.textTolerant(".md", "text/markdown"));
+  }
+
+  @Override
+  public DocumentFormatResult run(DocumentFormatSource source) {
+    String raw = readText(source);
+    String text = stripLeadingFrontmatter(raw);
+    if (text.isBlank()) {
+      return DocumentFormatResult.noContent();
+    }
+    List<HeadingSectionSplitter.Event> events = toEvents(text);
+    List<Document> chunks = HeadingSectionSplitter.chunk(events, MAX_CUTTING_LEVEL);
+    if (chunks.isEmpty()) {
+      return DocumentFormatResult.noExtractableText();
+    }
+    return DocumentFormatResult.chunked(chunks).withProperties(properties(raw, events));
+  }
+
+  /**
+   * The frontmatter's scalar entries verbatim, the first level-1 heading (ADR-0024) and the opening
+   * of the text after the frontmatter - the eval corpus' {@code titel}/{@code dokumentart}/{@code
+   * stand_datum}/{@code fassung} keys reach the extractor this way, uninterpreted.
+   */
+  @Override
+  public DocumentProperties readProperties(DocumentFormatSource source) {
+    String raw;
+    try {
+      raw = readText(source);
+    } catch (UncheckedIOException e) {
+      return DocumentProperties.EMPTY;
+    }
+    return properties(raw, toEvents(stripLeadingFrontmatter(raw)));
+  }
+
+  /**
+   * A leading Setext heading stands in for a missing ATX one: {@code Titel\n====} is a level-1
+   * heading of the same standing, and the cut along ATX headings is deliberately unchanged by it.
+   */
+  private static DocumentProperties properties(
+      String raw, List<HeadingSectionSplitter.Event> events) {
+    String headText = DocumentHeadText.ofEvents(events);
+    String atxHeading = HeadingSectionSplitter.firstTopLevelHeading(events);
+    return DocumentProperties.builder()
+        .firstHeading(atxHeading != null ? atxHeading : SetextHeading.leadingOf(headText))
+        .titleLine(DocumentTitleLine.ofEvents(events))
+        .headText(headText)
+        .frontmatter(frontmatterEntries(raw))
+        .build();
+  }
+
+  /**
+   * The {@code key: value} lines of a leading frontmatter block (same delimiter rule as {@link
+   * #stripLeadingFrontmatter}); nested YAML structures are skipped, values keep their quotes.
+   */
+  static Map<String, String> frontmatterEntries(String text) {
+    String[] lines = text.split("\n", -1);
+    if (lines.length == 0 || !FRONTMATTER_DELIMITER.matcher(stripCr(lines[0])).matches()) {
+      return Map.of();
+    }
+    Map<String, String> entries = new LinkedHashMap<>();
+    for (int i = 1; i < lines.length; i++) {
+      String line = stripCr(lines[i]);
+      if (FRONTMATTER_DELIMITER.matcher(line).matches()) {
+        return entries;
+      }
+      Matcher entry = FRONTMATTER_ENTRY.matcher(line);
+      if (entry.matches()) {
+        entries.put(entry.group(1), entry.group(2));
+      }
+    }
+    return Map.of();
+  }
+
+  /**
+   * Drops a YAML frontmatter block whose opening {@code ---} is the file's very first line, up to
+   * and including its closing {@code ---}. A block without a closing delimiter is not frontmatter
+   * and is returned unchanged, since discarding it would silently drop the rest of the document.
+   */
+  private static String stripLeadingFrontmatter(String text) {
+    String[] lines = text.split("\n", -1);
+    if (lines.length == 0 || !FRONTMATTER_DELIMITER.matcher(stripCr(lines[0])).matches()) {
+      return text;
+    }
+    for (int i = 1; i < lines.length; i++) {
+      if (FRONTMATTER_DELIMITER.matcher(stripCr(lines[i])).matches()) {
+        return String.join("\n", Arrays.asList(lines).subList(i + 1, lines.length));
+      }
+    }
+    return text;
+  }
+
+  private static String stripCr(String line) {
+    return line.endsWith("\r") ? line.substring(0, line.length() - 1) : line;
+  }
+
+  private static String readText(DocumentFormatSource source) {
+    if (source.file() != null) {
+      try {
+        return Files.readString(source.file(), StandardCharsets.UTF_8);
+      } catch (IOException e) {
+        throw new UncheckedIOException("Could not read Markdown document " + source.fileName(), e);
+      }
+    }
+    return source.extractedText();
+  }
+
+  /**
+   * Splits {@code text} into {@link HeadingSectionSplitter.Event}s: a heading line opens a new
+   * section, a fenced code block's contents are kept verbatim as a single paragraph block (never
+   * scanned for headings), and every other run of non-blank lines becomes its own paragraph block -
+   * a blank line ends the current paragraph, mirroring an ordinary Markdown reader's own paragraph
+   * rule.
+   */
+  private static List<HeadingSectionSplitter.Event> toEvents(String text) {
+    List<HeadingSectionSplitter.Event> events = new ArrayList<>();
+    StringBuilder paragraph = new StringBuilder();
+    boolean inFence = false;
+    for (String line : text.split("\n", -1)) {
+      String withoutCr = stripCr(line);
+      if (FENCE.matcher(withoutCr).find()) {
+        inFence = !inFence;
+        appendLine(paragraph, withoutCr);
+        continue;
+      }
+      if (inFence) {
+        appendLine(paragraph, withoutCr);
+        continue;
+      }
+      Matcher headingMatch = MarkdownHeading.LINE.matcher(withoutCr);
+      if (headingMatch.matches()) {
+        flushParagraph(events, paragraph);
+        events.add(
+            new HeadingSectionSplitter.Heading(
+                headingMatch.group(MarkdownHeading.LEVEL_GROUP).length(),
+                headingMatch.group(MarkdownHeading.TITLE_GROUP)));
+        continue;
+      }
+      if (withoutCr.isBlank()) {
+        flushParagraph(events, paragraph);
+        continue;
+      }
+      appendLine(paragraph, withoutCr);
+    }
+    flushParagraph(events, paragraph);
+    return events;
+  }
+
+  private static void appendLine(StringBuilder paragraph, String line) {
+    if (paragraph.length() > 0) {
+      paragraph.append('\n');
+    }
+    paragraph.append(line);
+  }
+
+  private static void flushParagraph(
+      List<HeadingSectionSplitter.Event> events, StringBuilder paragraph) {
+    if (paragraph.length() > 0) {
+      events.add(new HeadingSectionSplitter.Paragraph(paragraph.toString()));
+      paragraph.setLength(0);
+    }
+  }
+}

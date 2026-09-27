@@ -2,6 +2,7 @@ package io.opaa.indexing.metadata;
 
 import io.opaa.api.types.DatePrecision;
 import io.opaa.common.ValidationException;
+import io.opaa.format.FormatMetadataField;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.Collection;

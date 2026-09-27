@@ -8,7 +8,7 @@ Unterpaket ist ein Konnektor. Der Vertrag selbst liegt in `indexing.source` und 
 
 Ein Konnektor holt die Elemente einer Quellart und übergibt sie dem Kern. Lauf, Protokoll und
 Aufnahme eines Dokuments gehören dem Kern (`indexing.job`, `indexing.document`). connectors hängt nur
-von foundation und knowledge ab.
+von foundation, format und knowledge ab.
 
 ## Invarianten und Stolpersteine
 

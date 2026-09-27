@@ -11,10 +11,10 @@ import io.opaa.eval.EvaluationReport.ChunkCountInvariantResult;
 import io.opaa.eval.EvaluationReport.DatasetNotes;
 import io.opaa.eval.EvaluationReport.RunConfiguration;
 import io.opaa.eval.EvaluationReport.WorstQuery;
+import io.opaa.format.DocumentFormatRegistry;
+import io.opaa.format.DocumentFormatResult;
+import io.opaa.format.DocumentFormatSource;
 import io.opaa.indexing.IndexingProperties;
-import io.opaa.indexing.format.DocumentFormatRegistry;
-import io.opaa.indexing.format.DocumentFormatResult;
-import io.opaa.indexing.format.DocumentFormatSource;
 import io.opaa.indexing.job.DocumentIndexingService;
 import io.opaa.indexing.job.IndexingJob;
 import io.opaa.indexing.job.IndexingJobRepository;
@@ -78,8 +78,8 @@ import org.testcontainers.utility.DockerImageName;
  * EvalDomainConfig#CITY_LANDMARKS}'s Javadoc for the domain's chunk-count profile. Indexes the
  * frozen `eval/corpus/city-landmarks` corpus through the production pipeline ({@link
  * io.opaa.indexing.document.DocumentIngestService} routed to {@link
- * io.opaa.indexing.format.file.markdown.MarkdownDocumentFormat} for this all-Markdown corpus since
- * #1103), then runs every case from {@code eval/golden/city-landmarks.json} directly against {@link
+ * io.opaa.format.file.markdown.MarkdownDocumentFormat} for this all-Markdown corpus since #1103),
+ * then runs every case from {@code eval/golden/city-landmarks.json} directly against {@link
  * VectorStore#similaritySearch}. No LLM — retrieval-only, per ADR-0011 decision 3.
  *
  * <p>Like {@link RetrievalEvaluationHarnessTest}, it additionally runs the <b>pipeline measurement

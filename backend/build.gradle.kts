@@ -355,7 +355,7 @@ val testShards = mapOf(
         "io.opaa.prompt.web.*", "io.opaa.query.web.*", "io.opaa.search.web.*", "io.opaa.searchadmin.web.*",
         "io.opaa.externalaccess.web.*",
     ),
-    "indexing" to listOf("io.opaa.indexing.*", "io.opaa.llm.*"),
+    "indexing" to listOf("io.opaa.indexing.*", "io.opaa.format.*", "io.opaa.llm.*"),
 )
 
 tasks.named<Test>("test") {

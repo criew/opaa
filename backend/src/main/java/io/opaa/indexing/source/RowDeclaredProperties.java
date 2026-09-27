@@ -1,6 +1,6 @@
 package io.opaa.indexing.source;
 
-import io.opaa.indexing.format.DocumentProperties;
+import io.opaa.format.DocumentProperties;
 import io.opaa.knowledge.Document;
 
 /**

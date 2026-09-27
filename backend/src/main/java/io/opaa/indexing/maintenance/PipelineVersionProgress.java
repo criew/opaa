@@ -1,6 +1,6 @@
 package io.opaa.indexing.maintenance;
 
-import io.opaa.indexing.format.ChunkFormatMetadata;
+import io.opaa.format.ChunkFormatMetadata;
 import java.util.UUID;
 
 /**

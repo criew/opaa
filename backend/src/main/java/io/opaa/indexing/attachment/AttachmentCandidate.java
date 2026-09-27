@@ -1,7 +1,7 @@
 package io.opaa.indexing.attachment;
 
+import io.opaa.format.SupportedDocumentFormats;
 import io.opaa.indexing.document.DocumentIngestService;
-import io.opaa.indexing.format.SupportedDocumentFormats;
 import io.opaa.knowledge.DocumentRepository;
 
 /**

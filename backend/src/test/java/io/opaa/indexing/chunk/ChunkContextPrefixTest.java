@@ -2,6 +2,7 @@ package io.opaa.indexing.chunk;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.opaa.format.chunk.ChunkMetadataKeys;
 import io.opaa.knowledge.SourceDocumentContext;
 import java.util.Arrays;
 import java.util.List;
@@ -190,7 +191,7 @@ class ChunkContextPrefixTest {
         new Document(
             "37,00 EUR",
             Map.of(
-                ChunkingService.LOCATION_METADATA_KEY, "Abschn. § 7 Gebühren", "file_name", "x"));
+                ChunkMetadataKeys.LOCATION_METADATA_KEY, "Abschn. § 7 Gebühren", "file_name", "x"));
 
     ChunkContextPrefix.applyTo(chunk, true, true, "Satzung", List.of("Fassung 2026"));
 
