@@ -23,6 +23,7 @@ import io.opaa.chat.ChatService;
 import io.opaa.chat.ChatTurn;
 import io.opaa.chat.UsedPrompt;
 import io.opaa.common.AccessDeniedException;
+import io.opaa.common.NotFoundException;
 import io.opaa.llm.ActiveChatModelResolver;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
@@ -274,6 +275,18 @@ class PromptInChatIntegrationTest {
             () -> availablePromptController.listAvailablePrompts(space, callerOf(outsider)))
         .as("the space orders only for its members")
         .isInstanceOf(AccessDeniedException.class);
+  }
+
+  /** A space that does not exist, or one of another organization, orders nothing: it is a 404. */
+  @Test
+  void anUnknownSpaceOrAForeignOneIsNotFound() {
+    assertThatThrownBy(
+            () ->
+                availablePromptController.listAvailablePrompts(UUID.randomUUID(), callerOf(reader)))
+        .isInstanceOf(NotFoundException.class);
+    assertThatThrownBy(
+            () -> availablePromptController.listAvailablePrompts(space, callerOf(foreigner)))
+        .isInstanceOf(NotFoundException.class);
   }
 
   private Prompt zusammenfassung(UUID library) {
