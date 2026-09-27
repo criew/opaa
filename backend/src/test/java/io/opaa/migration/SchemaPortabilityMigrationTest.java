@@ -34,8 +34,8 @@ class SchemaPortabilityMigrationTest extends AbstractMigrationTest {
   private Connection connection;
 
   @Override
-  protected String baseFixtureChangelogPath() {
-    return "db/changelog/test-empty.yaml";
+  protected List<String> baseFixtureChangelogs() {
+    return List.of("db/changelog/test-empty.yaml");
   }
 
   @BeforeEach

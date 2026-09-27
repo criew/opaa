@@ -7,6 +7,7 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -24,8 +25,8 @@ abstract class AbstractBaselineTest extends AbstractMigrationTest {
   protected Connection connection;
 
   @Override
-  protected String baseFixtureChangelogPath() {
-    return "db/changelog/test-master-through-baseline.yaml";
+  protected List<String> baseFixtureChangelogs() {
+    return List.of("db/changelog/test-master-through-baseline.yaml");
   }
 
   @BeforeEach

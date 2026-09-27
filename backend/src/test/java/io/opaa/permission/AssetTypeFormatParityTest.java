@@ -31,7 +31,7 @@ import org.junit.jupiter.api.Test;
 class AssetTypeFormatParityTest {
 
   private static final Path BASELINE =
-      Path.of("src/main/resources/db/changelog/changes/001-baseline.yaml");
+      Path.of("src/main/resources/db/changelog/rights/2026-09-27-baseline.yaml");
 
   /** Every table that names an asset by type and id, each with its own format check. */
   private static final Set<String> TYPE_INDEPENDENT_TABLES =

@@ -1,0 +1,663 @@
+databaseChangeLog:
+  - changeSet:
+      id: knowledge-2026-09-27-baseline
+      author: opaa
+      comment: "Module knowledge: pgvector, knowledge libraries with their folders and documents, indexing runs and source state, the full-text index, the metadata schema with the delivered Dokumentart vocabulary, and the LLM model catalogue. The two vector_store expression indexes are separate, precondition-guarded changeSets below."
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              CREATE EXTENSION IF NOT EXISTS vector;
+
+              CREATE TABLE chunk_full_text (
+                  chunk_id uuid NOT NULL,
+                  document_id uuid NOT NULL,
+                  library_id uuid NOT NULL,
+                  content_tsv tsvector NOT NULL,
+                  content_tsv_version smallint DEFAULT 1 NOT NULL
+              );
+
+              CREATE TABLE document_keywords (
+                  id uuid NOT NULL,
+                  document_id uuid NOT NULL,
+                  library_id uuid NOT NULL,
+                  keyword character varying(40) NOT NULL,
+                  model_id character varying(255),
+                  extraction_version integer,
+                  created_at timestamp with time zone DEFAULT now() NOT NULL
+              );
+
+              CREATE TABLE document_metadata_values (
+                  id uuid NOT NULL,
+                  document_id uuid NOT NULL,
+                  field_key character varying(100) NOT NULL,
+                  value_state character varying(20) DEFAULT 'SET'::character varying NOT NULL,
+                  text_value character varying(1000),
+                  vocabulary_code character varying(50),
+                  date_value date,
+                  date_precision character varying(10),
+                  origin character varying(20) NOT NULL,
+                  confidence double precision,
+                  actor_user_id uuid,
+                  model_id character varying(255),
+                  extraction_version integer,
+                  created_at timestamp with time zone NOT NULL,
+                  updated_at timestamp with time zone NOT NULL,
+                  library_field_id uuid,
+                  library_value_id uuid,
+                  CONSTRAINT chk_document_metadata_values_confidence_only_derived CHECK (((confidence IS NULL) OR ((origin)::text = 'DERIVED'::text))),
+                  CONSTRAINT chk_document_metadata_values_core_field_type CHECK (((((field_key)::text = 'title'::text) AND (vocabulary_code IS NULL) AND (date_value IS NULL)) OR (((field_key)::text = 'document_type'::text) AND (text_value IS NULL) AND (date_value IS NULL)) OR (((field_key)::text = 'document_date'::text) AND (text_value IS NULL) AND (vocabulary_code IS NULL)) OR (field_key NOT IN ('title', 'document_type', 'document_date')))),
+                  CONSTRAINT chk_document_metadata_values_date_has_precision CHECK (((date_value IS NULL) = (date_precision IS NULL))),
+                  CONSTRAINT chk_document_metadata_values_extraction_version CHECK ((((origin)::text = 'MANUAL'::text) OR (extraction_version IS NOT NULL))),
+                  CONSTRAINT chk_document_metadata_values_library_field CHECK (((library_field_id IS NOT NULL) = ((field_key)::text ~~ 'lib:%'::text))),
+                  CONSTRAINT chk_document_metadata_values_library_value CHECK (((library_value_id IS NULL) OR ((library_field_id IS NOT NULL) AND (text_value IS NOT NULL)))),
+                  CONSTRAINT chk_document_metadata_values_not_determinable_is_manual CHECK ((((value_state)::text <> 'NOT_DETERMINABLE'::text) OR ((origin)::text = 'MANUAL'::text))),
+                  CONSTRAINT chk_document_metadata_values_one_value CHECK (((((value_state)::text = 'NOT_DETERMINABLE'::text) AND (text_value IS NULL) AND (vocabulary_code IS NULL) AND (date_value IS NULL)) OR (((value_state)::text = 'SET'::text) AND (((((text_value IS NOT NULL))::integer + ((vocabulary_code IS NOT NULL))::integer) + ((date_value IS NOT NULL))::integer) = 1)))),
+                  CONSTRAINT chk_document_metadata_values_origin CHECK ((origin IN ('DETERMINISTIC', 'DERIVED', 'MANUAL'))),
+                  CONSTRAINT chk_document_metadata_values_precision CHECK (((date_precision IS NULL) OR (date_precision IN ('DAY', 'MONTH', 'YEAR')))),
+                  CONSTRAINT chk_document_metadata_values_state CHECK ((value_state IN ('SET', 'NOT_DETERMINABLE')))
+              );
+
+              CREATE TABLE document_type_suffix_exclusions (
+                  code character varying(50) NOT NULL,
+                  token character varying(100) NOT NULL
+              );
+
+              CREATE TABLE document_type_suffixes (
+                  code character varying(50) NOT NULL,
+                  suffix character varying(100) NOT NULL,
+                  min_prefix_length integer DEFAULT 3 NOT NULL,
+                  CONSTRAINT chk_document_type_suffixes_min_prefix_length CHECK ((min_prefix_length >= 1))
+              );
+
+              CREATE TABLE document_type_synonyms (
+                  code character varying(50) NOT NULL,
+                  synonym character varying(100) NOT NULL
+              );
+
+              CREATE TABLE document_type_vocabulary (
+                  code character varying(50) NOT NULL,
+                  label character varying(100) NOT NULL,
+                  sort_order integer NOT NULL,
+                  CONSTRAINT chk_document_type_vocabulary_code CHECK (((code)::text ~ '^[A-Z][A-Z0-9_]*$'::text))
+              );
+
+              CREATE TABLE documents (
+                  id uuid DEFAULT gen_random_uuid() NOT NULL,
+                  file_name character varying(500) NOT NULL,
+                  file_path character varying(2000) NOT NULL,
+                  content_type character varying(255),
+                  file_size bigint,
+                  chunk_count integer DEFAULT 0,
+                  indexed_at timestamp with time zone,
+                  checksum character varying(64),
+                  status character varying(20) DEFAULT 'PENDING'::character varying NOT NULL,
+                  source_type character varying(20) DEFAULT 'FILESYSTEM'::character varying NOT NULL,
+                  last_modified_remote character varying(64),
+                  library_id uuid NOT NULL,
+                  organization_id uuid NOT NULL,
+                  uploaded_by_user_id uuid,
+                  source_entry_url character varying(2000),
+                  error_message text,
+                  created_at timestamp with time zone DEFAULT now() NOT NULL,
+                  folder_id uuid,
+                  parent_document_id uuid,
+                  source_container_key character varying(255),
+                  source_hierarchy_path character varying(2000),
+                  metadata_extraction_version integer,
+                  context_prefix_stamp character varying(64),
+                  context_prefix_eligible boolean,
+                  context_prefix_title text,
+                  model_extraction_version integer,
+                  keyword_extraction_version integer,
+                  CONSTRAINT chk_documents_source_type CHECK (((source_type)::text ~ '^[A-Z][A-Z0-9_]*$'::text)),
+                  CONSTRAINT chk_documents_status CHECK ((status IN ('PENDING', 'INDEXED', 'FAILED')))
+              );
+
+              CREATE TABLE indexing_jobs (
+                  id uuid DEFAULT gen_random_uuid() NOT NULL,
+                  status character varying(20) DEFAULT 'RUNNING'::character varying NOT NULL,
+                  documents_total integer DEFAULT 0,
+                  documents_processed integer DEFAULT 0,
+                  documents_failed integer DEFAULT 0,
+                  documents_skipped integer DEFAULT 0,
+                  started_at timestamp with time zone DEFAULT now() NOT NULL,
+                  completed_at timestamp with time zone,
+                  error_message text,
+                  library_id uuid,
+                  documents_indexed_total integer DEFAULT 0 NOT NULL,
+                  events_truncated_count integer DEFAULT 0 NOT NULL,
+                  last_progress_at timestamp with time zone NOT NULL,
+                  organization_id uuid NOT NULL,
+                  triggered_by character varying(20) DEFAULT 'MANUAL'::character varying NOT NULL,
+                  run_mode character varying(20) DEFAULT 'FULL'::character varying NOT NULL,
+                  requests_sent integer,
+                  throttle_count integer,
+                  throttle_wait_millis bigint,
+                  attachments_processed integer,
+                  attachments_skipped integer,
+                  attachments_failed integer,
+                  incomplete boolean DEFAULT false NOT NULL,
+                  listing_complete boolean,
+                  unlisted_scope_keys text,
+                  bytes_downloaded bigint,
+                  CONSTRAINT chk_indexing_jobs_run_mode CHECK ((run_mode IN ('FULL', 'INCREMENTAL', 'EVENT'))),
+                  CONSTRAINT chk_indexing_jobs_status CHECK ((status IN ('RUNNING', 'COMPLETED', 'FAILED'))),
+                  CONSTRAINT chk_indexing_jobs_triggered_by CHECK ((triggered_by IN ('MANUAL', 'SCHEDULED', 'WEBHOOK')))
+              );
+
+              CREATE TABLE indexing_run_events (
+                  id uuid NOT NULL,
+                  job_id uuid NOT NULL,
+                  category character varying(30) NOT NULL,
+                  message text NOT NULL,
+                  reference text,
+                  created_at timestamp with time zone DEFAULT now() NOT NULL
+              );
+
+              CREATE TABLE knowledge_libraries (
+                  id uuid NOT NULL,
+                  organization_id uuid NOT NULL,
+                  source_type character varying(20) NOT NULL,
+                  source_path character varying(2000),
+                  source_url character varying(2000),
+                  source_proxy character varying(255),
+                  source_credentials character varying(3000),
+                  source_insecure_ssl boolean DEFAULT false NOT NULL,
+                  schedule_enabled boolean DEFAULT false NOT NULL,
+                  schedule_cron character varying(100),
+                  diagnostics_locked boolean DEFAULT true NOT NULL,
+                  source_webhook_secret character varying(3000),
+                  core_context_prefix_document_type boolean DEFAULT false NOT NULL,
+                  core_context_prefix_document_date boolean DEFAULT false NOT NULL,
+                  model_extraction_enabled boolean DEFAULT false NOT NULL,
+                  keywords_enabled boolean DEFAULT false NOT NULL,
+                  source_settings jsonb,
+                  external_access_state character varying(20) DEFAULT 'NEVER_SET'::character varying NOT NULL,
+                  external_access_expires_at timestamp with time zone,
+                  external_access_set_at timestamp with time zone,
+                  external_access_set_by_user_id uuid,
+                  external_access_reminder_sent_at timestamp with time zone,
+                  listed_cap boolean DEFAULT true NOT NULL,
+                  all_accounts_grant_allowed boolean DEFAULT true NOT NULL,
+                  CONSTRAINT chk_knowledge_libraries_external_access CHECK (
+              CASE external_access_state
+                  WHEN 'NEVER_SET'::text THEN ((external_access_expires_at IS NULL) AND (external_access_set_at IS NULL) AND (external_access_set_by_user_id IS NULL) AND (external_access_reminder_sent_at IS NULL))
+                  WHEN 'ACTIVE'::text THEN ((external_access_expires_at IS NOT NULL) AND (external_access_set_at IS NOT NULL))
+                  ELSE (external_access_set_at IS NOT NULL)
+              END),
+                  CONSTRAINT chk_knowledge_libraries_external_access_state CHECK ((external_access_state IN ('NEVER_SET', 'ACTIVE', 'WITHDRAWN', 'EXPIRED', 'SUSPENDED'))),
+                  CONSTRAINT chk_knowledge_libraries_schedule CHECK ((((schedule_enabled = false) AND (schedule_cron IS NULL)) OR ((schedule_enabled = true) AND (schedule_cron IS NOT NULL) AND ((source_type)::text <> 'UPLOAD'::text)))),
+                  CONSTRAINT chk_knowledge_libraries_share_cap_upload_unrestricted CHECK ((((source_type)::text <> 'UPLOAD'::text) OR ((all_accounts_grant_allowed = true) AND (listed_cap = true)))),
+                  CONSTRAINT chk_knowledge_libraries_source_settings CHECK (((source_settings IS NULL) OR (jsonb_typeof(source_settings) = 'object'::text))),
+                  CONSTRAINT chk_knowledge_libraries_source_type CHECK (((source_type)::text ~ '^[A-Z][A-Z0-9_]*$'::text)),
+                  CONSTRAINT chk_knowledge_libraries_upload_without_source CHECK ((((source_type)::text <> 'UPLOAD'::text) OR ((source_path IS NULL) AND (source_url IS NULL) AND (source_proxy IS NULL) AND (source_credentials IS NULL) AND (source_insecure_ssl = false) AND (source_settings IS NULL))))
+              );
+
+              CREATE TABLE library_folders (
+                  id uuid NOT NULL,
+                  library_id uuid NOT NULL,
+                  parent_folder_id uuid,
+                  name character varying(255) NOT NULL,
+                  organization_id uuid NOT NULL,
+                  created_at timestamp with time zone DEFAULT now() NOT NULL
+              );
+
+              CREATE TABLE library_metadata_field_values (
+                  id uuid NOT NULL,
+                  field_id uuid NOT NULL,
+                  code character varying(50) NOT NULL,
+                  label character varying(100) NOT NULL,
+                  sort_order integer NOT NULL,
+                  CONSTRAINT chk_library_metadata_field_values_code CHECK (((code)::text ~ '^[A-Za-z0-9][A-Za-z0-9_.-]*$'::text))
+              );
+
+              CREATE TABLE library_metadata_fields (
+                  id uuid NOT NULL,
+                  library_id uuid NOT NULL,
+                  field_key character varying(50) NOT NULL,
+                  label character varying(100) NOT NULL,
+                  field_type character varying(20) NOT NULL,
+                  value_pattern character varying(200),
+                  filter_enabled boolean DEFAULT false NOT NULL,
+                  context_prefix_enabled boolean DEFAULT false NOT NULL,
+                  citation_enabled boolean DEFAULT false NOT NULL,
+                  citation_position integer,
+                  sort_order integer NOT NULL,
+                  created_at timestamp with time zone NOT NULL,
+                  updated_at timestamp with time zone NOT NULL,
+                  CONSTRAINT chk_library_metadata_fields_citation_position CHECK (((citation_enabled = (citation_position IS NOT NULL)) AND ((citation_position IS NULL) OR (citation_position = ANY (ARRAY[1, 2]))))),
+                  CONSTRAINT chk_library_metadata_fields_key CHECK (((field_key)::text ~ '^[a-z][a-z0-9_]*$'::text)),
+                  CONSTRAINT chk_library_metadata_fields_pattern CHECK ((((field_type)::text = 'PATTERN'::text) = (value_pattern IS NOT NULL))),
+                  CONSTRAINT chk_library_metadata_fields_retrieval_effect CHECK ((filter_enabled OR context_prefix_enabled)),
+                  CONSTRAINT chk_library_metadata_fields_type CHECK ((field_type IN ('SELECT', 'DATE', 'PATTERN')))
+              );
+
+              CREATE TABLE library_metadata_schema_changes (
+                  id uuid NOT NULL,
+                  field_id uuid NOT NULL,
+                  value_id uuid,
+                  target_value_id uuid,
+                  change_kind character varying(20) NOT NULL,
+                  correlation_ref character varying(100) NOT NULL,
+                  requested_at timestamp with time zone DEFAULT now() NOT NULL,
+                  processed_documents bigint DEFAULT 0 NOT NULL,
+                  CONSTRAINT chk_library_metadata_schema_changes_kind CHECK ((change_kind IN ('VALUE_REMAP', 'FIELD_DELETION'))),
+                  CONSTRAINT chk_library_metadata_schema_changes_processed CHECK ((processed_documents >= 0)),
+                  CONSTRAINT chk_library_metadata_schema_changes_subject CHECK ((((change_kind)::text = 'VALUE_REMAP'::text) = (value_id IS NOT NULL))),
+                  CONSTRAINT chk_library_metadata_schema_changes_target CHECK (((target_value_id IS NULL) OR (((change_kind)::text = 'VALUE_REMAP'::text) AND (target_value_id <> value_id))))
+              );
+
+              CREATE TABLE llm_model_seed_marker (
+                  id integer NOT NULL,
+                  seeded_at timestamp with time zone NOT NULL,
+                  CONSTRAINT chk_llm_model_seed_marker_singleton CHECK ((id = 1))
+              );
+
+              CREATE TABLE llm_models (
+                  id uuid NOT NULL,
+                  display_name character varying(120) NOT NULL,
+                  base_url character varying(500) NOT NULL,
+                  model_identifier character varying(200) NOT NULL,
+                  temperature numeric(3,2) DEFAULT 0.7 NOT NULL,
+                  max_tokens integer DEFAULT 2000 NOT NULL,
+                  api_key_ciphertext text,
+                  active boolean DEFAULT false NOT NULL,
+                  created_at timestamp with time zone DEFAULT now() NOT NULL,
+                  updated_at timestamp with time zone DEFAULT now() NOT NULL,
+                  CONSTRAINT chk_llm_models_max_tokens CHECK ((max_tokens > 0)),
+                  CONSTRAINT chk_llm_models_temperature CHECK (((temperature >= (0)::numeric) AND (temperature <= (2)::numeric)))
+              );
+
+              CREATE TABLE metadata_model_extraction_stats (
+                  library_id uuid NOT NULL,
+                  calls bigint DEFAULT 0 NOT NULL,
+                  accepted_values bigint DEFAULT 0 NOT NULL,
+                  rejected_below_threshold bigint DEFAULT 0 CONSTRAINT metadata_model_extraction_sta_rejected_below_threshold_not_null NOT NULL,
+                  rejected_outside_vocabulary bigint DEFAULT 0 CONSTRAINT metadata_model_extraction_s_rejected_outside_vocabular_not_null NOT NULL,
+                  failures bigint DEFAULT 0 NOT NULL,
+                  rejected_pool_full bigint DEFAULT 0 NOT NULL,
+                  keywords_assigned bigint DEFAULT 0 NOT NULL,
+                  last_call_at timestamp with time zone
+              );
+
+              CREATE TABLE metadata_model_rejections (
+                  id uuid NOT NULL,
+                  library_id uuid NOT NULL,
+                  document_id uuid,
+                  field_key character varying(100) NOT NULL,
+                  proposed_value character varying(200),
+                  confidence double precision,
+                  reason character varying(30) NOT NULL,
+                  created_at timestamp with time zone DEFAULT now() NOT NULL,
+                  CONSTRAINT chk_metadata_model_rejections_reason CHECK ((reason IN ('BELOW_THRESHOLD', 'OUTSIDE_VOCABULARY')))
+              );
+
+              CREATE TABLE source_sync_state (
+                  id uuid NOT NULL,
+                  library_id uuid NOT NULL,
+                  full_sync_job_id uuid,
+                  completed_scope_keys text,
+                  full_sync_completed_at timestamp with time zone,
+                  incremental_anchor timestamp with time zone,
+                  updated_at timestamp with time zone NOT NULL
+              );
+
+              ALTER TABLE ONLY chunk_full_text
+                  ADD CONSTRAINT chunk_full_text_pkey PRIMARY KEY (chunk_id);
+
+              ALTER TABLE ONLY document_keywords
+                  ADD CONSTRAINT document_keywords_pkey PRIMARY KEY (id);
+
+              ALTER TABLE ONLY document_metadata_values
+                  ADD CONSTRAINT document_metadata_values_pkey PRIMARY KEY (id);
+
+              ALTER TABLE ONLY document_type_suffix_exclusions
+                  ADD CONSTRAINT document_type_suffix_exclusions_pkey PRIMARY KEY (code, token);
+
+              ALTER TABLE ONLY document_type_suffixes
+                  ADD CONSTRAINT document_type_suffixes_pkey PRIMARY KEY (code, suffix);
+
+              ALTER TABLE ONLY document_type_synonyms
+                  ADD CONSTRAINT document_type_synonyms_pkey PRIMARY KEY (code, synonym);
+
+              ALTER TABLE ONLY document_type_vocabulary
+                  ADD CONSTRAINT document_type_vocabulary_pkey PRIMARY KEY (code);
+
+              ALTER TABLE ONLY documents
+                  ADD CONSTRAINT documents_pkey PRIMARY KEY (id);
+
+              ALTER TABLE ONLY indexing_jobs
+                  ADD CONSTRAINT indexing_jobs_pkey PRIMARY KEY (id);
+
+              ALTER TABLE ONLY indexing_run_events
+                  ADD CONSTRAINT indexing_run_events_pkey PRIMARY KEY (id);
+
+              ALTER TABLE ONLY knowledge_libraries
+                  ADD CONSTRAINT knowledge_libraries_pkey PRIMARY KEY (id);
+
+              ALTER TABLE ONLY library_folders
+                  ADD CONSTRAINT library_folders_pkey PRIMARY KEY (id);
+
+              ALTER TABLE ONLY library_metadata_field_values
+                  ADD CONSTRAINT library_metadata_field_values_pkey PRIMARY KEY (id);
+
+              ALTER TABLE ONLY library_metadata_fields
+                  ADD CONSTRAINT library_metadata_fields_pkey PRIMARY KEY (id);
+
+              ALTER TABLE ONLY library_metadata_schema_changes
+                  ADD CONSTRAINT library_metadata_schema_changes_pkey PRIMARY KEY (id);
+
+              ALTER TABLE ONLY llm_model_seed_marker
+                  ADD CONSTRAINT llm_model_seed_marker_pkey PRIMARY KEY (id);
+
+              ALTER TABLE ONLY llm_models
+                  ADD CONSTRAINT llm_models_pkey PRIMARY KEY (id);
+
+              ALTER TABLE ONLY metadata_model_extraction_stats
+                  ADD CONSTRAINT metadata_model_extraction_stats_pkey PRIMARY KEY (library_id);
+
+              ALTER TABLE ONLY metadata_model_rejections
+                  ADD CONSTRAINT metadata_model_rejections_pkey PRIMARY KEY (id);
+
+              ALTER TABLE ONLY source_sync_state
+                  ADD CONSTRAINT source_sync_state_pkey PRIMARY KEY (id);
+
+              ALTER TABLE ONLY documents
+                  ADD CONSTRAINT uk_documents_id_organization UNIQUE (id, organization_id);
+
+              ALTER TABLE ONLY documents
+                  ADD CONSTRAINT uk_documents_library_path UNIQUE (library_id, file_path);
+
+              ALTER TABLE ONLY knowledge_libraries
+                  ADD CONSTRAINT uk_knowledge_libraries_id_organization UNIQUE (id, organization_id);
+
+              ALTER TABLE ONLY library_folders
+                  ADD CONSTRAINT uk_library_folders_id_library_organization UNIQUE (id, library_id, organization_id);
+
+              ALTER TABLE ONLY library_metadata_field_values
+                  ADD CONSTRAINT uk_library_metadata_field_values_id_field UNIQUE (id, field_id);
+
+              ALTER TABLE ONLY library_metadata_schema_changes
+                  ADD CONSTRAINT uk_library_metadata_schema_changes_subject UNIQUE NULLS NOT DISTINCT (field_id, value_id);
+
+              ALTER TABLE ONLY source_sync_state
+                  ADD CONSTRAINT uk_source_sync_state_library UNIQUE (library_id);
+
+              ALTER TABLE ONLY document_keywords
+                  ADD CONSTRAINT uq_document_keywords_document_keyword UNIQUE (document_id, keyword);
+
+              CREATE INDEX idx_chunk_full_text_content_tsv ON chunk_full_text USING gin (content_tsv);
+
+              CREATE INDEX idx_chunk_full_text_document_id ON chunk_full_text USING btree (document_id);
+
+              CREATE INDEX idx_chunk_full_text_library_id ON chunk_full_text USING btree (library_id);
+
+              CREATE INDEX idx_document_keywords_document ON document_keywords USING btree (document_id);
+
+              CREATE INDEX idx_document_metadata_values_library_field ON document_metadata_values USING btree (library_field_id);
+
+              CREATE INDEX idx_document_metadata_values_library_value ON document_metadata_values USING btree (library_value_id);
+
+              CREATE INDEX idx_document_metadata_values_vocabulary_code ON document_metadata_values USING btree (vocabulary_code);
+
+              CREATE INDEX idx_documents_folder ON documents USING btree (folder_id);
+
+              CREATE INDEX idx_documents_indexed_chunk_count ON documents USING btree (organization_id, chunk_count) WHERE ((status)::text = 'INDEXED'::text);
+
+              CREATE INDEX idx_documents_library_context_prefix ON documents USING btree (library_id) WHERE (context_prefix_stamp IS NULL);
+
+              CREATE INDEX idx_documents_library_status ON documents USING btree (library_id, status);
+
+              CREATE INDEX idx_documents_parent ON documents USING btree (parent_document_id);
+
+              CREATE INDEX idx_indexing_jobs_organization_id ON indexing_jobs USING btree (organization_id);
+
+              CREATE INDEX idx_indexing_run_events_job_id ON indexing_run_events USING btree (job_id);
+
+              CREATE INDEX idx_knowledge_libraries_external_access_expiry ON knowledge_libraries USING btree (external_access_expires_at) WHERE ((external_access_state)::text = 'ACTIVE'::text);
+
+              CREATE INDEX idx_library_folders_parent ON library_folders USING btree (parent_folder_id);
+
+              CREATE INDEX idx_metadata_model_rejections_library_created ON metadata_model_rejections USING btree (library_id, created_at DESC);
+
+              CREATE UNIQUE INDEX uk_document_metadata_values_document_field ON document_metadata_values USING btree (document_id, field_key);
+
+              CREATE UNIQUE INDEX uk_documents_library_checksum ON documents USING btree (library_id, checksum) WHERE ((checksum IS NOT NULL) AND ((source_type)::text = 'UPLOAD'::text) AND (parent_document_id IS NULL));
+
+              CREATE UNIQUE INDEX uk_indexing_jobs_library_running ON indexing_jobs USING btree (library_id) WHERE ((status)::text = 'RUNNING'::text);
+
+              CREATE UNIQUE INDEX uk_library_folders_child_name ON library_folders USING btree (library_id, parent_folder_id, name) WHERE (parent_folder_id IS NOT NULL);
+
+              CREATE UNIQUE INDEX uk_library_folders_root_name ON library_folders USING btree (library_id, name) WHERE (parent_folder_id IS NULL);
+
+              CREATE UNIQUE INDEX uk_library_metadata_field_values_code ON library_metadata_field_values USING btree (field_id, code);
+
+              CREATE UNIQUE INDEX uk_library_metadata_fields_citation_position ON library_metadata_fields USING btree (library_id, citation_position) WHERE (citation_position IS NOT NULL);
+
+              CREATE UNIQUE INDEX uk_library_metadata_fields_key ON library_metadata_fields USING btree (library_id, field_key);
+
+              CREATE UNIQUE INDEX ux_llm_models_single_active ON llm_models USING btree (active) WHERE active;
+
+              ALTER TABLE ONLY document_keywords
+                  ADD CONSTRAINT fk_document_keywords_document FOREIGN KEY (document_id) REFERENCES documents(id) ON DELETE CASCADE;
+
+              ALTER TABLE ONLY document_keywords
+                  ADD CONSTRAINT fk_document_keywords_library FOREIGN KEY (library_id) REFERENCES knowledge_libraries(id) ON DELETE CASCADE;
+
+              ALTER TABLE ONLY document_metadata_values
+                  ADD CONSTRAINT fk_document_metadata_values_actor FOREIGN KEY (actor_user_id) REFERENCES users(id) ON DELETE SET NULL;
+
+              ALTER TABLE ONLY document_metadata_values
+                  ADD CONSTRAINT fk_document_metadata_values_document FOREIGN KEY (document_id) REFERENCES documents(id) ON DELETE CASCADE;
+
+              ALTER TABLE ONLY document_metadata_values
+                  ADD CONSTRAINT fk_document_metadata_values_library_field FOREIGN KEY (library_field_id) REFERENCES library_metadata_fields(id) ON DELETE CASCADE;
+
+              ALTER TABLE ONLY document_metadata_values
+                  ADD CONSTRAINT fk_document_metadata_values_library_value FOREIGN KEY (library_value_id, library_field_id) REFERENCES library_metadata_field_values(id, field_id) ON DELETE RESTRICT;
+
+              ALTER TABLE ONLY document_metadata_values
+                  ADD CONSTRAINT fk_document_metadata_values_vocabulary FOREIGN KEY (vocabulary_code) REFERENCES document_type_vocabulary(code) ON DELETE RESTRICT;
+
+              ALTER TABLE ONLY document_type_suffix_exclusions
+                  ADD CONSTRAINT fk_document_type_suffix_exclusions_code FOREIGN KEY (code) REFERENCES document_type_vocabulary(code) ON DELETE CASCADE;
+
+              ALTER TABLE ONLY document_type_suffixes
+                  ADD CONSTRAINT fk_document_type_suffixes_code FOREIGN KEY (code) REFERENCES document_type_vocabulary(code) ON DELETE CASCADE;
+
+              ALTER TABLE ONLY document_type_synonyms
+                  ADD CONSTRAINT fk_document_type_synonyms_code FOREIGN KEY (code) REFERENCES document_type_vocabulary(code) ON DELETE CASCADE;
+
+              ALTER TABLE ONLY documents
+                  ADD CONSTRAINT fk_documents_folder FOREIGN KEY (folder_id, library_id, organization_id) REFERENCES library_folders(id, library_id, organization_id) ON DELETE RESTRICT;
+
+              ALTER TABLE ONLY documents
+                  ADD CONSTRAINT fk_documents_library_organization FOREIGN KEY (library_id, organization_id) REFERENCES knowledge_libraries(id, organization_id) ON DELETE RESTRICT;
+
+              ALTER TABLE ONLY documents
+                  ADD CONSTRAINT fk_documents_parent FOREIGN KEY (parent_document_id, organization_id) REFERENCES documents(id, organization_id);
+
+              ALTER TABLE ONLY documents
+                  ADD CONSTRAINT fk_documents_uploaded_by_user_organization FOREIGN KEY (uploaded_by_user_id, organization_id) REFERENCES users(id, organization_id) ON DELETE SET NULL (uploaded_by_user_id);
+
+              ALTER TABLE ONLY indexing_jobs
+                  ADD CONSTRAINT fk_indexing_jobs_library_organization FOREIGN KEY (library_id, organization_id) REFERENCES knowledge_libraries(id, organization_id) ON DELETE SET NULL (library_id);
+
+              ALTER TABLE ONLY indexing_jobs
+                  ADD CONSTRAINT fk_indexing_jobs_organization FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE RESTRICT;
+
+              ALTER TABLE ONLY indexing_run_events
+                  ADD CONSTRAINT fk_indexing_run_events_job FOREIGN KEY (job_id) REFERENCES indexing_jobs(id) ON DELETE CASCADE;
+
+              ALTER TABLE ONLY knowledge_libraries
+                  ADD CONSTRAINT fk_knowledge_libraries_asset FOREIGN KEY (id, organization_id) REFERENCES assets(id, organization_id) ON DELETE CASCADE;
+
+              ALTER TABLE ONLY knowledge_libraries
+                  ADD CONSTRAINT fk_knowledge_libraries_organization FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE RESTRICT;
+
+              ALTER TABLE ONLY library_folders
+                  ADD CONSTRAINT fk_library_folders_library FOREIGN KEY (library_id, organization_id) REFERENCES knowledge_libraries(id, organization_id) ON DELETE CASCADE;
+
+              ALTER TABLE ONLY library_folders
+                  ADD CONSTRAINT fk_library_folders_parent FOREIGN KEY (parent_folder_id, library_id, organization_id) REFERENCES library_folders(id, library_id, organization_id) ON DELETE RESTRICT;
+
+              ALTER TABLE ONLY library_metadata_field_values
+                  ADD CONSTRAINT fk_library_metadata_field_values_field FOREIGN KEY (field_id) REFERENCES library_metadata_fields(id) ON DELETE CASCADE;
+
+              ALTER TABLE ONLY library_metadata_fields
+                  ADD CONSTRAINT fk_library_metadata_fields_library FOREIGN KEY (library_id) REFERENCES knowledge_libraries(id) ON DELETE CASCADE;
+
+              ALTER TABLE ONLY library_metadata_schema_changes
+                  ADD CONSTRAINT fk_library_metadata_schema_changes_field FOREIGN KEY (field_id) REFERENCES library_metadata_fields(id) ON DELETE CASCADE;
+
+              ALTER TABLE ONLY library_metadata_schema_changes
+                  ADD CONSTRAINT fk_library_metadata_schema_changes_target FOREIGN KEY (target_value_id, field_id) REFERENCES library_metadata_field_values(id, field_id) ON DELETE RESTRICT;
+
+              ALTER TABLE ONLY library_metadata_schema_changes
+                  ADD CONSTRAINT fk_library_metadata_schema_changes_value FOREIGN KEY (value_id, field_id) REFERENCES library_metadata_field_values(id, field_id) ON DELETE CASCADE;
+
+              ALTER TABLE ONLY metadata_model_extraction_stats
+                  ADD CONSTRAINT fk_metadata_model_extraction_stats_library FOREIGN KEY (library_id) REFERENCES knowledge_libraries(id) ON DELETE CASCADE;
+
+              ALTER TABLE ONLY metadata_model_rejections
+                  ADD CONSTRAINT fk_metadata_model_rejections_document FOREIGN KEY (document_id) REFERENCES documents(id) ON DELETE SET NULL;
+
+              ALTER TABLE ONLY metadata_model_rejections
+                  ADD CONSTRAINT fk_metadata_model_rejections_library FOREIGN KEY (library_id) REFERENCES knowledge_libraries(id) ON DELETE CASCADE;
+
+              ALTER TABLE ONLY source_sync_state
+                  ADD CONSTRAINT fk_source_sync_state_library FOREIGN KEY (library_id) REFERENCES knowledge_libraries(id) ON DELETE CASCADE;
+
+              -- Delivered Dokumentart vocabulary with its synonyms, endings and exclusions. An
+              -- installation extends this by inserting rows, never by editing the baseline; the
+              -- delivered set itself is reconciled against TestVocabularies by
+              -- DocumentTypeVocabularySeedReconciliationTest.
+              INSERT INTO document_type_vocabulary (code, label, sort_order) VALUES
+                  ('SATZUNG_ORDNUNG', 'Satzung/Ordnung', 10),
+                  ('DIENSTANWEISUNG', 'Dienstanweisung', 20),
+                  ('VERMERK', 'Vermerk', 30),
+                  ('PROTOKOLL', 'Protokoll', 40),
+                  ('BESCHEID_VORLAGE', 'Bescheid-Vorlage', 50),
+                  ('FORMULAR', 'Formular', 60),
+                  ('GEBUEHRENVERZEICHNIS', 'Gebührenverzeichnis', 70),
+                  ('PRAESENTATION', 'Präsentation', 80),
+                  ('SONSTIGES', 'Sonstiges', 90);
+
+              INSERT INTO document_type_synonyms (code, synonym) VALUES
+                  ('SATZUNG_ORDNUNG', 'satzung'),
+                  ('SATZUNG_ORDNUNG', 'satzungen'),
+                  ('SATZUNG_ORDNUNG', 'ordnung'),
+                  ('SATZUNG_ORDNUNG', 'hauptsatzung'),
+                  ('SATZUNG_ORDNUNG', 'gebuehrensatzung'),
+                  ('SATZUNG_ORDNUNG', 'gebuehrenordnung'),
+                  ('SATZUNG_ORDNUNG', 'benutzungsordnung'),
+                  ('DIENSTANWEISUNG', 'dienstanweisung'),
+                  ('DIENSTANWEISUNG', 'dienstanweisungen'),
+                  ('DIENSTANWEISUNG', 'dienstanordnung'),
+                  ('VERMERK', 'vermerk'),
+                  ('VERMERK', 'aktenvermerk'),
+                  ('PROTOKOLL', 'protokoll'),
+                  ('PROTOKOLL', 'niederschrift'),
+                  ('PROTOKOLL', 'sitzungsprotokoll'),
+                  ('PROTOKOLL', 'ergebnisprotokoll'),
+                  ('BESCHEID_VORLAGE', 'bescheid'),
+                  ('BESCHEID_VORLAGE', 'bescheidvorlage'),
+                  ('BESCHEID_VORLAGE', 'bescheidmuster'),
+                  ('BESCHEID_VORLAGE', 'musterbescheid'),
+                  ('FORMULAR', 'formular'),
+                  ('FORMULAR', 'formulare'),
+                  ('FORMULAR', 'antragsformular'),
+                  ('FORMULAR', 'formblatt'),
+                  ('FORMULAR', 'vordruck'),
+                  ('GEBUEHRENVERZEICHNIS', 'gebuehrenverzeichnis'),
+                  ('GEBUEHRENVERZEICHNIS', 'gebuehrentabelle'),
+                  ('GEBUEHRENVERZEICHNIS', 'gebuehrentarif'),
+                  ('GEBUEHRENVERZEICHNIS', 'kostenverzeichnis'),
+                  ('PRAESENTATION', 'praesentation'),
+                  ('PRAESENTATION', 'vortrag'),
+                  ('PRAESENTATION', 'folien'),
+                  ('SONSTIGES', 'sonstiges'),
+                  ('SONSTIGES', 'sonstige');
+              INSERT INTO document_type_suffixes (code, suffix, min_prefix_length) VALUES
+                  ('SATZUNG_ORDNUNG', 'satzung', 3),
+                  ('SATZUNG_ORDNUNG', 'ordnung', 3),
+                  ('DIENSTANWEISUNG', 'dienstanweisung', 3),
+                  ('GEBUEHRENVERZEICHNIS', 'gebuehrenverzeichnis', 3),
+                  ('PROTOKOLL', 'protokoll', 3),
+                  ('FORMULAR', 'formular', 3),
+                  ('VERMERK', 'vermerk', 3);
+
+              INSERT INTO document_type_suffix_exclusions (code, token) VALUES
+                  ('SATZUNG_ORDNUNG', 'anordnung'),
+                  ('SATZUNG_ORDNUNG', 'zuordnung'),
+                  ('SATZUNG_ORDNUNG', 'neuzuordnung'),
+                  ('SATZUNG_ORDNUNG', 'einordnung'),
+                  ('SATZUNG_ORDNUNG', 'neuordnung'),
+                  ('SATZUNG_ORDNUNG', 'umordnung'),
+                  ('SATZUNG_ORDNUNG', 'unterordnung'),
+                  ('SATZUNG_ORDNUNG', 'rangordnung'),
+                  ('SATZUNG_ORDNUNG', 'sitzordnung'),
+                  ('SATZUNG_ORDNUNG', 'tagesordnung'),
+                  ('SATZUNG_ORDNUNG', 'groessenordnung'),
+                  ('VERMERK', 'sperrvermerk'),
+                  ('VERMERK', 'sichtvermerk'),
+                  ('VERMERK', 'eingangsvermerk');
+      # No rollback: the baseline is never rolled back - a broken installation is discarded and re-run from an empty database instead.
+
+  - changeSet:
+      id: knowledge-2026-09-27-baseline-vector-store-library-id
+      author: opaa
+      comment: >-
+        Expression index on vector_store's metadata->>'library_id', backing
+        FullTextIndexFillStateService. vector_store is created by Spring AI at
+        application startup (spring.ai.vectorstore.pgvector.initialize-schema=true),
+        never by Liquibase, so on a fresh install this changeSet's precondition fails on
+        the very first start; onFail: CONTINUE skips it without recording it as
+        executed, and Liquibase retries it on the next start. Its own changeSet, never
+        folded into a module changeSet: a precondition there would skip the whole
+        module. Built CONCURRENTLY (and therefore outside a transaction) because it
+        runs against an already-populated table; the leading DROP INDEX CONCURRENTLY IF
+        EXISTS finishes an index a previously interrupted build left behind as invalid.
+        Looks for vector_store in the default schema, which opaa.database.schema also
+        binds spring.ai.vectorstore.pgvector.schema-name to; an installation overriding
+        spring.ai.vectorstore.pgvector.table-name needs its own changeSet.
+      preConditions:
+        onFail: CONTINUE
+        onFailMessage: >-
+          vector_store does not exist yet (Spring AI creates it at application
+          startup, not Liquibase - see this changeSet's own comment); retried on the
+          next application start.
+        tableExists:
+          tableName: vector_store
+      runInTransaction: false
+      changes:
+        - sql:
+            sql: |
+              DROP INDEX CONCURRENTLY IF EXISTS idx_vector_store_library_id;
+              CREATE INDEX CONCURRENTLY idx_vector_store_library_id ON vector_store USING btree (((metadata ->> 'library_id'::text)));
+      # No rollback: the baseline is never rolled back - a broken installation is discarded and re-run from an empty database instead.
+
+  - changeSet:
+      id: knowledge-2026-09-27-baseline-vector-store-document-id
+      author: opaa
+      comment: >-
+        Expression index on vector_store's metadata->>'document_id', backing
+        VectorStoreWriter#updateDocumentMetadata and VectorChunkStore#deleteByDocumentId.
+        Same precondition, CONCURRENTLY and retry mechanics as changeSet
+        knowledge-2026-09-27-baseline-vector-store-library-id, for the same reasons - see that changeSet's comment.
+      preConditions:
+        onFail: CONTINUE
+        onFailMessage: >-
+          vector_store does not exist yet (Spring AI creates it at application
+          startup, not Liquibase - see this changeSet's own comment); retried on the
+          next application start.
+        tableExists:
+          tableName: vector_store
+      runInTransaction: false
+      changes:
+        - sql:
+            sql: |
+              DROP INDEX CONCURRENTLY IF EXISTS idx_vector_store_document_id;
+              CREATE INDEX CONCURRENTLY idx_vector_store_document_id ON vector_store USING btree (((metadata ->> 'document_id'::text)));
+      # No rollback: the baseline is never rolled back - a broken installation is discarded and re-run from an empty database instead.

@@ -46,7 +46,7 @@ Eine eigene Transaktion (`REQUIRES_NEW`, `TransactionTemplate`) war in diesem Pr
 - Niemals auf `main` pushen, niemals mergen und niemals die Arbeit anderer Branches anfassen.
 - Beim PR-Abschluss die Abnahmekriterien-Checkboxen im Issue abhaken; Abweichungen bleiben offen und werden mit Verweis auf den PR begründet.
 - `Closes #N` nur, wenn der Issue-Umfang vollständig geliefert ist. Bewusst ausgelassener Umfang braucht ein tatsächlich angelegtes, im PR verlinktes Folge-Issue — oder `Refs` statt `Closes`. Ein Satz im PR-Body ersetzt kein Issue.
-- Vor der Vergabe einer Liquibase-Changeset-Nummer oder einer geteilten Versions-Konstante (Pipeline-Version, Messvertragsversion) nicht nur `main`, sondern auch die offenen PRs prüfen (`gh pr list`, `gh pr view <n> --json files`) — parallele Stränge vergeben dieselben Nummern.
+- Vor der Vergabe einer geteilten Versions-Konstante (Pipeline-Version, Messvertragsversion) nicht nur `main`, sondern auch die offenen PRs prüfen (`gh pr list`, `gh pr view <n> --json files`) — parallele Stränge vergeben dieselben Nummern.
 
 ## Pre-Push-Checkliste
 
@@ -79,7 +79,7 @@ Integrationstests mit `@Testcontainers(disabledWithoutDocker = true)` werden ohn
 - **Reihenfolge für neue Endpunkte:** OpenAPI-Spezifikation; generierte Backend-DTOs; Domain-Enum-Mappings und Cleanup in `backend/build.gradle.kts`; `pnpm run generate:api-types`; API-Funktion und Store-Aktion; und ein MSW-Handler in `frontend/src/mocks/handlers.ts`.
 - **Generierter Code wird niemals committet:** `build/generated/` und `frontend/src/types/generated/`.
 - **Abhängigkeitsversionen** leben nur in `backend/gradle/libs.versions.toml` und werden über `libs.*` referenziert.
-- **Liquibase:** Eine sequenziell nummerierte Change-Datei hinzufügen und in das Master-Changelog aufnehmen. Niemals ein ausgeführtes changeSet bearbeiten; `ddl-auto` ist `none`.
+- **Liquibase:** Eine neue Datei `db/changelog/<modul>/JJJJ-MM-TT-<thema>.yaml` im Verzeichnis des Moduls der Tabelle anlegen; der Master bindet sie selbst ein (Regeln in `backend/AGENTS.md`). Niemals ein ausgeführtes changeSet bearbeiten; `ddl-auto` ist `none`.
 - **Jackson:** Immer `tools.jackson.*` importieren. Jackson 2 liegt unvermeidbar transitiv mit auf dem Classpath (über `spring-ai-openai` → `openai-java-core` und `spring-ai-tika-document-reader` → Tika); ein versehentlicher `com.fasterxml.jackson.databind.ObjectMapper`-Import kompiliert, findet zur Laufzeit aber keine Bean. Ausnahme: Die Annotationen bleiben `com.fasterxml.jackson.annotation.*` — die nutzt Jackson 3 weiterhin.
 - **Frontend-Tests** verwenden `frontend/src/test/test-utils.tsx`-Helfer wie `renderWithProviders` und `setMockAuthState`.
 - **Lokaler Betrieb:** Backend mit `./gradlew bootRun` (standardmäßig Mock-Auth; PostgreSQL über `docker-compose up postgres`); Frontend mit `pnpm run dev` oder Backend-los mit `VITE_ENABLE_MOCKS=true`.

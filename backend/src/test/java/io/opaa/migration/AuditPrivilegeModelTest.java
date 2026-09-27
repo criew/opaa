@@ -9,6 +9,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -30,16 +31,14 @@ import org.junit.jupiter.api.Test;
  *
  * <p><b>Why this test does not re-run the baseline as a non-superuser role:</b> {@link
  * AbstractMigrationTest}'s template-database mechanism always builds {@link
- * #baseFixtureChangelogPath()} as the container's bootstrap superuser, and splitting {@code
- * changes/001-baseline.yaml} to change that would violate the "exactly one baseline file" rule.
- * Instead, this test creates an ordinary, freshly provisioned role after the baseline has been
- * applied and grants it exactly the privileges the identity changeSet grants to {@code
- * current_user} at migration time (INSERT/SELECT on {@code audit_log}/{@code
- * audit_actor_pseudonyms}, SELECT + narrow UPDATE on {@code audit_retention_settings}) - the
- * REVOKE/GRANT/ownership mechanism under test does not care which role name holds those grants,
- * only that holding exactly them (and no more) blocks the operations below. The CREATEROLE-time
- * residual membership of #426 is deliberately not exercised: it is a property of the migration
- * role's own CREATEROLE attribute, not of an arbitrary grantee.
+ * #baseFixtureChangelogs()} as the container's bootstrap superuser. Instead, this test creates an
+ * ordinary, freshly provisioned role after the baseline has been applied and grants it exactly the
+ * privileges the identity changeSet grants to {@code current_user} at migration time (INSERT/SELECT
+ * on {@code audit_log}/{@code audit_actor_pseudonyms}, SELECT + narrow UPDATE on {@code
+ * audit_retention_settings}) - the REVOKE/GRANT/ownership mechanism under test does not care which
+ * role name holds those grants, only that holding exactly them (and no more) blocks the operations
+ * below. The CREATEROLE-time residual membership of #426 is deliberately not exercised: it is a
+ * property of the migration role's own CREATEROLE attribute, not of an arbitrary grantee.
  */
 class AuditPrivilegeModelTest extends AbstractMigrationTest {
 
@@ -52,8 +51,8 @@ class AuditPrivilegeModelTest extends AbstractMigrationTest {
   private Connection appConnection;
 
   @Override
-  protected String baseFixtureChangelogPath() {
-    return "db/changelog/changes/001-baseline.yaml";
+  protected List<String> baseFixtureChangelogs() {
+    return List.of("db/changelog/test-master-through-baseline.yaml");
   }
 
   @BeforeEach

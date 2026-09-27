@@ -26,7 +26,7 @@ class UsedPromptQueryGuardTest {
   private static final Path MAIN_SOURCES = Path.of("src", "main", "java");
   private static final Path CHANGELOGS = Path.of("src", "main", "resources", "db", "changelog");
   private static final Path ENTITY = MAIN_SOURCES.resolve("io/opaa/chat/ChatMessage.java");
-  private static final String BASELINE = "001-baseline.yaml";
+  private static final Path BASELINE = CHANGELOGS.resolve("assistant/2026-09-27-baseline.yaml");
 
   @Test
   void noQueryStringNamesTheUsedPromptOutsideTheEntityMapping() {
@@ -63,14 +63,14 @@ class UsedPromptQueryGuardTest {
 
   /**
    * The columns and their pairing check are part of the {@code chat_messages} table definition in
-   * the baseline; no other statement there, and no later changeset, names them.
+   * the assistant baseline; no other statement there, and no other changelog file, names them.
    */
   @Test
   void onlyTheTableDefinitionTouchesTheColumns() throws IOException {
     List<String> offenses = new ArrayList<>();
     try (Stream<Path> files = Files.walk(CHANGELOGS)) {
       for (Path file : files.filter(Files::isRegularFile).toList()) {
-        if (!file.getFileName().toString().equals(BASELINE)) {
+        if (!file.equals(BASELINE)) {
           if (mentionsUsedPrompt(read(file))) {
             offenses.add(file.toString());
           }
@@ -91,7 +91,7 @@ class UsedPromptQueryGuardTest {
   /** Guards the premise of the statement filter above: the table definition carries the columns. */
   @Test
   void theBaselineDefinesTheColumnsInTheChatMessagesTable() {
-    String baseline = read(CHANGELOGS.resolve("changes").resolve(BASELINE));
+    String baseline = read(BASELINE);
     String table =
         baseline.substring(baseline.indexOf("CREATE TABLE chat_messages (")).split(";\\s*\\n")[0];
 

@@ -1,8 +1,22 @@
 databaseChangeLog:
-  # Baseline: the whole schema as one file with one changeSet per logical module (foundation,
-  # identity, rights, knowledge, connectors, workspace, assistant, external - in dependency order),
-  # plus the two precondition-guarded vector_store index changeSets, which must stay separate.
-  # An installation built from an earlier baseline cannot be migrated; it is set up anew.
-  # Every new schema change is its own changeset with its own delta test under io.opaa.migration.
-  - include:
-      file: db/changelog/changes/001-baseline.yaml
+  # One directory per logical module, in the module order of io.opaa.architecture.ModularArchitecture:
+  # a module's changesets only touch its own tables and reference its own or a lower module's.
+  # Within a directory includeAll runs the files in ascending name order; a file is named
+  # YYYY-MM-DD-<topic>.yaml, its changeSet ids start with <module>-YYYY-MM-DD-<topic>. The module
+  # library owns no table and therefore has no directory. Rules and tests: backend/AGENTS.md.
+  - includeAll:
+      path: db/changelog/foundation/
+  - includeAll:
+      path: db/changelog/identity/
+  - includeAll:
+      path: db/changelog/rights/
+  - includeAll:
+      path: db/changelog/knowledge/
+  - includeAll:
+      path: db/changelog/connectors/
+  - includeAll:
+      path: db/changelog/workspace/
+  - includeAll:
+      path: db/changelog/assistant/
+  - includeAll:
+      path: db/changelog/external/
