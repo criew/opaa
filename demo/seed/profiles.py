@@ -250,7 +250,7 @@ DEMO_PROFILE = Profile(
             description="Pressemitteilungen der Stadt Rheinfurt (Sperrungen, Öffnungszeiten, Veranstaltungen).",
             source_type="RSS_FEED",
             source_url="http://presse.stadt-rheinfurt.example/rss.xml",
-            # Selin and Thomas read the press releases through the group "Pressestelle" only.
+            # Selin and Thomas read these only through the group "Presseverteiler Bürgerbüro".
             viewer_keys=("maria", "andrea"),
         ),
         LibraryDef(
@@ -322,11 +322,10 @@ DEMO_PROFILE = Profile(
         # Selin and Thomas hold no VIEWER of their own on the press releases; Andrea stewards the
         # group but keeps her direct grant, as she is not a member.
         GroupDef(
-            name="Pressestelle",
+            name="Presseverteiler Bürgerbüro",
             description=(
-                "Ansprechpersonen des Bürgerbüros für die Pressestelle der Stadt: stimmen "
-                "Meldungen zu Schließtagen, Sperrungen und Terminen ab und lesen die "
-                "Pressemitteilungen über diese Gruppe."
+                "Verteiler des Bürgerbüros für die Pressemitteilungen des Presseamts der Stadt "
+                "Rheinfurt: Mitglieder erhalten die Pressemitteilungen über diese Gruppe."
             ),
             steward_keys=("andrea",),
             member_keys=("selin", "thomas"),

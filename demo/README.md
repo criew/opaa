@@ -343,8 +343,8 @@ zu ersetzen. Der Ist-Zustand auf der öffentlichen Instanz opaa.ewerlin.com weic
 |---|---|---|---|---|
 | `demo-admin` (admin@stadt-rheinfurt.example) | Systemadministration | eigener Default-Space | richtet ein, besitzt alle sieben Bibliotheken — „Formattest auf S3" liest ausschließlich er | `RheinfurtDemo!2026` |
 | `maria.weber` | Sachbearbeiterin Meldewesen | „Meldewesen & Ausweise" (mit Selin), „Maria Weber – persönlich" (allein), „Dienstbesprechung Bürgerbüro" (über Gruppe) | Leistungen Meldewesen & Ausweise, Satzungen & Gebührenordnungen, Pressemitteilungen, Interne Dienstanweisungen Meldewesen, Ratsinformationen | `RheinfurtDemo!2026` |
-| `selin.kaya` | Sachbearbeiterin Meldewesen | „Meldewesen & Ausweise" (mit Maria), „Dienstbesprechung Bürgerbüro" (über Gruppe) | dieselben fünf wie Maria, Pressemitteilungen nur über die Gruppe „Pressestelle" | `RheinfurtDemo!2026` |
-| `thomas.klein` | Sachbearbeiter Kfz-Zulassung | „Kfz-Zulassung" (allein), „Meldewesen & Ausweise" und „Dienstbesprechung Bürgerbüro" (je über Gruppe) | Leistungen Kfz-Zulassung, Satzungen & Gebührenordnungen, Ratsinformationen; Pressemitteilungen nur über „Pressestelle", Interne Dienstanweisungen Meldewesen nur über „Vertretung Meldewesen" | `RheinfurtDemo!2026` |
+| `selin.kaya` | Sachbearbeiterin Meldewesen | „Meldewesen & Ausweise" (mit Maria), „Dienstbesprechung Bürgerbüro" (über Gruppe) | dieselben fünf wie Maria, Pressemitteilungen nur über die Gruppe „Presseverteiler Bürgerbüro" | `RheinfurtDemo!2026` |
+| `thomas.klein` | Sachbearbeiter Kfz-Zulassung | „Kfz-Zulassung" (allein), „Meldewesen & Ausweise" und „Dienstbesprechung Bürgerbüro" (je über Gruppe) | Leistungen Kfz-Zulassung, Satzungen & Gebührenordnungen, Ratsinformationen; Pressemitteilungen nur über „Presseverteiler Bürgerbüro", Interne Dienstanweisungen Meldewesen nur über „Vertretung Meldewesen" | `RheinfurtDemo!2026` |
 | `andrea.vogt` | Amtsleitung Bürgerbüro | „Amtsleitung Bürgerbüro" (allein), „Dienstbesprechung Bürgerbüro" (Eigentümerin) | alle sechs fachlichen Bibliotheken (nicht „Formattest auf S3") | `RheinfurtDemo!2026` |
 
 Der Objektspeicher `objectstore` des Demo-Stacks hat einen eigenen Root-Schlüssel (`rheinfurt-archiv` /
@@ -404,8 +404,8 @@ Geschützte Gruppen liefert die Demo bewusst nicht (Umfang von #1823).
 Seit #2013 kommen zwei weitere interne Gruppen hinzu, beide mit Andrea als alleiniger
 Verantwortlicher (sie ist nicht zugleich Mitglied) und zur Verwendung freigegeben:
 
-- **„Pressestelle"** (Selin, Thomas) — die Ansprechpersonen des Bürgerbüros für die Pressestelle der
-  Stadt. Die Gruppe trägt `VIEWER` auf „Pressemitteilungen Stadt Rheinfurt"; Selin und Thomas haben
+- **„Presseverteiler Bürgerbüro"** (Selin, Thomas) — ihre Mitglieder erhalten die
+  Pressemitteilungen des Presseamts der Stadt. Die Gruppe trägt `VIEWER` auf „Pressemitteilungen Stadt Rheinfurt"; Selin und Thomas haben
   dort **kein eigenes Recht** mehr und lesen die Pressemitteilungen ausschließlich über die Gruppe.
   Maria und Andrea behalten ihren eigenen Grant. Die wirksame Rechtematrix bleibt damit unverändert.
 - **„Sachbearbeitung Bürgerbüro"** (Maria, Selin, Thomas) — ist `MEMBER` des Space
@@ -535,7 +535,7 @@ Der Lauf richtet über die API ein:
    weiter auf alle lesbaren Bibliotheken zurück). Die Zuordnung legt die Session des jeweiligen
    Space-Eigentümers an, denn `associateSpaceLibrary` verlangt CURATOR oder höher im Space plus
    mindestens VIEWER auf der Bibliothek — beides hat der Eigentümer nach Schritt 6 (Thomas liest die
-   Pressemitteilungen, die „Kfz-Zulassung" zugeordnet sind, erst über die Gruppe „Pressestelle").
+   Pressemitteilungen, die „Kfz-Zulassung" zugeordnet sind, erst über die Gruppe „Presseverteiler Bürgerbüro").
 8. **Indizierung je Bibliothek** über deren eigene Quellkonfiguration (nicht für die `UPLOAD`-Bibliothek
    — die hat keinen eigenen Lauf, ADR-0018, siehe Schritt 5) — der Seed wartet auf `COMPLETED` und
    bricht bei `documentsFailed > 0` ab. Für die beiden `S3`-Bibliotheken prüft er zusätzlich eine

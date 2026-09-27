@@ -208,13 +208,13 @@ def test_every_group_reference_resolves_within_the_profile() -> None:
             assert role in ("MEMBER", "CURATOR", "ADMIN")
 
 
-def test_pressestelle_carries_the_press_read_exclusively_for_some_member() -> None:
-    pressestelle = group("Pressestelle")
-    assert pressestelle.steward_keys == ("andrea",)
-    assert pressestelle.released_for_use
-    assert pressestelle.library_grants == ("Pressemitteilungen Stadt Rheinfurt",)
+def test_presseverteiler_carries_the_press_read_exclusively_for_some_member() -> None:
+    presseverteiler = group("Presseverteiler Bürgerbüro")
+    assert presseverteiler.steward_keys == ("andrea",)
+    assert presseverteiler.released_for_use
+    assert presseverteiler.library_grants == ("Pressemitteilungen Stadt Rheinfurt",)
     direct = set(library("Pressemitteilungen Stadt Rheinfurt").viewer_keys)
-    assert set(pressestelle.member_keys) - direct, "no member reads exclusively via the group"
+    assert set(presseverteiler.member_keys) - direct, "no member reads exclusively via the group"
 
 
 def test_a_group_brings_several_accounts_into_a_space_without_rows_of_their_own() -> None:

@@ -149,7 +149,7 @@ interne Gruppe fließt (Tabelle unten), ohne eigenen Grant an das Konto:
 | Leistungen Meldewesen & Ausweise | ✔ | ✔ | — | ✔ |
 | Leistungen Kfz-Zulassung | — | — | ✔ | ✔ |
 | Satzungen & Gebührenordnungen | ✔ | ✔ | ✔ | ✔ |
-| Pressemitteilungen | ✔ | ✔ G „Pressestelle" | ✔ G „Pressestelle" | ✔ |
+| Pressemitteilungen | ✔ | ✔ G „Presseverteiler Bürgerbüro" | ✔ G „Presseverteiler Bürgerbüro" | ✔ |
 | Interne Dienstanweisungen Meldewesen | ✔ | ✔ | ✔ G „Vertretung Meldewesen" | ✔ |
 | Ratsinformationen Stadt Rheinfurt | ✔ | ✔ | ✔ | ✔ |
 | Formattest auf S3 | — | — | — | — |
@@ -176,7 +176,11 @@ Damit sind die Vorführmomente konstruierbar: Maria und Thomas stellen dieselbe 
 Dienstanweisung — Maria erhält die belegte Antwort, Thomas die Auskunft, dass dazu nichts vorliegt. Weil
 Thomas die interne Bibliothek über „Vertretung Meldewesen" lesen darf, gilt das nur, wenn er in seinem
 Space „Kfz-Zulassung" fragt: Dem ist die Bibliothek nicht zugeordnet. In „Meldewesen & Ausweise" oder
-seinem Default-Space fände er die Dienstanweisung. Die Amtsleitung sieht amtsweit alles. Weil die Berechtigungsprüfung Teil der Vektorsuche ist und nicht ein
+seinem Default-Space fände er die Dienstanweisung. Dasselbe gilt für seine Teile der Drehbuchfragen 6
+(Satzung ohne interne Verfahrensanleitung) und 7 (Wunschkennzeichenfrist ohne interne Terminvergabe).
+Andrea ist damit auch nicht mehr das einzige Fachkonto, das die interne Meldewesen- und die
+Kfz-Bibliothek zugleich liest — Thomas liest beide, bekommt die vollständige Antwort auf Frage 7 in
+„Kfz-Zulassung" aber nicht. Die Amtsleitung sieht amtsweit alles. Weil die Berechtigungsprüfung Teil der Vektorsuche ist und nicht ein
 Nachfilter, ist der unberechtigte Treffer bei Thomas nicht nur unterdrückt, sondern nie geladen.
 
 ---
