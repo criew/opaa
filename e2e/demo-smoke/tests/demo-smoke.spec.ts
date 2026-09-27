@@ -1,10 +1,5 @@
-import { expect, test, type Page } from "@playwright/test";
-import {
-  askQuestion,
-  expectAnyCitedSource,
-  gotoLibraries,
-  startFreshChat,
-} from "../../fixtures/chat";
+import { expect, test, type Page } from '@playwright/test'
+import { askQuestion, expectAnyCitedSource, gotoLibraries, startFreshChat } from '../../fixtures/chat'
 
 /**
  * The one smoke test against the "demo" Compose profile (Issue #232, Epic #708). Not part of the
@@ -22,37 +17,35 @@ import {
  * without pinning corpus wording either.
  */
 
-const DEMO_USERNAME = "maria.weber";
+const DEMO_USERNAME = 'maria.weber'
 // Documented demo value, not a secret (demo/README.md, "Nutzerkonten";
 // demo/seed/profiles.py's DEMO_PASSWORD) - shared by every account in both realms.
-const DEMO_PASSWORD = "RheinfurtDemo!2026";
-const DEMO_ADMIN_USERNAME = "demo-admin";
+const DEMO_PASSWORD = 'RheinfurtDemo!2026'
+const DEMO_ADMIN_USERNAME = 'demo-admin'
 
 // The sixth demo library (#1383): fed from the demo stack's object store bucket over the S3
 // connector (demo/seed/profiles.py, docker-compose.yml's "objectstore"/"objectstore-seed"). Its
 // documents are the council records under demo/corpus/ratsinformationen/<jahr>/<Gremium>/, named
 // <datum>-<gremium>-<art>-… (a Vorlage's PDF attachments carry the Vorlage's name as prefix).
-const S3_LIBRARY_NAME = "Ratsinformationen Stadt Rheinfurt";
-const S3_DOCUMENT_NAME_PATTERN =
-  /\d{4}-\d{2}-\d{2}-(stadtrat|hauptausschuss|bauausschuss)-/;
+const S3_LIBRARY_NAME = 'Ratsinformationen Stadt Rheinfurt'
+const S3_DOCUMENT_NAME_PATTERN = /\d{4}-\d{2}-\d{2}-(stadtrat|hauptausschuss|bauausschuss)-/
 
 // The second identity provider of the demo stack (keycloak/realm-partner-export.json, ADR-0025):
 // the same origin, another realm, another public client - and a maria.weber with the same
 // e-mail address as the one in realm "opaa". Added through the Anbieterverwaltung during the
 // test, never seeded, so the run proves "a provider added in the UI works without a restart".
-const PARTNER_PROVIDER_NAME = "Partnerportal";
-const PARTNER_ISSUER = "http://localhost:8180/realms/partner";
-const PARTNER_CLIENT_ID = "opaa-partner";
+const PARTNER_PROVIDER_NAME = 'Partnerportal'
+const PARTNER_ISSUER = 'http://localhost:8180/realms/partner'
+const PARTNER_CLIENT_ID = 'opaa-partner'
 // The backend fetches the keys inside the Compose network - the same split as the seeded
 // provider's OPAA_OIDC_JWK_SET_URI (e2e/demo-smoke.env).
-const PARTNER_JWK_SET_URI =
-  "http://keycloak:8180/realms/partner/protocol/openid-connect/certs";
+const PARTNER_JWK_SET_URI = 'http://keycloak:8180/realms/partner/protocol/openid-connect/certs'
 
 interface KeycloakLogin {
   /** The sign-in page's button, "Anmelden bei <Anzeigename>" (frontend/src/pages/LoginPage.tsx). */
-  providerName: string;
-  realm: string;
-  username: string;
+  providerName: string
+  realm: string
+  username: string
 }
 
 /**
@@ -65,8 +58,8 @@ async function loginViaKeycloak(
   page: Page,
   login: KeycloakLogin,
 ): Promise<{ id: string; email: string | null; displayName: string | null }> {
-  await page.goto("/login");
-  return signInAtKeycloak(page, login, /\/chat/);
+  await page.goto('/login')
+  return signInAtKeycloak(page, login, /\/chat/)
 }
 
 /**
@@ -76,45 +69,36 @@ async function loginViaKeycloak(
 async function signInAtKeycloak(
   page: Page,
   { providerName, realm, username }: KeycloakLogin,
-  landing: Parameters<Page["waitForURL"]>[0],
+  landing: Parameters<Page['waitForURL']>[0],
 ): Promise<{ id: string; email: string | null; displayName: string | null }> {
   // #1631: entering the sign-in page starts one automatic attempt with prompt=none, and the page
   // keeps its tiles disabled until that attempt has had its turn. In a fresh browser context
   // Keycloak has no session to hand over and answers login_required, which brings the page back
   // here - waiting for the tile keeps the click below off a page that is about to navigate away.
-  const providerButton = page.getByRole("button", {
-    name: `Anmelden bei ${providerName}`,
-  });
-  await expect(providerButton).toBeEnabled({ timeout: 30_000 });
-  await providerButton.click();
+  const providerButton = page.getByRole('button', { name: `Anmelden bei ${providerName}` })
+  await expect(providerButton).toBeEnabled({ timeout: 30_000 })
+  await providerButton.click()
   // Keycloak's own hosted login page, a different origin from the frontend - the ids below
   // ("username"/"password"/"kc-login") are Keycloak's default theme, stable across locales and
   // Keycloak versions (see keycloak/realm-export.json for the realms this points at).
-  await page.waitForURL(
-    new RegExp(`/realms/${realm}/protocol/openid-connect/auth`),
-    {
-      timeout: 30_000,
-    },
-  );
-  await page.locator("#username").fill(username);
-  await page.locator("#password").fill(DEMO_PASSWORD);
+  await page.waitForURL(new RegExp(`/realms/${realm}/protocol/openid-connect/auth`), {
+    timeout: 30_000,
+  })
+  await page.locator('#username').fill(username)
+  await page.locator('#password').fill(DEMO_PASSWORD)
   const [meResponse] = await Promise.all([
     page.waitForResponse(
       (response) =>
-        response.request().method() === "GET" &&
-        response.url().endsWith("/api/v1/auth/me") &&
+        response.request().method() === 'GET' &&
+        response.url().endsWith('/api/v1/auth/me') &&
         response.status() === 200,
     ),
-    page.locator("#kc-login").click(),
-  ]);
+    page.locator('#kc-login').click(),
+  ])
   // Back on the frontend's own origin, past /auth/callback (AuthCallbackPage), landed on the route
   // the sign-in was started for - the chat page when there was none.
-  await page.waitForURL(landing, { timeout: 30_000 });
-  return (await meResponse.json()) as {
-    id: string;
-    email: string | null;
-    displayName: string | null;
-  };
+  await page.waitForURL(landing, { timeout: 30_000 })
+  return (await meResponse.json()) as { id: string; email: string | null; displayName: string | null }
 }
 
 /**
@@ -124,46 +108,38 @@ async function signInAtKeycloak(
  * would match a page that is about to be replaced.
  */
 async function logout(page: Page): Promise<void> {
-  await page.getByRole("button", { name: "Profil und Einstellungen" }).click();
+  await page.getByRole('button', { name: 'Profil und Einstellungen' }).click()
   // The old document has fired its load event long ago; the next one belongs to the document
   // behind Keycloak's redirect back to the origin.
-  const returnedFromProvider = page.waitForEvent("load", { timeout: 30_000 });
-  await page.getByRole("menuitem", { name: "Abmelden" }).click();
-  await returnedFromProvider;
+  const returnedFromProvider = page.waitForEvent('load', { timeout: 30_000 })
+  await page.getByRole('menuitem', { name: 'Abmelden' }).click()
+  await returnedFromProvider
   // Without a session the app shows the sign-in page again.
-  await page.waitForURL(/\/login(?:$|[/?#])/, { timeout: 30_000 });
-  await expect(
-    page.getByRole("heading", { name: "Anmelden", level: 1 }),
-  ).toBeVisible();
+  await page.waitForURL(/\/login(?:$|[/?#])/, { timeout: 30_000 })
+  await expect(page.getByRole('heading', { name: 'Anmelden', level: 1 })).toBeVisible()
 }
 
-test.describe("Demo-Smoke (#232)", () => {
-  test("Demo-Nutzerin meldet sich über Keycloak an und erhält eine belegte Antwort", async ({
+test.describe('Demo-Smoke (#232)', () => {
+  test('Demo-Nutzerin meldet sich über Keycloak an und erhält eine belegte Antwort', async ({
     page,
   }) => {
-    await loginViaKeycloak(page, {
-      providerName: "Verzeichnisdienst",
-      realm: "opaa",
-      username: DEMO_USERNAME,
-    });
+    await loginViaKeycloak(page, { providerName: 'Verzeichnisdienst', realm: 'opaa', username: DEMO_USERNAME })
 
     // #230: the demo/source notice (frontend/src/layouts/DemoNotice.tsx), shown only when the
     // frontend container's OPAA_DEMO_MODE flag is on (e2e/demo-smoke.env) - a real demo deployment
     // always sets it, so this run's own stack must match that, not just the belegte-Antwort
     // scenario below. Since #1921 it lives behind "Info zu OPAA" in the profile menu.
-    await page
-      .getByRole("button", { name: "Profil und Einstellungen" })
-      .click();
-    await page.getByRole("menuitem", { name: /^Info zu / }).click();
+    await page.getByRole('button', { name: 'Profil und Einstellungen' }).click()
+    await page.getByRole('menuitem', { name: /^Info zu / }).click()
     await expect(
       page.getByText(
-        "Demo-Instanz mit synthetischen Inhalten der fiktiven Stadt Rheinfurt",
+        'Demo-Instanz mit synthetischen Inhalten der fiktiven Stadt Rheinfurt',
         { exact: false },
       ),
-    ).toBeVisible();
-    await page.getByRole("button", { name: "Schließen" }).click();
+    ).toBeVisible()
+    await page.getByRole('button', { name: 'Schließen' }).click()
 
-    await startFreshChat(page);
+    await startFreshChat(page)
     // "Gebührenfrage" from docs/market/demo-drehbuch.md, question 1 (#713) - guaranteed to have an
     // answer in the corpus (demo/generator, #711) and readable by every fach account, Maria included
     // (docs/features/demo-instance.md, "Nutzer, Spaces und Berechtigungen"). The concrete wording
@@ -171,15 +147,12 @@ test.describe("Demo-Smoke (#232)", () => {
     // e2e/README.md, "KI-Stub statt echtem Modell"), so which chunks reach this answer is decided
     // by the permission filter, never by relevance to this specific question - this test asserts
     // no coupling to the corpus's actual content, only that the chain up to a cited answer works.
-    await askQuestion(
-      page,
-      "Was kostet ein Personalausweis für eine 22-Jährige?",
-    );
+    await askQuestion(page, 'Was kostet ein Personalausweis für eine 22-Jährige?')
 
     // Per the issue's own acceptance criteria: behaviour and presence of a citation, never the
     // LLM's exact wording and never a document count that would drift with the next corpus run.
-    await expectAnyCitedSource(page);
-  });
+    await expectAnyCitedSource(page)
+  })
 
   /**
    * #1631: the automatic sign-in, against a provider that really runs one. The scenario needs a
@@ -188,39 +161,37 @@ test.describe("Demo-Smoke (#232)", () => {
    * would be nothing left to take up. What remains is exactly the state of a new tab of a browser
    * whose provider session is still running.
    */
-  test("Laufende Keycloak-Sitzung: die Anmeldeseite führt ohne Klick in die Anwendung", async ({
+  test('Laufende Keycloak-Sitzung: die Anmeldeseite führt ohne Klick in die Anwendung', async ({
     page,
   }) => {
     const signedIn = await loginViaKeycloak(page, {
-      providerName: "Verzeichnisdienst",
-      realm: "opaa",
+      providerName: 'Verzeichnisdienst',
+      realm: 'opaa',
       username: DEMO_USERNAME,
-    });
+    })
 
     // The OIDC session of this tab lives in sessionStorage, Keycloak's own in a cookie. A string
     // script, because this suite compiles without DOM typings (see e2e/tsconfig.json).
-    await page.evaluate("window.sessionStorage.clear()");
+    await page.evaluate('window.sessionStorage.clear()')
 
     const [meResponse] = await Promise.all([
       page.waitForResponse(
         (response) =>
-          response.request().method() === "GET" &&
-          response.url().endsWith("/api/v1/auth/me") &&
+          response.request().method() === 'GET' &&
+          response.url().endsWith('/api/v1/auth/me') &&
           response.status() === 200,
       ),
       // 'commit' rather than the default 'load': the automatic attempt replaces this very document
       // as soon as the sign-in page has judged, and a replace that wins the race against `load`
       // would end this goto with net::ERR_ABORTED. What follows is asserted by waitForURL anyway.
-      page.goto("/login", { waitUntil: "commit" }),
-    ]);
+      page.goto('/login', { waitUntil: 'commit' }),
+    ])
 
     // Not a single click in between - the sign-in page led through Keycloak and back on its own.
-    await page.waitForURL(/\/chat/, { timeout: 30_000 });
-    await expect(
-      page.getByRole("button", { name: "Profil und Einstellungen" }),
-    ).toBeVisible();
-    expect(((await meResponse.json()) as { id: string }).id).toBe(signedIn.id);
-  });
+    await page.waitForURL(/\/chat/, { timeout: 30_000 })
+    await expect(page.getByRole('button', { name: 'Profil und Einstellungen' })).toBeVisible()
+    expect(((await meResponse.json()) as { id: string }).id).toBe(signedIn.id)
+  })
 
   /**
    * ADR-0025 / #1334: two providers, no shared account. The administrator adds the partner realm
@@ -229,112 +200,78 @@ test.describe("Demo-Smoke (#232)", () => {
    * through each yields a different account: the partner account is brand new and sees none of
    * the demo libraries the seeded Maria can read.
    */
-  test("Zweiter Anbieter über die Verwaltungsoberfläche: gleiche E-Mail, zwei Konten", async ({
+  test('Zweiter Anbieter über die Verwaltungsoberfläche: gleiche E-Mail, zwei Konten', async ({
     page,
   }) => {
-    test.setTimeout(180_000);
+    test.setTimeout(180_000)
     const admin = await loginViaKeycloak(page, {
-      providerName: "Verzeichnisdienst",
-      realm: "opaa",
+      providerName: 'Verzeichnisdienst',
+      realm: 'opaa',
       username: DEMO_ADMIN_USERNAME,
-    });
-    expect(admin.email).toBe("admin@stadt-rheinfurt.example");
+    })
+    expect(admin.email).toBe('admin@stadt-rheinfurt.example')
 
-    await page.goto("/admin/identity-providers");
-    await expect(
-      page.getByRole("heading", { name: "Identitätsanbieter" }),
-    ).toBeVisible();
+    await page.goto('/admin/identity-providers')
+    await expect(page.getByRole('heading', { name: 'Identitätsanbieter' })).toBeVisible()
     // the seeded provider from e2e/demo-smoke.env's OPAA_OIDC_* bootstrap values (ADR-0025,
     // Entscheidung 3) is listed as the default. Since #1625 the providers are table rows; a row's
     // accessible name is the concatenation of its cells, hence the regular expression.
-    const providerTable = page.getByRole("table", {
-      name: "Identitätsanbieter",
-    });
+    const providerTable = page.getByRole('table', { name: 'Identitätsanbieter' })
     await expect(
-      providerTable.getByRole("row", { name: new RegExp("Verzeichnisdienst") }),
-    ).toBeVisible();
+      providerTable.getByRole('row', { name: new RegExp('Verzeichnisdienst') }),
+    ).toBeVisible()
 
-    const partnerRow = providerTable.getByRole("row", {
-      name: new RegExp(PARTNER_PROVIDER_NAME),
-    });
+    const partnerRow = providerTable.getByRole('row', { name: new RegExp(PARTNER_PROVIDER_NAME) })
     // Repeat-safe: a Playwright retry runs against the same, still-running stack - the provider
     // a previous attempt created is still there, and the issuer is unique per provider.
     if ((await partnerRow.count()) === 0) {
-      await page.getByRole("button", { name: "Neuer Anbieter" }).click();
-      const dialog = page.getByRole("dialog");
+      await page.getByRole('button', { name: 'Neuer Anbieter' }).click()
+      const dialog = page.getByRole('dialog')
       // anchored: "Anzeigename-Claim" is a second textbox of the same dialog
-      await dialog
-        .getByRole("textbox", { name: /^Anzeigename\s*\*?$/ })
-        .fill(PARTNER_PROVIDER_NAME);
-      await dialog
-        .getByRole("textbox", { name: /^Issuer-URI/ })
-        .fill(PARTNER_ISSUER);
-      await dialog
-        .getByRole("textbox", { name: /^Client-ID/ })
-        .fill(PARTNER_CLIENT_ID);
-      await dialog
-        .getByRole("textbox", { name: /^JWK-Set-Adresse/ })
-        .fill(PARTNER_JWK_SET_URI);
-      await dialog.getByRole("button", { name: "Verbindung testen" }).click();
-      await expect(dialog.getByText(/Anbieter erreichbar/)).toBeVisible({
-        timeout: 30_000,
-      });
-      await dialog.getByRole("button", { name: "Anlegen" }).click();
-      await expect(page.getByRole("dialog")).toBeHidden();
+      await dialog.getByRole('textbox', { name: /^Anzeigename\s*\*?$/ }).fill(PARTNER_PROVIDER_NAME)
+      await dialog.getByRole('textbox', { name: /^Issuer-URI/ }).fill(PARTNER_ISSUER)
+      await dialog.getByRole('textbox', { name: /^Client-ID/ }).fill(PARTNER_CLIENT_ID)
+      await dialog.getByRole('textbox', { name: /^JWK-Set-Adresse/ }).fill(PARTNER_JWK_SET_URI)
+      await dialog.getByRole('button', { name: 'Verbindung testen' }).click()
+      await expect(dialog.getByText(/Anbieter erreichbar/)).toBeVisible({ timeout: 30_000 })
+      await dialog.getByRole('button', { name: 'Anlegen' }).click()
+      await expect(page.getByRole('dialog')).toBeHidden()
     }
-    await expect(partnerRow).toBeVisible();
+    await expect(partnerRow).toBeVisible()
     // its decoder was built after the commit, without a restart - exact: "Nicht erreichbar"
     // contains the same word
-    await expect(
-      partnerRow.getByText("Erreichbar", { exact: true }),
-    ).toBeVisible({
+    await expect(partnerRow.getByText('Erreichbar', { exact: true })).toBeVisible({
       timeout: 30_000,
-    });
-    await expect(
-      partnerRow.getByText("Nicht erreichbar", { exact: true }),
-    ).toHaveCount(0);
+    })
+    await expect(partnerRow.getByText('Nicht erreichbar', { exact: true })).toHaveCount(0)
 
-    await logout(page);
-    await expect(
-      page.getByRole("button", { name: "Anmelden bei Verzeichnisdienst" }),
-    ).toBeVisible();
-    await expect(
-      page.getByRole("button", {
-        name: `Anmelden bei ${PARTNER_PROVIDER_NAME}`,
-      }),
-    ).toBeVisible();
+    await logout(page)
+    await expect(page.getByRole('button', { name: 'Anmelden bei Verzeichnisdienst' })).toBeVisible()
+    await expect(page.getByRole('button', { name: `Anmelden bei ${PARTNER_PROVIDER_NAME}` })).toBeVisible()
 
     const mariaAtPartner = await loginViaKeycloak(page, {
       providerName: PARTNER_PROVIDER_NAME,
-      realm: "partner",
+      realm: 'partner',
       username: DEMO_USERNAME,
-    });
-    expect(mariaAtPartner.email).toBe("maria.weber@stadt-rheinfurt.example");
+    })
+    expect(mariaAtPartner.email).toBe('maria.weber@stadt-rheinfurt.example')
     // a fresh account: none of the seeded demo libraries is readable for it - wait for the
     // rendered empty state first, an absence check alone would pass before the list rendered
-    await gotoLibraries(page);
-    await expect(
-      page.getByText("Es sind noch keine Bibliotheken vorhanden."),
-    ).toBeVisible();
-    await expect(
-      page.getByText("Leistungen Meldewesen & Ausweise", { exact: true }),
-    ).toHaveCount(0);
-    await logout(page);
+    await gotoLibraries(page)
+    await expect(page.getByText('Es sind noch keine Bibliotheken vorhanden.')).toBeVisible()
+    await expect(page.getByText('Leistungen Meldewesen & Ausweise', { exact: true })).toHaveCount(0)
+    await logout(page)
 
     const mariaAtVerzeichnisdienst = await loginViaKeycloak(page, {
-      providerName: "Verzeichnisdienst",
-      realm: "opaa",
+      providerName: 'Verzeichnisdienst',
+      realm: 'opaa',
       username: DEMO_USERNAME,
-    });
-    expect(mariaAtVerzeichnisdienst.email).toBe(
-      "maria.weber@stadt-rheinfurt.example",
-    );
-    expect(mariaAtVerzeichnisdienst.id).not.toBe(mariaAtPartner.id);
-    await gotoLibraries(page);
-    await expect(
-      page.getByText("Leistungen Meldewesen & Ausweise", { exact: true }),
-    ).toBeVisible();
-  });
+    })
+    expect(mariaAtVerzeichnisdienst.email).toBe('maria.weber@stadt-rheinfurt.example')
+    expect(mariaAtVerzeichnisdienst.id).not.toBe(mariaAtPartner.id)
+    await gotoLibraries(page)
+    await expect(page.getByText('Leistungen Meldewesen & Ausweise', { exact: true })).toBeVisible()
+  })
 
   /**
    * #1685: a direct link survives the provider sign-in. The route ProtectedRoute denied travels in
@@ -347,37 +284,31 @@ test.describe("Demo-Smoke (#232)", () => {
    * `login_required`, back to the sign-in page, and only then the sign-in by hand. Without the
    * route coming back from the refusal, the click below would end on the chat start page.
    */
-  test("Direktlink auf einen Chat führt nach der Keycloak-Anmeldung in diesen Chat", async ({
+  test('Direktlink auf einen Chat führt nach der Keycloak-Anmeldung in diesen Chat', async ({
     page,
   }) => {
-    test.setTimeout(120_000);
-    const login = {
-      providerName: "Verzeichnisdienst",
-      realm: "opaa",
-      username: DEMO_USERNAME,
-    };
-    await loginViaKeycloak(page, login);
-    await startFreshChat(page);
-    const question = "Was kostet ein Personalausweis für eine 22-Jährige?";
-    await askQuestion(page, question);
+    test.setTimeout(120_000)
+    const login = { providerName: 'Verzeichnisdienst', realm: 'opaa', username: DEMO_USERNAME }
+    await loginViaKeycloak(page, login)
+    await startFreshChat(page)
+    const question = 'Was kostet ein Personalausweis für eine 22-Jährige?'
+    await askQuestion(page, question)
     // sending creates the chat and replaces ".../chats/new" with its own address
-    await expect(page).toHaveURL(/\/spaces\/[^/]+\/chats\/(?!new$)[^/]+$/);
-    const chatPath = new URL(page.url()).pathname;
-    await logout(page);
+    await expect(page).toHaveURL(/\/spaces\/[^/]+\/chats\/(?!new$)[^/]+$/)
+    const chatPath = new URL(page.url()).pathname
+    await logout(page)
     // A string script, because this suite compiles without DOM typings (see e2e/tsconfig.json).
-    await page.evaluate("window.sessionStorage.clear()");
+    await page.evaluate('window.sessionStorage.clear()')
 
     // 'commit' rather than the default 'load': the automatic attempt replaces this document as
     // soon as the sign-in page has judged, and a replace that wins the race against `load` would
     // end this goto with net::ERR_ABORTED.
-    await page.goto(chatPath, { waitUntil: "commit" });
-    await page.waitForURL(/\/login(?:$|[/?#])/, { timeout: 30_000 });
-    await signInAtKeycloak(page, login, (url) => url.pathname === chatPath);
+    await page.goto(chatPath, { waitUntil: 'commit' })
+    await page.waitForURL(/\/login(?:$|[/?#])/, { timeout: 30_000 })
+    await signInAtKeycloak(page, login, (url) => url.pathname === chatPath)
 
-    await expect(
-      page.getByTestId("message-list").getByText(question),
-    ).toBeVisible();
-  });
+    await expect(page.getByTestId('message-list').getByText(question)).toBeVisible()
+  })
 
   /**
    * #1383 / ADR-0027: the S3 connector against the stack's own MinIO. The seed created the library
@@ -387,44 +318,32 @@ test.describe("Demo-Smoke (#232)", () => {
    * so only the scope decides which library the cited sources come from - and a cited source that
    * carries a council-record name can only have arrived through the S3 path.
    */
-  test("S3-Bibliothek aus dem MinIO-Bucket: belegte Antwort zu einem Ratsbeschluss", async ({
+  test('S3-Bibliothek aus dem MinIO-Bucket: belegte Antwort zu einem Ratsbeschluss', async ({
     page,
   }) => {
-    await loginViaKeycloak(page, {
-      providerName: "Verzeichnisdienst",
-      realm: "opaa",
-      username: DEMO_USERNAME,
-    });
-    await startFreshChat(page);
+    await loginViaKeycloak(page, { providerName: 'Verzeichnisdienst', realm: 'opaa', username: DEMO_USERNAME })
+    await startFreshChat(page)
 
     // Mirrors ChatInput.tsx's findActiveMention: the fragment after '@' must not contain
     // whitespace, so the first word narrows the suggestions and the option is picked by its
     // full name (see space-chats.spec.ts's referenceLibrary for the single-word variant).
-    const input = page.getByPlaceholder("Nachricht eingeben …");
-    await input.fill("@Ratsinformationen");
-    await page.getByRole("option", { name: S3_LIBRARY_NAME }).click();
-    await expect(
-      page.getByLabel(`Bibliotheksreferenz ${S3_LIBRARY_NAME} entfernen`),
-    ).toBeVisible();
+    const input = page.getByPlaceholder('Nachricht eingeben …')
+    await input.fill('@Ratsinformationen')
+    await page.getByRole('option', { name: S3_LIBRARY_NAME }).click()
+    await expect(page.getByLabel(`Bibliotheksreferenz ${S3_LIBRARY_NAME} entfernen`)).toBeVisible()
 
     // A question only the council records can answer (demo/generator/rat.py, Vorlage 2026/006);
     // the wording is symbolic with ai-stub, see the first scenario.
-    await askQuestion(
-      page,
-      "Wann hat der Stadtrat den Grundsatzbeschluss zum Neubau der Feuerwache Süd gefasst?",
-    );
+    await askQuestion(page, 'Wann hat der Stadtrat den Grundsatzbeschluss zum Neubau der Feuerwache Süd gefasst?')
 
-    // The sources of an answer live only in its Belegfenster, opened via "Belege anzeigen".
-    const showEvidence = page
-      .getByRole("button", { name: "Belege anzeigen" })
-      .last();
-    await expect(showEvidence).toBeVisible({ timeout: 15_000 });
-    await showEvidence.click();
-    const drawer = page.getByRole("dialog", { name: "Belege dieser Antwort" });
-    const citedRow = drawer
-      .locator('[data-testid="evidence-doc"][data-cited="true"]')
-      .first();
-    await expect(citedRow).toBeVisible();
-    await expect(citedRow).toContainText(S3_DOCUMENT_NAME_PATTERN);
-  });
-});
+    // The sources of an answer live only in its Belegfenster, opened via "Belege anzeigen" - this
+    // chat holds exactly one answer, so the last button is this answer's.
+    const showEvidence = page.getByRole('button', { name: 'Belege anzeigen' }).last()
+    await expect(showEvidence).toBeVisible({ timeout: 15_000 })
+    await showEvidence.click()
+    const drawer = page.getByRole('dialog', { name: 'Belege dieser Antwort' })
+    const citedRow = drawer.locator('[data-testid="evidence-doc"][data-cited="true"]').first()
+    await expect(citedRow).toBeVisible()
+    await expect(citedRow).toContainText(S3_DOCUMENT_NAME_PATTERN)
+  })
+})

@@ -121,12 +121,13 @@ export default function SourceEvidenceDrawer({
   const firstFocusedDocIndex = focusedDocIndexes[0]
   useEffect(() => {
     if (!open || firstFocusedDocIndex === undefined) return
-    // The Drawer mounts its rows in the same commit; one frame later they are laid out.
-    const frame = requestAnimationFrame(() =>
-      document
-        .getElementById(citationRowId(messageId, firstFocusedDocIndex))
-        ?.scrollIntoView?.({ block: 'center' }),
-    )
+    // The Drawer mounts its rows in the same commit; one frame later they are laid out. Focus
+    // follows the mark, so keyboard and screen reader users land on the Beleg they asked for.
+    const frame = requestAnimationFrame(() => {
+      const row = document.getElementById(citationRowId(messageId, firstFocusedDocIndex))
+      row?.scrollIntoView?.({ block: 'center' })
+      row?.focus({ preventScroll: true })
+    })
     return () => cancelAnimationFrame(frame)
   }, [open, firstFocusedDocIndex, messageId])
 
@@ -311,6 +312,7 @@ export default function SourceEvidenceDrawer({
                 data-citation-valid={doc.citationValid ? 'true' : 'false'}
                 data-focused={focused ? 'true' : undefined}
                 aria-current={focused ? 'true' : undefined}
+                tabIndex={focused ? -1 : undefined}
                 sx={(theme) => ({
                   // Full-bleed rows, so the mark of a footnote's Beleg spans the panel's width.
                   mx: -2.5,
@@ -327,6 +329,10 @@ export default function SourceEvidenceDrawer({
                     ),
                     boxShadow: `inset 3px 0 0 ${theme.palette.primary.main}`,
                   }),
+                  '&:focus-visible': {
+                    outline: `2px solid ${alpha(theme.palette.primary.main, 0.6)}`,
+                    outlineOffset: '-2px',
+                  },
                 })}
               >
                 <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1 }}>

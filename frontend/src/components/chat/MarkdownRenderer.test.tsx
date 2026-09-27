@@ -182,6 +182,21 @@ describe('MarkdownRenderer', () => {
     expect(paragraph.textContent).toBe('kostet 42,60 Euro1. Termin nötig2')
   })
 
+  // regression guard: a number repeated from an earlier segment of the same group rendered twice
+  it('shows each number of a marker group once, even when it repeats', () => {
+    const content =
+      'Erst【source: a#0 | a.md】 dann【source: b#0 | b.md】 und【source: c#0 | c.md】【source: a#0 | a.md】【source: c#0 | c.md】.'
+    renderWithProviders(
+      <MarkdownRenderer content={content} citations={buildCitationIndex(content, undefined)} />,
+    )
+    expect(screen.getAllByRole('button').map((b) => b.getAttribute('aria-label'))).toEqual([
+      'Fundstelle 1: a.md',
+      'Fundstelle 2: b.md',
+      'Fundstelle 3: c.md',
+      'Fundstelle 1: a.md',
+    ])
+  })
+
   it('strips markers when no citation index is provided', () => {
     renderWithProviders(<MarkdownRenderer content="Satz【source: doc-1#0 | readme.md】 Ende." />)
     expect(screen.getByText(/Satz\s*Ende\./)).toBeInTheDocument()

@@ -350,7 +350,9 @@ Vollständige Tastaturbedienung (Pfeile, Enter, Escape) ist Teil der Komponente,
 Belege erscheinen im Antworttext als **Fußnotenmarken**: die Ziffer in Mono und `accent` in einem
 Kreis mit 10 % `accent`-Fläche (dunkel 22 %), hochgestellt über der x-Höhe, ohne den
 Zeilenabstand zu ändern; ein Bereich „1–3" wird zur Pille.
-Beim Hover oder Fokus füllt sich die Marke in `accent`, und ein Tooltip nennt je Fundstelle
+Beim Hover oder Fokus füllt sich die Marke in `accent-press` mit weißer Ziffer (`accent`
+selbst trüge Weiß im Dunkelschema nur mit 3,3:1); die Ziffer der ruhenden Marke rückt, wo die
+Tönung sie unter 4,5:1 drückt, wie jeder Akzenttext vom Grund weg, und ein Tooltip nennt je Fundstelle
 Ziffer, Dokumentname und Fundort; erst ein Klick öffnet das Belegfenster.
 Unter der Antwort steht keine Quellenliste. Eine 1-px-Haarlinie in `border`, nach rechts
 auslaufend, schließt den Antworttext ab; darunter folgt der Knopf **„Belege anzeigen"** als

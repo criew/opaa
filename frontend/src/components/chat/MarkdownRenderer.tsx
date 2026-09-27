@@ -17,7 +17,7 @@ import type { Components } from 'react-markdown'
 import rehypeNormalizeHeadings, { MD_LEVEL_PROPERTY } from './markdownHeadings'
 import type { CitationIndex } from './citations'
 import { CITATION_MARKER_RE } from './citations'
-import { citationMarkSx } from './citationMark'
+import { citationMarkColors, citationMarkSx } from './citationMark'
 import { focusRingAlpha, fontFamily, motion } from '../../theme/tokens'
 import 'highlight.js/styles/github-dark.css'
 
@@ -89,12 +89,16 @@ function renderCitationGroup(
   key: string,
   onCitationClick: ((numbers: number[]) => void) | undefined,
 ): React.ReactNode {
+  // A number repeated anywhere in the group shows once, where it first appears.
+  const seen = new Set<number>()
   const segments: ResolvedCitation[][] = []
   for (const citation of group) {
+    if (seen.has(citation.number)) continue
+    seen.add(citation.number)
     const current = segments[segments.length - 1]
     if (current && citation.number === current[current.length - 1].number + 1) {
       current.push(citation)
-    } else if (!current?.some((c) => c.number === citation.number)) {
+    } else {
       segments.push([citation])
     }
   }
@@ -134,8 +138,8 @@ function renderCitationGroup(
                 top: '-0.6em',
                 transition: `background ${motion.durationFastMs}ms ${motion.easeOut}, color ${motion.durationFastMs}ms ${motion.easeOut}`,
                 '&:hover, &[aria-describedby]': {
-                  background: theme.palette.primary.main,
-                  color: theme.palette.primary.contrastText,
+                  background: citationMarkColors(theme).filledSurface,
+                  color: citationMarkColors(theme).filledText,
                 },
                 '&.Mui-focusVisible': {
                   boxShadow: `0 0 0 3px ${alpha(theme.palette.primary.main, focusRingAlpha)}`,

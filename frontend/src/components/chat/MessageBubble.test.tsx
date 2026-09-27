@@ -226,6 +226,7 @@ describe('MessageBubble', () => {
       expect(evidenceRow('erste.md')).not.toHaveAttribute('data-focused')
       await waitFor(() => expect(scrollIntoView).toHaveBeenCalled())
       expect(scrollIntoView.mock.contexts[0]).toBe(evidenceRow('zweite.md'))
+      expect(evidenceRow('zweite.md')).toHaveFocus()
     } finally {
       // @ts-expect-error jsdom has no scrollIntoView; restore that state
       delete Element.prototype.scrollIntoView

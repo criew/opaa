@@ -512,7 +512,7 @@ filtert oder nur im Beleg steht, lässt den Abdruck unberührt.
 
 ## 10. Beleg-Anzeige
 
-Das Belegfenster einer Antwort zeigt je Fundstelle Titel, Dokumentart und Datum/Stand
+Das Belegfenster einer Antwort zeigt je Dokument Titel, Dokumentart und Datum/Stand
 des zitierten Dokuments, mit „ · " verbunden; ein leeres Feld erscheint gar nicht, ein abgeleiteter
 Wert ist als „(abgeleitet)" gekennzeichnet. Die Ortsangabe im Dokument bleibt daneben bestehen. Die
 Formatfelder eines Dokuments stehen als weitere Einträge derselben Liste dahinter; ein Wert, den der

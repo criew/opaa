@@ -352,7 +352,7 @@ describe('SourceEvidenceDrawer (#592, Mockup 1i)', () => {
     expect(within(drawer).queryByText('Beleg nicht bestätigt')).not.toBeInTheDocument()
   })
 
-  // #1066: the Belegfenster row carries the same generic metadata line as the Fundstellen block.
+  // #1066: the Belegfenster row carries the document's generic metadata line.
   it('shows the metadata line of a source, rendered from the generic list', async () => {
     const user = userEvent.setup()
     renderWithProviders(

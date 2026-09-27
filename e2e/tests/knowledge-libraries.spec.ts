@@ -73,10 +73,10 @@ const OWN_LIBRARY_NAME_REGULAR = `E2E Eigene Bibliothek Regular ${runId}`
 // Chats are persisted server-side and keyed per user, not per browser session: a fresh Playwright
 // context (a new browser context per fixture, see fixtures/auth.ts) still talks to the same
 // backend account and therefore reaches every chat an earlier scenario of this suite left behind.
-// `expectCitedSource`/`expectCitedExclusively` below assert page-wide, which is only correct on a
-// chat that holds exactly the one turn just asked; without this, a later scenario reusing the same
-// account (dev-user in scenarios 3 and 5, dev-outsider in scenarios 4 and 6) would see source
-// cards from an earlier scenario's turn still in the DOM alongside the new one. Every scenario
+// `expectCitedSource`/`expectCitedExclusively` below open the Belegfenster behind the page's last
+// "Belege anzeigen", which is only this turn's on a chat that holds exactly the one turn just
+// asked; without this, a later scenario reusing the same account (dev-user in scenarios 3 and 5,
+// dev-outsider in scenarios 4 and 6) could open an earlier scenario's Belege instead. Every scenario
 // below explicitly starts a fresh, not-yet-persisted chat (`startFreshChat`, see
 // fixtures/chat.ts) before asking its question instead, so "the page shows exactly this one turn"
 // is a fact, not an assumption that happened to hold by scenario order (CI fix following PR
@@ -109,10 +109,9 @@ async function uploadOwnDocument(page: Page, libraryName: string) {
  * `.filterExpression(...)` removed from
  * that call and `readableLibraryIds.isEmpty() ? List.of() : ...` short-circuit bypassed, both
  * scenarios fail identically - the own document is still (rightfully) cited, so
- * `expectCitedExclusively`'s first assertion passes, but its second one does not:
- * `expect(locator).toHaveCount(expected) failed / Locator: getByTestId('source-card').filter({
- * hasText: 'wissensdokument.txt' }) / Expected: 0 / Received: 1` - the excluded user now finds the
- * other's document too. Both restored to green with the filter back in place.
+ * `expectCitedExclusively`'s first assertion passes, but its second one does not: the other's
+ * document shows up as a Beleg (`toHaveCount(0)` received 1) - the excluded user now finds it too.
+ * Both restored to green with the filter back in place.
  */
 test.describe.serial('Wissensbibliotheken: Upload, Freigabe, rechtebewusste Suche (#424)', () => {
   test('1. Eigene Bibliothek anlegen und befüllen', async ({ authenticatedPage: page }) => {

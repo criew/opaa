@@ -1,5 +1,5 @@
-import type { Locator, Page } from "@playwright/test";
-import { expect } from "@playwright/test";
+import type { Locator, Page } from '@playwright/test'
+import { expect } from '@playwright/test'
 
 /**
  * Reusable building blocks for scenarios that drive the chat UI (test(e2e) #424, #529). Extracted
@@ -24,9 +24,9 @@ import { expect } from "@playwright/test";
  * moment the empty chat has not rendered yet, and the input is what askQuestion below needs.
  */
 export async function startFreshChat(page: Page): Promise<void> {
-  await page.goto("/chat");
-  await page.waitForURL(/\/spaces\/[^/]+\/chats\/new$/);
-  await expect(page.getByPlaceholder("Nachricht eingeben …")).toBeVisible();
+  await page.goto('/chat')
+  await page.waitForURL(/\/spaces\/[^/]+\/chats\/new$/)
+  await expect(page.getByPlaceholder('Nachricht eingeben …')).toBeVisible()
 }
 
 /**
@@ -35,9 +35,9 @@ export async function startFreshChat(page: Page): Promise<void> {
  * `/chat`. Waits for the draft's URL and its ready input, same as startFreshChat.
  */
 export async function startAnotherChatViaSidebar(page: Page): Promise<void> {
-  await page.getByRole("button", { name: "Neuer Chat" }).click();
-  await page.waitForURL(/\/spaces\/[^/]+\/chats\/new$/);
-  await expect(page.getByPlaceholder("Nachricht eingeben …")).toBeVisible();
+  await page.getByRole('button', { name: 'Neuer Chat' }).click()
+  await page.waitForURL(/\/spaces\/[^/]+\/chats\/new$/)
+  await expect(page.getByPlaceholder('Nachricht eingeben …')).toBeVisible()
 }
 
 /**
@@ -47,18 +47,16 @@ export async function startAnotherChatViaSidebar(page: Page): Promise<void> {
  * first question of a chat - the scope is the chat's own sticky setting from then on.
  */
 export async function clearSearchScope(page: Page): Promise<void> {
-  await page
-    .getByRole("button", { name: "Referenz Alles-Wissen entfernen" })
-    .press("Backspace");
-  await expect(page.getByText("Antwortet ohne Dokumente.")).toBeVisible();
+  await page.getByRole('button', { name: 'Referenz Alles-Wissen entfernen' }).press('Backspace')
+  await expect(page.getByText('Antwortet ohne Dokumente.')).toBeVisible()
 }
 
 /** Fills the chat input and sends it, waiting for it to be visible first (see startFreshChat). */
 export async function askQuestion(page: Page, question: string): Promise<void> {
-  const input = page.getByPlaceholder("Nachricht eingeben …");
-  await expect(input).toBeVisible();
-  await input.fill(question);
-  await page.getByRole("button", { name: "Senden" }).click();
+  const input = page.getByPlaceholder('Nachricht eingeben …')
+  await expect(input).toBeVisible()
+  await input.fill(question)
+  await page.getByRole('button', { name: 'Senden' }).click()
 }
 
 /**
@@ -79,9 +77,7 @@ export async function askQuestion(page: Page, question: string): Promise<void> {
  * (expectTopSidebarChatToBeNamed below) replace what used to be exact title-text assertions.
  */
 export function chatSidebarEntries(page: Page): Locator {
-  return page
-    .getByRole("navigation")
-    .getByRole("button", { name: /^Aktionen für Chat/ });
+  return page.getByRole('navigation').getByRole('button', { name: /^Aktionen für Chat/ })
 }
 
 /**
@@ -95,72 +91,65 @@ export function chatSidebarEntries(page: Page): Locator {
  */
 export async function expectTopSidebarChatToBeNamed(page: Page): Promise<void> {
   const ariaLabel = await page
-    .getByRole("navigation", { name: "Chats" })
-    .getByRole("list", { name: "Zuletzt verwendet" })
-    .getByRole("button", { name: /^Aktionen für Chat/ })
+    .getByRole('navigation', { name: 'Chats' })
+    .getByRole('list', { name: 'Zuletzt verwendet' })
+    .getByRole('button', { name: /^Aktionen für Chat/ })
     .first()
-    .getAttribute("aria-label");
-  expect(ariaLabel).toBeTruthy();
-  expect(ariaLabel).not.toContain("Unbenannter Chat");
+    .getAttribute('aria-label')
+  expect(ariaLabel).toBeTruthy()
+  expect(ariaLabel).not.toContain('Unbenannter Chat')
 }
 
 /**
- * Opens the Belegfenster of the latest answer via its "Belege anzeigen" button and hands the
- * drawer to `check`, closing it again afterwards so the chat is back in its normal state. The
- * sources of an answer live only there - under the answer stands just that button.
+ * Opens the Belegfenster behind the page's last "Belege anzeigen" and hands the drawer to
+ * `check`, closing it again afterwards so the chat is back in its normal state. The sources of an
+ * answer live only there - under the answer stands just that button.
+ *
+ * Contract: "last" is the newest answer only in a chat with exactly one answered question - an
+ * earlier answer's button would already be visible while a new one is still pending. Every caller
+ * asks a single question in a fresh chat; the answer arrives complete, sources included, so there
+ * is no half-rendered answer to race.
  */
-async function withLatestEvidence(
-  page: Page,
-  check: (drawer: Locator) => Promise<void>,
-) {
-  const showEvidence = page
-    .getByRole("button", { name: "Belege anzeigen" })
-    .last();
-  await expect(showEvidence).toBeVisible({ timeout: 15_000 });
-  await showEvidence.click();
-  const drawer = page.getByRole("dialog", { name: "Belege dieser Antwort" });
-  await expect(drawer).toBeVisible();
-  await check(drawer);
-  await page.keyboard.press("Escape");
-  await expect(drawer).toBeHidden();
+async function withLatestEvidence(page: Page, check: (drawer: Locator) => Promise<void>) {
+  const showEvidence = page.getByRole('button', { name: 'Belege anzeigen' }).last()
+  await expect(showEvidence).toBeVisible({ timeout: 15_000 })
+  await showEvidence.click()
+  const drawer = page.getByRole('dialog', { name: 'Belege dieser Antwort' })
+  await expect(drawer).toBeVisible()
+  await check(drawer)
+  await page.keyboard.press('Escape')
+  await expect(drawer).toBeHidden()
 }
 
 /** The Belegfenster row of one source (`evidence-doc`, SourceEvidenceDrawer.tsx). */
 function evidenceRow(drawer: Locator, fileName: string): Locator {
-  return drawer.getByTestId("evidence-doc").filter({ hasText: fileName });
+  return drawer.getByTestId('evidence-doc').filter({ hasText: fileName })
 }
 
-/** Waits for the latest answer to carry Belege and asserts fileName among them, cited. */
-export async function expectCitedSource(
-  page: Page,
-  fileName: string,
-): Promise<void> {
+/** Waits for the answer to carry Belege and asserts fileName among them, cited. */
+export async function expectCitedSource(page: Page, fileName: string): Promise<void> {
   await withLatestEvidence(page, async (drawer) => {
-    await expect(evidenceRow(drawer, fileName)).toHaveAttribute(
-      "data-cited",
-      "true",
-    );
-  });
+    await expect(evidenceRow(drawer, fileName)).toHaveAttribute('data-cited', 'true')
+  })
 }
 
 /**
- * Waits for the latest answer to cite *some* source, without pinning down which file. For
- * scenarios whose point is the chat mechanism itself (an answer with sources exists, and survives a
- * reload) rather than which library the default, unscoped @Alles-Wissen search actually reached
- * (#560): that search runs topK over the *entire* readable corpus, which by the time a given
- * scenario runs also holds whatever every earlier-sorting spec file left behind (same fixed ai-stub
- * embedding for every chunk, see ai-stub/server.mjs) - a specific document can legitimately fall
- * out of the top results as the corpus grows, without anything actually being broken. Scenarios
- * that need to prove *which* library a search reached still use expectCitedSource/
- * expectCitedExclusively with an explicit @-reference, which replaces @Alles-Wissen and scopes
- * the search deterministically regardless of corpus size.
+ * Waits for the answer to cite *some* source, without pinning down which file. For scenarios whose
+ * point is the chat mechanism itself (an answer with sources exists, and survives a reload) rather
+ * than which library the default, unscoped @Alles-Wissen search actually reached (#560): that
+ * search runs topK over the *entire* readable corpus, which by the time a given scenario runs also
+ * holds whatever every earlier-sorting spec file left behind (same fixed ai-stub embedding for
+ * every chunk, see ai-stub/server.mjs) - a specific document can legitimately fall out of the top
+ * results as the corpus grows, without anything actually being broken. Scenarios that need to
+ * prove *which* library a search reached still use expectCitedSource/expectCitedExclusively with
+ * an explicit @-reference, which replaces @Alles-Wissen and scopes the search deterministically
+ * regardless of corpus size.
  */
 export async function expectAnyCitedSource(page: Page): Promise<void> {
   await withLatestEvidence(page, async (drawer) => {
-    await expect(
-      drawer.locator('[data-testid="evidence-doc"][data-cited="true"]').first(),
-    ).toBeVisible();
-  });
+    const citedRow = drawer.locator('[data-testid="evidence-doc"][data-cited="true"]').first()
+    await expect(citedRow).toBeVisible()
+  })
 }
 
 // Not "no source at all": a plain absence check would pass just as happily before the answer has
@@ -172,12 +161,9 @@ export async function expectCitedExclusively(
   excludedFileName: string,
 ): Promise<void> {
   await withLatestEvidence(page, async (drawer) => {
-    await expect(evidenceRow(drawer, citedFileName)).toHaveAttribute(
-      "data-cited",
-      "true",
-    );
-    await expect(evidenceRow(drawer, excludedFileName)).toHaveCount(0);
-  });
+    await expect(evidenceRow(drawer, citedFileName)).toHaveAttribute('data-cited', 'true')
+    await expect(evidenceRow(drawer, excludedFileName)).toHaveCount(0)
+  })
 }
 
 // GET /api/v1/libraries is what decides whether a library is listed (or suggested) at all -
@@ -187,25 +173,21 @@ export async function gotoLibraries(page: Page): Promise<void> {
   await Promise.all([
     page.waitForResponse(
       (response) =>
-        response.request().method() === "GET" &&
-        response.url().endsWith("/api/v1/libraries"),
+        response.request().method() === 'GET' && response.url().endsWith('/api/v1/libraries'),
     ),
-    page.goto("/libraries"),
-  ]);
+    page.goto('/libraries'),
+  ])
 }
 
 // #481: the library overview no longer expands inline - every row navigates to its own detail
 // page (/libraries/:id), which is where name and description, die Freigaben and, for an
 // UPLOAD library, the upload zone and document list now live.
-export async function gotoLibraryDetail(
-  page: Page,
-  libraryName: string,
-): Promise<void> {
+export async function gotoLibraryDetail(page: Page, libraryName: string): Promise<void> {
   await Promise.all([
     page.waitForURL(/\/libraries\/[^/]+$/),
     page.getByText(libraryName, { exact: true }).click(),
-  ]);
-  await expect(page.getByRole("heading", { name: libraryName })).toBeVisible();
+  ])
+  await expect(page.getByRole('heading', { name: libraryName })).toBeVisible()
 }
 
 /**
@@ -220,7 +202,7 @@ export async function createLibraryWithDocument(
 ): Promise<void> {
   await createLibraryWithDocuments(page, libraryName, [
     { path: documentPath, name: documentName },
-  ]);
+  ])
 }
 
 /**
@@ -240,29 +222,29 @@ export async function createLibraryWithDocuments(
   // full expected row count here; every other caller keeps the one-chip-per-upload default.
   expectedIndexedCount: number = documents.length,
 ): Promise<void> {
-  await gotoLibraries(page);
-  await page.getByRole("button", { name: "Neue Bibliothek" }).click();
+  await gotoLibraries(page)
+  await page.getByRole('button', { name: 'Neue Bibliothek' }).click()
   // #1942: Schrittfolge „Art des Wissens · Name & Beschreibung · Freigaben" - Upload ist
   // vorausgewählt und hat keinen Schritt „Quelle".
-  await page.getByRole("button", { name: "Weiter", exact: true }).click();
-  await page.getByLabel("Name").fill(libraryName);
-  await page.getByRole("button", { name: "Weiter", exact: true }).click();
+  await page.getByRole('button', { name: 'Weiter', exact: true }).click()
+  await page.getByLabel('Name').fill(libraryName)
+  await page.getByRole('button', { name: 'Weiter', exact: true }).click()
   // #481/#596: the create wizard navigates straight to the new library's detail page on success -
   // there is no separate documents page or picker to visit afterwards. The wizard itself lives at
   // /libraries/new, hence the lookahead.
   await Promise.all([
     page.waitForURL(/\/libraries\/(?!new$)[^/]+$/),
-    page.getByRole("button", { name: "Bibliothek anlegen" }).click(),
-  ]);
-  await expect(page.getByRole("heading", { name: libraryName })).toBeVisible();
+    page.getByRole('button', { name: 'Bibliothek anlegen' }).click(),
+  ])
+  await expect(page.getByRole('heading', { name: libraryName })).toBeVisible()
 
   await page
-    .getByLabel("Dateien auswählen")
-    .setInputFiles(documents.map((document) => document.path));
+    .getByLabel('Dateien auswählen')
+    .setInputFiles(documents.map((document) => document.path))
   for (const { name } of documents) {
     // exact: true - a non-exact match risks a strict-mode violation once anything else on the
     // page (e.g. a status hint) also happens to contain this filename as a substring.
-    await expect(page.getByText(name, { exact: true })).toBeVisible();
+    await expect(page.getByText(name, { exact: true })).toBeVisible()
   }
   // A fresh library (created moments ago, above) holds nothing but these uploads (plus, since
   // #1218, the indexed attachment rows of any uploaded mail), so an exact chip count is the whole
@@ -270,12 +252,9 @@ export async function createLibraryWithDocuments(
   // would still satisfy. exact: the Pflege-Anker (#1069) above the list says "... indizierte
   // Dokumente dieser Bibliothek" and loads a moment later, so a substring match counts a chip that
   // is none - and only sometimes.
-  await expect(page.getByText("indiziert", { exact: true })).toHaveCount(
-    expectedIndexedCount,
-    {
-      timeout: 30_000,
-    },
-  );
+  await expect(page.getByText('indiziert', { exact: true })).toHaveCount(expectedIndexedCount, {
+    timeout: 30_000,
+  })
 }
 
 /**
@@ -289,20 +268,18 @@ export async function shareLibraryWithPerson(
   personQuery: string,
   personOption: RegExp,
 ): Promise<void> {
-  await gotoLibraries(adminPage);
-  await gotoLibraryDetail(adminPage, libraryName);
+  await gotoLibraries(adminPage)
+  await gotoLibraryDetail(adminPage, libraryName)
   // Seit #1941 steht der Abschnitt „Berechtigungen" als Liste im Reiter „Freigaben".
-  await adminPage.getByRole("tab", { name: "Freigaben" }).click();
-  await adminPage.getByRole("button", { name: "Freigeben" }).click();
+  await adminPage.getByRole('tab', { name: 'Freigaben' }).click()
+  await adminPage.getByRole('button', { name: 'Freigeben' }).click()
   // Not getByLabel: once the Autocomplete's listbox is open, its aria-labelledby also points back
   // at the field, so getByLabel resolves to both the input and the listbox.
   // getByRole('combobox', ...) only ever matches the input itself.
-  const personInput = adminPage.getByRole("combobox", {
-    name: "Person suchen",
-  });
-  await personInput.click();
-  await personInput.fill(personQuery);
-  await adminPage.getByRole("option", { name: personOption }).click();
-  await adminPage.getByRole("button", { name: "Freigeben" }).last().click();
-  await expect(adminPage.getByText(personOption)).toBeVisible();
+  const personInput = adminPage.getByRole('combobox', { name: 'Person suchen' })
+  await personInput.click()
+  await personInput.fill(personQuery)
+  await adminPage.getByRole('option', { name: personOption }).click()
+  await adminPage.getByRole('button', { name: 'Freigeben' }).last().click()
+  await expect(adminPage.getByText(personOption)).toBeVisible()
 }
