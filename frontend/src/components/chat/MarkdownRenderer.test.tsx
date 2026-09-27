@@ -172,6 +172,16 @@ describe('MarkdownRenderer', () => {
     expect(screen.getByRole('button', { name: 'Fundstelle 2: deploy.pdf' })).toHaveTextContent('2')
   })
 
+  it('sets a mark directly after the word, dropping the space before it', () => {
+    const content =
+      'kostet 42,60 Euro 【source: a#0 | gebuehren.md】. Termin nötig  【source: b#0 | termin.md】'
+    renderWithProviders(
+      <MarkdownRenderer content={content} citations={buildCitationIndex(content, undefined)} />,
+    )
+    const paragraph = screen.getByText(/kostet 42,60 Euro/)
+    expect(paragraph.textContent).toBe('kostet 42,60 Euro1. Termin nötig2')
+  })
+
   it('strips markers when no citation index is provided', () => {
     renderWithProviders(<MarkdownRenderer content="Satz【source: doc-1#0 | readme.md】 Ende." />)
     expect(screen.getByText(/Satz\s*Ende\./)).toBeInTheDocument()

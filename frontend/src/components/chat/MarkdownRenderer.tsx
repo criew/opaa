@@ -101,7 +101,7 @@ function renderCitationGroup(
     <Box
       component="span"
       key={key}
-      sx={{ display: 'inline-flex', gap: '3px', mx: '2px', whiteSpace: 'nowrap' }}
+      sx={{ display: 'inline-flex', gap: '3px', ml: '3px', whiteSpace: 'nowrap' }}
     >
       {segments.map((segment) => {
         const first = segment[0]
@@ -168,8 +168,10 @@ function renderWithCitations(
 
   const regex = new RegExp(CITATION_MARKER_RE.source, 'g')
   while ((match = regex.exec(text)) !== null) {
-    const between = text.slice(lastIndex, match.index)
-    if (between.trim().length > 0 || (group.length === 0 && between.length > 0)) {
+    // A mark attaches to the word before it, like a footnote digit: the model's space in
+    // "Euro 【…】" would otherwise add to the mark's own margin.
+    const between = text.slice(lastIndex, match.index).trimEnd()
+    if (between.length > 0) {
       flushGroup(`citation-${match.index}`)
       parts.push(between)
     }
