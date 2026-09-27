@@ -1,0 +1,80 @@
+package io.opaa.indexing.web;
+
+import io.opaa.api.dto.ContextPrefixRerunResponse;
+import io.opaa.api.dto.ContextPrefixRerunStatusResponse;
+import io.opaa.api.dto.CoreMetadataFieldFillResponse;
+import io.opaa.api.dto.MetadataBackfillResponse;
+import io.opaa.api.dto.MetadataBackfillStatusResponse;
+import io.opaa.api.dto.MetadataSchemaChangeStatusResponse;
+import io.opaa.indexing.maintenance.ContextPrefixRerunProgress;
+import io.opaa.indexing.maintenance.ContextPrefixRerunResult;
+import io.opaa.indexing.metadata.CoreMetadataExtractor;
+import io.opaa.indexing.metadata.CoreMetadataField;
+import io.opaa.indexing.metadata.LibraryMetadataSchemaChangeProgress;
+import io.opaa.indexing.metadata.MetadataBackfillProgress;
+import io.opaa.indexing.metadata.MetadataBackfillResult;
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * Maps the core-metadata backfill (#1067) and the Kontextpraefix-Nachlauf (#1072) onto their
+ * generated API responses (#860: the domain services never see a DTO). Package-private like every
+ * other mapper here.
+ */
+public final class MetadataBackfillResponseMapper {
+
+  private MetadataBackfillResponseMapper() {}
+
+  static MetadataBackfillResponse toBackfillResponse(MetadataBackfillResult result) {
+    return new MetadataBackfillResponse(
+        result.processedDocuments(),
+        result.markedForNextRun(),
+        result.skippedDocuments(),
+        result.isEmpty());
+  }
+
+  static ContextPrefixRerunResponse toRerunResponse(ContextPrefixRerunResult result) {
+    return new ContextPrefixRerunResponse(
+        result.processedDocuments(), result.skippedDocuments(), result.isEmpty());
+  }
+
+  public static ContextPrefixRerunStatusResponse toRerunStatusResponse(
+      ContextPrefixRerunProgress progress) {
+    return new ContextPrefixRerunStatusResponse(
+        progress.totalDocuments(),
+        progress.currentDocuments(),
+        progress.pendingDocuments(),
+        progress.lastSkippedDocuments(),
+        progress.isComplete());
+  }
+
+  public static MetadataSchemaChangeStatusResponse toSchemaChangeStatusResponse(
+      LibraryMetadataSchemaChangeProgress progress) {
+    return new MetadataSchemaChangeStatusResponse(
+        progress.pendingChanges(), progress.pendingDocuments(), progress.lastSkippedDocuments());
+  }
+
+  public static MetadataBackfillStatusResponse toStatusResponse(MetadataBackfillProgress progress) {
+    List<CoreMetadataFieldFillResponse> fields = new ArrayList<>();
+    for (CoreMetadataField field : CoreMetadataField.values()) {
+      fields.add(
+          new CoreMetadataFieldFillResponse(
+              field.key(),
+              field.label(),
+              progress.filledDocuments(field),
+              progress.filledShare(field),
+              progress.notDeterminableDocuments(field),
+              progress.documentsWithoutValue(field),
+              progress.missingShare(field)));
+    }
+    return new MetadataBackfillStatusResponse(
+        CoreMetadataExtractor.EXTRACTION_VERSION,
+        progress.totalDocuments(),
+        progress.currentDocuments(),
+        progress.pendingDocuments(),
+        progress.awaitingConnectorRunDocuments(),
+        progress.lastSkippedDocuments(),
+        progress.isComplete(),
+        fields);
+  }
+}

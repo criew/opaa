@@ -44,8 +44,8 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
  * "Spring-Testkontexte"), so it shares one cached context and one container with every other class
  * on that same meta-annotation, including {@link
  * io.opaa.revision.web.AuditControllerAuthorizationIntegrationTest} and {@link
- * io.opaa.api.LibraryControllerCredentialsIntegrationTest}. Everything that does not need MockMvc
- * lives in {@code BrandingSettingsServiceIntegrationTest}, which shares the other, {@link
+ * io.opaa.library.web.LibraryControllerCredentialsIntegrationTest}. Everything that does not need
+ * MockMvc lives in {@code BrandingSettingsServiceIntegrationTest}, which shares the other, {@link
  * io.opaa.test.OpaaIntegrationTest} context group instead.
  */
 @OpaaIntegrationTest

@@ -504,7 +504,7 @@ tasks.withType<Test> {
 
 // #514/PR #537 review (coordinator-reported CI failure): the "test" source set alone now holds
 // well over a dozen @SpringBootTest classes that each spin up their own Testcontainers Postgres
-// instance and ApplicationContext (io.opaa.api.LibraryControllerCredentialsIntegrationTest and
+// instance and ApplicationContext (io.opaa.library.web.LibraryControllerCredentialsIntegrationTest and
 // its siblings) - Spring's context cache cannot share these across classes once each declares its
 // own @DynamicPropertySource method (the cache key resolves the dynamic-property customizer per
 // declaring method, not per equivalent body), so several of these heavy contexts are alive at

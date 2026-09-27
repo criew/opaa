@@ -8,6 +8,7 @@ import static org.mockito.Mockito.when;
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.opaa.common.PayloadTooLargeException;
+import io.opaa.library.web.PushIntakeController;
 import io.opaa.observability.RateLimitMetrics;
 import io.opaa.ratelimit.RateLimitConfiguration;
 import io.opaa.ratelimit.RateLimitFilter;

@@ -23,7 +23,9 @@ foundation, identity, rights und knowledge ab und besitzt keine eigene Tabelle.
 - **library kennt keinen Konnektor.** Beschreibung, Validierung, Verbindungstest und Fähigkeiten
   eines Konnektors kommen nur über `SourceConnectorRegistry`.
 - **Fachpakete kennen einander nicht:** library kennt weder `prompt` noch `space` noch `group`; den
-  Lebenszyklus erreicht es nur über die Ports von `io.opaa.permission`.
+  Lebenszyklus erreicht es nur über die Ports von `io.opaa.permission`. Ausgenommen ist die
+  Web-Schicht `library.web`: Sie setzt die Antworten zusammen und liest dafür auch den
+  Nachfolgezustand (`SuccessionService`).
 
 ## Verweise
 
@@ -38,5 +40,5 @@ foundation, identity, rights und knowledge ab und besitzt keine eigene Tabelle.
 ./gradlew test --tests 'io.opaa.library.*' --tests 'io.opaa.architecture.*'
 ```
 
-Die Endpunkte der Bibliothek prüfen die Klassen in `io.opaa.api` mit; bei Änderungen an Verträgen
-zusätzlich die berührten `io.opaa.api`-Testklassen.
+Die Endpunkte der Bibliothek, der Dokumente, der Quelltypen, des Push-Eingangs und der verwaisten
+Originale liegen samt Tests in `io.opaa.library.web`; `library.*` deckt sie mit ab.
