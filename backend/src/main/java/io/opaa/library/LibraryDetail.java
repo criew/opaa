@@ -4,6 +4,7 @@ import io.opaa.api.types.AssetRole;
 import io.opaa.indexing.source.ConnectorData;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.permission.AssetReach;
+import io.opaa.permission.SuccessionFinding;
 
 /**
  * A {@link KnowledgeLibrary} enriched with the caller's effective role, its document count and its
@@ -23,6 +24,8 @@ import io.opaa.permission.AssetReach;
  *     resolution {@link io.opaa.asset.AssetOwnerNames} performs for the overview.
  * @param connectorSettings the connector settings as every reader of the library may see them
  *     (ADR-0038), {@code null} for none
+ * @param succession the derived state "Nachfolge offen" (ADR-0036, Entscheidung 6), set only by
+ *     {@link KnowledgeLibraryService#getLibrary}; {@code null} for none and for every other result
  */
 public record LibraryDetail(
     KnowledgeLibrary library,
@@ -32,4 +35,42 @@ public record LibraryDetail(
     boolean diagnosticsLockToggleable,
     AssetReach reach,
     String ownerName,
-    ConnectorData connectorSettings) {}
+    ConnectorData connectorSettings,
+    SuccessionFinding succession) {
+
+  /** A detail without the succession state - what creating and updating a library answer. */
+  public LibraryDetail(
+      KnowledgeLibrary library,
+      AssetRole myRole,
+      long documentCount,
+      LibraryManagementDetail managementDetail,
+      boolean diagnosticsLockToggleable,
+      AssetReach reach,
+      String ownerName,
+      ConnectorData connectorSettings) {
+    this(
+        library,
+        myRole,
+        documentCount,
+        managementDetail,
+        diagnosticsLockToggleable,
+        reach,
+        ownerName,
+        connectorSettings,
+        null);
+  }
+
+  /** This detail carrying {@code succession}. */
+  LibraryDetail withSuccession(SuccessionFinding succession) {
+    return new LibraryDetail(
+        library,
+        myRole,
+        documentCount,
+        managementDetail,
+        diagnosticsLockToggleable,
+        reach,
+        ownerName,
+        connectorSettings,
+        succession);
+  }
+}

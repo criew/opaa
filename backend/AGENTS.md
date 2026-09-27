@@ -103,13 +103,14 @@ Top-Level-Paket hat höchstens eines; ein tieferes Paket dieses Namens, etwa der
 - **Schichtung:** Ein `web`-Paket steht über allen Paketen, die sein Modul erreicht. Es unterliegt
   deshalb nicht `LAYERS`, nur `ALLOWED_MODULE_EDGES`: `branding.web` darf `auth` nutzen, obwohl
   `branding` darunter liegt. Umgekehrt nutzt kein Paket außerhalb der Web-Schicht und des Moduls app
-  ein `web`-Paket, und zwischen `web`-Paketen gibt es keinen Zyklus. Ebenso gelten die Verbote von
-  `PermissionPackageBoundaryTest` den Fachpaketen, nicht ihren `web`-Paketen: `library.web` liest
-  den Nachfolgezustand für seine Antworten.
+  ein `web`-Paket, und zwischen `web`-Paketen gibt es keinen Zyklus. `PermissionPackageBoundaryTest`
+  gilt für ein `web`-Paket wie für sein Fachpaket: Was die Web-Schicht eines Fachpakets zeigt, holt
+  die Domäne über die Ports von `io.opaa.permission` in ihren Domain-Record.
 - **Mapper:** Die Abbildung Entity → Response lebt in einer package-private, handgeschriebenen
   Mapper-Klasse im Paket des Controllers (Vorbild `BrandingResponseMapper`, `SpaceResponseMapper`).
   Braucht ein anderes `web`-Paket sie, wird sie `public`, und nur mit den Methoden, die es aufruft
-  (`SuccessionResponseMapper#toStateResponse`).
+  (`PermissionTransferResponseMapper#toResponse`). Ein Mapper, den mehrere Fachpakete brauchen, liegt
+  im tiefsten `web`-Paket, das alle erreichen dürfen (`permission.web.SuccessionStateResponseMapper`).
 - **Mapper-Tests:** Werden Test-Assertions von Response-Feldern auf Entity-Ableitungen umgestellt,
   sichert ein Mapper-Unit-Test die Feldbelegung (`SpaceResponseMapperTest`,
   `SpaceAssetAssociationResponseMapperTest`). Sonst prüft kein Test mehr, dass der Mapper jedes Feld

@@ -6,7 +6,7 @@ import io.opaa.api.dto.CatalogPageResponse;
 import io.opaa.asset.AssetCatalogEntry;
 import io.opaa.asset.AssetCatalogPage;
 import io.opaa.asset.AssetCatalogRow;
-import io.opaa.succession.web.SuccessionResponseMapper;
+import io.opaa.permission.web.SuccessionStateResponseMapper;
 
 /** Maps the catalog of {@code io.opaa.asset} onto its generated counterparts. */
 final class CatalogResponseMapper {
@@ -36,6 +36,6 @@ final class CatalogResponseMapper {
             entry.spaceCount())
         .description(asset.getDescription())
         .ownerLabel(entry.ownerLabel())
-        .succession(SuccessionResponseMapper.toStateResponse(entry.succession()));
+        .succession(SuccessionStateResponseMapper.toStateResponse(entry.succession()));
   }
 }

@@ -32,7 +32,7 @@ import org.junit.jupiter.api.Test;
  *
  * <p>The library asset type spans its holdings in {@code io.opaa.knowledge} and its administration
  * in {@code io.opaa.library}; a rule naming the library names both, except that a space may reach
- * the holdings. The rules hold the business packages, not their web packages.
+ * the holdings.
  */
 class PermissionPackageBoundaryTest {
 
@@ -119,16 +119,10 @@ class PermissionPackageBoundaryTest {
         .isTrue();
   }
 
-  /**
-   * The web package of {@code from} is exempt: like the app module, the web layer composes what its
-   * controllers answer, and the domain never reaches back into it.
-   */
   private static ArchRule forbid(String from, String to, String reason) {
     return noClasses()
         .that()
         .resideInAPackage(from)
-        .and()
-        .resideOutsideOfPackage(from.replace("..", ".web.."))
         .should()
         .dependOnClassesThat()
         .resideInAPackage(to)

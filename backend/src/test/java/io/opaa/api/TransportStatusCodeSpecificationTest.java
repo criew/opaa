@@ -1,14 +1,11 @@
 package io.opaa.api;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
-import io.opaa.common.PayloadTooLargeException;
-import io.opaa.library.web.PushIntakeController;
 import io.opaa.observability.RateLimitMetrics;
 import io.opaa.ratelimit.RateLimitConfiguration;
 import io.opaa.ratelimit.RateLimitFilter;
@@ -179,24 +176,11 @@ class TransportStatusCodeSpecificationTest {
   }
 
   /**
-   * The premise the scan below rests on: the bound the intakes share really does refuse an
-   * oversized body, so {@code 413} is a status they can actually answer.
-   */
-  @Test
-  void theSharedRawBodyBoundRefusesAnOversizedBody() {
-    MockHttpServletRequest oversized = new MockHttpServletRequest("POST", "/api/v1/libraries/x");
-    oversized.setContent(new byte[PushIntakeController.MAX_BODY_BYTES + 1]);
-
-    assertThatThrownBy(() -> PushIntakeController.readBounded(oversized))
-        .as("the shared bound no longer refuses an oversized body")
-        .isInstanceOf(PayloadTooLargeException.class);
-  }
-
-  /**
    * A raw-body bound is nowhere visible in the specification, so this half reads the production
-   * sources: whichever mapped handler calls {@link PushIntakeController#readBounded} has to declare
+   * sources: whichever mapped handler calls {@code PushIntakeController#readBounded} has to declare
    * {@code 413} at its own route. A third intake is found by the same scan, and removing the
-   * declaration from both of today's at once fails here too.
+   * declaration from both of today's at once fails here too. That the bound itself refuses an
+   * oversized body holds {@code io.opaa.library.web.PushIntakeControllerTest}.
    *
    * <p>Its self-check is a parity, not a threshold: every mapping annotation in the sources has to
    * belong to a parsed member. A threshold grows weaker as handlers are added and lets a signature

@@ -194,7 +194,7 @@ public class SuccessionService implements SuccessionReachGuard, SuccessionCaseCl
             + attemptedAction
             + " ist deshalb nicht möglich. Bestehende Rechte bleiben unverändert, und nichts wird"
             + " gelöscht. Zuständig: "
-            + addresseeLabel(finding),
+            + finding.addresseeLabel(),
         SUCCESSION_OPEN);
   }
 
@@ -203,15 +203,6 @@ public class SuccessionService implements SuccessionReachGuard, SuccessionCaseCl
   public void requireAssetReachNotFrozen(
       AssetType assetType, UUID assetId, String attemptedAction) {
     requireReachNotFrozen(SuccessionObjectType.ASSET, assetId, attemptedAction);
-  }
-
-  /** The German wording of the addressee - the same one the list and the object's view use. */
-  public static String addresseeLabel(SuccessionFinding finding) {
-    return switch (finding.addressee()) {
-      case SPACE_ADMINS -> "die übrigen handlungsfähigen ADMIN-Mitglieder des Space";
-      case GROUP_STEWARDS -> "die Verantwortlichen der besitzenden Gruppe";
-      case SYSTEM_ADMINISTRATION -> "die Systemverwaltung";
-    };
   }
 
   /**

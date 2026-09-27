@@ -40,7 +40,6 @@ import io.opaa.library.KnowledgeLibraryService;
 import io.opaa.library.LibraryDocumentService;
 import io.opaa.library.SourceConnectionTestService;
 import io.opaa.permission.PermissionTransferService;
-import io.opaa.succession.SuccessionService;
 import jakarta.validation.Valid;
 import java.time.Instant;
 import java.util.List;
@@ -74,7 +73,6 @@ public class LibraryController {
   private final DocumentIndexingService indexingService;
   private final SourceConnectionTestService sourceConnectionTestService;
   private final PermissionTransferService transferService;
-  private final SuccessionService successionService;
   private final SourceConnectorRegistry connectors;
 
   public LibraryController(
@@ -84,7 +82,6 @@ public class LibraryController {
       DocumentIndexingService indexingService,
       SourceConnectionTestService sourceConnectionTestService,
       PermissionTransferService transferService,
-      SuccessionService successionService,
       SourceConnectorRegistry connectors) {
     this.libraryService = libraryService;
     this.documentService = documentService;
@@ -92,7 +89,6 @@ public class LibraryController {
     this.indexingService = indexingService;
     this.sourceConnectionTestService = sourceConnectionTestService;
     this.transferService = transferService;
-    this.successionService = successionService;
     this.connectors = connectors;
   }
 
@@ -131,8 +127,7 @@ public class LibraryController {
   public LibraryResponse getLibrary(@PathVariable UUID libraryId, @Caller CurrentUser caller) {
     return LibraryResponseMapper.toResponse(
         libraryService.getLibrary(libraryId, caller),
-        transferService.markOf(KnowledgeLibrary.ASSET_TYPE, libraryId, caller).orElse(null),
-        successionService.findingForAsset(KnowledgeLibrary.ASSET_TYPE, libraryId).orElse(null));
+        transferService.markOf(KnowledgeLibrary.ASSET_TYPE, libraryId, caller).orElse(null));
   }
 
   @PutMapping("/{libraryId}")

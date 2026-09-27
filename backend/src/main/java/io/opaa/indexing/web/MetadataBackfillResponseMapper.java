@@ -18,8 +18,8 @@ import java.util.List;
 
 /**
  * Maps the core-metadata backfill (#1067) and the Kontextpraefix-Nachlauf (#1072) onto their
- * generated API responses (#860: the domain services never see a DTO). Package-private like every
- * other mapper here.
+ * generated API responses (#860: the domain services never see a DTO). Public because the status
+ * view of {@code searchadmin} shows the same progress.
  */
 public final class MetadataBackfillResponseMapper {
 

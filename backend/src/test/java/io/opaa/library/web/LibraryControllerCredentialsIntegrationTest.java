@@ -456,7 +456,7 @@ class LibraryControllerCredentialsIntegrationTest {
 
   // --- Mapper access to entity state outside the read-only service transaction --------------
   //
-  // spring.jpa.open-in-view=false (application.yml): every mapper in io.opaa.api runs strictly
+  // spring.jpa.open-in-view=false (application.yml): every response mapper runs strictly
   // after the @Transactional(readOnly = true) service method that loaded the entities it maps has
   // already returned, exactly the boundary PR #870's review found a LazyInitializationException
   // across (SpaceResponseMapper reading a not-fetch-joined getMemberships() there). These three

@@ -363,7 +363,8 @@ public class KnowledgeLibraryService {
     KnowledgeLibrary library = loadLibrary(libraryId, caller);
     AssetRole role =
         accessService.requireRole(library, caller.id(), caller.isSystemAdmin(), AssetRole.VIEWER);
-    return toLibraryDetail(library, role, caller.id());
+    return toLibraryDetail(library, role, caller.id())
+        .withSuccession(successionSource.findingFor(libraryId).orElse(null));
   }
 
   @Transactional

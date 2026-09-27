@@ -47,6 +47,15 @@ public record SuccessionFinding(
         objectType, null, objectId, objectName, addressee, null, List.of(), 0);
   }
 
+  /** The German wording of the addressee - the same one the list and the object's view use. */
+  public String addresseeLabel() {
+    return switch (addressee) {
+      case SPACE_ADMINS -> "die übrigen handlungsfähigen ADMIN-Mitglieder des Space";
+      case GROUP_STEWARDS -> "die Verantwortlichen der besitzenden Gruppe";
+      case SYSTEM_ADMINISTRATION -> "die Systemverwaltung";
+    };
+  }
+
   /** A finding about an asset of any type. */
   public static SuccessionFinding ofAsset(
       AssetType assetType, UUID assetId, String objectName, SuccessionAddressee addressee) {

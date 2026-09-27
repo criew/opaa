@@ -50,7 +50,7 @@ public class PushIntakeController {
   }
 
   /** Rejects by the declared length first, then by what actually arrives (chunked senders). */
-  public static byte[] readBounded(HttpServletRequest request) throws IOException {
+  static byte[] readBounded(HttpServletRequest request) throws IOException {
     if (request.getContentLengthLong() > MAX_BODY_BYTES) {
       throw new PayloadTooLargeException("Benachrichtigung zu groß");
     }

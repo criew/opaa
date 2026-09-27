@@ -22,9 +22,8 @@ import io.opaa.library.LibrarySummary;
 import io.opaa.library.LibraryUpdate;
 import io.opaa.permission.AssetReach;
 import io.opaa.permission.PermissionTransferMark;
-import io.opaa.permission.SuccessionFinding;
 import io.opaa.permission.web.PermissionTransferResponseMapper;
-import io.opaa.succession.web.SuccessionResponseMapper;
+import io.opaa.permission.web.SuccessionStateResponseMapper;
 import java.net.URI;
 import java.util.List;
 import java.util.Map;
@@ -97,15 +96,14 @@ final class LibraryResponseMapper {
   }
 
   static LibraryResponse toResponse(LibraryDetail detail) {
-    return toResponse(detail, null, null);
+    return toResponse(detail, null);
   }
 
   /**
    * The detail view additionally names the transfer that last touched this library (#1834, ADR-0036
    * Entscheidung 10), or nothing if none ever did.
    */
-  static LibraryResponse toResponse(
-      LibraryDetail detail, PermissionTransferMark lastTransfer, SuccessionFinding succession) {
+  static LibraryResponse toResponse(LibraryDetail detail, PermissionTransferMark lastTransfer) {
     KnowledgeLibrary library = detail.library();
     LibraryResponse response =
         new LibraryResponse(
@@ -125,7 +123,7 @@ final class LibraryResponseMapper {
             .diagnosticsLocked(library.isDiagnosticsLocked())
             .diagnosticsLockToggleable(detail.diagnosticsLockToggleable())
             .lastTransfer(PermissionTransferResponseMapper.toResponse(lastTransfer))
-            .succession(SuccessionResponseMapper.toStateResponse(succession));
+            .succession(SuccessionStateResponseMapper.toStateResponse(detail.succession()));
     LibraryManagementDetail managementDetail = detail.managementDetail();
     response
         .sourcePath(managementDetail.sourcePath())
@@ -182,7 +180,7 @@ final class LibraryResponseMapper {
         .ownerName(summary.ownerName())
         .lastIndexedAt(summary.lastIndexedAt())
         .lastRunStatus(toIndexingStatus(summary.lastRunStatus()))
-        .succession(SuccessionResponseMapper.toStateResponse(summary.succession()));
+        .succession(SuccessionStateResponseMapper.toStateResponse(summary.succession()));
   }
 
   /**

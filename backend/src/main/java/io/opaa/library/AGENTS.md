@@ -23,9 +23,9 @@ foundation, identity, rights und knowledge ab und besitzt keine eigene Tabelle.
 - **library kennt keinen Konnektor.** Beschreibung, Validierung, Verbindungstest und Fähigkeiten
   eines Konnektors kommen nur über `SourceConnectorRegistry`.
 - **Fachpakete kennen einander nicht:** library kennt weder `prompt` noch `space` noch `group`; den
-  Lebenszyklus erreicht es nur über die Ports von `io.opaa.permission`. Ausgenommen ist die
-  Web-Schicht `library.web`: Sie setzt die Antworten zusammen und liest dafür auch den
-  Nachfolgezustand (`SuccessionService`).
+  Lebenszyklus erreicht es nur über die Ports von `io.opaa.permission`. Das gilt auch für
+  `library.web`: Den Nachfolgezustand der Einzelansicht trägt `LibraryDetail`, wie `LibrarySummary`
+  den der Liste.
 
 ## Verweise
 

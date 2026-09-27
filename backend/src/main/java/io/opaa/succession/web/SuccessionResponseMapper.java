@@ -3,12 +3,10 @@ package io.opaa.succession.web;
 import io.opaa.api.dto.SuccessionEntryResponse;
 import io.opaa.api.dto.SuccessionListResponse;
 import io.opaa.api.dto.SuccessionReviewResponse;
-import io.opaa.api.dto.SuccessionStateResponse;
 import io.opaa.permission.SuccessionFinding;
 import io.opaa.succession.SuccessionEntry;
 import io.opaa.succession.SuccessionPage;
 import io.opaa.succession.SuccessionReview;
-import io.opaa.succession.SuccessionService;
 
 /**
  * Maps the lifecycle's domain records onto their generated counterparts (ADR-0006).
@@ -18,7 +16,7 @@ import io.opaa.succession.SuccessionService;
  * hint. Both wordings of the addressee come from one place, so the object and the list never say it
  * differently.
  */
-public final class SuccessionResponseMapper {
+final class SuccessionResponseMapper {
 
   private SuccessionResponseMapper() {}
 
@@ -45,21 +43,12 @@ public final class SuccessionResponseMapper {
             finding.assetType() == null
                 ? null
                 : io.opaa.api.dto.AssetType.fromValue(finding.assetType().value()))
-        .addresseeLabel(SuccessionService.addresseeLabel(finding))
+        .addresseeLabel(finding.addresseeLabel())
         .ownerHint(finding.ownerHint())
         .membershipHints(finding.membershipHints())
         .firstSeenAt(entry.firstSeenAt())
         .lastReviewedAt(entry.lastReviewedAt())
         .lastReviewReason(entry.lastReviewReason());
-  }
-
-  /** The marking at the object: what holds and who is responsible, and nothing else. */
-  public static SuccessionStateResponse toStateResponse(SuccessionFinding finding) {
-    if (finding == null) {
-      return null;
-    }
-    return new SuccessionStateResponse(
-        finding.addressee(), SuccessionService.addresseeLabel(finding));
   }
 
   static SuccessionReviewResponse toResponse(SuccessionReview review) {
