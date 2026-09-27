@@ -12,7 +12,7 @@ import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import io.opaa.api.types.ProviderType;
-import io.opaa.directory.OidcProviderServiceTest;
+import io.opaa.test.ProviderFixtures;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -131,7 +131,7 @@ class OidcProviderSeederTest {
             OidcClaimMapping.keycloakDefaults());
     mistyped.disable();
     OidcProvider partner =
-        OidcProviderServiceTest.provider("Partner", "https://idp.example/realms/b", true, true);
+        ProviderFixtures.provider("Partner", "https://idp.example/realms/b", true, true);
     when(repository.findByNormalizedIssuerUri("https://idp.example/realms/opaa"))
         .thenReturn(Optional.of(mistyped));
     when(repository.findByDefaultProviderTrue()).thenReturn(Optional.of(partner));

@@ -33,6 +33,20 @@ public final class ProviderFixtures {
     return save(repository, groupsClaim, false);
   }
 
+  /** An unsaved provider with the Keycloak-shaped claim mapping, for tests without a database. */
+  public static OidcProvider provider(
+      String name, String issuer, boolean enabled, boolean isDefault) {
+    OidcProvider provider =
+        new OidcProvider(name, issuer, "opaa-frontend", null, OidcClaimMapping.keycloakDefaults());
+    if (!enabled) {
+      provider.disable();
+    }
+    if (isDefault) {
+      provider.markDefault();
+    }
+    return provider;
+  }
+
   private static OidcProvider save(
       OidcProviderRepository repository, String groupsClaim, boolean directorySync) {
     OidcProvider provider =

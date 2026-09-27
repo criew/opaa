@@ -1,5 +1,6 @@
 package io.opaa.directory;
 
+import static io.opaa.test.ProviderFixtures.provider;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -53,7 +54,7 @@ import org.springframework.context.ApplicationEventPublisher;
  * operator-entered address passes through - and, since ADR-0033 (Entscheidung 4), the rules of the
  * LOCAL row and the guarded, acknowledged switch-off of the last enabled provider.
  */
-public class OidcProviderServiceTest {
+class OidcProviderServiceTest {
 
   private static final UUID ORGANIZATION_ID = UUID.randomUUID();
   private static final UUID ACTOR_ID = UUID.randomUUID();
@@ -678,18 +679,5 @@ public class OidcProviderServiceTest {
     assertThat(audit.getValue().before())
         .containsEntry("issuerUri", "https://idp.example/realms/b");
     verify(eventPublisher).publishEvent(any(OidcProvidersChangedEvent.class));
-  }
-
-  public static OidcProvider provider(
-      String name, String issuer, boolean enabled, boolean isDefault) {
-    OidcProvider provider =
-        new OidcProvider(name, issuer, "opaa-frontend", null, OidcClaimMapping.keycloakDefaults());
-    if (!enabled) {
-      provider.disable();
-    }
-    if (isDefault) {
-      provider.markDefault();
-    }
-    return provider;
   }
 }

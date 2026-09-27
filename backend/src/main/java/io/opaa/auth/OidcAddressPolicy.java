@@ -1,7 +1,6 @@
 package io.opaa.auth;
 
 import io.opaa.common.ValidationException;
-import io.opaa.directory.OidcProviderService;
 import io.opaa.security.TargetAddressValidator;
 import java.io.IOException;
 import java.net.URI;
@@ -21,11 +20,12 @@ import java.util.Set;
  * level as the allowlist itself, which is what keeps an upgrade of an installation with Keycloak on
  * {@code localhost} or a private address from locking everyone out.
  *
- * <p>Applied at save time ({@link OidcProviderService}), at use time ({@link OidcProviderRegistry},
- * so a narrowed allowlist or a row edited directly in the database cannot slip past), before the
- * connection test sends anything ({@link OidcDiscoveryClient}) - and to the admin API address of a
- * provider's directory access, both when it is stored and every time a run uses it ({@code
- * DirectoryConnectorService} and {@code ProviderDirectoryClient} in the group package).
+ * <p>Applied at save time ({@link io.opaa.directory.OidcProviderService}), at use time ({@link
+ * OidcProviderRegistry}, so a narrowed allowlist or a row edited directly in the database cannot
+ * slip past), before the connection test sends anything ({@link OidcDiscoveryClient}) - and to the
+ * admin API address of a provider's directory access, both when it is stored and every time a run
+ * uses it ({@code DirectoryConnectorService} and {@code ProviderDirectoryClient} in the group
+ * package).
  */
 public class OidcAddressPolicy {
 

@@ -11,7 +11,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.opaa.common.ValidationException;
-import io.opaa.directory.OidcProviderServiceTest;
+import io.opaa.test.ProviderFixtures;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -57,8 +57,8 @@ class OidcProviderRegistryTest {
 
   @BeforeEach
   void setUp() {
-    enabledA = OidcProviderServiceTest.provider("A", "https://idp.example/realms/a", true, true);
-    enabledB = OidcProviderServiceTest.provider("B", "https://idp.example/realms/b", true, false);
+    enabledA = ProviderFixtures.provider("A", "https://idp.example/realms/a", true, true);
+    enabledB = ProviderFixtures.provider("B", "https://idp.example/realms/b", true, false);
     when(repository.findAllByEnabledTrueOrderBySortOrderAscDisplayNameAsc())
         .thenReturn(List.of(enabledA, enabledB));
     when(decoderFactory.create(enabledA)).thenReturn(decoderA);
@@ -256,7 +256,7 @@ class OidcProviderRegistryTest {
 
     // a changed client id is a changed validator: that provider is rebuilt, the other is not
     OidcProvider aWithNewClient =
-        OidcProviderServiceTest.provider("A", "https://idp.example/realms/a", true, true);
+        ProviderFixtures.provider("A", "https://idp.example/realms/a", true, true);
     aWithNewClient.replaceDetails(
         "A",
         "https://idp.example/realms/a",

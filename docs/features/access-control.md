@@ -1355,7 +1355,7 @@ Gruppe" und rechts vier Klarnamen, und die Unterdrückung wäre Kosmetik. Die Al
 Objektinhaber durch Entscheidung 9 aufgehoben — steht dem Maintainer offen; ausgeliefert wird die
 datensparsame Auslegung.
 
-Gelistet werden **aktive Konten** (Definition `io.opaa.auth.AccountActivityService`); die Antwort
+Gelistet werden **aktive Konten** (Definition `io.opaa.account.AccountActivityService`); die Antwort
 trägt die Gesamtzahl und eine Seite, deren Deckel (200) die `LIMIT`-Klausel der Abfrage selbst ist —
 eine Gruppe von fünftausend wird nie zu fünftausend Zeilen im Speicher. Die Oberfläche lädt die
 Liste **erst auf ausdrücklichen Wunsch** („Mitglieder anzeigen" an der Gruppenzeile der

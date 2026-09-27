@@ -5,9 +5,9 @@ Pakete (`io.opaa.*`): auth, account, audit, branding, mail, notification. Ergän
 ## Zweck und Grenze
 
 Wer jemand ist und was über ihn protokolliert wird. `auth` ist der Identitätskern: Kontoidentität,
-Tokenprüfung, Registratur der Identitätsanbieter, Anmeldefähigkeit. `account` sind die lokalen
-Konten (Passwörter, lokaler Issuer, Self-Service, Übergabe, Verwaltung) samt Filterkette des Modus
-`oidc`. Dazu Revisionsprotokoll, Branding, Mailversand und Benachrichtigungen. identity hängt nur
+Bereitstellung aus dem Token, Registratur der Identitätsanbieter, Modus `dev`, Anmeldefähigkeit.
+`account` sind die lokalen Konten (Passwörter, lokaler Issuer, Self-Service, Übergabe, Verwaltung);
+die Filterkette und der Resolver des Modus `oidc` liegen ebenfalls dort. Dazu Revisionsprotokoll, Branding, Mailversand und Benachrichtigungen. identity hängt nur
 von foundation ab.
 
 ## Invarianten und Stolpersteine
@@ -20,7 +20,7 @@ von foundation ab.
 - **Die Kontoidentität ist `users(subject, issuer)` in `io.opaa.auth`**, lokale Konten tragen
   `LocalIssuer#URN`. Das Profil `oidc` startet nicht ohne starkes `OPAA_AUTH_JWT_SECRET`
   (`LocalAuthSecretGuard`).
-- **`auth` kennt `account` nicht.** Was Tokenverarbeitung und Rollenpflege vom lokalen Konto
+- **`auth` kennt `account` nicht, außer `auth.web`.** Was Tokenverarbeitung und Rollenpflege vom lokalen Konto
   brauchen, liegt im Kern: `LocalCredentials`, die Regel `LocalAccountAccess` und
   `LocalAdminAvailabilityGuard` („nie ohne anmeldefähigen Systemverwalter“). Den Schalter der
   lokalen Konten erreicht `account` nur über den Port `LocalAccountsSwitch`; die Verwaltung der

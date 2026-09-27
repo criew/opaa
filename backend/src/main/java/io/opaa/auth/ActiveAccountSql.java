@@ -1,12 +1,10 @@
 package io.opaa.auth;
 
-import io.opaa.account.AccountActivityService;
-
 /**
- * The SQL sibling of {@link AccountActivityService#activeAmong}: the same definition of an active
- * account, for a caller that only wants the <b>number</b> and must not load the accounts to get it
- * (#1820). Both encodings are held together by a parity test, so a change to one without the other
- * fails the build.
+ * The SQL sibling of {@link io.opaa.account.AccountActivityService#activeAmong}: the same
+ * definition of an active account, for a caller that only wants the <b>number</b> and must not load
+ * the accounts to get it (#1820). Both encodings are held together by a parity test, so a change to
+ * one without the other fails the build.
  *
  * <p>{@link #PREDICATE} expects the {@code users} row under the alias {@code u} and one named
  * parameter {@code :now}, the moment the definition is evaluated at - supplied by the caller from
