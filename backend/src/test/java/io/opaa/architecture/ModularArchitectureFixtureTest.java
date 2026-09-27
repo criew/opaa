@@ -7,6 +7,7 @@ import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.lang.ArchRule;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Function;
 import org.junit.jupiter.api.Test;
 
@@ -68,15 +69,26 @@ class ModularArchitectureFixtureTest {
         .contains("Cycle detected", "common", "observability");
   }
 
+  /**
+   * {@code query <-> query.answer} is a known cycle; {@code query.answer <-> query.citation} is new
+   * in the same package, {@code library <-> library.internal} new in a package without one.
+   */
   @Test
-  void aCycleBetweenSubpackagesIsReportedUnlessTheirPackageIsTolerated() {
-    Scenario scenario = new Scenario("subpackagecycle");
+  void aCycleBetweenSubpackagesIsReportedUnlessItsEdgesAreKnown() {
+    Scenario scenario =
+        new Scenario("subpackagecycle", Set.of("query -> query.answer", "query.answer -> query"));
 
-    assertThat(ModularArchitecture.SUBPACKAGE_CYCLES_TOLERATED).contains("query");
     assertThat(scenario.violations(ModularArchitecture::subpackagesAreFreeOfCycles))
-        .singleElement(STRING)
-        .contains("Cycle detected", "library.internal")
-        .doesNotContain("query");
+        .allSatisfy(
+            violation ->
+                assertThat(violation)
+                    .contains("is no known edge in", "KNOWN_SUBPACKAGE_CYCLE_EDGES"))
+        .map(violation -> violation.substring(0, violation.indexOf(" lies on a cycle")))
+        .containsExactlyInAnyOrder(
+            "library -> library.internal",
+            "library.internal -> library",
+            "query.answer -> query.citation",
+            "query.citation -> query.answer");
     assertThat(scenario.violations(ModularArchitecture::topLevelPackagesAreFreeOfCycles)).isEmpty();
   }
 
@@ -120,8 +132,12 @@ class ModularArchitectureFixtureTest {
     private final JavaClasses classes;
 
     Scenario(String name) {
+      this(name, Set.of());
+    }
+
+    Scenario(String name, Set<String> knownCycleEdges) {
       String root = FIXTURES + "." + name;
-      this.architecture = new ModularArchitecture(root);
+      this.architecture = new ModularArchitecture(root, knownCycleEdges);
       this.classes = new ClassFileImporter().importPackages(root);
       assertThat(classes).as("the fixture classes of %s", name).isNotEmpty();
     }

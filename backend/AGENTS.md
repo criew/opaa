@@ -60,19 +60,22 @@ Der Test prüft außerdem:
 
 - **Schichtung:** `LAYERS` ordnet alle Top-Level-Pakete, unten zuerst. Ein Paket nutzt nur sich
   selbst und Pakete davor.
-- **Zyklen:** keine zwischen Top-Level-Paketen und keine zwischen Unterpaketen. Ausgenommen sind die
-  Unterpakete der Pakete in `SUBPACKAGE_CYCLES_TOLERATED` (heute `auth`, `group`, `indexing`,
-  `query`, `externalaccess`).
+- **Zyklen:** keine zwischen Top-Level-Paketen. Zwischen Unterpaketen sind die heutigen Zyklen als
+  Paketkanten in `KNOWN_SUBPACKAGE_CYCLE_EDGES` eingefroren, vor allem in `indexing` und `query`.
+  Jede weitere Kante auf einem Zyklus lässt den Test fehlschlagen, also jeder neue Zyklus.
 - **Konnektoren:** Kein Konnektor kennt einen anderen, und keine Klasse außerhalb eines Konnektors
   kennt ihn. Kern, Verwaltung und API erreichen Konnektoren nur über die `SourceConnectorRegistry`.
 - Die Pakete des Gradle-Moduls `opaa-api` (`io.opaa.api.dto`, `io.opaa.api.types`) liegen
   außerhalb der Schichtung.
+- **Blinder Fleck:** Der Test sieht nur den Bytecode. Liest ein Paket von einem anderen nur eine
+  `static final`-Konstante, die der Compiler einfaltet, ist das für ihn keine Kante. Dasselbe gilt
+  für Verweise, die nur im Javadoc stehen.
 
 **Neues Top-Level-Paket:** in `LAYERS` oberhalb aller Pakete eintragen, die es nutzt, und in
 `MODULES` einem Modul zuordnen. Fehlt der Eintrag, nennt der Test das Paket und beide Stellen.
 Umgekehrt schlägt er fehl, wenn ein gelistetes Paket verschwindet, eine erlaubte Modulkante nicht
-mehr genutzt wird oder ein tolerierter Unterpaket-Zyklus aufgelöst ist. Dann wird der Eintrag
-entfernt.
+mehr genutzt wird oder eine eingefrorene Zykluskante auf keinem Zyklus mehr liegt. Dann wird der
+Eintrag entfernt.
 
 **Eine neue Kante zwischen Modulen ist eine bewusste Entscheidung** und wird im PR begründet. Den
 Eintrag nicht nur ergänzen, damit der Test grün wird. Zuerst prüfen, ob eine Schnittstelle im

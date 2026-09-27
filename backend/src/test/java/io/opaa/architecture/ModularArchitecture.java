@@ -22,20 +22,20 @@ import com.tngtech.archunit.lang.ArchCondition;
 import com.tngtech.archunit.lang.ArchRule;
 import com.tngtech.archunit.lang.ConditionEvents;
 import com.tngtech.archunit.lang.SimpleConditionEvent;
-import com.tngtech.archunit.library.dependencies.SliceAssignment;
-import com.tngtech.archunit.library.dependencies.SliceIdentifier;
+import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.TreeSet;
-import java.util.function.Predicate;
 
 /**
  * The logical modules of the backend and the layering of its top-level packages, as ArchUnit rules
  * over a root package. {@link ModularArchitectureTest} applies them to the main classes under
  * {@code io.opaa}; {@link ModularArchitectureFixtureTest} to example trees that break one rule
- * each. Only compiled dependencies count: a type named in Javadoc alone is none.
+ * each. Only compiled dependencies count: a type named only in Javadoc, or only through a {@code
+ * static final} constant the compiler inlines, is none.
  */
 final class ModularArchitecture {
 
@@ -138,6 +138,9 @@ final class ModularArchitecture {
   /**
    * The module edges the code may use. A new edge is a deliberate decision, justified in its pull
    * request. No module reaches {@link Module#CONNECTORS}: they are found by component scanning.
+   * EXTERNAL reaches RIGHTS only through members a library inherits from {@code
+   * io.opaa.asset.Asset}: a method reference such as {@code KnowledgeLibrary::getId} names the
+   * declaring class.
    */
   static final Map<Module, Set<Module>> ALLOWED_MODULE_EDGES =
       Map.of(
@@ -162,11 +165,114 @@ final class ModularArchitecture {
                   EXTERNAL));
 
   /**
-   * Top-level packages whose subpackages still form a cycle among themselves, typically with the
-   * package itself; every other package's subpackages must stay free of cycles.
+   * The package edges, relative to the root, that lie on a cycle between the subpackages of one
+   * top-level package today. Any other edge on such a cycle - and so every new cycle - fails the
+   * test; an edge that no longer lies on a cycle is removed from this list.
    */
-  static final Set<String> SUBPACKAGE_CYCLES_TOLERATED =
-      Set.of("auth", "group", "indexing", "query", "externalaccess");
+  static final Set<String> KNOWN_SUBPACKAGE_CYCLE_EDGES =
+      Set.of(
+          "auth -> auth.local",
+          "auth -> auth.oidc",
+          "auth.local -> auth",
+          "auth.local -> auth.oidc",
+          "auth.oidc -> auth",
+          "auth.oidc -> auth.local",
+          "externalaccess -> externalaccess.token",
+          "externalaccess.token -> externalaccess",
+          "group -> group.sync",
+          "group.sync -> group",
+          "indexing -> indexing.attachment",
+          "indexing -> indexing.chunk",
+          "indexing -> indexing.document",
+          "indexing -> indexing.format",
+          "indexing -> indexing.format.file.fallback",
+          "indexing -> indexing.format.file.html",
+          "indexing -> indexing.format.file.mail",
+          "indexing -> indexing.format.file.markdown",
+          "indexing -> indexing.format.file.office",
+          "indexing -> indexing.format.file.pdf",
+          "indexing -> indexing.format.file.tabular",
+          "indexing -> indexing.job",
+          "indexing -> indexing.maintenance",
+          "indexing -> indexing.metadata",
+          "indexing -> indexing.source",
+          "indexing.attachment -> indexing.document",
+          "indexing.attachment -> indexing.format",
+          "indexing.attachment -> indexing.job",
+          "indexing.attachment -> indexing.source",
+          "indexing.chunk -> indexing",
+          "indexing.document -> indexing",
+          "indexing.document -> indexing.attachment",
+          "indexing.document -> indexing.chunk",
+          "indexing.document -> indexing.format",
+          "indexing.document -> indexing.job",
+          "indexing.document -> indexing.metadata",
+          "indexing.document -> indexing.source",
+          "indexing.format -> indexing.metadata",
+          "indexing.format.file.fallback -> indexing.chunk",
+          "indexing.format.file.fallback -> indexing.document",
+          "indexing.format.file.fallback -> indexing.format",
+          "indexing.format.file.html -> indexing.format",
+          "indexing.format.file.mail -> indexing.chunk",
+          "indexing.format.file.mail -> indexing.format",
+          "indexing.format.file.mail -> indexing.metadata",
+          "indexing.format.file.markdown -> indexing.chunk",
+          "indexing.format.file.markdown -> indexing.format",
+          "indexing.format.file.office -> indexing.format",
+          "indexing.format.file.pdf -> indexing.format",
+          "indexing.format.file.tabular -> indexing.chunk",
+          "indexing.format.file.tabular -> indexing.format",
+          "indexing.format.file.tabular -> indexing.format.file.office",
+          "indexing.job -> indexing",
+          "indexing.job -> indexing.attachment",
+          "indexing.job -> indexing.document",
+          "indexing.job -> indexing.format",
+          "indexing.job -> indexing.source",
+          "indexing.maintenance -> indexing.attachment",
+          "indexing.maintenance -> indexing.chunk",
+          "indexing.maintenance -> indexing.document",
+          "indexing.maintenance -> indexing.format",
+          "indexing.maintenance -> indexing.job",
+          "indexing.maintenance -> indexing.metadata",
+          "indexing.maintenance -> indexing.source",
+          "indexing.metadata -> indexing.chunk",
+          "indexing.metadata -> indexing.format",
+          "indexing.metadata -> indexing.maintenance",
+          "indexing.source -> indexing.attachment",
+          "indexing.source -> indexing.document",
+          "indexing.source -> indexing.format",
+          "indexing.source -> indexing.job",
+          "indexing.source -> indexing.maintenance",
+          "indexing.source.confluence -> indexing.source.confluence.webhook",
+          "indexing.source.confluence.webhook -> indexing.source.confluence",
+          "indexing.source.s3 -> indexing.source.s3.events",
+          "indexing.source.s3.events -> indexing.source.s3",
+          "query -> query.answer",
+          "query -> query.citation",
+          "query -> query.filter",
+          "query -> query.retrieval",
+          "query -> query.retrieval.ranking",
+          "query -> query.retrieval.scope",
+          "query -> query.retrieval.search",
+          "query -> query.spike",
+          "query.answer -> query",
+          "query.answer -> query.citation",
+          "query.citation -> query",
+          "query.citation -> query.retrieval",
+          "query.citation -> query.retrieval.scope",
+          "query.filter -> query",
+          "query.retrieval -> query",
+          "query.retrieval.ranking -> query",
+          "query.retrieval.ranking -> query.retrieval",
+          "query.retrieval.scope -> query.retrieval",
+          "query.retrieval.search -> query",
+          "query.retrieval.search -> query.answer",
+          "query.retrieval.search -> query.retrieval",
+          "query.retrieval.search -> query.retrieval.scope",
+          "query.spike -> query",
+          "query.spike -> query.answer",
+          "query.spike -> query.citation",
+          "query.spike -> query.retrieval");
 
   /** Every direct subpackage of this one, relative to the root, is a connector. */
   static final String CONNECTOR_PARENT = "indexing.source";
@@ -175,9 +281,18 @@ final class ModularArchitecture {
   static final List<String> OUTSIDE_THE_LAYERING = List.of("api.dto", "api.types");
 
   private final String root;
+  private final Set<String> knownCycleEdges;
 
   ModularArchitecture(String root) {
+    this(root, Set.of());
+  }
+
+  /**
+   * Rules over {@code root} that let the subpackage cycle edges in {@code knownCycleEdges} pass.
+   */
+  ModularArchitecture(String root, Set<String> knownCycleEdges) {
     this.root = root;
+    this.knownCycleEdges = knownCycleEdges;
   }
 
   ArchRule everyPackageIsAssigned() {
@@ -234,36 +349,74 @@ final class ModularArchitecture {
   }
 
   ArchRule subpackagesAreFreeOfCycles() {
-    return subpackageCycles(topLevel -> !SUBPACKAGE_CYCLES_TOLERATED.contains(topLevel));
-  }
-
-  /** The cycle rule for the subpackages of the one top-level package {@code topLevel}. */
-  ArchRule subpackagesAreFreeOfCyclesIn(String topLevel) {
-    return subpackageCycles(topLevel::equals);
-  }
-
-  private ArchRule subpackageCycles(Predicate<String> coveredTopLevel) {
-    return slices()
-        .assignedFrom(
-            new SliceAssignment() {
-              @Override
-              public SliceIdentifier getIdentifierOf(JavaClass javaClass) {
-                String relative = relative(javaClass.getPackageName());
-                return relative == null
-                        || relative.isEmpty()
-                        || !coveredTopLevel.test(topLevel(relative))
-                    ? SliceIdentifier.ignore()
-                    : SliceIdentifier.of(javaClass.getPackageName());
-              }
-
-              @Override
-              public String getDescription() {
-                return "the packages below " + root;
-              }
-            })
-        .should()
-        .beFreeOfCycles()
+    return classes()
+        .that(areInTheRoot())
+        .should(formNoSubpackageCycleBeyondTheKnownEdges())
         .allowEmptyShould(true);
+  }
+
+  /**
+   * The edges {@code a -> b} between two packages below the same top-level package that lie on a
+   * cycle, that is whose ends share a strongly connected component; each with one dependency as
+   * evidence.
+   */
+  Map<String, Dependency> subpackageCycleEdges(Iterable<JavaClass> classes) {
+    Map<String, Map<String, Dependency>> graph = new TreeMap<>();
+    for (JavaClass origin : classes) {
+      String from = relative(origin.getPackageName());
+      if (from == null || from.isEmpty()) {
+        continue;
+      }
+      for (Dependency dependency : origin.getDirectDependenciesFromSelf()) {
+        String to = relative(dependency.getTargetClass().getBaseComponentType().getPackageName());
+        if (to != null
+            && !to.isEmpty()
+            && !to.equals(from)
+            && !isOutsideTheLayering(to)
+            && topLevel(to).equals(topLevel(from))) {
+          graph.computeIfAbsent(from, key -> new TreeMap<>()).putIfAbsent(to, dependency);
+        }
+      }
+    }
+    Map<String, Integer> component = StronglyConnectedComponents.of(graph);
+    Map<String, Dependency> cyclic = new TreeMap<>();
+    graph.forEach(
+        (from, targets) ->
+            targets.forEach(
+                (to, dependency) -> {
+                  if (component.get(from).equals(component.get(to))) {
+                    cyclic.put(from + " -> " + to, dependency);
+                  }
+                }));
+    return cyclic;
+  }
+
+  private ArchCondition<JavaClass> formNoSubpackageCycleBeyondTheKnownEdges() {
+    return new ArchCondition<>("form no subpackage cycle beyond the known edges") {
+      private final List<JavaClass> seen = new ArrayList<>();
+
+      @Override
+      public void check(JavaClass javaClass, ConditionEvents events) {
+        seen.add(javaClass);
+      }
+
+      @Override
+      public void finish(ConditionEvents events) {
+        subpackageCycleEdges(seen)
+            .forEach(
+                (edge, dependency) -> {
+                  if (!knownCycleEdges.contains(edge)) {
+                    events.add(
+                        SimpleConditionEvent.violated(
+                            dependency,
+                            edge
+                                + " lies on a cycle between subpackages and is no known edge in"
+                                + " ModularArchitecture.KNOWN_SUBPACKAGE_CYCLE_EDGES: "
+                                + dependency.getDescription()));
+                  }
+                });
+      }
+    };
   }
 
   ArchRule connectorsDoNotKnowEachOther() {
