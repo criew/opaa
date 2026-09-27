@@ -166,6 +166,29 @@ Dienstanweisung — Maria erhält die belegte Antwort, Thomas die Auskunft, dass
 Amtsleitung sieht amtsweit alles. Weil die Berechtigungsprüfung Teil der Vektorsuche ist und nicht ein
 Nachfilter, ist der unberechtigte Treffer bei Thomas nicht nur unterdrückt, sondern nie geladen.
 
+### Prompt-Bibliotheken
+
+Neben den Wissensbibliotheken richtet der Seed zwei
+[Prompt-Bibliotheken](./spaces-and-assets.md#prompt-bibliothek) ein (#2014). Beide legt Andrea Vogt
+über ihr eigenes Konto an — das Anlegerecht `CREATE_PROMPT_LIBRARY` ist an „Alle Konten" ausgeliefert
+— und ist deshalb ihre Eigentümerin; anders als die Wissensbibliotheken gehören sie nicht dem
+Admin-Konto. Jeder Prompt fragt nach etwas, das der Korpus beantwortet, und bringt Variablen mit, damit
+Slash-Befehl und Variablenformular im Chat vorführbar sind.
+
+| Prompt-Bibliothek | Reichweite | Katalog | Space-Zuordnung | Prompts (Slash-Befehl) |
+|---|---|---|---|---|
+| Textbausteine Bürgerbüro | „Alle Konten" (`VIEWER`) | gelistet | „Meldewesen & Ausweise", „Kfz-Zulassung", „Amtsleitung Bürgerbüro" | `/antwort-buergeranfrage`, `/gebuehrenauskunft-personalausweis`, `/aktenvermerk`, `/pressemitteilung-ratsbeschluss` |
+| Vorlagen Amtsleitung | nur Andrea (Eigentümerin) | nicht gelistet | „Amtsleitung Bürgerbüro" | `/wochenbericht-dezernentin`, `/stellungnahme-hauptausschuss` |
+
+Vorführbar ist damit: der Slash-Befehl mit Variablenformular in jedem Fachkonto, die Reichweite
+„Alle Konten" als Badge und Freigabe, der Katalog mit einer gelisteten Prompt-Bibliothek und die Grenze
+einer persönlichen Bibliothek — die „Vorlagen Amtsleitung" sind für Maria, Selin und Thomas weder in der
+Slash-Auswahl noch im Katalog zu finden. Die Space-Zuordnung ordnet nur: In den zugeordneten Spaces
+stehen die Bibliotheken in der Slash-Auswahl voran. Ein Prompt verändert die Rechtematrix oben nicht —
+er landet als Text im Eingabefeld und wird wie jede getippte Frage mit den Leserechten der fragenden
+Person beantwortet; die Gebührenauskunft zum Personalausweis fällt bei Thomas deshalb knapper aus als
+bei Maria, weil er die Leistungsbeschreibungen Meldewesen nicht liest.
+
 ---
 
 ## Demo-Drehbuch (Skizze)

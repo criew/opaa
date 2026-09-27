@@ -315,3 +315,331 @@ def test_seed_client_carries_an_audience_mapper_for_the_frontend_client() -> Non
     ]
     assert len(mappers) == 1
     assert mappers[0]["config"]["access.token.claim"] == "true"
+
+
+# --- Prompt libraries of the demo profile ------------------------------------------------------
+# The rules below mirror io.opaa.prompt.PromptTemplate and the PromptRequest schema of
+# opaa-api/src/main/openapi/prompts.yaml, so a profile the backend would refuse fails here already.
+
+import datetime  # noqa: E402
+import re  # noqa: E402
+
+import profiles  # noqa: E402
+
+PROMPT_NAME = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
+VARIABLE_NAME = re.compile(r"^[A-Za-z][A-Za-z0-9_]*$")
+PLACEHOLDER = re.compile(r"\{\{(.*?)}}", re.DOTALL)
+SYSTEM_VARIABLES = {"CURRENT_DATE", "USER_NAME"}
+VARIABLE_TYPES = {"TEXT", "TEXTAREA", "SELECT", "DATE"}
+AMTSLEITUNG_LIBRARY = "Vorlagen Amtsleitung"
+BUERGERBUERO_LIBRARY = "Textbausteine Bürgerbüro"
+
+
+def demo_prompt_library(name: str):
+    return next(lib for lib in profiles.DEMO_PROFILE.prompt_libraries if lib.name == name)
+
+
+def all_demo_prompts():
+    return [
+        (library, prompt)
+        for library in profiles.DEMO_PROFILE.prompt_libraries
+        for prompt in library.prompts
+    ]
+
+
+def placeholders(text: str) -> set[str]:
+    names = set()
+    for raw in PLACEHOLDER.findall(text):
+        name = raw.strip()
+        assert VARIABLE_NAME.match(name) and len(name) <= 64, f"ungültiger Platzhalter {{{{{raw}}}}}"
+        names.add(name.upper() if name.upper() in SYSTEM_VARIABLES else name)
+    return names
+
+
+def test_demo_profile_seeds_both_prompt_libraries() -> None:
+    names = {lib.name for lib in profiles.DEMO_PROFILE.prompt_libraries}
+    assert {BUERGERBUERO_LIBRARY, AMTSLEITUNG_LIBRARY} <= names
+
+
+def test_e2e_profile_stays_without_prompt_libraries() -> None:
+    assert profiles.E2E_PROFILE.prompt_libraries == ()
+
+
+def test_buergerbuero_textbausteine_reach_all_accounts_and_are_listed() -> None:
+    library = demo_prompt_library(BUERGERBUERO_LIBRARY)
+    assert library.all_accounts_viewer
+    assert library.listed
+    prompt_names = {prompt.name for prompt in library.prompts}
+    assert {
+        "antwort-buergeranfrage",
+        "gebuehrenauskunft-personalausweis",
+        "aktenvermerk",
+        "pressemitteilung-ratsbeschluss",
+    } <= prompt_names
+
+
+def test_amtsleitung_templates_reach_only_andrea() -> None:
+    library = demo_prompt_library(AMTSLEITUNG_LIBRARY)
+    assert library.owner_key == "andrea"
+    assert not library.all_accounts_viewer
+    assert library.viewer_keys == ()
+    # Unlisted: a listed library would appear in the catalog of every account, if only as an
+    # entry without access.
+    assert not library.listed
+    assert library.space_names == ("Amtsleitung Bürgerbüro",)
+    assert {"wochenbericht-dezernentin", "stellungnahme-hauptausschuss"} <= {
+        prompt.name for prompt in library.prompts
+    }
+
+
+def test_every_demo_prompt_library_offers_a_variable_form() -> None:
+    for library in profiles.DEMO_PROFILE.prompt_libraries:
+        assert any(prompt.variables for prompt in library.prompts), library.name
+
+
+def test_every_demo_prompt_satisfies_the_backend_template_rules() -> None:
+    for library, prompt in all_demo_prompts():
+        where = f"{library.name}/{prompt.name}"
+        assert PROMPT_NAME.match(prompt.name) and len(prompt.name) <= 64, where
+        assert 1 <= len(prompt.title) <= 255, where
+        assert prompt.description is None or len(prompt.description) <= 2000, where
+        assert 1 <= len(prompt.text) <= 8000, where
+        assert len(prompt.variables) <= 20, where
+
+        defined = [variable.name for variable in prompt.variables]
+        assert len(defined) == len(set(defined)), f"{where}: Variable doppelt definiert"
+        used = placeholders(prompt.text)
+        assert used - SYSTEM_VARIABLES == set(defined), (
+            f"{where}: Platzhalter {sorted(used - SYSTEM_VARIABLES)} ≠ Definitionen {sorted(defined)}"
+        )
+        for variable in prompt.variables:
+            assert VARIABLE_NAME.match(variable.name) and len(variable.name) <= 64, where
+            assert variable.name.upper() not in SYSTEM_VARIABLES, where
+            assert 1 <= len(variable.label.strip()) <= 255, where
+            assert variable.type in VARIABLE_TYPES, where
+            if variable.type == "SELECT":
+                assert 1 <= len(variable.options) <= 50, where
+                assert len(set(variable.options)) == len(variable.options), where
+                assert all(0 < len(option.strip()) <= 255 for option in variable.options), where
+            else:
+                assert variable.options == (), where
+            if variable.default_value is not None:
+                assert len(variable.default_value) <= 2000, where
+                if variable.type == "SELECT":
+                    assert variable.default_value in variable.options, where
+                if variable.type == "DATE":
+                    datetime.date.fromisoformat(variable.default_value)
+
+
+def test_prompt_names_are_unique_within_each_library() -> None:
+    for library in profiles.DEMO_PROFILE.prompt_libraries:
+        names = [prompt.name for prompt in library.prompts]
+        assert len(names) == len(set(names)), library.name
+
+
+def test_prompt_library_spaces_exist_and_their_owner_can_read_the_library() -> None:
+    """associateSpaceAsset needs CURATOR on the space plus VIEWER on the asset; the seed associates
+    through the space owner's session, so that owner has to be able to read the library."""
+    spaces = {space.name: space for space in profiles.DEMO_PROFILE.spaces}
+    for library in profiles.DEMO_PROFILE.prompt_libraries:
+        for space_name in library.space_names:
+            assert space_name in spaces, f"{library.name}: unbekannter Space {space_name}"
+            owner = spaces[space_name].owner_key
+            assert (
+                library.all_accounts_viewer
+                or owner == library.owner_key
+                or owner in library.viewer_keys
+            ), f"{library.name}: {owner} kann die Bibliothek nicht lesen"
+
+
+class FakePromptApi:
+    """In-memory stand-in for the prompt-library and asset endpoints the seed calls, with the
+    reading formula of the backend: owner, direct grant or a grant to ALL_ACCOUNTS."""
+
+    def __init__(self) -> None:
+        self.libraries: dict[str, dict] = {}
+        self.prompts: dict[str, list[dict]] = {}
+        self.grants: dict[str, dict[tuple[str, str | None], str]] = {}
+        self.associations: set[tuple[str, str]] = set()
+        self.calls: list[tuple[str, str, dict | None]] = []
+        self._next_id = 0
+
+    def new_id(self) -> str:
+        self._next_id += 1
+        return f"00000000-0000-0000-0000-{self._next_id:012d}"
+
+    def can_read(self, user_id: str, library_id: str) -> bool:
+        grants = self.grants[library_id]
+        return ("ALL_ACCOUNTS", None) in grants or ("USER", user_id) in grants
+
+    def client(self, user_id: str) -> "FakePromptClient":
+        return FakePromptClient(self, user_id)
+
+
+class FakePromptClient:
+    def __init__(self, api: FakePromptApi, user_id: str) -> None:
+        self.api = api
+        self.user_id = user_id
+
+    def get_ok(self, path: str, **kwargs):
+        self.api.calls.append(("GET", path, None))
+        if path == "/v1/prompt-libraries":
+            return [
+                lib
+                for lib_id, lib in self.api.libraries.items()
+                if self.api.can_read(self.user_id, lib_id)
+            ]
+        match = re.fullmatch(r"/v1/prompt-libraries/([^/]+)/prompts", path)
+        if match:
+            assert self.api.can_read(self.user_id, match.group(1)), "403"
+            return list(self.api.prompts[match.group(1)])
+        raise AssertionError(f"unerwarteter GET {path}")
+
+    def post_ok(self, path: str, expected=(200, 201, 202), json=None, **kwargs):
+        self.api.calls.append(("POST", path, json))
+        if path == "/v1/prompt-libraries":
+            assert 201 in expected
+            lib_id = self.api.new_id()
+            library = {
+                "id": lib_id,
+                "name": json["name"],
+                "description": json.get("description"),
+                "ownerType": "USER",
+                "ownerId": self.user_id,
+                "listed": bool(json.get("listed")),
+            }
+            self.api.libraries[lib_id] = library
+            self.api.prompts[lib_id] = []
+            self.api.grants[lib_id] = {("USER", self.user_id): "OWNER"}
+            return library
+        match = re.fullmatch(r"/v1/prompt-libraries/([^/]+)/prompts", path)
+        if match:
+            assert 201 in expected
+            lib_id = match.group(1)
+            assert not any(p["name"] == json["name"] for p in self.api.prompts[lib_id]), "409"
+            prompt = {"id": self.api.new_id(), "promptLibraryId": lib_id, **json}
+            self.api.prompts[lib_id].append(prompt)
+            return prompt
+        match = re.fullmatch(r"/v1/assets/PROMPT_LIBRARY/([^/]+)/grants", path)
+        if match:
+            assert 200 in expected
+            lib_id = match.group(1)
+            assert self.api.grants[lib_id].get(("USER", self.user_id)) in ("OWNER", "MANAGER")
+            if json["subjectType"] == "ALL_ACCOUNTS":
+                assert "subjectId" not in json, "ALL_ACCOUNTS nennt keine subjectId (400)"
+            self.api.grants[lib_id][(json["subjectType"], json.get("subjectId"))] = json["role"]
+            return {"id": self.api.new_id(), **json}
+        match = re.fullmatch(r"/v1/spaces/([^/]+)/assets", path)
+        if match:
+            assert 201 in expected
+            assert json["assetType"] == "PROMPT_LIBRARY"
+            assert self.api.can_read(self.user_id, json["assetId"]), "403: kein VIEWER"
+            self.api.associations.add((match.group(1), json["assetId"]))
+            return {"spaceId": match.group(1), **json}
+        raise AssertionError(f"unerwarteter POST {path}")
+
+
+def seed_prompt_libraries_into(api: FakePromptApi) -> tuple[dict[str, str], dict[str, str]]:
+    profile = profiles.DEMO_PROFILE
+    user_ids = {user.key: f"user-{user.key}" for user in profile.all_users()}
+    space_ids = {space.name: f"space-{index}" for index, space in enumerate(profile.spaces)}
+    clients = {key: api.client(user_id) for key, user_id in user_ids.items()}
+    seed.seed_prompt_libraries(clients, user_ids, space_ids, profile)
+    return user_ids, space_ids
+
+
+def creating_calls(api: FakePromptApi) -> list[tuple[str, str, dict | None]]:
+    return [
+        call
+        for call in api.calls
+        if call[0] == "POST" and re.fullmatch(r"/v1/prompt-libraries(/[^/]+/prompts)?", call[1])
+    ]
+
+
+def test_seed_creates_prompt_libraries_with_prompts_grants_and_associations() -> None:
+    api = FakePromptApi()
+    user_ids, space_ids = seed_prompt_libraries_into(api)
+
+    by_name = {lib["name"]: lib for lib in api.libraries.values()}
+    for library_def in profiles.DEMO_PROFILE.prompt_libraries:
+        library = by_name[library_def.name]
+        assert library["ownerId"] == user_ids[library_def.owner_key]
+        assert library["listed"] == library_def.listed
+        assert [p["name"] for p in api.prompts[library["id"]]] == [
+            p.name for p in library_def.prompts
+        ]
+        for space_name in library_def.space_names:
+            assert (space_ids[space_name], library["id"]) in api.associations
+
+    textbausteine = by_name[BUERGERBUERO_LIBRARY]["id"]
+    assert api.grants[textbausteine][("ALL_ACCOUNTS", None)] == "VIEWER"
+
+
+def test_seed_sends_prompts_in_the_shape_of_prompt_request() -> None:
+    api = FakePromptApi()
+    seed_prompt_libraries_into(api)
+    prompt_bodies = [
+        body for method, path, body in api.calls if method == "POST" and path.endswith("/prompts")
+    ]
+    assert prompt_bodies
+    allowed = {"name", "title", "description", "text", "variables", "sortOrder"}
+    variable_keys = {"name", "label", "type", "required", "defaultValue", "options"}
+    for body in prompt_bodies:
+        assert set(body) <= allowed
+        assert {"name", "title", "text"} <= set(body)
+        for variable in body.get("variables", []):
+            assert {"name", "label", "type", "required"} <= set(variable) <= variable_keys
+            assert isinstance(variable["required"], bool)
+            if variable["type"] != "SELECT":
+                assert "options" not in variable
+
+
+def test_amtsleitung_templates_are_readable_by_andrea_alone_after_seeding() -> None:
+    api = FakePromptApi()
+    user_ids, _ = seed_prompt_libraries_into(api)
+    amtsleitung = next(lib for lib in api.libraries.values() if lib["name"] == AMTSLEITUNG_LIBRARY)
+    textbausteine = next(
+        lib for lib in api.libraries.values() if lib["name"] == BUERGERBUERO_LIBRARY
+    )
+    assert api.can_read(user_ids["andrea"], amtsleitung["id"])
+    for key in ("maria", "selin", "thomas"):
+        assert not api.can_read(user_ids[key], amtsleitung["id"]), key
+        assert api.can_read(user_ids[key], textbausteine["id"]), key
+
+
+def test_seeding_prompt_libraries_twice_creates_nothing_new() -> None:
+    api = FakePromptApi()
+    seed_prompt_libraries_into(api)
+    first_libraries = dict(api.libraries)
+    first_prompt_count = sum(len(prompts) for prompts in api.prompts.values())
+    created_first = len(creating_calls(api))
+
+    seed_prompt_libraries_into(api)
+
+    assert api.libraries == first_libraries
+    assert sum(len(prompts) for prompts in api.prompts.values()) == first_prompt_count
+    assert len(creating_calls(api)) == created_first
+
+
+def test_same_named_prompt_library_of_another_owner_is_not_taken_over() -> None:
+    """A readable library of the same name owned by someone else (e.g. shared with "Alle Konten")
+    must not stand in for the profile's own - the seed would otherwise fill a foreign library."""
+    api = FakePromptApi()
+    foreign = api.client("user-maria").post_ok(
+        "/v1/prompt-libraries",
+        json={"name": AMTSLEITUNG_LIBRARY, "listed": False},
+        expected=(201,),
+    )
+    api.client("user-maria").post_ok(
+        f"/v1/assets/PROMPT_LIBRARY/{foreign['id']}/grants",
+        json={"subjectType": "ALL_ACCOUNTS", "role": "VIEWER"},
+        expected=(200,),
+    )
+    user_ids, _ = seed_prompt_libraries_into(api)
+    owned = [
+        lib
+        for lib in api.libraries.values()
+        if lib["name"] == AMTSLEITUNG_LIBRARY and lib["ownerId"] == user_ids["andrea"]
+    ]
+    assert len(owned) == 1
+    assert api.prompts[foreign["id"]] == []
