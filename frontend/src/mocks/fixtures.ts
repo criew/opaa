@@ -30,10 +30,11 @@ import type {
   SearchPermissionProfileResponse,
   SearchDiagnosisContextResponse,
   SearchDiagnosisResponse,
-  ConfluenceSpaceRef,
   ChunkInspectionResponse,
   DocumentChunksResponse,
+  SourceTypeDescriptor,
 } from '../types/api'
+import type { ConfluenceSpaceRef } from '../utils/confluenceSource'
 
 // #822: a plain mock shape rather than LibraryFolderResponse itself - documentCount there is
 // derived (recursive, computed on read), not a stored field, so keeping it out of the stored
@@ -1841,7 +1842,7 @@ export const mockLibraryDetails: Record<string, LibraryResponse> = {
     sourceProxy: null,
     sourceInsecureSsl: false,
     sourceCredentialsSet: true,
-    s3Settings: {
+    sourceSettings: {
       region: 'us-east-1',
       pathStyle: true,
       scopes: [
@@ -2520,6 +2521,56 @@ export const mockUsers: UserInfo[] = [
 ]
 
 /** #1134: spaces the mock Confluence token may read (source of the wizard's space selection). */
+/**
+ * The connectors the mock backend has (GET /api/v1/source-types, ADR-0038) - the six delivered
+ * ones with their production abilities, ordered by key like the backend answers.
+ */
+export const mockSourceTypes: SourceTypeDescriptor[] = [
+  {
+    type: 'CONFLUENCE',
+    displayName: 'Confluence',
+    indexingRun: true,
+    pushIntake: true,
+    browsable: true,
+    fullSyncIntervalDefaultDays: 7,
+  },
+  {
+    type: 'FILESYSTEM',
+    displayName: 'Dateisystem',
+    indexingRun: true,
+    pushIntake: false,
+    browsable: false,
+  },
+  {
+    type: 'HTTP_DIRECTORY',
+    displayName: 'Webverzeichnis',
+    indexingRun: true,
+    pushIntake: false,
+    browsable: false,
+  },
+  {
+    type: 'RSS_FEED',
+    displayName: 'RSS-Feed',
+    indexingRun: true,
+    pushIntake: false,
+    browsable: false,
+  },
+  {
+    type: 'S3',
+    displayName: 'S3-Objektspeicher',
+    indexingRun: true,
+    pushIntake: true,
+    browsable: true,
+  },
+  {
+    type: 'UPLOAD',
+    displayName: 'Upload',
+    indexingRun: false,
+    pushIntake: false,
+    browsable: false,
+  },
+]
+
 export const mockConfluenceSpaces: ConfluenceSpaceRef[] = [
   { key: 'BAU', name: 'Bauamt' },
   { key: 'HR', name: 'Personal und Organisation' },

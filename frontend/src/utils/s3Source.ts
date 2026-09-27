@@ -1,4 +1,50 @@
-import type { S3ScopeRef, S3Settings } from '../types/api'
+import type { LibraryResponse } from '../types/api'
+
+/** One scope of an S3 library (ADR-0027): a bucket and an optional key prefix. */
+export type S3ScopeRef = {
+  bucket: string
+  prefix?: string | null
+}
+
+/**
+ * The connector settings of an S3 library as the API carries them in `sourceSettings`
+ * (ADR-0038): where the library reads, never how it authenticates.
+ */
+export type S3Settings = {
+  region?: string | null
+  pathStyle?: boolean
+  scopes: S3ScopeRef[]
+  includePatterns?: string[] | null
+  excludePatterns?: string[] | null
+}
+
+/** The outcome of the connection test for one scope, one entry of `details.scopes`. */
+export interface S3ScopeCheck {
+  bucket: string
+  prefix: string
+  bucketReachable: boolean
+  listAllowed: boolean
+  readAllowed?: boolean | null
+  objectCount: number
+  objectCountIsLowerBound: boolean
+  message?: string | null
+}
+
+/** The S3 settings a library response carries, null for any other library. */
+export function s3SettingsFromLibrary(
+  library: Pick<LibraryResponse, 'sourceType' | 'sourceSettings'> | null | undefined,
+): S3Settings | null {
+  if (library?.sourceType !== 'S3' || !library.sourceSettings) return null
+  return library.sourceSettings as unknown as S3Settings
+}
+
+/** The per-scope findings of a connection test, from its `details`. */
+export function s3ScopeChecksOf(
+  details: Record<string, unknown> | null | undefined,
+): S3ScopeCheck[] | null {
+  const scopes = details?.scopes
+  return Array.isArray(scopes) ? (scopes as S3ScopeCheck[]) : null
+}
 
 /**
  * The provider templates of the wizard (ADR-0027, Entscheidung 10): each one prefills endpoint

@@ -71,7 +71,8 @@ export function validateScheduleValues(
  * The schedule fields of a LibraryUpdateRequest/LibraryRequest. Call {@link validateScheduleValues}
  * first - this does not itself reject anything.
  *
- * <p>#1200: an empty full-sync field means "instance-wide default", and the two request kinds spell
+ * <p>The full-sync rhythm is a Confluence setting and travels in `sourceSettings` (ADR-0038).
+ * #1200: an empty full-sync field means "instance-wide default", and the two request kinds spell
  * that differently. `LibraryUpdateRequest` needs the explicit 0, because an absent field there
  * means "leave the stored value alone". `LibraryRequest` accepts only 1 to 365 and rejects 0 with
  * 400 - a library being created has no stored value to return to, so the field simply stays away.
@@ -87,7 +88,7 @@ export function scheduleUpdateFrom(
     minute: number | null
     weekday?: ScheduleWeekday
   }
-  confluenceFullSyncIntervalDays?: number
+  sourceSettings?: { fullSyncIntervalDays: number }
 } {
   const needsTime = values.frequency === 'DAILY' || values.frequency === 'WEEKLY'
   const parts = needsTime ? timeStringToParts(values.time) : null
@@ -102,6 +103,6 @@ export function scheduleUpdateFrom(
     },
     ...(rhythmOmitted
       ? {}
-      : { confluenceFullSyncIntervalDays: trimmed === '' ? 0 : Number(trimmed) }),
+      : { sourceSettings: { fullSyncIntervalDays: trimmed === '' ? 0 : Number(trimmed) } }),
   }
 }

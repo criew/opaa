@@ -24,11 +24,8 @@ import FolderIcon from '@mui/icons-material/Folder'
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
 import OpenInNewIcon from '@mui/icons-material/OpenInNew'
 import SearchIcon from '@mui/icons-material/Search'
-import type {
-  ConfluenceSpaceRef,
-  LibraryDocumentResponse,
-  LibraryFolderListItem,
-} from '../../types/api'
+import type { LibraryDocumentResponse, LibraryFolderListItem } from '../../types/api'
+import type { ConfluenceSpaceRef } from '../../utils/confluenceSource'
 import type { DocumentPageState } from '../../stores/documentStore'
 import { DEFAULT_PAGE_SIZE } from '../../stores/documentStore'
 import { documentStatusLabel, formatFileSize } from '../../utils/labels'

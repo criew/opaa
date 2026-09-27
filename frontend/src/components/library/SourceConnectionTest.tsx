@@ -2,7 +2,7 @@ import { useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import type { DocumentSourceType, SourceConnectionTestResponse } from '../../types/api'
+import type { SourceTypeKey, SourceConnectionTestResponse } from '../../types/api'
 import { testLibrarySource } from '../../services/api'
 import {
   deriveLibrarySourceConfigPayload,
@@ -11,7 +11,7 @@ import {
 } from '../../utils/librarySourceConfig'
 
 interface SourceConnectionTestProps {
-  sourceType: DocumentSourceType
+  sourceType: SourceTypeKey
   values: GenericSourceValues
   /**
    * Edit mode: lets the probe fall back to the library's stored credentials and checks the MANAGER

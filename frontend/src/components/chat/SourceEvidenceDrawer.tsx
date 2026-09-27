@@ -17,7 +17,7 @@ import {
   formatMetadataLine,
   metadataFilterMatchLabel,
 } from './citations'
-import type { DocumentSourceType } from '../../types/api'
+import type { SourceTypeKey } from '../../types/api'
 import type { OpenableDocument } from '../../hooks/useDocumentPreview'
 import { fontFamily } from '../../theme/tokens'
 
@@ -58,7 +58,7 @@ interface EvidenceDoc {
    *  sourceType (that endpoint proxies HTTP_DIRECTORY/RSS_FEED server-side since #747). Undefined
    *  for a synthetic entry (#386). */
   documentId?: string | null
-  sourceType?: DocumentSourceType | null
+  sourceType?: SourceTypeKey | null
   /** #739/#747: the remote source URL for sourceType HTTP_DIRECTORY/RSS_FEED, mirroring
    *  LibraryDocumentResponse.sourceUrl (#738) - shown as secondary information alongside the
    *  documentId deep link above, not itself the primary way to open the original any more. */

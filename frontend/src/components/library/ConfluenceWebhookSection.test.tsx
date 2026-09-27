@@ -14,8 +14,8 @@ vi.mock('../../services/api', async () => {
   const actual = await vi.importActual<typeof import('../../services/api')>('../../services/api')
   return {
     ...actual,
-    generateConfluenceWebhookSecret: mockGenerate,
-    removeConfluenceWebhookSecret: mockRemove,
+    generatePushSecret: mockGenerate,
+    removePushSecret: mockRemove,
   }
 })
 
@@ -32,7 +32,7 @@ describe('ConfluenceWebhookSection (#1140)', () => {
   it('offers to set up a webhook and reveals the secret exactly once with the endpoint address', async () => {
     mockGenerate.mockResolvedValue({
       secret: 'geheim-43-zeichen',
-      path: '/api/v1/libraries/lib-1/confluence-webhook',
+      path: '/api/v1/libraries/lib-1/push',
     })
     renderWithProviders(<ConfluenceWebhookSection libraryId="lib-1" secretSet={false} />)
     const user = userEvent.setup()
@@ -45,9 +45,7 @@ describe('ConfluenceWebhookSection (#1140)', () => {
     expect(mockGenerate).toHaveBeenCalledWith('lib-1')
     const dialog = await screen.findByRole('dialog', { name: 'Webhook-Geheimnis' })
     expect(screen.getByTestId('confluence-webhook-secret')).toHaveTextContent('geheim-43-zeichen')
-    expect(dialog).toHaveTextContent(
-      `${window.location.origin}/api/v1/libraries/lib-1/confluence-webhook`,
-    )
+    expect(dialog).toHaveTextContent(`${window.location.origin}/api/v1/libraries/lib-1/push`)
     expect(dialog).toHaveTextContent(/nur jetzt angezeigt/)
     expect(dialog).toHaveTextContent(/X-Hub-Signature/)
     expect(dialog).toHaveTextContent(/X-OPAA-Webhook-Secret/)
@@ -83,7 +81,7 @@ describe('ConfluenceWebhookSection (#1140)', () => {
   it('asks before rotating an existing secret and can be cancelled', async () => {
     mockGenerate.mockResolvedValue({
       secret: 'neu',
-      path: '/api/v1/libraries/lib-1/confluence-webhook',
+      path: '/api/v1/libraries/lib-1/push',
     })
     renderWithProviders(<ConfluenceWebhookSection libraryId="lib-1" secretSet={true} />)
     const user = userEvent.setup()

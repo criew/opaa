@@ -10,18 +10,13 @@ import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
-import type {
-  ConfluenceEdition,
-  ConfluenceSpaceRef,
-  DocumentSourceType,
-  IndexingRunResponse,
-  LibrarySchedule,
-  S3Settings,
-} from '../../types/api'
+import type { SourceTypeKey, IndexingRunResponse, LibrarySchedule } from '../../types/api'
+import { confluenceSettingsOf, type ConfluenceSpaceRef } from '../../utils/confluenceSource'
+import { s3SettingsFromLibrary, type S3Settings } from '../../utils/s3Source'
 import { useIndexingStore } from '../../stores/indexingStore'
 import {
   confluenceEditionLabel,
-  documentSourceTypeConfigKind,
+  sourceConfigKind,
   formatFileSize,
   indexingRunEventCategoryLabel,
   indexingRunModeLabel,
@@ -42,19 +37,15 @@ export interface LibrarySourceSectionProps {
     name: string
     description?: string | null
     listed: boolean
-    sourceType: DocumentSourceType
+    sourceType: SourceTypeKey
     sourcePath?: string | null
     sourceUrl?: string | null
     sourceProxy?: string | null
     sourceInsecureSsl?: boolean | null
     sourceCredentialsSet?: boolean | null
-    confluenceEdition?: ConfluenceEdition | null
-    confluenceSpaces?: ConfluenceSpaceRef[] | null
-    confluenceWebhookSecretSet?: boolean | null
-    s3EventsTokenSet?: boolean | null
-    confluenceFullSyncIntervalDays?: number | null
-    confluenceFullSyncIntervalDefaultDays?: number | null
-    s3Settings?: S3Settings | null
+    sourceSettings?: Record<string, unknown> | null
+    pushSecretSet?: boolean | null
+    fullSyncIntervalDefaultDays?: number | null
     schedule?: LibrarySchedule | null
     lastScheduledRunsFailed?: boolean | null
   }
@@ -74,8 +65,10 @@ export default function LibrarySourceSection({
 }: LibrarySourceSectionProps) {
   const [editSourceOpen, setEditSourceOpen] = useState(false)
   const [editScheduleOpen, setEditScheduleOpen] = useState(false)
-  const configKind = documentSourceTypeConfigKind[library.sourceType]
+  const configKind = sourceConfigKind(library.sourceType)
   const hasScope = configKind === 'confluence' || configKind === 's3'
+  const confluence = confluenceSettingsOf(library)
+  const s3Settings = s3SettingsFromLibrary(library)
 
   // The stored configuration as the connection test reads it; the credentials field stays blank,
   // which is exactly what makes the backend fall back to the stored ones (#1856).
@@ -101,14 +94,12 @@ export default function LibrarySourceSection({
               <>
                 <Typography variant="body2">
                   <strong>Edition:</strong>{' '}
-                  {library.confluenceEdition
-                    ? confluenceEditionLabel(library.confluenceEdition)
-                    : '—'}{' '}
+                  {confluence.edition ? confluenceEditionLabel(confluence.edition) : '—'}{' '}
                   <Typography component="span" variant="caption" sx={{ color: 'text.secondary' }}>
                     (erkannt, nach der Anlage nicht änderbar)
                   </Typography>
                 </Typography>
-                <ConfluenceSpacesSummary spaces={library.confluenceSpaces} />
+                <ConfluenceSpacesSummary spaces={confluence.spaces} />
                 <Stack
                   direction="row"
                   spacing={1}
@@ -134,7 +125,7 @@ export default function LibrarySourceSection({
             )}
             {configKind === 's3' && (
               <>
-                <S3ScopesSummary settings={library.s3Settings} />
+                <S3ScopesSummary settings={s3Settings} />
                 <Stack
                   direction="row"
                   spacing={1}
@@ -208,20 +199,18 @@ export default function LibrarySourceSection({
                     <strong>Endpoint:</strong> {library.sourceUrl ?? '—'}
                   </Typography>
                   <Typography variant="body2">
-                    <strong>Region:</strong> {library.s3Settings?.region ?? 'us-east-1 (Vorgabe)'} ·{' '}
+                    <strong>Region:</strong> {s3Settings?.region ?? 'us-east-1 (Vorgabe)'} ·{' '}
                     <strong>Adressstil:</strong>{' '}
-                    {library.s3Settings?.pathStyle ? 'Path-Style' : 'Virtual-Host'}
+                    {s3Settings?.pathStyle ? 'Path-Style' : 'Virtual-Host'}
                   </Typography>
-                  {(library.s3Settings?.includePatterns?.length ?? 0) > 0 && (
+                  {(s3Settings?.includePatterns?.length ?? 0) > 0 && (
                     <Typography variant="body2">
-                      <strong>Einschlussmuster:</strong>{' '}
-                      {library.s3Settings?.includePatterns?.join(', ')}
+                      <strong>Einschlussmuster:</strong> {s3Settings?.includePatterns?.join(', ')}
                     </Typography>
                   )}
-                  {(library.s3Settings?.excludePatterns?.length ?? 0) > 0 && (
+                  {(s3Settings?.excludePatterns?.length ?? 0) > 0 && (
                     <Typography variant="body2">
-                      <strong>Ausschlussmuster:</strong>{' '}
-                      {library.s3Settings?.excludePatterns?.join(', ')}
+                      <strong>Ausschlussmuster:</strong> {s3Settings?.excludePatterns?.join(', ')}
                     </Typography>
                   )}
                 </>
@@ -256,16 +245,13 @@ export default function LibrarySourceSection({
                 </Box>
               )}
               {configKind === 'confluence' && (
-                <ConfluenceWebhookSection
-                  libraryId={libraryId}
-                  secretSet={library.confluenceWebhookSecretSet}
-                />
+                <ConfluenceWebhookSection libraryId={libraryId} secretSet={library.pushSecretSet} />
               )}
               {configKind === 's3' && (
                 <S3EventSection
                   libraryId={libraryId}
-                  tokenSet={library.s3EventsTokenSet}
-                  scopes={library.s3Settings?.scopes ?? []}
+                  tokenSet={library.pushSecretSet}
+                  scopes={s3Settings?.scopes ?? []}
                 />
               )}
             </Stack>
@@ -304,12 +290,10 @@ export default function LibrarySourceSection({
               <Typography variant="body2" sx={{ color: 'text.secondary' }}>
                 {(() => {
                   const days =
-                    library.confluenceFullSyncIntervalDays ??
-                    library.confluenceFullSyncIntervalDefaultDays ??
-                    7
+                    confluence.fullSyncIntervalDays ?? library.fullSyncIntervalDefaultDays ?? 7
                   const rhythm =
                     days === 1 ? 'Vollabgleich täglich' : `Vollabgleich alle ${days} Tage`
-                  return library.confluenceFullSyncIntervalDays == null
+                  return confluence.fullSyncIntervalDays == null
                     ? `${rhythm} (Vorgabe der Instanz)`
                     : rhythm
                 })()}
@@ -340,8 +324,8 @@ export default function LibrarySourceSection({
               confluence={
                 configKind === 'confluence'
                   ? {
-                      intervalDays: library.confluenceFullSyncIntervalDays ?? null,
-                      defaultDays: library.confluenceFullSyncIntervalDefaultDays ?? null,
+                      intervalDays: confluence.fullSyncIntervalDays ?? null,
+                      defaultDays: library.fullSyncIntervalDefaultDays ?? null,
                     }
                   : undefined
               }
@@ -501,7 +485,7 @@ function LibraryIndexingHistorySection({
   sourceType,
 }: {
   libraryId: string
-  sourceType: DocumentSourceType
+  sourceType: SourceTypeKey
 }) {
   const runs = useIndexingStore((s) => s.runHistoryByLibrary[libraryId] ?? EMPTY_RUN_HISTORY)
   // ADR-0023, Entscheidung 4: only Confluence knows two Betriebsarten - for every other type the

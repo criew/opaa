@@ -6,16 +6,17 @@ import { renderWithProviders } from '../../test/test-utils'
 import S3SourceForm from './S3SourceForm'
 import { EMPTY_S3_VALUES, type S3SourceValues } from '../../utils/s3Source'
 import type {
-  S3BucketListRequest,
-  S3BucketListResponse,
+  SourceBrowseRequest,
+  SourceBrowseResponse,
   SourceConnectionTestRequest,
   SourceConnectionTestResponse,
 } from '../../types/api'
 
-const { mockTestLibrarySource, mockListS3Buckets } = vi.hoisted(() => ({
+const { mockTestLibrarySource, mockBrowseSource } = vi.hoisted(() => ({
   mockTestLibrarySource:
     vi.fn<(request: SourceConnectionTestRequest) => Promise<SourceConnectionTestResponse>>(),
-  mockListS3Buckets: vi.fn<(request: S3BucketListRequest) => Promise<S3BucketListResponse>>(),
+  mockBrowseSource:
+    vi.fn<(sourceType: string, request: SourceBrowseRequest) => Promise<SourceBrowseResponse>>(),
 }))
 
 vi.mock('../../services/api', async () => {
@@ -23,7 +24,7 @@ vi.mock('../../services/api', async () => {
   return {
     ...actual,
     testLibrarySource: mockTestLibrarySource,
-    listS3Buckets: mockListS3Buckets,
+    browseSource: mockBrowseSource,
   }
 })
 
@@ -73,7 +74,7 @@ const keyed: Partial<S3SourceValues> = {
 describe('S3SourceForm (#1377, ADR-0027)', () => {
   beforeEach(() => {
     mockTestLibrarySource.mockReset()
-    mockListS3Buckets.mockReset()
+    mockBrowseSource.mockReset()
   })
 
   it('states the sharing consequence before the scope list and derives the endpoint from the template', async () => {
@@ -125,23 +126,23 @@ describe('S3SourceForm (#1377, ADR-0027)', () => {
 
   it('does not drop a bucket listing in flight when a scope row is edited meanwhile', async () => {
     const user = userEvent.setup()
-    let resolveListing: (value: S3BucketListResponse) => void = () => {}
-    mockListS3Buckets.mockImplementationOnce(
-      () => new Promise<S3BucketListResponse>((resolve) => (resolveListing = resolve)),
+    let resolveListing: (value: SourceBrowseResponse) => void = () => {}
+    mockBrowseSource.mockImplementationOnce(
+      () => new Promise<SourceBrowseResponse>((resolve) => (resolveListing = resolve)),
     )
     renderWithProviders(<Harness initial={keyed} />)
 
     await user.click(screen.getByRole('button', { name: 'Buckets laden' }))
     await user.type(screen.getByLabelText(/^Präfix 1/), 'x')
-    resolveListing({ listingPermitted: true, buckets: ['protokolle'], message: null })
+    resolveListing({ complete: true, entries: [{ key: 'protokolle' }], message: null })
     expect(await screen.findByText(/1 Bucket geladen/)).toBeInTheDocument()
   })
 
   it('loads the buckets and falls back to manual entry without an error state when not permitted', async () => {
     const user = userEvent.setup()
-    mockListS3Buckets.mockResolvedValueOnce({
-      listingPermitted: false,
-      buckets: [],
+    mockBrowseSource.mockResolvedValueOnce({
+      complete: false,
+      entries: [],
       message: 'Die Bucket-Liste ist mit diesen Zugangsdaten nicht lesbar - von Hand eintragen.',
     })
     renderWithProviders(<Harness initial={keyed} />)
@@ -156,19 +157,18 @@ describe('S3SourceForm (#1377, ADR-0027)', () => {
     await user.clear(bucket)
     await user.type(bucket, 'satzungen')
     expect(bucket).toHaveValue('satzungen')
-    expect(mockListS3Buckets).toHaveBeenCalledWith({
+    expect(mockBrowseSource).toHaveBeenCalledWith('S3', {
       sourceUrl: 'https://minio.intern.example:9000',
       sourceProxy: undefined,
       sourceInsecureSsl: false,
       sourceCredentials: 'AKIAEXAMPLE:geheim',
       libraryId: undefined,
-      region: 'us-east-1',
-      pathStyle: true,
+      query: { region: 'us-east-1', pathStyle: true },
     })
 
-    mockListS3Buckets.mockResolvedValueOnce({
-      listingPermitted: true,
-      buckets: ['protokolle', 'satzungen'],
+    mockBrowseSource.mockResolvedValueOnce({
+      complete: true,
+      entries: [{ key: 'protokolle' }, { key: 'satzungen' }],
       message: null,
     })
     await user.click(screen.getByRole('button', { name: 'Buckets laden' }))
@@ -181,28 +181,30 @@ describe('S3SourceForm (#1377, ADR-0027)', () => {
       reachable: false,
       credentialsVerified: true,
       message: 'Bereich „archiv“: s3:GetObject fehlt',
-      s3Scopes: [
-        {
-          bucket: 'protokolle',
-          prefix: '2025/',
-          bucketReachable: true,
-          listAllowed: true,
-          readAllowed: true,
-          objectCount: 412,
-          objectCountIsLowerBound: false,
-          message: null,
-        },
-        {
-          bucket: 'archiv',
-          prefix: '',
-          bucketReachable: true,
-          listAllowed: true,
-          readAllowed: false,
-          objectCount: 1000,
-          objectCountIsLowerBound: true,
-          message: 'darf nicht gelesen werden (s3:GetObject fehlt).',
-        },
-      ],
+      details: {
+        scopes: [
+          {
+            bucket: 'protokolle',
+            prefix: '2025/',
+            bucketReachable: true,
+            listAllowed: true,
+            readAllowed: true,
+            objectCount: 412,
+            objectCountIsLowerBound: false,
+            message: null,
+          },
+          {
+            bucket: 'archiv',
+            prefix: '',
+            bucketReachable: true,
+            listAllowed: true,
+            readAllowed: false,
+            objectCount: 1000,
+            objectCountIsLowerBound: true,
+            message: 'darf nicht gelesen werden (s3:GetObject fehlt).',
+          },
+        ],
+      },
     })
     renderWithProviders(
       <Harness
@@ -225,7 +227,7 @@ describe('S3SourceForm (#1377, ADR-0027)', () => {
       sourceInsecureSsl: false,
       sourceCredentials: 'AKIAEXAMPLE:geheim',
       libraryId: undefined,
-      s3Settings: {
+      sourceSettings: {
         region: 'us-east-1',
         pathStyle: true,
         scopes: [
@@ -292,7 +294,7 @@ describe('S3SourceForm (#1377, ADR-0027)', () => {
       reachable: true,
       credentialsVerified: true,
       message: 'Der Bereich ist erreichbar.',
-      s3Scopes: [],
+      details: { scopes: [] },
     })
     renderWithProviders(
       <Harness
@@ -332,7 +334,7 @@ describe('S3SourceForm (#1377, ADR-0027)', () => {
       reachable: true,
       credentialsVerified: true,
       message: 'Der Bereich ist erreichbar.',
-      s3Scopes: [],
+      details: { scopes: [] },
     })
     renderWithProviders(
       <Harness

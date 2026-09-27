@@ -32,6 +32,7 @@ import { useLibraryStore } from '../stores/libraryStore'
 import { useIndexingStore } from '../stores/indexingStore'
 import { useMyCapabilities } from '../hooks/useMyCapabilities'
 import { useMyGroups } from '../hooks/useMyGroups'
+import { useSourceTypes } from '../hooks/useSourceTypes'
 import AssetNameFields from '../components/assets/AssetNameFields'
 import AssetOwnerFields from '../components/assets/AssetOwnerFields'
 import AssetRightsFields from '../components/assets/AssetRightsFields'
@@ -40,9 +41,9 @@ import {
   type PendingGrant,
 } from '../components/assets/pendingGrants'
 import {
-  allDocumentSourceTypes,
   capabilityMissingMessage,
-  documentSourceTypeConfigKind,
+  registeredSourceTypes,
+  sourceConfigKind,
   documentSourceTypeDescription,
   documentSourceTypeLabel,
 } from '../utils/labels'
@@ -52,12 +53,7 @@ import {
   EMPTY_GENERIC_SOURCE_VALUES,
   type GenericSourceValues,
 } from '../utils/librarySourceConfig'
-import type {
-  Capability,
-  DocumentSourceType,
-  GroupListResponse,
-  AssetOwnerType,
-} from '../types/api'
+import type { Capability, SourceTypeKey, GroupListResponse, AssetOwnerType } from '../types/api'
 
 /**
  * Die Schritte des Assistenten (#1942): jeder trägt den Namen des Reiters bzw. des Kopfes, den er
@@ -68,7 +64,7 @@ const STEP_SOURCE = 'Quelle'
 const STEP_NAME = 'Name & Beschreibung'
 const STEP_SHARING = 'Freigaben'
 
-function stepsFor(sourceType: DocumentSourceType): string[] {
+function stepsFor(sourceType: SourceTypeKey): string[] {
   return sourceType === 'UPLOAD'
     ? [STEP_ART, STEP_NAME, STEP_SHARING]
     : [STEP_ART, STEP_SOURCE, STEP_NAME, STEP_SHARING]
@@ -90,14 +86,14 @@ const NEW_CONFLUENCE_RHYTHM: ConfluenceFullSyncRhythm = { intervalDays: null, de
 
 /** Der Name, den die Quelle selbst schon hergibt - überschreibbar, nie erzwungen. */
 function nameFromSource(
-  sourceType: DocumentSourceType,
+  sourceType: SourceTypeKey,
   values: {
     generic: GenericSourceValues
     confluence: ConfluenceSourceValues
     s3: S3SourceValues
   },
 ): string {
-  switch (documentSourceTypeConfigKind[sourceType]) {
+  switch (sourceConfigKind(sourceType)) {
     case 'confluence': {
       const first = values.confluence.spaces[0]
       if (!first) return ''
@@ -149,7 +145,7 @@ export default function LibraryCreatePage() {
   const [selectedGroup, setSelectedGroup] = useState<GroupListResponse | null>(null)
   const myGroups = useMyGroups()
 
-  const [chosenType, setSourceType] = useState<DocumentSourceType>('UPLOAD')
+  const [chosenType, setSourceType] = useState<SourceTypeKey>('UPLOAD')
   const [generic, setGeneric] = useState<GenericSourceValues>(EMPTY_GENERIC_SOURCE_VALUES)
   const [confluence, setConfluence] = useState<ConfluenceSourceValues>(EMPTY_CONFLUENCE_VALUES)
   const [s3, setS3] = useState<S3SourceValues>(EMPTY_S3_VALUES)
@@ -161,13 +157,28 @@ export default function LibraryCreatePage() {
   const [listed, setListed] = useState(false)
   const [pendingGrants, setPendingGrants] = useState<PendingGrant[]>([])
 
+  // Die Kacheln sind die Quellarten, für die das Backend einen Konnektor hat (ADR-0038), in der
+  // Reihenfolge der Eingabemasken; eine Art ohne Maske steht am Ende und ist nicht wählbar.
+  const { sourceTypes, error: sourceTypesError, loaded: sourceTypesLoaded } = useSourceTypes()
+  const offeredTypes: SourceTypeKey[] = [
+    ...registeredSourceTypes.filter((type) => sourceTypes.some((d) => d.type === type)),
+    ...sourceTypes.map((d) => d.type).filter((type) => sourceConfigKind(type) === undefined),
+  ]
+  const displayNameOf = (type: SourceTypeKey) =>
+    sourceConfigKind(type) !== undefined
+      ? documentSourceTypeLabel(type)
+      : (sourceTypes.find((d) => d.type === type)?.displayName ?? type)
+
   /** Die Begründung, warum diese Art hier nicht zu wählen ist - oder `null`, wenn sie es ist. */
-  function missingFor(type: DocumentSourceType): string | null {
+  function missingFor(type: SourceTypeKey): string | null {
+    if (sourceConfigKind(type) === undefined) {
+      return 'Für diese Quellart gibt es in dieser Oberfläche keine Eingabemaske.'
+    }
     const capability: Capability = type === 'UPLOAD' ? 'CREATE_LIBRARY' : 'CREATE_CONNECTOR_LIBRARY'
     return isMissing(capability) ? capabilityMissingMessage(capability) : null
   }
 
-  const selectableTypes = allDocumentSourceTypes.filter((type) => missingFor(type) === null)
+  const selectableTypes = offeredTypes.filter((type) => missingFor(type) === null)
 
   /**
    * Die tatsächlich gewählte Art. Die Anlegerechte kommen erst nach dem ersten Rendern an; was
@@ -177,11 +188,14 @@ export default function LibraryCreatePage() {
    * Schrittleiste erklärt, warum am Ende nichts angelegt wird.
    */
   const sourceType =
-    missingFor(chosenType) !== null && selectableTypes.length > 0 ? selectableTypes[0] : chosenType
+    (missingFor(chosenType) !== null || !selectableTypes.includes(chosenType)) &&
+    selectableTypes.length > 0
+      ? selectableTypes[0]
+      : chosenType
 
   const steps = stepsFor(sourceType)
   const currentStep = steps[Math.min(activeStep, steps.length - 1)]
-  const configKind = documentSourceTypeConfigKind[sourceType]
+  const configKind = sourceConfigKind(sourceType)
   const confluenceRhythm = configKind === 'confluence' ? NEW_CONFLUENCE_RHYTHM : undefined
 
   const requiredCapability: Capability =
@@ -302,6 +316,17 @@ export default function LibraryCreatePage() {
     setSubmitting(true)
     setError(null)
     try {
+      const source = deriveLibrarySourceConfigPayload(sourceType, { ...generic, confluence, s3 })
+      // #1942: Anlage und Zeitplan werden atomar gesetzt; eine Upload-Bibliothek bekommt gar
+      // keinen (das Backend wiese alles außer DISABLED mit 400 ab).
+      const scheduled =
+        sourceType !== 'UPLOAD'
+          ? scheduleUpdateFrom(schedule, confluenceRhythm, 'create')
+          : undefined
+      const sourceSettings =
+        source.sourceSettings || scheduled?.sourceSettings
+          ? { ...source.sourceSettings, ...scheduled?.sourceSettings }
+          : undefined
       const libraryId = await createNewLibrary({
         name: name.trim(),
         description: description.trim() || undefined,
@@ -309,16 +334,9 @@ export default function LibraryCreatePage() {
         ownerId: ownerType === 'GROUP' ? (selectedGroup?.id ?? undefined) : undefined,
         listed,
         sourceType,
-        ...deriveLibrarySourceConfigPayload(sourceType, {
-          ...generic,
-          confluence,
-          s3,
-        }),
-        // #1942: Anlage und Zeitplan werden atomar gesetzt; eine Upload-Bibliothek bekommt gar
-        // keinen (das Backend wiese alles außer DISABLED mit 400 ab).
-        ...(sourceType !== 'UPLOAD'
-          ? scheduleUpdateFrom(schedule, confluenceRhythm, 'create')
-          : {}),
+        ...source,
+        sourceSettings,
+        ...(scheduled ? { schedule: scheduled.schedule } : {}),
       })
       await applyPendingGrantsAfterCreation('KNOWLEDGE_LIBRARY', libraryId, pendingGrants)
       if (sourceType !== 'UPLOAD' && startFirstRun) {
@@ -373,7 +391,19 @@ export default function LibraryCreatePage() {
           )}
         </Box>
 
-        {currentStep === STEP_ART && (
+        {currentStep === STEP_ART && !sourceTypesLoaded && (
+          <Typography sx={{ fontSize: 13.5, color: 'text.secondary' }}>
+            Quellarten werden geladen …
+          </Typography>
+        )}
+
+        {currentStep === STEP_ART && sourceTypesError && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {sourceTypesError}
+          </Alert>
+        )}
+
+        {currentStep === STEP_ART && sourceTypesLoaded && (
           <Box
             role="radiogroup"
             aria-label="Art des Wissens wählen"
@@ -384,7 +414,7 @@ export default function LibraryCreatePage() {
               gap: '14px',
             }}
           >
-            {allDocumentSourceTypes.map((type) => {
+            {offeredTypes.map((type) => {
               const selected = type === sourceType
               const missing = missingFor(type)
               return (
@@ -432,7 +462,7 @@ export default function LibraryCreatePage() {
                   </Box>
                   <Box>
                     <Typography sx={{ fontSize: 14.5, fontWeight: 600 }}>
-                      {documentSourceTypeLabel(type)}
+                      {displayNameOf(type)}
                     </Typography>
                     <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 0.25 }}>
                       {documentSourceTypeDescription(type)}

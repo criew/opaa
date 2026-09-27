@@ -4,7 +4,7 @@ import FormControlLabel from '@mui/material/FormControlLabel'
 import Switch from '@mui/material/Switch'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
-import type { DocumentSourceType } from '../../types/api'
+import type { SourceTypeKey } from '../../types/api'
 import { documentSourceTypeLabel } from '../../utils/labels'
 import { sameLibrarySourceOrigin, type GenericSourceValues } from '../../utils/librarySourceConfig'
 import FieldLabel from '../wizard/FieldLabel'
@@ -12,7 +12,7 @@ import FieldLabel from '../wizard/FieldLabel'
 interface UrlSourceFormProps {
   /** `create` adds the step's own heading and the two-column layout of the wizard. */
   mode: 'create' | 'edit'
-  sourceType: DocumentSourceType
+  sourceType: SourceTypeKey
   idPrefix: string
   values: GenericSourceValues
   onChange: (patch: Partial<GenericSourceValues>) => void

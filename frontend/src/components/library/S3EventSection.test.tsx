@@ -14,8 +14,8 @@ vi.mock('../../services/api', async () => {
   const actual = await vi.importActual<typeof import('../../services/api')>('../../services/api')
   return {
     ...actual,
-    generateS3EventsToken: mockGenerate,
-    removeS3EventsToken: mockRemove,
+    generatePushSecret: mockGenerate,
+    removePushSecret: mockRemove,
   }
 })
 
@@ -36,8 +36,8 @@ describe('S3EventSection (#1381, ADR-0027)', () => {
 
   it('offers to set up notifications and reveals the token exactly once with the endpoint and the provider commands', async () => {
     mockGenerate.mockResolvedValue({
-      token: 'ereignis-token-43',
-      path: '/api/v1/libraries/lib-1/s3-events',
+      secret: 'ereignis-token-43',
+      path: '/api/v1/libraries/lib-1/push',
     })
     renderWithProviders(<S3EventSection libraryId="lib-1" tokenSet={false} scopes={scopes} />)
     const user = userEvent.setup()
@@ -53,7 +53,7 @@ describe('S3EventSection (#1381, ADR-0027)', () => {
     const dialog = await screen.findByRole('dialog', { name: 'Ereignis-Token' })
     expect(screen.getByTestId('s3-event-token')).toHaveTextContent('ereignis-token-43')
     expect(screen.getByTestId('s3-event-endpoint')).toHaveTextContent(
-      `${window.location.origin}/api/v1/libraries/lib-1/s3-events`,
+      `${window.location.origin}/api/v1/libraries/lib-1/push`,
     )
     expect(dialog).toHaveTextContent(/nur jetzt angezeigt/)
     expect(dialog).toHaveTextContent('auth_token="ereignis-token-43"')

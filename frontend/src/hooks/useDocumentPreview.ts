@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { openDocumentContent } from '../utils/documentContent'
 import type { TextPreviewResult } from '../utils/documentContent'
 import { notify } from '../stores/notificationStore'
-import type { DocumentSourceType } from '../types/api'
+import type { SourceTypeKey } from '../types/api'
 
 /**
  * Everything "Original öffnen"/"Im Dokument öffnen" needs to decide HOW to open a document -
@@ -11,7 +11,7 @@ import type { DocumentSourceType } from '../types/api'
 export interface OpenableDocument {
   id: string
   fileName: string
-  sourceType?: DocumentSourceType | null
+  sourceType?: SourceTypeKey | null
   sourceUrl?: string | null
   sourceEntryUrl?: string | null
 }

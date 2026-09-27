@@ -161,19 +161,16 @@ export type LibraryScheduleRequest = components['schemas']['LibraryScheduleReque
 export type LibrarySchedule = components['schemas']['LibrarySchedule']
 
 export type DocumentStatus = components['schemas']['DocumentStatus']
-export type DocumentSourceType = components['schemas']['DocumentSourceType']
-export type ConfluenceEdition = components['schemas']['ConfluenceEdition']
-export type ConfluenceSpaceRef = components['schemas']['ConfluenceSpaceRef']
-export type ConfluenceSpaceListRequest = components['schemas']['ConfluenceSpaceListRequest']
-export type ConfluenceSpaceListResponse = components['schemas']['ConfluenceSpaceListResponse']
-export type S3Settings = components['schemas']['S3Settings']
-export type S3ScopeRef = components['schemas']['S3ScopeRef']
-export type S3ScopeCheck = components['schemas']['S3ScopeCheck']
-export type S3BucketListRequest = components['schemas']['S3BucketListRequest']
-export type S3BucketListResponse = components['schemas']['S3BucketListResponse']
-export type ConfluenceWebhookSecretResponse =
-  components['schemas']['ConfluenceWebhookSecretResponse']
-export type S3EventsTokenResponse = components['schemas']['S3EventsTokenResponse']
+/**
+ * The open key of a source type (ADR-0038) - every connector the backend registers names its own;
+ * the list of known ones comes from GET /source-types, not from this type.
+ */
+export type SourceTypeKey = components['schemas']['SourceTypeKey']
+export type SourceTypeDescriptor = components['schemas']['SourceTypeDescriptor']
+export type SourceBrowseRequest = components['schemas']['SourceBrowseRequest']
+export type SourceBrowseResponse = components['schemas']['SourceBrowseResponse']
+export type SourceBrowseEntry = components['schemas']['SourceBrowseEntry']
+export type PushSecretResponse = components['schemas']['PushSecretResponse']
 export type LibraryDocumentResponse = components['schemas']['LibraryDocumentResponse']
 export type LibraryDocumentPageResponse = components['schemas']['LibraryDocumentPageResponse']
 export type MetadataOrigin = components['schemas']['MetadataOrigin']

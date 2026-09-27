@@ -8,8 +8,8 @@ import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
-import type { S3ScopeRef } from '../../types/api'
-import { generateS3EventsToken, removeS3EventsToken } from '../../services/api'
+import type { S3ScopeRef } from '../../utils/s3Source'
+import { generatePushSecret, removePushSecret } from '../../services/api'
 import { confirmAction } from '../../stores/confirmStore'
 import { useLibraryStore } from '../../stores/libraryStore'
 
@@ -37,8 +37,8 @@ export default function S3EventSection({ libraryId, tokenSet, scopes }: S3EventS
     setBusy(true)
     setError(null)
     try {
-      const response = await generateS3EventsToken(libraryId)
-      setRevealed({ token: response.token, url: `${window.location.origin}${response.path}` })
+      const response = await generatePushSecret(libraryId)
+      setRevealed({ token: response.secret, url: `${window.location.origin}${response.path}` })
       await loadLibraryDetails(libraryId)
     } catch (err) {
       setError(
@@ -53,7 +53,7 @@ export default function S3EventSection({ libraryId, tokenSet, scopes }: S3EventS
     setBusy(true)
     setError(null)
     try {
-      await removeS3EventsToken(libraryId)
+      await removePushSecret(libraryId)
       await loadLibraryDetails(libraryId)
     } catch (err) {
       setError(

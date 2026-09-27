@@ -10,16 +10,17 @@ import Stack from '@mui/material/Stack'
 import Switch from '@mui/material/Switch'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
-import type { ConfluenceSpaceRef } from '../../types/api'
-import { listConfluenceSpaces, testLibrarySource } from '../../services/api'
+import { browseSource, testLibrarySource } from '../../services/api'
 import { confluenceEditionLabel } from '../../utils/labels'
 import { sameLibrarySourceOrigin } from '../../utils/librarySourceConfig'
 import FieldLabel from '../wizard/FieldLabel'
 
 import {
   confluenceCredentialsOf,
+  detectedConfluenceEdition,
   MAX_CONFLUENCE_SPACES,
   type ConfluenceSourceValues,
+  type ConfluenceSpaceRef,
 } from '../../utils/confluenceSource'
 
 /** From this many selected spaces on, the limit is announced before the backend enforces it. */
@@ -112,9 +113,9 @@ export default function ConfluenceSourceForm({
     setLoadingSpaces(true)
     setSpacesError(null)
     try {
-      const result = await listConfluenceSpaces({
+      const result = await browseSource('CONFLUENCE', {
         ...connectionPayload(),
-        confluenceEdition: values.edition,
+        query: { edition: values.edition },
         sourceCredentials: confluenceCredentialsOf(values),
         // #1856 review: sent whenever this instance edits an existing library, not only while the
         // stored-credentials fallback applies - without libraryId, the listing needs
@@ -122,7 +123,7 @@ export default function ConfluenceSourceForm({
         libraryId: mode === 'edit' ? libraryId : undefined,
       })
       if (generation.current !== mine) return
-      setAvailableSpaces(result.spaces)
+      setAvailableSpaces(result.entries.map((entry) => ({ key: entry.key, name: entry.name })))
     } catch (err) {
       if (generation.current !== mine) return
       setAvailableSpaces(null)
@@ -180,8 +181,9 @@ export default function ConfluenceSourceForm({
         ...connectionPayload(),
       })
       if (generation.current !== mine) return
-      if (result.confluenceEdition) {
-        onChange({ edition: result.confluenceEdition, credentialsVerified: false })
+      const detected = detectedConfluenceEdition(result.details)
+      if (detected) {
+        onChange({ edition: detected, credentialsVerified: false })
         setDetectMessage({ severity: 'success', text: result.message })
       } else {
         onChange({ edition: null, credentialsVerified: false })
@@ -207,7 +209,7 @@ export default function ConfluenceSourceForm({
       const result = await testLibrarySource({
         sourceType: 'CONFLUENCE',
         ...connectionPayload(),
-        confluenceEdition: values.edition,
+        sourceSettings: { edition: values.edition },
         sourceCredentials: confluenceCredentialsOf(values),
         // #1856 review: same reasoning as loadSpaces above.
         libraryId: mode === 'edit' ? libraryId : undefined,

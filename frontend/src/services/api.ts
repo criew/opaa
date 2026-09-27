@@ -86,13 +86,12 @@ import type {
   SpaceVisibility,
   UserInfo,
   UserSummary,
-  ConfluenceSpaceListRequest,
-  ConfluenceSpaceListResponse,
-  S3BucketListRequest,
-  S3BucketListResponse,
+  SourceBrowseRequest,
+  SourceBrowseResponse,
+  SourceTypeDescriptor,
+  SourceTypeKey,
   IndexingRunMode,
-  ConfluenceWebhookSecretResponse,
-  S3EventsTokenResponse,
+  PushSecretResponse,
   BulkMetadataValueRequest,
   BulkDocumentDeleteResponse,
   BulkMetadataValueResponse,
@@ -672,50 +671,23 @@ export async function triggerIndexing(
 }
 
 /**
- * generates or rotates the Confluence webhook secret of a library. The secret is returned
- * exactly once - the caller shows it, the API never returns it again.
+ * generates or rotates the push secret of a library whose connector offers a push intake
+ * (ADR-0038). The secret is returned exactly once, together with the path the source notifies -
+ * the caller shows it, the API never returns it again.
  */
-export async function generateConfluenceWebhookSecret(
-  libraryId: string,
-): Promise<ConfluenceWebhookSecretResponse> {
+export async function generatePushSecret(libraryId: string): Promise<PushSecretResponse> {
   try {
-    const { data } = await client.post<ConfluenceWebhookSecretResponse>(
-      `/v1/libraries/${libraryId}/confluence-webhook-secret`,
-    )
+    const { data } = await client.post<PushSecretResponse>(`/v1/libraries/${libraryId}/push-secret`)
     return data
   } catch (err) {
     normalizeError(err)
   }
 }
 
-/** removes the webhook secret - the library's webhook endpoint rejects every call from now on. */
-export async function removeConfluenceWebhookSecret(libraryId: string): Promise<void> {
+/** removes the push secret - the library's push intake rejects every call from now on. */
+export async function removePushSecret(libraryId: string): Promise<void> {
   try {
-    await client.delete(`/v1/libraries/${libraryId}/confluence-webhook-secret`)
-  } catch (err) {
-    normalizeError(err)
-  }
-}
-
-/**
- * generates or rotates the S3 event token of a library (ADR-0027, Entscheidung 6). The token is
- * returned exactly once - the caller shows it, the API never returns it again.
- */
-export async function generateS3EventsToken(libraryId: string): Promise<S3EventsTokenResponse> {
-  try {
-    const { data } = await client.post<S3EventsTokenResponse>(
-      `/v1/libraries/${libraryId}/s3-events-token`,
-    )
-    return data
-  } catch (err) {
-    normalizeError(err)
-  }
-}
-
-/** removes the event token - the library's event endpoint rejects every call from now on. */
-export async function removeS3EventsToken(libraryId: string): Promise<void> {
-  try {
-    await client.delete(`/v1/libraries/${libraryId}/s3-events-token`)
+    await client.delete(`/v1/libraries/${libraryId}/push-secret`)
   } catch (err) {
     normalizeError(err)
   }
@@ -1115,23 +1087,27 @@ export async function testLibrarySource(
   }
 }
 
-/** the buckets an S3 key may see - basis of the wizard's scope entry (ADR-0027). */
-export async function listS3Buckets(request: S3BucketListRequest): Promise<S3BucketListResponse> {
+/** every source type the backend has a connector for (ADR-0038), ordered by key. */
+export async function listSourceTypes(): Promise<SourceTypeDescriptor[]> {
   try {
-    const { data } = await client.post<S3BucketListResponse>('/v1/libraries/s3/buckets', request)
+    const { data } = await client.get<SourceTypeDescriptor[]>('/v1/source-types')
     return data
   } catch (err) {
     normalizeError(err)
   }
 }
 
-/** the spaces a Confluence token may read - basis of the wizard's space selection. */
-export async function listConfluenceSpaces(
-  request: ConfluenceSpaceListRequest,
-): Promise<ConfluenceSpaceListResponse> {
+/**
+ * what a source offers before its configuration is saved - the spaces of a Confluence token, the
+ * buckets of an S3 key; `query` carries the connector's own listing parameters.
+ */
+export async function browseSource(
+  sourceType: SourceTypeKey,
+  request: SourceBrowseRequest,
+): Promise<SourceBrowseResponse> {
   try {
-    const { data } = await client.post<ConfluenceSpaceListResponse>(
-      '/v1/libraries/confluence/spaces',
+    const { data } = await client.post<SourceBrowseResponse>(
+      `/v1/source-types/${encodeURIComponent(sourceType)}/browse`,
       request,
     )
     return data

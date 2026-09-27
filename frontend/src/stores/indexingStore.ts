@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import type {
-  DocumentSourceType,
+  SourceTypeKey,
   IndexingRunMode,
   IndexingRunResponse,
   IndexingStatus,
@@ -49,7 +49,7 @@ interface IndexingRunState {
   // be decided by the library's own, unchanging sourceType - never by comparing documentCount and
   // documentsIndexedTotal, which happens to coincide for an RSS_FEED run whose entries carried no
   // attachments at all and would otherwise make the same library's label flicker from run to run.
-  sourceType: DocumentSourceType | null
+  sourceType: SourceTypeKey | null
   // The scopes (Confluence spaces, S3 bucket/prefix) the most recent listing-assessing full sync
   // could not list completely - carried by the status response independently of which run is the
   // latest one, so the warning at the library survives incremental, webhook and event runs.
@@ -80,10 +80,10 @@ interface IndexingState {
 
   triggerIndexing: (
     libraryId: string,
-    sourceType: DocumentSourceType,
+    sourceType: SourceTypeKey,
     runMode?: IndexingRunMode,
   ) => Promise<void>
-  loadStatus: (libraryId: string, sourceType: DocumentSourceType) => Promise<void>
+  loadStatus: (libraryId: string, sourceType: SourceTypeKey) => Promise<void>
   loadRunHistory: (libraryId: string) => Promise<void>
   stopPolling: (libraryId: string) => void
   closeSnackbar: () => void
@@ -157,7 +157,7 @@ export const useIndexingStore = create<IndexingState>((set, get) => ({
 
   triggerIndexing: async (
     libraryId: string,
-    sourceType: DocumentSourceType,
+    sourceType: SourceTypeKey,
     runMode?: IndexingRunMode,
   ) => {
     const sessionEpoch = currentSessionEpoch()
@@ -204,7 +204,7 @@ export const useIndexingStore = create<IndexingState>((set, get) => ({
     }
   },
 
-  loadStatus: async (libraryId: string, sourceType: DocumentSourceType) => {
+  loadStatus: async (libraryId: string, sourceType: SourceTypeKey) => {
     const sessionEpoch = currentSessionEpoch()
     // Reset to IDLE up front: if this library never had a status loaded before, or the fetch
     // below fails, the section must show this library's own default rather than whatever another

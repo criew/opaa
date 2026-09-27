@@ -56,11 +56,13 @@ describe('deriveLibrarySourceConfigPayload', () => {
       sourceProxy: undefined,
       sourceCredentials: 'dienst@behoerde.example:tok',
       sourceInsecureSsl: false,
-      confluenceEdition: 'CLOUD',
-      confluenceSpaces: [
-        { key: 'BAU', name: 'Bauamt' },
-        { key: 'HR', name: null },
-      ],
+      sourceSettings: {
+        edition: 'CLOUD',
+        spaces: [
+          { key: 'BAU', name: 'Bauamt' },
+          { key: 'HR', name: null },
+        ],
+      },
     })
   })
 
@@ -76,7 +78,7 @@ describe('deriveLibrarySourceConfigPayload', () => {
       },
     })
     expect(payload.sourceCredentials).toBeUndefined()
-    expect(payload.confluenceEdition).toBe('DATA_CENTER')
+    expect(payload.sourceSettings?.edition).toBe('DATA_CENTER')
   })
 })
 
@@ -97,7 +99,7 @@ describe('S3 (#1377, ADR-0027)', () => {
       sourceProxy: 'proxy.intern:3128',
       sourceCredentials: 'AKIAEXAMPLE:geheim',
       sourceInsecureSsl: false,
-      s3Settings: {
+      sourceSettings: {
         region: 'us-east-1',
         pathStyle: true,
         scopes: [{ bucket: 'dokumente', prefix: '2025/' }],

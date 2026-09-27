@@ -6,21 +6,20 @@ import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
 import Stack from '@mui/material/Stack'
-import type {
-  ConfluenceEdition,
-  ConfluenceSpaceRef,
-  DocumentSourceType,
-  S3Settings,
-} from '../types/api'
+import type { SourceTypeKey } from '../types/api'
 import ConfluenceSourceForm from './library/ConfluenceSourceForm'
 import PathSourceForm from './library/PathSourceForm'
 import S3SourceForm from './library/S3SourceForm'
 import SourceConnectionTest from './library/SourceConnectionTest'
 import UrlSourceForm from './library/UrlSourceForm'
-import { s3ValuesFromSettings, type S3SourceValues } from '../utils/s3Source'
-import { EMPTY_CONFLUENCE_VALUES, type ConfluenceSourceValues } from '../utils/confluenceSource'
+import { s3SettingsFromLibrary, s3ValuesFromSettings, type S3SourceValues } from '../utils/s3Source'
+import {
+  confluenceSettingsOf,
+  EMPTY_CONFLUENCE_VALUES,
+  type ConfluenceSourceValues,
+} from '../utils/confluenceSource'
 import { useLibraryStore } from '../stores/libraryStore'
-import { documentSourceTypeConfigKind } from '../utils/labels'
+import { sourceConfigKind } from '../utils/labels'
 import {
   deriveLibrarySourceConfigPayload,
   sameLibrarySourceOrigin,
@@ -39,7 +38,7 @@ export interface EditableLibrarySource {
   name: string
   description?: string | null
   listed: boolean
-  sourceType: DocumentSourceType
+  sourceType: SourceTypeKey
   sourcePath?: string | null
   sourceUrl?: string | null
   sourceProxy?: string | null
@@ -47,9 +46,7 @@ export interface EditableLibrarySource {
   // Optional/nullable to tolerate a LibraryResponse fixture that predates #542 finding 3 -
   // treated as "nothing stored" (false) rather than crashing or silently claiming otherwise.
   sourceCredentialsSet?: boolean | null
-  confluenceEdition?: ConfluenceEdition | null
-  confluenceSpaces?: ConfluenceSpaceRef[] | null
-  s3Settings?: S3Settings | null
+  sourceSettings?: Record<string, unknown> | null
 }
 
 interface EditLibrarySourceDialogProps {
@@ -65,7 +62,7 @@ export default function EditLibrarySourceDialog({
   libraryId,
   library,
 }: EditLibrarySourceDialogProps) {
-  const configKind = documentSourceTypeConfigKind[library.sourceType]
+  const configKind = sourceConfigKind(library.sourceType)
   const credentialsStored = Boolean(library.sourceCredentialsSet)
   const updateExistingLibrary = useLibraryStore((s) => s.updateExistingLibrary)
 
@@ -90,9 +87,9 @@ export default function EditLibrarySourceDialog({
     sourceUrl: library.sourceUrl ?? '',
     sourceProxy: library.sourceProxy ?? '',
     sourceInsecureSsl: Boolean(library.sourceInsecureSsl),
-    edition: library.confluenceEdition ?? null,
+    edition: confluenceSettingsOf(library).edition ?? null,
     credentialsVerified: Boolean(library.sourceCredentialsSet),
-    spaces: library.confluenceSpaces ?? [],
+    spaces: confluenceSettingsOf(library).spaces ?? [],
   }))
   // ADR-0027: endpoint, region, addressing style and scopes come back from the stored settings;
   // the stored key stands until a new one is typed.
@@ -101,7 +98,7 @@ export default function EditLibrarySourceDialog({
       library.sourceUrl,
       library.sourceProxy,
       library.sourceInsecureSsl,
-      library.s3Settings,
+      s3SettingsFromLibrary(library),
     ),
   )
   const [error, setError] = useState<string | null>(null)

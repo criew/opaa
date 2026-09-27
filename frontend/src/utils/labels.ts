@@ -7,7 +7,7 @@ import type {
   GroupOrigin,
   GroupProviderResponse,
   DatePrecision,
-  DocumentSourceType,
+  SourceTypeKey,
   DocumentStatus,
   GroupKind,
   IndexingRunEventCategory,
@@ -21,10 +21,10 @@ import type {
   SpaceMembershipCounts,
   SpaceRole,
   SpaceVisibility,
-  ConfluenceEdition,
   IndexingRunMode,
   IndexingTriggerSource,
 } from '../types/api'
+import type { ConfluenceEdition } from './confluenceSource'
 import type { AccessLevel } from '../types/chat'
 
 const spaceRoleLabels: Record<SpaceRole, string> = {
@@ -257,90 +257,98 @@ export function documentStatusLabel(status: DocumentStatus | string | undefined)
   return documentStatusLabels[status as DocumentStatus] ?? status
 }
 
-const documentSourceTypeLabels: Record<DocumentSourceType, string> = {
-  UPLOAD: 'Upload',
-  FILESYSTEM: 'Dateisystem',
-  HTTP_DIRECTORY: 'Webverzeichnis',
-  RSS_FEED: 'RSS-Feed',
-  CONFLUENCE: 'Confluence',
-  S3: 'S3-Objektspeicher',
-}
-
-export function documentSourceTypeLabel(
-  sourceType: DocumentSourceType | string | undefined,
-): string {
-  if (!sourceType) return ''
-  return documentSourceTypeLabels[sourceType as DocumentSourceType] ?? sourceType
-}
-
-const documentSourceTypeShortLabels: Record<DocumentSourceType, string> = {
-  UPLOAD: 'Upload',
-  FILESYSTEM: 'Dateisystem',
-  HTTP_DIRECTORY: 'Web',
-  RSS_FEED: 'Feed',
-  CONFLUENCE: 'Confluence',
-  S3: 'S3',
-}
-
-/** The origin as a card badge shows it; tables and forms keep {@link documentSourceTypeLabel}. */
-export function documentSourceTypeShortLabel(
-  sourceType: DocumentSourceType | string | undefined,
-): string {
-  if (!sourceType) return ''
-  return documentSourceTypeShortLabels[sourceType as DocumentSourceType] ?? sourceType
-}
-
-// One sentence per source type, shown on the origin cards in LibraryCreatePage (mockup 1e wording).
-const documentSourceTypeDescriptions: Record<DocumentSourceType, string> = {
-  UPLOAD: 'Dateien auswählen oder hineinziehen; einzelne Dokumente pflegen.',
-  FILESYSTEM: 'Ein Pfad im Hausnetz wird regelmäßig eingelesen.',
-  HTTP_DIRECTORY: 'Eine interne Webadresse wird durchlaufen und indiziert.',
-  RSS_FEED: 'Neue Beiträge werden laufend übernommen, Anhänge wahlweise.',
-  CONFLUENCE: 'Ausgewählte Spaces eines Confluence (Cloud oder Data Center) werden eingelesen.',
-  S3: 'Buckets und Präfixe eines S3-kompatiblen Objektspeichers werden eingelesen.',
-}
-
-export function documentSourceTypeDescription(
-  sourceType: DocumentSourceType | string | undefined,
-): string {
-  if (!sourceType) return ''
-  return documentSourceTypeDescriptions[sourceType as DocumentSourceType] ?? 'Weiterer Quellentyp.'
-}
-
-// Derived from documentSourceTypeLabels rather than written out again, so it stays in sync with
-// that Record<DocumentSourceType, string> - which itself is exhaustive over the generated
-// DocumentSourceType union at compile time: TypeScript rejects the file if a new enum value (like
-// a future connector type) is added to the OpenAPI spec without also giving it a label here.
-// openapi-typescript erases enums to a type-only union - there is no runtime array to import
-// straight from the generated spec types - so this is the closest a purely frontend change gets
-// to "the template list follows the spec automatically" without a build-time codegen step.
-export const allDocumentSourceTypes = Object.keys(documentSourceTypeLabels) as DocumentSourceType[]
-
 /**
- * Which configuration fields LibraryCreatePage renders and validates for each source type,
- * mirroring KnowledgeLibraryService#validateConfigurationForType (ADR-0018):
- * - 'none': no source configuration fields are shown/sent (UPLOAD).
+ * Which configuration form the frontend renders for a source type (ADR-0038) - the per-connector
+ * UI the backend's open type key is registered with:
+ * - 'none': no source configuration fields (UPLOAD).
  * - 'path': a required, server-absolute directory path (FILESYSTEM).
  * - 'url': a required http(s) URL plus optional proxy/credentials/insecure-SSL (HTTP_DIRECTORY,
- *   RSS_FEED - both run-based, URL-fetched source types with the identical configuration shape).
- * - 'confluence': base address, edition-dependent credentials and a space selection (CONFLUENCE,
- *   ADR-0023) - its own multi-stage flow, see LibraryCreatePage.
- * - 's3': endpoint, region and addressing style from a provider template, a static key and one to
- *   fifty scopes (S3, ADR-0027) - its own staged form, see S3SourceForm.
- *
- * Just like documentSourceTypeLabels, this is a Record over the full DocumentSourceType union, so
- * a future enum value forces a compile error here instead of silently rendering as a template with
- * no configuration fields at all.
+ *   RSS_FEED).
+ * - 'confluence': address, edition-dependent credentials and a space selection (ADR-0023).
+ * - 's3': endpoint, region and addressing style, a static key and one to fifty scopes (ADR-0027).
  */
 export type DocumentSourceConfigKind = 'none' | 'path' | 'url' | 'confluence' | 's3'
 
-export const documentSourceTypeConfigKind: Record<DocumentSourceType, DocumentSourceConfigKind> = {
-  UPLOAD: 'none',
-  FILESYSTEM: 'path',
-  HTTP_DIRECTORY: 'url',
-  RSS_FEED: 'url',
-  CONFLUENCE: 'confluence',
-  S3: 's3',
+/** The frontend half of a connector: its names, its sentence for the wizard tile, its form. */
+interface SourceTypeRegistration {
+  label: string
+  shortLabel: string
+  description: string
+  configKind: DocumentSourceConfigKind
+}
+
+/**
+ * Every source type the frontend has a form for, in the order the wizard offers them. A type the
+ * backend lists (GET /source-types) but this table lacks is shown under its own display name and
+ * cannot be configured here.
+ */
+const sourceTypeRegistrations: Record<SourceTypeKey, SourceTypeRegistration> = {
+  UPLOAD: {
+    label: 'Upload',
+    shortLabel: 'Upload',
+    description: 'Dateien auswählen oder hineinziehen; einzelne Dokumente pflegen.',
+    configKind: 'none',
+  },
+  FILESYSTEM: {
+    label: 'Dateisystem',
+    shortLabel: 'Dateisystem',
+    description: 'Ein Pfad im Hausnetz wird regelmäßig eingelesen.',
+    configKind: 'path',
+  },
+  HTTP_DIRECTORY: {
+    label: 'Webverzeichnis',
+    shortLabel: 'Web',
+    description: 'Eine interne Webadresse wird durchlaufen und indiziert.',
+    configKind: 'url',
+  },
+  RSS_FEED: {
+    label: 'RSS-Feed',
+    shortLabel: 'Feed',
+    description: 'Neue Beiträge werden laufend übernommen, Anhänge wahlweise.',
+    configKind: 'url',
+  },
+  CONFLUENCE: {
+    label: 'Confluence',
+    shortLabel: 'Confluence',
+    description: 'Ausgewählte Spaces eines Confluence (Cloud oder Data Center) werden eingelesen.',
+    configKind: 'confluence',
+  },
+  S3: {
+    label: 'S3-Objektspeicher',
+    shortLabel: 'S3',
+    description: 'Buckets und Präfixe eines S3-kompatiblen Objektspeichers werden eingelesen.',
+    configKind: 's3',
+  },
+}
+
+function registrationOf(sourceType: string | undefined): SourceTypeRegistration | undefined {
+  return sourceType ? sourceTypeRegistrations[sourceType] : undefined
+}
+
+export function documentSourceTypeLabel(sourceType: SourceTypeKey | undefined): string {
+  if (!sourceType) return ''
+  return registrationOf(sourceType)?.label ?? sourceType
+}
+
+/** The origin as a card badge shows it; tables and forms keep {@link documentSourceTypeLabel}. */
+export function documentSourceTypeShortLabel(sourceType: SourceTypeKey | undefined): string {
+  if (!sourceType) return ''
+  return registrationOf(sourceType)?.shortLabel ?? sourceType
+}
+
+export function documentSourceTypeDescription(sourceType: SourceTypeKey | undefined): string {
+  if (!sourceType) return ''
+  return registrationOf(sourceType)?.description ?? 'Weiterer Quellentyp.'
+}
+
+/** The source types with a registered form, in the wizard's order. */
+export const registeredSourceTypes: SourceTypeKey[] = Object.keys(sourceTypeRegistrations)
+
+/** The form a source type is configured with, undefined for a type the frontend has none for. */
+export function sourceConfigKind(
+  sourceType: SourceTypeKey | undefined,
+): DocumentSourceConfigKind | undefined {
+  return registrationOf(sourceType)?.configKind
 }
 
 // #513: German, understandable categories for a skipped/rejected item or error in a run's
@@ -461,7 +469,9 @@ const confluenceEditionLabels: Record<ConfluenceEdition, string> = {
   DATA_CENTER: 'Data Center',
 }
 
-export function confluenceEditionLabel(edition: ConfluenceEdition | string | undefined): string {
+export function confluenceEditionLabel(
+  edition: ConfluenceEdition | string | null | undefined,
+): string {
   if (!edition) return ''
   return confluenceEditionLabels[edition as ConfluenceEdition] ?? edition
 }

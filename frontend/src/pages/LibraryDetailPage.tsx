@@ -25,7 +25,9 @@ import PlayArrowIcon from '@mui/icons-material/PlayArrow'
 import WarningAmberIcon from '@mui/icons-material/WarningAmber'
 import { alpha } from '@mui/material/styles'
 import { fontFamily } from '../theme/tokens'
-import type { AssetRole, S3Settings, ConfluenceSpaceRef } from '../types/api'
+import type { AssetRole } from '../types/api'
+import { s3SettingsFromLibrary, type S3Settings } from '../utils/s3Source'
+import { confluenceSettingsOf, type ConfluenceSpaceRef } from '../utils/confluenceSource'
 import { confluenceEditionLabel } from '../utils/labels'
 import { useAuthStore } from '../stores/authStore'
 import { confirmAction } from '../stores/confirmStore'
@@ -33,7 +35,7 @@ import { useLibraryStore } from '../stores/libraryStore'
 import { IDLE_RUN_STATE, useIndexingStore } from '../stores/indexingStore'
 import {
   assetRoleLabel,
-  documentSourceTypeConfigKind,
+  sourceConfigKind,
   documentSourceTypeLabel,
   formatFileSize,
 } from '../utils/labels'
@@ -327,9 +329,7 @@ export default function LibraryDetailPage() {
   // The connector-only concerns (status polling, trigger actions, the "Indizierung" area) hang
   // off the details' sourceType; a plain UPLOAD library has none of them.
   const connectorSourceType = details && details.sourceType !== 'UPLOAD' ? details.sourceType : null
-  const connectorConfigKind = connectorSourceType
-    ? documentSourceTypeConfigKind[connectorSourceType]
-    : null
+  const connectorConfigKind = connectorSourceType ? sourceConfigKind(connectorSourceType) : null
 
   // #1939: every role sees every area; a reader simply finds less inside it. Only an UPLOAD
   // library genuinely has no source area.
@@ -757,14 +757,14 @@ export default function LibraryDetailPage() {
             <Typography variant="body2" data-testid="library-scope-summary">
               {details.sourceType === 'CONFLUENCE'
                 ? [
-                    confluenceScopeSummaryLabel(details.confluenceSpaces),
-                    details.confluenceEdition
-                      ? confluenceEditionLabel(details.confluenceEdition)
+                    confluenceScopeSummaryLabel(confluenceSettingsOf(details).spaces),
+                    confluenceSettingsOf(details).edition
+                      ? confluenceEditionLabel(confluenceSettingsOf(details).edition)
                       : null,
                   ]
                     .filter(Boolean)
                     .join(' · ')
-                : s3ScopeSummaryLabel(details.s3Settings)}
+                : s3ScopeSummaryLabel(s3SettingsFromLibrary(details))}
               {' · '}
               <Link
                 component={RouterLink}
@@ -801,8 +801,8 @@ export default function LibraryDetailPage() {
                 />
                 <Typography sx={{ fontSize: 12.5 }}>
                   {run.unlistedScopeKeys.length === 1
-                    ? `Der letzte Vollabgleich konnte den Space ${confluenceSpaceHeroLabel(run.unlistedScopeKeys[0], details.confluenceSpaces)} nicht vollständig lesen; sein Bestand ist möglicherweise veraltet.`
-                    : `Der letzte Vollabgleich konnte die Spaces ${run.unlistedScopeKeys.map((key) => confluenceSpaceHeroLabel(key, details.confluenceSpaces)).join(', ')} nicht vollständig lesen; ihr Bestand ist möglicherweise veraltet.`}{' '}
+                    ? `Der letzte Vollabgleich konnte den Space ${confluenceSpaceHeroLabel(run.unlistedScopeKeys[0], confluenceSettingsOf(details).spaces)} nicht vollständig lesen; sein Bestand ist möglicherweise veraltet.`
+                    : `Der letzte Vollabgleich konnte die Spaces ${run.unlistedScopeKeys.map((key) => confluenceSpaceHeroLabel(key, confluenceSettingsOf(details).spaces)).join(', ')} nicht vollständig lesen; ihr Bestand ist möglicherweise veraltet.`}{' '}
                   Der Hinweis bleibt, bis ein Vollabgleich wieder alle Spaces lesen kann.
                 </Typography>
               </Stack>
@@ -972,7 +972,7 @@ export default function LibraryDetailPage() {
             sourceType={details.sourceType}
             canManage={canTrigger}
             refreshToken={documentsRefreshToken}
-            confluenceSpaces={details.confluenceSpaces}
+            confluenceSpaces={confluenceSettingsOf(details).spaces}
             // #506 review, finding 7: the document count in the header comes from the library
             // itself, not from documentStore - without this it stays on whatever value was loaded
             // on mount even after an upload or delete changes it.
