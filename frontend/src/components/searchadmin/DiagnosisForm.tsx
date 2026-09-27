@@ -13,7 +13,7 @@ import type {
   SearchDiagnosisRequest,
   SearchPermissionProfileResponse,
 } from '../../types/api'
-import { getDocumentTypeVocabulary } from '../../services/api'
+import { getDocumentTypeVocabulary } from '../../services/libraryMetadataApi'
 import { plural, UUID_PATTERN } from './format'
 
 const OWN_CONTEXT_VALUE = 'SELF'

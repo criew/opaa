@@ -14,7 +14,7 @@ import {
   mockGroupEffects,
   mockPendingPlan,
 } from './groupAdminFixtures'
-import { mockGroups } from './fixtures'
+import { mockGroups } from './groupFixtures'
 
 const KIND_ORDER = ['AD_HOC', 'IDENTITY_PROVIDER', 'ORG_UNIT']
 const STATE_ORDER: GroupState[] = [

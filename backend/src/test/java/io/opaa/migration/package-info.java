@@ -2,17 +2,27 @@
  * Tests that apply real, versioned Liquibase changelogs in isolation against a Postgres
  * Testcontainer - not against Hibernate-generated schema and not against an empty database.
  *
- * <p><b>The baseline:</b> the whole schema lives in {@code db/changelog/changes/001-baseline.yaml},
- * one changeSet per logical module. {@link io.opaa.migration.MigrationBaselineTest} asserts what
- * spans all modules; each module's invariants live in its own subclass of {@link
- * io.opaa.migration.AbstractBaselineTest} ({@code IdentityBaselineTest}, {@code
- * RightsBaselineTest}, ...), next to the privilege models, the retention deletion and the guarded
- * {@code vector_store} changeSets, which keep classes of their own.
+ * <p><b>The layout:</b> {@code db/changelog/<module>/YYYY-MM-DD-<topic>.yaml}, one directory per
+ * logical module, included by the master in module order. {@link
+ * io.opaa.migration.ChangelogLayoutTest} holds names and order, {@link
+ * io.opaa.migration.ChangelogModuleBoundaryTest} the module boundary of every table, trigger,
+ * function and foreign key.
  *
- * <p><b>A new changeset</b> gets its own delta test here: apply everything up to the changeSet
- * immediately preceding it via a fixture changelog starting from {@code
- * db/changelog/test-master-through-baseline.yaml}, seed representative rows through JDBC, apply
- * only the new changelog file, and assert on the resulting schema and data.
+ * <p><b>The baseline</b> is the file {@code 2026-09-27-baseline.yaml} of every module, applied
+ * together by {@code db/changelog/test-master-through-baseline.yaml}. {@link
+ * io.opaa.migration.MigrationBaselineTest} asserts what spans all modules; each module's invariants
+ * live in its own subclass of {@link io.opaa.migration.AbstractBaselineTest} ({@code
+ * IdentityBaselineTest}, {@code RightsBaselineTest}, ...), next to the privilege models, the
+ * retention deletion and the guarded {@code vector_store} changeSets, which keep classes of their
+ * own.
+ *
+ * <p><b>A new changeset</b> gets its own delta test here: its {@code baseFixtureChangelogs()} is
+ * {@link io.opaa.migration.MasterChangelog#filesExcept(String...)} of its file - the state of an
+ * existing installation that receives it - then it seeds representative rows through JDBC, applies
+ * only the new file and asserts on the resulting schema and data. {@link
+ * io.opaa.migration.MasterChangelog#filesBefore(String)} gives the state of a fresh installation
+ * instead; {@link io.opaa.migration.ChangelogOrderTest} checks that both orders leave the same
+ * schema.
  *
  * <p>Every test class extends {@link io.opaa.migration.AbstractMigrationTest}, which owns the
  * Postgres Testcontainer (one per test JVM) and builds the fixture once per class into a template

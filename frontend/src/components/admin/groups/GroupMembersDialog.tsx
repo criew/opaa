@@ -12,7 +12,7 @@ import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import type { GroupListResponse, UserInfo } from '../../../types/api'
-import { getUsers } from '../../../services/api'
+import { getUsers } from '../../../services/userApi'
 import { selectGroupMembers, useGroupStore } from '../../../stores/groupStore'
 import GroupMembersTable from './GroupMembersTable'
 

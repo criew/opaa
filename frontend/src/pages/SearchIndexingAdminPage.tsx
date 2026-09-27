@@ -55,7 +55,7 @@ import type {
   TrackedDocumentResponse,
 } from '../types/api'
 import { translateListLabel, translateStageNote } from '../utils/retrievalProtocolText'
-import { getSearchChunk } from '../services/api'
+import { getSearchChunk } from '../services/searchAdminApi'
 import { useAuthStore } from '../stores/authStore'
 import { useSearchAdminStore } from '../stores/searchAdminStore'
 import { contentWidth } from '../theme/tokens'

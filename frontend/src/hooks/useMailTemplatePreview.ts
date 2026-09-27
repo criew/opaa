@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { MailTemplatePreviewResponse } from '../types/api'
-import { previewMailTemplate } from '../services/api'
+import { previewMailTemplate } from '../services/mailApi'
 
 /** Long enough that typing a sentence is one request, short enough to feel live. */
 export const MAIL_PREVIEW_DEBOUNCE_MS = 500

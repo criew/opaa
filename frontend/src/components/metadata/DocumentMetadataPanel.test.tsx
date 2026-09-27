@@ -22,8 +22,10 @@ const {
   })),
 }))
 
-vi.mock('../../services/api', async () => {
-  const actual = await vi.importActual<typeof import('../../services/api')>('../../services/api')
+vi.mock('../../services/libraryMetadataApi', async () => {
+  const actual = await vi.importActual<typeof import('../../services/libraryMetadataApi')>(
+    '../../services/libraryMetadataApi',
+  )
   return {
     ...actual,
     getDocumentMetadata: mockGetDocumentMetadata,

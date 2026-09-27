@@ -40,17 +40,34 @@ const {
   })),
 }))
 
-vi.mock('../../services/api', async () => {
-  const actual = await vi.importActual<typeof import('../../services/api')>('../../services/api')
+vi.mock('../../services/assetApi', async () => {
+  const actual =
+    await vi.importActual<typeof import('../../services/assetApi')>('../../services/assetApi')
   return {
     ...actual,
     getAssetGrants: mockGetAssetGrants,
     upsertAssetGrant: mockUpsertAssetGrant,
     revokeAssetGrant: mockRevokeAssetGrant,
+    getGrantedGroupMembers: mockGetGrantedGroupMembers,
+  }
+})
+
+vi.mock('../../services/groupApi', async () => {
+  const actual =
+    await vi.importActual<typeof import('../../services/groupApi')>('../../services/groupApi')
+  return {
+    ...actual,
     searchSelectableGroups: mockSearchSelectableGroups,
     resolveSelectableGroup: mockResolveSelectableGroup,
+  }
+})
+
+vi.mock('../../services/userApi', async () => {
+  const actual =
+    await vi.importActual<typeof import('../../services/userApi')>('../../services/userApi')
+  return {
+    ...actual,
     getUserSummaries: mockGetUserSummaries,
-    getGrantedGroupMembers: mockGetGrantedGroupMembers,
   }
 })
 

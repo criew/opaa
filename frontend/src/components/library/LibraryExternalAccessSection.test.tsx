@@ -10,11 +10,22 @@ const { mockGetLibrary, mockUpdateLibraryExternalAccess } = vi.hoisted(() => ({
   mockUpdateLibraryExternalAccess: vi.fn(),
 }))
 
-vi.mock('../../services/api', async () => {
-  const actual = await vi.importActual<typeof import('../../services/api')>('../../services/api')
+vi.mock('../../services/libraryApi', async () => {
+  const actual = await vi.importActual<typeof import('../../services/libraryApi')>(
+    '../../services/libraryApi',
+  )
   return {
     ...actual,
     getLibrary: mockGetLibrary,
+  }
+})
+
+vi.mock('../../services/externalAccessApi', async () => {
+  const actual = await vi.importActual<typeof import('../../services/externalAccessApi')>(
+    '../../services/externalAccessApi',
+  )
+  return {
+    ...actual,
     updateLibraryExternalAccess: mockUpdateLibraryExternalAccess,
   }
 })

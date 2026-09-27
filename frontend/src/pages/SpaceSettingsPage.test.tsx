@@ -183,23 +183,27 @@ const {
   }
 })
 
-vi.mock('../services/api', async () => {
-  const actual = await vi.importActual<typeof import('../services/api')>('../services/api')
+vi.mock('../services/userApi', async () => {
+  const actual = await vi.importActual<typeof import('../services/userApi')>('../services/userApi')
   return {
     ...actual,
     getUsers: vi.fn(async () => []),
     getUserSummaries: vi.fn(async () => []),
+  }
+})
+
+vi.mock('../services/spaceApi', async () => {
+  const actual =
+    await vi.importActual<typeof import('../services/spaceApi')>('../services/spaceApi')
+  return {
+    ...actual,
     getSpaces: vi.fn(async () => []),
-    getLibraries: mockGetLibraries,
-    // #1820: the subject picker searches groups server-side.
-    searchSelectableGroups: mockSearchSelectableGroups,
     getSpaceAccessDerivation: mockGetSpaceAccessDerivation,
     getSpaceGroupMembers: mockGetSpaceGroupMembers,
     getSpace: vi.fn(
       async (spaceId: string) => useSpaceStore.getState().selectedSpace ?? { id: spaceId },
     ),
     listSpaceMembers: mockListSpaceMembers,
-    getSpaceAssetAssociations: mockGetSpaceAssetAssociations,
     updateSpaceDetails: mockUpdateSpaceDetails,
     updateSpaceMemberRole: mockUpdateSpaceMemberRole,
     removeSpaceMember: mockRemoveSpaceMember,
@@ -207,6 +211,34 @@ vi.mock('../services/api', async () => {
     addSpaceMember: mockAddSpaceMember,
     deleteSpace: mockDeleteSpace,
     archiveSpace: mockArchiveSpace,
+  }
+})
+
+vi.mock('../services/libraryApi', async () => {
+  const actual =
+    await vi.importActual<typeof import('../services/libraryApi')>('../services/libraryApi')
+  return {
+    ...actual,
+    getLibraries: mockGetLibraries,
+  }
+})
+
+vi.mock('../services/groupApi', async () => {
+  const actual =
+    await vi.importActual<typeof import('../services/groupApi')>('../services/groupApi')
+  return {
+    ...actual,
+    // #1820: the subject picker searches groups server-side.
+    searchSelectableGroups: mockSearchSelectableGroups,
+  }
+})
+
+vi.mock('../services/assetApi', async () => {
+  const actual =
+    await vi.importActual<typeof import('../services/assetApi')>('../services/assetApi')
+  return {
+    ...actual,
+    getSpaceAssetAssociations: mockGetSpaceAssetAssociations,
   }
 })
 

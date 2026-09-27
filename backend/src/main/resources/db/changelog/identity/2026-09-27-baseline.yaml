@@ -1,0 +1,603 @@
+databaseChangeLog:
+  - changeSet:
+      id: identity-2026-09-27-baseline
+      author: opaa
+      comment: "Module identity: accounts and sign-in (users, OIDC providers, local accounts with their tokens and settings), branding, mail, and the append-only audit trail - partitioned by month and owned by the restricted opaa_audit_owner role (ADR-0015). Its retention-settings seed row is inserted before the privilege restriction revokes INSERT on it from the migration account."
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              CREATE TABLE audit_incident_scope_grants (
+                  id uuid NOT NULL,
+                  organization_id uuid NOT NULL,
+                  subject_user_id uuid NOT NULL,
+                  scope_start timestamp with time zone NOT NULL,
+                  scope_end timestamp with time zone NOT NULL,
+                  purpose character varying(40) NOT NULL,
+                  reason character varying(1000) NOT NULL,
+                  requested_by_user_id uuid NOT NULL,
+                  requested_at timestamp with time zone NOT NULL,
+                  approved_by_user_id uuid,
+                  approved_at timestamp with time zone,
+                  usable_until timestamp with time zone,
+                  status character varying(10) NOT NULL,
+                  CONSTRAINT chk_audit_incident_scope_grants_purpose CHECK ((purpose IN ('SECURITY_INCIDENT', 'UNAUTHORIZED_ACCESS_SUSPICION', 'DATA_BREACH_INVESTIGATION', 'EXTERNAL_AUDIT_OR_INSPECTION'))),
+                  CONSTRAINT chk_audit_incident_scope_grants_requester CHECK ((((approved_by_user_id IS NULL) AND (approved_at IS NULL)) OR ((approved_by_user_id IS NOT NULL) AND (approved_at IS NOT NULL) AND (approved_by_user_id <> requested_by_user_id)))),
+                  CONSTRAINT chk_audit_incident_scope_grants_scope CHECK ((scope_start <= scope_end)),
+                  CONSTRAINT chk_audit_incident_scope_grants_status CHECK ((status IN ('PENDING', 'APPROVED')))
+              );
+
+              CREATE TABLE branding_settings (
+                  id integer NOT NULL,
+                  product_name character varying(60),
+                  claim character varying(120),
+                  primary_color character varying(7),
+                  default_color_scheme character varying(10),
+                  logo_content bytea,
+                  logo_content_type character varying(50),
+                  logo_version character varying(16),
+                  logo_updated_at timestamp with time zone,
+                  updated_at timestamp with time zone DEFAULT now() NOT NULL,
+                  login_logo_content bytea,
+                  login_logo_content_type character varying(50),
+                  login_logo_version character varying(16),
+                  login_logo_updated_at timestamp with time zone,
+                  login_background_content bytea,
+                  login_background_content_type character varying(50),
+                  login_background_version character varying(16),
+                  login_background_updated_at timestamp with time zone,
+                  CONSTRAINT chk_branding_settings_color_scheme CHECK (((default_color_scheme IS NULL) OR (default_color_scheme IN ('LIGHT', 'DARK', 'SYSTEM')))),
+                  CONSTRAINT chk_branding_settings_login_background_complete CHECK ((((login_background_content IS NULL) AND (login_background_content_type IS NULL) AND (login_background_version IS NULL) AND (login_background_updated_at IS NULL)) OR ((login_background_content IS NOT NULL) AND (login_background_content_type IS NOT NULL) AND (login_background_version IS NOT NULL) AND (login_background_updated_at IS NOT NULL)))),
+                  CONSTRAINT chk_branding_settings_login_background_content_type CHECK (((login_background_content_type IS NULL) OR (login_background_content_type IN ('image/png', 'image/jpeg')))),
+                  CONSTRAINT chk_branding_settings_login_background_size CHECK (((login_background_content IS NULL) OR (octet_length(login_background_content) <= 2097152))),
+                  CONSTRAINT chk_branding_settings_login_logo_complete CHECK ((((login_logo_content IS NULL) AND (login_logo_content_type IS NULL) AND (login_logo_version IS NULL) AND (login_logo_updated_at IS NULL)) OR ((login_logo_content IS NOT NULL) AND (login_logo_content_type IS NOT NULL) AND (login_logo_version IS NOT NULL) AND (login_logo_updated_at IS NOT NULL)))),
+                  CONSTRAINT chk_branding_settings_login_logo_content_type CHECK (((login_logo_content_type IS NULL) OR (login_logo_content_type IN ('image/png', 'image/jpeg')))),
+                  CONSTRAINT chk_branding_settings_login_logo_size CHECK (((login_logo_content IS NULL) OR (octet_length(login_logo_content) <= 524288))),
+                  CONSTRAINT chk_branding_settings_logo_complete CHECK ((((logo_content IS NULL) AND (logo_content_type IS NULL) AND (logo_version IS NULL) AND (logo_updated_at IS NULL)) OR ((logo_content IS NOT NULL) AND (logo_content_type IS NOT NULL) AND (logo_version IS NOT NULL) AND (logo_updated_at IS NOT NULL)))),
+                  CONSTRAINT chk_branding_settings_logo_content_type CHECK (((logo_content_type IS NULL) OR (logo_content_type IN ('image/png', 'image/jpeg')))),
+                  CONSTRAINT chk_branding_settings_logo_size CHECK (((logo_content IS NULL) OR (octet_length(logo_content) <= 524288))),
+                  CONSTRAINT chk_branding_settings_primary_color CHECK (((primary_color IS NULL) OR ((primary_color)::text ~ '^#[0-9A-Fa-f]{6}$'::text))),
+                  CONSTRAINT chk_branding_settings_singleton CHECK ((id = 1))
+              );
+
+              CREATE TABLE local_action_tokens (
+                  id uuid NOT NULL,
+                  user_id uuid NOT NULL,
+                  purpose character varying(32) NOT NULL,
+                  token_hash character varying(64) NOT NULL,
+                  created_at timestamp with time zone DEFAULT now() NOT NULL,
+                  expires_at timestamp with time zone NOT NULL,
+                  consumed_at timestamp with time zone,
+                  provider_id uuid,
+                  reason character varying(200),
+                  CONSTRAINT chk_local_action_tokens_handover CHECK ((((purpose)::text = 'HANDOVER'::text) = ((provider_id IS NOT NULL) AND (reason IS NOT NULL)))),
+                  CONSTRAINT chk_local_action_tokens_purpose CHECK ((purpose IN ('SET_PASSWORD', 'RESET_PASSWORD', 'VERIFY_EMAIL', 'HANDOVER')))
+              );
+
+              CREATE TABLE local_admin_seed_marker (
+                  id integer NOT NULL,
+                  seeded_at timestamp with time zone NOT NULL,
+                  CONSTRAINT chk_local_admin_seed_marker_singleton CHECK ((id = 1))
+              );
+
+              CREATE TABLE local_auth_settings (
+                  id integer NOT NULL,
+                  self_registration_enabled boolean DEFAULT false NOT NULL,
+                  self_registration_allowed_domains character varying(2000) DEFAULT ''::character varying NOT NULL,
+                  password_reset_enabled boolean DEFAULT true NOT NULL,
+                  password_min_length integer DEFAULT 12 NOT NULL,
+                  invitation_token_ttl_hours integer DEFAULT 72 NOT NULL,
+                  reset_token_ttl_minutes integer DEFAULT 30 NOT NULL,
+                  default_expiry_days integer DEFAULT 90 NOT NULL,
+                  inactive_days integer DEFAULT 90 NOT NULL,
+                  updated_at timestamp with time zone DEFAULT now() NOT NULL,
+                  updated_by uuid,
+                  version bigint DEFAULT 0 NOT NULL,
+                  CONSTRAINT chk_local_auth_settings_default_expiry_days CHECK ((default_expiry_days >= 1)),
+                  CONSTRAINT chk_local_auth_settings_inactive_days CHECK ((inactive_days >= 30)),
+                  CONSTRAINT chk_local_auth_settings_invitation_token_ttl CHECK (((invitation_token_ttl_hours >= 1) AND (invitation_token_ttl_hours <= 720))),
+                  CONSTRAINT chk_local_auth_settings_password_min_length CHECK (((password_min_length >= 8) AND (password_min_length <= 64))),
+                  CONSTRAINT chk_local_auth_settings_reset_token_ttl CHECK (((reset_token_ttl_minutes >= 1) AND (reset_token_ttl_minutes <= 1440))),
+                  CONSTRAINT chk_local_auth_settings_singleton CHECK ((id = 1))
+              );
+
+              CREATE TABLE local_credentials (
+                  user_id uuid NOT NULL,
+                  password_hash character varying(255),
+                  password_change_required boolean DEFAULT false NOT NULL,
+                  password_change_reason character varying(32),
+                  password_invalidated_before timestamp with time zone,
+                  locked_at timestamp with time zone,
+                  locked_reason character varying(32),
+                  failed_login_attempts integer DEFAULT 0 NOT NULL,
+                  lockout_until timestamp with time zone,
+                  expires_at timestamp with time zone,
+                  email_verified_at timestamp with time zone,
+                  created_reason character varying(200) NOT NULL,
+                  is_bootstrap boolean DEFAULT false NOT NULL,
+                  created_at timestamp with time zone DEFAULT now() NOT NULL,
+                  updated_at timestamp with time zone DEFAULT now() NOT NULL,
+                  version bigint DEFAULT 0 NOT NULL,
+                  CONSTRAINT chk_local_credentials_created_reason CHECK ((btrim((created_reason)::text) <> ''::text)),
+                  CONSTRAINT chk_local_credentials_failed_login_attempts CHECK ((failed_login_attempts >= 0)),
+                  CONSTRAINT chk_local_credentials_lock_consistent CHECK (((locked_at IS NULL) = (locked_reason IS NULL))),
+                  CONSTRAINT chk_local_credentials_locked_reason CHECK (((locked_reason IS NULL) OR (locked_reason IN ('ADMIN', 'FAILED_LOGINS', 'INACTIVITY')))),
+                  CONSTRAINT chk_local_credentials_password_change_consistent CHECK ((password_change_required = (password_change_reason IS NOT NULL))),
+                  CONSTRAINT chk_local_credentials_password_change_reason CHECK (((password_change_reason IS NULL) OR (password_change_reason IN ('INITIAL', 'ADMIN_RESET', 'SECURITY'))))
+              );
+
+              CREATE TABLE local_refresh_tokens (
+                  id uuid NOT NULL,
+                  family_id uuid NOT NULL,
+                  user_id uuid NOT NULL,
+                  token_lookup_hash character varying(64) NOT NULL,
+                  issued_at timestamp with time zone NOT NULL,
+                  expires_at timestamp with time zone NOT NULL,
+                  family_expires_at timestamp with time zone NOT NULL,
+                  revoked_at timestamp with time zone,
+                  revocation_reason character varying(32),
+                  rotated_to_id uuid,
+                  CONSTRAINT chk_local_refresh_tokens_expiry_order CHECK (((expires_at > issued_at) AND (family_expires_at >= issued_at))),
+                  CONSTRAINT chk_local_refresh_tokens_revocation_consistent CHECK (((revoked_at IS NULL) = (revocation_reason IS NULL))),
+                  CONSTRAINT chk_local_refresh_tokens_revocation_reason CHECK (((revocation_reason IS NULL) OR (revocation_reason IN ('ROTATED', 'REUSE_DETECTED', 'LOGOUT', 'PASSWORD_CHANGED', 'ADMIN_RESET', 'ACCOUNT_LOCKED', 'HANDED_OVER', 'ADMIN'))))
+              );
+
+              CREATE TABLE local_revoked_tokens (
+                  jti_hash character varying(64) NOT NULL,
+                  user_id uuid NOT NULL,
+                  expires_at timestamp with time zone NOT NULL,
+                  revoked_at timestamp with time zone DEFAULT now() NOT NULL
+              );
+
+              CREATE TABLE mail_settings (
+                  id integer NOT NULL,
+                  enabled boolean DEFAULT false NOT NULL,
+                  host character varying(255),
+                  port integer,
+                  username character varying(255),
+                  password_ciphertext text,
+                  encryption character varying(20) DEFAULT 'STARTTLS'::character varying NOT NULL,
+                  from_address character varying(320),
+                  from_name character varying(120),
+                  last_success_at timestamp with time zone,
+                  last_failure_at timestamp with time zone,
+                  last_failure_reason character varying(500),
+                  updated_at timestamp with time zone DEFAULT now() NOT NULL,
+                  updated_by uuid,
+                  CONSTRAINT chk_mail_settings_encryption CHECK ((encryption IN ('NONE', 'STARTTLS', 'SSL'))),
+                  CONSTRAINT chk_mail_settings_port CHECK (((port IS NULL) OR ((port >= 1) AND (port <= 65535)))),
+                  CONSTRAINT chk_mail_settings_singleton CHECK ((id = 1))
+              );
+
+              CREATE TABLE mail_templates (
+                  id uuid NOT NULL,
+                  template_key character varying(60) NOT NULL,
+                  locale character varying(10) NOT NULL,
+                  subject character varying(300) NOT NULL,
+                  body_plain text NOT NULL,
+                  body_html text,
+                  updated_at timestamp with time zone DEFAULT now() NOT NULL,
+                  updated_by uuid
+              );
+
+              CREATE TABLE notifications (
+                  id uuid NOT NULL,
+                  organization_id uuid NOT NULL,
+                  recipient_user_id uuid NOT NULL,
+                  type character varying(50) NOT NULL,
+                  object_type character varying(30),
+                  object_id uuid,
+                  title character varying(255) NOT NULL,
+                  body character varying(2000),
+                  read_at timestamp with time zone,
+                  created_at timestamp with time zone DEFAULT now() NOT NULL
+              );
+
+              CREATE TABLE oidc_provider_seed_marker (
+                  id integer NOT NULL,
+                  seeded_at timestamp with time zone NOT NULL,
+                  CONSTRAINT chk_oidc_provider_seed_marker_singleton CHECK ((id = 1))
+              );
+
+              CREATE TABLE oidc_providers (
+                  id uuid NOT NULL,
+                  display_name character varying(120) NOT NULL,
+                  enabled boolean DEFAULT true NOT NULL,
+                  is_default boolean DEFAULT false NOT NULL,
+                  sort_order integer DEFAULT 0 NOT NULL,
+                  issuer_uri character varying(500) NOT NULL,
+                  client_id character varying(255),
+                  jwk_set_uri character varying(500),
+                  email_claim character varying(100) DEFAULT 'email'::character varying NOT NULL,
+                  display_name_claim character varying(100) DEFAULT 'name'::character varying NOT NULL,
+                  roles_claim character varying(200),
+                  system_admin_role character varying(255),
+                  auditor_role character varying(255),
+                  groups_claim character varying(200),
+                  created_at timestamp with time zone DEFAULT now() NOT NULL,
+                  updated_at timestamp with time zone DEFAULT now() NOT NULL,
+                  provider_type character varying(16) DEFAULT 'OIDC'::character varying NOT NULL,
+                  is_external boolean DEFAULT true NOT NULL,
+                  directory_sync_enabled boolean DEFAULT false NOT NULL,
+                  directory_sync_interval_minutes integer,
+                  CONSTRAINT chk_oidc_providers_client_id_by_type CHECK ((((provider_type)::text = 'OIDC'::text) = (client_id IS NOT NULL))),
+                  CONSTRAINT chk_oidc_providers_directory_sync CHECK ((((directory_sync_enabled = false) AND (directory_sync_interval_minutes IS NULL)) OR ((directory_sync_enabled = true) AND ((provider_type)::text = 'OIDC'::text) AND (groups_claim IS NULL) AND (directory_sync_interval_minutes >= 5) AND (directory_sync_interval_minutes <= 10080)))),
+                  CONSTRAINT chk_oidc_providers_local_not_external CHECK ((((provider_type)::text <> 'LOCAL'::text) OR (is_external = false))),
+                  CONSTRAINT chk_oidc_providers_local_row CHECK ((((provider_type)::text <> 'LOCAL'::text) OR ((is_default = false) AND ((issuer_uri)::text = 'urn:opaa:local'::text)))),
+                  CONSTRAINT chk_oidc_providers_provider_type CHECK ((provider_type IN ('OIDC', 'LOCAL')))
+              );
+
+              CREATE TABLE users (
+                  id uuid DEFAULT gen_random_uuid() NOT NULL,
+                  subject character varying(255) NOT NULL,
+                  issuer character varying(500) NOT NULL,
+                  email character varying(320),
+                  display_name character varying(255),
+                  created_at timestamp with time zone DEFAULT now() NOT NULL,
+                  last_login_at timestamp with time zone,
+                  system_role character varying(20) DEFAULT 'USER'::character varying NOT NULL,
+                  organization_id uuid NOT NULL,
+                  directory_locked_at timestamp with time zone
+              );
+
+              ALTER TABLE ONLY audit_incident_scope_grants
+                  ADD CONSTRAINT audit_incident_scope_grants_pkey PRIMARY KEY (id);
+
+              ALTER TABLE ONLY branding_settings
+                  ADD CONSTRAINT branding_settings_pkey PRIMARY KEY (id);
+
+              ALTER TABLE ONLY local_action_tokens
+                  ADD CONSTRAINT local_action_tokens_pkey PRIMARY KEY (id);
+
+              ALTER TABLE ONLY local_admin_seed_marker
+                  ADD CONSTRAINT local_admin_seed_marker_pkey PRIMARY KEY (id);
+
+              ALTER TABLE ONLY local_auth_settings
+                  ADD CONSTRAINT local_auth_settings_pkey PRIMARY KEY (id);
+
+              ALTER TABLE ONLY local_credentials
+                  ADD CONSTRAINT local_credentials_pkey PRIMARY KEY (user_id);
+
+              ALTER TABLE ONLY local_refresh_tokens
+                  ADD CONSTRAINT local_refresh_tokens_pkey PRIMARY KEY (id);
+
+              ALTER TABLE ONLY local_revoked_tokens
+                  ADD CONSTRAINT local_revoked_tokens_pkey PRIMARY KEY (jti_hash);
+
+              ALTER TABLE ONLY mail_settings
+                  ADD CONSTRAINT mail_settings_pkey PRIMARY KEY (id);
+
+              ALTER TABLE ONLY mail_templates
+                  ADD CONSTRAINT mail_templates_pkey PRIMARY KEY (id);
+
+              ALTER TABLE ONLY notifications
+                  ADD CONSTRAINT notifications_pkey PRIMARY KEY (id);
+
+              ALTER TABLE ONLY oidc_provider_seed_marker
+                  ADD CONSTRAINT oidc_provider_seed_marker_pkey PRIMARY KEY (id);
+
+              ALTER TABLE ONLY oidc_providers
+                  ADD CONSTRAINT oidc_providers_pkey PRIMARY KEY (id);
+
+              ALTER TABLE ONLY users
+                  ADD CONSTRAINT uk_users_id_organization UNIQUE (id, organization_id);
+
+              ALTER TABLE ONLY users
+                  ADD CONSTRAINT uq_users_subject_issuer UNIQUE (subject, issuer);
+
+              ALTER TABLE ONLY users
+                  ADD CONSTRAINT users_pkey PRIMARY KEY (id);
+
+              ALTER TABLE ONLY local_action_tokens
+                  ADD CONSTRAINT ux_local_action_tokens_hash UNIQUE (token_hash);
+
+              ALTER TABLE ONLY local_refresh_tokens
+                  ADD CONSTRAINT ux_local_refresh_tokens_lookup_hash UNIQUE (token_lookup_hash);
+
+              ALTER TABLE ONLY mail_templates
+                  ADD CONSTRAINT ux_mail_templates_key_locale UNIQUE (template_key, locale);
+
+              CREATE INDEX idx_audit_incident_scope_grants_org ON audit_incident_scope_grants USING btree (organization_id);
+
+              CREATE INDEX idx_local_action_tokens_expires_at ON local_action_tokens USING btree (expires_at);
+
+              CREATE INDEX idx_local_action_tokens_user_purpose ON local_action_tokens USING btree (user_id, purpose);
+
+              CREATE INDEX idx_local_refresh_tokens_active_family ON local_refresh_tokens USING btree (family_id) WHERE (revoked_at IS NULL);
+
+              CREATE INDEX idx_local_refresh_tokens_active_user ON local_refresh_tokens USING btree (user_id) WHERE (revoked_at IS NULL);
+
+              CREATE INDEX idx_local_refresh_tokens_expires_at ON local_refresh_tokens USING btree (expires_at);
+
+              CREATE INDEX idx_local_revoked_tokens_expires_at ON local_revoked_tokens USING btree (expires_at);
+
+              CREATE INDEX idx_local_revoked_tokens_user ON local_revoked_tokens USING btree (user_id);
+
+              CREATE INDEX idx_notifications_recipient_read ON notifications USING btree (recipient_user_id, read_at);
+
+              CREATE INDEX idx_users_directory_locked ON users USING btree (organization_id, issuer) WHERE (directory_locked_at IS NOT NULL);
+
+              CREATE UNIQUE INDEX ux_local_credentials_single_bootstrap ON local_credentials USING btree (is_bootstrap) WHERE is_bootstrap;
+
+              CREATE UNIQUE INDEX ux_oidc_providers_issuer_uri_normalized ON oidc_providers USING btree (rtrim((issuer_uri)::text, '/'::text));
+
+              CREATE UNIQUE INDEX ux_oidc_providers_single_default ON oidc_providers USING btree (is_default) WHERE is_default;
+
+              CREATE UNIQUE INDEX ux_oidc_providers_single_local ON oidc_providers USING btree (provider_type) WHERE ((provider_type)::text = 'LOCAL'::text);
+
+              CREATE UNIQUE INDEX ux_users_local_email ON users USING btree (lower((email)::text)) WHERE ((issuer)::text = 'urn:opaa:local'::text);
+
+              ALTER TABLE ONLY audit_incident_scope_grants
+                  ADD CONSTRAINT fk_audit_incident_scope_grants_approver_organization FOREIGN KEY (approved_by_user_id, organization_id) REFERENCES users(id, organization_id) ON DELETE RESTRICT;
+
+              ALTER TABLE ONLY audit_incident_scope_grants
+                  ADD CONSTRAINT fk_audit_incident_scope_grants_organization FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE RESTRICT;
+
+              ALTER TABLE ONLY audit_incident_scope_grants
+                  ADD CONSTRAINT fk_audit_incident_scope_grants_requester_organization FOREIGN KEY (requested_by_user_id, organization_id) REFERENCES users(id, organization_id) ON DELETE RESTRICT;
+
+              ALTER TABLE ONLY audit_incident_scope_grants
+                  ADD CONSTRAINT fk_audit_incident_scope_grants_subject_organization FOREIGN KEY (subject_user_id, organization_id) REFERENCES users(id, organization_id) ON DELETE RESTRICT;
+
+              ALTER TABLE ONLY local_action_tokens
+                  ADD CONSTRAINT fk_local_action_tokens_provider FOREIGN KEY (provider_id) REFERENCES oidc_providers(id) ON DELETE CASCADE;
+
+              ALTER TABLE ONLY local_action_tokens
+                  ADD CONSTRAINT fk_local_action_tokens_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
+
+              ALTER TABLE ONLY local_auth_settings
+                  ADD CONSTRAINT fk_local_auth_settings_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL;
+
+              ALTER TABLE ONLY local_credentials
+                  ADD CONSTRAINT fk_local_credentials_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
+
+              ALTER TABLE ONLY local_refresh_tokens
+                  ADD CONSTRAINT fk_local_refresh_tokens_rotated_to FOREIGN KEY (rotated_to_id) REFERENCES local_refresh_tokens(id) ON DELETE SET NULL;
+
+              ALTER TABLE ONLY local_refresh_tokens
+                  ADD CONSTRAINT fk_local_refresh_tokens_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
+
+              ALTER TABLE ONLY local_revoked_tokens
+                  ADD CONSTRAINT fk_local_revoked_tokens_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
+
+              ALTER TABLE ONLY notifications
+                  ADD CONSTRAINT fk_notifications_recipient_organization FOREIGN KEY (recipient_user_id, organization_id) REFERENCES users(id, organization_id) ON DELETE CASCADE;
+
+              ALTER TABLE ONLY users
+                  ADD CONSTRAINT fk_users_organization FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE RESTRICT;
+
+              INSERT INTO branding_settings (id, updated_at)
+              VALUES (1, now());
+
+              INSERT INTO mail_settings (id, updated_at)
+              VALUES (1, now());
+
+              INSERT INTO local_auth_settings (id)
+              VALUES (1);
+
+              CREATE TABLE audit_log (
+                  event_id uuid NOT NULL,
+                  recorded_at timestamp with time zone NOT NULL,
+                  organization_id uuid NOT NULL,
+                  actor_kind character varying(30) NOT NULL,
+                  actor_ref character varying(255) NOT NULL,
+                  event_type character varying(60) NOT NULL,
+                  object_type character varying(30) NOT NULL,
+                  object_id character varying(255) NOT NULL,
+                  object_label character varying(500),
+                  subject_kind character varying(10),
+                  subject_ref character varying(255),
+                  before text,
+                  after text,
+                  outcome character varying(10) NOT NULL,
+                  reason character varying(1000),
+                  correlation_ref character varying(255),
+                  CONSTRAINT chk_audit_log_actor_kind CHECK ((actor_kind IN ('USER', 'SERVICE_ACCOUNT', 'SYSTEM_PROCESS'))),
+                  CONSTRAINT chk_audit_log_object_type CHECK ((object_type IN ('KNOWLEDGE_LIBRARY', 'SPACE', 'GROUP', 'ASSET_GRANT', 'USER_ACCOUNT', 'API_TOKEN', 'SYSTEM_SETTING', 'AUDIT_LOG', 'DIRECTORY_SYNC_RUN', 'PROMPT_LIBRARY', 'PROMPT'))),
+                  CONSTRAINT chk_audit_log_outcome CHECK ((outcome IN ('SUCCESS', 'DENIED', 'FAILURE'))),
+                  CONSTRAINT chk_audit_log_subject CHECK ((((subject_kind IS NULL) AND (subject_ref IS NULL)) OR ((subject_kind IS NOT NULL) AND (subject_kind IN ('USER', 'GROUP')) AND (subject_ref IS NOT NULL))))
+              )
+              PARTITION BY RANGE (recorded_at);
+
+              ALTER TABLE ONLY audit_log
+                  ADD CONSTRAINT audit_log_pkey PRIMARY KEY (event_id, recorded_at);
+
+              CREATE INDEX idx_audit_log_object ON audit_log USING btree (organization_id, object_type, object_id, recorded_at);
+
+              CREATE INDEX idx_audit_log_event_type ON audit_log USING btree (organization_id, event_type, recorded_at);
+
+              CREATE INDEX idx_audit_log_correlation ON audit_log USING btree (organization_id, correlation_ref) WHERE (correlation_ref IS NOT NULL);
+
+              CREATE INDEX idx_audit_log_time_range ON audit_log USING btree (organization_id, recorded_at);
+
+              CREATE INDEX idx_audit_log_incident_scope ON audit_log USING btree (organization_id, actor_ref, recorded_at);
+
+              ALTER TABLE audit_log
+                  ADD CONSTRAINT fk_audit_log_organization FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE RESTRICT;
+
+              -- Long, fixed horizon of monthly partitions - three months back through 16 years forward from
+              -- the moment this migration runs; no DEFAULT partition, so a write outside this horizon fails
+              -- loudly instead of landing somewhere retention deletion can never reclaim.
+              DO $$
+              DECLARE
+                start_month date := date_trunc('month', now() - interval '3 months');
+                i integer;
+                partition_start date;
+                partition_end date;
+                partition_name text;
+              BEGIN
+                FOR i IN 0..194 LOOP
+                  partition_start := (start_month + (i || ' months')::interval)::date;
+                  partition_end := (start_month + ((i + 1) || ' months')::interval)::date;
+                  partition_name := 'audit_log_' || to_char(partition_start, 'YYYY_MM');
+                  EXECUTE format(
+                    'CREATE TABLE IF NOT EXISTS %I PARTITION OF audit_log FOR VALUES FROM (%L) TO (%L)',
+                    partition_name, partition_start, partition_end
+                  );
+                END LOOP;
+              END $$;
+
+              CREATE TABLE audit_actor_pseudonyms (
+                  pseudonym_id uuid NOT NULL,
+                  user_id uuid NOT NULL,
+                  organization_id uuid NOT NULL,
+                  created_at timestamp with time zone DEFAULT now() NOT NULL
+              );
+
+              ALTER TABLE ONLY audit_actor_pseudonyms
+                  ADD CONSTRAINT audit_actor_pseudonyms_pkey PRIMARY KEY (pseudonym_id);
+
+              ALTER TABLE ONLY audit_actor_pseudonyms
+                  ADD CONSTRAINT uk_audit_actor_pseudonyms_user UNIQUE (user_id);
+
+              ALTER TABLE ONLY audit_actor_pseudonyms
+                  ADD CONSTRAINT fk_audit_actor_pseudonyms_organization FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE RESTRICT;
+
+              ALTER TABLE ONLY audit_actor_pseudonyms
+                  ADD CONSTRAINT fk_audit_actor_pseudonyms_user_organization FOREIGN KEY (user_id, organization_id) REFERENCES users(id, organization_id) ON DELETE CASCADE;
+
+              -- opaa_audit_owner: a dedicated, NOLOGIN role nothing ever authenticates as. Ownership of
+              -- audit_log, its partitions, audit_actor_pseudonyms, audit_retention_settings and the retention
+              -- deletion function moves to it below, so the application account (current_user) - which created
+              -- every object above as their owner - can never bypass the narrow INSERT/SELECT/EXECUTE grants it
+              -- keeps by dropping a CHECK constraint, rewriting a partition or deleting rows directly (an owner
+              -- always retains DDL on its own objects regardless of REVOKEs). See ADR-0015 for the full
+              -- reasoning, including the residual CREATEROLE-time membership this migration cannot close.
+              DO $$
+              BEGIN
+                IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'opaa_audit_owner') THEN
+                  EXECUTE 'CREATE ROLE opaa_audit_owner NOLOGIN';
+                END IF;
+                EXECUTE format('GRANT opaa_audit_owner TO %I', current_user);
+              END $$;
+
+              DO $$
+              BEGIN
+                EXECUTE format('GRANT USAGE, CREATE ON SCHEMA %I TO opaa_audit_owner', current_schema());
+              END $$;
+
+              ALTER TABLE audit_log OWNER TO opaa_audit_owner;
+              ALTER TABLE audit_actor_pseudonyms OWNER TO opaa_audit_owner;
+
+              -- Every partition of audit_log, whichever statement above created it.
+              DO $$
+              DECLARE
+                partition regclass;
+              BEGIN
+                FOR partition IN
+                  SELECT inhrelid::regclass FROM pg_inherits
+                  WHERE inhparent = 'audit_log'::regclass
+                LOOP
+                  EXECUTE format('ALTER TABLE %s OWNER TO opaa_audit_owner', partition);
+                END LOOP;
+              END $$;
+
+              REVOKE ALL ON TABLE audit_log, audit_actor_pseudonyms FROM PUBLIC;
+              DO $$
+              BEGIN
+                EXECUTE format('GRANT INSERT, SELECT ON TABLE audit_log TO %I', current_user);
+                EXECUTE format('GRANT INSERT, SELECT ON TABLE audit_actor_pseudonyms TO %I', current_user);
+              END $$;
+              -- Future partitions opaa_audit_owner creates inherit exactly this grant automatically.
+              DO $$
+              BEGIN
+                EXECUTE format(
+                  'ALTER DEFAULT PRIVILEGES FOR ROLE opaa_audit_owner IN SCHEMA %I'
+                  ' GRANT SELECT, INSERT ON TABLES TO %I',
+                  current_schema(), current_user);
+              END $$;
+              DO $$
+              BEGIN
+                EXECUTE format('REVOKE opaa_audit_owner FROM %I', current_user);
+              END $$;
+
+              CREATE TABLE audit_retention_settings (
+                  id integer DEFAULT 1 NOT NULL,
+                  retention_months integer NOT NULL,
+                  last_cutoff timestamp with time zone,
+                  last_run_month date,
+                  updated_at timestamp with time zone NOT NULL,
+                  CONSTRAINT chk_audit_retention_settings_months CHECK (((retention_months >= 12) AND (retention_months <= 120))),
+                  CONSTRAINT chk_audit_retention_settings_singleton CHECK ((id = 1))
+              );
+
+              ALTER TABLE ONLY audit_retention_settings
+                  ADD CONSTRAINT audit_retention_settings_pkey PRIMARY KEY (id);
+
+              INSERT INTO audit_retention_settings
+                (id, retention_months, last_cutoff, last_run_month, updated_at)
+              VALUES (
+                1, 36,
+                date_trunc('month', now()) - interval '36 months',
+                date_trunc('month', now())::date,
+                now()
+              );
+
+              REVOKE ALL ON TABLE audit_retention_settings FROM PUBLIC;
+              DO $$
+              BEGIN
+                EXECUTE format('GRANT opaa_audit_owner TO %I WITH SET TRUE', current_user);
+              END $$;
+              ALTER TABLE audit_retention_settings OWNER TO opaa_audit_owner;
+              GRANT SELECT ON TABLE audit_retention_settings TO CURRENT_USER;
+              GRANT UPDATE (retention_months, updated_at) ON TABLE audit_retention_settings TO CURRENT_USER;
+              DO $$
+              BEGIN
+                EXECUTE format('REVOKE opaa_audit_owner FROM %I', current_user);
+              END $$;
+
+              CREATE FUNCTION opaa_audit_delete_expired_partitions() RETURNS SETOF text
+                  LANGUAGE plpgsql SECURITY DEFINER
+                  SET search_path TO 'pg_catalog', '${database.defaultSchemaName}', 'pg_temp'
+                  AS $_$ DECLARE
+                cfg RECORD;
+                current_month date := date_trunc('month', now())::date;
+                new_cutoff timestamptz;
+                rec RECORD;
+                partition_month date;
+              BEGIN
+                SELECT retention_months, last_cutoff INTO cfg
+                FROM audit_retention_settings WHERE id = 1 FOR UPDATE;
+
+                IF NOT FOUND THEN
+                  RAISE EXCEPTION 'audit_retention_settings has no row with id=1 - the baseline should have seeded it; refusing to silently skip retention deletion';
+                END IF;
+
+                new_cutoff := current_month
+                  - (cfg.retention_months::text || ' months')::interval;
+
+                FOR rec IN
+                  SELECT inhrelid::regclass AS partition_rel,
+                         inhrelid::regclass::text AS partition_name
+                  FROM pg_catalog.pg_inherits
+                  WHERE inhparent = 'audit_log'::regclass
+                LOOP
+                  partition_month := to_date(
+                    substring(rec.partition_name from 'audit_log_(\d{4}_\d{2})$'), 'YYYY_MM');
+                  IF partition_month IS NOT NULL
+                     AND (partition_month + interval '1 month') <= new_cutoff THEN
+                    EXECUTE format('DROP TABLE %s', rec.partition_rel);
+                    RETURN NEXT rec.partition_name;
+                  END IF;
+                END LOOP;
+
+                UPDATE audit_retention_settings
+                SET last_cutoff = GREATEST(cfg.last_cutoff, new_cutoff),
+                    last_run_month = current_month
+                WHERE id = 1;
+
+                RETURN;
+              END; $_$;
+
+              DO $$
+              BEGIN
+                EXECUTE format('GRANT opaa_audit_owner TO %I WITH SET TRUE', current_user);
+              END $$;
+              ALTER FUNCTION opaa_audit_delete_expired_partitions() OWNER TO opaa_audit_owner;
+              GRANT EXECUTE ON FUNCTION opaa_audit_delete_expired_partitions() TO CURRENT_USER;
+              REVOKE EXECUTE ON FUNCTION opaa_audit_delete_expired_partitions() FROM PUBLIC;
+              DO $$
+              BEGIN
+                EXECUTE format('REVOKE opaa_audit_owner FROM %I', current_user);
+              END $$;
+      # No rollback: the baseline is never rolled back - a broken installation is discarded and re-run from an empty database instead.

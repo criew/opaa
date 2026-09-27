@@ -8,7 +8,7 @@ import MenuItem from '@mui/material/MenuItem'
 import Typography from '@mui/material/Typography'
 import NotificationsIcon from '@mui/icons-material/Notifications'
 import type { NotificationResponse } from '../../types/api'
-import { getNotifications, markNotificationRead } from '../../services/api'
+import { getNotifications, markNotificationRead } from '../../services/notificationApi'
 import { useAuthStore } from '../../stores/authStore'
 
 function formatCreatedAt(value: string): string {

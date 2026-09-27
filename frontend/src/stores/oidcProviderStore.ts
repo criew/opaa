@@ -8,7 +8,7 @@ import {
   reorderOidcProviders,
   setOidcProviderEnabled,
   updateOidcProvider,
-} from '../services/api'
+} from '../services/identityProviderApi'
 import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
 
 interface OidcProviderState {

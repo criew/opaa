@@ -11,7 +11,7 @@ import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import NetworkCheckOutlinedIcon from '@mui/icons-material/NetworkCheckOutlined'
 import type { OidcProviderRequest, OidcProviderResponse } from '../../types/api'
-import { testOidcProvider } from '../../services/api'
+import { testOidcProvider } from '../../services/identityProviderApi'
 import { useOidcProviderStore } from '../../stores/oidcProviderStore'
 import SectionHead from '../SectionHead'
 

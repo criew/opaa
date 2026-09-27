@@ -37,7 +37,8 @@ import {
   selectedSubjectId,
   type SubjectSelection,
 } from './subjectSelection'
-import { getGrantedGroupMembers, resolveSelectableGroup } from '../../services/api'
+import { getGrantedGroupMembers } from '../../services/assetApi'
+import { resolveSelectableGroup } from '../../services/groupApi'
 import {
   allAccountsLabel,
   assetGrantScopeHint,

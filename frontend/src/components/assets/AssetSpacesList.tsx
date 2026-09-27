@@ -8,7 +8,7 @@ import Stack from '@mui/material/Stack'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import type { AssetSpaceAssociationListResponse, AssetType } from '../../types/api'
-import { detachSpaceAsset, getAssetSpaceAssociations } from '../../services/api'
+import { detachSpaceAsset, getAssetSpaceAssociations } from '../../services/assetApi'
 import { confirmAction } from '../../stores/confirmStore'
 import { assetTypeLabel } from '../../utils/labels'
 

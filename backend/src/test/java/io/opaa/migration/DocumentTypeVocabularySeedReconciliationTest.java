@@ -32,8 +32,8 @@ class DocumentTypeVocabularySeedReconciliationTest extends AbstractMigrationTest
   private Connection connection;
 
   @Override
-  protected String baseFixtureChangelogPath() {
-    return "db/changelog/test-master-through-baseline.yaml";
+  protected List<String> baseFixtureChangelogs() {
+    return List.of("db/changelog/test-master-through-baseline.yaml");
   }
 
   @BeforeEach

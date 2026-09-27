@@ -4,25 +4,21 @@ import '@testing-library/jest-dom/vitest'
 import './jsdom-blob-stream'
 import { beforeAll, afterEach, afterAll } from 'vitest'
 import { server } from '../mocks/server'
-import {
-  resetIndexingState,
-  resetDocumentMockState,
-  resetGrantMockState,
-  resetChatMockState,
-  resetLlmModelMockState,
-} from '../mocks/handlers'
+import { resetIndexingState } from '../mocks/indexingHandlers'
+import { resetDocumentMockState } from '../mocks/libraryDocumentHandlers'
+import { resetGrantMockState } from '../mocks/assetHandlers'
+import { resetChatMockState } from '../mocks/chatHandlers'
+import { resetLlmModelMockState } from '../mocks/modelHandlers'
 // Deliberately only the fixture module, never a store or `src/services/api` (#583): importing
 // anything that pulls in the axios instance *from this file* makes a dozen unrelated dialog tests
 // fail - their requests stop being intercepted, so every "expected onCreated to be called" assertion
 // times out. Verified by adding a bare `import '../services/api'` here and watching
 // SpaceCreatePage.test.tsx go red on its own. Store state that has to be reset between tests
 // belongs in that test file's own beforeEach.
-import {
-  resetMockAuthConfig,
-  resetMockBranding,
-  resetMockOidcProviders,
-  resetMockSpaceAssetAssociations,
-} from '../mocks/fixtures'
+import { resetMockAuthConfig } from '../mocks/authFixtures'
+import { resetMockBranding } from '../mocks/brandingFixtures'
+import { resetMockOidcProviders } from '../mocks/identityProviderFixtures'
+import { resetMockSpaceAssetAssociations } from '../mocks/assetFixtures'
 import { resetMockPromptLibraries } from '../mocks/promptLibraryFixtures'
 import { resetMockMailSettings, resetMockMailTemplates } from '../mocks/mailFixtures'
 import { resetMockLocalAuthSettings, resetMockLocalUsers } from '../mocks/localUserFixtures'

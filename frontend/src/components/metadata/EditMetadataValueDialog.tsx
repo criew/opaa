@@ -12,7 +12,10 @@ import type {
   DocumentTypeVocabularyEntryResponse,
   MetadataValueRequest,
 } from '../../types/api'
-import { getDocumentTypeVocabulary, setDocumentMetadataValue } from '../../services/api'
+import {
+  getDocumentTypeVocabulary,
+  setDocumentMetadataValue,
+} from '../../services/libraryMetadataApi'
 import MetadataValueForm from './MetadataValueForm'
 import { isMetadataValueComplete, metadataValueRequestFor } from './metadataValues'
 

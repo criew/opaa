@@ -10,8 +10,10 @@ const { mockGenerate, mockRemove } = vi.hoisted(() => ({
   mockRemove: vi.fn(),
 }))
 
-vi.mock('../../services/api', async () => {
-  const actual = await vi.importActual<typeof import('../../services/api')>('../../services/api')
+vi.mock('../../services/indexingApi', async () => {
+  const actual = await vi.importActual<typeof import('../../services/indexingApi')>(
+    '../../services/indexingApi',
+  )
   return {
     ...actual,
     generatePushSecret: mockGenerate,

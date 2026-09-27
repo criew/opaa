@@ -16,7 +16,10 @@ import type {
   DocumentTypeVocabularyEntryResponse,
   MetadataValueRequest,
 } from '../../types/api'
-import { bulkSetDocumentMetadata, getDocumentTypeVocabulary } from '../../services/api'
+import {
+  bulkSetDocumentMetadata,
+  getDocumentTypeVocabulary,
+} from '../../services/libraryMetadataApi'
 import MetadataValueForm from './MetadataValueForm'
 import {
   CORE_METADATA_FIELDS,

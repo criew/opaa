@@ -14,8 +14,8 @@ import {
   setGroupProtection,
   setGroupRelease,
   updateGroup,
-} from '../services/api'
-import type { GroupCreationOptions } from '../services/api'
+} from '../services/groupApi'
+import type { GroupCreationOptions } from '../services/groupApi'
 import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
 
 /**

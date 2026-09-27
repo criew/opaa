@@ -6,7 +6,7 @@ import { renderWithProviders } from '../test/test-utils'
 import { useAuthStore } from '../stores/authStore'
 import { FieldValidationError } from '../services/authApi'
 import { LOCAL_ACCOUNTS_DISABLED } from '../types/auth'
-import { mockLocalAccount, mockLocalTokenResponse, mockUser } from '../mocks/fixtures'
+import { mockLocalAccount, mockLocalTokenResponse, mockUser } from '../mocks/authFixtures'
 import ChangePasswordPage from './ChangePasswordPage'
 
 /**

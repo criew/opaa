@@ -11,7 +11,7 @@ import {
   unarchiveChat,
   unpinChat,
   updateChat,
-} from '../services/api'
+} from '../services/chatApi'
 import { dropChatSettingsCache, markChatManuallyRenamed, useChatStore } from './chatStore'
 import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
 

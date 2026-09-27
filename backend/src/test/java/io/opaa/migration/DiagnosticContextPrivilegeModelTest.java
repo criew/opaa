@@ -49,8 +49,8 @@ class DiagnosticContextPrivilegeModelTest extends AbstractMigrationTest {
   private Connection appConnection;
 
   @Override
-  protected String baseFixtureChangelogPath() {
-    return "db/changelog/test-master-through-baseline.yaml";
+  protected List<String> baseFixtureChangelogs() {
+    return List.of("db/changelog/test-master-through-baseline.yaml");
   }
 
   @BeforeEach

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { getMyGroups } from '../services/api'
+import { getMyGroups } from '../services/groupApi'
 import type { GroupListResponse } from '../types/api'
 
 export interface MyGroupsState {

@@ -7,7 +7,7 @@ import {
   getEmbeddingInfo,
   getLlmModels,
   updateLlmModel,
-} from '../services/api'
+} from '../services/modelApi'
 import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
 
 interface LlmModelState {
