@@ -482,7 +482,7 @@ export default function LibraryDetailPage() {
     )
   }
 
-  const isRssFeedRun = connectorSourceType === 'RSS_FEED'
+  const isRssFeedRun = Boolean(sourceRegistration(connectorSourceType)?.runCountsEntries)
   const runFailedSuffix =
     run.documentsFailed > 0 ? `, davon ${run.documentsFailed} fehlgeschlagen` : ''
 

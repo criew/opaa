@@ -7,6 +7,7 @@ import type {
 } from '../types/api'
 import { triggerIndexing, getIndexingStatus, getIndexingRuns } from '../services/api'
 import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
+import { sourceRegistration } from '../components/library/sources/registry'
 
 const POLL_INTERVAL_MS = 2000
 
@@ -287,7 +288,9 @@ function startPolling(
       if (isStaleSessionEpoch(sessionEpoch)) return
       // The run entry already carries sourceType, set by triggerIndexing/loadStatus before
       // polling ever starts (#518 review, finding 1) - polling itself never learns it anew.
-      const isRssFeed = get().runsByLibrary[libraryId]?.sourceType === 'RSS_FEED'
+      const isRssFeed = Boolean(
+        sourceRegistration(get().runsByLibrary[libraryId]?.sourceType)?.runCountsEntries,
+      )
       setRun(
         libraryId,
         {

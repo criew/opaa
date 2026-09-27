@@ -61,5 +61,6 @@ export const rssFeedSource: SourceRegistration = {
   shortLabel: 'Feed',
   description: 'Neue Beiträge werden laufend übernommen, Anhänge wahlweise.',
   Icon: RssFeedIcon,
+  runCountsEntries: true,
   configuration: genericConfiguration('url'),
 }

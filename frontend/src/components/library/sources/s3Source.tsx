@@ -18,6 +18,7 @@ export const s3Source: SourceRegistration = {
   shortLabel: 'S3',
   description: 'Buckets und Präfixe eines S3-kompatiblen Objektspeichers werden eingelesen.',
   Icon: StorageIcon,
+  containerLabel: 'Bucket',
   configuration: {
     empty: EMPTY_S3_VALUES,
     // ADR-0027: endpoint, region, addressing style and scopes come back from the stored settings;

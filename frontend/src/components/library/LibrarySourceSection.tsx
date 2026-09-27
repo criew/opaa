@@ -308,9 +308,9 @@ function LibraryIndexingHistorySection({
   sourceType: SourceTypeKey
 }) {
   const runs = useIndexingStore((s) => s.runHistoryByLibrary[libraryId] ?? EMPTY_RUN_HISTORY)
-  // ADR-0023, Entscheidung 4: only Confluence knows two Betriebsarten - for every other type the
-  // mode is implied by the source type and a chip would only repeat it.
-  const showRunMode = sourceType === 'CONFLUENCE'
+  // ADR-0023, Entscheidung 4: only a source with two Betriebsarten shows the mode - for every other
+  // type it is implied by the source type and a chip would only repeat it.
+  const showRunMode = Boolean(sourceRegistration(sourceType)?.configuration?.fullSyncRhythm)
   const loadRunHistory = useIndexingStore((s) => s.loadRunHistory)
 
   useEffect(() => {

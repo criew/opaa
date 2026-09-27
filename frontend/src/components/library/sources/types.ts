@@ -73,7 +73,10 @@ export interface SourceConfiguration<V> {
   /** The scope every reader sees in the Bereich „Umfang"; absent for a source without one. */
   Scope?: ComponentType<{ library: StoredLibrarySource }>
   scopeHero?: SourceScopeHero
-  /** Whether the library carries a full-sync rhythm and a forcible full run (Confluence). */
+  /**
+   * Whether runs come in two modes - incremental and a forcible full reconciliation with its own
+   * rhythm (Confluence).
+   */
   fullSyncRhythm?: boolean
   /** The sentence under the wizard's immediate-first-run switch. */
   firstRunHint?: string
@@ -87,6 +90,12 @@ export interface SourceRegistration {
   shortLabel: string
   description: string
   Icon: ComponentType<{ sx?: object }>
+  /** What a document row calls its container key (a Confluence space, an S3 bucket). */
+  containerLabel?: string
+  /** Whether a document's original is the page at the source, opened there rather than served. */
+  opensAtSource?: boolean
+  /** Whether a run counts the entries of a feed rather than documents alone (RSS). */
+  runCountsEntries?: boolean
   /** Null for UPLOAD, which has no source to configure. */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   configuration: SourceConfiguration<any> | null

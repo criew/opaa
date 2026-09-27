@@ -17,6 +17,8 @@ export const confluenceSource: SourceRegistration = {
   shortLabel: 'Confluence',
   description: 'Ausgewählte Spaces eines Confluence (Cloud oder Data Center) werden eingelesen.',
   Icon: AccountTreeIcon,
+  containerLabel: 'Space',
+  opensAtSource: true,
   configuration: {
     empty: EMPTY_CONFLUENCE_VALUES,
     // ADR-0023: the edition is fixed, the stored credentials stand until new ones are typed, and

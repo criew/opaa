@@ -3,6 +3,7 @@ import { openDocumentContent } from '../utils/documentContent'
 import type { TextPreviewResult } from '../utils/documentContent'
 import { notify } from '../stores/notificationStore'
 import type { SourceTypeKey } from '../types/api'
+import { sourceRegistration } from '../components/library/sources/registry'
 
 /**
  * Everything "Original öffnen"/"Im Dokument öffnen" needs to decide HOW to open a document -
@@ -28,14 +29,13 @@ export function useDocumentPreview() {
   const [previewDocument, setPreviewDocument] = useState<TextPreviewResult | null>(null)
 
   async function openDocument(document: OpenableDocument) {
-    // ADR-0023: a Confluence page (and its attachments) has no original file of its own - the
-    // backend's content endpoint deliberately answers 404 there
-    // (LibraryDocumentService#loadOriginal). Its original IS the page in the instance, so it
-    // opens directly at the source URL, exactly like the citation deep link.
-    if (document.sourceType === 'CONFLUENCE') {
+    // ADR-0023: a source whose original is the page at the source (Confluence) has no file of its
+    // own - the backend's content endpoint deliberately answers 404 there. It opens directly at
+    // the source URL, exactly like the citation deep link.
+    if (sourceRegistration(document.sourceType)?.opensAtSource) {
       const target = document.sourceUrl ?? document.sourceEntryUrl
       if (!target) {
-        notify('Für dieses Confluence-Dokument ist keine Quell-Adresse hinterlegt.', 'error')
+        notify('Für dieses Dokument ist keine Quell-Adresse hinterlegt.', 'error')
         return
       }
       window.open(target, '_blank', 'noopener,noreferrer')
