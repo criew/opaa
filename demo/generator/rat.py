@@ -442,8 +442,9 @@ NIEDERSCHRIFTEN: list[Niederschrift] = [
                 [
                     "Das Tiefbauamt berichtet, dass die restauratorische Befunduntersuchung "
                     "abgeschlossen ist. Die Untere Denkmalbehörde hat der Bemusterung der "
-                    "Natursteine zugestimmt; sie werden ab Herbst 2025 in der Werkstatt "
-                    "aufgearbeitet.",
+                    "Natursteine zugestimmt. Die Einfassungssteine des Beckenrands werden ab Herbst "
+                    "2025 einzeln abgenommen und in der Werkstatt aufgearbeitet; das Becken bleibt "
+                    "bis zum Beginn der Arbeiten am Brunnen im April 2026 gefüllt.",
                     "Ein schadhafter Zulaufschieber muss zusätzlich ersetzt werden. Die Mehrkosten "
                     "von 2.700 Euro wurden der Förderstelle vor der Ausführung angezeigt und sind "
                     "damit förderfähig.",
@@ -618,8 +619,9 @@ BESCHLUSSVORLAGEN: list[Beschlussvorlage] = [
                             "November 2024 bis März 2025: restauratorische Befunduntersuchung und "
                             "Bemusterung der Natursteine mit der Unteren Denkmalbehörde; der "
                             "Brunnen bleibt in dieser Zeit in Betrieb.",
-                            "Herbst 2025 bis Frühjahr 2026: Aufarbeitung der Natursteine in der "
-                            "Werkstatt.",
+                            "Herbst 2025 bis Frühjahr 2026: Aufarbeitung der Einfassungssteine des "
+                            "Beckenrands in der Werkstatt; sie werden dafür einzeln abgenommen, "
+                            "das Becken bleibt bis April 2026 gefüllt.",
                             "April und Mai 2026: Baustelleneinrichtung, Entleerung des Beckens, "
                             "Rückbau der alten Auskleidung, Abdichtung, Versetzen der Natursteine "
                             "und Einbau der Brunnentechnik.",
