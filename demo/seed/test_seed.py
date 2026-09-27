@@ -5,7 +5,9 @@ token are different failures and must not share one message), and that the realm
 audience mapper the token path depends on, and how uploads map a corpus folder tree onto library
 folders (against an in-memory stand-in of the document API). The demo profile's groups and the
 effective permission matrix they produce are checked as data, and the group steps run twice against
-an in-memory API to show the second run writes nothing. The seed run as a whole stays out - it is a
+an in-memory API to show the second run writes nothing. The Keycloak groups of the directory sync
+are checked against the realm export and the kcadm script, and the switch of the provider to the
+directory sync runs against an in-memory API. The seed run as a whole stays out - it is a
 sequence of API calls against a live installation, covered by the nightly demo smoke run.
 
 Run from the repository root:
@@ -338,20 +340,26 @@ def space(name: str) -> profiles.SpaceDef:
     return next(s for s in DEMO.spaces if s.name == name)
 
 
+def all_groups() -> tuple:
+    """Internal groups and the provider groups of the directory - both carry rights alike."""
+    return (*DEMO.groups, *DEMO.provider_groups)
+
+
 def effective_readers(library_name: str) -> set[str]:
-    """Direct VIEWER grants plus the members of every group granted VIEWER on the library."""
+    """Direct VIEWER grants plus the members of every group granted VIEWER on the library. The
+    admin account owns every library and is no row of the matrix, even as a group member."""
     readers = set(library(library_name).viewer_keys)
-    for group_def in DEMO.groups:
+    for group_def in all_groups():
         if library_name in group_def.library_grants:
             readers.update(group_def.member_keys)
-    return readers
+    return readers - {"admin"}
 
 
 def space_members(space_name: str) -> set[str]:
     """Owner, individual members and the members of every group that is a member of the space."""
     space_def = space(space_name)
     members = {space_def.owner_key, *(m.user_key for m in space_def.members)}
-    for group_def in DEMO.groups:
+    for group_def in all_groups():
         if group_def.space_membership and group_def.space_membership[0] == space_name:
             members.update(group_def.member_keys)
     return members
@@ -361,9 +369,9 @@ def test_every_group_reference_resolves_within_the_profile() -> None:
     user_keys = {u.key for u in DEMO.all_users()}
     library_names = {lib.name for lib in DEMO.libraries}
     space_names = {s.name for s in DEMO.spaces}
-    assert len({g.name for g in DEMO.groups}) == len(DEMO.groups)
-    for group_def in DEMO.groups:
-        assert set(group_def.steward_keys) <= user_keys
+    assert len({g.name for g in all_groups()}) == len(all_groups())
+    for group_def in all_groups():
+        assert set(getattr(group_def, "steward_keys", ())) <= user_keys
         assert set(group_def.member_keys) <= user_keys
         assert set(group_def.library_grants) <= library_names
         if group_def.space_membership:
@@ -522,6 +530,379 @@ def test_demo_groups_are_seeded_as_defined_and_a_second_run_changes_nothing() ->
     seed_groups(api)
     assert api.writes == []
     assert len(api.groups) == len(DEMO.groups)
+
+
+# --- Demo profile: provider groups from the Keycloak directory -----------------------------------
+
+APPLY_SCRIPT = REPO_ROOT / "demo" / "keycloak" / "apply-realm-changes.sh"
+
+
+def realm() -> dict:
+    return json.loads(REALM_EXPORT.read_text(encoding="utf-8"))
+
+
+def realm_group_members() -> dict[str, set[str]]:
+    """Profile user keys per realm group, read from the users' own "groups" entries."""
+    key_by_username = {u.identity: u.key for u in DEMO.all_users()}
+    members: dict[str, set[str]] = {g["name"]: set() for g in realm()["groups"]}
+    for user in realm()["users"]:
+        for path in user.get("groups", []):
+            if user["username"] in key_by_username:
+                members[path.lstrip("/")].add(key_by_username[user["username"]])
+    return members
+
+
+def test_provider_groups_are_exactly_the_realm_groups_with_their_members() -> None:
+    """The seed never creates a provider group: it only finds what the directory sync brought in.
+    A name or a membership that differs from the realm would leave a right without a holder."""
+    in_realm = realm_group_members()
+    for group_def in DEMO.provider_groups:
+        assert group_def.name in in_realm, group_def.name
+        assert set(group_def.member_keys) == in_realm[group_def.name], group_def.name
+
+
+def test_a_provider_group_carries_a_read_right_exclusively() -> None:
+    """Acceptance of #2017: at least one Keycloak group holds a right that reaches an account only
+    through that group - here the Kfz-Zulassung's own service descriptions for Thomas."""
+    kfz = next(g for g in DEMO.provider_groups if g.name == "Kfz-Zulassung")
+    assert "Leistungen Kfz-Zulassung" in kfz.library_grants
+    assert "thomas" not in library("Leistungen Kfz-Zulassung").viewer_keys
+    assert kfz.member_keys == ("thomas",)
+
+
+def test_provider_group_names_never_collide_with_internal_groups() -> None:
+    """ensure_group finds an internal group by name among every group of the organization."""
+    assert not {g.name for g in DEMO.groups} & {g.name for g in DEMO.provider_groups}
+
+
+def test_realm_export_carries_the_directory_service_account() -> None:
+    """A confidential client with service accounts and exactly the two realm-management roles the
+    Keycloak connector needs (ADR-0036, Entscheidung 3) - and nothing that signs a person in."""
+    sync = DEMO.directory_sync
+    client = next(c for c in realm()["clients"] if c["clientId"] == sync.client_id)
+    assert client["publicClient"] is False
+    assert client["serviceAccountsEnabled"] is True
+    assert client["standardFlowEnabled"] is False
+    assert client["directAccessGrantsEnabled"] is False
+    assert client["secret"] == sync.client_secret
+    service_account = next(
+        u for u in realm()["users"] if u.get("serviceAccountClientId") == sync.client_id
+    )
+    assert service_account["username"] == f"service-account-{sync.client_id}"
+    assert set(service_account["clientRoles"]["realm-management"]) == {"view-users", "query-groups"}
+    assert "id" in service_account
+
+
+def test_client_descriptions_fit_keycloaks_column() -> None:
+    """CLIENT.DESCRIPTION is varchar(255); a longer one aborts the realm import and Keycloak."""
+    assert all(len(c.get("description", "")) <= 255 for c in realm()["clients"])
+
+
+def test_every_realm_user_keeps_a_fixed_id() -> None:
+    """Without a fixed id Keycloak assigns a new one on every import of the volume-less stack."""
+    assert all("id" in user for user in realm()["users"])
+
+
+def test_apply_script_carries_the_realm_export_values() -> None:
+    """The script transfers the realm changes into a Keycloak that keeps its volume: it has to
+    name the same groups, memberships, client, secret and roles as the export."""
+    script = APPLY_SCRIPT.read_text(encoding="utf-8")
+    sync = DEMO.directory_sync
+    for group_name, keys in realm_group_members().items():
+        assert f'"{group_name}"' in script, group_name
+        usernames = {u.identity for u in DEMO.all_users() if u.key in keys}
+        for username in usernames:
+            assert f'"{username}|{group_name}"' in script, (username, group_name)
+    assert sync.client_id in script
+    assert sync.client_secret in script
+    assert "view-users" in script and "query-groups" in script
+    assert "opaa-frontend-audience" in script
+
+
+def test_demo_profile_switches_the_provider_to_the_directory_sync_on_a_schedule() -> None:
+    sync = DEMO.directory_sync
+    assert sync.client_id == "opaa-directory"
+    assert 5 <= sync.interval_minutes <= 10080
+    assert profiles.E2E_PROFILE.directory_sync is None
+    assert profiles.E2E_PROFILE.provider_groups == ()
+
+
+def test_admin_api_address_comes_from_the_jwk_set_address() -> None:
+    """The backend reaches Keycloak under the JWK set's host, not under the browser's issuer."""
+    assert (
+        seed.keycloak_admin_base_url(
+            "http://keycloak:8180/realms/opaa/protocol/openid-connect/certs"
+        )
+        == "http://keycloak:8180"
+    )
+    assert (
+        seed.keycloak_admin_base_url(
+            "http://keycloak:8180/idp/realms/opaa/protocol/openid-connect/certs"
+        )
+        == "http://keycloak:8180/idp"
+    )
+    assert seed.keycloak_admin_base_url(None) is None
+    assert seed.keycloak_admin_base_url("https://idp.example/certs") is None
+
+
+PROVIDER_ID = "11111111-1111-1111-1111-111111111111"
+PROVIDER_PATH = f"/v1/admin/oidc-providers/{PROVIDER_ID}"
+
+
+def api_response(status: int, method: str, path: str, body=None) -> requests.Response:
+    built = requests.Response()
+    built.status_code = status
+    built._content = json.dumps(body).encode() if body is not None else b""
+    built.request = requests.Request(method, f"http://localhost:8081/api{path}").prepare()
+    return built
+
+
+class FakeDirectorySyncApi:
+    """In-memory stand-in for the provider and directory-sync endpoints, with the backend's rule
+    that a groups claim and the directory run exclude each other (DIRECTORY_SYNC_MECHANISM_CONFLICT)
+    and the run lock that answers a parallel run with DIRECTORY_SYNC_ALREADY_RUNNING."""
+
+    def __init__(self, keycloak_secret: str, groups_claim: str | None = "groups") -> None:
+        self.keycloak_secret = keycloak_secret
+        self.stored_secret: str | None = None
+        self.provider = {
+            "id": PROVIDER_ID,
+            "displayName": "Verzeichnisdienst",
+            "issuerUri": "http://localhost:8180/realms/opaa",
+            "clientId": "opaa-frontend",
+            "jwkSetUri": "http://keycloak:8180/realms/opaa/protocol/openid-connect/certs",
+            "claimMapping": {"emailClaim": "email", "groupsClaim": groups_claim},
+            "directorySyncEnabled": False,
+            "directorySyncIntervalMinutes": None,
+            "directoryConnector": None,
+        }
+        self.runs_blocked = 0
+        self.outcome = "APPLIED"
+        self.writes: list[tuple[str, str]] = []
+        self.runs = 0
+
+    def get_ok(self, path: str, **kwargs):
+        if path == "/v1/admin/oidc-providers":
+            return [dict(self.provider)]
+        raise AssertionError(f"unexpected GET {path}")
+
+    def put_ok(self, path: str, expected=(200,), json=None, **kwargs):
+        self.writes.append(("PUT", path))
+        if path == PROVIDER_PATH:
+            assert {"displayName", "issuerUri", "clientId"} <= set(json)
+            self.provider["claimMapping"] = dict(json.get("claimMapping") or {})
+            return dict(self.provider)
+        if path == f"{PROVIDER_PATH}/directory-connector":
+            assert json["type"] == "KEYCLOAK"
+            self.stored_secret = json["clientSecret"]
+            self.provider["directoryConnector"] = {
+                "type": "KEYCLOAK",
+                "baseUrl": json.get("baseUrl") or "http://localhost:8180",
+                "realm": "opaa",
+                "clientId": json["clientId"],
+            }
+            return dict(self.provider["directoryConnector"])
+        if path == f"{PROVIDER_PATH}/directory-sync":
+            if json["enabled"] and (self.provider["claimMapping"] or {}).get("groupsClaim"):
+                raise ApiError(api_response(409, "PUT", path, {"code": "DIRECTORY_SYNC_MECHANISM_CONFLICT"}))
+            self.provider["directorySyncEnabled"] = json["enabled"]
+            self.provider["directorySyncIntervalMinutes"] = json.get("intervalMinutes") or 360
+            return dict(self.provider)
+        raise AssertionError(f"unexpected PUT {path}")
+
+    def post_ok(self, path: str, expected=(200, 201, 202), json=None, **kwargs):
+        if path == f"{PROVIDER_PATH}/directory-connector/test":
+            secret = json.get("clientSecret") or self.stored_secret
+            if secret == self.keycloak_secret:
+                return {"success": True, "message": "Verzeichnis erreichbar: Realm „opaa“ mit 3 Gruppen."}
+            return {"success": False, "message": "Anmeldung des Dienstkontos abgewiesen."}
+        raise AssertionError(f"unexpected POST {path}")
+
+    def post(self, path: str, **kwargs) -> requests.Response:
+        assert path == f"{PROVIDER_PATH}/directory-sync/run", path
+        if not self.provider["directorySyncEnabled"]:
+            return api_response(409, "POST", path, {"code": "DIRECTORY_SYNC_NOT_ENABLED"})
+        if self.runs_blocked:
+            self.runs_blocked -= 1
+            return api_response(409, "POST", path, {"code": "DIRECTORY_SYNC_ALREADY_RUNNING"})
+        self.runs += 1
+        return api_response(
+            200,
+            "POST",
+            path,
+            {
+                "outcome": self.outcome,
+                "message": "Synchronisation angewendet.",
+                "groupsCreated": [{"name": "Kfz-Zulassung", "memberCount": 1}],
+                "membershipsAdded": 1,
+                "accountsLocked": [],
+            },
+        )
+
+
+def test_directory_sync_replaces_the_groups_claim_and_runs_once() -> None:
+    sync = DEMO.directory_sync
+    api = FakeDirectorySyncApi(sync.client_secret)
+
+    provider_id = seed.ensure_directory_sync(api, sync)
+
+    assert provider_id == PROVIDER_ID
+    assert not api.provider["claimMapping"].get("groupsClaim")
+    assert api.provider["claimMapping"]["emailClaim"] == "email"
+    assert api.provider["directorySyncEnabled"] is True
+    assert api.provider["directorySyncIntervalMinutes"] == sync.interval_minutes
+    assert api.provider["directoryConnector"]["baseUrl"] == "http://keycloak:8180"
+    assert api.provider["directoryConnector"]["clientId"] == sync.client_id
+    assert api.stored_secret == sync.client_secret
+    assert api.runs == 1
+
+
+def test_second_directory_sync_setup_writes_nothing_and_only_runs() -> None:
+    sync = DEMO.directory_sync
+    api = FakeDirectorySyncApi(sync.client_secret)
+    seed.ensure_directory_sync(api, sync)
+    api.writes.clear()
+
+    seed.ensure_directory_sync(api, sync)
+
+    assert api.writes == []
+    assert api.runs == 2
+
+
+def test_failing_stored_connection_is_never_replaced_by_the_demo_fallback() -> None:
+    """A failed probe of a stored connection may be a Keycloak that is briefly down or an operator's
+    own secret - the documented demo value must not overwrite it; the seed stops instead."""
+    sync = DEMO.directory_sync
+    api = FakeDirectorySyncApi(sync.client_secret)
+    seed.ensure_directory_sync(api, sync)
+    api.keycloak_secret = "rotiert-im-keycloak"
+    api.stored_secret = "eigenes-geheimnis"
+    api.writes.clear()
+
+    with pytest.raises(SystemExit) as exit_info:
+        seed.ensure_directory_sync(api, sync)
+
+    assert api.writes == []
+    assert api.stored_secret == "eigenes-geheimnis"
+    assert "Anmeldung des Dienstkontos abgewiesen." in str(exit_info.value)
+    assert "--directory-client-secret" in str(exit_info.value)
+
+
+def test_explicit_secret_replaces_a_failing_stored_connection() -> None:
+    sync = DEMO.directory_sync
+    api = FakeDirectorySyncApi(sync.client_secret)
+    seed.ensure_directory_sync(api, sync)
+    api.keycloak_secret = "neu-erzeugt"
+    api.writes.clear()
+
+    seed.ensure_directory_sync(api, sync, client_secret="neu-erzeugt")
+
+    assert ("PUT", f"{PROVIDER_PATH}/directory-connector") in api.writes
+    assert api.stored_secret == "neu-erzeugt"
+
+
+def test_explicit_secret_is_stored_on_first_setup_instead_of_the_demo_value() -> None:
+    api = FakeDirectorySyncApi("zufaellig-erzeugt")
+
+    seed.ensure_directory_sync(api, DEMO.directory_sync, client_secret="zufaellig-erzeugt")
+
+    assert api.stored_secret == "zufaellig-erzeugt"
+
+
+def test_directory_secret_comes_from_the_environment_or_the_option(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("OPAA_DEMO_DIRECTORY_CLIENT_SECRET", raising=False)
+    assert seed.parse_args(["--profile", "demo"]).directory_client_secret is None
+    monkeypatch.setenv("OPAA_DEMO_DIRECTORY_CLIENT_SECRET", "aus-der-umgebung")
+    assert seed.parse_args(["--profile", "demo"]).directory_client_secret == "aus-der-umgebung"
+    args = seed.parse_args(["--profile", "demo", "--directory-client-secret", "aus-der-option"])
+    assert args.directory_client_secret == "aus-der-option"
+
+
+def test_apply_script_sets_the_secret_of_an_existing_client_only_when_given() -> None:
+    """Re-running the script must never reset a rotated secret to the public demo value."""
+    script = APPLY_SCRIPT.read_text(encoding="utf-8")
+    assert "${DIRECTORY_CLIENT_SECRET+x}" in script
+
+
+def test_rejected_service_account_stops_the_seed_with_the_probe_message() -> None:
+    api = FakeDirectorySyncApi("ein-anderes-geheimnis")
+
+    with pytest.raises(SystemExit) as exit_info:
+        seed.ensure_directory_sync(api, DEMO.directory_sync)
+
+    message = str(exit_info.value)
+    assert "Anmeldung des Dienstkontos abgewiesen." in message
+    assert "apply-realm-changes.sh" in message
+    assert api.runs == 0
+
+
+def test_run_waits_for_a_scheduled_run_already_in_flight() -> None:
+    """Switching the run on makes the provider due at once, so the minute tick may start a run
+    of its own before the seed's; that run's 409 is waited out, not reported as a failure."""
+    api = FakeDirectorySyncApi(DEMO.directory_sync.client_secret)
+    api.runs_blocked = 2
+
+    seed.ensure_directory_sync(api, DEMO.directory_sync)
+
+    assert api.runs == 1
+
+
+@pytest.mark.parametrize("outcome", ["UNREACHABLE", "PENDING_CONFIRMATION", "ABORTED_EMPTY_RESULT"])
+def test_a_run_that_applied_nothing_stops_the_seed(outcome: str) -> None:
+    api = FakeDirectorySyncApi(DEMO.directory_sync.client_secret)
+    api.outcome = outcome
+
+    with pytest.raises(SystemExit) as exit_info:
+        seed.ensure_directory_sync(api, DEMO.directory_sync)
+
+    assert outcome in str(exit_info.value)
+
+
+class FakeProviderGroupList:
+    def __init__(self, groups: list[dict]) -> None:
+        self.groups = groups
+
+    def get_ok(self, path: str, **kwargs):
+        assert path == "/v1/admin/groups"
+        return self.groups
+
+
+def provider_group(name: str, kind: str = "ORG_UNIT", provider_id: str = PROVIDER_ID, **extra) -> dict:
+    return {
+        "id": f"{kind}-{name}-{provider_id[:4]}",
+        "name": name,
+        "kind": kind,
+        "origin": "PROVIDER",
+        "provider": {"id": provider_id},
+        "dissolved": False,
+        "memberCount": 1,
+        **extra,
+    }
+
+
+def test_provider_group_is_the_directory_unit_not_the_frozen_token_group() -> None:
+    """After the switch from the groups claim a same-named token group stays behind, unmaintained."""
+    kfz = next(g for g in DEMO.provider_groups if g.name == "Kfz-Zulassung")
+    groups = FakeProviderGroupList(
+        [
+            provider_group("Kfz-Zulassung", kind="IDENTITY_PROVIDER"),
+            provider_group("Kfz-Zulassung", provider_id="22222222-2222-2222-2222-222222222222"),
+            provider_group("Kfz-Zulassung", dissolved=True),
+            provider_group("Kfz-Zulassung"),
+        ]
+    )
+    group_id = seed.find_provider_group(groups, PROVIDER_ID, kfz)
+    assert group_id == provider_group("Kfz-Zulassung")["id"]
+
+
+def test_missing_provider_group_names_the_realm_script() -> None:
+    kfz = next(g for g in DEMO.provider_groups if g.name == "Kfz-Zulassung")
+    with pytest.raises(SystemExit) as exit_info:
+        seed.find_provider_group(FakeProviderGroupList([]), PROVIDER_ID, kfz)
+    assert "Kfz-Zulassung" in str(exit_info.value)
+    assert "apply-realm-changes.sh" in str(exit_info.value)
 
 
 # --- Prompt libraries of the demo profile ------------------------------------------------------

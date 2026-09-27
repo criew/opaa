@@ -119,7 +119,7 @@ von Space"):
 | Nutzer | Rolle im Szenario | Spaces |
 |---|---|---|
 | Maria Weber | Sachbearbeiterin Meldewesen | Space „Meldewesen & Ausweise" (gemeinsam mit Selin Kaya), zusätzlich ihr eigener Space, in dem niemand sonst Mitglied ist; „Dienstbesprechung Bürgerbüro" über die Gruppe „Sachbearbeitung Bürgerbüro" |
-| Selin Kaya | Sachbearbeiterin Meldewesen | Space „Meldewesen & Ausweise"; „Dienstbesprechung Bürgerbüro" über die Gruppe „Sachbearbeitung Bürgerbüro" |
+| Selin Kaya | Sachbearbeiterin Meldewesen | Space „Meldewesen & Ausweise" über die Keycloak-Gruppe „Meldewesen"; „Dienstbesprechung Bürgerbüro" über die Gruppe „Sachbearbeitung Bürgerbüro" |
 | Thomas Klein | Sachbearbeiter Kfz-Zulassung | Space „Kfz-Zulassung", alleiniges Mitglied; „Meldewesen & Ausweise" über die Gruppe „Vertretung Meldewesen", „Dienstbesprechung Bürgerbüro" über die Gruppe „Sachbearbeitung Bürgerbüro" |
 | Andrea Vogt | Amtsleitung Bürgerbüro | Space „Amtsleitung Bürgerbüro", alleiniges Mitglied; Eigentümerin von „Dienstbesprechung Bürgerbüro" |
 | Administrationskonto (`demo-admin`) | Systemadministration | richtet ein und indiziert (`SYSTEM_ADMIN`) |
@@ -143,16 +143,17 @@ Default-Space (`SpaceService#ensureDefaultSpace`, `isDefault`), der nicht eigens
 
 Leserechte auf den Bibliotheken — vergeben als Asset-Rolle `VIEWER`, die Bibliotheken selbst gehören dem
 Admin-Konto. Die Matrix zeigt die wirksamen Rechte; „G" markiert ein Recht, das ausschließlich über eine
-interne Gruppe fließt (Tabelle unten), ohne eigenen Grant an das Konto:
+interne Gruppe fließt, „K" eines, das ausschließlich über eine Keycloak-Gruppe fließt (beide Tabellen
+unten) — jeweils ohne eigenen Grant an das Konto:
 
 | Bibliothek | Maria | Selin | Kfz (Thomas) | Amtsleitung (Andrea) |
 |---|---|---|---|---|
-| Leistungen Meldewesen & Ausweise | ✔ | ✔ | — | ✔ |
-| Leistungen Kfz-Zulassung | — | — | ✔ | ✔ |
-| Satzungen & Gebührenordnungen | ✔ | ✔ | ✔ | ✔ |
+| Leistungen Meldewesen & Ausweise | ✔ K „Meldewesen" | ✔ K „Meldewesen" | — | ✔ |
+| Leistungen Kfz-Zulassung | — | — | ✔ K „Kfz-Zulassung" | ✔ |
+| Satzungen & Gebührenordnungen | ✔ K „Bürgerbüro Rheinfurt" | ✔ K „Bürgerbüro Rheinfurt" | ✔ K „Bürgerbüro Rheinfurt" | ✔ K „Bürgerbüro Rheinfurt" |
 | Pressemitteilungen | ✔ | ✔ G „Presseverteiler Bürgerbüro" | ✔ G „Presseverteiler Bürgerbüro" | ✔ |
 | Interne Dienstanweisungen Meldewesen | ✔ | ✔ | ✔ G „Vertretung Meldewesen" | ✔ |
-| Ratsinformationen Stadt Rheinfurt | ✔ | ✔ | ✔ | ✔ |
+| Ratsinformationen Stadt Rheinfurt | ✔ K „Bürgerbüro Rheinfurt" | ✔ K „Bürgerbüro Rheinfurt" | ✔ K „Bürgerbüro Rheinfurt" | ✔ K „Bürgerbüro Rheinfurt" |
 | Formattest auf S3 | — | — | — | — |
 
 Die internen Gruppen (ADR-0036) legt der Seed mit benannten Verantwortlichen an; alle drei sind zur
@@ -161,8 +162,24 @@ Verwendung freigegeben. Verantwortliche sind nicht zugleich Mitglieder:
 | Gruppe | Verantwortlich | Mitglieder | Leserecht | Space-Mitgliedschaft |
 |---|---|---|---|---|
 | Vertretung Meldewesen | Maria | Thomas | Interne Dienstanweisungen Meldewesen | „Meldewesen & Ausweise" (`MEMBER`) |
-| Pressestelle | Andrea | Selin, Thomas | Pressemitteilungen | — |
+| Presseverteiler Bürgerbüro | Andrea | Selin, Thomas | Pressemitteilungen | — |
 | Sachbearbeitung Bürgerbüro | Andrea | Maria, Selin, Thomas | — | „Dienstbesprechung Bürgerbüro" (`MEMBER`) |
+
+Die Keycloak-Gruppen stammen aus dem Realm der Demo und kommen über den **Verzeichnisabgleich** des
+Anbieters „Verzeichnisdienst" nach OPAA (ADR-0036, Entscheidung 3; Keycloak-Konnektor mit dem
+Dienstkonto `opaa-directory`, stündlich). In der Gruppenverwaltung stehen sie als
+Organisationseinheiten mit Anbieter-Herkunft; ihre Mitglieder pflegt ausschließlich Keycloak, der Seed
+vergibt nur ihre Rechte:
+
+| Keycloak-Gruppe | Mitglieder | Leserecht | Space-Mitgliedschaft |
+|---|---|---|---|
+| Bürgerbüro Rheinfurt | alle fünf Konten (mit `demo-admin`) | Satzungen & Gebührenordnungen, Ratsinformationen Stadt Rheinfurt | — |
+| Meldewesen | Maria, Selin | Leistungen Meldewesen & Ausweise | „Meldewesen & Ausweise" (`MEMBER`) |
+| Kfz-Zulassung | Thomas | Leistungen Kfz-Zulassung | — |
+
+Die wirksame Matrix ist dieselbe wie vor der Umstellung; geändert hat sich nur, woher ein Recht kommt.
+Einrichtung, Werte und der Weg in ein Keycloak mit eigenem Volume stehen in
+[`../../demo/README.md`](../../demo/README.md), Abschnitt „Gruppen".
 
 Dieselben Bibliotheken sind den fachlichen Spaces zusätzlich als **Datenquellen zugeordnet**
 (Space↔Bibliothek-Assoziation als reine Kuratierung, #706): „Meldewesen & Ausweise" trägt die fünf

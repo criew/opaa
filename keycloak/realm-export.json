@@ -76,6 +76,18 @@
           }
         }
       ]
+    },
+    {
+      "clientId": "opaa-directory",
+      "description": "Dienstkonto des Verzeichnisabgleichs (ADR-0036): vertraulich, ohne Anmeldefluss, nur view-users und query-groups. Das Geheimnis ist ein dokumentierter Demo-Wert (demo/README.md).",
+      "enabled": true,
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "RheinfurtVerzeichnis!2026",
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true
     }
   ],
   "groups": [
@@ -187,6 +199,15 @@
         }
       ],
       "groups": ["/Bürgerbüro Rheinfurt"]
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000010",
+      "username": "service-account-opaa-directory",
+      "enabled": true,
+      "serviceAccountClientId": "opaa-directory",
+      "clientRoles": {
+        "realm-management": ["view-users", "query-groups"]
+      }
     }
   ]
 }

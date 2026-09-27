@@ -107,6 +107,31 @@ class GroupDef:
 
 
 @dataclass(frozen=True)
+class ProviderGroupDef:
+    """A group of the Keycloak realm (ADR-0036, Entscheidung 3). It reaches OPAA only through the
+    directory sync, as an ORG_UNIT group of the provider; the seed never creates it or changes its
+    members - member_keys states what the realm holds and only serves the rights matrix. Rights and
+    space membership work as for GroupDef."""
+
+    name: str
+    member_keys: tuple[str, ...]
+    library_grants: tuple[str, ...] = field(default_factory=tuple)
+    space_membership: tuple[str, str] | None = None
+
+
+@dataclass(frozen=True)
+class DirectorySyncDef:
+    """The Keycloak connector of the provider's directory sync: the confidential service-account
+    client of keycloak/realm-export.json, holding view-users and query-groups. client_secret is the
+    documented demo value and only the fallback for local and CI stacks; a reachable instance hands
+    the seed its own secret (seed.py --directory-client-secret)."""
+
+    client_id: str
+    client_secret: str
+    interval_minutes: int
+
+
+@dataclass(frozen=True)
 class PromptVariableDef:
     """One variable of a prompt (PromptVariable in prompts.yaml). The prompt text uses it as
     {{name}}; {{CURRENT_DATE}} and {{USER_NAME}} are system variables and never defined here."""
@@ -156,12 +181,16 @@ class Profile:
     libraries: tuple[LibraryDef, ...]
     groups: tuple[GroupDef, ...] = field(default_factory=tuple)
     prompt_libraries: tuple[PromptLibraryDef, ...] = field(default_factory=tuple)
+    provider_groups: tuple[ProviderGroupDef, ...] = field(default_factory=tuple)
+    directory_sync: DirectorySyncDef | None = None
 
     def all_users(self) -> tuple[UserDef, ...]:
         return (self.admin, *self.users)
 
 
 DEMO_PASSWORD = "RheinfurtDemo!2026"  # nosec - documented demo credential, see demo/README.md
+# nosec - documented demo credential of the service account opaa-directory, see demo/README.md
+DEMO_DIRECTORY_CLIENT_SECRET = "RheinfurtVerzeichnis!2026"
 
 _DEMO_ADMIN = UserDef(
     key="admin",
@@ -456,7 +485,7 @@ DEMO_PROFILE = Profile(
             name="Meldewesen & Ausweise",
             description="Gemeinsamer Space des Sachgebiets Meldewesen & Ausweise.",
             owner_key="maria",
-            members=(SpaceMemberDef("selin", "MEMBER"),),
+            # Selin joins through the Keycloak group "Meldewesen" (provider_groups below).
             library_names=(
                 "Leistungen Meldewesen & Ausweise",
                 "Satzungen & Gebührenordnungen",
@@ -517,21 +546,24 @@ DEMO_PROFILE = Profile(
             description="Leistungsbeschreibungen rund um Meldewesen und Ausweisdokumente, dazu die Sprechtage des mobilen Bürgerbüros.",
             source_type="HTTP_DIRECTORY",
             source_url="http://demo-corpus/leistungen-meldewesen-ausweise/",
-            viewer_keys=("maria", "selin", "andrea"),
+            # Maria and Selin read these through the Keycloak group "Meldewesen".
+            viewer_keys=("andrea",),
         ),
         LibraryDef(
             name="Leistungen Kfz-Zulassung",
             description="Leistungsbeschreibungen rund um Kfz-Zulassung und Führerschein.",
             source_type="HTTP_DIRECTORY",
             source_url="http://demo-corpus/leistungen-kfz-zulassung/",
-            viewer_keys=("thomas", "andrea"),
+            # Thomas reads these through the Keycloak group "Kfz-Zulassung".
+            viewer_keys=("andrea",),
         ),
         LibraryDef(
             name="Satzungen & Gebührenordnungen",
             description="Verwaltungsgebühren- und weitere städtische Satzungen mit Gebührentabellen.",
             source_type="HTTP_DIRECTORY",
             source_url="http://demo-corpus/satzungen-gebuehrenordnungen/",
-            viewer_keys=("maria", "selin", "thomas", "andrea"),
+            # Every fach account reads these through the Keycloak group "Bürgerbüro Rheinfurt".
+            viewer_keys=(),
         ),
         LibraryDef(
             name="Pressemitteilungen Stadt Rheinfurt",
@@ -562,7 +594,8 @@ DEMO_PROFILE = Profile(
                 "pathStyle": True,
                 "scopes": [{"bucket": "rheinfurt-archiv", "prefix": "ratsinformationen/"}],
             },
-            viewer_keys=("maria", "selin", "thomas", "andrea"),
+            # Every fach account reads these through the Keycloak group "Bürgerbüro Rheinfurt".
+            viewer_keys=(),
             expected_documents_dir=DEMO_CORPUS_ROOT / "ratsinformationen",
         ),
         # The seventh library (#1520): a technical showcase, not a Fachablage - one document per
@@ -635,6 +668,31 @@ DEMO_PROFILE = Profile(
         ),
     ),
     prompt_libraries=_DEMO_PROMPT_LIBRARIES,
+    # The three groups of keycloak/realm-export.json, brought in by the directory sync. Each one
+    # carries the rights of its Sachgebiet on its own: no member also holds them directly.
+    provider_groups=(
+        ProviderGroupDef(
+            name="Bürgerbüro Rheinfurt",
+            member_keys=("admin", "maria", "selin", "thomas", "andrea"),
+            library_grants=("Satzungen & Gebührenordnungen", "Ratsinformationen Stadt Rheinfurt"),
+        ),
+        ProviderGroupDef(
+            name="Meldewesen",
+            member_keys=("maria", "selin"),
+            library_grants=("Leistungen Meldewesen & Ausweise",),
+            space_membership=("Meldewesen & Ausweise", "MEMBER"),
+        ),
+        ProviderGroupDef(
+            name="Kfz-Zulassung",
+            member_keys=("thomas",),
+            library_grants=("Leistungen Kfz-Zulassung",),
+        ),
+    ),
+    directory_sync=DirectorySyncDef(
+        client_id="opaa-directory",
+        client_secret=DEMO_DIRECTORY_CLIENT_SECRET,
+        interval_minutes=60,
+    ),
 )
 
 _E2E_ADMIN = UserDef(

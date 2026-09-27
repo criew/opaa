@@ -306,10 +306,11 @@ pip install -r requirements.txt
 python seed.py --profile demo
 ```
 
-Der Seed richtet über die öffentliche API alle vier Demo-Nutzer plus das Admin-Konto ein, setzt den
-`groups_claim` des Anbieters „Verzeichnisdienst" (ADR-0036, siehe „Gruppen" unten), legt die fünf
+Der Seed richtet über die öffentliche API alle vier Demo-Nutzer plus das Admin-Konto ein, schaltet
+den Anbieter „Verzeichnisdienst" auf den **Verzeichnisabgleich** um und lässt ihn einmal laufen
+(ADR-0036, siehe „Gruppen" unten), legt die fünf
 Spaces und sieben Wissensbibliotheken an, vergibt die Leserechte, richtet drei interne Gruppen mit
-benannter Verantwortung ein, ordnet den vier gemeinsamen Spaces ihre Bibliotheken
+benannter Verantwortung ein, vergibt den drei Keycloak-Gruppen ihre Rechte, ordnet den vier gemeinsamen Spaces ihre Bibliotheken
 als Datenquellen zu (Assoziation als reine Kuratierung, #706 — Marias persönlicher Space bleibt
 bewusst ohne Zuordnung), lädt die 27 Dokumente der internen Upload-Bibliothek hoch und stößt die
 Indizierung der sechs konnektorgespeisten Bibliotheken an — darunter die beiden `S3`-Bibliotheken,
@@ -348,7 +349,7 @@ zu ersetzen. Der Ist-Zustand auf der öffentlichen Instanz opaa.ewerlin.com weic
 |---|---|---|---|---|
 | `demo-admin` (admin@stadt-rheinfurt.example) | Systemadministration | eigener Default-Space | richtet ein, besitzt alle sieben Bibliotheken — „Formattest auf S3" liest ausschließlich er | `RheinfurtDemo!2026` |
 | `maria.weber` | Sachbearbeiterin Meldewesen | „Meldewesen & Ausweise" (mit Selin), „Maria Weber – persönlich" (allein), „Dienstbesprechung Bürgerbüro" (über Gruppe) | Leistungen Meldewesen & Ausweise, Satzungen & Gebührenordnungen, Pressemitteilungen, Interne Dienstanweisungen Meldewesen, Ratsinformationen | `RheinfurtDemo!2026` |
-| `selin.kaya` | Sachbearbeiterin Meldewesen | „Meldewesen & Ausweise" (mit Maria), „Dienstbesprechung Bürgerbüro" (über Gruppe) | dieselben fünf wie Maria, Pressemitteilungen nur über die Gruppe „Presseverteiler Bürgerbüro" | `RheinfurtDemo!2026` |
+| `selin.kaya` | Sachbearbeiterin Meldewesen | „Meldewesen & Ausweise" (über die Keycloak-Gruppe „Meldewesen"), „Dienstbesprechung Bürgerbüro" (über Gruppe) | dieselben fünf wie Maria, Pressemitteilungen nur über die Gruppe „Presseverteiler Bürgerbüro" | `RheinfurtDemo!2026` |
 | `thomas.klein` | Sachbearbeiter Kfz-Zulassung | „Kfz-Zulassung" (allein), „Meldewesen & Ausweise" und „Dienstbesprechung Bürgerbüro" (je über Gruppe) | Leistungen Kfz-Zulassung, Satzungen & Gebührenordnungen, Ratsinformationen; Pressemitteilungen nur über „Presseverteiler Bürgerbüro", Interne Dienstanweisungen Meldewesen nur über „Vertretung Meldewesen" | `RheinfurtDemo!2026` |
 | `andrea.vogt` | Amtsleitung Bürgerbüro | „Amtsleitung Bürgerbüro" (allein), „Dienstbesprechung Bürgerbüro" (Eigentümerin) | alle sechs fachlichen Bibliotheken (nicht „Formattest auf S3") | `RheinfurtDemo!2026` |
 
@@ -364,8 +365,12 @@ eigenes Konto ohne die Rechte der Demo-Maria, sobald die Systemverwaltung den Re
 Anbieter angelegt hat (Administration → Identitätsanbieter; der Demo-Smoke-Lauf tut genau das).
 Sie zeigt, dass Konten zweier Anbieter nie zusammengeführt werden.
 
-Die Spalte „Lesbare Bibliotheken" zählt die wirksamen `VIEWER`-Rechte, eigene wie über eine interne
-Gruppe vermittelte (siehe „Gruppen" unten); jeder Nutzer bekommt
+Die Spalte „Lesbare Bibliotheken" zählt die wirksamen `VIEWER`-Rechte, eigene wie über eine
+Gruppe vermittelte (siehe „Gruppen" unten). Einen Teil davon tragen seit #2017 die drei
+Keycloak-Gruppen allein: Satzungen und Ratsinformationen lesen alle vier Fachkonten über
+„Bürgerbüro Rheinfurt", die Leistungen Meldewesen & Ausweise Maria und Selin über „Meldewesen", die
+Leistungen Kfz-Zulassung Thomas über „Kfz-Zulassung" — Andrea behält ihre eigenen Grants auf beide
+Leistungsbibliotheken. Jeder Nutzer bekommt
 beim ersten Login zusätzlich automatisch seinen eigenen Default-Space, der oben nicht eigens
 aufgeführt ist. Die drei Sachgebiets- und Amtsleitungs-Spaces tragen ihre lesbaren Bibliotheken
 zusätzlich als zugeordnete Datenquellen, „Dienstbesprechung Bürgerbüro" die drei für alle
@@ -383,18 +388,51 @@ Bibliothek gar nicht erst, unabhängig davon, wie thematisch treffend ein Chunk 
 Thomas die Bibliothek über die Gruppe „Vertretung Meldewesen" lesen darf, stellt er die Frage dafür
 in seinem Space „Kfz-Zulassung", dem sie nicht zugeordnet ist.
 
-### Gruppen (ADR-0036, #1823)
+### Gruppen (ADR-0036, #1823, #2017)
 
-`keycloak/realm-export.json` trägt seit #1823 drei Keycloak-Gruppen und einen
-Gruppen-Mapper (Claim `groups`, kurzer Name statt vollem Pfad) auf den Clients `opaa-frontend` und
-`opaa-seed`: „Bürgerbüro Rheinfurt" (alle fünf Demo-Konten, `demo-admin` eingeschlossen — genau die
-Mindestgruppengröße der Suchdiagnose), „Meldewesen" (Maria, Selin) und „Kfz-Zulassung" (Thomas). Der
-Seed setzt zusätzlich `groups_claim=groups` am Anbieter „Verzeichnisdienst" (Schritt 2 unten) und
-meldet jeden Demo-Nutzer danach erneut an — erst dann übernimmt `TokenGroupSynchronizer`
-(ADR-0036, Entscheidung 3) die Mitgliedschaft aus dem Token; ohne diesen zweiten Umlauf blieben die
-Gruppen der ersten Anmeldung (Schritt 1) leer. Die beiden kleineren Gruppen liegen unter der
-Mindestgruppengröße (Vorgabe 5) und zeigen deshalb in der Suchdiagnose „kleine Gruppe" statt einer
-Zahl; „Bürgerbüro Rheinfurt" ist das eine wählbare Rechteprofil oberhalb der Schwelle.
+`keycloak/realm-export.json` trägt drei Keycloak-Gruppen: „Bürgerbüro Rheinfurt" (alle fünf
+Demo-Konten, `demo-admin` eingeschlossen — genau die Mindestgruppengröße der Suchdiagnose),
+„Meldewesen" (Maria, Selin) und „Kfz-Zulassung" (Thomas). Seit #2017 kommen sie über den
+**Verzeichnisabgleich** nach OPAA, nicht mehr über den Gruppen-Claim der Tokens: Der Realm-Export
+führt dafür das Dienstkonto `opaa-directory` (vertraulicher Client ohne Anmeldefluss, Geheimnis
+`RheinfurtVerzeichnis!2026` — ein offener Demo-Wert nur für lokale und CI-Stacks; eine erreichbare
+Instanz bekommt ein eigenes, siehe „Realm-Änderungen in ein bestehendes Keycloak übertragen" —,
+Rollen `view-users` und `query-groups` aus `realm-management`), und der Seed richtet am Anbieter „Verzeichnisdienst" ein
+(Schritt 2 unten):
+
+| Einstellung | Wert in der Demo |
+|---|---|
+| Gruppenmechanismus | Verzeichnisabgleich; der Gruppen-Claim ist leer (je Anbieter gibt es genau einen Mechanismus) |
+| Verzeichniszugang | `KEYCLOAK`, Client `opaa-directory`, Adresse aus der JWK-Set-Adresse des Anbieters (im Compose-Stack `http://keycloak:8180`), Realm aus der Issuer-URI (`opaa`) |
+| Intervall | 60 Minuten — eine Änderung in Keycloak ist spätestens nach einer Stunde in OPAA |
+
+Die drei Gruppen erscheinen in der Gruppenverwaltung als Organisationseinheiten mit dem Anbieter
+„Verzeichnisdienst" als Herkunft und ihrem Quellpfad (`/Meldewesen` usw.), unter **Administration →
+Verzeichnisabgleich** steht die Karte des Anbieters mit Statuszeile, Trockenlauf und Lauf. Rechte
+tragen sie so (`provider_groups` in `demo/seed/profiles.py`); keines davon hält eines ihrer
+Mitglieder zusätzlich selbst:
+
+| Keycloak-Gruppe | Mitglieder | Leserecht | Space-Mitgliedschaft |
+|---|---|---|---|
+| Bürgerbüro Rheinfurt | alle fünf Demo-Konten | Satzungen & Gebührenordnungen, Ratsinformationen Stadt Rheinfurt | — |
+| Meldewesen | Maria, Selin | Leistungen Meldewesen & Ausweise | „Meldewesen & Ausweise" (`MEMBER`) |
+| Kfz-Zulassung | Thomas | Leistungen Kfz-Zulassung | — |
+
+Vorführen lässt sich damit der Weg einer Rechteänderung aus dem Verzeichnis: Thomas in Keycloak aus
+„Kfz-Zulassung" nehmen, unter Administration → Verzeichnisabgleich „Trockenlauf" und „Lauf" anstoßen
+— er liest die Kfz-Leistungen danach nicht mehr, ohne dass in OPAA ein Recht angefasst wurde.
+Danach die Mitgliedschaft in Keycloak zurückgeben und erneut abgleichen, sonst fehlt Thomas die
+Antwort auf Drehbuchfrage 4. Die
+beiden kleineren Gruppen liegen unter der Mindestgruppengröße (Vorgabe 5) und zeigen in der
+Suchdiagnose „kleine Gruppe" statt einer Zahl; „Bürgerbüro Rheinfurt" ist das eine wählbare
+Rechteprofil oberhalb der Schwelle.
+
+Die Gruppen-Mapper (Claim `groups`) auf `opaa-frontend` und `opaa-seed` bleiben im Export, werden für
+diesen Anbieter aber nicht mehr ausgewertet. Eine Instanz, die vor #2017 im Token-Modus lief, behält
+ihre drei Token-Gruppen mit eingefrorener Mitgliedschaft; sie stehen in der Gruppenverwaltung als
+„Wird nicht mehr gepflegt" neben den gleichnamigen Organisationseinheiten und tragen keine Rechte.
+Für die Umstellung einer bestehenden Instanz gilt deshalb: neu aufsetzen (siehe „Realm-Änderungen
+in ein bestehendes Keycloak übertragen" unten).
 
 Zusätzlich richtet der Seed (Schritt 6) die interne Gruppe **„Vertretung Meldewesen"** ein
 (`demo/seed/profiles.py`, `GroupDef`): Maria ist ihre alleinige, benannte Verantwortliche (nicht das
@@ -434,11 +472,9 @@ Anbieter ist per Vorgabe **extern** gekennzeichnet, und `TokenGroupSynchronizer`
 das nicht auslösen, weil `opaa-partner` (anders als `opaa-seed`) bewusst kein
 `directAccessGrantsEnabled` trägt und nur den echten Authorization-Code-Ablauf im Browser zulässt.
 
-**`sourcePath` bleibt in der Demo bei jeder Gruppe leer** — das Feld füllt ausschließlich der
-Verzeichnisabgleich (ORG_UNIT-Gruppen), und der bleibt hier bewusst aus (Umfang von #1823, die Demo
-läuft im Token-Modus). Die beiden gleichnamigen „Meldewesen"-Gruppen sind stattdessen über ihre
-Herkunft (Anbieter/Realm) unterscheidbar, nicht über einen Quellpfad — wer ihn in der Demo sucht,
-wird ihn nicht finden.
+Der Anbieter des Realms `partner` bleibt im Token-Modus: Seine „Meldewesen"-Gruppe hat deshalb
+keinen Quellpfad, die gleichnamige Organisationseinheit des Anbieters „Verzeichnisdienst" den Pfad
+`/Meldewesen`. Unterscheidbar sind beide in erster Linie über ihre Herkunft.
 
 ### Prompt-Bibliotheken (#2014)
 
@@ -530,15 +566,24 @@ Der Lauf richtet über die API ein:
    Notanker-Konto an (`POST /api/v1/auth/local/login`) und vergibt die Rolle über
    `POST /api/v1/admin/users/{id}/role`; gelingt das nicht, bricht der Lauf ab (siehe oben,
    `OPAA_INITIAL_ADMIN_EMAIL`/`OPAA_INITIAL_ADMIN_PASSWORD`).
-2. **Identitätsanbieter: `groups_claim` setzen** (nur im `demo`-Profil, ADR-0036) — der Seed setzt
-   `claimMapping.groupsClaim=groups` am Anbieter „Verzeichnisdienst"
-   (`PUT /api/v1/admin/oidc-providers/{id}`) und meldet danach jedes Konto aus Schritt 1 erneut an
-   (`GET /api/v1/auth/me`): `UserProvisioningFilter` provisioniert bei **jeder** Anfrage neu, aber
-   die erste Anmeldung aus Schritt 1 lief noch ohne `groups_claim` und synchronisierte deshalb keine
-   Gruppe. Das `e2e`-Profil überspringt den Schritt — der dev-Betriebsmodus kennt keine
-   Anbieterzeile (ADR-0036, Entscheidung 3).
-3. **Spaces** gemäß `docs/features/demo-instance.md` — „Meldewesen & Ausweise" (Maria Weber, Selin
-   Kaya), Marias eigener Space ohne weiteres Mitglied, „Kfz-Zulassung" (Thomas Klein), „Amtsleitung
+2. **Identitätsanbieter: Verzeichnisabgleich** (nur im `demo`-Profil, ADR-0036 Entscheidungen 2
+   und 3, siehe „Gruppen" oben) — am Anbieter „Verzeichnisdienst" leert der Seed einen gesetzten
+   Gruppen-Claim (`PUT /api/v1/admin/oidc-providers/{id}`), hinterlegt den Verzeichniszugang
+   (`PUT …/directory-connector` mit `opaa-directory` und dem Geheimnis aus
+   `OPAA_DEMO_DIRECTORY_CLIENT_SECRET`/`--directory-client-secret`, ohne beides dem Demo-Wert; die
+   Adresse leitet er aus der JWK-Set-Adresse des Anbieters ab), prüft ihn (`POST …/directory-connector/test`),
+   schaltet den Abgleich mit 60 Minuten Intervall ein (`PUT …/directory-sync`) und stößt einen
+   Lauf an (`POST …/directory-sync/run`). Jeder Lauf muss mit `APPLIED` enden, sonst bricht der
+   Seed mit dem Ergebnis ab; ein `409` des gerade vom Zeitplan gestarteten Laufs wartet er ab.
+   Gespeichert wird nur, was abweicht — ein hinterlegter Zugang, dessen Verbindungstest gelingt,
+   bleibt stehen; scheitert sein Test, bricht der Seed ab und ersetzt ihn nur durch ein
+   ausdrücklich übergebenes Geheimnis. Scheitert der Test eines neu hinterlegten Zugangs, fehlt dem
+   Realm meist das Dienstkonto: siehe „Realm-Änderungen in ein bestehendes Keycloak übertragen"
+   unten. Das `e2e`-Profil überspringt
+   den Schritt — der dev-Betriebsmodus kennt keine Anbieterzeile (ADR-0036, Entscheidung 3).
+3. **Spaces** gemäß `docs/features/demo-instance.md` — „Meldewesen & Ausweise" (Maria Weber; Selin
+   Kaya kommt in Schritt 6 über die Keycloak-Gruppe „Meldewesen" hinzu), Marias eigener Space ohne
+   weiteres Mitglied, „Kfz-Zulassung" (Thomas Klein), „Amtsleitung
    Bürgerbüro" (Andrea Vogt), „Dienstbesprechung Bürgerbüro" (Andrea Vogt; die Sachbearbeitung
    kommt erst in Schritt 6 über die Gruppe „Sachbearbeitung Bürgerbüro" hinzu).
 4. **Sieben Wissensbibliotheken** im Besitz des Admin-Kontos, je mit eigener Quellkonfiguration
@@ -569,7 +614,12 @@ Der Lauf richtet über die API ein:
    Verantwortlichen ernennen und die automatische Erstverantwortung des Admin-Kontos wieder
    abgeben, Mitglieder aufnehmen, zur Verwendung freigeben, ihr `VIEWER`-Recht auf die
    konfigurierten Bibliotheken vergeben (`subjectType=GROUP`) und sie den konfigurierten Spaces als
-   Mitglied hinzufügen (`subjectType=GROUP`, #1815).
+   Mitglied hinzufügen (`subjectType=GROUP`, #1815). Danach dasselbe für die Keycloak-Gruppen
+   (`ProviderGroupDef`): Der Seed legt sie nie an, sondern findet die Organisationseinheit, die der
+   Abgleich aus Schritt 2 gebracht hat (Art `ORG_UNIT`, Anbieter „Verzeichnisdienst", nicht
+   aufgelöst — eine gleichnamige, nicht mehr gepflegte Token-Gruppe ist es nicht), und vergibt ihr
+   Leserecht und Space-Mitgliedschaft. Fehlt sie, bricht der Lauf mit dem Hinweis auf das
+   Realm-Skript ab.
 7. **Space↔Bibliothek-Zuordnungen** (Assoziation als reine Kuratierung, #706) gemäß den
    `library_names` der Space-Definitionen in `profiles.py`: „Meldewesen & Ausweise" bekommt die fünf
    für das Sachgebiet lesbaren Bibliotheken zugeordnet, „Kfz-Zulassung" vier, „Amtsleitung Bürgerbüro"
@@ -676,6 +726,77 @@ Absatz „Änderungen am Realm auf einer bereits laufenden Instanz").
 Schlägt ein Seed-Lauf an dieser Stelle fehl, benennt `seed.py` die Ablehnung als solche und gibt den
 `WWW-Authenticate`-Header des Backends aus — „nicht erreichbar" meldet es nur, wenn tatsächlich
 nichts geantwortet hat.
+
+### Realm-Änderungen in ein bestehendes Keycloak übertragen
+
+Der lokale Compose-Stack importiert `keycloak/realm-export.json` bei jedem Start neu. Ein Keycloak mit
+eigenem Volume oder eigener Datenbank — die öffentliche Instanz ist so eines — liest den Export nach
+dem ersten Import **nie wieder**; Gruppen, Mitgliedschaften und Clients, die später in den Export
+kamen, fehlen dort. `demo/keycloak/apply-realm-changes.sh` überträgt die Teile, von denen der Seed
+abhängt, per `kcadm` in den bestehenden Realm:
+
+- die Gruppen „Bürgerbüro Rheinfurt", „Meldewesen", „Kfz-Zulassung" und die Mitgliedschaften der
+  fünf Demo-Konten darin,
+- den Client `opaa-directory` (vertraulich, nur Dienstkonto) und die Rollen `view-users` und
+  `query-groups` aus `realm-management`,
+- den Audience-Mapper `opaa-frontend-audience` am Client `opaa-seed`.
+
+Das Skript ist idempotent: Es prüft jeden Punkt und legt nur an, was fehlt; ein zweiter Lauf ändert
+nichts. Es entfernt nichts und setzt kein Passwort — die Härtung der Konten auf einer erreichbaren
+Instanz bleibt unberührt. **Das Geheimnis von `opaa-directory`** setzt es nur beim Anlegen des
+Clients oder wenn `DIRECTORY_CLIENT_SECRET` ausdrücklich übergeben ist; ein vorhandener Client
+behält sonst sein Geheimnis, ein rotiertes fällt also nie still auf den Demo-Wert zurück.
+
+| Variable | Bedeutung | Vorgabe |
+|---|---|---|
+| `KC_CONTAINER` | Container, in dem `kcadm.sh` läuft (`docker exec`); ohne Angabe wird `kcadm.sh` aus dem `PATH` aufgerufen | — |
+| `KC_SERVER` | Keycloak-Adresse aus Sicht von `kcadm`; auf der öffentlichen Instanz liegt Keycloak auch containerintern unter `/idp` | `http://localhost:8180` |
+| `KC_ADMIN_USER`, `KC_ADMIN_PASSWORD` | Administrator des `master`-Realms | Pflicht |
+| `KC_REALM` | Ziel-Realm | `opaa` |
+| `DIRECTORY_CLIENT_SECRET` | Geheimnis von `opaa-directory`; muss zu dem passen, was der Seed in OPAA hinterlegt | ungesetzt: neuer Client bekommt den Demo-Wert `RheinfurtVerzeichnis!2026` (nur lokal/CI), vorhandener behält seins |
+
+Der Seed nimmt dasselbe Geheimnis aus `OPAA_DEMO_DIRECTORY_CLIENT_SECRET` bzw.
+`--directory-client-secret`. Ohne beides hinterlegt er den Demo-Wert — aber nur, solange in OPAA
+noch kein Verzeichniszugang steht. Scheitert der Verbindungstest eines hinterlegten Zugangs (Keycloak
+nicht erreichbar oder Geheimnis rotiert), bricht er ab, statt ihn zu überschreiben; ersetzt wird ein
+hinterlegter Zugang nur durch ein ausdrücklich übergebenes Geheimnis.
+
+**Lokaler Compose-Stack und CI:** Nichts zu tun — der Realm-Export bringt `opaa-directory` mit dem
+Demo-Wert mit, und der Seed hinterlegt denselben. Das Skript ist dort nur nötig, um einen eigenen
+Keycloak mit Volume nachzuziehen; der Container heißt dann `<Projektname>-keycloak-1`.
+
+**Öffentlich erreichbare Instanz** (etwa opaa.ewerlin.com, deren Admin-API von außen erreichbar ist):
+Der Demo-Wert steht im Repository und öffnet über `client_credentials` den ganzen Verzeichnisabzug.
+Deshalb dort immer ein eigenes Geheimnis erzeugen, auf dem Server ablegen und an Skript **und** Seed
+durchreichen:
+
+```bash
+# einmalig: Geheimnis erzeugen und nur für root lesbar ablegen
+umask 077; openssl rand -base64 32 | tr -d '\n' > /srv/opaa/.directory-client-secret
+
+# Realm nachziehen - setzt das Geheimnis auch an einem schon vorhandenen Client
+KC_CONTAINER=opaa-keycloak \
+KC_SERVER=http://localhost:8180/idp \
+KC_ADMIN_USER=<Administrator des master-Realms> KC_ADMIN_PASSWORD=<sein Passwort> \
+DIRECTORY_CLIENT_SECRET="$(cat /srv/opaa/.directory-client-secret)" \
+  bash demo/keycloak/apply-realm-changes.sh
+
+# Seed - hinterlegt dasselbe Geheimnis als Verzeichniszugang
+OPAA_DEMO_DIRECTORY_CLIENT_SECRET="$(cat /srv/opaa/.directory-client-secret)" \
+  python seed.py --profile demo --base-url https://opaa.ewerlin.com/api \
+  --keycloak-url https://opaa.ewerlin.com/idp
+```
+
+Wer das Geheimnis später rotiert, erzeugt die Datei neu und lässt beide Aufrufe erneut laufen.
+
+**Bestehende Instanz: neu aufsetzen, nicht nur nachziehen.** Der Seed entzieht nichts. Auf einer
+Instanz, die vor der Umstellung gesät wurde, behalten Maria, Selin, Thomas und Andrea ihre eigenen
+Grants auf Satzungen, Ratsinformationen und die Leistungsbibliotheken, und Selin bleibt einzeln
+Mitglied von „Meldewesen & Ausweise"; die Spalte „K" der Matrix („ausschließlich über die
+Keycloak-Gruppe") stimmt dort also nicht, und die Vorführung „Thomas aus ‚Kfz-Zulassung' nehmen"
+ginge ins Leere. Außerdem blieben die alten Token-Gruppen als „Wird nicht mehr gepflegt" stehen.
+Für die Umstellung deshalb: Skript ausführen, dann die OPAA-Datenbank zurücksetzen (Postgres-Volume
+verwerfen; das Keycloak-Volume bleibt) und neu seeden.
 
 ### Öffentliche Instanz betreiben (opaa.ewerlin.com)
 
@@ -826,10 +947,16 @@ Der (erneute) Seed der Instanz läuft im Profil `demo` von einer Arbeitsstation 
 API und Keycloak, nicht auf dem Server selbst:
 
 ```bash
+OPAA_DEMO_DIRECTORY_CLIENT_SECRET="$(cat /srv/opaa/.directory-client-secret)" \
 python seed.py --profile demo \
   --base-url https://opaa.ewerlin.com/api \
   --keycloak-url https://opaa.ewerlin.com/idp
 ```
+
+Das Geheimnis des Verzeichnis-Dienstkontos `opaa-directory` ist dort ein eigener, auf dem Server
+abgelegter Zufallswert, nie der dokumentierte Demo-Wert — Erzeugung und Weitergabe an Realm-Skript
+und Seed: „Realm-Änderungen in ein bestehendes Keycloak übertragen" oben. Läuft der Seed von einer
+Arbeitsstation, wird der Wert von dort übergeben.
 
 Voraussetzung dafür ist der Keycloak-Client `opaa-seed` — siehe
 [„Härtung für erreichbare Deployments"](../docs/handbuch/deployment.md#härtung-für-erreichbare-deployments),
