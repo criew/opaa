@@ -1,5 +1,8 @@
-package io.opaa.metadata;
+package io.opaa.indexing.maintenance;
 
+import io.opaa.metadata.CoreMetadataExtractor;
+import io.opaa.metadata.CoreMetadataField;
+import io.opaa.metadata.MetadataFieldFill;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.UUID;

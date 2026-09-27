@@ -7,11 +7,8 @@ import java.util.UUID;
 import java.util.function.Function;
 
 /**
- * The chargen loop the resumable document runs share: pipeline re-index ({@code
- * PipelineReindexService}), the deterministic Bestandslauf ({@code MetadataBackfillService}), the
- * Kontextpräfix rerun ({@code ContextPrefixRerunService}) and the schema changes of a library field
- * ({@code LibraryMetadataSchemaChangeService}). Selection and processing unit are the caller's; the
- * loop owns only the mechanics they all need.
+ * The chargen loop of a resumable run over documents. Selection and processing unit are the
+ * caller's; the loop owns only the mechanics every such run needs.
  *
  * <p><b>Every call terminates and every call makes progress.</b> A candidate the unit cannot
  * advance right now stays in the candidate set on purpose - nothing about it is falsified in the

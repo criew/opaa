@@ -1,7 +1,7 @@
-package io.opaa.metadata;
+package io.opaa.indexing.maintenance;
 
 /**
- * What one {@code MetadataBackfillService#backfillBatch} call did. {@link #isEmpty()} is the signal
+ * What one {@link MetadataBackfillService#backfillBatch} call did. {@link #isEmpty()} is the signal
  * to stop calling - the same "advanced nothing means drained" contract {@code
  * PipelineReindexResult} uses, and for the same reason it ignores {@link #skippedDocuments()}: a
  * call that only skipped would retry the same unreachable documents forever.

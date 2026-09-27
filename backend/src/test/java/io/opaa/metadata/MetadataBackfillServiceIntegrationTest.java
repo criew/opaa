@@ -14,6 +14,8 @@ import io.opaa.indexing.document.DocumentIngest;
 import io.opaa.indexing.document.DocumentIngestResult;
 import io.opaa.indexing.document.DocumentIngestService;
 import io.opaa.indexing.document.DocumentIngests;
+import io.opaa.indexing.maintenance.MetadataBackfillProgress;
+import io.opaa.indexing.maintenance.MetadataBackfillResult;
 import io.opaa.indexing.maintenance.MetadataBackfillService;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;

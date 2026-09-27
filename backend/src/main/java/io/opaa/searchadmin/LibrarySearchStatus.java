@@ -1,8 +1,8 @@
 package io.opaa.searchadmin;
 
 import io.opaa.indexing.maintenance.ContextPrefixRerunProgress;
+import io.opaa.indexing.maintenance.MetadataBackfillProgress;
 import io.opaa.metadata.LibraryMetadataSchemaChangeProgress;
-import io.opaa.metadata.MetadataBackfillProgress;
 import io.opaa.metadata.ModelExtractionStats;
 import java.time.Instant;
 import java.util.UUID;

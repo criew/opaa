@@ -28,9 +28,8 @@ identity und rights ab.
   Format ab, das einen Schemaschlüssel als Passthrough-Schlüssel deklariert.
 - **`IndexingConfiguration` verdrahtet den Kern und kennt keinen Konnektor**; die Unterpakete
   kennen voneinander nichts über das Wurzelpaket `indexing`.
-- **Zyklen zwischen den Unterpaketen von `indexing`** sind in
-  `ModularArchitecture.KNOWN_SUBPACKAGE_CYCLE_EDGES` eingefroren. Jede weitere Kante auf einem
-  Zyklus lässt `ModularArchitectureTest` fehlschlagen.
+- **Zyklen zwischen den Unterpaketen von `indexing`** sind in `KNOWN_SUBPACKAGE_CYCLE_EDGES`
+  eingefroren; jede weitere Kante auf einem Zyklus lässt `ModularArchitectureTest` fehlschlagen.
 - **Chat-Modelle:** `LlmModelService` ist der einzige Einstieg. Der optionale API-Schlüssel wird
   über `SettingsEncryptor` verschlüsselt, bevor die Datenbank ihn sieht; jede Änderung wird
   protokolliert. Genau ein Modell ist systemweit aktiv.

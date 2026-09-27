@@ -8,11 +8,11 @@ import io.opaa.api.dto.MetadataBackfillStatusResponse;
 import io.opaa.api.dto.MetadataSchemaChangeStatusResponse;
 import io.opaa.indexing.maintenance.ContextPrefixRerunProgress;
 import io.opaa.indexing.maintenance.ContextPrefixRerunResult;
+import io.opaa.indexing.maintenance.MetadataBackfillProgress;
+import io.opaa.indexing.maintenance.MetadataBackfillResult;
 import io.opaa.metadata.CoreMetadataExtractor;
 import io.opaa.metadata.CoreMetadataField;
 import io.opaa.metadata.LibraryMetadataSchemaChangeProgress;
-import io.opaa.metadata.MetadataBackfillProgress;
-import io.opaa.metadata.MetadataBackfillResult;
 import java.util.ArrayList;
 import java.util.List;
 

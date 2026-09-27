@@ -17,8 +17,6 @@ import io.opaa.knowledge.SourceType;
 import io.opaa.metadata.CoreMetadataExtractor;
 import io.opaa.metadata.CoreMetadataField;
 import io.opaa.metadata.DocumentMetadataService;
-import io.opaa.metadata.MetadataBackfillProgress;
-import io.opaa.metadata.MetadataBackfillResult;
 import io.opaa.metadata.MetadataFieldFill;
 import io.opaa.metadata.MetadataFillCounter;
 import io.opaa.metadata.ModelExtractionPrompt;

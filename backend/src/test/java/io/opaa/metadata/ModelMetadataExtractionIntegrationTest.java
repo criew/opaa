@@ -15,6 +15,7 @@ import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.indexing.document.DocumentIngest;
 import io.opaa.indexing.document.DocumentIngestResult;
 import io.opaa.indexing.document.DocumentIngestService;
+import io.opaa.indexing.maintenance.MetadataBackfillResult;
 import io.opaa.indexing.maintenance.MetadataBackfillService;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
