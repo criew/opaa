@@ -1,6 +1,5 @@
 package io.opaa.indexing.source.confluence;
 
-import io.opaa.api.types.ConfluenceEdition;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.sourceaccess.SourceHttpClientFactory;
 import io.opaa.sourceaccess.SourceRequestMeter;

@@ -14,7 +14,6 @@ import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.indexing.attachment.AttachmentAccess;
 import io.opaa.indexing.chunk.VectorChunkStore;
@@ -32,6 +31,7 @@ import io.opaa.knowledge.LibraryStorageQuotaService;
 import io.opaa.sourceaccess.BoundedDownloader;
 import io.opaa.sourceaccess.SourceRequestPolicy;
 import io.opaa.test.ProductionDocumentFormats;
+import io.opaa.test.SourceTypes;
 import java.io.IOException;
 import java.net.http.HttpClient;
 import java.nio.charset.StandardCharsets;
@@ -83,7 +83,7 @@ class UrlIndexingExecutorAttachmentBookkeepingTest {
             null,
             UUID.randomUUID(),
             false,
-            DocumentSourceType.HTTP_DIRECTORY,
+            SourceTypes.HTTP_DIRECTORY,
             null,
             "https://example.com/docs/",
             null,
@@ -130,7 +130,7 @@ class UrlIndexingExecutorAttachmentBookkeepingTest {
             DocumentIngests.that()
                 .file()
                 .in(library)
-                .from(DocumentSourceType.HTTP_DIRECTORY)
+                .from(SourceTypes.HTTP_DIRECTORY)
                 .foundOn(null)
                 .childOf(null)
                 .match(),
@@ -149,7 +149,7 @@ class UrlIndexingExecutorAttachmentBookkeepingTest {
     Document keptDoc = httpDocument("behalten.pdf", keptPath, mailDoc.getId());
     Document removedDoc = httpDocument("entfernt.pdf", removedPath, mailDoc.getId());
     when(documentRepository.findByLibraryIdAndSourceType(
-            library.getId(), DocumentSourceType.HTTP_DIRECTORY))
+            library.getId(), SourceTypes.HTTP_DIRECTORY))
         .thenReturn(List.of(mailDoc, keptDoc, removedDoc));
 
     stubProcessUrlFile(
@@ -182,7 +182,7 @@ class UrlIndexingExecutorAttachmentBookkeepingTest {
     Document innerMailDoc = httpDocument("weitergeleitet.eml", innerMailPath, mailDoc.getId());
     Document grandchildDoc = httpDocument("anlage.pdf", grandchildPath, innerMailDoc.getId());
     when(documentRepository.findByLibraryIdAndSourceType(
-            library.getId(), DocumentSourceType.HTTP_DIRECTORY))
+            library.getId(), SourceTypes.HTTP_DIRECTORY))
         .thenReturn(List.of(grandchildDoc, mailDoc, innerMailDoc));
 
     stubProcessUrlFile(invocation -> DocumentIngestResult.SKIPPED);
@@ -206,7 +206,7 @@ class UrlIndexingExecutorAttachmentBookkeepingTest {
     Document failedDoc = httpDocument("voruebergehend-defekt.eml", failedPath, mailDoc.getId());
     Document childDoc = httpDocument("anlage.pdf", childOfFailedPath, failedDoc.getId());
     when(documentRepository.findByLibraryIdAndSourceType(
-            library.getId(), DocumentSourceType.HTTP_DIRECTORY))
+            library.getId(), SourceTypes.HTTP_DIRECTORY))
         .thenReturn(List.of(mailDoc, failedDoc, childDoc));
 
     stubProcessUrlFile(
@@ -225,7 +225,7 @@ class UrlIndexingExecutorAttachmentBookkeepingTest {
 
   private Document httpDocument(String fileName, String filePath, UUID parentDocumentId) {
     Document document =
-        new Document(fileName, filePath, "message/rfc822", 1L, DocumentSourceType.HTTP_DIRECTORY);
+        new Document(fileName, filePath, "message/rfc822", 1L, SourceTypes.HTTP_DIRECTORY);
     document.setLibraryId(library.getId());
     document.setParentDocumentId(parentDocumentId);
     return document;
@@ -237,7 +237,7 @@ class UrlIndexingExecutorAttachmentBookkeepingTest {
     verify(staleDocumentCleanupService, timeout(2000))
         .reconcile(
             eq(library),
-            eq(DocumentSourceType.HTTP_DIRECTORY),
+            eq(SourceTypes.HTTP_DIRECTORY),
             urlsCaptor.capture(),
             any(),
             any(),
@@ -252,7 +252,7 @@ class UrlIndexingExecutorAttachmentBookkeepingTest {
     verify(staleDocumentCleanupService, timeout(2000))
         .reconcile(
             eq(library),
-            eq(DocumentSourceType.HTTP_DIRECTORY),
+            eq(SourceTypes.HTTP_DIRECTORY),
             any(),
             urlsCaptor.capture(),
             any(),

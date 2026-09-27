@@ -1,8 +1,6 @@
 package io.opaa.indexing.source.rss;
 
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.IndexingRunMode;
-import io.opaa.indexing.IndexingProperties;
 import io.opaa.indexing.attachment.AttachmentCandidate;
 import io.opaa.indexing.attachment.AttachmentIndexer;
 import io.opaa.indexing.attachment.AttachmentLimits;
@@ -18,7 +16,6 @@ import io.opaa.indexing.job.IndexingRunProgress;
 import io.opaa.indexing.source.IndexingRun;
 import io.opaa.indexing.source.IndexingRunFailedException;
 import io.opaa.indexing.source.IndexingRunTemplate;
-import io.opaa.indexing.source.IndexingSourceType;
 import io.opaa.indexing.source.ListingOutcome;
 import io.opaa.indexing.source.RequestBudget;
 import io.opaa.indexing.source.SourceIndexingExecutor;
@@ -26,6 +23,7 @@ import io.opaa.indexing.source.VanishedDocumentPolicy;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
+import io.opaa.knowledge.SourceType;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.sourceaccess.ProxyAndCredentials;
 import io.opaa.sourceaccess.RequestPoliteness;
@@ -46,7 +44,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Async;
 
 /**
- * Executes indexing runs for {@link IndexingSourceType#RSS_FEED} (ADR-0017): fetches the feed,
+ * Executes indexing runs for {@link RssFeedSourceConnector#TYPE} (ADR-0017): fetches the feed,
  * resolves every entry's detail page and hands the page's main content - not the whole page - as
  * HTML into {@link DocumentIngestService#ingest}, naming the HTML pipeline, so an entry is cut into
  * sections like a {@code .html} file. Transport, page reduction and attachments belong to {@link
@@ -67,7 +65,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
 
   private final DocumentIngestService documentIngestService;
   private final DocumentRepository documentRepository;
-  private final IndexingProperties.Rss properties;
+  private final RssFeedProperties properties;
   private final FeedFetcher feedFetcher;
   private final DetailPageExtractor detailPageExtractor;
   private final AttachmentIndexer attachmentIndexer;
@@ -81,13 +79,13 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
       DocumentRepository documentRepository,
       RssFeedStateRepository feedStateRepository,
       AttachmentIndexer attachmentIndexer,
-      IndexingProperties properties,
+      RssFeedProperties properties,
       TargetAddressValidator targetAddressValidator,
       SourceRequestPolicy requestPolicy,
       IndexingRunTemplate runTemplate) {
     this.documentIngestService = documentIngestService;
     this.documentRepository = documentRepository;
-    this.properties = properties.rss();
+    this.properties = properties;
     this.feedFetcher =
         new FeedFetcher(
             targetAddressValidator,
@@ -106,8 +104,8 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
   }
 
   @Override
-  public IndexingSourceType sourceType() {
-    return IndexingSourceType.RSS_FEED;
+  public SourceType sourceType() {
+    return RssFeedSourceConnector.TYPE;
   }
 
   @Override
@@ -257,7 +255,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
           documentIngestService.ingest(
               DocumentIngest.text(ctx.targetLibrary(), entryUrl, detailPage.mainHtml())
                   .pipelineId(HtmlDocumentFormat.ID)
-                  .sourceType(DocumentSourceType.RSS_FEED)
+                  .sourceType(RssFeedSourceConnector.TYPE)
                   .title(entry.title())
                   .changeMarker(publishedAt.map(Instant::toString).orElse(null))
                   .documentDate(DocumentProperties.instantToLocalDate(publishedAt.orElse(null)))
@@ -334,7 +332,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
         sources,
         entryDocument.get().getId(),
         entryUrl,
-        DocumentSourceType.RSS_FEED,
+        RssFeedSourceConnector.TYPE,
         attachmentLimits);
   }
 

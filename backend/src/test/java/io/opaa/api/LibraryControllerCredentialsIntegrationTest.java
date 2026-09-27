@@ -159,9 +159,8 @@ class LibraryControllerCredentialsIntegrationTest {
           "name": "Wiki ohne E-Mail",
           "sourceType": "CONFLUENCE",
           "sourceUrl": "https://site.atlassian.net/wiki",
-          "confluenceEdition": "CLOUD",
           "sourceCredentials": "%s",
-          "confluenceSpaces": [{"key": "ENG"}]
+          "sourceSettings": {"edition": "CLOUD", "spaces": [{"key": "ENG"}]}
         }
         """
             .formatted(token);
@@ -188,7 +187,7 @@ class LibraryControllerCredentialsIntegrationTest {
           "sourceType": "S3",
           "sourceUrl": "http://127.0.0.2:9000",
           "sourceCredentials": "AKIAEXAMPLE:%s",
-          "s3Settings": {"pathStyle": true, "scopes": [{"bucket": "dokumente"}]}
+          "sourceSettings": {"pathStyle": true, "scopes": [{"bucket": "dokumente"}]}
         }
         """
             .formatted(secret);
@@ -218,7 +217,7 @@ class LibraryControllerCredentialsIntegrationTest {
           "sourceType": "S3",
           "sourceUrl": "http://127.0.0.2:9000",
           "sourceCredentials": "AKIAEXAMPLE:%s",
-          "s3Settings": {"pathStyle": true, "scopes": [{"bucket": "dokumente"}]}
+          "sourceSettings": {"pathStyle": true, "scopes": [{"bucket": "dokumente"}]}
         }
         """
             .formatted(secret);
@@ -237,12 +236,12 @@ class LibraryControllerCredentialsIntegrationTest {
 
     String listing =
         """
-        {"sourceUrl": "http://127.0.0.2:9000", "sourceCredentials": "AKIAEXAMPLE:%s", "pathStyle": true}
+        {"sourceUrl": "http://127.0.0.2:9000", "sourceCredentials": "AKIAEXAMPLE:%s", "query": {"pathStyle": true}}
         """
             .formatted(secret);
     var listingResult =
         mockMvc
-            .perform(post("/api/v1/libraries/s3/buckets").with(devUser()).content(listing))
+            .perform(post("/api/v1/source-types/S3/browse").with(devUser()).content(listing))
             .andExpect(status().isBadRequest())
             .andReturn();
     assertThat(listingResult.getResponse().getContentAsString(StandardCharsets.UTF_8))
@@ -262,7 +261,7 @@ class LibraryControllerCredentialsIntegrationTest {
             .andExpect(status().isBadRequest())
             .andReturn();
     assertThat(noSettingsResult.getResponse().getContentAsString(StandardCharsets.UTF_8))
-        .contains("s3Settings")
+        .contains("sourceSettings")
         .doesNotContain(secret);
   }
 
@@ -297,14 +296,15 @@ class LibraryControllerCredentialsIntegrationTest {
         """
         {
           "sourceUrl": "http://127.0.0.2:9/confluence",
-          "confluenceEdition": "DATA_CENTER",
+          "query": {"edition": "DATA_CENTER"},
           "sourceCredentials": "%s"
         }
         """
             .formatted(token);
     var listingResult =
         mockMvc
-            .perform(post("/api/v1/libraries/confluence/spaces").with(devUser()).content(listing))
+            .perform(
+                post("/api/v1/source-types/CONFLUENCE/browse").with(devUser()).content(listing))
             .andExpect(status().isBadRequest())
             .andReturn();
     assertThat(listingResult.getResponse().getContentAsString(StandardCharsets.UTF_8))

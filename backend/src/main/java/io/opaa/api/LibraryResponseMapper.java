@@ -8,9 +8,11 @@ import io.opaa.api.dto.LibraryResponse;
 import io.opaa.api.dto.LibrarySchedule;
 import io.opaa.api.dto.LibraryScheduleRequest;
 import io.opaa.api.dto.LibraryUpdateRequest;
+import io.opaa.common.ValidationException;
 import io.opaa.indexing.job.JobStatus;
-import io.opaa.indexing.source.SourceConnectorRegistry;
+import io.opaa.indexing.source.ConnectorData;
 import io.opaa.knowledge.KnowledgeLibrary;
+import io.opaa.knowledge.SourceType;
 import io.opaa.library.LibraryCreation;
 import io.opaa.library.LibraryDetail;
 import io.opaa.library.LibraryManagementDetail;
@@ -23,57 +25,65 @@ import io.opaa.permission.PermissionTransferMark;
 import io.opaa.permission.SuccessionFinding;
 import java.net.URI;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Maps {@link LibraryDetail} and {@link LibrarySummary} onto their generated response counterparts,
  * and {@link LibraryRequest}/{@link LibraryUpdateRequest} onto the domain-level {@link
  * LibraryCreation}/{@link LibraryUpdate} (ADR-0006: API DTOs are generated from the specification,
- * never hand-written). The connector-owned fields travel through {@link FlatSourceSettings}.
+ * never hand-written). The connector settings travel as an opaque object (ADR-0038).
  */
 final class LibraryResponseMapper {
 
   private LibraryResponseMapper() {}
 
-  static LibraryCreation toCreation(LibraryRequest request, SourceConnectorRegistry connectors) {
+  static LibraryCreation toCreation(LibraryRequest request) {
     return new LibraryCreation(
         request.getName(),
         request.getDescription(),
         request.getOwnerType(),
         request.getOwnerId(),
         request.getListed(),
-        request.getSourceType(),
+        toSourceType(request.getSourceType()),
         request.getSourcePath(),
         request.getSourceUrl(),
         request.getSourceProxy(),
         request.getSourceCredentials(),
         request.getSourceInsecureSsl(),
-        FlatSourceSettings.of(
-            request.getConfluenceEdition(),
-            request.getConfluenceSpaces(),
-            request.getConfluenceFullSyncIntervalDays(),
-            request.getS3Settings(),
-            connectors),
+        toSettings(request.getSourceSettings()),
         toScheduleUpdate(request.getSchedule()));
   }
 
-  static LibraryUpdate toUpdate(LibraryUpdateRequest request, SourceConnectorRegistry connectors) {
+  static LibraryUpdate toUpdate(LibraryUpdateRequest request) {
     return new LibraryUpdate(
         request.getName(),
         request.getDescription(),
         request.getListed(),
-        request.getSourceType(),
+        toSourceType(request.getSourceType()),
         request.getSourcePath(),
         request.getSourceUrl(),
         request.getSourceProxy(),
         request.getSourceCredentials(),
         request.getSourceInsecureSsl(),
         toScheduleUpdate(request.getSchedule()),
-        FlatSourceSettings.of(
-            request.getConfluenceEdition(),
-            request.getConfluenceSpaces(),
-            request.getConfluenceFullSyncIntervalDays(),
-            request.getS3Settings(),
-            connectors));
+        toSettings(request.getSourceSettings()));
+  }
+
+  /** {@code null} stays {@code null}; a value that is no type key is the caller's 400. */
+  static SourceType toSourceType(String key) {
+    if (key == null) {
+      return null;
+    }
+    if (!SourceType.isKey(key)) {
+      throw new ValidationException(
+          "sourceType " + key + " ist kein gültiger Quellentyp-Schlüssel");
+    }
+    return SourceType.of(key);
+  }
+
+  /** {@code null} stays {@code null} ("leave the settings alone" on an update). */
+  static ConnectorData toSettings(Map<String, Object> settings) {
+    return settings == null ? null : ConnectorData.of(settings);
   }
 
   private static LibraryScheduleUpdate toScheduleUpdate(LibraryScheduleRequest request) {
@@ -104,7 +114,7 @@ final class LibraryResponseMapper {
                 toReachResponse(detail.reach()),
                 library.isListed(),
                 detail.myRole(),
-                library.getSourceType(),
+                library.getSourceType().key(),
                 library.getCreatedAt(),
                 library.getUpdatedAt())
             .description(library.getDescription())
@@ -130,9 +140,15 @@ final class LibraryResponseMapper {
                 : LibraryExternalAccessResponseMapper.toResponse(managementDetail.externalAccess()))
         .allAccountsGrantAllowed(managementDetail.allAccountsGrantAllowed())
         .listedCap(managementDetail.listedCap());
-    // ADR-0023/ADR-0027: edition, selection and scopes are the scope every reader sees; the rhythm
-    // and the push secret's flag stay behind the management bar
-    FlatSourceSettings.writeTo(response, detail);
+    // a manager sees the connector's whole settings, every other reader what the connector shows
+    ConnectorData settings =
+        managementDetail.connectorSettings() != null
+            ? managementDetail.connectorSettings()
+            : detail.connectorSettings();
+    response
+        .sourceSettings(settings == null ? null : settings.asMap())
+        .pushSecretSet(managementDetail.pushSecretSet())
+        .fullSyncIntervalDefaultDays(managementDetail.fullSyncIntervalDefaultDays());
     LibraryScheduleDetail schedule = managementDetail.schedule();
     if (schedule != null) {
       response
@@ -156,7 +172,7 @@ final class LibraryResponseMapper {
             toReachResponse(summary.reach()),
             library.isListed(),
             summary.myRole(),
-            library.getSourceType(),
+            library.getSourceType().key(),
             summary.documentCount(),
             library.getCreatedAt(),
             library.getUpdatedAt())

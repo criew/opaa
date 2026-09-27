@@ -9,7 +9,6 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import io.opaa.api.types.ConfluenceEdition;
 import io.opaa.common.ValidationException;
 import io.opaa.indexing.source.SourceBrowser;
 import io.opaa.indexing.source.SourceListing;

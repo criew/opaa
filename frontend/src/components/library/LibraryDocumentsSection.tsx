@@ -25,11 +25,11 @@ import MoreVertIcon from '@mui/icons-material/MoreVert'
 import UploadFileIcon from '@mui/icons-material/UploadFile'
 import type {
   BulkMetadataValueResponse,
-  ConfluenceSpaceRef,
-  DocumentSourceType,
+  SourceTypeKey,
   LibraryDocumentResponse,
   LibraryFolderListItem,
 } from '../../types/api'
+import type { ConfluenceSpaceRef } from '../../utils/confluenceSource'
 import { getLibraryFolder } from '../../services/api'
 import { confirmAction } from '../../stores/confirmStore'
 import { DEFAULT_PAGE_SIZE, useDocumentStore } from '../../stores/documentStore'
@@ -66,7 +66,7 @@ const MAX_BULK_DELETE = 200
 
 export interface LibraryDocumentsSectionProps {
   libraryId: string
-  sourceType: DocumentSourceType
+  sourceType: SourceTypeKey
   canManage: boolean
   /** Bumped by the page when an indexing run finishes - reloads the current view in place. */
   refreshToken: number

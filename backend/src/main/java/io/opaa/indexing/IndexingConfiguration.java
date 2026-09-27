@@ -27,7 +27,6 @@ import io.opaa.indexing.format.file.office.PptxDocumentFormat;
 import io.opaa.indexing.format.file.pdf.PdfDocumentFormat;
 import io.opaa.indexing.format.file.tabular.TabularDocumentFormat;
 import io.opaa.indexing.format.file.tabular.TabularProperties;
-import io.opaa.indexing.format.stream.confluencestorage.ConfluenceStorageFormat;
 import io.opaa.indexing.job.DocumentIndexingService;
 import io.opaa.indexing.job.IndexingJobRepository;
 import io.opaa.indexing.job.IndexingJobService;
@@ -121,15 +120,6 @@ public class IndexingConfiguration {
   @Bean
   HtmlDocumentFormat htmlDocumentPipeline() {
     return new HtmlDocumentFormat();
-  }
-
-  /**
-   * Confluence page pipeline (ingestion-pipelines.md, Teil 3, Punkt 6) - claims no format, {@link
-   * DocumentIngestService#ingest} looks it up by id.
-   */
-  @Bean
-  ConfluenceStorageFormat confluenceDocumentPipeline() {
-    return new ConfluenceStorageFormat();
   }
 
   /**
@@ -230,14 +220,16 @@ public class IndexingConfiguration {
       KnowledgeLibraryRepository libraryRepository,
       ChecksumService checksumService,
       FilesystemPathAllowlist filesystemPathAllowlist,
-      UploadedOriginalStore uploadedOriginalStore) {
+      UploadedOriginalStore uploadedOriginalStore,
+      SourceConnectorRegistry connectors) {
     return new StoredDocumentSourceAccess(
         attachmentExtractor,
         documentRepository,
         libraryRepository,
         checksumService,
         filesystemPathAllowlist,
-        uploadedOriginalStore);
+        uploadedOriginalStore,
+        connectors);
   }
 
   @Bean
@@ -387,8 +379,8 @@ public class IndexingConfiguration {
    */
   @Bean
   IndexingSourceExecutorRegistry indexingSourceExecutorRegistry(
-      List<SourceIndexingExecutor> executors) {
-    return new IndexingSourceExecutorRegistry(executors);
+      List<SourceIndexingExecutor> executors, SourceConnectorRegistry connectors) {
+    return new IndexingSourceExecutorRegistry(executors, connectors);
   }
 
   /** Serves the originals of the URL-fetched connectors from their stored source URLs. */

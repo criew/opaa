@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.sun.net.httpserver.HttpServer;
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.api.types.SystemRole;
@@ -30,6 +29,7 @@ import io.opaa.sourceaccess.BoundedDownloader;
 import io.opaa.sourceaccess.SourceRequestPolicy;
 import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.ProductionDocumentFormats;
+import io.opaa.test.SourceTypes;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
@@ -123,7 +123,7 @@ class UrlFolderMappingIntegrationTest {
                 null,
                 userId,
                 false,
-                DocumentSourceType.HTTP_DIRECTORY,
+                SourceTypes.HTTP_DIRECTORY,
                 null,
                 baseUrl + "/dokumente/",
                 null,
@@ -138,7 +138,7 @@ class UrlFolderMappingIntegrationTest {
     // tables); folders only after their documents, for fk_documents_folder.
     List<Document> documents =
         documentRepository.findByLibraryIdAndSourceType(
-            library.getId(), DocumentSourceType.HTTP_DIRECTORY);
+            library.getId(), SourceTypes.HTTP_DIRECTORY);
     documents.stream()
         .sorted(Comparator.comparingInt((Document d) -> d.getFilePath().length()).reversed())
         .forEach(

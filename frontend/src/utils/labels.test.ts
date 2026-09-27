@@ -2,11 +2,11 @@ import { describe, expect, it } from 'vitest'
 import {
   assetReachLabel,
   spaceMembershipLabel,
-  documentSourceTypeShortLabel,
   assetRoleDescription,
   capabilityMissingMessage,
   documentCountLabel,
 } from './labels'
+import { documentSourceTypeShortLabel } from '../components/library/sources/sourceLabels'
 import type { Capability } from '../types/api'
 
 /**

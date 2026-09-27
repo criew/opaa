@@ -3,8 +3,6 @@ package io.opaa.indexing.source.confluence;
 import static io.opaa.indexing.source.ConnectorChecks.blankToNull;
 import static io.opaa.indexing.source.ConnectorChecks.unreachable;
 
-import io.opaa.api.types.ConfluenceEdition;
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.common.ValidationException;
 import io.opaa.indexing.source.ConnectorData;
 import io.opaa.indexing.source.PushIntake;
@@ -19,13 +17,13 @@ import io.opaa.indexing.source.SourceSyncStateRepository;
 import io.opaa.indexing.source.confluence.webhook.ConfluenceWebhookService;
 import io.opaa.indexing.source.confluence.webhook.ConfluenceWebhookSignature;
 import io.opaa.knowledge.KnowledgeLibrary;
+import io.opaa.knowledge.SourceType;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
 import java.util.function.UnaryOperator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,15 +39,18 @@ import org.slf4j.LoggerFactory;
 public class ConfluenceSourceConnector
     implements SourceConnector, SourceBrowser, PushIntakeHandler {
 
+  /** The type key this connector serves. */
+  public static final SourceType TYPE = SourceType.of("CONFLUENCE");
+
   private static final Logger log = LoggerFactory.getLogger(ConfluenceSourceConnector.class);
 
-  /** Upper bound of a space selection - matches LibraryRequest.confluenceSpaces.maxItems. */
+  /** Upper bound of a space selection. */
   static final int MAX_SPACES = 500;
 
   private static final String SPACES_STATE = "confluenceSpaces";
 
   private static final String SPACES_REQUIRED =
-      "confluenceSpaces: mindestens ein Space ist erforderlich, wenn sourceType CONFLUENCE ist";
+      "sourceSettings.spaces: mindestens ein Space ist erforderlich, wenn sourceType CONFLUENCE ist";
 
   private final ConfluenceConnectionService connectionService;
   private final SourceSyncStateRepository syncStateRepository;
@@ -65,11 +66,9 @@ public class ConfluenceSourceConnector
     this.syncStateRepository = syncStateRepository;
     this.webhookService = webhookService;
     this.descriptor =
-        new SourceConnectorDescriptor(
-            DocumentSourceType.CONFLUENCE,
-            true,
-            new PushIntake("confluenceWebhookSecret", "Ein Webhook-Geheimnis"),
-            properties.fullSyncInterval());
+        SourceConnectorDescriptor.remoteRun(TYPE, "Confluence")
+            .withPushIntake(new PushIntake("confluenceWebhookSecret"))
+            .withFullSyncInterval(properties.fullSyncInterval());
   }
 
   @Override
@@ -78,12 +77,31 @@ public class ConfluenceSourceConnector
   }
 
   @Override
-  public void acceptNotification(UUID libraryId, byte[] body, UnaryOperator<String> header) {
+  public void acceptNotification(
+      KnowledgeLibrary library, byte[] body, UnaryOperator<String> header) {
     webhookService.accept(
-        libraryId,
+        library.getId(),
+        library,
         body,
         header.apply(ConfluenceWebhookSignature.HUB_SIGNATURE_HEADER),
         header.apply(ConfluenceWebhookSignature.SHARED_SECRET_HEADER));
+  }
+
+  @Override
+  public void rejectForeign(byte[] body, UnaryOperator<String> header) {
+    ConfluenceWebhookSignature.verify(
+        body == null ? new byte[0] : body,
+        header.apply(ConfluenceWebhookSignature.HUB_SIGNATURE_HEADER),
+        header.apply(ConfluenceWebhookSignature.SHARED_SECRET_HEADER),
+        null);
+  }
+
+  /** Refuses a field the settings do not know and a part of the wrong kind; the rest waits. */
+  @Override
+  public ConnectorData readSettings(ConnectorData requested) {
+    requested.requireOnly(ConfluenceSourceSettings.KEYS);
+    ConfluenceSourceSettings.read(requested);
+    return requested;
   }
 
   @Override
@@ -115,7 +133,7 @@ public class ConfluenceSourceConnector
     ConfluenceEdition storedEdition = ConfluenceSourceSettings.of(library).edition();
     if (own.edition() != null && own.edition() != storedEdition) {
       throw new ValidationException(
-          "confluenceEdition kann nach dem Anlegen der Bibliothek nicht mehr geändert werden");
+          "sourceSettings.edition kann nach dem Anlegen der Bibliothek nicht mehr geändert werden");
     }
     List<ConfluenceSpaceSelection> spaces =
         own.spaces() == null ? null : validateSpaces(own.spaces());
@@ -138,7 +156,7 @@ public class ConfluenceSourceConnector
   private static String validateConnection(SourceSettings settings, ConfluenceEdition edition) {
     if (edition == null) {
       throw new ValidationException(
-          "confluenceEdition ist erforderlich, wenn sourceType CONFLUENCE ist");
+          "sourceSettings.edition ist erforderlich, wenn sourceType CONFLUENCE ist");
     }
     if (settings.sourcePath() != null) {
       throw new ValidationException("sourcePath ist für sourceType CONFLUENCE nicht zulässig");
@@ -176,7 +194,7 @@ public class ConfluenceSourceConnector
     }
     if (requested.size() > MAX_SPACES) {
       throw new ValidationException(
-          "confluenceSpaces: höchstens " + MAX_SPACES + " Spaces je Bibliothek");
+          "sourceSettings.spaces: höchstens " + MAX_SPACES + " Spaces je Bibliothek");
     }
     Set<String> seen = new HashSet<>();
     List<ConfluenceSpaceSelection> normalized = new ArrayList<>();
@@ -184,20 +202,20 @@ public class ConfluenceSourceConnector
       String key = selection == null ? null : blankToNull(selection.getSpaceKey());
       if (key == null) {
         throw new ValidationException(
-            "confluenceSpaces: jeder Eintrag braucht einen Space-Schlüssel");
+            "sourceSettings.spaces: jeder Eintrag braucht einen Space-Schlüssel");
       }
       if (key.length() > 255) {
         throw new ValidationException(
-            "confluenceSpaces: der Space-Schlüssel darf höchstens 255 Zeichen lang sein");
+            "sourceSettings.spaces: der Space-Schlüssel darf höchstens 255 Zeichen lang sein");
       }
       if (!seen.add(key.toUpperCase(Locale.ROOT))) {
         throw new ValidationException(
-            "confluenceSpaces: der Space " + key + " ist mehrfach ausgewählt");
+            "sourceSettings.spaces: der Space " + key + " ist mehrfach ausgewählt");
       }
       String name = blankToNull(selection.getSpaceName());
       if (name != null && name.length() > 255) {
         throw new ValidationException(
-            "confluenceSpaces: der Space-Name darf höchstens 255 Zeichen lang sein");
+            "sourceSettings.spaces: der Space-Name darf höchstens 255 Zeichen lang sein");
       }
       normalized.add(new ConfluenceSpaceSelection(key, name));
     }
@@ -208,7 +226,7 @@ public class ConfluenceSourceConnector
   private static Integer validateFullSyncIntervalDays(Integer days) {
     if (days != null && (days < 1 || days > 365)) {
       throw new ValidationException(
-          "confluenceFullSyncIntervalDays muss zwischen 1 und 365 Tagen liegen");
+          "sourceSettings.fullSyncIntervalDays muss zwischen 1 und 365 Tagen liegen");
     }
     return days;
   }

@@ -15,7 +15,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.indexing.FilesystemPathAllowlist;
 import io.opaa.indexing.IndexingProperties;
@@ -45,6 +44,7 @@ import io.opaa.knowledge.LibraryFolderService;
 import io.opaa.knowledge.LibraryStorageQuotaService;
 import io.opaa.observability.IndexingMetrics;
 import io.opaa.test.ProductionDocumentFormats;
+import io.opaa.test.SourceTypes;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -102,7 +102,7 @@ class AsyncIndexingExecutorTest {
             null,
             UUID.randomUUID(),
             false,
-            DocumentSourceType.FILESYSTEM,
+            SourceTypes.FILESYSTEM,
             documentDir.toAbsolutePath().toString(),
             null,
             null,
@@ -235,7 +235,7 @@ class AsyncIndexingExecutorTest {
         .parseDocument(file);
 
     IndexingProperties indexingProperties =
-        new IndexingProperties(1000, 0, 50, null, null, null, null, 1);
+        new IndexingProperties(1000, 0, 50, null, null, null, 1);
     DocumentIngestService realDocumentIngestService =
         new DocumentIngestService(
             TestPipelineRegistries.fallbackOnly(
@@ -310,8 +310,7 @@ class AsyncIndexingExecutorTest {
     Document mailDoc = filesystemDocument("mail.eml", mailPath, null);
     Document keptDoc = filesystemDocument("behalten.pdf", keptPath, mailDoc.getId());
     Document removedDoc = filesystemDocument("entfernt.pdf", removedPath, mailDoc.getId());
-    when(documentRepository.findByLibraryIdAndSourceType(
-            library.getId(), DocumentSourceType.FILESYSTEM))
+    when(documentRepository.findByLibraryIdAndSourceType(library.getId(), SourceTypes.FILESYSTEM))
         .thenReturn(List.of(mailDoc, keptDoc, removedDoc));
 
     when(documentIngestService.ingest(
@@ -351,8 +350,7 @@ class AsyncIndexingExecutorTest {
     Document innerMailDoc =
         filesystemDocument("weitergeleitet.eml", innerMailPath, mailDoc.getId());
     Document grandchildDoc = filesystemDocument("anlage.pdf", grandchildPath, innerMailDoc.getId());
-    when(documentRepository.findByLibraryIdAndSourceType(
-            library.getId(), DocumentSourceType.FILESYSTEM))
+    when(documentRepository.findByLibraryIdAndSourceType(library.getId(), SourceTypes.FILESYSTEM))
         .thenReturn(List.of(grandchildDoc, mailDoc, innerMailDoc));
 
     when(documentIngestService.ingest(
@@ -382,8 +380,7 @@ class AsyncIndexingExecutorTest {
     Document innerMailDoc =
         filesystemDocument("weitergeleitet.eml", innerMailPath, mailDoc.getId());
     Document grandchildDoc = filesystemDocument("anlage.pdf", grandchildPath, innerMailDoc.getId());
-    when(documentRepository.findByLibraryIdAndSourceType(
-            library.getId(), DocumentSourceType.FILESYSTEM))
+    when(documentRepository.findByLibraryIdAndSourceType(library.getId(), SourceTypes.FILESYSTEM))
         .thenReturn(List.of(grandchildDoc, mailDoc, innerMailDoc));
 
     when(documentIngestService.ingest(
@@ -452,7 +449,8 @@ class AsyncIndexingExecutorTest {
   }
 
   private Document filesystemDocument(String fileName, String filePath, UUID parentDocumentId) {
-    Document document = new Document(fileName, filePath, "application/octet-stream", 1L);
+    Document document =
+        new Document(fileName, filePath, "application/octet-stream", 1L, SourceTypes.FILESYSTEM);
     document.setLibraryId(library.getId());
     document.setParentDocumentId(parentDocumentId);
     return document;
@@ -464,7 +462,7 @@ class AsyncIndexingExecutorTest {
     verify(staleDocumentCleanupService, timeout(2000))
         .reconcile(
             eq(library),
-            eq(DocumentSourceType.FILESYSTEM),
+            eq(SourceTypes.FILESYSTEM),
             pathsCaptor.capture(),
             any(),
             any(),
@@ -479,7 +477,7 @@ class AsyncIndexingExecutorTest {
     verify(staleDocumentCleanupService, timeout(2000))
         .reconcile(
             eq(library),
-            eq(DocumentSourceType.FILESYSTEM),
+            eq(SourceTypes.FILESYSTEM),
             any(),
             pathsCaptor.capture(),
             any(),

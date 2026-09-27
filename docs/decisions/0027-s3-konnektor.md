@@ -417,7 +417,9 @@ Endpunkte und der Property-Block bleiben dagegen typspezifisch benannt (`s3-even
 `s3-events-token`, `opaa.indexing.s3.events.*` neben `confluence-webhook`,
 `confluence-webhook-secret`, `opaa.indexing.confluence.webhook.*`), weil Nutzlast,
 Absicherungsformen und Einrichtungsanleitung je Typ verschieden sind — gemeinsam ist nur die
-Ablage des Geheimnisses.
+Ablage des Geheimnisses. *(Abgelöst durch [ADR-0038](0038-steckbare-konnektoren.md),
+Nachtrag zu Teil B: Push-Eingang und Push-Geheimnis sind seither typneutral benannt,
+`/libraries/{id}/push` und `/libraries/{id}/push-secret`; der Property-Block bleibt je Typ.)*
 
 **Nutzlast.** Der Endpunkt liest drei Formen und erkennt sie am Aufbau, nicht am Absender:
 

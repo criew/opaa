@@ -1,11 +1,13 @@
 package io.opaa.indexing.document;
 
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.indexing.FilesystemPathAllowlist;
+import io.opaa.indexing.source.SourceConnectorDescriptor;
+import io.opaa.indexing.source.SourceConnectorRegistry;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
+import io.opaa.knowledge.SourceType;
 import io.opaa.knowledge.UploadedOriginalRef;
 import io.opaa.knowledge.UploadedOriginalStore;
 import java.io.IOException;
@@ -43,6 +45,7 @@ public class StoredDocumentSourceAccess {
   private final ChecksumService checksumService;
   private final FilesystemPathAllowlist filesystemAllowlist;
   private final UploadedOriginalStore uploadedOriginalStore;
+  private final SourceConnectorRegistry connectors;
 
   public StoredDocumentSourceAccess(
       AttachmentExtractor attachmentExtractor,
@@ -50,13 +53,15 @@ public class StoredDocumentSourceAccess {
       KnowledgeLibraryRepository libraryRepository,
       ChecksumService checksumService,
       FilesystemPathAllowlist filesystemAllowlist,
-      UploadedOriginalStore uploadedOriginalStore) {
+      UploadedOriginalStore uploadedOriginalStore,
+      SourceConnectorRegistry connectors) {
     this.attachmentExtractor = attachmentExtractor;
     this.documentRepository = documentRepository;
     this.libraryRepository = libraryRepository;
     this.checksumService = checksumService;
     this.filesystemAllowlist = filesystemAllowlist;
     this.uploadedOriginalStore = uploadedOriginalStore;
+    this.connectors = connectors;
   }
 
   /**
@@ -65,9 +70,16 @@ public class StoredDocumentSourceAccess {
    * the page again - the executor's pre-fetch version check and the processing checksum check both
    * see "changed".
    */
-  public static boolean isRemote(Document document) {
-    DocumentSourceType sourceType = document.getSourceType();
-    return sourceType != null && sourceType.isRemote();
+  public boolean isRemote(Document document) {
+    return connectors.isRemote(document);
+  }
+
+  /** Every source type whose documents are files this machine reads itself. */
+  public List<SourceType> localSourceTypes() {
+    return connectors.descriptors().stream()
+        .filter(descriptor -> !descriptor.remote())
+        .map(SourceConnectorDescriptor::type)
+        .toList();
   }
 
   /**
@@ -103,16 +115,12 @@ public class StoredDocumentSourceAccess {
     if (document.getFilePath() == null || document.getLibraryId() == null || isRemote(document)) {
       return Optional.empty();
     }
-    return switch (document.getSourceType()) {
-      case FILESYSTEM ->
-          Optional.ofNullable(filesystemFileWithinConfiguredDirectory(document)).map(action);
-      case UPLOAD ->
-          UploadedOriginalRef.of(document)
-              .flatMap(ref -> uploadedOriginalStore.withLocalFile(ref, action));
-      default ->
-          throw new IllegalStateException(
-              "local source type without a file resolution: " + document.getSourceType());
-    };
+    if (SourceType.UPLOAD.equals(document.getSourceType())) {
+      return UploadedOriginalRef.of(document)
+          .flatMap(ref -> uploadedOriginalStore.withLocalFile(ref, action));
+    }
+    // every other local type reads underneath its library's sourcePath
+    return Optional.ofNullable(filesystemFileWithinConfiguredDirectory(document)).map(action);
   }
 
   /**

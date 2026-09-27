@@ -5,7 +5,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.api.types.SystemRole;
@@ -30,6 +29,7 @@ import io.opaa.organization.Organization;
 import io.opaa.s3.S3AccessException;
 import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.ProductionDocumentFormats;
+import io.opaa.test.SourceTypes;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.util.ArrayList;
@@ -101,7 +101,7 @@ class S3FolderMappingIntegrationTest {
             null,
             userId,
             false,
-            DocumentSourceType.S3,
+            SourceTypes.S3,
             null,
             "https://minio.intern.example:9000",
             null,
@@ -127,7 +127,7 @@ class S3FolderMappingIntegrationTest {
    */
   private void cleanUp(KnowledgeLibrary created) {
     List<Document> documents =
-        documentRepository.findByLibraryIdAndSourceType(created.getId(), DocumentSourceType.S3);
+        documentRepository.findByLibraryIdAndSourceType(created.getId(), SourceTypes.S3);
     documents.stream()
         .sorted(Comparator.comparingInt((Document d) -> d.getFilePath().length()).reversed())
         .forEach(

@@ -1,6 +1,5 @@
 package io.opaa.chat;
 
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.MetadataFilterMatch;
 import java.time.Instant;
 import java.util.List;
@@ -27,7 +26,7 @@ public final class ChatSource {
   private boolean cited;
   private Instant indexedAt;
   private UUID documentId;
-  private DocumentSourceType sourceType;
+  private String sourceType;
   private String sourceUrl;
   private String sourceEntryUrl;
   private Boolean citationValid;
@@ -54,7 +53,7 @@ public final class ChatSource {
     return this;
   }
 
-  public ChatSource sourceType(DocumentSourceType sourceType) {
+  public ChatSource sourceType(String sourceType) {
     this.sourceType = sourceType;
     return this;
   }
@@ -150,11 +149,11 @@ public final class ChatSource {
     this.documentId = documentId;
   }
 
-  public DocumentSourceType getSourceType() {
+  public String getSourceType() {
     return sourceType;
   }
 
-  public void setSourceType(DocumentSourceType sourceType) {
+  public void setSourceType(String sourceType) {
     this.sourceType = sourceType;
   }
 

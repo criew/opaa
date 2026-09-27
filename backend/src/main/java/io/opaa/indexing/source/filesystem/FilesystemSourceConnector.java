@@ -4,7 +4,6 @@ import static io.opaa.indexing.source.ConnectorChecks.blankToNull;
 import static io.opaa.indexing.source.ConnectorChecks.reachable;
 import static io.opaa.indexing.source.ConnectorChecks.unreachable;
 
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.common.ValidationException;
 import io.opaa.indexing.FilesystemPathAllowlist;
 import io.opaa.indexing.document.DocumentService;
@@ -19,6 +18,7 @@ import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentContent;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.ServedContentTypes;
+import io.opaa.knowledge.SourceType;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -38,10 +38,13 @@ import org.slf4j.LoggerFactory;
  */
 public class FilesystemSourceConnector implements SourceConnector, OriginalAccess {
 
+  /** The type key this connector serves. */
+  public static final SourceType TYPE = SourceType.of("FILESYSTEM");
+
   private static final Logger log = LoggerFactory.getLogger(FilesystemSourceConnector.class);
 
   private static final SourceConnectorDescriptor DESCRIPTOR =
-      SourceConnectorDescriptor.runBased(DocumentSourceType.FILESYSTEM);
+      SourceConnectorDescriptor.localRun(TYPE, "Dateisystem");
 
   private static final String DISABLED =
       "sourceType FILESYSTEM ist deaktiviert: der Betrieb hat keine Verzeichnisse für"

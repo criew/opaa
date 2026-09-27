@@ -13,7 +13,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.NotFoundException;
@@ -21,6 +20,7 @@ import io.opaa.common.TooManyRequestsException;
 import io.opaa.indexing.chunk.ChunkingService;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
+import io.opaa.knowledge.SourceType;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -60,8 +60,7 @@ class PassageFetchServiceTest {
     quota = mock(AccessTokenQuota.class);
     alarm = mock(MassRetrievalAlarm.class);
 
-    document =
-        new Document("akte.pdf", "/akte.pdf", "application/pdf", 10L, DocumentSourceType.UPLOAD);
+    document = new Document("akte.pdf", "/akte.pdf", "application/pdf", 10L, SourceType.UPLOAD);
     document.setLibraryId(LIBRARY_ID);
     document.setOrganizationId(ORGANIZATION_ID);
     when(documents.findById(DOCUMENT_ID)).thenReturn(Optional.of(document));

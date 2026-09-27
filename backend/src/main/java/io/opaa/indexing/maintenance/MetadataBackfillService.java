@@ -1,12 +1,10 @@
 package io.opaa.indexing.maintenance;
 
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
 import io.opaa.common.NotFoundException;
 import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.indexing.document.ChecksumService;
 import io.opaa.indexing.document.StoredDocumentSourceAccess;
-import io.opaa.indexing.format.DocumentProperties;
 import io.opaa.indexing.metadata.CoreMetadataExtractor;
 import io.opaa.indexing.metadata.CoreMetadataField;
 import io.opaa.indexing.metadata.DocumentMetadataService;
@@ -16,10 +14,14 @@ import io.opaa.indexing.metadata.MetadataFieldFill;
 import io.opaa.indexing.metadata.MetadataFillCounter;
 import io.opaa.indexing.metadata.ModelExtractionPrompt;
 import io.opaa.indexing.metadata.ModelMetadataExtractor;
+import io.opaa.indexing.source.RowDeclaredProperties;
+import io.opaa.indexing.source.SourceConnectorDescriptor;
+import io.opaa.indexing.source.SourceConnectorRegistry;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
+import io.opaa.knowledge.SourceType;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Path;
@@ -59,6 +61,7 @@ public class MetadataBackfillService {
   private final KnowledgeLibraryRepository libraryRepository;
   private final DocumentMetadataService documentMetadataService;
   private final StoredDocumentSourceAccess sourceAccess;
+  private final SourceConnectorRegistry connectors;
   private final ChecksumService checksumService;
   private final MetadataFillCounter fillCounter;
   private final ModelMetadataExtractor modelMetadataExtractor;
@@ -80,6 +83,7 @@ public class MetadataBackfillService {
       KnowledgeLibraryRepository libraryRepository,
       DocumentMetadataService documentMetadataService,
       StoredDocumentSourceAccess sourceAccess,
+      SourceConnectorRegistry connectors,
       ChecksumService checksumService,
       MetadataFillCounter fillCounter,
       ModelMetadataExtractor modelMetadataExtractor,
@@ -89,6 +93,7 @@ public class MetadataBackfillService {
     this.libraryRepository = libraryRepository;
     this.documentMetadataService = documentMetadataService;
     this.sourceAccess = sourceAccess;
+    this.connectors = connectors;
     this.checksumService = checksumService;
     this.fillCounter = fillCounter;
     this.modelMetadataExtractor = modelMetadataExtractor;
@@ -147,7 +152,7 @@ public class MetadataBackfillService {
       return Advance.SKIPPED;
     }
     try {
-      if (StoredDocumentSourceAccess.isRemote(document)) {
+      if (sourceAccess.isRemote(document)) {
         return advanceRemote(document);
       }
       boolean advanced =
@@ -194,24 +199,16 @@ public class MetadataBackfillService {
   }
 
   /**
-   * An RSS entry's own body was never a file: its declared properties are the stored headline and
-   * the feed's publication instant, exactly what the ingest hands the extraction, so it is re-run
-   * from the row without a download. "Has a headline" is approximated as {@code file_name !=
-   * file_path}. Everything else remote can only be re-read by its own connector run and is marked
-   * for it. The name is marked synthetic exactly as the ingest marks it.
+   * A remote top-level document whose connector rebuilds its declared properties from the row
+   * ({@link RowDeclaredProperties}) is re-run without a download. Everything else remote can only
+   * be re-read by its own connector run and is marked for it.
    */
   private Advance advanceRemote(Document document) {
-    if (document.getSourceType() == DocumentSourceType.RSS_FEED
-        && document.getParentDocumentId() == null) {
-      boolean hasHeadline =
-          document.getFileName() != null && !document.getFileName().equals(document.getFilePath());
-      DocumentProperties properties =
-          DocumentProperties.EMPTY
-              .withTitle(hasHeadline ? document.getFileName() : null)
-              .withSyntheticName(true)
-              .withDocumentDate(
-                  DocumentProperties.instantToLocalDate(document.getLastModifiedRemote()));
-      documentMetadataService.reextractFromProperties(document, properties);
+    if (document.getParentDocumentId() == null
+        && connectors.find(document.getSourceType()).orElse(null)
+            instanceof RowDeclaredProperties rowDeclared) {
+      documentMetadataService.reextractFromProperties(
+          document, rowDeclared.declaredProperties(document));
       runModelStep(document);
       return Advance.PROCESSED;
     }
@@ -248,21 +245,43 @@ public class MetadataBackfillService {
   }
 
   /**
-   * A pending document a backfill call can still advance: a local file, an RSS entry body, or a
-   * remote document not yet marked for its next connector run. That last leg relies on {@link
-   * DocumentRepository#markForReindexOnNextRun} clearing {@code checksum} - excluding an
-   * already-marked document is what lets the run drain instead of re-marking the same rows.
+   * A pending document a backfill call can still advance: a local file, a top-level document whose
+   * connector rebuilds its properties from the row, or a remote document not yet marked for its
+   * next connector run. That last leg relies on {@link DocumentRepository#markForReindexOnNextRun}
+   * clearing {@code checksum} - excluding an already-marked document is what lets the run drain
+   * instead of re-marking the same rows. Type keys have the form {@code [A-Z][A-Z0-9_]*} and are
+   * safe as literals.
    */
-  private static String advanceableSql(String alias) {
+  private String advanceableSql(String alias) {
+    List<String> rowDeclared =
+        connectors.descriptors().stream()
+            .map(SourceConnectorDescriptor::type)
+            .filter(type -> connectors.connector(type) instanceof RowDeclaredProperties)
+            .map(SourceType::key)
+            .toList();
     return "("
         + alias
-        + "source_type IN ('FILESYSTEM', 'UPLOAD') OR ("
-        + alias
-        + "source_type = 'RSS_FEED' AND "
-        + alias
-        + "parent_document_id IS NULL) OR "
+        + "source_type IN ("
+        + literals(sourceAccess.localSourceTypes().stream().map(SourceType::key).toList())
+        + ")"
+        + (rowDeclared.isEmpty()
+            ? ""
+            : " OR ("
+                + alias
+                + "source_type IN ("
+                + literals(rowDeclared)
+                + ") AND "
+                + alias
+                + "parent_document_id IS NULL)")
+        + " OR "
         + alias
         + "checksum IS NOT NULL)";
+  }
+
+  private static String literals(List<String> keys) {
+    return keys.isEmpty()
+        ? "NULL"
+        : String.join(", ", keys.stream().map(key -> "'" + key + "'").toList());
   }
 
   /**

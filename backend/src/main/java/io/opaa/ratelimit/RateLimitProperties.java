@@ -24,10 +24,10 @@ import org.springframework.security.web.util.matcher.IpAddressMatcher;
  *     HTTP_DIRECTORY}/{@code RSS_FEED} document's original from its remote source (#747), the same
  *     kind of synchronous, outbound-connection-holding request {@code sourceTest} above is already
  *     limited for, except this one is VIEWER-reachable rather than gated by library creation.
- * @param webhook per-endpoint limits for the Confluence webhook intake (#1140) - {@code POST
- *     /api/v1/libraries/{libraryId}/confluence-webhook} is reachable without a session, so the
- *     limiter is the bound on how much signature checking an unauthenticated caller can cause;
- *     keyed per library so a chatty instance does not starve another library's notifications.
+ * @param webhook per-endpoint limits for the push intake - {@code POST
+ *     /api/v1/libraries/{libraryId}/push} is reachable without a session, so the limiter is the
+ *     bound on how much secret checking an unauthenticated caller can cause; keyed per library so a
+ *     chatty source does not starve another library's notifications.
  * @param chatSearch per-endpoint limits for the chat search ({@code POST
  *     /api/v1/spaces/{spaceId}/chats/search}) - its own budget, because the search runs while the
  *     person types and would exhaust the query budget within seconds

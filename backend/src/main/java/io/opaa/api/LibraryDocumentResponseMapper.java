@@ -29,26 +29,27 @@ final class LibraryDocumentResponseMapper {
    * #toResponse(LibraryDocumentEntry)} is the folder-aware counterpart (#821).
    */
   static LibraryDocumentResponse toResponse(Document document) {
-    return toResponse(document, null);
+    return toResponse(document, null, null);
   }
 
   static LibraryDocumentResponse toResponse(LibraryDocumentEntry entry) {
-    return toResponse(entry.document(), entry.folderPath());
+    return toResponse(entry.document(), entry.folderPath(), entry.sourceUrl());
   }
 
-  private static LibraryDocumentResponse toResponse(Document document, String folderPath) {
+  private static LibraryDocumentResponse toResponse(
+      Document document, String folderPath, String sourceUrl) {
     return new LibraryDocumentResponse(
             document.getId(),
             document.getFileName(),
             document.getStatus(),
-            document.getSourceType(),
+            document.getSourceType() == null ? null : document.getSourceType().key(),
             document.getChunkCount())
         .contentType(document.getContentType())
         .fileSize(document.getFileSize())
         .indexedAt(document.getIndexedAt())
         .uploadedByUserId(document.getUploadedByUserId())
         .sourceEntryUrl(document.getSourceEntryUrl())
-        .sourceUrl(document.getDeepLinkSourceUrl())
+        .sourceUrl(sourceUrl)
         .sourceContainerKey(document.getSourceContainerKey())
         .sourceHierarchyPath(document.getSourceHierarchyPath())
         .errorMessage(document.getErrorMessage())

@@ -1,6 +1,5 @@
 package io.opaa.indexing.attachment;
 
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.indexing.document.DocumentIngest;
 import io.opaa.indexing.document.DocumentIngestOutcomes;
 import io.opaa.indexing.document.DocumentIngestResult;
@@ -9,6 +8,7 @@ import io.opaa.indexing.format.SupportedDocumentFormats;
 import io.opaa.indexing.job.IndexingEventCategory;
 import io.opaa.indexing.source.IndexingRun;
 import io.opaa.knowledge.LibraryStorageQuotaService;
+import io.opaa.knowledge.SourceType;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.sourceaccess.BoundedDownloader;
 import io.opaa.sourceaccess.RedirectFollowingFetcher;
@@ -75,16 +75,16 @@ public class AttachmentIndexer {
   }
 
   /**
-   * {@link #indexAll(AttachmentAccess, List, UUID, String, DocumentSourceType, AttachmentLimits)}
-   * under the shared {@link AttachmentProperties#limits()} - for a connector without attachment
-   * numbers of its own.
+   * {@link #indexAll(AttachmentAccess, List, UUID, String, SourceType, AttachmentLimits)} under the
+   * shared {@link AttachmentProperties#limits()} - for a connector without attachment numbers of
+   * its own.
    */
   public List<String> indexAll(
       AttachmentAccess access,
       List<AttachmentSource> sources,
       UUID parentDocumentId,
       String parentPath,
-      DocumentSourceType sourceType)
+      SourceType sourceType)
       throws InterruptedException {
     return indexAll(
         access, sources, parentDocumentId, parentPath, sourceType, attachmentProperties.limits());
@@ -106,7 +106,7 @@ public class AttachmentIndexer {
       List<AttachmentSource> sources,
       UUID parentDocumentId,
       String parentPath,
-      DocumentSourceType sourceType,
+      SourceType sourceType,
       AttachmentLimits limits)
       throws InterruptedException {
     if (sources.isEmpty()) {
@@ -171,7 +171,7 @@ public class AttachmentIndexer {
       AttachmentSource source,
       UUID parentDocumentId,
       String parentPath,
-      DocumentSourceType sourceType,
+      SourceType sourceType,
       AttachmentLimits limits)
       throws InterruptedException {
     return switch (source) {
@@ -187,7 +187,7 @@ public class AttachmentIndexer {
       AttachmentSource.Download download,
       UUID parentDocumentId,
       String parentPath,
-      DocumentSourceType sourceType,
+      SourceType sourceType,
       AttachmentLimits limits)
       throws InterruptedException {
     BoundedDownloader.DownloadedFile downloaded = null;
@@ -372,7 +372,7 @@ public class AttachmentIndexer {
       AttachmentSource.LocalFile localFile,
       UUID parentDocumentId,
       String parentPath,
-      DocumentSourceType sourceType) {
+      SourceType sourceType) {
     try {
       String detectedMimeType = SupportedDocumentFormats.detectMediaType(localFile.file());
       SupportedDocumentFormats.ContentDecision decision =
@@ -450,7 +450,7 @@ public class AttachmentIndexer {
       long size,
       UUID parentDocumentId,
       String parentPath,
-      DocumentSourceType sourceType) {
+      SourceType sourceType) {
     try {
       DocumentIngestResult result =
           documentIngestService.ingest(

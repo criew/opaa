@@ -1,9 +1,7 @@
 package io.opaa.api;
 
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.common.PayloadTooLargeException;
-import io.opaa.indexing.source.PushIntakeHandler;
-import io.opaa.indexing.source.SourceConnectorRegistry;
+import io.opaa.library.PushIntakeService;
 import jakarta.servlet.http.HttpServletRequest;
 import java.io.IOException;
 import java.io.InputStream;
@@ -17,32 +15,28 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * The one endpoint a Confluence instance (or an Automation rule) calls into OPAA (#1140). Reachable
- * without a session - the sender has none - and permitted explicitly in both security chains; the
- * request authenticates itself with the library's webhook secret instead, checked by the push
- * intake of its connector. The body is read as raw bytes so a Data Center signature is verified
- * over exactly what was sent - and read through a bound of {@value #MAX_BODY_BYTES}, before
- * anything else: a stranger must not be able to make the backend buffer an arbitrarily large body
- * only to be told 401 afterwards. A page or attachment notification is a few kilobytes.
+ * The one endpoint a source calls into OPAA to push a change notification (ADR-0038). Reachable
+ * without a session through its own security chain ({@code io.opaa.auth.PushIntakeSecurityConfig});
+ * the library's connector authenticates the request against the library's push secret. The body is
+ * read as raw bytes, so a signature is verified over exactly what was sent, and through a bound of
+ * {@value #MAX_BODY_BYTES} before anything else: a stranger must not make the backend buffer an
+ * arbitrarily large body only to be told 401 afterwards.
  */
 @RestController
-public class ConfluenceWebhookController {
+public class PushIntakeController {
 
-  /** Shared with the S3 event intake (ADR-0027, Entscheidung 6). */
   public static final int MAX_BODY_BYTES = 256 * 1024;
 
-  private final SourceConnectorRegistry connectors;
+  private final PushIntakeService pushIntakeService;
 
-  public ConfluenceWebhookController(SourceConnectorRegistry connectors) {
-    this.connectors = connectors;
+  public PushIntakeController(PushIntakeService pushIntakeService) {
+    this.pushIntakeService = pushIntakeService;
   }
 
-  @PostMapping(value = "/api/v1/libraries/{libraryId}/confluence-webhook", consumes = "*/*")
+  @PostMapping(value = "/api/v1/libraries/{libraryId}/push", consumes = "*/*")
   @ResponseStatus(HttpStatus.ACCEPTED)
   public void receive(@PathVariable UUID libraryId, HttpServletRequest request) throws IOException {
-    PushIntakeHandler handler = connectors.pushIntakeHandler(DocumentSourceType.CONFLUENCE);
-    handler.acceptNotification(
-        libraryId, readBounded(request), name -> joinedHeader(request, name));
+    pushIntakeService.accept(libraryId, readBounded(request), name -> joinedHeader(request, name));
   }
 
   /**
@@ -58,12 +52,12 @@ public class ConfluenceWebhookController {
   /** Rejects by the declared length first, then by what actually arrives (chunked senders). */
   static byte[] readBounded(HttpServletRequest request) throws IOException {
     if (request.getContentLengthLong() > MAX_BODY_BYTES) {
-      throw new PayloadTooLargeException("Webhook-Nachricht zu groß");
+      throw new PayloadTooLargeException("Benachrichtigung zu groß");
     }
     try (InputStream in = request.getInputStream()) {
       byte[] body = in.readNBytes(MAX_BODY_BYTES + 1);
       if (body.length > MAX_BODY_BYTES) {
-        throw new PayloadTooLargeException("Webhook-Nachricht zu groß");
+        throw new PayloadTooLargeException("Benachrichtigung zu groß");
       }
       return body;
     }

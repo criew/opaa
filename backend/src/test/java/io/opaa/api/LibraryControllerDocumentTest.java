@@ -13,7 +13,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
 import io.opaa.api.types.SystemRole;
 import io.opaa.asset.AssetGrantService;
@@ -27,6 +26,7 @@ import io.opaa.indexing.job.DocumentIndexingService;
 import io.opaa.indexing.source.SourceConnectorRegistry;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.LibraryFolderService;
+import io.opaa.knowledge.SourceType;
 import io.opaa.library.BulkDocumentDeletion;
 import io.opaa.library.KnowledgeLibraryService;
 import io.opaa.library.LibraryDocumentEntry;
@@ -222,8 +222,7 @@ class LibraryControllerDocumentTest {
   void uploadingADocumentReturns201WithTheResponseFromTheService() throws Exception {
     UUID libraryId = UUID.randomUUID();
     Document document =
-        new Document(
-            "report.pdf", "/tmp/report.pdf", "application/pdf", 3L, DocumentSourceType.UPLOAD);
+        new Document("report.pdf", "/tmp/report.pdf", "application/pdf", 3L, SourceType.UPLOAD);
     document.setStatus(DocumentStatus.INDEXED);
     document.setChunkCount(3);
     var response = new LibraryDocumentEntry(document, null);
@@ -250,8 +249,7 @@ class LibraryControllerDocumentTest {
     UUID libraryId = UUID.randomUUID();
     UUID folderId = UUID.randomUUID();
     Document document =
-        new Document(
-            "report.pdf", "/tmp/report.pdf", "application/pdf", 3L, DocumentSourceType.UPLOAD);
+        new Document("report.pdf", "/tmp/report.pdf", "application/pdf", 3L, SourceType.UPLOAD);
     document.setStatus(DocumentStatus.INDEXED);
     document.setChunkCount(3);
     document.setFolderId(folderId);
@@ -278,8 +276,7 @@ class LibraryControllerDocumentTest {
     // dragged-and-dropped/webkitdirectory-selected folder tree materialize its structure.
     UUID libraryId = UUID.randomUUID();
     Document document =
-        new Document(
-            "januar.pdf", "/tmp/januar.pdf", "application/pdf", 0L, DocumentSourceType.UPLOAD);
+        new Document("januar.pdf", "/tmp/januar.pdf", "application/pdf", 0L, SourceType.UPLOAD);
     document.setStatus(DocumentStatus.PENDING);
     var response = new LibraryDocumentEntry(document, "Protokolle/2026");
     when(documentService.uploadDocument(

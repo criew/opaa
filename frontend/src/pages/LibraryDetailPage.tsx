@@ -25,18 +25,15 @@ import PlayArrowIcon from '@mui/icons-material/PlayArrow'
 import WarningAmberIcon from '@mui/icons-material/WarningAmber'
 import { alpha } from '@mui/material/styles'
 import { fontFamily } from '../theme/tokens'
-import type { AssetRole, S3Settings, ConfluenceSpaceRef } from '../types/api'
-import { confluenceEditionLabel } from '../utils/labels'
+import type { AssetRole } from '../types/api'
+import { confluenceSettingsOf } from '../utils/confluenceSource'
+import { sourceRegistration } from '../components/library/sources/registry'
 import { useAuthStore } from '../stores/authStore'
 import { confirmAction } from '../stores/confirmStore'
 import { useLibraryStore } from '../stores/libraryStore'
 import { IDLE_RUN_STATE, useIndexingStore } from '../stores/indexingStore'
-import {
-  assetRoleLabel,
-  documentSourceTypeConfigKind,
-  documentSourceTypeLabel,
-  formatFileSize,
-} from '../utils/labels'
+import { assetRoleLabel, formatFileSize } from '../utils/labels'
+import { documentSourceTypeLabel } from '../components/library/sources/sourceLabels'
 import AssetAccessDerivationSection from '../components/assets/AssetAccessDerivationSection'
 import AssetHeadlineEditor from '../components/assets/AssetHeadlineEditor'
 import AssetListedSection from '../components/assets/AssetListedSection'
@@ -66,30 +63,6 @@ function canDeleteLibrary(role: AssetRole | undefined): boolean {
 // Schwelle wie beim Hoch- und Löschen von Dokumenten.
 function canManageDocuments(role: AssetRole | undefined): boolean {
   return role === 'EDITOR' || role === 'MANAGER' || role === 'OWNER'
-}
-
-/**
- * #1191: names an unreadable space the way the documents area does ("Name (KEY)"), from the
- * library's own space selection - the key alone when the selection no longer carries the space.
- */
-function confluenceSpaceHeroLabel(
-  key: string,
-  spaces: ConfluenceSpaceRef[] | null | undefined,
-): string {
-  const name = spaces?.find((space) => space.key === key)?.name
-  return name ? `${name} (${key})` : key
-}
-
-/** The head's one-line Umfang of a Confluence library - the detail lives in the "Quelle" area. */
-function confluenceScopeSummaryLabel(spaces: ConfluenceSpaceRef[] | null | undefined): string {
-  const count = spaces?.length ?? 0
-  return count === 1 ? '1 Space' : `${count} Spaces`
-}
-
-/** The same one-liner for an S3 library's scopes (ADR-0027). */
-function s3ScopeSummaryLabel(settings: S3Settings | null | undefined): string {
-  const count = settings?.scopes?.length ?? 0
-  return count === 1 ? '1 Geltungsbereich' : `${count} Geltungsbereiche`
 }
 
 function formatIndexedAt(indexedAt: string | null | undefined): string {
@@ -327,9 +300,7 @@ export default function LibraryDetailPage() {
   // The connector-only concerns (status polling, trigger actions, the "Indizierung" area) hang
   // off the details' sourceType; a plain UPLOAD library has none of them.
   const connectorSourceType = details && details.sourceType !== 'UPLOAD' ? details.sourceType : null
-  const connectorConfigKind = connectorSourceType
-    ? documentSourceTypeConfigKind[connectorSourceType]
-    : null
+  const connectorConfiguration = sourceRegistration(connectorSourceType)?.configuration ?? null
 
   // #1939: every role sees every area; a reader simply finds less inside it. Only an UPLOAD
   // library genuinely has no source area.
@@ -511,7 +482,7 @@ export default function LibraryDetailPage() {
     )
   }
 
-  const isRssFeedRun = connectorSourceType === 'RSS_FEED'
+  const isRssFeedRun = Boolean(sourceRegistration(connectorSourceType)?.runCountsEntries)
   const runFailedSuffix =
     run.documentsFailed > 0 ? `, davon ${run.documentsFailed} fehlgeschlagen` : ''
 
@@ -644,7 +615,7 @@ export default function LibraryDetailPage() {
                 </Button>
                 {/* ADR-0023, Entscheidung 4 (#1139): "Jetzt indizieren" follows the library's state
                     (incremental between two full runs); the full reconciliation can be forced. */}
-                {connectorConfigKind === 'confluence' && (
+                {connectorConfiguration?.fullSyncRhythm && (
                   <Button
                     variant="outlined"
                     onClick={() => void triggerIndexing(libraryId, connectorSourceType, 'FULL')}
@@ -741,7 +712,7 @@ export default function LibraryDetailPage() {
             „Quelle"; dort steht er vollständig, für jede Rolle. Die Warnung über einen
             unvollständig gelesenen Umfang bleibt dagegen hier: Sie betrifft den Bestand, den
             jede Ansicht der Seite zeigt, nicht die Einstellung dahinter. */}
-        {(details?.sourceType === 'CONFLUENCE' || details?.sourceType === 'S3') && (
+        {details && connectorConfiguration?.scopeHero && (
           <Box
             sx={{
               mt: 2.5,
@@ -755,16 +726,7 @@ export default function LibraryDetailPage() {
             }}
           >
             <Typography variant="body2" data-testid="library-scope-summary">
-              {details.sourceType === 'CONFLUENCE'
-                ? [
-                    confluenceScopeSummaryLabel(details.confluenceSpaces),
-                    details.confluenceEdition
-                      ? confluenceEditionLabel(details.confluenceEdition)
-                      : null,
-                  ]
-                    .filter(Boolean)
-                    .join(' · ')
-                : s3ScopeSummaryLabel(details.s3Settings)}
+              {connectorConfiguration.scopeHero.summary(details)}
               {' · '}
               <Link
                 component={RouterLink}
@@ -775,12 +737,12 @@ export default function LibraryDetailPage() {
                 Details
               </Link>
             </Typography>
-            {details.sourceType === 'CONFLUENCE' && run.unlistedScopeKeys.length > 0 && (
+            {run.unlistedScopeKeys.length > 0 && (
               <Stack
                 direction="row"
                 spacing={1}
                 role="note"
-                data-testid="confluence-incomplete-listing-warning"
+                data-testid={connectorConfiguration.scopeHero.unlistedTestId}
                 sx={{
                   alignItems: 'flex-start',
                   mt: 0.5,
@@ -800,40 +762,7 @@ export default function LibraryDetailPage() {
                   sx={{ fontSize: 16, color: 'warning.main', mt: '2px', flexShrink: 0 }}
                 />
                 <Typography sx={{ fontSize: 12.5 }}>
-                  {run.unlistedScopeKeys.length === 1
-                    ? `Der letzte Vollabgleich konnte den Space ${confluenceSpaceHeroLabel(run.unlistedScopeKeys[0], details.confluenceSpaces)} nicht vollständig lesen; sein Bestand ist möglicherweise veraltet.`
-                    : `Der letzte Vollabgleich konnte die Spaces ${run.unlistedScopeKeys.map((key) => confluenceSpaceHeroLabel(key, details.confluenceSpaces)).join(', ')} nicht vollständig lesen; ihr Bestand ist möglicherweise veraltet.`}{' '}
-                  Der Hinweis bleibt, bis ein Vollabgleich wieder alle Spaces lesen kann.
-                </Typography>
-              </Stack>
-            )}
-            {details.sourceType === 'S3' && run.unlistedScopeKeys.length > 0 && (
-              <Stack
-                direction="row"
-                spacing={1}
-                role="note"
-                data-testid="s3-incomplete-listing-warning"
-                sx={{
-                  alignItems: 'flex-start',
-                  mt: 0.5,
-                  pl: 1.5,
-                  pr: 1.25,
-                  py: 1,
-                  borderLeft: 3,
-                  borderColor: 'warning.main',
-                  bgcolor: (theme) => alpha(theme.palette.warning.main, 0.08),
-                }}
-              >
-                <WarningAmberIcon
-                  aria-hidden
-                  sx={{ fontSize: 16, color: 'warning.main', mt: '2px', flexShrink: 0 }}
-                />
-                <Typography sx={{ fontSize: 12.5 }}>
-                  {run.unlistedScopeKeys.length === 1
-                    ? `Der letzte Vollabgleich konnte den Geltungsbereich „${run.unlistedScopeKeys[0]}“ nicht auflisten; sein Bestand ist möglicherweise veraltet.`
-                    : `Der letzte Vollabgleich konnte die Geltungsbereiche ${run.unlistedScopeKeys.map((key) => `„${key}“`).join(', ')} nicht auflisten; ihr Bestand ist möglicherweise veraltet.`}{' '}
-                  Der Hinweis bleibt, bis ein Vollabgleich wieder alle Geltungsbereiche auflisten
-                  kann.
+                  {connectorConfiguration.scopeHero.unlistedWarning(run.unlistedScopeKeys, details)}
                 </Typography>
               </Stack>
             )}
@@ -972,7 +901,7 @@ export default function LibraryDetailPage() {
             sourceType={details.sourceType}
             canManage={canTrigger}
             refreshToken={documentsRefreshToken}
-            confluenceSpaces={details.confluenceSpaces}
+            confluenceSpaces={confluenceSettingsOf(details).spaces}
             // #506 review, finding 7: the document count in the header comes from the library
             // itself, not from documentStore - without this it stays on whatever value was loaded
             // on mount even after an upload or delete changes it.

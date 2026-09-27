@@ -1,6 +1,5 @@
 package io.opaa.indexing.source.confluence;
 
-import io.opaa.api.types.ConfluenceEdition;
 import io.opaa.common.ValidationException;
 import io.opaa.sourceaccess.ProxyAndCredentials;
 import java.net.URI;
@@ -139,7 +138,7 @@ public class ConfluenceConnectionService {
       boolean insecureSsl)
       throws InterruptedException {
     if (edition == null) {
-      throw new ValidationException("confluenceEdition ist erforderlich");
+      throw new ValidationException("sourceSettings.edition ist erforderlich");
     }
     ProxyAndCredentials proxyConfig = parseProxy(proxy);
     URI baseUrl;

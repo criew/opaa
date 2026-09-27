@@ -67,7 +67,7 @@ class ConversationHarnessSupportTest {
             chatMemory(),
             ConversationRetrievalEvaluator.NoteExtraction.NONE,
             new ConversationMemoryProfile(20, 0, 0),
-            new IndexingProperties(1000, 200, 50, null, null, null, null, 0),
+            new IndexingProperties(1000, 200, 50, null, null, null, 0),
             UUID.randomUUID(),
             List.of(twoTurnCase()),
             Instant.now());
@@ -119,7 +119,7 @@ class ConversationHarnessSupportTest {
                 new ChatNoteCandidate("Bezugsjahr 2024", ChatNoteItemKind.RAHMEN),
                 new ChatNoteCandidate("Möchte knappe Antworten", ChatNoteItemKind.ANTWORTFORM)),
         new ConversationMemoryProfile(20, 2, 10),
-        new IndexingProperties(1000, 200, 50, null, null, null, null, 0),
+        new IndexingProperties(1000, 200, 50, null, null, null, 0),
         UUID.randomUUID(),
         List.of(twoTurnCase()),
         Instant.now());
@@ -159,7 +159,7 @@ class ConversationHarnessSupportTest {
         chatMemory(),
         userMessage -> List.of(new ChatNoteCandidate("Bezugsjahr 2024", ChatNoteItemKind.RAHMEN)),
         new ConversationMemoryProfile(20, 2, ConversationMemoryProfile.NO_CONVERSATION_NOTE),
-        new IndexingProperties(1000, 200, 50, null, null, null, null, 0),
+        new IndexingProperties(1000, 200, 50, null, null, null, 0),
         UUID.randomUUID(),
         List.of(twoTurnCase()),
         Instant.now());
@@ -239,7 +239,7 @@ class ConversationHarnessSupportTest {
                             chatMemory(),
                             mock(ChatNoteExtractionService.class),
                             new ChatNoteProperties(10),
-                            new IndexingProperties(1000, 200, 50, null, null, null, null, 0),
+                            new IndexingProperties(1000, 200, 50, null, null, null, 0),
                             UUID.randomUUID(),
                             LoggerFactory.getLogger(ConversationHarnessSupportTest.class)))
                 .as("the guard must not swallow this one")

@@ -69,6 +69,7 @@ import io.opaa.query.retrieval.search.QueryDecompositionService;
 import io.opaa.query.retrieval.search.SubQueryDecompositionStage;
 import io.opaa.query.retrieval.search.VectorSearchStage;
 import io.opaa.query.spike.SpikeToolLoopQueryHandler;
+import io.opaa.test.SourceTypes;
 import java.lang.reflect.Method;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -175,7 +176,8 @@ class QueryServiceTest {
             documentRepository,
             documentMetadataService,
             mock(CitationMetadataReader.class),
-            knowledgeLibraryRepository),
+            knowledgeLibraryRepository,
+            io.opaa.indexing.source.SourceConnectorStubs.registry()),
         answerGenerationService,
         memory,
         new CitationParser(),
@@ -382,7 +384,9 @@ class QueryServiceTest {
             .build();
     when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(chunk));
 
-    var indexedDocument = new io.opaa.knowledge.Document("entry.html", "/path", "text/html", 100L);
+    var indexedDocument =
+        new io.opaa.knowledge.Document(
+            "entry.html", "/path", "text/html", 100L, SourceTypes.FILESYSTEM);
     indexedDocument.setSourceEntryUrl("https://example.com/feed/entry-123");
     when(documentRepository.findById(documentId)).thenReturn(Optional.of(indexedDocument));
 
@@ -486,9 +490,11 @@ class QueryServiceTest {
     when(vectorStore.similaritySearch(any(SearchRequest.class)))
         .thenReturn(List.of(chunk, plainChunk));
     io.opaa.knowledge.Document document =
-        new io.opaa.knowledge.Document("dienstanweisung.pdf", "/d.pdf", "application/pdf", 1L);
+        new io.opaa.knowledge.Document(
+            "dienstanweisung.pdf", "/d.pdf", "application/pdf", 1L, SourceTypes.FILESYSTEM);
     io.opaa.knowledge.Document plainDocument =
-        new io.opaa.knowledge.Document("anweisung.md", "/a.md", "text/markdown", 1L);
+        new io.opaa.knowledge.Document(
+            "anweisung.md", "/a.md", "text/markdown", 1L, SourceTypes.FILESYSTEM);
     when(documentRepository.findById(any(UUID.class))).thenReturn(Optional.empty());
     when(documentRepository.findById(documentId)).thenReturn(Optional.of(document));
     when(documentRepository.findById(plainDocumentId)).thenReturn(Optional.of(plainDocument));
@@ -604,7 +610,9 @@ class QueryServiceTest {
             .build();
     when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(chunk));
 
-    var indexedDocument = new io.opaa.knowledge.Document("entry.html", "/path", "text/html", 100L);
+    var indexedDocument =
+        new io.opaa.knowledge.Document(
+            "entry.html", "/path", "text/html", 100L, SourceTypes.FILESYSTEM);
     when(documentRepository.findById(documentId)).thenReturn(Optional.of(indexedDocument));
 
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
@@ -639,7 +647,7 @@ class QueryServiceTest {
             "/data/upload.pdf",
             "application/pdf",
             100L,
-            io.opaa.api.types.DocumentSourceType.UPLOAD);
+            io.opaa.knowledge.SourceType.UPLOAD);
     when(documentRepository.findById(documentId)).thenReturn(Optional.of(indexedDocument));
 
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
@@ -650,7 +658,7 @@ class QueryServiceTest {
 
     ChatSource source = response.sources().getFirst();
     assertThat(source.getDocumentId()).isEqualTo(documentId);
-    assertThat(source.getSourceType()).isEqualTo(io.opaa.api.types.DocumentSourceType.UPLOAD);
+    assertThat(source.getSourceType()).isEqualTo("UPLOAD");
     assertThat(source.getSourceUrl()).isNull();
   }
 
@@ -678,7 +686,7 @@ class QueryServiceTest {
             "https://example.gov/verzeichnis/dienstanweisung.pdf",
             "application/pdf",
             100L,
-            io.opaa.api.types.DocumentSourceType.HTTP_DIRECTORY);
+            io.opaa.test.SourceTypes.HTTP_DIRECTORY);
     when(documentRepository.findById(documentId)).thenReturn(Optional.of(indexedDocument));
 
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
@@ -689,8 +697,7 @@ class QueryServiceTest {
 
     ChatSource source = response.sources().getFirst();
     assertThat(source.getDocumentId()).isEqualTo(documentId);
-    assertThat(source.getSourceType())
-        .isEqualTo(io.opaa.api.types.DocumentSourceType.HTTP_DIRECTORY);
+    assertThat(source.getSourceType()).isEqualTo("HTTP_DIRECTORY");
     assertThat(source.getSourceUrl())
         .isEqualTo("https://example.gov/verzeichnis/dienstanweisung.pdf");
   }
@@ -726,10 +733,12 @@ class QueryServiceTest {
         .thenReturn(List.of(firstChunk, secondChunk));
 
     var firstDocument =
-        new io.opaa.knowledge.Document("attachment.pdf", "/path1", "application/pdf", 100L);
+        new io.opaa.knowledge.Document(
+            "attachment.pdf", "/path1", "application/pdf", 100L, SourceTypes.FILESYSTEM);
     firstDocument.setSourceEntryUrl("https://example.com/feed/entry-1");
     var secondDocument =
-        new io.opaa.knowledge.Document("attachment.pdf", "/path2", "application/pdf", 100L);
+        new io.opaa.knowledge.Document(
+            "attachment.pdf", "/path2", "application/pdf", 100L, SourceTypes.FILESYSTEM);
     secondDocument.setSourceEntryUrl("https://example.com/feed/entry-2");
     when(documentRepository.findById(firstDocumentId)).thenReturn(Optional.of(firstDocument));
     when(documentRepository.findById(secondDocumentId)).thenReturn(Optional.of(secondDocument));

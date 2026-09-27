@@ -386,6 +386,26 @@ describe('LibraryDetailPage', () => {
       ).toHaveLength(1)
     })
 
+    // ADR-0038: a type the backend has a connector for but this client no form - shown as not
+    // configurable, never with a Bearbeiten that would open an empty dialog.
+    it('shows a source type without a registered form as not configurable', async () => {
+      setLibraryState(
+        managerLibrary,
+        detailsOf(managerLibrary, { sourceType: 'PROBE', sourceUrl: 'https://quelle.local' }),
+      )
+      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+      const user = userEvent.setup()
+
+      await user.click(await screen.findByRole('tab', { name: 'Quelle' }))
+
+      expect(await screen.findByTestId('source-not-configurable')).toHaveTextContent(
+        'nicht konfigurierbar',
+      )
+      expect(
+        screen.queryByRole('button', { name: /^quellkonfiguration bearbeiten$/i }),
+      ).not.toBeInTheDocument()
+    })
+
     it('names the source type exactly once, as a badge', async () => {
       setLibraryState(
         managerLibrary,
@@ -1149,7 +1169,7 @@ describe('LibraryDetailPage', () => {
         sourceType: 'S3',
         sourceUrl: 'https://minio.intern.example:9000',
         sourceCredentialsSet: true,
-        s3Settings: {
+        sourceSettings: {
           region: 'eu-central-1',
           pathStyle: true,
           scopes: [
@@ -1188,8 +1208,7 @@ describe('LibraryDetailPage', () => {
         sourceType: 'CONFLUENCE',
         sourceUrl: 'https://wiki.behoerde.example/confluence',
         sourceCredentialsSet: true,
-        confluenceEdition: 'DATA_CENTER',
-        confluenceSpaces: [{ key: 'BAU', name: 'Bauamt' }],
+        sourceSettings: { edition: 'DATA_CENTER', spaces: [{ key: 'BAU', name: 'Bauamt' }] },
       }),
     )
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
@@ -1222,8 +1241,7 @@ describe('LibraryDetailPage', () => {
       detailsOf(ownerLibrary, {
         sourceType: 'CONFLUENCE',
         sourceUrl: 'https://wiki.behoerde.example/confluence',
-        confluenceEdition: 'DATA_CENTER',
-        confluenceSpaces: [{ key: 'ENG', name: 'Engineering' }],
+        sourceSettings: { edition: 'DATA_CENTER', spaces: [{ key: 'ENG', name: 'Engineering' }] },
       }),
     )
     const { unmount } = renderWithProviders(<LibraryDetailPage />, { withRouter: true })
@@ -1252,8 +1270,7 @@ describe('LibraryDetailPage', () => {
       detailsOf(managerLibrary, {
         sourceType: 'CONFLUENCE',
         sourceUrl: 'https://wiki.behoerde.example/confluence',
-        confluenceEdition: 'DATA_CENTER',
-        confluenceSpaces: [{ key: 'ENG', name: 'Engineering' }],
+        sourceSettings: { edition: 'DATA_CENTER', spaces: [{ key: 'ENG', name: 'Engineering' }] },
       }),
     )
     server.use(
@@ -1366,9 +1383,8 @@ describe('LibraryDetailPage', () => {
       detailsOf(ownerLibrary, {
         sourceType: 'CONFLUENCE',
         sourceUrl: 'https://wiki.behoerde.example/confluence',
-        confluenceEdition: 'DATA_CENTER',
-        confluenceSpaces: [{ key: 'ENG', name: 'Engineering' }],
-        confluenceWebhookSecretSet: true,
+        sourceSettings: { edition: 'DATA_CENTER', spaces: [{ key: 'ENG', name: 'Engineering' }] },
+        pushSecretSet: true,
       }),
     )
     const { unmount } = renderWithProviders(<LibraryDetailPage />, { withRouter: true })
@@ -1385,8 +1401,7 @@ describe('LibraryDetailPage', () => {
       viewerLibrary,
       detailsOf(viewerLibrary, {
         sourceType: 'CONFLUENCE',
-        confluenceEdition: 'DATA_CENTER',
-        confluenceSpaces: [{ key: 'ENG', name: 'Engineering' }],
+        sourceSettings: { edition: 'DATA_CENTER', spaces: [{ key: 'ENG', name: 'Engineering' }] },
       }),
     )
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
@@ -1399,8 +1414,7 @@ describe('LibraryDetailPage', () => {
       viewerLibrary,
       detailsOf(viewerLibrary, {
         sourceType: 'CONFLUENCE',
-        confluenceEdition: 'CLOUD',
-        confluenceSpaces: [{ key: 'BAU', name: 'Bauamt' }],
+        sourceSettings: { edition: 'CLOUD', spaces: [{ key: 'BAU', name: 'Bauamt' }] },
       }),
     )
     const { unmount } = renderWithProviders(<LibraryDetailPage />, { withRouter: true })
@@ -1428,11 +1442,13 @@ describe('LibraryDetailPage', () => {
       viewerLibrary,
       detailsOf(viewerLibrary, {
         sourceType: 'CONFLUENCE',
-        confluenceEdition: 'DATA_CENTER',
-        confluenceSpaces: [
-          { key: 'SEC', name: 'Sicherheit' },
-          { key: 'ENG', name: 'Engineering' },
-        ],
+        sourceSettings: {
+          edition: 'DATA_CENTER',
+          spaces: [
+            { key: 'SEC', name: 'Sicherheit' },
+            { key: 'ENG', name: 'Engineering' },
+          ],
+        },
       }),
     )
     mockGetIndexingStatus.mockResolvedValueOnce({
@@ -1461,7 +1477,7 @@ describe('LibraryDetailPage', () => {
       detailsOf(viewerLibrary, {
         sourceType: 'S3',
         sourceUrl: 'https://minio.intern.example:9000',
-        s3Settings: {
+        sourceSettings: {
           region: 'us-east-1',
           pathStyle: true,
           scopes: [
@@ -1498,8 +1514,7 @@ describe('LibraryDetailPage', () => {
       viewerLibrary,
       detailsOf(viewerLibrary, {
         sourceType: 'CONFLUENCE',
-        confluenceEdition: 'DATA_CENTER',
-        confluenceSpaces: [{ key: 'ENG', name: 'Engineering' }],
+        sourceSettings: { edition: 'DATA_CENTER', spaces: [{ key: 'ENG', name: 'Engineering' }] },
       }),
     )
 
@@ -1647,10 +1662,12 @@ describe('LibraryDetailPage', () => {
       detailsOf(ownerLibrary, {
         sourceType: 'CONFLUENCE',
         sourceUrl: 'https://wiki.behoerde.example/confluence',
-        confluenceEdition: 'DATA_CENTER',
-        confluenceSpaces: [{ key: 'ENG', name: 'Engineering' }],
-        confluenceFullSyncIntervalDays: null,
-        confluenceFullSyncIntervalDefaultDays: 7,
+        sourceSettings: {
+          edition: 'DATA_CENTER',
+          spaces: [{ key: 'ENG', name: 'Engineering' }],
+          fullSyncIntervalDays: null,
+        },
+        fullSyncIntervalDefaultDays: 7,
         schedule: { frequency: 'HOURLY', nextRunAt: '2026-03-02T03:00:00Z' },
       }),
     )
@@ -1670,7 +1687,7 @@ describe('LibraryDetailPage', () => {
     await waitFor(() => {
       expect(mockUpdateLibrary).toHaveBeenCalledWith(
         'library-team',
-        expect.objectContaining({ confluenceFullSyncIntervalDays: 14 }),
+        expect.objectContaining({ sourceSettings: { fullSyncIntervalDays: 14 } }),
       )
     })
   })
@@ -1682,10 +1699,12 @@ describe('LibraryDetailPage', () => {
       detailsOf(ownerLibrary, {
         sourceType: 'CONFLUENCE',
         sourceUrl: 'https://wiki.behoerde.example/confluence',
-        confluenceEdition: 'DATA_CENTER',
-        confluenceSpaces: [{ key: 'ENG', name: 'Engineering' }],
-        confluenceFullSyncIntervalDays: 30,
-        confluenceFullSyncIntervalDefaultDays: 7,
+        sourceSettings: {
+          edition: 'DATA_CENTER',
+          spaces: [{ key: 'ENG', name: 'Engineering' }],
+          fullSyncIntervalDays: 30,
+        },
+        fullSyncIntervalDefaultDays: 7,
         schedule: { frequency: 'HOURLY', nextRunAt: '2026-03-02T03:00:00Z' },
       }),
     )
@@ -1703,7 +1722,7 @@ describe('LibraryDetailPage', () => {
     await waitFor(() => {
       expect(mockUpdateLibrary).toHaveBeenCalledWith(
         'library-team',
-        expect.objectContaining({ confluenceFullSyncIntervalDays: 0 }),
+        expect.objectContaining({ sourceSettings: { fullSyncIntervalDays: 0 } }),
       )
     })
   })
@@ -1865,8 +1884,7 @@ describe('LibraryDetailPage', () => {
       detailsOf(managerLibrary, {
         sourceType: 'CONFLUENCE',
         sourceUrl: 'https://wiki.behoerde.example/confluence',
-        confluenceEdition: 'DATA_CENTER',
-        confluenceSpaces: [{ key: 'ENG', name: 'Engineering' }],
+        sourceSettings: { edition: 'DATA_CENTER', spaces: [{ key: 'ENG', name: 'Engineering' }] },
       }),
     )
     const { unmount } = renderWithProviders(<LibraryDetailPage />, { withRouter: true })
@@ -2449,8 +2467,7 @@ describe('LibraryDetailPage', () => {
         detailsOf(managerLibrary, {
           sourceType: 'CONFLUENCE',
           sourceUrl: 'http://wiki.example',
-          confluenceEdition: 'DATA_CENTER',
-          confluenceSpaces: [{ key: 'IT', name: 'IT-Betrieb' }],
+          sourceSettings: { edition: 'DATA_CENTER', spaces: [{ key: 'IT', name: 'IT-Betrieb' }] },
         }),
       )
       mockGetLibraryDocuments.mockResolvedValueOnce(
@@ -2492,8 +2509,7 @@ describe('LibraryDetailPage', () => {
         detailsOf(managerLibrary, {
           sourceType: 'CONFLUENCE',
           sourceUrl: 'http://wiki.example',
-          confluenceEdition: 'DATA_CENTER',
-          confluenceSpaces: [{ key: 'IT', name: 'IT-Betrieb' }],
+          sourceSettings: { edition: 'DATA_CENTER', spaces: [{ key: 'IT', name: 'IT-Betrieb' }] },
         }),
       )
       mockGetLibraryDocuments.mockResolvedValueOnce(
@@ -2530,7 +2546,7 @@ describe('LibraryDetailPage', () => {
         detailsOf(managerLibrary, {
           sourceType: 'S3',
           sourceUrl: 'https://minio.intern.example:9000',
-          s3Settings: {
+          sourceSettings: {
             region: 'us-east-1',
             pathStyle: true,
             scopes: [{ bucket: 'dokumente', prefix: '2025/' }],
@@ -3781,7 +3797,7 @@ describe('LibraryDetailPage', () => {
         detailsOf(readerOfS3, {
           sourceType: 'S3',
           sourceUrl: 'https://s3.example.com',
-          s3Settings: { pathStyle: false, scopes: [{ bucket: 'akten', prefix: '2026/' }] },
+          sourceSettings: { pathStyle: false, scopes: [{ bucket: 'akten', prefix: '2026/' }] },
         }),
       )
       renderWithProviders(<LibraryDetailPage />, { withRouter: true })

@@ -2,7 +2,6 @@ package io.opaa.indexing.source.confluence;
 
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
-import io.opaa.api.types.ConfluenceEdition;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;

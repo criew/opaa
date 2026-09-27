@@ -2,9 +2,6 @@ package io.opaa.api;
 
 import io.opaa.api.dto.BulkDocumentDeleteRequest;
 import io.opaa.api.dto.BulkDocumentDeleteResponse;
-import io.opaa.api.dto.ConfluenceSpaceListRequest;
-import io.opaa.api.dto.ConfluenceSpaceListResponse;
-import io.opaa.api.dto.ConfluenceWebhookSecretResponse;
 import io.opaa.api.dto.IndexingRunEvent;
 import io.opaa.api.dto.IndexingRunEventCategory;
 import io.opaa.api.dto.IndexingRunListResponse;
@@ -23,12 +20,9 @@ import io.opaa.api.dto.LibraryRequest;
 import io.opaa.api.dto.LibraryResponse;
 import io.opaa.api.dto.LibraryShareCapRequest;
 import io.opaa.api.dto.LibraryUpdateRequest;
-import io.opaa.api.dto.S3BucketListRequest;
-import io.opaa.api.dto.S3BucketListResponse;
-import io.opaa.api.dto.S3EventsTokenResponse;
+import io.opaa.api.dto.PushSecretResponse;
 import io.opaa.api.dto.SourceConnectionTestRequest;
 import io.opaa.api.dto.SourceConnectionTestResponse;
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
@@ -107,8 +101,7 @@ public class LibraryController {
       @Valid @RequestBody LibraryRequest request, @Caller CurrentUser caller) {
     LibraryResponse response =
         LibraryResponseMapper.toResponse(
-            libraryService.createLibrary(
-                LibraryResponseMapper.toCreation(request, connectors), caller));
+            libraryService.createLibrary(LibraryResponseMapper.toCreation(request), caller));
     return ResponseEntity.status(HttpStatus.CREATED).body(response);
   }
 
@@ -126,33 +119,6 @@ public class LibraryController {
       @Valid @RequestBody SourceConnectionTestRequest request, @Caller CurrentUser caller) {
     return SourceConnectionTestResponseMapper.toResponse(
         sourceConnectionTestService.test(
-            SourceConnectionTestResponseMapper.toDomain(request, connectors), caller));
-  }
-
-  /**
-   * Space selection source for a CONFLUENCE library (ADR-0023, #1134) - same permission bar (#1856)
-   * and rate limit as the connection test above; credentials travel in the body and never come
-   * back.
-   */
-  @PostMapping("/confluence/spaces")
-  public ConfluenceSpaceListResponse listConfluenceSpaces(
-      @Valid @RequestBody ConfluenceSpaceListRequest request, @Caller CurrentUser caller) {
-    return SourceConnectionTestResponseMapper.toResponse(
-        SourceConnectionTestResponseMapper.toRefs(
-            sourceConnectionTestService.browse(
-                SourceConnectionTestResponseMapper.toDomain(request), caller)));
-  }
-
-  /**
-   * Bucket suggestion for an S3 library (ADR-0027, #1376) - same permission bar (#1856) and rate
-   * limit as the connection test above; credentials travel in the body and never come back. A key
-   * that may not list buckets gets the fallback answer, not an error.
-   */
-  @PostMapping("/s3/buckets")
-  public S3BucketListResponse listS3Buckets(
-      @Valid @RequestBody S3BucketListRequest request, @Caller CurrentUser caller) {
-    return SourceConnectionTestResponseMapper.toResponse(
-        sourceConnectionTestService.browse(
             SourceConnectionTestResponseMapper.toDomain(request), caller));
   }
 
@@ -175,8 +141,7 @@ public class LibraryController {
       @Valid @RequestBody LibraryUpdateRequest request,
       @Caller CurrentUser caller) {
     return LibraryResponseMapper.toResponse(
-        libraryService.updateLibrary(
-            libraryId, LibraryResponseMapper.toUpdate(request, connectors), caller));
+        libraryService.updateLibrary(libraryId, LibraryResponseMapper.toUpdate(request), caller));
   }
 
   /**
@@ -197,41 +162,21 @@ public class LibraryController {
   }
 
   /**
-   * Generates (or rotates) the library's Confluence webhook secret (#1140) and returns it exactly
-   * once, together with the path the instance has to call - the secret is never readable again,
-   * only {@code LibraryResponse.confluenceWebhookSecretSet} tells that one exists.
+   * Generates (or rotates) the push secret of a library whose connector has a push intake and
+   * returns it exactly once, together with the path the source has to notify - the secret is never
+   * readable again, only {@code LibraryResponse.pushSecretSet} tells that one exists.
    */
-  @PostMapping("/{libraryId}/confluence-webhook-secret")
-  public ConfluenceWebhookSecretResponse generateConfluenceWebhookSecret(
+  @PostMapping("/{libraryId}/push-secret")
+  public PushSecretResponse generatePushSecret(
       @PathVariable UUID libraryId, @Caller CurrentUser caller) {
-    String secret =
-        libraryService.generatePushSecret(libraryId, DocumentSourceType.CONFLUENCE, caller);
-    return new ConfluenceWebhookSecretResponse(
-        secret, "/api/v1/libraries/" + libraryId + "/confluence-webhook");
+    String secret = libraryService.generatePushSecret(libraryId, caller);
+    return new PushSecretResponse(secret, "/api/v1/libraries/" + libraryId + "/push");
   }
 
-  @DeleteMapping("/{libraryId}/confluence-webhook-secret")
-  public ResponseEntity<Void> removeConfluenceWebhookSecret(
+  @DeleteMapping("/{libraryId}/push-secret")
+  public ResponseEntity<Void> removePushSecret(
       @PathVariable UUID libraryId, @Caller CurrentUser caller) {
-    libraryService.removePushSecret(libraryId, DocumentSourceType.CONFLUENCE, caller);
-    return ResponseEntity.noContent().build();
-  }
-
-  /**
-   * Generates (or rotates) the library's S3 event token (ADR-0027, Entscheidung 6) and returns it
-   * exactly once, together with the path the object store has to notify.
-   */
-  @PostMapping("/{libraryId}/s3-events-token")
-  public S3EventsTokenResponse generateS3EventsToken(
-      @PathVariable UUID libraryId, @Caller CurrentUser caller) {
-    String token = libraryService.generatePushSecret(libraryId, DocumentSourceType.S3, caller);
-    return new S3EventsTokenResponse(token, "/api/v1/libraries/" + libraryId + "/s3-events");
-  }
-
-  @DeleteMapping("/{libraryId}/s3-events-token")
-  public ResponseEntity<Void> removeS3EventsToken(
-      @PathVariable UUID libraryId, @Caller CurrentUser caller) {
-    libraryService.removePushSecret(libraryId, DocumentSourceType.S3, caller);
+    libraryService.removePushSecret(libraryId, caller);
     return ResponseEntity.noContent().build();
   }
 

@@ -1,6 +1,7 @@
 package io.opaa.library;
 
-import io.opaa.api.types.DocumentSourceType;
+import io.opaa.indexing.source.ConnectorData;
+import io.opaa.knowledge.SourceType;
 import java.net.URI;
 
 /**
@@ -13,18 +14,18 @@ import java.net.URI;
  *     null} means the caller did not send one.
  * @param schedule {@code null} means the caller does not intend to change the schedule; the stored
  *     one stays untouched. Present (even if {@code DISABLED}) replaces it as a whole.
- * @param connectorSettings the change of the connector's settings (ADR-0038), never {@code null} -
- *     an absent part leaves the stored one untouched
+ * @param sourceSettings the change of the connector's settings (ADR-0038); {@code null} leaves them
+ *     untouched, and what a present one replaces the connector decides
  */
 public record LibraryUpdate(
     String name,
     String description,
     Boolean listed,
-    DocumentSourceType sourceType,
+    SourceType sourceType,
     String sourcePath,
     URI sourceUrl,
     String sourceProxy,
     String sourceCredentials,
     Boolean sourceInsecureSsl,
     LibraryScheduleUpdate schedule,
-    ConnectorSettingsRequest connectorSettings) {}
+    ConnectorData sourceSettings) {}

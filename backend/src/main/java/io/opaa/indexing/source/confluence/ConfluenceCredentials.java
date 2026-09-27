@@ -1,6 +1,5 @@
 package io.opaa.indexing.source.confluence;
 
-import io.opaa.api.types.ConfluenceEdition;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 

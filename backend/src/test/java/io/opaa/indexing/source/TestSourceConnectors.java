@@ -3,7 +3,6 @@ package io.opaa.indexing.source;
 import static org.mockito.Mockito.mock;
 
 import io.opaa.indexing.FilesystemPathAllowlist;
-import io.opaa.indexing.IndexingProperties;
 import io.opaa.indexing.document.DocumentService;
 import io.opaa.indexing.source.confluence.ConfluenceConnectionService;
 import io.opaa.indexing.source.confluence.ConfluenceProperties;
@@ -11,6 +10,7 @@ import io.opaa.indexing.source.confluence.ConfluenceSourceConnector;
 import io.opaa.indexing.source.confluence.webhook.ConfluenceWebhookService;
 import io.opaa.indexing.source.filesystem.FilesystemSourceConnector;
 import io.opaa.indexing.source.rss.RssFeedParser;
+import io.opaa.indexing.source.rss.RssFeedProperties;
 import io.opaa.indexing.source.rss.RssFeedSourceConnector;
 import io.opaa.indexing.source.rss.RssFeedStateRepository;
 import io.opaa.indexing.source.s3.S3ClientFactory;
@@ -37,8 +37,7 @@ import java.util.List;
 public final class TestSourceConnectors {
 
   private FilesystemPathAllowlist filesystemAllowlist = mock(FilesystemPathAllowlist.class);
-  private IndexingProperties indexingProperties =
-      new IndexingProperties(1000, 0, 50, null, null, null, null, 0);
+  private RssFeedProperties rssProperties = new RssFeedProperties(0, 0, 0, 0, null, null, 0, 0);
   private RssFeedStateRepository rssFeedStateRepository = mock(RssFeedStateRepository.class);
   private SourceSyncStateRepository sourceSyncStateRepository =
       mock(SourceSyncStateRepository.class);
@@ -65,8 +64,9 @@ public final class TestSourceConnectors {
     return this;
   }
 
-  public TestSourceConnectors indexingProperties(IndexingProperties properties) {
-    this.indexingProperties = properties;
+  /** The RSS limits; the HTTP directory's connection test reads its page limit too. */
+  public TestSourceConnectors rssProperties(RssFeedProperties properties) {
+    this.rssProperties = properties;
     return this;
   }
 
@@ -146,14 +146,14 @@ public final class TestSourceConnectors {
                 validator,
                 policy,
                 ProductionDocumentFormats.supportedFormats(),
-                indexingProperties,
+                rssProperties.maxPageSizeBytes(),
                 remoteOriginals),
             new RssFeedSourceConnector(
                 new RssFeedParser(),
                 rssFeedStateRepository,
                 validator,
                 policy,
-                indexingProperties,
+                rssProperties,
                 remoteOriginals),
             new ConfluenceSourceConnector(
                 confluenceConnectionService,

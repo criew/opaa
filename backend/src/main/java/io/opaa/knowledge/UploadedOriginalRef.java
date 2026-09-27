@@ -1,6 +1,5 @@
 package io.opaa.knowledge;
 
-import io.opaa.api.types.DocumentSourceType;
 import java.util.Optional;
 import java.util.UUID;
 import org.slf4j.Logger;
@@ -45,7 +44,7 @@ public record UploadedOriginalRef(UUID organizationId, UUID libraryId, String lo
    * logged rather than thrown - a delete must still remove the row.
    */
   public static Optional<UploadedOriginalRef> of(Document document) {
-    if (document.getSourceType() != DocumentSourceType.UPLOAD
+    if (!SourceType.UPLOAD.equals(document.getSourceType())
         || document.getFilePath() == null
         || document.getFilePath().isBlank()) {
       return Optional.empty();

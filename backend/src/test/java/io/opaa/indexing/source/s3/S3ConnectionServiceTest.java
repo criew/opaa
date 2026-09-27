@@ -41,7 +41,7 @@ class S3ConnectionServiceTest {
   void aCallerMistakeIsA400() {
     assertThatThrownBy(() -> service.probe("https://s3.example.org", null, "ak:sk", false, null))
         .isInstanceOf(ValidationException.class)
-        .hasMessageContaining("s3Settings");
+        .hasMessageContaining("sourceSettings");
     assertThatThrownBy(() -> service.probe("s3.example.org", null, "ak:sk", false, SETTINGS))
         .isInstanceOf(ValidationException.class)
         .hasMessageContaining("http://");

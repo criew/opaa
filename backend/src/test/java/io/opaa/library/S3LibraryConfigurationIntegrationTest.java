@@ -9,7 +9,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.DevAuthFilter;
@@ -24,6 +23,7 @@ import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
 import io.opaa.test.OpaaIntegrationTest;
+import io.opaa.test.SourceTypes;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -110,7 +110,7 @@ class S3LibraryConfigurationIntegrationTest {
     LibraryDetail detail = libraryService.createLibrary(request, currentUser(owner));
 
     KnowledgeLibrary library = detail.library();
-    assertThat(library.getSourceType()).isEqualTo(DocumentSourceType.S3);
+    assertThat(library.getSourceType()).isEqualTo(SourceTypes.S3);
     assertThat(library.getSourceUrl()).isEqualTo(ENDPOINT);
     assertThat(S3SourceSettingsJson.of(library).scopes())
         .containsExactly(S3Scope.of("protokolle", "2025/"), S3Scope.of("satzungen", ""));
@@ -139,7 +139,7 @@ class S3LibraryConfigurationIntegrationTest {
           "sourceType": "S3",
           "sourceUrl": "%s",
           "sourceCredentials": "AKIAEXAMPLE:%s",
-          "s3Settings": {
+          "sourceSettings": {
             "region": "eu-central-1",
             "pathStyle": true,
             "scopes": [{"bucket": "protokolle", "prefix": "2025"}],
@@ -175,7 +175,7 @@ class S3LibraryConfigurationIntegrationTest {
         assertThat(raw)
             .contains("\"sourceType\":\"S3\"")
             .contains("\"sourceUrl\":\"" + ENDPOINT + "\"")
-            .contains("\"s3Settings\":{")
+            .contains("\"sourceSettings\":{")
             .contains("\"bucket\":\"protokolle\"")
             .contains("\"prefix\":\"2025/\"")
             .contains("\"sourceCredentialsSet\":true")
@@ -201,7 +201,7 @@ class S3LibraryConfigurationIntegrationTest {
                 libraryService.createLibrary(
                     s3("ohne Settings", ENDPOINT).s3Settings(null).build(), caller))
         .isInstanceOf(ValidationException.class)
-        .hasMessageContaining("s3Settings sind erforderlich");
+        .hasMessageContaining("sourceSettings sind erforderlich");
     assertThatThrownBy(
             () ->
                 libraryService.createLibrary(
@@ -241,13 +241,13 @@ class S3LibraryConfigurationIntegrationTest {
     assertThatThrownBy(
             () ->
                 libraryService.createLibrary(
-                    libraryCreation("RSS mit Settings", DocumentSourceType.RSS_FEED)
+                    libraryCreation("RSS mit Settings", SourceTypes.RSS_FEED)
                         .sourceUrl(URI.create("https://example.org/feed.xml"))
                         .s3Settings(settings(null, true, S3Scope.of("dokumente", "")))
                         .build(),
                     caller))
         .isInstanceOf(ValidationException.class)
-        .hasMessageContaining("nur für sourceType S3");
+        .hasMessageContaining("ist nicht vorgesehen");
   }
 
   @Test
@@ -295,7 +295,7 @@ class S3LibraryConfigurationIntegrationTest {
     assertThat(libraryService.getLibrary(libraryId, caller).managementDetail().pushSecretSet())
         .isFalse();
 
-    String first = libraryService.generatePushSecret(libraryId, DocumentSourceType.S3, caller);
+    String first = libraryService.generatePushSecret(libraryId, caller);
     assertThat(first).hasSize(43).matches("[A-Za-z0-9_-]+");
     assertThat(libraryRepository.findById(libraryId).orElseThrow().getWebhookSecret())
         .isEqualTo(first);
@@ -310,11 +310,11 @@ class S3LibraryConfigurationIntegrationTest {
     assertThat(libraryService.getLibrary(libraryId, caller).managementDetail().pushSecretSet())
         .isTrue();
 
-    String second = libraryService.generatePushSecret(libraryId, DocumentSourceType.S3, caller);
+    String second = libraryService.generatePushSecret(libraryId, caller);
     assertThat(second).isNotEqualTo(first);
-    libraryService.removePushSecret(libraryId, DocumentSourceType.S3, caller);
+    libraryService.removePushSecret(libraryId, caller);
     assertThat(libraryRepository.findById(libraryId).orElseThrow().getWebhookSecret()).isNull();
-    libraryService.removePushSecret(libraryId, DocumentSourceType.S3, caller);
+    libraryService.removePushSecret(libraryId, caller);
 
     List<String> audit =
         jdbcTemplate.queryForList(
@@ -328,11 +328,6 @@ class S3LibraryConfigurationIntegrationTest {
         .hasSize(3)
         .allSatisfy(
             payload -> assertThat(payload).contains("s3EventsToken").doesNotContain(second));
-    assertThatThrownBy(
-            () ->
-                libraryService.generatePushSecret(libraryId, DocumentSourceType.CONFLUENCE, caller))
-        .isInstanceOf(ValidationException.class)
-        .hasMessageContaining("CONFLUENCE");
   }
 
   @Test
@@ -407,9 +402,7 @@ class S3LibraryConfigurationIntegrationTest {
             () ->
                 libraryService.updateLibrary(
                     libraryId,
-                    libraryUpdate("Sitzungen")
-                        .sourceType(DocumentSourceType.HTTP_DIRECTORY)
-                        .build(),
+                    libraryUpdate("Sitzungen").sourceType(SourceTypes.HTTP_DIRECTORY).build(),
                     caller))
         .isInstanceOf(ValidationException.class)
         .hasMessageContaining("sourceType kann nach dem Anlegen");
@@ -421,7 +414,7 @@ class S3LibraryConfigurationIntegrationTest {
     UUID rss =
         libraryService
             .createLibrary(
-                libraryCreation("Feed", DocumentSourceType.RSS_FEED)
+                libraryCreation("Feed", SourceTypes.RSS_FEED)
                     .sourceUrl(URI.create("https://example.org/feed.xml"))
                     .build(),
                 caller)
@@ -437,7 +430,7 @@ class S3LibraryConfigurationIntegrationTest {
                         .build(),
                     caller))
         .isInstanceOf(ValidationException.class)
-        .hasMessageContaining("nur für sourceType S3");
+        .hasMessageContaining("ist nicht vorgesehen");
   }
 
   private static S3SourceSettings settings(String region, boolean pathStyle, S3Scope... scopes) {
@@ -445,7 +438,7 @@ class S3LibraryConfigurationIntegrationTest {
   }
 
   private static LibraryCreationBuilder s3(String name, String endpoint) {
-    return libraryCreation(name, DocumentSourceType.S3)
+    return libraryCreation(name, SourceTypes.S3)
         .sourceUrl(endpoint == null ? null : URI.create(endpoint))
         .sourceCredentials("AKIAEXAMPLE:geheim")
         .s3Settings(settings("eu-central-1", true, S3Scope.of("protokolle", "2025/")));

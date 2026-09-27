@@ -27,14 +27,19 @@ const { mockUpdateLibrary, mockTestLibrarySource } = vi.hoisted(() => ({
   })),
 }))
 
-const { mockListConfluenceSpaces } = vi.hoisted(() => ({
-  mockListConfluenceSpaces: vi.fn(async () => ({
-    spaces: [
-      { key: 'BAU', name: 'Bauamt' },
-      { key: 'HR', name: 'Personal' },
-      { key: 'IT', name: 'IT-Betrieb' },
-    ],
-  })),
+const { mockBrowseSource } = vi.hoisted(() => ({
+  mockBrowseSource: vi.fn(async (sourceType: string) =>
+    sourceType === 'CONFLUENCE'
+      ? {
+          complete: true,
+          entries: [
+            { key: 'BAU', name: 'Bauamt' },
+            { key: 'HR', name: 'Personal' },
+            { key: 'IT', name: 'IT-Betrieb' },
+          ],
+        }
+      : { complete: true, entries: [{ key: 'protokolle' }], message: null },
+  ),
 }))
 
 vi.mock('../services/api', async () => {
@@ -45,12 +50,7 @@ vi.mock('../services/api', async () => {
     getLibraries: vi.fn(async () => []),
     getLibrary: vi.fn(async () => undefined),
     testLibrarySource: mockTestLibrarySource,
-    listConfluenceSpaces: mockListConfluenceSpaces,
-    listS3Buckets: vi.fn(async () => ({
-      listingPermitted: true,
-      buckets: ['protokolle'],
-      message: null,
-    })),
+    browseSource: mockBrowseSource,
   }
 })
 
@@ -505,7 +505,7 @@ describe('EditLibrarySourceDialog', () => {
       sourceProxy: null,
       sourceInsecureSsl: false,
       sourceCredentialsSet: true,
-      s3Settings: {
+      sourceSettings: {
         region: 'us-east-1',
         pathStyle: true,
         scopes: [{ bucket: 'protokolle', prefix: '2025/' }],
@@ -534,7 +534,7 @@ describe('EditLibrarySourceDialog', () => {
       const [, request] = mockUpdateLibrary.mock.calls[0]
       expect(request.sourceUrl).toBe('https://minio.intern.example:9000')
       expect(request.sourceCredentials).toBeUndefined()
-      expect(request.s3Settings).toEqual({
+      expect(request.sourceSettings).toEqual({
         region: 'us-east-1',
         pathStyle: true,
         scopes: [
@@ -592,8 +592,7 @@ describe('EditLibrarySourceDialog', () => {
       sourceProxy: null,
       sourceInsecureSsl: false,
       sourceCredentialsSet: true,
-      confluenceEdition: 'DATA_CENTER' as const,
-      confluenceSpaces: [{ key: 'BAU', name: 'Bauamt' }],
+      sourceSettings: { edition: 'DATA_CENTER' as const, spaces: [{ key: 'BAU', name: 'Bauamt' }] },
     }
 
     it('shows the fixed edition, loads the spaces with the stored token and saves the new selection without touching credentials', async () => {
@@ -613,7 +612,8 @@ describe('EditLibrarySourceDialog', () => {
       expect(screen.queryByRole('button', { name: 'Edition erkennen' })).not.toBeInTheDocument()
       // stored credentials stand: the listing loads right away through the library
       await waitFor(() =>
-        expect(mockListConfluenceSpaces).toHaveBeenCalledWith(
+        expect(mockBrowseSource).toHaveBeenCalledWith(
+          'CONFLUENCE',
           expect.objectContaining({ libraryId: 'lib-wiki', sourceCredentials: undefined }),
         ),
       )
@@ -625,11 +625,13 @@ describe('EditLibrarySourceDialog', () => {
 
       await waitFor(() => expect(mockUpdateLibrary).toHaveBeenCalledTimes(1))
       const [, request] = mockUpdateLibrary.mock.calls[0]
-      expect(request.confluenceSpaces).toEqual([
-        { key: 'BAU', name: 'Bauamt' },
-        { key: 'HR', name: 'Personal' },
-      ])
-      expect(request.confluenceEdition).toBe('DATA_CENTER')
+      expect(request.sourceSettings).toEqual({
+        edition: 'DATA_CENTER',
+        spaces: [
+          { key: 'BAU', name: 'Bauamt' },
+          { key: 'HR', name: 'Personal' },
+        ],
+      })
       expect(request.sourceUrl).toBe('https://wiki.behoerde.example/confluence')
       expect(request.sourceCredentials).toBeUndefined()
     }, 15000)
@@ -687,7 +689,7 @@ describe('EditLibrarySourceDialog', () => {
           library={{
             ...confluenceLibrary,
             sourceUrl: 'https://behoerde.atlassian.net',
-            confluenceEdition: 'CLOUD',
+            sourceSettings: { edition: 'CLOUD' },
           }}
         />,
       )
@@ -715,7 +717,7 @@ describe('EditLibrarySourceDialog', () => {
         />,
       )
       await screen.findByLabelText(/Spaces suchen und auswählen/)
-      expect(mockListConfluenceSpaces).toHaveBeenCalledTimes(1)
+      expect(mockBrowseSource).toHaveBeenCalledTimes(1)
 
       const address = screen.getByLabelText(/Adresse der Confluence-Instanz/)
       await user.clear(address)
@@ -723,7 +725,7 @@ describe('EditLibrarySourceDialog', () => {
 
       expect(screen.getByText(/zeigt auf einen anderen Server/)).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'Verbindung testen' })).toBeDisabled()
-      expect(mockListConfluenceSpaces).toHaveBeenCalledTimes(1)
+      expect(mockBrowseSource).toHaveBeenCalledTimes(1)
       await user.click(screen.getByRole('button', { name: 'Speichern' }))
       expect(
         screen.getByText(/Bitte die Zugangsdaten mit „Verbindung testen“ prüfen/),

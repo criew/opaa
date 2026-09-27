@@ -30,10 +30,11 @@ import type {
   SearchPermissionProfileResponse,
   SearchDiagnosisContextResponse,
   SearchDiagnosisResponse,
-  ConfluenceSpaceRef,
   ChunkInspectionResponse,
   DocumentChunksResponse,
+  SourceTypeDescriptor,
 } from '../types/api'
+import type { ConfluenceSpaceRef } from '../utils/confluenceSource'
 
 // #822: a plain mock shape rather than LibraryFolderResponse itself - documentCount there is
 // derived (recursive, computed on read), not a stored field, so keeping it out of the stored
@@ -1777,7 +1778,7 @@ export const mockLibraryDetails: Record<string, LibraryResponse> = {
     documentCount: 431,
     // #500 review, finding 5: unlike the other fixtures, this one is deliberately not UPLOAD - it
     // is the fixture the indexing-trigger tests use to exercise a successful run, since UPLOAD
-    // libraries have no run type at all (DocumentIndexingService#toIndexingSourceType, 409). Also
+    // libraries have no run type at all (DocumentIndexingService#executorFor, 409). Also
     // the fixture #479's connector-upload/-delete tests use.
     sourceType: 'FILESYSTEM',
     diagnosticsLocked: true,
@@ -1841,7 +1842,7 @@ export const mockLibraryDetails: Record<string, LibraryResponse> = {
     sourceProxy: null,
     sourceInsecureSsl: false,
     sourceCredentialsSet: true,
-    s3Settings: {
+    sourceSettings: {
       region: 'us-east-1',
       pathStyle: true,
       scopes: [
@@ -2517,6 +2518,62 @@ export const mockUsers: UserInfo[] = [
   { id: 'owner-2', email: 'chris@opaa.local', displayName: 'Chris', systemRole: 'USER' },
   { id: 'curator-1', email: 'bob@opaa.local', displayName: 'Bob', systemRole: 'USER' },
   { id: 'demo-user', email: 'demo@opaa.local', displayName: 'Demo-Benutzer', systemRole: 'USER' },
+]
+
+/**
+ * The connectors the mock backend has (GET /api/v1/source-types, ADR-0038) - the six delivered
+ * ones with their production abilities, ordered by key like the backend answers.
+ */
+export const mockSourceTypes: SourceTypeDescriptor[] = [
+  {
+    type: 'CONFLUENCE',
+    displayName: 'Confluence',
+    indexingRun: true,
+    uploads: false,
+    pushIntake: true,
+    browsable: true,
+    fullSyncIntervalDefaultDays: 7,
+  },
+  {
+    type: 'FILESYSTEM',
+    displayName: 'Dateisystem',
+    indexingRun: true,
+    uploads: false,
+    pushIntake: false,
+    browsable: false,
+  },
+  {
+    type: 'HTTP_DIRECTORY',
+    displayName: 'Webverzeichnis',
+    indexingRun: true,
+    uploads: false,
+    pushIntake: false,
+    browsable: false,
+  },
+  {
+    type: 'RSS_FEED',
+    displayName: 'RSS-Feed',
+    indexingRun: true,
+    uploads: false,
+    pushIntake: false,
+    browsable: false,
+  },
+  {
+    type: 'S3',
+    displayName: 'S3-Objektspeicher',
+    indexingRun: true,
+    uploads: false,
+    pushIntake: true,
+    browsable: true,
+  },
+  {
+    type: 'UPLOAD',
+    displayName: 'Upload',
+    indexingRun: false,
+    uploads: true,
+    pushIntake: false,
+    browsable: false,
+  },
 ]
 
 /** #1134: spaces the mock Confluence token may read (source of the wizard's space selection). */

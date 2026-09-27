@@ -10,7 +10,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.AuditEventType;
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.SystemRole;
 import io.opaa.asset.AssetChanged;
 import io.opaa.asset.AssetGrantService;
@@ -52,6 +51,7 @@ import io.opaa.permission.GroupMembershipResolver;
 import io.opaa.permission.GroupSubjectDirectory;
 import io.opaa.permission.PermissionHistoryService;
 import io.opaa.permission.SuccessionReachGuard;
+import io.opaa.test.SourceTypes;
 import java.time.Clock;
 import java.util.List;
 import java.util.Optional;
@@ -175,7 +175,7 @@ class KnowledgeLibraryServiceShareCapTest {
             null,
             ownerId,
             listed,
-            DocumentSourceType.FILESYSTEM,
+            SourceTypes.FILESYSTEM,
             "/data/dokumente",
             null,
             null,

@@ -176,12 +176,6 @@ public class OidcSecurityConfig {
                         "/api/v1/branding/login-logo",
                         "/api/v1/branding/login-background")
                     .permitAll()
-                    // #1140: a Confluence instance or Automation rule has no session - the
-                    // notification authenticates itself with the library's own webhook secret
-                    // (ConfluenceWebhookService); nothing is readable through this path, and a
-                    // request without a valid secret is answered 401 there.
-                    .requestMatchers(HttpMethod.POST, "/api/v1/libraries/*/confluence-webhook")
-                    .permitAll()
                     .requestMatchers("/api/**")
                     .authenticated()
                     .anyRequest()

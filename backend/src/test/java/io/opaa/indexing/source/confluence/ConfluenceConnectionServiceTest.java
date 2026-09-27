@@ -3,7 +3,6 @@ package io.opaa.indexing.source.confluence;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import io.opaa.api.types.ConfluenceEdition;
 import io.opaa.common.ValidationException;
 import io.opaa.security.TargetAddressValidator;
 import java.io.IOException;
@@ -243,7 +242,7 @@ class ConfluenceConnectionServiceTest {
         .satisfies(e -> assertThat(e.getMessage()).doesNotContain(TOKEN));
     assertThatThrownBy(() -> service.listSpaces(url, null, null, TOKEN, false))
         .isInstanceOf(ValidationException.class)
-        .hasMessageContaining("confluenceEdition");
+        .hasMessageContaining("sourceSettings.edition");
   }
 
   @ParameterizedTest

@@ -1,6 +1,5 @@
 package io.opaa.indexing.source.web;
 
-import io.opaa.indexing.IndexingProperties;
 import io.opaa.indexing.document.DocumentIngestService;
 import io.opaa.indexing.format.SupportedDocumentFormats;
 import io.opaa.indexing.source.IndexingRunTemplate;
@@ -11,6 +10,7 @@ import io.opaa.knowledge.LibraryFolderService;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.sourceaccess.BoundedDownloader;
 import io.opaa.sourceaccess.SourceRequestPolicy;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -19,6 +19,12 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 @EnableConfigurationProperties(CrawlProperties.class)
 public class WebConnectorConfiguration {
+
+  /**
+   * The directory page the connection test reads is bounded by the same key and default as an RSS
+   * detail page, {@code opaa.indexing.rss.max-page-size-bytes}.
+   */
+  static final long DEFAULT_MAX_PAGE_SIZE_BYTES = 5_242_880L;
 
   @Bean
   AutoindexCrawlerService autoindexCrawlerService(
@@ -35,14 +41,14 @@ public class WebConnectorConfiguration {
       TargetAddressValidator targetAddressValidator,
       SourceRequestPolicy sourceRequestPolicy,
       SupportedDocumentFormats supportedDocumentFormats,
-      IndexingProperties indexingProperties,
+      @Value("${opaa.indexing.rss.max-page-size-bytes:0}") long maxPageSizeBytes,
       RemoteOriginalAccess remoteOriginalAccess) {
     return new HttpDirectorySourceConnector(
         autoindexCrawlerService,
         targetAddressValidator,
         sourceRequestPolicy,
         supportedDocumentFormats,
-        indexingProperties,
+        maxPageSizeBytes > 0 ? maxPageSizeBytes : DEFAULT_MAX_PAGE_SIZE_BYTES,
         remoteOriginalAccess);
   }
 

@@ -1,7 +1,6 @@
 package io.opaa.knowledge;
 
 import io.opaa.api.types.AssetRole;
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
@@ -222,9 +221,8 @@ public class LibraryFolderService {
    * @param segments the path components between the library's {@code sourcePath} and the file
    *     itself, outermost first; an empty list means the library's root
    * @return the id of the deepest folder in {@code segments}, or {@code null} for an empty list
-   * @throws IllegalArgumentException if {@code library}'s source type does not mirror a directory
-   *     structure ({@link #MIRRORED_SOURCE_TYPES}) - the guard protects an {@code UPLOAD}/{@code
-   *     RSS_FEED} library's CRUD-managed folder tree from being written by an indexing run
+   * @throws IllegalArgumentException for an {@code UPLOAD} library - the guard protects its
+   *     CRUD-managed folder tree from being written by an indexing run
    */
   @Transactional
   public UUID materializeFolderPath(KnowledgeLibrary library, List<String> segments) {
@@ -237,23 +235,13 @@ public class LibraryFolderService {
   }
 
   /**
-   * The source types whose folders mirror a crawled directory structure instead of being managed
-   * through this service's CRUD methods: run-based types that actually have one ({@code
-   * HTTP_DIRECTORY} since #1277, {@code S3} with its key prefixes since ADR-0027). {@code RSS_FEED}
-   * is deliberately absent - a feed has no directory structure to mirror.
-   */
-  private static final Set<DocumentSourceType> MIRRORED_SOURCE_TYPES =
-      Set.of(
-          DocumentSourceType.FILESYSTEM, DocumentSourceType.HTTP_DIRECTORY, DocumentSourceType.S3);
-
-  /**
-   * The internal counterpart to {@link #requireUploadLibrary}, guarding the opposite direction
-   * (#824 review, Befund 4a): {@link #materializeFolderPath}/{@link #pruneOrphanedFolders} must
-   * never run against a library whose folders are not mirrored from a source directory structure -
-   * see {@link #materializeFolderPath}'s own Javadoc for why.
+   * The internal counterpart to {@link #requireUploadLibrary}, guarding the opposite direction:
+   * {@link #materializeFolderPath}/{@link #pruneOrphanedFolders} must never run against an upload
+   * library, whose folders are managed by hand. Which connector mirrors a directory structure at
+   * all is the connector's business - one without it simply never calls these methods.
    */
   private void requireMirroredSourceLibrary(KnowledgeLibrary library) {
-    if (!MIRRORED_SOURCE_TYPES.contains(library.getSourceType())) {
+    if (SourceType.UPLOAD.equals(library.getSourceType())) {
       throw new IllegalArgumentException(
           "materializeFolderPath/pruneOrphanedFolders is only valid for a library whose folders"
               + " mirror a source directory structure, got "
@@ -554,7 +542,7 @@ public class LibraryFolderService {
    * fixed, immutable source type.
    */
   private void requireUploadLibrary(KnowledgeLibrary library) {
-    if (library.getSourceType() != DocumentSourceType.UPLOAD) {
+    if (!SourceType.UPLOAD.equals(library.getSourceType())) {
       throw new ConflictException(
           "Diese Bibliothek ist eine Konnektorbibliothek und unterstützt keine manuell verwalteten"
               + " Ordner");

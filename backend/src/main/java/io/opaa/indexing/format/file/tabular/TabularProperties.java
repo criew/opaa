@@ -10,7 +10,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * {@code MAX_CHUNK_CHARS}), which stay hardcoded: those are the Zuschnitt itself
  * (docs/features/ingestion-pipelines.md, Querschnittsregel c - "kein Konfigurationsknopf in der
  * Oberfläche"), while the limits here are memory-safety ceilings, the same kind of operator-tunable
- * limit {@code IndexingProperties.Rss}'s own {@code max-*-bytes} fields already are.
+ * limit a connector's own {@code max-*-bytes} fields already are.
  *
  * @param maxRowColumns the maximum number of columns read from a single row, for XLSX and ODS alike
  *     - a defensive ceiling against a pathologically wide sheet (real spreadsheets rarely exceed a
@@ -24,9 +24,9 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *     content.xml} entry before parsing aborts - the zip-bomb guard: a compressed ODS archive can
  *     expand to an arbitrarily large XML document, and {@link TabularDocumentFormat} would
  *     otherwise hold the whole thing in memory while parsing. Enforced while streaming the entry,
- *     not after it has already been fully read (mirrors {@code IndexingProperties.Rss}'s own
- *     streaming bounds). Default 10 MiB - generous for a genuine spreadsheet's XML, small enough to
- *     bound worst-case memory use.
+ *     not after it has already been fully read (like the connectors' own streaming bounds). Default
+ *     10 MiB - generous for a genuine spreadsheet's XML, small enough to bound worst-case memory
+ *     use.
  * @param maxOdsRows the maximum number of {@code table:table-row} elements read across an ODS file
  *     before parsing aborts - a second, row-count-based guard alongside {@link
  *     #maxOdsContentXmlBytes}: a small, deeply repetitive {@code content.xml} could stay under the

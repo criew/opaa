@@ -4,7 +4,6 @@ import static io.opaa.library.LibraryCreationBuilder.libraryCreation;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
 import io.opaa.api.types.OrphanedOriginalSkipReason;
 import io.opaa.api.types.SystemRole;
@@ -16,6 +15,7 @@ import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.FilesystemUploadedOriginalStore;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
+import io.opaa.knowledge.SourceType;
 import io.opaa.knowledge.UploadProperties;
 import io.opaa.knowledge.UploadedOriginalRef;
 import io.opaa.organization.Organization;
@@ -23,6 +23,7 @@ import io.opaa.organization.OrganizationRepository;
 import io.opaa.permission.AssetGrantHistoryRepository;
 import io.opaa.permission.GroupMembershipHistoryRepository;
 import io.opaa.test.OpaaIntegrationTest;
+import io.opaa.test.SourceTypes;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -89,8 +90,7 @@ class OrphanedOriginalCleanupIntegrationTest {
         CurrentUser.of(editor.getId(), organizationId, SystemRole.USER, editor.getDisplayName());
     libraryId =
         libraryService
-            .createLibrary(
-                libraryCreation("Bibliothek", DocumentSourceType.UPLOAD).build(), editorCaller)
+            .createLibrary(libraryCreation("Bibliothek", SourceType.UPLOAD).build(), editorCaller)
             .library()
             .getId();
     UploadProperties uploadProperties =
@@ -129,15 +129,14 @@ class OrphanedOriginalCleanupIntegrationTest {
     String indexed = storedOriginal("fertig");
     String foreignSourceType = storedOriginal("Zeile eines anderen Quelltyps");
     String orphan = storedOriginal("verwaist");
-    row("pending.pdf", pending, DocumentStatus.PENDING, DocumentSourceType.UPLOAD, null);
-    row("failed.pdf", failed, DocumentStatus.FAILED, DocumentSourceType.UPLOAD, null);
-    UUID parentId =
-        row("mail.eml", indexed, DocumentStatus.INDEXED, DocumentSourceType.UPLOAD, null);
+    row("pending.pdf", pending, DocumentStatus.PENDING, SourceType.UPLOAD, null);
+    row("failed.pdf", failed, DocumentStatus.FAILED, SourceType.UPLOAD, null);
+    UUID parentId = row("mail.eml", indexed, DocumentStatus.INDEXED, SourceType.UPLOAD, null);
     row(
         "anlage.pdf",
         AttachmentFilePath.of(indexed, 0, "anlage.pdf"),
         DocumentStatus.INDEXED,
-        DocumentSourceType.UPLOAD,
+        SourceType.UPLOAD,
         parentId);
     // The query is over every row of the library, not over UPLOAD rows: a row of another source
     // type naming this path protects it too, which is the direction that deletes less.
@@ -145,7 +144,7 @@ class OrphanedOriginalCleanupIntegrationTest {
         "aus-dem-verzeichnis.pdf",
         foreignSourceType,
         DocumentStatus.INDEXED,
-        DocumentSourceType.FILESYSTEM,
+        SourceTypes.FILESYSTEM,
         null);
 
     OrphanedOriginalReport report = service.report(organizationId, libraryId, null);
@@ -177,7 +176,7 @@ class OrphanedOriginalCleanupIntegrationTest {
     // The gap the library-bound run cannot close: the bytes are there, no library row names the
     // area any more, and the two repository queries that draw the boundary run against Postgres.
     String owned = storedOriginal("gehört einer lebenden Bibliothek");
-    row("bescheid.pdf", owned, DocumentStatus.INDEXED, DocumentSourceType.UPLOAD, null);
+    row("bescheid.pdf", owned, DocumentStatus.INDEXED, SourceType.UPLOAD, null);
     UUID deletedLibrary = UUID.randomUUID();
     String orphan = storedOriginal(deletedLibrary, "Rest einer gelöschten Bibliothek");
 
@@ -229,7 +228,7 @@ class OrphanedOriginalCleanupIntegrationTest {
       String fileName,
       String filePath,
       DocumentStatus status,
-      DocumentSourceType sourceType,
+      SourceType sourceType,
       UUID parentId) {
     Document document = new Document(fileName, filePath, "application/pdf", 10L, sourceType);
     document.setLibraryId(libraryId);

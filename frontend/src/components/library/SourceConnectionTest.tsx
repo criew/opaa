@@ -2,16 +2,19 @@ import { useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import type { DocumentSourceType, SourceConnectionTestResponse } from '../../types/api'
+import type { SourceTypeKey, SourceConnectionTestResponse } from '../../types/api'
 import { testLibrarySource } from '../../services/api'
 import {
-  deriveLibrarySourceConfigPayload,
-  validateLibrarySourceFields,
+  genericSourcePayload,
+  validateGenericSource,
+  type GenericSourceKind,
   type GenericSourceValues,
 } from '../../utils/librarySourceConfig'
 
 interface SourceConnectionTestProps {
-  sourceType: DocumentSourceType
+  sourceType: SourceTypeKey
+  /** The generic shape of the source - a server path or an address. */
+  kind: GenericSourceKind
   values: GenericSourceValues
   /**
    * Edit mode: lets the probe fall back to the library's stored credentials and checks the MANAGER
@@ -40,6 +43,7 @@ interface Outcome {
  */
 export default function SourceConnectionTest({
   sourceType,
+  kind,
   values,
   libraryId,
   size = 'medium',
@@ -50,7 +54,7 @@ export default function SourceConnectionTest({
   const visible = outcome?.token === token ? outcome : null
 
   async function handleTest() {
-    const validationError = validateLibrarySourceFields(sourceType, values)
+    const validationError = validateGenericSource(kind, values)
     if (validationError) {
       setOutcome({ token, error: validationError })
       return
@@ -60,7 +64,7 @@ export default function SourceConnectionTest({
     try {
       const result = await testLibrarySource({
         sourceType,
-        ...deriveLibrarySourceConfigPayload(sourceType, values),
+        ...genericSourcePayload(kind, values),
         ...(libraryId ? { libraryId } : {}),
       })
       setOutcome({ token, result })

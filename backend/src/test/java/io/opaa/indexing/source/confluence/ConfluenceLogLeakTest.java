@@ -7,7 +7,6 @@ import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
-import io.opaa.api.types.ConfluenceEdition;
 import io.opaa.security.TargetAddressValidator;
 import java.net.URI;
 import java.util.List;

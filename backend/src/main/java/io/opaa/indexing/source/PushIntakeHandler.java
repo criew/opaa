@@ -1,6 +1,6 @@
 package io.opaa.indexing.source;
 
-import java.util.UUID;
+import io.opaa.knowledge.KnowledgeLibrary;
 import java.util.function.UnaryOperator;
 
 /**
@@ -10,14 +10,25 @@ import java.util.function.UnaryOperator;
  */
 public interface PushIntakeHandler {
 
+  /** The one German 401 every refused notification gets, whatever the reason. */
+  String UNAUTHORIZED_MESSAGE = "Benachrichtigung nicht autorisiert";
+
   /**
    * Authenticates and queues one notification; returns normally - also for a body that names
    * nothing to look at - once the request proves knowledge of the library's secret.
    *
+   * @param library the addressed library, already loaded and of this handler's source type
    * @param body the raw request body, already bounded by the caller
    * @param header the request header of the given name, or {@code null}
-   * @throws io.opaa.common.UnauthorizedException (401) for every request that does not - an unknown
-   *     library, another source type, no secret or a wrong one alike
+   * @throws io.opaa.common.UnauthorizedException (401) for every request that does not - no secret
+   *     or a wrong one alike
    */
-  void acceptNotification(UUID libraryId, byte[] body, UnaryOperator<String> header);
+  void acceptNotification(KnowledgeLibrary library, byte[] body, UnaryOperator<String> header);
+
+  /**
+   * Does the work of refusing a notification for a library without this handler's secret - the same
+   * checks against a stand-in, result discarded - so the answer time of the shared intake does not
+   * tell whether a library exists or which connector it has.
+   */
+  void rejectForeign(byte[] body, UnaryOperator<String> header);
 }

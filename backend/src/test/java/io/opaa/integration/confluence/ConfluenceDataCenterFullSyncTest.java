@@ -11,8 +11,6 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import io.opaa.api.types.ConfluenceEdition;
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.indexing.attachment.AttachmentIndexer;
 import io.opaa.indexing.document.DocumentIngestResult;
@@ -26,6 +24,7 @@ import io.opaa.indexing.maintenance.StaleDocumentCleanupService;
 import io.opaa.indexing.source.IndexingRunTemplate;
 import io.opaa.indexing.source.SourceSyncStateRepository;
 import io.opaa.indexing.source.confluence.ConfluenceClientFactory;
+import io.opaa.indexing.source.confluence.ConfluenceEdition;
 import io.opaa.indexing.source.confluence.ConfluenceIndexingExecutor;
 import io.opaa.indexing.source.confluence.ConfluenceProperties;
 import io.opaa.indexing.source.confluence.ConfluenceSpaceSelection;
@@ -37,6 +36,7 @@ import io.opaa.knowledge.SourceDocumentContext;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.sourceaccess.BoundedDownloader;
 import io.opaa.test.ProductionDocumentFormats;
+import io.opaa.test.SourceTypes;
 import java.time.Clock;
 import java.util.Optional;
 import java.util.Set;
@@ -122,7 +122,7 @@ class ConfluenceDataCenterFullSyncTest {
             null,
             UUID.randomUUID(),
             false,
-            DocumentSourceType.CONFLUENCE,
+            SourceTypes.CONFLUENCE,
             null,
             confluence.baseUrl(),
             null,
@@ -174,7 +174,7 @@ class ConfluenceDataCenterFullSyncTest {
                 .atPathMatching(path -> path.endsWith("/notizen.txt"))
                 .marked("1")
                 .in(library)
-                .from(DocumentSourceType.CONFLUENCE)
+                .from(SourceTypes.CONFLUENCE)
                 .foundOn(pagePath("Abschnitt 1.1"))
                 .match(),
             argThat(
@@ -187,7 +187,7 @@ class ConfluenceDataCenterFullSyncTest {
     verify(cleanupService)
         .reconcile(
             eq(library),
-            eq(DocumentSourceType.CONFLUENCE),
+            eq(SourceTypes.CONFLUENCE),
             current.capture(),
             any(),
             any(),

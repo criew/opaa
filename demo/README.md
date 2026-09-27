@@ -489,7 +489,7 @@ Der Lauf richtet über die API ein:
    (ADR-0018): drei `HTTP_DIRECTORY` gegen `demo-corpus`, ein `RSS_FEED` gegen
    `presse.stadt-rheinfurt.example`, ein `UPLOAD`, zwei `S3` gegen `objectstore` (Bucket
    `rheinfurt-archiv` mit Präfix `ratsinformationen/` sowie Bucket `formattest` ohne Präfix,
-   Zugangsdaten und typisierte `s3Settings` direkt aus `profiles.py`,
+   Zugangsdaten und die S3-Einstellungen (`sourceSettings`) direkt aus `profiles.py`,
    [ADR-0027](../docs/decisions/0027-s3-konnektor.md)). „Formattest auf S3" ist die einzige
    Bibliothek ohne `viewer_keys` und ohne Space-Zuordnung — sie bleibt beim anlegenden Admin-Konto.
 5. **VIEWER-Rechte** exakt nach der Matrix aus `docs/features/demo-instance.md` sowie die 26

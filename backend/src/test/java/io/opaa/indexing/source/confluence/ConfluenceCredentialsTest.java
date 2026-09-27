@@ -3,7 +3,6 @@ package io.opaa.indexing.source.confluence;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import io.opaa.api.types.ConfluenceEdition;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;

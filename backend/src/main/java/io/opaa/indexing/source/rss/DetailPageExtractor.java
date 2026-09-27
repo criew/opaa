@@ -1,6 +1,5 @@
 package io.opaa.indexing.source.rss;
 
-import io.opaa.indexing.IndexingProperties;
 import io.opaa.indexing.attachment.AttachmentCandidate;
 import io.opaa.indexing.format.file.html.HtmlContentRoots;
 import io.opaa.indexing.format.shared.Whitespace;
@@ -29,18 +28,18 @@ import org.jsoup.nodes.Element;
  * Fetches a single RSS entry's detail page and reduces it to the HTML of its main content plus
  * attachment candidates, split out of {@code RssFeedIndexingExecutor}. The reduction is {@link
  * HtmlContentRoots}' - the same boilerplate stripping and root selection the HTML pipeline applies
- * to a file, here with the configured {@link IndexingProperties.Rss#mainContentSelector()} - so
+ * to a file, here with the configured {@link RssFeedProperties#mainContentSelector()} - so
  * boilerplate never survives into the index and is never considered for attachments.
  */
 public class DetailPageExtractor {
 
   private final TargetAddressValidator targetAddressValidator;
-  private final IndexingProperties.Rss properties;
+  private final RssFeedProperties properties;
   private final SourceRequestPolicy requestPolicy;
 
   public DetailPageExtractor(
       TargetAddressValidator targetAddressValidator,
-      IndexingProperties.Rss properties,
+      RssFeedProperties properties,
       SourceRequestPolicy requestPolicy) {
     this.targetAddressValidator = targetAddressValidator;
     this.properties = properties;
@@ -64,8 +63,8 @@ public class DetailPageExtractor {
    *     {@link SourceRequestPolicy}'s retries) or a redirect would leave {@code entryUrl}'s own
    *     origin or downgrade the protocol
    * @throws UnsupportedContentTypeException if the response's {@code Content-Type} is not HTML
-   * @throws IOException if the page exceeds {@link IndexingProperties.Rss#maxPageSizeBytes()} or
-   *     any other transport failure
+   * @throws IOException if the page exceeds {@link RssFeedProperties#maxPageSizeBytes()} or any
+   *     other transport failure
    */
   public DetailPage fetch(
       HttpClient httpClient,

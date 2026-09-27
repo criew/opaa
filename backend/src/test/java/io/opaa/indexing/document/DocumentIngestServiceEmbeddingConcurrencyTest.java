@@ -114,7 +114,7 @@ class DocumentIngestServiceEmbeddingConcurrencyTest {
   private DocumentIngestService service(
       VectorStoreWriter vectorStoreWriter, int embeddingConcurrency, int batchSize) {
     IndexingProperties properties =
-        new IndexingProperties(1000, 0, batchSize, null, null, null, null, embeddingConcurrency);
+        new IndexingProperties(1000, 0, batchSize, null, null, null, embeddingConcurrency);
     // Mirrors IndexingConfiguration#embeddingTaskExecutor exactly: the concurrency bound
     // is the executor's own pool size, not anything DocumentIngestService enforces itself - a
     // test executor sized differently from embeddingConcurrency would not actually exercise the

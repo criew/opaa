@@ -1,7 +1,6 @@
 package io.opaa.indexing.job;
 
 import io.opaa.api.types.AssetRole;
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.AccessDeniedException;
@@ -10,11 +9,11 @@ import io.opaa.common.NotFoundException;
 import io.opaa.common.ServiceUnavailableException;
 import io.opaa.common.ValidationException;
 import io.opaa.indexing.source.IndexingSourceExecutorRegistry;
-import io.opaa.indexing.source.IndexingSourceType;
 import io.opaa.indexing.source.SourceIndexingExecutor;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.LibraryAccessService;
+import io.opaa.knowledge.SourceType;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -74,8 +73,7 @@ public class DocumentIndexingService {
   public IndexingJob triggerIndexing(
       UUID libraryId, CurrentUser caller, IndexingRunMode requestedRunMode) {
     KnowledgeLibrary targetLibrary = requireEditableLibrary(libraryId, caller);
-    IndexingSourceType sourceType = toIndexingSourceType(targetLibrary.getSourceType());
-    SourceIndexingExecutor executor = executorRegistry.resolve(sourceType);
+    SourceIndexingExecutor executor = executorFor(targetLibrary.getSourceType());
     IndexingRunMode runMode = resolveRunMode(executor, targetLibrary, requestedRunMode);
     if (indexingJobService.isJobRunning(targetLibrary.getId(), targetLibrary.getOrganizationId())) {
       throw new ConflictException("Für diese Bibliothek läuft bereits ein Indizierungslauf");
@@ -104,8 +102,7 @@ public class DocumentIndexingService {
    * as the 409 {@code startJob} already throws for the TOCTOU case.
    */
   public IndexingJob triggerScheduledIndexing(KnowledgeLibrary library) {
-    IndexingSourceType sourceType = toIndexingSourceType(library.getSourceType());
-    SourceIndexingExecutor executor = executorRegistry.resolve(sourceType);
+    SourceIndexingExecutor executor = executorFor(library.getSourceType());
     IndexingRunMode runMode = resolveRunMode(executor, library, null);
     var job =
         indexingJobService.startJob(
@@ -202,17 +199,17 @@ public class DocumentIndexingService {
   }
 
   /**
-   * Maps a library's {@link DocumentSourceType} onto the narrower {@link IndexingSourceType} the
-   * registry is keyed on (ADR-0017/ADR-0018): every lauf-basierte type maps 1:1, {@code UPLOAD} has
-   * no run at all and is rejected with a German 409 - not a 400, since the library itself is a
-   * perfectly valid target, it simply has nothing to run.
+   * The executor of {@code sourceType}'s run (ADR-0017/ADR-0018). A type without a run - {@code
+   * UPLOAD} - is refused with a German 409, not a 400: the library itself is a perfectly valid
+   * target, it simply has nothing to run.
    */
-  private IndexingSourceType toIndexingSourceType(DocumentSourceType sourceType) {
-    if (!sourceType.hasIndexingRun()) {
-      throw new ConflictException(
-          "Für " + sourceType + "-Bibliotheken gibt es keinen Indizierungslauf");
-    }
-    return IndexingSourceType.of(sourceType);
+  private SourceIndexingExecutor executorFor(SourceType sourceType) {
+    return executorRegistry
+        .find(sourceType)
+        .orElseThrow(
+            () ->
+                new ConflictException(
+                    "Für " + sourceType + "-Bibliotheken gibt es keinen Indizierungslauf"));
   }
 
   /**

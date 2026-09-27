@@ -8,13 +8,13 @@ import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
-import { generateConfluenceWebhookSecret, removeConfluenceWebhookSecret } from '../../services/api'
+import { generatePushSecret, removePushSecret } from '../../services/api'
 import { confirmAction } from '../../stores/confirmStore'
 import { useLibraryStore } from '../../stores/libraryStore'
 
 interface ConfluenceWebhookSectionProps {
   libraryId: string
-  /** From LibraryResponse.confluenceWebhookSecretSet - a yes/no, never the secret (#1140). */
+  /** From LibraryResponse.pushSecretSet - a yes/no, never the secret (#1140). */
   secretSet: boolean | null | undefined
 }
 
@@ -36,7 +36,7 @@ export default function ConfluenceWebhookSection({
     setBusy(true)
     setError(null)
     try {
-      const response = await generateConfluenceWebhookSecret(libraryId)
+      const response = await generatePushSecret(libraryId)
       setRevealed({ secret: response.secret, url: `${window.location.origin}${response.path}` })
       await loadLibraryDetails(libraryId)
     } catch (err) {
@@ -52,7 +52,7 @@ export default function ConfluenceWebhookSection({
     setBusy(true)
     setError(null)
     try {
-      await removeConfluenceWebhookSecret(libraryId)
+      await removePushSecret(libraryId)
       await loadLibraryDetails(libraryId)
     } catch (err) {
       setError(

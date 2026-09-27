@@ -1,16 +1,17 @@
 import { create } from 'zustand'
 import type {
-  DocumentSourceType,
+  SourceTypeKey,
   IndexingRunMode,
   IndexingRunResponse,
   IndexingStatus,
 } from '../types/api'
 import { triggerIndexing, getIndexingStatus, getIndexingRuns } from '../services/api'
 import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
+import { sourceRegistration } from '../components/library/sources/registry'
 
 const POLL_INTERVAL_MS = 2000
 
-// #500 review, finding 5: the exact German text DocumentIndexingService#toIndexingSourceType
+// #500 review, finding 5: the exact German text DocumentIndexingService#executorFor
 // sends for an UPLOAD library (no run type at all, 409) - matched here so triggerIndexing can show
 // this specific message instead of the generic failure one, and leave status untouched rather than
 // FAILED, since no run was ever started.
@@ -49,7 +50,7 @@ interface IndexingRunState {
   // be decided by the library's own, unchanging sourceType - never by comparing documentCount and
   // documentsIndexedTotal, which happens to coincide for an RSS_FEED run whose entries carried no
   // attachments at all and would otherwise make the same library's label flicker from run to run.
-  sourceType: DocumentSourceType | null
+  sourceType: SourceTypeKey | null
   // The scopes (Confluence spaces, S3 bucket/prefix) the most recent listing-assessing full sync
   // could not list completely - carried by the status response independently of which run is the
   // latest one, so the warning at the library survives incremental, webhook and event runs.
@@ -80,10 +81,10 @@ interface IndexingState {
 
   triggerIndexing: (
     libraryId: string,
-    sourceType: DocumentSourceType,
+    sourceType: SourceTypeKey,
     runMode?: IndexingRunMode,
   ) => Promise<void>
-  loadStatus: (libraryId: string, sourceType: DocumentSourceType) => Promise<void>
+  loadStatus: (libraryId: string, sourceType: SourceTypeKey) => Promise<void>
   loadRunHistory: (libraryId: string) => Promise<void>
   stopPolling: (libraryId: string) => void
   closeSnackbar: () => void
@@ -157,7 +158,7 @@ export const useIndexingStore = create<IndexingState>((set, get) => ({
 
   triggerIndexing: async (
     libraryId: string,
-    sourceType: DocumentSourceType,
+    sourceType: SourceTypeKey,
     runMode?: IndexingRunMode,
   ) => {
     const sessionEpoch = currentSessionEpoch()
@@ -204,7 +205,7 @@ export const useIndexingStore = create<IndexingState>((set, get) => ({
     }
   },
 
-  loadStatus: async (libraryId: string, sourceType: DocumentSourceType) => {
+  loadStatus: async (libraryId: string, sourceType: SourceTypeKey) => {
     const sessionEpoch = currentSessionEpoch()
     // Reset to IDLE up front: if this library never had a status loaded before, or the fetch
     // below fails, the section must show this library's own default rather than whatever another
@@ -287,7 +288,9 @@ function startPolling(
       if (isStaleSessionEpoch(sessionEpoch)) return
       // The run entry already carries sourceType, set by triggerIndexing/loadStatus before
       // polling ever starts (#518 review, finding 1) - polling itself never learns it anew.
-      const isRssFeed = get().runsByLibrary[libraryId]?.sourceType === 'RSS_FEED'
+      const isRssFeed = Boolean(
+        sourceRegistration(get().runsByLibrary[libraryId]?.sourceType)?.runCountsEntries,
+      )
       setRun(
         libraryId,
         {

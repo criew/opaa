@@ -3,13 +3,13 @@ package io.opaa.integration.confluence;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import io.opaa.api.types.ConfluenceEdition;
 import io.opaa.indexing.source.confluence.ConfluenceAccessException;
 import io.opaa.indexing.source.confluence.ConfluenceAttachment;
 import io.opaa.indexing.source.confluence.ConfluenceClient;
 import io.opaa.indexing.source.confluence.ConfluenceClientFactory;
 import io.opaa.indexing.source.confluence.ConfluenceConnection;
 import io.opaa.indexing.source.confluence.ConfluenceCredentials;
+import io.opaa.indexing.source.confluence.ConfluenceEdition;
 import io.opaa.indexing.source.confluence.ConfluenceEditionDetector;
 import io.opaa.indexing.source.confluence.ConfluencePage;
 import io.opaa.indexing.source.confluence.ConfluencePageStatus;

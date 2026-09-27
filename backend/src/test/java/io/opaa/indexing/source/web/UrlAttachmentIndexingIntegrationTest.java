@@ -3,7 +3,6 @@ package io.opaa.indexing.source.web;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.sun.net.httpserver.HttpServer;
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.indexing.document.DocumentIngestService;
@@ -20,6 +19,7 @@ import io.opaa.security.TargetAddressValidator;
 import io.opaa.sourceaccess.BoundedDownloader;
 import io.opaa.sourceaccess.SourceRequestPolicy;
 import io.opaa.test.ProductionDocumentFormats;
+import io.opaa.test.SourceTypes;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
@@ -125,7 +125,7 @@ class UrlAttachmentIndexingIntegrationTest {
                 null,
                 userId,
                 false,
-                DocumentSourceType.HTTP_DIRECTORY,
+                SourceTypes.HTTP_DIRECTORY,
                 null,
                 baseUrl + "/docs/",
                 null,
@@ -153,7 +153,7 @@ class UrlAttachmentIndexingIntegrationTest {
     // tables).
     List<Document> documents =
         documentRepository.findByLibraryIdAndSourceType(
-            library.getId(), DocumentSourceType.HTTP_DIRECTORY);
+            library.getId(), SourceTypes.HTTP_DIRECTORY);
     documents.stream()
         .sorted(
             java.util.Comparator.comparingInt((Document d) -> d.getFilePath().length()).reversed())
@@ -190,7 +190,7 @@ class UrlAttachmentIndexingIntegrationTest {
 
     List<Document> documents =
         documentRepository.findByLibraryIdAndSourceType(
-            library.getId(), DocumentSourceType.HTTP_DIRECTORY);
+            library.getId(), SourceTypes.HTTP_DIRECTORY);
     assertThat(documents).hasSize(2);
     Document mail =
         documents.stream().filter(d -> d.getParentDocumentId() == null).findFirst().orElseThrow();
@@ -218,7 +218,7 @@ class UrlAttachmentIndexingIntegrationTest {
 
     List<Document> afterFirstRun =
         documentRepository.findByLibraryIdAndSourceType(
-            library.getId(), DocumentSourceType.HTTP_DIRECTORY);
+            library.getId(), SourceTypes.HTTP_DIRECTORY);
     assertThat(afterFirstRun).hasSize(3);
     Document outer =
         afterFirstRun.stream()
@@ -243,7 +243,7 @@ class UrlAttachmentIndexingIntegrationTest {
     run();
     assertThat(
             documentRepository.findByLibraryIdAndSourceType(
-                library.getId(), DocumentSourceType.HTTP_DIRECTORY))
+                library.getId(), SourceTypes.HTTP_DIRECTORY))
         .hasSize(3);
 
     // Changed mail: the re-served mail no longer carries the inner mail - the removed attachment
@@ -254,7 +254,7 @@ class UrlAttachmentIndexingIntegrationTest {
 
     List<Document> afterChange =
         documentRepository.findByLibraryIdAndSourceType(
-            library.getId(), DocumentSourceType.HTTP_DIRECTORY);
+            library.getId(), SourceTypes.HTTP_DIRECTORY);
     assertThat(afterChange).hasSize(2);
     assertThat(afterChange)
         .noneMatch(d -> d.getId().equals(inner.getId()) || d.getId().equals(grandchild.getId()));

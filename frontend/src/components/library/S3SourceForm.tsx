@@ -19,8 +19,8 @@ import Typography from '@mui/material/Typography'
 import AddIcon from '@mui/icons-material/Add'
 import DeleteIcon from '@mui/icons-material/Delete'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
-import type { S3ScopeCheck, SourceConnectionTestResponse } from '../../types/api'
-import { listS3Buckets, testLibrarySource } from '../../services/api'
+import type { SourceConnectionTestResponse } from '../../types/api'
+import { browseSource, testLibrarySource } from '../../services/api'
 import { sameLibrarySourceOrigin } from '../../utils/librarySourceConfig'
 import FieldLabel from '../wizard/FieldLabel'
 
@@ -37,10 +37,12 @@ import {
   s3CredentialsOf,
   s3ProviderTemplate,
   s3ScopeKey,
+  s3ScopeChecksOf,
   s3SettingsOf,
   validateS3Prefix,
   validateS3Scope,
   type S3Provider,
+  type S3ScopeCheck,
   type S3ScopeInput,
   type S3SourceValues,
 } from '../../utils/s3Source'
@@ -204,20 +206,20 @@ export default function S3SourceForm({
     setLoadingBuckets(true)
     setBucketsMessage(null)
     try {
-      const result = await listS3Buckets({
+      const result = await browseSource('S3', {
         ...connectionPayload(),
-        region: values.region.trim() || undefined,
-        pathStyle: values.pathStyle,
+        query: { region: values.region.trim() || undefined, pathStyle: values.pathStyle },
       })
       if (listingGeneration.current !== mine) return
-      if (result.listingPermitted) {
-        setBucketOptions(result.buckets)
+      if (result.complete) {
+        const buckets = result.entries.map((entry) => entry.key)
+        setBucketOptions(buckets)
         setBucketsMessage({
           severity: 'success',
           text:
-            result.buckets.length === 0
+            buckets.length === 0
               ? 'Der Schlüssel sieht keine Buckets - der Bucket-Name kann von Hand eingetragen werden.'
-              : `${result.buckets.length} Bucket${result.buckets.length === 1 ? '' : 's'} geladen; sie stehen in den Bucket-Feldern zur Auswahl.`,
+              : `${buckets.length} Bucket${buckets.length === 1 ? '' : 's'} geladen; sie stehen in den Bucket-Feldern zur Auswahl.`,
         })
       } else {
         setBucketOptions([])
@@ -249,14 +251,14 @@ export default function S3SourceForm({
       const result: SourceConnectionTestResponse = await testLibrarySource({
         sourceType: 'S3',
         ...connectionPayload(),
-        s3Settings: s3SettingsOf(values),
+        sourceSettings: s3SettingsOf(values),
       })
       if (generation.current !== mine) return
       setTestMessage({
         severity: result.reachable ? 'success' : 'warning',
         text: result.message,
       })
-      setScopeChecks(result.s3Scopes ?? null)
+      setScopeChecks(s3ScopeChecksOf(result.details))
     } catch (err) {
       if (generation.current !== mine) return
       setTestMessage({

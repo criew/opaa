@@ -3,7 +3,6 @@ package io.opaa.indexing.source.s3;
 import static io.opaa.indexing.source.ConnectorChecks.blankToNull;
 import static io.opaa.indexing.source.ConnectorChecks.unreachable;
 
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.common.ValidationException;
 import io.opaa.indexing.source.ConnectorData;
 import io.opaa.indexing.source.OriginalAccess;
@@ -24,6 +23,7 @@ import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentContent;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.ServedContentTypes;
+import io.opaa.knowledge.SourceType;
 import io.opaa.s3.S3AccessException;
 import io.opaa.s3.S3Connection;
 import io.opaa.s3.S3Credentials;
@@ -39,7 +39,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.Set;
-import java.util.UUID;
 import java.util.function.UnaryOperator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -56,6 +55,9 @@ import org.springframework.http.HttpHeaders;
 public class S3SourceConnector
     implements SourceConnector, SourceBrowser, OriginalAccess, PushIntakeHandler {
 
+  /** The type key this connector serves. */
+  public static final SourceType TYPE = SourceType.of("S3");
+
   private static final Logger log = LoggerFactory.getLogger(S3SourceConnector.class);
 
   private static final String SETTINGS_STATE = "s3Settings";
@@ -66,8 +68,9 @@ public class S3SourceConnector
           + " versuchen.";
 
   private static final SourceConnectorDescriptor DESCRIPTOR =
-      new SourceConnectorDescriptor(
-          DocumentSourceType.S3, true, new PushIntake("s3EventsToken", "Ein Ereignis-Token"), null);
+      SourceConnectorDescriptor.remoteRun(TYPE, "S3-Objektspeicher")
+          .withoutDeepLink()
+          .withPushIntake(new PushIntake("s3EventsToken"));
 
   private final S3ConnectionService connectionService;
   private final S3ClientFactory clientFactory;
@@ -137,12 +140,22 @@ public class S3SourceConnector
   }
 
   @Override
-  public void acceptNotification(UUID libraryId, byte[] body, UnaryOperator<String> header) {
+  public void acceptNotification(
+      KnowledgeLibrary library, byte[] body, UnaryOperator<String> header) {
     eventService.accept(
-        libraryId,
+        library.getId(),
+        library,
         body,
         header.apply(HttpHeaders.AUTHORIZATION),
         header.apply(S3EventAuthentication.SHARED_SECRET_HEADER));
+  }
+
+  @Override
+  public void rejectForeign(byte[] body, UnaryOperator<String> header) {
+    S3EventAuthentication.verify(
+        header.apply(HttpHeaders.AUTHORIZATION),
+        header.apply(S3EventAuthentication.SHARED_SECRET_HEADER),
+        null);
   }
 
   @Override
@@ -153,7 +166,8 @@ public class S3SourceConnector
   /** Buckets, prefixes, overlap and patterns are checked here, before anything else is asked. */
   @Override
   public ConnectorData readSettings(ConnectorData requested) {
-    return requested == null ? null : S3SourceSettingsJson.toData(settingsOf(requested));
+    requested.requireOnly(S3SourceSettingsJson.KEYS);
+    return S3SourceSettingsJson.toData(settingsOf(requested));
   }
 
   private static S3SourceSettings settingsOf(ConnectorData data) {
@@ -161,7 +175,7 @@ public class S3SourceConnector
       return S3SourceSettingsJson.fromData(data);
     } catch (S3Scope.InvalidS3ScopeException
         | S3SourceSettings.InvalidS3SourceSettingsException e) {
-      throw new ValidationException("s3Settings: " + e.getMessage());
+      throw new ValidationException("sourceSettings: " + e.getMessage());
     }
   }
 
@@ -184,7 +198,7 @@ public class S3SourceConnector
       throw new ValidationException("sourceCredentials sind erforderlich, wenn sourceType S3 ist");
     }
     if (requested.connectorSettings() == null) {
-      throw new ValidationException("s3Settings sind erforderlich, wenn sourceType S3 ist");
+      throw new ValidationException("sourceSettings sind erforderlich, wenn sourceType S3 ist");
     }
     S3SourceSettings settings = settingsOf(requested.connectorSettings());
     requireReachableTargets(

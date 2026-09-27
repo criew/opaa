@@ -7,12 +7,12 @@ import static io.opaa.indexing.source.ConnectorChecks.requireHttpUrl;
 import static io.opaa.indexing.source.ConnectorChecks.translateConnectionError;
 import static io.opaa.indexing.source.ConnectorChecks.unreachable;
 
-import io.opaa.api.types.DocumentSourceType;
-import io.opaa.indexing.IndexingProperties;
+import io.opaa.indexing.format.DocumentProperties;
 import io.opaa.indexing.source.ConnectorChecks;
 import io.opaa.indexing.source.ConnectorData;
 import io.opaa.indexing.source.OriginalAccess;
 import io.opaa.indexing.source.RemoteOriginalAccess;
+import io.opaa.indexing.source.RowDeclaredProperties;
 import io.opaa.indexing.source.SourceConnectionTestResult;
 import io.opaa.indexing.source.SourceConnector;
 import io.opaa.indexing.source.SourceConnectorDescriptor;
@@ -20,6 +20,7 @@ import io.opaa.indexing.source.SourceSettings;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentContent;
 import io.opaa.knowledge.KnowledgeLibrary;
+import io.opaa.knowledge.SourceType;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.sourceaccess.BoundedStreams;
 import io.opaa.sourceaccess.ProxyAndCredentials;
@@ -46,12 +47,16 @@ import org.slf4j.LoggerFactory;
  * conditional-GET state, so the next run fetches the feed in full. The original of an indexed entry
  * is streamed from its stored URL ({@link RemoteOriginalAccess}).
  */
-public class RssFeedSourceConnector implements SourceConnector, OriginalAccess {
+public class RssFeedSourceConnector
+    implements SourceConnector, OriginalAccess, RowDeclaredProperties {
+
+  /** The type key this connector serves. */
+  public static final SourceType TYPE = SourceType.of("RSS_FEED");
 
   private static final Logger log = LoggerFactory.getLogger(RssFeedSourceConnector.class);
 
   private static final SourceConnectorDescriptor DESCRIPTOR =
-      SourceConnectorDescriptor.runBased(DocumentSourceType.RSS_FEED);
+      SourceConnectorDescriptor.remoteRun(TYPE, "RSS-Feed");
 
   private final RssFeedParser feedParser;
   private final RssFeedStateRepository feedStateRepository;
@@ -66,14 +71,14 @@ public class RssFeedSourceConnector implements SourceConnector, OriginalAccess {
       RssFeedStateRepository feedStateRepository,
       TargetAddressValidator targetAddressValidator,
       SourceRequestPolicy requestPolicy,
-      IndexingProperties properties,
+      RssFeedProperties properties,
       RemoteOriginalAccess remoteOriginals) {
     this.feedParser = feedParser;
     this.feedStateRepository = feedStateRepository;
     this.targetAddressValidator = targetAddressValidator;
     this.requestPolicy = requestPolicy;
-    this.maxFeedSizeBytes = properties.rss().maxFeedSizeBytes();
-    this.maxFeedEntries = properties.rss().maxEntries();
+    this.maxFeedSizeBytes = properties.maxFeedSizeBytes();
+    this.maxFeedEntries = properties.maxEntries();
     this.remoteOriginals = remoteOriginals;
   }
 
@@ -95,7 +100,7 @@ public class RssFeedSourceConnector implements SourceConnector, OriginalAccess {
   @Override
   public SourceSettings validate(SourceSettings requested) {
     ConnectorChecks.validateUrlBasedConfiguration(
-        DocumentSourceType.RSS_FEED, requested.sourcePath(), requested.sourceUrl());
+        RssFeedSourceConnector.TYPE, requested.sourcePath(), requested.sourceUrl());
     return requested;
   }
 
@@ -113,7 +118,7 @@ public class RssFeedSourceConnector implements SourceConnector, OriginalAccess {
 
   @Override
   public SourceConnectionTestResult testConnection(SourceSettings settings, ConnectorData stored) {
-    String url = requireHttpUrl(DocumentSourceType.RSS_FEED, settings);
+    String url = requireHttpUrl(RssFeedSourceConnector.TYPE, settings);
     ProxyAndCredentials config = parseProxyAndCredentials(settings);
     HttpClient httpClient =
         SourceHttpClientFactory.buildHttpClient(
@@ -181,5 +186,21 @@ public class RssFeedSourceConnector implements SourceConnector, OriginalAccess {
       Thread.currentThread().interrupt();
       return unreachable("Die Verbindung wurde unterbrochen.");
     }
+  }
+
+  /**
+   * An entry's own body was never a file: its declared properties are the stored headline and the
+   * feed's publication instant, exactly what the ingest hands the extraction. "Has a headline" is
+   * approximated as {@code file_name != file_path}; the name is marked synthetic as the ingest
+   * marks it.
+   */
+  @Override
+  public DocumentProperties declaredProperties(Document document) {
+    boolean hasHeadline =
+        document.getFileName() != null && !document.getFileName().equals(document.getFilePath());
+    return DocumentProperties.EMPTY
+        .withTitle(hasHeadline ? document.getFileName() : null)
+        .withSyntheticName(true)
+        .withDocumentDate(DocumentProperties.instantToLocalDate(document.getLastModifiedRemote()));
   }
 }

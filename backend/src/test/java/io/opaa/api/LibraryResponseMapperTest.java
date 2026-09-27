@@ -2,22 +2,15 @@ package io.opaa.api;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
-import io.opaa.api.dto.ConfluenceSpaceRef;
 import io.opaa.api.dto.IndexingStatus;
 import io.opaa.api.dto.LibraryRequest;
 import io.opaa.api.dto.LibraryResponse;
 import io.opaa.api.dto.LibraryScheduleRequest;
 import io.opaa.api.dto.LibraryUpdateRequest;
-import io.opaa.api.dto.S3ScopeRef;
-import io.opaa.api.dto.S3Settings;
 import io.opaa.api.types.AssetOwnerType;
 import io.opaa.api.types.AssetRole;
-import io.opaa.api.types.ConfluenceEdition;
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.ExternalAccessState;
 import io.opaa.api.types.ScheduleFrequency;
 import io.opaa.api.types.ScheduleWeekday;
@@ -25,12 +18,11 @@ import io.opaa.api.types.SuccessionAddressee;
 import io.opaa.common.ValidationException;
 import io.opaa.indexing.job.JobStatus;
 import io.opaa.indexing.source.ConnectorData;
-import io.opaa.indexing.source.SourceConnectorRegistry;
 import io.opaa.indexing.source.SourceSyncStateRepository;
 import io.opaa.indexing.source.confluence.ConfluenceConnectionService;
+import io.opaa.indexing.source.confluence.ConfluenceEdition;
 import io.opaa.indexing.source.confluence.ConfluenceProperties;
 import io.opaa.indexing.source.confluence.ConfluenceSourceConnector;
-import io.opaa.indexing.source.confluence.ConfluenceSourceSettings;
 import io.opaa.indexing.source.confluence.ConfluenceSpaceSelection;
 import io.opaa.indexing.source.confluence.ConfluenceTestSettings;
 import io.opaa.indexing.source.confluence.webhook.ConfluenceWebhookService;
@@ -41,7 +33,6 @@ import io.opaa.indexing.source.s3.S3Properties;
 import io.opaa.indexing.source.s3.S3Scope;
 import io.opaa.indexing.source.s3.S3SourceConnector;
 import io.opaa.indexing.source.s3.S3SourceSettings;
-import io.opaa.indexing.source.s3.S3SourceSettingsJson;
 import io.opaa.indexing.source.s3.S3TestSettings;
 import io.opaa.indexing.source.s3.events.S3EventService;
 import io.opaa.knowledge.KnowledgeLibrary;
@@ -56,6 +47,7 @@ import io.opaa.permission.AssetReach;
 import io.opaa.permission.AssetType;
 import io.opaa.permission.SuccessionFinding;
 import io.opaa.security.TargetAddressValidator;
+import io.opaa.test.SourceTypes;
 import java.net.URI;
 import java.time.Instant;
 import java.util.List;
@@ -86,11 +78,6 @@ class LibraryResponseMapperTest {
           new ConfluenceProperties(0, null, null, 0, null, 0, 0, 0, null, null, 0),
           mock(SourceSyncStateRepository.class),
           mock(ConfluenceWebhookService.class));
-  private final SourceConnectorRegistry connectors = mock(SourceConnectorRegistry.class);
-
-  {
-    when(connectors.connector(DocumentSourceType.S3)).thenReturn(s3Connector);
-  }
 
   @Test
   void toResponseCopiesLibraryAndDocumentCountFieldsForACallerBelowManager() {
@@ -124,7 +111,7 @@ class LibraryResponseMapperTest {
     assertThat(response.getReach().getUserCount()).isEqualTo(1);
     assertThat(response.getListed()).isTrue();
     assertThat(response.getMyRole()).isEqualTo(AssetRole.VIEWER);
-    assertThat(response.getSourceType()).isEqualTo(DocumentSourceType.UPLOAD);
+    assertThat(response.getSourceType()).isEqualTo("UPLOAD");
     assertThat(response.getDocumentCount()).isEqualTo(7L);
     // Leitplanke (e): every library starts diagnosegesperrt, and the state is readable by anyone
     // who may read the library - not only by whoever just set it through the lock endpoint. Both
@@ -138,7 +125,8 @@ class LibraryResponseMapperTest {
     assertThat(response.getSourceUrl()).isNull();
     assertThat(response.getSourceProxy()).isNull();
     assertThat(response.getSourceCredentialsSet()).isNull();
-    assertThat(response.getConfluenceWebhookSecretSet()).isNull();
+    assertThat(response.getPushSecretSet()).isNull();
+    assertThat(response.getSourceSettings()).isNull();
     assertThat(response.getSchedule()).isNull();
     assertThat(response.getLastScheduledRunsFailed()).isNull();
     assertThat(response.getStorageQuotaBytes()).isNull();
@@ -183,7 +171,6 @@ class LibraryResponseMapperTest {
 
   @Test
   void toResponseCarriesManagementDetailFieldsForAManager() {
-    // the push-secret flag and the rhythm land on the flat fields of the library's type
     KnowledgeLibrary library =
         KnowledgeLibrary.ownedByUser(
             UUID.randomUUID(),
@@ -191,7 +178,7 @@ class LibraryResponseMapperTest {
             null,
             UUID.randomUUID(),
             false,
-            DocumentSourceType.CONFLUENCE,
+            SourceTypes.CONFLUENCE,
             null,
             "https://wiki.example.org",
             null,
@@ -234,11 +221,11 @@ class LibraryResponseMapperTest {
     LibraryResponse response = LibraryResponseMapper.toResponse(detail);
 
     assertThat(response.getSourcePath()).isEqualTo("/data/documents");
-    assertThat(response.getConfluenceWebhookSecretSet()).isTrue();
-    assertThat(response.getS3EventsTokenSet()).isNull();
-    // #1200: distinct values prove both rhythm fields are carried, not aliased
-    assertThat(response.getConfluenceFullSyncIntervalDays()).isEqualTo(14);
-    assertThat(response.getConfluenceFullSyncIntervalDefaultDays()).isEqualTo(7);
+    assertThat(response.getPushSecretSet()).isTrue();
+    // #1200: distinct values prove both rhythm fields are carried, not aliased; a manager gets the
+    // connector's whole settings
+    assertThat(response.getSourceSettings()).containsEntry("fullSyncIntervalDays", 14);
+    assertThat(response.getFullSyncIntervalDefaultDays()).isEqualTo(7);
     assertThat(response.getSourceUrl()).isEqualTo(URI.create("https://example.com/documents/"));
     assertThat(response.getSourceProxy()).isEqualTo("proxy.example.com:8080");
     assertThat(response.getSourceInsecureSsl()).isTrue();
@@ -284,42 +271,6 @@ class LibraryResponseMapperTest {
     // #797: UPLOAD never carries a cap
     assertThat(response.getAllAccountsGrantAllowed()).isNull();
     assertThat(response.getListedCap()).isNull();
-  }
-
-  @Test
-  void thePushSecretFlagOfAnS3LibraryIsTheEventTokenNeverTheWebhookSecret() {
-    KnowledgeLibrary library =
-        KnowledgeLibrary.ownedByUser(
-            UUID.randomUUID(),
-            "Protokolle",
-            null,
-            UUID.randomUUID(),
-            false,
-            DocumentSourceType.S3,
-            null,
-            "https://s3.example.org",
-            null,
-            "ak:sk",
-            false);
-    LibraryManagementDetail managementDetail =
-        new LibraryManagementDetail(
-            null, null, null, false, true, true, null, null, null, null, 0L, 0L, null, true, true);
-
-    LibraryResponse response =
-        LibraryResponseMapper.toResponse(
-            new LibraryDetail(
-                library,
-                AssetRole.MANAGER,
-                0L,
-                managementDetail,
-                true,
-                AssetReach.NONE,
-                null,
-                null));
-
-    assertThat(response.getS3EventsTokenSet()).isTrue();
-    assertThat(response.getConfluenceWebhookSecretSet()).isNull();
-    assertThat(response.getConfluenceFullSyncIntervalDays()).isNull();
   }
 
   @Test
@@ -421,7 +372,7 @@ class LibraryResponseMapperTest {
     // particular sourcePath/sourceProxy/sourceCredentials, three plain strings) - a mapper that
     // swapped two of them would otherwise still pass with equal placeholder values.
     LibraryRequest request =
-        new LibraryRequest("Rechtsquellen", DocumentSourceType.HTTP_DIRECTORY)
+        new LibraryRequest("Rechtsquellen", "HTTP_DIRECTORY")
             .description("Beschreibung")
             .ownerType(AssetOwnerType.GROUP)
             .ownerId(ownerId)
@@ -432,14 +383,14 @@ class LibraryResponseMapperTest {
             .sourceCredentials("admin:secret")
             .sourceInsecureSsl(true);
 
-    LibraryCreation creation = LibraryResponseMapper.toCreation(request, connectors);
+    LibraryCreation creation = LibraryResponseMapper.toCreation(request);
 
     assertThat(creation.name()).isEqualTo("Rechtsquellen");
     assertThat(creation.description()).isEqualTo("Beschreibung");
     assertThat(creation.ownerType()).isEqualTo(AssetOwnerType.GROUP);
     assertThat(creation.ownerId()).isEqualTo(ownerId);
     assertThat(creation.listed()).isTrue();
-    assertThat(creation.sourceType()).isEqualTo(DocumentSourceType.HTTP_DIRECTORY);
+    assertThat(creation.sourceType()).isEqualTo(SourceTypes.HTTP_DIRECTORY);
     assertThat(creation.sourcePath()).isEqualTo("/data/documents");
     assertThat(creation.sourceUrl()).isEqualTo(URI.create("https://example.com/documents/"));
     assertThat(creation.sourceProxy()).isEqualTo("proxy.example.com:8080");
@@ -455,7 +406,7 @@ class LibraryResponseMapperTest {
         new LibraryUpdateRequest("Umbenannt")
             .description("Neue Beschreibung")
             .listed(false)
-            .sourceType(DocumentSourceType.RSS_FEED)
+            .sourceType("RSS_FEED")
             .sourcePath("/data/documents")
             .sourceUrl(URI.create("https://example.com/feed.xml"))
             .sourceProxy("proxy.example.com:8080")
@@ -467,12 +418,12 @@ class LibraryResponseMapperTest {
                     .minute(0)
                     .weekday(ScheduleWeekday.FRIDAY));
 
-    LibraryUpdate update = LibraryResponseMapper.toUpdate(request, connectors);
+    LibraryUpdate update = LibraryResponseMapper.toUpdate(request);
 
     assertThat(update.name()).isEqualTo("Umbenannt");
     assertThat(update.description()).isEqualTo("Neue Beschreibung");
     assertThat(update.listed()).isFalse();
-    assertThat(update.sourceType()).isEqualTo(DocumentSourceType.RSS_FEED);
+    assertThat(update.sourceType()).isEqualTo(SourceTypes.RSS_FEED);
     assertThat(update.sourcePath()).isEqualTo("/data/documents");
     assertThat(update.sourceUrl()).isEqualTo(URI.create("https://example.com/feed.xml"));
     assertThat(update.sourceProxy()).isEqualTo("proxy.example.com:8080");
@@ -485,125 +436,118 @@ class LibraryResponseMapperTest {
   }
 
   @Test
-  void toCreationAndToUpdateCarryEditionAndSpaces() {
+  void toCreationAndToUpdateCarryTheSettingsObjectAndAbsentStaysAbsent() {
     LibraryRequest request =
-        new LibraryRequest("Wiki", DocumentSourceType.CONFLUENCE)
+        new LibraryRequest("Wiki", "CONFLUENCE")
             .sourceUrl(URI.create("https://wiki.example.org"))
             .sourceCredentials("pat")
-            .confluenceEdition(ConfluenceEdition.DATA_CENTER)
-            .confluenceSpaces(
-                List.of(
-                    new ConfluenceSpaceRef("ENG").name("Engineering"),
-                    new ConfluenceSpaceRef("HR")));
+            .sourceSettings(
+                Map.of("edition", "DATA_CENTER", "spaces", List.of(Map.of("key", "ENG"))));
 
-    LibraryCreation creation = LibraryResponseMapper.toCreation(request, connectors);
+    LibraryCreation creation = LibraryResponseMapper.toCreation(request);
 
-    ConfluenceSourceSettings created =
-        ConfluenceSourceSettings.read(
-            creation.connectorSettings().addressedTo(DocumentSourceType.CONFLUENCE, false));
-    assertThat(created.edition()).isEqualTo(ConfluenceEdition.DATA_CENTER);
-    assertThat(created.spaces())
-        .extracting(ConfluenceSpaceSelection::getSpaceKey, ConfluenceSpaceSelection::getSpaceName)
-        .containsExactly(tuple("ENG", "Engineering"), tuple("HR", null));
-
-    LibraryUpdateRequest update =
-        new LibraryUpdateRequest("Wiki")
-            .confluenceEdition(ConfluenceEdition.DATA_CENTER)
-            .confluenceSpaces(List.of(new ConfluenceSpaceRef("OPS")));
-    ConfluenceSourceSettings mapped =
-        ConfluenceSourceSettings.read(
-            LibraryResponseMapper.toUpdate(update, connectors)
-                .connectorSettings()
-                .addressedTo(DocumentSourceType.CONFLUENCE, true));
-    assertThat(mapped.edition()).isEqualTo(ConfluenceEdition.DATA_CENTER);
-    assertThat(mapped.spaces())
-        .extracting(ConfluenceSpaceSelection::getSpaceKey)
-        .containsExactly("OPS");
-
-    // absent means "leave the selection alone", not "clear it"
+    assertThat(creation.sourceType()).isEqualTo(SourceTypes.CONFLUENCE);
+    assertThat(creation.sourceSettings().asMap())
+        .containsEntry("edition", "DATA_CENTER")
+        .containsKey("spaces");
     assertThat(
-            LibraryResponseMapper.toUpdate(new LibraryUpdateRequest("Wiki"), connectors)
-                .connectorSettings()
-                .addressedTo(DocumentSourceType.CONFLUENCE, true))
-        .isNull();
-  }
-
-  @Test
-  void toCreationAndToUpdateCarryS3SettingsAndTranslateARefusedScopeIntoA400() {
-    LibraryRequest request =
-        new LibraryRequest("Protokolle", DocumentSourceType.S3)
-            .sourceUrl(URI.create("https://s3.example.org"))
-            .sourceCredentials("AKIA:geheim")
-            .s3Settings(
-                new S3Settings(
-                        List.of(
-                            new S3ScopeRef("protokolle").prefix("/2025"),
-                            new S3ScopeRef("satzungen")))
-                    .region("eu-central-1")
-                    .pathStyle(true)
-                    .includePatterns(List.of("**/*.pdf")));
-
-    LibraryCreation creation = LibraryResponseMapper.toCreation(request, connectors);
-
-    S3SourceSettings created =
-        S3SourceSettingsJson.fromData(
-            creation.connectorSettings().addressedTo(DocumentSourceType.S3, false));
-    assertThat(created.region()).isEqualTo("eu-central-1");
-    assertThat(created.pathStyle()).isTrue();
-    assertThat(created.scopes())
-        .containsExactly(S3Scope.of("protokolle", "2025/"), S3Scope.of("satzungen", ""));
-    assertThat(created.includePatterns()).containsExactly("**/*.pdf");
-
-    S3SourceSettings updated =
-        S3SourceSettingsJson.fromData(
             LibraryResponseMapper.toUpdate(
-                    new LibraryUpdateRequest("Protokolle")
-                        .s3Settings(new S3Settings(List.of(new S3ScopeRef("archiv")))),
-                    connectors)
-                .connectorSettings()
-                .addressedTo(DocumentSourceType.S3, true));
-    assertThat(updated.scopes()).containsExactly(S3Scope.of("archiv", ""));
-    assertThat(updated.pathStyle()).isFalse();
+                    new LibraryUpdateRequest("Wiki")
+                        .sourceSettings(Map.of("fullSyncIntervalDays", 0)))
+                .sourceSettings()
+                .asMap())
+        .containsEntry("fullSyncIntervalDays", 0);
     // absent means "leave the settings alone", not "clear them"
-    assertThat(
-            LibraryResponseMapper.toUpdate(new LibraryUpdateRequest("Protokolle"), connectors)
-                .connectorSettings()
-                .addressedTo(DocumentSourceType.S3, true))
+    assertThat(LibraryResponseMapper.toUpdate(new LibraryUpdateRequest("Wiki")).sourceSettings())
         .isNull();
-
-    assertThatThrownBy(
-            () ->
-                LibraryResponseMapper.toCreation(
-                    new LibraryRequest("Kaputt", DocumentSourceType.S3)
-                        .s3Settings(new S3Settings(List.of(new S3ScopeRef("Grossbuchstaben")))),
-                    connectors))
-        .isInstanceOf(ValidationException.class)
-        .hasMessageContaining("s3Settings:")
-        .hasMessageContaining("Bucket-Name");
-    assertThatThrownBy(
-            () ->
-                LibraryResponseMapper.toCreation(
-                    new LibraryRequest("Leer", DocumentSourceType.S3)
-                        .s3Settings(new S3Settings(List.of())),
-                    connectors))
-        .isInstanceOf(ValidationException.class)
-        .hasMessageContaining("Mindestens ein Geltungsbereich");
-    assertThatThrownBy(
-            () ->
-                LibraryResponseMapper.toCreation(
-                    new LibraryRequest("Doppelt", DocumentSourceType.S3)
-                        .s3Settings(
-                            new S3Settings(
-                                List.of(
-                                    new S3ScopeRef("dokumente").prefix("a/"),
-                                    new S3ScopeRef("dokumente").prefix("a/b/")))),
-                    connectors))
-        .isInstanceOf(ValidationException.class)
-        .hasMessageContaining("überschneiden");
   }
 
   @Test
-  void toResponseCarriesTheS3SettingsWithoutCredentialsAndNothingForOtherTypes() {
+  void aValueThatIsNoTypeKeyIsTheCallersFourHundred() {
+    assertThatThrownBy(() -> LibraryResponseMapper.toCreation(new LibraryRequest("X", "wiki")))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("kein gültiger Quellentyp-Schlüssel");
+  }
+
+  @Test
+  void readersSeeWhatTheConnectorShowsAndAManagerTheWholeSettings() {
+    KnowledgeLibrary confluence =
+        KnowledgeLibrary.ownedByUser(
+            UUID.randomUUID(),
+            "Wiki",
+            null,
+            UUID.randomUUID(),
+            false,
+            SourceTypes.CONFLUENCE,
+            null,
+            "https://wiki.example.org",
+            null,
+            "pat-geheim",
+            false);
+    ConfluenceTestSettings.configure(
+        confluence,
+        ConfluenceEdition.CLOUD,
+        List.of(
+            new ConfluenceSpaceSelection("HR", "Personal"),
+            new ConfluenceSpaceSelection("ENG", null)));
+    ConfluenceTestSettings.fullSyncIntervalDays(confluence, 14);
+
+    LibraryResponse reader =
+        LibraryResponseMapper.toResponse(
+            new LibraryDetail(
+                confluence,
+                AssetRole.VIEWER,
+                0,
+                LibraryManagementDetail.EMPTY,
+                false,
+                AssetReach.NONE,
+                null,
+                confluenceConnector.settingsView(confluence, false)));
+
+    assertThat(reader.getSourceType()).isEqualTo("CONFLUENCE");
+    assertThat(reader.getSourceSettings())
+        .containsEntry("edition", "CLOUD")
+        .doesNotContainKey("fullSyncIntervalDays");
+    assertThat(
+            ((List<?>) reader.getSourceSettings().get("spaces"))
+                .stream().<Object>map(space -> ((Map<?, ?>) space).get("key")).toList())
+        .containsExactly("ENG", "HR");
+    assertThat(reader.toString()).doesNotContain("pat-geheim");
+
+    LibraryManagementDetail management =
+        new LibraryManagementDetail(
+            null,
+            null,
+            null,
+            false,
+            true,
+            false,
+            confluenceConnector.settingsView(confluence, true),
+            7,
+            null,
+            null,
+            0L,
+            0L,
+            null,
+            true,
+            true);
+    LibraryResponse manager =
+        LibraryResponseMapper.toResponse(
+            new LibraryDetail(
+                confluence,
+                AssetRole.MANAGER,
+                0,
+                management,
+                false,
+                AssetReach.NONE,
+                null,
+                confluenceConnector.settingsView(confluence, false)));
+    assertThat(manager.getSourceSettings()).containsEntry("fullSyncIntervalDays", 14);
+    assertThat(manager.getPushSecretSet()).isFalse();
+  }
+
+  @Test
+  void anS3LibraryShowsItsScopesToEveryReaderAndAnUploadLibraryNoSettings() {
     KnowledgeLibrary s3 =
         KnowledgeLibrary.ownedByUser(
             UUID.randomUUID(),
@@ -611,7 +555,7 @@ class LibraryResponseMapperTest {
             null,
             UUID.randomUUID(),
             false,
-            DocumentSourceType.S3,
+            SourceTypes.S3,
             null,
             "https://s3.example.org",
             null,
@@ -624,7 +568,7 @@ class LibraryResponseMapperTest {
             true,
             List.of(S3Scope.of("protokolle", "2025/")),
             List.of("**/*.pdf"),
-            List.of("**/~*")));
+            null));
 
     LibraryResponse response =
         LibraryResponseMapper.toResponse(
@@ -638,15 +582,8 @@ class LibraryResponseMapperTest {
                 null,
                 s3Connector.settingsView(s3, false)));
 
-    assertThat(response.getS3Settings().getRegion()).isEqualTo("eu-central-1");
-    assertThat(response.getS3Settings().getPathStyle()).isTrue();
-    assertThat(response.getS3Settings().getScopes())
-        .extracting(S3ScopeRef::getBucket, S3ScopeRef::getPrefix)
-        .containsExactly(tuple("protokolle", "2025/"));
-    assertThat(response.getS3Settings().getIncludePatterns()).containsExactly("**/*.pdf");
-    assertThat(response.getS3Settings().getExcludePatterns()).containsExactly("**/~*");
+    assertThat(response.getSourceSettings()).containsEntry("region", "eu-central-1");
     assertThat(response.toString()).doesNotContain("hochgeheim");
-    assertThat(response.getConfluenceSpaces()).isNull();
 
     KnowledgeLibrary upload =
         KnowledgeLibrary.ownedByUser(UUID.randomUUID(), "Upload", null, UUID.randomUUID(), false);
@@ -654,79 +591,22 @@ class LibraryResponseMapperTest {
             LibraryResponseMapper.toResponse(
                     new LibraryDetail(
                         upload,
-                        AssetRole.VIEWER,
+                        AssetRole.OWNER,
                         0,
                         LibraryManagementDetail.EMPTY,
                         false,
                         AssetReach.NONE,
                         null,
                         null))
-                .getS3Settings())
+                .getSourceSettings())
         .isNull();
-  }
-
-  @Test
-  void toResponseCarriesEditionAndSpacesForConfluenceAndNothingForOtherTypes() {
-    KnowledgeLibrary confluence =
-        KnowledgeLibrary.ownedByUser(
-            UUID.randomUUID(),
-            "Wiki",
-            null,
-            UUID.randomUUID(),
-            false,
-            DocumentSourceType.CONFLUENCE,
-            null,
-            "https://wiki.example.org",
-            null,
-            "pat-geheim",
-            false);
-    ConfluenceTestSettings.configure(
-        confluence,
-        ConfluenceEdition.CLOUD,
-        List.of(
-            new ConfluenceSpaceSelection("HR", "Personal"),
-            new ConfluenceSpaceSelection("ENG", null)));
-
-    LibraryResponse response =
-        LibraryResponseMapper.toResponse(
-            new LibraryDetail(
-                confluence,
-                AssetRole.VIEWER,
-                0,
-                LibraryManagementDetail.EMPTY,
-                false,
-                AssetReach.NONE,
-                null,
-                confluenceConnector.settingsView(confluence, false)));
-
-    assertThat(response.getConfluenceEdition()).isEqualTo(ConfluenceEdition.CLOUD);
-    assertThat(response.getConfluenceSpaces())
-        .extracting(ConfluenceSpaceRef::getKey, ConfluenceSpaceRef::getName)
-        .containsExactly(tuple("ENG", null), tuple("HR", "Personal"));
-    assertThat(response.toString()).doesNotContain("pat-geheim");
-
-    KnowledgeLibrary upload =
-        KnowledgeLibrary.ownedByUser(UUID.randomUUID(), "Upload", null, UUID.randomUUID(), false);
-    LibraryResponse plain =
-        LibraryResponseMapper.toResponse(
-            new LibraryDetail(
-                upload,
-                AssetRole.OWNER,
-                0,
-                LibraryManagementDetail.EMPTY,
-                false,
-                AssetReach.NONE,
-                null,
-                null));
-    assertThat(plain.getConfluenceEdition()).isNull();
-    assertThat(plain.getConfluenceSpaces()).isNull();
   }
 
   @Test
   void toUpdateLeavesScheduleNullWhenTheRequestOmitsIt() {
     LibraryUpdateRequest request = new LibraryUpdateRequest("Umbenannt");
 
-    LibraryUpdate update = LibraryResponseMapper.toUpdate(request, connectors);
+    LibraryUpdate update = LibraryResponseMapper.toUpdate(request);
 
     assertThat(update.schedule()).isNull();
   }

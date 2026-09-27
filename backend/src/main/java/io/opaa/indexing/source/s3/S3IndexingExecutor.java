@@ -8,7 +8,6 @@ import io.opaa.indexing.maintenance.StaleDocumentCleanupService;
 import io.opaa.indexing.source.IndexingRun;
 import io.opaa.indexing.source.IndexingRunFailedException;
 import io.opaa.indexing.source.IndexingRunTemplate;
-import io.opaa.indexing.source.IndexingSourceType;
 import io.opaa.indexing.source.ListingOutcome;
 import io.opaa.indexing.source.SourceIndexingExecutor;
 import io.opaa.indexing.source.SourceSyncState;
@@ -17,6 +16,7 @@ import io.opaa.indexing.source.VanishedDocumentPolicy;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.LibraryFolderService;
+import io.opaa.knowledge.SourceType;
 import io.opaa.s3.S3AccessException;
 import io.opaa.s3.S3Connection;
 import java.time.Clock;
@@ -28,7 +28,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Async;
 
 /**
- * Executes indexing runs for {@link IndexingSourceType#S3} (ADR-0027): exactly one mode, the full
+ * Executes indexing runs for {@link S3SourceConnector#TYPE} (ADR-0027): exactly one mode, the full
  * sync ({@link S3FullSync}) that lists every scope completely, fetches what its change feature says
  * has changed, and reports a complete listing so the run frame removes what it did not meet. The
  * key prefixes below each scope are mirrored as read-only folders (ADR-0020, ADR-0027 Entscheidung
@@ -75,8 +75,8 @@ public class S3IndexingExecutor implements SourceIndexingExecutor {
   }
 
   @Override
-  public IndexingSourceType sourceType() {
-    return IndexingSourceType.S3;
+  public SourceType sourceType() {
+    return S3SourceConnector.TYPE;
   }
 
   @Override

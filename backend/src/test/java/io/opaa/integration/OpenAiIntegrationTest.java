@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import io.opaa.TestcontainersConfiguration;
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.indexing.chunk.VectorChunkStore;
@@ -16,6 +15,7 @@ import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.organization.Organization;
 import io.opaa.query.QueryResult;
 import io.opaa.query.QueryService;
+import io.opaa.test.SourceTypes;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -86,7 +86,7 @@ class OpenAiIntegrationTest {
   void setUp() throws IOException {
     removeOwnFixtures();
     // #478: the trigger endpoint/service reads type and configuration off the library itself, and
-    // the seeded system library is DocumentSourceType.UPLOAD, which triggerIndexing now rejects
+    // the seeded system library is SourceType.UPLOAD, which triggerIndexing now rejects
     // with 409 (no run type). This test needs a document to actually be found and indexed, so it
     // creates its own FILESYSTEM library pointed at tempDir instead of reusing the system library.
     userId = UUID.randomUUID();
@@ -105,7 +105,7 @@ class OpenAiIntegrationTest {
                 null,
                 userId,
                 false,
-                DocumentSourceType.FILESYSTEM,
+                SourceTypes.FILESYSTEM,
                 tempDir.toAbsolutePath().toString(),
                 null,
                 null,

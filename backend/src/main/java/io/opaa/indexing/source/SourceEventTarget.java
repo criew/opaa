@@ -1,8 +1,8 @@
 package io.opaa.indexing.source;
 
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.knowledge.KnowledgeLibrary;
+import io.opaa.knowledge.SourceType;
 import java.util.Set;
 import java.util.UUID;
 
@@ -15,7 +15,7 @@ import java.util.UUID;
 public interface SourceEventTarget {
 
   /** The source type a library must carry for a batch to be drained; anything else is dropped. */
-  DocumentSourceType sourceType();
+  SourceType sourceType();
 
   /**
    * The executor behind the connector. Its {@link SourceIndexingExecutor#defaultRunMode} decides

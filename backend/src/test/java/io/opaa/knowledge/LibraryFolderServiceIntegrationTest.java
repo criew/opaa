@@ -6,7 +6,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.awaitility.Awaitility.await;
 
 import io.opaa.api.types.AssetRole;
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
 import io.opaa.api.types.SystemRole;
 import io.opaa.asset.AssetGrantService;
@@ -25,6 +24,7 @@ import io.opaa.permission.AssetGrantHistoryRepository;
 import io.opaa.permission.GroupMembershipHistoryRepository;
 import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.OwnLibraryFixtures;
+import io.opaa.test.SourceTypes;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -112,7 +112,7 @@ class LibraryFolderServiceIntegrationTest {
     viewer.setOrganizationId(organizationId);
     viewer = userRepository.save(viewer);
 
-    var libraryRequest = libraryCreation("Bibliothek", DocumentSourceType.UPLOAD).build();
+    var libraryRequest = libraryCreation("Bibliothek", SourceType.UPLOAD).build();
     var library = libraryService.createLibrary(libraryRequest, currentUserOf(editor));
     libraryId = library.library().getId();
 
@@ -311,7 +311,7 @@ class LibraryFolderServiceIntegrationTest {
     // "/tmp" matches application.yml's default opaa.indexing.filesystem.allowlist ("/data,/tmp") -
     // the source content of this library is never read, only its sourceType matters here.
     var connectorLibraryRequest =
-        libraryCreation("Verzeichnis", DocumentSourceType.FILESYSTEM).sourcePath("/tmp").build();
+        libraryCreation("Verzeichnis", SourceTypes.FILESYSTEM).sourcePath("/tmp").build();
     var connectorLibrary =
         libraryService.createLibrary(connectorLibraryRequest, currentUserOf(editor));
     try {

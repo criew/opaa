@@ -1,6 +1,5 @@
 package io.opaa.indexing.source.confluence;
 
-import io.opaa.api.types.ConfluenceEdition;
 import io.opaa.sourceaccess.BoundedDownloader;
 import io.opaa.sourceaccess.SourceRequestMeter;
 import java.time.Instant;

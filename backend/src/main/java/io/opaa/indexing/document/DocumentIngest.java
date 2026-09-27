@@ -1,9 +1,9 @@
 package io.opaa.indexing.document;
 
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.indexing.format.DocumentProperties;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.SourceDocumentContext;
+import io.opaa.knowledge.SourceType;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -50,7 +50,7 @@ public record DocumentIngest(
     String filePath,
     String fileName,
     Content content,
-    DocumentSourceType sourceType,
+    SourceType sourceType,
     UUID parentDocumentId,
     String sourceEntryUrl,
     SourceDocumentContext context,
@@ -128,15 +128,15 @@ public record DocumentIngest(
   public record Folder(UUID id) {}
 
   /**
-   * A file to be identified by its own absolute path, as a filesystem source indexes it: name and
-   * size are the file's own, the source type is {@link DocumentSourceType#FILESYSTEM}.
+   * A file to be identified by its own absolute path, as a local-file source indexes it: name and
+   * size are the file's own, the source type is the library's.
    */
   public static Builder localFile(KnowledgeLibrary library, Path file) throws IOException {
     return new Builder(library)
         .file(file)
         .filePath(file.toAbsolutePath().toString())
         .fileName(file.getFileName().toString())
-        .sourceType(DocumentSourceType.FILESYSTEM);
+        .sourceType(library.getSourceType());
   }
 
   /**
@@ -158,7 +158,7 @@ public record DocumentIngest(
     private String filePath;
     private String fileName;
     private Content content;
-    private DocumentSourceType sourceType;
+    private SourceType sourceType;
     private UUID parentDocumentId;
     private String sourceEntryUrl;
     private SourceDocumentContext context;
@@ -201,7 +201,7 @@ public record DocumentIngest(
       return this;
     }
 
-    public Builder sourceType(DocumentSourceType sourceType) {
+    public Builder sourceType(SourceType sourceType) {
       this.sourceType = sourceType;
       return this;
     }

@@ -1,6 +1,5 @@
 package io.opaa.indexing.source.confluence;
 
-import io.opaa.api.types.ConfluenceEdition;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;

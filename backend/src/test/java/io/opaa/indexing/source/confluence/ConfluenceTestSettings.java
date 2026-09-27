@@ -1,6 +1,5 @@
 package io.opaa.indexing.source.confluence;
 
-import io.opaa.api.types.ConfluenceEdition;
 import io.opaa.knowledge.KnowledgeLibrary;
 import java.util.List;
 

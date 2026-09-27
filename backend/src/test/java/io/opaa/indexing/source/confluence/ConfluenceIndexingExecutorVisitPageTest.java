@@ -11,8 +11,6 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import io.opaa.api.types.ConfluenceEdition;
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.indexing.attachment.AttachmentIndexer;
@@ -37,6 +35,7 @@ import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.LibraryStorageQuotaService;
 import io.opaa.knowledge.SourceDocumentContext;
+import io.opaa.test.SourceTypes;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -107,7 +106,7 @@ class ConfluenceIndexingExecutorVisitPageTest {
             null,
             UUID.randomUUID(),
             false,
-            DocumentSourceType.CONFLUENCE,
+            SourceTypes.CONFLUENCE,
             null,
             BASE,
             null,
@@ -124,7 +123,7 @@ class ConfluenceIndexingExecutorVisitPageTest {
             jobId,
             library,
             IndexingRunMode.FULL,
-            DocumentSourceType.CONFLUENCE,
+            SourceTypes.CONFLUENCE,
             new IndexingRunProgress(indexingJobService, jobId),
             new IndexingRunEventRecorder(eventRepository, indexingJobService, jobId),
             documentRepository,
@@ -174,7 +173,7 @@ class ConfluenceIndexingExecutorVisitPageTest {
   }
 
   private Document indexed(String title, String path, String version) {
-    Document document = new Document(title, path, "text/html", 10L, DocumentSourceType.CONFLUENCE);
+    Document document = new Document(title, path, "text/html", 10L, SourceTypes.CONFLUENCE);
     document.setStatus(DocumentStatus.INDEXED);
     document.setLastModifiedRemote(version);
     document.setLibraryId(library.getId());
@@ -191,7 +190,7 @@ class ConfluenceIndexingExecutorVisitPageTest {
             parent.getFilePath() + "/" + fileName,
             "application/octet-stream",
             5L,
-            DocumentSourceType.CONFLUENCE);
+            SourceTypes.CONFLUENCE);
     attachment.setParentDocumentId(parent.getId());
     when(documentRepository.findByParentDocumentId(parent.getId())).thenReturn(List.of(attachment));
     return attachment;

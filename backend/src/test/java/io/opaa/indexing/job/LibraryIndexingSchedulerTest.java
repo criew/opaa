@@ -8,11 +8,11 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.ScheduleFrequency;
 import io.opaa.common.ConflictException;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
+import io.opaa.test.SourceTypes;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -68,7 +68,7 @@ class LibraryIndexingSchedulerTest {
             null,
             UUID.randomUUID(),
             false,
-            DocumentSourceType.HTTP_DIRECTORY,
+            SourceTypes.HTTP_DIRECTORY,
             null,
             "https://example.org/docs/",
             null,

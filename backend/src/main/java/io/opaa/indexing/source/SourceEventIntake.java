@@ -97,7 +97,7 @@ public class SourceEventIntake {
       Optional<KnowledgeLibrary> loaded =
           libraryRepository
               .findById(libraryId)
-              .filter(l -> l.getSourceType() == target.sourceType())
+              .filter(l -> target.sourceType().equals(l.getSourceType()))
               .filter(l -> l.getWebhookSecret() != null);
       if (loaded.isEmpty()) {
         log.info(

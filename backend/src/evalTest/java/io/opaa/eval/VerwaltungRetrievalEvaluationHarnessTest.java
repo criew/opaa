@@ -5,7 +5,6 @@ import static org.awaitility.Awaitility.await;
 
 import com.github.dockerjava.api.model.Bind;
 import com.github.dockerjava.api.model.Volume;
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.chat.ChatNoteExtractionService;
@@ -38,6 +37,7 @@ import io.opaa.query.retrieval.RetrievalPipeline;
 import io.opaa.query.retrieval.RetrievalPipelineProperties;
 import io.opaa.query.retrieval.scope.MetadataFilterExpressions;
 import io.opaa.security.SettingsEncryptor;
+import io.opaa.test.SourceTypes;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -411,10 +411,10 @@ class VerwaltungRetrievalEvaluationHarnessTest {
   // corpus lands in does not change what is measured.
   //
   // #552: the library must be a FILESYSTEM library whose sourcePath is corpusWorkingDir, not the
-  // no-config default DocumentSourceType.UPLOAD KnowledgeLibrary#ownedByUser's six-argument
+  // no-config default SourceType.UPLOAD KnowledgeLibrary#ownedByUser's six-argument
   // overload defaults to (#478/ADR-0018 introduced per-library quellentyp after this harness's own
   // #536 library-model fix landed) - triggerIndexing() rejects an UPLOAD library with 409 before a
-  // single document is indexed (DocumentIndexingService#toIndexingSourceType), which is exactly the
+  // single document is indexed (DocumentIndexingService#executorFor), which is exactly the
   // ResponseStatusException the nightly run
   // (https://github.com/criew/opaa/actions/runs/32327052407) failed with.
   private UUID evalUserId;
@@ -446,7 +446,7 @@ class VerwaltungRetrievalEvaluationHarnessTest {
                 null,
                 evalUserId,
                 false,
-                DocumentSourceType.FILESYSTEM,
+                SourceTypes.FILESYSTEM,
                 corpusWorkingDir.toAbsolutePath().toString(),
                 null,
                 null,

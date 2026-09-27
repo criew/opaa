@@ -1,6 +1,5 @@
 package io.opaa.indexing.document;
 
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
 import io.opaa.indexing.IndexingProperties;
 import io.opaa.indexing.attachment.AttachmentAccess;
@@ -28,6 +27,7 @@ import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.LibraryStorageQuotaService;
 import io.opaa.knowledge.SourceDocumentContext;
+import io.opaa.knowledge.SourceType;
 import io.opaa.observability.IndexingMetrics;
 import java.io.IOException;
 import java.time.Instant;
@@ -616,7 +616,7 @@ public class DocumentIngestService {
       List<DiscoveredAttachment> discovered,
       UUID parentDocumentId,
       String parentFilePath,
-      DocumentSourceType sourceType,
+      SourceType sourceType,
       AttachmentAccess attachmentAccess) {
     if (discovered.isEmpty() || attachmentAccess == null) {
       return;

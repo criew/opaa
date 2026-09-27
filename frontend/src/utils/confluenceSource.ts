@@ -1,4 +1,39 @@
-import type { ConfluenceEdition, ConfluenceSpaceRef } from '../types/api'
+import type { LibraryResponse } from '../types/api'
+
+/** The Confluence edition (ADR-0023): detected by the connection test, fixed after creation. */
+export type ConfluenceEdition = 'CLOUD' | 'DATA_CENTER'
+
+/** One space of the selection; `name` is the display name at the time of selection. */
+export type ConfluenceSpaceRef = {
+  key: string
+  name?: string | null
+}
+
+/**
+ * The connector settings of a CONFLUENCE library as the API carries them in `sourceSettings`
+ * (ADR-0038). A reader sees edition and selection, a manager also the full-sync rhythm.
+ */
+export type ConfluenceSettings = {
+  edition?: ConfluenceEdition | null
+  spaces?: ConfluenceSpaceRef[] | null
+  fullSyncIntervalDays?: number | null
+}
+
+/** The Confluence settings a library response carries, empty for any other library. */
+export function confluenceSettingsOf(
+  library: Pick<LibraryResponse, 'sourceType' | 'sourceSettings'> | null | undefined,
+): ConfluenceSettings {
+  if (library?.sourceType !== 'CONFLUENCE' || !library.sourceSettings) return {}
+  return library.sourceSettings as ConfluenceSettings
+}
+
+/** The edition a connection test found, from its `details`. */
+export function detectedConfluenceEdition(
+  details: Record<string, unknown> | null | undefined,
+): ConfluenceEdition | null {
+  const edition = details?.edition
+  return edition === 'CLOUD' || edition === 'DATA_CENTER' ? edition : null
+}
 
 /**
  * Everything the Confluence source configuration consists of (ADR-0023): the address, the edition
@@ -68,4 +103,13 @@ export function validateConfluenceValues(
     return `Höchstens ${MAX_CONFLUENCE_SPACES} Spaces je Bibliothek`
   }
   return null
+}
+
+/** Names a space the way the documents area does ("Name (KEY)"), the key alone without a name. */
+export function confluenceSpaceLabel(
+  key: string,
+  spaces: ConfluenceSpaceRef[] | null | undefined,
+): string {
+  const name = spaces?.find((space) => space.key === key)?.name
+  return name ? `${name} (${key})` : key
 }

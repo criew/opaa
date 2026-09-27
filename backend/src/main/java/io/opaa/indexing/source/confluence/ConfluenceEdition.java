@@ -1,4 +1,4 @@
-package io.opaa.api.types;
+package io.opaa.indexing.source.confluence;
 
 /**
  * The two Confluence editions a {@code CONFLUENCE} library can point at (ADR-0023, Entscheidung 2).

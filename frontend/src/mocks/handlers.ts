@@ -79,6 +79,7 @@ import {
   resetMockLibraryGrants,
   resetMockChats,
   mockConfluenceSpaces,
+  mockSourceTypes,
 } from './fixtures'
 import type { MockLibraryFolder } from './fixtures'
 import type {
@@ -98,7 +99,7 @@ import type {
   ChatCreateRequest,
   ChatSearchRequest,
   ChatUpdateRequest,
-  DocumentSourceType,
+  SourceTypeKey,
   DocumentStatus,
   IndexingStatusResponse,
   LibraryDocumentResponse,
@@ -108,15 +109,14 @@ import type {
   LibraryFolderRequest,
   AssetOwnerType,
   LibraryScheduleRequest,
-  S3Settings,
   LlmModelRequest,
   LlmModelTestRequest,
   QueryRequest,
-  ConfluenceEdition,
-  ConfluenceSpaceRef,
-  ConfluenceWebhookSecretResponse,
-  S3EventsTokenResponse,
+  PushSecretResponse,
+  SourceBrowseResponse,
 } from '../types/api'
+import type { ConfluenceEdition, ConfluenceSettings } from '../utils/confluenceSource'
+import type { S3Settings } from '../utils/s3Source'
 
 // Mirrors what the registered DocumentFormats admit (DocumentFormat#admittedFormats,
 // backend/src/main/java/io/opaa/indexing/format) - kept as a literal list here rather than
@@ -473,7 +473,7 @@ export function resetIndexingState() {
 const INDEXING_POLL_STEPS = 5
 const TOTAL_DOCUMENTS = 42
 
-// Mirrors DocumentIndexingService#toIndexingSourceType's exact German 409 text for an UPLOAD
+// Mirrors DocumentIndexingService#executorFor's exact German 409 text for an UPLOAD
 // library (no run type at all). Duplicated as a literal - rather than imported from
 // stores/indexingStore.ts, which defines the same constant for triggerIndexing's own message
 // handling - to keep this mock module independent of application/store code.
@@ -589,7 +589,7 @@ export const handlers = [
         { status: 404 },
       )
     }
-    // Mirrors DocumentIndexingService#toIndexingSourceType ( review, finding 5): UPLOAD has no
+    // Mirrors DocumentIndexingService#executorFor ( review, finding 5): UPLOAD has no
     // run type at all - the library is a valid indexing target, it simply has nothing to run.
     if (library.sourceType === 'UPLOAD') {
       return HttpResponse.json(
@@ -620,8 +620,9 @@ export const handlers = [
     )
   }),
 
-  // the webhook secret is shown once; the mock keeps the yes/no on the library detail.
-  http.post('/api/v1/libraries/:libraryId/confluence-webhook-secret', ({ params }) => {
+  // the push secret is shown once; the mock keeps the yes/no on the library detail. Mirrors
+  // KnowledgeLibraryService: only a type whose connector names a push intake has one (ADR-0038).
+  http.post('/api/v1/libraries/:libraryId/push-secret', ({ params }) => {
     const libraryId = params.libraryId as string
     const library = mockLibraryDetails[libraryId]
     if (!library) {
@@ -630,24 +631,24 @@ export const handlers = [
         { status: 404 },
       )
     }
-    if (library.sourceType !== 'CONFLUENCE') {
+    if (!mockSourceTypes.some((d) => d.type === library.sourceType && d.pushIntake)) {
       return HttpResponse.json(
         {
-          error: 'Ein Webhook-Geheimnis gibt es nur für Bibliotheken vom Typ CONFLUENCE',
+          error: `Für Bibliotheken vom Typ ${library.sourceType} gibt es keinen Push-Eingang`,
           status: 400,
           timestamp: new Date().toISOString(),
         },
         { status: 400 },
       )
     }
-    mockLibraryDetails[libraryId] = { ...library, confluenceWebhookSecretSet: true }
+    mockLibraryDetails[libraryId] = { ...library, pushSecretSet: true }
     return HttpResponse.json({
-      secret: 'mock-webhook-secret-' + libraryId.slice(0, 8),
-      path: `/api/v1/libraries/${libraryId}/confluence-webhook`,
-    } satisfies ConfluenceWebhookSecretResponse)
+      secret: 'mock-push-secret-' + libraryId.slice(0, 8),
+      path: `/api/v1/libraries/${libraryId}/push`,
+    } satisfies PushSecretResponse)
   }),
 
-  http.delete('/api/v1/libraries/:libraryId/confluence-webhook-secret', ({ params }) => {
+  http.delete('/api/v1/libraries/:libraryId/push-secret', ({ params }) => {
     const libraryId = params.libraryId as string
     const library = mockLibraryDetails[libraryId]
     if (!library) {
@@ -656,58 +657,21 @@ export const handlers = [
         { status: 404 },
       )
     }
-    if (library.sourceType !== 'CONFLUENCE') {
+    if (!mockSourceTypes.some((d) => d.type === library.sourceType && d.pushIntake)) {
       return HttpResponse.json(
         {
-          error: 'Ein Webhook-Geheimnis gibt es nur für Bibliotheken vom Typ CONFLUENCE',
+          error: `Für Bibliotheken vom Typ ${library.sourceType} gibt es keinen Push-Eingang`,
           status: 400,
           timestamp: new Date().toISOString(),
         },
         { status: 400 },
       )
     }
-    mockLibraryDetails[libraryId] = { ...library, confluenceWebhookSecretSet: false }
+    mockLibraryDetails[libraryId] = { ...library, pushSecretSet: false }
     return new HttpResponse(null, { status: 204 })
   }),
 
-  http.post('/api/v1/libraries/:libraryId/s3-events-token', ({ params }) => {
-    const libraryId = params.libraryId as string
-    const library = mockLibraryDetails[libraryId]
-    if (!library) {
-      return HttpResponse.json(
-        { error: 'Bibliothek nicht gefunden', status: 404, timestamp: new Date().toISOString() },
-        { status: 404 },
-      )
-    }
-    if (library.sourceType !== 'S3') {
-      return HttpResponse.json(
-        {
-          error: 'Ein Ereignis-Token gibt es nur für Bibliotheken vom Typ S3',
-          status: 400,
-          timestamp: new Date().toISOString(),
-        },
-        { status: 400 },
-      )
-    }
-    mockLibraryDetails[libraryId] = { ...library, s3EventsTokenSet: true }
-    return HttpResponse.json({
-      token: 'mock-s3-events-token-' + libraryId.slice(0, 8),
-      path: `/api/v1/libraries/${libraryId}/s3-events`,
-    } satisfies S3EventsTokenResponse)
-  }),
-
-  http.delete('/api/v1/libraries/:libraryId/s3-events-token', ({ params }) => {
-    const libraryId = params.libraryId as string
-    const library = mockLibraryDetails[libraryId]
-    if (!library) {
-      return HttpResponse.json(
-        { error: 'Bibliothek nicht gefunden', status: 404, timestamp: new Date().toISOString() },
-        { status: 404 },
-      )
-    }
-    mockLibraryDetails[libraryId] = { ...library, s3EventsTokenSet: false }
-    return new HttpResponse(null, { status: 204 })
-  }),
+  http.get('/api/v1/source-types', () => HttpResponse.json(mockSourceTypes)),
 
   http.get('/api/v1/libraries/:libraryId/indexing/status', ({ params }) => {
     const libraryId = params.libraryId as string
@@ -1993,16 +1957,16 @@ export const handlers = [
       ownerType?: AssetOwnerType
       ownerId?: string
       listed?: boolean
-      sourceType: DocumentSourceType
+      sourceType: SourceTypeKey
       sourcePath?: string | null
       sourceUrl?: string | null
       sourceProxy?: string | null
       sourceCredentials?: string | null
       sourceInsecureSsl?: boolean | null
-      confluenceEdition?: ConfluenceEdition | null
-      confluenceSpaces?: ConfluenceSpaceRef[] | null
-      s3Settings?: S3Settings | null
+      sourceSettings?: Record<string, unknown> | null
     }
+    const confluenceSettings = (body.sourceSettings ?? {}) as ConfluenceSettings
+    const s3Settings = body.sourceSettings as S3Settings | null | undefined
     if (!body.name || body.name.trim() === '') {
       return HttpResponse.json(
         { error: 'Der Name der Bibliothek ist erforderlich' },
@@ -2072,9 +2036,9 @@ export const handlers = [
           { status: 400 },
         )
       }
-      if (!body.confluenceEdition) {
+      if (!confluenceSettings.edition) {
         return HttpResponse.json(
-          { error: 'confluenceEdition ist erforderlich, wenn sourceType CONFLUENCE ist' },
+          { error: 'sourceSettings.edition ist erforderlich, wenn sourceType CONFLUENCE ist' },
           { status: 400 },
         )
       }
@@ -2084,11 +2048,11 @@ export const handlers = [
           { status: 400 },
         )
       }
-      if (!body.confluenceSpaces || body.confluenceSpaces.length === 0) {
+      if (!confluenceSettings.spaces || confluenceSettings.spaces.length === 0) {
         return HttpResponse.json(
           {
             error:
-              'confluenceSpaces: mindestens ein Space ist erforderlich, wenn sourceType CONFLUENCE ist',
+              'sourceSettings.spaces: mindestens ein Space ist erforderlich, wenn sourceType CONFLUENCE ist',
           },
           { status: 400 },
         )
@@ -2131,9 +2095,9 @@ export const handlers = [
           { status: 400 },
         )
       }
-      if (!body.s3Settings?.scopes?.length) {
+      if (!s3Settings?.scopes?.length) {
         return HttpResponse.json(
-          { error: 's3Settings sind erforderlich, wenn sourceType S3 ist' },
+          { error: 'sourceSettings sind erforderlich, wenn sourceType S3 ist' },
           { status: 400 },
         )
       }
@@ -2176,9 +2140,10 @@ export const handlers = [
         body.sourceType === 'S3'
           ? (body.sourceProxy ?? null)
           : null,
-      confluenceEdition: body.sourceType === 'CONFLUENCE' ? (body.confluenceEdition ?? null) : null,
-      confluenceSpaces: body.sourceType === 'CONFLUENCE' ? (body.confluenceSpaces ?? null) : null,
-      s3Settings: body.sourceType === 'S3' ? (body.s3Settings ?? null) : null,
+      sourceSettings:
+        body.sourceType === 'CONFLUENCE' || body.sourceType === 'S3'
+          ? (body.sourceSettings ?? null)
+          : null,
       sourceCredentialsSet:
         body.sourceType === 'S3' || body.sourceType === 'CONFLUENCE'
           ? Boolean(body.sourceCredentials)
@@ -2196,50 +2161,54 @@ export const handlers = [
     return HttpResponse.json(detail, { status: 201 })
   }),
 
-  // the Confluence spaces the mock token may read - a fixed, searchable set for the wizard.
-  http.post('/api/v1/libraries/confluence/spaces', async ({ request }) => {
-    const body = (await request.json()) as {
-      sourceUrl?: string
-      confluenceEdition?: ConfluenceEdition
-      sourceCredentials?: string | null
-      libraryId?: string | null
-    }
-    if (!body.sourceUrl || !body.confluenceEdition) {
-      return HttpResponse.json(
-        { error: 'sourceUrl und confluenceEdition sind erforderlich' },
-        { status: 400 },
-      )
-    }
-    if (!body.sourceCredentials && !body.libraryId) {
-      return HttpResponse.json(
-        { error: 'sourceCredentials sind für die Space-Auflistung erforderlich' },
-        { status: 400 },
-      )
-    }
-    return HttpResponse.json({ spaces: mockConfluenceSpaces })
-  }),
-
-  // the buckets the mock key may see (ADR-0027) - a fixed set for the wizard's scope entry
-  http.post('/api/v1/libraries/s3/buckets', async ({ request }) => {
+  // what a source offers before it is saved (ADR-0038): the Confluence spaces the mock token may
+  // read - a fixed, searchable set - and the buckets the mock S3 key may see (ADR-0027)
+  http.post('/api/v1/source-types/:sourceType/browse', async ({ params, request }) => {
+    const sourceType = params.sourceType as string
     const body = (await request.json()) as {
       sourceUrl?: string
       sourceCredentials?: string | null
       libraryId?: string | null
+      query?: Record<string, unknown> | null
     }
-    if (!body.sourceUrl) {
-      return HttpResponse.json({ error: 'sourceUrl ist erforderlich' }, { status: 400 })
+    if (sourceType === 'CONFLUENCE') {
+      if (!body.sourceUrl || !body.query?.edition) {
+        return HttpResponse.json(
+          { error: 'sourceUrl und sourceSettings.edition sind erforderlich' },
+          { status: 400 },
+        )
+      }
+      if (!body.sourceCredentials && !body.libraryId) {
+        return HttpResponse.json(
+          { error: 'sourceCredentials sind für die Space-Auflistung erforderlich' },
+          { status: 400 },
+        )
+      }
+      return HttpResponse.json({
+        complete: true,
+        entries: mockConfluenceSpaces.map((space) => ({ key: space.key, name: space.name })),
+      } satisfies SourceBrowseResponse)
     }
-    if (!body.sourceCredentials && !body.libraryId) {
-      return HttpResponse.json(
-        { error: 'sourceCredentials sind für die Bucket-Auflistung erforderlich' },
-        { status: 400 },
-      )
+    if (sourceType === 'S3') {
+      if (!body.sourceUrl) {
+        return HttpResponse.json({ error: 'sourceUrl ist erforderlich' }, { status: 400 })
+      }
+      if (!body.sourceCredentials && !body.libraryId) {
+        return HttpResponse.json(
+          { error: 'sourceCredentials sind für die Bucket-Auflistung erforderlich' },
+          { status: 400 },
+        )
+      }
+      return HttpResponse.json({
+        complete: true,
+        entries: ['protokolle', 'satzungen', 'archiv'].map((key) => ({ key, name: null })),
+        message: null,
+      } satisfies SourceBrowseResponse)
     }
-    return HttpResponse.json({
-      listingPermitted: true,
-      buckets: ['protokolle', 'satzungen', 'archiv'],
-      message: null,
-    })
+    return HttpResponse.json(
+      { error: `Für sourceType ${sourceType} gibt es keine Auflistung` },
+      { status: 400 },
+    )
   }),
 
   // mirrors SourceConnectionTestService's per-type validation just enough that the mock
@@ -2247,18 +2216,16 @@ export const handlers = [
   // unhandled request (onUnhandledRequest: 'bypass' would otherwise leave it hanging forever).
   http.post('/api/v1/libraries/source-test', async ({ request }) => {
     const body = (await request.json()) as {
-      sourceType: DocumentSourceType
+      sourceType: SourceTypeKey
       sourcePath?: string | null
       sourceUrl?: string | null
       sourceCredentials?: string | null
-      confluenceEdition?: ConfluenceEdition | null
+      sourceSettings?: Record<string, unknown> | null
     }
     if (body.sourceType === 'S3') {
       // Mirrors S3ConnectionService#probe just enough for the mock: every scope passes with a
       // small count; without settings the request is the caller's mistake.
-      const settings = (
-        body as { s3Settings?: { scopes?: { bucket: string; prefix?: string | null }[] } }
-      ).s3Settings
+      const settings = body.sourceSettings as S3Settings | null | undefined
       if (!body.sourceUrl) {
         return HttpResponse.json(
           {
@@ -2270,7 +2237,7 @@ export const handlers = [
       }
       if (!settings?.scopes?.length) {
         return HttpResponse.json(
-          { error: 's3Settings sind für den Verbindungstest erforderlich' },
+          { error: 'sourceSettings sind für den Verbindungstest erforderlich' },
           { status: 400 },
         )
       }
@@ -2289,7 +2256,7 @@ export const handlers = [
         credentialsVerified: true,
         documentCount: 12 * scopes.length,
         message: `${scopes.length === 1 ? 'Der Bereich ist' : `Alle ${scopes.length} Bereiche sind`} erreichbar, Auflistung und Lesen sind erlaubt. ${12 * scopes.length} Objekte gefunden.`,
-        s3Scopes: scopes,
+        details: { scopes },
       })
     }
     if (body.sourceType === 'CONFLUENCE') {
@@ -2306,18 +2273,20 @@ export const handlers = [
         ? 'CLOUD'
         : 'DATA_CENTER'
       const label = (edition: ConfluenceEdition) => (edition === 'CLOUD' ? 'Cloud' : 'Data Center')
-      if (body.confluenceEdition && body.confluenceEdition !== detected) {
+      const requestedEdition = (body.sourceSettings as ConfluenceSettings | null | undefined)
+        ?.edition
+      if (requestedEdition && requestedEdition !== detected) {
         return HttpResponse.json({
           reachable: false,
-          confluenceEdition: detected,
+          details: { edition: detected },
           credentialsVerified: false,
-          message: `Unter dieser Adresse antwortet Confluence ${label(detected)}, nicht ${label(body.confluenceEdition)}.`,
+          message: `Unter dieser Adresse antwortet Confluence ${label(detected)}, nicht ${label(requestedEdition)}.`,
         })
       }
       if (!body.sourceCredentials) {
         return HttpResponse.json({
           reachable: true,
-          confluenceEdition: detected,
+          details: { edition: detected },
           credentialsVerified: false,
           message:
             detected === 'CLOUD'
@@ -2328,7 +2297,7 @@ export const handlers = [
       if (detected === 'CLOUD' && !body.sourceCredentials.includes(':')) {
         return HttpResponse.json({
           reachable: false,
-          confluenceEdition: detected,
+          details: { edition: detected },
           credentialsVerified: false,
           message:
             'Confluence Cloud erwartet E-Mail-Adresse und API-Token, getrennt durch einen Doppelpunkt (E-Mail:Token).',
@@ -2336,7 +2305,7 @@ export const handlers = [
       }
       return HttpResponse.json({
         reachable: true,
-        confluenceEdition: detected,
+        details: { edition: detected },
         credentialsVerified: true,
         documentCount: mockConfluenceSpaces.length,
         message: `Confluence ${label(detected)} erreichbar, Zugangsdaten gültig, ${mockConfluenceSpaces.length} lesbare Spaces.`,
@@ -2399,7 +2368,7 @@ export const handlers = [
       sourceUrl?: string | null
       sourceProxy?: string | null
       sourceInsecureSsl?: boolean | null
-      s3Settings?: S3Settings | null
+      sourceSettings?: Record<string, unknown> | null
     }
     library.name = body.name
     if (library.sourceType === 'S3') {
@@ -2407,7 +2376,7 @@ export const handlers = [
       if (body.sourceUrl !== undefined) library.sourceUrl = body.sourceUrl
       if (body.sourceProxy !== undefined) library.sourceProxy = body.sourceProxy
       if (body.sourceInsecureSsl !== undefined) library.sourceInsecureSsl = body.sourceInsecureSsl
-      if (body.s3Settings) library.s3Settings = body.s3Settings
+      if (body.sourceSettings) library.sourceSettings = body.sourceSettings
     }
     library.description = body.description ?? null
     library.listed = body.listed ?? library.listed
@@ -2710,7 +2679,7 @@ export const handlers = [
       contentType: file.type || null,
       fileSize: file.size,
       status: 'PENDING' as DocumentStatus,
-      sourceType: 'UPLOAD' as DocumentSourceType,
+      sourceType: 'UPLOAD' as SourceTypeKey,
       chunkCount: 0,
       indexedAt: null,
       uploadedByUserId: 'mock-user-id',

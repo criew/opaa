@@ -10,7 +10,6 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.indexing.chunk.VectorChunkStore;
@@ -32,6 +31,7 @@ import io.opaa.s3.S3Credentials;
 import io.opaa.s3.S3TestFixture;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.test.ProductionDocumentFormats;
+import io.opaa.test.SourceTypes;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -137,7 +137,7 @@ class S3IndexingExecutorIntegrationTest {
             null,
             UUID.randomUUID(),
             false,
-            DocumentSourceType.S3,
+            SourceTypes.S3,
             null,
             store.endpoint().toString(),
             null,
@@ -152,8 +152,7 @@ class S3IndexingExecutorIntegrationTest {
   private void rememberAsStored(List<DocumentIngest> previous) {
     for (DocumentIngest ingest : previous) {
       Document document =
-          new Document(
-              ingest.fileName(), ingest.filePath(), "text/plain", 2L, DocumentSourceType.S3);
+          new Document(ingest.fileName(), ingest.filePath(), "text/plain", 2L, SourceTypes.S3);
       document.setStatus(DocumentStatus.INDEXED);
       document.setLastModifiedRemote(ingest.changeMarker());
       storedDocuments.add(document);
@@ -166,7 +165,7 @@ class S3IndexingExecutorIntegrationTest {
     verify(cleanupService)
         .reconcile(
             eq(library),
-            eq(DocumentSourceType.S3),
+            eq(SourceTypes.S3),
             current.capture(),
             any(),
             any(),
@@ -191,7 +190,7 @@ class S3IndexingExecutorIntegrationTest {
             ingest -> {
               assertThat(ingest.filePath()).startsWith("s3://" + bucket + "/viele/");
               assertThat(ingest.changeMarker()).startsWith("e:").endsWith("|" + ingestSize(ingest));
-              assertThat(ingest.sourceType()).isEqualTo(DocumentSourceType.S3);
+              assertThat(ingest.sourceType()).isEqualTo(SourceTypes.S3);
               assertThat(ingest.context().containerKey()).isEqualTo(bucket);
             });
     assertThat(reconciledPaths(library, executor))
@@ -208,11 +207,7 @@ class S3IndexingExecutorIntegrationTest {
     store.deleteObject(bucket, vanished);
     Document vanishedRow =
         new Document(
-            "weg.txt",
-            "s3://" + bucket + "/viele/weg.txt",
-            "text/plain",
-            1L,
-            DocumentSourceType.S3);
+            "weg.txt", "s3://" + bucket + "/viele/weg.txt", "text/plain", 1L, SourceTypes.S3);
     storedDocuments.add(vanishedRow);
     UUID secondJob = UUID.randomUUID();
     S3IndexingExecutor secondRun = executor();

@@ -1,6 +1,5 @@
 package io.opaa.indexing.source.confluence;
 
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.indexing.attachment.AttachmentIndexer;
 import io.opaa.indexing.attachment.AttachmentOutcome;
 import io.opaa.indexing.attachment.AttachmentSource;
@@ -109,7 +108,7 @@ final class ConfluenceAttachmentIndexing {
                   String.valueOf(attachment.version()))),
           pageDocumentId,
           pagePath,
-          DocumentSourceType.CONFLUENCE);
+          ConfluenceSourceConnector.TYPE);
     } catch (BoundedDownloader.AttachmentTooLargeException e) {
       run.events.record(
           IndexingEventCategory.REJECTED, "Anhang überschreitet die Größengrenze", path);

@@ -1,7 +1,7 @@
 package io.opaa.library;
 
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.indexing.source.ConnectorData;
+import io.opaa.knowledge.SourceType;
 import java.net.URI;
 import java.util.UUID;
 
@@ -14,7 +14,7 @@ import java.util.UUID;
  *     none
  */
 public record SourceBrowseRequest(
-    DocumentSourceType sourceType,
+    SourceType sourceType,
     URI sourceUrl,
     String sourceCredentials,
     String sourceProxy,

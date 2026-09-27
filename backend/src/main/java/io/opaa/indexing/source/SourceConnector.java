@@ -20,11 +20,13 @@ public interface SourceConnector {
   SourceConnectorDescriptor descriptor();
 
   /**
-   * Reads connector settings as a request carries them into their normalised form, independent of
-   * any library and of the caller - a malformed value is refused before either is looked at.
+   * Reads connector settings as a request carries them into their normalised form; an unknown field
+   * or a malformed value is refused. By default a connector has no settings and refuses any but an
+   * empty object.
    */
   default ConnectorData readSettings(ConnectorData requested) {
-    return requested;
+    requested.requireOnly(Set.of());
+    return requested.isEmpty() ? null : requested;
   }
 
   /**

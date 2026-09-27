@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.api.types.DatePrecision;
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
 import io.opaa.api.types.MetadataOrigin;
 import io.opaa.api.types.SystemRole;
@@ -20,10 +19,12 @@ import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
+import io.opaa.knowledge.SourceType;
 import io.opaa.organization.Organization;
 import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.OpaaTestDirectory;
 import io.opaa.test.OwnLibraryFixtures;
+import io.opaa.test.SourceTypes;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -97,7 +98,7 @@ class MetadataBackfillServiceIntegrationTest {
                 null,
                 userId,
                 false,
-                DocumentSourceType.FILESYSTEM,
+                SourceTypes.FILESYSTEM,
                 classTempDir.toString(),
                 null,
                 null,
@@ -351,7 +352,7 @@ class MetadataBackfillServiceIntegrationTest {
     UUID entryId = UUID.randomUUID();
     insertRemoteDocument(
         entryId,
-        DocumentSourceType.RSS_FEED,
+        SourceTypes.RSS_FEED,
         "Gebührensatzung tritt in Kraft",
         "https://feed.example/eintrag-1",
         "2026-03-12T10:00:00Z");
@@ -377,7 +378,7 @@ class MetadataBackfillServiceIntegrationTest {
     UUID remoteId = UUID.randomUUID();
     insertRemoteDocument(
         remoteId,
-        DocumentSourceType.HTTP_DIRECTORY,
+        SourceTypes.HTTP_DIRECTORY,
         "2025-06-01_Vermerk_Haushalt.pdf",
         "https://files.example/2025-06-01_Vermerk_Haushalt.pdf",
         "Sun, 01 Jun 2025 10:00:00 GMT");
@@ -414,8 +415,7 @@ class MetadataBackfillServiceIntegrationTest {
       throws IOException {
     UUID pageId = UUID.randomUUID();
     String pageUrl = "https://wiki.example/pages/viewpage.action?pageId=4711";
-    insertRemoteDocument(
-        pageId, DocumentSourceType.CONFLUENCE, "Gebuehrensatzung 2024", pageUrl, "6");
+    insertRemoteDocument(pageId, SourceTypes.CONFLUENCE, "Gebuehrensatzung 2024", pageUrl, "6");
 
     MetadataBackfillResult result =
         backfillService.backfillBatch(Organization.DEFAULT_ID, library.getId(), 10);
@@ -506,14 +506,14 @@ class MetadataBackfillServiceIntegrationTest {
         persistedIndexedDocument(
             "dienstanweisung.eml",
             emlFile.toAbsolutePath().toString(),
-            DocumentSourceType.FILESYSTEM,
+            SourceTypes.FILESYSTEM,
             checksumService.computeSha256(emlFile),
             null);
     Document attachment =
         persistedIndexedDocument(
             attachmentName,
             emlFile.toAbsolutePath() + "/0/" + attachmentName,
-            DocumentSourceType.FILESYSTEM,
+            SourceTypes.FILESYSTEM,
             checksumService.computeSha256(pdf),
             mail.getId());
     seedChunk(attachment.getId(), "alter Anhang-Chunk");
@@ -541,7 +541,7 @@ class MetadataBackfillServiceIntegrationTest {
     UUID mailId = UUID.randomUUID();
     insertRemoteDocument(
         mailId,
-        DocumentSourceType.HTTP_DIRECTORY,
+        SourceTypes.HTTP_DIRECTORY,
         "post.eml",
         "https://files.example/post.eml",
         "Mon, 01 Sep 2026 10:00:00 GMT",
@@ -549,7 +549,7 @@ class MetadataBackfillServiceIntegrationTest {
     UUID attachmentId = UUID.randomUUID();
     insertRemoteDocument(
         attachmentId,
-        DocumentSourceType.HTTP_DIRECTORY,
+        SourceTypes.HTTP_DIRECTORY,
         "anlage.pdf",
         "https://files.example/post.eml/0/anlage.pdf",
         null,
@@ -629,7 +629,7 @@ class MetadataBackfillServiceIntegrationTest {
 
   private void insertRemoteDocument(
       UUID documentId,
-      DocumentSourceType sourceType,
+      SourceType sourceType,
       String fileName,
       String filePath,
       String lastModifiedRemote) {
@@ -638,7 +638,7 @@ class MetadataBackfillServiceIntegrationTest {
 
   private void insertRemoteDocument(
       UUID documentId,
-      DocumentSourceType sourceType,
+      SourceType sourceType,
       String fileName,
       String filePath,
       String lastModifiedRemote,
@@ -653,7 +653,7 @@ class MetadataBackfillServiceIntegrationTest {
         filePath,
         "checksum-" + documentId,
         lastModifiedRemote,
-        sourceType.name(),
+        sourceType.key(),
         library.getId(),
         Organization.DEFAULT_ID,
         parentDocumentId);
@@ -662,7 +662,7 @@ class MetadataBackfillServiceIntegrationTest {
   private Document persistedIndexedDocument(
       String fileName,
       String filePath,
-      DocumentSourceType sourceType,
+      SourceType sourceType,
       String checksum,
       UUID parentDocumentId) {
     Document document =

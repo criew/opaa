@@ -6,6 +6,7 @@ import LibraryCreatePage from './LibraryCreatePage'
 import { useLibraryStore } from '../stores/libraryStore'
 import { useIndexingStore } from '../stores/indexingStore'
 import { capabilityMissingMessage } from '../utils/labels'
+import { mockSourceTypes } from '../mocks/fixtures'
 
 const mockNavigate = vi.fn()
 
@@ -20,6 +21,8 @@ const {
   mockTestLibrarySource,
   mockListConfluenceSpaces,
   mockListS3Buckets,
+  mockBrowseSource,
+  mockListSourceTypes,
   mockGetUserSummaries,
   mockUpsertAssetGrant,
   mockSearchSelectableGroups,
@@ -29,6 +32,8 @@ const {
   mockTestLibrarySource: vi.fn(),
   mockListConfluenceSpaces: vi.fn(),
   mockListS3Buckets: vi.fn(),
+  mockBrowseSource: vi.fn(),
+  mockListSourceTypes: vi.fn(),
   mockGetUserSummaries: vi.fn().mockResolvedValue([]),
   mockUpsertAssetGrant: vi.fn(),
   mockSearchSelectableGroups: vi.fn(),
@@ -44,8 +49,8 @@ vi.mock('../services/api', async () => {
     upsertAssetGrant: mockUpsertAssetGrant,
     searchSelectableGroups: mockSearchSelectableGroups,
     testLibrarySource: mockTestLibrarySource,
-    listConfluenceSpaces: mockListConfluenceSpaces,
-    listS3Buckets: mockListS3Buckets,
+    browseSource: mockBrowseSource,
+    listSourceTypes: mockListSourceTypes,
   }
 })
 
@@ -54,8 +59,11 @@ const mockTriggerIndexing = vi.fn().mockResolvedValue(undefined)
 
 type User = ReturnType<typeof userEvent.setup>
 
-function renderPage() {
-  return renderWithProviders(<LibraryCreatePage />, { withRouter: true })
+/** Renders the wizard and waits for its tiles, which follow GET /source-types (ADR-0038). */
+async function renderPage() {
+  const rendered = renderWithProviders(<LibraryCreatePage />, { withRouter: true })
+  await screen.findByRole('radiogroup', { name: 'Art des Wissens wählen' })
+  return rendered
 }
 
 function next(user: User) {
@@ -88,14 +96,61 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       'CREATE_CONNECTOR_LIBRARY',
     ])
     useLibraryStore.setState({ createNewLibrary: mockCreateNewLibrary })
+    mockListSourceTypes.mockResolvedValue(mockSourceTypes)
+    // the per-connector listings of the forms, answered in the shape of the one browse endpoint
+    mockBrowseSource.mockImplementation(async (sourceType: string, request: unknown) => {
+      if (sourceType === 'CONFLUENCE') {
+        const { spaces } = await mockListConfluenceSpaces(request)
+        return { complete: true, entries: spaces }
+      }
+      const { listingPermitted, buckets, message } = await mockListS3Buckets(request)
+      return {
+        complete: listingPermitted,
+        entries: buckets.map((key: string) => ({ key })),
+        message,
+      }
+    })
     useIndexingStore.setState({ triggerIndexing: mockTriggerIndexing })
+  })
+
+  // ADR-0038: the tiles follow GET /source-types; a type without a form in this client is shown
+  // under its own name and locked, with the reason as text.
+  it('shows a source type the client has no form for as a locked tile with its reason', async () => {
+    mockListSourceTypes.mockResolvedValue([
+      ...mockSourceTypes,
+      {
+        type: 'PROBE',
+        displayName: 'Testquelle',
+        indexingRun: false,
+        uploads: false,
+        pushIntake: false,
+        browsable: false,
+      },
+    ])
+    await renderPage()
+
+    const tile = screen.getByRole('radio', { name: /Testquelle/ })
+    expect(tile).toBeDisabled()
+    expect(tile).toHaveTextContent(
+      'Für diese Quellart gibt es in dieser Oberfläche keine Eingabemaske.',
+    )
+    expect(screen.getByRole('radio', { name: /Upload/ })).toBeEnabled()
+  })
+
+  it('names a failed source-type list and does not go on with the upload library', async () => {
+    mockListSourceTypes.mockRejectedValue(new Error('Quellarten konnten nicht geladen werden'))
+    renderWithProviders(<LibraryCreatePage />, { withRouter: true })
+
+    expect(await screen.findByText('Quellarten konnten nicht geladen werden')).toBeInTheDocument()
+    expect(screen.queryByRole('radiogroup')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Weiter' })).toBeDisabled()
   })
 
   // #1942: Jeder Schritt trägt den Namen des Reiters, den er in der Detailansicht bekommt - und
   // eine Upload-Bibliothek hat keine Quelle, also auch keinen Schritt dafür.
   it('names the steps after the tabs and drops "Quelle" for an upload library', async () => {
     const user = userEvent.setup()
-    renderPage()
+    await renderPage()
 
     expect(screen.getByText('1 · Art des Wissens')).toBeInTheDocument()
     expect(screen.getByText('2 · Name & Beschreibung')).toBeInTheDocument()
@@ -110,7 +165,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
 
   it('blocks Weiter without a name and says so', async () => {
     const user = userEvent.setup()
-    renderPage()
+    await renderPage()
 
     await next(user)
     await next(user)
@@ -120,7 +175,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
 
   it('carries the focus to the heading of the step just entered', async () => {
     const user = userEvent.setup()
-    renderPage()
+    await renderPage()
 
     await next(user)
 
@@ -131,7 +186,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
   describe('Anlegerechte (#1813, ADR-0036 Entscheidung 5)', () => {
     it('disables the tiles of a kind the caller may not create, with the reason on the tile', async () => {
       mockGetMyCapabilities.mockResolvedValue(['CREATE_CONNECTOR_LIBRARY'])
-      renderPage()
+      await renderPage()
 
       const upload = await screen.findByRole('radio', { name: /Upload/ })
       expect(upload).toBeDisabled()
@@ -142,7 +197,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
     it('names the connector right once a connector source is chosen', async () => {
       mockGetMyCapabilities.mockResolvedValue(['CREATE_LIBRARY'])
       const user = userEvent.setup()
-      renderPage()
+      await renderPage()
 
       await waitFor(() => expect(screen.getByRole('radio', { name: /Dateisystem/ })).toBeDisabled())
       expect(screen.getByRole('radio', { name: /Upload/ })).toBeEnabled()
@@ -155,7 +210,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
     // ausgewählt stehen bleiben - sonst führte „Weiter" in einen Pfad, der nie anlegen kann.
     it('moves the selection off a tile that turns out to be locked', async () => {
       mockGetMyCapabilities.mockResolvedValue(['CREATE_CONNECTOR_LIBRARY'])
-      renderPage()
+      await renderPage()
 
       // Die erste erlaubte Kachel rückt nach; die Schrittleiste führt damit wieder „Quelle".
       await waitFor(() =>
@@ -177,7 +232,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
   it('moves through the tiles with the arrow keys and skips a locked one', async () => {
     mockGetMyCapabilities.mockResolvedValue(['CREATE_CONNECTOR_LIBRARY'])
     const user = userEvent.setup()
-    renderPage()
+    await renderPage()
 
     await waitFor(() => expect(screen.getByRole('radio', { name: /Upload/ })).toBeDisabled())
     const filesystem = screen.getByRole('radio', { name: /Dateisystem/ })
@@ -212,7 +267,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
     ])
     mockUpsertAssetGrant.mockResolvedValue({})
     const user = userEvent.setup()
-    renderPage()
+    await renderPage()
 
     await next(user)
     await nameItAndContinue(user, 'Rechtsquellen Soziales')
@@ -233,7 +288,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
   // #1942: Der Katalog-Schalter ist neu im Assistenten und wird beim Anlegen mitgesetzt.
   it('sets the catalog switch together with the library', async () => {
     const user = userEvent.setup()
-    renderPage()
+    await renderPage()
 
     await next(user)
     await nameItAndContinue(user, 'Rechtsquellen Soziales')
@@ -253,7 +308,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
     ])
     mockUpsertAssetGrant.mockRejectedValueOnce(new Error('abgelehnt'))
     const user = userEvent.setup()
-    renderPage()
+    await renderPage()
 
     await next(user)
     await nameItAndContinue(user, 'Rechtsquellen Soziales')
@@ -293,7 +348,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       },
     ])
     const user = userEvent.setup()
-    renderPage()
+    await renderPage()
 
     await next(user)
     await nameItAndContinue(user, 'Rechtsquellen Soziales')
@@ -316,7 +371,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
   describe('Zeitplan und Sofortstart im Assistenten (#1942)', () => {
     it('sets the schedule together with the library, for a connector type that never had one here', async () => {
       const user = userEvent.setup()
-      renderPage()
+      await renderPage()
 
       await chooseType(user, /Dateisystem/)
       await user.type(screen.getByLabelText(/Verzeichnispfad/), '/data/dokumente')
@@ -340,7 +395,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
 
     it('sends no schedule at all for an upload library', async () => {
       const user = userEvent.setup()
-      renderPage()
+      await renderPage()
 
       await next(user)
       await nameItAndContinue(user, 'Handakte')
@@ -360,7 +415,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
 
     async function openS3Step() {
       const user = userEvent.setup()
-      renderPage()
+      await renderPage()
       await chooseType(user, /S3-Objektspeicher/)
       return user
     }
@@ -384,7 +439,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       expect(screen.getByText('Access Key ist erforderlich')).toBeInTheDocument()
     }, 15000)
 
-    it('creates a MinIO library with the template values and sends s3Settings', async () => {
+    it('creates a MinIO library with the template values and sends its settings', async () => {
       // the bucket suggestion itself is covered in S3SourceForm.test.tsx; this flow types by hand
       const user = await openS3Step()
       await user.type(screen.getByLabelText('Endpoint'), 'https://minio.intern.example:9000')
@@ -408,7 +463,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
             sourceUrl: 'https://minio.intern.example:9000',
             sourceCredentials: 'AKIAEXAMPLE:geheim',
             sourceInsecureSsl: false,
-            s3Settings: {
+            sourceSettings: {
               region: 'us-east-1',
               pathStyle: true,
               scopes: [
@@ -421,7 +476,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
           }),
         ),
       )
-      expect(mockCreateNewLibrary.mock.calls[0][0]).not.toHaveProperty('confluenceSpaces')
+      expect(mockCreateNewLibrary.mock.calls[0][0].sourceSettings).not.toHaveProperty('spaces')
       // the "Erste Indizierung sofort ..." switch defaults to on: the full sync starts right after
       // creation, before the navigation to the detail page
       expect(mockTriggerIndexing).toHaveBeenCalledWith('lib-neu', 'S3')
@@ -447,7 +502,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
           expect.objectContaining({
             sourceType: 'S3',
             sourceUrl: 'https://s3.eu-central-1.amazonaws.com',
-            s3Settings: expect.objectContaining({
+            sourceSettings: expect.objectContaining({
               region: 'eu-central-1',
               pathStyle: false,
               scopes: [{ bucket: 'verwaltung-dokumente', prefix: null }],
@@ -496,7 +551,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
 
     async function openConfluenceStep() {
       const user = userEvent.setup()
-      renderPage()
+      await renderPage()
       await chooseType(user, /Confluence/)
       return user
     }
@@ -504,7 +559,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
     it('detects the edition before asking for credentials and shows Cloud fields for Cloud', async () => {
       mockTestLibrarySource.mockResolvedValueOnce({
         reachable: true,
-        confluenceEdition: 'CLOUD',
+        details: { edition: 'CLOUD' },
         credentialsVerified: false,
         message:
           'Confluence Cloud erkannt. Geben Sie E-Mail-Adresse und API-Token des Dienstkontos ein.',
@@ -544,7 +599,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
     it('shows the PAT field for Data Center and refuses to continue without a tested selection', async () => {
       mockTestLibrarySource.mockResolvedValueOnce({
         reachable: true,
-        confluenceEdition: 'DATA_CENTER',
+        details: { edition: 'DATA_CENTER' },
         credentialsVerified: false,
         message: 'Confluence Data Center erkannt.',
       })
@@ -570,13 +625,13 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       mockTestLibrarySource
         .mockResolvedValueOnce({
           reachable: true,
-          confluenceEdition: 'DATA_CENTER',
+          details: { edition: 'DATA_CENTER' },
           credentialsVerified: false,
           message: 'Confluence Data Center erkannt.',
         })
         .mockResolvedValueOnce({
           reachable: true,
-          confluenceEdition: 'DATA_CENTER',
+          details: { edition: 'DATA_CENTER' },
           credentialsVerified: true,
           message: 'Confluence Data Center erreichbar, Zugangsdaten gültig.',
         })
@@ -594,7 +649,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
         sourceUrl: 'https://wiki.behoerde.example/confluence',
         sourceProxy: undefined,
         sourceInsecureSsl: false,
-        confluenceEdition: 'DATA_CENTER',
+        sourceSettings: { edition: 'DATA_CENTER' },
         sourceCredentials: 'pat-geheim',
         libraryId: undefined,
       })
@@ -611,7 +666,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
 
       // Die ganze Anfrage, nicht nur ein Ausschnitt: Ein Feld, das der Anlege-Endpunkt gar nicht
       // annimmt, fällt nur auf, wenn der Vergleich auch das Zuviel sieht. Ohne eigenen
-      // Vollabgleich-Rhythmus darf `confluenceFullSyncIntervalDays` deshalb gar nicht mitgehen -
+      // Vollabgleich-Rhythmus darf `sourceSettings.fullSyncIntervalDays` deshalb gar nicht mitgehen -
       // die 0 („zurück zur Vorgabe der Instanz") kennt nur der Bearbeiten-Weg, das Anlegen weist
       // sie mit 400 ab (KnowledgeLibraryService: 1 bis 365).
       await waitFor(() => expect(mockCreateNewLibrary).toHaveBeenCalled())
@@ -626,8 +681,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
         sourceProxy: undefined,
         sourceCredentials: 'pat-geheim',
         sourceInsecureSsl: false,
-        confluenceEdition: 'DATA_CENTER',
-        confluenceSpaces: [{ key: 'BAU', name: 'Bauamt' }],
+        sourceSettings: { edition: 'DATA_CENTER', spaces: [{ key: 'BAU', name: 'Bauamt' }] },
         schedule: { frequency: 'DISABLED', hour: null, minute: null, weekday: undefined },
       })
       // The "Erste Indizierung sofort ..." switch defaults to on - the first run starts right
@@ -642,13 +696,13 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       mockTestLibrarySource
         .mockResolvedValueOnce({
           reachable: true,
-          confluenceEdition: 'DATA_CENTER',
+          details: { edition: 'DATA_CENTER' },
           credentialsVerified: false,
           message: 'Confluence Data Center erkannt.',
         })
         .mockResolvedValueOnce({
           reachable: true,
-          confluenceEdition: 'DATA_CENTER',
+          details: { edition: 'DATA_CENTER' },
           credentialsVerified: true,
           message: 'Zugangsdaten gültig.',
         })
@@ -670,7 +724,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
 
       await waitFor(() => expect(mockCreateNewLibrary).toHaveBeenCalled())
       expect(mockCreateNewLibrary.mock.calls[0][0]).toMatchObject({
-        confluenceFullSyncIntervalDays: 14,
+        sourceSettings: { fullSyncIntervalDays: 14 },
       })
     }, 25000)
 
@@ -678,13 +732,13 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       mockTestLibrarySource
         .mockResolvedValueOnce({
           reachable: true,
-          confluenceEdition: 'DATA_CENTER',
+          details: { edition: 'DATA_CENTER' },
           credentialsVerified: false,
           message: 'Confluence Data Center erkannt.',
         })
         .mockResolvedValueOnce({
           reachable: true,
-          confluenceEdition: 'DATA_CENTER',
+          details: { edition: 'DATA_CENTER' },
           credentialsVerified: true,
           message: 'Confluence Data Center erreichbar, Zugangsdaten gültig.',
         })
@@ -716,13 +770,13 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       mockTestLibrarySource
         .mockResolvedValueOnce({
           reachable: true,
-          confluenceEdition: 'CLOUD',
+          details: { edition: 'CLOUD' },
           credentialsVerified: false,
           message: 'Confluence Cloud erkannt.',
         })
         .mockResolvedValueOnce({
           reachable: true,
-          confluenceEdition: 'CLOUD',
+          details: { edition: 'CLOUD' },
           credentialsVerified: true,
           message: 'Zugangsdaten gültig.',
         })
@@ -750,7 +804,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
     it('shows a blocked or unreachable address as an error with the backend wording, and never a credentials field', async () => {
       mockTestLibrarySource.mockResolvedValueOnce({
         reachable: false,
-        confluenceEdition: null,
+        details: { edition: null },
         credentialsVerified: false,
         message:
           'Die Adresse zeigt auf ein internes Ziel. Interne Ziele müssen in OPAA_INDEXING_TARGET_ALLOWLIST freigegeben sein.',
@@ -771,7 +825,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
     it('keeps the space picker usable after "Zurück" re-enters the source step', async () => {
       mockTestLibrarySource.mockResolvedValue({
         reachable: true,
-        confluenceEdition: 'DATA_CENTER',
+        details: { edition: 'DATA_CENTER' },
         credentialsVerified: true,
         message: 'ok',
       })
@@ -803,7 +857,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       mockTestLibrarySource
         .mockResolvedValueOnce({
           reachable: true,
-          confluenceEdition: 'DATA_CENTER',
+          details: { edition: 'DATA_CENTER' },
           credentialsVerified: false,
           message: 'erkannt',
         })
@@ -823,7 +877,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       await act(async () => {
         answer({
           reachable: true,
-          confluenceEdition: 'DATA_CENTER',
+          details: { edition: 'DATA_CENTER' },
           credentialsVerified: true,
           message: 'Zugangsdaten gültig.',
         })
@@ -841,7 +895,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
     it('offers a retry when the space listing fails, keeping the selection visible', async () => {
       mockTestLibrarySource.mockResolvedValue({
         reachable: true,
-        confluenceEdition: 'DATA_CENTER',
+        details: { edition: 'DATA_CENTER' },
         credentialsVerified: true,
         message: 'ok',
       })
@@ -869,7 +923,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
 
   it('switches the connection form with the chosen kind and validates its fields', async () => {
     const user = userEvent.setup()
-    renderPage()
+    await renderPage()
 
     const radiogroup = screen.getByRole('radiogroup', { name: 'Art des Wissens wählen' })
     expect(radiogroup).toBeInTheDocument()
@@ -897,7 +951,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       reachable: true,
       message: 'Feed erreichbar, 12 Einträge gefunden.',
     })
-    renderPage()
+    await renderPage()
 
     await chooseType(user, /RSS-Feed/)
     await user.type(screen.getByLabelText(/Adresse/), 'https://example.test/feed.xml')
@@ -914,7 +968,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
 
   it('keeps entered values when navigating back', async () => {
     const user = userEvent.setup()
-    renderPage()
+    await renderPage()
 
     await chooseType(user, /Webverzeichnis/)
     await user.type(
@@ -935,7 +989,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
   // level, because there is none to pick.
   it('creates the library and navigates to its detail page', async () => {
     const user = userEvent.setup()
-    renderPage()
+    await renderPage()
 
     await next(user)
     await nameItAndContinue(user, 'Rechtsquellen Soziales')
@@ -967,7 +1021,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       },
     ])
     const user = userEvent.setup()
-    renderPage()
+    await renderPage()
 
     await next(user)
     await nameItAndContinue(user, 'Team-Bibliothek')
@@ -989,7 +1043,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
 
   it('shows a visible hint instead of a silent empty picker when the caller has no groups', async () => {
     const user = userEvent.setup()
-    renderPage()
+    await renderPage()
 
     await next(user)
     await nameItAndContinue(user, 'Rechtsquellen Soziales')
@@ -1000,7 +1054,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
 
   it('asks before discarding entered values on cancel', async () => {
     const user = userEvent.setup()
-    renderPage()
+    await renderPage()
 
     await next(user)
     await user.type(screen.getByLabelText(/^Name/), 'R')

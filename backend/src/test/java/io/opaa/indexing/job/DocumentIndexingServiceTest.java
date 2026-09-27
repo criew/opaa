@@ -11,7 +11,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.AssetRole;
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.User;
@@ -21,12 +20,13 @@ import io.opaa.common.NotFoundException;
 import io.opaa.common.ServiceUnavailableException;
 import io.opaa.common.ValidationException;
 import io.opaa.indexing.source.IndexingSourceExecutorRegistry;
-import io.opaa.indexing.source.IndexingSourceType;
+import io.opaa.indexing.source.SourceConnectorStubs;
 import io.opaa.indexing.source.SourceIndexingExecutor;
 import io.opaa.indexing.source.VanishedDocumentPolicy;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.LibraryAccessService;
+import io.opaa.test.SourceTypes;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -68,11 +68,11 @@ class DocumentIndexingServiceTest {
 
   @BeforeEach
   void setUp() {
-    when(asyncIndexingExecutor.sourceType()).thenReturn(IndexingSourceType.FILESYSTEM);
-    when(urlIndexingExecutor.sourceType()).thenReturn(IndexingSourceType.HTTP_DIRECTORY);
-    when(rssFeedIndexingExecutor.sourceType()).thenReturn(IndexingSourceType.RSS_FEED);
-    when(confluenceIndexingExecutor.sourceType()).thenReturn(IndexingSourceType.CONFLUENCE);
-    when(s3IndexingExecutor.sourceType()).thenReturn(IndexingSourceType.S3);
+    when(asyncIndexingExecutor.sourceType()).thenReturn(SourceTypes.FILESYSTEM);
+    when(urlIndexingExecutor.sourceType()).thenReturn(SourceTypes.HTTP_DIRECTORY);
+    when(rssFeedIndexingExecutor.sourceType()).thenReturn(SourceTypes.RSS_FEED);
+    when(confluenceIndexingExecutor.sourceType()).thenReturn(SourceTypes.CONFLUENCE);
+    when(s3IndexingExecutor.sourceType()).thenReturn(SourceTypes.S3);
     // ADR-0023, Entscheidung 4: without a requested mode the executor decides; the mocks
     // answer like the one-mode executors do
     lenient().when(asyncIndexingExecutor.defaultRunMode(any())).thenReturn(IndexingRunMode.FULL);
@@ -87,7 +87,8 @@ class DocumentIndexingServiceTest {
                 urlIndexingExecutor,
                 rssFeedIndexingExecutor,
                 confluenceIndexingExecutor,
-                s3IndexingExecutor));
+                s3IndexingExecutor),
+            SourceConnectorStubs.registry());
     service =
         new DocumentIndexingService(
             indexingJobService,
@@ -114,7 +115,7 @@ class DocumentIndexingServiceTest {
             null,
             UUID.randomUUID(),
             false,
-            DocumentSourceType.FILESYSTEM,
+            SourceTypes.FILESYSTEM,
             "/data/docs",
             null,
             null,
@@ -277,7 +278,7 @@ class DocumentIndexingServiceTest {
             null,
             UUID.randomUUID(),
             false,
-            DocumentSourceType.HTTP_DIRECTORY,
+            SourceTypes.HTTP_DIRECTORY,
             null,
             "https://example.com/files/",
             null,
@@ -309,7 +310,7 @@ class DocumentIndexingServiceTest {
             null,
             UUID.randomUUID(),
             false,
-            DocumentSourceType.RSS_FEED,
+            SourceTypes.RSS_FEED,
             null,
             "https://example.com/feed.xml",
             null,
@@ -388,7 +389,8 @@ class DocumentIndexingServiceTest {
 
   @Test
   void aSourceTypeWithoutARegisteredExecutorFailsAtStartupWithAClearErrorInsteadOfAnNpeAtRuntime() {
-    assertThatThrownBy(() -> new IndexingSourceExecutorRegistry(List.of()))
+    assertThatThrownBy(
+            () -> new IndexingSourceExecutorRegistry(List.of(), SourceConnectorStubs.registry()))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("FILESYSTEM")
         .hasMessageContaining("HTTP_DIRECTORY")

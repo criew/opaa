@@ -1,10 +1,10 @@
 package io.opaa.library;
 
 import io.opaa.api.types.AssetOwnerType;
-import io.opaa.api.types.ConfluenceEdition;
-import io.opaa.api.types.DocumentSourceType;
+import io.opaa.indexing.source.confluence.ConfluenceEdition;
 import io.opaa.indexing.source.confluence.ConfluenceSpaceSelection;
 import io.opaa.indexing.source.s3.S3SourceSettings;
+import io.opaa.knowledge.SourceType;
 import java.net.URI;
 import java.util.List;
 import java.util.UUID;
@@ -21,7 +21,7 @@ public final class LibraryCreationBuilder {
   private AssetOwnerType ownerType;
   private UUID ownerId;
   private Boolean listed;
-  private final DocumentSourceType sourceType;
+  private final SourceType sourceType;
   private String sourcePath;
   private URI sourceUrl;
   private String sourceProxy;
@@ -33,12 +33,12 @@ public final class LibraryCreationBuilder {
   private S3SourceSettings s3Settings;
   private LibraryScheduleUpdate schedule;
 
-  private LibraryCreationBuilder(String name, DocumentSourceType sourceType) {
+  private LibraryCreationBuilder(String name, SourceType sourceType) {
     this.name = name;
     this.sourceType = sourceType;
   }
 
-  public static LibraryCreationBuilder libraryCreation(String name, DocumentSourceType sourceType) {
+  public static LibraryCreationBuilder libraryCreation(String name, SourceType sourceType) {
     return new LibraryCreationBuilder(name, sourceType);
   }
 
@@ -125,7 +125,7 @@ public final class LibraryCreationBuilder {
         sourceProxy,
         sourceCredentials,
         sourceInsecureSsl,
-        FlatSourceSettingsFixture.of(
+        TestSourceSettings.of(
             confluenceEdition, confluenceSpaces, confluenceFullSyncIntervalDays, s3Settings),
         schedule);
   }

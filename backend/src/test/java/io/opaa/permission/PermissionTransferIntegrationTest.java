@@ -12,7 +12,6 @@ import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.Capability;
 import io.opaa.api.types.CapabilitySubjectType;
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.PermissionSubjectType;
 import io.opaa.api.types.PermissionTransferScope;
 import io.opaa.api.types.SpaceRole;
@@ -33,6 +32,7 @@ import io.opaa.group.GroupStewardRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.LibraryAccessService;
+import io.opaa.knowledge.SourceType;
 import io.opaa.library.KnowledgeLibraryService;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
@@ -1014,7 +1014,7 @@ class PermissionTransferIntegrationTest {
   private UUID libraryCreatedBy(CurrentUser owner) {
     return libraryService
         .createLibrary(
-            libraryCreation("Eigene Bibliothek " + UUID.randomUUID(), DocumentSourceType.UPLOAD)
+            libraryCreation("Eigene Bibliothek " + UUID.randomUUID(), SourceType.UPLOAD)
                 .ownerType(AssetOwnerType.USER)
                 .ownerId(owner.id())
                 .build(),
@@ -1026,7 +1026,7 @@ class PermissionTransferIntegrationTest {
   private UUID groupLibraryCreatedBy(CurrentUser creator, UUID ownerGroupId) {
     return libraryService
         .createLibrary(
-            libraryCreation("Referatsbibliothek " + UUID.randomUUID(), DocumentSourceType.UPLOAD)
+            libraryCreation("Referatsbibliothek " + UUID.randomUUID(), SourceType.UPLOAD)
                 .ownerType(AssetOwnerType.GROUP)
                 .ownerId(ownerGroupId)
                 .build(),

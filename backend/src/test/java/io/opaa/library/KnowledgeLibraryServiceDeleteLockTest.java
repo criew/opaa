@@ -8,7 +8,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.AssetRole;
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.SystemRole;
 import io.opaa.asset.AssetGrantService;
 import io.opaa.asset.AssetOwnerNames;
@@ -40,6 +39,7 @@ import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.LibraryAccessService;
 import io.opaa.knowledge.LibraryFolderRepository;
 import io.opaa.knowledge.LibraryStorageQuotaService;
+import io.opaa.knowledge.SourceType;
 import io.opaa.permission.AssetGrantRepository;
 import io.opaa.permission.AssetOwnershipHistoryService;
 import io.opaa.permission.CapabilityService;
@@ -163,7 +163,7 @@ class KnowledgeLibraryServiceDeleteLockTest {
             null,
             ownerId,
             false,
-            DocumentSourceType.UPLOAD,
+            SourceType.UPLOAD,
             null,
             null,
             null,

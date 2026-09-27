@@ -15,8 +15,6 @@ import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.Capability;
-import io.opaa.api.types.ConfluenceEdition;
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.AccessDeniedException;
@@ -25,6 +23,7 @@ import io.opaa.indexing.source.SourceConnectionTestResult;
 import io.opaa.indexing.source.SourceListing;
 import io.opaa.indexing.source.TestSourceConnectors;
 import io.opaa.indexing.source.confluence.ConfluenceConnectionService;
+import io.opaa.indexing.source.confluence.ConfluenceEdition;
 import io.opaa.indexing.source.confluence.ConfluenceSpace;
 import io.opaa.indexing.source.confluence.ConfluenceSpaceSelection;
 import io.opaa.indexing.source.confluence.ConfluenceTestSettings;
@@ -32,6 +31,7 @@ import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.LibraryAccessService;
 import io.opaa.permission.CapabilityService;
+import io.opaa.test.SourceTypes;
 import java.net.URI;
 import java.util.List;
 import java.util.Optional;
@@ -84,7 +84,7 @@ class SourceConnectionTestServiceConfluenceTest {
             null,
             currentUserId,
             false,
-            DocumentSourceType.CONFLUENCE,
+            SourceTypes.CONFLUENCE,
             null,
             url,
             "proxy.stored.example:3128",
@@ -107,7 +107,7 @@ class SourceConnectionTestServiceConfluenceTest {
     SourceConnectionTestResult result =
         service.test(
             new SourceConnectionTest(
-                DocumentSourceType.CONFLUENCE,
+                SourceTypes.CONFLUENCE,
                 null,
                 URI.create("https://wiki.example.org"),
                 null,
@@ -129,7 +129,7 @@ class SourceConnectionTestServiceConfluenceTest {
             () ->
                 service.test(
                     new SourceConnectionTest(
-                        DocumentSourceType.CONFLUENCE,
+                        SourceTypes.CONFLUENCE,
                         "/srv/docs",
                         URI.create("https://wiki.example.org"),
                         null,
@@ -155,7 +155,7 @@ class SourceConnectionTestServiceConfluenceTest {
             () ->
                 service.browse(
                     new SourceBrowseRequest(
-                        DocumentSourceType.CONFLUENCE,
+                        SourceTypes.CONFLUENCE,
                         URI.create("https://wiki.example.org"),
                         "pat",
                         null,
@@ -172,7 +172,7 @@ class SourceConnectionTestServiceConfluenceTest {
             () ->
                 service.browse(
                     new SourceBrowseRequest(
-                        DocumentSourceType.CONFLUENCE,
+                        SourceTypes.CONFLUENCE,
                         URI.create("https://wiki.example.org"),
                         null,
                         null,
@@ -198,7 +198,7 @@ class SourceConnectionTestServiceConfluenceTest {
     SourceListing spaces =
         service.browse(
             new SourceBrowseRequest(
-                DocumentSourceType.CONFLUENCE,
+                SourceTypes.CONFLUENCE,
                 URI.create("https://wiki.example.org/other"),
                 null,
                 "proxy.attacker.example:8080",
@@ -230,7 +230,7 @@ class SourceConnectionTestServiceConfluenceTest {
             () ->
                 service.browse(
                     new SourceBrowseRequest(
-                        DocumentSourceType.CONFLUENCE,
+                        SourceTypes.CONFLUENCE,
                         URI.create("https://other.example.org/confluence"),
                         null,
                         null,
@@ -250,7 +250,7 @@ class SourceConnectionTestServiceConfluenceTest {
         .thenThrow(new AccessDeniedException("Kein Zugriff auf diese Bibliothek"));
     SourceBrowseRequest listing =
         new SourceBrowseRequest(
-            DocumentSourceType.CONFLUENCE,
+            SourceTypes.CONFLUENCE,
             URI.create("https://wiki.example.org"),
             null,
             null,
@@ -271,7 +271,7 @@ class SourceConnectionTestServiceConfluenceTest {
             null,
             currentUserId,
             false,
-            DocumentSourceType.RSS_FEED,
+            SourceTypes.RSS_FEED,
             null,
             "https://wiki.example.org/feed.xml",
             null,
@@ -284,7 +284,7 @@ class SourceConnectionTestServiceConfluenceTest {
             () ->
                 service.browse(
                     new SourceBrowseRequest(
-                        DocumentSourceType.CONFLUENCE,
+                        SourceTypes.CONFLUENCE,
                         URI.create("https://wiki.example.org"),
                         null,
                         null,

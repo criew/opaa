@@ -6,7 +6,6 @@ import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.AuditObjectType;
 import io.opaa.api.types.AuditOutcome;
 import io.opaa.api.types.Capability;
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
 import io.opaa.api.types.ScheduleFrequency;
 import io.opaa.asset.AssetGrantService;
@@ -27,7 +26,6 @@ import io.opaa.indexing.job.JobStatus;
 import io.opaa.indexing.job.LibraryScheduleCodec;
 import io.opaa.indexing.metadata.CoreMetadataField;
 import io.opaa.indexing.source.ConnectorData;
-import io.opaa.indexing.source.PushIntake;
 import io.opaa.indexing.source.SourceConnector;
 import io.opaa.indexing.source.SourceConnectorDescriptor;
 import io.opaa.indexing.source.SourceConnectorRegistry;
@@ -40,6 +38,7 @@ import io.opaa.knowledge.LibraryAccessService;
 import io.opaa.knowledge.LibraryFolder;
 import io.opaa.knowledge.LibraryFolderRepository;
 import io.opaa.knowledge.LibraryStorageQuotaService;
+import io.opaa.knowledge.SourceType;
 import io.opaa.permission.AssetReach;
 import io.opaa.permission.CapabilityService;
 import io.opaa.permission.SuccessionFinding;
@@ -177,14 +176,13 @@ public class KnowledgeLibraryService {
   }
 
   /**
-   * Which capability a library of this source type needs (ADR-0036, Entscheidung 5). A library with
-   * an indexing run is its own capability because it reaches server paths and stored credentials; a
-   * missing source type - rejected by {@code validateSourceConfiguration} inside {@link
-   * #createLibrary} - takes the upload capability, so an unreadable request never decides which
-   * right is checked.
+   * Which capability a library of this source type needs (ADR-0036, Entscheidung 5). A connector
+   * library is its own capability because it reaches server paths and stored credentials; a missing
+   * source type - rejected by {@code validateSourceConfiguration} inside {@link #createLibrary} -
+   * takes the upload capability, so an unreadable request never decides which right is checked.
    */
-  private Capability capabilityFor(DocumentSourceType sourceType) {
-    return sourceType == null || !connectors.descriptor(sourceType).indexingRun()
+  private Capability capabilityFor(SourceType sourceType) {
+    return sourceType == null || connectors.descriptor(sourceType).uploads()
         ? Capability.CREATE_LIBRARY
         : Capability.CREATE_CONNECTOR_LIBRARY;
   }
@@ -265,7 +263,7 @@ public class KnowledgeLibraryService {
     // is append-only and never purged the way the library row itself can be (ADR-0018,
     // Entscheidung 4: credentials must appear in no log, and path/url are not "rechtlich
     // erheblich" - the same reasoning updateLibrary applies to the description).
-    payload.put("sourceType", library.getSourceType().name());
+    payload.put("sourceType", library.getSourceType().key());
     return payload;
   }
 
@@ -379,7 +377,7 @@ public class KnowledgeLibraryService {
     // Bestand and Loeschsemantik the way the ADR explicitly rules out. request.sourceType() is
     // optional purely so resending the current value (e.g. a naive client that echoes
     // LibraryDetail back) is not itself an error - only an actual change is rejected.
-    if (request.sourceType() != null && request.sourceType() != library.getSourceType()) {
+    if (request.sourceType() != null && !request.sourceType().equals(library.getSourceType())) {
       throw new ValidationException(
           "sourceType kann nach dem Anlegen der Bibliothek nicht mehr geändert werden");
     }
@@ -397,7 +395,6 @@ public class KnowledgeLibraryService {
     SourceConnector connector = connectors.connector(library.getSourceType());
     SourceSettings validatedSettings =
         connector.validateChange(library, requestedSettings, replacesSourceConfiguration);
-    request.connectorSettings().rejectForeign(library.getSourceType(), true);
     boolean replacesOwnSettings = requestedSettings.connectorSettings() != null;
     // #485: schedule follows the same replace-as-a-whole rule as the source configuration above -
     // only present when the caller actually intends to change it (LibraryUpdate.schedule), so a
@@ -539,7 +536,7 @@ public class KnowledgeLibraryService {
           "Nur die Systemverwaltung darf die Freigabe-Obergrenze einer Bibliothek setzen");
     }
     KnowledgeLibrary library = loadLibrary(libraryId, caller);
-    if (!hasIndexingRun(library)) {
+    if (acceptsUploads(library)) {
       throw new ValidationException(
           "Upload-Bibliotheken tragen keine Freigabe-Obergrenze - jedes Dokument wird ohnehin"
               + " einzeln von der Eigentümerin kuratiert");
@@ -609,7 +606,7 @@ public class KnowledgeLibraryService {
     // and vector store chunks) rather than being blocked.
     long documentCount = documentRepository.countByLibraryId(libraryId);
     long documentsRemoved = 0;
-    if (!hasIndexingRun(library)) {
+    if (acceptsUploads(library)) {
       if (documentCount > 0) {
         throw new ConflictException(
             "Die Bibliothek enthält noch Dokumente und kann nicht gelöscht werden");
@@ -1008,7 +1005,7 @@ public class KnowledgeLibraryService {
    * false} when omitted.
    */
   private SourceConfiguration validateSourceConfiguration(LibraryCreation request) {
-    DocumentSourceType sourceType = request.sourceType();
+    SourceType sourceType = request.sourceType();
     if (sourceType == null) {
       throw new ValidationException("sourceType ist erforderlich");
     }
@@ -1019,9 +1016,8 @@ public class KnowledgeLibraryService {
             blankToNull(request.sourceProxy()),
             blankToNull(request.sourceCredentials()),
             Boolean.TRUE.equals(request.sourceInsecureSsl()),
-            request.connectorSettings().addressedTo(sourceType, false));
+            readSettings(sourceType, request.sourceSettings()));
     SourceSettings validated = connectors.connector(sourceType).validate(requested);
-    request.connectorSettings().rejectForeign(sourceType, false);
     return new SourceConfiguration(sourceType, validated);
   }
 
@@ -1065,7 +1061,7 @@ public class KnowledgeLibraryService {
   private SourceSettings requestedSettingsChange(
       KnowledgeLibrary library, LibraryUpdate request, boolean replacesConnection) {
     ConnectorData connectorSettings =
-        request.connectorSettings().addressedTo(library.getSourceType(), true);
+        readSettings(library.getSourceType(), request.sourceSettings());
     if (!replacesConnection) {
       return new SourceSettings(null, null, null, null, false, connectorSettings);
     }
@@ -1085,9 +1081,16 @@ public class KnowledgeLibraryService {
         connectorSettings);
   }
 
-  /** Whether a run fills {@code library}, as its connector describes it. */
-  private boolean hasIndexingRun(KnowledgeLibrary library) {
-    return connectors.descriptor(library.getSourceType()).indexingRun();
+  /**
+   * The request's connector settings as {@code type}'s connector reads them; absent stays absent.
+   */
+  private ConnectorData readSettings(SourceType type, ConnectorData requested) {
+    return requested == null ? null : connectors.connector(type).readSettings(requested);
+  }
+
+  /** Whether {@code library} is curated through uploads, as its connector describes it. */
+  private boolean acceptsUploads(KnowledgeLibrary library) {
+    return connectors.descriptor(library.getSourceType()).uploads();
   }
 
   private String blankToNull(String value) {
@@ -1102,8 +1105,7 @@ public class KnowledgeLibraryService {
    * mirroring the database's own {@code chk_knowledge_libraries_schedule} (migration 054) as a
    * 400-before-insert.
    */
-  private ValidatedSchedule validateSchedule(
-      LibraryScheduleUpdate request, DocumentSourceType sourceType) {
+  private ValidatedSchedule validateSchedule(LibraryScheduleUpdate request, SourceType sourceType) {
     ScheduleFrequency frequency = request.frequency();
     if (frequency == null) {
       throw new ValidationException("frequency ist erforderlich");
@@ -1150,7 +1152,7 @@ public class KnowledgeLibraryService {
   private record ValidatedSchedule(boolean enabled, String cron) {}
 
   /** A validated {@link LibraryCreation}'s source type and settings, for the entity factories. */
-  private record SourceConfiguration(DocumentSourceType sourceType, SourceSettings settings) {
+  private record SourceConfiguration(SourceType sourceType, SourceSettings settings) {
 
     String sourcePath() {
       return settings.sourcePath();
@@ -1174,34 +1176,29 @@ public class KnowledgeLibraryService {
   }
 
   /**
-   * Generates a fresh push secret (#1140, ADR-0027 Entscheidung 6) for the push intake of {@code
-   * intakeType} - MANAGER or above, like every other change of the source configuration - stores it
-   * encrypted and returns the plaintext exactly once. A second call rotates: the previous secret
-   * stops authenticating with the commit. The audit entry names the field, never the value
-   * (ADR-0018, Entscheidung 4).
-   *
-   * @param intakeType the type whose intake the caller addresses; a library of another type is
-   *     refused with that intake's German 400
+   * Generates a fresh push secret (#1140, ADR-0027 Entscheidung 6) for the push intake of the
+   * library's connector - MANAGER or above, like every other change of the source configuration -
+   * stores it encrypted and returns the plaintext exactly once. A second call rotates: the previous
+   * secret stops authenticating with the commit. The audit entry names the connector's field for
+   * the secret, never the value (ADR-0018, Entscheidung 4). A library whose connector has no push
+   * intake is refused with a German 400.
    */
   @Transactional
-  public String generatePushSecret(
-      UUID libraryId, DocumentSourceType intakeType, CurrentUser caller) {
-    PushIntake intake = pushIntakeOf(intakeType);
-    KnowledgeLibrary library = requireLibraryWithPushIntake(libraryId, caller, intakeType, intake);
+  public String generatePushSecret(UUID libraryId, CurrentUser caller) {
+    KnowledgeLibrary library = requireManagedLibraryWithPushIntake(libraryId, caller);
     byte[] random = new byte[WEBHOOK_SECRET_BYTES];
     secureRandom.nextBytes(random);
     String secret = Base64.getUrlEncoder().withoutPadding().encodeToString(random);
     library.setWebhookSecret(secret);
     libraryRepository.save(library);
-    recordPushSecretChange(library, caller, intake);
+    recordPushSecretChange(library, caller);
     return secret;
   }
 
   /** Removes the push secret: the library's intake rejects every call from now on. */
   @Transactional
-  public void removePushSecret(UUID libraryId, DocumentSourceType intakeType, CurrentUser caller) {
-    PushIntake intake = pushIntakeOf(intakeType);
-    KnowledgeLibrary library = requireLibraryWithPushIntake(libraryId, caller, intakeType, intake);
+  public void removePushSecret(UUID libraryId, CurrentUser caller) {
+    KnowledgeLibrary library = requireManagedLibraryWithPushIntake(libraryId, caller);
     // Whether there is a secret to revoke is decided by the stored ciphertext, not by the entity
     // attribute: with the key missing the attribute reads null for a secret that still
     // authenticates once the key returns (#1806). The erasure carries the revocation; the entity
@@ -1211,31 +1208,23 @@ public class KnowledgeLibraryService {
     }
     library.setWebhookSecret(null);
     libraryRepository.save(library);
-    recordPushSecretChange(library, caller, intake);
+    recordPushSecretChange(library, caller);
   }
 
-  private PushIntake pushIntakeOf(DocumentSourceType intakeType) {
-    PushIntake intake = connectors.descriptor(intakeType).pushIntake();
-    if (intake == null) {
-      throw new IllegalStateException("The SourceConnector for " + intakeType + " has no intake");
-    }
-    return intake;
-  }
-
-  private KnowledgeLibrary requireLibraryWithPushIntake(
-      UUID libraryId, CurrentUser caller, DocumentSourceType intakeType, PushIntake intake) {
+  private KnowledgeLibrary requireManagedLibraryWithPushIntake(UUID libraryId, CurrentUser caller) {
     KnowledgeLibrary library = loadLibrary(libraryId, caller);
     accessService.requireRole(library, caller.id(), caller.isSystemAdmin(), AssetRole.MANAGER);
-    if (library.getSourceType() != intakeType) {
-      throw new ValidationException(intake.unavailableMessage(intakeType));
+    if (connectors.descriptor(library.getSourceType()).pushIntake() == null) {
+      throw new ValidationException(
+          "Für Bibliotheken vom Typ " + library.getSourceType() + " gibt es keinen Push-Eingang");
     }
     return library;
   }
 
   /** The audit names the secret's field, never the value. */
-  private void recordPushSecretChange(
-      KnowledgeLibrary library, CurrentUser caller, PushIntake intake) {
-    List<String> changedFields = List.of(intake.auditField());
+  private void recordPushSecretChange(KnowledgeLibrary library, CurrentUser caller) {
+    List<String> changedFields =
+        List.of(connectors.descriptor(library.getSourceType()).pushIntake().auditField());
     auditEventRecorder.recordUserAction(
         AuditEvent.builder()
             .organizationId(library.getOrganizationId())
@@ -1340,17 +1329,19 @@ public class KnowledgeLibraryService {
         storageQuotaService.quotaBytes(),
         storageQuotaService.usedBytes(library.getId()),
         externalAccessService.describe(library),
-        // #797: a library without a run never carries a cap narrower than the unrestricted default
+        // #797: an upload library never carries a cap narrower than the unrestricted default
         // (chk_knowledge_libraries_share_cap_upload_unrestricted) - null here rather than the
         // always-true value keeps a MANAGER from reading a ceiling into a library that in fact has
         // none.
-        descriptor.indexingRun() ? library.isAllAccountsGrantAllowed() : null,
-        descriptor.indexingRun() ? library.isListedCap() : null);
+        descriptor.uploads() ? null : library.isAllAccountsGrantAllowed(),
+        descriptor.uploads() ? null : library.isListedCap());
   }
 
   private LibraryDocumentEntry toLibraryDocumentEntry(
       Document document, Map<UUID, LibraryFolder> foldersById) {
     return new LibraryDocumentEntry(
-        document, LibraryFolderPaths.pathOf(document.getFolderId(), foldersById));
+        document,
+        LibraryFolderPaths.pathOf(document.getFolderId(), foldersById),
+        connectors.deepLink(document));
   }
 }

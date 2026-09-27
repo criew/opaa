@@ -7,7 +7,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.SystemRole;
 import io.opaa.asset.AssetGrantService;
 import io.opaa.asset.AssetOwnerNames;
@@ -37,6 +36,7 @@ import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.LibraryAccessService;
 import io.opaa.knowledge.LibraryFolderRepository;
 import io.opaa.knowledge.LibraryStorageQuotaService;
+import io.opaa.knowledge.SourceType;
 import io.opaa.permission.AssetGrantRepository;
 import io.opaa.permission.AssetOwnershipHistoryService;
 import io.opaa.permission.CapabilityService;
@@ -44,6 +44,7 @@ import io.opaa.permission.GroupMembershipResolver;
 import io.opaa.permission.GroupSubjectDirectory;
 import io.opaa.permission.PermissionHistoryService;
 import io.opaa.permission.SuccessionReachGuard;
+import io.opaa.test.SourceTypes;
 import java.time.Clock;
 import java.util.List;
 import java.util.Optional;
@@ -154,7 +155,7 @@ class KnowledgeLibraryServiceFilesystemAllowlistTest {
   void createLibraryRejectsFilesystemSourceTypeWhenNoAllowlistIsConfigured() {
     when(filesystemAllowlist.isConfigured()).thenReturn(false);
     LibraryCreation request =
-        libraryCreation("Verzeichnis", DocumentSourceType.FILESYSTEM)
+        libraryCreation("Verzeichnis", SourceTypes.FILESYSTEM)
             .sourcePath("/data/documents")
             .build();
 
@@ -167,11 +168,11 @@ class KnowledgeLibraryServiceFilesystemAllowlistTest {
     // The allowlist gates FILESYSTEM specifically - an operator who has configured none must not
     // accidentally lose every source type.
     when(filesystemAllowlist.isConfigured()).thenReturn(false);
-    LibraryCreation request = libraryCreation("Uploads", DocumentSourceType.UPLOAD).build();
+    LibraryCreation request = libraryCreation("Uploads", SourceType.UPLOAD).build();
 
     LibraryDetail response = libraryService.createLibrary(request, ownerCaller);
 
-    assertThat(response.library().getSourceType()).isEqualTo(DocumentSourceType.UPLOAD);
+    assertThat(response.library().getSourceType()).isEqualTo(SourceType.UPLOAD);
   }
 
   @Test
@@ -179,9 +180,7 @@ class KnowledgeLibraryServiceFilesystemAllowlistTest {
     when(filesystemAllowlist.isConfigured()).thenReturn(true);
     when(filesystemAllowlist.isAllowed("/etc/shadow")).thenReturn(false);
     LibraryCreation request =
-        libraryCreation("Verzeichnis", DocumentSourceType.FILESYSTEM)
-            .sourcePath("/etc/shadow")
-            .build();
+        libraryCreation("Verzeichnis", SourceTypes.FILESYSTEM).sourcePath("/etc/shadow").build();
 
     assertThatThrownBy(() -> libraryService.createLibrary(request, ownerCaller))
         .isInstanceOf(ValidationException.class);
@@ -192,13 +191,13 @@ class KnowledgeLibraryServiceFilesystemAllowlistTest {
     when(filesystemAllowlist.isConfigured()).thenReturn(true);
     when(filesystemAllowlist.isAllowed("/srv/opaa/documents")).thenReturn(true);
     LibraryCreation request =
-        libraryCreation("Verzeichnis", DocumentSourceType.FILESYSTEM)
+        libraryCreation("Verzeichnis", SourceTypes.FILESYSTEM)
             .sourcePath("/srv/opaa/documents")
             .build();
 
     LibraryDetail response = libraryService.createLibrary(request, ownerCaller);
 
-    assertThat(response.library().getSourceType()).isEqualTo(DocumentSourceType.FILESYSTEM);
+    assertThat(response.library().getSourceType()).isEqualTo(SourceTypes.FILESYSTEM);
     assertThat(response.managementDetail().sourcePath()).isEqualTo("/srv/opaa/documents");
   }
 }

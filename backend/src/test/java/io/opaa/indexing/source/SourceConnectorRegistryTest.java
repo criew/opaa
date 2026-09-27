@@ -3,57 +3,71 @@ package io.opaa.indexing.source;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import io.opaa.api.types.DocumentSourceType;
+import io.opaa.common.ValidationException;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentContent;
 import io.opaa.knowledge.KnowledgeLibrary;
+import io.opaa.knowledge.SourceType;
+import io.opaa.test.SourceTypes;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.UnaryOperator;
 import org.junit.jupiter.api.Test;
 
 /**
- * The startup guards of {@link SourceConnectorRegistry} - a gap or an overlap in the connector
- * beans fails the application instead of a request - and how it hands out a type's optional
- * abilities.
+ * The startup guards of {@link SourceConnectorRegistry} - an overlap or a contradiction in the
+ * connector beans fails the application instead of a request, a type no bean serves is merely
+ * unknown - and how it hands out a type's optional abilities.
  */
 class SourceConnectorRegistryTest {
 
-  private static final PushIntake INTAKE = new PushIntake("pushSecret", "Ein Geheimnis");
+  private static final PushIntake INTAKE = new PushIntake("pushSecret");
 
   @Test
-  void aCompleteSetResolvesEveryTypeAndItsAbilities() {
+  void aSetResolvesEveryTypeItServesAndItsAbilities() {
     SourceConnectorRegistry registry = new SourceConnectorRegistry(complete());
 
-    for (DocumentSourceType type : DocumentSourceType.values()) {
-      assertThat(registry.descriptor(type).type()).isEqualTo(type);
-    }
-    assertThat(registry.pushIntakeHandler(DocumentSourceType.CONFLUENCE))
-        .isSameAs(registry.connector(DocumentSourceType.CONFLUENCE));
-    assertThat(registry.pushIntakeHandler(DocumentSourceType.S3))
-        .isSameAs(registry.connector(DocumentSourceType.S3));
-    assertThat(registry.browser(DocumentSourceType.CONFLUENCE))
-        .isSameAs(registry.connector(DocumentSourceType.CONFLUENCE));
-    assertThat(registry.browser(DocumentSourceType.S3))
-        .isSameAs(registry.connector(DocumentSourceType.S3));
+    assertThat(registry.descriptors())
+        .extracting(SourceConnectorDescriptor::type)
+        .containsExactly(
+            SourceTypes.CONFLUENCE,
+            SourceTypes.FILESYSTEM,
+            SourceTypes.HTTP_DIRECTORY,
+            SourceTypes.RSS_FEED,
+            SourceTypes.S3,
+            SourceType.UPLOAD);
+    assertThat(registry.pushIntakeHandler(SourceTypes.CONFLUENCE))
+        .containsSame((PushIntakeHandler) registry.connector(SourceTypes.CONFLUENCE));
+    assertThat(registry.browser(SourceTypes.S3))
+        .containsSame((SourceBrowser) registry.connector(SourceTypes.S3));
+    assertThat(registry.pushIntakeHandler(SourceTypes.RSS_FEED)).isEmpty();
+    assertThat(registry.browser(SourceTypes.RSS_FEED)).isEmpty();
+    assertThat(registry.pushIntakeHandlers())
+        .containsExactly(
+            (PushIntakeHandler) registry.connector(SourceTypes.CONFLUENCE),
+            (PushIntakeHandler) registry.connector(SourceTypes.S3));
   }
 
   @Test
-  void aMissingConnectorFailsStartup() {
+  void aTypeNoConnectorServesIsUnknownNotAStartupFailure() {
     List<SourceConnector> connectors = complete();
-    connectors.removeIf(c -> c.descriptor().type() == DocumentSourceType.RSS_FEED);
+    connectors.removeIf(c -> c.descriptor().type().equals(SourceTypes.RSS_FEED));
+    SourceConnectorRegistry registry = new SourceConnectorRegistry(connectors);
 
-    assertThatThrownBy(() -> new SourceConnectorRegistry(connectors))
-        .isInstanceOf(IllegalStateException.class)
-        .hasMessageContaining("RSS_FEED");
+    assertThat(registry.find(SourceTypes.RSS_FEED)).isEmpty();
+    assertThat(registry.pushIntakeHandler(SourceTypes.RSS_FEED)).isEmpty();
+    assertThatThrownBy(() -> registry.connector(SourceTypes.RSS_FEED))
+        .isInstanceOf(ValidationException.class)
+        .hasMessage("sourceType RSS_FEED ist unbekannt");
   }
 
   @Test
   void aSecondConnectorForTheSameTypeFailsStartup() {
     List<SourceConnector> connectors = complete();
-    connectors.add(plain(DocumentSourceType.FILESYSTEM, true));
+    connectors.add(plain(SourceConnectorDescriptor.localRun(SourceTypes.FILESYSTEM, "Zweites")));
 
     assertThatThrownBy(() -> new SourceConnectorRegistry(connectors))
         .isInstanceOf(IllegalStateException.class)
@@ -61,26 +75,48 @@ class SourceConnectorRegistryTest {
   }
 
   @Test
-  void aRunThatDisagreesWithTheSourceTypeFailsStartup() {
-    List<SourceConnector> connectors = complete();
-    connectors.removeIf(c -> c.descriptor().type() == DocumentSourceType.UPLOAD);
-    connectors.add(plain(DocumentSourceType.UPLOAD, true));
+  void anUploadWithARunOrNoUploadAtAllFailsStartup() {
+    List<SourceConnector> withRun = complete();
+    withRun.removeIf(c -> c.descriptor().type().equals(SourceType.UPLOAD));
+    List<SourceConnector> without = new ArrayList<>(withRun);
+    withRun.add(plain(SourceConnectorDescriptor.localRun(SourceType.UPLOAD, "Upload")));
 
-    assertThatThrownBy(() -> new SourceConnectorRegistry(connectors))
+    assertThatThrownBy(() -> new SourceConnectorRegistry(withRun))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("UPLOAD");
+    assertThatThrownBy(() -> new SourceConnectorRegistry(without))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("UPLOAD");
   }
 
   @Test
+  void onlyUploadAcceptsUploads() {
+    List<SourceConnector> connectors = complete();
+    connectors.add(
+        plain(SourceConnectorDescriptor.acceptingUploads(SourceType.of("ABLAGE"), "Ablage")));
+
+    assertThatThrownBy(() -> new SourceConnectorRegistry(connectors))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("ABLAGE must accept uploads exactly when it serves UPLOAD");
+    assertThatThrownBy(
+            () ->
+                new SourceConnectorDescriptor(
+                    SourceType.UPLOAD, "Upload", true, false, false, true, null, null))
+        .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  @Test
   void aPushIntakeWithoutHandlerOrAHandlerWithoutPushIntakeFailsStartup() {
     List<SourceConnector> withoutHandler = complete();
-    withoutHandler.removeIf(c -> c.descriptor().type() == DocumentSourceType.RSS_FEED);
+    withoutHandler.removeIf(c -> c.descriptor().type().equals(SourceTypes.RSS_FEED));
     withoutHandler.add(
-        new Stub(new SourceConnectorDescriptor(DocumentSourceType.RSS_FEED, true, INTAKE, null)));
+        plain(
+            SourceConnectorDescriptor.remoteRun(SourceTypes.RSS_FEED, "RSS")
+                .withPushIntake(INTAKE)));
     List<SourceConnector> withoutIntake = complete();
-    withoutIntake.removeIf(c -> c.descriptor().type() == DocumentSourceType.RSS_FEED);
+    withoutIntake.removeIf(c -> c.descriptor().type().equals(SourceTypes.RSS_FEED));
     withoutIntake.add(
-        new PushStub(SourceConnectorDescriptor.runBased(DocumentSourceType.RSS_FEED)));
+        new PushStub(SourceConnectorDescriptor.remoteRun(SourceTypes.RSS_FEED, "RSS")));
 
     assertThatThrownBy(() -> new SourceConnectorRegistry(withoutHandler))
         .isInstanceOf(IllegalStateException.class)
@@ -91,20 +127,37 @@ class SourceConnectorRegistryTest {
   }
 
   @Test
-  void theOriginalAccessOfATypeIsResolvedAndAMissingAbilityIsAWiringError() {
+  void aDeepLinkNeedsARemoteSource() {
+    assertThatThrownBy(
+            () ->
+                new SourceConnectorDescriptor(
+                    SourceTypes.FILESYSTEM, "Dateisystem", true, false, true, false, null, null))
+        .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  @Test
+  void theOriginalAccessOfATypeIsResolvedAndAMissingAbilityIsEmpty() {
     List<SourceConnector> connectors = complete();
-    connectors.removeIf(c -> c.descriptor().type() == DocumentSourceType.FILESYSTEM);
+    connectors.removeIf(c -> c.descriptor().type().equals(SourceTypes.FILESYSTEM));
     connectors.add(
-        new OriginalStub(SourceConnectorDescriptor.runBased(DocumentSourceType.FILESYSTEM)));
+        new OriginalStub(
+            SourceConnectorDescriptor.localRun(SourceTypes.FILESYSTEM, "Dateisystem")));
     SourceConnectorRegistry registry = new SourceConnectorRegistry(connectors);
 
-    assertThat(registry.originalAccess(DocumentSourceType.FILESYSTEM))
-        .containsSame((OriginalAccess) registry.connector(DocumentSourceType.FILESYSTEM));
-    assertThat(registry.originalAccess(DocumentSourceType.CONFLUENCE)).isEmpty();
-    assertThatThrownBy(() -> registry.pushIntakeHandler(DocumentSourceType.RSS_FEED))
-        .isInstanceOf(IllegalStateException.class);
-    assertThatThrownBy(() -> registry.browser(DocumentSourceType.RSS_FEED))
-        .isInstanceOf(IllegalStateException.class);
+    assertThat(registry.originalAccess(SourceTypes.FILESYSTEM))
+        .containsSame((OriginalAccess) registry.connector(SourceTypes.FILESYSTEM));
+    assertThat(registry.originalAccess(SourceTypes.CONFLUENCE)).isEmpty();
+  }
+
+  @Test
+  void aConnectorWithoutSettingsRefusesEveryFieldButAcceptsNone() {
+    SourceConnector connector =
+        plain(SourceConnectorDescriptor.remoteRun(SourceTypes.HTTP_DIRECTORY, "Webverzeichnis"));
+
+    assertThat(connector.readSettings(ConnectorData.of(Map.of()))).isNull();
+    assertThatThrownBy(() -> connector.readSettings(ConnectorData.of(Map.of("spaces", List.of()))))
+        .isInstanceOf(ValidationException.class)
+        .hasMessage("sourceSettings: das Feld spaces ist nicht vorgesehen");
   }
 
   @Test
@@ -116,37 +169,43 @@ class SourceConnectorRegistryTest {
             null,
             UUID.randomUUID(),
             false,
-            DocumentSourceType.HTTP_DIRECTORY,
+            SourceTypes.HTTP_DIRECTORY,
             null,
             "https://example.org",
             null,
             null,
             false);
     library.updateSourceSettings("{\"root\": \"/intern/pfad\"}");
-    SourceConnector connector = plain(DocumentSourceType.HTTP_DIRECTORY, true);
+    SourceConnector connector =
+        plain(SourceConnectorDescriptor.remoteRun(SourceTypes.HTTP_DIRECTORY, "Webverzeichnis"));
 
     assertThat(connector.settingsView(library, false)).isNull();
     assertThat(connector.settingsView(library, true).asMap()).containsEntry("root", "/intern/pfad");
   }
 
-  /** One connector per source type, with the abilities the production connectors offer. */
+  /** One connector per built-in source type, with the abilities the production ones offer. */
   private List<SourceConnector> complete() {
     List<SourceConnector> connectors = new ArrayList<>();
-    connectors.add(plain(DocumentSourceType.UPLOAD, false));
-    connectors.add(plain(DocumentSourceType.FILESYSTEM, true));
-    connectors.add(plain(DocumentSourceType.HTTP_DIRECTORY, true));
-    connectors.add(plain(DocumentSourceType.RSS_FEED, true));
+    connectors.add(plain(SourceConnectorDescriptor.acceptingUploads(SourceType.UPLOAD, "Upload")));
+    connectors.add(
+        plain(SourceConnectorDescriptor.localRun(SourceTypes.FILESYSTEM, "Dateisystem")));
+    connectors.add(
+        plain(SourceConnectorDescriptor.remoteRun(SourceTypes.HTTP_DIRECTORY, "Webverzeichnis")));
+    connectors.add(plain(SourceConnectorDescriptor.remoteRun(SourceTypes.RSS_FEED, "RSS-Feed")));
     connectors.add(
         new PushBrowsingStub(
-            new SourceConnectorDescriptor(DocumentSourceType.CONFLUENCE, true, INTAKE, null)));
+            SourceConnectorDescriptor.remoteRun(SourceTypes.CONFLUENCE, "Confluence")
+                .withPushIntake(INTAKE)));
     connectors.add(
         new PushBrowsingStub(
-            new SourceConnectorDescriptor(DocumentSourceType.S3, true, INTAKE, null)));
+            SourceConnectorDescriptor.remoteRun(SourceTypes.S3, "S3")
+                .withoutDeepLink()
+                .withPushIntake(INTAKE)));
     return connectors;
   }
 
-  private SourceConnector plain(DocumentSourceType type, boolean indexingRun) {
-    return new Stub(new SourceConnectorDescriptor(type, indexingRun, null, null));
+  private static SourceConnector plain(SourceConnectorDescriptor descriptor) {
+    return new Stub(descriptor);
   }
 
   private static class Stub implements SourceConnector {
@@ -181,7 +240,11 @@ class SourceConnectorRegistryTest {
     }
 
     @Override
-    public void acceptNotification(UUID libraryId, byte[] body, UnaryOperator<String> header) {}
+    public void acceptNotification(
+        KnowledgeLibrary library, byte[] body, UnaryOperator<String> header) {}
+
+    @Override
+    public void rejectForeign(byte[] body, UnaryOperator<String> header) {}
   }
 
   private static class OriginalStub extends Stub implements OriginalAccess {

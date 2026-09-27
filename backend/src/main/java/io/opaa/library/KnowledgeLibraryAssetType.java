@@ -88,6 +88,6 @@ class KnowledgeLibraryAssetType implements AssetTypeDefinition {
       throw new IllegalStateException(
           "asset " + asset.getId() + " of type " + asset.getAssetType() + " is no library");
     }
-    return connectors.descriptor(library.getSourceType()).indexingRun() ? library : null;
+    return connectors.descriptor(library.getSourceType()).uploads() ? null : library;
   }
 }

@@ -1,6 +1,5 @@
 package io.opaa.indexing.source.confluence;
 
-import io.opaa.api.types.ConfluenceEdition;
 import io.opaa.common.ValidationException;
 import io.opaa.indexing.source.ConnectorData;
 import io.opaa.knowledge.KnowledgeLibrary;
@@ -25,6 +24,8 @@ public record ConfluenceSourceSettings(
   static final String EDITION = "edition";
   static final String SPACES = "spaces";
   static final String FULL_SYNC_INTERVAL_DAYS = "fullSyncIntervalDays";
+  static final java.util.Set<String> KEYS =
+      java.util.Set.of(EDITION, SPACES, FULL_SYNC_INTERVAL_DAYS);
 
   private static final ConfluenceSourceSettings NONE =
       new ConfluenceSourceSettings(null, List.of(), null);
@@ -96,7 +97,7 @@ public record ConfluenceSourceSettings(
     try {
       return ConfluenceEdition.valueOf(value.toString());
     } catch (IllegalArgumentException e) {
-      throw new ValidationException("confluenceEdition ist keine bekannte Edition");
+      throw new ValidationException("sourceSettings.edition ist keine bekannte Edition");
     }
   }
 
@@ -105,7 +106,7 @@ public record ConfluenceSourceSettings(
       return null;
     }
     if (!(value instanceof List<?> list)) {
-      throw new ValidationException("confluenceSpaces muss eine Liste sein");
+      throw new ValidationException("sourceSettings.spaces muss eine Liste sein");
     }
     List<ConfluenceSpaceSelection> spaces = new ArrayList<>();
     for (Object item : list) {
@@ -126,7 +127,8 @@ public record ConfluenceSourceSettings(
       return null;
     }
     if (!(value instanceof Number number) || number.doubleValue() != number.intValue()) {
-      throw new ValidationException("confluenceFullSyncIntervalDays muss eine ganze Zahl sein");
+      throw new ValidationException(
+          "sourceSettings.fullSyncIntervalDays muss eine ganze Zahl sein");
     }
     return number.intValue();
   }

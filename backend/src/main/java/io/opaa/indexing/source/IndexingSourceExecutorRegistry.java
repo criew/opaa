@@ -1,49 +1,51 @@
 package io.opaa.indexing.source;
 
-import io.opaa.api.types.DocumentSourceType;
-import java.util.EnumSet;
+import io.opaa.knowledge.SourceType;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
- * Resolves the {@link SourceIndexingExecutor} responsible for a given {@link IndexingSourceType}
- * (ADR-0017, decision 3). Populated from whatever {@link SourceIndexingExecutor} beans Spring finds
- * - each connector declares its own in its package's {@code @Configuration} - so a new source type
- * becomes reachable by adding one more bean, without touching this class or any of the call sites
- * that use it.
+ * Resolves the {@link SourceIndexingExecutor} responsible for a given {@link SourceType} (ADR-0017,
+ * decision 3). Populated from whatever {@link SourceIndexingExecutor} beans Spring finds - each
+ * connector declares its own in its package's {@code @Configuration} - so a new source type becomes
+ * reachable by adding one more bean, without touching this class or any of the call sites that use
+ * it.
  *
- * <p>The key space is deliberately {@link IndexingSourceType}, not {@link DocumentSourceType}:
- * {@code UPLOAD} cannot be looked up here at all, since it is not a value of {@link
- * IndexingSourceType} in the first place.
- *
- * <p>Completeness is checked at construction, not at resolve time: a missing executor for a
- * declared {@link IndexingSourceType} is a wiring bug, and this constructor fails application
- * startup with a clear message instead of letting {@link #resolve(IndexingSourceType)} throw the
- * first time some caller happens to hit the gap.
+ * <p>Completeness is checked at construction: the executors serve exactly the types whose connector
+ * declares an indexing run, so a gap is a wiring bug that fails startup instead of the first
+ * trigger.
  */
 public class IndexingSourceExecutorRegistry {
 
-  private final Map<IndexingSourceType, SourceIndexingExecutor> executorsByType;
+  private final Map<SourceType, SourceIndexingExecutor> executorsByType;
 
-  public IndexingSourceExecutorRegistry(List<SourceIndexingExecutor> executors) {
+  public IndexingSourceExecutorRegistry(
+      List<SourceIndexingExecutor> executors, SourceConnectorRegistry connectors) {
     this.executorsByType =
         executors.stream()
             .collect(
                 Collectors.toUnmodifiableMap(
                     SourceIndexingExecutor::sourceType, Function.identity()));
-    Set<IndexingSourceType> missing = EnumSet.allOf(IndexingSourceType.class);
-    missing.removeAll(executorsByType.keySet());
-    if (!missing.isEmpty()) {
+    Set<SourceType> runBased = new HashSet<>();
+    connectors.descriptors().stream()
+        .filter(SourceConnectorDescriptor::indexingRun)
+        .forEach(descriptor -> runBased.add(descriptor.type()));
+    if (!runBased.equals(executorsByType.keySet())) {
       throw new IllegalStateException(
-          "No SourceIndexingExecutor bean is registered for source type(s) " + missing);
+          "SourceIndexingExecutor beans serve "
+              + executorsByType.keySet()
+              + " but the connectors with an indexing run are "
+              + runBased);
     }
   }
 
-  /** Returns the executor registered for {@code sourceType}. Always succeeds after construction. */
-  public SourceIndexingExecutor resolve(IndexingSourceType sourceType) {
-    return executorsByType.get(sourceType);
+  /** The executor registered for {@code sourceType}, empty for a type without a run. */
+  public Optional<SourceIndexingExecutor> find(SourceType sourceType) {
+    return Optional.ofNullable(executorsByType.get(sourceType));
   }
 }

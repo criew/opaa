@@ -4,7 +4,6 @@ import static io.opaa.library.LibraryCreationBuilder.libraryCreation;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
@@ -16,6 +15,7 @@ import io.opaa.knowledge.DocumentContent;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.S3UploadedOriginalStore;
+import io.opaa.knowledge.SourceType;
 import io.opaa.knowledge.UploadStorageConfiguration;
 import io.opaa.knowledge.UploadedOriginalStore;
 import io.opaa.organization.Organization;
@@ -92,8 +92,7 @@ class S3UploadStorageIntegrationTest {
     editor = userRepository.save(editor);
     var library =
         libraryService.createLibrary(
-            libraryCreation("S3-Bibliothek", DocumentSourceType.UPLOAD).build(),
-            currentUserOf(editor));
+            libraryCreation("S3-Bibliothek", SourceType.UPLOAD).build(), currentUserOf(editor));
     libraryId = library.library().getId();
   }
 

@@ -24,14 +24,12 @@ import FolderIcon from '@mui/icons-material/Folder'
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
 import OpenInNewIcon from '@mui/icons-material/OpenInNew'
 import SearchIcon from '@mui/icons-material/Search'
-import type {
-  ConfluenceSpaceRef,
-  LibraryDocumentResponse,
-  LibraryFolderListItem,
-} from '../../types/api'
+import type { LibraryDocumentResponse, LibraryFolderListItem } from '../../types/api'
+import type { ConfluenceSpaceRef } from '../../utils/confluenceSource'
 import type { DocumentPageState } from '../../stores/documentStore'
 import { DEFAULT_PAGE_SIZE } from '../../stores/documentStore'
 import { documentStatusLabel, formatFileSize } from '../../utils/labels'
+import { sourceRegistration } from './sources/registry'
 
 function formatIndexedAt(indexedAt: string | null | undefined): string {
   if (!indexedAt) return '—'
@@ -152,7 +150,8 @@ export default function LibraryDocumentList({
     (confluenceSpaces ?? []).map((space) => [space.key, space.name]),
   )
 
-  function confluenceSpaceLabel(key: string): string {
+  /** A container key with the name the library's own selection gives it ("Name (KEY)"). */
+  function containerName(key: string): string {
     const name = confluenceSpaceNameByKey.get(key)
     return name ? `${name} (${key})` : key
   }
@@ -209,14 +208,12 @@ export default function LibraryDocumentList({
               {document.chunkCount === 1 ? 'Abschnitt' : 'Abschnitte'} ·{' '}
               {formatIndexedAt(document.indexedAt)}
             </Typography>
-            {/* ADR-0023 (#1136)/ADR-0027: a Confluence row names its space and the page's position
-                in its hierarchy, an S3 row its bucket and the key's folders below the scope prefix -
-                as text, since an s3:// path is no link a browser could open. */}
+            {/* ADR-0023 (#1136)/ADR-0027: a row names its container under the noun its source
+                registered (a Confluence space, an S3 bucket) and its position below it - as text,
+                since an s3:// path is no link a browser could open. */}
             {document.sourceContainerKey && (
               <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                {document.sourceType === 'S3'
-                  ? `Bucket: ${document.sourceContainerKey}`
-                  : `Space: ${confluenceSpaceLabel(document.sourceContainerKey)}`}
+                {`${sourceRegistration(document.sourceType)?.containerLabel ?? 'Bereich'}: ${containerName(document.sourceContainerKey)}`}
                 {document.sourceHierarchyPath ? ` · ${document.sourceHierarchyPath}` : ''}
               </Typography>
             )}

@@ -2,12 +2,13 @@ package io.opaa.indexing.document;
 
 import static org.mockito.ArgumentMatchers.argThat;
 
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.indexing.format.DocumentProperties;
 import io.opaa.indexing.format.file.html.HtmlDocumentFormat;
 import io.opaa.indexing.format.stream.confluencestorage.ConfluenceStorageFormat;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.SourceDocumentContext;
+import io.opaa.knowledge.SourceType;
+import io.opaa.test.SourceTypes;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.Objects;
@@ -50,7 +51,7 @@ public final class DocumentIngests {
   private static DocumentIngest.Builder extractedTextBuilder(
       KnowledgeLibrary library, String text, String title, String filePath, String changeMarker) {
     return DocumentIngest.text(library, filePath, text)
-        .sourceType(DocumentSourceType.RSS_FEED)
+        .sourceType(SourceTypes.RSS_FEED)
         .title(title)
         .changeMarker(changeMarker)
         .documentDate(DocumentProperties.instantToLocalDate(changeMarker));
@@ -66,7 +67,7 @@ public final class DocumentIngests {
       Instant lastModified,
       SourceDocumentContext context) {
     return DocumentIngest.text(library, pageUrl, storageBody)
-        .sourceType(DocumentSourceType.CONFLUENCE)
+        .sourceType(SourceTypes.CONFLUENCE)
         .title(title)
         .context(context)
         .changeMarker(version)
@@ -87,7 +88,7 @@ public final class DocumentIngests {
         .file(localFile, remoteFileSize)
         .filePath(remoteUrl)
         .fileName(fileName)
-        .sourceType(DocumentSourceType.HTTP_DIRECTORY)
+        .sourceType(SourceTypes.HTTP_DIRECTORY)
         .context(SourceDocumentContext.NONE)
         .changeMarker(lastModified);
   }
@@ -181,8 +182,8 @@ public final class DocumentIngests {
       return and(ingest -> library == ingest.library());
     }
 
-    public Matcher from(DocumentSourceType sourceType) {
-      return and(ingest -> sourceType == ingest.sourceType());
+    public Matcher from(SourceType sourceType) {
+      return and(ingest -> sourceType.equals(ingest.sourceType()));
     }
 
     /** Named the pipeline {@code pipelineId} directly instead of being routed. */

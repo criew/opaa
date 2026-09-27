@@ -13,9 +13,7 @@ import static org.mockito.Mockito.when;
 
 import com.sun.net.httpserver.HttpsConfigurator;
 import com.sun.net.httpserver.HttpsServer;
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.IndexingRunMode;
-import io.opaa.indexing.IndexingProperties;
 import io.opaa.indexing.document.DocumentIngestService;
 import io.opaa.indexing.document.DocumentIngests;
 import io.opaa.indexing.job.IndexingJobService;
@@ -29,6 +27,7 @@ import io.opaa.security.TargetAddressValidator;
 import io.opaa.sourceaccess.BoundedDownloader;
 import io.opaa.sourceaccess.RateLimitPolicy;
 import io.opaa.sourceaccess.SourceRequestPolicy;
+import io.opaa.test.SourceTypes;
 import java.io.File;
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -231,9 +230,7 @@ class RssFeedIndexingExecutorInsecureSslTest {
         .thenReturn(Optional.empty());
     indexingRunEventRepository = mock(IndexingRunEventRepository.class);
 
-    IndexingProperties.Rss rss =
-        new IndexingProperties.Rss(200, 10_000, 10_000, 0, null, null, 0, 0);
-    IndexingProperties properties = new IndexingProperties(0, 0, 0, null, rss, null, null, 0);
+    RssFeedProperties rss = new RssFeedProperties(200, 10_000, 10_000, 0, null, null, 0, 0);
     // Target validation is exercised on its own dedicated stand (TargetAddressValidatorTest) -
     // disabled here since every server this class talks to is deliberately loopback.
     TargetAddressValidator targetAddressValidator = TargetAddressValidator.disabled();
@@ -249,7 +246,7 @@ class RssFeedIndexingExecutorInsecureSslTest {
                 mock(LibraryStorageQuotaService.class),
                 new io.opaa.indexing.attachment.AttachmentProperties(5, 0, 0),
                 io.opaa.test.ProductionDocumentFormats.supportedFormats()),
-            properties,
+            rss,
             targetAddressValidator,
             requestPolicy(),
             new IndexingRunTemplate(
@@ -267,7 +264,7 @@ class RssFeedIndexingExecutorInsecureSslTest {
         null,
         UUID.randomUUID(),
         false,
-        DocumentSourceType.RSS_FEED,
+        SourceTypes.RSS_FEED,
         null,
         feedUrl,
         null,

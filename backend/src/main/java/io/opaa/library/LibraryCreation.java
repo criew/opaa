@@ -1,7 +1,8 @@
 package io.opaa.library;
 
 import io.opaa.api.types.AssetOwnerType;
-import io.opaa.api.types.DocumentSourceType;
+import io.opaa.indexing.source.ConnectorData;
+import io.opaa.knowledge.SourceType;
 import java.net.URI;
 import java.util.UUID;
 
@@ -13,8 +14,7 @@ import java.util.UUID;
  *
  * @param ownerType {@code null} means {@code USER} (the creator) - the same default the service
  *     applied to a {@code null} {@code LibraryRequest.ownerType}.
- * @param connectorSettings the settings of the library's connector (ADR-0038), never {@code null} -
- *     {@link ConnectorSettingsRequest#NONE} for none
+ * @param sourceSettings the settings of the library's connector (ADR-0038), {@code null} for none
  * @param schedule the indexing rhythm to set together with the library (#1942); {@code null} leaves
  *     the library without one, and anything but {@code DISABLED} on an {@code UPLOAD} library is
  *     refused exactly as it is on an update
@@ -25,11 +25,11 @@ public record LibraryCreation(
     AssetOwnerType ownerType,
     UUID ownerId,
     Boolean listed,
-    DocumentSourceType sourceType,
+    SourceType sourceType,
     String sourcePath,
     URI sourceUrl,
     String sourceProxy,
     String sourceCredentials,
     Boolean sourceInsecureSsl,
-    ConnectorSettingsRequest connectorSettings,
+    ConnectorData sourceSettings,
     LibraryScheduleUpdate schedule) {}

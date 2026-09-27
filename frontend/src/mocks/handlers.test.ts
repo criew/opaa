@@ -40,7 +40,7 @@ describe('MSW Handlers', () => {
     })
 
     it('returns 409 for an UPLOAD library', async () => {
-      // #500 review, finding 5: mirrors DocumentIndexingService#toIndexingSourceType - UPLOAD has
+      // #500 review, finding 5: mirrors DocumentIndexingService#executorFor - UPLOAD has
       // no run type, the library is a valid target, it simply has nothing to run.
       const response = await fetch('/api/v1/libraries/library-mine/indexing', {
         method: 'POST',

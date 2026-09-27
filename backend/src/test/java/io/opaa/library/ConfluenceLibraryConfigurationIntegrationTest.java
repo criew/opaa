@@ -7,8 +7,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.api.types.AssetGrantSubjectType;
 import io.opaa.api.types.AssetRole;
-import io.opaa.api.types.ConfluenceEdition;
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.SystemRole;
 import io.opaa.asset.AssetGrantService;
 import io.opaa.asset.AssetGrantUpsert;
@@ -19,14 +17,17 @@ import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ValidationException;
 import io.opaa.indexing.source.SourceSyncState;
 import io.opaa.indexing.source.SourceSyncStateRepository;
+import io.opaa.indexing.source.confluence.ConfluenceEdition;
 import io.opaa.indexing.source.confluence.ConfluenceSourceSettings;
 import io.opaa.indexing.source.confluence.ConfluenceSpaceSelection;
 import io.opaa.indexing.source.confluence.FakeConfluenceServer;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
+import io.opaa.knowledge.SourceType;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
 import io.opaa.test.OpaaIntegrationTest;
+import io.opaa.test.SourceTypes;
 import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
@@ -106,7 +107,7 @@ class ConfluenceLibraryConfigurationIntegrationTest {
   void createsADataCenterLibraryWithNormalisedAddressAndSelectionAndNeverReturnsTheToken() {
     UUID owner = user();
     LibraryCreation request =
-        libraryCreation("Wiki Bauamt", DocumentSourceType.CONFLUENCE)
+        libraryCreation("Wiki Bauamt", SourceTypes.CONFLUENCE)
             .sourceUrl(URI.create(dataCenter.baseUrl() + "/"))
             .sourceCredentials("pat-geheim")
             .confluenceEdition(ConfluenceEdition.DATA_CENTER)
@@ -119,7 +120,7 @@ class ConfluenceLibraryConfigurationIntegrationTest {
     LibraryDetail detail = libraryService.createLibrary(request, currentUser(owner));
 
     KnowledgeLibrary library = detail.library();
-    assertThat(library.getSourceType()).isEqualTo(DocumentSourceType.CONFLUENCE);
+    assertThat(library.getSourceType()).isEqualTo(SourceTypes.CONFLUENCE);
     assertThat(ConfluenceSourceSettings.of(library).edition())
         .isEqualTo(ConfluenceEdition.DATA_CENTER);
     assertThat(library.getSourceUrl()).isEqualTo(dataCenter.baseUrl());
@@ -163,14 +164,14 @@ class ConfluenceLibraryConfigurationIntegrationTest {
     assertThatThrownBy(
             () ->
                 libraryService.createLibrary(
-                    libraryCreation("ohne Edition", DocumentSourceType.CONFLUENCE)
+                    libraryCreation("ohne Edition", SourceTypes.CONFLUENCE)
                         .sourceUrl(URI.create(dataCenter.baseUrl()))
                         .sourceCredentials("pat")
                         .confluenceSpaces(List.of(new ConfluenceSpaceSelection("A", null)))
                         .build(),
                     caller))
         .isInstanceOf(ValidationException.class)
-        .hasMessageContaining("confluenceEdition ist erforderlich");
+        .hasMessageContaining("sourceSettings.edition ist erforderlich");
     assertThatThrownBy(
             () ->
                 libraryService.createLibrary(
@@ -222,23 +223,23 @@ class ConfluenceLibraryConfigurationIntegrationTest {
     assertThatThrownBy(
             () ->
                 libraryService.createLibrary(
-                    libraryCreation("RSS mit Edition", DocumentSourceType.RSS_FEED)
+                    libraryCreation("RSS mit Edition", SourceTypes.RSS_FEED)
                         .sourceUrl(URI.create("https://example.org/feed.xml"))
                         .confluenceEdition(ConfluenceEdition.CLOUD)
                         .build(),
                     caller))
         .isInstanceOf(ValidationException.class)
-        .hasMessageContaining("nur für sourceType CONFLUENCE");
+        .hasMessageContaining("ist nicht vorgesehen");
     assertThatThrownBy(
             () ->
                 libraryService.createLibrary(
-                    libraryCreation("RSS mit Spaces", DocumentSourceType.RSS_FEED)
+                    libraryCreation("RSS mit Spaces", SourceTypes.RSS_FEED)
                         .sourceUrl(URI.create("https://example.org/feed.xml"))
                         .confluenceSpaces(List.of(new ConfluenceSpaceSelection("A", null)))
                         .build(),
                     caller))
         .isInstanceOf(ValidationException.class)
-        .hasMessageContaining("nur für sourceType CONFLUENCE");
+        .hasMessageContaining("ist nicht vorgesehen");
   }
 
   @Test
@@ -272,7 +273,7 @@ class ConfluenceLibraryConfigurationIntegrationTest {
                     libraryUpdate("Wiki").confluenceEdition(ConfluenceEdition.CLOUD).build(),
                     caller))
         .isInstanceOf(ValidationException.class)
-        .hasMessageContaining("confluenceEdition kann nach dem Anlegen");
+        .hasMessageContaining("sourceSettings.edition kann nach dem Anlegen");
 
     // echoing the stored edition is fine, like sourceType
     libraryService.updateLibrary(
@@ -321,7 +322,7 @@ class ConfluenceLibraryConfigurationIntegrationTest {
   }
 
   @Test
-  void aForeignEditionIsRefusedBeforeTheConnectorAndForeignSpacesOnCreationAfterIt() {
+  void aForeignSettingIsRefusedBeforeTheConnectorLooksAtTheAddress() {
     CurrentUser caller = currentUser(user());
     // an address the RSS connector refuses tells which check ran first
     URI notHttp = URI.create("ftp://example.org/feed.xml");
@@ -329,28 +330,28 @@ class ConfluenceLibraryConfigurationIntegrationTest {
     assertThatThrownBy(
             () ->
                 libraryService.createLibrary(
-                    libraryCreation("RSS mit Edition", DocumentSourceType.RSS_FEED)
+                    libraryCreation("RSS mit Edition", SourceTypes.RSS_FEED)
                         .sourceUrl(notHttp)
                         .confluenceEdition(ConfluenceEdition.CLOUD)
                         .build(),
                     caller))
         .isInstanceOf(ValidationException.class)
-        .hasMessage("confluenceEdition ist nur für sourceType CONFLUENCE zulässig");
+        .hasMessage("sourceSettings: das Feld edition ist nicht vorgesehen");
     assertThatThrownBy(
             () ->
                 libraryService.createLibrary(
-                    libraryCreation("RSS mit Spaces", DocumentSourceType.RSS_FEED)
+                    libraryCreation("RSS mit Spaces", SourceTypes.RSS_FEED)
                         .sourceUrl(notHttp)
                         .confluenceSpaces(List.of(new ConfluenceSpaceSelection("A", null)))
                         .build(),
                     caller))
         .isInstanceOf(ValidationException.class)
-        .hasMessageContaining("sourceUrl");
+        .hasMessage("sourceSettings: das Feld spaces ist nicht vorgesehen");
 
     UUID rss =
         libraryService
             .createLibrary(
-                libraryCreation("Feed", DocumentSourceType.RSS_FEED)
+                libraryCreation("Feed", SourceTypes.RSS_FEED)
                     .sourceUrl(URI.create("https://example.org/feed.xml"))
                     .build(),
                 caller)
@@ -366,7 +367,7 @@ class ConfluenceLibraryConfigurationIntegrationTest {
                         .build(),
                     caller))
         .isInstanceOf(ValidationException.class)
-        .hasMessage("confluenceSpaces sind nur für sourceType CONFLUENCE zulässig");
+        .hasMessage("sourceSettings: das Feld spaces ist nicht vorgesehen");
     assertThatThrownBy(
             () ->
                 libraryService.updateLibrary(
@@ -377,7 +378,7 @@ class ConfluenceLibraryConfigurationIntegrationTest {
                         .build(),
                     caller))
         .isInstanceOf(ValidationException.class)
-        .hasMessageContaining("sourceUrl");
+        .hasMessage("sourceSettings: das Feld fullSyncIntervalDays ist nicht vorgesehen");
   }
 
   @Test
@@ -387,7 +388,7 @@ class ConfluenceLibraryConfigurationIntegrationTest {
     UUID rss =
         libraryService
             .createLibrary(
-                libraryCreation("Feed", DocumentSourceType.RSS_FEED)
+                libraryCreation("Feed", SourceTypes.RSS_FEED)
                     .sourceUrl(URI.create("https://example.org/feed.xml"))
                     .build(),
                 caller)
@@ -401,7 +402,7 @@ class ConfluenceLibraryConfigurationIntegrationTest {
                     libraryUpdate("Feed").confluenceEdition(ConfluenceEdition.CLOUD).build(),
                     caller))
         .isInstanceOf(ValidationException.class)
-        .hasMessageContaining("nur für sourceType CONFLUENCE zulässig");
+        .hasMessageContaining("ist nicht vorgesehen");
     assertThatThrownBy(
             () ->
                 libraryService.updateLibrary(
@@ -411,13 +412,13 @@ class ConfluenceLibraryConfigurationIntegrationTest {
                         .build(),
                     caller))
         .isInstanceOf(ValidationException.class)
-        .hasMessageContaining("nur für sourceType CONFLUENCE zulässig");
+        .hasMessageContaining("ist nicht vorgesehen");
     assertThatThrownBy(
             () ->
                 libraryService.updateLibrary(
                     rss, libraryUpdate("Feed").confluenceFullSyncIntervalDays(14).build(), caller))
         .isInstanceOf(ValidationException.class)
-        .hasMessageContaining("nur für sourceType CONFLUENCE zulässig");
+        .hasMessageContaining("ist nicht vorgesehen");
   }
 
   @Test
@@ -550,7 +551,7 @@ class ConfluenceLibraryConfigurationIntegrationTest {
 
     List<KnowledgeLibrary> all = libraryRepository.findAllById(List.of(a, b, c, d, e, f));
     assertThat(all).hasSize(6);
-    assertThat(all).allMatch(l -> l.getSourceType() == DocumentSourceType.CONFLUENCE);
+    assertThat(all).allMatch(l -> SourceTypes.CONFLUENCE.equals(l.getSourceType()));
     assertThat(all.stream().filter(l -> l.getSourceUrl().equals(instance1))).hasSize(4);
     assertThat(
             ConfluenceSourceSettings.of(libraryRepository.findById(a).orElseThrow())
@@ -596,9 +597,7 @@ class ConfluenceLibraryConfigurationIntegrationTest {
                 .pushSecretSet())
         .isFalse();
 
-    String first =
-        libraryService.generatePushSecret(
-            libraryId, DocumentSourceType.CONFLUENCE, currentUser(owner));
+    String first = libraryService.generatePushSecret(libraryId, currentUser(owner));
     assertThat(first).hasSize(43).matches("[A-Za-z0-9_-]+");
     KnowledgeLibrary stored = libraryRepository.findById(libraryId).orElseThrow();
     assertThat(stored.getWebhookSecret()).isEqualTo(first);
@@ -617,16 +616,14 @@ class ConfluenceLibraryConfigurationIntegrationTest {
                 .pushSecretSet())
         .isTrue();
 
-    String second =
-        libraryService.generatePushSecret(
-            libraryId, DocumentSourceType.CONFLUENCE, currentUser(owner));
+    String second = libraryService.generatePushSecret(libraryId, currentUser(owner));
     assertThat(second).isNotEqualTo(first);
     assertThat(libraryRepository.findById(libraryId).orElseThrow().getWebhookSecret())
         .isEqualTo(second);
 
-    libraryService.removePushSecret(libraryId, DocumentSourceType.CONFLUENCE, currentUser(owner));
+    libraryService.removePushSecret(libraryId, currentUser(owner));
     assertThat(libraryRepository.findById(libraryId).orElseThrow().getWebhookSecret()).isNull();
-    libraryService.removePushSecret(libraryId, DocumentSourceType.CONFLUENCE, currentUser(owner));
+    libraryService.removePushSecret(libraryId, currentUser(owner));
 
     List<String> audit =
         jdbcTemplate.queryForList(
@@ -654,14 +651,14 @@ class ConfluenceLibraryConfigurationIntegrationTest {
     UUID owner = user();
     UUID libraryId =
         create(currentUser(owner), "Wiki", dataCenter.baseUrl(), "pat", List.of("ENG"));
-    libraryService.generatePushSecret(libraryId, DocumentSourceType.CONFLUENCE, currentUser(owner));
+    libraryService.generatePushSecret(libraryId, currentUser(owner));
     jdbcTemplate.update(
         "UPDATE knowledge_libraries SET source_webhook_secret = ? WHERE id = ?",
         "enc:v1:not-decryptable-with-any-key",
         libraryId);
     assertThat(libraryRepository.findById(libraryId).orElseThrow().getWebhookSecret()).isNull();
 
-    libraryService.removePushSecret(libraryId, DocumentSourceType.CONFLUENCE, currentUser(owner));
+    libraryService.removePushSecret(libraryId, currentUser(owner));
 
     assertThat(
             jdbcTemplate.queryForObject(
@@ -684,29 +681,19 @@ class ConfluenceLibraryConfigurationIntegrationTest {
         new AssetGrantUpsert(AssetGrantSubjectType.USER, editor, AssetRole.EDITOR),
         currentUser(owner));
 
-    assertThatThrownBy(
-            () ->
-                libraryService.generatePushSecret(
-                    libraryId, DocumentSourceType.CONFLUENCE, currentUser(editor)))
+    assertThatThrownBy(() -> libraryService.generatePushSecret(libraryId, currentUser(editor)))
         .isInstanceOf(AccessDeniedException.class);
-    assertThatThrownBy(
-            () ->
-                libraryService.removePushSecret(
-                    libraryId, DocumentSourceType.CONFLUENCE, currentUser(editor)))
+    assertThatThrownBy(() -> libraryService.removePushSecret(libraryId, currentUser(editor)))
         .isInstanceOf(AccessDeniedException.class);
 
     UUID upload =
         libraryService
-            .createLibrary(
-                libraryCreation("Ablage", DocumentSourceType.UPLOAD).build(), currentUser(owner))
+            .createLibrary(libraryCreation("Ablage", SourceType.UPLOAD).build(), currentUser(owner))
             .library()
             .getId();
-    assertThatThrownBy(
-            () ->
-                libraryService.generatePushSecret(
-                    upload, DocumentSourceType.CONFLUENCE, currentUser(owner)))
+    assertThatThrownBy(() -> libraryService.generatePushSecret(upload, currentUser(owner)))
         .isInstanceOf(ValidationException.class)
-        .hasMessageContaining("CONFLUENCE");
+        .hasMessage("Für Bibliotheken vom Typ UPLOAD gibt es keinen Push-Eingang");
   }
 
   private UUID create(
@@ -726,7 +713,7 @@ class ConfluenceLibraryConfigurationIntegrationTest {
 
   private static LibraryCreationBuilder confluence(
       String name, ConfluenceEdition edition, String url) {
-    return libraryCreation(name, DocumentSourceType.CONFLUENCE)
+    return libraryCreation(name, SourceTypes.CONFLUENCE)
         .sourceUrl(URI.create(url))
         .sourceCredentials(edition == ConfluenceEdition.CLOUD ? "a@b.example:token" : "pat-token")
         .confluenceEdition(edition)

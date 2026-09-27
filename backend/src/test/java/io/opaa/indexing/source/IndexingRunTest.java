@@ -8,7 +8,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.indexing.attachment.AttachmentOutcome;
@@ -24,6 +23,7 @@ import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.LibraryStorageQuotaService;
 import io.opaa.knowledge.SourceDocumentContext;
+import io.opaa.test.SourceTypes;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -43,7 +43,7 @@ class IndexingRunTest {
           null,
           UUID.randomUUID(),
           false,
-          DocumentSourceType.HTTP_DIRECTORY,
+          SourceTypes.HTTP_DIRECTORY,
           null,
           "https://host/",
           null,
@@ -54,7 +54,7 @@ class IndexingRunTest {
           jobId,
           library,
           IndexingRunMode.FULL,
-          DocumentSourceType.HTTP_DIRECTORY,
+          SourceTypes.HTTP_DIRECTORY,
           new IndexingRunProgress(jobService, jobId),
           new IndexingRunEventRecorder(eventRepository, jobService, jobId),
           documentRepository,
@@ -197,7 +197,8 @@ class IndexingRunTest {
   }
 
   private Document indexedDocument(String filePath, String lastModifiedRemote) {
-    Document document = new Document("file.txt", filePath, "text/plain", 1L);
+    Document document =
+        new Document("file.txt", filePath, "text/plain", 1L, SourceTypes.FILESYSTEM);
     document.setLibraryId(library.getId());
     document.setStatus(DocumentStatus.INDEXED);
     document.setLastModifiedRemote(lastModifiedRemote);
