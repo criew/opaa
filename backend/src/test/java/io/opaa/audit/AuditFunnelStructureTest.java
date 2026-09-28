@@ -2,7 +2,7 @@ package io.opaa.audit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.opaa.revision.web.AuditController;
+import io.opaa.audit.web.AuditController;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.util.LinkedHashSet;

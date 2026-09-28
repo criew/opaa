@@ -111,9 +111,11 @@ Top-Level-Paket hat höchstens eines; ein tieferes Paket dieses Namens, etwa der
 `HealthController`.
 
 - **Zuordnung:** Ein Controller liegt im `web`-Paket seiner Ressource. Braucht er ein höheres Modul,
-  liegt er im höchsten beteiligten, im Paket, dessen Dienste er dort nutzt: `AssetController` in
-  `space.web` (Raumzuordnungen eines Assets), `MeController` in `group.web`, `AuditController` in
-  `revision.web` (Stichtagsauskunft).
+  liegt er im höchsten beteiligten, im Paket, dessen Dienste er dort nutzt (`MeController` in
+  `group.web`). Braucht nur eine Unterressource das höhere Modul, bekommt sie einen eigenen
+  Controller dort, und der Rest bleibt bei der Ressource: `AssetSpaceController` in `space.web`
+  neben `AssetController` in `asset.web`, `PointInTimeAccessController` in `revision.web` neben
+  `AuditController` in `audit.web`.
 - **Schichtung:** Ein `web`-Paket steht über allen Paketen, die sein Modul erreicht. Es unterliegt
   deshalb nicht `LAYERS`, nur `ALLOWED_MODULE_EDGES`: `branding.web` darf `auth` nutzen, obwohl
   `branding` darunter liegt. Umgekehrt nutzt kein Paket außerhalb der Web-Schicht und des Moduls app

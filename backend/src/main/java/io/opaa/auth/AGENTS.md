@@ -36,8 +36,8 @@ von foundation ab.
   (`BrandingImageValidator`).
 - **Web-Schicht:** `auth.web`, `account.web`, `audit.web`, `branding.web`, `mail.web`,
   `notification.web`; `audit.web.AuditedAdminCall` protokolliert `IndexingAdminController` und
-  `UploadStoreAdminController`. `AuditController` liegt in `revision.web` (workspace), `/api/v1/me`
-  in `group.web` und die Anbieterverwaltung in `directory.web` (beide rights).
+  `UploadStoreAdminController`. Die Stichtagsauskunft `/api/v1/audit/access-as-of` liegt in
+  `revision.web` (workspace), `/api/v1/me` in `group.web`, die Anbieter in `directory.web` (rights).
 - **Lokale Anmeldung testet nur die Familie `oidc`** der Testkontexte (`@OpaaLocalAuth*`); unter
   `local,dev` ist keine lokale Sitzung fahrbar.
 

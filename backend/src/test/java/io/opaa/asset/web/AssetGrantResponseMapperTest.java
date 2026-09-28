@@ -1,4 +1,4 @@
-package io.opaa.space.web;
+package io.opaa.asset.web;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

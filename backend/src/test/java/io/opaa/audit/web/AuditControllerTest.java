@@ -1,4 +1,4 @@
-package io.opaa.revision.web;
+package io.opaa.audit.web;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -20,7 +20,7 @@ import io.opaa.audit.AuditQueryService;
 import io.opaa.auth.AdminTestSecurityConfig;
 import io.opaa.auth.User;
 import io.opaa.auth.UserService;
-import io.opaa.revision.PointInTimeAccessService;
+import io.opaa.revision.web.PointInTimeAccessController;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Parameter;
@@ -28,6 +28,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -51,8 +52,9 @@ import org.springframework.web.bind.annotation.RequestParam;
  * #393 acceptance criterion: "Ein Test gegen sämtliche Auswertungsendpunkte belegt, dass keiner
  * nach Person filtert, gruppiert oder sortiert." {@link
  * #noEndpointAcceptsAnActorOrSortRequestParameter()} is that cross-cutting proof, at the HTTP layer
- * - it reflects over every {@code @RequestParam} of every method {@link AuditController} declares
- * and fails if any of them could be used to name, filter, group or sort by a person. {@code
+ * - it reflects over every {@code @RequestParam} of every method {@link AuditController} and {@link
+ * PointInTimeAccessController} declare and fails if any of them could be used to name, filter,
+ * group or sort by a person. {@code
  * io.opaa.audit.AuditQueryServiceIntegrationTest#noAccessPathAcceptsOrSortsByActor()} makes the
  * same proof one layer down, against the service the controller delegates to.
  *
@@ -77,7 +79,6 @@ class AuditControllerTest {
   @Autowired private MockMvc mockMvc;
   @MockitoBean private AuditQueryService queryService;
   @MockitoBean private AuditIncidentScopeService incidentScopeService;
-  @MockitoBean private PointInTimeAccessService pointInTimeAccessService;
   @MockitoBean private UserService userService;
 
   private final UUID organizationId = UUID.randomUUID();
@@ -262,9 +263,9 @@ class AuditControllerTest {
 
   /**
    * The dedicated cross-cutting proof this issue's acceptance criteria require: every
-   * {@code @RequestParam} on every public HTTP-handler method {@link AuditController} declares,
-   * across every one of its revision access paths, is inspected by name - none may be usable to
-   * name, filter, group or sort by the acting person.
+   * {@code @RequestParam} on every public HTTP-handler method under {@code /api/v1/audit}, across
+   * every one of its revision access paths, is inspected by name - none may be usable to name,
+   * filter, group or sort by the acting person.
    *
    * <p>#393 code review, nit 4: this alone would miss a future unannotated {@code Pageable
    * pageable} parameter, which Spring's {@code PageableHandlerMethodArgumentResolver} binds
@@ -362,7 +363,7 @@ class AuditControllerTest {
 
     failIf(
         methodNames.size() != 8,
-        "AuditController's public HTTP-handler method count changed to "
+        "The public HTTP-handler method count under /api/v1/audit changed to "
             + methodNames.size()
             + " ("
             + methodNames
@@ -371,12 +372,14 @@ class AuditControllerTest {
   }
 
   /**
-   * Every {@code public}, non-synthetic method declared directly on {@link AuditController} - its
-   * full HTTP-handler surface, private helpers like {@code toPage}/{@code toEventResponse} excluded
-   * by construction since those are not {@code public}.
+   * Every {@code public}, non-synthetic method declared directly on {@link AuditController} and on
+   * {@link PointInTimeAccessController} - the full HTTP-handler surface under {@code
+   * /api/v1/audit}, private helpers like {@code toPage}/{@code toEventResponse} excluded by
+   * construction since those are not {@code public}.
    */
   private List<Method> httpHandlerMethods() {
-    return Arrays.stream(AuditController.class.getDeclaredMethods())
+    return Stream.of(AuditController.class, PointInTimeAccessController.class)
+        .flatMap(controller -> Arrays.stream(controller.getDeclaredMethods()))
         .filter(m -> Modifier.isPublic(m.getModifiers()))
         .filter(m -> !m.isSynthetic())
         .toList();

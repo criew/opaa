@@ -48,7 +48,7 @@ import org.springframework.transaction.support.TransactionTemplate;
  * newly added method) and proves none of them exposes an actor/person entry point, either by
  * parameter type ({@code Sort}/{@code Pageable}) or by parameter name (real names, not {@code
  * arg0}/{@code arg1} - see the {@code -parameters} compiler flag {@code build.gradle.kts} now sets
- * for exactly this). Matches {@code io.opaa.revision.web.AuditControllerTest}'s {@code
+ * for exactly this). Matches {@code io.opaa.audit.web.AuditControllerTest}'s {@code
  * noEndpointAcceptsAnActorOrSortRequestParameter}/{@code
  * noParameterIsUnannotatedOrClientControlledSort} for the same claim at the HTTP layer.
  *
