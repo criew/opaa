@@ -3,7 +3,7 @@ package io.opaa.query.answer;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
-import io.opaa.query.QueryProperties;
+import io.opaa.retrieval.QueryProperties;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.IntStream;

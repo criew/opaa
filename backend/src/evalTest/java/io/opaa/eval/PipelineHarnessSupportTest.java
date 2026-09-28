@@ -8,11 +8,11 @@ import static org.mockito.Mockito.when;
 
 import io.opaa.llm.RerankModelRole;
 import io.opaa.llm.RerankRoleStatus;
-import io.opaa.query.QueryProperties;
-import io.opaa.query.RetrievalContextFactory;
-import io.opaa.query.retrieval.RetrievalPipeline;
-import io.opaa.query.retrieval.RetrievalPipelineProperties;
-import io.opaa.query.retrieval.RetrievalStageName;
+import io.opaa.retrieval.QueryProperties;
+import io.opaa.retrieval.RetrievalContextFactory;
+import io.opaa.retrieval.RetrievalPipeline;
+import io.opaa.retrieval.RetrievalPipelineProperties;
+import io.opaa.retrieval.RetrievalStageName;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;

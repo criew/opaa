@@ -17,13 +17,13 @@ import io.opaa.llm.RerankClient.ScoredCandidate;
 import io.opaa.llm.RerankModelRole;
 import io.opaa.llm.RerankRoleState;
 import io.opaa.llm.RerankRoleStatus;
-import io.opaa.query.QueryProperties;
-import io.opaa.query.RetrievalContextFactory;
-import io.opaa.query.retrieval.RetrievalPipeline;
-import io.opaa.query.retrieval.RetrievalPipelineTestSupport;
-import io.opaa.query.retrieval.RetrievalStageName;
-import io.opaa.query.retrieval.StageExplanation;
-import io.opaa.query.retrieval.StageStatus;
+import io.opaa.retrieval.QueryProperties;
+import io.opaa.retrieval.RetrievalContextFactory;
+import io.opaa.retrieval.RetrievalPipeline;
+import io.opaa.retrieval.RetrievalPipelineTestSupport;
+import io.opaa.retrieval.RetrievalStageName;
+import io.opaa.retrieval.StageExplanation;
+import io.opaa.retrieval.StageStatus;
 import io.opaa.test.JavaSources;
 import java.io.IOException;
 import java.util.List;
@@ -144,10 +144,10 @@ class SearchDiagnosisRerankParityTest {
 
   /**
    * The parity above holds only while every caller obtains its context from {@link
-   * io.opaa.query.RetrievalContextFactory}: a caller that constructed a {@code RetrievalContext}
-   * itself could read the role's state differently from the chat query without any test noticing.
-   * Structural guard: in production code the constructor is called only by the factory and by the
-   * record's own {@code withoutReranking()}.
+   * io.opaa.retrieval.RetrievalContextFactory}: a caller that constructed a {@code
+   * RetrievalContext} itself could read the role's state differently from the chat query without
+   * any test noticing. Structural guard: in production code the constructor is called only by the
+   * factory and by the record's own {@code withoutReranking()}.
    */
   @Test
   void onlyTheFactoryConstructsARetrievalContextInProductionCode() throws IOException {

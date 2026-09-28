@@ -33,7 +33,7 @@ Referenzvariante markiert ist. Ein neuer Vergleich ist eine neue Datei — kein 
 
 - `referenceVariant` muss der Name einer der `variants` sein und selbst ausführbar sein (siehe
   unten) — jedes Delta im Bericht ist gegen sie gepaart.
-- `queryOverrides` ist ein partielles Override von `io.opaa.query.QueryProperties`: ein
+- `queryOverrides` ist ein partielles Override von `io.opaa.retrieval.QueryProperties`: ein
   weggelassenes oder `null`-Feld übernimmt den Produktionswert unverändert. Unterstützte Felder:
   `fetchK`, `mmrLambda`, `similarityThreshold`, `queryDecompositionEnabled`, `maxSubQueries`,
   `maxChunksPerDocument`, `fullTextSearchEnabled` (seit Issue #1049), `rerankCandidateCount`

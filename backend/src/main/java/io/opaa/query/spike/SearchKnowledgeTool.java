@@ -1,7 +1,7 @@
 package io.opaa.query.spike;
 
-import io.opaa.query.KnowledgeRetrieval;
-import io.opaa.query.retrieval.RetrievalPipelineResult;
+import io.opaa.retrieval.KnowledgeRetrieval;
+import io.opaa.retrieval.RetrievalPipelineResult;
 import java.util.List;
 import org.springframework.ai.chat.model.ToolContext;
 import org.springframework.ai.tool.annotation.Tool;

@@ -26,7 +26,7 @@ import io.opaa.metadata.CoreMetadataField;
 import io.opaa.metadata.LibraryMetadataSchemaChangeProgress;
 import io.opaa.metadata.MetadataFieldFill;
 import io.opaa.metadata.ModelExtractionStats;
-import io.opaa.query.retrieval.RetrievalExplanation;
+import io.opaa.retrieval.RetrievalExplanation;
 import io.opaa.search.ChunkInspection;
 import io.opaa.search.ChunkInspectionService;
 import io.opaa.search.DocumentChunks;

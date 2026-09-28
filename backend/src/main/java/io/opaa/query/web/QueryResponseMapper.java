@@ -3,10 +3,10 @@ package io.opaa.query.web;
 import io.opaa.api.dto.QueryMetadata;
 import io.opaa.api.dto.QueryResponse;
 import io.opaa.api.dto.SearchedLibrary;
+import io.opaa.chat.SearchedLibraryRef;
 import io.opaa.chat.web.ChatResponseMapper;
 import io.opaa.query.QueryOutcome;
 import io.opaa.query.QueryResult;
-import io.opaa.query.SearchedLibraryRef;
 import java.util.List;
 
 /**

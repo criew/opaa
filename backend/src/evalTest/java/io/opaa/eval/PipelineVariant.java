@@ -23,7 +23,7 @@ package io.opaa.eval;
  *     index (the specification's explicit requirement — a future issue can add the reindex path
  *     this field already anticipates).
  * @param queryOverrides parameter overrides applied on top of the production {@link
- *     io.opaa.query.QueryProperties}; every field left unset there means "use the production
+ *     io.opaa.retrieval.QueryProperties}; every field left unset there means "use the production
  *     value".
  */
 public record PipelineVariant(
@@ -39,7 +39,7 @@ public record PipelineVariant(
   }
 
   /**
-   * Partial override of {@link io.opaa.query.QueryProperties}. Every field is nullable/boxed:
+   * Partial override of {@link io.opaa.retrieval.QueryProperties}. Every field is nullable/boxed:
    * {@code null} means "inherit the production value", not zero. {@code topK} is deliberately not a
    * field here — the pipeline path's metric component names ({@code hitRateAt5}, {@code ndcgAt8},
    * …) are pinned to the production window (docs/features/retrieval-benchmark.md §1, "Folgen für

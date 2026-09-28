@@ -1,6 +1,6 @@
 package io.opaa.query.answer;
 
-import io.opaa.query.QueryProperties;
+import io.opaa.retrieval.QueryProperties;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.memory.ChatMemoryRepository;
 import org.springframework.ai.chat.memory.MessageWindowChatMemory;

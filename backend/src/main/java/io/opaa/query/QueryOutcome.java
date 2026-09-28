@@ -1,5 +1,6 @@
 package io.opaa.query;
 
+import io.opaa.chat.SearchedLibraryRef;
 import java.util.List;
 
 /**

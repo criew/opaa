@@ -1,6 +1,6 @@
 package io.opaa.eval;
 
-import io.opaa.query.QueryProperties;
+import io.opaa.retrieval.QueryProperties;
 import java.util.Optional;
 
 /**

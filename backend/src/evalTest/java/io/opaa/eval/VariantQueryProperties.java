@@ -1,6 +1,6 @@
 package io.opaa.eval;
 
-import io.opaa.query.QueryProperties;
+import io.opaa.retrieval.QueryProperties;
 
 /**
  * Applies a {@link PipelineVariant.QueryOverrides} on top of the production {@link QueryProperties}

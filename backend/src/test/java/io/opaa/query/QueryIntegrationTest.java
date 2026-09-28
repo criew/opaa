@@ -9,7 +9,7 @@ import io.opaa.auth.CurrentUser;
 import io.opaa.chat.ChatSource;
 import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.llm.ActiveChatModelResolver;
-import io.opaa.query.retrieval.ranking.ChunkEmbeddingLookup;
+import io.opaa.retrieval.ranking.ChunkEmbeddingLookup;
 import io.opaa.test.OpaaMockedChatModelIntegrationTest;
 import java.util.ArrayList;
 import java.util.List;

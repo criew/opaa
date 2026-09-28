@@ -2,7 +2,7 @@ package io.opaa.eval;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.opaa.query.QueryProperties;
+import io.opaa.retrieval.QueryProperties;
 import org.junit.jupiter.api.Test;
 
 class VariantQueryPropertiesTest {
