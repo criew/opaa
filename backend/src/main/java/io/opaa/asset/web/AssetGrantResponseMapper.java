@@ -1,4 +1,4 @@
-package io.opaa.space.web;
+package io.opaa.asset.web;
 
 import io.opaa.api.dto.AssetGrantRequest;
 import io.opaa.api.dto.AssetGrantResponse;
