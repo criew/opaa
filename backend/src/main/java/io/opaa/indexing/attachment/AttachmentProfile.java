@@ -152,10 +152,10 @@ public enum AttachmentProfile {
   /**
    * Whether {@code fileName}'s last path segment carries a file extension at all - a dot that is
    * neither the first nor the last character. The structural "this looks like a file" signal {@link
-   * #GENERIC} uses instead of {@link SupportedDocumentFormats#isSupported}. Package-visible so
-   * {@code AttachmentIndexer#resolveFileName} applies the identical rule.
+   * #GENERIC} uses instead of {@link SupportedDocumentFormats#isSupported}. Public so {@code
+   * AttachmentIndexer#resolveFileName} applies the identical rule.
    */
-  static boolean fileHasSomeExtension(String fileName) {
+  public static boolean fileHasSomeExtension(String fileName) {
     if (fileName == null || fileName.isBlank()) {
       return false;
     }

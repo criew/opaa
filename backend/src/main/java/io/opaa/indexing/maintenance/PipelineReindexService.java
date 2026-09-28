@@ -10,7 +10,7 @@ import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.indexing.document.DocumentIngest;
 import io.opaa.indexing.document.DocumentIngestResult;
 import io.opaa.indexing.document.DocumentIngestService;
-import io.opaa.indexing.document.StoredDocumentSourceAccess;
+import io.opaa.indexing.source.StoredDocumentSourceAccess;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentBatchLoop;
 import io.opaa.knowledge.DocumentRepository;

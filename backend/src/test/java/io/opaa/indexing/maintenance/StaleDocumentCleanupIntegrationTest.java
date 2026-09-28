@@ -5,13 +5,13 @@ import static org.awaitility.Awaitility.await;
 
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
-import io.opaa.indexing.job.DocumentIndexingService;
 import io.opaa.indexing.job.IndexingEventCategory;
 import io.opaa.indexing.job.IndexingJob;
 import io.opaa.indexing.job.IndexingJobRepository;
 import io.opaa.indexing.job.IndexingRunEvent;
 import io.opaa.indexing.job.IndexingRunEventRepository;
 import io.opaa.indexing.job.JobStatus;
+import io.opaa.indexing.source.DocumentIndexingService;
 import io.opaa.indexing.source.filesystem.AsyncIndexingExecutor;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;

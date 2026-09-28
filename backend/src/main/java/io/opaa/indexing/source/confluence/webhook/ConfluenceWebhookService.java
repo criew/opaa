@@ -7,7 +7,9 @@ import io.opaa.indexing.source.SourceEventIntake;
 import io.opaa.indexing.source.SourceEventTarget;
 import io.opaa.indexing.source.SourceIndexingExecutor;
 import io.opaa.indexing.source.confluence.ConfluenceIndexingExecutor;
+import io.opaa.indexing.source.confluence.ConfluencePushReceiver;
 import io.opaa.indexing.source.confluence.ConfluenceSourceConnector;
+import io.opaa.indexing.source.confluence.ConfluenceWebhookSignature;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.SourceType;
@@ -30,7 +32,7 @@ import tools.jackson.databind.json.JsonMapper;
  * incremental anchor never moves for a webhook.
  */
 @Service
-public class ConfluenceWebhookService {
+public class ConfluenceWebhookService implements ConfluencePushReceiver {
 
   private static final Logger log = LoggerFactory.getLogger(ConfluenceWebhookService.class);
 
@@ -91,6 +93,7 @@ public class ConfluenceWebhookService {
    * The same for a library the caller has already loaded, {@code null} for none - the shared push
    * intake loads it once for every request, so no path costs an extra query.
    */
+  @Override
   public void accept(
       UUID libraryId,
       KnowledgeLibrary loaded,

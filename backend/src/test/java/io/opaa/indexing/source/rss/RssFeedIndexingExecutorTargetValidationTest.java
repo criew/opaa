@@ -103,7 +103,7 @@ class RssFeedIndexingExecutorTargetValidationTest {
             documentIngestService,
             documentRepository,
             feedStateRepository,
-            new io.opaa.indexing.attachment.AttachmentIndexer(
+            new io.opaa.indexing.document.AttachmentIndexer(
                 new BoundedDownloader(enabledValidator),
                 documentIngestService,
                 mock(LibraryStorageQuotaService.class),

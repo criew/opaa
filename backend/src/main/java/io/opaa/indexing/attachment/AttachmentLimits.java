@@ -1,7 +1,7 @@
 package io.opaa.indexing.attachment;
 
 /**
- * How many attachments of one parent {@link AttachmentIndexer} indexes and how large a downloaded
+ * How many attachments of one parent {@code AttachmentIndexer} indexes and how large a downloaded
  * one may be - plain values, so a connector supplies its own numbers without this package depending
  * on its configuration type; {@link AttachmentProperties#limits()} is the shared default.
  *

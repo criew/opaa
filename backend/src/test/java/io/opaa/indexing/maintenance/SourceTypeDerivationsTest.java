@@ -2,9 +2,9 @@ package io.opaa.indexing.maintenance;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.opaa.indexing.document.StoredDocumentSourceAccess;
 import io.opaa.indexing.source.SourceConnectorRegistry;
 import io.opaa.indexing.source.SourceConnectorStubs;
+import io.opaa.indexing.source.StoredDocumentSourceAccess;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.SourceType;
 import io.opaa.test.SourceTypes;

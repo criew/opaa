@@ -1,4 +1,4 @@
-package io.opaa.indexing.job;
+package io.opaa.indexing.source;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -10,6 +10,13 @@ import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.ScheduleFrequency;
 import io.opaa.common.ConflictException;
+import io.opaa.indexing.job.IndexingEventCategory;
+import io.opaa.indexing.job.IndexingJob;
+import io.opaa.indexing.job.IndexingJobService;
+import io.opaa.indexing.job.IndexingRunEvent;
+import io.opaa.indexing.job.IndexingRunEventRepository;
+import io.opaa.indexing.job.JobStatus;
+import io.opaa.indexing.job.LibraryScheduleCodec;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.test.SourceTypes;

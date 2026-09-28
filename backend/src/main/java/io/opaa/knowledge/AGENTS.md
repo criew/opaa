@@ -21,15 +21,16 @@ identity und rights ab.
   Nachlauf selbst liegen in `indexing.maintenance`.
 - **Ein Aufnahmeweg:** Jede Quelle und jeder Upload geht durch `DocumentIngestService#ingest`
   (parsen, schneiden, speichern, markieren). Die `Document`-Zeile gehört `knowledge`.
-- **`indexing.job` besitzt den Lauf** (Zeile, Lebenszyklus, Protokoll, Zeitpläne) und weiß nichts
-  von Parsen, Schneiden oder Chunk-Speichern. `maintenance` hängt von `document` ab, nie umgekehrt.
+- **Richtung im Kern von `indexing`** (`ModularArchitecture.INDEXING_CORE`): `chunk`, `job` (Lauf,
+  Protokoll), `attachment` (Übergabe an den Anhangspfad), `document` (Aufnahme samt Anhängen),
+  `source` (Vertrag, Laufrahmen, Auslöser), `maintenance`; darüber Wurzel, `web` und Konnektoren.
+  Rückwege sind Ports: `VanishedDocumentReconciler`, Properties als Schnittstellen
+  (`EmbeddingBatching` u. a.).
 - **Formate** liegen im Modul format (`io.opaa.format`, siehe `format/AGENTS.md`).
   `FormatConfiguration` registriert die Dateiformate als Beans; `DocumentIngestService` lehnt ein
   Format ab, das einen Schemaschlüssel als Passthrough-Schlüssel deklariert.
-- **`IndexingConfiguration` verdrahtet den Kern und kennt keinen Konnektor**; die Unterpakete
-  kennen voneinander nichts über das Wurzelpaket `indexing`.
-- **Zyklen zwischen den Unterpaketen von `indexing`** sind in `KNOWN_SUBPACKAGE_CYCLE_EDGES`
-  eingefroren; jede weitere Kante auf einem Zyklus lässt `ModularArchitectureTest` fehlschlagen.
+- **`IndexingConfiguration` verdrahtet den Kern und kennt keinen Konnektor**; kein Unterpaket
+  nennt das Wurzelpaket `indexing`.
 - **Chat-Modelle:** `LlmModelService` ist der einzige Einstieg. Der optionale API-Schlüssel wird
   über `SettingsEncryptor` verschlüsselt, bevor die Datenbank ihn sieht; jede Änderung wird
   protokolliert. Genau ein Modell ist systemweit aktiv.

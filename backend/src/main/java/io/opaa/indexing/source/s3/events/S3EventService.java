@@ -6,8 +6,10 @@ import io.opaa.indexing.source.PushIntakeHandler;
 import io.opaa.indexing.source.SourceEventIntake;
 import io.opaa.indexing.source.SourceEventTarget;
 import io.opaa.indexing.source.SourceIndexingExecutor;
+import io.opaa.indexing.source.s3.S3EventAuthentication;
 import io.opaa.indexing.source.s3.S3IndexingExecutor;
 import io.opaa.indexing.source.s3.S3KeyPatterns;
+import io.opaa.indexing.source.s3.S3PushReceiver;
 import io.opaa.indexing.source.s3.S3Scope;
 import io.opaa.indexing.source.s3.S3SourceConnector;
 import io.opaa.indexing.source.s3.S3SourceSettings;
@@ -37,7 +39,7 @@ import tools.jackson.databind.json.JsonMapper;
  * never touched by an event.
  */
 @Service
-public class S3EventService {
+public class S3EventService implements S3PushReceiver {
 
   private static final Logger log = LoggerFactory.getLogger(S3EventService.class);
 
@@ -98,6 +100,7 @@ public class S3EventService {
    * The same for a library the caller has already loaded, {@code null} for none - the shared push
    * intake loads it once for every request, so no path costs an extra query.
    */
+  @Override
   public void accept(
       UUID libraryId,
       KnowledgeLibrary loaded,

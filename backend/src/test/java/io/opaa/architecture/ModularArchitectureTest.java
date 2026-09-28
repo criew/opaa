@@ -63,6 +63,16 @@ class ModularArchitectureTest {
   }
 
   @Test
+  void theIndexingCoreDependsOnlyDownward() {
+    ARCHITECTURE.theIndexingCoreDependsOnlyDownward().check(mainClasses);
+  }
+
+  @Test
+  void everyIndexingPackageIsInTheCore() {
+    ARCHITECTURE.everyIndexingPackageIsInTheCore().check(mainClasses);
+  }
+
+  @Test
   void connectorsDoNotKnowEachOther() {
     ARCHITECTURE.connectorsDoNotKnowEachOther().check(mainClasses);
   }
@@ -155,6 +165,18 @@ class ModularArchitectureTest {
     assertThat(layers)
         .as("a top-level package that is gone is removed from LAYERS and MODULES as well")
         .containsAll(LAYERS);
+  }
+
+  /** Guards the premise of the core rule: every package it orders still has classes. */
+  @Test
+  void everyIndexingCorePackageHasClasses() {
+    Set<String> packages =
+        mainClasses.stream()
+            .map(JavaClass::getPackageName)
+            .filter(name -> name.startsWith("io.opaa."))
+            .map(name -> name.substring("io.opaa.".length()))
+            .collect(Collectors.toSet());
+    assertThat(packages).containsAll(ModularArchitecture.INDEXING_CORE);
   }
 
   @Test

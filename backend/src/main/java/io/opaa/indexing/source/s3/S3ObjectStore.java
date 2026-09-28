@@ -14,7 +14,7 @@ import io.opaa.sourceaccess.SourceRequestMeter;
  * whose German message names bucket, key and cause but never a credential; the target of every
  * request passes {@code TargetAddressValidator} before it is sent. A run's store refuses the call
  * that would exceed its request budget with a {@link
- * io.opaa.indexing.source.RequestBudgetExhaustedException}, before it is sent.
+ * io.opaa.indexing.job.RequestBudgetExhaustedException}, before it is sent.
  */
 public interface S3ObjectStore extends AutoCloseable {
 

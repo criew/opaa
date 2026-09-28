@@ -1,12 +1,10 @@
-package io.opaa.indexing.job;
-
-import io.opaa.indexing.attachment.AttachmentOutcome;
+package io.opaa.indexing.attachment;
 
 /**
- * The narrow slice of {@link IndexingRunProgress} a source-agnostic collaborator (e.g. {@code
+ * The narrow slice of {@code IndexingRunProgress} a source-agnostic collaborator (e.g. {@code
  * io.opaa.indexing.attachment.AttachmentAccess}) needs to count an attachment's outcome - split out
  * so a caller with no job/run of its own (a single document upload) can supply a lightweight
- * implementation instead of a full, job-bound {@link IndexingRunProgress}.
+ * implementation instead of a full, job-bound {@code IndexingRunProgress}.
  */
 public interface AttachmentProgressSink {
 

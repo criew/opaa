@@ -1,5 +1,6 @@
 package io.opaa.indexing.source;
 
+import io.opaa.indexing.job.RequestBudgetExhaustedException;
 import io.opaa.sourceaccess.RateLimitListener;
 import io.opaa.sourceaccess.SourceRequestMeter;
 import io.opaa.sourceaccess.SourceRequestPolicy;

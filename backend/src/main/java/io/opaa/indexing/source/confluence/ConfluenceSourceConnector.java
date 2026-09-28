@@ -14,8 +14,6 @@ import io.opaa.indexing.source.SourceConnectorDescriptor;
 import io.opaa.indexing.source.SourceListing;
 import io.opaa.indexing.source.SourceSettings;
 import io.opaa.indexing.source.SourceSyncStateRepository;
-import io.opaa.indexing.source.confluence.webhook.ConfluenceWebhookService;
-import io.opaa.indexing.source.confluence.webhook.ConfluenceWebhookSignature;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.SourceType;
 import java.util.ArrayList;
@@ -55,13 +53,13 @@ public class ConfluenceSourceConnector
   private final ConfluenceConnectionService connectionService;
   private final SourceSyncStateRepository syncStateRepository;
   private final SourceConnectorDescriptor descriptor;
-  private final ConfluenceWebhookService webhookService;
+  private final ConfluencePushReceiver webhookService;
 
   public ConfluenceSourceConnector(
       ConfluenceConnectionService connectionService,
       ConfluenceProperties properties,
       SourceSyncStateRepository syncStateRepository,
-      ConfluenceWebhookService webhookService) {
+      ConfluencePushReceiver webhookService) {
     this.connectionService = connectionService;
     this.syncStateRepository = syncStateRepository;
     this.webhookService = webhookService;

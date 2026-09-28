@@ -1,8 +1,12 @@
-package io.opaa.indexing.job;
+package io.opaa.indexing.source;
 
 import io.opaa.indexing.attachment.AttachmentOutcome;
+import io.opaa.indexing.attachment.AttachmentProgressSink;
 import io.opaa.indexing.document.DocumentIngestOutcomes;
 import io.opaa.indexing.document.DocumentIngestResult;
+import io.opaa.indexing.job.IndexingEventSink;
+import io.opaa.indexing.job.IndexingJobService;
+import io.opaa.indexing.job.IndexingRunCost;
 import java.util.UUID;
 import java.util.function.Supplier;
 

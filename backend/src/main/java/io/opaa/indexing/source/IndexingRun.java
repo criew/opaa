@@ -6,7 +6,8 @@ import io.opaa.indexing.document.DocumentIngestResult;
 import io.opaa.indexing.job.IndexingEventCategory;
 import io.opaa.indexing.job.IndexingRunCost;
 import io.opaa.indexing.job.IndexingRunEventRecorder;
-import io.opaa.indexing.job.IndexingRunProgress;
+import io.opaa.indexing.job.RequestBudgetExhaustedException;
+import io.opaa.indexing.job.RunEndingFailures;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.LibraryStorageQuotaService;
@@ -225,20 +226,11 @@ public final class IndexingRun {
   }
 
   /**
-   * Lets what must end the run pass an item catch: an {@link InterruptedException} (itself or as a
-   * cause, with the interrupt flag restored) and a {@link RequestBudgetExhaustedException}. Every
-   * other failure returns to the caller, which records it as the item's own.
+   * Lets what must end the run pass a connector's item catch. The connectors' entry point; the rule
+   * itself is {@link RunEndingFailures#rethrow}, which {@code document} uses below this package.
    */
   public static void rethrowRunEnding(Throwable failure) throws InterruptedException {
-    for (Throwable t = failure; t != null; t = t.getCause()) {
-      if (t instanceof InterruptedException interrupted) {
-        Thread.currentThread().interrupt();
-        throw interrupted;
-      }
-      if (t instanceof RequestBudgetExhaustedException exhausted) {
-        throw exhausted;
-      }
-    }
+    RunEndingFailures.rethrow(failure);
   }
 
   IndexingRunCost cost(boolean incomplete) {

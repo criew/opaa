@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.opaa.indexing.job.RequestBudgetExhaustedException;
 import io.opaa.sourceaccess.RateLimitPolicy;
 import io.opaa.sourceaccess.SourceRequestMeter;
 import io.opaa.sourceaccess.SourceRequestPolicy;

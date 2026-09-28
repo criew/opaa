@@ -32,6 +32,8 @@ von foundation, format und knowledge ab.
 - **Der Laufrahmen ist `IndexingRunTemplate`:** Der Körper zählt nur die Quelle auf, gibt jedes
   Element über `IndexingRun` weiter und meldet einen `ListingOutcome`. Fortschritt, Protokoll,
   Fehlerübersetzung und Abgleich durch Abwesenheit besitzt der Rahmen.
+- **Push-Adapter** (`confluence.webhook`, `s3.events`) liegen über ihrem Konnektor; der Konnektor
+  erreicht sie über einen eigenen Port (`ConfluencePushReceiver`, `S3PushReceiver`).
 - **Netzzugriff:** HTTP über `io.opaa.sourceaccess`, S3 über `io.opaa.s3`.
 - **Die S3-Tests** nutzen die geteilte `S3TestFixture` (foundation, siehe `backend/AGENTS.md`,
   „Spring-Testkontexte"); ohne Docker werden sie übersprungen.

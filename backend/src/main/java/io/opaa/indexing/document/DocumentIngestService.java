@@ -9,9 +9,7 @@ import io.opaa.format.DocumentFormatResult;
 import io.opaa.format.DocumentFormatRunner;
 import io.opaa.format.DocumentFormatSource;
 import io.opaa.format.DocumentService;
-import io.opaa.indexing.IndexingProperties;
 import io.opaa.indexing.attachment.AttachmentAccess;
-import io.opaa.indexing.attachment.AttachmentIndexer;
 import io.opaa.indexing.attachment.AttachmentLimits;
 import io.opaa.indexing.attachment.AttachmentSource;
 import io.opaa.indexing.chunk.SourceChunkMetadataKeys;
@@ -97,7 +95,7 @@ public class DocumentIngestService {
       ChecksumService checksumService,
       IndexingMetrics metrics,
       LibraryStorageQuotaService storageQuotaService,
-      IndexingProperties indexingProperties,
+      EmbeddingBatching indexingProperties,
       Executor embeddingExecutor,
       ObjectProvider<AttachmentIndexer> attachmentIndexerProvider,
       AttachmentLimits mailAttachmentLimits,

@@ -1,4 +1,4 @@
-package io.opaa.indexing.source.confluence.webhook;
+package io.opaa.indexing.source.confluence;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

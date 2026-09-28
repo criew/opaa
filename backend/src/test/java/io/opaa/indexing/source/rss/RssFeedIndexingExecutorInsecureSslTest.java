@@ -240,7 +240,7 @@ class RssFeedIndexingExecutorInsecureSslTest {
             documentIngestService,
             documentRepository,
             feedStateRepository,
-            new io.opaa.indexing.attachment.AttachmentIndexer(
+            new io.opaa.indexing.document.AttachmentIndexer(
                 new BoundedDownloader(targetAddressValidator),
                 documentIngestService,
                 mock(LibraryStorageQuotaService.class),

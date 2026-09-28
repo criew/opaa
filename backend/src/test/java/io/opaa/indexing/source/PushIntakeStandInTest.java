@@ -3,8 +3,8 @@ package io.opaa.indexing.source;
 import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.mockStatic;
 
-import io.opaa.indexing.source.confluence.webhook.ConfluenceWebhookSignature;
-import io.opaa.indexing.source.s3.events.S3EventAuthentication;
+import io.opaa.indexing.source.confluence.ConfluenceWebhookSignature;
+import io.opaa.indexing.source.s3.S3EventAuthentication;
 import io.opaa.test.SourceTypes;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;

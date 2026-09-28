@@ -1,13 +1,13 @@
-package io.opaa.indexing.source;
+package io.opaa.indexing.job;
 
 import java.time.Duration;
 
 /**
  * A run's own bound is reached - its request budget is spent or its {@code 429} waiting time is
- * used up. Not a failure of the source or the credentials: {@link IndexingRunTemplate} ends the run
+ * used up. Not a failure of the source or the credentials: {@code IndexingRunTemplate} ends the run
  * in an orderly way as incomplete, and the next run continues. Unchecked so it passes every
  * per-item catch of an access layer untouched; an item catch that swallows {@code Exception} lets
- * it through via {@link IndexingRun#rethrowRunEnding}.
+ * it through via {@link RunEndingFailures#rethrow}.
  *
  * <p>{@link #getMessage()} is the German head of the protocol note ("Anfragebudget von 500 Anfragen
  * erschöpft"); the frame appends the connector's continuation.
