@@ -68,6 +68,11 @@ class ModularArchitectureTest {
   }
 
   @Test
+  void everyIndexingPackageIsInTheCore() {
+    ARCHITECTURE.everyIndexingPackageIsInTheCore().check(mainClasses);
+  }
+
+  @Test
   void connectorsDoNotKnowEachOther() {
     ARCHITECTURE.connectorsDoNotKnowEachOther().check(mainClasses);
   }

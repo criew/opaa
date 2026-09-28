@@ -226,8 +226,8 @@ public final class IndexingRun {
   }
 
   /**
-   * Lets what must end the run pass a connector's item catch, see {@link
-   * RunEndingFailures#rethrow}.
+   * Lets what must end the run pass a connector's item catch. The connectors' entry point; the rule
+   * itself is {@link RunEndingFailures#rethrow}, which {@code document} uses below this package.
    */
   public static void rethrowRunEnding(Throwable failure) throws InterruptedException {
     RunEndingFailures.rethrow(failure);

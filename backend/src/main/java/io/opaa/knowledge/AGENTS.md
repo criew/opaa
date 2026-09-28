@@ -23,8 +23,9 @@ identity und rights ab.
   (parsen, schneiden, speichern, markieren). Die `Document`-Zeile gehört `knowledge`.
 - **Richtung im Kern von `indexing`** (`ModularArchitecture.INDEXING_CORE`): `chunk`, `job` (Lauf,
   Protokoll), `attachment` (Übergabe an den Anhangspfad), `document` (Aufnahme samt Anhängen),
-  `source` (Vertrag, Laufrahmen, Auslöser), `maintenance`; darüber Wurzel und `web`. Rückwege sind
-  Ports: `VanishedDocumentReconciler`, Properties als Schnittstellen (`EmbeddingBatching` u. a.).
+  `source` (Vertrag, Laufrahmen, Auslöser), `maintenance`; darüber Wurzel, `web` und Konnektoren.
+  Rückwege sind Ports: `VanishedDocumentReconciler`, Properties als Schnittstellen
+  (`EmbeddingBatching` u. a.).
 - **Formate** liegen im Modul format (`io.opaa.format`, siehe `format/AGENTS.md`).
   `FormatConfiguration` registriert die Dateiformate als Beans; `DocumentIngestService` lehnt ein
   Format ab, das einen Schemaschlüssel als Passthrough-Schlüssel deklariert.

@@ -500,6 +500,47 @@ public final class ModularArchitecture {
         .allowEmptyShould(true);
   }
 
+  /**
+   * A new package below {@code indexing} is ordered in {@link #INDEXING_CORE} or is a connector.
+   */
+  ArchRule everyIndexingPackageIsInTheCore() {
+    return classes()
+        .that(areInTheRoot())
+        .should(
+            new ArchCondition<>(
+                "lie in the indexing core, its root, its web package or a connector") {
+              private final Set<String> unlisted = new TreeSet<>();
+
+              @Override
+              public void check(JavaClass javaClass, ConditionEvents events) {
+                String relative = relative(javaClass.getPackageName());
+                if (relative != null
+                    && relative.startsWith("indexing.")
+                    && !INDEXING_CORE.contains(relative)
+                    && !isWebPackage(relative)
+                    && !relative.startsWith(CONNECTOR_PARENT + ".")) {
+                  unlisted.add(relative);
+                }
+              }
+
+              @Override
+              public void finish(ConditionEvents events) {
+                unlisted.forEach(
+                    name ->
+                        events.add(
+                            SimpleConditionEvent.violated(
+                                name,
+                                root
+                                    + "."
+                                    + name
+                                    + " is not ordered in the indexing core: insert it into"
+                                    + " ModularArchitecture.INDEXING_CORE above every core"
+                                    + " package it uses")));
+              }
+            })
+        .allowEmptyShould(true);
+  }
+
   ArchRule connectorsDoNotKnowEachOther() {
     return slices()
         .matching(root + "." + CONNECTOR_PARENT + ".(*)..")
@@ -530,6 +571,7 @@ public final class ModularArchitecture {
         topLevelPackagesAreFreeOfCycles(),
         subpackagesAreFreeOfCycles(),
         theIndexingCoreDependsOnlyDownward(),
+        everyIndexingPackageIsInTheCore(),
         connectorsDoNotKnowEachOther(),
         noOneOutsideAConnectorKnowsIt(),
         webClassesResideInAWebPackage(),

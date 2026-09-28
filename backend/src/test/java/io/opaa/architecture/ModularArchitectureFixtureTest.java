@@ -114,6 +114,18 @@ class ModularArchitectureFixtureTest {
     assertThat(scenario.violations(ModularArchitecture::noPackageDependsOnAHigherLayer)).isEmpty();
   }
 
+  /** {@code indexing.run} is neither core, root, web package nor connector. */
+  @Test
+  void anIndexingPackageOutsideTheCoreIsReported() {
+    Scenario scenario = new Scenario("indexingunlisted");
+
+    assertThat(scenario.violations(ModularArchitecture::everyIndexingPackageIsInTheCore))
+        .singleElement(STRING)
+        .contains("indexingunlisted.indexing.run is not ordered", "INDEXING_CORE");
+    assertThat(scenario.violations(ModularArchitecture::theIndexingCoreDependsOnlyDownward))
+        .isEmpty();
+  }
+
   @Test
   void anUnassignedTopLevelPackageIsNamedWithWhereToAssignIt() {
     Scenario scenario = new Scenario("unassigned");
