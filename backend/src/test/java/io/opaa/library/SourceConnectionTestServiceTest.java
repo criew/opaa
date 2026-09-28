@@ -18,7 +18,7 @@ import io.opaa.common.AccessDeniedException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
 import io.opaa.format.DocumentService;
-import io.opaa.indexing.FilesystemPathAllowlist;
+import io.opaa.indexing.source.FilesystemPathAllowlist;
 import io.opaa.indexing.source.SourceConnectionTestResult;
 import io.opaa.indexing.source.TestSourceConnectors;
 import io.opaa.indexing.source.rss.RssFeedParser;

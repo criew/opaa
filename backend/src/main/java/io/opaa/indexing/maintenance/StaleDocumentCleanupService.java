@@ -6,6 +6,7 @@ import io.opaa.indexing.job.IndexingEventCategory;
 import io.opaa.indexing.job.IndexingRunEventRecorder;
 import io.opaa.indexing.source.SourceIndexingExecutor;
 import io.opaa.indexing.source.VanishedDocumentPolicy;
+import io.opaa.indexing.source.VanishedDocumentReconciler;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
@@ -36,7 +37,7 @@ import org.slf4j.LoggerFactory;
  * VanishedDocumentPolicy#REMOVE_ON_ABSENCE} mode. An empty set of current paths deletes nothing
  * either - it is indistinguishable from an unreachable source.
  */
-public class StaleDocumentCleanupService {
+public class StaleDocumentCleanupService implements VanishedDocumentReconciler {
 
   private static final Logger log = LoggerFactory.getLogger(StaleDocumentCleanupService.class);
 
@@ -58,6 +59,7 @@ public class StaleDocumentCleanupService {
    *
    * @return the number of documents removed
    */
+  @Override
   public int reconcile(
       KnowledgeLibrary library,
       SourceType sourceType,

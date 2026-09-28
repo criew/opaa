@@ -186,36 +186,22 @@ public final class ModularArchitecture {
       Set.of(
           "externalaccess -> externalaccess.token",
           "externalaccess.token -> externalaccess",
-          "indexing -> indexing.attachment",
-          "indexing -> indexing.document",
-          "indexing -> indexing.job",
-          "indexing -> indexing.maintenance",
-          "indexing -> indexing.source",
-          "indexing.attachment -> indexing.document",
-          "indexing.attachment -> indexing.job",
-          "indexing.attachment -> indexing.source",
-          "indexing.document -> indexing",
-          "indexing.document -> indexing.attachment",
-          "indexing.document -> indexing.job",
-          "indexing.document -> indexing.source",
-          "indexing.job -> indexing",
-          "indexing.job -> indexing.attachment",
-          "indexing.job -> indexing.document",
-          "indexing.job -> indexing.source",
-          "indexing.maintenance -> indexing.attachment",
-          "indexing.maintenance -> indexing.document",
-          "indexing.maintenance -> indexing.job",
-          "indexing.maintenance -> indexing.source",
-          "indexing.source -> indexing.attachment",
-          "indexing.source -> indexing.document",
-          "indexing.source -> indexing.job",
-          "indexing.source -> indexing.maintenance",
-          "indexing.source.confluence -> indexing.source.confluence.webhook",
-          "indexing.source.confluence.webhook -> indexing.source.confluence",
-          "indexing.source.s3 -> indexing.source.s3.events",
-          "indexing.source.s3.events -> indexing.source.s3",
           "query -> query.spike",
           "query.spike -> query");
+
+  /**
+   * The core subpackages of {@code indexing}, lowest first. A core package depends only on itself
+   * and on core packages before it; {@code indexing} itself (the wiring), its web package and the
+   * connectors sit above the whole core.
+   */
+  static final List<String> INDEXING_CORE =
+      List.of(
+          "indexing.chunk",
+          "indexing.job",
+          "indexing.attachment",
+          "indexing.document",
+          "indexing.source",
+          "indexing.maintenance");
 
   /** Every direct subpackage of this one, relative to the root, is a connector. */
   static final String CONNECTOR_PARENT = "indexing.source";
@@ -484,6 +470,36 @@ public final class ModularArchitecture {
     };
   }
 
+  ArchRule theIndexingCoreDependsOnlyDownward() {
+    return classes()
+        .that(areInTheRoot())
+        .should(
+            dependOnly(
+                "depend on no later package of ModularArchitecture.INDEXING_CORE",
+                (origin, target) -> {
+                  int from =
+                      INDEXING_CORE.indexOf(
+                          relative(origin.getBaseComponentType().getPackageName()));
+                  String to = relative(target.getBaseComponentType().getPackageName());
+                  if (from < 0
+                      || to == null
+                      || !(to.equals("indexing") || to.startsWith("indexing."))) {
+                    return null;
+                  }
+                  int index = INDEXING_CORE.indexOf(to);
+                  if (index >= 0 && index <= from) {
+                    return null;
+                  }
+                  return INDEXING_CORE.get(from)
+                      + " -> "
+                      + to
+                      + (index < 0
+                          ? " leaves the indexing core for a package above it"
+                          : " points upward in ModularArchitecture.INDEXING_CORE");
+                }))
+        .allowEmptyShould(true);
+  }
+
   ArchRule connectorsDoNotKnowEachOther() {
     return slices()
         .matching(root + "." + CONNECTOR_PARENT + ".(*)..")
@@ -513,6 +529,7 @@ public final class ModularArchitecture {
         modulesDependOnlyOnAllowedModules(),
         topLevelPackagesAreFreeOfCycles(),
         subpackagesAreFreeOfCycles(),
+        theIndexingCoreDependsOnlyDownward(),
         connectorsDoNotKnowEachOther(),
         noOneOutsideAConnectorKnowsIt(),
         webClassesResideInAWebPackage(),

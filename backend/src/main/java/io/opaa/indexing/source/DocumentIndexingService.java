@@ -1,4 +1,4 @@
-package io.opaa.indexing.job;
+package io.opaa.indexing.source;
 
 import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.IndexingRunMode;
@@ -8,8 +8,13 @@ import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ServiceUnavailableException;
 import io.opaa.common.ValidationException;
-import io.opaa.indexing.source.IndexingSourceExecutorRegistry;
-import io.opaa.indexing.source.SourceIndexingExecutor;
+import io.opaa.indexing.job.IndexingJob;
+import io.opaa.indexing.job.IndexingJobService;
+import io.opaa.indexing.job.IndexingRunDetail;
+import io.opaa.indexing.job.IndexingRunEvent;
+import io.opaa.indexing.job.IndexingRunEventRepository;
+import io.opaa.indexing.job.IndexingStatusView;
+import io.opaa.indexing.job.JobTriggerSource;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.LibraryAccessService;

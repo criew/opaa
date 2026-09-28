@@ -17,8 +17,6 @@ import io.opaa.indexing.source.SourceConnectorDescriptor;
 import io.opaa.indexing.source.SourceListing;
 import io.opaa.indexing.source.SourceSettings;
 import io.opaa.indexing.source.SourceSyncStateRepository;
-import io.opaa.indexing.source.s3.events.S3EventAuthentication;
-import io.opaa.indexing.source.s3.events.S3EventService;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentContent;
 import io.opaa.knowledge.KnowledgeLibrary;
@@ -76,14 +74,14 @@ public class S3SourceConnector
   private final S3ClientFactory clientFactory;
   private final SourceSyncStateRepository syncStateRepository;
   private final S3OriginalAccess originalAccess;
-  private final S3EventService eventService;
+  private final S3PushReceiver eventService;
 
   public S3SourceConnector(
       S3ConnectionService connectionService,
       S3ClientFactory clientFactory,
       SourceSyncStateRepository syncStateRepository,
       S3OriginalAccess originalAccess,
-      S3EventService eventService) {
+      S3PushReceiver eventService) {
     this.connectionService = connectionService;
     this.clientFactory = clientFactory;
     this.syncStateRepository = syncStateRepository;

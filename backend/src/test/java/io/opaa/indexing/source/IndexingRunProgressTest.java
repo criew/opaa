@@ -1,4 +1,4 @@
-package io.opaa.indexing.job;
+package io.opaa.indexing.source;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -10,6 +10,9 @@ import io.opaa.format.DocumentService;
 import io.opaa.indexing.attachment.AttachmentOutcome;
 import io.opaa.indexing.document.DocumentIngestOutcomes;
 import io.opaa.indexing.document.DocumentIngestResult;
+import io.opaa.indexing.job.IndexingEventCategory;
+import io.opaa.indexing.job.IndexingEventSink;
+import io.opaa.indexing.job.IndexingJobService;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 

@@ -1,12 +1,14 @@
-package io.opaa.indexing.attachment;
+package io.opaa.indexing.document;
 
 import io.opaa.format.SupportedDocumentFormats;
-import io.opaa.indexing.document.DocumentIngest;
-import io.opaa.indexing.document.DocumentIngestOutcomes;
-import io.opaa.indexing.document.DocumentIngestResult;
-import io.opaa.indexing.document.DocumentIngestService;
+import io.opaa.indexing.attachment.AttachmentAccess;
+import io.opaa.indexing.attachment.AttachmentLimits;
+import io.opaa.indexing.attachment.AttachmentOutcome;
+import io.opaa.indexing.attachment.AttachmentProfile;
+import io.opaa.indexing.attachment.AttachmentProperties;
+import io.opaa.indexing.attachment.AttachmentSource;
 import io.opaa.indexing.job.IndexingEventCategory;
-import io.opaa.indexing.source.IndexingRun;
+import io.opaa.indexing.job.RunEndingFailures;
 import io.opaa.knowledge.LibraryStorageQuotaService;
 import io.opaa.knowledge.SourceType;
 import io.opaa.security.TargetAddressValidator;
@@ -32,7 +34,7 @@ import org.slf4j.LoggerFactory;
  * <p>An attachment failure never propagates: a lost attachment is logged and skipped with no effect
  * on the parent's outcome, but marks {@link AttachmentAccess#markDeferred()} so a later conditional
  * {@code GET} cannot suppress the retry. What ends the run - an interruption, a spent request
- * budget - is not an attachment failure and passes through ({@link IndexingRun#rethrowRunEnding}).
+ * budget - is not an attachment failure and passes through ({@link RunEndingFailures#rethrow}).
  * Every attachment created or confirmed unchanged becomes a child of {@code parentDocumentId}
  * (Entscheidung 4) and its {@code file_path} is returned, for a caller that folds those paths into
  * its own reconciliation set (Entscheidung 3).
@@ -328,7 +330,7 @@ public class AttachmentIndexer {
       access.markDeferred();
       access.progress().recordAttachment(AttachmentOutcome.SKIPPED);
     } catch (IOException e) {
-      IndexingRun.rethrowRunEnding(e);
+      RunEndingFailures.rethrow(e);
       log.warn(
           "Attachment unreachable, skipping: {} (from {}, {})",
           download.url(),
@@ -340,7 +342,7 @@ public class AttachmentIndexer {
       access.markDeferred();
       access.progress().recordAttachment(AttachmentOutcome.FAILED);
     } catch (Exception e) {
-      IndexingRun.rethrowRunEnding(e);
+      RunEndingFailures.rethrow(e);
       log.error("Failed to process attachment: {} (from {})", download.url(), parentPath, e);
       access
           .events()

@@ -1,7 +1,8 @@
-package io.opaa.indexing;
+package io.opaa.indexing.source;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.opaa.indexing.FilesystemProperties;
 import java.util.Arrays;
 import java.util.List;
 import org.junit.jupiter.api.Test;

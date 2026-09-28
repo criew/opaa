@@ -1,8 +1,8 @@
-package io.opaa.indexing.document;
+package io.opaa.indexing.source;
 
-import io.opaa.indexing.FilesystemPathAllowlist;
-import io.opaa.indexing.source.SourceConnectorDescriptor;
-import io.opaa.indexing.source.SourceConnectorRegistry;
+import io.opaa.indexing.document.AttachmentExtractor;
+import io.opaa.indexing.document.AttachmentFilePath;
+import io.opaa.indexing.document.ChecksumService;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;

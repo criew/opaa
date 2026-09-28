@@ -1,4 +1,4 @@
-package io.opaa.indexing.attachment;
+package io.opaa.indexing.document;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -14,15 +14,17 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-import io.opaa.indexing.document.DocumentIngestResult;
-import io.opaa.indexing.document.DocumentIngestService;
-import io.opaa.indexing.document.DocumentIngests;
-import io.opaa.indexing.job.AttachmentProgressSink;
+import io.opaa.indexing.attachment.AttachmentAccess;
+import io.opaa.indexing.attachment.AttachmentLimits;
+import io.opaa.indexing.attachment.AttachmentOutcome;
+import io.opaa.indexing.attachment.AttachmentProgressSink;
+import io.opaa.indexing.attachment.AttachmentProperties;
+import io.opaa.indexing.attachment.AttachmentSource;
 import io.opaa.indexing.job.IndexingEventCategory;
 import io.opaa.indexing.job.IndexingJobService;
 import io.opaa.indexing.job.IndexingRunEventRecorder;
 import io.opaa.indexing.job.IndexingRunEventRepository;
-import io.opaa.indexing.job.IndexingRunProgress;
+import io.opaa.indexing.source.IndexingRunProgress;
 import io.opaa.indexing.source.RequestBudget;
 import io.opaa.indexing.source.rss.RssFeedRunContext;
 import io.opaa.knowledge.KnowledgeLibrary;

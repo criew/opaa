@@ -1,7 +1,7 @@
 package io.opaa.indexing.source;
 
 import io.opaa.indexing.attachment.AttachmentAccess;
-import io.opaa.indexing.job.AttachmentProgressSink;
+import io.opaa.indexing.attachment.AttachmentProgressSink;
 import io.opaa.indexing.job.IndexingEventSink;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.SourceDocumentContext;

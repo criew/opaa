@@ -1,8 +1,8 @@
 package io.opaa.indexing.source.confluence;
 
-import io.opaa.indexing.attachment.AttachmentIndexer;
 import io.opaa.indexing.attachment.AttachmentOutcome;
 import io.opaa.indexing.attachment.AttachmentSource;
+import io.opaa.indexing.document.AttachmentIndexer;
 import io.opaa.indexing.job.IndexingEventCategory;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;

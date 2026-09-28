@@ -1,6 +1,13 @@
-package io.opaa.indexing.job;
+package io.opaa.indexing.source;
 
 import io.opaa.common.ConflictException;
+import io.opaa.indexing.job.IndexingEventCategory;
+import io.opaa.indexing.job.IndexingJob;
+import io.opaa.indexing.job.IndexingJobService;
+import io.opaa.indexing.job.IndexingRunEvent;
+import io.opaa.indexing.job.IndexingRunEventRepository;
+import io.opaa.indexing.job.JobStatus;
+import io.opaa.indexing.job.LibraryScheduleCodec;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import java.time.Clock;

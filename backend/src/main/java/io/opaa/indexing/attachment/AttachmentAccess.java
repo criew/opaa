@@ -1,13 +1,12 @@
 package io.opaa.indexing.attachment;
 
-import io.opaa.indexing.job.AttachmentProgressSink;
 import io.opaa.indexing.job.IndexingEventSink;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.SourceDocumentContext;
 import io.opaa.sourceaccess.RateLimitListener;
 
 /**
- * The narrow, source-agnostic slice of a connector run {@link AttachmentIndexer} needs (ADR-0022,
+ * The narrow, source-agnostic slice of a connector run {@code AttachmentIndexer} needs (ADR-0022,
  * Entscheidung 8) - replaces the direct dependency on RSS's own {@code RssFeedRunContext}/{@code
  * RssPoliteness}. A connector implements (or adapts to) this interface instead of this package
  * depending on a single source's run-state type; {@code RssFeedRunContext} implements it directly
@@ -33,7 +32,7 @@ public interface AttachmentAccess {
   void markDeferred();
 
   /**
-   * Called once for every attachment {@link AttachmentIndexer} encountered in the parent this run,
+   * Called once for every attachment {@code AttachmentIndexer} encountered in the parent this run,
    * at any nesting depth - created, confirmed unchanged, or present but failed (quota, rejected,
    * transient read error) - the channel a caller that runs {@code
    * StaleDocumentCleanupService#cleanupVanished} uses to fold the attachment's {@code file_path}
@@ -48,7 +47,7 @@ public interface AttachmentAccess {
 
   /**
    * Where inside its source the parent document sits (ADR-0023) - inherited by every attachment
-   * {@link AttachmentIndexer} stores through this access, at any nesting depth: a Confluence
+   * {@code AttachmentIndexer} stores through this access, at any nesting depth: a Confluence
    * attachment carries its page's space and hierarchy path, so the run protocol, the citation and
    * the chunk context can name them. Default {@link SourceDocumentContext#NONE} for every source
    * without such a notion (RSS, Mail, HTTP_DIRECTORY, an upload).

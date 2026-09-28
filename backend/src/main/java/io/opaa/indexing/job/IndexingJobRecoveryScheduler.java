@@ -1,6 +1,5 @@
 package io.opaa.indexing.job;
 
-import io.opaa.indexing.IndexingProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
@@ -24,10 +23,10 @@ public class IndexingJobRecoveryScheduler {
   private static final Logger log = LoggerFactory.getLogger(IndexingJobRecoveryScheduler.class);
 
   private final IndexingJobService indexingJobService;
-  private final IndexingProperties properties;
+  private final RunRecoverySettings properties;
 
   public IndexingJobRecoveryScheduler(
-      IndexingJobService indexingJobService, IndexingProperties properties) {
+      IndexingJobService indexingJobService, RunRecoverySettings properties) {
     this.indexingJobService = indexingJobService;
     this.properties = properties;
   }
@@ -52,8 +51,8 @@ public class IndexingJobRecoveryScheduler {
   /**
    * Runs periodically while the application keeps running, independent of {@link
    * #recoverOnStartup}. Every 15 minutes: frequent enough that a library is not locked out for long
-   * once a run actually exceeds {@link IndexingProperties#staleJobTimeout()}, infrequent enough not
-   * to matter for load.
+   * once a run actually exceeds {@link RunRecoverySettings#staleJobTimeout()}, infrequent enough
+   * not to matter for load.
    */
   @Scheduled(fixedDelay = 15 * 60 * 1000L)
   public void recoverStaleRunningJobs() {

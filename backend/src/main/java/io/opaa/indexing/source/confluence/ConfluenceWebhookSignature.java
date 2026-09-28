@@ -1,4 +1,4 @@
-package io.opaa.indexing.source.confluence.webhook;
+package io.opaa.indexing.source.confluence;
 
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;

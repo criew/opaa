@@ -167,7 +167,7 @@ class RssFeedIndexingExecutorTest {
         documentIngestService,
         documentRepository,
         feedStateRepository,
-        new io.opaa.indexing.attachment.AttachmentIndexer(
+        new io.opaa.indexing.document.AttachmentIndexer(
             new BoundedDownloader(targetAddressValidator, requestPolicy),
             documentIngestService,
             storageQuotaService,

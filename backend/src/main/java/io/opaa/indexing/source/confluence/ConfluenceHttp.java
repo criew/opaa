@@ -1,7 +1,7 @@
 package io.opaa.indexing.source.confluence;
 
+import io.opaa.indexing.job.RequestBudgetExhaustedException;
 import io.opaa.indexing.source.RequestBudget;
-import io.opaa.indexing.source.RequestBudgetExhaustedException;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.sourceaccess.BoundedDownloader;
 import io.opaa.sourceaccess.RateLimitPolicy;

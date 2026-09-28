@@ -5,7 +5,6 @@ import io.opaa.indexing.document.DocumentIngestService;
 import io.opaa.indexing.maintenance.StaleDocumentCleanupService;
 import io.opaa.indexing.source.IndexingRunTemplate;
 import io.opaa.indexing.source.SourceSyncStateRepository;
-import io.opaa.indexing.source.s3.events.S3EventService;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.LibraryFolderService;
 import io.opaa.security.TargetAddressValidator;
@@ -36,7 +35,7 @@ public class S3ConnectorConfiguration {
       S3ClientFactory s3ClientFactory,
       SourceSyncStateRepository sourceSyncStateRepository,
       S3OriginalAccess s3OriginalAccess,
-      S3EventService s3EventService) {
+      S3PushReceiver s3EventService) {
     return new S3SourceConnector(
         s3ConnectionService,
         s3ClientFactory,

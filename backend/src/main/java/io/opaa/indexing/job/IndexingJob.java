@@ -36,7 +36,7 @@ public class IndexingJob {
   /**
    * The true count of documents indexed by this run - higher than {@code documentsProcessed} for a
    * run whose items carry attachments, since every attachment indexed adds here without adding a
-   * processed item ({@link IndexingRunProgress#recordAttachment}).
+   * processed item ({@code IndexingRunProgress#recordAttachment}).
    */
   @Column(name = "documents_indexed_total")
   private int documentsIndexedTotal;

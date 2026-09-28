@@ -1,6 +1,6 @@
 package io.opaa.indexing.source.rss;
 
-import io.opaa.indexing.attachment.AttachmentIndexer;
+import io.opaa.indexing.document.AttachmentIndexer;
 import io.opaa.indexing.document.DocumentIngestService;
 import io.opaa.indexing.source.IndexingRunTemplate;
 import io.opaa.indexing.source.RemoteOriginalAccess;

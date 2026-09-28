@@ -5,8 +5,7 @@ import io.opaa.indexing.job.IndexingEventCategory;
 import io.opaa.indexing.job.IndexingJobService;
 import io.opaa.indexing.job.IndexingRunEventRecorder;
 import io.opaa.indexing.job.IndexingRunEventRepository;
-import io.opaa.indexing.job.IndexingRunProgress;
-import io.opaa.indexing.maintenance.StaleDocumentCleanupService;
+import io.opaa.indexing.job.RequestBudgetExhaustedException;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.LibraryStorageQuotaService;
@@ -50,14 +49,14 @@ public class IndexingRunTemplate {
 
   private final IndexingJobService indexingJobService;
   private final IndexingRunEventRepository eventRepository;
-  private final StaleDocumentCleanupService staleDocumentCleanupService;
+  private final VanishedDocumentReconciler staleDocumentCleanupService;
   private final DocumentRepository documentRepository;
   private final LibraryStorageQuotaService storageQuotaService;
 
   public IndexingRunTemplate(
       IndexingJobService indexingJobService,
       IndexingRunEventRepository eventRepository,
-      StaleDocumentCleanupService staleDocumentCleanupService,
+      VanishedDocumentReconciler staleDocumentCleanupService,
       DocumentRepository documentRepository,
       LibraryStorageQuotaService storageQuotaService) {
     this.indexingJobService = indexingJobService;

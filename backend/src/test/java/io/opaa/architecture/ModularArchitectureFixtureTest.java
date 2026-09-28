@@ -93,6 +93,27 @@ class ModularArchitectureFixtureTest {
     assertThat(scenario.violations(ModularArchitecture::topLevelPackagesAreFreeOfCycles)).isEmpty();
   }
 
+  /** {@code document -> source} points upward in the core, {@code job -> indexing} leaves it. */
+  @Test
+  void anEdgeAgainstTheIndexingCoreOrderIsReported() {
+    Scenario scenario = new Scenario("indexingcore");
+
+    assertThat(scenario.violations(ModularArchitecture::theIndexingCoreDependsOnlyDownward))
+        .hasSize(2)
+        .anySatisfy(
+            violation ->
+                assertThat(violation)
+                    .contains(
+                        "indexing.document -> indexing.source points upward",
+                        "document.DocumentIngest"))
+        .anySatisfy(
+            violation ->
+                assertThat(violation)
+                    .contains(
+                        "indexing.job -> indexing leaves the indexing core", "job.IndexingJob"));
+    assertThat(scenario.violations(ModularArchitecture::noPackageDependsOnAHigherLayer)).isEmpty();
+  }
+
   @Test
   void anUnassignedTopLevelPackageIsNamedWithWhereToAssignIt() {
     Scenario scenario = new Scenario("unassigned");

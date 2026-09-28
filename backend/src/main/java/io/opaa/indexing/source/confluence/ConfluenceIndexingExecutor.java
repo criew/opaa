@@ -3,7 +3,7 @@ package io.opaa.indexing.source.confluence;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.format.DocumentProperties;
 import io.opaa.format.stream.confluencestorage.ConfluenceStorageFormat;
-import io.opaa.indexing.attachment.AttachmentIndexer;
+import io.opaa.indexing.document.AttachmentIndexer;
 import io.opaa.indexing.document.DocumentIngest;
 import io.opaa.indexing.document.DocumentIngestResult;
 import io.opaa.indexing.document.DocumentIngestService;

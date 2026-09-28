@@ -1,4 +1,4 @@
-package io.opaa.indexing.source.s3.events;
+package io.opaa.indexing.source.s3;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;

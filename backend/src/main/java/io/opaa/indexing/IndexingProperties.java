@@ -1,7 +1,9 @@
 package io.opaa.indexing;
 
 import io.opaa.format.chunk.ChunkSizing;
+import io.opaa.indexing.document.EmbeddingBatching;
 import io.opaa.indexing.job.JobStatus;
+import io.opaa.indexing.job.RunRecoverySettings;
 import java.time.Duration;
 import java.util.List;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -60,7 +62,7 @@ public record IndexingProperties(
     Duration staleJobTimeout,
     TargetValidation targetValidation,
     int embeddingConcurrency)
-    implements ChunkSizing {
+    implements ChunkSizing, EmbeddingBatching, RunRecoverySettings {
 
   public IndexingProperties {
     if (chunkSize <= 0) {
