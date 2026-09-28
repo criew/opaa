@@ -32,9 +32,9 @@ hängt nur von foundation und identity ab.
 - **Rohes SQL gegen die Grant-Tabellen** nennt das Objekt über `asset_type` und `asset_id`.
 - **`directory` liegt über `group`,** denn die Synchronisation schreibt Gruppen; `group` fragt das
   Verzeichnis über den Port `DirectorySyncRuns`. Die Anbieter-Registratur liegt in `io.opaa.auth`.
-- **Web-Schicht:** `permission.web`, `asset.web` (Katalog), `group.web` (auch `/api/v1/me`),
-  `directory.web` (Anbieter, Verzeichnis-Konnektor, Synchronisation), `succession.web`. Die Grants
-  und Raumzuordnungen eines Assets bedient `AssetController` in `space.web` (workspace).
+- **Web-Schicht:** `permission.web`, `asset.web` (Katalog, Grants, Herleitung, Eigentum), `group.web`
+  (auch `/api/v1/me`), `directory.web` (Anbieter, Verzeichnis-Konnektor, Synchronisation),
+  `succession.web`. Die Raumzuordnungen eines Assets bedient `space.web` (workspace).
 - **Gruppenrechte enden mit der Mitgliedschaft:** Aufgelöst wird über `GroupMembershipResolver`,
   dessen Cache nach dem Commit der schreibenden Transaktion invalidiert wird.
 

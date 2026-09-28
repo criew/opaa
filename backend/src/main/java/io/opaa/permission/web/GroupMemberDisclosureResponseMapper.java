@@ -1,4 +1,4 @@
-package io.opaa.space.web;
+package io.opaa.permission.web;
 
 import io.opaa.api.dto.DisclosedGroupMemberResponse;
 import io.opaa.api.dto.GroupMemberDisclosureResponse;
@@ -6,14 +6,14 @@ import io.opaa.permission.DisclosedGroupMember;
 import io.opaa.permission.GroupMemberDisclosure;
 
 /**
- * Maps the member disclosure of a granted group onto its generated response counterpart (ADR-0006:
- * API DTOs are generated from the specification, never hand-written).
+ * Maps the member disclosure of a granted group onto its generated response counterpart, for every
+ * web package that discloses one (asset grants, space members).
  */
-final class GroupMemberDisclosureResponseMapper {
+public final class GroupMemberDisclosureResponseMapper {
 
   private GroupMemberDisclosureResponseMapper() {}
 
-  static GroupMemberDisclosureResponse toResponse(GroupMemberDisclosure disclosure) {
+  public static GroupMemberDisclosureResponse toResponse(GroupMemberDisclosure disclosure) {
     return new GroupMemberDisclosureResponse(
             disclosure.groupId(),
             disclosure.protectedGroup(),

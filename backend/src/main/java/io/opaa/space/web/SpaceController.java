@@ -18,6 +18,7 @@ import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
 import io.opaa.permission.PermissionSubject;
 import io.opaa.permission.PermissionTransferService;
+import io.opaa.permission.web.GroupMemberDisclosureResponseMapper;
 import io.opaa.space.Space;
 import io.opaa.space.SpaceAssetAssociationService;
 import io.opaa.space.SpaceCreation;

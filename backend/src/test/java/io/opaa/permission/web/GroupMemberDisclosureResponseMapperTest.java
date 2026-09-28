@@ -1,4 +1,4 @@
-package io.opaa.space.web;
+package io.opaa.permission.web;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

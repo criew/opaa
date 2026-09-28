@@ -1,10 +1,9 @@
-package io.opaa.space.web;
+package io.opaa.asset.web;
 
 import io.opaa.api.dto.AssetAccessDerivationResponse;
 import io.opaa.api.dto.AssetGrantRequest;
 import io.opaa.api.dto.AssetGrantResponse;
 import io.opaa.api.dto.AssetOwnershipTransferRequest;
-import io.opaa.api.dto.AssetSpaceAssociationListResponse;
 import io.opaa.api.dto.GroupMemberDisclosureResponse;
 import io.opaa.asset.AssetAccessDerivationService;
 import io.opaa.asset.AssetGrantService;
@@ -13,7 +12,7 @@ import io.opaa.asset.AssetTypes;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
 import io.opaa.permission.AssetType;
-import io.opaa.space.SpaceAssetAssociationService;
+import io.opaa.permission.web.GroupMemberDisclosureResponseMapper;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.UUID;
@@ -28,9 +27,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * What every asset has, whatever its type (#1899, #1900): its grants, the Herleitung and the spaces
- * it is associated with. An asset is named by type plus id; a malformed or unknown type answers
- * {@code 404} like an unknown asset.
+ * What every asset has, whatever its type (#1899, #1900): its grants, the Herleitung and its owner.
+ * An asset is named by type plus id; a malformed or unknown type answers {@code 404} like an
+ * unknown asset. The spaces an asset is associated with are served by {@code AssetSpaceController}.
  */
 @RestController
 @RequestMapping("/api/v1/assets/{assetType}/{assetId}")
@@ -38,19 +37,16 @@ public class AssetController {
 
   private final AssetGrantService grantService;
   private final AssetAccessDerivationService derivationService;
-  private final SpaceAssetAssociationService associationService;
   private final AssetOwnershipTransferService ownershipTransferService;
   private final AssetTypes assetTypes;
 
   public AssetController(
       AssetGrantService grantService,
       AssetAccessDerivationService derivationService,
-      SpaceAssetAssociationService associationService,
       AssetOwnershipTransferService ownershipTransferService,
       AssetTypes assetTypes) {
     this.grantService = grantService;
     this.derivationService = derivationService;
-    this.associationService = associationService;
     this.ownershipTransferService = ownershipTransferService;
     this.assetTypes = assetTypes;
   }
@@ -104,13 +100,6 @@ public class AssetController {
       @PathVariable String assetType, @PathVariable UUID assetId, @Caller CurrentUser caller) {
     return AccessDerivationResponseMapper.toResponse(
         derivationService.derive(typeOf(assetType), assetId, caller));
-  }
-
-  @GetMapping("/spaces")
-  public AssetSpaceAssociationListResponse listAssetSpaceAssociations(
-      @PathVariable String assetType, @PathVariable UUID assetId, @Caller CurrentUser caller) {
-    return SpaceAssetAssociationResponseMapper.toAssetSpaceListResponse(
-        associationService.listForAsset(typeOf(assetType), assetId, caller));
   }
 
   @PostMapping("/transfer-ownership")
