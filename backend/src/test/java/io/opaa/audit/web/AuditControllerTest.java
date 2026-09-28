@@ -1,5 +1,6 @@
 package io.opaa.audit.web;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.when;
@@ -9,26 +10,25 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.tngtech.archunit.core.domain.JavaClass;
 import io.opaa.api.types.ActorKind;
 import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.AuditObjectType;
 import io.opaa.api.types.AuditOutcome;
 import io.opaa.api.types.SystemRole;
+import io.opaa.architecture.MainClasses;
 import io.opaa.audit.AuditIncidentScopeService;
 import io.opaa.audit.AuditLogEntry;
 import io.opaa.audit.AuditQueryService;
 import io.opaa.auth.AdminTestSecurityConfig;
 import io.opaa.auth.User;
 import io.opaa.auth.UserService;
-import io.opaa.revision.web.PointInTimeAccessController;
 import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
 import java.lang.reflect.Parameter;
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
-import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,6 +40,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.stereotype.Controller;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -47,14 +48,17 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.context.support.StaticWebApplicationContext;
+import org.springframework.web.servlet.mvc.method.RequestMappingInfo;
+import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 
 /**
  * #393 acceptance criterion: "Ein Test gegen sämtliche Auswertungsendpunkte belegt, dass keiner
  * nach Person filtert, gruppiert oder sortiert." {@link
  * #noEndpointAcceptsAnActorOrSortRequestParameter()} is that cross-cutting proof, at the HTTP layer
- * - it reflects over every {@code @RequestParam} of every method {@link AuditController} and {@link
- * PointInTimeAccessController} declare and fails if any of them could be used to name, filter,
- * group or sort by a person. {@code
+ * - it reflects over every {@code @RequestParam} of every handler under {@code /api/v1/audit}
+ * (except the diagnostic protocol, see {@code httpHandlerMethods}) and fails if any of them could
+ * be used to name, filter, group or sort by a person. {@code
  * io.opaa.audit.AuditQueryServiceIntegrationTest#noAccessPathAcceptsOrSortsByActor()} makes the
  * same proof one layer down, against the service the controller delegates to.
  *
@@ -70,6 +74,21 @@ import org.springframework.web.bind.annotation.RequestParam;
 @ActiveProfiles("dev")
 @Import(AdminTestSecurityConfig.class)
 class AuditControllerTest {
+
+  private static final String AUDIT_PATH = "/api/v1/audit";
+  private static final String DIAGNOSTIC_CONTEXT_PATH = "/api/v1/audit/diagnostic-context-events";
+
+  /** The revision access paths of #393 plus the Stichtagsauskunft of #1822. */
+  private static final List<String> KNOWN_REVISION_HANDLERS =
+      List.of(
+          "listAuditEventsByObject",
+          "listAuditEventsByTimeRange",
+          "listAuditEventsByEventType",
+          "listAuditEventsByCorrelation",
+          "listAccessAsOf",
+          "requestAuditIncidentScope",
+          "approveAuditIncidentScope",
+          "listAuditEventsByIncidentScope");
 
   private static final String TEST_ISSUER = "test-issuer";
   private static final String TEST_SUBJECT = "test-subject";
@@ -263,17 +282,16 @@ class AuditControllerTest {
 
   /**
    * The dedicated cross-cutting proof this issue's acceptance criteria require: every
-   * {@code @RequestParam} on every public HTTP-handler method under {@code /api/v1/audit}, across
-   * every one of its revision access paths, is inspected by name - none may be usable to name,
-   * filter, group or sort by the acting person.
+   * {@code @RequestParam} on every HTTP-handler method under {@code /api/v1/audit} outside the
+   * diagnostic protocol, across every revision access path, is inspected by name - none may be
+   * usable to name, filter, group or sort by the acting person.
    *
    * <p>#393 code review, nit 4: this alone would miss a future unannotated {@code Pageable
    * pageable} parameter, which Spring's {@code PageableHandlerMethodArgumentResolver} binds
    * straight from {@code ?sort=actorRef,desc} without ever going through {@code @RequestParam} -
    * see {@link #noParameterIsUnannotatedOrClientControlledSort()} for the structural check that
    * closes exactly that gap, and {@link #forbiddenSubstringsCoverAllDeclaredParameterNames()} for
-   * why iterating {@code getDeclaredMethods()} rather than a hardcoded method-name list matters
-   * here too.
+   * why the handlers are collected by path rather than from a hardcoded list.
    */
   @Test
   void noEndpointAcceptsAnActorOrSortRequestParameter() {
@@ -350,39 +368,71 @@ class AuditControllerTest {
   }
 
   /**
-   * #393 code review, nit 4: the other half of the same finding - a hardcoded method-name list (as
-   * the two tests above no longer use) would silently stop covering a newly added access path. This
-   * asserts the controller's public HTTP-handler surface still consists of exactly the known
-   * endpoints - the seven of #393 plus the Stichtagsauskunft of #1822; growing that list is a
-   * deliberate reminder to add the new method to the checks above as well, not an assertion this
-   * test is expected to keep failing forever.
+   * #393 code review, nit 4: the other half of the same finding - the handlers are collected by
+   * path, not from a list of methods or controllers, so a new access path under {@code
+   * /api/v1/audit} is covered by the checks above wherever its controller lives. This asserts that
+   * the collection still finds at least the known revision access paths, so the checks cannot pass
+   * vacuously, and that the named exclusion still matches something.
    */
   @Test
   void forbiddenSubstringsCoverAllDeclaredParameterNames() {
-    List<String> methodNames = httpHandlerMethods().stream().map(Method::getName).sorted().toList();
+    List<String> methodNames = httpHandlerMethods().stream().map(Method::getName).toList();
 
-    failIf(
-        methodNames.size() != 8,
-        "The public HTTP-handler method count under /api/v1/audit changed to "
-            + methodNames.size()
-            + " ("
-            + methodNames
-            + ") - review whether the new method needs covering here too before adjusting this"
-            + " count");
+    assertThat(methodNames)
+        .as("the revision access paths under %s", AUDIT_PATH)
+        .containsAll(KNOWN_REVISION_HANDLERS);
+    assertThat(handlerMethodsUnder(DIAGNOSTIC_CONTEXT_PATH))
+        .as("the excluded diagnostic protocol paths still exist")
+        .isNotEmpty();
   }
 
   /**
-   * Every {@code public}, non-synthetic method declared directly on {@link AuditController} and on
-   * {@link PointInTimeAccessController} - the full HTTP-handler surface under {@code
-   * /api/v1/audit}, private helpers like {@code toPage}/{@code toEventResponse} excluded by
-   * construction since those are not {@code public}.
+   * Every HTTP-handler method of every controller in {@code io.opaa} mapped under {@link
+   * #AUDIT_PATH}, except the diagnostic protocol under {@link #DIAGNOSTIC_CONTEXT_PATH}: its
+   * purpose limitation is guarded by {@code DiagnosticContextPurposeLimitationTest}.
    */
-  private List<Method> httpHandlerMethods() {
-    return Stream.of(AuditController.class, PointInTimeAccessController.class)
-        .flatMap(controller -> Arrays.stream(controller.getDeclaredMethods()))
-        .filter(m -> Modifier.isPublic(m.getModifiers()))
-        .filter(m -> !m.isSynthetic())
+  private static List<Method> httpHandlerMethods() {
+    List<Method> diagnostic = handlerMethodsUnder(DIAGNOSTIC_CONTEXT_PATH);
+    return handlerMethodsUnder(AUDIT_PATH).stream()
+        .filter(method -> !diagnostic.contains(method))
         .toList();
+  }
+
+  private static List<Method> handlerMethodsUnder(String prefix) {
+    HandlerPaths mapping = new HandlerPaths();
+    List<Method> methods = new ArrayList<>();
+    for (JavaClass javaClass : MainClasses.get()) {
+      if (!javaClass.isAnnotatedWith(Controller.class)
+          && !javaClass.isMetaAnnotatedWith(Controller.class)) {
+        continue;
+      }
+      Class<?> controller = javaClass.reflect();
+      for (Method method : controller.getMethods()) {
+        RequestMappingInfo info = mapping.of(method, controller);
+        if (info != null
+            && info.getPatternValues().stream()
+                .anyMatch(path -> path.equals(prefix) || path.startsWith(prefix + "/"))) {
+          methods.add(method);
+        }
+      }
+    }
+    return methods;
+  }
+
+  /**
+   * Resolves the mapping of a handler method as Spring MVC does, without an application context.
+   */
+  private static final class HandlerPaths extends RequestMappingHandlerMapping {
+    HandlerPaths() {
+      StaticWebApplicationContext context = new StaticWebApplicationContext();
+      context.refresh();
+      setApplicationContext(context);
+      afterPropertiesSet();
+    }
+
+    RequestMappingInfo of(Method method, Class<?> controller) {
+      return getMappingForMethod(method, controller);
+    }
   }
 
   private void failIf(boolean condition, String message) {
