@@ -5,8 +5,31 @@
   <link href="https://criew.github.io/opaa/report/feed.xml" rel="self"/>
   <link href="https://criew.github.io/opaa/report/"/>
   <id>https://criew.github.io/opaa/report/</id>
-  <updated>2026-09-27T05:33:03Z</updated>
+  <updated>2026-09-28T05:41:51Z</updated>
   <author><name>criew/opaa</name></author>
+  <entry>
+    <title>Tagesreport Sonntag, 27. September 2026</title>
+    <link href="https://criew.github.io/opaa/report/reports/2026-09-27.html"/>
+    <id>https://criew.github.io/opaa/report/reports/2026-09-27.html</id>
+    <updated>2026-09-28T05:41:51Z</updated>
+    <summary type="text">feat: Backend und Frontend modularisieren – Grenzen erzwingen, Kreise auflösen, gezielt in Module aufteilen:
+— refactor(indexing): Dokumentformate als eigenständiges Paket format herauslösen
+— refactor(auth): auth in Identitätskern, lokale Konten und Verzeichnis aufteilen
+— refactor(api): Controller und Response-Mapper in das web-Paket ihres Moduls verschieben
+— docs(agents): Kurze AGENTS.md je logischem Modul, zentrale backend/AGENTS.md verschlanken
+feat(demo): Demo Rheinfurt um Gruppen, Prompt-Bibliotheken, Ordner und Fachformate erweitern:
+— fix(e2e): Demo-Smoke bricht vor dem Seed ab – Compose-Dienst „minio“ heißt inzwischen „objectstore“
+— chore(demo): Demo-Instanz Rheinfurt mit erweitertem Seed und Korpus neu aufsetzen
+— docs(demo): Drehbuch um Gruppen, Prompt-Bibliotheken, Ordner und Fachformate ergänzen
+— feat(demo): Fachdokumente in weiteren Formaten in den Fachbibliotheken
+feat: UI-Politur-Runde Oktober 2026 — Sammel-Epic:
+— feat(chat): Fundstellenblock unter der Antwort verschlanken
+Sonstiges:
+— E2E-Suite auf main fehlgeschlagen (automatischer Lauf)
+— fix(indexing): PDF-Tabellen verlieren die Spaltenstruktur – Chatmodell ordnet Zellen falschen Zeilen zu
+— fix(library): Anhänge einer S3-Mail erscheinen in der Ordneransicht doppelt
+— fix(e2e): Demo-Smoke „Direktlink auf einen Chat“ scheitert nach dem Abmelden an zerstörtem Ausführungskontext</summary>
+  </entry>
   <entry>
     <title>Tagesreport Samstag, 26. September 2026</title>
     <link href="https://criew.github.io/opaa/report/reports/2026-09-26.html"/>

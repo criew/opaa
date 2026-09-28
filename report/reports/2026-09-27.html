@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tagesreport 2026-09-27</title>
+<link rel="alternate" type="application/atom+xml" title="OPAA Tagesreport" href="../feed.xml">
+<style>:root {
+  color-scheme: light dark;
+  --bg: #ffffff;
+  --fg: #1a1a1a;
+  --muted: #5c6370;
+  --line: #e2e5e9;
+  --accent: #2f6feb;
+  --card: #f7f8fa;
+  --green: #1a7f37;
+  --red: #cf222e;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14161a;
+    --fg: #e6e8eb;
+    --muted: #9aa1ab;
+    --line: #2a2e35;
+    --accent: #6ea0ff;
+    --card: #1b1e24;
+    --green: #3fb950;
+    --red: #f85149;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 2rem 1.25rem 4rem;
+  background: var(--bg);
+  color: var(--fg);
+  font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+main { max-width: 46rem; margin: 0 auto; }
+a { color: var(--accent); }
+header { border-bottom: 1px solid var(--line); padding-bottom: 1.25rem; margin-bottom: 2rem; }
+h1 { font-size: 1.6rem; margin: 0 0 .35rem; letter-spacing: -.01em; }
+h2 { font-size: 1.1rem; margin: 2.25rem 0 .85rem; letter-spacing: -.01em; }
+.sub { color: var(--muted); font-size: .9rem; margin: 0; }
+.num { font-variant-numeric: tabular-nums; color: var(--muted); margin-right: .4rem; }
+.empty { color: var(--muted); font-style: italic; }
+
+.blaettern { color: var(--muted); font-size: .9rem; }
+.blaettern a { text-decoration: none; }
+.blaettern a:hover { text-decoration: underline; }
+
+.linkbar { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .85rem; }
+.linkbar a {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  font-size: .85rem;
+  padding: .3rem .7rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--card);
+  text-decoration: none;
+}
+.linkbar a:hover { border-color: var(--accent); }
+.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.dot.green { background: var(--green); }
+.dot.red { background: var(--red); }
+
+.kpi-row { display: flex; gap: .75rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+.kpi {
+  flex: 1;
+  min-width: 7rem;
+  padding: .75rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+  text-align: center;
+}
+.kpi-value {
+  font-size: 1.8rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+.kpi-value.green { color: var(--green); }
+.kpi-label {
+  font-size: .78rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.epic-section {
+  margin-bottom: 1.25rem;
+  padding: .85rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+}
+.epic-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  margin-bottom: .5rem;
+}
+.epic-title { font-weight: 600; font-size: .95rem; }
+.epic-progress {
+  font-size: .8rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.progress-bar {
+  height: 4px;
+  background: var(--line);
+  border-radius: 2px;
+  margin-bottom: .6rem;
+  overflow: hidden;
+}
+.progress-fill { height: 100%; background: var(--accent); border-radius: 2px; }
+.epic-section ul { margin: 0; padding-left: 1.25rem; font-size: .9rem; }
+.epic-section li { margin-bottom: .25rem; }
+
+.merged-summary {
+  margin-top: .5rem;
+  padding-top: .5rem;
+  border-top: 1px dashed var(--line);
+  font-size: .85rem;
+  color: var(--muted);
+}
+.merged-summary ul { margin: .25rem 0 0; padding-left: 1.25rem; }
+.merged-summary li { margin-bottom: .2rem; }
+
+ul.items { list-style: none; margin: 0; padding: 0; }
+ul.items li {
+  padding: .7rem .9rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  margin-bottom: .5rem;
+  background: var(--card);
+}
+.meta { display: block; color: var(--muted); font-size: .82rem; margin-top: .25rem; }
+
+footer { margin-top: 3rem; padding-top: 1.25rem; border-top: 1px solid var(--line); color: var(--muted); font-size: .85rem; }
+.status.bad { color: var(--red); font-weight: 600; }
+</style>
+</head>
+<body>
+<main>
+<header>
+<h1>Tagesreport Sonntag, 27. September 2026</h1>
+<nav class="blaettern"><a href="2026-09-26.html" rel="prev" title="Samstag, 26. September 2026">← Vorheriger Tag</a> · <a href="../index.html">Alle Reports</a></nav>
+<div class="linkbar"><a href="https://opaa.ewerlin.com/chat">Testumgebung</a><a href="https://github.com/criew/opaa">Repository</a><a href="https://github.com/criew/opaa/issues">Issues</a><a href="https://github.com/criew/opaa/pulls">Pull Requests</a><a href="https://github.com/criew/opaa/actions/runs/36382439344" title="Letzter CI-Lauf auf dem Hauptbranch: erfolgreich">CI <span class="dot green"></span></a></div>
+</header>
+
+<div class="kpi-row"><div class="kpi"><div class="kpi-value">51</div><div class="kpi-label">Issues offen</div></div><div class="kpi"><div class="kpi-value green">+31</div><div class="kpi-label">Neu angelegt</div></div><div class="kpi"><div class="kpi-value">27</div><div class="kpi-label">Abgeschlossen</div></div><div class="kpi"><div class="kpi-value">29</div><div class="kpi-label">PRs gemergt</div></div></div>
+
+<div class="epic-section">
+<div class="epic-header">
+<span class="epic-title"><a href="https://github.com/criew/opaa/issues/1906">#1906</a> feat: Backend und Frontend modularisieren – Grenzen erzwingen, Kreise auflösen, gezielt in Module aufteilen</span>
+<span class="epic-progress">20 / 21 erledigt</span>
+</div>
+<div class="progress-bar"><div class="progress-fill" style="width: 95%"></div></div>
+<ul><li><span class="num"><a href="https://github.com/criew/opaa/issues/2046">#2046</a></span>refactor(indexing): Dokumentformate als eigenständiges Paket format herauslösen</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/2044">#2044</a></span>refactor(auth): auth in Identitätskern, lokale Konten und Verzeichnis aufteilen</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/2034">#2034</a></span>refactor(api): Controller und Response-Mapper in das web-Paket ihres Moduls verschieben</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/2005">#2005</a></span>docs(agents): Kurze AGENTS.md je logischem Modul, zentrale backend/AGENTS.md verschlanken</li></ul>
+<div class="merged-summary">Gemergte Pull Requests:<ul><li><span class="num"><a href="https://github.com/criew/opaa/pull/2050">#2050</a></span>refactor(auth): auth in Identitätskern, lokale Konten und Verzeichnis aufteilen (+1114/−1025, 336 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2049">#2049</a></span>refactor(indexing): Dokumentformate als eigenständiges Paket format herauslösen (+1174/−1037, 222 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2043">#2043</a></span>refactor(api): Web-Schicht von assistant und external in die web-Pakete, io.opaa.api nur noch gemeinsam (+161/−128, 52 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2011">#2011</a></span>docs(agents): Kurze AGENTS.md je logischem Modul, zentrale backend/AGENTS.md verschlanken (+742/−38, 49 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2010">#2010</a></span>refactor(migration): Changelog je logischem Modul statt globaler Changeset-Nummern (+4110/−2796, 34 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2009">#2009</a></span>refactor(frontend): Sammeldateien api.ts, Mock-Handler, Fixtures und chatStore je Thema aufteilen (+9527/−9144, 167 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2008">#2008</a></span>refactor(api): OpenAPI-Spezifikation in Dateien je Thema aufteilen und zur Build-Zeit bündeln (+20594/−19631, 42 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2007">#2007</a></span>refactor(migration): Liquibase-Historie ein drittes Mal zu einer Baseline zusammenfassen – ein Changeset je Modul (+6148/−22720, 255 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2006">#2006</a></span>test(architecture): Logische Module und Schichtung per ArchUnit im Build erzwingen (+1216/−688, 42 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1997">#1997</a></span>feat(indexing): steckbare Konnektoren – offener Typ-Schlüssel und typneutrale API (Teil B von #1977) (+5286/−5350, 307 Dateien)</li></ul></div>
+</div>
+<div class="epic-section">
+<div class="epic-header">
+<span class="epic-title"><a href="https://github.com/criew/opaa/issues/2012">#2012</a> feat(demo): Demo Rheinfurt um Gruppen, Prompt-Bibliotheken, Ordner und Fachformate erweitern</span>
+<span class="epic-progress">9 / 9 erledigt</span>
+</div>
+<div class="progress-bar"><div class="progress-fill" style="width: 100%"></div></div>
+<ul><li><span class="num"><a href="https://github.com/criew/opaa/issues/2025">#2025</a></span>fix(e2e): Demo-Smoke bricht vor dem Seed ab – Compose-Dienst „minio“ heißt inzwischen „objectstore“</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/2020">#2020</a></span>chore(demo): Demo-Instanz Rheinfurt mit erweitertem Seed und Korpus neu aufsetzen</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/2019">#2019</a></span>docs(demo): Drehbuch um Gruppen, Prompt-Bibliotheken, Ordner und Fachformate ergänzen</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/2018">#2018</a></span>feat(demo): Fachdokumente in weiteren Formaten in den Fachbibliotheken</li></ul>
+<div class="merged-summary">Gemergte Pull Requests:<ul><li><span class="num"><a href="https://github.com/criew/opaa/pull/2032">#2032</a></span>docs(demo): Drehbuch um Gruppen, Prompt-Bibliotheken, Ordner und Fachformate ergänzen (+366/−74, 5 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2029">#2029</a></span>feat(demo): Keycloak-Gruppen mit Rechten über den Verzeichnisabgleich (+1024/−88, 8 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2028">#2028</a></span>feat(demo): Fachdokumente in XLSX, E-Mail mit PDF-Anhang und CSV in den Fachbibliotheken (+613/−70, 18 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2027">#2027</a></span>fix(e2e): Demo-Smoke-Harness auf objectstore/objectstore-seed umstellen (+16/−14, 3 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2024">#2024</a></span>feat(demo): Ratsinformationen nach Gremien ordnen und Anlagen als Anhänge zeigen (+1075/−78, 28 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2023">#2023</a></span>feat(demo): Prompt-Bibliotheken „Textbausteine Bürgerbüro“ und „Vorlagen Amtsleitung“ im Demo-Seed (+808/−1, 5 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2022">#2022</a></span>feat(demo): Aktenplan-Ordner in der Upload-Bibliothek „Interne Dienstanweisungen Meldewesen“ (+360/−106, 36 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2021">#2021</a></span>feat(demo): interne Gruppen „Pressestelle“ und „Sachbearbeitung Bürgerbüro“ im Demo-Seed (+329/−38, 5 Dateien)</li></ul></div>
+</div>
+<div class="epic-section">
+<div class="epic-header">
+<span class="epic-title"><a href="https://github.com/criew/opaa/issues/1441">#1441</a> feat: UI-Politur-Runde Oktober 2026 — Sammel-Epic</span>
+<span class="epic-progress">14 / 15 erledigt</span>
+</div>
+<div class="progress-bar"><div class="progress-fill" style="width: 93%"></div></div>
+<ul><li><span class="num"><a href="https://github.com/criew/opaa/issues/1449">#1449</a></span>feat(chat): Fundstellenblock unter der Antwort verschlanken</li></ul>
+<div class="merged-summary">Gemergte Pull Requests:<ul><li><span class="num"><a href="https://github.com/criew/opaa/pull/2042">#2042</a></span>feat(chat): Fundstellenblock unter der Antwort durch „Belege anzeigen&quot; ersetzen (+997/−1266, 30 Dateien)</li></ul></div>
+</div>
+<div class="epic-section">
+<div class="epic-header"><span class="epic-title">Sonstiges</span></div>
+<ul><li><span class="num"><a href="https://github.com/criew/opaa/issues/2048">#2048</a></span>E2E-Suite auf main fehlgeschlagen (automatischer Lauf)</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/2033">#2033</a></span>fix(indexing): PDF-Tabellen verlieren die Spaltenstruktur – Chatmodell ordnet Zellen falschen Zeilen zu</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/2031">#2031</a></span>fix(library): Anhänge einer S3-Mail erscheinen in der Ordneransicht doppelt</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/2030">#2030</a></span>fix(e2e): Demo-Smoke „Direktlink auf einen Chat“ scheitert nach dem Abmelden an zerstörtem Ausführungskontext</li></ul>
+<div class="merged-summary">Gemergte Pull Requests:<ul><li><span class="num"><a href="https://github.com/criew/opaa/pull/2040">#2040</a></span>refactor(api): Web-Schicht von knowledge und library in die web-Pakete ihrer Module (+267/−185, 69 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2039">#2039</a></span>refactor(api): Web-Schicht von identity, rights und workspace in die web-Pakete ihrer Module (+662/−172, 136 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2038">#2038</a></span>fix(indexing): PDF-Tabellen mit Gitterlinien zeilenweise mit Zellentrennern ausgeben (+1554/−44, 23 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2036">#2036</a></span>fix(e2e): Demo-Smoke wartet beim Abmelden auf die Rückkehr von Keycloak (+12/−3, 1 Datei)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2035">#2035</a></span>fix(library): Anhänge in der Ordneransicht nur unter ihrem Elterndokument zeigen (+98/−34, 7 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1999">#1999</a></span>chore(deps): npm (non-major) aktualisieren (+61/−74, 4 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1998">#1998</a></span>chore(deps): axllent/mailpit docker tag to v1.31.3 (+1/−1, 1 Datei)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1996">#1996</a></span>fix(migration): Fixture-Kette des Delta-Tests 092 ohne entfernten Changeset 077 (+0/−2, 1 Datei)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1994">#1994</a></span>fix(chat): mehrzeilige Fragen annehmen und Eingabe an Server-Regeln angleichen (+498/−23, 9 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1986">#1986</a></span>refactor(indexing): Einstellungen je Konnektor, Kern ohne Konnektornamen (Teil A von #1977) (+2770/−1549, 130 Dateien)</li></ul></div>
+</div>
+
+<footer>
+Erzeugt am 2026-09-28 um 07:41 Uhr ·
+<a href="../feed.xml">Feed abonnieren</a>
+<br><span class="empty">Berichtszeitraum: 2026-09-27T00:00:00 bis 2026-09-27T23:59:59 (Europe/Berlin)</span>
+</footer>
+</main>
+</body>
+</html>
