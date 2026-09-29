@@ -3,6 +3,8 @@ import userEvent from '@testing-library/user-event'
 import { vi, describe, expect, it } from 'vitest'
 import MessageBubble from './MessageBubble'
 import type { ChatMessage } from '../../types/chat'
+import { useNotificationStore } from '../../stores/notificationStore'
+import { useCopyAnnouncement } from './copyAnnouncer'
 
 const citedSource = {
   fileName: 'test.md',
@@ -312,5 +314,108 @@ describe('MessageBubble', () => {
     expect(
       screen.queryByText('Diese Antwort wurde ohne Wissensbasis erstellt.'),
     ).not.toBeInTheDocument()
+  })
+})
+
+describe('MessageBubble copy', () => {
+  const answer: ChatMessage = {
+    id: 'copy-a',
+    role: 'assistant',
+    content: 'Er kostet **42,60 Euro** 【source: doc-a#0 | 001_personalausweis.md】.',
+    sources: [{ ...citedSource, fileName: '001_personalausweis.md', documentId: 'doc-a' }],
+    timestamp: new Date(),
+  }
+
+  it('copies the answer as Markdown without footnote marks and confirms it at the button', async () => {
+    const user = userEvent.setup()
+    render(<MessageBubble message={answer} />)
+
+    await user.click(screen.getByRole('button', { name: 'Antwort kopieren' }))
+
+    expect(await navigator.clipboard.readText()).toBe('Er kostet **42,60 Euro**.')
+    expect(screen.getByRole('button', { name: 'Antwort kopiert' })).toHaveTextContent('Kopiert')
+    expect(useCopyAnnouncement.getState().text).toBe('Die Antwort wurde kopiert.')
+  })
+
+  it('offers the answer with its sources as Markdown footnotes', async () => {
+    const user = userEvent.setup()
+    render(<MessageBubble message={answer} />)
+
+    await user.click(screen.getByRole('button', { name: 'Weitere Kopieroptionen' }))
+    await user.click(screen.getByRole('menuitem', { name: /Mit Quellenangaben/ }))
+
+    expect(await navigator.clipboard.readText()).toBe(
+      'Er kostet **42,60 Euro**[^1].\n\n[^1]: 001_personalausweis.md',
+    )
+  })
+
+  it('offers the answer as plain text', async () => {
+    const user = userEvent.setup()
+    render(<MessageBubble message={answer} />)
+
+    await user.click(screen.getByRole('button', { name: 'Weitere Kopieroptionen' }))
+    await user.click(screen.getByRole('menuitem', { name: /Nur Text/ }))
+
+    expect(await navigator.clipboard.readText()).toBe('Er kostet 42,60 Euro.')
+  })
+
+  it('copies by keyboard alone', async () => {
+    const user = userEvent.setup()
+    render(<MessageBubble message={answer} />)
+
+    screen.getByRole('button', { name: 'Antwort kopieren' }).focus()
+    await user.keyboard('{Enter}')
+
+    expect(await navigator.clipboard.readText()).toBe('Er kostet **42,60 Euro**.')
+  })
+
+  it('offers copying for an answer without any Belege too', () => {
+    render(
+      <MessageBubble
+        message={{
+          id: 'copy-b',
+          role: 'assistant',
+          content: 'Nichts gefunden.',
+          timestamp: new Date(),
+        }}
+      />,
+    )
+    expect(screen.getByRole('button', { name: 'Antwort kopieren' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Belege anzeigen' })).not.toBeInTheDocument()
+  })
+
+  it('copies one of the own questions as plain text', async () => {
+    const user = userEvent.setup()
+    render(
+      <MessageBubble
+        message={{
+          id: 'copy-q',
+          role: 'user',
+          content: 'Was kostet **ein** Ausweis?',
+          timestamp: new Date(),
+        }}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Frage kopieren' }))
+
+    expect(await navigator.clipboard.readText()).toBe('Was kostet **ein** Ausweis?')
+    expect(screen.getByRole('button', { name: 'Frage kopiert' })).toBeInTheDocument()
+  })
+
+  it('says so when the clipboard refuses', async () => {
+    const user = userEvent.setup()
+    vi.spyOn(navigator.clipboard, 'writeText').mockRejectedValueOnce(new Error('denied'))
+    useNotificationStore.getState().reset()
+    render(<MessageBubble message={answer} />)
+
+    await user.click(screen.getByRole('button', { name: 'Antwort kopieren' }))
+
+    await waitFor(() =>
+      expect(useNotificationStore.getState().queue.at(-1)?.message).toBe(
+        'Die Antwort konnte nicht kopiert werden – bitte manuell markieren.',
+      ),
+    )
+    expect(screen.getByRole('button', { name: 'Antwort kopieren' })).toBeInTheDocument()
   })
 })
