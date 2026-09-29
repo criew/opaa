@@ -5,8 +5,22 @@
   <link href="https://criew.github.io/opaa/report/feed.xml" rel="self"/>
   <link href="https://criew.github.io/opaa/report/"/>
   <id>https://criew.github.io/opaa/report/</id>
-  <updated>2026-09-28T05:41:51Z</updated>
+  <updated>2026-09-29T05:58:59Z</updated>
   <author><name>criew/opaa</name></author>
+  <entry>
+    <title>Tagesreport Montag, 28. September 2026</title>
+    <link href="https://criew.github.io/opaa/report/reports/2026-09-28.html"/>
+    <id>https://criew.github.io/opaa/report/reports/2026-09-28.html</id>
+    <updated>2026-09-29T05:58:59Z</updated>
+    <summary type="text">feat: Backend und Frontend modularisieren – Grenzen erzwingen, Kreise auflösen, gezielt in Module aufteilen:
+— AssetController und AuditController ins eigene web-Paket verschoben
+— Zyklen im Pipeline-Kern von indexing aufgelöst
+— Metadatenschema und Extraktion als eigenes Paket metadata
+— Retrieval als eigenes Paket unter der Antwortgenerierung
+Sonstiges:
+— API nach Nutzergruppen trennen geplant
+— Frontend nach Fachthemen gliedern geplant</summary>
+  </entry>
   <entry>
     <title>Tagesreport Sonntag, 27. September 2026</title>
     <link href="https://criew.github.io/opaa/report/reports/2026-09-27.html"/>
