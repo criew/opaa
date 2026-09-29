@@ -14,6 +14,7 @@ import {
 } from '../services/chatApi'
 import { dropChatSettingsCache, markChatManuallyRenamed, useChatStore } from './chatStore'
 import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
+import { RECENT_PAGE_SIZE } from '../components/chat/chatListSections'
 
 /** Page size of the chat archive and of the active table on the "Chats" page. */
 export const CHAT_PAGE_SIZE = 50
@@ -73,6 +74,11 @@ interface ChatListState {
    * the LLM-derived title chatStore's delayed reload picks up (#557) - to a chat already in the
    * list. A no-op if the chat isn't in the (possibly not yet loaded) list. */
   updateChatTitle: (spaceId: string, chatId: string, title: string | null) => void
+  /** How many "Zuletzt verwendet" rows the sidebar reveals, and for which space. Kept here rather
+   *  than in ChatList: the sidebar remounts whenever the layout switches between desktop and the
+   *  mobile drawer, and the revealed pages must survive that. Another space starts at one page. */
+  revealedRecent: { spaceId: string | null; count: number }
+  setRevealedRecent: (spaceId: string, count: number) => void
   reset: () => void
 }
 
@@ -132,6 +138,9 @@ export const useChatListStore = create<ChatListState>((set, get) => ({
   error: null,
   archiveBySpaceId: {},
   isLoadingArchive: false,
+  revealedRecent: { spaceId: null, count: RECENT_PAGE_SIZE },
+
+  setRevealedRecent: (spaceId, count) => set({ revealedRecent: { spaceId, count } }),
 
   reset: () =>
     set({
@@ -140,6 +149,7 @@ export const useChatListStore = create<ChatListState>((set, get) => ({
       error: null,
       archiveBySpaceId: {},
       isLoadingArchive: false,
+      revealedRecent: { spaceId: null, count: RECENT_PAGE_SIZE },
     }),
 
   loadChats: async (spaceId: string) => {

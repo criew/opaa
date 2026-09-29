@@ -101,12 +101,18 @@ export default function ChatList({ spaceId, header }: ChatListProps) {
   const [renamingChatId, setRenamingChatId] = useState<string | null>(null)
   const [renameValue, setRenameValue] = useState('')
   const [menuAnchor, setMenuAnchor] = useState<{ chatId: string; el: HTMLElement } | null>(null)
-  // How many "Zuletzt verwendet" rows are revealed, together with the space they were revealed
-  // for - switching spaces starts that section at its first page again.
-  const [revealed, setRevealed] = useState({ spaceId, count: RECENT_PAGE_SIZE })
-  if (revealed.spaceId !== spaceId) setRevealed({ spaceId, count: RECENT_PAGE_SIZE })
-  const recentShown = revealed.spaceId === spaceId ? revealed.count : RECENT_PAGE_SIZE
-  const setRecentShown = (count: number) => setRevealed({ spaceId, count })
+  // How many "Zuletzt verwendet" rows are revealed - held in the store so a remount (layout
+  // switch between desktop and mobile drawer) keeps them; another space starts at one page.
+  const revealedRecent = useChatListStore((s) => s.revealedRecent)
+  const setRevealedRecent = useChatListStore((s) => s.setRevealedRecent)
+  const recentShown = revealedRecent.spaceId === spaceId ? revealedRecent.count : RECENT_PAGE_SIZE
+  const setRecentShown = (count: number) => setRevealedRecent(spaceId, count)
+  const chatPathPrefix = `/spaces/${spaceId}/chats/`
+  const activeChatId = location.pathname.startsWith(chatPathPrefix)
+    ? location.pathname.slice(chatPathPrefix.length)
+    : null
+  // Set whenever the open chat changes or the list mounts; consumed once its row is rendered.
+  const scrollToActiveRef = useRef(true)
   const groupIdPrefix = useId()
   // Pinning moves a row into another group, which remounts it; focus follows it there.
   const refocusMovedChatIdRef = useRef<string | null>(null)
@@ -167,6 +173,32 @@ export default function ChatList({ spaceId, header }: ChatListProps) {
       void loadChats(spaceId)
     }
   }, [spaceId, chats, loadChats])
+
+  // An open chat beyond the revealed pages - after a remount, or opened by link - is revealed,
+  // once per open chat and mount, so "Weniger" still folds the list back afterwards.
+  const revealedForChatRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (activeChatId === null || chats === undefined) return
+    if (revealedForChatRef.current === activeChatId) return
+    revealedForChatRef.current = activeChatId
+    const index = splitChats(chats).recent.findIndex((chat) => chat.id === activeChatId)
+    if (index < recentShown) return
+    setRevealedRecent(spaceId, Math.ceil((index + 1) / RECENT_PAGE_SIZE) * RECENT_PAGE_SIZE)
+  }, [activeChatId, chats, recentShown, spaceId, setRevealedRecent])
+
+  useEffect(() => {
+    scrollToActiveRef.current = true
+  }, [activeChatId])
+
+  // Brings the open chat's row into the list's visible part once it is rendered - a remounted
+  // list starts scrolled to the top, where a chat far down would not be seen as selected.
+  useEffect(() => {
+    if (!scrollToActiveRef.current || activeChatId === null) return
+    const row = rowButtonRefs.current?.get(activeChatId)
+    if (!row) return
+    scrollToActiveRef.current = false
+    row.scrollIntoView?.({ block: 'nearest' })
+  })
 
   // Routes through the not-yet-persisted "new" chat state instead of eagerly creating a chat here
   // - the first sent message is the only place a chat gets created (chatStore#sendMessage), so a
