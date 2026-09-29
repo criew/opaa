@@ -118,8 +118,8 @@ Space nimmt für alle keine neuen Inhalte mehr an, auch keine Frage in einem arc
 Archivieren eines Chats ist dort trotzdem möglich und ändert an der Sichtbarkeit des Space nichts.
 
 Die **Chatliste** in der Seitenleiste zeigt zuerst die angehefteten Chats, darunter „Zuletzt
-verwendet" mit den 15 zuletzt genutzten. „15 weitere anzeigen" blendet die nächsten ein, „weniger
-anzeigen" klappt wieder auf die ersten 15 zurück. Ein Filterfeld gibt es nicht; der Suchknopf neben
+verwendet" mit den 15 zuletzt genutzten. „15 weitere" blendet die nächsten ein, „Weniger" klappt
+wieder auf die ersten 15 zurück. Ein Filterfeld gibt es nicht; der Suchknopf neben
 „Neu" öffnet die Chatsuche (Abschnitt 7.2), die auch archivierte Chats findet. Jeder Eintrag hat ein
 Menü mit Umbenennen, Anheften, Archivieren und Löschen; der Titel des offenen Chats lässt sich
 zusätzlich direkt in der Kopfzeile bearbeiten (Enter speichert, Escape verwirft).

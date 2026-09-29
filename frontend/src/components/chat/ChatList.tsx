@@ -19,6 +19,8 @@ import AddIcon from '@mui/icons-material/Add'
 import ArchiveOutlinedIcon from '@mui/icons-material/ArchiveOutlined'
 import DeleteIcon from '@mui/icons-material/Delete'
 import EditIcon from '@mui/icons-material/Edit'
+import ExpandLessIcon from '@mui/icons-material/ExpandLess'
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import MoreVertIcon from '@mui/icons-material/MoreVert'
 import PushPinIcon from '@mui/icons-material/PushPin'
 import PushPinOutlinedIcon from '@mui/icons-material/PushPinOutlined'
@@ -32,6 +34,41 @@ import { confirmAction } from '../../stores/confirmStore'
 import { notify } from '../../stores/notificationStore'
 import { useSpaceStore } from '../../stores/spaceStore'
 import { chatTitle, RECENT_PAGE_SIZE, splitChats } from './chatListSections'
+
+/** The paging buttons under "Zuletzt verwendet": quiet, small, never wrapping their label. */
+const PAGING_BUTTON_SX = {
+  minHeight: 0,
+  px: 0.75,
+  py: 0.25,
+  fontSize: 11.5,
+  whiteSpace: 'nowrap',
+  '& .MuiButton-endIcon': { ml: 0.25 },
+  '& .MuiButton-endIcon > svg': { fontSize: 16 },
+} as const
+
+/**
+ * A short visible label followed by a part only assistive technology reads, so the accessible
+ * name is complete and still starts with what is shown. The separating space stays outside the
+ * hidden part: as an absolutely positioned box it counts as a block, and a block drops the
+ * whitespace at its edges from the name.
+ */
+function labelWithHiddenRest(visible: string, hiddenRest: string): ReactNode {
+  return (
+    <>
+      {visible}{' '}
+      <Box component="span" sx={visuallyHidden}>
+        {hiddenRest}
+      </Box>
+    </>
+  )
+}
+
+/** "15 weitere" visibly, "15 weitere Chats anzeigen" as the name. */
+function revealMoreLabel(count: number): ReactNode {
+  return count === 1
+    ? labelWithHiddenRest('1 weiteren', 'Chat anzeigen')
+    : labelWithHiddenRest(`${count} weitere`, 'Chats anzeigen')
+}
 
 interface ChatListProps {
   spaceId: string
@@ -64,19 +101,25 @@ export default function ChatList({ spaceId, header }: ChatListProps) {
   const [renamingChatId, setRenamingChatId] = useState<string | null>(null)
   const [renameValue, setRenameValue] = useState('')
   const [menuAnchor, setMenuAnchor] = useState<{ chatId: string; el: HTMLElement } | null>(null)
-  // How many "Zuletzt verwendet" rows are revealed, together with the space they were revealed
-  // for - switching spaces starts that section at its first page again.
-  const [revealed, setRevealed] = useState({ spaceId, count: RECENT_PAGE_SIZE })
-  if (revealed.spaceId !== spaceId) setRevealed({ spaceId, count: RECENT_PAGE_SIZE })
-  const recentShown = revealed.spaceId === spaceId ? revealed.count : RECENT_PAGE_SIZE
-  const setRecentShown = (count: number) => setRevealed({ spaceId, count })
+  // How many "Zuletzt verwendet" rows are revealed - held in the store so a remount (layout
+  // switch between desktop and mobile drawer) keeps them; another space starts at one page.
+  const revealedRecent = useChatListStore((s) => s.revealedRecent)
+  const setRevealedRecent = useChatListStore((s) => s.setRevealedRecent)
+  const recentShown = revealedRecent.spaceId === spaceId ? revealedRecent.count : RECENT_PAGE_SIZE
+  const setRecentShown = (count: number) => setRevealedRecent(spaceId, count)
+  const chatPathPrefix = `/spaces/${spaceId}/chats/`
+  const activeChatId = location.pathname.startsWith(chatPathPrefix)
+    ? location.pathname.slice(chatPathPrefix.length)
+    : null
+  // Set whenever the open chat changes or the list mounts; consumed once its row is rendered.
+  const scrollToActiveRef = useRef(true)
   const groupIdPrefix = useId()
   // Pinning moves a row into another group, which remounts it; focus follows it there.
   const refocusMovedChatIdRef = useRef<string | null>(null)
   // While its pin request is in flight, a row the rollback moves back takes lost focus along.
   const pinFocusChatIdRef = useRef<string | null>(null)
   const searchButtonRef = useRef<HTMLButtonElement>(null)
-  // Revealing the last page unmounts the "… weitere anzeigen" button under the pointer, so focus
+  // Revealing the last page unmounts the "… weitere" button under the pointer, so focus
   // moves to the first row that just appeared - and the live region says how many did.
   const [revealStatus, setRevealStatus] = useState('')
   const refocusRevealedChatIdRef = useRef<string | null>(null)
@@ -130,6 +173,32 @@ export default function ChatList({ spaceId, header }: ChatListProps) {
       void loadChats(spaceId)
     }
   }, [spaceId, chats, loadChats])
+
+  // An open chat beyond the revealed pages - after a remount, or opened by link - is revealed,
+  // once per open chat and mount, so "Weniger" still folds the list back afterwards.
+  const revealedForChatRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (activeChatId === null || chats === undefined) return
+    if (revealedForChatRef.current === activeChatId) return
+    revealedForChatRef.current = activeChatId
+    const index = splitChats(chats).recent.findIndex((chat) => chat.id === activeChatId)
+    if (index < recentShown) return
+    setRevealedRecent(spaceId, Math.ceil((index + 1) / RECENT_PAGE_SIZE) * RECENT_PAGE_SIZE)
+  }, [activeChatId, chats, recentShown, spaceId, setRevealedRecent])
+
+  useEffect(() => {
+    scrollToActiveRef.current = true
+  }, [activeChatId])
+
+  // Brings the open chat's row into the list's visible part once it is rendered - a remounted
+  // list starts scrolled to the top, where a chat far down would not be seen as selected.
+  useEffect(() => {
+    if (!scrollToActiveRef.current || activeChatId === null) return
+    const row = rowButtonRefs.current?.get(activeChatId)
+    if (!row) return
+    scrollToActiveRef.current = false
+    row.scrollIntoView?.({ block: 'nearest' })
+  })
 
   // Routes through the not-yet-persisted "new" chat state instead of eagerly creating a chat here
   // - the first sent message is the only place a chat gets created (chatStore#sendMessage), so a
@@ -347,15 +416,27 @@ export default function ChatList({ spaceId, header }: ChatListProps) {
           {revealStatus}
         </Box>
         {(remaining > 0 || shown > RECENT_PAGE_SIZE) && (
-          <Box sx={{ display: 'flex', gap: 1, px: 1, mt: 0.5 }}>
+          // Short visible labels on one line each; the arrow carries "anzeigen", the hidden rest
+          // completes the accessible name, which still starts with the visible text.
+          <Box
+            sx={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              justifyContent: 'space-between',
+              columnGap: 1,
+              px: 0.25,
+              mt: 0.5,
+            }}
+          >
             {remaining > 0 && (
               <Button
                 variant="text"
                 size="small"
                 onClick={revealMore}
-                sx={{ minHeight: 0, px: 0.75, py: 0.25, fontSize: 11.5 }}
+                endIcon={<ExpandMoreIcon aria-hidden />}
+                sx={PAGING_BUTTON_SX}
               >
-                {Math.min(remaining, RECENT_PAGE_SIZE)} weitere anzeigen
+                {revealMoreLabel(Math.min(remaining, RECENT_PAGE_SIZE))}
               </Button>
             )}
             {shown > RECENT_PAGE_SIZE && (
@@ -363,9 +444,10 @@ export default function ChatList({ spaceId, header }: ChatListProps) {
                 variant="text"
                 size="small"
                 onClick={showFewer}
-                sx={{ minHeight: 0, px: 0.75, py: 0.25, fontSize: 11.5 }}
+                endIcon={<ExpandLessIcon aria-hidden />}
+                sx={{ ...PAGING_BUTTON_SX, ml: 'auto' }}
               >
-                weniger anzeigen
+                {labelWithHiddenRest('Weniger', 'anzeigen')}
               </Button>
             )}
           </Box>

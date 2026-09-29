@@ -143,6 +143,18 @@ describe('Sidebar', () => {
     )
   })
 
+  // regression guard for #2062: the chat list's live region ("15 weitere Chats angezeigt",
+  // visuallyHidden -> position: absolute) needs a positioned ancestor inside the scrolling nav.
+  // Without one its static position below a long, expanded list escapes the nav's clip, makes
+  // the page taller than the viewport and lets the browser scroll the whole shell up. jsdom has
+  // no layout, so this asserts the containment itself (same pattern as MessageList, #749).
+  it('contains the chat list in a positioned scroll container', () => {
+    renderSidebarAtRoute('/chat')
+    const chats = screen.getByRole('navigation', { name: 'Chats' })
+    expect(getComputedStyle(chats).overflowY).toBe('auto')
+    expect(getComputedStyle(chats).position).toBe('relative')
+  })
+
   it('renders New Chat button for the default space', async () => {
     renderSidebarAtRoute('/chat')
     await waitFor(() => {

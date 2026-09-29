@@ -423,6 +423,7 @@ describe('ChatList "Zuletzt verwendet"', () => {
   beforeEach(() => {
     mockNavigate.mockReset()
     currentPathname = '/spaces/space-personal'
+    useChatListStore.getState().reset()
     useChatListStore.setState({
       chatsBySpaceId: {
         'space-personal': Array.from({ length: 38 }, (_, index) => summary(index + 1)),
@@ -443,18 +444,111 @@ describe('ChatList "Zuletzt verwendet"', () => {
     renderWithProviders(<ChatList spaceId="space-personal" />)
 
     expect(shownTitles()).toHaveLength(15)
-    expect(screen.queryByRole('button', { name: 'weniger anzeigen' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Weniger anzeigen' })).not.toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: '15 weitere anzeigen' }))
+    await user.click(screen.getByRole('button', { name: '15 weitere Chats anzeigen' }))
     expect(shownTitles()).toHaveLength(30)
 
     // The last page is shorter than a full one and says so.
-    await user.click(screen.getByRole('button', { name: '8 weitere anzeigen' }))
+    await user.click(screen.getByRole('button', { name: '8 weitere Chats anzeigen' }))
     expect(shownTitles()).toHaveLength(38)
-    expect(screen.queryByRole('button', { name: /weitere anzeigen/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /weitere Chats anzeigen/ })).not.toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'weniger anzeigen' }))
+    await user.click(screen.getByRole('button', { name: 'Weniger anzeigen' }))
     expect(shownTitles()).toHaveLength(15)
+  })
+
+  // The sidebar is too narrow for "15 weitere anzeigen" and "weniger anzeigen" side by side -
+  // the visible labels stay short and on one line, the accessible names stay complete.
+  it('shows short one-line paging labels whose accessible names start with them', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<ChatList spaceId="space-personal" />)
+
+    const more = screen.getByRole('button', { name: '15 weitere Chats anzeigen' })
+    expect(more).toHaveTextContent(/^15 weitere Chats anzeigen$/)
+    expect(getComputedStyle(more).whiteSpace).toBe('nowrap')
+
+    await user.click(more)
+    const fewer = screen.getByRole('button', { name: 'Weniger anzeigen' })
+    expect(getComputedStyle(fewer).whiteSpace).toBe('nowrap')
+  })
+
+  // regression guard for #2062: the sidebar remounts when the layout switches between desktop
+  // and the mobile drawer - the revealed pages must survive that instead of folding back to 15.
+  it('keeps the revealed pages when the list remounts', async () => {
+    const user = userEvent.setup()
+    const { unmount } = renderWithProviders(<ChatList spaceId="space-personal" />)
+    await user.click(screen.getByRole('button', { name: '15 weitere Chats anzeigen' }))
+    expect(shownTitles()).toHaveLength(30)
+
+    unmount()
+    renderWithProviders(<ChatList spaceId="space-personal" />)
+
+    expect(shownTitles()).toHaveLength(30)
+  })
+
+  it('starts a different space at its first page again', async () => {
+    const user = userEvent.setup()
+    const { unmount } = renderWithProviders(<ChatList spaceId="space-personal" />)
+    await user.click(screen.getByRole('button', { name: '15 weitere Chats anzeigen' }))
+    unmount()
+    useChatListStore.setState({
+      chatsBySpaceId: {
+        ...useChatListStore.getState().chatsBySpaceId,
+        'space-other': Array.from({ length: 38 }, (_, index) => ({
+          ...summary(index + 1),
+          id: `other-${index + 1}`,
+          spaceId: 'space-other',
+        })),
+      },
+    })
+
+    renderWithProviders(<ChatList spaceId="space-other" />)
+
+    expect(shownTitles()).toHaveLength(15)
+  })
+
+  // regression guard for #2062: an open chat beyond the revealed pages - after a remount, or
+  // opened by link - is revealed, marked as selected and scrolled into the visible part.
+  it('reveals, selects and scrolls to the open chat beyond the first page', () => {
+    const scrollIntoView = vi.fn()
+    Element.prototype.scrollIntoView = scrollIntoView
+    try {
+      currentPathname = '/spaces/space-personal/chats/chat-35'
+      renderWithProviders(<ChatList spaceId="space-personal" />)
+
+      expect(shownTitles()).toHaveLength(38)
+      const row = within(screen.getByRole('list', { name: 'Zuletzt verwendet' }))
+        .getAllByRole('button')
+        .find((element) => element.textContent === 'Chat 35')
+      expect(row).toHaveClass('Mui-selected')
+      expect(scrollIntoView.mock.contexts).toContain(row)
+    } finally {
+      // @ts-expect-error jsdom has no scrollIntoView; restore that state
+      delete Element.prototype.scrollIntoView
+    }
+  })
+
+  it('still folds back with "Weniger" while the open chat sits on a later page', async () => {
+    const user = userEvent.setup()
+    currentPathname = '/spaces/space-personal/chats/chat-20'
+    renderWithProviders(<ChatList spaceId="space-personal" />)
+    expect(shownTitles()).toHaveLength(30)
+
+    await user.click(screen.getByRole('button', { name: 'Weniger anzeigen' }))
+
+    expect(shownTitles()).toHaveLength(15)
+  })
+
+  it('names a last page of one chat in the singular', async () => {
+    useChatListStore.setState({
+      chatsBySpaceId: {
+        'space-personal': Array.from({ length: 16 }, (_, index) => summary(index + 1)),
+      },
+    })
+    renderWithProviders(<ChatList spaceId="space-personal" />)
+
+    expect(screen.getByRole('button', { name: '1 weiteren Chat anzeigen' })).toBeInTheDocument()
   })
 
   // The button that reveals the last page unmounts with that click - without this, focus would
@@ -463,7 +557,7 @@ describe('ChatList "Zuletzt verwendet"', () => {
     const user = userEvent.setup()
     renderWithProviders(<ChatList spaceId="space-personal" />)
 
-    await user.click(screen.getByRole('button', { name: '15 weitere anzeigen' }))
+    await user.click(screen.getByRole('button', { name: '15 weitere Chats anzeigen' }))
 
     // Chat 16 is the first row of the second page (chats are ordered newest first).
     const firstRevealed = within(screen.getByRole('list', { name: 'Zuletzt verwendet' }))
@@ -472,12 +566,12 @@ describe('ChatList "Zuletzt verwendet"', () => {
     expect(firstRevealed).toHaveFocus()
     expect(screen.getByRole('status')).toHaveTextContent('15 weitere Chats angezeigt')
 
-    await user.click(screen.getByRole('button', { name: '8 weitere anzeigen' }))
+    await user.click(screen.getByRole('button', { name: '8 weitere Chats anzeigen' }))
 
     expect(document.body).not.toHaveFocus()
     expect(screen.getByRole('status')).toHaveTextContent('8 weitere Chats angezeigt')
 
-    await user.click(screen.getByRole('button', { name: 'weniger anzeigen' }))
+    await user.click(screen.getByRole('button', { name: 'Weniger anzeigen' }))
     expect(screen.getByRole('status')).toHaveTextContent('Wieder 15 Chats angezeigt')
   })
 })

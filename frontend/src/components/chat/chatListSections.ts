@@ -1,6 +1,6 @@
 import type { ChatSummary } from '../../types/api'
 
-/** How many recent chats the list shows at once, and how many each "weitere anzeigen" adds. */
+/** How many recent chats the list shows at once, and how many each "… weitere" adds. */
 export const RECENT_PAGE_SIZE = 15
 
 export interface ChatSections {

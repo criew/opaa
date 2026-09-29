@@ -242,10 +242,14 @@ export default function Sidebar() {
         </Menu>
       </Box>
 
+      {/* position: 'relative' makes this scroll container the containing block of ChatList's
+          visually hidden live region (position: absolute). Otherwise that region sits at its
+          static position below an expanded list, escapes the clip and stretches the page past
+          the viewport - the browser then scrolls the whole shell. */}
       <Box
         component="nav"
         aria-label="Chats"
-        sx={{ px: 2, pb: 1, flexGrow: 1, minHeight: 0, overflowY: 'auto' }}
+        sx={{ px: 2, pb: 1, flexGrow: 1, minHeight: 0, overflowY: 'auto', position: 'relative' }}
       >
         {activeChatSpaceId ? (
           <Box sx={{ mt: 0.5 }}>

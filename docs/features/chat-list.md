@@ -73,7 +73,7 @@ missverständlich, weil der ganze Assistent „sucht".
 │ · Erlass vom März    │
 │ · Rückfrage Kämmerei │
 │ · …                  │
-│ 15 weitere anzeigen  │
+│ 15 weitere ⌄         │
 └──────────────────────┘
 ```
 
@@ -97,8 +97,10 @@ aus dem Gespräch, nicht an dessen Titel. Statt eines Filterfelds steht deshalb 
 | **Angeheftet** | alle angehefteten Chats, zuletzt angeheftet oben; immer offen |
 | **Zuletzt verwendet** | alle übrigen Chats nach letzter Aktivität, die jüngsten 15 sichtbar |
 
-- „15 weitere anzeigen" blendet die nächste Seite ein — die letzte nennt ihre tatsächliche Zahl;
-  „weniger anzeigen" klappt auf die ersten 15 zurück. Ein Spacewechsel beginnt wieder bei 15.
+- „15 weitere" blendet die nächste Seite ein — die letzte nennt ihre tatsächliche Zahl;
+  „Weniger" klappt auf die ersten 15 zurück. Ein Spacewechsel beginnt wieder bei 15. Beide Knöpfe
+  stehen einzeilig in einer Zeile (Pfeil statt „anzeigen"); vorgelesen werden sie vollständig als
+  „15 weitere Chats anzeigen" und „Weniger anzeigen".
 - Maßgeblich ist die **letzte Aktivität** des Chats; die jüngste steht oben. Tagesgruppen (Heute,
   Gestern, Letzte 7 Tage …) gibt es seit #1918 nicht mehr: Sie zerlegten eine kurze Liste in viele
   Überschriften, ohne beim Wiederfinden zu helfen.
