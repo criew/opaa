@@ -19,6 +19,8 @@ import AddIcon from '@mui/icons-material/Add'
 import ArchiveOutlinedIcon from '@mui/icons-material/ArchiveOutlined'
 import DeleteIcon from '@mui/icons-material/Delete'
 import EditIcon from '@mui/icons-material/Edit'
+import ExpandLessIcon from '@mui/icons-material/ExpandLess'
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import MoreVertIcon from '@mui/icons-material/MoreVert'
 import PushPinIcon from '@mui/icons-material/PushPin'
 import PushPinOutlinedIcon from '@mui/icons-material/PushPinOutlined'
@@ -32,6 +34,41 @@ import { confirmAction } from '../../stores/confirmStore'
 import { notify } from '../../stores/notificationStore'
 import { useSpaceStore } from '../../stores/spaceStore'
 import { chatTitle, RECENT_PAGE_SIZE, splitChats } from './chatListSections'
+
+/** The paging buttons under "Zuletzt verwendet": quiet, small, never wrapping their label. */
+const PAGING_BUTTON_SX = {
+  minHeight: 0,
+  px: 0.75,
+  py: 0.25,
+  fontSize: 11.5,
+  whiteSpace: 'nowrap',
+  '& .MuiButton-endIcon': { ml: 0.25 },
+  '& .MuiButton-endIcon > svg': { fontSize: 16 },
+} as const
+
+/**
+ * A short visible label followed by a part only assistive technology reads, so the accessible
+ * name is complete and still starts with what is shown. The separating space stays outside the
+ * hidden part: as an absolutely positioned box it counts as a block, and a block drops the
+ * whitespace at its edges from the name.
+ */
+function labelWithHiddenRest(visible: string, hiddenRest: string): ReactNode {
+  return (
+    <>
+      {visible}{' '}
+      <Box component="span" sx={visuallyHidden}>
+        {hiddenRest}
+      </Box>
+    </>
+  )
+}
+
+/** "15 weitere" visibly, "15 weitere Chats anzeigen" as the name. */
+function revealMoreLabel(count: number): ReactNode {
+  return count === 1
+    ? labelWithHiddenRest('1 weiteren', 'Chat anzeigen')
+    : labelWithHiddenRest(`${count} weitere`, 'Chats anzeigen')
+}
 
 interface ChatListProps {
   spaceId: string
@@ -76,7 +113,7 @@ export default function ChatList({ spaceId, header }: ChatListProps) {
   // While its pin request is in flight, a row the rollback moves back takes lost focus along.
   const pinFocusChatIdRef = useRef<string | null>(null)
   const searchButtonRef = useRef<HTMLButtonElement>(null)
-  // Revealing the last page unmounts the "… weitere anzeigen" button under the pointer, so focus
+  // Revealing the last page unmounts the "… weitere" button under the pointer, so focus
   // moves to the first row that just appeared - and the live region says how many did.
   const [revealStatus, setRevealStatus] = useState('')
   const refocusRevealedChatIdRef = useRef<string | null>(null)
@@ -347,15 +384,27 @@ export default function ChatList({ spaceId, header }: ChatListProps) {
           {revealStatus}
         </Box>
         {(remaining > 0 || shown > RECENT_PAGE_SIZE) && (
-          <Box sx={{ display: 'flex', gap: 1, px: 1, mt: 0.5 }}>
+          // Short visible labels on one line each; the arrow carries "anzeigen", the hidden rest
+          // completes the accessible name, which still starts with the visible text.
+          <Box
+            sx={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              justifyContent: 'space-between',
+              columnGap: 1,
+              px: 0.25,
+              mt: 0.5,
+            }}
+          >
             {remaining > 0 && (
               <Button
                 variant="text"
                 size="small"
                 onClick={revealMore}
-                sx={{ minHeight: 0, px: 0.75, py: 0.25, fontSize: 11.5 }}
+                endIcon={<ExpandMoreIcon aria-hidden />}
+                sx={PAGING_BUTTON_SX}
               >
-                {Math.min(remaining, RECENT_PAGE_SIZE)} weitere anzeigen
+                {revealMoreLabel(Math.min(remaining, RECENT_PAGE_SIZE))}
               </Button>
             )}
             {shown > RECENT_PAGE_SIZE && (
@@ -363,9 +412,10 @@ export default function ChatList({ spaceId, header }: ChatListProps) {
                 variant="text"
                 size="small"
                 onClick={showFewer}
-                sx={{ minHeight: 0, px: 0.75, py: 0.25, fontSize: 11.5 }}
+                endIcon={<ExpandLessIcon aria-hidden />}
+                sx={{ ...PAGING_BUTTON_SX, ml: 'auto' }}
               >
-                weniger anzeigen
+                {labelWithHiddenRest('Weniger', 'anzeigen')}
               </Button>
             )}
           </Box>

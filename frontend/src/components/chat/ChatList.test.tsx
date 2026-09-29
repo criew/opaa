@@ -443,18 +443,44 @@ describe('ChatList "Zuletzt verwendet"', () => {
     renderWithProviders(<ChatList spaceId="space-personal" />)
 
     expect(shownTitles()).toHaveLength(15)
-    expect(screen.queryByRole('button', { name: 'weniger anzeigen' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Weniger anzeigen' })).not.toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: '15 weitere anzeigen' }))
+    await user.click(screen.getByRole('button', { name: '15 weitere Chats anzeigen' }))
     expect(shownTitles()).toHaveLength(30)
 
     // The last page is shorter than a full one and says so.
-    await user.click(screen.getByRole('button', { name: '8 weitere anzeigen' }))
+    await user.click(screen.getByRole('button', { name: '8 weitere Chats anzeigen' }))
     expect(shownTitles()).toHaveLength(38)
-    expect(screen.queryByRole('button', { name: /weitere anzeigen/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /weitere Chats anzeigen/ })).not.toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'weniger anzeigen' }))
+    await user.click(screen.getByRole('button', { name: 'Weniger anzeigen' }))
     expect(shownTitles()).toHaveLength(15)
+  })
+
+  // The sidebar is too narrow for "15 weitere anzeigen" and "weniger anzeigen" side by side -
+  // the visible labels stay short and on one line, the accessible names stay complete.
+  it('shows short one-line paging labels whose accessible names start with them', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<ChatList spaceId="space-personal" />)
+
+    const more = screen.getByRole('button', { name: '15 weitere Chats anzeigen' })
+    expect(more).toHaveTextContent(/^15 weitere Chats anzeigen$/)
+    expect(getComputedStyle(more).whiteSpace).toBe('nowrap')
+
+    await user.click(more)
+    const fewer = screen.getByRole('button', { name: 'Weniger anzeigen' })
+    expect(getComputedStyle(fewer).whiteSpace).toBe('nowrap')
+  })
+
+  it('names a last page of one chat in the singular', async () => {
+    useChatListStore.setState({
+      chatsBySpaceId: {
+        'space-personal': Array.from({ length: 16 }, (_, index) => summary(index + 1)),
+      },
+    })
+    renderWithProviders(<ChatList spaceId="space-personal" />)
+
+    expect(screen.getByRole('button', { name: '1 weiteren Chat anzeigen' })).toBeInTheDocument()
   })
 
   // The button that reveals the last page unmounts with that click - without this, focus would
@@ -463,7 +489,7 @@ describe('ChatList "Zuletzt verwendet"', () => {
     const user = userEvent.setup()
     renderWithProviders(<ChatList spaceId="space-personal" />)
 
-    await user.click(screen.getByRole('button', { name: '15 weitere anzeigen' }))
+    await user.click(screen.getByRole('button', { name: '15 weitere Chats anzeigen' }))
 
     // Chat 16 is the first row of the second page (chats are ordered newest first).
     const firstRevealed = within(screen.getByRole('list', { name: 'Zuletzt verwendet' }))
@@ -472,12 +498,12 @@ describe('ChatList "Zuletzt verwendet"', () => {
     expect(firstRevealed).toHaveFocus()
     expect(screen.getByRole('status')).toHaveTextContent('15 weitere Chats angezeigt')
 
-    await user.click(screen.getByRole('button', { name: '8 weitere anzeigen' }))
+    await user.click(screen.getByRole('button', { name: '8 weitere Chats anzeigen' }))
 
     expect(document.body).not.toHaveFocus()
     expect(screen.getByRole('status')).toHaveTextContent('8 weitere Chats angezeigt')
 
-    await user.click(screen.getByRole('button', { name: 'weniger anzeigen' }))
+    await user.click(screen.getByRole('button', { name: 'Weniger anzeigen' }))
     expect(screen.getByRole('status')).toHaveTextContent('Wieder 15 Chats angezeigt')
   })
 })
