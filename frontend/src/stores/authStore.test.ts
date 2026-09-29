@@ -795,6 +795,8 @@ describe('authStore', () => {
         const manager = signout.mock.instances[0] as UserManager
         expect(manager.settings.authority).toBe('https://partner.example.test/realms/extern')
         expect(sessionStorage.getItem('opaa.oidc.flowProvider')).toBeNull()
+        // #2037: the page is on its way to the provider - the login page must not show meanwhile
+        expect(useAuthStore.getState().isSigningOut).toBe(true)
       } finally {
         signout.mockRestore()
       }
@@ -813,6 +815,8 @@ describe('authStore', () => {
 
         expect(removeUser).toHaveBeenCalled()
         expect(useAuthStore.getState().isAuthenticated).toBe(false)
+        // #2037: without a provider redirect the login page is where this ends
+        expect(useAuthStore.getState().isSigningOut).toBe(false)
         expect(useNotificationStore.getState().queue.at(-1)?.message).toMatch(
           /nur in dieser Anwendung/,
         )
