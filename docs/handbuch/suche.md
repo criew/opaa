@@ -596,6 +596,17 @@ Fußnote im Antworttext, nennt ein Tooltip Dokument und Fundort; ein Klick öffn
 an der zugehörigen Fundstelle und markiert sie dort. Das
 Belegfenster stellt zitierte vor nicht zitierte und zeigt den Auszug jedes Chunks.
 
+**Kopieren.** Rechts unter jeder Antwort steht „Kopieren". Ein Klick legt die Antwort als Markdown in
+die Zwischenablage, ohne Fußnotenmarken und ohne Quellenliste. Der Pfeil daneben bietet zwei
+Varianten: **„Mit Quellenangaben"** setzt jede Fußnote als Markdown-Fußnote (`[^1]`, dieselbe Nummer
+wie im Chat) und hängt die zitierten Dokumente mit Fundort als Fußnotenliste an; **„Nur Text"** gibt
+die Antwort ohne Markdown-Zeichen aus, Aufzählungen mit „•", Tabellenzeilen tabulatorgetrennt. Unter
+jeder eigenen Frage liegt ein Kopiersymbol, das die Frage unverändert übernimmt, etwa um sie in einem
+neuen Chat abgewandelt zu stellen; es erscheint beim Überfahren oder bei Tastaturfokus, auf
+Touch-Geräten immer. Ein erfolgreiches Kopieren bestätigt der Knopf selbst („Kopiert"), ein
+Screenreader sagt es an; verweigert der Browser die Zwischenablage, meldet ein Hinweis, dass von Hand
+markiert werden muss.
+
 ### 7.1 Suchen ohne Antwort
 
 Neben der Abfrage gibt es einen Weg, der **bei Stufe 9 aufhört**: `POST /api/v1/search` liefert die

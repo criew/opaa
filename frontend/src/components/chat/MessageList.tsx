@@ -10,6 +10,7 @@ import type { ChatMessage } from '../../types/chat'
 import { CHAT_MAX_WIDTH } from '../../theme/theme'
 import MessageBubble from './MessageBubble'
 import DateSeparator from './DateSeparator'
+import { useCopyAnnouncement } from './copyAnnouncer'
 
 interface MessageListProps {
   messages: ChatMessage[]
@@ -36,6 +37,7 @@ export default function MessageList({ messages, isLoading, targetMessageId }: Me
   const prefersReducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
   const wasLoading = useRef(isLoading)
   const [announcement, setAnnouncement] = useState('')
+  const copyAnnouncement = useCopyAnnouncement()
   // The jump happens once per target; afterwards only a new message scrolls to the end again.
   const jumpedRef = useRef<{ id: string; length: number } | null>(null)
   const [highlightEndedFor, setHighlightEndedFor] = useState<string | null>(null)
@@ -77,9 +79,17 @@ export default function MessageList({ messages, isLoading, targetMessageId }: Me
   }, [isLoading])
 
   const liveRegion = (
-    <Box component="div" role="status" aria-live="polite" sx={visuallyHidden}>
-      {announcement}
-    </Box>
+    <>
+      <Box component="div" role="status" aria-live="polite" sx={visuallyHidden}>
+        {announcement}
+      </Box>
+      {/* The copy buttons of every message report here - one region for the whole history. The
+          invisible alternating suffix makes the same sentence twice in a row a change again. */}
+      <Box component="div" aria-live="polite" data-testid="copy-announcement" sx={visuallyHidden}>
+        {copyAnnouncement.text}
+        {copyAnnouncement.sequence % 2 === 1 ? '​' : ''}
+      </Box>
+    </>
   )
 
   if (messages.length === 0 && !isLoading) {

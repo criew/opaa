@@ -5,8 +5,10 @@ import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import TextSnippetOutlinedIcon from '@mui/icons-material/TextSnippetOutlined'
 import type { ChatMessage } from '../../types/chat'
-import { blue } from '../../theme/tokens'
+import { blue, motion } from '../../theme/tokens'
 import { buildCitationIndex } from './citations'
+import CopyAnswerButton from './CopyAnswerButton'
+import CopyQuestionButton, { QUESTION_COPY_CLASS } from './CopyQuestionButton'
 import EvidenceFooter from './EvidenceFooter'
 import MarkdownRenderer from './MarkdownRenderer'
 import SourceEvidenceDrawer from './SourceEvidenceDrawer'
@@ -70,7 +72,22 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
           width: isUser ? undefined : '100%',
         }}
       >
-        <Box sx={{ minWidth: 0, flexGrow: isUser ? undefined : 1 }}>
+        <Box
+          sx={{
+            minWidth: 0,
+            flexGrow: isUser ? undefined : 1,
+            // The question's copy button stays out of the way until the question is hovered or
+            // focused; a touch screen has no hover, so there it is always shown.
+            [`& .${QUESTION_COPY_CLASS}`]: {
+              opacity: 0,
+              transition: `opacity ${motion.durationFastMs}ms ${motion.easeOut}`,
+            },
+            [`&:hover .${QUESTION_COPY_CLASS}, &:focus-within .${QUESTION_COPY_CLASS}`]: {
+              opacity: 1,
+            },
+            '@media (hover: none)': { [`& .${QUESTION_COPY_CLASS}`]: { opacity: 1 } },
+          }}
+        >
           {/* The prompt a question was built from - a snapshot of its title, deliberately no
               link, since the person may no longer be allowed to read the prompt. */}
           {isUser && message.usedPromptTitle && (
@@ -153,7 +170,19 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
               </Typography>
             )}
 
-          {!isUser && <EvidenceFooter citations={citations} onOpen={openAllEvidence} />}
+          {isUser && (
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 0.25, mr: -0.5 }}>
+              <CopyQuestionButton text={message.content} />
+            </Box>
+          )}
+
+          {!isUser && (
+            <EvidenceFooter
+              citations={citations}
+              onOpen={openAllEvidence}
+              actions={<CopyAnswerButton content={message.content} citations={citations} />}
+            />
+          )}
           {!isUser && (
             <SourceEvidenceDrawer
               open={evidenceOpen}

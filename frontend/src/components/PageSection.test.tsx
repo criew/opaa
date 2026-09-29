@@ -112,6 +112,9 @@ const VERWALTUNGSDATEIEN = Object.keys(QUELLEN).filter((pfad) => {
  * - `MessageBubble`: die Blase grenzt zwei Sprecher voneinander ab. Nur die Frage trägt sie; die
  *   Antwort steht schon als Fließtext ohne Blase. Ohne diese eine Fläche verlöre der Verlauf
  *   seinen Wechsel.
+ * - `CopyAnswerButton`: „Kopieren" unter einer Antwort ist ein geteiltes Bedienelement in derselben
+ *   Pillenform wie „Belege anzeigen"; der Rahmen fasst Knopf und Variantenpfeil zu einer
+ *   Trefferfläche zusammen.
  * - `EvidenceFooter`: „Belege anzeigen" unter einer Antwort ist ein Bedienelement in Pillenform;
  *   der Rahmen zeigt, wie weit die Trefferfläche mit den Fußnotenmarken reicht, und bündelt
  *   keinen ruhenden Inhalt.
@@ -140,6 +143,7 @@ const AUSNAHMEN = [
   'HandoverLinkDialog.tsx',
   'MessageBubble.tsx',
   'EvidenceFooter.tsx',
+  'CopyAnswerButton.tsx',
   'ChatInput.tsx',
   'PromptCommandMenu.tsx',
   'LibraryManagementPage.tsx',
