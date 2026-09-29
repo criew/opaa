@@ -16,8 +16,9 @@ import { dropChatSettingsCache, markChatManuallyRenamed, useChatStore } from './
 import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
 import { RECENT_PAGE_SIZE } from '../components/chat/chatListSections'
 
-/** Page size of the chat archive and of the active table on the "Chats" page. */
-export const CHAT_PAGE_SIZE = 50
+/** Page size of the chat archive and of the active table on the "Chats" page - the same 25 rows
+ *  per page as the administration lists. */
+export const CHAT_PAGE_SIZE = 25
 
 /** The loaded page of a space's chat archive. */
 export interface ChatArchivePage {

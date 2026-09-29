@@ -1,14 +1,14 @@
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
-import { afterEach, describe, expect, it, vi, beforeEach } from 'vitest'
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi, beforeEach } from 'vitest'
 import { answerConfirm, renderWithProviders } from '../test/test-utils'
 import ChatsPage from './ChatsPage'
 import { useChatListStore } from '../stores/chatListStore'
 import { useSpaceStore } from '../stores/spaceStore'
 import { mockChatArchive, mockChatDetails, mockSearchChats } from '../mocks/chatFixtures'
 import { server } from '../mocks/server'
-import type { ChatSearchRequest, ChatSearchResponse } from '../types/api'
+import type { ChatSearchRequest, ChatSearchResponse, ChatSummary } from '../types/api'
 
 const mockNavigate = vi.fn()
 let currentLocation: { pathname: string; state: unknown; key: string } = {
@@ -68,6 +68,44 @@ function putTermIntoAnswer() {
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
+/** jsdom has no matchMedia; the table renders only on a desktop viewport (guidelines 5.3). */
+function matchMediaAt(desktop: boolean) {
+  return (query: string): MediaQueryList =>
+    ({
+      matches: desktop && query.includes('min-width'),
+      media: query,
+      onchange: null,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }) as unknown as MediaQueryList
+}
+
+function manyChats(count: number): ChatSummary[] {
+  return Array.from({ length: count }, (_, index) => {
+    const updatedAt = new Date(Date.UTC(2026, 8, 1) - index * 60_000).toISOString()
+    return {
+      id: `many-${index + 1}`,
+      spaceId: 'space-personal',
+      authorId: 'mock-user-id',
+      title: `Chat ${index + 1}`,
+      useKnowledge: true,
+      referencedLibraryIds: [],
+      status: 'PRIVATE',
+      createdAt: updatedAt,
+      updatedAt,
+      pinnedAt: null,
+    }
+  })
+}
+
+async function openRowMenu(user: ReturnType<typeof userEvent.setup>, title: string) {
+  await user.click(await screen.findByRole('button', { name: `Aktionen für „${title}“` }))
+  return screen.findByRole('menu', { name: `Aktionen für „${title}“` })
+}
+
 function rowTitles(): string[] {
   const table = screen.getByRole('table')
   return within(table)
@@ -76,6 +114,14 @@ function rowTitles(): string[] {
 }
 
 describe('ChatsPage', () => {
+  const originalMatchMedia = window.matchMedia
+  beforeAll(() => {
+    window.matchMedia = matchMediaAt(true)
+  })
+  afterAll(() => {
+    window.matchMedia = originalMatchMedia
+  })
+
   beforeEach(() => {
     mockNavigate.mockReset()
     currentLocation = { pathname: '/spaces/space-personal/chats', state: null, key: 'initial' }
@@ -109,14 +155,83 @@ describe('ChatsPage', () => {
     renderWithProviders(<ChatsPage />)
     await screen.findByRole('tab', { name: 'Aktiv (2)' })
 
-    const archive = screen.getByRole('button', { name: 'Archivieren' })
-    expect(archive).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'Löschen' })).toBeDisabled()
+    const toolbar = screen.getByRole('toolbar', { name: 'Sammelaktionen' })
+    expect(within(toolbar).queryByRole('button', { name: 'Archivieren' })).not.toBeInTheDocument()
+    expect(within(toolbar).queryByRole('button', { name: 'Löschen' })).not.toBeInTheDocument()
 
     await user.click(screen.getByRole('checkbox', { name: '„Architektur des Projekts“ auswählen' }))
 
-    expect(archive).toBeEnabled()
+    expect(within(toolbar).getByRole('button', { name: 'Archivieren' })).toBeEnabled()
+    expect(within(toolbar).getByRole('button', { name: 'Löschen' })).toBeEnabled()
     expect(screen.getByText('1 ausgewählt')).toBeInTheDocument()
+  })
+
+  it('archives a single chat from its row menu', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<ChatsPage />)
+    await screen.findByRole('tab', { name: 'Aktiv (2)' })
+
+    const menu = await openRowMenu(user, 'Deployment-Fragen')
+    await user.click(within(menu).getByRole('menuitem', { name: 'Archivieren' }))
+
+    expect(await screen.findByRole('status')).toHaveTextContent('1 Chat archiviert')
+    await waitFor(() => expect(rowTitles()).toEqual(['Architektur des Projekts']))
+    expect(Object.keys(mockChatArchive)).toEqual(['chat-personal-2'])
+  })
+
+  it('deletes a single chat from its row menu after a confirmation that names it', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<ChatsPage />)
+    await screen.findByRole('tab', { name: 'Aktiv (2)' })
+
+    const menu = await openRowMenu(user, 'Deployment-Fragen')
+    await user.click(within(menu).getByRole('menuitem', { name: 'Löschen' }))
+    await answerConfirm(user, '„Deployment-Fragen“ wirklich löschen?', 'Löschen')
+
+    expect(await screen.findByRole('status')).toHaveTextContent('1 Chat gelöscht')
+    expect(mockChatDetails['chat-personal-2']).toBeUndefined()
+  })
+
+  it('offers "Zurückholen" instead of pinning and archiving in the archive tab', async () => {
+    mockChatArchive['chat-personal-1'] = '2026-09-18T09:00:00Z'
+    const user = userEvent.setup()
+    renderWithProviders(<ChatsPage />)
+    await user.click(await screen.findByRole('tab', { name: 'Archiv (1)' }))
+
+    const menu = await openRowMenu(user, 'Architektur des Projekts')
+
+    expect(within(menu).getByRole('menuitem', { name: 'Zurückholen' })).toBeInTheDocument()
+    expect(within(menu).queryByRole('menuitem', { name: 'Anheften' })).not.toBeInTheDocument()
+    expect(within(menu).queryByRole('menuitem', { name: 'Archivieren' })).not.toBeInTheDocument()
+  })
+
+  it('pages the active chats by 25 with the pager of the administration lists', async () => {
+    useChatListStore.setState({ chatsBySpaceId: { 'space-personal': manyChats(30) } })
+    const user = userEvent.setup()
+    renderWithProviders(<ChatsPage />)
+    await screen.findByRole('tab', { name: 'Aktiv (30)' })
+
+    expect(rowTitles()).toHaveLength(25)
+    expect(screen.getByText('30 Chats · Seite 1 von 2')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Vorherige Seite' })).toBeDisabled()
+
+    await user.click(screen.getByRole('button', { name: 'Nächste Seite' }))
+
+    expect(rowTitles()).toEqual(['Chat 26', 'Chat 27', 'Chat 28', 'Chat 29', 'Chat 30'])
+    expect(screen.getByText('30 Chats · Seite 2 von 2')).toBeInTheDocument()
+  })
+
+  it('marks a pinned chat in its title cell and pins another from the row menu', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<ChatsPage />)
+    await screen.findByRole('tab', { name: 'Aktiv (2)' })
+    expect(screen.queryByText('angeheftet')).not.toBeInTheDocument()
+
+    const menu = await openRowMenu(user, 'Architektur des Projekts')
+    await user.click(within(menu).getByRole('menuitem', { name: 'Anheften' }))
+
+    expect(await screen.findByText('angeheftet')).toBeInTheDocument()
+    expect(rowTitles()[0]).toBe('Architektur des Projekts')
   })
 
   it('archives every chat of the page by keyboard and announces the result', async () => {
@@ -510,5 +625,40 @@ describe('ChatsPage', () => {
     await user.click(screen.getByRole('link', { name: 'Deployment-Fragen' }))
 
     expect(mockNavigate).toHaveBeenCalledWith('/spaces/space-personal/chats/chat-personal-2')
+  })
+})
+
+describe('ChatsPage below tablet width', () => {
+  const originalMatchMedia = window.matchMedia
+  beforeAll(() => {
+    window.matchMedia = matchMediaAt(false)
+  })
+  afterAll(() => {
+    window.matchMedia = originalMatchMedia
+  })
+
+  beforeEach(() => {
+    useChatListStore.setState({
+      chatsBySpaceId: {},
+      archiveBySpaceId: {},
+      isLoading: false,
+      isLoadingArchive: false,
+      error: null,
+    })
+  })
+
+  it('lists the chats as entries instead of a table (guidelines 5.3)', async () => {
+    renderWithProviders(<ChatsPage />)
+    await screen.findByRole('tab', { name: 'Aktiv (2)' })
+
+    expect(screen.queryByRole('table')).not.toBeInTheDocument()
+    const entry = screen.getByRole('article', { name: 'Deployment-Fragen' })
+    expect(within(entry).getByRole('link', { name: 'Deployment-Fragen' })).toBeInTheDocument()
+    expect(
+      within(entry).getByRole('checkbox', { name: '„Deployment-Fragen“ auswählen' }),
+    ).toBeInTheDocument()
+    expect(
+      within(entry).getByRole('button', { name: 'Aktionen für „Deployment-Fragen“' }),
+    ).toBeInTheDocument()
   })
 })
