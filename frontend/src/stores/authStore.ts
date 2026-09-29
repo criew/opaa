@@ -151,6 +151,12 @@ interface AuthState {
    * sign-in in this tab may be somebody else. A session that ended on its own clears it again.
    */
   signedOut: boolean
+  /**
+   * A sign-out is on its way to the provider's end-session endpoint. oidc-client-ts removes the
+   * user before the browser leaves, so without this the login page would show - and be usable -
+   * in between. Stays set once the redirect started: the page is leaving anyway.
+   */
+  isSigningOut: boolean
 
   initialize: () => Promise<void>
   /**
@@ -447,6 +453,7 @@ export const useAuthStore = create<AuthState>((set, get) => {
     passwordChangeRequired: false,
     passwordChangeReason: null,
     signedOut: false,
+    isSigningOut: false,
 
     initialize: async () => {
       let config
@@ -871,10 +878,13 @@ export const useAuthStore = create<AuthState>((set, get) => {
         await get().refreshPublicAuthConfig()
         return
       }
+      let redirectedToProvider = false
       if (mode === 'oidc' && userManager) {
+        set({ isSigningOut: true })
         try {
           // the RP-initiated logout at the provider of the active session (ADR-0025)
           await userManager.signoutRedirect()
+          redirectedToProvider = true
         } catch {
           // no end_session_endpoint at this provider, or it could not be reached: a local
           // sign-out is all there is, and the person is told exactly that
@@ -895,6 +905,9 @@ export const useAuthStore = create<AuthState>((set, get) => {
         passwordChangeReason: null,
         error: null,
         signedOut: true,
+        // signoutRedirect() resolves once the navigation started, while this page still shows -
+        // only the fallback without a provider redirect may reveal the login page now
+        isSigningOut: redirectedToProvider,
       })
       // Nach einem signoutRedirect() ist die Seite ohnehin fort; erreicht wird das hier auf dem
       // Weg, auf dem der Anbieter keinen end_session_endpoint hat und die Anwendung stehen bleibt.
@@ -1011,7 +1024,8 @@ export const useAuthStore = create<AuthState>((set, get) => {
 
 // The mark of a deliberate sign-out lasts until the next session begins, whichever path starts it.
 useAuthStore.subscribe((state, previous) => {
-  if (state.isAuthenticated && !previous.isAuthenticated && state.signedOut) {
-    useAuthStore.setState({ signedOut: false })
+  if (state.isAuthenticated && !previous.isAuthenticated) {
+    if (state.signedOut) useAuthStore.setState({ signedOut: false })
+    if (state.isSigningOut) useAuthStore.setState({ isSigningOut: false })
   }
 })

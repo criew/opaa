@@ -20,6 +20,7 @@ describe('ProtectedRoute', () => {
       passwordChangeRequired: false,
       passwordChangeReason: null,
       signedOut: false,
+      isSigningOut: false,
     })
   })
 
@@ -147,6 +148,35 @@ describe('ProtectedRoute', () => {
     expect(await screen.findByText(/^Ziel: /)).toHaveTextContent('Ziel: keins')
     await act(() => loggingOut)
     expect(screen.getByText('Ziel: keins')).toBeInTheDocument()
+  })
+
+  // regression guard for #2037: signoutRedirect() removes the user before the browser leaves for
+  // the provider - until then the login page must not appear, let alone be usable.
+  it('shows a neutral sign-out state, not the login page, while the provider redirect is pending', async () => {
+    const userManager = {
+      signoutRedirect: () => {
+        useAuthStore.setState({ token: null, isAuthenticated: false })
+        // the browser is on its way to the provider; this tab never gets further
+        return new Promise<void>(() => {})
+      },
+      removeUser: () => Promise.resolve(),
+    } as unknown as UserManager
+    useAuthStore.setState({
+      mode: 'oidc',
+      isAuthenticated: true,
+      isLoading: false,
+      sessionKind: 'oidc',
+      userManager,
+    })
+    renderDenied('/libraries')
+
+    act(() => {
+      void useAuthStore.getState().logout()
+    })
+
+    expect(await screen.findByRole('status')).toHaveTextContent('Sie werden abgemeldet …')
+    expect(screen.queryByText(/^Ziel: /)).not.toBeInTheDocument()
+    expect(screen.queryByText('Protected Content')).not.toBeInTheDocument()
   })
 
   it('forgets the sign-out mark as soon as the next session begins', () => {

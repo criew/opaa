@@ -103,9 +103,9 @@ async function signInAtKeycloak(
 
 /**
  * The RP-initiated logout at the provider of the session (ADR-0025, Entscheidung 5). Resolves only
- * once the document Keycloak sent the browser back to has loaded: the app already routes the old
- * document to /login in-page while the redirect to Keycloak is still pending, so the URL alone
- * would match a page that is about to be replaced.
+ * once the document Keycloak sent the browser back to has loaded: until the redirect to Keycloak
+ * starts, the old document shows "Sie werden abgemeldet …" instead of the sign-in page, so only the
+ * document behind the provider's redirect back is the sign-in page this waits for.
  */
 async function logout(page: Page): Promise<void> {
   await page.getByRole('button', { name: 'Profil und Einstellungen' }).click()
