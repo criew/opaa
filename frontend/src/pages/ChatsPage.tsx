@@ -3,24 +3,20 @@ import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Checkbox from '@mui/material/Checkbox'
-import CircularProgress from '@mui/material/CircularProgress'
 import FormControlLabel from '@mui/material/FormControlLabel'
-import Link from '@mui/material/Link'
+import InputAdornment from '@mui/material/InputAdornment'
 import Stack from '@mui/material/Stack'
 import Tab from '@mui/material/Tab'
-import Table from '@mui/material/Table'
-import TableBody from '@mui/material/TableBody'
-import TableCell from '@mui/material/TableCell'
-import TableHead from '@mui/material/TableHead'
-import TablePagination from '@mui/material/TablePagination'
-import TableRow from '@mui/material/TableRow'
 import Tabs from '@mui/material/Tabs'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
-import visuallyHidden from '@mui/utils/visuallyHidden'
+import { alpha } from '@mui/material/styles'
+import SearchIcon from '@mui/icons-material/Search'
 import { useLocation, useNavigate, useParams } from 'react-router'
 import PageHeading from '../components/a11y/PageHeading'
+import { ListEmptyState, ListLoading, ListPager } from '../components/admin/list/AdminList'
 import ChatSearchResults from '../components/chat/ChatSearchResults'
+import ChatTable from '../components/chat/ChatTable'
 import { chatTitle, splitChats } from '../components/chat/chatListSections'
 import {
   CHAT_SEARCH_MAX_LENGTH,
@@ -44,15 +40,6 @@ function handedOverTerm(state: unknown): string | null {
 
 const EMPTY_SELECTION: ReadonlySet<string> = new Set()
 
-const dateTimeFormat = new Intl.DateTimeFormat('de-DE', {
-  dateStyle: 'medium',
-  timeStyle: 'short',
-})
-
-function formatDateTime(iso: string | null | undefined): string {
-  return iso ? dateTimeFormat.format(new Date(iso)) : ''
-}
-
 function chatCount(count: number): string {
   return count === 1 ? '1 Chat' : `${count} Chats`
 }
@@ -65,9 +52,10 @@ const RESULT_VERBS: Record<ChatBulkAction, string> = {
 
 /**
  * The management surface of the person's own chats in one space (docs/features/chat-list.md,
- * "Die Seite ‚Chats‘ je Space"): the active chats and the person's chat archive as tabs, with
- * multi-selection and bulk actions. A click on a title opens the chat. While a term is entered,
- * the chat search's hits take the place of the tabs.
+ * "Die Seite ‚Chats‘ je Space"): the active chats and the person's chat archive as tabs, in the
+ * table of the administration lists, with a row menu for single actions and multi-selection for
+ * bulk ones. A click on a title opens the chat. While a term is entered, the chat search's hits
+ * take the place of the tabs.
  */
 export default function ChatsPage() {
   const { spaceId = '' } = useParams<{ spaceId: string }>()
@@ -84,6 +72,7 @@ export default function ChatsPage() {
   const loadChats = useChatListStore((s) => s.loadChats)
   const loadArchivedChats = useChatListStore((s) => s.loadArchivedChats)
   const applyBulkAction = useChatListStore((s) => s.applyBulkAction)
+  const setChatPinned = useChatListStore((s) => s.setChatPinned)
 
   const [tab, setTab] = useState<ChatsTab>('active')
   const [activePage, setActivePage] = useState(0)
@@ -95,8 +84,8 @@ export default function ChatsPage() {
   const searchFieldRef = useRef<HTMLInputElement>(null)
   const isSearching = search.query.trim() !== ''
   const selectAllRef = useRef<HTMLInputElement>(null)
-  // The action buttons are disabled while a bulk action runs and once the selection is gone, which
-  // drops their focus; it is placed back into the toolbar (or onto the tab) once the list settled.
+  // The action buttons vanish while a bulk action runs and once the selection is gone, which
+  // drops their focus; it is placed back onto "select all" (or onto the tab) once the list settled.
   const restoreFocusRef = useRef(false)
 
   // A term handed over by the sidebar is searched at once and then dropped from the history entry,
@@ -123,7 +112,8 @@ export default function ChatsPage() {
     void loadArchivedChats(spaceId, 0)
   }, [spaceId, loadArchivedChats])
 
-  // Same order as the sidebar: pinned chats first, the rest by last use.
+  // Same order as the sidebar: pinned chats first, the rest by last use. The active chats are all
+  // loaded anyway (the sidebar needs them), so they are paged here; the archive is paged server-side.
   const orderedActive = useMemo(() => {
     const { pinned, recent } = splitChats(chats ?? [])
     return [...pinned, ...recent]
@@ -153,7 +143,14 @@ export default function ChatsPage() {
     setSelection(EMPTY_SELECTION)
   }
 
+  function changePage(page: number) {
+    setSelection(EMPTY_SELECTION)
+    if (tab === 'active') setActivePage(page)
+    else void loadArchivedChats(spaceId, page)
+  }
+
   function toggle(chatId: string) {
+    setStatusMessage('')
     setSelection((current) => {
       const next = new Set(current)
       if (next.has(chatId)) next.delete(chatId)
@@ -163,15 +160,19 @@ export default function ChatsPage() {
   }
 
   function toggleAll() {
+    setStatusMessage('')
     setSelection(allSelected ? EMPTY_SELECTION : new Set(rows.map((chat) => chat.id)))
   }
 
-  async function runBulkAction(action: ChatBulkAction) {
-    const ids = selectedIds
-    if (ids.length === 0) return
+  /** Runs one action on the given chats - the bulk selection and the row menu share this path. */
+  async function runAction(action: ChatBulkAction, targets: ChatSummary[]) {
+    if (targets.length === 0) return
     if (action === 'DELETE') {
       const confirmed = await confirmAction({
-        question: `${chatCount(ids.length)} wirklich löschen?`,
+        question:
+          targets.length === 1
+            ? `„${chatTitle(targets[0])}“ wirklich löschen?`
+            : `${chatCount(targets.length)} wirklich löschen?`,
         consequence: 'Diese Aktion kann nicht rückgängig gemacht werden.',
         confirmLabel: 'Löschen',
         tone: 'danger',
@@ -180,12 +181,27 @@ export default function ChatsPage() {
     }
     setIsBusy(true)
     setStatusMessage('')
-    const applied = await applyBulkAction(spaceId, action, ids)
+    const applied = await applyBulkAction(
+      spaceId,
+      action,
+      targets.map((chat) => chat.id),
+    )
     restoreFocusRef.current = true
     setIsBusy(false)
     if (applied === null) return
-    setSelection(EMPTY_SELECTION)
+    setSelection((current) => {
+      const next = new Set(current)
+      for (const id of applied) next.delete(id)
+      return next
+    })
     setStatusMessage(`${chatCount(applied.length)} ${RESULT_VERBS[action]}`)
+  }
+
+  function pin(chat: ChatSummary, pinned: boolean) {
+    setStatusMessage('')
+    void setChatPinned(spaceId, chat.id, pinned).then((held) => {
+      if (held) setStatusMessage(`„${chatTitle(chat)}“ ${pinned ? 'angeheftet' : 'gelöst'}`)
+    })
   }
 
   function openChat(chatId: string) {
@@ -197,6 +213,8 @@ export default function ChatsPage() {
   const isTabLoading = tab === 'active' ? chats === undefined && isLoading : isLoadingArchive
   const tabPanelId = `${idPrefix}-panel`
   const tabId = (value: ChatsTab) => `${idPrefix}-tab-${value}`
+  const selectedChats = rows.filter((chat) => selection.has(chat.id))
+  const hasSelection = selectedIds.length > 0
 
   return (
     <Box sx={{ flexGrow: 1, p: { xs: 2, md: 3 }, overflowY: 'auto' }}>
@@ -214,7 +232,8 @@ export default function ChatsPage() {
         <TextField
           type="search"
           size="small"
-          label="In Chats suchen"
+          fullWidth
+          placeholder="Titel, Fragen und Antworten durchsuchen, auch im Chat-Archiv …"
           value={search.query}
           onChange={(event) => search.changeQuery(event.target.value)}
           onKeyDown={(event) => {
@@ -229,12 +248,22 @@ export default function ChatsPage() {
           helperText={
             isSearching && !isSearchableTerm(search.query)
               ? `Bitte mindestens ${CHAT_SEARCH_MIN_LENGTH} Zeichen eingeben.`
-              : 'Titel, Fragen und Antworten Ihrer Chats in diesem Space, auch im Chat-Archiv'
+              : undefined
           }
           slotProps={{
-            htmlInput: { ref: searchFieldRef, maxLength: CHAT_SEARCH_MAX_LENGTH },
+            input: {
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon fontSize="small" aria-hidden />
+                </InputAdornment>
+              ),
+            },
+            htmlInput: {
+              ref: searchFieldRef,
+              maxLength: CHAT_SEARCH_MAX_LENGTH,
+              'aria-label': 'In Chats suchen',
+            },
           }}
-          sx={{ width: { xs: '100%', sm: 420 } }}
         />
 
         {isSearching ? (
@@ -246,11 +275,12 @@ export default function ChatsPage() {
             />
           </Box>
         ) : (
-          <>
+          <Box>
             <Tabs
               value={tab}
               onChange={(_, value: ChatsTab) => changeTab(value)}
               aria-label="Chats nach Ablage"
+              sx={{ borderBottom: 1, borderColor: 'divider' }}
             >
               <Tab
                 value="active"
@@ -266,13 +296,27 @@ export default function ChatsPage() {
               />
             </Tabs>
 
-            <Box role="tabpanel" id={tabPanelId} aria-labelledby={tabId(tab)}>
+            <Box role="tabpanel" id={tabPanelId} aria-labelledby={tabId(tab)} sx={{ pt: 1.5 }}>
+              {/* One slim bar above the list: "select all" on the left; on the right the result
+                  of the last action, or - once something is selected - its count and the bulk
+                  actions. Only buttons that can act are shown, none sits there disabled. */}
               <Stack
                 direction="row"
-                spacing={1.5}
                 role="toolbar"
                 aria-label="Sammelaktionen"
-                sx={{ alignItems: 'center', flexWrap: 'wrap', mb: 1 }}
+                sx={(theme) => ({
+                  alignItems: 'center',
+                  flexWrap: 'wrap',
+                  columnGap: 1.5,
+                  minHeight: 44,
+                  px: { xs: 0.75, md: 2.25 },
+                  mb: 1,
+                  borderRadius: 1,
+                  bgcolor: hasSelection
+                    ? alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.14 : 0.06)
+                    : 'transparent',
+                  transition: 'background-color 120ms',
+                })}
               >
                 <FormControlLabel
                   control={
@@ -280,155 +324,82 @@ export default function ChatsPage() {
                       size="small"
                       slotProps={{ input: { ref: selectAllRef } }}
                       checked={allSelected}
-                      indeterminate={!allSelected && selectedIds.length > 0}
+                      indeterminate={!allSelected && hasSelection}
                       onChange={toggleAll}
                       disabled={rows.length === 0}
                     />
                   }
                   label="Alle auf dieser Seite auswählen"
+                  slotProps={{ typography: { sx: { fontSize: 13 } } }}
+                  sx={{ mr: 0 }}
                 />
-                <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                  {selectedIds.length} ausgewählt
+                <Box sx={{ flexGrow: 1 }} />
+                {hasSelection ? (
+                  <>
+                    <Typography sx={{ fontSize: 13, fontWeight: 500 }}>
+                      {selectedIds.length} ausgewählt
+                    </Typography>
+                    <Button
+                      size="small"
+                      disabled={isBusy}
+                      onClick={() =>
+                        void runAction(tab === 'active' ? 'ARCHIVE' : 'UNARCHIVE', selectedChats)
+                      }
+                    >
+                      {tab === 'active' ? 'Archivieren' : 'Zurückholen'}
+                    </Button>
+                    <Button
+                      size="small"
+                      color="error"
+                      disabled={isBusy}
+                      onClick={() => void runAction('DELETE', selectedChats)}
+                    >
+                      Löschen
+                    </Button>
+                  </>
+                ) : null}
+                <Typography role="status" sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+                  {statusMessage}
                 </Typography>
-                {tab === 'active' ? (
-                  <Button
-                    size="small"
-                    variant="outlined"
-                    disabled={selectedIds.length === 0 || isBusy}
-                    onClick={() => void runBulkAction('ARCHIVE')}
-                  >
-                    Archivieren
-                  </Button>
-                ) : (
-                  <Button
-                    size="small"
-                    variant="outlined"
-                    disabled={selectedIds.length === 0 || isBusy}
-                    onClick={() => void runBulkAction('UNARCHIVE')}
-                  >
-                    Zurückholen
-                  </Button>
-                )}
-                <Button
-                  size="small"
-                  variant="outlined"
-                  color="error"
-                  disabled={selectedIds.length === 0 || isBusy}
-                  onClick={() => void runBulkAction('DELETE')}
-                >
-                  Löschen
-                </Button>
               </Stack>
 
-              <Typography role="status" variant="body2" sx={{ minHeight: 20, mb: 1 }}>
-                {statusMessage}
-              </Typography>
-
               {isTabLoading ? (
-                <Box sx={{ py: 3, display: 'flex', justifyContent: 'center' }}>
-                  <CircularProgress size={24} aria-label="Chats werden geladen" />
-                </Box>
+                <ListLoading label="Chats werden geladen …" />
               ) : rows.length === 0 ? (
-                <Typography sx={{ color: 'text.secondary' }}>
-                  {tab === 'archive'
-                    ? 'Das Chat-Archiv dieses Space ist leer.'
-                    : 'Keine aktiven Chats in diesem Space.'}
-                </Typography>
+                tab === 'archive' ? (
+                  <ListEmptyState
+                    title="Das Chat-Archiv dieses Space ist leer."
+                    hint="Archivierte Chats bleiben lesbar; wer darin weiterschreibt, holt sie zurück."
+                  />
+                ) : (
+                  <ListEmptyState
+                    title="Keine aktiven Chats in diesem Space."
+                    hint="Einen neuen Chat beginnen Sie über „Neu“ in der Seitenleiste."
+                  />
+                )
               ) : (
-                <Table size="small" aria-label={tab === 'active' ? 'Aktive Chats' : 'Chat-Archiv'}>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell padding="checkbox">
-                        <Box component="span" sx={visuallyHidden}>
-                          Auswahl
-                        </Box>
-                      </TableCell>
-                      <TableCell>Titel</TableCell>
-                      <TableCell>{tab === 'active' ? 'Angeheftet' : 'Archiviert am'}</TableCell>
-                      <TableCell>Letzte Aktivität</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {rows.map((chat) => {
-                      const title = chatTitle(chat)
-                      return (
-                        <TableRow key={chat.id} hover selected={selection.has(chat.id)}>
-                          <TableCell padding="checkbox">
-                            <Checkbox
-                              size="small"
-                              checked={selection.has(chat.id)}
-                              onChange={() => toggle(chat.id)}
-                              slotProps={{ input: { 'aria-label': `„${title}“ auswählen` } }}
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <Link
-                              href={`/spaces/${spaceId}/chats/${chat.id}`}
-                              onClick={(event) => {
-                                event.preventDefault()
-                                openChat(chat.id)
-                              }}
-                              underline="hover"
-                            >
-                              {title}
-                            </Link>
-                          </TableCell>
-                          <TableCell>
-                            {tab === 'active'
-                              ? chat.pinnedAt
-                                ? 'angeheftet'
-                                : ''
-                              : formatDateTime(chat.archivedAt)}
-                          </TableCell>
-                          <TableCell>{formatDateTime(chat.updatedAt)}</TableCell>
-                        </TableRow>
-                      )
-                    })}
-                  </TableBody>
-                </Table>
+                <ChatTable
+                  spaceId={spaceId}
+                  rows={rows}
+                  archived={tab === 'archive'}
+                  selection={selection}
+                  onToggle={toggle}
+                  onOpen={openChat}
+                  busy={isBusy}
+                  onAction={(action, targets) => void runAction(action, targets)}
+                  onPin={pin}
+                />
               )}
 
-              {tab === 'active' && orderedActive.length > CHAT_PAGE_SIZE && (
-                <TablePagination
-                  component="div"
-                  count={orderedActive.length}
-                  page={shownActivePage}
-                  rowsPerPage={CHAT_PAGE_SIZE}
-                  rowsPerPageOptions={[]}
-                  onPageChange={(_, page) => setActivePage(page)}
-                  labelDisplayedRows={({ from, to, count }) => `${from}–${to} von ${count}`}
-                  getItemAriaLabel={(type) =>
-                    type === 'next'
-                      ? 'Nächste Seite'
-                      : type === 'previous'
-                        ? 'Vorherige Seite'
-                        : type
-                  }
-                />
-              )}
-              {tab === 'archive' && archivedCount > CHAT_PAGE_SIZE && (
-                <TablePagination
-                  component="div"
-                  count={archivedCount}
-                  page={archive?.page ?? 0}
-                  rowsPerPage={CHAT_PAGE_SIZE}
-                  rowsPerPageOptions={[]}
-                  onPageChange={(_, page) => {
-                    setSelection(EMPTY_SELECTION)
-                    void loadArchivedChats(spaceId, page)
-                  }}
-                  labelDisplayedRows={({ from, to, count }) => `${from}–${to} von ${count}`}
-                  getItemAriaLabel={(type) =>
-                    type === 'next'
-                      ? 'Nächste Seite'
-                      : type === 'previous'
-                        ? 'Vorherige Seite'
-                        : type
-                  }
-                />
-              )}
+              <ListPager
+                total={tab === 'active' ? orderedActive.length : archivedCount}
+                size={CHAT_PAGE_SIZE}
+                page={tab === 'active' ? shownActivePage : (archive?.page ?? 0)}
+                onPage={changePage}
+                countLabel={chatCount(tab === 'active' ? orderedActive.length : archivedCount)}
+              />
             </Box>
-          </>
+          </Box>
         )}
       </Stack>
     </Box>

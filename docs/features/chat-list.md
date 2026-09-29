@@ -136,27 +136,36 @@ Chats eines Space, keine zweite Chatoberfläche: Ein Klick auf einen Eintrag öf
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │ Chats in „Widerspruchsstelle"                               │
-│ ┌─────────────────────────────────────────────┐             │
-│ │ In Chats suchen …                           │             │
-│ └─────────────────────────────────────────────┘             │
+│ ┌─────────────────────────────────────────────────────────┐ │
+│ │ ⌕ Titel, Fragen und Antworten durchsuchen …             │ │
+│ └─────────────────────────────────────────────────────────┘ │
 │  [ Aktiv (42) ]  [ Archiv (118) ]                           │
-│ ─────────────────────────────────────────────────────────── │
-│ ☐  Fristen Übersicht      angeheftet   zuletzt heute        │
-│ ☐  Erlass vom März                     zuletzt gestern      │
-│ ☐  Rückfrage Kämmerei                  zuletzt 12.09.2026   │
-│ ─────────────────────────────────────────────────────────── │
-│ 2 ausgewählt:  [ Archivieren ]  [ Löschen ]                 │
+│ ☑ Alle auf dieser Seite …  2 ausgewählt  Archivieren Löschen│
+│  TITEL                              LETZTE AKTIVITÄT        │
+│ ☐ Fristen Übersicht                 18.09.2026, 09:12    ⋮  │
+│   · angeheftet                                              │
+│ ☑ Erlass vom März                   17.09.2026, 16:40    ⋮  │
+│ ☑ Rückfrage Kämmerei                12.09.2026, 11:03    ⋮  │
+│                          42 Chats · Seite 1 von 2   ‹  ›    │
 └─────────────────────────────────────────────────────────────┘
 ```
 
+- **Tabelle wie in der Administration** („Benutzer", „Gruppen"): dieselben Bausteine
+  (`components/admin/list/`) für Tabellenstil, Seitenumschalter, Lade- und Leerzustand. Unterhalb der
+  Tablet-Breite wird die Tabelle zur Liste (Leitfaden 5.3).
 - **Reiter „Aktiv"** zeigt dieselben Chats wie die Seitenleiste, in derselben Ordnung (angeheftet, dann
-  nach letzter Aktivität), als Tabelle mit Titel, Anheftung und letzter Aktivität.
-- **Reiter „Archiv"** zeigt die archivierten Chats, jüngst archivierte zuerst, mit „archiviert am".
-  Das Archiv wächst unbegrenzt und wird deshalb seitenweise geladen.
-- **Mehrfachauswahl** mit Auswahlkästchen, „Alle auf dieser Seite auswählen" und den Sammelaktionen
-  *Archivieren* (Reiter Aktiv), *Zurückholen* (Reiter Archiv) und *Löschen* (beide Reiter, mit derselben
-  Bestätigung wie beim Einzellöschen, die die Zahl der betroffenen Chats nennt). Vollständig per Tastatur
-  bedienbar.
+  nach letzter Aktivität), mit Titel, Anheftung als zweiter Zeile und letzter Aktivität.
+- **Reiter „Archiv"** zeigt die archivierten Chats, jüngst archivierte zuerst, mit „Archiviert am".
+- **Blättern** in beiden Reitern mit 25 Chats je Seite und demselben Seitenumschalter wie in der
+  Administration („42 Chats · Seite 1 von 2"). Die aktiven Chats sind für die Seitenleiste ohnehin
+  vollständig geladen und werden im Browser geblättert; das Archiv wächst unbegrenzt und wird
+  seitenweise vom Server geladen.
+- **Zeilenmenü** (⋮) für die Einzelaktionen: *Anheften*/*Lösen* und *Archivieren* (Reiter Aktiv),
+  *Zurückholen* (Reiter Archiv), *Löschen* unter einer Trennlinie (beide Reiter).
+- **Mehrfachauswahl** mit Auswahlkästchen und „Alle auf dieser Seite auswählen". Die Sammelaktionen
+  *Archivieren* bzw. *Zurückholen* und *Löschen* erscheinen erst, wenn etwas ausgewählt ist; die Leiste
+  färbt sich dann leicht ein. Löschen fragt nach, die Rückfrage nennt die Zahl der betroffenen Chats
+  (beim Einzellöschen den Titel). Vollständig per Tastatur bedienbar.
 - **Zahlen an den Reitern** zählen ausschließlich die eigenen, für die Person sichtbaren Chats.
 - Das **Suchfeld** der Seite ist die Chatsuche (siehe [Chatsuche](#chatsuche)) und steht über beiden
   Reitern. Solange ein Begriff eingegeben ist, ersetzt die Trefferliste die Reiteransicht; Leeren des
