@@ -9,10 +9,8 @@
 
 ## Management Summary
 
-Der September war der bisher lieferstärkste Monat des Projekts. In einem Monat kamen fast so viele
-Pull Requests zusammen wie in den sechs Monaten bis zum ersten Meilenstein. 22 Epics wurden
-abgeschlossen. Die großen Phase-1-Lücken des Vormonats sind zum Großteil geschlossen: hybride Suche
-mit Reranking, echter Verzeichnisanschluss, Kontenlebenszyklus und zwei weitere lesende
+Der September war ein regulärer Arbeitsmonat; 22 Epics wurden abgeschlossen. Die großen
+Phase-1-Lücken des Vormonats sind zum Großteil geschlossen: hybride Suche mit Reranking, echter Verzeichnisanschluss, Kontenlebenszyklus und zwei weitere lesende
 Konnektoren. Dazu kamen die ersten Phase-2-Bausteine: OPAA als Wissensschicht für fremde
 KI-Werkzeuge per MCP und die Prompt-Bibliothek als erster teilbarer Asset-Typ neben den
 Wissensbibliotheken.
@@ -20,10 +18,9 @@ Wissensbibliotheken.
 **Phase 1 der Produktvision („Souveräner Wissensassistent“) ist zu geschätzt rund 85 % umgesetzt
 (Vormonat: rund 80 %).** Herleitung: Von der priorisierten Restliste des Vormonats sind die beiden
 gewichtigsten Punkte in der Kernfunktion erledigt, die hybride Suche mit Reranking und der echte
-Verzeichnisanschluss mit Kontenlebenszyklus. Offen bleiben Antworten im Fluss, Konfidenz, Leichte
-Sprache, zentrale Modellvorgaben, DSGVO-Vollständigkeit und der Betrieb bis air-gapped. Die
-Ausbreitung in die Breite (weitere Konnektoren, Formate, Oberfläche) zählt dabei weniger als
-diese Kernlücken. Deshalb fällt der Sprung kleiner aus, als die Liefermenge vermuten lässt.
+Verzeichnisanschluss mit Kontenlebenszyklus. Offen bleiben Streaming der Antworten, Konfidenz, Leichte
+Sprache, DSGVO-Vollständigkeit und der Betrieb bis air-gapped. Die Ausbreitung in die Breite
+(weitere Konnektoren, Formate, Oberfläche) zählt bei der Schätzung weniger als diese Kernlücken.
 
 **Was nach diesem Zeitraum neu möglich ist:**
 
@@ -288,7 +285,7 @@ diese Kernlücken. Deshalb fällt der Sprung kleiner aus, als die Liefermenge ve
 Gegen die Phase-1-Definition der [Vision](../../VISION.md), nach Gewicht:
 
 **Kern des Wissensassistenten**
-1. **Antworten im Fluss (Streaming)** — größter Einzelfaktor der gefühlten Antwortzeit, weiter
+1. **Streaming der Antworten** — größter Einzelfaktor der gefühlten Antwortzeit, weiter
    nicht gebaut
 2. **Konfidenz als erklärte Größe** — das Erklärprotokoll und die Chunk-Ansicht liefern die
    Grundlage für erklärbares Chunking, eine Konfidenzaussage an der Antwort fehlt
@@ -296,26 +293,28 @@ Gegen die Phase-1-Definition der [Vision](../../VISION.md), nach Gewicht:
 4. **Textwerkzeuge einschließlich Leichter Sprache** — Bereich K, weiter ohne Vorgang
 
 **Modelle & Nachweis**
-5. **Zentrale Modellvorgaben als Obergrenze** je Space und Bibliothek — Bereich E hatte im
-   Zeitraum keinen Vorgang
-6. **DSGVO-Vollständigkeit** — bis vor den Produktivbetrieb zurückgestellt (#143, #798)
-7. **Schadsoftwareprüfung des Uploads**
-8. **Integrität des Audit-Trails** und ein extern anbindbarer Ereignisstrom (Epic #1296)
+5. **DSGVO-Vollständigkeit** — bis vor den Produktivbetrieb zurückgestellt (#143, #798)
+6. **Schadsoftwareprüfung des Uploads**
+7. **Integrität des Audit-Trails** und ein extern anbindbarer Ereignisstrom (Epic #1296)
 
 **Betrieb**
-9. **Kubernetes und große Installationen** (Epic #1439), Multiinstanzbetrieb (Epic #1292)
+8. **Kubernetes und große Installationen** (Epic #1439), Multiinstanzbetrieb (Epic #1292)
    und die **air-gapped-Lieferung**. SBOM und CVE-Scans sind gebaut, signierte Builds fehlen.
-10. Mandantenfähigkeit mit mehreren Organisationen in einer Installation (Epic #1442)
+9. Mandantenfähigkeit mit mehreren Organisationen in einer Installation (Epic #1442)
 
 **Nachrangig, aus der Restliste des Vormonats fortgeführt**
-11. Sitzungsverwaltung mit erzwungener Neuanmeldung und Einschränkung auf Netzbereiche (Punkt 7
+10. Sitzungsverwaltung mit erzwungener Neuanmeldung und Einschränkung auf Netzbereiche (Punkt 7
     des Vormonats; Netzbereiche gibt es bisher nur für Fremdzugänge, #1717)
-12. Antwort-Bewertung mit Speicherung (Hälfte von Punkt 13 des Vormonats) — die konzeptlosen
+11. Antwort-Bewertung mit Speicherung (Hälfte von Punkt 13 des Vormonats) — die konzeptlosen
     Daumen-Schaltflächen wurden entfernt (#1447), ein Konzept steht aus
+12. Modell-Obergrenze je Space und Bibliothek (Punkt 6 des Vormonats) — die zentrale
+    Modellkonfiguration durch die Systemverwaltung ist gebaut; eine Einschränkung darunter wird
+    erst relevant, wenn mehr als ein Chat-Modell zur Wahl steht
 
 Erledigt gegenüber der Restliste des Vormonats: hybride Suche mit Reranking (1), echter
 Verzeichnisanschluss mit Kontenlebenszyklus (5), API-Tokens (Hälfte von 13) sowie SBOM und
-Sicherheits-Scans in der CI (Teil von 10).
+Sicherheits-Scans in der CI (Teil von 10). Die Modell-Obergrenze (6) ist herabgestuft, weil die
+zentrale Modellkonfiguration steht und eine Einschränkung darunter erst mit Modellauswahl greift.
 
 **Begonnen in Phase 2:** OPAA als Wissensschicht mit Zugangstokens und MCP-Server (Epic #1715,
 vollständig), die Prompt-Bibliothek als teilbares Asset mit Katalog (Epic #1726), ein Spike zur
@@ -326,7 +325,7 @@ Objektart (Epic #1727).
 
 | | |
 |---|---|
-| Gemergte Pull Requests | 489 (Vorzeitraum kumuliert: 496), davon 54 Renovate-Updates |
+| Gemergte Pull Requests | 489, davon 54 Renovate-Updates |
 | Geschlossene Issues | 502, davon 9 „not planned“ und 28 automatisch geöffnete und wieder geschlossene Alarm-Issues aus CI-Läufen |
 | Abgeschlossene Epics | 22 |
 | Vorgänge mit Befund | 43 von 616 geprüften (7 %; Vorgänger-Stichtag: 131 von 562) |

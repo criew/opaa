@@ -89,7 +89,7 @@ zwei Messpfaden (Rohvektor und produktive Pipeline), Mehrrunden-Messpfad, Varian
 drei Eval-Domänen einschließlich der deutschsprachigen Verwaltungsdomäne, reproduzierbaren
 Messfestpunkten und nächtlichem Regressionsjob mit automatischem Alarm.
 
-**Nicht gebaut:** Konfidenz als erklärte Größe, Antworten im Fluss (Streaming); Reranking ohne
+**Nicht gebaut:** Konfidenz als erklärte Größe, Streaming der Antworten; Reranking ohne
 Hardwareprofil und daher nicht voreingestellt; Qualitätsgewinn des Gesprächsgedächtnisses mit
 dem Eval-Modell nicht belegt.
 
@@ -160,7 +160,9 @@ Verbindungstest, Laufzeitauflösung des aktiven Modells, Administrationsseite mi
 Chat-Modelle und Einbettung — E2E-abgedeckt. Ollama steht als optionales Compose-Profil bereit.
 Reranking als zusätzliche, abschaltbare Modellrolle.
 
-**Nicht gebaut:** zentrale Modellvorgaben als Obergrenze je Space/Bibliothek.
+Die Modellkonfiguration ist zentral: Die Systemverwaltung legt fest, welches Modell genutzt wird.
+**Nicht gebaut:** Einschränkung darunter je Space/Bibliothek (Modell-Obergrenze) — erst relevant,
+wenn mehr als ein Chat-Modell zur Wahl steht.
 
 ### F · Identität, Rechte & Mandanten
 
