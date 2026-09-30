@@ -369,8 +369,19 @@ export default function ChatList({ spaceId, header }: ChatListProps) {
           ) : (
             <>
               {chat.pinnedAt && (
-                // Decorative: the "Angeheftet" group heading states the pin in text.
-                <PushPinIcon aria-hidden sx={{ fontSize: 12, mr: 0.75, opacity: 0.7 }} />
+                // Decorative: the "Angeheftet" group heading states the pin in text. It sits in
+                // the row's left padding, out of the text flow, so every title starts on one edge.
+                <PushPinIcon
+                  aria-hidden
+                  sx={{
+                    position: 'absolute',
+                    left: 1,
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    fontSize: 12,
+                    opacity: 0.7,
+                  }}
+                />
               )}
               <ListItemText
                 primary={chatTitle(chat)}

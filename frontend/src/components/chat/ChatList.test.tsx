@@ -239,6 +239,19 @@ describe('ChatList ordering', () => {
     expect(screen.queryByRole('searchbox', { name: 'Chats filtern' })).not.toBeInTheDocument()
   })
 
+  // regression guard for #2077: the pin mark sits in the row's left padding, out of the text flow,
+  // so a pinned title starts on the same edge as every other title. jsdom has no layout, so this
+  // asserts the positioning itself.
+  it('keeps the pin mark out of the text flow, so pinned titles align with the rest', () => {
+    renderWithProviders(<ChatList spaceId="space-personal" />)
+
+    const pinnedRow = within(screen.getByRole('list', { name: 'Angeheftet' })).getByRole('button', {
+      name: 'Fristen Übersicht',
+    })
+    const pin = within(pinnedRow).getByTestId('PushPinIcon')
+    expect(getComputedStyle(pin).position).toBe('absolute')
+  })
+
   it('always shows the pinned group open, without a collapse toggle', () => {
     renderWithProviders(<ChatList spaceId="space-personal" />)
 
