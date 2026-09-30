@@ -295,7 +295,7 @@ export const libraryHandlers = [
 
   // mirrors SourceConnectionTestService's per-type validation just enough that the mock
   // dialog's "Verbindung testen" button gets a plausible response in mock mode instead of an
-  // unhandled request (onUnhandledRequest: 'bypass' would otherwise leave it hanging forever).
+  // unhandled request (onUnhandledFrame: 'bypass' would otherwise leave it hanging forever).
   http.post('/api/v1/libraries/source-test', async ({ request }) => {
     const body = (await request.json()) as {
       sourceType: SourceTypeKey

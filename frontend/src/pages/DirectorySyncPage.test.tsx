@@ -78,7 +78,6 @@ describe('DirectorySyncPage', () => {
   // Kennung ins Leere.
   it('presents the new plan after the shown one has drifted', async () => {
     const confirmed: string[] = []
-    let planRequests = 0
     server.use(
       http.post(
         '/api/v1/admin/oidc-providers/:providerId/directory-sync/pending-plan/:planId/confirm',
@@ -90,10 +89,11 @@ describe('DirectorySyncPage', () => {
           )
         },
       ),
+      // The directory drifts once the first confirmation was refused - however often the page
+      // asked for the plan before that.
       http.get('/api/v1/admin/oidc-providers/:providerId/directory-sync/pending-plan', () => {
-        planRequests += 1
         return HttpResponse.json(
-          planRequests === 1
+          confirmed.length === 0
             ? mockPendingPlan
             : {
                 ...mockPendingPlan,

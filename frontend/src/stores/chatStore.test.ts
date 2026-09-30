@@ -55,6 +55,16 @@ function resetChatStore() {
   })
 }
 
+/**
+ * Releases a request a mock handler holds open - but only once the handler actually holds it:
+ * msw hands an intercepted request to its handler a few ticks after the call, so resolving
+ * right away could find no request to release and leave the test waiting forever.
+ */
+async function releaseWhenHeld(getRelease: () => (() => void) | undefined): Promise<void> {
+  await vi.waitFor(() => expect(getRelease()).toBeTypeOf('function'))
+  getRelease()!()
+}
+
 describe('chatStore', () => {
   beforeEach(() => {
     resetChatStore()
@@ -1225,7 +1235,8 @@ describe('chatStore', () => {
   // carries, and the delayed reload that picks up the LLM-derived title generated asynchronously
   // on the backend after a chat's very first turn.
   describe('chat title (#557)', () => {
-    afterEach(() => {
+    afterEach(async () => {
+      if (vi.isFakeTimers()) await vi.runOnlyPendingTimersAsync()
       vi.useRealTimers()
     })
 
@@ -1475,7 +1486,7 @@ describe('chatStore', () => {
       await useChatStore.getState().loadChat('chat-personal-2') // starts as scope "libraries"
 
       useChatStore.getState().setScopeAll()
-      await new Promise((resolve) => setTimeout(resolve, 0))
+      await useChatStore.getState().pendingSettingsUpdate
 
       expect(useChatStore.getState().scope).toBe('all')
       expect(patchedBody?.useKnowledge).toBe(true)
@@ -1511,7 +1522,7 @@ describe('chatStore', () => {
         documentTypes: ['VERMERK', 'DIENSTANWEISUNG'],
         documentDateFrom: '2024-01-01',
       })
-      await new Promise((resolve) => setTimeout(resolve, 0))
+      await useChatStore.getState().pendingSettingsUpdate
 
       expect(useChatStore.getState().metadataFilter).toEqual({
         documentTypes: ['DIENSTANWEISUNG', 'VERMERK'],
@@ -1529,7 +1540,7 @@ describe('chatStore', () => {
       })
 
       useChatStore.getState().setMetadataFilter(null)
-      await new Promise((resolve) => setTimeout(resolve, 0))
+      await useChatStore.getState().pendingSettingsUpdate
 
       expect(useChatStore.getState().metadataFilter).toBeNull()
       expect(patchedBody).toEqual({ metadataFilter: {} })
@@ -1595,13 +1606,13 @@ describe('chatStore', () => {
       await useChatStore.getState().loadChat(EMPTY_CHAT_ID)
 
       useChatStore.getState().addReferencedLibrary('library-a')
-      await new Promise((resolve) => setTimeout(resolve, 0))
+      await useChatStore.getState().pendingSettingsUpdate
 
       expect(patchedBody?.useKnowledge).toBe(false)
       expect(patchedBody?.referencedLibraryIds).toEqual(['library-a'])
 
       useChatStore.getState().removeReferencedLibrary('library-a')
-      await new Promise((resolve) => setTimeout(resolve, 0))
+      await useChatStore.getState().pendingSettingsUpdate
 
       expect(patchedBody?.referencedLibraryIds).toEqual([])
     })
@@ -1815,7 +1826,7 @@ describe('chatStore', () => {
       // The server still has not applied the in-flight PATCH - loadChat's snapshot is stale.
       expect(useChatStore.getState().scope).toBe('all')
 
-      resolveExistingChatPatch?.()
+      await releaseWhenHeld(() => resolveExistingChatPatch)
       await stalePatch
 
       const state = useChatStore.getState()
@@ -2013,7 +2024,7 @@ describe('chatStore', () => {
       expect(useChatStore.getState().referencedLibraryIds).toEqual(['library-referat-50'])
 
       // The stale success from the chat that's no longer active arrives.
-      resolveExistingChatPatch?.()
+      await releaseWhenHeld(() => resolveExistingChatPatch)
       await stalePatch
 
       const state = useChatStore.getState()
@@ -2281,7 +2292,7 @@ describe('chatStore', () => {
       // A's PATCH is still held open at this point - the query must not have been sent yet.
       expect(events).not.toContain('query-start')
 
-      resolveExistingChatPatch?.()
+      await releaseWhenHeld(() => resolveExistingChatPatch)
       await sendPromise
 
       expect(events.indexOf(`patch-end:${EXISTING_CHAT_ID}`)).toBeLessThan(
@@ -2328,8 +2339,7 @@ describe('chatStore', () => {
 
       await useChatStore.getState().loadChat(EXISTING_CHAT_ID)
       useChatStore.getState().clearScope() // PATCH #1 fires and stays open
-      await new Promise((resolve) => setTimeout(resolve, 0))
-      expect(events).toEqual([`patch-start:${EXISTING_CHAT_ID}`])
+      await vi.waitFor(() => expect(events).toEqual([`patch-start:${EXISTING_CHAT_ID}`]))
 
       useChatStore.getState().reset()
 
@@ -2339,17 +2349,18 @@ describe('chatStore', () => {
       // deliberately held open, instead of firing immediately.
       useChatStore.setState({ chatId: EXISTING_CHAT_ID, scope: 'all', referencedLibraryIds: [] })
       useChatStore.getState().addReferencedLibrary('library-fresh')
-      await new Promise((resolve) => setTimeout(resolve, 0))
 
       // The second call's own handler run completes immediately (it is not held open) - this
       // proves it started (and finished) without ever awaiting PATCH #1, which is still pending.
-      expect(events).toEqual([
-        `patch-start:${EXISTING_CHAT_ID}`,
-        `patch-start:${EXISTING_CHAT_ID}`,
-        `patch-end:${EXISTING_CHAT_ID}`,
-      ])
+      await vi.waitFor(() =>
+        expect(events).toEqual([
+          `patch-start:${EXISTING_CHAT_ID}`,
+          `patch-start:${EXISTING_CHAT_ID}`,
+          `patch-end:${EXISTING_CHAT_ID}`,
+        ]),
+      )
 
-      resolveFirstPatch?.()
+      await releaseWhenHeld(() => resolveFirstPatch)
       await new Promise((resolve) => setTimeout(resolve, 0))
     })
 
@@ -2442,8 +2453,7 @@ describe('chatStore', () => {
 
       await useChatStore.getState().loadChat(EXISTING_CHAT_ID)
       useChatStore.getState().clearScope() // PATCH #1 fires and stays open
-      await new Promise((resolve) => setTimeout(resolve, 0))
-      expect(events).toEqual(['patch-start'])
+      await vi.waitFor(() => expect(events).toEqual(['patch-start']))
 
       dropChatSettingsCache(EXISTING_CHAT_ID) // simulates chatListStore.deleteChatFromList's cleanup
 
@@ -2454,7 +2464,7 @@ describe('chatStore', () => {
 
       expect(events).toEqual(['patch-start', 'query-start'])
 
-      resolveHeldPatch?.()
+      await releaseWhenHeld(() => resolveHeldPatch)
       await new Promise((resolve) => setTimeout(resolve, 0))
     })
 
@@ -2507,8 +2517,7 @@ describe('chatStore', () => {
       // register resolveSecondPatch) before this test tries to resolve it - the chain only starts
       // its own updateChat() call once action 1's already-settled promise resolves, which is itself
       // asynchronous.
-      await new Promise((resolve) => setTimeout(resolve, 0))
-      resolveSecondPatch?.()
+      await releaseWhenHeld(() => resolveSecondPatch)
       await useChatStore.getState().pendingSettingsUpdate
 
       // The still-in-flight PATCH's own failure handler reads confirmedSettingsByChatId as its
