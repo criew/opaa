@@ -1,7 +1,7 @@
 # Bausteine mit Befund — Zeitraum 31.08.–30.09.2026
 
 Die Fortschreibung zum Stichtag 30.09.2026 hat **616 Vorgänge** geprüft — die 502 im Zeitraum
-geschlossenen Issues und die 114 gemergten Pull Requests ohne Issue-Verknüpfung (davon 49
+geschlossenen Issues und die 114 gemergten Pull Requests ohne Issue-Verknüpfung (davon 54
 Renovate-Updates). Diese Datei führt die **43 Vorgänge mit Befund**: solche, bei denen die
 Lieferung wesentlich vom Vorgang abweicht. Aufnahmekriterium ist eines der folgenden drei
 (Kennziffer in der Zeile „Befund"):

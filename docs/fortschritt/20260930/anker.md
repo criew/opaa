@@ -17,7 +17,7 @@ Spätere Fortschreibungen erheben nur das Delta ab diesen Marken.
 | Commits auf `main` (`--first-parent`) im Zeitraum | 467 |
 
 Erhoben mit `gh issue list --state closed --search "closed:>2026-08-30"` und
-`gh pr list --state merged --search "merged:>2026-08-30"`. Nachgezogen wurden die drei Vorgänge
+`gh pr list --state merged --search "merged:>2026-08-30"`. Nachgezogen wurden die beiden Vorgänge
 vom 30.08., die erst nach dem Vorgänger-Anker abgeschlossen wurden: Issue #945 und PR #1026
 (Finalisierung des Meilenstein-1-Berichts). Die ebenfalls am 30.08. geschlossenen Issues #1022 und
 #1023 gehören mit ihren PRs #1024/#1025 noch zum Vorgänger-Anker.

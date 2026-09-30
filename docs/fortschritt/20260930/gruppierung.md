@@ -175,7 +175,7 @@ Prüfvorgängen hängen.
 
 Modularisierung des Backends (Epic #1906): Zyklenfreiheit, logische Module per ArchUnit, Liquibase
 und OpenAPI je Modul bzw. Thema; Struktur-Review und Entkernung des query-Pakets; CI-Laufzeiten
-(Sharding); 49 Renovate-Updates.
+(Sharding); 54 Renovate-Updates.
 
 #1013, #1089, #1112, #1113, #1117, #1123, #1226, #1371, #1420, #1423, #1424, #1444, #1454,
 #1455, #1457, #1458, #1492, #1660, #1708, #1844, #1861, #1906, #1959, #1960, #1961, #1973,

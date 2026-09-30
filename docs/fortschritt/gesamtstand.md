@@ -67,12 +67,14 @@ Rechtefilter in der Abfrage, zusammengeführt per RRF-Fusion; danach MMR-Diversi
 Dokument-Vervollständigung und optionales Reranking als eigene Modellrolle (Voreinstellung aus).
 Harte Filter nach Dokumentart und Datum wirken in beiden Pfaden. Überlappendes Chunking,
 gliederungsbewusster Zuschnitt je Format, Contextual Chunking mit Metadaten im Kontextpräfix.
+Suchbereichssteuerung per @-Bibliotheksreferenzen im Chat.
 
 **Belege:** Jeder Beleg durchläuft eine deterministische Belegvalidierung und Faktenprüfung
 gegen die tatsächlich abgerufenen Fundstellen; ungültige Belege sind sichtbar gekennzeichnet.
 Belege führen bis zum Original (Download, Deeplink, Content-Proxy, Objektspeicher,
-Nachextraktion von Mail-Anhängen); die Belegansicht öffnet über „Belege anzeigen“ und
-klickbare Fußnoten.
+Nachextraktion von Mail-Anhängen, Herkunfts-Link bei Feed-Anlagen); jede Zitatstelle nennt
+Fundort und durchsuchte Bestände; die Belegansicht öffnet über „Belege anzeigen“ und klickbare
+Fußnoten.
 
 **Gesprächsgedächtnis:** kurzes, wörtliches Suchfenster und eine sichtbare, punktweise
 löschbare Gesprächsnotiz (ADR-0031).
@@ -106,15 +108,18 @@ schreibgeschützte Ordner gespiegelt.
 **Formate:** eigene, strukturbewusste Aufbereitung für PDF (inkl. Tabellen, Scan-Erkennung),
 DOCX, PPTX, ODT, ODP, ODS, XLSX/CSV, HTML, EML/MSG und Markdown, Tika als Rückfall;
 Pipeline-Version am Chunk mit selektivem Reindex. Ein neues Format braucht nur Klasse und Bean.
+Formaterkennung anhand des Inhalts statt der Endung, Prüfsummen-Skip, asynchrone Verarbeitung.
 **Anhänge** sind eigene Dokumente mit Elternbezug (ADR-0022).
 
 Bibliothekstypen mit gespeicherter Quellkonfiguration, Anlage-Assistent und Detailansicht mit
 Reitern Dokumente/Quelle/Metadaten/Freigaben; Verbindungstest, Zeitplan, sichere
 Zugangsdatenverwahrung, Pfad-Allowlist, Speicherkontingent. Dokumentenverwaltung mit Paging,
-Stichwortsuche, Drag-and-drop-Upload, Sammellöschen und Statusanzeige. Die Quellenzugriffe sind
-gegen SSRF, Redirect-Tricks, kodierten Pfadaufstieg und Zugangsdaten-Abfluss gehärtet;
-Downloads sind gedeckelt, alte Chunks bleiben bis zum erfolgreichen Parsen der neuen Fassung
-stehen. Produkthandbuch mit Kapiteln zu Indexierung, allen Konnektoren und Formaten.
+Stichwortsuche, Drag-and-drop-Upload, Sammellöschen, Statusanzeige, übersprungenen Dokumenten
+mit Grund und letztem Indexstand je Bibliothek. Dokumente verschwundener Quellen werden
+aufgeräumt; die Dokumentidentität ist je (Bibliothek, Quelle) gescoped. Die Quellenzugriffe sind
+gegen SSRF, Redirect-Tricks, kodierten Pfadaufstieg, Endlosrekursion und Zugangsdaten-Abfluss
+gehärtet; Downloads sind gedeckelt, alte Chunks bleiben bis zum erfolgreichen Parsen der neuen
+Fassung stehen. Produkthandbuch mit Kapiteln zu Indexierung, allen Konnektoren und Formaten.
 
 **Nicht gebaut:** OCR und Bilderkennung (Docling-PoC #1062 offen), Schadsoftwareprüfung.
 
@@ -148,11 +153,12 @@ existiert als Spike hinter Schalter. Konzeptionell ausgearbeitet: Agenten und We
 *Bestätigt: 20260831; Reranking-Rolle 20260930*
 
 Austauschbare, OpenAI-kompatible Modellanbieter, für Chat und Einbettung getrennt
-konfigurierbar — lokal betriebene Modelle sind die Voreinstellung, eine unkonfigurierte
-Installation redet nicht nach außen. Modellverwaltung Stufe 1: Chat-Modelle als verwaltbare
-Objekte mit verschlüsselten Zugangsdaten, Aktivierung und Verbindungstest, Administrationsseite
-mit Reitern für Chat-Modelle und Einbettung. Reranking als zusätzliche, abschaltbare
-Modellrolle.
+konfigurierbar — lokal betriebene Modelle (vLLM, Ollama) sind die Voreinstellung, eine
+unkonfigurierte Installation redet nicht nach außen. Modellverwaltung Stufe 1: Chat-Modelle
+als verwaltbare Objekte mit verschlüsselten Zugangsdaten, Admin-API mit CRUD, Aktivierung und
+Verbindungstest, Laufzeitauflösung des aktiven Modells, Administrationsseite mit Reitern für
+Chat-Modelle und Einbettung — E2E-abgedeckt. Ollama steht als optionales Compose-Profil bereit.
+Reranking als zusätzliche, abschaltbare Modellrolle.
 
 **Nicht gebaut:** zentrale Modellvorgaben als Obergrenze je Space/Bibliothek.
 
@@ -164,8 +170,8 @@ Modellrolle.
 Rollen und Gruppen je Anbieter aus dem Token, Anbieterwahl und automatische Anmeldung bei
 laufender Sitzung; alternativ oder ergänzend **lokale Benutzerverwaltung** (ADR-0033) mit
 Passwort, rotierenden Refresh-Tokens, Notanker-Systemverwalter, Einladung, Sperre, Ablauf,
-Selbstbedienung, Mail-Anbindung und Übergabe an einen Identitätsanbieter. Dev-Modus per
-Startguard abgetrennt.
+Selbstbedienung, Mail-Anbindung und Übergabe an einen Identitätsanbieter. Robust gegen
+parallele Erstanmeldungen, Silent-Token-Renew. Dev-Modus per Startguard abgetrennt.
 
 **Rechte** (ADR-0036): typunabhängige Grants an Personen, Gruppen und „Alle Konten“; Gruppen
 mit Herkunft (Anbieter oder intern mit Verantwortlichen); **Verzeichnisabgleich je Anbieter
@@ -174,7 +180,8 @@ mit Keycloak als erstem Konnektor**, samt Kontostatus — ausgeschiedene Konten 
 Rechteprüfung sitzt in der Suche selbst. Lückenlose Historisierung mit streng monotonen
 Intervallgrenzen, Stichtagsauskunft und Herleitung „warum sehe ich das“, Aufbewahrungshöchstdauer
 mit Löschlauf. Organisationsgrenze auf Datenbankebene mit strukturellem Prüflauf. Rechte-,
-Space- und Gruppenverwaltung vollständig über die Oberfläche.
+Space- und Gruppenverwaltung vollständig über die Oberfläche, inklusive
+berechtigungsunabhängiger Nutzersuche für die Rechtevergabe.
 
 **Nicht gebaut:** Verzeichnis-Konnektoren jenseits von Keycloak (LDAP, SCIM), mehrere
 Organisationen in einer Installation (Epic #1442), Sitzungsverwaltung mit erzwungener
@@ -188,9 +195,10 @@ Ratenbegrenzung mit Proxy-Auflösung und Kontosperre, CORS-Härtung, Sicherheits
 Härtungsdokumentation. **Lieferkette:** SBOM als Image-Attestierung und CycloneDX-Artefakt,
 CVE-Erkennung über Dependabot und Trivy mit Triage-Verfahren, versionierter Unterdrückungsliste
 und automatischem Alarm; Backend-Image auf Distroless mit jlink-JRE als
-Nicht-root-Nutzer, wöchentlich neu gebaut. **Audit-Trail Stufe 1:** nur-anfügende Ablage,
-Erfassung aller Rechte- und Verwaltungsereignisse, Revisionszugriff ohne personenbezogene
-Auswertung, Selbstprotokollierung, Aufbewahrung mit wirksamen Löschläufen. Die Diagnose „Sicht
+Nicht-root-Nutzer, wöchentlich neu gebaut. **Audit-Trail Stufe 1:** nur-anfügende Ablage mit entzogenen
+Änderungsrechten, Erfassung aller Rechte- und Verwaltungsereignisse, Revisionszugriff ohne
+personenbezogene Auswertung, Selbstprotokollierung, Aufbewahrung mit wirksamen Löschläufen,
+Abfrage-Indizes und strukturell abgesicherte Doppelbuchführung über Domain-Events. Die Diagnose „Sicht
 als“ ist an eine befristete Befugnis mit Pflichtbegründung und Protokoll gebunden.
 **Benannte Grenzen:** keine Prüfsummenverkettung; die Diagnosesperre einer Bibliothek schützt
 über Nachvollziehbarkeit, nicht gegen die Systemverwaltung; DSGVO-Vollständigkeit (Löschrecht,
@@ -199,10 +207,10 @@ zurückgestellt; signierte Builds fehlen.
 
 ### H · Monitoring & Governance
 
-*Bestätigt: 20260831; Konnektor-Kennzahlen 20260930*
+*Bestätigt: 20260831*
 
-Betriebsmetriken und Gesundheitsendpunkt; Speicherkontingente je Bibliothek und Organisation;
-Kennzahlen je Konnektorlauf.
+Betriebsmetriken und Gesundheitsendpunkt; Speicherkontingente je Bibliothek und Organisation.
+(Kennzahlen je Konnektorlauf stehen unter B.)
 
 **Nicht gebaut:** Auswertung von Nutzung und Kosten.
 
@@ -210,12 +218,15 @@ Kennzahlen je Konnektorlauf.
 
 *Bestätigt: 20260930*
 
-**Web-Oberfläche:** persistente Chats in Spaces mit Titelfilter, Zeitgruppen, Anheften, Archiv,
-Volltext-Chatsuche, umbenennbaren Titeln und Kopierfunktion; Einstieg im zuletzt genutzten
-Space. Eigenes Designsystem mit konfigurierbarem Branding (kontrastsicher), Dunkelmodus,
-globaler Navigation, einheitlichen Bereichsseiten, Tabellen mit Zeilenmenü und eigenem
-Bestätigungs-Overlay; Anmeldeseite mit eigenem Logo und Anbieterwahl. Browservorschau für
-Originaldokumente; durchgängig deutsch (Entscheidung: deutsch-only).
+**Web-Oberfläche:** persistente Chats in Spaces mit serverseitigem Verlauf, LLM-generierten
+und umbenennbaren Titeln, Titelfilter, Zeitgruppen, Anheften, Archiv, Volltext-Chatsuche und
+Kopierfunktion; race-gehärtete Frontend-Stores; Einstieg im zuletzt genutzten Space. Eigenes
+Designsystem mit Design-Tokens, konfigurierbarem Branding (kontrastsicher), Dunkelmodus,
+App-Shell mit globaler Navigation, einheitlichen Bereichsseiten, Tabellen mit Zeilenmenü,
+eigenem Bestätigungs-Overlay, Assistenten für Space- und Bibliotheksanlage und
+Fußnoten-Fundstellen mit Belegfenster; Anmeldeseite mit eigenem Logo und Anbieterwahl.
+Browservorschau für Originaldokumente; durchgängig deutsch inklusive MUI-Standardtexten
+(Entscheidung: deutsch-only).
 
 **Fremdzugänge und API:** persönliche Zugangstokens, Such-Endpunkt ohne Antwortgenerierung und
 MCP-Server (`search`, `fetch`, `list_libraries`) hinter einem installationsweiten Schalter mit
@@ -248,7 +259,8 @@ air-gapped-Lieferung.
 *Bestätigt: 20260831*
 
 Barrierefreiheit als Richtlinie (BITV 2.0 / WCAG 2.1 AA) mit automatisierten Prüfungen in
-Lint und E2E sowie manuell abgenommenem Abschluss-Audit mit Prüfprotokoll.
+Lint und E2E sowie manuell abgenommenem Abschluss-Audit mit Prüfprotokoll — alle Befunde
+behoben.
 **Nicht gebaut:** Textwerkzeuge einschließlich Leichter Sprache.
 
 ## Technisches Fundament & Arbeitsweise
@@ -259,13 +271,15 @@ Java 21 / Spring Boot 4.1 / Spring AI 2.0, React 19 / TypeScript 6 / MUI 9 / Vit
 PostgreSQL 18 mit pgvector. **Modularer Monolith ohne Paketzyklen:** logische Module
 (u. a. Retrieval, Formate, Metadaten, Konnektoren) und ihre Schichtung per ArchUnit im Build
 erzwungen, Controller in `web`-Paketen der Module. API-First: alle DTOs aus der
-OpenAPI-Spezifikation im Gradle-Modul `opaa-api`, aufgeteilt in Dateien je Thema. Liquibase mit
+OpenAPI-Spezifikation im Gradle-Modul `opaa-api`, aufgeteilt in Dateien je Thema;
+Domain-Services ohne DTO-Kenntnis, Domain-Exceptions, zentralisierte Aufrufer-Identität. Liquibase mit
 einer Baseline je Modul und Changelogs mit Datums-Dateinamen. 36 gepflegte ADRs. Testfundament:
 Unit-, Integrations- und Migrationstests, vier Spring-Testkontexte mit Isolationswächtern,
 Container-Suiten gegen Confluence, S3-Objektspeicher und Keycloak, Playwright-E2E gegen den
-echten Compose-Stack (nächtlich und auf `main`), Struktur-Wächter für API-Regeln. CI/CD über
-GitHub Actions mit drei parallelen Backend-Test-Shards, Docker-Images nach GHCR,
-Branch-Schutz und Auto-Merge; Abhängigkeits-Updates über Renovate. Produkthandbuch unter
+echten Compose-Stack (nächtlich und auf `main`), Struktur-Wächter für API-Regeln;
+plattformübergreifend lauffähig. CI/CD über GitHub Actions mit drei parallelen
+Backend-Test-Shards, Docker-Images nach GHCR, Branch-Schutz und Auto-Merge; selbst betriebene
+Abhängigkeits-Updates über Renovate mit gehärtetem Auto-Merge-Betrieb. Produkthandbuch unter
 `docs/handbuch/`. Mensch-KI-Kollaborationsmodell mit dokumentierten Agenten-Rollen,
 verbindlichen Arbeitsregeln (AGENTS.md, je Modul ergänzt), Projektsprache Deutsch, AGPL-3.0
 mit CLA-Prozess und täglichem Projektreport.

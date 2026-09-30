@@ -65,9 +65,9 @@ diese Kernlücken. Deshalb fällt der Sprung kleiner aus, als die Liefermenge ve
 - **Hybride Suche mit Reranking gebaut** (Epic #1045). Die Abfragestrecke wurde verhaltensneutral
   in benannte Stufen mit Pflicht-Erklärprotokoll umgebaut (#1046). Ein lexikalischer Volltextpfad
   mit Kennungsschutz für Paragraphen und Aktenzeichen kam dazu, der Rechtefilter sitzt in der
-  Abfrage (#1048). Beide Pfade laufen in einer RRF-Fusion zusammen (#1049). Reranking ist eine
-  konfigurierbare Modellrolle mit Zeitlimit und Ausfallwächter (#1050, #1153, #1154, #1209). Die
-  Volltextsuche bleibt bei Versionsanhebungen vollständig verfügbar (#1346, ADR-0028).
+  Abfrage (#1048). Beide Pfade wurden in einer RRF-Fusion zusammengeführt (#1049). Reranking kam als
+  konfigurierbare Modellrolle mit Zeitlimit und Ausfallwächter hinzu (#1050, #1153, #1154, #1209). Die
+  Volltextsuche wurde so umgestellt, dass sie bei Versionsanhebungen vollständig verfügbar bleibt (#1346, ADR-0028).
 - **Suchdiagnose für die Administration:** Die Seite „Suche & Indexierung“ zeigt Status und
   Diagnose je Pipeline-Stufe (#1053, #1120). Die Chunk-Ansicht wird je Dokument angezeigt (#1230).
   Die Diagnose im Rechtekontext einer Person („Sicht als“) ist befugt und protokolliert (#1150,
@@ -82,7 +82,7 @@ diese Kernlücken. Deshalb fällt der Sprung kleiner aus, als die Liefermenge ve
   Formatfelder ins Schema eingegangen (#1242).
 - **Gesprächsgedächtnis gebaut** (Epic #1482, ADR-0031): kurzes, wörtliches Suchfenster (#1486),
   eine sichtbare und löschbare Gesprächsnotiz (#1487, #1488) und Teilfragen-Zerlegung mit Kenntnis
-  des Verlaufs (#1684). Die Antwortstufe hat eine deutsche Systemanweisung (#1635).
+  des Verlaufs (#1684). Die Systemanweisung der Antwortstufe wurde auf Deutsch umgestellt (#1635).
 - **Suchqualitäts-Benchmark ausgebaut** (Epic #1036): ein zweiter Messpfad durch die produktive
   Pipeline (#1039, #1040), Variantenvergleiche (#1041) und die deutschsprachige Verwaltungsdomäne
   „Kalkstadt“ mit 46 Golden-Fällen in fünf neuen Fallklassen (#1042, #1043). Dazu kamen eine
@@ -175,7 +175,7 @@ diese Kernlücken. Deshalb fällt der Sprung kleiner aus, als die Liefermenge ve
 - **Zwei Politur-Runden:**
   - Verwaltungsbereich: gemeinsamer Seitenkopf, ruhige Flächen, Tabellen mit Zeilenmenü, eigenes
     Bestätigungs-Overlay statt 25 Browser-Dialogen, Reiter für „Suche & Indexierung“ und „Modelle“
-    (#1604–#1627, #1609)
+    (#1604, #1607–#1610, #1614, #1616, #1617, #1619, #1621, #1623, #1625, #1627)
   - Anmeldeseite, Übersichten, Space-Einstellungen und Navigation (#1910–#1922, #1970)
   - Die Hausfarbe wird als Textfarbe automatisch kontrastsicher (#1600).
 - **REST-API mit sauberem Fehlerverhalten:**
@@ -190,9 +190,9 @@ diese Kernlücken. Deshalb fällt der Sprung kleiner aus, als die Liefermenge ve
 - **Prompt-Bibliothek als zweiter Asset-Typ** (Epic #1726): Modell, API, Oberfläche und Einsatz im
   Chat per Slash-Befehl mit Variablenformular (#1901–#1903). Das ist der erste tragfähige Schnitt
   der Verteilungs-Säule.
-- **Reichweite ist eine Freigabe:** „Für alle“ ist eine gewöhnliche Freigabe an „Alle Konten“ in
-  derselben Rechteliste (#1931, ADR-0037). Für Konnektorbibliotheken gibt es eine
-  Freigabe-Obergrenze (#797).
+- **Reichweite wurde zur Freigabe:** „Für alle“ wurde eine gewöhnliche Freigabe an „Alle Konten“ in
+  derselben Rechteliste (#1931, ADR-0037). Für Konnektorbibliotheken kam eine
+  Freigabe-Obergrenze hinzu (#797).
 - **Werkzeugschleife als Spike** hinter Schalter (#1789). Das Fundament-Epic #1747 ist bewusst
   zurückgestellt.
 
@@ -227,7 +227,7 @@ diese Kernlücken. Deshalb fällt der Sprung kleiner aus, als die Liefermenge ve
   ihrer Module (#2034, PR#2039, PR#2040). Die OpenAPI-Spezifikation ist in 26 Dateien je Thema
   aufgeteilt (#2002), das Liquibase-Changelog je Modul (#2001, #2003). Retrieval, Formate und
   Metadaten sind eigene Module (#2045–#2047). Vorarbeit war das Struktur-Review des query-Pakets:
-  `QueryService` wurde von 894 auf 381 Zeilen gekürzt und in sieben Unterpakete geschnitten
+  `QueryService` wurde von 894 auf 369 Zeilen gekürzt und in sieben Unterpakete geschnitten
   (#1444, #1455, #1457).
 - **Tests und CI:**
   - Spring-Testkontexte von 23 auf vier konsolidiert (#1481)
@@ -255,7 +255,7 @@ diese Kernlücken. Deshalb fällt der Sprung kleiner aus, als die Liefermenge ve
   Frage. Das Latenzprofil auf Referenzhardware wurde nicht gebaut, weil die Aktivierung neu
   gedacht wird (#1051).
 - **Die Modell-Extraktion der Metadaten ist nicht abnahmefähig.** Die Handstichprobe fand die
-  Dokumentart zu 94 % falsch (PR#1358). Sie bleibt ausgeschaltet. Die Kalibrierung ist mit den
+  Dokumentart oberhalb der Konfidenzschwelle zu 94 % falsch (PR#1358). Sie bleibt ausgeschaltet. Die Kalibrierung ist mit den
   übrigen Nacharbeiten geparkt (#1364, #1704, #1359).
 - **Der Qualitätsgewinn des Gesprächsgedächtnisses ist nicht belegt.** Mit dem kleinen
   Eval-Modell senken Suchfenster und Notiz die Mehrrunden-Treffer (#1587). Die erste
@@ -307,8 +307,14 @@ Gegen die Phase-1-Definition der [Vision](../../VISION.md), nach Gewicht:
    und die **air-gapped-Lieferung**. SBOM und CVE-Scans sind gebaut, signierte Builds fehlen.
 10. Mandantenfähigkeit mit mehreren Organisationen in einer Installation (Epic #1442)
 
+**Nachrangig, aus der Restliste des Vormonats fortgeführt**
+11. Sitzungsverwaltung mit erzwungener Neuanmeldung und Einschränkung auf Netzbereiche (Punkt 7
+    des Vormonats; Netzbereiche gibt es bisher nur für Fremdzugänge, #1717)
+12. Antwort-Bewertung mit Speicherung (Hälfte von Punkt 13 des Vormonats) — die konzeptlosen
+    Daumen-Schaltflächen wurden entfernt (#1447), ein Konzept steht aus
+
 Erledigt gegenüber der Restliste des Vormonats: hybride Suche mit Reranking (1), echter
-Verzeichnisanschluss mit Kontenlebenszyklus (5), API-Tokens (13) sowie SBOM und
+Verzeichnisanschluss mit Kontenlebenszyklus (5), API-Tokens (Hälfte von 13) sowie SBOM und
 Sicherheits-Scans in der CI (Teil von 10).
 
 **Begonnen in Phase 2:** OPAA als Wissensschicht mit Zugangstokens und MCP-Server (Epic #1715,
@@ -320,7 +326,7 @@ Objektart (Epic #1727).
 
 | | |
 |---|---|
-| Gemergte Pull Requests | 489 (Vorzeitraum kumuliert: 496), davon 49 Renovate-Updates |
+| Gemergte Pull Requests | 489 (Vorzeitraum kumuliert: 496), davon 54 Renovate-Updates |
 | Geschlossene Issues | 502, davon 9 „not planned“ und 28 automatisch geöffnete und wieder geschlossene Alarm-Issues aus CI-Läufen |
 | Abgeschlossene Epics | 22 |
 | Vorgänge mit Befund | 43 von 616 geprüften (7 %; Vorgänger-Stichtag: 131 von 562) |
