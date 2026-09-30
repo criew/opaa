@@ -1,11 +1,12 @@
 # Zeitraumsbericht 31.08.–30.09.2026
 
-> **ENTWURF — zur Abnahme durch die Maintainer.** Der Bericht beruht auf der Fortschreibung mit
+> **Abgenommener Bericht zum Stichtag 30.09.2026.** Er beruht auf der Fortschreibung mit
 > Datenstand 30.09.2026 (`main@17ec7fca8`, 502 geschlossene Issues und 489 gemergte PRs im
 > Zeitraum — siehe [anker.md](./anker.md)). Er enthält nur das **Delta zum Stichtag 31.08.2026**;
 > den konsolidierten Stand führt [gesamtstand.md](../gesamtstand.md). Jede Aussage ist über
 > Issue- und PR-Nummer auf Code rückführbar. Wo Lieferung und Vorgang auseinanderfallen, steht die
-> Begründung im [Baustein mit Befund](./bausteine.md).
+> Begründung im [Baustein mit Befund](./bausteine.md). Der Commit, der diesen Berichtsstand
+> einführt, trägt das Git-Tag `inventur-20260930`.
 
 ## Management Summary
 

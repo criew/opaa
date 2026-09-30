@@ -7,7 +7,8 @@
 > Dokument ist die **einzige Quelle für den Umsetzungsstand** (Maintainer-Entscheidung,
 > 26.08.2026, #927); das frühere `docs/STATUS.md` ist entfernt.
 
-**Stand: Stichtag 30.09.2026** — Datenstand `main@17ec7fca8` (30.09.2026). Belege:
+**Stand: Stichtag 30.09.2026** — Datenstand `main@17ec7fca8` (30.09.2026), im Repository als
+Tag `inventur-20260930` verankert. Belege:
 [Zeitraumsbericht 20260930](./20260930/report.md) mit den
 [Bausteinen mit Befund](./20260930/bausteine.md) für das Delta, der
 [Zeitraumsbericht 20260831](./20260831/report.md) für alles davor. Jeder Abschnitt nennt den
