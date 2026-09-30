@@ -205,6 +205,11 @@ opaa:
   spike:
     tool-loop:
       enabled: ${OPAA_SPIKE_TOOL_LOOP_ENABLED:false}
+  # Demo seed only: POST /api/v1/spaces/{spaceId}/chat-imports writes prepared chat transcripts
+  # without a model call. The route exists only while this is true; off everywhere else.
+  demo:
+    chat-import:
+      enabled: ${OPAA_DEMO_CHAT_IMPORT_ENABLED:false}
   query:
     top-k: ${OPAA_QUERY_TOP_K:8}
     fetch-k: ${OPAA_QUERY_FETCH_K:25}
