@@ -1,4 +1,4 @@
-"""Prepared chat transcripts of the demo profile (Issue #2071).
+"""Prepared chat transcripts of the demo profile.
 
 A chat set is one directory under chats/: its set.json names the space, the owner (the account
 the chats are written for) and the corpus documents the answers cite; every other *.json file holds

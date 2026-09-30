@@ -7,8 +7,8 @@
       "pinned": true,
       "turns": [
         {
-          "q": "Mit welcher Begründung hat der Stadtrat die zwei zusätzlichen Stellen im Bürgerbüro geschaffen?",
-          "a": "Beschlussvorlage 2024/052 für die Sitzung am 26. November 2024[[rat-stellenplan]]:\n\n- **Beschluss:** zwei zusätzliche Stellen der Entgeltgruppe 9a für das Sachgebiet Meldewesen und Ausweise im Stellenplan 2025\n- **Begründung:** Die Fallzahlen im Meldewesen sind seit 2022 um 18 Prozent gestiegen; die Wartezeit auf einen Termin beträgt im Durchschnitt 19 Werktage.\n- **Ziel:** Wartezeit unter zehn Werktage und dauerhaft besetzter Sprechtag des mobilen Bürgerbüros\n- **Kosten:** rund 128.000 Euro jährlich, im Haushaltsentwurf 2025 berücksichtigt; die Zustimmung des Personalrats lag vor"
+          "q": "Mit welcher Begründung wurden die zwei zusätzlichen Stellen im Bürgerbüro beantragt?",
+          "a": "Beschlussvorlage 2024/052 für die Sitzung am 26. November 2024[[rat-stellenplan]]:\n\n- **Beschlussvorschlag:** zwei zusätzliche Stellen der Entgeltgruppe 9a für das Sachgebiet Meldewesen und Ausweise im Stellenplan 2025\n- **Begründung:** Die Fallzahlen im Meldewesen sind seit 2022 um 18 Prozent gestiegen; die Wartezeit auf einen Termin beträgt im Durchschnitt 19 Werktage.\n- **Ziel:** Wartezeit unter zehn Werktage und dauerhaft besetzter Sprechtag des mobilen Bürgerbüros\n- **Kosten:** rund 128.000 Euro jährlich, im Haushaltsentwurf 2025 berücksichtigt; die Zustimmung des Personalrats lag vor\n\nDie Niederschrift der Sitzung vom 26. November 2024 liegt nicht vor; das Abstimmungsergebnis lässt sich aus den Unterlagen deshalb nicht belegen."
         },
         {
           "q": "Wurde über die Personalkosten im Bürgerbüro schon früher im Rat gesprochen?",
@@ -27,7 +27,7 @@
       "turns": [
         {
           "q": "Was hat der Bürgerkoffer gekostet?",
-          "a": "Einmalig 9.800 Euro für das Gerät und jährlich 1.200 Euro für Wartung und Datenverbindung, gedeckt aus dem Ansatz Bürgerbüro-Sachaufwand 2024. Der Hauptausschuss beschloss im Mai 2024 die Anschaffung und einen viermonatigen Probebetrieb in zwei Pflegeeinrichtungen ab September 2024[[rat-buergerkoffer]]."
+          "a": "Einmalig 9.800 Euro für das Gerät und jährlich 1.200 Euro für Wartung und Datenverbindung, gedeckt aus dem Ansatz Bürgerbüro-Sachaufwand 2024. So steht es in der Beschlussvorlage 2024/019 für den Hauptausschuss am 14. Mai 2024, die die Anschaffung und einen viermonatigen Probebetrieb in zwei Pflegeeinrichtungen ab September 2024 vorschlägt[[rat-buergerkoffer]]. Die Niederschrift dieser Sitzung liegt nicht vor; dass der Probebetrieb stattgefunden hat, berichtet die Niederschrift des Hauptausschusses vom 11. Februar 2025[[rat-ha-2025-02]]."
         },
         {
           "q": "Was kam beim Probebetrieb heraus?",
@@ -170,7 +170,7 @@
       "turns": [
         {
           "q": "Wie ist der Stand beim Neubau der Feuerwache Süd?",
-          "a": "Der Stadtrat hat am 24. Februar 2026 den Grundsatzbeschluss für den Standort Festplatz gefasst. Begründung: Die Wache von 1968 erfüllt die Anforderungen an Schwarz-Weiß-Trennung, Hallenhöhe und Ausrückzeiten nicht mehr; vom Festplatz aus ist eine Ausrückzeit unter acht Minuten für alle südlichen Ortsteile möglich. Der Kostenrahmen liegt bei 14,5 Millionen Euro, für den Architektenwettbewerb sind 220.000 Euro veranschlagt[[rat-feuerwache]]."
+          "a": "Der Stadtrat hat am 24. Februar 2026 den Grundsatzbeschluss gefasst[[rat-bau-2026-05]]; die Beschlussvorlage 2026/006 nennt als Standort den Festplatz. Begründung: Die Wache von 1968 erfüllt die Anforderungen an Schwarz-Weiß-Trennung, Hallenhöhe und Ausrückzeiten nicht mehr; vom Festplatz aus ist eine Ausrückzeit unter acht Minuten für alle südlichen Ortsteile möglich. Der Kostenrahmen liegt bei 14,5 Millionen Euro, für den Architektenwettbewerb sind 220.000 Euro veranschlagt[[rat-feuerwache]]."
         },
         {
           "q": "Wie geht es mit dem Wettbewerb weiter?",

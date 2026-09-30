@@ -94,6 +94,7 @@ public class ChatImportService {
       throw new ConflictException("Der Space ist archiviert und lässt keine neuen Chats mehr zu");
     }
     List<ChatImport.Turn> turns = transcript.turns();
+    requireText(transcript);
     requireChronologicalAndPast(turns);
     Map<UUID, Document> documents = readableDocuments(turns, authorId, space.getOrganizationId());
     Map<UUID, CoreMetadata> coreMetadata =
@@ -118,6 +119,20 @@ public class ChatImportService {
               turn.answeredAt()));
     }
     return chatId;
+  }
+
+  private static void requireText(ChatImport transcript) {
+    boolean blank =
+        isBlank(transcript.title())
+            || transcript.turns().stream()
+                .anyMatch(turn -> isBlank(turn.question()) || isBlank(turn.answer()));
+    if (blank) {
+      throw new ValidationException("Titel, Fragen und Antworten dürfen nicht leer sein");
+    }
+  }
+
+  private static boolean isBlank(String text) {
+    return text == null || text.isBlank();
   }
 
   private void requireChronologicalAndPast(List<ChatImport.Turn> turns) {

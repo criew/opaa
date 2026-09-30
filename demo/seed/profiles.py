@@ -184,7 +184,7 @@ class Profile:
     prompt_libraries: tuple[PromptLibraryDef, ...] = field(default_factory=tuple)
     provider_groups: tuple[ProviderGroupDef, ...] = field(default_factory=tuple)
     directory_sync: DirectorySyncDef | None = None
-    # Directories of prepared chat transcripts (chats.py, #2071), imported after indexing so their
+    # Directories of prepared chat transcripts (chats.py), imported after indexing so their
     # sources resolve.
     chat_sets: tuple[Path, ...] = field(default_factory=tuple)
 

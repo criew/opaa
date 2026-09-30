@@ -1,4 +1,4 @@
-"""Tests for the prepared demo chats (Issue #2071), without a running stack.
+"""Tests for the prepared demo chats, without a running stack.
 
 What is covered: the committed chat set as data (volume, marks, spread over weeks, every cited
 document present in the corpus and readable in the space), the request the seed sends for a chat

@@ -256,6 +256,28 @@ class ChatImportServiceIntegrationTest {
     assertThat(chatCountOf(author)).isZero();
   }
 
+  @Test
+  void aBlankQuestionOrAnswerIsRefused() {
+    ChatImport blankQuestion =
+        new ChatImport(
+            "Leer",
+            List.of(
+                new ChatImport.Turn(
+                    "   ", "Antwort", FIRST_ASKED, FIRST_ASKED.plusSeconds(5), List.of())));
+    ChatImport blankAnswer =
+        new ChatImport(
+            "Leer",
+            List.of(
+                new ChatImport.Turn(
+                    "Frage", "\t \n", FIRST_ASKED, FIRST_ASKED.plusSeconds(5), List.of())));
+
+    assertThatThrownBy(() -> chatImportService.importChat(spaceId, author, blankQuestion))
+        .isInstanceOf(ValidationException.class);
+    assertThatThrownBy(() -> chatImportService.importChat(spaceId, author, blankAnswer))
+        .isInstanceOf(ValidationException.class);
+    assertThat(chatCountOf(author)).isZero();
+  }
+
   private static ChatImport.Turn turn(String question, Instant askedAt, Instant answeredAt) {
     return new ChatImport.Turn(question, "Antwort auf: " + question, askedAt, answeredAt, null);
   }

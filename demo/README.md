@@ -193,7 +193,10 @@ Herkunft und Zwang jeder einzelnen Variable:
   `POST /api/v1/spaces/{spaceId}/chat-imports`, über die der letzte Seed-Schritt Andreas Chats ohne
   Modellaufruf anlegt. Ohne die Zeile bricht der Seed an dieser Stelle mit einem Hinweis auf die
   Variable ab – alles davor ist dann schon eingerichtet, ein erneuter Lauf nach dem Neustart des
-  Backends holt nur die Chats nach. Für jede Nicht-Demo-Installation bleibt die Variable ungesetzt.
+  Backends holt nur die Chats nach. **Der Schalter gilt nur für die Dauer des Seed-Laufs:** Danach
+  wird die Zeile entfernt und das Backend neu gestartet, denn solange er gesetzt ist, kann jedes
+  angemeldete Konto Antworten ohne Modell in eigene Chats schreiben (siehe „Vorbereitete Chats"
+  unten). Für jede Nicht-Demo-Installation bleibt die Variable ungesetzt.
 
 #### 2. Stack starten
 
@@ -570,6 +573,11 @@ Titels – aktiv oder archiviert –, legt der Seed ihn nicht noch einmal an. Fe
 eine Markierung, die die Datei verlangt (etwa weil er in einer Vorführung wieder gelöst wurde), setzt
 der Seed sie erneut; Markierungen, die die Datei nicht verlangt, bleiben unangetastet. Ein neuer Chat
 eines späteren Laufs bekommt Zeitpunkte relativ zu diesem Lauf.
+
+Die Erkennung über den Titel hat bei geteilten Demo-Konten zwei Grenzen: Wird ein eingespielter Chat
+umbenannt, legt der nächste Lauf ihn unter dem Originaltitel noch einmal an. Hat eine besuchende
+Person zufällig einen eigenen Chat mit gleichem Titel angelegt, fehlt der vorbereitete Chat, und
+eine verlangte Markierung trifft ihren Chat. Nach einem Neuaufsatz der Demo tritt beides nicht auf.
 
 ---
 
@@ -1043,11 +1051,15 @@ Import als auch nachträglich per `kcadm`. Für einen Seed-Lauf wird er ausschli
 aktiviert und unmittelbar danach wieder deaktiviert — kein dauerhaft scharfer, passwortbasierter
 Tokenweg ohne Client-Secret auf einer erreichbaren Instanz.
 
-**Vorbedingung für die vorbereiteten Chats (#2071):** Für den letzten Seed-Schritt muss das Backend der Instanz mit
-`OPAA_DEMO_CHAT_IMPORT_ENABLED=true` laufen (siehe „Vorbereitete Chats" oben). Die Route ist nur
-für Konten mit Space-Mitgliedschaft und nur für eigene Chats nutzbar; wer sie nach dem Seed-Lauf
-nicht offen lassen will, nimmt die Variable wieder heraus und startet das Backend neu – die
-eingespielten Chats bleiben.
+**Vorbedingung für die vorbereiteten Chats (#2071):** Für den letzten Seed-Schritt läuft das
+Backend der Instanz mit `OPAA_DEMO_CHAT_IMPORT_ENABLED=true` (siehe „Vorbereitete Chats" oben) –
+**ausschließlich für die Dauer des Seed-Laufs**, genau wie beim Client `opaa-seed`: Variable vor dem
+Lauf setzen und das Backend neu starten, unmittelbar danach die Variable entfernen und das Backend
+erneut neu starten. Grund: Die Fach-Demokonten haben dokumentierte Passwörter und werden von allen
+Besuchenden geteilt. Solange der Schalter an ist, kann jede angemeldete Person über die Route
+beliebige, zurückdatierte „Antworten“ ohne Modell in die Chats dieser Konten schreiben, die die
+nächsten Besuchenden in der vertrauten Oberfläche sehen. Die eingespielten Chats bleiben nach dem
+Abschalten erhalten.
 
 **Dritte Vorbedingung (seit ADR-0033, #1534):** Der Seed vergibt `SYSTEM_ADMIN` an `demo-admin` über
 das lokale Notanker-Konto; dessen Passwort wird als `--local-admin-password` (oder

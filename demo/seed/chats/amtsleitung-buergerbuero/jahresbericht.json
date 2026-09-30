@@ -8,7 +8,7 @@
       "turns": [
         {
           "q": "Ich bereite den Jahresbericht des Bürgerbüros für 2026 vor. Welche Ratsbeschlüsse der letzten Jahre betreffen das Bürgerbüro direkt?",
-          "a": "Unmittelbar das Bürgerbüro betreffen vier Beschlüsse:\n\n1. **14. Mai 2024, Hauptausschuss:** Anschaffung eines Bürgerkoffers und viermonatiger Probebetrieb in zwei Pflegeeinrichtungen[[rat-buergerkoffer]]\n2. **26. November 2024, Stadtrat:** zwei zusätzliche Stellen EG 9a im Meldewesen (Stellenplan 2025)[[rat-stellenplan]]\n3. **11. Februar 2025, Hauptausschuss:** feste Sprechtage des mobilen Bürgerbüros in Rheinau und Weststadt ab April 2025[[rat-ha-2025-02]]\n4. **21. April 2026, Hauptausschuss:** unbefristete Fortführung des mobilen Bürgerbüros und neuer Sprechtag in Nordfeld[[rat-ha-2026-04]]\n\nMittelbar kommt der Beschluss zum zentralen Dokumentenarchiv hinzu, das die Ratsunterlagen für den Wissensassistenten bereitstellt[[rat-dokumentenarchiv]]."
+          "a": "Unmittelbar das Bürgerbüro betreffen zwei Vorlagen und zwei Beschlüsse:\n\n1. **Vorlage 2024/019, Hauptausschuss 14. Mai 2024:** Anschaffung eines Bürgerkoffers und viermonatiger Probebetrieb in zwei Pflegeeinrichtungen[[rat-buergerkoffer]]\n2. **Vorlage 2024/052, Stadtrat 26. November 2024:** zwei zusätzliche Stellen EG 9a im Meldewesen (Stellenplan 2025)[[rat-stellenplan]]\n3. **11. Februar 2025, Hauptausschuss:** feste Sprechtage des mobilen Bürgerbüros in Rheinau und Weststadt ab April 2025[[rat-ha-2025-02]]\n4. **21. April 2026, Hauptausschuss:** unbefristete Fortführung des mobilen Bürgerbüros und neuer Sprechtag in Nordfeld[[rat-ha-2026-04]]\n\nZu den beiden Vorlagen liegen die Niederschriften nicht vor; dass der Probebetrieb lief, belegt die Niederschrift vom 11. Februar 2025. Mittelbar kommt die Vorlage zum zentralen Dokumentenarchiv hinzu, das die Ratsunterlagen für den Wissensassistenten bereitstellt[[rat-dokumentenarchiv]]."
         },
         {
           "q": "Fass mir die Begründung für die zwei neuen Stellen in zwei Sätzen zusammen.",
@@ -33,7 +33,7 @@
         },
         {
           "q": "Kommen wir zum mobilen Bürgerbüro. Wie hat es sich seit dem Bürgerkoffer entwickelt?",
-          "a": "In drei Schritten:\n\n- **2024:** Anschaffung des Bürgerkoffers und Probebetrieb in zwei Pflegeeinrichtungen ab September[[rat-buergerkoffer]]\n- **2025:** feste Sprechtage im Stadtteilzentrum Rheinau (jeden ersten Dienstag) und im Bürgertreff Weststadt (jeden dritten Donnerstag) ab April[[rat-ha-2025-02]]\n- **2026:** unbefristete Fortführung und ein dritter Sprechtag im Gemeindezentrum Nordfeld[[rat-ha-2026-04]], erstmals am 8. Juli 2026[[rundschreiben-nordfeld]]"
+          "a": "In drei Schritten:\n\n- **2024:** Bürgerkoffer und viermonatiger Probebetrieb in zwei Pflegeeinrichtungen ab September, so vorgeschlagen[[rat-buergerkoffer]] und laut Bericht im Hauptausschuss durchgeführt[[rat-ha-2025-02]]\n- **2025:** feste Sprechtage im Stadtteilzentrum Rheinau (jeden ersten Dienstag) und im Bürgertreff Weststadt (jeden dritten Donnerstag) ab April[[rat-ha-2025-02]]\n- **2026:** unbefristete Fortführung und ein dritter Sprechtag im Gemeindezentrum Nordfeld[[rat-ha-2026-04]], erstmals am 8. Juli 2026[[rundschreiben-nordfeld]]"
         },
         {
           "q": "Wie viele Anliegen waren es im Probebetrieb und im ersten Jahr mit festen Sprechtagen?",
@@ -49,7 +49,7 @@
         },
         {
           "q": "Welche laufenden Kosten verursacht das mobile Bürgerbüro?",
-          "a": "Für den Bürgerkoffer fallen jährlich 1.200 Euro für Wartung und Datenverbindung an[[rat-buergerkoffer]]. Die Personalkosten weisen die Unterlagen nicht gesondert aus; die Stellenplanvorlage nennt die dauerhafte Besetzung des Sprechtags aber als eines der Ziele der zwei zusätzlichen Stellen[[rat-stellenplan]]."
+          "a": "Für den Bürgerkoffer veranschlagt die Vorlage 2024/019 jährlich 1.200 Euro für Wartung und Datenverbindung[[rat-buergerkoffer]]. Die Personalkosten weisen die Unterlagen nicht gesondert aus; die Stellenplanvorlage nennt die dauerhafte Besetzung des Sprechtags aber als eines der Ziele der zwei zusätzlichen Stellen[[rat-stellenplan]]."
         },
         {
           "q": "Wann war der erste Sprechtag in Nordfeld?",

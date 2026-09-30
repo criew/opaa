@@ -140,6 +140,28 @@ class ChatImportControllerTest {
 
       verify(chatImportService, never()).importChat(any(), any(), any());
     }
+
+    @Test
+    void aWhitespaceQuestionOrAnOverlongQuestionIsRefusedBeforeTheService() throws Exception {
+      String whitespace =
+          TRANSCRIPT.formatted(UUID.randomUUID()).replace("Was kostet ein Personalausweis?", "   ");
+      String overlong =
+          TRANSCRIPT
+              .formatted(UUID.randomUUID())
+              .replace("Was kostet ein Personalausweis?", "x".repeat(2001));
+
+      for (String body : new String[] {whitespace, overlong}) {
+        mockMvc
+            .perform(
+                post("/api/v1/spaces/{spaceId}/chat-imports", UUID.randomUUID())
+                    .with(asTestUser())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(body))
+            .andExpect(status().isBadRequest());
+      }
+
+      verify(chatImportService, never()).importChat(any(), any(), any());
+    }
   }
 
   @Nested

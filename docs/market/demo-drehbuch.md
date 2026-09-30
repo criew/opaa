@@ -443,13 +443,19 @@ Drei Fragen, die sich nur aus einem Nicht-Text-Format beantworten lassen (#2028)
      fünf Chats, darunter die übrigen aktiven Chats, zuletzt verwendete zuerst.
   2. Einen Chat öffnen, etwa „Auskunftssperre bei häuslicher Gewalt": Die Antworten tragen Fußnoten,
      „Belege anzeigen" öffnet die zitierten Dokumente mit Dateiname und Bibliothek.
-  3. Über „Aktionen für Chat …" einen Chat anheften oder lösen und einen anderen archivieren.
+  3. Über „Aktionen für Chat …" einen nicht angehefteten Chat, etwa „Trauung im Standesamt“,
+     anheften: Er erscheint unter „Angeheftet“. Über dasselbe Menü wieder „Lösen“.
+  4. Über „Aktionen für Chat …" denselben Chat „Archivieren“: Er verschwindet aus der Seitenleiste.
+     Auf der Seite „Chats durchsuchen“ (siehe unten) im Reiter „Archiv“ steht er jetzt als zwölfter
+     Eintrag.
 - **Klickweg, Suche und Archiv:**
   1. In der Seitenleiste auf „Chats durchsuchen" klicken. Die Seite „Chats in „Amtsleitung
-     Bürgerbüro“" zeigt die Reiter „Aktiv (70)" und „Archiv (11)".
+     Bürgerbüro“" zeigt die Reiter „Aktiv (69)" und „Archiv (12)" – im Ausgangszustand, ohne den in
+     Schritt 4 archivierten Chat, „Aktiv (70)" und „Archiv (11)".
   2. Im Suchfeld „Auskunftssperre" eingeben. Die Treffer kommen aus Titeln, Fragen und Antworten,
      darunter auch „Amtshilfeersuchen anderer Meldebehörden" aus dem Archiv.
-  3. Reiter „Archiv": die elf archivierten Chats mit „Archiviert am".
+  3. Reiter „Archiv": die archivierten Chats mit „Archiviert am" – nach Schritt 4 oben zwölf statt
+     elf.
 - **Klickweg, langer Verlauf:** „Jahresbericht Bürgerbüro 2026 vorbereiten" (angeheftet) öffnen und
   durch die 32 Runden scrollen – vom Überblick über die Ratsbeschlüsse bis zur Gliederung und den
   Lücken des Berichts. Bei einer Antwort mit Tabelle, etwa den Kennzahlen, „Antwort kopieren"
@@ -457,9 +463,13 @@ Drei Fragen, die sich nur aus einem Nicht-Text-Format beantworten lassen (#2028)
 - **Hinweis:** Die eingespielten Chats haben keine Gesprächsnotiz; sie entsteht erst, wenn im Chat
   eine neue Frage gestellt wird. Eine neue Frage ist mit dem Modell der Instanz jederzeit möglich
   und reiht den Chat in der Liste nach oben.
-- **Zurücksetzen:** nicht nötig. Anheften und Archivieren sind persönliche Markierungen Andreas;
-  ein erneuter Seed stellt die Markierungen wieder her, die er selbst gesetzt hat, und legt keine
-  Chats doppelt an.
+- **Zurücksetzen (Pflicht):** den in Schritt 4 archivierten Chat zurückholen – im Reiter „Archiv“
+  beim Chat „Trauung im Standesamt“ im Aktionsmenü „Zurückholen“ wählen (oder ihn auswählen und die
+  Sammelaktion „Zurückholen“ nutzen). Danach zeigen die Reiter wieder „Aktiv (70)“ und
+  „Archiv (11)“, und „Angeheftet“ hat fünf Einträge. Ein erneuter Seed hilft hier nicht: Er setzt nur
+  fehlende Markierungen, die er selbst vorgibt, nimmt aber keine Archivierung und kein zusätzliches
+  Anheften zurück. Auf der öffentlichen Instanz teilen sich alle Besuchenden Andreas Konto; ohne das
+  Zurücksetzen stimmen die Zahlen dieses Schritts bei der nächsten Vorführung nicht mehr.
 - **Zeigt:** Auch nach Wochen mit vielen Gesprächen bleibt die eigene Chatablage beherrschbar:
   Anheften, Archiv und Volltextsuche über Titel, Fragen und Antworten. Chats bleiben privat – kein
   anderes Konto sieht Andreas Chats, auch nicht die Systemverwaltung.

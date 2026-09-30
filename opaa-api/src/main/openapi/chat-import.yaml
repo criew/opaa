@@ -63,6 +63,7 @@ components:
           type: string
           minLength: 1
           maxLength: 255
+          pattern: "[\\s\\S]*\\S[\\s\\S]*"
           example: Gebühr Personalausweis unter 24
         turns:
           type: array
@@ -73,17 +74,21 @@ components:
 
     ChatImportTurn:
       type: object
-      description: One question with its answer, in the order the chat shows them.
+      description: >
+        One question with its answer, in the order the chat shows them. Question and answer must
+        contain more than whitespace; the question is bounded like a regular query.
       required: [question, answer, askedAt, answeredAt]
       properties:
         question:
           type: string
           minLength: 1
-          maxLength: 20000
+          maxLength: 2000
+          pattern: "[\\s\\S]*\\S[\\s\\S]*"
         answer:
           type: string
           minLength: 1
           maxLength: 50000
+          pattern: "[\\s\\S]*\\S[\\s\\S]*"
           description: >
             The answer text, citation markers (【source: <documentId>#<chunk> | <fileName>】)
             included as the chat renders them.

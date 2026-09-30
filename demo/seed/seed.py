@@ -5,7 +5,7 @@ Sets up a ready-to-use OPAA installation through the public API only (no direct 
 per the issue's "Technische Hinweise"): users (provisioned by their first authenticated request),
 spaces, knowledge libraries with their own source configuration (ADR-0018), VIEWER grants,
 space<->library associations (#706, pure curation), upload documents, the indexing run per
-library and, last, prepared chats with their sources (chats.py, #2071; the import route exists only
+library and, last, prepared chats with their sources (chats.py; the import route exists only
 while the backend runs with OPAA_DEMO_CHAT_IMPORT_ENABLED=true).
 
 Two data profiles (profiles.py), one mechanism:
