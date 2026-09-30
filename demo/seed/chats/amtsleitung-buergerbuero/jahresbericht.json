@@ -1,0 +1,141 @@
+{
+  "chats": [
+    {
+      "title": "Jahresbericht Bürgerbüro 2026 vorbereiten",
+      "daysAgo": 5,
+      "time": "08:30",
+      "pinned": true,
+      "turns": [
+        {
+          "q": "Ich bereite den Jahresbericht des Bürgerbüros für 2026 vor. Welche Ratsbeschlüsse der letzten Jahre betreffen das Bürgerbüro direkt?",
+          "a": "Unmittelbar das Bürgerbüro betreffen zwei Vorlagen und zwei Beschlüsse:\n\n1. **Vorlage 2024/019, Hauptausschuss 14. Mai 2024:** Anschaffung eines Bürgerkoffers und viermonatiger Probebetrieb in zwei Pflegeeinrichtungen[[rat-buergerkoffer]]\n2. **Vorlage 2024/052, Stadtrat 26. November 2024:** zwei zusätzliche Stellen EG 9a im Meldewesen (Stellenplan 2025)[[rat-stellenplan]]\n3. **11. Februar 2025, Hauptausschuss:** feste Sprechtage des mobilen Bürgerbüros in Rheinau und Weststadt ab April 2025[[rat-ha-2025-02]]\n4. **21. April 2026, Hauptausschuss:** unbefristete Fortführung des mobilen Bürgerbüros und neuer Sprechtag in Nordfeld[[rat-ha-2026-04]]\n\nZu den beiden Vorlagen liegen die Niederschriften nicht vor; dass der Probebetrieb lief, belegt die Niederschrift vom 11. Februar 2025. Mittelbar kommt die Vorlage zum zentralen Dokumentenarchiv hinzu, das die Ratsunterlagen für den Wissensassistenten bereitstellt[[rat-dokumentenarchiv]]."
+        },
+        {
+          "q": "Fass mir die Begründung für die zwei neuen Stellen in zwei Sätzen zusammen.",
+          "a": "Die Fallzahlen im Meldewesen sind seit 2022 um 18 Prozent gestiegen, und die Wartezeit auf einen Termin lag im Durchschnitt bei 19 Werktagen. Mit zwei zusätzlichen Stellen sollte die Wartezeit unter zehn Werktage sinken und der Sprechtag des mobilen Bürgerbüros dauerhaft besetzt werden können[[rat-stellenplan]]."
+        },
+        {
+          "q": "Was kosten die beiden Stellen im Jahr?",
+          "a": "Rund 128.000 Euro jährlich; der Betrag war im Haushaltsentwurf 2025 berücksichtigt[[rat-stellenplan]]."
+        },
+        {
+          "q": "Haben wir in den Unterlagen eine aktuelle Zahl zur Wartezeit?",
+          "a": "Nein. Die Unterlagen enthalten nur den Ausgangswert von 19 Werktagen aus der Vorlage vom November 2024 und den Zielwert von unter zehn Werktagen. Für den Bericht müsste der aktuelle Wert aus der Terminvergabe selbst kommen.",
+          "also": ["rat-stellenplan", "da-terminvergabe"]
+        },
+        {
+          "q": "Wann wurde die Stelle in der Sachbearbeitung Meldewesen ausgeschrieben?",
+          "a": "Die Pressemitteilung vom 10. Februar 2026 kündigt die Neubesetzung einer Vollzeitstelle in der Sachbearbeitung Meldewesen und Ausweisangelegenheiten zum 1. Mai 2026 an; Bewerbungen liefen bis zum 20. März 2026 über das Karriereportal[[pm-stellenausschreibung]]."
+        },
+        {
+          "q": "Ist das eine der beiden Stellen aus dem Stellenplan 2025?",
+          "a": "Das geht aus den Unterlagen nicht hervor. Die Mitteilung spricht davon, eine Stelle „neu zu besetzen“[[pm-stellenausschreibung]], die Stellenplanvorlage von zwei zusätzlichen Stellen[[rat-stellenplan]]. Ob es sich um eine der neuen Stellen oder um eine Nachbesetzung handelt, müsste das Personalamt bestätigen."
+        },
+        {
+          "q": "Kommen wir zum mobilen Bürgerbüro. Wie hat es sich seit dem Bürgerkoffer entwickelt?",
+          "a": "In drei Schritten:\n\n- **2024:** Bürgerkoffer und viermonatiger Probebetrieb in zwei Pflegeeinrichtungen ab September, so vorgeschlagen[[rat-buergerkoffer]] und laut Bericht im Hauptausschuss durchgeführt[[rat-ha-2025-02]]\n- **2025:** feste Sprechtage im Stadtteilzentrum Rheinau (jeden ersten Dienstag) und im Bürgertreff Weststadt (jeden dritten Donnerstag) ab April[[rat-ha-2025-02]]\n- **2026:** unbefristete Fortführung und ein dritter Sprechtag im Gemeindezentrum Nordfeld[[rat-ha-2026-04]], erstmals am 8. Juli 2026[[rundschreiben-nordfeld]]"
+        },
+        {
+          "q": "Wie viele Anliegen waren es im Probebetrieb und im ersten Jahr mit festen Sprechtagen?",
+          "a": "Im viermonatigen Probebetrieb 86 Anliegen, überwiegend Ausweisangelegenheiten[[rat-ha-2025-02]]; im ersten Jahr mit festen Sprechtagen 412 Anliegen[[rat-ha-2026-04]]."
+        },
+        {
+          "q": "Rechne mir grob aus, wie viele Anliegen das pro Sprechtag waren.",
+          "a": "Im ersten Jahr gab es zwei Standorte mit je einem Sprechtag im Monat[[sprechtage]], also rund 24 Sprechtage. 412 Anliegen geteilt durch 24 ergibt etwa **17 Anliegen je Sprechtag**[[rat-ha-2026-04]].\n\nZur Einordnung: Die Online-Terminvergabe gibt je Sprechtag zwölf Termine frei, Vorsprachen ohne Termin kommen hinzu[[rundschreiben-nordfeld]]. Die Zahl der tatsächlich durchgeführten Sprechtage nennen die Unterlagen nicht; die Rechnung ist deshalb eine Näherung."
+        },
+        {
+          "q": "Wie zufrieden waren die Befragten?",
+          "a": "94 Prozent der Befragten waren zufrieden. Inhaltlich waren 61 Prozent der Anliegen Ausweis- und 24 Prozent Meldeangelegenheiten[[rat-ha-2026-04]]."
+        },
+        {
+          "q": "Welche laufenden Kosten verursacht das mobile Bürgerbüro?",
+          "a": "Für den Bürgerkoffer veranschlagt die Vorlage 2024/019 jährlich 1.200 Euro für Wartung und Datenverbindung[[rat-buergerkoffer]]. Die Personalkosten weisen die Unterlagen nicht gesondert aus; die Stellenplanvorlage nennt die dauerhafte Besetzung des Sprechtags aber als eines der Ziele der zwei zusätzlichen Stellen[[rat-stellenplan]]."
+        },
+        {
+          "q": "Wann war der erste Sprechtag in Nordfeld?",
+          "a": "Am Mittwoch, 8. Juli 2026, im Gemeindezentrum Nordfeld. Seitdem findet er jeden zweiten Mittwoch im Monat vormittags statt[[rundschreiben-nordfeld]], von 9:00 bis 12:30 Uhr im Besprechungsraum 2[[sprechtage]]."
+        },
+        {
+          "q": "Gut. Jetzt die Online-Dienste: Was hat sich 2026 bei der Terminvergabe getan?",
+          "a": "Seit Januar 2026 lassen sich Termine für alle Sachgebiete online buchen, also auch für die Kfz-Zulassung. Die telefonische Terminvergabe bleibt für Menschen ohne Internetzugang bestehen[[pm-onlinetermine]]."
+        },
+        {
+          "q": "Und wie sind die Kontingente intern geregelt?",
+          "a": "Je Sachgebiet gibt es täglich feste Terminkontingente und ein kleines Kontingent für dringende Spontanfälle. Bei hohem Andrang kann die diensthabende Teamleitung Personal vorübergehend zwischen Meldewesen und Kfz-Zulassung umverteilen[[da-terminvergabe]]."
+        },
+        {
+          "q": "Gab es 2026 Schließtage oder eingeschränkte Öffnungszeiten?",
+          "a": "Zwei:\n\n- Am **19. Juni 2026** blieb das Bürgerbüro wegen des Stadtfests ganztägig geschlossen; gebuchte Termine wurden automatisch verschoben[[pm-stadtfest-schliessung]].\n- Vom **27. Juli bis 7. September 2026** entfiel die Mittwochnachmittag-Öffnung der Kfz-Zulassungsstelle[[pm-kfz-sommer]]."
+        },
+        {
+          "q": "Welche neuen Angebote gab es 2026 im Bürgerbüro?",
+          "a": "Seit dem 4. Februar 2026 bietet die Verbraucherzentrale jeden Mittwochnachmittag eine kostenlose Energieberatung im Bürgerbüro an[[pm-energieberatung]]. Außerdem gibt es seit April 2026 einmal im Monat Trausamstage – das ist allerdings ein Angebot des Standesamts[[pm-standesamt-samstage]]."
+        },
+        {
+          "q": "Die Trausamstage gehören nicht zu uns, lass die weg. Wie steht es um die elektronische Akte?",
+          "a": "Laut Bericht zur Digitalisierungsstrategie vom Dezember 2025 startet die elektronische Aktenführung im Bürgerbüro im ersten Quartal 2026[[rat-2025-12]]. Sie ist eines der vier Handlungsfelder der Digitalisierungsstrategie 2024 bis 2028[[rat-2024-09]]. Wie weit die Einführung inzwischen ist, steht nicht in den Unterlagen."
+        },
+        {
+          "q": "Welche Schulungen haben wir für die Mitarbeitenden im Angebot?",
+          "a": "Sechs Schulungsunterlagen liegen vor:\n\n- Onboarding neue Mitarbeitende[[schulung-onboarding]]\n- Betrugserkennung bei Ausweisdokumenten[[schulung-betrug]]\n- Datenschutzgrundlagen für das Meldewesen[[schulung-datenschutz]]\n- Deeskalationstraining am Schalter[[schulung-deeskalation]]\n- Barrierefreie Kommunikation[[schulung-barrierefrei]]\n- Umgang mit der Fachanwendung MeldeSoft[[schulung-meldesoft]]"
+        },
+        {
+          "q": "Nenn mir zu jeder Schulung ein Stichwort für den Bericht.",
+          "a": "- **Onboarding:** erste Woche mit MeldeSoft, begleiteten Schalterdiensten und Eskalationsregeln[[schulung-onboarding]]\n- **Betrugserkennung:** Sicherheitsmerkmale wie Hologramm, Lasergravur und Mikroschrift[[schulung-betrug]]\n- **Datenschutz:** Sperrvermerke vor jeder Melderegisterauskunft prüfen[[schulung-datenschutz]]\n- **Deeskalation:** Warnsignale erkennen, ruhig und klar bleiben[[schulung-deeskalation]]\n- **Barrierefreiheit:** Leichte Sprache, Braille-Aufkleber, Dolmetschliste[[schulung-barrierefrei]]\n- **MeldeSoft:** Grundfunktionen, Notbetrieb bei Systemausfall, Datenqualität[[schulung-meldesoft]]"
+        },
+        {
+          "q": "Welche Gebühren haben sich 2026 gegenüber dem Vorjahr geändert?",
+          "a": "Das lässt sich aus den Unterlagen nicht belegen. Die Verwaltungsgebührensatzung ist am 1. Januar 2026 in Kraft getreten[[vgs]], und die Gebührenübersicht der Kasse hat den Stand 5. Januar 2026[[gebuebersicht]] – eine frühere Fassung zum Vergleich liegt nicht vor."
+        },
+        {
+          "q": "Dann nur die wichtigsten Beträge für den Bericht.",
+          "a": "Aus dem Gebührenverzeichnis der Verwaltungsgebührensatzung[[vgs]]:\n\n- Personalausweis: 26,20 Euro (unter 24 Jahren) bzw. 42,60 Euro\n- Reisepass (32 Seiten): 69 Euro\n- Führungszeugnis: 15 Euro\n- Beglaubigung je Unterschrift: 23 Euro\n- einfache Melderegisterauskunft: 11,50 Euro\n- An- und Ummeldung: gebührenfrei\n- Reservierung Wunschkennzeichen: 14,70 Euro"
+        },
+        {
+          "q": "Wie oft wurde die Gebührenbefreiung wegen Bedürftigkeit genutzt?",
+          "a": "Dazu enthalten die Unterlagen keine Zahlen. Beschrieben ist nur das Verfahren: formloser schriftlicher Antrag mit einem höchstens drei Monate alten Bescheid, Entscheidung durch die Sachgebietsleitung, schriftliche Mitteilung und Dokumentation im Vorgang[[da-gebuehrenbefreiung]]. Die Zahl ließe sich aus diesen Vorgängen auszählen."
+        },
+        {
+          "q": "Welche Regeln zur Sicherheit am Schalter gehören in den Bericht?",
+          "a": "Vier Regelwerke:\n\n- dreistufige Eskalation bei Beschwerden bis zur Sachgebietsleitung[[esk-beschwerden]]\n- Umgang mit aggressivem Verhalten, bei unmittelbarer Gefahr stiller Alarm und Polizei[[da-aggression]]\n- papiergestützter Notbetrieb bei Ausfall von MeldeSoft[[esk-it]]\n- Erste Hilfe und Rettungsdienst bei medizinischen Notfällen[[esk-notfall]]"
+        },
+        {
+          "q": "Formuliere daraus einen kurzen Absatz.",
+          "a": "Für schwierige Situationen am Schalter gelten im Bürgerbüro klare Regeln. Beschwerden werden zunächst vor Ort geklärt und bei Bedarf über die Teamleitung bis zur Sachgebietsleitung eskaliert, die abschließend entscheidet[[esk-beschwerden]]. Bei aggressivem Verhalten steht Deeskalation an erster Stelle; bei unmittelbarer Gefahr werden der Empfang über den stillen Alarm informiert und die Polizei gerufen[[da-aggression]]. Fällt die Fachanwendung MeldeSoft aus, arbeitet das Sachgebiet im papiergestützten Notbetrieb weiter[[esk-it]], und bei medizinischen Notfällen leisten Ersthelfende Erste Hilfe, während der Rettungsdienst alarmiert wird[[esk-notfall]]."
+        },
+        {
+          "q": "Welche Dienstanweisungen sind 2026 neu erlassen worden?",
+          "a": "Ein Erlassdatum nennen die Dienstanweisungen nicht. Ihre Aktenzeichen tragen aber durchgehend das Jahr 2026, etwa AZ 32.1-DA-2026-001 (Verdacht auf gefälschte Ausweisdokumente)[[da-identitaet]], AZ 32.1-DA-2026-007 (Vier-Augen-Prinzip)[[da-vier-augen]] und AZ 32.1-DA-2026-009 (Terminvergabe)[[da-terminvergabe]]. Ob es sich um Neufassungen oder erstmalige Regelungen handelt, geht daraus nicht hervor."
+        },
+        {
+          "q": "Was schreibe ich zur Zusammenarbeit mit anderen Stellen?",
+          "a": "Vier interne FAQ regeln die Schnittstellen:\n\n- **Kfz-Zulassung:** Kfz-Vorgänge bleiben dem Sachgebiet Kfz vorbehalten, der Meldewesen-Schalter verweist auf Portal und Öffnungszeiten[[faq-kfz]]\n- **Fundbüro:** Fundsachen gehen mit Fundzettel noch am selben Tag weiter[[faq-fundsachen]]\n- **Presseamt:** Presseanfragen werden grundsätzlich weitergeleitet[[faq-presse]]\n- **Standesamt:** Eheschließungen meldet das Standesamt automatisch, Ehefähigkeitszeugnisse bearbeitet allein das Standesamt[[faq-standesamt]]"
+        },
+        {
+          "q": "Gibt es Beschlüsse, die das Bürgerbüro 2027 betreffen werden?",
+          "a": "Unmittelbar keinen. Am nächsten liegt der kostenfreie Stadtbus für Schülerinnen und Schüler ab dem 1. Januar 2027; das Verfahren zur Ausgabe der Schülerkarte regeln aber die Stadtwerke[[rat-stadtbus]]. Das mobile Bürgerbüro läuft unbefristet weiter[[rat-ha-2026-04]]."
+        },
+        {
+          "q": "Welche Baustellen im Umfeld des Rathauses sollte ich für die Erreichbarkeit erwähnen?",
+          "a": "Zwei:\n\n- die Vollsperrung der Marktstraße zwischen Rathausplatz und Domplatz seit dem 1. September 2026, voraussichtlich bis Ende Oktober[[pm-marktstrasse]]\n- den Umbau des Bahnhofsvorplatzes ab dem 1. Oktober 2026 für rund vier Monate[[pm-bahnhofsvorplatz]]"
+        },
+        {
+          "q": "Fass die Kennzahlen des Berichts in einer Tabelle zusammen.",
+          "a": "| Kennzahl | Wert | Quelle |\n|---|---|---|\n| Anstieg der Fallzahlen im Meldewesen seit 2022 | 18 Prozent | Vorlage 2024/052[[rat-stellenplan]] |\n| Wartezeit auf einen Termin (Ausgangswert) | 19 Werktage | Vorlage 2024/052 |\n| Zielwert Wartezeit | unter 10 Werktage | Vorlage 2024/052 |\n| Zusätzliche Stellen | 2 (EG 9a), rund 128.000 Euro/Jahr | Vorlage 2024/052 |\n| Anliegen im mobilen Bürgerbüro (erstes Jahr) | 412 | Hauptausschuss 21.04.2026[[rat-ha-2026-04]] |\n| Zufriedenheit mobiles Bürgerbüro | 94 Prozent | Hauptausschuss 21.04.2026 |\n| Standorte mobiles Bürgerbüro | 3 | Sprechtagsübersicht[[sprechtage]] |\n| Online-Termine je Sprechtag | 12 | Rundschreiben vom 15.06.2026[[rundschreiben-nordfeld]] |"
+        },
+        {
+          "q": "Schlag mir eine Gliederung für den Bericht vor.",
+          "a": "1. **Überblick:** Aufgaben der Sachgebiete Meldewesen & Ausweise und Kfz-Zulassung, gemeinsamer Empfang\n2. **Personal:** Stellenplan 2025, Ausschreibung 2026, Einarbeitung und Schulungen\n3. **Service und Erreichbarkeit:** Online-Terminvergabe für alle Sachgebiete, Schließtage, Energieberatung\n4. **Mobiles Bürgerbüro:** Entwicklung seit dem Bürgerkoffer, Evaluation, Nordfeld\n5. **Digitalisierung:** elektronische Akte, Dokumentenarchiv\n6. **Gebühren:** wichtigste Beträge 2026, Befreiung wegen Bedürftigkeit\n7. **Sicherheit und Qualität:** Eskalations- und Notfallregeln, Zusammenarbeit mit anderen Stellen\n8. **Kennzahlen und Ausblick 2027**"
+        },
+        {
+          "q": "Welche Punkte kann ich nicht aus den Unterlagen belegen und muss selbst ergänzen?",
+          "a": "Aus den Unterlagen fehlen:\n\n- die aktuelle Wartezeit auf einen Termin,\n- Fallzahlen 2026 für Meldewesen und Kfz-Zulassung,\n- die Zahl der Gebührenbefreiungen,\n- der aktuelle Personalstand und die Besetzung der beiden zusätzlichen Stellen,\n- der Einführungsstand der elektronischen Akte,\n- die Zahl der tatsächlich durchgeführten Sprechtage des mobilen Bürgerbüros."
+        },
+        {
+          "q": "Danke. Zum Schluss noch zwei Sätze zum Ausblick auf 2027.",
+          "a": "Das mobile Bürgerbüro wird 2027 an drei Standorten unbefristet weitergeführt; nach dem ersten vollen Jahr mit dem Sprechtag in Nordfeld lässt sich die Wirkung der Erweiterung bewerten[[rat-ha-2026-04]]. Mit der elektronischen Aktenführung, deren Start im Bürgerbüro für das erste Quartal 2026 vorgesehen war, rückt die Digitalisierung der Vorgänge in den Mittelpunkt der Arbeit[[rat-2025-12]]."
+        }
+      ]
+    }
+  ]
+}

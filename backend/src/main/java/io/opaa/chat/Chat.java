@@ -150,8 +150,21 @@ public class Chat {
   @PrePersist
   void onCreate() {
     Instant now = Instant.now();
-    this.createdAt = now;
-    this.updatedAt = now;
+    if (createdAt == null) {
+      this.createdAt = now;
+    }
+    if (updatedAt == null) {
+      this.updatedAt = now;
+    }
+  }
+
+  /**
+   * Gives a chat that is not persisted yet the instants of an imported transcript instead of the
+   * moment of persisting ({@link ChatImportService} only).
+   */
+  void backdate(Instant createdAt, Instant updatedAt) {
+    this.createdAt = createdAt;
+    this.updatedAt = updatedAt;
   }
 
   @PreUpdate

@@ -94,9 +94,22 @@ public class ChatMessage {
     }
   }
 
+  /**
+   * A message of an imported transcript, carrying its original instant instead of the moment of
+   * persisting ({@link ChatImportService} only).
+   */
+  static ChatMessage imported(
+      UUID chatId, int sequence, ChatRole role, String content, String sources, Instant createdAt) {
+    ChatMessage message = new ChatMessage(chatId, sequence, role, content, sources);
+    message.createdAt = createdAt;
+    return message;
+  }
+
   @PrePersist
   void onCreate() {
-    this.createdAt = Instant.now();
+    if (createdAt == null) {
+      this.createdAt = Instant.now();
+    }
   }
 
   public UUID getId() {

@@ -1,0 +1,117 @@
+# Topic "chat-import": its tags, paths and the components only this topic uses.
+# Merged with all other fragments at build time, see root.yaml.
+tags:
+  - name: chat-import
+    description: >
+      Seed-only import of prepared chat transcripts for a demo instance. Switched off unless the
+      installation sets opaa.demo.chat-import.enabled (OPAA_DEMO_CHAT_IMPORT_ENABLED) to true;
+      otherwise the route does not exist and answers like any unknown route.
+paths:
+  /api/v1/spaces/{spaceId}/chat-imports:
+    parameters:
+      - name: spaceId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    post:
+      operationId: importChat
+      tags: [chat-import]
+      summary: >
+        Create one chat of the caller in this space from a prepared transcript, without any model
+        call (demo seed only, off by default).
+      description: >
+        The caller becomes the chat's author, exactly as with createChat: space membership is
+        required and an archived space is refused with 409. Questions, answers and their
+        timestamps are taken as given; they must be in chronological order and must not lie in the
+        future. Every source names a document by id; the document must lie in a library the caller
+        may read, otherwise the request is refused with 400 - an unknown and an unreadable document
+        are not told apart. File name, source type and the document's metadata are read from the
+        document itself, never from the request. The route exists only while
+        opaa.demo.chat-import.enabled is true.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatImportRequest"
+      responses:
+        "201":
+          description: The imported chat as its author lists it
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatSummary"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+components:
+  schemas:
+    ChatImportRequest:
+      type: object
+      required: [title, turns]
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 255
+          pattern: "[\\s\\S]*\\S[\\s\\S]*"
+          example: Gebühr Personalausweis unter 24
+        turns:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/ChatImportTurn"
+
+    ChatImportTurn:
+      type: object
+      description: >
+        One question with its answer, in the order the chat shows them. Question and answer must
+        contain more than whitespace; the question is bounded like a regular query.
+      required: [question, answer, askedAt, answeredAt]
+      properties:
+        question:
+          type: string
+          minLength: 1
+          maxLength: 2000
+          pattern: "[\\s\\S]*\\S[\\s\\S]*"
+        answer:
+          type: string
+          minLength: 1
+          maxLength: 50000
+          pattern: "[\\s\\S]*\\S[\\s\\S]*"
+          description: >
+            The answer text, citation markers (【source: <documentId>#<chunk> | <fileName>】)
+            included as the chat renders them.
+        askedAt:
+          type: string
+          format: date-time
+        answeredAt:
+          type: string
+          format: date-time
+        sources:
+          type: array
+          maxItems: 20
+          items:
+            $ref: "#/components/schemas/ChatImportSource"
+          description: The answer's sources in rank order; absent or empty for none.
+
+    ChatImportSource:
+      type: object
+      required: [documentId, cited]
+      properties:
+        documentId:
+          type: string
+          format: uuid
+        cited:
+          type: boolean
+          description: Whether the answer text cites this document.

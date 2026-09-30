@@ -1,0 +1,226 @@
+{
+  "chats": [
+    {
+      "title": "Eskalationsstufen bei Beschwerden",
+      "daysAgo": 42,
+      "time": "09:10",
+      "pinned": true,
+      "turns": [
+        {
+          "q": "Wie sind unsere Eskalationsstufen bei Beschwerden im Bürgerbüro geregelt?",
+          "a": "Es gibt drei Stufen[[esk-beschwerden]]:\n\n1. **Vor-Ort-Klärung:** Die Sachbearbeitung versucht, die Beschwerde direkt am Schalter zu klären. Gelingt das nicht innerhalb weniger Minuten, geht sie an Stufe 2.\n2. **Teamleitung:** Die diensthabende Teamleitung übernimmt das Gespräch. Bleibt die Beschwerde ungelöst oder geht es um einen grundsätzlichen Verfahrensfehler, geht sie an Stufe 3.\n3. **Sachgebietsleitung:** Sie entscheidet abschließend und dokumentiert die Beschwerde im Beschwerdemanagement-System."
+        },
+        {
+          "q": "Und wenn jemand am Schalter aggressiv wird?",
+          "a": "Zunächst ruhig und sachlich deeskalieren und frühzeitig, aber unauffällig Hilfe von Kolleginnen und Kollegen anfordern. Bleibt das erfolglos, gelten die Eskalationsstufen 1 bis 3; bei unmittelbarer Gefahr wird der Empfang über den stillen Alarm benachrichtigt und die Polizei gerufen[[da-aggression]]."
+        },
+        {
+          "q": "Gibt es dazu eine Schulung?",
+          "a": "Ja, das Deeskalationstraining am Schalter. Es behandelt Warnsignale (erhöhte Lautstärke, angespannte Körpersprache, wiederholte Unterbrechungen), Techniken (ruhiger Tonfall, aktives Zuhören, klare kurze Sätze) und die Frage, wann eskaliert wird[[schulung-deeskalation]]."
+        }
+      ]
+    },
+    {
+      "title": "MeldeSoft ausgefallen",
+      "daysAgo": 1,
+      "time": "08:05",
+      "turns": [
+        {
+          "q": "MeldeSoft reagiert seit zehn Minuten nicht mehr. Was ist jetzt zu tun?",
+          "a": "Das Sachgebiet wechselt in den papiergestützten Notbetrieb: Laufende Vorgänge werden mit Zeitstempel auf Papier fortgeführt und nach der Wiederherstellung nacherfasst. Der Ausfall ist unverzüglich der IT-Leitstelle zu melden. Dauert die Störung länger als 30 Minuten, informiert die Sachgebietsleitung die wartenden Bürgerinnen und Bürger über die voraussichtliche Dauer[[esk-it]]."
+        },
+        {
+          "q": "Kennen die neuen Kolleginnen das Verfahren?",
+          "a": "Es ist Teil der Schulung zur Fachanwendung MeldeSoft: Die Folie „Bei Systemausfall“ nennt den Wechsel in den Notbetrieb, die Meldung an die IT-Leitstelle und die Nacherfassung[[schulung-meldesoft]]. Die Eskalationsregeln gehören außerdem zur ersten Woche im Onboarding[[schulung-onboarding]]."
+        }
+      ]
+    },
+    {
+      "title": "Personalengpass im Meldewesen",
+      "daysAgo": 6,
+      "time": "14:25",
+      "turns": [
+        {
+          "q": "Im Meldewesen fehlen nächste Woche drei von fünf Kolleginnen. Was regelt die Vertretungsregelung?",
+          "a": "Regulär übernimmt die im Dienstplan ausgewiesene Vertretung die laufenden Vorgänge. Fehlt mehr als die Hälfte des Sachgebiets – wie hier –, wird die Terminvergabe für den Zeitraum reduziert, und die Sachgebietsleitung priorisiert dringende Fälle, etwa eine Reisepassabholung vor einem gebuchten Flug[[da-vertretung]]."
+        },
+        {
+          "q": "Kann die Kfz-Zulassung aushelfen?",
+          "a": "Bei hohem Andrang kann die diensthabende Teamleitung Personal vorübergehend zwischen den Empfangsbereichen Meldewesen und Kfz-Zulassung umverteilen[[da-terminvergabe]]. Die Schalter-FAQ beschreibt die Umverteilung ebenfalls als Entscheidung der Teamleitung[[faq-kfz]]."
+        }
+      ]
+    },
+    {
+      "title": "Terminkontingente und Spontanfälle",
+      "daysAgo": 18,
+      "time": "09:35",
+      "turns": [
+        {
+          "q": "Wie sind unsere Terminkontingente geregelt?",
+          "a": "Je Sachgebiet werden täglich feste Terminkontingente vorgehalten, dazu ein kleines Kontingent für dringende Spontanfälle ohne Termin[[da-terminvergabe]]."
+        },
+        {
+          "q": "Seit wann kann man auch Kfz-Termine online buchen?",
+          "a": "Seit Mitte Januar 2026: Das Bürgerbüro hat die Online-Terminvergabe auf sämtliche Sachgebiete ausgeweitet, also auch auf die Kfz-Zulassung. Die telefonische Terminvergabe bleibt für Bürgerinnen und Bürger ohne Internetzugang bestehen[[pm-onlinetermine]]."
+        }
+      ]
+    },
+    {
+      "title": "Medizinischer Notfall im Wartebereich",
+      "daysAgo": 56,
+      "time": "11:55",
+      "archived": true,
+      "turns": [
+        {
+          "q": "Wie gehen wir bei einem medizinischen Notfall im Wartebereich vor?",
+          "a": "Ersthelfende Kolleginnen und Kollegen leisten Erste Hilfe; parallel wird der Rettungsdienst über die zentrale Notrufnummer alarmiert. Danach wird der Vorfall im Meldeportal für Arbeitssicherheit dokumentiert, und betroffenen Mitarbeitenden wird bei Bedarf ein Gespräch mit dem betriebsärztlichen Dienst angeboten[[esk-notfall]]."
+        },
+        {
+          "q": "Muss danach die Teamleitung informiert werden?",
+          "a": "Eine ausdrückliche Informationspflicht gegenüber der Teamleitung nennt die Regel nicht – sie beschreibt nur Erstversorgung und Nachbereitung über das Meldeportal[[esk-notfall]]."
+        }
+      ]
+    },
+    {
+      "title": "Verdacht auf Kindeswohlgefährdung",
+      "daysAgo": 34,
+      "time": "15:15",
+      "turns": [
+        {
+          "q": "Was tun, wenn sich bei einer Vorsprache Hinweise auf eine Kindeswohlgefährdung ergeben?",
+          "a": "Das Gespräch wird besonnen fortgeführt, ohne die Situation zu verschärfen. Die Sachgebietsleitung wird unverzüglich informiert und meldet den Sachverhalt an die Fachberatung Kinderschutz nach den städtischen Kinderschutzverfahren[[esk-kindeswohl]]."
+        },
+        {
+          "q": "Sollen wir die Eltern direkt darauf ansprechen?",
+          "a": "Dazu trifft die Regel keine Aussage. Sie verlangt nur, das Gespräch besonnen fortzuführen und die Meldung über die Sachgebietsleitung laufen zu lassen[[esk-kindeswohl]]; alles Weitere liegt bei der Fachberatung Kinderschutz."
+        }
+      ]
+    },
+    {
+      "title": "Dienstausweis verloren",
+      "daysAgo": 27,
+      "time": "16:30",
+      "turns": [
+        {
+          "q": "Eine Kollegin hat ihren Dienstausweis samt Zugangskarte verloren. Was ist zu tun?",
+          "a": "Der Verlust ist unverzüglich der Sachgebietsleitung und der IT-Leitstelle zu melden; die betroffenen Zugänge werden umgehend gesperrt. Der Vorfall wird im internen Meldeportal dokumentiert, und die IT-Leitstelle prüft die betroffenen Konten innerhalb von 24 Stunden auf Auffälligkeiten[[da-zugangsdaten]]."
+        },
+        {
+          "q": "Muss das zusätzlich als Datenschutzvorfall gemeldet werden?",
+          "a": "Das regelt die Dienstanweisung nicht; sie nennt nur Sachgebietsleitung, IT-Leitstelle und das interne Meldeportal[[da-zugangsdaten]]. Die Datenschutzschulung des Meldewesens verweist allgemein auf das Bundesmeldegesetz und die DSGVO als Rechtsgrundlagen[[schulung-datenschutz]] – ob eine Meldung nötig ist, sollte die Datenschutzbeauftragte beurteilen."
+        }
+      ]
+    },
+    {
+      "title": "Presseanfrage am Schalter",
+      "daysAgo": 9,
+      "time": "13:40",
+      "turns": [
+        {
+          "q": "Ein Journalist hat am Schalter nach unseren Wartezeiten gefragt. Was sagen wir?",
+          "a": "Presseanfragen werden am Schalter nicht beantwortet, sondern grundsätzlich an das Presseamt der Stadt Rheinfurt weitergeleitet (presse@stadt-rheinfurt.example). Erscheint ein Kamerateam ohne Anmeldung, wird die Teamleitung informiert; Aufnahmen im laufenden Publikumsverkehr sind ohne Drehgenehmigung nicht gestattet[[faq-presse]]."
+        },
+        {
+          "q": "Welche Zahl zur Wartezeit könnte das Presseamt nennen?",
+          "a": "Die einzige Zahl in den Unterlagen stammt aus der Stellenplanvorlage vom November 2024: Damals lag die Wartezeit auf einen Termin im Durchschnitt bei 19 Werktagen; mit zwei zusätzlichen Stellen sollte sie unter zehn Werktage sinken[[rat-stellenplan]]. Einen aktuelleren Wert enthalten die Quellen nicht."
+        }
+      ]
+    },
+    {
+      "title": "Amtshilfeersuchen anderer Meldebehörden",
+      "daysAgo": 51,
+      "time": "10:15",
+      "archived": true,
+      "turns": [
+        {
+          "q": "Wie schnell beantworten wir Amtshilfeersuchen anderer Meldebehörden?",
+          "a": "Innerhalb von fünf Werktagen, sofern keine Auskunftssperre entgegensteht. Ersuchen sind grundsätzlich schriftlich über das Fachverfahren zu stellen; telefonische Ersuchen werden nur bei Gefahr im Verzug bearbeitet und nachträglich schriftlich bestätigt[[da-amtshilfe]]."
+        },
+        {
+          "q": "Und wenn eine Auskunftssperre besteht?",
+          "a": "Dann gehen Auskünfte ausschließlich an berechtigte Stellen nach § 51 BMG, und jede Anfrage wird protokolliert[[da-auskunftssperre]]."
+        }
+      ]
+    },
+    {
+      "title": "Barrierefreie Kommunikation am Schalter",
+      "daysAgo": 22,
+      "time": "14:55",
+      "turns": [
+        {
+          "q": "Was empfehlen unsere Schulungsunterlagen für Bürger mit Sehbeeinträchtigung?",
+          "a": "Die Schulung zur barrierefreien Kommunikation empfiehlt, einen Braille-Aufkleber für den Personalausweis anzubieten und bei Bedarf eine Schriftdolmetschung zu organisieren[[schulung-barrierefrei]]. Den transparenten Aufkleber mit den Braille-Zeichen „ad“ gibt es bei Beantragung oder Abholung des Ausweises und auch nachträglich über das Servicetelefon[[pa]]."
+        },
+        {
+          "q": "Und für Menschen mit wenig Deutschkenntnissen?",
+          "a": "Die Schulung nennt die Dolmetschliste des Bürgerbüros und wichtige Formulare in mehreren Sprachen; dazu die Grundsätze Leichter Sprache: kurze Sätze, ein Gedanke pro Satz, keine Fremdwörter[[schulung-barrierefrei]]."
+        }
+      ]
+    },
+    {
+      "title": "Einarbeitung der neuen Sachbearbeiterin",
+      "daysAgo": 30,
+      "time": "08:40",
+      "turns": [
+        {
+          "q": "Wir arbeiten gerade die neue Kollegin im Meldewesen ein. Was sieht unser Onboarding vor?",
+          "a": "Die Onboarding-Folien stellen zuerst die Struktur vor – die Sachgebiete Meldewesen & Ausweise und Kfz-Zulassung, die Amtsleitung und den gemeinsamen Empfang. Für die erste Woche sind die Einweisung in MeldeSoft, begleitete Schalterdienste und das Kennenlernen der Eskalationsregeln vorgesehen[[schulung-onboarding]]."
+        },
+        {
+          "q": "Welche Funktionen von MeldeSoft sollte sie zuerst beherrschen?",
+          "a": "Die Grundfunktionen: Vorgang anlegen, Dokumente scannen und verknüpfen, Gebühren erfassen. Zur Datenqualität gehören vollständig gepflegte Adressfelder und die Dublettenprüfung vor dem Speichern[[schulung-meldesoft]]."
+        },
+        {
+          "q": "Zu welchem Termin war die Stelle ausgeschrieben?",
+          "a": "Zum 1. Mai 2026 als Vollzeitstelle in der Sachbearbeitung Meldewesen und Ausweisangelegenheiten; Bewerbungen waren bis zum 20. März 2026 über das Karriereportal möglich[[pm-stellenausschreibung]]."
+        }
+      ]
+    },
+    {
+      "title": "Rückfragen an das Standesamt",
+      "daysAgo": 44,
+      "time": "16:00",
+      "turns": [
+        {
+          "q": "Wohin verweisen wir Fragen zum Ehefähigkeitszeugnis?",
+          "a": "Ausschließlich an das Standesamt; das Meldewesen bearbeitet diese Fragen nicht[[faq-standesamt]]."
+        },
+        {
+          "q": "Und Eltern, die eine Geburtsurkunde für ihr Neugeborenes brauchen?",
+          "a": "Auch an das Standesamt, genauer das Geburtenbüro. Bei Geburten in einer Rheinfurter Klinik meldet diese die Geburt; nach etwa acht Tagen können die Eltern die Urkunde beantragen. Bei der Erstbeurkundung gibt es drei kostenlose Geburtsurkunden für Kindergeld, Elterngeld und Mutterschaftshilfe, jedes weitere Exemplar kostet 13,80 Euro[[geburt]]."
+        }
+      ]
+    },
+    {
+      "title": "Energieberatung im Bürgerbüro",
+      "daysAgo": 56,
+      "time": "12:30",
+      "archived": true,
+      "turns": [
+        {
+          "q": "Seit wann bietet die Verbraucherzentrale Energieberatung bei uns an?",
+          "a": "Seit dem 4. Februar 2026, jeden Mittwochnachmittag, kostenlos. Termine vereinbart man über die Verbraucherzentrale oder direkt am Empfang des Bürgerbüros[[pm-energieberatung]]."
+        },
+        {
+          "q": "Betrifft die Schließung der Kfz-Zulassung am Mittwochnachmittag im Sommer auch die Energieberatung?",
+          "a": "Die Mitteilung zur Kfz-Zulassung betrifft nur deren eigene Mittwochnachmittag-Öffnung vom 27. Juli bis 7. September 2026[[pm-kfz-sommer]]. Zur Energieberatung sagt sie nichts; die Beratung ist ein Angebot der Verbraucherzentrale im Bürgerbüro[[pm-energieberatung]]."
+        }
+      ]
+    },
+    {
+      "title": "Inhalte der Datenschutzschulung",
+      "daysAgo": 39,
+      "time": "09:45",
+      "turns": [
+        {
+          "q": "Welche Inhalte hat unsere Datenschutzschulung für das Meldewesen?",
+          "a": "Drei Blöcke[[schulung-datenschutz]]:\n\n- **Rechtsgrundlagen:** Bundesmeldegesetz und DSGVO\n- **Auskunftssperren:** § 51 BMG, einfache und erweiterte Sperre, vorrangige Bearbeitung bei Gefährdungslage\n- **Melderegisterauskünfte:** immer Sperrvermerke prüfen, erweiterte Auskunft nur bei berechtigtem Interesse"
+        },
+        {
+          "q": "Deckt sich das mit der Dienstanweisung zur Melderegisterauskunft?",
+          "a": "Ja. Auch die Dienstanweisung verlangt vor jeder einfachen Auskunft die Prüfung auf Auskunfts- und Übermittlungssperren sowie sonstige Übermittlungsverbote und lässt eine erweiterte Auskunft nur bei Nachweis eines berechtigten Interesses und nach Prüfung durch die Sachgebietsleitung zu[[da-datenschutz]]."
+        }
+      ]
+    }
+  ]
+}

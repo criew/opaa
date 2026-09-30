@@ -1,0 +1,249 @@
+{
+  "chats": [
+    {
+      "title": "Neuzulassung: Unterlagen fürs Autohaus",
+      "daysAgo": 4,
+      "time": "09:00",
+      "turns": [
+        {
+          "q": "Welche Unterlagen braucht ein Autohaus, das für einen Kunden einen Neuwagen zulassen will?",
+          "a": "Für die Anmeldung eines fabrikneuen Fahrzeugs durch einen Bevollmächtigten[[neuzulassung]]:\n\n- schriftliche Vollmacht im Original, Ausweis des Bevollmächtigten im Original und Ausweis des Halters in Kopie\n- Einverständniserklärung des Halters, dass dem Bevollmächtigten die Kfz-steuerlichen Verhältnisse bekannt gegeben werden dürfen\n- SEPA-Mandat des Halters (bei rein elektrischen Fahrzeugen erst ab 10 Jahren erforderlich)\n- eVB (elektronische Versicherungsbestätigung)\n- EG-Übereinstimmungserklärung (COC)\n- Zulassungsbescheinigung Teil II\n\nVoraussetzung ist, dass der Halter mit Hauptwohnsitz in Rheinfurt gemeldet ist[[neuzulassung]]."
+        },
+        {
+          "q": "Und was kostet die Zulassung?",
+          "a": "Die Leistungsbeschreibung nennt einen Gebührenrahmen ab 30,90 Euro[[neuzulassung]]; die Kfz-Gebührenordnung führt die Neuzulassung eines Fahrzeugs mit genau diesem Betrag[[kfzgebo]]. Ein Wunsch- oder Wechselkennzeichen käme gegebenenfalls hinzu."
+        }
+      ]
+    },
+    {
+      "title": "Zuzug mit Fahrzeug: Umschreibung",
+      "daysAgo": 10,
+      "time": "13:15",
+      "turns": [
+        {
+          "q": "Was kostet es, ein Auto nach einem Zuzug von außerhalb nach Rheinfurt umzuschreiben?",
+          "a": "Mit Halterwechsel ab 33,90 Euro, ohne Halterwechsel ab 31,50 Euro[[zuzug-kfz]]."
+        },
+        {
+          "q": "Und bei einem Umzug innerhalb von Rheinfurt?",
+          "a": "Dann wird das Fahrzeug nicht umgeschrieben, nur die neue Adresse in die Zulassungsbescheinigung Teil I eingetragen[[umschreibung]]. Das kostet 13,80 Euro; die Person kann auch jemanden schicken – eine schriftliche Vollmacht braucht es dafür nicht, wenn alle Unterlagen dabei sind[[kfz-adresse]]."
+        }
+      ]
+    },
+    {
+      "title": "Wunschkennzeichen: Reservierungsfrist",
+      "daysAgo": 14,
+      "time": "10:10",
+      "turns": [
+        {
+          "q": "Wie lange hält eine Wunschkennzeichen-Reservierung?",
+          "a": "Bei einer Reservierung vor Ort einen Monat, bei einer Online-Reservierung drei Monate. Findet in dieser Zeit keine Zulassung statt, erlischt die Reservierung automatisch. Reserviert werden kann nur auf den Namen des künftigen Halters[[wunschkennzeichen]]."
+        },
+        {
+          "q": "Was sagen wir am Meldewesen-Schalter, wenn jemand danach fragt?",
+          "a": "Am Meldewesen-Schalter wird nur auf das Online-Portal der Kfz-Zulassungsstelle und deren Öffnungszeiten verwiesen; die Bearbeitung bleibt dem Sachgebiet Kfz-Zulassung vorbehalten[[faq-kfz]]."
+        }
+      ]
+    },
+    {
+      "title": "Saisonkennzeichen fürs Motorrad",
+      "daysAgo": 26,
+      "time": "15:55",
+      "turns": [
+        {
+          "q": "Welcher Zeitraum ist bei einem Saisonkennzeichen möglich?",
+          "a": "Zwischen zwei und elf Monaten. Die Zulassung gilt jeweils für volle Monate, beginnt am Ersten und endet am Letzten eines Monats; der Zeitraum wird auf das Kennzeichen geprägt und in die Zulassungsbescheinigung Teil I eingetragen[[saisonkennzeichen]]."
+        },
+        {
+          "q": "Was kostet das?",
+          "a": "Der Gebührenrahmen beginnt bei 31,20 Euro[[saisonkennzeichen]]."
+        }
+      ]
+    },
+    {
+      "title": "Wechselkennzeichen für Auto und Motorrad?",
+      "daysAgo": 32,
+      "time": "09:25",
+      "turns": [
+        {
+          "q": "Kann jemand ein Wechselkennzeichen für sein Auto und sein Motorrad bekommen?",
+          "a": "Nein. Beide Fahrzeuge müssen in dieselbe Fahrzeugklasse fallen und Kennzeichenschilder derselben Abmessung tragen können – also etwa zwei Pkw oder zwei Motorräder, nicht aber Pkw und Motorrad[[wechselkennzeichen]]."
+        },
+        {
+          "q": "Was kostet ein Wechselkennzeichen?",
+          "a": "Die Leistungsbeschreibung nennt einen Aufschlag von 6,90 Euro pro Fahrzeug auf die üblichen Zulassungsgebühren[[wechselkennzeichen]]. Die Kfz-Gebührenordnung führt für die Ausgabe eines Wechselkennzeichens 22 Euro[[kfzgebo]]. Die beiden Angaben beschreiben verschiedene Bezugsgrößen; welche im Einzelfall anfällt, sollte das Sachgebiet Kfz-Zulassung bestätigen."
+        }
+      ]
+    },
+    {
+      "title": "Kurzzeitkennzeichen für eine Überführung",
+      "daysAgo": 21,
+      "time": "11:00",
+      "turns": [
+        {
+          "q": "Wo und für wie lange gibt es ein Kurzzeitkennzeichen?",
+          "a": "In Rheinfurt ausschließlich an der Feldstraße 2. Es gilt ab dem Tag der Beantragung höchstens fünf Tage und nur für Probe- und Überführungsfahrten innerhalb Deutschlands; das Fahrzeug muss abgemeldet sein[[kurzzeitkennzeichen]]."
+        },
+        {
+          "q": "Mit welchen Kosten muss man rechnen?",
+          "a": "Ab 15,10 Euro zuzüglich der Kennzeichenschilder; eine gegebenenfalls nötige Ausnahmegenehmigung für die Umweltzone kostet 57,50 Euro[[kurzzeitkennzeichen]]. Die Kfz-Gebührenordnung nennt für das Kurzzeitkennzeichen ebenfalls 15,10 Euro[[kfzgebo]]."
+        }
+      ]
+    },
+    {
+      "title": "Fahrzeug abmelden: online oder am Schalter",
+      "daysAgo": 17,
+      "time": "14:40",
+      "turns": [
+        {
+          "q": "Kann man ein Fahrzeug online abmelden?",
+          "a": "Ja, wenn das Fahrzeug ab dem 1. Januar 2015 zugelassen wurde und die Person einen Personalausweis mit aktivierter Online-Ausweisfunktion hat. Nicht möglich ist das bei Wechselkennzeichen und mitgenommenen Kennzeichen. Die Online-Abmeldung kostet 7,20 Euro, die Reservierung des Kennzeichens für bis zu 12 Monate 3 Euro zusätzlich[[kfz-online-abmeldung]]."
+        },
+        {
+          "q": "Und am Schalter?",
+          "a": "Dort kostet die Abmeldung 9 Euro, mit Verwertungsnachweis zusätzlich 5,90 Euro, ein nachträglich vorgelegter Verwertungsnachweis 11,70 Euro; die Kennzeichenreservierung 3 Euro. Eine Vollmacht ist nicht nötig, wenn die beauftragte Person alle Unterlagen dabeihat[[kfz-abmeldung]]."
+        }
+      ]
+    },
+    {
+      "title": "Kennzeichen gestohlen",
+      "daysAgo": 8,
+      "time": "16:10",
+      "turns": [
+        {
+          "q": "Einem Bürger wurden die Kennzeichenschilder gestohlen. Was muss er tun?",
+          "a": "Zuerst den Diebstahl bei einer deutschen Polizeidienststelle anzeigen; das Kennzeichen wird zur Fahndung ausgeschrieben. Danach braucht das Fahrzeug so bald wie möglich neue Kennzeichen. Mitzubringen sind unter anderem Ausweis, Zulassungsbescheinigung Teil I und II, der HU-Nachweis, das verbliebene Schild und die Anzeige. Die Gebühr beginnt bei 28,50 Euro[[kennzeichen-verlust]]."
+        },
+        {
+          "q": "Und wenn zusätzlich der Fahrzeugschein weg ist?",
+          "a": "Dann stellt die Zulassungsstelle eine neue Zulassungsbescheinigung Teil I aus – sofort, wenn alle Unterlagen vorliegen – für 13,80 Euro. Liegt der Fahrzeugbrief bei einer Bank oder Leasinggesellschaft, genügt deren schriftliche Bestätigung mit ZB-II-Nummer, Kennzeichen oder Fahrzeugidentifizierungsnummer[[zb1-verlust]]."
+        }
+      ]
+    },
+    {
+      "title": "Geleaste Fahrzeuge und der Fahrzeugbrief",
+      "daysAgo": 35,
+      "time": "10:45",
+      "turns": [
+        {
+          "q": "Warum können wir geleaste Fahrzeuge oft nicht sofort ummelden?",
+          "a": "Weil die Zulassungsbescheinigung Teil II meist noch bei der Bank oder Leasinggesellschaft liegt. Sie muss dort angefordert und an die Kfz-Zulassungsstelle geschickt werden; erst nach ihrem Eingang kann das Anliegen bearbeitet werden. Im Anschreiben müssen Verwendungszweck und Halter klar erkennbar sein[[leasing]]."
+        },
+        {
+          "q": "Gilt das auch für eine reine Adressänderung?",
+          "a": "Nein. Für eine reine Adressänderung innerhalb Rheinfurts wird der Fahrzeugbrief nicht gebraucht; der Leasinggeber oder die Bank muss die Änderung aber schriftlich bestätigen, per Fax oder Mail[[leasing]]."
+        }
+      ]
+    },
+    {
+      "title": "H-Kennzeichen und E-Kennzeichen",
+      "daysAgo": 45,
+      "time": "13:35",
+      "turns": [
+        {
+          "q": "Ab wann bekommt ein Oldtimer ein H-Kennzeichen?",
+          "a": "Wenn das Fahrzeug vor mindestens 30 Jahren erstmals zugelassen wurde und ein Oldtimergutachten nach § 23 StVZO bestätigt, dass es gut erhalten ist und weitgehend dem Originalzustand entspricht. Die Gebühr beginnt bei 31,20 Euro[[h-kennzeichen]]."
+        },
+        {
+          "q": "Und wer bekommt ein E-Kennzeichen?",
+          "a": "Batterieelektrofahrzeuge, von außen aufladbare Hybridelektrofahrzeuge und Brennstoffzellenfahrzeuge. Bei bereits zugelassenen Fahrzeugen sind unter anderem Zulassungsbescheinigung Teil I und II, das COC und die Kennzeichenschilder mitzubringen[[e-kennzeichen]]."
+        }
+      ]
+    },
+    {
+      "title": "Begleitetes Fahren ab 17",
+      "daysAgo": 23,
+      "time": "09:50",
+      "turns": [
+        {
+          "q": "Welche Voraussetzungen muss eine Begleitperson beim begleiteten Fahren ab 17 erfüllen?",
+          "a": "Sie muss mindestens 30 Jahre alt sein, seit fünf Jahren ununterbrochen den Führerschein der Klasse B oder der alten Klasse 3 besitzen und darf höchstens einen Punkt im Register in Flensburg haben[[fs17]]."
+        },
+        {
+          "q": "Was kostet der Antrag insgesamt?",
+          "a": "Die Bearbeitungsgebühr beträgt 60,30 Euro mit Probezeit (59,30 Euro ohne Probezeit, nur falls Klasse A1 vorhanden ist). Je Begleitperson kommen 12,60 Euro für die Überprüfung hinzu, dazu 0,60 Euro je Kopie. Bei zwei Begleitpersonen sind es also 85,50 Euro zuzüglich Kopien. Die Bearbeitung dauert etwa acht Wochen[[fs17]]."
+        }
+      ]
+    },
+    {
+      "title": "Klasse 2 ab 50: Umtausch",
+      "daysAgo": 40,
+      "time": "11:15",
+      "turns": [
+        {
+          "q": "Ein Lkw-Fahrer wird bald 50 und hat noch die alte Klasse 2. Was muss er tun?",
+          "a": "Die Berechtigung der Klasse 2 endet mit dem 50. Lebensjahr. Er sollte den Umtausch in den Kartenführerschein drei Monate vorher beantragen; mit gleichzeitiger Verlängerung kostet das 50,50 Euro, und er braucht zusätzlich Bescheinigungen über Sehvermögen und gesundheitliche Eignung[[fs-umtausch]]."
+        },
+        {
+          "q": "Und ein normaler Umtausch ohne Klasse 2?",
+          "a": "Der kostet 29,10 Euro, wird schriftlich oder online beantragt und dauert etwa acht Wochen. Bei Führerscheinen einer anderen Behörde ist eine Karteikartenabschrift nötig, die direkt an die Fahrerlaubnisbehörde Rheinfurt geht[[fs-umtausch]]."
+        }
+      ]
+    },
+    {
+      "title": "Internationaler Führerschein vor der Reise",
+      "daysAgo": 12,
+      "time": "15:20",
+      "turns": [
+        {
+          "q": "Kann eine Bürgerin den internationalen Führerschein noch vor ihrer Reise nächste Woche bekommen?",
+          "a": "Wenn sie bereits einen deutschen Kartenführerschein hat und einen Termin vor Ort bekommt, erhält sie ihn sofort; online dauert es bis zu vier Wochen. Mit einem alten Papierführerschein muss zuerst der Kartenführerschein beantragt werden – dann sind es etwa sechs Wochen, weshalb der Antrag mindestens vier Wochen vor der Reise gestellt werden sollte. Die Gebühr beträgt 18,70 Euro[[fs-international]]."
+        },
+        {
+          "q": "Wie lange gilt er?",
+          "a": "Das hängt vom Abkommen ab: Der Führerschein nach dem Wiener Übereinkommen von 1968 gilt 3 Jahre, der nach dem Pariser Abkommen von 1926 ein Jahr – jeweils nur in den Vertragsstaaten[[fs-international]]."
+        }
+      ]
+    },
+    {
+      "title": "Ausländischen Führerschein umschreiben",
+      "daysAgo": 28,
+      "time": "08:30",
+      "turns": [
+        {
+          "q": "Wie lange darf jemand mit einem Führerschein aus einem Nicht-EU-Staat hier fahren?",
+          "a": "Sechs Monate nach der ersten Anmeldung in Deutschland; danach muss der Führerschein umgeschrieben werden. Das Landeskriminalamt prüft ihn zwei bis drei Wochen auf Echtheit, und in dieser Zeit muss er abgegeben werden[[fs-ausland]]."
+        },
+        {
+          "q": "Welche Gebühren fallen an?",
+          "a": "Prüfungsfrei 41,70 Euro ohne und 42,70 Euro mit Probezeit, prüfungspflichtig 50,50 Euro ohne und 51,40 Euro mit Probezeit. Was zutrifft, lässt sich erst bei Vorlage des Führerscheins sagen[[fs-ausland]]."
+        },
+        {
+          "q": "Und bei einem Führerschein aus einem EU-Staat?",
+          "a": "Ohne die Klassen C und D muss er grundsätzlich nicht umgeschrieben werden. Umzuschreiben sind nur befristete Führerscheine, wenn die Befristung abläuft, sowie Führerscheine mit C- oder D-Klassen, wenn deren Befristung abläuft[[fs-eu]]."
+        }
+      ]
+    },
+    {
+      "title": "Punktestand in Flensburg",
+      "daysAgo": 49,
+      "time": "10:30",
+      "archived": true,
+      "turns": [
+        {
+          "q": "Können wir einem Bürger Auskunft über seine Punkte in Flensburg geben?",
+          "a": "Nein. Die Auskunft aus dem Fahreignungsregister gibt das Kraftfahrt-Bundesamt, kostenfrei und online oder auf dem Postweg. Die Fahrerlaubnisbehörde der Stadt Rheinfurt kann zu diesem Verfahren keine Auskunft erteilen[[fer]]."
+        },
+        {
+          "q": "Wohin verweisen wir ihn also?",
+          "a": "Direkt an das Kraftfahrt-Bundesamt[[fer]]."
+        }
+      ]
+    },
+    {
+      "title": "Busfahrer: Verlängerung der Fahrerlaubnis",
+      "daysAgo": 38,
+      "time": "14:10",
+      "turns": [
+        {
+          "q": "Wann sollte ein Busfahrer die Verlängerung seiner befristeten Fahrerlaubnis beantragen?",
+          "a": "Etwa sechs Monate bevor die Befristung abläuft, und zwar nur noch schriftlich. Dem Antrag liegen unter anderem Passfoto, aktueller Führerschein und Bescheinigungen über Sehvermögen und gesundheitliche Eignung bei[[fs-befristet]]."
+        },
+        {
+          "q": "Was kostet die Verlängerung samt Fahrerqualifizierungsnachweis?",
+          "a": "Die Verlängerung befristeter Klassen kostet 50,50 Euro, gegebenenfalls zuzüglich 15 Euro für ein Führungszeugnis. Der Fahrerqualifizierungsnachweis kostet bei erstmaliger Ausstellung, Verlängerung oder Datenänderung 37,40 Euro, bei Verlust 42,40 Euro[[fs-befristet]]."
+        }
+      ]
+    }
+  ]
+}
