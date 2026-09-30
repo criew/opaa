@@ -220,5 +220,5 @@ Handbuch (docs/handbuch/) — das gebaute Produkt benutzen
 
 Demo und Vorführung
 ├── demo/README.md         — Demo-Instanz: Installation, Konten, öffentliche Instanz
-└── docs/market/demo-drehbuch.md — Vorführ-Drehbuch: acht Fragen, fünf Vorführschritte
+└── docs/market/demo-drehbuch.md — Vorführ-Drehbuch: acht Fragen, sechs Vorführschritte
 ```

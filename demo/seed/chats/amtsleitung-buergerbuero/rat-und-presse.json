@@ -1,0 +1,197 @@
+{
+  "chats": [
+    {
+      "title": "Stellenplan 2025: Begründung und Wirkung",
+      "daysAgo": 47,
+      "time": "10:20",
+      "pinned": true,
+      "turns": [
+        {
+          "q": "Mit welcher Begründung hat der Stadtrat die zwei zusätzlichen Stellen im Bürgerbüro geschaffen?",
+          "a": "Beschlussvorlage 2024/052 für die Sitzung am 26. November 2024[[rat-stellenplan]]:\n\n- **Beschluss:** zwei zusätzliche Stellen der Entgeltgruppe 9a für das Sachgebiet Meldewesen und Ausweise im Stellenplan 2025\n- **Begründung:** Die Fallzahlen im Meldewesen sind seit 2022 um 18 Prozent gestiegen; die Wartezeit auf einen Termin beträgt im Durchschnitt 19 Werktage.\n- **Ziel:** Wartezeit unter zehn Werktage und dauerhaft besetzter Sprechtag des mobilen Bürgerbüros\n- **Kosten:** rund 128.000 Euro jährlich, im Haushaltsentwurf 2025 berücksichtigt; die Zustimmung des Personalrats lag vor"
+        },
+        {
+          "q": "Wurde über die Personalkosten im Bürgerbüro schon früher im Rat gesprochen?",
+          "a": "Ja, bei den Haushaltsberatungen am 27. Februar 2024: In der Aussprache wurde die Höhe der Personalkosten im Bürgerbüro angesprochen, und die Verwaltung verwies auf die gestiegenen Fallzahlen im Meldewesen seit 2022. Der Haushalt 2024 samt Stellenplan wurde mit 28 Ja-Stimmen, 4 Nein-Stimmen und 2 Enthaltungen beschlossen[[rat-2024-02]]."
+        },
+        {
+          "q": "Und beim Haushalt 2026?",
+          "a": "Am 9. Dezember 2025 beschloss der Stadtrat die Haushaltssatzung 2026 mit dem Stellenplan in der Fassung der Vorlage 2025/041 (29 Ja, 5 Nein, 2 Enthaltungen). Im selben Termin wurde berichtet, dass die elektronische Aktenführung im Bürgerbüro im ersten Quartal 2026 startet[[rat-2025-12]]."
+        }
+      ]
+    },
+    {
+      "title": "Bürgerkoffer: Kosten und Probebetrieb",
+      "daysAgo": 21,
+      "time": "16:45",
+      "turns": [
+        {
+          "q": "Was hat der Bürgerkoffer gekostet?",
+          "a": "Einmalig 9.800 Euro für das Gerät und jährlich 1.200 Euro für Wartung und Datenverbindung, gedeckt aus dem Ansatz Bürgerbüro-Sachaufwand 2024. Der Hauptausschuss beschloss im Mai 2024 die Anschaffung und einen viermonatigen Probebetrieb in zwei Pflegeeinrichtungen ab September 2024[[rat-buergerkoffer]]."
+        },
+        {
+          "q": "Was kam beim Probebetrieb heraus?",
+          "a": "In vier Monaten wurden 86 Anliegen bearbeitet, überwiegend Ausweisangelegenheiten. Daraufhin beschloss der Hauptausschuss am 11. Februar 2025 einstimmig die Fortführung mit festen Sprechtagen in Rheinau und Weststadt ab April 2025[[rat-ha-2025-02]]."
+        }
+      ]
+    },
+    {
+      "title": "Mobiles Bürgerbüro: Standorte und Termine",
+      "daysAgo": 11,
+      "time": "09:05",
+      "pinned": true,
+      "turns": [
+        {
+          "q": "Wann und wo sind die Sprechtage des mobilen Bürgerbüros?",
+          "a": "Laut Sprechtagsübersicht[[sprechtage]]:\n\n| Standort | Sprechtag | Uhrzeit | Raum |\n|---|---|---|---|\n| Stadtteilzentrum Rheinau | jeden ersten Dienstag | 9:00–12:30 Uhr | Gruppenraum im Erdgeschoss |\n| Bürgertreff Weststadt | jeden dritten Donnerstag | 14:00–17:30 Uhr | Saal im ersten Obergeschoss |\n| Gemeindezentrum Nordfeld | jeden zweiten Mittwoch | 9:00–12:30 Uhr | Besprechungsraum 2 |\n\nAngeboten werden Personalausweis und Reisepass sowie An- und Ummeldungen, keine Kfz-Angelegenheiten."
+        },
+        {
+          "q": "Wie viele Termine gibt die Online-Terminvergabe je Sprechtag frei?",
+          "a": "Zwölf Termine je Sprechtag; Vorsprachen ohne Termin werden angenommen, soweit am Ende des Sprechtags Zeit bleibt[[rundschreiben-nordfeld]]."
+        },
+        {
+          "q": "Was gilt für den Bürgerkoffer an den Sprechtagen?",
+          "a": "Die eingeteilte Kollegin holt ihn spätestens eine Stunde vor Beginn bei der IT-Leitstelle ab und gibt ihn nach dem Sprechtag dort zurück; nach einem Nachmittagstermin wie in Weststadt bis 9:00 Uhr am folgenden Werktag. Tauschwünsche für den Einsatzplan gehen an die Leitung des Bürgerbüros, bei Krankheit gilt die Vertretungsregelung im Meldewesen[[rundschreiben-nordfeld]]."
+        }
+      ]
+    },
+    {
+      "title": "Evaluation mobiles Bürgerbüro",
+      "daysAgo": 26,
+      "time": "10:35",
+      "turns": [
+        {
+          "q": "Welche Zahlen lagen dem Hauptausschuss zur Evaluation des mobilen Bürgerbüros vor?",
+          "a": "Nach einem Jahr fester Sprechtage: 412 bearbeitete Anliegen, davon 61 Prozent Ausweis- und 24 Prozent Meldeangelegenheiten; die Zufriedenheit der Befragten lag bei 94 Prozent. Der Hauptausschuss beschloss am 21. April 2026 einstimmig, das mobile Bürgerbüro unbefristet fortzuführen und um einen Sprechtag in Nordfeld zu erweitern[[rat-ha-2026-04]]."
+        },
+        {
+          "q": "Welche Anliegen kann man dort nicht erledigen?",
+          "a": "Kfz-Angelegenheiten. An allen drei Standorten gibt es nur Personalausweis und Reisepass sowie die An- und Ummeldung des Wohnsitzes[[sprechtage]]."
+        }
+      ]
+    },
+    {
+      "title": "Zentrales Dokumentenarchiv für Ratsunterlagen",
+      "daysAgo": 53,
+      "time": "13:10",
+      "turns": [
+        {
+          "q": "Welcher Beschluss steht hinter dem zentralen Dokumentenarchiv für Ratsunterlagen?",
+          "a": "Die Beschlussvorlage 2025/014 für den Stadtrat am 8. April 2025: Alle Niederschriften und Beschlussvorlagen von Stadtrat und Ausschüssen ab dem Jahrgang 2024 werden in einem zentralen, revisionssicheren Archiv abgelegt, das als Quelle für den Wissensassistenten der Verwaltung freigegeben wird. Die Ablage nach Jahrgängen erlaubt es, einzelne Jahrgänge gezielt freizugeben oder zu sperren; zusätzliche Kosten entstehen nicht[[rat-dokumentenarchiv]]."
+        },
+        {
+          "q": "Ist das inzwischen umgesetzt?",
+          "a": "Ja. Im Bericht zur Digitalisierungsstrategie vom 9. Dezember 2025 heißt es, das Ratsinformationssystem sei seit Oktober 2025 in Betrieb und alle Niederschriften und Vorlagen seit 2024 seien im zentralen Dokumentenarchiv abgelegt[[rat-2025-12]]."
+        }
+      ]
+    },
+    {
+      "title": "Digitalisierungsstrategie und Ratsinformationssystem",
+      "daysAgo": 55,
+      "time": "09:15",
+      "turns": [
+        {
+          "q": "Was sieht die Digitalisierungsstrategie 2024 bis 2028 vor?",
+          "a": "Vier Handlungsfelder: elektronische Aktenführung, Online-Dienste für Bürgerinnen und Bürger, Datensicherheit und Qualifizierung der Beschäftigten. Erste Maßnahme war 2025 ein Ratsinformationssystem mit elektronischer Sitzungsverwaltung. Der Stadtrat beschloss die Strategie am 17. September 2024 mit 31 Ja-Stimmen und 4 Enthaltungen und lässt sich jährlich berichten[[rat-2024-09]]."
+        },
+        {
+          "q": "Was kostet das Ratsinformationssystem?",
+          "a": "Das wirtschaftlichste von drei Angeboten lag bei 96.400 Euro für fünf Jahre einschließlich Betrieb. Der Hauptausschuss vergab den Auftrag am 11. Februar 2025 mit 10 Ja-Stimmen und einer Enthaltung[[rat-ha-2025-02]]."
+        }
+      ]
+    },
+    {
+      "title": "Schließung zum Stadtfest",
+      "daysAgo": 52,
+      "time": "11:40",
+      "archived": true,
+      "turns": [
+        {
+          "q": "Wie haben wir die Schließung des Bürgerbüros zum Stadtfest kommuniziert?",
+          "a": "Per Pressemitteilung vom 8. Juni 2026: Das Bürgerbüro blieb am Freitag, 19. Juni 2026, ganztägig geschlossen. Gebuchte Termine wurden automatisch auf den folgenden Werktag verschoben, die Betroffenen per E-Mail benachrichtigt. Für dringende Anliegen stand die Leitstelle des Ordnungsamts telefonisch bereit; ab Montag, 22. Juni, galten wieder die regulären Öffnungszeiten[[pm-stadtfest-schliessung]]."
+        },
+        {
+          "q": "Welches Sicherheitskonzept galt beim Stadtfest?",
+          "a": "Das Ordnungsamt hat dem Hauptausschuss am 21. April 2026 das mit Polizei und Feuerwehr abgestimmte Konzept vorgestellt: neu waren Zufahrtssperren an vier Zugängen zum Rathausplatz und ein Sanitätsdienst mit zwei Stationen. Der Ausschuss nahm es zustimmend zur Kenntnis[[rat-ha-2026-04]]."
+        }
+      ]
+    },
+    {
+      "title": "Kfz-Zulassung in den Sommerferien",
+      "daysAgo": 48,
+      "time": "08:15",
+      "archived": true,
+      "turns": [
+        {
+          "q": "Welche Öffnungszeiten gelten für die Kfz-Zulassung in den Sommerferien?",
+          "a": "Vom 27. Juli bis 7. September 2026 entfällt die Öffnung am Mittwochnachmittag, weil in den Ferien weniger Personal da ist. Alle übrigen Zeiten – montags bis freitags vormittags sowie dienstags und donnerstags nachmittags – bleiben; bereits gebuchte Termine sind nicht betroffen[[pm-kfz-sommer]]."
+        },
+        {
+          "q": "Müssen wir dafür die Terminkontingente anpassen?",
+          "a": "Die Dienstanweisung sieht feste Tageskontingente je Sachgebiet vor[[da-terminvergabe]], und laut Mitteilung bleiben schon gebuchte Mittwochstermine bestehen[[pm-kfz-sommer]]. Wie mit den Kontingenten der entfallenden Nachmittage umzugehen ist, regelt keine der Unterlagen."
+        }
+      ]
+    },
+    {
+      "title": "Marktstraße gesperrt: Erreichbarkeit",
+      "daysAgo": 2,
+      "time": "13:30",
+      "turns": [
+        {
+          "q": "Die Marktstraße ist gesperrt. Was wissen wir über Dauer und Umleitung?",
+          "a": "Die Marktstraße ist zwischen Rathausplatz und Domplatz seit dem 1. September 2026 wegen der Erneuerung des Abwasserkanals voll gesperrt; die Arbeiten sollen bis Ende Oktober abgeschlossen sein. Geschäfte bleiben über die Seiteneingänge erreichbar, der Durchgangsverkehr wird über die Bahnhofstraße umgeleitet[[pm-marktstrasse]]. Zur Erreichbarkeit des Bürgerbüros selbst sagt die Mitteilung nichts."
+        },
+        {
+          "q": "Steht in der Nähe noch eine Baustelle an?",
+          "a": "Ja: Ab dem 1. Oktober 2026 wird der Vorplatz des Hauptbahnhofs für rund vier Monate umgebaut. Der Zugang zum Bahnhofsgebäude bleibt über einen provisorischen Weg entlang der Bahnhofstraße erhalten[[pm-bahnhofsvorplatz]]."
+        }
+      ]
+    },
+    {
+      "title": "Marktbrunnen: Einweihung und Kosten",
+      "daysAgo": 50,
+      "time": "16:15",
+      "archived": true,
+      "turns": [
+        {
+          "q": "Wann wurde der Marktbrunnen neu eingeweiht?",
+          "a": "Die Neueinweihung zum 150-jährigen Bestehen war für den 30. Mai 2026 um 17 Uhr auf dem Rathausplatz angekündigt, mit einer Ansprache der Oberbürgermeisterin und einem Rückblick des Stadtarchivs[[pm-brunnen]]. Im Bauausschuss am 12. Mai 2026 meldete die Verwaltung, dass die Sanierung im Zeitplan liege[[rat-bau-2026-05]]."
+        },
+        {
+          "q": "Was hat die Sanierung gekostet?",
+          "a": "Der Bauausschuss vergab die Bauleistungen im Oktober 2024 für 138.600 Euro, 6.400 Euro unter der Kostenschätzung; das Landesprogramm Ortskernsanierung fördert 40 Prozent der förderfähigen Kosten[[rat-brunnen]]. Hinzu kamen 2.700 Euro für einen schadhaften Zulaufschieber, die der Förderstelle vor der Ausführung angezeigt wurden und damit förderfähig sind[[rat-bau-2025-05]]."
+        }
+      ]
+    },
+    {
+      "title": "Feuerwache Süd: Stand des Verfahrens",
+      "daysAgo": 4,
+      "time": "15:45",
+      "turns": [
+        {
+          "q": "Wie ist der Stand beim Neubau der Feuerwache Süd?",
+          "a": "Der Stadtrat hat am 24. Februar 2026 den Grundsatzbeschluss für den Standort Festplatz gefasst. Begründung: Die Wache von 1968 erfüllt die Anforderungen an Schwarz-Weiß-Trennung, Hallenhöhe und Ausrückzeiten nicht mehr; vom Festplatz aus ist eine Ausrückzeit unter acht Minuten für alle südlichen Ortsteile möglich. Der Kostenrahmen liegt bei 14,5 Millionen Euro, für den Architektenwettbewerb sind 220.000 Euro veranschlagt[[rat-feuerwache]]."
+        },
+        {
+          "q": "Wie geht es mit dem Wettbewerb weiter?",
+          "a": "Der Bauausschuss hat am 12. Mai 2026 der Auslobung zugestimmt: ein nichtoffener Realisierungswettbewerb mit 15 Teilnehmenden. Die Arbeiten sind im Oktober 2026 abzugeben, das Preisgericht tagt voraussichtlich im November 2026[[rat-bau-2026-05]]."
+        }
+      ]
+    },
+    {
+      "title": "Kostenfreier Stadtbus für Schüler",
+      "daysAgo": 7,
+      "time": "10:55",
+      "turns": [
+        {
+          "q": "Was sieht die Vorlage zum kostenfreien Stadtbus für Schülerinnen und Schüler vor?",
+          "a": "Beschlussvorlage 2026/021: Schülerinnen und Schüler mit Wohnsitz in Rheinfurt sollen den Stadtbus ab dem 1. Januar 2027 kostenfrei nutzen. Im Schuljahr 2025/2026 nutzen ihn 2.300 Schülerinnen und Schüler; der Einnahmeausfall liegt bei rund 410.000 Euro jährlich, dazu kommen 30.000 Euro für die Schülerkarte[[rat-stadtbus]]."
+        },
+        {
+          "q": "Kommt dadurch Arbeit auf das Bürgerbüro zu, etwa bei der Ausgabe der Schülerkarte?",
+          "a": "Nach der Vorlage regeln die Stadtwerke das Verfahren zur Ausgabe der Schülerkarte[[rat-stadtbus]]. Eine Rolle des Bürgerbüros nennt sie nicht – falls die Stadtwerke eine Meldebescheinigung als Nachweis des Wohnsitzes verlangen, könnte das allerdings Nachfragen bei uns auslösen."
+        }
+      ]
+    }
+  ]
+}

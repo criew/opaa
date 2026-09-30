@@ -34,6 +34,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 DEMO_CORPUS_ROOT = REPO_ROOT / "demo" / "corpus"
 E2E_DATA_ROOT = REPO_ROOT / "demo" / "seed" / "e2e-data"
 E2E_SEED_UPLOAD_ROOT = E2E_DATA_ROOT / "test-documents" / "seed"
+DEMO_CHATS_ROOT = REPO_ROOT / "demo" / "seed" / "chats"
 
 
 @dataclass(frozen=True)
@@ -183,6 +184,9 @@ class Profile:
     prompt_libraries: tuple[PromptLibraryDef, ...] = field(default_factory=tuple)
     provider_groups: tuple[ProviderGroupDef, ...] = field(default_factory=tuple)
     directory_sync: DirectorySyncDef | None = None
+    # Directories of prepared chat transcripts (chats.py, #2071), imported after indexing so their
+    # sources resolve.
+    chat_sets: tuple[Path, ...] = field(default_factory=tuple)
 
     def all_users(self) -> tuple[UserDef, ...]:
         return (self.admin, *self.users)
@@ -693,6 +697,7 @@ DEMO_PROFILE = Profile(
         client_secret=DEMO_DIRECTORY_CLIENT_SECRET,
         interval_minutes=60,
     ),
+    chat_sets=(DEMO_CHATS_ROOT / "amtsleitung-buergerbuero",),
 )
 
 _E2E_ADMIN = UserDef(

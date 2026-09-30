@@ -4,7 +4,7 @@ Die eine Quelle für die Demo-Instanz „Stadt Rheinfurt" (Epic #708): installie
 vorführen — und, für alle, die die Demo selbst weiterentwickeln, Korpus-Generator und
 Seed-Mechanismus. Konzept dahinter — Behördenlandschaft, Bibliotheken, Berechtigungsmatrix, Quellen
 und Lizenzen — steht in [`docs/features/demo-instance.md`](../docs/features/demo-instance.md) und
-wird hier **nicht wiederholt**. Das ausformulierte Vorführ-Drehbuch mit acht Fragen und fünf
+wird hier **nicht wiederholt**. Das ausformulierte Vorführ-Drehbuch mit acht Fragen und sechs
 Vorführschritten steht in
 [`docs/market/demo-drehbuch.md`](../docs/market/demo-drehbuch.md).
 
@@ -75,9 +75,10 @@ Begründung der Auswahl, Quellen und Lizenzen des Korpus:
 | Prompt-Bibliotheken | „Textbausteine Bürgerbüro" für alle, „Vorlagen Amtsleitung" nur für Andrea; Slash-Befehle mit Variablenformular | Schritt C |
 | Ordner und Anhänge | Aktenplan in der Upload-Bibliothek, Jahrgang und Gremium in den Ratsinformationen, Ratsvorlagen mit PDF-Anlagen | Schritt D |
 | Fachformate | Fachfragen aus XLSX, aus dem PDF-Anhang einer Mail und aus CSV | Schritt E |
+| Viele Chats und ein langer Verlauf | 81 vorbereitete Chats im Space „Amtsleitung Bürgerbüro" (Andrea Vogt), über acht Wochen verteilt, fünf angeheftet, elf archiviert, einer mit 32 Runden | Schritt F |
 
-Einzelheiten zu Gruppen und Prompts stehen unten in den Abschnitten „Gruppen" und
-„Prompt-Bibliotheken".
+Einzelheiten zu Gruppen, Prompts und Chats stehen unten in den Abschnitten „Gruppen",
+„Prompt-Bibliotheken" und „Vorbereitete Chats".
 
 ### Installation mit einem Befehl
 
@@ -108,6 +109,7 @@ OPAA_UPLOAD_S3_ENDPOINT=http://objectstore:9000
 OPAA_UPLOAD_S3_BUCKET=opaa-uploads
 OPAA_UPLOAD_S3_ACCESS_KEY=opaa-uploads
 OPAA_UPLOAD_S3_SECRET_KEY=OpaaUploads!2026
+OPAA_DEMO_CHAT_IMPORT_ENABLED=true
 ```
 
 Herkunft und Zwang jeder einzelnen Variable:
@@ -186,6 +188,12 @@ Herkunft und Zwang jeder einzelnen Variable:
   Ablage hat einen eigenen Namensraum und lässt ihre eigene konfigurierte Adresse immer zu; der
   Eintrag `objectstore` in `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST` oben betrifft ausschließlich die
   Konnektoren.
+- `OPAA_DEMO_CHAT_IMPORT_ENABLED=true` schaltet den Einspielweg für die vorbereiteten Chats ein
+  (#2071, siehe „Vorbereitete Chats" unten): Nur damit existiert die Route
+  `POST /api/v1/spaces/{spaceId}/chat-imports`, über die der letzte Seed-Schritt Andreas Chats ohne
+  Modellaufruf anlegt. Ohne die Zeile bricht der Seed an dieser Stelle mit einem Hinweis auf die
+  Variable ab – alles davor ist dann schon eingerichtet, ein erneuter Lauf nach dem Neustart des
+  Backends holt nur die Chats nach. Für jede Nicht-Demo-Installation bleibt die Variable ungesetzt.
 
 #### 2. Stack starten
 
@@ -336,7 +344,8 @@ Idempotenz und Fehlerfälle: „Seed-Mechanismus (#712)" unten.
 
 Außerdem legt der Seed im Namen von Andrea Vogt die beiden Prompt-Bibliotheken „Textbausteine
 Bürgerbüro" und „Vorlagen Amtsleitung" samt Prompts, Freigaben und Space-Zuordnung an (siehe
-„Prompt-Bibliotheken" unten).
+„Prompt-Bibliotheken" unten) und spielt zum Schluss 81 vorbereitete Chats in ihren Space
+„Amtsleitung Bürgerbüro" ein (siehe „Vorbereitete Chats" unten).
 
 **Wie lange dauert die Erstindizierung, und wie erkennt man, dass sie fertig ist?** Der Seed selbst
 wartet auf jede Indizierung und jeden Upload (Polling gegen `GET
@@ -521,6 +530,47 @@ Ausweise" `/` tippen, `/gebuehrenauskunft-personalausweis` wählen, Formular bes
 Als Thomas erscheint dieselbe Auswahl, die „Vorlagen Amtsleitung" aber weder dort noch im Katalog.
 Der vollständige Klickweg steht im Drehbuch, Schritt C.
 
+### Vorbereitete Chats (#2071)
+
+Der Space „Amtsleitung Bürgerbüro" von **Andrea Vogt** bekommt 81 Chats, wie sie nach einigen Wochen
+Arbeit mit OPAA aussähen. Wofür: Chatliste, Chatsuche, Anheften, Archiv, Nachladen und lange
+Verläufe lassen sich damit an einem realistischen Bestand vorführen und testen – ein leerer Space
+zeigt davon nichts, und erst ein voller Space macht Layoutfehler der Chatliste sichtbar.
+
+| Merkmal | In der Demo |
+|---|---|
+| Umfang | 80 Chats mit je 2–3 Runden, ein Chat mit 32 Runden („Jahresbericht Bürgerbüro 2026 vorbereiten") |
+| Themen | Gebühren und Satzungen, Meldewesen und Ausweise, Kfz-Zulassung und Führerschein, interne Dienstanweisungen und Schulungen, Rats- und Pressethemen des Bürgerbüros |
+| Zeitraum | verteilt über die acht Wochen vor dem Seed-Lauf, der jüngste vom Vortag |
+| Angeheftet | 5 Chats, darunter der lange Verlauf |
+| Archiviert | 11 Chats |
+| Belege | jede Antwort mit Quellen zitiert echte Dokumente der sechs Bibliotheken, die dem Space zugeordnet sind; „Belege anzeigen" öffnet sie wie bei einer frisch erzeugten Antwort |
+
+Die Verläufe sind **Daten, keine Live-Antworten**: Sie liegen unter
+[`seed/chats/amtsleitung-buergerbuero/`](seed/chats/amtsleitung-buergerbuero/) – `set.json` nennt
+Space, Eigentümerin und die zitierten Korpusdokumente, die übrigen Dateien die Chats nach Themen. Eine
+Antwort zitiert mit `[[schluessel]]` (oder `[[schluessel#abschnitt]]`); der Seed setzt dafür beim
+Einspielen die Dokument-ID der laufenden Instanz ein und schreibt die Fundstelle in der Form, in der
+auch das Modell zitiert. Die Zeitpunkte sind relativ: `daysAgo` und `time` (Uhrzeit in Rheinfurt)
+legen die erste Frage fest, die weiteren Runden folgen im Abstand weniger Minuten. Wer Chats ergänzt,
+prüft sie mit `pytest demo/seed`: Die Tests verlangen unter anderem, dass jedes zitierte Dokument im
+Korpus liegt und der Space die Bibliothek zugeordnet hat.
+
+**Einspielweg:** Der Seed schreibt die Chats über `POST /api/v1/spaces/{spaceId}/chat-imports` mit
+Andreas eigener Sitzung – sie wird Autorin, genau wie bei einem selbst begonnenen Chat. Die Route
+existiert nur mit `OPAA_DEMO_CHAT_IMPORT_ENABLED=true` (Schritt 1 oben) und verlangt dieselbe
+Space-Mitgliedschaft wie ein neuer Chat; jeder Beleg muss auf ein Dokument zeigen, das Andrea lesen
+darf. Dateiname, Quellentyp und Metadaten eines Belegs liest das Backend aus dem Dokument selbst,
+der Seed liefert nur die Dokument-ID. Anheften und Archivieren laufen über die regulären Endpunkte.
+Eine Gesprächsnotiz haben die eingespielten Chats nicht; sie entsteht erst mit der nächsten
+gestellten Frage.
+
+**Idempotenz:** Ein Chat ist an seinem Titel erkennbar. Hat Andrea im Space schon einen Chat dieses
+Titels – aktiv oder archiviert –, legt der Seed ihn nicht noch einmal an. Fehlt einem solchen Chat
+eine Markierung, die die Datei verlangt (etwa weil er in einer Vorführung wieder gelöst wurde), setzt
+der Seed sie erneut; Markierungen, die die Datei nicht verlangt, bleiben unangetastet. Ein neuer Chat
+eines späteren Laufs bekommt Zeitpunkte relativ zu diesem Lauf.
+
 ---
 
 ## Demo weiterentwickeln
@@ -669,6 +719,16 @@ Der Lauf richtet über die API ein:
    und meldet nur die Mail. Ohne diese Prüfung meldete ein Lauf gegen einen noch
    nicht fertig befüllten Bucket „abgeschlossen" über eine leere Bibliothek — der Einmal-Schritt
    `objectstore-seed` muss vorher durch sein (Schritt 2 von „Demo nutzen" oben).
+9. **Vorbereitete Chats** (nur im `demo`-Profil, siehe „Vorbereitete Chats" oben) — erst nach der
+   Indizierung, weil die Belege auf die Dokumente der laufenden Instanz zeigen: Der Seed liest die
+   Dokumentlisten der zitierten Bibliotheken (`GET /api/v1/libraries/{id}/documents`, Ordnerbaum
+   inklusive) und ordnet jede Korpusdatei genau einem Dokument zu – über den Dateinamen oder, bei
+   den Pressemitteilungen, deren Adresse. Passt kein oder mehr als ein Dokument, bricht er ab, bevor
+   ein Chat entsteht. Danach liest er Andreas vorhandene Chats des Space (aktiv und archiviert),
+   spielt die fehlenden über `POST /api/v1/spaces/{id}/chat-imports` ein und setzt fehlende
+   Markierungen über `PUT /api/v1/chats/{id}/pin` bzw. `…/archive`. Antwortet der Import mit `404`,
+   ist `OPAA_DEMO_CHAT_IMPORT_ENABLED` im Backend nicht gesetzt; der Seed nennt die Variable. Das
+   `e2e`-Profil hat keine vorbereiteten Chats.
 
 Für das minimale, eingefrorene `e2e`-Profil (dev-Auth, keine Keycloak-Anmeldung nötig) braucht es den
 separaten E2E-Stack (`e2e/docker-compose.e2e.yml`), nicht den `demo`-Stack — nur dieser provisioniert
@@ -696,7 +756,8 @@ Dann:
 python seed.py --profile e2e --base-url http://localhost:18081/api
 ```
 
-**Idempotent:** Ein zweiter Lauf gegen dieselbe Instanz legt nichts doppelt an — Spaces und
+**Idempotent:** Ein zweiter Lauf gegen dieselbe Instanz legt nichts doppelt an — Chats werden per
+Titel erkannt (siehe „Vorbereitete Chats" oben), Spaces und
 Bibliotheken werden vor dem Anlegen per Namenssuche geprüft (Spaces über die Session des jeweiligen
 Eigentümers, da ein Space nur für seine eigenen Mitglieder sichtbar ist), Uploads werden anhand von
 Dateiname und Status übersprungen (ein zuvor `FAILED`es Dokument wird dagegen erneut hochgeladen),
@@ -982,6 +1043,12 @@ Import als auch nachträglich per `kcadm`. Für einen Seed-Lauf wird er ausschli
 aktiviert und unmittelbar danach wieder deaktiviert — kein dauerhaft scharfer, passwortbasierter
 Tokenweg ohne Client-Secret auf einer erreichbaren Instanz.
 
+**Vorbedingung für die vorbereiteten Chats (#2071):** Für den letzten Seed-Schritt muss das Backend der Instanz mit
+`OPAA_DEMO_CHAT_IMPORT_ENABLED=true` laufen (siehe „Vorbereitete Chats" oben). Die Route ist nur
+für Konten mit Space-Mitgliedschaft und nur für eigene Chats nutzbar; wer sie nach dem Seed-Lauf
+nicht offen lassen will, nimmt die Variable wieder heraus und startet das Backend neu – die
+eingespielten Chats bleiben.
+
 **Dritte Vorbedingung (seit ADR-0033, #1534):** Der Seed vergibt `SYSTEM_ADMIN` an `demo-admin` über
 das lokale Notanker-Konto; dessen Passwort wird als `--local-admin-password` (oder
 `OPAA_INITIAL_ADMIN_PASSWORD` in der Umgebung des Aufrufs) übergeben und ist auf der Instanz nach
@@ -1051,7 +1118,7 @@ standardmäßig eine Anfrage pro IP und Minute).
 - [`docs/features/demo-instance.md`](../docs/features/demo-instance.md) — Konzept: Behördenlandschaft,
   Bibliotheken, Formate, Quellen und Lizenzen, Rechtemodell
 - [`docs/market/demo-drehbuch.md`](../docs/market/demo-drehbuch.md) — das ausformulierte
-  Vorführ-Drehbuch mit acht Fragen und fünf Vorführschritten
+  Vorführ-Drehbuch mit acht Fragen und sechs Vorführschritten
 - [`docs/handbuch/deployment.md`](../docs/handbuch/deployment.md), Abschnitt „Härtung für erreichbare
   Deployments" — zwingend vor jedem über `localhost` hinaus erreichbaren Rollout dieser Demo,
   einschließlich des dort separat behandelten `opaa-seed`-Clients

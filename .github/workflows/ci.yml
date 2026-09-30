@@ -102,9 +102,12 @@ jobs:
             # keycloak/** belongs to the seed filter because demo/seed/test_seed.py
             # asserts the realm export keeps the audience mapper the seed's token
             # path depends on (#1515) - otherwise only the nightly demo smoke run
-            # would notice its removal.
+            # would notice its removal. demo/corpus/** belongs to it because
+            # demo/seed/test_chats.py asserts every document the demo chats cite
+            # still exists in the corpus.
             seed:
               - 'demo/seed/**'
+              - 'demo/corpus/**'
               - 'keycloak/**'
               - '.github/workflows/ci.yml'
 

@@ -1,0 +1,383 @@
+{
+  "chats": [
+    {
+      "title": "Ummeldung ohne Wohnungsgeberbestätigung",
+      "daysAgo": 6,
+      "time": "09:12",
+      "turns": [
+        {
+          "q": "Ein Bürger will sich ummelden, hat aber keine Wohnungsgeberbestätigung dabei. Wie verfahren wir?",
+          "a": "Der Vorgang wird vorläufig angelegt, mit einer Frist von zwei Wochen zur Nachreichung; ohne Nachreichung folgt ein Bußgeldhinweis nach dem Bundesmeldegesetz[[faq-ummeldung]]. Liegt die Bestätigung noch gar nicht vor, kann der Bürger eine Erklärung zur fehlenden Wohnungsgeberbestätigung abgeben[[anmeldung]]."
+        },
+        {
+          "q": "Welche Angaben muss eine selbst verfasste Bestätigung enthalten?",
+          "a": "Eine selbst verfasste Bestätigung reicht nur, wenn sie alle notwendigen Angaben enthält[[anmeldung]]:\n\n- Anschrift der Wohnung\n- vollständiger Name und Anschrift des Wohnungsgebers (ist er nicht Eigentümer, zusätzlich der Name des Eigentümers)\n- Einzugsdatum\n- Namen sämtlicher meldepflichtiger Personen"
+        },
+        {
+          "q": "Und was kostet die Ummeldung?",
+          "a": "Die An- und Ummeldung des Wohnsitzes ist gebührenfrei[[vgs]]. Kosten entstehen nur, wenn zugleich die Adresse in den Fahrzeugpapieren geändert wird: 13,80 Euro[[anmeldung]]."
+        }
+      ]
+    },
+    {
+      "title": "Anmeldung für die ganze Familie",
+      "daysAgo": 9,
+      "time": "10:05",
+      "turns": [
+        {
+          "q": "Muss bei einer Anmeldung die ganze Familie im Bürgerbüro erscheinen?",
+          "a": "Nein. Bei Familien reicht es, wenn eine meldepflichtige Person zur Anmeldung kommt[[anmeldung]]. Eine bevollmächtigte Person kann für Familienangehörige mitvorsprechen, sofern für jede Person eine unterschriebene Vollmacht vorliegt[[faq-ummeldung]]."
+        },
+        {
+          "q": "Welche Frist gilt für die Anmeldung?",
+          "a": "Wer nach Rheinfurt zieht oder innerhalb der Stadt umzieht, muss sich so schnell wie möglich anmelden; der Gesetzgeber sieht 14 Tage vor. Am bisherigen Wohnort muss man sich nicht abmelden, das geschieht mit der Anmeldung in Rheinfurt automatisch[[anmeldung]]."
+        }
+      ]
+    },
+    {
+      "title": "Abmeldung bei Wegzug ins Ausland",
+      "daysAgo": 20,
+      "time": "15:40",
+      "turns": [
+        {
+          "q": "Bis wann muss sich jemand abmelden, der ins Ausland zieht?",
+          "a": "Die Abmeldung ist frühestens eine Woche vor dem Auszug möglich und muss innerhalb von zwei Wochen nach dem Auszug erfolgen; wer das versäumt, handelt ordnungswidrig. Beim Wegzug ins Ausland geht die Abmeldung auch online, und die Auslandsanschrift kann im Melderegister hinterlegt werden – etwa für Wahlen[[abmeldung]]."
+        },
+        {
+          "q": "Wie lange dauert die Bearbeitung, und kostet sie etwas?",
+          "a": "Die Bearbeitung dauert etwa drei bis vier Wochen; die Abmeldung ist kostenfrei[[abmeldung]]."
+        }
+      ]
+    },
+    {
+      "title": "Reisepass im Expressverfahren",
+      "daysAgo": 5,
+      "time": "11:30",
+      "turns": [
+        {
+          "q": "Was kostet ein Reisepass im Expressverfahren, und wie schnell ist er da?",
+          "a": "Zur regulären Gebühr – 43,10 Euro unter 24 Jahren, 69 Euro ab 24 Jahren – kommt ein Aufpreis von 36,80 Euro. Im Idealfall liegt der Pass in der Passausgabe nach drei bis vier Arbeitstagen vor; in den Außenstellen dauert es einen Arbeitstag länger[[reisepass]]."
+        },
+        {
+          "q": "Und für Vielreisende mit 48 Seiten?",
+          "a": "Der Pass mit 48 Seiten kostet 25,30 Euro Aufpreis auf die Gebühr[[reisepass]]."
+        },
+        {
+          "q": "In der Satzung steht aber nur der Pass für 69 Euro, oder?",
+          "a": "Richtig. Das Gebührenverzeichnis der Verwaltungsgebührensatzung führt nur den regulären Reisepass mit 32 Seiten für 69 Euro[[vgs]]. Den Tarif für unter 24-Jährige und die Aufpreise für Express und 48 Seiten nennt allein die Leistungsbeschreibung[[reisepass]]."
+        }
+      ]
+    },
+    {
+      "title": "Vorläufiger Reisepass kurz vor dem Flug",
+      "daysAgo": 13,
+      "time": "08:10",
+      "turns": [
+        {
+          "q": "Eine Familie fliegt übermorgen, der Reisepass des Vaters ist abgelaufen. Was können wir anbieten?",
+          "a": "Einen vorläufigen Reisepass: Er wird sofort ausgestellt, gilt ein Jahr und kostet 29,90 Euro. Der Vater muss glaubhaft machen, dass er ihn dringend braucht, und ein biometrietaugliches Lichtbild mitbringen[[vorl-reisepass]].\n\nWichtig für die Beratung: Ob das Zielland einen vorläufigen Reisepass akzeptiert, sollte die Familie vorher beim Auswärtigen Amt, im Reisebüro oder bei der Botschaft klären[[vorl-reisepass]]."
+        },
+        {
+          "q": "Und wenn sie keinen Termin mehr bekommen?",
+          "a": "Ohne Termin geht es nur im Rahmen des Spontan-Kontingents und nur bei glaubhaft gemachter Dringlichkeit, etwa einer gebuchten Reise innerhalb von drei Werktagen[[faq-ausweis]]. Dieses kleine Kontingent für dringende Spontanfälle halten die Sachgebiete täglich vor[[da-terminvergabe]]."
+        }
+      ]
+    },
+    {
+      "title": "Kinderreisepass: Gültigkeit und Kosten",
+      "daysAgo": 29,
+      "time": "16:05",
+      "turns": [
+        {
+          "q": "Wie lange gilt ein Kinderreisepass inzwischen?",
+          "a": "Ein Jahr, längstens bis zum zwölften Lebensjahr. Verlängern lässt er sich nur, solange er noch gültig ist – spätestens am Tag des Ablaufdatums[[kinderpass]]."
+        },
+        {
+          "q": "Was kosten Ausstellung, Verlängerung und Aktualisierung?",
+          "a": "Der Kinderreisepass kostet 15 Euro, Aktualisierung und Verlängerung je 6,90 Euro. Das Kind muss bei jeder Beantragung, Verlängerung und Aktualisierung dabei sein[[kinderpass]]."
+        }
+      ]
+    },
+    {
+      "title": "Personalausweis gestohlen",
+      "daysAgo": 7,
+      "time": "12:20",
+      "turns": [
+        {
+          "q": "Was muss eine Bürgerin tun, deren Personalausweis gestohlen wurde?",
+          "a": "1. Den Diebstahl beim Bürgerbüro melden – online, schriftlich oder persönlich; eine Anzeige bei der Polizei wird empfohlen.\n2. Ist die Online-Ausweisfunktion eingeschaltet, diese sofort über den Sperrnotruf 116 116 sperren lassen; das Bürgerbüro kann die Sperrung ebenfalls veranlassen.\n3. War die Unterschriftsfunktion aktiviert, die Signatur zusätzlich beim Anbieter sperren lassen.\n4. Einen neuen Ausweis beantragen, wenn sie keinen gültigen Reisepass besitzt[[verlust-pa]]."
+        },
+        {
+          "q": "Bekommt sie noch am selben Tag einen Ersatz?",
+          "a": "Einen vorläufigen Personalausweis, ja: Er wird sofort ausgestellt, gilt drei Monate und kostet 11,50 Euro; dafür braucht sie ein zusätzliches biometrisches Passfoto. Der reguläre Ausweis dauert vier bis fünf Wochen[[verlust-pa]]."
+        },
+        {
+          "q": "Müssen wir intern etwas Besonderes beachten?",
+          "a": "Ja: Bei einer Verlustanzeige mit anschließender Neubeantragung am selben Tag gilt verbindlich das Vier-Augen-Prinzip. Eine zweite Sachbearbeiterin oder ein zweiter Sachbearbeiter prüft die Unterlagen unabhängig und bestätigt die Freigabe mit Kurzzeichen im Fachverfahren, bevor der Antrag weiterverarbeitet wird[[da-vier-augen]]."
+        }
+      ]
+    },
+    {
+      "title": "Vier-Augen-Prinzip: Anwendungsfälle",
+      "daysAgo": 36,
+      "time": "09:55",
+      "turns": [
+        {
+          "q": "In welchen Fällen gilt bei uns das Vier-Augen-Prinzip bei der Ausweisausstellung?",
+          "a": "Verbindlich in drei Fällen[[da-vier-augen]]:\n\n- bei Erstbeantragung ohne vorhandenes Altdokument,\n- bei Verlustanzeigen mit anschließender Neubeantragung am selben Tag,\n- bei jedem Verdachtsfall nach der Dienstanweisung zu gefälschten Ausweisdokumenten."
+        },
+        {
+          "q": "Ist das Teil der Einarbeitung neuer Kolleginnen und Kollegen?",
+          "a": "Ja. Die Onboarding-Folien nennen das Vier-Augen-Prinzip unter den wichtigen Dienstanweisungen, zusammen mit dem Vorgehen bei Verdacht auf gefälschte Dokumente und der Gebührenermäßigung wegen Bedürftigkeit[[schulung-onboarding]]."
+        }
+      ]
+    },
+    {
+      "title": "Verdacht auf gefälschten Pass",
+      "daysAgo": 3,
+      "time": "15:10",
+      "turns": [
+        {
+          "q": "Eine Sachbearbeiterin zweifelt an der Echtheit eines vorgelegten Passes. Wie ist das Vorgehen?",
+          "a": "Die Dienstanweisung sieht vier Schritte vor[[da-identitaet]]:\n\n1. Das Dokument einbehalten und den Vorgang unterbrechen, **ohne** die Person auf den konkreten Verdacht hinzuweisen.\n2. Die Sachgebietsleitung unverzüglich hinzuziehen (Vier-Augen-Prinzip).\n3. Bei erhärtetem Verdacht die Polizeiinspektion Rheinfurt über die interne Meldeleitstelle informieren und den Vorgang mit Aktenzeichen im Vorgangsprotokoll dokumentieren.\n4. Besteht kein hinreichender Verdacht, das Dokument zurückgeben und regulär weiterarbeiten."
+        },
+        {
+          "q": "Woran erkennt man solche Fälle typischerweise?",
+          "a": "Anzeichen sind eine abweichende Unterschrift gegenüber dem Altdokument, unplausible biografische Angaben, sichtbare Manipulation am Lichtbild oder Sicherheitspapier sowie Nervosität in Kombination mit fehlenden Zusatzdokumenten[[da-identitaet]]. Die Basisschulung nennt als Sicherheitsmerkmale Hologramm und Kippeffekt, die Lasergravur der biografischen Daten und Mikroschrift im Untergrund[[schulung-betrug]]."
+        },
+        {
+          "q": "Was muss dokumentiert werden?",
+          "a": "Jeder Vorgang nach dieser Dienstanweisung wird im Vorgangsprotokoll des Sachgebiets mit Datum, beteiligten Bediensteten und Ergebnis erfasst[[da-identitaet]]."
+        }
+      ]
+    },
+    {
+      "title": "Auskunftssperre bei häuslicher Gewalt",
+      "daysAgo": 2,
+      "time": "10:35",
+      "turns": [
+        {
+          "q": "Eine Frau aus dem Frauenhaus beantragt eine Auskunftssperre. Wie schnell muss das gehen?",
+          "a": "Anträge auf Auskunftssperre werden vorrangig bearbeitet und innerhalb von drei Werktagen im Melderegister vermerkt. Bei glaubhaft gemachter akuter Gefährdung – ausdrücklich genannt ist häusliche Gewalt – wird die Sperre vorläufig **noch am selben Tag** eingetragen; die Unterlagen werden nachgelagert abschließend geprüft[[da-auskunftssperre]]."
+        },
+        {
+          "q": "Welche Nachweise braucht sie, und wie lange gilt die Sperre?",
+          "a": "Die Gefährdung ist durch geeignete Unterlagen nachzuweisen oder glaubhaft zu machen, etwa durch Urteile oder Bestätigungen von Polizeibehörden, Opferschutzstellen oder Frauenhäusern. Die Sperre ist auf zwei Jahre befristet und kann auf Antrag mit erneutem Nachweis verlängert werden. Die Eintragung ist gebührenfrei[[auskunftssperre]]."
+        },
+        {
+          "q": "Wer darf später erfahren, dass eine Sperre besteht?",
+          "a": "Auskünfte über eine bestehende Auskunftssperre gehen ausschließlich an berechtigte Stellen nach § 51 BMG, und jede Anfrage wird protokolliert[[da-auskunftssperre]]."
+        }
+      ]
+    },
+    {
+      "title": "Melderegisterauskunft an ein Inkassobüro",
+      "daysAgo": 24,
+      "time": "14:00",
+      "turns": [
+        {
+          "q": "Ein Inkassobüro fragt die aktuelle Adresse einer Person an. Was dürfen wir herausgeben?",
+          "a": "Eine einfache Melderegisterauskunft umfasst Familienname, Vornamen, Doktorgrad und aktuelle Anschrift sowie gegebenenfalls den Hinweis, dass die Person verstorben ist. Voraussetzung ist, dass die Person zweifelsfrei identifiziert werden kann und der Antragsteller erklärt, die Daten nicht für Werbung oder Adresshandel zu verwenden[[mra]].\n\nVor der Auskunft muss geprüft werden, ob eine Auskunfts- oder Übermittlungssperre oder ein sonstiges Übermittlungsverbot vorliegt[[da-datenschutz]]."
+        },
+        {
+          "q": "Was kostet das?",
+          "a": "Eine einfache Auskunft kostet 11,50 Euro, bei aufwendiger Ermittlung in verfilmten Karteien 17,20 Euro; eine erweiterte Auskunft ebenfalls 17,20 Euro. Mit der Auskunft geht ein Gebührenbescheid hinaus[[mra]]. Die Satzung führt die einfache Auskunft mit 11,50 Euro[[vgs]]."
+        },
+        {
+          "q": "Wann geben wir eine erweiterte Auskunft?",
+          "a": "Nur bei Nachweis eines berechtigten Interesses – zum Beispiel für einen Gerichtsvollzieher – und nach Prüfung durch die Sachgebietsleitung[[da-datenschutz]]."
+        }
+      ]
+    },
+    {
+      "title": "Übermittlungssperre vor Wahlen",
+      "daysAgo": 41,
+      "time": "11:20",
+      "turns": [
+        {
+          "q": "Kann ein Bürger verhindern, dass seine Daten vor einer Wahl an Parteien gehen?",
+          "a": "Ja, mit einer Übermittlungssperre. Parteien und Wählergruppen dürfen in den sechs Monaten vor Wahlen einfache Auskünfte über nach Alter zusammengesetzte Gruppen von Wahlberechtigten erhalten – aber nur, wenn die Person nicht widersprochen hat. Die Sperre ist gebührenfrei und gilt, bis sie widerrufen wird[[uebermittlungssperre]]."
+        },
+        {
+          "q": "Welchen Übermittlungen kann man noch widersprechen?",
+          "a": "Außerdem[[uebermittlungssperre]]:\n\n- Übermittlungen an öffentlich-rechtliche Religionsgesellschaften über Familienangehörige eines Mitglieds (nicht für Zwecke der Kirchensteuer),\n- Auskünfte über Alters- und Ehejubiläen,\n- Auskünfte an Adressbuchverlage,\n- die jährliche Übermittlung zum 31. März an das Bundesamt für das Personalmanagement der Bundeswehr."
+        }
+      ]
+    },
+    {
+      "title": "Führungszeugnis für Übungsleiter",
+      "daysAgo": 15,
+      "time": "09:40",
+      "turns": [
+        {
+          "q": "Der Sportverein fragt, ob seine Übungsleiter das Führungszeugnis kostenlos bekommen.",
+          "a": "Ja, wenn sie ehrenamtlich und gemeinnützig tätig sind und keinerlei Aufwandsentschädigung erhalten. Das müssen sie mit einem Nachweis der Einrichtung belegen, ausgestellt auf ihren Namen und mit Stempel und Unterschrift[[fz-ehrenamt]]."
+        },
+        {
+          "q": "Brauchen sie ein erweitertes Führungszeugnis?",
+          "a": "Wer im Kinder- und Jugendbereich tätig ist – ausdrücklich genannt ist der Sportverein –, braucht ein erweitertes Führungszeugnis. Dafür ist eine schriftliche Aufforderung der Stelle vorzulegen, die es verlangt[[fz]][[fz-ehrenamt]]."
+        },
+        {
+          "q": "Wie lange dauert es?",
+          "a": "Im Regelfall zwei bis drei Wochen, ein Europäisches Führungszeugnis bis zu sechs Wochen. Ausgestellt wird es vom Bundesamt für Justiz, an das wir den Antrag weiterleiten[[fz]]."
+        }
+      ]
+    },
+    {
+      "title": "Führungszeugnis schriftlich beantragen",
+      "daysAgo": 47,
+      "time": "13:50",
+      "archived": true,
+      "turns": [
+        {
+          "q": "Wie kann jemand ein Führungszeugnis schriftlich beantragen?",
+          "a": "Der schriftliche Antrag muss Namen, Geburtsdatum und -ort, Staatsangehörigkeiten, die Rheinfurter Meldeanschrift, gegebenenfalls Behörde und Verwendungszweck sowie die eigenhändige, amtlich oder öffentlich beglaubigte Unterschrift enthalten. Die Gebühr von 15 Euro ist vorab zu überweisen; ohne Zahlungsnachweis wird der Antrag nicht bearbeitet[[fz]]."
+        },
+        {
+          "q": "Geht es auch online?",
+          "a": "Ja, direkt beim Bundesamt für Justiz – mit einem elektronischen Personalausweis, elektronischen Aufenthaltstitel mit freigeschalteter Online-Ausweisfunktion oder einer eID-Karte[[fz]]."
+        }
+      ]
+    },
+    {
+      "title": "Befreiung von der Ausweispflicht im Pflegeheim",
+      "daysAgo": 33,
+      "time": "10:25",
+      "turns": [
+        {
+          "q": "Ein Betreuer fragt, ob seine Mutter im Pflegeheim noch einen gültigen Ausweis braucht.",
+          "a": "Sie kann von der Ausweispflicht befreit werden, wenn sie voraussichtlich dauerhaft in einem Pflegeheim untergebracht ist oder sich wegen einer dauerhaften Behinderung nicht allein in der Öffentlichkeit bewegen kann; ebenso bei einer Betreuung mit Aufgabenkreis „Aufenthaltsbestimmung“ oder „alle Angelegenheiten“. Beantragen lässt sich die Befreiung erst, wenn die Ausweisdokumente abgelaufen sind. Sie ist gebührenfrei, die Bestätigung kommt in der Regel innerhalb von 14 Tagen per Post[[ausweispflicht]]."
+        },
+        {
+          "q": "Welche Unterlagen braucht er?",
+          "a": "Den Antrag (Formular oder formlos), einen Nachweis über Erkrankung, Behinderung oder Mobilitätseinschränkung – etwa ärztliches Attest, Bestätigung des Pflegeheims oder Nachweis des Pflegegrads – sowie Betreuerausweis und eigenes Ausweisdokument. Per Post genügen Kopien der Ausweisdokumente[[ausweispflicht]]."
+        },
+        {
+          "q": "Könnten wir alternativ einen Ausweisantrag vor Ort aufnehmen?",
+          "a": "Ja, im Ausnahmefall: Für besonders beeinträchtigte Personen nimmt eine Bedienstete oder ein Bediensteter den Antrag auf einen Personalausweis in der Wohnung entgegen[[pa]]. Für Pflegeeinrichtungen wurde dafür eigens der Bürgerkoffer angeschafft – ein mobiles Erfassungsgerät mit Fingerabdruckscanner und Signaturpad[[rat-buergerkoffer]]."
+        }
+      ]
+    },
+    {
+      "title": "Haushaltsbescheinigung für das Kindergeld",
+      "daysAgo": 50,
+      "time": "09:20",
+      "turns": [
+        {
+          "q": "Was kostet eine Haushaltsbescheinigung, und kann man sie schriftlich beantragen?",
+          "a": "Sie kostet 5,80 Euro. Beantragen lässt sie sich schriftlich per Post, Fax oder E-Mail oder persönlich mit Termin; bei schriftlichem Antrag ist die Gebühr vorab zu überweisen. Bei persönlicher Vorsprache wird sie sofort ausgestellt[[haushalt]]."
+        },
+        {
+          "q": "Und eine Meldebescheinigung?",
+          "a": "Ebenfalls 5,80 Euro je Bescheinigung; für Rentenzwecke ist sie gebührenfrei. Bei persönlicher Vorsprache gibt es sie sofort, schriftlich dauert es etwa drei Wochen. Aus Datenschutzgründen wird sie nur der antragstellenden Person persönlich ausgehändigt[[meldebescheinigung]]."
+        }
+      ]
+    },
+    {
+      "title": "Lebensbescheinigung für ausländische Rente",
+      "daysAgo": 43,
+      "time": "15:05",
+      "turns": [
+        {
+          "q": "Wer bestätigt bei uns Lebensbescheinigungen für ausländische Rententräger?",
+          "a": "Das Versicherungsamt Rheinfurt, nur nach vorheriger Terminvereinbarung. Mitzubringen sind ein gültiges Ausweisdokument und das Formular des ausländischen Rententrägers; die Bestätigung ist gebührenfrei[[lebensbescheinigung]]."
+        },
+        {
+          "q": "Und Unterschriftsbeglaubigungen für Rentenzwecke?",
+          "a": "Auch die nimmt das Versicherungsamt gebührenfrei vor[[begl-unterschrift]]."
+        }
+      ]
+    },
+    {
+      "title": "Kirchenaustritt: Wer ist zuständig?",
+      "daysAgo": 37,
+      "time": "14:30",
+      "turns": [
+        {
+          "q": "Kann man im Bürgerbüro aus der Kirche austreten?",
+          "a": "Nein, zuständig ist das Standesamt am Wohnort – für Rheinau, Westend, Nordheim, Südheim, Altfeld, Feldflur und Wiesengrund das Standesamt Rheinfurt-Rheinau, für alle anderen Stadtteile das Standesamt Rheinfurt. Die Vorsprache ist nur mit Termin möglich. Die Aufnahme der Erklärung kostet 28,70 Euro pro Person, eine Austrittsbescheinigung 11,50 Euro[[kirchenaustritt]]."
+        },
+        {
+          "q": "Reicht ein Brief an das Standesamt?",
+          "a": "Nein. Ein einfacher Brief oder eine E-Mail entspricht nicht der vorgeschriebenen Form. Schriftlich geht es nur mit notariell beglaubigter Unterschrift; die Urkunde muss dann an das zuständige Standesamt weitergeleitet werden[[kirchenaustritt]]."
+        }
+      ]
+    },
+    {
+      "title": "Namensänderung: Gebührenrahmen",
+      "daysAgo": 53,
+      "time": "10:50",
+      "archived": true,
+      "turns": [
+        {
+          "q": "Was kostet eine öffentlich-rechtliche Namensänderung?",
+          "a": "Die Änderung eines Familiennamens kostet 57,50 bis 1.725 Euro, die eines Vornamens 28,70 bis 575 Euro. In Rheinfurt liegt die Gebühr für den Familiennamen im Regelfall etwa in der Mitte, für den Vornamen in der oberen Rahmenhälfte. Die Gebührenschuld entsteht bereits mit Eingang des Antrags[[namensaenderung]]."
+        },
+        {
+          "q": "Und bei einer Namensänderung nach der Heirat?",
+          "a": "Dann gibt man beim Standesamt eine Namenserklärung ab: Die Beurkundung kostet 34,50 Euro, mehrere Erklärungen in einer Beurkundung 69 Euro, eine Bescheinigung über die Namensänderung 13,80 Euro[[name-heirat]]."
+        }
+      ]
+    },
+    {
+      "title": "Online-Ausweisfunktion nachträglich einschalten",
+      "daysAgo": 19,
+      "time": "12:05",
+      "turns": [
+        {
+          "q": "Was kostet es, die Online-Ausweisfunktion nachträglich einzuschalten?",
+          "a": "Nichts: Einschalten und Entsperren der Online-Ausweisfunktion sind ebenso gebührenfrei wie das Ändern oder Neusetzen der PIN. Mitzubringen ist nur der Personalausweis[[eid]]."
+        },
+        {
+          "q": "Kann die Bürgerin das auch ohne uns erledigen?",
+          "a": "Ja. Mit deutscher Meldeadresse kann sie die PIN selbst zurücksetzen und die Online-Ausweisfunktion selbst aktivieren. Den PIN-Rücksetzbrief schickt die Bundesdruckerei auf dem Postweg an die im Chip gespeicherte Meldeadresse[[pa]]."
+        }
+      ]
+    },
+    {
+      "title": "Adressaufkleber nach dem Umzug",
+      "daysAgo": 31,
+      "time": "08:45",
+      "turns": [
+        {
+          "q": "Muss bei einer Ummeldung auch der Ausweis geändert werden?",
+          "a": "Es wird empfohlen, die Adresse in allen Ausweisdokumenten zugleich mit der Anmeldung ändern zu lassen. Der Personalausweis bekommt einen Adressaufkleber auf der Rückseite, beim Ausweis im Scheckkartenformat wird zusätzlich der Chip aktualisiert; im Reisepass steht nur der Wohnort. Die Änderung erfolgt sofort und ist gebührenfrei[[anschrift]]."
+        },
+        {
+          "q": "Und wenn der Bürger auch ein Auto hat?",
+          "a": "Bei einem Umzug innerhalb Rheinfurts muss das Fahrzeug nicht umgeschrieben werden, aber die neue Adresse gehört in die Zulassungsbescheinigung Teil I[[kfz-adresse]]. Dafür bringt er Fahrzeugschein und Nachweis über die gültige Hauptuntersuchung mit; die Änderung kostet 13,80 Euro[[anmeldung]]."
+        }
+      ]
+    },
+    {
+      "title": "Sorgeerklärung vor der Geburt",
+      "daysAgo": 46,
+      "time": "11:35",
+      "turns": [
+        {
+          "q": "Können unverheiratete Eltern die Sorgeerklärung schon vor der Geburt abgeben?",
+          "a": "Ja, vor und nach der Geburt. Die Beurkundung erfolgt nur nach Terminvereinbarung und persönlich vor einer Urkundsperson; Gebühren fallen nicht an. Wichtig für die Beratung: Eine wirksame Sorgeerklärung ist unwiderruflich[[sorgeerklaerung]]."
+        },
+        {
+          "q": "Welche Unterlagen sind vor der Geburt nötig?",
+          "a": "Gültige Ausweise beider Eltern, eine Kopie der Vaterschaftsanerkennung mit Zustimmung der Mutter (falls schon beurkundet, sonst ist die Beurkundung gleichzeitig möglich), der Mutterpass oder eine ärztliche Bestätigung des Entbindungstermins sowie Familienstand und Kontaktdaten beider Eltern[[sorgeerklaerung]]."
+        }
+      ]
+    },
+    {
+      "title": "Wählbarkeitsbescheinigung für eine Kandidatur",
+      "daysAgo": 54,
+      "time": "16:40",
+      "turns": [
+        {
+          "q": "Ein Rheinfurter kandidiert in einer Nachbargemeinde. Braucht er von uns eine Wählbarkeitsbescheinigung?",
+          "a": "Ja: Wer in Rheinfurt den Hauptwohnsitz hat und außerhalb kandidiert, beantragt die Bescheinigung beim Wahlamt – formlos per Brief oder E-Mail mit Namen, Geburtsdatum, Anschrift und Art der Kandidatur. Sie kommt in der Regel nach einer Woche per Post und ist kostenfrei[[waehlbarkeit]]."
+        },
+        {
+          "q": "Und wer in Rheinfurt selbst kandidiert?",
+          "a": "Der muss nichts beantragen; das Wahlamt prüft die Wählbarkeit aller Kandidatinnen und Kandidaten in Rheinfurt automatisch[[waehlbarkeit]]."
+        }
+      ]
+    }
+  ]
+}

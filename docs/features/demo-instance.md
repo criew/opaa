@@ -12,7 +12,7 @@
 > „Öffentliche Demo" beschreibt den bisherigen Superhelden-Stand und wird durch dieses Konzept
 > abgelöst. Die praktische Anwenderdokumentation — Installation mit einem Befehl, Nutzerkonten,
 > öffentliche Instanz — steht in [`../../demo/README.md`](../../demo/README.md), das ausformulierte
-> Vorführ-Drehbuch mit acht Fragen und fünf Vorführschritten in
+> Vorführ-Drehbuch mit acht Fragen und sechs Vorführschritten in
 > [`../market/demo-drehbuch.md`](../market/demo-drehbuch.md); beide wiederholen dieses Konzept nicht.
 
 ## Motivation

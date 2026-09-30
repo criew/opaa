@@ -4,8 +4,9 @@
 Sets up a ready-to-use OPAA installation through the public API only (no direct database access,
 per the issue's "Technische Hinweise"): users (provisioned by their first authenticated request),
 spaces, knowledge libraries with their own source configuration (ADR-0018), VIEWER grants,
-space<->library associations (#706, pure curation), upload documents and the indexing run per
-library.
+space<->library associations (#706, pure curation), upload documents, the indexing run per
+library and, last, prepared chats with their sources (chats.py, #2071; the import route exists only
+while the backend runs with OPAA_DEMO_CHAT_IMPORT_ENABLED=true).
 
 Two data profiles (profiles.py), one mechanism:
 
@@ -23,10 +24,12 @@ import mimetypes
 import os
 import sys
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 
 import requests
 
+import chats
 from api_client import ApiError, Client
 from auth import AuthError, DevHeaderAuth, KeycloakPasswordAuth, LocalPasswordAuth
 from profiles import PROFILES, GroupDef, LibraryDef, Profile, SpaceDef, UserDef
@@ -839,29 +842,29 @@ def run(args: argparse.Namespace) -> None:
     print("Warte auf Backend/Keycloak …")
     wait_until_ready(admin_client, profile.auth_mode)
 
-    print("1/8 Nutzer bereitstellen (erste authentifizierte Anfrage je Nutzer) …")
+    print("1/9 Nutzer bereitstellen (erste authentifizierte Anfrage je Nutzer) …")
     user_ids = provision_users(clients, profile, bootstrap_admin)
 
     provider_id: str | None = None
     if profile.directory_sync is not None:
-        print("2/8 Identitätsanbieter: Verzeichnisabgleich einrichten und ausführen (ADR-0036) …")
+        print("2/9 Identitätsanbieter: Verzeichnisabgleich einrichten und ausführen (ADR-0036) …")
         provider_id = ensure_directory_sync(
             admin_client, profile.directory_sync, client_secret=args.directory_client_secret
         )
     else:
-        print("2/8 Identitätsanbieter: übersprungen (kein Verzeichnisabgleich im Profil) …")
+        print("2/9 Identitätsanbieter: übersprungen (kein Verzeichnisabgleich im Profil) …")
 
-    print("3/8 Spaces einrichten …")
+    print("3/9 Spaces einrichten …")
     space_ids: dict[str, str] = {}
     for space_def in profile.spaces:
         space_ids[space_def.name] = ensure_space(admin_client, clients, user_ids, space_def)
 
-    print("4/8 Wissensbibliotheken einrichten …")
+    print("4/9 Wissensbibliotheken einrichten …")
     library_ids: dict[str, str] = {}
     for library_def in profile.libraries:
         library_ids[library_def.name] = ensure_library(admin_client, library_def)
 
-    print("5/8 Leserechte (VIEWER) und Upload-Dokumente …")
+    print("5/9 Leserechte (VIEWER) und Upload-Dokumente …")
     for library_def in profile.libraries:
         library_id = library_ids[library_def.name]
         for viewer_key in library_def.viewer_keys:
@@ -880,7 +883,7 @@ def run(args: argparse.Namespace) -> None:
                 timeout_seconds=args.indexing_timeout_seconds,
             )
 
-    print("6/8 Gruppen einrichten und Rechte der Keycloak-Gruppen vergeben (ADR-0036) …")
+    print("6/9 Gruppen einrichten und Rechte der Keycloak-Gruppen vergeben (ADR-0036) …")
     space_owner_by_name = {space_def.name: space_def.owner_key for space_def in profile.spaces}
     for group_def in profile.groups:
         group_id = ensure_group(admin_client, user_ids, group_def)
@@ -910,7 +913,7 @@ def run(args: argparse.Namespace) -> None:
                 f"({role})"
             )
 
-    print("7/8 Space↔Bibliothek-Zuordnungen (Assoziation als Kuratierung, #706) …")
+    print("7/9 Space↔Bibliothek-Zuordnungen (Assoziation als Kuratierung, #706) …")
     for space_def in profile.spaces:
         for library_name in space_def.library_names:
             if library_name not in library_ids:
@@ -927,10 +930,10 @@ def run(args: argparse.Namespace) -> None:
             )
             print(f"  zugeordnet: {space_def.name} ← {library_name}")
 
-    print("7b/8 Prompt-Bibliotheken mit Prompts, Freigaben und Space-Zuordnung …")
+    print("7b/9 Prompt-Bibliotheken mit Prompts, Freigaben und Space-Zuordnung …")
     seed_prompt_libraries(clients, user_ids, space_ids, profile)
 
-    print("8/8 Indizierung je Bibliothek auslösen (ADR-0018) …")
+    print("8/9 Indizierung je Bibliothek auslösen (ADR-0018) …")
     for library_def in profile.libraries:
         if library_def.source_type == "UPLOAD":
             # UPLOAD has no run of its own (ADR-0018) - indexing happens per document on upload.
@@ -943,7 +946,46 @@ def run(args: argparse.Namespace) -> None:
             expected_documents=expected_document_count(library_def),
         )
 
+    print("9/9 Vorbereitete Chats einspielen (ohne Modellaufruf, #2071) …")
+    seed_chats(clients, admin_client, space_ids, library_ids, profile)
+
     print(f"Seed-Profil '{profile.name}' abgeschlossen.")
+
+
+def seed_chats(
+    clients: dict[str, Client],
+    admin_client: Client,
+    space_ids: dict[str, str],
+    library_ids: dict[str, str],
+    profile: Profile,
+) -> None:
+    """Imports each chat set of the profile into its space, through the owner's own session - the
+    import makes the caller the author. Sources resolve against the admin's document lists: the
+    admin owns every library, so every document is listed there."""
+    if not profile.chat_sets:
+        print("  übersprungen (keine vorbereiteten Chats im Profil)")
+        return
+    space_owner_by_name = {space_def.name: space_def.owner_key for space_def in profile.spaces}
+    now = datetime.now(timezone.utc)
+    for directory in profile.chat_sets:
+        chat_set = chats.load_chat_set(directory)
+        if space_owner_by_name.get(chat_set.space) != chat_set.owner_key:
+            raise SystemExit(
+                f"Chat-Satz {directory.name}: '{chat_set.owner_key}' ist nicht Eigentümerin bzw. "
+                f"Eigentümer des Space '{chat_set.space}'."
+            )
+        resolved = chats.resolve_documents(
+            chat_set,
+            library_ids,
+            lambda library_id: list(existing_documents(admin_client, library_id).values()),
+        )
+        imported, present = chats.seed_chat_set(
+            clients[chat_set.owner_key], space_ids[chat_set.space], chat_set, resolved, now
+        )
+        print(
+            f"  {chat_set.space}: {imported} Chat(s) eingespielt, {present} bereits vorhanden "
+            f"({len(chat_set.chats)} in {directory.name})"
+        )
 
 
 def parse_args(argv: list[str]) -> argparse.Namespace:

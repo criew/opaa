@@ -1,0 +1,262 @@
+{
+  "chats": [
+    {
+      "title": "Gebühr Personalausweis nach Alter",
+      "daysAgo": 3,
+      "time": "08:20",
+      "turns": [
+        {
+          "q": "Welche Gebühr erheben wir für einen Personalausweis, und hängt sie vom Alter ab?",
+          "a": "Ja, die Gebühr richtet sich nach dem Alter der antragstellenden Person. Das Gebührenverzeichnis der Verwaltungsgebührensatzung (Anlage zu § 2) sieht vor[[vgs]]:\n\n- **unter 24 Jahren:** 26,20 Euro\n- **ab 24 Jahren:** 42,60 Euro\n- **vorläufiger Personalausweis:** 11,50 Euro\n\nDie Leistungsbeschreibung nennt dieselben Beträge und ergänzt, dass das Einschalten der Online-Ausweisfunktion und das Neusetzen der PIN gebührenfrei sind[[pa]]."
+        },
+        {
+          "q": "Warum ist der Ausweis für Jüngere günstiger?",
+          "a": "Einen Grund für die Staffelung nennen die Unterlagen nicht. Sie fällt aber mit der Gültigkeitsdauer zusammen: Ein Personalausweis gilt für Personen unter 24 Jahren 6 Jahre, für Personen über 24 Jahren 10 Jahre, ein vorläufiger Ausweis höchstens 3 Monate. Eine Verlängerung ist in keinem der drei Fälle möglich[[pa]]."
+        },
+        {
+          "q": "Mit welchem Buchungsschlüssel erfasst die Kasse die drei Fälle?",
+          "a": "Laut Gebührenübersicht des Bürgerbüros 2026[[gebuebersicht]]:\n\n| Tarifstelle | Gebührentatbestand | Gebühr | Buchungsschlüssel |\n|---|---|---|---|\n| 1.1 | Personalausweis (unter 24 Jahren) | 26,20 Euro | BB-3211 |\n| 1.2 | Personalausweis (ab 24 Jahren) | 42,60 Euro | BB-3212 |\n| 1.3 | Vorläufiger Personalausweis | 11,50 Euro | BB-3213 |\n\nDie Übersicht weist ausdrücklich darauf hin, dass allein die Satzung maßgeblich ist; die Tarifstelle ist nur eine Ordnungsnummer für Aushang und Kassenbeleg.",
+          "also": ["vgs"]
+        }
+      ]
+    },
+    {
+      "title": "Gebührenübersicht 2026 für den Aushang",
+      "daysAgo": 34,
+      "time": "09:05",
+      "pinned": true,
+      "turns": [
+        {
+          "q": "Stell mir bitte alle Gebühren aus der Verwaltungsgebührensatzung für einen Aushang am Empfang zusammen.",
+          "a": "Das Gebührenverzeichnis der Verwaltungsgebührensatzung (Anlage zu § 2) enthält neun Tatbestände[[vgs]]:\n\n| Leistung | Gebühr |\n|---|---|\n| Personalausweis (unter 24 Jahren) | 26,20 Euro |\n| Personalausweis (ab 24 Jahren) | 42,60 Euro |\n| Vorläufiger Personalausweis | 11,50 Euro |\n| Reisepass (regulär, 32 Seiten) | 69 Euro |\n| Führungszeugnis | 15 Euro |\n| Beglaubigung je Unterschrift | 23 Euro |\n| Melderegisterauskunft, einfach | 11,50 Euro |\n| Anmeldung/Ummeldung des Wohnsitzes | gebührenfrei |\n| Reservierung Wunschkennzeichen | 14,70 Euro |\n\nFür einen Aushang empfiehlt sich der Zusatz, dass auf schriftlichen Antrag eine Ermäßigung oder Befreiung wegen Bedürftigkeit möglich ist (§ 3 VGS)[[vgs]]."
+        },
+        {
+          "q": "Welche davon bucht die Kasse nicht?",
+          "a": "Nur die Anmeldung bzw. Ummeldung des Wohnsitzes: Sie ist gebührenfrei und steht in der Übersicht mit dem Vermerk „keine Buchung“. Gebührenfreie Amtshandlungen werden grundsätzlich nicht gebucht[[gebuebersicht]]."
+        },
+        {
+          "q": "Ab wann gilt die Übersicht, und von wem stammt sie?",
+          "a": "Die Übersicht gilt ab dem 1. Januar 2026; ihr Stand ist der 5. Januar 2026, erstellt von der Kasse des Bürgerbüros Rheinfurt[[gebuebersicht]]. Die Verwaltungsgebührensatzung selbst tritt ebenfalls am 1. Januar 2026 in Kraft[[vgs]]."
+        }
+      ]
+    },
+    {
+      "title": "Gebührenbefreiung bei Bürgergeld",
+      "daysAgo": 12,
+      "time": "10:40",
+      "turns": [
+        {
+          "q": "Eine Bürgerin bezieht Bürgergeld und kann die Gebühr für ihren Personalausweis nicht bezahlen. Was sieht die Satzung vor?",
+          "a": "Nach § 3 der Verwaltungsgebührensatzung kann die Gebühr auf **schriftlichen Antrag** ganz oder teilweise erlassen werden, wenn die Einziehung eine unbillige Härte bedeuten würde. Als Nachweis genügt in der Regel ein aktueller Bescheid über Bürgergeld, Grundsicherung im Alter oder bei Erwerbsminderung, Wohngeld oder Leistungen nach dem Asylbewerberleistungsgesetz[[vgs]].\n\nÜber den Antrag entscheidet die Leitung des zuständigen Sachgebiets; die Entscheidung ist aktenkundig zu machen und der Antragstellerin schriftlich mitzuteilen[[vgs]]."
+        },
+        {
+          "q": "Wie läuft das intern am Schalter ab?",
+          "a": "Die Dienstanweisung zur Gebührenbefreiung regelt vier Schritte[[da-gebuehrenbefreiung]]:\n\n1. Die Bürgerin legt den formlosen schriftlichen Antrag zusammen mit dem Nachweis vor. Der Bescheid darf bei Antragstellung nicht älter als drei Monate sein.\n2. Die Sachbearbeitung prüft die Vollständigkeit und leitet den Vorgang zur Entscheidung an die Sachgebietsleitung weiter.\n3. Der Personalausweis wird bis zur Entscheidung bereits beantragt; der Gebührenbescheid ergeht gesondert.\n4. Die Entscheidung wird schriftlich mitgeteilt und im Vorgang dokumentiert."
+        },
+        {
+          "q": "Könnten wir die Gebühr stattdessen einfach stunden?",
+          "a": "Nein. Eine Stundung ist nicht vorgesehen; bei Bedürftigkeit gilt stattdessen § 3 VGS in Verbindung mit der Dienstanweisung[[faq-ausweis]]. Die Kasse bucht in diesem Fall erst, wenn die Sachgebietsleitung entschieden hat[[gebuebersicht]]."
+        }
+      ]
+    },
+    {
+      "title": "Gebührenbefreiung auch für Kfz-Angelegenheiten?",
+      "daysAgo": 11,
+      "time": "14:15",
+      "turns": [
+        {
+          "q": "Gilt die Befreiung wegen Bedürftigkeit auch für Kfz-Angelegenheiten?",
+          "a": "Ja. Die Dienstanweisung stellt klar, dass § 3 VGS für Kfz-Angelegenheiten entsprechend gilt; eine gesonderte Dienstanweisung für die Kfz-Zulassung gibt es dazu nicht[[da-gebuehrenbefreiung]]. Die Verwaltungsgebührensatzung gilt nach § 1 ausdrücklich auch für die Kfz-Zulassungsbehörde der Stadt Rheinfurt[[vgs]]."
+        },
+        {
+          "q": "Enthält die Gebührenordnung der Kfz-Zulassungsbehörde eine eigene Befreiungsregel?",
+          "a": "Nein. Die Kfz-Gebührenordnung regelt nur Geltungsbereich, Regelungsgegenstand, Ordnungswidrigkeiten und Inkrafttreten sowie das Gebührenverzeichnis[[kfzgebo]]. Ob § 3 VGS auch die Beträge dieser Gebührenordnung erfasst, sagen die Unterlagen nicht ausdrücklich – die Dienstanweisung spricht allgemein von Kfz-Angelegenheiten[[da-gebuehrenbefreiung]]. Im Zweifel sollte die Sachgebietsleitung Kfz-Zulassung das vor der ersten Entscheidung klären."
+        }
+      ]
+    },
+    {
+      "title": "Kfz-Gebührenordnung im Überblick",
+      "daysAgo": 27,
+      "time": "08:50",
+      "turns": [
+        {
+          "q": "Welche Gebühren stehen in der Gebührenordnung der Kfz-Zulassungsbehörde?",
+          "a": "Das Gebührenverzeichnis der Kfz-Gebührenordnung nennt fünf Beträge[[kfzgebo]]:\n\n- Neuzulassung eines Fahrzeugs: 30,90 Euro\n- Ummeldung innerhalb Rheinfurts: 22,10 Euro\n- Wunschkennzeichen, Reservierung: 14,70 Euro\n- Wechselkennzeichen, Ausgabe: 22 Euro\n- Kurzzeitkennzeichen: 15,10 Euro"
+        },
+        {
+          "q": "Warum steht das Wunschkennzeichen auch in der Verwaltungsgebührensatzung?",
+          "a": "Die Verwaltungsgebührensatzung gilt nach § 1 auch für die Kfz-Zulassungsbehörde und führt die Reservierung eines Wunschkennzeichens mit 14,70 Euro[[vgs]]; die Kfz-Gebührenordnung nennt denselben Betrag[[kfzgebo]]. Widersprüchlich sind die beiden Stellen also nicht. In der Gebührenübersicht der Kasse steht der Tatbestand als Tarifstelle 4.1 mit dem Buchungsschlüssel BB-3311[[gebuebersicht]]."
+        },
+        {
+          "q": "Gibt es bei der Online-Reservierung nicht einen günstigeren Betrag?",
+          "a": "Ja, laut Leistungsbeschreibung kostet die Reservierung 11,70 Euro statt 14,70 Euro, wenn das Fahrzeug am Tag der Online-Reservierung zugelassen wird[[wunschkennzeichen]]. Diesen ermäßigten Betrag nennen weder die Verwaltungsgebührensatzung noch die Kfz-Gebührenordnung.",
+          "also": ["kfzgebo"]
+        }
+      ]
+    },
+    {
+      "title": "Hundesteuer für einen Zweithund",
+      "daysAgo": 44,
+      "time": "11:10",
+      "turns": [
+        {
+          "q": "Ein Bürger fragt am Empfang, was die Hundesteuer für einen zweiten Hund kostet.",
+          "a": "Nach der Hundesteuersatzung gelten je Jahr[[hundesteuer]]:\n\n- erster Hund: 84 Euro\n- jeder weitere Hund: 156 Euro\n- gefährlicher Hund im Sinne § 4: 612 Euro\n\nFür den zweiten Hund fallen also 156 Euro im Jahr an."
+        },
+        {
+          "q": "Gibt es Befreiungen?",
+          "a": "Ja. Von der Steuer befreit sind unter anderem Assistenzhunde, Diensthunde und Hunde aus dem städtischen Tierheim im ersten Jahr nach der Vermittlung[[hundesteuer]]."
+        }
+      ]
+    },
+    {
+      "title": "Friedhof: Ruhezeiten und Nutzungsrecht",
+      "daysAgo": 39,
+      "time": "15:30",
+      "turns": [
+        {
+          "q": "Welche Ruhezeiten gelten auf den städtischen Friedhöfen?",
+          "a": "Die Ruhezeit beträgt für Erdbestattungen 25 Jahre und für Urnenbeisetzungen 20 Jahre[[friedhof]]."
+        },
+        {
+          "q": "Was kostet das Grabnutzungsrecht?",
+          "a": "Laut Gebührenverzeichnis der Friedhofssatzung[[friedhof]]:\n\n- Erdgrab (25 Jahre): 1.240 Euro\n- Urnengrab (20 Jahre): 610 Euro\n- Verlängerung des Nutzungsrechts: 42 Euro je Jahr"
+        },
+        {
+          "q": "Und wie kommen Angehörige an die Sterbeurkunde?",
+          "a": "Den Sterbefall zeigt in der Regel das beauftragte Bestattungsunternehmen beim Standesamt an; nach der Beurkundung erhalten die Angehörigen die bestellten Urkunden über das Bestattungsunternehmen. Für Krankenkasse und Rentenzwecke gibt es je eine gebührenfreie Urkunde, Sterbeurkunden für den privaten Gebrauch kosten 13,80 Euro[[sterbe]]."
+        }
+      ]
+    },
+    {
+      "title": "Winterdienst der Anlieger",
+      "daysAgo": 22,
+      "time": "09:30",
+      "turns": [
+        {
+          "q": "Zu welchen Zeiten müssen Anlieger im Winter die Gehwege räumen?",
+          "a": "Der Winterdienst auf Gehwegen obliegt den Anliegerinnen und Anliegern werktags von 7:00 bis 20:00 Uhr sowie sonn- und feiertags von 9:00 bis 20:00 Uhr[[strassenreinigung]]."
+        },
+        {
+          "q": "Was kostet die Straßenreinigung für ein Grundstück?",
+          "a": "Die Straßenreinigungsgebühr beträgt 4,60 Euro je laufendem Meter Grundstücksfront und Jahr[[strassenreinigung]]. Bei 20 Metern Front wären das zum Beispiel 92 Euro im Jahr."
+        }
+      ]
+    },
+    {
+      "title": "Wochenmarkt: Termine und Standgebühr",
+      "daysAgo": 48,
+      "time": "13:05",
+      "turns": [
+        {
+          "q": "Wann findet der Wochenmarkt statt, und was kostet ein Stand?",
+          "a": "Der Wochenmarkt findet dienstags und freitags von 7:00 bis 13:00 Uhr auf dem Rathausplatz statt. Die Standgebühr beträgt 2,30 Euro je laufendem Meter und Markttag; die Standplätze weist das städtische Marktamt auf Antrag zu[[markt]]."
+        },
+        {
+          "q": "Braucht ein Marktbeschicker zusätzlich eine Sondernutzungserlaubnis?",
+          "a": "Das lässt sich aus den Satzungen nicht eindeutig ablesen. Der Standplatz auf dem Wochenmarkt wird nach der Marktsatzung zugewiesen[[markt]]. Die Sondernutzungssatzung regelt dagegen die Nutzung öffentlicher Straßen, Wege und Plätze etwa durch Freischankflächen oder Warenauslagen, die das Ordnungsamt vorher erlauben muss[[sondernutzung]]. Ob beides nebeneinander gilt, sollte das Marktamt beantworten."
+        }
+      ]
+    },
+    {
+      "title": "Zweitwohnungsteuer und Abmeldung",
+      "daysAgo": 30,
+      "time": "10:00",
+      "turns": [
+        {
+          "q": "Wie hoch ist die Zweitwohnungsteuer in Rheinfurt?",
+          "a": "Der Steuersatz beträgt 12 Prozent der jährlichen Nettokaltmiete[[zweitwohnung]]."
+        },
+        {
+          "q": "Gibt es eine Ausnahme für Berufspendler?",
+          "a": "Ja, befreit sind unter anderem Zweitwohnungen, die aus zwingenden beruflichen Gründen gehalten werden – allerdings nur während einer Übergangszeit von einem Jahr[[zweitwohnung]]."
+        },
+        {
+          "q": "Muss das Meldewesen jemanden informieren, wenn eine Zweitwohnung abgemeldet wird?",
+          "a": "Nein, das geschieht automatisch: Wird eine Zweitwohnung in Rheinfurt abgemeldet, erhält das Kassen- und Steueramt automatisch eine Mitteilung[[abmeldung]]."
+        }
+      ]
+    },
+    {
+      "title": "Fundsachen am Schalter",
+      "daysAgo": 18,
+      "time": "16:20",
+      "turns": [
+        {
+          "q": "Eine Kollegin hat am Meldewesen-Schalter eine Geldbörse angenommen. Wie gehen wir vor?",
+          "a": "Fundsachen, die am Meldewesen-Schalter abgegeben werden, erhalten einen Fundzettel und werden noch am selben Tag an das städtische Fundbüro weitergeleitet[[faq-fundsachen]]."
+        },
+        {
+          "q": "Wie lange wird verwahrt, und was zahlt der Eigentümer?",
+          "a": "Das Fundbüro verwahrt Fundsachen sechs Monate; danach kann die Stadt Rheinfurt sie verwerten oder versteigern[[fundsatzung]]. Bis zu einem Warenwert von 50 Euro ist die Verwahrung gebührenfrei, darüber fallen 3,50 Euro je angefangenem Monat an[[fundsatzung]]."
+        }
+      ]
+    },
+    {
+      "title": "Trauung im Standesamt",
+      "daysAgo": 25,
+      "time": "11:45",
+      "turns": [
+        {
+          "q": "Was kostet eine Trauung im Standesamt?",
+          "a": "Die Personenstandsgebührensatzung sieht für eine Eheschließung im Standesamt (Regeltermin) 57,50 Euro vor; jede weitere Ausfertigung der Eheurkunde kostet 12 Euro[[pstgeb]]."
+        },
+        {
+          "q": "Gibt es inzwischen auch Samstagstermine?",
+          "a": "Ja. Seit April 2026 bietet das Standesamt an jedem ersten Samstag im Monat Trautermine im historischen Rathaussaal an; die Termine vergibt wie gewohnt das Standesamt[[pm-standesamt-samstage]]."
+        },
+        {
+          "q": "Muss das Meldewesen nach der Trauung etwas veranlassen?",
+          "a": "Nein. Das Standesamt informiert die Meldebehörde automatisch über das Fachverfahren; eine gesonderte Meldung durch das Meldewesen ist nicht erforderlich[[faq-standesamt]]."
+        }
+      ]
+    },
+    {
+      "title": "Anwohnerparkausweis zum Stadtfest",
+      "daysAgo": 52,
+      "time": "08:35",
+      "archived": true,
+      "turns": [
+        {
+          "q": "Was kostet ein Anwohnerparkausweis, und wer bekommt einen?",
+          "a": "Der Anwohnerparkausweis kostet 30,70 Euro im Jahr. Anspruch haben Personen mit Hauptwohnsitz und Fahrzeughalterschaft innerhalb der jeweiligen Bewohnerparkzone[[anwohnerpark]]."
+        },
+        {
+          "q": "Gab es für die Anwohner beim Stadtfest besondere Hinweise?",
+          "a": "Ja. Anwohnerinnen und Anwohner der Innenstadt wurden gebeten, ihre Fahrzeuge während der Festtage außerhalb der gesperrten Bereiche zu parken; ab dem Festplatz Nord fuhr ein kostenloser Pendelbus[[pm-stadtfest-programm]]."
+        }
+      ]
+    },
+    {
+      "title": "Sperrzeit beim Stadtfest",
+      "daysAgo": 55,
+      "time": "14:50",
+      "archived": true,
+      "turns": [
+        {
+          "q": "Welche Sperrzeit gilt für Gaststätten, und kann sie zum Stadtfest aufgehoben werden?",
+          "a": "Die allgemeine Sperrzeit beginnt um 5:00 Uhr und endet um 6:00 Uhr. Für Veranstaltungen von besonderem öffentlichen Interesse wie das Stadtfest kann das Ordnungsamt die Sperrzeit auf Antrag verkürzen oder aufheben[[sperrzeit]]."
+        },
+        {
+          "q": "Wann war das Stadtfest dieses Jahr?",
+          "a": "Vom 19. bis 21. Juni 2026 rund um den Rathausplatz und die Rheinpromenade – mit drei Bühnen entlang der Rheinpromenade, einem Kinderprogramm auf dem Domplatz und einem Kunsthandwerkermarkt in der Marktstraße. Der Eintritt war frei[[pm-stadtfest-programm]]."
+        }
+      ]
+    },
+    {
+      "title": "Beglaubigungen: Gebühren und Grenzen",
+      "daysAgo": 16,
+      "time": "13:25",
+      "turns": [
+        {
+          "q": "Was kostet bei uns eine Unterschriftsbeglaubigung und was die Beglaubigung eines Dokuments?",
+          "a": "- **Unterschrift oder Handzeichen:** 23 Euro[[vgs]]; für Firmen- und Vereinsvertreter 57,50 Euro[[begl-unterschrift]]\n- **Dokument bis 6 Seiten:** 5,80 Euro je Dokument; bei mehr Seiten wird die Gebühr bei der Vorsprache berechnet[[begl-dokumente]]\n- **zur Vorlage bei einem Sozialversicherungsträger** (etwa für Rentenzwecke): gebührenfrei[[begl-dokumente]]"
+        },
+        {
+          "q": "Dürfen wir auch Unterlagen für eine ausländische Behörde beglaubigen?",
+          "a": "In der Regel nicht:\n\n- Unterschriftsbeglaubigungen zur Vorlage bei einer ausländischen Behörde sind den Notariaten vorbehalten[[begl-unterschrift]].\n- Dokumente beglaubigen wir nur, wenn sie von einer deutschen Behörde ausgestellt wurden oder bei einer deutschen Behörde vorgelegt werden müssen. Fremdsprachige Dokumente ohne deutsche Übersetzung sowie Geburts-, Heirats- und Sterbeurkunden sind ausgeschlossen[[begl-dokumente]]."
+        }
+      ]
+    }
+  ]
+}

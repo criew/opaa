@@ -1,6 +1,6 @@
 # Demo-Drehbuch „Stadt Rheinfurt"
 
-Acht vorbereitete Fragen und fünf Vorführschritte für die Demo-Instanz „Stadt Rheinfurt" (Epic #708,
+Acht vorbereitete Fragen und sechs Vorführschritte für die Demo-Instanz „Stadt Rheinfurt" (Epic #708,
 Epic #2012). Dieses Dokument ist Überzeugungsmaterial und leitet sich wie jedes andere
 Marketing-Asset aus [`MESSAGING.md`](./MESSAGING.md) ab. Der stärkste Vorführ-Moment ist die dort
 zentrale Botschaft **Belegbarkeit**, live erlebbar: Zwei Nutzer stellen dieselbe Frage und bekommen
@@ -246,7 +246,7 @@ diesen Fall nicht von selbst. Bleibt offen für eine spätere, gezielt konstruie
 
 ---
 
-## Vorführschritte zu Gruppen, Prompts, Ordnern und Fachformaten
+## Vorführschritte zu Gruppen, Prompts, Ordnern, Fachformaten und Chats
 
 Die Schritte A und B ändern Rechte. Beide enden deshalb mit dem Zurücksetzen. Ohne es fehlt danach:
 
@@ -430,12 +430,47 @@ Drei Fragen, die sich nur aus einem Nicht-Text-Format beantworten lassen (#2028)
 - **Zeigt:** Tabellen, Mails und ihre Anhänge sind für Suche und Beleg gewöhnliche Dokumente. Das
   Format entscheidet nicht darüber, ob eine Antwort belegt ist.
 
+### F. Viele Chats: Chatliste, Suche, Archiv und ein langer Verlauf
+
+- **Konto und Space:** `andrea.vogt` im Space „Amtsleitung Bürgerbüro"
+- **Ausgangslage:** Der Seed hat dort 81 vorbereitete Chats eingespielt, verteilt über die acht
+  Wochen vor dem Seed-Lauf (#2071, [`../../demo/README.md`](../../demo/README.md), Abschnitt
+  „Vorbereitete Chats"). Fünf sind angeheftet, elf archiviert; „Jahresbericht Bürgerbüro 2026
+  vorbereiten" hat 32 Runden. Alle Antworten sind belegt – aus Satzungen, Leistungsbeschreibungen,
+  internen Dienstanweisungen, Pressemitteilungen und Ratsinformationen.
+- **Klickweg, Chatliste:**
+  1. „Spaces" → „Amtsleitung Bürgerbüro". Die Seitenleiste zeigt oben die Gruppe „Angeheftet" mit
+     fünf Chats, darunter die übrigen aktiven Chats, zuletzt verwendete zuerst.
+  2. Einen Chat öffnen, etwa „Auskunftssperre bei häuslicher Gewalt": Die Antworten tragen Fußnoten,
+     „Belege anzeigen" öffnet die zitierten Dokumente mit Dateiname und Bibliothek.
+  3. Über „Aktionen für Chat …" einen Chat anheften oder lösen und einen anderen archivieren.
+- **Klickweg, Suche und Archiv:**
+  1. In der Seitenleiste auf „Chats durchsuchen" klicken. Die Seite „Chats in „Amtsleitung
+     Bürgerbüro“" zeigt die Reiter „Aktiv (70)" und „Archiv (11)".
+  2. Im Suchfeld „Auskunftssperre" eingeben. Die Treffer kommen aus Titeln, Fragen und Antworten,
+     darunter auch „Amtshilfeersuchen anderer Meldebehörden" aus dem Archiv.
+  3. Reiter „Archiv": die elf archivierten Chats mit „Archiviert am".
+- **Klickweg, langer Verlauf:** „Jahresbericht Bürgerbüro 2026 vorbereiten" (angeheftet) öffnen und
+  durch die 32 Runden scrollen – vom Überblick über die Ratsbeschlüsse bis zur Gliederung und den
+  Lücken des Berichts. Bei einer Antwort mit Tabelle, etwa den Kennzahlen, „Antwort kopieren"
+  zeigen.
+- **Hinweis:** Die eingespielten Chats haben keine Gesprächsnotiz; sie entsteht erst, wenn im Chat
+  eine neue Frage gestellt wird. Eine neue Frage ist mit dem Modell der Instanz jederzeit möglich
+  und reiht den Chat in der Liste nach oben.
+- **Zurücksetzen:** nicht nötig. Anheften und Archivieren sind persönliche Markierungen Andreas;
+  ein erneuter Seed stellt die Markierungen wieder her, die er selbst gesetzt hat, und legt keine
+  Chats doppelt an.
+- **Zeigt:** Auch nach Wochen mit vielen Gesprächen bleibt die eigene Chatablage beherrschbar:
+  Anheften, Archiv und Volltextsuche über Titel, Fragen und Antworten. Chats bleiben privat – kein
+  anderes Konto sieht Andreas Chats, auch nicht die Systemverwaltung.
+
 ---
 
 ## Zugehörige Dokumentation
 
 - [`../../demo/README.md`](../../demo/README.md) — Installation mit einem Befehl, Nutzerkonten mit
-  Passwörtern, Gruppen und Prompt-Bibliotheken der Demo, öffentliche Instanz, Korpus-Aktualisierung
+  Passwörtern, Gruppen, Prompt-Bibliotheken und vorbereitete Chats der Demo, öffentliche Instanz,
+  Korpus-Aktualisierung
 - [`../features/demo-instance.md`](../features/demo-instance.md) — Konzept: Behördenlandschaft,
   Bibliotheken, Formate, Quellen und Lizenzen, Rechtemodell mit internen und Keycloak-Gruppen
 - [`../handbuch/deployment.md`](../handbuch/deployment.md), Abschnitt „Härtung für erreichbare
