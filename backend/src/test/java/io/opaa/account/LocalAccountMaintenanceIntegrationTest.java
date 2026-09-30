@@ -188,7 +188,7 @@ class LocalAccountMaintenanceIntegrationTest {
   @Test
   void remindsThePersonAndTheAdministratorsFourteenDaysBeforeAnExpiryExactlyOnce()
       throws Exception {
-    Instant now = Instant.now();
+    Instant now = referenceDayAwayFromQuarterStart();
     LocalAccount soon = fixtures.activeUser("bald-" + UUID.randomUUID() + "@stadt.example");
     LocalAccount later = fixtures.activeUser("spaeter-" + UUID.randomUUID() + "@stadt.example");
     LocalAccount unlimited =
@@ -278,6 +278,23 @@ class LocalAccountMaintenanceIntegrationTest {
         .doesNotContain(limited.email())
         .doesNotContain(one.id().toString())
         .doesNotContain(two.id().toString());
+  }
+
+  /**
+   * A reference instant on which neither that day nor the next one starts a quarter. The reminder
+   * test runs a second time on the next day to prove no second reminder goes out; on the first day
+   * of a quarter the administrators additionally get the quarterly overview, which would count as
+   * one.
+   */
+  private static Instant referenceDayAwayFromQuarterStart() {
+    ZoneId zone = ZoneId.systemDefault();
+    Instant candidate = Instant.now();
+    while (AdminReviewReminderStep.isQuarterStart(LocalDate.ofInstant(candidate, zone))
+        || AdminReviewReminderStep.isQuarterStart(
+            LocalDate.ofInstant(candidate.plus(Duration.ofDays(1)), zone))) {
+      candidate = candidate.plus(Duration.ofDays(1));
+    }
+    return candidate;
   }
 
   private User localAdmin(UUID organizationId) {
