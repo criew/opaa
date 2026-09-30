@@ -347,12 +347,13 @@ describe('SearchIndexingAdminPage', () => {
       }),
     )
 
-    await waitFor(() => {
-      expect(screen.getByText('11 / 11 aktuell')).toBeInTheDocument()
-    })
     // Two batch calls (the second reported done), and the status was re-read after each of them.
-    expect(batchCalls).toEqual([50, 50])
-    expect(statusLoads).toBeGreaterThanOrEqual(3)
+    // The count already reads "11 / 11" after the first batch, so the wait is on the calls.
+    await waitFor(() => {
+      expect(batchCalls).toEqual([50, 50])
+      expect(statusLoads).toBeGreaterThanOrEqual(3)
+    })
+    expect(screen.getByText('11 / 11 aktuell')).toBeInTheDocument()
     expect(
       screen.queryByRole('button', { name: /^Kernfelder nachrüsten: Satzungen/ }),
     ).not.toBeInTheDocument()

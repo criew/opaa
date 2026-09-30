@@ -914,12 +914,16 @@ describe('authStore', () => {
       }
     })
 
-    it('explains an unknown_issuer expiry differently from an expired token', () => {
+    it('explains an unknown_issuer expiry differently from an expired token', async () => {
       useAuthStore.setState({ mode: 'oidc', isAuthenticated: true, token: 't' })
 
       useAuthStore.getState().expireSession('unknown_issuer')
 
       expect(useAuthStore.getState().error).toMatch(/nicht mehr zugelassen/)
+      // The provider list reloads in the background; it must finish in this test, not set its
+      // error into the next one.
+      await vi.waitFor(() => expect(useAuthStore.getState().isLoading).toBe(false))
+      await vi.waitFor(() => expect(useAuthStore.getState().error).toMatch(/nicht mehr zugelassen/))
     })
   })
 
