@@ -1,0 +1,452 @@
+{
+  "repo": "criew/opaa",
+  "date": "2026-09-29",
+  "generated_at": "2026-09-30T07:48:37.051940+02:00",
+  "timezone": "Europe/Berlin",
+  "timezone_fallback": false,
+  "window_start": "2026-09-29T00:00:00+02:00",
+  "window_end": "2026-09-29T23:59:59+02:00",
+  "closed_issues": [
+    {
+      "number": 2064,
+      "title": "feat(chat): Chat-Tabelle an die Admin-Tabellen angleichen, mit einheitlichem Paging",
+      "url": "https://github.com/criew/opaa/issues/2064",
+      "author": "bigpuritz",
+      "labels": [
+        "enhancement",
+        "frontend",
+        "size:M"
+      ],
+      "body": "## Ziel\n\nDie Tabelle auf der Seite „Chats in „<Space>““ soll aussehen und sich bedienen lassen wie die Tabellen im Adminbereich „Benutzer“ und „Gruppen“. Dazu kommt ein einheitliches Paging.\n\n## Ist-Stand\n\n- Eigene MUI-Tabelle (`ChatsPage.tsx`), nicht über die Bausteine der Admin-Listen (`components/admin/list/`: `adminTableSx`, `ListPager`, `ListLoading`, `ListEmptyState`).\n- Titel als blaue Links. Kein Zeilenmenü. Dauerhaft sichtbare Leiste „Alle auf dieser Seite auswählen / Archivieren / Löschen“ mit ausgegrauten Knöpfen.\n- Paging über MUI-`TablePagination` („1–50 von 77“), in der aktiven Liste erst ab 50 Chats. Die Admin-Listen zeigen dagegen „n Gruppen · Seite x von y ‹ ›“ mit 25 pro Seite.\n- Laden als Spinner statt Skeleton-Zeilen (Leitfaden 5.7).\n\n## Soll\n\n- Tabellenstil der Admin-Listen: Kopfzeile im Eyebrow-Muster, Zeilen durch Linien getrennt, Titel in Navy mit Nebenzeile. Unterhalb der Tablet-Breite Kartenliste (Leitfaden 5.3).\n- Zeilenmenü (⋮) wie im Admin: Anheften/Lösen, Archivieren bzw. Zurückholen, Löschen.\n- Die Mehrfachauswahl bleibt. Die Aktionsleiste erscheint erst, wenn etwas ausgewählt ist.\n- Paging mit `ListPager` („n Chats · Seite x von y“), 25 pro Seite, in „Aktiv“ und „Archiv“. „Aktiv“ bleibt clientseitig (die Seitenleiste lädt alle aktiven Chats ohnehin), „Archiv“ serverseitig.\n- Laden über `ListLoading`, Leerzustand über `ListEmptyState`.\n- Tabs „Aktiv/Archiv“ und die Volltextsuche bleiben erhalten.\n\n## Nicht Teil dieses Issues\n\nAndere Tabellen außerhalb von „Benutzer“ und „Gruppen“ (Modelle, Anbieter, Fremdzugänge, Rechtehistorie …).\n\n## Abnahmekriterien\n\n- [ ] Chat-Tabelle optisch wie „Benutzer“/„Gruppen“, auch als Kartenliste auf dem Handy\n- [ ] Zeilenmenü mit den Einzelaktionen, Mehrfachauswahl mit kontextueller Aktionsleiste\n- [ ] Paging mit `ListPager` und 25 pro Seite in beiden Tabs\n- [ ] Tests angepasst und ergänzt",
+      "closes": []
+    },
+    {
+      "number": 2062,
+      "title": "fix(chat): Aufgeklappte Chatliste macht die Seite scrollbar – Chat springt nach oben, Leerraum darunter",
+      "url": "https://github.com/criew/opaa/issues/2062",
+      "author": "bigpuritz",
+      "labels": [
+        "bug",
+        "frontend",
+        "size:S"
+      ],
+      "body": "## Problem\n\nIm Space „Meine Dokumente“ mit vielen Chats: In der Chatliste „15 weitere anzeigen“ anklicken und dann den untersten Chat der Liste öffnen. Die ganze Seite springt nach oben. Der Chat mit Eingabezeile rutscht aus dem oberen Rand, im unteren Drittel bleibt eine leere weiße Fläche.\n\nGemessen bei einem Fenster von 1440 × 900:\n\n- Nach „15 weitere anzeigen“ ist das Dokument 1268 px hoch (`document.documentElement.scrollHeight`), obwohl die App-Oberfläche nur 900 px hoch ist.\n- Nach dem Klick auf den untersten Chat steht `window.scrollY` bei 368. Der Hauptbereich beginnt bei −368 px, darunter bleiben 368 px leer.\n\n## Ursache (Vermutung)\n\nDie aufgeklappte Chatliste überläuft ihren Container in der Seitenleiste, statt innerhalb der Seitenleiste zu scrollen. Dadurch wird die Seite selbst scrollbar, und der Browser scrollt sie, um den fokussierten Listeneintrag sichtbar zu halten. Die Chatseite soll laut #749 genau das Fenster füllen, ohne äußere Scrollleiste.\n\n## Abnahmekriterien\n\n- [ ] Die Chatliste scrollt innerhalb der Seitenleiste, gleich wie viele Chats aufgeklappt sind\n- [ ] Die Seite selbst ist nie höher als das Fenster (`scrollHeight == clientHeight`), auch mit aufgeklappter Liste\n- [ ] Nach Auswahl des untersten Chats steht der Chat bündig im Fenster, ohne Leerraum darunter\n- [ ] Test sichert die Regression ab",
+      "closes": []
+    },
+    {
+      "number": 2037,
+      "title": "fix(auth): Anmeldeseite blitzt beim Abmelden über OIDC auf und ist kurz bedienbar",
+      "url": "https://github.com/criew/opaa/issues/2037",
+      "author": "criew",
+      "labels": [
+        "bug",
+        "frontend",
+        "size:S",
+        "auth"
+      ],
+      "body": "Beim Abmelden über einen OIDC-Anbieter (Keycloak) blitzt die Anmeldeseite kurz auf, bevor der Browser zum Abmelde-Endpunkt des Anbieters weitergeleitet wird. Aufgefallen bei der Analyse von #2030 (PR #2036).\n\n### Ursache\n\n`oidc-client-ts` entfernt beim `signoutRedirect` zuerst den Nutzer und lädt erst danach die Discovery des Anbieters. Das Entfernen setzt `isAuthenticated` auf `false`; `ProtectedRoute` leitet daraufhin innerhalb der Seite auf `/login` um. Bis die Weiterleitung zum Anbieter startet (im CI-Trace mehrere Sekunden), ist die Anmeldeseite sichtbar und bedienbar.\n\n### Folge\n\n- Sichtbares Flackern der Anmeldeseite.\n- Ein Klick auf einen Anbieter in dieser Lücke könnte eine Anmeldung starten, die mit der laufenden Abmeldung konkurriert (plausibel, nicht gemessen).\n\n### Vorschlag\n\nWährend einer laufenden Abmeldung statt der Anmeldeseite einen neutralen Zustand zeigen (z. B. „Sie werden abgemeldet …“) oder die Umleitung durch `ProtectedRoute` unterdrücken, bis die Weiterleitung zum Anbieter erfolgt ist. Der Weg für Anbieter ohne Abmelde-Endpunkt muss weiter funktionieren.\n\n### Abnahmekriterien\n\n- [ ] Beim Abmelden über Keycloak erscheint die Anmeldeseite erst nach der Rückkehr vom Anbieter\n- [ ] Anbieter ohne Abmelde-Endpunkt landen weiterhin auf der Anmeldeseite\n- [ ] Demo-Smoke bleibt grün",
+      "closes": []
+    },
+    {
+      "number": 1924,
+      "title": "feat(chat): Kopierfunktion — Antwort als Markdown ohne Fußnoten, Varianten im Dropdown, Copy an eigenen Fragen",
+      "url": "https://github.com/criew/opaa/issues/1924",
+      "author": "criew",
+      "labels": [
+        "enhancement",
+        "frontend",
+        "size:M"
+      ],
+      "body": "## Kontext\r\n\r\nBefund der UI-Durchsicht vom 24.09.2026 (Maintainer und Mitentwickler, gemeinsamer Klick durch die Demo-Instanz). Teil der UI-Politur-Runde #1441. Beim Kopieren einer Antwort landen die Zitatmarken im Text. Eigene Fragen lassen sich nicht mit einem Klick kopieren, obwohl man sie oft in einem neuen Chat leicht abgewandelt wiederverwenden will.\r\n\r\n## Ziel\r\n\r\nEin Klick kopiert die Antwort sauber; wer Quellen oder reinen Text will, wählt es im Dropdown daneben.\r\n\r\n## Abnahmekriterien\r\n\r\n- [ ] Copy-Knopf an der Antwort: Standard = Markdown ohne Fußnotenmarken und ohne Quellenliste\r\n- [ ] Dropdown-Pfeil daneben mit „Mit Quellenangaben“ (Markdown, Fußnoten und Quellenliste sauber formatiert) und „Nur Text“ (ohne Markdown)\r\n- [ ] Copy-Knopf an jeder eigenen Frage (reiner Text)\r\n- [ ] Kurze Bestätigung („Kopiert“), tastaturbedienbar\r\n- [ ] Dokumentation: `docs/handbuch/suche.md`, Abschnitt Antworten\r\n\r\n## Umfang\r\n\r\n- Zwischenablage-Funktionen im Chatverlauf\r\n\r\n## Außerhalb des Umfangs\r\n\r\n- Export ganzer Chats (eigenes Issue)\r\n\r\n## Betroffene Module\r\n\r\nFrontend (`frontend/src`)",
+      "closes": []
+    }
+  ],
+  "opened_issues": [
+    {
+      "number": 2064,
+      "title": "feat(chat): Chat-Tabelle an die Admin-Tabellen angleichen, mit einheitlichem Paging",
+      "url": "https://github.com/criew/opaa/issues/2064",
+      "author": "bigpuritz",
+      "labels": [
+        "enhancement",
+        "frontend",
+        "size:M"
+      ],
+      "body": "## Ziel\n\nDie Tabelle auf der Seite „Chats in „<Space>““ soll aussehen und sich bedienen lassen wie die Tabellen im Adminbereich „Benutzer“ und „Gruppen“. Dazu kommt ein einheitliches Paging.\n\n## Ist-Stand\n\n- Eigene MUI-Tabelle (`ChatsPage.tsx`), nicht über die Bausteine der Admin-Listen (`components/admin/list/`: `adminTableSx`, `ListPager`, `ListLoading`, `ListEmptyState`).\n- Titel als blaue Links. Kein Zeilenmenü. Dauerhaft sichtbare Leiste „Alle auf dieser Seite auswählen / Archivieren / Löschen“ mit ausgegrauten Knöpfen.\n- Paging über MUI-`TablePagination` („1–50 von 77“), in der aktiven Liste erst ab 50 Chats. Die Admin-Listen zeigen dagegen „n Gruppen · Seite x von y ‹ ›“ mit 25 pro Seite.\n- Laden als Spinner statt Skeleton-Zeilen (Leitfaden 5.7).\n\n## Soll\n\n- Tabellenstil der Admin-Listen: Kopfzeile im Eyebrow-Muster, Zeilen durch Linien getrennt, Titel in Navy mit Nebenzeile. Unterhalb der Tablet-Breite Kartenliste (Leitfaden 5.3).\n- Zeilenmenü (⋮) wie im Admin: Anheften/Lösen, Archivieren bzw. Zurückholen, Löschen.\n- Die Mehrfachauswahl bleibt. Die Aktionsleiste erscheint erst, wenn etwas ausgewählt ist.\n- Paging mit `ListPager` („n Chats · Seite x von y“), 25 pro Seite, in „Aktiv“ und „Archiv“. „Aktiv“ bleibt clientseitig (die Seitenleiste lädt alle aktiven Chats ohnehin), „Archiv“ serverseitig.\n- Laden über `ListLoading`, Leerzustand über `ListEmptyState`.\n- Tabs „Aktiv/Archiv“ und die Volltextsuche bleiben erhalten.\n\n## Nicht Teil dieses Issues\n\nAndere Tabellen außerhalb von „Benutzer“ und „Gruppen“ (Modelle, Anbieter, Fremdzugänge, Rechtehistorie …).\n\n## Abnahmekriterien\n\n- [ ] Chat-Tabelle optisch wie „Benutzer“/„Gruppen“, auch als Kartenliste auf dem Handy\n- [ ] Zeilenmenü mit den Einzelaktionen, Mehrfachauswahl mit kontextueller Aktionsleiste\n- [ ] Paging mit `ListPager` und 25 pro Seite in beiden Tabs\n- [ ] Tests angepasst und ergänzt",
+      "closes": []
+    },
+    {
+      "number": 2062,
+      "title": "fix(chat): Aufgeklappte Chatliste macht die Seite scrollbar – Chat springt nach oben, Leerraum darunter",
+      "url": "https://github.com/criew/opaa/issues/2062",
+      "author": "bigpuritz",
+      "labels": [
+        "bug",
+        "frontend",
+        "size:S"
+      ],
+      "body": "## Problem\n\nIm Space „Meine Dokumente“ mit vielen Chats: In der Chatliste „15 weitere anzeigen“ anklicken und dann den untersten Chat der Liste öffnen. Die ganze Seite springt nach oben. Der Chat mit Eingabezeile rutscht aus dem oberen Rand, im unteren Drittel bleibt eine leere weiße Fläche.\n\nGemessen bei einem Fenster von 1440 × 900:\n\n- Nach „15 weitere anzeigen“ ist das Dokument 1268 px hoch (`document.documentElement.scrollHeight`), obwohl die App-Oberfläche nur 900 px hoch ist.\n- Nach dem Klick auf den untersten Chat steht `window.scrollY` bei 368. Der Hauptbereich beginnt bei −368 px, darunter bleiben 368 px leer.\n\n## Ursache (Vermutung)\n\nDie aufgeklappte Chatliste überläuft ihren Container in der Seitenleiste, statt innerhalb der Seitenleiste zu scrollen. Dadurch wird die Seite selbst scrollbar, und der Browser scrollt sie, um den fokussierten Listeneintrag sichtbar zu halten. Die Chatseite soll laut #749 genau das Fenster füllen, ohne äußere Scrollleiste.\n\n## Abnahmekriterien\n\n- [ ] Die Chatliste scrollt innerhalb der Seitenleiste, gleich wie viele Chats aufgeklappt sind\n- [ ] Die Seite selbst ist nie höher als das Fenster (`scrollHeight == clientHeight`), auch mit aufgeklappter Liste\n- [ ] Nach Auswahl des untersten Chats steht der Chat bündig im Fenster, ohne Leerraum darunter\n- [ ] Test sichert die Regression ab",
+      "closes": []
+    }
+  ],
+  "merged_pull_requests": [
+    {
+      "number": 2067,
+      "title": "feat(chat): Antworten und eigene Fragen mit einem Klick kopieren",
+      "url": "https://github.com/criew/opaa/pull/2067",
+      "author": "bigpuritz",
+      "labels": [
+        "enhancement",
+        "frontend"
+      ],
+      "body": "## Zusammenfassung\n\nAntworten und eigene Fragen lassen sich jetzt mit einem Klick kopieren.\n\n- **Antwort:** geteilter Knopf „Kopieren ⌄“ rechts in der Fußzeile, in einer Zeile mit „Belege anzeigen“ und in derselben Pillenform, nur ruhiger.\n  - **Klick:** Die Antwort kommt als Markdown **ohne Fußnotenmarken und ohne Quellenliste** in die Zwischenablage. Die Marken fallen samt Leerzeichen davor weg.\n  - **Pfeil → „Mit Quellenangaben“:** Markdown mit Fußnoten `[^n]`, dieselben Nummern wie im Chat; direkt wiederholte Marken derselben Stelle ergeben eine Fußnote. Darunter folgt die Quellenliste `[^n]: <Dokument>, <Fundort>`.\n  - **Pfeil → „Nur Text“:** ohne Markdown-Zeichen. Überschriften und Zitate verlieren ihre Zeichen, Aufzählungen werden zu „•“, Tabellenzeilen tabulatorgetrennt (lassen sich in eine Tabelle einfügen), Code behält seine Zeilen.\n  - Die Fußzeile erscheint damit auch bei Antworten ohne Belege, dann nur mit Haarlinie und Kopierknopf.\n- **Frage:** ein Kopiersymbol unter jeder eigenen Frage. Es übernimmt den Text unverändert, etwa um die Frage in einem neuen Chat abgewandelt zu stellen. Sichtbar bei Hover und Tastaturfokus, auf Geräten ohne Hover immer.\n- **Bestätigung** am Knopf selbst: Häkchen, „Kopiert“ und passender Name für 2 Sekunden. Ein Popup pro Kopie wäre im Chatverlauf zu laut. Screenreader hören „Die Antwort wurde kopiert.“ aus **einer einzigen** Live-Region der Nachrichtenliste (`copyAnnouncer`), nicht aus einer Region je Nachricht. Verweigert der Browser die Zwischenablage, meldet ein Hinweis den Weg von Hand, wie bei `copyToClipboard`.\n\nNeu sind:\n\n- `copyFormats.ts`: drei reine Formatfunktionen\n- `useClipboardCopy.ts`\n- `copyAnnouncer.ts`\n- `CopyAnswerButton.tsx`\n- `CopyQuestionButton.tsx`\n\n`EvidenceFooter` hat einen optionalen `actions`-Platz.\n\n## Zugehörige Issues\n\nCloses #1924\n\n## Art der Änderung\n\n- [ ] Bugfix\n- [x] Neues Feature\n- [x] Dokumentation\n- [ ] Refactoring\n- [ ] CI/Build\n\n## Checkliste\n\n- [x] Tests bestehen lokal (Frontend grün bis auf die 2 `GlobalRail`-Tests, die auf `main` identisch scheitern). Lint, Prettier und Build sind grün\n- [ ] Bei Bugfix: Reproduktionsnachweis erbracht — entfällt, Feature\n- [x] Dokumentation aktualisiert (falls zutreffend)\n- [x] Handbuch nachgezogen: `docs/handbuch/suche.md`, Abschnitt 7 (Absatz „Kopieren“ vor 7.1, damit die Nummern 7.1/7.2 stehen bleiben)\n- [x] Barrierefreiheit nach `docs/design/accessibility.md` geprüft:\n  - Knöpfe mit Namen („Antwort kopieren“, „Weitere Kopieroptionen“, „Frage kopieren“), das Menü mit `aria-haspopup`/`aria-expanded`\n  - Das Kopiersymbol der Frage wird bei Tastaturfokus sichtbar\n  - Bestätigung über die Live-Region\n  - `prefers-reduced-motion` wird beachtet\n- [x] Keine Secrets oder Anmeldeinformationen committet\n- [x] Commit-Nachrichten folgen Conventional Commits\n- [x] CLA unterzeichnet\n\n### Tests\n\n- `copyFormats.test.ts`: alle drei Formate mit Fußnoten, Fundort, wiederholten Marken, Tabellen, Code und Unterstrichen in Dateinamen\n- `MessageBubble.test.tsx`:\n  - Standard-Kopie mit Bestätigung und Ansage\n  - „Mit Quellenangaben“, „Nur Text“\n  - Bedienung per Tastatur\n  - Antwort ohne Belege\n  - Frage kopieren\n  - verweigerte Zwischenablage\n- `PageSection.test.tsx`: `CopyAnswerButton` mit Begründung unter den Rahmen-Ausnahmen, wie `EvidenceFooter`\n\n### Im Browser geprüft\n\nLokaler Stack, demo-admin, echter Chat:\n\n- **Platzierung:** Kopierknopf in der Fußzeile, Symbol unter der überfahrenen Frage.\n- **Menü:** „✓ Kopiert“ nach dem Klick, Varianten-Menü mit Erklärung.\n- **Inhalte:** Die an `navigator.clipboard.writeText` übergebenen Texte habe ich mitgeschrieben.\n  - Keines der drei Formate enthält eine Zitatmarke.\n  - „Mit Quellenangaben“ endet mit `[^1]: 015_befreiung-von-der-ausweispflicht.md, Abschn. Befreiung von der Ausweispflicht`.\n  - „Nur Text“ setzt „•“ statt „-“.\n\n## KI-Agenten-Offenlegung\n\n- [ ] Dieser PR wurde von einem Menschen verfasst\n- [ ] Dieser PR wurde von einem KI-Agenten verfasst (angeben: _______)\n- [x] Dieser PR wurde von Mensch + KI-Agent gemeinsam verfasst (Claude Opus 5.5)\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)",
+      "closes": [
+        1924
+      ],
+      "additions": 659,
+      "deletions": 89,
+      "changed_files": 12
+    },
+    {
+      "number": 2066,
+      "title": "fix(auth): Beim Abmelden über OIDC nicht mehr kurz die Anmeldeseite zeigen",
+      "url": "https://github.com/criew/opaa/pull/2066",
+      "author": "bigpuritz",
+      "labels": [
+        "bug",
+        "frontend",
+        "auth"
+      ],
+      "body": "## Zusammenfassung\n\nBeim Abmelden über einen OIDC-Anbieter (Keycloak) blitzte die Anmeldeseite auf und war bedienbar, bis der Browser zum Abmelde-Endpunkt des Anbieters wechselte.\n\n**Ursache:** `oidc-client-ts` entfernt bei `signoutRedirect()` zuerst den Nutzer und lädt erst danach die Discovery. `UserUnloaded` setzt `isAuthenticated` auf `false`, und `ProtectedRoute` leitete in dieser Lücke auf `/login` um.\n\n**Fix:**\n- `authStore` hat einen neuen Zustand `isSigningOut`. `logout()` setzt ihn vor `signoutRedirect()`.\n  - Nach gestarteter Weiterleitung wird er **nicht** zurückgenommen: `signoutRedirect()` kehrt zurück, sobald die Navigation angestoßen ist, und der Code danach läuft noch, bevor die Seite verschwindet.\n  - Im Rückfallweg ohne `end_session_endpoint` geht er zurück auf `false`. Dann folgt wie bisher die Anmeldeseite mit dem Hinweis „nur in dieser Anwendung abgemeldet“.\n  - Eine neue Sitzung setzt ihn zurück, wie schon `signedOut`.\n- `ProtectedRoute` zeigt währenddessen einen neutralen Zustand „Sie werden abgemeldet …“ (`role=\"status\"`) statt Anwendung oder Anmeldeseite. Kommt die Seite per „Zurück“ aus dem Back-Forward-Cache, lädt sie neu, statt dort stehen zu bleiben.\n- Den Kommentar des Abmelde-Helfers im Demo-Smoke habe ich an das neue Verhalten angepasst; die Logik bleibt unverändert.\n\nLokale Konten sind nicht betroffen: Dort wird `isAuthenticated` erst nach der Server-Abmeldung zurückgesetzt, und es gibt keine Weiterleitung.\n\n## Zugehörige Issues\n\nCloses #2037\n\n## Art der Änderung\n\n- [x] Bugfix\n- [ ] Neues Feature\n- [ ] Dokumentation\n- [ ] Refactoring\n- [ ] CI/Build\n\n## Checkliste\n\n- [x] Tests bestehen lokal (Frontend grün bis auf die 2 `GlobalRail`-Tests, die auf `main` identisch scheitern). Lint, Prettier, Build und die E2E-Typprüfung sind grün\n- [x] Bei Bugfix: Reproduktionsnachweis erbracht (siehe unten)\n- [ ] Dokumentation aktualisiert (falls zutreffend) — nicht betroffen\n- [x] Handbuch (`docs/handbuch/`) ausdrücklich nicht betroffen: Das beschriebene Verhalten (Abmeldung beim Anbieter) bleibt gleich\n- [x] Barrierefreiheit nach `docs/design/accessibility.md` geprüft: Die Abmeldemeldung ist eine Statusmeldung, der Kreisel `aria-hidden`\n- [x] Keine Secrets oder Anmeldeinformationen committet\n- [x] Commit-Nachrichten folgen Conventional Commits\n- [x] CLA unterzeichnet\n\n### Reproduktionsnachweis\n\nDer Branch steht auf aktuellem `main` (5a8726ce). Für den roten Lauf habe ich den Fix (`authStore.ts`, `ProtectedRoute.tsx`) per `git stash` zurückgenommen:\n```\n× shows a neutral sign-out state, not the login page, while the provider redirect is pending\n    TestingLibraryElementError: Unable to find role=\"status\"\n× signs out at the provider of the active session\n    AssertionError: expected undefined to be true\n× falls back to a local sign-out when the provider offers no end session endpoint\n    AssertionError: expected undefined to be false\nTests  3 failed | 69 passed (72)\n```\nMit Fix: `Tests 72 passed (72)`.\n\n**Gegen echtes Keycloak** (lokaler Stack, demo-admin): Vor dem Klick auf „Abmelden“ habe ich einen `MutationObserver` angehängt, der seine Beobachtungen in `sessionStorage` festhält. Ergebnis: Vor der Weiterleitung erschien „Sie werden abgemeldet …“, die Anmeldeseite nie; der einzige beobachtete Pfad war `/spaces`. Die Anmeldeseite kam erst als neues Dokument nach der Rückkehr von Keycloak.\n\n### Abnahmekriterien\n\n- [x] Beim Abmelden über Keycloak erscheint die Anmeldeseite erst nach der Rückkehr vom Anbieter (lokal belegt, siehe oben)\n- [x] Anbieter ohne Abmelde-Endpunkt landen weiterhin auf der Anmeldeseite (Unit-Test „falls back to a local sign-out …“ und der bestehende `ProtectedRoute`-Test zum Rückfallweg)\n- [x] Demo-Smoke bleibt grün: manueller Lauf auf diesem Branch erfolgreich (https://github.com/criew/opaa/actions/runs/36613588613). Er meldet sich über Keycloak an und wieder ab\n\n## KI-Agenten-Offenlegung\n\n- [ ] Dieser PR wurde von einem Menschen verfasst\n- [ ] Dieser PR wurde von einem KI-Agenten verfasst (angeben: _______)\n- [x] Dieser PR wurde von Mensch + KI-Agent gemeinsam verfasst (Claude Opus 5.5)\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)",
+      "closes": [
+        2037
+      ],
+      "additions": 94,
+      "deletions": 5,
+      "changed_files": 5
+    },
+    {
+      "number": 2065,
+      "title": "feat(chat): Chat-Tabelle an die Admin-Tabellen angleichen, mit einheitlichem Paging",
+      "url": "https://github.com/criew/opaa/pull/2065",
+      "author": "bigpuritz",
+      "labels": [
+        "enhancement",
+        "frontend"
+      ],
+      "body": "## Zusammenfassung\n\nDie Tabelle auf der Seite „Chats in „<Space>““ sieht jetzt aus wie die Tabellen „Benutzer“ und „Gruppen“ im Adminbereich und bedient sich auch so. Sie nutzt dieselben Bausteine aus `components/admin/list/`.\n\n- **Tabellenstil** `adminTableSx`: Mono-Kopfzeile im Eyebrow-Muster, feste Spaltenbreiten, Zeilen durch Linien getrennt. Der Titel steht in Navy (13,5 px, 500) statt als blauer Link; darunter „angeheftet“ als zweite Zeile. Unterhalb der Tablet-Breite wird die Tabelle zur Liste (`listCardSx`, Leitfaden 5.3).\n- **Zeilenmenü (⋮)** wie `GroupRowMenu`. Im Reiter Aktiv: Anheften/Lösen und Archivieren, im Reiter Archiv: Zurückholen. In beiden steht Löschen unter einer Trennlinie. Das Einzellöschen fragt mit dem Titel nach.\n- **Mehrfachauswahl** bleibt. Die Leiste „Alle auf dieser Seite auswählen“ zeigt die Sammelaktionen erst bei Auswahl („2 ausgewählt · Archivieren · Löschen“, leicht eingefärbt) statt dauerhaft ausgegrauter Knöpfe. Die Tastaturführung „Alle auswählen → Tab → Archivieren“ bleibt erhalten.\n- **Paging** mit `ListPager` und 25 je Seite in beiden Reitern („77 Chats · Seite 1 von 4 ‹ ›“) statt MUI-`TablePagination` mit 50. Die aktiven Chats sind für die Seitenleiste ohnehin vollständig geladen und werden im Browser geblättert; das Archiv blättert weiterhin serverseitig. Die API ist unverändert.\n- **Laden** über `ListLoading` (Skeleton statt Spinner, Leitfaden 5.7), **Leerzustand** über `ListEmptyState`.\n- **Suchfeld** in voller Breite mit Lupe wie in den Admin-Filterleisten. Der Hinweis auf die Mindestlänge erscheint nur, wenn er nötig ist.\n\nNeu sind `components/chat/ChatTable.tsx` (Tabelle und Liste) und `components/chat/ChatRowMenu.tsx`. `ChatsPage.tsx` nutzt beide.\n\nDie Auswahlspalte ist bewusst keine `padding=\"checkbox\"`-Zelle: Das Theme verengt diese auf 24 px, und `adminTableSx` schneidet Zellinhalte ab. Die Kästchen wurden dadurch abgeschnitten.\n\n## Zugehörige Issues\n\nCloses #2064\n\n## Art der Änderung\n\n- [ ] Bugfix\n- [x] Neues Feature\n- [x] Dokumentation\n- [ ] Refactoring\n- [ ] CI/Build\n\n## Checkliste\n\n- [x] Tests bestehen lokal (Frontend 2267 grün; 2 rote in `GlobalRail.test.tsx` scheitern auf `main` identisch, lokale Umgebungsstörung). Lint, Prettier und Build sind grün\n- [ ] Bei Bugfix: Reproduktionsnachweis erbracht — entfällt, Feature\n- [x] Dokumentation aktualisiert: `docs/features/chat-list.md`, Abschnitt „Die Seite ‚Chats‘ je Space“, mit Skizze\n- [x] Handbuch (`docs/handbuch/`) ausdrücklich nicht betroffen: Es beschreibt die Seite „Chats“ nicht im Detail\n- [x] Barrierefreiheit nach `docs/design/accessibility.md` geprüft: Zeilenmenü mit Namen „Aktionen für „<Titel>““, Checkboxen mit „„<Titel>“ auswählen“, Statusmeldung als dauerhafte Live-Region, Sammelaktionen per Tastatur erreichbar, der Fokus kehrt nach einer Aktion auf „Alle auswählen“ bzw. den Reiter zurück\n- [x] Keine Secrets oder Anmeldeinformationen committet\n- [x] Commit-Nachrichten folgen Conventional Commits\n- [x] CLA unterzeichnet\n\n### Tests\n\n`ChatsPage.test.tsx` läuft wie die Admin-Tests mit Desktop-`matchMedia`.\n\n- **Angepasst:** Die Sammelaktionen erscheinen erst bei Auswahl.\n- **Neu:**\n  - Archivieren und Löschen über das Zeilenmenü\n  - Zurückholen statt Anheften und Archivieren im Archiv\n  - Paging mit 25 je Seite („30 Chats · Seite 1 von 2“, Seitenwechsel)\n  - Anheften über das Menü samt Markierung\n  - Listenansicht unter Tablet-Breite\n\n### Im Browser geprüft\n\nLokaler Stack, demo-admin, 77 Chats:\n\n- Tabelle bei 1440 px mit und ohne Auswahl\n- Zeilenmenü\n- Pager „77 Chats · Seite 1 von 4“\n- Listenansicht bei 375 px\n- Die Checkboxen der Auswahlleiste und der Zeilen fluchten (gemessen, beide bei x = 352)\n\n## KI-Agenten-Offenlegung\n\n- [ ] Dieser PR wurde von einem Menschen verfasst\n- [ ] Dieser PR wurde von einem KI-Agenten verfasst (angeben: _______)\n- [x] Dieser PR wurde von Mensch + KI-Agent gemeinsam verfasst (Claude Opus 5.5)\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)",
+      "closes": [
+        2064
+      ],
+      "additions": 632,
+      "deletions": 197,
+      "changed_files": 7
+    },
+    {
+      "number": 2063,
+      "title": "fix(chat): Aufgeklappte Chatliste macht die Seite nicht mehr scrollbar",
+      "url": "https://github.com/criew/opaa/pull/2063",
+      "author": "bigpuritz",
+      "labels": [
+        "bug",
+        "frontend"
+      ],
+      "body": "## Zusammenfassung\n\nNach „15 weitere anzeigen“ in der Chatliste und dem Öffnen des untersten Chats sprang die ganze Oberfläche nach oben, und im unteren Drittel blieb eine leere Fläche.\n\n**Ursache:** Die Statusmeldung der Chatliste für Screenreader („15 weitere Chats angezeigt“) ist per `visuallyHidden` absolut positioniert. Einen positionierten Vorfahren hatte sie nicht. Unter einer aufgeklappten Liste lag sie deshalb an ihrer statischen Position unterhalb des Fensters, entkam dem Clipping der scrollenden Chat-Navigation und machte das Dokument höher als das Fenster. Beim Fokuswechsel auf den untersten Eintrag scrollte der Browser dann die ganze Seite. Die Nachrichtenliste hatte denselben Fehler in #749.\n\n**Fix:** Die Chat-Navigation in der Seitenleiste (`Sidebar.tsx`) bekommt `position: 'relative'` und ist damit der Positionierungskontext der Statusmeldung, nach dem Muster der Nachrichtenliste seit #749. Die Suchergebnisse der Chatliste liegen im selben Container und sind mit abgedeckt.\n\n### Nachbesserung: Blätterknöpfe einzeilig (8e1cd8ba)\n\nMit aufgeklappter Liste standen „15 weitere anzeigen“ und „weniger anzeigen“ nebeneinander und brachen zweizeilig um. Gemessen: Die beiden brauchen ohne Umbruch zusammen 230 px, in der Seitenleiste sind 198 px frei. `nowrap` allein hätte den Text überlaufen lassen.\n\n- Sichtbar steht jetzt links **„15 weitere ⌄“** und rechts **„Weniger ⌃“**, jeweils `nowrap`. Der Pfeil ersetzt das Wort „anzeigen“. Im Browser sind beide Knöpfe einzeilig und 24 px hoch.\n- Vorgelesen werden sie weiterhin vollständig („15 weitere Chats anzeigen“, „Weniger anzeigen“, im Singular „1 weiteren Chat anzeigen“). Der Rest steht in einem nur für Screenreader lesbaren Textteil, sodass der Name mit dem sichtbaren Text beginnt (WCAG 2.5.3 Label in Name). Das trennende Leerzeichen steht außerhalb dieses Teils; innerhalb fiel es bei der Namensberechnung weg („15 weitereChats“).\n- Tests: Namen angepasst, neu sind Tests für `nowrap` und den Singular. Handbuch `suche.md` und `docs/features/chat-list.md` sind nachgezogen.\n\n### Nachbesserung: Aufklappstand übersteht den Layoutwechsel (a3097bcd)\n\nAblauf: Die Liste mehrmals mit „15 weitere“ aufklappen, den untersten Chat wählen, das Fenster auf Handybreite verkleinern und wieder vergrößern. Danach war die Liste wieder auf 15 zugeklappt, und der gewählte Chat war weder sichtbar noch als ausgewählt erkennbar.\n\n**Ursache:** `AppShell` rendert die Seitenleiste unterhalb von `md` in einem Drawer und darüber direkt. Beim Wechsel wird `ChatList` neu aufgebaut. Der Aufklappstand lag in lokalem `useState` und fiel dabei auf 15 zurück, und die Liste stand wieder oben.\n\n**Fix:**\n- Der Aufklappstand (`revealedRecent`) liegt jetzt im `chatListStore` und übersteht jeden Neuaufbau. Ein anderer Space beginnt weiterhin bei 15, wie `docs/features/chat-list.md` es festlegt.\n- Liegt der geöffnete Chat jenseits der aufgeklappten Seiten, klappt die Liste einmal bis zu ihm auf; das gilt auch beim Öffnen per Link. „Weniger“ klappt danach weiterhin zurück.\n- Beim Aufbau scrollt die Liste den geöffneten Chat in ihren sichtbaren Bereich (`scrollIntoView({ block: 'nearest' })`).\n\n**Reproduktionsnachweis:** Vor dem Fix schlagen drei neue Tests in `ChatList.test.tsx` fehl, nach dem Fix sind sie grün:\n```\n× keeps the revealed pages when the list remounts\n× reveals, selects and scrolls to the open chat beyond the first page\n× still folds back with \"Weniger\" while the open chat sits on a later page\nTests  3 failed | 25 passed (28)\n```\nEin vierter Test („starts a different space at its first page again“) sichert das Verhalten beim Spacewechsel ab; er ist vor und nach dem Fix grün.\n\n**Im Browser:** 60 Chats aufgeklappt, den untersten gewählt, dann 1440 → 320 → 1440 px. Danach sind weiter 60 Einträge da, der gewählte Chat ist markiert und im sichtbaren Bereich (`nav.scrollTop` 1551), die Seite bleibt bei 900 px. Im Handymenü bei 320 px gilt dasselbe, ohne seitlichen Überlauf.\n\n## Zugehörige Issues\n\nCloses #2062\n\n## Art der Änderung\n\n- [x] Bugfix\n- [ ] Neues Feature\n- [ ] Dokumentation\n- [ ] Refactoring\n- [ ] CI/Build\n\n## Checkliste\n\n- [x] Tests bestehen lokal (Frontend 2251 grün; 2 rote in `GlobalRail.test.tsx` scheitern auf `main` identisch, lokale Umgebungsstörung, siehe unten). Lint, Prettier und Build sind grün\n- [x] Bei Bugfix: Reproduktionsnachweis erbracht (siehe unten)\n- [ ] Dokumentation aktualisiert (falls zutreffend) — nicht betroffen\n- [x] Handbuch (`docs/handbuch/`) nachgezogen oder ausdrücklich nicht betroffen — nicht betroffen, reine Layoutkorrektur\n- [x] Barrierefreiheit nach `docs/design/accessibility.md` geprüft: Die Statusmeldung bleibt unverändert und wird weiter angesagt, nur ihr Positionierungskontext ändert sich\n- [x] Keine Secrets oder Anmeldeinformationen committet\n- [x] Commit-Nachrichten folgen Conventional Commits\n- [x] CLA unterzeichnet\n\n### Reproduktionsnachweis\n\n**Unit-Test** `Sidebar.test.tsx` › „contains the chat list in a positioned scroll container“. Wie bei #749 prüft er die Eindämmung selbst, weil jsdom kein Layout berechnet.\n\nRot, ohne den Fix:\n```\n× contains the chat list in a positioned scroll container\nExpected: \"relative\"\nReceived: \"static\"\n```\nGrün, mit dem Fix: `Tests 18 passed (18)`.\n\n**Im echten Browser** (lokaler Stack, 1440 × 900, demo-admin, „Meine Dokumente“ mit 77 Chats, „15 weitere anzeigen“, dann den untersten Chat öffnen):\n\n| | vorher | nachher |\n|---|---|---|\n| `document.documentElement.scrollHeight` | 1268 | 900 |\n| `window.scrollY` nach Chatauswahl | 368 | 0 |\n| Oberkante des Hauptbereichs | −368 px | 0 px |\n| Scrollposition der Chatliste (`nav.scrollTop`) | — | 483 (die Liste scrollt selbst) |\n\nDas Element, das über das Fenster hinausragte, habe ich per DOM-Messung eindeutig identifiziert: ein 1 px hohes, absolut positioniertes Element bei y = 1267, die Statusmeldung.\n\n**Hinweis zu den lokalen Testfehlern:** `GlobalRail.test.tsx` (2 Tests) scheitert im Hauptverzeichnis auf `main` mit derselben Meldung. Die Ursache liegt nicht in diesem PR; maßgeblich ist die CI.\n\n## KI-Agenten-Offenlegung\n\n- [ ] Dieser PR wurde von einem Menschen verfasst\n- [ ] Dieser PR wurde von einem KI-Agenten verfasst (angeben: _______)\n- [x] Dieser PR wurde von Mensch + KI-Agent gemeinsam verfasst (Claude Opus 5.5)\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)",
+      "closes": [
+        2062
+      ],
+      "additions": 231,
+      "deletions": 27,
+      "changed_files": 8
+    },
+    {
+      "number": 2061,
+      "title": "chore(deps): ollama/ollama docker tag to v0.35.0",
+      "url": "https://github.com/criew/opaa/pull/2061",
+      "author": "bigpuritz",
+      "labels": [
+        "enhancement",
+        "ci"
+      ],
+      "body": "Automatisches Abhängigkeits-Update durch Renovate (#751, siehe docs/renovate.md) — Prüfung und Merge folgen dem normalen Weg.\n\nThis PR contains the following updates:\n\n| Package | Update | Change |\n|---|---|---|\n| ollama/ollama | minor | `0.34.4` → `0.35.0` |\n\n---\n\n### Configuration\n\n📅 **Schedule**: (in timezone Europe/Berlin)\n\n- Branch creation\n  - At any time (no schedule defined)\n- Automerge\n  - At any time (no schedule defined)\n\n🚦 **Automerge**: Enabled.\n\n♻ **Rebasing**: Whenever PR is behind base branch, or you tick the rebase/retry checkbox.\n\n🔕 **Ignore**: Close this PR and you won't be reminded about this update again.\n\n---\n\n - [ ] <!-- rebase-check -->If you want to rebase/retry this PR, check this box\n\n---\n\nThis PR has been generated by [Mend Renovate CLI](https://redirect.github.com/renovatebot/renovate).\n<!--renovate-debug:eyJjcmVhdGVkSW5WZXIiOiI0NC4xMTguMSIsInVwZGF0ZWRJblZlciI6IjQ0LjExOC4xIiwidGFyZ2V0QnJhbmNoIjoibWFpbiIsImxhYmVscyI6WyJjaSIsImVuaGFuY2VtZW50Il19-->",
+      "closes": [],
+      "additions": 2,
+      "deletions": 2,
+      "changed_files": 1
+    },
+    {
+      "number": 2060,
+      "title": "chore(deps): aws-java-sdk-v2 monorepo aktualisieren",
+      "url": "https://github.com/criew/opaa/pull/2060",
+      "author": "bigpuritz",
+      "labels": [
+        "enhancement",
+        "backend"
+      ],
+      "body": "Automatisches Abhängigkeits-Update durch Renovate (#751, siehe docs/renovate.md) — Prüfung und Merge folgen dem normalen Weg.\n\nThis PR contains the following updates:\n\n| Package | Type | Update | Change |\n|---|---|---|---|\n| [software.amazon.awssdk:apache5-client](https://aws.amazon.com/sdkforjava) | dependencies | patch | `2.55.6` → `2.55.7` |\n| [software.amazon.awssdk:s3](https://aws.amazon.com/sdkforjava) | dependencies | patch | `2.55.6` → `2.55.7` |\n\n---\n\n### Configuration\n\n📅 **Schedule**: (in timezone Europe/Berlin)\n\n- Branch creation\n  - At any time (no schedule defined)\n- Automerge\n  - At any time (no schedule defined)\n\n🚦 **Automerge**: Disabled because a matching PR was automerged previously.\n\n♻ **Rebasing**: Whenever PR becomes conflicted, or you tick the rebase/retry checkbox.\n\n🔕 **Ignore**: Close this PR and you won't be reminded about these updates again.\n\n---\n\n - [ ] <!-- rebase-check -->If you want to rebase/retry this PR, check this box\n\n---\n\nThis PR has been generated by [Mend Renovate CLI](https://redirect.github.com/renovatebot/renovate).\n<!--renovate-debug:eyJjcmVhdGVkSW5WZXIiOiI0NC4xMTguMSIsInVwZGF0ZWRJblZlciI6IjQ0LjExOC4xIiwidGFyZ2V0QnJhbmNoIjoibWFpbiIsImxhYmVscyI6WyJiYWNrZW5kIiwiZW5oYW5jZW1lbnQiXX0=-->",
+      "closes": [],
+      "additions": 1,
+      "deletions": 1,
+      "changed_files": 1
+    },
+    {
+      "number": 2059,
+      "title": "chore(deps): amazon/aws-cli docker tag to v2.37.5",
+      "url": "https://github.com/criew/opaa/pull/2059",
+      "author": "bigpuritz",
+      "labels": [
+        "enhancement",
+        "ci"
+      ],
+      "body": "Automatisches Abhängigkeits-Update durch Renovate (#751, siehe docs/renovate.md) — Prüfung und Merge folgen dem normalen Weg.\n\nThis PR contains the following updates:\n\n| Package | Update | Change |\n|---|---|---|\n| amazon/aws-cli | patch | `2.37.4` → `2.37.5` |\n\n---\n\n### Configuration\n\n📅 **Schedule**: (in timezone Europe/Berlin)\n\n- Branch creation\n  - At any time (no schedule defined)\n- Automerge\n  - At any time (no schedule defined)\n\n🚦 **Automerge**: Disabled by config. Please merge this manually once you are satisfied.\n\n♻ **Rebasing**: Whenever PR becomes conflicted, or you tick the rebase/retry checkbox.\n\n🔕 **Ignore**: Close this PR and you won't be reminded about this update again.\n\n---\n\n - [ ] <!-- rebase-check -->If you want to rebase/retry this PR, check this box\n\n---\n\nThis PR has been generated by [Mend Renovate CLI](https://redirect.github.com/renovatebot/renovate).\n<!--renovate-debug:eyJjcmVhdGVkSW5WZXIiOiI0NC4xMTguMSIsInVwZGF0ZWRJblZlciI6IjQ0LjExOC4xIiwidGFyZ2V0QnJhbmNoIjoibWFpbiIsImxhYmVscyI6WyJjaSIsImVuaGFuY2VtZW50Il19-->",
+      "closes": [],
+      "additions": 2,
+      "deletions": 2,
+      "changed_files": 1
+    }
+  ],
+  "open_pull_requests": [
+    {
+      "number": 161,
+      "title": "docs: plugin architecture deep dive for all three variants",
+      "url": "https://github.com/criew/opaa/pull/161",
+      "author": "bigpuritz",
+      "labels": [
+        "documentation",
+        "enhancement",
+        "backend"
+      ],
+      "body": "",
+      "closes": []
+    }
+  ],
+  "open_issues_total": 49,
+  "ci": {
+    "conclusion": "success",
+    "url": "https://github.com/criew/opaa/actions/runs/36619236509",
+    "title": "Merge pull request #2067 from criew/feature/1924_kopierfunktion-chat",
+    "finished_at": "2026-09-29T19:33:17Z"
+  },
+  "highlights": {
+    "sonstiges": [
+      {
+        "nummer": 2067,
+        "text": "Antworten und eigene Fragen mit einem Klick kopieren"
+      },
+      {
+        "nummer": 2066,
+        "text": "Anmeldeseite blinkt beim OIDC-Abmelden nicht mehr auf"
+      },
+      {
+        "nummer": 2065,
+        "text": "Chat-Tabelle an Admin-Tabellen angleichen mit einheitlichem Paging"
+      },
+      {
+        "nummer": 2063,
+        "text": "Aufgeklappte Chatliste verursacht keinen Seitensprung mehr"
+      }
+    ]
+  },
+  "epics": [],
+  "ohne_epic": {
+    "opened": [
+      {
+        "number": 2064,
+        "title": "feat(chat): Chat-Tabelle an die Admin-Tabellen angleichen, mit einheitlichem Paging",
+        "url": "https://github.com/criew/opaa/issues/2064",
+        "author": "bigpuritz",
+        "labels": [
+          "enhancement",
+          "frontend",
+          "size:M"
+        ],
+        "body": "## Ziel\n\nDie Tabelle auf der Seite „Chats in „<Space>““ soll aussehen und sich bedienen lassen wie die Tabellen im Adminbereich „Benutzer“ und „Gruppen“. Dazu kommt ein einheitliches Paging.\n\n## Ist-Stand\n\n- Eigene MUI-Tabelle (`ChatsPage.tsx`), nicht über die Bausteine der Admin-Listen (`components/admin/list/`: `adminTableSx`, `ListPager`, `ListLoading`, `ListEmptyState`).\n- Titel als blaue Links. Kein Zeilenmenü. Dauerhaft sichtbare Leiste „Alle auf dieser Seite auswählen / Archivieren / Löschen“ mit ausgegrauten Knöpfen.\n- Paging über MUI-`TablePagination` („1–50 von 77“), in der aktiven Liste erst ab 50 Chats. Die Admin-Listen zeigen dagegen „n Gruppen · Seite x von y ‹ ›“ mit 25 pro Seite.\n- Laden als Spinner statt Skeleton-Zeilen (Leitfaden 5.7).\n\n## Soll\n\n- Tabellenstil der Admin-Listen: Kopfzeile im Eyebrow-Muster, Zeilen durch Linien getrennt, Titel in Navy mit Nebenzeile. Unterhalb der Tablet-Breite Kartenliste (Leitfaden 5.3).\n- Zeilenmenü (⋮) wie im Admin: Anheften/Lösen, Archivieren bzw. Zurückholen, Löschen.\n- Die Mehrfachauswahl bleibt. Die Aktionsleiste erscheint erst, wenn etwas ausgewählt ist.\n- Paging mit `ListPager` („n Chats · Seite x von y“), 25 pro Seite, in „Aktiv“ und „Archiv“. „Aktiv“ bleibt clientseitig (die Seitenleiste lädt alle aktiven Chats ohnehin), „Archiv“ serverseitig.\n- Laden über `ListLoading`, Leerzustand über `ListEmptyState`.\n- Tabs „Aktiv/Archiv“ und die Volltextsuche bleiben erhalten.\n\n## Nicht Teil dieses Issues\n\nAndere Tabellen außerhalb von „Benutzer“ und „Gruppen“ (Modelle, Anbieter, Fremdzugänge, Rechtehistorie …).\n\n## Abnahmekriterien\n\n- [ ] Chat-Tabelle optisch wie „Benutzer“/„Gruppen“, auch als Kartenliste auf dem Handy\n- [ ] Zeilenmenü mit den Einzelaktionen, Mehrfachauswahl mit kontextueller Aktionsleiste\n- [ ] Paging mit `ListPager` und 25 pro Seite in beiden Tabs\n- [ ] Tests angepasst und ergänzt",
+        "closes": []
+      },
+      {
+        "number": 2062,
+        "title": "fix(chat): Aufgeklappte Chatliste macht die Seite scrollbar – Chat springt nach oben, Leerraum darunter",
+        "url": "https://github.com/criew/opaa/issues/2062",
+        "author": "bigpuritz",
+        "labels": [
+          "bug",
+          "frontend",
+          "size:S"
+        ],
+        "body": "## Problem\n\nIm Space „Meine Dokumente“ mit vielen Chats: In der Chatliste „15 weitere anzeigen“ anklicken und dann den untersten Chat der Liste öffnen. Die ganze Seite springt nach oben. Der Chat mit Eingabezeile rutscht aus dem oberen Rand, im unteren Drittel bleibt eine leere weiße Fläche.\n\nGemessen bei einem Fenster von 1440 × 900:\n\n- Nach „15 weitere anzeigen“ ist das Dokument 1268 px hoch (`document.documentElement.scrollHeight`), obwohl die App-Oberfläche nur 900 px hoch ist.\n- Nach dem Klick auf den untersten Chat steht `window.scrollY` bei 368. Der Hauptbereich beginnt bei −368 px, darunter bleiben 368 px leer.\n\n## Ursache (Vermutung)\n\nDie aufgeklappte Chatliste überläuft ihren Container in der Seitenleiste, statt innerhalb der Seitenleiste zu scrollen. Dadurch wird die Seite selbst scrollbar, und der Browser scrollt sie, um den fokussierten Listeneintrag sichtbar zu halten. Die Chatseite soll laut #749 genau das Fenster füllen, ohne äußere Scrollleiste.\n\n## Abnahmekriterien\n\n- [ ] Die Chatliste scrollt innerhalb der Seitenleiste, gleich wie viele Chats aufgeklappt sind\n- [ ] Die Seite selbst ist nie höher als das Fenster (`scrollHeight == clientHeight`), auch mit aufgeklappter Liste\n- [ ] Nach Auswahl des untersten Chats steht der Chat bündig im Fenster, ohne Leerraum darunter\n- [ ] Test sichert die Regression ab",
+        "closes": []
+      }
+    ],
+    "closed": [
+      {
+        "number": 2064,
+        "title": "feat(chat): Chat-Tabelle an die Admin-Tabellen angleichen, mit einheitlichem Paging",
+        "url": "https://github.com/criew/opaa/issues/2064",
+        "author": "bigpuritz",
+        "labels": [
+          "enhancement",
+          "frontend",
+          "size:M"
+        ],
+        "body": "## Ziel\n\nDie Tabelle auf der Seite „Chats in „<Space>““ soll aussehen und sich bedienen lassen wie die Tabellen im Adminbereich „Benutzer“ und „Gruppen“. Dazu kommt ein einheitliches Paging.\n\n## Ist-Stand\n\n- Eigene MUI-Tabelle (`ChatsPage.tsx`), nicht über die Bausteine der Admin-Listen (`components/admin/list/`: `adminTableSx`, `ListPager`, `ListLoading`, `ListEmptyState`).\n- Titel als blaue Links. Kein Zeilenmenü. Dauerhaft sichtbare Leiste „Alle auf dieser Seite auswählen / Archivieren / Löschen“ mit ausgegrauten Knöpfen.\n- Paging über MUI-`TablePagination` („1–50 von 77“), in der aktiven Liste erst ab 50 Chats. Die Admin-Listen zeigen dagegen „n Gruppen · Seite x von y ‹ ›“ mit 25 pro Seite.\n- Laden als Spinner statt Skeleton-Zeilen (Leitfaden 5.7).\n\n## Soll\n\n- Tabellenstil der Admin-Listen: Kopfzeile im Eyebrow-Muster, Zeilen durch Linien getrennt, Titel in Navy mit Nebenzeile. Unterhalb der Tablet-Breite Kartenliste (Leitfaden 5.3).\n- Zeilenmenü (⋮) wie im Admin: Anheften/Lösen, Archivieren bzw. Zurückholen, Löschen.\n- Die Mehrfachauswahl bleibt. Die Aktionsleiste erscheint erst, wenn etwas ausgewählt ist.\n- Paging mit `ListPager` („n Chats · Seite x von y“), 25 pro Seite, in „Aktiv“ und „Archiv“. „Aktiv“ bleibt clientseitig (die Seitenleiste lädt alle aktiven Chats ohnehin), „Archiv“ serverseitig.\n- Laden über `ListLoading`, Leerzustand über `ListEmptyState`.\n- Tabs „Aktiv/Archiv“ und die Volltextsuche bleiben erhalten.\n\n## Nicht Teil dieses Issues\n\nAndere Tabellen außerhalb von „Benutzer“ und „Gruppen“ (Modelle, Anbieter, Fremdzugänge, Rechtehistorie …).\n\n## Abnahmekriterien\n\n- [ ] Chat-Tabelle optisch wie „Benutzer“/„Gruppen“, auch als Kartenliste auf dem Handy\n- [ ] Zeilenmenü mit den Einzelaktionen, Mehrfachauswahl mit kontextueller Aktionsleiste\n- [ ] Paging mit `ListPager` und 25 pro Seite in beiden Tabs\n- [ ] Tests angepasst und ergänzt",
+        "closes": []
+      },
+      {
+        "number": 2062,
+        "title": "fix(chat): Aufgeklappte Chatliste macht die Seite scrollbar – Chat springt nach oben, Leerraum darunter",
+        "url": "https://github.com/criew/opaa/issues/2062",
+        "author": "bigpuritz",
+        "labels": [
+          "bug",
+          "frontend",
+          "size:S"
+        ],
+        "body": "## Problem\n\nIm Space „Meine Dokumente“ mit vielen Chats: In der Chatliste „15 weitere anzeigen“ anklicken und dann den untersten Chat der Liste öffnen. Die ganze Seite springt nach oben. Der Chat mit Eingabezeile rutscht aus dem oberen Rand, im unteren Drittel bleibt eine leere weiße Fläche.\n\nGemessen bei einem Fenster von 1440 × 900:\n\n- Nach „15 weitere anzeigen“ ist das Dokument 1268 px hoch (`document.documentElement.scrollHeight`), obwohl die App-Oberfläche nur 900 px hoch ist.\n- Nach dem Klick auf den untersten Chat steht `window.scrollY` bei 368. Der Hauptbereich beginnt bei −368 px, darunter bleiben 368 px leer.\n\n## Ursache (Vermutung)\n\nDie aufgeklappte Chatliste überläuft ihren Container in der Seitenleiste, statt innerhalb der Seitenleiste zu scrollen. Dadurch wird die Seite selbst scrollbar, und der Browser scrollt sie, um den fokussierten Listeneintrag sichtbar zu halten. Die Chatseite soll laut #749 genau das Fenster füllen, ohne äußere Scrollleiste.\n\n## Abnahmekriterien\n\n- [ ] Die Chatliste scrollt innerhalb der Seitenleiste, gleich wie viele Chats aufgeklappt sind\n- [ ] Die Seite selbst ist nie höher als das Fenster (`scrollHeight == clientHeight`), auch mit aufgeklappter Liste\n- [ ] Nach Auswahl des untersten Chats steht der Chat bündig im Fenster, ohne Leerraum darunter\n- [ ] Test sichert die Regression ab",
+        "closes": []
+      },
+      {
+        "number": 2037,
+        "title": "fix(auth): Anmeldeseite blitzt beim Abmelden über OIDC auf und ist kurz bedienbar",
+        "url": "https://github.com/criew/opaa/issues/2037",
+        "author": "criew",
+        "labels": [
+          "bug",
+          "frontend",
+          "size:S",
+          "auth"
+        ],
+        "body": "Beim Abmelden über einen OIDC-Anbieter (Keycloak) blitzt die Anmeldeseite kurz auf, bevor der Browser zum Abmelde-Endpunkt des Anbieters weitergeleitet wird. Aufgefallen bei der Analyse von #2030 (PR #2036).\n\n### Ursache\n\n`oidc-client-ts` entfernt beim `signoutRedirect` zuerst den Nutzer und lädt erst danach die Discovery des Anbieters. Das Entfernen setzt `isAuthenticated` auf `false`; `ProtectedRoute` leitet daraufhin innerhalb der Seite auf `/login` um. Bis die Weiterleitung zum Anbieter startet (im CI-Trace mehrere Sekunden), ist die Anmeldeseite sichtbar und bedienbar.\n\n### Folge\n\n- Sichtbares Flackern der Anmeldeseite.\n- Ein Klick auf einen Anbieter in dieser Lücke könnte eine Anmeldung starten, die mit der laufenden Abmeldung konkurriert (plausibel, nicht gemessen).\n\n### Vorschlag\n\nWährend einer laufenden Abmeldung statt der Anmeldeseite einen neutralen Zustand zeigen (z. B. „Sie werden abgemeldet …“) oder die Umleitung durch `ProtectedRoute` unterdrücken, bis die Weiterleitung zum Anbieter erfolgt ist. Der Weg für Anbieter ohne Abmelde-Endpunkt muss weiter funktionieren.\n\n### Abnahmekriterien\n\n- [ ] Beim Abmelden über Keycloak erscheint die Anmeldeseite erst nach der Rückkehr vom Anbieter\n- [ ] Anbieter ohne Abmelde-Endpunkt landen weiterhin auf der Anmeldeseite\n- [ ] Demo-Smoke bleibt grün",
+        "closes": []
+      },
+      {
+        "number": 1924,
+        "title": "feat(chat): Kopierfunktion — Antwort als Markdown ohne Fußnoten, Varianten im Dropdown, Copy an eigenen Fragen",
+        "url": "https://github.com/criew/opaa/issues/1924",
+        "author": "criew",
+        "labels": [
+          "enhancement",
+          "frontend",
+          "size:M"
+        ],
+        "body": "## Kontext\r\n\r\nBefund der UI-Durchsicht vom 24.09.2026 (Maintainer und Mitentwickler, gemeinsamer Klick durch die Demo-Instanz). Teil der UI-Politur-Runde #1441. Beim Kopieren einer Antwort landen die Zitatmarken im Text. Eigene Fragen lassen sich nicht mit einem Klick kopieren, obwohl man sie oft in einem neuen Chat leicht abgewandelt wiederverwenden will.\r\n\r\n## Ziel\r\n\r\nEin Klick kopiert die Antwort sauber; wer Quellen oder reinen Text will, wählt es im Dropdown daneben.\r\n\r\n## Abnahmekriterien\r\n\r\n- [ ] Copy-Knopf an der Antwort: Standard = Markdown ohne Fußnotenmarken und ohne Quellenliste\r\n- [ ] Dropdown-Pfeil daneben mit „Mit Quellenangaben“ (Markdown, Fußnoten und Quellenliste sauber formatiert) und „Nur Text“ (ohne Markdown)\r\n- [ ] Copy-Knopf an jeder eigenen Frage (reiner Text)\r\n- [ ] Kurze Bestätigung („Kopiert“), tastaturbedienbar\r\n- [ ] Dokumentation: `docs/handbuch/suche.md`, Abschnitt Antworten\r\n\r\n## Umfang\r\n\r\n- Zwischenablage-Funktionen im Chatverlauf\r\n\r\n## Außerhalb des Umfangs\r\n\r\n- Export ganzer Chats (eigenes Issue)\r\n\r\n## Betroffene Module\r\n\r\nFrontend (`frontend/src`)",
+        "closes": []
+      }
+    ],
+    "merged": [
+      {
+        "number": 2067,
+        "title": "feat(chat): Antworten und eigene Fragen mit einem Klick kopieren",
+        "url": "https://github.com/criew/opaa/pull/2067",
+        "author": "bigpuritz",
+        "labels": [
+          "enhancement",
+          "frontend"
+        ],
+        "body": "## Zusammenfassung\n\nAntworten und eigene Fragen lassen sich jetzt mit einem Klick kopieren.\n\n- **Antwort:** geteilter Knopf „Kopieren ⌄“ rechts in der Fußzeile, in einer Zeile mit „Belege anzeigen“ und in derselben Pillenform, nur ruhiger.\n  - **Klick:** Die Antwort kommt als Markdown **ohne Fußnotenmarken und ohne Quellenliste** in die Zwischenablage. Die Marken fallen samt Leerzeichen davor weg.\n  - **Pfeil → „Mit Quellenangaben“:** Markdown mit Fußnoten `[^n]`, dieselben Nummern wie im Chat; direkt wiederholte Marken derselben Stelle ergeben eine Fußnote. Darunter folgt die Quellenliste `[^n]: <Dokument>, <Fundort>`.\n  - **Pfeil → „Nur Text“:** ohne Markdown-Zeichen. Überschriften und Zitate verlieren ihre Zeichen, Aufzählungen werden zu „•“, Tabellenzeilen tabulatorgetrennt (lassen sich in eine Tabelle einfügen), Code behält seine Zeilen.\n  - Die Fußzeile erscheint damit auch bei Antworten ohne Belege, dann nur mit Haarlinie und Kopierknopf.\n- **Frage:** ein Kopiersymbol unter jeder eigenen Frage. Es übernimmt den Text unverändert, etwa um die Frage in einem neuen Chat abgewandelt zu stellen. Sichtbar bei Hover und Tastaturfokus, auf Geräten ohne Hover immer.\n- **Bestätigung** am Knopf selbst: Häkchen, „Kopiert“ und passender Name für 2 Sekunden. Ein Popup pro Kopie wäre im Chatverlauf zu laut. Screenreader hören „Die Antwort wurde kopiert.“ aus **einer einzigen** Live-Region der Nachrichtenliste (`copyAnnouncer`), nicht aus einer Region je Nachricht. Verweigert der Browser die Zwischenablage, meldet ein Hinweis den Weg von Hand, wie bei `copyToClipboard`.\n\nNeu sind:\n\n- `copyFormats.ts`: drei reine Formatfunktionen\n- `useClipboardCopy.ts`\n- `copyAnnouncer.ts`\n- `CopyAnswerButton.tsx`\n- `CopyQuestionButton.tsx`\n\n`EvidenceFooter` hat einen optionalen `actions`-Platz.\n\n## Zugehörige Issues\n\nCloses #1924\n\n## Art der Änderung\n\n- [ ] Bugfix\n- [x] Neues Feature\n- [x] Dokumentation\n- [ ] Refactoring\n- [ ] CI/Build\n\n## Checkliste\n\n- [x] Tests bestehen lokal (Frontend grün bis auf die 2 `GlobalRail`-Tests, die auf `main` identisch scheitern). Lint, Prettier und Build sind grün\n- [ ] Bei Bugfix: Reproduktionsnachweis erbracht — entfällt, Feature\n- [x] Dokumentation aktualisiert (falls zutreffend)\n- [x] Handbuch nachgezogen: `docs/handbuch/suche.md`, Abschnitt 7 (Absatz „Kopieren“ vor 7.1, damit die Nummern 7.1/7.2 stehen bleiben)\n- [x] Barrierefreiheit nach `docs/design/accessibility.md` geprüft:\n  - Knöpfe mit Namen („Antwort kopieren“, „Weitere Kopieroptionen“, „Frage kopieren“), das Menü mit `aria-haspopup`/`aria-expanded`\n  - Das Kopiersymbol der Frage wird bei Tastaturfokus sichtbar\n  - Bestätigung über die Live-Region\n  - `prefers-reduced-motion` wird beachtet\n- [x] Keine Secrets oder Anmeldeinformationen committet\n- [x] Commit-Nachrichten folgen Conventional Commits\n- [x] CLA unterzeichnet\n\n### Tests\n\n- `copyFormats.test.ts`: alle drei Formate mit Fußnoten, Fundort, wiederholten Marken, Tabellen, Code und Unterstrichen in Dateinamen\n- `MessageBubble.test.tsx`:\n  - Standard-Kopie mit Bestätigung und Ansage\n  - „Mit Quellenangaben“, „Nur Text“\n  - Bedienung per Tastatur\n  - Antwort ohne Belege\n  - Frage kopieren\n  - verweigerte Zwischenablage\n- `PageSection.test.tsx`: `CopyAnswerButton` mit Begründung unter den Rahmen-Ausnahmen, wie `EvidenceFooter`\n\n### Im Browser geprüft\n\nLokaler Stack, demo-admin, echter Chat:\n\n- **Platzierung:** Kopierknopf in der Fußzeile, Symbol unter der überfahrenen Frage.\n- **Menü:** „✓ Kopiert“ nach dem Klick, Varianten-Menü mit Erklärung.\n- **Inhalte:** Die an `navigator.clipboard.writeText` übergebenen Texte habe ich mitgeschrieben.\n  - Keines der drei Formate enthält eine Zitatmarke.\n  - „Mit Quellenangaben“ endet mit `[^1]: 015_befreiung-von-der-ausweispflicht.md, Abschn. Befreiung von der Ausweispflicht`.\n  - „Nur Text“ setzt „•“ statt „-“.\n\n## KI-Agenten-Offenlegung\n\n- [ ] Dieser PR wurde von einem Menschen verfasst\n- [ ] Dieser PR wurde von einem KI-Agenten verfasst (angeben: _______)\n- [x] Dieser PR wurde von Mensch + KI-Agent gemeinsam verfasst (Claude Opus 5.5)\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)",
+        "closes": [
+          1924
+        ],
+        "additions": 659,
+        "deletions": 89,
+        "changed_files": 12
+      },
+      {
+        "number": 2066,
+        "title": "fix(auth): Beim Abmelden über OIDC nicht mehr kurz die Anmeldeseite zeigen",
+        "url": "https://github.com/criew/opaa/pull/2066",
+        "author": "bigpuritz",
+        "labels": [
+          "bug",
+          "frontend",
+          "auth"
+        ],
+        "body": "## Zusammenfassung\n\nBeim Abmelden über einen OIDC-Anbieter (Keycloak) blitzte die Anmeldeseite auf und war bedienbar, bis der Browser zum Abmelde-Endpunkt des Anbieters wechselte.\n\n**Ursache:** `oidc-client-ts` entfernt bei `signoutRedirect()` zuerst den Nutzer und lädt erst danach die Discovery. `UserUnloaded` setzt `isAuthenticated` auf `false`, und `ProtectedRoute` leitete in dieser Lücke auf `/login` um.\n\n**Fix:**\n- `authStore` hat einen neuen Zustand `isSigningOut`. `logout()` setzt ihn vor `signoutRedirect()`.\n  - Nach gestarteter Weiterleitung wird er **nicht** zurückgenommen: `signoutRedirect()` kehrt zurück, sobald die Navigation angestoßen ist, und der Code danach läuft noch, bevor die Seite verschwindet.\n  - Im Rückfallweg ohne `end_session_endpoint` geht er zurück auf `false`. Dann folgt wie bisher die Anmeldeseite mit dem Hinweis „nur in dieser Anwendung abgemeldet“.\n  - Eine neue Sitzung setzt ihn zurück, wie schon `signedOut`.\n- `ProtectedRoute` zeigt währenddessen einen neutralen Zustand „Sie werden abgemeldet …“ (`role=\"status\"`) statt Anwendung oder Anmeldeseite. Kommt die Seite per „Zurück“ aus dem Back-Forward-Cache, lädt sie neu, statt dort stehen zu bleiben.\n- Den Kommentar des Abmelde-Helfers im Demo-Smoke habe ich an das neue Verhalten angepasst; die Logik bleibt unverändert.\n\nLokale Konten sind nicht betroffen: Dort wird `isAuthenticated` erst nach der Server-Abmeldung zurückgesetzt, und es gibt keine Weiterleitung.\n\n## Zugehörige Issues\n\nCloses #2037\n\n## Art der Änderung\n\n- [x] Bugfix\n- [ ] Neues Feature\n- [ ] Dokumentation\n- [ ] Refactoring\n- [ ] CI/Build\n\n## Checkliste\n\n- [x] Tests bestehen lokal (Frontend grün bis auf die 2 `GlobalRail`-Tests, die auf `main` identisch scheitern). Lint, Prettier, Build und die E2E-Typprüfung sind grün\n- [x] Bei Bugfix: Reproduktionsnachweis erbracht (siehe unten)\n- [ ] Dokumentation aktualisiert (falls zutreffend) — nicht betroffen\n- [x] Handbuch (`docs/handbuch/`) ausdrücklich nicht betroffen: Das beschriebene Verhalten (Abmeldung beim Anbieter) bleibt gleich\n- [x] Barrierefreiheit nach `docs/design/accessibility.md` geprüft: Die Abmeldemeldung ist eine Statusmeldung, der Kreisel `aria-hidden`\n- [x] Keine Secrets oder Anmeldeinformationen committet\n- [x] Commit-Nachrichten folgen Conventional Commits\n- [x] CLA unterzeichnet\n\n### Reproduktionsnachweis\n\nDer Branch steht auf aktuellem `main` (5a8726ce). Für den roten Lauf habe ich den Fix (`authStore.ts`, `ProtectedRoute.tsx`) per `git stash` zurückgenommen:\n```\n× shows a neutral sign-out state, not the login page, while the provider redirect is pending\n    TestingLibraryElementError: Unable to find role=\"status\"\n× signs out at the provider of the active session\n    AssertionError: expected undefined to be true\n× falls back to a local sign-out when the provider offers no end session endpoint\n    AssertionError: expected undefined to be false\nTests  3 failed | 69 passed (72)\n```\nMit Fix: `Tests 72 passed (72)`.\n\n**Gegen echtes Keycloak** (lokaler Stack, demo-admin): Vor dem Klick auf „Abmelden“ habe ich einen `MutationObserver` angehängt, der seine Beobachtungen in `sessionStorage` festhält. Ergebnis: Vor der Weiterleitung erschien „Sie werden abgemeldet …“, die Anmeldeseite nie; der einzige beobachtete Pfad war `/spaces`. Die Anmeldeseite kam erst als neues Dokument nach der Rückkehr von Keycloak.\n\n### Abnahmekriterien\n\n- [x] Beim Abmelden über Keycloak erscheint die Anmeldeseite erst nach der Rückkehr vom Anbieter (lokal belegt, siehe oben)\n- [x] Anbieter ohne Abmelde-Endpunkt landen weiterhin auf der Anmeldeseite (Unit-Test „falls back to a local sign-out …“ und der bestehende `ProtectedRoute`-Test zum Rückfallweg)\n- [x] Demo-Smoke bleibt grün: manueller Lauf auf diesem Branch erfolgreich (https://github.com/criew/opaa/actions/runs/36613588613). Er meldet sich über Keycloak an und wieder ab\n\n## KI-Agenten-Offenlegung\n\n- [ ] Dieser PR wurde von einem Menschen verfasst\n- [ ] Dieser PR wurde von einem KI-Agenten verfasst (angeben: _______)\n- [x] Dieser PR wurde von Mensch + KI-Agent gemeinsam verfasst (Claude Opus 5.5)\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)",
+        "closes": [
+          2037
+        ],
+        "additions": 94,
+        "deletions": 5,
+        "changed_files": 5
+      },
+      {
+        "number": 2065,
+        "title": "feat(chat): Chat-Tabelle an die Admin-Tabellen angleichen, mit einheitlichem Paging",
+        "url": "https://github.com/criew/opaa/pull/2065",
+        "author": "bigpuritz",
+        "labels": [
+          "enhancement",
+          "frontend"
+        ],
+        "body": "## Zusammenfassung\n\nDie Tabelle auf der Seite „Chats in „<Space>““ sieht jetzt aus wie die Tabellen „Benutzer“ und „Gruppen“ im Adminbereich und bedient sich auch so. Sie nutzt dieselben Bausteine aus `components/admin/list/`.\n\n- **Tabellenstil** `adminTableSx`: Mono-Kopfzeile im Eyebrow-Muster, feste Spaltenbreiten, Zeilen durch Linien getrennt. Der Titel steht in Navy (13,5 px, 500) statt als blauer Link; darunter „angeheftet“ als zweite Zeile. Unterhalb der Tablet-Breite wird die Tabelle zur Liste (`listCardSx`, Leitfaden 5.3).\n- **Zeilenmenü (⋮)** wie `GroupRowMenu`. Im Reiter Aktiv: Anheften/Lösen und Archivieren, im Reiter Archiv: Zurückholen. In beiden steht Löschen unter einer Trennlinie. Das Einzellöschen fragt mit dem Titel nach.\n- **Mehrfachauswahl** bleibt. Die Leiste „Alle auf dieser Seite auswählen“ zeigt die Sammelaktionen erst bei Auswahl („2 ausgewählt · Archivieren · Löschen“, leicht eingefärbt) statt dauerhaft ausgegrauter Knöpfe. Die Tastaturführung „Alle auswählen → Tab → Archivieren“ bleibt erhalten.\n- **Paging** mit `ListPager` und 25 je Seite in beiden Reitern („77 Chats · Seite 1 von 4 ‹ ›“) statt MUI-`TablePagination` mit 50. Die aktiven Chats sind für die Seitenleiste ohnehin vollständig geladen und werden im Browser geblättert; das Archiv blättert weiterhin serverseitig. Die API ist unverändert.\n- **Laden** über `ListLoading` (Skeleton statt Spinner, Leitfaden 5.7), **Leerzustand** über `ListEmptyState`.\n- **Suchfeld** in voller Breite mit Lupe wie in den Admin-Filterleisten. Der Hinweis auf die Mindestlänge erscheint nur, wenn er nötig ist.\n\nNeu sind `components/chat/ChatTable.tsx` (Tabelle und Liste) und `components/chat/ChatRowMenu.tsx`. `ChatsPage.tsx` nutzt beide.\n\nDie Auswahlspalte ist bewusst keine `padding=\"checkbox\"`-Zelle: Das Theme verengt diese auf 24 px, und `adminTableSx` schneidet Zellinhalte ab. Die Kästchen wurden dadurch abgeschnitten.\n\n## Zugehörige Issues\n\nCloses #2064\n\n## Art der Änderung\n\n- [ ] Bugfix\n- [x] Neues Feature\n- [x] Dokumentation\n- [ ] Refactoring\n- [ ] CI/Build\n\n## Checkliste\n\n- [x] Tests bestehen lokal (Frontend 2267 grün; 2 rote in `GlobalRail.test.tsx` scheitern auf `main` identisch, lokale Umgebungsstörung). Lint, Prettier und Build sind grün\n- [ ] Bei Bugfix: Reproduktionsnachweis erbracht — entfällt, Feature\n- [x] Dokumentation aktualisiert: `docs/features/chat-list.md`, Abschnitt „Die Seite ‚Chats‘ je Space“, mit Skizze\n- [x] Handbuch (`docs/handbuch/`) ausdrücklich nicht betroffen: Es beschreibt die Seite „Chats“ nicht im Detail\n- [x] Barrierefreiheit nach `docs/design/accessibility.md` geprüft: Zeilenmenü mit Namen „Aktionen für „<Titel>““, Checkboxen mit „„<Titel>“ auswählen“, Statusmeldung als dauerhafte Live-Region, Sammelaktionen per Tastatur erreichbar, der Fokus kehrt nach einer Aktion auf „Alle auswählen“ bzw. den Reiter zurück\n- [x] Keine Secrets oder Anmeldeinformationen committet\n- [x] Commit-Nachrichten folgen Conventional Commits\n- [x] CLA unterzeichnet\n\n### Tests\n\n`ChatsPage.test.tsx` läuft wie die Admin-Tests mit Desktop-`matchMedia`.\n\n- **Angepasst:** Die Sammelaktionen erscheinen erst bei Auswahl.\n- **Neu:**\n  - Archivieren und Löschen über das Zeilenmenü\n  - Zurückholen statt Anheften und Archivieren im Archiv\n  - Paging mit 25 je Seite („30 Chats · Seite 1 von 2“, Seitenwechsel)\n  - Anheften über das Menü samt Markierung\n  - Listenansicht unter Tablet-Breite\n\n### Im Browser geprüft\n\nLokaler Stack, demo-admin, 77 Chats:\n\n- Tabelle bei 1440 px mit und ohne Auswahl\n- Zeilenmenü\n- Pager „77 Chats · Seite 1 von 4“\n- Listenansicht bei 375 px\n- Die Checkboxen der Auswahlleiste und der Zeilen fluchten (gemessen, beide bei x = 352)\n\n## KI-Agenten-Offenlegung\n\n- [ ] Dieser PR wurde von einem Menschen verfasst\n- [ ] Dieser PR wurde von einem KI-Agenten verfasst (angeben: _______)\n- [x] Dieser PR wurde von Mensch + KI-Agent gemeinsam verfasst (Claude Opus 5.5)\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)",
+        "closes": [
+          2064
+        ],
+        "additions": 632,
+        "deletions": 197,
+        "changed_files": 7
+      },
+      {
+        "number": 2063,
+        "title": "fix(chat): Aufgeklappte Chatliste macht die Seite nicht mehr scrollbar",
+        "url": "https://github.com/criew/opaa/pull/2063",
+        "author": "bigpuritz",
+        "labels": [
+          "bug",
+          "frontend"
+        ],
+        "body": "## Zusammenfassung\n\nNach „15 weitere anzeigen“ in der Chatliste und dem Öffnen des untersten Chats sprang die ganze Oberfläche nach oben, und im unteren Drittel blieb eine leere Fläche.\n\n**Ursache:** Die Statusmeldung der Chatliste für Screenreader („15 weitere Chats angezeigt“) ist per `visuallyHidden` absolut positioniert. Einen positionierten Vorfahren hatte sie nicht. Unter einer aufgeklappten Liste lag sie deshalb an ihrer statischen Position unterhalb des Fensters, entkam dem Clipping der scrollenden Chat-Navigation und machte das Dokument höher als das Fenster. Beim Fokuswechsel auf den untersten Eintrag scrollte der Browser dann die ganze Seite. Die Nachrichtenliste hatte denselben Fehler in #749.\n\n**Fix:** Die Chat-Navigation in der Seitenleiste (`Sidebar.tsx`) bekommt `position: 'relative'` und ist damit der Positionierungskontext der Statusmeldung, nach dem Muster der Nachrichtenliste seit #749. Die Suchergebnisse der Chatliste liegen im selben Container und sind mit abgedeckt.\n\n### Nachbesserung: Blätterknöpfe einzeilig (8e1cd8ba)\n\nMit aufgeklappter Liste standen „15 weitere anzeigen“ und „weniger anzeigen“ nebeneinander und brachen zweizeilig um. Gemessen: Die beiden brauchen ohne Umbruch zusammen 230 px, in der Seitenleiste sind 198 px frei. `nowrap` allein hätte den Text überlaufen lassen.\n\n- Sichtbar steht jetzt links **„15 weitere ⌄“** und rechts **„Weniger ⌃“**, jeweils `nowrap`. Der Pfeil ersetzt das Wort „anzeigen“. Im Browser sind beide Knöpfe einzeilig und 24 px hoch.\n- Vorgelesen werden sie weiterhin vollständig („15 weitere Chats anzeigen“, „Weniger anzeigen“, im Singular „1 weiteren Chat anzeigen“). Der Rest steht in einem nur für Screenreader lesbaren Textteil, sodass der Name mit dem sichtbaren Text beginnt (WCAG 2.5.3 Label in Name). Das trennende Leerzeichen steht außerhalb dieses Teils; innerhalb fiel es bei der Namensberechnung weg („15 weitereChats“).\n- Tests: Namen angepasst, neu sind Tests für `nowrap` und den Singular. Handbuch `suche.md` und `docs/features/chat-list.md` sind nachgezogen.\n\n### Nachbesserung: Aufklappstand übersteht den Layoutwechsel (a3097bcd)\n\nAblauf: Die Liste mehrmals mit „15 weitere“ aufklappen, den untersten Chat wählen, das Fenster auf Handybreite verkleinern und wieder vergrößern. Danach war die Liste wieder auf 15 zugeklappt, und der gewählte Chat war weder sichtbar noch als ausgewählt erkennbar.\n\n**Ursache:** `AppShell` rendert die Seitenleiste unterhalb von `md` in einem Drawer und darüber direkt. Beim Wechsel wird `ChatList` neu aufgebaut. Der Aufklappstand lag in lokalem `useState` und fiel dabei auf 15 zurück, und die Liste stand wieder oben.\n\n**Fix:**\n- Der Aufklappstand (`revealedRecent`) liegt jetzt im `chatListStore` und übersteht jeden Neuaufbau. Ein anderer Space beginnt weiterhin bei 15, wie `docs/features/chat-list.md` es festlegt.\n- Liegt der geöffnete Chat jenseits der aufgeklappten Seiten, klappt die Liste einmal bis zu ihm auf; das gilt auch beim Öffnen per Link. „Weniger“ klappt danach weiterhin zurück.\n- Beim Aufbau scrollt die Liste den geöffneten Chat in ihren sichtbaren Bereich (`scrollIntoView({ block: 'nearest' })`).\n\n**Reproduktionsnachweis:** Vor dem Fix schlagen drei neue Tests in `ChatList.test.tsx` fehl, nach dem Fix sind sie grün:\n```\n× keeps the revealed pages when the list remounts\n× reveals, selects and scrolls to the open chat beyond the first page\n× still folds back with \"Weniger\" while the open chat sits on a later page\nTests  3 failed | 25 passed (28)\n```\nEin vierter Test („starts a different space at its first page again“) sichert das Verhalten beim Spacewechsel ab; er ist vor und nach dem Fix grün.\n\n**Im Browser:** 60 Chats aufgeklappt, den untersten gewählt, dann 1440 → 320 → 1440 px. Danach sind weiter 60 Einträge da, der gewählte Chat ist markiert und im sichtbaren Bereich (`nav.scrollTop` 1551), die Seite bleibt bei 900 px. Im Handymenü bei 320 px gilt dasselbe, ohne seitlichen Überlauf.\n\n## Zugehörige Issues\n\nCloses #2062\n\n## Art der Änderung\n\n- [x] Bugfix\n- [ ] Neues Feature\n- [ ] Dokumentation\n- [ ] Refactoring\n- [ ] CI/Build\n\n## Checkliste\n\n- [x] Tests bestehen lokal (Frontend 2251 grün; 2 rote in `GlobalRail.test.tsx` scheitern auf `main` identisch, lokale Umgebungsstörung, siehe unten). Lint, Prettier und Build sind grün\n- [x] Bei Bugfix: Reproduktionsnachweis erbracht (siehe unten)\n- [ ] Dokumentation aktualisiert (falls zutreffend) — nicht betroffen\n- [x] Handbuch (`docs/handbuch/`) nachgezogen oder ausdrücklich nicht betroffen — nicht betroffen, reine Layoutkorrektur\n- [x] Barrierefreiheit nach `docs/design/accessibility.md` geprüft: Die Statusmeldung bleibt unverändert und wird weiter angesagt, nur ihr Positionierungskontext ändert sich\n- [x] Keine Secrets oder Anmeldeinformationen committet\n- [x] Commit-Nachrichten folgen Conventional Commits\n- [x] CLA unterzeichnet\n\n### Reproduktionsnachweis\n\n**Unit-Test** `Sidebar.test.tsx` › „contains the chat list in a positioned scroll container“. Wie bei #749 prüft er die Eindämmung selbst, weil jsdom kein Layout berechnet.\n\nRot, ohne den Fix:\n```\n× contains the chat list in a positioned scroll container\nExpected: \"relative\"\nReceived: \"static\"\n```\nGrün, mit dem Fix: `Tests 18 passed (18)`.\n\n**Im echten Browser** (lokaler Stack, 1440 × 900, demo-admin, „Meine Dokumente“ mit 77 Chats, „15 weitere anzeigen“, dann den untersten Chat öffnen):\n\n| | vorher | nachher |\n|---|---|---|\n| `document.documentElement.scrollHeight` | 1268 | 900 |\n| `window.scrollY` nach Chatauswahl | 368 | 0 |\n| Oberkante des Hauptbereichs | −368 px | 0 px |\n| Scrollposition der Chatliste (`nav.scrollTop`) | — | 483 (die Liste scrollt selbst) |\n\nDas Element, das über das Fenster hinausragte, habe ich per DOM-Messung eindeutig identifiziert: ein 1 px hohes, absolut positioniertes Element bei y = 1267, die Statusmeldung.\n\n**Hinweis zu den lokalen Testfehlern:** `GlobalRail.test.tsx` (2 Tests) scheitert im Hauptverzeichnis auf `main` mit derselben Meldung. Die Ursache liegt nicht in diesem PR; maßgeblich ist die CI.\n\n## KI-Agenten-Offenlegung\n\n- [ ] Dieser PR wurde von einem Menschen verfasst\n- [ ] Dieser PR wurde von einem KI-Agenten verfasst (angeben: _______)\n- [x] Dieser PR wurde von Mensch + KI-Agent gemeinsam verfasst (Claude Opus 5.5)\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)",
+        "closes": [
+          2062
+        ],
+        "additions": 231,
+        "deletions": 27,
+        "changed_files": 8
+      },
+      {
+        "number": 2061,
+        "title": "chore(deps): ollama/ollama docker tag to v0.35.0",
+        "url": "https://github.com/criew/opaa/pull/2061",
+        "author": "bigpuritz",
+        "labels": [
+          "enhancement",
+          "ci"
+        ],
+        "body": "Automatisches Abhängigkeits-Update durch Renovate (#751, siehe docs/renovate.md) — Prüfung und Merge folgen dem normalen Weg.\n\nThis PR contains the following updates:\n\n| Package | Update | Change |\n|---|---|---|\n| ollama/ollama | minor | `0.34.4` → `0.35.0` |\n\n---\n\n### Configuration\n\n📅 **Schedule**: (in timezone Europe/Berlin)\n\n- Branch creation\n  - At any time (no schedule defined)\n- Automerge\n  - At any time (no schedule defined)\n\n🚦 **Automerge**: Enabled.\n\n♻ **Rebasing**: Whenever PR is behind base branch, or you tick the rebase/retry checkbox.\n\n🔕 **Ignore**: Close this PR and you won't be reminded about this update again.\n\n---\n\n - [ ] <!-- rebase-check -->If you want to rebase/retry this PR, check this box\n\n---\n\nThis PR has been generated by [Mend Renovate CLI](https://redirect.github.com/renovatebot/renovate).\n<!--renovate-debug:eyJjcmVhdGVkSW5WZXIiOiI0NC4xMTguMSIsInVwZGF0ZWRJblZlciI6IjQ0LjExOC4xIiwidGFyZ2V0QnJhbmNoIjoibWFpbiIsImxhYmVscyI6WyJjaSIsImVuaGFuY2VtZW50Il19-->",
+        "closes": [],
+        "additions": 2,
+        "deletions": 2,
+        "changed_files": 1
+      },
+      {
+        "number": 2060,
+        "title": "chore(deps): aws-java-sdk-v2 monorepo aktualisieren",
+        "url": "https://github.com/criew/opaa/pull/2060",
+        "author": "bigpuritz",
+        "labels": [
+          "enhancement",
+          "backend"
+        ],
+        "body": "Automatisches Abhängigkeits-Update durch Renovate (#751, siehe docs/renovate.md) — Prüfung und Merge folgen dem normalen Weg.\n\nThis PR contains the following updates:\n\n| Package | Type | Update | Change |\n|---|---|---|---|\n| [software.amazon.awssdk:apache5-client](https://aws.amazon.com/sdkforjava) | dependencies | patch | `2.55.6` → `2.55.7` |\n| [software.amazon.awssdk:s3](https://aws.amazon.com/sdkforjava) | dependencies | patch | `2.55.6` → `2.55.7` |\n\n---\n\n### Configuration\n\n📅 **Schedule**: (in timezone Europe/Berlin)\n\n- Branch creation\n  - At any time (no schedule defined)\n- Automerge\n  - At any time (no schedule defined)\n\n🚦 **Automerge**: Disabled because a matching PR was automerged previously.\n\n♻ **Rebasing**: Whenever PR becomes conflicted, or you tick the rebase/retry checkbox.\n\n🔕 **Ignore**: Close this PR and you won't be reminded about these updates again.\n\n---\n\n - [ ] <!-- rebase-check -->If you want to rebase/retry this PR, check this box\n\n---\n\nThis PR has been generated by [Mend Renovate CLI](https://redirect.github.com/renovatebot/renovate).\n<!--renovate-debug:eyJjcmVhdGVkSW5WZXIiOiI0NC4xMTguMSIsInVwZGF0ZWRJblZlciI6IjQ0LjExOC4xIiwidGFyZ2V0QnJhbmNoIjoibWFpbiIsImxhYmVscyI6WyJiYWNrZW5kIiwiZW5oYW5jZW1lbnQiXX0=-->",
+        "closes": [],
+        "additions": 1,
+        "deletions": 1,
+        "changed_files": 1
+      },
+      {
+        "number": 2059,
+        "title": "chore(deps): amazon/aws-cli docker tag to v2.37.5",
+        "url": "https://github.com/criew/opaa/pull/2059",
+        "author": "bigpuritz",
+        "labels": [
+          "enhancement",
+          "ci"
+        ],
+        "body": "Automatisches Abhängigkeits-Update durch Renovate (#751, siehe docs/renovate.md) — Prüfung und Merge folgen dem normalen Weg.\n\nThis PR contains the following updates:\n\n| Package | Update | Change |\n|---|---|---|\n| amazon/aws-cli | patch | `2.37.4` → `2.37.5` |\n\n---\n\n### Configuration\n\n📅 **Schedule**: (in timezone Europe/Berlin)\n\n- Branch creation\n  - At any time (no schedule defined)\n- Automerge\n  - At any time (no schedule defined)\n\n🚦 **Automerge**: Disabled by config. Please merge this manually once you are satisfied.\n\n♻ **Rebasing**: Whenever PR becomes conflicted, or you tick the rebase/retry checkbox.\n\n🔕 **Ignore**: Close this PR and you won't be reminded about this update again.\n\n---\n\n - [ ] <!-- rebase-check -->If you want to rebase/retry this PR, check this box\n\n---\n\nThis PR has been generated by [Mend Renovate CLI](https://redirect.github.com/renovatebot/renovate).\n<!--renovate-debug:eyJjcmVhdGVkSW5WZXIiOiI0NC4xMTguMSIsInVwZGF0ZWRJblZlciI6IjQ0LjExOC4xIiwidGFyZ2V0QnJhbmNoIjoibWFpbiIsImxhYmVscyI6WyJjaSIsImVuaGFuY2VtZW50Il19-->",
+        "closes": [],
+        "additions": 2,
+        "deletions": 2,
+        "changed_files": 1
+      }
+    ]
+  }
+}
