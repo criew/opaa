@@ -40,7 +40,7 @@ final class KeycloakFixture {
    * {@code renovate.json5} reads it from the comment below.
    */
   // renovate: datasource=docker depName=quay.io/keycloak/keycloak
-  static final String IMAGE = "quay.io/keycloak/keycloak:26.7";
+  static final String IMAGE = "quay.io/keycloak/keycloak:26.8";
 
   static final String REALM = "opaa-it";
   static final String DIRECTORY_CLIENT_ID = "opaa-directory";
