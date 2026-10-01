@@ -1,0 +1,490 @@
+{
+  "repo": "criew/opaa",
+  "date": "2026-09-30",
+  "generated_at": "2026-10-01T08:19:44.637722+02:00",
+  "timezone": "Europe/Berlin",
+  "timezone_fallback": false,
+  "window_start": "2026-09-30T00:00:00+02:00",
+  "window_end": "2026-09-30T23:59:59+02:00",
+  "closed_issues": [
+    {
+      "number": 2079,
+      "title": "fix(test): Ablauferinnerungs-Test scheitert am Tag vor jedem Quartalsbeginn",
+      "url": "https://github.com/criew/opaa/issues/2079",
+      "author": "bigpuritz",
+      "labels": [
+        "bug",
+        "backend",
+        "size:S"
+      ],
+      "body": "## Problem\n\n`LocalAccountMaintenanceIntegrationTest.remindsThePersonAndTheAdministratorsFourteenDaysBeforeAnExpiryExactlyOnce` schlägt am Tag vor jedem Quartalsbeginn fehl, also am 31.03., 30.06., 30.09. und 31.12.\n\nDer Test nimmt `Instant.now()` als Stichtag und prüft, dass ein zweiter Lauf am **Folgetag** keine weitere Mail verschickt. Fällt dieser Folgetag auf den ersten Tag eines Quartals, verschickt `AdminReviewReminderStep` dort zusätzlich die Quartalsübersicht an die Administratoren (`isQuarterStart`). Der Test zählt dann eine Mail mehr (`LocalAccountMaintenanceIntegrationTest.java:239`).\n\nAufgefallen am 30.09.2026 im Renovate-PR #2074. Das Scheitern ist unabhängig von dessen Änderung: Mit der alten AWS-SDK-Version fällt der Test lokal genauso durch. Auf `main` blieb es an diesem Tag unbemerkt, weil die Pushes nur das Frontend betrafen und die Backend-Tests übersprungen wurden.\n\n## Soll\n\nDer Test wählt seinen Stichtag so, dass weder der Stichtag noch der Folgetag ein Quartalsbeginn ist. Er prüft damit an jedem Kalendertag dasselbe.\n\n## Abnahmekriterien\n\n- [ ] Test besteht am 30.09.2026 (heute), vorher nachweislich rot\n- [ ] Aussage des Tests unverändert: genau eine Erinnerung, keine zweite am Folgetag",
+      "closes": []
+    },
+    {
+      "number": 2077,
+      "title": "fix(chat): Titel angehefteter Chats fluchten nicht mit den übrigen",
+      "url": "https://github.com/criew/opaa/issues/2077",
+      "author": "bigpuritz",
+      "labels": [
+        "bug",
+        "frontend",
+        "size:S"
+      ],
+      "body": "## Problem\n\nIn der Chatliste der Seitenleiste steht vor angehefteten Chats ein Pin-Symbol im Textfluss (`ChatList.tsx`, 12 px plus 6 px Abstand). Dadurch beginnt der Titel angehefteter Chats rund 18 px weiter rechts als der Titel aller übrigen Chats. Die Namen fluchten nicht.\n\n## Soll\n\nAlle Chat-Namen stehen linksbündig auf derselben Kante. Das Pin-Symbol sitzt links davor im Innenabstand der Zeile und verschiebt den Titel nicht.\n\n## Abnahmekriterien\n\n- [ ] Titel angehefteter und nicht angehefteter Chats beginnen an derselben x-Position\n- [ ] Pin-Symbol bleibt sichtbar, vertikal zentriert, links vor dem Titel\n- [ ] Test sichert die Ausrichtung ab",
+      "closes": []
+    },
+    {
+      "number": 2068,
+      "title": "docs(fortschritt): Zeitraumsbericht zum Stichtag 30.09.2026 und Gesamtstand fortschreiben",
+      "url": "https://github.com/criew/opaa/issues/2068",
+      "author": "criew",
+      "labels": [
+        "documentation",
+        "size:L"
+      ],
+      "body": "Monatlicher Zeitraumsbericht zum Stichtag 30.09.2026 nach dem Verfahren in `docs/fortschritt/README.md`.\n\n## Umfang\n\n- Anker ziehen (`main`-Commit und Abfragezeitpunkt) — Delta ab `a51e6b8c` / 30.08.2026\n- Rohdaten erheben (geschlossene Issues, gemergte PRs; nicht committet)\n- `bausteine.md` mit den Vorgängen mit Befund, Anhang mit den Vorgängen ohne Befund\n- `gruppierung.md` nach Themenbereichen A–K, T1–T3, V, P\n- `report.md` als Delta mit Management Summary, „Lücken und bewusste Schnitte\" und priorisierter Restliste\n- `gesamtstand.md` aus dem Delta fortschreiben\n\n## Abnahmekriterien\n\n- Neues Verzeichnis `docs/fortschritt/20260930/` mit `anker.md`, `bausteine.md`, `gruppierung.md`, `report.md` (Entwurf)\n- `gesamtstand.md` nennt je fortgeschriebene Aussage den Stichtag 20260930",
+      "closes": []
+    }
+  ],
+  "opened_issues": [
+    {
+      "number": 2079,
+      "title": "fix(test): Ablauferinnerungs-Test scheitert am Tag vor jedem Quartalsbeginn",
+      "url": "https://github.com/criew/opaa/issues/2079",
+      "author": "bigpuritz",
+      "labels": [
+        "bug",
+        "backend",
+        "size:S"
+      ],
+      "body": "## Problem\n\n`LocalAccountMaintenanceIntegrationTest.remindsThePersonAndTheAdministratorsFourteenDaysBeforeAnExpiryExactlyOnce` schlägt am Tag vor jedem Quartalsbeginn fehl, also am 31.03., 30.06., 30.09. und 31.12.\n\nDer Test nimmt `Instant.now()` als Stichtag und prüft, dass ein zweiter Lauf am **Folgetag** keine weitere Mail verschickt. Fällt dieser Folgetag auf den ersten Tag eines Quartals, verschickt `AdminReviewReminderStep` dort zusätzlich die Quartalsübersicht an die Administratoren (`isQuarterStart`). Der Test zählt dann eine Mail mehr (`LocalAccountMaintenanceIntegrationTest.java:239`).\n\nAufgefallen am 30.09.2026 im Renovate-PR #2074. Das Scheitern ist unabhängig von dessen Änderung: Mit der alten AWS-SDK-Version fällt der Test lokal genauso durch. Auf `main` blieb es an diesem Tag unbemerkt, weil die Pushes nur das Frontend betrafen und die Backend-Tests übersprungen wurden.\n\n## Soll\n\nDer Test wählt seinen Stichtag so, dass weder der Stichtag noch der Folgetag ein Quartalsbeginn ist. Er prüft damit an jedem Kalendertag dasselbe.\n\n## Abnahmekriterien\n\n- [ ] Test besteht am 30.09.2026 (heute), vorher nachweislich rot\n- [ ] Aussage des Tests unverändert: genau eine Erinnerung, keine zweite am Folgetag",
+      "closes": []
+    },
+    {
+      "number": 2077,
+      "title": "fix(chat): Titel angehefteter Chats fluchten nicht mit den übrigen",
+      "url": "https://github.com/criew/opaa/issues/2077",
+      "author": "bigpuritz",
+      "labels": [
+        "bug",
+        "frontend",
+        "size:S"
+      ],
+      "body": "## Problem\n\nIn der Chatliste der Seitenleiste steht vor angehefteten Chats ein Pin-Symbol im Textfluss (`ChatList.tsx`, 12 px plus 6 px Abstand). Dadurch beginnt der Titel angehefteter Chats rund 18 px weiter rechts als der Titel aller übrigen Chats. Die Namen fluchten nicht.\n\n## Soll\n\nAlle Chat-Namen stehen linksbündig auf derselben Kante. Das Pin-Symbol sitzt links davor im Innenabstand der Zeile und verschiebt den Titel nicht.\n\n## Abnahmekriterien\n\n- [ ] Titel angehefteter und nicht angehefteter Chats beginnen an derselben x-Position\n- [ ] Pin-Symbol bleibt sichtbar, vertikal zentriert, links vor dem Titel\n- [ ] Test sichert die Ausrichtung ab",
+      "closes": []
+    },
+    {
+      "number": 2071,
+      "title": "feat(demo): Space mit vielen Chats und einem langen Chat im Demo-Seed",
+      "url": "https://github.com/criew/opaa/issues/2071",
+      "author": "criew",
+      "labels": [
+        "enhancement",
+        "size:M",
+        "demo"
+      ],
+      "body": "## Zusammenfassung\n\nDer Demo-Seed „Stadt Rheinfurt“ bekommt zwei Dinge:\n- einen **Space mit vielen Chats**, rund 70–80 realistische Gespräche,\n- einen **Chat mit vielen Nachrichten**.\n\nDamit lassen sich Chatliste, Suche, Anheften, Archiv, Paging und lange Verläufe in der Demo realistisch vorführen und testen.\n\n## Motivation\n\nAbstimmung vom 30.09.2026: Erst mit 70–80 Chats je Space ist sichtbar geworden, dass das Layout der Chatliste bricht (#2062). Maxim hat sich solche Chats lokal von Claude aus dem vorhandenen Wissen erzeugen lassen. Die Demo zeigt bisher nur Spaces mit wenigen oder gar keinen Chats. Die Funktionen aus Epic #1762 (Chatliste, Chatsuche, Archiv) und #2064 (Paging) kommen dort kaum zur Geltung.\n\n## Umfang\n\n- **Space mit vielen Chats:** ein neuer Demo-Space oder ein bestehender Space eines Fachkontos, etwa Andrea Vogt, mit rund 70–80 Chats.\n  - Je Chat 2–3 Frage-Antwort-Runden.\n  - Fragen und Antworten beziehen sich inhaltlich auf den Rheinfurt-Korpus des jeweiligen Spaces.\n  - Die Chats verteilen sich über mehrere Wochen, damit „Zuletzt verwendet“, Nachladen und die Suche sinnvoll wirken.\n  - Einige Chats sind angeheftet, einige archiviert.\n- **Chat mit vielen Nachrichten:** ein Chat mit deutlich längerem Verlauf, etwa 30 oder mehr Runden, als Probe für Scrollen, Gesprächsnotiz und Kopieren.\n- Die Chats werden durch den Seed reproduzierbar angelegt, bei einem Demo-Neuaufsatz genauso wie beim lokalen `demo`-Profil.\n- `demo/README.md` und das Demo-Drehbuch nennen den neuen Space und wofür er gedacht ist.\n\n## Außerhalb des Umfangs\n\n- Neue Chat-Funktionen, etwa Auto-Archivierung (#1923) oder Export (#1925).\n- Chats für die E2E-Seed-Profile.\n\n## Abnahmekriterien\n\n- [x] Nach einem Seed-Lauf enthält der Demo-Space mindestens 70 Chats mit je 2–3 inhaltlich passenden Runden. Ihre Zeitstempel liegen über mehrere Wochen verteilt.\n- [x] Mindestens ein Chat hat 30 oder mehr Runden.\n- [x] Mehrere Chats sind angeheftet, mehrere archiviert.\n- [x] Ein wiederholter Seed-Lauf erzeugt keine Dubletten.\n- [x] Der Demo-Smoke läuft weiterhin grün.\n- [x] Dokumentation aktualisiert (`demo/README.md`, Drehbuch).\n\n## Abhängigkeiten\n\nKeine.\n\n## Teil von Epic\n\nKeines. Nachtrag zu Epic #2012, das bereits geschlossen ist.\n\n## Technische Hinweise\n\n- Der Seed legt heute keine Chats an. Chats entstehen über die Chat-API nur mit echter Antwortgenerierung. Zu entscheiden ist deshalb, wie die vorbereiteten Gespräche in die Datenbank kommen:\n  - Variante 1: im Voraus erzeugte, committete Verläufe (JSON) über einen Seed-Weg einspielen, **ohne** Live-LLM. Das ist deterministisch und schnell; empfohlen.\n  - Variante 2: die Fragen live über die API stellen. Das ist langsam, hängt vom Demo-Modell ab und liefert jedes Mal andere Antworten.\n- Für Variante 1 braucht es einen Einspielweg, der nicht in der regulären API landet, etwa einen seed-only Pfad oder ein SQL-Skript im Seed. Er muss die Organisation, Chat-Eigentümer und die Belege der Antworten korrekt setzen.\n- Die Verläufe lassen sich einmalig per LLM aus dem Korpus generieren und anschließend als Daten committen, wie bei `demo/generator`.\n- Neuaufsatz der Demo-Instanz über die bekannten Reset-Skripte.",
+      "closes": []
+    },
+    {
+      "number": 2070,
+      "title": "feat: Eine Asset-Übersicht mit öffentlich/geschlossen, Favoriten und ausdrücklicher Space-Zuordnung",
+      "url": "https://github.com/criew/opaa/issues/2070",
+      "author": "criew",
+      "labels": [
+        "enhancement",
+        "epic",
+        "backend",
+        "frontend",
+        "size:L"
+      ],
+      "body": "Heute gibt es für Assets mehrere Einstiege mit sich überlappender Bedeutung:\n- „Wissen“ (`/libraries`) und „Prompts“ (`/prompts`) zeigen, worauf man berechtigt ist.\n- Der „Katalog“ (`/catalog`) zeigt organisationsweit Geteiltes.\n- Die Space-Einstellungen zeigen, welches Wissen dem Space zugeordnet ist.\n\nHinzu kommt eine unsichtbare Regel: Hat ein Space **keine** Zuordnung, durchsucht er alles Lesbare (`ChatService#effectiveLibraryScope`, Übergangsregel „Ein Space ohne Assoziationen verengt nie“). Sobald man etwas zuordnet, wird eingeengt. In der Abstimmung am 30.09.2026 waren wir uns einig: Diese Stufung ist aus Nutzersicht nicht verständlich, selbst wenn man die Semantik kennt.\n\nDieses Epic ersetzt die Stufen durch **eine einzige Asset-Übersicht** und macht die Space-Zuordnung ausdrücklich.\n\n### Zielbild\n\n- **Eine Asset-Übersicht** für alle Asset-Typen (Wissen, Prompts, später Skills und Agenten), gemischt dargestellt:\n  - Filter nach Typ\n  - Typ-Badges\n  - Suche über Name und Beschreibung\n  - Kachel- und Tabellenansicht wie in den übrigen Übersichten\n- **Zwei Sichtbarkeiten, beide aus dem bestehenden Freigabemodell (ADR-0036, ADR-0037):**\n  - **geschlossen:** sichtbar nur über eine Freigabe an Personen oder Gruppen\n  - **öffentlich:** Freigabe an „Alle Konten“, jeder sieht das Asset und darf es nutzen\n\n  Einen Anfrage- oder Genehmigungsweg gibt es nicht.\n- **Favoriten** als persönliche Markierung an jedem Asset, egal ob öffentlich oder geschlossen. Sie dienen dazu, bei vielen öffentlichen Assets die für einen selbst relevanten zu finden, und sind in der Übersicht und im Space-Assistenten filterbar.\n- **Space-Assistent mit ausdrücklicher Zuordnung:**\n  - Beim Anlegen eines Spaces wird Wissen immer zugeordnet.\n  - Die Auswahl hat Filter („nur Favoriten“, „aus meinen Gruppen“, „alle“) und Suche.\n  - Die Übergangsregel „ohne Zuordnung alles“ entfällt.\n- Die Zwischenstufe „Wissen als eigener Menüpunkt neben dem Katalog“ entfällt.\n\n### Hintergrund\n\n- Abstimmung vom 30.09.2026 (Transkript), Abschnitt zu Wissen, Katalog und Marketplace\n- `docs/features/spaces-and-assets.md`: Suchbereich je Chatart, Asset-Modell, Katalog\n- ADR-0036 (Berechtigungsmodell), ADR-0037 (Reichweite als Freigabe an „Alle Konten“)\n- Vorarbeit: Asset-Schale und Katalog aus Epic #1726 (#1899, #1900, #1904), Navigation aus #1915\n\n### Phasen\n\n**Phase 1 — Konzept.** Spezifikation in `spaces-and-assets.md` fortschreiben, für den Wegfall der Übergangsregel einen ADR-Nachtrag schreiben und die Stakeholder-Rollen Sachbearbeiter und KI-Champion bewerten lassen. Kommt zuerst, weil die Übergangsregel bisher als dauerhaft dokumentiert ist und dafür eine Entscheidung braucht.\n\n**Phase 2 — Eine Asset-Übersicht.** Sie ersetzt „Wissen“, „Prompts“ und „Katalog“ in der Hauptnavigation, zeigt öffentliche und geschlossene Assets mit Typfilter und behält das Anlegen je Typ bei.\n\n**Phase 3 — Favoriten.** Persönliche Markierung mit Datenmodell und API, sichtbar und filterbar in der Übersicht.\n\n**Phase 4 — Space-Assistent und Suchbereich.** Wissen wird beim Anlegen ausdrücklich zugeordnet, mit Filtern und Suche. Die Übergangsregel entfällt; für bestehende Spaces ohne Zuordnung ist eine Lösung zu entscheiden. Optional: Findet die Suche im zugeordneten Wissen nichts, schlägt sie vor, weiteres Wissen zuzuordnen.\n\nDie Schnittregel gilt: höchstens etwa acht Sub-Issues. Kleinere Entscheidungen fallen im jeweiligen Sub-Issue.\n\n### Abhängigkeiten\n\n```\nKonzept ──> Asset-Übersicht ──> Favoriten ──> Space-Assistent/Suchbereich\n```\n\n### Abnahmekriterien (Epic-Ebene)\n\n- [ ] Die Hauptnavigation hat genau einen Einstieg für Assets. Alle Asset-Typen sind darin mit Typfilter auffindbar.\n- [ ] Öffentliche und geschlossene Assets sind in der Übersicht unterscheidbar und beruhen allein auf dem bestehenden Freigabemodell. Es entsteht keine neue Sichtbarkeitsstufe.\n- [ ] Favoriten lassen sich an jedem sichtbaren Asset setzen und entfernen und wirken als Filter in Übersicht und Space-Assistent.\n- [ ] Ein neuer Space erhält sein Wissen ausdrücklich im Assistenten. Ein Space ohne Zuordnung durchsucht nicht mehr stillschweigend alles Lesbare.\n- [ ] Spezifikation, betroffene ADRs und Handbuch (`docs/handbuch/bibliotheken-und-berechtigungen.md`, `prompt-bibliotheken.md`) beschreiben das neue Modell.\n- [ ] Die E2E-Pfade für das Anlegen von Space, Bibliothek und Prompt-Bibliothek sind angepasst.\n\n### Außerhalb des Umfangs (separate Epics)\n\n- Ein Marketplace über Organisationsgrenzen hinweg (fremde Assets installieren, wie npm oder ein Browser-Store) ist ausdrücklich nicht Ziel.\n- Freigabe- und Prüfworkflow sowie Versionierung von Assets.\n- Neue Asset-Typen (Skills: Epic #1727).\n\n### Referenzen\n\n- `docs/features/spaces-and-assets.md`\n- `docs/decisions/0036-berechtigungsmodell-gruppen-und-faehigkeiten.md`\n- `docs/decisions/0037-reichweite-als-freigabe-an-alle.md`\n\nHinweis zur Umsetzung: Wer das Epic baut, ist noch offen. Wer anfängt, gibt dem anderen vorher Bescheid.",
+      "closes": []
+    },
+    {
+      "number": 2068,
+      "title": "docs(fortschritt): Zeitraumsbericht zum Stichtag 30.09.2026 und Gesamtstand fortschreiben",
+      "url": "https://github.com/criew/opaa/issues/2068",
+      "author": "criew",
+      "labels": [
+        "documentation",
+        "size:L"
+      ],
+      "body": "Monatlicher Zeitraumsbericht zum Stichtag 30.09.2026 nach dem Verfahren in `docs/fortschritt/README.md`.\n\n## Umfang\n\n- Anker ziehen (`main`-Commit und Abfragezeitpunkt) — Delta ab `a51e6b8c` / 30.08.2026\n- Rohdaten erheben (geschlossene Issues, gemergte PRs; nicht committet)\n- `bausteine.md` mit den Vorgängen mit Befund, Anhang mit den Vorgängen ohne Befund\n- `gruppierung.md` nach Themenbereichen A–K, T1–T3, V, P\n- `report.md` als Delta mit Management Summary, „Lücken und bewusste Schnitte\" und priorisierter Restliste\n- `gesamtstand.md` aus dem Delta fortschreiben\n\n## Abnahmekriterien\n\n- Neues Verzeichnis `docs/fortschritt/20260930/` mit `anker.md`, `bausteine.md`, `gruppierung.md`, `report.md` (Entwurf)\n- `gesamtstand.md` nennt je fortgeschriebene Aussage den Stichtag 20260930",
+      "closes": []
+    }
+  ],
+  "merged_pull_requests": [
+    {
+      "number": 2080,
+      "title": "fix(test): Ablauferinnerungs-Test nicht mehr am Tag vor einem Quartalsbeginn rot",
+      "url": "https://github.com/criew/opaa/pull/2080",
+      "author": "bigpuritz",
+      "labels": [
+        "bug",
+        "backend"
+      ],
+      "body": "## Zusammenfassung\n\n`LocalAccountMaintenanceIntegrationTest.remindsThePersonAndTheAdministratorsFourteenDaysBeforeAnExpiryExactlyOnce` scheitert jedes Jahr am **Tag vor einem Quartalsbeginn**: am 31.03., 30.06., 30.09. und 31.12.\n\n**Ursache:**\n- Der Test nimmt `Instant.now()` als Stichtag und prüft, dass ein zweiter Lauf am Folgetag keine weitere Mail verschickt.\n- Fällt dieser Folgetag auf den ersten Tag eines Quartals, verschickt `AdminReviewReminderStep` dort zusätzlich die Quartalsübersicht an die Administratoren. Der Test zählt dann eine Mail mehr (Zeile 239).\n\n**Fix:** Ein Helfer `referenceDayAwayFromQuarterStart()` wählt den Stichtag so, dass weder er noch der Folgetag ein Quartalsbeginn ist. Er prüft das mit derselben Regel wie der Produktcode (`AdminReviewReminderStep.isQuarterStart`). Die Aussage des Tests bleibt unverändert.\n\n**Aufgefallen** am 30.09.2026 im Renovate-PR #2074 (aws-java-sdk 2.55.7 → 2.55.8). Mit der Änderung dort hat der Fehler nichts zu tun: Mit der alten SDK-Version schlägt der Test lokal genauso fehl. Auf `main` blieb es an diesem Tag unbemerkt, weil die Pushes nur das Frontend betrafen und die Backend-Tests übersprungen wurden.\n\n## Zugehörige Issues\n\nCloses #2079\n\n## Art der Änderung\n\n- [x] Bugfix\n- [ ] Neues Feature\n- [ ] Dokumentation\n- [ ] Refactoring\n- [ ] CI/Build\n\n## Checkliste\n\n- [x] Tests bestehen lokal (`LocalAccountMaintenanceIntegrationTest`), Spotless ist grün. Es ändert sich nur eine Testklasse, die volle Suite läuft in der CI\n- [x] Bei Bugfix: Reproduktionsnachweis erbracht (siehe unten)\n- [ ] Dokumentation aktualisiert (falls zutreffend) — nicht betroffen\n- [x] Handbuch (`docs/handbuch/`) ausdrücklich nicht betroffen: reine Teständerung\n- [ ] Barrierefreiheit — entfällt, keine UI\n- [x] Keine Secrets oder Anmeldeinformationen committet\n- [x] Commit-Nachrichten folgen Conventional Commits\n- [x] CLA unterzeichnet\n\n### Reproduktionsnachweis\n\nBeide Läufe am 30.09.2026, dem Tag vor einem Quartalsbeginn, auf aktuellem `main` (581db3d9).\n\nRot, ohne den Fix:\n```\nLocalAccountMaintenanceIntegrationTest > remindsThePersonAndTheAdministratorsFourteenDaysBeforeAnExpiryExactlyOnce() FAILED\n    java.lang.AssertionError at LocalAccountMaintenanceIntegrationTest.java:239\n3 tests completed, 1 failed\n```\nGrün, mit dem Fix: `BUILD SUCCESSFUL`, 3 von 3.\n\nZusätzlich die Gegenprobe im Renovate-Branch #2074: Mit zurückgenommener SDK-Version (`aws-sdk = \"2.55.7\"`) scheitert der Test identisch.\n\n## KI-Agenten-Offenlegung\n\n- [ ] Dieser PR wurde von einem Menschen verfasst\n- [ ] Dieser PR wurde von einem KI-Agenten verfasst (angeben: _______)\n- [x] Dieser PR wurde von Mensch + KI-Agent gemeinsam verfasst (Claude Opus 5.5)\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)",
+      "closes": [
+        2079
+      ],
+      "additions": 18,
+      "deletions": 1,
+      "changed_files": 1
+    },
+    {
+      "number": 2078,
+      "title": "fix(chat): Titel angehefteter Chats fluchten mit den übrigen",
+      "url": "https://github.com/criew/opaa/pull/2078",
+      "author": "bigpuritz",
+      "labels": [
+        "bug",
+        "frontend"
+      ],
+      "body": "## Zusammenfassung\n\nIn der Chatliste der Seitenleiste stand das Pin-Symbol angehefteter Chats im Textfluss vor dem Titel (12 px plus 6 px Abstand). Der Titel rückte dadurch nach rechts und fluchtete nicht mit den übrigen.\n\n**Fix:** Das Symbol ist absolut positioniert im linken Innenabstand der Zeile, vertikal zentriert, mit 3 px Luft zum Titel. Alle Titel beginnen auf derselben Kante. Das Symbol bleibt dekorativ (`aria-hidden`), die Überschrift „Angeheftet“ nennt den Zustand weiterhin in Text.\n\n## Zugehörige Issues\n\nCloses #2077\n\n## Art der Änderung\n\n- [x] Bugfix\n- [ ] Neues Feature\n- [ ] Dokumentation\n- [ ] Refactoring\n- [ ] CI/Build\n\n## Checkliste\n\n- [x] Tests bestehen lokal (`ChatList.test.tsx` 29/29), Lint und Prettier sind grün\n- [x] Bei Bugfix: Reproduktionsnachweis erbracht (siehe unten)\n- [ ] Dokumentation aktualisiert (falls zutreffend) — nicht betroffen\n- [x] Handbuch (`docs/handbuch/`) ausdrücklich nicht betroffen: reine Ausrichtung\n- [x] Barrierefreiheit nach `docs/design/accessibility.md` geprüft: Das Symbol ist unverändert dekorativ, Namen und Reihenfolge bleiben gleich\n- [x] Keine Secrets oder Anmeldeinformationen committet\n- [x] Commit-Nachrichten folgen Conventional Commits\n- [x] CLA unterzeichnet\n\n### Reproduktionsnachweis\n\nNeuer Test in `ChatList.test.tsx`, „keeps the pin mark out of the text flow, so pinned titles align with the rest“. jsdom berechnet kein Layout, darum prüft der Test die Positionierung selbst.\n\nRot, ohne den Fix:\n```\n× keeps the pin mark out of the text flow, so pinned titles align with the rest\nExpected: \"absolute\"\nReceived: \"static\"\n```\nGrün, mit dem Fix.\n\n**Im Browser** (lokaler Stack, demo-admin mit drei angehefteten Chats) habe ich gemessen, wo die Titel beginnen:\n\n| | vorher | nachher |\n|---|---|---|\n| Titel angehefteter Chats | 18 px rechts der übrigen | x = 97 |\n| Titel der übrigen Chats | x = 97 | x = 97 |\n| Pin-Symbol | im Textfluss | x = 82–94, 3 px vor dem Titel |\n\n## KI-Agenten-Offenlegung\n\n- [ ] Dieser PR wurde von einem Menschen verfasst\n- [ ] Dieser PR wurde von einem KI-Agenten verfasst (angeben: _______)\n- [x] Dieser PR wurde von Mensch + KI-Agent gemeinsam verfasst (Claude Opus 5.5)\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)",
+      "closes": [
+        2077
+      ],
+      "additions": 26,
+      "deletions": 2,
+      "changed_files": 2
+    },
+    {
+      "number": 2076,
+      "title": "chore(deps): msw auf v3.0.0 aktualisieren",
+      "url": "https://github.com/criew/opaa/pull/2076",
+      "author": "bigpuritz",
+      "labels": [
+        "enhancement",
+        "frontend"
+      ],
+      "body": "Automatisches Abhängigkeits-Update durch Renovate (#751, siehe docs/renovate.md) — Prüfung und Merge folgen dem normalen Weg.\n\nThis PR contains the following updates:\n\n| Package | Type | Update | Change |\n|---|---|---|---|\n| [msw](https://mswjs.io) ([source](https://redirect.github.com/mswjs/msw)) | devDependencies | major | [`2.15.0` → `3.0.0`](https://renovatebot.com/diffs/npm/msw/2.15.0/3.0.0) |\n\n---\n\n### Release Notes\n\n<details>\n<summary>mswjs/msw (msw)</summary>\n\n### [`v3.0.0`](https://redirect.github.com/mswjs/msw/releases/tag/v3.0.0)\n\n[Compare Source](https://redirect.github.com/mswjs/msw/compare/v2.15.0...v3.0.0)\n\n#### v3.0.0 (2026-09-28)\n\n- v3.0.0 ([#&#8203;2692](https://redirect.github.com/mswjs/msw/issues/2692)) ([`2bb4342`](https://redirect.github.com/mswjs/msw/commit/2bb43428b79ac06f94bb8ea8aeacd6102fe31f56)) [@&#8203;kettanaito](https://redirect.github.com/kettanaito) [@&#8203;Andarist](https://redirect.github.com/Andarist)\n\n##### ⚠️ BREAKING CHANGES\n\n- **MSW is now ESM-only** ([#&#8203;2765](https://redirect.github.com/mswjs/msw/issues/2765)).\n- Deprecate support for Node.js v18 and v20 ([#&#8203;2729](https://redirect.github.com/mswjs/msw/issues/2729)). The minimal supported Node.js version is v22.\n- `msw/native` is removed in favor of [`@msw/react-native`](https://redirect.github.com/mswjs/react-native).\n- Require TypeScript 5.9 as the minimal version.\n- Deprecate support for TypeScript 5.1 and 5.2 ([#&#8203;2730](https://redirect.github.com/mswjs/msw/issues/2730))\n- `worker.stop()` returns a Promise ([#&#8203;2724](https://redirect.github.com/mswjs/msw/issues/2724)). Awaiting it is relevant only for in-flight critical scenarios.\n- `graphql` is now exported as `msw/graphql` ([#&#8203;2691](https://redirect.github.com/mswjs/msw/issues/2691)). GraphQL is now handled as a proper optional peer dependency.\n- Removes the `handleRequest()` utility. Please use the `defineNetwork()` API instead.\n- `GraphQLLinkHandlers` type has been renamed to `GraphQLLink`.\n- The `file://` requests now throw in Node.js as they normally do (not supported by `fetch`).\n- The `Content-Length` request header is now removed by `bypass()`.\n- HTTP-to-WebSocket upgrade requests performed via `fetch()` now throw in Node.js as they normally do (not supported by `fetch`).\n- Cookies are no longer managed in Node.js for better compatibilty. Instead, whatever is the default behavior of your environment that's the cookie behavior you get. This has no effect on the browser.\n- WebSocket `connection` life cycle event has been renamed to `websocket:connection` ([#&#8203;2783](https://redirect.github.com/mswjs/msw/issues/2783)).\n- `onUnhandledRequest` option has been renamed to `onUnhandledFrame`.\n- The library no longer patches `setTimeout` to circumvent fake timers in test runners. You should advance the fake timers normally for delayed mocked responses to resolve.\n- The library no longer returns a mocked cookie string on `request.headers.get('cookie')` in the handlers. It returns `null` in all environments. Please use the `cookies` resolver argument to have cookie-based logic.\n\n##### Features\n\n- Supports Node.js v24 and v26.\n- Supports TypeScript v6.0 and v7.0.\n- You can import individual utilities, like `delay` or `passthrough`, from the new `msw/utils` entrypoint for smaller footprint on your bundle.\n- Support GraphQL v17.0.\n- Support intercepting page navigations and form submissions ([#&#8203;2721](https://redirect.github.com/mswjs/msw/issues/2721)).\n- Support GraphQL subscriptions ([#&#8203;285](https://redirect.github.com/mswjs/msw/issues/285), [#&#8203;2763](https://redirect.github.com/mswjs/msw/issues/2763)).\n- Migrate from `path-to-regexp` to `@msw/url` ([#&#8203;2678](https://redirect.github.com/mswjs/msw/issues/2678)).\n- Remove the following dependencies:\n  - `graphql`\n  - `path-to-regexp`\n  - `picocolors`\n  - `statuses`\n  - `strict-event-emitter`\n- Adds a Vite plugin for MSW ([#&#8203;2781](https://redirect.github.com/mswjs/msw/issues/2781)).\n- Adds a `websocket:error` life cycle event to listen to WebSocket connection errors ([#&#8203;2784](https://redirect.github.com/mswjs/msw/issues/2784)).\n- Support modifying the intercepted request headers in passthrough scenarios ([#&#8203;2786](https://redirect.github.com/mswjs/msw/issues/2786)).\n- Support a new WebSocket Extension API that allows for better custom experiences ([#&#8203;2791](https://redirect.github.com/mswjs/msw/issues/2791)).\n\n##### Bug fixes\n\n- Fix an issue where preventing a page closure via the `beforeunload` listener would unregister the MSW worker ([#&#8203;1105](https://redirect.github.com/mswjs/msw/issues/1105)).\n- Fix an issue that caused intermittent test failures in Vitest Browser Mode and Firefox if using `maxWorkers: 1` ([#&#8203;2726](https://redirect.github.com/mswjs/msw/issues/2726)).\n- Fix an issue where in-flight requests were incorrectly passthrough when performed before calling `worker.stop()` ([#&#8203;2724](https://redirect.github.com/mswjs/msw/issues/2724), [#&#8203;2597](https://redirect.github.com/mswjs/msw/issues/2597)).\n- Fix an issue where persisting cookies in `localStorage` would cause a maximum quota exceeded errors.\n- Fix various issues related to the network interception in Node.js.\n\n</details>\n\n---\n\n### Configuration\n\n📅 **Schedule**: (in timezone Europe/Berlin)\n\n- Branch creation\n  - At any time (no schedule defined)\n- Automerge\n  - At any time (no schedule defined)\n\n🚦 **Automerge**: Disabled by config. Please merge this manually once you are satisfied.\n\n♻ **Rebasing**: Whenever PR is behind base branch, or you tick the rebase/retry checkbox.\n\n🔕 **Ignore**: Close this PR and you won't be reminded about this update again.\n\n---\n\n - [ ] <!-- rebase-check -->If you want to rebase/retry this PR, check this box\n\n---\n\nThis PR has been generated by [Mend Renovate CLI](https://redirect.github.com/renovatebot/renovate).\n<!--renovate-debug:eyJjcmVhdGVkSW5WZXIiOiI0NC4xMjQuMCIsInVwZGF0ZWRJblZlciI6IjQ0LjEyNC4wIiwidGFyZ2V0QnJhbmNoIjoibWFpbiIsImxhYmVscyI6WyJlbmhhbmNlbWVudCIsImZyb250ZW5kIl19-->",
+      "closes": [],
+      "additions": 355,
+      "deletions": 283,
+      "changed_files": 9
+    },
+    {
+      "number": 2073,
+      "title": "chore(deps): amazon/aws-cli docker tag to v2.37.6",
+      "url": "https://github.com/criew/opaa/pull/2073",
+      "author": "bigpuritz",
+      "labels": [
+        "enhancement",
+        "ci"
+      ],
+      "body": "Automatisches Abhängigkeits-Update durch Renovate (#751, siehe docs/renovate.md) — Prüfung und Merge folgen dem normalen Weg.\n\nThis PR contains the following updates:\n\n| Package | Update | Change |\n|---|---|---|\n| amazon/aws-cli | patch | `2.37.5` → `2.37.6` |\n\n---\n\n### Configuration\n\n📅 **Schedule**: (in timezone Europe/Berlin)\n\n- Branch creation\n  - At any time (no schedule defined)\n- Automerge\n  - At any time (no schedule defined)\n\n🚦 **Automerge**: Disabled by config. Please merge this manually once you are satisfied.\n\n♻ **Rebasing**: Whenever PR becomes conflicted, or you tick the rebase/retry checkbox.\n\n🔕 **Ignore**: Close this PR and you won't be reminded about this update again.\n\n---\n\n - [ ] <!-- rebase-check -->If you want to rebase/retry this PR, check this box\n\n---\n\nThis PR has been generated by [Mend Renovate CLI](https://redirect.github.com/renovatebot/renovate).\n<!--renovate-debug:eyJjcmVhdGVkSW5WZXIiOiI0NC4xMjQuMCIsInVwZGF0ZWRJblZlciI6IjQ0LjEyNC4wIiwidGFyZ2V0QnJhbmNoIjoibWFpbiIsImxhYmVscyI6WyJjaSIsImVuaGFuY2VtZW50Il19-->",
+      "closes": [],
+      "additions": 2,
+      "deletions": 2,
+      "changed_files": 1
+    },
+    {
+      "number": 2072,
+      "title": "chore(deps): @cyclonedx/cdxgen auf v12.8.5 aktualisieren",
+      "url": "https://github.com/criew/opaa/pull/2072",
+      "author": "bigpuritz",
+      "labels": [
+        "enhancement",
+        "ci"
+      ],
+      "body": "Automatisches Abhängigkeits-Update durch Renovate (#751, siehe docs/renovate.md) — Prüfung und Merge folgen dem normalen Weg.\n\nThis PR contains the following updates:\n\n| Package | Update | Change |\n|---|---|---|\n| [@cyclonedx/cdxgen](https://redirect.github.com/cdxgen/cdxgen) | patch | `12.8.4` → `12.8.5` |\n\n---\n\n### Release Notes\n\n<details>\n<summary>cdxgen/cdxgen (@&#8203;cyclonedx/cdxgen)</summary>\n\n### [`v12.8.5`](https://redirect.github.com/cdxgen/cdxgen/releases/tag/v12.8.5)\n\n[Compare Source](https://redirect.github.com/cdxgen/cdxgen/compare/v12.8.4...v12.8.5)\n\nThis LTS release fixes a High severity signature verification bypass, tracked as GHSA-7m2v-pj5r-fjww. `cdx-verify`, `cdx-validate --require-signature` and the `verifyBom` library function accepted a BOM whose JSF signature declared an HMAC algorithm and was computed with the signer's public key, so anyone holding the public key could forge a valid signature. The advisory will be published shortly with full details.\n\n#### Breaking change\n\nEach signature now covers its own `algorithm`, `keyId` and `publicKey`, as the JSF specification requires, and every signature algorithm must match the key type. BOMs signed with 12.8.4 or earlier no longer verify and must be re-signed with this version of `cdx-sign`, as described in the [cdx-sign documentation](https://cdxgen.github.io/cdxgen/#/CDX_SIGN?id=re-signing-boms-from-earlier-releases). HMAC signatures now need the new `--secret-key` option. cdxgen also exits with an error when signing is configured but fails, instead of writing or uploading an unsigned BOM.\n\n#### What's Changed\n\n- Bind JSF signature algorithms to key types and require an explicit HMAC secret by [@&#8203;prabhu](https://redirect.github.com/prabhu) in [#&#8203;4401](https://redirect.github.com/cdxgen/cdxgen/pull/4401)\n- Patch dependency updates, action pins and types by [@&#8203;prabhu](https://redirect.github.com/prabhu) in [#&#8203;4411](https://redirect.github.com/cdxgen/cdxgen/pull/4411)\n- Refresh image digests and tool versions by [@&#8203;prabhu](https://redirect.github.com/prabhu) in [#&#8203;4412](https://redirect.github.com/cdxgen/cdxgen/pull/4412)\n\nThanks to [@&#8203;richilino](https://redirect.github.com/richilino) for the report.\n\n**Full Changelog**: <https://github.com/cdxgen/cdxgen/compare/v12.8.4...v12.8.5>\n\n</details>\n\n---\n\n### Configuration\n\n📅 **Schedule**: (in timezone Europe/Berlin)\n\n- Branch creation\n  - At any time (no schedule defined)\n- Automerge\n  - At any time (no schedule defined)\n\n🚦 **Automerge**: Enabled.\n\n♻ **Rebasing**: Whenever PR is behind base branch, or you tick the rebase/retry checkbox.\n\n🔕 **Ignore**: Close this PR and you won't be reminded about this update again.\n\n---\n\n - [ ] <!-- rebase-check -->If you want to rebase/retry this PR, check this box\n\n---\n\nThis PR has been generated by [Mend Renovate CLI](https://redirect.github.com/renovatebot/renovate).\n<!--renovate-debug:eyJjcmVhdGVkSW5WZXIiOiI0NC4xMjQuMCIsInVwZGF0ZWRJblZlciI6IjQ0LjEyNC4wIiwidGFyZ2V0QnJhbmNoIjoibWFpbiIsImxhYmVscyI6WyJjaSIsImVuaGFuY2VtZW50Il19-->",
+      "closes": [],
+      "additions": 1,
+      "deletions": 1,
+      "changed_files": 1
+    },
+    {
+      "number": 2069,
+      "title": "docs(fortschritt): Zeitraumsbericht zum Stichtag 30.09.2026 und Gesamtstand fortschreiben",
+      "url": "https://github.com/criew/opaa/pull/2069",
+      "author": "criew",
+      "labels": [
+        "documentation",
+        "size:L"
+      ],
+      "body": "## Zusammenfassung\n\nMonatlicher Zeitraumsbericht zum Stichtag **30.09.2026**, erstellt nach dem Verfahren in `docs/fortschritt/README.md`, dazu der fortgeschriebene Gesamtstand.\n\n- `20260930/anker.md`: `main@17ec7fca8`, Abfrage vom 30.09.2026. Nachgezogen sind die beiden Vorgänge vom 30.08., die erst nach dem alten Anker abgeschlossen wurden (#945, PR #1026).\n- `20260930/bausteine.md`: 616 Vorgänge geprüft (502 Issues und 114 PRs ohne Issue-Verknüpfung), davon **43 mit Befund**. Die übrigen stehen als Nummern im Anhang.\n- `20260930/gruppierung.md`: jeder Vorgang genau einem Bereich A–K, T1–T3, V oder P zugeordnet. E, H und K hatten im Zeitraum keinen Vorgang.\n- `20260930/report.md`:\n  - Management Summary mit geschätztem Phase-1-Umsetzungsgrad von rund 85 % (Vormonat rund 80 %)\n  - Delta je Themenbereich\n  - Lücken und bewusste Schnitte\n  - priorisierte Phase-1-Restliste\n- `gesamtstand.md`: Das Delta ist eingearbeitet, Zurückgebautes entfernt. Jeder Abschnitt nennt den Stichtag seiner letzten Bestätigung.\n\n**Abgenommen durch den Maintainer am 30.09.2026.** Die Anmerkungen aus der Abnahme sind eingearbeitet: September neutral beschrieben, Streaming benannt, Modell-Obergrenze herabgestuft. Die Entwurfsmarkierung ist entfernt; der Merge-Commit erhält das Tag `inventur-20260930`.\n\n## Zugehörige Issues\n\nCloses #2068\n\n## Art der Änderung\n\n- [ ] Bugfix\n- [ ] Neues Feature\n- [x] Dokumentation\n- [ ] Refactoring\n- [ ] CI/Build\n\n## Checkliste\n\n- [ ] Tests bestehen lokal — entfällt, reine Dokumentationsänderung\n- [ ] Bei Bugfix: Reproduktionsnachweis erbracht — entfällt\n- [x] Dokumentation aktualisiert (falls zutreffend)\n- [x] Handbuch (`docs/handbuch/`) nachgezogen oder ausdrücklich nicht betroffen — nicht betroffen\n- [ ] Barrierefreiheit nach `docs/design/accessibility.md` geprüft — entfällt\n- [x] Keine Secrets oder Anmeldeinformationen committet\n- [x] Commit-Nachrichten folgen Conventional Commits\n- [x] CLA unterzeichnet (Erstbeitragende: Unterzeichnungskommentar unten posten, oder wurde bereits unterzeichnet)\n\n## KI-Agenten-Offenlegung\n\n- [ ] Dieser PR wurde von einem Menschen verfasst\n- [x] Dieser PR wurde von einem KI-Agenten verfasst (angeben: Claude Code, Claude Opus 5.5; Bausteine von sechs parallelen Agenten erhoben)\n- [ ] Dieser PR wurde von Mensch + KI-Agent gemeinsam verfasst\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_0147dkwXQ6DB9SZomzbHAExL",
+      "closes": [
+        2068
+      ],
+      "additions": 1715,
+      "deletions": 101,
+      "changed_files": 5
+    }
+  ],
+  "open_pull_requests": [
+    {
+      "number": 2075,
+      "title": "chore(deps): npm (non-major) aktualisieren",
+      "url": "https://github.com/criew/opaa/pull/2075",
+      "author": "bigpuritz",
+      "labels": [
+        "enhancement",
+        "frontend"
+      ],
+      "body": "",
+      "closes": []
+    },
+    {
+      "number": 2074,
+      "title": "chore(deps): aws-java-sdk-v2 monorepo aktualisieren",
+      "url": "https://github.com/criew/opaa/pull/2074",
+      "author": "bigpuritz",
+      "labels": [
+        "enhancement",
+        "backend"
+      ],
+      "body": "",
+      "closes": []
+    },
+    {
+      "number": 161,
+      "title": "docs: plugin architecture deep dive for all three variants",
+      "url": "https://github.com/criew/opaa/pull/161",
+      "author": "bigpuritz",
+      "labels": [
+        "documentation",
+        "enhancement",
+        "backend"
+      ],
+      "body": "",
+      "closes": []
+    }
+  ],
+  "open_issues_total": 51,
+  "ci": {
+    "conclusion": "success",
+    "url": "https://github.com/criew/opaa/actions/runs/36785057263",
+    "title": "feat(demo): 81 vorbereitete Chats im Demo-Seed, eingespielt ohne Mode…",
+    "finished_at": "2026-09-30T22:28:45Z"
+  },
+  "highlights": {
+    "sonstiges": [
+      {
+        "nummer": null,
+        "text": "Ablauferinnerungs-Test bei Quartalsbeginn repariert"
+      },
+      {
+        "nummer": null,
+        "text": "Chat-Titel angehefteter Chats fluchen korrekt"
+      },
+      {
+        "nummer": null,
+        "text": "Abhängigkeiten aktualisiert: msw, aws-cli, cdxgen"
+      },
+      {
+        "nummer": null,
+        "text": "Zeitraumsbericht zum 30.09.2026 fortgeschrieben"
+      }
+    ]
+  },
+  "epics": [],
+  "ohne_epic": {
+    "opened": [
+      {
+        "number": 2079,
+        "title": "fix(test): Ablauferinnerungs-Test scheitert am Tag vor jedem Quartalsbeginn",
+        "url": "https://github.com/criew/opaa/issues/2079",
+        "author": "bigpuritz",
+        "labels": [
+          "bug",
+          "backend",
+          "size:S"
+        ],
+        "body": "## Problem\n\n`LocalAccountMaintenanceIntegrationTest.remindsThePersonAndTheAdministratorsFourteenDaysBeforeAnExpiryExactlyOnce` schlägt am Tag vor jedem Quartalsbeginn fehl, also am 31.03., 30.06., 30.09. und 31.12.\n\nDer Test nimmt `Instant.now()` als Stichtag und prüft, dass ein zweiter Lauf am **Folgetag** keine weitere Mail verschickt. Fällt dieser Folgetag auf den ersten Tag eines Quartals, verschickt `AdminReviewReminderStep` dort zusätzlich die Quartalsübersicht an die Administratoren (`isQuarterStart`). Der Test zählt dann eine Mail mehr (`LocalAccountMaintenanceIntegrationTest.java:239`).\n\nAufgefallen am 30.09.2026 im Renovate-PR #2074. Das Scheitern ist unabhängig von dessen Änderung: Mit der alten AWS-SDK-Version fällt der Test lokal genauso durch. Auf `main` blieb es an diesem Tag unbemerkt, weil die Pushes nur das Frontend betrafen und die Backend-Tests übersprungen wurden.\n\n## Soll\n\nDer Test wählt seinen Stichtag so, dass weder der Stichtag noch der Folgetag ein Quartalsbeginn ist. Er prüft damit an jedem Kalendertag dasselbe.\n\n## Abnahmekriterien\n\n- [ ] Test besteht am 30.09.2026 (heute), vorher nachweislich rot\n- [ ] Aussage des Tests unverändert: genau eine Erinnerung, keine zweite am Folgetag",
+        "closes": []
+      },
+      {
+        "number": 2077,
+        "title": "fix(chat): Titel angehefteter Chats fluchten nicht mit den übrigen",
+        "url": "https://github.com/criew/opaa/issues/2077",
+        "author": "bigpuritz",
+        "labels": [
+          "bug",
+          "frontend",
+          "size:S"
+        ],
+        "body": "## Problem\n\nIn der Chatliste der Seitenleiste steht vor angehefteten Chats ein Pin-Symbol im Textfluss (`ChatList.tsx`, 12 px plus 6 px Abstand). Dadurch beginnt der Titel angehefteter Chats rund 18 px weiter rechts als der Titel aller übrigen Chats. Die Namen fluchten nicht.\n\n## Soll\n\nAlle Chat-Namen stehen linksbündig auf derselben Kante. Das Pin-Symbol sitzt links davor im Innenabstand der Zeile und verschiebt den Titel nicht.\n\n## Abnahmekriterien\n\n- [ ] Titel angehefteter und nicht angehefteter Chats beginnen an derselben x-Position\n- [ ] Pin-Symbol bleibt sichtbar, vertikal zentriert, links vor dem Titel\n- [ ] Test sichert die Ausrichtung ab",
+        "closes": []
+      },
+      {
+        "number": 2071,
+        "title": "feat(demo): Space mit vielen Chats und einem langen Chat im Demo-Seed",
+        "url": "https://github.com/criew/opaa/issues/2071",
+        "author": "criew",
+        "labels": [
+          "enhancement",
+          "size:M",
+          "demo"
+        ],
+        "body": "## Zusammenfassung\n\nDer Demo-Seed „Stadt Rheinfurt“ bekommt zwei Dinge:\n- einen **Space mit vielen Chats**, rund 70–80 realistische Gespräche,\n- einen **Chat mit vielen Nachrichten**.\n\nDamit lassen sich Chatliste, Suche, Anheften, Archiv, Paging und lange Verläufe in der Demo realistisch vorführen und testen.\n\n## Motivation\n\nAbstimmung vom 30.09.2026: Erst mit 70–80 Chats je Space ist sichtbar geworden, dass das Layout der Chatliste bricht (#2062). Maxim hat sich solche Chats lokal von Claude aus dem vorhandenen Wissen erzeugen lassen. Die Demo zeigt bisher nur Spaces mit wenigen oder gar keinen Chats. Die Funktionen aus Epic #1762 (Chatliste, Chatsuche, Archiv) und #2064 (Paging) kommen dort kaum zur Geltung.\n\n## Umfang\n\n- **Space mit vielen Chats:** ein neuer Demo-Space oder ein bestehender Space eines Fachkontos, etwa Andrea Vogt, mit rund 70–80 Chats.\n  - Je Chat 2–3 Frage-Antwort-Runden.\n  - Fragen und Antworten beziehen sich inhaltlich auf den Rheinfurt-Korpus des jeweiligen Spaces.\n  - Die Chats verteilen sich über mehrere Wochen, damit „Zuletzt verwendet“, Nachladen und die Suche sinnvoll wirken.\n  - Einige Chats sind angeheftet, einige archiviert.\n- **Chat mit vielen Nachrichten:** ein Chat mit deutlich längerem Verlauf, etwa 30 oder mehr Runden, als Probe für Scrollen, Gesprächsnotiz und Kopieren.\n- Die Chats werden durch den Seed reproduzierbar angelegt, bei einem Demo-Neuaufsatz genauso wie beim lokalen `demo`-Profil.\n- `demo/README.md` und das Demo-Drehbuch nennen den neuen Space und wofür er gedacht ist.\n\n## Außerhalb des Umfangs\n\n- Neue Chat-Funktionen, etwa Auto-Archivierung (#1923) oder Export (#1925).\n- Chats für die E2E-Seed-Profile.\n\n## Abnahmekriterien\n\n- [x] Nach einem Seed-Lauf enthält der Demo-Space mindestens 70 Chats mit je 2–3 inhaltlich passenden Runden. Ihre Zeitstempel liegen über mehrere Wochen verteilt.\n- [x] Mindestens ein Chat hat 30 oder mehr Runden.\n- [x] Mehrere Chats sind angeheftet, mehrere archiviert.\n- [x] Ein wiederholter Seed-Lauf erzeugt keine Dubletten.\n- [x] Der Demo-Smoke läuft weiterhin grün.\n- [x] Dokumentation aktualisiert (`demo/README.md`, Drehbuch).\n\n## Abhängigkeiten\n\nKeine.\n\n## Teil von Epic\n\nKeines. Nachtrag zu Epic #2012, das bereits geschlossen ist.\n\n## Technische Hinweise\n\n- Der Seed legt heute keine Chats an. Chats entstehen über die Chat-API nur mit echter Antwortgenerierung. Zu entscheiden ist deshalb, wie die vorbereiteten Gespräche in die Datenbank kommen:\n  - Variante 1: im Voraus erzeugte, committete Verläufe (JSON) über einen Seed-Weg einspielen, **ohne** Live-LLM. Das ist deterministisch und schnell; empfohlen.\n  - Variante 2: die Fragen live über die API stellen. Das ist langsam, hängt vom Demo-Modell ab und liefert jedes Mal andere Antworten.\n- Für Variante 1 braucht es einen Einspielweg, der nicht in der regulären API landet, etwa einen seed-only Pfad oder ein SQL-Skript im Seed. Er muss die Organisation, Chat-Eigentümer und die Belege der Antworten korrekt setzen.\n- Die Verläufe lassen sich einmalig per LLM aus dem Korpus generieren und anschließend als Daten committen, wie bei `demo/generator`.\n- Neuaufsatz der Demo-Instanz über die bekannten Reset-Skripte.",
+        "closes": []
+      },
+      {
+        "number": 2070,
+        "title": "feat: Eine Asset-Übersicht mit öffentlich/geschlossen, Favoriten und ausdrücklicher Space-Zuordnung",
+        "url": "https://github.com/criew/opaa/issues/2070",
+        "author": "criew",
+        "labels": [
+          "enhancement",
+          "epic",
+          "backend",
+          "frontend",
+          "size:L"
+        ],
+        "body": "Heute gibt es für Assets mehrere Einstiege mit sich überlappender Bedeutung:\n- „Wissen“ (`/libraries`) und „Prompts“ (`/prompts`) zeigen, worauf man berechtigt ist.\n- Der „Katalog“ (`/catalog`) zeigt organisationsweit Geteiltes.\n- Die Space-Einstellungen zeigen, welches Wissen dem Space zugeordnet ist.\n\nHinzu kommt eine unsichtbare Regel: Hat ein Space **keine** Zuordnung, durchsucht er alles Lesbare (`ChatService#effectiveLibraryScope`, Übergangsregel „Ein Space ohne Assoziationen verengt nie“). Sobald man etwas zuordnet, wird eingeengt. In der Abstimmung am 30.09.2026 waren wir uns einig: Diese Stufung ist aus Nutzersicht nicht verständlich, selbst wenn man die Semantik kennt.\n\nDieses Epic ersetzt die Stufen durch **eine einzige Asset-Übersicht** und macht die Space-Zuordnung ausdrücklich.\n\n### Zielbild\n\n- **Eine Asset-Übersicht** für alle Asset-Typen (Wissen, Prompts, später Skills und Agenten), gemischt dargestellt:\n  - Filter nach Typ\n  - Typ-Badges\n  - Suche über Name und Beschreibung\n  - Kachel- und Tabellenansicht wie in den übrigen Übersichten\n- **Zwei Sichtbarkeiten, beide aus dem bestehenden Freigabemodell (ADR-0036, ADR-0037):**\n  - **geschlossen:** sichtbar nur über eine Freigabe an Personen oder Gruppen\n  - **öffentlich:** Freigabe an „Alle Konten“, jeder sieht das Asset und darf es nutzen\n\n  Einen Anfrage- oder Genehmigungsweg gibt es nicht.\n- **Favoriten** als persönliche Markierung an jedem Asset, egal ob öffentlich oder geschlossen. Sie dienen dazu, bei vielen öffentlichen Assets die für einen selbst relevanten zu finden, und sind in der Übersicht und im Space-Assistenten filterbar.\n- **Space-Assistent mit ausdrücklicher Zuordnung:**\n  - Beim Anlegen eines Spaces wird Wissen immer zugeordnet.\n  - Die Auswahl hat Filter („nur Favoriten“, „aus meinen Gruppen“, „alle“) und Suche.\n  - Die Übergangsregel „ohne Zuordnung alles“ entfällt.\n- Die Zwischenstufe „Wissen als eigener Menüpunkt neben dem Katalog“ entfällt.\n\n### Hintergrund\n\n- Abstimmung vom 30.09.2026 (Transkript), Abschnitt zu Wissen, Katalog und Marketplace\n- `docs/features/spaces-and-assets.md`: Suchbereich je Chatart, Asset-Modell, Katalog\n- ADR-0036 (Berechtigungsmodell), ADR-0037 (Reichweite als Freigabe an „Alle Konten“)\n- Vorarbeit: Asset-Schale und Katalog aus Epic #1726 (#1899, #1900, #1904), Navigation aus #1915\n\n### Phasen\n\n**Phase 1 — Konzept.** Spezifikation in `spaces-and-assets.md` fortschreiben, für den Wegfall der Übergangsregel einen ADR-Nachtrag schreiben und die Stakeholder-Rollen Sachbearbeiter und KI-Champion bewerten lassen. Kommt zuerst, weil die Übergangsregel bisher als dauerhaft dokumentiert ist und dafür eine Entscheidung braucht.\n\n**Phase 2 — Eine Asset-Übersicht.** Sie ersetzt „Wissen“, „Prompts“ und „Katalog“ in der Hauptnavigation, zeigt öffentliche und geschlossene Assets mit Typfilter und behält das Anlegen je Typ bei.\n\n**Phase 3 — Favoriten.** Persönliche Markierung mit Datenmodell und API, sichtbar und filterbar in der Übersicht.\n\n**Phase 4 — Space-Assistent und Suchbereich.** Wissen wird beim Anlegen ausdrücklich zugeordnet, mit Filtern und Suche. Die Übergangsregel entfällt; für bestehende Spaces ohne Zuordnung ist eine Lösung zu entscheiden. Optional: Findet die Suche im zugeordneten Wissen nichts, schlägt sie vor, weiteres Wissen zuzuordnen.\n\nDie Schnittregel gilt: höchstens etwa acht Sub-Issues. Kleinere Entscheidungen fallen im jeweiligen Sub-Issue.\n\n### Abhängigkeiten\n\n```\nKonzept ──> Asset-Übersicht ──> Favoriten ──> Space-Assistent/Suchbereich\n```\n\n### Abnahmekriterien (Epic-Ebene)\n\n- [ ] Die Hauptnavigation hat genau einen Einstieg für Assets. Alle Asset-Typen sind darin mit Typfilter auffindbar.\n- [ ] Öffentliche und geschlossene Assets sind in der Übersicht unterscheidbar und beruhen allein auf dem bestehenden Freigabemodell. Es entsteht keine neue Sichtbarkeitsstufe.\n- [ ] Favoriten lassen sich an jedem sichtbaren Asset setzen und entfernen und wirken als Filter in Übersicht und Space-Assistent.\n- [ ] Ein neuer Space erhält sein Wissen ausdrücklich im Assistenten. Ein Space ohne Zuordnung durchsucht nicht mehr stillschweigend alles Lesbare.\n- [ ] Spezifikation, betroffene ADRs und Handbuch (`docs/handbuch/bibliotheken-und-berechtigungen.md`, `prompt-bibliotheken.md`) beschreiben das neue Modell.\n- [ ] Die E2E-Pfade für das Anlegen von Space, Bibliothek und Prompt-Bibliothek sind angepasst.\n\n### Außerhalb des Umfangs (separate Epics)\n\n- Ein Marketplace über Organisationsgrenzen hinweg (fremde Assets installieren, wie npm oder ein Browser-Store) ist ausdrücklich nicht Ziel.\n- Freigabe- und Prüfworkflow sowie Versionierung von Assets.\n- Neue Asset-Typen (Skills: Epic #1727).\n\n### Referenzen\n\n- `docs/features/spaces-and-assets.md`\n- `docs/decisions/0036-berechtigungsmodell-gruppen-und-faehigkeiten.md`\n- `docs/decisions/0037-reichweite-als-freigabe-an-alle.md`\n\nHinweis zur Umsetzung: Wer das Epic baut, ist noch offen. Wer anfängt, gibt dem anderen vorher Bescheid.",
+        "closes": []
+      },
+      {
+        "number": 2068,
+        "title": "docs(fortschritt): Zeitraumsbericht zum Stichtag 30.09.2026 und Gesamtstand fortschreiben",
+        "url": "https://github.com/criew/opaa/issues/2068",
+        "author": "criew",
+        "labels": [
+          "documentation",
+          "size:L"
+        ],
+        "body": "Monatlicher Zeitraumsbericht zum Stichtag 30.09.2026 nach dem Verfahren in `docs/fortschritt/README.md`.\n\n## Umfang\n\n- Anker ziehen (`main`-Commit und Abfragezeitpunkt) — Delta ab `a51e6b8c` / 30.08.2026\n- Rohdaten erheben (geschlossene Issues, gemergte PRs; nicht committet)\n- `bausteine.md` mit den Vorgängen mit Befund, Anhang mit den Vorgängen ohne Befund\n- `gruppierung.md` nach Themenbereichen A–K, T1–T3, V, P\n- `report.md` als Delta mit Management Summary, „Lücken und bewusste Schnitte\" und priorisierter Restliste\n- `gesamtstand.md` aus dem Delta fortschreiben\n\n## Abnahmekriterien\n\n- Neues Verzeichnis `docs/fortschritt/20260930/` mit `anker.md`, `bausteine.md`, `gruppierung.md`, `report.md` (Entwurf)\n- `gesamtstand.md` nennt je fortgeschriebene Aussage den Stichtag 20260930",
+        "closes": []
+      }
+    ],
+    "closed": [
+      {
+        "number": 2079,
+        "title": "fix(test): Ablauferinnerungs-Test scheitert am Tag vor jedem Quartalsbeginn",
+        "url": "https://github.com/criew/opaa/issues/2079",
+        "author": "bigpuritz",
+        "labels": [
+          "bug",
+          "backend",
+          "size:S"
+        ],
+        "body": "## Problem\n\n`LocalAccountMaintenanceIntegrationTest.remindsThePersonAndTheAdministratorsFourteenDaysBeforeAnExpiryExactlyOnce` schlägt am Tag vor jedem Quartalsbeginn fehl, also am 31.03., 30.06., 30.09. und 31.12.\n\nDer Test nimmt `Instant.now()` als Stichtag und prüft, dass ein zweiter Lauf am **Folgetag** keine weitere Mail verschickt. Fällt dieser Folgetag auf den ersten Tag eines Quartals, verschickt `AdminReviewReminderStep` dort zusätzlich die Quartalsübersicht an die Administratoren (`isQuarterStart`). Der Test zählt dann eine Mail mehr (`LocalAccountMaintenanceIntegrationTest.java:239`).\n\nAufgefallen am 30.09.2026 im Renovate-PR #2074. Das Scheitern ist unabhängig von dessen Änderung: Mit der alten AWS-SDK-Version fällt der Test lokal genauso durch. Auf `main` blieb es an diesem Tag unbemerkt, weil die Pushes nur das Frontend betrafen und die Backend-Tests übersprungen wurden.\n\n## Soll\n\nDer Test wählt seinen Stichtag so, dass weder der Stichtag noch der Folgetag ein Quartalsbeginn ist. Er prüft damit an jedem Kalendertag dasselbe.\n\n## Abnahmekriterien\n\n- [ ] Test besteht am 30.09.2026 (heute), vorher nachweislich rot\n- [ ] Aussage des Tests unverändert: genau eine Erinnerung, keine zweite am Folgetag",
+        "closes": []
+      },
+      {
+        "number": 2077,
+        "title": "fix(chat): Titel angehefteter Chats fluchten nicht mit den übrigen",
+        "url": "https://github.com/criew/opaa/issues/2077",
+        "author": "bigpuritz",
+        "labels": [
+          "bug",
+          "frontend",
+          "size:S"
+        ],
+        "body": "## Problem\n\nIn der Chatliste der Seitenleiste steht vor angehefteten Chats ein Pin-Symbol im Textfluss (`ChatList.tsx`, 12 px plus 6 px Abstand). Dadurch beginnt der Titel angehefteter Chats rund 18 px weiter rechts als der Titel aller übrigen Chats. Die Namen fluchten nicht.\n\n## Soll\n\nAlle Chat-Namen stehen linksbündig auf derselben Kante. Das Pin-Symbol sitzt links davor im Innenabstand der Zeile und verschiebt den Titel nicht.\n\n## Abnahmekriterien\n\n- [ ] Titel angehefteter und nicht angehefteter Chats beginnen an derselben x-Position\n- [ ] Pin-Symbol bleibt sichtbar, vertikal zentriert, links vor dem Titel\n- [ ] Test sichert die Ausrichtung ab",
+        "closes": []
+      },
+      {
+        "number": 2068,
+        "title": "docs(fortschritt): Zeitraumsbericht zum Stichtag 30.09.2026 und Gesamtstand fortschreiben",
+        "url": "https://github.com/criew/opaa/issues/2068",
+        "author": "criew",
+        "labels": [
+          "documentation",
+          "size:L"
+        ],
+        "body": "Monatlicher Zeitraumsbericht zum Stichtag 30.09.2026 nach dem Verfahren in `docs/fortschritt/README.md`.\n\n## Umfang\n\n- Anker ziehen (`main`-Commit und Abfragezeitpunkt) — Delta ab `a51e6b8c` / 30.08.2026\n- Rohdaten erheben (geschlossene Issues, gemergte PRs; nicht committet)\n- `bausteine.md` mit den Vorgängen mit Befund, Anhang mit den Vorgängen ohne Befund\n- `gruppierung.md` nach Themenbereichen A–K, T1–T3, V, P\n- `report.md` als Delta mit Management Summary, „Lücken und bewusste Schnitte\" und priorisierter Restliste\n- `gesamtstand.md` aus dem Delta fortschreiben\n\n## Abnahmekriterien\n\n- Neues Verzeichnis `docs/fortschritt/20260930/` mit `anker.md`, `bausteine.md`, `gruppierung.md`, `report.md` (Entwurf)\n- `gesamtstand.md` nennt je fortgeschriebene Aussage den Stichtag 20260930",
+        "closes": []
+      }
+    ],
+    "merged": [
+      {
+        "number": 2080,
+        "title": "fix(test): Ablauferinnerungs-Test nicht mehr am Tag vor einem Quartalsbeginn rot",
+        "url": "https://github.com/criew/opaa/pull/2080",
+        "author": "bigpuritz",
+        "labels": [
+          "bug",
+          "backend"
+        ],
+        "body": "## Zusammenfassung\n\n`LocalAccountMaintenanceIntegrationTest.remindsThePersonAndTheAdministratorsFourteenDaysBeforeAnExpiryExactlyOnce` scheitert jedes Jahr am **Tag vor einem Quartalsbeginn**: am 31.03., 30.06., 30.09. und 31.12.\n\n**Ursache:**\n- Der Test nimmt `Instant.now()` als Stichtag und prüft, dass ein zweiter Lauf am Folgetag keine weitere Mail verschickt.\n- Fällt dieser Folgetag auf den ersten Tag eines Quartals, verschickt `AdminReviewReminderStep` dort zusätzlich die Quartalsübersicht an die Administratoren. Der Test zählt dann eine Mail mehr (Zeile 239).\n\n**Fix:** Ein Helfer `referenceDayAwayFromQuarterStart()` wählt den Stichtag so, dass weder er noch der Folgetag ein Quartalsbeginn ist. Er prüft das mit derselben Regel wie der Produktcode (`AdminReviewReminderStep.isQuarterStart`). Die Aussage des Tests bleibt unverändert.\n\n**Aufgefallen** am 30.09.2026 im Renovate-PR #2074 (aws-java-sdk 2.55.7 → 2.55.8). Mit der Änderung dort hat der Fehler nichts zu tun: Mit der alten SDK-Version schlägt der Test lokal genauso fehl. Auf `main` blieb es an diesem Tag unbemerkt, weil die Pushes nur das Frontend betrafen und die Backend-Tests übersprungen wurden.\n\n## Zugehörige Issues\n\nCloses #2079\n\n## Art der Änderung\n\n- [x] Bugfix\n- [ ] Neues Feature\n- [ ] Dokumentation\n- [ ] Refactoring\n- [ ] CI/Build\n\n## Checkliste\n\n- [x] Tests bestehen lokal (`LocalAccountMaintenanceIntegrationTest`), Spotless ist grün. Es ändert sich nur eine Testklasse, die volle Suite läuft in der CI\n- [x] Bei Bugfix: Reproduktionsnachweis erbracht (siehe unten)\n- [ ] Dokumentation aktualisiert (falls zutreffend) — nicht betroffen\n- [x] Handbuch (`docs/handbuch/`) ausdrücklich nicht betroffen: reine Teständerung\n- [ ] Barrierefreiheit — entfällt, keine UI\n- [x] Keine Secrets oder Anmeldeinformationen committet\n- [x] Commit-Nachrichten folgen Conventional Commits\n- [x] CLA unterzeichnet\n\n### Reproduktionsnachweis\n\nBeide Läufe am 30.09.2026, dem Tag vor einem Quartalsbeginn, auf aktuellem `main` (581db3d9).\n\nRot, ohne den Fix:\n```\nLocalAccountMaintenanceIntegrationTest > remindsThePersonAndTheAdministratorsFourteenDaysBeforeAnExpiryExactlyOnce() FAILED\n    java.lang.AssertionError at LocalAccountMaintenanceIntegrationTest.java:239\n3 tests completed, 1 failed\n```\nGrün, mit dem Fix: `BUILD SUCCESSFUL`, 3 von 3.\n\nZusätzlich die Gegenprobe im Renovate-Branch #2074: Mit zurückgenommener SDK-Version (`aws-sdk = \"2.55.7\"`) scheitert der Test identisch.\n\n## KI-Agenten-Offenlegung\n\n- [ ] Dieser PR wurde von einem Menschen verfasst\n- [ ] Dieser PR wurde von einem KI-Agenten verfasst (angeben: _______)\n- [x] Dieser PR wurde von Mensch + KI-Agent gemeinsam verfasst (Claude Opus 5.5)\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)",
+        "closes": [
+          2079
+        ],
+        "additions": 18,
+        "deletions": 1,
+        "changed_files": 1
+      },
+      {
+        "number": 2078,
+        "title": "fix(chat): Titel angehefteter Chats fluchten mit den übrigen",
+        "url": "https://github.com/criew/opaa/pull/2078",
+        "author": "bigpuritz",
+        "labels": [
+          "bug",
+          "frontend"
+        ],
+        "body": "## Zusammenfassung\n\nIn der Chatliste der Seitenleiste stand das Pin-Symbol angehefteter Chats im Textfluss vor dem Titel (12 px plus 6 px Abstand). Der Titel rückte dadurch nach rechts und fluchtete nicht mit den übrigen.\n\n**Fix:** Das Symbol ist absolut positioniert im linken Innenabstand der Zeile, vertikal zentriert, mit 3 px Luft zum Titel. Alle Titel beginnen auf derselben Kante. Das Symbol bleibt dekorativ (`aria-hidden`), die Überschrift „Angeheftet“ nennt den Zustand weiterhin in Text.\n\n## Zugehörige Issues\n\nCloses #2077\n\n## Art der Änderung\n\n- [x] Bugfix\n- [ ] Neues Feature\n- [ ] Dokumentation\n- [ ] Refactoring\n- [ ] CI/Build\n\n## Checkliste\n\n- [x] Tests bestehen lokal (`ChatList.test.tsx` 29/29), Lint und Prettier sind grün\n- [x] Bei Bugfix: Reproduktionsnachweis erbracht (siehe unten)\n- [ ] Dokumentation aktualisiert (falls zutreffend) — nicht betroffen\n- [x] Handbuch (`docs/handbuch/`) ausdrücklich nicht betroffen: reine Ausrichtung\n- [x] Barrierefreiheit nach `docs/design/accessibility.md` geprüft: Das Symbol ist unverändert dekorativ, Namen und Reihenfolge bleiben gleich\n- [x] Keine Secrets oder Anmeldeinformationen committet\n- [x] Commit-Nachrichten folgen Conventional Commits\n- [x] CLA unterzeichnet\n\n### Reproduktionsnachweis\n\nNeuer Test in `ChatList.test.tsx`, „keeps the pin mark out of the text flow, so pinned titles align with the rest“. jsdom berechnet kein Layout, darum prüft der Test die Positionierung selbst.\n\nRot, ohne den Fix:\n```\n× keeps the pin mark out of the text flow, so pinned titles align with the rest\nExpected: \"absolute\"\nReceived: \"static\"\n```\nGrün, mit dem Fix.\n\n**Im Browser** (lokaler Stack, demo-admin mit drei angehefteten Chats) habe ich gemessen, wo die Titel beginnen:\n\n| | vorher | nachher |\n|---|---|---|\n| Titel angehefteter Chats | 18 px rechts der übrigen | x = 97 |\n| Titel der übrigen Chats | x = 97 | x = 97 |\n| Pin-Symbol | im Textfluss | x = 82–94, 3 px vor dem Titel |\n\n## KI-Agenten-Offenlegung\n\n- [ ] Dieser PR wurde von einem Menschen verfasst\n- [ ] Dieser PR wurde von einem KI-Agenten verfasst (angeben: _______)\n- [x] Dieser PR wurde von Mensch + KI-Agent gemeinsam verfasst (Claude Opus 5.5)\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)",
+        "closes": [
+          2077
+        ],
+        "additions": 26,
+        "deletions": 2,
+        "changed_files": 2
+      },
+      {
+        "number": 2076,
+        "title": "chore(deps): msw auf v3.0.0 aktualisieren",
+        "url": "https://github.com/criew/opaa/pull/2076",
+        "author": "bigpuritz",
+        "labels": [
+          "enhancement",
+          "frontend"
+        ],
+        "body": "Automatisches Abhängigkeits-Update durch Renovate (#751, siehe docs/renovate.md) — Prüfung und Merge folgen dem normalen Weg.\n\nThis PR contains the following updates:\n\n| Package | Type | Update | Change |\n|---|---|---|---|\n| [msw](https://mswjs.io) ([source](https://redirect.github.com/mswjs/msw)) | devDependencies | major | [`2.15.0` → `3.0.0`](https://renovatebot.com/diffs/npm/msw/2.15.0/3.0.0) |\n\n---\n\n### Release Notes\n\n<details>\n<summary>mswjs/msw (msw)</summary>\n\n### [`v3.0.0`](https://redirect.github.com/mswjs/msw/releases/tag/v3.0.0)\n\n[Compare Source](https://redirect.github.com/mswjs/msw/compare/v2.15.0...v3.0.0)\n\n#### v3.0.0 (2026-09-28)\n\n- v3.0.0 ([#&#8203;2692](https://redirect.github.com/mswjs/msw/issues/2692)) ([`2bb4342`](https://redirect.github.com/mswjs/msw/commit/2bb43428b79ac06f94bb8ea8aeacd6102fe31f56)) [@&#8203;kettanaito](https://redirect.github.com/kettanaito) [@&#8203;Andarist](https://redirect.github.com/Andarist)\n\n##### ⚠️ BREAKING CHANGES\n\n- **MSW is now ESM-only** ([#&#8203;2765](https://redirect.github.com/mswjs/msw/issues/2765)).\n- Deprecate support for Node.js v18 and v20 ([#&#8203;2729](https://redirect.github.com/mswjs/msw/issues/2729)). The minimal supported Node.js version is v22.\n- `msw/native` is removed in favor of [`@msw/react-native`](https://redirect.github.com/mswjs/react-native).\n- Require TypeScript 5.9 as the minimal version.\n- Deprecate support for TypeScript 5.1 and 5.2 ([#&#8203;2730](https://redirect.github.com/mswjs/msw/issues/2730))\n- `worker.stop()` returns a Promise ([#&#8203;2724](https://redirect.github.com/mswjs/msw/issues/2724)). Awaiting it is relevant only for in-flight critical scenarios.\n- `graphql` is now exported as `msw/graphql` ([#&#8203;2691](https://redirect.github.com/mswjs/msw/issues/2691)). GraphQL is now handled as a proper optional peer dependency.\n- Removes the `handleRequest()` utility. Please use the `defineNetwork()` API instead.\n- `GraphQLLinkHandlers` type has been renamed to `GraphQLLink`.\n- The `file://` requests now throw in Node.js as they normally do (not supported by `fetch`).\n- The `Content-Length` request header is now removed by `bypass()`.\n- HTTP-to-WebSocket upgrade requests performed via `fetch()` now throw in Node.js as they normally do (not supported by `fetch`).\n- Cookies are no longer managed in Node.js for better compatibilty. Instead, whatever is the default behavior of your environment that's the cookie behavior you get. This has no effect on the browser.\n- WebSocket `connection` life cycle event has been renamed to `websocket:connection` ([#&#8203;2783](https://redirect.github.com/mswjs/msw/issues/2783)).\n- `onUnhandledRequest` option has been renamed to `onUnhandledFrame`.\n- The library no longer patches `setTimeout` to circumvent fake timers in test runners. You should advance the fake timers normally for delayed mocked responses to resolve.\n- The library no longer returns a mocked cookie string on `request.headers.get('cookie')` in the handlers. It returns `null` in all environments. Please use the `cookies` resolver argument to have cookie-based logic.\n\n##### Features\n\n- Supports Node.js v24 and v26.\n- Supports TypeScript v6.0 and v7.0.\n- You can import individual utilities, like `delay` or `passthrough`, from the new `msw/utils` entrypoint for smaller footprint on your bundle.\n- Support GraphQL v17.0.\n- Support intercepting page navigations and form submissions ([#&#8203;2721](https://redirect.github.com/mswjs/msw/issues/2721)).\n- Support GraphQL subscriptions ([#&#8203;285](https://redirect.github.com/mswjs/msw/issues/285), [#&#8203;2763](https://redirect.github.com/mswjs/msw/issues/2763)).\n- Migrate from `path-to-regexp` to `@msw/url` ([#&#8203;2678](https://redirect.github.com/mswjs/msw/issues/2678)).\n- Remove the following dependencies:\n  - `graphql`\n  - `path-to-regexp`\n  - `picocolors`\n  - `statuses`\n  - `strict-event-emitter`\n- Adds a Vite plugin for MSW ([#&#8203;2781](https://redirect.github.com/mswjs/msw/issues/2781)).\n- Adds a `websocket:error` life cycle event to listen to WebSocket connection errors ([#&#8203;2784](https://redirect.github.com/mswjs/msw/issues/2784)).\n- Support modifying the intercepted request headers in passthrough scenarios ([#&#8203;2786](https://redirect.github.com/mswjs/msw/issues/2786)).\n- Support a new WebSocket Extension API that allows for better custom experiences ([#&#8203;2791](https://redirect.github.com/mswjs/msw/issues/2791)).\n\n##### Bug fixes\n\n- Fix an issue where preventing a page closure via the `beforeunload` listener would unregister the MSW worker ([#&#8203;1105](https://redirect.github.com/mswjs/msw/issues/1105)).\n- Fix an issue that caused intermittent test failures in Vitest Browser Mode and Firefox if using `maxWorkers: 1` ([#&#8203;2726](https://redirect.github.com/mswjs/msw/issues/2726)).\n- Fix an issue where in-flight requests were incorrectly passthrough when performed before calling `worker.stop()` ([#&#8203;2724](https://redirect.github.com/mswjs/msw/issues/2724), [#&#8203;2597](https://redirect.github.com/mswjs/msw/issues/2597)).\n- Fix an issue where persisting cookies in `localStorage` would cause a maximum quota exceeded errors.\n- Fix various issues related to the network interception in Node.js.\n\n</details>\n\n---\n\n### Configuration\n\n📅 **Schedule**: (in timezone Europe/Berlin)\n\n- Branch creation\n  - At any time (no schedule defined)\n- Automerge\n  - At any time (no schedule defined)\n\n🚦 **Automerge**: Disabled by config. Please merge this manually once you are satisfied.\n\n♻ **Rebasing**: Whenever PR is behind base branch, or you tick the rebase/retry checkbox.\n\n🔕 **Ignore**: Close this PR and you won't be reminded about this update again.\n\n---\n\n - [ ] <!-- rebase-check -->If you want to rebase/retry this PR, check this box\n\n---\n\nThis PR has been generated by [Mend Renovate CLI](https://redirect.github.com/renovatebot/renovate).\n<!--renovate-debug:eyJjcmVhdGVkSW5WZXIiOiI0NC4xMjQuMCIsInVwZGF0ZWRJblZlciI6IjQ0LjEyNC4wIiwidGFyZ2V0QnJhbmNoIjoibWFpbiIsImxhYmVscyI6WyJlbmhhbmNlbWVudCIsImZyb250ZW5kIl19-->",
+        "closes": [],
+        "additions": 355,
+        "deletions": 283,
+        "changed_files": 9
+      },
+      {
+        "number": 2073,
+        "title": "chore(deps): amazon/aws-cli docker tag to v2.37.6",
+        "url": "https://github.com/criew/opaa/pull/2073",
+        "author": "bigpuritz",
+        "labels": [
+          "enhancement",
+          "ci"
+        ],
+        "body": "Automatisches Abhängigkeits-Update durch Renovate (#751, siehe docs/renovate.md) — Prüfung und Merge folgen dem normalen Weg.\n\nThis PR contains the following updates:\n\n| Package | Update | Change |\n|---|---|---|\n| amazon/aws-cli | patch | `2.37.5` → `2.37.6` |\n\n---\n\n### Configuration\n\n📅 **Schedule**: (in timezone Europe/Berlin)\n\n- Branch creation\n  - At any time (no schedule defined)\n- Automerge\n  - At any time (no schedule defined)\n\n🚦 **Automerge**: Disabled by config. Please merge this manually once you are satisfied.\n\n♻ **Rebasing**: Whenever PR becomes conflicted, or you tick the rebase/retry checkbox.\n\n🔕 **Ignore**: Close this PR and you won't be reminded about this update again.\n\n---\n\n - [ ] <!-- rebase-check -->If you want to rebase/retry this PR, check this box\n\n---\n\nThis PR has been generated by [Mend Renovate CLI](https://redirect.github.com/renovatebot/renovate).\n<!--renovate-debug:eyJjcmVhdGVkSW5WZXIiOiI0NC4xMjQuMCIsInVwZGF0ZWRJblZlciI6IjQ0LjEyNC4wIiwidGFyZ2V0QnJhbmNoIjoibWFpbiIsImxhYmVscyI6WyJjaSIsImVuaGFuY2VtZW50Il19-->",
+        "closes": [],
+        "additions": 2,
+        "deletions": 2,
+        "changed_files": 1
+      },
+      {
+        "number": 2072,
+        "title": "chore(deps): @cyclonedx/cdxgen auf v12.8.5 aktualisieren",
+        "url": "https://github.com/criew/opaa/pull/2072",
+        "author": "bigpuritz",
+        "labels": [
+          "enhancement",
+          "ci"
+        ],
+        "body": "Automatisches Abhängigkeits-Update durch Renovate (#751, siehe docs/renovate.md) — Prüfung und Merge folgen dem normalen Weg.\n\nThis PR contains the following updates:\n\n| Package | Update | Change |\n|---|---|---|\n| [@cyclonedx/cdxgen](https://redirect.github.com/cdxgen/cdxgen) | patch | `12.8.4` → `12.8.5` |\n\n---\n\n### Release Notes\n\n<details>\n<summary>cdxgen/cdxgen (@&#8203;cyclonedx/cdxgen)</summary>\n\n### [`v12.8.5`](https://redirect.github.com/cdxgen/cdxgen/releases/tag/v12.8.5)\n\n[Compare Source](https://redirect.github.com/cdxgen/cdxgen/compare/v12.8.4...v12.8.5)\n\nThis LTS release fixes a High severity signature verification bypass, tracked as GHSA-7m2v-pj5r-fjww. `cdx-verify`, `cdx-validate --require-signature` and the `verifyBom` library function accepted a BOM whose JSF signature declared an HMAC algorithm and was computed with the signer's public key, so anyone holding the public key could forge a valid signature. The advisory will be published shortly with full details.\n\n#### Breaking change\n\nEach signature now covers its own `algorithm`, `keyId` and `publicKey`, as the JSF specification requires, and every signature algorithm must match the key type. BOMs signed with 12.8.4 or earlier no longer verify and must be re-signed with this version of `cdx-sign`, as described in the [cdx-sign documentation](https://cdxgen.github.io/cdxgen/#/CDX_SIGN?id=re-signing-boms-from-earlier-releases). HMAC signatures now need the new `--secret-key` option. cdxgen also exits with an error when signing is configured but fails, instead of writing or uploading an unsigned BOM.\n\n#### What's Changed\n\n- Bind JSF signature algorithms to key types and require an explicit HMAC secret by [@&#8203;prabhu](https://redirect.github.com/prabhu) in [#&#8203;4401](https://redirect.github.com/cdxgen/cdxgen/pull/4401)\n- Patch dependency updates, action pins and types by [@&#8203;prabhu](https://redirect.github.com/prabhu) in [#&#8203;4411](https://redirect.github.com/cdxgen/cdxgen/pull/4411)\n- Refresh image digests and tool versions by [@&#8203;prabhu](https://redirect.github.com/prabhu) in [#&#8203;4412](https://redirect.github.com/cdxgen/cdxgen/pull/4412)\n\nThanks to [@&#8203;richilino](https://redirect.github.com/richilino) for the report.\n\n**Full Changelog**: <https://github.com/cdxgen/cdxgen/compare/v12.8.4...v12.8.5>\n\n</details>\n\n---\n\n### Configuration\n\n📅 **Schedule**: (in timezone Europe/Berlin)\n\n- Branch creation\n  - At any time (no schedule defined)\n- Automerge\n  - At any time (no schedule defined)\n\n🚦 **Automerge**: Enabled.\n\n♻ **Rebasing**: Whenever PR is behind base branch, or you tick the rebase/retry checkbox.\n\n🔕 **Ignore**: Close this PR and you won't be reminded about this update again.\n\n---\n\n - [ ] <!-- rebase-check -->If you want to rebase/retry this PR, check this box\n\n---\n\nThis PR has been generated by [Mend Renovate CLI](https://redirect.github.com/renovatebot/renovate).\n<!--renovate-debug:eyJjcmVhdGVkSW5WZXIiOiI0NC4xMjQuMCIsInVwZGF0ZWRJblZlciI6IjQ0LjEyNC4wIiwidGFyZ2V0QnJhbmNoIjoibWFpbiIsImxhYmVscyI6WyJjaSIsImVuaGFuY2VtZW50Il19-->",
+        "closes": [],
+        "additions": 1,
+        "deletions": 1,
+        "changed_files": 1
+      },
+      {
+        "number": 2069,
+        "title": "docs(fortschritt): Zeitraumsbericht zum Stichtag 30.09.2026 und Gesamtstand fortschreiben",
+        "url": "https://github.com/criew/opaa/pull/2069",
+        "author": "criew",
+        "labels": [
+          "documentation",
+          "size:L"
+        ],
+        "body": "## Zusammenfassung\n\nMonatlicher Zeitraumsbericht zum Stichtag **30.09.2026**, erstellt nach dem Verfahren in `docs/fortschritt/README.md`, dazu der fortgeschriebene Gesamtstand.\n\n- `20260930/anker.md`: `main@17ec7fca8`, Abfrage vom 30.09.2026. Nachgezogen sind die beiden Vorgänge vom 30.08., die erst nach dem alten Anker abgeschlossen wurden (#945, PR #1026).\n- `20260930/bausteine.md`: 616 Vorgänge geprüft (502 Issues und 114 PRs ohne Issue-Verknüpfung), davon **43 mit Befund**. Die übrigen stehen als Nummern im Anhang.\n- `20260930/gruppierung.md`: jeder Vorgang genau einem Bereich A–K, T1–T3, V oder P zugeordnet. E, H und K hatten im Zeitraum keinen Vorgang.\n- `20260930/report.md`:\n  - Management Summary mit geschätztem Phase-1-Umsetzungsgrad von rund 85 % (Vormonat rund 80 %)\n  - Delta je Themenbereich\n  - Lücken und bewusste Schnitte\n  - priorisierte Phase-1-Restliste\n- `gesamtstand.md`: Das Delta ist eingearbeitet, Zurückgebautes entfernt. Jeder Abschnitt nennt den Stichtag seiner letzten Bestätigung.\n\n**Abgenommen durch den Maintainer am 30.09.2026.** Die Anmerkungen aus der Abnahme sind eingearbeitet: September neutral beschrieben, Streaming benannt, Modell-Obergrenze herabgestuft. Die Entwurfsmarkierung ist entfernt; der Merge-Commit erhält das Tag `inventur-20260930`.\n\n## Zugehörige Issues\n\nCloses #2068\n\n## Art der Änderung\n\n- [ ] Bugfix\n- [ ] Neues Feature\n- [x] Dokumentation\n- [ ] Refactoring\n- [ ] CI/Build\n\n## Checkliste\n\n- [ ] Tests bestehen lokal — entfällt, reine Dokumentationsänderung\n- [ ] Bei Bugfix: Reproduktionsnachweis erbracht — entfällt\n- [x] Dokumentation aktualisiert (falls zutreffend)\n- [x] Handbuch (`docs/handbuch/`) nachgezogen oder ausdrücklich nicht betroffen — nicht betroffen\n- [ ] Barrierefreiheit nach `docs/design/accessibility.md` geprüft — entfällt\n- [x] Keine Secrets oder Anmeldeinformationen committet\n- [x] Commit-Nachrichten folgen Conventional Commits\n- [x] CLA unterzeichnet (Erstbeitragende: Unterzeichnungskommentar unten posten, oder wurde bereits unterzeichnet)\n\n## KI-Agenten-Offenlegung\n\n- [ ] Dieser PR wurde von einem Menschen verfasst\n- [x] Dieser PR wurde von einem KI-Agenten verfasst (angeben: Claude Code, Claude Opus 5.5; Bausteine von sechs parallelen Agenten erhoben)\n- [ ] Dieser PR wurde von Mensch + KI-Agent gemeinsam verfasst\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_0147dkwXQ6DB9SZomzbHAExL",
+        "closes": [
+          2068
+        ],
+        "additions": 1715,
+        "deletions": 101,
+        "changed_files": 5
+      }
+    ]
+  }
+}

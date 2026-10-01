@@ -5,8 +5,19 @@
   <link href="https://criew.github.io/opaa/report/feed.xml" rel="self"/>
   <link href="https://criew.github.io/opaa/report/"/>
   <id>https://criew.github.io/opaa/report/</id>
-  <updated>2026-09-30T05:48:37Z</updated>
+  <updated>2026-10-01T06:19:44Z</updated>
   <author><name>criew/opaa</name></author>
+  <entry>
+    <title>Tagesreport Mittwoch, 30. September 2026</title>
+    <link href="https://criew.github.io/opaa/report/reports/2026-09-30.html"/>
+    <id>https://criew.github.io/opaa/report/reports/2026-09-30.html</id>
+    <updated>2026-10-01T06:19:44Z</updated>
+    <summary type="text">Sonstiges:
+— Ablauferinnerungs-Test bei Quartalsbeginn repariert
+— Chat-Titel angehefteter Chats fluchen korrekt
+— Abhängigkeiten aktualisiert: msw, aws-cli, cdxgen
+— Zeitraumsbericht zum 30.09.2026 fortgeschrieben</summary>
+  </entry>
   <entry>
     <title>Tagesreport Dienstag, 29. September 2026</title>
     <link href="https://criew.github.io/opaa/report/reports/2026-09-29.html"/>
@@ -868,24 +879,5 @@ Sonstiges:
 — Space-Tests auf echtes Liquibase-Schema umgestellt
 — Transaktionsrichtlinien in Entwickler-Rollendefinition dokumentiert
 — Branch-Regel und Reproduktionsnachweis in Agenten-Richtlinien präzisiert</summary>
-  </entry>
-  <entry>
-    <title>Tagesreport Sonntag, 2. August 2026</title>
-    <link href="https://criew.github.io/opaa/report/reports/2026-08-02.html"/>
-    <id>https://criew.github.io/opaa/report/reports/2026-08-02.html</id>
-    <updated>2026-08-14T14:54:41Z</updated>
-    <summary type="text">Epic: Space and asset model — replace the workspace model:
-— Workspace in Space umbenannt, Organisationsgrenze und Rollen neu geschnitten
-— Gruppen als Rechtesubjekte eingeführt
-— 25 weitere Tickets für Asset-Modell angelegt
-Epic: Suchqualität messbar machen — Demo-Korpus und Retrieval-Regression:
-— Korpus-Generator für Comichelden implementiert
-— Golden Dataset aus Frontmatter abgeleitet
-— Grundgerüst für browserbasierte End-to-End-Tests
-— 14 Tickets zur Suchqualitätsmessung angelegt
-Sonstiges:
-— Race Condition bei paralleler Erstanmeldung behoben
-— Erstanmeldung nach Regression wiederhergestellt
-— Report-Zusammenfassung an Epics ausgerichtet</summary>
   </entry>
 </feed>
