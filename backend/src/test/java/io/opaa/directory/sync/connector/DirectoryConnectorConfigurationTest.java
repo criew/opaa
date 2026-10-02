@@ -1,16 +1,23 @@
 package io.opaa.directory.sync.connector;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 
 import io.opaa.auth.OidcAddressPolicy;
 import io.opaa.auth.OidcProviderRepository;
 import io.opaa.directory.sync.DirectoryClient;
+import io.opaa.directory.sync.DirectoryUnavailableException;
+import io.opaa.directory.sync.keycloak.FakeKeycloakServer;
 import io.opaa.directory.sync.keycloak.KeycloakDirectoryConnector;
+import io.opaa.directory.sync.keycloak.KeycloakDirectoryProperties;
+import io.opaa.directory.sync.keycloak.KeycloakRealmAddress;
 import io.opaa.security.CredentialsEncryptor;
+import io.opaa.security.RebindingHostLookup;
 import io.opaa.security.TargetAddressValidator;
 import java.net.http.HttpClient;
 import java.time.Clock;
+import java.time.Duration;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
@@ -56,6 +63,41 @@ class DirectoryConnectorConfigurationTest {
           assertThat(context.getBean("directoryHttpClient", HttpClient.class).followRedirects())
               .isEqualTo(HttpClient.Redirect.NEVER);
         });
+  }
+
+  /**
+   * Regression guard for #1860: the admin API address passes the policy when it is checked ({@code
+   * ProviderDirectoryClient}) and must pass it again when the published client connects. {@code
+   * localhost} answers a public address to the check and the loopback to the connection.
+   */
+  @Test
+  void theAdminApiOfARealmThatRebindsAfterTheCheckIsNeverContacted() throws Exception {
+    RebindingHostLookup lookup = new RebindingHostLookup("localhost");
+    OidcAddressPolicy policy =
+        new OidcAddressPolicy(new TargetAddressValidator(true, List.of(), lookup));
+    DirectoryConnectorConfiguration configuration = new DirectoryConnectorConfiguration();
+    KeycloakDirectoryProperties properties =
+        new KeycloakDirectoryProperties(
+            100, 5000, 20000, 50000, Duration.ofSeconds(5), Duration.ofSeconds(10));
+    KeycloakDirectoryConnector connector =
+        configuration.keycloakDirectoryConnector(
+            configuration.directoryHttpClient(properties, policy), properties, Clock.systemUTC());
+    try (FakeKeycloakServer keycloak = new FakeKeycloakServer()) {
+      String issuer = keycloak.issuerUri().replace("127.0.0.1", "localhost");
+      policy.requireAllowed(issuer, "Issuer-URI");
+
+      assertThatThrownBy(
+              () ->
+                  connector.fetchSnapshot(
+                      KeycloakRealmAddress.of(issuer, null),
+                      FakeKeycloakServer.CLIENT_ID,
+                      FakeKeycloakServer.CLIENT_SECRET))
+          .isInstanceOf(DirectoryUnavailableException.class)
+          .hasMessageContaining("gesperrten Adressbereich");
+      assertThat(keycloak.requestedPaths()).isEmpty();
+      assertThat(keycloak.tokenRequests()).isZero();
+    }
+    assertThat(lookup.lookups()).isEqualTo(2);
   }
 
   @Test
