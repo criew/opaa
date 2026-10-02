@@ -8,12 +8,12 @@ package io.opaa.api.types;
  */
 public enum NotificationType {
   /**
-   * A library was associated into a space whose members do not all already have read access to it
-   * (#203, docs/features/spaces-and-assets.md#assets-in-einen-space-assoziieren - "Benachrichtigung
-   * statt Zustimmung"). Sent to the library's owner - every member of the owning group, if
-   * group-owned.
+   * An asset of any type was associated into a space whose members do not all already have read
+   * access to it (docs/features/spaces-and-assets.md#assets-in-einen-space-assoziieren -
+   * "Benachrichtigung statt Zustimmung"). Sent to the asset's owner - every member of the owning
+   * group, if group-owned - once per owner and request, naming every such asset of theirs.
    */
-  LIBRARY_ASSOCIATED_TO_MIXED_SPACE,
+  ASSET_ASSOCIATED_TO_MIXED_SPACE,
 
   /**
    * The external-access channel exceeded the mass-retrieval threshold (#1720,

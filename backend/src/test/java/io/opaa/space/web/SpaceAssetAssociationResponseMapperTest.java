@@ -31,27 +31,21 @@ class SpaceAssetAssociationResponseMapperTest {
   }
 
   private static SpaceAssetLink link(
-      SpaceAssetAssociation association, boolean readable, String name, String createdBy) {
+      SpaceAssetAssociation association, String name, String createdBy) {
     return new SpaceAssetLink(
-        association,
-        KnowledgeLibrary.ASSET_TYPE,
-        readable,
-        name,
-        readable ? "Beschreibung" : null,
-        createdBy);
+        association, KnowledgeLibrary.ASSET_TYPE, name, "Beschreibung", createdBy);
   }
 
   @Test
-  void toResponseIncludesTheAssetNameWhenReadableByCaller() {
+  void toResponseCarriesEveryFieldOfTheReadableAsset() {
     SpaceAssetAssociation association = association();
 
     SpaceAssetAssociationResponse response =
         SpaceAssetAssociationResponseMapper.toResponse(
-            link(association, true, "Bibliothek", "Ada Lovelace"));
+            link(association, "Bibliothek", "Ada Lovelace"));
 
     assertThat(response.getAssetType()).isEqualTo(AssetType.KNOWLEDGE_LIBRARY);
     assertThat(response.getAssetId()).isEqualTo(association.getAssetId());
-    assertThat(response.getReadableByCaller()).isTrue();
     assertThat(response.getName()).isEqualTo("Bibliothek");
     assertThat(response.getDescription()).isEqualTo("Beschreibung");
     assertThat(response.getCreatedByUserId()).isEqualTo(association.getCreatedByUserId());
@@ -60,27 +54,13 @@ class SpaceAssetAssociationResponseMapperTest {
   }
 
   @Test
-  void toResponseOmitsTheAssetNameWhenNotReadableByCaller() {
-    // #706 review: a CURATOR/ADMIN/owner sees an association they cannot themselves read, but
-    // never its name - name and description must be absent whenever readableByCaller is false.
-    SpaceAssetAssociationResponse response =
-        SpaceAssetAssociationResponseMapper.toResponse(
-            link(association(), false, null, "Ada Lovelace"));
-
-    assertThat(response.getReadableByCaller()).isFalse();
-    assertThat(response.getName()).isNull();
-    assertThat(response.getDescription()).isNull();
-  }
-
-  @Test
-  void toListResponseKeepsHasAssociationsIndependentOfAnEmptyItemsList() {
-    // #706 review, finding 2: hasAssociations must stay true even when every item was filtered
-    // out of the (possibly filtered) items list - the two are computed independently.
+  void toListResponseCarriesTheCountFreeFlagsIndependentlyOfAnEmptyItemsList() {
     SpaceAssetAssociationListResponse response =
         SpaceAssetAssociationResponseMapper.toListResponse(
-            new SpaceAssetLinks(true, false, List.of()));
+            new SpaceAssetLinks(true, true, false, List.of()));
 
     assertThat(response.getHasAssociations()).isTrue();
+    assertThat(response.getHasUnreadableAssociations()).isTrue();
     assertThat(response.getNarrowsSearch()).isFalse();
     assertThat(response.getItems()).isEmpty();
   }
@@ -90,8 +70,9 @@ class SpaceAssetAssociationResponseMapperTest {
     SpaceAssetLinks links =
         new SpaceAssetLinks(
             true,
+            false,
             true,
-            List.of(link(association(), true, "A", null), link(association(), true, "B", null)));
+            List.of(link(association(), "A", null), link(association(), "B", null)));
 
     SpaceAssetAssociationListResponse response =
         SpaceAssetAssociationResponseMapper.toListResponse(links);
@@ -99,6 +80,7 @@ class SpaceAssetAssociationResponseMapperTest {
     assertThat(response.getItems())
         .extracting(SpaceAssetAssociationResponse::getName)
         .containsExactly("A", "B");
+    assertThat(response.getHasUnreadableAssociations()).isFalse();
     assertThat(response.getNarrowsSearch()).isTrue();
   }
 

@@ -399,7 +399,7 @@ public class SpaceAssetAssociationService {
       notificationService.notify(
           asset.getOrganizationId(),
           recipientId,
-          NotificationType.LIBRARY_ASSOCIATED_TO_MIXED_SPACE,
+          NotificationType.ASSET_ASSOCIATED_TO_MIXED_SPACE,
           definition.auditObjectType(),
           asset.getId(),
           title,
