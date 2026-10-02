@@ -574,28 +574,31 @@ components:
 
     SpaceAssetAssociationListResponse:
       type: object
-      required: [hasAssociations, narrowsSearch, items]
+      required: [hasAssociations, hasKnowledge, hasReadableKnowledge, items]
       description: >
-        The wrapper around GET /v1/spaces/{spaceId}/assets's list, carrying one count-free state
-        field alongside it (#203 review finding on #706). hasAssociations distinguishes two
-        outwardly identical empty-items cases that need different frontend messages: a space with
-        no association at all (search falls back to every readable library, per the permanent
-        transition rule) versus a space that is curated but happens to have nothing the caller may
-        read (docs/features/spaces-and-assets.md#suchbereich-je-chatart, "In diesem Space ist für
-        dich derzeit kein Wissen verfügbar" - a valid state, not an error, and deliberately without
-        a count of the unreadable assets).
+        The wrapper around GET /v1/spaces/{spaceId}/assets's list, carrying count-free state fields
+        alongside it. A space offers exactly what is associated with it: a chat searches the
+        associated knowledge libraries the caller may read, and nothing else. hasKnowledge and
+        hasReadableKnowledge are the two signals of an empty search scope - "no knowledge
+        associated" and "associated, but nothing the caller may read" - and deliberately carry no
+        count of the unreadable assets.
       properties:
         hasAssociations:
           type: boolean
           description: >
-            Whether the space has at least one association at all, regardless of whether the
+            Whether the space has at least one association of any type, regardless of whether the
             caller may read it - computed unfiltered, independently of items.
-        narrowsSearch:
+        hasKnowledge:
           type: boolean
           description: >
-            Whether the space narrows a chat's search scope: at least one associated knowledge
-            library, readable or not - the rule the search itself applies. An asset of another type
-            carries no documents and narrows nothing.
+            Whether at least one knowledge library is associated with the space, readable or not.
+            False means a chat in this space searches nothing until knowledge is associated.
+        hasReadableKnowledge:
+          type: boolean
+          description: >
+            Whether at least one associated knowledge library is readable by the caller. False
+            together with hasKnowledge means the space is curated, but nothing in it is available
+            to this caller.
         items:
           type: array
           items:

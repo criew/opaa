@@ -19,8 +19,7 @@ final class AvailablePromptResponseMapper {
             entry.library().getName(),
             entry.prompt().getName(),
             entry.prompt().getTitle(),
-            !entry.prompt().getVariables().isEmpty(),
-            entry.associatedWithSpace())
+            !entry.prompt().getVariables().isEmpty())
         .description(entry.prompt().getDescription());
   }
 }

@@ -16,8 +16,10 @@ interface PromptCommandMenuProps {
   open: boolean
   anchorEl: HTMLElement | null
   listboxId: string
-  /** The matching prompts, in the server's order: space-associated libraries first. */
+  /** The matching prompts, in the server's order: by library, then sort order. */
   prompts: AvailablePrompt[]
+  /** Whether the space offers any prompt at all, matching or not. */
+  hasPrompts: boolean
   highlightedIndex: number
   isLoading: boolean
   error: string | null
@@ -35,6 +37,7 @@ export default function PromptCommandMenu({
   anchorEl,
   listboxId,
   prompts,
+  hasPrompts,
   highlightedIndex,
   isLoading,
   error,
@@ -42,16 +45,10 @@ export default function PromptCommandMenu({
   onSelect,
   onClose,
 }: PromptCommandMenuProps) {
-  const groups: { libraryId: string; libraryName: string; associated: boolean; start: number }[] =
-    []
+  const groups: { libraryId: string; libraryName: string; start: number }[] = []
   prompts.forEach((prompt, index) => {
     if (groups.at(-1)?.libraryId !== prompt.libraryId) {
-      groups.push({
-        libraryId: prompt.libraryId,
-        libraryName: prompt.libraryName,
-        associated: prompt.associatedWithSpace,
-        start: index,
-      })
+      groups.push({ libraryId: prompt.libraryId, libraryName: prompt.libraryName, start: index })
     }
   })
 
@@ -59,9 +56,11 @@ export default function PromptCommandMenu({
     ? error
     : isLoading && prompts.length === 0
       ? 'Prompts werden geladen …'
-      : prompts.length === 0
-        ? 'Kein passender Prompt gefunden'
-        : null
+      : !hasPrompts
+        ? 'Diesem Space sind keine Prompts zugeordnet'
+        : prompts.length === 0
+          ? 'Kein passender Prompt gefunden'
+          : null
 
   return (
     <Popper
@@ -113,7 +112,6 @@ export default function PromptCommandMenu({
                       sx={{ lineHeight: 2.2, fontSize: 11.5 }}
                     >
                       {group.libraryName}
-                      {group.associated && ' · diesem Space zugeordnet'}
                     </ListSubheader>
                     <Box component="ul" role="presentation" sx={{ p: 0, m: 0 }}>
                       {prompts.slice(group.start, end).map((prompt, offset) => {

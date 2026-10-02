@@ -52,8 +52,14 @@ export function usePromptCommand({ spaceId, userName, insertText }: UsePromptCom
 
   const load = useCallback(() => {
     const token = ++loadToken.current
-    setIsLoading(true)
     setError(null)
+    // Without a space there is nothing to offer: prompts exist in a chat only through its space.
+    if (!spaceId) {
+      setPrompts([])
+      setIsLoading(false)
+      return
+    }
+    setIsLoading(true)
     listAvailablePrompts(spaceId)
       .then((loaded) => {
         if (token !== loadToken.current) return
@@ -166,6 +172,8 @@ export function usePromptCommand({ spaceId, userName, insertText }: UsePromptCom
     setHighlightedIndex: setHighlight,
     moveHighlight,
     isLoading,
+    /** Whether the space offers any prompt at all - an empty selection says why it is empty. */
+    hasPrompts: prompts.length > 0,
     /** While the chosen prompt is fetched, sending waits - the input is about to change. */
     isInserting,
     error,

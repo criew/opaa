@@ -9,10 +9,12 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.doCallRealMethod;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -129,6 +131,15 @@ class QueryServiceTest {
   // explicitly stubs this mock (see the "Query decomposition (#923)" nested class below).
   @Mock private QueryDecompositionService queryDecompositionService;
   @Mock private PromptService promptService;
+
+  /**
+   * This class is about what QueryService does with a resolved scope. Most of its tests ask without
+   * a chat and stand in the scope of a space holding every readable library; the hard boundary
+   * itself - no chat, no knowledge - is SearchScopeResolverTest's and
+   * aQuestionWithoutAChatOfTheCallerSearchesNoKnowledgeAndSaysSo's.
+   */
+  private SearchScopeResolver searchScopeResolver;
+
   private QueryService queryService;
 
   private final UUID currentUserId = UUID.randomUUID();
@@ -177,7 +188,7 @@ class QueryServiceTest {
     return new QueryService(
         new KnowledgeRetrieval(pipeline, contextFactory),
         contextFactory,
-        new SearchScopeResolver(chatService),
+        searchScopeResolver,
         new ChatSourceAssembler(
             documentRepository,
             documentMetadataService,
@@ -229,7 +240,17 @@ class QueryServiceTest {
   }
 
   @BeforeEach
+  @SuppressWarnings("unchecked")
   void setUp() {
+    searchScopeResolver = spy(new SearchScopeResolver(chatService));
+    lenient()
+        .doAnswer(
+            invocation ->
+                ((Optional<Chat>) invocation.getArgument(0)).isEmpty()
+                    ? invocation.getArgument(1)
+                    : invocation.callRealMethod())
+        .when(searchScopeResolver)
+        .resolveSearchScope(any(), any());
     // mmrLambda=1.0 (pure top-K by relevance): the tests in this class stub small,
     // already-descending-score candidate lists and assert on their exact order/content -
     // MmrSelector's own diversity behaviour (mmrLambda != 1.0) is covered separately by
@@ -309,7 +330,7 @@ class QueryServiceTest {
         new QueryResult(
             "Spike-Antwort",
             List.of(),
-            new QueryOutcome("gpt-4o", 10, 5L, false, false, List.of()),
+            new QueryOutcome("gpt-4o", 10, 5L, false, false, false, false, List.of()),
             UUID.randomUUID(),
             null,
             null);
@@ -590,6 +611,7 @@ class QueryServiceTest {
   /** #667: when no search ran, nothing was searched - the list is empty, not a guess. */
   @Test
   void queryListsNoSearchedLibrariesWhenNoSearchRan() {
+    doCallRealMethod().when(searchScopeResolver).resolveSearchScope(any(), any());
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
     when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
         .thenReturn(chatResponse);
@@ -958,10 +980,9 @@ class QueryServiceTest {
     assertThat(filter).doesNotContain(otherReadableLibraryId.toString());
   }
 
-  // #706 review, finding 3: the space-curated fail-open case - useKnowledge stays true
-  // (@Alles-Wissen), the chat's space has at least one library association, but none of them are
-  // readable by this caller, so effectiveLibraryScope legitimately resolves to empty. This must be
-  // marked distinctly from answeredWithoutKnowledge (which only ever covers useKnowledge=false).
+  // The space is curated, but none of its associated libraries are readable by this caller, so
+  // the scope resolves to empty: marked distinctly from "nothing associated" and from
+  // answeredWithoutKnowledge (which only ever covers useKnowledge=false).
   @Test
   void queryMarksNoKnowledgeAvailableInSpaceWhenTheSpaceIsCuratedButNothingIsReadable() {
     Chat chat = new Chat(UUID.randomUUID(), currentUserId, organizationId, null, true, Set.of());
@@ -978,43 +999,88 @@ class QueryServiceTest {
     QueryResult response = queryService.query("Question", chatId, caller, true, List.of());
 
     assertThat(response.metadata().noKnowledgeAvailableInSpace()).isTrue();
+    assertThat(response.metadata().noKnowledgeAssignedToSpace()).isFalse();
     assertThat(response.metadata().answeredWithoutKnowledge()).isFalse();
     org.mockito.Mockito.verifyNoInteractions(vectorStore);
   }
 
-  // The unrelated ordinary case must stay unmarked: a space without any association resolving to
-  // an empty scope would mean the caller simply has no readable library at all - not curation.
+  /**
+   * A space without associated knowledge searches nothing and says so - for @Space-Wissen and for
+   * an emptied chip bar alike: the answer never looks sourced, and the signal is the "nothing
+   * associated" one, not "nothing readable" or "answered without knowledge".
+   */
   @Test
-  void queryDoesNotMarkNoKnowledgeAvailableInSpaceWhenTheSpaceHasNoAssociations() {
-    Chat chat = new Chat(UUID.randomUUID(), currentUserId, organizationId, null, true, Set.of());
+  void queryMarksNoKnowledgeAssignedToSpaceWhenTheSpaceHasNoKnowledge() {
+    for (boolean useKnowledge : List.of(true, false)) {
+      Chat chat =
+          new Chat(UUID.randomUUID(), currentUserId, organizationId, null, useKnowledge, Set.of());
+      UUID chatId = chat.getId();
+      when(chatService.findOwnedChat(chatId, currentUserId)).thenReturn(Optional.of(chat));
+      when(chatMemory.get(currentUserId + ":" + chatId)).thenReturn(List.of());
+      when(chatService.historyAsSpringAiMessages(chatId, 20)).thenReturn(List.of());
+      when(chatService.effectiveLibraryScope(chat, Set.of(readableLibraryId))).thenReturn(Set.of());
+      when(chatService.spaceHasLibraryAssociations(chat.getSpaceId())).thenReturn(false);
+      var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
+      when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
+          .thenReturn(chatResponse);
+
+      QueryResult response = queryService.query("Question", chatId, caller, true, List.of());
+
+      assertThat(response.metadata().noKnowledgeAssignedToSpace()).isTrue();
+      assertThat(response.metadata().noKnowledgeAvailableInSpace()).isFalse();
+      assertThat(response.metadata().answeredWithoutKnowledge()).isFalse();
+      assertThat(response.sources()).isEmpty();
+      assertThat(response.metadata().searchedLibraries()).isEmpty();
+    }
+    org.mockito.Mockito.verifyNoInteractions(vectorStore);
+  }
+
+  /**
+   * Every question in the web interface needs a space: without a chat of the caller nothing is
+   * searched - neither with useKnowledge nor with explicit libraryIds - and the answer says why.
+   */
+  @Test
+  void aQuestionWithoutAChatOfTheCallerSearchesNoKnowledgeAndSaysSo() {
+    doCallRealMethod().when(searchScopeResolver).resolveSearchScope(any(), any());
+    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
+    when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
+        .thenReturn(chatResponse);
+
+    QueryResult withKnowledge = queryService.query("Question", null, caller, true, List.of());
+    QueryResult withReference =
+        queryService.query("Question", null, caller, false, List.of(readableLibraryId));
+
+    for (QueryResult response : List.of(withKnowledge, withReference)) {
+      assertThat(response.metadata().noSpaceContext()).isTrue();
+      assertThat(response.metadata().answeredWithoutKnowledge()).isFalse();
+      assertThat(response.metadata().noKnowledgeAssignedToSpace()).isFalse();
+      assertThat(response.metadata().noKnowledgeAvailableInSpace()).isFalse();
+      assertThat(response.sources()).isEmpty();
+      assertThat(response.metadata().searchedLibraries()).isEmpty();
+    }
+    org.mockito.Mockito.verifyNoInteractions(vectorStore, queryDecompositionService);
+  }
+
+  /** A chat whose chip bar was emptied on purpose answers without knowledge and says so. */
+  @Test
+  void aChatWithAnEmptiedChipBarIsMarkedAnsweredWithoutKnowledge() {
+    Chat chat = new Chat(UUID.randomUUID(), currentUserId, organizationId, null, false, Set.of());
     UUID chatId = chat.getId();
     when(chatService.findOwnedChat(chatId, currentUserId)).thenReturn(Optional.of(chat));
     when(chatMemory.get(currentUserId + ":" + chatId)).thenReturn(List.of());
     when(chatService.historyAsSpringAiMessages(chatId, 20)).thenReturn(List.of());
-    when(chatService.effectiveLibraryScope(chat, Set.of(readableLibraryId)))
-        .thenReturn(Set.of(readableLibraryId));
-    lenient().when(chatService.spaceHasLibraryAssociations(chat.getSpaceId())).thenReturn(false);
-    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
+    when(chatService.effectiveLibraryScope(chat, Set.of(readableLibraryId))).thenReturn(Set.of());
+    when(chatService.spaceHasLibraryAssociations(chat.getSpaceId())).thenReturn(true);
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
     when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
         .thenReturn(chatResponse);
 
-    QueryResult response = queryService.query("Question", chatId, caller, true, List.of());
+    QueryResult response = queryService.query("Question", chatId, caller, false, List.of());
 
-    assertThat(response.metadata().noKnowledgeAvailableInSpace()).isFalse();
-  }
-
-  // An ephemeral query (no persisted chat) never marks this flag, regardless of scope - curation
-  // only exists at the chat/space level.
-  @Test
-  void queryNeverMarksNoKnowledgeAvailableInSpaceForAnEphemeralQuery() {
-    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
-    when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
-        .thenReturn(chatResponse);
-
-    QueryResult response = queryService.query("Question", null, caller, false, List.of());
-
-    assertThat(response.metadata().noKnowledgeAvailableInSpace()).isFalse();
+    assertThat(response.metadata().answeredWithoutKnowledge()).isTrue();
+    assertThat(response.metadata().noSpaceContext()).isFalse();
+    assertThat(response.sources()).isEmpty();
+    org.mockito.Mockito.verifyNoInteractions(vectorStore, queryDecompositionService);
   }
 
   @Test
@@ -1076,7 +1142,7 @@ class QueryServiceTest {
     UUID chatId = chat.getId();
     UUID promptId = UUID.randomUUID();
     when(chatService.findOwnedChat(chatId, currentUserId)).thenReturn(Optional.of(chat));
-    when(promptService.requireUsable(promptId, caller))
+    when(promptService.requireUsable(promptId, chat.getSpaceId(), caller))
         .thenThrow(new AccessDeniedException("Dieser Prompt steht Ihnen nicht zur Verfügung"));
 
     assertThatThrownBy(
@@ -1102,7 +1168,7 @@ class QueryServiceTest {
     UUID promptId = UUID.randomUUID();
     when(prompt.getId()).thenReturn(promptId);
     when(prompt.getTitle()).thenReturn("Zusammenfassung");
-    when(promptService.requireUsable(promptId, caller)).thenReturn(prompt);
+    when(promptService.requireUsable(promptId, chat.getSpaceId(), caller)).thenReturn(prompt);
     when(chatService.findOwnedChat(chatId, currentUserId)).thenReturn(Optional.of(chat));
     when(chatMemory.get(conversationKey)).thenReturn(List.of());
     when(chatService.historyAsSpringAiMessages(chatId, 20)).thenReturn(List.of());
@@ -1565,105 +1631,29 @@ class QueryServiceTest {
     org.mockito.Mockito.verifyNoInteractions(vectorStore);
   }
 
+  /** A chat with @Space-Wissen over a space with readable knowledge searches and sets no flag. */
   @Test
-  void queryWithUseKnowledgeFalseAndOneReferencedLibraryOnlySearchesThatLibrary() {
-    UUID otherReadableLibraryId = UUID.randomUUID();
-    when(libraryAccessService.readableLibraryIds(currentUserId, organizationId))
-        .thenReturn(Set.of(readableLibraryId, otherReadableLibraryId));
-    when(chatMemory.get(any())).thenReturn(List.of());
+  void aChatThatSearchesItsSpacesKnowledgeCarriesNoEmptyScopeFlag() {
+    doCallRealMethod().when(searchScopeResolver).resolveSearchScope(any(), any());
+    Chat chat = new Chat(UUID.randomUUID(), currentUserId, organizationId, null, true, Set.of());
+    UUID chatId = chat.getId();
+    when(chatService.findOwnedChat(chatId, currentUserId)).thenReturn(Optional.of(chat));
+    when(chatMemory.get(currentUserId + ":" + chatId)).thenReturn(List.of());
+    when(chatService.historyAsSpringAiMessages(chatId, 20)).thenReturn(List.of());
+    when(chatService.effectiveLibraryScope(chat, Set.of(readableLibraryId)))
+        .thenReturn(Set.of(readableLibraryId));
     when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
     when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
         .thenReturn(chatResponse);
 
-    queryService.query("Question", null, caller, false, List.of(readableLibraryId));
+    QueryResult response = queryService.query("Question", chatId, caller, true, List.of());
 
-    ArgumentCaptor<SearchRequest> captor = ArgumentCaptor.forClass(SearchRequest.class);
-    verify(vectorStore).similaritySearch(captor.capture());
-    String filterExpression = captor.getValue().getFilterExpression().toString();
-    assertThat(filterExpression).contains(readableLibraryId.toString());
-    assertThat(filterExpression).doesNotContain(otherReadableLibraryId.toString());
-  }
-
-  @Test
-  void queryWithUseKnowledgeFalseAndUnreadableLibrarySkipsVectorStoreAndReturnsEmptySources() {
-    UUID unreadableLibraryId = UUID.randomUUID();
-    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
-    when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
-        .thenReturn(chatResponse);
-
-    QueryResult response =
-        queryService.query("Question", null, caller, false, List.of(unreadableLibraryId));
-
-    assertThat(response.sources()).isEmpty();
-    assertThat(response.metadata().answeredWithoutKnowledge()).isTrue();
-    org.mockito.Mockito.verifyNoInteractions(vectorStore);
-  }
-
-  @Test
-  void queryWithUseKnowledgeFalseAndNoReferencesSkipsVectorStoreAndMarksAnsweredWithoutKnowledge() {
-    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
-    when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
-        .thenReturn(chatResponse);
-
-    QueryResult response = queryService.query("Question", null, caller, false, List.of());
-
-    assertThat(response.sources()).isEmpty();
-    assertThat(response.metadata().answeredWithoutKnowledge()).isTrue();
-    org.mockito.Mockito.verifyNoInteractions(vectorStore);
-    // An empty search scope must not pay for the decomposition LLM call either.
-    org.mockito.Mockito.verifyNoInteractions(queryDecompositionService);
-  }
-
-  @Test
-  void queryWithUseKnowledgeTrueDoesNotMarkAnsweredWithoutKnowledge() {
-    when(chatMemory.get(any())).thenReturn(List.of());
-    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
-    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
-    when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
-        .thenReturn(chatResponse);
-
-    QueryResult response = queryService.query("Question", null, caller, true, List.of());
-
+    verify(vectorStore).similaritySearch(any(SearchRequest.class));
     assertThat(response.metadata().answeredWithoutKnowledge()).isFalse();
-  }
-
-  @Test
-  void queryWithUseKnowledgeTrueIgnoresLibraryIdsAndSearchesAllReadableLibraries() {
-    UUID otherReadableLibraryId = UUID.randomUUID();
-    when(libraryAccessService.readableLibraryIds(currentUserId, organizationId))
-        .thenReturn(Set.of(readableLibraryId, otherReadableLibraryId));
-    when(chatMemory.get(any())).thenReturn(List.of());
-    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
-    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
-    when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
-        .thenReturn(chatResponse);
-
-    // useKnowledge = true with a non-empty libraryIds: the list must be ignored, and the search
-    // scope stays every readable library - not just the one referenced here.
-    queryService.query("Question", null, caller, true, List.of(readableLibraryId));
-
-    ArgumentCaptor<SearchRequest> captor = ArgumentCaptor.forClass(SearchRequest.class);
-    verify(vectorStore).similaritySearch(captor.capture());
-    String filterExpression = captor.getValue().getFilterExpression().toString();
-    assertThat(filterExpression).contains(readableLibraryId.toString());
-    assertThat(filterExpression).contains(otherReadableLibraryId.toString());
-  }
-
-  @Test
-  void
-      queryWithUseKnowledgeFalseAndNullLibraryIdsSkipsVectorStoreAndMarksAnsweredWithoutKnowledge() {
-    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
-    when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
-        .thenReturn(chatResponse);
-
-    // null requestedLibraryIds must behave exactly like an empty list, not throw or search
-    // everything readable.
-    QueryResult response = queryService.query("Question", null, caller, false, null);
-
-    assertThat(response.sources()).isEmpty();
-    assertThat(response.metadata().answeredWithoutKnowledge()).isTrue();
-    org.mockito.Mockito.verifyNoInteractions(vectorStore);
+    assertThat(response.metadata().noKnowledgeAssignedToSpace()).isFalse();
+    assertThat(response.metadata().noKnowledgeAvailableInSpace()).isFalse();
+    assertThat(response.metadata().noSpaceContext()).isFalse();
   }
 
   // #739: two chunks sharing the same document_id (multiple chunks retrieved from one document) -

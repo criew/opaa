@@ -445,6 +445,105 @@ def test_every_space_association_is_readable_by_its_owner() -> None:
             )
 
 
+def prompt_library_readers(prompt_library: profiles.PromptLibraryDef) -> set[str]:
+    if prompt_library.all_accounts_viewer:
+        return {user.key for user in DEMO.all_users()}
+    return {prompt_library.owner_key, *prompt_library.viewer_keys}
+
+
+def test_every_demo_space_carries_knowledge_and_prompts() -> None:
+    """A space searches and offers only what is associated with it: no seeded space may stay
+    silent. The hint for an empty space shows in any newly created one."""
+    prompt_spaces = {
+        space_name
+        for prompt_library in DEMO.prompt_libraries
+        for space_name in prompt_library.space_names
+    }
+    for space_def in DEMO.spaces:
+        assert space_def.library_names, f"{space_def.name}: kein Wissen zugeordnet"
+        assert space_def.name in prompt_spaces, f"{space_def.name}: keine Prompts zugeordnet"
+    assert space("Maria Weber – persönlich").library_names
+
+
+def test_every_account_has_knowledge_and_prompts_in_its_personal_space() -> None:
+    personal = {personal_def.owner_key: personal_def for personal_def in DEMO.personal_spaces}
+    assert set(personal) == {user.key for user in DEMO.all_users()}
+    prompt_libraries = {lib.name: lib for lib in DEMO.prompt_libraries}
+    for owner_key, personal_def in personal.items():
+        assert personal_def.library_names, owner_key
+        assert personal_def.prompt_library_names, owner_key
+        for library_name in personal_def.library_names:
+            # The admin owns every library; effective_readers leaves it out of the matrix.
+            assert owner_key == "admin" or owner_key in effective_readers(library_name), (
+                owner_key,
+                library_name,
+            )
+        for name in personal_def.prompt_library_names:
+            assert owner_key in prompt_library_readers(prompt_libraries[name]), (owner_key, name)
+
+
+def test_the_format_showcase_stays_in_the_admins_personal_space_alone() -> None:
+    showcase = "Formattest auf S3"
+    assert all(showcase not in space_def.library_names for space_def in DEMO.spaces)
+    holders = [p.owner_key for p in DEMO.personal_spaces if showcase in p.library_names]
+    assert holders == ["admin"]
+
+
+def test_dienstbesprechung_offers_the_shared_textbausteine() -> None:
+    """Selin's Drehbuch step asks in "Dienstbesprechung Bürgerbüro" with a prompt."""
+    textbausteine = next(
+        lib for lib in DEMO.prompt_libraries if lib.name == "Textbausteine Bürgerbüro"
+    )
+    assert "Dienstbesprechung Bürgerbüro" in textbausteine.space_names
+
+
+def test_e2e_space_carries_its_library() -> None:
+    e2e_space = profiles.E2E_PROFILE.spaces[0]
+    assert e2e_space.library_names == ("E2E Wissensbibliothek",)
+
+
+class FakePersonalSpaceClient:
+    """One account's session against the space endpoints seed_personal_spaces calls."""
+
+    def __init__(self, owner_key: str, associations: set) -> None:
+        self.owner_key = owner_key
+        self.associations = associations
+
+    def get_ok(self, path: str, **kwargs):
+        assert path == "/v1/spaces"
+        return [
+            {"id": f"shared-{self.owner_key}", "isDefault": False},
+            {"id": f"personal-{self.owner_key}", "isDefault": True},
+        ]
+
+    def post_ok(self, path: str, expected=(201,), json=None, **kwargs):
+        assert path == f"/v1/spaces/personal-{self.owner_key}/assets"
+        self.associations.add((self.owner_key, json["assetType"], json["assetId"]))
+        return {}
+
+
+def test_seed_associates_knowledge_and_prompts_with_each_personal_space() -> None:
+    associations: set = set()
+    clients = {
+        user.key: FakePersonalSpaceClient(user.key, associations) for user in DEMO.all_users()
+    }
+    library_ids = {lib.name: f"lib-{lib.name}" for lib in DEMO.libraries}
+    prompt_library_ids = {lib.name: f"prompt-{lib.name}" for lib in DEMO.prompt_libraries}
+
+    seed.seed_personal_spaces(clients, library_ids, prompt_library_ids, DEMO)
+
+    expected = {
+        (personal_def.owner_key, "KNOWLEDGE_LIBRARY", library_ids[name])
+        for personal_def in DEMO.personal_spaces
+        for name in personal_def.library_names
+    } | {
+        (personal_def.owner_key, "PROMPT_LIBRARY", prompt_library_ids[name])
+        for personal_def in DEMO.personal_spaces
+        for name in personal_def.prompt_library_names
+    }
+    assert associations == expected
+
+
 class FakeGroupApi:
     """In-memory stand-in for the group and space-member endpoints ensure_group and
     ensure_group_space_membership call; records every request that changes state."""

@@ -9,9 +9,8 @@ import type {
 } from '../types/api'
 import { mockGroups, mockMyGroups } from './groupFixtures'
 import { mockMyCapabilities } from './capabilityFixtures'
+import { mockSpaceAssetAssociations } from './assetFixtures'
 import {
-  MOCK_PROMPT_SPACE_ID,
-  MOCK_PROMPT_SPACE_LIBRARY_ID,
   mockPromptLibraries,
   mockPrompts,
   mockUnreadablePromptLibraryIds,
@@ -200,11 +199,20 @@ export const promptLibraryHandlers = [
       : HttpResponse.json({ error: 'Prompt nicht gefunden' }, { status: 404 })
   }),
 
-  // Mirrors GET /api/v1/prompts/available: the prompts of every readable library, the space's
-  // associated library first, then by library name - fed by the same fixtures as the pages.
+  // Mirrors GET /api/v1/prompts/available: the prompts of every library associated with the space
+  // and readable, by library name - fed by the same fixtures as the pages.
   http.get('/api/v1/prompts/available', ({ request }) => {
     const spaceId = new URL(request.url).searchParams.get('spaceId')
+    if (!spaceId) {
+      return HttpResponse.json({ error: 'spaceId fehlt' }, { status: 400 })
+    }
+    const associated = new Set(
+      (mockSpaceAssetAssociations[spaceId]?.items ?? [])
+        .filter((item) => item.assetType === 'PROMPT_LIBRARY')
+        .map((item) => item.assetId),
+    )
     const entries: AvailablePrompt[] = Object.values(mockPromptLibraries)
+      .filter((library) => associated.has(library.id))
       .filter((library) => !mockUnreadablePromptLibraryIds.has(library.id))
       .flatMap((library) =>
         (mockPrompts[library.id] ?? []).map((prompt) => ({
@@ -215,15 +223,12 @@ export const promptLibraryHandlers = [
           title: prompt.title,
           description: prompt.description ?? null,
           hasVariables: prompt.variables.length > 0,
-          associatedWithSpace:
-            spaceId === MOCK_PROMPT_SPACE_ID && library.id === MOCK_PROMPT_SPACE_LIBRARY_ID,
         })),
       )
     const order = (entry: AvailablePrompt) =>
       mockPrompts[entry.libraryId]?.find((p) => p.id === entry.id)?.sortOrder ?? 0
     entries.sort(
       (a, b) =>
-        Number(b.associatedWithSpace) - Number(a.associatedWithSpace) ||
         a.libraryName.localeCompare(b.libraryName, 'de') ||
         order(a) - order(b) ||
         a.name.localeCompare(b.name),

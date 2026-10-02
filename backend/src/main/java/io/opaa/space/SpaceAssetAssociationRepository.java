@@ -31,10 +31,8 @@ public interface SpaceAssetAssociationRepository
 
   /**
    * Every knowledge library associated with {@code spaceId} - the typed view the search reads:
-   * {@code ChatService#effectiveLibraryScope} intersects it with the caller's readable libraries
-   * for the default @Alles-Wissen scope
-   * (docs/features/spaces-and-assets.md#suchbereich-je-chatart). An empty result means "no library
-   * association", which the caller treats as "do not narrow", not as "search nothing".
+   * {@code ChatService#effectiveLibraryScope} intersects it with the caller's readable libraries.
+   * An empty result means the space offers no knowledge, so a chat in it searches nothing.
    */
   default Set<UUID> findLibraryIdsBySpaceId(UUID spaceId) {
     return findAssetIdsBySpaceIdAndAssetType(spaceId, KnowledgeLibrary.ASSET_TYPE);

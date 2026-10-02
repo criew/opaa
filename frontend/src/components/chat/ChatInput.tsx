@@ -20,13 +20,13 @@ import TextSnippetOutlinedIcon from '@mui/icons-material/TextSnippetOutlined'
 import { CHAT_MAX_WIDTH } from '../../theme/theme'
 import { useAuthStore } from '../../stores/authStore'
 import { QUESTION_MAX_LENGTH, useChatStore } from '../../stores/chatStore'
-import { useLibraryStore } from '../../stores/libraryStore'
 import {
   metadataFilterScopeKey,
   useMetadataFilterOptionsStore,
 } from '../../stores/metadataFilterOptionsStore'
 import { useSpaceStore } from '../../stores/spaceStore'
-import type { LibraryListResponse } from '../../types/api'
+import SpaceKnowledgeNotice from '../space/SpaceKnowledgeNotice'
+import { spaceKnowledgeGap } from '../space/spaceKnowledge'
 import MetadataFilterPopover from './MetadataFilterPopover'
 import PromptCommandMenu from './PromptCommandMenu'
 import { promptOptionId } from './promptCommand'
@@ -74,10 +74,19 @@ interface ActiveMention {
   query: string
 }
 
-/** The chip bar's special entry: matches every readable library (#560), always offered first. */
-const ALL_KNOWLEDGE_LABEL = 'Alles-Wissen'
+/**
+ * The chip bar's special entry: every knowledge library associated with the chat's space that the
+ * person may read - never more (#560), always offered first.
+ */
+const SPACE_KNOWLEDGE_LABEL = 'Space-Wissen'
 
-type MentionSuggestion = { kind: 'all' } | { kind: 'library'; library: LibraryListResponse }
+/** A knowledge library associated with the chat's space and readable by the person. */
+interface SpaceLibrary {
+  id: string
+  name: string
+}
+
+type MentionSuggestion = { kind: 'all' } | { kind: 'library'; library: SpaceLibrary }
 
 /**
  * The neutral hint under the input (#1920): the input triggers more than a question - prompts,
@@ -157,8 +166,9 @@ export default function ChatInput({
   const lengthCounter = lengthCounterText(questionLength)
 
   // The chip bar is the only search-scope control (#560): "Durchsucht wird, was in der Leiste
-  // steht." scope 'all' -> the special @Alles-Wissen chip, 'libraries' -> concrete chips,
-  // 'none' -> an emptied bar with a hint and a one-click way back to @Alles-Wissen.
+  // steht." scope 'all' -> the special @Space-Wissen chip, 'libraries' -> concrete chips,
+  // 'none' -> an emptied bar with a hint and a one-click way back to @Space-Wissen. Every chip
+  // stays within the space's associated knowledge - the server enforces the same boundary.
   const scope = useChatStore((s) => s.scope)
   const setScopeAll = useChatStore((s) => s.setScopeAll)
   const referencedLibraryIds = useChatStore((s) => s.referencedLibraryIds)
@@ -205,34 +215,39 @@ export default function ChatInput({
     onReturnedQuestionHandled?.()
   }, [returnedQuestion, seenReturned, returnedTaken, onReturnedQuestionHandled])
 
-  const libraries = useLibraryStore((s) => s.libraries)
-  const librariesLoading = useLibraryStore((s) => s.isLoading)
-  const loadLibraries = useLibraryStore((s) => s.loadLibraries)
-
-  useEffect(() => {
-    if (libraries.length === 0) {
-      void loadLibraries()
-    }
-  }, [libraries.length, loadLibraries])
-
-  // #782: @Alles-Wissen's scope line must mirror ChatService#effectiveLibraryScope, not just
-  // "every readable library" - a space curated via space<->library associations (#706) narrows
-  // the actual search to associated ∩ readable, and the line has to say so, not the wider number
-  // the user never gets to search. Loaded per current chat's space via the same spaceStore
-  // SpaceSettingsPage/SpacePage use (their routes never render at the same time as this one, so
-  // there is no simultaneous-consumer conflict) - but #783 review finding 1: that store write-back
-  // is asynchronous and per-space, so this component must not simply trust whatever is currently in
-  // assetAssociations/hasAssetAssociations. assetAssociationsSpaceId names which space that
-  // data actually describes; isAssetAssociationsCurrent below is false while it does not match
-  // chatSpaceId - covering the load still being in flight, a load that failed (spaceStore leaves it
-  // null rather than defaulting to "no associations", #783 review nit 1), and the moment right after
-  // switching to a chat in a different space, before its own load has even started.
+  // What the chip bar offers mirrors ChatService#effectiveLibraryScope: the space's associated
+  // knowledge libraries the person may read, nothing else. Loaded per current chat's space via the
+  // same spaceStore SpaceSettingsPage/SpacePage use (their routes never render at the same time as
+  // this one) - but #783 review finding 1: that store write-back is asynchronous and per-space, so
+  // this component must not simply trust whatever is currently in assetAssociations.
+  // assetAssociationsSpaceId names which space that data actually describes;
+  // isAssetAssociationsCurrent below is false while it does not match chatSpaceId - covering the
+  // load still being in flight, a load that failed (spaceStore leaves it null rather than
+  // defaulting to "no associations", #783 review nit 1), and the moment right after switching to a
+  // chat in a different space, before its own load has even started.
   const chatSpaceId = useChatStore((s) => s.spaceId)
-  const narrowsSearch = useSpaceStore((s) => s.assetAssociationsNarrowSearch)
+  const hasKnowledge = useSpaceStore((s) => s.hasKnowledge)
+  const hasReadableKnowledge = useSpaceStore((s) => s.hasReadableKnowledge)
   const assetAssociations = useSpaceStore((s) => s.assetAssociations)
   const assetAssociationsSpaceId = useSpaceStore((s) => s.assetAssociationsSpaceId)
   const loadAssetAssociations = useSpaceStore((s) => s.loadAssetAssociations)
+  const spaceRole = useSpaceStore(
+    (s) => s.spaces.find((space) => space.id === chatSpaceId)?.userRole,
+  )
   const isAssetAssociationsCurrent = assetAssociationsSpaceId === chatSpaceId
+  const spaceLibraries = useMemo(
+    (): SpaceLibrary[] =>
+      isAssetAssociationsCurrent
+        ? assetAssociations
+            .filter((a) => a.readableByCaller && a.assetType === 'KNOWLEDGE_LIBRARY')
+            .map((a) => ({ id: a.assetId, name: a.name ?? '' }))
+        : [],
+    [assetAssociations, isAssetAssociationsCurrent],
+  )
+  const knowledgeGap =
+    chatSpaceId && isAssetAssociationsCurrent
+      ? spaceKnowledgeGap(hasKnowledge, hasReadableKnowledge)
+      : null
 
   useEffect(() => {
     if (chatSpaceId) {
@@ -248,47 +263,38 @@ export default function ChatInput({
   }, [disabled])
 
   // One entry per referenced id, in the order the ids were added - not per matched library, so a
-  // reference that is (still, or no longer) missing from the loaded list keeps its own chip
+  // reference that is (still, or no longer) missing from the space's libraries keeps its own chip
   // instead of silently disappearing. An empty-looking bar for scope 'libraries' would otherwise
   // be indistinguishable from a deliberately emptied one (#564 review).
   const libraryChips = useMemo(() => {
     if (scope !== 'libraries') return []
     return referencedLibraryIds.map((libraryId) => {
-      const library = libraries.find((l) => l.id === libraryId)
+      const library = spaceLibraries.find((l) => l.id === libraryId)
       if (library) return { kind: 'known' as const, libraryId, library }
-      if (librariesLoading) return { kind: 'loading' as const, libraryId }
-      // Loaded, and still not found - either no longer readable or deleted. Removable like any
-      // other chip, so a stale reference does not get stuck in the bar.
+      if (!isAssetAssociationsCurrent) return { kind: 'loading' as const, libraryId }
+      // Known, and still not found - no longer associated, no longer readable or deleted.
+      // Removable like any other chip, so a stale reference does not get stuck in the bar.
       return { kind: 'missing' as const, libraryId }
     })
-  }, [libraries, librariesLoading, referencedLibraryIds, scope])
+  }, [spaceLibraries, isAssetAssociationsCurrent, referencedLibraryIds, scope])
 
-  // #1920 dropped the library count from the line under the input, but not the two statements a
-  // count never carried anyway (#782/#783): the chip bar promises @Alles-Wissen, and there are
-  // exactly two states in which that promise would be a false claim - the associated ∩ readable
-  // scope of a curated space being empty (wording shared with MessageBubble/SpacePage), and the
-  // associations of the current space not being known yet (still loading, or the load failed -
-  // this must never quietly default to "every readable library"). Both replace the hint below.
-  const scopeNotice = useMemo((): string | null => {
-    if (scope !== 'all') return null
-    if (!isAssetAssociationsCurrent) return 'Suchbereich wird ermittelt …'
-    if (!narrowsSearch) return null
-    // The search reads knowledge libraries only; an associated asset of another type is no Bestand.
-    const count = assetAssociations.filter(
-      (a) => a.readableByCaller && a.assetType === 'KNOWLEDGE_LIBRARY',
-    ).length
-    return count === 0 ? 'In diesem Space ist für Sie derzeit kein Wissen verfügbar.' : null
-  }, [narrowsSearch, isAssetAssociationsCurrent, assetAssociations, scope])
+  // While the space's associations are not known yet (still loading, or the load failed), the
+  // @Space-Wissen chip must not quietly promise a scope; the line under the input says so. An
+  // empty scope is stated by SpaceKnowledgeNotice above the chip bar.
+  const scopeNotice =
+    scope === 'all' && !isAssetAssociationsCurrent ? 'Suchbereich wird ermittelt …' : null
 
   // The scope the next question searches - the filter options are loaded for exactly this scope,
-  // resolved server-side with the query's own rules (chat first, otherwise useKnowledge/ids).
+  // resolved server-side with the query's own rules: the chat's own settings, or for a chat not yet
+  // created its space with the chip bar's settings.
   const filterScope = useMemo(
     () => ({
       chatId,
+      spaceId: chatSpaceId,
       useKnowledge: scope === 'all',
       libraryIds: scope === 'libraries' ? referencedLibraryIds : [],
     }),
-    [chatId, referencedLibraryIds, scope],
+    [chatId, chatSpaceId, referencedLibraryIds, scope],
   )
 
   // A chat loaded with a Dokumentart condition needs the labels before the popover was ever
@@ -325,19 +331,19 @@ export default function ChatInput({
     if (mention === null) return []
     const query = mention.query.toLowerCase()
     const suggestions: MentionSuggestion[] = []
-    // @Alles-Wissen is always offered first (#560), regardless of the current scope - re-selecting
+    // @Space-Wissen is always offered first (#560), regardless of the current scope - re-selecting
     // it while already active is a harmless no-op, and it is the only way back once removed.
-    if (ALL_KNOWLEDGE_LABEL.toLowerCase().includes(query)) {
+    if (SPACE_KNOWLEDGE_LABEL.toLowerCase().includes(query)) {
       suggestions.push({ kind: 'all' })
     }
     const alreadyReferenced = scope === 'libraries' ? referencedLibraryIds : []
-    libraries
+    spaceLibraries
       .filter((library) => !alreadyReferenced.includes(library.id))
       .filter((library) => library.name.toLowerCase().includes(query))
       .slice(0, 8 - suggestions.length)
       .forEach((library) => suggestions.push({ kind: 'library', library }))
     return suggestions
-  }, [libraries, mention, referencedLibraryIds, scope])
+  }, [spaceLibraries, mention, referencedLibraryIds, scope])
 
   /** Closes the suggestion popup without recording a dismissal (used on selection/send). */
   const closeMention = () => {
@@ -496,6 +502,11 @@ export default function ChatInput({
 
   return (
     <Box sx={{ flexShrink: 0, p: 2, bgcolor: 'background.default' }}>
+      {knowledgeGap && chatSpaceId && (
+        <Box sx={{ maxWidth: CHAT_MAX_WIDTH, mx: 'auto', mb: 1 }}>
+          <SpaceKnowledgeNotice spaceId={chatSpaceId} gap={knowledgeGap} role={spaceRole} />
+        </Box>
+      )}
       <Box
         sx={{
           maxWidth: CHAT_MAX_WIDTH,
@@ -521,13 +532,13 @@ export default function ChatInput({
         {scope === 'all' && (
           <Chip
             icon={<AllInclusiveIcon />}
-            label="@Alles-Wissen"
+            label="@Space-Wissen"
             size="small"
             color="primary"
             onDelete={disabled ? undefined : clearScope}
             // The default delete icon carries aria-hidden from MUI, so the accessible name has to
             // sit on the chip itself rather than on that icon (review finding #539).
-            aria-label="Referenz Alles-Wissen entfernen"
+            aria-label="Referenz Space-Wissen entfernen"
           />
         )}
         {scope === 'libraries' &&
@@ -579,12 +590,12 @@ export default function ChatInput({
             </Typography>
             <Chip
               icon={<AllInclusiveIcon />}
-              label="@Alles-Wissen nutzen"
+              label="@Space-Wissen nutzen"
               size="small"
               variant="outlined"
               onClick={disabled ? undefined : setScopeAll}
               disabled={disabled}
-              aria-label="Wieder alles Wissen durchsuchen"
+              aria-label="Wieder das Wissen des Space durchsuchen"
             />
           </>
         )}
@@ -769,10 +780,10 @@ export default function ChatInput({
               <List id={mentionListboxId} role="listbox" aria-label="Suchbereich" dense>
                 {suggestions.map((suggestion, index) => {
                   const key = suggestion.kind === 'all' ? '@all-knowledge' : suggestion.library.id
-                  const name = suggestion.kind === 'all' ? '@Alles-Wissen' : suggestion.library.name
+                  const name = suggestion.kind === 'all' ? '@Space-Wissen' : suggestion.library.name
                   const badge =
                     suggestion.kind === 'all'
-                      ? 'Alles Wissen · hebt Eingrenzung auf'
+                      ? 'Wissen des Space · hebt Eingrenzung auf'
                       : 'Bibliothek · verengt die Suche'
                   const query = mention?.query ?? ''
                   const matchIndex =
@@ -838,7 +849,7 @@ export default function ChatInput({
               </List>
             ) : (
               <Typography variant="body2" sx={{ color: 'text.secondary', p: 1.5 }}>
-                Keine passende Bibliothek gefunden
+                Keine passende Bibliothek in diesem Space
               </Typography>
             )}
           </Paper>
@@ -850,6 +861,7 @@ export default function ChatInput({
         anchorEl={inputBoxEl}
         listboxId={promptListboxId}
         prompts={promptCommand.matches}
+        hasPrompts={promptCommand.hasPrompts}
         highlightedIndex={promptCommand.highlightedIndex}
         isLoading={promptCommand.isLoading}
         error={promptCommand.error}

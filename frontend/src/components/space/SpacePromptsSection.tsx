@@ -10,7 +10,7 @@ interface SpacePromptsSectionProps {
 const texts = {
   heading: 'Zugeordnete Prompt-Bibliotheken',
   intro:
-    'Eine Zuordnung stellt eine Prompt-Bibliothek in diesem Space bereit, gewährt aber niemandem zusätzlichen Zugriff — nur Mitglieder mit eigenem Leserecht auf die Prompt-Bibliothek sehen ihre Prompts. Den Suchbereich des Chats verengt sie nicht.',
+    'Im Chat stehen nur die Prompts der hier zugeordneten Prompt-Bibliotheken zur Auswahl. Eine Zuordnung gewährt niemandem zusätzlichen Zugriff — nur Mitglieder mit eigenem Leserecht auf die Prompt-Bibliothek sehen ihre Prompts.',
   loading: 'Prompt-Bibliotheken werden geladen …',
   empty: 'Diesem Space sind keine Prompt-Bibliotheken zugeordnet.',
   pickerLabel: 'Prompt-Bibliothek',
