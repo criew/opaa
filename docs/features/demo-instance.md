@@ -214,13 +214,13 @@ Neben den Wissensbibliotheken richtet der Seed zwei
 Admin-Konto. Jeder Prompt fragt nach etwas, das der Korpus beantwortet, und bringt Variablen mit, damit
 Slash-Befehl und Variablenformular im Chat vorführbar sind.
 
-| Prompt-Bibliothek | Reichweite | Katalog | Space-Zuordnung | Prompts (Slash-Befehl) |
-|---|---|---|---|---|
-| Textbausteine Bürgerbüro | „Alle Konten" (`VIEWER`) | gelistet | alle fünf fachlichen Spaces und der Default-Space jedes Kontos | `/antwort-buergeranfrage`, `/gebuehrenauskunft-personalausweis`, `/aktenvermerk`, `/pressemitteilung-ratsbeschluss` |
-| Vorlagen Amtsleitung | nur Andrea (Eigentümerin) | nicht gelistet | „Amtsleitung Bürgerbüro" und Andreas Default-Space | `/wochenbericht-dezernentin`, `/stellungnahme-hauptausschuss` |
+| Prompt-Bibliothek | Reichweite | Space-Zuordnung | Prompts (Slash-Befehl) |
+|---|---|---|---|
+| Textbausteine Bürgerbüro | „Alle Konten" (`VIEWER`) | alle fünf fachlichen Spaces und der Default-Space jedes Kontos | `/antwort-buergeranfrage`, `/gebuehrenauskunft-personalausweis`, `/aktenvermerk`, `/pressemitteilung-ratsbeschluss` |
+| Vorlagen Amtsleitung | nur Andrea (Eigentümerin) | „Amtsleitung Bürgerbüro" und Andreas Default-Space | `/wochenbericht-dezernentin`, `/stellungnahme-hauptausschuss` |
 
 Vorführbar ist damit: der Slash-Befehl mit Variablenformular in jedem Fachkonto, die Reichweite
-„Alle Konten" als Badge und Freigabe, der Katalog mit einer gelisteten Prompt-Bibliothek und die Grenze
+„Alle Konten" als Badge und Freigabe, der Katalog mit der für alle freigegebenen Prompt-Bibliothek und die Grenze
 einer persönlichen Bibliothek — die „Vorlagen Amtsleitung" sind für Maria, Selin und Thomas weder in der
 Slash-Auswahl noch im Katalog zu finden. Die Space-Zuordnung bestimmt die Slash-Auswahl: Der Chat
 eines Space bietet nur die Prompts der ihm zugeordneten Bibliotheken an — Andrea sieht ihre Vorlagen

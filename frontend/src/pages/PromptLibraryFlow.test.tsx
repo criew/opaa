@@ -4,7 +4,6 @@ import userEvent from '@testing-library/user-event'
 import { Route, Routes } from 'react-router'
 import { http, HttpResponse } from 'msw'
 import { server } from '../mocks/server'
-import { mockPromptLibraries } from '../mocks/promptLibraryFixtures'
 import { renderWithProviders, setMockAuthState } from '../test/test-utils'
 import { usePromptLibraryStore } from '../stores/promptLibraryStore'
 import type { AssetGrantRequest, PromptLibraryRequest, PromptRequest } from '../types/api'
@@ -63,8 +62,7 @@ describe('Prompt-Bibliothek anlegen, füllen und freigeben', () => {
     await user.click(await screen.findByRole('option', { name: 'Projektbeteiligte Phoenix' }))
     await user.click(screen.getByRole('button', { name: 'Weiter zu Rechten' }))
 
-    // Rechte: Auffindbarkeit ist aus, bis jemand sie ausdrücklich setzt
-    expect(screen.getByLabelText('Im Katalog auffindbar, auch ohne Berechtigung')).not.toBeChecked()
+    // Rechte
     await user.click(screen.getByRole('radio', { name: 'Gruppe' }))
     await user.type(await screen.findByLabelText('Gruppe suchen'), 'Referat')
     const [referat] = await screen.findAllByRole('option', { name: /Referat 50/ })
@@ -81,7 +79,6 @@ describe('Prompt-Bibliothek anlegen, füllen und freigeben', () => {
         name: 'Formulierungshilfen Referat 50',
         ownerType: 'GROUP',
         ownerId: 'group-phoenix',
-        listed: false,
       }),
     ])
     expect(captured.grants).toHaveLength(1)
@@ -153,26 +150,6 @@ describe('Prompt-Bibliothek anlegen, füllen und freigeben', () => {
     expect(captured.libraries).toHaveLength(1)
   }, 30000)
 
-  it('nennt bei offener Nachfolge den Ausgang, wenn die Reichweite wachsen soll', async () => {
-    mockPromptLibraries['prompt-library-referat-50'].succession = {
-      addressee: 'SYSTEM_ADMINISTRATION',
-      addresseeLabel: 'die Systemverwaltung',
-    }
-    const user = userEvent.setup()
-    renderWithProviders(
-      <Routes>
-        <Route path="/prompts/:promptLibraryId/:tab" element={<PromptLibraryDetailPage />} />
-      </Routes>,
-      { withRouter: true, initialRoute: '/prompts/prompt-library-referat-50/settings' },
-    )
-
-    expect(await screen.findByText(/Nachfolge offen — zuständig/)).toBeInTheDocument()
-    await user.click(await screen.findByLabelText('Im Katalog auffindbar, auch ohne Berechtigung'))
-    await user.click(screen.getByRole('button', { name: 'Auffindbarkeit speichern' }))
-
-    expect(await screen.findByText(/Übernahme/)).toBeInTheDocument()
-  }, 15000)
-
   it('zeigt der Verwaltung ohne Leserecht statt der Prompts den verweigerten Zugriff', async () => {
     renderWithProviders(
       <Routes>
@@ -223,7 +200,6 @@ describe('Prompt-Bibliothek anlegen, füllen und freigeben', () => {
       'true',
     )
     expect(screen.getByRole('heading', { name: 'Berechtigungen' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Im Katalog auffindbar' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Zuordnungen' })).toBeInTheDocument()
     // #1941: Die Berechtigungen stehen als Liste auf der Seite, nicht hinter einem Dialog.
     expect(screen.getByRole('button', { name: 'Freigeben' })).toBeInTheDocument()

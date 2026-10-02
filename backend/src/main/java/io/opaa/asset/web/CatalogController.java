@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-/** The catalog across every asset type - readable united with listed, one page at a time. */
+/** The catalog across every asset type - only what the caller may read, one page at a time. */
 @RestController
 @RequestMapping("/api/v1/catalog")
 public class CatalogController {

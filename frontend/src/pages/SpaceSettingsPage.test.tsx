@@ -761,7 +761,6 @@ describe('SpaceSettingsPage', () => {
         ownerType: 'USER',
         ownerId: 'u1',
         reach: { allAccounts: false, groupCount: 0, userCount: 1 },
-        listed: false,
         myRole: 'OWNER',
         documentCount: 0,
         sourceType: 'UPLOAD',

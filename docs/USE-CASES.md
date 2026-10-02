@@ -208,12 +208,13 @@ Modell.
 
 1. Der Kollege baut seinen Agenten in seinem **persönlichen Space**: Aufgabenbeschreibung, gebundene
    Wissensbibliothek, erlaubte Werkzeuge, Modellwahl — alles in einem Paket.
-2. Er stellt ihn dem **Team** bereit. Das Team nutzt ihn sofort, ohne etwas nachzubauen: Das Wissen kommt
-   mit.
+2. Er gibt ihn dem **Team** frei und ordnet ihn dem Space des Teams zu. Das Team nutzt ihn sofort, ohne
+   etwas nachzubauen: Das Wissen kommt mit.
 3. Die Sachgebietsleiterin schlägt ihn für den **Fachbereich** vor. Es läuft ein **Freigabeverfahren**:
    fachliche Prüfung, Test gegen Referenzfälle, Freigabe mit Namen und Datum.
-4. Nach Freigabe steht er im **organisationsweiten Katalog** — auffindbar über Fachbereich, Anwendungsfall
-   und Verantwortlichen statt über eine Mail-Weiterleitung.
+4. Nach Freigabe ist er an alle Konten freigegeben und steht damit für jede Person im **Katalog** —
+   auffindbar über Fachbereich, Anwendungsfall und Verantwortlichen statt über eine Mail-Weiterleitung.
+   Mit „In Space verwenden" ordnet ihn jedes Team in zwei Klicks seinem eigenen Space zu.
 5. Verbessert der Eigentümer den Agenten, erhalten alle die neue **Version**; die Historie bleibt, ein
    Zurückrollen ist möglich.
 6. Die Nutzungsauswertung zeigt aggregiert, welche Assets tatsächlich tragen und welche eingestellt werden

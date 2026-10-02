@@ -296,7 +296,6 @@ class MetadataFilterOptionsServiceIntegrationTest {
             name,
             null,
             admin.id(),
-            false,
             SourceTypes.FILESYSTEM,
             sourcePath.toString(),
             null,

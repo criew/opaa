@@ -564,7 +564,6 @@ class LibraryMetadataSchemaChangeIntegrationTest {
             "Schemaänderung",
             null,
             owner.id(),
-            false,
             SourceTypes.FILESYSTEM,
             classTempDir.toString(),
             null,

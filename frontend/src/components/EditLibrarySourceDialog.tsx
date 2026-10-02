@@ -14,14 +14,13 @@ import type { SourceFormContext } from './library/sources/types'
 /**
  * Editable snapshot of a connector library's source configuration. Deliberately narrower than
  * LibraryResponse - only what this dialog needs to prefill fields and resend the parts of
- * LibraryUpdateRequest that are not source-specific (name/description/visibility/listed), since
+ * LibraryUpdateRequest that are not source-specific (name/description), since
  * KnowledgeLibraryService#updateLibrary overwrites those unconditionally rather than leaving them
  * untouched when absent (unlike the source configuration fields themselves).
  */
 export interface EditableLibrarySource {
   name: string
   description?: string | null
-  listed: boolean
   sourceType: SourceTypeKey
   sourcePath?: string | null
   sourceUrl?: string | null
@@ -84,12 +83,11 @@ export default function EditLibrarySourceDialog({
     setSubmitting(true)
     try {
       await updateExistingLibrary(libraryId, {
-        // name/description/listed are resent unchanged - KnowledgeLibraryService#updateLibrary
-        // overwrites all three unconditionally, so omitting them here would wipe the description
-        // and reset listed to false even though this dialog only touches the source configuration.
+        // name/description are resent unchanged - KnowledgeLibraryService#updateLibrary
+        // overwrites both unconditionally, so omitting them here would wipe the description even
+        // though this dialog only touches the source configuration.
         name: library.name,
         description: library.description ?? undefined,
-        listed: library.listed,
         // Blank credentials stay undefined: the backend keeps the stored ones, but only while the
         // address still names the same origin (#516/#542).
         ...configuration.toPayload(values),

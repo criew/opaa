@@ -41,7 +41,7 @@ klingend", „nachvollziehbar auch in drei Jahren".
 Das reale Problem ist nicht, ob es ein gutes Modell gibt, sondern wie das Können von wenigen zu allen
 kommt. Ohne Antwort darauf entsteht Schatten-KI. OPAA macht Agenten, Prompts und Wissensbestände zu
 benannten, teilbaren, versionierbaren Objekten, die über Freigabestufen von einer Person bis in die ganze
-Organisation wandern.
+Organisation wandern — auffindbar in einem Katalog.
 
 **Formulierungen, die tragen:** „die gute Arbeitsweise einer Abteilung wird zum Standard aller",
 „einmal geprüft, überall nutzbar", „Schwarmintelligenz mit Freigabe statt Wildwuchs".
@@ -59,7 +59,7 @@ Diese Sorge wird zuerst adressiert, nicht die Funktionsliste.
 | **Fach- und Amtsleitung** | „Ich verantworte, was mein Bereich abgibt. Und ich soll KI einführen, ohne zu wissen, wie das in der Fläche ankommen soll." | Was Ihr Bereich an Arbeitsweise entwickelt, wird zum geprüften, freigegebenen Standard — nachvollziehbar, wer wann welche Fassung freigegeben hat. Sie sehen, wo die Einführung trägt und wo nicht. |
 | **IT und Betrieb** | „Ich muss das betreiben, aktuell halten und gegenüber Prüfern erklären." | Betrieb im eigenen Rechenzentrum bis hin zu Installationen ohne Netzanbindung. Modelle sind austauschbar, ohne dass Fachbereiche ihre Agenten anfassen. Quelloffen und damit prüfbar statt zugesichert. |
 | **Datenschutz und Informationssicherheit** | „Wo laufen die Daten hin, und was passiert bei einer Prüfung?" | Daten verlassen das Haus nicht. Die Rechteprüfung sitzt in der Suche, nicht dahinter. Beschränkungen hängen an den Daten und nicht am Arbeitsraum, sind also nicht durch einen Raumwechsel zu umgehen. Nachweise sind Teil des Produkts. |
-| **Personalvertretung** | „Wird hier Leistung und Verhalten kontrolliert?" | Sichtbarkeit ist eine Handlung, keine Automatik. Der persönliche Bereich ist unbeobachtet. Einen personenbezogenen Auswertungspfad gibt es nicht — nicht abgeschaltet, sondern nicht gebaut. Keine Ranglisten. Die Dienstvereinbarung wird zur Konfigurationsaufgabe statt zum Projektrisiko. |
+| **Personalvertretung** | „Wird hier Leistung und Verhalten kontrolliert?" | Sichtbarkeit ist eine Handlung, keine Automatik. Private Inhalte sind unbeobachtet. Einen personenbezogenen Auswertungspfad gibt es nicht — nicht abgeschaltet, sondern nicht gebaut. Keine Ranglisten. Die Dienstvereinbarung wird zur Konfigurationsaufgabe statt zum Projektrisiko. |
 | **KI-Koordination, Digitalisierung** | „Ich soll KI steuern, kann aber nur zusehen, was die Leute sich zusammenbasteln." | Einmal zentral festlegen, welche Modelle erlaubt sind und welche Vorgaben gelten — alle erben es. Zentrale Änderungen wirken sofort überall. |
 | **Beitragende, Open-Source-Umfeld** | „Ist das echt offen oder nur so genannt?" | AGPL-3.0, der vollständige Funktionsumfang ist quelloffen. Entwicklung im Offenen, mit nachvollziehbarer Änderungshistorie. |
 

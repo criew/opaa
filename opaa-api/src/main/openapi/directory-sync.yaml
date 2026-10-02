@@ -190,6 +190,8 @@ paths:
         (DIRECTORY_SYNC_PROVIDER_DISABLED - a disabled provider is no anchor of trust, so its run
         pauses), and while another run or dry run of the same provider is still in flight
         (DIRECTORY_SYNC_ALREADY_RUNNING). See #237 and #1816.
+        A report naming persons is recorded as one DIRECTORY_SYNC_REPORT_READ audit entry with the
+        number of groups and persons it named (ADR-0036, Entscheidung 9).
       parameters:
         - name: providerId
           in: path
@@ -223,6 +225,8 @@ paths:
         writes nothing and leaves a pending plan behind (outcome PENDING_CONFIRMATION), replacing
         any plan this provider already had; an empty group list stays a hard abort and leaves no
         plan at all. Same 409s as the dry run. See #237 and #1816.
+        A report naming persons is recorded as one DIRECTORY_SYNC_REPORT_READ audit entry with the
+        number of groups and persons it named (ADR-0036, Entscheidung 9).
       parameters:
         - name: providerId
           in: path
@@ -252,6 +256,8 @@ paths:
       description: >
         404 when this provider has no pending plan - that is the answer, not an error condition
         worth a field of its own.
+        A report naming persons is recorded as one DIRECTORY_SYNC_REPORT_READ audit entry with the
+        number of groups and persons it named (ADR-0036, Entscheidung 9).
       parameters:
         - name: providerId
           in: path
@@ -285,6 +291,8 @@ paths:
         exactly the decision it guards. An unreachable directory keeps the plan and reports
         UNREACHABLE. The reason is mandatory and goes into the run's audit entry together with the
         confirming person.
+        A report naming persons is recorded as one DIRECTORY_SYNC_REPORT_READ audit entry with the
+        number of groups and persons it named (ADR-0036, Entscheidung 9).
       parameters:
         - name: providerId
           in: path

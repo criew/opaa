@@ -108,7 +108,6 @@ class ExternalAccessTokenAuthenticationIntegrationTest {
                     null,
                     AssetOwnerType.USER,
                     owner.getId(),
-                    false,
                     SourceType.UPLOAD,
                     null,
                     null,

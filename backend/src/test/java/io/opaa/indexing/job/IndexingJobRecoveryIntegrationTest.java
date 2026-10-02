@@ -92,7 +92,6 @@ class IndexingJobRecoveryIntegrationTest {
                 "Test-Bibliothek Recovery " + UUID.randomUUID(),
                 null,
                 devAdmin.getId(),
-                false,
                 SourceTypes.FILESYSTEM,
                 documentDir.toAbsolutePath().toString(),
                 null,

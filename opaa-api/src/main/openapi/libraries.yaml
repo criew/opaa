@@ -209,16 +209,13 @@ paths:
     put:
       operationId: updateLibrary
       tags: [library]
-      summary: Update library name, description and listed flag (owner only)
+      summary: Update library name, description and source settings (owner only)
       description: >
         A sourceCredentials given here is stored encrypted, so this operation needs the
         credentials encryption key (OPAA_CREDENTIALS_ENCRYPTION_KEY). Without a usable key
         nothing is changed and the answer is 503 naming the missing key - a write never silently
         drops a credential. A request that carries no new credential keeps the stored one and is
-        unaffected. For a connector library, listed is refused with 409 while the share cap the
-        system administration set forbids it (#797, PUT /api/v1/libraries/{libraryId}/share-cap)
-        - the caller's own MANAGER/OWNER role is not in question, the requested state conflicts
-        with that ceiling.
+        unaffected.
       requestBody:
         required: true
         content:
@@ -277,16 +274,15 @@ paths:
     put:
       operationId: updateLibraryShareCap
       tags: [library]
-      summary: Set a connector library's share cap - whether it may be granted to ALL_ACCOUNTS and listed at all (#797)
+      summary: Set a connector library's share cap - whether it may be granted to ALL_ACCOUNTS (#797)
       description: >
         SYSTEM_ADMIN only (403 otherwise). Rejected with 400 for an UPLOAD library, which is never
         capped - the same person who uploads already curates every document individually, so there
         is nothing the cap would protect. Narrowing the cap below what the library currently
         carries takes it back immediately, in the same request - never a state left "verletzt, aber
         geduldet": forbidding ALL_ACCOUNTS revokes an existing such grant through the ordinary
-        grant path (ASSET_GRANT_REVOKED, one grant-history interval), forbidding listed clears
-        listed with the same ASSET_VISIBILITY_CHANGED entry an owner's own edit would write, and
-        the cap change itself is recorded separately (CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED).
+        grant path (ASSET_GRANT_REVOKED, one grant-history interval), and the cap change itself is
+        recorded separately (CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED).
       requestBody:
         required: true
         content:
@@ -823,10 +819,6 @@ components:
           description: >
             Required when ownerType is GROUP (the caller must be a member of that group).
             Ignored for ownerType USER, which always owns as the creator.
-        listed:
-          type: boolean
-          nullable: true
-          description: Defaults to false
         sourceType:
           $ref: "#/components/schemas/SourceTypeKey"
         sourcePath:
@@ -905,7 +897,7 @@ components:
       description: >
         Carries the same typed configuration fields as LibraryRequest (#514) - deliberately a
         separate schema rather than reusing LibraryRequest itself, since name/ownerType/
-        listed/... have no meaning before a library exists and would only invite a client
+        description have no meaning before a library exists and would only invite a client
         to pass a half-filled LibraryRequest by mistake. Which fields are accepted depends on
         sourceType exactly like LibraryRequest; UPLOAD accepts none and is rejected outright
         (there is nothing to test). CONFLUENCE (ADR-0023) works in two stages with the same
@@ -1246,10 +1238,6 @@ components:
           maxLength: 2000
           nullable: true
           example: SGB II, SGB XII, VwVfG, Dienstanweisungen
-        listed:
-          type: boolean
-          nullable: true
-          description: Defaults to false
         sourceType:
           $ref: "#/components/schemas/SourceTypeKey"
         sourcePath:
@@ -1316,11 +1304,8 @@ components:
 
     LibraryShareCapRequest:
       type: object
-      required: [allAccountsGrantAllowed, listedCap]
-      description: >
-        Body for PUT /api/v1/libraries/{libraryId}/share-cap (#797). Both fields are required and
-        replace the cap as a whole - there is no partial update, the same reasoning
-        a connector's sourceSettings follow when it replaces them as a whole.
+      required: [allAccountsGrantAllowed]
+      description: Body for PUT /api/v1/libraries/{libraryId}/share-cap (#797).
       properties:
         allAccountsGrantAllowed:
           type: boolean
@@ -1328,8 +1313,6 @@ components:
             Whether this library may be granted to ALL_ACCOUNTS ("Alle Konten"). Lowering
             it to false revokes an existing such grant in the same transaction (#1931, ADR-0037
             Entscheidung 5) - there is no state "over the ceiling but tolerated".
-        listedCap:
-          type: boolean
 
     LibraryListResponse:
       type: object
@@ -1339,7 +1322,6 @@ components:
           name,
           ownerType,
           reach,
-          listed,
           myRole,
           sourceType,
           documentCount,
@@ -1368,8 +1350,6 @@ components:
           example: Referat 50
         reach:
           $ref: "#/components/schemas/AssetReachResponse"
-        listed:
-          type: boolean
         myRole:
           description: >
             The effective role you hold on this library, per the formula in
@@ -1435,7 +1415,6 @@ components:
         - ownerType
         - ownerId
         - reach
-        - listed
         - myRole
         - sourceType
         - createdAt
@@ -1469,8 +1448,6 @@ components:
           example: Referat 50
         reach:
           $ref: "#/components/schemas/AssetReachResponse"
-        listed:
-          type: boolean
         myRole:
           description: >
             The effective role you hold on this library. For a system admin, this is always
@@ -1623,12 +1600,6 @@ components:
             like sourcePath above, absent (not merely null) below MANAGER. POST
             /api/v1/assets/{assetType}/{assetId}/grants answers 409 for such a grant while it is
             false.
-        listedCap:
-          type: boolean
-          nullable: true
-          description: >
-            The counterpart cap on listed - false forbids listing this library at all. Same
-            gating as allAccountsGrantAllowed.
         lastTransfer:
           description: >
             The transfer that last touched this library (#1834, ADR-0036 Entscheidung 10), or

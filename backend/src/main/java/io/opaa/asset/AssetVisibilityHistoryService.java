@@ -10,16 +10,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * The asset half of the permission history: the {@link AssetVisibilityHistory} intervals of
- * findability and of the release for Fremdzugaenge (#238, #1731, see
+ * The asset half of the permission history: the {@link AssetVisibilityHistory} intervals of the
+ * release for Fremdzugaenge (#238, #1731, see
  * docs/features/security-and-compliance.md#nachweisbarkeit-historisierung-von-rechten). Who may
  * read the asset is not here - that follows from the grants alone and is historised with them
  * (#1931, ADR-0037). Both tables take their interval boundaries from the one {@link
  * PermissionHistoryClock}, so the interval contract holds across them.
- *
- * <p>An interval records listed and the release for Fremdzugaenge together. A change of one carries
- * the other forward from the interval it closes, so the shell records a change of findability
- * without knowing which type releases for Fremdzugaenge at all.
  *
  * <p>Every recording method runs inside the caller's own transaction (default propagation): a
  * change and its history row commit or roll back together.
@@ -46,25 +42,6 @@ public class AssetVisibilityHistoryService {
             AssetVisibilityHistoryCause.CREATED,
             actorUserId,
             clock.nextBoundary()));
-  }
-
-  /**
-   * Closes the open interval and opens a new one with the asset's <i>current</i> findability -
-   * callers apply the change first, and call only when it actually differs.
-   */
-  public void recordVisibilityChanged(Asset asset, UUID actorUserId) {
-    Instant now = clock.nextBoundary();
-    Optional<AssetVisibilityHistory> previous = closeOpenInterval(asset, now);
-    repository.save(
-        interval(
-            asset,
-            previous
-                .map(AssetVisibilityHistory::getExternalAccessState)
-                .orElse(ExternalAccessState.NEVER_SET),
-            previous.map(AssetVisibilityHistory::getExternalAccessExpiresAt).orElse(null),
-            AssetVisibilityHistoryCause.VISIBILITY_CHANGED,
-            actorUserId,
-            now));
   }
 
   /**
@@ -152,7 +129,6 @@ public class AssetVisibilityHistoryService {
         asset.getAssetType(),
         asset.getId(),
         asset.getOrganizationId(),
-        asset.isListed(),
         externalAccessState,
         externalAccessExpiresAt,
         cause,

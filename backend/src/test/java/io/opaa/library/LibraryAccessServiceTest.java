@@ -60,7 +60,7 @@ class LibraryAccessServiceTest {
 
   private KnowledgeLibrary privateUserOwnedLibrary(UUID libraryId) {
     KnowledgeLibrary library =
-        KnowledgeLibrary.ownedByUser(organizationId, "Bibliothek", null, UUID.randomUUID(), false);
+        KnowledgeLibrary.ownedByUser(organizationId, "Bibliothek", null, UUID.randomUUID());
     setId(library, libraryId);
     return library;
   }
@@ -72,7 +72,7 @@ class LibraryAccessServiceTest {
    */
   private KnowledgeLibrary foreignLibrary(UUID libraryId) {
     KnowledgeLibrary library =
-        KnowledgeLibrary.ownedByUser(organizationId, "Bibliothek", null, UUID.randomUUID(), false);
+        KnowledgeLibrary.ownedByUser(organizationId, "Bibliothek", null, UUID.randomUUID());
     setId(library, libraryId);
     return library;
   }

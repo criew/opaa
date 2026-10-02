@@ -525,7 +525,6 @@ class DocumentMetadataCorrectionServiceIntegrationTest {
             name,
             null,
             owner.id(),
-            false,
             SourceTypes.FILESYSTEM,
             sourcePath.toString(),
             null,

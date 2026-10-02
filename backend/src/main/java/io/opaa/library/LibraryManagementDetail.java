@@ -26,8 +26,6 @@ import io.opaa.indexing.source.ConnectorData;
  * @param allAccountsGrantAllowed the share cap (#797, #1931): whether this library may be granted
  *     to "Alle Konten". {@code null} for {@code UPLOAD} (which carries none) and below the MANAGER
  *     threshold, same gating as {@link #schedule}.
- * @param listedCap the counterpart cap on {@code listed}, same gating as {@link
- *     #allAccountsGrantAllowed}.
  */
 public record LibraryManagementDetail(
     String sourcePath,
@@ -43,10 +41,9 @@ public record LibraryManagementDetail(
     Long storageQuotaBytes,
     Long storageUsedBytes,
     LibraryExternalAccess externalAccess,
-    Boolean allAccountsGrantAllowed,
-    Boolean listedCap) {
+    Boolean allAccountsGrantAllowed) {
 
   public static final LibraryManagementDetail EMPTY =
       new LibraryManagementDetail(
-          null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+          null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 }

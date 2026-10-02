@@ -94,8 +94,7 @@ export default function GlobalRail() {
       icon: GridViewOutlinedIcon,
     },
     // Je Asset-Typ ein eigener Punkt (#1915): „Wissen" und „Prompts" führen auf die lesbaren
-    // Bestände ihres Typs. Der Katalog ist die gemischte Sicht über alle Typen, einschließlich
-    // der auffindbaren Assets ohne Zugriff.
+    // Bestände ihres Typs. Der Katalog ist die gemischte Sicht über alle Typen.
     ...ASSET_DESTINATIONS,
     {
       label: 'Katalog',

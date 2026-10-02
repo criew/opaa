@@ -75,8 +75,7 @@ class DocumentIngestServiceIntegrationTest {
 
     targetLibrary =
         libraryRepository.save(
-            KnowledgeLibrary.ownedByUser(
-                Organization.DEFAULT_ID, "Zielbibliothek", null, userId, false));
+            KnowledgeLibrary.ownedByUser(Organization.DEFAULT_ID, "Zielbibliothek", null, userId));
   }
 
   // By id, not by the e-mail above: ChunkReplacementOrderIntegrationTest uses the same one for its

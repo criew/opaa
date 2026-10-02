@@ -89,7 +89,7 @@ class QueryIntegrationTest {
         DEFAULT_ORGANIZATION_ID);
     jdbcTemplate.update(
         "WITH shell AS (INSERT INTO assets (id, asset_type, organization_id, name, owner_type,"
-            + " owner_user_id, listed) VALUES (?, 'KNOWLEDGE_LIBRARY', ?, 'IT-Bibliothek', 'USER', ?, false)"
+            + " owner_user_id) VALUES (?, 'KNOWLEDGE_LIBRARY', ?, 'IT-Bibliothek', 'USER', ?)"
             + " RETURNING id, organization_id) INSERT INTO knowledge_libraries (id,"
             + " organization_id, source_type) SELECT id, organization_id, 'UPLOAD' FROM shell",
         libraryId,
@@ -268,7 +268,7 @@ class QueryIntegrationTest {
         DEFAULT_ORGANIZATION_ID);
     jdbcTemplate.update(
         "WITH shell AS (INSERT INTO assets (id, asset_type, organization_id, name, owner_type,"
-            + " owner_user_id, listed) VALUES (?, 'KNOWLEDGE_LIBRARY', ?, 'Verschlossene Bibliothek', 'USER', ?, false)"
+            + " owner_user_id) VALUES (?, 'KNOWLEDGE_LIBRARY', ?, 'Verschlossene Bibliothek', 'USER', ?)"
             + " RETURNING id, organization_id) INSERT INTO knowledge_libraries (id,"
             + " organization_id, source_type) SELECT id, organization_id, 'UPLOAD' FROM shell",
         closedLibraryId,
@@ -355,7 +355,7 @@ class QueryIntegrationTest {
     UUID ungrantedLibraryId = UUID.randomUUID();
     jdbcTemplate.update(
         "WITH shell AS (INSERT INTO assets (id, asset_type, organization_id, name, owner_type,"
-            + " owner_user_id, listed) VALUES (?, 'KNOWLEDGE_LIBRARY', ?, 'Fremde Bibliothek', 'USER', ?, false)"
+            + " owner_user_id) VALUES (?, 'KNOWLEDGE_LIBRARY', ?, 'Fremde Bibliothek', 'USER', ?)"
             + " RETURNING id, organization_id) INSERT INTO knowledge_libraries (id,"
             + " organization_id, source_type) SELECT id, organization_id, 'UPLOAD' FROM shell",
         ungrantedLibraryId,
@@ -500,7 +500,7 @@ class QueryIntegrationTest {
     UUID ungrantedLibraryId = UUID.randomUUID();
     jdbcTemplate.update(
         "WITH shell AS (INSERT INTO assets (id, asset_type, organization_id, name, owner_type,"
-            + " owner_user_id, listed) VALUES (?, 'KNOWLEDGE_LIBRARY', ?, 'Fremde Bibliothek', 'USER', ?, false)"
+            + " owner_user_id) VALUES (?, 'KNOWLEDGE_LIBRARY', ?, 'Fremde Bibliothek', 'USER', ?)"
             + " RETURNING id, organization_id) INSERT INTO knowledge_libraries (id,"
             + " organization_id, source_type) SELECT id, organization_id, 'UPLOAD' FROM shell",
         ungrantedLibraryId,

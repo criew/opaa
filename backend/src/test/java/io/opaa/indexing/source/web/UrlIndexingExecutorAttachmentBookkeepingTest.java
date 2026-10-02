@@ -82,7 +82,6 @@ class UrlIndexingExecutorAttachmentBookkeepingTest {
             "Webverzeichnis",
             null,
             UUID.randomUUID(),
-            false,
             SourceTypes.HTTP_DIRECTORY,
             null,
             "https://example.com/docs/",

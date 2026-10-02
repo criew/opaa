@@ -30,8 +30,6 @@ final class CatalogResponseMapper {
             asset.getName(),
             asset.getOwnerType(),
             asset.getOrigin(),
-            entry.accessible(),
-            asset.isListed(),
             entry.itemCount(),
             entry.spaceCount())
         .description(asset.getDescription())

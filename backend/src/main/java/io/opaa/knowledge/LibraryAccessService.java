@@ -42,8 +42,8 @@ public class LibraryAccessService {
   }
 
   /**
-   * Whether the user may rename, change visibility/listed or manage grants - {@link
-   * AssetRole#MANAGER}. Deleting and handing on need {@link AssetRole#OWNER}.
+   * Whether the user may rename or manage grants - {@link AssetRole#MANAGER}. Deleting and handing
+   * on need {@link AssetRole#OWNER}.
    */
   public boolean canManage(KnowledgeLibrary library, UUID userId, boolean systemAdmin) {
     return authorization.canManage(library, userId, systemAdmin);

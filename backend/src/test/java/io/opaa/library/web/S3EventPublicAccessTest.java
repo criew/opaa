@@ -93,7 +93,6 @@ class S3EventPublicAccessTest {
                     "Quelle",
                     null,
                     UUID.randomUUID(),
-                    false,
                     SourceTypes.S3,
                     null,
                     "https://quelle.example.org",

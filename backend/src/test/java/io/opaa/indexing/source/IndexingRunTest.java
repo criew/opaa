@@ -42,7 +42,6 @@ class IndexingRunTest {
           "Bibliothek",
           null,
           UUID.randomUUID(),
-          false,
           SourceTypes.HTTP_DIRECTORY,
           null,
           "https://host/",

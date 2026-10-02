@@ -60,9 +60,11 @@ freigegeben sein, und die Person muss ihn für ein benanntes Werkzeug bewusst er
    Verhalten. Die Zusage aus
    [security-and-compliance.md](./security-and-compliance.md#was-ausdrücklich-nicht-protokolliert-wird)
    bleibt unverändert; auch eine Nutzungszählung je Token gibt es nicht.
-7. **Die Freigabe einer Bibliothek ist ein Reichweitenfeld.** Sie wird wie `visibility` und `listed`
-   historisiert und ist **pflichtbefristet**; die Freigabe-Obergrenze konnektor-gespeister Bibliotheken
-   (#797) deckelt sie **nicht** — deren Wirkung ist ausdrücklich auf `visibility`/`listed` begrenzt.
+7. **Die Freigabe einer Bibliothek ist ein Reichweitenfeld.** Sie wird als Intervall historisiert und
+   ist **pflichtbefristet**; die Freigabe-Obergrenze konnektor-gespeister Bibliotheken (#797) deckelt
+   sie **nicht** — deren Wirkung ist ausdrücklich auf die Freigabe an „Alle Konten" begrenzt (bis
+   ADR-0037 und [ADR-0039](../decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md) auf
+   `visibility`/`listed`, die beide entfallen sind).
 8. **OPAA wird dafür nicht öffentlich erreichbar.** Der ganze Kanal liegt zusätzlich hinter einer
    installationsweiten Netzbeschränkung, Vorgabe Hausnetz. Zielclients sind Werkzeuge, die auf dem
    Arbeitsplatz oder im Hausnetz laufen. Ein Betrieb als OAuth-Autorisierungsserver für fremde
@@ -73,6 +75,13 @@ freigegeben sein, und die Person muss ihn für ein benanntes Werkzeug bewusst er
 10. **Der Kanal erklärt sich dem fremden Modell selbst.** Werkzeugbeschreibungen und der
     Einleitungstext des Servers werden aus der effektiven Sicht des Tokens erzeugt, damit das fremde
     Werkzeug von allein erkennt, welche Fragen hierher gehören.
+11. **Ohne Space, mit eigener ausdrücklicher Auswahl.** Ein Chat in der Web-Oberfläche durchsucht nur,
+    was seinem Space zugeordnet ist. Der Fremdzugang hat keinen Space und bleibt bewusst ohne:
+    Durchsucht wird lesbar ∩ Fremdzugangsfreigabe ∩ Bibliotheksauswahl des Tokens — die Auswahl ist
+    im Kleinen dieselbe ausdrückliche Entscheidung wie die Zuordnung eines Space und wird mit
+    derselben Kachelauswahl getroffen
+    ([ADR-0039](../decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md), Entscheidung 5;
+    Umsetzung #2098). Tokens an einen Space zu binden ist verworfen.
 
 ---
 
@@ -222,14 +231,15 @@ der Systemverwaltung.
 
 ### Die Freigabe ist ein Reichweitenfeld und wird wie eines behandelt
 
-Das Merkmal ist fachlich dasselbe wie `visibility` und `listed`: eine Stufe der Reichweite, an der
-Bibliothek. Daraus folgen vier Festlegungen. Zwei davon brauchen keine neue Mechanik — die
+Das Merkmal ist fachlich dasselbe wie früher `visibility` und `listed` (entfallen mit ADR-0037 und
+[ADR-0039](../decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md)): eine Stufe der
+Reichweite, an der Bibliothek. Daraus folgen vier Festlegungen. Zwei davon brauchen keine neue Mechanik — die
 Intervall-Historisierung samt Schreibpfadschutz und das Ablaufereignis befristeter Grants existieren
 im Produkt bereits. Die anderen beiden hängen an Mechaniken, die heute **noch nicht gebaut** sind;
 sie sind deshalb als Bedingung formuliert und nicht als Abnahmekriterium dieser Stufe:
 
 1. **Historisiert, nicht nur protokolliert.** Das Merkmal wandert in dieselbe Intervall-Historisierung
-   wie `visibility` und `listed` (siehe
+   wie die übrigen Rechte (siehe
    [security-and-compliance.md](./security-and-compliance.md#nachweisbarkeit-historisierung-von-rechten)),
    mit demselben Schreibpfadschutz: veränderbar nur aus dem Paket heraus, das die Historienzeile
    schreibt. Der Protokolleintrag bleibt zusätzlich. Der Grund ist eine Prüfsituation: Das Protokoll
@@ -241,7 +251,8 @@ sie sind deshalb als Bedingung formuliert und nicht als Abnahmekriterium dieser 
    ([access-control.md](./access-control.md#dokumentenfluss-konnektoren-gegen-benutzer-uploads)) —
    eine frühere Fassung dieses Kapitels ging davon aus, dass sie auch dieses Merkmal deckeln würde,
    um den Fremdzugang nicht zum Weg an ihr vorbei zu machen. #797 hat das Feld der Obergrenze
-   **ausdrücklich auf `visibility` und `listed`** begrenzt; die Fremdzugangsfreigabe bleibt außen vor.
+   **ausdrücklich auf `visibility` und `listed`** begrenzt — heute, nach ADR-0037 und ADR-0039, allein
+   auf die Freigabe an „Alle Konten"; die Fremdzugangsfreigabe bleibt außen vor.
    Der Fremdzugang bleibt damit unabhängig von der Freigabe-Obergrenze zu setzen und zurückzunehmen —
    der Schutz gegen „Fachverfahrensdaten eingespeist, dann über den Fremdzugang organisationsweit
    erreichbar" liegt stattdessen ausschließlich in Punkt 3 (Pflichtbefristung) und darin, dass Setzen
@@ -515,9 +526,13 @@ brauchbaren Fall zum Sonderfall. Und wer den Bestand abziehen will, muss es ausd
 statt es nebenbei zu bekommen.
 
 Der Suchweg ist derselbe wie der der Web-Oberfläche: Teilfragen, Vektor- und Volltextsuche, Fusion,
-Reranking, Rechtefilter in der Suche. Was dort nicht gefunden wird, wird hier auch nicht gefunden;
-was hier gefunden wird, hätte die Person auch dort gefunden. Ein zweiter Rankingpfad wäre eine
-zweite Qualitätswahrheit, die niemand pflegt.
+Reranking, Rechtefilter in der Suche. Ein zweiter Rankingpfad wäre eine zweite Qualitätswahrheit, die
+niemand pflegt. **Was durchsucht wird, bestimmt dagegen jeder Kanal selbst** — im Chat die Zuordnung
+des Space, hier die Bibliotheksauswahl des Tokens
+([ADR-0039](../decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md), Entscheidung 5;
+die frühere Zusage „was dort nicht gefunden wird, wird hier auch nicht gefunden — und umgekehrt"
+ist damit umformuliert). Fest bleibt: Eine Bibliothek, die die Person nicht lesen darf, findet sie
+in keinem der beiden Kanäle, und jede Verbesserung des Suchwegs wirkt in beiden.
 
 Dieser Suchweg wird zugleich als **regulärer REST-Endpunkt** angeboten (`POST /api/v1/search` samt
 Dokumentabruf). Er ist nicht auf Tokens beschränkt — auch eine angemeldete Person erreicht ihn — und
@@ -711,8 +726,9 @@ dafür an drei Stellen **erweitert** — die Liste zählt einzeln auf, und was d
 nicht geschrieben; eine Behauptung, man fülle nur vorhandene Punkte aus, wäre an dieser Stelle
 unehrlich. Die drei Ergänzungen sind im selben Zug dort eingetragen:
 
-- die **Fremdzugangsfreigabe einer Wissensbibliothek** — sie steht neben `visibility` und `listed`,
-  weil sie dieselbe Art Reichweitenfeld ist;
+- die **Fremdzugangsfreigabe einer Wissensbibliothek** — sie stand neben `visibility` und `listed`,
+  weil sie dieselbe Art Reichweitenfeld ist; seit deren Wegfall ist sie das einzige Reichweitenfeld
+  neben den Grants;
 - das **Außerkrafttreten eines Zugangstokens** — es steht neben Ausstellung und Widerruf, die der
   Punkt zu den API-Tokens bereits nennt;
 - die **Kanaleinstellungen des Fremdzugangs** — sie stehen neben der Freigabe-Obergrenze, die

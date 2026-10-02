@@ -66,7 +66,7 @@ class PushIntakeServiceTest {
   @Test
   void aLibraryWithoutPushIntakeIsAnsweredLikeAnUnknownOne() {
     KnowledgeLibrary upload =
-        KnowledgeLibrary.ownedByUser(UUID.randomUUID(), "Ablage", null, UUID.randomUUID(), false);
+        KnowledgeLibrary.ownedByUser(UUID.randomUUID(), "Ablage", null, UUID.randomUUID());
     when(libraries.findById(upload.getId())).thenReturn(Optional.of(upload));
 
     assertThatThrownBy(() -> service.accept(upload.getId(), BODY, HEADER))
@@ -86,7 +86,6 @@ class PushIntakeServiceTest {
             "Wiki",
             null,
             UUID.randomUUID(),
-            false,
             SourceTypes.CONFLUENCE,
             null,
             "https://wiki.example.org",

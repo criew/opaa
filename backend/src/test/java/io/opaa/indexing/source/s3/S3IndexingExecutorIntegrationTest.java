@@ -136,7 +136,6 @@ class S3IndexingExecutorIntegrationTest {
             "Vollabgleich",
             null,
             UUID.randomUUID(),
-            false,
             SourceTypes.S3,
             null,
             store.endpoint().toString(),

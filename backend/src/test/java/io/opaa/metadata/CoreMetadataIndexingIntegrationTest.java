@@ -99,8 +99,7 @@ class CoreMetadataIndexingIntegrationTest {
         Organization.DEFAULT_ID);
     targetLibrary =
         libraryRepository.save(
-            KnowledgeLibrary.ownedByUser(
-                Organization.DEFAULT_ID, "Kernfelder", null, userId, false));
+            KnowledgeLibrary.ownedByUser(Organization.DEFAULT_ID, "Kernfelder", null, userId));
   }
 
   @AfterEach

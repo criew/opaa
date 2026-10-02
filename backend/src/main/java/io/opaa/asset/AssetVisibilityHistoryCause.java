@@ -9,13 +9,8 @@ public enum AssetVisibilityHistoryCause {
   CREATED,
 
   /**
-   * {@code listed} changed - closes the previous interval and opens a new one with the new value.
-   */
-  VISIBILITY_CHANGED,
-
-  /**
    * The release for Fremdzugaenge was set or taken back - closes the previous interval and opens a
-   * new one, exactly like {@link #VISIBILITY_CHANGED} does for its own field (#1731).
+   * new one with the new state (#1731).
    */
   EXTERNAL_ACCESS_CHANGED,
 
@@ -25,7 +20,11 @@ public enum AssetVisibilityHistoryCause {
    */
   EXTERNAL_ACCESS_EXPIRED,
 
-  /** Written by the #238 backfill for an asset that existed before the history did. */
+  /**
+   * Written by a migration, not by an operation: the #238 backfill for an asset that existed before
+   * the history did, and the #2092 rewrite of a former change of the findability flag, whose
+   * interval carries the release state of its predecessor unchanged.
+   */
   BACKFILL,
 
   /**

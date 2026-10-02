@@ -19,11 +19,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * The catalog (docs/features/spaces-and-assets.md#der-katalog): the assets a person may read by
- * {@link AssetAccessService#readableAssetIds}, united with the listed ones, over every served type
- * and within the person's organization - one query on the shell, paged and searched in SQL. Whether
- * an entry is accessible is the formula's alone; the administration's floor never counts here.
- * Extent and spread of a page come in grouped queries, one per type and one for the spaces.
+ * The catalog (docs/features/spaces-and-assets.md#der-katalog): exactly the assets a person may
+ * read by {@link AssetAccessService#readableAssetIds}, over every served type and within the
+ * person's organization - one query on the shell, paged and searched in SQL. An asset the person
+ * may not read never appears; the administration's floor never counts here. Extent and spread of a
+ * page come in grouped queries, one per type and one for the spaces.
  */
 @Service
 @Transactional(readOnly = true)
@@ -85,6 +85,9 @@ public class AssetCatalogService {
     for (AssetType type : types) {
       readable.addAll(accessService.readableAssetIds(type, caller.id(), caller.organizationId()));
     }
+    if (readable.isEmpty()) {
+      return new AssetCatalogPage(List.of(), page, size, 0, 0);
+    }
     Page<AssetCatalogRow> rows =
         assetRepository.findCatalogPage(
             caller.organizationId(),
@@ -104,7 +107,6 @@ public class AssetCatalogService {
                 row ->
                     new AssetCatalogEntry(
                         row,
-                        readable.contains(row.getId()),
                         names.get(row.getOwnerId()),
                         succession.get(row.getId()),
                         itemCounts.getOrDefault(row.getId(), 0L),

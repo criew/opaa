@@ -197,7 +197,6 @@ public class KnowledgeLibraryService {
     AssetOwnerType ownerType =
         request.ownerType() != null ? request.ownerType() : AssetOwnerType.USER;
 
-    boolean listed = Boolean.TRUE.equals(request.listed());
     SourceConfiguration sourceConfiguration = validateSourceConfiguration(request);
 
     KnowledgeLibrary library;
@@ -214,7 +213,6 @@ public class KnowledgeLibraryService {
               normalizedName,
               request.description(),
               request.ownerId(),
-              listed,
               sourceConfiguration.sourceType(),
               sourceConfiguration.sourcePath(),
               sourceConfiguration.sourceUrl(),
@@ -228,7 +226,6 @@ public class KnowledgeLibraryService {
               normalizedName,
               request.description(),
               currentUserId,
-              listed,
               sourceConfiguration.sourceType(),
               sourceConfiguration.sourcePath(),
               sourceConfiguration.sourceUrl(),
@@ -258,7 +255,6 @@ public class KnowledgeLibraryService {
   private Map<String, Object> libraryAuditPayload(KnowledgeLibrary library) {
     Map<String, Object> payload = new LinkedHashMap<>();
     payload.put("name", library.getName());
-    payload.put("listed", library.isListed());
     // sourceType only, deliberately never sourcePath/sourceUrl/sourceCredentials - the audit log
     // is append-only and never purged the way the library row itself can be (ADR-0018,
     // Entscheidung 4: credentials must appear in no log, and path/url are not "rechtlich
@@ -406,7 +402,6 @@ public class KnowledgeLibraryService {
 
     String normalizedName = validateName(request.name());
     validateDescription(request.description());
-    boolean listed = Boolean.TRUE.equals(request.listed());
     String previousName = library.getName();
     String previousDescription = library.getDescription();
     String previousSourcePath = library.getSourcePath();
@@ -415,10 +410,7 @@ public class KnowledgeLibraryService {
     String previousSourceCredentials = library.getSourceCredentials();
     boolean previousSourceInsecureSsl = library.isSourceInsecureSsl();
     Map<String, Object> previousSettingsState = connector.settingsState(library);
-    // The shell refuses listing while the succession is open and asks the share cap; a change of
-    // listed writes its history interval and ASSET_VISIBILITY_CHANGED there.
     library.rename(normalizedName, request.description());
-    shellService.changeListed(library, listed, currentUserId);
     if (replacesSchedule) {
       library.updateSchedule(validatedSchedule.enabled(), validatedSchedule.cron());
     }
@@ -470,8 +462,8 @@ public class KnowledgeLibraryService {
     }
     // #545: a pure source-configuration change (e.g. rotating sourceCredentials or moving a
     // FILESYSTEM/HTTP_DIRECTORY/RSS_FEED crawl target) previously left no trace at all - neither
-    // LIBRARY_CHANGED (name/description) nor ASSET_VISIBILITY_CHANGED (listed) fires for it,
-    // since the edit dialog (#516) resends name/description/listed unchanged.
+    // LIBRARY_CHANGED (name/description) fires for it, since the edit dialog (#516) resends
+    // name/description unchanged.
     // Only the set of changed fields is recorded, never their values - sourceCredentials in
     // particular must never appear in the log (ADR-0018, Entscheidung 4), so unlike
     // LIBRARY_CHANGED's before/after this event carries no value at all, not even a redacted one.
@@ -525,13 +517,12 @@ public class KnowledgeLibraryService {
    * Sets a connector library's share cap (#797) - {@code SYSTEM_ADMIN} only, rejected for {@code
    * UPLOAD}. A cap that now forbids what the library currently carries takes it back in the same
    * transaction (#1931, ADR-0037 Entscheidung 5): the grant to "Alle Konten" is revoked through the
-   * ordinary grant path, {@code listed} is cleared through the asset shell. Both are recorded
-   * separately from the cap change itself ({@code CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED}), so
-   * nothing is ever left "verletzt, aber geduldet".
+   * ordinary grant path and recorded separately from the cap change itself ({@code
+   * CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED}), so nothing is ever left "verletzt, aber geduldet".
    */
   @Transactional
   public LibraryDetail updateShareCap(
-      UUID libraryId, boolean allAccountsGrantAllowed, boolean listedCap, CurrentUser caller) {
+      UUID libraryId, boolean allAccountsGrantAllowed, CurrentUser caller) {
     if (!caller.isSystemAdmin()) {
       throw new AccessDeniedException(
           "Nur die Systemverwaltung darf die Freigabe-Obergrenze einer Bibliothek setzen");
@@ -543,8 +534,7 @@ public class KnowledgeLibraryService {
               + " einzeln von der Eigentümerin kuratiert");
     }
     boolean previousCap = library.isAllAccountsGrantAllowed();
-    boolean previousListedCap = library.isListedCap();
-    library.updateShareCap(allAccountsGrantAllowed, listedCap);
+    library.updateShareCap(allAccountsGrantAllowed);
     KnowledgeLibrary saved = libraryRepository.save(library);
     auditEventRecorder.recordUserAction(
         AuditEvent.builder()
@@ -552,16 +542,12 @@ public class KnowledgeLibraryService {
             .actor(caller.id())
             .type(AuditEventType.CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED)
             .object(AuditObjectType.KNOWLEDGE_LIBRARY, saved.getId(), saved.getName())
-            .before(Map.of("allAccountsGrantAllowed", previousCap, "listedCap", previousListedCap))
-            .after(
-                Map.of("allAccountsGrantAllowed", allAccountsGrantAllowed, "listedCap", listedCap))
+            .before(Map.of("allAccountsGrantAllowed", previousCap))
+            .after(Map.of("allAccountsGrantAllowed", allAccountsGrantAllowed))
             .outcome(AuditOutcome.SUCCESS)
             .build());
     if (!allAccountsGrantAllowed) {
       grantService.revokeAllAccountsGrantForLoweredCap(saved, caller.id());
-    }
-    if (!listedCap) {
-      shellService.clearListedForLoweredCap(saved, caller.id());
     }
     return toLibraryDetail(saved, AssetRole.OWNER, caller.id());
   }
@@ -1333,8 +1319,7 @@ public class KnowledgeLibraryService {
         // (chk_knowledge_libraries_share_cap_upload_unrestricted) - null here rather than the
         // always-true value keeps a MANAGER from reading a ceiling into a library that in fact has
         // none.
-        descriptor.uploads() ? null : library.isAllAccountsGrantAllowed(),
-        descriptor.uploads() ? null : library.isListedCap());
+        descriptor.uploads() ? null : library.isAllAccountsGrantAllowed());
   }
 
   private LibraryDocumentEntry toLibraryDocumentEntry(

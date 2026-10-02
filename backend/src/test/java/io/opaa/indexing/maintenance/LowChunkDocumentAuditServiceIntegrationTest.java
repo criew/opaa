@@ -75,7 +75,7 @@ class LowChunkDocumentAuditServiceIntegrationTest {
 
     library =
         libraryRepository.save(
-            KnowledgeLibrary.ownedByUser(ORGANIZATION_ID, "Satzungen", null, userId, false));
+            KnowledgeLibrary.ownedByUser(ORGANIZATION_ID, "Satzungen", null, userId));
 
     // A document's organizationId is always denormalized from its own library's (see
     // DocumentIngestService#processFile) - cross-org scoping is genuinely tested only against a
@@ -97,7 +97,7 @@ class LowChunkDocumentAuditServiceIntegrationTest {
     otherOrganizationLibrary =
         libraryRepository.save(
             KnowledgeLibrary.ownedByUser(
-                OTHER_ORGANIZATION_ID, "Fremdbibliothek", null, otherOrganizationUserId, false));
+                OTHER_ORGANIZATION_ID, "Fremdbibliothek", null, otherOrganizationUserId));
   }
 
   @AfterEach

@@ -23,6 +23,9 @@ ließ — die Voreinstellung der Mindestgruppengröße und der ausgelieferte Wer
 Aufbewahrungshöchstdauer —, hat der Maintainer entschieden; sie stehen in „Zahlen, die dieser ADR
 setzt".
 
+**Nachtrag mit [ADR-0039](0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md) (02.10.2026,
+#2091):** In Entscheidung 9 entfällt der Bezug auf `listed`; die Regel selbst gilt unverändert.
+
 **Präzisiert, ohne aufzuheben:** [ADR-0016](0016-loeschschicksal-rechtehistorie.md) (Entscheidung 8),
 [ADR-0025](0025-mehrere-oidc-anbieter.md) (Entscheidungen 2 und 3),
 [ADR-0033](0033-lokale-benutzerverwaltung.md) (Entscheidung 2).
@@ -666,6 +669,12 @@ Auffindbarkeit ist eine bewusste Handlung. Drei Festlegungen:
 3. **Die Bestandsänderung wird ausgesprochen:** Ein `MANAGER` kann eine neue interne Gruppe erst dann
    als Empfänger wählen, wenn deren Verantwortliche sie freigegeben haben.
 
+> **Nachtrag (02.10.2026, #2091):** Mit [ADR-0039](0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md)
+> entfällt `listed` bei Assets; der Vergleich „Gegenstück zu `listed`" hat damit keinen Bezugspunkt
+> mehr. Die Freigabe einer internen Gruppe zur Verwendung bleibt unverändert — sie begründet sich
+> allein daraus, dass die Auswahl eines Empfängers eine bewusste Handlung der Verantwortlichen
+> voraussetzt.
+
 **Die Regel — „wer ein Recht gibt, sieht, an wen":**
 
 | Wer | Name und Herkunft | Mitgliederzahl | Mitgliederliste |
@@ -738,6 +747,40 @@ Bibliotheken benennt — gilt dieselbe Sonderstellung:
 > abrufen darf (protokolliert). Jede Änderung des Kennzeichens bleibt ein Audit-Ereignis
 > (`GROUP_PROTECTION_CHANGED`) mit handelnder Person; die Nachprüfbarkeit, nicht die
 > Unverfügbarkeit für die Administration, ist damit die Sicherung.
+
+> **Nachtrag (02.10.2026, Maintainer-Entscheidung, #1991): Der Bericht des Verzeichnisabgleichs
+> ist ein zweiter Weg zu den Namen und wird protokolliert, nicht maskiert.** Der Bericht nennt die
+> Mitglieder, die ein Lauf aufnimmt oder entzieht, namentlich — für eine neu angelegte Gruppe die
+> vollständige Mitgliederliste, beim ersten Lauf eines Anbieters also jede Gruppe des Verzeichnisses,
+> geschützte eingeschlossen —, dazu die Konten, die er sperrt, entsperrt oder ungesperrt lässt. Das
+> „wer" ist die Entscheidungsgrundlage für die Freigabe eines Plans und bleibt deshalb stehen.
+> Festlegungen:
+>
+> - **Jede Antwort an die Systemverwaltung, die einen Bericht mit Namen ausliefert, schreibt ein
+>   zusammenfassendes Ereignis** `DIRECTORY_SYNC_REPORT_READ`: der Abruf des ausstehenden Plans
+>   (jeder, nicht nur der erste), der Probelauf, der Lauf von Hand und die Bestätigung eines Plans.
+>   Der zeitgesteuerte Lauf liefert niemandem etwas aus und schreibt keines.
+> - **Inhalt:** die handelnde Person, der Anbieter als Objekt, der Weg (`PENDING_PLAN`, `DRY_RUN`,
+>   `RUN`, `PLAN_CONFIRMATION`), beim ausstehenden und beim bestätigten Plan dessen Kennung, die Zahl der Gruppen mit
+>   namentlich genannten Mitgliedern und die Zahl der genannten Personen (jede einmal) — **nie die
+>   Namen selbst**.
+> - **Ein Bericht ohne Namen schreibt nichts** (etwa ein Lauf ohne Änderung oder ein unerreichbares
+>   Verzeichnis).
+> - **Ein eigenes Ereignis statt `GROUP_MEMBERS_READ` je Gruppe.** `GROUP_MEMBERS_READ` hängt an einer
+>   bestehenden Gruppe; eine Gruppe, die der Plan erst anlegen würde, hat noch keine Kennung, und
+>   ein erster Lauf ergäbe Hunderte Einträge für eine einzige Ansicht.
+> - **Der Eintrag wird vor der Antwort geschrieben.** Scheitert er, scheitert die Antwort — Namen
+>   ohne Eintrag gibt es nicht. Bei einem Lauf von Hand und einer Bestätigung ist die Änderung zu
+>   diesem Zeitpunkt schon angewendet: Die Antwort ist dann ein Fehler (500), obwohl der Abgleich
+>   gewirkt hat; seinen Ausgang zeigen Statuszeile und Protokoll.
+> - **Die Verwaltungsoberfläche ruft einen ausstehenden Plan einmal je Plan ab,** nicht bei jedem
+>   Neuladen des Status — sonst entstünden Einträge, die wie bewusste Abrufe aussehen. Das Anzeigen
+>   eines offenen Plans auf der Seite erzeugt aber einen Eintrag.
+>
+> **Abwägung.** Maskieren (geschützte und neu angelegte Gruppen nur als Zahl) hätte der Freigabe
+> eines Plans genau die Angabe genommen, für die der Bericht namentlich ist, und die Namen wären über
+> den protokollierten Mitgliederabruf ohnehin erreichbar geblieben. Wie beim Schutzkennzeichen ist die
+> Nachprüfbarkeit die Sicherung, nicht die Unverfügbarkeit für die Administration.
 
 **Die Herleitung für die eigene Person.** Flach zu *sein* und das flach zu *zeigen* sind zwei
 Zusagen. Für jede Bibliothek und jeden Space, den eine Person sieht, zeigt die Oberfläche ihr **den

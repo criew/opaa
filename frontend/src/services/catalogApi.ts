@@ -12,7 +12,7 @@ export interface CatalogQuery {
 
 /**
  * The catalog across every asset type (docs/features/spaces-and-assets.md#der-katalog): what the
- * caller may read united with what is listed. Search, filter and paging run on the server.
+ * caller may read. Search, filter and paging run on the server.
  */
 export async function getCatalog(query: CatalogQuery): Promise<CatalogPageResponse> {
   try {

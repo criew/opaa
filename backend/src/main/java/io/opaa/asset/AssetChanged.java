@@ -4,15 +4,14 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * Domain event for the shell's own double bookkeeping (#238/#892): creating an asset or changing
- * its findability writes one {@link AssetVisibilityHistoryService} interval and one audit entry,
- * side by side - {@link AssetHistoryListener} and {@link AssetAuditListener} each write their half.
- * Published only by {@link AssetShellService}, synchronously and inside its transaction, so both
- * writes roll back with the operation - the same contract as {@link AssetGrantChanged}.
+ * Domain event for the shell's own double bookkeeping (#238/#892): creating an asset writes one
+ * {@link AssetVisibilityHistoryService} interval and one audit entry, side by side - {@link
+ * AssetHistoryListener} and {@link AssetAuditListener} each write their half. Published only by
+ * {@link AssetShellService}, synchronously and inside its transaction, so both writes roll back
+ * with the operation - the same contract as {@link AssetGrantChanged}.
  *
  * <p>The audit event of {@link Cause#CREATED} is the type's own ({@link
- * AssetTypeDefinition#createdAuditEventType()}); a change of findability is {@code
- * ASSET_VISIBILITY_CHANGED} for every type.
+ * AssetTypeDefinition#createdAuditEventType()}).
  */
 public record AssetChanged(
     Asset asset,
@@ -22,7 +21,6 @@ public record AssetChanged(
     Map<String, Object> auditAfter) {
 
   public enum Cause {
-    CREATED,
-    VISIBILITY_CHANGED
+    CREATED
   }
 }

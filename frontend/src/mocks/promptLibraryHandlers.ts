@@ -130,7 +130,6 @@ export const promptLibraryHandlers = [
       ownerId: group?.id ?? 'mock-user-id',
       ownerName: group?.name ?? 'Mock User',
       reach: { allAccounts: false, groupCount: 0, userCount: 1 },
-      listed: body.listed ?? false,
       // The creator owns a personal library; a group owner holds MANAGER and so does its member.
       myRole: body.ownerType === 'GROUP' ? 'MANAGER' : 'OWNER',
       promptCount: 0,
@@ -153,22 +152,9 @@ export const promptLibraryHandlers = [
     if (!library) return notFound()
     if (!holds(library, 'MANAGER')) return forbidden()
     const body = (await request.json()) as PromptLibraryUpdateRequest
-    // #1931: Die Reichweite ist eine Freigabe - am Aktualisieren waechst nur noch die
-    // Auffindbarkeit.
-    const widens = body.listed && !library.listed
-    if (library.succession && widens) {
-      return HttpResponse.json(
-        {
-          error: `Für dieses Objekt ist die Nachfolge offen: eine größere Reichweite (Auffindbarkeit) ist deshalb nicht möglich. Bestehende Rechte bleiben unverändert, und nichts wird gelöscht. Zuständig: ${library.succession.addresseeLabel}`,
-          code: 'SUCCESSION_OPEN',
-        },
-        { status: 409 },
-      )
-    }
     Object.assign(library, {
       name: body.name,
       description: body.description ?? null,
-      listed: body.listed,
       updatedAt: new Date().toISOString(),
     })
     return HttpResponse.json(library)

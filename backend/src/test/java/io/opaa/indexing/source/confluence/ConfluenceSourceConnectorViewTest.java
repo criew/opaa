@@ -27,7 +27,6 @@ class ConfluenceSourceConnectorViewTest {
         "Wiki",
         null,
         UUID.randomUUID(),
-        false,
         SourceTypes.CONFLUENCE,
         null,
         "https://wiki.example.org",

@@ -13,7 +13,7 @@
 | Objekt | Was es ist | Was es an Rechten trägt |
 |---|---|---|
 | **Organisation** | Das Haus. Heute genau eine je Installation | Die Grenze jeder Berechtigung: Gruppen, Konten, Bibliotheken und Räume gehören ihr, und nichts wirkt darüber hinaus |
-| **Wissensbibliothek** | Verwaltungseinheit für Dokumente mit genau einer Quelle | Eigene Rollen, eine Auffindbarkeit, einen Eigentümer |
+| **Wissensbibliothek** | Verwaltungseinheit für Dokumente mit genau einer Quelle | Eigene Rollen, einen Eigentümer |
 | **Raum** (Space) | Arbeitsbereich, in dem Chats liegen und Bibliotheken bereitgestellt werden | Eigene Rollen, eigene Mitgliedschaften, einen Eigentümer |
 | **Gruppe** | Eine benannte Menge von Konten | Kein Recht an sich selbst — sie ist das *Subjekt*, dem Rollen, Anlegerechte und Eigentum erteilt werden |
 
@@ -87,12 +87,11 @@ OPAA eine **leere** Gruppe — eine Freigabe an sie erreicht niemanden.
 
 Die Bibliotheken, die eine Person lesen darf, stehen in der Hauptnavigation unter **„Wissen"**. Jede
 Art von Bestand hat dort einen eigenen Punkt; der Menüpunkt und die Seite dahinter heißen gleich —
-die [Prompt-Bibliotheken](prompt-bibliotheken.md) stehen unter **„Prompts"**. Rollen,
-Auffindbarkeit, Herleitung und „Nachfolge offen" gelten für beide Arten gleich; dafür stehen bei
-beiden dieselben Abschnitte — **„Berechtigungen"** als Liste auf der Seite (nicht mehr hinter einem
-Knopf „Rechte verwalten"), **„Im Katalog auffindbar"**, **„Zuordnungen"** und **„Warum sehe ich
-das?"** — bei einer Wissensbibliothek im Reiter „Freigaben", bei einer Prompt-Bibliothek im Reiter
-„Verwaltung".
+die [Prompt-Bibliotheken](prompt-bibliotheken.md) stehen unter **„Prompts"**. Rollen, Herleitung
+und „Nachfolge offen" gelten für beide Arten gleich; dafür stehen bei beiden dieselben Abschnitte —
+**„Berechtigungen"** als Liste auf der Seite (nicht mehr hinter einem Knopf „Rechte verwalten"),
+**„Zuordnungen"** und **„Warum sehe ich das?"** — bei einer Wissensbibliothek im Reiter
+„Freigaben", bei einer Prompt-Bibliothek im Reiter „Verwaltung".
 
 Der Reiter **„Freigaben"** einer Wissensbibliothek führt sie in dieser Reihenfolge:
 
@@ -100,7 +99,6 @@ Der Reiter **„Freigaben"** einer Wissensbibliothek führt sie in dieser Reihen
 |---|---|
 | **Eigentümer** | die zuständige Stelle mit Namen; über „Eigentum übergeben" reicht der Eigentümer sie an eine Person oder eine Gruppe weiter — mit Rückfrage, und die Eigentümerrolle geht mit. Auch die **Systemverwaltung** kann übergeben: So bekommt eine Bibliothek mit offener Nachfolge wieder eine handlungsfähige Stelle, ohne das Konto der ausgeschiedenen Person. Jede Übergabe steht mit Namen im Nachweisprotokoll |
 | **Berechtigungen** | Personen, Gruppen und „Alle Konten" mit Rolle, Befristung und Entzug, dazu das Formular „Freigeben". Für „Alle Konten" stehen dabei nur **Leser** und **Bearbeiter** zur Wahl — in der Liste wie im Formular; für die Systemverwaltung darunter die Obergrenze „Freigabe an Alle erlaubt" |
-| **Im Katalog auffindbar** | der Schalter mit eigenem „Auffindbarkeit speichern"; für die Systemverwaltung darunter die Obergrenze „Auffindbarkeit im Katalog erlaubt" |
 | **Externer Zugang** | die Freigabe für Fremdzugänge |
 | **Zuordnungen** | die Spaces, in denen die Bibliothek als Datenquelle bereitsteht |
 | **Diagnosesperre** | ob die Bibliothek in einer fremden Suchdiagnose auftauchen darf |
@@ -123,7 +121,7 @@ Versprechen gilt auch hier.
 |---|---|
 | **Leser** (`VIEWER`) | Die Bibliothek durchsuchen, Treffer und Dokumentenliste sehen |
 | **Bearbeiter** (`EDITOR`) | Zusätzlich Dokumente hochladen und löschen, Ordner anlegen, umbenennen und löschen, einen Indexierungslauf anstoßen, Metadaten pflegen |
-| **Verwalter** (`MANAGER`) | Zusätzlich Rechte vergeben und entziehen — auch an alle Konten —, die Auffindbarkeit im Katalog setzen, die Quellverbindung sehen und ändern, die Bibliothek für [Fremdzugänge](fremdzugaenge.md) freigeben |
+| **Verwalter** (`MANAGER`) | Zusätzlich Rechte vergeben und entziehen — auch an alle Konten —, die Quellverbindung sehen und ändern, die Bibliothek für [Fremdzugänge](fremdzugaenge.md) freigeben |
 | **Eigentümer** (`OWNER`) | Zusätzlich löschen und das Eigentum übertragen |
 
 Die Rollen sind gestuft: Wer Verwalter ist, darf alles, was ein Bearbeiter darf. Die
@@ -147,7 +145,7 @@ Rückfrage vor einer Freigabe an die Gruppe eines externen Anbieters. Den Empfä
 bietet der Assistent nicht an: Ein Bestand, den es noch nicht gibt, hat keine Reichweite zu weiten,
 und die Obergrenze, die über eine solche Freigabe entscheidet, gehört der angelegten Bibliothek.
 
-### Reichweite: „Alle Konten" und Auffindbarkeit
+### Reichweite: „Alle Konten"
 
 **Es gibt keine getrennte Verteilungsstufe mehr.** Wie weit eine Bibliothek reicht, ergibt sich
 allein aus ihrer Rechteliste. Wer sie dem ganzen Haus öffnen will, erteilt ein Recht an den
@@ -162,43 +160,39 @@ In den Übersichten steht die Reichweite als **abgeleitete Kennzeichnung**: „A
 Personen" oder „nur Sie". Sie ist keine Einstellung, sondern die Zusammenfassung dessen, was in der
 Rechteliste steht.
 
-Daneben trägt jede Bibliothek genau ein Feld, das niemanden benennt und das ihr Verwalter setzt:
+**Sichtbar ist nur, was lesbar ist.** Eine Bibliothek, die eine Person nicht lesen darf, erscheint
+für sie nirgends — weder in der Übersicht noch im Katalog noch in der Suche, auch nicht mit Namen
+oder Beschreibung. Wer einen Bestand für andere sichtbar machen will, gibt ihn frei.
 
-| Feld | Werte | Wirkung |
-|---|---|---|
-| **Auffindbarkeit** | im Katalog auffindbar, auch ohne Berechtigung, ja/nein | Ob der **Eintrag** der Bibliothek — Name, Beschreibung, zuständige Stelle — im Katalog erscheint. Der **Inhalt** bleibt den Berechtigten vorbehalten. Vorgabe: nein |
-
-Beides wird **historisiert** wie eine erteilte Rolle: Zu jedem Stichtag innerhalb der
-Aufbewahrungsfrist ist belegbar, wie weit eine Bibliothek gereicht hat (Abschnitt 12) — die
-Freigabe an alle Konten in der Rechtehistorie, die Auffindbarkeit in ihrer eigenen. Die
-Freigabe für [Fremdzugänge](fremdzugaenge.md) ist ein weiteres Reichweitenfeld derselben Art.
+Die Freigabe an alle Konten wird **historisiert** wie jede erteilte Rolle: Zu jedem Stichtag
+innerhalb der Aufbewahrungsfrist ist belegbar, wie weit eine Bibliothek gereicht hat (Abschnitt 12).
+Die Freigabe für [Fremdzugänge](fremdzugaenge.md) ist ein weiteres Reichweitenfeld und wird
+ebenso historisiert.
 
 ### Der Katalog
 
 Der **Katalog** ist ein eigener Punkt der Hauptnavigation neben „Wissen" und „Prompts". Er zeigt
-Wissens- und Prompt-Bibliotheken gemischt: alle, die die Person lesen darf — über eine eigene Rolle,
-eine Rolle über eine Gruppe oder die Freigabe an „Alle Konten" —, und dazu alle, die im Katalog
-auffindbar sind. Die Übersichten unter „Wissen" und „Prompts" bleiben daneben die Orte, an
+Wissens- und Prompt-Bibliotheken gemischt: genau die, die die Person lesen darf — über eine eigene
+Rolle, eine Rolle über eine Gruppe oder die Freigabe an „Alle Konten". Die Übersichten unter „Wissen" und „Prompts" bleiben daneben die Orte, an
 denen Bibliotheken angelegt und verwaltet werden.
 
 | Element | Inhalt |
 |---|---|
 | **Suche** | Über Name und Beschreibung, ohne Rücksicht auf Groß- und Kleinschreibung; der Suchtext ist begrenzt |
 | **Filter** | „Alle", „Wissen" oder „Prompts" |
-| **Eintrag** | Art (Wissens- oder Prompt-Bibliothek), Name, Beschreibung, Umfang (Dokumente bzw. Prompts), in wie vielen Räumen sie bereitsteht, zuständige Stelle; in der Tabelle zusätzlich die Herkunft |
+| **Eintrag** | Art (Wissens- oder Prompt-Bibliothek), Name, Beschreibung, Umfang (Dokumente bzw. Prompts), in wie vielen Räumen sie bereitsteht, zuständige Stelle; in der Tabelle zusätzlich die Herkunft. Jeder Eintrag führt zur Detailseite der Bibliothek |
 | **Seiten** | Die Einträge kommen seitenweise; „Weitere laden" hängt die nächste Seite an |
 
-**Auffindbar ist nicht zugänglich.** Eine auffindbare Bibliothek, die die Person nicht lesen darf,
-steht im Katalog mit dem Hinweis **„Auffindbar ohne Berechtigung — zuständig: …"** und führt nirgendwohin;
-ihre Adresse antwortet „nicht gefunden" wie bei einer unbekannten Bibliothek. Zuständig ist der
-Eigentümer — bei einer Gruppe ihr Name, bei einer Person ihr Anzeigename. Eine geschützte Gruppe und
-eine Person ohne Anzeigenamen bleiben unbenannt, eine E-Mail-Adresse erscheint nie. Ist die
-Nachfolge offen (Abschnitt 13.3), nennt der Hinweis deren Adressaten.
+Eine Bibliothek ohne Leserecht steht nicht im Katalog; auch die Suche über Name oder Beschreibung
+findet sie nicht, und ihre Adresse antwortet „nicht gefunden" wie bei einer unbekannten Bibliothek.
+Zuständig ist der Eigentümer — bei einer Gruppe ihr Name, bei einer Person ihr Anzeigename. Eine
+geschützte Gruppe und eine Person ohne Anzeigenamen bleiben unbenannt, eine E-Mail-Adresse erscheint
+nie. Ist die Nachfolge offen (Abschnitt 13.3), nennt der Eintrag deren Adressaten.
 
 Die Systemverwaltung sieht im Katalog nicht mehr als andere: **Verwalten ist nicht Lesen.** Eine
-Bibliothek, die sie nur verwaltet, erscheint dort nur, wenn sie auffindbar ist, und dann als Eintrag
-ohne Zugriff. Der Katalog zeigt nie etwas aus einer anderen Organisation, und ein Eintrag enthält
-Beschreibungen, nie Inhalte: keine Dokumente, keine Prompts.
+Bibliothek, die sie nur verwaltet, erscheint dort nicht. Der Katalog zeigt nie etwas aus einer
+anderen Organisation, und ein Eintrag enthält Beschreibungen, nie Inhalte: keine Dokumente, keine
+Prompts.
 
 ### Freigabe-Obergrenze für Konnektorbibliotheken
 
@@ -210,37 +204,34 @@ die technische Sicherung gegen genau diesen einen Schritt. Bibliotheken für Upl
 Obergrenze: Dort kuratiert dieselbe Person ohnehin jedes Dokument einzeln.
 
 **Die Obergrenze gilt je Bibliothek und wird nicht automatisch gesetzt.** Neu angelegt ist jede
-Konnektorbibliothek zunächst **ungedeckelt**: Beide Erlaubnisse stehen offen, und die
+Konnektorbibliothek zunächst **ungedeckelt**: Die Erlaubnis steht offen, und die
 Systemverwaltung muss sie eigens entziehen, damit die Obergrenze wirkt. Die Bibliothek selbst
-startet trotzdem eng — sie trägt nur die Rechte, die der Anlegende erteilt, und ist nicht
-auffindbar. Wer die Obergrenze nicht senkt, lässt dem Anlegenden also die Wahl bis hin zur Freigabe
+startet trotzdem eng — sie trägt nur die Rechte, die der Anlegende erteilt. Wer die Obergrenze nicht senkt, lässt dem Anlegenden also die Wahl bis hin zur Freigabe
 an alle Konten. Ein Betrieb, der das systematisch verhindern will, prüft die Obergrenze
 deshalb **nach jeder Neuanlage** einer Konnektorbibliothek, oder schränkt das Anlegerecht
 „Konnektorbibliotheken anlegen" auf eine benannte Gruppe ein (Abschnitt 9) — dann entscheidet diese
 Gruppe, wer überhaupt anlegen darf, bevor die Obergrenze greifen müsste.
 
 Zu finden ist die Obergrenze auf der Detailseite der jeweiligen Bibliothek, Reiter „Freigaben" —
-sichtbar und änderbar nur für die Systemverwaltung. Zwei Erlaubnisse:
+sichtbar und änderbar nur für die Systemverwaltung. Sie besteht aus einer Erlaubnis:
 
 | Erlaubnis | Wirkung, wenn entzogen |
 |---|---|
 | **Freigabe an alle Konten erlaubt** | Ein Recht an „Alle Konten" kann nicht mehr erteilt werden; ein bestehendes wird beim Entziehen sofort zurückgenommen |
-| **Auffindbarkeit im Katalog erlaubt** | Die Bibliothek kann nicht mehr im Katalog gelistet werden; eine bestehende Listung wird sofort gelöscht |
 
-**Wird eine Erlaubnis entzogen, wirkt das sofort — aber ausschließlich für diese beiden Dinge.**
+**Wird die Erlaubnis entzogen, wirkt das sofort — aber ausschließlich für die Freigabe an alle
+Konten.**
 Es gibt keine Übergangszeit und keinen Zustand „noch zu weit, aber geduldet". **Unberührt bleiben
 erteilte Rechte an einzelnen Personen und Gruppen sowie eine bestehende Fremdzugangsfreigabe**
 (Abschnitt „Die Freigabe einer Wissensbibliothek" im Kapitel [Fremdzugänge](fremdzugaenge.md)) —
 beide müssen gesondert geprüft und, falls gewünscht, gesondert zurückgenommen werden. Jeder Vorgang
 steht im Nachweisprotokoll: das Setzen der Obergrenze selbst und, falls ausgelöst, die dadurch
-bewirkte Rücknahme der Freigabe oder der Auffindbarkeit.
+bewirkte Rücknahme der Freigabe.
 
 Versucht die Eigentümerin oder ein Verwalter der Bibliothek anschließend, an alle Konten
-freizugeben oder die Bibliothek trotz gesperrter Auffindbarkeit zu listen, weist die Anwendung das
-mit einer Meldung ab, die die geltende Obergrenze beim Namen nennt und auf die Systemverwaltung
-verweist — kein technischer Fehler, sondern eine erklärte Grenze. Der Schalter für die
-Auffindbarkeit ist im Formular bereits gesperrt, mit demselben Hinweis, sodass die Grenze schon vor
-dem Speichern sichtbar ist.
+freizugeben, weist die Anwendung das mit einer Meldung ab, die die geltende Obergrenze beim Namen
+nennt und auf die Systemverwaltung verweist — kein technischer Fehler, sondern eine erklärte
+Grenze.
 
 ### Ordner, Speicherkontingent, Löschen
 
@@ -513,7 +504,9 @@ jede Änderung an Freigabe und Schutzkennzeichen stehen im Nachweisprotokoll; ei
 führen sie nicht — Verantwortung trägt kein Leserecht. Ruft die **Systemverwaltung** die
 Mitgliederliste einer Gruppe ab, die sie nicht selbst verantwortet, steht auch dieser Abruf im
 Nachweisprotokoll — mit der Zahl der Mitglieder, ohne die Namen. Verantwortliche erzeugen beim Lesen
-ihrer eigenen Gruppe keinen Eintrag.
+ihrer eigenen Gruppe keinen Eintrag. Auch der Bericht des Verzeichnisabgleichs nennt aufgenommene
+und entfernte Mitglieder namentlich; jede Auslieferung dieses Berichts an die Systemverwaltung steht
+ebenfalls im Nachweisprotokoll, mit der Zahl der genannten Gruppen und Personen.
 
 **Gruppen aus dem Verzeichnis oder dem Anmeldetoken lassen sich hier nicht bearbeiten.** Sie haben
 keine Verantwortlichen; Name und Mitglieder pflegt ihre Quelle. In der Gruppenverwaltung lässt sich an

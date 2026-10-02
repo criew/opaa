@@ -98,7 +98,7 @@ class AssetGrantServiceTest {
     // method on that entity) - libraryId is read back from the constructed instance rather than
     // generated independently, so every stub keyed on "this library's id" below actually matches
     // what AssetGrantService reads via library.getId().
-    library = KnowledgeLibrary.ownedByUser(organizationId, "Bibliothek", null, managerId, false);
+    library = KnowledgeLibrary.ownedByUser(organizationId, "Bibliothek", null, managerId);
     libraryId = library.getId();
     when(accessService.load(KnowledgeLibrary.ASSET_TYPE, libraryId, organizationId))
         .thenReturn(library);

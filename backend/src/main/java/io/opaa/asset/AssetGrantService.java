@@ -428,12 +428,10 @@ public class AssetGrantService {
 
   /**
    * Takes back the grant to "Alle Konten" because the type's ceiling now forbids it (#797, #1931,
-   * ADR-0037 Entscheidung 5) - the counterpart of {@link
-   * AssetShellService#clearListedForLoweredCap} on the grant side. Deliberately without the {@code
-   * MANAGER} check of {@link #revokeGrant}: the caller is the system administration, whose {@code
-   * SYSTEM_ADMIN} role it has already established, and the clamp must never be refused. Everything
-   * else is an ordinary revocation - one grant-history interval, one audit entry, one cache
-   * invalidation.
+   * ADR-0037 Entscheidung 5). Deliberately without the {@code MANAGER} check of {@link
+   * #revokeGrant}: the caller is the system administration, whose {@code SYSTEM_ADMIN} role it has
+   * already established, and the clamp must never be refused. Everything else is an ordinary
+   * revocation - one grant-history interval, one audit entry, one cache invalidation.
    *
    * @return whether such a grant existed and was taken back.
    */

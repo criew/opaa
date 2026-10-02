@@ -79,9 +79,7 @@ paths:
     put:
       operationId: updatePromptLibrary
       tags: [prompt]
-      summary: >
-        Replace name, description and listed (MANAGER or above). A wider reach is
-        refused with 409 while the library's succession is open (ADR-0036, Entscheidung 6).
+      summary: Replace name and description (MANAGER or above).
       requestBody:
         required: true
         content:
@@ -101,8 +99,6 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
-        "409":
-          $ref: "#/components/responses/Conflict"
 
     delete:
       operationId: deletePromptLibrary
@@ -448,15 +444,11 @@ components:
           description: >
             Required when ownerType is GROUP (the caller must be a member of that group). Ignored
             for ownerType USER, which always owns as the creator.
-        listed:
-          type: boolean
-          nullable: true
-          description: Defaults to false - listing is a deliberate act.
 
     PromptLibraryUpdateRequest:
       type: object
-      required: [name, listed]
-      description: Replaces name, description and findability as a whole.
+      required: [name]
+      description: Replaces name and description as a whole.
       properties:
         name:
           type: string
@@ -466,13 +458,11 @@ components:
           type: string
           nullable: true
           maxLength: 2000
-        listed:
-          type: boolean
 
     PromptLibraryResponse:
       type: object
       required:
-        [id, name, ownerType, ownerId, reach, listed, myRole, promptCount, createdAt, updatedAt]
+        [id, name, ownerType, ownerId, reach, myRole, promptCount, createdAt, updatedAt]
       properties:
         id:
           type: string
@@ -496,8 +486,6 @@ components:
             group is protected and the caller may not see its name (ADR-0036, Entscheidung 9).
         reach:
           $ref: "#/components/schemas/AssetReachResponse"
-        listed:
-          type: boolean
         myRole:
           description: >
             The role the caller holds. In the list, the role of the formula (at least VIEWER);

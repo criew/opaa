@@ -89,8 +89,7 @@ class DocumentIngestServiceEmbeddingConcurrencyTest {
   void setUp() {
     meterRegistry = new SimpleMeterRegistry();
     targetLibrary =
-        KnowledgeLibrary.ownedByUser(
-            UUID.randomUUID(), "Bibliothek", null, UUID.randomUUID(), false);
+        KnowledgeLibrary.ownedByUser(UUID.randomUUID(), "Bibliothek", null, UUID.randomUUID());
     lenient()
         .when(storageQuotaService.wouldExceedQuota(any(), org.mockito.ArgumentMatchers.anyLong()))
         .thenReturn(false);

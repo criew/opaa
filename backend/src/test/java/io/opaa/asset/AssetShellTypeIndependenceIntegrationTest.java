@@ -44,7 +44,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * The acceptance criteria of #1899 and #1900 for a second asset type: {@code TEST_ASSET}, declared
@@ -59,7 +58,6 @@ class AssetShellTypeIndependenceIntegrationTest {
   @Autowired private AssetGrantService grantService;
   @Autowired private AssetAccessService accessService;
   @Autowired private AssetAccessDerivationService derivationService;
-  @Autowired private AssetShellService shellService;
   @Autowired private AssetRepository assetRepository;
   @Autowired private AssetGrantHistoryRepository grantHistoryRepository;
   @Autowired private AssetGrantRepository grantRepository;
@@ -74,7 +72,6 @@ class AssetShellTypeIndependenceIntegrationTest {
   @Autowired private OrganizationRepository organizationRepository;
   @Autowired private OwnOrganizationFixtures ownOrganizationFixtures;
   @Autowired private JdbcTemplate jdbcTemplate;
-  @Autowired private TransactionTemplate transactionTemplate;
 
   private UUID organizationId;
   private UUID owner;
@@ -163,7 +160,7 @@ class AssetShellTypeIndependenceIntegrationTest {
     UUID asset = createTestAsset();
     UUID library =
         libraryRepository
-            .save(KnowledgeLibrary.ownedByUser(organizationId, "Bibliothek", null, owner, false))
+            .save(KnowledgeLibrary.ownedByUser(organizationId, "Bibliothek", null, owner))
             .getId();
     grantRepository.save(
         AssetGrant.forUser(
@@ -199,7 +196,8 @@ class AssetShellTypeIndependenceIntegrationTest {
 
   /**
    * ADR-0036 Entscheidung 6 for a type no enum names: without a capable owner it is listed, the run
-   * records it, and its reach is frozen for a new grant, a wider release and a new association.
+   * records it, and its reach is frozen for a new grant, a grant to "Alle Konten" and a new
+   * association.
    */
   @Test
   void aTestDefinedTypeWithoutACapableOwnerIsListedRecordedAndFrozen() {
@@ -249,13 +247,6 @@ class AssetShellTypeIndependenceIntegrationTest {
                     asset,
                     AssetGrantUpsert.forAllAccounts(AssetRole.VIEWER),
                     systemAdmin))
-        .isInstanceOf(ConflictException.class);
-    assertThatThrownBy(
-            () ->
-                transactionTemplate.executeWithoutResult(
-                    status ->
-                        shellService.changeListed(
-                            assetRepository.findById(asset).orElseThrow(), true, administrator)))
         .isInstanceOf(ConflictException.class);
     assertThatThrownBy(
             () -> associationService.associate(space, TEST_ASSET, asset, callerOf(reader)))

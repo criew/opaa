@@ -84,7 +84,7 @@ class LibraryResponseMapperTest {
     UUID owner = UUID.randomUUID();
     UUID organization = UUID.randomUUID();
     KnowledgeLibrary library =
-        KnowledgeLibrary.ownedByUser(organization, "Rechtsquellen", "Beschreibung", owner, true);
+        KnowledgeLibrary.ownedByUser(organization, "Rechtsquellen", "Beschreibung", owner);
     LibraryDetail detail =
         new LibraryDetail(
             library,
@@ -109,7 +109,6 @@ class LibraryResponseMapperTest {
     assertThat(response.getReach().getAllAccounts()).isTrue();
     assertThat(response.getReach().getGroupCount()).isEqualTo(2);
     assertThat(response.getReach().getUserCount()).isEqualTo(1);
-    assertThat(response.getListed()).isTrue();
     assertThat(response.getMyRole()).isEqualTo(AssetRole.VIEWER);
     assertThat(response.getSourceType()).isEqualTo("UPLOAD");
     assertThat(response.getDocumentCount()).isEqualTo(7L);
@@ -140,8 +139,7 @@ class LibraryResponseMapperTest {
   @Test
   void toResponseCopiesDiagnosticsLockToggleableIndependentlyOfMyRole() {
     KnowledgeLibrary library =
-        KnowledgeLibrary.ownedByUser(
-            UUID.randomUUID(), "Rechtsquellen", null, UUID.randomUUID(), false);
+        KnowledgeLibrary.ownedByUser(UUID.randomUUID(), "Rechtsquellen", null, UUID.randomUUID());
     LibraryDetail toggleable =
         new LibraryDetail(
             library,
@@ -177,7 +175,6 @@ class LibraryResponseMapperTest {
             "Wiki",
             null,
             UUID.randomUUID(),
-            false,
             SourceTypes.CONFLUENCE,
             null,
             "https://wiki.example.org",
@@ -212,7 +209,6 @@ class LibraryResponseMapperTest {
                 "Erika Mustermann",
                 0L,
                 365),
-            false,
             false);
     LibraryDetail detail =
         new LibraryDetail(
@@ -248,7 +244,6 @@ class LibraryResponseMapperTest {
     assertThat(response.getExternalAccess().getMaxReleaseDays()).isEqualTo(365);
     // #797
     assertThat(response.getAllAccountsGrantAllowed()).isFalse();
-    assertThat(response.getListedCap()).isFalse();
   }
 
   @Test
@@ -256,10 +251,10 @@ class LibraryResponseMapperTest {
     // #485: an UPLOAD library never carries a schedule at all - the management detail's own
     // schedule field distinguishes that case from "not visible to this caller" (previous test).
     KnowledgeLibrary library =
-        KnowledgeLibrary.ownedByUser(UUID.randomUUID(), "Uploads", null, UUID.randomUUID(), false);
+        KnowledgeLibrary.ownedByUser(UUID.randomUUID(), "Uploads", null, UUID.randomUUID());
     LibraryManagementDetail managementDetail =
         new LibraryManagementDetail(
-            null, null, null, false, false, null, null, null, null, null, 0L, 0L, null, null, null);
+            null, null, null, false, false, null, null, null, null, null, 0L, 0L, null, null);
     LibraryDetail detail =
         new LibraryDetail(
             library, AssetRole.OWNER, 0L, managementDetail, true, AssetReach.NONE, null, null);
@@ -270,14 +265,13 @@ class LibraryResponseMapperTest {
     assertThat(response.getLastScheduledRunsFailed()).isNull();
     // #797: UPLOAD never carries a cap
     assertThat(response.getAllAccountsGrantAllowed()).isNull();
-    assertThat(response.getListedCap()).isNull();
   }
 
   @Test
   void toListResponseCarriesTheResolvedOwnerName() {
     UUID owner = UUID.randomUUID();
     KnowledgeLibrary library =
-        KnowledgeLibrary.ownedByUser(UUID.randomUUID(), "Team-Bibliothek", null, owner, true);
+        KnowledgeLibrary.ownedByUser(UUID.randomUUID(), "Team-Bibliothek", null, owner);
     LibrarySummary summary =
         new LibrarySummary(
             library,
@@ -309,9 +303,9 @@ class LibraryResponseMapperTest {
   @Test
   void toListResponsesMapsEverySummaryInOrder() {
     KnowledgeLibrary first =
-        KnowledgeLibrary.ownedByUser(UUID.randomUUID(), "A", null, UUID.randomUUID(), false);
+        KnowledgeLibrary.ownedByUser(UUID.randomUUID(), "A", null, UUID.randomUUID());
     KnowledgeLibrary second =
-        KnowledgeLibrary.ownedByUser(UUID.randomUUID(), "B", null, UUID.randomUUID(), false);
+        KnowledgeLibrary.ownedByUser(UUID.randomUUID(), "B", null, UUID.randomUUID());
     List<LibrarySummary> summaries =
         List.of(
             new LibrarySummary(
@@ -333,7 +327,7 @@ class LibraryResponseMapperTest {
   @Test
   void toListResponseNamesAFailedLastRunEvenWhenAnEarlierOneSucceeded() {
     KnowledgeLibrary library =
-        KnowledgeLibrary.ownedByUser(UUID.randomUUID(), "Konnektor", null, UUID.randomUUID(), true);
+        KnowledgeLibrary.ownedByUser(UUID.randomUUID(), "Konnektor", null, UUID.randomUUID());
     // #1940: exactly the picture the overview could not show before - lastIndexedAt still stands
     // at the last success while the newest run failed.
     LibrarySummary summary =
@@ -356,7 +350,7 @@ class LibraryResponseMapperTest {
   @Test
   void toListResponseCarriesARunningRun() {
     KnowledgeLibrary library =
-        KnowledgeLibrary.ownedByUser(UUID.randomUUID(), "Laeuft", null, UUID.randomUUID(), true);
+        KnowledgeLibrary.ownedByUser(UUID.randomUUID(), "Laeuft", null, UUID.randomUUID());
     LibrarySummary summary =
         new LibrarySummary(
             library, AssetRole.MANAGER, 0L, null, null, JobStatus.RUNNING, null, AssetReach.NONE);
@@ -376,7 +370,6 @@ class LibraryResponseMapperTest {
             .description("Beschreibung")
             .ownerType(AssetOwnerType.GROUP)
             .ownerId(ownerId)
-            .listed(true)
             .sourcePath("/data/documents")
             .sourceUrl(URI.create("https://example.com/documents/"))
             .sourceProxy("proxy.example.com:8080")
@@ -389,7 +382,6 @@ class LibraryResponseMapperTest {
     assertThat(creation.description()).isEqualTo("Beschreibung");
     assertThat(creation.ownerType()).isEqualTo(AssetOwnerType.GROUP);
     assertThat(creation.ownerId()).isEqualTo(ownerId);
-    assertThat(creation.listed()).isTrue();
     assertThat(creation.sourceType()).isEqualTo(SourceTypes.HTTP_DIRECTORY);
     assertThat(creation.sourcePath()).isEqualTo("/data/documents");
     assertThat(creation.sourceUrl()).isEqualTo(URI.create("https://example.com/documents/"));
@@ -405,7 +397,6 @@ class LibraryResponseMapperTest {
     LibraryUpdateRequest request =
         new LibraryUpdateRequest("Umbenannt")
             .description("Neue Beschreibung")
-            .listed(false)
             .sourceType("RSS_FEED")
             .sourcePath("/data/documents")
             .sourceUrl(URI.create("https://example.com/feed.xml"))
@@ -422,7 +413,6 @@ class LibraryResponseMapperTest {
 
     assertThat(update.name()).isEqualTo("Umbenannt");
     assertThat(update.description()).isEqualTo("Neue Beschreibung");
-    assertThat(update.listed()).isFalse();
     assertThat(update.sourceType()).isEqualTo(SourceTypes.RSS_FEED);
     assertThat(update.sourcePath()).isEqualTo("/data/documents");
     assertThat(update.sourceUrl()).isEqualTo(URI.create("https://example.com/feed.xml"));
@@ -477,7 +467,6 @@ class LibraryResponseMapperTest {
             "Wiki",
             null,
             UUID.randomUUID(),
-            false,
             SourceTypes.CONFLUENCE,
             null,
             "https://wiki.example.org",
@@ -529,7 +518,6 @@ class LibraryResponseMapperTest {
             0L,
             0L,
             null,
-            true,
             true);
     LibraryResponse manager =
         LibraryResponseMapper.toResponse(
@@ -554,7 +542,6 @@ class LibraryResponseMapperTest {
             "Protokolle",
             null,
             UUID.randomUUID(),
-            false,
             SourceTypes.S3,
             null,
             "https://s3.example.org",
@@ -586,7 +573,7 @@ class LibraryResponseMapperTest {
     assertThat(response.toString()).doesNotContain("hochgeheim");
 
     KnowledgeLibrary upload =
-        KnowledgeLibrary.ownedByUser(UUID.randomUUID(), "Upload", null, UUID.randomUUID(), false);
+        KnowledgeLibrary.ownedByUser(UUID.randomUUID(), "Upload", null, UUID.randomUUID());
     assertThat(
             LibraryResponseMapper.toResponse(
                     new LibraryDetail(

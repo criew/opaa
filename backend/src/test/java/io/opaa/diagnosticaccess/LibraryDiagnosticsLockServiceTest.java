@@ -54,8 +54,7 @@ class LibraryDiagnosticsLockServiceTest {
   void setUp() {
     service =
         new LibraryDiagnosticsLockService(libraryRepository, accessService, auditEventRecorder);
-    library =
-        KnowledgeLibrary.ownedByUser(ORGANIZATION_ID, "Personalvorgänge", null, ownerId, false);
+    library = KnowledgeLibrary.ownedByUser(ORGANIZATION_ID, "Personalvorgänge", null, ownerId);
     when(libraryRepository.findById(library.getId())).thenReturn(Optional.of(library));
     when(libraryRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
   }

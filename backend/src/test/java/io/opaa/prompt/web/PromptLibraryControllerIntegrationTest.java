@@ -75,7 +75,7 @@ class PromptLibraryControllerIntegrationTest {
     mockMvc
         .perform(get("/api/v1/prompt-libraries/" + library).with(devUser()))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.listed").value(false))
+        .andExpect(jsonPath("$.listed").doesNotExist())
         .andExpect(jsonPath("$.reach.allAccounts").value(false))
         .andExpect(jsonPath("$.reach.groupCount").value(0))
         .andExpect(jsonPath("$.reach.userCount").value(1))
@@ -132,9 +132,9 @@ class PromptLibraryControllerIntegrationTest {
         .perform(
             put("/api/v1/prompt-libraries/" + library)
                 .with(devUser())
-                .content("{\"name\":\"Vorlagen\",\"listed\":true}"))
+                .content("{\"name\":\"Vorlagen\"}"))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.listed").value(true))
+        .andExpect(jsonPath("$.name").value("Vorlagen"))
         // #1931: the reach follows the grants - the second one above widened it to two people.
         .andExpect(jsonPath("$.reach.allAccounts").value(false))
         .andExpect(jsonPath("$.reach.userCount").value(2))

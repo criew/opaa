@@ -3,38 +3,6 @@ import type { AssetType, CatalogEntryResponse } from '../types/api'
 import { mockLibraries } from './libraryFixtures'
 import { mockPromptLibraries, mockUnreadablePromptLibraryIds } from './promptLibraryFixtures'
 
-/** Listed for the organization, but without a right of the mock user - findable, not usable. */
-export const mockListedWithoutAccess: CatalogEntryResponse[] = [
-  {
-    assetType: 'KNOWLEDGE_LIBRARY',
-    assetId: 'library-listed-foreign',
-    name: 'Satzungen der Kämmerei',
-    description: 'Gebühren- und Beitragssatzungen, gepflegt von der Kämmerei',
-    ownerType: 'GROUP',
-    ownerLabel: 'Kämmerei',
-    origin: 'LOCAL',
-    accessible: false,
-    listed: true,
-    itemCount: 38,
-    spaceCount: 2,
-    succession: null,
-  },
-  {
-    assetType: 'PROMPT_LIBRARY',
-    assetId: 'prompt-library-listed-foreign',
-    name: 'Bescheidbausteine Ordnungsamt',
-    description: 'Anhörung und Bescheid nach Hausstandard des Ordnungsamts',
-    ownerType: 'USER',
-    ownerLabel: null,
-    origin: 'LOCAL',
-    accessible: false,
-    listed: true,
-    itemCount: 5,
-    spaceCount: 0,
-    succession: { addressee: 'SYSTEM_ADMINISTRATION', addresseeLabel: 'die Systemverwaltung' },
-  },
-]
-
 function readableEntries(): CatalogEntryResponse[] {
   const knowledge: CatalogEntryResponse[] = mockLibraries.map((library) => ({
     assetType: 'KNOWLEDGE_LIBRARY',
@@ -44,8 +12,6 @@ function readableEntries(): CatalogEntryResponse[] {
     ownerType: library.ownerType,
     ownerLabel: library.ownerName ?? null,
     origin: 'LOCAL',
-    accessible: true,
-    listed: library.listed,
     itemCount: library.documentCount,
     spaceCount: 0,
     succession: library.succession ?? null,
@@ -60,8 +26,6 @@ function readableEntries(): CatalogEntryResponse[] {
       ownerType: library.ownerType,
       ownerLabel: library.ownerName ?? null,
       origin: 'LOCAL',
-      accessible: true,
-      listed: library.listed,
       itemCount: library.promptCount,
       spaceCount: 1,
       succession: library.succession ?? null,
@@ -69,7 +33,7 @@ function readableEntries(): CatalogEntryResponse[] {
   return [...knowledge, ...prompts]
 }
 
-/** The server's catalog: readable united with listed, filtered, searched and paged by name. */
+/** The server's catalog: only what the mock user may read, filtered, searched and paged by name. */
 export const catalogHandlers = [
   http.get('/api/v1/catalog', ({ request }) => {
     const params = new URL(request.url).searchParams
@@ -80,7 +44,7 @@ export const catalogHandlers = [
     if (page < 0 || size < 1 || size > 200) {
       return HttpResponse.json({ error: 'page oder size außerhalb der Grenzen' }, { status: 400 })
     }
-    const all = [...readableEntries(), ...mockListedWithoutAccess]
+    const all = readableEntries()
       .filter((entry) => !type || entry.assetType === type)
       .filter(
         (entry) =>

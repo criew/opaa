@@ -121,7 +121,6 @@ class ConfluenceDataCenterFullSyncTest {
             "Wiki " + UUID.randomUUID(),
             null,
             UUID.randomUUID(),
-            false,
             SourceTypes.CONFLUENCE,
             null,
             confluence.baseUrl(),

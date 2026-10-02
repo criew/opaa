@@ -104,7 +104,6 @@ class OpenAiIntegrationTest {
                 "OpenAI-IT-Bibliothek",
                 null,
                 userId,
-                false,
                 SourceTypes.FILESYSTEM,
                 tempDir.toAbsolutePath().toString(),
                 null,

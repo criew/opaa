@@ -49,7 +49,6 @@ class S3OriginalAccessIntegrationTest {
             "Belegsprung",
             null,
             UUID.randomUUID(),
-            false,
             SourceTypes.S3,
             null,
             endpoint,

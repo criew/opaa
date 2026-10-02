@@ -9,11 +9,10 @@ import io.opaa.permission.AssetType;
  * appears as, and the words messages use for it. The business package owning the type contributes
  * one bean; the shell never names a type.
  *
- * <p>{@link #requireListedWithinLimits} and {@link #requireAllAccountsGrantAllowed} are the two
- * ports for type-specific <b>restrictions</b>, one per thing that can be capped: the shell asks the
- * first before it applies a requested findability, the grant service the second before it writes a
- * grant to "Alle Konten". A type that restricts nothing keeps the defaults. Everything else -
- * grants, derivation, history, succession - is the shell's.
+ * <p>{@link #requireAllAccountsGrantAllowed} is the port for a type-specific <b>restriction</b>:
+ * the grant service asks it before it writes a grant to "Alle Konten". A type that restricts
+ * nothing keeps the default. Everything else - grants, derivation, history, succession - is the
+ * shell's.
  */
 public interface AssetTypeDefinition {
 
@@ -30,12 +29,6 @@ public interface AssetTypeDefinition {
 
   /** The plural noun ("Bibliotheken"). */
   String plural();
-
-  /**
-   * Refuses a findability the type does not allow for this asset, with a {@code 409} naming the
-   * limit. Called with the requested state before it is applied.
-   */
-  default void requireListedWithinLimits(Asset asset, boolean listed) {}
 
   /**
    * Refuses a grant to "Alle Konten" the type does not allow for this asset, with a {@code 409}

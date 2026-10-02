@@ -688,7 +688,7 @@ class GroupStewardshipIntegrationTest {
     KnowledgeLibrary library =
         libraryRepository.save(
             KnowledgeLibrary.ownedByUser(
-                organizationId, "Bibliothek " + UUID.randomUUID(), null, caller.id(), false));
+                organizationId, "Bibliothek " + UUID.randomUUID(), null, caller.id()));
     assetGrantRepository.save(
         AssetGrant.forUser(
             KnowledgeLibrary.ASSET_TYPE,
