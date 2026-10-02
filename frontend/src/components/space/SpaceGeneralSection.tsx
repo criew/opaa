@@ -19,19 +19,21 @@ import {
   spaceVisibilityLabel,
 } from '../../utils/labels'
 import FieldLabel from '../wizard/FieldLabel'
+import ChatAutoCleanupField from './ChatAutoCleanupField'
 import SectionHead from '../SectionHead'
 
 interface SpaceGeneralSectionProps {
   spaceId: string
   space: SpaceResponse
-  /** Nur ein Administrator ändert Name, Beschreibung und Sichtbarkeit. */
+  /** Nur ein Administrator ändert Name, Beschreibung, Sichtbarkeit und die Chat-Bereinigung. */
   canManage: boolean
   /** Archivieren und Löschen bleiben dem Eigentümer vorbehalten. */
   isOwner: boolean
 }
 
 /**
- * Der Reiter „Stammdaten" der Space-Einstellungen: Name, Beschreibung und Sichtbarkeit, und am
+ * Der Reiter „Stammdaten" der Space-Einstellungen: Name, Beschreibung, Sichtbarkeit und der Schalter
+ * der automatischen Chat-Bereinigung, den jedes Mitglied sieht, und am
  * Ende der abgesetzte Gefahrenbereich mit Archivieren und Löschen (#1917).
  */
 export default function SpaceGeneralSection({
@@ -50,7 +52,8 @@ export default function SpaceGeneralSection({
     name: string
     description: string
     visibility: SpaceVisibility
-  }>({ spaceId: null, name: '', description: '', visibility: 'PRIVATE' })
+    chatAutoCleanup: boolean
+  }>({ spaceId: null, name: '', description: '', visibility: 'PRIVATE', chatAutoCleanup: false })
   const [localError, setLocalError] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   // #543: deleteSpace's 409 - "Der Space enthält noch Chats ... Archivieren Sie den Space
@@ -61,6 +64,9 @@ export default function SpaceGeneralSection({
   const name = draft.spaceId === spaceId ? draft.name : (space.name ?? '')
   const description = draft.spaceId === spaceId ? draft.description : (space.description ?? '')
   const visibility = draft.spaceId === spaceId ? draft.visibility : (space.visibility ?? 'PRIVATE')
+  const chatAutoCleanup =
+    draft.spaceId === spaceId ? draft.chatAutoCleanup : space.chatAutoCleanup.enabled
+  const current = { spaceId, name, description, visibility, chatAutoCleanup }
 
   async function archive() {
     setLocalError(null)
@@ -109,9 +115,7 @@ export default function SpaceGeneralSection({
               size="small"
               fullWidth
               value={name}
-              onChange={(event) =>
-                setDraft({ spaceId, name: event.target.value, description, visibility })
-              }
+              onChange={(event) => setDraft({ ...current, name: event.target.value })}
               disabled={!canManage}
             />
           </Box>
@@ -122,9 +126,7 @@ export default function SpaceGeneralSection({
               size="small"
               fullWidth
               value={description}
-              onChange={(event) =>
-                setDraft({ spaceId, name, description: event.target.value, visibility })
-              }
+              onChange={(event) => setDraft({ ...current, description: event.target.value })}
               multiline
               minRows={2}
               disabled={!canManage}
@@ -137,12 +139,7 @@ export default function SpaceGeneralSection({
               size="small"
               value={visibility}
               onChange={(event) =>
-                setDraft({
-                  spaceId,
-                  name,
-                  description,
-                  visibility: event.target.value as SpaceVisibility,
-                })
+                setDraft({ ...current, visibility: event.target.value as SpaceVisibility })
               }
               aria-describedby="space-visibility-helper"
             >
@@ -156,6 +153,15 @@ export default function SpaceGeneralSection({
               {spaceVisibilityDescription(visibility)}
             </FormHelperText>
           </FormControl>
+          <ChatAutoCleanupField
+            id="space-chat-auto-cleanup"
+            checked={chatAutoCleanup}
+            onChange={(checked) => setDraft({ ...current, chatAutoCleanup: checked })}
+            disabled={!canManage || (space.isDefault && !isOwner)}
+            personalSpaceOfOther={space.isDefault && !isOwner}
+            archiveAfterDays={space.chatAutoCleanup.archiveAfterDays}
+            deleteAfterDays={space.chatAutoCleanup.deleteAfterDays}
+          />
           {canManage && (
             <Box>
               <Button
@@ -163,7 +169,18 @@ export default function SpaceGeneralSection({
                 onClick={async () => {
                   setLocalError(null)
                   try {
-                    await updateDetails(spaceId, name, description, visibility)
+                    // Der Schalter geht nur mit, wenn er umgelegt wurde: Ein bloßes Umbenennen
+                    // setzt so keinen Stand zurück, den inzwischen jemand anderes geändert hat.
+                    await updateDetails(
+                      spaceId,
+                      name,
+                      description,
+                      visibility,
+                      chatAutoCleanup !== space.chatAutoCleanup.enabled &&
+                        !(space.isDefault && !isOwner)
+                        ? chatAutoCleanup
+                        : undefined,
+                    )
                     setSuccessMessage('Space aktualisiert')
                   } catch (err) {
                     setLocalError(

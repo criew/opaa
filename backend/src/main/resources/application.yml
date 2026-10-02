@@ -198,6 +198,11 @@ opaa:
       # (docs/features/conversation-memory.md). Everything else about the note is a fixed
       # value with no addressee to reconfigure it.
       max-items: ${OPAA_CHAT_NOTE_MAX_ITEMS:10}
+    # Periods of the automatic chat cleanup a space can switch on (io.opaa.space.
+    # ChatAutoCleanupProperties). Floors 90 and 30 days; a smaller value stops the start.
+    auto-cleanup:
+      archive-after-days: ${OPAA_CHAT_AUTO_CLEANUP_ARCHIVE_AFTER_DAYS:90}
+      delete-after-days: ${OPAA_CHAT_AUTO_CLEANUP_DELETE_AFTER_DAYS:365}
   # SPIKE (#1789), throwaway ahead of epic #1747 - never for production use. A message starting
   # with "@test " (case-insensitive) runs through a model-driven tool-calling loop instead of the
   # ordinary retrieval/answer path; every other message is unaffected. Off by default; the beans

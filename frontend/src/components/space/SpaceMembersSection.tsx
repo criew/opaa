@@ -243,8 +243,9 @@ export default function SpaceMembersSection({
                   {/* #1815: Die Verantwortung darf jedes handlungsfähige ADMIN-Mitglied
                       übertragen — an sich oder an ein anderes solches Mitglied (ADR-0036
                       Entscheidung 6). Eine Gruppe kommt dafür nicht in Betracht: Der
-                      Eigentümer bleibt eine natürliche Person. */}
-                  {(canManage || isOwner) && !memberIsOwner && !isGroup && (
+                      Eigentümer bleibt eine natürliche Person. Der Standard-Space bleibt bei
+                      seiner Person und wird nie übertragen. */}
+                  {(canManage || isOwner) && !memberIsOwner && !isGroup && !space.isDefault && (
                     <Button
                       size="small"
                       onClick={async () => {

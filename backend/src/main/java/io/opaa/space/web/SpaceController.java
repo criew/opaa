@@ -126,7 +126,11 @@ public class SpaceController {
     Space updated =
         spaceService.updateSpace(
             spaceId,
-            new SpaceUpdate(request.getName(), request.getDescription(), request.getVisibility()),
+            new SpaceUpdate(
+                request.getName(),
+                request.getDescription(),
+                request.getVisibility(),
+                request.getChatAutoCleanup()),
             caller);
     return SpaceResponseMapper.toResponse(spaceService.detailOf(updated, caller));
   }
@@ -251,6 +255,7 @@ public class SpaceController {
         request.getOwnerId(),
         request.getVisibility(),
         initialMembers,
-        assets);
+        assets,
+        request.getChatAutoCleanup());
   }
 }

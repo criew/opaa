@@ -45,7 +45,8 @@ public final class ChatResponseMapper {
         .referencedLibraryIds(List.copyOf(chat.getReferencedLibraryIds()))
         .metadataFilter(MetadataFilterMapper.toResponse(chat.getMetadataFilter()))
         .pinnedAt(entry.pinnedAt())
-        .archivedAt(entry.archivedAt());
+        .archivedAt(entry.archivedAt())
+        .deletionDueAt(entry.deletionDueAt());
   }
 
   static ChatSummaryPage toSummaryPage(Page<ChatListEntry> page) {
@@ -76,7 +77,8 @@ public final class ChatResponseMapper {
         .title(conversation.getTitle())
         .referencedLibraryIds(conversation.getReferencedLibraryIds())
         .metadataFilter(MetadataFilterMapper.toResponse(conversation.getMetadataFilter()))
-        .archivedAt(conversation.getArchivedAt());
+        .archivedAt(conversation.getArchivedAt())
+        .deletionDueAt(conversation.getDeletionDueAt());
   }
 
   /**

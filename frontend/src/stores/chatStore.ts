@@ -383,6 +383,8 @@ export interface ChatState {
   noteItems: ChatNoteItem[]
   /** When the person moved the active chat into their chat archive; null while it is active. */
   archivedAt: string | null
+  /** When the automatic chat cleanup of the space deletes the archived chat; null otherwise. */
+  deletionDueAt: string | null
   /** The in-flight PATCH (if any) from the most recently *started* setScopeAll/
    * addReferencedLibrary/removeReferencedLibrary call across all chats - never rejects (failures
    * are caught and turned into `error` + a local rollback). Exposed for tests/UI only; sendMessage
@@ -418,7 +420,11 @@ export interface ChatState {
    * confirmation step, optimistically with a rollback (and `error`) if the DELETE fails. */
   removeNoteItem: (itemId: string) => Promise<void>
   /** Records a changed archive mark of a chat - a no-op unless that chat is the active one. */
-  applyArchivedAt: (chatId: string, archivedAt: string | null) => void
+  applyArchivedAt: (
+    chatId: string,
+    archivedAt: string | null,
+    deletionDueAt?: string | null,
+  ) => void
   /** Records a renamed chat - a no-op unless that chat is the active one. */
   applyTitle: (chatId: string, title: string | null) => void
   /** Drops the active chat back to its initial, empty state (#440) - used on logout so a
@@ -454,6 +460,7 @@ function applyChatDetail(detail: ChatDetail) {
     messages: withOutstandingQuestions(detail.id, detail.messages.map(toChatMessage)),
     noteItems: visibleNoteItems(detail.id, detail.noteItems ?? []),
     archivedAt: detail.archivedAt ?? null,
+    deletionDueAt: detail.deletionDueAt ?? null,
     isLoading: isViewAwaitingAnswer(detail.id),
   }
 }
@@ -484,6 +491,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   metadataFilter: null,
   noteItems: [],
   archivedAt: null,
+  deletionDueAt: null,
   pendingSettingsUpdate: null,
 
   loadChat: async (chatId: string) => {
@@ -558,6 +566,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         title: null,
         noteItems: [],
         archivedAt: null,
+        deletionDueAt: null,
         isLoading: false,
       })
     }
@@ -584,6 +593,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       metadataFilter: null,
       noteItems: [],
       archivedAt: null,
+      deletionDueAt: null,
       isLoadingChat: false,
       isLoading: false,
       returnedQuestion: null,
@@ -969,12 +979,13 @@ export const useChatStore = create<ChatState>((set, get) => ({
       metadataFilter: null,
       noteItems: [],
       archivedAt: null,
+      deletionDueAt: null,
       pendingSettingsUpdate: null,
     })
   },
 
-  applyArchivedAt: (chatId: string, archivedAt: string | null) => {
-    if (get().chatId === chatId) set({ archivedAt })
+  applyArchivedAt: (chatId: string, archivedAt: string | null, deletionDueAt = null) => {
+    if (get().chatId === chatId) set({ archivedAt, deletionDueAt })
   },
 
   applyTitle: (chatId: string, title: string | null) => {

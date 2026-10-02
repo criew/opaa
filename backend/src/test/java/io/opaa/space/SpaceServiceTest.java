@@ -83,6 +83,7 @@ class SpaceServiceTest {
             new io.opaa.permission.GroupSizeProperties(null),
             successionGuard,
             mock(SpaceSuccessionSource.class),
+            new ChatAutoCleanupProperties(90, 365),
             transactionManager);
   }
 

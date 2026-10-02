@@ -84,6 +84,7 @@ interface SpaceState {
     name: string,
     description: string,
     visibility?: SpaceVisibility,
+    chatAutoCleanup?: boolean,
   ) => Promise<void>
   deleteSelectedSpace: (spaceId: string) => Promise<void>
   archiveSelectedSpace: (spaceId: string) => Promise<void>
@@ -92,6 +93,7 @@ interface SpaceState {
     description: string,
     visibility?: SpaceVisibility,
     libraryIds?: string[],
+    chatAutoCleanup?: boolean,
   ) => Promise<string>
   loadAssetAssociations: (spaceId: string) => Promise<void>
   associateAsset: (spaceId: string, assetType: AssetType, assetId: string) => Promise<void>
@@ -239,8 +241,8 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
     await Promise.all([get().selectSpace(spaceId), get().loadMembers(spaceId)])
   },
 
-  updateDetails: async (spaceId, name, description, visibility) => {
-    await updateSpaceDetails(spaceId, name, description, visibility)
+  updateDetails: async (spaceId, name, description, visibility, chatAutoCleanup) => {
+    await updateSpaceDetails(spaceId, name, description, visibility, chatAutoCleanup)
     await Promise.all([get().loadSpaces(), get().selectSpace(spaceId), get().loadMembers(spaceId)])
   },
 
@@ -267,8 +269,8 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
     await Promise.all([get().loadSpaces(), get().selectSpace(spaceId), get().loadMembers(spaceId)])
   },
 
-  createNewSpace: async (name, description, visibility, libraryIds) => {
-    const space = await createSpace(name, description, visibility, libraryIds)
+  createNewSpace: async (name, description, visibility, libraryIds, chatAutoCleanup) => {
+    const space = await createSpace(name, description, visibility, libraryIds, chatAutoCleanup)
     await get().loadSpaces()
     await get().selectSpace(space.id)
     return space.id

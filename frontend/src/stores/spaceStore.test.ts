@@ -171,7 +171,13 @@ describe('spaceStore', () => {
 
     const id = await useSpaceStore.getState().createNewSpace('New Space', 'desc', 'DISCOVERABLE')
     expect(id).toBe('space-new')
-    expect(mockCreateSpace).toHaveBeenCalledWith('New Space', 'desc', 'DISCOVERABLE', undefined)
+    expect(mockCreateSpace).toHaveBeenCalledWith(
+      'New Space',
+      'desc',
+      'DISCOVERABLE',
+      undefined,
+      undefined,
+    )
     expect(useSpaceStore.getState().selectedSpaceId).toBe('space-new')
   })
 
@@ -195,10 +201,13 @@ describe('spaceStore', () => {
       .getState()
       .createNewSpace('New Space', 'desc', 'DISCOVERABLE', ['lib-1', 'lib-2'])
 
-    expect(mockCreateSpace).toHaveBeenCalledWith('New Space', 'desc', 'DISCOVERABLE', [
-      'lib-1',
-      'lib-2',
-    ])
+    expect(mockCreateSpace).toHaveBeenCalledWith(
+      'New Space',
+      'desc',
+      'DISCOVERABLE',
+      ['lib-1', 'lib-2'],
+      undefined,
+    )
   })
 
   // #203: library associations - loaded on demand, not part of selectSpace, since only pages that
