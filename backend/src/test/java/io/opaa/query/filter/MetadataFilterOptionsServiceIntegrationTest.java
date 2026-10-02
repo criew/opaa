@@ -1,12 +1,14 @@
 package io.opaa.query.filter;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.GroupKind;
 import io.opaa.api.types.SystemRole;
 import io.opaa.asset.AssetGrantService;
 import io.opaa.auth.CurrentUser;
+import io.opaa.common.AccessDeniedException;
 import io.opaa.format.FormatMetadataField;
 import io.opaa.group.Group;
 import io.opaa.group.GroupRepository;
@@ -145,6 +147,17 @@ class MetadataFilterOptionsServiceIntegrationTest {
 
     assertThat(options.totalDocuments()).isZero();
     assertThat(options.documentTypes()).isEmpty();
+  }
+
+  /** A space the caller is no member of yields no figures: the request is refused. */
+  @Test
+  void aNonMemberGetsNoOptionsForASpace() {
+    CurrentUser outsider = user("aussen", SystemRole.USER);
+    grant(libraryA, outsider);
+
+    assertThatThrownBy(() -> optionsService.optionsFor(outsider, null, spaceId, true, List.of()))
+        .isInstanceOf(AccessDeniedException.class);
+    assertThat(cache.contains(outsider.id(), Set.of(libraryA.getId()))).isFalse();
   }
 
   /** The options of a new chat count only what its space holds, not everything readable. */

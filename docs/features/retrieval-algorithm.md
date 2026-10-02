@@ -92,7 +92,10 @@ Bibliotheks-Kennungen) wird als `library_id IN (...)`-Filter (`SearchScopeStage#
 [Durchsetzung zur Abfragezeit](./spaces-and-assets.md#durchsetzung-zur-abfragezeit) sowie die
 Javadoc-Begründung an `QueryService#query`). Ein leerer Suchbereich überspringt die Schritte 2–6
 vollständig (`relevantChunks = List.of()`, keine der dortigen Aufrufe läuft) — Schritt 7 läuft trotzdem,
-mit null Chunks im Kontext, und markiert das Ergebnis über `QueryOutcome#answeredWithoutKnowledge`.
+mit null Chunks im Kontext, und markiert das Ergebnis mit dem Grund für den leeren Suchbereich:
+`QueryOutcome#noSpaceContext` (kein eigener Chat, also kein Space), `noKnowledgeAssignedToSpace` (dem
+Space ist kein Wissen zugeordnet), `noKnowledgeAvailableInSpace` (zugeordnet, aber nichts lesbar) oder
+`answeredWithoutKnowledge` (Chip-Leiste bewusst geleert); höchstens eines davon ist gesetzt.
 
 **Die Zuordnung als Grenze ([ADR-0039](../decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md)):**
 Für einen persistierten Chat ist der Suchbereich höchstens das, was dem Space des Chats zugeordnet ist,

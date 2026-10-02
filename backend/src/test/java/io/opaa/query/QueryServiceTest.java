@@ -1631,17 +1631,29 @@ class QueryServiceTest {
     org.mockito.Mockito.verifyNoInteractions(vectorStore);
   }
 
+  /** A chat with @Space-Wissen over a space with readable knowledge searches and sets no flag. */
   @Test
-  void queryWithUseKnowledgeTrueDoesNotMarkAnsweredWithoutKnowledge() {
-    when(chatMemory.get(any())).thenReturn(List.of());
+  void aChatThatSearchesItsSpacesKnowledgeCarriesNoEmptyScopeFlag() {
+    doCallRealMethod().when(searchScopeResolver).resolveSearchScope(any(), any());
+    Chat chat = new Chat(UUID.randomUUID(), currentUserId, organizationId, null, true, Set.of());
+    UUID chatId = chat.getId();
+    when(chatService.findOwnedChat(chatId, currentUserId)).thenReturn(Optional.of(chat));
+    when(chatMemory.get(currentUserId + ":" + chatId)).thenReturn(List.of());
+    when(chatService.historyAsSpringAiMessages(chatId, 20)).thenReturn(List.of());
+    when(chatService.effectiveLibraryScope(chat, Set.of(readableLibraryId)))
+        .thenReturn(Set.of(readableLibraryId));
     when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
     when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
         .thenReturn(chatResponse);
 
-    QueryResult response = queryService.query("Question", null, caller, true, List.of());
+    QueryResult response = queryService.query("Question", chatId, caller, true, List.of());
 
+    verify(vectorStore).similaritySearch(any(SearchRequest.class));
     assertThat(response.metadata().answeredWithoutKnowledge()).isFalse();
+    assertThat(response.metadata().noKnowledgeAssignedToSpace()).isFalse();
+    assertThat(response.metadata().noKnowledgeAvailableInSpace()).isFalse();
+    assertThat(response.metadata().noSpaceContext()).isFalse();
   }
 
   // #739: two chunks sharing the same document_id (multiple chunks retrieved from one document) -
