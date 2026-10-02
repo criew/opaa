@@ -11,6 +11,12 @@ import { useAuthStore } from '../stores/authStore'
 import { useChatStore } from '../stores/chatStore'
 import { useChatListStore } from '../stores/chatListStore'
 import { useSpaceStore } from '../stores/spaceStore'
+import {
+  SIDEBAR_DEFAULT_WIDTH,
+  SIDEBAR_MAX_WIDTH,
+  SIDEBAR_MIN_WIDTH,
+  useUiStore,
+} from '../stores/uiStore'
 import { OPAA_BRANDING, useBrandingStore } from '../stores/brandingStore'
 
 const mockNavigate = vi.fn()
@@ -51,13 +57,13 @@ function manySpaces() {
  * the branch, including the pathless layout match - so useParams() in Sidebar genuinely sees the
  * leaf route's :spaceId (#556 review, nit 1).
  */
-function renderSidebarAtRoute(initialPath: string) {
+function renderSidebarAtRoute(initialPath: string, sidebar = <Sidebar />) {
   return render(
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <MemoryRouter initialEntries={[initialPath]}>
         <Routes>
-          <Route element={<Sidebar />}>
+          <Route element={sidebar}>
             <Route path="spaces/:spaceId/chats/:chatId" element={null} />
             <Route path="spaces/:spaceId/settings/:tab" element={null} />
             <Route path="spaces/:spaceId" element={null} />
@@ -74,6 +80,7 @@ describe('Sidebar', () => {
     mockNavigate.mockReset()
     // #1912: Die Nutzungsreihenfolge liegt im localStorage und überdauert sonst die Testfälle.
     window.localStorage.clear()
+    useUiStore.setState({ sidebarWidth: SIDEBAR_DEFAULT_WIDTH })
     useBrandingStore.setState({ branding: OPAA_BRANDING })
     useChatStore.setState({
       spaceId: null,
@@ -435,5 +442,52 @@ describe('Sidebar', () => {
     })
     renderSidebarAtRoute('/spaces/space-engineering')
     expect(screen.getByRole('link', { name: 'Einstellungen' })).toBeInTheDocument()
+  })
+
+  describe('resizable column (#2085)', () => {
+    it('offers no resize handle unless the column is resizable', () => {
+      renderSidebarAtRoute('/chat')
+      expect(
+        screen.queryByRole('separator', { name: 'Breite der Space-Spalte' }),
+      ).not.toBeInTheDocument()
+    })
+
+    it('widens and narrows the column with the arrow keys, within the bounds', async () => {
+      const user = userEvent.setup()
+      renderSidebarAtRoute('/chat', <Sidebar resizable />)
+      const aside = screen.getByRole('complementary', { name: 'Space-Bereich' })
+      const handle = screen.getByRole('separator', { name: 'Breite der Space-Spalte' })
+      expect(handle).toHaveAttribute('aria-valuenow', String(SIDEBAR_DEFAULT_WIDTH))
+
+      handle.focus()
+      await user.keyboard('{ArrowRight}')
+      expect(handle).toHaveAttribute('aria-valuenow', String(SIDEBAR_DEFAULT_WIDTH + 16))
+      expect(getComputedStyle(aside).width).toBe(`${SIDEBAR_DEFAULT_WIDTH + 16}px`)
+
+      await user.keyboard('{End}{ArrowRight}')
+      expect(useUiStore.getState().sidebarWidth).toBe(SIDEBAR_MAX_WIDTH)
+      await user.keyboard('{Home}{ArrowLeft}')
+      expect(useUiStore.getState().sidebarWidth).toBe(SIDEBAR_MIN_WIDTH)
+    })
+
+    it('follows a drag and returns to the default width on double click', async () => {
+      const user = userEvent.setup()
+      renderSidebarAtRoute('/chat', <Sidebar resizable />)
+      const handle = screen.getByRole('separator', { name: 'Breite der Space-Spalte' })
+
+      await user.pointer([
+        { keys: '[MouseLeft>]', target: handle, coords: { clientX: 300 } },
+        { target: handle, coords: { clientX: 360 } },
+        { keys: '[/MouseLeft]', target: handle },
+      ])
+      expect(useUiStore.getState().sidebarWidth).toBe(SIDEBAR_DEFAULT_WIDTH + 60)
+
+      // After release, moving over the handle must no longer resize the column.
+      await user.pointer({ target: handle, coords: { clientX: 420 } })
+      expect(useUiStore.getState().sidebarWidth).toBe(SIDEBAR_DEFAULT_WIDTH + 60)
+
+      await user.dblClick(handle)
+      expect(useUiStore.getState().sidebarWidth).toBe(SIDEBAR_DEFAULT_WIDTH)
+    })
   })
 })

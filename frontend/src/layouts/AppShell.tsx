@@ -50,7 +50,7 @@ export default function AppShell() {
       {isDesktop ? (
         <>
           <GlobalRail />
-          {!isGlobalArea && <Sidebar />}
+          {!isGlobalArea && <Sidebar resizable />}
         </>
       ) : (
         <Drawer
