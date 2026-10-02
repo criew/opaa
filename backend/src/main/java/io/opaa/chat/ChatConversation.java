@@ -33,6 +33,7 @@ public final class ChatConversation {
   private final Instant createdAt;
   private final Instant updatedAt;
   private final Instant archivedAt;
+  private final Instant deletionDueAt;
 
   public ChatConversation(Chat chat, List<ChatTurn> messages, List<ChatNotePoint> noteItems) {
     this(chat, messages, noteItems, null);
@@ -43,6 +44,19 @@ public final class ChatConversation {
    */
   public ChatConversation(
       Chat chat, List<ChatTurn> messages, List<ChatNotePoint> noteItems, Instant archivedAt) {
+    this(chat, messages, noteItems, archivedAt, null);
+  }
+
+  /**
+   * @param deletionDueAt when the automatic chat cleanup of the space deletes the archived chat,
+   *     {@code null} if it is active or the cleanup is off
+   */
+  public ChatConversation(
+      Chat chat,
+      List<ChatTurn> messages,
+      List<ChatNotePoint> noteItems,
+      Instant archivedAt,
+      Instant deletionDueAt) {
     this.id = chat.getId();
     this.spaceId = chat.getSpaceId();
     this.authorId = chat.getAuthorId();
@@ -56,6 +70,7 @@ public final class ChatConversation {
     this.createdAt = chat.getCreatedAt();
     this.updatedAt = chat.getUpdatedAt();
     this.archivedAt = archivedAt;
+    this.deletionDueAt = deletionDueAt;
   }
 
   public UUID getId() {
@@ -110,5 +125,9 @@ public final class ChatConversation {
 
   public Instant getArchivedAt() {
     return archivedAt;
+  }
+
+  public Instant getDeletionDueAt() {
+    return deletionDueAt;
   }
 }

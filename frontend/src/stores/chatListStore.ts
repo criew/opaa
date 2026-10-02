@@ -356,7 +356,9 @@ export const useChatListStore = create<ChatListState>((set, get) => ({
           : chats && sortByLastUse([...chats.filter((chat) => chat.id !== chatId), summary])
         return { chatsBySpaceId: { ...state.chatsBySpaceId, [spaceId]: next } }
       })
-      useChatStore.getState().applyArchivedAt(chatId, summary.archivedAt ?? null)
+      useChatStore
+        .getState()
+        .applyArchivedAt(chatId, summary.archivedAt ?? null, summary.deletionDueAt ?? null)
       if (get().archiveBySpaceId[spaceId]) await get().loadArchivedChats(spaceId)
       return true
     } catch (err) {

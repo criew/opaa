@@ -13,7 +13,8 @@ import org.springframework.data.repository.query.Param;
 
 /**
  * Every method is scoped to one person: a mark is only ever read or written together with the
- * {@code userId} it belongs to, so no caller can reach another person's marks.
+ * {@code userId} it belongs to, so no caller can reach another person's marks. The one exception,
+ * {@link #archiveInactiveForAutoCleanup}, writes nothing but the author's own row of each chat.
  */
 public interface ChatPersonalMarkRepository
     extends JpaRepository<ChatPersonalMark, ChatPersonalMark.Key> {
@@ -87,7 +88,7 @@ public interface ChatPersonalMarkRepository
               + " VALUES (:chatId, :userId, :archivedAt)"
               + " ON CONFLICT (chat_id, user_id) DO UPDATE"
               + " SET archived_at = COALESCE(chat_personal_marks.archived_at, EXCLUDED.archived_at),"
-              + " pinned_at = NULL",
+              + " pinned_at = NULL, unarchived_at = NULL",
       nativeQuery = true)
   void archive(
       @Param("chatId") UUID chatId,
@@ -109,6 +110,21 @@ public interface ChatPersonalMarkRepository
   int clearArchive(@Param("chatId") UUID chatId, @Param("userId") UUID userId);
 
   /**
+   * {@link #clearArchive} that also records {@code unarchivedAt}: in a space with automatic chat
+   * cleanup, bringing a chat back starts its archive period anew from that moment.
+   */
+  @Modifying
+  @Query(
+      value =
+          "UPDATE chat_personal_marks SET archived_at = NULL, unarchived_at = :unarchivedAt"
+              + " WHERE chat_id = :chatId AND user_id = :userId AND archived_at IS NOT NULL",
+      nativeQuery = true)
+  int clearArchiveRecordingReturn(
+      @Param("chatId") UUID chatId,
+      @Param("userId") UUID userId,
+      @Param("unarchivedAt") Instant unarchivedAt);
+
+  /**
    * Removes the row once it carries no mark at all, so no empty row stays behind as a trace that
    * the person once marked this chat. Every mark column belongs in this predicate.
    */
@@ -117,7 +133,52 @@ public interface ChatPersonalMarkRepository
       value =
           "DELETE FROM chat_personal_marks"
               + " WHERE chat_id = :chatId AND user_id = :userId"
-              + " AND pinned_at IS NULL AND archived_at IS NULL",
+              + " AND pinned_at IS NULL AND archived_at IS NULL AND unarchived_at IS NULL",
       nativeQuery = true)
   void deleteIfUnmarked(@Param("chatId") UUID chatId, @Param("userId") UUID userId);
+
+  /**
+   * Moves every chat whose last activity, whose return from the archive and whose space's cleanup
+   * start all lie before {@code cutoff} into its author's chat archive, unless the author pinned or
+   * archived it already - also when that happens concurrently, so a pin never makes the statement
+   * fail. Only spaces with the automatic chat cleanup switched on take part.
+   *
+   * @return the number of chats archived
+   */
+  @Modifying
+  @Query(
+      value =
+          """
+          INSERT INTO chat_personal_marks (chat_id, user_id, archived_at)
+          SELECT c.id, c.author_id, :now FROM chats c JOIN spaces s ON s.id = c.space_id
+          LEFT JOIN chat_personal_marks m ON m.chat_id = c.id AND m.user_id = c.author_id
+          WHERE s.chat_auto_cleanup_enabled_at < :cutoff AND c.updated_at < :cutoff
+            AND (m.chat_id IS NULL
+                 OR (m.pinned_at IS NULL AND m.archived_at IS NULL
+                     AND (m.unarchived_at IS NULL OR m.unarchived_at < :cutoff)))
+          ON CONFLICT (chat_id, user_id) DO UPDATE
+            SET archived_at = EXCLUDED.archived_at, unarchived_at = NULL
+            WHERE chat_personal_marks.pinned_at IS NULL AND chat_personal_marks.archived_at IS NULL
+          """,
+      nativeQuery = true)
+  int archiveInactiveForAutoCleanup(@Param("cutoff") Instant cutoff, @Param("now") Instant now);
+
+  /**
+   * Removes the rows whose only mark is a return from the archive older than {@code cutoff}: it no
+   * longer holds a chat back, so the moment is kept no longer than needed. Followed by {@link
+   * #forgetReturnsBefore} for rows that carry another mark too.
+   */
+  @Modifying
+  @Query(
+      value =
+          "DELETE FROM chat_personal_marks WHERE unarchived_at < :cutoff"
+              + " AND pinned_at IS NULL AND archived_at IS NULL",
+      nativeQuery = true)
+  int deleteReturnOnlyRowsBefore(@Param("cutoff") Instant cutoff);
+
+  @Modifying
+  @Query(
+      value = "UPDATE chat_personal_marks SET unarchived_at = NULL WHERE unarchived_at < :cutoff",
+      nativeQuery = true)
+  int forgetReturnsBefore(@Param("cutoff") Instant cutoff);
 }

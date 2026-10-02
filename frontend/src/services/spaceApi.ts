@@ -107,9 +107,10 @@ export async function updateSpaceDetails(
   name: string,
   description: string,
   visibility?: SpaceVisibility,
+  chatAutoCleanup?: boolean,
 ): Promise<SpaceResponse> {
   try {
-    const body: SpaceUpdateRequest = { name, description, visibility }
+    const body: SpaceUpdateRequest = { name, description, visibility, chatAutoCleanup }
     const { data } = await client.put<SpaceResponse>(`/v1/spaces/${spaceId}`, body)
     return data
   } catch (err) {
@@ -122,6 +123,7 @@ export async function createSpace(
   description: string,
   visibility?: SpaceVisibility,
   libraryIds?: string[],
+  chatAutoCleanup?: boolean,
 ): Promise<SpaceResponse> {
   try {
     const currentUserId = useAuthStore.getState().user?.id ?? null
@@ -136,6 +138,7 @@ export async function createSpace(
       // creator to already be able to read it (SpaceAssetAssociationService#associate), the same
       // rule the dedicated endpoints below enforce afterwards.
       libraryIds: libraryIds && libraryIds.length > 0 ? libraryIds : undefined,
+      chatAutoCleanup: chatAutoCleanup || undefined,
     }
     const { data } = await client.post<SpaceResponse>('/v1/spaces', body)
     return data

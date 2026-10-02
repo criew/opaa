@@ -540,6 +540,17 @@ Eine konfigurierbare Inhaltsaufbewahrung existiert nicht (der dafür vorgesehene
 als nicht geplant geschlossen). Der zuvor als Erweiterungspunkt vorbereitete `ContentRetentionProvider`
 wurde mit ihm entfernt (#817) und müsste bei Wiederaufnahme des Umfangs neu eingeführt werden.
 
+Die **automatische Chat-Bereinigung je Space** (#1923, [chat-list.md](./chat-list.md)) ändert daran
+nichts, und das ist geprüft: Sie ist keine installationsweite Inhaltsaufbewahrung, sondern eine
+Höchstdauer, die nur in Spaces mit eingeschaltetem Schalter und nicht für angeheftete Chats gilt.
+Ohne sie bleiben Chats unbegrenzt erhalten, eine Aufbewahrungsdauer, mit der die Protokollfrist
+verglichen werden könnte, gibt es also weiterhin nicht. Die Bereinigung verkürzt außerdem nur die
+Lebensdauer von Inhalten und kann ein Protokoll deshalb nicht überdauern lassen. Das Löschen eines
+Chats erzeugt keinen Protokolleintrag, sodass keine Eintragsart ohne ihren Inhalt zurückbleiben
+kann. Protokolliert wird allein das Umlegen des Schalters, mit altem und neuem Wert, als
+`SPACE_CHANGED`. Mit dem Teilen von Chats oder einer allgemeinen Chat-Aufbewahrung ist die Warnung
+neu zu bewerten.
+
 Die Löschung eines Kontos entfernt bereits seit #391 automatisch die Pseudonymzuordnung
 (`fk_audit_actor_pseudonyms_user_organization`, `ON DELETE CASCADE`, zusammengesetzt seit Migration 047) und lässt das Protokoll selbst unverändert — das
 war keine neue Arbeit für #395, nur ein zusätzlicher Nachweis auf Anwendungsebene (siehe

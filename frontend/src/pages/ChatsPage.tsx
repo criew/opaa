@@ -14,6 +14,7 @@ import { alpha } from '@mui/material/styles'
 import SearchIcon from '@mui/icons-material/Search'
 import { useLocation, useNavigate, useParams } from 'react-router'
 import PageHeading from '../components/a11y/PageHeading'
+import { chatAutoCleanupNotice } from '../components/chat/deletionDueLabel'
 import { ListEmptyState, ListLoading, ListPager } from '../components/admin/list/AdminList'
 import ChatSearchResults from '../components/chat/ChatSearchResults'
 import ChatTable from '../components/chat/ChatTable'
@@ -64,6 +65,7 @@ export default function ChatsPage() {
   const spaces = useSpaceStore((s) => s.spaces)
   const loadSpaces = useSpaceStore((s) => s.loadSpaces)
   const space = spaces.find((candidate) => candidate.id === spaceId)
+  const cleanupNotice = chatAutoCleanupNotice(space?.chatAutoCleanup)
   const chats = useChatListStore((s) => s.chatsBySpaceId[spaceId])
   const archive = useChatListStore((s) => s.archiveBySpaceId[spaceId])
   const isLoading = useChatListStore((s) => s.isLoading)
@@ -225,6 +227,11 @@ export default function ChatsPage() {
             Ihre eigenen Chats in diesem Space. Archivierte Chats bleiben lesbar; wer darin
             weiterschreibt, holt sie aus dem Chat-Archiv zurück.
           </Typography>
+          {cleanupNotice && (
+            <Typography variant="body2" sx={{ color: 'text.secondary', mt: 0.5 }}>
+              {cleanupNotice}
+            </Typography>
+          )}
         </Box>
 
         {error && <Alert severity="error">{error}</Alert>}

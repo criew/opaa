@@ -1,5 +1,11 @@
 import { http, HttpResponse } from 'msw'
-import { mockSpaces, mockSpaceDetails, mockSpaceMembers } from './spaceFixtures'
+import type { SpaceRequest, SpaceUpdateRequest } from '../types/api'
+import {
+  defaultChatAutoCleanup,
+  mockSpaces,
+  mockSpaceDetails,
+  mockSpaceMembers,
+} from './spaceFixtures'
 import { mockGroups } from './groupFixtures'
 
 function recalculateRoleCounts(spaceId: string) {
@@ -22,10 +28,7 @@ function recalculateRoleCounts(spaceId: string) {
 
 export const spaceHandlers = [
   http.post('/api/v1/spaces', async ({ request }) => {
-    const body = (await request.json()) as {
-      name: string
-      description?: string
-    }
+    const body = (await request.json()) as SpaceRequest
     if (!body.name || body.name.trim() === '') {
       return HttpResponse.json({ error: 'Der Name des Space ist erforderlich' }, { status: 400 })
     }
@@ -51,6 +54,7 @@ export const spaceHandlers = [
       ...listEntry,
       ownerId: 'mock-user-id',
       roleCounts: { MEMBER: 0, CURATOR: 0, ADMIN: 1 },
+      chatAutoCleanup: { ...defaultChatAutoCleanup, enabled: body.chatAutoCleanup === true },
     }
     mockSpaceDetails[id] = detail
     mockSpaceMembers[id] = [
@@ -204,9 +208,12 @@ export const spaceHandlers = [
     if (!space || !listEntry) {
       return HttpResponse.json({ error: 'Space nicht gefunden' }, { status: 404 })
     }
-    const body = (await request.json()) as { name: string; description: string }
+    const body = (await request.json()) as SpaceUpdateRequest
     space.name = body.name
     space.description = body.description
+    if (body.chatAutoCleanup != null) {
+      space.chatAutoCleanup = { ...space.chatAutoCleanup, enabled: body.chatAutoCleanup }
+    }
     listEntry.name = body.name
     listEntry.description = body.description
     return HttpResponse.json(space)

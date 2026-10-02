@@ -13,6 +13,7 @@ import MessageList from '../components/chat/MessageList'
 import ChatInput from '../components/chat/ChatInput'
 import ConversationNote from '../components/chat/ConversationNote'
 import { isConversationNoteVisible } from '../components/chat/conversationNoteVisibility'
+import { deletionDueLabel } from '../components/chat/deletionDueLabel'
 import { useChatStore } from '../stores/chatStore'
 import { useChatListStore } from '../stores/chatListStore'
 import { notify } from '../stores/notificationStore'
@@ -40,6 +41,7 @@ export default function ChatPage() {
   const noteItems = useChatStore((s) => s.noteItems)
   const removeNoteItem = useChatStore((s) => s.removeNoteItem)
   const archivedAt = useChatStore((s) => s.archivedAt)
+  const deletionDueAt = useChatStore((s) => s.deletionDueAt)
   const setChatArchived = useChatListStore((s) => s.setChatArchived)
   const renameChat = useChatListStore((s) => s.renameChat)
   const applyChatTitle = useChatStore((s) => s.applyTitle)
@@ -310,6 +312,11 @@ export default function ChatPage() {
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               {/* The chat archive of the person, not an archived space. */}
               <Chip size="small" variant="outlined" label="Archiviert" />
+              {deletionDueAt && (
+                <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                  {deletionDueLabel(deletionDueAt)}
+                </Typography>
+              )}
               <Button
                 size="small"
                 variant="outlined"
