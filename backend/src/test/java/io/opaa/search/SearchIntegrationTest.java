@@ -176,8 +176,51 @@ class SearchIntegrationTest {
             List.of(passage(0, "Die Widerspruchsfrist einer fremden Behörde.", null)));
   }
 
+  /** A chat of the caller in a space of their own that holds exactly {@code libraryId}. */
+  private UUID chatOverTheLibrary() {
+    UUID spaceId = UUID.randomUUID();
+    jdbc.update(
+        "INSERT INTO spaces (id, name, is_default, visibility, owner_id, organization_id,"
+            + " created_at, updated_at) VALUES (?, 'Such-IT-Space', false, 'PRIVATE', ?, ?, now(),"
+            + " now())",
+        spaceId,
+        callerId,
+        DEFAULT_ORGANIZATION_ID);
+    jdbc.update(
+        "INSERT INTO space_memberships (id, subject_type, user_id, space_id, role, organization_id,"
+            + " created_at) VALUES (?, 'USER', ?, ?, 'ADMIN', ?, now())",
+        UUID.randomUUID(),
+        callerId,
+        spaceId,
+        DEFAULT_ORGANIZATION_ID);
+    jdbc.update(
+        "INSERT INTO space_asset_associations (id, space_id, asset_id, organization_id,"
+            + " created_by_user_id, created_at) VALUES (?, ?, ?, ?, ?, now())",
+        UUID.randomUUID(),
+        spaceId,
+        libraryId,
+        DEFAULT_ORGANIZATION_ID,
+        callerId);
+    UUID chatId = UUID.randomUUID();
+    jdbc.update(
+        "INSERT INTO chats (id, space_id, author_id, organization_id, use_knowledge, status,"
+            + " created_at, updated_at) VALUES (?, ?, ?, ?, true, 'PRIVATE', now(), now())",
+        chatId,
+        spaceId,
+        callerId,
+        DEFAULT_ORGANIZATION_ID);
+    return chatId;
+  }
+
   @AfterEach
   void tearDown() {
+    // The question's chat and its space; messages, notes and associations go with them.
+    jdbc.update(
+        "DELETE FROM chats WHERE space_id IN (SELECT id FROM spaces WHERE name = 'Such-IT-Space')");
+    jdbc.update(
+        "DELETE FROM space_memberships WHERE space_id IN (SELECT id FROM spaces WHERE name ="
+            + " 'Such-IT-Space')");
+    jdbc.update("DELETE FROM spaces WHERE name = 'Such-IT-Space'");
     vectorChunkStore.deleteByLibraryId(libraryId);
     vectorChunkStore.deleteByLibraryId(foreignLibraryId);
     jdbc.update("DELETE FROM documents WHERE library_id IN (?, ?)", libraryId, foreignLibraryId);
@@ -199,9 +242,10 @@ class SearchIntegrationTest {
    */
   @Test
   void theHitsAreTheSameSelectionInTheSameOrderAsTheFundstellenOfTheQuery() {
+    // A question needs a space: a chat whose space holds exactly the library the search names.
     QueryResult answered =
         queryService.query(
-            QUESTION, null, caller(), false, List.of(libraryId), MetadataFilter.NONE);
+            QUESTION, chatOverTheLibrary(), caller(), true, List.of(), MetadataFilter.NONE);
     SearchOutcome searched =
         searchService.search(caller(), QUESTION, List.of(libraryId), MetadataFilter.NONE, 50);
 

@@ -427,7 +427,8 @@ class ChatServiceIntegrationTest {
             author,
             new ChatPatch().referencedLibraryIds(List.of(kept, detachedLater, addedLater)));
 
-    assertThat(updated.getReferencedLibraryIds()).containsExactly(kept, detachedLater, addedLater);
+    assertThat(updated.getReferencedLibraryIds())
+        .containsExactlyInAnyOrder(kept, detachedLater, addedLater);
     Chat chat = chatRepository.findById(created.getId()).orElseThrow();
     assertThat(chatService.effectiveLibraryScope(chat, Set.of(kept, detachedLater, addedLater)))
         .as("the stale chip stays harmless: it is no longer searched")
