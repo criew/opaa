@@ -334,9 +334,10 @@ Pill-Radius, 12 px, Gewicht 500, dezent — Umriss (`border-strong` + `fg-2`) od
 Tintfläche (`bg-3`), **keine Signalfarben**. Feste Wortlisten:
 
 - **Rollen:** Leser · Bearbeiter · Verwalter · Eigentümer
-- **Sichtbarkeit:** öffentlich · geschlossen (Begriffe der Spezifikation; die Beschriftung in der
-  Oberfläche legt #2094 fest, Vorschlag „Für alle" · „Eingeschränkt", weil „öffentlich" in Behörden
-  nach Internet klingt). Abgeleitet aus den Freigaben, nie eingestellt
+- **Sichtbarkeit:** in der Oberfläche „Für alle" · „Eingeschränkt" — in der Spezifikation öffentlich ·
+  geschlossen; „öffentlich" klingt in Behörden nach Internet. Die Erklärung („an alle Konten
+  freigegeben" · „nur über Freigaben an Personen oder Gruppen erreichbar") steht als Tooltip am
+  Etikett und zusätzlich als Text auf der Seite. Abgeleitet aus den Freigaben, nie eingestellt
 - **Herkunft:** Upload · Dateisystem · Webverzeichnis · RSS-Feed · Confluence · S3-Objektspeicher;
   als Badge auf Kacheln die Kurzform Upload · Dateisystem · Web · Feed · Confluence · S3
 - **Asset-Art:** Wissen · Prompts — stets mit dem Icon der Art

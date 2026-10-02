@@ -104,7 +104,9 @@ describe('CatalogPage (ADR-0039)', () => {
     expect(requestedUrls.at(-1)?.searchParams.get('type')).toBe('PROMPT_LIBRARY')
     expect(screen.getByTestId('location')).toHaveTextContent('/catalog?type=prompts')
 
-    await user.click(screen.getByRole('button', { name: 'Alle' }))
+    await user.click(
+      within(screen.getByRole('group', { name: 'Typ' })).getByRole('button', { name: 'Alle' }),
+    )
     expect(await screen.findByRole('link', { name: /Rechtsquellen Soziales/ })).toBeInTheDocument()
     expect(screen.getByTestId('location')).toHaveTextContent(/^\/catalog$/)
   })
@@ -207,5 +209,174 @@ describe('CatalogPage (ADR-0039)', () => {
     await waitFor(() =>
       expect(screen.queryByRole('button', { name: 'Neu' })).not.toBeInTheDocument(),
     )
+  })
+
+  describe('tile fields, filters and sort (#2093)', () => {
+    function serve(entries: CatalogEntryResponse[]) {
+      server.use(
+        http.get('/api/v1/catalog', () =>
+          HttpResponse.json({
+            entries,
+            page: 0,
+            size: 50,
+            totalElements: entries.length,
+            totalPages: 1,
+          }),
+        ),
+      )
+    }
+
+    it('shows visibility, own role and the Stand of a ready entry', async () => {
+      serve([
+        entry('Bauordnung', {
+          assetType: 'KNOWLEDGE_LIBRARY',
+          visibility: 'PUBLIC',
+          myRole: 'MANAGER',
+          knowledgeLibrary: {
+            sourceType: 'FILESYSTEM',
+            indexingStatus: 'READY',
+            lastIndexedAt: '2026-08-18T06:00:00Z',
+          },
+        }),
+        entry('Bescheidbausteine', { updatedAt: '2026-09-30T08:00:00Z' }),
+      ])
+      renderCatalog()
+
+      const knowledge = await screen.findByRole('link', { name: /Bauordnung/ })
+      expect(within(knowledge).getByText('Für alle')).toBeInTheDocument()
+      expect(within(knowledge).getByText('Verwalter')).toBeInTheDocument()
+      expect(within(knowledge).getByText('Stand 18.08.2026')).toBeInTheDocument()
+      const prompts = screen.getByRole('link', { name: /Bescheidbausteine/ })
+      expect(within(prompts).getByText('Eingeschränkt')).toBeInTheDocument()
+      expect(within(prompts).getByText('Leser')).toBeInTheDocument()
+      // A type without a measure of its own is READY; its Stand is the last change.
+      expect(within(prompts).getByText('Stand 30.09.2026')).toBeInTheDocument()
+      // Both words are explained on the page, not only behind a tooltip.
+      expect(screen.getByText(/„Für alle“: an alle Konten freigegeben/)).toBeInTheDocument()
+    })
+
+    // An upload library has no runs and so no lastIndexedAt; its Stand is its last change.
+    it('gives a ready upload library its last change as Stand', async () => {
+      serve([
+        entry('Hochgeladenes', {
+          assetType: 'KNOWLEDGE_LIBRARY',
+          updatedAt: '2026-09-12T08:00:00Z',
+          knowledgeLibrary: { sourceType: 'UPLOAD', indexingStatus: 'READY' },
+        }),
+      ])
+      renderCatalog()
+
+      const card = await screen.findByRole('link', { name: /Hochgeladenes/ })
+      expect(within(card).getByText('Stand 12.09.2026')).toBeInTheDocument()
+    })
+
+    it('titles every filter group and the sort visibly, and names them by that title', async () => {
+      renderCatalog()
+      await screen.findByRole('link', { name: /Rechtsquellen Soziales/ })
+
+      for (const title of ['Typ', 'Sichtbarkeit', 'Sortierung']) {
+        const group = screen.getByRole('group', { name: title })
+        const labelId = group.getAttribute('aria-labelledby')
+        expect(labelId).toBeTruthy()
+        expect(document.getElementById(labelId!)).toHaveTextContent(title)
+        expect(document.getElementById(labelId!)).toBeVisible()
+      }
+    })
+
+    it('names a state that is not ready in words, and keeps it visible under an open succession', async () => {
+      serve([
+        entry('Fehlgeschlagen', {
+          assetType: 'KNOWLEDGE_LIBRARY',
+          status: 'UPDATE_FAILED',
+          knowledgeLibrary: { sourceType: 'WEB', indexingStatus: 'UPDATE_FAILED' },
+        }),
+        entry('Verwaist', {
+          assetType: 'KNOWLEDGE_LIBRARY',
+          status: 'SUCCESSION_OPEN',
+          succession: {
+            addressee: 'SYSTEM_ADMINISTRATION',
+            addresseeLabel: 'die Systemverwaltung',
+          },
+          knowledgeLibrary: { sourceType: 'UPLOAD', indexingStatus: 'UPDATING' },
+        }),
+        entry('Leer', {
+          assetType: 'KNOWLEDGE_LIBRARY',
+          status: 'NOT_YET_AVAILABLE',
+          knowledgeLibrary: { sourceType: 'UPLOAD', indexingStatus: 'NOT_YET_AVAILABLE' },
+        }),
+      ])
+      renderCatalog()
+
+      const failed = await screen.findByRole('link', { name: /Fehlgeschlagen/ })
+      expect(within(failed).getByText('Aktualisierung fehlgeschlagen')).toBeInTheDocument()
+      const orphaned = screen.getByRole('link', { name: /Verwaist/ })
+      expect(within(orphaned).getByText('Wird aktualisiert')).toBeInTheDocument()
+      expect(within(orphaned).getByText(/Nachfolge offen/)).toBeInTheDocument()
+      const empty = screen.getByRole('link', { name: /Leer/ })
+      expect(within(empty).getByText('Noch kein Inhalt')).toBeInTheDocument()
+    })
+
+    it('filters by visibility on the server and keeps it in the address', async () => {
+      const user = userEvent.setup()
+      renderCatalog()
+      await screen.findByRole('link', { name: /Rechtsquellen Soziales/ })
+
+      const visibility = screen.getByRole('group', { name: 'Sichtbarkeit' })
+      await user.click(within(visibility).getByRole('button', { name: 'Eingeschränkt' }))
+
+      await waitFor(() =>
+        expect(requestedUrls.at(-1)?.searchParams.get('visibility')).toBe('RESTRICTED'),
+      )
+      expect(screen.getByTestId('location')).toHaveTextContent('visibility=restricted')
+      await waitFor(() =>
+        expect(screen.queryByText('Dienstanweisungen', { exact: true })).not.toBeInTheDocument(),
+      )
+    })
+
+    it('narrows to assets from my groups on the server', async () => {
+      const user = userEvent.setup()
+      renderCatalog()
+      await screen.findByRole('link', { name: /Rechtsquellen Soziales/ })
+
+      await user.click(screen.getByRole('checkbox', { name: 'Aus meinen Gruppen' }))
+
+      await waitFor(() =>
+        expect(requestedUrls.at(-1)?.searchParams.get('fromMyGroups')).toBe('true'),
+      )
+      expect(screen.getByTestId('location')).toHaveTextContent('groups=1')
+      await waitFor(() =>
+        expect(screen.queryByRole('link', { name: /Meine Dokumente/ })).not.toBeInTheDocument(),
+      )
+      expect(screen.getByRole('link', { name: /Rechtsquellen Soziales/ })).toBeInTheDocument()
+    })
+
+    it('sorts by the last change on the server, by name by default', async () => {
+      const user = userEvent.setup()
+      renderCatalog()
+      await screen.findByRole('link', { name: /Rechtsquellen Soziales/ })
+      expect(requestedUrls.at(-1)?.searchParams.get('sort')).toBeNull()
+
+      const sort = screen.getByRole('group', { name: 'Sortierung' })
+      expect(within(sort).getByRole('button', { name: 'Name' })).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      )
+      await user.click(within(sort).getByRole('button', { name: 'Zuletzt geändert' }))
+
+      await waitFor(() => expect(requestedUrls.at(-1)?.searchParams.get('sort')).toBe('updatedAt'))
+      expect(screen.getByTestId('location')).toHaveTextContent('sort=updated')
+    })
+
+    it('starts with every filter and the sort the address names', async () => {
+      renderCatalog('/catalog?type=knowledge&visibility=public&groups=1&sort=updated')
+
+      await waitFor(() => expect(requestedUrls.length).toBeGreaterThan(0))
+      const params = requestedUrls.at(-1)!.searchParams
+      expect(params.get('type')).toBe('KNOWLEDGE_LIBRARY')
+      expect(params.get('visibility')).toBe('PUBLIC')
+      expect(params.get('fromMyGroups')).toBe('true')
+      expect(params.get('sort')).toBe('updatedAt')
+      expect(screen.getByRole('checkbox', { name: 'Aus meinen Gruppen' })).toBeChecked()
+    })
   })
 })
