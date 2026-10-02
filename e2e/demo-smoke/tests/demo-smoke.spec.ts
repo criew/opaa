@@ -266,8 +266,14 @@ test.describe('Demo-Smoke (#232)', () => {
     // libraries the seeded Maria reads - the absence check waits for the rendered empty result
     await searchLibraries(page, 'Satzungen')
     await expect(page.getByText('Satzungen & Gebührenordnungen', { exact: true })).toBeVisible()
-    await searchLibraries(page, 'Leistungen Meldewesen')
-    await expectNoCatalogMatch(page, 'Leistungen Meldewesen')
+    for (const query of [
+      'Leistungen Meldewesen',
+      'Pressemitteilungen',
+      'Interne Dienstanweisungen',
+    ]) {
+      await searchLibraries(page, query)
+      await expectNoCatalogMatch(page, query)
+    }
     await logout(page)
 
     const mariaAtVerzeichnisdienst = await loginViaKeycloak(page, {

@@ -560,7 +560,11 @@ Für die Teile 1 und 3 lohnen sich zwei Browserfenster, eines davon privat.
 - **Zurücksetzen:** Wer einen Favoriten setzt oder entfernt, ändert nur die eigene Ordnung. Ein
   erneuter Seed setzt die Favoriten des Profils wieder, entfernt aber keinen zusätzlich gesetzten.
   Auf der öffentlichen Instanz teilen sich alle Besuchenden die Konten; einen in der Vorführung
-  gesetzten Favoriten deshalb wieder entfernen.
+  gesetzten Favoriten deshalb wieder entfernen. An den Bibliotheken der Fachkonten selbst nichts
+  ändern: Maria und Andrea besitzen dort Demo-Wissen, und eine gelöschte Bibliothek, entzogene
+  Freigabe oder hochgeladene Datei trifft alle Besuchenden. Sicher wiederherstellen lässt sich das nur durch
+  Neuaufsetzen (`reset-demo-0/a/b`, siehe [`../../demo/README.md`](../../demo/README.md),
+  „Öffentliche Instanz betreiben").
 - **Zeigt:** Eigentum, Sichtbarkeit, persönliche Ordnung und Space-Zuordnung sind vier getrennte
   Dinge. Nur die Leserechte entscheiden, was eine Person findet. Der Space bestimmt, wo gesucht wird.
 

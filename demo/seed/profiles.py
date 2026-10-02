@@ -866,8 +866,8 @@ DEMO_PROFILE = Profile(
         interval_minutes=60,
     ),
     chat_sets=(DEMO_CHATS_ROOT / "amtsleitung-buergerbuero",),
-    # Each list fits its person's daily work and mixes public and closed assets; Selin, new in the
-    # Sachgebiet, and the admin account have none yet.
+    # Each list fits its person's daily work and mixes public and closed assets; Selin and the
+    # admin account work without favorites.
     favorites=(
         FavoritesDef(
             user_key="maria",

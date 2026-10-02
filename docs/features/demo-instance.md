@@ -264,8 +264,8 @@ Admin-Konto bleiben nur die Bibliotheken, die es technisch anbindet.
 | Arbeitshilfen Kfz-Zulassung | Prompts | Thomas | geschlossen | niemand |
 
 **Favoriten.** Jede Person setzt ihre Favoriten über die eigene Sitzung; niemand sonst sieht sie. Die
-Listen unterscheiden sich je Person und mischen öffentliche und geschlossene Assets. Selin ist neu im
-Sachgebiet und hat noch keine. Der Seed setzt nur, er entfernt keinen Favoriten.
+Listen unterscheiden sich je Person und mischen öffentliche und geschlossene Assets. Selin arbeitet
+ohne Favoriten und sucht im Katalog. Der Seed setzt nur, er entfernt keinen Favoriten.
 
 | Konto | Favoriten |
 |---|---|

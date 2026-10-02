@@ -1026,10 +1026,23 @@ Demo-Konten) und mit dem Rheinfurt-Korpus samt Seed-Profil `demo` befüllt.
   Seed-Lauf bewusst rotiert (siehe „Seed- und `opaa-seed`-Verfahren" unten) und weicht deshalb vom
   oben dokumentierten Demo-Passwort ab; die vier Fach-Demokonten behalten dieses dokumentierte
   Passwort unverändert — sie sind für das Drehbuch vorführnotwendige `USER`-Konten ohne
-  Adminrechte, ihr offenes Demo-Passwort ist ein akzeptiertes Restrisiko. Begrenzt wird dieses
-  Risiko durch das je Konto greifende Rate Limiting (siehe [„Sicherheitshinweis"](../docs/handbuch/deployment.md#sicherheitshinweis-post-apiv1librarieslibraryidindexing-ist-von-außen-erreichbar))
+  Systemrolle, ihr offenes Demo-Passwort ist ein akzeptiertes Restrisiko. Das je Konto greifende
+  Rate Limiting (siehe [„Sicherheitshinweis"](../docs/handbuch/deployment.md#sicherheitshinweis-post-apiv1librarieslibraryidindexing-ist-von-außen-erreichbar))
   und das monatliche Ausgabenlimit in der Anthropic-Console (siehe „Modellkonfiguration der
-  Instanz" unten) — beide setzen dem, was ein Fachkonto anrichten kann, eine feste Obergrenze.
+  Instanz" unten) begrenzen, was ein Fachkonto an Last und Kosten erzeugen kann.
+  **Seit #2103 besitzen und verwalten Fachkonten aber selbst Demo-Wissen** (siehe „Eigentum,
+  Sichtbarkeit, Favoriten und Zuordnung" oben): Andrea besitzt Satzungen, Pressemitteilungen und
+  ihre Prompt-Bibliotheken, Maria die internen Dienstanweisungen und als Anlegerin die Leistungen
+  Meldewesen, die Selin über die Gruppe „Meldewesen" mitverwaltet; Thomas besitzt seine
+  Arbeitshilfen. Wer sich mit dem offenen Passwort anmeldet, kann diese Bibliotheken löschen, ihre
+  Quellen umkonfigurieren, Dokumente hochladen und Freigaben ändern — auch die Freigabe an „Alle
+  Konten" entziehen. Untergeschobene Dokumente erscheinen dann als belegte Quelle in den Antworten
+  anderer Konten, eine entzogene Freigabe bricht die Fragen 1 und 6 und die Infotheke. Das ist
+  bewusst hingenommen, weil die Demo das Eigentum von Fachleuten vorführen soll. **Wiederherstellung
+  ist das Neuaufsetzen mit den Reset-Skripten `reset-demo-0`, `reset-demo-a` und `reset-demo-b` auf
+  dem Server.** Ein erneuter Seed allein genügt nicht: Er legt eine gelöschte Bibliothek zwar neu
+  an, die Belege der eingespielten Chats zeigen dann aber ins Leere. Entzogene Freigaben vergibt er
+  neu, eine geänderte Quellkonfiguration und untergeschobene Dokumente bleiben dagegen bestehen.
   Alle administrativen Vorgänge auf der Instanz führt `demo-admin` über den Admin-Bereich der
   Oberfläche aus. Weitere Konten mit dieser Rolle gibt es derzeit nicht.
 - **Netzwerk:** Alle Container-Ports binden ausschließlich auf `127.0.0.1`. Nach außen führt
