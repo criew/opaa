@@ -2,6 +2,7 @@ import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { HttpResponse, http } from 'msw'
 import { server } from '../mocks/server'
+import { favoriteKey, mockFavoriteAssets } from '../mocks/assetFixtures'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { answerConfirm, renderWithProviders } from '../test/test-utils'
 import SpaceSettingsPage from './SpaceSettingsPage'
@@ -130,6 +131,7 @@ const {
         void spaceId
         return {
           hasAssociations: false,
+          hasUnreadableAssociations: false,
           hasKnowledge: false,
           hasReadableKnowledge: false,
           items: [],
@@ -318,6 +320,7 @@ describe('SpaceSettingsPage', () => {
     vi.clearAllMocks()
     mockGetSpaceAssetAssociations.mockResolvedValue({
       hasAssociations: false,
+      hasUnreadableAssociations: false,
       hasKnowledge: false,
       hasReadableKnowledge: false,
       items: [],
@@ -791,47 +794,44 @@ describe('SpaceSettingsPage', () => {
     expect(screen.getByText('Space archiviert')).toBeInTheDocument()
   })
 
-  // #706 review, finding 5: an ADMIN must see (and be able to detach) an association they cannot
-  // themselves read - the store's unfiltered items list carries readableByCaller=false and no
-  // libraryName for such an entry.
-  it('shows an unreadable association without its name and still offers to detach it', async () => {
+  // ADR-0039, Entscheidung 2: an association the caller cannot read leaves no name, id or number,
+  // whatever the role - only the count-free hint.
+  it('shows only the count-free hint for associations the caller cannot read', async () => {
     mockGetSpaceAssetAssociations.mockResolvedValue({
       hasAssociations: true,
+      hasUnreadableAssociations: true,
       hasKnowledge: true,
-      hasReadableKnowledge: true,
-      items: [
-        {
-          assetType: 'KNOWLEDGE_LIBRARY',
-          assetId: 'lib-hidden',
-          readableByCaller: false,
-          createdByUserId: 'u2',
-          createdAt: '2026-03-01T10:00:00Z',
-        },
-      ],
+      hasReadableKnowledge: false,
+      items: [],
     })
+    setSpaceState(teamSpace)
+
+    for (const tab of ['knowledge', 'prompts'] as const) {
+      const { unmount } = renderTab(tab)
+
+      const hint = await screen.findByText('Nicht alle zugeordneten Inhalte sind für Sie lesbar.')
+      expect(hint.textContent).not.toMatch(/\d/)
+      // The hint stands alone: "nothing associated" would contradict it.
+      expect(screen.queryByText(/^Diesem Space sind keine/)).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /lösen$/i })).not.toBeInTheDocument()
+      unmount()
+    }
+  })
+
+  it('shows no hint when every association is readable', async () => {
     setSpaceState(teamSpace)
 
     renderTab('knowledge')
 
-    expect(await screen.findByText('Bibliothek ohne eigenen Zugriff')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /^lösen$/i })).toBeInTheDocument()
+    expect(
+      await screen.findByRole('group', { name: 'Weitere Bibliotheken zuordnen' }),
+    ).toBeVisible()
+    expect(
+      screen.queryByText('Nicht alle zugeordneten Inhalte sind für Sie lesbar.'),
+    ).not.toBeInTheDocument()
   })
 
   it('names the takeover when an open succession refuses a new association', async () => {
-    mockGetLibraries.mockResolvedValueOnce([
-      {
-        id: 'lib-frei',
-        name: 'Freie Bibliothek',
-        ownerType: 'USER',
-        ownerId: 'u1',
-        reach: { allAccounts: false, groupCount: 0, userCount: 1 },
-        myRole: 'OWNER',
-        documentCount: 0,
-        sourceType: 'UPLOAD',
-        createdAt: '2026-03-01T10:00:00Z',
-        updatedAt: '2026-03-01T10:00:00Z',
-      },
-    ])
     server.use(
       http.post('/api/v1/spaces/:spaceId/assets', () =>
         HttpResponse.json(
@@ -850,27 +850,60 @@ describe('SpaceSettingsPage', () => {
     renderTab('knowledge')
     const user = userEvent.setup()
 
-    const field = await screen.findByPlaceholderText('Bibliothek suchen …')
-    await user.click(field)
-    await user.click(await screen.findByRole('option', { name: 'Freie Bibliothek' }))
+    await user.click(await screen.findByRole('checkbox', { name: /^Dienstanweisungen/ }))
     await user.click(screen.getByRole('button', { name: 'Zuordnen' }))
 
     expect(await screen.findByText(/Nachfolge offen/)).toBeInTheDocument()
     expect(screen.getByText(/Übernahme/)).toBeInTheDocument()
   })
 
-  // #784: without an explicit noOptionsText, MUI's Autocomplete falls back to the English
-  // default "No options" - the project language requires German for every visible UI text.
-  it('shows a German text when the library autocomplete has no options to offer', async () => {
+  it('narrows the tiles to my favorites, as in the space wizard', async () => {
+    mockFavoriteAssets.add(favoriteKey('KNOWLEDGE_LIBRARY', 'library-dienstanweisungen'))
     setSpaceState(teamSpace)
     renderTab('knowledge')
     const user = userEvent.setup()
 
-    const field = await screen.findByPlaceholderText('Bibliothek suchen …')
-    await user.click(field)
+    expect(await screen.findByRole('checkbox', { name: /^Projektakte Phoenix/ })).toBeVisible()
+    await user.click(
+      within(screen.getByRole('group', { name: 'Herkunft' })).getByRole('button', {
+        name: 'Nur Favoriten',
+      }),
+    )
 
-    expect(await screen.findByText('Keine Treffer')).toBeInTheDocument()
-    expect(screen.queryByText('No options')).not.toBeInTheDocument()
+    expect(await screen.findByRole('checkbox', { name: /^Dienstanweisungen/ })).toBeVisible()
+    expect(screen.queryByRole('checkbox', { name: /^Projektakte Phoenix/ })).not.toBeInTheDocument()
+  })
+
+  it('narrows the tiles to assets from my groups, as in the space wizard', async () => {
+    setSpaceState(teamSpace)
+    renderTab('knowledge')
+    const user = userEvent.setup()
+
+    expect(await screen.findByRole('checkbox', { name: /^Projektakte Phoenix/ })).toBeVisible()
+    await user.click(
+      within(screen.getByRole('group', { name: 'Herkunft' })).getByRole('button', {
+        name: 'Aus meinen Gruppen',
+      }),
+    )
+
+    expect(await screen.findByRole('checkbox', { name: /^Dienstanweisungen/ })).toBeVisible()
+    expect(screen.queryByRole('checkbox', { name: /^Projektakte Phoenix/ })).not.toBeInTheDocument()
+  })
+
+  it("offers only the tab's own type and narrows the tiles by search", async () => {
+    setSpaceState(teamSpace)
+    renderTab('knowledge')
+    const user = userEvent.setup()
+
+    expect(await screen.findByRole('checkbox', { name: /^Dienstanweisungen/ })).toBeVisible()
+    expect(
+      screen.queryByRole('checkbox', { name: /^Formulierungshilfen Referat 50/ }),
+    ).not.toBeInTheDocument()
+
+    await user.type(screen.getByRole('searchbox', { name: 'Suche' }), 'gibt es nicht')
+
+    expect(await screen.findByText('Keine Treffer.')).toBeInTheDocument()
+    expect(screen.queryByRole('checkbox', { name: /^Dienstanweisungen/ })).not.toBeInTheDocument()
   })
 
   /**
@@ -880,6 +913,7 @@ describe('SpaceSettingsPage', () => {
   describe('Reiter „Prompts"', () => {
     const mixedAssociations: SpaceAssetAssociationListResponse = {
       hasAssociations: true,
+      hasUnreadableAssociations: false,
       hasKnowledge: true,
       hasReadableKnowledge: true,
       items: [
@@ -887,7 +921,6 @@ describe('SpaceSettingsPage', () => {
           assetType: 'KNOWLEDGE_LIBRARY',
           assetId: 'lib-1',
           name: 'Rechtsquellen Soziales',
-          readableByCaller: true,
           createdByUserId: 'u1',
           createdAt: '2026-03-01T10:00:00Z',
         },
@@ -895,7 +928,6 @@ describe('SpaceSettingsPage', () => {
           assetType: 'PROMPT_LIBRARY',
           assetId: 'prompt-library-organisation',
           name: 'Hausweite Vorlagen',
-          readableByCaller: true,
           createdByUserId: 'u1',
           createdAt: '2026-03-01T10:00:00Z',
         },
@@ -928,9 +960,8 @@ describe('SpaceSettingsPage', () => {
       renderTab('prompts')
       const user = userEvent.setup()
 
-      await user.click(await screen.findByPlaceholderText('Prompt-Bibliothek suchen …'))
       await user.click(
-        await screen.findByRole('option', { name: 'Formulierungshilfen Referat 50' }),
+        await screen.findByRole('checkbox', { name: /^Formulierungshilfen Referat 50/ }),
       )
       await user.click(screen.getByRole('button', { name: 'Zuordnen' }))
 

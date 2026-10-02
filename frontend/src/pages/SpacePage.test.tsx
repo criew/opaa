@@ -30,6 +30,7 @@ const { mockListSpaceMembers, mockGetSpaceAssetAssociations } = vi.hoisted(() =>
   mockListSpaceMembers: vi.fn(async (): Promise<SpaceMemberResponse[]> => []),
   mockGetSpaceAssetAssociations: vi.fn(async (): Promise<SpaceAssetAssociationListResponse> => ({
     hasAssociations: false,
+    hasUnreadableAssociations: false,
     hasKnowledge: false,
     hasReadableKnowledge: false,
     items: [],
@@ -63,6 +64,7 @@ describe('SpacePage', () => {
     mockGetSpaceAssetAssociations.mockClear()
     mockGetSpaceAssetAssociations.mockResolvedValue({
       hasAssociations: false,
+      hasUnreadableAssociations: false,
       hasKnowledge: false,
       hasReadableKnowledge: false,
       items: [],
@@ -139,6 +141,7 @@ describe('SpacePage', () => {
     window.localStorage.removeItem('opaa.space-library-hint-dismissed')
     mockGetSpaceAssetAssociations.mockResolvedValue({
       hasAssociations: true,
+      hasUnreadableAssociations: false,
       hasKnowledge: true,
       hasReadableKnowledge: true,
       items: [
@@ -146,7 +149,6 @@ describe('SpacePage', () => {
           assetType: 'KNOWLEDGE_LIBRARY',
           assetId: 'lib-1',
           name: 'Rechtsquellen Soziales',
-          readableByCaller: true,
           createdByUserId: 'mock-user-id',
           createdAt: '2026-03-01T10:00:00Z',
         },
@@ -162,6 +164,7 @@ describe('SpacePage', () => {
   it('names the type of every data source, a prompt library included', async () => {
     mockGetSpaceAssetAssociations.mockResolvedValue({
       hasAssociations: true,
+      hasUnreadableAssociations: false,
       hasKnowledge: false,
       hasReadableKnowledge: false,
       items: [
@@ -169,7 +172,6 @@ describe('SpacePage', () => {
           assetType: 'PROMPT_LIBRARY',
           assetId: 'prompt-library-1',
           name: 'Formulierungshilfen',
-          readableByCaller: true,
           createdByUserId: 'mock-user-id',
           createdAt: '2026-03-01T10:00:00Z',
         },
@@ -189,6 +191,7 @@ describe('SpacePage', () => {
   it('shows the knowledge notice with a direct link when the space has no associations', async () => {
     mockGetSpaceAssetAssociations.mockResolvedValue({
       hasAssociations: false,
+      hasUnreadableAssociations: false,
       hasKnowledge: false,
       hasReadableKnowledge: false,
       items: [],
@@ -210,6 +213,7 @@ describe('SpacePage', () => {
   it('shows the space-has-no-readable-knowledge message when curated but nothing is readable', async () => {
     mockGetSpaceAssetAssociations.mockResolvedValue({
       hasAssociations: true,
+      hasUnreadableAssociations: false,
       hasKnowledge: true,
       hasReadableKnowledge: false,
       items: [],

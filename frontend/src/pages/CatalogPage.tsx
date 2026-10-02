@@ -24,6 +24,7 @@ import {
   type AssetTypeDefinition,
 } from '../components/assets/assetTypeRegistry'
 import OverviewPage, { OverviewCard, OverviewCardLink } from '../components/overview/OverviewPage'
+import UseInSpaceButton from '../components/assets/UseInSpaceButton'
 import MetaBadge from '../components/MetaBadge'
 import SuccessionStateNote from '../components/succession/SuccessionStateNote'
 import {
@@ -237,6 +238,15 @@ function CatalogCard({
       </Typography>
       <CatalogStatusLine entry={entry} />
       <SuccessionStateNote succession={entry.succession} variant="badge" />
+      {/* Like the star: its own tab stop above the card's stretched link, never inside it. */}
+      <Box sx={{ position: 'relative', zIndex: 1, alignSelf: 'flex-start', mt: 0.5 }}>
+        <UseInSpaceButton
+          assetType={entry.assetType}
+          assetId={entry.assetId}
+          name={entry.name}
+          size="small"
+        />
+      </Box>
     </OverviewCard>
   )
 }

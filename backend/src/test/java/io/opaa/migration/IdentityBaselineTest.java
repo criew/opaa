@@ -482,7 +482,7 @@ class IdentityBaselineTest extends AbstractBaselineTest {
             + SEEDED_ORGANIZATION_ID
             + "', '"
             + recipient
-            + "', 'LIBRARY_ASSOCIATED_TO_MIXED_SPACE', 'Titel')");
+            + "', 'ASSET_ASSOCIATED_TO_MIXED_SPACE', 'Titel')");
 
     execute("DELETE FROM users WHERE id = '" + recipient + "'");
 

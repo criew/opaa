@@ -105,7 +105,6 @@ export const assetHandlers = [
       assetType: body.assetType,
       assetId: body.assetId,
       name: asset.name,
-      readableByCaller: true,
       createdByUserId: mockUser.id,
       createdAt: new Date().toISOString(),
     }

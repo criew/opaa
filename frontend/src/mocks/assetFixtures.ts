@@ -11,8 +11,9 @@ export function associationListOf(
   const knowledge = items.filter((item) => item.assetType === 'KNOWLEDGE_LIBRARY')
   return {
     hasAssociations: items.length > 0,
+    hasUnreadableAssociations: false,
     hasKnowledge: knowledge.length > 0,
-    hasReadableKnowledge: knowledge.some((item) => item.readableByCaller),
+    hasReadableKnowledge: knowledge.length > 0,
     items,
   }
 }
@@ -26,7 +27,6 @@ function association(
     assetType,
     assetId,
     name,
-    readableByCaller: true,
     createdByUserId: 'owner-2',
     createdAt: '2026-03-01T10:00:00Z',
   }

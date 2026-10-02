@@ -372,6 +372,12 @@ paths:
         above on the asset itself
         (docs/features/spaces-and-assets.md#assets-in-einen-space-assoziieren: "Der Eigentümer des
         Assets ... kann jede davon jederzeit einseitig lösen").
+      description: >
+        On the space side the caller must also be able to read the asset, so no role learns of an
+        asset it may not read (ADR-0039, Entscheidung 2). A caller who neither may read nor manage
+        the asset gets the same 404 as for an unknown asset, whatever their role in the space;
+        403 means the caller may read the asset but is neither CURATOR in the space nor MANAGER on
+        the asset.
       responses:
         "204":
           description: Association removed (or did not exist)
@@ -679,15 +685,12 @@ components:
 
     SpaceAssetAssociationResponse:
       type: object
-      required: [assetType, assetId, createdByUserId, createdAt, readableByCaller]
+      required: [assetType, assetId, name, createdByUserId, createdAt]
       description: >
-        One space's view of one associated asset - see
-        docs/features/spaces-and-assets.md#assets-in-einen-space-assoziieren. For a plain MEMBER,
-        only returned for an asset they may themselves read (#203 acceptance criterion "two
-        members with different grants see different asset lists"). For a CURATOR, ADMIN or the
-        space owner, every association is returned, including one they cannot themselves read -
-        readableByCaller distinguishes the two, and name and description are only present when it
-        is true, so an unreadable entry never leaks them to a manager without a grant on the asset.
+        One space's view of one associated asset the caller may read - see
+        docs/features/spaces-and-assets.md#assets-in-einen-space-assoziieren. An association the
+        caller cannot read is never returned, whatever their role in the space (ADR-0039,
+        Entscheidung 2): two members with different grants see different lists.
       properties:
         assetType:
           $ref: "#/components/schemas/AssetType"
@@ -696,18 +699,10 @@ components:
           format: uuid
         name:
           type: string
-          nullable: true
           example: Rechtsquellen Soziales
-          description: Present only when readableByCaller is true.
         description:
           type: string
           nullable: true
-          description: Present only when readableByCaller is true.
-        readableByCaller:
-          type: boolean
-          description: >
-            Whether the calling user may themselves read this asset. Always true in a plain
-            MEMBER's filtered list; may be false in a CURATOR/ADMIN/owner's unfiltered list.
         createdByUserId:
           type: string
           format: uuid
@@ -720,7 +715,7 @@ components:
 
     SpaceAssetAssociationListResponse:
       type: object
-      required: [hasAssociations, hasKnowledge, hasReadableKnowledge, items]
+      required: [hasAssociations, hasUnreadableAssociations, hasKnowledge, hasReadableKnowledge, items]
       description: >
         The wrapper around GET /v1/spaces/{spaceId}/assets's list, carrying count-free state fields
         alongside it. A space offers exactly what is associated with it: a chat searches the
@@ -734,6 +729,13 @@ components:
           description: >
             Whether the space has at least one association of any type, regardless of whether the
             caller may read it - computed unfiltered, independently of items.
+        hasUnreadableAssociations:
+          type: boolean
+          description: >
+            Whether at least one association is left out of items because the caller cannot read
+            it - the one disclosure ADR-0039 allows ("Nicht alle zugeordneten Inhalte sind für Sie
+            lesbar."). Deliberately a flag: neither the number nor any detail of the left-out
+            associations is ever returned.
         hasKnowledge:
           type: boolean
           description: >

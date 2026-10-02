@@ -2,8 +2,11 @@ package io.opaa.space;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.catchThrowable;
 
 import io.opaa.api.types.AssetRole;
+import io.opaa.api.types.AuditObjectType;
+import io.opaa.api.types.NotificationType;
 import io.opaa.api.types.SpaceRole;
 import io.opaa.api.types.SpaceVisibility;
 import io.opaa.api.types.SystemRole;
@@ -21,6 +24,9 @@ import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
 import io.opaa.permission.AssetGrant;
 import io.opaa.permission.AssetGrantRepository;
+import io.opaa.permission.AssetType;
+import io.opaa.prompt.PromptLibrary;
+import io.opaa.prompt.PromptLibraryRepository;
 import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.OwnOrganizationFixtures;
 import java.util.LinkedHashMap;
@@ -41,6 +47,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 class SpaceAssetAssociationServiceIntegrationTest {
 
   @Autowired private SpaceAssetAssociationService associationService;
+  @Autowired private SpaceService spaceService;
+  @Autowired private org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
+  @Autowired private PromptLibraryRepository promptLibraryRepository;
   @Autowired private SpaceRepository spaceRepository;
   @Autowired private KnowledgeLibraryRepository libraryRepository;
   @Autowired private AssetGrantRepository grantRepository;
@@ -91,15 +100,31 @@ class SpaceAssetAssociationServiceIntegrationTest {
   }
 
   private UUID createLibrary(UUID ownerId) {
-    KnowledgeLibrary library =
-        KnowledgeLibrary.ownedByUser(organizationA, "Bibliothek", null, ownerId);
+    return createLibrary(ownerId, "Bibliothek");
+  }
+
+  private UUID createLibrary(UUID ownerId, String name) {
+    KnowledgeLibrary library = KnowledgeLibrary.ownedByUser(organizationA, name, null, ownerId);
     return libraryRepository.save(library).getId();
   }
 
+  private UUID createPromptLibrary(UUID ownerId) {
+    return createPromptLibrary(ownerId, "Vorlagen");
+  }
+
+  private UUID createPromptLibrary(UUID ownerId, String name) {
+    return promptLibraryRepository
+        .save(PromptLibrary.ownedByUser(organizationA, name, null, ownerId))
+        .getId();
+  }
+
   private void grant(UUID libraryId, UUID userId, AssetRole role) {
+    grant(KnowledgeLibrary.ASSET_TYPE, libraryId, userId, role);
+  }
+
+  private void grant(AssetType assetType, UUID assetId, UUID userId, AssetRole role) {
     grantRepository.save(
-        AssetGrant.forUser(
-            KnowledgeLibrary.ASSET_TYPE, libraryId, organizationA, userId, role, null, userId));
+        AssetGrant.forUser(assetType, assetId, organizationA, userId, role, null, userId));
   }
 
   private CurrentUser currentUserOf(UUID userId) {
@@ -224,30 +249,204 @@ class SpaceAssetAssociationServiceIntegrationTest {
     assertThat(response.hasReadableKnowledge()).isFalse();
   }
 
-  // #706 review, finding 5: a CURATOR/ADMIN/owner sees every association, including one they
-  // cannot themselves read, so they can also detach it - unlike a plain MEMBER's filtered view.
+  /**
+   * ADR-0039, Entscheidung 2: no role in the space - not ADMIN, CURATOR, the owner or a system
+   * admin - learns name, id or number of an association it cannot read. The one disclosure is the
+   * count-free flag.
+   */
   @Test
-  void aSpaceAdminSeesAnAssociationTheyCannotThemselvesReadWithoutItsName() {
+  void noRoleInTheSpaceSeesAnAssociationItCannotReadButEveryRoleGetsTheHint() {
     UUID owner = createUser();
-    UUID library = createLibrary(owner);
-    grant(library, owner, AssetRole.OWNER);
+    UUID hidden = createLibrary(owner);
+    grant(hidden, owner, AssetRole.OWNER);
+    UUID shared = createLibrary(owner);
+    grant(shared, owner, AssetRole.OWNER);
+    UUID space = createSpace(owner, SpaceRole.ADMIN);
+    Map<String, CurrentUser> callers = new LinkedHashMap<>();
+    for (SpaceRole role : List.of(SpaceRole.ADMIN, SpaceRole.CURATOR, SpaceRole.MEMBER)) {
+      UUID caller = createUser();
+      addMember(space, caller, role);
+      grant(shared, caller, AssetRole.VIEWER);
+      callers.put(role.name(), currentUserOf(caller));
+    }
+    UUID systemAdmin = createUser();
+    addMember(space, systemAdmin, SpaceRole.ADMIN);
+    grant(shared, systemAdmin, AssetRole.VIEWER);
+    callers.put("SYSTEM_ADMIN", currentUserOf(systemAdmin, true));
+    associationService.associate(space, KnowledgeLibrary.ASSET_TYPE, hidden, currentUserOf(owner));
+    associationService.associate(space, KnowledgeLibrary.ASSET_TYPE, shared, currentUserOf(owner));
+
+    callers.forEach(
+        (label, caller) -> {
+          SpaceAssetLinks view = associationService.listForSpace(space, caller);
+          assertThat(view.items())
+              .as(label)
+              .extracting(link -> link.association().getAssetId())
+              .containsExactly(shared);
+          assertThat(view.hasUnreadableAssociations()).as(label).isTrue();
+          assertThat(view.hasAssociations()).as(label).isTrue();
+        });
+    SpaceAssetLinks ownerView = associationService.listForSpace(space, currentUserOf(owner));
+    assertThat(ownerView.items()).hasSize(2);
+    assertThat(ownerView.hasUnreadableAssociations()).isFalse();
+  }
+
+  @Test
+  void theOverviewFigureCountsOnlyWhatTheCallerMayReadAlsoForACurator() {
+    UUID owner = createUser();
+    UUID hidden = createLibrary(owner);
+    grant(hidden, owner, AssetRole.OWNER);
+    UUID shared = createLibrary(owner);
+    grant(shared, owner, AssetRole.OWNER);
+    UUID space = createSpace(owner, SpaceRole.ADMIN);
     UUID curator = createUser();
-    grant(library, curator, AssetRole.VIEWER);
+    addMember(space, curator, SpaceRole.CURATOR);
+    grant(shared, curator, AssetRole.VIEWER);
+    associationService.associate(space, KnowledgeLibrary.ASSET_TYPE, hidden, currentUserOf(owner));
+    associationService.associate(space, KnowledgeLibrary.ASSET_TYPE, shared, currentUserOf(owner));
+
+    Space loaded = spaceRepository.findByIdWithMemberships(space).orElseThrow();
+
+    assertThat(associationService.countVisibleBySpace(List.of(loaded), currentUserOf(curator)))
+        .containsEntry(space, 1L);
+    assertThat(
+            associationService.countVisibleBySpace(List.of(loaded), currentUserOf(curator, true)))
+        .containsEntry(space, 1L);
+  }
+
+  @Test
+  void aSpaceWithCreationAssetsOfEveryTypeIsCreatedInOneCall() {
+    UUID creator = createUser();
+    UUID library = createLibrary(creator);
+    grant(library, creator, AssetRole.OWNER);
+    UUID prompts = createPromptLibrary(creator);
+    grant(PromptLibrary.ASSET_TYPE, prompts, creator, AssetRole.OWNER);
+
+    Space created =
+        spaceService.createSpace(
+            new SpaceCreation(
+                "Widerspruchsstelle",
+                null,
+                null,
+                null,
+                List.of(),
+                List.of(
+                    new SpaceAssetSeed(KnowledgeLibrary.ASSET_TYPE, library),
+                    new SpaceAssetSeed(PromptLibrary.ASSET_TYPE, prompts))),
+            currentUserOf(creator));
+
+    SpaceAssetLinks view = associationService.listForSpace(created.getId(), currentUserOf(creator));
+    assertThat(view.items())
+        .extracting(SpaceAssetLink::assetType)
+        .containsExactlyInAnyOrder(KnowledgeLibrary.ASSET_TYPE, PromptLibrary.ASSET_TYPE);
+  }
+
+  /**
+   * Space, members, assets, audit and notifications are created together or not at all: an asset
+   * the creator cannot read, last in the request, leaves none of them behind.
+   */
+  @Test
+  void anAssetTheCreatorCannotReadRollsTheWholeCreationBack() {
+    UUID owner = createUser();
+    UUID shared = createLibrary(owner, "Geteilt");
+    grant(shared, owner, AssetRole.OWNER);
+    UUID foreign = createPromptLibrary(owner);
+    grant(PromptLibrary.ASSET_TYPE, foreign, owner, AssetRole.OWNER);
+    UUID creator = createUser();
+    grant(shared, creator, AssetRole.VIEWER);
+    UUID member = createUser();
+
+    assertThatThrownBy(
+            () ->
+                spaceService.createSpace(
+                    new SpaceCreation(
+                        "Ohne Zugriff",
+                        null,
+                        null,
+                        null,
+                        List.of(new SpaceMemberSeed(member, SpaceRole.MEMBER)),
+                        List.of(
+                            new SpaceAssetSeed(KnowledgeLibrary.ASSET_TYPE, shared),
+                            new SpaceAssetSeed(PromptLibrary.ASSET_TYPE, foreign))),
+                    currentUserOf(creator)))
+        .isInstanceOf(NotFoundException.class);
+
+    assertThat(spaceRepository.findDistinctByMembershipsUserIdWithMemberships(creator)).isEmpty();
+    assertThat(spaceRepository.findDistinctByMembershipsUserIdWithMemberships(member)).isEmpty();
+    assertThat(associationRepository.findByAssetIdOrderByCreatedAtAsc(shared)).isEmpty();
+    assertThat(notificationRepository.findByRecipientUserIdOrderByCreatedAtDesc(owner)).isEmpty();
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM audit_log WHERE organization_id = ? AND event_type IN"
+                    + " ('SPACE_CREATED', 'SPACE_MEMBER_ADDED', 'ASSET_SHARED_TO_SPACE')",
+                Long.class,
+                organizationA))
+        .isZero();
+  }
+
+  /**
+   * One notification per owner for the whole creation, naming every asset of theirs that now stands
+   * in a space not every member may read - whatever the asset types.
+   */
+  @Test
+  void creatingASpaceWithSeveralAssetsNotifiesEachOwnerOnceForAllOfThem() {
+    UUID owner = createUser();
+    UUID library = createLibrary(owner, "Rechtsquellen");
+    grant(library, owner, AssetRole.OWNER);
+    UUID prompts = createPromptLibrary(owner, "Bescheidvorlagen");
+    grant(PromptLibrary.ASSET_TYPE, prompts, owner, AssetRole.OWNER);
+    UUID creator = createUser();
+    grant(library, creator, AssetRole.VIEWER);
+    grant(PromptLibrary.ASSET_TYPE, prompts, creator, AssetRole.VIEWER);
+    UUID memberWithoutAccess = createUser();
+
+    Space created =
+        spaceService.createSpace(
+            new SpaceCreation(
+                "Widerspruchsstelle",
+                null,
+                null,
+                null,
+                List.of(new SpaceMemberSeed(memberWithoutAccess, SpaceRole.MEMBER)),
+                List.of(
+                    new SpaceAssetSeed(KnowledgeLibrary.ASSET_TYPE, library),
+                    new SpaceAssetSeed(PromptLibrary.ASSET_TYPE, prompts))),
+            currentUserOf(creator));
+
+    assertThat(notificationRepository.findByRecipientUserIdOrderByCreatedAtDesc(owner))
+        .singleElement()
+        .satisfies(
+            notification -> {
+              assertThat(notification.getType())
+                  .isEqualTo(NotificationType.ASSET_ASSOCIATED_TO_MIXED_SPACE);
+              assertThat(notification.getObjectType()).isEqualTo(AuditObjectType.SPACE);
+              assertThat(notification.getObjectId()).isEqualTo(created.getId());
+              assertThat(notification.getBody())
+                  .contains("Rechtsquellen", "Bescheidvorlagen", "Widerspruchsstelle");
+            });
+    assertThat(notificationRepository.findByRecipientUserIdOrderByCreatedAtDesc(creator)).isEmpty();
+  }
+
+  @Test
+  void ownerOfAPromptLibraryIsNotifiedLikeTheOwnerOfAKnowledgeLibrary() {
+    UUID owner = createUser();
+    UUID prompts = createPromptLibrary(owner);
+    grant(PromptLibrary.ASSET_TYPE, prompts, owner, AssetRole.OWNER);
+    UUID curator = createUser();
+    grant(PromptLibrary.ASSET_TYPE, prompts, curator, AssetRole.VIEWER);
     UUID space = createSpace(curator, SpaceRole.ADMIN);
-    associationService.associate(
-        space, KnowledgeLibrary.ASSET_TYPE, library, currentUserOf(curator));
+    addMember(space, createUser(), SpaceRole.MEMBER);
 
-    UUID otherAdmin = createUser();
-    addMember(space, otherAdmin, SpaceRole.ADMIN);
+    associationService.associate(space, PromptLibrary.ASSET_TYPE, prompts, currentUserOf(curator));
 
-    SpaceAssetLinks seenByOtherAdmin =
-        associationService.listForSpace(space, currentUserOf(otherAdmin));
-
-    assertThat(seenByOtherAdmin.items()).hasSize(1);
-    SpaceAssetLink entry = seenByOtherAdmin.items().get(0);
-    assertThat(entry.association().getAssetId()).isEqualTo(library);
-    assertThat(entry.readableByCaller()).isFalse();
-    assertThat(entry.name()).isNull();
+    assertThat(notificationRepository.findByRecipientUserIdOrderByCreatedAtDesc(owner))
+        .singleElement()
+        .satisfies(
+            notification -> {
+              assertThat(notification.getType())
+                  .isEqualTo(NotificationType.ASSET_ASSOCIATED_TO_MIXED_SPACE);
+              assertThat(notification.getObjectId()).isEqualTo(prompts);
+            });
   }
 
   @Test
@@ -268,17 +467,17 @@ class SpaceAssetAssociationServiceIntegrationTest {
   }
 
   @Test
-  void ordinaryCuratorCannotDetachAnotherLibrarysAssociationTheyDoNotManage() {
+  void aReaderWhoIsNoCuratorCannotDetachAnAssociation() {
     UUID owner = createUser();
     UUID library = createLibrary(owner);
     grant(library, owner, AssetRole.OWNER);
     UUID curator = createUser();
     grant(library, curator, AssetRole.VIEWER);
+    UUID stranger = createUser();
+    grant(library, stranger, AssetRole.VIEWER);
     UUID space = createSpace(curator, SpaceRole.ADMIN);
     associationService.associate(
         space, KnowledgeLibrary.ASSET_TYPE, library, currentUserOf(curator));
-
-    UUID stranger = createUser();
 
     assertThatThrownBy(() -> associationService.detach(space, library, currentUserOf(stranger)))
         .isInstanceOf(AccessDeniedException.class);
@@ -291,15 +490,49 @@ class SpaceAssetAssociationServiceIntegrationTest {
     UUID owner = createUser();
     UUID library = createLibrary(owner);
     grant(library, owner, AssetRole.OWNER);
-    UUID space = createSpace(owner, SpaceRole.ADMIN);
-    associationService.associate(space, KnowledgeLibrary.ASSET_TYPE, library, currentUserOf(owner));
-
     UUID plainMember = createUser();
+    grant(library, plainMember, AssetRole.VIEWER);
+    UUID space = createSpace(owner, SpaceRole.ADMIN);
     addMember(space, plainMember, SpaceRole.MEMBER);
+    associationService.associate(space, KnowledgeLibrary.ASSET_TYPE, library, currentUserOf(owner));
 
     assertThatThrownBy(() -> associationService.detach(space, library, currentUserOf(plainMember)))
         .isInstanceOf(AccessDeniedException.class);
 
+    assertThat(associationRepository.existsBySpaceIdAndAssetId(space, library)).isTrue();
+  }
+
+  /**
+   * ADR-0039, Entscheidung 2: detaching an asset one may not read answers like an unknown asset, in
+   * every role of the space - a curator cannot detach what they cannot see, and nobody learns that
+   * the asset exists.
+   */
+  @Test
+  void detachingAnUnreadableAssetAnswersLikeAnUnknownOneInEveryRole() {
+    UUID owner = createUser();
+    UUID library = createLibrary(owner);
+    grant(library, owner, AssetRole.OWNER);
+    UUID space = createSpace(owner, SpaceRole.ADMIN);
+    Map<SpaceRole, UUID> callers = new LinkedHashMap<>();
+    for (SpaceRole role : List.of(SpaceRole.ADMIN, SpaceRole.CURATOR, SpaceRole.MEMBER)) {
+      UUID caller = createUser();
+      addMember(space, caller, role);
+      callers.put(role, caller);
+    }
+    UUID outsider = createUser();
+    associationService.associate(space, KnowledgeLibrary.ASSET_TYPE, library, currentUserOf(owner));
+
+    String unknownMessage =
+        catchThrowable(
+                () -> associationService.detach(space, UUID.randomUUID(), currentUserOf(owner)))
+            .getMessage();
+    List<UUID> everyone = new java.util.ArrayList<>(callers.values());
+    everyone.add(outsider);
+    for (UUID caller : everyone) {
+      assertThatThrownBy(() -> associationService.detach(space, library, currentUserOf(caller)))
+          .isInstanceOf(NotFoundException.class)
+          .hasMessage(unknownMessage);
+    }
     assertThat(associationRepository.existsBySpaceIdAndAssetId(space, library)).isTrue();
   }
 

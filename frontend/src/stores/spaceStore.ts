@@ -1,5 +1,7 @@
 import { create } from 'zustand'
 import type {
+  SpaceAssetAssociationRequest,
+  SpaceMemberRequest,
   AssetType,
   PermissionSubjectType,
   SpaceAssetAssociationResponse,
@@ -47,10 +49,9 @@ interface SpaceState {
   // reachable for ADMIN, owner and system admins (a 403 for anyone else leaves members empty).
   members: SpaceMemberResponse[]
   isLoadingMembers: boolean
-  // #203: the space's associated assets, of every type - for a plain MEMBER, filtered server-side to what the
-  // caller may themselves read (two members of the same space can legitimately see different
-  // lists here); for a CURATOR/ADMIN/owner, unfiltered (#706 review, finding 5). hasAssociations
-  // is a count-free state field independent of the (possibly filtered) items list.
+  // The space's associated assets of every type that the caller may read, in every role - two
+  // members of the same space can legitimately see different lists here. hasAssociations is a
+  // count-free state field independent of the filtered items list.
   assetAssociations: SpaceAssetAssociationResponse[]
   hasAssetAssociations: boolean
   // The two count-free signals of an empty search scope, computed by the server because the
@@ -58,6 +59,8 @@ interface SpaceState {
   // at all, and is any of it readable by the caller. Without knowledge, a chat searches nothing.
   hasKnowledge: boolean
   hasReadableKnowledge: boolean
+  // Count-free: some association is left out of assetAssociations because the caller cannot read it.
+  hasUnreadableAssociations: boolean
   isLoadingAssetAssociations: boolean
   // #783 review: the space id that assetAssociations/hasAssetAssociations actually describe -
   // null while nothing has successfully loaded yet, or after a failed load. A caller reading
@@ -92,8 +95,9 @@ interface SpaceState {
     name: string,
     description: string,
     visibility?: SpaceVisibility,
-    libraryIds?: string[],
+    assets?: SpaceAssetAssociationRequest[],
     chatAutoCleanup?: boolean,
+    initialMembers?: SpaceMemberRequest[],
   ) => Promise<string>
   loadAssetAssociations: (spaceId: string) => Promise<void>
   associateAsset: (spaceId: string, assetType: AssetType, assetId: string) => Promise<void>
@@ -121,6 +125,7 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
   hasAssetAssociations: false,
   hasKnowledge: false,
   hasReadableKnowledge: false,
+  hasUnreadableAssociations: false,
   isLoadingAssetAssociations: false,
   assetAssociationsSpaceId: null,
 
@@ -138,6 +143,7 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
       hasAssetAssociations: false,
       hasKnowledge: false,
       hasReadableKnowledge: false,
+      hasUnreadableAssociations: false,
       isLoadingAssetAssociations: false,
       assetAssociationsSpaceId: null,
     }),
@@ -182,6 +188,7 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
       hasAssetAssociations: false,
       hasKnowledge: false,
       hasReadableKnowledge: false,
+      hasUnreadableAssociations: false,
       assetAssociationsSpaceId: null,
     })
     try {
@@ -272,8 +279,22 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
     await Promise.all([get().loadSpaces(), get().selectSpace(spaceId), get().loadMembers(spaceId)])
   },
 
-  createNewSpace: async (name, description, visibility, libraryIds, chatAutoCleanup) => {
-    const space = await createSpace(name, description, visibility, libraryIds, chatAutoCleanup)
+  createNewSpace: async (
+    name,
+    description,
+    visibility,
+    assets,
+    chatAutoCleanup,
+    initialMembers,
+  ) => {
+    const space = await createSpace(
+      name,
+      description,
+      visibility,
+      assets,
+      chatAutoCleanup,
+      initialMembers,
+    )
     await get().loadSpaces()
     await get().selectSpace(space.id)
     return space.id
@@ -296,6 +317,7 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
       hasAssetAssociations: false,
       hasKnowledge: false,
       hasReadableKnowledge: false,
+      hasUnreadableAssociations: false,
       assetAssociationsSpaceId: null,
     })
     try {
@@ -306,6 +328,7 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
         hasAssetAssociations: response.hasAssociations,
         hasKnowledge: response.hasKnowledge,
         hasReadableKnowledge: response.hasReadableKnowledge,
+        hasUnreadableAssociations: response.hasUnreadableAssociations,
         assetAssociationsSpaceId: spaceId,
         isLoadingAssetAssociations: false,
       })
@@ -319,6 +342,7 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
         hasAssetAssociations: false,
         hasKnowledge: false,
         hasReadableKnowledge: false,
+        hasUnreadableAssociations: false,
         assetAssociationsSpaceId: null,
         isLoadingAssetAssociations: false,
       })

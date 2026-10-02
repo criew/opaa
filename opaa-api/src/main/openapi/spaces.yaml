@@ -457,23 +457,21 @@ components:
             Switches on the automatic archiving and deletion of inactive chats in this space.
             Omitted or null leaves it off. The periods are fixed installation-wide, see
             ChatAutoCleanupResponse.
-        libraryIds:
+        assets:
           type: array
           nullable: true
           maxItems: 100
           description: >
-            Libraries to associate with the space on creation (#203/#686) - each must be at least
-            readable (VIEWER or above) by the creator, exactly the same rule the dedicated POST
-            /v1/spaces/{spaceId}/assets endpoint enforces afterwards. Optional: a space created
-            without this has no knowledge yet, and a chat in it searches nothing until a library
-            is associated - the association is the space's hard boundary for every asset type.
-            Associated atomically with the space
-            itself (SpaceService#createSpace) - if any id cannot be associated (not found, or not
-            readable by the creator), the whole space creation is rolled back rather than left
-            half-created.
+            Assets of any type to associate with the space on creation - each must be readable
+            (VIEWER or above) by the creator, the same rule POST /v1/spaces/{spaceId}/assets
+            enforces. Optional: a space created without this offers nothing - a chat in it searches
+            no knowledge until some is associated, since the association is the space's hard
+            boundary for every asset type. Associated atomically with the space itself - if any
+            entry cannot be associated (not found, or not readable by the creator), the whole
+            creation is rolled back. The owners' notification about a mixed audience is sent once
+            per owner for the whole request, not once per asset.
           items:
-            type: string
-            format: uuid
+            $ref: "#/components/schemas/SpaceAssetAssociationRequest"
 
     SpaceUpdateRequest:
       type: object
@@ -552,10 +550,10 @@ components:
         libraryCount:
           type: integer
           description: >
-            #682: number of knowledge libraries assigned to the space - the "Quellen" figure of
-            the overview card. Follows the same rule as the space's association list: CURATOR,
-            ADMIN, the owner and system admins count every association, a plain MEMBER only the
-            libraries they may read. Optional so older clients keep working.
+            #682: number of assets associated with the space that the caller may read - the
+            "Quellen" figure of the overview card. Follows the same rule as the space's association
+            list and applies to every role: an association the caller cannot read is never
+            counted (ADR-0039, Entscheidung 2). Optional so older clients keep working.
           example: 3
         chatCount:
           type: integer

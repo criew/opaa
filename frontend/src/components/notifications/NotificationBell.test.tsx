@@ -22,7 +22,7 @@ describe('NotificationBell (#203)', () => {
         HttpResponse.json([
           {
             id: 'n1',
-            type: 'LIBRARY_ASSOCIATED_TO_MIXED_SPACE',
+            type: 'ASSET_ASSOCIATED_TO_MIXED_SPACE',
             title: 'Ihre Bibliothek wurde in einem Space bereitgestellt',
             body: 'Die Bibliothek "Rechtsquellen" wurde im Space "Team A" bereitgestellt.',
             readAt: null,
@@ -53,7 +53,7 @@ describe('NotificationBell (#203)', () => {
         HttpResponse.json([
           {
             id: 'n1',
-            type: 'LIBRARY_ASSOCIATED_TO_MIXED_SPACE',
+            type: 'ASSET_ASSOCIATED_TO_MIXED_SPACE',
             title: 'Ungelesene Benachrichtigung',
             readAt: null,
             createdAt: '2026-03-01T10:00:00Z',

@@ -239,7 +239,7 @@ export default function ChatInput({
     (): SpaceLibrary[] =>
       isAssetAssociationsCurrent
         ? assetAssociations
-            .filter((a) => a.readableByCaller && a.assetType === 'KNOWLEDGE_LIBRARY')
+            .filter((a) => a.assetType === 'KNOWLEDGE_LIBRARY')
             .map((a) => ({ id: a.assetId, name: a.name ?? '' }))
         : [],
     [assetAssociations, isAssetAssociationsCurrent],

@@ -250,9 +250,9 @@ class SpaceServiceIntegrationTest {
   void listCountsAssignedLibrariesAndOnlyTheCallersOwnChats() {
     // #682: the overview card's figures line. Chats count only the caller's own (#525: chats are
     // private to their author, so another member's chats must neither show up in the figure nor
-    // leak through it). Libraries follow listForSpace's rule: the ADMIN sees every association,
-    // the plain MEMBER only the libraries they may read - the figure must not give away how many
-    // are withheld (spaces-and-assets.md: "darf keine Anzahlen nennen").
+    // leak through it). Libraries follow listForSpace's rule: every role, the ADMIN included,
+    // counts only the libraries it may read - the figure must not give away how many are withheld
+    // (ADR-0039, Entscheidung 2).
     UUID userA = createUser(organizationA);
     UUID userB = createUser(organizationA);
     Space eng =
@@ -290,7 +290,9 @@ class SpaceServiceIntegrationTest {
             .filter(s -> s.space().getName().equals("Engineering"))
             .findFirst()
             .orElseThrow();
-    assertThat(engineering.libraryCount()).isEqualTo(2);
+    assertThat(engineering.libraryCount())
+        .as("ADMIN userA may read only the library they own")
+        .isEqualTo(1);
     assertThat(engineering.chatCount()).isEqualTo(3);
     SpaceOverview leer =
         spaces.stream().filter(s -> s.space().getName().equals("Leer")).findFirst().orElseThrow();
@@ -1062,9 +1064,9 @@ class SpaceServiceIntegrationTest {
     assertThat(visibleToSystemAdmin.getFirst().space().isArchived()).isTrue();
   }
 
-  // #706 review, finding 4: libraryIds are associated in the same transaction as the space itself
-  // - a library the creator cannot associate (here: does not exist) must roll the whole creation
-  // back, not leave a half-created space with only some of the requested associations.
+  // #706 review, finding 4: the creation's assets are associated in the same transaction as the
+  // space itself - a library the creator cannot associate (here: does not exist) must roll the
+  // whole creation back, not leave a half-created space with only some of the associations.
   @Test
   void createSpaceRollsBackEntirelyWhenOneOfTheRequestedLibraryIdsCannotBeAssociated() {
     UUID creator = createUser(organizationA);
@@ -1072,7 +1074,12 @@ class SpaceServiceIntegrationTest {
     UUID nonExistentLibrary = UUID.randomUUID();
     SpaceCreation request =
         new SpaceCreation(
-            "Datenraum", null, null, null, null, List.of(readableLibrary, nonExistentLibrary));
+            "Datenraum",
+            null,
+            null,
+            null,
+            null,
+            List.of(knowledge(readableLibrary), knowledge(nonExistentLibrary)));
 
     assertThatThrownBy(() -> spaceService.createSpace(request, currentUserOf(creator)))
         .isInstanceOf(io.opaa.common.NotFoundException.class);
@@ -1086,7 +1093,13 @@ class SpaceServiceIntegrationTest {
     UUID libraryOne = createReadableLibrary(organizationA, creator);
     UUID libraryTwo = createReadableLibrary(organizationA, creator);
     SpaceCreation request =
-        new SpaceCreation("Datenraum", null, null, null, null, List.of(libraryOne, libraryTwo));
+        new SpaceCreation(
+            "Datenraum",
+            null,
+            null,
+            null,
+            null,
+            List.of(knowledge(libraryOne), knowledge(libraryTwo)));
 
     Space created = spaceService.createSpace(request, currentUserOf(creator));
 
@@ -1096,5 +1109,9 @@ class SpaceServiceIntegrationTest {
             (rs, rowNum) -> (UUID) rs.getObject("asset_id"),
             created.getId());
     assertThat(associatedLibraryIds).containsExactlyInAnyOrder(libraryOne, libraryTwo);
+  }
+
+  private static SpaceAssetSeed knowledge(UUID libraryId) {
+    return new SpaceAssetSeed(io.opaa.knowledge.KnowledgeLibrary.ASSET_TYPE, libraryId);
   }
 }

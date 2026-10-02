@@ -28,6 +28,7 @@ function mockAssociations(
   spaceId: string,
   response: {
     hasAssociations: boolean
+    hasUnreadableAssociations: boolean
     hasKnowledge: boolean
     hasReadableKnowledge: boolean
     items: SpaceAssetAssociationResponse[]
@@ -67,7 +68,6 @@ function associated(library: LibraryListResponse): SpaceAssetAssociationResponse
     assetType: 'KNOWLEDGE_LIBRARY',
     assetId: library.id,
     name: library.name,
-    readableByCaller: true,
     createdByUserId: 'user-1',
     createdAt: '2026-03-01T10:00:00Z',
   }
@@ -142,6 +142,7 @@ describe('ChatInput', () => {
     it('shows the "kein Wissen zugeordnet" notice with a direct link for a curator', async () => {
       mockAssociations('space-gewerbeamt', {
         hasAssociations: false,
+        hasUnreadableAssociations: false,
         hasKnowledge: false,
         hasReadableKnowledge: false,
         items: [],
@@ -177,6 +178,7 @@ describe('ChatInput', () => {
     it('tells a plain member who can assign knowledge, without a link', async () => {
       mockAssociations('space-gewerbeamt', {
         hasAssociations: true,
+        hasUnreadableAssociations: false,
         hasKnowledge: false,
         hasReadableKnowledge: false,
         items: [],
@@ -194,6 +196,7 @@ describe('ChatInput', () => {
     it('shows the "kein Wissen verfügbar" notice when nothing associated is readable', async () => {
       mockAssociations('space-gewerbeamt', {
         hasAssociations: true,
+        hasUnreadableAssociations: false,
         hasKnowledge: true,
         hasReadableKnowledge: false,
         items: [],
@@ -212,6 +215,7 @@ describe('ChatInput', () => {
     it('shows no notice once associated knowledge is readable', async () => {
       mockAssociations('space-gewerbeamt', {
         hasAssociations: true,
+        hasUnreadableAssociations: false,
         hasKnowledge: true,
         hasReadableKnowledge: true,
         items: [associated(rechtsquellen)],
@@ -239,7 +243,6 @@ describe('ChatInput', () => {
             assetType: 'KNOWLEDGE_LIBRARY',
             assetId: rechtsquellen.id,
             name: rechtsquellen.name,
-            readableByCaller: true,
             createdByUserId: 'user-1',
             createdAt: '2026-03-01T10:00:00Z',
           },

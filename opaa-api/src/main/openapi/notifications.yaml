@@ -58,12 +58,12 @@ components:
         same set was dropped (#862).
       enum:
         [
-          LIBRARY_ASSOCIATED_TO_MIXED_SPACE,
+          ASSET_ASSOCIATED_TO_MIXED_SPACE,
           EXTERNAL_ACCESS_MASS_RETRIEVAL,
           GROUP_MEMBER_ADDED,
           GROUP_MEMBER_REMOVED,
         ]
-      example: LIBRARY_ASSOCIATED_TO_MIXED_SPACE
+      example: ASSET_ASSOCIATED_TO_MIXED_SPACE
 
     NotificationResponse:
       type: object
