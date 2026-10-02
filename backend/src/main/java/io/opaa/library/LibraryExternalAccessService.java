@@ -37,9 +37,9 @@ import org.springframework.transaction.annotation.Transactional;
  * deliberate act. Nothing here consults the installation-wide channel switch (#1717): the release
  * is an attribute of the library, its enforcement is a separate question (#1720/#1721).
  *
- * <p>The write itself goes through {@link KnowledgeLibrary#updateExternalAccess}, which is
- * package-private, and every change publishes {@link LibraryChanged} so the history interval and
- * the audit entry are written side by side.
+ * <p>The write itself goes through {@link KnowledgeLibrary#updateExternalAccess}, which only this
+ * package may call ({@code KnowledgeLibraryReachWriterTest}), and every change publishes {@link
+ * LibraryChanged} so the history interval and the audit entry are written side by side.
  */
 @Service
 public class LibraryExternalAccessService {

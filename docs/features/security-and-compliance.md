@@ -723,12 +723,18 @@ schreiben, fällt dort auf, bevor er in Betrieb geht. Welche Klassen dabei über
 derselbe Test gegen den Anwendungskontext, damit eine neue Klasse an den Rechtetabellen nicht unbemerkt
 hinzukommt.
 
-Für das **Reichweitenfeld** der Fremdzugangsfreigabe trägt diese
-Einschränkung zusätzlich der Compiler:
-Über die Bibliothek selbst ist es nur aus dem Paket heraus veränderbar, das die Historienzeile schreibt
-— ein Schreibpfad außerhalb dieses Pakets lässt sich gar nicht erst übersetzen. Am Compiler vorbei ginge
-es weiterhin über direktes SQL, eine Datenbankmigration oder Reflection; diese Wege sieht keine der
-Prüfungen.
+Für die **Reichweitenfelder** einer Bibliothek — die Fremdzugangsfreigabe und die Freigabe-Obergrenze —
+kommt ein Strukturtest hinzu (`KnowledgeLibraryReachWriterTest`): Er liest die übersetzten Klassen
+und schlägt fehl, sobald eine Klasse außerhalb von `io.opaa.library` — dem Paket, das die
+Historienzeile schreibt — eine der ändernden Methoden der Bibliothek aufruft
+(`updateExternalAccess`, `expireExternalAccess`, `markExternalAccessReminderSent`, `updateShareCap`).
+Der Compiler trägt diese Einschränkung nicht: Die Methoden sind öffentlich, weil die Bibliothek in
+`io.opaa.knowledge` liegt und dieses Paket nach der Modulschichtung nicht von `io.opaa.library`
+abhängen darf. Der Strukturtest unterscheidet nur nach Paket: Dass ein Schreibpfad seine Historienzeile
+schreibt, prüft der Integrationstest je Operation nur für die dort benannten Dienste
+(`externalAccessWritePaths`: Setzen, Zurücknehmen, Ablauflauf). Eine neue Klasse in `io.opaa.library`,
+die die Freigabe ändert, fiele keiner der Prüfungen auf. Ebenso ginge es am Strukturtest vorbei über
+direktes SQL, eine Datenbankmigration oder Reflection.
 
 Für den **Bestand** einer Bibliothek — das Anlegen und Löschen der Zeile selbst — gilt weder das eine noch
 das andere: Der Test gegen den Anwendungskontext lässt das Bibliotheks-Repository bewusst aus, weil es
@@ -757,8 +763,8 @@ Recht falsch, nicht bloß lückenhaft. Die Historie überlebt die Löschung eine
 bewusst keinen Fremdschlüssel, damit eine reguläre Lösch-Operation die Beweislage nicht mit sich reißt.
 
 **Umsetzungsstand der Fremdzugangsfreigabe (#1731):** Die Freigabe einer
-Wissensbibliothek für Fremdzugänge ist gebaut und liegt in `asset_visibility_history`, mit demselben Schreibpfadschutz (`KnowledgeLibrary#updateExternalAccess` ist
-paketprivat). Setzen, Zurücknehmen und Erlöschen erzeugen je einen Protokolleintrag
+Wissensbibliothek für Fremdzugänge ist gebaut und liegt in `asset_visibility_history`, mit demselben Schreibpfadschutz (Integrationstest je Operation und
+`KnowledgeLibraryReachWriterTest`, siehe oben). Setzen, Zurücknehmen und Erlöschen erzeugen je einen Protokolleintrag
 (`ASSET_EXTERNAL_ACCESS_CHANGED`, `ASSET_EXTERNAL_ACCESS_EXPIRED`) und öffnen je ein neues Intervall;
 der Ablauflauf schreibt ohne handelnde Person, unter einem Systemakteur. Die
 Befristung **wirkt im Augenblick ihres Ablaufs**, nicht erst mit dem nächtlichen Lauf: Der Lauf
