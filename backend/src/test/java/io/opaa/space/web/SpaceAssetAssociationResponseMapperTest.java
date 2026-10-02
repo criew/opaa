@@ -57,11 +57,12 @@ class SpaceAssetAssociationResponseMapperTest {
   void toListResponseCarriesTheCountFreeFlagsIndependentlyOfAnEmptyItemsList() {
     SpaceAssetAssociationListResponse response =
         SpaceAssetAssociationResponseMapper.toListResponse(
-            new SpaceAssetLinks(true, true, false, List.of()));
+            new SpaceAssetLinks(true, true, true, false, List.of()));
 
     assertThat(response.getHasAssociations()).isTrue();
     assertThat(response.getHasUnreadableAssociations()).isTrue();
-    assertThat(response.getNarrowsSearch()).isFalse();
+    assertThat(response.getHasKnowledge()).isTrue();
+    assertThat(response.getHasReadableKnowledge()).isFalse();
     assertThat(response.getItems()).isEmpty();
   }
 
@@ -70,6 +71,7 @@ class SpaceAssetAssociationResponseMapperTest {
     SpaceAssetLinks links =
         new SpaceAssetLinks(
             true,
+            false,
             false,
             true,
             List.of(link(association(), "A", null), link(association(), "B", null)));
@@ -81,7 +83,8 @@ class SpaceAssetAssociationResponseMapperTest {
         .extracting(SpaceAssetAssociationResponse::getName)
         .containsExactly("A", "B");
     assertThat(response.getHasUnreadableAssociations()).isFalse();
-    assertThat(response.getNarrowsSearch()).isTrue();
+    assertThat(response.getHasKnowledge()).isFalse();
+    assertThat(response.getHasReadableKnowledge()).isTrue();
   }
 
   @Test

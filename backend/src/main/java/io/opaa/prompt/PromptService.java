@@ -17,6 +17,7 @@ import io.opaa.permission.SpaceAssetDirectory;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -48,8 +49,9 @@ public class PromptService {
   private static final String UNIQUE_NAME = "uk_prompts_library_name";
 
   static final String NOT_USABLE =
-      "Dieser Prompt steht Ihnen nicht zur Verfügung – er wurde gelöscht oder Ihre Leseberechtigung"
-          + " für seine Prompt-Bibliothek besteht nicht mehr.";
+      "Dieser Prompt steht Ihnen hier nicht zur Verfügung – er wurde gelöscht, Ihre"
+          + " Leseberechtigung für seine Prompt-Bibliothek besteht nicht mehr, oder die Bibliothek"
+          + " ist diesem Space nicht zugeordnet.";
 
   /** The code of that refusal, on which a client hands the question back without the prompt. */
   public static final String NOT_USABLE_CODE = "PROMPT_NOT_USABLE";
@@ -80,67 +82,56 @@ public class PromptService {
   }
 
   /**
-   * The prompt {@code promptId} if the caller may read its library by the formula - the check a
-   * question built from it has to pass. An unknown prompt, one of another organization and one
-   * whose library the caller cannot (or can no longer) read all answer the same {@code 403}, so a
-   * foreign id is never confirmed.
+   * The prompt {@code promptId} if its library is associated with the space {@code spaceId} and the
+   * caller may read it by the formula - the check a question built from it has to pass. Without a
+   * space no prompt is usable. An unknown prompt, one of another organization, one whose library
+   * the caller cannot (or can no longer) read and one outside the space all answer the same {@code
+   * 403}, so a foreign id is never confirmed.
    */
-  public Prompt requireUsable(UUID promptId, CurrentUser caller) {
+  public Prompt requireUsable(UUID promptId, UUID spaceId, CurrentUser caller) {
     Prompt prompt =
         promptRepository
             .findByIdAndOrganizationId(promptId, caller.organizationId())
             .orElseThrow(() -> new AccessDeniedException(NOT_USABLE, NOT_USABLE_CODE));
     try {
       requireContent(prompt.getLibraryId(), caller, AssetRole.VIEWER);
-    } catch (NotFoundException | AccessDeniedException notReadable) {
+      if (spaceId == null
+          || !spaceAssets
+              .assetIdsInSpace(spaceId, PromptLibrary.ASSET_TYPE, caller)
+              .contains(prompt.getLibraryId())) {
+        throw new AccessDeniedException(NOT_USABLE, NOT_USABLE_CODE);
+      }
+    } catch (NotFoundException | AccessDeniedException notUsable) {
       throw new AccessDeniedException(NOT_USABLE, NOT_USABLE_CODE);
     }
     return prompt;
   }
 
   /**
-   * {@link #available(CurrentUser, Set)} with the prompt libraries of the space {@code spaceId}
-   * first; without a space nothing comes first and the order by name stays. Only a member of the
-   * space may order by it: an unknown or foreign space is a {@code 404}, a caller who is no member
-   * a {@code 403}.
+   * Every prompt of every prompt library that is associated with the space {@code spaceId} and
+   * readable by the caller by the formula - the space is a hard boundary. By library name, within a
+   * library by sort order and name. Only a member of the space may list them: an unknown or foreign
+   * space is a {@code 404}, a caller who is no member a {@code 403}.
    */
   public List<AvailablePrompt> available(CurrentUser caller, UUID spaceId) {
-    Set<UUID> spaceLibraryIds =
-        spaceId == null
-            ? Set.of()
-            : spaceAssets.assetIdsInSpace(spaceId, PromptLibrary.ASSET_TYPE, caller);
-    return available(caller, spaceLibraryIds);
-  }
-
-  /**
-   * Every prompt of every prompt library the caller may read by the formula - the same set {@link
-   * PromptLibraryService#list} shows. Libraries in {@code spaceLibraryIds} come first and are
-   * marked as such; then by library name, within a library by sort order and name. {@code
-   * spaceLibraryIds} only orders: a library in it the caller cannot read is not offered.
-   */
-  public List<AvailablePrompt> available(CurrentUser caller, Set<UUID> spaceLibraryIds) {
-    Set<UUID> readable =
+    Set<UUID> offered =
+        new LinkedHashSet<>(spaceAssets.assetIdsInSpace(spaceId, PromptLibrary.ASSET_TYPE, caller));
+    offered.retainAll(
         accessService.readableAssetIds(
-            PromptLibrary.ASSET_TYPE, caller.id(), caller.organizationId());
-    if (readable.isEmpty()) {
+            PromptLibrary.ASSET_TYPE, caller.id(), caller.organizationId()));
+    if (offered.isEmpty()) {
       return List.of();
     }
     Map<UUID, PromptLibrary> libraries =
-        libraryRepository.findAllById(readable).stream()
+        libraryRepository.findAllById(offered).stream()
             .collect(Collectors.toMap(PromptLibrary::getId, Function.identity()));
     Comparator<AvailablePrompt> order =
-        Comparator.comparing((AvailablePrompt entry) -> !entry.associatedWithSpace())
-            .thenComparing(entry -> entry.library().getName())
+        Comparator.comparing((AvailablePrompt entry) -> entry.library().getName())
             .thenComparing(entry -> entry.library().getId())
             .thenComparingInt(entry -> entry.prompt().getSortOrder())
             .thenComparing(entry -> entry.prompt().getName());
     return promptRepository.findByLibraryIdIn(libraries.keySet()).stream()
-        .map(
-            prompt ->
-                new AvailablePrompt(
-                    prompt,
-                    libraries.get(prompt.getLibraryId()),
-                    spaceLibraryIds.contains(prompt.getLibraryId())))
+        .map(prompt -> new AvailablePrompt(prompt, libraries.get(prompt.getLibraryId())))
         .sorted(order)
         .toList();
   }

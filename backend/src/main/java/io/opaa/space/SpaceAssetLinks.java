@@ -10,11 +10,13 @@ import java.util.List;
  *
  * @param hasUnreadableAssociations at least one association left out of {@code items} because the
  *     caller cannot read it - never how many, never which
- * @param narrowsSearch at least one associated knowledge library, readable or not - the rule the
- *     search applies; an asset of another type narrows nothing
+ * @param hasKnowledge at least one associated knowledge library, readable or not - without one a
+ *     chat in the space searches nothing
+ * @param hasReadableKnowledge at least one associated knowledge library the caller may read
  */
 public record SpaceAssetLinks(
     boolean hasAssociations,
     boolean hasUnreadableAssociations,
-    boolean narrowsSearch,
+    boolean hasKnowledge,
+    boolean hasReadableKnowledge,
     List<SpaceAssetLink> items) {}

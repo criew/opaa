@@ -1,24 +1,53 @@
-import type { AssetGrantResponse, SpaceAssetAssociationListResponse } from '../types/api'
+import type {
+  AssetGrantResponse,
+  SpaceAssetAssociationListResponse,
+  SpaceAssetAssociationResponse,
+} from '../types/api'
 
-// #782/#783: GET /api/v1/spaces/{spaceId}/assets fixture. 'space-phoenix' is curated (#203/#706)
-// with exactly one association, readable by the mock user - the "Gewerbeamt" scenario from #782's
-// bug report (one associated, several more readable overall via mockLibraries). Every other space id
-// falls back to hasAssociations: false in the handler (assetHandlers.ts), i.e. uncurated.
-const INITIAL_SPACE_ASSET_ASSOCIATIONS: Record<string, SpaceAssetAssociationListResponse> = {
-  'space-phoenix': {
-    hasAssociations: true,
+/** The list response for the given items, with the count-free flags the server derives from them. */
+export function associationListOf(
+  items: SpaceAssetAssociationResponse[],
+): SpaceAssetAssociationListResponse {
+  const knowledge = items.filter((item) => item.assetType === 'KNOWLEDGE_LIBRARY')
+  return {
+    hasAssociations: items.length > 0,
     hasUnreadableAssociations: false,
-    narrowsSearch: true,
-    items: [
-      {
-        assetType: 'KNOWLEDGE_LIBRARY',
-        assetId: 'library-referat-50',
-        name: 'Rechtsquellen Soziales',
-        createdByUserId: 'owner-2',
-        createdAt: '2026-03-01T10:00:00Z',
-      },
-    ],
-  },
+    hasKnowledge: knowledge.length > 0,
+    hasReadableKnowledge: knowledge.length > 0,
+    items,
+  }
+}
+
+function association(
+  assetType: SpaceAssetAssociationResponse['assetType'],
+  assetId: string,
+  name: string,
+): SpaceAssetAssociationResponse {
+  return {
+    assetType,
+    assetId,
+    name,
+    createdByUserId: 'owner-2',
+    createdAt: '2026-03-01T10:00:00Z',
+  }
+}
+
+// GET /api/v1/spaces/{spaceId}/assets fixture. A space offers exactly what is associated with it,
+// so every mock space carries knowledge: the personal space its own library, 'space-engineering'
+// the Dienstanweisungen and both readable prompt libraries, 'space-phoenix' one library readable
+// by the mock user. A space id without an entry answers "nothing associated" (assetHandlers.ts).
+const INITIAL_SPACE_ASSET_ASSOCIATIONS: Record<string, SpaceAssetAssociationListResponse> = {
+  'space-personal': associationListOf([
+    association('KNOWLEDGE_LIBRARY', 'library-mine', 'Meine Dokumente'),
+  ]),
+  'space-engineering': associationListOf([
+    association('KNOWLEDGE_LIBRARY', 'library-dienstanweisungen', 'Dienstanweisungen'),
+    association('PROMPT_LIBRARY', 'prompt-library-referat-50', 'Formulierungshilfen Referat 50'),
+    association('PROMPT_LIBRARY', 'prompt-library-organisation', 'Hausweite Vorlagen'),
+  ]),
+  'space-phoenix': associationListOf([
+    association('KNOWLEDGE_LIBRARY', 'library-referat-50', 'Rechtsquellen Soziales'),
+  ]),
 }
 
 // Mutable: associating and detaching in the mocks write here; the test setup resets it.

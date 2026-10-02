@@ -52,11 +52,12 @@ public class QueryController {
   @GetMapping("/search/metadata-filter-options")
   public MetadataFilterOptionsResponse metadataFilterOptions(
       @RequestParam(required = false) UUID chatId,
+      @RequestParam(required = false) UUID spaceId,
       @RequestParam(required = false, defaultValue = "true") boolean useKnowledge,
       @RequestParam(required = false) List<UUID> libraryIds,
       @Caller CurrentUser caller) {
     return MetadataFilterOptionsResponseMapper.toResponse(
         metadataFilterOptionsService.optionsFor(
-            caller, chatId, useKnowledge, libraryIds == null ? List.of() : libraryIds));
+            caller, chatId, spaceId, useKnowledge, libraryIds == null ? List.of() : libraryIds));
   }
 }

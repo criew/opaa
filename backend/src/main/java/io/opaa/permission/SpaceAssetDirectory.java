@@ -5,8 +5,8 @@ import java.util.Set;
 import java.util.UUID;
 
 /**
- * Which assets of a type a space shows - the port that lets an asset type order by a space without
- * knowing {@code io.opaa.space} (ADR-0036, Entscheidung 12). Implemented by {@code
+ * Which assets of a type a space shows - the port that lets an asset type bound its offer by a
+ * space without knowing {@code io.opaa.space} (ADR-0036, Entscheidung 12). Implemented by {@code
  * SpaceAssetDirectoryAdapter}.
  */
 public interface SpaceAssetDirectory {

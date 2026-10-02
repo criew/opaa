@@ -464,11 +464,12 @@ components:
           description: >
             Assets of any type to associate with the space on creation - each must be readable
             (VIEWER or above) by the creator, the same rule POST /v1/spaces/{spaceId}/assets
-            enforces. Optional: a space without associations offers nothing until something is
-            associated. Associated atomically with the space itself - if any entry cannot be
-            associated (not found, or not readable by the creator), the whole creation is rolled
-            back. The owners' notification about a mixed audience is sent once per owner for the
-            whole request, not once per asset.
+            enforces. Optional: a space created without this offers nothing - a chat in it searches
+            no knowledge until some is associated, since the association is the space's hard
+            boundary for every asset type. Associated atomically with the space itself - if any
+            entry cannot be associated (not found, or not readable by the creator), the whole
+            creation is rolled back. The owners' notification about a mixed audience is sent once
+            per owner for the whole request, not once per asset.
           items:
             $ref: "#/components/schemas/SpaceAssetAssociationRequest"
 

@@ -37,7 +37,11 @@ final class SpaceAssetAssociationResponseMapper {
     List<SpaceAssetAssociationResponse> items =
         links.items().stream().map(SpaceAssetAssociationResponseMapper::toResponse).toList();
     return new SpaceAssetAssociationListResponse(
-        links.hasAssociations(), links.hasUnreadableAssociations(), links.narrowsSearch(), items);
+        links.hasAssociations(),
+        links.hasUnreadableAssociations(),
+        links.hasKnowledge(),
+        links.hasReadableKnowledge(),
+        items);
   }
 
   /**

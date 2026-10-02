@@ -12,6 +12,7 @@ import {
   openNewPromptLibraryWizard,
   searchCatalog,
 } from '../fixtures/promptLibraries'
+import { assignToDefaultSpace } from '../fixtures/spaces'
 import type { Page } from '@playwright/test'
 
 // Unique per run, so a stack that was not torn down never offers a leftover of the same name.
@@ -274,6 +275,8 @@ test.describe.serial('Prompt-Bibliotheken: Freigabewege und Katalog (#1904)', ()
   test('8. Im Chat per Befehl einsetzen, mit Variablenformular und Hinweis im Verlauf', async ({
     outsiderPage: outsider,
   }) => {
+    // A chat offers only the prompts of libraries assigned to its space.
+    await assignToDefaultSpace('dev-outsider', 'PROMPT_LIBRARY', await promptLibraryId(LIBRARY_NAME))
     await startFreshChat(outsider)
     const input = outsider.getByPlaceholder('Nachricht eingeben …')
     await input.fill(`/${PROMPT_COMMAND}`)

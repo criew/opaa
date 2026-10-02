@@ -127,8 +127,9 @@ public class SpaceAssetAssociationService {
    * counted (ADR-0039, Entscheidung 2). Two members with different grants see different lists.
    *
    * <p>The flags are computed over every association, independently of the filtered items: "no
-   * association at all", "not everything readable" and "knowledge narrows the search" need their
-   * own messages, without a count.
+   * association at all", "not everything readable" ({@link
+   * SpaceAssetLinks#hasUnreadableAssociations()}), "no knowledge associated" and "associated, but
+   * no knowledge the caller may read" need their own messages, without a count.
    */
   public SpaceAssetLinks listForSpace(UUID spaceId, CurrentUser caller) {
     Space space = loadSpace(spaceId, caller);
@@ -137,7 +138,7 @@ public class SpaceAssetAssociationService {
     List<SpaceAssetAssociation> associations =
         associationRepository.findBySpaceIdOrderByCreatedAtAsc(space.getId());
     if (associations.isEmpty()) {
-      return new SpaceAssetLinks(false, false, false, List.of());
+      return new SpaceAssetLinks(false, false, false, false, List.of());
     }
     Map<UUID, AssetHeader> headers = headersOf(associations);
     Set<UUID> readable = readableAmong(headers.values(), caller.id(), space.getOrganizationId());
@@ -165,10 +166,17 @@ public class SpaceAssetAssociationService {
             .toList();
     boolean hasUnreadable =
         headers.keySet().stream().anyMatch(assetId -> !readable.contains(assetId));
-    boolean narrowsSearch =
+    List<UUID> knowledge =
         headers.values().stream()
-            .anyMatch(asset -> KnowledgeLibrary.ASSET_TYPE.equals(asset.assetType()));
-    return new SpaceAssetLinks(true, hasUnreadable, narrowsSearch, items);
+            .filter(asset -> KnowledgeLibrary.ASSET_TYPE.equals(asset.assetType()))
+            .map(AssetHeader::id)
+            .toList();
+    return new SpaceAssetLinks(
+        true,
+        hasUnreadable,
+        !knowledge.isEmpty(),
+        knowledge.stream().anyMatch(readable::contains),
+        items);
   }
 
   /**

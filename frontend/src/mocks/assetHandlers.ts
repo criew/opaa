@@ -5,6 +5,7 @@ import { mockUser } from './authFixtures'
 import { mockSpaceDetails } from './spaceFixtures'
 import { mockLibraryDetails } from './libraryFixtures'
 import {
+  associationListOf,
   mockSpaceAssetAssociations,
   mockLibraryGrants,
   resetMockLibraryGrants,
@@ -58,22 +59,14 @@ function countOtherActiveMockOwnerGrants(libraryId: string, excludingGrantId: st
 }
 
 export const assetHandlers = [
-  // mockSpaceAssetAssociations has an entry only for curated spaces - every other
-  // space id (uncurated, per the  "no association at all" transition rule) falls back to an
-  // empty, hasAssociations: false response rather than a 404, mirroring the real endpoint's
-  // behaviour for any space the caller may see (it never 404s just for lacking curation).
+  // A space id without an entry has nothing associated and answers an empty list rather than a
+  // 404, mirroring the real endpoint for any space the caller may see.
   http.get('/api/v1/spaces/:spaceId/assets', ({ params }) => {
     const spaceId = String(params.spaceId)
     if (!mockSpaceDetails[spaceId]) {
       return HttpResponse.json({ error: 'Space nicht gefunden' }, { status: 404 })
     }
-    const associations = mockSpaceAssetAssociations[spaceId] ?? {
-      hasAssociations: false,
-      hasUnreadableAssociations: false,
-      narrowsSearch: false,
-      items: [],
-    }
-    return HttpResponse.json(associations)
+    return HttpResponse.json(mockSpaceAssetAssociations[spaceId] ?? associationListOf([]))
   }),
 
   // Associating needs a readable asset of the named type; the list keeps one entry per asset.
@@ -87,12 +80,7 @@ export const assetHandlers = [
     if (!asset) {
       return HttpResponse.json({ error: 'Asset nicht gefunden' }, { status: 404 })
     }
-    const current = mockSpaceAssetAssociations[spaceId] ?? {
-      hasAssociations: false,
-      hasUnreadableAssociations: false,
-      narrowsSearch: false,
-      items: [],
-    }
+    const current = mockSpaceAssetAssociations[spaceId] ?? associationListOf([])
     const entry = {
       assetType: body.assetType,
       assetId: body.assetId,
@@ -101,12 +89,7 @@ export const assetHandlers = [
       createdAt: new Date().toISOString(),
     }
     const items = [...current.items.filter((item) => item.assetId !== body.assetId), entry]
-    mockSpaceAssetAssociations[spaceId] = {
-      hasAssociations: true,
-      hasUnreadableAssociations: false,
-      narrowsSearch: items.some((item) => item.assetType === 'KNOWLEDGE_LIBRARY'),
-      items,
-    }
+    mockSpaceAssetAssociations[spaceId] = associationListOf(items)
     return HttpResponse.json(entry, { status: 201 })
   }),
 
@@ -115,12 +98,7 @@ export const assetHandlers = [
     const current = mockSpaceAssetAssociations[spaceId]
     if (current) {
       const items = current.items.filter((item) => item.assetId !== String(params.assetId))
-      mockSpaceAssetAssociations[spaceId] = {
-        hasAssociations: items.length > 0,
-        hasUnreadableAssociations: false,
-        narrowsSearch: items.some((item) => item.assetType === 'KNOWLEDGE_LIBRARY'),
-        items,
-      }
+      mockSpaceAssetAssociations[spaceId] = associationListOf(items)
     }
     return new HttpResponse(null, { status: 204 })
   }),

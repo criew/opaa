@@ -8,10 +8,11 @@ import java.util.UUID;
 import org.springframework.stereotype.Component;
 
 /**
- * The search scope a question runs in - a persisted chat's own settings govern it entirely; only an
- * ephemeral query falls back to the request-level {@code useKnowledge}/{@code requestedLibraryIds}.
- * Never wider than the readable set. Shared by {@code QueryService} and the metadata filter
- * options, so the options are built over exactly the libraries the next question would search.
+ * The search scope a question runs in. In the web interface every question needs a space: a
+ * persisted chat's own settings govern it entirely, within its space's associations, and a question
+ * without a chat of the caller searches nothing. The filter options of a chat not yet created use
+ * the space it will be created in. Only {@code POST /api/v1/search} resolves a scope without a
+ * space, over a view it was handed. Never wider than the readable set.
  */
 @Component
 public class SearchScopeResolver {
@@ -22,33 +23,42 @@ public class SearchScopeResolver {
     this.chatService = chatService;
   }
 
-  public Set<UUID> resolveSearchScope(
-      Optional<Chat> chat,
-      boolean useKnowledge,
-      List<UUID> requestedLibraryIds,
-      Set<UUID> readableLibraryIds) {
+  /** The scope of a question: the chat's own, or nothing without a chat of the caller. */
+  public Set<UUID> resolveSearchScope(Optional<Chat> chat, Set<UUID> readableLibraryIds) {
     return chat.map(c -> chatService.effectiveLibraryScope(c, readableLibraryIds))
-        .orElseGet(
-            () ->
-                useKnowledge
-                    ? readableLibraryIds
-                    : intersectWithReadable(requestedLibraryIds, readableLibraryIds));
+        .orElseGet(Set::of);
   }
 
   /**
-   * {@code requestedLibraryIds ∩ readableLibraryIds} - the search scope of an ephemeral query with
-   * {@code useKnowledge = false}. Never adds anything beyond {@code readableLibraryIds}: a
-   * reference to a library the caller cannot read is dropped, not honoured. A persisted chat's
-   * sticky references go through {@link ChatService#effectiveLibraryScope}, which applies the same
-   * rule.
+   * The scope the first question of a chat not yet created in {@code spaceId} would search, with
+   * the chip bar's {@code useKnowledge}/{@code requestedLibraryIds}. The caller must be a member of
+   * the space.
    */
-  private Set<UUID> intersectWithReadable(
-      List<UUID> requestedLibraryIds, Set<UUID> readableLibraryIds) {
+  public Set<UUID> resolveDraftScope(
+      UUID spaceId,
+      UUID userId,
+      boolean useKnowledge,
+      List<UUID> requestedLibraryIds,
+      Set<UUID> readableLibraryIds) {
+    return chatService.draftLibraryScope(
+        spaceId,
+        userId,
+        useKnowledge,
+        requestedLibraryIds == null ? List.of() : requestedLibraryIds,
+        readableLibraryIds);
+  }
+
+  /**
+   * The scope of {@code POST /api/v1/search}, which has no space: the whole {@code view} when
+   * nothing is requested, otherwise {@code requestedLibraryIds ∩ view}. A requested library outside
+   * the view is dropped, not honoured.
+   */
+  public Set<UUID> resolveViewScope(List<UUID> requestedLibraryIds, Set<UUID> view) {
     if (requestedLibraryIds == null || requestedLibraryIds.isEmpty()) {
-      return Set.of();
+      return view;
     }
     Set<UUID> scope = new HashSet<>(requestedLibraryIds);
-    scope.retainAll(readableLibraryIds);
+    scope.retainAll(view);
     return scope;
   }
 }

@@ -14,6 +14,7 @@ import {
   startAnotherChatViaSidebar,
   startFreshChat,
 } from '../fixtures/chat'
+import { assignLibraryToDefaultSpace } from '../fixtures/spaces'
 import type { Page, TestInfo } from '@playwright/test'
 
 // Own fixture files here, deliberately never uploaded by any other spec
@@ -130,17 +131,16 @@ test.describe.serial('Chats im Space, @-Referenzen und Suchbereich-Chip-Leiste (
     const question = `Was steht im Wissensdokument fuer Chat-Szenario 1 (${id})?`
 
     await createLibraryWithDocument(page, libraryName, DOCUMENT_A_PATH, DOCUMENT_A_NAME)
+    await assignLibraryToDefaultSpace('dev-admin', libraryName)
 
     await startFreshChat(page)
     await askQuestion(page, question)
     // Deliberately not expectCitedSource(page, DOCUMENT_A_NAME): this scenario is about the chat
     // mechanism (an answer with sources exists, and both it and the chat list entry survive a
-    // reload), not about which library the default @Alles-Wissen scope (left untouched here) ends
-    // up citing - that search is an unscoped topK over the entire readable corpus, which keeps
-    // growing as earlier specs run. Asserting on this scenario's own document specifically would
-    // make the test fragile to how large that corpus has grown by the time it runs, not to
-    // anything this scenario is meant to catch - scenarios 2 and 5 below cover "the right library
-    // was searched" deterministically via an explicit @-reference, which replaces @Alles-Wissen.
+    // reload), not about which library the default @Space-Wissen scope (left untouched here) ends
+    // up citing - that search is a topK over everything assigned to the space, which grows as
+    // earlier scenarios assign their libraries. Scenarios 2 and 5 below cover "the right library
+    // was searched" deterministically via an explicit @-reference, which replaces @Space-Wissen.
     await expectAnyCitedSource(page)
 
     // sendMessage implicitly creates the chat and replaces the URL to point at it (#548) - once
@@ -192,9 +192,12 @@ test.describe.serial('Chats im Space, @-Referenzen und Suchbereich-Chip-Leiste (
 
     await createLibraryWithDocument(page, libraryAName, DOCUMENT_A_PATH, DOCUMENT_A_NAME)
     await createLibraryWithDocument(page, libraryBName, DOCUMENT_B_PATH, DOCUMENT_B_NAME)
+    // Both assigned, so the exclusion below is the reference's doing, not the space's.
+    await assignLibraryToDefaultSpace('dev-admin', libraryAName)
+    await assignLibraryToDefaultSpace('dev-admin', libraryBName)
 
     await startFreshChat(page)
-    // Referencing a library replaces the default @Alles-Wissen chip outright (#560) - no separate
+    // Referencing a library replaces the default @Space-Wissen chip outright (#560) - no separate
     // step to leave the default scope first.
     await referenceLibrary(page, libraryAName)
     await expect(page.getByLabel(`Bibliotheksreferenz ${libraryAName} entfernen`)).toBeVisible()
@@ -212,7 +215,7 @@ test.describe.serial('Chats im Space, @-Referenzen und Suchbereich-Chip-Leiste (
 
     await startFreshChat(page)
     // Leaving the chip bar empty (not a switch, #560) is what "ohne Wissensbasis" means now:
-    // remove the default @Alles-Wissen chip and reference nothing in its place.
+    // remove the default @Space-Wissen chip and reference nothing in its place.
     await clearSearchScope(page)
 
     await askQuestion(page, question)
@@ -235,6 +238,10 @@ test.describe.serial('Chats im Space, @-Referenzen und Suchbereich-Chip-Leiste (
     // trivially empty because dev-user cannot read anything at all.
     await createLibraryWithDocument(adminPage, sharedLibraryName, DOCUMENT_B_PATH, DOCUMENT_B_NAME)
     await shareLibraryWithPerson(adminPage, sharedLibraryName, 'Dev User', /Dev User/)
+    // The suggestions offer only what is assigned to the chat's space; each account assigns what it
+    // can read to its own space - dev-user cannot assign the private library at all.
+    await assignLibraryToDefaultSpace('dev-admin', privateLibraryName)
+    await assignLibraryToDefaultSpace('dev-user', sharedLibraryName)
 
     // Positive control (review finding on PR #554, nit 4): the private library's own creator can
     // read it, so it must appear in *their* @-suggestions. Without this, "absent from dev-user's
@@ -272,6 +279,7 @@ test.describe.serial('Chats im Space, @-Referenzen und Suchbereich-Chip-Leiste (
     const chatCountBefore = await chatSidebarEntries(page).count()
 
     await createLibraryWithDocument(page, libraryName, DOCUMENT_A_PATH, DOCUMENT_A_NAME)
+    await assignLibraryToDefaultSpace('dev-admin', libraryName)
 
     await startFreshChat(page)
     await askQuestion(page, questionChat1)
@@ -281,7 +289,7 @@ test.describe.serial('Chats im Space, @-Referenzen und Suchbereich-Chip-Leiste (
 
     // "Neuer Chat" in the sidebar starts a second, independent chat in the same space rather than
     // reusing chat 1 - the in-app path, deliberately not another entry via `/chat`. Referencing a
-    // library replaces its default @Alles-Wissen chip outright (#560).
+    // library replaces its default @Space-Wissen chip outright (#560).
     await startAnotherChatViaSidebar(page)
     await referenceLibrary(page, libraryName)
     await askQuestion(page, questionChat2)
@@ -310,6 +318,33 @@ test.describe.serial('Chats im Space, @-Referenzen und Suchbereich-Chip-Leiste (
     await expect(main.getByText(questionChat1)).toBeVisible()
     await expect(main.getByText(questionChat2)).toHaveCount(0)
     await expect(page.getByLabel(`Bibliotheksreferenz ${libraryName} entfernen`)).toHaveCount(0)
+  })
+
+  // A space searches only what is assigned to it. Without knowledge it never answers silently as
+  // if sourced: the chat shows the hint with a direct link to the assignment, and the answer says
+  // that it rests on no document.
+  test('5a. Space ohne Wissen: Hinweis mit Direktlink statt stillem Leerlauf', async (
+    { authenticatedPage: page },
+    testInfo,
+  ) => {
+    const id = uniqueId(testInfo)
+    const spaceId = await createSpace(page, `E2E-Chat-Leerer-Space-${id}`)
+
+    await page.goto(`/spaces/${spaceId}/chats/new`)
+    await expect(page.getByText(/Diesem Space ist kein Wissen zugeordnet\./)).toBeVisible()
+    const assign = page.getByRole('link', { name: 'Wissen zuordnen' })
+    await expect(assign).toBeVisible()
+
+    await askQuestion(page, `Was steht im leeren Space (${id})?`)
+    await expect(
+      page.getByText(
+        'Diesem Space ist kein Wissen zugeordnet. Diese Antwort stützt sich auf keine Dokumente.',
+      ),
+    ).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Belege anzeigen' })).toHaveCount(0)
+
+    await assign.click()
+    await expect(page).toHaveURL(new RegExp(`/spaces/${spaceId}/settings/knowledge$`))
   })
 
   test('6. Einstieg und Space-Wechsel landen auf einem leeren Gespräch', async (

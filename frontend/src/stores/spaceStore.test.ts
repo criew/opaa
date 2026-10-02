@@ -109,7 +109,8 @@ const mockGetSpaceAssetAssociations = vi.fn(async (spaceId: string) => {
   return {
     hasAssociations: true,
     hasUnreadableAssociations: false,
-    narrowsSearch: true,
+    hasKnowledge: true,
+    hasReadableKnowledge: true,
     items: [
       {
         assetType: 'KNOWLEDGE_LIBRARY',
@@ -181,7 +182,7 @@ describe('spaceStore', () => {
     expect(useSpaceStore.getState().selectedSpaceId).toBe('space-new')
   })
 
-  it('passes libraryIds through to createSpace when provided (#686)', async () => {
+  it('passes the chosen assets through to createSpace when provided', async () => {
     mockCreateSpace.mockResolvedValueOnce({
       id: 'space-new',
       name: 'New Space',
@@ -225,7 +226,8 @@ describe('spaceStore', () => {
       },
     ])
     expect(useSpaceStore.getState().hasAssetAssociations).toBe(true)
-    expect(useSpaceStore.getState().assetAssociationsNarrowSearch).toBe(true)
+    expect(useSpaceStore.getState().hasKnowledge).toBe(true)
+    expect(useSpaceStore.getState().hasReadableKnowledge).toBe(true)
     // #783 review finding 1: callers must be able to tell which space this data actually
     // describes before trusting it.
     expect(useSpaceStore.getState().assetAssociationsSpaceId).toBe('space-project')
@@ -238,7 +240,8 @@ describe('spaceStore', () => {
     const first = deferred<{
       hasAssociations: boolean
       hasUnreadableAssociations: boolean
-      narrowsSearch: boolean
+      hasKnowledge: boolean
+      hasReadableKnowledge: boolean
       items: {
         assetType: string
         assetId: string
@@ -261,7 +264,8 @@ describe('spaceStore', () => {
     first.resolve({
       hasAssociations: true,
       hasUnreadableAssociations: false,
-      narrowsSearch: true,
+      hasKnowledge: true,
+      hasReadableKnowledge: true,
       items: [
         {
           assetType: 'KNOWLEDGE_LIBRARY',
@@ -298,7 +302,8 @@ describe('spaceStore', () => {
 
     expect(useSpaceStore.getState().assetAssociationsSpaceId).toBeNull()
     expect(useSpaceStore.getState().hasAssetAssociations).toBe(false)
-    expect(useSpaceStore.getState().assetAssociationsNarrowSearch).toBe(false)
+    expect(useSpaceStore.getState().hasKnowledge).toBe(false)
+    expect(useSpaceStore.getState().hasReadableKnowledge).toBe(false)
   })
 
   it('associates a library and reloads the association list', async () => {
