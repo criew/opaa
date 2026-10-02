@@ -52,6 +52,6 @@ von foundation, format und knowledge ab.
 OPAA_CONFLUENCE_IT=true ./gradlew confluenceIntegrationTest   # nur bei Confluence-Änderungen
 ```
 
-Bei Schemaänderungen: neue Datei unter `db/changelog/connectors/` mit eigenem Delta-Test
-(`MasterChangelog.filesExcept(...)`), Regeln in `backend/AGENTS.md`, „Liquibase: Changelog je
-Modul“; dazu `ChangelogLayoutTest`, `ChangelogModuleBoundaryTest`, `ChangelogOrderTest`.
+Bei Schemaänderungen: neue Datei unter `db/changelog/connectors/`. Regeln und
+Tests in `backend/AGENTS.md`, „Liquibase: Changelog je Modul“ — ein eigener Delta-Test ist nur
+für rein additive DDL entbehrlich.
