@@ -11,9 +11,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * The caller's own favorites (ADR-0039, Entscheidung 7). Marking and unmarking need read access by
- * the rights formula - the administration floor does not count - and answer {@code 404} otherwise,
- * so the answer never confirms an asset the caller cannot read. Deliberately silent: no event, no
+ * The caller's own favorites (ADR-0039, Entscheidung 7). Marking needs read access by the rights
+ * formula - the administration floor does not count - and answers {@code 404} otherwise. Unmarking
+ * always removes the caller's own mark, whatever the asset's state, and checks nothing: its answer
+ * is the same for every asset and therefore confirms none. Deliberately silent: no event, no
  * protocol entry, no history.
  */
 @Service
@@ -43,8 +44,7 @@ public class AssetFavoriteService {
 
   @Transactional
   public void unmark(AssetType assetType, UUID assetId, CurrentUser caller) {
-    Asset asset = requireReadable(assetType, assetId, caller);
-    favorites.unmark(asset.getId(), caller.id());
+    favorites.unmark(assetType.value(), assetId, caller.id());
   }
 
   private Asset requireReadable(AssetType assetType, UUID assetId, CurrentUser caller) {

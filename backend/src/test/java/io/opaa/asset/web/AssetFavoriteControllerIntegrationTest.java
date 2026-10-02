@@ -8,8 +8,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.jayway.jsonpath.JsonPath;
 import io.opaa.auth.DevAuthFilter;
+import io.opaa.auth.User;
+import io.opaa.auth.UserRepository;
+import io.opaa.knowledge.KnowledgeLibrary;
+import io.opaa.knowledge.KnowledgeLibraryRepository;
+import io.opaa.organization.Organization;
+import io.opaa.organization.OrganizationRepository;
 import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.OwnLibraryFixtures;
+import io.opaa.test.OwnOrganizationFixtures;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
@@ -28,7 +35,8 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
 /**
  * {@code PUT/DELETE /api/v1/assets/{assetType}/{assetId}/favorite} (#2095, ADR-0039 Entscheidung
  * 7): a favorite is the caller's own mark on an asset they read by the rights formula - idempotent,
- * never audited, and gone with the asset.
+ * never audited, and gone with the asset. Removing one's own mark is always possible and always
+ * answers 204.
  */
 @OpaaIntegrationTest
 class AssetFavoriteControllerIntegrationTest {
@@ -36,12 +44,18 @@ class AssetFavoriteControllerIntegrationTest {
   @Autowired private MockMvc mockMvc;
   @Autowired private JdbcTemplate jdbcTemplate;
   @Autowired private OwnLibraryFixtures ownLibraryFixtures;
+  @Autowired private OwnOrganizationFixtures ownOrganizationFixtures;
+  @Autowired private OrganizationRepository organizationRepository;
+  @Autowired private UserRepository userRepository;
+  @Autowired private KnowledgeLibraryRepository knowledgeLibraryRepository;
 
   private final List<UUID> createdLibraryIds = new ArrayList<>();
+  private final List<UUID> createdOrganizationIds = new ArrayList<>();
 
   @BeforeEach
   void provisionCallers() throws Exception {
     createdLibraryIds.clear();
+    createdOrganizationIds.clear();
     mockMvc.perform(get("/api/v1/spaces").with(devUser())).andExpect(status().isOk());
     mockMvc.perform(get("/api/v1/spaces").with(devAdmin())).andExpect(status().isOk());
   }
@@ -55,6 +69,7 @@ class AssetFavoriteControllerIntegrationTest {
       jdbcTemplate.update("DELETE FROM asset_grant_history WHERE asset_id = ?", libraryId);
     }
     ownLibraryFixtures.removeLibraries(createdLibraryIds.toArray(new UUID[0]));
+    ownOrganizationFixtures.removeOrganizations(createdOrganizationIds.toArray(new UUID[0]));
   }
 
   @Test
@@ -96,15 +111,11 @@ class AssetFavoriteControllerIntegrationTest {
         .isTrue();
   }
 
-  /**
-   * An asset the caller cannot read is not confirmed to exist - neither by marking nor unmarking.
-   */
   @Test
-  void anUnreadableLibraryAnswers404AndStoresNothing() throws Exception {
+  void anUnreadableLibraryCannotBeMarked() throws Exception {
     String library = createLibrary(devAdmin());
 
     mockMvc.perform(mark(library, devUser())).andExpect(status().isNotFound());
-    mockMvc.perform(unmark(library, devUser())).andExpect(status().isNotFound());
 
     assertThat(favoriteRows(library, userIdOf("dev-user@opaa.local"))).isZero();
   }
@@ -119,21 +130,62 @@ class AssetFavoriteControllerIntegrationTest {
     assertThat(favoriteRows(library, userIdOf("admin@opaa.local"))).isZero();
   }
 
+  /**
+   * Marking an asset the caller cannot read never confirms that it exists: unknown, unreadable and
+   * foreign assets answer the same 404, and so does an asset under another type's path.
+   */
   @Test
-  void anUnknownAssetOrAMismatchingTypeAnswers404() throws Exception {
-    String library = createLibrary(devAdmin());
+  void markingAnswersTheSame404ForEveryAssetTheCallerCannotRead() throws Exception {
+    String unreadable = createLibrary(devAdmin());
+    String foreign = createForeignLibrary().toString();
 
+    String unknownAnswer = notFoundMessage(mark(UUID.randomUUID().toString(), devUser()));
+    assertThat(notFoundMessage(mark(unreadable, devUser()))).isEqualTo(unknownAnswer);
+    assertThat(notFoundMessage(mark(foreign, devUser()))).isEqualTo(unknownAnswer);
+
+    String unknownPromptLibrary =
+        notFoundMessage(markAs("PROMPT_LIBRARY", UUID.randomUUID().toString(), devAdmin()));
+    assertThat(notFoundMessage(markAs("PROMPT_LIBRARY", unreadable, devAdmin())))
+        .isEqualTo(unknownPromptLibrary);
+
+    assertThat(favoriteRows(unreadable, userIdOf("dev-user@opaa.local"))).isZero();
+    assertThat(favoriteRows(unreadable, userIdOf("admin@opaa.local"))).isZero();
+  }
+
+  /** A person may always remove their own mark, even once they can no longer read the asset. */
+  @Test
+  void unmarkingWorksAfterTheReadRightIsGone() throws Exception {
+    String library = createLibrary(devAdmin());
+    UUID reader = userIdOf("dev-user@opaa.local");
+    grantToUser(library, reader, "VIEWER");
+    mockMvc.perform(mark(library, devUser())).andExpect(status().isNoContent());
+    revokeUserGrant(library, reader);
+
+    mockMvc.perform(unmark(library, devUser())).andExpect(status().isNoContent());
+
+    assertThat(favoriteRows(library, reader)).isZero();
+  }
+
+  /**
+   * Unmarking checks nothing and answers 204 for every asset, so its answer confirms none; a path
+   * naming another type removes nothing.
+   */
+  @Test
+  void unmarkingAnswers204ForUnknownAndMismatchingAssetsAndRemovesNothingElse() throws Exception {
+    String library = createLibrary(devAdmin());
+    UUID admin = userIdOf("admin@opaa.local");
+    mockMvc.perform(mark(library, devAdmin())).andExpect(status().isNoContent());
+
+    mockMvc
+        .perform(unmark(UUID.randomUUID().toString(), devAdmin()))
+        .andExpect(status().isNoContent());
     mockMvc
         .perform(
-            put("/api/v1/assets/PROMPT_LIBRARY/" + library + "/favorite")
-                .with(devAdmin())
-                .contentType(MediaType.APPLICATION_JSON))
-        .andExpect(status().isNotFound());
-    mockMvc
-        .perform(mark(UUID.randomUUID().toString(), devAdmin()))
-        .andExpect(status().isNotFound());
+            MockMvcRequestBuilders.delete("/api/v1/assets/PROMPT_LIBRARY/" + library + "/favorite")
+                .with(devAdmin()))
+        .andExpect(status().isNoContent());
 
-    assertThat(favoriteRows(library, userIdOf("admin@opaa.local"))).isZero();
+    assertThat(favoriteRows(library, admin)).isEqualTo(1);
   }
 
   /** A favorite is personal order, not an act: no protocol entry and no history (ADR-0039). */
@@ -188,6 +240,58 @@ class AssetFavoriteControllerIntegrationTest {
 
   private static MockHttpServletRequestBuilder mark(String libraryId, RequestPostProcessor caller) {
     return put(favoritePath(libraryId)).with(caller);
+  }
+
+  private static MockHttpServletRequestBuilder markAs(
+      String assetType, String assetId, RequestPostProcessor caller) {
+    return put("/api/v1/assets/" + assetType + "/" + assetId + "/favorite").with(caller);
+  }
+
+  /** The user-facing message of a 404 - what a caller could tell two refusals apart by. */
+  private String notFoundMessage(MockHttpServletRequestBuilder request) throws Exception {
+    String body =
+        mockMvc
+            .perform(request)
+            .andExpect(status().isNotFound())
+            .andReturn()
+            .getResponse()
+            .getContentAsString(StandardCharsets.UTF_8);
+    return JsonPath.read(body, "$.error");
+  }
+
+  private void revokeUserGrant(String libraryId, UUID userId) throws Exception {
+    UUID grantId =
+        jdbcTemplate.queryForObject(
+            "SELECT id FROM asset_grants WHERE asset_id = ? AND subject_user_id = ?",
+            UUID.class,
+            UUID.fromString(libraryId),
+            userId);
+    mockMvc
+        .perform(
+            MockMvcRequestBuilders.delete(
+                    "/api/v1/assets/KNOWLEDGE_LIBRARY/" + libraryId + "/grants/" + grantId)
+                .with(devAdmin()))
+        .andExpect(status().isNoContent());
+  }
+
+  /** A library in an organization of its own, readable by its owner there and by nobody here. */
+  private UUID createForeignLibrary() {
+    UUID organization =
+        organizationRepository
+            .save(new Organization(UUID.randomUUID(), "Fremde Favoriten " + UUID.randomUUID()))
+            .getId();
+    createdOrganizationIds.add(organization);
+    User owner =
+        new User(
+            "favorite-" + UUID.randomUUID(),
+            "https://issuer.example",
+            UUID.randomUUID() + "@example.com",
+            "Fremde Eigentümerin");
+    owner.setOrganizationId(organization);
+    UUID ownerId = userRepository.save(owner).getId();
+    return knowledgeLibraryRepository
+        .save(KnowledgeLibrary.ownedByUser(organization, "Fremd", null, ownerId))
+        .getId();
   }
 
   private static MockHttpServletRequestBuilder unmark(

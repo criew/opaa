@@ -823,13 +823,6 @@ class LocalUserAdminIntegrationTest {
         .andExpect(jsonPath("$.systemRole").value("SYSTEM_ADMIN"));
   }
 
-  /**
-   * Diagnostic impersonation grants are no deletion blocker (#1697): the schema lets all their
-   * person columns cascade since #1509, and an account that once granted or revoked one would
-   * otherwise stay undeletable forever. What the account still confers on a holder who remains is
-   * revoked first, with the event a regular revocation writes - ADR-0016's Auflage, without which
-   * the cascade would take those grants in silence.
-   */
   /** Favorites are personal order, not content: they go with the account (ADR-0039, #2095). */
   @Test
   void deletionRemovesTheAccountsFavoritesAndIsNotBlockedByThem() throws Exception {
@@ -859,6 +852,13 @@ class LocalUserAdminIntegrationTest {
     }
   }
 
+  /**
+   * Diagnostic impersonation grants are no deletion blocker (#1697): the schema lets all their
+   * person columns cascade since #1509, and an account that once granted or revoked one would
+   * otherwise stay undeletable forever. What the account still confers on a holder who remains is
+   * revoked first, with the event a regular revocation writes - ADR-0016's Auflage, without which
+   * the cascade would take those grants in silence.
+   */
   @Test
   void deletionRevokesWhatTheAccountStillConfersAndIsNotBlockedByItsGrants() throws Exception {
     LocalAccount issuer = fixtures.activeAdmin("geberin-" + UUID.randomUUID() + "@stadt.example");

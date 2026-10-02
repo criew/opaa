@@ -190,11 +190,14 @@ paths:
       operationId: unmarkAssetFavorite
       tags: [asset]
       summary: >
-        Remove an asset from the caller's favorites. Idempotent: an asset that is no favorite
-        answers 204 as well.
+        Remove an asset from the caller's favorites. Always allowed and idempotent: answers 204
+        whether or not the asset was a favorite.
       description: >
-        Like marking, only for an asset the caller reads by the rights formula; any other asset
-        answers 404, so the answer never confirms that an asset the caller cannot read exists.
+        A person may always remove their own mark, even from an asset they can no longer read. No
+        read or load check takes place: an unknown id, an asset of another type or organization
+        and an asset that is no favorite all answer 204 and remove nothing - the answer is the same
+        for every asset and therefore confirms none. 404 answers only an asset type that does not
+        exist.
       responses:
         "204":
           description: The asset is not one of the caller's favorites

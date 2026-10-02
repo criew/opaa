@@ -28,10 +28,19 @@ public interface AssetFavoriteRepository extends Repository<AssetFavorite, Asset
       @Param("organizationId") UUID organizationId,
       @Param("createdAt") Instant createdAt);
 
-  /** Idempotent: removing a mark that does not exist changes nothing. */
+  /**
+   * Idempotent: removing a mark that does not exist changes nothing. Bound to the asset's type, so
+   * a path naming another type removes nothing.
+   */
   @Modifying
   @Query(
-      value = "DELETE FROM asset_favorites WHERE asset_id = :assetId AND user_id = :userId",
+      value =
+          "DELETE FROM asset_favorites f USING assets a"
+              + " WHERE f.asset_id = a.id AND a.asset_type = :assetType"
+              + " AND f.asset_id = :assetId AND f.user_id = :userId",
       nativeQuery = true)
-  void unmark(@Param("assetId") UUID assetId, @Param("userId") UUID userId);
+  void unmark(
+      @Param("assetType") String assetType,
+      @Param("assetId") UUID assetId,
+      @Param("userId") UUID userId);
 }
