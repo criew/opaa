@@ -817,7 +817,9 @@ describe('SpaceSettingsPage', () => {
 
     renderTab('knowledge')
 
-    expect(await screen.findByRole('group', { name: 'Weitere Bibliotheken zuordnen' })).toBeVisible()
+    expect(
+      await screen.findByRole('group', { name: 'Weitere Bibliotheken zuordnen' }),
+    ).toBeVisible()
     expect(
       screen.queryByText('Nicht alle zugeordneten Inhalte sind für Sie lesbar.'),
     ).not.toBeInTheDocument()
@@ -849,7 +851,7 @@ describe('SpaceSettingsPage', () => {
     expect(screen.getByText(/Übernahme/)).toBeInTheDocument()
   })
 
-  it('offers only the tab\'s own type and narrows the tiles by search', async () => {
+  it("offers only the tab's own type and narrows the tiles by search", async () => {
     setSpaceState(teamSpace)
     renderTab('knowledge')
     const user = userEvent.setup()

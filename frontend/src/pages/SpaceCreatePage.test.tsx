@@ -5,14 +5,19 @@ import { http, HttpResponse } from 'msw'
 import { answerConfirm, renderWithProviders } from '../test/test-utils'
 import { server } from '../mocks/server'
 import { capabilityMissingMessage } from '../utils/labels'
-import SpaceCreatePage from './SpaceCreatePage'
+import SpaceCreatePage, { NO_KNOWLEDGE_SUMMARY } from './SpaceCreatePage'
 import { useSpaceStore } from '../stores/spaceStore'
 
 const mockNavigate = vi.fn()
+let mockLocationState: unknown = null
 
 vi.mock('react-router', async () => {
   const actual = await vi.importActual<typeof import('react-router')>('react-router')
-  return { ...actual, useNavigate: () => mockNavigate }
+  return {
+    ...actual,
+    useNavigate: () => mockNavigate,
+    useLocation: () => ({ ...actual.useLocation(), state: mockLocationState }),
+  }
 })
 
 const mockCreateNewSpace = vi.fn(async () => 'space-neu')
@@ -20,6 +25,7 @@ const mockAddMember = vi.fn(async () => {})
 
 describe('SpaceCreatePage (#594, Mockup 1b)', () => {
   beforeEach(() => {
+    mockLocationState = null
     mockNavigate.mockReset()
     mockCreateNewSpace.mockClear()
     mockAddMember.mockClear()
@@ -36,7 +42,7 @@ describe('SpaceCreatePage (#594, Mockup 1b)', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'Neuer Space' })).toBeInTheDocument()
     expect(screen.getByText('1 · Grunddaten')).toBeInTheDocument()
     expect(screen.getByText('2 · Mitglieder')).toBeInTheDocument()
-    expect(screen.getByText('3 · Datenquellen')).toBeInTheDocument()
+    expect(screen.getByText('3 · Inhalte')).toBeInTheDocument()
     expect(screen.getByText('4 · Zusammenfassung')).toBeInTheDocument()
 
     expect(screen.getByRole('button', { name: 'Weiter' })).toBeDisabled()
@@ -191,5 +197,95 @@ describe('SpaceCreatePage (#594, Mockup 1b)', () => {
     await answerConfirm(user, 'Eingaben verwerfen und den Assistenten verlassen?', 'Abbrechen')
 
     expect(mockNavigate).not.toHaveBeenCalled()
+  })
+
+  describe('Schritt „Inhalte“', () => {
+    async function toContentStep(user: ReturnType<typeof userEvent.setup>) {
+      await user.type(screen.getByLabelText(/Name/), 'Widerspruchsstelle')
+      await user.click(screen.getByRole('button', { name: 'Weiter' }))
+      await user.click(screen.getByRole('button', { name: 'Weiter' }))
+    }
+
+    it('can be skipped, and the summary says explicitly that no knowledge is assigned', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(<SpaceCreatePage />, { withRouter: true })
+
+      await toContentStep(user)
+      await user.click(screen.getByRole('button', { name: 'Weiter' }))
+
+      expect(screen.getByText(NO_KNOWLEDGE_SUMMARY)).toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: 'Space anlegen' }))
+      expect(mockCreateNewSpace).toHaveBeenCalledWith(
+        'Widerspruchsstelle',
+        '',
+        'PRIVATE',
+        [],
+        false,
+      )
+    })
+
+    it('creates the space with knowledge and prompts chosen as tiles, in one call', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(<SpaceCreatePage />, { withRouter: true })
+
+      await toContentStep(user)
+      await user.click(await screen.findByRole('checkbox', { name: /^Dienstanweisungen/ }))
+      await user.click(screen.getByRole('checkbox', { name: /^Formulierungshilfen Referat 50/ }))
+      expect(
+        screen.getByText('Ausgewählt: Dienstanweisungen, Formulierungshilfen Referat 50'),
+      ).toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: 'Weiter' }))
+
+      expect(screen.queryByText(NO_KNOWLEDGE_SUMMARY)).not.toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: 'Space anlegen' }))
+      expect(mockCreateNewSpace).toHaveBeenCalledWith(
+        'Widerspruchsstelle',
+        '',
+        'PRIVATE',
+        [
+          { assetType: 'KNOWLEDGE_LIBRARY', assetId: 'library-dienstanweisungen' },
+          { assetType: 'PROMPT_LIBRARY', assetId: 'prompt-library-referat-50' },
+        ],
+        false,
+      )
+    })
+
+    it('keeps a choice when the type filter or the search hides its tile', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(<SpaceCreatePage />, { withRouter: true })
+
+      await toContentStep(user)
+      await user.click(await screen.findByRole('checkbox', { name: /^Dienstanweisungen/ }))
+      await user.click(screen.getByRole('button', { name: /Prompts/ }))
+
+      expect(
+        await screen.findByRole('checkbox', { name: /^Formulierungshilfen Referat 50/ }),
+      ).toBeInTheDocument()
+      expect(screen.queryByRole('checkbox', { name: /^Dienstanweisungen/ })).not.toBeInTheDocument()
+      expect(screen.getByText('Ausgewählt: Dienstanweisungen')).toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'Alle' }))
+      await user.type(screen.getByRole('searchbox', { name: 'Suche' }), 'gibt es nicht')
+      expect(await screen.findByText('Keine Treffer.')).toBeInTheDocument()
+      expect(screen.getByText('Ausgewählt: Dienstanweisungen')).toBeInTheDocument()
+    })
+
+    it('starts with the asset handed over by "In Space verwenden"', async () => {
+      mockLocationState = {
+        preselect: {
+          assetType: 'PROMPT_LIBRARY',
+          assetId: 'prompt-library-referat-50',
+          name: 'Formulierungshilfen Referat 50',
+        },
+      }
+      const user = userEvent.setup()
+      renderWithProviders(<SpaceCreatePage />, { withRouter: true })
+
+      await toContentStep(user)
+
+      expect(
+        await screen.findByRole('checkbox', { name: /^Formulierungshilfen Referat 50/ }),
+      ).toBeChecked()
+    })
   })
 })

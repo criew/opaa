@@ -13,10 +13,8 @@ import Typography from '@mui/material/Typography'
 import DeleteIcon from '@mui/icons-material/Delete'
 import { useLocation, useNavigate } from 'react-router'
 import PageHeading from '../components/a11y/PageHeading'
-import AssetTilePicker, {
-  type AssetPick,
-  type SpaceCreateLocationState,
-} from '../components/assets/AssetTilePicker'
+import AssetTilePicker from '../components/assets/AssetTilePicker'
+import type { AssetPick, SpaceCreateLocationState } from '../components/assets/assetPick'
 import ChatAutoCleanupField from '../components/space/ChatAutoCleanupField'
 import FieldLabel from '../components/wizard/FieldLabel'
 import WizardStepBar from '../components/wizard/WizardStepBar'
@@ -87,7 +85,9 @@ export default function SpaceCreatePage() {
     return userResults.filter((u) => !pendingIds.has(u.id))
   }, [userResults, pendingMembers])
 
-  const isDirty = name.trim() !== '' || description.trim() !== '' ||
+  const isDirty =
+    name.trim() !== '' ||
+    description.trim() !== '' ||
     pendingMembers.length > 0 ||
     selectedAssets.length > 0
 

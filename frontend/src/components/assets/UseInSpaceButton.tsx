@@ -17,7 +17,7 @@ import { associateSpaceAsset, getAssetSpaceAssociations } from '../../services/a
 import { getSpaces } from '../../services/spaceApi'
 import { notify } from '../../stores/notificationStore'
 import { successionAwareMessage } from '../succession/successionConflict'
-import type { SpaceCreateLocationState } from './AssetTilePicker'
+import type { SpaceCreateLocationState } from './assetPick'
 
 interface UseInSpaceButtonProps {
   assetType: AssetType
@@ -53,8 +53,6 @@ export default function UseInSpaceButton({
   useEffect(() => {
     if (!open) return
     let cancelled = false
-    setError(null)
-    setSpaces(null)
     void Promise.all([
       getSpaces(),
       getAssetSpaceAssociations(assetType, assetId).catch(() => ({ items: [] })),
@@ -101,7 +99,11 @@ export default function UseInSpaceButton({
         variant="outlined"
         size={size}
         startIcon={<WorkspacesOutlinedIcon />}
-        onClick={() => setOpen(true)}
+        onClick={() => {
+          setError(null)
+          setSpaces(null)
+          setOpen(true)
+        }}
         aria-label={`„${name}“ in Space verwenden`}
       >
         In Space verwenden

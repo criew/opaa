@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -10,21 +10,15 @@ import type { AssetType, CatalogEntryResponse } from '../../types/api'
 import { getCatalog } from '../../services/catalogApi'
 import ChoiceTileGroup, { type ChoiceTile } from '../choice/ChoiceTileGroup'
 import { ASSET_TYPES, assetTypeDefinition } from './assetTypeRegistry'
+import { assetPickKey, type AssetPick } from './assetPick'
 
-/** One chosen asset - enough to submit it and to name it in a summary. */
-export interface AssetPick {
-  assetType: AssetType
-  assetId: string
-  name: string
-}
-
-/** What "In Space verwenden" hands the space wizard when it starts a new space with an asset. */
-export interface SpaceCreateLocationState {
-  preselect?: AssetPick
-}
-
-export function assetPickKey(pick: { assetType: AssetType | string; assetId: string }): string {
-  return `${pick.assetType}:${pick.assetId}`
+/** The loaded tiles for one filter; a different key means the shown result is outdated. */
+interface Loaded {
+  key: string
+  entries: CatalogEntryResponse[]
+  page: number
+  totalPages: number
+  error: string | null
 }
 
 const PAGE_SIZE = 50
@@ -62,11 +56,8 @@ export default function AssetTilePicker({
   const [typeFilter, setTypeFilter] = useState<string>(ALL_TYPES)
   const [query, setQuery] = useState('')
   const [appliedQuery, setAppliedQuery] = useState('')
-  const [entries, setEntries] = useState<CatalogEntryResponse[]>([])
-  const [page, setPage] = useState(0)
-  const [totalPages, setTotalPages] = useState(0)
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [loaded, setLoaded] = useState<Loaded | null>(null)
+  const [loadingMore, setLoadingMore] = useState(false)
   const latestRequest = useRef(0)
 
   useEffect(() => {
@@ -75,42 +66,58 @@ export default function AssetTilePicker({
   }, [query])
 
   const filterType: AssetType | undefined =
-    offered.length === 1
-      ? offered[0].type
-      : offered.find((d) => d.type === typeFilter)?.type
+    offered.length === 1 ? offered[0].type : offered.find((d) => d.type === typeFilter)?.type
 
-  const load = useCallback(
-    async (nextPage: number) => {
-      const request = ++latestRequest.current
-      setIsLoading(true)
-      setError(null)
-      try {
-        const result = await getCatalog({
-          type: filterType,
-          q: appliedQuery,
-          page: nextPage,
-          size: PAGE_SIZE,
-        })
-        if (request !== latestRequest.current) return
-        const allowed = result.entries.filter((entry) =>
-          offered.some((d) => d.type === entry.assetType),
-        )
-        setEntries((previous) => (nextPage === 0 ? allowed : [...previous, ...allowed]))
-        setPage(result.page)
-        setTotalPages(result.totalPages)
-      } catch (err) {
-        if (request !== latestRequest.current) return
-        setError(err instanceof Error ? err.message : 'Die Auswahl konnte nicht geladen werden.')
-      } finally {
-        if (request === latestRequest.current) setIsLoading(false)
+  const filterKey = `${filterType ?? ''}|${appliedQuery.trim()}|${typesKey}`
+
+  async function fetchPage(page: number): Promise<Omit<Loaded, 'key'>> {
+    try {
+      const result = await getCatalog({ type: filterType, q: appliedQuery, page, size: PAGE_SIZE })
+      return {
+        entries: result.entries.filter((entry) => offered.some((d) => d.type === entry.assetType)),
+        page: result.page,
+        totalPages: result.totalPages,
+        error: null,
       }
-    },
-    [filterType, appliedQuery, offered],
-  )
+    } catch (err) {
+      return {
+        entries: [],
+        page,
+        totalPages: 0,
+        error: err instanceof Error ? err.message : 'Die Auswahl konnte nicht geladen werden.',
+      }
+    }
+  }
 
+  // Only the answer to the latest filter lands; state is set once it arrives, never before.
   useEffect(() => {
-    void load(0)
-  }, [load])
+    const request = ++latestRequest.current
+    void fetchPage(0).then((result) => {
+      if (request === latestRequest.current) setLoaded({ key: filterKey, ...result })
+    })
+    // fetchPage reads exactly what filterKey names.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterKey])
+
+  async function loadMore() {
+    if (!loaded) return
+    const request = ++latestRequest.current
+    setLoadingMore(true)
+    const result = await fetchPage(loaded.page + 1)
+    setLoadingMore(false)
+    if (request !== latestRequest.current) return
+    setLoaded({
+      key: filterKey,
+      ...result,
+      entries: result.error ? loaded.entries : [...loaded.entries, ...result.entries],
+    })
+  }
+
+  const isLoading = loaded?.key !== filterKey
+  const entries = isLoading ? [] : (loaded?.entries ?? [])
+  const error = isLoading ? null : (loaded?.error ?? null)
+  const page = loaded?.page ?? 0
+  const totalPages = isLoading ? 0 : (loaded?.totalPages ?? 0)
 
   const chosenKeys = useMemo(() => new Set(value.map(assetPickKey)), [value])
   const shownKeys = entries.map(assetPickKey)
@@ -202,7 +209,12 @@ export default function AssetTilePicker({
 
       {page + 1 < totalPages && !error && (
         <Box>
-          <Button variant="outlined" size="small" onClick={() => void load(page + 1)}>
+          <Button
+            variant="outlined"
+            size="small"
+            disabled={loadingMore}
+            onClick={() => void loadMore()}
+          >
             Weitere laden
           </Button>
         </Box>
