@@ -29,7 +29,9 @@ Quellen (HTTP) und die S3-Clientschicht. foundation hängt von keinem anderen Mo
 - **Ratenbegrenzung:** `RateLimitService` ist ein Gleitfenster je Geltungsbereich mit gedeckeltem
   Schlüsselraum; jenseits des Deckels öffnet er. Ein Wildcard-Bereich in
   `OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS` wird in jedem Profil abgewiesen.
-- **`TargetAddressValidator` kann DNS-Rebinding nicht ausschließen** — eine akzeptierte Grenze.
+- **Verbunden wird nur mit der geprüften Adresse:** Jeder Client zu einem geprüften Ziel löst über
+  `CheckedDnsResolver` auf (`AddressCheckingHttpClient`, S3-SDK); ein neuer Client ohne ihn öffnet
+  die DNS-Rebinding-Lücke wieder (#1860).
 
 ## Verweise
 

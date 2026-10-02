@@ -90,8 +90,11 @@ Geprüft wird jede aufgelöste Adresse eines Hostnamens. Auch der Proxy-Host wir
 interner Dokumentenserver im privaten Netz, was der Normalfall für diesen Konnektor sein dürfte.
 Die Prüfung lässt sich komplett abschalten; die Schemaprüfung bleibt auch dann aktiv.
 
-Bekannte Restlücke: DNS-Rebinding, bei dem ein Hostname zwischen Prüfung und Verbindung auf eine
-andere Adresse wechselt, ist mit dem verwendeten HTTP-Client nicht abzufangen.
+Geprüft wird die Adresse, mit der tatsächlich verbunden wird: Der Hostname wird beim
+Verbindungsaufbau aufgelöst, diese Antwort geprüft und genau sie angewählt. Ein Hostname, der
+zwischen Prüfung und Verbindung auf eine gesperrte Adresse wechselt (DNS-Rebinding), wird
+abgewiesen, ohne dass eine Anfrage das Ziel erreicht. Über einen Proxy löst der Proxy den Zielnamen
+selbst auf; geprüft wird dann das Ziel vor jeder Anfrage.
 
 ### 4.2 Weiterleitungen
 

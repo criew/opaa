@@ -4,6 +4,7 @@ import io.opaa.auth.OidcAddressPolicy;
 import io.opaa.auth.OidcProviderRepository;
 import io.opaa.directory.sync.keycloak.KeycloakDirectoryConnector;
 import io.opaa.directory.sync.keycloak.KeycloakDirectoryProperties;
+import io.opaa.security.AddressCheckingHttpClient;
 import io.opaa.security.CredentialsEncryptor;
 import java.net.http.HttpClient;
 import java.time.Clock;
@@ -24,9 +25,8 @@ public class DirectoryConnectorConfiguration {
   @Bean
   HttpClient directoryHttpClient(
       KeycloakDirectoryProperties properties, OidcAddressPolicy addressPolicy) {
-    return HttpClient.newBuilder()
+    return AddressCheckingHttpClient.newBuilder(addressPolicy)
         .connectTimeout(properties.connectTimeout())
-        .followRedirects(HttpClient.Redirect.NEVER)
         .build();
   }
 

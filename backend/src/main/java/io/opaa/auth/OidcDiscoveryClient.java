@@ -1,6 +1,7 @@
 package io.opaa.auth;
 
 import io.opaa.common.ValidationException;
+import io.opaa.security.AddressCheckingHttpClient;
 import io.opaa.security.TargetAddressValidator;
 import java.io.IOException;
 import java.io.InputStream;
@@ -77,9 +78,9 @@ public class OidcDiscoveryClient {
    * through {@code addressPolicy}. Shared with {@link NimbusOidcJwtDecoderFactory}.
    */
   static HttpClient newHttpClient(OidcAddressPolicy addressPolicy) {
-    return HttpClient.newBuilder()
+    return AddressCheckingHttpClient.newBuilder(addressPolicy)
         .connectTimeout(CONNECT_TIMEOUT)
-        .followRedirects(HttpClient.Redirect.NEVER)
+        .responseTimeout(REQUEST_TIMEOUT)
         .build();
   }
 

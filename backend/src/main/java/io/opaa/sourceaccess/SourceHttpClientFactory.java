@@ -1,5 +1,7 @@
 package io.opaa.sourceaccess;
 
+import io.opaa.security.AddressCheckingHttpClient;
+import io.opaa.security.ConnectionAddressResolver;
 import io.opaa.security.TargetAddressValidator;
 import java.net.http.HttpClient;
 import java.nio.charset.StandardCharsets;
@@ -39,14 +41,10 @@ public final class SourceHttpClientFactory {
    */
   public static HttpClient buildHttpClient(
       TargetAddressValidator validator, String proxyHost, int proxyPort, boolean insecureSsl) {
-    HttpClient.Builder builder =
-        HttpClient.newBuilder()
-            .followRedirects(HttpClient.Redirect.NEVER)
-            .connectTimeout(Duration.ofSeconds(30));
-    if (proxyHost != null && !proxyHost.isBlank()) {
-      builder.proxy(
-          java.net.ProxySelector.of(new java.net.InetSocketAddress(proxyHost, proxyPort)));
-    }
+    AddressCheckingHttpClient.Builder builder =
+        AddressCheckingHttpClient.newBuilder(ConnectionAddressResolver.of(validator))
+            .connectTimeout(Duration.ofSeconds(30))
+            .proxy(proxyHost, proxyPort);
 
     if (insecureSsl) {
       try {

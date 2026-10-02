@@ -75,7 +75,10 @@ public final class S3SdkClient implements AutoCloseable {
     Duration timeout = settings.requestTimeout();
     CheckedDnsResolver dnsResolver = new CheckedDnsResolver(resolver);
     Apache5HttpClient.Builder http =
-        Apache5HttpClient.builder().connectionTimeout(timeout).socketTimeout(timeout);
+        Apache5HttpClient.builder()
+            .connectionTimeout(timeout)
+            .socketTimeout(timeout)
+            .dnsResolver(dnsResolver);
     if (settings.hasProxy()) {
       dnsResolver.exemptProxy(settings.proxyHost());
       http.proxyConfiguration(

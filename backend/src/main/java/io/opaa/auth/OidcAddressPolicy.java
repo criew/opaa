@@ -28,7 +28,7 @@ import java.util.Set;
  * admin API address of a provider's directory access, both when it is stored and every time a run
  * uses it ({@code DirectoryConnectorService} and {@code ProviderDirectoryClient} in the group
  * package). The clients that reach these addresses resolve every connection through {@link
- * #resolveForConnection}, so the address checked is the address connected to.
+ * #resolve}, so the address checked is the address connected to.
  */
 public class OidcAddressPolicy implements ConnectionAddressResolver {
 

@@ -919,6 +919,11 @@ sicher zu sein — er soll etwas einschalten müssen, um es nicht zu sein, und d
 - **Geschlossene Voreinstellung nach außen.** Ohne ausdrückliche Freigabe geht keine Anfrage an ein
   externes Modell und an keinen externen Dienst. Der Betrieb ohne Netzanbindung ist das vorgesehene
   Szenario, nicht die Ausnahme.
+- **Abrufe erreichen nur geprüfte Adressen.** Was OPAA selbst aus dem Netz holt — Datenquellen, die
+  Adressen der Anmeldeanbieter, den Verzeichnisabgleich —, darf ohne ausdrückliche Freigabe kein
+  lokales, privates oder sonst nicht öffentliches Ziel ansprechen. Geprüft wird die Adresse, mit der
+  tatsächlich verbunden wird, nicht nur die, die der Name bei einer früheren Prüfung hatte; ein Name,
+  der dazwischen umgelenkt wird, wird abgewiesen.
 - **Getrennte Ausführung.** Was Dokumente verarbeitet oder Werkzeuge ausführt, läuft in einer eigenen,
   eingeschränkten Umgebung ohne Zugriff auf Netz und Datenbestand außerhalb des Auftrags.
 - **Fehlermeldungen verraten nichts.** Nutzerseitige Meldungen nennen keine internen Pfade, Kennungen
