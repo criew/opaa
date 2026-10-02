@@ -9,7 +9,7 @@ import Stack from '@mui/material/Stack'
 import PageSection from '../PageSection'
 import { successionAwareMessage } from '../succession/successionConflict'
 import type { AssetType } from '../../types/api'
-import { assetTypeLabel } from '../../utils/labels'
+import { assetTypeLabel } from './assetTypeRegistry'
 
 export interface AssetListedSectionProps {
   assetType: AssetType

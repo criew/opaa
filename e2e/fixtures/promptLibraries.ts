@@ -69,23 +69,49 @@ export async function createReleasedGroupViaApi(name: string, memberQuery: strin
   }
 }
 
-/** Öffnet die Übersicht „Prompts“ und wartet auf ihre Liste. */
+/** Öffnet den Katalog, eingegrenzt auf Prompt-Bibliotheken, und wartet auf seine erste Seite. */
 export async function gotoPromptLibraries(page: Page): Promise<void> {
   await Promise.all([
-    page.waitForResponse(
-      (response) =>
-        response.request().method() === 'GET' &&
-        response.url().endsWith('/api/v1/prompt-libraries'),
-    ),
-    page.goto('/prompts'),
+    page.waitForResponse((response) => {
+      if (response.request().method() !== 'GET') return false
+      const url = new URL(response.url())
+      return url.pathname === '/api/v1/catalog' && url.searchParams.get('type') === 'PROMPT_LIBRARY'
+    }),
+    page.goto('/catalog?type=prompts'),
   ])
 }
 
-/** Öffnet die Detailseite einer Prompt-Bibliothek über ihre Kachel in der Übersicht. */
+/**
+ * Öffnet die Detailseite einer Prompt-Bibliothek über ihre Kachel im Katalog. Der Name wird zuerst
+ * gesucht: Der Katalog blättert, und eine Bibliothek jenseits der ersten Seite stünde sonst nicht
+ * auf dem Bildschirm.
+ */
 export async function gotoPromptLibraryDetail(page: Page, name: string): Promise<void> {
   await gotoPromptLibraries(page)
+  await Promise.all([
+    page.waitForResponse((response) => {
+      if (response.request().method() !== 'GET') return false
+      const url = new URL(response.url())
+      return url.pathname === '/api/v1/catalog' && url.searchParams.get('q') === name
+    }),
+    page.getByRole('textbox', { name: 'Suchen' }).fill(name),
+  ])
   await page.getByRole('link', { name: new RegExp(escapeRegExp(name)) }).click()
   await expect(page.getByRole('heading', { level: 1, name })).toBeVisible()
+}
+
+/**
+ * Startet den Assistenten einer Prompt-Bibliothek wie eine Person: „Neu“ im Katalog, Typwahl
+ * „Prompts“, „Weiter“ (ADR-0039, Entscheidung 1).
+ */
+export async function openNewPromptLibraryWizard(page: Page): Promise<void> {
+  await page.goto('/catalog')
+  await page.getByRole('button', { name: 'Neu', exact: true }).click()
+  await page.getByRole('radio', { name: /^Prompts/ }).click()
+  await Promise.all([
+    page.waitForURL(/\/prompts\/new$/),
+    page.getByRole('button', { name: 'Weiter', exact: true }).click(),
+  ])
 }
 
 /**

@@ -101,40 +101,21 @@ flowchart TB
     D --> K[Chunks<br/>Text, Vektor, Metadaten]
 ```
 
-### Die Bibliotheksübersicht
+### Bibliotheken im Katalog finden
 
-Der Menüpunkt „Wissen" führt auf die Übersicht aller Bibliotheken, die Sie lesen dürfen. Neben der
-Überschrift steht ihre Anzahl, oben rechts „Neue Bibliothek". Ein Suchfeld filtert die Liste über Name und Beschreibung,
-ein Umschalter wechselt zwischen Kacheln und Tabelle; die gewählte Ansicht bleibt für die nächste
-Sitzung gemerkt.
+Die Bibliotheken, die Sie lesen dürfen, stehen im **Katalog** der Hauptnavigation, zusammen mit den
+Prompt-Bibliotheken; der Filter „Wissen" grenzt ihn auf Wissensbibliotheken ein. Eine Kachel nennt
+Name, Beschreibung, die Anzahl der Dokumente, in wie vielen Räumen die Bibliothek bereitsteht, und
+die zuständige Stelle, gegebenenfalls mit „Nachfolge offen". Suche, Filter und Seiten beschreibt
+[Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), Abschnitt 4, „Der Katalog".
 
-Die Tabelle hat sechs Spalten:
-
-| Spalte | Inhalt |
-|---|---|
-| **Name** | Name, darunter Beschreibung und Eigentümer; darunter gegebenenfalls „Nachfolge offen" |
-| **Herkunft** | der Quellentyp |
-| **Dokumente** | die Anzahl als Zahl, ab fünf Stellen gekürzt („120 K", „1,2 Mio.") |
-| **Reichweite** | wie weit die Bibliothek reicht, abgeleitet aus ihren Berechtigungen: „Alle", „3 Gruppen, 2 Personen" oder „nur Sie" |
-| **Ihre Rolle** | Ihre Rolle an der Bibliothek |
-| **Letzte Aktualisierung** | das Datum des letzten erfolgreichen Laufs — oder „Lauf fehlgeschlagen", wenn der jüngste Lauf gescheitert ist, und „Lauf läuft", solange einer läuft. Eine Upload-Bibliothek hat keinen Lauf, ihr Feld bleibt leer |
-
-Eine Kachel zeigt Name, Beschreibung, Eigentümer und Anzahl der Dokumente, darunter als Badges die
-Art „Wissen", die Herkunft in Kurzform („Web" statt „Webverzeichnis", „S3" statt
-„S3-Objektspeicher"), Ihre Rolle und die Reichweite. Bestände ohne Leserecht erscheinen nicht
-in der Liste.
-
-**Was die Übersicht über Läufe sagt — und was nicht.** Die Spalte nennt den Ausgang des jüngsten
-Laufs, auch ohne die Bibliothek zu öffnen: Ein gescheiterter letzter Lauf steht dort als „Lauf
-fehlgeschlagen" statt als Datum eines älteren Erfolgs. Den *Fortschritt* eines laufenden Vorgangs
-(„Lauf läuft · 62 %") zeigt sie dagegen nur, solange die Sitzung ihn verfolgt — also nachdem die
-Bibliothek in dieser Sitzung geöffnet oder ein Lauf von hier aus angestoßen wurde; sonst steht dort
-schlicht „Lauf läuft". Warum ein Lauf gescheitert ist, steht im Laufprotokoll der Detailansicht
-(Abschnitt 8.2).
+**Was der Katalog über Läufe sagt — nichts.** Herkunft, Stand und Ausgang des jüngsten Laufs zeigt
+erst die Detailansicht: Kopf und Reiter „Quelle", und warum ein Lauf gescheitert ist, das
+Laufprotokoll (Abschnitt 8.2).
 
 ### Die Detailansicht einer Bibliothek
 
-Ein Klick auf eine Zeile der Übersicht führt auf die Detailansicht. Sie besteht aus einem **Kopf**
+Ein Klick auf eine Kachel im Katalog führt auf die Detailansicht. Sie besteht aus einem **Kopf**
 und vier **Reitern**; einen Weg „zurück zur Übersicht" gibt es nicht, der Einstieg ist die
 Hauptnavigation.
 
@@ -196,7 +177,9 @@ Sammellöschen — ein gelöschtes Dokument käme mit dem nächsten Lauf zurück
 
 ### Eine Bibliothek anlegen
 
-„Neue Bibliothek" führt in einen Assistenten. Seine Schritte tragen dieselben Namen und dieselben
+Angelegt wird über **„Neu"** im Katalog: Nach der Wahl der Art „Wissen" führt „Weiter" in einen
+Assistenten ([Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), Abschnitt 4,
+„Anlegen über ‚Neu'"). Seine Schritte tragen dieselben Namen und dieselben
 Formulare wie der Kopf und die Reiter der fertigen Bibliothek — was hier eingestellt wird, steht
 später an derselben Stelle wieder:
 

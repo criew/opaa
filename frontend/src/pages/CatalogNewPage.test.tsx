@@ -57,6 +57,9 @@ describe('CatalogNewPage (ADR-0039, "Neu")', () => {
     knowledge.focus()
     await user.keyboard('{ArrowRight}')
     expect(screen.getByRole('radio', { name: /Prompts/ })).toHaveFocus()
+    // One tab stop for the whole group: the next Tab leaves it.
+    await user.tab()
+    expect(screen.getByRole('button', { name: 'Abbrechen' })).toHaveFocus()
     await user.tab()
     expect(screen.getByRole('button', { name: 'Weiter' })).toHaveFocus()
     await user.keyboard('{Enter}')
@@ -68,7 +71,9 @@ describe('CatalogNewPage (ADR-0039, "Neu")', () => {
     withCapabilities(['CREATE_PROMPT_LIBRARY'])
     renderPage()
 
-    await waitFor(() => expect(screen.queryByRole('radio', { name: /Wissen/ })).not.toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.queryByRole('radio', { name: /Wissen/ })).not.toBeInTheDocument(),
+    )
     expect(screen.getByRole('radio', { name: /Prompts/ })).toHaveAttribute('aria-checked', 'true')
   })
 

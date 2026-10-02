@@ -8,10 +8,7 @@ import { renderWithProviders, setMockAuthState } from '../test/test-utils'
 import { server } from '../mocks/server'
 import type { AssetType, CatalogEntryResponse } from '../types/api'
 import { useCatalogStore } from '../stores/catalogStore'
-import {
-  ASSET_TYPES,
-  type AssetTypeDefinition,
-} from '../components/assets/assetTypeRegistry'
+import { ASSET_TYPES, type AssetTypeDefinition } from '../components/assets/assetTypeRegistry'
 import CatalogPage from './CatalogPage'
 import CatalogNewPage from './CatalogNewPage'
 

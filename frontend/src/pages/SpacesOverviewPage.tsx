@@ -1,11 +1,10 @@
 import { useCallback, useEffect } from 'react'
 import Box from '@mui/material/Box'
 import Chip from '@mui/material/Chip'
-import TableCell from '@mui/material/TableCell'
 import Typography from '@mui/material/Typography'
 import { useNavigate } from 'react-router'
 import MetaBadge from '../components/MetaBadge'
-import OverviewPage, { OverviewCard, OverviewRowLink } from '../components/overview/OverviewPage'
+import OverviewPage, { OverviewCard } from '../components/overview/OverviewPage'
 import SuccessionStateNote from '../components/succession/SuccessionStateNote'
 import { useSpaceStore } from '../stores/spaceStore'
 import { spaceMembershipLabel, spaceRoleLabel } from '../utils/labels'
@@ -61,36 +60,6 @@ function SpaceCard({ space }: { space: SpaceListResponse }) {
   )
 }
 
-function SpaceRow({ space }: { space: SpaceListResponse }) {
-  return (
-    <>
-      <TableCell>
-        <OverviewRowLink to={spaceHref(space)}>{space.name}</OverviewRowLink>
-        {space.description && (
-          <Typography component="div" sx={{ fontSize: 11.5, color: 'text.disabled' }}>
-            {space.description}
-          </Typography>
-        )}
-        <SuccessionStateNote succession={space.succession} variant="badge" />
-      </TableCell>
-      <TableCell>{space.chatCount ?? '–'}</TableCell>
-      <TableCell>{spaceMembershipLabel(space.memberships)}</TableCell>
-      <TableCell>
-        <MetaBadge accent>{spaceRoleLabel(space.userRole)}</MetaBadge>
-      </TableCell>
-      <TableCell>{space.archived ? 'Archiviert' : 'Aktiv'}</TableCell>
-    </>
-  )
-}
-
-const columns = [
-  { key: 'name', label: 'Name' },
-  { key: 'chats', label: 'Chats' },
-  { key: 'members', label: 'Mitglieder' },
-  { key: 'role', label: 'Ihre Rolle' },
-  { key: 'state', label: 'Zustand' },
-]
-
 /** The Spaces overview (#593, mockup 1c) on the shared overview frame (#1913). */
 export default function SpacesOverviewPage() {
   const navigate = useNavigate()
@@ -116,16 +85,12 @@ export default function SpacesOverviewPage() {
       heading={(count) => (count === 1 ? '1 Space' : `${count} Spaces`)}
       createLabel="Neuer Space"
       onCreate={() => navigate('/spaces/new')}
-      storageKey="spaces"
-      defaultView="cards"
       items={spaces}
       itemKey={(space) => space.id}
       searchText={searchText}
       isLoading={isLoading}
       error={error}
-      columns={columns}
       renderCard={(space) => <SpaceCard space={space} />}
-      renderRow={(space) => <SpaceRow space={space} />}
       emptyState={
         <Typography sx={{ color: 'text.secondary' }}>
           Noch kein Space — legen Sie über „Neuer Space“ den ersten an.

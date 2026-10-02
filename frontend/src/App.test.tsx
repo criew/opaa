@@ -59,8 +59,8 @@ describe('App', () => {
     render(<App />)
     await waitFor(() => {
       expect(screen.getByText('Chats')).toBeInTheDocument()
-      // Der Bestand je Asset-Typ steht als eigener Punkt auf der globalen Leiste (#786, #1915).
-      expect(screen.getByText('Wissen')).toBeInTheDocument()
+      // Ein Einstieg für alle Asset-Typen (ADR-0039, Entscheidung 1).
+      expect(screen.getByText('Katalog')).toBeInTheDocument()
     })
   })
 
@@ -72,6 +72,20 @@ describe('App', () => {
     await waitFor(() => {
       expect(window.location.pathname).toBe('/spaces/space-1/settings/general')
     })
+    window.history.pushState({}, '', '/')
+  })
+
+  // ADR-0039: the former type overviews lead into the catalog, narrowed to their type.
+  it.each([
+    ['/libraries', '?type=knowledge'],
+    ['/prompts', '?type=prompts'],
+  ])('sends a bookmark of %s to the catalog', async (path, search) => {
+    window.history.pushState({}, '', path)
+    render(<App />)
+    await waitFor(() => {
+      expect(window.location.pathname).toBe('/catalog')
+    })
+    expect(window.location.search).toBe(search)
     window.history.pushState({}, '', '/')
   })
 })

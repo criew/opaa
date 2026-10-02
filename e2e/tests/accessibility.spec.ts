@@ -1,6 +1,6 @@
 import { expect, test } from "../fixtures/auth";
 import { expectNoSeriousA11yViolations } from "../fixtures/a11y";
-import { gotoLibraries, startFreshChat } from "../fixtures/chat";
+import { startFreshChat } from "../fixtures/chat";
 
 /**
  * Automated accessibility checks with axe-core (#586): every page listed in the issue is opened
@@ -157,22 +157,35 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
     await expectNoSeriousA11yViolations(page, "Spaces-Übersicht (dunkles Farbschema)");
   });
 
-  test("Wissen", async ({ authenticatedPage: page }) => {
-    await gotoLibraries(page);
-    // #1915: Die Seite heißt wie ihr Menüpunkt.
+  // Die Kachelauswahl mit Icon (Gestaltungsleitlinien 5.11) an ihren beiden Stellen: Typwahl unter
+  // „Neu" und Quellart-Wahl im Wissens-Assistenten - Auswahlgruppe, Häkchen und gesperrte Kachel.
+  test("Kachelauswahl: Typwahl und Quellart in beiden Farbschemata", async ({
+    authenticatedPage: page,
+  }) => {
+    await page.goto("/catalog/new");
     await expect(
-      page.getByRole("heading", { level: 1, name: "Wissen" }),
+      page.getByRole("radiogroup", { name: "Was möchten Sie anlegen?" }),
     ).toBeVisible();
 
     await page.emulateMedia({ colorScheme: "light" });
-    await expectNoSeriousA11yViolations(page, "Wissen (helles Farbschema)");
-
-    // #957: der „Eigentümer"-Chip fiel nur im Dunkelschema durch.
+    await expectNoSeriousA11yViolations(page, "Typwahl (helles Farbschema)");
     await page.emulateMedia({ colorScheme: "dark" });
-    await expectNoSeriousA11yViolations(page, "Wissen (dunkles Farbschema)");
+    await expectNoSeriousA11yViolations(page, "Typwahl (dunkles Farbschema)");
+
+    await page.getByRole("radio", { name: /^Wissen/ }).click();
+    await page.getByRole("button", { name: "Weiter", exact: true }).click();
+    await expect(
+      page.getByRole("radiogroup", { name: "Art des Wissens wählen" }),
+    ).toBeVisible();
+
+    await page.emulateMedia({ colorScheme: "light" });
+    await expectNoSeriousA11yViolations(page, "Quellart (helles Farbschema)");
+    await page.emulateMedia({ colorScheme: "dark" });
+    await expectNoSeriousA11yViolations(page, "Quellart (dunkles Farbschema)");
   });
 
-  // #1904: Typfilter als Umschaltgruppe, Einträge ohne Zugriff als gestrichelte Karte ohne Link.
+  // Der Katalog: Typfilter als Umschaltgruppe, Kacheln mit Typ-Etikett. #957: Etiketten fielen
+  // einmal nur im Dunkelschema durch, deshalb beide Schemata.
   test("Katalog in beiden Farbschemata", async ({ authenticatedPage: page }) => {
     await Promise.all([
       page.waitForResponse(

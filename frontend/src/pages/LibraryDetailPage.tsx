@@ -50,6 +50,7 @@ import PageSection from '../components/PageSection'
 import MetaBadge from '../components/MetaBadge'
 import SuccessionStateNote from '../components/succession/SuccessionStateNote'
 import { successionAwareMessage } from '../components/succession/successionConflict'
+import { CATALOG_ROUTE } from '../routes'
 
 function canEditLibrary(role: AssetRole | undefined): boolean {
   return role === 'MANAGER' || role === 'OWNER'
@@ -428,7 +429,7 @@ export default function LibraryDetailPage() {
     setLocalError(null)
     try {
       await deleteExistingLibrary(libraryId)
-      navigate('/libraries')
+      navigate(CATALOG_ROUTE)
     } catch (err) {
       setLocalError(err instanceof Error ? err.message : 'Löschen fehlgeschlagen')
     }

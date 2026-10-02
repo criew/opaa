@@ -10,6 +10,7 @@ import {
   gotoPromptLibraries,
   gotoPromptLibraryDetail,
   listedCatalogEntry,
+  openNewPromptLibraryWizard,
   searchCatalog,
 } from '../fixtures/promptLibraries'
 import type { Page } from '@playwright/test'
@@ -82,7 +83,7 @@ async function expectNoCatalogMatch(page: Page, query: string): Promise<void> {
 
 async function expectNotInPromptList(page: Page, name: string): Promise<void> {
   await gotoPromptLibraries(page)
-  await expect(page.getByRole('heading', { level: 1, name: 'Prompts' })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: 'Katalog' })).toBeVisible()
   await expect(page.getByText(name, { exact: true })).toHaveCount(0)
 }
 
@@ -107,7 +108,7 @@ test.describe.serial('Prompt-Bibliotheken: Freigabewege und Katalog (#1904)', ()
   test('1. Prompt-Bibliothek mit einem Prompt und einer Pflicht-Variable anlegen', async ({
     regularUserPage: owner,
   }) => {
-    await owner.goto('/prompts/new')
+    await openNewPromptLibraryWizard(owner)
     await owner.getByLabel(/^Name/).fill(LIBRARY_NAME)
     await owner.getByRole('button', { name: 'Weiter', exact: true }).click()
     await owner.getByRole('button', { name: 'Weiter zu Rechten' }).click()

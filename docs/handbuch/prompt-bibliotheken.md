@@ -19,13 +19,9 @@ einem Namen und benannten Platzhaltern, ohne Dokumente, ohne Werkzeuge und ohne 
 Deshalb verengt eine Prompt-Bibliothek, die einem Raum zugeordnet ist, auch nicht dessen
 Suchbereich — das tun nur Wissensbibliotheken.
 
-Die Prompt-Bibliotheken, die eine Person lesen darf, stehen in der Hauptnavigation unter
-**„Prompts"**, gleich unter „Wissen". Die Übersicht dort funktioniert wie die der
-Wissensbibliotheken: Anzahl in der Kopfzeile, „Neue Prompt-Bibliothek" oben rechts, Suche über Name
-und Beschreibung, Umschalter zwischen Kacheln und Tabelle. Eine Kachel nennt Eigentümer und Anzahl
-der Prompts, darunter als Badges die Art „Prompts", die eigene Rolle und die Reichweite. Gefunden werden
-Prompt-Bibliotheken außerdem im **Katalog**, zusammen mit den Wissensbibliotheken (Abschnitt 4, „Im
-Katalog finden").
+Die Prompt-Bibliotheken, die eine Person lesen darf, stehen im **Katalog**, dem einen Punkt der
+Hauptnavigation für Bestände jeder Art, zusammen mit den Wissensbibliotheken; der Filter „Prompts"
+grenzt ihn auf Prompt-Bibliotheken ein (Abschnitt 4, „Im Katalog finden").
 
 ```mermaid
 flowchart LR
@@ -81,7 +77,9 @@ der Zugriff fehlt.
 
 ### Anlegen
 
-„Neue Prompt-Bibliothek" öffnet einen Assistenten mit drei Schritten. Er verwendet dieselben
+Angelegt wird über **„Neu"** im Katalog: Nach der Wahl der Art „Prompts" öffnet „Weiter" einen
+Assistenten mit drei Schritten ([Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md),
+Abschnitt 4, „Anlegen über ‚Neu'"). Er verwendet dieselben
 Formularbausteine wie der Assistent einer Wissensbibliothek, schneidet sie aber anders zu: Es gibt
 keine Schritte „Art des Wissens" und „Quelle" — eine Prompt-Bibliothek bindet kein Wissen und hat
 keine Quelle —, und Eigentümer und Rechte stehen in zwei eigenen Schritten statt zusammen in einem
@@ -242,8 +240,7 @@ offen"**. Sie bleibt nutzbar, alle Rollen bleiben, nichts wird gelöscht — **n
 eingefroren**: keine neuen oder größeren Rollen, keine Freigabe an „Alle Konten", keine neue
 Auffindbarkeit, keine neue Zuordnung zu einem Raum. Prompts anlegen und ändern bleibt möglich.
 
-Die Kennzeichnung „Nachfolge offen — zuständig: …" steht in der Übersicht unter „Prompts" und auf
-der Detailseite. In der Betriebsliste unter **Administration → Lebenszyklus** erscheint die
+Die Kennzeichnung „Nachfolge offen — zuständig: …" steht im Katalog und auf der Detailseite. In der Betriebsliste unter **Administration → Lebenszyklus** erscheint die
 Prompt-Bibliothek als eigene Zeile; ihr Name führt auf ihre Detailseite, und der Ausgang ist
 dieselbe Übertragung wie bei jeder anderen Bibliothek.
 

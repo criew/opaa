@@ -11,11 +11,9 @@ import GridViewOutlinedIcon from '@mui/icons-material/GridViewOutlined'
 import HistoryOutlinedIcon from '@mui/icons-material/HistoryOutlined'
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
 import LogoutIcon from '@mui/icons-material/Logout'
-import MenuBookOutlinedIcon from '@mui/icons-material/MenuBookOutlined'
+import LibraryBooksOutlinedIcon from '@mui/icons-material/LibraryBooksOutlined'
 import SettingsIcon from '@mui/icons-material/Settings'
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined'
-import StorefrontOutlinedIcon from '@mui/icons-material/StorefrontOutlined'
-import TextSnippetOutlinedIcon from '@mui/icons-material/TextSnippetOutlined'
 import { Link as RouterLink, useLocation, useNavigate } from 'react-router'
 import AboutDialog from './AboutDialog'
 import BrandMark from '../components/BrandMark'
@@ -23,6 +21,7 @@ import NotificationBell from '../components/notifications/NotificationBell'
 import { useAuthStore } from '../stores/authStore'
 import { userInitial } from '../utils/userInitial'
 import { useBrandingStore } from '../stores/brandingStore'
+import { CATALOG_ROUTE } from '../routes'
 import { createRailTheme } from '../theme/theme'
 import { darkRoles, railRoles, shadow } from '../theme/tokens'
 
@@ -39,30 +38,9 @@ interface RailDestination {
 }
 
 /**
- * Ein Eintrag je Asset-Typ, in der Reihenfolge der Leiste; die Seite dahinter trägt denselben
- * Namen wie der Eintrag. Ein weiterer Typ braucht drei Stellen: diese Zeile, seine Route unter
- * `GlobalAreaLayout` in App.tsx und sein Präfix in `GLOBAL_AREA_PREFIXES` (globalArea.ts) — ohne
- * das letzte rendert die neue Seite mit der Space-Spalte daneben statt im globalen Rahmen.
- */
-const ASSET_DESTINATIONS: RailDestination[] = [
-  {
-    label: 'Wissen',
-    to: '/libraries',
-    activePrefixes: ['/libraries'],
-    icon: MenuBookOutlinedIcon,
-  },
-  {
-    label: 'Prompts',
-    to: '/prompts',
-    activePrefixes: ['/prompts'],
-    icon: TextSnippetOutlinedIcon,
-  },
-]
-
-/**
  * The global rail (#786, mockup 2a): the always-visible first navigation level left of the
  * space column, one shade darker so global and space scope read apart at a glance. It carries
- * the brand emblem, the global destinations - Spaces, one entry per asset type, administration -
+ * the brand emblem, the global destinations - Spaces, the catalog, administration -
  * and the user's avatar with the account menu; the navy column next to it stays purely
  * space-scoped.
  */
@@ -93,15 +71,13 @@ export default function GlobalRail() {
       activePrefixes: ['/spaces', '/chat'],
       icon: GridViewOutlinedIcon,
     },
-    // Je Asset-Typ ein eigener Punkt (#1915): „Wissen" und „Prompts" führen auf die lesbaren
-    // Bestände ihres Typs. Der Katalog ist die gemischte Sicht über alle Typen, einschließlich
-    // der auffindbaren Assets ohne Zugriff.
-    ...ASSET_DESTINATIONS,
+    // One entry for every asset type (ADR-0039, Entscheidung 1); an asset's own pages count as
+    // the catalog's scope.
     {
       label: 'Katalog',
-      to: '/catalog',
-      activePrefixes: ['/catalog'],
-      icon: StorefrontOutlinedIcon,
+      to: CATALOG_ROUTE,
+      activePrefixes: [CATALOG_ROUTE, '/libraries', '/prompts'],
+      icon: LibraryBooksOutlinedIcon,
     },
     ...(user?.systemRole === 'SYSTEM_ADMIN'
       ? [

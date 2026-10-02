@@ -166,28 +166,54 @@ export async function expectCitedExclusively(
   })
 }
 
-// GET /api/v1/libraries is what decides whether a library is listed (or suggested) at all -
-// waiting for the concrete response instead of a fixed delay avoids racing it (see AGENTS.md /
-// e2e/README.md "Serialisierungs-Konvention" on not hanging scenarios on wall-clock time).
+// The catalog's first page decides whether a library is shown at all - waiting for the concrete
+// response instead of a fixed delay avoids racing it (see e2e/README.md
+// "Serialisierungs-Konvention" on not hanging scenarios on wall-clock time).
 export async function gotoLibraries(page: Page): Promise<void> {
   await Promise.all([
-    page.waitForResponse(
-      (response) =>
-        response.request().method() === 'GET' && response.url().endsWith('/api/v1/libraries'),
-    ),
-    page.goto('/libraries'),
+    page.waitForResponse((response) => {
+      if (response.request().method() !== 'GET') return false
+      const url = new URL(response.url())
+      return (
+        url.pathname === '/api/v1/catalog' && url.searchParams.get('type') === 'KNOWLEDGE_LIBRARY'
+      )
+    }),
+    page.goto('/catalog?type=knowledge'),
   ])
 }
 
-// #481: the library overview no longer expands inline - every row navigates to its own detail
-// page (/libraries/:id), which is where name and description, die Freigaben and, for an
-// UPLOAD library, the upload zone and document list now live.
+/**
+ * Opens a library's detail page from the catalog. The name is searched first: the catalog pages
+ * its result, and a library beyond the first page would otherwise not be on screen.
+ */
 export async function gotoLibraryDetail(page: Page, libraryName: string): Promise<void> {
+  await Promise.all([
+    page.waitForResponse((response) => {
+      if (response.request().method() !== 'GET') return false
+      const url = new URL(response.url())
+      return url.pathname === '/api/v1/catalog' && url.searchParams.get('q') === libraryName
+    }),
+    page.getByRole('textbox', { name: 'Suchen' }).fill(libraryName),
+  ])
   await Promise.all([
     page.waitForURL(/\/libraries\/[^/]+$/),
     page.getByText(libraryName, { exact: true }).click(),
   ])
   await expect(page.getByRole('heading', { name: libraryName })).toBeVisible()
+}
+
+/**
+ * Starts the knowledge-library wizard the way a person does: "Neu" in the catalog, the type
+ * choice "Wissen", "Weiter" (ADR-0039, Entscheidung 1).
+ */
+export async function openNewLibraryWizard(page: Page): Promise<void> {
+  await page.goto('/catalog')
+  await page.getByRole('button', { name: 'Neu', exact: true }).click()
+  await page.getByRole('radio', { name: /^Wissen/ }).click()
+  await Promise.all([
+    page.waitForURL(/\/libraries\/new$/),
+    page.getByRole('button', { name: 'Weiter', exact: true }).click(),
+  ])
 }
 
 /**
@@ -222,8 +248,7 @@ export async function createLibraryWithDocuments(
   // full expected row count here; every other caller keeps the one-chip-per-upload default.
   expectedIndexedCount: number = documents.length,
 ): Promise<void> {
-  await gotoLibraries(page)
-  await page.getByRole('button', { name: 'Neue Bibliothek' }).click()
+  await openNewLibraryWizard(page)
   // #1942: Schrittfolge „Art des Wissens · Name & Beschreibung · Freigaben" - Upload ist
   // vorausgewählt und hat keinen Schritt „Quelle".
   await page.getByRole('button', { name: 'Weiter', exact: true }).click()

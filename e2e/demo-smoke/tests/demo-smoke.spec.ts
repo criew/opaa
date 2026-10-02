@@ -258,7 +258,9 @@ test.describe('Demo-Smoke (#232)', () => {
     // a fresh account: none of the seeded demo libraries is readable for it - wait for the
     // rendered empty state first, an absence check alone would pass before the list rendered
     await gotoLibraries(page)
-    await expect(page.getByText('Es sind noch keine Bibliotheken vorhanden.')).toBeVisible()
+    await expect(
+      page.getByText('Kein Eintrag passt zu den Filtern.', { exact: true }).and(page.locator('p')),
+    ).toBeVisible()
     await expect(page.getByText('Leistungen Meldewesen & Ausweise', { exact: true })).toHaveCount(0)
     await logout(page)
 

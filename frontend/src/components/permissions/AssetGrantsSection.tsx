@@ -44,10 +44,10 @@ import {
   assetGrantScopeHint,
   assetRoleDescription,
   assetRoleLabel,
-  assetTypeLabel,
   groupGrowthLabel,
   permissionSubjectTypeLabel,
 } from '../../utils/labels'
+import { assetTypeLabel } from '../assets/assetTypeRegistry'
 
 const grantableRoles: AssetRole[] = ['VIEWER', 'EDITOR', 'MANAGER', 'OWNER']
 

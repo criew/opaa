@@ -164,7 +164,10 @@ describe('CatalogPage (ADR-0039)', () => {
         HttpResponse.json({
           entries: [
             entry('Verwaiste Bausteine', {
-              succession: { addressee: 'SYSTEM_ADMINISTRATION', addresseeLabel: 'die Systemverwaltung' },
+              succession: {
+                addressee: 'SYSTEM_ADMINISTRATION',
+                addresseeLabel: 'die Systemverwaltung',
+              },
             }),
           ],
           page: 0,

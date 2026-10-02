@@ -17,7 +17,12 @@ import { usePromptLibraryStore } from '../stores/promptLibraryStore'
 import { confirmAction } from '../stores/confirmStore'
 import { assetRoleLabel, promptVariableTypeLabel } from '../utils/labels'
 import { fontFamily } from '../theme/tokens'
-import { PROMPT_LIBRARY_TABS, promptLibraryRoute, type PromptLibraryTab } from '../routes'
+import {
+  CATALOG_ROUTE,
+  PROMPT_LIBRARY_TABS,
+  promptLibraryRoute,
+  type PromptLibraryTab,
+} from '../routes'
 import PageHeading from '../components/a11y/PageHeading'
 import PageSection from '../components/PageSection'
 import AreaTabs from '../components/AreaTabs'
@@ -257,7 +262,7 @@ function SettingsArea({ library }: { library: PromptLibraryResponse }) {
     setError(null)
     try {
       await deleteLibrary(library.id)
-      navigate('/prompts')
+      navigate(CATALOG_ROUTE)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Löschen fehlgeschlagen')
     }
@@ -355,7 +360,7 @@ export default function PromptLibraryDetailPage() {
     if (promptLibraryId) void loadLibrary(promptLibraryId)
   }, [promptLibraryId, loadLibrary])
 
-  if (!promptLibraryId) return <Navigate to="/prompts" replace />
+  if (!promptLibraryId) return <Navigate to={CATALOG_ROUTE} replace />
 
   if (!library) {
     return (
@@ -381,12 +386,12 @@ export default function PromptLibraryDetailPage() {
       <Box sx={{ maxWidth: 880 }}>
         <Link
           component={RouterLink}
-          to="/prompts"
+          to={CATALOG_ROUTE}
           underline="hover"
           sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5, mb: 2, fontSize: 13 }}
         >
           <ArrowBackIcon fontSize="small" />
-          Zurück zur Übersicht
+          Zurück zum Katalog
         </Link>
 
         <Box component="header" sx={{ borderBottom: 1, borderColor: 'divider', pb: 2.5, mb: 3 }}>

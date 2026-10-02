@@ -17,7 +17,12 @@ const tiles: ChoiceTile<Fruit>[] = [
 function Single({ initial = 'apple' }: { initial?: Fruit | null }) {
   const [value, setValue] = useState<Fruit | null>(initial)
   return (
-    <ChoiceTileGroup<Fruit> aria-label="Obst wählen" tiles={tiles} value={value} onChange={setValue} />
+    <ChoiceTileGroup<Fruit>
+      aria-label="Obst wählen"
+      tiles={tiles}
+      value={value}
+      onChange={setValue}
+    />
   )
 }
 

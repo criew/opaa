@@ -29,13 +29,13 @@ import DirectorySyncPage from './pages/DirectorySyncPage'
 import ProviderGroupWorklistPage from './pages/ProviderGroupWorklistPage'
 import SuccessionPage from './pages/SuccessionPage'
 import UserManagementPage from './pages/UserManagementPage'
-import LibraryManagementPage from './pages/LibraryManagementPage'
 import LibraryCreatePage from './pages/LibraryCreatePage'
 import LibraryDetailPage from './pages/LibraryDetailPage'
-import PromptLibrariesPage from './pages/PromptLibrariesPage'
 import PromptLibraryCreatePage from './pages/PromptLibraryCreatePage'
 import PromptLibraryDetailPage from './pages/PromptLibraryDetailPage'
 import CatalogPage from './pages/CatalogPage'
+import CatalogNewPage from './pages/CatalogNewPage'
+import { catalogRoute } from './components/assets/assetTypeRegistry'
 import {
   FORGOT_PASSWORD_ROUTE,
   HANDOVER_ROUTE,
@@ -173,16 +173,24 @@ export default function App() {
                 <Route path="spaces/new" element={<SpaceCreatePage />} />
               </Route>
               {/* Every asset type's pages are a global area too (#789, Schlussnotiz von
-                  Mockup-Abschnitt 2): bare global frame, no secondary column. */}
+                  Mockup-Abschnitt 2): bare global frame, no secondary column. The catalog is
+                  their one overview (ADR-0039); the former type overviews lead into it. */}
               <Route element={<GlobalAreaLayout />}>
-                <Route path="libraries" element={<LibraryManagementPage />} />
+                <Route path="catalog" element={<CatalogPage />} />
+                <Route path="catalog/new" element={<CatalogNewPage />} />
+                <Route
+                  path="libraries"
+                  element={<Navigate to={catalogRoute('KNOWLEDGE_LIBRARY')} replace />}
+                />
                 <Route path="libraries/new" element={<LibraryCreatePage />} />
                 <Route path="libraries/:libraryId" element={<LibraryDetailPage />} />
-                <Route path="prompts" element={<PromptLibrariesPage />} />
+                <Route
+                  path="prompts"
+                  element={<Navigate to={catalogRoute('PROMPT_LIBRARY')} replace />}
+                />
                 <Route path="prompts/new" element={<PromptLibraryCreatePage />} />
                 <Route path="prompts/:promptLibraryId" element={<PromptLibraryDetailPage />} />
                 <Route path="prompts/:promptLibraryId/:tab" element={<PromptLibraryDetailPage />} />
-                <Route path="catalog" element={<CatalogPage />} />
               </Route>
               {/* Global areas render inside the frame from mockup 2b (#787): no space
                   column, a light secondary column with the area navigation instead. */}
