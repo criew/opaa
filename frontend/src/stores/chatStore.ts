@@ -121,6 +121,26 @@ const persistedUserTurnsByChatId = new Map<string, number>()
 
 // Questions the server refused while another chat was shown; handed back when the person returns.
 const parkedRefusalsByChatId = new Map<string, ParkedRefusal>()
+// Same for a question whose chat creation was refused: no chat id exists yet, so it is keyed by
+// the space whose new-chat view it was sent from.
+const parkedRefusalsByNewChatSpaceId = new Map<string, ParkedRefusal>()
+
+/** The refusal as the input takes it back; `stillShown` guards the confirming note. */
+function parkedAsReturnedQuestion(
+  parked: ParkedRefusal,
+  get: () => ChatState,
+  set: (partial: Partial<ChatState>) => void,
+  stillShown: () => boolean,
+): RefusedQuestion {
+  return {
+    restoreDraft: parked.question,
+    onRestored: () => {
+      if (stillShown() && get().error === parked.reason) {
+        set({ error: `${parked.reason} ${parked.note}` })
+      }
+    },
+  }
+}
 
 /**
  * Takes note of a server read of `chatId` that is about to be applied. An outstanding question
@@ -493,19 +513,18 @@ export const useChatStore = create<ChatState>((set, get) => ({
           metadataFilter: detailState.metadataFilter,
         })
       }
-      const parked = parkedRefusalsByChatId.get(chatId)
+      // Consumed only now that this chat is the one shown (superseded loads returned above).
+      const parked = get().chatId === chatId ? parkedRefusalsByChatId.get(chatId) : undefined
       if (parked) {
         parkedRefusalsByChatId.delete(chatId)
         set({
           error: parked.reason,
-          returnedQuestion: {
-            restoreDraft: parked.question,
-            onRestored: () => {
-              if (get().chatId === chatId && get().error === parked.reason) {
-                set({ error: `${parked.reason} ${parked.note}` })
-              }
-            },
-          },
+          returnedQuestion: parkedAsReturnedQuestion(
+            parked,
+            get,
+            set,
+            () => get().chatId === chatId,
+          ),
         })
       }
       // An answer that arrived while this GET was in flight may be missing from its snapshot.
@@ -553,7 +572,21 @@ export const useChatStore = create<ChatState>((set, get) => ({
       archivedAt: null,
       isLoadingChat: false,
       isLoading: false,
+      returnedQuestion: null,
     })
+    const parked = parkedRefusalsByNewChatSpaceId.get(spaceId)
+    if (parked) {
+      parkedRefusalsByNewChatSpaceId.delete(spaceId)
+      set({
+        error: parked.reason,
+        returnedQuestion: parkedAsReturnedQuestion(
+          parked,
+          get,
+          set,
+          () => get().chatId === null && get().spaceId === spaceId,
+        ),
+      })
+    }
   },
 
   sendMessage: async (question: string, usedPrompt?: { id: string; title: string }) => {
@@ -577,6 +610,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     // not-yet-created chat view is identified by chatLoadSequence, which every loadChat/startNewChat
     // bumps.
     const sendingChatId = get().chatId
+    const sendingSpaceId = get().spaceId
     const archivedWhenSent = sendingChatId !== null && get().archivedAt !== null
     const send: InFlightSend = {
       chatId: sendingChatId,
@@ -622,7 +656,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }
     const parkRefusal = (failure: unknown) => {
       const refusal = classifyRefusal(failure)
-      if (refusal && send.chatId) parkedRefusalsByChatId.set(send.chatId, { question, ...refusal })
+      if (!refusal) return
+      const parked = { question, ...refusal }
+      if (send.chatId) parkedRefusalsByChatId.set(send.chatId, parked)
+      else if (sendingSpaceId) parkedRefusalsByNewChatSpaceId.set(sendingSpaceId, parked)
     }
 
     try {
@@ -895,6 +932,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     inFlightSends.clear()
     persistedUserTurnsByChatId.clear()
     parkedRefusalsByChatId.clear()
+    parkedRefusalsByNewChatSpaceId.clear()
     // #1488: the pending removals belong to the chat the previous user had open - keeping them
     // would filter points out of the next user's chats until some load confirmed them.
     clearRemovedNoteItemCache()

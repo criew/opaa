@@ -36,6 +36,7 @@ function resetChatStore() {
     isLoading: false,
     isLoadingChat: false,
     error: null,
+    returnedQuestion: null,
     scope: 'all',
     referencedLibraryIds: [],
     noteItems: [],
@@ -164,6 +165,49 @@ describe('ChatPage', () => {
       ),
     ).toBeInTheDocument()
     expect(screen.queryByText('question: ungültig')).not.toBeInTheDocument()
+  })
+
+  it('puts a question refused while another chat was shown back into the input on return', async () => {
+    currentChatId = 'chat-personal-1'
+    let release: () => void = () => {}
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    server.use(
+      http.post('/api/v1/query', async () => {
+        await gate
+        return HttpResponse.json(
+          { error: 'Zu viele Anfragen.', status: 429, timestamp: new Date().toISOString() },
+          { status: 429 },
+        )
+      }),
+    )
+    renderWithProviders(<ChatPage />, { withRouter: true })
+    await waitFor(() => expect(useChatStore.getState().chatId).toBe('chat-personal-1'))
+    await waitFor(() => expect(useChatStore.getState().isLoadingChat).toBe(false))
+
+    const input = screen.getByPlaceholderText('Nachricht eingeben …')
+    fireEvent.change(input, { target: { value: 'Frage im alten Chat' } })
+    fireEvent.click(screen.getByLabelText('Senden'))
+    await act(async () => {
+      await useChatStore.getState().loadChat('chat-personal-2')
+    })
+    release()
+    await waitFor(() => expect(useChatStore.getState().isLoading).toBe(false))
+    expect(screen.getByPlaceholderText('Nachricht eingeben …')).toHaveValue('')
+
+    await act(async () => {
+      await useChatStore.getState().loadChat('chat-personal-1')
+    })
+
+    await waitFor(() =>
+      expect(screen.getByPlaceholderText('Nachricht eingeben …')).toHaveValue(
+        'Frage im alten Chat',
+      ),
+    )
+    expect(
+      await screen.findByText('Zu viele Anfragen. Die Frage steht wieder im Eingabefeld.'),
+    ).toBeInTheDocument()
   })
 
   it('shows error alert when present', async () => {

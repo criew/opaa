@@ -816,6 +816,57 @@ describe('chatStore', () => {
         expect(useChatStore.getState().returnedQuestion).toBeNull()
       })
 
+      it('hands a question back whose chat creation was refused after switching to another chat', async () => {
+        useChatStore.getState().startNewChat(SPACE_ID)
+        const gate = deferred<void>()
+        server.use(
+          http.post('/api/v1/spaces/:spaceId/chats', async () => {
+            await gate.promise
+            return HttpResponse.json(
+              { error: 'Zu viele Anfragen.', status: 429, timestamp: new Date().toISOString() },
+              { status: 429 },
+            )
+          }),
+        )
+
+        const sendPromise = useChatStore.getState().sendMessage('Erste Frage')
+        await useChatStore.getState().loadChat(OTHER_CHAT_ID)
+        gate.resolve()
+        await sendPromise
+        expect(useChatStore.getState().returnedQuestion).toBeNull()
+
+        useChatStore.getState().startNewChat(SPACE_ID)
+
+        expect(useChatStore.getState().returnedQuestion).toMatchObject({
+          restoreDraft: 'Erste Frage',
+        })
+        expect(useChatStore.getState().error).toBe('Zu viele Anfragen.')
+      })
+
+      it('does not carry a returned question into a new chat of another space', async () => {
+        await useChatStore.getState().loadChat(EXISTING_CHAT_ID)
+        const gate = deferred<void>()
+        server.use(
+          http.post('/api/v1/query', async () => {
+            await gate.promise
+            return HttpResponse.json(
+              { error: 'Zu viele Anfragen.', status: 429, timestamp: new Date().toISOString() },
+              { status: 429 },
+            )
+          }),
+        )
+        const sendPromise = useChatStore.getState().sendMessage('Frage im alten Chat')
+        await useChatStore.getState().loadChat(OTHER_CHAT_ID)
+        gate.resolve()
+        await sendPromise
+        await useChatStore.getState().loadChat(EXISTING_CHAT_ID)
+        expect(useChatStore.getState().returnedQuestion).not.toBeNull()
+
+        useChatStore.getState().startNewChat('space-other')
+
+        expect(useChatStore.getState().returnedQuestion).toBeNull()
+      })
+
       it('an answer for a just-created chat arriving after switching to another chat leaves that chat untouched', async () => {
         useChatStore.getState().startNewChat(SPACE_ID)
         const gate = deferred<void>()
