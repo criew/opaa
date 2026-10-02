@@ -303,6 +303,36 @@ describe('ChatInput', () => {
     expect(setMetadataFilter).toHaveBeenCalledWith({ documentTypes: ['VERMERK'] })
   })
 
+  // The options of a chat not yet created belong to its space: without the space the server
+  // would count nothing, and with it only the space's knowledge.
+  it('loads the filter options of a new chat for its space', async () => {
+    const requested: URL[] = []
+    server.use(
+      http.get('/api/v1/search/metadata-filter-options', ({ request }) => {
+        requested.push(new URL(request.url))
+        return HttpResponse.json({
+          totalDocuments: 0,
+          fields: [],
+          documentTypes: [],
+          libraryFields: [],
+          formatFields: [],
+        })
+      }),
+    )
+    useChatStore.setState({
+      chatId: null,
+      spaceId: 'space-a',
+      scope: 'all',
+      metadataFilter: { documentTypes: ['VERMERK'] },
+    })
+
+    render(<ChatInput onSend={vi.fn()} />)
+
+    await waitFor(() => expect(requested).toHaveLength(1))
+    expect(requested[0].searchParams.get('spaceId')).toBe('space-a')
+    expect(requested[0].searchParams.get('chatId')).toBeNull()
+  })
+
   it('offers no filter for the empty scope', () => {
     useChatStore.setState({ scope: 'none', referencedLibraryIds: [] })
     render(<ChatInput onSend={vi.fn()} />)

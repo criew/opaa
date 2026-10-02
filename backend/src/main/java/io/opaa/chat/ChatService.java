@@ -362,8 +362,11 @@ public class ChatService {
             ? null
             : new LinkedHashSet<>(patch.getReferencedLibraryIds());
     if (referencedLibraryIds != null) {
-      requireUsableReferences(
-          referencedLibraryIds, chat.getSpaceId(), authorId, chat.getOrganizationId());
+      // Only what this change adds is checked: a stored reference that has since lost its
+      // association or its read right stays harmless, effectiveLibraryScope leaves it out.
+      Set<UUID> added = new LinkedHashSet<>(referencedLibraryIds);
+      added.removeAll(chat.getReferencedLibraryIds());
+      requireUsableReferences(added, chat.getSpaceId(), authorId, chat.getOrganizationId());
     }
     MetadataFilter metadataFilter =
         patch.getMetadataFilter() == null
@@ -452,6 +455,28 @@ public class ChatService {
             spaceAssetAssociationRepository.findLibraryIdsBySpaceId(chat.getSpaceId()));
     if (!chat.isUseKnowledge()) {
       scoped.retainAll(chat.getReferencedLibraryIds());
+    }
+    scoped.retainAll(readableLibraryIds);
+    return scoped;
+  }
+
+  /**
+   * The scope the first question of a chat not yet created in {@code spaceId} would search - the
+   * same rule as {@link #effectiveLibraryScope}, applied to the chip bar's settings. The user must
+   * be a member of the space.
+   */
+  @Transactional(readOnly = true)
+  public Set<UUID> draftLibraryScope(
+      UUID spaceId,
+      UUID userId,
+      boolean useKnowledge,
+      Collection<UUID> referencedLibraryIds,
+      Set<UUID> readableLibraryIds) {
+    requireMembership(spaceId, userId);
+    Set<UUID> scoped =
+        new LinkedHashSet<>(spaceAssetAssociationRepository.findLibraryIdsBySpaceId(spaceId));
+    if (!useKnowledge) {
+      scoped.retainAll(referencedLibraryIds);
     }
     scoped.retainAll(readableLibraryIds);
     return scoped;

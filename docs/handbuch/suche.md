@@ -137,7 +137,9 @@ für Aktionen". Solange der Suchbereich des Space noch ermittelt wird, steht dor
 Ein Raum enthält genau das, was ihm **zugeordnet** ist: Im Chat sucht er nur in den zugeordneten
 Bibliotheken und bietet nur die Prompts der zugeordneten Prompt-Bibliotheken an. Was die Person
 lesen darf, aber dem Raum nicht zugeordnet ist, bleibt im Chat dieses Raums außen vor. Das gilt
-ohne Ausnahme, auch für den persönlichen Raum „Meine Dokumente". Zuordnen dürfen Kuratoren und
+ohne Ausnahme, auch für den persönlichen Raum „Meine Dokumente". Eine Frage braucht immer einen
+Raum: Wer `POST /api/v1/query` ohne einen eigenen Chat aufruft, bekommt eine Antwort ohne Suche und
+ohne Belege. Ohne Raum suchen nur der Fremdzugang und `POST /api/v1/search`. Zuordnen dürfen Kuratoren und
 Administratoren des Raums (siehe [Bibliotheken und Berechtigungen, „Zuordnung: was ein Raum
 enthält"](bibliotheken-und-berechtigungen.md#zuordnung-was-ein-raum-enthält)).
 

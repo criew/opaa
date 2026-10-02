@@ -81,9 +81,11 @@ Stufenname: `SEARCH_SCOPE`. `QueryService#query` unterscheidet zunächst zwei F�
 **ephemere Anfrage** (kein `chatId`, oder er löst nicht auf). Bei einem persistierten Chat bestimmt
 `ChatService#effectiveLibraryScope` den Suchbereich aus dessen eigenem `useKnowledge`/
 `referencedLibraryIds` — die Request-Parameter `useKnowledge`/`requestedLibraryIds` werden dann ignoriert,
-nicht nur überschrieben. Bei einer ephemeren Anfrage gilt `useKnowledge = true` → alle für den Aufrufenden
-lesbaren Bibliotheken, `useKnowledge = false` → `requestedLibraryIds ∩ readableLibraryIds` (nie über die
-lesbare Menge hinaus erweitert). Die lesbaren Bibliotheken selbst liefert
+nicht nur überschrieben. Eine ephemere Anfrage hat keinen Space und durchsucht **kein Wissen**, gleich
+was `useKnowledge` und `requestedLibraryIds` sagen (`SearchScopeResolver#resolveSearchScope`); ihre
+Antwort trägt `noSpaceContext`. Jede Anfrage der Weboberfläche braucht einen Space-Bezug; ohne Space
+suchen nur der Fremdzugang und `POST /api/v1/search` ([ADR-0039](../decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md)).
+Die lesbaren Bibliotheken selbst liefert
 `LibraryAccessService#readableLibraryIds`; der resultierende Suchbereich (`searchScope`, eine Menge von
 Bibliotheks-Kennungen) wird als `library_id IN (...)`-Filter (`SearchScopeStage#libraryFilter`) **Teil des
 `similaritySearch`-Aufrufs selbst**, nicht ein Filter auf dessen Ergebnis (siehe
@@ -92,14 +94,17 @@ Javadoc-Begründung an `QueryService#query`). Ein leerer Suchbereich überspring
 vollständig (`relevantChunks = List.of()`, keine der dortigen Aufrufe läuft) — Schritt 7 läuft trotzdem,
 mit null Chunks im Kontext, und markiert das Ergebnis über `QueryOutcome#answeredWithoutKnowledge`.
 
-**Zielbild mit [ADR-0039](../decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md)
-(Umsetzung #2096):** Für einen persistierten Chat ist der Suchbereich höchstens das, was dem Space des
-Chats zugeordnet ist, geschnitten mit den lesbaren Bibliotheken — mit @Space-Wissen genau diese Menge,
-mit konkreten Chips ihr Ausschnitt. Der heutige Rückfall von `ChatService#effectiveLibraryScope` auf
-alle lesbaren Bibliotheken, wenn der Space keine Zuordnung hat, entfällt; der Suchbereich ist dann leer,
-und die Antwort trägt eines von zwei getrennten Signalen („kein Wissen zugeordnet" oder „nichts davon
-lesbar", siehe [Suchbereich je Chatart](./spaces-and-assets.md#suchbereich-je-chatart)). Wie die
-ephemere Anfrage ohne Chat, die keinen Space kennt, sich dazu verhält, legt #2096 fest.
+**Die Zuordnung als Grenze ([ADR-0039](../decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md)):**
+Für einen persistierten Chat ist der Suchbereich höchstens das, was dem Space des Chats zugeordnet ist,
+geschnitten mit den lesbaren Bibliotheken — mit @Space-Wissen genau diese Menge, mit konkreten Chips ihr
+Ausschnitt. Einen Rückfall auf alle lesbaren Bibliotheken gibt es nicht: Hat der Space keine Zuordnung,
+ist der Suchbereich leer, und die Antwort trägt eines von zwei getrennten Signalen
+(`noKnowledgeAssignedToSpace` für „kein Wissen zugeordnet", `noKnowledgeAvailableInSpace` für „nichts
+davon lesbar", siehe [Suchbereich je Chatart](./spaces-and-assets.md#suchbereich-je-chatart)). Die
+ephemere Anfrage ohne Chat durchsucht nichts und trägt `noSpaceContext` (siehe oben). Die
+Filteroptionen eines noch nicht angelegten Chats (`GET /api/v1/search/metadata-filter-options` mit
+`spaceId`) folgen derselben Regel über `ChatService#draftLibraryScope`; ohne Chat und Space sind sie
+leer.
 
 ### 1b. Metadatenfilter (#1070)
 

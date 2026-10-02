@@ -285,14 +285,16 @@ export default function ChatInput({
     scope === 'all' && !isAssetAssociationsCurrent ? 'Suchbereich wird ermittelt …' : null
 
   // The scope the next question searches - the filter options are loaded for exactly this scope,
-  // resolved server-side with the query's own rules (chat first, otherwise useKnowledge/ids).
+  // resolved server-side with the query's own rules: the chat's own settings, or for a chat not yet
+  // created its space with the chip bar's settings.
   const filterScope = useMemo(
     () => ({
       chatId,
+      spaceId: chatSpaceId,
       useKnowledge: scope === 'all',
       libraryIds: scope === 'libraries' ? referencedLibraryIds : [],
     }),
-    [chatId, referencedLibraryIds, scope],
+    [chatId, chatSpaceId, referencedLibraryIds, scope],
   )
 
   // A chat loaded with a Dokumentart condition needs the labels before the popover was ever

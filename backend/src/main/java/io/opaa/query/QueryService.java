@@ -124,9 +124,8 @@ public class QueryService {
    * scope and filter come from the chat's own settings - {@code useKnowledge} and {@code
    * requestedLibraryIds} are then ignored, not merely defaulted - the conversation memory is seeded
    * from its persisted history, and question and answer are persisted. Otherwise the query runs
-   * ephemerally, with {@code useKnowledge = true} searching every readable library and {@code
-   * false} narrowing to {@code requestedLibraryIds} intersected with the readable set - never
-   * widened beyond it, so a referenced but unreadable library yields no hits.
+   * ephemerally and, having no space, searches no knowledge at all: {@code useKnowledge} and {@code
+   * requestedLibraryIds} widen nothing, and the answer is marked {@code noSpaceContext}.
    *
    * <p>Deliberately <em>not</em> {@code @Transactional}: an ambient transaction would hold one JDBC
    * connection for the whole call, LLM round trip included, while the write phase afterwards needs
@@ -221,11 +220,11 @@ public class QueryService {
                 Set<UUID> readableLibraryIds =
                     libraryAccessService.readableLibraryIds(currentUserId, caller.organizationId());
 
-                // A persisted chat's own settings govern the scope entirely; only an ephemeral
-                // query falls back to the request-level useKnowledge/requestedLibraryIds.
+                // A persisted chat's own settings govern the scope entirely; a question without a
+                // chat of the caller has no space and searches nothing - the request-level
+                // useKnowledge/requestedLibraryIds no longer widen anything.
                 Set<UUID> searchScope =
-                    searchScopeResolver.resolveSearchScope(
-                        chat, useKnowledge, requestedLibraryIds, readableLibraryIds);
+                    searchScopeResolver.resolveSearchScope(chat, readableLibraryIds);
                 MetadataFilter metadataFilter =
                     validatedMetadataFilter(
                         readableLibraryIds,
@@ -258,16 +257,20 @@ public class QueryService {
                   }
                 }
 
-                // Why an empty scope is empty - at most one of the three, and only for a
-                // persisted chat do the two space signals apply: nothing associated with the
-                // space, or associated but nothing of it readable by this caller.
-                boolean effectiveUseKnowledge = chat.map(Chat::isUseKnowledge).orElse(useKnowledge);
+                // Why an empty scope is empty - at most one of the four: no space at all, nothing
+                // associated with the space, associated but nothing of it readable by this
+                // caller, or a chip bar emptied on purpose.
+                boolean noSpaceContext = chat.isEmpty();
+                boolean effectiveUseKnowledge = chat.map(Chat::isUseKnowledge).orElse(false);
                 boolean noKnowledgeAssignedToSpace =
                     searchScope.isEmpty()
                         && chat.map(c -> !chatService.spaceHasLibraryAssociations(c.getSpaceId()))
                             .orElse(false);
                 boolean answeredWithoutKnowledge =
-                    !noKnowledgeAssignedToSpace && !effectiveUseKnowledge && searchScope.isEmpty();
+                    !noSpaceContext
+                        && !noKnowledgeAssignedToSpace
+                        && !effectiveUseKnowledge
+                        && searchScope.isEmpty();
                 boolean noKnowledgeAvailableInSpace =
                     !noKnowledgeAssignedToSpace
                         && effectiveUseKnowledge
@@ -346,6 +349,7 @@ public class QueryService {
                         answeredWithoutKnowledge,
                         noKnowledgeAssignedToSpace,
                         noKnowledgeAvailableInSpace,
+                        noSpaceContext,
                         chatSourceAssembler.searchedLibraries(searchScope));
                 return new QueryResult(
                     answer, sources, metadata, effectiveChatId, chatTitle, notePoints);

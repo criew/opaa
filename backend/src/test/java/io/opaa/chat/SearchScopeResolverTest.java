@@ -2,6 +2,7 @@ package io.opaa.chat;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
@@ -19,46 +20,57 @@ class SearchScopeResolverTest {
   private final ChatService chatService = mock(ChatService.class);
   private final SearchScopeResolver resolver = new SearchScopeResolver(chatService);
 
-  /** A persisted chat's own settings govern; the request-level parameters are ignored entirely. */
+  /** A persisted chat's own settings govern. */
   @Test
-  void aPersistedChatsEffectiveScopeGovernsRegardlessOfTheRequest() {
+  void aPersistedChatsEffectiveScopeGoverns() {
     Chat chat =
         new Chat(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), null, false, Set.of());
     when(chatService.effectiveLibraryScope(chat, Set.of(readable, alsoReadable)))
         .thenReturn(Set.of(readable));
 
-    Set<UUID> scope =
-        resolver.resolveSearchScope(
-            Optional.of(chat), true, List.of(alsoReadable), Set.of(readable, alsoReadable));
-
-    assertThat(scope).containsExactly(readable);
+    assertThat(resolver.resolveSearchScope(Optional.of(chat), Set.of(readable, alsoReadable)))
+        .containsExactly(readable);
   }
 
+  /** Every question in the web interface needs a space: without a chat nothing is searched. */
   @Test
-  void anEphemeralQueryWithUseKnowledgeSearchesEveryReadableLibrary() {
-    Set<UUID> scope =
-        resolver.resolveSearchScope(
-            Optional.empty(), true, List.of(readable), Set.of(readable, alsoReadable));
-
-    assertThat(scope).containsExactlyInAnyOrder(readable, alsoReadable);
+  void aQuestionWithoutAChatSearchesNothing() {
+    assertThat(resolver.resolveSearchScope(Optional.empty(), Set.of(readable, alsoReadable)))
+        .isEmpty();
     verifyNoInteractions(chatService);
   }
 
-  /** Never widened beyond the readable set: an unreadable reference is dropped, not honoured. */
+  /** The draft scope of a chat not yet created is the space's, with the chip bar's settings. */
   @Test
-  void anEphemeralQueryWithoutUseKnowledgeIntersectsTheReferencesWithTheReadableSet() {
-    Set<UUID> scope =
-        resolver.resolveSearchScope(
-            Optional.empty(), false, List.of(readable, unreadable), Set.of(readable, alsoReadable));
+  void aDraftScopeIsResolvedWithinItsSpace() {
+    UUID spaceId = UUID.randomUUID();
+    UUID userId = UUID.randomUUID();
+    when(chatService.draftLibraryScope(
+            spaceId, userId, false, List.of(readable), Set.of(readable, alsoReadable)))
+        .thenReturn(Set.of(readable));
 
-    assertThat(scope).containsExactly(readable);
+    assertThat(
+            resolver.resolveDraftScope(
+                spaceId, userId, false, List.of(readable), Set.of(readable, alsoReadable)))
+        .containsExactly(readable);
+    verify(chatService)
+        .draftLibraryScope(
+            spaceId, userId, false, List.of(readable), Set.of(readable, alsoReadable));
   }
 
   @Test
-  void noReferencesWithoutUseKnowledgeYieldAnEmptyScopeForNullAndEmptyAlike() {
-    assertThat(resolver.resolveSearchScope(Optional.empty(), false, null, Set.of(readable)))
-        .isEmpty();
-    assertThat(resolver.resolveSearchScope(Optional.empty(), false, List.of(), Set.of(readable)))
-        .isEmpty();
+  void theViewScopeIsTheWholeViewWithoutARequest() {
+    assertThat(resolver.resolveViewScope(null, Set.of(readable, alsoReadable)))
+        .containsExactlyInAnyOrder(readable, alsoReadable);
+    assertThat(resolver.resolveViewScope(List.of(), Set.of(readable))).containsExactly(readable);
+  }
+
+  /** Never widened beyond the view: a requested library outside it is dropped, not honoured. */
+  @Test
+  void theViewScopeIntersectsTheRequestWithTheView() {
+    assertThat(
+            resolver.resolveViewScope(
+                List.of(readable, unreadable), Set.of(readable, alsoReadable)))
+        .containsExactly(readable);
   }
 }

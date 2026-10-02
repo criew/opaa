@@ -67,13 +67,24 @@ paths:
       tags: [search]
       summary: >
         The Füllstand and the offered values of the filterable core fields in the caller's search
-        scope (#1070). The scope is resolved exactly as POST /api/v1/query resolves it: from the
-        named chat's own settings when chatId names a chat the caller authored, otherwise from
-        useKnowledge/libraryIds - always narrowed to what the caller may read.
+        scope (#1070), over exactly the libraries the next question would search. With chatId
+        naming a chat the caller authored, that chat's own settings govern. Otherwise spaceId names
+        the space of a chat not yet created: the scope is the knowledge libraries associated with
+        it and readable by the caller, narrowed by useKnowledge/libraryIds like a chip bar. Without
+        either the options are empty - a question without a space searches nothing.
       parameters:
         - name: chatId
           in: query
           required: false
+          schema:
+            type: string
+            format: uuid
+        - name: spaceId
+          in: query
+          required: false
+          description: >
+            The space of a chat not yet created; the caller must be a member of it (403 otherwise,
+            404 for an unknown space). Ignored when chatId names a chat the caller authored.
           schema:
             type: string
             format: uuid
@@ -98,6 +109,10 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/MetadataFilterOptionsResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
 
   /api/v1/search:
     post:
@@ -408,12 +423,10 @@ components:
           default: true
           description: >
             Ignored when chatId names a chat the caller authored - that chat's own useKnowledge
-            setting applies instead (#525). Otherwise (#526): whether the query searches the
-            knowledge base at all. When true (the default), the search scope is every knowledge
-            library the caller may read; libraryIds is ignored in this mode. When false, the
-            search scope is libraryIds narrowed to the libraries the caller may read - never
-            widened beyond it - and an empty (or entirely unreadable) libraryIds performs no
-            retrieval at all, see QueryMetadata.answeredWithoutKnowledge.
+            setting applies instead (#525). Without such a chat the query has no space and
+            searches no knowledge at all, whatever useKnowledge and libraryIds say: every question
+            in the web interface needs a space, see QueryMetadata.noSpaceContext. Only the
+            external-access channel and POST /api/v1/search search without a space.
         libraryIds:
           type: array
           items:
@@ -421,8 +434,8 @@ components:
             format: uuid
           description: >
             Ignored when chatId names a chat the caller authored - that chat's own sticky
-            @-references apply instead (#525). Otherwise (#526): knowledge libraries explicitly
-            referenced for the query. Only consulted when useKnowledge is false.
+            @-references apply instead (#525). Without such a chat nothing is searched, see
+            useKnowledge.
         metadataFilter:
           nullable: true
           allOf:
@@ -650,8 +663,8 @@ components:
           nullable: true
           default: false
           description: >
-            True when useKnowledge was false and libraryIds resolved to no readable library, so no
-            vector search ran and the answer was generated without any document context (#526). The
+            True when the chat's useKnowledge was false and its references resolved to no
+            associated, readable library, so no vector search ran and the answer was generated without any document context (#526). The
             frontend uses this to show the corresponding hint instead of inferring it from an empty
             sources list, which alone cannot distinguish "no knowledge searched" from "searched but
             found nothing".
@@ -666,6 +679,14 @@ components:
             precedence over, and is mutually exclusive with, answeredWithoutKnowledge and
             noKnowledgeAvailableInSpace. Never true for an ephemeral query without a persisted
             chat.
+        noSpaceContext:
+          type: boolean
+          nullable: true
+          default: false
+          description: >
+            True when chatId names no chat the caller authored: the query has no space, so no
+            knowledge was searched and the answer carries no sources. Mutually exclusive with the
+            other three flags.
         noKnowledgeAvailableInSpace:
           type: boolean
           nullable: true
@@ -691,7 +712,7 @@ components:
             sorted by name. Lets a client print mockup 1a's "Durchsucht wurden: …" line under an
             answer that could not be substantiated, naming exactly what was looked at. Empty when no
             search ran (answeredWithoutKnowledge / noKnowledgeAssignedToSpace /
-            noKnowledgeAvailableInSpace).
+            noKnowledgeAvailableInSpace / noSpaceContext).
 
     SearchedLibrary:
       type: object

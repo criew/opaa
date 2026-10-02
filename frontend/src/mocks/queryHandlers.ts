@@ -52,6 +52,7 @@ export const queryHandlers = [
           answeredWithoutKnowledge: false,
           noKnowledgeAssignedToSpace: true,
           noKnowledgeAvailableInSpace: false,
+          noSpaceContext: false,
         },
         chatId,
         chatTitle,

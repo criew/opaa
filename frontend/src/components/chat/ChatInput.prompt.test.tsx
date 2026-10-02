@@ -215,7 +215,6 @@ describe('ChatInput: inserting a prompt', () => {
             title: 'Zusammenfassung',
             description: null,
             hasVariables: true,
-            associatedWithSpace: false,
           },
         ])
       }),

@@ -395,6 +395,45 @@ class ChatServiceIntegrationTest {
         .hasMessage(message);
   }
 
+  /**
+   * A stored chip whose association was detached later does not block the next chip change: only
+   * what a change adds is checked, the stale reference stays and is no longer searched.
+   */
+  @Test
+  void aStaleChipDoesNotBlockAddingAnotherOne() {
+    UUID author = createUser();
+    UUID spaceId = createSpaceWithMember(author);
+    UUID kept = createLibrary(author);
+    UUID detachedLater = createLibrary(author);
+    UUID addedLater = createLibrary(author);
+    associateLibrary(spaceId, kept, author);
+    associateLibrary(spaceId, detachedLater, author);
+    associateLibrary(spaceId, addedLater, author);
+    ChatConversation created =
+        chatService.createChat(
+            spaceId,
+            author,
+            new ChatCreation()
+                .useKnowledge(false)
+                .referencedLibraryIds(List.of(kept, detachedLater)));
+    jdbcTemplate.update(
+        "DELETE FROM space_asset_associations WHERE space_id = ? AND asset_id = ?",
+        spaceId,
+        detachedLater);
+
+    ChatConversation updated =
+        chatService.updateChat(
+            created.getId(),
+            author,
+            new ChatPatch().referencedLibraryIds(List.of(kept, detachedLater, addedLater)));
+
+    assertThat(updated.getReferencedLibraryIds()).containsExactly(kept, detachedLater, addedLater);
+    Chat chat = chatRepository.findById(created.getId()).orElseThrow();
+    assertThat(chatService.effectiveLibraryScope(chat, Set.of(kept, detachedLater, addedLater)))
+        .as("the stale chip stays harmless: it is no longer searched")
+        .containsExactlyInAnyOrder(kept, addedLater);
+  }
+
   @Test
   void deleteChatRemovesItForItsAuthor() {
     UUID author = createUser();

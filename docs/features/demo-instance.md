@@ -182,7 +182,7 @@ Einrichtung, Werte und der Weg in ein Keycloak mit eigenem Volume stehen in
 [`../../demo/README.md`](../../demo/README.md), Abschnitt „Gruppen".
 
 Dieselben Bibliotheken sind jedem Space zusätzlich als **Datenquellen zugeordnet**, denn ein Space
-enthält genau, was ihm zugeordnet ist (#2096): „Meldewesen & Ausweise" und Marias eigener Space tragen
+enthält genau, was ihm zugeordnet ist: „Meldewesen & Ausweise" und Marias eigener Space tragen
 die fünf für das Sachgebiet lesbaren Bibliotheken, „Kfz-Zulassung" seine vier, „Amtsleitung
 Bürgerbüro" alle sechs fachlichen, „Dienstbesprechung Bürgerbüro" nur die drei, die alle vier
 Fachkonten lesen (Satzungen, Pressemitteilungen, Ratsinformationen). Der Default-Space jedes Kontos

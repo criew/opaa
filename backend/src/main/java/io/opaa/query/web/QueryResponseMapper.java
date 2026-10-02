@@ -34,6 +34,7 @@ final class QueryResponseMapper {
         .answeredWithoutKnowledge(outcome.answeredWithoutKnowledge())
         .noKnowledgeAssignedToSpace(outcome.noKnowledgeAssignedToSpace())
         .noKnowledgeAvailableInSpace(outcome.noKnowledgeAvailableInSpace())
+        .noSpaceContext(outcome.noSpaceContext())
         .searchedLibraries(toSearchedLibraries(outcome.searchedLibraries()));
   }
 

@@ -35,6 +35,7 @@ class QueryResponseMapperTest {
             true,
             false,
             false,
+            false,
             List.of(new SearchedLibraryRef(libraryId, "Dienstanweisungen")));
     QueryResult result =
         new QueryResult(
@@ -79,7 +80,7 @@ class QueryResponseMapperTest {
             new QueryResult(
                 "Antwort",
                 List.of(),
-                new QueryOutcome("gpt-4o", 0, 0L, false, true, false, List.of()),
+                new QueryOutcome("gpt-4o", 0, 0L, false, true, false, false, List.of()),
                 UUID.randomUUID(),
                 null,
                 null));
@@ -88,7 +89,7 @@ class QueryResponseMapperTest {
             new QueryResult(
                 "Antwort",
                 List.of(),
-                new QueryOutcome("gpt-4o", 0, 0L, false, false, true, List.of()),
+                new QueryOutcome("gpt-4o", 0, 0L, false, false, true, false, List.of()),
                 UUID.randomUUID(),
                 null,
                 null));
@@ -97,11 +98,23 @@ class QueryResponseMapperTest {
     assertThat(assigned.getMetadata().getNoKnowledgeAvailableInSpace()).isFalse();
     assertThat(readable.getMetadata().getNoKnowledgeAssignedToSpace()).isFalse();
     assertThat(readable.getMetadata().getNoKnowledgeAvailableInSpace()).isTrue();
+    assertThat(
+            QueryResponseMapper.toResponse(
+                    new QueryResult(
+                        "Antwort",
+                        List.of(),
+                        new QueryOutcome("gpt-4o", 0, 0L, false, false, false, true, List.of()),
+                        UUID.randomUUID(),
+                        null,
+                        null))
+                .getMetadata()
+                .getNoSpaceContext())
+        .isTrue();
   }
 
   @Test
   void toResponseLeavesSearchedLibrariesNullWhenAbsent() {
-    QueryOutcome metadata = new QueryOutcome("gpt-4o", 0, 0L, false, false, false, null);
+    QueryOutcome metadata = new QueryOutcome("gpt-4o", 0, 0L, false, false, false, false, null);
     QueryResult result =
         new QueryResult("Antwort", List.of(), metadata, UUID.randomUUID(), null, null);
 
