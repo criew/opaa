@@ -403,16 +403,16 @@ export interface ChatState {
     question: string,
     usedPrompt?: { id: string; title: string },
   ) => Promise<RefusedQuestion | void>
-  /** Sets the chip bar back to the special @Alles-Wissen chip, replacing any concrete chips. */
+  /** Sets the chip bar back to the special @Space-Wissen chip, replacing any concrete chips. */
   setScopeAll: () => void
-  /** Adds a concrete library chip. The first concrete chip replaces @Alles-Wissen (scope 'all' ->
+  /** Adds a concrete library chip. The first concrete chip replaces @Space-Wissen (scope 'all' ->
    * 'libraries'); further chips are added to the existing selection. */
   addReferencedLibrary: (libraryId: string) => void
   /** Removes a concrete library chip. Removing the last one empties the bar (scope -> 'none'),
    * matching "leere Leiste = ohne Wissen". */
   removeReferencedLibrary: (libraryId: string) => void
-  /** Removes the @Alles-Wissen chip, emptying the bar (scope -> 'none'); the reverse of
-   * setScopeAll. Every chip - including @Alles-Wissen - is removable (#560). */
+  /** Removes the @Space-Wissen chip, emptying the bar (scope -> 'none'); the reverse of
+   * setScopeAll. Every chip - including @Space-Wissen - is removable (#560). */
   clearScope: () => void
   /** Sets or clears (null / no condition) the chat's core-field filter (#1070). */
   setMetadataFilter: (filter: MetadataFilter | null) => void
@@ -799,6 +799,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         content: response.answer,
         sources: response.sources,
         answeredWithoutKnowledge: response.metadata.answeredWithoutKnowledge ?? false,
+        noKnowledgeAssignedToSpace: response.metadata.noKnowledgeAssignedToSpace ?? false,
         noKnowledgeAvailableInSpace: response.metadata.noKnowledgeAvailableInSpace ?? false,
         searchedLibraries: response.metadata.searchedLibraries ?? [],
         timestamp: new Date(),
@@ -856,17 +857,17 @@ export const useChatStore = create<ChatState>((set, get) => ({
   },
 
   setScopeAll: () => {
-    // Already showing @Alles-Wissen - nothing to replace. Short-circuiting here avoids a PATCH
+    // Already showing @Space-Wissen - nothing to replace. Short-circuiting here avoids a PATCH
     // that would just re-send the chat's current settings (#564 review).
     if (get().scope === 'all') return
-    // Re-adding @Alles-Wissen replaces any concrete chips (#560) - the two are mutually
+    // Re-adding @Space-Wissen replaces any concrete chips (#560) - the two are mutually
     // exclusive states of the same bar, never shown together.
     applyScopeChange(get, set, 'all', [])
   },
 
   addReferencedLibrary: (libraryId: string) => {
     const { scope, referencedLibraryIds } = get()
-    // The first concrete chip replaces @Alles-Wissen; from 'libraries' or 'none' it simply
+    // The first concrete chip replaces @Space-Wissen; from 'libraries' or 'none' it simply
     // extends/starts the selection (#560).
     const previousIds = scope === 'libraries' ? referencedLibraryIds : []
     if (previousIds.includes(libraryId)) return
@@ -875,7 +876,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   removeReferencedLibrary: (libraryId: string) => {
     const next = get().referencedLibraryIds.filter((id) => id !== libraryId)
-    // Removing the last concrete chip empties the bar rather than falling back to @Alles-Wissen -
+    // Removing the last concrete chip empties the bar rather than falling back to @Space-Wissen -
     // "leere Leiste = ohne Wissen" (#560), with an explicit one-click way back via setScopeAll.
     applyScopeChange(get, set, next.length > 0 ? 'libraries' : 'none', next)
   },

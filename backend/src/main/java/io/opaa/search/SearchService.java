@@ -9,7 +9,6 @@ import io.opaa.metadata.MetadataFilterValidator;
 import io.opaa.retrieval.KnowledgeRetrieval;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.ai.document.Document;
@@ -127,12 +126,9 @@ public class SearchService {
     quota.requireWithinQuota(scope.accessTokenId());
     alarm.record(caller.organizationId(), scope.accessTokenId());
     Set<UUID> effectiveView = scope.libraryIds();
-    boolean everything = requestedLibraryIds == null || requestedLibraryIds.isEmpty();
-    // The same resolver the query uses for an ephemeral question, so "no narrowing" and "narrowed
-    // to these" mean here exactly what they mean there.
+    // The one search without a space: the view itself, or the requested libraries within it.
     Set<UUID> searchScope =
-        searchScopeResolver.resolveSearchScope(
-            Optional.empty(), everything, requestedLibraryIds, effectiveView);
+        searchScopeResolver.resolveViewScope(requestedLibraryIds, effectiveView);
     MetadataFilter metadataFilter = validated(effectiveView, requestedMetadataFilter);
 
     List<SearchedLibraryRef> searchedLibraries = namesOf(searchScope);

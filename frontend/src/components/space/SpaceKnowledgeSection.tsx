@@ -10,9 +10,10 @@ interface SpaceKnowledgeSectionProps {
 const texts = {
   heading: 'Zugeordnete Bibliotheken',
   intro:
-    'Eine Zuordnung stellt eine Bibliothek in diesem Space bereit, gewährt aber niemandem zusätzlichen Zugriff — nur Mitglieder mit eigenem Leserecht auf die Bibliothek sehen ihre Treffer.',
+    'Ein Chat in diesem Space durchsucht nur die hier zugeordneten Bibliotheken. Eine Zuordnung gewährt niemandem zusätzlichen Zugriff — nur Mitglieder mit eigenem Leserecht auf die Bibliothek sehen ihre Treffer.',
   loading: 'Bibliotheken werden geladen …',
-  empty: 'Diesem Space sind keine Bibliotheken zugeordnet.',
+  empty:
+    'Diesem Space sind keine Bibliotheken zugeordnet — ein Chat durchsucht hier noch kein Wissen.',
   pickerLabel: 'Bibliothek',
   pickerPlaceholder: 'Bibliothek suchen …',
   associated: 'Bibliothek zugeordnet',

@@ -33,10 +33,11 @@ import org.springframework.stereotype.Service;
 /**
  * The Füllstand and the offered values of the filterable core fields for one person's search scope
  * (metadata-schema.md "Eintrittsbedingung für den Kernfeld-Filter"): the scope is resolved by the
- * same {@link SearchScopeResolver} a query uses - from the chat's own settings, or from {@code
- * useKnowledge}/{@code libraryIds}, always narrowed to what the caller may read - and every number
- * is counted over that scope only. No aggregate here ever exceeds the rights context of the asking
- * person; the cache in front keeps the same key.
+ * same {@link SearchScopeResolver} a query uses - from the chat's own settings, or for a chat not
+ * yet created from its space and the chip bar's {@code useKnowledge}/{@code libraryIds}, always
+ * narrowed to what is associated and readable - and every number is counted over that scope only.
+ * Without a chat and a space the scope is empty, like the question's. No aggregate here ever
+ * exceeds the rights context of the asking person; the cache in front keeps the same key.
  */
 @Service
 public class MetadataFilterOptionsService {
@@ -80,15 +81,23 @@ public class MetadataFilterOptionsService {
 
   /**
    * The options for the scope the caller's next question would search: the named chat's scope when
-   * {@code chatId} names a chat the caller authored, otherwise the request-level scope.
+   * {@code chatId} names a chat the caller authored, otherwise the draft scope in {@code spaceId}
+   * (membership required), otherwise nothing.
    */
   public MetadataFilterOptions optionsFor(
-      CurrentUser caller, UUID chatId, boolean useKnowledge, List<UUID> requestedLibraryIds) {
+      CurrentUser caller,
+      UUID chatId,
+      UUID spaceId,
+      boolean useKnowledge,
+      List<UUID> requestedLibraryIds) {
     Optional<Chat> chat = chatService.findOwnedChat(chatId, caller.id());
     Set<UUID> readable =
         libraryAccessService.readableLibraryIds(caller.id(), caller.organizationId());
     Set<UUID> scope =
-        searchScopeResolver.resolveSearchScope(chat, useKnowledge, requestedLibraryIds, readable);
+        chat.isPresent() || spaceId == null
+            ? searchScopeResolver.resolveSearchScope(chat, readable)
+            : searchScopeResolver.resolveDraftScope(
+                spaceId, caller.id(), useKnowledge, requestedLibraryIds, readable);
     return optionsForScope(caller.id(), scope);
   }
 

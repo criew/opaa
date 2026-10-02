@@ -4,7 +4,8 @@
 Sets up a ready-to-use OPAA installation through the public API only (no direct database access,
 per the issue's "Technische Hinweise"): users (provisioned by their first authenticated request),
 spaces, knowledge libraries with their own source configuration (ADR-0018), VIEWER grants,
-space<->library associations (#706, pure curation), upload documents, the indexing run per
+space<->asset associations (a space searches and offers only what is associated, the accounts'
+personal spaces included), upload documents, the indexing run per
 library and, last, prepared chats with their sources (chats.py; the import route exists only
 while the backend runs with OPAA_DEMO_CHAT_IMPORT_ENABLED=true).
 
@@ -239,14 +240,55 @@ def ensure_library(admin_client: Client, library_def: LibraryDef) -> str:
     return created["id"]
 
 
-def ensure_association(owner_client: Client, space_id: str, library_id: str) -> None:
+def ensure_association(
+    owner_client: Client, space_id: str, asset_id: str, asset_type: str = "KNOWLEDGE_LIBRARY"
+) -> None:
     # associateSpaceAsset is idempotent by design (see opaa-api.yaml): an already-associated
     # asset returns its existing association unchanged, also with 201.
     owner_client.post_ok(
         f"/v1/spaces/{space_id}/assets",
-        json={"assetType": "KNOWLEDGE_LIBRARY", "assetId": library_id},
+        json={"assetType": asset_type, "assetId": asset_id},
         expected=(201,),
     )
+
+
+def personal_space_id(owner_client: Client, owner_key: str) -> str:
+    """The owner's automatic personal space - created by the backend on the first login (step 1),
+    found through the owner's own session like ensure_space does."""
+    for space in owner_client.get_ok("/v1/spaces"):
+        if space.get("isDefault"):
+            return space["id"]
+    raise SystemExit(
+        f"Kein persönlicher Space für '{owner_key}' gefunden - er entsteht bei der ersten "
+        "Anmeldung (Schritt 1)."
+    )
+
+
+def seed_personal_spaces(
+    clients: dict[str, Client],
+    library_ids: dict[str, str],
+    prompt_library_ids: dict[str, str],
+    profile: Profile,
+) -> None:
+    """Associates knowledge and prompt libraries with each listed account's personal space,
+    through the owner's own session - after steps 6 and 7b, so the owner reads every entry."""
+    for personal_def in profile.personal_spaces:
+        owner_client = clients[personal_def.owner_key]
+        space_id = personal_space_id(owner_client, personal_def.owner_key)
+        entries = [
+            ("KNOWLEDGE_LIBRARY", name, library_ids) for name in personal_def.library_names
+        ] + [
+            ("PROMPT_LIBRARY", name, prompt_library_ids)
+            for name in personal_def.prompt_library_names
+        ]
+        for asset_type, name, ids in entries:
+            if name not in ids:
+                raise SystemExit(
+                    f"Persönlicher Space von '{personal_def.owner_key}' referenziert eine "
+                    f"unbekannte Bibliothek '{name}'."
+                )
+            ensure_association(owner_client, space_id, ids[name], asset_type)
+            print(f"  zugeordnet: persönlicher Space von {personal_def.owner_key} ← {name}")
 
 
 def ensure_grant(
@@ -598,16 +640,19 @@ def seed_prompt_libraries(
     user_ids: dict[str, str],
     space_ids: dict[str, str],
     profile: Profile,
-) -> None:
+) -> dict[str, str]:
     """Creates each prompt library through its owner's session, gives its grants, fills in its
     prompts and associates it with its spaces through each space owner's session - after the
-    grants, because associateSpaceAsset requires that owner to read the library."""
+    grants, because associateSpaceAsset requires that owner to read the library. Returns the
+    library ids by name."""
     space_owner_by_name = {space_def.name: space_def.owner_key for space_def in profile.spaces}
+    library_ids: dict[str, str] = {}
     for library_def in profile.prompt_libraries:
         owner_client = clients[library_def.owner_key]
         library_id = ensure_prompt_library(
             owner_client, user_ids[library_def.owner_key], library_def
         )
+        library_ids[library_def.name] = library_id
         ensure_prompt_library_grants(owner_client, library_id, library_def, user_ids)
         ensure_prompts(owner_client, library_id, library_def)
         for space_name in library_def.space_names:
@@ -622,6 +667,7 @@ def seed_prompt_libraries(
                 expected=(201,),
             )
             print(f"  zugeordnet: {space_name} ← {library_def.name}")
+    return library_ids
 
 
 def existing_documents(admin_client: Client, library_id: str) -> dict[tuple[str, str], dict]:
@@ -909,7 +955,7 @@ def run(args: argparse.Namespace) -> None:
                 f"({role})"
             )
 
-    print("7/9 Space↔Bibliothek-Zuordnungen (Assoziation als Kuratierung, #706) …")
+    print("7/9 Space↔Bibliothek-Zuordnungen (ein Space durchsucht nur Zugeordnetes) …")
     for space_def in profile.spaces:
         for library_name in space_def.library_names:
             if library_name not in library_ids:
@@ -918,7 +964,7 @@ def run(args: argparse.Namespace) -> None:
                     f"'{library_name}' - library_names muss auf eine LibraryDef des Profils zeigen."
                 )
             # After step 6 the owner holds VIEWER on the library (own or group grant) and is
-            # CURATOR or above on their own space - exactly what associateSpaceLibrary requires.
+            # CURATOR or above on their own space - exactly what associateSpaceAsset requires.
             ensure_association(
                 clients[space_def.owner_key],
                 space_ids[space_def.name],
@@ -927,7 +973,10 @@ def run(args: argparse.Namespace) -> None:
             print(f"  zugeordnet: {space_def.name} ← {library_name}")
 
     print("7b/9 Prompt-Bibliotheken mit Prompts, Freigaben und Space-Zuordnung …")
-    seed_prompt_libraries(clients, user_ids, space_ids, profile)
+    prompt_library_ids = seed_prompt_libraries(clients, user_ids, space_ids, profile)
+
+    print("7c/9 Persönliche Spaces: Wissen und Prompts zuordnen …")
+    seed_personal_spaces(clients, library_ids, prompt_library_ids, profile)
 
     print("8/9 Indizierung je Bibliothek auslösen (ADR-0018) …")
     for library_def in profile.libraries:

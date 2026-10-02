@@ -11,8 +11,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * The prompts a person can insert in the chat. Readability is the formula's, through {@link
- * PromptService#available}; the space only orders, through its associations.
+ * The prompts a person can insert in a chat of the space: associated with it and readable by the
+ * formula, through {@link PromptService#available}.
  */
 @RestController
 public class AvailablePromptController {
@@ -25,7 +25,7 @@ public class AvailablePromptController {
 
   @GetMapping("/api/v1/prompts/available")
   public List<AvailablePrompt> listAvailablePrompts(
-      @RequestParam(required = false) UUID spaceId, @Caller CurrentUser caller) {
+      @RequestParam UUID spaceId, @Caller CurrentUser caller) {
     return AvailablePromptResponseMapper.toResponses(promptService.available(caller, spaceId));
   }
 }

@@ -23,6 +23,8 @@ import { assetTypeTitle } from '../components/assets/assetTypeRegistry'
 import MetaBadge from '../components/MetaBadge'
 import PageHeading from '../components/a11y/PageHeading'
 import SuccessionStateNote from '../components/succession/SuccessionStateNote'
+import SpaceKnowledgeNotice from '../components/space/SpaceKnowledgeNotice'
+import { spaceKnowledgeGap } from '../components/space/spaceKnowledge'
 
 // #674 review: the owner is not always ADMIN - transferOwnership only reassigns Space.ownerId and
 // never touches the new owner's own SpaceMembership role (see SpaceService#requireMemberListViewer,
@@ -48,7 +50,9 @@ export default function SpacePage() {
   const isOwner = Boolean(currentUserId) && space?.ownerId === currentUserId
   const assetAssociations = useSpaceStore((s) => s.assetAssociations)
   const hasAssetAssociations = useSpaceStore((s) => s.hasAssetAssociations)
-  const narrowsSearch = useSpaceStore((s) => s.assetAssociationsNarrowSearch)
+  const hasKnowledge = useSpaceStore((s) => s.hasKnowledge)
+  const hasReadableKnowledge = useSpaceStore((s) => s.hasReadableKnowledge)
+  const assetAssociationsSpaceId = useSpaceStore((s) => s.assetAssociationsSpaceId)
   const isLoadingAssetAssociations = useSpaceStore((s) => s.isLoadingAssetAssociations)
   const loadAssetAssociations = useSpaceStore((s) => s.loadAssetAssociations)
 
@@ -119,6 +123,13 @@ export default function SpacePage() {
     )
   }
 
+  // Only once the associations of exactly this space are known - a load in flight or a failed
+  // one claims nothing.
+  const knowledgeGap =
+    assetAssociationsSpaceId === space.id
+      ? spaceKnowledgeGap(hasKnowledge, hasReadableKnowledge)
+      : null
+
   return (
     <Box sx={{ flexGrow: 1, p: { xs: 2, md: 3 }, overflowY: 'auto' }}>
       {error && (
@@ -164,6 +175,10 @@ export default function SpacePage() {
             </Stack>
           </Stack>
         </Box>
+
+        {knowledgeGap && (
+          <SpaceKnowledgeNotice spaceId={space.id} gap={knowledgeGap} role={space.userRole} />
+        )}
 
         <Accordion expanded={chatsExpanded} onChange={(_, expanded) => setChatsExpanded(expanded)}>
           <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ px: 2.5 }}>
@@ -275,17 +290,14 @@ export default function SpacePage() {
               </Typography>
             ) : !hasAssetAssociations ? (
               <Typography sx={{ color: 'text.secondary' }}>
-                Diesem Space sind keine Bibliotheken zugeordnet — die Suche greift auf alle für Sie
-                lesbaren Bibliotheken zurück.
+                Diesem Space ist noch nichts zugeordnet.
               </Typography>
             ) : assetAssociations.length === 0 ? (
-              // #706 review, finding 2: hasAssetAssociations is true here, but the (rechtege-
-              // filterte) items list is empty - the space IS curated, just with libraries the
-              // viewer cannot read. Spec (docs/features/spaces-and-assets.md#suchbereich-je-
-              // chatart): a valid state, not an error, and deliberately without a count of the
-              // unreadable libraries.
+              // hasAssetAssociations is true here, but the (rechtegefilterte) items list is empty -
+              // the space IS curated, just with assets the viewer cannot read: a valid state, not
+              // an error, and deliberately without a count of the unreadable ones.
               <Typography sx={{ color: 'text.secondary' }}>
-                In diesem Space ist für Sie derzeit kein Wissen verfügbar.
+                Diesem Space ist nichts zugeordnet, das Sie lesen dürfen.
               </Typography>
             ) : (
               <Stack spacing={1}>
@@ -306,14 +318,6 @@ export default function SpacePage() {
                   </Box>
                 ))}
               </Stack>
-            )}
-            {!isLoadingAssetAssociations && hasAssetAssociations && !narrowsSearch && (
-              // Only a knowledge library narrows the search; a space with other types alone keeps
-              // the fallback to every readable library.
-              <Typography sx={{ color: 'text.secondary', fontSize: 13, mt: 1.5 }}>
-                Diesem Space ist keine Wissensbibliothek zugeordnet — die Suche greift auf alle für
-                Sie lesbaren Bibliotheken zurück.
-              </Typography>
             )}
           </AccordionDetails>
         </Accordion>

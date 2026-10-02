@@ -73,15 +73,16 @@ class SpaceAssetAssociationResponseMapperTest {
   }
 
   @Test
-  void toListResponseKeepsHasAssociationsIndependentOfAnEmptyItemsList() {
-    // #706 review, finding 2: hasAssociations must stay true even when every item was filtered
-    // out of the (possibly filtered) items list - the two are computed independently.
+  void toListResponseKeepsTheFlagsIndependentOfAnEmptyItemsList() {
+    // The flags must stay true even when every item was filtered out of the (possibly filtered)
+    // items list - they are computed independently.
     SpaceAssetAssociationListResponse response =
         SpaceAssetAssociationResponseMapper.toListResponse(
-            new SpaceAssetLinks(true, false, List.of()));
+            new SpaceAssetLinks(true, true, false, List.of()));
 
     assertThat(response.getHasAssociations()).isTrue();
-    assertThat(response.getNarrowsSearch()).isFalse();
+    assertThat(response.getHasKnowledge()).isTrue();
+    assertThat(response.getHasReadableKnowledge()).isFalse();
     assertThat(response.getItems()).isEmpty();
   }
 
@@ -90,6 +91,7 @@ class SpaceAssetAssociationResponseMapperTest {
     SpaceAssetLinks links =
         new SpaceAssetLinks(
             true,
+            false,
             true,
             List.of(link(association(), true, "A", null), link(association(), true, "B", null)));
 
@@ -99,7 +101,8 @@ class SpaceAssetAssociationResponseMapperTest {
     assertThat(response.getItems())
         .extracting(SpaceAssetAssociationResponse::getName)
         .containsExactly("A", "B");
-    assertThat(response.getNarrowsSearch()).isTrue();
+    assertThat(response.getHasKnowledge()).isFalse();
+    assertThat(response.getHasReadableKnowledge()).isTrue();
   }
 
   @Test

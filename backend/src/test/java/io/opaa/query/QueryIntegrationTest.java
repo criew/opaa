@@ -172,7 +172,8 @@ class QueryIntegrationTest {
 
     // Execute the query
     QueryResult response =
-        queryService.query("What is OPAA?", null, asCaller(userId), true, java.util.List.of());
+        queryService.query(
+            "What is OPAA?", chatOf(userId), asCaller(userId), true, java.util.List.of());
 
     // Verify the response
     assertThat(response.answer()).isEqualTo("OPAA is an AI project assistant (readme.md).");
@@ -193,7 +194,11 @@ class QueryIntegrationTest {
 
     QueryResult response =
         queryService.query(
-            "Something completely unrelated", null, asCaller(userId), true, java.util.List.of());
+            "Something completely unrelated",
+            chatOf(userId),
+            asCaller(userId),
+            true,
+            java.util.List.of());
 
     assertThat(response.answer()).contains("don't have enough context");
     assertThat(response.sources()).isEmpty();
@@ -237,11 +242,18 @@ class QueryIntegrationTest {
     try {
       QueryResult response =
           queryService.query(
-              "What is the secret?", null, asCaller(strangerId), true, java.util.List.of());
+              "What is the secret?",
+              // The library sits in the stranger's own space: only the missing read right keeps
+              // its chunk out.
+              chatOf(strangerId),
+              asCaller(strangerId),
+              true,
+              java.util.List.of());
 
       assertThat(response.answer()).contains("don't have enough context");
       assertThat(response.sources()).isEmpty();
     } finally {
+      removeChatsAndSpacesOf(strangerId);
       jdbcTemplate.update("DELETE FROM users WHERE id = ?", strangerId);
     }
   }
@@ -294,10 +306,12 @@ class QueryIntegrationTest {
     when(chatModel.call(any(Prompt.class)))
         .thenReturn(new ChatResponse(List.of(new Generation(assistantMessage))));
 
+    // The closed library is part of the user's space from the start: only its reach decides.
+    UUID chatId = chatOf(userId, closedLibraryId);
     try {
       QueryResult closed =
           queryService.query(
-              "Wie gross ist Batman?", null, asCaller(userId), true, java.util.List.of());
+              "Wie gross ist Batman?", chatId, asCaller(userId), true, java.util.List.of());
       assertThat(closed.sources()).isEmpty();
 
       // #1931: Die Reichweite ist eine Freigabe - geoeffnet wird sie, indem die Bibliothek an
@@ -316,7 +330,7 @@ class QueryIntegrationTest {
 
       QueryResult opened =
           queryService.query(
-              "Wie gross ist Batman?", null, asCaller(userId), true, java.util.List.of());
+              "Wie gross ist Batman?", chatId, asCaller(userId), true, java.util.List.of());
 
       assertThat(opened.sources()).hasSize(1);
       assertThat(opened.sources().getFirst().getFileName()).isEqualTo("batman.md");
@@ -398,7 +412,12 @@ class QueryIntegrationTest {
 
     try {
       QueryResult response =
-          queryService.query("Beliebige Frage", null, asCaller(userId), true, java.util.List.of());
+          queryService.query(
+              "Beliebige Frage",
+              chatOf(userId, ungrantedLibraryId),
+              asCaller(userId),
+              true,
+              java.util.List.of());
 
       // Exactly topK (8, application.yml default) retrieved chunks, every one of them from the
       // granted library - the count itself is the assertion that matters (see the comment above).
@@ -536,7 +555,11 @@ class QueryIntegrationTest {
     try {
       QueryResult response =
           queryService.query(
-              "Beliebige Mehrthemenfrage", null, asCaller(userId), true, java.util.List.of());
+              "Beliebige Mehrthemenfrage",
+              chatOf(userId, ungrantedLibraryId),
+              asCaller(userId),
+              true,
+              java.util.List.of());
 
       // Exactly topK (8) retrieved chunks: each sub-query is independently MMR-narrowed to the
       // full topK before fusion (#923 review) - with both sub-queries returning the identical,
@@ -686,6 +709,7 @@ class QueryIntegrationTest {
               "SELECT count(*) FROM chat_messages WHERE chat_id = ?", Integer.class, chatId);
       assertThat(messageCount).isZero();
     } finally {
+      removeChatsAndSpacesOf(strangerId);
       jdbcTemplate.update("DELETE FROM users WHERE id = ?", strangerId);
     }
   }
@@ -764,6 +788,7 @@ class QueryIntegrationTest {
           .as("the owner's cached question must never appear in a stranger's prompt")
           .isFalse();
     } finally {
+      removeChatsAndSpacesOf(strangerId);
       jdbcTemplate.update("DELETE FROM users WHERE id = ?", strangerId);
     }
   }
@@ -825,6 +850,7 @@ class QueryIntegrationTest {
     assertThat(title).isEqualTo("Erste Frage");
   }
 
+  /** A space of the member, carrying the class's library - a space searches only what it holds. */
   private UUID insertSpaceWithMembership(UUID memberId) {
     UUID spaceId = UUID.randomUUID();
     jdbcTemplate.update(
@@ -842,7 +868,41 @@ class QueryIntegrationTest {
         memberId,
         spaceId,
         DEFAULT_ORGANIZATION_ID);
+    jdbcTemplate.update(
+        "INSERT INTO space_asset_associations (id, space_id, asset_id, organization_id,"
+            + " created_by_user_id, created_at) VALUES (?, ?, ?, ?, ?, now())",
+        UUID.randomUUID(),
+        spaceId,
+        libraryId,
+        DEFAULT_ORGANIZATION_ID,
+        memberId);
     return spaceId;
+  }
+
+  /**
+   * A chat of {@code member} in a space of their own that carries the class's library and {@code
+   * furtherLibraries} - a question searches only what its space holds, the read rights decide the
+   * rest.
+   */
+  private UUID chatOf(UUID member, UUID... furtherLibraries) {
+    UUID spaceId = insertSpaceWithMembership(member);
+    for (UUID library : furtherLibraries) {
+      jdbcTemplate.update(
+          "INSERT INTO space_asset_associations (id, space_id, asset_id, organization_id,"
+              + " created_by_user_id, created_at) VALUES (?, ?, ?, ?, ?, now())",
+          UUID.randomUUID(),
+          spaceId,
+          library,
+          DEFAULT_ORGANIZATION_ID,
+          member);
+    }
+    return insertChat(spaceId, member);
+  }
+
+  private void removeChatsAndSpacesOf(UUID member) {
+    jdbcTemplate.update("DELETE FROM chats WHERE author_id = ?", member);
+    jdbcTemplate.update("DELETE FROM space_memberships WHERE user_id = ?", member);
+    jdbcTemplate.update("DELETE FROM spaces WHERE owner_id = ?", member);
   }
 
   private UUID insertChat(UUID spaceId, UUID authorId) {

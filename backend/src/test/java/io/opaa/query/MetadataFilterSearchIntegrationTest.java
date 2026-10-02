@@ -108,6 +108,7 @@ class MetadataFilterSearchIntegrationTest {
   @Autowired private LibraryAccessService accessService;
   @Autowired private JdbcTemplate jdbcTemplate;
   @Autowired private ChatModel chatModel;
+  @Autowired private io.opaa.chat.ChatService chatService;
   @Autowired private ActiveChatModelResolver activeChatModelResolver;
 
   private KnowledgeLibrary library;
@@ -223,15 +224,17 @@ class MetadataFilterSearchIntegrationTest {
     // Only now stub the answer model: with it in place the decomposition takes the stubbed reply
     // as its sub-query, which the lexical path above would not find.
     stubAnswer();
+    // A question needs a space; the chat carries the filter as its own sticky one.
     List<ChatSource> sources =
-        queryService.query("Nutzung", null, reader, true, List.of(), filter).sources();
+        queryService.query("Nutzung", chatOf(reader, filter), reader, true, List.of()).sources();
     assertThat(sources)
         .extracting(ChatSource::getDocumentId, ChatSource::getMetadataFilterMatch)
         .containsExactlyInAnyOrder(
             org.assertj.core.groups.Tuple.tuple(marked.getId(), MetadataFilterMatch.NO_VALUE),
             org.assertj.core.groups.Tuple.tuple(matching.getId(), MetadataFilterMatch.MATCHED));
     // Without a filter no source claims a match state at all.
-    assertThat(queryService.query("Nutzung", null, reader, true, List.of()).sources())
+    assertThat(
+            queryService.query("Nutzung", chatOf(reader, null), reader, true, List.of()).sources())
         .extracting(ChatSource::getMetadataFilterMatch)
         .containsOnlyNulls();
   }
@@ -549,6 +552,13 @@ class MetadataFilterSearchIntegrationTest {
    */
   @AfterEach
   void removeOwnFixtures() {
+    // The questions' chats and spaces, before their owner; messages and associations cascade.
+    jdbcTemplate.update(
+        "DELETE FROM chats WHERE space_id IN (SELECT id FROM spaces WHERE name = 'Filter-Space')");
+    jdbcTemplate.update(
+        "DELETE FROM space_memberships WHERE space_id IN (SELECT id FROM spaces WHERE name ="
+            + " 'Filter-Space')");
+    jdbcTemplate.update("DELETE FROM spaces WHERE name = 'Filter-Space'");
     jdbcTemplate.update("DELETE FROM chunk_full_text WHERE library_id IN " + OWN_LIBRARIES);
     jdbcTemplate.update(
         "DELETE FROM vector_store WHERE (metadata->>'library_id')::uuid IN " + OWN_LIBRARIES);
@@ -569,6 +579,39 @@ class MetadataFilterSearchIntegrationTest {
             + " LIKE 'metadata-filter-%')");
     jdbcTemplate.update("DELETE FROM assets WHERE name LIKE 'Filter-%'");
     jdbcTemplate.update("DELETE FROM users WHERE subject LIKE 'metadata-filter-%'");
+  }
+
+  /**
+   * A chat of {@code member} in a space of their own that holds {@code library}, with {@code
+   * filter} as the chat's own core-field filter ({@code null}: none).
+   */
+  private UUID chatOf(CurrentUser member, MetadataFilter filter) {
+    UUID spaceId = UUID.randomUUID();
+    jdbcTemplate.update(
+        "INSERT INTO spaces (id, name, is_default, visibility, owner_id, organization_id,"
+            + " created_at, updated_at) VALUES (?, 'Filter-Space', false, 'PRIVATE', ?, ?, now(),"
+            + " now())",
+        spaceId,
+        member.id(),
+        member.organizationId());
+    jdbcTemplate.update(
+        "INSERT INTO space_memberships (id, subject_type, user_id, space_id, role, organization_id,"
+            + " created_at) VALUES (?, 'USER', ?, ?, 'ADMIN', ?, now())",
+        UUID.randomUUID(),
+        member.id(),
+        spaceId,
+        member.organizationId());
+    jdbcTemplate.update(
+        "INSERT INTO space_asset_associations (id, space_id, asset_id, organization_id,"
+            + " created_by_user_id, created_at) VALUES (?, ?, ?, ?, ?, now())",
+        UUID.randomUUID(),
+        spaceId,
+        library.getId(),
+        member.organizationId(),
+        member.id());
+    return chatService
+        .createChat(spaceId, member.id(), new io.opaa.chat.ChatCreation().metadataFilter(filter))
+        .getId();
   }
 
   private CurrentUser user(String name, SystemRole role) {

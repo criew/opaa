@@ -85,7 +85,7 @@ export function sameMetadataFilter(a: MetadataFilter | null, b: MetadataFilter |
   return JSON.stringify(normalizeMetadataFilter(a)) === JSON.stringify(normalizeMetadataFilter(b))
 }
 
-// The chip bar is the only search-scope control (#560): 'all' shows the special @Alles-Wissen
+// The chip bar is the only search-scope control (#560): 'all' shows the special @Space-Wissen
 // chip (backend useKnowledge=true), 'libraries' shows the sticky concrete-library chips
 // (useKnowledge=false + referencedLibraryIds), 'none' is an emptied bar (useKnowledge=false, no
 // ids) - "Durchsucht wird, was in der Leiste steht." @Space (space-associated libraries) is
@@ -99,7 +99,7 @@ export type SearchScope = 'all' | 'libraries' | 'none'
  * settings and surfaces `error` - the server's chat settings otherwise silently diverge from what
  * the chip bar shows (#548 review, finding 3; carried over to the chip-only model in #560).
  * useKnowledge and referencedLibraryIds are always sent together, even when only one conceptually
- * changed, because a scope change - e.g. the first concrete chip replacing @Alles-Wissen - flips
+ * changed, because a scope change - e.g. the first concrete chip replacing @Space-Wissen - flips
  * both fields atomically; splitting them into separate PATCHes could let a chat briefly sit with
  * useKnowledge=true and stale referencedLibraryIds server-side.
  *

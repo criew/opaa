@@ -49,7 +49,8 @@ Konnektortypen und mehrere Dateiformate:
 
 Die siebte Bibliothek ist keine Fachablage, sondern eine **technische Schaubibliothek**: Sie zeigt,
 dass jedes vom Handbuch zugelassene Dateiformat wirklich verarbeitet wird, und gehört deshalb allein
-dem Demo-Admin — kein Fachkonto bekommt ein Leserecht darauf, und keinem Space ist sie zugeordnet.
+dem Demo-Admin — kein Fachkonto bekommt ein Leserecht darauf, und zugeordnet ist sie allein dem
+persönlichen Space des Demo-Admins.
 Jedes erzeugte Dokument nennt im Text sein eigenes Format, damit im Chat erkennbar bleibt, aus
 welcher Datei eine Antwort stammt.
 
@@ -76,6 +77,7 @@ Begründung der Auswahl, Quellen und Lizenzen des Korpus:
 | Ordner und Anhänge | Aktenplan in der Upload-Bibliothek, Jahrgang und Gremium in den Ratsinformationen, Ratsvorlagen mit PDF-Anlagen | Schritt D |
 | Fachformate | Fachfragen aus XLSX, aus dem PDF-Anhang einer Mail und aus CSV | Schritt E |
 | Viele Chats und ein langer Verlauf | 81 vorbereitete Chats im Space „Amtsleitung Bürgerbüro" (Andrea Vogt), über acht Wochen verteilt, fünf angeheftet, elf archiviert, einer mit 32 Runden | Schritt F |
+| Space ohne Wissen | jeder neu angelegte Space: Hinweis mit Direktlink „Wissen zuordnen" statt einer Antwort ohne Belege | Schritt G |
 
 Einzelheiten zu Gruppen, Prompts und Chats stehen unten in den Abschnitten „Gruppen",
 „Prompt-Bibliotheken" und „Vorbereitete Chats".
@@ -337,9 +339,9 @@ Der Seed richtet über die öffentliche API alle vier Demo-Nutzer plus das Admin
 den Anbieter „Verzeichnisdienst" auf den **Verzeichnisabgleich** um und lässt ihn einmal laufen
 (ADR-0036, siehe „Gruppen" unten), legt die fünf
 Spaces und sieben Wissensbibliotheken an, vergibt die Leserechte, richtet drei interne Gruppen mit
-benannter Verantwortung ein, vergibt den drei Keycloak-Gruppen ihre Rechte, ordnet den vier gemeinsamen Spaces ihre Bibliotheken
-als Datenquellen zu (Assoziation als reine Kuratierung, #706 — Marias persönlicher Space bleibt
-bewusst ohne Zuordnung), lädt die 27 Dokumente der internen Upload-Bibliothek hoch und stößt die
+benannter Verantwortung ein, vergibt den drei Keycloak-Gruppen ihre Rechte, ordnet jedem Space
+seine Bibliotheken als Datenquellen zu — den fünf angelegten Spaces ebenso wie dem persönlichen
+Space „Meine Dokumente" jedes Kontos, denn ein Space durchsucht nur, was ihm zugeordnet ist —, lädt die 27 Dokumente der internen Upload-Bibliothek hoch und stößt die
 Indizierung der sechs konnektorgespeisten Bibliotheken an — darunter die beiden `S3`-Bibliotheken,
 deren Läufe die Buckets `rheinfurt-archiv` und `formattest` des `objectstore`-Containers lesen (der
 Einmal-Schritt `objectstore-seed` muss dafür durchgelaufen sein, siehe Schritt 2). Vollständiger Ablauf,
@@ -347,7 +349,7 @@ Idempotenz und Fehlerfälle: „Seed-Mechanismus (#712)" unten.
 
 Außerdem legt der Seed im Namen von Andrea Vogt die beiden Prompt-Bibliotheken „Textbausteine
 Bürgerbüro" und „Vorlagen Amtsleitung" samt Prompts, Freigaben und Space-Zuordnung an (siehe
-„Prompt-Bibliotheken" unten) und spielt zum Schluss 81 vorbereitete Chats in ihren Space
+„Prompt-Bibliotheken" unten), ordnet die Textbausteine jedem Space zu und spielt zum Schluss 81 vorbereitete Chats in ihren Space
 „Amtsleitung Bürgerbüro" ein (siehe „Vorbereitete Chats" unten).
 
 **Wie lange dauert die Erstindizierung, und wie erkennt man, dass sie fertig ist?** Der Seed selbst
@@ -375,7 +377,7 @@ zu ersetzen. Der Ist-Zustand auf der öffentlichen Instanz opaa.ewerlin.com weic
 
 | Konto | Rolle im Szenario | Spaces | Lesbare Bibliotheken | Passwort |
 |---|---|---|---|---|
-| `demo-admin` (admin@stadt-rheinfurt.example) | Systemadministration | eigener Default-Space | richtet ein, besitzt alle sieben Bibliotheken — „Formattest auf S3" liest ausschließlich er | `RheinfurtDemo!2026` |
+| `demo-admin` (admin@stadt-rheinfurt.example) | Systemadministration | eigener Default-Space (mit „Formattest auf S3") | richtet ein, besitzt alle sieben Bibliotheken — „Formattest auf S3" liest ausschließlich er | `RheinfurtDemo!2026` |
 | `maria.weber` | Sachbearbeiterin Meldewesen | „Meldewesen & Ausweise" (mit Selin), „Maria Weber – persönlich" (allein), „Dienstbesprechung Bürgerbüro" (über Gruppe) | Leistungen Meldewesen & Ausweise, Satzungen & Gebührenordnungen, Pressemitteilungen, Interne Dienstanweisungen Meldewesen, Ratsinformationen | `RheinfurtDemo!2026` |
 | `selin.kaya` | Sachbearbeiterin Meldewesen | „Meldewesen & Ausweise" (über die Keycloak-Gruppe „Meldewesen"), „Dienstbesprechung Bürgerbüro" (über Gruppe) | dieselben fünf wie Maria, Pressemitteilungen nur über die Gruppe „Presseverteiler Bürgerbüro" | `RheinfurtDemo!2026` |
 | `thomas.klein` | Sachbearbeiter Kfz-Zulassung | „Kfz-Zulassung" (allein), „Meldewesen & Ausweise" und „Dienstbesprechung Bürgerbüro" (je über Gruppe) | Leistungen Kfz-Zulassung, Satzungen & Gebührenordnungen, Ratsinformationen; Pressemitteilungen nur über „Presseverteiler Bürgerbüro", Interne Dienstanweisungen Meldewesen nur über „Vertretung Meldewesen" | `RheinfurtDemo!2026` |
@@ -399,13 +401,17 @@ Keycloak-Gruppen allein: Satzungen und Ratsinformationen lesen alle vier Fachkon
 „Bürgerbüro Rheinfurt", die Leistungen Meldewesen & Ausweise Maria und Selin über „Meldewesen", die
 Leistungen Kfz-Zulassung Thomas über „Kfz-Zulassung" — Andrea behält ihre eigenen Grants auf beide
 Leistungsbibliotheken. Jeder Nutzer bekommt
-beim ersten Login zusätzlich automatisch seinen eigenen Default-Space, der oben nicht eigens
-aufgeführt ist. Die drei Sachgebiets- und Amtsleitungs-Spaces tragen ihre lesbaren Bibliotheken
-zusätzlich als zugeordnete Datenquellen, „Dienstbesprechung Bürgerbüro" die drei für alle
-Fachkonten lesbaren (Space↔Bibliothek-Assoziation, #706): `@Alles-Wissen`
-durchsucht in diesen Spaces genau die zugeordneten Bibliotheken, geschnitten mit den Leserechten der
-fragenden Person. „Maria Weber – persönlich" bleibt bewusst ohne Zuordnung — dort greift
-`@Alles-Wissen` weiterhin auf alle für Maria lesbaren Bibliotheken zurück. Begründung der Matrix:
+beim ersten Login zusätzlich automatisch seinen eigenen Default-Space „Meine Dokumente", der oben
+nicht eigens aufgeführt ist. **Ein Space durchsucht nur, was ihm zugeordnet ist** —
+`@Space-Wissen` sucht in den zugeordneten Bibliotheken, geschnitten mit den Leserechten der
+fragenden Person, und die `/`-Auswahl bietet nur zugeordnete Prompts an. Der Seed ordnet deshalb
+jedem Space Wissen zu: den Sachgebiets- und Amtsleitungs-Spaces ihre lesbaren Bibliotheken, „Maria
+Weber – persönlich" dieselben fünf wie „Meldewesen & Ausweise", „Dienstbesprechung Bürgerbüro" die
+drei für alle Fachkonten lesbaren und jedem Default-Space die Bibliotheken des Sachgebiets seines
+Kontos (dem von Thomas zusätzlich die internen Dienstanweisungen, die er als Vertretung liest, dem
+des Demo-Admins „Formattest auf S3"). Wie ein Space ohne Wissen aussieht — Hinweis mit
+Direktlink „Wissen zuordnen" statt einer Antwort ohne Belege —, zeigt jeder neu angelegte Space
+(Drehbuch, Schritt G). Begründung der Matrix:
 [`../docs/features/demo-instance.md`, „Nutzer, Spaces und
 Berechtigungen"](../docs/features/demo-instance.md#nutzer-spaces-und-berechtigungen).
 
@@ -513,8 +519,8 @@ nicht, und sie könnte die Prompts ohne eigenes Recht auch nicht lesen.
 
 | Prompt-Bibliothek | Reichweite | Zugeordnete Spaces |
 |---|---|---|
-| Textbausteine Bürgerbüro | „Alle Konten" (`VIEWER`) | „Meldewesen & Ausweise", „Kfz-Zulassung", „Amtsleitung Bürgerbüro" |
-| Vorlagen Amtsleitung | nur Andrea | „Amtsleitung Bürgerbüro" |
+| Textbausteine Bürgerbüro | „Alle Konten" (`VIEWER`) | alle fünf angelegten Spaces und der Default-Space jedes Kontos |
+| Vorlagen Amtsleitung | nur Andrea | „Amtsleitung Bürgerbüro" und Andreas Default-Space |
 
 | Slash-Befehl | Bibliothek | Variablen |
 |---|---|---|
@@ -704,14 +710,13 @@ Der Lauf richtet über die API ein:
    aufgelöst — eine gleichnamige, nicht mehr gepflegte Token-Gruppe ist es nicht), und vergibt ihr
    Leserecht und Space-Mitgliedschaft. Fehlt sie, bricht der Lauf mit dem Hinweis auf das
    Realm-Skript ab.
-7. **Space↔Bibliothek-Zuordnungen** (Assoziation als reine Kuratierung, #706) gemäß den
-   `library_names` der Space-Definitionen in `profiles.py`: „Meldewesen & Ausweise" bekommt die fünf
-   für das Sachgebiet lesbaren Bibliotheken zugeordnet, „Kfz-Zulassung" vier, „Amtsleitung Bürgerbüro"
-   alle sechs fachlichen, „Dienstbesprechung Bürgerbüro" die drei für alle Fachkonten lesbaren
-   („Formattest auf S3" ist keinem Space zugeordnet, siehe Schritt 4);
-   Marias persönlicher Space bleibt bewusst ohne Zuordnung (@Alles-Wissen greift dort
-   weiter auf alle lesbaren Bibliotheken zurück). Die Zuordnung legt die Session des jeweiligen
-   Space-Eigentümers an, denn `associateSpaceLibrary` verlangt CURATOR oder höher im Space plus
+7. **Space↔Bibliothek-Zuordnungen** gemäß den `library_names` der Space-Definitionen in
+   `profiles.py` — ein Space durchsucht nur, was ihm zugeordnet ist: „Meldewesen & Ausweise" und
+   „Maria Weber – persönlich" bekommen die fünf für das Sachgebiet lesbaren Bibliotheken zugeordnet,
+   „Kfz-Zulassung" vier, „Amtsleitung Bürgerbüro" alle sechs fachlichen, „Dienstbesprechung
+   Bürgerbüro" die drei für alle Fachkonten lesbaren („Formattest auf S3" steht in keinem dieser
+   Spaces, siehe Schritt 7c). Die Zuordnung legt die Session des jeweiligen
+   Space-Eigentümers an, denn `associateSpaceAsset` verlangt CURATOR oder höher im Space plus
    mindestens VIEWER auf der Bibliothek — beides hat der Eigentümer nach Schritt 6 (Thomas liest die
    Pressemitteilungen, die „Kfz-Zulassung" zugeordnet sind, erst über die Gruppe „Presseverteiler Bürgerbüro").
 
@@ -725,6 +730,14 @@ Der Lauf richtet über die API ein:
    (`POST /api/v1/spaces/{id}/assets`, `assetType=PROMPT_LIBRARY`) — erst nach den Freigaben, weil
    die Zuordnung Leserecht des Space-Eigentümers verlangt. Das `e2e`-Profil hat keine
    Prompt-Bibliotheken.
+
+   **7c. Persönliche Spaces** (`profiles.py`s `PersonalSpaceDef`) — den Default-Space „Meine
+   Dokumente", den das Backend bei der ersten Anmeldung anlegt, findet der Seed über die Sitzung
+   seines Kontos (`GET /api/v1/spaces`, `isDefault`) und ordnet ihm Wissen und Prompts zu:
+   Maria und Selin die fünf Meldewesen-Bibliotheken, Thomas die vier der Kfz-Zulassung und als
+   Vertretung die internen Dienstanweisungen Meldewesen, Andrea alle
+   sechs fachlichen samt „Vorlagen Amtsleitung", dem Demo-Admin „Formattest auf S3"; allen die
+   Textbausteine. Erst nach 7b, weil die Zuordnung das Leserecht des Kontos verlangt.
 8. **Indizierung je Bibliothek** über deren eigene Quellkonfiguration (nicht für die `UPLOAD`-Bibliothek
    — die hat keinen eigenen Lauf, ADR-0018, siehe Schritt 5) — der Seed wartet auf `COMPLETED` und
    bricht bei `documentsFailed > 0` ab. Für die beiden `S3`-Bibliotheken prüft er zusätzlich eine

@@ -32,7 +32,9 @@ final class QueryResponseMapper {
   private static QueryMetadata toMetadata(QueryOutcome outcome) {
     return new QueryMetadata(outcome.model(), outcome.tokenCount(), outcome.durationMs())
         .answeredWithoutKnowledge(outcome.answeredWithoutKnowledge())
+        .noKnowledgeAssignedToSpace(outcome.noKnowledgeAssignedToSpace())
         .noKnowledgeAvailableInSpace(outcome.noKnowledgeAvailableInSpace())
+        .noSpaceContext(outcome.noSpaceContext())
         .searchedLibraries(toSearchedLibraries(outcome.searchedLibraries()));
   }
 

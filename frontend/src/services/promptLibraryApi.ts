@@ -93,14 +93,14 @@ export async function getPrompt(
 }
 
 /**
- * The prompts the person can insert in the chat: every prompt of a readable prompt library, the
- * ones associated with the space first. Without text and variables - those come with the choice,
- * through {@link getPrompt}.
+ * The prompts the person can insert in a chat of the space: every prompt of a prompt library that
+ * is associated with the space and readable by the person. Without text and variables - those
+ * come with the choice, through {@link getPrompt}.
  */
-export async function listAvailablePrompts(spaceId?: string | null): Promise<AvailablePrompt[]> {
+export async function listAvailablePrompts(spaceId: string): Promise<AvailablePrompt[]> {
   try {
     const { data } = await apiClient.get<AvailablePrompt[]>('/v1/prompts/available', {
-      params: spaceId ? { spaceId } : undefined,
+      params: { spaceId },
     })
     return data
   } catch (err) {

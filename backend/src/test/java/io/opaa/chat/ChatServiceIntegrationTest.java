@@ -280,6 +280,7 @@ class ChatServiceIntegrationTest {
     UUID author = createUser();
     UUID spaceId = createSpaceWithMember(author);
     UUID libraryId = createLibrary(author);
+    associateLibrary(spaceId, libraryId, author);
     ChatConversation created =
         chatService.createChat(
             spaceId, author, new ChatCreation().title("Ursprünglich").useKnowledge(false));
@@ -351,6 +352,87 @@ class ChatServiceIntegrationTest {
                     author,
                     new ChatPatch().referencedLibraryIds(List.of(unreadableLibrary))))
         .isInstanceOf(ValidationException.class);
+  }
+
+  /**
+   * A readable library outside the space's associations cannot become a chip: the space is a hard
+   * boundary, and the server rejects the reference instead of silently searching less.
+   */
+  @Test
+  void aReferenceToAReadableLibraryOutsideTheSpaceIsRejected() {
+    UUID author = createUser();
+    UUID spaceId = createSpaceWithMember(author);
+    UUID associated = createLibrary(author);
+    UUID readableButNotAssociated = createLibrary(author);
+    associateLibrary(spaceId, associated, author);
+    String message =
+        "referencedLibraryIds enthält eine Bibliothek, die diesem Space nicht zugeordnet ist";
+
+    assertThatThrownBy(
+            () ->
+                chatService.createChat(
+                    spaceId,
+                    author,
+                    new ChatCreation()
+                        .useKnowledge(false)
+                        .referencedLibraryIds(List.of(associated, readableButNotAssociated))))
+        .isInstanceOf(ValidationException.class)
+        .hasMessage(message);
+
+    ChatConversation created =
+        chatService.createChat(
+            spaceId,
+            author,
+            new ChatCreation().useKnowledge(false).referencedLibraryIds(List.of(associated)));
+    assertThat(created.getReferencedLibraryIds()).containsExactly(associated);
+    assertThatThrownBy(
+            () ->
+                chatService.updateChat(
+                    created.getId(),
+                    author,
+                    new ChatPatch().referencedLibraryIds(List.of(readableButNotAssociated))))
+        .isInstanceOf(ValidationException.class)
+        .hasMessage(message);
+  }
+
+  /**
+   * A stored chip whose association was detached later does not block the next chip change: only
+   * what a change adds is checked, the stale reference stays and is no longer searched.
+   */
+  @Test
+  void aStaleChipDoesNotBlockAddingAnotherOne() {
+    UUID author = createUser();
+    UUID spaceId = createSpaceWithMember(author);
+    UUID kept = createLibrary(author);
+    UUID detachedLater = createLibrary(author);
+    UUID addedLater = createLibrary(author);
+    associateLibrary(spaceId, kept, author);
+    associateLibrary(spaceId, detachedLater, author);
+    associateLibrary(spaceId, addedLater, author);
+    ChatConversation created =
+        chatService.createChat(
+            spaceId,
+            author,
+            new ChatCreation()
+                .useKnowledge(false)
+                .referencedLibraryIds(List.of(kept, detachedLater)));
+    jdbcTemplate.update(
+        "DELETE FROM space_asset_associations WHERE space_id = ? AND asset_id = ?",
+        spaceId,
+        detachedLater);
+
+    ChatConversation updated =
+        chatService.updateChat(
+            created.getId(),
+            author,
+            new ChatPatch().referencedLibraryIds(List.of(kept, detachedLater, addedLater)));
+
+    assertThat(updated.getReferencedLibraryIds())
+        .containsExactlyInAnyOrder(kept, detachedLater, addedLater);
+    Chat chat = chatRepository.findById(created.getId()).orElseThrow();
+    assertThat(chatService.effectiveLibraryScope(chat, Set.of(kept, detachedLater, addedLater)))
+        .as("the stale chip stays harmless: it is no longer searched")
+        .containsExactlyInAnyOrder(kept, addedLater);
   }
 
   @Test
@@ -724,40 +806,40 @@ class ChatServiceIntegrationTest {
     assertThat(chatService.findOwnedChat(null, author)).isEmpty();
   }
 
+  /**
+   * The test matrix of the hard boundary for knowledge, for @Space-Wissen and for a chip alike:
+   * associated and readable is searched; associated but not readable, and readable but not
+   * associated, are not.
+   */
   @Test
-  void effectiveLibraryScopeIntersectsReferencesWithReadableLibrariesWhenUseKnowledgeIsOff() {
-    UUID readable = UUID.randomUUID();
-    UUID notReadable = UUID.randomUUID();
-    Chat chat =
-        new Chat(
-            UUID.randomUUID(),
-            UUID.randomUUID(),
-            organizationA,
-            null,
-            false,
-            Set.of(readable, notReadable));
+  void effectiveLibraryScopeIsAssociatedIntersectedWithReadableForSpaceKnowledgeAndChips() {
+    UUID author = createUser();
+    UUID spaceId = createSpaceWithMember(author);
+    UUID associatedAndReadable = createLibrary(author);
+    UUID associatedButUnreadable = createLibrary(author);
+    UUID readableButNotAssociated = createLibrary(author);
+    associateLibrary(spaceId, associatedAndReadable, author);
+    associateLibrary(spaceId, associatedButUnreadable, author);
+    Set<UUID> readable = Set.of(associatedAndReadable, readableButNotAssociated);
+    Set<UUID> everyReference =
+        Set.of(associatedAndReadable, associatedButUnreadable, readableButNotAssociated);
 
-    Set<UUID> scope = chatService.effectiveLibraryScope(chat, Set.of(readable));
+    Chat spaceKnowledge = new Chat(spaceId, author, organizationA, null, true, Set.of());
+    Chat chips = new Chat(spaceId, author, organizationA, null, false, everyReference);
 
-    assertThat(scope).containsExactly(readable);
+    assertThat(chatService.effectiveLibraryScope(spaceKnowledge, readable))
+        .containsExactly(associatedAndReadable);
+    assertThat(chatService.effectiveLibraryScope(chips, readable))
+        .as("a stored reference outside the space is not searched either")
+        .containsExactly(associatedAndReadable);
   }
 
+  /**
+   * A space without any association searches nothing - also a personal space, and although the
+   * caller can read libraries: there is no fallback to the readable set.
+   */
   @Test
-  void effectiveLibraryScopeIsEveryReadableLibraryWhenUseKnowledgeIsOn() {
-    UUID readableA = UUID.randomUUID();
-    UUID readableB = UUID.randomUUID();
-    Chat chat = new Chat(UUID.randomUUID(), UUID.randomUUID(), organizationA, null, true, Set.of());
-
-    Set<UUID> scope = chatService.effectiveLibraryScope(chat, Set.of(readableA, readableB));
-
-    assertThat(scope).containsExactlyInAnyOrder(readableA, readableB);
-  }
-
-  // #203: a space without any association never narrows - the fallback above already covers a
-  // space id nobody ever inserted a row for, this covers the same rule for a real, persisted
-  // space that genuinely has zero associations.
-  @Test
-  void effectiveLibraryScopeIsEveryReadableLibraryWhenTheSpaceHasNoAssociations() {
+  void effectiveLibraryScopeIsEmptyWhenTheSpaceHasNoAssociations() {
     UUID author = createUser();
     UUID spaceId = createSpaceWithMember(author);
     UUID readableA = createLibrary(author);
@@ -766,34 +848,10 @@ class ChatServiceIntegrationTest {
 
     Set<UUID> scope = chatService.effectiveLibraryScope(chat, Set.of(readableA, readableB));
 
-    assertThat(scope).containsExactlyInAnyOrder(readableA, readableB);
+    assertThat(scope).isEmpty();
   }
 
-  // #203: once a space has at least one association, @Alles-Wissen narrows to the associated
-  // libraries intersected with the readable ones - a readable library that is not associated with
-  // this space no longer appears, and an associated library the caller cannot read still does not
-  // appear either.
-  @Test
-  void effectiveLibraryScopeIntersectsAssociatedWithReadableLibrariesWhenUseKnowledgeIsOn() {
-    UUID author = createUser();
-    UUID spaceId = createSpaceWithMember(author);
-    UUID associatedAndReadable = createLibrary(author);
-    UUID readableButNotAssociated = createLibrary(author);
-    associateLibrary(spaceId, associatedAndReadable, author);
-    Chat chat = new Chat(spaceId, author, organizationA, null, true, Set.of());
-
-    Set<UUID> scope =
-        chatService.effectiveLibraryScope(
-            chat, Set.of(associatedAndReadable, readableButNotAssociated));
-
-    assertThat(scope).containsExactly(associatedAndReadable);
-  }
-
-  // #706 review, finding 7a: the fail-open branch - a space with at least one association, none
-  // of which are readable by this caller, must resolve to an EMPTY scope, never fall back to
-  // "every readable library". Distinct from
-  // effectiveLibraryScopeIsEveryReadableLibraryWhenTheSpaceHasNoAssociations, which covers the
-  // unrelated "no curation at all" case.
+  /** A curated space whose libraries the caller cannot read resolves to an empty scope. */
   @Test
   void effectiveLibraryScopeIsEmptyWhenTheSpaceIsCuratedButNothingIsReadable() {
     UUID author = createUser();
