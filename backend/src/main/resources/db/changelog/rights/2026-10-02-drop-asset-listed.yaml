@@ -2,7 +2,7 @@ databaseChangeLog:
   - changeSet:
       id: rights-2026-10-02-drop-asset-listed
       author: opaa
-      comment: "Visible means readable: the asset shell loses its findability flag (listed), its partial index, the listed column of the reach history and the history cause that recorded a change of it."
+      comment: "Visible means readable: the asset shell loses its findability flag (listed), its partial index, the listed column of the reach history and the history cause that recorded a change of it. Intervals opened by such a change keep their place in the chain as BACKFILL - they carry the release state of their predecessor unchanged, so deleting them would leave gaps."
       changes:
         - sql:
             sql: |
@@ -10,4 +10,5 @@ databaseChangeLog:
               ALTER TABLE assets DROP COLUMN listed;
               ALTER TABLE asset_visibility_history DROP COLUMN listed;
               ALTER TABLE asset_visibility_history DROP CONSTRAINT chk_asset_visibility_history_cause;
+              UPDATE asset_visibility_history SET cause = 'BACKFILL' WHERE cause = 'VISIBILITY_CHANGED';
               ALTER TABLE asset_visibility_history ADD CONSTRAINT chk_asset_visibility_history_cause CHECK ((cause IN ('CREATED', 'BACKFILL', 'ASSET_DELETED', 'EXTERNAL_ACCESS_CHANGED', 'EXTERNAL_ACCESS_EXPIRED')));
