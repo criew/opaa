@@ -178,6 +178,55 @@ class ChatAutoCleanupIntegrationTest {
   }
 
   @Test
+  void theMomentOfBringingAChatBackIsForgottenOnceTheArchivePeriodHasPassed() {
+    UUID author = createUser();
+    UUID spaceId = createSpace(author, now.minus(DAY.multipliedBy(200)));
+    UUID chatId = createArchivedChat(spaceId, author);
+    chatService.unarchiveChat(chatId, author);
+    assertThat(unarchivedAt(chatId, author)).isNotNull();
+
+    chatService.pinChat(chatId, author);
+    UUID onlyReturned = createArchivedChat(spaceId, author);
+    chatService.unarchiveChat(onlyReturned, author);
+    cleanupService.runOnce(now.plus(DAY.multipliedBy(91)));
+
+    assertThat(unarchivedAt(chatId, author)).isNull();
+    assertThat(markRowCount(onlyReturned)).isOne();
+    assertThat(archivedAt(onlyReturned, author)).isNotNull();
+    assertThat(unarchivedAt(onlyReturned, author)).isNull();
+  }
+
+  @Test
+  void aReturnOnlyRowDisappearsOnceTheArchivePeriodHasPassedWithoutArchivingAgain() {
+    UUID author = createUser();
+    UUID spaceId = createSpace(author, now.minus(DAY.multipliedBy(200)));
+    UUID chatId = createArchivedChat(spaceId, author);
+    chatService.unarchiveChat(chatId, author);
+    jdbcTemplate.update(
+        "UPDATE chat_personal_marks SET unarchived_at = ? WHERE chat_id = ?",
+        Timestamp.from(now.minus(DAY.multipliedBy(100))),
+        chatId);
+
+    cleanupService.runOnce(now.minus(DAY.multipliedBy(5)));
+
+    assertThat(markRowCount(chatId)).isZero();
+  }
+
+  @Test
+  void withTheCleanupOffBringingAChatBackStoresNoMoment() {
+    UUID author = createUser();
+    UUID spaceId = createSpace(author, null);
+    UUID chatId = createArchivedChat(spaceId, author);
+
+    chatService.unarchiveChat(chatId, author);
+    UUID bulk = createArchivedChat(spaceId, author);
+    chatService.unarchiveChats(spaceId, author, List.of(bulk));
+
+    assertThat(markRowCount(chatId)).isZero();
+    assertThat(markRowCount(bulk)).isZero();
+  }
+
+  @Test
   void bringingChatsBackTogetherStartsTheArchivePeriodAnewForEach() {
     UUID author = createUser();
     UUID spaceId = createSpace(author, now.minus(DAY.multipliedBy(200)));
@@ -404,6 +453,21 @@ class ChatAutoCleanupIntegrationTest {
             chatId,
             userId);
     return values.isEmpty() ? null : values.getFirst();
+  }
+
+  private Timestamp unarchivedAt(UUID chatId, UUID userId) {
+    List<Timestamp> values =
+        jdbcTemplate.queryForList(
+            "SELECT unarchived_at FROM chat_personal_marks WHERE chat_id = ? AND user_id = ?",
+            Timestamp.class,
+            chatId,
+            userId);
+    return values.isEmpty() ? null : values.getFirst();
+  }
+
+  private int markRowCount(UUID chatId) {
+    return jdbcTemplate.queryForObject(
+        "SELECT count(*) FROM chat_personal_marks WHERE chat_id = ?", Integer.class, chatId);
   }
 
   private boolean chatExists(UUID chatId) {

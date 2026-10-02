@@ -675,6 +675,11 @@ public class SpaceService {
   @Transactional
   public void transferOwnership(UUID spaceId, UUID newOwnerUserId, CurrentUser caller) {
     Space space = loadSpace(spaceId, caller);
+    // The personal space belongs to its person for good; otherwise taking it over would also take
+    // over the decisions reserved to its owner, such as its chat cleanup.
+    if (space.isDefault()) {
+      throw new ValidationException("Der Standard-Space kann nicht übertragen werden");
+    }
     if (!caller.isSystemAdmin() && !accessPolicy.hasAtLeast(space, caller.id(), SpaceRole.ADMIN)) {
       throw new AccessDeniedException(
           "Nur ein handlungsfähiges ADMIN-Mitglied oder ein Systemadministrator kann die"

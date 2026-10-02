@@ -11,6 +11,7 @@ import io.opaa.auth.CurrentUser;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.common.AccessDeniedException;
+import io.opaa.common.ValidationException;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
 import io.opaa.permission.PermissionSubject;
@@ -170,6 +171,29 @@ class SpaceChatAutoCleanupIntegrationTest {
 
     spaceService.updateSpace(space.getId(), update(space, true), currentUserOf(owner));
     assertThat(reload(space).isChatAutoCleanupEnabled()).isTrue();
+  }
+
+  @Test
+  void aPersonalSpaceCannotBeTakenOverToSwitchItsCleanup() {
+    UUID owner = createUser();
+    UUID colleague = createUser();
+    UUID systemAdmin = createUser();
+    Space personal =
+        new Space("Meine Dokumente", null, true, SpaceVisibility.PRIVATE, owner, organizationId);
+    personal.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, organizationId));
+    personal.addMembership(SpaceMembership.ofUser(colleague, SpaceRole.ADMIN, organizationId));
+    Space space = spaceRepository.save(personal);
+
+    assertThatThrownBy(
+            () ->
+                spaceService.transferOwnership(space.getId(), colleague, currentUserOf(colleague)))
+        .isInstanceOf(ValidationException.class);
+    assertThatThrownBy(
+            () ->
+                spaceService.transferOwnership(
+                    space.getId(), colleague, systemAdminOf(systemAdmin)))
+        .isInstanceOf(ValidationException.class);
+    assertThat(reload(space).getOwnerId()).isEqualTo(owner);
   }
 
   @Test

@@ -432,6 +432,14 @@ describe('SpaceSettingsPage', () => {
     expect(screen.getAllByRole('button', { name: /zum eigentümer machen/i })).toHaveLength(1)
   })
 
+  it('#1923: never offers the handover in a personal space', async () => {
+    setSpaceState({ ...teamSpace, isDefault: true })
+    renderTab('members')
+
+    expect(await screen.findByText('Colleague')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /zum eigentümer machen/i })).not.toBeInTheDocument()
+  })
+
   // #1815: a group row names the group, marks it as one, and carries the growth signal of
   // ADR-0036, Entscheidung 9 - but never the handover, which only a natural person may receive.
   it('renders a group member with its name, its marker and its growth signal', async () => {

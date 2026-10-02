@@ -113,6 +113,9 @@ class SpaceAssetOwnershipDirectory implements AssetOwnershipDirectory {
       throw new ValidationException("Ein Space gehört immer einer natürlichen Person");
     }
     Space space = spaceRepository.findByIdWithMemberships(assetId).orElseThrow();
+    if (space.isDefault()) {
+      throw new ValidationException("Der Standard-Space kann nicht übertragen werden");
+    }
     UUID previousOwnerId = space.getOwnerId();
     space.transferOwnershipTo(newOwner.id());
     if (!membershipRepository.existsBySpaceIdAndUserId(space.getId(), newOwner.id())) {

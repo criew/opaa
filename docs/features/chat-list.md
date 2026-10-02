@@ -227,7 +227,9 @@ bewusste Weg, von Hand aufzuräumen.
 - **Ein Schalter je Space** „Inaktive Chats automatisch archivieren und löschen", ab Werk aus, wählbar
   im Assistenten beim Anlegen und in den Space-Einstellungen (Reiter „Stammdaten"). Umlegen darf ihn,
   wer die Stammdaten ändern darf (Space-`ADMIN`, Systemverwaltung). **Im persönlichen Standard-Space
-  nur die Person selbst** (Eigentümer), auch nicht die Systemverwaltung (403).
+  nur die Person selbst** (Eigentümer), auch nicht die Systemverwaltung (403). Damit das nicht über
+  einen Eigentümerwechsel zu umgehen ist, wird ein Standard-Space nie übertragen (400, weder über
+  die Space-Übertragung noch über die Nachfolge; im Frontend fehlt dort „Zum Eigentümer machen").
 - **Sichtbar für jedes Mitglied dort, wo die Chats sind:** Ist die Bereinigung an, nennt die Seite
   „Chats" die Fristen in einem knappen Hinweis („In diesem Space werden inaktive Chats nach … Tagen
   archiviert und nach weiteren … Tagen im Archiv gelöscht. Angeheftete Chats bleiben."). Die Fristen

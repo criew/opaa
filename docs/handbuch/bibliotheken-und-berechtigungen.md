@@ -310,7 +310,8 @@ Seitenleiste. Es sehen nur Administratoren und Kuratoren des Raums. Die Seite ha
 die Stammdaten aber nur lesend, und im Reiter „Mitglieder" steht für ihn der Hinweis, dass die
 Liste seiner Rolle nicht offensteht — seine Arbeit liegt in den Reitern „Wissen" und „Prompts".
 Den Schalter der Chat-Bereinigung im eigenen Standard-Raum legt nur dessen Eigentümer um, auch die
-Systemverwaltung nicht. Den
+Systemverwaltung nicht. Deshalb lässt sich ein Standard-Raum auch nicht übertragen: Der Knopf „Zum
+Eigentümer machen" fehlt dort, und eine Übertragung wird abgewiesen. Den
 Gefahrenbereich sieht nur der Eigentümer, und nicht im eigenen Standard-Raum: Der lässt sich weder
 archivieren noch löschen.
 

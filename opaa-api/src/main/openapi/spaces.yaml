@@ -395,7 +395,7 @@ paths:
         Transfer space ownership to a member who is a natural person. Every capable ADMIN member
         that is a natural person may do this, to themselves or to another such member (ADR-0036
         Entscheidung 6) - a group never becomes owner. 404 when the target is not a member of the
-        space or not a person.
+        space or not a person; 400 for the personal default space, which stays with its person.
       requestBody:
         required: true
         content:

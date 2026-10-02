@@ -121,7 +121,7 @@ Archivieren eines Chats ist dort trotzdem möglich und ändert an der Sichtbarke
 automatisch archivieren und löschen", ab Werk aus. Gesetzt wird er beim Anlegen des Space im
 Assistenten oder später in den Einstellungen des Space im Reiter „Stammdaten"; umlegen darf ihn,
 wer die Stammdaten ändern darf. Im persönlichen Standard-Space legt ihn nur die Person selbst um,
-auch die Systemverwaltung nicht. Ist er an, nennt die Seite „Chats" allen Mitgliedern die Fristen
+auch die Systemverwaltung nicht; ein Standard-Space lässt sich dafür auch nicht übertragen. Ist er an, nennt die Seite „Chats" allen Mitgliedern die Fristen
 in einem kurzen Hinweis. Für alle Chats des Space gilt dann:
 
 - Ein Chat, dessen letzte Aktivität länger als die Archivfrist zurückliegt, wandert in das
