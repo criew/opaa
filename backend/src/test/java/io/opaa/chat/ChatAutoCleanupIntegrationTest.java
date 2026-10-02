@@ -159,6 +159,39 @@ class ChatAutoCleanupIntegrationTest {
   }
 
   @Test
+  void bringingAChatBackFromTheArchiveStartsTheArchivePeriodAnew() {
+    UUID author = createUser();
+    UUID spaceId = createSpace(author, now.minus(DAY.multipliedBy(200)));
+    UUID chatId = createChat(spaceId, author);
+    setLastActivity(chatId, now.minus(DAY.multipliedBy(100)));
+    cleanupService.runOnce(now);
+    assertThat(archivedAt(chatId, author)).isNotNull();
+
+    chatService.unarchiveChat(chatId, author);
+    cleanupService.runOnce(now);
+    assertThat(archivedAt(chatId, author)).isNull();
+    cleanupService.runOnce(now.plus(DAY.multipliedBy(89)));
+    assertThat(archivedAt(chatId, author)).isNull();
+
+    cleanupService.runOnce(now.plus(DAY.multipliedBy(91)));
+    assertThat(archivedAt(chatId, author)).isNotNull();
+  }
+
+  @Test
+  void bringingChatsBackTogetherStartsTheArchivePeriodAnewForEach() {
+    UUID author = createUser();
+    UUID spaceId = createSpace(author, now.minus(DAY.multipliedBy(200)));
+    UUID chatId = createChat(spaceId, author);
+    setLastActivity(chatId, now.minus(DAY.multipliedBy(100)));
+    cleanupService.runOnce(now);
+
+    chatService.unarchiveChats(spaceId, author, List.of(chatId));
+    cleanupService.runOnce(now);
+
+    assertThat(archivedAt(chatId, author)).isNull();
+  }
+
+  @Test
   void pinningAnAutomaticallyArchivedChatBringsItBackAndKeepsItFromTheCleanup() {
     UUID author = createUser();
     UUID spaceId = createSpace(author, now.minus(DAY.multipliedBy(200)));

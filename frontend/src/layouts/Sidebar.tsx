@@ -96,10 +96,10 @@ export default function Sidebar({ resizable = false }: { resizable?: boolean }) 
     [spaces, recentSpaceIds],
   )
 
-  // Den Einstieg sieht jedes Mitglied: Die Stammdaten zeigen allen, ob inaktive Chats dieses Space
-  // automatisch archiviert und gelöscht werden. Ändern darf weiter nur, wer verwaltet; die
-  // Felder sind für alle anderen gesperrt, und der Dienst weist ihre Schreibzugriffe ohnehin ab.
-  const mayOpenSettings = activeSpace?.userRole != null
+  // #1917: Den Einstieg sieht, wer an diesem Space etwas zu verwalten hat - ein Administrator
+  // (Stammdaten, Mitglieder) oder ein Kurator (zugeordnetes Wissen). Für alle anderen sind die
+  // Einstellungen leer, und der Dienst weist ihre Schreibzugriffe ohnehin ab.
+  const mayOpenSettings = activeSpace?.userRole === 'ADMIN' || activeSpace?.userRole === 'CURATOR'
   const settingsRoute = activeChatSpaceId ? spaceSettingsRoute(activeChatSpaceId) : ''
   const inSettings = location.pathname.startsWith(`/spaces/${activeChatSpaceId}/settings`)
 

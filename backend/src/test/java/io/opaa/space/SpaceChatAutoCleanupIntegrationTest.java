@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.SpaceRole;
 import io.opaa.api.types.SpaceVisibility;
+import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
@@ -151,6 +152,43 @@ class SpaceChatAutoCleanupIntegrationTest {
     assertThat(detail.chatAutoCleanup().deleteAfterDays()).isEqualTo(365);
   }
 
+  @Test
+  void inThePersonalSpaceOnlyItsOwnerSwitchesTheCleanupNotEvenTheSystemAdministration() {
+    UUID owner = createUser();
+    UUID systemAdmin = createUser();
+    Space personal =
+        new Space("Meine Dokumente", null, true, SpaceVisibility.PRIVATE, owner, organizationId);
+    personal.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, organizationId));
+    Space space = spaceRepository.save(personal);
+
+    assertThatThrownBy(
+            () ->
+                spaceService.updateSpace(
+                    space.getId(), update(space, true), systemAdminOf(systemAdmin)))
+        .isInstanceOf(AccessDeniedException.class);
+    assertThat(reload(space).isChatAutoCleanupEnabled()).isFalse();
+
+    spaceService.updateSpace(space.getId(), update(space, true), currentUserOf(owner));
+    assertThat(reload(space).isChatAutoCleanupEnabled()).isTrue();
+  }
+
+  @Test
+  void theSystemAdministrationStillRenamesAPersonalSpaceWithoutTouchingTheSwitch() {
+    UUID owner = createUser();
+    UUID systemAdmin = createUser();
+    Space personal =
+        new Space("Meine Dokumente", null, true, SpaceVisibility.PRIVATE, owner, organizationId);
+    personal.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, organizationId));
+    Space space = spaceRepository.save(personal);
+
+    spaceService.updateSpace(
+        space.getId(),
+        new SpaceUpdate("Umbenannt", null, SpaceVisibility.PRIVATE, null),
+        systemAdminOf(systemAdmin));
+
+    assertThat(reload(space).getName()).isEqualTo("Umbenannt");
+  }
+
   private SpaceUpdate update(Space space, boolean chatAutoCleanup) {
     Space current = reload(space);
     return new SpaceUpdate(
@@ -192,6 +230,16 @@ class SpaceChatAutoCleanupIntegrationTest {
         new User(UUID.randomUUID().toString(), "test-issuer", "frist@example.com", "Test User");
     user.setOrganizationId(organizationId);
     return userRepository.save(user).getId();
+  }
+
+  private CurrentUser systemAdminOf(UUID userId) {
+    User user = userRepository.findById(userId).orElseThrow();
+    return CurrentUser.of(
+        user.getId(),
+        user.getOrganizationId(),
+        SystemRole.SYSTEM_ADMIN,
+        user.getDisplayName(),
+        user.getEmail());
   }
 
   private CurrentUser currentUserOf(UUID userId) {
