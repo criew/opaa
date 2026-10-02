@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeEach, vi } from 'vitest'
-import { screen, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { answerConfirm, renderWithProviders } from '../test/test-utils'
@@ -319,7 +319,7 @@ describe('SpaceCreatePage (#594, Mockup 1b)', () => {
       await toContentStep(user)
       expect(await screen.findByRole('checkbox', { name: /^Meine Dokumente/ })).toBeVisible()
       await user.click(
-        within(screen.getByRole('group', { name: 'Herkunft' })).getByRole('button', {
+        within(screen.getByRole('group', { name: 'Filter' })).getByRole('button', {
           name: 'Aus meinen Gruppen',
         }),
       )
@@ -338,14 +338,46 @@ describe('SpaceCreatePage (#594, Mockup 1b)', () => {
       await toContentStep(user)
       expect(await screen.findByRole('checkbox', { name: /^Meine Dokumente/ })).toBeVisible()
       await user.click(
-        within(screen.getByRole('group', { name: 'Herkunft' })).getByRole('button', {
-          name: 'Nur Favoriten',
+        within(screen.getByRole('group', { name: 'Filter' })).getByRole('button', {
+          name: 'Favoriten',
         }),
       )
 
       expect(await screen.findByRole('checkbox', { name: /^Dienstanweisungen/ })).toBeVisible()
       expect(screen.queryByRole('checkbox', { name: /^Meine Dokumente/ })).not.toBeInTheDocument()
       expect(screen.getAllByRole('checkbox')).toHaveLength(1)
+    })
+
+    it('combines favorites and my groups with AND, as the catalog does', async () => {
+      mockFavoriteAssets.add(favoriteKey('KNOWLEDGE_LIBRARY', 'library-dienstanweisungen'))
+      mockFavoriteAssets.add(favoriteKey('KNOWLEDGE_LIBRARY', 'library-mine'))
+      const requested: URLSearchParams[] = []
+      server.events.on('request:start', ({ request }) => {
+        const url = new URL(request.url)
+        if (url.pathname === '/api/v1/catalog') requested.push(url.searchParams)
+      })
+      const user = userEvent.setup()
+      renderWithProviders(<SpaceCreatePage />, { withRouter: true })
+
+      await toContentStep(user)
+      expect(await screen.findByRole('checkbox', { name: /^Meine Dokumente/ })).toBeVisible()
+      const filters = screen.getByRole('group', { name: 'Filter' })
+      await user.click(within(filters).getByRole('button', { name: 'Favoriten' }))
+      await user.click(within(filters).getByRole('button', { name: 'Aus meinen Gruppen' }))
+
+      // Favorite but owned in person: out; favorite and from my group: in.
+      await waitFor(() =>
+        expect(
+          screen.queryByRole('checkbox', { name: /^Meine Dokumente/ }),
+        ).not.toBeInTheDocument(),
+      )
+      expect(screen.getByRole('checkbox', { name: /^Dienstanweisungen/ })).toBeVisible()
+      expect(
+        requested.some(
+          (params) => params.get('favorites') === 'true' && params.get('fromMyGroups') === 'true',
+        ),
+      ).toBe(true)
+      server.events.removeAllListeners()
     })
 
     it('starts with the asset handed over by "In Space verwenden"', async () => {

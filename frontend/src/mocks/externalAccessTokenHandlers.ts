@@ -7,6 +7,7 @@ import type {
   OwnExternalAccessTokenResponse,
 } from '../types/api'
 import { mockLibraries } from './libraryFixtures'
+import { favoriteKey, mockFavoriteAssets } from './assetFixtures'
 import { mockExternalAccessSettings } from './externalAccessHandlers'
 
 /**
@@ -115,6 +116,9 @@ function eligibleLibraries(): EligibleExternalAccessLibraryResponse[] {
     name: library.name,
     description: library.description ?? undefined,
     releaseExpiresAt: inDays(300),
+    favorite: mockFavoriteAssets.has(favoriteKey('KNOWLEDGE_LIBRARY', library.id)),
+    // Approximated by group ownership, like the catalog mock: the fixtures name no memberships.
+    fromMyGroups: library.ownerType === 'GROUP',
   }))
 }
 

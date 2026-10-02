@@ -477,7 +477,7 @@ describe('CatalogPage (ADR-0039)', () => {
       renderCatalog()
       await screen.findByRole('link', { name: /Rechtsquellen Soziales/ })
 
-      await user.click(screen.getByRole('checkbox', { name: 'Aus meinen Gruppen' }))
+      await user.click(screen.getByRole('button', { name: 'Aus meinen Gruppen' }))
 
       await waitFor(() =>
         expect(requestedUrls.at(-1)?.searchParams.get('fromMyGroups')).toBe('true'),
@@ -515,7 +515,10 @@ describe('CatalogPage (ADR-0039)', () => {
       expect(params.get('visibility')).toBe('PUBLIC')
       expect(params.get('fromMyGroups')).toBe('true')
       expect(params.get('sort')).toBe('updatedAt')
-      expect(screen.getByRole('checkbox', { name: 'Aus meinen Gruppen' })).toBeChecked()
+      expect(screen.getByRole('button', { name: 'Aus meinen Gruppen' })).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      )
     })
   })
 })

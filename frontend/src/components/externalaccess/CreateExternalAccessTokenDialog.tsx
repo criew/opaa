@@ -25,6 +25,10 @@ import {
 import { radius } from '../../theme/tokens'
 import ChoiceTileGroup, { type ChoiceTile } from '../choice/ChoiceTileGroup'
 import { assetTypeDefinition } from '../assets/assetTypeRegistry'
+import AssetFilterChips, {
+  type AssetFilterKey,
+  type AssetFilters,
+} from '../assets/AssetFilterChips'
 import {
   DISCLOSURE_HINT,
   NO_LIBRARIES_HINT,
@@ -59,23 +63,41 @@ function matchesQuery(library: EligibleExternalAccessLibraryResponse, query: str
     .every((term) => haystack.includes(term))
 }
 
-function searchResultMessage(count: number): string {
-  if (count === 0) return 'Keine Bibliothek passt zur Suche.'
-  return count === 1 ? '1 Bibliothek passt zur Suche.' : `${count} Bibliotheken passen zur Suche.`
+const NO_FILTERS: AssetFilters = { favorites: false, fromMyGroups: false, selectedOnly: false }
+
+function anyFilter(filters: AssetFilters): boolean {
+  return filters.favorites || filters.fromMyGroups || Boolean(filters.selectedOnly)
+}
+
+function resultMessage(count: number, searching: boolean, filtering: boolean): string {
+  const by =
+    searching && filtering
+      ? 'zur Suche und zu den Filtern'
+      : searching
+        ? 'zur Suche'
+        : 'zu den Filtern'
+  if (count === 0) return `Keine Bibliothek passt ${by}.`
+  return count === 1 ? `1 Bibliothek passt ${by}.` : `${count} Bibliotheken passen ${by}.`
 }
 
 /**
- * One tile per selectable library matching the search (guidelines 5.11). The search only hides
- * tiles, it never drops a choice. The sentence under the name carries the end of the release: if it
- * ends before the token, the token loses the library first.
+ * One tile per selectable library matching the search and the filters (guidelines 5.11). Search
+ * and filters only hide tiles, they never drop a choice. "Nur ausgewählte" filters by `shown`, the
+ * choice as it stood when the filter was switched on: a tile chosen away stays, so the focus does
+ * not lose its tile. The sentence under the name carries the end of the release.
  */
 function libraryTiles(
   libraries: EligibleExternalAccessLibraryResponse[],
   query: string,
+  filters: AssetFilters,
+  shown: string[],
 ): ChoiceTile<string>[] {
   const Icon = assetTypeDefinition('KNOWLEDGE_LIBRARY')?.Icon
   return libraries
     .filter((library) => matchesQuery(library, query))
+    .filter((library) => !filters.favorites || library.favorite)
+    .filter((library) => !filters.fromMyGroups || library.fromMyGroups)
+    .filter((library) => !filters.selectedOnly || shown.includes(library.id))
     .map((library) => ({
       value: library.id,
       label: library.name,
@@ -123,6 +145,8 @@ export default function CreateExternalAccessTokenDialog({
   const [name, setName] = useState('')
   const [selected, setSelected] = useState<string[]>([])
   const [query, setQuery] = useState('')
+  const [filters, setFilters] = useState<AssetFilters>(NO_FILTERS)
+  const [selectedSnapshot, setSelectedSnapshot] = useState<string[]>([])
   // Der Entwurf lebt nur, solange der Dialog montiert ist - der Aufrufer montiert ihn je Vorgang
   // neu. Ein Zurücksetzen im Effekt wäre derselbe Zustand, nur einen Renderdurchlauf später.
   const [expiresOn, setExpiresOn] = useState(() =>
@@ -156,7 +180,17 @@ export default function CreateExternalAccessTokenDialog({
     }
   }, [])
 
-  const tiles = useMemo(() => libraryTiles(libraries ?? [], query), [libraries, query])
+  const tiles = useMemo(
+    () => libraryTiles(libraries ?? [], query, filters, selectedSnapshot),
+    [libraries, query, filters, selectedSnapshot],
+  )
+  const searching = query.trim() !== ''
+  const filtering = anyFilter(filters)
+
+  function toggleFilter(key: AssetFilterKey) {
+    if (key === 'selectedOnly' && !filters.selectedOnly) setSelectedSnapshot(selected)
+    setFilters((current) => ({ ...current, [key]: !current[key] }))
+  }
 
   function validate(): FieldErrors {
     const errors: FieldErrors = {}
@@ -261,8 +295,11 @@ export default function CreateExternalAccessTokenDialog({
                     {selected.length} ausgewählt
                   </Typography>
                 </Stack>
-                {/* Searching does not move the focus, so the result is announced in a live
-                    region. Without a match the same message is visible as well. */}
+                <Box sx={{ mb: 1.5 }}>
+                  <AssetFilterChips value={filters} onToggle={toggleFilter} />
+                </Box>
+                {/* Searching and filtering do not move the focus, so the result is announced in a
+                    live region. Without a match the same message is visible as well. */}
                 <Box
                   role="status"
                   aria-live="polite"
@@ -270,7 +307,7 @@ export default function CreateExternalAccessTokenDialog({
                     tiles.length === 0 ? { fontSize: 13, color: 'text.secondary' } : visuallyHidden
                   }
                 >
-                  {query.trim() ? searchResultMessage(tiles.length) : ''}
+                  {searching || filtering ? resultMessage(tiles.length, searching, filtering) : ''}
                 </Box>
                 {tiles.length > 0 && (
                   <ChoiceTileGroup<string>

@@ -155,9 +155,10 @@ public final class ModularArchitecture {
   /**
    * The module edges the code may use. A new edge is a deliberate decision, justified in its pull
    * request. No module reaches {@link Module#CONNECTORS}: they are found by component scanning.
-   * EXTERNAL reaches RIGHTS only through members a library inherits from {@code
-   * io.opaa.asset.Asset}: a method reference such as {@code KnowledgeLibrary::getId} names the
-   * declaring class.
+   * EXTERNAL reaches RIGHTS for members a library inherits from {@code io.opaa.asset.Asset} (a
+   * method reference such as {@code KnowledgeLibrary::getId} names the declaring class) and for the
+   * catalog's personal marks the token selection filters by ({@code
+   * AssetCatalogService#marksAmong}).
    */
   public static final Map<Module, Set<Module>> ALLOWED_MODULE_EDGES =
       Map.ofEntries(

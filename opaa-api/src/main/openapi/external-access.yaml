@@ -482,10 +482,11 @@ components:
 
     EligibleExternalAccessLibraryResponse:
       type: object
-      required: [id, name, releaseExpiresAt]
+      required: [id, name, releaseExpiresAt, favorite, fromMyGroups]
       description: >
         One library a new access token may name. Carries the end of its release, so a person can
-        see that a token outliving it would lose the library before its own expiry.
+        see that a token outliving it would lose the library before its own expiry, and the two
+        marks the selection filters by - with the same meaning as in the catalog.
       properties:
         id:
           type: string
@@ -497,6 +498,18 @@ components:
         releaseExpiresAt:
           type: string
           format: date-time
+        favorite:
+          type: boolean
+          description: >
+            Whether the caller marked this library as a favorite. Only ever the caller's own mark -
+            no entry says anything about anybody else's.
+        fromMyGroups:
+          type: boolean
+          description: >
+            "Aus meinen Gruppen", as the catalog's filter of that name: the library carries an
+            unexpired grant, of any role, to a group the caller is currently a direct member of, or
+            is owned by such a group. A grant to all accounts or to the caller in person does not
+            count.
 
     EligibleExternalAccessLibraryListResponse:
       type: object

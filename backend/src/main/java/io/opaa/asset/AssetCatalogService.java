@@ -9,6 +9,7 @@ import io.opaa.permission.AssetAccessService;
 import io.opaa.permission.AssetType;
 import io.opaa.permission.ReadableAssets;
 import io.opaa.permission.SuccessionFinding;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -162,6 +163,25 @@ public class AssetCatalogService {
     return new AssetCatalogPage(entries, page, size, rows.getTotalElements(), rows.getTotalPages());
   }
 
+  /**
+   * The catalog's two personal marks among {@code assetIds} of one type: which {@code userId}
+   * marked as favorites, and which come from one of their groups by the rule of the filter "Aus
+   * meinen Gruppen". An id the person cannot read is never marked as coming from their groups.
+   */
+  public AssetCatalogMarks marksAmong(
+      UUID userId, UUID organizationId, AssetType assetType, Collection<UUID> assetIds) {
+    if (assetIds.isEmpty()) {
+      return new AssetCatalogMarks(Set.of(), Set.of());
+    }
+    ReadableAssets reach = accessService.readableAssets(assetType, userId, organizationId);
+    Set<UUID> fromMyGroups =
+        fromMyGroups(
+            organizationId, List.of(assetType), reach.byGroupGrant(), reach.callerGroupIds());
+    fromMyGroups.retainAll(reach.all());
+    fromMyGroups.retainAll(assetIds);
+    return new AssetCatalogMarks(favorites.findMarkedAmong(userId, assetIds), fromMyGroups);
+  }
+
   /** The ids the page query may return, and which of the readable ones are public. */
   private record Selection(Set<UUID> ids, Set<UUID> publicIds) {}
 
@@ -189,15 +209,24 @@ public class AssetCatalogService {
     } else if (query.visibility() == CatalogVisibility.RESTRICTED) {
       selected.removeAll(publicIds);
     }
-    if (query.fromMyGroups()) {
-      Set<UUID> mine = new HashSet<>(grantedToMyGroups);
-      if (!myGroupIds.isEmpty() && !selected.isEmpty()) {
-        mine.addAll(
-            assetRepository.findIdsOwnedByGroups(caller.organizationId(), types, myGroupIds));
-      }
-      selected.retainAll(mine);
+    if (query.fromMyGroups() && !selected.isEmpty()) {
+      selected.retainAll(
+          fromMyGroups(caller.organizationId(), types, grantedToMyGroups, myGroupIds));
     }
     return new Selection(selected, publicIds);
+  }
+
+  /** "Aus meinen Gruppen": granted to one of the caller's groups or owned by one. */
+  private Set<UUID> fromMyGroups(
+      UUID organizationId,
+      List<AssetType> types,
+      Set<UUID> grantedToMyGroups,
+      Set<UUID> myGroupIds) {
+    Set<UUID> mine = new HashSet<>(grantedToMyGroups);
+    if (!myGroupIds.isEmpty()) {
+      mine.addAll(assetRepository.findIdsOwnedByGroups(organizationId, types, myGroupIds));
+    }
+    return mine;
   }
 
   private static CatalogEntryStatus statusOf(

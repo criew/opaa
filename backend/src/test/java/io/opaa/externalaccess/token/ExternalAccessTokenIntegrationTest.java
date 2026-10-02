@@ -13,6 +13,7 @@ import com.jayway.jsonpath.JsonPath;
 import io.opaa.api.types.AssetOwnerType;
 import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.AuditEventType;
+import io.opaa.api.types.GroupKind;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.DevAuthFilter;
@@ -21,6 +22,9 @@ import io.opaa.auth.UserRepository;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.externalaccess.ExternalAccessSettings;
 import io.opaa.externalaccess.ExternalAccessSettingsService;
+import io.opaa.group.Group;
+import io.opaa.group.GroupMembership;
+import io.opaa.group.GroupRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.LibraryAccessService;
@@ -31,6 +35,7 @@ import io.opaa.library.LibraryExternalAccessService;
 import io.opaa.library.LibraryExternalAccessTokenCounter;
 import io.opaa.permission.AssetGrant;
 import io.opaa.permission.AssetGrantRepository;
+import io.opaa.permission.GroupMembershipResolver;
 import io.opaa.security.LocalAuthKeyService;
 import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.OwnLibraryFixtures;
@@ -82,11 +87,14 @@ class ExternalAccessTokenIntegrationTest {
   @Autowired private ExternalAccessSettingsService settings;
   @Autowired private LibraryExternalAccessService libraryRelease;
   @Autowired private Clock clock;
+  @Autowired private GroupRepository groupRepository;
+  @Autowired private GroupMembershipResolver membershipResolver;
 
   private UUID libraryId;
   private UUID foreignLibraryId;
   private User owner;
   private User administrator;
+  private UUID groupId;
 
   @BeforeEach
   void setUp() throws Exception {
@@ -140,6 +148,15 @@ class ExternalAccessTokenIntegrationTest {
     // audit_log is append-only for the application account and is therefore never cleaned here;
     // every assertion below is scoped to this class's own object ids.
     removeOwnTokens();
+    if (groupId != null) {
+      jdbcTemplate.update("DELETE FROM asset_grants WHERE subject_group_id = ?", groupId);
+      jdbcTemplate.update("DELETE FROM asset_grant_history WHERE subject_group_id = ?", groupId);
+      jdbcTemplate.update("DELETE FROM group_membership_history WHERE group_id = ?", groupId);
+      jdbcTemplate.update("DELETE FROM group_memberships WHERE group_id = ?", groupId);
+      jdbcTemplate.update("DELETE FROM groups WHERE id = ?", groupId);
+      membershipResolver.invalidateUser(owner.getId());
+      groupId = null;
+    }
     ownLibraryFixtures.removeLibraries(libraryId, foreignLibraryId);
   }
 
@@ -347,6 +364,62 @@ class ExternalAccessTokenIntegrationTest {
     assertThat(JsonPath.<List<String>>read(offered, "$.libraries[*].releaseExpiresAt"))
         .isNotEmpty()
         .allSatisfy(value -> assertThat(value).isNotBlank());
+  }
+
+  @Test
+  void theOfferMarksTheCallersOwnFavoritesAndWhatComesFromTheirGroups() throws Exception {
+    // The foreign library reaches the person through a grant to a group they are a member of.
+    Group group =
+        new Group(
+            owner.getOrganizationId(),
+            GroupKind.AD_HOC,
+            "Referat Fremdzugang",
+            "Ad-hoc-Gruppe",
+            null,
+            null,
+            null,
+            null);
+    group.release(true);
+    group.addMembership(new GroupMembership(owner.getId(), owner.getOrganizationId()));
+    groupId = groupRepository.save(group).getId();
+    // Written past the group service, which evicts the cached memberships after its commit.
+    membershipResolver.invalidateUser(owner.getId());
+    grants.save(
+        AssetGrant.forGroup(
+            KnowledgeLibrary.ASSET_TYPE,
+            foreignLibraryId,
+            administrator.getOrganizationId(),
+            groupId,
+            AssetRole.VIEWER,
+            null,
+            administrator.getId(),
+            1));
+    libraryAccess.invalidateLibrary(foreignLibraryId);
+
+    // The person marks their own library; somebody else's mark on the foreign one is not theirs.
+    mockMvc
+        .perform(
+            put("/api/v1/assets/KNOWLEDGE_LIBRARY/{id}/favorite", libraryId)
+                .with(devUser("dev-user")))
+        .andExpect(status().isNoContent());
+    mockMvc
+        .perform(
+            put("/api/v1/assets/KNOWLEDGE_LIBRARY/{id}/favorite", foreignLibraryId)
+                .with(devUser("dev-admin")))
+        .andExpect(status().isNoContent());
+
+    String offered = eligibleLibraries();
+    String own = "$.libraries[?(@.id == '" + libraryId + "')]";
+    String foreign = "$.libraries[?(@.id == '" + foreignLibraryId + "')]";
+    assertThat(JsonPath.<List<Boolean>>read(offered, own + ".favorite")).containsExactly(true);
+    assertThat(JsonPath.<List<Boolean>>read(offered, own + ".fromMyGroups"))
+        .as("owned in person - no group involved")
+        .containsExactly(false);
+    assertThat(JsonPath.<List<Boolean>>read(offered, foreign + ".favorite"))
+        .as("another person's mark")
+        .containsExactly(false);
+    assertThat(JsonPath.<List<Boolean>>read(offered, foreign + ".fromMyGroups"))
+        .containsExactly(true);
   }
 
   private String eligibleLibraries() throws Exception {

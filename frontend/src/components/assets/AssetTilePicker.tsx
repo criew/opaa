@@ -11,6 +11,7 @@ import { getCatalog } from '../../services/catalogApi'
 import ChoiceTileGroup, { type ChoiceTile } from '../choice/ChoiceTileGroup'
 import { ASSET_TYPES, assetTypeDefinition } from './assetTypeRegistry'
 import { assetPickKey, type AssetPick } from './assetPick'
+import AssetFilterChips, { type AssetFilters } from './AssetFilterChips'
 
 /** The loaded tiles for one filter; a different key means the shown result is outdated. */
 interface Loaded {
@@ -24,14 +25,6 @@ interface Loaded {
 const PAGE_SIZE = 50
 const SEARCH_DELAY_MS = 300
 const ALL_TYPES = 'all'
-
-/** Which part of the readable assets is on offer. */
-type Scope = 'all' | 'favorites' | 'groups'
-const SCOPES: Array<{ value: Scope; label: string }> = [
-  { value: 'all', label: 'Alle' },
-  { value: 'favorites', label: 'Nur Favoriten' },
-  { value: 'groups', label: 'Aus meinen Gruppen' },
-]
 
 interface AssetTilePickerProps {
   /** The types on offer; more than one shows a type filter. */
@@ -62,7 +55,7 @@ export default function AssetTilePicker({
     return typesKey ? ASSET_TYPES.filter((d) => keys.includes(d.type)) : ASSET_TYPES
   }, [typesKey])
   const [typeFilter, setTypeFilter] = useState<string>(ALL_TYPES)
-  const [scope, setScope] = useState<Scope>('all')
+  const [filters, setFilters] = useState<AssetFilters>({ favorites: false, fromMyGroups: false })
   const [query, setQuery] = useState('')
   const [appliedQuery, setAppliedQuery] = useState('')
   const [loaded, setLoaded] = useState<Loaded | null>(null)
@@ -79,15 +72,15 @@ export default function AssetTilePicker({
   const filterType: AssetType | undefined =
     offered.length === 1 ? offered[0].type : offered.find((d) => d.type === typeFilter)?.type
 
-  const filterKey = `${filterType ?? ''}|${scope}|${appliedQuery.trim()}|${typesKey}`
+  const filterKey = `${filterType ?? ''}|${filters.favorites}|${filters.fromMyGroups}|${appliedQuery.trim()}|${typesKey}`
 
   async function fetchPage(page: number): Promise<Omit<Loaded, 'key'>> {
     try {
       const result = await getCatalog({
         type: filterType,
         q: appliedQuery,
-        favorites: scope === 'favorites',
-        fromMyGroups: scope === 'groups',
+        favorites: filters.favorites,
+        fromMyGroups: filters.fromMyGroups,
         page,
         size: PAGE_SIZE,
       })
@@ -200,21 +193,10 @@ export default function AssetTilePicker({
             })}
           </ToggleButtonGroup>
         )}
-        <ToggleButtonGroup
-          size="small"
-          exclusive
-          value={scope}
-          onChange={(_event, next: Scope | null) => {
-            if (next) setScope(next)
-          }}
-          aria-label="Herkunft"
-        >
-          {SCOPES.map((option) => (
-            <ToggleButton key={option.value} value={option.value} sx={{ px: 1.5 }}>
-              {option.label}
-            </ToggleButton>
-          ))}
-        </ToggleButtonGroup>
+        <AssetFilterChips
+          value={filters}
+          onToggle={(key) => setFilters((current) => ({ ...current, [key]: !current[key] }))}
+        />
         <TextField
           size="small"
           type="search"
@@ -232,7 +214,7 @@ export default function AssetTilePicker({
         <Typography sx={{ color: 'text.secondary', fontSize: 13.5 }}>
           {isLoading
             ? 'Wird geladen …'
-            : appliedQuery.trim() || filterType || scope !== 'all'
+            : appliedQuery.trim() || filterType || filters.favorites || filters.fromMyGroups
               ? 'Keine Treffer.'
               : 'Es gibt derzeit nichts, was Sie lesen dürfen und zuordnen könnten.'}
         </Typography>

@@ -393,8 +393,8 @@ mit „Weiter" überspringen.
 
 Im Schritt **Inhalte** stehen alle Bestände als Kacheln, die die Person lesen darf — dieselbe Menge
 wie im Katalog. Mehrere Kacheln lassen sich zugleich wählen; ein Filter grenzt auf eine Art ein
-(„Alle", „Wissen", „Prompts"), ein zweiter auf „Alle", „Nur Favoriten" oder „Aus meinen Gruppen",
-ein Suchfeld auf Name und Beschreibung. Eine Wahl bleibt bestehen,
+(„Alle", „Wissen", „Prompts"); die Umschalter „Favoriten" und „Aus meinen Gruppen" grenzen wie im
+Katalog ein und wirken gedrückt zusammen; ein Suchfeld grenzt auf Name und Beschreibung ein. Eine Wahl bleibt bestehen,
 wenn Filter oder Suche ihre Kachel ausblenden; die Zeile unter den Kacheln nennt alles Gewählte.
 Jede Kachel ist ein Kontrollkästchen mit eigenem Tabstopp: Leertaste und Enter wählen oder
 heben die Wahl auf.

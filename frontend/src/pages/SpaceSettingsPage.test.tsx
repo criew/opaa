@@ -865,8 +865,8 @@ describe('SpaceSettingsPage', () => {
 
     expect(await screen.findByRole('checkbox', { name: /^Projektakte Phoenix/ })).toBeVisible()
     await user.click(
-      within(screen.getByRole('group', { name: 'Herkunft' })).getByRole('button', {
-        name: 'Nur Favoriten',
+      within(screen.getByRole('group', { name: 'Filter' })).getByRole('button', {
+        name: 'Favoriten',
       }),
     )
 
@@ -881,7 +881,7 @@ describe('SpaceSettingsPage', () => {
 
     expect(await screen.findByRole('checkbox', { name: /^Projektakte Phoenix/ })).toBeVisible()
     await user.click(
-      within(screen.getByRole('group', { name: 'Herkunft' })).getByRole('button', {
+      within(screen.getByRole('group', { name: 'Filter' })).getByRole('button', {
         name: 'Aus meinen Gruppen',
       }),
     )
