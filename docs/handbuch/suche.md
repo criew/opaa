@@ -124,6 +124,12 @@ wieder auf die ersten 15 zurück. Ein Filterfeld gibt es nicht; der Suchknopf ne
 Menü mit Umbenennen, Anheften, Archivieren und Löschen; der Titel des offenen Chats lässt sich
 zusätzlich direkt in der Kopfzeile bearbeiten (Enter speichert, Escape verwirft).
 
+Die **Seitenleiste** lässt sich auf dem Desktop am rechten Rand breiter oder schmaler ziehen; mit
+dem Griff im Fokus geht das auch mit den Pfeiltasten, Pos1 und Ende. Ein Doppelklick auf den Griff
+stellt die Standardbreite wieder her. Die gewählte Breite merkt sich der Browser, sie gilt also je
+Gerät und nicht je Konto. Auf schmalen Bildschirmen öffnet sich die Seitenleiste als
+Überlagerung in fester Breite.
+
 Das **Eingabefeld** sendet mit dem Senden-Knopf oder mit Enter. Darunter steht „@ für Quellen, /
 für Aktionen". An zwei Stellen tritt stattdessen ein Hinweis an diese Stelle: solange der
 Suchbereich des Space noch ermittelt wird, und wenn dem Space nur Bibliotheken zugeordnet sind, die
