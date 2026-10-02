@@ -250,9 +250,9 @@ class SpaceServiceIntegrationTest {
   void listCountsAssignedLibrariesAndOnlyTheCallersOwnChats() {
     // #682: the overview card's figures line. Chats count only the caller's own (#525: chats are
     // private to their author, so another member's chats must neither show up in the figure nor
-    // leak through it). Libraries follow listForSpace's rule: the ADMIN sees every association,
-    // the plain MEMBER only the libraries they may read - the figure must not give away how many
-    // are withheld (spaces-and-assets.md: "darf keine Anzahlen nennen").
+    // leak through it). Libraries follow listForSpace's rule: every role, the ADMIN included,
+    // counts only the libraries it may read - the figure must not give away how many are withheld
+    // (ADR-0039, Entscheidung 2).
     UUID userA = createUser(organizationA);
     UUID userB = createUser(organizationA);
     Space eng =
@@ -290,7 +290,9 @@ class SpaceServiceIntegrationTest {
             .filter(s -> s.space().getName().equals("Engineering"))
             .findFirst()
             .orElseThrow();
-    assertThat(engineering.libraryCount()).isEqualTo(2);
+    assertThat(engineering.libraryCount())
+        .as("ADMIN userA may read only the library they own")
+        .isEqualTo(1);
     assertThat(engineering.chatCount()).isEqualTo(3);
     SpaceOverview leer =
         spaces.stream().filter(s -> s.space().getName().equals("Leer")).findFirst().orElseThrow();

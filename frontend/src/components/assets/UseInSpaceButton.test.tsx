@@ -122,5 +122,7 @@ describe('UseInSpaceButton', () => {
     expect(within(list).getByRole('button', { name: 'Als Administrator' })).toBeInTheDocument()
     expect(within(list).queryByRole('button', { name: 'Als Mitglied' })).not.toBeInTheDocument()
     expect(within(list).queryByRole('button', { name: 'Archiviert' })).not.toBeInTheDocument()
+    // A list holds list items only (axe "list"): every entry is an <li> around its button.
+    expect(Array.from(list.children).map((child) => child.tagName)).toEqual(['LI', 'LI', 'LI'])
   })
 })

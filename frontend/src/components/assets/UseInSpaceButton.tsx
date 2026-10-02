@@ -7,6 +7,7 @@ import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
 import List from '@mui/material/List'
+import ListItem from '@mui/material/ListItem'
 import ListItemButton from '@mui/material/ListItemButton'
 import ListItemText from '@mui/material/ListItemText'
 import Typography from '@mui/material/Typography'
@@ -129,22 +130,25 @@ export default function UseInSpaceButton({
                 {spaces.map((space) => {
                   const already = associated.has(space.id)
                   return (
-                    <ListItemButton
-                      key={space.id}
-                      disabled={busy || already}
-                      onClick={() => void associate(space)}
-                    >
-                      <ListItemText
-                        primary={space.name}
-                        secondary={already ? 'Bereits zugeordnet' : undefined}
-                      />
-                    </ListItemButton>
+                    <ListItem key={space.id} disablePadding>
+                      <ListItemButton
+                        disabled={busy || already}
+                        onClick={() => void associate(space)}
+                      >
+                        <ListItemText
+                          primary={space.name}
+                          secondary={already ? 'Bereits zugeordnet' : undefined}
+                        />
+                      </ListItemButton>
+                    </ListItem>
                   )
                 })}
-                <ListItemButton disabled={busy} onClick={startNewSpace}>
-                  <AddIcon aria-hidden sx={{ mr: 1.5, color: 'text.secondary' }} />
-                  <ListItemText primary="Neuen Space damit anlegen" />
-                </ListItemButton>
+                <ListItem disablePadding>
+                  <ListItemButton disabled={busy} onClick={startNewSpace}>
+                    <AddIcon aria-hidden sx={{ mr: 1.5, color: 'text.secondary' }} />
+                    <ListItemText primary="Neuen Space damit anlegen" />
+                  </ListItemButton>
+                </ListItem>
               </List>
             </>
           )}
