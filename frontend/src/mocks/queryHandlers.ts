@@ -1,6 +1,7 @@
 import { http, HttpResponse } from 'msw'
 import { getRandomMockResponse, mockErrorResponse } from './queryFixtures'
 import { mockChatDetails, mockChatArchive } from './chatFixtures'
+import { mockSpaceAssetAssociations } from './assetFixtures'
 import type { QueryRequest } from '../types/api'
 
 /**
@@ -37,6 +38,25 @@ export const queryHandlers = [
     // Mirrors ChatService#appendTurn: the person's own message brings the chat back from their
     // chat archive.
     delete mockChatArchive[chatId]
+    // Mirrors QueryService: a chat whose space has no knowledge associated searches nothing and
+    // says so, whatever its chip bar shows.
+    const spaceId = mockChatDetails[chatId]?.spaceId
+    if (spaceId && !mockSpaceAssetAssociations[spaceId]?.hasKnowledge) {
+      return HttpResponse.json({
+        answer: 'Dazu liegt mir in diesem Space kein Wissen vor.',
+        sources: [],
+        metadata: {
+          model: 'gpt-4o',
+          tokenCount: 42,
+          durationMs: 120,
+          answeredWithoutKnowledge: false,
+          noKnowledgeAssignedToSpace: true,
+          noKnowledgeAvailableInSpace: false,
+        },
+        chatId,
+        chatTitle,
+      })
+    }
     // Mirrors QueryService: useKnowledge=false with no (or only unreadable) libraryIds
     // performs no retrieval - without this branch, mock/dev mode could never show the "answered
     // without knowledge" hint that  added to the chat UI.

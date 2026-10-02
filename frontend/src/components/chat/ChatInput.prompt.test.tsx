@@ -24,7 +24,8 @@ describe('ChatInput: inserting a prompt', () => {
     useSpaceStore.setState({
       assetAssociations: [],
       hasAssetAssociations: false,
-      assetAssociationsNarrowSearch: false,
+      hasKnowledge: false,
+      hasReadableKnowledge: false,
       isLoadingAssetAssociations: false,
       assetAssociationsSpaceId: 'space-engineering',
     })
@@ -126,7 +127,7 @@ describe('ChatInput: inserting a prompt', () => {
     expect(onSend.mock.calls[0]).toEqual([text])
   })
 
-  it('groups by prompt library and puts the space-associated one first', async () => {
+  it('groups the prompt libraries associated with the space by name', async () => {
     const user = userEvent.setup()
     const { input } = renderInput()
 
@@ -135,11 +136,24 @@ describe('ChatInput: inserting a prompt', () => {
     await screen.findByRole('option', { name: /\/anhoerung/ })
     const groups = within(screen.getByRole('listbox', { name: 'Prompts' })).getAllByRole('group')
     expect(groups.map((group) => group.getAttribute('aria-labelledby'))).toHaveLength(2)
-    expect(groups[0]).toHaveAccessibleName(
-      'Formulierungshilfen Referat 50 · diesem Space zugeordnet',
-    )
+    expect(groups[0]).toHaveAccessibleName('Formulierungshilfen Referat 50')
     expect(groups[1]).toHaveAccessibleName('Hausweite Vorlagen')
     expect(within(groups[1]).getByRole('option', { name: /\/ablehnung/ })).toBeInTheDocument()
+  })
+
+  // The hard boundary: a space without an associated prompt library offers no prompt, even though
+  // the person may read prompt libraries elsewhere.
+  it('says that the space has no prompts when none is associated', async () => {
+    useChatStore.setState({ spaceId: 'space-phoenix' })
+    const user = userEvent.setup()
+    const { input } = renderInput()
+
+    await user.type(input, '/')
+
+    expect(
+      await screen.findByText('Diesem Space sind keine Prompts zugeordnet'),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: /\/anhoerung/ })).not.toBeInTheDocument()
   })
 
   it('navigates with the arrow keys and closes on Escape until the fragment is left', async () => {

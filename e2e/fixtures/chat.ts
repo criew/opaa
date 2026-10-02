@@ -42,12 +42,12 @@ export async function startAnotherChatViaSidebar(page: Page): Promise<void> {
 
 /**
  * Empties the chat's search-scope chip bar, which is what "ohne Wissensbasis" means since #560:
- * @Alles-Wissen is a chip like any other and is removed the same way a reference chip is (the
+ * @Space-Wissen is a chip like any other and is removed the same way a reference chip is (the
  * accessible name sits on the chip root, not on its aria-hidden delete icon). Call before the
  * first question of a chat - the scope is the chat's own sticky setting from then on.
  */
 export async function clearSearchScope(page: Page): Promise<void> {
-  await page.getByRole('button', { name: 'Referenz Alles-Wissen entfernen' }).press('Backspace')
+  await page.getByRole('button', { name: 'Referenz Space-Wissen entfernen' }).press('Backspace')
   await expect(page.getByText('Antwortet ohne Dokumente.')).toBeVisible()
 }
 
@@ -136,14 +136,13 @@ export async function expectCitedSource(page: Page, fileName: string): Promise<v
 /**
  * Waits for the answer to cite *some* source, without pinning down which file. For scenarios whose
  * point is the chat mechanism itself (an answer with sources exists, and survives a reload) rather
- * than which library the default, unscoped @Alles-Wissen search actually reached (#560): that
- * search runs topK over the *entire* readable corpus, which by the time a given scenario runs also
- * holds whatever every earlier-sorting spec file left behind (same fixed ai-stub embedding for
- * every chunk, see ai-stub/server.mjs) - a specific document can legitimately fall out of the top
- * results as the corpus grows, without anything actually being broken. Scenarios that need to
- * prove *which* library a search reached still use expectCitedSource/expectCitedExclusively with
- * an explicit @-reference, which replaces @Alles-Wissen and scopes the search deterministically
- * regardless of corpus size.
+ * than which library the default @Space-Wissen search actually reached (#560): that search runs
+ * topK over everything assigned to the space, which by the time a given scenario runs also holds
+ * whatever earlier scenarios assigned (same fixed ai-stub embedding for every chunk, see
+ * ai-stub/server.mjs) - a specific document can legitimately fall out of the top results as that
+ * set grows, without anything actually being broken. Scenarios that need to prove *which* library
+ * a search reached still use expectCitedSource/expectCitedExclusively with an explicit
+ * @-reference, which replaces @Space-Wissen and scopes the search deterministically.
  */
 export async function expectAnyCitedSource(page: Page): Promise<void> {
   await withLatestEvidence(page, async (drawer) => {

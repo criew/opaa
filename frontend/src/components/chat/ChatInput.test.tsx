@@ -8,6 +8,8 @@ import { useChatStore } from '../../stores/chatStore'
 import { useLibraryStore } from '../../stores/libraryStore'
 import { useSpaceStore } from '../../stores/spaceStore'
 import { server } from '../../mocks/server'
+import { MemoryRouter } from 'react-router'
+import type { ReactElement } from 'react'
 import type { LibraryListResponse, SpaceAssetAssociationResponse } from '../../types/api'
 
 /**
@@ -26,11 +28,17 @@ function mockAssociations(
   spaceId: string,
   response: {
     hasAssociations: boolean
-    narrowsSearch: boolean
+    hasKnowledge: boolean
+    hasReadableKnowledge: boolean
     items: SpaceAssetAssociationResponse[]
   },
 ) {
   server.use(http.get(`/api/v1/spaces/${spaceId}/assets`, () => HttpResponse.json(response)))
+}
+
+/** The knowledge notice carries a router link. */
+function renderWithRouter(ui: ReactElement) {
+  return render(<MemoryRouter>{ui}</MemoryRouter>)
 }
 
 function deferredOutcome() {
@@ -53,6 +61,17 @@ const rechtsquellen: LibraryListResponse = {
   documentCount: 431,
   createdAt: '2026-03-01T10:00:00Z',
   updatedAt: '2026-03-01T10:00:00Z',
+}
+
+function associated(library: LibraryListResponse): SpaceAssetAssociationResponse {
+  return {
+    assetType: 'KNOWLEDGE_LIBRARY',
+    assetId: library.id,
+    name: library.name,
+    readableByCaller: true,
+    createdByUserId: 'user-1',
+    createdAt: '2026-03-01T10:00:00Z',
+  }
 }
 
 const dienstanweisungen: LibraryListResponse = {
@@ -84,19 +103,22 @@ describe('ChatInput', () => {
       isLoading: false,
       error: null,
     })
+    // Without a chat space the associations stand for "the current space": the chip bar offers
+    // exactly these two libraries.
     useSpaceStore.setState({
-      assetAssociations: [],
-      hasAssetAssociations: false,
-      assetAssociationsNarrowSearch: false,
+      spaces: [],
+      assetAssociations: [associated(rechtsquellen), associated(dienstanweisungen)],
+      hasAssetAssociations: true,
+      hasKnowledge: true,
+      hasReadableKnowledge: true,
       isLoadingAssetAssociations: false,
       assetAssociationsSpaceId: null,
     })
   })
 
-  // #1920: die Zeile unter der Eingabe nennt keine Bestandszahl mehr. Was sie weiter tragen muss,
-  // sind die beiden Zustände, in denen die Zusage der Chip-Leiste (@Alles-Wissen) sonst falsch wäre
-  // (#782/#783) - ein kuratierter Space ohne lesbar zugeordnetes Wissen, und noch unbekannte
-  // Zuordnungen des aktuellen Space.
+  // #1920: die Zeile unter der Eingabe nennt keine Bestandszahl mehr. Ein leerer Suchbereich steht
+  // als Hinweis über der Chip-Leiste - kein Wissen zugeordnet, oder nichts davon lesbar -, noch
+  // unbekannte Zuordnungen des aktuellen Space in der Zeile.
   describe('the line under the input (#1920)', () => {
     it('shows the neutral hint instead of a library count', async () => {
       render(<ChatInput onSend={vi.fn()} />)
@@ -117,55 +139,103 @@ describe('ChatInput', () => {
       expect(screen.queryByText(/gewählte Bestände/)).not.toBeInTheDocument()
     })
 
-    // #783 review nit 3: "kuratiert, aber nichts davon lesbar" liest sich wie bei MessageBubble
-    // und SpacePage - und verdrängt den Hinweis, weil @Alles-Wissen hier nichts durchsucht.
-    it('shows the established "kein Wissen verfügbar" notice when nothing associated is readable', async () => {
+    // Nichts zugeordnet: der Hinweis mit Direktlink für Kuratoren und Administratoren, sonst der
+    // Hinweis, wer zuordnen kann - nie ein stiller Leerlauf.
+    it('shows the "kein Wissen zugeordnet" notice with a direct link for a curator', async () => {
       mockAssociations('space-gewerbeamt', {
-        hasAssociations: true,
-        narrowsSearch: true,
+        hasAssociations: false,
+        hasKnowledge: false,
+        hasReadableKnowledge: false,
         items: [],
       })
-      useChatStore.setState({ scope: 'all', spaceId: 'space-gewerbeamt' })
-
-      render(<ChatInput onSend={vi.fn()} />)
-
-      expect(
-        await screen.findByText('In diesem Space ist für Sie derzeit kein Wissen verfügbar.'),
-      ).toBeInTheDocument()
-      expect(screen.queryByText('@ für Quellen, / für Aktionen')).not.toBeInTheDocument()
-    })
-
-    it('shows the neutral hint again once associated knowledge is readable', async () => {
-      mockAssociations('space-gewerbeamt', {
-        hasAssociations: true,
-        narrowsSearch: true,
-        items: [
+      useSpaceStore.setState({
+        spaces: [
           {
-            assetType: 'KNOWLEDGE_LIBRARY',
-            assetId: rechtsquellen.id,
-            name: rechtsquellen.name,
-            readableByCaller: true,
-            createdByUserId: 'user-1',
+            id: 'space-gewerbeamt',
+            name: 'Gewerbeamt',
+            isDefault: false,
+            archived: false,
+            memberCount: 1,
+            memberships: { userCount: 1, groupCount: 0 },
+            userRole: 'CURATOR',
             createdAt: '2026-03-01T10:00:00Z',
+            updatedAt: '2026-03-01T10:00:00Z',
           },
         ],
       })
       useChatStore.setState({ scope: 'all', spaceId: 'space-gewerbeamt' })
 
-      render(<ChatInput onSend={vi.fn()} />)
+      renderWithRouter(<ChatInput onSend={vi.fn()} />)
+
+      expect(
+        await screen.findByText(/Diesem Space ist kein Wissen zugeordnet\./),
+      ).toBeInTheDocument()
+      expect(screen.getByRole('link', { name: 'Wissen zuordnen' })).toHaveAttribute(
+        'href',
+        '/spaces/space-gewerbeamt/settings/knowledge',
+      )
+    })
+
+    it('tells a plain member who can assign knowledge, without a link', async () => {
+      mockAssociations('space-gewerbeamt', {
+        hasAssociations: true,
+        hasKnowledge: false,
+        hasReadableKnowledge: false,
+        items: [],
+      })
+      useChatStore.setState({ scope: 'all', spaceId: 'space-gewerbeamt' })
+
+      renderWithRouter(<ChatInput onSend={vi.fn()} />)
+
+      expect(
+        await screen.findByText(/Wissen ordnen die Kuratoren und Administratoren dieses Space zu/),
+      ).toBeInTheDocument()
+      expect(screen.queryByRole('link', { name: 'Wissen zuordnen' })).not.toBeInTheDocument()
+    })
+
+    it('shows the "kein Wissen verfügbar" notice when nothing associated is readable', async () => {
+      mockAssociations('space-gewerbeamt', {
+        hasAssociations: true,
+        hasKnowledge: true,
+        hasReadableKnowledge: false,
+        items: [],
+      })
+      useChatStore.setState({ scope: 'all', spaceId: 'space-gewerbeamt' })
+
+      renderWithRouter(<ChatInput onSend={vi.fn()} />)
+
+      expect(
+        await screen.findByText('In diesem Space ist für Sie derzeit kein Wissen verfügbar.'),
+      ).toBeInTheDocument()
+      expect(screen.queryByText(/kein Wissen zugeordnet/)).not.toBeInTheDocument()
+      expect(screen.queryByRole('link', { name: 'Wissen zuordnen' })).not.toBeInTheDocument()
+    })
+
+    it('shows no notice once associated knowledge is readable', async () => {
+      mockAssociations('space-gewerbeamt', {
+        hasAssociations: true,
+        hasKnowledge: true,
+        hasReadableKnowledge: true,
+        items: [associated(rechtsquellen)],
+      })
+      useChatStore.setState({ scope: 'all', spaceId: 'space-gewerbeamt' })
+
+      renderWithRouter(<ChatInput onSend={vi.fn()} />)
 
       expect(await screen.findByText('@ für Quellen, / für Aktionen')).toBeInTheDocument()
-      expect(
-        screen.queryByText('In diesem Space ist für Sie derzeit kein Wissen verfügbar.'),
-      ).not.toBeInTheDocument()
+      await waitFor(() =>
+        expect(useSpaceStore.getState().assetAssociationsSpaceId).toBe('space-gewerbeamt'),
+      )
+      expect(screen.queryByTestId('space-knowledge-notice')).not.toBeInTheDocument()
     })
 
     // #783 review, finding 1: der Suchbereich eines gewechselten Space ist noch unbekannt - solange
-    // darf weder der vorige Stand noch "alles Lesbare" behauptet werden.
+    // darf der vorige Stand nicht behauptet werden.
     it("shows a neutral notice, not the previous space's state, right after switching spaceId", async () => {
       useSpaceStore.setState({
         hasAssetAssociations: true,
-        assetAssociationsNarrowSearch: true,
+        hasKnowledge: true,
+        hasReadableKnowledge: true,
         assetAssociations: [
           {
             assetType: 'KNOWLEDGE_LIBRARY',
@@ -241,6 +311,25 @@ describe('ChatInput', () => {
     expect(screen.queryByRole('button', { name: 'Metadatenfilter setzen' })).not.toBeInTheDocument()
   })
 
+  // The hard boundary: a library the person may read, but which is not associated with the space,
+  // is never offered as a chip.
+  it('offers only libraries associated with the space as suggestions', async () => {
+    const user = userEvent.setup()
+    useLibraryStore.setState({
+      libraries: [
+        rechtsquellen,
+        dienstanweisungen,
+        { ...rechtsquellen, id: 'l-bau', name: 'Bauakten' },
+      ],
+    })
+    render(<ChatInput onSend={vi.fn()} />)
+
+    await user.type(screen.getByPlaceholderText('Nachricht eingeben …'), '@Bau')
+
+    expect(await screen.findByText('Keine passende Bibliothek in diesem Space')).toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: /Bauakten/ })).not.toBeInTheDocument()
+  })
+
   it('labels library suggestions with the type badge (#591, mockup 1h)', async () => {
     const user = userEvent.setup()
     render(<ChatInput onSend={vi.fn()} />)
@@ -249,11 +338,11 @@ describe('ChatInput', () => {
     expect(await screen.findByText('Bibliothek · verengt die Suche')).toBeInTheDocument()
   })
 
-  it('renders input field, send button and the @Alles-Wissen chip by default', () => {
+  it('renders input field, send button and the @Space-Wissen chip by default', () => {
     render(<ChatInput onSend={vi.fn()} />)
     expect(screen.getByPlaceholderText('Nachricht eingeben …')).toBeInTheDocument()
     expect(screen.getByLabelText('Senden')).toBeInTheDocument()
-    expect(screen.getByText('@Alles-Wissen')).toBeInTheDocument()
+    expect(screen.getByText('@Space-Wissen')).toBeInTheDocument()
   })
 
   it('calls onSend with trimmed text on button click', () => {
@@ -467,11 +556,11 @@ describe('ChatInput', () => {
   })
 
   describe('the three chip-bar states (#560)', () => {
-    it('shows the @Alles-Wissen chip, removable, as the default state', async () => {
+    it('shows the @Space-Wissen chip, removable, as the default state', async () => {
       const user = userEvent.setup()
       render(<ChatInput onSend={vi.fn()} />)
 
-      const chip = screen.getByRole('button', { name: 'Referenz Alles-Wissen entfernen' })
+      const chip = screen.getByRole('button', { name: 'Referenz Space-Wissen entfernen' })
       chip.focus()
       await user.keyboard('{Backspace}')
 
@@ -483,16 +572,18 @@ describe('ChatInput', () => {
       render(<ChatInput onSend={vi.fn()} />)
 
       expect(screen.getByText('Rechtsquellen Soziales')).toBeInTheDocument()
-      expect(screen.queryByText('@Alles-Wissen')).not.toBeInTheDocument()
+      expect(screen.queryByText('@Space-Wissen')).not.toBeInTheDocument()
     })
 
-    it('shows a hint and a way back to @Alles-Wissen when the bar is empty', async () => {
+    it('shows a hint and a way back to @Space-Wissen when the bar is empty', async () => {
       const user = userEvent.setup()
       useChatStore.setState({ scope: 'none', referencedLibraryIds: [] })
       render(<ChatInput onSend={vi.fn()} />)
 
       expect(screen.getByText('Antwortet ohne Dokumente.')).toBeInTheDocument()
-      const backButton = screen.getByRole('button', { name: 'Wieder alles Wissen durchsuchen' })
+      const backButton = screen.getByRole('button', {
+        name: 'Wieder das Wissen des Space durchsuchen',
+      })
 
       await user.click(backButton)
 
@@ -512,13 +603,12 @@ describe('ChatInput', () => {
     // #564 review: scope "libraries" with an id that is not (yet, or no longer) in the loaded
     // library list must never look like an emptied bar - that would be indistinguishable from a
     // deliberate "ohne Wissen" and silently drop the reference from what the user sees.
-    it('shows a loading chip for a referenced id while the library list is still loading', () => {
-      useChatStore.setState({ scope: 'libraries', referencedLibraryIds: ['library-referat-50'] })
-      useLibraryStore.setState({
-        libraries: [],
-        libraryDetails: {},
-        isLoading: true,
-        error: null,
+    it("shows a loading chip for a referenced id while the space's associations are loading", () => {
+      server.use(http.get('/api/v1/spaces/space-b/assets', () => new Promise(() => {})))
+      useChatStore.setState({
+        scope: 'libraries',
+        referencedLibraryIds: ['library-referat-50'],
+        spaceId: 'space-b',
       })
       render(<ChatInput onSend={vi.fn()} />)
 
@@ -526,13 +616,13 @@ describe('ChatInput', () => {
       expect(screen.queryByText('Antwortet ohne Dokumente.')).not.toBeInTheDocument()
     })
 
-    it('shows a removable placeholder chip for a referenced id that is no longer readable', async () => {
+    it('shows a removable placeholder chip for a referenced id no longer in the space', async () => {
       const user = userEvent.setup()
       useChatStore.setState({
         scope: 'libraries',
         referencedLibraryIds: ['library-referat-50', 'library-removed'],
       })
-      // The library list finished loading but no longer contains "library-removed" - it was
+      // The associations are known but no longer contain "library-removed" - it was detached,
       // deleted, or is no longer readable by this user.
       render(<ChatInput onSend={vi.fn()} />)
 
@@ -550,7 +640,7 @@ describe('ChatInput', () => {
   })
 
   describe('replacement logic', () => {
-    it('replaces @Alles-Wissen with the first concrete chip selected via @', async () => {
+    it('replaces @Space-Wissen with the first concrete chip selected via @', async () => {
       const user = userEvent.setup()
       render(<ChatInput onSend={vi.fn()} />)
       const input = screen.getByPlaceholderText('Nachricht eingeben …')
@@ -560,24 +650,24 @@ describe('ChatInput', () => {
 
       expect(useChatStore.getState().scope).toBe('libraries')
       expect(useChatStore.getState().referencedLibraryIds).toEqual(['library-referat-50'])
-      expect(screen.queryByText('@Alles-Wissen')).not.toBeInTheDocument()
+      expect(screen.queryByText('@Space-Wissen')).not.toBeInTheDocument()
     })
 
-    it('replaces concrete chips when @Alles-Wissen is picked from the @ suggestions', async () => {
+    it('replaces concrete chips when @Space-Wissen is picked from the @ suggestions', async () => {
       const user = userEvent.setup()
       useChatStore.setState({ scope: 'libraries', referencedLibraryIds: ['library-referat-50'] })
       render(<ChatInput onSend={vi.fn()} />)
       const input = screen.getByPlaceholderText('Nachricht eingeben …')
 
-      await user.type(input, '@Alles')
-      await user.click(await screen.findByRole('option', { name: /@Alles-Wissen/ }))
+      await user.type(input, '@Space')
+      await user.click(await screen.findByRole('option', { name: /@Space-Wissen/ }))
 
       expect(useChatStore.getState().scope).toBe('all')
       expect(useChatStore.getState().referencedLibraryIds).toEqual([])
     })
   })
 
-  it('opens library suggestions on "@", with @Alles-Wissen always listed first, and filters by further typing', async () => {
+  it('opens library suggestions on "@", with @Space-Wissen always listed first, and filters by further typing', async () => {
     const user = userEvent.setup()
     render(<ChatInput onSend={vi.fn()} />)
     const input = screen.getByPlaceholderText('Nachricht eingeben …')
@@ -585,7 +675,7 @@ describe('ChatInput', () => {
     await user.type(input, '@')
     const listbox = await screen.findByRole('listbox', { name: 'Suchbereich' })
     const options = listbox.querySelectorAll('[role="option"]')
-    expect(options[0]).toHaveTextContent('@Alles-Wissen')
+    expect(options[0]).toHaveTextContent('@Space-Wissen')
 
     await user.type(input, 'Rechts')
 
@@ -593,9 +683,9 @@ describe('ChatInput', () => {
       await screen.findByRole('option', { name: /Rechtsquellen Soziales/ }),
     ).toBeInTheDocument()
     expect(screen.queryByRole('option', { name: /Dienstanweisungen/ })).not.toBeInTheDocument()
-    // The chip bar itself still shows @Alles-Wissen (scope hasn't changed yet) - only the
+    // The chip bar itself still shows @Space-Wissen (scope hasn't changed yet) - only the
     // suggestion list must have filtered the special entry out.
-    expect(screen.queryByRole('option', { name: /Alles-Wissen/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: /Space-Wissen/ })).not.toBeInTheDocument()
   })
 
   it('selects a suggestion by click, adds a chip and removes the @-fragment from the text', async () => {
@@ -617,7 +707,7 @@ describe('ChatInput', () => {
 
     await user.type(input, '@')
     await screen.findByRole('option', { name: /Rechtsquellen Soziales/ })
-    // suggestion order is [@Alles-Wissen, rechtsquellen, dienstanweisungen] - three ArrowDown
+    // suggestion order is [@Space-Wissen, rechtsquellen, dienstanweisungen] - three ArrowDown
     // presses land on the last option.
     await user.keyboard('{ArrowDown}{ArrowDown}{ArrowDown}{Enter}')
 

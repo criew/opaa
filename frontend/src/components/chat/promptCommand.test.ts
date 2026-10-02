@@ -11,7 +11,6 @@ function available(name: string, title: string, description?: string): Available
     title,
     description: description ?? null,
     hasVariables: false,
-    associatedWithSpace: false,
   }
 }
 

@@ -139,10 +139,6 @@ const INITIAL_PROMPTS: Record<string, PromptResponse[]> = {
   ],
 }
 
-/** The space whose chat puts the Referat's prompt library first (a mock space association). */
-export const MOCK_PROMPT_SPACE_ID = 'space-engineering'
-export const MOCK_PROMPT_SPACE_LIBRARY_ID = 'prompt-library-referat-50'
-
 // Mutable copies: the handlers read and write them, and the test setup resets them between tests.
 export let mockPromptLibraries: Record<string, PromptLibraryResponse> = structuredClone({
   ...INITIAL_PROMPT_LIBRARIES,

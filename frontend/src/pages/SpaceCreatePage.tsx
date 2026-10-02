@@ -395,7 +395,7 @@ export default function SpaceCreatePage() {
                 label: 'Datenquellen',
                 value:
                   selectedLibraryIds.length === 0
-                    ? 'keine — durchsucht bis auf Weiteres alles Lesbare'
+                    ? 'keine — der Chat durchsucht kein Wissen, bis Sie Bibliotheken zuordnen'
                     : availableLibraries
                         .filter((l) => selectedLibraryIds.includes(l.id))
                         .map((l) => l.name)

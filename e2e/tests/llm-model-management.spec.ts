@@ -250,7 +250,7 @@ test.describe.serial('Modellverwaltung (#760)', () => {
     // Ohne Wissensbasis (kein @-Bezug) ist die Antwort selbst deterministisch - der Punkt dieses
     // Szenarios ist der Modellwechsel ohne Neustart (#758), nicht die inhaltliche Qualität der
     // Antwort (siehe Issue, "Technische Hinweise").
-    await page.getByRole('button', { name: 'Referenz Alles-Wissen entfernen' }).press('Backspace')
+    await page.getByRole('button', { name: 'Referenz Space-Wissen entfernen' }).press('Backspace')
     await expect(page.getByText('Antwortet ohne Dokumente.')).toBeVisible()
 
     await askQuestion(page, `Testfrage nach Modellaktivierung (${runId})`)
