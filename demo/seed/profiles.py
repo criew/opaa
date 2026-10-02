@@ -60,12 +60,23 @@ class SpaceDef:
     description: str
     owner_key: str
     members: tuple[SpaceMemberDef, ...] = field(default_factory=tuple)
-    # Libraries (by LibraryDef.name) to associate with this space (#706, pure curation). The
-    # association is created through the owner's own session: associateSpaceLibrary requires
-    # CURATOR or above on the space plus at least VIEWER on the library, both of which the owner
-    # has once the grants of step 4 exist. An empty tuple deliberately leaves the space
-    # unassociated - @Alles-Wissen then falls back to every readable library.
+    # Libraries (by LibraryDef.name) to associate with this space. A chat searches exactly what is
+    # associated, so a space without an entry here searches nothing and shows the hint to assign
+    # knowledge. The association is created through the owner's own session: associateSpaceAsset
+    # requires CURATOR or above on the space plus at least VIEWER on the library, both of which
+    # the owner has once the grants of steps 5 and 6 exist.
     library_names: tuple[str, ...] = field(default_factory=tuple)
+
+
+@dataclass(frozen=True)
+class PersonalSpaceDef:
+    """The associations of an account's automatic personal space ("Meine Dokumente"), which the
+    backend creates on the first login and the seed therefore finds instead of creating. Like any
+    space it searches only what is associated; the owner is its ADMIN and must read every entry."""
+
+    owner_key: str
+    library_names: tuple[str, ...]
+    prompt_library_names: tuple[str, ...] = field(default_factory=tuple)
 
 
 @dataclass(frozen=True)
@@ -159,8 +170,9 @@ class PromptDef:
 class PromptLibraryDef:
     """A prompt library, created through the owner's own session (every account holds
     CREATE_PROMPT_LIBRARY by default) and therefore owned by that person. Its reach is exactly
-    all_accounts_viewer plus viewer_keys; space_names only orders the slash selection in those
-    spaces and grants nothing - each space owner must already be able to read the library."""
+    all_accounts_viewer plus viewer_keys; space_names offers its prompts in the chats of those
+    spaces - a chat offers no other - and grants nothing: each space owner must already be able to
+    read the library."""
 
     name: str
     description: str
@@ -182,6 +194,7 @@ class Profile:
     libraries: tuple[LibraryDef, ...]
     groups: tuple[GroupDef, ...] = field(default_factory=tuple)
     prompt_libraries: tuple[PromptLibraryDef, ...] = field(default_factory=tuple)
+    personal_spaces: tuple[PersonalSpaceDef, ...] = field(default_factory=tuple)
     provider_groups: tuple[ProviderGroupDef, ...] = field(default_factory=tuple)
     directory_sync: DirectorySyncDef | None = None
     # Directories of prepared chat transcripts (chats.py), imported after indexing so their
@@ -246,7 +259,13 @@ _DEMO_PROMPT_LIBRARIES = (
         owner_key="andrea",
         listed=True,
         all_accounts_viewer=True,
-        space_names=("Meldewesen & Ausweise", "Kfz-Zulassung", "Amtsleitung Bürgerbüro"),
+        space_names=(
+            "Meldewesen & Ausweise",
+            "Maria Weber – persönlich",
+            "Kfz-Zulassung",
+            "Amtsleitung Bürgerbüro",
+            "Dienstbesprechung Bürgerbüro",
+        ),
         prompts=(
             PromptDef(
                 name="antwort-buergeranfrage",
@@ -479,6 +498,29 @@ _DEMO_PROMPT_LIBRARIES = (
     ),
 )
 
+# The knowledge of each Sachgebiet - what its space and the personal spaces of its accounts carry.
+_MELDEWESEN_LIBRARIES = (
+    "Leistungen Meldewesen & Ausweise",
+    "Satzungen & Gebührenordnungen",
+    "Pressemitteilungen Stadt Rheinfurt",
+    "Interne Dienstanweisungen Meldewesen",
+    "Ratsinformationen Stadt Rheinfurt",
+)
+_KFZ_LIBRARIES = (
+    "Leistungen Kfz-Zulassung",
+    "Satzungen & Gebührenordnungen",
+    "Pressemitteilungen Stadt Rheinfurt",
+    "Ratsinformationen Stadt Rheinfurt",
+)
+_AMTSLEITUNG_LIBRARIES = (
+    "Leistungen Meldewesen & Ausweise",
+    "Leistungen Kfz-Zulassung",
+    "Satzungen & Gebührenordnungen",
+    "Pressemitteilungen Stadt Rheinfurt",
+    "Interne Dienstanweisungen Meldewesen",
+    "Ratsinformationen Stadt Rheinfurt",
+)
+
 DEMO_PROFILE = Profile(
     name="demo",
     auth_mode="keycloak",
@@ -490,42 +532,25 @@ DEMO_PROFILE = Profile(
             description="Gemeinsamer Space des Sachgebiets Meldewesen & Ausweise.",
             owner_key="maria",
             # Selin joins through the Keycloak group "Meldewesen" (provider_groups below).
-            library_names=(
-                "Leistungen Meldewesen & Ausweise",
-                "Satzungen & Gebührenordnungen",
-                "Pressemitteilungen Stadt Rheinfurt",
-                "Interne Dienstanweisungen Meldewesen",
-                "Ratsinformationen Stadt Rheinfurt",
-            ),
+            library_names=_MELDEWESEN_LIBRARIES,
         ),
         SpaceDef(
             name="Maria Weber – persönlich",
             description="Persönlicher Arbeitsraum von Maria Weber, kein weiteres Mitglied.",
             owner_key="maria",
+            library_names=_MELDEWESEN_LIBRARIES,
         ),
         SpaceDef(
             name="Kfz-Zulassung",
             description="Space des Sachgebiets Kfz-Zulassung.",
             owner_key="thomas",
-            library_names=(
-                "Leistungen Kfz-Zulassung",
-                "Satzungen & Gebührenordnungen",
-                "Pressemitteilungen Stadt Rheinfurt",
-                "Ratsinformationen Stadt Rheinfurt",
-            ),
+            library_names=_KFZ_LIBRARIES,
         ),
         SpaceDef(
             name="Amtsleitung Bürgerbüro",
             description="Space der Amtsleitung des Bürgerbüros Rheinfurt.",
             owner_key="andrea",
-            library_names=(
-                "Leistungen Meldewesen & Ausweise",
-                "Leistungen Kfz-Zulassung",
-                "Satzungen & Gebührenordnungen",
-                "Pressemitteilungen Stadt Rheinfurt",
-                "Interne Dienstanweisungen Meldewesen",
-                "Ratsinformationen Stadt Rheinfurt",
-            ),
+            library_names=_AMTSLEITUNG_LIBRARIES,
         ),
         # Its only individual member is Andrea as owner; Maria, Selin and Thomas join exclusively
         # through the group "Sachbearbeitung Bürgerbüro" (step 6). It carries only the libraries
@@ -672,6 +697,31 @@ DEMO_PROFILE = Profile(
         ),
     ),
     prompt_libraries=_DEMO_PROMPT_LIBRARIES,
+    # Every fach account's personal space carries the knowledge of its Sachgebiet and the shared
+    # Textbausteine. The admin's personal space deliberately stays empty: the one demo space that
+    # shows the hint to assign knowledge instead of an answer.
+    personal_spaces=(
+        PersonalSpaceDef(
+            owner_key="maria",
+            library_names=_MELDEWESEN_LIBRARIES,
+            prompt_library_names=("Textbausteine Bürgerbüro",),
+        ),
+        PersonalSpaceDef(
+            owner_key="selin",
+            library_names=_MELDEWESEN_LIBRARIES,
+            prompt_library_names=("Textbausteine Bürgerbüro",),
+        ),
+        PersonalSpaceDef(
+            owner_key="thomas",
+            library_names=_KFZ_LIBRARIES,
+            prompt_library_names=("Textbausteine Bürgerbüro",),
+        ),
+        PersonalSpaceDef(
+            owner_key="andrea",
+            library_names=_AMTSLEITUNG_LIBRARIES,
+            prompt_library_names=("Textbausteine Bürgerbüro", "Vorlagen Amtsleitung"),
+        ),
+    ),
     # The three groups of keycloak/realm-export.json, brought in by the directory sync. Each one
     # carries the rights of its Sachgebiet on its own: no member also holds them directly.
     provider_groups=(
@@ -732,6 +782,7 @@ E2E_PROFILE = Profile(
             name="E2E Space",
             description="Minimaler Space des e2e-Datenprofils.",
             owner_key="user",
+            library_names=("E2E Wissensbibliothek",),
         ),
     ),
     libraries=(
