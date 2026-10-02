@@ -20,7 +20,6 @@ import java.net.URI;
 public record LibraryUpdate(
     String name,
     String description,
-    Boolean listed,
     SourceType sourceType,
     String sourcePath,
     URI sourceUrl,

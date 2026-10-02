@@ -105,7 +105,6 @@ export default function LibraryCreatePage() {
   // right after creation unless switched off. Since #1942 for every connector type, not only
   // Confluence and S3.
   const [startFirstRun, setStartFirstRun] = useState(true)
-  const [listed, setListed] = useState(false)
   const [pendingGrants, setPendingGrants] = useState<PendingGrant[]>([])
 
   // Die Kacheln sind die Quellarten, für die das Backend einen Konnektor hat (ADR-0038), in der
@@ -273,7 +272,6 @@ export default function LibraryCreatePage() {
         description: description.trim() || undefined,
         ownerType,
         ownerId: ownerType === 'GROUP' ? (selectedGroup?.id ?? undefined) : undefined,
-        listed,
         sourceType,
         ...source,
         sourceSettings,
@@ -449,7 +447,6 @@ export default function LibraryCreatePage() {
             />
             <AssetRightsFields
               idPrefix="library-create"
-              listed={{ value: listed, onChange: setListed }}
               pendingGrants={pendingGrants}
               onPendingGrantsChange={setPendingGrants}
             />

@@ -345,14 +345,13 @@ paths:
       tags: [asset]
       summary: >
         The catalog across every asset type (docs/features/spaces-and-assets.md#der-katalog): the
-        assets the caller may read - direct grant, grant to one of their groups, organization-wide
-        release - united with the listed ones, always within the caller's organization. An entry
-        describes an asset and never carries its content.
+        assets the caller may read - direct grant, grant to one of their groups, grant to all
+        accounts - always within the caller's organization. An entry describes an asset and never
+        carries its content.
       description: >
-        A listed asset the caller may not read is an entry with accessible = false; its detail
-        view still answers 404 or 403 - being findable is not being accessible. accessible follows
-        the rights formula alone, so a system administrator without a grant sees the listed assets
-        like everybody else and no more. Ordered by name; the search matches name and
+        Visible means readable: an asset the caller may not read appears in no entry, not even by
+        name. Readability follows the rights formula alone, so a system administrator without a
+        grant sees no more than anybody else. Ordered by name; the search matches name and
         description, case-insensitive, every character literally.
       parameters:
         - name: type
@@ -418,7 +417,7 @@ components:
 
     CatalogEntryResponse:
       type: object
-      required: [assetType, assetId, name, ownerType, origin, accessible, listed, itemCount, spaceCount]
+      required: [assetType, assetId, name, ownerType, origin, itemCount, spaceCount]
       description: >
         One asset in the catalog - a description, never a content
         (docs/features/spaces-and-assets.md#der-katalog).
@@ -445,13 +444,6 @@ components:
           example: Referat 50
         origin:
           $ref: "#/components/schemas/AssetOrigin"
-        accessible:
-          type: boolean
-          description: >
-            Whether the caller may read the asset by the rights formula. False for an entry that is
-            only listed - its detail view answers 404 or 403.
-        listed:
-          type: boolean
         itemCount:
           type: integer
           format: int64
@@ -653,7 +645,7 @@ components:
       description: >
         The graded asset role a grant carries - a ranking deliberately separate from SpaceRole; no
         role name occurs in both. VIEWER uses the asset and sees its configuration, EDITOR
-        additionally changes it, MANAGER additionally shares/grants and sets findability, OWNER
+        additionally changes it, MANAGER additionally shares and grants, OWNER
         additionally deletes and transfers ownership. See
         docs/features/spaces-and-assets.md#asset-rollen. Exception for a knowledge library: its
         source connection detail (LibraryResponse's sourcePath/sourceUrl/sourceProxy/

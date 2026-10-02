@@ -2,8 +2,8 @@
  * The asset shell (#1899, ADR-0036 Entscheidung 12, Nachtrag vom 24.09.2026): what every asset has,
  * whatever its type - the table {@code assets} with {@link io.opaa.asset.Asset} as the root of a
  * {@code JOINED} hierarchy, the grants on it ({@link io.opaa.asset.AssetGrantService}), the
- * Herleitung ({@link io.opaa.asset.AssetAccessDerivationService}), its release level, findability
- * and owner ({@link io.opaa.asset.AssetShellService}), the reach history ({@link
+ * Herleitung ({@link io.opaa.asset.AssetAccessDerivationService}), its release level and owner
+ * ({@link io.opaa.asset.AssetShellService}), the reach history ({@link
  * io.opaa.asset.AssetVisibilityHistoryService}), succession ({@link
  * io.opaa.asset.AssetSuccessionSource}), ownership transfer and the catalog ({@link
  * io.opaa.asset.AssetCatalogService}). There is exactly one of each; an asset type adds a table, an

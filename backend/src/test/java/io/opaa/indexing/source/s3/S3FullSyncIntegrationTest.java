@@ -149,7 +149,6 @@ class S3FullSyncIntegrationTest {
             "Objektspeicher",
             null,
             userId,
-            false,
             SourceTypes.S3,
             null,
             store.endpoint().toString(),

@@ -151,7 +151,6 @@ describe('authStore', () => {
           description: null,
           ownerType: 'USER',
           reach: { allAccounts: false, groupCount: 0, userCount: 1 },
-          listed: true,
           myRole: 'OWNER',
           sourceType: 'UPLOAD',
           documentCount: 0,

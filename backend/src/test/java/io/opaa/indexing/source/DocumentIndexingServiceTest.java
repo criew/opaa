@@ -116,7 +116,6 @@ class DocumentIndexingServiceTest {
             "Zielbibliothek",
             null,
             UUID.randomUUID(),
-            false,
             SourceTypes.FILESYSTEM,
             "/data/docs",
             null,
@@ -151,7 +150,7 @@ class DocumentIndexingServiceTest {
     // does not exist at all.
     KnowledgeLibrary foreignLibrary =
         KnowledgeLibrary.ownedByUser(
-            UUID.randomUUID(), "Fremde Bibliothek", null, UUID.randomUUID(), false);
+            UUID.randomUUID(), "Fremde Bibliothek", null, UUID.randomUUID());
     when(libraryRepository.findById(foreignLibrary.getId()))
         .thenReturn(Optional.of(foreignLibrary));
 
@@ -259,8 +258,7 @@ class DocumentIndexingServiceTest {
   @Test
   void anUploadLibraryIsRejectedWithConflictAndNoJobStarts() {
     KnowledgeLibrary uploadLibrary =
-        KnowledgeLibrary.ownedByUser(
-            organizationId, "Upload-Bibliothek", null, UUID.randomUUID(), false);
+        KnowledgeLibrary.ownedByUser(organizationId, "Upload-Bibliothek", null, UUID.randomUUID());
     when(libraryRepository.findById(uploadLibrary.getId())).thenReturn(Optional.of(uploadLibrary));
     when(libraryAccessService.requireRole(uploadLibrary, caller.id(), false, AssetRole.EDITOR))
         .thenReturn(AssetRole.EDITOR);
@@ -279,7 +277,6 @@ class DocumentIndexingServiceTest {
             "HTTP-Bibliothek",
             null,
             UUID.randomUUID(),
-            false,
             SourceTypes.HTTP_DIRECTORY,
             null,
             "https://example.com/files/",
@@ -311,7 +308,6 @@ class DocumentIndexingServiceTest {
             "RSS-Bibliothek",
             null,
             UUID.randomUUID(),
-            false,
             SourceTypes.RSS_FEED,
             null,
             "https://example.com/feed.xml",
@@ -461,7 +457,7 @@ class DocumentIndexingServiceTest {
   void getStatusForAForeignLibraryFailsWithNotFound() {
     KnowledgeLibrary foreignLibrary =
         KnowledgeLibrary.ownedByUser(
-            UUID.randomUUID(), "Fremde Bibliothek", null, UUID.randomUUID(), false);
+            UUID.randomUUID(), "Fremde Bibliothek", null, UUID.randomUUID());
     when(libraryRepository.findById(foreignLibrary.getId()))
         .thenReturn(Optional.of(foreignLibrary));
 
@@ -509,7 +505,7 @@ class DocumentIndexingServiceTest {
   void getRecentRunsForAForeignLibraryFailsWithNotFound() {
     KnowledgeLibrary foreignLibrary =
         KnowledgeLibrary.ownedByUser(
-            UUID.randomUUID(), "Fremde Bibliothek", null, UUID.randomUUID(), false);
+            UUID.randomUUID(), "Fremde Bibliothek", null, UUID.randomUUID());
     when(libraryRepository.findById(foreignLibrary.getId()))
         .thenReturn(Optional.of(foreignLibrary));
 

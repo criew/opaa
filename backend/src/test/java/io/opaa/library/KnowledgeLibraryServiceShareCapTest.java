@@ -1,6 +1,5 @@
 package io.opaa.library;
 
-import static io.opaa.library.LibraryUpdateBuilder.libraryUpdate;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -11,7 +10,6 @@ import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.SystemRole;
-import io.opaa.asset.AssetChanged;
 import io.opaa.asset.AssetGrantService;
 import io.opaa.asset.AssetOwnerNames;
 import io.opaa.asset.AssetShellService;
@@ -24,7 +22,6 @@ import io.opaa.auth.CurrentUser;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.common.AccessDeniedException;
-import io.opaa.common.ConflictException;
 import io.opaa.common.ValidationException;
 import io.opaa.indexing.chunk.FullTextChunkStore;
 import io.opaa.indexing.chunk.VectorChunkStore;
@@ -50,7 +47,6 @@ import io.opaa.permission.CapabilityService;
 import io.opaa.permission.GroupMembershipResolver;
 import io.opaa.permission.GroupSubjectDirectory;
 import io.opaa.permission.PermissionHistoryService;
-import io.opaa.permission.SuccessionReachGuard;
 import io.opaa.test.SourceTypes;
 import java.time.Clock;
 import java.util.List;
@@ -62,11 +58,10 @@ import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.context.ApplicationEventPublisher;
 
 /**
- * Unit-level coverage of the share cap #797 introduces, in the shape #1931 gave it: the two
- * booleans {@code KnowledgeLibraryService#updateShareCap} sets - may this library be granted to
- * "Alle Konten", may it be listed - and what lowering either of them takes back at once. Wired
- * exactly like {@link KnowledgeLibraryServiceFilesystemAllowlistTest}: a mocked repository that
- * echoes {@code save} back, no Spring context.
+ * Unit-level coverage of the share cap #797 introduces, in the shape #1931 gave it: whether this
+ * library may be granted to "Alle Konten", and what lowering it takes back at once. Wired exactly
+ * like {@link KnowledgeLibraryServiceFilesystemAllowlistTest}: a mocked repository that echoes
+ * {@code save} back, no Spring context.
  */
 class KnowledgeLibraryServiceShareCapTest {
 
@@ -130,8 +125,7 @@ class KnowledgeLibraryServiceShareCapTest {
                 permissionHistoryService,
                 visibilityHistoryService,
                 auditEventRecorder,
-                eventPublisher,
-                mock(SuccessionReachGuard.class)),
+                eventPublisher),
             accessService,
             auditEventRecorder,
             vectorChunkStore,
@@ -167,14 +161,13 @@ class KnowledgeLibraryServiceShareCapTest {
         .thenReturn(io.opaa.api.types.AssetRole.OWNER);
   }
 
-  private KnowledgeLibrary filesystemLibrary(boolean listed) {
+  private KnowledgeLibrary filesystemLibrary() {
     KnowledgeLibrary library =
         KnowledgeLibrary.ownedByUser(
             organizationId,
             "Bibliothek",
             null,
             ownerId,
-            listed,
             SourceTypes.FILESYSTEM,
             "/data/dokumente",
             null,
@@ -187,57 +180,18 @@ class KnowledgeLibraryServiceShareCapTest {
 
   private KnowledgeLibrary uploadLibrary() {
     KnowledgeLibrary library =
-        KnowledgeLibrary.ownedByUser(organizationId, "Uploads", null, ownerId, false);
+        KnowledgeLibrary.ownedByUser(organizationId, "Uploads", null, ownerId);
     when(libraryRepository.findById(library.getId())).thenReturn(Optional.of(library));
     return library;
-  }
-
-  // --- updateLibrary is capped -------------------------------------------------------------
-
-  @Test
-  void updateLibraryRejectsListedAboveTheShareCapWith409() {
-    KnowledgeLibrary library = filesystemLibrary(false);
-    library.updateShareCap(true, false);
-
-    assertThatThrownBy(
-            () ->
-                libraryService.updateLibrary(
-                    library.getId(), libraryUpdate("Bibliothek").listed(true).build(), ownerCaller))
-        .isInstanceOf(ConflictException.class)
-        .hasMessageContaining("gelistet");
-  }
-
-  @Test
-  void updateLibraryAllowsListedAtTheShareCap() {
-    KnowledgeLibrary library = filesystemLibrary(false);
-    library.updateShareCap(true, true);
-
-    LibraryDetail updated =
-        libraryService.updateLibrary(
-            library.getId(), libraryUpdate("Bibliothek").listed(true).build(), ownerCaller);
-
-    assertThat(updated.library().isListed()).isTrue();
-  }
-
-  @Test
-  void updateLibraryIgnoresTheShareCapForAnUploadLibrary() {
-    KnowledgeLibrary library = uploadLibrary();
-
-    LibraryDetail updated =
-        libraryService.updateLibrary(
-            library.getId(), libraryUpdate("Uploads").listed(true).build(), ownerCaller);
-
-    assertThat(updated.library().isListed()).isTrue();
   }
 
   // --- updateShareCap: who may call it --------------------------------------------------
 
   @Test
   void updateShareCapIsRefusedWithoutSystemAdmin() {
-    KnowledgeLibrary library = filesystemLibrary(false);
+    KnowledgeLibrary library = filesystemLibrary();
 
-    assertThatThrownBy(
-            () -> libraryService.updateShareCap(library.getId(), false, true, ownerCaller))
+    assertThatThrownBy(() -> libraryService.updateShareCap(library.getId(), false, ownerCaller))
         .isInstanceOf(AccessDeniedException.class);
   }
 
@@ -246,7 +200,7 @@ class KnowledgeLibraryServiceShareCapTest {
     KnowledgeLibrary library = uploadLibrary();
 
     assertThatThrownBy(
-            () -> libraryService.updateShareCap(library.getId(), false, true, systemAdminCaller))
+            () -> libraryService.updateShareCap(library.getId(), false, systemAdminCaller))
         .isInstanceOf(ValidationException.class);
   }
 
@@ -258,34 +212,19 @@ class KnowledgeLibraryServiceShareCapTest {
    */
   @Test
   void forbiddingAllAccountsRevokesAnExistingGrantToAllAccounts() {
-    KnowledgeLibrary library = filesystemLibrary(false);
+    KnowledgeLibrary library = filesystemLibrary();
 
-    LibraryDetail result =
-        libraryService.updateShareCap(library.getId(), false, true, systemAdminCaller);
+    LibraryDetail result = libraryService.updateShareCap(library.getId(), false, systemAdminCaller);
 
     assertThat(result.library().isAllAccountsGrantAllowed()).isFalse();
     verify(grantService).revokeAllAccountsGrantForLoweredCap(library, systemAdminCaller.id());
   }
 
   @Test
-  void loweringTheListedCapClearsListedImmediately() {
-    KnowledgeLibrary library = filesystemLibrary(true);
-
-    LibraryDetail result =
-        libraryService.updateShareCap(library.getId(), true, false, systemAdminCaller);
-
-    assertThat(result.library().isListed()).isFalse();
-    assertThat(result.library().isListedCap()).isFalse();
-    // the clamp writes the same event an owner's own edit would - one history interval, one
-    // audit entry, through the identical publish path
-    verify(eventPublisher).publishEvent(org.mockito.ArgumentMatchers.any(AssetChanged.class));
-  }
-
-  @Test
   void loweringTheShareCapRecordsItsOwnAuditEventSeparatelyFromTheClamp() {
-    KnowledgeLibrary library = filesystemLibrary(true);
+    KnowledgeLibrary library = filesystemLibrary();
 
-    libraryService.updateShareCap(library.getId(), false, false, systemAdminCaller);
+    libraryService.updateShareCap(library.getId(), false, systemAdminCaller);
 
     org.mockito.ArgumentCaptor<AuditEvent> captor =
         org.mockito.ArgumentCaptor.forClass(AuditEvent.class);
@@ -295,13 +234,11 @@ class KnowledgeLibraryServiceShareCapTest {
   }
 
   @Test
-  void raisingTheShareCapNeverClampsAndPublishesNoVisibilityChangedEvent() {
-    KnowledgeLibrary library = filesystemLibrary(false);
+  void raisingTheShareCapNeverClampsAndPublishesNoEvent() {
+    KnowledgeLibrary library = filesystemLibrary();
 
-    LibraryDetail result =
-        libraryService.updateShareCap(library.getId(), true, true, systemAdminCaller);
+    LibraryDetail result = libraryService.updateShareCap(library.getId(), true, systemAdminCaller);
 
-    assertThat(result.library().isListed()).isFalse();
     assertThat(result.library().isAllAccountsGrantAllowed()).isTrue();
     verify(eventPublisher, never()).publishEvent(any());
     verify(grantService, never()).revokeAllAccountsGrantForLoweredCap(any(), any());

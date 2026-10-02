@@ -46,7 +46,6 @@ import io.opaa.permission.CapabilityService;
 import io.opaa.permission.GroupMembershipResolver;
 import io.opaa.permission.GroupSubjectDirectory;
 import io.opaa.permission.PermissionHistoryService;
-import io.opaa.permission.SuccessionReachGuard;
 import java.time.Clock;
 import java.util.List;
 import java.util.Optional;
@@ -126,8 +125,7 @@ class KnowledgeLibraryServiceDeleteLockTest {
                 permissionHistoryService,
                 visibilityHistoryService,
                 auditEventRecorder,
-                eventPublisher,
-                mock(SuccessionReachGuard.class)),
+                eventPublisher),
             accessService,
             auditEventRecorder,
             vectorChunkStore,
@@ -162,7 +160,6 @@ class KnowledgeLibraryServiceDeleteLockTest {
             "Laufende Indizierung",
             null,
             ownerId,
-            false,
             SourceType.UPLOAD,
             null,
             null,

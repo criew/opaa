@@ -592,7 +592,6 @@ class MetadataFilterSearchIntegrationTest {
             name,
             null,
             owner.id(),
-            false,
             SourceTypes.FILESYSTEM,
             sourcePath.toString(),
             null,

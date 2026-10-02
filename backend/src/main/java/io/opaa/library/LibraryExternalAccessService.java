@@ -39,8 +39,7 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <p>The write itself goes through {@link KnowledgeLibrary#updateExternalAccess}, which is
  * package-private, and every change publishes {@link LibraryChanged} so the history interval and
- * the audit entry are written side by side - the same double bookkeeping {@code visibility}/{@code
- * listed} have.
+ * the audit entry are written side by side.
  */
 @Service
 public class LibraryExternalAccessService {

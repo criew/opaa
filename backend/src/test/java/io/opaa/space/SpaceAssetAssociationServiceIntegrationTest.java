@@ -92,7 +92,7 @@ class SpaceAssetAssociationServiceIntegrationTest {
 
   private UUID createLibrary(UUID ownerId) {
     KnowledgeLibrary library =
-        KnowledgeLibrary.ownedByUser(organizationA, "Bibliothek", null, ownerId, false);
+        KnowledgeLibrary.ownedByUser(organizationA, "Bibliothek", null, ownerId);
     return libraryRepository.save(library).getId();
   }
 

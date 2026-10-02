@@ -259,7 +259,7 @@ wird; der Bibliotheks-Eigentümer entscheidet, **wer es sieht**.
 Bibliotheks-Eigentümer (gebaut, #797, Maintainer-Festlegung vom 21.09.2026; Form seit
 [ADR-0037](../decisions/0037-reichweite-als-freigabe-an-alle.md) und
 [ADR-0039](../decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md)).** Die frühere zweite
-Erlaubnis, die Auffindbarkeit (`listed_cap`), entfällt mit `listed` (Umsetzung #2092).
+Erlaubnis, die Auffindbarkeit (`listed_cap`), ist mit `listed` entfallen (#2092).
 Sie wirkt aber erst, **nachdem** sie gesetzt wurde:
 
 - Gedeckelt wird **ausschließlich die Freigabe an „Alle Konten"** der
@@ -1370,6 +1370,13 @@ sobald die Systemrolle den Zugang trägt — ein Systemverwalter passiert deren 
 Bibliothek und in jedem Space. Wer die Gruppe selbst verantwortet, erzeugt beim Lesen nichts, **und
 der Rechtevergebende ohne Systemrolle ebenfalls nicht**: Er liest, wen er selbst an sein Objekt
 geholt hat, und das steht mit Zeitpunkt an der Berechtigung.
+
+**Der Bericht des Verzeichnisabgleichs ist ein zweiter Weg zu denselben Namen** (#1991): Er nennt
+die Mitglieder, die ein Lauf aufnimmt oder entzieht, für eine neu angelegte Gruppe die vollständige
+Liste. Jede Antwort, die ihn mit Namen an die Systemverwaltung ausliefert — Abruf des ausstehenden
+Plans, Probelauf, Lauf von Hand, Bestätigung —, schreibt deshalb ein zusammenfassendes
+`DIRECTORY_SYNC_REPORT_READ` mit Anbieter und der Zahl der genannten Gruppen und Personen, nie mit
+den Namen (ADR-0036, Entscheidung 9, Nachtrag vom 02.10.2026).
 
 > Festgeschrieben in [ADR-0036](../decisions/0036-berechtigungsmodell-gruppen-und-faehigkeiten.md),
 > Entscheidungen 4 und 9.

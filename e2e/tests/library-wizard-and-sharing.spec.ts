@@ -82,33 +82,6 @@ async function walkThroughSharingTab(page: Page): Promise<void> {
   await expect(
     grants.getByRole('button', { name: 'Freigabe für Alle Konten entziehen' }),
   ).toBeVisible()
-
-  // 4. The catalog switch is a section of its own with its own save button - set in the wizard,
-  //    taken back here.
-  const listed = section(page, 'Im Katalog auffindbar')
-  const listedBox = listed.getByRole('checkbox', {
-    name: 'Im Katalog auffindbar, auch ohne Berechtigung',
-  })
-  await expect(listedBox).toBeChecked()
-  await listedBox.uncheck()
-  await Promise.all([
-    page.waitForResponse(
-      (response) =>
-        response.request().method() === 'PUT' &&
-        /\/api\/v1\/libraries\/[^/]+$/.test(new URL(response.url()).pathname) &&
-        response.ok(),
-    ),
-    listed.getByRole('button', { name: 'Auffindbarkeit speichern' }).click(),
-  ])
-
-  // The saved state, not the draft in the form: after a reload it still stands.
-  await page.reload()
-  await page.getByRole('tab', { name: 'Freigaben' }).click()
-  await expect(
-    section(page, 'Im Katalog auffindbar').getByRole('checkbox', {
-      name: 'Im Katalog auffindbar, auch ohne Berechtigung',
-    }),
-  ).not.toBeChecked()
 }
 
 test.describe('Anlage-Assistent und Reiter „Freigaben" (#1944)', () => {
@@ -132,9 +105,6 @@ test.describe('Anlage-Assistent und Reiter „Freigaben" (#1944)', () => {
     await nextStep(page)
 
     await expectWizardStep(page, 'Freigaben')
-    await page
-      .getByRole('checkbox', { name: 'Im Katalog auffindbar, auch ohne Berechtigung' })
-      .check()
     await Promise.all([
       page.waitForURL(/\/libraries\/(?!new$)[^/]+$/),
       page.getByRole('button', { name: 'Bibliothek anlegen' }).click(),
@@ -179,9 +149,6 @@ test.describe('Anlage-Assistent und Reiter „Freigaben" (#1944)', () => {
     await nextStep(page)
 
     await expectWizardStep(page, 'Freigaben')
-    await page
-      .getByRole('checkbox', { name: 'Im Katalog auffindbar, auch ohne Berechtigung' })
-      .check()
     await Promise.all([
       page.waitForURL(/\/libraries\/(?!new$)[^/]+$/),
       page.getByRole('button', { name: 'Bibliothek anlegen' }).click(),

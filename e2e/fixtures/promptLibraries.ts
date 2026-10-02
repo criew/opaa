@@ -16,7 +16,7 @@ async function created<T>(response: Awaited<ReturnType<APIRequestContext['post']
 /** Legt eine Prompt-Bibliothek im Namen von `devUser` an und gibt ihre Kennung zurück. */
 export async function createPromptLibraryViaApi(
   devUser: string,
-  library: { name: string; description?: string; listed?: boolean },
+  library: { name: string; description?: string },
 ): Promise<string> {
   const api = await apiAs(devUser)
   try {
@@ -32,7 +32,7 @@ export async function createPromptLibraryViaApi(
 /** Legt eine Upload-Wissensbibliothek im Namen von `devUser` an und gibt ihre Kennung zurück. */
 export async function createKnowledgeLibraryViaApi(
   devUser: string,
-  library: { name: string; description?: string; listed?: boolean },
+  library: { name: string; description?: string },
 ): Promise<string> {
   const api = await apiAs(devUser)
   try {
@@ -136,14 +136,9 @@ export async function searchCatalog(page: Page, query: string): Promise<void> {
   ])
 }
 
-/** Ein zugänglicher Katalogeintrag - eine Kachel, die als Link zur Detailseite führt. */
-export function accessibleCatalogEntry(page: Page, name: string): Locator {
+/** Ein Katalogeintrag - eine Kachel, die als Link zur Detailseite führt. */
+export function catalogEntry(page: Page, name: string): Locator {
   return page.getByRole('link', { name: new RegExp(escapeRegExp(name)) })
-}
-
-/** Ein gelisteter Eintrag ohne Zugriff - eine Kachel ohne Link. */
-export function listedCatalogEntry(page: Page, name: string): Locator {
-  return page.getByRole('article', { name })
 }
 
 export function escapeRegExp(text: string): string {

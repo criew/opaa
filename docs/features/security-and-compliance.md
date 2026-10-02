@@ -215,6 +215,12 @@ ersten Stufe nicht geschrieben.
   über `correlation_ref`; dazu ein Kopfeintrag des Laufs mit Ergebnis und, oberhalb der Schwelle, mit
   der bestätigenden Person und ihrem Anlass. **Das Verwerfen** eines vorgelegten Plans ist ein
   eigenes Ereignis mit derselben Angabe — eine Entscheidung, die keine Spur hinterlässt, ist keine
+  Entscheidung
+- **Die Auslieferung eines Abgleichsberichts mit Namen an die Systemverwaltung** — Abruf des
+  ausstehenden Plans, Probelauf, Lauf von Hand und Bestätigung; ein zusammenfassender Eintrag mit
+  Anbieter und der Zahl der genannten Gruppen und Personen, nie mit den Namen
+  ([ADR-0036](../decisions/0036-berechtigungsmodell-gruppen-und-faehigkeiten.md), Entscheidung 9,
+  Nachtrag vom 02.10.2026)
 
 **Systemeinstellungen**
 
@@ -244,7 +250,7 @@ ersten Stufe nicht geschrieben.
 Die Liste oben beschreibt das **Zielverhalten**; welche Arten heute tatsächlich einen Eintrag
 schreiben, hängt davon ab, ob die zugrunde liegende Funktion im Code schon existiert. Verdrahtet
 sind: Rechte an Assets (Vergabe/Änderung/Entzug von Grants — Empfänger „Alle Konten"
-eingeschlossen —, Änderung von `listed`, die mit #2092 samt Ereignis entfällt),
+eingeschlossen —),
 Anlegen/Ändern/Löschen von Bibliotheken, Spaces und Gruppen — seit #1901 auch von Prompt-Bibliotheken
 und Prompts (`PROMPT_LIBRARY_CREATED`/`_CHANGED`/`_DELETED`, `PROMPT_CREATED`/`_CHANGED`/`_DELETED`,
 Objekte `PROMPT_LIBRARY` und `PROMPT`) —, Aufnahme/Rollenänderung/Entfernen von
@@ -287,11 +293,14 @@ Verantwortlichen interner Gruppen samt Reichweitenfeldern (`GROUP_STEWARD_APPOIN
 letzten mit Vorher/Nachher des Kennzeichens; die betroffene Person steht als Pseudonym im Subjekt,
 und keines der vier erzeugt eine Historienzeile) und — ebenfalls seit #1814 — der Abruf der
 Mitgliederliste einer Gruppe durch die Systemverwaltung, die diese Gruppe nicht selbst verantwortet
-(`GROUP_MEMBERS_READ` mit der Zahl der Mitglieder) und — seit #1834 — die Übertragung der Rechte
+(`GROUP_MEMBERS_READ` mit der Zahl der Mitglieder) und — seit #1991 — jede Auslieferung eines
+Abgleichsberichts mit Namen an die Systemverwaltung (`DIRECTORY_SYNC_REPORT_READ` mit Anbieter,
+Weg und der Zahl der genannten Gruppen und Personen; ein Bericht ohne Namen schreibt nichts) und —
+seit #1834 — die Übertragung der Rechte
 eines Subjekts auf ein anderes (`PERMISSION_TRANSFER_EXECUTED` mit Quelle, Ziel, Umfang und Zahl
 der Zeilen, und `PERMISSION_TRANSFER_PREVIEWED` für **jeden** Abruf der Vorschau, auch den
 abgebrochenen — die Vorschau liest alles, was ein Subjekt hält). Das sind, neben dem Abruf der
-Mitgliederliste, die einzigen **Leseereignisse** dieser
+Mitgliederliste und des Abgleichsberichts, die einzigen **Leseereignisse** dieser
 Liste und die bewusste Ausnahme von „Abfragen werden nicht protokolliert": ADR-0036,
 Entscheidung 9, räumt der Verwaltung die volle Mitgliederliste ein — und hält dafür fest, dass sie
 sie abgerufen hat. Wer die Gruppe selbst verantwortet, erzeugt beim Lesen nichts; es ist die
@@ -703,7 +712,7 @@ schreiben, fällt dort auf, bevor er in Betrieb geht. Welche Klassen dabei über
 derselbe Test gegen den Anwendungskontext, damit eine neue Klasse an den Rechtetabellen nicht unbemerkt
 hinzukommt.
 
-Für das **Reichweitenfeld** der Fremdzugangsfreigabe (bis #2092 auch für `listed`) trägt diese
+Für das **Reichweitenfeld** der Fremdzugangsfreigabe trägt diese
 Einschränkung zusätzlich der Compiler:
 Über die Bibliothek selbst ist es nur aus dem Paket heraus veränderbar, das die Historienzeile schreibt
 — ein Schreibpfad außerhalb dieses Pakets lässt sich gar nicht erst übersetzen. Am Compiler vorbei ginge
@@ -737,8 +746,7 @@ Recht falsch, nicht bloß lückenhaft. Die Historie überlebt die Löschung eine
 bewusst keinen Fremdschlüssel, damit eine reguläre Lösch-Operation die Beweislage nicht mit sich reißt.
 
 **Umsetzungsstand der Fremdzugangsfreigabe (#1731):** Die Freigabe einer
-Wissensbibliothek für Fremdzugänge ist gebaut und liegt in `asset_visibility_history` (bis #2092 im
-selben Intervall wie `listed`), mit demselben Schreibpfadschutz (`KnowledgeLibrary#updateExternalAccess` ist
+Wissensbibliothek für Fremdzugänge ist gebaut und liegt in `asset_visibility_history`, mit demselben Schreibpfadschutz (`KnowledgeLibrary#updateExternalAccess` ist
 paketprivat). Setzen, Zurücknehmen und Erlöschen erzeugen je einen Protokolleintrag
 (`ASSET_EXTERNAL_ACCESS_CHANGED`, `ASSET_EXTERNAL_ACCESS_EXPIRED`) und öffnen je ein neues Intervall;
 der Ablauflauf schreibt ohne handelnde Person, unter einem Systemakteur. Die

@@ -177,8 +177,7 @@ class AssetApiNeutralityDumpTest {
         send(
             USER,
             put("/api/v1/libraries/" + l1),
-            "{\"name\":\"N1 Privat\",\"description\":\"geteilt\",\"visibility\":\"SHARED\","
-                + "\"listed\":true}"));
+            "{\"name\":\"N1 Privat\",\"description\":\"geteilt\",\"visibility\":\"SHARED\"}"));
 
     for (UUID library : List.of(l1, l2, l3, l4, l5)) {
       insertDocument(library, labels.get(library.toString()) + ".md", "Widerspruchsfrist Monat");

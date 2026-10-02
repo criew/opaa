@@ -30,7 +30,6 @@ import MetaBadge from '../components/MetaBadge'
 import FieldLabel from '../components/wizard/FieldLabel'
 import SuccessionStateNote from '../components/succession/SuccessionStateNote'
 import AssetAccessDerivationSection from '../components/assets/AssetAccessDerivationSection'
-import AssetListedSection from '../components/assets/AssetListedSection'
 import AssetSpacesSection from '../components/assets/AssetSpacesSection'
 import AssetGrantsSection from '../components/permissions/AssetGrantsSection'
 import PromptEditorDialog from '../components/prompts/PromptEditorDialog'
@@ -223,17 +222,11 @@ function SettingsArea({ library }: { library: PromptLibraryResponse }) {
   const name = draft?.name ?? library.name
   const description = draft?.description ?? library.description ?? ''
 
-  // The PUT replaces name, description and findability as a whole; each form sends its own
-  // fields and the saved values of the other.
-  async function save(fields: {
-    name: string
-    description: string | null | undefined
-    listed: boolean
-  }) {
+  // The PUT replaces name and description as a whole.
+  async function save(fields: { name: string; description: string | null | undefined }) {
     await updateLibrary(library.id, {
       name: fields.name.trim(),
       description: fields.description?.trim() || null,
-      listed: fields.listed,
     })
   }
 
@@ -241,7 +234,7 @@ function SettingsArea({ library }: { library: PromptLibraryResponse }) {
     setError(null)
     setSaving(true)
     try {
-      await save({ name, description, listed: library.listed })
+      await save({ name, description })
       setDraft(null)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Speichern fehlgeschlagen')
@@ -318,12 +311,6 @@ function SettingsArea({ library }: { library: PromptLibraryResponse }) {
           Eigentümer-Abschnitt bleibt dort, solange die Antwort einer Prompt-Bibliothek den
           Anzeigenamen ihrer zuständigen Stelle nicht trägt. */}
       <AssetGrantsSection assetType="PROMPT_LIBRARY" assetId={library.id} />
-
-      <AssetListedSection
-        assetType="PROMPT_LIBRARY"
-        listed={library.listed}
-        onSave={(listed) => save({ name: library.name, description: library.description, listed })}
-      />
 
       <AssetSpacesSection assetType="PROMPT_LIBRARY" assetId={library.id} canManage />
 

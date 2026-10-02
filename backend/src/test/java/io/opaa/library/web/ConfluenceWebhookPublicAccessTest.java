@@ -89,7 +89,6 @@ class ConfluenceWebhookPublicAccessTest {
                     "Quelle",
                     null,
                     UUID.randomUUID(),
-                    false,
                     SourceTypes.CONFLUENCE,
                     null,
                     "https://quelle.example.org",

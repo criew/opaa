@@ -70,7 +70,6 @@ class ConfluencePageIndexingIntegrationTest {
             "Wiki Bauamt " + owner,
             null,
             owner,
-            false,
             SourceTypes.CONFLUENCE,
             null,
             "https://wiki.behoerde.example/confluence",

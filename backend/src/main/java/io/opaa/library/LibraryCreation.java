@@ -24,7 +24,6 @@ public record LibraryCreation(
     String description,
     AssetOwnerType ownerType,
     UUID ownerId,
-    Boolean listed,
     SourceType sourceType,
     String sourcePath,
     URI sourceUrl,

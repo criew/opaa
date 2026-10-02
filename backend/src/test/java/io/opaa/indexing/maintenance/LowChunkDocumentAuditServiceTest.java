@@ -43,7 +43,7 @@ class LowChunkDocumentAuditServiceTest {
   }
 
   private static KnowledgeLibrary library(String name) {
-    return KnowledgeLibrary.ownedByUser(UUID.randomUUID(), name, null, UUID.randomUUID(), false);
+    return KnowledgeLibrary.ownedByUser(UUID.randomUUID(), name, null, UUID.randomUUID());
   }
 
   private static Document indexedDocument(UUID libraryId, String fileName, long size, int chunks) {

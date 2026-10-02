@@ -358,9 +358,8 @@ lassen.
   durch **Art des Wissens · Quelle · Name & Beschreibung · Freigaben**; eine Upload-Bibliothek hat
   drei Schritte, und der Name einer Konnektorbibliothek kommt vorbelegt aus der Quelle (hier ihr
   Hostname). Die fertige Bibliothek zeigt die vier Reiter (ohne „Quelle" beim Upload), und im
-  Reiter „Freigaben" laufen die drei Freigabewege durch: eine Person, „Alle Konten" mit der
-  Rückfrage aus ADR-0037, und der Katalog-Schalter mit eigenem „Auffindbarkeit speichern" —
-  gesetzt im Assistenten, hier zurückgenommen und über ein Neuladen nachgeprüft. Beide
+  Reiter „Freigaben" laufen die Freigabewege durch: eine Person und „Alle Konten" mit der
+  Rückfrage aus ADR-0037. Beide
   Bibliotheken räumt `cleanupLibraries()` über die API wieder ab.
 
   Die Abschnitte des Reiters werden über `getByRole('region', { name: … })` angesteuert:
@@ -524,8 +523,9 @@ lassen.
   und einer Pflicht-Variable an und gibt sie an eine Person (`dev-admin`), an eine Gruppe (Mitglied
   `dev-format-pipelines`) und an „Alle Konten" frei. Vor der Freigabe an „Alle Konten" findet
   `dev-outsider` sie weder in der Liste noch im Katalog noch unter ihrer Adresse (Negativfall).
-  Eine zweite Prompt-Bibliothek und eine Wissensbibliothek erscheinen erst nach der Listung im
-  Katalog — als Eintrag ohne Zugriff, ohne Link, mit zuständiger Stelle; der Typfilter trennt sie.
+  Eine zweite, geschlossene Prompt-Bibliothek findet `dev-outsider` im Katalog weder über den
+  Namen noch über die Beschreibung, ihre Eigentümerin dagegen schon; der Typfilter trennt sie von
+  einer Wissensbibliothek.
   Zuletzt setzt `dev-outsider` den Prompt im Chat per Befehl ein, füllt das Variablenformular und
   sieht den Hinweis „Prompt: <Titel>" im Verlauf, auch nach einem Neuladen. Eine zweite Organisation
   ist im `dev`-Auth-Modus nicht erreichbar; die Organisationsgrenze prüft das Backend

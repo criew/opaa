@@ -194,7 +194,7 @@ final class ContextPrefixFingerprint {
 
   static String productionEmbeddingInput(Sample sample) {
     KnowledgeLibrary library =
-        KnowledgeLibrary.ownedByUser(ORGANIZATION, "Eval-Zielbibliothek", null, OWNER, false);
+        KnowledgeLibrary.ownedByUser(ORGANIZATION, "Eval-Zielbibliothek", null, OWNER);
     if (sample.coreFieldsInPrefix()) {
       library.applyCoreContextPrefix(true, true);
     }

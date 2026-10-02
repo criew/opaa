@@ -20,7 +20,6 @@ public final class LibraryCreationBuilder {
   private String description;
   private AssetOwnerType ownerType;
   private UUID ownerId;
-  private Boolean listed;
   private final SourceType sourceType;
   private String sourcePath;
   private URI sourceUrl;
@@ -54,11 +53,6 @@ public final class LibraryCreationBuilder {
 
   public LibraryCreationBuilder ownerId(UUID ownerId) {
     this.ownerId = ownerId;
-    return this;
-  }
-
-  public LibraryCreationBuilder listed(Boolean listed) {
-    this.listed = listed;
     return this;
   }
 
@@ -118,7 +112,6 @@ public final class LibraryCreationBuilder {
         description,
         ownerType,
         ownerId,
-        listed,
         sourceType,
         sourcePath,
         sourceUrl,

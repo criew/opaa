@@ -166,7 +166,6 @@ class PromptLibraryDef:
     description: str
     owner_key: str
     prompts: tuple[PromptDef, ...]
-    listed: bool = False
     all_accounts_viewer: bool = False
     viewer_keys: tuple[str, ...] = field(default_factory=tuple)
     space_names: tuple[str, ...] = field(default_factory=tuple)
@@ -233,8 +232,8 @@ _DEMO_ANDREA = UserDef(
 )
 
 # Prompt libraries of the demo. Both belong to Andrea (Amtsleitung): the Textbausteine reach every
-# account through "Alle Konten" and are listed in the catalog; her own Vorlagen stay unlisted and
-# without any further grant, so Maria, Selin and Thomas neither use nor find them. Every prompt asks
+# account through "Alle Konten"; her own Vorlagen stay without any further grant, so Maria, Selin
+# and Thomas neither use nor find them. Every prompt asks
 # for what the Rheinfurt corpus answers - Leistungen, Satzungen, Pressemitteilungen, Ratsinformationen.
 _DEMO_PROMPT_LIBRARIES = (
     PromptLibraryDef(
@@ -244,7 +243,6 @@ _DEMO_PROMPT_LIBRARIES = (
             "Gebührenauskünfte, Aktenvermerke und Pressemitteilungen. Gepflegt von der Amtsleitung."
         ),
         owner_key="andrea",
-        listed=True,
         all_accounts_viewer=True,
         space_names=("Meldewesen & Ausweise", "Kfz-Zulassung", "Amtsleitung Bürgerbüro"),
         prompts=(

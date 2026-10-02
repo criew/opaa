@@ -28,7 +28,6 @@ export interface LibrarySourceSectionProps {
   library: {
     name: string
     description?: string | null
-    listed: boolean
     sourceType: SourceTypeKey
     sourcePath?: string | null
     sourceUrl?: string | null

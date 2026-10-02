@@ -8,7 +8,6 @@ import java.util.UUID;
  *
  * @param ownerType {@code null} means the creator owns it.
  * @param ownerId the owning group for {@link AssetOwnerType#GROUP}, ignored otherwise.
- * @param listed {@code null} means not listed.
  */
 public record PromptLibraryCreation(
-    String name, String description, AssetOwnerType ownerType, UUID ownerId, Boolean listed) {}
+    String name, String description, AssetOwnerType ownerType, UUID ownerId) {}

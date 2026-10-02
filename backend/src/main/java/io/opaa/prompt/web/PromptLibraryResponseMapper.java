@@ -24,16 +24,11 @@ final class PromptLibraryResponseMapper {
 
   static PromptLibraryCreation toCreation(PromptLibraryRequest request) {
     return new PromptLibraryCreation(
-        request.getName(),
-        request.getDescription(),
-        request.getOwnerType(),
-        request.getOwnerId(),
-        request.getListed());
+        request.getName(), request.getDescription(), request.getOwnerType(), request.getOwnerId());
   }
 
   static PromptLibraryUpdate toUpdate(PromptLibraryUpdateRequest request) {
-    return new PromptLibraryUpdate(
-        request.getName(), request.getDescription(), Boolean.TRUE.equals(request.getListed()));
+    return new PromptLibraryUpdate(request.getName(), request.getDescription());
   }
 
   static PromptLibraryResponse toResponse(PromptLibraryView view) {
@@ -44,7 +39,6 @@ final class PromptLibraryResponseMapper {
             library.getOwnerType(),
             library.getOwnerId(),
             toReachResponse(view.reach()),
-            library.isListed(),
             view.myRole(),
             view.promptCount(),
             library.getCreatedAt(),

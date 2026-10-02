@@ -318,21 +318,6 @@ describe('LibraryCreatePage (#596, #1942)', () => {
     )
   }, 15000)
 
-  // #1942: Der Katalog-Schalter ist neu im Assistenten und wird beim Anlegen mitgesetzt.
-  it('sets the catalog switch together with the library', async () => {
-    const user = userEvent.setup()
-    await renderPage()
-
-    await next(user)
-    await nameItAndContinue(user, 'Rechtsquellen Soziales')
-    await user.click(screen.getByLabelText('Im Katalog auffindbar, auch ohne Berechtigung'))
-    await user.click(screen.getByRole('button', { name: 'Bibliothek anlegen' }))
-
-    await waitFor(() =>
-      expect(mockCreateNewLibrary).toHaveBeenCalledWith(expect.objectContaining({ listed: true })),
-    )
-  }, 15000)
-
   // The library exists once the POST succeeded: a refused grant leads to its detail page instead
   // of re-enabling "Bibliothek anlegen", which would create a second library.
   it('goes to the new library when a noted grant is refused, and names the grant', async () => {
@@ -708,7 +693,6 @@ describe('LibraryCreatePage (#596, #1942)', () => {
         description: undefined,
         ownerType: 'USER',
         ownerId: undefined,
-        listed: false,
         sourceType: 'CONFLUENCE',
         sourceUrl: 'https://wiki.behoerde.example/confluence',
         sourceProxy: undefined,

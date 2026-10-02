@@ -49,14 +49,13 @@ class KnowledgeLibraryAssetTypeTest {
             "Bibliothek",
             null,
             UUID.randomUUID(),
-            false,
             SourceTypes.FILESYSTEM,
             "/data/dokumente",
             null,
             null,
             null,
             false);
-    library.updateShareCap(false, true);
+    library.updateShareCap(false);
     return library;
   }
 }

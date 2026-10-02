@@ -146,7 +146,7 @@ nicht der Reiter selbst.
 | **Dokumente** | der Bestand der Bibliothek, für jeden Quellentyp dieselbe Liste (siehe unten) |
 | **Quelle** | Umfang · Anbindung · Zeitplan · Läufe (siehe unten); entfällt bei einer Upload-Bibliothek |
 | **Metadaten** | „Metadatenfelder" — die eigenen Felder dieser Bibliothek samt Wertelisten — und, ab der Verwalterrolle, „Modellgestützte Extraktion". Beides beschreibt das Kapitel [Metadaten](metadaten.md) |
-| **Freigaben** | Eigentümer, Berechtigungen, Auffindbarkeit im Katalog, externer Zugang, Zuordnungen, Diagnosesperre und die Herleitung „Warum sehe ich diese Wissensbibliothek?" — die sieben Abschnitte beschreibt [Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), Abschnitt 4 |
+| **Freigaben** | Eigentümer, Berechtigungen, externer Zugang, Zuordnungen, Diagnosesperre und die Herleitung „Warum sehe ich diese Wissensbibliothek?" — die sechs Abschnitte beschreibt [Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), Abschnitt 4 |
 
 Der Reiter **„Quelle"** hat vier Abschnitte in dieser Reihenfolge:
 
@@ -188,7 +188,7 @@ später an derselben Stelle wieder:
 | **1. Art des Wissens** | je Quellentyp eine Kachel mit demselben Symbol, das später der Kopf der Detailansicht trägt, und einem Satz dazu. Fehlt das Anlegerecht für diese Art — „Bibliotheken für Uploads anlegen" und „Konnektorbibliotheken anlegen" sind zwei getrennte Rechte —, ist die Kachel gesperrt und nennt den Grund auf sich selbst. Zwischen den Kacheln führen die Pfeiltasten |
 | **2. Quelle** | Anbindung und Verbindungstest wie im gleichnamigen Reiter, dazu der **Zeitplan** und der Schalter „Erste Indizierung sofort nach dem Anlegen starten". Beide gelten für **jeden** Konnektortyp. Bei einer Upload-Bibliothek entfällt der Schritt, der Assistent hat dann drei |
 | **3. Name & Beschreibung** | der Name ist vorbelegt, wo die Quelle ihn hergibt — der einzelne Confluence-Space, der erste Bucket, der letzte Pfadabschnitt, der Hostname — und bleibt überschreibbar |
-| **4. Freigaben** | Eigentümer („Mein Konto" oder eine Gruppe, in der die anlegende Person Mitglied ist), vorgemerkte Freigaben an Personen und Gruppen, und der Schalter „Im Katalog auffindbar, auch ohne Berechtigung". Eine Freigabe an „Alle Konten" gibt es hier nicht: Sie wird an der fertigen Bibliothek erteilt, wo auch die Obergrenze dafür gilt |
+| **4. Freigaben** | Eigentümer („Mein Konto" oder eine Gruppe, in der die anlegende Person Mitglied ist) und vorgemerkte Freigaben an Personen und Gruppen. Eine Freigabe an „Alle Konten" gibt es hier nicht: Sie wird an der fertigen Bibliothek erteilt, wo auch die Obergrenze dafür gilt |
 
 Nach „Bibliothek anlegen" führt der Assistent auf die Detailseite. Konnte eine vorgemerkte Freigabe
 nicht erteilt werden, ist die Bibliothek trotzdem angelegt; ein Hinweis nennt die betroffenen

@@ -82,7 +82,7 @@ class PointInTimeAccessIntegrationTest {
         libraryRepository
             .save(
                 KnowledgeLibrary.ownedByUser(
-                    organizationId, "Vorgangsablage", null, ordinaryUserId, false))
+                    organizationId, "Vorgangsablage", null, ordinaryUserId))
             .getId();
     jdbcTemplate.update(
         "UPDATE users SET system_role = ? WHERE id = ?", SystemRole.AUDITOR.name(), auditorId);
@@ -161,7 +161,7 @@ class PointInTimeAccessIntegrationTest {
     UUID foreignLibraryId = UUID.randomUUID();
     jdbcTemplate.update(
         "WITH shell AS (INSERT INTO assets (id, asset_type, organization_id, name, owner_type,"
-            + " owner_user_id, listed) VALUES (?, 'KNOWLEDGE_LIBRARY', ?, 'Fremde Bibliothek', 'USER', ?, true)"
+            + " owner_user_id) VALUES (?, 'KNOWLEDGE_LIBRARY', ?, 'Fremde Bibliothek', 'USER', ?)"
             + " RETURNING id, organization_id) INSERT INTO knowledge_libraries (id,"
             + " organization_id, source_type) SELECT id, organization_id, 'UPLOAD' FROM shell",
         foreignLibraryId,

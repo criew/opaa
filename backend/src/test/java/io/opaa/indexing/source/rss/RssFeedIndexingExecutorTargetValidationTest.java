@@ -64,7 +64,6 @@ class RssFeedIndexingExecutorTargetValidationTest {
           "Bibliothek",
           null,
           UUID.randomUUID(),
-          false,
           SourceTypes.RSS_FEED,
           null,
           "https://example.com/feed.xml",

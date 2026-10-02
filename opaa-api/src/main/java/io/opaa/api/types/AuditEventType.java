@@ -18,25 +18,21 @@ public enum AuditEventType {
   /** A time-limited grant expiring is itself an event, the moment it takes effect. */
   ASSET_GRANT_EXPIRED,
   /**
-   * Change of an asset's visibility or listedness (visibility, listed) - also the event a connector
-   * library's clamp to a newly lowered share cap fires under (#797), since the clamp is materially
-   * the same change an owner's own edit makes, just actor and cause differ.
+   * Historical: the change of an asset's former catalogue findability. Never written since #2092;
+   * kept so the entries already in the append-only log stay readable until their retention ends.
    */
   ASSET_VISIBILITY_CHANGED,
   /**
    * A library's Fremdzugangsfreigabe was set or taken back (docs/features/external-access.md#die-
-   * freigabe-der-bibliothek) - the same kind of reach field as {@link #ASSET_VISIBILITY_CHANGED},
-   * but one that additionally decides about the Hausgrenze, which is why it is its own event rather
-   * than a payload variant of that one. Carries the direction and the expiry date, never a name of
-   * anyone holding a token.
+   * freigabe-der-bibliothek) - a reach field that decides about the Hausgrenze. Carries the
+   * direction and the expiry date, never a name of anyone holding a token.
    */
   ASSET_EXTERNAL_ACCESS_CHANGED,
   /**
    * A library's Fremdzugangsfreigabe stopped taking effect without anyone acting - carrying the
-   * Anlass, today always the expiry of its mandatory Befristung. #797 decided the connector share
-   * cap ({@link #CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED}) bounds only visibility and listed, not
-   * this field - a lowered cap therefore never writes this event. Written under a system actor,
-   * like every other expiry event.
+   * Anlass, today always the expiry of its mandatory Befristung. The connector share cap ({@link
+   * #CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED}) does not bound this field - a lowered cap therefore
+   * never writes this event. Written under a system actor, like every other expiry event.
    */
   ASSET_EXTERNAL_ACCESS_EXPIRED,
 
@@ -66,10 +62,9 @@ public enum AuditEventType {
   PROMPT_DELETED,
   /**
    * A library's source configuration (sourcePath/sourceUrl/sourceProxy/sourceCredentials/
-   * sourceInsecureSsl) changed - distinct from {@link #LIBRARY_CHANGED} (name/description) and
-   * {@link #ASSET_VISIBILITY_CHANGED} (visibility/listed), neither of which fires for a source
-   * configuration edit alone. Only which fields changed is recorded, never their values -
-   * sourceCredentials must never appear in the log at all.
+   * sourceInsecureSsl) changed - distinct from {@link #LIBRARY_CHANGED} (name/description), which
+   * does not fire for a source configuration edit alone. Only which fields changed is recorded,
+   * never their values - sourceCredentials must never appear in the log at all.
    */
   LIBRARY_SOURCE_UPDATED,
   GROUP_CREATED,
@@ -95,8 +90,8 @@ public enum AuditEventType {
   GROUP_STEWARD_DISMISSED,
   /**
    * An internal group was released for use by other people granting rights, or the release was
-   * taken back (ADR-0036, Entscheidung 9). A reach field like {@link #ASSET_VISIBILITY_CHANGED}: it
-   * decides who may name this group as a grant subject at all.
+   * taken back (ADR-0036, Entscheidung 9). A reach field: it decides who may name this group as a
+   * grant subject at all.
    */
   GROUP_RELEASE_CHANGED,
   /**
@@ -178,6 +173,13 @@ public enum AuditEventType {
    */
   DIRECTORY_SYNC_PLAN_DISCARDED,
   /**
+   * The system administration received a directory sync report naming persons - a pending plan, a
+   * dry run, a run or a confirmation (ADR-0036, Entscheidung 9). One summary entry per response on
+   * the provider as object, with the number of groups and persons it named; a report naming nobody
+   * writes nothing.
+   */
+  DIRECTORY_SYNC_REPORT_READ,
+  /**
    * An account lost its access because the directory reports it as disabled or no longer reports it
    * at all (#1818, ADR-0036 Entscheidung 3). One entry per account, linked to the run's header
    * entry via {@code correlationRef}.
@@ -201,10 +203,9 @@ public enum AuditEventType {
   /** Covers both model defaults and the approval of external models. */
   MODEL_POLICY_CHANGED,
   /**
-   * A system administrator set or changed a connector library's share cap - the ceiling on {@code
-   * visibility}/{@code listed} #797 introduces. Distinct from {@link #ASSET_VISIBILITY_CHANGED},
-   * which the same call also writes whenever lowering the cap clamps the library's own, wider
-   * setting back down to it.
+   * A system administrator set or changed a connector library's share cap - whether the library may
+   * be granted to "Alle Konten". Distinct from {@link #ASSET_GRANT_REVOKED}, which the same call
+   * also writes whenever lowering the cap revokes such a grant.
    */
   CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED,
   /**

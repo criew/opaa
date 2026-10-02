@@ -75,7 +75,6 @@ class UrlIndexingExecutorCredentialsTest {
                 "Web-Verzeichnis mit Zugangsdaten",
                 null,
                 userId,
-                false,
                 SourceTypes.HTTP_DIRECTORY,
                 null,
                 "https://files.example.com/documents/",
