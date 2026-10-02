@@ -1,5 +1,12 @@
 import { expect, test, type Page } from '@playwright/test'
-import { askQuestion, expectAnyCitedSource, gotoLibraries, startFreshChat } from '../../fixtures/chat'
+import {
+  askQuestion,
+  expectAnyCitedSource,
+  expectNoCatalogMatch,
+  gotoLibraries,
+  searchLibraries,
+  startFreshChat,
+} from '../../fixtures/chat'
 
 /**
  * The one smoke test against the "demo" Compose profile (Issue #232, Epic #708). Not part of the
@@ -197,8 +204,8 @@ test.describe('Demo-Smoke (#232)', () => {
    * ADR-0025 / #1334: two providers, no shared account. The administrator adds the partner realm
    * as a second provider through the Anbieterverwaltung - no restart - and the sign-in page then
    * offers both. maria.weber exists in both realms with the same e-mail address; signing in
-   * through each yields a different account: the partner account is brand new and sees none of
-   * the demo libraries the seeded Maria can read.
+   * through each yields a different account: the partner account is brand new and reads only what
+   * is released to "Alle Konten", none of the closed libraries the seeded Maria reads.
    */
   test('Zweiter Anbieter über die Verwaltungsoberfläche: gleiche E-Mail, zwei Konten', async ({
     page,
@@ -255,13 +262,12 @@ test.describe('Demo-Smoke (#232)', () => {
       username: DEMO_USERNAME,
     })
     expect(mariaAtPartner.email).toBe('maria.weber@stadt-rheinfurt.example')
-    // a fresh account: none of the seeded demo libraries is readable for it - wait for the
-    // rendered empty state first, an absence check alone would pass before the list rendered
-    await gotoLibraries(page)
-    await expect(
-      page.getByText('Kein Eintrag passt zu den Filtern.', { exact: true }).and(page.locator('p')),
-    ).toBeVisible()
-    await expect(page.getByText('Leistungen Meldewesen & Ausweise', { exact: true })).toHaveCount(0)
+    // a fresh account: it reads what the seed released to "Alle Konten", but none of the closed
+    // libraries the seeded Maria reads - the absence check waits for the rendered empty result
+    await searchLibraries(page, 'Satzungen')
+    await expect(page.getByText('Satzungen & Gebührenordnungen', { exact: true })).toBeVisible()
+    await searchLibraries(page, 'Leistungen Meldewesen')
+    await expectNoCatalogMatch(page, 'Leistungen Meldewesen')
     await logout(page)
 
     const mariaAtVerzeichnisdienst = await loginViaKeycloak(page, {
