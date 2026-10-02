@@ -264,7 +264,7 @@ public class SearchStatusService {
           new ModelRoleStatus(
               ModelRole.EMBEDDING,
               ModelRoleCondition.ACTIVE,
-              null,
+              info.baseUrl(),
               info.model(),
               "Das Einbettungsmodell hat auf die Erreichbarkeitsprüfung geantwortet."),
           true);
@@ -285,7 +285,7 @@ public class SearchStatusService {
     return new ModelRoleStatus(
         ModelRole.EMBEDDING,
         ModelRoleCondition.UNREACHABLE,
-        null,
+        info.baseUrl(),
         info.model(),
         "Das Einbettungsmodell hat auf die Erreichbarkeitsprüfung nicht geantwortet. Ohne"
             + " Einbettungen findet die Vektorsuche nichts.");

@@ -86,7 +86,9 @@ class SearchStatusProbeCacheTest {
     when(connectionTester.test(any(), any(), isNull(), any()))
         .thenReturn(new LlmModelConnectionTester.TestOutcome(true, "Verbindung erfolgreich."));
     when(embeddingInfoService.getEmbeddingInfo())
-        .thenReturn(new EmbeddingInfo("openai", "text-embedding-3-small", 1536));
+        .thenReturn(
+            new EmbeddingInfo(
+                "openai", "text-embedding-3-small", 1536, "https://embedding.example.invalid/v1"));
     when(embeddingModel.embed(anyString())).thenReturn(new float[] {0.1f});
     when(rerankRoleStatusProvider.currentStatus()).thenReturn(RerankRoleStatus.disabled());
     when(libraryRepository.findByOrganizationId(ORGANIZATION_ID)).thenReturn(List.of());
@@ -159,6 +161,18 @@ class SearchStatusProbeCacheTest {
 
     assertThat(conditionOf(status, ModelRole.EMBEDDING)).isEqualTo(ModelRoleCondition.UNREACHABLE);
     assertThat(conditionOf(status, ModelRole.CHAT)).isEqualTo(ModelRoleCondition.ACTIVE);
+    assertThat(roleOf(status, ModelRole.EMBEDDING).endpoint())
+        .isEqualTo("https://embedding.example.invalid/v1");
+  }
+
+  /** regression guard for #2123: the embedding role names its endpoint like the other roles. */
+  @Test
+  void anActiveEmbeddingRoleNamesItsEndpoint() {
+    ModelRoleStatus embedding =
+        roleOf(service.statusForOrganization(ORGANIZATION_ID), ModelRole.EMBEDDING);
+
+    assertThat(embedding.condition()).isEqualTo(ModelRoleCondition.ACTIVE);
+    assertThat(embedding.endpoint()).isEqualTo("https://embedding.example.invalid/v1");
   }
 
   /**
@@ -224,6 +238,10 @@ class SearchStatusProbeCacheTest {
     assertThat(rerank.detail()).contains("Anmeldedaten");
     assertThat(rerank.detail()).doesNotContain("keine Rerank-Modellrolle hinterlegt");
     assertThat(rerank.endpoint()).isNull();
+  }
+
+  private static ModelRoleStatus roleOf(SearchStatus status, ModelRole role) {
+    return status.modelRoles().stream().filter(r -> r.role() == role).findFirst().orElseThrow();
   }
 
   private static ModelRoleCondition conditionOf(SearchStatus status, ModelRole role) {

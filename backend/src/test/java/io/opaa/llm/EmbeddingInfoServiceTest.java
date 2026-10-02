@@ -15,12 +15,24 @@ class EmbeddingInfoServiceTest {
 
   @Test
   void reportsTheConfiguredProviderModelAndDimensions() {
-    EmbeddingInfoService service = new EmbeddingInfoService("openai", "nomic-embed-text", 768);
+    EmbeddingInfoService service =
+        new EmbeddingInfoService(
+            "openai", "nomic-embed-text", 768, "http://host.docker.internal:11434/v1");
 
     EmbeddingInfo info = service.getEmbeddingInfo();
 
     assertThat(info.provider()).isEqualTo("openai");
     assertThat(info.model()).isEqualTo("nomic-embed-text");
     assertThat(info.dimensions()).isEqualTo(768);
+    assertThat(info.baseUrl()).isEqualTo("http://host.docker.internal:11434/v1");
+  }
+
+  @Test
+  void withholdsABaseUrlThatCarriesCredentials() {
+    EmbeddingInfoService service =
+        new EmbeddingInfoService(
+            "openai", "nomic-embed-text", 768, "https://user:secret@llm.example.invalid/v1");
+
+    assertThat(service.getEmbeddingInfo().baseUrl()).isNull();
   }
 }

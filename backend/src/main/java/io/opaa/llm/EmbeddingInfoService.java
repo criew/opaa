@@ -25,17 +25,20 @@ public class EmbeddingInfoService {
   private final String provider;
   private final String model;
   private final int dimensions;
+  private final String baseUrl;
 
   public EmbeddingInfoService(
       @Value("${spring.ai.model.embedding}") String provider,
       @Value("${spring.ai.openai.embedding.model}") String model,
-      @Value("${spring.ai.vectorstore.pgvector.dimensions}") int dimensions) {
+      @Value("${spring.ai.vectorstore.pgvector.dimensions}") int dimensions,
+      @Value("${spring.ai.openai.embedding.base-url}") String baseUrl) {
     this.provider = provider;
     this.model = model;
     this.dimensions = dimensions;
+    this.baseUrl = ModelEndpointUri.containsCredentials(baseUrl) ? null : baseUrl;
   }
 
   public EmbeddingInfo getEmbeddingInfo() {
-    return new EmbeddingInfo(provider, model, dimensions);
+    return new EmbeddingInfo(provider, model, dimensions, baseUrl);
   }
 }
