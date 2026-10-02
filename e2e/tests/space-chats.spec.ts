@@ -7,6 +7,7 @@ import {
   chatSidebarEntries,
   clearSearchScope,
   createLibraryWithDocument,
+  expectCitedSource,
   expectAnyCitedSource,
   expectCitedExclusively,
   expectTopSidebarChatToBeNamed,
@@ -91,9 +92,9 @@ async function referenceLibrary(page: Page, libraryName: string) {
 }
 
 /**
- * Creates a space named spaceName through the four-step wizard (name is the only required field,
- * members and data sources are optional) and returns its id, read off the overview URL the wizard
- * navigates to on success.
+ * Creates a space named spaceName through the four-step wizard (name is the only required field;
+ * the steps "Mitglieder" and "Inhalte" are skipped) and returns its id, read off the overview URL
+ * the wizard navigates to on success.
  */
 async function createSpace(page: Page, spaceName: string): Promise<string> {
   await page.goto('/spaces/new')
@@ -594,5 +595,28 @@ test.describe.serial('Chats im Space, @-Referenzen und Suchbereich-Chip-Leiste (
     await page.goto(chatUrl)
     await page.getByRole('button', { name: 'Chat aus dem Archiv zurückholen' }).click()
     await expect(page.getByRole('main').getByText('Archiviert', { exact: true })).toHaveCount(0)
+  })
+
+  // ADR-0039, Entscheidung 4: "In Space verwenden" leads from the catalog to the association in at
+  // most two clicks, and the asset is usable in the space's chat right after.
+  test('10. In Space verwenden: Bibliothek aus dem Katalog in zwei Klicks zuordnen und im Chat nutzen', async (
+    { authenticatedPage: page },
+    testInfo,
+  ) => {
+    const id = uniqueId(testInfo)
+    const libraryName = `E2E-Chat-Katalog-${id}`
+    const spaceName = `E2E-Chat-Katalog-Space-${id}`
+    await createLibraryWithDocument(page, libraryName, DOCUMENT_B_PATH, DOCUMENT_B_NAME)
+    const spaceId = await createSpace(page, spaceName)
+
+    await page.goto('/catalog')
+    await page.getByLabel('Suchen', { exact: true }).fill(libraryName)
+    await page.getByRole('button', { name: `„${libraryName}“ in Space verwenden` }).click()
+    await page.getByRole('dialog').getByRole('button', { name: spaceName }).click()
+    await expect(page.getByText(`ist jetzt im Space „${spaceName}“ zugeordnet`)).toBeVisible()
+
+    await page.goto(`/spaces/${spaceId}/chats/new`)
+    await askQuestion(page, `Was steht im zugeordneten Dokument (${id})?`)
+    await expectCitedSource(page, DOCUMENT_B_NAME)
   })
 })

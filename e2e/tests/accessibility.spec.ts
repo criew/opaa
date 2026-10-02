@@ -204,6 +204,38 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
     await expectNoSeriousA11yViolations(page, "Katalog (helles Farbschema)");
     await page.emulateMedia({ colorScheme: "dark" });
     await expectNoSeriousA11yViolations(page, "Katalog (dunkles Farbschema)");
+
+    // „In Space verwenden": die Auswahl der kuratierten Spaces im Dialog - sofern der Stapel
+    // schon einen Katalogeintrag führt.
+    const useInSpace = page.getByRole("button", { name: /in Space verwenden$/ }).first();
+    if ((await useInSpace.count()) > 0) {
+      await useInSpace.click();
+      await expect(
+        page.getByRole("dialog").getByRole("button", { name: "Neuen Space damit anlegen" }),
+      ).toBeVisible();
+      await expectNoSeriousA11yViolations(page, "In Space verwenden (dunkles Farbschema)");
+    }
+  });
+
+  // Der Schritt „Inhalte" des Space-Assistenten: Mehrfachauswahl als Kacheln mit Typfilter und Suche.
+  test("Space-Assistent: Inhalte als Kachelauswahl in beiden Farbschemata", async ({
+    authenticatedPage: page,
+  }) => {
+    await page.goto("/spaces/new");
+    await page.getByLabel("Name", { exact: true }).fill("Barrierefreiheit");
+    await page.getByRole("button", { name: "Weiter", exact: true }).click();
+    await page.getByRole("button", { name: "Weiter", exact: true }).click();
+    await expect(
+      page
+        .getByRole("group", { name: "Inhalte für diesen Space" })
+        .or(page.getByText("Es gibt derzeit nichts, was Sie lesen dürfen"))
+        .first(),
+    ).toBeVisible();
+
+    await page.emulateMedia({ colorScheme: "light" });
+    await expectNoSeriousA11yViolations(page, "Space-Inhalte (helles Farbschema)");
+    await page.emulateMedia({ colorScheme: "dark" });
+    await expectNoSeriousA11yViolations(page, "Space-Inhalte (dunkles Farbschema)");
   });
 
   // #1541/#1601: die Benutzerverwaltung führt die dichteste Kombination des Bereichs — eine

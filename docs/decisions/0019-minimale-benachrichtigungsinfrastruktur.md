@@ -14,9 +14,9 @@ und den beiden Endpunkten dieses ADR ändert das nichts.
 **Hinweis (02.10.2026, [ADR-0039](0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md)):** Seit
 die Space-Zuordnung für alle Asset-Typen eine harte Grenze ist, gilt die Benachrichtigung bei Zuordnung
 zu einem gemischten Space nicht nur für Wissensbibliotheken, sondern für jeden Typ; wird ein Space mit
-vielen Zuordnungen angelegt, wird sie je Eigentümer gebündelt (#2097). Ob dafür
-`LIBRARY_ASSOCIATED_TO_MIXED_SPACE` verallgemeinert oder ein typneutraler Wert eingeführt wird,
-entscheidet #2097.
+vielen Zuordnungen angelegt, wird sie je Eigentümer gebündelt (#2097). #2097 hat dafür
+`LIBRARY_ASSOCIATED_TO_MIXED_SPACE` durch den typneutralen Wert `ASSET_ASSOCIATED_TO_MIXED_SPACE`
+ersetzt; eine gebündelte Benachrichtigung bezieht sich auf den Space statt auf einen Bestand.
 
 ## Kontext
 
