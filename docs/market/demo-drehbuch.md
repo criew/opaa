@@ -511,10 +511,10 @@ Wem welches Asset gehört, was öffentlich ist, wer welche Favoriten hat und wel
 zugeordnet hat, steht als Übersicht in
 [`../features/demo-instance.md`](../features/demo-instance.md#eigentum-sichtbarkeit-favoriten-und-zuordnung).
 
-**Stand der Oberfläche:** Die Seed-Daten dieses Schritts gibt es, der Seed setzt sie. Den Stern und
-den Filter „nur Favoriten" im Katalog, Eigentum und Sichtbarkeit an der Kachel sowie den Hinweis auf
-nicht lesbare Zuordnungen baut Epic #2070 noch (#2095, #2094, #2097). Die Beschriftungen unten folgen
-der Spezifikation und sind nach dem Neuaufsetzen der Demo gegenzuprüfen.
+**Stand der Oberfläche:** Eigentum und Sichtbarkeit an der Kachel, die Filter und die Sortierung
+des Katalogs sind gebaut (#2113, #2116). Den Stern und den Filter „nur Favoriten" sowie den Hinweis
+auf nicht lesbare Zuordnungen baut Epic #2070 noch (#2095, #2097). Die Beschriftungen dieser Teile
+folgen der Spezifikation und sind nach dem Neuaufsetzen der Demo gegenzuprüfen.
 
 Für die Teile 1 und 3 lohnen sich zwei Browserfenster, eines davon privat.
 
@@ -529,11 +529,11 @@ Für die Teile 1 und 3 lohnen sich zwei Browserfenster, eines davon privat.
   - **Zeigt:** Jede Person ordnet ihren Katalog selbst. Niemand sieht die Favoriten anderer, auch
     nicht als Zahl am Asset.
 - **2. Eigentum und Sichtbarkeit an der Kachel** (Konto `maria.weber`):
-  - „Satzungen & Gebührenordnungen" gehört Andrea Vogt und ist für alle Konten freigegeben.
+  - „Satzungen & Gebührenordnungen" gehört Andrea Vogt und trägt die Sichtbarkeit „Für alle".
   - „Leistungen Meldewesen & Ausweise" gehört der Keycloak-Gruppe „Meldewesen" und ist
-    eingeschränkt. Maria hat die Bibliothek für die Gruppe angelegt; Selin verwaltet sie als
+    „Eingeschränkt". Maria hat die Bibliothek für die Gruppe angelegt; Selin verwaltet sie als
     Gruppenmitglied mit.
-  - „Interne Dienstanweisungen Meldewesen" gehört Maria selbst und ist eingeschränkt.
+  - „Interne Dienstanweisungen Meldewesen" gehört Maria selbst und ist „Eingeschränkt".
   - Als `thomas.klein` fehlen „Leistungen Meldewesen & Ausweise" und die „Vorlagen Amtsleitung" im
     Katalog ganz: Was eine Person nicht lesen darf, sieht sie nirgends.
   - **Zeigt:** Wissen gehört Fachleuten und Fachgruppen, nicht der Systemverwaltung. Sichtbar ist
