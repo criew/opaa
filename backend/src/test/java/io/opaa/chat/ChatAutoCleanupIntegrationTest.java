@@ -39,6 +39,7 @@ class ChatAutoCleanupIntegrationTest {
   @Autowired private ChatAutoCleanupService cleanupService;
   @Autowired private ChatService chatService;
   @Autowired private SpaceRepository spaceRepository;
+  @Autowired private ChatRepository chatRepository;
   @Autowired private UserRepository userRepository;
   @Autowired private OrganizationRepository organizationRepository;
   @Autowired private JdbcTemplate jdbcTemplate;
@@ -173,6 +174,100 @@ class ChatAutoCleanupIntegrationTest {
   }
 
   @Test
+  void aChatPinnedAfterItWasFoundDueIsNotDeletedByItsBatch() {
+    UUID author = createUser();
+    UUID spaceId = createSpace(author, now.minus(DAY.multipliedBy(800)));
+    UUID chatId = createArchivedChat(spaceId, author);
+    setArchivedAt(chatId, now.minus(DAY.multipliedBy(800)));
+    Instant cutoff = now.minus(DAY.multipliedBy(365));
+    List<UUID> due = chatRepository.findDueForAutoCleanupDeletion(cutoff);
+    assertThat(due).contains(chatId);
+
+    chatService.pinChat(chatId, author);
+    cleanupService.deleteBatch(due, cutoff);
+
+    assertThat(chatExists(chatId)).isTrue();
+  }
+
+  @Test
+  void aSpaceSwitchedOffAfterItsChatsWereFoundDueLosesNoneOfThemToTheBatch() {
+    UUID author = createUser();
+    UUID spaceId = createSpace(author, now.minus(DAY.multipliedBy(800)));
+    UUID chatId = createArchivedChat(spaceId, author);
+    setArchivedAt(chatId, now.minus(DAY.multipliedBy(800)));
+    Instant cutoff = now.minus(DAY.multipliedBy(365));
+    List<UUID> due = chatRepository.findDueForAutoCleanupDeletion(cutoff);
+
+    setCleanupEnabledAt(spaceId, null);
+    cleanupService.deleteBatch(due, cutoff);
+
+    assertThat(chatExists(chatId)).isTrue();
+  }
+
+  @Test
+  void afterSwitchingOffNothingIsArchivedOrDeleted() {
+    UUID author = createUser();
+    UUID spaceId = createSpace(author, now.minus(DAY.multipliedBy(800)));
+    UUID inactive = createChat(spaceId, author);
+    setLastActivity(inactive, now.minus(DAY.multipliedBy(800)));
+    UUID archived = createArchivedChat(spaceId, author);
+    setArchivedAt(archived, now.minus(DAY.multipliedBy(800)));
+
+    setCleanupEnabledAt(spaceId, null);
+    cleanupService.runOnce(now.plus(DAY.multipliedBy(1000)));
+
+    assertThat(archivedAt(inactive, author)).isNull();
+    assertThat(chatExists(archived)).isTrue();
+  }
+
+  @Test
+  void switchingOnAgainStartsTheDeletePeriodAnew() {
+    UUID author = createUser();
+    UUID spaceId = createSpace(author, now.minus(DAY.multipliedBy(800)));
+    UUID chatId = createArchivedChat(spaceId, author);
+    setArchivedAt(chatId, now.minus(DAY.multipliedBy(800)));
+
+    setCleanupEnabledAt(spaceId, now);
+    cleanupService.runOnce(now.plus(DAY.multipliedBy(364)));
+    assertThat(chatExists(chatId)).isTrue();
+
+    cleanupService.runOnce(now.plus(DAY.multipliedBy(366)));
+    assertThat(chatExists(chatId)).isFalse();
+  }
+
+  @Test
+  void oneRunDeletesMoreChatsThanFitIntoOneBatch() {
+    UUID author = createUser();
+    UUID spaceId = createSpace(author, now.minus(DAY.multipliedBy(800)));
+    for (int i = 0; i <= ChatAutoCleanupService.DELETE_BATCH_SIZE; i++) {
+      createChat(spaceId, author);
+    }
+    jdbcTemplate.update(
+        "INSERT INTO chat_personal_marks (chat_id, user_id, archived_at)"
+            + " SELECT id, author_id, ? FROM chats WHERE space_id = ?",
+        Timestamp.from(now.minus(DAY.multipliedBy(800))),
+        spaceId);
+
+    cleanupService.runOnce(now);
+
+    assertThat(chatCount(spaceId)).isZero();
+  }
+
+  @Test
+  void anEmptyMarkRowDoesNotStopTheArchiving() {
+    UUID author = createUser();
+    UUID spaceId = createSpace(author, now.minus(DAY.multipliedBy(200)));
+    UUID chatId = createChat(spaceId, author);
+    setLastActivity(chatId, now.minus(DAY.multipliedBy(100)));
+    jdbcTemplate.update(
+        "INSERT INTO chat_personal_marks (chat_id, user_id) VALUES (?, ?)", chatId, author);
+
+    cleanupService.runOnce(now);
+
+    assertThat(archivedAt(chatId, author)).isEqualTo(Timestamp.from(now));
+  }
+
+  @Test
   void anArchivedChatShowsWhenTheCleanupDeletesIt() {
     UUID author = createUser();
     Instant enabledAt = now.minus(DAY.multipliedBy(10));
@@ -242,6 +337,18 @@ class ChatAutoCleanupIntegrationTest {
   private UUID authorOf(UUID chatId) {
     return jdbcTemplate.queryForObject(
         "SELECT author_id FROM chats WHERE id = ?", UUID.class, chatId);
+  }
+
+  private void setCleanupEnabledAt(UUID spaceId, Instant instant) {
+    if (instant == null) {
+      jdbcTemplate.update(
+          "UPDATE spaces SET chat_auto_cleanup_enabled_at = NULL WHERE id = ?", spaceId);
+    } else {
+      jdbcTemplate.update(
+          "UPDATE spaces SET chat_auto_cleanup_enabled_at = ? WHERE id = ?",
+          Timestamp.from(instant),
+          spaceId);
+    }
   }
 
   private void setLastActivity(UUID chatId, Instant instant) {

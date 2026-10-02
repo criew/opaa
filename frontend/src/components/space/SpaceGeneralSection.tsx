@@ -33,7 +33,7 @@ interface SpaceGeneralSectionProps {
 
 /**
  * Der Reiter „Stammdaten" der Space-Einstellungen: Name, Beschreibung, Sichtbarkeit und der Schalter
- * der automatischen Chat-Bereinigung, den jedes Mitglied sieht (#1923), und am
+ * der automatischen Chat-Bereinigung, den jedes Mitglied sieht, und am
  * Ende der abgesetzte Gefahrenbereich mit Archivieren und Löschen (#1917).
  */
 export default function SpaceGeneralSection({

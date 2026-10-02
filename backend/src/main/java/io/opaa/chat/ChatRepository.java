@@ -47,7 +47,7 @@ public interface ChatRepository extends JpaRepository<Chat, UUID> {
 
   /**
    * The chats in their author's chat archive since before {@code cutoff}, in spaces whose automatic
-   * chat cleanup was switched on before {@code cutoff} too - the chats it deletes now (#1923).
+   * chat cleanup was switched on before {@code cutoff} too - the chats it deletes now.
    */
   @Query(
       value =

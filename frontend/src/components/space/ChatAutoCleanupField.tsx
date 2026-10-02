@@ -14,7 +14,7 @@ interface ChatAutoCleanupFieldProps {
 }
 
 /**
- * Der Schalter „Inaktive Chats automatisch archivieren und löschen" eines Space (#1923), mit der
+ * Der Schalter „Inaktive Chats automatisch archivieren und löschen" eines Space, mit der
  * Erklärung, was er bewirkt. Die Fristen sind systemweit fest und nur vom Betrieb einstellbar.
  */
 export default function ChatAutoCleanupField({

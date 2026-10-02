@@ -11,11 +11,11 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * The automatic chat cleanup of the spaces that switched it on (#1923, docs/features/chat-list.md,
- * "Automatisches Archivieren und Löschen"): archives chats without activity and deletes chats that
- * stayed archived, each after its installation-wide period, never counted from before switching on.
- * Pinned chats take part in neither. Activity is {@code chats.updated_at} and nothing else; the log
- * names only totals, never a chat, space or person.
+ * The automatic chat cleanup of the spaces that switched it on (docs/features/chat-list.md,
+ * "Automatisches Archivieren und Löschen je Space"): archives chats without activity and deletes
+ * chats that stayed archived, each after its installation-wide period, never counted from before
+ * switching on. Pinned chats take part in neither. Activity is {@code chats.updated_at} and nothing
+ * else; the log names only totals, never a chat, space or person.
  */
 @Service
 public class ChatAutoCleanupService {
@@ -56,19 +56,25 @@ public class ChatAutoCleanupService {
   }
 
   private int deleteDue(Instant now) {
-    List<UUID> due = chatRepository.findDueForAutoCleanupDeletion(properties.deleteCutoff(now));
+    Instant cutoff = properties.deleteCutoff(now);
+    List<UUID> due = chatRepository.findDueForAutoCleanupDeletion(cutoff);
     int deleted = 0;
     for (int from = 0; from < due.size(); from += DELETE_BATCH_SIZE) {
-      List<UUID> batch = due.subList(from, Math.min(from + DELETE_BATCH_SIZE, due.size()));
-      Integer count =
-          transactionTemplate.execute(
-              status -> {
-                List<Chat> chats = chatRepository.findAllById(batch);
-                chatRepository.deleteAll(chats);
-                return chats.size();
-              });
-      deleted += count == null ? 0 : count;
+      deleted +=
+          deleteBatch(due.subList(from, Math.min(from + DELETE_BATCH_SIZE, due.size())), cutoff);
     }
     return deleted;
+  }
+
+  /** Deletes the chats among {@code candidates} in one transaction; returns how many. */
+  int deleteBatch(List<UUID> candidates, Instant cutoff) {
+    Integer count =
+        transactionTemplate.execute(
+            status -> {
+              List<Chat> chats = chatRepository.findAllById(candidates);
+              chatRepository.deleteAll(chats);
+              return chats.size();
+            });
+    return count == null ? 0 : count;
   }
 }

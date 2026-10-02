@@ -739,7 +739,7 @@ public class SpaceService {
       // "rechtlich Erheblich" - visibility is (it feeds who can see the space), free-text
       // name/description content is not, and is never written here even though it changed;
       // changedFields names which fields changed without carrying the free-text values. Visibility
-      // and the chat cleanup switch (a retention setting, #1923) carry their before/after.
+      // and the chat cleanup switch (a retention setting) carry their before/after.
       List<String> changedFields = new ArrayList<>();
       if (nameChanged) {
         changedFields.add("name");

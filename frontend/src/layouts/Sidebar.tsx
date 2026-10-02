@@ -97,7 +97,7 @@ export default function Sidebar({ resizable = false }: { resizable?: boolean }) 
   )
 
   // Den Einstieg sieht jedes Mitglied: Die Stammdaten zeigen allen, ob inaktive Chats dieses Space
-  // automatisch archiviert und gelöscht werden (#1923). Ändern darf weiter nur, wer verwaltet; die
+  // automatisch archiviert und gelöscht werden. Ändern darf weiter nur, wer verwaltet; die
   // Felder sind für alle anderen gesperrt, und der Dienst weist ihre Schreibzugriffe ohnehin ab.
   const mayOpenSettings = activeSpace?.userRole != null
   const settingsRoute = activeChatSpaceId ? spaceSettingsRoute(activeChatSpaceId) : ''

@@ -125,7 +125,7 @@ public interface ChatPersonalMarkRepository
   /**
    * Moves every chat whose last activity and whose space's cleanup start both lie before {@code
    * cutoff} into its author's chat archive, unless the author pinned or archived it already. Only
-   * spaces with the automatic chat cleanup switched on take part (#1923).
+   * spaces with the automatic chat cleanup switched on take part.
    *
    * @return the number of chats archived
    */

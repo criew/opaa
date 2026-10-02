@@ -492,7 +492,7 @@ components:
           format: date-time
           nullable: true
           description: >
-            When the automatic chat cleanup of the space will delete this archived chat (#1923);
+            When the automatic chat cleanup of the space will delete this archived chat;
             null while the chat is active for the caller or the space has the cleanup switched off.
             Pinning the chat or asking a new question in it brings it back and clears this.
 
@@ -610,7 +610,7 @@ components:
           format: date-time
           nullable: true
           description: >
-            When the automatic chat cleanup of the space will delete this archived chat (#1923);
+            When the automatic chat cleanup of the space will delete this archived chat;
             null while the chat is active for the caller or the space has the cleanup switched off.
             Pinning the chat or asking a new question in it brings it back and clears this.
 

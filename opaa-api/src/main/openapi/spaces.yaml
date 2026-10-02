@@ -454,8 +454,8 @@ components:
           type: boolean
           nullable: true
           description: >
-            Switches on the automatic archiving and deletion of inactive chats in this space
-            (#1923). Omitted or null leaves it off. The periods are fixed installation-wide, see
+            Switches on the automatic archiving and deletion of inactive chats in this space.
+            Omitted or null leaves it off. The periods are fixed installation-wide, see
             ChatAutoCleanupResponse.
         libraryIds:
           type: array
@@ -499,7 +499,7 @@ components:
           type: boolean
           nullable: true
           description: >
-            Switches the automatic archiving and deletion of inactive chats on or off (#1923).
+            Switches the automatic archiving and deletion of inactive chats on or off.
             Omitted or null leaves the current setting unchanged. Switching it on starts both
             periods anew; nothing is archived or deleted retroactively.
 
@@ -770,7 +770,7 @@ components:
       type: object
       required: [enabled, archiveAfterDays, deleteAfterDays]
       description: >
-        Whether inactive chats of the space are archived and deleted automatically (#1923), with
+        Whether inactive chats of the space are archived and deleted automatically, with
         the installation-wide periods the operator configures. Visible to every member.
       properties:
         enabled:

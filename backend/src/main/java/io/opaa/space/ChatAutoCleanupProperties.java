@@ -6,8 +6,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.bind.DefaultValue;
 
 /**
- * The installation-wide periods of the automatic chat cleanup a space can switch on (#1923). Only
- * the operator sets them; a value below its floor stops the start, so no configuration can turn the
+ * The installation-wide periods of the automatic chat cleanup a space can switch on. Only the
+ * operator sets them; a value below its floor stops the start, so no configuration can turn the
  * cleanup into a short-notice deletion.
  *
  * @param archiveAfterDays days without chat activity after which a chat that is not pinned is
