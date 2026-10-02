@@ -8,6 +8,8 @@ import java.util.UUID;
  * Parameters for creating a space - domain counterpart of the generated {@code SpaceRequest} at the
  * {@link SpaceService#createSpace} boundary. {@code ownerId} may be {@code null} - {@link
  * SpaceService#createSpace} then defaults it to the caller.
+ *
+ * @param assets associated in the same transaction as the space; {@code null} means none
  */
 public record SpaceCreation(
     String name,
@@ -15,4 +17,4 @@ public record SpaceCreation(
     UUID ownerId,
     SpaceVisibility visibility,
     List<SpaceMemberSeed> initialMembers,
-    List<UUID> libraryIds) {}
+    List<SpaceAssetSeed> assets) {}

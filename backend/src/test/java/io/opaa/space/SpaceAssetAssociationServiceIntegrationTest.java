@@ -357,8 +357,8 @@ class SpaceAssetAssociationServiceIntegrationTest {
   }
 
   /**
-   * One notification per owner for the whole creation, naming every asset of theirs that now
-   * stands in a space not every member may read - whatever the asset types.
+   * One notification per owner for the whole creation, naming every asset of theirs that now stands
+   * in a space not every member may read - whatever the asset types.
    */
   @Test
   void creatingASpaceWithSeveralAssetsNotifiesEachOwnerOnceForAllOfThem() {
@@ -396,8 +396,7 @@ class SpaceAssetAssociationServiceIntegrationTest {
               assertThat(notification.getBody())
                   .contains("Rechtsquellen", "Bescheidvorlagen", "Widerspruchsstelle");
             });
-    assertThat(notificationRepository.findByRecipientUserIdOrderByCreatedAtDesc(creator))
-        .isEmpty();
+    assertThat(notificationRepository.findByRecipientUserIdOrderByCreatedAtDesc(creator)).isEmpty();
   }
 
   @Test

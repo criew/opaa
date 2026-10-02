@@ -24,8 +24,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 /**
- * HTTP-layer coverage of creating a space with associations of every asset type in one call, and
- * of the rule that an association the caller cannot read leaves no trace in the space's answers -
+ * HTTP-layer coverage of creating a space with associations of every asset type in one call, and of
+ * the rule that an association the caller cannot read leaves no trace in the space's answers -
  * whatever the caller's role there (ADR-0039, Entscheidung 2).
  */
 @OpaaIntegrationTest
@@ -72,7 +72,8 @@ class SpaceCreationWithAssetsControllerIntegrationTest {
       jdbcTemplate.update("DELETE FROM assets WHERE id = ?", promptLibraryId);
       jdbcTemplate.update(
           "DELETE FROM asset_visibility_history WHERE asset_id = ?", promptLibraryId);
-      jdbcTemplate.update("DELETE FROM asset_ownership_history WHERE asset_id = ?", promptLibraryId);
+      jdbcTemplate.update(
+          "DELETE FROM asset_ownership_history WHERE asset_id = ?", promptLibraryId);
     }
     ownLibraryFixtures.removeLibraries(createdLibraryIds.toArray(new UUID[0]));
   }
@@ -96,8 +97,7 @@ class SpaceCreationWithAssetsControllerIntegrationTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.items.length()").value(2))
         .andExpect(jsonPath("$.hasUnreadableAssociations").value(false))
-        .andExpect(
-            jsonPath("$.items[?(@.assetType == 'PROMPT_LIBRARY')].assetId").value(prompts))
+        .andExpect(jsonPath("$.items[?(@.assetType == 'PROMPT_LIBRARY')].assetId").value(prompts))
         .andExpect(
             jsonPath("$.items[?(@.assetType == 'KNOWLEDGE_LIBRARY')].assetId").value(library));
   }

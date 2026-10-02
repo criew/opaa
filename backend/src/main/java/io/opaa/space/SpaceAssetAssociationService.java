@@ -2,6 +2,7 @@ package io.opaa.space;
 
 import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.AuditEventType;
+import io.opaa.api.types.AuditObjectType;
 import io.opaa.api.types.AuditOutcome;
 import io.opaa.api.types.NotificationType;
 import io.opaa.api.types.SpaceRole;
@@ -37,7 +38,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -98,12 +98,11 @@ public class SpaceAssetAssociationService {
 
   /**
    * Number of assets each of the given spaces shows the caller (#682) - the overview card's
-   * "Quellen" figure. Mirrors {@link #listForSpace}'s rule: CURATOR/ADMIN, the owner and a system
-   * admin count every association, a plain MEMBER only the assets they may read - otherwise the
-   * figure next to a filtered list would give away how many are withheld, which
-   * docs/features/spaces-and-assets.md forbids. One query for all associations, one for their types
-   * and one readable-set lookup per type, never a query per space. Expects all spaces to belong to
-   * one organization, as {@code SpaceService#listSpaces} guarantees.
+   * "Quellen" figure. Mirrors {@link #listForSpace}: only what the caller may read counts, in every
+   * role, so the figure never gives away how many associations are withheld (ADR-0039, Entscheidung
+   * 2). One query for all associations, one for their types and one readable-set lookup per type,
+   * never a query per space. Expects all spaces to belong to one organization, as {@code
+   * SpaceService#listSpaces} guarantees.
    */
   public Map<UUID, Long> countVisibleBySpace(List<Space> spaces, CurrentUser caller) {
     if (spaces.isEmpty()) {
@@ -114,37 +113,22 @@ public class SpaceAssetAssociationService {
     if (associations.isEmpty()) {
       return Map.of();
     }
-    Map<UUID, Space> spacesById =
-        spaces.stream().collect(Collectors.toMap(Space::getId, Function.identity()));
     Set<UUID> readable =
-        caller.isSystemAdmin()
-            ? Set.of()
-            : readableAmong(
-                headersOf(associations).values(),
-                caller.id(),
-                spaces.getFirst().getOrganizationId());
+        readableAmong(
+            headersOf(associations).values(), caller.id(), spaces.getFirst().getOrganizationId());
     return associations.stream()
-        .filter(
-            association -> {
-              Space space = spacesById.get(association.getSpaceId());
-              return caller.isSystemAdmin()
-                  || accessPolicy.hasAtLeast(space, caller.id(), SpaceRole.CURATOR)
-                  || readable.contains(association.getAssetId());
-            })
+        .filter(association -> readable.contains(association.getAssetId()))
         .collect(Collectors.groupingBy(SpaceAssetAssociation::getSpaceId, Collectors.counting()));
   }
 
   /**
-   * The space's associated assets. For a plain {@code MEMBER}, filtered to what the caller may
-   * themselves read (#203: two members of the same space with different grants see different
-   * lists). For a {@code CURATOR}, {@code ADMIN} or the space owner, unfiltered - every association
-   * is returned, one they cannot read with {@code readableByCaller=false} and neither name nor
-   * description, so a manager can also see and detach an over-broad association.
+   * The space's associated assets the caller may read - in every role, a CURATOR, ADMIN, owner or
+   * system admin included: an association the caller cannot read is never named, identified or
+   * counted (ADR-0039, Entscheidung 2). Two members with different grants see different lists.
    *
-   * <p>{@link SpaceAssetLinks#hasAssociations()} is computed unfiltered, independently of the
-   * (possibly filtered) item list: "no association at all" and "curated, but nothing the viewer may
-   * read" need different messages (#706 review). {@link SpaceAssetLinks#narrowsSearch()} is
-   * unfiltered as well: an association the viewer cannot read still narrows their search.
+   * <p>The flags are computed over every association, independently of the filtered items: "no
+   * association at all", "not everything readable" and "knowledge narrows the search" need their
+   * own messages, without a count.
    */
   public SpaceAssetLinks listForSpace(UUID spaceId, CurrentUser caller) {
     Space space = loadSpace(spaceId, caller);
@@ -153,37 +137,38 @@ public class SpaceAssetAssociationService {
     List<SpaceAssetAssociation> associations =
         associationRepository.findBySpaceIdOrderByCreatedAtAsc(space.getId());
     if (associations.isEmpty()) {
-      return new SpaceAssetLinks(false, false, List.of());
+      return new SpaceAssetLinks(false, false, false, List.of());
     }
-    boolean unfiltered =
-        accessPolicy.hasAtLeast(space, caller.id(), SpaceRole.CURATOR) || caller.isSystemAdmin();
     Map<UUID, AssetHeader> headers = headersOf(associations);
     Set<UUID> readable = readableAmong(headers.values(), caller.id(), space.getOrganizationId());
-    Map<UUID, String> displayNames =
-        resolveDisplayNames(
-            associations.stream().map(SpaceAssetAssociation::getCreatedByUserId).toList());
-
-    List<SpaceAssetLink> items =
+    List<SpaceAssetAssociation> visible =
         associations.stream()
             .filter(association -> headers.containsKey(association.getAssetId()))
-            .filter(association -> unfiltered || readable.contains(association.getAssetId()))
+            .filter(association -> readable.contains(association.getAssetId()))
+            .toList();
+    Map<UUID, String> displayNames =
+        resolveDisplayNames(
+            visible.stream().map(SpaceAssetAssociation::getCreatedByUserId).toList());
+
+    List<SpaceAssetLink> items =
+        visible.stream()
             .map(
                 association -> {
                   AssetHeader asset = headers.get(association.getAssetId());
-                  boolean readableByCaller = readable.contains(association.getAssetId());
                   return new SpaceAssetLink(
                       association,
                       asset.assetType(),
-                      readableByCaller,
-                      readableByCaller ? asset.name() : null,
-                      readableByCaller ? asset.description() : null,
+                      asset.name(),
+                      asset.description(),
                       displayNames.get(association.getCreatedByUserId()));
                 })
             .toList();
+    boolean hasUnreadable =
+        headers.keySet().stream().anyMatch(assetId -> !readable.contains(assetId));
     boolean narrowsSearch =
         headers.values().stream()
             .anyMatch(asset -> KnowledgeLibrary.ASSET_TYPE.equals(asset.assetType()));
-    return new SpaceAssetLinks(true, narrowsSearch, items);
+    return new SpaceAssetLinks(true, hasUnreadable, narrowsSearch, items);
   }
 
   /**
@@ -194,6 +179,41 @@ public class SpaceAssetAssociationService {
   public SpaceAssetLink associate(
       UUID spaceId, AssetType assetType, UUID assetId, CurrentUser caller) {
     Space space = loadSpace(spaceId, caller);
+    Association result = associateInto(space, assetType, assetId, caller);
+    if (result.created()) {
+      notifyOwnersOfMixedAudience(space, List.of(result.asset()), caller.id());
+    }
+    return toSpaceAssetLink(result.association(), result.asset());
+  }
+
+  /**
+   * Associates every seed with the space just created, in the caller's transaction: one that cannot
+   * be associated throws and rolls the whole creation back. Each owner is notified once for all of
+   * their assets that now stand in a space not every member may read.
+   */
+  @Transactional
+  public void associateOnCreation(UUID spaceId, List<SpaceAssetSeed> seeds, CurrentUser caller) {
+    if (seeds == null || seeds.isEmpty()) {
+      return;
+    }
+    Space space = loadSpace(spaceId, caller);
+    List<Asset> created = new ArrayList<>();
+    for (SpaceAssetSeed seed : seeds) {
+      if (seed == null) {
+        continue;
+      }
+      Association result = associateInto(space, seed.assetType(), seed.assetId(), caller);
+      if (result.created()) {
+        created.add(result.asset());
+      }
+    }
+    notifyOwnersOfMixedAudience(space, created, caller.id());
+  }
+
+  private record Association(SpaceAssetAssociation association, Asset asset, boolean created) {}
+
+  private Association associateInto(
+      Space space, AssetType assetType, UUID assetId, CurrentUser caller) {
     accessPolicy.requireCurator(space, caller);
 
     Asset asset = assetAuthorization.load(assetType, assetId, space.getOrganizationId());
@@ -204,7 +224,7 @@ public class SpaceAssetAssociationService {
 
     var existing = associationRepository.findBySpaceIdAndAssetId(space.getId(), asset.getId());
     if (existing.isPresent()) {
-      return toSpaceAssetLink(existing.get(), asset);
+      return new Association(existing.get(), asset, false);
     }
 
     // ADR-0036, Entscheidung 6: neither side gains reach while its succession is open - a space
@@ -231,10 +251,7 @@ public class SpaceAssetAssociationService {
             .after(Map.of("spaceId", space.getId().toString()))
             .outcome(AuditOutcome.SUCCESS)
             .build());
-
-    notifyOwnerIfMixedAudience(space, asset, caller.id());
-
-    return toSpaceAssetLink(saved, asset);
+    return new Association(saved, asset, true);
   }
 
   /**
@@ -367,44 +384,71 @@ public class SpaceAssetAssociationService {
   }
 
   /**
-   * Notifies the asset's owner (every member, if group-owned) when the space just associated has at
-   * least one member without read access to it (#203: "Benachrichtigung statt Zustimmung"). The
-   * caller who created the association is never among the recipients - they know what they did.
+   * Notifies the owners (every member, if group-owned) of those {@code assets} that stand in a
+   * space with at least one member without read access to them (#203: "Benachrichtigung statt
+   * Zustimmung") - one notification per recipient, naming all of their assets. The caller who
+   * created the association is never among the recipients - they know what they did.
    */
-  private void notifyOwnerIfMixedAudience(Space space, Asset asset, UUID triggeringUserId) {
-    if (allMembersCanRead(space, asset)) {
-      return;
-    }
-    AssetTypeDefinition definition = definitionOf(asset);
-    Set<UUID> recipients =
-        switch (asset.getOwnerType()) {
-          case USER -> Set.of(asset.getOwnerUserId());
-          case GROUP ->
-              groupMembershipResolver.resolveUserIds(
-                  PermissionSubject.group(asset.getOwnerGroupId(), asset.getOrganizationId()));
-        };
-    String title = "Ihre " + definition.singular() + " wurde in einem Space bereitgestellt";
-    String body =
-        "Die "
-            + definition.singular()
-            + " \""
-            + asset.getName()
-            + "\" wurde im Space \""
-            + space.getName()
-            + "\" bereitgestellt, dessen Mitglieder nicht alle Lesezugriff darauf haben.";
-    for (UUID recipientId : recipients) {
-      if (recipientId.equals(triggeringUserId)) {
+  private void notifyOwnersOfMixedAudience(Space space, List<Asset> assets, UUID triggeringUserId) {
+    Map<UUID, List<Asset>> byRecipient = new LinkedHashMap<>();
+    for (Asset asset : assets) {
+      if (allMembersCanRead(space, asset)) {
         continue;
       }
+      for (UUID recipientId : ownersOf(asset)) {
+        if (!recipientId.equals(triggeringUserId)) {
+          byRecipient.computeIfAbsent(recipientId, id -> new ArrayList<>()).add(asset);
+        }
+      }
+    }
+    byRecipient.forEach((recipientId, owned) -> notifyOwner(space, recipientId, owned));
+  }
+
+  private void notifyOwner(Space space, UUID recipientId, List<Asset> owned) {
+    if (owned.size() == 1) {
+      Asset asset = owned.getFirst();
+      AssetTypeDefinition definition = definitionOf(asset);
       notificationService.notify(
           asset.getOrganizationId(),
           recipientId,
           NotificationType.ASSET_ASSOCIATED_TO_MIXED_SPACE,
           definition.auditObjectType(),
           asset.getId(),
-          title,
-          body);
+          "Ihre " + definition.singular() + " wurde in einem Space bereitgestellt",
+          "Die "
+              + definition.singular()
+              + " \""
+              + asset.getName()
+              + "\" wurde im Space \""
+              + space.getName()
+              + "\" bereitgestellt, dessen Mitglieder nicht alle Lesezugriff darauf haben.");
+      return;
     }
+    String names =
+        owned.stream()
+            .map(asset -> definitionOf(asset).singular() + " \"" + asset.getName() + "\"")
+            .collect(Collectors.joining(", "));
+    notificationService.notify(
+        space.getOrganizationId(),
+        recipientId,
+        NotificationType.ASSET_ASSOCIATED_TO_MIXED_SPACE,
+        AuditObjectType.SPACE,
+        space.getId(),
+        "Ihre Inhalte wurden in einem Space bereitgestellt",
+        "Im Space \""
+            + space.getName()
+            + "\", dessen Mitglieder nicht alle Lesezugriff darauf haben, wurden bereitgestellt: "
+            + names
+            + ".");
+  }
+
+  private Set<UUID> ownersOf(Asset asset) {
+    return switch (asset.getOwnerType()) {
+      case USER -> Set.of(asset.getOwnerUserId());
+      case GROUP ->
+          groupMembershipResolver.resolveUserIds(
+              PermissionSubject.group(asset.getOwnerGroupId(), asset.getOrganizationId()));
+    };
   }
 
   /** Whether every current member of {@code space} already has at least VIEWER on the asset. */
@@ -495,7 +539,6 @@ public class SpaceAssetAssociationService {
     return new SpaceAssetLink(
         association,
         asset.getAssetType(),
-        true,
         asset.getName(),
         asset.getDescription(),
         resolveDisplayNames(List.of(association.getCreatedByUserId()))

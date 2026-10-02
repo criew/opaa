@@ -1062,9 +1062,9 @@ class SpaceServiceIntegrationTest {
     assertThat(visibleToSystemAdmin.getFirst().space().isArchived()).isTrue();
   }
 
-  // #706 review, finding 4: libraryIds are associated in the same transaction as the space itself
-  // - a library the creator cannot associate (here: does not exist) must roll the whole creation
-  // back, not leave a half-created space with only some of the requested associations.
+  // #706 review, finding 4: the creation's assets are associated in the same transaction as the
+  // space itself - a library the creator cannot associate (here: does not exist) must roll the
+  // whole creation back, not leave a half-created space with only some of the associations.
   @Test
   void createSpaceRollsBackEntirelyWhenOneOfTheRequestedLibraryIdsCannotBeAssociated() {
     UUID creator = createUser(organizationA);
@@ -1072,7 +1072,12 @@ class SpaceServiceIntegrationTest {
     UUID nonExistentLibrary = UUID.randomUUID();
     SpaceCreation request =
         new SpaceCreation(
-            "Datenraum", null, null, null, null, List.of(readableLibrary, nonExistentLibrary));
+            "Datenraum",
+            null,
+            null,
+            null,
+            null,
+            List.of(knowledge(readableLibrary), knowledge(nonExistentLibrary)));
 
     assertThatThrownBy(() -> spaceService.createSpace(request, currentUserOf(creator)))
         .isInstanceOf(io.opaa.common.NotFoundException.class);
@@ -1086,7 +1091,13 @@ class SpaceServiceIntegrationTest {
     UUID libraryOne = createReadableLibrary(organizationA, creator);
     UUID libraryTwo = createReadableLibrary(organizationA, creator);
     SpaceCreation request =
-        new SpaceCreation("Datenraum", null, null, null, null, List.of(libraryOne, libraryTwo));
+        new SpaceCreation(
+            "Datenraum",
+            null,
+            null,
+            null,
+            null,
+            List.of(knowledge(libraryOne), knowledge(libraryTwo)));
 
     Space created = spaceService.createSpace(request, currentUserOf(creator));
 
@@ -1096,5 +1107,9 @@ class SpaceServiceIntegrationTest {
             (rs, rowNum) -> (UUID) rs.getObject("asset_id"),
             created.getId());
     assertThat(associatedLibraryIds).containsExactlyInAnyOrder(libraryOne, libraryTwo);
+  }
+
+  private static SpaceAssetSeed knowledge(UUID libraryId) {
+    return new SpaceAssetSeed(io.opaa.knowledge.KnowledgeLibrary.ASSET_TYPE, libraryId);
   }
 }
