@@ -2,6 +2,7 @@ package io.opaa.library;
 
 import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.DocumentStatus;
+import io.opaa.asset.AssetRepository;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
@@ -43,6 +44,7 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -140,6 +142,7 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
   private final AttachmentExtractionLimiter attachmentExtractionLimiter;
   private final SupportedDocumentFormats supportedFormats;
   private final SourceConnectorRegistry connectors;
+  private final AssetRepository assetRepository;
 
   /** One transaction per document for {@link #deleteDocuments} - see its contract. */
   private final TransactionTemplate transactionTemplate;
@@ -161,6 +164,7 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
       AttachmentExtractionLimiter attachmentExtractionLimiter,
       SupportedDocumentFormats supportedFormats,
       SourceConnectorRegistry connectors,
+      AssetRepository assetRepository,
       PlatformTransactionManager transactionManager) {
     this.libraryRepository = libraryRepository;
     this.accessService = accessService;
@@ -178,6 +182,7 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
     this.attachmentExtractionLimiter = attachmentExtractionLimiter;
     this.supportedFormats = supportedFormats;
     this.connectors = connectors;
+    this.assetRepository = assetRepository;
     this.transactionTemplate = new TransactionTemplate(transactionManager);
   }
 
@@ -405,8 +410,21 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
       accepted.discard();
       throw e;
     }
+    markUploadAsContentChange(libraryId);
     return new LibraryDocumentEntry(
         storedRow, LibraryFolderPaths.pathOf(folderRepository, storedRow.getFolderId()));
+  }
+
+  /**
+   * The catalog's "last change" of the library. Bookkeeping only: the row is committed and its
+   * processing started, so a failure here is logged and never fails the upload.
+   */
+  private void markUploadAsContentChange(UUID libraryId) {
+    try {
+      assetRepository.markContentChanged(libraryId, Instant.now());
+    } catch (RuntimeException e) {
+      log.warn("Could not mark library {} as changed after an upload", libraryId, e);
+    }
   }
 
   /**
@@ -850,6 +868,7 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
     // (see DocumentIngestService#processUploadedFileAsync). The vector store delete below then only
     // has to handle the ordinary case: chunks a document already had before this call.
     documentRepository.delete(document);
+    assetRepository.markContentChanged(document.getLibraryId(), Instant.now());
 
     // Both deferred to after commit (#420 code review, nit 7, extended to the chunk deletion by
     // #614): if the row deletion above rolls back for any reason, the file and its chunks must

@@ -67,6 +67,8 @@ class SpecEnumParityTest {
         Arguments.of("AssetOrigin", AssetOrigin.values()),
         Arguments.of("ExternalAccessState", ExternalAccessState.values()),
         Arguments.of("DocumentStatus", DocumentStatus.values()),
+        Arguments.of("CatalogVisibility", CatalogVisibility.values()),
+        Arguments.of("CatalogEntryStatus", CatalogEntryStatus.values()),
         Arguments.of("AssetRole", AssetRole.values()),
         Arguments.of("AccessBasis", AccessBasis.values()),
         Arguments.of("AccessAsOfObjectType", AccessAsOfObjectType.values()),

@@ -1,6 +1,7 @@
 package io.opaa.asset;
 
 import io.opaa.permission.AssetType;
+import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
@@ -8,8 +9,10 @@ import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * The asset shell across every type - what the catalogue-shaped questions (ownership, succession,
@@ -64,13 +67,7 @@ public interface AssetRepository extends JpaRepository<Asset, UUID> {
    * case-insensitively (a {@code LIKE} pattern escaped with a backslash), ordered by name.
    */
   @Query(
-      value =
-          "select a.id as id, a.assetType as assetType, a.name as name,"
-              + " a.description as description, a.ownerType as ownerType,"
-              + " a.ownerUserId as ownerUserId, a.ownerGroupId as ownerGroupId,"
-              + " a.origin as origin"
-              + CATALOG_CONDITION
-              + " order by lower(a.name), a.id",
+      value = CATALOG_SELECT + CATALOG_CONDITION + " order by lower(a.name), a.id",
       countQuery = "select count(a)" + CATALOG_CONDITION)
   Page<AssetCatalogRow> findCatalogPage(
       @Param("organizationId") UUID organizationId,
@@ -78,6 +75,38 @@ public interface AssetRepository extends JpaRepository<Asset, UUID> {
       @Param("readableIds") Set<UUID> readableIds,
       @Param("pattern") String pattern,
       Pageable pageable);
+
+  /** {@link #findCatalogPage}, ordered by the last change, most recent first. */
+  @Query(
+      value = CATALOG_SELECT + CATALOG_CONDITION + " order by a.updatedAt desc, a.id",
+      countQuery = "select count(a)" + CATALOG_CONDITION)
+  Page<AssetCatalogRow> findCatalogPageByUpdatedAt(
+      @Param("organizationId") UUID organizationId,
+      @Param("assetTypes") Collection<AssetType> assetTypes,
+      @Param("readableIds") Set<UUID> readableIds,
+      @Param("pattern") String pattern,
+      Pageable pageable);
+
+  /**
+   * Marks a content change written outside the asset entity - a document uploaded, deleted or
+   * indexed. Touches only {@code updated_at} and never moves it backwards, so neither a concurrent
+   * edit of the asset nor an earlier change committing late is overwritten.
+   */
+  @Modifying
+  @Transactional
+  @Query(
+      value = "UPDATE assets SET updated_at = :at WHERE id = :assetId AND updated_at < :at",
+      nativeQuery = true)
+  int markContentChanged(@Param("assetId") UUID assetId, @Param("at") Instant at);
+
+  /** The assets of {@code assetTypes} in the organization owned by one of the groups. */
+  @Query(
+      "select a.id from Asset a where a.organizationId = :organizationId"
+          + " and a.assetType in :assetTypes and a.ownerGroupId in :groupIds")
+  Set<UUID> findIdsOwnedByGroups(
+      @Param("organizationId") UUID organizationId,
+      @Param("assetTypes") Collection<AssetType> assetTypes,
+      @Param("groupIds") Collection<UUID> groupIds);
 
   /**
    * In how many spaces each of the assets is associated, in one grouped query - the spread the
@@ -95,6 +124,12 @@ public interface AssetRepository extends JpaRepository<Asset, UUID> {
 
     long getSpaceCount();
   }
+
+  String CATALOG_SELECT =
+      "select a.id as id, a.assetType as assetType, a.name as name,"
+          + " a.description as description, a.ownerType as ownerType,"
+          + " a.ownerUserId as ownerUserId, a.ownerGroupId as ownerGroupId,"
+          + " a.origin as origin, a.updatedAt as updatedAt";
 
   String CATALOG_CONDITION =
       " from Asset a where a.organizationId = :organizationId"
