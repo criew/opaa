@@ -29,6 +29,8 @@ export default function ChatPage() {
   const isLoading = useChatStore((s) => s.isLoading)
   const isLoadingChat = useChatStore((s) => s.isLoadingChat)
   const error = useChatStore((s) => s.error)
+  const returnedQuestion = useChatStore((s) => s.returnedQuestion)
+  const clearReturnedQuestion = useChatStore((s) => s.clearReturnedQuestion)
   const sendMessage = useChatStore((s) => s.sendMessage)
   const loadChat = useChatStore((s) => s.loadChat)
   const startNewChat = useChatStore((s) => s.startNewChat)
@@ -337,6 +339,8 @@ export default function ChatPage() {
       <ChatInput
         onSend={(message, usedPrompt) => sendMessage(message, usedPrompt)}
         disabled={isLoading}
+        returnedQuestion={returnedQuestion}
+        onReturnedQuestionHandled={clearReturnedQuestion}
       />
     </Box>
   )

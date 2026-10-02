@@ -406,6 +406,24 @@ describe('ChatInput', () => {
       expect(onRestored).toHaveBeenCalledTimes(1)
     })
 
+    it('puts a question returned from another chat into the empty input once', async () => {
+      const onRestored = vi.fn()
+      const onHandled = vi.fn()
+      render(
+        <ChatInput
+          onSend={vi.fn()}
+          returnedQuestion={{ restoreDraft: 'Zurückgegeben', onRestored }}
+          onReturnedQuestionHandled={onHandled}
+        />,
+      )
+
+      await waitFor(() =>
+        expect(screen.getByPlaceholderText('Nachricht eingeben …')).toHaveValue('Zurückgegeben'),
+      )
+      expect(onRestored).toHaveBeenCalledTimes(1)
+      expect(onHandled).toHaveBeenCalledTimes(1)
+    })
+
     it('does not overwrite a new draft and does not confirm a restore', async () => {
       const onRestored = vi.fn()
       const refused = deferredOutcome()

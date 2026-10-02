@@ -69,6 +69,13 @@ export interface RefusedQuestion {
   onRestored: () => void
 }
 
+/** A refused question whose chat was not shown when the refusal arrived; keyed by chat. */
+interface ParkedRefusal {
+  question: string
+  reason: string
+  note: string
+}
+
 /** The HTTP status of a failed request, or `null` when no response arrived. */
 function responseStatus(err: unknown): number | null {
   const cause = err instanceof Error ? err.cause : undefined
@@ -111,6 +118,9 @@ const inFlightSends = new Set<InFlightSend>()
 // Per chat, the number of user messages the server is known to hold - the baseline a question
 // records when it is sent. Module state like inFlightSends; reset() clears it.
 const persistedUserTurnsByChatId = new Map<string, number>()
+
+// Questions the server refused while another chat was shown; handed back when the person returns.
+const parkedRefusalsByChatId = new Map<string, ParkedRefusal>()
 
 /**
  * Takes note of a server read of `chatId` that is about to be applied. An outstanding question
@@ -222,6 +232,7 @@ export function dropChatSettingsCache(chatId: string): void {
   // confirmed - and nothing would ever filter against them either.
   removedNoteItemIdsByChatId.delete(chatId)
   persistedUserTurnsByChatId.delete(chatId)
+  parkedRefusalsByChatId.delete(chatId)
   manuallyRenamedChatIds.delete(chatId)
   if (pendingChain) {
     void pendingChain.finally(() => confirmedSettingsByChatId.delete(chatId))
@@ -320,6 +331,9 @@ export interface ChatState {
   /** True while an existing chat's history is being fetched via loadChat. */
   isLoadingChat: boolean
   error: string | null
+  /** A question refused while another chat was shown, to be put back into the input of this chat;
+   * cleared by `clearReturnedQuestion` once the input has handled it. */
+  returnedQuestion: RefusedQuestion | null
   /** The chip bar's state (#560, backend default: 'all'). */
   scope: SearchScope
   // Sticky per-chat @-references (#523/#528/#560), meaningful only while scope === 'libraries'.
@@ -376,6 +390,7 @@ export interface ChatState {
   /** Drops the active chat back to its initial, empty state (#440) - used on logout so a
    * subsequent sign-in by a different user never briefly sees the previous user's conversation. */
   reset: () => void
+  clearReturnedQuestion: () => void
 }
 
 /** Maps the backend's useKnowledge/referencedLibraryIds pair onto the chip bar's scope. */
@@ -429,6 +444,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   isLoading: false,
   isLoadingChat: false,
   error: null,
+  returnedQuestion: null,
   scope: 'all',
   referencedLibraryIds: [],
   metadataFilter: null,
@@ -443,7 +459,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     // why a per-chat counter, rather than settingsUpdateChains, is needed to catch this ordering.
     const settingsSequenceAtStart = settingsChangeSequenceByChatId.get(chatId) ?? 0
     const completedTurnsAtStart = completedTurnSequence
-    set({ isLoadingChat: true, error: null })
+    set({ isLoadingChat: true, error: null, returnedQuestion: null })
     try {
       const detail = await getChat(chatId)
       // A newer loadChat/startNewChat call superseded this one while the request was in flight -
@@ -475,6 +491,21 @@ export const useChatStore = create<ChatState>((set, get) => ({
           scope: detailState.scope,
           referencedLibraryIds: detailState.referencedLibraryIds,
           metadataFilter: detailState.metadataFilter,
+        })
+      }
+      const parked = parkedRefusalsByChatId.get(chatId)
+      if (parked) {
+        parkedRefusalsByChatId.delete(chatId)
+        set({
+          error: parked.reason,
+          returnedQuestion: {
+            restoreDraft: parked.question,
+            onRestored: () => {
+              if (get().chatId === chatId && get().error === parked.reason) {
+                set({ error: `${parked.reason} ${parked.note}` })
+              }
+            },
+          },
         })
       }
       // An answer that arrived while this GET was in flight may be missing from its snapshot.
@@ -576,6 +607,23 @@ export const useChatStore = create<ChatState>((set, get) => ({
       isLoading: true,
       error: null,
     }))
+
+    // A 4xx means the question was not persisted: it is handed back instead of lost.
+    const classifyRefusal = (failure: unknown): { reason: string; note: string } | null => {
+      const status = responseStatus(failure)
+      if (status === null || status < 400 || status >= 500) return null
+      const message =
+        failure instanceof Error ? failure.message : 'Ein unerwarteter Fehler ist aufgetreten'
+      const promptNotUsable = usedPrompt !== undefined && isPromptNotUsable(failure)
+      return {
+        reason: status === 400 && isQuestionViolation(message) ? INVALID_QUESTION_MESSAGE : message,
+        note: promptNotUsable ? DRAFT_RESTORED_WITHOUT_PROMPT_NOTE : DRAFT_RESTORED_NOTE,
+      }
+    }
+    const parkRefusal = (failure: unknown) => {
+      const refusal = classifyRefusal(failure)
+      if (refusal && send.chatId) parkedRefusalsByChatId.set(send.chatId, { question, ...refusal })
+    }
 
     try {
       const { spaceId, scope, referencedLibraryIds, metadataFilter } = get()
@@ -718,18 +766,16 @@ export const useChatStore = create<ChatState>((set, get) => ({
       // A failure is shown in its own chat only, not in one the person switched to.
       if (!isTargetChatShown()) {
         set({ isLoading })
+        parkRefusal(err)
         return
       }
       // TODO: Add retry UX (e.g. "Retry" button on failed messages)
       const message = err instanceof Error ? err.message : 'Ein unerwarteter Fehler ist aufgetreten'
       // A question the server rejected (4xx) was not persisted: it leaves the history and goes
       // back to the input. The error only promises that once the input confirms it.
-      const status = responseStatus(err)
-      if (status !== null && status >= 400 && status < 500) {
-        const promptNotUsable = usedPrompt !== undefined && isPromptNotUsable(err)
-        const reason =
-          status === 400 && isQuestionViolation(message) ? INVALID_QUESTION_MESSAGE : message
-        const note = promptNotUsable ? DRAFT_RESTORED_WITHOUT_PROMPT_NOTE : DRAFT_RESTORED_NOTE
+      const refusal = classifyRefusal(err)
+      if (refusal) {
+        const { reason, note } = refusal
         set((state) => ({
           messages: state.messages.filter((m) => m !== send.userMessage),
           error: reason,
@@ -840,12 +886,15 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }
   },
 
+  clearReturnedQuestion: () => set({ returnedQuestion: null }),
+
   reset: () => {
     // Invalidates any loadChat still in flight, matching startNewChat above - otherwise a
     // response arriving after reset() could resurrect the previous user's chat.
     chatLoadSequence++
     inFlightSends.clear()
     persistedUserTurnsByChatId.clear()
+    parkedRefusalsByChatId.clear()
     // #1488: the pending removals belong to the chat the previous user had open - keeping them
     // would filter points out of the next user's chats until some load confirmed them.
     clearRemovedNoteItemCache()
@@ -862,6 +911,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       isLoading: false,
       isLoadingChat: false,
       error: null,
+      returnedQuestion: null,
       scope: 'all',
       referencedLibraryIds: [],
       metadataFilter: null,

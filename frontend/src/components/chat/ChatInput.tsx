@@ -61,6 +61,10 @@ interface ChatInputProps {
     usedPrompt?: SelectedPrompt,
   ) => void | SendOutcome | Promise<void | SendOutcome>
   disabled?: boolean
+  /** A question refused while another chat was shown; put into the input if it is empty. */
+  returnedQuestion?: SendOutcome | null
+  /** Called once `returnedQuestion` has been handled, whether it was taken or not. */
+  onReturnedQuestionHandled?: () => void
 }
 
 interface ActiveMention {
@@ -126,7 +130,12 @@ function findActiveMention(text: string, cursor: number): ActiveMention | null {
   return { start: atIndex, query }
 }
 
-export default function ChatInput({ onSend, disabled = false }: ChatInputProps) {
+export default function ChatInput({
+  onSend,
+  disabled = false,
+  returnedQuestion = null,
+  onReturnedQuestionHandled,
+}: ChatInputProps) {
   const [value, setValue] = useState('')
   const [mention, setMention] = useState<ActiveMention | null>(null)
   // -1 means "nothing explicitly highlighted yet" - Enter only selects once ArrowDown/ArrowUp/
@@ -180,6 +189,21 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
     userName,
     insertText: insertPromptText,
   })
+
+  // Adjusted during render (not in an effect) so the input already shows the text when it paints.
+  const [seenReturned, setSeenReturned] = useState<SendOutcome | null>(null)
+  const [returnedTaken, setReturnedTaken] = useState(false)
+  if (returnedQuestion !== seenReturned) {
+    setSeenReturned(returnedQuestion)
+    const taken = !!returnedQuestion?.restoreDraft && value.trim() === ''
+    if (taken) setValue(returnedQuestion.restoreDraft!)
+    setReturnedTaken(taken)
+  }
+  useEffect(() => {
+    if (!returnedQuestion || returnedQuestion !== seenReturned) return
+    if (returnedTaken) returnedQuestion.onRestored?.()
+    onReturnedQuestionHandled?.()
+  }, [returnedQuestion, seenReturned, returnedTaken, onReturnedQuestionHandled])
 
   const libraries = useLibraryStore((s) => s.libraries)
   const librariesLoading = useLibraryStore((s) => s.isLoading)
