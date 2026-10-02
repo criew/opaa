@@ -297,18 +297,20 @@ Mitglieder, im Verzeichnis sichtbar mit Beitritt auf Antrag, oder im Verzeichnis
 Selbstbeitritt.
 
 **In der Oberfläche liegt all das auf einer Seite je Raum:** dem Zahnrad „Einstellungen" am Fuß der
-Seitenleiste. Es sehen nur Administratoren und Kuratoren des Raums. Die Seite hat vier Reiter:
+Seitenleiste. Es sieht jedes Mitglied des Raums. Die Seite hat vier Reiter:
 
 | Reiter | Inhalt |
 |---|---|
-| **Stammdaten** | Name, Beschreibung, Sichtbarkeit — und am Ende der abgesetzte **Gefahrenbereich** mit „Space archivieren" und „Space löschen" |
+| **Stammdaten** | Name, Beschreibung, Sichtbarkeit, der Schalter „Inaktive Chats automatisch archivieren und löschen" ([Suche](suche.md), Abschnitt 2) — und am Ende der abgesetzte **Gefahrenbereich** mit „Space archivieren" und „Space löschen" |
 | **Mitglieder** | Die Mitgliederliste mit Rollen, das Aufnehmen von Personen und Gruppen, die Übertragung der Verantwortung und die Herleitung je Zeile |
 | **Wissen** | Die dem Raum zugeordneten Wissensbibliotheken; Zuordnen und Lösen ab der Kuratorenrolle |
 | **Prompts** | Die dem Raum zugeordneten [Prompt-Bibliotheken](prompt-bibliotheken.md); Zuordnen und Lösen ab der Kuratorenrolle |
 
-**Die ersten beiden Reiter gehören den Administratoren.** Ein Kurator öffnet dieselbe Seite, sieht
-die Stammdaten aber nur lesend, und im Reiter „Mitglieder" steht für ihn der Hinweis, dass die
-Liste seiner Rolle nicht offensteht — seine Arbeit liegt in den Reitern „Wissen" und „Prompts". Den
+**Die ersten beiden Reiter gehören den Administratoren.** Kuratoren und Mitglieder öffnen dieselbe
+Seite, sehen die Stammdaten aber nur lesend — so weiß jedes Mitglied, ob inaktive Chats des Raums
+automatisch archiviert und gelöscht werden —, und im Reiter „Mitglieder" steht für sie der Hinweis,
+dass die Liste ihrer Rolle nicht offensteht. Die Arbeit eines Kurators liegt in den Reitern
+„Wissen" und „Prompts". Den
 Gefahrenbereich sieht nur der Eigentümer, und nicht im eigenen Standard-Raum: Der lässt sich weder
 archivieren noch löschen.
 

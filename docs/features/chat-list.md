@@ -205,19 +205,48 @@ Archivieren ist **eine persönliche Ablage**, keine Zustandsänderung am Chat:
 - **Archivieren ist kein Löschen** und **kein Aufbewahren über eine Frist hinaus.** Eine
   Aufbewahrungsfrist für Chats wirkt auf archivierte und aktive Chats gleich. Ein Archiv mit eigener
   Lebensdauer wäre ein zweiter Bestand, den niemand überblickt.
-- Eine Aufbewahrungsfrist für Chats ist **heute nicht gebaut** (der vorgesehene Umfang wurde mit #216
+- Eine allgemeine Aufbewahrungsfrist für Chats ist nicht gebaut (der vorgesehene Umfang wurde mit #216
   als nicht geplant geschlossen, siehe [security-and-compliance.md](./security-and-compliance.md#aufbewahrung)).
-  Die Archivansicht zeigt deshalb nur „archiviert am" und **keine** Angabe, wann ein Chat entfällt.
-  Kommt eine Chat-Aufbewahrung, zeigt die Archivansicht den Ablauf dort an, wo er ohnehin fällig wird —
-  an jedem Chat, nicht nur im Archiv.
-- Gelöscht wird ein archivierter Chat wie jeder andere: durch seinen Autor.
+  Gebaut ist die **automatische Bereinigung je Space** (#1923, nächster Abschnitt): Ist sie im Space
+  eingeschaltet, trägt jeder archivierte Chat das Datum, an dem sie ihn löscht — in der Archivliste
+  und in der Kopfzeile des Chats.
+- Gelöscht wird ein archivierter Chat wie jeder andere durch seinen Autor, oder durch die automatische
+  Bereinigung des Space auf demselben Löschweg.
 
-### Kein automatisches Archivieren
+### Automatisches Archivieren und Löschen je Space
 
-Ein Archivieren nach Inaktivität wird **nicht** gebaut. Eine Liste, die sich von selbst verändert, ist
-erklärungsbedürftig, und „Zuletzt verwendet" leistet das Wesentliche — Altes rutscht hinter die
-Nachladeschwelle, ohne zu verschwinden. Das Sammelarchivieren auf der Seite „Chats" ist der bewusste
-Weg, aufzuräumen. (Ein Auto-Archivieren wird in #1923 erneut aufgeworfen.)
+Entschieden vom Maintainer am 02.10.2026 (#1923), nach Bewertung und Nachprüfung durch die
+Stakeholder-Rolle Personalrat. Ursprünglich galt „ein Archivieren nach Inaktivität wird nicht
+gebaut"; ohne Einschalten bleibt es dabei, das Sammelarchivieren auf der Seite „Chats" bleibt der
+bewusste Weg, von Hand aufzuräumen.
+
+- **Ein Schalter je Space** „Inaktive Chats automatisch archivieren und löschen", ab Werk aus, wählbar
+  im Assistenten beim Anlegen und in den Space-Einstellungen (Reiter „Stammdaten"). Umlegen darf ihn,
+  wer die Stammdaten ändern darf (Space-`ADMIN`, Systemverwaltung). Jedes Mitglied sieht den
+  Schalterstand; der Einstieg in die Space-Einstellungen steht deshalb jedem Mitglied offen.
+- **Feste Fristen**, systemweit, nur vom Betrieb einstellbar: archivieren nach 90 Tagen ohne
+  Aktivität, archivierte Chats löschen nach 365 Tagen im Archiv. Die Konfiguration hat eine nicht
+  unterschreitbare **Untergrenze** von 90 bzw. 30 Tagen; ein kleinerer Wert bricht den Start ab.
+- **Aktivität** ist ausschließlich der vorhandene Zeitstempel der letzten Chat-Aktivität
+  (`chats.updated_at`). Es werden keine neuen Aktivitätsdaten je Person erhoben.
+- **Keine Rückwirkung:** Der Zeitpunkt des Einschaltens wird am Space gespeichert; beide Fristen
+  beginnen frühestens dort. Ein Archivierdatum aus der Zeit davor löst keine sofortige Löschung aus.
+- **Angeheftete Chats** sind ausgenommen. Anheften oder eine eigene neue Frage holt einen archivierten
+  Chat zurück und lässt die Frist neu beginnen. Eine eigene Benachrichtigung gibt es nicht; der
+  archivierte Chat zeigt sein Löschdatum.
+- **Gelöscht wird über den bestehenden Löschweg** des Chats, mit Verlauf, Notiz und persönlichen
+  Merkmalen. Es gibt keine Protokollereignisart für das Löschen eines Chats, und es kommt keine dazu.
+- **Protokoll:** nur das Umlegen des Schalters (Ereignis `SPACE_CHANGED` mit `chatAutoCleanup` vor
+  und nach der Änderung, handelnde Person, Zeitpunkt; beim Anlegen im Ereignis `SPACE_CREATED`). Der
+  tägliche Lauf (03:50 Uhr, Single-Instance nach ADR-0021) schreibt nur Gesamtzahlen ins
+  Anwendungslog, keinen Chat, keinen Space, keine Person.
+
+**Verhältnis zur persönlichen Ablage.** Der Automatismus schreibt dieselbe persönliche
+Archiv-Markierung, die die Person selbst setzen würde — die Zeile des **Autors** zu seinem Chat. Das
+Archivmodell ändert sich dadurch nicht: Solange es nur private Chats gibt, ist der Autor die einzige
+Person, die den Chat sieht. Kommt das Teilen von Chats, ist zu entscheiden, ob der Automatismus auch
+die Zeilen der Personen schreibt, mit denen ein Chat geteilt ist, und wessen Archivzeitpunkt die
+Löschfrist bestimmt.
 
 ---
 
@@ -333,7 +362,7 @@ Entschieden vom Maintainer am 18.09.2026 (Epic #1762, Phase 1):
 
 Im Konzept festgelegt, ohne gesonderte Maintainer-Frage: Suche nur im aktiven Space; Suchbegriffe nicht
 protokolliert; Archiv in der Suche einbezogen; persönliche Merkmale als eigene Zeilen je Person und
-Chat; kein automatisches Archivieren; keine Obergrenze beim Anheften; Merkmale auch im archivierten Space
+Chat; kein automatisches Archivieren (seit #1923 je Space einschaltbar, siehe oben); keine Obergrenze beim Anheften; Merkmale auch im archivierten Space
 setzbar; Chatsuche nicht über Fremdzugänge erreichbar; durchsucht werden Titel, Fragen und Antworten.
 
 ### Mustervergleich
@@ -393,7 +422,8 @@ Handbuch und E2E-Abdeckung gehören in jede Phase, nicht gesammelt ans Ende.
   verhält.
 - **Spaceübergreifende Chatsuche** („in welchem Space war das noch?") — eigenes Epic.
 - **Filter „meine / mit mir geteilte"** und die Sortierung bei fremder Aktivität — mit dem Teilen von Chats.
-- **Anzeige des Fristablaufs** — mit einer künftigen Chat-Aufbewahrung.
+- **Automatische Bereinigung geteilter Chats** — mit dem Teilen von Chats (siehe „Automatisches
+  Archivieren und Löschen je Space").
 
 ---
 
