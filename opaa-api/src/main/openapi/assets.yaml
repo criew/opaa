@@ -560,9 +560,11 @@ components:
             every type. Master data: name, description, settings, ownership. Content: for a prompt
             library a prompt created, changed or deleted; for a knowledge library a document
             uploaded or deleted, a completed indexing run that indexed at least one document, and
-            documents a run removed because they left the source. Grants and technical bookkeeping
-            without a person or a content change behind it - a reminder sent, an automatic expiry
-            - never move it. The sort updatedAt orders by this value.
+            documents a run removed because they left the source. Grants, a knowledge library's
+            metadata schema and its folders themselves (created, renamed) are no such change, and
+            neither is technical bookkeeping without a person or a content change behind it - a
+            reminder sent, an automatic expiry; none of them moves it. The sort updatedAt orders by
+            this value.
         knowledgeLibrary:
           description: Present exactly when assetType is KNOWLEDGE_LIBRARY.
           allOf:

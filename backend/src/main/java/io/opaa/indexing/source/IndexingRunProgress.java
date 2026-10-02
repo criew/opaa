@@ -138,8 +138,13 @@ public final class IndexingRunProgress implements AttachmentProgressSink {
     indexingJobService.updateProgress(jobId, processed, failed, skipped, documentsIndexedTotal);
   }
 
+  /** Completes the run; one that indexed a document is a content change of its library. */
   public void complete() {
-    indexingJobService.completeJob(jobId, processed, failed, skipped, documentsIndexedTotal);
+    boolean completed =
+        indexingJobService.completeJob(jobId, processed, failed, skipped, documentsIndexedTotal);
+    if (completed && documentsIndexedTotal > 0) {
+      indexingJobService.recordContentChange(jobId);
+    }
   }
 
   public void fail(String message) {

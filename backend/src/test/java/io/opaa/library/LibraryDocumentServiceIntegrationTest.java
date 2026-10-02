@@ -23,6 +23,7 @@ import io.opaa.common.PayloadTooLargeException;
 import io.opaa.common.ValidationException;
 import io.opaa.indexing.job.IndexingJobService;
 import io.opaa.indexing.job.JobTriggerSource;
+import io.opaa.indexing.source.IndexingRunProgress;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentContent;
 import io.opaa.knowledge.DocumentRepository;
@@ -237,14 +238,18 @@ class LibraryDocumentServiceIntegrationTest {
         indexingJobService
             .startJob(libraryId, organizationId, JobTriggerSource.MANUAL, IndexingRunMode.FULL)
             .getId();
-    indexingJobService.completeJob(quietRun, 0, 0, 3, 0);
+    IndexingRunProgress quiet = new IndexingRunProgress(indexingJobService, quietRun);
+    quiet.recordSkipped();
+    quiet.complete();
     assertThat(updatedAt()).as("a run that changed nothing").isEqualTo(past);
 
     UUID changingRun =
         indexingJobService
             .startJob(libraryId, organizationId, JobTriggerSource.MANUAL, IndexingRunMode.FULL)
             .getId();
-    indexingJobService.completeJob(changingRun, 1, 0, 2, 1);
+    IndexingRunProgress changing = new IndexingRunProgress(indexingJobService, changingRun);
+    changing.recordProcessed();
+    changing.complete();
     assertThat(updatedAt()).as("a completed run that indexed a document").isAfter(past);
 
     setUpdatedAt(past);

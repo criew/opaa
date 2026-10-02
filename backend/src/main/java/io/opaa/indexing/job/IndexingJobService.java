@@ -8,11 +8,15 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 public class IndexingJobService {
+
+  private static final Logger log = LoggerFactory.getLogger(IndexingJobService.class);
 
   /**
    * Error message a run that was still {@link JobStatus#RUNNING} at the previous application
@@ -112,17 +116,17 @@ public class IndexingJobService {
    * a job the stale-run sweep or startup recovery already failed - while its own executor thread,
    * unaware, kept running regardless - would have this call silently flip the row back from {@code
    * FAILED} to {@code COMPLETED} once that thread finally finishes. See {@link
-   * IndexingJobRepository#completeIfRunning}'s Javadoc for the conditional-update mechanics. A
-   * completed run that indexed at least one document is a content change of its library.
+   * IndexingJobRepository#completeIfRunning}'s Javadoc for the conditional-update mechanics.
+   *
+   * @return whether this call completed the run - {@code false} for one already recovered
    */
   @Transactional(propagation = Propagation.REQUIRES_NEW)
-  public void completeJob(
+  public boolean completeJob(
       UUID jobId,
       int documentsProcessed,
       int documentsFailed,
       int documentsSkipped,
       int documentsIndexedTotal) {
-    Instant now = Instant.now();
     int updated =
         indexingJobRepository.completeIfRunning(
             jobId,
@@ -130,13 +134,25 @@ public class IndexingJobService {
             documentsFailed,
             documentsSkipped,
             documentsIndexedTotal,
-            now);
+            Instant.now());
     requireJobExistedIfNoRowsUpdated(jobId, updated);
-    if (updated > 0 && documentsIndexedTotal > 0) {
+    return updated > 0;
+  }
+
+  /**
+   * Marks the library of a completed run that indexed a document as changed - the catalog's "last
+   * change". Runs outside any caller's transaction and after the completion has committed, so a
+   * failure is only logged and never takes the completion back.
+   */
+  @Transactional(propagation = Propagation.NOT_SUPPORTED)
+  public void recordContentChange(UUID jobId) {
+    try {
       indexingJobRepository
           .findById(jobId)
           .map(IndexingJob::getLibraryId)
-          .ifPresent(libraryId -> assetRepository.markContentChanged(libraryId, now));
+          .ifPresent(libraryId -> assetRepository.markContentChanged(libraryId, Instant.now()));
+    } catch (RuntimeException e) {
+      log.warn("Could not mark the library of run {} as changed", jobId, e);
     }
   }
 

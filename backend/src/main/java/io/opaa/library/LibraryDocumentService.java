@@ -337,7 +337,6 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
       // still true now that the embedding work itself has moved off this thread entirely).
       document.setChecksum(checksum);
       document = documentRepository.save(document);
-      assetRepository.markContentChanged(libraryId, Instant.now());
 
       // #589 review, item 4: from here on, the row is committed - a RuntimeException must never
       // again just delete the file and rethrow (the outer catch below), or the row would survive
@@ -411,8 +410,21 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
       accepted.discard();
       throw e;
     }
+    markUploadAsContentChange(libraryId);
     return new LibraryDocumentEntry(
         storedRow, LibraryFolderPaths.pathOf(folderRepository, storedRow.getFolderId()));
+  }
+
+  /**
+   * The catalog's "last change" of the library. Bookkeeping only: the row is committed and its
+   * processing started, so a failure here is logged and never fails the upload.
+   */
+  private void markUploadAsContentChange(UUID libraryId) {
+    try {
+      assetRepository.markContentChanged(libraryId, Instant.now());
+    } catch (RuntimeException e) {
+      log.warn("Could not mark library {} as changed after an upload", libraryId, e);
+    }
   }
 
   /**
