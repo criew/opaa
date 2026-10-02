@@ -1,21 +1,19 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import Checkbox from '@mui/material/Checkbox'
 import Dialog from '@mui/material/Dialog'
 import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
-import FormControl from '@mui/material/FormControl'
-import FormControlLabel from '@mui/material/FormControlLabel'
-import FormGroup from '@mui/material/FormGroup'
 import FormHelperText from '@mui/material/FormHelperText'
-import FormLabel from '@mui/material/FormLabel'
+import InputAdornment from '@mui/material/InputAdornment'
 import Skeleton from '@mui/material/Skeleton'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
+import visuallyHidden from '@mui/utils/visuallyHidden'
+import SearchIcon from '@mui/icons-material/Search'
 import type {
   CreatedExternalAccessTokenResponse,
   EligibleExternalAccessLibraryResponse,
@@ -25,6 +23,8 @@ import {
   listEligibleExternalAccessLibraries,
 } from '../../services/externalAccessApi'
 import { radius } from '../../theme/tokens'
+import ChoiceTileGroup, { type ChoiceTile } from '../choice/ChoiceTileGroup'
+import { assetTypeDefinition } from '../assets/assetTypeRegistry'
 import {
   DISCLOSURE_HINT,
   NO_LIBRARIES_HINT,
@@ -50,6 +50,58 @@ interface FieldErrors {
   expiresAt?: string
 }
 
+function matchesQuery(library: EligibleExternalAccessLibraryResponse, query: string): boolean {
+  const haystack = `${library.name} ${library.description ?? ''}`.toLowerCase()
+  return query
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(Boolean)
+    .every((term) => haystack.includes(term))
+}
+
+function searchResultMessage(count: number): string {
+  if (count === 0) return 'Keine Bibliothek passt zur Suche.'
+  return count === 1 ? '1 Bibliothek passt zur Suche.' : `${count} Bibliotheken passen zur Suche.`
+}
+
+/**
+ * Eine Kachel je wählbarer Bibliothek, die zur Suche passt. Der Satz unter dem Namen trägt das Ende
+ * der Freigabe: Läuft sie vor dem Token aus, verliert das Token die Bibliothek vorher.
+ */
+function libraryTiles(
+  libraries: EligibleExternalAccessLibraryResponse[],
+  query: string,
+): ChoiceTile<string>[] {
+  const Icon = assetTypeDefinition('KNOWLEDGE_LIBRARY')?.Icon
+  return libraries
+    .filter((library) => matchesQuery(library, query))
+    .map((library) => ({
+      value: library.id,
+      label: library.name,
+      icon: Icon ? <Icon sx={{ fontSize: 20 }} /> : null,
+      description: (
+        <>
+          {library.description && (
+            <Box
+              component="span"
+              sx={{
+                display: '-webkit-box',
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: 'vertical',
+                overflow: 'hidden',
+              }}
+            >
+              {library.description}
+            </Box>
+          )}
+          <Box component="span" sx={{ display: 'block' }}>
+            Freigabe bis {formatDate(library.releaseExpiresAt)}
+          </Box>
+        </>
+      ),
+    }))
+}
+
 /**
  * Der Anlegedialog eines Zugangstokens (#1719).
  *
@@ -59,7 +111,8 @@ interface FieldErrors {
  *
  * Die Auswahl kommt aus `eligible-libraries` und ist damit genau die Menge, die die Ausstellung
  * annimmt - lesbar und freigegeben. Alles, was der Dialog anbietet, ist ausstellbar; eine
- * Bibliothek mehr anzubieten hieße, die Person in eine Abweisung laufen zu lassen.
+ * Bibliothek mehr anzubieten hieße, die Person in eine Abweisung laufen zu lassen. Gewählt wird
+ * über die Kachelauswahl (guidelines 5.11); die Suche blendet nur aus und lässt die Auswahl stehen.
  */
 export default function CreateExternalAccessTokenDialog({
   tokenMaxLifetimeDays,
@@ -69,6 +122,7 @@ export default function CreateExternalAccessTokenDialog({
   const [libraries, setLibraries] = useState<EligibleExternalAccessLibraryResponse[] | null>(null)
   const [name, setName] = useState('')
   const [selected, setSelected] = useState<string[]>([])
+  const [query, setQuery] = useState('')
   // Der Entwurf lebt nur, solange der Dialog montiert ist - der Aufrufer montiert ihn je Vorgang
   // neu. Ein Zurücksetzen im Effekt wäre derselbe Zustand, nur einen Renderdurchlauf später.
   const [expiresOn, setExpiresOn] = useState(() =>
@@ -102,13 +156,7 @@ export default function CreateExternalAccessTokenDialog({
     }
   }, [])
 
-  function toggle(libraryId: string) {
-    setSelected((current) =>
-      current.includes(libraryId)
-        ? current.filter((id) => id !== libraryId)
-        : [...current, libraryId],
-    )
-  }
+  const tiles = useMemo(() => libraryTiles(libraries ?? [], query), [libraries, query])
 
   function validate(): FieldErrors {
     const errors: FieldErrors = {}
@@ -178,48 +226,71 @@ export default function CreateExternalAccessTokenDialog({
             fullWidth
           />
 
-          <FormControl component="fieldset" error={Boolean(fieldErrors.libraryIds)}>
-            <FormLabel component="legend" sx={{ fontSize: 13.5 }}>
+          <Box>
+            <Typography id="create-token-libraries-title" sx={{ fontSize: 13.5, fontWeight: 500 }}>
               Bibliotheken
-            </FormLabel>
+            </Typography>
             {libraries === null ? (
               <Skeleton variant="rounded" height={96} sx={{ mt: 1 }} />
             ) : hasLibraries ? (
               <>
-                <FormGroup sx={{ mt: 0.5 }}>
-                  {libraries.map((library) => (
-                    <FormControlLabel
-                      key={library.id}
-                      control={
-                        <Checkbox
-                          checked={selected.includes(library.id)}
-                          onChange={() => toggle(library.id)}
-                        />
-                      }
-                      label={
-                        <>
-                          {library.name}
-                          {/* Die Freigabe der Bibliothek endet unabhängig vom Token; läuft sie
-                              früher aus, verliert das Token sie vorher. */}
-                          <Typography
-                            component="span"
-                            sx={{ fontSize: 12, color: 'text.secondary', ml: 1 }}
-                          >
-                            Freigabe bis {formatDate(library.releaseExpiresAt)}
-                          </Typography>
-                        </>
-                      }
-                    />
-                  ))}
-                </FormGroup>
-                <FormHelperText>{fieldErrors.libraryIds ?? SELECTION_IS_FINAL_HINT}</FormHelperText>
+                <Stack
+                  direction="row"
+                  spacing={1.5}
+                  sx={{ alignItems: 'center', mt: 1, mb: 1.5, flexWrap: 'wrap' }}
+                >
+                  <TextField
+                    type="search"
+                    size="small"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="Name oder Beschreibung …"
+                    sx={{ flex: '1 1 220px' }}
+                    slotProps={{
+                      input: {
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <SearchIcon sx={{ fontSize: 16 }} />
+                          </InputAdornment>
+                        ),
+                      },
+                      htmlInput: { 'aria-label': 'Bibliotheken suchen' },
+                    }}
+                  />
+                  <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+                    {selected.length} ausgewählt
+                  </Typography>
+                </Stack>
+                {/* Die Suche verschiebt den Fokus nicht; ohne Live-Bereich bliebe das Ergebnis am
+                    Screenreader unbemerkt. Ohne Treffer ist dieselbe Meldung auch sichtbar. */}
+                <Box
+                  role="status"
+                  aria-live="polite"
+                  sx={
+                    tiles.length === 0 ? { fontSize: 13, color: 'text.secondary' } : visuallyHidden
+                  }
+                >
+                  {query.trim() ? searchResultMessage(tiles.length) : ''}
+                </Box>
+                {tiles.length > 0 && (
+                  <ChoiceTileGroup<string>
+                    multiple
+                    aria-labelledby="create-token-libraries-title"
+                    tiles={tiles}
+                    value={selected}
+                    onChange={setSelected}
+                  />
+                )}
+                <FormHelperText error={Boolean(fieldErrors.libraryIds)}>
+                  {fieldErrors.libraryIds ?? SELECTION_IS_FINAL_HINT}
+                </FormHelperText>
               </>
             ) : (
               <Alert severity="info" sx={{ mt: 1 }}>
                 {NO_LIBRARIES_HINT}
               </Alert>
             )}
-          </FormControl>
+          </Box>
 
           <TextField
             label="Läuft ab"
