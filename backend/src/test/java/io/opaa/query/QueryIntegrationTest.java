@@ -825,6 +825,7 @@ class QueryIntegrationTest {
     assertThat(title).isEqualTo("Erste Frage");
   }
 
+  /** A space of the member, carrying the class's library - a space searches only what it holds. */
   private UUID insertSpaceWithMembership(UUID memberId) {
     UUID spaceId = UUID.randomUUID();
     jdbcTemplate.update(
@@ -842,6 +843,14 @@ class QueryIntegrationTest {
         memberId,
         spaceId,
         DEFAULT_ORGANIZATION_ID);
+    jdbcTemplate.update(
+        "INSERT INTO space_asset_associations (id, space_id, asset_id, organization_id,"
+            + " created_by_user_id, created_at) VALUES (?, ?, ?, ?, ?, now())",
+        UUID.randomUUID(),
+        spaceId,
+        libraryId,
+        DEFAULT_ORGANIZATION_ID,
+        memberId);
     return spaceId;
   }
 

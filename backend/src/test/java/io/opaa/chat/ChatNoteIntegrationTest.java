@@ -457,8 +457,9 @@ class ChatNoteIntegrationTest {
   }
 
   /**
-   * A library the user may read, which is what makes the search scope non-empty and therefore the
-   * sub-question decomposition run at all - without it the query short-circuits past it.
+   * A library the user may read, associated with the chat's space - which is what makes the search
+   * scope non-empty and therefore the sub-question decomposition run at all; without it the query
+   * short-circuits past it.
    */
   private UUID insertReadableLibrary() {
     UUID libraryId = UUID.randomUUID();
@@ -474,6 +475,14 @@ class ChatNoteIntegrationTest {
         "INSERT INTO asset_grants (id, asset_type, asset_id, organization_id, subject_type, subject_user_id,"
             + " role, created_at, updated_at) VALUES (?, 'KNOWLEDGE_LIBRARY', ?, ?, 'USER', ?, 'OWNER', now(), now())",
         UUID.randomUUID(),
+        libraryId,
+        DEFAULT_ORGANIZATION_ID,
+        userId);
+    jdbcTemplate.update(
+        "INSERT INTO space_asset_associations (id, space_id, asset_id, organization_id,"
+            + " created_by_user_id, created_at) VALUES (?, ?, ?, ?, ?, now())",
+        UUID.randomUUID(),
+        spaceId,
         libraryId,
         DEFAULT_ORGANIZATION_ID,
         userId);
