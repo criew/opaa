@@ -1,4 +1,16 @@
-import type { SpaceListResponse, SpaceMemberResponse, SpaceResponse } from '../types/api'
+import type {
+  ChatAutoCleanupResponse,
+  SpaceListResponse,
+  SpaceMemberResponse,
+  SpaceResponse,
+} from '../types/api'
+
+/** Die Vorgabe der Betreiber-Konfiguration: Schalter aus, 90 Tage bis zum Archiv, 365 bis zur Löschung. */
+export const defaultChatAutoCleanup: ChatAutoCleanupResponse = {
+  enabled: false,
+  archiveAfterDays: 90,
+  deleteAfterDays: 365,
+}
 
 export const mockSpaces: SpaceListResponse[] = [
   {
@@ -59,6 +71,7 @@ export const mockSpaceDetails: Record<string, SpaceResponse> = {
     ownerId: 'mock-user-id',
     memberCount: 1,
     userRole: 'ADMIN',
+    chatAutoCleanup: { ...defaultChatAutoCleanup },
     roleCounts: { MEMBER: 0, CURATOR: 0, ADMIN: 1 },
     createdAt: '2026-03-01T10:00:00Z',
     updatedAt: '2026-03-01T10:00:00Z',
@@ -73,6 +86,7 @@ export const mockSpaceDetails: Record<string, SpaceResponse> = {
     ownerId: 'owner-1',
     memberCount: 3,
     userRole: 'ADMIN',
+    chatAutoCleanup: { ...defaultChatAutoCleanup },
     roleCounts: { MEMBER: 1, CURATOR: 1, ADMIN: 1 },
     createdAt: '2026-03-01T10:00:00Z',
     updatedAt: '2026-03-01T10:00:00Z',
@@ -87,6 +101,7 @@ export const mockSpaceDetails: Record<string, SpaceResponse> = {
     ownerId: 'owner-2',
     memberCount: 2,
     userRole: 'CURATOR',
+    chatAutoCleanup: { ...defaultChatAutoCleanup },
     roleCounts: { MEMBER: 0, CURATOR: 1, ADMIN: 1 },
     createdAt: '2026-03-01T10:00:00Z',
     updatedAt: '2026-03-01T10:00:00Z',

@@ -7,7 +7,8 @@ import java.util.UUID;
 /**
  * Parameters for creating a space - domain counterpart of the generated {@code SpaceRequest} at the
  * {@link SpaceService#createSpace} boundary. {@code ownerId} may be {@code null} - {@link
- * SpaceService#createSpace} then defaults it to the caller.
+ * SpaceService#createSpace} then defaults it to the caller. {@code chatAutoCleanup} {@code null}
+ * leaves the automatic chat cleanup off.
  */
 public record SpaceCreation(
     String name,
@@ -15,4 +16,16 @@ public record SpaceCreation(
     UUID ownerId,
     SpaceVisibility visibility,
     List<SpaceMemberSeed> initialMembers,
-    List<UUID> libraryIds) {}
+    List<UUID> libraryIds,
+    Boolean chatAutoCleanup) {
+
+  public SpaceCreation(
+      String name,
+      String description,
+      UUID ownerId,
+      SpaceVisibility visibility,
+      List<SpaceMemberSeed> initialMembers,
+      List<UUID> libraryIds) {
+    this(name, description, ownerId, visibility, initialMembers, libraryIds, null);
+  }
+}

@@ -9,6 +9,7 @@ import io.opaa.knowledge.LibraryAccessService;
 import io.opaa.metadata.MetadataFilter;
 import io.opaa.metadata.MetadataFilterValidator;
 import io.opaa.observability.ChatMetrics;
+import io.opaa.space.ChatAutoCleanupProperties;
 import io.opaa.space.Space;
 import io.opaa.space.SpaceAccessPolicy;
 import io.opaa.space.SpaceAssetAssociationRepository;
@@ -103,6 +104,7 @@ public class ChatService {
   private final ChatPersonalMarkRepository chatPersonalMarkRepository;
   private final ChatFullTextSearch chatFullTextSearch;
   private final ChatMetrics chatMetrics;
+  private final ChatAutoCleanupProperties chatAutoCleanup;
 
   public ChatService(
       ChatRepository chatRepository,
@@ -118,7 +120,9 @@ public class ChatService {
       ChatNoteService chatNoteService,
       ChatPersonalMarkRepository chatPersonalMarkRepository,
       ChatFullTextSearch chatFullTextSearch,
-      ChatMetrics chatMetrics) {
+      ChatMetrics chatMetrics,
+      ChatAutoCleanupProperties chatAutoCleanup) {
+    this.chatAutoCleanup = chatAutoCleanup;
     this.chatPersonalMarkRepository = chatPersonalMarkRepository;
     this.chatFullTextSearch = chatFullTextSearch;
     this.chatMetrics = chatMetrics;
@@ -201,8 +205,17 @@ public class ChatService {
   /** The caller's chat archive of one space, most recently archived first. */
   @Transactional(readOnly = true)
   public Page<ChatListEntry> listArchivedChats(UUID spaceId, UUID userId, Pageable pageable) {
-    requireMembership(spaceId, userId);
-    return chatPersonalMarkRepository.findArchivedInSpace(spaceId, userId, pageable);
+    Space space = requireMembership(spaceId, userId);
+    return chatPersonalMarkRepository
+        .findArchivedInSpace(spaceId, userId, pageable)
+        .map(
+            entry ->
+                new ChatListEntry(
+                    entry.chat(),
+                    entry.pinnedAt(),
+                    entry.archivedAt(),
+                    chatAutoCleanup.deletionDueAt(
+                        entry.archivedAt(), space.getChatAutoCleanupEnabledAt())));
   }
 
   /**
@@ -294,15 +307,15 @@ public class ChatService {
   public ChatListEntry archiveChat(UUID chatId, UUID userId) {
     Chat chat = getOwnedChat(chatId, userId);
     chatPersonalMarkRepository.archive(chatId, userId, Instant.now());
-    return new ChatListEntry(
-        chat, null, chatPersonalMarkRepository.findArchivedAt(chatId, userId).orElseThrow());
+    Instant archivedAt = chatPersonalMarkRepository.findArchivedAt(chatId, userId).orElseThrow();
+    return new ChatListEntry(chat, null, archivedAt, deletionDueAt(chat, archivedAt));
   }
 
   /** Counterpart of {@link #archiveChat}; the chat comes back unpinned. Idempotent. */
   @Transactional
   public ChatListEntry unarchiveChat(UUID chatId, UUID userId) {
     Chat chat = getOwnedChat(chatId, userId);
-    clearArchive(chatId, userId);
+    clearArchive(chat, userId, Instant.now());
     return new ChatListEntry(chat, null, null);
   }
 
@@ -326,7 +339,8 @@ public class ChatService {
   public List<UUID> unarchiveChats(UUID spaceId, UUID userId, Collection<UUID> chatIds) {
     requireMembership(spaceId, userId);
     List<Chat> chats = chatRepository.findByIdInAndSpaceIdAndAuthorId(chatIds, spaceId, userId);
-    chats.forEach(chat -> clearArchive(chat.getId(), userId));
+    Instant now = Instant.now();
+    chats.forEach(chat -> clearArchive(chat, userId, now));
     return chats.stream().map(Chat::getId).toList();
   }
 
@@ -339,9 +353,22 @@ public class ChatService {
     return chats.stream().map(Chat::getId).toList();
   }
 
-  private void clearArchive(UUID chatId, UUID userId) {
-    chatPersonalMarkRepository.clearArchive(chatId, userId);
-    chatPersonalMarkRepository.deleteIfUnmarked(chatId, userId);
+  /**
+   * Brings the chat back from the person's archive. In a space with automatic chat cleanup the
+   * moment is kept, so the archive period starts anew; elsewhere nothing of it is stored.
+   */
+  private void clearArchive(Chat chat, UUID userId, Instant now) {
+    boolean cleanupOn =
+        spaceRepository
+            .findById(chat.getSpaceId())
+            .map(Space::isChatAutoCleanupEnabled)
+            .orElse(false);
+    if (cleanupOn) {
+      chatPersonalMarkRepository.clearArchiveRecordingReturn(chat.getId(), userId, now);
+    } else {
+      chatPersonalMarkRepository.clearArchive(chat.getId(), userId);
+    }
+    chatPersonalMarkRepository.deleteIfUnmarked(chat.getId(), userId);
   }
 
   @Transactional(readOnly = true)
@@ -609,7 +636,23 @@ public class ChatService {
     Instant archivedAt =
         chatPersonalMarkRepository.findArchivedAt(chat.getId(), userId).orElse(null);
     return new ChatConversation(
-        chat, conversation.getMessages(), conversation.getNoteItems(), archivedAt);
+        chat,
+        conversation.getMessages(),
+        conversation.getNoteItems(),
+        archivedAt,
+        deletionDueAt(chat, archivedAt));
+  }
+
+  /** When the automatic chat cleanup deletes the chat archived at {@code archivedAt}, if ever. */
+  private Instant deletionDueAt(Chat chat, Instant archivedAt) {
+    if (archivedAt == null) {
+      return null;
+    }
+    return spaceRepository
+        .findById(chat.getSpaceId())
+        .map(
+            space -> chatAutoCleanup.deletionDueAt(archivedAt, space.getChatAutoCleanupEnabledAt()))
+        .orElse(null);
   }
 
   private ChatTurn toTurn(ChatMessage message) {

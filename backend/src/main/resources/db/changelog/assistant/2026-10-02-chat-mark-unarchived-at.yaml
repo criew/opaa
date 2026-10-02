@@ -1,0 +1,9 @@
+databaseChangeLog:
+  - changeSet:
+      id: assistant-2026-10-02-chat-mark-unarchived-at
+      author: opaa
+      comment: "When the person brought a chat back from the archive in a space with automatic chat cleanup; restarts the archive period."
+      changes:
+        - sql:
+            sql: |
+              ALTER TABLE chat_personal_marks ADD COLUMN unarchived_at timestamp with time zone;

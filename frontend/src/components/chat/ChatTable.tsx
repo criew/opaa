@@ -17,6 +17,7 @@ import { adminTableSx, listCardSx } from '../admin/list/adminListStyles'
 import ChatRowMenu from './ChatRowMenu'
 import type { ChatRowActions } from './ChatRowMenu'
 import { chatTitle } from './chatListSections'
+import { deletionDueLabel } from './deletionDueLabel'
 
 const dateTimeFormat = new Intl.DateTimeFormat('de-DE', {
   dateStyle: 'medium',
@@ -136,6 +137,11 @@ export default function ChatTable({
                   {archived && `Archiviert ${formatDateTime(chat.archivedAt)} · `}
                   Zuletzt {formatDateTime(chat.updatedAt)}
                 </Typography>
+                {archived && chat.deletionDueAt && (
+                  <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>
+                    {deletionDueLabel(chat.deletionDueAt)}
+                  </Typography>
+                )}
               </Box>
               <ChatRowMenu
                 chat={chat}
@@ -178,6 +184,11 @@ export default function ChatTable({
             {archived && (
               <TableCell sx={{ fontVariantNumeric: 'tabular-nums' }}>
                 {formatDateTime(chat.archivedAt)}
+                {chat.deletionDueAt && (
+                  <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>
+                    {deletionDueLabel(chat.deletionDueAt)}
+                  </Typography>
+                )}
               </TableCell>
             )}
             <TableCell sx={{ fontVariantNumeric: 'tabular-nums' }}>

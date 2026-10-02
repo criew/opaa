@@ -117,6 +117,39 @@ eine Anheftung. Ein **archivierter Chat** ist etwas anderes als ein **archiviert
 Space nimmt für alle keine neuen Inhalte mehr an, auch keine Frage in einem archivierten Chat; das
 Archivieren eines Chats ist dort trotzdem möglich und ändert an der Sichtbarkeit des Space nichts.
 
+**Automatisches Archivieren und Löschen.** Je Space gibt es den Schalter „Inaktive Chats
+automatisch archivieren und löschen", ab Werk aus. Gesetzt wird er beim Anlegen des Space im
+Assistenten oder später in den Einstellungen des Space im Reiter „Stammdaten"; umlegen darf ihn,
+wer die Stammdaten ändern darf. Im persönlichen Standard-Space legt ihn nur die Person selbst um,
+auch die Systemverwaltung nicht; ein Standard-Space lässt sich dafür auch nicht übertragen. Ist er an, nennt die Seite „Chats" allen Mitgliedern die Fristen
+in einem kurzen Hinweis. Für alle Chats des Space gilt dann:
+
+- Ein Chat, dessen letzte Aktivität länger als die Archivfrist zurückliegt, wandert in das
+  Chat-Archiv seines Autors. Aktivität ist allein der vorhandene Zeitstempel der letzten Änderung
+  des Chats, also vor allem die letzte Frage, und der Zeitpunkt, zu dem die Person den Chat aus dem
+  Archiv zurückgeholt hat; weitere Daten über die Person werden dafür weder erhoben noch
+  gespeichert.
+- Ein Chat, der länger als die Löschfrist im Archiv liegt, wird gelöscht — auf demselben Weg, auf
+  dem sein Autor ihn löschen würde, mit Verlauf und Gesprächsnotiz. Das gilt auch für Chats, die
+  die Person selbst archiviert hat.
+- **Angeheftete Chats** sind ausgenommen. Anheften, eine neue Frage oder das Zurückholen aus dem
+  Archiv holt einen archivierten Chat zurück und lässt die Archivfrist neu beginnen; Zurückholen
+  genügt also, um einen Chat für eine weitere Archivfrist zu behalten. Dafür wird der Zeitpunkt
+  des Zurückholens an der persönlichen Archiv-Markierung gespeichert, nur solange die Bereinigung
+  an ist und höchstens eine Archivfrist lang. Wer einen Chat dauerhaft behalten will,
+  heftet ihn an.
+- **Keine Rückwirkung:** Beide Fristen beginnen frühestens mit dem Einschalten. Ein Chat, der
+  schon lange ruht oder lange im Archiv liegt, verschwindet nicht am Tag danach. Ausschalten hält
+  den Automatismus an; erneutes Einschalten beginnt die Fristen von vorn.
+- Ein archivierter Chat zeigt im Reiter „Archiv" und in seiner Kopfzeile, an welchem Tag er
+  gelöscht wird. Eine gesonderte Benachrichtigung gibt es nicht.
+- Der Lauf findet einmal täglich nachts statt. Er schreibt nur Gesamtzahlen ins Anwendungslog, nie
+  einen Chat, einen Space oder eine Person; im Protokoll steht allein das Umlegen des Schalters mit
+  altem und neuem Wert, handelnder Person und Zeitpunkt.
+
+Die Fristen sind systemweit fest und nur vom Betrieb einstellbar, mit einer Untergrenze, die keine
+Konfiguration unterschreiten kann (Abschnitt 10.3).
+
 Die **Chatliste** in der Seitenleiste zeigt zuerst die angehefteten Chats, darunter „Zuletzt
 verwendet" mit den 15 zuletzt genutzten. „15 weitere" blendet die nächsten ein, „Weniger" klappt
 wieder auf die ersten 15 zurück. Ein Filterfeld gibt es nicht; der Suchknopf neben
@@ -961,6 +994,14 @@ die Notiz Chatinhalt ist und kein Suchparameter:
 | Schlüssel | Standard | Wirkung |
 |---|---|---|
 | `opaa.chat.note.max-items` | 10 | Höchstzahl der Notizpunkte je Chat (1 bis 50); beim Anhängen darüber hinaus fällt der älteste Punkt weg (`OPAA_CHAT_NOTE_MAX_ITEMS`) |
+
+Die Fristen der automatischen Chat-Bereinigung (Abschnitt 2) stehen unter `opaa.chat.auto-cleanup.*`.
+Ein Wert unter der Untergrenze bricht den Start mit einer Meldung im Log ab:
+
+| Schlüssel | Standard | Wirkung |
+|---|---|---|
+| `archive-after-days` | 90 | Tage ohne Aktivität, nach denen ein nicht angehefteter Chat archiviert wird; mindestens 90 (`OPAA_CHAT_AUTO_CLEANUP_ARCHIVE_AFTER_DAYS`) |
+| `delete-after-days` | 365 | Tage im Chat-Archiv, nach denen ein Chat gelöscht wird; mindestens 30 (`OPAA_CHAT_AUTO_CLEANUP_DELETE_AFTER_DAYS`) |
 
 Alles andere an der Notiz ist ein fester Wert ohne Adressaten: zwei Punkte je Runde, 200 Zeichen je
 Punkt, die Art eines Punkts, das verwendete Modell (das systemweit aktive Chat-Modell) und die
