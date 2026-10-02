@@ -123,6 +123,18 @@ Issues sind die Arbeitseinheit und müssen ausreichend in sich geschlossen sein,
 
 **Epics grob schneiden.** Ein Epic wird in wenige, größere Sub-Issues zerlegt — Richtwert höchstens acht. Viele kleine Tickets kosten je Ticket denselben Fixaufwand (Kontext einlesen, Worktree, PR, Review, CI) und verleiten dazu, Entscheidungen in immer neue Folge-Issues zu verschieben. Ein Sub-Issue darf deshalb einen zusammenhängenden Block umfassen, in dem der Entwickler kleinere Entscheidungen selbst trifft; was fachlich in derselben Ecke liegt, wird im selben Issue miterledigt statt ausgegliedert (siehe Schritt 5 des Workflows). Bereits angelegte Issues derselben Ecke darf der Koordinator einem Entwickler gebündelt geben (siehe Koordinator-Betrieb, „Bündelung"). (Anweisung des Maintainers vom 24.09.2026.)
 
+#### Bearbeitung anzeigen: Issue selbst zuweisen
+
+Wer ein Issue bearbeitet — Mensch oder Agent —, weist es sich **vor Arbeitsbeginn** selbst zu. So arbeiten nicht mehrere Personen unbemerkt am selben Thema. Das gilt für jedes Issue, das ein PR mit `Closes` schließt, auch bei gebündelten Aufträgen.
+
+1. **Zuweisung prüfen:** `gh issue view <nr> --json assignees --jq '[.assignees[].login]'`
+2. **Ist das Issue einem anderen Account zugewiesen, wird nicht angefangen.** Ein Agent meldet das seinem Koordinator (mit dem Namen des Accounts), der es an den Maintainer weitergibt; ein Mensch spricht die zugewiesene Person an.
+3. **Sonst selbst zuweisen:** `gh issue edit <nr> --add-assignee @me`.
+
+Agenten arbeiten unter dem GitHub-Account ihres Betreibers. Die Zuweisung schützt deshalb nur gegen **andere Accounts**, nicht gegen parallele Sessions desselben Betreibers. Ist ein Issue schon dem eigenen Account zugewiesen, ohne dass der Koordinator es gerade zugeteilt hat, prüft der Agent vor Arbeitsbeginn, ob es bereits einen Branch oder PR dazu gibt (`git ls-remote --heads origin "feature/<nr>_*"`, `gh pr list --search "<nr> in:body"`), und meldet einen Fund dem Koordinator, statt anzufangen.
+
+Wird die Arbeit abgebrochen, ohne dass ein PR entsteht, wird die Zuweisung wieder entfernt (`--remove-assignee @me`). Der Koordinator weist Issues, die er an Entwickler-Agenten verteilt, beim Verteilen zu. Renovate-PRs haben kein Issue und sind ausgenommen.
+
 ### Dokumentation
 
 - **Feature-Dokumentation wird von demjenigen geschrieben, der das Feature baut, im selben PR.** Kein separater Dokumentationsdurchgang; dies wird durch die Abnahmekriterien durchgesetzt und vom Code Reviewer geprüft.
