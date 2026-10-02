@@ -1,6 +1,7 @@
 package io.opaa.auth;
 
 import io.opaa.common.ValidationException;
+import io.opaa.security.TargetAddressValidator;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.ConnectException;
@@ -68,11 +69,22 @@ public class OidcDiscoveryClient {
 
   public OidcDiscoveryClient(OidcAddressPolicy addressPolicy) {
     this.addressPolicy = addressPolicy;
-    this.httpClient =
-        HttpClient.newBuilder()
-            .connectTimeout(CONNECT_TIMEOUT)
-            .followRedirects(HttpClient.Redirect.NEVER)
-            .build();
+    this.httpClient = newHttpClient(addressPolicy);
+  }
+
+  /**
+   * The client every provider address is fetched with: no redirects, and every connection resolved
+   * through {@code addressPolicy}. Shared with {@link NimbusOidcJwtDecoderFactory}.
+   */
+  static HttpClient newHttpClient(OidcAddressPolicy addressPolicy) {
+    return HttpClient.newBuilder()
+        .connectTimeout(CONNECT_TIMEOUT)
+        .followRedirects(HttpClient.Redirect.NEVER)
+        .build();
+  }
+
+  OidcAddressPolicy addressPolicy() {
+    return addressPolicy;
   }
 
   /**
@@ -150,6 +162,8 @@ public class OidcDiscoveryClient {
       }
     } catch (OidcProbeException e) {
       throw e;
+    } catch (TargetAddressValidator.TargetAddressBlockedException e) {
+      throw new OidcProbeException(e.getMessage() + " " + OidcAddressPolicy.ALLOWLIST_HINT);
     } catch (HttpTimeoutException e) {
       throw new OidcProbeException("Der Anbieter hat nicht rechtzeitig geantwortet.", true);
     } catch (ConnectException | UnknownHostException e) {

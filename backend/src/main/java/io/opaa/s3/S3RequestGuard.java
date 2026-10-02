@@ -1,8 +1,10 @@
 package io.opaa.s3;
 
+import io.opaa.security.ConnectionAddressResolver;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.sourceaccess.SourceRequestMeter;
 import java.io.IOException;
+import java.net.InetAddress;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.function.Consumer;
@@ -30,9 +32,11 @@ public final class S3RequestGuard implements ExecutionInterceptor {
   private static final ExecutionAttribute<Instant> THROTTLED_AT =
       new ExecutionAttribute<>("opaa.s3.throttledAt");
 
-  /** Decides before every wire attempt whether the signed request may leave. */
-  @FunctionalInterface
-  public interface TargetPolicy {
+  /**
+   * Decides before every wire attempt whether the signed request may leave, and at connect time
+   * which addresses the connection may use ({@link ConnectionAddressResolver}).
+   */
+  public interface TargetPolicy extends ConnectionAddressResolver {
 
     /**
      * @throws TargetAddressValidator.UnknownTargetHostException when the host does not resolve
@@ -40,9 +44,19 @@ public final class S3RequestGuard implements ExecutionInterceptor {
      */
     void validate(SdkHttpRequest request) throws IOException;
 
-    /** The host of every request passes {@code validator}. */
+    /** The host of every request, and every connection, passes {@code validator}. */
     static TargetPolicy hostOnly(TargetAddressValidator validator) {
-      return request -> validator.validateHost(request.host());
+      return new TargetPolicy() {
+        @Override
+        public void validate(SdkHttpRequest request) throws IOException {
+          validator.validateHost(request.host());
+        }
+
+        @Override
+        public InetAddress[] resolve(String host, int port) throws IOException {
+          return validator.resolveForConnection(host);
+        }
+      };
     }
   }
 
@@ -81,6 +95,11 @@ public final class S3RequestGuard implements ExecutionInterceptor {
   /** A guard for a client that is only target-checked - no meter, no budget, no observer. */
   public static S3RequestGuard targetCheckOnly(TargetPolicy targetPolicy) {
     return new S3RequestGuard(targetPolicy, null, 0, null);
+  }
+
+  /** The policy whose {@link TargetPolicy#resolve} every connection of the client runs through. */
+  public TargetPolicy targetPolicy() {
+    return targetPolicy;
   }
 
   /** The budget this guard enforces; {@code 0} is unbounded. */

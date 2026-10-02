@@ -136,7 +136,8 @@ public class AutoindexCrawlerService {
       throws IOException, InterruptedException {
 
     HttpClient httpClient =
-        SourceHttpClientFactory.buildHttpClient(proxyHost, proxyPort, insecureSsl);
+        SourceHttpClientFactory.buildHttpClient(
+            targetAddressValidator, proxyHost, proxyPort, insecureSsl);
     String authHeader = SourceHttpClientFactory.buildAuthHeader(username, password);
 
     List<CrawledFileEntry> results = new ArrayList<>();

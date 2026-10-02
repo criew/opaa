@@ -1,6 +1,5 @@
 package io.opaa.auth;
 
-import java.net.http.HttpClient;
 import java.util.ArrayList;
 import java.util.List;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
@@ -17,12 +16,13 @@ import org.springframework.web.client.RestTemplate;
  * NimbusJwtDecoder} on a fixed JWK set address - the provider's override, or the {@code jwks_uri}
  * of a discovery document the {@link OidcDiscoveryClient} fetched and address-checked - with the
  * standard validators (expiry, issuer - byte for byte against the stored issuer, as OIDC requires)
- * plus {@link AuthorizedPartyValidator}. The JWK set itself is read through a client that never
- * follows redirects, so neither address can lead anywhere the policy did not see, and with the
- * discovery client's timeouts: the fetch runs on the request thread of the first token of an
- * issuer, and a provider that swallows packets must not hold that thread forever. With an override
- * no discovery happens at all, which is what makes the Compose split ({@code keycloak:8180} for the
- * backend, {@code localhost:8180} for the browser) work.
+ * plus {@link AuthorizedPartyValidator}. The JWK set itself is read through the discovery client's
+ * client - no redirects, every connection resolved through the address policy, so neither a
+ * redirect nor a changed DNS answer can lead anywhere the policy did not see - and with its
+ * timeouts: the fetch runs on the request thread of the first token of an issuer, and a provider
+ * that swallows packets must not hold that thread forever. With an override no discovery happens at
+ * all, which is what makes the Compose split ({@code keycloak:8180} for the backend, {@code
+ * localhost:8180} for the browser) work.
  */
 public class NimbusOidcJwtDecoderFactory implements OidcJwtDecoderFactory {
 
@@ -33,10 +33,7 @@ public class NimbusOidcJwtDecoderFactory implements OidcJwtDecoderFactory {
     this.discoveryClient = discoveryClient;
     JdkClientHttpRequestFactory requestFactory =
         new JdkClientHttpRequestFactory(
-            HttpClient.newBuilder()
-                .connectTimeout(OidcDiscoveryClient.CONNECT_TIMEOUT)
-                .followRedirects(HttpClient.Redirect.NEVER)
-                .build());
+            OidcDiscoveryClient.newHttpClient(discoveryClient.addressPolicy()));
     requestFactory.setReadTimeout(OidcDiscoveryClient.REQUEST_TIMEOUT);
     this.jwkSetClient = new RestTemplate(requestFactory);
   }

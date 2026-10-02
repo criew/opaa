@@ -1,6 +1,7 @@
 package io.opaa.directory.sync.keycloak;
 
 import io.opaa.directory.sync.DirectoryUnavailableException;
+import io.opaa.security.TargetAddressValidator;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.ConnectException;
@@ -219,6 +220,8 @@ class KeycloakAdminApi {
             "Das Verzeichnis antwortet mit HTTP " + status + ".");
       }
       return text;
+    } catch (TargetAddressValidator.TargetAddressBlockedException e) {
+      throw new DirectoryUnavailableException(e.getMessage(), e);
     } catch (HttpTimeoutException e) {
       throw new DirectoryUnavailableException(
           "Das Verzeichnis hat nicht rechtzeitig geantwortet.", e);

@@ -54,7 +54,9 @@ public final class ConfluenceEditionDetector {
     URI dataCenterBase =
         ConfluenceConnection.normalizeBaseUrl(rawBaseUrl, ConfluenceEdition.DATA_CENTER);
     URI cloudBase = ConfluenceConnection.normalizeBaseUrl(rawBaseUrl, ConfluenceEdition.CLOUD);
-    HttpClient client = SourceHttpClientFactory.buildHttpClient(proxyHost, proxyPort, insecureSsl);
+    HttpClient client =
+        SourceHttpClientFactory.buildHttpClient(
+            targetAddressValidator, proxyHost, proxyPort, insecureSsl);
     SourceRequestMeter meter = new SourceRequestMeter();
     String resource = "die Editionserkennung";
 
@@ -138,7 +140,9 @@ public final class ConfluenceEditionDetector {
       ConfluenceEdition expected)
       throws ConfluenceAccessException, InterruptedException {
     ConfluenceHttp.validateProxy(targetAddressValidator, proxyHost);
-    HttpClient client = SourceHttpClientFactory.buildHttpClient(proxyHost, proxyPort, insecureSsl);
+    HttpClient client =
+        SourceHttpClientFactory.buildHttpClient(
+            targetAddressValidator, proxyHost, proxyPort, insecureSsl);
     SourceRequestMeter meter = new SourceRequestMeter();
     String resource = "die Editionsprüfung";
     URI base = ConfluenceConnection.normalizeBaseUrl(rawBaseUrl, expected);

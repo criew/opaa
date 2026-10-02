@@ -142,7 +142,8 @@ class BoundedDownloaderTest {
 
       Path result =
           downloader.download(
-              SourceHttpClientFactory.buildHttpClient(null, -1, false),
+              SourceHttpClientFactory.buildHttpClient(
+                  TargetAddressValidator.disabled(), null, -1, false),
               "Basic dGVzdDp0ZXN0",
               baseUrl + "/report.pdf",
               "report.pdf",
@@ -181,7 +182,8 @@ class BoundedDownloaderTest {
 
     Path result =
         downloader.download(
-            SourceHttpClientFactory.buildHttpClient(null, -1, false),
+            SourceHttpClientFactory.buildHttpClient(
+                TargetAddressValidator.disabled(), null, -1, false),
             "Basic dGVzdDp0ZXN0",
             baseUrl + "/report.pdf",
             "report.pdf",
@@ -223,7 +225,8 @@ class BoundedDownloaderTest {
       assertThatThrownBy(
               () ->
                   downloader.downloadBounded(
-                      SourceHttpClientFactory.buildHttpClient(null, -1, false),
+                      SourceHttpClientFactory.buildHttpClient(
+                          TargetAddressValidator.disabled(), null, -1, false),
                       baseUrl + "/anlage.pdf",
                       "anlage.pdf",
                       10_000,
@@ -256,7 +259,8 @@ class BoundedDownloaderTest {
 
     BoundedDownloader.DownloadedFile result =
         downloader.downloadBounded(
-            SourceHttpClientFactory.buildHttpClient(null, -1, false),
+            SourceHttpClientFactory.buildHttpClient(
+                TargetAddressValidator.disabled(), null, -1, false),
             baseUrl + "/anlage.pdf",
             "anlage.pdf",
             10_000,
@@ -552,7 +556,8 @@ class BoundedDownloaderTest {
     assertThatThrownBy(
             () ->
                 downloader.downloadBounded(
-                    SourceHttpClientFactory.buildHttpClient(null, -1, false),
+                    SourceHttpClientFactory.buildHttpClient(
+                        TargetAddressValidator.disabled(), null, -1, false),
                     baseUrl + "/anlage.pdf",
                     "anlage.pdf",
                     10_000,
@@ -591,7 +596,8 @@ class BoundedDownloaderTest {
 
       Path result =
           downloader.download(
-              SourceHttpClientFactory.buildHttpClient(null, -1, false),
+              SourceHttpClientFactory.buildHttpClient(
+                  TargetAddressValidator.disabled(), null, -1, false),
               "Basic dGVzdDp0ZXN0",
               baseUrl + "/report.pdf",
               "report.pdf",
@@ -915,7 +921,8 @@ class BoundedDownloaderTest {
     assertThatThrownBy(
             () ->
                 validatingDownloader.download(
-                    SourceHttpClientFactory.buildHttpClient(null, -1, false),
+                    SourceHttpClientFactory.buildHttpClient(
+                        TargetAddressValidator.disabled(), null, -1, false),
                     null,
                     baseUrl + "/anlage.pdf",
                     "anlage.pdf",

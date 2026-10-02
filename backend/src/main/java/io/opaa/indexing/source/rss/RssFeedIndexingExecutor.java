@@ -66,6 +66,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
   private final DocumentIngestService documentIngestService;
   private final DocumentRepository documentRepository;
   private final RssFeedProperties properties;
+  private final TargetAddressValidator targetAddressValidator;
   private final FeedFetcher feedFetcher;
   private final DetailPageExtractor detailPageExtractor;
   private final AttachmentIndexer attachmentIndexer;
@@ -86,6 +87,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
     this.documentIngestService = documentIngestService;
     this.documentRepository = documentRepository;
     this.properties = properties;
+    this.targetAddressValidator = targetAddressValidator;
     this.feedFetcher =
         new FeedFetcher(
             targetAddressValidator,
@@ -139,10 +141,12 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
     // only when the library asks for it and is used exclusively for same-origin requests - see
     // RssFeedRunContext#httpClientFor's own Javadoc.
     HttpClient secureClient =
-        SourceHttpClientFactory.buildHttpClient(config.proxyHost(), config.proxyPort(), false);
+        SourceHttpClientFactory.buildHttpClient(
+            targetAddressValidator, config.proxyHost(), config.proxyPort(), false);
     HttpClient insecureClient =
         targetLibrary.isSourceInsecureSsl()
-            ? SourceHttpClientFactory.buildHttpClient(config.proxyHost(), config.proxyPort(), true)
+            ? SourceHttpClientFactory.buildHttpClient(
+                targetAddressValidator, config.proxyHost(), config.proxyPort(), true)
             : secureClient;
 
     RequestBudget budget = RequestBudget.forRun(requestPolicy);

@@ -13,15 +13,17 @@ import org.springframework.context.annotation.Configuration;
 
 /**
  * Wires the directory connectors (#1817). The {@link HttpClient} is one shared instance that never
- * follows a redirect: every address it is given has passed {@link OidcAddressPolicy}, a redirect
- * target would not have.
+ * follows a redirect - every address it is given has passed {@link OidcAddressPolicy}, a redirect
+ * target would not have - and resolves every connection through that policy, so the address checked
+ * is the address connected to.
  */
 @Configuration
 @EnableConfigurationProperties(KeycloakDirectoryProperties.class)
 public class DirectoryConnectorConfiguration {
 
   @Bean
-  HttpClient directoryHttpClient(KeycloakDirectoryProperties properties) {
+  HttpClient directoryHttpClient(
+      KeycloakDirectoryProperties properties, OidcAddressPolicy addressPolicy) {
     return HttpClient.newBuilder()
         .connectTimeout(properties.connectTimeout())
         .followRedirects(HttpClient.Redirect.NEVER)

@@ -186,7 +186,8 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
     run.progress().report();
 
     HttpClient httpClient =
-        SourceHttpClientFactory.buildHttpClient(proxyHost, proxyPort, request.insecureSsl());
+        SourceHttpClientFactory.buildHttpClient(
+            downloader.targetAddressValidator(), proxyHost, proxyPort, request.insecureSsl());
     String authHeader =
         SourceHttpClientFactory.buildAuthHeader(config.username(), config.password());
     ReconcilingAttachmentAccess attachmentAccess = run.attachmentAccess();

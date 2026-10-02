@@ -569,7 +569,8 @@ class RedirectFollowingFetcherTest {
   }
 
   private static HttpClient productionClient() {
-    return SourceHttpClientFactory.buildHttpClient(null, -1, false);
+    return SourceHttpClientFactory.buildHttpClient(
+        TargetAddressValidator.disabled(), null, -1, false);
   }
 
   private static void redirectTo(com.sun.net.httpserver.HttpExchange exchange, String location)

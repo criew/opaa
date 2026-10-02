@@ -1,8 +1,10 @@
 package io.opaa.auth;
 
 import io.opaa.common.ValidationException;
+import io.opaa.security.ConnectionAddressResolver;
 import io.opaa.security.TargetAddressValidator;
 import java.io.IOException;
+import java.net.InetAddress;
 import java.net.URI;
 import java.util.HashSet;
 import java.util.Locale;
@@ -25,9 +27,10 @@ import java.util.Set;
  * slip past), before the connection test sends anything ({@link OidcDiscoveryClient}) - and to the
  * admin API address of a provider's directory access, both when it is stored and every time a run
  * uses it ({@code DirectoryConnectorService} and {@code ProviderDirectoryClient} in the group
- * package).
+ * package). The clients that reach these addresses resolve every connection through {@link
+ * #resolveForConnection}, so the address checked is the address connected to.
  */
-public class OidcAddressPolicy {
+public class OidcAddressPolicy implements ConnectionAddressResolver {
 
   static final String ALLOWLIST_HINT =
       "Interne Adressen gibt der Betrieb über OPAA_OIDC_TARGET_VALIDATION_ALLOWLIST frei.";
@@ -83,6 +86,20 @@ public class OidcAddressPolicy {
       port = scheme.equals("https") ? 443 : 80;
     }
     return scheme + "://" + uri.getHost().toLowerCase(Locale.ROOT) + ":" + port;
+  }
+
+  /**
+   * The connect-time counterpart of {@link #requireAllowed}: a bootstrap address by host and port
+   * (its scheme was checked before the request), everything else through the validator.
+   */
+  @Override
+  public InetAddress[] resolve(String host, int port) throws IOException {
+    for (String origin : bootstrapOrigins) {
+      if (origin.endsWith("://" + host.toLowerCase(Locale.ROOT) + ":" + port)) {
+        return validator.lookup(host);
+      }
+    }
+    return validator.resolveForConnection(host);
   }
 
   /**

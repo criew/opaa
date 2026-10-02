@@ -1,5 +1,6 @@
 package io.opaa.s3;
 
+import io.opaa.security.CheckedDnsResolver;
 import java.io.IOException;
 import java.net.ConnectException;
 import java.net.SocketTimeoutException;
@@ -123,6 +124,11 @@ public final class S3FailureTranslator {
       return target.unknownHost()
           ? new S3AccessException.Unreachable(target.getMessage())
           : new S3AccessException.TargetBlocked(target.getMessage(), allowlistHint);
+    }
+    CheckedDnsResolver.RejectedAddressException rejected =
+        findCause(e, CheckedDnsResolver.RejectedAddressException.class);
+    if (rejected != null) {
+      return new S3AccessException.TargetBlocked(rejected.getMessage(), allowlistHint);
     }
     if (e instanceof NoSuchBucketException && op != S3Operation.LIST_BUCKETS) {
       return new S3AccessException.BucketNotFound(bucket);

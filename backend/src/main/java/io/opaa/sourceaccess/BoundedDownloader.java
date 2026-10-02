@@ -45,6 +45,11 @@ public class BoundedDownloader {
     this.requestPolicy = requestPolicy;
   }
 
+  /** The validator every download of this downloader is checked against. */
+  public TargetAddressValidator targetAddressValidator() {
+    return targetAddressValidator;
+  }
+
   /**
    * {@link #download(HttpClient, String, String, String, long, RateLimitListener)} without a
    * listener - for a caller with no run to count on.

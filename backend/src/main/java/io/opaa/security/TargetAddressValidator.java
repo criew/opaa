@@ -16,8 +16,11 @@ import org.slf4j.LoggerFactory;
  * and NAT64 included. Checked before the first request and again on every redirect hop. {@code
  * enabled} is the operator's off switch, {@code allowlist} the per-host exception.
  *
- * <p>DNS rebinding is an accepted limitation: the vetted address and the one the client connects to
- * come from two resolutions of the same name, and the JDK client offers no hook to pin one.
+ * <p>{@link #validate} is the early check before a request is built. The connection itself is bound
+ * by {@link #resolveForConnection}: clients built on {@link AddressCheckingHttpClient} or {@link
+ * CheckedDnsResolver} resolve the name exactly once, at connect time, check that answer and connect
+ * to it - a name that answers differently between check and connect (DNS rebinding) is rejected,
+ * not followed.
  */
 public class TargetAddressValidator {
 
@@ -30,12 +33,27 @@ public class TargetAddressValidator {
   public static final String ALLOWLIST_HINT =
       "Interne Adressen gibt der Betrieb über OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST frei.";
 
+  /**
+   * Resolves a host name to all of its addresses; {@link InetAddress#getAllByName} in production.
+   */
+  @FunctionalInterface
+  public interface HostLookup {
+    InetAddress[] lookup(String host) throws UnknownHostException;
+  }
+
   private final boolean enabled;
   private final List<String> allowedHosts;
+  private final HostLookup hostLookup;
 
   public TargetAddressValidator(boolean enabled, List<String> allowlist) {
+    this(enabled, allowlist, InetAddress::getAllByName);
+  }
+
+  /** {@code hostLookup} answers every resolution of this validator, at check and connect time. */
+  public TargetAddressValidator(boolean enabled, List<String> allowlist, HostLookup hostLookup) {
     this.enabled = enabled;
     this.allowedHosts = allowlist == null ? List.of() : allowlist;
+    this.hostLookup = hostLookup;
   }
 
   /**
@@ -88,13 +106,35 @@ public class TargetAddressValidator {
     checkHost(host);
   }
 
+  /**
+   * The addresses a connection to {@code host} may use: resolved once, checked against the same
+   * rule as {@link #validate} and returned for the socket to connect to, so no second resolution
+   * can substitute a different answer. Unchecked when disabled or when the host is on the
+   * allowlist.
+   *
+   * @throws UnknownHostException when the host does not resolve
+   * @throws TargetAddressBlockedException when an address lies in a blocked range
+   */
+  public InetAddress[] resolveForConnection(String host) throws IOException {
+    InetAddress[] addresses = lookup(host);
+    if (enabled && !isAllowedHost(host)) {
+      requireUnblocked(host, addresses);
+    }
+    return addresses;
+  }
+
+  /** The resolution this validator checks, without the check. */
+  public InetAddress[] lookup(String host) throws UnknownHostException {
+    return hostLookup.lookup(host);
+  }
+
   private void checkHost(String host) throws IOException {
     if (isAllowedHost(host)) {
       return;
     }
     InetAddress[] addresses;
     try {
-      addresses = InetAddress.getAllByName(host);
+      addresses = hostLookup.lookup(host);
     } catch (UnknownHostException e) {
       // Deliberately not surfaced as a generic "unreachable" - a DNS failure and a resolved-but-
       // blocked target are different diagnoses for whoever configured this source. Same wording
@@ -103,6 +143,11 @@ public class TargetAddressValidator {
       throw new UnknownTargetHostException(
           "Der Host konnte nicht gefunden werden (DNS-Auflösung fehlgeschlagen): " + host);
     }
+    requireUnblocked(host, addresses);
+  }
+
+  private static void requireUnblocked(String host, InetAddress[] addresses)
+      throws TargetAddressBlockedException {
     for (InetAddress address : addresses) {
       if (isBlockedAddress(address)) {
         log.warn(

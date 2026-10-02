@@ -8,6 +8,7 @@ import static org.mockito.Mockito.when;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.sourceaccess.SourceRequestMeter;
 import java.io.IOException;
+import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -25,6 +26,9 @@ import software.amazon.awssdk.http.SdkHttpResponse;
  * the interceptor is driven directly.
  */
 class S3RequestGuardTest {
+
+  private static final S3RequestGuard.TargetPolicy UNCHECKED =
+      S3RequestGuard.TargetPolicy.hostOnly(TargetAddressValidator.disabled());
 
   private static SdkHttpRequest request(String host) {
     return SdkHttpRequest.builder()
@@ -86,10 +90,18 @@ class S3RequestGuardTest {
   void aCustomPolicySeesTheWholeRequestNotJustTheHost() {
     List<String> seen = new ArrayList<>();
     S3RequestGuard.TargetPolicy policy =
-        request -> {
-          seen.add(request.protocol() + "://" + request.host() + ":" + request.port());
-          if (request.port() != 9000) {
-            throw new IOException("falscher Port");
+        new S3RequestGuard.TargetPolicy() {
+          @Override
+          public void validate(SdkHttpRequest request) throws IOException {
+            seen.add(request.protocol() + "://" + request.host() + ":" + request.port());
+            if (request.port() != 9000) {
+              throw new IOException("falscher Port");
+            }
+          }
+
+          @Override
+          public InetAddress[] resolve(String host, int port) throws IOException {
+            return InetAddress.getAllByName(host);
           }
         };
     S3RequestGuard guard = S3RequestGuard.targetCheckOnly(policy);
@@ -102,7 +114,7 @@ class S3RequestGuardTest {
   @Test
   void withoutAMeterNothingIsCountedAndNoBudgetApplies() {
     List<SdkHttpRequest> observed = new ArrayList<>();
-    S3RequestGuard guard = new S3RequestGuard(request -> {}, null, 0, observed::add);
+    S3RequestGuard guard = new S3RequestGuard(UNCHECKED, null, 0, observed::add);
     ExecutionAttributes attributes = new ExecutionAttributes();
     SdkHttpRequest request = request("minio");
 
@@ -117,7 +129,7 @@ class S3RequestGuardTest {
   @Test
   void withAMeterEveryAttemptIsCountedAndTheBudgetEndsTheClient() {
     SourceRequestMeter meter = new SourceRequestMeter();
-    S3RequestGuard guard = new S3RequestGuard(request -> {}, meter, 2, null);
+    S3RequestGuard guard = new S3RequestGuard(UNCHECKED, meter, 2, null);
     ExecutionAttributes attributes = new ExecutionAttributes();
 
     guard.beforeTransmission(before(request("minio")), attributes);
@@ -135,7 +147,7 @@ class S3RequestGuardTest {
   @Test
   void aZeroBudgetWithAMeterIsUnbounded() {
     SourceRequestMeter meter = new SourceRequestMeter();
-    S3RequestGuard guard = new S3RequestGuard(request -> {}, meter, 0, null);
+    S3RequestGuard guard = new S3RequestGuard(UNCHECKED, meter, 0, null);
     ExecutionAttributes attributes = new ExecutionAttributes();
 
     for (int i = 0; i < 50; i++) {
@@ -148,7 +160,7 @@ class S3RequestGuardTest {
   @Test
   void aThrottledAnswerIsCountedAndItsWaitMeasuredOnTheNextAttempt() throws Exception {
     SourceRequestMeter meter = new SourceRequestMeter();
-    S3RequestGuard guard = new S3RequestGuard(request -> {}, meter, 0, null);
+    S3RequestGuard guard = new S3RequestGuard(UNCHECKED, meter, 0, null);
     ExecutionAttributes attributes = new ExecutionAttributes();
     SdkHttpRequest request = request("minio");
 
@@ -164,7 +176,7 @@ class S3RequestGuardTest {
 
   @Test
   void aBudgetWithoutAMeterIsAWiringError() {
-    assertThatThrownBy(() -> new S3RequestGuard(request -> {}, null, 5, null))
+    assertThatThrownBy(() -> new S3RequestGuard(UNCHECKED, null, 5, null))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("meter");
   }

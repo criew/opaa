@@ -151,6 +151,10 @@ commons-csv = { module = "org.apache.commons:commons-csv", version.ref = "common
 jmustache = { module = "com.samskivert:jmustache", version.ref = "jmustache" }
 aws-sdk-s3 = { module = "software.amazon.awssdk:s3", version.ref = "aws-sdk" }
 aws-sdk-apache5-client = { module = "software.amazon.awssdk:apache5-client", version.ref = "aws-sdk" }
+# Apache HttpClient 5 for every connection to a validated target address (io.opaa.security):
+# its DnsResolver hook lets the address check run on the very resolution the socket connects to.
+# Version managed by the Spring Boot BOM; the same artifact apache5-client brings along.
+httpclient5 = { module = "org.apache.httpcomponents.client5:httpclient5" }
 junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit-jupiter" }
 junit-jupiter-engine = { module = "org.junit.jupiter:junit-jupiter-engine", version.ref = "junit-jupiter" }
 assertj-core = { module = "org.assertj:assertj-core", version.ref = "assertj-core" }

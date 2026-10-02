@@ -58,7 +58,10 @@ public class RemoteOriginalAccess implements OriginalAccess {
           ProxyAndCredentials.parse(library.getSourceProxy(), library.getSourceCredentials());
       httpClient =
           SourceHttpClientFactory.buildHttpClient(
-              config.proxyHost(), config.proxyPort(), library.isSourceInsecureSsl());
+              targetAddressValidator,
+              config.proxyHost(),
+              config.proxyPort(),
+              library.isSourceInsecureSsl());
       // the proxy decides where the connection (and Authorization below) goes
       targetAddressValidator.validateHost(config.proxyHost());
       String authHeader =

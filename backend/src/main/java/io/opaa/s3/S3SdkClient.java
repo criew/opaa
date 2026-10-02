@@ -1,12 +1,13 @@
 package io.opaa.s3;
 
+import io.opaa.security.CheckedDnsResolver;
+import io.opaa.security.ConnectionAddressResolver;
 import java.net.URI;
 import java.time.Duration;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.awscore.retry.AwsRetryStrategy;
 import software.amazon.awssdk.core.checksums.RequestChecksumCalculation;
 import software.amazon.awssdk.core.checksums.ResponseChecksumValidation;
-import software.amazon.awssdk.core.interceptor.ExecutionInterceptor;
 import software.amazon.awssdk.http.SdkHttpClient;
 import software.amazon.awssdk.http.SdkHttpConfigurationOption;
 import software.amazon.awssdk.http.apache5.Apache5HttpClient;
@@ -22,9 +23,10 @@ import software.amazon.awssdk.utils.AttributeMap;
  * Entscheidung 8): static credentials and an explicit region, so the SDK's own resolution chains
  * never run; the endpoint and addressing style as configured; request and response checksums only
  * where the protocol requires them, because S3-compatible stores do not all understand the SDK's
- * newer checksums; the Apache 5 client with one timeout for connection, socket and attempt; a proxy
- * and relaxed TLS when asked; and an exponential, capped retry strategy without a circuit breaker.
- * Holds the HTTP connection pool and must be closed.
+ * newer checksums; the Apache 5 client with one timeout for connection, socket and attempt and
+ * every connection resolved through the guard's target policy; a proxy and relaxed TLS when asked;
+ * and an exponential, capped retry strategy without a circuit breaker. Holds the HTTP connection
+ * pool and must be closed.
  */
 public final class S3SdkClient implements AutoCloseable {
 
@@ -40,10 +42,10 @@ public final class S3SdkClient implements AutoCloseable {
 
   /**
    * Builds the client; sends nothing. {@code guard} sees every wire attempt before it leaves and
-   * every answer that comes back.
+   * every answer that comes back, and its target policy resolves every connection the client opens.
    */
-  public static S3SdkClient open(S3ClientSettings settings, ExecutionInterceptor guard) {
-    SdkHttpClient httpClient = buildHttpClient(settings);
+  public static S3SdkClient open(S3ClientSettings settings, S3RequestGuard guard) {
+    SdkHttpClient httpClient = buildHttpClient(settings, guard.targetPolicy());
     try {
       S3Client s3 =
           S3Client.builder()
@@ -68,11 +70,14 @@ public final class S3SdkClient implements AutoCloseable {
     }
   }
 
-  private static SdkHttpClient buildHttpClient(S3ClientSettings settings) {
+  private static SdkHttpClient buildHttpClient(
+      S3ClientSettings settings, ConnectionAddressResolver resolver) {
     Duration timeout = settings.requestTimeout();
+    CheckedDnsResolver dnsResolver = new CheckedDnsResolver(resolver);
     Apache5HttpClient.Builder http =
         Apache5HttpClient.builder().connectionTimeout(timeout).socketTimeout(timeout);
     if (settings.hasProxy()) {
+      dnsResolver.exemptProxy(settings.proxyHost());
       http.proxyConfiguration(
           ProxyConfiguration.builder()
               .endpoint(URI.create("http://" + settings.proxyHost() + ":" + settings.proxyPort()))

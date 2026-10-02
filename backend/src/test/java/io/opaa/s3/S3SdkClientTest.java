@@ -3,6 +3,7 @@ package io.opaa.s3;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.opaa.security.TargetAddressValidator;
 import java.net.URI;
 import java.time.Duration;
 import org.junit.jupiter.api.Test;
@@ -20,6 +21,9 @@ import software.amazon.awssdk.services.s3.S3ServiceClientConfiguration;
  */
 class S3SdkClientTest {
 
+  private static final S3RequestGuard.TargetPolicy UNCHECKED =
+      S3RequestGuard.TargetPolicy.hostOnly(TargetAddressValidator.disabled());
+
   private static S3ClientSettings settings(int maxRetries) {
     return new S3ClientSettings(
         URI.create("http://minio.intern:9000"),
@@ -36,7 +40,7 @@ class S3SdkClientTest {
 
   @Test
   void everyClientCarriesTheCompatibilitySettings() {
-    S3RequestGuard guard = S3RequestGuard.targetCheckOnly(request -> {});
+    S3RequestGuard guard = S3RequestGuard.targetCheckOnly(UNCHECKED);
 
     try (S3SdkClient client = S3SdkClient.open(settings(4), guard)) {
       S3ServiceClientConfiguration configuration = client.s3().serviceClientConfiguration();
@@ -60,7 +64,7 @@ class S3SdkClientTest {
   @Test
   void zeroRetriesMeansASingleAttempt() {
     try (S3SdkClient client =
-        S3SdkClient.open(settings(0), S3RequestGuard.targetCheckOnly(request -> {}))) {
+        S3SdkClient.open(settings(0), S3RequestGuard.targetCheckOnly(UNCHECKED))) {
       assertThat(client.s3().serviceClientConfiguration().overrideConfiguration().retryStrategy())
           .get()
           .satisfies(strategy -> assertThat(strategy.maxAttempts()).isEqualTo(1));

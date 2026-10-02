@@ -122,7 +122,10 @@ public class RssFeedSourceConnector
     ProxyAndCredentials config = parseProxyAndCredentials(settings);
     HttpClient httpClient =
         SourceHttpClientFactory.buildHttpClient(
-            config.proxyHost(), config.proxyPort(), settings.sourceInsecureSsl());
+            targetAddressValidator,
+            config.proxyHost(),
+            config.proxyPort(),
+            settings.sourceInsecureSsl());
     String authHeader =
         SourceHttpClientFactory.buildAuthHeader(config.username(), config.password());
     Map<String, String> headers = requestPolicy.headers(authHeader);

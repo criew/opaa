@@ -3,6 +3,7 @@ package io.opaa.knowledge;
 import io.opaa.s3.S3RequestGuard;
 import io.opaa.security.TargetAddressValidator;
 import java.io.IOException;
+import java.net.InetAddress;
 import java.net.URI;
 import java.util.Locale;
 import software.amazon.awssdk.http.SdkHttpRequest;
@@ -50,6 +51,16 @@ final class UploadS3TargetPolicy implements S3RequestGuard.TargetPolicy {
       return;
     }
     validator.validateHost(request.host());
+  }
+
+  /** The configured endpoint by host and port, every other connection through the validator. */
+  @Override
+  public InetAddress[] resolve(String host, int connectPort) throws IOException {
+    String lower = host.toLowerCase(Locale.ROOT);
+    if (connectPort == port && (lower.equals(endpointHost) || lower.equals(bucketHost))) {
+      return validator.lookup(host);
+    }
+    return validator.resolveForConnection(host);
   }
 
   private boolean isConfiguredEndpoint(SdkHttpRequest request) {

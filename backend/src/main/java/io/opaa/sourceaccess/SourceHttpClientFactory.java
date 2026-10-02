@@ -1,7 +1,6 @@
 package io.opaa.sourceaccess;
 
-import java.net.InetSocketAddress;
-import java.net.ProxySelector;
+import io.opaa.security.TargetAddressValidator;
 import java.net.http.HttpClient;
 import java.nio.charset.StandardCharsets;
 import java.security.KeyManagementException;
@@ -29,22 +28,24 @@ public final class SourceHttpClientFactory {
 
   /**
    * Builds the {@link HttpClient} shared by every indexing/connection-test caller of this package.
-   * {@code Redirect.NEVER}: the JDK's built-in redirect handling resends every request header -
-   * {@code Authorization} included - to whatever host a {@code 3xx} response names, regardless of
-   * the source configuration's own credentials ever having been meant for that host. Callers that
-   * need to follow a redirect at all use {@link RedirectFollowingFetcher#sendFollowingRedirects},
-   * which re-validates the target host/scheme on every hop and drops or refuses {@code
-   * Authorization} the moment it stops matching, depending on the caller's {@link
+   * Every connection it opens resolves the target through {@code validator} at connect time and
+   * connects only to an address that passed it ({@link AddressCheckingHttpClient}). It never
+   * follows a redirect: the JDK's built-in redirect handling would resend every request header -
+   * {@code Authorization} included - to whatever host a {@code 3xx} response names. Callers that
+   * need to follow a redirect use {@link RedirectFollowingFetcher#sendFollowingRedirects}, which
+   * re-validates the target host/scheme on every hop and drops or refuses {@code Authorization} the
+   * moment it stops matching, depending on the caller's {@link
    * RedirectFollowingFetcher.RedirectPolicy}.
    */
-  public static HttpClient buildHttpClient(String proxyHost, int proxyPort, boolean insecureSsl) {
+  public static HttpClient buildHttpClient(
+      TargetAddressValidator validator, String proxyHost, int proxyPort, boolean insecureSsl) {
     HttpClient.Builder builder =
         HttpClient.newBuilder()
             .followRedirects(HttpClient.Redirect.NEVER)
             .connectTimeout(Duration.ofSeconds(30));
-
     if (proxyHost != null && !proxyHost.isBlank()) {
-      builder.proxy(ProxySelector.of(new InetSocketAddress(proxyHost, proxyPort)));
+      builder.proxy(
+          java.net.ProxySelector.of(new java.net.InetSocketAddress(proxyHost, proxyPort)));
     }
 
     if (insecureSsl) {

@@ -60,6 +60,7 @@ dependencies {
     implementation(libs.commons.csv)
     implementation(libs.jmustache)
     implementation(libs.pdfbox)
+    implementation(libs.httpclient5)
     // ADR-0027: the S3 access layer configures apache5-client explicitly; the SDK's own default
     // HTTP clients would otherwise sit unused on the classpath (and netty is sizeable).
     implementation(libs.bundles.aws.sdk) {

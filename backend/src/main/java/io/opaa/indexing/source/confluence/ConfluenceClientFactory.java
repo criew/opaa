@@ -76,7 +76,10 @@ public class ConfluenceClientFactory {
     }
     HttpClient httpClient =
         SourceHttpClientFactory.buildHttpClient(
-            connection.proxyHost(), connection.proxyPort(), connection.insecureSsl());
+            targetAddressValidator,
+            connection.proxyHost(),
+            connection.proxyPort(),
+            connection.insecureSsl());
     ConfluenceHttp http =
         new ConfluenceHttp(
             httpClient,
