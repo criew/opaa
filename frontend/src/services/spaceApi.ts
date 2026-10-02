@@ -5,6 +5,7 @@ import type {
   PermissionSubjectType,
   SpaceAssetAssociationRequest,
   SpaceListResponse,
+  SpaceMemberRequest,
   SpaceMemberResponse,
   SpaceRequest,
   SpaceRole,
@@ -125,6 +126,7 @@ export async function createSpace(
   visibility?: SpaceVisibility,
   assets?: SpaceAssetAssociationRequest[],
   chatAutoCleanup?: boolean,
+  initialMembers: SpaceMemberRequest[] = [],
 ): Promise<SpaceResponse> {
   try {
     const currentUserId = useAuthStore.getState().user?.id ?? null
@@ -133,7 +135,9 @@ export async function createSpace(
       description,
       visibility,
       ownerId: currentUserId,
-      initialMembers: [],
+      // Members and assets go in the same call as the space: one that cannot be added rolls
+      // the whole creation back, so nothing is left half-created.
+      initialMembers,
       // Associated in the same call as the space; each must be readable by the creator, and one
       // that is not rolls the whole creation back.
       assets: assets && assets.length > 0 ? assets : undefined,

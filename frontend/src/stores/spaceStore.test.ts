@@ -178,6 +178,7 @@ describe('spaceStore', () => {
       'DISCOVERABLE',
       undefined,
       undefined,
+      undefined,
     )
     expect(useSpaceStore.getState().selectedSpaceId).toBe('space-new')
   })
@@ -206,6 +207,7 @@ describe('spaceStore', () => {
       'desc',
       'DISCOVERABLE',
       assets,
+      undefined,
       undefined,
     )
   })

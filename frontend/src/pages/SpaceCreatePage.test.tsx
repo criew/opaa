@@ -21,18 +21,14 @@ vi.mock('react-router', async () => {
 })
 
 const mockCreateNewSpace = vi.fn(async () => 'space-neu')
-const mockAddMember = vi.fn(async () => {})
 
 describe('SpaceCreatePage (#594, Mockup 1b)', () => {
   beforeEach(() => {
     mockLocationState = null
     mockNavigate.mockReset()
     mockCreateNewSpace.mockClear()
-    mockAddMember.mockClear()
-    useSpaceStore.setState({
-      createNewSpace: mockCreateNewSpace,
-      addMember: mockAddMember,
-    })
+    mockCreateNewSpace.mockResolvedValue('space-neu')
+    useSpaceStore.setState({ createNewSpace: mockCreateNewSpace })
   })
 
   it('renders the stepper and blocks "Weiter" until a name is entered', async () => {
@@ -116,6 +112,7 @@ describe('SpaceCreatePage (#594, Mockup 1b)', () => {
       'PRIVATE',
       [],
       false,
+      [],
     )
     expect(mockNavigate).toHaveBeenCalledWith('/spaces/space-neu')
   })
@@ -137,7 +134,14 @@ describe('SpaceCreatePage (#594, Mockup 1b)', () => {
     expect(screen.getByText('werden automatisch archiviert und gelöscht')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Space anlegen' }))
 
-    expect(mockCreateNewSpace).toHaveBeenCalledWith('Widerspruchsstelle', '', 'PRIVATE', [], true)
+    expect(mockCreateNewSpace).toHaveBeenCalledWith(
+      'Widerspruchsstelle',
+      '',
+      'PRIVATE',
+      [],
+      true,
+      [],
+    )
   })
 
   it('#777: offers the user picker on the Mitglieder step, powered by GET /v1/users', async () => {
@@ -167,13 +171,7 @@ describe('SpaceCreatePage (#594, Mockup 1b)', () => {
     expect(await screen.findByRole('option', { name: /Alice/ })).toBeInTheDocument()
   })
 
-  // The space exists once createNewSpace resolved: a refused member must not leave the wizard
-  // open with an active "Space anlegen", which would create a second space.
-  it('leaves the wizard when a noted member cannot be added, and names the member', async () => {
-    mockAddMember.mockRejectedValueOnce(new Error('abgelehnt'))
-    const user = userEvent.setup()
-    renderWithProviders(<SpaceCreatePage />, { withRouter: true })
-
+  async function noteAlice(user: ReturnType<typeof userEvent.setup>) {
     await user.type(screen.getByLabelText(/Name/), 'Widerspruchsstelle')
     await user.click(screen.getByRole('button', { name: 'Weiter' }))
     await user.type(screen.getByLabelText('Benutzer'), 'al')
@@ -181,11 +179,42 @@ describe('SpaceCreatePage (#594, Mockup 1b)', () => {
     await user.click(screen.getByRole('button', { name: 'Vormerken' }))
     await user.click(screen.getByRole('button', { name: 'Weiter' }))
     await user.click(screen.getByRole('button', { name: 'Weiter' }))
+  }
+
+  it('creates the space with its noted members in the same call', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<SpaceCreatePage />, { withRouter: true })
+
+    await noteAlice(user)
     await user.click(screen.getByRole('button', { name: 'Space anlegen' }))
 
     expect(mockCreateNewSpace).toHaveBeenCalledTimes(1)
+    expect(mockCreateNewSpace).toHaveBeenCalledWith(
+      'Widerspruchsstelle',
+      '',
+      'PRIVATE',
+      [],
+      false,
+      [{ userId: expect.any(String), role: 'MEMBER' }],
+    )
     expect(mockNavigate).toHaveBeenCalledWith('/spaces/space-neu')
-    expect(await screen.findByText(/nicht hinzugefügt werden: Alice/)).toBeInTheDocument()
+  }, 15000)
+
+  // Space, members and assets are created together or not at all: a refusal leaves no space
+  // behind, so the wizard stays open with its entries and says why.
+  it('stays in the wizard with an understandable message when the creation is refused', async () => {
+    mockCreateNewSpace.mockRejectedValueOnce(new Error('Benutzer nicht gefunden'))
+    const user = userEvent.setup()
+    renderWithProviders(<SpaceCreatePage />, { withRouter: true })
+
+    await noteAlice(user)
+    await user.click(screen.getByRole('button', { name: 'Space anlegen' }))
+
+    expect(
+      await screen.findByText(/Der Space wurde nicht angelegt: Benutzer nicht gefunden/),
+    ).toBeInTheDocument()
+    expect(mockNavigate).not.toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: 'Space anlegen' })).toBeEnabled()
   }, 15000)
 
   it('asks before cancelling once something was entered', async () => {
@@ -221,6 +250,7 @@ describe('SpaceCreatePage (#594, Mockup 1b)', () => {
         'PRIVATE',
         [],
         false,
+        [],
       )
     })
 
@@ -247,6 +277,7 @@ describe('SpaceCreatePage (#594, Mockup 1b)', () => {
           { assetType: 'PROMPT_LIBRARY', assetId: 'prompt-library-referat-50' },
         ],
         false,
+        [],
       )
     })
 

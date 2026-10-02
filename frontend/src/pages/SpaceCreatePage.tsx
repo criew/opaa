@@ -19,7 +19,7 @@ import ChatAutoCleanupField from '../components/space/ChatAutoCleanupField'
 import FieldLabel from '../components/wizard/FieldLabel'
 import WizardStepBar from '../components/wizard/WizardStepBar'
 import { confirmAction } from '../stores/confirmStore'
-import { notify } from '../stores/notificationStore'
+import { useAuthStore } from '../stores/authStore'
 import { useSpaceStore } from '../stores/spaceStore'
 import { useMyCapabilities } from '../hooks/useMyCapabilities'
 import { useUserSearch } from '../hooks/useUserSearch'
@@ -54,7 +54,7 @@ export default function SpaceCreatePage() {
   const location = useLocation()
   const preselect = (location.state as SpaceCreateLocationState | null)?.preselect
   const createNewSpace = useSpaceStore((s) => s.createNewSpace)
-  const addMember = useSpaceStore((s) => s.addMember)
+  const currentUserId = useAuthStore((s) => s.user?.id)
 
   const [activeStep, setActiveStep] = useState(0)
   const [name, setName] = useState('')
@@ -81,9 +81,10 @@ export default function SpaceCreatePage() {
   const [selectedAssets, setSelectedAssets] = useState<AssetPick[]>(preselect ? [preselect] : [])
 
   const availableUsers = useMemo(() => {
-    const pendingIds = new Set(pendingMembers.map((m) => m.user.id))
-    return userResults.filter((u) => !pendingIds.has(u.id))
-  }, [userResults, pendingMembers])
+    // The creator becomes the owner and ADMIN anyway; offering them would only be overruled.
+    const excluded = new Set([...pendingMembers.map((m) => m.user.id), currentUserId])
+    return userResults.filter((u) => !excluded.has(u.id))
+  }, [userResults, pendingMembers, currentUserId])
 
   const isDirty =
     name.trim() !== '' ||
@@ -113,25 +114,15 @@ export default function SpaceCreatePage() {
         visibility,
         selectedAssets.map(({ assetType, assetId }) => ({ assetType, assetId })),
         chatAutoCleanup,
+        pendingMembers.map((member) => ({ userId: member.user.id, role: member.role })),
       )
-      const failed: string[] = []
-      for (const member of pendingMembers) {
-        try {
-          await addMember(spaceId, 'USER', member.user.id, member.role)
-        } catch {
-          failed.push(member.user.displayName ?? member.user.email ?? member.user.id)
-        }
-      }
-      // The space exists either way: leaving the wizard keeps a second click from creating it again.
-      if (failed.length > 0) {
-        notify(
-          `Der Space wurde angelegt, aber diese Mitglieder konnten nicht hinzugefügt werden: ${failed.join(', ')}. Ergänzen Sie sie in den Einstellungen des Space.`,
-          'warning',
-        )
-      }
       navigate(`/spaces/${spaceId}`)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Der Space konnte nicht angelegt werden.')
+      // Space, members and assets are created together or not at all - nothing to clean up here.
+      const reason = err instanceof Error ? err.message : null
+      setError(
+        `Der Space wurde nicht angelegt${reason ? `: ${reason}` : '.'} Prüfen Sie Mitglieder und Inhalte und versuchen Sie es erneut.`,
+      )
       setSubmitting(false)
     }
   }

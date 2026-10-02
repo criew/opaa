@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type {
   SpaceAssetAssociationRequest,
+  SpaceMemberRequest,
   AssetType,
   PermissionSubjectType,
   SpaceAssetAssociationResponse,
@@ -96,6 +97,7 @@ interface SpaceState {
     visibility?: SpaceVisibility,
     assets?: SpaceAssetAssociationRequest[],
     chatAutoCleanup?: boolean,
+    initialMembers?: SpaceMemberRequest[],
   ) => Promise<string>
   loadAssetAssociations: (spaceId: string) => Promise<void>
   associateAsset: (spaceId: string, assetType: AssetType, assetId: string) => Promise<void>
@@ -277,8 +279,22 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
     await Promise.all([get().loadSpaces(), get().selectSpace(spaceId), get().loadMembers(spaceId)])
   },
 
-  createNewSpace: async (name, description, visibility, assets, chatAutoCleanup) => {
-    const space = await createSpace(name, description, visibility, assets, chatAutoCleanup)
+  createNewSpace: async (
+    name,
+    description,
+    visibility,
+    assets,
+    chatAutoCleanup,
+    initialMembers,
+  ) => {
+    const space = await createSpace(
+      name,
+      description,
+      visibility,
+      assets,
+      chatAutoCleanup,
+      initialMembers,
+    )
     await get().loadSpaces()
     await get().selectSpace(space.id)
     return space.id

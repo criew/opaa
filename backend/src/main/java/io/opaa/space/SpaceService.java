@@ -178,6 +178,23 @@ public class SpaceService {
             .after(spaceAuditPayload(saved))
             .outcome(AuditOutcome.SUCCESS)
             .build());
+    // Every member taken in at creation is audited like one added later; the owner's own
+    // membership is the creation itself.
+    for (SpaceMembership membership : saved.getMemberships()) {
+      if (membership.isUserSubject() && membership.getUserId().equals(saved.getOwnerId())) {
+        continue;
+      }
+      auditEventRecorder.recordUserActionOnSubject(
+          AuditEvent.builder()
+              .organizationId(saved.getOrganizationId())
+              .actor(caller.id())
+              .type(AuditEventType.SPACE_MEMBER_ADDED)
+              .object(AuditObjectType.SPACE, saved.getId(), saved.getName())
+              .subject(auditSubjectKind(membership), membership.subjectId())
+              .after(Map.of("role", membership.getRole().name()))
+              .outcome(AuditOutcome.SUCCESS)
+              .build());
+    }
 
     // Associated in this method's own transaction: an asset that cannot be associated (not found,
     // or not readable by the creator) rolls back the space row and every association before it.

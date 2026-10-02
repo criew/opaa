@@ -360,8 +360,10 @@ wenn Filter oder Suche ihre Kachel ausblenden; die Zeile unter den Kacheln nennt
 Jede Kachel ist ein Kontrollkästchen mit eigenem Tabstopp: Leertaste und Enter wählen oder
 heben die Wahl auf.
 
-„Space anlegen" legt den Raum samt allen Zuordnungen in einem Schritt an. Lässt sich ein gewählter
-Bestand nicht zuordnen, entsteht kein Raum. Ist kein Wissen gewählt, sagt die Zusammenfassung „Kein
+„Space anlegen" legt den Raum samt vorgemerkten Mitgliedern und allen Zuordnungen in einem Schritt
+an. Lässt sich ein Mitglied nicht aufnehmen oder ein gewählter Bestand nicht zuordnen, entsteht kein
+Raum; der Assistent bleibt mit allen Eingaben offen und nennt den Grund. Die Aufnahme jedes
+Mitglieds steht wie beim späteren Hinzufügen im Nachweisprotokoll. Ist kein Wissen gewählt, sagt die Zusammenfassung „Kein
 Wissen zugeordnet — der Space durchsucht kein Wissen, bis Sie etwas zuordnen."
 
 Dieselbe Kachelauswahl steht in den Reitern „Wissen" und „Prompts" der Einstellungen, dort auf die

@@ -8,6 +8,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.jayway.jsonpath.JsonPath;
 import io.opaa.auth.DevAuthFilter;
+import io.opaa.auth.User;
+import io.opaa.auth.UserRepository;
 import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.OwnLibraryFixtures;
 import java.nio.charset.StandardCharsets;
@@ -34,16 +36,19 @@ class SpaceCreationWithAssetsControllerIntegrationTest {
   @Autowired private MockMvc mockMvc;
   @Autowired private JdbcTemplate jdbcTemplate;
   @Autowired private OwnLibraryFixtures ownLibraryFixtures;
+  @Autowired private UserRepository userRepository;
 
   private final List<UUID> createdLibraryIds = new ArrayList<>();
   private final List<UUID> createdPromptLibraryIds = new ArrayList<>();
   private final List<UUID> createdSpaceIds = new ArrayList<>();
+  private final List<UUID> createdUserIds = new ArrayList<>();
 
   @BeforeEach
   void provisionCallers() throws Exception {
     createdLibraryIds.clear();
     createdPromptLibraryIds.clear();
     createdSpaceIds.clear();
+    createdUserIds.clear();
     mockMvc.perform(get("/api/v1/spaces").with(devUser())).andExpect(status().isOk());
     mockMvc.perform(get("/api/v1/spaces").with(devAdmin())).andExpect(status().isOk());
   }
@@ -51,6 +56,7 @@ class SpaceCreationWithAssetsControllerIntegrationTest {
   @AfterEach
   void removeOwnRows() {
     for (UUID spaceId : createdSpaceIds) {
+      jdbcTemplate.update("DELETE FROM notifications WHERE object_id = ?", spaceId);
       jdbcTemplate.update("DELETE FROM space_asset_associations WHERE space_id = ?", spaceId);
       jdbcTemplate.update("DELETE FROM space_membership_history WHERE space_id = ?", spaceId);
       jdbcTemplate.update("DELETE FROM space_memberships WHERE space_id = ?", spaceId);
@@ -76,6 +82,9 @@ class SpaceCreationWithAssetsControllerIntegrationTest {
           "DELETE FROM asset_ownership_history WHERE asset_id = ?", promptLibraryId);
     }
     ownLibraryFixtures.removeLibraries(createdLibraryIds.toArray(new UUID[0]));
+    for (UUID userId : createdUserIds) {
+      jdbcTemplate.update("DELETE FROM users WHERE id = ?", userId);
+    }
   }
 
   @Test
@@ -144,12 +153,92 @@ class SpaceCreationWithAssetsControllerIntegrationTest {
     assertThat(overview).doesNotContain(library).doesNotContain(secretName);
   }
 
+  /**
+   * The wizard's one call: a space with an initial member who cannot read what is associated. The
+   * owner of both assets is told once, naming both, and the member taken in is audited like one
+   * added later.
+   */
+  @Test
+  void creatingAMixedSpaceInOneCallAuditsTheMemberAndNotifiesTheOwnerOnce() throws Exception {
+    String libraryName = "Rechtsquellen " + UUID.randomUUID();
+    String promptsName = "Vorlagen " + UUID.randomUUID();
+    String library = createLibrary(devAdmin(), libraryName);
+    String prompts = createPromptLibrary(devAdmin(), promptsName);
+    UUID devUserId = userIdOf("dev-user@opaa.local");
+    grantViewer("KNOWLEDGE_LIBRARY", library, devUserId);
+    grantViewer("PROMPT_LIBRARY", prompts, devUserId);
+    UUID memberWithoutAccess = createUserInOrganizationOf(devUserId);
+
+    String space =
+        createSpace(
+            devUser(),
+            "{\"name\":\"Gemischt aus dem Assistenten\",\"initialMembers\":[{\"userId\":\""
+                + memberWithoutAccess
+                + "\",\"role\":\"MEMBER\"}],\"assets\":["
+                + assetJson("KNOWLEDGE_LIBRARY", library)
+                + ","
+                + assetJson("PROMPT_LIBRARY", prompts)
+                + "]}");
+
+    UUID devAdminId = userIdOf("admin@opaa.local");
+    List<java.util.Map<String, Object>> notifications =
+        jdbcTemplate.queryForList(
+            "SELECT type, object_type, object_id, body FROM notifications"
+                + " WHERE recipient_user_id = ? AND (object_id = ? OR object_id = ? OR object_id = ?)",
+            devAdminId,
+            UUID.fromString(space),
+            UUID.fromString(library),
+            UUID.fromString(prompts));
+    assertThat(notifications).hasSize(1);
+    assertThat(notifications.getFirst())
+        .containsEntry("type", "ASSET_ASSOCIATED_TO_MIXED_SPACE")
+        .containsEntry("object_type", "SPACE")
+        .containsEntry("object_id", UUID.fromString(space));
+    assertThat((String) notifications.getFirst().get("body")).contains(libraryName, promptsName);
+
+    List<String> memberAdded =
+        jdbcTemplate.queryForList(
+            "SELECT subject_kind FROM audit_log"
+                + " WHERE event_type = 'SPACE_MEMBER_ADDED' AND object_id = ?",
+            String.class,
+            space);
+    assertThat(memberAdded).containsExactly("USER");
+  }
+
   // -------------------------------------------------------------------------------------------
   // Fixture
   // -------------------------------------------------------------------------------------------
 
   private static String assetJson(String assetType, String assetId) {
     return "{\"assetType\":\"" + assetType + "\",\"assetId\":\"" + assetId + "\"}";
+  }
+
+  private UUID createUserInOrganizationOf(UUID colleague) {
+    UUID organizationId =
+        jdbcTemplate.queryForObject(
+            "SELECT organization_id FROM users WHERE id = ?", UUID.class, colleague);
+    User user =
+        new User(
+            UUID.randomUUID().toString(),
+            "test-issuer",
+            "ohne-zugriff-" + UUID.randomUUID() + "@example.com",
+            "Ohne");
+    user.setOrganizationId(organizationId);
+    UUID id = userRepository.save(user).getId();
+    createdUserIds.add(id);
+    return id;
+  }
+
+  private void grantViewer(String assetType, String assetId, UUID userId) throws Exception {
+    mockMvc
+        .perform(
+            post("/api/v1/assets/" + assetType + "/" + assetId + "/grants")
+                .with(devAdmin())
+                .content(
+                    "{\"subjectType\":\"USER\",\"subjectId\":\""
+                        + userId
+                        + "\",\"role\":\"VIEWER\"}"))
+        .andExpect(status().isOk());
   }
 
   private UUID userIdOf(String email) {
