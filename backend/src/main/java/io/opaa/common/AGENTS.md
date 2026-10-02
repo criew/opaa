@@ -48,6 +48,5 @@ Quellen (HTTP) und die S3-Clientschicht. foundation hängt von keinem anderen Mo
 ```
 
 Die S3-Tests brauchen Docker und werden ohne Docker übersprungen. Bei Schemaänderungen: neue Datei
-unter `db/changelog/foundation/` mit eigenem Delta-Test (`MasterChangelog.filesExcept(...)`),
-Regeln in `backend/AGENTS.md`, „Liquibase: Changelog je Modul“; dazu `ChangelogLayoutTest`,
-`ChangelogModuleBoundaryTest`, `ChangelogOrderTest`.
+unter `db/changelog/foundation/`. Regeln und Tests in `backend/AGENTS.md`, „Liquibase: Changelog
+je Modul“ — ein eigener Delta-Test ist nur für rein additive DDL entbehrlich.

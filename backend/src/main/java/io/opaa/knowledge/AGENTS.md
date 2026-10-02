@@ -52,9 +52,9 @@ identity und rights ab.
 ./gradlew test --tests 'io.opaa.knowledge.*' --tests 'io.opaa.architecture.*'
 ```
 
-Bei Schemaänderungen: neue Datei unter `db/changelog/knowledge/` mit eigenem Delta-Test
-(`MasterChangelog.filesExcept(...)`), Regeln in `backend/AGENTS.md`, „Liquibase: Changelog je
-Modul“; dazu `ChangelogLayoutTest`, `ChangelogModuleBoundaryTest`, `ChangelogOrderTest`.
+Bei Schemaänderungen: neue Datei unter `db/changelog/knowledge/`. Regeln und
+Tests in `backend/AGENTS.md`, „Liquibase: Changelog je Modul“ — ein eigener Delta-Test ist nur
+für rein additive DDL entbehrlich.
 Die beiden `vector_store`-Ausdrucksindexe der Baseline bleiben eigenständige, precondition-geschützte
 Changesets. Ändert sich Schnitt, Einbettung oder Metadaten, misst `./gradlew evaluateRetrieval`
 die Suchqualität (braucht Docker, nicht Teil von `build`; siehe `eval/README.md`).
