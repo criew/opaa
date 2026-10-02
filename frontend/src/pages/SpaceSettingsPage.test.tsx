@@ -700,6 +700,16 @@ describe('SpaceSettingsPage', () => {
     })
   })
 
+  it("#1923: in somebody else's personal space the switch stays locked, even for an admin", () => {
+    setSpaceState({ ...personalSpace, ownerId: 'someone-else' })
+    renderTab('general')
+
+    expect(
+      screen.getByRole('switch', { name: 'Inaktive Chats automatisch archivieren und löschen' }),
+    ).toBeDisabled()
+    expect(screen.getByText(/legt nur die Person selbst fest/)).toBeInTheDocument()
+  })
+
   it('#1923: a plain member sees the switch state but cannot change it', () => {
     setSpaceState({
       ...nonAdminSpace,

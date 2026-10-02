@@ -226,17 +226,26 @@ bewusste Weg, von Hand aufzuräumen.
 
 - **Ein Schalter je Space** „Inaktive Chats automatisch archivieren und löschen", ab Werk aus, wählbar
   im Assistenten beim Anlegen und in den Space-Einstellungen (Reiter „Stammdaten"). Umlegen darf ihn,
-  wer die Stammdaten ändern darf (Space-`ADMIN`, Systemverwaltung). Jedes Mitglied sieht den
-  Schalterstand; der Einstieg in die Space-Einstellungen steht deshalb jedem Mitglied offen.
+  wer die Stammdaten ändern darf (Space-`ADMIN`, Systemverwaltung). **Im persönlichen Standard-Space
+  nur die Person selbst** (Eigentümer), auch nicht die Systemverwaltung (403).
+- **Sichtbar für jedes Mitglied dort, wo die Chats sind:** Ist die Bereinigung an, nennt die Seite
+  „Chats" die Fristen in einem knappen Hinweis („In diesem Space werden inaktive Chats nach … Tagen
+  archiviert und nach weiteren … Tagen im Archiv gelöscht. Angeheftete Chats bleiben."). Die Fristen
+  kommen mit der Space-Liste (`SpaceListResponse.chatAutoCleanup`). Der Einstieg in die
+  Space-Einstellungen bleibt Administratoren und Kuratoren vorbehalten.
 - **Feste Fristen**, systemweit, nur vom Betrieb einstellbar: archivieren nach 90 Tagen ohne
   Aktivität, archivierte Chats löschen nach 365 Tagen im Archiv. Die Konfiguration hat eine nicht
   unterschreitbare **Untergrenze** von 90 bzw. 30 Tagen; ein kleinerer Wert bricht den Start ab.
 - **Aktivität** ist ausschließlich der vorhandene Zeitstempel der letzten Chat-Aktivität
-  (`chats.updated_at`). Es werden keine neuen Aktivitätsdaten je Person erhoben.
+  (`chats.updated_at`), dazu der Zeitpunkt des Zurückholens aus dem Archiv (unten). Weitere
+  Aktivitätsdaten je Person werden nicht erhoben.
 - **Keine Rückwirkung:** Der Zeitpunkt des Einschaltens wird am Space gespeichert; beide Fristen
   beginnen frühestens dort. Ein Archivierdatum aus der Zeit davor löst keine sofortige Löschung aus.
-- **Angeheftete Chats** sind ausgenommen. Anheften oder eine eigene neue Frage holt einen archivierten
-  Chat zurück und lässt die Frist neu beginnen. Eine eigene Benachrichtigung gibt es nicht; der
+- **Angeheftete Chats** sind ausgenommen. Anheften, eine eigene neue Frage oder das Zurückholen aus
+  dem Archiv holt einen archivierten Chat zurück und lässt die Archivfrist neu beginnen. Für das
+  Zurückholen speichert die persönliche Archiv-Markierung den Zeitpunkt (`unarchived_at`), nur in
+  Spaces mit eingeschalteter Bereinigung; der Lauf zählt ab `max(letzte Aktivität, zurückgeholt am,
+  eingeschaltet am)` und vergisst den Zeitpunkt, sobald er eine Archivfrist alt ist. Eine eigene Benachrichtigung gibt es nicht; der
   archivierte Chat zeigt sein Löschdatum.
 - **Gelöscht wird über den bestehenden Löschweg** des Chats, mit Verlauf, Notiz und persönlichen
   Merkmalen. Es gibt keine Protokollereignisart für das Löschen eines Chats, und es kommt keine dazu.
@@ -310,6 +319,7 @@ Person und Chat:
 |---|---|---|
 | angeheftet | Zeitpunkt des Anheftens oder leer | Anzeige und Reihenfolge der Gruppe „Angeheftet" |
 | archiviert | Zeitpunkt des Archivierens oder leer | Trennung Aktiv/Archiv, Anzeige „archiviert am" |
+| zurückgeholt | Zeitpunkt des Zurückholens aus dem Archiv oder leer; nur in Spaces mit automatischer Bereinigung, höchstens eine Archivfrist lang | Neubeginn der Archivfrist nach dem Zurückholen |
 
 - Bei privaten Chats fallen Person und Autor zusammen; das Modell trägt aber schon den geteilten Chat, in
   dem jede Person ihre eigene Ordnung hat.

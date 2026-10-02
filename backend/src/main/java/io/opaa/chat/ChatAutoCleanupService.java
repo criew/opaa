@@ -14,8 +14,9 @@ import org.springframework.transaction.support.TransactionTemplate;
  * The automatic chat cleanup of the spaces that switched it on (docs/features/chat-list.md,
  * "Automatisches Archivieren und Löschen je Space"): archives chats without activity and deletes
  * chats that stayed archived, each after its installation-wide period, never counted from before
- * switching on. Pinned chats take part in neither. Activity is {@code chats.updated_at} and nothing
- * else; the log names only totals, never a chat, space or person.
+ * switching on. Pinned chats take part in neither; bringing a chat back from the archive restarts
+ * its archive period. Activity is {@code chats.updated_at} and nothing else; the log names only
+ * totals, never a chat, space or person.
  */
 @Service
 public class ChatAutoCleanupService {
@@ -46,10 +47,15 @@ public class ChatAutoCleanupService {
    */
   public void runOnce(Instant now) {
     int deleted = deleteDue(now);
+    Instant archiveCutoff = properties.archiveCutoff(now);
     Integer archived =
         transactionTemplate.execute(
-            status ->
-                markRepository.archiveInactiveForAutoCleanup(properties.archiveCutoff(now), now));
+            status -> {
+              int count = markRepository.archiveInactiveForAutoCleanup(archiveCutoff, now);
+              markRepository.deleteReturnOnlyRowsBefore(archiveCutoff);
+              markRepository.forgetReturnsBefore(archiveCutoff);
+              return count;
+            });
     if (deleted > 0 || (archived != null && archived > 0)) {
       log.info("Chat auto cleanup: archived {} chat(s), deleted {} chat(s)", archived, deleted);
     }

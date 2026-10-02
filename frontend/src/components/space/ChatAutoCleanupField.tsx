@@ -8,6 +8,8 @@ interface ChatAutoCleanupFieldProps {
   checked: boolean
   onChange: (checked: boolean) => void
   disabled?: boolean
+  /** Im persönlichen Space einer anderen Person legt nur diese selbst den Schalter fest. */
+  personalSpaceOfOther?: boolean
   /** Die Fristen der Installation; fehlen sie (im Assistenten), nennt der Hinweis keine Zahlen. */
   archiveAfterDays?: number
   deleteAfterDays?: number
@@ -22,6 +24,7 @@ export default function ChatAutoCleanupField({
   checked,
   onChange,
   disabled = false,
+  personalSpaceOfOther = false,
   archiveAfterDays,
   deleteAfterDays,
 }: ChatAutoCleanupFieldProps) {
@@ -43,9 +46,11 @@ export default function ChatAutoCleanupField({
         label="Inaktive Chats automatisch archivieren und löschen"
       />
       <FormHelperText id={`${id}-helper`} sx={{ mx: 0 }}>
-        {periods} Angeheftete Chats sind ausgenommen; eine neue Frage oder das Anheften holt einen
-        Chat zurück und lässt die Frist neu beginnen. Die Fristen beginnen frühestens mit dem
-        Einschalten und gelten für alle Mitglieder; festgelegt werden sie vom Betrieb.
+        {periods} Angeheftete Chats sind ausgenommen; eine neue Frage, das Anheften oder das
+        Zurückholen aus dem Archiv lässt die Frist neu beginnen. Die Fristen beginnen frühestens mit
+        dem Einschalten und gelten für alle Mitglieder; festgelegt werden sie vom Betrieb.
+        {personalSpaceOfOther &&
+          ' Im persönlichen Space legt nur die Person selbst fest, ob ihre Chats bereinigt werden.'}
       </FormHelperText>
     </FormControl>
   )

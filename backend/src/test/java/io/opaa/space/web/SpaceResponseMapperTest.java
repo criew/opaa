@@ -118,6 +118,22 @@ class SpaceResponseMapperTest {
   }
 
   @Test
+  void toListResponseNamesTheChatCleanupWithItsPeriods() {
+    UUID owner = UUID.randomUUID();
+    UUID organization = UUID.randomUUID();
+    Space space = new Space("Team", null, false, SpaceVisibility.PRIVATE, owner, organization);
+    space.switchChatAutoCleanup(true, java.time.Instant.now());
+
+    SpaceListResponse response =
+        SpaceResponseMapper.toListResponse(
+            new SpaceOverview(space, 0, 0, SpaceRole.MEMBER, false, null, CLEANUP));
+
+    assertThat(response.getChatAutoCleanup().getEnabled()).isTrue();
+    assertThat(response.getChatAutoCleanup().getArchiveAfterDays()).isEqualTo(120);
+    assertThat(response.getChatAutoCleanup().getDeleteAfterDays()).isEqualTo(400);
+  }
+
+  @Test
   void toListResponseCarriesOverviewFiguresAlongsideSpaceFields() {
     UUID owner = UUID.randomUUID();
     UUID organization = UUID.randomUUID();

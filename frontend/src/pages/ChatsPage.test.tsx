@@ -13,6 +13,7 @@ import {
   mockSearchChats,
 } from '../mocks/chatFixtures'
 import { server } from '../mocks/server'
+import { mockSpaces } from '../mocks/spaceFixtures'
 import type { ChatSearchRequest, ChatSearchResponse, ChatSummary } from '../types/api'
 
 const mockNavigate = vi.fn()
@@ -281,6 +282,31 @@ describe('ChatsPage', () => {
     await waitFor(() => expect(rowTitles()).toEqual(['Architektur des Projekts']))
     expect(screen.getByRole('tab', { name: 'Aktiv (1)' })).toBeInTheDocument()
     expect(screen.getByRole('checkbox', { name: 'Alle auf dieser Seite auswählen' })).toHaveFocus()
+  })
+
+  it('#1923: tells every member when the space cleans up inactive chats', async () => {
+    useSpaceStore.setState({
+      spaces: [
+        {
+          ...mockSpaces[0],
+          chatAutoCleanup: { enabled: true, archiveAfterDays: 120, deleteAfterDays: 400 },
+        },
+      ],
+    })
+    renderWithProviders(<ChatsPage />)
+
+    expect(
+      await screen.findByText(
+        'In diesem Space werden inaktive Chats nach 120 Tagen archiviert und nach weiteren 400 Tagen im Archiv gelöscht. Angeheftete Chats bleiben.',
+      ),
+    ).toBeInTheDocument()
+  })
+
+  it('#1923: says nothing about a cleanup that is off', async () => {
+    renderWithProviders(<ChatsPage />)
+
+    await screen.findByRole('tab', { name: /Aktiv/ })
+    expect(screen.queryByText(/inaktive Chats/)).not.toBeInTheDocument()
   })
 
   it('#1923: shows at an archived chat when the automatic cleanup deletes it', async () => {

@@ -120,20 +120,24 @@ Archivieren eines Chats ist dort trotzdem möglich und ändert an der Sichtbarke
 **Automatisches Archivieren und Löschen.** Je Space gibt es den Schalter „Inaktive Chats
 automatisch archivieren und löschen", ab Werk aus. Gesetzt wird er beim Anlegen des Space im
 Assistenten oder später in den Einstellungen des Space im Reiter „Stammdaten"; umlegen darf ihn,
-wer die Stammdaten ändern darf, sehen kann ihn jedes Mitglied. Ist er an, gilt für alle Chats des
-Space:
+wer die Stammdaten ändern darf. Im persönlichen Standard-Space legt ihn nur die Person selbst um,
+auch die Systemverwaltung nicht. Ist er an, nennt die Seite „Chats" allen Mitgliedern die Fristen
+in einem kurzen Hinweis. Für alle Chats des Space gilt dann:
 
 - Ein Chat, dessen letzte Aktivität länger als die Archivfrist zurückliegt, wandert in das
   Chat-Archiv seines Autors. Aktivität ist allein der vorhandene Zeitstempel der letzten Änderung
-  des Chats, also vor allem die letzte Frage; weitere Daten über die Person werden dafür weder
-  erhoben noch gespeichert.
+  des Chats, also vor allem die letzte Frage, und der Zeitpunkt, zu dem die Person den Chat aus dem
+  Archiv zurückgeholt hat; weitere Daten über die Person werden dafür weder erhoben noch
+  gespeichert.
 - Ein Chat, der länger als die Löschfrist im Archiv liegt, wird gelöscht — auf demselben Weg, auf
   dem sein Autor ihn löschen würde, mit Verlauf und Gesprächsnotiz. Das gilt auch für Chats, die
   die Person selbst archiviert hat.
-- **Angeheftete Chats** sind ausgenommen. Anheften oder eine neue Frage holt einen archivierten
-  Chat zurück und lässt die Frist neu beginnen. Wer einen Chat ohne neue Frage zurückholt oder
-  später löst, dessen Chat wandert beim nächsten Lauf wieder ins Archiv, sobald seine letzte
-  Aktivität die Archivfrist überschreitet; wer einen Chat dauerhaft behalten will, heftet ihn an.
+- **Angeheftete Chats** sind ausgenommen. Anheften, eine neue Frage oder das Zurückholen aus dem
+  Archiv holt einen archivierten Chat zurück und lässt die Archivfrist neu beginnen; Zurückholen
+  genügt also, um einen Chat für eine weitere Archivfrist zu behalten. Dafür wird der Zeitpunkt
+  des Zurückholens an der persönlichen Archiv-Markierung gespeichert, nur solange die Bereinigung
+  an ist und höchstens eine Archivfrist lang. Wer einen Chat dauerhaft behalten will,
+  heftet ihn an.
 - **Keine Rückwirkung:** Beide Fristen beginnen frühestens mit dem Einschalten. Ein Chat, der
   schon lange ruht oder lange im Archiv liegt, verschwindet nicht am Tag danach. Ausschalten hält
   den Automatismus an; erneutes Einschalten beginnt die Fristen von vorn.

@@ -582,6 +582,12 @@ components:
           nullable: true
           allOf:
             - $ref: "#/components/schemas/SuccessionStateResponse"
+        chatAutoCleanup:
+          description: >
+            Whether inactive chats of the space are archived and deleted automatically, with the
+            installation-wide periods - so every member can be told where the chats are listed.
+          allOf:
+            - $ref: "#/components/schemas/ChatAutoCleanupResponse"
         createdAt:
           type: string
           format: date-time

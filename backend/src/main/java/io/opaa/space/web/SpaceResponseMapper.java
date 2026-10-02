@@ -11,6 +11,7 @@ import io.opaa.permission.PermissionTransferMark;
 import io.opaa.permission.SuccessionFinding;
 import io.opaa.permission.web.PermissionTransferResponseMapper;
 import io.opaa.permission.web.SuccessionStateResponseMapper;
+import io.opaa.space.ChatAutoCleanupProperties;
 import io.opaa.space.Space;
 import io.opaa.space.SpaceDetail;
 import io.opaa.space.SpaceMemberView;
@@ -95,7 +96,18 @@ final class SpaceResponseMapper {
         .successionOpen(overview.successionOpen())
         .succession(SuccessionStateResponseMapper.toStateResponse(overview.succession()))
         .libraryCount(overview.libraryCount())
-        .chatCount(overview.chatCount());
+        .chatCount(overview.chatCount())
+        .chatAutoCleanup(toChatAutoCleanup(space, overview.chatAutoCleanup()));
+  }
+
+  private static ChatAutoCleanupResponse toChatAutoCleanup(
+      Space space, ChatAutoCleanupProperties periods) {
+    return periods == null
+        ? null
+        : new ChatAutoCleanupResponse(
+            space.isChatAutoCleanupEnabled(),
+            periods.archiveAfterDays(),
+            periods.deleteAfterDays());
   }
 
   /** Membership rows per subject type; a group row counts once, whatever its size. */

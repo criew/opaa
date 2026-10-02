@@ -315,7 +315,7 @@ public class ChatService {
   @Transactional
   public ChatListEntry unarchiveChat(UUID chatId, UUID userId) {
     Chat chat = getOwnedChat(chatId, userId);
-    clearArchive(chatId, userId);
+    clearArchive(chat, userId, Instant.now());
     return new ChatListEntry(chat, null, null);
   }
 
@@ -339,7 +339,8 @@ public class ChatService {
   public List<UUID> unarchiveChats(UUID spaceId, UUID userId, Collection<UUID> chatIds) {
     requireMembership(spaceId, userId);
     List<Chat> chats = chatRepository.findByIdInAndSpaceIdAndAuthorId(chatIds, spaceId, userId);
-    chats.forEach(chat -> clearArchive(chat.getId(), userId));
+    Instant now = Instant.now();
+    chats.forEach(chat -> clearArchive(chat, userId, now));
     return chats.stream().map(Chat::getId).toList();
   }
 
@@ -352,9 +353,22 @@ public class ChatService {
     return chats.stream().map(Chat::getId).toList();
   }
 
-  private void clearArchive(UUID chatId, UUID userId) {
-    chatPersonalMarkRepository.clearArchive(chatId, userId);
-    chatPersonalMarkRepository.deleteIfUnmarked(chatId, userId);
+  /**
+   * Brings the chat back from the person's archive. In a space with automatic chat cleanup the
+   * moment is kept, so the archive period starts anew; elsewhere nothing of it is stored.
+   */
+  private void clearArchive(Chat chat, UUID userId, Instant now) {
+    boolean cleanupOn =
+        spaceRepository
+            .findById(chat.getSpaceId())
+            .map(Space::isChatAutoCleanupEnabled)
+            .orElse(false);
+    if (cleanupOn) {
+      chatPersonalMarkRepository.clearArchiveRecordingReturn(chat.getId(), userId, now);
+    } else {
+      chatPersonalMarkRepository.clearArchive(chat.getId(), userId);
+    }
+    chatPersonalMarkRepository.deleteIfUnmarked(chat.getId(), userId);
   }
 
   @Transactional(readOnly = true)

@@ -251,7 +251,8 @@ public class SpaceService {
                     chatCounts.getOrDefault(space.getId(), 0L).intValue(),
                     SpaceAccessPolicy.effectiveRole(space, caller.id(), callerGroupIds),
                     succession.containsKey(space.getId()),
-                    succession.get(space.getId())))
+                    succession.get(space.getId()),
+                    chatAutoCleanup))
         .toList();
   }
 
@@ -726,6 +727,15 @@ public class SpaceService {
     SpaceVisibility previousVisibility = space.getVisibility();
     boolean previousChatAutoCleanup = space.isChatAutoCleanupEnabled();
     space.updateDetails(normalizedName, update.description(), update.visibility());
+    if (update.chatAutoCleanup() != null
+        && update.chatAutoCleanup() != previousChatAutoCleanup
+        && space.isDefault()
+        && !space.getOwnerId().equals(caller.id())) {
+      // The personal space's chats are its owner's alone: only the owner decides on their
+      // cleanup, not even the system administration.
+      throw new AccessDeniedException(
+          "Im persönlichen Space legt nur die Person selbst die Chat-Bereinigung fest");
+    }
     if (update.chatAutoCleanup() != null) {
       space.switchChatAutoCleanup(update.chatAutoCleanup(), Instant.now());
     }

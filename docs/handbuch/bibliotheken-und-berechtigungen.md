@@ -297,7 +297,7 @@ Mitglieder, im Verzeichnis sichtbar mit Beitritt auf Antrag, oder im Verzeichnis
 Selbstbeitritt.
 
 **In der Oberfläche liegt all das auf einer Seite je Raum:** dem Zahnrad „Einstellungen" am Fuß der
-Seitenleiste. Es sieht jedes Mitglied des Raums. Die Seite hat vier Reiter:
+Seitenleiste. Es sehen nur Administratoren und Kuratoren des Raums. Die Seite hat vier Reiter:
 
 | Reiter | Inhalt |
 |---|---|
@@ -306,11 +306,11 @@ Seitenleiste. Es sieht jedes Mitglied des Raums. Die Seite hat vier Reiter:
 | **Wissen** | Die dem Raum zugeordneten Wissensbibliotheken; Zuordnen und Lösen ab der Kuratorenrolle |
 | **Prompts** | Die dem Raum zugeordneten [Prompt-Bibliotheken](prompt-bibliotheken.md); Zuordnen und Lösen ab der Kuratorenrolle |
 
-**Die ersten beiden Reiter gehören den Administratoren.** Kuratoren und Mitglieder öffnen dieselbe
-Seite, sehen die Stammdaten aber nur lesend — so weiß jedes Mitglied, ob inaktive Chats des Raums
-automatisch archiviert und gelöscht werden —, und im Reiter „Mitglieder" steht für sie der Hinweis,
-dass die Liste ihrer Rolle nicht offensteht. Die Arbeit eines Kurators liegt in den Reitern
-„Wissen" und „Prompts". Den
+**Die ersten beiden Reiter gehören den Administratoren.** Ein Kurator öffnet dieselbe Seite, sieht
+die Stammdaten aber nur lesend, und im Reiter „Mitglieder" steht für ihn der Hinweis, dass die
+Liste seiner Rolle nicht offensteht — seine Arbeit liegt in den Reitern „Wissen" und „Prompts".
+Den Schalter der Chat-Bereinigung im eigenen Standard-Raum legt nur dessen Eigentümer um, auch die
+Systemverwaltung nicht. Den
 Gefahrenbereich sieht nur der Eigentümer, und nicht im eigenen Standard-Raum: Der lässt sich weder
 archivieren noch löschen.
 

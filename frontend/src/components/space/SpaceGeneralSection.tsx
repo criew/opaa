@@ -157,7 +157,8 @@ export default function SpaceGeneralSection({
             id="space-chat-auto-cleanup"
             checked={chatAutoCleanup}
             onChange={(checked) => setDraft({ ...current, chatAutoCleanup: checked })}
-            disabled={!canManage}
+            disabled={!canManage || (space.isDefault && !isOwner)}
+            personalSpaceOfOther={space.isDefault && !isOwner}
             archiveAfterDays={space.chatAutoCleanup.archiveAfterDays}
             deleteAfterDays={space.chatAutoCleanup.deleteAfterDays}
           />
@@ -175,7 +176,8 @@ export default function SpaceGeneralSection({
                       name,
                       description,
                       visibility,
-                      chatAutoCleanup !== space.chatAutoCleanup.enabled
+                      chatAutoCleanup !== space.chatAutoCleanup.enabled &&
+                        !(space.isDefault && !isOwner)
                         ? chatAutoCleanup
                         : undefined,
                     )
