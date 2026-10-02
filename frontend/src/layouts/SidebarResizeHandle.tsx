@@ -91,12 +91,6 @@ export default function SidebarResizeHandle() {
           transition: 'opacity 120ms',
         },
         '&:hover::after, &:active::after': { opacity: 1 },
-        // Keyboard focus keeps the design system's focus ring, distinct from the hover cue.
-        '&:focus-visible': {
-          outline: '2px solid',
-          outlineColor: 'primary.main',
-          outlineOffset: -2,
-        },
       }}
     />
   )

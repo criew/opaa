@@ -127,7 +127,7 @@ zusätzlich direkt in der Kopfzeile bearbeiten (Enter speichert, Escape verwirft
 Die **Seitenleiste** lässt sich auf dem Desktop am rechten Rand breiter oder schmaler ziehen; mit
 dem Griff im Fokus geht das auch mit den Pfeiltasten, Pos1 und Ende. Ein Doppelklick auf den Griff
 stellt die Standardbreite wieder her. Die gewählte Breite merkt sich der Browser, sie gilt also je
-Gerät und nicht je Konto. Auf schmalen Bildschirmen öffnet sich die Seitenleiste wie bisher als
+Gerät und nicht je Konto. Auf schmalen Bildschirmen öffnet sich die Seitenleiste als
 Überlagerung in fester Breite.
 
 Das **Eingabefeld** sendet mit dem Senden-Knopf oder mit Enter. Darunter steht „@ für Quellen, /
