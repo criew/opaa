@@ -2,6 +2,9 @@ package io.opaa.directory.web;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
@@ -16,6 +19,8 @@ import io.opaa.auth.User;
 import io.opaa.auth.UserService;
 import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
+import io.opaa.directory.sync.DirectorySyncReportDisclosure;
+import io.opaa.directory.sync.DirectorySyncReportDisclosure.Channel;
 import io.opaa.directory.sync.DirectorySyncService;
 import io.opaa.directory.sync.PendingPlanView;
 import io.opaa.directory.sync.SyncReport;
@@ -50,6 +55,7 @@ class DirectorySyncControllerTest {
 
   @Autowired private MockMvc mockMvc;
   @MockitoBean private DirectorySyncService directorySyncService;
+  @MockitoBean private DirectorySyncReportDisclosure reportDisclosure;
   @MockitoBean private UserService userService;
 
   private final UUID actingAdminId = UUID.randomUUID();
@@ -175,6 +181,69 @@ class DirectorySyncControllerTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.id").value(planId.toString()))
         .andExpect(jsonPath("$.report.outcome").value("PENDING_CONFIRMATION"));
+
+    verify(reportDisclosure)
+        .recordIfNamed(
+            eq(actingAdminOrganizationId),
+            eq(actingAdminId),
+            eq(providerId),
+            eq(Channel.PENDING_PLAN),
+            eq(planId),
+            any());
+  }
+
+  /** Every report-carrying response records its disclosure under the acting administrator. */
+  @Test
+  void dryRunAndRunRecordTheirReportsDisclosure() throws Exception {
+    when(directorySyncService.dryRun(any(), eq(providerId)))
+        .thenReturn(report(DirectorySyncOutcome.DRY_RUN));
+    when(directorySyncService.run(any(), eq(providerId)))
+        .thenReturn(report(DirectorySyncOutcome.APPLIED));
+
+    mockMvc
+        .perform(
+            post("/api/v1/admin/oidc-providers/" + providerId + "/directory-sync/dry-run")
+                .with(asAdmin()))
+        .andExpect(status().isOk());
+    mockMvc
+        .perform(
+            post("/api/v1/admin/oidc-providers/" + providerId + "/directory-sync/run")
+                .with(asAdmin()))
+        .andExpect(status().isOk());
+
+    verify(reportDisclosure)
+        .recordIfNamed(
+            eq(actingAdminOrganizationId),
+            eq(actingAdminId),
+            eq(providerId),
+            eq(Channel.DRY_RUN),
+            isNull(),
+            any());
+    verify(reportDisclosure)
+        .recordIfNamed(
+            eq(actingAdminOrganizationId),
+            eq(actingAdminId),
+            eq(providerId),
+            eq(Channel.RUN),
+            isNull(),
+            any());
+  }
+
+  /** No record, no names: a failing audit write fails the response instead of disclosing. */
+  @Test
+  void aFailingDisclosureRecordWithholdsTheReport() throws Exception {
+    when(directorySyncService.dryRun(any(), eq(providerId)))
+        .thenReturn(report(DirectorySyncOutcome.DRY_RUN));
+    doThrow(new IllegalStateException("audit write failed"))
+        .when(reportDisclosure)
+        .recordIfNamed(any(), any(), any(), any(), any(), any());
+
+    mockMvc
+        .perform(
+            post("/api/v1/admin/oidc-providers/" + providerId + "/directory-sync/dry-run")
+                .with(asAdmin()))
+        .andExpect(status().isInternalServerError())
+        .andExpect(jsonPath("$.outcome").doesNotExist());
   }
 
   /** "mit der bestätigenden Person und ihrem Anlass" - an empty reason is no reason. */
@@ -213,6 +282,14 @@ class DirectorySyncControllerTest {
     verify(directorySyncService)
         .confirmPlan(
             actingAdminOrganizationId, providerId, planId, actingAdminId, "Reorganisation");
+    verify(reportDisclosure)
+        .recordIfNamed(
+            eq(actingAdminOrganizationId),
+            eq(actingAdminId),
+            eq(providerId),
+            eq(Channel.PLAN_CONFIRMATION),
+            eq(planId),
+            any());
   }
 
   @Test
@@ -243,6 +320,8 @@ class DirectorySyncControllerTest {
                 .content("{\"reason\":\"Anlass\"}"))
         .andExpect(status().isConflict())
         .andExpect(jsonPath("$.code").value(DirectorySyncService.PLAN_CHANGED_CODE));
+
+    verify(reportDisclosure, never()).recordIfNamed(any(), any(), any(), any(), any(), any());
   }
 
   @Test

@@ -168,6 +168,13 @@ public enum AuditEventType {
    */
   DIRECTORY_SYNC_PLAN_DISCARDED,
   /**
+   * The system administration received a directory sync report naming persons - a pending plan, a
+   * dry run, a run or a confirmation (ADR-0036, Entscheidung 9). One summary entry per response on
+   * the provider as object, with the number of groups and persons it named; a report naming nobody
+   * writes nothing.
+   */
+  DIRECTORY_SYNC_REPORT_READ,
+  /**
    * An account lost its access because the directory reports it as disabled or no longer reports it
    * at all (#1818, ADR-0036 Entscheidung 3). One entry per account, linked to the run's header
    * entry via {@code correlationRef}.
