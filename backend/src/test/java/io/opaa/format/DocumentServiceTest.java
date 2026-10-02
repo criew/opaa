@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import io.opaa.test.ProductionDocumentFormats;
+import io.opaa.test.UnreadableDirectory;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -77,6 +78,40 @@ class DocumentServiceTest {
 
     assertThatThrownBy(() -> service.discoverFiles(file, supportedFormats))
         .isInstanceOf(IOException.class);
+  }
+
+  @Test
+  void discoverFilesSkipsAnUnreadableSubdirectoryAndReportsIt() throws IOException {
+    // regression guard for #2124: one unlistable subdirectory must not abort the whole walk
+    Files.writeString(tempDir.resolve("top.txt"), "Top");
+    Path readable = Files.createDirectory(tempDir.resolve("lesbar"));
+    Files.writeString(readable.resolve("deep.md"), "# Deep");
+    Path locked = Files.createDirectory(tempDir.resolve("gesperrt"));
+    Files.writeString(locked.resolve("hidden.txt"), "Hidden");
+
+    DocumentService.DiscoveredFiles discovered;
+    try (UnreadableDirectory ignored = UnreadableDirectory.of(locked)) {
+      discovered = service.discoverFiles(tempDir, supportedFormats);
+    }
+
+    assertThat(discovered.supported())
+        .extracting(p -> p.getFileName().toString())
+        .containsExactlyInAnyOrder("top.txt", "deep.md");
+    assertThat(discovered.unreadable()).containsExactly(locked);
+    assertThat(discovered.rejected()).isEmpty();
+  }
+
+  @Test
+  void discoverFilesFailsWhenTheDirectoryItselfCannotBeListed() throws IOException {
+    // an unlistable root is not a source with zero documents - reporting it as such would let the
+    // stale-document cleanup delete the whole library's content
+    Path root = Files.createDirectory(tempDir.resolve("wurzel"));
+    Files.writeString(root.resolve("a.txt"), "content");
+
+    try (UnreadableDirectory ignored = UnreadableDirectory.of(root)) {
+      assertThatThrownBy(() -> service.discoverFiles(root, supportedFormats))
+          .isInstanceOf(IOException.class);
+    }
   }
 
   @Test
