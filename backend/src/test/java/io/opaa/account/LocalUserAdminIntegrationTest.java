@@ -837,8 +837,7 @@ class LocalUserAdminIntegrationTest {
     UUID pseudonym = audit.pseudonymFor(user.id(), Organization.DEFAULT_ID);
     KnowledgeLibrary library =
         libraries.save(
-            KnowledgeLibrary.ownedByUser(
-                Organization.DEFAULT_ID, "Favorisiert", null, admin.id(), false));
+            KnowledgeLibrary.ownedByUser(Organization.DEFAULT_ID, "Favorisiert", null, admin.id()));
     try {
       jdbc.update(
           "INSERT INTO asset_favorites (asset_id, user_id, organization_id) VALUES (?, ?, ?)",
