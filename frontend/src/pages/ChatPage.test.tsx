@@ -210,6 +210,20 @@ describe('ChatPage', () => {
     ).toBeInTheDocument()
   })
 
+  it('does not hand a returned question to the new-chat view while the store still shows its chat', async () => {
+    renderWithProviders(<ChatPage />, { withRouter: true })
+    await waitFor(() => expect(useChatStore.getState().spaceId).toBe('space-personal'))
+
+    act(() => {
+      useChatStore.setState({
+        chatId: 'chat-personal-1',
+        returnedQuestion: { restoreDraft: 'Frage aus Chat A', onRestored: vi.fn() },
+      })
+    })
+
+    expect(screen.getByPlaceholderText('Nachricht eingeben …')).toHaveValue('')
+  })
+
   it('shows error alert when present', async () => {
     renderWithProviders(<ChatPage />, { withRouter: true })
     await waitFor(() => expect(useChatStore.getState().spaceId).toBe('space-personal'))

@@ -843,6 +843,31 @@ describe('chatStore', () => {
         expect(useChatStore.getState().error).toBe('Zu viele Anfragen.')
       })
 
+      it('keeps both questions when two chat creations are refused in the same space', async () => {
+        useChatStore.getState().startNewChat(SPACE_ID)
+        const gate = deferred<void>()
+        server.use(
+          http.post('/api/v1/spaces/:spaceId/chats', async () => {
+            await gate.promise
+            return HttpResponse.json(
+              { error: 'Zu viele Anfragen.', status: 429, timestamp: new Date().toISOString() },
+              { status: 429 },
+            )
+          }),
+        )
+        const first = useChatStore.getState().sendMessage('Erste Frage')
+        const second = useChatStore.getState().sendMessage('Zweite Frage')
+        await useChatStore.getState().loadChat(OTHER_CHAT_ID)
+        gate.resolve()
+        await Promise.all([first, second])
+
+        useChatStore.getState().startNewChat(SPACE_ID)
+
+        expect(useChatStore.getState().returnedQuestion).toMatchObject({
+          restoreDraft: 'Erste Frage\n\nZweite Frage',
+        })
+      })
+
       it('does not carry a returned question into a new chat of another space', async () => {
         await useChatStore.getState().loadChat(EXISTING_CHAT_ID)
         const gate = deferred<void>()

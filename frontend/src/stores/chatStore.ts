@@ -125,6 +125,20 @@ const parkedRefusalsByChatId = new Map<string, ParkedRefusal>()
 // the space whose new-chat view it was sent from.
 const parkedRefusalsByNewChatSpaceId = new Map<string, ParkedRefusal>()
 
+/** Parks a refusal; a second one for the same key is appended so neither question is lost. */
+function parkRefused(map: Map<string, ParkedRefusal>, key: string, refusal: ParkedRefusal): void {
+  const earlier = map.get(key)
+  map.set(
+    key,
+    earlier
+      ? {
+          ...refusal,
+          question: `${earlier.question}\n\n${refusal.question}`,
+        }
+      : refusal,
+  )
+}
+
 /** The refusal as the input takes it back; `stillShown` guards the confirming note. */
 function parkedAsReturnedQuestion(
   parked: ParkedRefusal,
@@ -513,7 +527,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
           metadataFilter: detailState.metadataFilter,
         })
       }
-      // Consumed only now that this chat is the one shown (superseded loads returned above).
+      // Superseded loads returned above; ChatPage hands the question on only to the matching route.
       const parked = get().chatId === chatId ? parkedRefusalsByChatId.get(chatId) : undefined
       if (parked) {
         parkedRefusalsByChatId.delete(chatId)
@@ -658,8 +672,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
       const refusal = classifyRefusal(failure)
       if (!refusal) return
       const parked = { question, ...refusal }
-      if (send.chatId) parkedRefusalsByChatId.set(send.chatId, parked)
-      else if (sendingSpaceId) parkedRefusalsByNewChatSpaceId.set(sendingSpaceId, parked)
+      if (send.chatId) parkRefused(parkedRefusalsByChatId, send.chatId, parked)
+      else if (sendingSpaceId) parkRefused(parkedRefusalsByNewChatSpaceId, sendingSpaceId, parked)
     }
 
     try {
