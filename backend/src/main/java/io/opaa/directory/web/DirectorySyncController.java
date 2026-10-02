@@ -55,7 +55,7 @@ public class DirectorySyncController {
   public DirectorySyncReportResponse dryRun(
       @PathVariable UUID providerId, @Caller CurrentUser caller) {
     SyncReport report = directorySyncService.dryRun(caller.organizationId(), providerId);
-    return disclose(caller, providerId, Channel.DRY_RUN, report);
+    return disclose(caller, providerId, Channel.DRY_RUN, null, report);
   }
 
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
@@ -63,7 +63,7 @@ public class DirectorySyncController {
   public DirectorySyncReportResponse run(
       @PathVariable UUID providerId, @Caller CurrentUser caller) {
     SyncReport report = directorySyncService.run(caller.organizationId(), providerId);
-    return disclose(caller, providerId, Channel.RUN, report);
+    return disclose(caller, providerId, Channel.RUN, null, report);
   }
 
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
@@ -98,7 +98,7 @@ public class DirectorySyncController {
     SyncReport report =
         directorySyncService.confirmPlan(
             caller.organizationId(), providerId, planId, caller.id(), request.getReason());
-    return disclose(caller, providerId, Channel.PLAN_CONFIRMATION, report);
+    return disclose(caller, providerId, Channel.PLAN_CONFIRMATION, planId, report);
   }
 
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
@@ -115,9 +115,9 @@ public class DirectorySyncController {
   }
 
   private DirectorySyncReportResponse disclose(
-      CurrentUser caller, UUID providerId, Channel channel, SyncReport report) {
+      CurrentUser caller, UUID providerId, Channel channel, UUID planId, SyncReport report) {
     reportDisclosure.recordIfNamed(
-        caller.organizationId(), caller.id(), providerId, channel, null, report);
+        caller.organizationId(), caller.id(), providerId, channel, planId, report);
     return DirectorySyncResponseMapper.toReportResponse(report);
   }
 }

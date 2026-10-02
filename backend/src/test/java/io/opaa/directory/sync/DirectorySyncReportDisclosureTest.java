@@ -38,6 +38,7 @@ class DirectorySyncReportDisclosureTest {
     UserRef anna = new UserRef(UUID.randomUUID(), "Anna Amsel");
     UserRef bert = new UserRef(UUID.randomUUID(), "Bert Buchfink");
     UserRef carl = new UserRef(UUID.randomUUID(), "Carl Clever");
+    UserRef dora = new UserRef(UUID.randomUUID(), "Dora Dohle");
     SyncReport report =
         report(
             List.of(
@@ -45,6 +46,7 @@ class DirectorySyncReportDisclosureTest {
                 new MembershipChange("dir-2", "Referat 52", List.of(anna), List.of()),
                 new MembershipChange("dir-3", "Referat 53", List.of(), List.of())),
             List.of(bert),
+            List.of(dora, anna),
             List.of(carl));
 
     disclosure.recordIfNamed(
@@ -65,12 +67,13 @@ class DirectorySyncReportDisclosureTest {
     assertThat(event.after())
         .containsEntry("channel", "RUN")
         .containsEntry("groupCount", 2)
-        .containsEntry("personCount", 3)
+        .containsEntry("personCount", 4)
         .doesNotContainKey("planId");
     assertThat(event.after().toString() + event.objectLabel())
         .doesNotContain("Anna")
         .doesNotContain("Bert")
-        .doesNotContain("Carl");
+        .doesNotContain("Carl")
+        .doesNotContain("Dora");
   }
 
   @Test
@@ -78,6 +81,7 @@ class DirectorySyncReportDisclosureTest {
     SyncReport report =
         report(
             List.of(new MembershipChange("dir-1", "Referat 50", List.of(), List.of())),
+            List.of(),
             List.of(),
             List.of());
 
@@ -93,7 +97,10 @@ class DirectorySyncReportDisclosureTest {
   }
 
   private static SyncReport report(
-      List<MembershipChange> changes, List<UserRef> locked, List<UserRef> withheld) {
+      List<MembershipChange> changes,
+      List<UserRef> locked,
+      List<UserRef> unlocked,
+      List<UserRef> withheld) {
     return new SyncReport(
         DirectorySyncOutcome.APPLIED,
         Instant.parse("2026-10-02T04:00:00Z"),
@@ -103,7 +110,7 @@ class DirectorySyncReportDisclosureTest {
         List.of(),
         changes,
         locked,
-        List.of(),
+        unlocked,
         withheld,
         0,
         0,

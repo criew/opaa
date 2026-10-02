@@ -181,7 +181,8 @@ class DirectorySyncReportDisclosureIntegrationTest {
     assertThat(entries())
         .extracting(Entry::after)
         .filteredOn(after -> after.contains("\"channel\":\"PLAN_CONFIRMATION\""))
-        .hasSize(1);
+        .singleElement()
+        .satisfies(after -> assertThat(after).contains("\"planId\":\"" + planId + "\""));
   }
 
   @Test

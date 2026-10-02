@@ -215,6 +215,7 @@ ersten Stufe nicht geschrieben.
   über `correlation_ref`; dazu ein Kopfeintrag des Laufs mit Ergebnis und, oberhalb der Schwelle, mit
   der bestätigenden Person und ihrem Anlass. **Das Verwerfen** eines vorgelegten Plans ist ein
   eigenes Ereignis mit derselben Angabe — eine Entscheidung, die keine Spur hinterlässt, ist keine
+  Entscheidung
 - **Die Auslieferung eines Abgleichsberichts mit Namen an die Systemverwaltung** — Abruf des
   ausstehenden Plans, Probelauf, Lauf von Hand und Bestätigung; ein zusammenfassender Eintrag mit
   Anbieter und der Zahl der genannten Gruppen und Personen, nie mit den Namen

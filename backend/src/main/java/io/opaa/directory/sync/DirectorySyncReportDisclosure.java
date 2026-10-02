@@ -43,8 +43,9 @@ public class DirectorySyncReportDisclosure {
 
   /**
    * Writes the entry if {@code report} names at least one person. {@code planId} is set for {@link
-   * Channel#PENDING_PLAN} only. Must run before the report is handed out: a failing write then
-   * fails the response instead of disclosing names without a record.
+   * Channel#PENDING_PLAN} and {@link Channel#PLAN_CONFIRMATION}. Must run before the report is
+   * handed out: a failing write then fails the response instead of disclosing names without a
+   * record - for a run or a confirmation after the change was already applied.
    */
   public void recordIfNamed(
       UUID organizationId,

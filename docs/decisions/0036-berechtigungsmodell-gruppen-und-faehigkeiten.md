@@ -752,7 +752,7 @@ Bibliotheken benennt — gilt dieselbe Sonderstellung:
 >   (jeder, nicht nur der erste), der Probelauf, der Lauf von Hand und die Bestätigung eines Plans.
 >   Der zeitgesteuerte Lauf liefert niemandem etwas aus und schreibt keines.
 > - **Inhalt:** die handelnde Person, der Anbieter als Objekt, der Weg (`PENDING_PLAN`, `DRY_RUN`,
->   `RUN`, `PLAN_CONFIRMATION`), beim ausstehenden Plan dessen Kennung, die Zahl der Gruppen mit
+>   `RUN`, `PLAN_CONFIRMATION`), beim ausstehenden und beim bestätigten Plan dessen Kennung, die Zahl der Gruppen mit
 >   namentlich genannten Mitgliedern und die Zahl der genannten Personen (jede einmal) — **nie die
 >   Namen selbst**.
 > - **Ein Bericht ohne Namen schreibt nichts** (etwa ein Lauf ohne Änderung oder ein unerreichbares
@@ -761,7 +761,12 @@ Bibliotheken benennt — gilt dieselbe Sonderstellung:
 >   bestehenden Gruppe; eine Gruppe, die der Plan erst anlegen würde, hat noch keine Kennung, und
 >   ein erster Lauf ergäbe Hunderte Einträge für eine einzige Ansicht.
 > - **Der Eintrag wird vor der Antwort geschrieben.** Scheitert er, scheitert die Antwort — Namen
->   ohne Eintrag gibt es nicht.
+>   ohne Eintrag gibt es nicht. Bei einem Lauf von Hand und einer Bestätigung ist die Änderung zu
+>   diesem Zeitpunkt schon angewendet: Die Antwort ist dann ein Fehler (500), obwohl der Abgleich
+>   gewirkt hat; seinen Ausgang zeigen Statuszeile und Protokoll.
+> - **Die Verwaltungsoberfläche ruft einen ausstehenden Plan einmal je Plan ab,** nicht bei jedem
+>   Neuladen des Status — sonst entstünden Einträge, die wie bewusste Abrufe aussehen. Das Anzeigen
+>   eines offenen Plans auf der Seite erzeugt aber einen Eintrag.
 >
 > **Abwägung.** Maskieren (geschützte und neu angelegte Gruppen nur als Zahl) hätte der Freigabe
 > eines Plans genau die Angabe genommen, für die der Bericht namentlich ist, und die Namen wären über

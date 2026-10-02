@@ -288,7 +288,7 @@ class DirectorySyncControllerTest {
             eq(actingAdminId),
             eq(providerId),
             eq(Channel.PLAN_CONFIRMATION),
-            isNull(),
+            eq(planId),
             any());
   }
 
