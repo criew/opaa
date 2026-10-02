@@ -197,19 +197,19 @@ class AssetFavoriteControllerIntegrationTest {
     mockMvc.perform(mark(marked, devAdmin())).andExpect(status().isNoContent());
 
     mockMvc
-        .perform(get("/api/v1/catalog?q=Favoriten%20Test&favorites=true").with(devAdmin()))
+        .perform(catalog(true).with(devAdmin()))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.totalElements").value(1))
         .andExpect(jsonPath("$.entries[0].assetId").value(marked))
         .andExpect(jsonPath("$.entries[0].favorite").value(true));
     mockMvc
-        .perform(get("/api/v1/catalog?q=Favoriten%20Test").with(devAdmin()))
+        .perform(catalog(false).with(devAdmin()))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.totalElements").value(2))
         .andExpect(jsonPath("$.entries[0].assetId").value(marked))
         .andExpect(jsonPath("$.entries[1].favorite").value(false));
     mockMvc
-        .perform(get("/api/v1/catalog?q=Favoriten%20Test&favorites=true").with(devUser()))
+        .perform(catalog(true).with(devUser()))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.totalElements").value(0));
   }
@@ -266,6 +266,13 @@ class AssetFavoriteControllerIntegrationTest {
 
   private static MockHttpServletRequestBuilder mark(String libraryId, RequestPostProcessor caller) {
     return put(favoritePath(libraryId)).with(caller);
+  }
+
+  /** The catalog searched for this class's libraries, optionally only the caller's favorites. */
+  private static MockHttpServletRequestBuilder catalog(boolean favoritesOnly) {
+    return get("/api/v1/catalog")
+        .param("q", "Favoriten Test")
+        .param("favorites", String.valueOf(favoritesOnly));
   }
 
   private static MockHttpServletRequestBuilder markAs(
