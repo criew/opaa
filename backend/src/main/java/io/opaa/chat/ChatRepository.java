@@ -45,6 +45,21 @@ public interface ChatRepository extends JpaRepository<Chat, UUID> {
    */
   boolean existsBySpaceId(UUID spaceId);
 
+  /**
+   * The chats in their author's chat archive since before {@code cutoff}, in spaces whose automatic
+   * chat cleanup was switched on before {@code cutoff} too - the chats it deletes now (#1923).
+   */
+  @Query(
+      value =
+          """
+          SELECT c.id FROM chats c JOIN spaces s ON s.id = c.space_id
+          JOIN chat_personal_marks m ON m.chat_id = c.id AND m.user_id = c.author_id
+          WHERE s.chat_auto_cleanup_enabled_at < :cutoff AND m.archived_at < :cutoff
+            AND m.pinned_at IS NULL
+          """,
+      nativeQuery = true)
+  List<UUID> findDueForAutoCleanupDeletion(@Param("cutoff") Instant cutoff);
+
   /** Whether the user authored any chat ({@code fk_chats_author_organization} is RESTRICT). */
   boolean existsByAuthorId(UUID authorId);
 

@@ -37,6 +37,7 @@ import io.opaa.permission.GroupSubjectDirectory;
 import io.opaa.permission.PermissionSubject;
 import io.opaa.permission.SuccessionFinding;
 import io.opaa.permission.SuccessionReachGuard;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -74,6 +75,7 @@ public class SpaceService {
   private final GroupSizeProperties groupSizeProperties;
   private final SuccessionReachGuard successionGuard;
   private final SpaceSuccessionSource successionSource;
+  private final ChatAutoCleanupProperties chatAutoCleanup;
   private final TransactionTemplate requiresNewTransactionTemplate;
 
   /**
@@ -100,8 +102,10 @@ public class SpaceService {
       GroupSizeProperties groupSizeProperties,
       SuccessionReachGuard successionGuard,
       SpaceSuccessionSource successionSource,
+      ChatAutoCleanupProperties chatAutoCleanup,
       PlatformTransactionManager transactionManager) {
     this.spaceRepository = spaceRepository;
+    this.chatAutoCleanup = chatAutoCleanup;
     this.successionGuard = successionGuard;
     this.successionSource = successionSource;
     this.spaceChats = spaceChats;
@@ -153,6 +157,9 @@ public class SpaceService {
             ownerId,
             caller.organizationId());
     appendInitialMemberships(space, ownerId, creation.initialMembers());
+    if (Boolean.TRUE.equals(creation.chatAutoCleanup())) {
+      space.switchChatAutoCleanup(true, Instant.now());
+    }
 
     Space saved = spaceRepository.save(space);
     for (SpaceMembership membership : saved.getMemberships()) {
@@ -193,6 +200,7 @@ public class SpaceService {
     payload.put("name", space.getName());
     payload.put("visibility", space.getVisibility().name());
     payload.put("ownerId", space.getOwnerId().toString());
+    payload.put("chatAutoCleanup", space.isChatAutoCleanupEnabled());
     return payload;
   }
 
@@ -267,7 +275,8 @@ public class SpaceService {
     return new SpaceDetail(
         space,
         accessPolicy.effectiveRole(space, caller),
-        successionSource.openAmong(List.of(space)).contains(space.getId()));
+        successionSource.openAmong(List.of(space)).contains(space.getId()),
+        chatAutoCleanup);
   }
 
   public Space getSpace(UUID spaceId, CurrentUser caller) {
@@ -715,17 +724,22 @@ public class SpaceService {
     String previousName = space.getName();
     String previousDescription = space.getDescription();
     SpaceVisibility previousVisibility = space.getVisibility();
+    boolean previousChatAutoCleanup = space.isChatAutoCleanupEnabled();
     space.updateDetails(normalizedName, update.description(), update.visibility());
+    if (update.chatAutoCleanup() != null) {
+      space.switchChatAutoCleanup(update.chatAutoCleanup(), Instant.now());
+    }
     Space updated = spaceRepository.save(space);
     boolean nameChanged = !Objects.equals(previousName, updated.getName());
     boolean descriptionChanged = !Objects.equals(previousDescription, updated.getDescription());
     boolean visibilityChanged = previousVisibility != updated.getVisibility();
-    if (nameChanged || descriptionChanged || visibilityChanged) {
+    boolean chatAutoCleanupChanged = previousChatAutoCleanup != updated.isChatAutoCleanupEnabled();
+    if (nameChanged || descriptionChanged || visibilityChanged || chatAutoCleanupChanged) {
       // #392 code review, finding 4: before/after are limited to what the specification calls
       // "rechtlich Erheblich" - visibility is (it feeds who can see the space), free-text
       // name/description content is not, and is never written here even though it changed;
-      // changedFields names which of the three changed without carrying either value. Only
-      // visibility, the one field that is itself rights-relevant, carries its actual before/after.
+      // changedFields names which fields changed without carrying the free-text values. Visibility
+      // and the chat cleanup switch (a retention setting, #1923) carry their before/after.
       List<String> changedFields = new ArrayList<>();
       if (nameChanged) {
         changedFields.add("name");
@@ -741,6 +755,11 @@ public class SpaceService {
         changedFields.add("visibility");
         before.put("visibility", previousVisibility.name());
         after.put("visibility", updated.getVisibility().name());
+      }
+      if (chatAutoCleanupChanged) {
+        changedFields.add("chatAutoCleanup");
+        before.put("chatAutoCleanup", previousChatAutoCleanup);
+        after.put("chatAutoCleanup", updated.isChatAutoCleanupEnabled());
       }
       auditEventRecorder.recordUserAction(
           AuditEvent.builder()

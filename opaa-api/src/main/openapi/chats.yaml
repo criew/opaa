@@ -487,6 +487,14 @@ components:
             When the requesting person moved this chat into their chat archive; null if it is not
             archived for them. A personal mark, never another person's - unrelated to an archived
             space.
+        deletionDueAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: >
+            When the automatic chat cleanup of the space will delete this archived chat (#1923);
+            null while the chat is active for the caller or the space has the cleanup switched off.
+            Pinning the chat or asking a new question in it brings it back and clears this.
 
     ChatSummaryPage:
       type: object
@@ -597,6 +605,14 @@ components:
           description: >
             When the requesting person moved this chat into their chat archive; null if it is not
             archived for them. Lets a chat opened by link show that it is archived.
+        deletionDueAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: >
+            When the automatic chat cleanup of the space will delete this archived chat (#1923);
+            null while the chat is active for the caller or the space has the cleanup switched off.
+            Pinning the chat or asking a new question in it brings it back and clears this.
 
     ChatSearchRequest:
       type: object

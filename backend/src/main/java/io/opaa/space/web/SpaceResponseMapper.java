@@ -1,5 +1,6 @@
 package io.opaa.space.web;
 
+import io.opaa.api.dto.ChatAutoCleanupResponse;
 import io.opaa.api.dto.SpaceListResponse;
 import io.opaa.api.dto.SpaceMemberResponse;
 import io.opaa.api.dto.SpaceMembershipCountsResponse;
@@ -63,6 +64,10 @@ final class SpaceResponseMapper {
             space.getOwnerId(),
             space.getMemberships().size(),
             roleCounts,
+            new ChatAutoCleanupResponse(
+                space.isChatAutoCleanupEnabled(),
+                detail.chatAutoCleanup().archiveAfterDays(),
+                detail.chatAutoCleanup().deleteAfterDays()),
             space.getCreatedAt(),
             space.getUpdatedAt())
         .description(space.getDescription())

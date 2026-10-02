@@ -61,6 +61,10 @@ public class Space {
   @Column(name = "updated_at", nullable = false)
   private Instant updatedAt;
 
+  /** When the automatic chat cleanup was switched on; {@code null} while it is off. */
+  @Column(name = "chat_auto_cleanup_enabled_at")
+  private Instant chatAutoCleanupEnabledAt;
+
   @OneToMany(mappedBy = "space", cascade = CascadeType.ALL, orphanRemoval = true)
   private List<SpaceMembership> memberships = new ArrayList<>();
 
@@ -110,6 +114,28 @@ public class Space {
     if (visibility != null) {
       this.visibility = visibility;
     }
+  }
+
+  /**
+   * Switches the automatic chat cleanup on or off. Switching it on records {@code now} as the
+   * earliest start of both periods; switching on an already enabled cleanup keeps the original
+   * start, so a repeated request never extends or shortens a running period.
+   */
+  public void switchChatAutoCleanup(boolean enabled, Instant now) {
+    if (!enabled) {
+      this.chatAutoCleanupEnabledAt = null;
+    } else if (chatAutoCleanupEnabledAt == null) {
+      this.chatAutoCleanupEnabledAt = now;
+    }
+  }
+
+  public boolean isChatAutoCleanupEnabled() {
+    return chatAutoCleanupEnabledAt != null;
+  }
+
+  /** When the automatic chat cleanup was switched on, {@code null} while it is off. */
+  public Instant getChatAutoCleanupEnabledAt() {
+    return chatAutoCleanupEnabledAt;
   }
 
   public void transferOwnershipTo(UUID newOwnerId) {

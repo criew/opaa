@@ -3,9 +3,14 @@ package io.opaa.space;
 import io.opaa.api.types.SpaceRole;
 
 /**
- * A space plus the two values a detail response shows that the entity does not carry: the caller's
+ * A space plus the values a detail response shows that the entity does not carry: the caller's
  * effective role - which since #1815 may come from a group membership rather than a row of their
- * own - and the derived state "Nachfolge offen" (ADR-0036, Entscheidung 6). Domain counterpart of
- * the generated {@code SpaceResponse}, mapped by {@code SpaceResponseMapper}.
+ * own - the derived state "Nachfolge offen" (ADR-0036, Entscheidung 6) and the installation-wide
+ * periods of the automatic chat cleanup (#1923). Domain counterpart of the generated {@code
+ * SpaceResponse}, mapped by {@code SpaceResponseMapper}.
  */
-public record SpaceDetail(Space space, SpaceRole userRole, boolean successionOpen) {}
+public record SpaceDetail(
+    Space space,
+    SpaceRole userRole,
+    boolean successionOpen,
+    ChatAutoCleanupProperties chatAutoCleanup) {}

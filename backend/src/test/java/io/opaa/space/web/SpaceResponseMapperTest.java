@@ -12,6 +12,7 @@ import io.opaa.api.types.SuccessionAddressee;
 import io.opaa.api.types.SuccessionObjectType;
 import io.opaa.permission.GroupSizeSignal;
 import io.opaa.permission.SuccessionFinding;
+import io.opaa.space.ChatAutoCleanupProperties;
 import io.opaa.space.Space;
 import io.opaa.space.SpaceDetail;
 import io.opaa.space.SpaceMemberView;
@@ -29,6 +30,8 @@ import org.junit.jupiter.api.Test;
  */
 class SpaceResponseMapperTest {
 
+  private static final ChatAutoCleanupProperties CLEANUP = new ChatAutoCleanupProperties(120, 400);
+
   @Test
   void toResponseCopiesFieldsAndComputesRoleCountsForEveryRole() {
     UUID owner = UUID.randomUUID();
@@ -39,7 +42,7 @@ class SpaceResponseMapperTest {
     space.addMembership(SpaceMembership.ofUser(member, SpaceRole.MEMBER, organization));
 
     SpaceResponse response =
-        SpaceResponseMapper.toResponse(new SpaceDetail(space, SpaceRole.ADMIN, false));
+        SpaceResponseMapper.toResponse(new SpaceDetail(space, SpaceRole.ADMIN, false, CLEANUP));
 
     assertThat(response.getId()).isEqualTo(space.getId());
     assertThat(response.getName()).isEqualTo("Team");
@@ -51,6 +54,9 @@ class SpaceResponseMapperTest {
     assertThat(response.getMemberCount()).isEqualTo(2);
     assertThat(response.getCreatedAt()).isEqualTo(space.getCreatedAt());
     assertThat(response.getUpdatedAt()).isEqualTo(space.getUpdatedAt());
+    assertThat(response.getChatAutoCleanup().getEnabled()).isFalse();
+    assertThat(response.getChatAutoCleanup().getArchiveAfterDays()).isEqualTo(120);
+    assertThat(response.getChatAutoCleanup().getDeleteAfterDays()).isEqualTo(400);
     // Every SpaceRole is present with a count, including CURATOR which nobody here holds - not
     // just the roles actually assigned.
     assertThat(response.getRoleCounts())
@@ -70,7 +76,8 @@ class SpaceResponseMapperTest {
     Space space = new Space("Team", null, false, SpaceVisibility.PRIVATE, owner, organization);
     space.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, organization));
 
-    SpaceResponse response = SpaceResponseMapper.toResponse(new SpaceDetail(space, null, false));
+    SpaceResponse response =
+        SpaceResponseMapper.toResponse(new SpaceDetail(space, null, false, CLEANUP));
 
     assertThat(response.getUserRole()).isNull();
   }
@@ -89,7 +96,7 @@ class SpaceResponseMapperTest {
     space.addMembership(SpaceMembership.ofUser(owner, SpaceRole.MEMBER, organization));
 
     SpaceResponse response =
-        SpaceResponseMapper.toResponse(new SpaceDetail(space, SpaceRole.ADMIN, false));
+        SpaceResponseMapper.toResponse(new SpaceDetail(space, SpaceRole.ADMIN, false, CLEANUP));
 
     assertThat(response.getUserRole()).isEqualTo(SpaceRole.ADMIN);
     // roleCounts keeps showing the raw membership role, including the owner's own row - only
@@ -309,7 +316,7 @@ class SpaceResponseMapperTest {
     space.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, organization));
 
     assertThat(
-            SpaceResponseMapper.toResponse(new SpaceDetail(space, SpaceRole.ADMIN, true))
+            SpaceResponseMapper.toResponse(new SpaceDetail(space, SpaceRole.ADMIN, true, CLEANUP))
                 .getSuccessionOpen())
         .isTrue();
     SuccessionFinding finding =

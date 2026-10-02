@@ -13,7 +13,8 @@ import org.springframework.data.repository.query.Param;
 
 /**
  * Every method is scoped to one person: a mark is only ever read or written together with the
- * {@code userId} it belongs to, so no caller can reach another person's marks.
+ * {@code userId} it belongs to, so no caller can reach another person's marks. The one exception,
+ * {@link #archiveInactiveForAutoCleanup}, writes nothing but the author's own row of each chat.
  */
 public interface ChatPersonalMarkRepository
     extends JpaRepository<ChatPersonalMark, ChatPersonalMark.Key> {
@@ -120,4 +121,26 @@ public interface ChatPersonalMarkRepository
               + " AND pinned_at IS NULL AND archived_at IS NULL",
       nativeQuery = true)
   void deleteIfUnmarked(@Param("chatId") UUID chatId, @Param("userId") UUID userId);
+
+  /**
+   * Moves every chat whose last activity and whose space's cleanup start both lie before {@code
+   * cutoff} into its author's chat archive, unless the author pinned or archived it already. Only
+   * spaces with the automatic chat cleanup switched on take part (#1923).
+   *
+   * @return the number of chats archived
+   */
+  @Modifying
+  @Query(
+      value =
+          """
+          INSERT INTO chat_personal_marks (chat_id, user_id, archived_at)
+          SELECT c.id, c.author_id, :now FROM chats c JOIN spaces s ON s.id = c.space_id
+          WHERE s.chat_auto_cleanup_enabled_at < :cutoff AND c.updated_at < :cutoff
+            AND NOT EXISTS (SELECT 1 FROM chat_personal_marks m
+                            WHERE m.chat_id = c.id AND m.user_id = c.author_id
+                              AND (m.pinned_at IS NOT NULL OR m.archived_at IS NOT NULL))
+          ON CONFLICT (chat_id, user_id) DO UPDATE SET archived_at = EXCLUDED.archived_at
+          """,
+      nativeQuery = true)
+  int archiveInactiveForAutoCleanup(@Param("cutoff") Instant cutoff, @Param("now") Instant now);
 }
