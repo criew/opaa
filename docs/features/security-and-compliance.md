@@ -725,16 +725,16 @@ hinzukommt.
 
 Für die **Reichweitenfelder** einer Bibliothek — die Fremdzugangsfreigabe und die Freigabe-Obergrenze —
 kommt ein Strukturtest hinzu (`KnowledgeLibraryReachWriterTest`): Er liest die übersetzten Klassen
-und schlägt fehl, sobald eine Klasse außerhalb von `io.opaa.library` — dem Paket, das die
-Historienzeile schreibt — eine der ändernden Methoden der Bibliothek aufruft
-(`updateExternalAccess`, `expireExternalAccess`, `markExternalAccessReminderSent`, `updateShareCap`).
+und lässt jede ändernde Methode der Bibliothek nur aus genau einem Dienst zu — `updateExternalAccess`
+aus `LibraryExternalAccessService`, `expireExternalAccess` aus `LibraryExternalAccessExpiryService`,
+`markExternalAccessReminderSent` aus `LibraryExternalAccessReminderService` und `updateShareCap` aus
+`KnowledgeLibraryService`. Jeder weitere Aufrufer, auch eine neue Klasse im selben Paket, lässt den
+Test fehlschlagen. Dass die zugelassenen Schreibpfade der Freigabe ihre Historienzeile tatsächlich schreiben, prüft
+der Integrationstest je Operation (`externalAccessWritePaths`: Setzen, Zurücknehmen, Ablauflauf).
 Der Compiler trägt diese Einschränkung nicht: Die Methoden sind öffentlich, weil die Bibliothek in
 `io.opaa.knowledge` liegt und dieses Paket nach der Modulschichtung nicht von `io.opaa.library`
-abhängen darf. Der Strukturtest unterscheidet nur nach Paket: Dass ein Schreibpfad seine Historienzeile
-schreibt, prüft der Integrationstest je Operation nur für die dort benannten Dienste
-(`externalAccessWritePaths`: Setzen, Zurücknehmen, Ablauflauf). Eine neue Klasse in `io.opaa.library`,
-die die Freigabe ändert, fiele keiner der Prüfungen auf. Ebenso ginge es am Strukturtest vorbei über
-direktes SQL, eine Datenbankmigration oder Reflection.
+abhängen darf. Am Strukturtest vorbei ginge es über direktes SQL, eine Datenbankmigration oder
+Reflection; diese Wege sieht keine der Prüfungen.
 
 Für den **Bestand** einer Bibliothek — das Anlegen und Löschen der Zeile selbst — gilt weder das eine noch
 das andere: Der Test gegen den Anwendungskontext lässt das Bibliotheks-Repository bewusst aus, weil es
