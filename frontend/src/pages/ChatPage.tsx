@@ -29,6 +29,8 @@ export default function ChatPage() {
   const isLoading = useChatStore((s) => s.isLoading)
   const isLoadingChat = useChatStore((s) => s.isLoadingChat)
   const error = useChatStore((s) => s.error)
+  const returnedQuestion = useChatStore((s) => s.returnedQuestion)
+  const clearReturnedQuestion = useChatStore((s) => s.clearReturnedQuestion)
   const sendMessage = useChatStore((s) => s.sendMessage)
   const loadChat = useChatStore((s) => s.loadChat)
   const startNewChat = useChatStore((s) => s.startNewChat)
@@ -198,6 +200,13 @@ export default function ChatPage() {
     )
   }
 
+  // A returned question belongs to the chat (or the new-chat view) it was refused in; the store may
+  // still hold another view for a render while the route has already moved on.
+  const returnedQuestionForView =
+    returnedQuestion && (isNewChat ? storeChatId === null : routeChatId === storeChatId)
+      ? returnedQuestion
+      : null
+
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', flexGrow: 1, minHeight: 0 }}>
       {/* Static heading text on purpose: the chat title falls back to the first question, and a
@@ -337,6 +346,8 @@ export default function ChatPage() {
       <ChatInput
         onSend={(message, usedPrompt) => sendMessage(message, usedPrompt)}
         disabled={isLoading}
+        returnedQuestion={returnedQuestionForView}
+        onReturnedQuestionHandled={clearReturnedQuestion}
       />
     </Box>
   )
