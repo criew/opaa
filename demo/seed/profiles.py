@@ -96,6 +96,14 @@ class LibraryDef:
     # fails a run that ended COMPLETED with fewer documents - without it, a run against a bucket
     # the "objectstore-seed" step has not finished filling reports success with nothing indexed.
     expected_documents_dir: Path | None = None
+    # The account whose session creates, fills and indexes the library; it holds OWNER. With
+    # owner_group (a ProviderGroupDef name, owner_key among its members) the library belongs to
+    # that group instead, which holds MANAGER - and so must get no VIEWER grant of its own.
+    owner_key: str = "admin"
+    owner_group: str | None = None
+    # "Öffentlich": a VIEWER grant to "Alle Konten". Everything else is closed and reaches exactly
+    # the owner, viewer_keys and the groups that carry the library in their library_grants.
+    all_accounts_viewer: bool = False
 
 
 @dataclass(frozen=True)
@@ -184,6 +192,16 @@ class PromptLibraryDef:
 
 
 @dataclass(frozen=True)
+class FavoritesDef:
+    """One account's favorites, set through its own session. A favorite needs read access and is
+    visible to that account alone; the seed only adds, never removes one."""
+
+    user_key: str
+    library_names: tuple[str, ...] = field(default_factory=tuple)
+    prompt_library_names: tuple[str, ...] = field(default_factory=tuple)
+
+
+@dataclass(frozen=True)
 class Profile:
     name: str
     auth_mode: str  # "keycloak" or "dev"
@@ -199,6 +217,7 @@ class Profile:
     # Directories of prepared chat transcripts (chats.py), imported after indexing so their
     # sources resolve.
     chat_sets: tuple[Path, ...] = field(default_factory=tuple)
+    favorites: tuple[FavoritesDef, ...] = field(default_factory=tuple)
 
     def all_users(self) -> tuple[UserDef, ...]:
         return (self.admin, *self.users)
@@ -244,10 +263,10 @@ _DEMO_ANDREA = UserDef(
     password=DEMO_PASSWORD,
 )
 
-# Prompt libraries of the demo. Both belong to Andrea (Amtsleitung): the Textbausteine reach every
-# account through "Alle Konten"; her own Vorlagen stay without any further grant, so Maria, Selin
-# and Thomas neither use nor find them. Every prompt asks
-# for what the Rheinfurt corpus answers - Leistungen, Satzungen, Pressemitteilungen, Ratsinformationen.
+# Prompt libraries of the demo. Andrea's Textbausteine reach every account through "Alle Konten";
+# her own Vorlagen and Thomas' Arbeitshilfen stay without any further grant, so nobody else uses or
+# finds them. Every prompt asks for what the Rheinfurt corpus answers - Leistungen, Satzungen,
+# Pressemitteilungen, Ratsinformationen.
 _DEMO_PROMPT_LIBRARIES = (
     PromptLibraryDef(
         name="Textbausteine Bürgerbüro",
@@ -263,6 +282,7 @@ _DEMO_PROMPT_LIBRARIES = (
             "Kfz-Zulassung",
             "Amtsleitung Bürgerbüro",
             "Dienstbesprechung Bürgerbüro",
+            "Infotheke Bürgerbüro",
         ),
         prompts=(
             PromptDef(
@@ -494,6 +514,73 @@ _DEMO_PROMPT_LIBRARIES = (
             ),
         ),
     ),
+    PromptLibraryDef(
+        name="Arbeitshilfen Kfz-Zulassung",
+        description="Persönliche Arbeitshilfen von Thomas Klein für den Schalter der Kfz-Zulassung.",
+        owner_key="thomas",
+        space_names=("Kfz-Zulassung",),
+        prompts=(
+            PromptDef(
+                name="auskunft-sonderkennzeichen",
+                title="Auskunft zu einem Sonderkennzeichen",
+                description="Voraussetzungen, Unterlagen, Gebühr und Gültigkeit je Kennzeichenart.",
+                text=(
+                    "Erkläre einer Fahrzeughalterin oder einem Fahrzeughalter, wie bei der "
+                    "Kfz-Zulassung Rheinfurt ein {{kennzeichenart}} beantragt wird: "
+                    "Voraussetzungen, mitzubringende Unterlagen, Gebühr und Gültigkeit. Stütze "
+                    "dich auf die Leistungsbeschreibungen der Kfz-Zulassung und die "
+                    "Verwaltungsgebührensatzung der Stadt Rheinfurt und schließe mit „Mit "
+                    "freundlichen Grüßen, {{USER_NAME}}, Kfz-Zulassung Rheinfurt“."
+                ),
+                variables=(
+                    PromptVariableDef(
+                        name="kennzeichenart",
+                        label="Kennzeichenart",
+                        type="SELECT",
+                        default_value="Saisonkennzeichen",
+                        options=(
+                            "Saisonkennzeichen",
+                            "Wechselkennzeichen",
+                            "Kurzzeitkennzeichen",
+                            "E-Kennzeichen",
+                            "historisches Kennzeichen (H-Kennzeichen)",
+                        ),
+                    ),
+                ),
+                sort_order=10,
+            ),
+            PromptDef(
+                name="checkliste-umschreibung",
+                title="Checkliste Umschreibung",
+                description="Checkliste für eine Umschreibung am Schalter, mit Besonderheiten des Falls.",
+                text=(
+                    "Erstelle eine Checkliste für die Umschreibung eines Fahrzeugs {{herkunft}} am "
+                    "Schalter der Kfz-Zulassung Rheinfurt: mitzubringende Unterlagen, Gebühren, ob "
+                    "das Kennzeichen wechselt, und typische Gründe, aus denen ein Antrag "
+                    "zurückgewiesen wird. Besonderheiten des Falls: {{besonderheiten}}. Belege "
+                    "jeden Punkt mit der Leistungsbeschreibung und kennzeichne, wo die Quellen "
+                    "keine Aussage treffen."
+                ),
+                variables=(
+                    PromptVariableDef(
+                        name="herkunft",
+                        label="Umschreibung",
+                        type="SELECT",
+                        default_value="von außerhalb nach Rheinfurt",
+                        options=("innerhalb Rheinfurts", "von außerhalb nach Rheinfurt"),
+                    ),
+                    PromptVariableDef(
+                        name="besonderheiten",
+                        label="Besonderheiten des Falls",
+                        type="TEXTAREA",
+                        required=False,
+                        default_value="Das Fahrzeug ist geleast.",
+                    ),
+                ),
+                sort_order=20,
+            ),
+        ),
+    ),
 )
 
 # The knowledge of each Sachgebiet - what its space and the personal spaces of its accounts carry.
@@ -551,8 +638,9 @@ DEMO_PROFILE = Profile(
             library_names=_AMTSLEITUNG_LIBRARIES,
         ),
         # Its only individual member is Andrea as owner; Maria, Selin and Thomas join exclusively
-        # through the group "Sachbearbeitung Bürgerbüro" (step 6). It carries only the libraries
-        # every fach account reads, so a question asked here never reaches past an account's rights.
+        # through the group "Sachbearbeitung Bürgerbüro" (step 6). Besides what every fach account
+        # reads it carries the Leistungen of both Sachgebiete: each member reads only those of
+        # their own, so the space shows them that not all of its content is readable for them.
         SpaceDef(
             name="Dienstbesprechung Bürgerbüro",
             description=(
@@ -561,8 +649,24 @@ DEMO_PROFILE = Profile(
             ),
             owner_key="andrea",
             library_names=(
+                "Leistungen Meldewesen & Ausweise",
+                "Leistungen Kfz-Zulassung",
                 "Satzungen & Gebührenordnungen",
                 "Pressemitteilungen Stadt Rheinfurt",
+                "Ratsinformationen Stadt Rheinfurt",
+            ),
+        ),
+        # Only public knowledge: every account of the Keycloak group "Bürgerbüro Rheinfurt" is a
+        # member (step 6) and reads everything associated here.
+        SpaceDef(
+            name="Infotheke Bürgerbüro",
+            description=(
+                "Auskünfte am Empfang des Bürgerbüros aus den öffentlichen Satzungen und "
+                "Ratsbeschlüssen der Stadt Rheinfurt."
+            ),
+            owner_key="selin",
+            library_names=(
+                "Satzungen & Gebührenordnungen",
                 "Ratsinformationen Stadt Rheinfurt",
             ),
         ),
@@ -573,7 +677,10 @@ DEMO_PROFILE = Profile(
             description="Leistungsbeschreibungen rund um Meldewesen und Ausweisdokumente, dazu die Sprechtage des mobilen Bürgerbüros.",
             source_type="HTTP_DIRECTORY",
             source_url="http://demo-corpus/leistungen-meldewesen-ausweise/",
-            # Maria and Selin read these through the Keycloak group "Meldewesen".
+            # Owned by the Keycloak group "Meldewesen" - the Sachgebiet maintains its own
+            # descriptions; Maria creates it as a member, Selin reads it through the group.
+            owner_key="maria",
+            owner_group="Meldewesen",
             viewer_keys=("andrea",),
         ),
         LibraryDef(
@@ -589,7 +696,8 @@ DEMO_PROFILE = Profile(
             description="Verwaltungsgebühren- und weitere städtische Satzungen mit Gebührentabellen.",
             source_type="HTTP_DIRECTORY",
             source_url="http://demo-corpus/satzungen-gebuehrenordnungen/",
-            # Every fach account reads these through the Keycloak group "Bürgerbüro Rheinfurt".
+            owner_key="andrea",
+            all_accounts_viewer=True,
             viewer_keys=(),
         ),
         LibraryDef(
@@ -597,20 +705,23 @@ DEMO_PROFILE = Profile(
             description="Pressemitteilungen der Stadt Rheinfurt (Sperrungen, Öffnungszeiten, Veranstaltungen).",
             source_type="RSS_FEED",
             source_url="http://presse.stadt-rheinfurt.example/rss.xml",
-            # Selin and Thomas read these only through the group "Presseverteiler Bürgerbüro".
-            viewer_keys=("maria", "andrea"),
+            # Andrea stewards the press distribution list; Selin and Thomas read these only
+            # through the group "Presseverteiler Bürgerbüro".
+            owner_key="andrea",
+            viewer_keys=("maria",),
         ),
         LibraryDef(
             name="Interne Dienstanweisungen Meldewesen",
             description="Dienstanweisungen, Eskalationsregeln, interne FAQ, Schulungsfolien und Rundschreiben Meldewesen.",
             source_type="UPLOAD",
-            viewer_keys=("maria", "selin", "andrea"),
+            owner_key="maria",
+            viewer_keys=("selin", "andrea"),
             upload_dir=DEMO_CORPUS_ROOT / "interne-dienstanweisungen-meldewesen",
         ),
         # The S3 library (#1383, ADR-0027): reads the demo stack's object store (service "objectstore",
         # path-style over the Compose network), bucket "rheinfurt-archiv" under the prefix the
         # "objectstore-seed" init step mirrors demo/corpus/ratsinformationen/ to. Public council
-        # information, readable by every fach account like the press releases.
+        # information, released to "Alle Konten".
         LibraryDef(
             name="Ratsinformationen Stadt Rheinfurt",
             description="Niederschriften und Beschlussvorlagen des Stadtrats, des Hauptausschusses und des Bauausschusses, nach Jahrgang und Gremium abgelegt; Vorlagen mit Anlagen liegen als Versandmail mit PDF-Anhängen vor.",
@@ -621,7 +732,7 @@ DEMO_PROFILE = Profile(
                 "pathStyle": True,
                 "scopes": [{"bucket": "rheinfurt-archiv", "prefix": "ratsinformationen/"}],
             },
-            # Every fach account reads these through the Keycloak group "Bürgerbüro Rheinfurt".
+            all_accounts_viewer=True,
             viewer_keys=(),
             expected_documents_dir=DEMO_CORPUS_ROOT / "ratsinformationen",
         ),
@@ -720,7 +831,7 @@ DEMO_PROFILE = Profile(
         PersonalSpaceDef(
             owner_key="thomas",
             library_names=(*_KFZ_LIBRARIES, "Interne Dienstanweisungen Meldewesen"),
-            prompt_library_names=("Textbausteine Bürgerbüro",),
+            prompt_library_names=("Textbausteine Bürgerbüro", "Arbeitshilfen Kfz-Zulassung"),
         ),
         PersonalSpaceDef(
             owner_key="andrea",
@@ -728,18 +839,19 @@ DEMO_PROFILE = Profile(
             prompt_library_names=("Textbausteine Bürgerbüro", "Vorlagen Amtsleitung"),
         ),
     ),
-    # The three groups of keycloak/realm-export.json, brought in by the directory sync. Each one
-    # carries the rights of its Sachgebiet on its own: no member also holds them directly.
+    # The three groups of keycloak/realm-export.json, brought in by the directory sync. "Meldewesen"
+    # owns the Leistungen of its Sachgebiet (LibraryDef.owner_group), "Kfz-Zulassung" carries the
+    # only read right Thomas holds on his; "Bürgerbüro Rheinfurt" brings every account into the
+    # Infotheke, whose public knowledge needs no group grant.
     provider_groups=(
         ProviderGroupDef(
             name="Bürgerbüro Rheinfurt",
             member_keys=("admin", "maria", "selin", "thomas", "andrea"),
-            library_grants=("Satzungen & Gebührenordnungen", "Ratsinformationen Stadt Rheinfurt"),
+            space_membership=("Infotheke Bürgerbüro", "MEMBER"),
         ),
         ProviderGroupDef(
             name="Meldewesen",
             member_keys=("maria", "selin"),
-            library_grants=("Leistungen Meldewesen & Ausweise",),
             space_membership=("Meldewesen & Ausweise", "MEMBER"),
         ),
         ProviderGroupDef(
@@ -754,6 +866,32 @@ DEMO_PROFILE = Profile(
         interval_minutes=60,
     ),
     chat_sets=(DEMO_CHATS_ROOT / "amtsleitung-buergerbuero",),
+    # Each list fits its person's daily work and mixes public and closed assets; Selin, new in the
+    # Sachgebiet, and the admin account have none yet.
+    favorites=(
+        FavoritesDef(
+            user_key="maria",
+            library_names=(
+                "Interne Dienstanweisungen Meldewesen",
+                "Leistungen Meldewesen & Ausweise",
+                "Satzungen & Gebührenordnungen",
+            ),
+            prompt_library_names=("Textbausteine Bürgerbüro",),
+        ),
+        FavoritesDef(
+            user_key="thomas",
+            library_names=("Leistungen Kfz-Zulassung", "Ratsinformationen Stadt Rheinfurt"),
+            prompt_library_names=("Arbeitshilfen Kfz-Zulassung",),
+        ),
+        FavoritesDef(
+            user_key="andrea",
+            library_names=(
+                "Pressemitteilungen Stadt Rheinfurt",
+                "Ratsinformationen Stadt Rheinfurt",
+            ),
+            prompt_library_names=("Vorlagen Amtsleitung",),
+        ),
+    ),
 )
 
 _E2E_ADMIN = UserDef(
