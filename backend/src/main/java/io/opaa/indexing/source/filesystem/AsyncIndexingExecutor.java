@@ -203,10 +203,10 @@ public class AsyncIndexingExecutor implements SourceIndexingExecutor {
    *
    * <p>{@code documentDir} and {@code file} are both already absolute and {@link Path#normalize()
    * normalize}d - {@code file} because {@link DocumentService#discoverFiles} only ever returns
-   * entries {@link java.nio.file.Files#walk} found physically under {@code documentDir} (walked
-   * without {@code FOLLOW_LINKS} - a symlink is a leaf, never traversed into), so a defensive
-   * {@link Path#startsWith} guard is enough to catch an unexpected escape rather than needing to
-   * resolve symlinks up front.
+   * entries {@link java.nio.file.Files#walkFileTree} found physically under {@code documentDir}
+   * (walked without {@code FOLLOW_LINKS} - a symlink is a leaf, never traversed into), so a
+   * defensive {@link Path#startsWith} guard is enough to catch an unexpected escape rather than
+   * needing to resolve symlinks up front.
    *
    * @return {@code null} for a file directly in {@code documentDir} (the library's root), when
    *     {@code file} unexpectedly does not sit under {@code documentDir} at all, or when a
