@@ -8,6 +8,7 @@ import static org.awaitility.Awaitility.await;
 import com.sun.net.httpserver.HttpServer;
 import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.DocumentStatus;
+import io.opaa.api.types.ExternalAccessState;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.api.types.SystemRole;
 import io.opaa.asset.AssetGrantService;
@@ -47,6 +48,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
@@ -218,6 +220,13 @@ class LibraryDocumentServiceIntegrationTest {
     assertThat(updatedAt()).as("an upload").isAfter(past);
     awaitDocumentStatus(uploaded.document().getId(), DocumentStatus.INDEXED);
 
+    KnowledgeLibrary released = libraryRepository.findById(libraryId).orElseThrow();
+    released.updateExternalAccess(
+        ExternalAccessState.ACTIVE,
+        Instant.now().plus(30, ChronoUnit.DAYS),
+        editor.getId(),
+        Instant.now());
+    libraryRepository.saveAndFlush(released);
     setUpdatedAt(past);
     KnowledgeLibrary library = libraryRepository.findById(libraryId).orElseThrow();
     library.markExternalAccessReminderSent(Instant.now());
