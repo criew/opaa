@@ -147,6 +147,14 @@ public class AsyncIndexingExecutor implements SourceIndexingExecutor {
               mismatch.file().getFileName().toString());
     }
 
+    for (Path unreadable : discovered.unreadable()) {
+      run.events()
+          .record(
+              IndexingEventCategory.UNREACHABLE,
+              "Nicht lesbar, übersprungen",
+              documentDir.relativize(unreadable).toString());
+    }
+
     run.progress().setTotal(discovered.totalFound());
     run.progress().report();
 
@@ -180,6 +188,10 @@ public class AsyncIndexingExecutor implements SourceIndexingExecutor {
     for (Path rejected : discovered.rejected()) {
       run.markPresent(rejected.toAbsolutePath().toString());
     }
+    // What lies below an unreadable entry is unknown, so absence proves nothing: no reconciliation.
+    if (!discovered.unreadable().isEmpty()) {
+      return ListingOutcome.incomplete(List.of());
+    }
     run.afterReconciliation(reconciled -> folderMirror.prune());
     return ListingOutcome.complete();
   }
@@ -191,10 +203,10 @@ public class AsyncIndexingExecutor implements SourceIndexingExecutor {
    *
    * <p>{@code documentDir} and {@code file} are both already absolute and {@link Path#normalize()
    * normalize}d - {@code file} because {@link DocumentService#discoverFiles} only ever returns
-   * entries {@link java.nio.file.Files#walk} found physically under {@code documentDir} (walked
-   * without {@code FOLLOW_LINKS} - a symlink is a leaf, never traversed into), so a defensive
-   * {@link Path#startsWith} guard is enough to catch an unexpected escape rather than needing to
-   * resolve symlinks up front.
+   * entries {@link java.nio.file.Files#walkFileTree} found physically under {@code documentDir}
+   * (walked without {@code FOLLOW_LINKS} - a symlink is a leaf, never traversed into), so a
+   * defensive {@link Path#startsWith} guard is enough to catch an unexpected escape rather than
+   * needing to resolve symlinks up front.
    *
    * @return {@code null} for a file directly in {@code documentDir} (the library's root), when
    *     {@code file} unexpectedly does not sit under {@code documentDir} at all, or when a

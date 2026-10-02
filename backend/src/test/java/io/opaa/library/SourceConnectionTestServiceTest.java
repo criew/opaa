@@ -30,6 +30,7 @@ import io.opaa.knowledge.LibraryAccessService;
 import io.opaa.knowledge.SourceType;
 import io.opaa.permission.CapabilityService;
 import io.opaa.test.SourceTypes;
+import io.opaa.test.UnreadableDirectory;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.URI;
@@ -125,6 +126,35 @@ class SourceConnectionTestServiceTest {
     assertThat(response.reachable()).isTrue();
     assertThat(response.documentCount()).isEqualTo(2L);
     assertThat(response.message()).contains("2").contains("Dokumente");
+  }
+
+  @Test
+  void filesystemSkipsAnUnreadableSubdirectoryAndReportsItsCount(@TempDir Path dir)
+      throws IOException {
+    // regression guard for #2124: an unlistable subdirectory used to escape as a 500
+    when(filesystemAllowlist.isConfigured()).thenReturn(true);
+    when(filesystemAllowlist.isAllowed(dir.toString())).thenReturn(true);
+    Files.writeString(dir.resolve("a.txt"), "hello");
+    Path locked = Files.createDirectory(dir.resolve("gesperrt"));
+    Files.writeString(locked.resolve("b.txt"), "hidden");
+
+    SourceConnectionTestResult response;
+    try (UnreadableDirectory ignored = UnreadableDirectory.of(locked)) {
+      response =
+          service.test(
+              sourceConnectionTest()
+                  .sourceType(SourceTypes.FILESYSTEM)
+                  .sourcePath(dir.toString())
+                  .build(),
+              caller);
+    }
+
+    assertThat(response.reachable()).isTrue();
+    assertThat(response.documentCount()).isEqualTo(1L);
+    assertThat(response.message())
+        .isEqualTo(
+            "Verzeichnis erreichbar, 1 Dokument gefunden; 1 nicht lesbarer Eintrag übersprungen.")
+        .doesNotContain("gesperrt");
   }
 
   @Test

@@ -46,6 +46,7 @@ import io.opaa.metadata.EmbeddingRateEstimator;
 import io.opaa.observability.IndexingMetrics;
 import io.opaa.test.ProductionDocumentFormats;
 import io.opaa.test.SourceTypes;
+import io.opaa.test.UnreadableDirectory;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -296,6 +297,43 @@ class AsyncIndexingExecutorTest {
 
     verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(0), anyInt());
     verify(indexingRunEventRepository, timeout(2000).times(0)).save(any());
+  }
+
+  @Test
+  void anUnreadableSubdirectoryIsSkippedAndItsBestandKeptWhileReadableFilesAreIndexed()
+      throws IOException {
+    // regression guard for #2124: the run completes instead of failing, and since the listing is
+    // incomplete, the documents below the unreadable directory are not taken for vanished
+    Path readable = documentDir.resolve("lesbar.txt");
+    Files.writeString(readable, "content");
+    Path locked = Files.createDirectory(documentDir.resolve("gesperrt"));
+    Path hidden = locked.resolve("verborgen.txt");
+    Files.writeString(hidden, "content");
+    Document hiddenDoc =
+        filesystemDocument("verborgen.txt", hidden.toAbsolutePath().toString(), null);
+    when(documentRepository.findByLibraryIdAndSourceType(library.getId(), SourceTypes.FILESYSTEM))
+        .thenReturn(List.of(hiddenDoc));
+    when(documentIngestService.ingest(
+            DocumentIngests.that().file().file(readable).in(library).inFolder(null).match(), any()))
+        .thenReturn(DocumentIngestResult.PROCESSED);
+    UUID jobId = UUID.randomUUID();
+
+    try (UnreadableDirectory ignored = UnreadableDirectory.of(locked)) {
+      executor.execute(jobId, library, IndexingRunMode.FULL);
+    }
+
+    verify(indexingJobService, timeout(2000)).completeJob(eq(jobId), eq(1), eq(0), eq(0), anyInt());
+    verify(indexingJobService, never()).failJob(any(), any());
+    verify(indexingRunEventRepository)
+        .save(
+            argThat(
+                event ->
+                    event.getCategory() == IndexingEventCategory.UNREACHABLE
+                        && "gesperrt".equals(event.getReference())));
+    verify(indexingJobService).recordListingAssessment(jobId, false, List.of());
+    verify(staleDocumentCleanupService, never())
+        .reconcile(any(), any(), any(), any(), any(), any(), any());
+    verify(documentRepository, never()).delete(any(Document.class));
   }
 
   @Test

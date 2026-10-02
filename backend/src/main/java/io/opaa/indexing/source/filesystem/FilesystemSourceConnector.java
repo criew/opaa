@@ -20,6 +20,7 @@ import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.ServedContentTypes;
 import io.opaa.knowledge.SourceType;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Optional;
@@ -184,14 +185,23 @@ public class FilesystemSourceConnector implements SourceConnector, OriginalAcces
       DocumentService.DiscoveredFiles discovered =
           documentService.discoverFiles(directory, supportedFormats);
       long count = discovered.supported().size();
+      int unreadable = discovered.unreadable().size();
       return reachable(
           "Verzeichnis erreichbar, "
               + count
               + " "
               + (count == 1 ? "Dokument" : "Dokumente")
-              + " gefunden.",
+              + " gefunden"
+              + (unreadable == 0
+                  ? ""
+                  : "; "
+                      + unreadable
+                      + (unreadable == 1
+                          ? " nicht lesbarer Eintrag übersprungen"
+                          : " nicht lesbare Einträge übersprungen"))
+              + ".",
           count);
-    } catch (IOException e) {
+    } catch (IOException | UncheckedIOException e) {
       log.warn("Filesystem source test failed to read {}: {}", sourcePath, e.getMessage());
       return unreachable("Das Verzeichnis konnte nicht gelesen werden.");
     }

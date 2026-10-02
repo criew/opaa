@@ -71,6 +71,11 @@ auf den Korpus ist der falsche Weg, wenn ihn ein Fachverfahren befüllt — das 
 Rechte; Einzelheiten im [Deployment-Kapitel](deployment.md), Abschnitt „Nicht-root-Betrieb des
 Backend-Containers". Ein Netzlaufwerk sollte schreibgeschützt eingebunden werden.
 
+Ein **Unterverzeichnis**, das der Prozess nicht betreten darf, wird übersprungen, statt den Lauf
+abzubrechen. Es erscheint im Protokoll als „Nicht lesbar, übersprungen" mit seinem Pfad relativ zum
+Verzeichnispfad; „Verbindung testen" nennt nur die Anzahl solcher Einträge. Typisch sind
+Verwaltungsordner eingebundener Cloud-Laufwerke, etwa `.shortcut-targets-by-id` bei Google Drive.
+
 ## 4. Schutzmechanismen
 
 ### 4.1 Freigabeliste für Pfade
@@ -110,9 +115,11 @@ Der Lauf durchläuft den Baum rekursiv und betrachtet alle regulären Dateien.
   unterstützt mit Hinweis, dass Endung und Inhalt nicht zusammenpassen.
 - **Keine definierte Reihenfolge.** Die Dateien werden in der Reihenfolge verarbeitet, in der
   das Dateisystem sie liefert.
-- **Existiert der Pfad nicht** oder ist er kein Verzeichnis, scheitert der Lauf sofort. Das ist
-  bewusst so, damit ein nicht eingebundenes Netzlaufwerk nie als „leerer, erfolgreicher Bestand"
-  gewertet wird und Dokumente löscht.
+- **Existiert der Pfad nicht**, ist er kein Verzeichnis oder lässt er sich selbst nicht auflisten,
+  scheitert der Lauf sofort. Das ist bewusst so, damit ein nicht eingebundenes Netzlaufwerk nie
+  als „leerer, erfolgreicher Bestand" gewertet wird und Dokumente löscht.
+- **Nicht lesbare Unterverzeichnisse** werden übersprungen (Abschnitt 3). Die Aufzählung gilt dann
+  als unvollständig.
 
 ## 6. Änderungserkennung
 
@@ -165,6 +172,8 @@ Nicht gelöscht wird:
 
 - wenn der Lauf gescheitert ist, etwa weil das Verzeichnis nicht existiert,
 - wenn der Lauf keine Dateien gefunden hat,
+- wenn der Lauf ein nicht lesbares Unterverzeichnis übersprungen hat — dann bleibt der ganze
+  Bestand stehen, und auch die Ordner werden nicht aufgeräumt,
 - ein Anhang, dessen Mail unverändert und daher nicht neu ausgepackt wurde.
 
 ## 10. Protokolleinträge dieses Konnektors
@@ -174,6 +183,7 @@ Nicht gelöscht wird:
 | Allowlist | Verzeichnispfad liegt außerhalb der vom Betrieb freigegebenen Verzeichnisse | Freigabeliste verletzt, Lauf endet sofort |
 | Format nicht unterstützt | Dateiformat wird nicht unterstützt | Inhalt nicht zugelassen oder Datei nicht lesbar |
 | Formatabweichung | Dateiendung passt nicht zum erkannten Inhalt (erkannt: …) | wird trotzdem indiziert |
+| nicht erreichbar | Nicht lesbar, übersprungen | Unterverzeichnis darf nicht betreten werden; Aufzählung unvollständig |
 | abgewiesen | Speicherkontingent-Meldung | Kontingent der Bibliothek erreicht |
 | abgewiesen | kein extrahierbarer Text | typisch Scan-PDF |
 | Fehler | Verarbeitung fehlgeschlagen | Pipeline-Fehler oder Ausnahme |
@@ -189,6 +199,7 @@ Anhangs-Einträge (nicht unterstützt, Formatabweichung, nicht lesbar, Verarbeit
 |---|---|
 | Netzlaufwerk nicht eingebunden, Pfad fehlt | Lauf `FAILED` mit Fehlermeldung, nichts gelöscht |
 | Verzeichnis leer | Lauf erfolgreich mit null Dokumenten, nichts gelöscht |
+| Unterverzeichnis nicht lesbar | übersprungen, übrige Dateien werden indiziert, nichts gelöscht |
 | Freigabeliste nachträglich verengt | nächster Lauf endet sofort mit „Allowlist" |
 | Datei zwischen Aufzählung und Verarbeitung gelöscht oder gesperrt | Eintrag „Format nicht unterstützt" oder „Fehler", Lauf läuft weiter |
 | Datei nach Normalisierung außerhalb des Quellpfads | Warnung im Log, Datei wird der Wurzel zugeordnet |
