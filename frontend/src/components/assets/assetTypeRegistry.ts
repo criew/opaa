@@ -18,6 +18,11 @@ export interface AssetTypeDefinition {
   /** One sentence under the label in the type choice. */
   description: string
   Icon: SvgIconComponent
+  /**
+   * The path prefix of the type's own pages (detail and wizard). They render in the global frame
+   * and count as the catalog's scope in the rail.
+   */
+  routePrefix: string
   detailRoute: (assetId: string) => string
   /** Where the type's own creation wizard starts. */
   createRoute: string
@@ -29,8 +34,9 @@ export interface AssetTypeDefinition {
 
 /**
  * The asset types in the order of the catalog's filter and the type choice. A new type needs one
- * entry here to appear in the catalog, its type filter and under "Neu" - no rail entry, no
- * overview page of its own.
+ * entry here to appear in the catalog, its type filter and under "Neu", and for its pages to
+ * render in the global frame under the rail's "Katalog" - no rail entry, no overview page of its
+ * own. Its routes themselves still need registering in App.tsx.
  */
 export const ASSET_TYPES: AssetTypeDefinition[] = [
   {
@@ -42,6 +48,7 @@ export const ASSET_TYPES: AssetTypeDefinition[] = [
     description:
       'Dokumente, die der Chat durchsucht – hochgeladen oder aus einer Quelle eingelesen.',
     Icon: MenuBookOutlinedIcon,
+    routePrefix: '/libraries',
     detailRoute: (assetId) => `/libraries/${assetId}`,
     createRoute: '/libraries/new',
     createCapabilities: ['CREATE_LIBRARY', 'CREATE_CONNECTOR_LIBRARY'],
@@ -55,6 +62,7 @@ export const ASSET_TYPES: AssetTypeDefinition[] = [
     noun: 'Prompt-Bibliothek',
     description: 'Wiederkehrende Formulierungshilfen mit Platzhaltern, im Chat per „/“ einsetzbar.',
     Icon: TextSnippetOutlinedIcon,
+    routePrefix: '/prompts',
     detailRoute: (assetId) => promptLibraryRoute(assetId),
     createRoute: '/prompts/new',
     createCapabilities: ['CREATE_PROMPT_LIBRARY'],
@@ -88,6 +96,11 @@ export function creatableAssetTypes(
   return ASSET_TYPES.filter((definition) =>
     definition.createCapabilities.some((capability) => !isMissing(capability)),
   )
+}
+
+/** The catalog and the pages of every asset type - the rail's "Katalog" scope. */
+export function catalogScopePrefixes(): string[] {
+  return [CATALOG_ROUTE, ...ASSET_TYPES.map((definition) => definition.routePrefix)]
 }
 
 /** The catalog, narrowed to one type when given. */

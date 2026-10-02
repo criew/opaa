@@ -6,8 +6,10 @@ import {
   createLibraryWithDocument,
   expectCitedExclusively,
   expectCitedSource,
+  expectNoCatalogMatch,
   gotoLibraries,
   gotoLibraryDetail,
+  searchLibraries,
   shareLibraryWithPerson,
   startFreshChat,
 } from '../fixtures/chat'
@@ -132,7 +134,7 @@ test.describe.serial('Wissensbibliotheken: Upload, Freigabe, rechtebewusste Such
     // regularUserPage having done it, the admin's picker would never list dev-user at all.
     await shareLibraryWithPerson(adminPage, LIBRARY_NAME, 'Dev User', /Dev User/)
 
-    await gotoLibraries(bPage)
+    await searchLibraries(bPage, LIBRARY_NAME)
     await expect(bPage.getByText(LIBRARY_NAME, { exact: true })).toBeVisible()
 
     await startFreshChat(bPage)
@@ -143,7 +145,8 @@ test.describe.serial('Wissensbibliotheken: Upload, Freigabe, rechtebewusste Such
   test('4. Negativfall: keine Freigabe, kein Treffer', async ({ outsiderPage: cPage }) => {
     await uploadOwnDocument(cPage, OWN_LIBRARY_NAME_OUTSIDER)
 
-    await gotoLibraries(cPage)
+    await searchLibraries(cPage, LIBRARY_NAME)
+    await expectNoCatalogMatch(cPage, LIBRARY_NAME)
     await expect(cPage.getByText(LIBRARY_NAME, { exact: true })).toHaveCount(0)
 
     await startFreshChat(cPage)
@@ -173,7 +176,8 @@ test.describe.serial('Wissensbibliotheken: Upload, Freigabe, rechtebewusste Such
 
     await uploadOwnDocument(bPage, OWN_LIBRARY_NAME_REGULAR)
 
-    await gotoLibraries(bPage)
+    await searchLibraries(bPage, LIBRARY_NAME)
+    await expectNoCatalogMatch(bPage, LIBRARY_NAME)
     await expect(bPage.getByText(LIBRARY_NAME, { exact: true })).toHaveCount(0)
 
     await startFreshChat(bPage)
@@ -200,7 +204,7 @@ test.describe.serial('Wissensbibliotheken: Upload, Freigabe, rechtebewusste Such
     await adminPage.getByRole('button', { name: 'Freigeben' }).last().click()
     await expect(adminPage.getByText(GROUP_NAME)).toBeVisible()
 
-    await gotoLibraries(cPage)
+    await searchLibraries(cPage, LIBRARY_NAME)
     await expect(cPage.getByText(LIBRARY_NAME, { exact: true })).toBeVisible()
 
     await startFreshChat(cPage)

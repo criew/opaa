@@ -97,7 +97,8 @@ Schritt „Freigaben":
 
 Anlegen darf, wer das Anlegerecht **„Prompt-Bibliotheken anlegen"** hat; ausgeliefert ist es an
 „Alle Konten" ([Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), Abschnitt 9).
-Fehlt es, nennt der Assistent es beim Namen, statt die Funktion zu verstecken. Kann eine
+Fehlt es, bietet „Neu" im Katalog die Art „Prompts" nicht an; wer den Assistenten direkt
+aufruft, liest das fehlende Recht beim Namen. Kann eine
 vorgemerkte Rolle nicht erteilt werden, ist die Bibliothek trotzdem angelegt: Der Assistent führt
 auf ihre Detailseite, nennt in einem Hinweis die betroffenen Personen oder Gruppen, und die Rolle
 lässt sich dort im Reiter „Verwaltung" unter „Berechtigungen" nachtragen. Ein zweites Anlegen

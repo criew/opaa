@@ -1,18 +1,13 @@
+import { catalogScopePrefixes } from '../components/assets/assetTypeRegistry'
+
 /**
  * Route prefixes that render inside the global frame (#787, mockup 2b) - the navy space
  * column disappears there (AppShell checks this). Every prefix must correspond to a
- * GlobalAreaLayout route in App.tsx and vice versa; the coupling is manual. Lives outside
- * GlobalAreaLayout.tsx so that file only exports components
- * (react-refresh/only-export-components).
+ * GlobalAreaLayout route in App.tsx and vice versa; the catalog and the asset types' pages come
+ * from the type registry, the rest is listed here. Lives outside GlobalAreaLayout.tsx so that file
+ * only exports components (react-refresh/only-export-components).
  */
-const GLOBAL_AREA_PREFIXES = [
-  '/admin',
-  '/settings',
-  '/libraries',
-  '/prompts',
-  '/catalog',
-  '/revision',
-]
+const OTHER_GLOBAL_AREA_PREFIXES = ['/admin', '/settings', '/revision']
 
 /**
  * Views where no space is selected yet (#809): the overview of all spaces and the create
@@ -28,6 +23,8 @@ export function isGlobalAreaPath(pathname: string): boolean {
   const path = pathname.replace(/\/+$/, '') || '/'
   return (
     GLOBAL_AREA_EXACT_PATHS.includes(path) ||
-    GLOBAL_AREA_PREFIXES.some((prefix) => path === prefix || path.startsWith(`${prefix}/`))
+    [...OTHER_GLOBAL_AREA_PREFIXES, ...catalogScopePrefixes()].some(
+      (prefix) => path === prefix || path.startsWith(`${prefix}/`),
+    )
   )
 }

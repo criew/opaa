@@ -183,6 +183,33 @@ export async function gotoLibraries(page: Page): Promise<void> {
 }
 
 /**
+ * Opens the catalog narrowed to knowledge libraries and searches `query` there. Presence and
+ * absence checks go through the search: the catalog pages its result, so a name beyond the first
+ * page would otherwise be missing from the screen whether or not the person may read it.
+ */
+export async function searchLibraries(page: Page, query: string): Promise<void> {
+  await gotoLibraries(page)
+  await Promise.all([
+    page.waitForResponse((response) => {
+      if (response.request().method() !== 'GET') return false
+      const url = new URL(response.url())
+      return url.pathname === '/api/v1/catalog' && url.searchParams.get('q') === query
+    }),
+    page.getByRole('textbox', { name: 'Suchen' }).fill(query),
+  ])
+}
+
+/**
+ * The rendered empty result of this very search - without it, an absent entry would also pass
+ * before the result is on the page.
+ */
+export async function expectNoCatalogMatch(page: Page, query: string): Promise<void> {
+  await expect(
+    page.getByText(`Kein Eintrag passt zu „${query}“.`, { exact: true }).and(page.locator('p')),
+  ).toBeVisible()
+}
+
+/**
  * Opens a library's detail page from the catalog. The name is searched first: the catalog pages
  * its result, and a library beyond the first page would otherwise not be on screen.
  */

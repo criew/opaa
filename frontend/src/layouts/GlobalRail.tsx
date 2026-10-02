@@ -22,6 +22,7 @@ import { useAuthStore } from '../stores/authStore'
 import { userInitial } from '../utils/userInitial'
 import { useBrandingStore } from '../stores/brandingStore'
 import { CATALOG_ROUTE } from '../routes'
+import { catalogScopePrefixes } from '../components/assets/assetTypeRegistry'
 import { createRailTheme } from '../theme/theme'
 import { darkRoles, railRoles, shadow } from '../theme/tokens'
 
@@ -76,7 +77,7 @@ export default function GlobalRail() {
     {
       label: 'Katalog',
       to: CATALOG_ROUTE,
-      activePrefixes: [CATALOG_ROUTE, '/libraries', '/prompts'],
+      activePrefixes: catalogScopePrefixes(),
       icon: LibraryBooksOutlinedIcon,
     },
     ...(user?.systemRole === 'SYSTEM_ADMIN'

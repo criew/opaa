@@ -11,6 +11,8 @@ import { useCatalogStore } from '../stores/catalogStore'
 import { ASSET_TYPES, type AssetTypeDefinition } from '../components/assets/assetTypeRegistry'
 import CatalogPage from './CatalogPage'
 import CatalogNewPage from './CatalogNewPage'
+import GlobalRail from '../layouts/GlobalRail'
+import { isGlobalAreaPath } from '../layouts/globalArea'
 
 /** A type the application does not know - it exists only as this registry entry. */
 const SKILL = 'SKILL' as AssetType
@@ -23,6 +25,7 @@ const skillType: AssetTypeDefinition = {
   noun: 'Skill',
   description: 'Wiederverwendbare Arbeitsschritte für den Chat.',
   Icon: ExtensionIcon,
+  routePrefix: '/skills',
   detailRoute: (assetId) => `/skills/${assetId}`,
   createRoute: '/skills/new',
   createCapabilities: ['CREATE_PROMPT_LIBRARY'],
@@ -103,5 +106,14 @@ describe('a new asset type through the registry alone', () => {
     await user.click(screen.getByRole('button', { name: 'Weiter' }))
 
     expect(await screen.findByText('Assistent Skills')).toBeInTheDocument()
+  })
+
+  it('renders its pages in the global frame under the rail entry "Katalog"', () => {
+    expect(isGlobalAreaPath('/skills/skill-1')).toBe(true)
+    expect(isGlobalAreaPath('/skills/new')).toBe(true)
+
+    renderWithProviders(<GlobalRail />, { withRouter: true, initialRoute: '/skills/skill-1' })
+
+    expect(screen.getByRole('link', { name: 'Katalog' })).toHaveAttribute('aria-current', 'true')
   })
 })

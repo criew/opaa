@@ -67,15 +67,31 @@ async function expectNoCatalogMatch(page: Page, query: string): Promise<void> {
   ).toBeVisible()
 }
 
-async function expectNotInPromptList(page: Page, name: string): Promise<void> {
+/**
+ * The catalog narrowed to prompt libraries, searched for `name`: the catalog pages its result, so
+ * presence and absence are only conclusive through the search.
+ */
+async function searchPromptLibraries(page: Page, name: string): Promise<void> {
   await gotoPromptLibraries(page)
-  await expect(page.getByRole('heading', { level: 1, name: 'Katalog' })).toBeVisible()
-  await expect(page.getByText(name, { exact: true })).toHaveCount(0)
+  await Promise.all([
+    page.waitForResponse((response) => {
+      if (response.request().method() !== 'GET') return false
+      const url = new URL(response.url())
+      return url.pathname === '/api/v1/catalog' && url.searchParams.get('q') === name
+    }),
+    page.getByRole('textbox', { name: 'Suchen' }).fill(name),
+  ])
+}
+
+async function expectNotInPromptList(page: Page, name: string): Promise<void> {
+  await searchPromptLibraries(page, name)
+  await expectNoCatalogMatch(page, name)
+  await expect(catalogEntry(page, name)).toHaveCount(0)
 }
 
 async function expectInPromptList(page: Page, name: string): Promise<void> {
-  await gotoPromptLibraries(page)
-  await expect(page.getByText(name, { exact: true })).toBeVisible()
+  await searchPromptLibraries(page, name)
+  await expect(catalogEntry(page, name)).toBeVisible()
 }
 
 /**

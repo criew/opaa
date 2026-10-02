@@ -172,9 +172,8 @@ ebenso historisiert.
 
 Der **Katalog** ist der eine Punkt der Hauptnavigation für Bestände jeder Art. Er zeigt Wissens- und
 Prompt-Bibliotheken gemischt: genau die, die die Person lesen darf — über eine eigene Rolle, eine
-Rolle über eine Gruppe oder die Freigabe an „Alle Konten". Eigene Übersichten je Art gibt es nicht
-mehr; ein Lesezeichen auf die früheren Übersichten „Wissen" und „Prompts" führt auf den Katalog,
-eingegrenzt auf die jeweilige Art.
+Rolle über eine Gruppe oder die Freigabe an „Alle Konten". Die Adressen `/libraries` und
+`/prompts` führen auf den Katalog, eingegrenzt auf die jeweilige Art.
 
 | Element | Inhalt |
 |---|---|
@@ -607,9 +606,11 @@ Fünf Punkte dazu:
 - **Ein Anlegerecht öffnet nie einen Inhalt.** Es erlaubt das Anlegen und sonst nichts; an der Menge
   der lesbaren Bibliotheken ändert es nichts, und in der Herleitung eines Zugriffs (Abschnitt 11)
   taucht es deshalb nicht auf.
-- **Ein Entzug wirkt sofort**, ohne dass sich die betroffene Person neu anmelden muss. Fehlt das
-  Recht, nennt die Anwendung es beim Namen und sagt, an wen man sich wendet — sie versteckt die
-  Funktion nicht.
+- **Ein Entzug wirkt sofort**, ohne dass sich die betroffene Person neu anmelden muss. Unter „Neu"
+  im Katalog erscheinen nur die Arten, für die die Person ein Anlegerecht hat; ohne jedes fehlt
+  „Neu" ganz (Abschnitt 4, „Anlegen über ‚Neu'"). Wer einen Assistenten direkt aufruft, liest das
+  fehlende Recht beim Namen und erfährt, an wen man sich wendet; dasselbe gilt für eine Quellart
+  im Wissens-Assistenten, deren Recht fehlt.
 
 Vergeben und entzogen werden Anlegerechte unter **Administration → Anlegerechte**. Dort steht je
 Anlegerecht eine Zeile in Klartext („Alle Konten dürfen Konnektorbibliotheken anlegen."), darunter
