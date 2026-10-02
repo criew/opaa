@@ -236,7 +236,8 @@ class AssetCatalogFilterIntegrationTest {
   @Test
   void visibilityAgreesWithTheReachOfTheDetailView() {
     createTheMembersCatalog();
-    UUID knowledgeExpired = knowledgeLibrary("Wissen abgelaufen", owner, SourceType.UPLOAD);
+    UUID knowledgeExpired =
+        ownerOnlyKnowledgeLibrary("Wissen abgelaufen", owner, SourceType.UPLOAD);
     grantRepository.save(
         AssetGrant.forAllAccounts(
             KnowledgeLibrary.ASSET_TYPE,
@@ -439,7 +440,16 @@ class AssetCatalogFilterIntegrationTest {
     return id;
   }
 
+  /** Released to all accounts. */
   private UUID knowledgeLibrary(String name, UUID ownerId, SourceType sourceType) {
+    UUID id = ownerOnlyKnowledgeLibrary(name, ownerId, sourceType);
+    grantRepository.save(
+        AssetGrant.forAllAccounts(
+            KnowledgeLibrary.ASSET_TYPE, id, organization, AssetRole.VIEWER, null, ownerId));
+    return id;
+  }
+
+  private UUID ownerOnlyKnowledgeLibrary(String name, UUID ownerId, SourceType sourceType) {
     UUID id =
         knowledgeLibraryRepository
             .save(
@@ -455,9 +465,6 @@ class AssetCatalogFilterIntegrationTest {
             AssetRole.OWNER,
             null,
             ownerId));
-    grantRepository.save(
-        AssetGrant.forAllAccounts(
-            KnowledgeLibrary.ASSET_TYPE, id, organization, AssetRole.VIEWER, null, ownerId));
     return id;
   }
 
