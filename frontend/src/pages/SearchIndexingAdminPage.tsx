@@ -59,6 +59,7 @@ import { getSearchChunk } from '../services/searchAdminApi'
 import { useAuthStore } from '../stores/authStore'
 import { useSearchAdminStore } from '../stores/searchAdminStore'
 import { contentWidth } from '../theme/tokens'
+import { catalogRoute } from '../components/assets/assetTypeRegistry'
 
 function formatMetadataValue(value: unknown): string {
   if (value == null) return '—'
@@ -369,13 +370,12 @@ function DiagnosisResult({
       {diagnosis.lockedLibraryCount > 0 && (
         <Alert severity="info" sx={{ mb: 2 }}>
           {`In dieser Organisation ${diagnosis.lockedLibraryCount === 1 ? 'ist' : 'sind'} ${plural(diagnosis.lockedLibraryCount, 'Bibliothek', 'Bibliotheken')} für die Diagnose gesperrt; daraus zeigt die Diagnose nichts - weder Treffer noch Titel. Die Zahl gilt für den gesamten Bestand und sagt nichts darüber, was die betrachtete Person lesen darf. Aufheben kann die Sperre nur die für die Bibliothek zuständige Stelle, nicht die Systemverwaltung.`}{' '}
-          {/* #1257/#1278 review: die Sperre selbst wird auf der Detailseite der jeweiligen
-              Bibliothek bedient, nicht hier - der Link führt bewusst nur zur Bibliotheksliste,
-              ohne eine der gesperrten Bibliotheken selbst zu nennen (Leitplanke (e): kein Titel
-              aus einem gesperrten Bereich). */}
-          Bedient wird sie in den{' '}
-          <Link component={RouterLink} to="/libraries">
-            Bibliotheken
+          {/* Die Sperre wird auf der Detailseite der Bibliothek bedient. Der Link führt nur in
+              den Katalog und nennt keine gesperrte Bibliothek (Leitplanke (e): kein Titel aus
+              einem gesperrten Bereich). */}
+          Bedient wird sie auf der Seite der Bibliothek, zu finden im{' '}
+          <Link component={RouterLink} to={catalogRoute('KNOWLEDGE_LIBRARY')}>
+            Katalog
           </Link>
           .
         </Alert>
@@ -560,8 +560,8 @@ function isSearchAdminTab(value: string | undefined): value is SearchAdminTab {
   return value === 'overview' || value === 'index' || value === 'diagnosis'
 }
 
-// „Indexstatus" statt „Bibliotheken": Der Bereich „Wissen" führt bereits denselben Bestand,
-// und gemeint ist hier nicht der Bestand selbst, sondern sein Zustand im Index.
+// „Indexstatus" statt „Bibliotheken": Gemeint ist nicht der Bestand selbst, den der Katalog
+// führt, sondern sein Zustand im Index.
 const tabs: Array<{ value: SearchAdminTab; label: string }> = [
   { value: 'overview', label: 'Überblick' },
   { value: 'index', label: 'Indexstatus' },

@@ -3,7 +3,7 @@ import Button from '@mui/material/Button'
 import type { AssetType } from '../../types/api'
 import PageSection from '../PageSection'
 import AccessDerivation from '../permissions/AccessDerivation'
-import { assetTypeLabel } from '../../utils/labels'
+import { assetTypeLabel } from './assetTypeRegistry'
 
 /**
  * ADR-0036, Entscheidung 9: flat and shown as flat - every person sees their own way to this asset,

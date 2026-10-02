@@ -18,7 +18,7 @@ import { usePromptLibraryStore } from '../stores/promptLibraryStore'
 import { useMyCapabilities } from '../hooks/useMyCapabilities'
 import { useMyGroups } from '../hooks/useMyGroups'
 import { capabilityMissingMessage } from '../utils/labels'
-import { promptLibraryRoute } from '../routes'
+import { CATALOG_ROUTE, promptLibraryRoute } from '../routes'
 import type { AssetOwnerType, GroupListResponse } from '../types/api'
 
 const STEPS = ['Stammdaten', 'Eigentümer', 'Rechte'] as const
@@ -59,7 +59,7 @@ export default function PromptLibraryCreatePage() {
       })
       if (!confirmed) return
     }
-    navigate('/prompts')
+    navigate(CATALOG_ROUTE)
   }
 
   const handleNext = () => {

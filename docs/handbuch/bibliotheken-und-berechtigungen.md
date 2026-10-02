@@ -84,13 +84,13 @@ OPAA eine **leere** Gruppe — eine Freigabe an sie erreicht niemanden.
 
 ## 4. Rollen an einer Wissensbibliothek
 
-Die Bibliotheken, die eine Person lesen darf, stehen in der Hauptnavigation unter **„Wissen"**. Jede
-Art von Bestand hat dort einen eigenen Punkt; der Menüpunkt und die Seite dahinter heißen gleich —
-die [Prompt-Bibliotheken](prompt-bibliotheken.md) stehen unter **„Prompts"**. Rollen, Herleitung
-und „Nachfolge offen" gelten für beide Arten gleich; dafür stehen bei beiden dieselben Abschnitte —
-**„Berechtigungen"** als Liste auf der Seite (nicht mehr hinter einem Knopf „Rechte verwalten"),
-**„Zuordnungen"** und **„Warum sehe ich das?"** — bei einer Wissensbibliothek im Reiter
-„Freigaben", bei einer Prompt-Bibliothek im Reiter „Verwaltung".
+Die Bibliotheken, die eine Person lesen darf, findet sie im **Katalog**, dem einen Punkt der
+Hauptnavigation für jede Art von Bestand; die [Prompt-Bibliotheken](prompt-bibliotheken.md) stehen
+dort neben den Wissensbibliotheken. Rollen, Herleitung und „Nachfolge offen" gelten für beide Arten
+gleich; dafür stehen bei beiden dieselben Abschnitte — **„Berechtigungen"** als Liste auf der Seite
+(nicht mehr hinter einem Knopf „Rechte verwalten"), **„Zuordnungen"** und **„Warum sehe ich das?"**
+— bei einer Wissensbibliothek im Reiter „Freigaben", bei einer Prompt-Bibliothek im Reiter
+„Verwaltung".
 
 Der Reiter **„Freigaben"** einer Wissensbibliothek führt sie in dieser Reihenfolge:
 
@@ -170,17 +170,18 @@ ebenso historisiert.
 
 ### Der Katalog
 
-Der **Katalog** ist ein eigener Punkt der Hauptnavigation neben „Wissen" und „Prompts". Er zeigt
-Wissens- und Prompt-Bibliotheken gemischt: genau die, die die Person lesen darf — über eine eigene
-Rolle, eine Rolle über eine Gruppe oder die Freigabe an „Alle Konten". Die Übersichten unter „Wissen" und „Prompts" bleiben daneben die Orte, an
-denen Bibliotheken angelegt und verwaltet werden.
+Der **Katalog** ist der eine Punkt der Hauptnavigation für Bestände jeder Art. Er zeigt Wissens- und
+Prompt-Bibliotheken gemischt: genau die, die die Person lesen darf — über eine eigene Rolle, eine
+Rolle über eine Gruppe oder die Freigabe an „Alle Konten". Die Adressen `/libraries` und
+`/prompts` führen auf den Katalog, eingegrenzt auf die jeweilige Art.
 
 | Element | Inhalt |
 |---|---|
 | **Suche** | Über Name und Beschreibung, ohne Rücksicht auf Groß- und Kleinschreibung; der Suchtext ist begrenzt |
-| **Filter** | „Alle", „Wissen" oder „Prompts" |
-| **Eintrag** | Art (Wissens- oder Prompt-Bibliothek), Name, Beschreibung, Umfang (Dokumente bzw. Prompts), in wie vielen Räumen sie bereitsteht, zuständige Stelle; in der Tabelle zusätzlich die Herkunft. Jeder Eintrag führt zur Detailseite der Bibliothek |
+| **Filter** | „Alle", „Wissen" oder „Prompts"; der gewählte Filter steht in der Adresse der Seite |
+| **Eintrag** | Eine Kachel: Art (Wissens- oder Prompt-Bibliothek) als Etikett mit Symbol, Name, Beschreibung, Umfang (Dokumente bzw. Prompts), in wie vielen Räumen sie bereitsteht, zuständige Stelle. Jede Kachel führt zur Detailseite der Bibliothek; eine Tabellenansicht gibt es nicht |
 | **Seiten** | Die Einträge kommen seitenweise; „Weitere laden" hängt die nächste Seite an |
+| **Neu** | Oben rechts, nur wenn die Person mindestens ein Anlegerecht für eine Art hat (siehe unten, „Anlegen über ‚Neu'") |
 
 Eine Bibliothek ohne Leserecht steht nicht im Katalog; auch die Suche über Name oder Beschreibung
 findet sie nicht, und ihre Adresse antwortet „nicht gefunden" wie bei einer unbekannten Bibliothek.
@@ -192,6 +193,24 @@ Die Systemverwaltung sieht im Katalog nicht mehr als andere: **Verwalten ist nic
 Bibliothek, die sie nur verwaltet, erscheint dort nicht. Der Katalog zeigt nie etwas aus einer
 anderen Organisation, und ein Eintrag enthält Beschreibungen, nie Inhalte: keine Dokumente, keine
 Prompts.
+
+#### Anlegen über „Neu"
+
+Neue Bestände entstehen über **„Neu"** im Katalog. Der erste Schritt fragt „Was möchten Sie
+anlegen?" und bietet jede Art als Kachel mit Symbol und einem Satz dazu an — **nur die Arten, für
+die die Person ein Anlegerecht hat** (Abschnitt 9). Für Wissen genügt eines der beiden Rechte
+„Bibliotheken für Uploads anlegen" oder „Konnektorbibliotheken anlegen", für Prompts das Recht
+„Prompt-Bibliotheken anlegen". Hat sie für keine Art ein Recht, fehlt „Neu" im Katalog; wer die
+Seite dennoch erreicht, liest dort, dass ein Anlegerecht fehlt.
+
+„Weiter" führt in den Assistenten der gewählten Art: für Wissen in den Assistenten aus
+[Indexierung](indexierung.md), Abschnitt „Eine Bibliothek anlegen", für Prompts in den aus
+[Prompt-Bibliotheken](prompt-bibliotheken.md), Abschnitt „Anlegen". „Abbrechen" in einem der
+Assistenten führt zurück in den Katalog.
+
+Die Kacheln sind eine Auswahlgruppe: Die Pfeiltasten wechseln die Wahl, Leertaste und Enter
+wählen, und ein Bildschirmleser sagt die Gruppe mit ihrer Frage an. Die gewählte Kachel trägt einen
+Rahmen und ein Häkchen.
 
 ### Freigabe-Obergrenze für Konnektorbibliotheken
 
@@ -307,17 +326,15 @@ archivieren noch löschen.
 
 Die Übersicht führt alle Räume auf, in denen Sie Mitglied sind — in der Oberfläche heißen sie
 „Spaces". Die Überschrift nennt ihre Anzahl, oben rechts steht „Neuer Space". Ein Suchfeld filtert
-über Name und Beschreibung, ein Umschalter wechselt zwischen Kacheln und Tabelle; die gewählte
-Ansicht bleibt gemerkt.
+über Name und Beschreibung. Die Räume stehen als Kacheln; eine Tabellenansicht gibt es nicht.
 
 Eine Kachel zeigt Name, Beschreibung und die Anzahl der Chats, darunter Ihre eigene Rolle und die
 Mitglieder als Badges. Die Mitgliederangabe ist wie die Reichweite einer Bibliothek formuliert:
 „2 Gruppen, 3 Personen", oder „nur Sie", wenn Ihr eigenes Konto das einzige Mitglied ist — gleich,
 ob es der Standard-Raum ist oder nicht. Eine Gruppe zählt als eine Mitgliedschaft, wie viele Personen
 sie auch umfasst; ihre Größe wird hier nicht genannt. Ein archivierter Space ist als solcher
-gekennzeichnet und führt auf seine Übersicht statt in einen neuen Chat. Die Tabellenansicht zeigt
-dieselben Angaben spaltenweise; das Space-Menü der Seitenleiste nennt unter jedem Namen dieselbe
-Mitgliederangabe.
+gekennzeichnet und führt auf seine Übersicht statt in einen neuen Chat. Das Space-Menü der
+Seitenleiste nennt unter jedem Namen dieselbe Mitgliederangabe.
 
 ### Einstieg und Space-Wechsel
 
@@ -530,7 +547,7 @@ Vier Eigenschaften gehören dazu:
 - **Geschützte Gruppen sind über die Suche nicht auffindbar.** In der Auswahl erscheinen sie nur bei
   Eingabe ihrer **vollständigen** Bezeichnung; wer ihre Kennung eingibt, erhält sie zur Bestätigung
   **ohne** Namen. In fremden Listen — Mitgliederliste eines Raums, Freigabeliste einer Bibliothek,
-  Eigentümerspalte der Bibliotheksübersicht, Liste der Anlegerechte — steht „Geschützte Gruppe"
+  Liste der Anlegerechte — steht „Geschützte Gruppe"
   statt der Bezeichnung. Die Zeile bleibt, damit eine Mitgliedschaft beendet werden kann, die
   niemand sieht; Größe und Zuwachssignal entfallen dort ganz.
 
@@ -589,9 +606,11 @@ Fünf Punkte dazu:
 - **Ein Anlegerecht öffnet nie einen Inhalt.** Es erlaubt das Anlegen und sonst nichts; an der Menge
   der lesbaren Bibliotheken ändert es nichts, und in der Herleitung eines Zugriffs (Abschnitt 11)
   taucht es deshalb nicht auf.
-- **Ein Entzug wirkt sofort**, ohne dass sich die betroffene Person neu anmelden muss. Fehlt das
-  Recht, nennt die Anwendung es beim Namen und sagt, an wen man sich wendet — sie versteckt die
-  Funktion nicht.
+- **Ein Entzug wirkt sofort**, ohne dass sich die betroffene Person neu anmelden muss. Unter „Neu"
+  im Katalog erscheinen nur die Arten, für die die Person ein Anlegerecht hat; ohne jedes fehlt
+  „Neu" ganz (Abschnitt 4, „Anlegen über ‚Neu'"). Wer einen Assistenten direkt aufruft, liest das
+  fehlende Recht beim Namen und erfährt, an wen man sich wendet; dasselbe gilt für eine Quellart
+  im Wissens-Assistenten, deren Recht fehlt.
 
 Vergeben und entzogen werden Anlegerechte unter **Administration → Anlegerechte**. Dort steht je
 Anlegerecht eine Zeile in Klartext („Alle Konten dürfen Konnektorbibliotheken anlegen."), darunter
@@ -815,7 +834,7 @@ und indexieren.
 **Jedes betroffene Objekt führt Zustand und Zuständigkeit mit** — „Nachfolge offen — zuständig: die
 Systemverwaltung" —, und zwar für jeden, der das Objekt sehen darf: bewusst ohne Datum, ohne den
 bisherigen Eigentümer und ohne Grund, dazu der Satz, dass das Objekt nutzbar bleibt und nichts
-gelöscht wird. Zu sehen ist die Kennzeichnung in der **Übersicht** und in der **Detailansicht**
+gelöscht wird. Zu sehen ist die Kennzeichnung im **Katalog** und in der **Detailansicht**
 einer Bibliothek — einer Wissens- wie einer Prompt-Bibliothek — sowie in der **Space-Übersicht**
 und am **Space** selbst. Das Datum steht allein in der Betriebsliste. **Suchtreffer und
 Quellenverweise tragen den Hinweis nicht:** Der Zustand betrifft die Zuständigkeit, nicht die Richtigkeit des Inhalts, und eine

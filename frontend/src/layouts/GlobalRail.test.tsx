@@ -53,27 +53,16 @@ describe('GlobalRail', () => {
     const rail = screen.getByRole('navigation', { name: 'Globale Navigation' })
     expect(rail).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Spaces' })).toHaveAttribute('href', '/spaces')
-    expect(screen.getByRole('link', { name: 'Wissen' })).toHaveAttribute('href', '/libraries')
+    expect(screen.getByRole('link', { name: 'Katalog' })).toHaveAttribute('href', '/catalog')
   })
 
-  it('lists prompt libraries as an asset type of their own, after knowledge', () => {
-    renderRailAt('/prompts/prompt-library-1/settings')
-
-    const labels = screen.getAllByRole('link').map((link) => link.textContent)
-    expect(labels.indexOf('Prompts')).toBe(labels.indexOf('Wissen') + 1)
-    expect(screen.getByRole('link', { name: 'Prompts' })).toHaveAttribute('href', '/prompts')
-    expect(screen.getByRole('link', { name: 'Prompts' })).toHaveAttribute('aria-current', 'true')
-  })
-
-  it('leads to the catalog beside the asset overviews, which stay (#1904)', () => {
+  // ADR-0039, Entscheidung 1: one entry for every asset type, no entry per type.
+  it('has exactly one entry for assets, the catalog, right after Spaces', () => {
     renderRailAt('/catalog')
 
     const labels = screen.getAllByRole('link').map((link) => link.textContent)
-    expect(labels.indexOf('Katalog')).toBe(labels.indexOf('Prompts') + 1)
-    expect(screen.getByRole('link', { name: 'Katalog' })).toHaveAttribute('href', '/catalog')
+    expect(labels).toEqual(['Spaces', 'Katalog'])
     expect(screen.getByRole('link', { name: 'Katalog' })).toHaveAttribute('aria-current', 'page')
-    expect(screen.getByRole('link', { name: 'Wissen' })).toHaveAttribute('href', '/libraries')
-    expect(screen.getByRole('link', { name: 'Wissen' })).not.toHaveAttribute('aria-current')
   })
 
   it('shows the brand emblem without the product name - the rail has no room for text', () => {
@@ -83,19 +72,21 @@ describe('GlobalRail', () => {
   })
 
   it('marks the exact destination with aria-current="page"', () => {
-    renderRailAt('/libraries')
+    renderRailAt('/catalog')
 
-    expect(screen.getByRole('link', { name: 'Wissen' })).toHaveAttribute('aria-current', 'page')
+    expect(screen.getByRole('link', { name: 'Katalog' })).toHaveAttribute('aria-current', 'page')
     expect(screen.getByRole('link', { name: 'Spaces' })).not.toHaveAttribute('aria-current')
   })
 
-  it('marks a scope hit below the destination with aria-current="true"', () => {
-    // /libraries/lib-1 is in the knowledge scope but is not the link's own target - "true" is
-    // the accurate token there, "page" would claim the link points at the current page.
-    renderRailAt('/libraries/lib-1')
+  it.each(['/libraries/lib-1', '/libraries/new', '/prompts/prompt-library-1/settings'])(
+    'counts the asset page %s as the catalog scope with aria-current="true"',
+    (path) => {
+      // Within the scope but not the link's own target - "page" would claim the link points here.
+      renderRailAt(path)
 
-    expect(screen.getByRole('link', { name: 'Wissen' })).toHaveAttribute('aria-current', 'true')
-  })
+      expect(screen.getByRole('link', { name: 'Katalog' })).toHaveAttribute('aria-current', 'true')
+    },
+  )
 
   it('counts an open chat as the Spaces scope', () => {
     renderRailAt('/spaces/space-1/chats/chat-1')

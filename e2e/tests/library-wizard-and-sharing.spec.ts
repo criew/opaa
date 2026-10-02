@@ -1,5 +1,5 @@
 import { expect, test } from '../fixtures/auth'
-import { gotoLibraries } from '../fixtures/chat'
+import { openNewLibraryWizard } from '../fixtures/chat'
 import { cleanupLibraries, libraryIdFromCurrentUrl } from '../fixtures/libraries'
 import type { Page } from '@playwright/test'
 
@@ -90,8 +90,7 @@ test.describe('Anlage-Assistent und Reiter „Freigaben" (#1944)', () => {
   test('Upload-Bibliothek: drei Schritte, Detailansicht ohne Reiter „Quelle", Freigaben', async ({
     authenticatedPage: page,
   }) => {
-    await gotoLibraries(page)
-    await page.getByRole('button', { name: 'Neue Bibliothek' }).click()
+    await openNewLibraryWizard(page)
 
     // Step 1: kind of knowledge - one tile per source type, "Upload" preselected.
     await expectWizardStep(page, 'Welche Art von Wissen soll hier stehen?')
@@ -124,8 +123,7 @@ test.describe('Anlage-Assistent und Reiter „Freigaben" (#1944)', () => {
   test('Konnektorbibliothek: Schritt „Quelle" mit Zeitplan, vorbelegter Name, Freigaben', async ({
     authenticatedPage: page,
   }) => {
-    await gotoLibraries(page)
-    await page.getByRole('button', { name: 'Neue Bibliothek' }).click()
+    await openNewLibraryWizard(page)
 
     await expectWizardStep(page, 'Welche Art von Wissen soll hier stehen?')
     await page.getByRole('radio', { name: /^Webverzeichnis/ }).click()

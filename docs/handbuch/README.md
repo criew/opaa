@@ -135,7 +135,7 @@ Begriffe, die in allen Kapiteln in genau dieser Bedeutung verwendet werden.
 |---|---|
 | **Wissensbibliothek** (Bibliothek) | Verwaltungseinheit für Dokumente: gehört zu einer Organisation, trägt Berechtigungen und genau eine Quelle |
 | **Prompt-Bibliothek** | Verwaltungseinheit für Prompts: gehört zu einer Organisation, trägt Berechtigungen wie eine Wissensbibliothek, bindet aber kein Wissen und verengt keinen Suchbereich |
-| **Katalog** | Die gemischte Übersicht über Wissens- und Prompt-Bibliotheken: genau die, die die Person lesen darf; was sie nicht lesen darf, erscheint dort nicht |
+| **Katalog** | Der eine Einstieg der Hauptnavigation für Bestände jeder Art, nur als Kacheln: genau die Wissens- und Prompt-Bibliotheken, die die Person lesen darf; was sie nicht lesen darf, erscheint dort nicht. Über „Neu" beginnt dort das Anlegen mit der Wahl der Art |
 | **Prompt** | Eine benannte, wiederverwendbare Anweisung in genau einer Prompt-Bibliothek, mit Titel, Befehl (`/name`), Text und Variablen |
 | **Variable** | Eine Stelle im Text eines Prompts, geschrieben als `{{name}}`, die beim Einsetzen gefüllt wird; `{{CURRENT_DATE}}` und `{{USER_NAME}}` füllt OPAA selbst |
 | **Quelle** | Woher eine Bibliothek ihre Dokumente bezieht: Upload oder ein Quellentyp mit Konnektor (Dateisystem, Webverzeichnis, Feed, Confluence, S3) |

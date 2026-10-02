@@ -1,15 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
-import type { KeyboardEvent as ReactKeyboardEvent } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import Switch from '@mui/material/Switch'
 import Typography from '@mui/material/Typography'
-import { alpha } from '@mui/material/styles'
 import { useNavigate } from 'react-router'
 import PageHeading from '../components/a11y/PageHeading'
-import { blue } from '../theme/tokens'
+import ChoiceTileGroup from '../components/choice/ChoiceTileGroup'
+import { CATALOG_ROUTE } from '../routes'
 import LibraryScheduleForm from '../components/library/LibraryScheduleForm'
 import SourceTypeIcon from '../components/library/sourceTypeIcon'
 import { registeredSourceTypes, sourceRegistration } from '../components/library/sources/registry'
@@ -173,33 +172,6 @@ export default function LibraryCreatePage() {
     ? capabilityMissingMessage(requiredCapability)
     : null
 
-  /**
-   * Pfeiltasten wählen innerhalb der Kachelgruppe die nächste bzw. vorherige *wählbare* Kachel und
-   * ziehen den Fokus mit (WAI-ARIA „radio group"); Pos1/Ende springen an die Enden. Eine gesperrte
-   * Kachel wird dabei übersprungen, statt den Fokus zu verschlucken.
-   */
-  function handleTileKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
-    const forward = event.key === 'ArrowRight' || event.key === 'ArrowDown'
-    const backward = event.key === 'ArrowLeft' || event.key === 'ArrowUp'
-    const home = event.key === 'Home'
-    const end = event.key === 'End'
-    if (!forward && !backward && !home && !end) return
-    if (selectableTypes.length === 0) return
-    event.preventDefault()
-    const current = selectableTypes.indexOf(sourceType)
-    const next = home
-      ? selectableTypes[0]
-      : end
-        ? selectableTypes[selectableTypes.length - 1]
-        : selectableTypes[
-            (current + (forward ? 1 : selectableTypes.length - 1) + selectableTypes.length) %
-              selectableTypes.length
-          ]
-    setSourceType(next)
-    setError(null)
-    event.currentTarget.querySelector<HTMLButtonElement>(`[data-source-type="${next}"]`)?.focus()
-  }
-
   // Der Fokus folgt dem Schritt (WCAG 2.4.3): Nach „Weiter" steht er auf der Überschrift des neuen
   // Schritts, nicht auf dem Knopf, der gerade verschwunden ist.
   const stepHeadingRef = useRef<HTMLHeadingElement>(null)
@@ -236,7 +208,7 @@ export default function LibraryCreatePage() {
       })
       if (!confirmed) return
     }
-    navigate('/libraries')
+    navigate(CATALOG_ROUTE)
   }
 
   const handleNext = () => {
@@ -369,79 +341,21 @@ export default function LibraryCreatePage() {
         )}
 
         {currentStep === STEP_ART && sourceTypesLoaded && !sourceTypesError && (
-          <Box
-            role="radiogroup"
+          <ChoiceTileGroup<SourceTypeKey>
             aria-label="Art des Wissens wählen"
-            onKeyDown={handleTileKeyDown}
-            sx={{
-              display: 'grid',
-              gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
-              gap: '14px',
+            value={sourceType}
+            onChange={(next) => {
+              setSourceType(next)
+              setError(null)
             }}
-          >
-            {offeredTypes.map((type) => {
-              const selected = type === sourceType
-              const missing = missingFor(type)
-              return (
-                <Box
-                  key={type}
-                  component="button"
-                  type="button"
-                  role="radio"
-                  data-source-type={type}
-                  aria-checked={selected}
-                  aria-disabled={missing != null}
-                  disabled={missing != null}
-                  // Eine Radiogruppe hat genau einen Halt in der Tabulatorreihenfolge (WAI-ARIA
-                  // „radio group", roving tabindex); zwischen den Kacheln führen die Pfeiltasten.
-                  tabIndex={selected ? 0 : -1}
-                  onClick={() => {
-                    if (missing) return
-                    setSourceType(type)
-                    setError(null)
-                  }}
-                  sx={{
-                    display: 'flex',
-                    alignItems: 'flex-start',
-                    gap: '12px',
-                    textAlign: 'left',
-                    font: 'inherit',
-                    cursor: missing ? 'not-allowed' : 'pointer',
-                    opacity: missing ? 0.6 : 1,
-                    p: 2,
-                    border: selected ? 2 : 1,
-                    borderColor: selected ? 'primary.main' : 'divider',
-                    borderRadius: '10px',
-                    color: 'text.primary',
-                    bgcolor: selected
-                      ? (theme) =>
-                          theme.palette.mode === 'dark'
-                            ? alpha(theme.palette.primary.main, 0.16)
-                            : blue[50]
-                      : 'transparent',
-                    '&:hover': { borderColor: selected ? 'primary.main' : 'text.disabled' },
-                  }}
-                >
-                  <Box aria-hidden sx={{ display: 'flex', color: 'text.secondary', mt: '2px' }}>
-                    <SourceTypeIcon sourceType={type} fontSize={22} />
-                  </Box>
-                  <Box>
-                    <Typography sx={{ fontSize: 14.5, fontWeight: 600 }}>
-                      {displayNameOf(type)}
-                    </Typography>
-                    <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 0.25 }}>
-                      {documentSourceTypeDescription(type)}
-                    </Typography>
-                    {missing && (
-                      <Typography sx={{ fontSize: 12.5, color: 'warning.main', mt: 0.5 }}>
-                        {missing}
-                      </Typography>
-                    )}
-                  </Box>
-                </Box>
-              )
-            })}
-          </Box>
+            tiles={offeredTypes.map((type) => ({
+              value: type,
+              label: displayNameOf(type),
+              description: documentSourceTypeDescription(type),
+              icon: <SourceTypeIcon sourceType={type} fontSize={22} />,
+              disabledReason: missingFor(type),
+            }))}
+          />
         )}
 
         {currentStep === STEP_SOURCE && (

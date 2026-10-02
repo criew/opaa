@@ -20,21 +20,14 @@ import PermissionTransferDialog, {
   type TransferSubject,
 } from '../permissions/PermissionTransferDialog'
 import { ageLabel } from '../groups/groupOriginLabels'
-import { assetTypeLabel } from '../../utils/labels'
+import { assetTypeDefinition, assetTypeLabel } from '../assets/assetTypeRegistry'
 
 const PAGE_SIZE = 50
 
 function objectHref(entry: SuccessionEntryResponse): string | null {
   switch (entry.objectType) {
     case 'ASSET':
-      switch (entry.assetType) {
-        case 'KNOWLEDGE_LIBRARY':
-          return `/libraries/${entry.objectId}`
-        case 'PROMPT_LIBRARY':
-          return `/prompts/${entry.objectId}`
-        default:
-          return null
-      }
+      return assetTypeDefinition(entry.assetType)?.detailRoute(entry.objectId) ?? null
     case 'SPACE':
       return `/spaces/${entry.objectId}`
     default:
