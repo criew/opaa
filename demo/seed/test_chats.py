@@ -51,9 +51,11 @@ def corpus_files(library: profiles.LibraryDef) -> set[str]:
 
 def effective_readers(library_name: str) -> set[str]:
     library = next(lib for lib in DEMO.libraries if lib.name == library_name)
-    readers = set(library.viewer_keys)
+    if library.all_accounts_viewer:
+        return {user.key for user in DEMO.all_users()}
+    readers = {library.owner_key, *library.viewer_keys}
     for group in (*DEMO.groups, *DEMO.provider_groups):
-        if library_name in group.library_grants:
+        if library_name in group.library_grants or group.name == library.owner_group:
             readers.update(group.member_keys)
     return readers
 

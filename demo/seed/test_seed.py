@@ -345,14 +345,23 @@ def all_groups() -> tuple:
     return (*DEMO.groups, *DEMO.provider_groups)
 
 
-def effective_readers(library_name: str) -> set[str]:
-    """Direct VIEWER grants plus the members of every group granted VIEWER on the library. The
-    admin account owns every library and is no row of the matrix, even as a group member."""
-    readers = set(library(library_name).viewer_keys)
+def readers(library_name: str) -> set[str]:
+    """Every account that reads the library: all of them for a grant to "Alle Konten", otherwise
+    the owner, the members of an owning group, direct VIEWER grants and the members of every group
+    granted VIEWER."""
+    library_def = library(library_name)
+    if library_def.all_accounts_viewer:
+        return {u.key for u in DEMO.all_users()}
+    found = {library_def.owner_key, *library_def.viewer_keys}
     for group_def in all_groups():
-        if library_name in group_def.library_grants:
-            readers.update(group_def.member_keys)
-    return readers - {"admin"}
+        if library_name in group_def.library_grants or group_def.name == library_def.owner_group:
+            found.update(group_def.member_keys)
+    return found
+
+
+def effective_readers(library_name: str) -> set[str]:
+    """The rows of the matrix in docs/features/demo-instance.md: the four fach accounts only."""
+    return readers(library_name) - {"admin"}
 
 
 def space_members(space_name: str) -> set[str]:
@@ -427,6 +436,7 @@ def test_space_membership_matrix() -> None:
     assert space_members("Kfz-Zulassung") == {"thomas"}
     assert space_members("Amtsleitung Bürgerbüro") == {"andrea"}
     assert space_members("Dienstbesprechung Bürgerbüro") == set(FACH_KEYS)
+    assert space_members("Infotheke Bürgerbüro") == {"admin", *FACH_KEYS}
 
 
 def test_drehbuch_frage_5_holds_in_thomas_own_space() -> None:
@@ -439,7 +449,7 @@ def test_every_space_association_is_readable_by_its_owner() -> None:
     """associateSpaceAsset needs VIEWER on the library - directly or through a group of step 6."""
     for space_def in DEMO.spaces:
         for library_name in space_def.library_names:
-            assert space_def.owner_key in effective_readers(library_name), (
+            assert space_def.owner_key in readers(library_name), (
                 space_def.name,
                 library_name,
             )
@@ -1345,3 +1355,295 @@ def test_council_library_expects_every_file_below_year_and_committee_folders() -
     assert len(council_keys) == COUNCIL_LIBRARY_FILES
     assert all(len(key.split("/")) == 4 for key in council_keys), council_keys
     assert seed.expected_document_count(council) == COUNCIL_LIBRARY_FILES
+
+
+# --- Demo profile: ownership, reach, favorites and space associations (#2103) --------------------
+
+import dataclasses  # noqa: E402
+
+PUBLIC = "public"
+CLOSED = "closed"
+
+
+def prompt_library(name: str) -> profiles.PromptLibraryDef:
+    return next(lib for lib in DEMO.prompt_libraries if lib.name == name)
+
+
+def reach(library_def) -> str:
+    return PUBLIC if library_def.all_accounts_viewer else CLOSED
+
+
+def provider_group_def(name: str) -> profiles.ProviderGroupDef:
+    return next(g for g in DEMO.provider_groups if g.name == name)
+
+
+def test_knowledge_libraries_belong_to_several_people_and_a_group() -> None:
+    personal_owners = {lib.owner_key for lib in DEMO.libraries if lib.owner_group is None}
+    assert len(personal_owners - {"admin"}) >= 2, personal_owners
+    assert any(lib.owner_group for lib in DEMO.libraries)
+
+
+def test_prompt_libraries_belong_to_several_people() -> None:
+    assert len({lib.owner_key for lib in DEMO.prompt_libraries}) >= 2
+
+
+def test_a_group_owned_library_is_created_by_a_member_of_a_directory_group() -> None:
+    """The seed creates a group-owned library in step 4 through a member of the group, so the
+    group must already exist then - a Keycloak group, which the directory sync of step 2 brings.
+    The owning group holds MANAGER; a VIEWER grant of its own would lower that."""
+    for library_def in DEMO.libraries:
+        if library_def.owner_group is None:
+            continue
+        group_def = provider_group_def(library_def.owner_group)
+        assert library_def.owner_key in group_def.member_keys, library_def.name
+        assert library_def.name not in group_def.library_grants, library_def.name
+
+
+def test_public_and_closed_assets_of_both_types_exist() -> None:
+    assert {reach(lib) for lib in DEMO.libraries} == {PUBLIC, CLOSED}
+    assert {reach(lib) for lib in DEMO.prompt_libraries} == {PUBLIC, CLOSED}
+
+
+def test_closed_knowledge_is_shared_with_single_people_and_with_groups() -> None:
+    closed = [lib for lib in DEMO.libraries if not lib.all_accounts_viewer]
+    assert any(lib.viewer_keys for lib in closed)
+    assert any(any(lib.name in g.library_grants for g in all_groups()) for lib in closed)
+
+
+def test_a_public_library_carries_no_further_read_grant() -> None:
+    """A grant beside "Alle Konten" changes nobody's reach and would only blur the overview."""
+    for library_def in DEMO.libraries:
+        if library_def.all_accounts_viewer:
+            assert library_def.viewer_keys == (), library_def.name
+            assert all(library_def.name not in g.library_grants for g in all_groups())
+
+
+def test_the_drehbuch_boundaries_stay_closed() -> None:
+    """Frage 5 and Schritt A rest on Thomas reading the internal instructions only through
+    "Vertretung Meldewesen"; Frage 1 and 7 on the Leistungen of the other Sachgebiet staying shut."""
+    for name in (
+        "Interne Dienstanweisungen Meldewesen",
+        "Leistungen Meldewesen & Ausweise",
+        "Leistungen Kfz-Zulassung",
+        "Formattest auf S3",
+    ):
+        assert not library(name).all_accounts_viewer, name
+    assert "thomas" not in effective_readers("Leistungen Meldewesen & Ausweise")
+
+
+def favorites_by_user() -> dict[str, profiles.FavoritesDef]:
+    keys = [f.user_key for f in DEMO.favorites]
+    assert len(keys) == len(set(keys)), "eine Favoritenliste je Konto"
+    return {f.user_key: f for f in DEMO.favorites}
+
+
+def prompt_readers(name: str) -> set[str]:
+    return prompt_library_readers(prompt_library(name))
+
+
+def test_every_favorite_names_an_asset_its_person_reads() -> None:
+    """markAssetFavorite answers 404 for an asset the caller cannot read."""
+    for user_key, favorites in favorites_by_user().items():
+        for name in favorites.library_names:
+            assert user_key in readers(name), (user_key, name)
+        for name in favorites.prompt_library_names:
+            assert user_key in prompt_readers(name), (user_key, name)
+
+
+def test_several_accounts_have_different_favorites_and_one_has_none() -> None:
+    lists = {
+        user_key: (frozenset(f.library_names), frozenset(f.prompt_library_names))
+        for user_key, f in favorites_by_user().items()
+        if f.library_names or f.prompt_library_names
+    }
+    assert len(lists) >= 3
+    assert len(set(lists.values())) == len(lists), "zwei Konten mit derselben Favoritenliste"
+    assert set(FACH_KEYS) - set(lists), "ein Fachkonto ohne Favoriten"
+
+
+def test_favorites_mix_public_and_closed_assets() -> None:
+    reaches = {reach(library(name)) for f in DEMO.favorites for name in f.library_names} | {
+        reach(prompt_library(name)) for f in DEMO.favorites for name in f.prompt_library_names
+    }
+    assert reaches == {PUBLIC, CLOSED}
+
+
+def test_e2e_profile_stays_without_favorites() -> None:
+    assert profiles.E2E_PROFILE.favorites == ()
+
+
+def test_a_space_holds_only_public_knowledge() -> None:
+    assert any(
+        s.library_names and all(library(n).all_accounts_viewer for n in s.library_names)
+        for s in DEMO.spaces
+    )
+
+
+def test_a_space_holds_closed_knowledge_every_member_reads() -> None:
+    assert any(
+        any(not library(n).all_accounts_viewer for n in s.library_names)
+        and all(space_members(s.name) <= readers(n) for n in s.library_names)
+        for s in DEMO.spaces
+    )
+
+
+def test_a_space_holds_knowledge_not_every_member_reads() -> None:
+    """The variant behind "Nicht alle zugeordneten Inhalte sind für Sie lesbar.": a member other
+    than the owner - who must read everything to associate it - misses part of the space."""
+    variants = [
+        s.name
+        for s in DEMO.spaces
+        if any(
+            member != s.owner_key and member not in readers(n)
+            for n in s.library_names
+            for member in space_members(s.name)
+        )
+    ]
+    assert "Dienstbesprechung Bürgerbüro" in variants
+
+
+def test_dienstbesprechung_shows_each_sachgebiet_the_other_ones_leistungen_as_unreadable() -> None:
+    space_def = space("Dienstbesprechung Bürgerbüro")
+    unreadable = {
+        member: {n for n in space_def.library_names if member not in readers(n)}
+        for member in ("maria", "selin", "thomas")
+    }
+    assert unreadable == {
+        "maria": {"Leistungen Kfz-Zulassung"},
+        "selin": {"Leistungen Kfz-Zulassung"},
+        "thomas": {"Leistungen Meldewesen & Ausweise"},
+    }
+    assert all(space_def.owner_key in readers(n) for n in space_def.library_names)
+
+
+def test_spaces_offer_public_and_closed_prompts() -> None:
+    assert {reach(lib) for lib in DEMO.prompt_libraries if lib.space_names} == {PUBLIC, CLOSED}
+
+
+class FakeFavoriteClient:
+    """One account's session against PUT /v1/assets/{type}/{id}/favorite."""
+
+    def __init__(self, user_key: str, calls: list) -> None:
+        self.user_key = user_key
+        self.calls = calls
+
+    def put_ok(self, path: str, expected=(200,), **kwargs):
+        assert expected == (204,)
+        self.calls.append((self.user_key, "PUT", path))
+        return None
+
+
+def favorite_calls(profile: profiles.Profile = DEMO) -> list:
+    calls: list = []
+    clients = {u.key: FakeFavoriteClient(u.key, calls) for u in profile.all_users()}
+    library_ids = {lib.name: f"lib-{lib.name}" for lib in profile.libraries}
+    prompt_ids = {lib.name: f"prompt-{lib.name}" for lib in profile.prompt_libraries}
+    seed.seed_favorites(clients, library_ids, prompt_ids, profile)
+    return calls
+
+
+def test_seed_sets_each_persons_favorites_through_their_own_session() -> None:
+    expected = {
+        (f.user_key, "PUT", f"/v1/assets/KNOWLEDGE_LIBRARY/lib-{name}/favorite")
+        for f in DEMO.favorites
+        for name in f.library_names
+    } | {
+        (f.user_key, "PUT", f"/v1/assets/PROMPT_LIBRARY/prompt-{name}/favorite")
+        for f in DEMO.favorites
+        for name in f.prompt_library_names
+    }
+    calls = favorite_calls()
+    assert set(calls) == expected
+    assert len(calls) == len(expected)
+
+
+def test_a_second_seed_run_sets_the_same_favorites_and_removes_none() -> None:
+    """PUT is idempotent, and the seed never removes a favorite a visitor has set."""
+    assert favorite_calls() == favorite_calls()
+
+
+def test_an_unknown_favorite_stops_the_seed() -> None:
+    broken = dataclasses.replace(
+        DEMO, favorites=(profiles.FavoritesDef("maria", library_names=("Gibt es nicht",)),)
+    )
+    with pytest.raises(SystemExit) as exit_info:
+        favorite_calls(broken)
+    assert "Gibt es nicht" in str(exit_info.value)
+
+
+class FakeLibraryApi:
+    """One account's session against listLibraries, createLibrary and the asset grants. The
+    creator holds OWNER (myRole), also on a library created in a group's name."""
+
+    def __init__(self, listed: list[dict] | None = None) -> None:
+        self.listed = list(listed or [])
+        self.created: list[dict] = []
+        self.grants: list[dict] = []
+
+    def get_ok(self, path: str, **kwargs):
+        assert path == "/v1/libraries"
+        return list(self.listed)
+
+    def post_ok(self, path: str, expected=(200, 201, 202), json=None, **kwargs):
+        if path == "/v1/libraries":
+            assert expected == (201,)
+            library_id = f"lib-{len(self.created) + 1}"
+            self.created.append(dict(json))
+            self.listed.append({"id": library_id, "name": json["name"], "myRole": "OWNER"})
+            return {"id": library_id}
+        match = re.fullmatch(r"/v1/assets/KNOWLEDGE_LIBRARY/([^/]+)/grants", path)
+        assert match, path
+        if json["subjectType"] == "ALL_ACCOUNTS":
+            assert "subjectId" not in json, "ALL_ACCOUNTS nennt keine subjectId (400)"
+        self.grants.append({"libraryId": match.group(1), **json})
+        return {}
+
+
+def test_a_group_owned_library_is_created_in_the_groups_name_and_found_again() -> None:
+    library_def = next(lib for lib in DEMO.libraries if lib.owner_group)
+    api = FakeLibraryApi()
+
+    first = seed.ensure_library(api, library_def, owner_group_id="g-meldewesen")
+    second = seed.ensure_library(api, library_def, owner_group_id="g-meldewesen")
+
+    assert first == second
+    assert len(api.created) == 1
+    assert api.created[0]["ownerType"] == "GROUP"
+    assert api.created[0]["ownerId"] == "g-meldewesen"
+
+
+def test_a_personally_owned_library_names_no_owner_group() -> None:
+    api = FakeLibraryApi()
+    seed.ensure_library(api, library("Interne Dienstanweisungen Meldewesen"))
+    assert "ownerType" not in api.created[0]
+    assert "ownerId" not in api.created[0]
+
+
+def test_a_same_named_library_the_owner_does_not_own_stops_the_seed() -> None:
+    """An instance seeded before #2103 holds the library under the admin account; the new owner
+    reads it but does not own it. No second library of the same name may appear beside it."""
+    api = FakeLibraryApi(
+        [{"id": "alt", "name": "Interne Dienstanweisungen Meldewesen", "myRole": "VIEWER"}]
+    )
+    with pytest.raises(SystemExit) as exit_info:
+        seed.ensure_library(api, library("Interne Dienstanweisungen Meldewesen"))
+    assert api.created == []
+    assert "neu aufsetzen" in str(exit_info.value)
+
+
+def test_a_public_library_is_granted_to_all_accounts_and_a_closed_one_to_its_viewers() -> None:
+    user_ids = {u.key: f"u-{u.key}" for u in DEMO.all_users()}
+    public = next(lib for lib in DEMO.libraries if lib.all_accounts_viewer)
+    closed = next(lib for lib in DEMO.libraries if lib.viewer_keys)
+    api = FakeLibraryApi()
+
+    seed.ensure_library_grants(api, "pub", public, user_ids)
+    seed.ensure_library_grants(api, "zu", closed, user_ids)
+
+    assert {"libraryId": "pub", "subjectType": "ALL_ACCOUNTS", "role": "VIEWER"} in api.grants
+    assert not any(
+        g["libraryId"] == "zu" and g["subjectType"] == "ALL_ACCOUNTS" for g in api.grants
+    )
+    assert {g["subjectId"] for g in api.grants if g["libraryId"] == "zu"} == {
+        user_ids[key] for key in closed.viewer_keys
+    }

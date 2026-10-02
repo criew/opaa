@@ -1,7 +1,7 @@
 # Demo-Drehbuch „Stadt Rheinfurt"
 
-Acht vorbereitete Fragen und sechs Vorführschritte für die Demo-Instanz „Stadt Rheinfurt" (Epic #708,
-Epic #2012). Dieses Dokument ist Überzeugungsmaterial und leitet sich wie jedes andere
+Acht vorbereitete Fragen und acht Vorführschritte für die Demo-Instanz „Stadt Rheinfurt" (Epic #708,
+Epic #2012, Epic #2070). Dieses Dokument ist Überzeugungsmaterial und leitet sich wie jedes andere
 Marketing-Asset aus [`MESSAGING.md`](./MESSAGING.md) ab. Der stärkste Vorführ-Moment ist die dort
 zentrale Botschaft **Belegbarkeit**, live erlebbar: Zwei Nutzer stellen dieselbe Frage und bekommen
 unterschiedliche, jeweils belegte Antworten (Frage 5). Wer das Recht dahinter vergibt und wieder
@@ -78,7 +78,8 @@ sind sie mit dem neuen Stand gegenzuprüfen.
 
 Die Klickwege unten benutzen diese Begriffe:
 
-- **Linke Leiste:** „Spaces“, „Wissen“, „Prompts“, „Katalog“. Bei `demo-admin` kommt „Admin“ hinzu; auf
+- **Linke Leiste:** „Spaces“ und „Katalog“. Der Katalog ist der eine Einstieg zu Wissen und Prompts
+  (#2114). Bei `demo-admin` kommt „Admin“ hinzu; auf
   opaa.ewerlin.com meldet sich damit nur der Maintainer an (Passwort rotiert), sonst am lokalen Stack.
   Unten sitzt der Avatar mit dem Kontomenü (Bedienhilfe „Profil und Einstellungen“) und den
   Einträgen „Einstellungen“ und „Abmelden“.
@@ -105,8 +106,7 @@ Wissen aussieht, zeigt Schritt G.
   - aus der Leistungsbeschreibung `001_personalausweis.md` (Bibliothek „Leistungen Meldewesen &
     Ausweise", lesbar für Maria und Selin über die Keycloak-Gruppe „Meldewesen" und für Andrea)
   - aus der Verwaltungsgebührensatzung `01_verwaltungsgebuehrensatzung.pdf` (Bibliothek „Satzungen &
-    Gebührenordnungen", lesbar für alle vier Fachkonten über die Keycloak-Gruppe „Bürgerbüro
-    Rheinfurt")
+    Gebührenordnungen", für „Alle Konten" freigegeben)
 
   Seit #2028 kann zusätzlich die Gebührenübersicht `20_gebuehrenuebersicht-buergerbuero.xlsx` als
   Quelle erscheinen. Thomas liest die Leistungsbeschreibung nicht; er bekommt die Zahl nur aus Satzung
@@ -124,13 +124,15 @@ Wissen aussieht, zeigt Schritt G.
 
 ## 3. Aktualitätsfrage
 
-- **Konto und Space:** ein beliebiges Fachkonto, in jedem seiner Spaces
+- **Konto und Space:** ein beliebiges Fachkonto, in jedem seiner Spaces außer „Infotheke
+  Bürgerbüro"
 - **Frage:** „Wann ist das Bürgerbüro wegen des Stadtfests geschlossen?"
 - **Erwartete Antwort:** Freitag, 19. Juni 2026, ganztägig; ab Montag, 22. Juni 2026, wieder reguläre
   Öffnungszeiten — belegt aus der Pressemitteilung `buergerbuero-geschlossen-stadtfest.html`
   (Bibliothek „Pressemitteilungen Stadt Rheinfurt", `RSS_FEED`). Selin und Thomas lesen die
   Pressemitteilungen über die interne Gruppe „Presseverteiler Bürgerbüro"; allen fachlichen Spaces
-  ist die Bibliothek zugeordnet.
+  ist die Bibliothek zugeordnet. Die „Infotheke Bürgerbüro" führt nur öffentliches Wissen, die
+  geschlossenen Pressemitteilungen gehören nicht dazu.
 - **Zeigt:** dass eine tagesaktuelle Meldung aus dem RSS-Feed genauso durchsucht wird wie eine
   Leistungsbeschreibung — der Konnektortyp ist für die Antwort unsichtbar.
 
@@ -248,7 +250,7 @@ diesen Fall nicht von selbst. Bleibt offen für eine spätere, gezielt konstruie
 
 ---
 
-## Vorführschritte zu Gruppen, Prompts, Ordnern, Fachformaten, Chats und leeren Spaces
+## Vorführschritte zu Gruppen, Prompts, Ordnern, Fachformaten, Chats, leeren Spaces und Katalog
 
 Die Schritte A und B ändern Rechte. Beide enden deshalb mit dem Zurücksetzen. Ohne es fehlt danach:
 
@@ -273,14 +275,14 @@ vorführen; alle anderen nutzen dafür den lokalen Stack.
 - **Ausgangslage:** Thomas hat auf „Interne Dienstanweisungen Meldewesen" kein eigenes Recht. Er liest
   sie ausschließlich über die Gruppe und ist nur über sie Mitglied des Space „Meldewesen & Ausweise".
 - **Klickweg:**
-  1. Als Thomas: „Wissen" zeigt die Karte „Interne Dienstanweisungen Meldewesen". Die Space-Auswahl
+  1. Als Thomas: Der „Katalog" zeigt die Kachel „Interne Dienstanweisungen Meldewesen". Die Space-Auswahl
      („Spaces" oder das Feld „Space" oben in der Space-Spalte) führt „Meldewesen & Ausweise".
   2. Als Maria: Avatar unten links → „Einstellungen" → Reiter „Meine Gruppen". Die Gruppe
      „Vertretung Meldewesen" steht dort mit den Kennzeichen „freigegeben" und „1 Mitglied".
      Aufklappen, dann im Abschnitt „Mitglieder" bei „Thomas Klein" auf „Entfernen" klicken.
   3. Als Thomas die Seite neu laden.
 - **Erwartetes Ergebnis:**
-  - Unter „Wissen" fehlt „Interne Dienstanweisungen Meldewesen".
+  - Im „Katalog" fehlt „Interne Dienstanweisungen Meldewesen".
   - In der Space-Auswahl fehlt „Meldewesen & Ausweise".
   - Frage 5 liefert jetzt auch in „Meine Dokumente" keine Quelle aus der internen Bibliothek.
   - Kein Recht an der Bibliothek und keine Space-Mitgliedschaft wurde angefasst; weggefallen ist nur
@@ -303,9 +305,10 @@ vorführen; alle anderen nutzen dafür den lokalen Stack.
   läuft sie unter <http://localhost:8180/admin>, Anmeldung mit `admin`/`admin` (Vorgabe in
   `docker-compose.yml`).
 - **Ausgangslage:** Die Keycloak-Gruppen „Bürgerbüro Rheinfurt", „Meldewesen" und „Kfz-Zulassung"
-  kommen über den Verzeichnisabgleich des Anbieters „Verzeichnisdienst" nach OPAA. Ihre Rechte tragen
-  sie allein: Thomas liest „Leistungen Kfz-Zulassung" nur über „Kfz-Zulassung", alle vier Fachkonten
-  lesen Satzungen und Ratsinformationen nur über „Bürgerbüro Rheinfurt".
+  kommen über den Verzeichnisabgleich des Anbieters „Verzeichnisdienst" nach OPAA. Was an ihnen
+  hängt, hängt allein an ihnen: Thomas liest „Leistungen Kfz-Zulassung" nur über „Kfz-Zulassung",
+  „Meldewesen" ist Eigentümerin der „Leistungen Meldewesen & Ausweise", und „Bürgerbüro Rheinfurt"
+  bringt alle fünf Konten in den Space „Infotheke Bürgerbüro".
 - **Klickweg, Herkunft:** „Admin" → „Gruppen".
   - Die drei Keycloak-Gruppen haben die Herkunft „Verzeichnisdienst", die internen Gruppen die
     Herkunft „Intern". Unter dem Namen steht bei Keycloak-Gruppen der Quellpfad aus dem Verzeichnis,
@@ -313,7 +316,8 @@ vorführen; alle anderen nutzen dafür den lokalen Stack.
   - Das Info-Symbol neben „Verzeichnisdienst" erklärt die Herkunft: „OPAA liest Gruppen und
     Mitglieder von „Verzeichnisdienst“ selbst aus, zurzeit stündlich. Änderungen dort gelten hier
     nach dem nächsten Abgleich, auch für Personen, die sich nicht anmelden."
-  - Die Spalte „Verwendung" zeigt „2 Bibliotheken" bzw. „1 Bibliothek · 1 Space" bzw. „1 Bibliothek".
+  - Die Spalte „Verwendung" zeigt für „Bürgerbüro Rheinfurt" einen Space, für „Meldewesen" Space
+    und Eigentum, für „Kfz-Zulassung" eine Bibliothek.
   - Der Filter „Herkunft" trennt „Intern" und „Alle Identitätsanbieter".
 - **Klickweg, Abgleich:** „Admin" → „Verzeichnisabgleich".
   - Die Karte „Verzeichnisdienst" zeigt den Stand „Angewendet", den Schalter „Verzeichnisabgleich
@@ -329,7 +333,7 @@ vorführen; alle anderen nutzen dafür den lokalen Stack.
      Thomas Klein. Der Anteil liegt unter der Schwelle von 30 %.
   3. Auf „Jetzt abgleichen" klicken: Stand „Angewendet", „Mitgliedschaften: +0 / −1".
 - **Erwartetes Ergebnis:**
-  - Als Thomas (neu laden) fehlt unter „Wissen" die Bibliothek „Leistungen Kfz-Zulassung".
+  - Als Thomas (neu laden) fehlt im „Katalog" die Bibliothek „Leistungen Kfz-Zulassung".
   - Frage 4 liefert keine Quelle mehr aus `008_wunschkennzeichen.txt`.
   - In OPAA wurde kein Recht angefasst.
 - **Zurücksetzen (Pflicht):** in Keycloak Thomas wieder in „Kfz-Zulassung" aufnehmen („Join
@@ -364,12 +368,14 @@ vorführen; alle anderen nutzen dafür den lokalen Stack.
 - **Vorlagen nur für die Amtsleitung:**
   - `andrea.vogt` im Space „Amtsleitung Bürgerbüro": „/" zeigt zusätzlich die Gruppe „Vorlagen
     Amtsleitung" mit `/wochenbericht-dezernentin` und `/stellungnahme-hauptausschuss`.
-    Unter „Prompts" stehen zwei Karten; „Vorlagen Amtsleitung" trägt das Kennzeichen „nur Sie".
+    Der „Katalog" führt für sie beide Prompt-Bibliotheken; „Vorlagen Amtsleitung" trägt das
+    Kennzeichen „nur Sie".
   - `andrea.vogt` im Space „Dienstbesprechung Bürgerbüro": „/" zeigt nur die Textbausteine. Andrea
     darf die Vorlagen lesen, dieser Space führt sie aber nicht — und was ein Space nicht führt, bietet
     sein Chat nicht an.
-  - `thomas.klein`: „Prompts" zeigt nur „Textbausteine Bürgerbüro". Der „Katalog" führt die
-    Textbausteine, aber keine „Vorlagen Amtsleitung".
+  - `thomas.klein`: Der „Katalog" führt die Textbausteine und seine eigenen „Arbeitshilfen
+    Kfz-Zulassung", aber keine „Vorlagen Amtsleitung". Im Space „Kfz-Zulassung" bietet „/" beide
+    Bibliotheken an, darunter `/auskunft-sonderkennzeichen` mit der Auswahl der Kennzeichenart.
   - `selin.kaya` im Space „Dienstbesprechung Bürgerbüro": „/" zeigt dieselben Textbausteine.
 - **Zeigt:** Prompts gehören wie Wissen einer Person, werden freigegeben und Spaces zugeordnet. Der
   Chat eines Space bietet nur dessen Prompts an. Im Chat bleibt nachvollziehbar, aus welchem Prompt
@@ -379,17 +385,17 @@ vorführen; alle anderen nutzen dafür den lokalen Stack.
 
 ### D. Ordner: Aktenplan, Jahrgang und Gremium, Anhänge an den Ratsvorlagen
 
-- **Konto:** `maria.weber`. Die Ratsinformationen lesen alle vier Fachkonten, die internen
-  Dienstanweisungen Maria, Selin, Andrea und über die Vertretung Thomas.
+- **Konto:** `maria.weber`. Die Ratsinformationen sind für „Alle Konten" freigegeben, die internen
+  Dienstanweisungen lesen Maria, Selin, Andrea und über die Vertretung Thomas.
 - **Klickweg, Aktenplan:**
-  1. „Wissen" → „Interne Dienstanweisungen Meldewesen", Reiter „Dokumente". Die Wurzel zeigt die
+  1. „Katalog" → „Interne Dienstanweisungen Meldewesen", Reiter „Dokumente". Die Wurzel zeigt die
      Aktenplan-Ordner `01 Melderecht` bis `06 Aus- und Fortbildung`.
   2. `05 Bürgerbüro` → `04 Mobiles Bürgerbüro` öffnen. Der Pfad über der Liste lautet „Wurzel / 05
      Bürgerbüro / 04 Mobiles Bürgerbüro".
   3. Das Rundschreiben `27_rundschreiben-mobiles-buergerbuero-nordfeld.eml` hat den Aufklapper
      „1 Anhang". Er zeigt `einsatzplan-mobiles-buergerbuero-2026-q3.pdf` mit dem Kennzeichen „Anhang".
 - **Klickweg, Ratsinformationen:**
-  1. „Wissen" → „Ratsinformationen Stadt Rheinfurt", Reiter „Dokumente". Die Wurzel zeigt die
+  1. „Katalog" → „Ratsinformationen Stadt Rheinfurt", Reiter „Dokumente". Die Wurzel zeigt die
      Jahrgänge `2024`, `2025` und `2026`, darin je `Bauausschuss`, `Hauptausschuss` und `Stadtrat`.
   2. `2026` → `Stadtrat` öffnen. Die Vorlage `2026-02-24-stadtrat-vorlage-feuerwache-sued.eml` hat den
      Aufklapper „2 Anhänge": Lageplan-Erläuterung und Kostenaufstellung.
@@ -498,6 +504,69 @@ Drei Fragen, die sich nur aus einem Nicht-Text-Format beantworten lassen (#2028)
 - **Zeigt:** Ein Space enthält genau, was ihm zugeordnet ist — auch der persönliche. Ein Space ohne
   Wissen antwortet nie so, als wäre die Antwort belegt; er sagt, was fehlt, und führt mit einem
   Klick zur Zuordnung. Wer nur Mitglied ist, liest stattdessen, wer zuordnen kann.
+
+### H. Katalog: Eigentum, Sichtbarkeit, Favoriten und Zuordnung
+
+Wem welches Asset gehört, was öffentlich ist, wer welche Favoriten hat und welcher Space was
+zugeordnet hat, steht als Übersicht in
+[`../features/demo-instance.md`](../features/demo-instance.md#eigentum-sichtbarkeit-favoriten-und-zuordnung).
+
+**Stand der Oberfläche:** Eigentum und Sichtbarkeit an der Kachel, die Filter und die Sortierung
+des Katalogs sind gebaut (#2113, #2116). Den Stern und den Filter „nur Favoriten" sowie den Hinweis
+auf nicht lesbare Zuordnungen baut Epic #2070 noch (#2095, #2097). Die Beschriftungen dieser Teile
+folgen der Spezifikation und sind nach dem Neuaufsetzen der Demo gegenzuprüfen.
+
+Für die Teile 1 und 3 lohnen sich zwei Browserfenster, eines davon privat.
+
+- **1. Favoriten sind persönlich:**
+  1. Als `maria.weber` den „Katalog" öffnen. Oben stehen ihre vier Favoriten: „Interne
+     Dienstanweisungen Meldewesen", „Leistungen Meldewesen & Ausweise", „Satzungen &
+     Gebührenordnungen" und „Textbausteine Bürgerbüro".
+  2. Als `thomas.klein` dasselbe: Oben stehen „Leistungen Kfz-Zulassung", „Ratsinformationen Stadt
+     Rheinfurt" und seine „Arbeitshilfen Kfz-Zulassung".
+  3. Als `selin.kaya`: Sie hat keine Favoriten. Der Filter „nur Favoriten" bleibt leer, der Katalog
+     ist nach Name geordnet.
+  - **Zeigt:** Jede Person ordnet ihren Katalog selbst. Niemand sieht die Favoriten anderer, auch
+    nicht als Zahl am Asset.
+- **2. Eigentum und Sichtbarkeit an der Kachel** (Konto `maria.weber`):
+  - „Satzungen & Gebührenordnungen" gehört Andrea Vogt und trägt die Sichtbarkeit „Für alle".
+  - „Leistungen Meldewesen & Ausweise" gehört der Keycloak-Gruppe „Meldewesen" und ist
+    „Eingeschränkt". Maria hat die Bibliothek für die Gruppe angelegt; Selin verwaltet sie als
+    Gruppenmitglied mit.
+  - „Interne Dienstanweisungen Meldewesen" gehört Maria selbst und ist „Eingeschränkt".
+  - Als `thomas.klein` fehlen „Leistungen Meldewesen & Ausweise" und die „Vorlagen Amtsleitung" im
+    Katalog ganz: Was eine Person nicht lesen darf, sieht sie nirgends.
+  - **Zeigt:** Wissen gehört Fachleuten und Fachgruppen, nicht der Systemverwaltung. Sichtbar ist
+    genau, was lesbar ist.
+- **3. Nicht alles Zugeordnete ist für jedes Mitglied lesbar:**
+  1. Als `thomas.klein` den Space „Dienstbesprechung Bürgerbüro" wählen und die Space-Einstellungen
+     öffnen, Reiter „Wissen". Er sieht vier Bibliotheken und den Hinweis „Nicht alle zugeordneten
+     Inhalte sind für Sie lesbar." Ohne Namen und ohne Zahl: Ihm fehlen die „Leistungen
+     Meldewesen & Ausweise".
+  2. Als `maria.weber` im selben Space: derselbe Hinweis. Ihr fehlen die „Leistungen
+     Kfz-Zulassung".
+  3. Als `andrea.vogt` (Eigentümerin) im selben Space: alle fünf Bibliotheken, kein Hinweis.
+  4. Zur Gegenprobe Frage 4 als Maria in „Dienstbesprechung Bürgerbüro" stellen: keine Quelle aus
+     `008_wunschkennzeichen.txt`. Die Zuordnung gewährt kein Leserecht.
+  - Dasselbe gilt für Thomas im Space „Meldewesen & Ausweise": Er ist dort über die Vertretung
+    Mitglied, liest die Leistungen Meldewesen aber nicht.
+- **4. Ein Space nur mit öffentlichem Wissen:**
+  - Als ein beliebiges Konto den Space „Infotheke Bürgerbüro" wählen. Mitglied sind alle fünf Konten
+    über die Keycloak-Gruppe „Bürgerbüro Rheinfurt", Eigentümerin ist Selin Kaya.
+  - Zugeordnet sind nur „Satzungen & Gebührenordnungen" und „Ratsinformationen Stadt Rheinfurt".
+    Kein Mitglied sieht den Hinweis aus Teil 3.
+  - Die Gebührenfrage aus Frage 1 liefert dort für jedes Konto dieselbe Antwort aus der Satzung. Die
+    Aktualitätsfrage aus Frage 3 bleibt ohne Pressemitteilung.
+- **Zurücksetzen:** Wer einen Favoriten setzt oder entfernt, ändert nur die eigene Ordnung. Ein
+  erneuter Seed setzt die Favoriten des Profils wieder, entfernt aber keinen zusätzlich gesetzten.
+  Auf der öffentlichen Instanz teilen sich alle Besuchenden die Konten; einen in der Vorführung
+  gesetzten Favoriten deshalb wieder entfernen. An den Bibliotheken der Fachkonten selbst nichts
+  ändern: Maria und Andrea besitzen dort Demo-Wissen, und eine gelöschte Bibliothek, entzogene
+  Freigabe oder hochgeladene Datei trifft alle Besuchenden. Sicher wiederherstellen lässt sich das nur durch
+  Neuaufsetzen (`reset-demo-0/a/b`, siehe [`../../demo/README.md`](../../demo/README.md),
+  „Öffentliche Instanz betreiben").
+- **Zeigt:** Eigentum, Sichtbarkeit, persönliche Ordnung und Space-Zuordnung sind vier getrennte
+  Dinge. Nur die Leserechte entscheiden, was eine Person findet. Der Space bestimmt, wo gesucht wird.
 
 ---
 

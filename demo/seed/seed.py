@@ -3,9 +3,10 @@
 
 Sets up a ready-to-use OPAA installation through the public API only (no direct database access,
 per the issue's "Technische Hinweise"): users (provisioned by their first authenticated request),
-spaces, knowledge libraries with their own source configuration (ADR-0018), VIEWER grants,
+spaces, knowledge libraries with their own source configuration (ADR-0018), each created through
+its owner's session, grants to "Alle Konten" and VIEWER grants,
 space<->asset associations (a space searches and offers only what is associated, the accounts'
-personal spaces included), upload documents, the indexing run per
+personal spaces included), each account's favorites, upload documents, the indexing run per
 library and, last, prepared chats with their sources (chats.py; the import route exists only
 while the backend runs with OPAA_DEMO_CHAT_IMPORT_ENABLED=true).
 
@@ -212,32 +213,76 @@ def ensure_space(
     return created["id"]
 
 
-def ensure_library(admin_client: Client, library_def: LibraryDef) -> str:
-    """Idempotency: every demo/e2e library is owned by the admin account, so listLibraries as the
-    admin always includes it - a straightforward name lookup."""
-    existing = admin_client.get_ok("/v1/libraries")
-    for library in existing:
-        if library["name"] == library_def.name:
+def ensure_library(
+    owner_client: Client, library_def: LibraryDef, owner_group_id: str | None = None
+) -> str:
+    """Creates the library through owner_client - in the name of owner_group_id if given - or finds
+    it by name among the libraries that session owns: its creator holds OWNER, also on a library
+    created in a group's name. A same-named library the session merely reads stops the seed; it is
+    one of an instance seeded under different ownership, and a second one beside it would split
+    the demo's knowledge."""
+    same_named = [
+        library
+        for library in owner_client.get_ok("/v1/libraries")
+        if library["name"] == library_def.name
+    ]
+    for library in same_named:
+        if library.get("myRole") == "OWNER":
             print(f"  Bibliothek bereits vorhanden: {library_def.name}")
             return library["id"]
+    if same_named:
+        raise SystemExit(
+            f"Bibliothek '{library_def.name}' besteht bereits, gehört aber nicht dem Konto "
+            f"'{library_def.owner_key}', über das der Seed sie anlegt. Die Instanz stammt aus "
+            "einem älteren Seed-Stand - die Demo neu aufsetzen (siehe demo/README.md)."
+        )
 
     body = {
         "name": library_def.name,
         "description": library_def.description,
         "sourceType": library_def.source_type,
-        # No grant to "Alle Konten" on any knowledge library of the demo (#1931,
-        # docs/features/spaces-and-assets.md): such a grant reaches every account regardless of the
-        # demo's own VIEWER matrix (Thomas must not read the internal Meldewesen instructions).
     }
+    if owner_group_id:
+        body["ownerType"] = "GROUP"
+        body["ownerId"] = owner_group_id
     if library_def.source_url:
         body["sourceUrl"] = library_def.source_url
     if library_def.source_credentials:
         body["sourceCredentials"] = library_def.source_credentials
     if library_def.s3_settings:
         body["sourceSettings"] = library_def.s3_settings
-    created = admin_client.post_ok("/v1/libraries", json=body, expected=(201,))
-    print(f"  Bibliothek angelegt: {library_def.name} ({created['id']})")
+    created = owner_client.post_ok("/v1/libraries", json=body, expected=(201,))
+    owner = library_def.owner_group or library_def.owner_key
+    print(f"  Bibliothek angelegt: {library_def.name} (Eigentum: {owner}, {created['id']})")
     return created["id"]
+
+
+def library_owner_group_ids(
+    admin_client: Client, provider_id: str | None, profile: Profile
+) -> dict[str, str]:
+    """The ids of the Keycloak groups libraries are created in the name of, by group name - found
+    after the directory sync of step 2 like the groups of step 6."""
+    names = {lib.owner_group for lib in profile.libraries if lib.owner_group}
+    if not names:
+        return {}
+    if provider_id is None:
+        raise SystemExit(
+            "Eine Bibliothek soll einer Keycloak-Gruppe gehören, das Profil richtet aber keinen "
+            "Verzeichnisabgleich ein."
+        )
+    by_name = {g.name: g for g in profile.provider_groups}
+    return {name: find_provider_group(admin_client, provider_id, by_name[name]) for name in names}
+
+
+def ensure_library_grants(
+    owner_client: Client, library_id: str, library_def: LibraryDef, user_ids: dict[str, str]
+) -> None:
+    """The library's own reach: "Alle Konten" for a public one, the direct VIEWER grants of
+    viewer_keys for a closed one. Group grants follow in step 6."""
+    if library_def.all_accounts_viewer:
+        ensure_grant(owner_client, library_id, None, subject_type="ALL_ACCOUNTS")
+    for viewer_key in library_def.viewer_keys:
+        ensure_grant(owner_client, library_id, user_ids[viewer_key])
 
 
 def ensure_association(
@@ -292,18 +337,45 @@ def seed_personal_spaces(
 
 
 def ensure_grant(
-    admin_client: Client,
+    manager_client: Client,
     library_id: str,
-    subject_id: str,
+    subject_id: str | None,
     role: str = "VIEWER",
     subject_type: str = "USER",
 ) -> None:
-    # upsertAssetGrant is idempotent per subject by design (see opaa-api.yaml) - always safe to call.
-    admin_client.post_ok(
-        f"/v1/assets/KNOWLEDGE_LIBRARY/{library_id}/grants",
-        json={"subjectType": subject_type, "subjectId": subject_id, "role": role},
-        expected=(200,),
+    # upsertAssetGrant is idempotent per subject by design (see opaa-api.yaml) - always safe to
+    # call. ALL_ACCOUNTS names no subjectId.
+    grant = {"subjectType": subject_type, "role": role}
+    if subject_id is not None:
+        grant["subjectId"] = subject_id
+    manager_client.post_ok(
+        f"/v1/assets/KNOWLEDGE_LIBRARY/{library_id}/grants", json=grant, expected=(200,)
     )
+
+
+def seed_favorites(
+    clients: dict[str, Client],
+    library_ids: dict[str, str],
+    prompt_library_ids: dict[str, str],
+    profile: Profile,
+) -> None:
+    """Marks each account's favorites through its own session - a favorite belongs to the account
+    alone. markAssetFavorite is idempotent, and the seed only adds: a favorite a visitor has set
+    stays, one the profile names is set again."""
+    for favorites in profile.favorites:
+        entries = [("KNOWLEDGE_LIBRARY", name, library_ids) for name in favorites.library_names] + [
+            ("PROMPT_LIBRARY", name, prompt_library_ids)
+            for name in favorites.prompt_library_names
+        ]
+        for asset_type, name, ids in entries:
+            if name not in ids:
+                raise SystemExit(
+                    f"Favorit von '{favorites.user_key}' nennt eine unbekannte Bibliothek '{name}'."
+                )
+            clients[favorites.user_key].put_ok(
+                f"/v1/assets/{asset_type}/{ids[name]}/favorite", expected=(204,)
+            )
+            print(f"  Favorit gesetzt: {favorites.user_key} → {name}")
 
 
 DIRECTORY_SYNC_RUN_ATTEMPTS = 40
@@ -901,25 +973,33 @@ def run(args: argparse.Namespace) -> None:
     for space_def in profile.spaces:
         space_ids[space_def.name] = ensure_space(admin_client, clients, user_ids, space_def)
 
-    print("4/9 Wissensbibliotheken einrichten …")
+    print("4/9 Wissensbibliotheken über die Sitzung ihrer Eigentümer einrichten …")
+    # Each library is created, filled, shared and indexed through the account that owns it (for a
+    # group-owned one: the member creating it, who holds OWNER as its creator).
+    library_clients = {lib.name: clients[lib.owner_key] for lib in profile.libraries}
+    owner_group_ids = library_owner_group_ids(admin_client, provider_id, profile)
     library_ids: dict[str, str] = {}
     for library_def in profile.libraries:
-        library_ids[library_def.name] = ensure_library(admin_client, library_def)
+        library_ids[library_def.name] = ensure_library(
+            library_clients[library_def.name],
+            library_def,
+            owner_group_ids.get(library_def.owner_group),
+        )
 
-    print("5/9 Leserechte (VIEWER) und Upload-Dokumente …")
+    print("5/9 Leserechte (Alle Konten, VIEWER) und Upload-Dokumente …")
     for library_def in profile.libraries:
         library_id = library_ids[library_def.name]
-        for viewer_key in library_def.viewer_keys:
-            ensure_grant(admin_client, library_id, user_ids[viewer_key])
+        library_client = library_clients[library_def.name]
+        ensure_library_grants(library_client, library_id, library_def, user_ids)
         if library_def.source_type == "UPLOAD":
             if library_def.upload_dir is None or not library_def.upload_dir.is_dir():
                 raise SystemExit(
                     f"Upload-Verzeichnis für '{library_def.name}' fehlt: {library_def.upload_dir}"
                 )
             print(f"  Uploads für '{library_def.name}':")
-            upload_documents(admin_client, library_id, library_def.upload_dir)
+            upload_documents(library_client, library_id, library_def.upload_dir)
             wait_for_uploads_indexed(
-                admin_client,
+                library_client,
                 library_id,
                 library_def.name,
                 timeout_seconds=args.indexing_timeout_seconds,
@@ -931,7 +1011,10 @@ def run(args: argparse.Namespace) -> None:
         group_id = ensure_group(admin_client, user_ids, group_def)
         for library_name in group_def.library_grants:
             ensure_grant(
-                admin_client, library_ids[library_name], group_id, subject_type="GROUP"
+                library_clients[library_name],
+                library_ids[library_name],
+                group_id,
+                subject_type="GROUP",
             )
             print(f"  Leserecht (Gruppe) vergeben: {group_def.name} → {library_name}")
         if group_def.space_membership:
@@ -943,7 +1026,12 @@ def run(args: argparse.Namespace) -> None:
     for provider_group_def in profile.provider_groups:
         group_id = find_provider_group(admin_client, provider_id, provider_group_def)
         for library_name in provider_group_def.library_grants:
-            ensure_grant(admin_client, library_ids[library_name], group_id, subject_type="GROUP")
+            ensure_grant(
+                library_clients[library_name],
+                library_ids[library_name],
+                group_id,
+                subject_type="GROUP",
+            )
             print(f"  Leserecht (Keycloak-Gruppe) vergeben: {provider_group_def.name} → {library_name}")
         if provider_group_def.space_membership:
             space_name, role = provider_group_def.space_membership
@@ -978,13 +1066,16 @@ def run(args: argparse.Namespace) -> None:
     print("7c/9 Persönliche Spaces: Wissen und Prompts zuordnen …")
     seed_personal_spaces(clients, library_ids, prompt_library_ids, profile)
 
+    print("7d/9 Favoriten je Person über die eigene Sitzung …")
+    seed_favorites(clients, library_ids, prompt_library_ids, profile)
+
     print("8/9 Indizierung je Bibliothek auslösen (ADR-0018) …")
     for library_def in profile.libraries:
         if library_def.source_type == "UPLOAD":
             # UPLOAD has no run of its own (ADR-0018) - indexing happens per document on upload.
             continue
         trigger_indexing(
-            admin_client,
+            library_clients[library_def.name],
             library_ids[library_def.name],
             library_def.name,
             timeout_seconds=args.indexing_timeout_seconds,
@@ -992,21 +1083,20 @@ def run(args: argparse.Namespace) -> None:
         )
 
     print("9/9 Vorbereitete Chats einspielen (ohne Modellaufruf, #2071) …")
-    seed_chats(clients, admin_client, space_ids, library_ids, profile)
+    seed_chats(clients, space_ids, library_ids, profile)
 
     print(f"Seed-Profil '{profile.name}' abgeschlossen.")
 
 
 def seed_chats(
     clients: dict[str, Client],
-    admin_client: Client,
     space_ids: dict[str, str],
     library_ids: dict[str, str],
     profile: Profile,
 ) -> None:
     """Imports each chat set of the profile into its space, through the owner's own session - the
-    import makes the caller the author. Sources resolve against the admin's document lists: the
-    admin owns every library, so every document is listed there."""
+    import makes the caller the author. Sources resolve against that owner's document lists: the
+    import only accepts sources the owner reads, so every cited document is listed there."""
     if not profile.chat_sets:
         print("  übersprungen (keine vorbereiteten Chats im Profil)")
         return
@@ -1019,10 +1109,11 @@ def seed_chats(
                 f"Chat-Satz {directory.name}: '{chat_set.owner_key}' ist nicht Eigentümerin bzw. "
                 f"Eigentümer des Space '{chat_set.space}'."
             )
+        owner_client = clients[chat_set.owner_key]
         resolved = chats.resolve_documents(
             chat_set,
             library_ids,
-            lambda library_id: list(existing_documents(admin_client, library_id).values()),
+            lambda library_id: list(existing_documents(owner_client, library_id).values()),
         )
         imported, present = chats.seed_chat_set(
             clients[chat_set.owner_key], space_ids[chat_set.space], chat_set, resolved, now
