@@ -396,10 +396,10 @@ describe('Sidebar', () => {
   })
 
   /**
-   * #1917: Den Einstieg sieht nur, wer den Space verwalten darf - ein Mitglied hätte dort nichts
-   * zu tun und bekäme vom Dienst ohnehin nur Absagen.
+   * #1923: Auch ein einfaches Mitglied erreicht die Einstellungen - die Stammdaten zeigen ihm, ob
+   * inaktive Chats des Space automatisch archiviert und gelöscht werden.
    */
-  it('hides the settings entry from a plain member and shows it to a curator', () => {
+  it('shows the settings entry to a plain member and to a curator', () => {
     useSpaceStore.setState({
       spaces: [
         {
@@ -419,7 +419,7 @@ describe('Sidebar', () => {
       isLoadingList: false,
     })
     const { unmount } = renderSidebarAtRoute('/spaces/space-engineering')
-    expect(screen.queryByRole('link', { name: 'Einstellungen' })).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Einstellungen' })).toBeInTheDocument()
     unmount()
 
     useSpaceStore.setState({

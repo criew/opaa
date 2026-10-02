@@ -6,7 +6,12 @@ import { answerConfirm, renderWithProviders } from '../test/test-utils'
 import ChatsPage from './ChatsPage'
 import { useChatListStore } from '../stores/chatListStore'
 import { useSpaceStore } from '../stores/spaceStore'
-import { mockChatArchive, mockChatDetails, mockSearchChats } from '../mocks/chatFixtures'
+import {
+  mockArchivedChatsForSpace,
+  mockChatArchive,
+  mockChatDetails,
+  mockSearchChats,
+} from '../mocks/chatFixtures'
 import { server } from '../mocks/server'
 import type { ChatSearchRequest, ChatSearchResponse, ChatSummary } from '../types/api'
 
@@ -276,6 +281,29 @@ describe('ChatsPage', () => {
     await waitFor(() => expect(rowTitles()).toEqual(['Architektur des Projekts']))
     expect(screen.getByRole('tab', { name: 'Aktiv (1)' })).toBeInTheDocument()
     expect(screen.getByRole('checkbox', { name: 'Alle auf dieser Seite auswählen' })).toHaveFocus()
+  })
+
+  it('#1923: shows at an archived chat when the automatic cleanup deletes it', async () => {
+    mockChatArchive['chat-personal-1'] = '2026-09-18T09:00:00Z'
+    server.use(
+      http.get('/api/v1/spaces/:spaceId/chats/archived', () =>
+        HttpResponse.json({
+          items: mockArchivedChatsForSpace('space-personal').map((chat) => ({
+            ...chat,
+            deletionDueAt: '2027-09-18T09:00:00Z',
+          })),
+          page: 0,
+          size: 25,
+          totalElements: 1,
+        }),
+      ),
+    )
+    const user = userEvent.setup()
+    renderWithProviders(<ChatsPage />)
+
+    await user.click(await screen.findByRole('tab', { name: 'Archiv (1)' }))
+
+    expect(await screen.findByText('Wird am 18.09.2027 gelöscht')).toBeInTheDocument()
   })
 
   it('deletes the selected chats after a confirmation that names their number', async () => {

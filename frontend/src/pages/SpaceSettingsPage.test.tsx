@@ -253,6 +253,7 @@ const personalSpace: SpaceResponse = {
   memberCount: 1,
   userRole: 'ADMIN',
   roleCounts: { MEMBER: 0, CURATOR: 0, ADMIN: 1 },
+  chatAutoCleanup: { enabled: false, archiveAfterDays: 90, deleteAfterDays: 365 },
   createdAt: '2026-03-01T10:00:00Z',
   updatedAt: '2026-03-01T10:00:00Z',
 }
@@ -268,6 +269,7 @@ const teamSpace: SpaceResponse = {
   memberCount: 2,
   userRole: 'ADMIN',
   roleCounts: { MEMBER: 0, CURATOR: 0, ADMIN: 2 },
+  chatAutoCleanup: { enabled: false, archiveAfterDays: 90, deleteAfterDays: 365 },
   createdAt: '2026-03-01T10:00:00Z',
   updatedAt: '2026-03-01T10:00:00Z',
 }
@@ -288,6 +290,7 @@ const nonAdminSpace: SpaceResponse = {
   memberCount: 2,
   userRole: 'MEMBER',
   roleCounts: { MEMBER: 1, CURATOR: 0, ADMIN: 1 },
+  chatAutoCleanup: { enabled: false, archiveAfterDays: 90, deleteAfterDays: 365 },
   createdAt: '2026-03-01T10:00:00Z',
   updatedAt: '2026-03-01T10:00:00Z',
 }
@@ -648,6 +651,7 @@ describe('SpaceSettingsPage', () => {
         'Team Renamed',
         'Team docs',
         'OPEN',
+        undefined,
       )
     })
   })
@@ -664,8 +668,50 @@ describe('SpaceSettingsPage', () => {
     await user.click(screen.getByRole('button', { name: /einstellungen speichern/i }))
 
     await waitFor(() => {
-      expect(mockUpdateSpaceDetails).toHaveBeenCalledWith('space-team', 'Team', 'Team docs', 'OPEN')
+      expect(mockUpdateSpaceDetails).toHaveBeenCalledWith(
+        'space-team',
+        'Team',
+        'Team docs',
+        'OPEN',
+        undefined,
+      )
     })
+  })
+
+  it('#1923: an admin switches the chat cleanup on, with the periods of the installation', async () => {
+    setSpaceState(teamSpace)
+    renderTab('general')
+    const user = userEvent.setup()
+
+    expect(screen.getByText(/nach 90 Tagen archiviert und nach weiteren 365 Tagen/)).toBeVisible()
+    await user.click(
+      screen.getByRole('switch', { name: 'Inaktive Chats automatisch archivieren und löschen' }),
+    )
+    await user.click(screen.getByRole('button', { name: /einstellungen speichern/i }))
+
+    await waitFor(() => {
+      expect(mockUpdateSpaceDetails).toHaveBeenCalledWith(
+        'space-team',
+        'Team',
+        'Team docs',
+        'PRIVATE',
+        true,
+      )
+    })
+  })
+
+  it('#1923: a plain member sees the switch state but cannot change it', () => {
+    setSpaceState({
+      ...nonAdminSpace,
+      chatAutoCleanup: { enabled: true, archiveAfterDays: 90, deleteAfterDays: 365 },
+    })
+    renderTab('general')
+
+    const cleanup = screen.getByRole('switch', {
+      name: 'Inaktive Chats automatisch archivieren und löschen',
+    })
+    expect(cleanup).toBeChecked()
+    expect(cleanup).toBeDisabled()
   })
 
   // #543: Space mit fremden privaten Chats ist dauerhaft unlöschbar - Archivieren ist der Ausweg.

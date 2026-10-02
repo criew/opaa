@@ -109,8 +109,29 @@ describe('SpaceCreatePage (#594, Mockup 1b)', () => {
       'Referat 12',
       'PRIVATE',
       [],
+      false,
     )
     expect(mockNavigate).toHaveBeenCalledWith('/spaces/space-neu')
+  })
+
+  it('#1923: offers the chat cleanup switch, off by default, and passes it on', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<SpaceCreatePage />, { withRouter: true })
+
+    const cleanup = screen.getByRole('switch', {
+      name: 'Inaktive Chats automatisch archivieren und löschen',
+    })
+    expect(cleanup).not.toBeChecked()
+    await user.type(screen.getByLabelText(/Name/), 'Widerspruchsstelle')
+    await user.click(cleanup)
+    await user.click(screen.getByRole('button', { name: 'Weiter' }))
+    await user.click(screen.getByRole('button', { name: 'Weiter' }))
+    await user.click(screen.getByRole('button', { name: 'Weiter' }))
+
+    expect(screen.getByText('werden automatisch archiviert und gelöscht')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Space anlegen' }))
+
+    expect(mockCreateNewSpace).toHaveBeenCalledWith('Widerspruchsstelle', '', 'PRIVATE', [], true)
   })
 
   it('#777: offers the user picker on the Mitglieder step, powered by GET /v1/users', async () => {
