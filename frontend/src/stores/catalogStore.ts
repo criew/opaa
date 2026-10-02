@@ -1,6 +1,6 @@
 import { create } from 'zustand'
-import type { AssetType, CatalogEntryResponse } from '../types/api'
-import { getCatalog } from '../services/catalogApi'
+import type { AssetType, CatalogEntryResponse, CatalogVisibility } from '../types/api'
+import { getCatalog, type CatalogSort } from '../services/catalogApi'
 import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
 
 export const CATALOG_PAGE_SIZE = 50
@@ -11,6 +11,9 @@ export interface CatalogFilter {
   /** Every type when absent. */
   type?: AssetType
   q: string
+  visibility?: CatalogVisibility
+  fromMyGroups?: boolean
+  sort?: CatalogSort
 }
 
 interface CatalogState {

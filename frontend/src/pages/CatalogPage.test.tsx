@@ -104,7 +104,9 @@ describe('CatalogPage (ADR-0039)', () => {
     expect(requestedUrls.at(-1)?.searchParams.get('type')).toBe('PROMPT_LIBRARY')
     expect(screen.getByTestId('location')).toHaveTextContent('/catalog?type=prompts')
 
-    await user.click(screen.getByRole('button', { name: 'Alle' }))
+    await user.click(
+      within(screen.getByRole('group', { name: 'Typ' })).getByRole('button', { name: 'Alle' }),
+    )
     expect(await screen.findByRole('link', { name: /Rechtsquellen Soziales/ })).toBeInTheDocument()
     expect(screen.getByTestId('location')).toHaveTextContent(/^\/catalog$/)
   })
@@ -263,7 +265,10 @@ describe('CatalogPage (ADR-0039)', () => {
         entry('Verwaist', {
           assetType: 'KNOWLEDGE_LIBRARY',
           status: 'SUCCESSION_OPEN',
-          succession: { addressee: 'SYSTEM_ADMINISTRATION', addresseeLabel: 'die Systemverwaltung' },
+          succession: {
+            addressee: 'SYSTEM_ADMINISTRATION',
+            addresseeLabel: 'die Systemverwaltung',
+          },
           knowledgeLibrary: { sourceType: 'UPLOAD', indexingStatus: 'UPDATING' },
         }),
         entry('Leer', {
@@ -296,7 +301,7 @@ describe('CatalogPage (ADR-0039)', () => {
       )
       expect(screen.getByTestId('location')).toHaveTextContent('visibility=restricted')
       await waitFor(() =>
-        expect(screen.queryByRole('link', { name: /Dienstanweisungen/ })).not.toBeInTheDocument(),
+        expect(screen.queryByText('Dienstanweisungen', { exact: true })).not.toBeInTheDocument(),
       )
     })
 
