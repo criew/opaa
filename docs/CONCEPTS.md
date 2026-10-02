@@ -168,8 +168,8 @@ dieser Arbeit liegen.
 
 **Zweck:**
 - Chats und Artefakte thematisch bündeln
-- Kuratieren, welche Assets hier angeboten werden
-- Standard-Suchbereich, Modell-Obergrenze und Zurechnung für Nutzung und Kosten
+- Zuordnen, welche Assets hier nutzbar sind — genau die zugeordneten, nichts sonst
+- Suchbereich, Modell-Obergrenze und Zurechnung für Nutzung und Kosten
 
 **Flaches Modell:**
 Spaces sind **flach** — keine Hierarchie, keine Verschachtelung. Es gibt **eine** Art von Space; ein
@@ -183,41 +183,44 @@ Ein **Mitglied** ist eine Person oder eine **Gruppe**, jeweils mit einer Space-R
 angehört, hält deren Rolle ohne eigene Zeile und verliert sie mit dem Austritt; bei einer zusätzlichen
 eigenen Mitgliedschaft gilt die höhere der beiden Rollen. Das frühere `memberSource` entfällt.
 
-**Wichtig:** Space-Mitgliedschaft gewährt **keinen** Zugriff auf die im Space assoziierten Assets — aber
-vollen Zugriff auf **geteilte** space-eigene Inhalte. Chats und Artefakte entstehen zunächst **privat** bei
+**Wichtig:** Space-Mitgliedschaft gewährt **keinen** Zugriff auf die dem Space zugeordneten Assets — aber
+vollen Zugriff auf **geteilte** space-eigene Inhalte. Umgekehrt ist die [Zuordnung](#zuordnung) eine
+harte Grenze: Im Chat eines Space ist nur nutzbar, was ihm zugeordnet und für die Person lesbar ist. Chats und Artefakte entstehen zunächst **privat** bei
 der Person, die sie erzeugt, und werden erst sichtbar, sobald sie sie **in den Space teilt**. Siehe
 [Spaces, Assets & Zugangskontrolle](./features/spaces-and-assets.md).
 
 - **Beispiel:** Der Space „Bauleitplanung" bündelt die Chats zum laufenden Verfahren; die
-  Rechtsquellen darin gehören dem Rechtsreferat und sind nur assoziiert.
+  Rechtsquellen darin gehören dem Rechtsreferat und sind nur zugeordnet.
 
 ---
 
 ### Suchbereich eines Chats
 
-Was ein Chat durchsucht, wird nicht durch eine Auswahl je Anfrage bestimmt, sondern ausschließlich
-durch die **Chip-Leiste am Eingabefeld** — die einzige Suchbereichssteuerung, kein zusätzlicher
-Schalter daneben: „Durchsucht wird, was in der Leiste steht." Beim Tippen von `@` werden alle
-Bibliotheken vorgeschlagen, die der Nutzer lesen darf, unabhängig vom Space, dazu immer als erster
-Eintrag die Spezial-Referenz **@Alles-Wissen**. Der Zustand bleibt als entfernbare Chips **sticky am
-Chat**, nicht nur für eine einzelne Anfrage.
+Was ein Chat durchsucht, wird nicht durch eine Auswahl je Anfrage bestimmt, sondern durch die
+**Chip-Leiste am Eingabefeld** — die einzige Suchbereichssteuerung, kein zusätzlicher Schalter
+daneben: „Durchsucht wird, was in der Leiste steht." Die Obergrenze ist die [Zuordnung](#zuordnung)
+des Space: Beim Tippen von `@` werden die dem Space zugeordneten Bibliotheken vorgeschlagen, die der
+Nutzer lesen darf, dazu immer als erster Eintrag die Spezial-Referenz **@Space-Wissen**. Der Zustand
+bleibt als entfernbare Chips **sticky am Chat**, nicht nur für eine einzelne Anfrage.
 
-- **@Alles-Wissen** (Standard) — im Zielbild die dem Space assoziierten Bibliotheken, geschnitten mit
-  den lesbaren; bis zur Space↔Bibliothek-Assoziation (#203) gelten ersatzweise alle lesbaren
-  Bibliotheken, und ein Space ohne Assoziationen verengt auch danach dauerhaft nicht
+- **@Space-Wissen** (Standard) — die dem Space zugeordneten Bibliotheken, geschnitten mit den
+  lesbaren. Ist dem Space kein Wissen zugeordnet, durchsucht er keines; der Chat sagt das und führt
+  mit einem Direktlink zur Zuordnung
 - **konkrete Bibliotheks-Chips** — ausschließlich die referenzierten Bibliotheken, geschnitten mit den
-  lesbaren. Der erste konkrete Chip ersetzt @Alles-Wissen; @Alles-Wissen erneut hinzuzufügen ersetzt
-  umgekehrt die konkreten Chips
-- **leere Leiste** — kein Retrieval; jeder Chip ist entfernbar, auch @Alles-Wissen, mit einem
+  zugeordneten und den lesbaren. Der erste konkrete Chip ersetzt @Space-Wissen; @Space-Wissen erneut
+  hinzuzufügen ersetzt umgekehrt die konkreten Chips
+- **leere Leiste** — kein Retrieval; jeder Chip ist entfernbar, auch @Space-Wissen, mit einem
   Ein-Klick-Weg zurück
 
 Eine Space-Auswahl, die den Suchbereich einer einzelnen Anfrage steuert, gibt es nicht mehr. Siehe
-[Suchbereich je Chatart](./features/spaces-and-assets.md#suchbereich-je-chatart).
+[Suchbereich je Chatart](./features/spaces-and-assets.md#suchbereich-je-chatart) und
+[ADR-0039](./decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md).
 
 - **Beispiel:** Eine Sachbearbeiterin öffnet einen Chat im Space „Bauleitplanung" zu einer Frage,
-  die ausschließlich die Bibliothek „Rechtsquellen Denkmalschutz" betrifft. Sie referenziert die
-  Bibliothek per `@Rechtsquellen-Denkmalschutz`, was den vorbelegten @Alles-Wissen-Chip ersetzt — die
-  Antwort stützt sich dann nur auf diesen Bestand, nicht auf das gesamte lesbare Wissen.
+  die ausschließlich die dort zugeordnete Bibliothek „Rechtsquellen Denkmalschutz" betrifft. Sie
+  referenziert die Bibliothek per `@Rechtsquellen-Denkmalschutz`, was den vorbelegten
+  @Space-Wissen-Chip ersetzt — die Antwort stützt sich dann nur auf diesen Bestand, nicht auf das
+  gesamte Wissen des Space.
 
 ---
 
@@ -230,7 +233,7 @@ eigenen Rechteliste.
 
 ### KI-Asset
 
-Ein benanntes, beschriebenes, auffindbares Objekt, das eine KI-Fähigkeit oder einen Wissensbestand trägt und
+Ein benanntes, beschriebenes, im [Katalog](#katalog) auffindbares Objekt, das eine KI-Fähigkeit oder einen Wissensbestand trägt und
 für sich geteilt, versioniert und freigegeben werden kann. Es gibt drei Gattungen: **Agent**,
 **Prompt-Bibliothek** und **[Wissensbibliothek](#wissensbibliothek)**.
 
@@ -242,15 +245,35 @@ Chatverlauf verschwindet.
 - Können und Wissen verteilbar machen, ohne es zu kopieren
 - Ein Bestand liegt einmal und wird an vielen Stellen genutzt
 
-**Assoziation:** Ein Asset wird in beliebig viele Spaces assoziiert. Die Assoziation ist reine Kuratierung
-und **gewährt keinerlei Zugriff**; sie stellt das Asset nur denen im Space bereit, die ohnehin ein Recht
-darauf haben.
+**Zuordnung:** Ein Asset wird beliebig vielen Spaces [zugeordnet](#zuordnung). Die Zuordnung **gewährt
+keinerlei Zugriff**; sie stellt das Asset nur denen im Space bereit, die ohnehin ein Recht darauf haben.
 
-**Merkregel:** Was im Space entsteht, gehört dem Space. Was assoziiert wird, behält seinen Eigentümer.
+**Merkregel:** Was im Space entsteht, gehört dem Space. Was zugeordnet wird, behält seinen Eigentümer.
 
-- **Beispiel:** Der Agent „Vorprüfung Widerspruch" gehört dem Rechtsreferat, ist in vier Spaces
-  assoziiert und trägt die Fassung 3. Wird Fassung 4 freigegeben, arbeiten alle vier Räume damit — ohne dass
+- **Beispiel:** Der Agent „Vorprüfung Widerspruch" gehört dem Rechtsreferat, ist vier Spaces
+  zugeordnet und trägt die Fassung 3. Wird Fassung 4 freigegeben, arbeiten alle vier Räume damit — ohne dass
   irgendwo eine Kopie nachgezogen werden muss.
+
+---
+
+### Zuordnung
+
+Die ausdrückliche Bereitstellung eines [Assets](#ki-asset) in einem [Space](#space) — technisch
+„Assoziation". Sie ist für alle Asset-Arten eine **harte Grenze**: Ein Space enthält genau, was ihm
+zugeordnet ist. Im Chat ist nur nutzbar, was zugeordnet **und** für die Person lesbar ist —
+zugeordnetes Wissen als Suchbereich, Prompts zugeordneter Prompt-Bibliotheken per `/`, zugeordnete
+Agenten. Ein Space ohne zugeordnetes Wissen durchsucht keines und sagt das mit einem Hinweis samt
+Direktlink zur Zuordnung. Der Fremdzugang über Zugangstokens hat keinen Space; dort ist die
+Bibliotheksauswahl des Tokens die entsprechende Auswahl.
+
+Zuordnen darf, wer im Space `CURATOR` ist und das Asset selbst lesen kann — im Space-Assistenten,
+in den Space-Einstellungen oder über „In Space verwenden" im [Katalog](#katalog).
+
+- **Beispiel:** Die Bibliothek „Rechtsquellen Soziales" ist an alle Konten freigegeben und damit im
+  Katalog jeder Person sichtbar. Im Chat des Space „Widerspruchsstelle" wird sie erst durchsucht,
+  nachdem sie dort zugeordnet wurde.
+
+Siehe [ADR-0039](./decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md).
 
 ---
 
@@ -273,12 +296,13 @@ Chunk trägt weiterhin nur ihre Kennung als Filterachse, nicht zusätzlich eine 
 
 **Persönliche Ablage:**
 - Jede Person hat einen Standard-Space; eine eigene Wissensbibliothek legt sie bei Bedarf selbst
-  an — es gibt keine automatisch angelegte, nicht löschbare Vorgabebibliothek mehr
+  an — es gibt keine automatisch angelegte, nicht löschbare Vorgabebibliothek mehr. Wie jeder Space
+  startet der Standard-Space ohne Zuordnung und durchsucht nur, was ihm zugeordnet wird
 - Geteilt wird über die Bibliothek, nicht über den Raum: Eine direkte Berechtigung für eine andere Person
   genügt, ein Space, in dem niemand sonst Mitglied ist, bleibt privat
 
 - **Beispiel:** Die Bibliothek „Rechtsquellen Soziales" gehört dem Rechtsreferat, ist für die Gruppe
-  „Amt 50" lesbar und in mehreren Spaces assoziiert. Wer nicht in der Gruppe ist, bekommt daraus keinen
+  „Amt 50" lesbar und mehreren Spaces zugeordnet. Wer nicht in der Gruppe ist, bekommt daraus keinen
   Treffer — und erfährt auch nicht, dass es Treffer gäbe.
 
 ---
@@ -303,6 +327,48 @@ nebenbei verrutscht; vor der Freigabe an alle Konten fragt die Anwendung eigens 
   übernimmt ihn (Team). Das Referat prüft ihn fachlich und gibt ihn frei (Fachbereich). Nach einer Prüfung
   durch die Systemverwaltung ist er an alle Konten freigegeben (organisationsweit).
 
+**Sichtbarkeit: öffentlich oder geschlossen.** Aus den Freigaben folgt auch, wie ein Asset im
+[Katalog](#katalog) erscheint: **öffentlich**, wenn es an „Alle Konten" freigegeben ist, sonst
+**geschlossen** — sichtbar nur für die, die es über eine Freigabe an sich oder eine ihrer Gruppen
+lesen dürfen. Ein eigenes Feld dafür gibt es nicht, und es gibt keinen Weg, ein Asset sichtbar zu
+machen, ohne es lesbar zu machen. In der Oberfläche heißen die beiden Werte voraussichtlich
+„Für alle" und „Eingeschränkt".
+
+---
+
+### Katalog
+
+Der **eine Einstieg** für alle [Assets](#ki-asset) — Wissensbibliotheken, Prompt-Bibliotheken, später
+Skills und Agenten. Er zeigt alles, was die Person lesen darf, **und nichts sonst**, ausschließlich als
+Kacheln: Asset-Art mit Icon, Name, Beschreibung, Sichtbarkeit, zuständige Stelle, eigene Rolle,
+Stand und die Zahl der Spaces, in denen das Asset zugeordnet ist. Gefiltert wird nach Art,
+Sichtbarkeit, „aus meinen Gruppen" und [Favoriten](#favorit). „Neu" beginnt mit der Wahl der Art,
+„In Space verwenden" führt in die [Zuordnung](#zuordnung).
+
+Der Katalog ist die sichtbare Einlösung der [Verteilbarkeit](#verteilbarkeit): Was ein Referat an alle
+Konten freigibt, findet jede Person dort — nutzbar im Chat wird es in den Spaces, denen es zugeordnet
+ist.
+
+- **Beispiel:** Eine Sachbearbeiterin sucht im Katalog nach „Bescheid", filtert auf Prompts und findet
+  die öffentliche Sammlung „Bescheidbausteine" des Rechtsamts. Mit „In Space verwenden" ordnet sie sie
+  ihrem Space zu und kann die Prompts dort per `/` einsetzen.
+
+---
+
+### Favorit
+
+Eine **persönliche Markierung** an einem Asset, das man sehen darf. Favoriten stehen im
+[Katalog](#katalog) oben und dienen als Filter im Katalog, beim Zuordnen zu einem Space und bei der
+Auswahl für ein Zugangstoken. Sie haben keine Rechtewirkung.
+
+Weil eine Liste von Favoriten ein Interessenprofil wäre, sind sie nur für die Person selbst
+abrufbar: keine Zählung je Asset, keine Sicht für Verwaltung oder Eigentümer, kein Protokolleintrag,
+keine Historie, Löschung mit dem Konto.
+
+- **Beispiel:** Ein Sachbearbeiter markiert die drei Rechtsquellen, die er täglich braucht. Beim
+  Anlegen eines neuen Space wählt er im Zuordnungsschritt „nur Favoriten" und hat sie mit drei Klicks
+  zugeordnet.
+
 ---
 
 ### Rolle (in der Zugangskontrolle)
@@ -316,7 +382,7 @@ Ein Bündel von Rechten, das Personen oder Gruppen zugewiesen wird.
 
 **Space-Rollen (je Mitgliedschaft) — regeln Mitarbeit und Kuratierung, nicht den Dokumentenzugriff:**
 - **Member** — Space betreten, Chats führen, alle **geteilten** Chats und Artefakte des Space lesen
-- **Curator** — zusätzlich Assets assoziieren und lösen
+- **Curator** — zusätzlich Assets zuordnen und Zuordnungen lösen
 - **Admin** — zusätzlich Mitglieder, Einstellungen und Modell-Obergrenze verwalten, geteilte Inhalte
   **zurückziehen** (nicht löschen)
 
@@ -476,8 +542,9 @@ Metadatenfilter in die Abfrage ein. Nicht freigegebene Chunks werden nie geladen
 
 **Ablauf:**
 1. Das System ermittelt die lesbaren Wissensbibliotheken der fragenden Person und schneidet sie mit dem
-   [Suchbereich des Chats](#suchbereich-eines-chats) — bestimmt durch die Chip-Leiste (@Alles-Wissen,
-   konkrete @-Referenzen oder eine leere Leiste), oder durch den gebundenen Agenten
+   [Suchbereich des Chats](#suchbereich-eines-chats) — bestimmt durch die Chip-Leiste (@Space-Wissen,
+   konkrete @-Referenzen oder eine leere Leiste) innerhalb der Zuordnung des Space, oder durch den
+   gebundenen Agenten
 2. Die Frage lautet etwa: „Wie ist die Regelung zu Zulagen?"
 3. Die Vektorsuche liefert nur Chunks, deren Bibliothek im ermittelten Suchbereich liegt
 4. Es erscheinen ausschließlich Inhalte, für die eine Leseberechtigung besteht
@@ -693,7 +760,7 @@ Beides ist vorgesehen; die Wahl hängt an der Quelle und daran, wie aktuell der 
 ### Bestände mehrfach verwenden
 
 Ein Bestand, der an mehreren Stellen gebraucht wird, wird nicht kopiert: Dieselbe
-[Wissensbibliothek](#wissensbibliothek) wird in mehreren Spaces assoziiert oder an weitere Personen und
+[Wissensbibliothek](#wissensbibliothek) wird mehreren Spaces zugeordnet oder an weitere Personen und
 Gruppen freigegeben. Eine Fassung, eine Pflegestelle, keine Vervielfachung von Chunks.
 
 **Stand:** Durch das Asset-Modell gelöst. Das frühere Konzept eines raumübergreifenden Dokument-Teilens samt
@@ -785,6 +852,11 @@ OPAA erzeugt Daten mit Personenbezug, und ein Rollout beginnt in aller Regel nic
 Mitbestimmungsfähigkeit bedeutet konkret: Sichtbarkeit ist eine Handlung und keine Automatik, der
 persönliche Bereich bleibt unbeobachtet, Auswertungen sind aggregiert, und einen personenbezogenen
 Auswertungspfad gibt es nicht — nicht abgeschaltet, sondern nicht gebaut. Ranglisten existieren nicht.
+Persönliche Ordnungsmerkmale wie [Favoriten](#favorit) sind nur für die Person selbst sichtbar.
+
+Eine frühere Zusage ist geändert: Ein Raum, in dem jemand allein arbeitet, durchsucht seit
+[ADR-0039](./decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md) wie jeder andere nur
+das ihm Zugeordnete und nicht mehr alles Lesbare. Private Inhalte bleiben unbeobachtet.
 
 Damit wird die Dienstvereinbarung zu einer Konfigurationsaufgabe statt zu einem Projektrisiko.
 
@@ -1007,10 +1079,14 @@ Recherchegrundlage steht in [discussion-retrieval-strategien.md, Abschnitt 9](./
 | **Belegvalidierung** | Jeder Beleg wird gegen die abgerufenen Fundstellen geprüft | Ein Beleg, der auf nichts zeigt, erscheint als nicht bestätigt |
 | **Konfidenz** | Wie belastbar die Grundlage ist | 0,4 — Auskunft vor Verwendung prüfen |
 | **Space** | Thematischer Arbeitsraum, flach; trägt Chats und Artefakte | „Bauleitplanung" |
-| **Suchbereich eines Chats** | Gesteuert am Chat über die Chip-Leiste (@Alles-Wissen, konkrete @-Referenzen, leere Leiste), nicht per Anfrage | `@Rechtsquellen-Denkmalschutz` ersetzt @Alles-Wissen und schränkt auf eine Bibliothek ein |
+| **Suchbereich eines Chats** | Gesteuert am Chat über die Chip-Leiste (@Space-Wissen, konkrete @-Referenzen, leere Leiste), nicht per Anfrage; nie über die Zuordnung des Space hinaus | `@Rechtsquellen-Denkmalschutz` ersetzt @Space-Wissen und schränkt auf eine Bibliothek ein |
+| **@Space-Wissen** | Vorbelegter Chip: das dem Space zugeordnete, für die Person lesbare Wissen | Space ohne Zuordnung → Hinweis „Wissen zuordnen" statt Suche |
 | **KI-Asset** | Benanntes, teilbares Objekt mit Eigentümer und Rechten | Agent, Prompt-Bibliothek, Wissensbibliothek |
 | **Wissensbibliothek** | Dokumentencontainer und Rechteanker der Suche | „Rechtsquellen Soziales" |
-| **Assoziation** | Asset in einem Space bereitstellen; gewährt keine Rechte | „Rechtsquellen" in fünf Spaces |
+| **Zuordnung** | Asset einem Space bereitstellen; gewährt keine Rechte, ist aber die harte Grenze dessen, was der Space nutzt (technisch: Assoziation) | „Rechtsquellen" in fünf Spaces |
+| **Katalog** | Ein Einstieg für alle Assets; zeigt nur Lesbares, nur als Kacheln | Typfilter „Prompts", Suche „Bescheid" |
+| **Favorit** | Persönliche Markierung an einem Asset, nur für die Person selbst sichtbar | Drei Rechtsquellen oben im Katalog |
+| **Sichtbarkeit (öffentlich/geschlossen)** | Aus den Freigaben abgeleitet: öffentlich = an „Alle Konten" freigegeben | „Bescheidbausteine" öffentlich, „Referat 32 Akten" geschlossen |
 | **Verteilungsstufe** | Reichweite der Freigabe, abgeleitet aus den Empfängern | persönlich → Team → Fachbereich → „Alle Konten" |
 | **Aufgabenbeschreibung** | Was ein Agent tut und was nicht | „Prüft Frist, Form, Zuständigkeit; versendet nichts" |
 | **Agenten-Prüfstand** | Durchlauf an Testfällen vor der Freigabe | 30 Altfälle, 2 Abweichungen |

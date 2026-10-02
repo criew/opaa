@@ -11,6 +11,13 @@ Datenbank, `MailService` mit `SendResult`, Vorlagen-Registry `MailTemplateKey` m
 unverändert und ergänzt nur Vorlagen und gegebenenfalls einen Digest; an der Tabelle `notifications`
 und den beiden Endpunkten dieses ADR ändert das nichts.
 
+**Hinweis (02.10.2026, [ADR-0039](0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md)):** Seit
+die Space-Zuordnung für alle Asset-Typen eine harte Grenze ist, gilt die Benachrichtigung bei Zuordnung
+zu einem gemischten Space nicht nur für Wissensbibliotheken, sondern für jeden Typ; wird ein Space mit
+vielen Zuordnungen angelegt, wird sie je Eigentümer gebündelt (#2097). Ob dafür
+`LIBRARY_ASSOCIATED_TO_MIXED_SPACE` verallgemeinert oder ein typneutraler Wert eingeführt wird,
+entscheidet #2097.
+
 ## Kontext
 
 `docs/features/spaces-and-assets.md#assets-in-einen-space-assoziieren` verlangt für #203/#686:

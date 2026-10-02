@@ -107,7 +107,7 @@ Danach in den Lesepfad wechseln, der zu Ihnen passt.
 - Die Rechteprüfung sitzt **in** der Suche, nicht dahinter: Was jemand nicht lesen darf, wird nicht geladen
   und nicht gerankt
 - Beschränkungen hängen an den Daten, nicht am Arbeitsraum — ein Raumwechsel umgeht sie nicht
-- Sichtbarkeit ist eine Handlung, keine Automatik; der persönliche Bereich bleibt unbeobachtet
+- Sichtbarkeit ist eine Handlung, keine Automatik; private Inhalte bleiben unbeobachtet
 - Es gibt keinen personenbezogenen Auswertungspfad und keine Ranglisten — nicht abgeschaltet, sondern nicht
   gebaut
 - OPAA ist **nicht zertifiziert**. Das Ziel ist, dass ein Betreiber die Prüfung mit OPAA im Prüfumfang

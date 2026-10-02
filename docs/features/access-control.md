@@ -254,13 +254,15 @@ Die zwei Wege, auf denen Dokumente in OPAA gelangen, haben unterschiedliche Auto
 Wesentliche Verschiebung gegenüber dem alten Modell: Der System-Admin entscheidet, **wohin** indiziert
 wird; der Bibliotheks-Eigentümer entscheidet, **wer es sieht**.
 
-**Die Freigabe-Obergrenze deckelt, wo sie gesetzt ist, zwei Dinge an einer Konnektorbibliothek: die
-Freigabe an „Alle Konten" und die Auffindbarkeit (`listed`) — die einzige technische Sicherung
-gegen eine zu weite Freigabe durch den Bibliotheks-Eigentümer (gebaut, #797, Maintainer-Festlegung vom
-21.09.2026; Form seit [ADR-0037](../decisions/0037-reichweite-als-freigabe-an-alle.md)).**
+**Die Freigabe-Obergrenze deckelt, wo sie gesetzt ist, an einer Konnektorbibliothek die Freigabe an
+„Alle Konten" — die einzige technische Sicherung gegen eine zu weite Freigabe durch den
+Bibliotheks-Eigentümer (gebaut, #797, Maintainer-Festlegung vom 21.09.2026; Form seit
+[ADR-0037](../decisions/0037-reichweite-als-freigabe-an-alle.md) und
+[ADR-0039](../decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md)).** Die frühere zweite
+Erlaubnis, die Auffindbarkeit (`listed_cap`), entfällt mit `listed` (Umsetzung #2092).
 Sie wirkt aber erst, **nachdem** sie gesetzt wurde:
 
-- Gedeckelt werden **ausschließlich die Freigabe an „Alle Konten" und `listed`** der
+- Gedeckelt wird **ausschließlich die Freigabe an „Alle Konten"** der
   Konnektorbibliothek — keine
   Gruppengrößen-Schwelle für Grants (eine frühere Fassung dieses Abschnitts sah eine solche Schwelle
   vor; sie entfällt ersatzlos, mit derselben Begründung wie die gestrichene Größenschwelle bei Grants
@@ -273,10 +275,10 @@ Sie wirkt aber erst, **nachdem** sie gesetzt wurde:
   Obergrenze verbietet.
 - Die Systemverwaltung setzt die Obergrenze **je Bibliothek**, nicht installationsweit
   (`PUT /api/v1/libraries/{libraryId}/share-cap`). **Ausgeliefert ist die Obergrenze unrestriktiv**
-  (`all_accounts_grant_allowed = true`, `listed_cap = true`) — eine neu angelegte
+  (`all_accounts_grant_allowed = true`) — eine neu angelegte
   Konnektorbibliothek unterliegt deshalb **keiner** Einschränkung, bis die Systemverwaltung die
   Obergrenze für sie eigens senkt. Die Bibliothek selbst startet dagegen eng: Sie trägt nur die
-  Rechte, die ihr jemand erteilt, und `listed = false`; ungedeckelt ist nicht
+  Rechte, die ihr jemand erteilt, und ist damit geschlossen; ungedeckelt ist nicht
   die Bibliothek, sondern die **Wahl** des Anlegenden. Da `CREATE_CONNECTOR_LIBRARY` an „Alle
   Konten" ausgeliefert ist (siehe oben), kann zwischen Anlage und Setzen der Obergrenze eine Lücke
   liegen, in der der Anlegende den eingespeisten Bestand an alle Konten freigeben kann. Zwei Wege dagegen, beide betrieblich statt
@@ -286,24 +288,21 @@ Sie wirkt aber erst, **nachdem** sie gesetzt wurde:
   jede neue Konnektorbibliothek setzt, ist eine offene Maintainer-Frage** — die Festlegung vom
   21.09.2026 regelt nur, *was* gedeckelt wird und *was beim Senken geschieht*, nicht *je Bibliothek
   vs. installationsweiter Vorgabewert*; dieser PR baut keinen Vorgabewert.
-  Ein Bibliotheks-Eigentümer oder `MANAGER` kann weder an „Alle Konten" freigeben noch
-  listen, solange die Obergrenze es verbietet — der Versuch scheitert mit `409`, weil die eigene
+  Ein Bibliotheks-Eigentümer oder `MANAGER` kann nicht an „Alle Konten" freigeben, solange die
+  Obergrenze es verbietet — der Versuch scheitert mit `409`, weil die eigene
   Berechtigung nicht in Frage steht, sondern die Anfrage mit der gesetzten Obergrenze kollidiert.
-  **Die erste Prüfung sitzt am Freigabepfad** (`POST …/grants`), nicht an einem Reichweitenfeld:
+  **Die Prüfung sitzt am Freigabepfad** (`POST …/grants`), nicht an einem Reichweitenfeld:
   Seit die organisationsweite Reichweite ein Grant ist, ist der Grant die Stelle, an der gedeckelt
   wird.
 - Wird eine gesetzte Obergrenze **nachträglich gesenkt**, nimmt das System das Weitergehende
   **sofort zurück**: Ein bestehender Grant an „Alle Konten" wird über den gewöhnlichen
-  Widerrufsweg entzogen (`ASSET_GRANT_REVOKED`, ein Grant-Intervall), ein gesetztes `listed`
-  gelöscht (`ASSET_VISIBILITY_CHANGED`, eine Zeile der Sichtbarkeits-Historie). Das Setzen der
+  Widerrufsweg entzogen (`ASSET_GRANT_REVOKED`, ein Grant-Intervall). Das Setzen der
   Obergrenze selbst steht getrennt daneben (`CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED`). Erteilte
   Rechte an Personen und Gruppen sowie eine bestehende Fremdzugangsfreigabe bleiben unberührt (siehe
   oben) und sind gesondert zu prüfen. Es gibt bewusst **keinen** Zustand „verletzt, aber geduldet" —
   eine frühere Fassung sah ein Aussetzen ohne Entzug vor; das ist mit der Maintainer-Festlegung
   entschieden anders: Die Bibliothek liegt in der Hand der Systemverwaltung, die die Obergrenze
-  selbst setzt, sodass ein sofortiges Zurücknehmen keine widersprüchliche Zuständigkeit erzeugt
-  (anders als beim Strikt-Space, siehe
-  [spaces-and-assets.md](./spaces-and-assets.md#wenn-die-voraussetzung-eines-strikt-space-nachträglich-bricht)).
+  selbst setzt, sodass ein sofortiges Zurücknehmen keine widersprüchliche Zuständigkeit erzeugt.
 - `UPLOAD`-Bibliotheken tragen keine Obergrenze (`400` beim Versuch, eine zu setzen): Dieselbe Person
   kuratiert dort ohnehin jedes Dokument einzeln, es gibt nichts, wovor die Obergrenze schützen müsste.
   Da ADR-0018 die gemischte Speisung einer Bibliothek aus Konnektor und manuellem Upload strukturell
@@ -1108,7 +1107,9 @@ Abgleichmodus mit dem Zeitpunkt des Laufs.
    `(Issuer, Subject)`, ohne Verzeichnisgruppen und ohne Erstadministrator-Regel.
 2. **Erste Anmeldung.** Der Standard-Space (`isDefault`) entsteht dabei; eine Wissensbibliothek legt die Person
    bei Bedarf selbst an (siehe [Wissensquellen](./knowledge-sources.md)). Ein Anlaufbestand an
-   Assets ergibt sich aus den Gruppen der Person.
+   Assets ergibt sich aus den Gruppen der Person — sichtbar im Katalog, im Chat nutzbar erst nach
+   der Zuordnung zu einem Space; auch der Standard-Space startet ohne Zuordnung
+   ([ADR-0039](../decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md)).
 3. **Änderung.** Wechselt jemand das Referat, ändern sich seine Gruppenmitgliedschaften — und damit
    seine Rechte, **ohne dass jemand in OPAA etwas tut**. Das ist der Regelfall und der Grund, warum die
    Synchronisation als Rechteereignis behandelt wird (siehe unten).
@@ -1290,8 +1291,8 @@ diesem Weg.
   Schutzkennzeichen setzt die Systemverwaltung — siehe „Geschützte Gruppen" unten.
 
 **Freigabe zur Verwendung.** Eine interne Gruppe ist erst dann für andere Rechtevergebende wählbar,
-wenn ihre Verantwortlichen sie **freigegeben** haben — das Gegenstück zu `listed` bei Assets:
-Auffindbarkeit ist eine bewusste Handlung. Drei Festlegungen dazu:
+wenn ihre Verantwortlichen sie **freigegeben** haben: Die Wählbarkeit als Empfänger ist eine
+bewusste Handlung. Drei Festlegungen dazu:
 
 1. **Die Durchsetzung liegt im Dienst, nicht in der Auswahlliste**, und gilt für jeden Weg — auch
    für die Eingabe der Kennung von Hand. Eine nicht freigegebene interne Gruppe ist für einen
@@ -1369,6 +1370,13 @@ sobald die Systemrolle den Zugang trägt — ein Systemverwalter passiert deren 
 Bibliothek und in jedem Space. Wer die Gruppe selbst verantwortet, erzeugt beim Lesen nichts, **und
 der Rechtevergebende ohne Systemrolle ebenfalls nicht**: Er liest, wen er selbst an sein Objekt
 geholt hat, und das steht mit Zeitpunkt an der Berechtigung.
+
+**Der Bericht des Verzeichnisabgleichs ist ein zweiter Weg zu denselben Namen** (#1991): Er nennt
+die Mitglieder, die ein Lauf aufnimmt oder entzieht, für eine neu angelegte Gruppe die vollständige
+Liste. Jede Antwort, die ihn mit Namen an die Systemverwaltung ausliefert — Abruf des ausstehenden
+Plans, Probelauf, Lauf von Hand, Bestätigung —, schreibt deshalb ein zusammenfassendes
+`DIRECTORY_SYNC_REPORT_READ` mit Anbieter und der Zahl der genannten Gruppen und Personen, nie mit
+den Namen (ADR-0036, Entscheidung 9, Nachtrag vom 02.10.2026).
 
 > Festgeschrieben in [ADR-0036](../decisions/0036-berechtigungsmodell-gruppen-und-faehigkeiten.md),
 > Entscheidungen 4 und 9.
@@ -1497,7 +1505,7 @@ bestehende Rechte bleiben, **nichts wird gelöscht**. Abgelehnt werden, mit Grun
 Zuständigkeit in der Meldung (`409`, Code `SUCCESSION_OPEN`):
 
 - eine neue oder geänderte Berechtigung an der Bibliothek,
-- eine größere Sichtbarkeit oder Auffindbarkeit,
+- eine größere Sichtbarkeit (eine Freigabe an „Alle Konten" ist eine neue Berechtigung, siehe oben),
 - eine Freigabe für Fremdzugänge,
 - eine neue Bereitstellung in einem Space (beide Seiten),
 - ein neues Mitglied im Space.
@@ -1674,10 +1682,12 @@ Mail aus, weil sie sonst ein Belästigungskanal für jeden wäre, der eine Adres
 > unveränderlichen Bibliotheksauswahl und einem Kontingent je Token, hinter einem installationsweiten
 > Schalter (Standard aus), einer kanalweiten Netzbeschränkung (Vorgabe Hausnetz) und einer
 > **pflichtbefristeten** Freigabe je Bibliothek (Standard aus, höchstens ein Jahr). Diese Freigabe ist
-> ein Reichweitenfeld: Sie wird wie `listed` historisiert, fällt aber **nicht** unter
+> ein Reichweitenfeld: Sie wird als Intervall historisiert, fällt aber **nicht** unter
 > die [Freigabe-Obergrenze](#dokumentenfluss-konnektoren-gegen-benutzer-uploads) konnektor-gespeister
-> Bibliotheken — #797 hat deren Wirkung ausdrücklich auf die Freigabe an „Alle Konten" und
-> auf `listed` begrenzt. **Service-Accounts
+> Bibliotheken — #797 hat deren Wirkung ausdrücklich auf die Freigabe an „Alle Konten"
+> begrenzt. Ein Token ist an keinen Space gebunden: Seine Bibliotheksauswahl ist die ausdrückliche
+> Auswahl dieses Kanals, so wie die Zuordnung die eines Space ist
+> ([ADR-0039](../decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md)). **Service-Accounts
 > als eigene Identität ohne Person bleiben Zielbild** und sind in
 > dieser Stufe nicht enthalten. Einzelheiten: [external-access.md](./external-access.md).
 
@@ -1734,19 +1744,24 @@ beschrieben.
 
 Nicht über eine Sonderrolle, sondern über **Gruppen**: Die Stabsstelle erhält als Gruppe Leserechte an den
 einschlägigen Wissensbibliotheken. Das skaliert, ist im Katalog nachvollziehbar und läuft über denselben
-Weg wie jede andere Freigabe — kein Sonderpfad, der bei einer Prüfung erklärt werden müsste.
+Weg wie jede andere Freigabe — kein Sonderpfad, der bei einer Prüfung erklärt werden müsste. Im Chat
+nutzbar werden die Bibliotheken in den Spaces, denen die Stabsstelle sie zuordnet.
 
 ### Revision und Rechnungsprüfung
 
-Prüfende Stellen brauchen Unabhängigkeit. Empfohlen ist ein eigener Space im **Strikt-Modus** (nur
-Bibliotheken, deren Leserkreis alle Mitglieder umfasst), damit in der Prüfung keine Inhalte an
-Unberechtigte gelangen und die Prüfakte sauber abgegrenzt bleibt.
+Prüfende Stellen brauchen Unabhängigkeit. Empfohlen ist ein eigener Space, dem **nur Bibliotheken und
+Agenten zugeordnet werden, deren Leserkreis alle Mitglieder umfasst**, damit in der Prüfung keine
+Inhalte an Unberechtigte gelangen und die Prüfakte sauber abgegrenzt bleibt. Seit
+[ADR-0039](../decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md) ist das eine Frage der
+Kuratierung, kein eigener Modus: Ein Space nutzt ohnehin nur, was ihm zugeordnet ist, und der früher
+dafür vorgesehene Strikt-Modus ist entfallen. Der Hinweis „Nicht alle zugeordneten Inhalte sind für Sie
+lesbar." zeigt jedem Mitglied ohne Anzahl und ohne Namen, ob die Voraussetzung für es hält.
 
 **Der Preis gehört an dieselbe Stelle wie die Empfehlung:** Ein hausweit geteilter Agent ist in aller
-Regel an mindestens eine Bibliothek gebunden, deren Leserkreis die Prüfstelle nicht umfasst — im
-Strikt-Modus ist er dort nicht aufrufbar. Die Prüfstelle verliert damit faktisch den größten Teil der
-geteilten Agenten des Hauses. Das ist vertretbar und für die Unabhängigkeit sogar folgerichtig, muss aber
-vor der Entscheidung bekannt sein und nicht drei Monate später auffallen.
+Regel an mindestens eine Bibliothek gebunden, deren Leserkreis die Prüfstelle nicht umfasst — wer die
+Prüfakte so abgrenzt, ordnet ihn dem Prüfraum nicht zu. Die Prüfstelle verzichtet damit faktisch auf
+den größten Teil der geteilten Agenten des Hauses. Das ist vertretbar und für die Unabhängigkeit sogar
+folgerichtig, muss aber vor der Entscheidung bekannt sein und nicht drei Monate später auffallen.
 
 ### Externe Beteiligte
 

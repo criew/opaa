@@ -73,6 +73,35 @@ describe('DirectorySyncPage', () => {
     expect(await within(card).findByText(/bestätigte Plan wurde angewendet/)).toBeInTheDocument()
   })
 
+  // ADR-0036, Entscheidung 9: Jeder Abruf des Plans ist ein Protokolleintrag. Ein neu geladener
+  // Status, der denselben Plan meldet, darf ihn deshalb nicht erneut abrufen.
+  it('fetches a pending plan once per plan id, not on every status reload', async () => {
+    let statusCalls = 0
+    let planCalls = 0
+    server.events.on('request:start', ({ request }) => {
+      const path = new URL(request.url).pathname
+      if (path === '/api/v1/admin/directory-sync/status') statusCalls++
+      if (path.endsWith('/directory-sync/pending-plan')) planCalls++
+    })
+    renderWithProviders(<DirectorySyncPage />, { withRouter: true })
+    const user = userEvent.setup()
+
+    const card = await providerCard()
+    await within(card).findByRole('button', { name: 'Plan bestätigen' })
+    const statusCallsBefore = statusCalls
+    await user.click(within(card).getByRole('button', { name: 'Jetzt abgleichen' }))
+
+    await waitFor(() => expect(statusCalls).toBeGreaterThan(statusCallsBefore))
+    await waitFor(() =>
+      expect(within(card).getByRole('button', { name: 'Jetzt abgleichen' })).toBeEnabled(),
+    )
+    // Gives a fetch triggered by the re-render the chance to start before counting.
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    expect(within(card).getByRole('button', { name: 'Plan bestätigen' })).toBeInTheDocument()
+    expect(planCalls).toBe(1)
+    server.events.removeAllListeners()
+  })
+
   // ADR-0036, Entscheidung 3: Eine abgewiesene Bestätigung hinterlässt einen NEUEN Plan. Ohne das
   // Nachladen stünde weiter der alte Bericht da, und die nächste Bestätigung liefe mit der alten
   // Kennung ins Leere.

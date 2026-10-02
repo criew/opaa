@@ -92,6 +92,15 @@ Javadoc-Begründung an `QueryService#query`). Ein leerer Suchbereich überspring
 vollständig (`relevantChunks = List.of()`, keine der dortigen Aufrufe läuft) — Schritt 7 läuft trotzdem,
 mit null Chunks im Kontext, und markiert das Ergebnis über `QueryOutcome#answeredWithoutKnowledge`.
 
+**Zielbild mit [ADR-0039](../decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md)
+(Umsetzung #2096):** Für einen persistierten Chat ist der Suchbereich höchstens das, was dem Space des
+Chats zugeordnet ist, geschnitten mit den lesbaren Bibliotheken — mit @Space-Wissen genau diese Menge,
+mit konkreten Chips ihr Ausschnitt. Der heutige Rückfall von `ChatService#effectiveLibraryScope` auf
+alle lesbaren Bibliotheken, wenn der Space keine Zuordnung hat, entfällt; der Suchbereich ist dann leer,
+und die Antwort trägt eines von zwei getrennten Signalen („kein Wissen zugeordnet" oder „nichts davon
+lesbar", siehe [Suchbereich je Chatart](./spaces-and-assets.md#suchbereich-je-chatart)). Wie die
+ephemere Anfrage ohne Chat, die keinen Space kennt, sich dazu verhält, legt #2096 fest.
+
 ### 1b. Metadatenfilter (#1070)
 
 Stufenname: `METADATA_FILTER`. Direkt hinter der Scope-Bestimmung trägt `MetadataFilterStage` den Kernfeld-Filter der Person oder

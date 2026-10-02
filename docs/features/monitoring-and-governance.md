@@ -169,7 +169,10 @@ gibt. Er beantwortet vier Fragen:
 2. **Welche Assets sind erfolgreich?** Welche Agenten, Prompt-Bibliotheken und Wissensbibliotheken
    tatsächlich genutzt werden — und welche im Katalog stehen, ohne dass sie jemand aufruft. Ein Asset ist
    ein Objekt und keine Person; hier ist die Auswertung uneingeschränkt möglich und ausdrücklich
-   erwünscht.
+   erwünscht. Gemessen wird die Nutzung, nicht die Beliebtheit: **Favoriten sind keine Kennzahl** —
+   sie werden je Asset weder gezählt noch ausgewertet, weil sie ein persönliches Interessenprofil
+   wären ([ADR-0039](../decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md),
+   Entscheidung 7). Aussagekräftig ist dagegen die Zahl der Spaces, denen ein Asset zugeordnet ist.
 3. **Wo ist die Verbreitung schwach?** Einheiten mit auffällig geringer Nutzung sind der Anlass für
    Kuratierung und Begleitung — nicht für Nachfragen an einzelne Beschäftigte. Eine schwache Verbreitung
    ist in aller Regel ein Befund über das Angebot, nicht über die Leute.

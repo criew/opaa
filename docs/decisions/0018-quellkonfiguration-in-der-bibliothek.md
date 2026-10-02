@@ -134,6 +134,11 @@ Die Bibliothek wird der eine Ort für alles, was ihren Bestand betrifft:
 - **Abgelöst werden** die separate Dokumentenseite (`/documents`) und der Indizierungsabschnitt im
   Admin-Drawer.
 
+> **Hinweis (02.10.2026, [ADR-0039](0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md)):** Die
+> eigene Bibliotheksliste geht im **Katalog** auf: Eine Bibliothek erscheint dort als Kachel neben den
+> übrigen Asset-Typen, mit Umfang und Stand. Die Typauswahl beim Anlegen folgt dem durchgängigen
+> Muster „Kachelauswahl mit Icon" und kommt nach der Wahl des Asset-Typs im generischen „Neu".
+
 ### 4. Zugangsdaten werden persistent — mit festen Grundsätzen
 
 Bisher lagen Zugangsdaten nur transient im einzelnen Request; mit der Konfiguration an der

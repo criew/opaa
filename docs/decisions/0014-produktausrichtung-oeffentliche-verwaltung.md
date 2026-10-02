@@ -287,6 +287,10 @@ Nachtrag hat denselben Aufbau: Datum, Punkt, Entscheidung, Begründung, Verweis.
   geführt, nicht verworfen.
 - **Verweis:** [#355](https://github.com/criew/opaa/issues/355) ·
   [features/security-and-compliance.md](../features/security-and-compliance.md#revisionssicheres-protokoll)
+- **Hinweis (02.10.2026, [ADR-0039](0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md)):**
+  **Favoriten** an Assets fallen unter dieselbe Logik wie Abfragen: Sie sind persönliche Ordnung, keine
+  Zugriffsänderung, ergeben in der Menge ein Interessenprofil und werden deshalb weder protokolliert
+  noch historisiert, gezählt oder für andere abrufbar gemacht.
 
 ### 14.08.2026 — Zitierzwang: Schnitt der Belegprüfung und Ort des Schalters
 

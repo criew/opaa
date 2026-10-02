@@ -6,9 +6,10 @@
 > Mit dem [Space- und Asset-Modell](./spaces-and-assets.md) entfällt der Bedarf: Dokumente liegen
 > in **Wissensbibliotheken**, die eigenständige, teilbare Assets mit eigener Rechteliste sind.
 >
-> - Ein Bestand soll mehreren Teams zur Verfügung stehen → die **Bibliothek** wird in mehreren
->   Spaces assoziiert oder an weitere Nutzer und Gruppen freigegeben. Keine Kopien, kein
->   Vervielfachen von Chunks, eine Fassung.
+> - Ein Bestand soll mehreren Teams zur Verfügung stehen → die **Bibliothek** wird an weitere Nutzer
+>   und Gruppen freigegeben und den Spaces der Teams zugeordnet — die Zuordnung bestimmt, was ein
+>   Space im Chat nutzt ([ADR-0039](../decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md)).
+>   Keine Kopien, kein Vervielfachen von Chunks, eine Fassung.
 > - Ein einzelnes Dokument soll weitergegeben werden → es wird in eine Bibliothek verschoben,
 >   deren Leserkreis passt.
 > - Teilen zwischen persönlichen Ablagen — im alten Modell strukturell unmöglich — funktioniert
