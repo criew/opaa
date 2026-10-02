@@ -515,9 +515,13 @@ components:
           type: string
           format: date-time
           description: >
-            When the asset's own data last changed - name, description, settings, ownership. A
-            change to its grants or its contents (documents, prompts) does not move it. The sort
-            updatedAt orders by this value.
+            When the asset last changed in its master data or its content, by the same rule for
+            every type. Master data: name, description, settings, ownership. Content: for a prompt
+            library a prompt created, changed or deleted; for a knowledge library a document
+            uploaded or deleted, a completed indexing run that indexed at least one document, and
+            documents a run removed because they left the source. Grants and technical bookkeeping
+            without a person or a content change behind it - a reminder sent, an automatic expiry
+            - never move it. The sort updatedAt orders by this value.
         knowledgeLibrary:
           description: Present exactly when assetType is KNOWLEDGE_LIBRARY.
           allOf:
@@ -572,22 +576,31 @@ components:
       description: >
         The one state a tile shows, the same words for every asset type. SUCCESSION_OPEN: the
         asset has no capable owner (succession carries the addressee); it outranks every other
-        state. Otherwise the type's own measure - for a knowledge library its newest indexing run:
-        UPDATING while it runs, UPDATE_FAILED when it failed, NOT_YET_AVAILABLE for a connector
-        library that has never been indexed, READY when the newest run completed and for an upload
-        library, which has no runs. A type without a measure of its own, such as a prompt library,
-        is READY.
+        state. Otherwise the type's own measure, also carried as knowledgeLibrary.indexingStatus.
+        A connector library goes by its newest indexing run: UPDATING while it runs,
+        UPDATE_FAILED when it failed, READY when it completed, NOT_YET_AVAILABLE without any run.
+        An upload library has no runs and goes by its documents, the first matching rule wins:
+        UPDATING while a document is still being processed (PENDING), UPDATE_FAILED when a
+        document failed, READY when a document is indexed, NOT_YET_AVAILABLE when it holds no
+        document at all. A type without a measure of its own, such as a prompt library, is READY.
       enum: [READY, UPDATING, UPDATE_FAILED, NOT_YET_AVAILABLE, SUCCESSION_OPEN]
 
     CatalogKnowledgeLibraryFacts:
       type: object
-      required: [sourceType]
+      required: [sourceType, indexingStatus]
       description: >
         What only a knowledge library shows on its tile - the same values the library list
         (LibraryListResponse) carries.
       properties:
         sourceType:
           $ref: "#/components/schemas/SourceTypeKey"
+        indexingStatus:
+          description: >
+            The library's own state by its indexing, as CatalogEntryStatus describes it - never
+            SUCCESSION_OPEN. Equal to the entry's status unless the succession is open, so the
+            indexing state stays visible then.
+          allOf:
+            - $ref: "#/components/schemas/CatalogEntryStatus"
         lastIndexedAt:
           type: string
           format: date-time

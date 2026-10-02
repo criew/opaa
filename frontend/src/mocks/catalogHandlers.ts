@@ -9,9 +9,14 @@ import type {
 import { mockLibraries, mockLibraryDetails } from './libraryFixtures'
 import { mockPromptLibraries, mockUnreadablePromptLibraryIds } from './promptLibraryFixtures'
 
-/** The tile status the server derives for a knowledge library, see CatalogEntryStatus. */
-function knowledgeStatus(library: LibraryListResponse): CatalogEntryStatus {
-  if (library.succession) return 'SUCCESSION_OPEN'
+/**
+ * A knowledge library's own state, see CatalogEntryStatus. Upload libraries are approximated by
+ * their document count - the fixtures carry no per-document states.
+ */
+function indexingStatus(library: LibraryListResponse): CatalogEntryStatus {
+  if (library.sourceType === 'UPLOAD') {
+    return library.documentCount > 0 ? 'READY' : 'NOT_YET_AVAILABLE'
+  }
   switch (library.lastRunStatus) {
     case 'RUNNING':
       return 'UPDATING'
@@ -20,7 +25,7 @@ function knowledgeStatus(library: LibraryListResponse): CatalogEntryStatus {
     case 'COMPLETED':
       return 'READY'
     default:
-      return library.sourceType === 'UPLOAD' ? 'READY' : 'NOT_YET_AVAILABLE'
+      return 'NOT_YET_AVAILABLE'
   }
 }
 
@@ -40,9 +45,13 @@ function readableEntries(): CatalogEntryResponse[] {
     origin: 'LOCAL',
     visibility: visibilityOf(library.reach.allAccounts),
     myRole: library.myRole,
-    status: knowledgeStatus(library),
+    status: library.succession ? 'SUCCESSION_OPEN' : indexingStatus(library),
     updatedAt: library.updatedAt,
-    knowledgeLibrary: { sourceType: library.sourceType, lastIndexedAt: library.lastIndexedAt },
+    knowledgeLibrary: {
+      sourceType: library.sourceType,
+      lastIndexedAt: library.lastIndexedAt,
+      indexingStatus: indexingStatus(library),
+    },
     itemCount: library.documentCount,
     spaceCount: 0,
     succession: library.succession ?? null,

@@ -1,6 +1,7 @@
 package io.opaa.indexing.maintenance;
 
 import io.opaa.api.types.IndexingRunMode;
+import io.opaa.asset.AssetRepository;
 import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.indexing.job.IndexingEventCategory;
 import io.opaa.indexing.job.IndexingRunEventRecorder;
@@ -11,6 +12,7 @@ import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.SourceType;
+import java.time.Instant;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -45,11 +47,15 @@ public class StaleDocumentCleanupService implements VanishedDocumentReconciler {
 
   private final DocumentRepository documentRepository;
   private final VectorChunkStore vectorChunkStore;
+  private final AssetRepository assetRepository;
 
   public StaleDocumentCleanupService(
-      DocumentRepository documentRepository, VectorChunkStore vectorChunkStore) {
+      DocumentRepository documentRepository,
+      VectorChunkStore vectorChunkStore,
+      AssetRepository assetRepository) {
     this.documentRepository = documentRepository;
     this.vectorChunkStore = vectorChunkStore;
+    this.assetRepository = assetRepository;
   }
 
   /**
@@ -189,10 +195,14 @@ public class StaleDocumentCleanupService implements VanishedDocumentReconciler {
     return removed;
   }
 
-  /** Chunks go before the row; the removal is then its own {@code REMOVED} event. */
+  /**
+   * Chunks go before the row; the removal is then its own {@code REMOVED} event and a content
+   * change of the library.
+   */
   private void remove(Document document, IndexingRunEventRecorder events, String message) {
     vectorChunkStore.deleteByDocumentId(document.getId());
     documentRepository.delete(document);
+    assetRepository.markContentChanged(document.getLibraryId(), Instant.now());
     events.record(IndexingEventCategory.REMOVED, message, document.getFilePath());
   }
 

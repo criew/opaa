@@ -20,6 +20,7 @@ import com.sun.net.httpserver.HttpServer;
 import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.DocumentStatus;
 import io.opaa.api.types.SystemRole;
+import io.opaa.asset.AssetRepository;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ConflictException;
@@ -292,6 +293,7 @@ class LibraryDocumentServiceTest {
             .remoteContentProperties(remoteContentProperties)
             .s3OriginalAccess(s3OriginalAccess)
             .registry(),
+        mock(AssetRepository.class),
         NO_OP_TRANSACTION_MANAGER);
   }
 
@@ -1693,6 +1695,7 @@ class LibraryDocumentServiceTest {
                 .remoteContentProperties(remoteContentProperties)
                 .s3OriginalAccess(s3OriginalAccess)
                 .registry(),
+            mock(AssetRepository.class),
             NO_OP_TRANSACTION_MANAGER);
     grantViewerOnUploadLibrary();
     KnowledgeLibrary library = remoteLibrary(null);

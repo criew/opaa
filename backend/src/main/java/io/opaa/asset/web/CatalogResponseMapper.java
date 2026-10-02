@@ -2,9 +2,7 @@ package io.opaa.asset.web;
 
 import io.opaa.api.dto.AssetType;
 import io.opaa.api.dto.CatalogEntryResponse;
-import io.opaa.api.dto.CatalogEntryStatus;
 import io.opaa.api.dto.CatalogPageResponse;
-import io.opaa.api.dto.CatalogVisibility;
 import io.opaa.asset.AssetCatalogEntry;
 import io.opaa.asset.AssetCatalogPage;
 import io.opaa.asset.AssetCatalogRow;
@@ -47,9 +45,9 @@ final class CatalogResponseMapper {
                 asset.getOwnerType(),
                 asset.getOwnerId(),
                 asset.getOrigin(),
-                CatalogVisibility.valueOf(entry.visibility().name()),
+                entry.visibility(),
                 entry.myRole(),
-                CatalogEntryStatus.valueOf(entry.status().name()),
+                entry.status(),
                 asset.getUpdatedAt(),
                 entry.itemCount(),
                 entry.spaceCount())

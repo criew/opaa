@@ -3,7 +3,7 @@ package io.opaa.library.web;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.api.dto.CatalogEntryResponse;
-import io.opaa.asset.AssetCatalogStatus;
+import io.opaa.api.types.CatalogEntryStatus;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryCatalogFacts;
 import java.time.Instant;
@@ -20,7 +20,7 @@ class KnowledgeLibraryCatalogFactsMapperTest {
     CatalogEntryResponse response = new CatalogEntryResponse();
 
     mapper.apply(
-        new KnowledgeLibraryCatalogFacts("CONFLUENCE", indexedAt, AssetCatalogStatus.READY),
+        new KnowledgeLibraryCatalogFacts("CONFLUENCE", indexedAt, CatalogEntryStatus.READY),
         response);
 
     assertThat(mapper.assetType()).isEqualTo(KnowledgeLibrary.ASSET_TYPE);
@@ -33,7 +33,7 @@ class KnowledgeLibraryCatalogFactsMapperTest {
     CatalogEntryResponse response = new CatalogEntryResponse();
 
     mapper.apply(
-        new KnowledgeLibraryCatalogFacts("UPLOAD", null, AssetCatalogStatus.READY), response);
+        new KnowledgeLibraryCatalogFacts("UPLOAD", null, CatalogEntryStatus.READY), response);
 
     assertThat(response.getKnowledgeLibrary().getLastIndexedAt()).isNull();
   }

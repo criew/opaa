@@ -1,6 +1,8 @@
 package io.opaa.asset;
 
 import io.opaa.api.types.AssetRole;
+import io.opaa.api.types.CatalogEntryStatus;
+import io.opaa.api.types.CatalogVisibility;
 import io.opaa.permission.SuccessionFinding;
 
 /**
@@ -16,8 +18,8 @@ import io.opaa.permission.SuccessionFinding;
 public record AssetCatalogEntry(
     AssetCatalogRow asset,
     AssetRole myRole,
-    AssetCatalogVisibility visibility,
-    AssetCatalogStatus status,
+    CatalogVisibility visibility,
+    CatalogEntryStatus status,
     AssetCatalogFacts facts,
     String ownerLabel,
     SuccessionFinding succession,

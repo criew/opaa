@@ -4,28 +4,23 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.api.dto.AssetType;
 import io.opaa.api.dto.CatalogEntryResponse;
-import io.opaa.api.dto.CatalogEntryStatus;
 import io.opaa.api.dto.CatalogKnowledgeLibraryFacts;
 import io.opaa.api.dto.CatalogPageResponse;
-import io.opaa.api.dto.CatalogVisibility;
 import io.opaa.api.types.AssetOrigin;
 import io.opaa.api.types.AssetOwnerType;
 import io.opaa.api.types.AssetRole;
+import io.opaa.api.types.CatalogEntryStatus;
+import io.opaa.api.types.CatalogVisibility;
 import io.opaa.api.types.SuccessionAddressee;
 import io.opaa.asset.AssetCatalogEntry;
 import io.opaa.asset.AssetCatalogFacts;
 import io.opaa.asset.AssetCatalogPage;
 import io.opaa.asset.AssetCatalogRow;
-import io.opaa.asset.AssetCatalogStatus;
-import io.opaa.asset.AssetCatalogVisibility;
 import io.opaa.permission.SuccessionFinding;
 import java.time.Instant;
-import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.EnumSource;
 
 class CatalogResponseMapperTest {
 
@@ -35,7 +30,7 @@ class CatalogResponseMapperTest {
   private static final io.opaa.permission.AssetType PROMPTS =
       io.opaa.permission.AssetType.of("PROMPT_LIBRARY");
 
-  private record TestFacts(AssetCatalogStatus status, String label) implements AssetCatalogFacts {}
+  private record TestFacts(CatalogEntryStatus status, String label) implements AssetCatalogFacts {}
 
   /** Writes the label of {@link TestFacts} where a knowledge library's source type goes. */
   private static final CatalogFactsResponseMapper TEST_FACTS_MAPPER =
@@ -47,7 +42,8 @@ class CatalogResponseMapperTest {
 
         @Override
         public void apply(AssetCatalogFacts facts, CatalogEntryResponse response) {
-          response.knowledgeLibrary(new CatalogKnowledgeLibraryFacts(((TestFacts) facts).label()));
+          response.knowledgeLibrary(
+              new CatalogKnowledgeLibraryFacts().sourceType(((TestFacts) facts).label()));
         }
       };
 
@@ -59,8 +55,8 @@ class CatalogResponseMapperTest {
         new AssetCatalogEntry(
             row(AssetOrigin.BUILT_IN),
             AssetRole.EDITOR,
-            AssetCatalogVisibility.PUBLIC,
-            AssetCatalogStatus.SUCCESSION_OPEN,
+            CatalogVisibility.PUBLIC,
+            CatalogEntryStatus.SUCCESSION_OPEN,
             null,
             "Referat 50",
             SuccessionFinding.ofAsset(
@@ -98,7 +94,7 @@ class CatalogResponseMapperTest {
 
   @Test
   void anEntryWithoutSuccessionOrOwnerLabelCarriesNeither() {
-    CatalogEntryResponse response = mapper.toResponse(entry(AssetCatalogStatus.READY, null));
+    CatalogEntryResponse response = mapper.toResponse(entry(CatalogEntryStatus.READY, null));
 
     assertThat(response.getOwnerLabel()).isNull();
     assertThat(response.getSuccession()).isNull();
@@ -109,9 +105,9 @@ class CatalogResponseMapperTest {
   @Test
   void theFactsOfATypeGoThroughThatTypesMapper() {
     CatalogResponseMapper withFacts = new CatalogResponseMapper(List.of(TEST_FACTS_MAPPER));
-    TestFacts facts = new TestFacts(AssetCatalogStatus.UPDATING, "FILESYSTEM");
+    TestFacts facts = new TestFacts(CatalogEntryStatus.UPDATING, "FILESYSTEM");
 
-    CatalogEntryResponse response = withFacts.toResponse(entry(AssetCatalogStatus.UPDATING, facts));
+    CatalogEntryResponse response = withFacts.toResponse(entry(CatalogEntryStatus.UPDATING, facts));
 
     assertThat(response.getKnowledgeLibrary().getSourceType()).isEqualTo("FILESYSTEM");
     assertThat(response.getStatus()).isEqualTo(CatalogEntryStatus.UPDATING);
@@ -121,32 +117,16 @@ class CatalogResponseMapperTest {
   void factsOfATypeWithoutAMapperAreLeftOut() {
     CatalogEntryResponse response =
         mapper.toResponse(
-            entry(AssetCatalogStatus.READY, new TestFacts(AssetCatalogStatus.READY, "x")));
+            entry(CatalogEntryStatus.READY, new TestFacts(CatalogEntryStatus.READY, "x")));
 
     assertThat(response.getKnowledgeLibrary()).isNull();
   }
 
-  @ParameterizedTest
-  @EnumSource(AssetCatalogStatus.class)
-  void everyStatusHasItsCounterpartInTheSpecification(AssetCatalogStatus status) {
-    assertThat(mapper.toResponse(entry(status, null)).getStatus().name()).isEqualTo(status.name());
-  }
-
-  @Test
-  void theSpecificationNamesNoStatusOrVisibilityTheDomainLacks() {
-    assertThat(Arrays.stream(CatalogEntryStatus.values()).map(Enum::name))
-        .containsExactlyInAnyOrderElementsOf(
-            Arrays.stream(AssetCatalogStatus.values()).map(Enum::name).toList());
-    assertThat(Arrays.stream(CatalogVisibility.values()).map(Enum::name))
-        .containsExactlyInAnyOrderElementsOf(
-            Arrays.stream(AssetCatalogVisibility.values()).map(Enum::name).toList());
-  }
-
-  private static AssetCatalogEntry entry(AssetCatalogStatus status, AssetCatalogFacts facts) {
+  private static AssetCatalogEntry entry(CatalogEntryStatus status, AssetCatalogFacts facts) {
     return new AssetCatalogEntry(
         row(AssetOrigin.LOCAL),
         AssetRole.VIEWER,
-        AssetCatalogVisibility.RESTRICTED,
+        CatalogVisibility.RESTRICTED,
         status,
         facts,
         null,

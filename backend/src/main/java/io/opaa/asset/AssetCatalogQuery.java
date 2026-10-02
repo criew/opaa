@@ -1,5 +1,6 @@
 package io.opaa.asset;
 
+import io.opaa.api.types.CatalogVisibility;
 import io.opaa.permission.AssetType;
 import java.util.Objects;
 
@@ -15,7 +16,7 @@ import java.util.Objects;
 public record AssetCatalogQuery(
     AssetType assetType,
     String text,
-    AssetCatalogVisibility visibility,
+    CatalogVisibility visibility,
     boolean fromMyGroups,
     AssetCatalogSort sort) {
 

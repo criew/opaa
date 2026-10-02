@@ -12,6 +12,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.IndexingRunMode;
+import io.opaa.asset.AssetRepository;
 import io.opaa.common.ConflictException;
 import java.time.Duration;
 import java.time.Instant;
@@ -30,11 +31,12 @@ import org.springframework.dao.DataIntegrityViolationException;
 class IndexingJobServiceTest {
 
   @Mock private IndexingJobRepository indexingJobRepository;
+  @Mock private AssetRepository assetRepository;
   private IndexingJobService service;
 
   @BeforeEach
   void setUp() {
-    service = new IndexingJobService(indexingJobRepository);
+    service = new IndexingJobService(indexingJobRepository, assetRepository);
   }
 
   @Test

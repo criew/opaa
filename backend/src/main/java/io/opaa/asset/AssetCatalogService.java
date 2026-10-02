@@ -1,6 +1,8 @@
 package io.opaa.asset;
 
 import io.opaa.api.types.AssetRole;
+import io.opaa.api.types.CatalogEntryStatus;
+import io.opaa.api.types.CatalogVisibility;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.ValidationException;
 import io.opaa.permission.AssetAccessService;
@@ -122,8 +124,8 @@ public class AssetCatalogService {
                       row,
                       Optional.ofNullable(roles.get(id)).orElse(AssetRole.VIEWER),
                       selection.publicIds().contains(id)
-                          ? AssetCatalogVisibility.PUBLIC
-                          : AssetCatalogVisibility.RESTRICTED,
+                          ? CatalogVisibility.PUBLIC
+                          : CatalogVisibility.RESTRICTED,
                       statusOf(succession.get(id), rowFacts),
                       rowFacts,
                       names.get(row.getOwnerId()),
@@ -157,9 +159,9 @@ public class AssetCatalogService {
     }
 
     Set<UUID> selected = new HashSet<>(readable);
-    if (query.visibility() == AssetCatalogVisibility.PUBLIC) {
+    if (query.visibility() == CatalogVisibility.PUBLIC) {
       selected.retainAll(publicIds);
-    } else if (query.visibility() == AssetCatalogVisibility.RESTRICTED) {
+    } else if (query.visibility() == CatalogVisibility.RESTRICTED) {
       selected.removeAll(publicIds);
     }
     if (query.fromMyGroups()) {
@@ -173,12 +175,12 @@ public class AssetCatalogService {
     return new Selection(selected, publicIds);
   }
 
-  private static AssetCatalogStatus statusOf(
+  private static CatalogEntryStatus statusOf(
       SuccessionFinding succession, AssetCatalogFacts facts) {
     if (succession != null) {
-      return AssetCatalogStatus.SUCCESSION_OPEN;
+      return CatalogEntryStatus.SUCCESSION_OPEN;
     }
-    return facts == null ? AssetCatalogStatus.READY : facts.status();
+    return facts == null ? CatalogEntryStatus.READY : facts.status();
   }
 
   /** The caller's role on each asset of the page by the formula, one query per type. */

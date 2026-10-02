@@ -20,6 +20,7 @@ import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.DocumentStatus;
 import io.opaa.api.types.IndexingRunMode;
+import io.opaa.asset.AssetRepository;
 import io.opaa.indexing.attachment.AttachmentAccess;
 import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.indexing.document.AttachmentIndexer;
@@ -145,7 +146,10 @@ class ConfluenceIndexingExecutorTest {
     vectorChunkStore = mock(VectorChunkStore.class);
     // A spy, not a mock: the reconciliation runs for real over the mocked repository, so what a
     // run hands over and what the fold-in preserves are both observable.
-    cleanupService = spy(new StaleDocumentCleanupService(documentRepository, vectorChunkStore));
+    cleanupService =
+        spy(
+            new StaleDocumentCleanupService(
+                documentRepository, vectorChunkStore, mock(AssetRepository.class)));
     syncStateRepository = mock(SourceSyncStateRepository.class);
     when(syncStateRepository.findByLibraryId(any())).thenReturn(Optional.empty());
     when(syncStateRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));

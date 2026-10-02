@@ -2,7 +2,11 @@ package io.opaa.asset;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.opaa.api.types.AssetGrantSubjectType;
 import io.opaa.api.types.AssetRole;
+import io.opaa.api.types.CatalogEntryStatus;
+import io.opaa.api.types.CatalogVisibility;
+import io.opaa.api.types.DocumentStatus;
 import io.opaa.api.types.GroupKind;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
@@ -14,6 +18,8 @@ import io.opaa.group.GroupRepository;
 import io.opaa.indexing.job.IndexingJob;
 import io.opaa.indexing.job.IndexingJobRepository;
 import io.opaa.indexing.job.JobStatus;
+import io.opaa.knowledge.Document;
+import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.SourceType;
@@ -24,9 +30,11 @@ import io.opaa.organization.OrganizationRepository;
 import io.opaa.permission.AssetGrant;
 import io.opaa.permission.AssetGrantRepository;
 import io.opaa.permission.AssetType;
+import io.opaa.prompt.PromptContent;
 import io.opaa.prompt.PromptLibrary;
 import io.opaa.prompt.PromptLibraryRepository;
 import io.opaa.prompt.PromptLibraryService;
+import io.opaa.prompt.PromptService;
 import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.OwnOrganizationFixtures;
 import java.sql.Timestamp;
@@ -64,6 +72,17 @@ class AssetCatalogFilterIntegrationTest {
   private static final List<String> UNREADABLE_FOR_MEMBER =
       List.of("Geschlossen", "Fremde Gruppe", "Gruppeneigentum ohne Recht");
 
+  private static final List<String> READABLE_FOR_MEMBER =
+      List.of(
+          PUBLIC,
+          PUBLIC_AND_GROUP,
+          PUBLIC_KNOWLEDGE,
+          GROUP_GRANT,
+          GROUP_OWNED,
+          DIRECT,
+          EXPIRED_PUBLIC,
+          EXPIRED_GROUP_GRANT);
+
   private static final List<AssetType> TYPES_AND_ALL =
       Arrays.asList(null, PromptLibrary.ASSET_TYPE, KnowledgeLibrary.ASSET_TYPE);
 
@@ -74,6 +93,9 @@ class AssetCatalogFilterIntegrationTest {
   @Autowired private KnowledgeLibraryService knowledgeLibraryService;
   @Autowired private AssetGrantRepository grantRepository;
   @Autowired private IndexingJobRepository indexingJobRepository;
+  @Autowired private DocumentRepository documentRepository;
+  @Autowired private PromptService promptService;
+  @Autowired private AssetGrantService grantService;
   @Autowired private UserRepository userRepository;
   @Autowired private GroupRepository groupRepository;
   @Autowired private OrganizationRepository organizationRepository;
@@ -105,6 +127,7 @@ class AssetCatalogFilterIntegrationTest {
   @AfterEach
   void tearDown() {
     jdbcTemplate.update("DELETE FROM indexing_jobs WHERE organization_id = ?", organization);
+    jdbcTemplate.update("DELETE FROM documents WHERE organization_id = ?", organization);
     jdbcTemplate.update("DELETE FROM assets WHERE organization_id = ?", organization);
     jdbcTemplate.update("DELETE FROM asset_grant_history WHERE organization_id = ?", organization);
     jdbcTemplate.update(
@@ -121,9 +144,9 @@ class AssetCatalogFilterIntegrationTest {
   void theVisibilityFilterSplitsTheReadableSetByTheGrantToAllAccounts() {
     createTheMembersCatalog();
 
-    assertThat(names(query(null, AssetCatalogVisibility.PUBLIC, false)))
+    assertThat(names(query(null, CatalogVisibility.PUBLIC, false)))
         .containsExactlyInAnyOrder(PUBLIC, PUBLIC_AND_GROUP, PUBLIC_KNOWLEDGE);
-    assertThat(names(query(null, AssetCatalogVisibility.RESTRICTED, false)))
+    assertThat(names(query(null, CatalogVisibility.RESTRICTED, false)))
         .as("an expired grant to all accounts makes nothing public")
         .containsExactlyInAnyOrder(
             GROUP_GRANT, GROUP_OWNED, DIRECT, EXPIRED_PUBLIC, EXPIRED_GROUP_GRANT);
@@ -146,9 +169,9 @@ class AssetCatalogFilterIntegrationTest {
     assertThat(names(query(null, null, true)))
         .as("a grant to my group, ownership by my group - not a grant to all or to me in person")
         .containsExactlyInAnyOrder(PUBLIC_AND_GROUP, GROUP_GRANT, GROUP_OWNED);
-    assertThat(names(query(null, AssetCatalogVisibility.PUBLIC, true)))
+    assertThat(names(query(null, CatalogVisibility.PUBLIC, true)))
         .containsExactly(PUBLIC_AND_GROUP);
-    assertThat(names(query(null, AssetCatalogVisibility.RESTRICTED, true)))
+    assertThat(names(query(null, CatalogVisibility.RESTRICTED, true)))
         .containsExactlyInAnyOrder(GROUP_GRANT, GROUP_OWNED);
     assertThat(names(query(KnowledgeLibrary.ASSET_TYPE, null, true))).isEmpty();
   }
@@ -174,25 +197,28 @@ class AssetCatalogFilterIntegrationTest {
 
     List<String> combinations = new ArrayList<>();
     for (AssetType type : TYPES_AND_ALL) {
-      for (AssetCatalogVisibility visibility : visibilitiesAndBoth()) {
+      for (CatalogVisibility visibility : visibilitiesAndBoth()) {
         for (boolean fromMyGroups : List.of(false, true)) {
           for (AssetCatalogSort sort : AssetCatalogSort.values()) {
             for (String text : Arrays.asList(null, "e")) {
-              AssetCatalogPage page =
-                  catalogService.list(
-                      callerOf(member),
-                      new AssetCatalogQuery(type, text, visibility, fromMyGroups, sort),
-                      0,
-                      200);
+              AssetCatalogQuery query =
+                  new AssetCatalogQuery(type, text, visibility, fromMyGroups, sort);
               String combination =
                   type + "/" + visibility + "/" + fromMyGroups + "/" + sort + "/" + text;
               combinations.add(combination);
-              assertThat(names(page))
+              List<String> walked = new ArrayList<>();
+              AssetCatalogPage first = catalogService.list(callerOf(member), query, 0, 2);
+              for (int page = 0; page < Math.max(first.totalPages(), 1); page++) {
+                walked.addAll(names(catalogService.list(callerOf(member), query, page, 2)));
+              }
+              assertThat(walked)
                   .as(combination)
-                  .doesNotContainAnyElementsOf(UNREADABLE_FOR_MEMBER);
-              assertThat(page.totalElements())
-                  .as("the count includes no unreadable asset: %s", combination)
-                  .isEqualTo(page.entries().size());
+                  .doesNotHaveDuplicates()
+                  .doesNotContainAnyElementsOf(UNREADABLE_FOR_MEMBER)
+                  .isSubsetOf(READABLE_FOR_MEMBER);
+              assertThat(first.totalElements())
+                  .as("the count is the readable entries the pages hold: %s", combination)
+                  .isEqualTo(walked.size());
             }
           }
         }
@@ -266,7 +292,7 @@ class AssetCatalogFilterIntegrationTest {
           entry.asset().getAssetType().equals(KnowledgeLibrary.ASSET_TYPE)
               ? knowledgeLibraryService.getLibrary(id, callerOf(member)).reach().allAccounts()
               : promptLibraryService.get(id, callerOf(member)).reach().allAccounts();
-      assertThat(entry.visibility() == AssetCatalogVisibility.PUBLIC)
+      assertThat(entry.visibility() == CatalogVisibility.PUBLIC)
           .as("visibility of %s", entry.asset().getName())
           .isEqualTo(allAccounts);
     }
@@ -319,11 +345,45 @@ class AssetCatalogFilterIntegrationTest {
   }
 
   @Test
+  void aPromptChangeMovesUpdatedAtAndAGrantDoesNot() {
+    UUID library = promptLibrary("Vorlagen", owner, false);
+    Instant past = Instant.parse("2026-01-01T00:00:00Z");
+    setUpdatedAt(library, past);
+
+    grantService.upsertGrant(
+        PromptLibrary.ASSET_TYPE,
+        library,
+        new AssetGrantUpsert(AssetGrantSubjectType.USER, member, AssetRole.VIEWER),
+        callerOf(owner));
+    assertThat(updatedAtOf(library)).as("a grant is no change of the asset").isEqualTo(past);
+
+    promptService.create(
+        library,
+        new PromptContent("anhoerung", "Anhörung", null, "Bitte formulieren.", List.of(), 0),
+        callerOf(owner));
+    Instant afterPrompt = updatedAtOf(library);
+    assertThat(afterPrompt).as("a new prompt is a content change").isAfter(past);
+    assertThat(entryFor(query(null, null, false).entries(), library).asset().getUpdatedAt())
+        .isEqualTo(afterPrompt);
+  }
+
+  @Test
   void theStatusFollowsSuccessionAndTheNewestIndexingRun() {
     UUID leaver = createUser("Ausgeschieden");
     UUID prompts = promptLibrary("Vorlagen", owner, true);
     UUID orphaned = promptLibrary("Verwaist", leaver, true);
     UUID upload = knowledgeLibrary("Hochgeladen", owner, SourceType.UPLOAD);
+    UUID uploadEmpty = knowledgeLibrary("Leer hochgeladen", owner, SourceType.UPLOAD);
+    UUID uploadPending = knowledgeLibrary("Wird verarbeitet", owner, SourceType.UPLOAD);
+    UUID uploadFailed = knowledgeLibrary("Upload gescheitert", owner, SourceType.UPLOAD);
+    UUID orphanedKnowledge =
+        knowledgeLibrary("Verwaistes Wissen", leaver, SourceType.of("FILESYSTEM"));
+    document(upload, DocumentStatus.INDEXED);
+    document(uploadPending, DocumentStatus.INDEXED);
+    document(uploadPending, DocumentStatus.FAILED);
+    document(uploadPending, DocumentStatus.PENDING);
+    document(uploadFailed, DocumentStatus.INDEXED);
+    document(uploadFailed, DocumentStatus.FAILED);
     UUID neverIndexed = knowledgeLibrary("Nie indiziert", owner, SourceType.of("FILESYSTEM"));
     UUID running = knowledgeLibrary("Läuft", owner, SourceType.of("FILESYSTEM"));
     UUID failed = knowledgeLibrary("Gescheitert", owner, SourceType.of("FILESYSTEM"));
@@ -337,24 +397,39 @@ class AssetCatalogFilterIntegrationTest {
     indexingRun(failed, JobStatus.FAILED, later, null);
     indexingRun(completed, JobStatus.FAILED, earlier, null);
     indexingRun(completed, JobStatus.COMPLETED, later, done);
+    indexingRun(orphanedKnowledge, JobStatus.FAILED, later, null);
     jdbcTemplate.update("UPDATE users SET directory_locked_at = now() WHERE id = ?", leaver);
 
     List<AssetCatalogEntry> entries = query(null, null, false).entries();
 
-    assertThat(entryFor(entries, prompts).status()).isEqualTo(AssetCatalogStatus.READY);
+    assertThat(entryFor(entries, prompts).status()).isEqualTo(CatalogEntryStatus.READY);
     assertThat(entryFor(entries, prompts).facts()).isNull();
-    assertThat(entryFor(entries, orphaned).status()).isEqualTo(AssetCatalogStatus.SUCCESSION_OPEN);
-    assertThat(entryFor(entries, upload).status()).isEqualTo(AssetCatalogStatus.READY);
+    assertThat(entryFor(entries, orphaned).status()).isEqualTo(CatalogEntryStatus.SUCCESSION_OPEN);
+    assertThat(entryFor(entries, upload).status()).isEqualTo(CatalogEntryStatus.READY);
+    assertThat(entryFor(entries, uploadEmpty).status())
+        .as("an upload library without any document")
+        .isEqualTo(CatalogEntryStatus.NOT_YET_AVAILABLE);
+    assertThat(entryFor(entries, uploadPending).status())
+        .as("a document still being processed outranks a failed one")
+        .isEqualTo(CatalogEntryStatus.UPDATING);
+    assertThat(entryFor(entries, uploadFailed).status())
+        .isEqualTo(CatalogEntryStatus.UPDATE_FAILED);
+    assertThat(entryFor(entries, orphanedKnowledge).status())
+        .as("the open succession outranks the library's own state")
+        .isEqualTo(CatalogEntryStatus.SUCCESSION_OPEN);
+    assertThat(entryFor(entries, orphanedKnowledge).facts().status())
+        .as("which the library's facts still carry")
+        .isEqualTo(CatalogEntryStatus.UPDATE_FAILED);
     assertThat(entryFor(entries, neverIndexed).status())
-        .isEqualTo(AssetCatalogStatus.NOT_YET_AVAILABLE);
-    assertThat(entryFor(entries, running).status()).isEqualTo(AssetCatalogStatus.UPDATING);
-    assertThat(entryFor(entries, failed).status()).isEqualTo(AssetCatalogStatus.UPDATE_FAILED);
-    assertThat(entryFor(entries, completed).status()).isEqualTo(AssetCatalogStatus.READY);
+        .isEqualTo(CatalogEntryStatus.NOT_YET_AVAILABLE);
+    assertThat(entryFor(entries, running).status()).isEqualTo(CatalogEntryStatus.UPDATING);
+    assertThat(entryFor(entries, failed).status()).isEqualTo(CatalogEntryStatus.UPDATE_FAILED);
+    assertThat(entryFor(entries, completed).status()).isEqualTo(CatalogEntryStatus.READY);
     assertThat(entryFor(entries, failed).facts())
         .isEqualTo(
-            new KnowledgeLibraryCatalogFacts("FILESYSTEM", done, AssetCatalogStatus.UPDATE_FAILED));
+            new KnowledgeLibraryCatalogFacts("FILESYSTEM", done, CatalogEntryStatus.UPDATE_FAILED));
     assertThat(entryFor(entries, upload).facts())
-        .isEqualTo(new KnowledgeLibraryCatalogFacts("UPLOAD", null, AssetCatalogStatus.READY));
+        .isEqualTo(new KnowledgeLibraryCatalogFacts("UPLOAD", null, CatalogEntryStatus.READY));
   }
 
   /**
@@ -394,7 +469,7 @@ class AssetCatalogFilterIntegrationTest {
   }
 
   private AssetCatalogPage query(
-      AssetType type, AssetCatalogVisibility visibility, boolean fromMyGroups) {
+      AssetType type, CatalogVisibility visibility, boolean fromMyGroups) {
     return catalogService.list(
         callerOf(member),
         new AssetCatalogQuery(type, null, visibility, fromMyGroups, AssetCatalogSort.NAME),
@@ -406,10 +481,10 @@ class AssetCatalogFilterIntegrationTest {
     return new AssetCatalogQuery(null, null, null, false, sort);
   }
 
-  private static List<AssetCatalogVisibility> visibilitiesAndBoth() {
-    List<AssetCatalogVisibility> values = new ArrayList<>();
+  private static List<CatalogVisibility> visibilitiesAndBoth() {
+    List<CatalogVisibility> values = new ArrayList<>();
     values.add(null);
-    values.addAll(List.of(AssetCatalogVisibility.values()));
+    values.addAll(List.of(CatalogVisibility.values()));
     return values;
   }
 
@@ -509,9 +584,26 @@ class AssetCatalogFilterIntegrationTest {
         "UPDATE indexing_jobs SET started_at = ? WHERE id = ?", Timestamp.from(startedAt), id);
   }
 
+  private void document(UUID libraryId, DocumentStatus status) {
+    String name = status + "-" + UUID.randomUUID();
+    Document document =
+        new Document(name + ".txt", "/" + name + ".txt", "text/plain", 1L, SourceType.UPLOAD);
+    document.setLibraryId(libraryId);
+    document.setOrganizationId(organization);
+    document.setChecksum(name);
+    document.setStatus(status);
+    documentRepository.save(document);
+  }
+
   private void setUpdatedAt(UUID assetId, Instant updatedAt) {
     jdbcTemplate.update(
         "UPDATE assets SET updated_at = ? WHERE id = ?", Timestamp.from(updatedAt), assetId);
+  }
+
+  private Instant updatedAtOf(UUID assetId) {
+    return jdbcTemplate
+        .queryForObject("SELECT updated_at FROM assets WHERE id = ?", Timestamp.class, assetId)
+        .toInstant();
   }
 
   private static List<String> names(AssetCatalogPage page) {

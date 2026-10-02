@@ -1,7 +1,7 @@
 package io.opaa.library;
 
+import io.opaa.api.types.CatalogEntryStatus;
 import io.opaa.asset.AssetCatalogFacts;
-import io.opaa.asset.AssetCatalogStatus;
 import java.time.Instant;
 
 /**
@@ -12,5 +12,5 @@ import java.time.Instant;
  * @param status by the newest indexing run, see {@link KnowledgeLibraryCatalogFactSource}.
  */
 public record KnowledgeLibraryCatalogFacts(
-    String sourceType, Instant lastIndexedAt, AssetCatalogStatus status)
+    String sourceType, Instant lastIndexedAt, CatalogEntryStatus status)
     implements AssetCatalogFacts {}

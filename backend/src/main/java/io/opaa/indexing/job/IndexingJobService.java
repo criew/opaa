@@ -1,6 +1,7 @@
 package io.opaa.indexing.job;
 
 import io.opaa.api.types.IndexingRunMode;
+import io.opaa.asset.AssetRepository;
 import io.opaa.common.ConflictException;
 import java.time.Duration;
 import java.time.Instant;
@@ -34,9 +35,12 @@ public class IndexingJobService {
   static final int MAX_RETAINED_RUNS_PER_LIBRARY = 10;
 
   private final IndexingJobRepository indexingJobRepository;
+  private final AssetRepository assetRepository;
 
-  public IndexingJobService(IndexingJobRepository indexingJobRepository) {
+  public IndexingJobService(
+      IndexingJobRepository indexingJobRepository, AssetRepository assetRepository) {
     this.indexingJobRepository = indexingJobRepository;
+    this.assetRepository = assetRepository;
   }
 
   /**
@@ -108,7 +112,8 @@ public class IndexingJobService {
    * a job the stale-run sweep or startup recovery already failed - while its own executor thread,
    * unaware, kept running regardless - would have this call silently flip the row back from {@code
    * FAILED} to {@code COMPLETED} once that thread finally finishes. See {@link
-   * IndexingJobRepository#completeIfRunning}'s Javadoc for the conditional-update mechanics.
+   * IndexingJobRepository#completeIfRunning}'s Javadoc for the conditional-update mechanics. A
+   * completed run that indexed at least one document is a content change of its library.
    */
   @Transactional(propagation = Propagation.REQUIRES_NEW)
   public void completeJob(
@@ -117,6 +122,7 @@ public class IndexingJobService {
       int documentsFailed,
       int documentsSkipped,
       int documentsIndexedTotal) {
+    Instant now = Instant.now();
     int updated =
         indexingJobRepository.completeIfRunning(
             jobId,
@@ -124,8 +130,14 @@ public class IndexingJobService {
             documentsFailed,
             documentsSkipped,
             documentsIndexedTotal,
-            Instant.now());
+            now);
     requireJobExistedIfNoRowsUpdated(jobId, updated);
+    if (updated > 0 && documentsIndexedTotal > 0) {
+      indexingJobRepository
+          .findById(jobId)
+          .map(IndexingJob::getLibraryId)
+          .ifPresent(libraryId -> assetRepository.markContentChanged(libraryId, now));
+    }
   }
 
   /**

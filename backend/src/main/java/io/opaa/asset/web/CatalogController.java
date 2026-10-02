@@ -2,11 +2,10 @@ package io.opaa.asset.web;
 
 import io.opaa.api.dto.AssetType;
 import io.opaa.api.dto.CatalogPageResponse;
-import io.opaa.api.dto.CatalogVisibility;
+import io.opaa.api.types.CatalogVisibility;
 import io.opaa.asset.AssetCatalogQuery;
 import io.opaa.asset.AssetCatalogService;
 import io.opaa.asset.AssetCatalogSort;
-import io.opaa.asset.AssetCatalogVisibility;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.ValidationException;
@@ -44,7 +43,7 @@ public class CatalogController {
         new AssetCatalogQuery(
             type == null ? null : io.opaa.permission.AssetType.of(type.getValue()),
             q,
-            visibility == null ? null : AssetCatalogVisibility.valueOf(visibility.name()),
+            visibility,
             fromMyGroups,
             sortOf(sort));
     return responseMapper.toResponse(catalogService.list(caller, query, page, size));

@@ -24,7 +24,9 @@ class KnowledgeLibraryCatalogFactsMapper implements CatalogFactsResponseMapper {
   public void apply(AssetCatalogFacts facts, CatalogEntryResponse response) {
     KnowledgeLibraryCatalogFacts knowledge = (KnowledgeLibraryCatalogFacts) facts;
     response.knowledgeLibrary(
-        new CatalogKnowledgeLibraryFacts(knowledge.sourceType())
+        new CatalogKnowledgeLibraryFacts()
+            .sourceType(knowledge.sourceType())
+            .indexingStatus(knowledge.status())
             .lastIndexedAt(knowledge.lastIndexedAt()));
   }
 }
