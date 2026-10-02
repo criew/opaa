@@ -12,6 +12,10 @@ export const HANDOVER_ROUTE = '/handover'
 /** Where every provider sign-in returns - the one route a running handover may pass through. */
 export const AUTH_CALLBACK_ROUTE = '/auth/callback'
 export const SETTINGS_ROUTE = '/settings'
+/** The one entry for every asset type (ADR-0039, Entscheidung 1). */
+export const CATALOG_ROUTE = '/catalog'
+/** "Neu" in the catalog: the type choice before the type's own wizard. */
+export const CATALOG_NEW_ROUTE = '/catalog/new'
 /**
  * Die Reiter der Space-Einstellungen (#1917). Ein weiterer Asset-Typ ist ein weiterer Wert hier
  * und ein weiterer Eintrag in SpaceSettingsPage; die Reihenfolge ist die der Reiterleiste, der

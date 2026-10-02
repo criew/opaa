@@ -1,7 +1,6 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, screen } from '@testing-library/react'
+import { describe, expect, it, vi } from 'vitest'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import TableCell from '@mui/material/TableCell'
 import { renderWithProviders } from '../../test/test-utils'
 import OverviewPage, { OverviewCard } from './OverviewPage'
 
@@ -23,21 +22,10 @@ function renderOverview(props: Partial<React.ComponentProps<typeof OverviewPage<
       heading={(count) => `${count} Beispiele`}
       createLabel="Neues Beispiel"
       onCreate={() => {}}
-      storageKey="test"
       items={items}
       itemKey={(item) => item.id}
       searchText={(item) => `${item.name} ${item.description}`}
-      columns={[
-        { key: 'name', label: 'Name' },
-        { key: 'description', label: 'Beschreibung' },
-      ]}
       renderCard={(item) => <OverviewCard to={`/items/${item.id}`}>{item.name}</OverviewCard>}
-      renderRow={(item) => (
-        <>
-          <TableCell>{item.name}</TableCell>
-          <TableCell>{item.description}</TableCell>
-        </>
-      )}
       {...props}
     />,
     { withRouter: true },
@@ -45,12 +33,6 @@ function renderOverview(props: Partial<React.ComponentProps<typeof OverviewPage<
 }
 
 describe('OverviewPage (#1913)', () => {
-  beforeEach(() => {
-    window.localStorage.clear()
-    // Ein Stub aus einem vorherigen Test würde sonst die Ansichtswahl aller folgenden bestimmen.
-    Reflect.deleteProperty(window, 'matchMedia')
-  })
-
   it('shows the heading with the visible count and the create button', () => {
     const onCreate = vi.fn()
     renderOverview({ onCreate })
@@ -118,47 +100,21 @@ describe('OverviewPage (#1913)', () => {
     expect(status).toHaveTextContent('Kein Eintrag passt zu „Bauamtxyz“.')
   })
 
-  it('switches to the table view and remembers the choice per overview', async () => {
-    const user = userEvent.setup()
-    const { unmount } = renderOverview()
-
-    expect(screen.queryByRole('table')).not.toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Tabelle' }))
-
-    expect(screen.getByRole('table')).toBeInTheDocument()
-    expect(screen.getByRole('columnheader', { name: 'Beschreibung' })).toBeInTheDocument()
-
-    // Die Wahl überlebt den Seitenwechsel ...
-    unmount()
+  // ADR-0039, Entscheidung 1: only cards - neither a table nor a switch to one.
+  it('shows the items as linked cards and offers no table view', () => {
     renderOverview()
-    expect(screen.getByRole('table')).toBeInTheDocument()
 
-    // ... und gilt nur für diese Übersicht, nicht für die nächste.
-    cleanup()
-    renderOverview({ storageKey: 'other' })
+    expect(screen.getByRole('link', { name: 'Bauamt' })).toHaveAttribute('href', '/items/b')
     expect(screen.queryByRole('table')).not.toBeInTheDocument()
+    expect(screen.queryByRole('group', { name: 'Ansicht' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Tabelle' })).not.toBeInTheDocument()
   })
 
-  it('starts a first visit on a narrow viewport with cards, not with the wide table', () => {
-    // jsdom kennt kein matchMedia; die Übersicht fällt sonst auf den Vorgabewert zurück.
-    window.matchMedia = ((query: string) =>
-      ({
-        matches: false,
-        media: query,
-        addEventListener: () => {},
-        removeEventListener: () => {},
-      }) as unknown as MediaQueryList) as typeof window.matchMedia
-    renderOverview({ defaultView: 'table' })
-
-    expect(screen.queryByRole('table')).not.toBeInTheDocument()
-  })
-
-  it('shows the empty state without search and switch when there is nothing to list', () => {
+  it('shows the empty state without search when there is nothing to list', () => {
     renderOverview({ items: [], emptyState: <p>Noch nichts da.</p> })
 
     expect(screen.getByText('Noch nichts da.')).toBeInTheDocument()
     expect(screen.queryByRole('textbox', { name: 'Suchen' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Tabelle' })).not.toBeInTheDocument()
   })
 
   it('keeps the plain title while the first load is still running', () => {
@@ -204,14 +160,11 @@ describe('OverviewPage (#1913)', () => {
     rerender(
       <OverviewPage<Item>
         title="Beispiele"
-        storageKey="test"
         items={[]}
         itemKey={(item) => item.id}
         search={{ ...search, resultFor: 'bau' }}
         total={0}
-        columns={[]}
         renderCard={() => null}
-        renderRow={() => null}
       />,
     )
 

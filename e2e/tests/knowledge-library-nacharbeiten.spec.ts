@@ -8,6 +8,7 @@ import {
   libraryIdFromCurrentUrl,
 } from '../fixtures/libraries'
 import type { Page } from '@playwright/test'
+import { openNewLibraryWizard } from '../fixtures/chat'
 
 // Nacharbeiten-Serie aus Epic #458 (#514, #516, #517, #519, siehe Issue #547): vier
 // nutzersichtbare Verhaltensweisen, die die Suite bislang nicht abdeckte. Eigene Datei statt
@@ -23,17 +24,6 @@ import type { Page } from '@playwright/test'
 // admin-lesbaren Wegwerfdokumente also über das eigene test.describe-Ende hinaus.
 const runId = Date.now()
 
-// Same waiting pattern as knowledge-libraries.spec.ts's gotoLibraries (kept module-local there,
-// duplicated here rather than shared - see rss-feed-library.spec.ts's identical comment).
-async function gotoLibraries(page: Page) {
-  await Promise.all([
-    page.waitForResponse(
-      (response) =>
-        response.request().method() === 'GET' && response.url().endsWith('/api/v1/libraries'),
-    ),
-    page.goto('/libraries'),
-  ])
-}
 
 /**
  * Builds a real, parseable PDF of roughly 2 MB, entirely in memory - not one of the suite's
@@ -157,8 +147,7 @@ test.describe('Upload > 1 MB durch den echten nginx (#519)', () => {
     // only regresses client_max_body_size if the file is unambiguously past that old default too.
     expect(pdfBuffer.byteLength).toBeGreaterThan(1_500_000)
 
-    await gotoLibraries(page)
-    await page.getByRole('button', { name: 'Neue Bibliothek' }).click()
+    await openNewLibraryWizard(page)
     await page.getByRole('button', { name: 'Weiter', exact: true }).click()
     await page.getByLabel('Name').fill(libraryName)
     await page.getByRole('button', { name: 'Weiter', exact: true }).click()
@@ -214,8 +203,7 @@ test.describe('Verbindungstest im Anlage-Assistenten (#514)', () => {
   const createdLibraryIds = cleanupLibraries()
 
   test('Erreichbare Quelle zeigt einen Zaehlwert', async ({ authenticatedPage: page }) => {
-    await gotoLibraries(page)
-    await page.getByRole('button', { name: 'Neue Bibliothek' }).click()
+    await openNewLibraryWizard(page)
     await page.getByRole('radio', { name: /Webverzeichnis/ }).click()
     await page.getByRole('button', { name: 'Weiter', exact: true }).click()
     await page.getByLabel('Adresse (URL)').fill('http://rss-feed/webverzeichnis/')
@@ -235,8 +223,7 @@ test.describe('Verbindungstest im Anlage-Assistenten (#514)', () => {
   }) => {
     const libraryName = `E2E Verbindungstest-Fehlerfall ${runId}`
 
-    await gotoLibraries(page)
-    await page.getByRole('button', { name: 'Neue Bibliothek' }).click()
+    await openNewLibraryWizard(page)
     await page.getByRole('radio', { name: /Webverzeichnis/ }).click()
     await page.getByRole('button', { name: 'Weiter', exact: true }).click()
     // "ai-stub" resolves instantly (it is part of this very stack) - nothing listens on port 9,
@@ -280,8 +267,7 @@ test.describe('Dokumentliste mit Paging und Suche (#517)', () => {
     const libraryName = `E2E Paging-Bibliothek ${runId}`
     const searchTargetName = `suchtreffer-${runId}.txt`
 
-    await gotoLibraries(page)
-    await page.getByRole('button', { name: 'Neue Bibliothek' }).click()
+    await openNewLibraryWizard(page)
     await page.getByRole('button', { name: 'Weiter', exact: true }).click()
     await page.getByLabel('Name').fill(libraryName)
     await page.getByRole('button', { name: 'Weiter', exact: true }).click()
@@ -353,8 +339,7 @@ test.describe('Dokumentliste mit Paging und Suche (#517)', () => {
   }) => {
     const libraryName = `E2E Konnektor-Dokumentliste ${runId}`
 
-    await gotoLibraries(page)
-    await page.getByRole('button', { name: 'Neue Bibliothek' }).click()
+    await openNewLibraryWizard(page)
     await page.getByRole('radio', { name: /Webverzeichnis/ }).click()
     await page.getByRole('button', { name: 'Weiter', exact: true }).click()
     await page.getByLabel('Adresse (URL)').fill('http://rss-feed/anlagen/')
@@ -393,8 +378,7 @@ test.describe('Sammelloeschen von Dokumenten (#1943)', () => {
   }) => {
     const libraryName = `E2E Sammelloeschen ${runId}`
 
-    await gotoLibraries(page)
-    await page.getByRole('button', { name: 'Neue Bibliothek' }).click()
+    await openNewLibraryWizard(page)
     await page.getByRole('button', { name: 'Weiter', exact: true }).click()
     await page.getByLabel('Name').fill(libraryName)
     await page.getByRole('button', { name: 'Weiter', exact: true }).click()
@@ -435,8 +419,7 @@ test.describe('Quellkonfiguration bearbeiten (#516)', () => {
   }) => {
     const libraryName = `E2E Quellkonfiguration-Bearbeiten ${runId}`
 
-    await gotoLibraries(page)
-    await page.getByRole('button', { name: 'Neue Bibliothek' }).click()
+    await openNewLibraryWizard(page)
     await page.getByRole('radio', { name: /Webverzeichnis/ }).click()
     await page.getByRole('button', { name: 'Weiter', exact: true }).click()
     await page.getByLabel('Adresse (URL)').fill('http://rss-feed/anlagen/')

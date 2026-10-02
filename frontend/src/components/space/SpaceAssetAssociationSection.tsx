@@ -8,7 +8,7 @@ import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import type { AssetType } from '../../types/api'
 import { useSpaceStore } from '../../stores/spaceStore'
-import { assetTypeLabel } from '../../utils/labels'
+import { assetTypeLabel } from '../assets/assetTypeRegistry'
 import { successionAwareMessage } from '../succession/successionConflict'
 import SectionHead from '../SectionHead'
 

@@ -85,10 +85,8 @@ const VERWALTUNGSDATEIEN = Object.keys(QUELLEN).filter((pfad) => {
     'SearchIndexingAdminPage',
     // #1609: außerhalb der Administration
     'LibraryDetailPage',
-    'LibraryManagementPage',
     'SpacePage',
     'SpaceSettingsPage',
-    'PromptLibrariesPage',
     'PromptLibraryDetailPage',
   ].some((seite) => pfad.endsWith(`${seite}.tsx`))
 })
@@ -126,9 +124,6 @@ const VERWALTUNGSDATEIEN = Object.keys(QUELLEN).filter((pfad) => {
  * - `SpaceGeneralSection`: der Gefahrenbereich am Ende der Stammdaten (#1917). Der Rahmen setzt
  *   Archivieren und Löschen vom Formular darüber ab — er markiert eine Grenze, statt Inhalt zu
  *   bündeln.
- * - `LibraryManagementPage`: die Kachel je Bibliothek ist eine `ButtonBase` — ein Bedienelement,
- *   das den Weg in die Detailansicht trägt. Ohne Begrenzung wäre unklar, wie weit die Trefferfläche
- *   reicht; das ist der dritte Fall aus #1608, nicht ein Kasten um ruhenden Inhalt.
  * - `PromptTextHighlight`, `PromptPreview`: der Wortlaut eines Prompts als Monospace-Block und der
  *   daraus eingesetzte Text als Ergebnisfläche — fremder Inhalt in der Seite, derselbe Fall wie
  *   beim `MailTemplateEditor`.
@@ -146,7 +141,6 @@ const AUSNAHMEN = [
   'CopyAnswerButton.tsx',
   'ChatInput.tsx',
   'PromptCommandMenu.tsx',
-  'LibraryManagementPage.tsx',
   'SpaceGeneralSection.tsx',
   'PromptTextHighlight.tsx',
   'PromptPreview.tsx',

@@ -20,7 +20,7 @@ function renderShell(initialRoute = '/chat') {
           {/* #805: mirrors App.tsx - /settings renders inside the sectionless global frame,
               the harness had drifted from the route table (#788). */}
           <Route path="/settings" element={<PageHeading title="Einstellungen" />} />
-          <Route path="/libraries" element={<div>Ohne Überschrift</div>} />
+          <Route path="/catalog" element={<div>Ohne Überschrift</div>} />
           <Route path="/spaces" element={<div>Spaces-Karten</div>} />
           <Route path="/spaces/new" element={<div>Space-Assistent</div>} />
         </Route>
@@ -78,7 +78,7 @@ describe('AppShell', () => {
     renderShell()
     expect(screen.getByText('Chats')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Spaces' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Wissen' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Katalog' })).toBeInTheDocument()
   })
 
   it('renders OPAA branding', () => {
@@ -163,8 +163,8 @@ describe('AppShell', () => {
     expect(screen.queryByRole('complementary', { name: 'Space-Bereich' })).not.toBeInTheDocument()
   })
 
-  it('drops the space column in the library catalog as well (#789)', () => {
-    renderShell('/libraries')
+  it('drops the space column in the catalog as well (#789)', () => {
+    renderShell('/catalog')
 
     expect(screen.getByText('Ohne Überschrift')).toBeInTheDocument()
     expect(screen.queryByRole('complementary', { name: 'Space-Bereich' })).not.toBeInTheDocument()
@@ -198,7 +198,7 @@ describe('AppShell', () => {
       expect(rail).toBeVisible()
       expect(screen.getByRole('complementary', { name: 'Space-Bereich' })).toBeVisible()
 
-      await user.click(within(rail).getByText('Wissen'))
+      await user.click(within(rail).getByText('Katalog'))
 
       await waitFor(() => expect(useUiStore.getState().sidebarOpen).toBe(false))
     } finally {
@@ -211,7 +211,7 @@ describe('AppShell', () => {
     renderShell()
 
     await user.click(
-      within(screen.getByRole('navigation', { name: 'Globale Navigation' })).getByText('Wissen'),
+      within(screen.getByRole('navigation', { name: 'Globale Navigation' })).getByText('Katalog'),
     )
 
     expect(screen.getByRole('main')).toHaveFocus()
