@@ -20,6 +20,7 @@ import com.sun.net.httpserver.HttpServer;
 import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.DocumentStatus;
 import io.opaa.api.types.SystemRole;
+import io.opaa.asset.AssetRepository;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ConflictException;
@@ -97,6 +98,7 @@ import org.springframework.ai.vectorstore.filter.Filter;
 import org.springframework.ai.vectorstore.filter.FilterExpressionBuilder;
 import org.springframework.core.task.TaskRejectedException;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.QueryTimeoutException;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
@@ -121,6 +123,7 @@ class LibraryDocumentServiceTest {
   private KnowledgeLibraryRepository libraryRepository;
   private LibraryAccessService accessService;
   private DocumentRepository documentRepository;
+  private final AssetRepository assetRepository = mock(AssetRepository.class);
   private ChecksumService checksumService;
   private DocumentIngestService documentIngestService;
   private VectorStore vectorStore;
@@ -292,7 +295,29 @@ class LibraryDocumentServiceTest {
             .remoteContentProperties(remoteContentProperties)
             .s3OriginalAccess(s3OriginalAccess)
             .registry(),
+        assetRepository,
         NO_OP_TRANSACTION_MANAGER);
+  }
+
+  @Test
+  void anUploadSucceedsEvenWhenMarkingTheLibraryAsChangedFails() throws IOException {
+    grantEditor();
+    when(checksumService.computeSha256(any(Path.class))).thenReturn("checksum-mark");
+    when(documentRepository.findByLibraryIdAndChecksumAndParentDocumentIdIsNull(
+            libraryId, "checksum-mark"))
+        .thenReturn(Optional.empty());
+    when(assetRepository.markContentChanged(eq(libraryId), any(Instant.class)))
+        .thenThrow(new QueryTimeoutException("lock_timeout on assets"));
+
+    LibraryDocumentEntry response =
+        service.uploadDocument(libraryId, pdfFile("report.pdf", "pdf content"), null, caller);
+
+    assertThat(response.document().getStatus()).isEqualTo(DocumentStatus.PENDING);
+    ArgumentCaptor<DocumentIngest> ingest = ArgumentCaptor.forClass(DocumentIngest.class);
+    verify(documentIngestService).processUploadedFileAsync(ingest.capture(), any(), any());
+    assertThat(DocumentIngests.fileOf(ingest.getValue()))
+        .as("the file the processing reads is kept")
+        .exists();
   }
 
   @Test
@@ -1693,6 +1718,7 @@ class LibraryDocumentServiceTest {
                 .remoteContentProperties(remoteContentProperties)
                 .s3OriginalAccess(s3OriginalAccess)
                 .registry(),
+            assetRepository,
             NO_OP_TRANSACTION_MANAGER);
     grantViewerOnUploadLibrary();
     KnowledgeLibrary library = remoteLibrary(null);

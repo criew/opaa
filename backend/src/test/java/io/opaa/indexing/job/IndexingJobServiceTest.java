@@ -1,6 +1,7 @@
 package io.opaa.indexing.job;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -9,9 +10,11 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.IndexingRunMode;
+import io.opaa.asset.AssetRepository;
 import io.opaa.common.ConflictException;
 import java.time.Duration;
 import java.time.Instant;
@@ -25,16 +28,18 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.QueryTimeoutException;
 
 @ExtendWith(MockitoExtension.class)
 class IndexingJobServiceTest {
 
   @Mock private IndexingJobRepository indexingJobRepository;
+  @Mock private AssetRepository assetRepository;
   private IndexingJobService service;
 
   @BeforeEach
   void setUp() {
-    service = new IndexingJobService(indexingJobRepository);
+    service = new IndexingJobService(indexingJobRepository, assetRepository);
   }
 
   @Test
@@ -424,5 +429,29 @@ class IndexingJobServiceTest {
             eq("Indizierungslauf abgebrochen: verwaister Lauf (Zeitüberschreitung)"),
             any(Instant.class),
             any(Instant.class));
+  }
+
+  @Test
+  void aFailingContentMarkNeverEscapesTheRecording() {
+    UUID jobId = UUID.randomUUID();
+    UUID libraryId = UUID.randomUUID();
+    IndexingJob job = new IndexingJob(JobStatus.COMPLETED);
+    job.setLibraryId(libraryId);
+    when(indexingJobRepository.findById(jobId)).thenReturn(Optional.of(job));
+    when(assetRepository.markContentChanged(eq(libraryId), any(Instant.class)))
+        .thenThrow(new QueryTimeoutException("lock_timeout on assets"));
+
+    assertThatCode(() -> service.recordContentChange(jobId)).doesNotThrowAnyException();
+  }
+
+  @Test
+  void completingARunMarksNothingItself() {
+    UUID jobId = UUID.randomUUID();
+    when(indexingJobRepository.completeIfRunning(
+            eq(jobId), anyInt(), anyInt(), anyInt(), anyInt(), any(Instant.class)))
+        .thenReturn(1);
+
+    assertThat(service.completeJob(jobId, 1, 0, 0, 1)).isTrue();
+    verifyNoInteractions(assetRepository);
   }
 }

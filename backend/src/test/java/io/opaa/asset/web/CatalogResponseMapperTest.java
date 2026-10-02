@@ -4,14 +4,20 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.api.dto.AssetType;
 import io.opaa.api.dto.CatalogEntryResponse;
+import io.opaa.api.dto.CatalogKnowledgeLibraryFacts;
 import io.opaa.api.dto.CatalogPageResponse;
 import io.opaa.api.types.AssetOrigin;
 import io.opaa.api.types.AssetOwnerType;
+import io.opaa.api.types.AssetRole;
+import io.opaa.api.types.CatalogEntryStatus;
+import io.opaa.api.types.CatalogVisibility;
 import io.opaa.api.types.SuccessionAddressee;
 import io.opaa.asset.AssetCatalogEntry;
+import io.opaa.asset.AssetCatalogFacts;
 import io.opaa.asset.AssetCatalogPage;
 import io.opaa.asset.AssetCatalogRow;
 import io.opaa.permission.SuccessionFinding;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -20,23 +26,46 @@ class CatalogResponseMapperTest {
 
   private static final UUID ASSET_ID = UUID.randomUUID();
   private static final UUID OWNER_ID = UUID.randomUUID();
+  private static final Instant UPDATED_AT = Instant.parse("2026-09-30T08:15:00Z");
+  private static final io.opaa.permission.AssetType PROMPTS =
+      io.opaa.permission.AssetType.of("PROMPT_LIBRARY");
+
+  private record TestFacts(CatalogEntryStatus status, String label) implements AssetCatalogFacts {}
+
+  /** Writes the label of {@link TestFacts} where a knowledge library's source type goes. */
+  private static final CatalogFactsResponseMapper TEST_FACTS_MAPPER =
+      new CatalogFactsResponseMapper() {
+        @Override
+        public io.opaa.permission.AssetType assetType() {
+          return PROMPTS;
+        }
+
+        @Override
+        public void apply(AssetCatalogFacts facts, CatalogEntryResponse response) {
+          response.knowledgeLibrary(
+              new CatalogKnowledgeLibraryFacts().sourceType(((TestFacts) facts).label()));
+        }
+      };
+
+  private final CatalogResponseMapper mapper = new CatalogResponseMapper(List.of());
 
   @Test
   void everyFieldOfAnEntryAndThePageIsCarried() {
     AssetCatalogEntry entry =
         new AssetCatalogEntry(
             row(AssetOrigin.BUILT_IN),
+            AssetRole.EDITOR,
+            CatalogVisibility.PUBLIC,
+            CatalogEntryStatus.SUCCESSION_OPEN,
+            null,
             "Referat 50",
             SuccessionFinding.ofAsset(
-                io.opaa.permission.AssetType.of("PROMPT_LIBRARY"),
-                ASSET_ID,
-                "Vorlagen",
-                SuccessionAddressee.GROUP_STEWARDS),
+                PROMPTS, ASSET_ID, "Vorlagen", SuccessionAddressee.GROUP_STEWARDS),
             7,
             3);
 
     CatalogPageResponse page =
-        CatalogResponseMapper.toResponse(new AssetCatalogPage(List.of(entry), 2, 10, 21, 3));
+        mapper.toResponse(new AssetCatalogPage(List.of(entry), 2, 10, 21, 3));
 
     assertThat(page.getPage()).isEqualTo(2);
     assertThat(page.getSize()).isEqualTo(10);
@@ -48,24 +77,62 @@ class CatalogResponseMapperTest {
     assertThat(response.getName()).isEqualTo("Vorlagen");
     assertThat(response.getDescription()).isEqualTo("Hausstandard");
     assertThat(response.getOwnerType()).isEqualTo(AssetOwnerType.GROUP);
+    assertThat(response.getOwnerId()).isEqualTo(OWNER_ID);
     assertThat(response.getOwnerLabel()).isEqualTo("Referat 50");
     assertThat(response.getOrigin()).isEqualTo(AssetOrigin.BUILT_IN);
+    assertThat(response.getVisibility()).isEqualTo(CatalogVisibility.PUBLIC);
+    assertThat(response.getMyRole()).isEqualTo(AssetRole.EDITOR);
+    assertThat(response.getStatus()).isEqualTo(CatalogEntryStatus.SUCCESSION_OPEN);
+    assertThat(response.getUpdatedAt()).isEqualTo(UPDATED_AT);
     assertThat(response.getItemCount()).isEqualTo(7);
     assertThat(response.getSpaceCount()).isEqualTo(3);
     assertThat(response.getSuccession()).isNotNull();
     assertThat(response.getSuccession().getAddressee())
         .isEqualTo(SuccessionAddressee.GROUP_STEWARDS);
+    assertThat(response.getKnowledgeLibrary()).as("no facts, no type property").isNull();
   }
 
   @Test
   void anEntryWithoutSuccessionOrOwnerLabelCarriesNeither() {
-    CatalogEntryResponse response =
-        CatalogResponseMapper.toResponse(
-            new AssetCatalogEntry(row(AssetOrigin.LOCAL), null, null, 0, 0));
+    CatalogEntryResponse response = mapper.toResponse(entry(CatalogEntryStatus.READY, null));
 
     assertThat(response.getOwnerLabel()).isNull();
     assertThat(response.getSuccession()).isNull();
     assertThat(response.getOrigin()).isEqualTo(AssetOrigin.LOCAL);
+    assertThat(response.getVisibility()).isEqualTo(CatalogVisibility.RESTRICTED);
+  }
+
+  @Test
+  void theFactsOfATypeGoThroughThatTypesMapper() {
+    CatalogResponseMapper withFacts = new CatalogResponseMapper(List.of(TEST_FACTS_MAPPER));
+    TestFacts facts = new TestFacts(CatalogEntryStatus.UPDATING, "FILESYSTEM");
+
+    CatalogEntryResponse response = withFacts.toResponse(entry(CatalogEntryStatus.UPDATING, facts));
+
+    assertThat(response.getKnowledgeLibrary().getSourceType()).isEqualTo("FILESYSTEM");
+    assertThat(response.getStatus()).isEqualTo(CatalogEntryStatus.UPDATING);
+  }
+
+  @Test
+  void factsOfATypeWithoutAMapperAreLeftOut() {
+    CatalogEntryResponse response =
+        mapper.toResponse(
+            entry(CatalogEntryStatus.READY, new TestFacts(CatalogEntryStatus.READY, "x")));
+
+    assertThat(response.getKnowledgeLibrary()).isNull();
+  }
+
+  private static AssetCatalogEntry entry(CatalogEntryStatus status, AssetCatalogFacts facts) {
+    return new AssetCatalogEntry(
+        row(AssetOrigin.LOCAL),
+        AssetRole.VIEWER,
+        CatalogVisibility.RESTRICTED,
+        status,
+        facts,
+        null,
+        null,
+        0,
+        0);
   }
 
   private static AssetCatalogRow row(AssetOrigin origin) {
@@ -77,7 +144,7 @@ class CatalogResponseMapperTest {
 
       @Override
       public io.opaa.permission.AssetType getAssetType() {
-        return io.opaa.permission.AssetType.of("PROMPT_LIBRARY");
+        return PROMPTS;
       }
 
       @Override
@@ -108,6 +175,11 @@ class CatalogResponseMapperTest {
       @Override
       public AssetOrigin getOrigin() {
         return origin;
+      }
+
+      @Override
+      public Instant getUpdatedAt() {
+        return UPDATED_AT;
       }
     };
   }

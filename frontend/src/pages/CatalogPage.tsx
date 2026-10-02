@@ -1,12 +1,16 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
+import Checkbox from '@mui/material/Checkbox'
+import FormControlLabel from '@mui/material/FormControlLabel'
 import ToggleButton from '@mui/material/ToggleButton'
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
+import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import { alpha } from '@mui/material/styles'
-import type { CatalogEntryResponse } from '../types/api'
+import type { CatalogEntryResponse, CatalogEntryStatus, CatalogVisibility } from '../types/api'
+import type { CatalogSort } from '../services/catalogApi'
 import { CATALOG_QUERY_MAX_LENGTH, useCatalogStore } from '../stores/catalogStore'
 import { useMyCapabilities } from '../hooks/useMyCapabilities'
 import {
@@ -16,13 +20,89 @@ import {
   type AssetTypeDefinition,
 } from '../components/assets/assetTypeRegistry'
 import OverviewPage, { OverviewCard } from '../components/overview/OverviewPage'
+import MetaBadge from '../components/MetaBadge'
 import SuccessionStateNote from '../components/succession/SuccessionStateNote'
+import {
+  assetRoleLabel,
+  catalogStatusLabel,
+  catalogVisibilityDescription,
+  catalogVisibilityLabel,
+} from '../utils/labels'
 import { CATALOG_NEW_ROUTE } from '../routes'
 
 /** Long enough to let a word be typed out before the server is asked. */
 const SEARCH_DELAY_MS = 300
 
-const ALL_TYPES = 'all'
+const ALL = 'all'
+
+/** The address values of the filters and the sort; the API's own values stay out of the URL. */
+const VISIBILITY_SLUGS: Record<CatalogVisibility, string> = {
+  PUBLIC: 'public',
+  RESTRICTED: 'restricted',
+}
+const SORT_SLUGS: Record<CatalogSort, string> = { name: 'name', updatedAt: 'updated' }
+
+function fromSlug<K extends string>(slugs: Record<K, string>, slug: string | null): K | undefined {
+  return (Object.keys(slugs) as K[]).find((key) => slugs[key] === slug)
+}
+
+function formatDate(value: string): string {
+  return new Date(value).toLocaleDateString('de-DE', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  })
+}
+
+/**
+ * The type's own state - for a knowledge library its indexing, which stays visible while the
+ * succession is open; every other type has no measure of its own and is READY.
+ */
+function ownStatus(entry: CatalogEntryResponse): CatalogEntryStatus {
+  if (entry.knowledgeLibrary) return entry.knowledgeLibrary.indexingStatus
+  return entry.status === 'SUCCESSION_OPEN' ? 'READY' : entry.status
+}
+
+const STATUS_DOT: Record<CatalogEntryStatus, string> = {
+  READY: 'success.main',
+  UPDATING: 'info.main',
+  UPDATE_FAILED: 'error.main',
+  NOT_YET_AVAILABLE: 'text.disabled',
+  SUCCESSION_OPEN: 'warning.main',
+}
+
+/**
+ * "Stand <date>" when ready - the last successful run of a knowledge library, otherwise the last
+ * change - and the state in words when not. The colour sits in the dot, never in the text, as in
+ * the shared StatusLine; this compact form fits a tile and knows the "updating" tone.
+ */
+function CatalogStatusLine({ entry }: { entry: CatalogEntryResponse }) {
+  const status = ownStatus(entry)
+  // An upload library has no runs, so no lastIndexedAt; its Stand is then its last change.
+  const standAt = entry.knowledgeLibrary?.lastIndexedAt ?? entry.updatedAt
+  const text =
+    status === 'READY'
+      ? standAt
+        ? `Stand ${formatDate(standAt)}`
+        : ''
+      : catalogStatusLabel(status)
+  if (!text) return null
+  return (
+    <Box
+      component="span"
+      sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75, fontSize: 11.5 }}
+    >
+      <Box
+        component="span"
+        aria-hidden
+        sx={{ width: 7, height: 7, borderRadius: '50%', bgcolor: STATUS_DOT[status] }}
+      />
+      <Typography component="span" sx={{ fontSize: 11.5, color: 'text.secondary' }}>
+        {text}
+      </Typography>
+    </Box>
+  )
+}
 
 /**
  * Who to turn to: while the succession is open that is its addressee, otherwise the owner. A name
@@ -75,7 +155,15 @@ function CatalogCard({
 }) {
   return (
     <OverviewCard to={definition.detailRoute(entry.assetId)}>
-      <TypeBadge definition={definition} />
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 0.75 }}>
+        <TypeBadge definition={definition} />
+        <Tooltip title={catalogVisibilityDescription(entry.visibility)} describeChild>
+          <span>
+            <MetaBadge>{catalogVisibilityLabel(entry.visibility)}</MetaBadge>
+          </span>
+        </Tooltip>
+        <MetaBadge accent>{assetRoleLabel(entry.myRole)}</MetaBadge>
+      </Box>
       <Typography component="span" sx={{ fontSize: 16.5, fontWeight: 600 }}>
         {entry.name}
       </Typography>
@@ -100,20 +188,50 @@ function CatalogCard({
       <Typography component="span" sx={{ fontSize: 11.5, color: 'text.secondary' }}>
         zuständig: {responsibleLabel(entry)}
       </Typography>
+      <CatalogStatusLine entry={entry} />
       <SuccessionStateNote succession={entry.succession} variant="badge" />
     </OverviewCard>
   )
 }
 
+/** A filter group with its visible title, which is also the group's accessible name. */
+function FilterGroup({
+  id,
+  title,
+  children,
+  push = false,
+}: {
+  id: string
+  title: string
+  children: (labelId: string) => ReactNode
+  push?: boolean
+}) {
+  const labelId = `catalog-filter-${id}`
+  return (
+    <Box
+      sx={{ display: 'inline-flex', alignItems: 'center', gap: 1, ...(push ? { ml: 'auto' } : {}) }}
+    >
+      <Typography id={labelId} component="span" sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+        {title}
+      </Typography>
+      {children(labelId)}
+    </Box>
+  )
+}
+
 /**
  * The one entry for every asset type (ADR-0039, Entscheidung 1): what the person may read, as
- * cards. Type filter and search run on the server; the type filter stands in the address
- * (`?type=`), so `/libraries` and `/prompts` can lead here narrowed to their type.
+ * cards. Search, filters and sort run on the server; filters and sort stand in the address
+ * (`?type=&visibility=&groups=1&sort=`), so `/libraries` and `/prompts` can lead here narrowed to
+ * their type and a filtered view survives a reload.
  */
 export default function CatalogPage() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const typeFilter = ASSET_TYPES.find((definition) => definition.slug === searchParams.get('type'))
+  const visibility = fromSlug(VISIBILITY_SLUGS, searchParams.get('visibility'))
+  const fromMyGroups = searchParams.get('groups') === '1'
+  const sort = fromSlug(SORT_SLUGS, searchParams.get('sort')) ?? 'name'
   const [query, setQuery] = useState('')
   const [appliedQuery, setAppliedQuery] = useState('')
   const entries = useCatalogStore((s) => s.entries)
@@ -135,12 +253,20 @@ export default function CatalogPage() {
 
   const filterType = typeFilter?.type
   useEffect(() => {
-    void load({ type: filterType, q: appliedQuery })
-  }, [load, filterType, appliedQuery])
+    void load({ type: filterType, q: appliedQuery, visibility, fromMyGroups, sort })
+  }, [load, filterType, appliedQuery, visibility, fromMyGroups, sort])
 
-  function changeType(slug: string | null) {
-    if (!slug) return
-    setSearchParams(slug === ALL_TYPES ? {} : { type: slug }, { replace: true })
+  /** Sets one address parameter; `null` removes it, so the default view has a bare address. */
+  function setParam(key: string, value: string | null) {
+    setSearchParams(
+      (current) => {
+        const next = new URLSearchParams(current)
+        if (value === null) next.delete(key)
+        else next.set(key, value)
+        return next
+      },
+      { replace: true },
+    )
   }
 
   return (
@@ -158,32 +284,93 @@ export default function CatalogPage() {
         maxLength: CATALOG_QUERY_MAX_LENGTH,
       }}
       filters={
-        <ToggleButtonGroup
-          size="small"
-          exclusive
-          value={typeFilter?.slug ?? ALL_TYPES}
-          onChange={(_event, next: string | null) => changeType(next)}
-          aria-label="Typ"
-        >
-          <ToggleButton value={ALL_TYPES} sx={{ px: 1.5 }}>
-            Alle
-          </ToggleButton>
-          {ASSET_TYPES.map((definition) => {
-            const Icon = definition.Icon
-            return (
-              <ToggleButton
-                key={definition.type}
-                value={definition.slug}
-                sx={{ px: 1.5, gap: 0.75 }}
+        <>
+          <FilterGroup id="type" title="Typ">
+            {(labelId) => (
+              <ToggleButtonGroup
+                size="small"
+                exclusive
+                value={typeFilter?.slug ?? ALL}
+                onChange={(_event, next: string | null) =>
+                  next && setParam('type', next === ALL ? null : next)
+                }
+                aria-labelledby={labelId}
               >
-                <Icon aria-hidden sx={{ fontSize: 16 }} />
-                {definition.label}
-              </ToggleButton>
-            )
-          })}
-        </ToggleButtonGroup>
+                <ToggleButton value={ALL} sx={{ px: 1.5 }}>
+                  Alle
+                </ToggleButton>
+                {ASSET_TYPES.map((definition) => {
+                  const Icon = definition.Icon
+                  return (
+                    <ToggleButton
+                      key={definition.type}
+                      value={definition.slug}
+                      sx={{ px: 1.5, gap: 0.75 }}
+                    >
+                      <Icon aria-hidden sx={{ fontSize: 16 }} />
+                      {definition.label}
+                    </ToggleButton>
+                  )
+                })}
+              </ToggleButtonGroup>
+            )}
+          </FilterGroup>
+          <FilterGroup id="visibility" title="Sichtbarkeit">
+            {(labelId) => (
+              <ToggleButtonGroup
+                size="small"
+                exclusive
+                value={visibility ? VISIBILITY_SLUGS[visibility] : ALL}
+                onChange={(_event, next: string | null) =>
+                  next && setParam('visibility', next === ALL ? null : next)
+                }
+                aria-labelledby={labelId}
+              >
+                <ToggleButton value={ALL} sx={{ px: 1.5 }}>
+                  Alle
+                </ToggleButton>
+                {(Object.keys(VISIBILITY_SLUGS) as CatalogVisibility[]).map((value) => (
+                  <ToggleButton key={value} value={VISIBILITY_SLUGS[value]} sx={{ px: 1.5 }}>
+                    {catalogVisibilityLabel(value)}
+                  </ToggleButton>
+                ))}
+              </ToggleButtonGroup>
+            )}
+          </FilterGroup>
+          <FormControlLabel
+            control={
+              <Checkbox
+                size="small"
+                checked={fromMyGroups}
+                onChange={(event) => setParam('groups', event.target.checked ? '1' : null)}
+              />
+            }
+            label="Aus meinen Gruppen"
+            sx={{ mr: 0, '& .MuiFormControlLabel-label': { fontSize: 13 } }}
+          />
+          <FilterGroup id="sort" title="Sortierung" push>
+            {(labelId) => (
+              <ToggleButtonGroup
+                size="small"
+                exclusive
+                value={SORT_SLUGS[sort]}
+                onChange={(_event, next: string | null) =>
+                  next && setParam('sort', next === SORT_SLUGS.name ? null : next)
+                }
+                aria-labelledby={labelId}
+              >
+                <ToggleButton value={SORT_SLUGS.name} sx={{ px: 1.5 }}>
+                  Name
+                </ToggleButton>
+                <ToggleButton value={SORT_SLUGS.updatedAt} sx={{ px: 1.5 }}>
+                  Zuletzt geändert
+                </ToggleButton>
+              </ToggleButtonGroup>
+            )}
+          </FilterGroup>
+        </>
       }
-      filtered={typeFilter !== undefined}
+      filtered={typeFilter !== undefined || visibility !== undefined || fromMyGroups}
       total={total}
       isLoading={isLoading}
       error={error}
@@ -205,7 +392,7 @@ export default function CatalogPage() {
           </Box>
         ) : undefined
       }
-      footNote="Der Katalog zeigt nur, was Sie lesen dürfen."
+      footNote="Der Katalog zeigt nur, was Sie lesen dürfen. „Für alle“: an alle Konten freigegeben; „Eingeschränkt“: nur über Freigaben an Personen oder Gruppen erreichbar."
     />
   )
 }
