@@ -147,6 +147,14 @@ public class AsyncIndexingExecutor implements SourceIndexingExecutor {
               mismatch.file().getFileName().toString());
     }
 
+    for (Path unreadable : discovered.unreadable()) {
+      run.events()
+          .record(
+              IndexingEventCategory.UNREACHABLE,
+              "Nicht lesbar, übersprungen",
+              documentDir.relativize(unreadable).toString());
+    }
+
     run.progress().setTotal(discovered.totalFound());
     run.progress().report();
 
@@ -179,6 +187,10 @@ public class AsyncIndexingExecutor implements SourceIndexingExecutor {
     // source and must not be treated as vanished.
     for (Path rejected : discovered.rejected()) {
       run.markPresent(rejected.toAbsolutePath().toString());
+    }
+    // What lies below an unreadable entry is unknown, so absence proves nothing: no reconciliation.
+    if (!discovered.unreadable().isEmpty()) {
+      return ListingOutcome.incomplete(List.of());
     }
     run.afterReconciliation(reconciled -> folderMirror.prune());
     return ListingOutcome.complete();
