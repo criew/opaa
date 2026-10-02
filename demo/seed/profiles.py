@@ -629,8 +629,9 @@ DEMO_PROFILE = Profile(
         ),
         # The seventh library (#1520): a technical showcase, not a Fachablage - one document per
         # file extension OPAA admits, read over the S3 connector from the bucket "formattest" of
-        # the same store. It stays with the admin account that creates it and gets no VIEWER grant
-        # and no space association, so it never widens what a fach account sees.
+        # the same store. It stays with the admin account that creates it and gets no VIEWER grant;
+        # only the admin's own personal space carries it, so it never widens what a fach account
+        # sees.
         LibraryDef(
             name="Formattest auf S3",
             description=(
@@ -697,10 +698,15 @@ DEMO_PROFILE = Profile(
         ),
     ),
     prompt_libraries=_DEMO_PROMPT_LIBRARIES,
-    # Every fach account's personal space carries the knowledge of its Sachgebiet and the shared
-    # Textbausteine. The admin's personal space deliberately stays empty: the one demo space that
-    # shows the hint to assign knowledge instead of an answer.
+    # Every personal space carries knowledge and the shared Textbausteine: a fach account's the
+    # knowledge of its Sachgebiet, the admin's the technical showcase only it reads. The hint for a
+    # space without knowledge shows in any newly created space (Drehbuch, Schritt G).
     personal_spaces=(
+        PersonalSpaceDef(
+            owner_key="admin",
+            library_names=("Formattest auf S3",),
+            prompt_library_names=("Textbausteine Bürgerbüro",),
+        ),
         PersonalSpaceDef(
             owner_key="maria",
             library_names=_MELDEWESEN_LIBRARIES,
@@ -711,9 +717,11 @@ DEMO_PROFILE = Profile(
             library_names=_MELDEWESEN_LIBRARIES,
             prompt_library_names=("Textbausteine Bürgerbüro",),
         ),
+        # Thomas reads the internal instructions as Vertretung Meldewesen; his own space carries
+        # them, his Sachgebiet's space "Kfz-Zulassung" does not (Drehbuch, Frage 5).
         PersonalSpaceDef(
             owner_key="thomas",
-            library_names=_KFZ_LIBRARIES,
+            library_names=(*_KFZ_LIBRARIES, "Interne Dienstanweisungen Meldewesen"),
             prompt_library_names=("Textbausteine Bürgerbüro",),
         ),
         PersonalSpaceDef(

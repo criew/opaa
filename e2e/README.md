@@ -392,9 +392,13 @@ lassen.
   Objekte samt der neuen Suchbereichssteuerung im Eingabefeld: ein Chat wird im Space erstellt,
   eine Frage liefert eine Antwort mit Quellenangabe, und ein Neuladen der Seite stellt sowohl den
   Chatlisten-Eintrag (Sidebar) als auch den Gesprächsverlauf (Hauptbereich) wieder her. Eine
-  `@`-Referenz ersetzt den vorbelegten Spezial-Chip @Alles-Wissen und schränkt die Suche auf genau
+  `@`-Referenz ersetzt den vorbelegten Spezial-Chip @Space-Wissen und schränkt die Suche auf genau
   die referenzierte Bibliothek ein (#560). Ohne Wissensbasis (Chip-Leiste geleert, keine Referenz)
-  antwortet die KI ohne Quellen und mit sichtbarem Hinweis. Eine nicht mit dem Nutzer geteilte Bibliothek bleibt aus dessen
+  antwortet die KI ohne Quellen und mit sichtbarem Hinweis. Ein Space durchsucht nur, was ihm
+  zugeordnet ist (#2096): Szenarien, die eine Bibliothek finden sollen, ordnen sie deshalb vorher
+  über `fixtures/spaces.ts` dem Standard-Space des fragenden Kontos zu, und Szenario 5a prüft, dass
+  ein Space ohne Wissen den Hinweis „Diesem Space ist kein Wissen zugeordnet." mit dem Direktlink
+  „Wissen zuordnen" zeigt und die Antwort keine Belege trägt. Eine nicht mit dem Nutzer geteilte Bibliothek bleibt aus dessen
   `@`-Vorschlägen ausgeschlossen — mit einer Positivprobe auf der Bibliothek selbst (deren
   Ersteller sieht sie in den eigenen Vorschlägen sehr wohl), sonst wäre die Abwesenheit ebenso gut
   durch eine kaputte Mention-Funktion erklärbar wie durch die Rechteprüfung. Ein zweiter, über
@@ -426,11 +430,11 @@ lassen.
   gelaufenen Spec-Datei weiter, auch innerhalb dieser eigenen Datei - prüft nur, was den jeweiligen
   Szenariozweck tatsächlich braucht: Szenario 1 (Chat-Mechanik: Antwort mit Quellen, Persistenz
   über ein Neuladen) prüft nur "irgendeine Quelle wurde zitiert" (`expectAnyCitedSource`), nicht
-  einen bestimmten Dateinamen - bei unverändertem @Alles-Wissen-Chip sucht es unscoped über den
-  gesamten lesbaren Korpus, und welches Dokument dabei in die Top-Treffer fällt, ist nicht das, was
-  dieses Szenario zeigen soll. Szenarien 2 und 5, die tatsächlich zeigen sollen, _welche_ Bibliothek
-  durchsucht wurde, referenzieren stattdessen explizit per `@` - das ersetzt den @Alles-Wissen-Chip
-  und bleibt unabhängig von der Korpusgröße deterministisch.
+  einen bestimmten Dateinamen - bei unverändertem @Space-Wissen-Chip sucht es über alles, was dem
+  Standard-Space zugeordnet ist, und welches Dokument dabei in die Top-Treffer fällt, ist nicht das,
+  was dieses Szenario zeigen soll. Szenarien 2 und 5, die tatsächlich zeigen sollen, _welche_
+  Bibliothek durchsucht wurde, referenzieren stattdessen explizit per `@` - das ersetzt den
+  @Space-Wissen-Chip und bleibt unabhängig von der Korpusgröße deterministisch.
 
   Die wiederverwendbaren Bausteine (Chat starten/fragen, zitierte Quelle prüfen, Bibliothek anlegen
   und befüllen, Bibliothek mit einer Person teilen) leben in `fixtures/chat.ts`, extrahiert aus

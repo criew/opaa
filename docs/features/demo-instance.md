@@ -181,14 +181,18 @@ Die wirksame Matrix ist dieselbe wie vor der Umstellung; geändert hat sich nur,
 Einrichtung, Werte und der Weg in ein Keycloak mit eigenem Volume stehen in
 [`../../demo/README.md`](../../demo/README.md), Abschnitt „Gruppen".
 
-Dieselben Bibliotheken sind den fachlichen Spaces zusätzlich als **Datenquellen zugeordnet**
-(Space↔Bibliothek-Assoziation als reine Kuratierung, #706): „Meldewesen & Ausweise" trägt die fünf
-für das Sachgebiet lesbaren Bibliotheken, „Kfz-Zulassung" seine vier, „Amtsleitung Bürgerbüro" alle
-sechs fachlichen, „Dienstbesprechung Bürgerbüro" nur die drei, die alle vier Fachkonten lesen
-(Satzungen, Pressemitteilungen, Ratsinformationen). `@Alles-Wissen` durchsucht in diesen Spaces genau die zugeordneten Bibliotheken, geschnitten
-mit den Leserechten der fragenden Person. Marias persönlicher Space bleibt bewusst ohne Zuordnung —
-dort greift `@Alles-Wissen` auf alle für sie lesbaren Bibliotheken zurück. Die Zuordnung gewährt
-keinerlei Zugriff; die Matrix oben bleibt die alleinige Rechtequelle.
+Dieselben Bibliotheken sind jedem Space zusätzlich als **Datenquellen zugeordnet**, denn ein Space
+enthält genau, was ihm zugeordnet ist (#2096): „Meldewesen & Ausweise" und Marias eigener Space tragen
+die fünf für das Sachgebiet lesbaren Bibliotheken, „Kfz-Zulassung" seine vier, „Amtsleitung
+Bürgerbüro" alle sechs fachlichen, „Dienstbesprechung Bürgerbüro" nur die drei, die alle vier
+Fachkonten lesen (Satzungen, Pressemitteilungen, Ratsinformationen). Der Default-Space jedes Kontos
+trägt die Bibliotheken seines Sachgebiets — der von Thomas zusätzlich die internen Dienstanweisungen,
+die er als Vertretung liest, der des Admin-Kontos die Schaubibliothek „Formattest auf S3".
+`@Space-Wissen` durchsucht in jedem Space genau die zugeordneten Bibliotheken, geschnitten mit den
+Leserechten der fragenden Person; eine Rückfallregel auf alles Lesbare gibt es nicht. Die Zuordnung
+gewährt keinerlei Zugriff; die Matrix oben bleibt die alleinige Rechtequelle. Ein Space ohne
+zugeordnetes Wissen zeigt im Chat einen Hinweis mit Direktlink zur Zuordnung — vorführbar an jedem
+neu angelegten Space (Drehbuch, Schritt G).
 
 Damit sind die Vorführmomente konstruierbar: Maria und Thomas stellen dieselbe Frage zu einer internen
 Dienstanweisung — Maria erhält die belegte Antwort, Thomas die Auskunft, dass dazu nichts vorliegt. Weil
@@ -212,14 +216,15 @@ Slash-Befehl und Variablenformular im Chat vorführbar sind.
 
 | Prompt-Bibliothek | Reichweite | Katalog | Space-Zuordnung | Prompts (Slash-Befehl) |
 |---|---|---|---|---|
-| Textbausteine Bürgerbüro | „Alle Konten" (`VIEWER`) | gelistet | „Meldewesen & Ausweise", „Kfz-Zulassung", „Amtsleitung Bürgerbüro" | `/antwort-buergeranfrage`, `/gebuehrenauskunft-personalausweis`, `/aktenvermerk`, `/pressemitteilung-ratsbeschluss` |
-| Vorlagen Amtsleitung | nur Andrea (Eigentümerin) | nicht gelistet | „Amtsleitung Bürgerbüro" | `/wochenbericht-dezernentin`, `/stellungnahme-hauptausschuss` |
+| Textbausteine Bürgerbüro | „Alle Konten" (`VIEWER`) | gelistet | alle fünf fachlichen Spaces und der Default-Space jedes Kontos | `/antwort-buergeranfrage`, `/gebuehrenauskunft-personalausweis`, `/aktenvermerk`, `/pressemitteilung-ratsbeschluss` |
+| Vorlagen Amtsleitung | nur Andrea (Eigentümerin) | nicht gelistet | „Amtsleitung Bürgerbüro" und Andreas Default-Space | `/wochenbericht-dezernentin`, `/stellungnahme-hauptausschuss` |
 
 Vorführbar ist damit: der Slash-Befehl mit Variablenformular in jedem Fachkonto, die Reichweite
 „Alle Konten" als Badge und Freigabe, der Katalog mit einer gelisteten Prompt-Bibliothek und die Grenze
 einer persönlichen Bibliothek — die „Vorlagen Amtsleitung" sind für Maria, Selin und Thomas weder in der
-Slash-Auswahl noch im Katalog zu finden. Die Space-Zuordnung ordnet nur: In den zugeordneten Spaces
-stehen die Bibliotheken in der Slash-Auswahl voran. Ein Prompt verändert die Rechtematrix oben nicht —
+Slash-Auswahl noch im Katalog zu finden. Die Space-Zuordnung bestimmt die Slash-Auswahl: Der Chat
+eines Space bietet nur die Prompts der ihm zugeordneten Bibliotheken an — Andrea sieht ihre Vorlagen
+deshalb in „Amtsleitung Bürgerbüro", nicht aber in „Dienstbesprechung Bürgerbüro". Ein Prompt verändert die Rechtematrix oben nicht —
 er landet als Text im Eingabefeld und wird wie jede getippte Frage mit den Leserechten der fragenden
 Person beantwortet; die Gebührenauskunft zum Personalausweis fällt bei Thomas deshalb knapper aus als
 bei Maria, weil er die Leistungsbeschreibungen Meldewesen nicht liest.

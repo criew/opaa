@@ -131,9 +131,15 @@ Gerät und nicht je Konto. Auf schmalen Bildschirmen öffnet sich die Seitenleis
 Überlagerung in fester Breite.
 
 Das **Eingabefeld** sendet mit dem Senden-Knopf oder mit Enter. Darunter steht „@ für Quellen, /
-für Aktionen". An zwei Stellen tritt stattdessen ein Hinweis an diese Stelle: solange der
-Suchbereich des Space noch ermittelt wird, und wenn dem Space nur Bibliotheken zugeordnet sind, die
-die Person nicht lesen darf.
+für Aktionen". Solange der Suchbereich des Space noch ermittelt wird, steht dort stattdessen
+„Suchbereich wird ermittelt …".
+
+Ein Raum enthält genau das, was ihm **zugeordnet** ist: Im Chat sucht er nur in den zugeordneten
+Bibliotheken und bietet nur die Prompts der zugeordneten Prompt-Bibliotheken an. Was die Person
+lesen darf, aber dem Raum nicht zugeordnet ist, bleibt im Chat dieses Raums außen vor. Das gilt
+ohne Ausnahme, auch für den persönlichen Raum „Meine Dokumente". Zuordnen dürfen Kuratoren und
+Administratoren des Raums (siehe [Bibliotheken und Berechtigungen, „Zuordnung: was ein Raum
+enthält"](bibliotheken-und-berechtigungen.md#zuordnung-was-ein-raum-enthält)).
 
 Der **Suchbereich** ist die Menge der Bibliotheken, in denen diese Frage sucht. Er steht in der
 Chip-Leiste am Eingabefeld und gilt für den ganzen Chat: „Durchsucht wird, was in der Leiste
@@ -141,27 +147,31 @@ steht."
 
 | Leiste | Suchbereich |
 |---|---|
-| `@Alles-Wissen` (Standard) | alle Bibliotheken, die die Person lesen darf; in einem Raum mit zugeordneten Bibliotheken nur diese, geschnitten mit den Leserechten |
-| eine oder mehrere Bibliotheken | genau diese, geschnitten mit den Leserechten; eine referenzierte, aber nicht lesbare Bibliothek liefert stillschweigend keine Treffer |
+| `@Space-Wissen` (Standard) | die dem Raum zugeordneten Bibliotheken, geschnitten mit den Leserechten |
+| eine oder mehrere Bibliotheken | genau diese, geschnitten mit den Leserechten; zur Auswahl stehen nur zugeordnete Bibliotheken, die die Person lesen darf |
 | leer | bewusst ohne Wissensbasis: keine Suche, das Modell antwortet aus dem Gespräch allein |
 
-Der Suchbereich ist **nie weiter als die Leserechte**. Er kann sie nur einschränken. Ist er leer,
-läuft keine Suche, und das Modell antwortet aus dem Gespräch allein. Was die Person davon sieht,
-hängt vom Grund ab:
+Eine Bibliothek, die dem Raum nicht zugeordnet ist, lässt sich nicht als Chip setzen; das Backend
+lehnt einen solchen Bezug ab. Wird eine Zuordnung später gelöst oder ein Leserecht entzogen, bleibt
+ihr Chip als „Nicht verfügbare Bibliothek" stehen, durchsucht wird sie nicht mehr.
 
-| Grund für den leeren Suchbereich | Hinweis an der Antwort |
-|---|---|
-| Leiste bewusst geleert | „Diese Antwort wurde ohne Wissensbasis erstellt." |
-| Raum ordnet nur Bibliotheken zu, die die Person nicht lesen darf (gespeicherter Chat) | „In diesem Space ist für Sie derzeit kein Wissen verfügbar." |
-| Person darf gar keine Bibliothek lesen | kein Hinweis |
+Der Suchbereich ist **nie weiter als Zuordnung und Leserechte**. Ist er leer, läuft keine Suche,
+und das Modell antwortet aus dem Gespräch allein, ohne Belege. Was die Person davon sieht, hängt vom
+Grund ab:
 
-Der letzte Fall bleibt absichtlich stumm: Die Antwort unterscheidet „nichts gefunden" nicht von
-„nichts lesbar", damit aus einer Fehlantwort kein Rückschluss auf fremde Bestände möglich ist.
+| Grund für den leeren Suchbereich | Hinweis über dem Eingabefeld | Hinweis an der Antwort |
+|---|---|---|
+| dem Raum ist kein Wissen zugeordnet | „Diesem Space ist kein Wissen zugeordnet." Kuratoren und Administratoren sehen dazu „Wissen zuordnen", das in die Einstellungen des Raums führt; alle anderen den Hinweis, wer zuordnen kann | „Diesem Space ist kein Wissen zugeordnet. Diese Antwort stützt sich auf keine Dokumente." |
+| der Raum ordnet nur Bibliotheken zu, die die Person nicht lesen darf | „In diesem Space ist für Sie derzeit kein Wissen verfügbar." | derselbe Satz |
+| Leiste bewusst geleert | — | „Diese Antwort wurde ohne Wissensbasis erstellt." |
+
+Beide Raum-Hinweise nennen keine Zahl: Wie viele zugeordnete Bibliotheken die Person nicht lesen
+darf, verrät die Oberfläche nicht. Dieselben zwei Hinweise stehen auch auf der Seite des Raums.
 
 **Prompts einsetzen.** Ein `/` am Anfang einer Zeile im Eingabefeld öffnet die Auswahl der Prompts:
-alle Prompts aus Prompt-Bibliotheken, die die Person lesen darf, gruppiert nach Bibliothek. Die dem
-Raum zugeordneten Bibliotheken stehen voran und tragen den Zusatz „diesem Space zugeordnet".
-Weitertippen sucht in Befehlsname, Titel und Beschreibung — `/zusam` findet `/zusammenfassung`;
+die Prompts aller Prompt-Bibliotheken, die dem Raum zugeordnet sind und die die Person lesen darf,
+gruppiert nach Bibliothek. Ist dem Raum keine Prompt-Bibliothek zugeordnet, sagt die Auswahl
+„Diesem Space sind keine Prompts zugeordnet". Weitertippen sucht in Befehlsname, Titel und Beschreibung — `/zusam` findet `/zusammenfassung`;
 Pfeiltasten wählen, Enter setzt ein, Escape schließt die Auswahl. Ein `/` mitten im Satz ist
 gewöhnlicher Text.
 
@@ -180,9 +190,10 @@ Kennzeichnung. Im Verlauf steht an der Frage „Prompt: <Titel>" — der Titel z
 Sendens, auch wenn der Prompt später umbenannt, gelöscht oder nicht mehr lesbar ist.
 
 Für Suche und Antwort macht ein Prompt keinen Unterschied: Sie sehen die fertige Frage wie jede
-getippte. Das Backend prüft nur, ob die Person den Prompt noch lesen darf. Ist das Recht inzwischen
-entzogen oder der Prompt gelöscht, lehnt es die Frage ab („Dieser Prompt steht Ihnen nicht zur
-Verfügung …"), bevor ein Modell gerufen wird, und speichert nichts. Die Frage verschwindet dann aus
+getippte. Das Backend prüft nur, ob die Person den Prompt noch lesen darf und ob seine Bibliothek
+dem Raum des Chats zugeordnet ist. Ist das Recht inzwischen entzogen, die Zuordnung gelöst oder der
+Prompt gelöscht, lehnt es die Frage ab („Dieser Prompt steht Ihnen hier nicht zur Verfügung …"),
+bevor ein Modell gerufen wird, und speichert nichts. Die Frage verschwindet dann aus
 dem Verlauf und steht wieder im Eingabefeld, diesmal ohne Chip; erneut gesendet geht sie ohne
 Prompt-Kennzeichnung durch. Die Verwendung eines Prompts wird nicht protokolliert, und es gibt keine
 Auswertung, wer welchen Prompt wie oft verwendet hat.
@@ -756,7 +767,7 @@ rekonstruiert.
 |---|---|---|
 | eigener Rechtekontext | Systemadministrator | die eigenen Leserechte |
 | Rechteprofil (eine Gruppe mit ihrer lesbaren Bibliotheksmenge) | Systemadministrator | Voreinstellung; Installationen, die Rechte nur einzeln statt über Gruppen vergeben, haben keine Profile, und die Seite sagt das |
-| Rechteprofil **in einem Space** | Systemadministrator | Sucht die Schnittmenge aus den Bibliotheken des Space und den für die Gruppe lesbaren. Nur zulässig, wenn mindestens `OPAA_MINIMUM_GROUP_SIZE` aktive Konten der Gruppe diesen Space auf irgendeinem Weg erreichen — geprüft beim Lauf, nicht bei der Auswahl; sonst `403` mit dem Hinweis auf den Personenkontext. Jeder solche Lauf erzeugt **einen** Protokolleintrag (Person, Profil, Space, Zeitpunkt) |
+| Rechteprofil **in einem Space** | Systemadministrator | Sucht die Schnittmenge aus den Bibliotheken des Space und den für die Gruppe lesbaren; ein Space ohne Zuordnung sucht nichts, wie im Chat. Nur zulässig, wenn mindestens `OPAA_MINIMUM_GROUP_SIZE` aktive Konten der Gruppe diesen Space auf irgendeinem Weg erreichen — geprüft beim Lauf, nicht bei der Auswahl; sonst `403` mit dem Hinweis auf den Personenkontext. Jeder solche Lauf erzeugt **einen** Protokolleintrag (Person, Profil, Space, Zeitpunkt) |
 | Person („Sicht als") | nur mit einzeln vergebener, befristeter Befugnis, die aus keiner Rolle folgt; ihr Geltungsbereich ist eine Anbietergruppe, die im Moment der Nutzung die Mindestgruppengröße an aktiven Konten erreicht — sonst ist sie nicht nutzbar, bleibt aber gültig | Pflichtbegründung vor dem Lauf, Protokolleintrag, Abzug der diagnosegesperrten Bibliotheken; das Ergebnis wird nirgends gespeichert |
 
 Die Diagnose bleibt Systemadministratoren vorbehalten; keine Anlegerecht-Vergabe öffnet sie. Sie ist

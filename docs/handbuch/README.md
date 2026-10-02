@@ -134,7 +134,7 @@ Begriffe, die in allen Kapiteln in genau dieser Bedeutung verwendet werden.
 | Begriff | Bedeutung |
 |---|---|
 | **Wissensbibliothek** (Bibliothek) | Verwaltungseinheit für Dokumente: gehört zu einer Organisation, trägt Berechtigungen und genau eine Quelle |
-| **Prompt-Bibliothek** | Verwaltungseinheit für Prompts: gehört zu einer Organisation, trägt Berechtigungen und Auffindbarkeit wie eine Wissensbibliothek, bindet aber kein Wissen und verengt keinen Suchbereich |
+| **Prompt-Bibliothek** | Verwaltungseinheit für Prompts: gehört zu einer Organisation, trägt Berechtigungen und Auffindbarkeit wie eine Wissensbibliothek, bindet aber kein Wissen und ändert keinen Suchbereich; einem Raum zugeordnet, bietet sie dessen Chat ihre Prompts an |
 | **Katalog** | Die gemischte Übersicht über Wissens- und Prompt-Bibliotheken: alle, die die Person lesen darf, und alle, die im Katalog auffindbar sind; auffindbar heißt nicht zugänglich |
 | **Prompt** | Eine benannte, wiederverwendbare Anweisung in genau einer Prompt-Bibliothek, mit Titel, Befehl (`/name`), Text und Variablen |
 | **Variable** | Eine Stelle im Text eines Prompts, geschrieben als `{{name}}`, die beim Einsetzen gefüllt wird; `{{CURRENT_DATE}}` und `{{USER_NAME}}` füllt OPAA selbst |
@@ -149,8 +149,8 @@ Begriffe, die in allen Kapiteln in genau dieser Bedeutung verwendet werden.
 | **Nachzug** | Neuverarbeitung von Dokumenten, deren Chunks mit einer älteren Pipeline-Version oder Volltextfassung entstanden sind; von einem Systemadministrator angestoßen |
 | **Kernfelder** | Titel, Dokumentart und Datum/Stand je Dokument |
 | **Kontextpräfix** | Text, der jedem Chunk beim Einbetten und im Volltextindex vorangestellt wird (Titel, ausgewählte Felder, Gliederungspfad), ohne den gespeicherten Text zu ändern |
-| **Raum** (Space) | Arbeitsbereich, in dem Chats liegen; kann Bibliotheken zuordnen und damit den Standard-Suchbereich verengen |
-| **Suchbereich** | Die Bibliotheken, in denen eine Frage sucht; steht in der Chip-Leiste des Chats und ist nie weiter als die Leserechte |
+| **Raum** (Space) | Arbeitsbereich, in dem Chats liegen; enthält genau die ihm zugeordneten Bibliotheken und Prompt-Bibliotheken — ohne Zuordnung sucht sein Chat nichts |
+| **Suchbereich** | Die Bibliotheken, in denen eine Frage sucht; steht in der Chip-Leiste des Chats (Standard `@Space-Wissen`) und ist nie weiter als Zuordnung und Leserechte |
 | **Fundstelle** (Beleg) | Eine Quellenangabe unter einer Antwort, eine je Dokument, mit Rang, Ortsangabe und Kernfeldern |
 | **Ortsangabe** | Die Stelle eines Chunks im Dokument, etwa „S. 3 · Abschn. Fristen" |
 | **Modellrolle** | Eine der drei Aufgaben, für die ein externes Modell konfiguriert wird: Chat, Embedding, Reranking |

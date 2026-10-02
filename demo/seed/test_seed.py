@@ -452,8 +452,8 @@ def prompt_library_readers(prompt_library: profiles.PromptLibraryDef) -> set[str
 
 
 def test_every_demo_space_carries_knowledge_and_prompts() -> None:
-    """A space searches and offers only what is associated with it: no demo space may stay silent.
-    The admin's personal space is the one deliberately empty space that shows the hint."""
+    """A space searches and offers only what is associated with it: no seeded space may stay
+    silent. The hint for an empty space shows in any newly created one."""
     prompt_spaces = {
         space_name
         for prompt_library in DEMO.prompt_libraries
@@ -465,18 +465,28 @@ def test_every_demo_space_carries_knowledge_and_prompts() -> None:
     assert space("Maria Weber – persönlich").library_names
 
 
-def test_every_fach_account_has_knowledge_and_prompts_in_its_personal_space() -> None:
+def test_every_account_has_knowledge_and_prompts_in_its_personal_space() -> None:
     personal = {personal_def.owner_key: personal_def for personal_def in DEMO.personal_spaces}
-    assert set(personal) == set(FACH_KEYS)
-    assert "admin" not in personal, "der persönliche Space des Admins bleibt bewusst leer"
+    assert set(personal) == {user.key for user in DEMO.all_users()}
     prompt_libraries = {lib.name: lib for lib in DEMO.prompt_libraries}
     for owner_key, personal_def in personal.items():
         assert personal_def.library_names, owner_key
         assert personal_def.prompt_library_names, owner_key
         for library_name in personal_def.library_names:
-            assert owner_key in effective_readers(library_name), (owner_key, library_name)
+            # The admin owns every library; effective_readers leaves it out of the matrix.
+            assert owner_key == "admin" or owner_key in effective_readers(library_name), (
+                owner_key,
+                library_name,
+            )
         for name in personal_def.prompt_library_names:
             assert owner_key in prompt_library_readers(prompt_libraries[name]), (owner_key, name)
+
+
+def test_the_format_showcase_stays_in_the_admins_personal_space_alone() -> None:
+    showcase = "Formattest auf S3"
+    assert all(showcase not in space_def.library_names for space_def in DEMO.spaces)
+    holders = [p.owner_key for p in DEMO.personal_spaces if showcase in p.library_names]
+    assert holders == ["admin"]
 
 
 def test_dienstbesprechung_offers_the_shared_textbausteine() -> None:

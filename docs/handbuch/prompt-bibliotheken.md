@@ -16,8 +16,9 @@
 
 Eine Prompt-Bibliothek **bindet kein Wissen und erreicht keine Quelle**: Ein Prompt ist Text mit
 einem Namen und benannten Platzhaltern, ohne Dokumente, ohne Werkzeuge und ohne eigene Modellwahl.
-Deshalb verengt eine Prompt-Bibliothek, die einem Raum zugeordnet ist, auch nicht dessen
-Suchbereich — das tun nur Wissensbibliotheken.
+Deshalb ändert eine Prompt-Bibliothek, die einem Raum zugeordnet ist, nichts an dessen
+Suchbereich — den bestimmen nur die zugeordneten Wissensbibliotheken. Sie legt fest, welche Prompts
+der Chat des Raums anbietet.
 
 Die Prompt-Bibliotheken, die eine Person lesen darf, stehen in der Hauptnavigation unter
 **„Prompts"**, gleich unter „Wissen". Die Übersicht dort funktioniert wie die der
@@ -138,8 +139,10 @@ Abschnitt 11).
 
 Die Einstellungen eines Raums haben einen eigenen Reiter **„Prompts"**. Dort ordnet, wer im Raum
 mindestens Kurator ist, eine Prompt-Bibliothek zu, die er selbst lesen darf, und löst Zuordnungen
-wieder. Die Zuordnung **gewährt niemandem zusätzlichen Zugriff**: Wer die Bibliothek nicht lesen
-darf, sieht sie im Raum nicht. Auf der Übersichtsseite des Raums stehen zugeordnete
+wieder. **Der Chat eines Raums bietet nur die Prompts zugeordneter Prompt-Bibliotheken an**; eine
+Bibliothek, die nicht zugeordnet ist, steht dort nicht zur Verfügung, auch wenn die Person sie
+lesen darf. Die Zuordnung **gewährt niemandem zusätzlichen Zugriff**: Wer die Bibliothek nicht
+lesen darf, sieht sie im Raum nicht. Auf der Übersichtsseite des Raums stehen zugeordnete
 Prompt-Bibliotheken unter „Datenquellen" zusammen mit den Wissensbibliotheken, jede mit ihrer Art
 gekennzeichnet.
 
@@ -206,10 +209,11 @@ gespeichert.
 ## 6. Im Chat verwenden
 
 Im Eingabefeld des Chats öffnet ein `/` am Anfang einer Zeile die Auswahl der Prompts. Angeboten
-wird jeder Prompt aus einer Prompt-Bibliothek, die die Person lesen darf, gruppiert nach
-Bibliothek. Die dem Raum zugeordneten Bibliotheken (Abschnitt 4, „In einem Raum bereitstellen")
-stehen voran und tragen den Zusatz „diesem Space zugeordnet". Eine zugeordnete Bibliothek, die die
-Person nicht lesen darf, erscheint nicht. Die Systemverwaltung ohne eigenes Recht sieht keine
+wird jeder Prompt aus einer Prompt-Bibliothek, die dem Raum zugeordnet ist (Abschnitt 4, „In einem
+Raum bereitstellen") und die die Person lesen darf, gruppiert nach Bibliothek. Eine zugeordnete
+Bibliothek, die die Person nicht lesen darf, erscheint nicht, eine lesbare, die dem Raum nicht
+zugeordnet ist, ebenso wenig. Ist dem Raum keine Prompt-Bibliothek zugeordnet, sagt die Auswahl
+„Diesem Space sind keine Prompts zugeordnet". Die Systemverwaltung ohne eigenes Recht sieht keine
 Prompts: Verwalten ist nicht Lesen. Weitertippen sucht in Befehl, Titel und Beschreibung.
 
 - **Ohne Variablen** steht der Text sofort im Eingabefeld.
@@ -224,7 +228,8 @@ Der Text bleibt bearbeitbar. Gesendet wird er erst mit Enter oder der Senden-Sch
 an der Frage „Prompt: <Titel>", mit dem Titel zum Zeitpunkt des Sendens, ohne Verweis auf den
 Prompt. Dieser Hinweis bleibt, wenn der Prompt später umbenannt oder gelöscht wird.
 
-Wird der Prompt nach dem Einsetzen gelöscht oder das Leserecht entzogen, lehnt OPAA die Frage ab.
+Wird der Prompt nach dem Einsetzen gelöscht, das Leserecht entzogen oder die Zuordnung zum Raum
+gelöst, lehnt OPAA die Frage ab; die Prüfung liegt im Backend, nicht nur in der Auswahl.
 Sie steht dann ohne Chip wieder im Eingabefeld und lässt sich ohne Prompt senden. Wie die Frage
 danach gesucht und beantwortet wird, beschreibt [Suche](suche.md), Abschnitt 2 („Prompts
 einsetzen"). Für die Suche und die Antwort macht ein Prompt keinen Unterschied.
