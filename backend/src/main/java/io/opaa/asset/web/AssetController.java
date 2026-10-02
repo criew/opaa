@@ -6,6 +6,7 @@ import io.opaa.api.dto.AssetGrantResponse;
 import io.opaa.api.dto.AssetOwnershipTransferRequest;
 import io.opaa.api.dto.GroupMemberDisclosureResponse;
 import io.opaa.asset.AssetAccessDerivationService;
+import io.opaa.asset.AssetFavoriteService;
 import io.opaa.asset.AssetGrantService;
 import io.opaa.asset.AssetOwnershipTransferService;
 import io.opaa.asset.AssetTypes;
@@ -21,15 +22,17 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * What every asset has, whatever its type (#1899, #1900): its grants, the Herleitung and its owner.
- * An asset is named by type plus id; a malformed or unknown type answers {@code 404} like an
- * unknown asset. The spaces an asset is associated with are served by {@code AssetSpaceController}.
+ * What every asset has, whatever its type (#1899, #1900): its grants, the Herleitung, its owner and
+ * the caller's own favorite mark. An asset is named by type plus id; a malformed or unknown type
+ * answers {@code 404} like an unknown asset. The spaces an asset is associated with are served by
+ * {@code AssetSpaceController}.
  */
 @RestController
 @RequestMapping("/api/v1/assets/{assetType}/{assetId}")
@@ -38,16 +41,19 @@ public class AssetController {
   private final AssetGrantService grantService;
   private final AssetAccessDerivationService derivationService;
   private final AssetOwnershipTransferService ownershipTransferService;
+  private final AssetFavoriteService favoriteService;
   private final AssetTypes assetTypes;
 
   public AssetController(
       AssetGrantService grantService,
       AssetAccessDerivationService derivationService,
       AssetOwnershipTransferService ownershipTransferService,
+      AssetFavoriteService favoriteService,
       AssetTypes assetTypes) {
     this.grantService = grantService;
     this.derivationService = derivationService;
     this.ownershipTransferService = ownershipTransferService;
+    this.favoriteService = favoriteService;
     this.assetTypes = assetTypes;
   }
 
@@ -110,6 +116,20 @@ public class AssetController {
       @Caller CurrentUser caller) {
     ownershipTransferService.transferOwnership(
         typeOf(assetType), assetId, request.getOwnerType(), request.getOwnerId(), caller);
+    return ResponseEntity.noContent().build();
+  }
+
+  @PutMapping("/favorite")
+  public ResponseEntity<Void> markAssetFavorite(
+      @PathVariable String assetType, @PathVariable UUID assetId, @Caller CurrentUser caller) {
+    favoriteService.mark(typeOf(assetType), assetId, caller);
+    return ResponseEntity.noContent().build();
+  }
+
+  @DeleteMapping("/favorite")
+  public ResponseEntity<Void> unmarkAssetFavorite(
+      @PathVariable String assetType, @PathVariable UUID assetId, @Caller CurrentUser caller) {
+    favoriteService.unmark(typeOf(assetType), assetId, caller);
     return ResponseEntity.noContent().build();
   }
 
