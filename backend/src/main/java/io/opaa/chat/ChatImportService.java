@@ -50,7 +50,9 @@ public class ChatImportService {
 
   static final String UNMATCHED_MARKER =
       "Eine Fundstellenmarke verweist auf kein Dokument der Belege ihrer Runde oder nennt einen"
-          + " anderen Dateinamen";
+          + " anderen Dateinamen oder Abschnitt";
+
+  private static final String MARKER_OPENING = "【source";
 
   private final ChatRepository chatRepository;
   private final ChatMessageRepository chatMessageRepository;
@@ -178,23 +180,35 @@ public class ChatImportService {
   }
 
   /**
-   * Every citation marker of an answer names a source of its own turn and that document's file
-   * name, compared as the answer pipeline compares it (NFC, case-insensitive) - so a marker can
-   * neither add a row to the Belegfenster nor attach itself to another source by its name.
+   * Every citation marker of an answer names a source of its own turn, one of that document's
+   * sections and its file name, compared as the answer pipeline compares it (NFC, case-insensitive)
+   * - so a marker can neither add a row to the Belegfenster nor attach itself to another source by
+   * its name. Text that still opens a marker once every parsed marker is gone is one this parser
+   * does not read but the Belegfenster's might, and is refused as well.
    */
   private static void requireMarkersOfOwnSources(
       List<ChatImport.Turn> turns, Map<UUID, Document> documents) {
     for (ChatImport.Turn turn : turns) {
-      Map<String, String> fileNameById = new HashMap<>();
+      Map<String, Document> sourceById = new HashMap<>();
       for (ChatImport.Source source : turn.sources()) {
         Document document = documents.get(source.documentId());
-        fileNameById.put(document.getId().toString(), normalizeFileName(document.getFileName()));
+        sourceById.put(document.getId().toString(), document);
       }
       for (CitationMarker marker : CitationMarker.parse(turn.answer())) {
-        String expected = fileNameById.get(marker.documentId());
-        if (expected == null || !expected.equals(normalizeFileName(marker.fileName()))) {
+        Document document = sourceById.get(marker.documentId());
+        boolean matches =
+            document != null
+                && marker.chunkIndex() >= 0
+                && marker.chunkIndex() < document.getChunkCount()
+                && normalizeFileName(document.getFileName())
+                    .equals(normalizeFileName(marker.fileName()));
+        if (!matches) {
           throw new ValidationException(UNMATCHED_MARKER);
         }
+      }
+      String unparsed = CitationMarker.PATTERN.matcher(turn.answer()).replaceAll("");
+      if (unparsed.contains(MARKER_OPENING)) {
+        throw new ValidationException(UNMATCHED_MARKER);
       }
     }
   }
