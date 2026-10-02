@@ -179,11 +179,25 @@ Rolle über eine Gruppe oder die Freigabe an „Alle Konten". Die Adressen `/lib
 | Element | Inhalt |
 |---|---|
 | **Suche** | Über Name und Beschreibung, ohne Rücksicht auf Groß- und Kleinschreibung; der Suchtext ist begrenzt |
-| **Filter** | „Alle", „Wissen" oder „Prompts"; der gewählte Filter steht in der Adresse der Seite. Daneben der Filter „Favoriten" für die eigenen Favoriten |
-| **Eintrag** | Eine Kachel: Art (Wissens- oder Prompt-Bibliothek) als Etikett mit Symbol, Stern für den eigenen Favoriten, Name, Beschreibung, Umfang (Dokumente bzw. Prompts), in wie vielen Räumen sie bereitsteht, zuständige Stelle. Jede Kachel führt zur Detailseite der Bibliothek; eine Tabellenansicht gibt es nicht |
-| **Reihenfolge** | Die eigenen Favoriten zuerst, danach nach Name |
+| **Filter** | Art: „Alle", „Wissen" oder „Prompts"; Sichtbarkeit: „Alle", „Für alle" oder „Eingeschränkt"; dazu „Aus meinen Gruppen" und „Favoriten" für die eigenen Favoriten. Die Filter wirken zusammen; gewählte Filter und Sortierung stehen in der Adresse der Seite |
+| **Sortierung** | „Name" (Vorgabe, A bis Z) oder „Zuletzt geändert" (jüngste Änderung zuerst); in beiden stehen die eigenen Favoriten vorn |
+| **Eintrag** | Eine Kachel: Art (Wissens- oder Prompt-Bibliothek) als Etikett mit Symbol, Sichtbarkeit und die eigene Rolle als Etiketten, Stern für den eigenen Favoriten, Name, Beschreibung, Umfang (Dokumente bzw. Prompts), in wie vielen Räumen sie bereitsteht, zuständige Stelle und Stand oder Zustand. Jede Kachel führt zur Detailseite der Bibliothek; eine Tabellenansicht gibt es nicht |
 | **Seiten** | Die Einträge kommen seitenweise; „Weitere laden" hängt die nächste Seite an |
 | **Neu** | Oben rechts, nur wenn die Person mindestens ein Anlegerecht für eine Art hat (siehe unten, „Anlegen über ‚Neu'") |
+
+**Sichtbarkeit.** „Für alle" heißt: an „Alle Konten" freigegeben; „Eingeschränkt" heißt: nur über
+Freigaben an Personen oder Gruppen erreichbar. Die Sichtbarkeit wird aus der Rechteliste abgeleitet
+und ist keine eigene Einstellung; die Kachel erklärt das Etikett beim Darüberfahren, die Seite unter
+der Liste. **„Aus meinen Gruppen"** zeigt nur, was einer Gruppe, in der die Person derzeit Mitglied
+ist, freigegeben ist oder gehört; eine Freigabe an „Alle Konten" oder an die Person selbst zählt
+dafür nicht.
+
+**Stand und Zustand.** Ist eine Bibliothek bereit, nennt die Kachel ihren Stand: bei einer
+Konnektorbibliothek das Datum des letzten erfolgreichen Laufs, sonst das Datum der letzten Änderung
+an Stammdaten oder Inhalt. Sonst nennt sie den Zustand in Worten, mit einem farbigen Punkt davor:
+„Wird aktualisiert", „Aktualisierung fehlgeschlagen" oder „Noch kein Inhalt". Ist die Nachfolge
+offen, steht zusätzlich „Nachfolge offen — zuständig: …"; der Stand der Indexierung bleibt dann
+sichtbar. Als Änderung zählt, was Stammdaten oder Inhalt ändert; Freigaben zählen nicht.
 
 Eine Bibliothek ohne Leserecht steht nicht im Katalog; auch die Suche über Name oder Beschreibung
 findet sie nicht, und ihre Adresse antwortet „nicht gefunden" wie bei einer unbekannten Bibliothek.
@@ -203,7 +217,7 @@ Jede Person kann jede Bibliothek, die sie im Katalog sieht, mit dem **Stern** au
 oben; der Filter „Favoriten" zeigt nur sie. Der Stern ist ein eigenes Bedienelement neben dem Link
 der Kachel: Er ist mit der Tabulatortaste erreichbar, Enter und Leertaste schalten ihn um, und ein
 Bildschirmleser liest vor, was der nächste Druck bewirkt („… als Favorit markieren" oder „… aus den
-Favoriten entfernen").
+Favoriten entfernen"). Nach dem Umschalten bleibt die Kachel bis zum nächsten Laden an ihrem Platz.
 
 Favoriten sind eine rein persönliche Ordnung und ändern keine Rechte:
 

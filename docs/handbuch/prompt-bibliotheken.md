@@ -146,9 +146,11 @@ gekennzeichnet.
 ### Im Katalog finden
 
 Der **Katalog** in der Hauptnavigation zeigt genau die Prompt- und Wissensbibliotheken, die die
-Person lesen darf — mit Suche über Name und Beschreibung und dem Filter „Alle", „Wissen" oder
-„Prompts" sowie dem Filter „Favoriten"; eigene Favoriten stehen oben. Jeder Eintrag führt auf die
-Detailseite. Eine Prompt-Bibliothek ohne Leserecht erscheint
+Person lesen darf — mit Suche über Name und Beschreibung, den Filtern nach Art, Sichtbarkeit und
+„Aus meinen Gruppen", dem Filter „Favoriten" und der Sortierung nach Name oder letzter Änderung;
+eigene Favoriten stehen oben. Eine Kachel nennt
+Sichtbarkeit, die eigene Rolle und als Stand das Datum der letzten Änderung, etwa eines Prompts.
+Jeder Eintrag führt auf die Detailseite. Eine Prompt-Bibliothek ohne Leserecht erscheint
 dort nicht, auch nicht über die Suche. Die Regeln im Einzelnen stehen in
 [Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), Abschnitt 4, „Der Katalog".
 
