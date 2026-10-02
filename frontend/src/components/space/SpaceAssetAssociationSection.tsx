@@ -1,22 +1,17 @@
 import { useEffect, useMemo, useState } from 'react'
 import Alert from '@mui/material/Alert'
-import Autocomplete from '@mui/material/Autocomplete'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
-import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import type { AssetType } from '../../types/api'
 import { useSpaceStore } from '../../stores/spaceStore'
-import { assetTypeLabel } from '../assets/assetTypeRegistry'
+import AssetTilePicker, { assetPickKey, type AssetPick } from '../assets/AssetTilePicker'
 import { successionAwareMessage } from '../succession/successionConflict'
 import SectionHead from '../SectionHead'
 
-/** An asset the caller may read and therefore associate - id and display name suffice. */
-export interface AssociableAsset {
-  id: string
-  name: string
-}
+/** The one disclosure about unreadable associations: no number, no name (ADR-0039). */
+export const NOT_ALL_READABLE = 'Nicht alle zugeordneten Inhalte sind für Sie lesbar.'
 
 export interface SpaceAssetAssociationSectionProps {
   spaceId: string
@@ -29,57 +24,70 @@ export interface SpaceAssetAssociationSectionProps {
     intro: string
     loading: string
     empty: string
-    pickerLabel: string
-    pickerPlaceholder: string
+    pickerHeading: string
     associated: string
   }
-  /** The assets of this type the caller may read - the backend re-checks the same rule. */
-  loadReadable: () => Promise<AssociableAsset[]>
 }
 
 /**
- * One tab of the space settings for one asset type: the associated assets of that type, and
- * for curators the association of further readable ones. The association grants nobody access
- * (docs/features/spaces-and-assets.md#assets-in-einen-space-assoziieren); the store holds every
- * type's associations, this section shows its own type's only.
+ * One tab of the space settings for one asset type: the associated assets of that type the caller
+ * may read, and for curators the tile choice of further readable ones. The association grants
+ * nobody access (docs/features/spaces-and-assets.md#assets-in-einen-space-assoziieren); the store
+ * holds every type's associations, this section shows its own type's only.
  */
 export default function SpaceAssetAssociationSection({
   spaceId,
   canManage,
   assetType,
   texts,
-  loadReadable,
 }: SpaceAssetAssociationSectionProps) {
   const storeError = useSpaceStore((s) => s.error)
   const allAssociations = useSpaceStore((s) => s.assetAssociations)
+  const hasUnreadable = useSpaceStore((s) => s.hasUnreadableAssociations)
   const isLoading = useSpaceStore((s) => s.isLoadingAssetAssociations)
   const loadAssetAssociations = useSpaceStore((s) => s.loadAssetAssociations)
   const associateAsset = useSpaceStore((s) => s.associateAsset)
   const detachAsset = useSpaceStore((s) => s.detachAsset)
   const [localError, setLocalError] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
-  const [readable, setReadable] = useState<AssociableAsset[]>([])
-  const [selected, setSelected] = useState<AssociableAsset | null>(null)
+  const [picked, setPicked] = useState<AssetPick[]>([])
+  const [isAssociating, setIsAssociating] = useState(false)
 
   useEffect(() => {
     void loadAssetAssociations(spaceId)
   }, [loadAssetAssociations, spaceId])
 
-  useEffect(() => {
-    void loadReadable()
-      .then(setReadable)
-      .catch(() => setReadable([]))
-  }, [loadReadable])
-
   const associations = useMemo(
     () => allAssociations.filter((association) => association.assetType === assetType),
     [allAssociations, assetType],
   )
+  const associatedKeys = useMemo(
+    () => new Set(allAssociations.map((association) => assetPickKey(association))),
+    [allAssociations],
+  )
 
-  const associable = useMemo(() => {
-    const associatedIds = new Set(associations.map((a) => a.assetId))
-    return readable.filter((asset) => !associatedIds.has(asset.id))
-  }, [readable, associations])
+  async function associatePicked() {
+    setLocalError(null)
+    setSuccessMessage(null)
+    setIsAssociating(true)
+    const remaining: AssetPick[] = []
+    let failure: string | null = null
+    for (const pick of picked) {
+      try {
+        await associateAsset(spaceId, pick.assetType, pick.assetId)
+      } catch (err) {
+        remaining.push(pick)
+        failure ??= successionAwareMessage(err, 'Zuordnung fehlgeschlagen')
+      }
+    }
+    setPicked(remaining)
+    setIsAssociating(false)
+    if (failure) {
+      setLocalError(failure)
+    } else {
+      setSuccessMessage(texts.associated)
+    }
+  }
 
   return (
     <Stack spacing={2}>
@@ -90,6 +98,7 @@ export default function SpaceAssetAssociationSection({
       <Typography variant="body2" sx={{ color: 'text.secondary' }}>
         {texts.intro}
       </Typography>
+      {hasUnreadable && !isLoading && <Alert severity="info">{NOT_ALL_READABLE}</Alert>}
       {isLoading ? (
         <Typography sx={{ color: 'text.secondary' }}>{texts.loading}</Typography>
       ) : associations.length === 0 ? (
@@ -107,21 +116,12 @@ export default function SpaceAssetAssociationSection({
                 '& + &': { borderTop: 1, borderColor: 'divider' },
               }}
             >
-              <Typography
-                sx={
-                  association.readableByCaller
-                    ? undefined
-                    : { color: 'text.secondary', fontStyle: 'italic' }
-                }
-              >
-                {association.readableByCaller
-                  ? association.name
-                  : `${assetTypeLabel(association.assetType)} ohne eigenen Zugriff`}
-              </Typography>
+              <Typography>{association.name}</Typography>
               {canManage && (
                 <Button
                   color="error"
                   size="small"
+                  aria-label={`${association.name} lösen`}
                   onClick={async () => {
                     setLocalError(null)
                     try {
@@ -139,40 +139,26 @@ export default function SpaceAssetAssociationSection({
         </Stack>
       )}
       {canManage && (
-        <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5} sx={{ pt: 1 }}>
-          <Autocomplete
-            options={associable}
-            getOptionLabel={(option) => option.name}
-            noOptionsText="Keine Treffer"
-            value={selected}
-            onChange={(_event, value) => setSelected(value)}
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                label={texts.pickerLabel}
-                placeholder={texts.pickerPlaceholder}
-              />
-            )}
-            isOptionEqualToValue={(option, value) => option.id === value.id}
-            sx={{ minWidth: 280 }}
+        <Stack spacing={1.5} sx={{ pt: 1 }}>
+          <Typography component="h3" sx={{ fontSize: 15, fontWeight: 600 }}>
+            {texts.pickerHeading}
+          </Typography>
+          <AssetTilePicker
+            types={[assetType]}
+            value={picked}
+            onChange={setPicked}
+            excludedKeys={associatedKeys}
+            aria-label={texts.pickerHeading}
           />
-          <Button
-            variant="contained"
-            disabled={!selected}
-            onClick={async () => {
-              if (!selected) return
-              setLocalError(null)
-              try {
-                await associateAsset(spaceId, assetType, selected.id)
-                setSelected(null)
-                setSuccessMessage(texts.associated)
-              } catch (err) {
-                setLocalError(successionAwareMessage(err, 'Zuordnung fehlgeschlagen'))
-              }
-            }}
-          >
-            Zuordnen
-          </Button>
+          <Box>
+            <Button
+              variant="contained"
+              disabled={picked.length === 0 || isAssociating}
+              onClick={() => void associatePicked()}
+            >
+              Zuordnen
+            </Button>
+          </Box>
         </Stack>
       )}
     </Stack>

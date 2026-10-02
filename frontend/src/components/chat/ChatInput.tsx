@@ -274,9 +274,7 @@ export default function ChatInput({
     if (!isAssetAssociationsCurrent) return 'Suchbereich wird ermittelt …'
     if (!narrowsSearch) return null
     // The search reads knowledge libraries only; an associated asset of another type is no Bestand.
-    const count = assetAssociations.filter(
-      (a) => a.readableByCaller && a.assetType === 'KNOWLEDGE_LIBRARY',
-    ).length
+    const count = assetAssociations.filter((a) => a.assetType === 'KNOWLEDGE_LIBRARY').length
     return count === 0 ? 'In diesem Space ist für Sie derzeit kein Wissen verfügbar.' : null
   }, [narrowsSearch, isAssetAssociationsCurrent, assetAssociations, scope])
 

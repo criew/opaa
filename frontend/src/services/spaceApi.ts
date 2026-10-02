@@ -3,6 +3,7 @@ import type {
   GroupMemberDisclosureResponse,
   SpaceAccessDerivationResponse,
   PermissionSubjectType,
+  SpaceAssetAssociationRequest,
   SpaceListResponse,
   SpaceMemberResponse,
   SpaceRequest,
@@ -122,7 +123,7 @@ export async function createSpace(
   name: string,
   description: string,
   visibility?: SpaceVisibility,
-  libraryIds?: string[],
+  assets?: SpaceAssetAssociationRequest[],
   chatAutoCleanup?: boolean,
 ): Promise<SpaceResponse> {
   try {
@@ -133,11 +134,9 @@ export async function createSpace(
       visibility,
       ownerId: currentUserId,
       initialMembers: [],
-      // the assistant's Datenquellen step submits the creator's chosen libraries alongside
-      // the space itself - the backend associates each one right after creation, requiring the
-      // creator to already be able to read it (SpaceAssetAssociationService#associate), the same
-      // rule the dedicated endpoints below enforce afterwards.
-      libraryIds: libraryIds && libraryIds.length > 0 ? libraryIds : undefined,
+      // Associated in the same call as the space; each must be readable by the creator, and one
+      // that is not rolls the whole creation back.
+      assets: assets && assets.length > 0 ? assets : undefined,
       chatAutoCleanup: chatAutoCleanup || undefined,
     }
     const { data } = await client.post<SpaceResponse>('/v1/spaces', body)
