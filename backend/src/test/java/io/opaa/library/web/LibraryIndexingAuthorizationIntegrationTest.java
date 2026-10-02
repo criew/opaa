@@ -136,7 +136,6 @@ class LibraryIndexingAuthorizationIntegrationTest {
                 name,
                 null,
                 ownerId,
-                false,
                 SourceTypes.FILESYSTEM,
                 documentDir.toAbsolutePath().toString(),
                 null,
@@ -237,7 +236,7 @@ class LibraryIndexingAuthorizationIntegrationTest {
     KnowledgeLibrary library =
         libraryRepository.save(
             KnowledgeLibrary.ownedByUser(
-                Organization.DEFAULT_ID, "Test-Bibliothek Upload", null, devAdmin.getId(), false));
+                Organization.DEFAULT_ID, "Test-Bibliothek Upload", null, devAdmin.getId()));
     ownLibraryIds.add(library.getId());
     grantRepository.save(
         AssetGrant.forUser(
@@ -311,7 +310,6 @@ class LibraryIndexingAuthorizationIntegrationTest {
                 "Test-Bibliothek Fremd",
                 null,
                 foreignOwnerId,
-                false,
                 SourceTypes.FILESYSTEM,
                 documentDir.toAbsolutePath().toString(),
                 null,

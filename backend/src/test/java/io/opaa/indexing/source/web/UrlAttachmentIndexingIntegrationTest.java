@@ -124,7 +124,6 @@ class UrlAttachmentIndexingIntegrationTest {
                 "Webverzeichnis",
                 null,
                 userId,
-                false,
                 SourceTypes.HTTP_DIRECTORY,
                 null,
                 baseUrl + "/docs/",

@@ -695,8 +695,7 @@ class LocalUserAdminIntegrationTest {
     LocalAccount owner = fixtures.activeUser("owner-" + UUID.randomUUID() + "@stadt.example");
     KnowledgeLibrary library =
         libraries.save(
-            KnowledgeLibrary.ownedByUser(
-                Organization.DEFAULT_ID, "Meine", null, owner.id(), false));
+            KnowledgeLibrary.ownedByUser(Organization.DEFAULT_ID, "Meine", null, owner.id()));
     try {
       asAdmin(delete(LOCAL_USERS + "/" + owner.id()))
           .andExpect(status().isConflict())

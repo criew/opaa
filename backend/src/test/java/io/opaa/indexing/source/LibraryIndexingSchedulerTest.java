@@ -74,7 +74,6 @@ class LibraryIndexingSchedulerTest {
             "Rechtsquellen",
             null,
             UUID.randomUUID(),
-            false,
             SourceTypes.HTTP_DIRECTORY,
             null,
             "https://example.org/docs/",

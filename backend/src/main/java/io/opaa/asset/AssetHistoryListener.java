@@ -38,8 +38,6 @@ class AssetHistoryListener {
   void onAssetChanged(AssetChanged event) {
     switch (event.cause()) {
       case CREATED -> visibilityHistoryService.recordCreated(event.asset(), event.actorUserId());
-      case VISIBILITY_CHANGED ->
-          visibilityHistoryService.recordVisibilityChanged(event.asset(), event.actorUserId());
     }
   }
 }

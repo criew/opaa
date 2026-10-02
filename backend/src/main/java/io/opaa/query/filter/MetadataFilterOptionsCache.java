@@ -90,7 +90,7 @@ public class MetadataFilterOptionsCache implements GroupMembershipChangeListener
     invalidateAll();
   }
 
-  /** An asset was created or its visibility changed: that reaches every person's scope. */
+  /** An asset was created: that reaches every person's scope. */
   @TransactionalEventListener(phase = TransactionPhase.AFTER_COMPLETION, fallbackExecution = true)
   public void onAssetChanged(AssetChanged event) {
     invalidateAll();

@@ -105,7 +105,6 @@ class ModelMetadataExtractionIntegrationTest {
                 "Modellextraktion",
                 null,
                 userId,
-                false,
                 SourceTypes.FILESYSTEM,
                 classTempDir.toString(),
                 null,

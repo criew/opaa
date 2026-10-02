@@ -212,8 +212,7 @@ class DocumentIngestServiceTest {
   }
 
   private KnowledgeLibrary library() {
-    return KnowledgeLibrary.ownedByUser(
-        UUID.randomUUID(), "Bibliothek", null, UUID.randomUUID(), false);
+    return KnowledgeLibrary.ownedByUser(UUID.randomUUID(), "Bibliothek", null, UUID.randomUUID());
   }
 
   // embeddingConcurrency=1: every test in this class exercises the sequential storeChunks path (a

@@ -85,15 +85,13 @@ public class PromptLibraryService {
 
   /**
    * Creates a prompt library owned by the caller or, for {@link AssetOwnerType#GROUP}, by one of
-   * the caller's groups. Needs {@link Capability#CREATE_PROMPT_LIBRARY}; unlisted unless the
-   * request lists it.
+   * the caller's groups. Needs {@link Capability#CREATE_PROMPT_LIBRARY}.
    */
   @Transactional
   public PromptLibraryView create(PromptLibraryCreation request, CurrentUser caller) {
     capabilityService.requireCapability(caller, Capability.CREATE_PROMPT_LIBRARY);
     String name = validateName(request.name());
     String description = validateDescription(request.description());
-    boolean listed = Boolean.TRUE.equals(request.listed());
 
     PromptLibrary library;
     if (request.ownerType() == AssetOwnerType.GROUP) {
@@ -102,12 +100,9 @@ public class PromptLibraryService {
       }
       grantService.requireOwnableGroup(request.ownerId(), PromptLibrary.ASSET_TYPE, caller);
       library =
-          PromptLibrary.ownedByGroup(
-              caller.organizationId(), name, description, request.ownerId(), listed);
+          PromptLibrary.ownedByGroup(caller.organizationId(), name, description, request.ownerId());
     } else {
-      library =
-          PromptLibrary.ownedByUser(
-              caller.organizationId(), name, description, caller.id(), listed);
+      library = PromptLibrary.ownedByUser(caller.organizationId(), name, description, caller.id());
     }
     PromptLibrary saved = libraryRepository.save(library);
     shellService.registerCreated(saved, caller.id(), auditPayload(saved));
@@ -160,9 +155,8 @@ public class PromptLibraryService {
   }
 
   /**
-   * Replaces name, description and reach ({@code MANAGER}). A wider reach is refused while the
-   * succession is open - the shell's rule; a rename writes {@code PROMPT_LIBRARY_CHANGED} with the
-   * names of the changed fields, never their values.
+   * Replaces name and description ({@code MANAGER}); a rename writes {@code PROMPT_LIBRARY_CHANGED}
+   * with the names of the changed fields, never their values.
    */
   @Transactional
   public PromptLibraryView update(UUID libraryId, PromptLibraryUpdate request, CurrentUser caller) {
@@ -171,7 +165,6 @@ public class PromptLibraryService {
         authorization.requireRole(library, caller.id(), caller.isSystemAdmin(), AssetRole.MANAGER);
     String name = validateName(request.name());
     String description = validateDescription(request.description());
-    shellService.changeListed(library, request.listed(), caller.id());
 
     List<String> changedFields = new ArrayList<>();
     if (!Objects.equals(library.getName(), name)) {
@@ -247,7 +240,6 @@ public class PromptLibraryService {
   private static Map<String, Object> auditPayload(PromptLibrary library) {
     Map<String, Object> payload = new LinkedHashMap<>();
     payload.put("name", library.getName());
-    payload.put("listed", library.isListed());
     return payload;
   }
 

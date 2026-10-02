@@ -105,7 +105,6 @@ class ConfluenceIndexingExecutorVisitPageTest {
             "Wiki",
             null,
             UUID.randomUUID(),
-            false,
             SourceTypes.CONFLUENCE,
             null,
             BASE,

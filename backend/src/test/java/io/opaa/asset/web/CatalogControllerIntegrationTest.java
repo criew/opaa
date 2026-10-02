@@ -1,5 +1,6 @@
 package io.opaa.asset.web;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -22,9 +23,9 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 /**
- * HTTP-layer coverage of {@code GET /api/v1/catalog}: the entry the specification promises, a
- * listed asset findable but not accessible for a system administrator without a grant, and the
- * parameters the operation refuses itself.
+ * HTTP-layer coverage of {@code GET /api/v1/catalog}: the entry the specification promises, an
+ * asset the caller may not read leaving no trace in any answer (#2092), and the parameters the
+ * operation refuses itself.
  */
 @OpaaIntegrationTest
 class CatalogControllerIntegrationTest {
@@ -53,19 +54,14 @@ class CatalogControllerIntegrationTest {
   }
 
   @Test
-  void aListedLibraryIsFoundButNotAccessibleWithoutAGrantAndItsDetailStaysClosed()
-      throws Exception {
+  void anEntryCarriesWhatTheSpecificationPromises() throws Exception {
     String name = "Katalog " + UUID.randomUUID();
     String id =
-        createPromptLibrary(
-            "{\"name\":\"" + name + "\",\"description\":\"Vorlagen\",\"listed\":true}");
+        createPromptLibrary(devUser(), "{\"name\":\"" + name + "\",\"description\":\"Vorlagen\"}");
 
     mockMvc
         .perform(
-            get("/api/v1/catalog")
-                .param("type", "PROMPT_LIBRARY")
-                .param("q", name)
-                .with(devAdmin()))
+            get("/api/v1/catalog").param("type", "PROMPT_LIBRARY").param("q", name).with(devUser()))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.totalElements").value(1))
         .andExpect(jsonPath("$.page").value(0))
@@ -77,30 +73,59 @@ class CatalogControllerIntegrationTest {
         .andExpect(jsonPath("$.entries[0].ownerType").value("USER"))
         .andExpect(jsonPath("$.entries[0].ownerLabel").value("Dev User"))
         .andExpect(jsonPath("$.entries[0].origin").value("LOCAL"))
-        .andExpect(jsonPath("$.entries[0].listed").value(true))
-        .andExpect(jsonPath("$.entries[0].accessible").value(false))
+        .andExpect(jsonPath("$.entries[0].accessible").doesNotExist())
+        .andExpect(jsonPath("$.entries[0].listed").doesNotExist())
         .andExpect(jsonPath("$.entries[0].succession").doesNotExist());
-    mockMvc
-        .perform(get("/api/v1/prompt-libraries/" + id + "/prompts").with(devAdmin()))
-        .andExpect(status().isForbidden());
     mockMvc
         .perform(
             get("/api/v1/catalog")
                 .param("type", "KNOWLEDGE_LIBRARY")
                 .param("q", name)
-                .with(devAdmin()))
+                .with(devUser()))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.totalElements").value(0));
+  }
+
+  /**
+   * Visible means readable: an account without a read right learns neither the name, nor the
+   * description, nor the existence of a closed asset - not from the catalog, not from the type's
+   * own list, and its detail answers like an unknown id.
+   */
+  @Test
+  void aClosedLibraryLeavesNoTraceForAnAccountWithoutReadRight() throws Exception {
+    String name = "Geschlossen " + UUID.randomUUID();
+    String description = "Personalsachen " + UUID.randomUUID();
+    String id =
+        createPromptLibrary(
+            devAdmin(), "{\"name\":\"" + name + "\",\"description\":\"" + description + "\"}");
+
+    for (String query : List.of(name, description)) {
+      mockMvc
+          .perform(get("/api/v1/catalog").param("q", query).with(devUser()))
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.totalElements").value(0))
+          .andExpect(jsonPath("$.entries").isEmpty());
+    }
+    String libraries =
+        mockMvc
+            .perform(get("/api/v1/prompt-libraries").with(devUser()))
+            .andExpect(status().isOk())
+            .andReturn()
+            .getResponse()
+            .getContentAsString(StandardCharsets.UTF_8);
+    assertThat(libraries).doesNotContain(name, description, id);
     mockMvc
-        .perform(get("/api/v1/catalog").param("q", name).with(devUser()))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.entries[0].accessible").value(true));
+        .perform(get("/api/v1/prompt-libraries/" + id).with(devUser()))
+        .andExpect(status().isNotFound());
+    mockMvc
+        .perform(get("/api/v1/prompt-libraries/" + UUID.randomUUID()).with(devUser()))
+        .andExpect(status().isNotFound());
   }
 
   @Test
-  void anUnlistedLibraryWithoutAGrantIsNotInTheCatalog() throws Exception {
+  void aSystemAdministratorWithoutAGrantDoesNotFindALibraryInTheCatalog() throws Exception {
     String name = "Unauffindbar " + UUID.randomUUID();
-    createPromptLibrary("{\"name\":\"" + name + "\"}");
+    createPromptLibrary(devUser(), "{\"name\":\"" + name + "\"}");
 
     mockMvc
         .perform(get("/api/v1/catalog").param("q", name).with(devAdmin()))
@@ -125,10 +150,10 @@ class CatalogControllerIntegrationTest {
         .andExpect(status().isBadRequest());
   }
 
-  private String createPromptLibrary(String body) throws Exception {
+  private String createPromptLibrary(RequestPostProcessor creator, String body) throws Exception {
     String response =
         mockMvc
-            .perform(post("/api/v1/prompt-libraries").with(devUser()).content(body))
+            .perform(post("/api/v1/prompt-libraries").with(creator).content(body))
             .andExpect(status().isCreated())
             .andReturn()
             .getResponse()

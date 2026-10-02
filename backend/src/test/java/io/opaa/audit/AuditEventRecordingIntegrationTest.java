@@ -445,15 +445,12 @@ class AuditEventRecordingIntegrationTest {
     assertThat(created.get(0).getSubjectKind()).isNull();
 
     libraryService.updateLibrary(
-        libraryId, libraryUpdate("Bibliothek").listed(true).build(), currentUserOf(owner, false));
-    List<AuditLogEntry> visibilityChanged =
+        libraryId, libraryUpdate("Bibliothek neu").build(), currentUserOf(owner, false));
+    List<AuditLogEntry> changed =
         entriesFor(AuditObjectType.KNOWLEDGE_LIBRARY, libraryId).stream()
-            .filter(e -> e.getEventType() == AuditEventType.ASSET_VISIBILITY_CHANGED)
+            .filter(e -> e.getEventType() == AuditEventType.LIBRARY_CHANGED)
             .toList();
-    assertThat(visibilityChanged).hasSize(1);
-    // #1931: Das Ereignis traegt nur noch die Auffindbarkeit - die Reichweite ist eine Freigabe
-    // und wird als ASSET_GRANT_GRANTED protokolliert.
-    assertThat(visibilityChanged.get(0).getAfter()).contains("listed");
+    assertThat(changed).hasSize(1);
 
     libraryService.deleteLibrary(libraryId, currentUserOf(owner, false));
     List<AuditLogEntry> deleted =

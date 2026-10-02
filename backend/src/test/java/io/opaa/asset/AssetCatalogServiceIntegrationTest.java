@@ -38,7 +38,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -46,9 +45,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * The catalog of #1904 over both asset types: readable (direct grant, group grant,
- * organization-wide) united with listed, from one query on the shell - with {@code accessible} by
- * the rights formula alone, the organization boundary, the search and the paging in SQL.
+ * The catalog of #1904 over both asset types: exactly what the caller may read (direct grant, group
+ * grant, organization-wide), from one query on the shell - by the rights formula alone, with the
+ * organization boundary, the search and the paging in SQL. An asset the caller may not read never
+ * appears, not even by name (#2092).
  */
 @OpaaIntegrationTest
 class AssetCatalogServiceIntegrationTest {
@@ -110,71 +110,87 @@ class AssetCatalogServiceIntegrationTest {
   }
 
   @Test
-  void everyoneSeesWhatTheyMayReadUnitedWithTheListedAssetsOfBothTypes() {
-    Map<String, UUID> assets = createTheFourStagesOfBothTypes();
+  void everyoneSeesExactlyWhatTheyMayReadOfBothTypes() {
+    Map<String, UUID> assets = createTheThreeStagesOfBothTypes();
 
-    assertThat(accessibleByName(callerOf(owner)))
-        .as("the owner reads all eight")
-        .containsOnlyKeys(assets.keySet())
-        .allSatisfy((name, accessible) -> assertThat(accessible).isTrue());
-    assertThat(accessibleByName(callerOf(member)))
-        .containsExactlyInAnyOrderEntriesOf(
-            Map.of(
-                "Gruppe Wissen", true,
-                "Gruppe Prompts", true,
-                "Organisation Wissen", true,
-                "Organisation Prompts", true,
-                "Gelistet Wissen", false,
-                "Gelistet Prompts", false));
-    assertThat(accessibleByName(callerOf(outsider)))
-        .containsExactlyInAnyOrderEntriesOf(
-            Map.of(
-                "Organisation Wissen", true,
-                "Organisation Prompts", true,
-                "Gelistet Wissen", false,
-                "Gelistet Prompts", false));
+    assertThat(namesFor(callerOf(owner)))
+        .as("the owner reads all six")
+        .containsExactlyInAnyOrderElementsOf(assets.keySet());
+    assertThat(namesFor(callerOf(member)))
+        .containsExactlyInAnyOrder(
+            "Gruppe Wissen", "Gruppe Prompts", "Organisation Wissen", "Organisation Prompts");
+    assertThat(namesFor(callerOf(outsider)))
+        .containsExactlyInAnyOrder("Organisation Wissen", "Organisation Prompts");
   }
 
   @Test
-  void aSystemAdministratorWithoutAGrantFindsTheListedAssetsButCannotReadThem() {
-    createTheFourStagesOfBothTypes();
+  void anAssetTheCallerMayNotReadIsFoundNeitherByListingNorBySearch() {
+    createTheThreeStagesOfBothTypes();
+    UUID closed =
+        promptLibraryRepository
+            .save(
+                PromptLibrary.ownedByUser(
+                    organization, "Geschlossene Vorlagen", "Personalsachen Referat 12", owner))
+            .getId();
+    grantRepository.save(
+        AssetGrant.forUser(
+            PromptLibrary.ASSET_TYPE, closed, organization, owner, AssetRole.OWNER, null, owner));
 
-    assertThat(accessibleByName(callerOf(administrator, true)))
-        .as("administering is never reading: accessible follows the formula alone")
-        .containsExactlyInAnyOrderEntriesOf(
-            Map.of(
-                "Organisation Wissen", true,
-                "Organisation Prompts", true,
-                "Gelistet Wissen", false,
-                "Gelistet Prompts", false));
+    assertThat(namesFor(callerOf(outsider))).doesNotContain("Geschlossene Vorlagen");
+    for (String query : List.of("Geschlossene", "Personalsachen")) {
+      AssetCatalogPage page = catalogService.list(callerOf(outsider), null, query, 0, 50);
+      assertThat(page.entries())
+          .as("neither the name nor the description reveals it: %s", query)
+          .isEmpty();
+      assertThat(page.totalElements()).as("not even its existence counts").isZero();
+    }
+    assertThat(entryIds(callerOf(owner))).contains(closed);
+  }
+
+  @Test
+  void aCallerWhoMayReadNothingGetsAnEmptyPage() {
+    createTheThreeStagesOfBothTypes();
+    UUID foreignOwner = createUser(foreignOrganization, "Fremde Eigentümerin");
+    knowledgeLibrary(foreignOrganization, "Fremd privat", foreignOwner, OWNER_ONLY);
+
+    AssetCatalogPage page = catalogService.list(callerOf(foreigner), null, null, 0, 50);
+
+    assertThat(page.entries()).isEmpty();
+    assertThat(page.totalElements()).isZero();
+    assertThat(page.totalPages()).isZero();
+  }
+
+  @Test
+  void aSystemAdministratorWithoutAGrantSeesNoMoreThanTheFormulaGrants() {
+    createTheThreeStagesOfBothTypes();
+
+    assertThat(namesFor(callerOf(administrator, true)))
+        .as("administering is never reading: the catalog follows the formula alone")
+        .containsExactlyInAnyOrder("Organisation Wissen", "Organisation Prompts");
   }
 
   @Test
   void theCatalogNeverCrossesTheOrganizationBoundary() {
-    createTheFourStagesOfBothTypes();
+    createTheThreeStagesOfBothTypes();
     UUID foreignOwner = createUser(foreignOrganization, "Fremde Eigentümerin");
-    promptLibrary(foreignOrganization, "Fremd gelistet", foreignOwner, OWNER_ONLY, true);
-    knowledgeLibrary(
-        foreignOrganization, "Fremd organisationsweit", foreignOwner, ALL_ACCOUNTS, false);
+    promptLibrary(foreignOrganization, "Fremd privat", foreignOwner, OWNER_ONLY);
+    knowledgeLibrary(foreignOrganization, "Fremd organisationsweit", foreignOwner, ALL_ACCOUNTS);
 
-    assertThat(accessibleByName(callerOf(owner)))
-        .doesNotContainKeys("Fremd gelistet", "Fremd organisationsweit");
-    assertThat(accessibleByName(callerOf(administrator, true)))
-        .doesNotContainKeys("Fremd gelistet", "Fremd organisationsweit");
-    assertThat(accessibleByName(callerOf(foreigner)))
-        .containsExactlyInAnyOrderEntriesOf(
-            Map.of("Fremd gelistet", false, "Fremd organisationsweit", true));
+    assertThat(namesFor(callerOf(owner))).doesNotContain("Fremd privat", "Fremd organisationsweit");
+    assertThat(namesFor(callerOf(administrator, true)))
+        .doesNotContain("Fremd privat", "Fremd organisationsweit");
+    assertThat(namesFor(callerOf(foreigner))).containsExactly("Fremd organisationsweit");
   }
 
   @Test
-  void anEntryNamesTypeOwnerOriginAndListing() {
+  void anEntryNamesTypeOwnerAndOrigin() {
     UUID groupOwned =
         promptLibraryRepository
             .save(
-                PromptLibrary.ownedByGroup(
-                    organization, "Referatsvorlagen", "Hausstandard", group, true))
+                PromptLibrary.ownedByGroup(organization, "Referatsvorlagen", "Hausstandard", group))
             .getId();
-    UUID personOwned = knowledgeLibrary(organization, "Rechtsquellen", owner, ALL_ACCOUNTS, false);
+    releaseToAllAccounts(PromptLibrary.ASSET_TYPE, groupOwned, organization, owner, ALL_ACCOUNTS);
+    UUID personOwned = knowledgeLibrary(organization, "Rechtsquellen", owner, ALL_ACCOUNTS);
 
     List<AssetCatalogEntry> entries =
         catalogService.list(callerOf(outsider), null, null, 0, 50).entries();
@@ -183,21 +199,17 @@ class AssetCatalogServiceIntegrationTest {
     assertThat(prompts.asset().getAssetType()).isEqualTo(PromptLibrary.ASSET_TYPE);
     assertThat(prompts.asset().getDescription()).isEqualTo("Hausstandard");
     assertThat(prompts.asset().getOrigin()).isEqualTo(AssetOrigin.LOCAL);
-    assertThat(prompts.asset().isListed()).isTrue();
     assertThat(prompts.ownerLabel()).as("the owning group, not a person").isEqualTo("Referat 50");
-    assertThat(prompts.accessible()).isFalse();
     AssetCatalogEntry knowledge = entryFor(entries, personOwned);
     assertThat(knowledge.asset().getAssetType()).isEqualTo(KnowledgeLibrary.ASSET_TYPE);
     assertThat(knowledge.ownerLabel()).isEqualTo("Eigentümerin");
-    assertThat(knowledge.asset().isListed()).isFalse();
-    assertThat(knowledge.accessible()).isTrue();
     assertThat(knowledge.succession()).isNull();
   }
 
   @Test
   void anEntryCarriesItsExtentAndItsSpreadOverSpaces() {
-    UUID prompts = promptLibrary(organization, "Vorlagen", owner, ALL_ACCOUNTS, false);
-    UUID knowledge = knowledgeLibrary(organization, "Leer", owner, ALL_ACCOUNTS, false);
+    UUID prompts = promptLibrary(organization, "Vorlagen", owner, ALL_ACCOUNTS);
+    UUID knowledge = knowledgeLibrary(organization, "Leer", owner, ALL_ACCOUNTS);
     for (String name : List.of("anhoerung", "vermerk")) {
       promptService.create(
           prompts,
@@ -220,7 +232,7 @@ class AssetCatalogServiceIntegrationTest {
 
   @Test
   void anAssetWhoseOwnerLeftCarriesItsOpenSuccessionInTheCatalog() {
-    UUID id = promptLibrary(organization, "Verwaist", owner, OWNER_ONLY, true);
+    UUID id = promptLibrary(organization, "Verwaist", owner, ALL_ACCOUNTS);
     jdbcTemplate.update("UPDATE users SET directory_locked_at = now() WHERE id = ?", owner);
 
     AssetCatalogEntry entry =
@@ -232,28 +244,27 @@ class AssetCatalogServiceIntegrationTest {
 
   @Test
   void theTypeFilterAndTheSearchNarrowTheCatalogInTheQuery() {
-    createTheFourStagesOfBothTypes();
-    promptLibrary(organization, "Rabatt 100%", owner, ALL_ACCOUNTS, false);
-    promptLibrary(organization, "Rabatt 1000", owner, ALL_ACCOUNTS, false);
+    createTheThreeStagesOfBothTypes();
+    promptLibrary(organization, "Rabatt 100%", owner, ALL_ACCOUNTS);
+    promptLibrary(organization, "Rabatt 1000", owner, ALL_ACCOUNTS);
     UUID described =
         promptLibraryRepository
             .save(
                 PromptLibrary.ownedByUser(
-                    organization, "Vermerke", "Formulierungen für die ANHÖRUNG", owner, false))
+                    organization, "Vermerke", "Formulierungen für die ANHÖRUNG", owner))
             .getId();
     releaseToAllAccounts(PromptLibrary.ASSET_TYPE, described, organization, owner, ALL_ACCOUNTS);
 
     assertThat(
             names(catalogService.list(callerOf(outsider), PromptLibrary.ASSET_TYPE, null, 0, 50)))
-        .containsExactly(
-            "Gelistet Prompts", "Organisation Prompts", "Rabatt 100%", "Rabatt 1000", "Vermerke");
+        .containsExactly("Organisation Prompts", "Rabatt 100%", "Rabatt 1000", "Vermerke");
     assertThat(
             names(
                 catalogService.list(callerOf(outsider), KnowledgeLibrary.ASSET_TYPE, null, 0, 50)))
-        .containsExactly("Gelistet Wissen", "Organisation Wissen");
-    assertThat(names(catalogService.list(callerOf(outsider), null, "gelistet", 0, 50)))
+        .containsExactly("Organisation Wissen");
+    assertThat(names(catalogService.list(callerOf(outsider), null, "organisation", 0, 50)))
         .as("case-insensitive on the name")
-        .containsExactly("Gelistet Prompts", "Gelistet Wissen");
+        .containsExactly("Organisation Prompts", "Organisation Wissen");
     assertThat(names(catalogService.list(callerOf(outsider), null, "anhörung", 0, 50)))
         .as("the description counts, and the search is case-insensitive beyond ASCII")
         .containsExactly("Vermerke");
@@ -267,17 +278,18 @@ class AssetCatalogServiceIntegrationTest {
 
   @Test
   void theCatalogIsPagedByNameWithTheTotalOfTheWholeSet() {
-    createTheFourStagesOfBothTypes();
+    createTheThreeStagesOfBothTypes();
 
-    AssetCatalogPage first = catalogService.list(callerOf(outsider), null, null, 0, 3);
-    AssetCatalogPage second = catalogService.list(callerOf(outsider), null, null, 1, 3);
+    AssetCatalogPage first = catalogService.list(callerOf(owner), null, null, 0, 4);
+    AssetCatalogPage second = catalogService.list(callerOf(owner), null, null, 1, 4);
 
     assertThat(names(first))
-        .containsExactly("Gelistet Prompts", "Gelistet Wissen", "Organisation Prompts");
-    assertThat(names(second)).containsExactly("Organisation Wissen");
-    assertThat(first.totalElements()).isEqualTo(4);
+        .containsExactly(
+            "Gruppe Prompts", "Gruppe Wissen", "Organisation Prompts", "Organisation Wissen");
+    assertThat(names(second)).containsExactly("Privat Prompts", "Privat Wissen");
+    assertThat(first.totalElements()).isEqualTo(6);
     assertThat(first.totalPages()).isEqualTo(2);
-    assertThat(names(catalogService.list(callerOf(outsider), null, null, 5, 3))).isEmpty();
+    assertThat(names(catalogService.list(callerOf(owner), null, null, 5, 4))).isEmpty();
   }
 
   @Test
@@ -292,37 +304,32 @@ class AssetCatalogServiceIntegrationTest {
         .isInstanceOf(ValidationException.class);
   }
 
-  /**
-   * Per type: private (owner only), shared with the group, released organization-wide, and private
-   * but listed.
-   */
-  private Map<String, UUID> createTheFourStagesOfBothTypes() {
+  /** Per type: private (owner only), shared with the group, released organization-wide. */
+  private Map<String, UUID> createTheThreeStagesOfBothTypes() {
     Map<String, UUID> assets = new LinkedHashMap<>();
     for (AssetType type : TYPES) {
       String suffix = type.equals(KnowledgeLibrary.ASSET_TYPE) ? " Wissen" : " Prompts";
-      assets.put("Privat" + suffix, asset(type, "Privat" + suffix, OWNER_ONLY, false));
-      UUID shared = asset(type, "Gruppe" + suffix, OWNER_ONLY, false);
+      assets.put("Privat" + suffix, asset(type, "Privat" + suffix, OWNER_ONLY));
+      UUID shared = asset(type, "Gruppe" + suffix, OWNER_ONLY);
       grantRepository.save(
           AssetGrant.forGroup(type, shared, organization, group, AssetRole.VIEWER, null, owner, 1));
       assets.put("Gruppe" + suffix, shared);
-      assets.put(
-          "Organisation" + suffix, asset(type, "Organisation" + suffix, ALL_ACCOUNTS, false));
-      assets.put("Gelistet" + suffix, asset(type, "Gelistet" + suffix, OWNER_ONLY, true));
+      assets.put("Organisation" + suffix, asset(type, "Organisation" + suffix, ALL_ACCOUNTS));
     }
     return assets;
   }
 
-  private UUID asset(AssetType type, String name, boolean allAccounts, boolean listed) {
+  private UUID asset(AssetType type, String name, boolean allAccounts) {
     return type.equals(KnowledgeLibrary.ASSET_TYPE)
-        ? knowledgeLibrary(organization, name, owner, allAccounts, listed)
-        : promptLibrary(organization, name, owner, allAccounts, listed);
+        ? knowledgeLibrary(organization, name, owner, allAccounts)
+        : promptLibrary(organization, name, owner, allAccounts);
   }
 
   private UUID knowledgeLibrary(
-      UUID organizationId, String name, UUID ownerId, boolean allAccounts, boolean listed) {
+      UUID organizationId, String name, UUID ownerId, boolean allAccounts) {
     UUID id =
         knowledgeLibraryRepository
-            .save(KnowledgeLibrary.ownedByUser(organizationId, name, null, ownerId, listed))
+            .save(KnowledgeLibrary.ownedByUser(organizationId, name, null, ownerId))
             .getId();
     releaseToAllAccounts(KnowledgeLibrary.ASSET_TYPE, id, organizationId, ownerId, allAccounts);
     grantRepository.save(
@@ -337,11 +344,10 @@ class AssetCatalogServiceIntegrationTest {
     return id;
   }
 
-  private UUID promptLibrary(
-      UUID organizationId, String name, UUID ownerId, boolean allAccounts, boolean listed) {
+  private UUID promptLibrary(UUID organizationId, String name, UUID ownerId, boolean allAccounts) {
     UUID id =
         promptLibraryRepository
-            .save(PromptLibrary.ownedByUser(organizationId, name, null, ownerId, listed))
+            .save(PromptLibrary.ownedByUser(organizationId, name, null, ownerId))
             .getId();
     releaseToAllAccounts(PromptLibrary.ASSET_TYPE, id, organizationId, ownerId, allAccounts);
     grantRepository.save(
@@ -358,9 +364,14 @@ class AssetCatalogServiceIntegrationTest {
     }
   }
 
-  private Map<String, Boolean> accessibleByName(CurrentUser caller) {
+  private List<String> namesFor(CurrentUser caller) {
+    return names(catalogService.list(caller, null, null, 0, 200));
+  }
+
+  private List<UUID> entryIds(CurrentUser caller) {
     return catalogService.list(caller, null, null, 0, 200).entries().stream()
-        .collect(Collectors.toMap(entry -> entry.asset().getName(), AssetCatalogEntry::accessible));
+        .map(entry -> entry.asset().getId())
+        .toList();
   }
 
   private static List<String> names(AssetCatalogPage page) {

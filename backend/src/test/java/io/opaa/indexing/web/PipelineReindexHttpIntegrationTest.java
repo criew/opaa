@@ -78,11 +78,7 @@ class PipelineReindexHttpIntegrationTest {
     library =
         libraryRepository.save(
             KnowledgeLibrary.ownedByUser(
-                Organization.DEFAULT_ID,
-                "Reindex-HTTP-Testbibliothek",
-                null,
-                devAdmin.getId(),
-                false));
+                Organization.DEFAULT_ID, "Reindex-HTTP-Testbibliothek", null, devAdmin.getId()));
 
     Path managedDirectory =
         Path.of(uploadProperties.storagePath())

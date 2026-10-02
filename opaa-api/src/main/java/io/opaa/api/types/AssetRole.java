@@ -26,7 +26,7 @@ public enum AssetRole {
   /** Additionally change the configuration. */
   EDITOR,
 
-  /** Additionally share, grant roles to others, and set visibility/listed. */
+  /** Additionally share and grant roles to others. */
   MANAGER,
 
   /** Additionally delete the asset and transfer ownership. */

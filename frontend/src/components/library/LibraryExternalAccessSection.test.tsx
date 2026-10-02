@@ -37,7 +37,6 @@ function library(externalAccess: LibraryExternalAccessResponse | undefined): Lib
     ownerType: 'USER',
     ownerId: 'user-1',
     reach: { allAccounts: false, groupCount: 0, userCount: 1 },
-    listed: false,
     myRole: 'MANAGER',
     sourceType: 'UPLOAD',
     diagnosticsLocked: true,

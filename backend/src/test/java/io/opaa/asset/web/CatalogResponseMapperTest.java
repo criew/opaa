@@ -26,7 +26,6 @@ class CatalogResponseMapperTest {
     AssetCatalogEntry entry =
         new AssetCatalogEntry(
             row(AssetOrigin.BUILT_IN),
-            false,
             "Referat 50",
             SuccessionFinding.ofAsset(
                 io.opaa.permission.AssetType.of("PROMPT_LIBRARY"),
@@ -51,8 +50,6 @@ class CatalogResponseMapperTest {
     assertThat(response.getOwnerType()).isEqualTo(AssetOwnerType.GROUP);
     assertThat(response.getOwnerLabel()).isEqualTo("Referat 50");
     assertThat(response.getOrigin()).isEqualTo(AssetOrigin.BUILT_IN);
-    assertThat(response.getAccessible()).isFalse();
-    assertThat(response.getListed()).isTrue();
     assertThat(response.getItemCount()).isEqualTo(7);
     assertThat(response.getSpaceCount()).isEqualTo(3);
     assertThat(response.getSuccession()).isNotNull();
@@ -64,12 +61,11 @@ class CatalogResponseMapperTest {
   void anEntryWithoutSuccessionOrOwnerLabelCarriesNeither() {
     CatalogEntryResponse response =
         CatalogResponseMapper.toResponse(
-            new AssetCatalogEntry(row(AssetOrigin.LOCAL), true, null, null, 0, 0));
+            new AssetCatalogEntry(row(AssetOrigin.LOCAL), null, null, 0, 0));
 
     assertThat(response.getOwnerLabel()).isNull();
     assertThat(response.getSuccession()).isNull();
     assertThat(response.getOrigin()).isEqualTo(AssetOrigin.LOCAL);
-    assertThat(response.getAccessible()).isTrue();
   }
 
   private static AssetCatalogRow row(AssetOrigin origin) {
@@ -112,11 +108,6 @@ class CatalogResponseMapperTest {
       @Override
       public AssetOrigin getOrigin() {
         return origin;
-      }
-
-      @Override
-      public boolean isListed() {
-        return true;
       }
     };
   }

@@ -26,8 +26,8 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 /**
  * HTTP-layer coverage of {@code PUT /api/v1/libraries/{libraryId}/share-cap} (#797, in the shape
- * #1931 gave it): SYSTEM_ADMIN only, rejected for UPLOAD, and what withdrawing either permission
- * takes back at once - the grant to "Alle Konten" and {@code listed}. Runs through the real {@link
+ * #1931 gave it): SYSTEM_ADMIN only, rejected for UPLOAD, and that withdrawing the permission takes
+ * the grant to "Alle Konten" back at once. Runs through the real {@link
  * io.opaa.audit.AuditListener}, unlike the mocked-event-publisher unit coverage in {@code
  * io.opaa.library.KnowledgeLibraryServiceShareCapTest}.
  */
@@ -75,7 +75,7 @@ class LibraryShareCapControllerIntegrationTest {
     String body =
         """
         { "name": "Freigabe-Obergrenze Test", "sourceType": "FILESYSTEM",
-          "sourcePath": "/data/dokumente", "listed": true }
+          "sourcePath": "/data/dokumente" }
         """;
     String response =
         mockMvc
@@ -104,13 +104,13 @@ class LibraryShareCapControllerIntegrationTest {
         .perform(
             put("/api/v1/libraries/" + libraryId + "/share-cap")
                 .with(devUser())
-                .content("{\"allAccountsGrantAllowed\":false,\"listedCap\":false}"))
+                .content("{\"allAccountsGrantAllowed\":false}"))
         .andExpect(status().isForbidden());
   }
 
   /**
-   * #1931: withdrawing the first permission revokes the grant that carried the organization-wide
-   * reach; withdrawing the second clears {@code listed}. Both happen in the same request.
+   * #1931: withdrawing the permission revokes the grant that carried the organization-wide reach,
+   * in the same request.
    */
   @Test
   void succeedsForSystemAdminAndTakesTheWiderReachBackImmediately() throws Exception {
@@ -122,29 +122,24 @@ class LibraryShareCapControllerIntegrationTest {
         .perform(
             put("/api/v1/libraries/" + libraryId + "/share-cap")
                 .with(devAdmin())
-                .content("{\"allAccountsGrantAllowed\":false,\"listedCap\":false}"))
+                .content("{\"allAccountsGrantAllowed\":false}"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.allAccountsGrantAllowed").value(false))
-        .andExpect(jsonPath("$.listedCap").value(false))
-        // the library was granted to everybody and listed - the new cap takes both back at once
-        .andExpect(jsonPath("$.reach.allAccounts").value(false))
-        .andExpect(jsonPath("$.listed").value(false));
+        .andExpect(jsonPath("$.listedCap").doesNotExist())
+        // the library was granted to everybody - the new cap takes that back at once
+        .andExpect(jsonPath("$.reach.allAccounts").value(false));
 
     assertThat(allAccountsGrantCount(libraryId))
         .as("the grant that carried the organization-wide reach is gone")
         .isZero();
 
-    // #1870 review, finding 3: the real AuditListener (no mocked eventPublisher here, unlike the
-    // service-level unit test) must write all three entries - the governance act, the revoked
-    // grant and the cleared findability are separate facts, and all carry the acting system
-    // administrator.
+    // The real AuditListener (no mocked eventPublisher here, unlike the service-level unit test)
+    // must write both entries - the governance act and the revoked grant are separate facts, and
+    // both carry the acting system administrator.
     List<Map<String, Object>> events = auditEventsFor(libraryId);
     assertThat(events)
         .extracting(row -> row.get("event_type"))
-        .containsExactlyInAnyOrder(
-            "CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED",
-            "ASSET_GRANT_REVOKED",
-            "ASSET_VISIBILITY_CHANGED");
+        .containsExactlyInAnyOrder("CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED", "ASSET_GRANT_REVOKED");
     assertThat(events).extracting(row -> row.get("actor_ref")).doesNotContainNull();
     assertThat(events.stream().map(row -> row.get("actor_ref")).distinct().count())
         .as("all entries carry the same actor")
@@ -156,7 +151,7 @@ class LibraryShareCapControllerIntegrationTest {
     return jdbcTemplate.queryForList(
         "SELECT event_type, actor_ref FROM audit_log WHERE object_type = 'KNOWLEDGE_LIBRARY' AND"
             + " object_id = ? AND event_type IN ('CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED',"
-            + " 'ASSET_GRANT_REVOKED', 'ASSET_VISIBILITY_CHANGED')",
+            + " 'ASSET_GRANT_REVOKED')",
         libraryId);
   }
 
@@ -184,7 +179,7 @@ class LibraryShareCapControllerIntegrationTest {
         .perform(
             put("/api/v1/libraries/" + libraryId + "/share-cap")
                 .with(devAdmin())
-                .content("{\"allAccountsGrantAllowed\":false,\"listedCap\":false}"))
+                .content("{\"allAccountsGrantAllowed\":false}"))
         .andExpect(status().isBadRequest());
   }
 
@@ -201,7 +196,7 @@ class LibraryShareCapControllerIntegrationTest {
         .perform(
             put("/api/v1/libraries/" + libraryId + "/share-cap")
                 .with(devAdmin())
-                .content("{\"allAccountsGrantAllowed\":false,\"listedCap\":false}"))
+                .content("{\"allAccountsGrantAllowed\":false}"))
         .andExpect(status().isOk());
 
     mockMvc
@@ -210,12 +205,26 @@ class LibraryShareCapControllerIntegrationTest {
                 .with(devUser())
                 .content("{\"subjectType\":\"ALL_ACCOUNTS\",\"role\":\"VIEWER\"}"))
         .andExpect(status().isConflict());
+  }
 
-    mockMvc
-        .perform(
-            put("/api/v1/libraries/" + libraryId)
-                .with(devUser())
-                .content("{\"name\":\"Freigabe-Obergrenze Test\",\"listed\":true}"))
-        .andExpect(status().isConflict());
+  /**
+   * Raising the cap again lets the owner grant to "Alle Konten" - the cap is a switch, no ratchet.
+   */
+  @Test
+  void raisingTheCapAgainLetsTheOwnerGrantToAllAccounts() throws Exception {
+    String libraryId = createFilesystemLibrary(devUser());
+    for (boolean allowed : List.of(false, true)) {
+      mockMvc
+          .perform(
+              put("/api/v1/libraries/" + libraryId + "/share-cap")
+                  .with(devAdmin())
+                  .content("{\"allAccountsGrantAllowed\":" + allowed + "}"))
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.allAccountsGrantAllowed").value(allowed));
+    }
+
+    grantToAllAccounts(libraryId, devUser());
+
+    assertThat(allAccountsGrantCount(libraryId)).isEqualTo(1);
   }
 }

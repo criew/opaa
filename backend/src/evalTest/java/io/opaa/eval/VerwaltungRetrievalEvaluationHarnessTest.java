@@ -445,7 +445,6 @@ class VerwaltungRetrievalEvaluationHarnessTest {
                 "Eval-Zielbibliothek",
                 null,
                 evalUserId,
-                false,
                 SourceTypes.FILESYSTEM,
                 corpusWorkingDir.toAbsolutePath().toString(),
                 null,

@@ -141,7 +141,6 @@ class DocumentIndexingIntegrationTest {
                 "Zielbibliothek",
                 null,
                 userId,
-                false,
                 SourceTypes.FILESYSTEM,
                 classTempDir.toAbsolutePath().toString(),
                 null,
@@ -330,7 +329,6 @@ class DocumentIndexingIntegrationTest {
                 "Andere Bibliothek (Retention)",
                 null,
                 userId,
-                false,
                 SourceTypes.FILESYSTEM,
                 classTempDir.toAbsolutePath().toString(),
                 null,
@@ -759,7 +757,6 @@ class DocumentIndexingIntegrationTest {
                 "Andere Bibliothek",
                 null,
                 userId,
-                false,
                 SourceTypes.FILESYSTEM,
                 classTempDir.toAbsolutePath().toString(),
                 null,
@@ -893,7 +890,7 @@ class DocumentIndexingIntegrationTest {
     KnowledgeLibrary strangerLibrary =
         libraryRepository.save(
             KnowledgeLibrary.ownedByUser(
-                Organization.DEFAULT_ID, "Bibliothek des Fremden", null, strangerId, false));
+                Organization.DEFAULT_ID, "Bibliothek des Fremden", null, strangerId));
     grantOwner(strangerLibrary.getId(), strangerId);
 
     QueryResult withoutGrant =
@@ -959,7 +956,6 @@ class DocumentIndexingIntegrationTest {
                 "Ausserhalb der Allowlist",
                 null,
                 userId,
-                false,
                 SourceTypes.FILESYSTEM,
                 OpaaTestDirectory.OUTSIDE_ALLOWLIST_DIR
                     .resolve("opaa-484")
@@ -1123,7 +1119,6 @@ class DocumentIndexingIntegrationTest {
                 "Bibliothek " + subdirectoryName,
                 null,
                 ownerId,
-                false,
                 SourceTypes.FILESYSTEM,
                 libraryDir.toAbsolutePath().toString(),
                 null,

@@ -90,7 +90,6 @@ class UrlIndexingExecutorExecuteTest {
           "Webverzeichnis",
           null,
           UUID.randomUUID(),
-          false,
           SourceTypes.HTTP_DIRECTORY,
           null,
           null,

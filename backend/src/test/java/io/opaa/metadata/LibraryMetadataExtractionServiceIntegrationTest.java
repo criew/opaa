@@ -63,7 +63,6 @@ class LibraryMetadataExtractionServiceIntegrationTest {
                 "Güte",
                 null,
                 owner.id(),
-                false,
                 SourceType.UPLOAD,
                 null,
                 null,

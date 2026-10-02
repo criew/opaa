@@ -122,7 +122,6 @@ class UrlFolderMappingIntegrationTest {
                 "Webverzeichnis",
                 null,
                 userId,
-                false,
                 SourceTypes.HTTP_DIRECTORY,
                 null,
                 baseUrl + "/dokumente/",

@@ -29,7 +29,7 @@ class PromptLibraryResponseMapperTest {
   @Test
   void theResponseCarriesShellFieldsRoleCountAndOwnerName() {
     PromptLibrary library =
-        PromptLibrary.ownedByGroup(ORGANIZATION, "Vorlagen", "Beschreibung", GROUP, true);
+        PromptLibrary.ownedByGroup(ORGANIZATION, "Vorlagen", "Beschreibung", GROUP);
 
     PromptLibraryResponse response =
         PromptLibraryResponseMapper.toResponse(
@@ -45,7 +45,6 @@ class PromptLibraryResponseMapperTest {
     assertThat(response.getReach().getAllAccounts()).isTrue();
     assertThat(response.getReach().getGroupCount()).isEqualTo(1);
     assertThat(response.getReach().getUserCount()).isEqualTo(2);
-    assertThat(response.getListed()).isTrue();
     assertThat(response.getMyRole()).isEqualTo(AssetRole.EDITOR);
     assertThat(response.getPromptCount()).isEqualTo(7L);
     assertThat(response.getSuccession()).isNull();
@@ -57,17 +56,15 @@ class PromptLibraryResponseMapperTest {
         new PromptLibraryRequest("Vorlagen")
             .description("Beschreibung")
             .ownerType(AssetOwnerType.GROUP)
-            .ownerId(GROUP)
-            .listed(true);
+            .ownerId(GROUP);
 
     assertThat(PromptLibraryResponseMapper.toCreation(request))
         .isEqualTo(
-            new PromptLibraryCreation(
-                "Vorlagen", "Beschreibung", AssetOwnerType.GROUP, GROUP, true));
+            new PromptLibraryCreation("Vorlagen", "Beschreibung", AssetOwnerType.GROUP, GROUP));
     assertThat(
             PromptLibraryResponseMapper.toUpdate(
-                new PromptLibraryUpdateRequest("Neu", false).description("Text")))
-        .isEqualTo(new PromptLibraryUpdate("Neu", "Text", false));
+                new PromptLibraryUpdateRequest("Neu").description("Text")))
+        .isEqualTo(new PromptLibraryUpdate("Neu", "Text"));
   }
 
   @Test

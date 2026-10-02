@@ -23,19 +23,17 @@ import org.hibernate.annotations.DynamicUpdate;
 
 /**
  * The asset shell (#1899, docs/features/spaces-and-assets.md#assets): everything an asset has
- * regardless of its type - name, description, one owner, findability ({@link #listed}), origin and
- * creator. A type adds its own table and entity by extending this class ({@code JOINED}: the type
- * row shares the shell's id); an asset whose type maps no entity of its own loads as a plain {@code
- * Asset}.
+ * regardless of its type - name, description, one owner, origin and creator. A type adds its own
+ * table and entity by extending this class ({@code JOINED}: the type row shares the shell's id); an
+ * asset whose type maps no entity of its own loads as a plain {@code Asset}.
  *
  * <p><b>How far the asset reaches is not a field here</b> (#1931, ADR-0037): it follows from the
- * grants alone, "Alle Konten" included. The shell carries only findability, which is a statement
- * about the catalogue and not about access.
+ * grants alone, "Alle Konten" included. Whoever may not read an asset does not see it at all.
  *
  * <p>Exactly the owner column matching {@link #ownerType} is set ({@code chk_assets_owner}); each
- * carries a real foreign key, which a single polymorphic column could not. Whoever changes owner or
- * listed goes through {@link AssetShellService}, which writes the audit entry, the history interval
- * and applies the frozen-reach rule - the setters are package-private for that reason.
+ * carries a real foreign key, which a single polymorphic column could not. Whoever changes the
+ * owner goes through the shell's transfer, which writes the audit entry and the history interval -
+ * the setter is package-private for that reason.
  */
 @Entity
 @DynamicUpdate
@@ -68,9 +66,6 @@ public class Asset implements OwnedAsset {
   @Column(name = "owner_group_id")
   private UUID ownerGroupId;
 
-  @Column(name = "listed", nullable = false)
-  private boolean listed;
-
   @Enumerated(EnumType.STRING)
   @Column(name = "origin", nullable = false, length = 20)
   private AssetOrigin origin = AssetOrigin.LOCAL;
@@ -97,8 +92,7 @@ public class Asset implements OwnedAsset {
       String name,
       String description,
       AssetOwnerType ownerType,
-      UUID ownerId,
-      boolean listed) {
+      UUID ownerId) {
     this.id = UUID.randomUUID();
     this.assetType = Objects.requireNonNull(assetType, "assetType");
     this.organizationId = Objects.requireNonNull(organizationId, "organizationId");
@@ -107,7 +101,6 @@ public class Asset implements OwnedAsset {
     this.ownerType = Objects.requireNonNull(ownerType, "ownerType");
     this.ownerUserId = ownerType == AssetOwnerType.USER ? ownerId : null;
     this.ownerGroupId = ownerType == AssetOwnerType.GROUP ? ownerId : null;
-    this.listed = listed;
   }
 
   @PrePersist
@@ -136,11 +129,6 @@ public class Asset implements OwnedAsset {
   public void rename(String name, String description) {
     this.name = name;
     this.description = description;
-  }
-
-  /** Package-private by contract: only {@link AssetShellService} changes findability. */
-  void applyListed(boolean listed) {
-    this.listed = listed;
   }
 
   /**
@@ -207,10 +195,6 @@ public class Asset implements OwnedAsset {
 
   public UUID getOwnerGroupId() {
     return ownerGroupId;
-  }
-
-  public boolean isListed() {
-    return listed;
   }
 
   public AssetOrigin getOrigin() {

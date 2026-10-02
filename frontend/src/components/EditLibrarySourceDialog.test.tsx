@@ -58,7 +58,6 @@ vi.mock('../services/libraryApi', async () => {
 const filesystemLibrary = {
   name: 'Serververzeichnis',
   description: 'Interne Dokumente',
-  listed: true,
   sourceType: 'FILESYSTEM' as const,
   sourcePath: '/data/dokumente',
   sourceUrl: null,
@@ -69,7 +68,6 @@ const filesystemLibrary = {
 const httpDirectoryLibrary = {
   name: 'Webverzeichnis',
   description: null,
-  listed: false,
   sourceType: 'HTTP_DIRECTORY' as const,
   sourcePath: null,
   sourceUrl: 'https://old.example.com/documents/',
@@ -141,7 +139,7 @@ describe('EditLibrarySourceDialog', () => {
     expect(mockUpdateLibrary).not.toHaveBeenCalled()
   })
 
-  it('saves a new directory path together with the unrelated name/description/visibility/listed fields', async () => {
+  it('saves a new directory path together with the unrelated name/description fields', async () => {
     const onClose = vi.fn()
     renderWithProviders(
       <EditLibrarySourceDialog
@@ -162,7 +160,6 @@ describe('EditLibrarySourceDialog', () => {
       expect(mockUpdateLibrary).toHaveBeenCalledWith('library-1', {
         name: 'Serververzeichnis',
         description: 'Interne Dokumente',
-        listed: true,
         sourcePath: '/data/neu',
         sourceUrl: undefined,
         sourceProxy: undefined,
@@ -499,7 +496,6 @@ describe('EditLibrarySourceDialog', () => {
     const s3Library = {
       name: 'Protokolle',
       description: null,
-      listed: false,
       sourceType: 'S3' as const,
       sourcePath: null,
       sourceUrl: 'https://minio.intern.example:9000',
@@ -586,7 +582,6 @@ describe('EditLibrarySourceDialog', () => {
     const confluenceLibrary = {
       name: 'Wiki Bauamt',
       description: null,
-      listed: false,
       sourceType: 'CONFLUENCE' as const,
       sourcePath: null,
       sourceUrl: 'https://wiki.behoerde.example/confluence',
