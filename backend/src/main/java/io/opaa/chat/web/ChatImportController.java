@@ -4,6 +4,7 @@ import io.opaa.api.dto.ChatImportRequest;
 import io.opaa.api.dto.ChatImportSource;
 import io.opaa.api.dto.ChatImportTurn;
 import io.opaa.api.dto.ChatSummary;
+import io.opaa.api.dto.ImportedChat;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
 import io.opaa.chat.ChatImport;
@@ -16,6 +17,7 @@ import java.util.UUID;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -23,9 +25,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * The demo seed's import of prepared chat transcripts. The bean - and with it the route - exists
- * only while {@code opaa.demo.chat-import.enabled} is {@code true}; a regular installation answers
- * the path like any unknown route.
+ * The demo seed's import of prepared chat transcripts and the list of the chats it imported, by
+ * import key. The bean - and with it both routes - exists only while {@code
+ * opaa.demo.chat-import.enabled} is {@code true}; a regular installation answers the path like any
+ * unknown route.
  */
 @RestController
 @RequestMapping("/api/v1")
@@ -53,9 +56,23 @@ public class ChatImportController {
                     chatService.findOwnedChat(chatId, caller.id()).orElseThrow(), null, null)));
   }
 
+  @GetMapping("/spaces/{spaceId}/chat-imports")
+  public List<ImportedChat> listChatImports(
+      @PathVariable UUID spaceId, @Caller CurrentUser caller) {
+    return chatImportService.listImportedChats(spaceId, caller.id()).stream()
+        .map(
+            entry ->
+                new ImportedChat()
+                    .importKey(entry.importKey())
+                    .chat(ChatResponseMapper.toSummaryResponse(entry.chat())))
+        .toList();
+  }
+
   private static ChatImport toImport(ChatImportRequest request) {
     return new ChatImport(
-        request.getTitle(), request.getTurns().stream().map(ChatImportController::toTurn).toList());
+        request.getImportKey(),
+        request.getTitle(),
+        request.getTurns().stream().map(ChatImportController::toTurn).toList());
   }
 
   private static ChatImport.Turn toTurn(ChatImportTurn turn) {

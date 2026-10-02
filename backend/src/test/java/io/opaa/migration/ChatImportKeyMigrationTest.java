@@ -32,8 +32,7 @@ class ChatImportKeyMigrationTest extends AbstractBaselineTest {
 
   @Test
   void anExistingChatHasNoImportKey() throws Exception {
-    assertThat(stringOf("SELECT import_key FROM chats WHERE id = '" + existingChat + "'"))
-        .isNull();
+    assertThat(stringOf("SELECT import_key FROM chats WHERE id = '" + existingChat + "'")).isNull();
   }
 
   @Test

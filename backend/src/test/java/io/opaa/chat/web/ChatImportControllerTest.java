@@ -233,7 +233,8 @@ class ChatImportControllerTest {
                   .content(TRANSCRIPT.formatted(UUID.randomUUID())))
           .andExpect(status().isNotFound());
       mockMvc
-          .perform(get("/api/v1/spaces/{spaceId}/chat-imports", UUID.randomUUID()).with(asTestUser()))
+          .perform(
+              get("/api/v1/spaces/{spaceId}/chat-imports", UUID.randomUUID()).with(asTestUser()))
           .andExpect(status().isNotFound());
 
       verify(chatImportService, never()).importChat(any(), any(), any());

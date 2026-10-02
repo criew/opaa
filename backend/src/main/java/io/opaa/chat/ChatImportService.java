@@ -9,16 +9,21 @@ import io.opaa.indexing.source.SourceConnectorRegistry;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.LibraryAccessService;
+import io.opaa.metadata.CitationFieldValue;
+import io.opaa.metadata.CitationMetadataReader;
 import io.opaa.metadata.CoreMetadata;
 import io.opaa.metadata.DocumentMetadataService;
 import io.opaa.space.Space;
 import io.opaa.space.SpaceAccessPolicy;
 import io.opaa.space.SpaceRepository;
+import java.text.Normalizer;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -32,7 +37,9 @@ import tools.jackson.databind.ObjectMapper;
  * Writes a prepared transcript as one chat of its author, without any model call - the demo seed's
  * way to a space with many realistic chats. The caller is the author and needs the same space
  * membership as for {@link ChatService#createChat}; every source must be a document the author may
- * read, and what a source shows is read from that document, never taken from the transcript.
+ * read, every citation marker must name a source of its own turn, and what a source shows is read
+ * from that document exactly as a generated answer reads it, never taken from the transcript. Each
+ * chat carries the caller's import key, by which {@link #listImportedChats} finds it again.
  * Reachable over HTTP only while {@code opaa.demo.chat-import.enabled} is set.
  */
 @Service
@@ -41,67 +48,81 @@ public class ChatImportService {
   static final String UNREADABLE_DOCUMENT =
       "Ein Beleg verweist auf ein Dokument, das nicht lesbar ist";
 
+  static final String UNMATCHED_MARKER =
+      "Eine Fundstellenmarke verweist auf kein Dokument der Belege ihrer Runde oder nennt einen"
+          + " anderen Dateinamen";
+
   private final ChatRepository chatRepository;
   private final ChatMessageRepository chatMessageRepository;
+  private final ChatPersonalMarkRepository chatPersonalMarkRepository;
   private final SpaceRepository spaceRepository;
   private final SpaceAccessPolicy spaceAccessPolicy;
   private final LibraryAccessService libraryAccessService;
   private final DocumentRepository documentRepository;
   private final SourceConnectorRegistry connectors;
   private final DocumentMetadataService documentMetadataService;
+  private final CitationMetadataReader citationMetadataReader;
   private final ObjectMapper objectMapper;
   private final Clock clock;
 
   public ChatImportService(
       ChatRepository chatRepository,
       ChatMessageRepository chatMessageRepository,
+      ChatPersonalMarkRepository chatPersonalMarkRepository,
       SpaceRepository spaceRepository,
       SpaceAccessPolicy spaceAccessPolicy,
       LibraryAccessService libraryAccessService,
       DocumentRepository documentRepository,
       SourceConnectorRegistry connectors,
       DocumentMetadataService documentMetadataService,
+      CitationMetadataReader citationMetadataReader,
       ObjectMapper objectMapper,
       Clock clock) {
     this.chatRepository = chatRepository;
     this.chatMessageRepository = chatMessageRepository;
+    this.chatPersonalMarkRepository = chatPersonalMarkRepository;
     this.spaceRepository = spaceRepository;
     this.spaceAccessPolicy = spaceAccessPolicy;
     this.libraryAccessService = libraryAccessService;
     this.documentRepository = documentRepository;
     this.connectors = connectors;
     this.documentMetadataService = documentMetadataService;
+    this.citationMetadataReader = citationMetadataReader;
     this.objectMapper = objectMapper;
     this.clock = clock;
   }
 
   /**
    * Creates the chat with the transcript's instants: it was created when its first question was
-   * asked and last used when its last answer came. All or nothing - one transaction.
+   * asked and last used when its last answer came. All or nothing - one transaction. A key the
+   * author already used in this space is a conflict.
    *
    * @return the new chat's id
    */
   @Transactional
   public UUID importChat(UUID spaceId, UUID authorId, ChatImport transcript) {
-    Space space =
-        spaceRepository
-            .findById(spaceId)
-            .orElseThrow(() -> new NotFoundException("Space nicht gefunden"));
-    if (!spaceAccessPolicy.isMember(spaceId, authorId)) {
-      throw new AccessDeniedException("Sie sind kein Mitglied dieses Space");
-    }
+    Space space = requireMembership(spaceId, authorId);
     if (space.isArchived()) {
       throw new ConflictException("Der Space ist archiviert und lässt keine neuen Chats mehr zu");
     }
     List<ChatImport.Turn> turns = transcript.turns();
     requireText(transcript);
+    if (chatRepository.existsBySpaceIdAndAuthorIdAndImportKey(
+        spaceId, authorId, transcript.importKey())) {
+      throw new ConflictException(
+          "Ein Chat mit diesem Importschlüssel besteht in diesem Space bereits");
+    }
     requireChronologicalAndPast(turns);
     Map<UUID, Document> documents = readableDocuments(turns, authorId, space.getOrganizationId());
+    requireMarkersOfOwnSources(turns, documents);
     Map<UUID, CoreMetadata> coreMetadata =
         documentMetadataService.coreMetadataFor(documents.keySet());
+    Map<UUID, List<CitationFieldValue>> citationFields =
+        citationMetadataReader.forDocuments(documents.values());
 
     Chat chat =
         new Chat(spaceId, authorId, space.getOrganizationId(), transcript.title(), true, Set.of());
+    chat.markImported(transcript.importKey());
     chat.backdate(turns.getFirst().askedAt(), turns.getLast().answeredAt());
     UUID chatId = chatRepository.save(chat).getId();
     int sequence = 0;
@@ -115,19 +136,84 @@ public class ChatImportService {
               sequence++,
               ChatRole.ASSISTANT,
               turn.answer(),
-              serialize(sourcesOf(turn, documents, coreMetadata)),
+              serialize(sourcesOf(turn, documents, coreMetadata, citationFields)),
               turn.answeredAt()));
     }
     return chatId;
   }
 
+  /**
+   * The author's imported chats of the space under their import keys, active and archived, with the
+   * author's own marks - whatever their current title.
+   */
+  @Transactional(readOnly = true)
+  public List<ImportedChatEntry> listImportedChats(UUID spaceId, UUID authorId) {
+    requireMembership(spaceId, authorId);
+    Map<UUID, ChatPersonalMark> marks =
+        chatPersonalMarkRepository.findOwnMarksInSpace(spaceId, authorId).stream()
+            .collect(Collectors.toMap(ChatPersonalMark::getChatId, Function.identity()));
+    return chatRepository.findBySpaceIdAndAuthorIdAndImportKeyNotNull(spaceId, authorId).stream()
+        .map(
+            chat -> {
+              ChatPersonalMark mark = marks.get(chat.getId());
+              return new ImportedChatEntry(
+                  chat.getImportKey(),
+                  new ChatListEntry(
+                      chat,
+                      mark == null ? null : mark.getPinnedAt(),
+                      mark == null ? null : mark.getArchivedAt()));
+            })
+        .toList();
+  }
+
+  private Space requireMembership(UUID spaceId, UUID authorId) {
+    Space space =
+        spaceRepository
+            .findById(spaceId)
+            .orElseThrow(() -> new NotFoundException("Space nicht gefunden"));
+    if (!spaceAccessPolicy.isMember(spaceId, authorId)) {
+      throw new AccessDeniedException("Sie sind kein Mitglied dieses Space");
+    }
+    return space;
+  }
+
+  /**
+   * Every citation marker of an answer names a source of its own turn and that document's file
+   * name, compared as the answer pipeline compares it (NFC, case-insensitive) - so a marker can
+   * neither add a row to the Belegfenster nor attach itself to another source by its name.
+   */
+  private static void requireMarkersOfOwnSources(
+      List<ChatImport.Turn> turns, Map<UUID, Document> documents) {
+    for (ChatImport.Turn turn : turns) {
+      Map<String, String> fileNameById = new HashMap<>();
+      for (ChatImport.Source source : turn.sources()) {
+        Document document = documents.get(source.documentId());
+        fileNameById.put(document.getId().toString(), normalizeFileName(document.getFileName()));
+      }
+      for (CitationMarker marker : CitationMarker.parse(turn.answer())) {
+        String expected = fileNameById.get(marker.documentId());
+        if (expected == null || !expected.equals(normalizeFileName(marker.fileName()))) {
+          throw new ValidationException(UNMATCHED_MARKER);
+        }
+      }
+    }
+  }
+
+  private static String normalizeFileName(String fileName) {
+    return fileName == null
+        ? ""
+        : Normalizer.normalize(fileName.strip(), Normalizer.Form.NFC).toLowerCase(Locale.ROOT);
+  }
+
   private static void requireText(ChatImport transcript) {
     boolean blank =
-        isBlank(transcript.title())
+        isBlank(transcript.importKey())
+            || isBlank(transcript.title())
             || transcript.turns().stream()
                 .anyMatch(turn -> isBlank(turn.question()) || isBlank(turn.answer()));
     if (blank) {
-      throw new ValidationException("Titel, Fragen und Antworten dürfen nicht leer sein");
+      throw new ValidationException(
+          "Importschlüssel, Titel, Fragen und Antworten dürfen nicht leer sein");
     }
   }
 
@@ -176,13 +262,17 @@ public class ChatImportService {
   }
 
   private List<ChatSource> sourcesOf(
-      ChatImport.Turn turn, Map<UUID, Document> documents, Map<UUID, CoreMetadata> coreMetadata) {
+      ChatImport.Turn turn,
+      Map<UUID, Document> documents,
+      Map<UUID, CoreMetadata> coreMetadata,
+      Map<UUID, List<CitationFieldValue>> citationFields) {
     List<ChatSource> sources = new ArrayList<>();
     for (ChatImport.Source source : turn.sources()) {
       Document document = documents.get(source.documentId());
       List<ChatSourceMetadataEntry> metadata =
           ChatSourceMetadataEntry.from(
-              coreMetadata.getOrDefault(document.getId(), CoreMetadata.EMPTY), List.of());
+              coreMetadata.getOrDefault(document.getId(), CoreMetadata.EMPTY),
+              citationFields.getOrDefault(document.getId(), List.of()));
       sources.add(
           new ChatSource(document.getFileName(), 1.0 / (sources.size() + 1), 1, source.cited())
               .indexedAt(document.getIndexedAt())

@@ -393,9 +393,7 @@ def test_a_renamed_imported_chat_is_not_imported_again_and_keeps_its_marks() -> 
     ]
 
 
-def test_a_foreign_chat_of_the_same_title_neither_replaces_the_prepared_one_nor_gets_its_marks() -> (
-    None
-):
+def test_a_foreign_chat_of_the_same_title_neither_stands_in_nor_gets_marked() -> None:
     api = FakeChatApi()
     foreign = api.add_own_chat("Eins")
     archived_foreign = api.add_own_chat("Zwei")

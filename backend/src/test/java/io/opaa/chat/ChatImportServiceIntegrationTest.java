@@ -156,14 +156,13 @@ class ChatImportServiceIntegrationTest {
             spaceId,
             author,
             new ChatImport(
-                "Älter",
-                "Älter", List.of(turn("Frage", FIRST_ASKED, FIRST_ASKED.plusSeconds(5)))));
+                "Älter", "Älter", List.of(turn("Frage", FIRST_ASKED, FIRST_ASKED.plusSeconds(5)))));
     Instant later = FIRST_ASKED.plus(Duration.ofDays(3));
     UUID newer =
         chatImportService.importChat(
             spaceId,
             author,
-            new ChatImport("Neuer","Neuer", List.of(turn("Frage", later, later.plusSeconds(5)))));
+            new ChatImport("Neuer", "Neuer", List.of(turn("Frage", later, later.plusSeconds(5)))));
 
     assertThat(chatService.listChats(spaceId, author))
         .extracting(entry -> entry.chat().getId())
@@ -237,7 +236,8 @@ class ChatImportServiceIntegrationTest {
   void onlyAMemberOfAWritableSpaceCanImport() {
     UUID outsider = createUser();
     ChatImport transcript =
-        new ChatImport("Chat","Chat", List.of(turn("Frage", FIRST_ASKED, FIRST_ASKED.plusSeconds(5))));
+        new ChatImport(
+            "Chat", "Chat", List.of(turn("Frage", FIRST_ASKED, FIRST_ASKED.plusSeconds(5))));
 
     assertThatThrownBy(() -> chatImportService.importChat(spaceId, outsider, transcript))
         .isInstanceOf(AccessDeniedException.class);
@@ -261,7 +261,8 @@ class ChatImportServiceIntegrationTest {
                 turn("Zweite", FIRST_ASKED.plusSeconds(30), FIRST_ASKED.plusSeconds(90))));
     Instant tomorrow = Instant.now().plus(Duration.ofDays(1));
     ChatImport future =
-        new ChatImport("Zukunft","Zukunft", List.of(turn("Frage", tomorrow, tomorrow.plusSeconds(5))));
+        new ChatImport(
+            "Zukunft", "Zukunft", List.of(turn("Frage", tomorrow, tomorrow.plusSeconds(5))));
 
     assertThatThrownBy(() -> chatImportService.importChat(spaceId, author, backwards))
         .isInstanceOf(ValidationException.class);
@@ -304,7 +305,10 @@ class ChatImportServiceIntegrationTest {
             List.of(
                 citingTurn("Erste", "Laut Satzung" + satzungMarker + ".", FIRST_ASKED, satzung),
                 citingTurn(
-                    "Zweite", "Siehe" + satzungMarker + ".", FIRST_ASKED.plusSeconds(60), leistung)));
+                    "Zweite",
+                    "Siehe" + satzungMarker + ".",
+                    FIRST_ASKED.plusSeconds(60),
+                    leistung)));
     ChatImport unknownId =
         new ChatImport(
             "unbekannte-id",
@@ -393,9 +397,12 @@ class ChatImportServiceIntegrationTest {
                     new org.springframework.ai.document.Document(
                         "Text",
                         Map.of(
-                            "document_id", satzung.toString(),
-                            "file_name", "01_verwaltungsgebuehrensatzung.pdf",
-                            "chunk_index", 0))),
+                            "document_id",
+                            satzung.toString(),
+                            "file_name",
+                            "01_verwaltungsgebuehrensatzung.pdf",
+                            "chunk_index",
+                            0))),
                 List.of(),
                 null)
             .getFirst();
@@ -411,11 +418,9 @@ class ChatImportServiceIntegrationTest {
     chatImportService.importChat(
         spaceId,
         author,
-        new ChatImport(
-            "schluessel", "Erster", List.of(turn("Frage", FIRST_ASKED, FIRST_ASKED))));
+        new ChatImport("schluessel", "Erster", List.of(turn("Frage", FIRST_ASKED, FIRST_ASKED))));
     ChatImport again =
-        new ChatImport(
-            "schluessel", "Zweiter", List.of(turn("Frage", FIRST_ASKED, FIRST_ASKED)));
+        new ChatImport("schluessel", "Zweiter", List.of(turn("Frage", FIRST_ASKED, FIRST_ASKED)));
 
     assertThatThrownBy(() -> chatImportService.importChat(spaceId, author, again))
         .isInstanceOf(ConflictException.class);

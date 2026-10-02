@@ -1,17 +1,17 @@
 package io.opaa.query.citation;
 
+import io.opaa.chat.CitationMarker;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 
 /** Deterministic extraction of the citation markers an answer carries. */
 @Service
 public class CitationParser {
 
-  static final Pattern CITATION_PATTERN =
-      Pattern.compile("【source:\\s*([a-zA-Z0-9\\-]+)#(\\d+)\\s*\\|\\s*(.+?)】");
+  static final Pattern CITATION_PATTERN = CitationMarker.PATTERN;
 
   /**
    * One citation marker as it literally appears in the answer text - the input to {@link
@@ -27,22 +27,10 @@ public class CitationParser {
    * independently against the chunks actually retrieved for this answer.
    */
   public List<ParsedCitation> extractCitations(String answer) {
-    List<ParsedCitation> citations = new ArrayList<>();
-    if (answer == null || answer.isEmpty()) {
-      return citations;
-    }
-    Matcher matcher = CITATION_PATTERN.matcher(answer);
-    while (matcher.find()) {
-      String documentId = matcher.group(1).trim();
-      String fileName = matcher.group(3).trim();
-      int chunkIndex;
-      try {
-        chunkIndex = Integer.parseInt(matcher.group(2).trim());
-      } catch (NumberFormatException e) {
-        chunkIndex = -1;
-      }
-      citations.add(new ParsedCitation(documentId, chunkIndex, fileName));
-    }
-    return citations;
+    return CitationMarker.parse(answer).stream()
+        .map(
+            marker ->
+                new ParsedCitation(marker.documentId(), marker.chunkIndex(), marker.fileName()))
+        .collect(Collectors.toCollection(ArrayList::new));
   }
 }

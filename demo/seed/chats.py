@@ -9,9 +9,11 @@ OPAA_DEMO_CHAT_IMPORT_ENABLED=true) - deterministic, no model call.
 Answers cite with [[ref]] or [[ref#chunk]]: ref is a key of the set's "documents", resolved at
 seed time to the document id of the running instance and rendered as the backend's own citation
 marker. Instants are relative to the seed run: a chat lies "daysAgo" days back at "time"
-(Europe/Berlin), its turns follow each other a few minutes apart. The chat's title is its identity:
-a chat whose title the owner already has in the space is left as it is, so a second run writes
-nothing new; only the pinned/archived marks the file asks for are set again if they went missing.
+(Europe/Berlin), its turns follow each other a few minutes apart. Every chat is imported under an
+import key - its title in the file - that only the import sets and a rename keeps: a chat the owner
+already has under that key is left as it is, so a second run writes nothing new; only the
+pinned/archived marks the file asks for are set again if they went missing. A chat the owner
+started themselves has no key and is never taken for a prepared one.
 """
 
 from __future__ import annotations
@@ -27,7 +29,6 @@ from urllib.parse import unquote, urlparse
 from api_client import ApiError
 
 CITATION_PLACEHOLDER = re.compile(r"\[\[([a-z0-9-]+)(?:#(\d+))?\]\]")
-ARCHIVED_PAGE_SIZE = 100
 
 
 @dataclass(frozen=True)
@@ -194,7 +195,14 @@ def import_request(chat: ChatDef, resolved: dict[str, dict], now: datetime) -> d
                 "sources": sources,
             }
         )
-    return {"title": chat.title, "turns": turns}
+    return {"importKey": import_key(chat), "title": chat.title, "turns": turns}
+
+
+def import_key(chat: ChatDef) -> str:
+    """The chat's identity on the instance: its title as the file writes it. Only the import sets
+    the key, so neither a rename in the UI nor a chat of the same title the owner started
+    themselves affects it."""
+    return chat.title
 
 
 def _iso(instant: datetime) -> str:
@@ -234,31 +242,30 @@ def resolve_documents(
     return resolved
 
 
-def existing_chats(owner_client, space_id: str) -> dict[str, dict]:
-    """The owner's chats of the space by title, active and archived."""
-    chats = {c["title"]: c for c in owner_client.get_ok(f"/v1/spaces/{space_id}/chats")}
-    page = 0
-    while True:
-        result = owner_client.get_ok(
-            f"/v1/spaces/{space_id}/chats/archived",
-            params={"page": page, "size": ARCHIVED_PAGE_SIZE},
-        )
-        for chat in result["items"]:
-            chats.setdefault(chat["title"], chat)
-        if (page + 1) * result["size"] >= result["totalElements"] or not result["items"]:
-            return chats
-        page += 1
+def _switched_off(response) -> SystemExit:
+    return SystemExit(
+        "Chat-Import abgelehnt (HTTP 404). Meist ist der Import im Backend abgeschaltet: "
+        "OPAA_DEMO_CHAT_IMPORT_ENABLED=true in der Umgebung des Backends setzen, Backend neu "
+        "starten und den Seed erneut laufen lassen (siehe demo/README.md). Antwort: "
+        f"{response.text[:300]}"
+    )
+
+
+def imported_chats(owner_client, space_id: str) -> dict[str, dict]:
+    """The owner's imported chats of the space by import key, active and archived - a renamed chat
+    under its key, a chat the owner started themselves not at all."""
+    response = owner_client.get(f"/v1/spaces/{space_id}/chat-imports")
+    if response.status_code == 404:
+        raise _switched_off(response)
+    if response.status_code != 200:
+        raise ApiError(response)
+    return {entry["importKey"]: entry["chat"] for entry in response.json()}
 
 
 def import_chat(owner_client, space_id: str, request: dict) -> dict:
     response = owner_client.post(f"/v1/spaces/{space_id}/chat-imports", json=request)
     if response.status_code == 404:
-        raise SystemExit(
-            "Chat-Import abgelehnt (HTTP 404). Meist ist der Import im Backend abgeschaltet: "
-            "OPAA_DEMO_CHAT_IMPORT_ENABLED=true in der Umgebung des Backends setzen, Backend neu "
-            "starten und den Seed erneut laufen lassen (siehe demo/README.md). Antwort: "
-            f"{response.text[:300]}"
-        )
+        raise _switched_off(response)
     if response.status_code != 201:
         raise ApiError(response)
     return response.json()
@@ -280,10 +287,10 @@ def seed_chat_set(
     now: datetime,
 ) -> tuple[int, int]:
     """Imports every chat the owner does not have yet. Returns (imported, already present)."""
-    present = existing_chats(owner_client, space_id)
+    present = imported_chats(owner_client, space_id)
     imported = 0
     for chat in chat_set.chats:
-        summary = present.get(chat.title)
+        summary = present.get(import_key(chat))
         if summary is None:
             summary = import_chat(owner_client, space_id, import_request(chat, resolved, now))
             imported += 1
