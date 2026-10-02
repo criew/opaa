@@ -33,6 +33,11 @@ public interface ChatRepository extends JpaRepository<Chat, UUID> {
   /** The author's own chats of one space among {@code ids}; every other id yields nothing. */
   List<Chat> findByIdInAndSpaceIdAndAuthorId(Collection<UUID> ids, UUID spaceId, UUID authorId);
 
+  /** The author's imported chats of one space, active and archived alike. */
+  List<Chat> findBySpaceIdAndAuthorIdAndImportKeyNotNull(UUID spaceId, UUID authorId);
+
+  boolean existsBySpaceIdAndAuthorIdAndImportKey(UUID spaceId, UUID authorId, String importKey);
+
   /**
    * Used by {@code SpaceService#deleteSpace} to reject the delete with a clear 409 before it ever
    * reaches {@code fk_chats_space_organization} (ON DELETE RESTRICT) - see

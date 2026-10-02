@@ -78,9 +78,12 @@ etwa nachdem ein Chat geteilt wurde (siehe
 [Das Ableitungsleck](./spaces-and-assets.md#das-ableitungsleck)).
 
 Zusätzlich wird ausgewiesen, **was durchsucht wurde**: welche Wissensbibliotheken im Suchbereich lagen und
-wie viele Treffer in die Antwort eingegangen sind. Bei fehlendem Zugriff bleibt diese Anzeige bewusst
-unspezifisch — „in diesem Space ist für dich derzeit kein Wissen verfügbar" statt einer Angabe, wie viele
-Bestände gesperrt sind.
+wie viele Treffer in die Antwort eingegangen sind. Der Suchbereich eines Chats ist höchstens das dem Space
+zugeordnete, lesbare Wissen ([ADR-0039](../decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md)).
+Ist er leer, sagt die Anzeige warum, und zwar mit zwei getrennten Hinweisen ohne Anzahlen: „Diesem
+Space ist kein Wissen zugeordnet" (mit Direktlink zur Zuordnung) oder „In diesem Space ist für Sie
+derzeit kein Wissen verfügbar" — nie eine Angabe, wie viele Bestände gesperrt sind (siehe
+[Suchbereich je Chatart](./spaces-and-assets.md#suchbereich-je-chatart)).
 
 ### Belegvalidierung
 

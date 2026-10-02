@@ -73,9 +73,11 @@ Quellsystem sie belastbar liefert · Zuordnung einer Quelle zu genau einer Wisse
 
 **[`features/spaces-and-assets.md`](./features/spaces-and-assets.md)**
 
-Spaces als Arbeitsräume, Assets als eigenständige Objekte · Assoziation gegen Enthaltensein ·
-Wissensbibliotheken als Rechteanker · Verteilungsstufen bis zum organisationsweiten Katalog · Freigabekette,
-Versionierung, Rückruf · Chats und Artefakte · Mitbestimmung und Personalvertretung.
+Spaces als Arbeitsräume, Assets als eigenständige Objekte · Zuordnung als harte Grenze gegen Enthaltensein ·
+Wissensbibliotheken als Rechteanker · Verteilungsstufen und Sichtbarkeit · ein Katalog nur mit Lesbarem ·
+Favoriten · Freigabekette, Versionierung, Rückruf · Chats und Artefakte · Mitbestimmung und
+Personalvertretung. Entscheidung zu Katalog und Zuordnung:
+[ADR-0039](./decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md).
 
 ### D · Agenten, Prompts & Werkzeuge
 

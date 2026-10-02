@@ -30,6 +30,13 @@ Redesign-Epic #600.
 Die Seiten 1f (Kennung) und 1g zeigen Zielbild-Funktionen, die es im Backend noch nicht gibt —
 siehe Epic #600, „Außerhalb des Umfangs".
 
+**Überholt durch [ADR-0039](../decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md):**
+Seite 1d zeigt die Wissensbibliotheken als eigene Übersicht in Tabellenform. Im Zielbild gibt es dafür
+den einen **Katalog** für alle Asset-Arten, ausschließlich als Kacheln; die Auswahl in 1b („Datenquellen
+zuordnen") und 1e (Herkunft) folgt der Kachelauswahl mit Icon
+([guidelines.md](./guidelines.md), 5.11). Maßgeblich sind in diesen Punkten die Guidelines, nicht die
+Mockups.
+
 ### Designsystem in Kürze
 
 - **Farben:** Blau `#1292EE` auf Navy `#012142` und Weiß; helles und dunkles Schema gleichrangig

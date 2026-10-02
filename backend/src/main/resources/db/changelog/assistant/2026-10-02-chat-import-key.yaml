@@ -1,0 +1,11 @@
+databaseChangeLog:
+  - changeSet:
+      id: assistant-2026-10-02-chat-import-key
+      author: opaa
+      comment: "Import key of a chat the demo seed imported: set only by the import, unique per author and space."
+      changes:
+        - sql:
+            sql: |
+              ALTER TABLE chats ADD COLUMN import_key character varying(255);
+
+              CREATE UNIQUE INDEX uk_chats_import_key ON chats USING btree (space_id, author_id, import_key) WHERE (import_key IS NOT NULL);

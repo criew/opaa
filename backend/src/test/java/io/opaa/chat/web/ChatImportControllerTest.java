@@ -7,6 +7,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -18,8 +19,11 @@ import io.opaa.auth.UserService;
 import io.opaa.chat.Chat;
 import io.opaa.chat.ChatImport;
 import io.opaa.chat.ChatImportService;
+import io.opaa.chat.ChatListEntry;
 import io.opaa.chat.ChatService;
+import io.opaa.chat.ImportedChatEntry;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -49,7 +53,7 @@ class ChatImportControllerTest {
 
   private static final String TRANSCRIPT =
       """
-      {"title": "Gebühr Personalausweis", "turns": [
+      {"importKey": "gebuehr-personalausweis", "title": "Gebühr Personalausweis", "turns": [
         {"question": "Was kostet ein Personalausweis?", "answer": "42,60 Euro.",
          "askedAt": "2026-09-01T08:15:00Z", "answeredAt": "2026-09-01T08:15:20Z",
          "sources": [{"documentId": "%s", "cited": true}]},
@@ -119,6 +123,7 @@ class ChatImportControllerTest {
       ArgumentCaptor<ChatImport> captor = ArgumentCaptor.forClass(ChatImport.class);
       verify(chatImportService).importChat(eq(spaceId), eq(currentUser.getId()), captor.capture());
       ChatImport transcript = captor.getValue();
+      assertThat(transcript.importKey()).isEqualTo("gebuehr-personalausweis");
       assertThat(transcript.title()).isEqualTo("Gebühr Personalausweis");
       assertThat(transcript.turns()).hasSize(2);
       ChatImport.Turn first = transcript.turns().getFirst();
@@ -139,6 +144,44 @@ class ChatImportControllerTest {
           .andExpect(status().isBadRequest());
 
       verify(chatImportService, never()).importChat(any(), any(), any());
+    }
+
+    @Test
+    void aTranscriptWithoutImportKeyIsRefusedBeforeTheService() throws Exception {
+      String withoutKey =
+          TRANSCRIPT
+              .formatted(UUID.randomUUID())
+              .replace("\"importKey\": \"gebuehr-personalausweis\", ", "");
+
+      mockMvc
+          .perform(
+              post("/api/v1/spaces/{spaceId}/chat-imports", UUID.randomUUID())
+                  .with(asTestUser())
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content(withoutKey))
+          .andExpect(status().isBadRequest());
+
+      verify(chatImportService, never()).importChat(any(), any(), any());
+    }
+
+    @Test
+    void theCallersImportedChatsAreListedWithKeyAndMarks() throws Exception {
+      UUID spaceId = UUID.randomUUID();
+      Chat chat =
+          new Chat(spaceId, currentUser.getId(), UUID.randomUUID(), "Umbenannt", true, Set.of());
+      Instant archivedAt = Instant.parse("2026-09-30T12:00:00Z");
+      when(chatImportService.listImportedChats(spaceId, currentUser.getId()))
+          .thenReturn(
+              List.of(
+                  new ImportedChatEntry("gebuehren", new ChatListEntry(chat, null, archivedAt))));
+
+      mockMvc
+          .perform(get("/api/v1/spaces/{spaceId}/chat-imports", spaceId).with(asTestUser()))
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$[0].importKey").value("gebuehren"))
+          .andExpect(jsonPath("$[0].chat.id").value(chat.getId().toString()))
+          .andExpect(jsonPath("$[0].chat.title").value("Umbenannt"))
+          .andExpect(jsonPath("$[0].chat.archivedAt").value("2026-09-30T12:00:00Z"));
     }
 
     @Test
@@ -189,8 +232,13 @@ class ChatImportControllerTest {
                   .contentType(MediaType.APPLICATION_JSON)
                   .content(TRANSCRIPT.formatted(UUID.randomUUID())))
           .andExpect(status().isNotFound());
+      mockMvc
+          .perform(
+              get("/api/v1/spaces/{spaceId}/chat-imports", UUID.randomUUID()).with(asTestUser()))
+          .andExpect(status().isNotFound());
 
       verify(chatImportService, never()).importChat(any(), any(), any());
+      verify(chatImportService, never()).listImportedChats(any(), any());
     }
   }
 }

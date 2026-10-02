@@ -16,6 +16,31 @@ paths:
           type: string
           format: uuid
 
+    get:
+      operationId: listChatImports
+      tags: [chat-import]
+      summary: >
+        The caller's chats of this space that an import created, each with its import key (demo
+        seed only, off by default).
+      description: >
+        Lists active and archived chats alike, regardless of their current title - the seed's way to
+        recognise a chat it imported earlier even after a rename, and never to mistake a chat the
+        caller started themselves for one of its own. Space membership is required as for
+        listSpaceChats. The route exists only while opaa.demo.chat-import.enabled is true.
+      responses:
+        "200":
+          description: The caller's imported chats of the space, in no particular order
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ImportedChat"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
     post:
       operationId: importChat
       tags: [chat-import]
@@ -28,9 +53,13 @@ paths:
         timestamps are taken as given; they must be in chronological order and must not lie in the
         future. Every source names a document by id; the document must lie in a library the caller
         may read, otherwise the request is refused with 400 - an unknown and an unreadable document
-        are not told apart. File name, source type and the document's metadata are read from the
-        document itself, never from the request. The route exists only while
-        opaa.demo.chat-import.enabled is true.
+        are not told apart. Every citation marker in an answer must name a document among the
+        sources of its own turn, with one of that document's sections and its file name; otherwise
+        the request is refused with 400. File name, source type and the document's metadata - core, format and library
+        fields, exactly as a generated answer shows them - are read from the document itself, never
+        from the request. The import key identifies the chat for listChatImports; a second import
+        with a key the caller already used in this space is refused with 409. The route exists only
+        while opaa.demo.chat-import.enabled is true.
       requestBody:
         required: true
         content:
@@ -57,8 +86,17 @@ components:
   schemas:
     ChatImportRequest:
       type: object
-      required: [title, turns]
+      required: [importKey, title, turns]
       properties:
+        importKey:
+          type: string
+          minLength: 1
+          maxLength: 255
+          pattern: "[\\s\\S]*\\S[\\s\\S]*"
+          description: >
+            The caller's stable name for this chat within the space. Only an import sets it, a
+            rename keeps it, and it is never shown in the regular chat views.
+          example: Gebühr Personalausweis unter 24
         title:
           type: string
           minLength: 1
@@ -91,7 +129,10 @@ components:
           pattern: "[\\s\\S]*\\S[\\s\\S]*"
           description: >
             The answer text, citation markers (【source: <documentId>#<chunk> | <fileName>】)
-            included as the chat renders them.
+            included as the chat renders them. A marker must name a document of this turn's
+            sources, one of that document's sections (0 to its chunk count minus one) and its file
+            name (compared case-insensitively in Unicode NFC). Text that opens a marker the import
+            cannot read as one is refused as well.
         askedAt:
           type: string
           format: date-time
@@ -115,3 +156,12 @@ components:
         cited:
           type: boolean
           description: Whether the answer text cites this document.
+
+    ImportedChat:
+      type: object
+      required: [importKey, chat]
+      properties:
+        importKey:
+          type: string
+        chat:
+          $ref: "#/components/schemas/ChatSummary"

@@ -55,8 +55,9 @@ OPAA macht KI-Können zum **verteilbaren Asset**:
 
 - **Assets statt Einzelwissen.** Agenten, Skills, Prompt-Bibliotheken, Wissensbibliotheken und Vorlagen
   sind benannte, beschriebene, auffindbare Objekte — nicht in Chatverläufen vergrabene Einzelfälle.
-- **Verteilungswege.** Persönlich → Team → Fachbereich → organisationsweiter Katalog, jeweils mit
-  Freigabe- und Prüfschritt. Schwarmintelligenz mit Governance statt Wildwuchs.
+- **Verteilungswege.** Persönlich → Team → Fachbereich → organisationsweit, jeweils mit Freigabe- und
+  Prüfschritt; gefunden wird alles Lesbare in **einem** Katalog, genutzt wird es in den Spaces, denen es
+  ausdrücklich zugeordnet ist. Schwarmintelligenz mit Governance statt Wildwuchs.
 - **Zentrale Steuerung statt lokaler Bastelei.** Die Systemverwaltung legt einmal fest, welche Modelle
   erlaubt sind, welche Voreinstellungen gelten, welche Werkzeuge und Grenzen greifen — alle erben das.
 - **Wirkung.** Die beste Arbeitsweise einer Abteilung wird zum Standard aller — nachvollziehbar,

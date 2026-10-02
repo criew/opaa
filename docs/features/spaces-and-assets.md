@@ -10,10 +10,10 @@ Dieses Dokument beschreibt das abgelöste Modell: **Assets** (Wissensbibliotheke
 
 ## Überblick
 
-1. **Assets** gehören ihrem Eigentümer und tragen ihre eigenen Rechte. Sie werden in Spaces *assoziiert* — die Assoziation gewährt keinerlei Zugriff.
+1. **Assets** gehören ihrem Eigentümer und tragen ihre eigenen Rechte. Sie werden Spaces *zugeordnet* (technisch: assoziiert) — die Zuordnung gewährt keinerlei Zugriff, ist aber eine harte Grenze: Im Chat eines Space ist nur nutzbar, was ihm zugeordnet und für die Person lesbar ist ([ADR-0039](../decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md)).
 2. **Spaces** sind Arbeitsräume. Chats und Artefakte entstehen *in* einem Space und gehören ihm — sie sind **zunächst privat** und werden für alle Mitglieder sichtbar, sobald der Ersteller sie **in den Space teilt**.
 3. **Dokumente** liegen in Wissensbibliotheken, nicht in Spaces. Die rechtebewusste Vektorsuche filtert über die Bibliothek.
-4. **Ein Chat läuft immer in einem Space.** Der Space bestimmt Aufbewahrung, Standard-Suchbereich, Modell-Policy und Zurechnung — aber keine Rechte an Assets.
+4. **Ein Chat läuft immer in einem Space.** Der Space bestimmt Aufbewahrung, Suchbereich (das Zugeordnete), Modell-Policy und Zurechnung — aber keine Rechte an Assets.
 5. **Rechte gelten für Nutzer und Gruppen.** Gruppen bilden die Aufbauorganisation ab und tragen die Verteilungsstufe „Fachbereich".
 6. **Ein Agent liest immer mit den Rechten des Nutzers.** Damit ein geteilter Agent funktioniert, wird sein Wissen mitfreigegeben — es gibt keinen Umgehungsweg.
 7. **Verteilt wird per Referenz, nicht per Kopie.** Verbesserungen wirken sofort bei allen; wer abweichen muss, erzeugt einen gekennzeichneten Abkömmling.
@@ -48,7 +48,7 @@ Ein pauschaler Satz in nur eine Richtung („der Space trägt keine Rechte" oder
 
 ### Was ein Asset ist
 
-Ein Asset ist ein benanntes, beschriebenes, auffindbares Objekt mit genau einem Eigentümer und einer eigenen Rechteliste. In dieser Ausbaustufe gibt es drei Typen; das Modell ist bewusst so geschnitten, dass weitere ohne Strukturänderung hinzukommen:
+Ein Asset ist ein benanntes, beschriebenes, im [Katalog](#der-katalog) auffindbares Objekt mit genau einem Eigentümer und einer eigenen Rechteliste. In dieser Ausbaustufe gibt es drei Typen; das Modell ist bewusst so geschnitten, dass weitere ohne Strukturänderung hinzukommen:
 
 | Typ | Inhalt |
 |---|---|
@@ -60,9 +60,9 @@ Die Ausdifferenzierung der Asset-Typen ist **nicht** Gegenstand dieses Dokuments
 
 #### Die Asset-Schale
 
-Was alle Typen gemeinsam haben, liegt in **einer** Tabelle `assets` ([#1899](https://github.com/criew/opaa/issues/1899), [ADR-0036](../decisions/0036-berechtigungsmodell-gruppen-und-faehigkeiten.md), Nachtrag zu Entscheidung 12): Kennung, Typ (`asset_type`), Organisation, Name, Beschreibung, Eigentümer (Person oder Gruppe), Auffindbarkeit (`listed`), Herkunft (`LOCAL` oder `BUILT_IN`), Anleger und Zeitstempel. Die Typtabelle — heute `knowledge_libraries` und `prompt_libraries` — trägt nur, was allein ihr gehört, und teilt die Kennung der Schale; im Code sind `KnowledgeLibrary` und `PromptLibrary` Unterklassen der Basisentität `Asset` (`io.opaa.asset`).
+Was alle Typen gemeinsam haben, liegt in **einer** Tabelle `assets` ([#1899](https://github.com/criew/opaa/issues/1899), [ADR-0036](../decisions/0036-berechtigungsmodell-gruppen-und-faehigkeiten.md), Nachtrag zu Entscheidung 12): Kennung, Typ (`asset_type`), Organisation, Name, Beschreibung, Eigentümer (Person oder Gruppe), Herkunft (`LOCAL` oder `BUILT_IN`), Anleger und Zeitstempel. Ein Feld für die Auffindbarkeit trägt sie nicht mehr: `listed` entfällt mit [ADR-0039](../decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md) (Umsetzung #2092). Die Typtabelle — heute `knowledge_libraries` und `prompt_libraries` — trägt nur, was allein ihr gehört, und teilt die Kennung der Schale; im Code sind `KnowledgeLibrary` und `PromptLibrary` Unterklassen der Basisentität `Asset` (`io.opaa.asset`).
 
-Auf der Schale arbeitet alles, was für jeden Typ gleich gilt, ohne den Typ zu kennen: Grants und ihre Historie, die Herleitung, die Auffindbarkeit samt Historie (`asset_visibility_history`), Eigentum und Nachfolge sowie die Space-Assoziation. Die zugehörigen Endpunkte tragen den Typ im Pfad (`/api/v1/assets/{assetType}/{assetId}/grants`, `…/access-derivation`, `…/spaces`); ein Typ, der nicht zur Kennung passt, antwortet `404` wie eine unbekannte Kennung. Die Betriebsliste der Nachfolge und die Reichweitensperre führen ein Asset als `ASSET` mit seinem Typ (`succession_cases.asset_type`), nicht über einen Katalog der Typen. Ein neuer Asset-Typ bringt damit eine Typtabelle, eine Unterklasse von `Asset`, eine `AssetTypeDefinition` (Bezeichnung, Protokoll-Objekttyp und gegebenenfalls eine eigene Reichweitenobergrenze) und seinen Wert im Enum `AssetType` der API-Spezifikation mit — Rechte, Katalog, Nachfolge und Reichweitensperre erreicht er ohne weitere Stelle. Hinzu kommen, weil beide Listen geschlossen sind, sein Protokoll-Objekttyp in der Prüfbedingung des Protokolls (`chk_audit_log_object_type`) und, wenn er ein eigenes Anlegerecht hat, dessen Fähigkeit. Auch die Regeln, die jeder Typ gleich braucht, liegen auf der Schale: der Inhalt eines Assets folgt der Formel, nicht der Verwaltung (`AssetAuthorization#requireContentRole`); eine Gruppe als Eigentümerin wählt nur ein Mitglied (`AssetGrantService#requireOwnableGroup`); Eigentümernamen einer Liste nennen weder E-Mail-Adresse noch geschützte Gruppe (`AssetOwnerNames`). Mit der [Prompt-Bibliothek](#prompt-bibliothek) ist das für einen zweiten Typ eingelöst.
+Auf der Schale arbeitet alles, was für jeden Typ gleich gilt, ohne den Typ zu kennen: Grants und ihre Historie, die Herleitung, die Reichweitenfelder samt Historie (`asset_visibility_history`, nach dem Wegfall von `listed` nur noch die Fremdzugangsfreigabe), Eigentum und Nachfolge, die Space-Zuordnung und die Favoriten. Die zugehörigen Endpunkte tragen den Typ im Pfad (`/api/v1/assets/{assetType}/{assetId}/grants`, `…/access-derivation`, `…/spaces`); ein Typ, der nicht zur Kennung passt, antwortet `404` wie eine unbekannte Kennung. Die Betriebsliste der Nachfolge und die Reichweitensperre führen ein Asset als `ASSET` mit seinem Typ (`succession_cases.asset_type`), nicht über einen Katalog der Typen. Ein neuer Asset-Typ bringt damit eine Typtabelle, eine Unterklasse von `Asset`, eine `AssetTypeDefinition` (Bezeichnung, Protokoll-Objekttyp und gegebenenfalls eine eigene Reichweitenobergrenze) und seinen Wert im Enum `AssetType` der API-Spezifikation mit — Rechte, Katalog, Nachfolge und Reichweitensperre erreicht er ohne weitere Stelle. Hinzu kommen, weil beide Listen geschlossen sind, sein Protokoll-Objekttyp in der Prüfbedingung des Protokolls (`chk_audit_log_object_type`) und, wenn er ein eigenes Anlegerecht hat, dessen Fähigkeit. Auch die Regeln, die jeder Typ gleich braucht, liegen auf der Schale: der Inhalt eines Assets folgt der Formel, nicht der Verwaltung (`AssetAuthorization#requireContentRole`); eine Gruppe als Eigentümerin wählt nur ein Mitglied (`AssetGrantService#requireOwnableGroup`); Eigentümernamen einer Liste nennen weder E-Mail-Adresse noch geschützte Gruppe (`AssetOwnerNames`). Mit der [Prompt-Bibliothek](#prompt-bibliothek) ist das für einen zweiten Typ eingelöst.
 
 ### Asset-Rollen
 
@@ -70,7 +70,7 @@ Auf der Schale arbeitet alles, was für jeden Typ gleich gilt, ohne den Typ zu k
 |---|---|
 | `VIEWER` | das Asset benutzen und seine Konfiguration einsehen — Agent aufrufen, Bibliothek liefert Treffer, Aufgabenbeschreibung und Dokumentenliste sind sichtbar. Ausnahme Wissensbibliothek: ihre Quellverbindung (interner Serverpfad, Quell-URL, Proxy-Host) bleibt selbst einem `EDITOR` verborgen und wird erst ab `MANAGER` sichtbar — sie ist Infrastrukturdetail, nicht Konfiguration im Sinne dieser Zeile (#507) |
 | `EDITOR` | zusätzlich ändern |
-| `MANAGER` | zusätzlich teilen, Rechte vergeben, Freigabestufe und Auffindbarkeit setzen |
+| `MANAGER` | zusätzlich teilen und Rechte vergeben — auch an „Alle Konten", womit das Asset öffentlich wird |
 | `OWNER` | zusätzlich löschen und Eigentum übertragen |
 
 Asset-Rollen sind eine **eigene Rangordnung**, getrennt von den Space-Rollen. **Kein Rollenname kommt in beiden Systemen vor** — deshalb heißt die verwaltende Asset-Rolle `MANAGER` und nicht `ADMIN`. Wer sagt „ich habe hier Admin-Rechte", meint damit immer einen Space; wer Asset-Rechte meint, sagt `MANAGER` oder `OWNER`. Das ist keine Kosmetik: Bei der Übergabe eines Vorgangs muss ohne Rückfrage klar sein, wovon die Rede ist.
@@ -118,7 +118,7 @@ lesbare_Bibliotheken(u) =
   ∪ { L : Grant(ALLE, L) ≥ VIEWER und gleiche Organisation }
 ```
 
-**Space-Assoziationen kommen in diesem Ausdruck nicht vor.** Das ist die Kernaussage des Modells.
+**Space-Assoziationen kommen in diesem Ausdruck nicht vor.** Das ist die Kernaussage des Modells. Die Zuordnung begrenzt, was ein Chat in einem Space nutzt ([Suchbereich je Chatart](#suchbereich-je-chatart)) — nie, was jemand lesen darf.
 
 **Der Ausdruck kennt keine Ausnahme je Bibliothek — und, bis auf die Systemverwaltung (siehe unten), auch
 keine je Nutzer.** Beide Wege, auf denen Rechte geprüft werden — die Anzeige einer einzelnen Bibliothek
@@ -194,11 +194,11 @@ Die Herleitung beantwortet die Gegenwart. Die Vergangenheit beantwortet die
 [Stichtagsauskunft](./security-and-compliance.md#der-lesepfad-stichtagsauskunft-1822), und sie ist
 `AUDITOR`-Sache mit Anlass, Zeitfenster und Abrufprotokoll.
 
-### Freigabestufen und Auffindbarkeit
+### Freigabestufen und Sichtbarkeit
 
 Die in der Produktvision beschriebene Verteilung „persönlich → Team → Fachbereich → organisationsweit" ist eine Eigenschaft **des Assets**, keine Topologie der Spaces. Es gibt keine Space-Hierarchie — und es gibt auch **kein Abteilungs- oder Amts-Objekt**.
 
-Die Stufe ergibt sich stattdessen daraus, **wem** der Grant gilt, kombiniert mit der Auffindbarkeit:
+Die Stufe ergibt sich stattdessen allein daraus, **wem** der Grant gilt:
 
 | Stufe der Vision | Umsetzung im Modell |
 |---|---|
@@ -211,13 +211,14 @@ Ein Asset „an die ganze Abteilung freigeben" heißt also: **Grant an die Grupp
 
 **Die Stufe ist kein eigenes Feld mehr** ([ADR-0037](../decisions/0037-reichweite-als-freigabe-an-alle.md), [#1931](https://github.com/criew/opaa/issues/1931)). Das frühere `visibility` (`PRIVATE` / `SHARED` / `ORGANIZATION`) ist entfallen: Von seinen drei Werten wirkte nur der letzte, `PRIVATE` und `SHARED` wurden nirgends unterschieden, und die Reichweite stand damit an zwei Stellen zugleich — in der Rechteliste und in einem Feld der Schale. Wie weit ein Asset reicht, ergibt sich seither **allein aus seinen Grants**; die Übersichten zeigen es als abgeleitete Kennzeichnung („Alle" / „N Gruppen, M Personen" / „nur Sie"), nicht als Einstellung.
 
-Ein Feld steuert die Auffindbarkeit:
+**Sichtbarkeit: öffentlich oder geschlossen** ([ADR-0039](../decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md), Entscheidung 2). Ein Asset ist
 
-| Feld | Werte | Wirkung |
+| Sichtbarkeit | abgeleitet aus | wer es sieht |
 |---|---|---|
-| `listed` | `true` \| `false` | Auffindbarkeit im Katalog, unabhängig vom Zugriff |
+| **öffentlich** | einer Freigabe an „Alle Konten" | jedes Konto der Organisation |
+| **geschlossen** | Freigaben nur an Personen oder Gruppen | nur, wer darüber lesen darf |
 
-`listed` ist standardmäßig `false`, und es zu setzen ist eine bewusste Entscheidung des Freigebenden; die Schwelle dafür ist die Rolle `MANAGER` am Asset — dieselbe wie für jede andere Reichweitenentscheidung. Eine frühere Regel „`listed` erst ab Fachbereichsebene" hing an der entfallenen Stufe und ist mit ihr weggefallen. Damit ist ein Asset auffindbar, ohne zugänglich zu sein — aber nur, wenn jemand das ausdrücklich wollte.
+Auch die Sichtbarkeit ist **kein Feld**, sondern eine Ableitung aus den Grants. **Sichtbar ist gleich lesbar:** Ein Asset, das jemand nicht lesen darf, erscheint für ihn nirgends — nicht im Katalog, nicht in einer Auswahl, nicht in den Space-Einstellungen, nicht in einer API-Antwort; weder sein Name noch seine Anzahl werden genannt. Die einzige Auskunft ist ein Hinweis **ohne Anzahl und ohne Namen** innerhalb eines Space, dem die Person angehört: „Nicht alle zugeordneten Inhalte sind für Sie lesbar." (siehe [Assets in einen Space assoziieren](#assets-in-einen-space-assoziieren)). Einen Anfrage- oder Genehmigungsweg zu einem geschlossenen Asset gibt es nicht. Das frühere Schaufenster `listed` („im Katalog auffindbar, auch ohne Berechtigung") entfällt samt Historie und Audit-Ereignis (Umsetzung #2092). Die Beschriftung des Paars in der Oberfläche legt #2094 fest („öffentlich" klingt in Behörden nach Internet; Vorschlag „Für alle" / „Eingeschränkt").
 
 ### Eigentümerschaft und Verwaisung
 
@@ -247,7 +248,7 @@ Verfall — also automatisches Löschen von Assets ohne Zuständigkeit — wird 
 
 ### Prompt-Bibliothek
 
-Die Prompt-Bibliothek ist der zweite gebaute Asset-Typ ([#1901](https://github.com/criew/opaa/issues/1901), Epic [#1726](https://github.com/criew/opaa/issues/1726)). Sie ist ein Asset wie die Wissensbibliothek — Name, Beschreibung, Eigentümer (Person oder Gruppe), Freigabestufe, `listed` (Vorgabe `false`), Organisation, Herkunft `LOCAL` — und liegt als Typtabelle `prompt_libraries` auf der [Asset-Schale](#die-asset-schale). Eigene Spalten hat sie vorerst keine; die Tabelle hält den Typ.
+Die Prompt-Bibliothek ist der zweite gebaute Asset-Typ ([#1901](https://github.com/criew/opaa/issues/1901), Epic [#1726](https://github.com/criew/opaa/issues/1726)). Sie ist ein Asset wie die Wissensbibliothek — Name, Beschreibung, Eigentümer (Person oder Gruppe), Freigabestufe, Organisation, Herkunft `LOCAL` — und liegt als Typtabelle `prompt_libraries` auf der [Asset-Schale](#die-asset-schale). Eigene Spalten hat sie vorerst keine; die Tabelle hält den Typ.
 
 **Ein Prompt** ist eine benannte, wiederverwendbare Anweisung in genau einer Prompt-Bibliothek. Er hat keine Wissensbindung, keine Werkzeuge und keine Modellwahl ([Abgrenzung zu Skill und Agent](./agents-and-tools.md#skills-und-prompt-bibliotheken)):
 
@@ -277,27 +278,27 @@ Das Einsetzen im Chat beschreibt der Abschnitt [Prompt im Chat](#prompt-im-chat)
 
 Ein Prompt wird im Chat benutzt, nicht nur abgelegt ([#1903](https://github.com/criew/opaa/issues/1903)). Der Ablauf folgt dem Konsens der Wettbewerbsrecherche (Epic #1726) — `/name` als Auslöser, Formular für die Variablen — und weicht an einer Stelle bewusst ab: Der aufgelöste Text wird **nicht** sofort gesendet, sondern steht bearbeitbar im Eingabefeld. Die fragende Person sieht, was an das Modell geht.
 
-1. **Auswählen.** Ein `/` am Anfang einer Zeile im Eingabefeld öffnet die Auswahl. Sie enthält alle Prompts aus Prompt-Bibliotheken, die die Person nach der Formel lesen darf (`GET /api/v1/prompts/available`), gruppiert nach Bibliothek; im Chat eines Space stehen die dort [assoziierten](#assets-in-einen-space-assoziieren) Bibliotheken voran und sind gekennzeichnet (`associatedWithSpace`). Die Assoziation ordnet nur — eine assoziierte Bibliothek, die die Person nicht lesen darf, erscheint nicht. Gesucht wird in Befehlsname, Titel und Beschreibung. Die Auswahl ist bewusst schlank (Kennung, Bibliothek, Name, Titel, Beschreibung, `hasVariables`); Text und Variablen holt der Client erst mit der Wahl über die Einzelansicht des Prompts.
+1. **Auswählen.** Ein `/` am Anfang einer Zeile im Eingabefeld öffnet die Auswahl. Sie enthält genau die Prompts aus Prompt-Bibliotheken, die dem Space des Chats [zugeordnet](#assets-in-einen-space-assoziieren) sind **und** die die Person nach der Formel lesen darf (`GET /api/v1/prompts/available`, der Space ist Pflichtangabe), gruppiert nach Bibliothek. Die Zuordnung ist eine Grenze, keine Sortierung ([ADR-0039](../decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md); Umsetzung #2096): Eine lesbare, nicht zugeordnete Bibliothek erscheint nicht, eine zugeordnete, die die Person nicht lesen darf, ebenso wenig. Gesucht wird in Befehlsname, Titel und Beschreibung. Die Auswahl ist bewusst schlank (Kennung, Bibliothek, Name, Titel, Beschreibung, `hasVariables`); Text und Variablen holt der Client erst mit der Wahl über die Einzelansicht des Prompts.
 2. **Ausfüllen.** Ein Prompt ohne Variablen wird sofort eingesetzt. Einer mit Variablen fragt die Werte in einem Formular ab: ein Feld je Variable nach ihrem Typ, Vorbelegungen eingetragen, ein Datum ohne Vorbelegung auf den heutigen Tag gesetzt; Pflichtfelder sperren „Einsetzen". `{{CURRENT_DATE}}` und `{{USER_NAME}}` löst der Client auf. Datumswerte stehen im eingesetzten Text als `TT.MM.JJJJ`.
 3. **Senden.** Der Text landet im Eingabefeld, ein Chip „Prompt: <Titel>" kennzeichnet ihn. Senden bleibt eine eigene Handlung. Wer den Chip entfernt, sendet ohne Kennzeichnung.
 
-**Was der Server tut.** Die Anfrage trägt `usedPromptId`. Der Server löst den Text **nicht** auf — er sieht die fertige Frage wie jede getippte; Suche und Modellaufruf bleiben unverändert. Er prüft nur das Leserecht auf die Bibliothek des Prompts über die Schale (`AssetAuthorization#requireContentRole`, also die Formel; die Systemverwaltung ohne Grant darf nicht). Fehlt es, lehnt er die Frage vor jedem Modellaufruf mit `403` und dem Code `PROMPT_NOT_USABLE` ab; ein unbekannter Prompt und einer einer anderen Organisation antworten gleich, damit keine fremde Kennung bestätigt wird. Der Client nimmt die Frage dann aus dem Verlauf und legt ihren Text ohne Chip ins Eingabefeld zurück. Im gespeicherten Chat hält er Kennung und **Titel zum Zeitpunkt des Sendens** an der Nutzer-Nachricht fest (`chat_messages.used_prompt_id`, `used_prompt_title`, nur gemeinsam und nur an einer Frage) und liefert beides in `ChatMessageResponse` zurück.
+**Was der Server tut.** Die Anfrage trägt `usedPromptId`. Der Server löst den Text **nicht** auf — er sieht die fertige Frage wie jede getippte; Suche und Modellaufruf bleiben unverändert. Er prüft nur, dass die Bibliothek des Prompts dem Space des Chats zugeordnet ist und die Person sie lesen darf — das Leserecht über die Schale (`AssetAuthorization#requireContentRole`, also die Formel; die Systemverwaltung ohne Grant darf nicht). Fehlt eines von beiden, lehnt er die Frage vor jedem Modellaufruf mit `403` und dem Code `PROMPT_NOT_USABLE` ab; ein unbekannter Prompt und einer einer anderen Organisation antworten gleich, damit keine fremde Kennung bestätigt wird. Der Client nimmt die Frage dann aus dem Verlauf und legt ihren Text ohne Chip ins Eingabefeld zurück. Im gespeicherten Chat hält er Kennung und **Titel zum Zeitpunkt des Sendens** an der Nutzer-Nachricht fest (`chat_messages.used_prompt_id`, `used_prompt_title`, nur gemeinsam und nur an einer Frage) und liefert beides in `ChatMessageResponse` zurück.
 
 **Nachweis im Verlauf.** An der Frage steht „Prompt: <Titel>". Das ist ein Namens-Snapshot, kein Link: Er bleibt stehen, wenn der Prompt umbenannt oder gelöscht wird oder die Person ihn nicht mehr lesen darf. Die Spalten haben deshalb keinen Fremdschlüssel auf `prompts`. Kein Wettbewerber zeigt im Verlauf, welcher Prompt benutzt wurde.
 
 **Kein Auswertungspfad.** Die Verwendung ist kein Protokollereignis ([Protokoll](#protokoll)) und keine Statistik: Es gibt keinen Endpunkt, keinen Filter und keine Sortierung nach Person oder nach verwendetem Prompt über Gespräche hinweg, und `used_prompt_id` trägt keinen Index. Der Prompt ist nur dort sichtbar, wo die Frage selbst sichtbar ist — im Chat ihres Autors ([Kein personenbezogener Auswertungspfad](#kein-personenbezogener-auswertungspfad)). `PromptUsageSpecificationTest` hält das über die API-Spezifikation fest, `UsedPromptQueryGuardTest` an der Quelle: Keine Abfrage, keine abgeleitete Repository-Methode und kein späteres Changeset nennt die Spalten. Eine künftige [Nutzungstransparenz](#nutzungstransparenz) je Asset wäre eine eigene, aggregierte Erhebung, nicht eine Abfrage über diese Spalten.
 
-Außerhalb dieses Abschnitts: ein Prompt als dauerhafter Vorspann für einen ganzen Chat (das ist der Skill), Favoriten und „zuletzt verwendet".
+Außerhalb dieses Abschnitts: ein Prompt als dauerhafter Vorspann für einen ganzen Chat (das ist der Skill), Favoriten an einzelnen Prompts und „zuletzt verwendet". Favoriten an der Prompt-Bibliothek als Asset gibt es wie für jedes Asset (siehe [Favoriten](#favoriten)).
 
 #### Rechte, Anlegen und Nachfolge
 
-Die Prompt-Bibliothek bringt keine eigene Rechtelogik mit. Rechte, Herleitung und Space-Assoziation laufen ausschließlich über die Endpunkte der Schale (`/api/v1/assets/PROMPT_LIBRARY/{assetId}/grants`, `…/access-derivation`, `…/spaces`); Freigabestufe, Auffindbarkeit, Eigentum und „Nachfolge offen" wirken wie bei jedem Asset. Dasselbe gilt in der Oberfläche: Wissens- und Prompt-Bibliothek teilen den Freigabeabschnitt (`AssetDistributionSection` — Verteilungsstufe, Auffindbarkeit, Rechte, bereitgestellt in, Herleitung), den einen Rechtedialog samt Grant-Store und die Schritte des Anlage-Assistenten; Typeigenes wie die Freigabe-Obergrenze einer Konnektorbibliothek oder ihre Fremdzugangsfreigabe kommt als Einschub des Aufrufers hinzu ([#1902](https://github.com/criew/opaa/issues/1902)).
+Die Prompt-Bibliothek bringt keine eigene Rechtelogik mit. Rechte, Herleitung und Space-Assoziation laufen ausschließlich über die Endpunkte der Schale (`/api/v1/assets/PROMPT_LIBRARY/{assetId}/grants`, `…/access-derivation`, `…/spaces`); Freigabestufe, Sichtbarkeit, Eigentum und „Nachfolge offen" wirken wie bei jedem Asset. Dasselbe gilt in der Oberfläche: Wissens- und Prompt-Bibliothek teilen den Freigabeabschnitt (`AssetDistributionSection` — Verteilungsstufe, Rechte, bereitgestellt in, Herleitung; der Schalter für die Auffindbarkeit entfällt mit #2092), den einen Rechtedialog samt Grant-Store und die Schritte des Anlage-Assistenten; Typeigenes wie die Freigabe-Obergrenze einer Konnektorbibliothek oder ihre Fremdzugangsfreigabe kommt als Einschub des Aufrufers hinzu ([#1902](https://github.com/criew/opaa/issues/1902)).
 
 | Rolle | an einer Prompt-Bibliothek |
 |---|---|
 | `VIEWER` | Bibliothek und Prompts lesen |
 | `EDITOR` | Prompts anlegen, ändern, löschen |
-| `MANAGER` | Name, Beschreibung, Freigabestufe und Auffindbarkeit ändern, Rechte vergeben |
+| `MANAGER` | Name und Beschreibung ändern, Rechte vergeben (auch an „Alle Konten") |
 | `OWNER` | die Bibliothek samt Prompts löschen |
 
 **Verwalten ist nicht Lesen.** Die Systemverwaltung zählt für die Verwaltung einer Prompt-Bibliothek als `OWNER`, für ihre Prompts aber nicht: Wer sie nur über die Verwaltung erreicht, erhält beim Lesen der Prompts `403` — dieselbe Regel wie beim Original eines Dokuments. Die Liste `GET /api/v1/prompt-libraries` enthält genau die Bibliotheken, deren Prompts die Person lesen darf; die Einzelansicht urteilt für jede Person ohne Systemrolle genauso.
@@ -346,16 +347,17 @@ Eine Verteilung hätte zwei Seiten haben können: die Gebeseite — ein `MANAGER
 
 Der Grund ist die Asymmetrie zwischen Geben und Empfangen: **Ein Grant setzt niemanden etwas aus.** Er gewährt Zugriff, er verteilt keine Inhalte an Unbeteiligte. Wer ihn nicht nutzen will, nutzt ihn nicht. Das Risiko ist deshalb kein Datenabfluss, sondern Katalog-Rauschen — dass jemand vierhundert Personen ein Asset in die Liste legt, das sie nicht angefordert haben.
 
-Dagegen wirken zwei Mittel, die es ohnehin gibt:
+Dagegen wirken drei Mittel, die es ohnehin gibt:
 
-- **`listed` ist standardmäßig `false`.** Ein Asset ist zugänglich, ohne im Katalog aufzutauchen; die Aufnahme in den Katalog ist eine eigene, bewusste Entscheidung (siehe [Freigabestufen und Auffindbarkeit](#freigabestufen-und-auffindbarkeit)).
+- **Lesbar heißt nicht genutzt.** Ein freigegebenes Asset erscheint im Katalog der Empfangenden, aber in keinem Chat: Nutzbar wird es in einem Space erst durch eine ausdrückliche [Zuordnung](#assets-in-einen-space-assoziieren).
+- **Der Katalog ordnet für die Person selbst** — Favoriten oben, Filter nach Typ, Sichtbarkeit und „aus meinen Gruppen" (siehe [Der Katalog](#der-katalog)). Ein unerwünschter Eintrag stört dort, er drängt sich nicht auf.
 - **Die Governance-Arbeitsliste.** Der System-Admin sieht, was breit verteilt wurde, und kann eingreifen — Freigaben laufen frei, die Aufsicht schaut hinterher.
 
 **Was damit ersatzlos entfällt:** Kuratoren als Objekt an der Organisationseinheit, die Zuständigkeitsvererbung nach oben, die konfigurierbare Größenschwelle, die Sonderbehandlung des Umgehungswegs über `AD_HOC`-Gruppen sowie Freigabeanfragen mit Frist, Eskalation und Liegezeit-Listen. Eine frühere Fassung sah das alles vor; die Begründung für die Streichung steht unter [Geprüfte und verworfene Alternativen](#verteilung-von-assets-1).
 
 **Wo eine Obergrenze bleibt:** Jede Konnektorbibliothek (jeder `sourceType` außer `UPLOAD`) trägt eine Freigabe-Obergrenze (siehe [Konnektoren und Quellzuordnung](#konnektoren-und-quellzuordnung)). Sie ist die einzige Stelle, an der die Reichweite eines Grants technisch gedeckelt ist. Ihre ursprüngliche Begründung — ein Admin speist einen Bestand ein, über den ein Bibliotheks-Eigentümer sonst frei verfügen könnte — setzte voraus, dass nur die Systemverwaltung eine solche Bibliothek anlegen kann; das gilt mit [ADR-0018](../decisions/0018-quellkonfiguration-in-der-bibliothek.md) nicht mehr. An die Stelle der dortigen Entscheidung 6 tritt seit [ADR-0036](../decisions/0036-berechtigungsmodell-gruppen-und-faehigkeiten.md), Entscheidung 5 die vergebbare Fähigkeit `CREATE_CONNECTOR_LIBRARY` — ausgeliefert an „Alle Konten", also im Auslieferungszustand unverändert offen, aber auf eine benannte Gruppe einschränkbar (siehe [access-control.md](access-control.md#fähigkeiten-die-installationsweiten-anlegerechte)).
 
-**Wirkung der Obergrenze (gebaut, #797, Maintainer-Festlegung vom 21.09.2026; Form seit [ADR-0037](../decisions/0037-reichweite-als-freigabe-an-alle.md)):** Sie besteht aus zwei Erlaubnissen — „Freigabe an Alle erlaubt" (`all_accounts_grant_allowed`) und „Auffindbarkeit erlaubt" (`listed_cap`) — und begrenzt sonst nichts, insbesondere keine Gruppengrößen-Schwelle für Grants (die Streichung der Größenschwelle gilt unverändert, siehe [Freigabe an eine Gruppe braucht keine Zustimmung](#freigabe-an-eine-gruppe-braucht-keine-zustimmung)). Die Systemverwaltung setzt sie je Bibliothek (`PUT /api/v1/libraries/{libraryId}/share-cap`). Ein Bibliotheks-Eigentümer oder `MANAGER` kann weder an „Alle Konten" freigeben noch listen, solange die jeweilige Erlaubnis fehlt — der Versuch scheitert mit `409`, weil die eigene Berechtigung nicht in Frage steht, sondern die Anfrage mit der gesetzten Obergrenze kollidiert. **Die Prüfung der ersten Erlaubnis sitzt am Freigabepfad**, nicht an einem Reichweitenfeld: Seit die organisationsweite Reichweite ein Grant ist, ist der Grant die Stelle, an der gedeckelt wird. Wird eine Erlaubnis nachträglich entzogen, nimmt das System das Weitergehende **sofort** zurück — ein bestehender Grant an „Alle Konten" wird über den gewöhnlichen Widerrufsweg entzogen (Audit-Ereignis und Grant-Intervall wie bei jedem Widerruf), ein gesetztes `listed` wird gelöscht. Erteilte Rechte an Personen und Gruppen sowie eine bestehende Fremdzugangsfreigabe bleiben davon **unberührt**; wer auch diese zurücknehmen will, tut es gesondert. Es gibt bewusst keinen Zustand „verletzt, aber geduldet": Anders als beim [Strikt-Space](#der-strikt-modus), dessen „Voraussetzung verletzt" einen bestehenden Zustand vorübergehend einfriert, weil ein Space nicht unter der Kontrolle des Bibliotheks-Eigentümers steht, liegt die Bibliothek selbst in der Hand der Systemverwaltung, die die Obergrenze setzt — ein sofortiges Zurücknehmen erzeugt hier keine widersprüchliche Zuständigkeit. Eine gesenkte Obergrenze zählt zu den Ursachen, die einen Strikt-Space in den Zustand „Voraussetzung verletzt" versetzen können, sobald jener Mechanismus gebaut ist (#204, noch nicht umgesetzt). `UPLOAD`-Bibliotheken tragen keine Obergrenze: Dieselbe Person kuratiert dort ohnehin jedes Dokument einzeln, es gibt nichts, wovor die Obergrenze schützen müsste.
+**Wirkung der Obergrenze (gebaut, #797, Maintainer-Festlegung vom 21.09.2026; Form seit [ADR-0037](../decisions/0037-reichweite-als-freigabe-an-alle.md) und [ADR-0039](../decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md)):** Sie besteht aus einer Erlaubnis — „Freigabe an Alle erlaubt" (`all_accounts_grant_allowed`); die frühere zweite Erlaubnis „Auffindbarkeit erlaubt" (`listed_cap`) entfällt mit `listed` (Umsetzung #2092) — und begrenzt sonst nichts, insbesondere keine Gruppengrößen-Schwelle für Grants (die Streichung der Größenschwelle gilt unverändert, siehe [Freigabe an eine Gruppe braucht keine Zustimmung](#freigabe-an-eine-gruppe-braucht-keine-zustimmung)). Die Systemverwaltung setzt sie je Bibliothek (`PUT /api/v1/libraries/{libraryId}/share-cap`). Ein Bibliotheks-Eigentümer oder `MANAGER` kann nicht an „Alle Konten" freigeben, solange die Erlaubnis fehlt — der Versuch scheitert mit `409`, weil die eigene Berechtigung nicht in Frage steht, sondern die Anfrage mit der gesetzten Obergrenze kollidiert. **Die Prüfung sitzt am Freigabepfad**, nicht an einem Reichweitenfeld: Seit die organisationsweite Reichweite ein Grant ist, ist der Grant die Stelle, an der gedeckelt wird. Wird die Erlaubnis nachträglich entzogen, nimmt das System das Weitergehende **sofort** zurück — ein bestehender Grant an „Alle Konten" wird über den gewöhnlichen Widerrufsweg entzogen (Audit-Ereignis und Grant-Intervall wie bei jedem Widerruf). Erteilte Rechte an Personen und Gruppen sowie eine bestehende Fremdzugangsfreigabe bleiben davon **unberührt**; wer auch diese zurücknehmen will, tut es gesondert. Es gibt bewusst keinen Zustand „verletzt, aber geduldet": Die Bibliothek liegt in der Hand der Systemverwaltung, die die Obergrenze setzt — ein sofortiges Zurücknehmen erzeugt keine widersprüchliche Zuständigkeit. `UPLOAD`-Bibliotheken tragen keine Obergrenze: Dieselbe Person kuratiert dort ohnehin jedes Dokument einzeln, es gibt nichts, wovor die Obergrenze schützen müsste.
 
 ### Referenz statt Kopie
 
@@ -436,7 +438,7 @@ Der Freigabeweg hat vier Schritte:
 | **Vorschlagen** | `MANAGER` oder `OWNER` des Assets | Eine benannte Fassung wird zur Prüfung für eine Freigabestufe eingereicht |
 | **Fachlich prüfen** | die für diese Stufe benannte prüfende Stelle | Prüfvermerk mit Ergebnis; bei Agenten gehört der Bericht des [Prüfstands](./agents-and-tools.md#agenten-prüfstand-vor-der-freigabe) zur Unterlage |
 | **Freigeben** | dieselbe Stelle | Freigabestempel an der **Version**: wer, wann, für welche Stufe, auf welcher Prüfgrundlage |
-| **Veröffentlichen** | `MANAGER` des Assets | Grants und `listed` werden gesetzt — der Schritt, der die Reichweite tatsächlich herstellt |
+| **Veröffentlichen** | `MANAGER` des Assets | Grants werden gesetzt — der Schritt, der die Reichweite tatsächlich herstellt |
 
 **Der Freigabestempel hängt an der Version, nicht am Asset.** Sonst wäre er nach der ersten Änderung wertlos — und genau diese Frage stellt eine Revision: nicht „war der Agent freigegeben", sondern „war *diese* Fassung freigegeben, als *dieser* Bescheid erging".
 
@@ -446,7 +448,7 @@ Der Freigabeweg hat vier Schritte:
 
 **Wer prüft.** Die prüfende Stelle wird je Freigabestufe benannt — als Person oder, besser, als Gruppe. Ist für eine Stufe keine Stelle benannt, ist die Stufe schlicht nicht erreichbar; das System erfindet keine Ersatzzuständigkeit und lässt die Prüfung auch nicht entfallen. Ein Vorschlag läuft nicht ins Leere: Er trägt eine Frist und erscheint nach Ablauf auf der Governance-Arbeitsliste des System-Admins — derselbe Mechanismus wie bei der Mitfreigabe von Wissen und bei offener Nachfolge.
 
-Die Zustände einer Version sind eine **eigene Achse**, unabhängig von den Grants und von `listed`:
+Die Zustände einer Version sind eine **eigene Achse**, unabhängig von den Grants:
 
 | Zustand | Bedeutung |
 |---|---|
@@ -461,14 +463,22 @@ Die Zustände einer Version sind eine **eigene Achse**, unabhängig von den Gran
 
 Der Katalog ist die Antwort auf den Satz „das hätte ich gebraucht, ich wusste nur nicht, dass es das gibt". **KI-Assets sollen gefunden und nicht herumgemailt werden.**
 
-**Auffindbarkeit ist ein eigenes Merkmal, getrennt von der Zugänglichkeit.** Das Feld `listed` ist bereits unter [Freigabestufen und Auffindbarkeit](#freigabestufen-und-auffindbarkeit) eingeführt; hier steht, was daraus folgt. Vier Kombinationen sind möglich, und alle vier kommen vor:
+**Ein Einstieg für alle Asset-Typen** ([ADR-0039](../decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md), Entscheidung 1). Der Katalog ist der einzige Ort der Hauptnavigation, an dem Assets gefunden, angelegt und geöffnet werden — Wissen, Prompts, später Skills und Agenten. Getrennte Einstiege je Typ gibt es nicht; ein neuer Typ braucht einen Eintrag in der Typ-Registry der Oberfläche, keinen Menüpunkt.
 
-| | `listed = true` | `listed = false` |
-|---|---|---|
-| **zugänglich** | Regelfall für geprüfte Assets: nutzbar und im Katalog auffindbar | Regelfall für Arbeitsstände und für gezielt geteilte Assets: nutzbar, aber nicht beworben |
-| **nicht zugänglich** | Schaufenster: der Eintrag ist sichtbar, die Nutzung nicht — man erfährt, dass es etwas gibt, und an wen man sich wendet | Das Asset existiert für diesen Nutzer nicht |
+**Der Katalog zeigt alles, was die Person lesen darf, und nichts sonst.** Grundlage ist allein die [Rechteformel](#rechte-an-einem-asset-erhalten): direkter Grant, Grant an eine ihrer Gruppen oder Grant an „Alle Konten". Ein geschlossenes Asset ohne Leserecht erscheint nicht, auch nicht als Eintrag ohne Zugriff; damit berührt der Katalog die Zusage zur Nicht-Sichtbarkeit nicht mehr (siehe [Was aus der Zusage zur Nicht-Sichtbarkeit wird](#was-aus-der-zusage-zur-nicht-sichtbarkeit-wird)). Er überschreitet **nie** die Organisationsgrenze (siehe [Organisation als Mandantengrenze](#organisation-als-mandantengrenze)).
 
-Der Fall unten links ist der einzige, der die Zusage zur Nicht-Sichtbarkeit berührt: Ein Katalogeintrag verrät die **Existenz** eines Assets. Deshalb ist `listed` standardmäßig `false` und die Listung eine ausdrückliche Entscheidung des Freigebenden.
+**Darstellung: nur Kacheln.** Eine Tabellenansicht gibt es nicht; Kacheln folgen dem Muster aus den [Gestaltungsleitlinien](../design/guidelines.md). Jede Kachel zeigt Typ-Badge mit Icon, Name, Beschreibung, [Sichtbarkeit](#freigabestufen-und-sichtbarkeit) (öffentlich/geschlossen), die zuständige Stelle, die eigene Rolle, Stand oder Status (etwa Indizierungsstand, „Nachfolge offen") und die Zahl der Spaces, denen das Asset zugeordnet ist.
+
+| Bedienelement | Wirkung |
+|---|---|
+| **Suche** | über Name und Beschreibung |
+| **Typfilter** | ein oder alle Asset-Typen |
+| **Sichtbarkeit** | öffentlich, geschlossen oder beides |
+| **„aus meinen Gruppen"** | Assets mit einer Freigabe an eine eigene Gruppe oder im Eigentum einer solchen Gruppe (genaue Definition in der API-Spezifikation, #2093) |
+| **Favoriten** | nur Favoriten; ohne Filter stehen sie oben (siehe [Favoriten](#favoriten)) |
+| **Sortierung** | Name oder Änderungsdatum |
+| **„Neu"** | Schritt 1 ist die Typwahl als Kacheln mit Icon, angeboten nur für Typen mit Anlegerecht; danach folgt der typeigene Assistent |
+| **„In Space verwenden"** | an jeder Kachel und auf der Detailseite: ordnet das Asset einem Space zu, in dem die Person `CURATOR` oder `ADMIN` ist, oder legt einen neuen Space damit an — höchstens zwei Klicks (siehe [Assets in einen Space assoziieren](#assets-in-einen-space-assoziieren)) |
 
 Ein Katalogeintrag enthält **Beschreibungen, keine Inhalte**:
 
@@ -479,15 +489,24 @@ Ein Katalogeintrag enthält **Beschreibungen, keine Inhalte**:
 - Herkunft: mitgeliefert, lokal angelegt, abgeleitet oder importiert
 - Nutzungsangaben — aggregiert, siehe [Nutzungstransparenz](#nutzungstransparenz)
 
-Die Suche im Katalog läuft über die Assets, auf die der Nutzer Zugriff hat — direkter Grant, Grant an eine seiner Gruppen oder Grant an „Alle Konten" —, **vereinigt** mit den gelisteten. Sie überschreitet **nie** die Organisationsgrenze (siehe [Organisation als Mandantengrenze](#organisation-als-mandantengrenze)).
+*Phasenlage: durchsuchbarer Katalog in Phase 2; der organisationsweite Katalog mit Freigabestand in Phase 3. Gebaut ist ein erster Katalog ohne Freigabestand, Fachbereich und Nutzungsangaben ([#1904](https://github.com/criew/opaa/issues/1904)); was er heute zeigt, steht unter [Gebauter Ist-Stand](#gebauter-ist-stand). Den einen Einstieg, die Kacheln und die Filter liefern #2092 bis #2095.*
 
-*Phasenlage: durchsuchbarer Katalog in Phase 2; der organisationsweite Katalog mit Freigabestand in Phase 3. Gebaut ist ein erster Katalog ohne Freigabestand, Fachbereich und Nutzungsangaben ([#1904](https://github.com/criew/opaa/issues/1904)); was er zeigt, steht unter [Gebauter Ist-Stand](#gebauter-ist-stand).*
+#### Favoriten
+
+Jede Person kann jedes für sie sichtbare Asset als **Favorit** markieren — eine rein persönliche Ordnung ohne Rechtewirkung ([ADR-0039](../decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md), Entscheidung 7; Umsetzung #2095). Favoriten stehen im Katalog oben und wirken als Filter „nur Favoriten" im Katalog, im [Space-Assistenten](#assets-in-einen-space-assoziieren) und bei der Bibliotheksauswahl eines Zugangstokens.
+
+Eine Liste von Favoriten ist ein Interessenprofil. Deshalb gilt, als Bedingung der Mitbestimmung und nicht als Einstellung:
+
+- **Nur für die Person selbst abrufbar** — weder für die Systemverwaltung noch für Space-Verwaltung oder Asset-Verantwortliche.
+- **Keine Zählung** und keine Anzeige von Favoriten je Asset, auch nicht aggregiert in der [Nutzungstransparenz](#nutzungstransparenz).
+- **Kein Protokolleintrag und keine Historie.** Nicht Teil von Berichten und Exporten an Dritte; enthalten nur in der [Selbstauskunft](./security-and-compliance.md) der Person — dasselbe Muster wie die persönlichen Ordnungsmerkmale der [Chatliste](./chat-list.md).
+- **Gelöscht mit dem Konto**, ohne die Löschung zu blockieren. Ein favorisiertes Asset, das die Person nicht mehr lesen darf, erscheint nicht mehr.
 
 ### Vorlagenkatalog nach Fachbereich
 
 Ein leerer Katalog hilft niemandem, und die Frage „was macht man damit überhaupt" ist am ersten Tag die häufigste. Der **Vorlagenkatalog** beantwortet sie mit Beispielen statt mit Erklärungen: kuratierte Assets, nach Fachbereich geordnet — „so arbeitet die Rechtsbehelfsstelle", „so arbeitet die Kämmerei".
 
-- Der Vorlagenkatalog ist **kein zweites Objekt**, sondern eine Sicht auf den Katalog: kuratierte, gelistete Assets mit gepflegter Beschreibung und Fachbereichszuordnung.
+- Der Vorlagenkatalog ist **kein zweites Objekt**, sondern eine Sicht auf den Katalog: kuratierte, öffentliche Assets mit gepflegter Beschreibung und Fachbereichszuordnung. Er zeigt wie der Katalog nur, was die Person lesen darf.
 - Der Werksanteil kommt aus den mitgelieferten Assets (siehe [Mitgelieferte Assets](#mitgelieferte-assets)), der Rest aus dem, was die Behörde selbst freigegeben hat.
 - Wer eine Vorlage übernimmt, nutzt sie als Referenz oder passt sie über [Parameter](#anpassen-ohne-fork-parameter) an; erst wenn das nicht reicht, entsteht ein gekennzeichneter Abkömmling.
 
@@ -556,7 +575,7 @@ Ein Produkt-Update des Originals löst bei Abkömmlingen dieselbe Anzeige und Be
 
 Gruppen kommen aus dem Verzeichnisdienst. Ein Synchronisationslauf, der Mitgliedschaften entfernt, ist damit ein **Massen-Rechteentzug ohne menschlichen Entscheidungspunkt** — die einzige Stelle im gesamten Modell, an der sich Rechte in großer Zahl ändern, ohne dass jemand eine Entscheidung trifft. Die Formel „die Synchronisation ändert nur die Herkunft der Mitgliedschaften, nicht das Rechtemodell" ist deshalb irreführend: Die Herkunft **ist** das Risiko.
 
-An ihr hängen die Verwaisung, der Zustand von Strikt-Spaces und die Nachweisbarkeit. Sie ist keine spätere Ausbaustufe, sondern eine Voraussetzung für den ersten Produktivbetrieb.
+An ihr hängen die Verwaisung, der Leserkreis geteilter Inhalte und die Nachweisbarkeit. Sie ist keine spätere Ausbaustufe, sondern eine Voraussetzung für den ersten Produktivbetrieb.
 
 ### Verbindliche Anforderungen
 
@@ -573,7 +592,7 @@ Eine Gruppe kann selbst Mitglied eines Space sein, mit einer Space-Rolle (siehe 
 Das ist fachlich richtig — er gehört dazu beziehungsweise nicht mehr —, aber es ist eine Rechteänderung ohne menschlichen Entscheidungspunkt, und sie trifft Inhalte, für die ein Beschäftigter persönlich die Weitergabe verantwortet hat. Deshalb gilt zusätzlich:
 
 - **Die Autoren-Benachrichtigung löst auch bei Sync-Zuwachs aus.** Die unter [Chats](#chats) zugesagte Nachricht „der Leserkreis eines von dir geteilten Inhalts hat sich wesentlich erweitert" darf nicht davon abhängen, ob ein Mensch das Mitglied aufgenommen hat oder ein Verzeichnislauf. Andernfalls ist die Zusage genau dort wirkungslos, wo der Zuwachs am wenigsten sichtbar ist.
-- **Der Zuwachs zählt als Mitgliederaufnahme**, auch für die Prüfung eines Strikt-Space (siehe [Der Strikt-Modus](#der-strikt-modus)). Da ein Verzeichnislauf nicht an Ort und Stelle abgelehnt werden kann, geht ein Strikt-Space, dessen Voraussetzung dadurch bricht, in den Zustand „Voraussetzung verletzt".
+- **Der Zuwachs zählt als Mitgliederaufnahme.** Er ändert auch, wer im Space wie viel vom Zugeordneten lesen kann; die Space-Einstellungen und der Hinweis „Nicht alle zugeordneten Inhalte sind für Sie lesbar." (siehe [Assets in einen Space assoziieren](#assets-in-einen-space-assoziieren)) folgen dem ohne eigenen Schritt.
 
 ### Reorganisation, Umbenennung, Zusammenlegung
 
@@ -596,9 +615,9 @@ Ein Space ist ein thematischer Arbeitsraum — für ein Projekt, ein Team, einen
 ### Die fünf Funktionen des Space
 
 1. **Ordnungsrahmen für space-eigene Inhalte.** Chats und Artefakte liegen hier und sind thematisch gruppiert. Ein Space „Projekt 1" enthält n Chats zu verschiedenen Themen und die daraus entstandenen Artefakte. Das ist die Primärfunktion.
-2. **Standard-Suchbereich** für Chats ohne gebundenen Agenten, solange die Chip-Leiste am Eingabefeld auf **@Alles-Wissen** steht — verengend, nie erweiternd (siehe [Suchbereich je Chatart](#suchbereich-je-chatart)).
+2. **Suchbereich** für Chats ohne gebundenen Agenten: das dem Space zugeordnete Wissen, geschnitten mit dem lesbaren — mit dem Chip **@Space-Wissen** ganz, mit konkreten Chips ein Ausschnitt davon, nie mehr (siehe [Suchbereich je Chatart](#suchbereich-je-chatart)).
 3. **Policy-Kontext** — welche Modelle hier zulässig sind, als Obergrenze.
-4. **Verfügbarkeitsrahmen** — welche Assets hier angeboten werden, gefiltert auf den Zugriff des jeweiligen Nutzers.
+4. **Verfügbarkeitsrahmen** — welche Assets hier nutzbar sind: **genau die zugeordneten**, für jeden Typ, gefiltert auf den Zugriff des jeweiligen Nutzers. Die Zuordnung ist eine harte Grenze, serverseitig durchgesetzt ([ADR-0039](../decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md)).
 5. **Zurechnungspunkt** für Nutzungsstatistik, Kostenzuordnung und Audit; zugleich Vorauswahl beim Hochladen neuer Dokumente.
 
 ### Es gibt nur eine Art von Space
@@ -649,8 +668,8 @@ Mitgliedschaft und Assetzugriff sind entkoppelt; deshalb braucht der Space eine 
 
 | Rolle | Darf |
 |---|---|
-| `MEMBER` | Space betreten; Chats anlegen und führen; **alle geteilten** Chats und Artefakte des Space lesen; kuratierte Assets sehen — gefiltert auf den eigenen Zugriff |
-| `CURATOR` | zusätzlich Assets assoziieren und lösen, Inhalte ordnen |
+| `MEMBER` | Space betreten; Chats anlegen und führen; **alle geteilten** Chats und Artefakte des Space lesen; die zugeordneten Assets sehen und im Chat nutzen — gefiltert auf den eigenen Zugriff |
+| `CURATOR` | zusätzlich Assets zuordnen und Zuordnungen lösen, Inhalte ordnen |
 | `ADMIN` | zusätzlich Mitglieder und Rollen verwalten, Einstellungen und Policy-Obergrenze setzen, geteilte Inhalte **zurückziehen** (nicht löschen) |
 
 Dazu trägt jeder Space eine `ownerId` als **Attribut** — den fachlich Verantwortlichen, der im Verzeichnis ausgewiesen wird. Einen Space löschen oder die Verantwortung übertragen darf nur der Verantwortliche selbst oder ein System-Admin.
@@ -667,7 +686,17 @@ Warum drei statt der bisherigen vier Rollen:
 
 ### Assets in einen Space assoziieren
 
-Ein Space-`CURATOR` kann jedes Asset, auf das er selbst Zugriff hat, in seinen Space assoziieren. Das ist unbedenklich, weil die Assoziation **keine Rechte gewährt** — sie stellt das Asset lediglich im Space zur Verfügung, und zwar nur für die Mitglieder, die ohnehin Zugriff darauf haben.
+Ein Space-`CURATOR` kann jedes Asset, auf das er selbst Zugriff hat, seinem Space **zuordnen** (technisch: assoziieren, `space_asset_associations`). Das ist unbedenklich, weil die Zuordnung **keine Rechte gewährt** — sie stellt das Asset lediglich im Space zur Verfügung, und zwar nur für die Mitglieder, die ohnehin Zugriff darauf haben.
+
+**Die Zuordnung ist eine harte Grenze, für alle Asset-Typen** ([ADR-0039](../decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md), Entscheidung 4). Ein Space enthält genau, was ihm zugeordnet ist; im Chat ist nur nutzbar, was zugeordnet **und** lesbar ist, serverseitig durchgesetzt:
+
+| Typ | Was die Zuordnung begrenzt |
+|---|---|
+| Wissensbibliothek | den Suchbereich: Chip **@Space-Wissen** und konkrete `@`-Chips (siehe [Suchbereich je Chatart](#suchbereich-je-chatart)) |
+| Prompt-Bibliothek | das `/`-Angebot und das Einsetzen eines Prompts (siehe [Prompt im Chat](#prompt-im-chat)) |
+| Agent (Zielbild) | das Angebot im Chat — nicht die eigene Wissensbindung des Agenten (siehe [Suchbereich je Chatart](#suchbereich-je-chatart)) |
+
+Eine Freigabe an „Alle Konten" macht ein Asset damit im Katalog jeder Person sichtbar, im Chat eines Space aber erst nutzbar, wenn es dort zugeordnet ist. Das ist bewusst so: Was ein Raum nutzt, entscheiden seine Kuratierenden, nicht die Reichweite des Assets.
 
 Der Eigentümer des Assets sieht alle Assoziationen und kann jede davon jederzeit einseitig lösen. Das Asset bleibt Herr über seine Verbreitung.
 
@@ -683,22 +712,21 @@ Daraus folgt eine Schwelle, nicht zwei Listen:
 
 Die Zahl selbst ist bewusst kein Geheimnis: Sie sagt, dass die Liste unvollständig ist, ohne einen einzigen Space zu benennen — ein unkommentiert gekürztes Ergebnis wäre die schlechtere Auskunft.
 
-**Die Assoziation hängt an der Schale** ([#1900](https://github.com/criew/opaa/issues/1900)). `space_asset_associations.asset_id` verweist mit der Organisation auf `assets`; das Löschen eines Assets nimmt seine Assoziationen mit, gleich welchen Typs es ist. Ein Space führt seine Assets über `GET/POST /api/v1/spaces/{spaceId}/assets` und `DELETE /api/v1/spaces/{spaceId}/assets/{assetId}`, die Gegenrichtung über `GET /api/v1/assets/{assetType}/{assetId}/spaces`; jeder Eintrag nennt den Asset-Typ. Assoziieren darf, wer im Space `CURATOR` ist und das Asset selbst lesen kann; lösen darf auch der Verwalter des Assets. Den Suchbereich verengen nur assoziierte **Wissensbibliotheken** — andere Typen tragen keine Dokumente und bleiben dort außen vor.
+**Die Assoziation hängt an der Schale** ([#1900](https://github.com/criew/opaa/issues/1900)). `space_asset_associations.asset_id` verweist mit der Organisation auf `assets`; das Löschen eines Assets nimmt seine Assoziationen mit, gleich welchen Typs es ist. Ein Space führt seine Assets über `GET/POST /api/v1/spaces/{spaceId}/assets` und `DELETE /api/v1/spaces/{spaceId}/assets/{assetId}`, die Gegenrichtung über `GET /api/v1/assets/{assetType}/{assetId}/spaces`; jeder Eintrag nennt den Asset-Typ. Assoziieren darf, wer im Space `CURATOR` ist und das Asset selbst lesen kann; lösen darf auch der Verwalter des Assets. Den Suchbereich bestimmen nur zugeordnete **Wissensbibliotheken** — andere Typen tragen keine Dokumente; für sie begrenzt die Zuordnung das Angebot im Chat (Tabelle oben). Ein neuer Space wird in einem Aufruf mit Zuordnungen aller Typen angelegt (`SpaceRequest` mit einer Liste aus Typ und Kennung statt `libraryIds`, Umsetzung #2097).
 
-**Benachrichtigung statt Zustimmung.** Wird eine Bibliothek in einem Space bereitgestellt, dessen Mitglieder nicht sämtlich Lesezugriff darauf haben, **wird ihr Eigentümer aktiv benachrichtigt**. Er muss nicht zustimmen — die Assoziation setzt niemanden etwas aus, weil Inhalte erst durch das Teilen sichtbar werden —, aber er erfährt davon, ohne in eine Liste schauen zu müssen. Das schließt die Lücke, dass ein Referatsleiter erst zufällig bemerkt, wo sein Wissen bereitsteht.
+**Der Space-Assistent und „In Space verwenden"** (Umsetzung #2097). Weil die Zuordnung eine Grenze ist, muss sie leicht und an zwei Stellen erreichbar sein:
 
-**Selbstschutz des Eigentümers.** Ein Bibliotheks-Eigentümer kann seine Bibliothek als **strikt-only** kennzeichnen. Die Kennzeichnung wirkt an **zwei** Stellen, und die zweite ist die wichtigere:
+- **Im Space-Assistenten** ist die Zuordnung ein eigener Schritt (Grunddaten, Mitglieder, Zuordnung, Zusammenfassung). Ausgewählt wird aus derselben Kachelliste wie im [Katalog](#der-katalog), mit Mehrfachauswahl, Typfilter, den Filtern „nur Favoriten", „aus meinen Gruppen" und „alle" sowie einer Suche. Angeboten wird nur, was die Person lesen darf. Der Schritt ist **überspringbar**; die Zusammenfassung sagt dann ausdrücklich, dass der Space kein Wissen durchsucht, bis jemand etwas zuordnet.
+- **In den Space-Einstellungen** nutzen die Reiter für Wissen und Prompts dieselbe Auswahl. Sie zeigen jedem Mitglied nur die für es lesbaren Zuordnungen. Ist dem Space darüber hinaus etwas zugeordnet, das die Person nicht lesen darf, steht dort ein Hinweis **ohne Anzahl und ohne Namen**: „Nicht alle zugeordneten Inhalte sind für Sie lesbar." Nicht lesbare Zuordnungen erscheinen weder als Eintrag noch als Zahl.
+- **Am Katalog** führt „In Space verwenden" an jeder Kachel und auf der Detailseite in höchstens zwei Klicks zur Zuordnung — in einen Space, in dem die Person `CURATOR` oder `ADMIN` ist, oder in einen neuen Space mit dieser Vorbelegung.
 
-- Die Bibliothek darf nur in Strikt-Spaces bereitgestellt werden.
-- **Sie darf nur von Agenten gebunden werden, die selbst ausschließlich in Strikt-Spaces aufrufbar sind.**
+**Ohne Zuordnung kein stiller Leerlauf.** Ein Space ohne zugeordnetes Wissen zeigt im Chat und auf der Space-Seite einen Hinweis: für `CURATOR` und `ADMIN` mit dem Direktlink „Wissen zuordnen", für andere Mitglieder mit der Angabe, wer zuordnen kann. Die Signale dafür stehen unter [Suchbereich je Chatart](#suchbereich-je-chatart).
 
-Ohne die zweite Regel liefe die Kennzeichnung ins Leere: Sie würde die Assoziation begrenzen — die dieses Dokument an anderer Stelle ausdrücklich für harmlos erklärt — und den verbliebenen Weg offen lassen. Eine Sachbearbeiterin mit persönlichem Grant auf eine geschützte Bibliothek könnte sonst in einem gewöhnlichen Space einen daran gebundenen Agenten aufrufen, weil der Space den Agenten nicht verengt, und das Ergebnis anschließend teilen. Erst die Bindungsregel macht aus der Kennzeichnung ein Werkzeug gegen das Ableitungsleck.
+**Benachrichtigung statt Zustimmung.** Wird ein Asset in einem Space bereitgestellt, dessen Mitglieder nicht sämtlich Lesezugriff darauf haben, **wird sein Eigentümer aktiv benachrichtigt** — für jeden Asset-Typ; beim Anlegen eines Space mit vielen Zuordnungen gebündelt (Umsetzung #2097, [ADR-0019](../decisions/0019-minimale-benachrichtigungsinfrastruktur.md)). Er muss nicht zustimmen — die Assoziation setzt niemanden etwas aus, weil Inhalte erst durch das Teilen sichtbar werden —, aber er erfährt davon, ohne in eine Liste schauen zu müssen. Das schließt die Lücke, dass ein Referatsleiter erst zufällig bemerkt, wo sein Wissen bereitsteht.
 
-**Nachträgliche Umstellung auf strikt-only** ist möglich, aber nicht stillschweigend: Bestehen bereits Bereitstellungen in Nicht-Strikt-Spaces oder Bindungen durch entsprechende Agenten, zeigt das System sie auf und der Eigentümer entscheidet — lösen oder abbrechen. Es gibt keinen Zustandswechsel im Hintergrund.
+**Selbstschutz des Eigentümers** bleiben die Benachrichtigung, das jederzeitige Lösen einer Zuordnung und die Nennung des Eigentümers im Teilen-Dialog. Eine Kennzeichnung „strikt-only" (nur in Strikt-Spaces bereitstellbar, nur von dort aufrufbaren Agenten bindbar) war spezifiziert, aber nie gebaut; sie entfällt mit dem [Strikt-Modus](#der-strikt-modus-entfällt) (ADR-0039).
 
-**Was die Kennzeichnung nicht leistet:** Sie gilt für die Bibliothek als Ganzes, nicht je Bereitstellung. Für einen Bestand, der in den meisten Räumen breit verfügbar sein soll und nur in einem einzelnen gemischten Projektraum eine Prüfung verdiente, ist sie das falsche Werkzeug — der Eigentümer müsste im Voraus über künftige Verwendungen entscheiden, die er noch nicht kennt. Für diesen Fall bleiben die Benachrichtigung, das Lösen der Bereitstellung und die Nennung des Eigentümers im Teilen-Dialog.
-
-**Folge für die Oberfläche:** Zwei Mitglieder desselben Space sehen unterschiedlich viele Assets. Das ist gewollt, wirkt aber ohne Erklärung wie ein Fehler und muss in der Oberfläche einmal deutlich benannt werden.
+**Folge für die Oberfläche:** Zwei Mitglieder desselben Space können unterschiedlich viel vom Zugeordneten nutzen, weil ihre Leserechte verschieden sind. Das ist gewollt, wirkt aber ohne Erklärung wie ein Fehler; der Hinweis „Nicht alle zugeordneten Inhalte sind für Sie lesbar." benennt es, ohne zu sagen, wie viel oder was fehlt.
 
 #### Leitbeispiel: gemeinsame Rechtsquellen
 
@@ -758,17 +786,17 @@ Ein Chat entsteht als `PRIVATE` und ist ausschließlich für seinen Autor sichtb
 
 **Reihenfolge des Aufbaus.** Zuerst entsteht die Persistenz-Grundlage: Chat und Nachrichten leben in genau einem Space, in dem der Chat erstellt und gelistet wird, und sind zunächst ausschließlich `PRIVATE` — der Teilen-Mechanismus (`SHARED`, Provenienz-Hinweis, Widerruf, Benachrichtigung bei erweitertem Leserkreis) baut erst darauf auf. Die Status-Achse aus der Tabelle oben wird im Datenmodell von Anfang an offengehalten, auch bevor sie bedient wird. Ein Chat kann **nicht in einen anderen Space verschoben** werden.
 
-**Der Suchbereich eines Chats wird ausschließlich über die Chip-Leiste am Eingabefeld gesteuert** — sie ist ein Attribut des Chats, nicht der einzelnen Anfrage, und die einzige Regel, die sich Nutzer merken müssen, lautet: **„Durchsucht wird, was in der Leiste steht."** Beim Tippen von `@` im Eingabefeld werden die lesbaren Bibliotheken vorgeschlagen, dazu **als erster Eintrag**, solange die eingegebene Zeichenfolge dazu passt (bei leerer Eingabe also immer), die Spezial-Referenz **@Alles-Wissen**; referenzierbar sind ansonsten **alle lesbaren Bibliotheken**, unabhängig vom Space. Die Leiste kennt drei Zustände:
+**Der Suchbereich eines Chats wird ausschließlich über die Chip-Leiste am Eingabefeld gesteuert** — sie ist ein Attribut des Chats, nicht der einzelnen Anfrage, und die einzige Regel, die sich Nutzer merken müssen, lautet: **„Durchsucht wird, was in der Leiste steht — und nie mehr, als dem Space zugeordnet ist."** Beim Tippen von `@` im Eingabefeld werden die Bibliotheken vorgeschlagen, die dem Space zugeordnet sind und die die Person lesen darf, dazu **als erster Eintrag**, solange die eingegebene Zeichenfolge dazu passt (bei leerer Eingabe also immer), die Spezial-Referenz **@Space-Wissen**. Eine Bibliothek außerhalb der Zuordnung ist nicht referenzierbar ([ADR-0039](../decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md)). Die Leiste kennt drei Zustände:
 
 | Zustand | Chip-Leiste | Suchbereich |
 |---|---|---|
-| Standard | **@Alles-Wissen** (vorbelegter Spezial-Chip) | alle lesbaren Bibliotheken |
-| Fokussiert | konkrete Bibliotheks-Chips | nur die referenzierten, geschnitten mit den lesbaren |
+| Standard | **@Space-Wissen** (vorbelegter Spezial-Chip) | die dem Space zugeordneten Bibliotheken, geschnitten mit den lesbaren |
+| Fokussiert | konkrete Bibliotheks-Chips | nur die referenzierten, geschnitten mit den zugeordneten und den lesbaren |
 | Ohne Wissen | leer, mit Hinweis „Antwortet ohne Dokumente" | kein Retrieval |
 
-Der erste konkrete Bibliotheks-Chip **ersetzt** @Alles-Wissen; weitere Chips ergänzen die Auswahl. @Alles-Wissen erneut hinzuzufügen ersetzt umgekehrt die konkreten Chips — die beiden Zustände sind einander ausschließend, nie gemeinsam sichtbar. **Jeder Chip ist entfernbar, auch @Alles-Wissen**; eine leere Leiste bedeutet bewusst ohne Wissensbasis und bietet einen Ein-Klick-Weg zurück zu @Alles-Wissen. Der Zustand ist **sticky pro Chat**: Er bleibt erhalten, bis er explizit geändert wird, und wird mit dem Chat persistiert — die Leiste zeigt jederzeit exakt das, was der Server anwendet, nie einen Schalter mit eigenem, davon unabhängigem Zustand. Details stehen unter [Suchbereich je Chatart](#suchbereich-je-chatart).
+Der erste konkrete Bibliotheks-Chip **ersetzt** @Space-Wissen; weitere Chips ergänzen die Auswahl. @Space-Wissen erneut hinzuzufügen ersetzt umgekehrt die konkreten Chips — die beiden Zustände sind einander ausschließend, nie gemeinsam sichtbar. **Jeder Chip ist entfernbar, auch @Space-Wissen**; eine leere Leiste bedeutet bewusst ohne Wissensbasis und bietet einen Ein-Klick-Weg zurück zu @Space-Wissen. Der Zustand ist **sticky pro Chat**: Er bleibt erhalten, bis er explizit geändert wird, und wird mit dem Chat persistiert — die Leiste zeigt jederzeit exakt das, was der Server anwendet, nie einen Schalter mit eigenem, davon unabhängigem Zustand. Details stehen unter [Suchbereich je Chatart](#suchbereich-je-chatart).
 
-**@Space** (die dem Space assoziierten Bibliotheken als eigener Spezial-Chip) ist mit #203/#686 im Datenmodell und über die API abbildbar (`SpaceAssetAssociation`, `GET/POST /spaces/{spaceId}/assets`) — der Chip selbst in der Eingabeleiste ist noch nicht gebaut und bleibt einem Folge-Issue vorbehalten.
+Der Chip hieß bis Epic #2070 „@Alles-Wissen" und durchsuchte in einem Space ohne Zuordnung alles Lesbare; beides entfällt mit #2096.
 
 **Konsequenz für die Nutzerführung.** Verbindlich:
 
@@ -780,7 +808,7 @@ Der erste konkrete Bibliotheks-Chip **ersetzt** @Alles-Wissen; weitere Chips erg
 - Der Autor kann einen geteilten Chat **zurückziehen** (`WITHDRAWN`). Das entfernt ihn aus der Space-Ansicht, löscht ihn aber nicht; bereits erfolgte Einsichtnahmen macht es nicht rückgängig.
 - **Der Autor wird benachrichtigt, wenn sich der Leserkreis eines von ihm geteilten Inhalts wesentlich erweitert** — bei Aufnahme neuer Mitglieder, insbesondere externer Personen, bei Öffnung des Space und bei Zuwachs über einen Verzeichnislauf in einem gruppengebundenen Space. Ohne diese Nachricht wäre die Entscheidung zu teilen nachträglich eine andere geworden als die, die er getroffen hat: Er hat im Februar sieben Kolleginnen und den Referatsleiter zugestimmt, nicht der externen Beraterin, die im Juni dazukommt. Die Legitimation des ganzen Modells ruht darauf, dass der Ersteller weiß, was er tut; das Zurückziehen ist nur dann ein Werkzeug, wenn er von der Änderung erfährt.
 
-Ein Chat kann an einen Agenten gebunden sein. Ist er das, bestimmt der Agent den Suchbereich. Ist er es nicht, bestimmt ihn ausschließlich die Chip-Leiste des Chats — nicht mehr eine Space-Auswahl im Suchfeld, die es nicht gibt (siehe [Suchbereich je Chatart](#suchbereich-je-chatart)).
+Ein Chat kann an einen Agenten gebunden sein — angeboten werden dafür nur Agenten, die dem Space zugeordnet sind und die die Person nutzen darf. Ist er das, bestimmt der Agent den Suchbereich. Ist er es nicht, bestimmt ihn ausschließlich die Chip-Leiste des Chats — nicht mehr eine Space-Auswahl im Suchfeld, die es nicht gibt (siehe [Suchbereich je Chatart](#suchbereich-je-chatart)).
 
 Das Datenmodell hält von Anfang an die Achsen offen, die für Mensch+KI-Gruppenräume gebraucht werden (Teilnehmer mit Lese-/Schreibrolle, Antwort-Bezug für Threads, Erwähnungen), auch wenn diese Funktionen erst später gebaut werden.
 
@@ -900,34 +928,39 @@ Die Berechtigungsprüfung ist **Teil der Vektorsuche**, kein Nachfilter. Die Men
 
 ### Suchbereich je Chatart
 
-Der Suchbereich eines Chats wird **nicht über eine Space-Auswahl im Suchfeld gesteuert.** Eine solche Auswahl entfällt ersatzlos, sowohl im Frontend als auch in der API (das heutige `QueryRequest.spaceIds` wird ohnehin ignoriert und fällt mit weg). Stattdessen bestimmt ihn **ausschließlich die Chip-Leiste** am Eingabefeld — die einzige Suchbereichssteuerung, kein zusätzlicher Schalter daneben: **„Durchsucht wird, was in der Leiste steht."** Referenzierbar sind beim Tippen von `@` alle Bibliotheken, die der Nutzer lesen darf, unabhängig vom Space, dazu als erster Eintrag (bei leerer Eingabe) die Spezial-Referenz **@Alles-Wissen** (siehe [Chats](#chats)).
+Der Suchbereich eines Chats wird **nicht über eine Space-Auswahl im Suchfeld gesteuert.** Eine solche Auswahl entfällt ersatzlos, sowohl im Frontend als auch in der API (das heutige `QueryRequest.spaceIds` wird ohnehin ignoriert und fällt mit weg). Stattdessen bestimmt ihn **die Chip-Leiste** am Eingabefeld — die einzige Suchbereichssteuerung, kein zusätzlicher Schalter daneben: **„Durchsucht wird, was in der Leiste steht."** Die Leiste kann dabei nie mehr enthalten, als dem Space zugeordnet ist: Referenzierbar sind beim Tippen von `@` die zugeordneten Bibliotheken, die der Nutzer lesen darf, dazu als erster Eintrag (bei leerer Eingabe) die Spezial-Referenz **@Space-Wissen** (siehe [Chats](#chats)).
 
 Ist der Chat an einen Agenten gebunden, tritt die Chip-Leiste zurück: Der Agent bestimmt den Suchbereich.
 
 | Chatart | Suchbereich |
 |---|---|
-| Chat ohne Agent, Leiste zeigt **@Alles-Wissen** | die dem Space assoziierten Bibliotheken **geschnitten mit** den lesbaren Bibliotheken des Nutzers. Hat der Space keine Assoziation, gilt ersatzweise **alle Bibliotheken, die der Nutzer lesen darf** (dauerhafte Übergangs-/Leerfall-Regel, siehe unten) |
-| Chat ohne Agent, Leiste zeigt **konkrete Bibliotheks-Chips** | ausschließlich die referenzierten Bibliotheken des Chats **geschnitten mit** den lesbaren Bibliotheken des Nutzers |
+| Chat ohne Agent, Leiste zeigt **@Space-Wissen** | die dem Space zugeordneten Bibliotheken **geschnitten mit** den lesbaren Bibliotheken des Nutzers. Hat der Space kein Wissen zugeordnet, ist der Suchbereich leer (siehe [Leerer Suchbereich](#leerer-suchbereich-hinweis-statt-stillem-leerlauf)) |
+| Chat ohne Agent, Leiste zeigt **konkrete Bibliotheks-Chips** | ausschließlich die referenzierten Bibliotheken des Chats **geschnitten mit** den zugeordneten und den lesbaren Bibliotheken des Nutzers |
 | Chat ohne Agent, Leiste **leer** | **kein Retrieval** — das Modell antwortet ohne Quellen, die Oberfläche weist deutlich darauf hin (`answeredWithoutKnowledge`) |
-| Chat mit Agent A | die vom Agenten gebundenen Bibliotheken **geschnitten mit** den lesbaren Bibliotheken des Nutzers. Die Chip-Leiste wirkt hier nicht — Folge der bestehenden Agenten-Asymmetrie (siehe unten), keine neue Festlegung |
+| Chat mit Agent A | die vom Agenten gebundenen Bibliotheken **geschnitten mit** den lesbaren Bibliotheken des Nutzers. Die Chip-Leiste wirkt hier nicht — Folge der bestehenden Agenten-Asymmetrie (siehe unten), keine neue Festlegung. An der Zuordnung hängt nur, ob der Agent im Space angeboten wird |
 
-In allen Fällen ist der Rechtekontext derselbe — der des aufrufenden Nutzers. Es gibt keinen zweiten. Chips erweitern den Suchbereich nie über die lesbaren Bibliotheken hinaus.
+In allen Fällen ist der Rechtekontext derselbe — der des aufrufenden Nutzers. Es gibt keinen zweiten. Chips erweitern den Suchbereich nie über die zugeordneten und die lesbaren Bibliotheken hinaus. **Die Grenze setzt der Server durch**, nicht die Vorschlagsliste: Ein Chat, der eine Bibliothek außerhalb der Zuordnung referenziert (etwa nachdem die Zuordnung gelöst wurde), durchsucht sie nicht. Ob der Server eine solche Referenz beim Speichern abweist oder beim Suchen übergeht, legt #2096 fest.
 
-**Im Strikt-Modus ist @Alles-Wissen aus der Chip-Leiste nicht entfernbar, und die Leiste lässt nur die dem Space assoziierten Bibliotheken als konkrete Chips zu.** Das ist fail-closed, analog zur bestehenden Aufrufverweigerung für Agenten im Strikt-Space (siehe [Der Strikt-Modus](#der-strikt-modus)): Ein Nutzer kann in einem solchen Raum die Dokumentensuche weder durch eine leere Leiste abschalten noch über einen beliebigen Chip auf unkuratiertes Wissen außerhalb der Space-Kuratierung ausweiten.
-
-**Zu einem Verweigerungsmodus als eigenem Space-Schalter, wie in diesem Abschnitt an einigen Stellen noch mitgedacht:** Ein
+**Zu einem Verweigerungsmodus als eigenem Space-Schalter:** Ein
 Schalter am Space, der bei fehlendem Beleg die Antwort verweigert, wurde am 21.08.2026 verworfen — siehe
 [Belegvalidierung](./data-indexing-rag.md#belegvalidierung) für die Begründung. Gebaut ist stattdessen die
 deterministische Belegvalidierung, die unabhängig vom Space greift und ungültige Belege kennzeichnet, statt
-die Antwort zurückzuhalten. Nur der Strikt-Modus oben ist ein tatsächlicher Space-Schalter.
+die Antwort zurückzuhalten. Einen Strikt-Modus als Space-Schalter gibt es ebenfalls nicht mehr (siehe [Der Strikt-Modus entfällt](#der-strikt-modus-entfällt)).
 
-Bei @Alles-Wissen in der Leiste **verengt** der Space den ungebundenen Chat über die Assoziation (#203/#686); stehen konkrete Chips in der Leiste, bestimmen ausschließlich sie den Suchbereich, unabhängig vom Space. Der Space **verengt aber nie den Agenten**. Diese Asymmetrie ist beabsichtigt: Nur wenn die Wissensbindung eines Agenten unabhängig davon ist, wo er ausgeführt wird, bleibt ein Agenten-Release versionierbar und prüfbar. Würde der Space zusätzlich verengen, antwortete dieselbe geprüfte Fassung eines Agenten je nach Space anders — und ein Prüfbericht würde wertlos.
+Bei @Space-Wissen in der Leiste **begrenzt** der Space den ungebundenen Chat über die Zuordnung (#203/#686); stehen konkrete Chips in der Leiste, bestimmen sie den Suchbereich innerhalb dieser Grenze. Der Space **verengt aber nie den Agenten**. Diese Asymmetrie ist beabsichtigt: Nur wenn die Wissensbindung eines Agenten unabhängig davon ist, wo er ausgeführt wird, bleibt ein Agenten-Release versionierbar und prüfbar. Würde der Space zusätzlich verengen, antwortete dieselbe geprüfte Fassung eines Agenten je nach Space anders — und ein Prüfbericht würde wertlos. Was der Space beim Agenten begrenzt, ist allein das **Angebot**: Ein Agent, der dem Space nicht zugeordnet ist, wird dort nicht angeboten und nicht aufgerufen.
 
-**Dauerhafte Regel:** Ein Space **ohne** assoziierte Bibliotheken verengt nicht — dort bleibt der Suchbereich bei @Alles-Wissen **alles, was der Nutzer lesen darf**. Erst eine tatsächlich gesetzte Assoziation verengt den Standardbereich; ein Space, der nichts kuratiert, hat nichts zu verengen. Das ersetzt die frühere Sonderregel für den persönlichen Space und kommt ohne Space-Art aus. Damit steht ein Raum, in dem jemand allein arbeitet, fachlich nie schlechter da als ein gemeinsamer, und die Möglichkeit, unbeobachtet zu arbeiten, ist keine bloß formale: Wer dorthin ausweicht, verliert keinen Zugang zu Wissen.
+**Die Zuordnung ist die Grenze — ohne Ausnahme für leere Spaces** ([ADR-0039](../decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md), Entscheidung 4). Ein Space **ohne** zugeordnetes Wissen durchsucht kein Wissen; das gilt für jeden Space, auch für den persönlichen Standard-Space, der deshalb leer startet. Eine frühere Fassung dieses Abschnitts führte hier eine dauerhafte Übergangsregel („ein Space ohne Zuordnung verengt nicht, dort gilt alles Lesbare"); sie ist mit ADR-0039 entfallen, und mit ihr die Zusage, ein Raum, in dem jemand allein arbeitet, stehe fachlich nie schlechter da als ein gemeinsamer (siehe [Private Inhalte sind unbeobachtet](#private-inhalte-sind-unbeobachtet)). Wer allein arbeitet, ordnet seinem Raum zu, was er braucht — mit denselben Wegen wie jeder andere ([Assets in einen Space assoziieren](#assets-in-einen-space-assoziieren)).
 
-**Sobald tatsächlich Assoziationen gesetzt sind:** Ein Space, in dem der Nutzer auf keine der assoziierten Bibliotheken Zugriff hat, ist ein **zulässiger Zustand, kein Fehler**: Bei @Alles-Wissen in der Leiste ist der Suchbereich dann leer, und die Antwort wird ohne Quellen erzeugt, deutlich gekennzeichnet — keine Verweigerung, da eine Antwortverweigerung als eigener Space-Schalter verworfen wurde (siehe oben). Die Meldung darf dabei **keine Anzahlen nennen**. Zulässig: „In diesem Space ist für dich derzeit kein Wissen verfügbar." Unzulässig: „3 von 4 Bibliotheken sind für dich gesperrt." Serverseitig trägt `QueryMetadata.noKnowledgeAvailableInSpace` dieses Signal, bewusst getrennt von `answeredWithoutKnowledge`: Letzteres meint die bewusst geleerte Chip-Leiste (eine Nutzerentscheidung), Ersteres den hier beschriebenen, vom Nutzer nicht gewählten Systemzustand — beide führen zur selben quellenlosen Antwort, aber aus unterschiedlichem Grund, den die Oberfläche unterschiedlich benennt.
+#### Leerer Suchbereich: Hinweis statt stillem Leerlauf
 
-**Ein leerer Suchbereich hat zwei unterschiedliche Ursachen, wird aber gleich behandelt.** Sowohl bei einer explizit geleerten Chip-Leiste (**bewusste Nutzerentscheidung**) als auch bei @Alles-Wissen mit leerem Suchbereich (**Systemzustand**, den der Nutzer nicht gewählt hat) erscheint die Antwort ohne Quellen, deutlich gekennzeichnet — niemand wird zurückgehalten, weil niemand eine Suche erwartet hat, die gar nicht angefordert wurde, oder weil die Kennzeichnung ohnehin sichtbar macht, dass ohne Wissensbasis geantwortet wurde. In einem Strikt-Space tritt der erste Fall ohnehin nicht auf, weil dort @Alles-Wissen nicht aus der Leiste entfernbar ist.
+Ein Space, in dem der Suchbereich bei @Space-Wissen leer ist, ist ein **zulässiger Zustand, kein Fehler** — aber nie ein stiller. Die Antwort wird ohne Quellen erzeugt und deutlich gekennzeichnet, nie als scheinbar quellenbasierte Antwort; eine Verweigerung gibt es nicht, da eine Antwortverweigerung als eigener Space-Schalter verworfen wurde (siehe oben). Dazu erscheint im Chat und auf der Space-Seite ein Hinweis. Es gibt **zwei getrennte Signale**, weil die Abhilfe verschieden ist:
+
+| Signal | Ursache | Hinweis |
+|---|---|---|
+| **kein Wissen zugeordnet** | dem Space ist keine Wissensbibliothek zugeordnet | „Diesem Space ist kein Wissen zugeordnet." — für `CURATOR`/`ADMIN` mit Direktlink „Wissen zuordnen", für andere Mitglieder mit der Angabe, wer zuordnen kann |
+| **nichts für Sie lesbar** | Wissen ist zugeordnet, aber keine der Bibliotheken für diese Person lesbar | „In diesem Space ist für Sie derzeit kein Wissen verfügbar." |
+
+Die Meldungen nennen **keine Anzahlen**. Unzulässig wäre etwa „3 von 4 Bibliotheken sind für dich gesperrt." Serverseitig tragen getrennte Signale beide Fälle (heute `QueryMetadata.noKnowledgeAvailableInSpace` für den zweiten; die Form beider legt #2096 fest), bewusst getrennt von `answeredWithoutKnowledge`: Letzteres meint die bewusst geleerte Chip-Leiste (eine Nutzerentscheidung), die beiden Signale dagegen einen vom Nutzer nicht gewählten Zustand. Alle drei führen zur selben quellenlosen, gekennzeichneten Antwort, aber aus unterschiedlichem Grund, den die Oberfläche unterschiedlich benennt.
 
 ### Einen Agenten weitergeben: die Freigabekette
 
@@ -978,7 +1011,7 @@ Das ist der Preis dafür, dass es keinen Kanal gibt, über den Wissen an der Rec
 
 Eine Konnektor-Quelle wird **genau einer** Wissensbibliothek zugeordnet — mit [ADR-0018](../decisions/0018-quellkonfiguration-in-der-bibliothek.md) strukturell erzwungen: Die Bibliothek trägt ihren Quellentyp und ihre Quellkonfiguration selbst, es gibt keine davon getrennte Zuordnung mehr, die auf mehr als ein Ziel zeigen könnte. Wird derselbe Bestand an mehreren Stellen gebraucht, wird die Bibliothek freigegeben, nicht das Dokument vervielfacht.
 
-Die Trennung von Technik und Fachlichkeit, die diese Zuordnung ursprünglich begründete — jemand entscheidet, wohin indiziert wird, der Bibliotheks-Eigentümer entscheidet, wer es sieht —, gilt weiterhin, nur ist „jemand" seit ADR-0018 nicht mehr auf den System-Admin beschränkt: Wer eine Bibliothek anlegen darf, wählt Typ und Konfiguration selbst. Wer das darf, entscheidet seit [ADR-0036](../decisions/0036-berechtigungsmodell-gruppen-und-faehigkeiten.md), Entscheidung 5 die Fähigkeit `CREATE_CONNECTOR_LIBRARY`, ausgeliefert an „Alle Konten" und damit im Auslieferungszustand unverändert offen. Die Sicherung bleibt trotzdem nötig: Jede Konnektorbibliothek trägt eine **Obergrenze der Freigabe** (gebaut, #797, siehe „Wo eine Obergrenze bleibt" weiter oben in [Verteilung von Assets](#verteilung-von-assets)) — sonst könnte ein Bibliotheks-Eigentümer einen konnektorgespeisten Bestand dem ganzen Haus öffnen. Sie besteht aus den beiden Erlaubnissen „Freigabe an Alle" und „Auffindbarkeit", die Systemverwaltung setzt sie je Bibliothek (ausgeliefert offen, wirksam erst nach dem Entziehen), und ein Entzug nimmt das Weitergehende sofort zurück — erteilte Rechte an Personen und Gruppen sowie eine bestehende Fremdzugangsfreigabe bleiben davon unberührt.
+Die Trennung von Technik und Fachlichkeit, die diese Zuordnung ursprünglich begründete — jemand entscheidet, wohin indiziert wird, der Bibliotheks-Eigentümer entscheidet, wer es sieht —, gilt weiterhin, nur ist „jemand" seit ADR-0018 nicht mehr auf den System-Admin beschränkt: Wer eine Bibliothek anlegen darf, wählt Typ und Konfiguration selbst. Wer das darf, entscheidet seit [ADR-0036](../decisions/0036-berechtigungsmodell-gruppen-und-faehigkeiten.md), Entscheidung 5 die Fähigkeit `CREATE_CONNECTOR_LIBRARY`, ausgeliefert an „Alle Konten" und damit im Auslieferungszustand unverändert offen. Die Sicherung bleibt trotzdem nötig: Jede Konnektorbibliothek trägt eine **Obergrenze der Freigabe** (gebaut, #797, siehe „Wo eine Obergrenze bleibt" weiter oben in [Verteilung von Assets](#verteilung-von-assets)) — sonst könnte ein Bibliotheks-Eigentümer einen konnektorgespeisten Bestand dem ganzen Haus öffnen. Sie besteht aus der Erlaubnis „Freigabe an Alle" (die zweite, „Auffindbarkeit", entfällt mit `listed`, [ADR-0039](../decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md)), die Systemverwaltung setzt sie je Bibliothek (ausgeliefert offen, wirksam erst nach dem Entziehen), und ein Entzug nimmt das Weitergehende sofort zurück — erteilte Rechte an Personen und Gruppen sowie eine bestehende Fremdzugangsfreigabe bleiben davon unberührt.
 
 Der Ausschluss einzelner Konnektor-Dokumente ist noch nicht gebaut (**Zielbild**); im Zielbild wirkt er an der Bibliothek — an genau einer Stelle statt je Workspace.
 
@@ -1011,7 +1044,7 @@ Was **bleibt**, ist das Billige und Wirksame:
 1. **Herkunftsverfolgung.** Jeder Chat und jedes Artefakt führt mit, aus welchen Bibliotheken tatsächlich Treffer stammten — Grundlage für den Hinweis im Teilen-Dialog, für den Nachweis und für die Kennzeichnung am Artefakt.
 2. **Hinweis im Teilen-Dialog**, wenn der Inhalt aus Bibliotheken stammt, die nicht alle Mitglieder lesen dürfen — ohne Anzahlen, ohne Namen, und ohne zusätzlichen Dialog: die Information steht dort, wo die Entscheidung ohnehin fällt.
 3. **Zitat-Sprungmarken bleiben rechtegeprüft.** Der Sprung in das Quelldokument wird beim Klick gegen die Rechte des Lesenden geprüft und gegebenenfalls verweigert. Das verhindert das Weiterhangeln vom Zitat in den vollen Bestand.
-4. **Benachrichtigung des Bibliotheks-Eigentümers**, wenn seine Bibliothek in einem Space bereitgestellt wird, dessen Mitglieder nicht sämtlich Lesezugriff haben (siehe [Assets in einen Space assoziieren](#assets-in-einen-space-assoziieren)).
+4. **Benachrichtigung des Eigentümers**, wenn sein Asset in einem Space bereitgestellt wird, dessen Mitglieder nicht sämtlich Lesezugriff haben (siehe [Assets in einen Space assoziieren](#assets-in-einen-space-assoziieren)).
 
 ### Warum Zitat-Redaktion weiterhin nicht gebaut wird
 
@@ -1021,39 +1054,13 @@ Naheliegend wäre, Zitate beim Lesen gegen die Rechte des Lesenden zu maskieren.
 2. **Sie zerstört den gemeinsamen Arbeitsraum.** Jeder sähe einen anderen Verlauf.
 3. **Sie verlagert die Prüfung auf jeden Lesevorgang** statt auf den einen Entstehungsvorgang.
 
-### Der Strikt-Modus
+### Der Strikt-Modus entfällt
 
-Für die wenigen Räume, in denen eine technische Zusicherung gebraucht wird statt einer verantworteten Handlung, gibt es den **Strikt-Modus je Space**. Er ist standardmäßig aus und wird vom System-Admin oder vom Space-Verantwortlichen gesetzt — empfohlen für Räume wie Rechnungsprüfung, Revision oder Personal.
+Spezifiziert, aber nie gebaut war ein **Strikt-Modus je Space** für Räume wie Rechnungsprüfung, Revision oder Personal: nur Bibliotheken zuordnen, deren Leserkreis alle Mitglieder umfasst, Agenten mit anderer Bindung dort nicht aufrufen, eine Mitgliederaufnahme ablehnen, die die Voraussetzung bräche, @Alles-Wissen fest setzen und bei nachträglich gebrochener Voraussetzung den Zustand „Voraussetzung verletzt" mit Frist auf der Governance-Arbeitsliste. Dazu gehörte die Kennzeichnung „strikt-only" an einer Bibliothek.
 
-In einem Strikt-Space gilt:
+**Mit [ADR-0039](../decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md) entfällt er samt allen genannten Bestandteilen.** Sein Kern für den Suchbereich — nur Zugeordnetes, keine Chips darüber hinaus — gilt jetzt für **jeden** Space; ein eigener Schalter dafür wäre leer. Was er darüber hinaus zusicherte, eine technische Garantie „alle Mitglieder dürfen alles Zugeordnete lesen", gibt es nicht mehr. Ein Raum, der so geführt werden soll, wird so kuratiert: Seine Kuratierenden ordnen nur Bestände und Agenten zu, deren Leserkreis alle Mitglieder umfasst; der Hinweis „Nicht alle zugeordneten Inhalte sind für Sie lesbar." zeigt jedem Mitglied, ohne Anzahl und ohne Namen, ob die Voraussetzung für es hält. Gegen das Ableitungsleck wirken weiter die vier Mittel unter [Was daraufhin entfallen ist](#was-daraufhin-entfallen-ist) („Was bleibt").
 
-- Es dürfen nur Bibliotheken assoziiert werden, deren Leserkreis **alle** Space-Mitglieder umfasst.
-- **Ein Agent, dessen gebundene Bibliotheken nicht sämtlich zu dieser Menge gehören, kann in diesem Space nicht aufgerufen werden.**
-- **Eine Mitgliederaufnahme, die die Voraussetzung brechen würde, wird an Ort und Stelle abgelehnt**, mit dem Hinweis, welche Freigabe fehlt. Das ist der einzige Auslöser, den der Handelnde selbst kontrolliert und vorher sieht; ohne die Prüfung sperrt ein Space-Admin mit der Aufnahme einer neuen Kollegin im selben Moment seinen eigenen Raum für alle Mitglieder.
-- **@Alles-Wissen ist in der Chip-Leiste fest gesetzt und nicht entfernbar; konkrete Chips sind auf die dem Space assoziierten Bibliotheken beschränkt.** Fail-closed aus demselben Grund wie die Aufrufverweigerung für Agenten: Ein Strikt-Space garantiert einen kuratierten Leserkreis, und diese Garantie darf weder durch eine geleerte Leiste noch durch einen beliebigen Chip auf unkuratiertes Wissen unterlaufen werden.
-
-Der zweite Punkt schließt eine Lücke, die eine frühere Fassung offen ließ: Der Space verengt den Suchbereich eines Agenten nicht (siehe [Suchbereich je Chatart](#suchbereich-je-chatart)), weil ein geprüftes Agenten-Release sonst nicht mehr reproduzierbar wäre. Ein Agent könnte damit im Strikt-Space aus einer engen, dort nicht assoziierten Bibliothek liefern.
-
-Die Auflösung ist **weder den Agenten zu verengen noch die Zusicherung zurückzunehmen, sondern den Aufruf zu verweigern**: Der Agent läuft entweder mit seiner vollständigen, reproduzierbaren Bindung oder gar nicht. Die Reproduzierbarkeit bleibt unangetastet, weil sein Suchbereich nie stillschweigend verkleinert wird — er wird nur an einem Ort nicht zugelassen. Der Nutzer erhält einen klaren Hinweis, dass dieser Agent in diesem Raum nicht verwendet werden darf.
-
-### Wenn die Voraussetzung eines Strikt-Space nachträglich bricht
-
-Die Bedingung „alle Mitglieder dürfen alles lesen" hängt an Größen, die sich außerhalb des Space ändern: eine Verzeichnissynchronisation entfernt jemanden aus einer Gruppe, ein Bibliotheks-Eigentümer nimmt einen Grant zurück, eine Freigabe-Obergrenze wird gesenkt.
-
-Das System löst dann **weder Assoziationen automatisch** (das entzöge einem ganzen Team sein Wissen, weil eine Person versetzt wurde) **noch entfernt es Mitglieder** (das koppelte eine Rechteänderung an einer Bibliothek an die Mitgliedschaft in einem Arbeitsraum). Stattdessen geht der Space in den Zustand **„Voraussetzung verletzt"**:
-
-- Bestehende Inhalte bleiben unangetastet und lesbar.
-- **Neues Teilen und Agentenaufrufe sind gesperrt**, bis der Zustand behoben ist.
-
-Das ist fail-closed für neue Exposition, ohne etwas zu zerstören, und es gibt keinen stillschweigenden Zustandswechsel im Hintergrund. Ein Sperrzustand ohne Zuständigen wäre allerdings nur die halbe Regelung — er erzeugt **Arbeitsstillstand**, und zwar in genau dem Raum, für den dieses Dokument den Strikt-Modus empfiehlt. Deshalb gilt derselbe Zuschnitt wie bei „Nachfolge offen":
-
-- **Benannter Adressat und Frist.** Der Vorgang erscheint mit Frist auf der Governance-Arbeitsliste des System-Admins. Ohne das hängt die Arbeitsfähigkeit einer Prüfstelle an der Reaktionszeit eines Referatsleiters, den sie unter Umständen gerade prüft.
-- **Der System-Admin erhält eine Liste mit Liegezeit** — wie bei der Nachfolge. Sonst sieht niemand, wie viele Räume betroffen sind und wie lange schon, und ein Space kann monatelang gesperrt daliegen, weil eine Nachricht im Urlaub ankam.
-- **Die Neubewertung wird von jeder Rechteänderung an jeder Bibliothek ausgelöst, die in irgendeinem Strikt-Space bereitgestellt ist.** Sonst löst sich der Zustand nicht von selbst, wenn seine Ursache wegfällt, sondern bleibt hängen, bis jemand einen Knopf drückt.
-- **Die Ursache geht im Klartext an den Space-Verantwortlichen:** welche Bibliothek, welches Ereignis, welcher Zeitpunkt.
-- **Die Meldung an den Nutzer weist den Zustand als fachlichen Vorgang aus, nicht als Störung**, und benennt die zuständige Stelle. Sinngemäß: „Dieser Raum ist gesperrt, weil eine Zugriffsvoraussetzung nicht mehr erfüllt ist. Zuständig ist der Space-Verantwortliche."
-- **Der Zustandswechsel ist ausdrücklich kein Bereitschaftsereignis.** Ein fail-closed-Zustand, der nachts eintritt und tagsüber fachlich aufgelöst wird, ist richtig — aber nur, wenn niemand nachts daran zieht und zur „Behebung" eine Mitgliedschaft zurücksetzt.
-- Der Vorgang steht im Protokoll.
+Unverändert gilt die Agenten-Asymmetrie: Der Space verengt einen Agenten nie, weil ein geprüftes Agenten-Release sonst nicht reproduzierbar wäre (siehe [Suchbereich je Chatart](#suchbereich-je-chatart)). Ein Agent, dessen Bindung über den Leserkreis eines Raums hinausreicht, wird dort nicht durch eine Aufrufsperre ferngehalten, sondern dadurch, dass niemand ihn dem Raum zuordnet — angeboten wird im Chat nur Zugeordnetes.
 
 ---
 
@@ -1115,8 +1122,8 @@ Die bisherige Zusage lautete: *„Der Nutzer weiß nie, dass Dokumente existiere
 | Ebene | Gilt |
 |---|---|
 | **Chunk / Suche** | **Unverändert.** Der Filter über die Bibliothek ist Teil der Vektorsuche; unberechtigte Chunks werden nie geladen und nie gerankt |
-| **Asset / Katalog** | **Umformuliert:** Der Nutzer sieht nur Assets, auf die er Zugriff hat, oder die bewusst zur Auffindbarkeit veröffentlicht wurden |
-| **Space-Ansicht** | Nur zugängliche Assets; Meldungen nennen keine Anzahlen |
+| **Asset / Katalog** | **Unverändert** seit [ADR-0039](../decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md): Der Nutzer sieht nur Assets, auf die er Zugriff hat. Das Schaufenster `listed`, das die Existenz nicht lesbarer Assets bewusst preisgab, ist entfallen |
+| **Space-Ansicht** | Nur zugängliche Assets; Meldungen nennen keine Anzahlen und keine Namen nicht lesbarer Assets. Sind einem Space Inhalte zugeordnet, die die Person nicht lesen darf, erfährt sie das nur als Hinweis ohne Anzahl: „Nicht alle zugeordneten Inhalte sind für Sie lesbar." ([ADR-0039](../decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md), Entscheidung 2) |
 | **Agent** | **Unverändert.** Ein Agent liest immer mit den Rechten des Nutzers; es gibt keinen Umgehungsweg |
 | **Privater Inhalt** | **Unverändert.** Ein nicht geteilter Chat oder ein nicht geteiltes Artefakt ist ausschließlich für seinen Ersteller sichtbar — auch für Space-Admins und System-Admins nicht |
 | **Geteilter Inhalt** | **Gilt nicht — und das ist eine bewusste Handlung.** Wer teilt, gibt weiter, was er selbst lesen durfte, und verantwortet das. Der Vorgang wird protokolliert |
@@ -1204,7 +1211,8 @@ Ausdrücklich zugesagt und nicht nur als Nebenwirkung gemeint:
 - **Alle privaten Inhalte** sind für System-Admins, Revision und Dienststellenleitung **nicht lesbar** — in jedem Space, nicht nur in einem dafür vorgesehenen. Ein System-Admin kann im Rahmen des Offboardings einen Space deaktivieren; er kann ihn nicht einsehen.
 - Diese Zusage ist durch den Wegfall der Space-Arten **stärker** geworden, nicht schwächer: Sie hängt nicht mehr daran, dass jemand im richtigen Raum gearbeitet hat.
 - **Geschützt ist der Inhalt, nicht die Tatsache der Nutzung.** Der Protokollsatz entsteht bei jeder Abfrage, unabhängig davon, ob ein Chat geteilt ist und in welchem Space er läuft. Wer privat arbeitet, tut das inhaltlich unbeobachtet — dass er arbeitet, wann und wie oft, wird protokolliert. Das gehört ausgesprochen, damit eine Auskunft an die Beschäftigten stimmt: *„Dass du arbeitest, wird protokolliert. Was du schreibst, nicht. Und es gibt keine Funktion, die das nach dir sortiert."* Der einzige Weg, der von dieser Spur noch zu einer Person führt, ist die anlassbezogene Klärung — deshalb ist deren Begrenzung so wichtig.
-- Ein Raum, in dem jemand allein arbeitet, steht fachlich **nicht schlechter** da als ein gemeinsamer: Der Suchbereich umfasst dort alles, was der Nutzer lesen darf (siehe [Suchbereich je Chatart](#suchbereich-je-chatart)). Ohne diese Zusage wäre die Ausweichmöglichkeit nur formal und der Zwang zum sichtbaren Raum faktisch.
+- **Privat kostet keinen Zugang zu Wissen:** Ein privater Chat verfügt über dasselbe Wissen und denselben Suchbereich wie ein geteilter im selben Space.
+- **Geänderte Zusage gegenüber der Personalvertretung** ([ADR-0039](../decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md), Entscheidung 6). Bis Epic #2070 galt zusätzlich: *„Ein Raum, in dem jemand allein arbeitet, steht fachlich nicht schlechter da als ein gemeinsamer: Der Suchbereich umfasst dort alles, was der Nutzer lesen darf."* **Diese Zusage ist ausdrücklich zurückgenommen.** Jeder Raum durchsucht genau, was ihm zugeordnet ist — auch einer, in dem jemand allein arbeitet. Wer dorthin ausweicht, ordnet sich das benötigte Wissen zu; Hinweis mit Direktlink, Space-Assistent und „In Space verwenden" machen das zu einer Sache von zwei Klicks (siehe [Assets in einen Space assoziieren](#assets-in-einen-space-assoziieren)). Die Änderung ist der Personalvertretung vor dem Rollout als geänderte Zusage vorzulegen. Die Zusagen dieses Abschnitts zur Unbeobachtetheit privater Inhalte bleiben unverändert.
 
 ### Was das Produkt nicht regeln kann
 
@@ -1243,22 +1251,24 @@ Das Modell weicht **von beiden Mustern ab**, aber nicht in derselben Sache — e
 - **Assoziation mit explizitem, gedeckeltem Grant.** Sicher, aber sie verlangt bei jeder Zuordnung eine zusätzliche Entscheidung durch den Asset-Verantwortlichen. Zugunsten des einfacheren und strikteren Modells verworfen.
 - **Eine Asset-Rolle `USER` unterhalb von `VIEWER`** — benutzen, ohne die Konfiguration zu sehen. Zunächst als „wesentlicher Zugewinn" vorgesehen, dann verworfen: **Die Zusage ist nicht durchsetzbar.** Wer einen Agenten aufrufen darf, kann ihn nach seinen Anweisungen fragen — die Aufgabenbeschreibung steht in seinem Kontext, und kein Rechtemodell hält ein Sprachmodell davon ab, sie wiederzugeben. Bei einer Bibliothek läuft die Trennung weitgehend leer, weil eine Antwort mit Quellenangabe die Dokumenttitel ohnehin nennt. Eine Rolle, die etwas zusichert, was die Technik nicht hält, ist schlechter als keine: Sie verleitet dazu, Bestände breiter freizugeben, als man es täte, wenn man die Wirkung richtig einschätzte. `VIEWER` ist damit die unterste Asset-Rolle.
 - **Kuratoren als Objekt an der Organisationseinheit, mit Zuständigkeitsvererbung nach oben.** Eine Freigabe an eine Einheit hätte die Zustimmung ihres Kurators erfordert; bei Nichtbesetzung wäre die Zuständigkeit an die nächsthöhere Einheit gefallen, im Zweifel bis zur Gesamtorganisation. Verworfen zugunsten der Regel, dass ein Grant an eine Gruppe **keine** Zustimmung braucht:
-  1. **Ein Grant setzt niemanden etwas aus.** Er gewährt Zugriff, er verteilt keine Inhalte. Das Risiko ist Katalog-Rauschen, nicht Datenabfluss — und dagegen wirken `listed = false` und die Governance-Arbeitsliste.
+  1. **Ein Grant setzt niemanden etwas aus.** Er gewährt Zugriff, er verteilt keine Inhalte. Das Risiko ist Katalog-Rauschen, nicht Datenabfluss — und dagegen wirken die ausdrückliche Space-Zuordnung, die persönliche Ordnung des Katalogs und die Governance-Arbeitsliste.
   2. **Der Auffangfall endet ohnehin zentral.** Ist niemand benannt, landet die Entscheidung beim System-Admin. Die Eskalationskette ist der teurere Weg zum selben Ergebnis.
   3. **Sie setzt eine Besetzung voraus, die eine Pilotbehörde nicht hat.** Referats- und Abteilungsebene mit Arbeitszeit zu hinterlegen ist ein Einführungsprojekt; bis dahin ist die Kette auf jeder Stufe leer.
   4. **Sie erzeugt einen Zustandsautomaten für einen Verwaltungsvorgang** — Frist je Stufe, Weiterreichen bei Ablauf, Liegezeit je Station.
 
   Mit den Kuratoren entfallen auch die konfigurierbare Größenschwelle und die Sonderbehandlung des Umgehungswegs über `AD_HOC`-Gruppen: Ohne Zustimmungspflicht gibt es nichts zu umgehen. Die Aufbauorganisation bleibt als Herkunft der Gruppen und als Aggregationsachse erhalten. Wer die Annahmeseite später doch braucht, kann sie als Rolle *in* der Gruppe ergänzen — so löst es Langdock —, ohne das Rechtemodell anzufassen.
-- **Space-Hierarchie zur Abbildung der Verteilungsstufen.** Die Stufen „persönlich → Team → Fachbereich → organisationsweit" werden über das Rechtesubjekt abgebildet — persönlich, Team-Gruppe, Abteilungs-Gruppe, „Alle Konten" —, kombiniert mit `listed`. Keine Topologie der Spaces, kein Abteilungs-Objekt.
+- **Space-Hierarchie zur Abbildung der Verteilungsstufen.** Die Stufen „persönlich → Team → Fachbereich → organisationsweit" werden über das Rechtesubjekt abgebildet — persönlich, Team-Gruppe, Abteilungs-Gruppe, „Alle Konten". Keine Topologie der Spaces, kein Abteilungs-Objekt.
 - **Eine eigene Verteilungsstufe `visibility` am Asset.** Sie führte dieselbe Frage — wie weit reicht dieses Asset — neben der Rechteliste ein zweites Mal, und von ihren drei Werten wirkte nur einer. Ersetzt durch den Grant an „Alle Konten"; die Begründung samt verworfener Zwischenlösungen steht in [ADR-0037](../decisions/0037-reichweite-als-freigabe-an-alle.md).
-- **Drei Space-Arten (`PERSONAL`, `PROJECT`, `TEAM`).** Verworfen zugunsten eines einzigen Typs mit dem Attribut `isDefault` (damals noch samt `memberSource`, das mit [ADR-0036](../decisions/0036-berechtigungsmodell-gruppen-und-faehigkeiten.md) ebenfalls entfallen ist). `PERSONAL` war nichts anderes als „ein Space, in dem nur eine Person Mitglied ist", und alles, was daran hing, hängt in Wahrheit woanders: der unverengte Suchbereich an der Abwesenheit assoziierter Bibliotheken, die Zusage an die Personalvertretung am Privatstatus der Inhalte, die Aufbewahrungsfrist ebenso. `TEAM` unterschied sich von `PROJECT` nur darin, wer ihn anlegen darf — eine Berechtigung, keine Art. Entscheidend ist, dass die Grundregel die Arten überflüssig macht: Wenn private Inhalte ohnehin nur ihrem Ersteller gehören, ist jeder Space, in dem nichts geteilt wird, faktisch privat. Nebenwirkung der Streichung, ausdrücklich gewollt: Ein Nutzer darf beliebig viele Räume anlegen, in denen er allein arbeitet, statt genau einen.
+- **Drei Space-Arten (`PERSONAL`, `PROJECT`, `TEAM`).** Verworfen zugunsten eines einzigen Typs mit dem Attribut `isDefault` (damals noch samt `memberSource`, das mit [ADR-0036](../decisions/0036-berechtigungsmodell-gruppen-und-faehigkeiten.md) ebenfalls entfallen ist). `PERSONAL` war nichts anderes als „ein Space, in dem nur eine Person Mitglied ist", und alles, was daran hing, hängt in Wahrheit woanders: der Suchbereich an der Zuordnung (bis [ADR-0039](../decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md) war der unverengte Suchbereich an die Abwesenheit assoziierter Bibliotheken gebunden), die Zusage an die Personalvertretung am Privatstatus der Inhalte, die Aufbewahrungsfrist ebenso. `TEAM` unterschied sich von `PROJECT` nur darin, wer ihn anlegen darf — eine Berechtigung, keine Art. Entscheidend ist, dass die Grundregel die Arten überflüssig macht: Wenn private Inhalte ohnehin nur ihrem Ersteller gehören, ist jeder Space, in dem nichts geteilt wird, faktisch privat. Nebenwirkung der Streichung, ausdrücklich gewollt: Ein Nutzer darf beliebig viele Räume anlegen, in denen er allein arbeitet, statt genau einen.
 - **Die Statusnamen `DRAFT` und `PLACED`.** Ersetzt durch `PRIVATE` und `SHARED`. „Entwurf" und „ablegen" sind Aktenjargon für einen Vorgang, den jeder aus jedem Werkzeug kennt; die Sache wird davon nicht präziser, nur fremder. Bewusst in Kauf genommen wird, dass „teilen" nun zwei Vorgänge bezeichnet — ein Asset teilen heißt Rechte vergeben, einen Chat in den Space teilen heißt ihn sichtbar machen. Die Objekte sind verschieden genug, dass der jeweilige Satz eindeutig bleibt; wo es eng wird, heißt es „in den Space teilen".
 - **Chat und Artefakt als Asset-Typen.** Falsche Kardinalität (viele, wegwerfbar statt wenige, kuratiert), falsche Beziehung (Komposition statt Assoziation), falsche Rechtelogik (die Chats eines Space wären für seine Mitglieder unsichtbar) und ein abweichendes Sicherheitsprofil (Ergebnisse statt Fähigkeiten). Siehe [Warum Chats und Artefakte keine Assets sind](#warum-chats-und-artefakte-keine-assets-sind).
 
 ### Sichtbarkeit und Ableitungsleck
 
 - **Chats automatisch space-sichtbar.** Zunächst so entschieden, dann revidiert. Die Regel war einfach und vorhersagbar, erzeugte aber Ausweichverhalten: Gearbeitet wird dann in einem Raum, in dem man allein ist, oder außerhalb des Systems, und in den gemeinsamen Raum wandert nur das Vorzeigbare. Sie war zudem der einzige Grund für das Ableitungsleck in seiner scharfen Form und für die halbe Kennzeichnungsmaschinerie. Der Preis der Revision ist der Tausch automatischer gegen freiwillige Transparenz — ein Chat, den niemand teilt, ist für die Organisation nicht vorhanden. Deshalb muss das Teilen ein Klick sein.
-- **Harte Invariante: Bibliothek nur assoziierbar, wenn alle Space-Mitglieder Lesezugriff haben.** Das ist der Strikt-Modus als Pflicht. Drei Gründe gegen die Pflichtform: Sie hängt von einer Größe ab, die sich außerhalb des Systems ändert (eine Verzeichnissynchronisation bricht sie bei jedem Referatswechsel), sie lässt bei Verletzung nur schlechte Optionen (Assoziationen automatisch lösen, Mitglieder entfernen oder den Zustand dulden), und sie macht referatsübergreifende Projekträume — den eigentlichen Anwendungsfall — entweder unmöglich oder erzwingt die Vollfreigabe aller Bestände an alle Beteiligten. Als wählbarer [Strikt-Modus](#der-strikt-modus) bleibt sie erhalten.
+- **Harte Invariante: Bibliothek nur assoziierbar, wenn alle Space-Mitglieder Lesezugriff haben.** Das ist der Strikt-Modus als Pflicht. Drei Gründe gegen die Pflichtform: Sie hängt von einer Größe ab, die sich außerhalb des Systems ändert (eine Verzeichnissynchronisation bricht sie bei jedem Referatswechsel), sie lässt bei Verletzung nur schlechte Optionen (Assoziationen automatisch lösen, Mitglieder entfernen oder den Zustand dulden), und sie macht referatsübergreifende Projekträume — den eigentlichen Anwendungsfall — entweder unmöglich oder erzwingt die Vollfreigabe aller Bestände an alle Beteiligten. Auch als wählbarer Strikt-Modus ist sie mit [ADR-0039](../decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md) entfallen (siehe [Der Strikt-Modus entfällt](#der-strikt-modus-entfällt)); wer einen Raum so führen will, kuratiert seine Zuordnung danach.
+- **Übergangsregel: Ein Space ohne Zuordnung durchsucht alles Lesbare.** Sie galt bis Epic #2070 als dauerhafte Regel und trug die Zusage, ein Raum, in dem jemand allein arbeitet, stehe nie schlechter da. Verworfen, weil die Stufung „ohne Zuordnung alles, mit Zuordnung eingeengt" für Nutzende nicht verständlich ist, auch wenn man sie kennt (Abstimmung vom 30.09.2026). Begründung und die geänderte Zusage in [ADR-0039](../decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md).
+- **Schaufenster `listed`: im Katalog sichtbar, ohne lesbar zu sein.** Ohne Anfrageweg eine Sackgasse, und die einzige Stelle, an der die Existenz nicht lesbarer Assets sichtbar wurde. Entfallen mit [ADR-0039](../decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md); der Katalog zeigt nur Lesbares.
 - **Zitat-Redaktion beim Lesen.** Verworfen als unvollständig, nicht bloß aufwendig: Der Antworttext trägt die Information weiter, und ein je Leser unterschiedlicher Verlauf zerstört den gemeinsamen Arbeitsraum. Siehe [Warum Zitat-Redaktion weiterhin nicht gebaut wird](#warum-zitat-redaktion-weiterhin-nicht-gebaut-wird).
 - **Agent liest mit eigenen Rechten (Rechtedelegation).** Zunächst als admin-aktivierbare Ausnahme vorgesehen, dann vollständig verworfen. Mit der [Freigabekette](#einen-agenten-weitergeben-die-freigabekette) gibt es bereits einen Weg, auf dem ein geteilter Agent beim Empfänger funktioniert; ein zweiter wäre redundant und zugleich der riskantere von beiden. Bewusst in Kauf genommen: Ein Agent, dessen Wissen nicht freigegeben werden darf, ist nicht teilbar.
 
@@ -1295,6 +1305,8 @@ Das Modell weicht **von beiden Mustern ab**, aber nicht in derselben Sache — e
 
 Stand nach Epic [#1726](https://github.com/criew/opaa/issues/1726), September 2026. Die Kapitel oben beschreiben das Zielbild; hier steht, was davon gebaut ist und was nicht. Wie es sich bedient, beschreibt das Handbuch (`docs/handbuch/bibliotheken-und-berechtigungen.md`, `docs/handbuch/prompt-bibliotheken.md`).
 
+**Mit Epic [#2070](https://github.com/criew/opaa/issues/2070) abgelöst, aber noch gebaut** ([ADR-0039](../decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md)): das Schaufenster `listed` samt `listed_cap`, `accessible` und Historie (entfällt mit #2092); die drei Einstiege „Wissen", „Prompts" und „Katalog" mit Tabellenansicht (ein Katalog nur mit Kacheln, #2093/#2094); die Übergangsregel, nach der ein Space ohne Zuordnung alles Lesbare durchsucht, der Chip „@Alles-Wissen" und das `/`-Angebot aller lesbaren Prompts (harte Grenze und „@Space-Wissen", #2096). Die Absätze unten beschreiben diesen gebauten Stand, bis die genannten Issues ihn ablösen; Favoriten (#2095), Space-Assistent und „In Space verwenden" (#2097) und die Kachelauswahl der Token-Ausstellung (#2098) sind noch nicht gebaut.
+
 **Zwei Asset-Typen.** Gebaut sind die Wissensbibliothek (`KNOWLEDGE_LIBRARY`) und die [Prompt-Bibliothek](#prompt-bibliothek) (`PROMPT_LIBRARY`). Der Agent ist Zielbild.
 
 **Die Schale.** Beide Typen liegen auf der [Asset-Schale](#die-asset-schale): Tabelle `assets` plus je Typ eine Typtabelle, im Code die Basisentität `Asset` (`io.opaa.asset`) mit `KnowledgeLibrary` und `PromptLibrary` als Unterklassen und je eine `AssetTypeDefinition`. Was für jeden Typ gleich gilt, gibt es genau einmal:
@@ -1303,7 +1315,7 @@ Stand nach Epic [#1726](https://github.com/criew/opaa/issues/1726), September 20
 |---|---|
 | Rechteformel „direkter Grant ∪ Gruppen-Grant ∪ Grant an „Alle Konten"" | `AssetAccessService` (`io.opaa.permission`), ohne Durchgriff der Systemverwaltung |
 | Verwaltungsboden der Systemverwaltung — Verwalten ist nicht Lesen | `AssetAuthorization` |
-| Grants samt der Freigabe an „Alle Konten" und Rechtehistorie, Auffindbarkeit und ihre Historie, Eigentum und Übertragung, „Nachfolge offen" | `AssetGrantService`, `AssetShellService`, `AssetVisibilityHistoryService`, `AssetShellOwnershipDirectory`, `AssetSuccessionSource` |
+| Grants samt der Freigabe an „Alle Konten" und Rechtehistorie, Auffindbarkeit (bis #2092) und Fremdzugangsfreigabe mit ihrer Historie, Eigentum und Übertragung, „Nachfolge offen" | `AssetGrantService`, `AssetShellService`, `AssetVisibilityHistoryService`, `AssetShellOwnershipDirectory`, `AssetSuccessionSource` |
 | Space-Assoziation | `space_asset_associations` mit Fremdschlüssel auf `assets` |
 | Katalog | `AssetCatalogService` |
 | Oberfläche | ein Freigabeabschnitt (`AssetDistributionSection`), ein Rechtedialog samt Grant-Store, eine Übersichtskomponente (`OverviewPage`) |
@@ -1321,7 +1333,7 @@ Stand nach Epic [#1726](https://github.com/criew/opaa/issues/1726), September 20
 
 **Bekannte Grenze.** Die lesbare Menge entsteht im Speicher — je Typ aus der Formel, die an „Alle Konten" freigegebenen Assets eingeschlossen — und geht als `IN`-Liste in die Katalogabfrage und ihre Zählung. Der PostgreSQL-Treiber nimmt je Anweisung höchstens 65 535 Parameter; eine Person, die mehr Assets lesen darf, bekäme vom Katalog einen Fehler statt einer Seite. Dasselbe Muster tragen die bestehenden Listen der Asset-Typen. Die Formel als Teilabfrage in SQL nachzubauen, verdoppelte sie und ist deshalb nicht gebaut.
 
-Gegenüber dem Kapitel [Der Katalog](#der-katalog) fehlen im Eintrag der Anwendungsfall in einem Satz, der Fachbereich, der Freigabestand und die Nutzungsangaben — von „Umfang und Verbreitung" ist die Verbreitung über Spaces gebaut, „wie oft genutzt" nicht, weil es keine Nutzungsstatistik gibt. Die Regel aus [Freigabestufen und Auffindbarkeit](#freigabestufen-und-auffindbarkeit), dass erst ab Fachbereichsebene gelistet werden kann, ist nicht gebaut: Listen ist eine ausdrückliche Handlung mit Vorgabe `false`, aber an keine Freigabe gebunden; begrenzen kann es nur die Freigabe-Obergrenze einer Konnektorbibliothek.
+Gegenüber dem Kapitel [Der Katalog](#der-katalog) fehlen im Eintrag der Anwendungsfall in einem Satz, der Fachbereich, der Freigabestand und die Nutzungsangaben — von „Umfang und Verbreitung" ist die Verbreitung über Spaces gebaut, „wie oft genutzt" nicht, weil es keine Nutzungsstatistik gibt. Gebaut ist dagegen noch das Listen (`listed`, Vorgabe `false`, begrenzbar nur durch die Freigabe-Obergrenze einer Konnektorbibliothek), das mit #2092 entfällt.
 
 **Die Prompt-Bibliothek in Gebrauch.** Anlegen (auch im Namen einer Gruppe), Prompts mit typisierten Variablen pflegen, an Personen, Gruppen und „Alle Konten" freigeben, einem Space zuordnen, im Chat per `/name` mit Variablenformular einsetzen, Nachweis „Prompt: <Titel>" im Verlauf — alles über die Oberfläche und ohne Systemverwaltung.
 
@@ -1333,6 +1345,7 @@ Gegenüber dem Kapitel [Der Katalog](#der-katalog) fehlen im Eintrag der Anwendu
 - **Mitgelieferte Assets** — `origin = BUILT_IN` ist im Schema vorgesehen, angelegt wird es von nichts; ebenso der Aktualisierungsweg.
 - **Nutzungsstatistik** — aggregiert und mit Mindestgruppengröße ([Nutzungstransparenz](#nutzungstransparenz)). Die Verwendung eines Prompts ist nur an der eigenen Nachricht vermerkt (`chat_messages.used_prompt_id`/`used_prompt_title`, Changeset 088, Hinweis im Verlauf), ohne Index und ohne Abfrage über Gespräche hinweg; sie wird weder protokolliert noch gezählt.
 - **Parameter, Abkömmlinge, Referenz statt Kopie, Export und Import** und der **Agent** als Asset-Typ.
+- **Das Modell aus Epic #2070** — ein Katalog nur mit Kacheln und Sichtbarkeit öffentlich/geschlossen, Favoriten, die Zuordnung als harte Grenze für alle Typen mit Hinweis statt stillem Leerlauf, Space-Assistent und „In Space verwenden" (#2092 bis #2098).
 
 ---
 

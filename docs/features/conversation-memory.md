@@ -377,7 +377,7 @@ Person es sehen konnte.
 | Verdichtung schlägt fehl | Runde steuert keine Punkte bei; Log ohne Inhalt, Zähler mit Grund; kein Nachholen |
 | Neuladen mitten in der Unterhaltung | Notiz kommt mit dem Chat aus der Datenbank; Zahl und Punkte sind identisch zu vorher; Panel zugeklappt |
 | Neustart des Backends, Cache-Ablauf | Notiz liegt in der Datenbank; das Gesprächsfenster wird aus den letzten *n* Nachrichten mit derselben Marken-Normalisierung nachgeladen — derselbe Chat schickt vor und nach dem Neustart denselben Prompt |
-| Chat ohne Wissensbasis (Leiste geleert) | Notiz wird geführt und verwendet — sie betrifft das Gespräch, nicht die Suche |
+| Chat ohne Wissensbasis (Leiste geleert, oder dem Space ist kein Wissen zugeordnet) | Notiz wird geführt und verwendet — sie betrifft das Gespräch, nicht die Suche |
 | Anfrage ohne gespeicherten Chat (nur API) | keine Notiz; nur das flüchtige Gesprächsfenster |
 | Mitlesende eines geteilten Chats (sobald Teilen gebaut ist) | sehen die Notiz, ohne Entfernen-Schaltflächen |
 | Entfernen und Verdichtung gleichzeitig | Entfernen trifft einen Punkt über seine Kennung; die Verdichtung hängt neue Punkte an — beides berührt sich technisch nicht. Für die *eigene* Runde tritt der Fall nicht auf: Ein Punkt wird erst mit der nächsten Antwort sichtbar, kann also nicht entfernt werden, während seine Verdichtung läuft. Die Verdichtung einer *späteren* Runde kann einen entfernten Punkt dagegen erneut erzeugen, weil Dedupe nur die aktuelle Liste prüft — das ist die entschiedene Löschsemantik (kein Sperren), und die Person entfernt ihn erneut |

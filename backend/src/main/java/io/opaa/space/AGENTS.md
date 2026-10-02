@@ -46,6 +46,6 @@ foundation, identity, rights und knowledge ab.
   --tests 'io.opaa.diagnosticaccess.*' --tests 'io.opaa.architecture.*'
 ```
 
-Bei Schemaänderungen: neue Datei unter `db/changelog/workspace/` mit eigenem Delta-Test
-(`MasterChangelog.filesExcept(...)`), Regeln in `backend/AGENTS.md`, „Liquibase: Changelog je
-Modul“; dazu `ChangelogLayoutTest`, `ChangelogModuleBoundaryTest`, `ChangelogOrderTest`.
+Bei Schemaänderungen: neue Datei unter `db/changelog/workspace/`. Regeln und
+Tests in `backend/AGENTS.md`, „Liquibase: Changelog je Modul“ — ein eigener Delta-Test ist nur
+für rein additive DDL entbehrlich.
