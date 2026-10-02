@@ -36,7 +36,9 @@ public record AssetCatalogQuery(
     this(assetType, text, visibility, fromMyGroups, sort, false);
   }
 
-  /** Every readable asset of {@code assetType} matching {@code text}, ordered by name. */
+  /**
+   * Every readable asset of {@code assetType} matching {@code text}, favorites first, then by name.
+   */
   public static AssetCatalogQuery of(AssetType assetType, String text) {
     return new AssetCatalogQuery(assetType, text, null, false, AssetCatalogSort.NAME);
   }

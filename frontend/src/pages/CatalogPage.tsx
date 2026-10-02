@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -153,18 +153,23 @@ function TypeBadge({ definition }: { definition: AssetTypeDefinition }) {
 /**
  * The caller's own favorite mark (ADR-0039, Entscheidung 7): a toggle beside the card's link, never
  * inside it. Its name says what the next press does and thereby the state; `aria-pressed` would say
- * the state a second time, in the opposite direction.
+ * the state a second time, in the opposite direction. While a press is pending it is only
+ * `aria-disabled`: a natively disabled button would drop the keyboard focus.
  */
 function FavoriteToggle({ entry }: { entry: CatalogEntryResponse }) {
   const setFavorite = useCatalogStore((s) => s.setFavorite)
+  const pending = useRef(false)
   const [busy, setBusy] = useState(false)
   const label = entry.favorite
     ? `„${entry.name}“ aus den Favoriten entfernen`
     : `„${entry.name}“ als Favorit markieren`
 
   async function toggle() {
+    if (pending.current) return
+    pending.current = true
     setBusy(true)
     await setFavorite(entry, !entry.favorite)
+    pending.current = false
     setBusy(false)
   }
 
@@ -172,7 +177,7 @@ function FavoriteToggle({ entry }: { entry: CatalogEntryResponse }) {
     <IconButton
       size="small"
       aria-label={label}
-      disabled={busy}
+      aria-disabled={busy || undefined}
       onClick={() => void toggle()}
       sx={{ position: 'relative', zIndex: 1, m: -0.75, ml: 'auto' }}
     >

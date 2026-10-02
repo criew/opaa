@@ -19,6 +19,7 @@ import io.opaa.test.OwnOrganizationFixtures;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -103,6 +104,46 @@ class AssetCatalogFavoritesIntegrationTest {
     assertThat(names(page)).containsExactly("Beta", "Gamma");
     assertThat(page.totalElements()).isEqualTo(2);
     assertThat(page.entries()).allMatch(AssetCatalogEntry::favorite);
+  }
+
+  /**
+   * Favorites first is a total order in both sorts: the pages neither repeat nor skip an entry, and
+   * a favorite that would stand on a later page by name alone leads the first one.
+   */
+  @Test
+  void pagesWithFavoritesNeitherRepeatNorSkipAnEntry() {
+    List<String> names = List.of("Alpha", "Beta", "Delta", "Epsilon", "Gamma");
+    for (String name : names) {
+      UUID id = publicLibrary(name);
+      if (name.equals("Gamma")) {
+        mark(member, id);
+      }
+    }
+
+    for (AssetCatalogSort sort : AssetCatalogSort.values()) {
+      List<String> paged = new ArrayList<>();
+      for (int page = 0; page < 3; page++) {
+        AssetCatalogPage result =
+            catalogService.list(
+                callerOf(member),
+                new AssetCatalogQuery(null, null, null, false, sort, false),
+                page,
+                2);
+        assertThat(result.totalElements()).isEqualTo(5);
+        paged.addAll(names(result));
+      }
+      assertThat(paged).as(sort.name()).doesNotHaveDuplicates();
+      assertThat(paged).as(sort.name()).containsExactlyInAnyOrderElementsOf(names);
+      assertThat(paged.getFirst()).as(sort.name()).isEqualTo("Gamma");
+    }
+    assertThat(
+            names(
+                catalogService.list(
+                    callerOf(member),
+                    new AssetCatalogQuery(null, null, null, false, AssetCatalogSort.NAME, false),
+                    1,
+                    2)))
+        .containsExactly("Beta", "Delta");
   }
 
   /**

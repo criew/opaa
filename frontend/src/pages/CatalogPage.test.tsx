@@ -207,6 +207,16 @@ describe('CatalogPage (ADR-0039)', () => {
         favoriteRequests.push(`${request.method} ${new URL(request.url).pathname}`)
       }
     }
+    let release: () => void = () => {}
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    server.use(
+      http.put('/api/v1/assets/:assetType/:assetId/favorite', async () => {
+        await gate
+        return new HttpResponse(null, { status: 204 })
+      }),
+    )
     server.events.on('request:start', recordFavorite)
     renderCatalog()
 
@@ -218,21 +228,70 @@ describe('CatalogPage (ADR-0039)', () => {
 
     star.focus()
     await user.keyboard('{Enter}')
+    // pending: only aria-disabled - a natively disabled button would drop the focus
+    await waitFor(() => expect(star).toHaveAttribute('aria-disabled', 'true'))
+    expect(star).not.toBeDisabled()
+    expect(star).toHaveFocus()
+    await user.keyboard('{Enter}')
+    release()
+
     const marked = await within(cardOf(link)).findByRole('button', {
       name: '„Formulierungshilfen Referat 50“ aus den Favoriten entfernen',
     })
-    await user.click(marked)
-    expect(
-      await within(cardOf(link)).findByRole('button', {
-        name: '„Formulierungshilfen Referat 50“ als Favorit markieren',
-      }),
-    ).toBeInTheDocument()
+    expect(marked).toHaveFocus()
+    await waitFor(() => expect(marked).not.toHaveAttribute('aria-disabled'))
+    await user.keyboard('{Enter}')
+    const unmarked = await within(cardOf(link)).findByRole('button', {
+      name: '„Formulierungshilfen Referat 50“ als Favorit markieren',
+    })
+    expect(unmarked).toHaveFocus()
 
     server.events.removeListener('request:start', recordFavorite)
     expect(favoriteRequests).toEqual([
       'PUT /api/v1/assets/PROMPT_LIBRARY/prompt-library-referat-50/favorite',
       'DELETE /api/v1/assets/PROMPT_LIBRARY/prompt-library-referat-50/favorite',
     ])
+  })
+
+  it('loads further pages after a toggle without repeating or skipping an entry', async () => {
+    const user = userEvent.setup()
+    const names = Array.from({ length: 60 }, (_, i) => `Eintrag ${String(i).padStart(2, '0')}`)
+    const favorites = new Set<string>(['Eintrag 55'])
+    server.use(
+      http.get('/api/v1/catalog', ({ request }) => {
+        const params = new URL(request.url).searchParams
+        const page = Number(params.get('page') ?? '0')
+        const size = Number(params.get('size') ?? '50')
+        const all = [...names]
+          .sort((a, b) => Number(favorites.has(b)) - Number(favorites.has(a)) || a.localeCompare(b))
+          .map((name) => entry(name, { favorite: favorites.has(name) }))
+        return HttpResponse.json({
+          entries: all.slice(page * size, page * size + size),
+          page,
+          size,
+          totalElements: all.length,
+          totalPages: Math.ceil(all.length / size),
+        })
+      }),
+      http.delete('/api/v1/assets/:assetType/:assetId/favorite', ({ params }) => {
+        favorites.delete(String(params.assetId))
+        return new HttpResponse(null, { status: 204 })
+      }),
+    )
+    renderCatalog()
+
+    const first = await screen.findByRole('link', { name: 'Eintrag 55' })
+    await user.click(
+      within(cardOf(first)).getByRole('button', {
+        name: '„Eintrag 55“ aus den Favoriten entfernen',
+      }),
+    )
+    await within(cardOf(first)).findByRole('button', { name: '„Eintrag 55“ als Favorit markieren' })
+    await user.click(screen.getByRole('button', { name: 'Weitere laden' }))
+
+    await waitFor(() => expect(screen.getAllByRole('link', { name: /^Eintrag / })).toHaveLength(60))
+    expect(screen.getAllByRole('link', { name: 'Eintrag 55' })).toHaveLength(1)
+    expect(screen.getByRole('link', { name: 'Eintrag 49' })).toBeInTheDocument()
   })
 
   it('narrows to the own favorites with the "Favoriten" chip', async () => {

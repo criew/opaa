@@ -71,7 +71,10 @@ public class AssetCatalogService {
             .collect(Collectors.toMap(AssetCatalogFactSource::assetType, source -> source));
   }
 
-  /** One page of every readable asset of {@code assetType} matching {@code text}, by name. */
+  /**
+   * One page of every readable asset of {@code assetType} matching {@code text}: the caller's
+   * favorites first, then by name.
+   */
   public AssetCatalogPage list(
       CurrentUser caller, AssetType assetType, String text, int page, int size) {
     return list(caller, AssetCatalogQuery.of(assetType, text), page, size);
