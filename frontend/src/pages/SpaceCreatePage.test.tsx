@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { answerConfirm, renderWithProviders } from '../test/test-utils'
 import { server } from '../mocks/server'
+import { favoriteKey, mockFavoriteAssets } from '../mocks/assetFixtures'
 import { capabilityMissingMessage } from '../utils/labels'
 import SpaceCreatePage, { NO_KNOWLEDGE_SUMMARY } from './SpaceCreatePage'
 import { useSpaceStore } from '../stores/spaceStore'
@@ -327,6 +328,24 @@ describe('SpaceCreatePage (#594, Mockup 1b)', () => {
       expect(screen.queryByRole('checkbox', { name: /^Meine Dokumente/ })).not.toBeInTheDocument()
       expect(fromMyGroups).toContain('true')
       server.events.removeAllListeners()
+    })
+
+    it('narrows the tiles to my favorites', async () => {
+      mockFavoriteAssets.add(favoriteKey('KNOWLEDGE_LIBRARY', 'library-dienstanweisungen'))
+      const user = userEvent.setup()
+      renderWithProviders(<SpaceCreatePage />, { withRouter: true })
+
+      await toContentStep(user)
+      expect(await screen.findByRole('checkbox', { name: /^Meine Dokumente/ })).toBeVisible()
+      await user.click(
+        within(screen.getByRole('group', { name: 'Herkunft' })).getByRole('button', {
+          name: 'Nur Favoriten',
+        }),
+      )
+
+      expect(await screen.findByRole('checkbox', { name: /^Dienstanweisungen/ })).toBeVisible()
+      expect(screen.queryByRole('checkbox', { name: /^Meine Dokumente/ })).not.toBeInTheDocument()
+      expect(screen.getAllByRole('checkbox')).toHaveLength(1)
     })
 
     it('starts with the asset handed over by "In Space verwenden"', async () => {

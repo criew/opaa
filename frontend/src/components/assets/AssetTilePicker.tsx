@@ -26,9 +26,10 @@ const SEARCH_DELAY_MS = 300
 const ALL_TYPES = 'all'
 
 /** Which part of the readable assets is on offer. */
-type Scope = 'all' | 'groups'
+type Scope = 'all' | 'favorites' | 'groups'
 const SCOPES: Array<{ value: Scope; label: string }> = [
   { value: 'all', label: 'Alle' },
+  { value: 'favorites', label: 'Nur Favoriten' },
   { value: 'groups', label: 'Aus meinen Gruppen' },
 ]
 
@@ -85,6 +86,7 @@ export default function AssetTilePicker({
       const result = await getCatalog({
         type: filterType,
         q: appliedQuery,
+        favorites: scope === 'favorites',
         fromMyGroups: scope === 'groups',
         page,
         size: PAGE_SIZE,

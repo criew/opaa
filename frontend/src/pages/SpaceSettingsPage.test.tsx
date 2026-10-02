@@ -2,6 +2,7 @@ import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { HttpResponse, http } from 'msw'
 import { server } from '../mocks/server'
+import { favoriteKey, mockFavoriteAssets } from '../mocks/assetFixtures'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { answerConfirm, renderWithProviders } from '../test/test-utils'
 import SpaceSettingsPage from './SpaceSettingsPage'
@@ -854,6 +855,23 @@ describe('SpaceSettingsPage', () => {
 
     expect(await screen.findByText(/Nachfolge offen/)).toBeInTheDocument()
     expect(screen.getByText(/Übernahme/)).toBeInTheDocument()
+  })
+
+  it('narrows the tiles to my favorites, as in the space wizard', async () => {
+    mockFavoriteAssets.add(favoriteKey('KNOWLEDGE_LIBRARY', 'library-dienstanweisungen'))
+    setSpaceState(teamSpace)
+    renderTab('knowledge')
+    const user = userEvent.setup()
+
+    expect(await screen.findByRole('checkbox', { name: /^Projektakte Phoenix/ })).toBeVisible()
+    await user.click(
+      within(screen.getByRole('group', { name: 'Herkunft' })).getByRole('button', {
+        name: 'Nur Favoriten',
+      }),
+    )
+
+    expect(await screen.findByRole('checkbox', { name: /^Dienstanweisungen/ })).toBeVisible()
+    expect(screen.queryByRole('checkbox', { name: /^Projektakte Phoenix/ })).not.toBeInTheDocument()
   })
 
   it('narrows the tiles to assets from my groups, as in the space wizard', async () => {
