@@ -175,8 +175,8 @@ class AssetShellTypeIndependenceIntegrationTest {
 
     SpaceAssetLink associated =
         associationService.associate(space, TEST_ASSET, asset, callerOf(owner));
-    assertThat(associationService.listForSpace(space, callerOf(owner)).narrowsSearch())
-        .as("an asset without documents narrows no search")
+    assertThat(associationService.listForSpace(space, callerOf(owner)).hasKnowledge())
+        .as("an asset without documents is no knowledge")
         .isFalse();
     associationService.associate(space, KnowledgeLibrary.ASSET_TYPE, library, callerOf(owner));
 
@@ -185,7 +185,7 @@ class AssetShellTypeIndependenceIntegrationTest {
         .extracting(SpaceAssetLink::assetType)
         .containsExactlyInAnyOrder(TEST_ASSET, KnowledgeLibrary.ASSET_TYPE);
     assertThat(associationService.libraryIdsInSpace(space)).containsExactly(library);
-    assertThat(associationService.listForSpace(space, callerOf(owner)).narrowsSearch()).isTrue();
+    assertThat(associationService.listForSpace(space, callerOf(owner)).hasKnowledge()).isTrue();
     assertThat(associationRepository.findLibraryIdsBySpaceId(space)).containsExactly(library);
 
     associationService.detach(space, asset, callerOf(owner));

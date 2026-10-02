@@ -13,6 +13,7 @@ import EvidenceFooter from './EvidenceFooter'
 import MarkdownRenderer from './MarkdownRenderer'
 import SourceEvidenceDrawer from './SourceEvidenceDrawer'
 import DocumentTextPreviewDialog from '../DocumentTextPreviewDialog'
+import { NO_KNOWLEDGE_ASSIGNED, NO_KNOWLEDGE_READABLE } from '../space/spaceKnowledge'
 import { useDocumentPreview } from '../../hooks/useDocumentPreview'
 
 interface MessageBubbleProps {
@@ -146,12 +147,17 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
             </Alert>
           )}
 
-          {/* #203/#706: distinct from answeredWithoutKnowledge above - the space is curated, but
-              none of its associated libraries are readable by this caller, not a deliberate
-              "ohne Wissen" choice. */}
+          {/* Distinct from answeredWithoutKnowledge above: the space offers nothing to search -
+              nothing associated, or nothing of it readable by this caller - not a deliberate
+              "ohne Wissen" choice. The answer must never look sourced. */}
+          {!isUser && message.noKnowledgeAssignedToSpace && (
+            <Alert severity="warning" variant="outlined" sx={{ mt: 1 }}>
+              {NO_KNOWLEDGE_ASSIGNED} Diese Antwort stützt sich auf keine Dokumente.
+            </Alert>
+          )}
           {!isUser && message.noKnowledgeAvailableInSpace && (
             <Alert severity="info" variant="outlined" sx={{ mt: 1 }}>
-              In diesem Space ist für Sie derzeit kein Wissen verfügbar.
+              {NO_KNOWLEDGE_READABLE}
             </Alert>
           )}
 

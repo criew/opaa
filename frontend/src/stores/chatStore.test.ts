@@ -158,7 +158,7 @@ describe('chatStore', () => {
     })
 
     // #564 review: a chat persisted with useKnowledge=true still carrying leftover
-    // referencedLibraryIds (a legacy/inconsistent record) must show @Alles-Wissen, not a mix of
+    // referencedLibraryIds (a legacy/inconsistent record) must show @Space-Wissen, not a mix of
     // both - the bar has to mirror exactly one state, and the ids are meaningless while
     // useKnowledge is true (#560).
     it('discards referencedLibraryIds locally when useKnowledge=true carries a non-empty list', async () => {
@@ -1224,7 +1224,7 @@ describe('chatStore', () => {
       })
     })
 
-    // Payload mapping for all three chip-bar states (#560): @Alles-Wissen -> useKnowledge=true (no
+    // Payload mapping for all three chip-bar states (#560): @Space-Wissen -> useKnowledge=true (no
     // libraryIds), concrete chips -> useKnowledge=false + libraryIds, empty bar -> useKnowledge=
     // false with an empty libraryIds array, mirroring exactly what the bar shows.
     describe('maps scope to the query payload', () => {
@@ -1517,9 +1517,9 @@ describe('chatStore', () => {
       expect(useChatStore.getState().referencedLibraryIds).toEqual(['library-a'])
     })
 
-    // The Ersetzungslogik at the core of #560: the first concrete chip replaces @Alles-Wissen, and
-    // re-adding @Alles-Wissen replaces the concrete chips in turn.
-    it('replaces @Alles-Wissen with the first concrete chip', () => {
+    // The Ersetzungslogik at the core of #560: the first concrete chip replaces @Space-Wissen, and
+    // re-adding @Space-Wissen replaces the concrete chips in turn.
+    it('replaces @Space-Wissen with the first concrete chip', () => {
       useChatStore.getState().startNewChat(SPACE_ID)
       expect(useChatStore.getState().scope).toBe('all')
 
@@ -1533,7 +1533,7 @@ describe('chatStore', () => {
       expect(useChatStore.getState().referencedLibraryIds).toEqual(['library-a', 'library-b'])
     })
 
-    it('replaces the concrete chips when @Alles-Wissen is re-added', () => {
+    it('replaces the concrete chips when @Space-Wissen is re-added', () => {
       useChatStore.getState().startNewChat(SPACE_ID)
       useChatStore.getState().addReferencedLibrary('library-a')
       useChatStore.getState().addReferencedLibrary('library-b')
@@ -1565,7 +1565,7 @@ describe('chatStore', () => {
       expect(useChatStore.getState().referencedLibraryIds).toEqual(['library-b'])
     })
 
-    it('empties the bar (scope "none") when @Alles-Wissen is removed via clearScope', () => {
+    it('empties the bar (scope "none") when @Space-Wissen is removed via clearScope', () => {
       useChatStore.getState().startNewChat(SPACE_ID)
       expect(useChatStore.getState().scope).toBe('all')
 

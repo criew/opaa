@@ -130,6 +130,19 @@ class SearchDiagnosisSpaceContextIntegrationTest {
         .containsExactly(libraryInSpaceAndProfile);
   }
 
+  /**
+   * The diagnosis follows the chat's hard boundary: a space without associations searches nothing,
+   * there is no fallback to everything the profile may read.
+   */
+  @Test
+  void aProfileRunInASpaceWithoutAssociationsSearchesNothing() {
+    jdbcTemplate.update("DELETE FROM space_asset_associations WHERE space_id = ?", spaceId);
+
+    SearchDiagnosis diagnosis = diagnosisService.diagnose(admin(), profileQuery(spaceId));
+
+    assertThat(diagnosis.searchScope()).isEmpty();
+  }
+
   /** Without a space the run keeps the whole organization-wide reach of the profile. */
   @Test
   void aProfileRunWithoutASpaceIsUnchanged() {

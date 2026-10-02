@@ -50,14 +50,14 @@ interface SpaceState {
   // #203: the space's associated assets, of every type - for a plain MEMBER, filtered server-side to what the
   // caller may themselves read (two members of the same space can legitimately see different
   // lists here); for a CURATOR/ADMIN/owner, unfiltered (#706 review, finding 5). hasAssociations
-  // is a count-free state field independent of the (possibly filtered) items list - it is what
-  // distinguishes "this space has no curation at all" from "curated, but nothing the caller may
-  // read" (#706 review, finding 2), two cases that look identical if only items is inspected.
+  // is a count-free state field independent of the (possibly filtered) items list.
   assetAssociations: SpaceAssetAssociationResponse[]
   hasAssetAssociations: boolean
-  // Whether the space narrows a chat's search: an associated knowledge library, readable or not.
-  // Computed by the server, because the filtered list does not show what the caller cannot read.
-  assetAssociationsNarrowSearch: boolean
+  // The two count-free signals of an empty search scope, computed by the server because the
+  // filtered list does not show what the caller cannot read: is any knowledge library associated
+  // at all, and is any of it readable by the caller. Without knowledge, a chat searches nothing.
+  hasKnowledge: boolean
+  hasReadableKnowledge: boolean
   isLoadingAssetAssociations: boolean
   // #783 review: the space id that assetAssociations/hasAssetAssociations actually describe -
   // null while nothing has successfully loaded yet, or after a failed load. A caller reading
@@ -84,6 +84,7 @@ interface SpaceState {
     name: string,
     description: string,
     visibility?: SpaceVisibility,
+    chatAutoCleanup?: boolean,
   ) => Promise<void>
   deleteSelectedSpace: (spaceId: string) => Promise<void>
   archiveSelectedSpace: (spaceId: string) => Promise<void>
@@ -92,6 +93,7 @@ interface SpaceState {
     description: string,
     visibility?: SpaceVisibility,
     libraryIds?: string[],
+    chatAutoCleanup?: boolean,
   ) => Promise<string>
   loadAssetAssociations: (spaceId: string) => Promise<void>
   associateAsset: (spaceId: string, assetType: AssetType, assetId: string) => Promise<void>
@@ -117,7 +119,8 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
   isLoadingMembers: false,
   assetAssociations: [],
   hasAssetAssociations: false,
-  assetAssociationsNarrowSearch: false,
+  hasKnowledge: false,
+  hasReadableKnowledge: false,
   isLoadingAssetAssociations: false,
   assetAssociationsSpaceId: null,
 
@@ -133,7 +136,8 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
       isLoadingMembers: false,
       assetAssociations: [],
       hasAssetAssociations: false,
-      assetAssociationsNarrowSearch: false,
+      hasKnowledge: false,
+      hasReadableKnowledge: false,
       isLoadingAssetAssociations: false,
       assetAssociationsSpaceId: null,
     }),
@@ -176,7 +180,8 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
       members: [],
       assetAssociations: [],
       hasAssetAssociations: false,
-      assetAssociationsNarrowSearch: false,
+      hasKnowledge: false,
+      hasReadableKnowledge: false,
       assetAssociationsSpaceId: null,
     })
     try {
@@ -239,8 +244,8 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
     await Promise.all([get().selectSpace(spaceId), get().loadMembers(spaceId)])
   },
 
-  updateDetails: async (spaceId, name, description, visibility) => {
-    await updateSpaceDetails(spaceId, name, description, visibility)
+  updateDetails: async (spaceId, name, description, visibility, chatAutoCleanup) => {
+    await updateSpaceDetails(spaceId, name, description, visibility, chatAutoCleanup)
     await Promise.all([get().loadSpaces(), get().selectSpace(spaceId), get().loadMembers(spaceId)])
   },
 
@@ -267,8 +272,8 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
     await Promise.all([get().loadSpaces(), get().selectSpace(spaceId), get().loadMembers(spaceId)])
   },
 
-  createNewSpace: async (name, description, visibility, libraryIds) => {
-    const space = await createSpace(name, description, visibility, libraryIds)
+  createNewSpace: async (name, description, visibility, libraryIds, chatAutoCleanup) => {
+    const space = await createSpace(name, description, visibility, libraryIds, chatAutoCleanup)
     await get().loadSpaces()
     await get().selectSpace(space.id)
     return space.id
@@ -280,8 +285,7 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
   // response for the space just left land after a later call already started for the next space,
   // making the wrong space's association count render. On failure, assetAssociationsSpaceId stays
   // null rather than becoming "this space has no associations" - #783 review nit 1: an unresolved
-  // load must render as unknown, not silently as the exact false claim #782 fixed (every readable
-  // library treated as searched).
+  // load must render as unknown, not silently as a claim about what the space searches.
   loadAssetAssociations: async (spaceId) => {
     const sessionEpoch = currentSessionEpoch()
     const requestId = ++assetAssociationsRequestSeq
@@ -290,7 +294,8 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
       error: null,
       assetAssociations: [],
       hasAssetAssociations: false,
-      assetAssociationsNarrowSearch: false,
+      hasKnowledge: false,
+      hasReadableKnowledge: false,
       assetAssociationsSpaceId: null,
     })
     try {
@@ -299,7 +304,8 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
       set({
         assetAssociations: response.items,
         hasAssetAssociations: response.hasAssociations,
-        assetAssociationsNarrowSearch: response.narrowsSearch,
+        hasKnowledge: response.hasKnowledge,
+        hasReadableKnowledge: response.hasReadableKnowledge,
         assetAssociationsSpaceId: spaceId,
         isLoadingAssetAssociations: false,
       })
@@ -311,7 +317,8 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
         error: message,
         assetAssociations: [],
         hasAssetAssociations: false,
-        assetAssociationsNarrowSearch: false,
+        hasKnowledge: false,
+        hasReadableKnowledge: false,
         assetAssociationsSpaceId: null,
         isLoadingAssetAssociations: false,
       })

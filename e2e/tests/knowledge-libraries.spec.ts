@@ -14,6 +14,7 @@ import {
   startFreshChat,
 } from '../fixtures/chat'
 import { createReleasedGroupViaApi } from '../fixtures/promptLibraries'
+import { assignLibraryToDefaultSpace } from '../fixtures/spaces'
 import type { Page } from '@playwright/test'
 
 // Deterministic, tiny, and part of the repo (see AGENTS.md "Reproduktionsnachweis" context on
@@ -85,11 +86,13 @@ const OWN_LIBRARY_NAME_REGULAR = `E2E Eigene Bibliothek Regular ${runId}`
 // #548's review).
 
 // Creates a fresh library named libraryName for the acting user (mirroring scenario 1's own
-// creation step) and uploads OWN_DOCUMENT_PATH into it. Since #522 removed the automatically
-// provisioned personal library, there is no existing library to rely on for this upload - it must
-// be created here, on demand, same as any other library a user wants.
-async function uploadOwnDocument(page: Page, libraryName: string) {
+// creation step), uploads OWN_DOCUMENT_PATH into it and assigns it to the user's own space - a
+// space searches only what is assigned to it. Since #522 removed the automatically provisioned
+// personal library, there is no existing library to rely on for this upload - it must be created
+// here, on demand, same as any other library a user wants.
+async function uploadOwnDocument(page: Page, devUser: string, libraryName: string) {
   await createLibraryWithDocument(page, libraryName, OWN_DOCUMENT_PATH, OWN_DOCUMENT_NAME)
+  await assignLibraryToDefaultSpace(devUser, libraryName)
 }
 
 /**
@@ -121,6 +124,7 @@ test.describe.serial('Wissensbibliotheken: Upload, Freigabe, rechtebewusste Such
   })
 
   test('2. Suche findet das eigene Dokument', async ({ authenticatedPage: page }) => {
+    await assignLibraryToDefaultSpace('dev-admin', LIBRARY_NAME)
     await startFreshChat(page)
     await askQuestion(page, QUESTION)
     await expectCitedSource(page, TEST_DOCUMENT_NAME)
@@ -137,13 +141,16 @@ test.describe.serial('Wissensbibliotheken: Upload, Freigabe, rechtebewusste Such
     await searchLibraries(bPage, LIBRARY_NAME)
     await expect(bPage.getByText(LIBRARY_NAME, { exact: true })).toBeVisible()
 
+    // Readable is not enough: the library is searched only once it is assigned to B's space. It
+    // stays assigned through scenario 5, where the revoked grant alone must exclude it.
+    await assignLibraryToDefaultSpace('dev-user', LIBRARY_NAME)
     await startFreshChat(bPage)
     await askQuestion(bPage, QUESTION)
     await expectCitedSource(bPage, TEST_DOCUMENT_NAME)
   })
 
   test('4. Negativfall: keine Freigabe, kein Treffer', async ({ outsiderPage: cPage }) => {
-    await uploadOwnDocument(cPage, OWN_LIBRARY_NAME_OUTSIDER)
+    await uploadOwnDocument(cPage, 'dev-outsider', OWN_LIBRARY_NAME_OUTSIDER)
 
     await searchLibraries(cPage, LIBRARY_NAME)
     await expectNoCatalogMatch(cPage, LIBRARY_NAME)
@@ -174,7 +181,7 @@ test.describe.serial('Wissensbibliotheken: Upload, Freigabe, rechtebewusste Such
     // is gone.
     await expect(adminPage.getByText('Dev User')).toHaveCount(0)
 
-    await uploadOwnDocument(bPage, OWN_LIBRARY_NAME_REGULAR)
+    await uploadOwnDocument(bPage, 'dev-user', OWN_LIBRARY_NAME_REGULAR)
 
     await searchLibraries(bPage, LIBRARY_NAME)
     await expectNoCatalogMatch(bPage, LIBRARY_NAME)
@@ -207,6 +214,7 @@ test.describe.serial('Wissensbibliotheken: Upload, Freigabe, rechtebewusste Such
     await searchLibraries(cPage, LIBRARY_NAME)
     await expect(cPage.getByText(LIBRARY_NAME, { exact: true })).toBeVisible()
 
+    await assignLibraryToDefaultSpace('dev-outsider', LIBRARY_NAME)
     await startFreshChat(cPage)
     await askQuestion(cPage, QUESTION)
     await expectCitedSource(cPage, TEST_DOCUMENT_NAME)

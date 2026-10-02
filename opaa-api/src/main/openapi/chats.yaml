@@ -39,7 +39,9 @@ paths:
       tags: [chat]
       summary: >
         Create a new chat in this space (requires space membership). Rejected with 409 if the
-        space is archived (#543) - an archived space accepts no new content.
+        space is archived (#543) - an archived space accepts no new content. Rejected with 400 if
+        referencedLibraryIds names a library the caller may not read, or one that is not associated
+        with the space.
       requestBody:
         required: false
         content:
@@ -136,7 +138,8 @@ paths:
       summary: >
         Update a chat's title, useKnowledge switch or sticky library references - author only.
         Rejected with 409 if the chat's space is archived (#543) - an archived space accepts no
-        changes to existing chats either.
+        changes to existing chats either. Rejected with 400 if referencedLibraryIds names a library
+        the caller may not read, or one that is not associated with the chat's space.
       requestBody:
         required: true
         content:
@@ -449,6 +452,10 @@ components:
         useKnowledge:
           type: boolean
           default: true
+          description: >
+            @Space-Wissen: true searches every knowledge library associated with the chat's space
+            that the caller may read - nothing else, and nothing at all while the space has no
+            knowledge associated.
         referencedLibraryIds:
           type: array
           items:
@@ -456,7 +463,8 @@ components:
             format: uuid
           description: >
             Sticky @-references (epic #523). Used as the search scope when useKnowledge is false;
-            ignored when it is true.
+            ignored when it is true. Only the references that are still associated with the chat's
+            space and readable by the caller are searched.
         metadataFilter:
           nullable: true
           allOf:
@@ -487,6 +495,14 @@ components:
             When the requesting person moved this chat into their chat archive; null if it is not
             archived for them. A personal mark, never another person's - unrelated to an archived
             space.
+        deletionDueAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: >
+            When the automatic chat cleanup of the space will delete this archived chat;
+            null while the chat is active for the caller or the space has the cleanup switched off.
+            Pinning the chat or asking a new question in it brings it back and clears this.
 
     ChatSummaryPage:
       type: object
@@ -597,6 +613,14 @@ components:
           description: >
             When the requesting person moved this chat into their chat archive; null if it is not
             archived for them. Lets a chat opened by link show that it is archived.
+        deletionDueAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: >
+            When the automatic chat cleanup of the space will delete this archived chat;
+            null while the chat is active for the caller or the space has the cleanup switched off.
+            Pinning the chat or asking a new question in it brings it back and clears this.
 
     ChatSearchRequest:
       type: object
@@ -748,6 +772,9 @@ components:
         referencedLibraryIds:
           type: array
           nullable: true
+          description: >
+            Sticky @-references. Each must be readable by the caller and associated with the chat's
+            space; otherwise the request is rejected with 400.
           items:
             type: string
             format: uuid
@@ -773,6 +800,9 @@ components:
         referencedLibraryIds:
           type: array
           nullable: true
+          description: >
+            Sticky @-references. Each must be readable by the caller and associated with the chat's
+            space; otherwise the request is rejected with 400.
           items:
             type: string
             format: uuid

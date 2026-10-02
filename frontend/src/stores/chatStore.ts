@@ -383,6 +383,8 @@ export interface ChatState {
   noteItems: ChatNoteItem[]
   /** When the person moved the active chat into their chat archive; null while it is active. */
   archivedAt: string | null
+  /** When the automatic chat cleanup of the space deletes the archived chat; null otherwise. */
+  deletionDueAt: string | null
   /** The in-flight PATCH (if any) from the most recently *started* setScopeAll/
    * addReferencedLibrary/removeReferencedLibrary call across all chats - never rejects (failures
    * are caught and turned into `error` + a local rollback). Exposed for tests/UI only; sendMessage
@@ -401,16 +403,16 @@ export interface ChatState {
     question: string,
     usedPrompt?: { id: string; title: string },
   ) => Promise<RefusedQuestion | void>
-  /** Sets the chip bar back to the special @Alles-Wissen chip, replacing any concrete chips. */
+  /** Sets the chip bar back to the special @Space-Wissen chip, replacing any concrete chips. */
   setScopeAll: () => void
-  /** Adds a concrete library chip. The first concrete chip replaces @Alles-Wissen (scope 'all' ->
+  /** Adds a concrete library chip. The first concrete chip replaces @Space-Wissen (scope 'all' ->
    * 'libraries'); further chips are added to the existing selection. */
   addReferencedLibrary: (libraryId: string) => void
   /** Removes a concrete library chip. Removing the last one empties the bar (scope -> 'none'),
    * matching "leere Leiste = ohne Wissen". */
   removeReferencedLibrary: (libraryId: string) => void
-  /** Removes the @Alles-Wissen chip, emptying the bar (scope -> 'none'); the reverse of
-   * setScopeAll. Every chip - including @Alles-Wissen - is removable (#560). */
+  /** Removes the @Space-Wissen chip, emptying the bar (scope -> 'none'); the reverse of
+   * setScopeAll. Every chip - including @Space-Wissen - is removable (#560). */
   clearScope: () => void
   /** Sets or clears (null / no condition) the chat's core-field filter (#1070). */
   setMetadataFilter: (filter: MetadataFilter | null) => void
@@ -418,7 +420,11 @@ export interface ChatState {
    * confirmation step, optimistically with a rollback (and `error`) if the DELETE fails. */
   removeNoteItem: (itemId: string) => Promise<void>
   /** Records a changed archive mark of a chat - a no-op unless that chat is the active one. */
-  applyArchivedAt: (chatId: string, archivedAt: string | null) => void
+  applyArchivedAt: (
+    chatId: string,
+    archivedAt: string | null,
+    deletionDueAt?: string | null,
+  ) => void
   /** Records a renamed chat - a no-op unless that chat is the active one. */
   applyTitle: (chatId: string, title: string | null) => void
   /** Drops the active chat back to its initial, empty state (#440) - used on logout so a
@@ -454,6 +460,7 @@ function applyChatDetail(detail: ChatDetail) {
     messages: withOutstandingQuestions(detail.id, detail.messages.map(toChatMessage)),
     noteItems: visibleNoteItems(detail.id, detail.noteItems ?? []),
     archivedAt: detail.archivedAt ?? null,
+    deletionDueAt: detail.deletionDueAt ?? null,
     isLoading: isViewAwaitingAnswer(detail.id),
   }
 }
@@ -484,6 +491,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   metadataFilter: null,
   noteItems: [],
   archivedAt: null,
+  deletionDueAt: null,
   pendingSettingsUpdate: null,
 
   loadChat: async (chatId: string) => {
@@ -558,6 +566,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         title: null,
         noteItems: [],
         archivedAt: null,
+        deletionDueAt: null,
         isLoading: false,
       })
     }
@@ -584,6 +593,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       metadataFilter: null,
       noteItems: [],
       archivedAt: null,
+      deletionDueAt: null,
       isLoadingChat: false,
       isLoading: false,
       returnedQuestion: null,
@@ -789,6 +799,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         content: response.answer,
         sources: response.sources,
         answeredWithoutKnowledge: response.metadata.answeredWithoutKnowledge ?? false,
+        noKnowledgeAssignedToSpace: response.metadata.noKnowledgeAssignedToSpace ?? false,
         noKnowledgeAvailableInSpace: response.metadata.noKnowledgeAvailableInSpace ?? false,
         searchedLibraries: response.metadata.searchedLibraries ?? [],
         timestamp: new Date(),
@@ -846,17 +857,17 @@ export const useChatStore = create<ChatState>((set, get) => ({
   },
 
   setScopeAll: () => {
-    // Already showing @Alles-Wissen - nothing to replace. Short-circuiting here avoids a PATCH
+    // Already showing @Space-Wissen - nothing to replace. Short-circuiting here avoids a PATCH
     // that would just re-send the chat's current settings (#564 review).
     if (get().scope === 'all') return
-    // Re-adding @Alles-Wissen replaces any concrete chips (#560) - the two are mutually
+    // Re-adding @Space-Wissen replaces any concrete chips (#560) - the two are mutually
     // exclusive states of the same bar, never shown together.
     applyScopeChange(get, set, 'all', [])
   },
 
   addReferencedLibrary: (libraryId: string) => {
     const { scope, referencedLibraryIds } = get()
-    // The first concrete chip replaces @Alles-Wissen; from 'libraries' or 'none' it simply
+    // The first concrete chip replaces @Space-Wissen; from 'libraries' or 'none' it simply
     // extends/starts the selection (#560).
     const previousIds = scope === 'libraries' ? referencedLibraryIds : []
     if (previousIds.includes(libraryId)) return
@@ -865,7 +876,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   removeReferencedLibrary: (libraryId: string) => {
     const next = get().referencedLibraryIds.filter((id) => id !== libraryId)
-    // Removing the last concrete chip empties the bar rather than falling back to @Alles-Wissen -
+    // Removing the last concrete chip empties the bar rather than falling back to @Space-Wissen -
     // "leere Leiste = ohne Wissen" (#560), with an explicit one-click way back via setScopeAll.
     applyScopeChange(get, set, next.length > 0 ? 'libraries' : 'none', next)
   },
@@ -969,12 +980,13 @@ export const useChatStore = create<ChatState>((set, get) => ({
       metadataFilter: null,
       noteItems: [],
       archivedAt: null,
+      deletionDueAt: null,
       pendingSettingsUpdate: null,
     })
   },
 
-  applyArchivedAt: (chatId: string, archivedAt: string | null) => {
-    if (get().chatId === chatId) set({ archivedAt })
+  applyArchivedAt: (chatId: string, archivedAt: string | null, deletionDueAt = null) => {
+    if (get().chatId === chatId) set({ archivedAt, deletionDueAt })
   },
 
   applyTitle: (chatId: string, title: string | null) => {

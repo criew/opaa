@@ -30,7 +30,8 @@ const { mockListSpaceMembers, mockGetSpaceAssetAssociations } = vi.hoisted(() =>
   mockListSpaceMembers: vi.fn(async (): Promise<SpaceMemberResponse[]> => []),
   mockGetSpaceAssetAssociations: vi.fn(async (): Promise<SpaceAssetAssociationListResponse> => ({
     hasAssociations: false,
-    narrowsSearch: false,
+    hasKnowledge: false,
+    hasReadableKnowledge: false,
     items: [],
   })),
 }))
@@ -62,7 +63,8 @@ describe('SpacePage', () => {
     mockGetSpaceAssetAssociations.mockClear()
     mockGetSpaceAssetAssociations.mockResolvedValue({
       hasAssociations: false,
-      narrowsSearch: false,
+      hasKnowledge: false,
+      hasReadableKnowledge: false,
       items: [],
     })
     useChatListStore.setState({ chatsBySpaceId: {}, isLoading: false, error: null })
@@ -103,6 +105,7 @@ describe('SpacePage', () => {
         memberCount: 1,
         userRole: 'ADMIN',
         roleCounts: { MEMBER: 0, CURATOR: 0, ADMIN: 1 },
+        chatAutoCleanup: { enabled: false, archiveAfterDays: 90, deleteAfterDays: 365 },
         createdAt: '2026-03-01T10:00:00Z',
         updatedAt: '2026-03-01T10:00:00Z',
       },
@@ -136,7 +139,8 @@ describe('SpacePage', () => {
     window.localStorage.removeItem('opaa.space-library-hint-dismissed')
     mockGetSpaceAssetAssociations.mockResolvedValue({
       hasAssociations: true,
-      narrowsSearch: true,
+      hasKnowledge: true,
+      hasReadableKnowledge: true,
       items: [
         {
           assetType: 'KNOWLEDGE_LIBRARY',
@@ -158,7 +162,8 @@ describe('SpacePage', () => {
   it('names the type of every data source, a prompt library included', async () => {
     mockGetSpaceAssetAssociations.mockResolvedValue({
       hasAssociations: true,
-      narrowsSearch: false,
+      hasKnowledge: false,
+      hasReadableKnowledge: false,
       items: [
         {
           assetType: 'PROMPT_LIBRARY',
@@ -175,31 +180,38 @@ describe('SpacePage', () => {
 
     const entry = (await screen.findByText('Formulierungshilfen')).parentElement as HTMLElement
     expect(within(entry).getByText('Prompt-Bibliothek')).toBeInTheDocument()
-    // A prompt library carries no documents: the search still falls back to every library.
-    expect(screen.getByText(/keine Wissensbibliothek zugeordnet/)).toBeInTheDocument()
+    // A prompt library carries no documents: the space still has no knowledge to search.
+    expect(screen.getByText(/Diesem Space ist kein Wissen zugeordnet\./)).toBeInTheDocument()
   })
 
-  it('shows a fallback message when the space has no library associations', async () => {
+  // Nothing associated: the space searches nothing, and the page says so with a direct link for
+  // whoever may assign knowledge - here the ADMIN of the personal space.
+  it('shows the knowledge notice with a direct link when the space has no associations', async () => {
     mockGetSpaceAssetAssociations.mockResolvedValue({
       hasAssociations: false,
-      narrowsSearch: false,
+      hasKnowledge: false,
+      hasReadableKnowledge: false,
       items: [],
     })
 
     renderWithProviders(<SpacePage />, { withRouter: true })
 
-    expect(
-      await screen.findByText(/Diesem Space sind keine Bibliotheken zugeordnet/),
-    ).toBeInTheDocument()
+    expect(await screen.findByText(/Diesem Space ist kein Wissen zugeordnet\./)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Wissen zuordnen' })).toHaveAttribute(
+      'href',
+      '/spaces/space-personal/settings/knowledge',
+    )
+    expect(screen.getByText('Diesem Space ist noch nichts zugeordnet.')).toBeInTheDocument()
+    expect(screen.queryByText(/alle für Sie lesbaren/)).not.toBeInTheDocument()
   })
 
-  // #706 review, finding 2: hasAssociations=true with an empty (filtered) items list must not be
-  // reported the same as "no association at all" - the space IS curated, the caller just cannot
-  // read any of what it curates.
+  // hasKnowledge with an empty (filtered) items list must not be reported the same as "no
+  // association at all" - the space IS curated, the caller just cannot read any of it.
   it('shows the space-has-no-readable-knowledge message when curated but nothing is readable', async () => {
     mockGetSpaceAssetAssociations.mockResolvedValue({
       hasAssociations: true,
-      narrowsSearch: true,
+      hasKnowledge: true,
+      hasReadableKnowledge: false,
       items: [],
     })
 
@@ -208,6 +220,8 @@ describe('SpacePage', () => {
     expect(
       await screen.findByText('In diesem Space ist für Sie derzeit kein Wissen verfügbar.'),
     ).toBeInTheDocument()
+    expect(screen.queryByText(/kein Wissen zugeordnet/)).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Wissen zuordnen' })).not.toBeInTheDocument()
   })
 
   // #674 review, nit e: the non-admin path - a MEMBER must see only the aggregated roleCounts,
@@ -225,6 +239,7 @@ describe('SpacePage', () => {
         memberCount: 2,
         userRole: 'MEMBER',
         roleCounts: { MEMBER: 1, CURATOR: 0, ADMIN: 1 },
+        chatAutoCleanup: { enabled: false, archiveAfterDays: 90, deleteAfterDays: 365 },
         createdAt: '2026-03-01T10:00:00Z',
         updatedAt: '2026-03-01T10:00:00Z',
       },
@@ -282,6 +297,7 @@ describe('SpacePage', () => {
         memberCount: 2,
         userRole: 'MEMBER',
         roleCounts: { MEMBER: 1, CURATOR: 0, ADMIN: 1 },
+        chatAutoCleanup: { enabled: false, archiveAfterDays: 90, deleteAfterDays: 365 },
         createdAt: '2026-03-01T10:00:00Z',
         updatedAt: '2026-03-01T10:00:00Z',
       },

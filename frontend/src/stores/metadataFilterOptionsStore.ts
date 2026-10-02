@@ -5,6 +5,8 @@ import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
 
 export interface MetadataFilterScope {
   chatId: string | null
+  /** The space of a chat not yet created; without chat and space the options are empty. */
+  spaceId: string | null
   useKnowledge: boolean
   libraryIds: string[]
 }
@@ -22,7 +24,12 @@ interface MetadataFilterOptionsState {
 }
 
 export function metadataFilterScopeKey(scope: MetadataFilterScope): string {
-  return JSON.stringify([scope.chatId, scope.useKnowledge, [...scope.libraryIds].sort()])
+  return JSON.stringify([
+    scope.chatId,
+    scope.spaceId,
+    scope.useKnowledge,
+    [...scope.libraryIds].sort(),
+  ])
 }
 
 let loadSequence = 0

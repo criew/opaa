@@ -9,7 +9,7 @@ import { useMetadataFilterOptionsStore } from '../../stores/metadataFilterOption
 import MetadataFilterPopover from './MetadataFilterPopover'
 import { fillLevelText, notOfferedText } from './metadataFilterText'
 
-const SCOPE = { chatId: null, useKnowledge: true, libraryIds: [] }
+const SCOPE = { chatId: null, spaceId: null, useKnowledge: true, libraryIds: [] }
 
 describe('MetadataFilterPopover (#1070)', () => {
   beforeEach(() => {

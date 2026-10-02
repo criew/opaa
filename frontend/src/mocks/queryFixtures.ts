@@ -122,7 +122,9 @@ export const mockQueryResponses: QueryResponse[] = [
       tokenCount: 847,
       durationMs: 1523,
       answeredWithoutKnowledge: false,
+      noKnowledgeAssignedToSpace: false,
       noKnowledgeAvailableInSpace: false,
+      noSpaceContext: false,
       searchedLibraries: [
         { id: '11111111-1111-4111-8111-111111111111', name: 'Engineering-Handbuch' },
         { id: '22222222-2222-4222-8222-222222222222', name: 'Meine Dokumente' },
@@ -152,7 +154,9 @@ export const mockQueryResponses: QueryResponse[] = [
       tokenCount: 312,
       durationMs: 890,
       answeredWithoutKnowledge: false,
+      noKnowledgeAssignedToSpace: false,
       noKnowledgeAvailableInSpace: false,
+      noSpaceContext: false,
       searchedLibraries: [
         { id: '11111111-1111-4111-8111-111111111111', name: 'Engineering-Handbuch' },
         { id: '22222222-2222-4222-8222-222222222222', name: 'Meine Dokumente' },
@@ -256,7 +260,9 @@ export const mockQueryResponses: QueryResponse[] = [
       tokenCount: 1584,
       durationMs: 2341,
       answeredWithoutKnowledge: false,
+      noKnowledgeAssignedToSpace: false,
       noKnowledgeAvailableInSpace: false,
+      noSpaceContext: false,
       searchedLibraries: [
         { id: '11111111-1111-4111-8111-111111111111', name: 'Engineering-Handbuch' },
         { id: '22222222-2222-4222-8222-222222222222', name: 'Meine Dokumente' },

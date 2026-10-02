@@ -1,0 +1,9 @@
+databaseChangeLog:
+  - changeSet:
+      id: workspace-2026-10-02-space-chat-auto-cleanup
+      author: opaa
+      comment: "Automatic chat cleanup of a space: when it was switched on, null while it is off."
+      changes:
+        - sql:
+            sql: |
+              ALTER TABLE spaces ADD COLUMN chat_auto_cleanup_enabled_at timestamp with time zone;

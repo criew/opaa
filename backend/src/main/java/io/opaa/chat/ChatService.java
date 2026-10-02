@@ -9,6 +9,7 @@ import io.opaa.knowledge.LibraryAccessService;
 import io.opaa.metadata.MetadataFilter;
 import io.opaa.metadata.MetadataFilterValidator;
 import io.opaa.observability.ChatMetrics;
+import io.opaa.space.ChatAutoCleanupProperties;
 import io.opaa.space.Space;
 import io.opaa.space.SpaceAccessPolicy;
 import io.opaa.space.SpaceAssetAssociationRepository;
@@ -103,6 +104,7 @@ public class ChatService {
   private final ChatPersonalMarkRepository chatPersonalMarkRepository;
   private final ChatFullTextSearch chatFullTextSearch;
   private final ChatMetrics chatMetrics;
+  private final ChatAutoCleanupProperties chatAutoCleanup;
 
   public ChatService(
       ChatRepository chatRepository,
@@ -118,7 +120,9 @@ public class ChatService {
       ChatNoteService chatNoteService,
       ChatPersonalMarkRepository chatPersonalMarkRepository,
       ChatFullTextSearch chatFullTextSearch,
-      ChatMetrics chatMetrics) {
+      ChatMetrics chatMetrics,
+      ChatAutoCleanupProperties chatAutoCleanup) {
+    this.chatAutoCleanup = chatAutoCleanup;
     this.chatPersonalMarkRepository = chatPersonalMarkRepository;
     this.chatFullTextSearch = chatFullTextSearch;
     this.chatMetrics = chatMetrics;
@@ -149,7 +153,7 @@ public class ChatService {
         creation.getReferencedLibraryIds() == null
             ? Set.of()
             : new LinkedHashSet<>(creation.getReferencedLibraryIds());
-    requireReadableLibraries(referencedLibraryIds, authorId, space.getOrganizationId());
+    requireUsableReferences(referencedLibraryIds, spaceId, authorId, space.getOrganizationId());
 
     Chat chat =
         new Chat(
@@ -201,8 +205,17 @@ public class ChatService {
   /** The caller's chat archive of one space, most recently archived first. */
   @Transactional(readOnly = true)
   public Page<ChatListEntry> listArchivedChats(UUID spaceId, UUID userId, Pageable pageable) {
-    requireMembership(spaceId, userId);
-    return chatPersonalMarkRepository.findArchivedInSpace(spaceId, userId, pageable);
+    Space space = requireMembership(spaceId, userId);
+    return chatPersonalMarkRepository
+        .findArchivedInSpace(spaceId, userId, pageable)
+        .map(
+            entry ->
+                new ChatListEntry(
+                    entry.chat(),
+                    entry.pinnedAt(),
+                    entry.archivedAt(),
+                    chatAutoCleanup.deletionDueAt(
+                        entry.archivedAt(), space.getChatAutoCleanupEnabledAt())));
   }
 
   /**
@@ -294,15 +307,15 @@ public class ChatService {
   public ChatListEntry archiveChat(UUID chatId, UUID userId) {
     Chat chat = getOwnedChat(chatId, userId);
     chatPersonalMarkRepository.archive(chatId, userId, Instant.now());
-    return new ChatListEntry(
-        chat, null, chatPersonalMarkRepository.findArchivedAt(chatId, userId).orElseThrow());
+    Instant archivedAt = chatPersonalMarkRepository.findArchivedAt(chatId, userId).orElseThrow();
+    return new ChatListEntry(chat, null, archivedAt, deletionDueAt(chat, archivedAt));
   }
 
   /** Counterpart of {@link #archiveChat}; the chat comes back unpinned. Idempotent. */
   @Transactional
   public ChatListEntry unarchiveChat(UUID chatId, UUID userId) {
     Chat chat = getOwnedChat(chatId, userId);
-    clearArchive(chatId, userId);
+    clearArchive(chat, userId, Instant.now());
     return new ChatListEntry(chat, null, null);
   }
 
@@ -326,7 +339,8 @@ public class ChatService {
   public List<UUID> unarchiveChats(UUID spaceId, UUID userId, Collection<UUID> chatIds) {
     requireMembership(spaceId, userId);
     List<Chat> chats = chatRepository.findByIdInAndSpaceIdAndAuthorId(chatIds, spaceId, userId);
-    chats.forEach(chat -> clearArchive(chat.getId(), userId));
+    Instant now = Instant.now();
+    chats.forEach(chat -> clearArchive(chat, userId, now));
     return chats.stream().map(Chat::getId).toList();
   }
 
@@ -339,9 +353,22 @@ public class ChatService {
     return chats.stream().map(Chat::getId).toList();
   }
 
-  private void clearArchive(UUID chatId, UUID userId) {
-    chatPersonalMarkRepository.clearArchive(chatId, userId);
-    chatPersonalMarkRepository.deleteIfUnmarked(chatId, userId);
+  /**
+   * Brings the chat back from the person's archive. In a space with automatic chat cleanup the
+   * moment is kept, so the archive period starts anew; elsewhere nothing of it is stored.
+   */
+  private void clearArchive(Chat chat, UUID userId, Instant now) {
+    boolean cleanupOn =
+        spaceRepository
+            .findById(chat.getSpaceId())
+            .map(Space::isChatAutoCleanupEnabled)
+            .orElse(false);
+    if (cleanupOn) {
+      chatPersonalMarkRepository.clearArchiveRecordingReturn(chat.getId(), userId, now);
+    } else {
+      chatPersonalMarkRepository.clearArchive(chat.getId(), userId);
+    }
+    chatPersonalMarkRepository.deleteIfUnmarked(chat.getId(), userId);
   }
 
   @Transactional(readOnly = true)
@@ -362,7 +389,11 @@ public class ChatService {
             ? null
             : new LinkedHashSet<>(patch.getReferencedLibraryIds());
     if (referencedLibraryIds != null) {
-      requireReadableLibraries(referencedLibraryIds, authorId, chat.getOrganizationId());
+      // Only what this change adds is checked: a stored reference that has since lost its
+      // association or its read right stays harmless, effectiveLibraryScope leaves it out.
+      Set<UUID> added = new LinkedHashSet<>(referencedLibraryIds);
+      added.removeAll(chat.getReferencedLibraryIds());
+      requireUsableReferences(added, chat.getSpaceId(), authorId, chat.getOrganizationId());
     }
     MetadataFilter metadataFilter =
         patch.getMetadataFilter() == null
@@ -439,41 +470,49 @@ public class ChatService {
   }
 
   /**
-   * The search scope for a query run in this chat (epic #523 "Entschiedene Semantik", narrowed by
-   * #203's space↔library association): when {@code useKnowledge} is on (@Alles-Wissen), the scope
-   * is the space's associated libraries intersected with the readable libraries - or, if the space
-   * has no associations at all, every readable library (the permanent transition rule, see
-   * docs/features/spaces-and-assets.md#suchbereich-je-chatart: "Ein Space ohne Assoziationen
-   * verengt nie"). When {@code useKnowledge} is off, the scope is the intersection of the
-   * sticky @-references with the readable libraries. Neither branch is ever wider than {@code
-   * readableLibraryIds}, regardless of what the chat references or the space associates.
+   * The search scope for a query run in this chat: the space's associated knowledge libraries are a
+   * hard boundary. With {@code useKnowledge} on (@Space-Wissen) the scope is associated ∩ readable;
+   * with it off, the sticky @-references ∩ associated ∩ readable. A space without an associated
+   * library searches nothing - there is no fallback to the readable set.
    */
   @Transactional(readOnly = true)
   public Set<UUID> effectiveLibraryScope(Chat chat, Set<UUID> readableLibraryIds) {
-    if (chat.isUseKnowledge()) {
-      Set<UUID> associatedLibraryIds =
-          spaceAssetAssociationRepository.findLibraryIdsBySpaceId(chat.getSpaceId());
-      if (associatedLibraryIds.isEmpty()) {
-        return readableLibraryIds;
-      }
-      Set<UUID> scoped = new LinkedHashSet<>(associatedLibraryIds);
-      scoped.retainAll(readableLibraryIds);
-      return scoped;
+    Set<UUID> scoped =
+        new LinkedHashSet<>(
+            spaceAssetAssociationRepository.findLibraryIdsBySpaceId(chat.getSpaceId()));
+    if (!chat.isUseKnowledge()) {
+      scoped.retainAll(chat.getReferencedLibraryIds());
     }
-    Set<UUID> scoped = new LinkedHashSet<>(chat.getReferencedLibraryIds());
     scoped.retainAll(readableLibraryIds);
     return scoped;
   }
 
   /**
-   * Whether {@code spaceId} has at least one library association (#706 review) - used by {@code
-   * QueryService} to distinguish, in {@link #effectiveLibraryScope}'s @Alles-Wissen branch, the
-   * ordinary "no association at all" case (falls back to every readable library) from the fail-open
-   * case a curated-but-nothing-readable space produces: an empty {@link #effectiveLibraryScope}
-   * result together with {@code true} here means "curated, but nothing the caller may read", not
-   * "no curation configured" - the two need different frontend messages
-   * (docs/features/spaces-and-assets.md#suchbereich-je-chatart, "In diesem Space ist für dich
-   * derzeit kein Wissen verfügbar").
+   * The scope the first question of a chat not yet created in {@code spaceId} would search - the
+   * same rule as {@link #effectiveLibraryScope}, applied to the chip bar's settings. The user must
+   * be a member of the space.
+   */
+  @Transactional(readOnly = true)
+  public Set<UUID> draftLibraryScope(
+      UUID spaceId,
+      UUID userId,
+      boolean useKnowledge,
+      Collection<UUID> referencedLibraryIds,
+      Set<UUID> readableLibraryIds) {
+    requireMembership(spaceId, userId);
+    Set<UUID> scoped =
+        new LinkedHashSet<>(spaceAssetAssociationRepository.findLibraryIdsBySpaceId(spaceId));
+    if (!useKnowledge) {
+      scoped.retainAll(referencedLibraryIds);
+    }
+    scoped.retainAll(readableLibraryIds);
+    return scoped;
+  }
+
+  /**
+   * Whether {@code spaceId} has at least one knowledge library associated, readable or not. An
+   * empty {@link #effectiveLibraryScope} means "nothing associated" when this is false and
+   * "associated, but nothing the caller may read" when it is true - two separate signals.
    */
   @Transactional(readOnly = true)
   public boolean spaceHasLibraryAssociations(UUID spaceId) {
@@ -609,7 +648,23 @@ public class ChatService {
     Instant archivedAt =
         chatPersonalMarkRepository.findArchivedAt(chat.getId(), userId).orElse(null);
     return new ChatConversation(
-        chat, conversation.getMessages(), conversation.getNoteItems(), archivedAt);
+        chat,
+        conversation.getMessages(),
+        conversation.getNoteItems(),
+        archivedAt,
+        deletionDueAt(chat, archivedAt));
+  }
+
+  /** When the automatic chat cleanup deletes the chat archived at {@code archivedAt}, if ever. */
+  private Instant deletionDueAt(Chat chat, Instant archivedAt) {
+    if (archivedAt == null) {
+      return null;
+    }
+    return spaceRepository
+        .findById(chat.getSpaceId())
+        .map(
+            space -> chatAutoCleanup.deletionDueAt(archivedAt, space.getChatAutoCleanupEnabledAt()))
+        .orElse(null);
   }
 
   private ChatTurn toTurn(ChatMessage message) {
@@ -697,7 +752,9 @@ public class ChatService {
    * does not exist at all, with the identical message for both cases (#525 review, finding/nit b):
    * distinguishing "not readable" from "does not exist" would let a caller probe for library ids
    * they have no rights on, and a bare foreign-key violation from {@code chat_library_references}
-   * would otherwise surface as an opaque 500 instead of a 400.
+   * would otherwise surface as an opaque 500 instead of a 400. Only then is a readable library
+   * outside the space's associations rejected with its own message - that reveals nothing the
+   * caller could not read anyway.
    *
    * <p>#677 (PR #680 review, finding 3): {@code chat_library_references} now also carries
    * organization_id, backed by a BEFORE INSERT trigger and enforced via composite foreign keys -
@@ -709,8 +766,8 @@ public class ChatService {
    * insert with a nonexistent chat_id would hit (plpgsql {@code NO_DATA_FOUND}, SQLState P0002,
    * instead of the composite foreign key's SQLState 23503) - a case this method never produces.
    */
-  private void requireReadableLibraries(
-      Set<UUID> referencedLibraryIds, UUID authorId, UUID organizationId) {
+  private void requireUsableReferences(
+      Set<UUID> referencedLibraryIds, UUID spaceId, UUID authorId, UUID organizationId) {
     if (referencedLibraryIds.isEmpty()) {
       return;
     }
@@ -718,6 +775,12 @@ public class ChatService {
     if (!readable.containsAll(referencedLibraryIds)) {
       throw new ValidationException(
           "referencedLibraryIds enthält eine Bibliothek, die nicht lesbar ist");
+    }
+    if (!spaceAssetAssociationRepository
+        .findLibraryIdsBySpaceId(spaceId)
+        .containsAll(referencedLibraryIds)) {
+      throw new ValidationException(
+          "referencedLibraryIds enthält eine Bibliothek, die diesem Space nicht zugeordnet ist");
     }
   }
 }

@@ -84,15 +84,17 @@ Die Klickwege unten benutzen diese Begriffe:
   Einträgen „Einstellungen“ und „Abmelden“.
 - **Space wählen:** über „Spaces“ in der Leiste oder oben in der Space-Spalte (Feld „Space“). Ein
   gewählter Space öffnet einen neuen Chat. Einen weiteren beginnt „Neu“ neben „Chats“.
-- **Persönlicher Space:** Jedes Konto hat seinen persönlichen Space „Meine Dokumente“. Er hat keine
-  zugeordneten Bibliotheken, `@Alles-Wissen` durchsucht dort alle lesbaren.
+- **Persönlicher Space:** Jedes Konto hat seinen persönlichen Space „Meine Dokumente“. Der Seed hat
+  ihm das Wissen des eigenen Sachgebiets und die Textbausteine zugeordnet.
 - **Quellen einer Antwort:** „Belege anzeigen“ unter der Antwort öffnet das Belegfenster rechts;
   ein Klick auf eine Fußnotenziffer im Text öffnet es direkt an dieser Fundstelle. Jede Fundstelle
   hat „Im Dokument öffnen“.
 
-**Vor den Fragen 5 bis 7 wichtig:** In einem Space mit zugeordneten Bibliotheken durchsucht
-`@Alles-Wissen` nur diese Bibliotheken, und davon nur die für das Konto lesbaren. Wo eine Frage
-gestellt wird, entscheidet deshalb mit über die Antwort. Deshalb nennt jede Frage ihren Space.
+**Vor den Fragen 5 bis 7 wichtig:** Ein Space enthält genau, was ihm zugeordnet ist.
+`@Space-Wissen` durchsucht nur die zugeordneten Bibliotheken, und davon nur die für das Konto
+lesbaren; die `/`-Auswahl bietet nur zugeordnete Prompts an. Wo eine Frage gestellt wird,
+entscheidet deshalb mit über die Antwort. Deshalb nennt jede Frage ihren Space. Wie ein Space ohne
+Wissen aussieht, zeigt Schritt G.
 
 ## 1. Gebührenfrage
 
@@ -246,7 +248,7 @@ diesen Fall nicht von selbst. Bleibt offen für eine spätere, gezielt konstruie
 
 ---
 
-## Vorführschritte zu Gruppen, Prompts, Ordnern, Fachformaten und Chats
+## Vorführschritte zu Gruppen, Prompts, Ordnern, Fachformaten, Chats und leeren Spaces
 
 Die Schritte A und B ändern Rechte. Beide enden deshalb mit dem Zurücksetzen. Ohne es fehlt danach:
 
@@ -345,8 +347,7 @@ vorführen; alle anderen nutzen dafür den lokalen Stack.
 - **Klickweg:**
   1. „Spaces" → „Meldewesen & Ausweise"; es öffnet sich ein neuer Chat.
   2. Im Eingabefeld „/" tippen. Die Liste „Prompt einsetzen" zeigt die Gruppe „Textbausteine
-     Bürgerbüro · diesem Space zugeordnet" mit vier Einträgen, jeder mit dem Kennzeichen „mit
-     Formular".
+     Bürgerbüro" mit vier Einträgen, jeder mit dem Kennzeichen „mit Formular".
   3. `/gebuehrenauskunft-personalausweis · Gebührenauskunft Personalausweis` wählen. Es öffnet sich
      der Dialog „Prompt einsetzen: Gebührenauskunft Personalausweis" mit den Auswahlfeldern „Alter der
      antragstellenden Person" (vorbelegt „24 Jahre und älter") und „Anlass" (vorbelegt „Neuausstellung
@@ -361,16 +362,20 @@ vorführen; alle anderen nutzen dafür den lokalen Stack.
   - Die Antwort nennt 26,20 Euro wie Frage 1 und ist aus der Leistungsbeschreibung bzw. der Satzung
     belegt.
 - **Vorlagen nur für die Amtsleitung:**
-  - `andrea.vogt` im Space „Amtsleitung Bürgerbüro": „/" zeigt zusätzlich „Vorlagen Amtsleitung ·
-    diesem Space zugeordnet" mit `/wochenbericht-dezernentin` und `/stellungnahme-hauptausschuss`.
+  - `andrea.vogt` im Space „Amtsleitung Bürgerbüro": „/" zeigt zusätzlich die Gruppe „Vorlagen
+    Amtsleitung" mit `/wochenbericht-dezernentin` und `/stellungnahme-hauptausschuss`.
     Unter „Prompts" stehen zwei Karten; „Vorlagen Amtsleitung" trägt das Kennzeichen „nur Sie".
+  - `andrea.vogt` im Space „Dienstbesprechung Bürgerbüro": „/" zeigt nur die Textbausteine. Andrea
+    darf die Vorlagen lesen, dieser Space führt sie aber nicht — und was ein Space nicht führt, bietet
+    sein Chat nicht an.
   - `thomas.klein`: „Prompts" zeigt nur „Textbausteine Bürgerbüro". Der „Katalog" führt die
     Textbausteine, aber keine „Vorlagen Amtsleitung".
-  - `selin.kaya` im Space „Dienstbesprechung Bürgerbüro": „/" zeigt die Textbausteine ohne den Zusatz
-    „diesem Space zugeordnet". Sie darf sie lesen, dieser Space führt sie aber nicht.
-- **Zeigt:** Prompts gehören wie Wissen einer Person, werden freigegeben und Spaces zugeordnet. Im Chat
-  bleibt nachvollziehbar, aus welchem Prompt eine Frage entstand. Wer nicht lesen darf, bekommt den
-  Prompt weder angezeigt noch kann er ihn benutzen; die API lehnt ihn ab.
+  - `selin.kaya` im Space „Dienstbesprechung Bürgerbüro": „/" zeigt dieselben Textbausteine.
+- **Zeigt:** Prompts gehören wie Wissen einer Person, werden freigegeben und Spaces zugeordnet. Der
+  Chat eines Space bietet nur dessen Prompts an. Im Chat bleibt nachvollziehbar, aus welchem Prompt
+  eine Frage entstand. Wer nicht lesen darf, bekommt den Prompt weder angezeigt noch kann er ihn
+  benutzen; die API lehnt ihn ab, ebenso einen Prompt aus einer Bibliothek, die dem Space nicht
+  zugeordnet ist.
 
 ### D. Ordner: Aktenplan, Jahrgang und Gremium, Anhänge an den Ratsvorlagen
 
@@ -473,6 +478,26 @@ Drei Fragen, die sich nur aus einem Nicht-Text-Format beantworten lassen (#2028)
 - **Zeigt:** Auch nach Wochen mit vielen Gesprächen bleibt die eigene Chatablage beherrschbar:
   Anheften, Archiv und Volltextsuche über Titel, Fragen und Antworten. Chats bleiben privat – kein
   anderes Konto sieht Andreas Chats, auch nicht die Systemverwaltung.
+
+### G. Space ohne Wissen: Hinweis statt stiller Leerlauf
+
+- **Konto:** `maria.weber`
+- **Klickweg:**
+  1. „Spaces" → „Neuer Space". Name „Vorführung leerer Space", alle weiteren Schritte mit „Weiter"
+     übergehen — keine Mitglieder, keine Datenquellen — und „Space anlegen".
+  2. Den neuen Space in der Space-Spalte wählen; es öffnet sich ein neuer Chat. Über dem Eingabefeld
+     steht „Diesem Space ist kein Wissen zugeordnet." mit der Schaltfläche „Wissen zuordnen".
+  3. Die Gebührenfrage aus Frage 1 stellen. Die Antwort trägt den Hinweis „Diesem Space ist kein
+     Wissen zugeordnet. Diese Antwort stützt sich auf keine Dokumente." und keine Belege.
+  4. „Wissen zuordnen" klicken. Es öffnet sich der Reiter „Wissen" der Space-Einstellungen. Dort
+     „Leistungen Meldewesen & Ausweise" zuordnen.
+  5. Zurück in den Space, einen neuen Chat beginnen und dieselbe Frage stellen: Die Antwort nennt
+     26,20 Euro, belegt aus der Leistungsbeschreibung.
+- **Zurücksetzen:** in den Space-Einstellungen, Reiter „Stammdaten", im Gefahrenbereich „Space
+  löschen". Auf der öffentlichen Instanz bleibt ein nicht gelöschter Space im Konto von Maria stehen.
+- **Zeigt:** Ein Space enthält genau, was ihm zugeordnet ist — auch der persönliche. Ein Space ohne
+  Wissen antwortet nie so, als wäre die Antwort belegt; er sagt, was fehlt, und führt mit einem
+  Klick zur Zuordnung. Wer nur Mitglied ist, liest stattdessen, wer zuordnen kann.
 
 ---
 

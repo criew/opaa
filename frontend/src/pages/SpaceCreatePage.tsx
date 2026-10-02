@@ -19,6 +19,7 @@ import ListItemButton from '@mui/material/ListItemButton'
 import ListItemIcon from '@mui/material/ListItemIcon'
 import ListItemText from '@mui/material/ListItemText'
 import PageHeading from '../components/a11y/PageHeading'
+import ChatAutoCleanupField from '../components/space/ChatAutoCleanupField'
 import FieldLabel from '../components/wizard/FieldLabel'
 import WizardStepBar from '../components/wizard/WizardStepBar'
 import { getLibraries } from '../services/libraryApi'
@@ -58,6 +59,7 @@ export default function SpaceCreatePage() {
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [visibility, setVisibility] = useState<SpaceVisibility>('PRIVATE')
+  const [chatAutoCleanup, setChatAutoCleanup] = useState(false)
   const [pendingMembers, setPendingMembers] = useState<PendingMember[]>([])
   const [selectedUser, setSelectedUser] = useState<UserSummary | null>(null)
   const [selectedRole, setSelectedRole] = useState<SpaceRole>('MEMBER')
@@ -128,6 +130,7 @@ export default function SpaceCreatePage() {
         description.trim(),
         visibility,
         selectedLibraryIds,
+        chatAutoCleanup,
       )
       const failed: string[] = []
       for (const member of pendingMembers) {
@@ -219,6 +222,11 @@ export default function SpaceCreatePage() {
                 {spaceVisibilityDescription(visibility)}
               </FormHelperText>
             </FormControl>
+            <ChatAutoCleanupField
+              id="space-create-chat-auto-cleanup"
+              checked={chatAutoCleanup}
+              onChange={setChatAutoCleanup}
+            />
           </Box>
         )}
 
@@ -380,6 +388,12 @@ export default function SpaceCreatePage() {
               { label: 'Beschreibung', value: description.trim() || '–' },
               { label: 'Sichtbarkeit', value: spaceVisibilityLabel(visibility) },
               {
+                label: 'Inaktive Chats',
+                value: chatAutoCleanup
+                  ? 'werden automatisch archiviert und gelöscht'
+                  : 'bleiben, bis sie jemand selbst archiviert oder löscht',
+              },
+              {
                 label: 'Mitglieder',
                 value:
                   pendingMembers.length === 0
@@ -395,7 +409,7 @@ export default function SpaceCreatePage() {
                 label: 'Datenquellen',
                 value:
                   selectedLibraryIds.length === 0
-                    ? 'keine — durchsucht bis auf Weiteres alles Lesbare'
+                    ? 'keine — der Chat durchsucht kein Wissen, bis Sie Bibliotheken zuordnen'
                     : availableLibraries
                         .filter((l) => selectedLibraryIds.includes(l.id))
                         .map((l) => l.name)

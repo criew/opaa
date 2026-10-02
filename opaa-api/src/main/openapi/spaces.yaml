@@ -395,7 +395,7 @@ paths:
         Transfer space ownership to a member who is a natural person. Every capable ADMIN member
         that is a natural person may do this, to themselves or to another such member (ADR-0036
         Entscheidung 6) - a group never becomes owner. 404 when the target is not a member of the
-        space or not a person.
+        space or not a person; 400 for the personal default space, which stays with its person.
       requestBody:
         required: true
         content:
@@ -450,6 +450,13 @@ components:
           nullable: true
           items:
             $ref: "#/components/schemas/SpaceMemberRequest"
+        chatAutoCleanup:
+          type: boolean
+          nullable: true
+          description: >
+            Switches on the automatic archiving and deletion of inactive chats in this space.
+            Omitted or null leaves it off. The periods are fixed installation-wide, see
+            ChatAutoCleanupResponse.
         libraryIds:
           type: array
           nullable: true
@@ -458,9 +465,9 @@ components:
             Libraries to associate with the space on creation (#203/#686) - each must be at least
             readable (VIEWER or above) by the creator, exactly the same rule the dedicated POST
             /v1/spaces/{spaceId}/assets endpoint enforces afterwards. Optional: a space created
-            without this is not narrower for search, it simply has no associations yet (the
-            permanent transition rule in docs/features/spaces-and-assets.md#suchbereich-je-chatart
-            - "ein Space ohne Assoziationen verengt nie"). Associated atomically with the space
+            without this has no knowledge yet, and a chat in it searches nothing until a library
+            is associated - the association is the space's hard boundary for every asset type.
+            Associated atomically with the space
             itself (SpaceService#createSpace) - if any id cannot be associated (not found, or not
             readable by the creator), the whole space creation is rolled back rather than left
             half-created.
@@ -488,6 +495,13 @@ components:
           example: Engineering project space
         visibility:
           $ref: "#/components/schemas/SpaceVisibility"
+        chatAutoCleanup:
+          type: boolean
+          nullable: true
+          description: >
+            Switches the automatic archiving and deletion of inactive chats on or off.
+            Omitted or null leaves the current setting unchanged. Switching it on starts both
+            periods anew; nothing is archived or deleted retroactively.
 
     SpaceMemberRequest:
       type: object
@@ -568,6 +582,12 @@ components:
           nullable: true
           allOf:
             - $ref: "#/components/schemas/SuccessionStateResponse"
+        chatAutoCleanup:
+          description: >
+            Whether inactive chats of the space are archived and deleted automatically, with the
+            installation-wide periods - so every member can be told where the chats are listed.
+          allOf:
+            - $ref: "#/components/schemas/ChatAutoCleanupResponse"
         createdAt:
           type: string
           format: date-time
@@ -666,7 +686,18 @@ components:
     SpaceResponse:
       type: object
       required:
-        [id, name, isDefault, archived, ownerId, memberCount, roleCounts, createdAt, updatedAt]
+        [
+          id,
+          name,
+          isDefault,
+          archived,
+          ownerId,
+          memberCount,
+          roleCounts,
+          chatAutoCleanup,
+          createdAt,
+          updatedAt,
+        ]
       properties:
         id:
           type: string
@@ -732,12 +763,33 @@ components:
           nullable: true
           allOf:
             - $ref: "#/components/schemas/SuccessionStateResponse"
+        chatAutoCleanup:
+          $ref: "#/components/schemas/ChatAutoCleanupResponse"
         createdAt:
           type: string
           format: date-time
         updatedAt:
           type: string
           format: date-time
+
+    ChatAutoCleanupResponse:
+      type: object
+      required: [enabled, archiveAfterDays, deleteAfterDays]
+      description: >
+        Whether inactive chats of the space are archived and deleted automatically, with
+        the installation-wide periods the operator configures. Visible to every member.
+      properties:
+        enabled:
+          type: boolean
+          example: false
+        archiveAfterDays:
+          type: integer
+          description: Days without activity after which a chat that is not pinned is archived.
+          example: 90
+        deleteAfterDays:
+          type: integer
+          description: Days in the chat archive after which a chat is deleted.
+          example: 365
 
     SpaceAddMemberRequest:
       type: object

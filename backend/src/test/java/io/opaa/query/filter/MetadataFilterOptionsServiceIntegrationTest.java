@@ -1,12 +1,14 @@
 package io.opaa.query.filter;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.GroupKind;
 import io.opaa.api.types.SystemRole;
 import io.opaa.asset.AssetGrantService;
 import io.opaa.auth.CurrentUser;
+import io.opaa.common.AccessDeniedException;
 import io.opaa.format.FormatMetadataField;
 import io.opaa.group.Group;
 import io.opaa.group.GroupRepository;
@@ -80,6 +82,7 @@ class MetadataFilterOptionsServiceIntegrationTest {
   private CurrentUser admin;
   private CurrentUser onlyA;
   private CurrentUser both;
+  private UUID spaceId;
 
   @BeforeEach
   void setUp() throws IOException {
@@ -95,6 +98,9 @@ class MetadataFilterOptionsServiceIntegrationTest {
     grant(libraryA, onlyA);
     grant(libraryA, both);
     grant(libraryB, both);
+    // The options of a chat not yet created in this space: it carries both libraries, so the
+    // scope is exactly what each person may read of them.
+    spaceId = space(libraryA, libraryB);
     deletePdfsIn(classTempDir.resolve("a"));
     deletePdfsIn(classTempDir.resolve("b"));
     // A: one document with Dokumentart and date, one with neither. B: one with both.
@@ -105,8 +111,9 @@ class MetadataFilterOptionsServiceIntegrationTest {
 
   @Test
   void theFillLevelAndTheOfferedValuesFollowTheAskingPersonsRights() {
-    MetadataFilterOptions forOnlyA = optionsService.optionsFor(onlyA, null, true, List.of());
-    MetadataFilterOptions forBoth = optionsService.optionsFor(both, null, true, List.of());
+    MetadataFilterOptions forOnlyA =
+        optionsService.optionsFor(onlyA, null, spaceId, true, List.of());
+    MetadataFilterOptions forBoth = optionsService.optionsFor(both, null, spaceId, true, List.of());
 
     assertThat(forOnlyA.totalDocuments()).isEqualTo(2);
     assertThat(field(forOnlyA, CoreMetadataField.DOCUMENT_TYPE).filledDocuments()).isEqualTo(1);
@@ -131,6 +138,50 @@ class MetadataFilterOptionsServiceIntegrationTest {
         .isEqualTo(properties.documentDateOfferThreshold());
   }
 
+  /**
+   * Every question in the web interface needs a space: without chat and space nothing is counted.
+   */
+  @Test
+  void withoutAChatAndASpaceTheOptionsAreEmpty() {
+    MetadataFilterOptions options = optionsService.optionsFor(both, null, null, true, List.of());
+
+    assertThat(options.totalDocuments()).isZero();
+    assertThat(options.documentTypes()).isEmpty();
+  }
+
+  /** A space the caller is no member of yields no figures: the request is refused. */
+  @Test
+  void aNonMemberGetsNoOptionsForASpace() {
+    CurrentUser outsider = user("aussen", SystemRole.USER);
+    grant(libraryA, outsider);
+
+    assertThatThrownBy(() -> optionsService.optionsFor(outsider, null, spaceId, true, List.of()))
+        .isInstanceOf(AccessDeniedException.class);
+    assertThat(cache.contains(outsider.id(), Set.of(libraryA.getId()))).isFalse();
+  }
+
+  /** The options of a new chat count only what its space holds, not everything readable. */
+  @Test
+  void theOptionsOfANewChatCountOnlyTheKnowledgeOfItsSpace() {
+    jdbcTemplate.update(
+        "DELETE FROM space_asset_associations WHERE space_id = ? AND asset_id = ?",
+        spaceId,
+        libraryB.getId());
+
+    MetadataFilterOptions options = optionsService.optionsFor(both, null, spaceId, true, List.of());
+
+    assertThat(options.totalDocuments()).isEqualTo(2);
+    assertThat(options.documentTypes())
+        .extracting(MetadataFilterOptions.DocumentTypeOption::code)
+        .containsExactly("DIENSTANWEISUNG");
+    assertThat(
+            optionsService
+                .optionsFor(both, null, spaceId, false, List.of(libraryB.getId()))
+                .totalDocuments())
+        .as("a chip outside the space counts nothing")
+        .isZero();
+  }
+
   /** "Kein Wert ermittelbar" counts as answered: the entry condition can be reached by hand. */
   @Test
   void aFieldMarkedNotDeterminableCountsTowardsTheFillLevel() {
@@ -144,7 +195,8 @@ class MetadataFilterOptionsServiceIntegrationTest {
         libraryA.getId(), untyped, "document_type", MetadataValueInput.notDeterminable(), admin);
     cache.invalidateAll();
 
-    MetadataFilterOptions options = optionsService.optionsFor(onlyA, null, true, List.of());
+    MetadataFilterOptions options =
+        optionsService.optionsFor(onlyA, null, spaceId, true, List.of());
 
     assertThat(field(options, CoreMetadataField.DOCUMENT_TYPE).filledDocuments()).isEqualTo(2);
     assertThat(field(options, CoreMetadataField.DOCUMENT_TYPE).offered()).isTrue();
@@ -157,7 +209,7 @@ class MetadataFilterOptionsServiceIntegrationTest {
   @Test
   void revokingAGrantDiscardsThePersonsCachedOptions() {
     Set<UUID> scopeBefore = Set.of(libraryA.getId(), libraryB.getId());
-    optionsService.optionsFor(both, null, true, List.of());
+    optionsService.optionsFor(both, null, spaceId, true, List.of());
     assertThat(cache.contains(both.id(), scopeBefore)).isTrue();
 
     AssetGrant grantOnB =
@@ -171,7 +223,7 @@ class MetadataFilterOptionsServiceIntegrationTest {
         KnowledgeLibrary.ASSET_TYPE, libraryB.getId(), grantOnB.getId(), admin);
 
     assertThat(cache.contains(both.id(), scopeBefore)).isFalse();
-    MetadataFilterOptions after = optionsService.optionsFor(both, null, true, List.of());
+    MetadataFilterOptions after = optionsService.optionsFor(both, null, spaceId, true, List.of());
     assertThat(after.totalDocuments()).isEqualTo(2);
     assertThat(after.documentTypes())
         .extracting(MetadataFilterOptions.DocumentTypeOption::code)
@@ -203,13 +255,13 @@ class MetadataFilterOptionsServiceIntegrationTest {
             null));
     accessService.invalidateLibrary(libraryB.getId());
     Set<UUID> scopeBefore = Set.of(libraryA.getId());
-    optionsService.optionsFor(onlyA, null, true, List.of());
+    optionsService.optionsFor(onlyA, null, spaceId, true, List.of());
     assertThat(cache.contains(onlyA.id(), scopeBefore)).isTrue();
 
     groupService.addMember(group.getId(), onlyA.id(), admin);
 
     assertThat(cache.contains(onlyA.id(), scopeBefore)).isFalse();
-    assertThat(optionsService.optionsFor(onlyA, null, true, List.of()).totalDocuments())
+    assertThat(optionsService.optionsFor(onlyA, null, spaceId, true, List.of()).totalDocuments())
         .isEqualTo(3);
   }
 
@@ -226,7 +278,8 @@ class MetadataFilterOptionsServiceIntegrationTest {
     }
     cache.invalidateAll();
 
-    MetadataFilterOptions options = optionsService.optionsFor(onlyA, null, true, List.of());
+    MetadataFilterOptions options =
+        optionsService.optionsFor(onlyA, null, spaceId, true, List.of());
     MetadataFilterOptions.FormatFieldOption sender =
         options.formatFields().stream()
             .filter(field -> field.field() == FormatMetadataField.MAIL_SENDER)
@@ -262,6 +315,11 @@ class MetadataFilterOptionsServiceIntegrationTest {
             + OWN_LIBRARIES);
     jdbcTemplate.update("DELETE FROM documents WHERE library_id IN " + OWN_LIBRARIES);
     jdbcTemplate.update("DELETE FROM asset_grants WHERE asset_id IN " + OWN_LIBRARIES);
+    // Memberships and associations go with their space; spaces before their owner.
+    jdbcTemplate.update(
+        "DELETE FROM space_memberships WHERE space_id IN (SELECT id FROM spaces WHERE name ="
+            + " 'Optionen-Space')");
+    jdbcTemplate.update("DELETE FROM spaces WHERE name = 'Optionen-Space'");
     jdbcTemplate.update(
         "DELETE FROM group_memberships WHERE user_id IN (SELECT id FROM users WHERE subject LIKE 'metadata-options-%')");
     // History rows reference users with RESTRICT - they go before the users themselves.
@@ -287,6 +345,39 @@ class MetadataFilterOptionsServiceIntegrationTest {
         role.name(),
         Organization.DEFAULT_ID);
     return CurrentUser.of(id, Organization.DEFAULT_ID, role, "Optionen " + name);
+  }
+
+  /** A space owned by the admin, with onlyA and both as members, carrying the given libraries. */
+  private UUID space(KnowledgeLibrary... libraries) {
+    UUID id = UUID.randomUUID();
+    jdbcTemplate.update(
+        "INSERT INTO spaces (id, name, is_default, visibility, owner_id, organization_id,"
+            + " created_at, updated_at) VALUES (?, 'Optionen-Space', false, 'PRIVATE', ?, ?, now(),"
+            + " now())",
+        id,
+        admin.id(),
+        Organization.DEFAULT_ID);
+    for (CurrentUser member : List.of(admin, onlyA, both)) {
+      jdbcTemplate.update(
+          "INSERT INTO space_memberships (id, subject_type, user_id, space_id, role,"
+              + " organization_id, created_at) VALUES (?, 'USER', ?, ?, ?, ?, now())",
+          UUID.randomUUID(),
+          member.id(),
+          id,
+          member == admin ? "ADMIN" : "MEMBER",
+          Organization.DEFAULT_ID);
+    }
+    for (KnowledgeLibrary library : libraries) {
+      jdbcTemplate.update(
+          "INSERT INTO space_asset_associations (id, space_id, asset_id, organization_id,"
+              + " created_by_user_id, created_at) VALUES (?, ?, ?, ?, ?, now())",
+          UUID.randomUUID(),
+          id,
+          library.getId(),
+          Organization.DEFAULT_ID,
+          admin.id());
+    }
+    return id;
   }
 
   private KnowledgeLibrary library(String name, Path sourcePath) {

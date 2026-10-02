@@ -12,10 +12,14 @@ export interface ChatMessage {
   /** True when the backend answered without any document retrieval (QueryMetadata#526). */
   answeredWithoutKnowledge?: boolean
   /**
-   * True for the #203/#706 fail-open case: the chat's space is curated (@Alles-Wissen, at least
-   * one library association) but none of the associated libraries are readable by the caller, so
-   * the search scope resolved to empty even though the caller never chose "ohne Wissen". Mutually
-   * exclusive with answeredWithoutKnowledge.
+   * True when no knowledge library is associated with the chat's space, so nothing was searched
+   * (QueryMetadata#noKnowledgeAssignedToSpace). Mutually exclusive with the two flags below.
+   */
+  noKnowledgeAssignedToSpace?: boolean
+  /**
+   * True when the chat's space has knowledge associated (@Space-Wissen) but none of it is readable
+   * by the caller, so the search scope resolved to empty even though the caller never chose "ohne
+   * Wissen". Mutually exclusive with answeredWithoutKnowledge.
    */
   noKnowledgeAvailableInSpace?: boolean
   /**

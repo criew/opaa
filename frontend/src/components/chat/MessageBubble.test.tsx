@@ -301,6 +301,33 @@ describe('MessageBubble', () => {
     expect(screen.getByText('Diese Antwort wurde ohne Wissensbasis erstellt.')).toBeInTheDocument()
   })
 
+  // A space without associated knowledge never answers as if sourced: the bubble says why.
+  it('names the two space signals separately', () => {
+    const base: ChatMessage = {
+      id: '8b',
+      role: 'assistant',
+      content: 'Answer',
+      sources: [],
+      timestamp: new Date(),
+    }
+    const { unmount } = render(
+      <MessageBubble message={{ ...base, noKnowledgeAssignedToSpace: true }} />,
+    )
+    expect(
+      screen.getByText(
+        'Diesem Space ist kein Wissen zugeordnet. Diese Antwort stützt sich auf keine Dokumente.',
+      ),
+    ).toBeInTheDocument()
+    expect(screen.queryByText(/derzeit kein Wissen verfügbar/)).not.toBeInTheDocument()
+    unmount()
+
+    render(<MessageBubble message={{ ...base, noKnowledgeAvailableInSpace: true }} />)
+    expect(
+      screen.getByText('In diesem Space ist für Sie derzeit kein Wissen verfügbar.'),
+    ).toBeInTheDocument()
+    expect(screen.queryByText(/kein Wissen zugeordnet/)).not.toBeInTheDocument()
+  })
+
   it('does not show the hint when the answer used the knowledge base', () => {
     const msg: ChatMessage = {
       id: '9',

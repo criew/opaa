@@ -163,6 +163,13 @@ class DocumentIndexingIntegrationTest {
    * the whole suite shares one database.
    */
   private void removeOwnFixtures() {
+    jdbcTemplate.update(
+        "DELETE FROM chats WHERE space_id IN (SELECT id FROM spaces WHERE name ="
+            + " 'Indexierung-Space')");
+    jdbcTemplate.update(
+        "DELETE FROM space_memberships WHERE space_id IN (SELECT id FROM spaces WHERE name ="
+            + " 'Indexierung-Space')");
+    jdbcTemplate.update("DELETE FROM spaces WHERE name = 'Indexierung-Space'");
     ownLibraryFixtures.removeLibraries(ownLibraryIds().toArray(new UUID[0]));
     jdbcTemplate.update("DELETE FROM users WHERE email = 'indexing-it@example.com'");
     removeThrowawayOrganizations();
@@ -861,10 +868,12 @@ class DocumentIndexingIntegrationTest {
         .isEqualTo(JobStatus.COMPLETED);
 
     // userId holds OWNER on targetLibraryId (granted in setUp) - the reader path.
+    // A question needs a space: both users ask in a space of their own that holds the target
+    // library, so only the read right decides.
     QueryResult withGrant =
         queryService.query(
             "uniquely identifiable sentence",
-            null,
+            chatOverTargetLibrary(userId),
             CurrentUser.of(userId, Organization.DEFAULT_ID, SystemRole.SYSTEM_ADMIN, null),
             true,
             java.util.List.of());
@@ -896,7 +905,7 @@ class DocumentIndexingIntegrationTest {
     QueryResult withoutGrant =
         queryService.query(
             "uniquely identifiable sentence",
-            null,
+            chatOverTargetLibrary(strangerId, strangerLibrary.getId()),
             CurrentUser.of(strangerId, Organization.DEFAULT_ID, SystemRole.USER, null),
             true,
             java.util.List.of());
@@ -904,9 +913,57 @@ class DocumentIndexingIntegrationTest {
         .as("a user without any grant on the target library must not find the indexed document")
         .noneMatch(source -> "findable.txt".equals(source.getFileName()));
 
+    removeChatsAndSpacesOf(strangerId);
+    removeChatsAndSpacesOf(userId);
     jdbcTemplate.update("DELETE FROM asset_grants WHERE asset_id = ?", strangerLibrary.getId());
     jdbcTemplate.update("DELETE FROM assets WHERE id = ?", strangerLibrary.getId());
     jdbcTemplate.update("DELETE FROM users WHERE id = ?", strangerId);
+  }
+
+  /** A chat of {@code member} in a space of their own holding the target and further libraries. */
+  private UUID chatOverTargetLibrary(UUID member, UUID... furtherLibraries) {
+    UUID spaceId = UUID.randomUUID();
+    jdbcTemplate.update(
+        "INSERT INTO spaces (id, name, is_default, visibility, owner_id, organization_id,"
+            + " created_at, updated_at) VALUES (?, 'Indexierung-Space', false, 'PRIVATE', ?, ?,"
+            + " now(), now())",
+        spaceId,
+        member,
+        Organization.DEFAULT_ID);
+    jdbcTemplate.update(
+        "INSERT INTO space_memberships (id, subject_type, user_id, space_id, role, organization_id,"
+            + " created_at) VALUES (?, 'USER', ?, ?, 'ADMIN', ?, now())",
+        UUID.randomUUID(),
+        member,
+        spaceId,
+        Organization.DEFAULT_ID);
+    List<UUID> libraries = new ArrayList<>(List.of(furtherLibraries));
+    libraries.add(targetLibraryId);
+    for (UUID library : libraries) {
+      jdbcTemplate.update(
+          "INSERT INTO space_asset_associations (id, space_id, asset_id, organization_id,"
+              + " created_by_user_id, created_at) VALUES (?, ?, ?, ?, ?, now())",
+          UUID.randomUUID(),
+          spaceId,
+          library,
+          Organization.DEFAULT_ID,
+          member);
+    }
+    UUID chatId = UUID.randomUUID();
+    jdbcTemplate.update(
+        "INSERT INTO chats (id, space_id, author_id, organization_id, use_knowledge, status,"
+            + " created_at, updated_at) VALUES (?, ?, ?, ?, true, 'PRIVATE', now(), now())",
+        chatId,
+        spaceId,
+        member,
+        Organization.DEFAULT_ID);
+    return chatId;
+  }
+
+  private void removeChatsAndSpacesOf(UUID member) {
+    jdbcTemplate.update("DELETE FROM chats WHERE author_id = ?", member);
+    jdbcTemplate.update("DELETE FROM space_memberships WHERE user_id = ?", member);
+    jdbcTemplate.update("DELETE FROM spaces WHERE owner_id = ?", member);
   }
 
   @Test

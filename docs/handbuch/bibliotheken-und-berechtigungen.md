@@ -19,9 +19,10 @@
 
 Zwei Sätze gelten in allen folgenden Abschnitten:
 
-- **Ein Raum erweitert keine Leserechte.** Wer in einem Raum arbeitet, sieht dort die
-  bereitgestellten Bibliotheken nur, soweit er sie ohnehin lesen darf; die Bereitstellung verengt
-  den Suchbereich, sie öffnet ihn nicht.
+- **Ein Raum enthält genau, was ihm zugeordnet ist, und erweitert keine Leserechte.** Der Chat
+  eines Raums sucht nur in den zugeordneten Bibliotheken und bietet nur die zugeordneten Prompts
+  an — und davon nur, was die Person ohnehin lesen darf. Die Zuordnung legt fest, was im Raum zur
+  Verfügung steht; ein Leserecht öffnet sie nicht.
 - **Rechte wirken in der Suche, nicht dahinter.** Jede Suchabfrage trägt den Filter auf die
   lesbaren Bibliotheken in sich. Es gibt keinen Administrator-Durchgriff auf Inhalte
   (Abschnitt 10).
@@ -291,10 +292,22 @@ Drei Regeln halten einen Raum handlungsfähig:
   natürliche Person ist — an sich selbst oder an ein anderes solches Mitglied.
 - **Ein archivierter Raum nimmt keine neuen Mitglieder auf.**
 
+### Zuordnung: was ein Raum enthält
+
+**Ein Raum enthält genau, was ihm zugeordnet ist** — für jede Art von Bestand. Die Chats des Raums
+suchen nur in den zugeordneten Wissensbibliotheken, auch über `@`-Bezüge, und bieten nur die
+Prompts der zugeordneten Prompt-Bibliotheken an. Was eine Person lesen darf, aber dem Raum nicht
+zugeordnet ist, steht dort nicht zur Verfügung. Ein Raum ohne zugeordnetes Wissen durchsucht nichts;
+das gilt auch für den persönlichen Standard-Raum, der zunächst leer ist. Der Chat und die Seite des
+Raums sagen das mit „Diesem Space ist kein Wissen zugeordnet."; Kuratoren und Administratoren
+führt „Wissen zuordnen" direkt in den Reiter „Wissen" der Einstellungen. Die Durchsetzung liegt im
+Backend, nicht nur in der Oberfläche: Einen `@`-Bezug auf eine nicht zugeordnete Bibliothek und
+einen Prompt aus einer nicht zugeordneten Prompt-Bibliothek lehnt es ab.
+
 **Eine Bibliothek in einem Raum bereitzustellen ist eine Handlung im Raum.** Sie setzt die
 Kuratorenrolle **im Raum** und mindestens die Leserrolle **an der Bibliothek** voraus: Wer etwas
 bereitstellt, muss es selbst lesen dürfen. Die Bereitstellung **verschafft niemandem ein
-Leserecht** — sie legt fest, worin die Chats dieses Raums standardmäßig suchen. Sind im Raum
+Leserecht** — sie legt fest, worin die Chats dieses Raums suchen. Sind im Raum
 Mitglieder ohne Leserecht an dieser Bibliothek, wird die Eigentümerin der Bibliothek darüber
 benachrichtigt; eine Zustimmung braucht es nicht, die Bereitstellung wirkt sofort. Wer im Raum
 mindestens Kurator ist, sieht auch eine Bereitstellung, die er selbst nicht lesen darf — sonst
@@ -311,14 +324,17 @@ Seitenleiste. Es sehen nur Administratoren und Kuratoren des Raums. Die Seite ha
 
 | Reiter | Inhalt |
 |---|---|
-| **Stammdaten** | Name, Beschreibung, Sichtbarkeit — und am Ende der abgesetzte **Gefahrenbereich** mit „Space archivieren" und „Space löschen" |
+| **Stammdaten** | Name, Beschreibung, Sichtbarkeit, der Schalter „Inaktive Chats automatisch archivieren und löschen" ([Suche](suche.md), Abschnitt 2) — und am Ende der abgesetzte **Gefahrenbereich** mit „Space archivieren" und „Space löschen" |
 | **Mitglieder** | Die Mitgliederliste mit Rollen, das Aufnehmen von Personen und Gruppen, die Übertragung der Verantwortung und die Herleitung je Zeile |
 | **Wissen** | Die dem Raum zugeordneten Wissensbibliotheken; Zuordnen und Lösen ab der Kuratorenrolle |
 | **Prompts** | Die dem Raum zugeordneten [Prompt-Bibliotheken](prompt-bibliotheken.md); Zuordnen und Lösen ab der Kuratorenrolle |
 
 **Die ersten beiden Reiter gehören den Administratoren.** Ein Kurator öffnet dieselbe Seite, sieht
 die Stammdaten aber nur lesend, und im Reiter „Mitglieder" steht für ihn der Hinweis, dass die
-Liste seiner Rolle nicht offensteht — seine Arbeit liegt in den Reitern „Wissen" und „Prompts". Den
+Liste seiner Rolle nicht offensteht — seine Arbeit liegt in den Reitern „Wissen" und „Prompts".
+Den Schalter der Chat-Bereinigung im eigenen Standard-Raum legt nur dessen Eigentümer um, auch die
+Systemverwaltung nicht. Deshalb lässt sich ein Standard-Raum auch nicht übertragen: Der Knopf „Zum
+Eigentümer machen" fehlt dort, und eine Übertragung wird abgewiesen. Den
 Gefahrenbereich sieht nur der Eigentümer, und nicht im eigenen Standard-Raum: Der lässt sich weder
 archivieren noch löschen.
 
@@ -942,6 +958,8 @@ Drei Dinge gehören vor die Inbetriebnahme, nicht danach:
 ## 17. Was es hier nicht gibt
 
 - **Keinen Administrator-Durchgriff in der Suche** (Abschnitt 10).
+- **Keinen Rückgriff auf alles Lesbare im Chat.** Ein Raum ohne Zuordnung sucht nichts; es gibt
+  keinen Schalter, der einen Raum auf alle lesbaren Bibliotheken öffnet (Abschnitt 5).
 - **Keine Gruppenschachtelung** und keine vererbte Mitgliedschaft (Abschnitt 3).
 - **Keine Gruppe als Verantwortliche einer Gruppe** und keine Gruppe als Raumeigentümerin.
 - **Keine freien Rollen.** Die vier Bibliotheks- und die drei Raumrollen sind fest; wer ein Bündel
