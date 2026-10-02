@@ -12,7 +12,7 @@
 > „Öffentliche Demo" beschreibt den bisherigen Superhelden-Stand und wird durch dieses Konzept
 > abgelöst. Die praktische Anwenderdokumentation — Installation mit einem Befehl, Nutzerkonten,
 > öffentliche Instanz — steht in [`../../demo/README.md`](../../demo/README.md), das ausformulierte
-> Vorführ-Drehbuch mit acht Fragen und sechs Vorführschritten in
+> Vorführ-Drehbuch mit acht Fragen und acht Vorführschritten in
 > [`../market/demo-drehbuch.md`](../market/demo-drehbuch.md); beide wiederholen dieses Konzept nicht.
 
 ## Motivation
@@ -119,10 +119,13 @@ von Space"):
 | Nutzer | Rolle im Szenario | Spaces |
 |---|---|---|
 | Maria Weber | Sachbearbeiterin Meldewesen | Space „Meldewesen & Ausweise" (gemeinsam mit Selin Kaya), zusätzlich ihr eigener Space, in dem niemand sonst Mitglied ist; „Dienstbesprechung Bürgerbüro" über die Gruppe „Sachbearbeitung Bürgerbüro" |
-| Selin Kaya | Sachbearbeiterin Meldewesen | Space „Meldewesen & Ausweise" über die Keycloak-Gruppe „Meldewesen"; „Dienstbesprechung Bürgerbüro" über die Gruppe „Sachbearbeitung Bürgerbüro" |
+| Selin Kaya | Sachbearbeiterin Meldewesen | Space „Meldewesen & Ausweise" über die Keycloak-Gruppe „Meldewesen"; „Dienstbesprechung Bürgerbüro" über die Gruppe „Sachbearbeitung Bürgerbüro"; Eigentümerin der „Infotheke Bürgerbüro" |
 | Thomas Klein | Sachbearbeiter Kfz-Zulassung | Space „Kfz-Zulassung", alleiniges Mitglied; „Meldewesen & Ausweise" über die Gruppe „Vertretung Meldewesen", „Dienstbesprechung Bürgerbüro" über die Gruppe „Sachbearbeitung Bürgerbüro" |
 | Andrea Vogt | Amtsleitung Bürgerbüro | Space „Amtsleitung Bürgerbüro", alleiniges Mitglied; Eigentümerin von „Dienstbesprechung Bürgerbüro" |
-| Administrationskonto (`demo-admin`) | Systemadministration | richtet ein und indiziert (`SYSTEM_ADMIN`) |
+| Administrationskonto (`demo-admin`) | Systemadministration | richtet ein (`SYSTEM_ADMIN`) und besitzt die technisch angebundenen Bibliotheken |
+
+Alle fünf Konten sind zusätzlich über die Keycloak-Gruppe „Bürgerbüro Rheinfurt" Mitglied der
+„Infotheke Bürgerbüro".
 
 Das Administrationskonto ist ein reguläres Konto aus dem Keycloak-Realm der Demo. Die Systemrolle
 erhält es **nicht mehr** über `OPAA_INITIAL_ADMIN_EMAIL` — diese Variable bezeichnet seit
@@ -141,19 +144,21 @@ sehen will, findet ihn im E2E-Ziel `local-auth` (`e2e/local-auth/`), das genau d
 die fachlich gestellten Spaces auf: Jeder Nutzer bekommt beim ersten Login zusätzlich automatisch seinen
 Default-Space (`SpaceService#ensureDefaultSpace`, `isDefault`), der nicht eigens eingerichtet wird.
 
-Leserechte auf den Bibliotheken — vergeben als Asset-Rolle `VIEWER`, die Bibliotheken selbst gehören dem
-Admin-Konto. Die Matrix zeigt die wirksamen Rechte; „G" markiert ein Recht, das ausschließlich über eine
-interne Gruppe fließt, „K" eines, das ausschließlich über eine Keycloak-Gruppe fließt (beide Tabellen
-unten) — jeweils ohne eigenen Grant an das Konto:
+Leserechte auf den Bibliotheken — aus Eigentum, aus einer Freigabe an „Alle Konten" oder als Asset-Rolle
+`VIEWER`. Wem welche Bibliothek gehört, steht im Abschnitt
+[„Eigentum, Sichtbarkeit, Favoriten und Zuordnung"](#eigentum-sichtbarkeit-favoriten-und-zuordnung).
+Die Matrix zeigt die wirksamen Rechte; „E" markiert das Eigentum, „A" die Freigabe an „Alle Konten",
+„G" ein Recht, das ausschließlich über eine interne Gruppe fließt, „K" eines, das ausschließlich über
+eine Keycloak-Gruppe fließt (beide Tabellen unten) — jeweils ohne eigenen Grant an das Konto:
 
 | Bibliothek | Maria | Selin | Kfz (Thomas) | Amtsleitung (Andrea) |
 |---|---|---|---|---|
-| Leistungen Meldewesen & Ausweise | ✔ K „Meldewesen" | ✔ K „Meldewesen" | — | ✔ |
+| Leistungen Meldewesen & Ausweise | ✔ E (für die Gruppe „Meldewesen" angelegt) | ✔ K „Meldewesen" (Eigentümerin) | — | ✔ |
 | Leistungen Kfz-Zulassung | — | — | ✔ K „Kfz-Zulassung" | ✔ |
-| Satzungen & Gebührenordnungen | ✔ K „Bürgerbüro Rheinfurt" | ✔ K „Bürgerbüro Rheinfurt" | ✔ K „Bürgerbüro Rheinfurt" | ✔ K „Bürgerbüro Rheinfurt" |
-| Pressemitteilungen | ✔ | ✔ G „Presseverteiler Bürgerbüro" | ✔ G „Presseverteiler Bürgerbüro" | ✔ |
-| Interne Dienstanweisungen Meldewesen | ✔ | ✔ | ✔ G „Vertretung Meldewesen" | ✔ |
-| Ratsinformationen Stadt Rheinfurt | ✔ K „Bürgerbüro Rheinfurt" | ✔ K „Bürgerbüro Rheinfurt" | ✔ K „Bürgerbüro Rheinfurt" | ✔ K „Bürgerbüro Rheinfurt" |
+| Satzungen & Gebührenordnungen | ✔ A | ✔ A | ✔ A | ✔ E |
+| Pressemitteilungen | ✔ | ✔ G „Presseverteiler Bürgerbüro" | ✔ G „Presseverteiler Bürgerbüro" | ✔ E |
+| Interne Dienstanweisungen Meldewesen | ✔ E | ✔ | ✔ G „Vertretung Meldewesen" | ✔ |
+| Ratsinformationen Stadt Rheinfurt | ✔ A | ✔ A | ✔ A | ✔ A |
 | Formattest auf S3 | — | — | — | — |
 
 Die internen Gruppen (ADR-0036) legt der Seed mit benannten Verantwortlichen an; alle drei sind zur
@@ -171,21 +176,25 @@ Dienstkonto `opaa-directory`, stündlich). In der Gruppenverwaltung stehen sie a
 Organisationseinheiten mit Anbieter-Herkunft; ihre Mitglieder pflegt ausschließlich Keycloak, der Seed
 vergibt nur ihre Rechte:
 
-| Keycloak-Gruppe | Mitglieder | Leserecht | Space-Mitgliedschaft |
+| Keycloak-Gruppe | Mitglieder | Recht an Bibliotheken | Space-Mitgliedschaft |
 |---|---|---|---|
-| Bürgerbüro Rheinfurt | alle fünf Konten (mit `demo-admin`) | Satzungen & Gebührenordnungen, Ratsinformationen Stadt Rheinfurt | — |
-| Meldewesen | Maria, Selin | Leistungen Meldewesen & Ausweise | „Meldewesen & Ausweise" (`MEMBER`) |
-| Kfz-Zulassung | Thomas | Leistungen Kfz-Zulassung | — |
+| Bürgerbüro Rheinfurt | alle fünf Konten (mit `demo-admin`) | — | „Infotheke Bürgerbüro" (`MEMBER`) |
+| Meldewesen | Maria, Selin | Eigentümerin von „Leistungen Meldewesen & Ausweise" (`MANAGER`) | „Meldewesen & Ausweise" (`MEMBER`) |
+| Kfz-Zulassung | Thomas | `VIEWER` auf „Leistungen Kfz-Zulassung" | — |
 
 Die wirksame Matrix ist dieselbe wie vor der Umstellung; geändert hat sich nur, woher ein Recht kommt.
+Satzungen und Ratsinformationen lesen alle Konten seit #2103 über die Freigabe an „Alle Konten" statt
+über „Bürgerbüro Rheinfurt".
 Einrichtung, Werte und der Weg in ein Keycloak mit eigenem Volume stehen in
 [`../../demo/README.md`](../../demo/README.md), Abschnitt „Gruppen".
 
 Dieselben Bibliotheken sind jedem Space zusätzlich als **Datenquellen zugeordnet**, denn ein Space
 enthält genau, was ihm zugeordnet ist: „Meldewesen & Ausweise" und Marias eigener Space tragen
 die fünf für das Sachgebiet lesbaren Bibliotheken, „Kfz-Zulassung" seine vier, „Amtsleitung
-Bürgerbüro" alle sechs fachlichen, „Dienstbesprechung Bürgerbüro" nur die drei, die alle vier
-Fachkonten lesen (Satzungen, Pressemitteilungen, Ratsinformationen). Der Default-Space jedes Kontos
+Bürgerbüro" alle sechs fachlichen, „Dienstbesprechung Bürgerbüro" die drei, die alle vier
+Fachkonten lesen (Satzungen, Pressemitteilungen, Ratsinformationen), und dazu die Leistungen beider
+Sachgebiete, von denen jedes Mitglied der Sachbearbeitung nur die eigenen liest. „Infotheke
+Bürgerbüro" trägt nur die beiden öffentlichen. Der Default-Space jedes Kontos
 trägt die Bibliotheken seines Sachgebiets — der von Thomas zusätzlich die internen Dienstanweisungen,
 die er als Vertretung liest, der des Admin-Kontos die Schaubibliothek „Formattest auf S3".
 `@Space-Wissen` durchsucht in jedem Space genau die zugeordneten Bibliotheken, geschnitten mit den
@@ -207,17 +216,18 @@ Nachfilter, ist der unberechtigte Treffer bei Thomas nicht nur unterdrückt, son
 
 ### Prompt-Bibliotheken
 
-Neben den Wissensbibliotheken richtet der Seed zwei
-[Prompt-Bibliotheken](./spaces-and-assets.md#prompt-bibliothek) ein (#2014). Beide legt Andrea Vogt
-über ihr eigenes Konto an — das Anlegerecht `CREATE_PROMPT_LIBRARY` ist an „Alle Konten" ausgeliefert
-— und ist deshalb ihre Eigentümerin; anders als die Wissensbibliotheken gehören sie nicht dem
-Admin-Konto. Jeder Prompt fragt nach etwas, das der Korpus beantwortet, und bringt Variablen mit, damit
-Slash-Befehl und Variablenformular im Chat vorführbar sind.
+Neben den Wissensbibliotheken richtet der Seed drei
+[Prompt-Bibliotheken](./spaces-and-assets.md#prompt-bibliothek) ein (#2014, #2103). Jede legt ihre
+Eigentümerin bzw. ihr Eigentümer über das eigene Konto an — das Anlegerecht `CREATE_PROMPT_LIBRARY`
+ist an „Alle Konten" ausgeliefert. Zwei gehören Andrea Vogt, eine Thomas Klein. Jeder Prompt fragt
+nach etwas, das der Korpus beantwortet, und bringt Variablen mit, damit Slash-Befehl und
+Variablenformular im Chat vorführbar sind.
 
 | Prompt-Bibliothek | Reichweite | Space-Zuordnung | Prompts (Slash-Befehl) |
 |---|---|---|---|
-| Textbausteine Bürgerbüro | „Alle Konten" (`VIEWER`) | alle fünf fachlichen Spaces und der Default-Space jedes Kontos | `/antwort-buergeranfrage`, `/gebuehrenauskunft-personalausweis`, `/aktenvermerk`, `/pressemitteilung-ratsbeschluss` |
+| Textbausteine Bürgerbüro | „Alle Konten" (`VIEWER`) | alle sechs angelegten Spaces und der Default-Space jedes Kontos | `/antwort-buergeranfrage`, `/gebuehrenauskunft-personalausweis`, `/aktenvermerk`, `/pressemitteilung-ratsbeschluss` |
 | Vorlagen Amtsleitung | nur Andrea (Eigentümerin) | „Amtsleitung Bürgerbüro" und Andreas Default-Space | `/wochenbericht-dezernentin`, `/stellungnahme-hauptausschuss` |
+| Arbeitshilfen Kfz-Zulassung | nur Thomas (Eigentümer) | „Kfz-Zulassung" und Thomas' Default-Space | `/auskunft-sonderkennzeichen`, `/checkliste-umschreibung` |
 
 Vorführbar ist damit: der Slash-Befehl mit Variablenformular in jedem Fachkonto, die Reichweite
 „Alle Konten" als Badge und Freigabe, der Katalog mit der für alle freigegebenen Prompt-Bibliothek und die Grenze
@@ -228,6 +238,62 @@ deshalb in „Amtsleitung Bürgerbüro", nicht aber in „Dienstbesprechung Bür
 er landet als Text im Eingabefeld und wird wie jede getippte Frage mit den Leserechten der fragenden
 Person beantwortet; die Gebührenauskunft zum Personalausweis fällt bei Thomas deshalb knapper aus als
 bei Maria, weil er die Leistungsbeschreibungen Meldewesen nicht liest.
+
+### Eigentum, Sichtbarkeit, Favoriten und Zuordnung
+
+Der Seed mischt Eigentum, Sichtbarkeit, Favoriten und Space-Zuordnung so, dass das Modell aus
+[ADR-0039](../decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md) im Katalog und in den
+Spaces sichtbar wird (#2103). „Öffentlich" heißt: freigegeben an „Alle Konten". „Geschlossen" heißt:
+Es liest nur, wer Eigentum oder eine Freigabe hat. Die Rechtematrix oben bleibt dabei unverändert.
+
+**Eigentum und Sichtbarkeit.** Jede Bibliothek legt der Seed über die Sitzung ihrer Eigentümerin bzw.
+ihres Eigentümers an; eine Gruppenbibliothek legt ein Mitglied im Namen der Gruppe an. Beim
+Admin-Konto bleiben nur die Bibliotheken, die es technisch anbindet.
+
+| Asset | Art | Eigentum | Sichtbarkeit | Freigegeben an |
+|---|---|---|---|---|
+| Leistungen Meldewesen & Ausweise | Wissen | Keycloak-Gruppe „Meldewesen" (angelegt von Maria) | geschlossen | Andrea |
+| Leistungen Kfz-Zulassung | Wissen | Admin-Konto | geschlossen | Andrea; Keycloak-Gruppe „Kfz-Zulassung" |
+| Satzungen & Gebührenordnungen | Wissen | Andrea | öffentlich | Alle Konten |
+| Pressemitteilungen Stadt Rheinfurt | Wissen | Andrea | geschlossen | Maria; Gruppe „Presseverteiler Bürgerbüro" |
+| Interne Dienstanweisungen Meldewesen | Wissen | Maria | geschlossen | Selin, Andrea; Gruppe „Vertretung Meldewesen" |
+| Ratsinformationen Stadt Rheinfurt | Wissen | Admin-Konto | öffentlich | Alle Konten |
+| Formattest auf S3 | Wissen | Admin-Konto | geschlossen | niemand |
+| Textbausteine Bürgerbüro | Prompts | Andrea | öffentlich | Alle Konten |
+| Vorlagen Amtsleitung | Prompts | Andrea | geschlossen | niemand |
+| Arbeitshilfen Kfz-Zulassung | Prompts | Thomas | geschlossen | niemand |
+
+**Favoriten.** Jede Person setzt ihre Favoriten über die eigene Sitzung; niemand sonst sieht sie. Die
+Listen unterscheiden sich je Person und mischen öffentliche und geschlossene Assets. Selin ist neu im
+Sachgebiet und hat noch keine. Der Seed setzt nur, er entfernt keinen Favoriten.
+
+| Konto | Favoriten |
+|---|---|
+| Maria Weber | Interne Dienstanweisungen Meldewesen, Leistungen Meldewesen & Ausweise (beide geschlossen), Satzungen & Gebührenordnungen, Textbausteine Bürgerbüro (beide öffentlich) |
+| Thomas Klein | Leistungen Kfz-Zulassung, Arbeitshilfen Kfz-Zulassung (beide geschlossen), Ratsinformationen Stadt Rheinfurt (öffentlich) |
+| Andrea Vogt | Pressemitteilungen Stadt Rheinfurt, Vorlagen Amtsleitung (beide geschlossen), Ratsinformationen Stadt Rheinfurt (öffentlich) |
+| Selin Kaya | keine |
+| `demo-admin` | keine |
+
+**Zuordnung je Space.** Die Varianten der Spalte rechts sind die, die der Seed-Test verlangt. Einen
+bewusst leeren Space legt der Seed nicht an; den Hinweis „kein Wissen zugeordnet" zeigt jeder neu
+angelegte Space (Drehbuch, Schritt G).
+
+| Space | Eigentum | Mitglieder | Wissen | Prompts | Variante |
+|---|---|---|---|---|---|
+| Meldewesen & Ausweise | Maria | Maria; Selin über K „Meldewesen"; Thomas über G „Vertretung Meldewesen" | Leistungen Meldewesen & Ausweise, Satzungen, Pressemitteilungen, Interne Dienstanweisungen, Ratsinformationen | Textbausteine | nicht für alle Mitglieder lesbar: Thomas liest die Leistungen Meldewesen nicht |
+| Maria Weber – persönlich | Maria | Maria | wie „Meldewesen & Ausweise" | Textbausteine | geschlossenes Wissen, für das Mitglied vollständig lesbar |
+| Kfz-Zulassung | Thomas | Thomas | Leistungen Kfz-Zulassung, Satzungen, Pressemitteilungen, Ratsinformationen | Textbausteine, Arbeitshilfen Kfz-Zulassung | geschlossenes Wissen und geschlossene Prompts, vollständig lesbar |
+| Amtsleitung Bürgerbüro | Andrea | Andrea | alle sechs fachlichen | Textbausteine, Vorlagen Amtsleitung | geschlossenes Wissen und geschlossene Prompts, vollständig lesbar |
+| Dienstbesprechung Bürgerbüro | Andrea | Andrea; Maria, Selin, Thomas über G „Sachbearbeitung Bürgerbüro" | Leistungen Meldewesen & Ausweise, Leistungen Kfz-Zulassung, Satzungen, Pressemitteilungen, Ratsinformationen | Textbausteine | nicht für alle Mitglieder lesbar: Maria und Selin lesen die Kfz-Leistungen nicht, Thomas die Leistungen Meldewesen nicht |
+| Infotheke Bürgerbüro | Selin | alle fünf Konten über K „Bürgerbüro Rheinfurt" | Satzungen, Ratsinformationen | Textbausteine | nur öffentliches Wissen |
+
+Die Default-Spaces „Meine Dokumente" tragen das Wissen des eigenen Sachgebiets und die Textbausteine,
+Andreas zusätzlich die „Vorlagen Amtsleitung", Thomas' die „Arbeitshilfen Kfz-Zulassung" (siehe
+oben).
+
+Vorführen lässt sich das im Drehbuch, Schritt H. Der Seed-Test `demo/seed/test_seed.py` prüft jede
+Variante, die verschiedenen Favoritenlisten und das Konto ohne Favoriten.
 
 ---
 
