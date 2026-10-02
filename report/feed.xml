@@ -5,8 +5,19 @@
   <link href="https://criew.github.io/opaa/report/feed.xml" rel="self"/>
   <link href="https://criew.github.io/opaa/report/"/>
   <id>https://criew.github.io/opaa/report/</id>
-  <updated>2026-10-01T06:19:44Z</updated>
+  <updated>2026-10-02T05:58:46Z</updated>
   <author><name>criew/opaa</name></author>
+  <entry>
+    <title>Tagesreport Donnerstag, 1. Oktober 2026</title>
+    <link href="https://criew.github.io/opaa/report/reports/2026-10-01.html"/>
+    <id>https://criew.github.io/opaa/report/reports/2026-10-01.html</id>
+    <updated>2026-10-02T05:58:46Z</updated>
+    <summary type="text">Sonstiges:
+— Demo-Seed mit 70–80 Chats und einem langen Verlauf umgesetzt
+— 81 vorbereite Chats im Demo-Seed eingespielt ohne Modellaufruf
+— Nachbesserungen am Chat-Import geplant: Fundstellenmarken, Belegfelder, Dubletten
+— Abhängigkeiten aktualisiert: Keycloak, AWS CLI, npm, AWS Java SDK</summary>
+  </entry>
   <entry>
     <title>Tagesreport Mittwoch, 30. September 2026</title>
     <link href="https://criew.github.io/opaa/report/reports/2026-09-30.html"/>
@@ -861,23 +872,5 @@ Sonstiges:
 Sonstiges:
 — Zeitfenster des Tagesreports nachvollziehbar und lückenlos gemacht
 — Retrieval-Regression erkannt</summary>
-  </entry>
-  <entry>
-    <title>Tagesreport Montag, 3. August 2026</title>
-    <link href="https://criew.github.io/opaa/report/reports/2026-08-03.html"/>
-    <id>https://criew.github.io/opaa/report/reports/2026-08-03.html</id>
-    <updated>2026-08-14T14:55:18Z</updated>
-    <summary type="text">Epic: Space and asset model — replace the workspace model:
-— Verzeichnissynchronisation als Rechteereignis behandelt
-— Knowledge Library als Dokumentencontainer mit Migration eingeführt
-— Gruppen als Rechtesubjekte neben Nutzern etabliert
-Epic: Suchqualität messbar machen — Demo-Korpus und Retrieval-Regression:
-— Retrieval-Regressionsjob mit Baseline und Schwellenwerten automatisiert
-— Retrieval-Metrik-Harness für Hit Rate, MRR, nDCG, Recall implementiert
-Sonstiges:
-— Race Condition bei paralleler Erstanmeldung auf uq_users_subject_issuer behoben
-— Space-Tests auf echtes Liquibase-Schema umgestellt
-— Transaktionsrichtlinien in Entwickler-Rollendefinition dokumentiert
-— Branch-Regel und Reproduktionsnachweis in Agenten-Richtlinien präzisiert</summary>
   </entry>
 </feed>
