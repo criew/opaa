@@ -1,6 +1,7 @@
 package io.opaa.asset;
 
 import io.opaa.api.types.AssetOrigin;
+import java.time.Instant;
 import java.util.UUID;
 
 /**
@@ -12,6 +13,8 @@ public interface AssetCatalogRow extends OwnedAsset {
   String getDescription();
 
   AssetOrigin getOrigin();
+
+  Instant getUpdatedAt();
 
   @Override
   default UUID getOwnerId() {

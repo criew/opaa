@@ -15,6 +15,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.IndexingRunMode;
+import io.opaa.asset.AssetRepository;
 import io.opaa.indexing.attachment.AttachmentAccess;
 import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.indexing.document.DocumentIngestResult;
@@ -72,7 +73,9 @@ class UrlIndexingExecutorAttachmentBookkeepingTest {
     documentIngestService = mock(DocumentIngestService.class);
     documentRepository = mock(DocumentRepository.class);
     staleDocumentCleanupService =
-        spy(new StaleDocumentCleanupService(documentRepository, mock(VectorChunkStore.class)));
+        spy(
+            new StaleDocumentCleanupService(
+                documentRepository, mock(VectorChunkStore.class), mock(AssetRepository.class)));
     when(documentRepository.findByLibraryIdAndFilePath(any(), anyString()))
         .thenReturn(Optional.empty());
 

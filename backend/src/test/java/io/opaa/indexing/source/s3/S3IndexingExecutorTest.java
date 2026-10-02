@@ -18,6 +18,7 @@ import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.DocumentStatus;
 import io.opaa.api.types.IndexingRunMode;
+import io.opaa.asset.AssetRepository;
 import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.indexing.document.DocumentIngest;
 import io.opaa.indexing.document.DocumentIngestResult;
@@ -117,7 +118,10 @@ class S3IndexingExecutorTest {
     when(documentRepository.findByLibraryIdAndSourceType(any(), any()))
         .thenAnswer(invocation -> List.copyOf(storedDocuments));
     vectorChunkStore = mock(VectorChunkStore.class);
-    cleanupService = spy(new StaleDocumentCleanupService(documentRepository, vectorChunkStore));
+    cleanupService =
+        spy(
+            new StaleDocumentCleanupService(
+                documentRepository, vectorChunkStore, mock(AssetRepository.class)));
     folderService = mock(LibraryFolderService.class);
     syncStateRepository = mock(SourceSyncStateRepository.class);
     when(syncStateRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));

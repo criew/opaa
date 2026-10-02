@@ -361,6 +361,7 @@ public class KnowledgeLibrary extends Asset {
     this.sourceProxy = sourceProxy;
     this.sourceCredentials = sourceCredentials;
     this.sourceInsecureSsl = sourceInsecureSsl;
+    touch();
   }
 
   /**
@@ -373,6 +374,7 @@ public class KnowledgeLibrary extends Asset {
   public void updateSchedule(boolean enabled, String scheduleCron) {
     this.scheduleEnabled = enabled;
     this.scheduleCron = scheduleCron;
+    touch();
   }
 
   /**
@@ -400,6 +402,7 @@ public class KnowledgeLibrary extends Asset {
    */
   public void updateShareCap(boolean allAccountsGrantAllowed) {
     this.allAccountsGrantAllowed = allAccountsGrantAllowed;
+    touch();
   }
 
   public ExternalAccessState getExternalAccessState() {
@@ -475,6 +478,7 @@ public class KnowledgeLibrary extends Asset {
     this.externalAccessSetAt = at;
     this.externalAccessSetByUserId = actorUserId;
     this.externalAccessReminderSentAt = null;
+    touch();
   }
 
   /**
@@ -569,6 +573,7 @@ public class KnowledgeLibrary extends Asset {
   /** See {@link #diagnosticsLocked} - only the responsible owner reaches this, never an admin. */
   public void setDiagnosticsLocked(boolean diagnosticsLocked) {
     this.diagnosticsLocked = diagnosticsLocked;
+    touch();
   }
 
   public boolean isModelExtractionEnabled() {
