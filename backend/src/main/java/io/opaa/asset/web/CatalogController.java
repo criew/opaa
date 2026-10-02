@@ -35,6 +35,7 @@ public class CatalogController {
       @RequestParam(required = false) String q,
       @RequestParam(required = false) CatalogVisibility visibility,
       @RequestParam(defaultValue = "false") boolean fromMyGroups,
+      @RequestParam(defaultValue = "false") boolean favorites,
       @RequestParam(defaultValue = "name") String sort,
       @RequestParam(defaultValue = "0") int page,
       @RequestParam(defaultValue = "50") int size,
@@ -45,7 +46,8 @@ public class CatalogController {
             q,
             visibility,
             fromMyGroups,
-            sortOf(sort));
+            sortOf(sort),
+            favorites);
     return responseMapper.toResponse(catalogService.list(caller, query, page, size));
   }
 

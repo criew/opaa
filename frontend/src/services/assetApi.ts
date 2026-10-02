@@ -168,3 +168,21 @@ export async function transferAssetOwnership(
     normalizeError(err)
   }
 }
+
+/** Marks a readable asset as one of the caller's own favorites (ADR-0039, Entscheidung 7). */
+export async function markAssetFavorite(assetType: AssetType, assetId: string): Promise<void> {
+  try {
+    await client.put(`/v1/assets/${assetType}/${assetId}/favorite`)
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/** Removes the caller's own favorite mark; always possible, whatever the asset's state. */
+export async function unmarkAssetFavorite(assetType: AssetType, assetId: string): Promise<void> {
+  try {
+    await client.delete(`/v1/assets/${assetType}/${assetId}/favorite`)
+  } catch (err) {
+    normalizeError(err)
+  }
+}

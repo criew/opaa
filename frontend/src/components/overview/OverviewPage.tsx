@@ -13,6 +13,7 @@ import visuallyHidden from '@mui/utils/visuallyHidden'
 import CloseIcon from '@mui/icons-material/Close'
 import SearchIcon from '@mui/icons-material/Search'
 import PageHeading from '../a11y/PageHeading'
+import type { Theme } from '@mui/material/styles'
 import { blue } from '../../theme/tokens'
 
 export interface ControlledSearch {
@@ -240,57 +241,77 @@ export default function OverviewPage<T>({
   )
 }
 
+const cardSx = {
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'stretch',
+  textAlign: 'left',
+  gap: 1,
+  p: 2.5,
+  border: 1,
+  borderColor: 'divider',
+  borderRadius: '16px',
+  bgcolor: 'background.paper',
+  transition: (theme: Theme) =>
+    theme.transitions.create(['border-color', 'transform'], {
+      duration: theme.transitions.duration.shortest,
+    }),
+  '&:hover': {
+    borderColor: blue[300],
+    transform: 'translateY(-2px)',
+  },
+} as const
+
 /**
- * The card shell of an overview: a real link (new tab, middle click, history) with the quiet
- * border and hover lift of mockup 1c. Motion stays on transform only (guidelines 4.5).
+ * The card shell of an overview with the quiet border and hover lift of mockup 1c. Motion stays on
+ * transform only (guidelines 4.5). With `to` the whole card is one real link (new tab, middle
+ * click, history). Without it the card carries its own controls: an {@link OverviewCardLink} inside
+ * stretches its click area over the card, and the controls stay separate tab stops - never a button
+ * inside a link (guidelines 5.4).
  */
+export function OverviewCard({ to, children }: { to?: string; children: ReactNode }) {
+  if (to === undefined) {
+    return (
+      <Box
+        sx={{
+          ...cardSx,
+          position: 'relative',
+          '&:focus-within': { borderColor: blue[300] },
+        }}
+      >
+        {children}
+      </Box>
+    )
+  }
+  return (
+    <ButtonBase component={RouterLink} to={to} sx={cardSx}>
+      {children}
+    </ButtonBase>
+  )
+}
+
 /**
- * A card that is one link. An `action` stands beside the link, at the card's foot, never inside
- * it - a control nested in a link is neither reachable nor announced on its own.
+ * The link of a card with its own controls: its text names the card, its click area covers the
+ * whole card. Controls beside it need `position: relative` to stay above that area.
  */
-export function OverviewCard({
-  to,
-  children,
-  action,
-}: {
-  to: string
-  children: ReactNode
-  action?: ReactNode
-}) {
-  const card = (
-    <ButtonBase
+export function OverviewCardLink({ to, children }: { to: string; children: ReactNode }) {
+  return (
+    <Box
       component={RouterLink}
       to={to}
       sx={{
-        ...(action ? { width: '100%', pb: 7 } : {}),
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'stretch',
-        textAlign: 'left',
-        gap: 1,
-        p: 2.5,
-        border: 1,
-        borderColor: 'divider',
-        borderRadius: '16px',
-        bgcolor: 'background.paper',
-        transition: (theme) =>
-          theme.transitions.create(['border-color', 'transform'], {
-            duration: theme.transitions.duration.shortest,
-          }),
-        '&:hover': {
-          borderColor: blue[300],
-          transform: 'translateY(-2px)',
+        color: 'inherit',
+        textDecoration: 'none',
+        '&::after': { content: '""', position: 'absolute', inset: 0, borderRadius: '16px' },
+        '&:focus-visible': { outline: 'none' },
+        '&:focus-visible::after': {
+          outline: 2,
+          outlineColor: 'primary.main',
+          outlineOffset: 2,
         },
       }}
     >
       {children}
-    </ButtonBase>
-  )
-  if (!action) return card
-  return (
-    <Box sx={{ position: 'relative', display: 'flex' }}>
-      {card}
-      <Box sx={{ position: 'absolute', left: 20, bottom: 16 }}>{action}</Box>
     </Box>
   )
 }

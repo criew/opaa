@@ -64,27 +64,42 @@ public interface AssetRepository extends JpaRepository<Asset, UUID> {
   /**
    * The catalog in one query over every type: the assets of {@code assetTypes} in the organization
    * that are among {@code readableIds}, whose name or description matches {@code pattern}
-   * case-insensitively (a {@code LIKE} pattern escaped with a backslash), ordered by name.
+   * case-insensitively (a {@code LIKE} pattern escaped with a backslash). The favorites of {@code
+   * userId} come first, then by name; with {@code favoritesOnly} nothing else is selected.
    */
   @Query(
-      value = CATALOG_SELECT + CATALOG_CONDITION + " order by lower(a.name), a.id",
+      value =
+          CATALOG_SELECT
+              + CATALOG_CONDITION
+              + " order by "
+              + FAVORITES_FIRST
+              + ", lower(a.name), a.id",
       countQuery = "select count(a)" + CATALOG_CONDITION)
   Page<AssetCatalogRow> findCatalogPage(
       @Param("organizationId") UUID organizationId,
       @Param("assetTypes") Collection<AssetType> assetTypes,
       @Param("readableIds") Set<UUID> readableIds,
       @Param("pattern") String pattern,
+      @Param("userId") UUID userId,
+      @Param("favoritesOnly") boolean favoritesOnly,
       Pageable pageable);
 
-  /** {@link #findCatalogPage}, ordered by the last change, most recent first. */
+  /** {@link #findCatalogPage}, favorites first, then by the last change, most recent first. */
   @Query(
-      value = CATALOG_SELECT + CATALOG_CONDITION + " order by a.updatedAt desc, a.id",
+      value =
+          CATALOG_SELECT
+              + CATALOG_CONDITION
+              + " order by "
+              + FAVORITES_FIRST
+              + ", a.updatedAt desc, a.id",
       countQuery = "select count(a)" + CATALOG_CONDITION)
   Page<AssetCatalogRow> findCatalogPageByUpdatedAt(
       @Param("organizationId") UUID organizationId,
       @Param("assetTypes") Collection<AssetType> assetTypes,
       @Param("readableIds") Set<UUID> readableIds,
       @Param("pattern") String pattern,
+      @Param("userId") UUID userId,
+      @Param("favoritesOnly") boolean favoritesOnly,
       Pageable pageable);
 
   /**
@@ -132,11 +147,16 @@ public interface AssetRepository extends JpaRepository<Asset, UUID> {
           + " a.origin as origin, a.updatedAt as updatedAt";
 
   String CATALOG_CONDITION =
-      " from Asset a where a.organizationId = :organizationId"
+      " from Asset a left join AssetFavorite f on f.assetId = a.id and f.userId = :userId"
+          + " where a.organizationId = :organizationId"
           + " and a.assetType in :assetTypes"
           + " and a.id in :readableIds"
           + " and (lower(a.name) like lower(:pattern) escape '\\'"
-          + " or lower(coalesce(a.description, '')) like lower(:pattern) escape '\\')";
+          + " or lower(coalesce(a.description, '')) like lower(:pattern) escape '\\')"
+          + " and (:favoritesOnly = false or f.assetId is not null)";
+
+  /** The caller's own favorites before everything else; the join names only their marks. */
+  String FAVORITES_FIRST = "case when f.assetId is null then 1 else 0 end";
 
   /** Every asset of one organization - what the succession detection run walks. */
   List<Asset> findByOrganizationId(UUID organizationId);

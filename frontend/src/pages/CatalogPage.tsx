@@ -1,14 +1,18 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Checkbox from '@mui/material/Checkbox'
+import Chip from '@mui/material/Chip'
+import IconButton from '@mui/material/IconButton'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import ToggleButton from '@mui/material/ToggleButton'
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import { alpha } from '@mui/material/styles'
+import StarIcon from '@mui/icons-material/Star'
+import StarBorderIcon from '@mui/icons-material/StarBorder'
 import type { CatalogEntryResponse, CatalogEntryStatus, CatalogVisibility } from '../types/api'
 import type { CatalogSort } from '../services/catalogApi'
 import { CATALOG_QUERY_MAX_LENGTH, useCatalogStore } from '../stores/catalogStore'
@@ -19,7 +23,7 @@ import {
   creatableAssetTypes,
   type AssetTypeDefinition,
 } from '../components/assets/assetTypeRegistry'
-import OverviewPage, { OverviewCard } from '../components/overview/OverviewPage'
+import OverviewPage, { OverviewCard, OverviewCardLink } from '../components/overview/OverviewPage'
 import UseInSpaceButton from '../components/assets/UseInSpaceButton'
 import MetaBadge from '../components/MetaBadge'
 import SuccessionStateNote from '../components/succession/SuccessionStateNote'
@@ -147,6 +151,46 @@ function TypeBadge({ definition }: { definition: AssetTypeDefinition }) {
   )
 }
 
+/**
+ * The caller's own favorite mark (ADR-0039, Entscheidung 7): a toggle beside the card's link, never
+ * inside it. Its name says what the next press does and thereby the state; `aria-pressed` would say
+ * the state a second time, in the opposite direction. While a press is pending it is only
+ * `aria-disabled`: a natively disabled button would drop the keyboard focus.
+ */
+function FavoriteToggle({ entry }: { entry: CatalogEntryResponse }) {
+  const setFavorite = useCatalogStore((s) => s.setFavorite)
+  const pending = useRef(false)
+  const [busy, setBusy] = useState(false)
+  const label = entry.favorite
+    ? `„${entry.name}“ aus den Favoriten entfernen`
+    : `„${entry.name}“ als Favorit markieren`
+
+  async function toggle() {
+    if (pending.current) return
+    pending.current = true
+    setBusy(true)
+    await setFavorite(entry, !entry.favorite)
+    pending.current = false
+    setBusy(false)
+  }
+
+  return (
+    <IconButton
+      size="small"
+      aria-label={label}
+      aria-disabled={busy || undefined}
+      onClick={() => void toggle()}
+      sx={{ position: 'relative', zIndex: 1, m: -0.75, ml: 'auto' }}
+    >
+      {entry.favorite ? (
+        <StarIcon sx={{ fontSize: 20, color: 'primary.main' }} />
+      ) : (
+        <StarBorderIcon sx={{ fontSize: 20 }} />
+      )}
+    </IconButton>
+  )
+}
+
 function CatalogCard({
   entry,
   definition,
@@ -155,17 +199,7 @@ function CatalogCard({
   definition: AssetTypeDefinition
 }) {
   return (
-    <OverviewCard
-      to={definition.detailRoute(entry.assetId)}
-      action={
-        <UseInSpaceButton
-          assetType={entry.assetType}
-          assetId={entry.assetId}
-          name={entry.name}
-          size="small"
-        />
-      }
-    >
+    <OverviewCard>
       <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 0.75 }}>
         <TypeBadge definition={definition} />
         <Tooltip title={catalogVisibilityDescription(entry.visibility)} describeChild>
@@ -174,10 +208,13 @@ function CatalogCard({
           </span>
         </Tooltip>
         <MetaBadge accent>{assetRoleLabel(entry.myRole)}</MetaBadge>
+        <FavoriteToggle entry={entry} />
       </Box>
-      <Typography component="span" sx={{ fontSize: 16.5, fontWeight: 600 }}>
-        {entry.name}
-      </Typography>
+      <OverviewCardLink to={definition.detailRoute(entry.assetId)}>
+        <Typography component="span" sx={{ fontSize: 16.5, fontWeight: 600 }}>
+          {entry.name}
+        </Typography>
+      </OverviewCardLink>
       <Typography
         component="p"
         sx={{
@@ -201,6 +238,15 @@ function CatalogCard({
       </Typography>
       <CatalogStatusLine entry={entry} />
       <SuccessionStateNote succession={entry.succession} variant="badge" />
+      {/* Like the star: its own tab stop above the card's stretched link, never inside it. */}
+      <Box sx={{ position: 'relative', zIndex: 1, alignSelf: 'flex-start', mt: 0.5 }}>
+        <UseInSpaceButton
+          assetType={entry.assetType}
+          assetId={entry.assetId}
+          name={entry.name}
+          size="small"
+        />
+      </Box>
     </OverviewCard>
   )
 }
@@ -233,7 +279,7 @@ function FilterGroup({
 /**
  * The one entry for every asset type (ADR-0039, Entscheidung 1): what the person may read, as
  * cards. Search, filters and sort run on the server; filters and sort stand in the address
- * (`?type=&visibility=&groups=1&sort=`), so `/libraries` and `/prompts` can lead here narrowed to
+ * (`?type=&visibility=&groups=1&favorites=1&sort=`), so `/libraries` and `/prompts` can lead here narrowed to
  * their type and a filtered view survives a reload.
  */
 export default function CatalogPage() {
@@ -242,6 +288,7 @@ export default function CatalogPage() {
   const typeFilter = ASSET_TYPES.find((definition) => definition.slug === searchParams.get('type'))
   const visibility = fromSlug(VISIBILITY_SLUGS, searchParams.get('visibility'))
   const fromMyGroups = searchParams.get('groups') === '1'
+  const favoritesOnly = searchParams.get('favorites') === '1'
   const sort = fromSlug(SORT_SLUGS, searchParams.get('sort')) ?? 'name'
   const [query, setQuery] = useState('')
   const [appliedQuery, setAppliedQuery] = useState('')
@@ -264,8 +311,15 @@ export default function CatalogPage() {
 
   const filterType = typeFilter?.type
   useEffect(() => {
-    void load({ type: filterType, q: appliedQuery, visibility, fromMyGroups, sort })
-  }, [load, filterType, appliedQuery, visibility, fromMyGroups, sort])
+    void load({
+      type: filterType,
+      q: appliedQuery,
+      visibility,
+      fromMyGroups,
+      favorites: favoritesOnly,
+      sort,
+    })
+  }, [load, filterType, appliedQuery, visibility, fromMyGroups, favoritesOnly, sort])
 
   /** Sets one address parameter; `null` removes it, so the default view has a bare address. */
   function setParam(key: string, value: string | null) {
@@ -359,6 +413,13 @@ export default function CatalogPage() {
             label="Aus meinen Gruppen"
             sx={{ mr: 0, '& .MuiFormControlLabel-label': { fontSize: 13 } }}
           />
+          <Chip
+            label="Favoriten"
+            icon={favoritesOnly ? <StarIcon /> : <StarBorderIcon />}
+            variant={favoritesOnly ? 'filled' : 'outlined'}
+            aria-pressed={favoritesOnly}
+            onClick={() => setParam('favorites', favoritesOnly ? null : '1')}
+          />
           <FilterGroup id="sort" title="Sortierung" push>
             {(labelId) => (
               <ToggleButtonGroup
@@ -381,7 +442,9 @@ export default function CatalogPage() {
           </FilterGroup>
         </>
       }
-      filtered={typeFilter !== undefined || visibility !== undefined || fromMyGroups}
+      filtered={
+        typeFilter !== undefined || visibility !== undefined || fromMyGroups || favoritesOnly
+      }
       total={total}
       isLoading={isLoading}
       error={error}

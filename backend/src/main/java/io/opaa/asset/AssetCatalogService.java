@@ -28,7 +28,8 @@ import org.springframework.transaction.annotation.Transactional;
  * organization - one query on the shell, paged, searched and sorted in SQL. Every filter narrows
  * the readable set before the query, so no entry and no count ever includes an unreadable asset;
  * the administration's floor never counts here. What a page shows beyond the shell comes in grouped
- * queries per type present on it.
+ * queries per type present on it. The caller's own favorites come first in every order; no other
+ * person's mark is read.
  */
 @Service
 @Transactional(readOnly = true)
@@ -46,6 +47,7 @@ public class AssetCatalogService {
   private final AssetSuccessionSource successionSource;
   private final Map<AssetType, AssetExtent> extents;
   private final Map<AssetType, AssetCatalogFactSource> factSources;
+  private final AssetFavoriteRepository favorites;
 
   AssetCatalogService(
       AssetRepository assetRepository,
@@ -54,7 +56,8 @@ public class AssetCatalogService {
       AssetOwnerNames ownerNames,
       AssetSuccessionSource successionSource,
       List<AssetExtent> extents,
-      List<AssetCatalogFactSource> factSources) {
+      List<AssetCatalogFactSource> factSources,
+      AssetFavoriteRepository favorites) {
     this.assetRepository = assetRepository;
     this.accessService = accessService;
     this.assetTypes = assetTypes;
@@ -62,12 +65,16 @@ public class AssetCatalogService {
     this.successionSource = successionSource;
     this.extents =
         extents.stream().collect(Collectors.toMap(AssetExtent::assetType, extent -> extent));
+    this.favorites = favorites;
     this.factSources =
         factSources.stream()
             .collect(Collectors.toMap(AssetCatalogFactSource::assetType, source -> source));
   }
 
-  /** One page of every readable asset of {@code assetType} matching {@code text}, by name. */
+  /**
+   * One page of every readable asset of {@code assetType} matching {@code text}: the caller's
+   * favorites first, then by name.
+   */
   public AssetCatalogPage list(
       CurrentUser caller, AssetType assetType, String text, int page, int size) {
     return list(caller, AssetCatalogQuery.of(assetType, text), page, size);
@@ -101,10 +108,22 @@ public class AssetCatalogService {
         switch (query.sort()) {
           case NAME ->
               assetRepository.findCatalogPage(
-                  caller.organizationId(), types, selection.ids(), pattern, pageRequest);
+                  caller.organizationId(),
+                  types,
+                  selection.ids(),
+                  pattern,
+                  caller.id(),
+                  query.favoritesOnly(),
+                  pageRequest);
           case UPDATED_AT ->
               assetRepository.findCatalogPageByUpdatedAt(
-                  caller.organizationId(), types, selection.ids(), pattern, pageRequest);
+                  caller.organizationId(),
+                  types,
+                  selection.ids(),
+                  pattern,
+                  caller.id(),
+                  query.favoritesOnly(),
+                  pageRequest);
         };
 
     List<AssetCatalogRow> content = rows.getContent();
@@ -114,6 +133,11 @@ public class AssetCatalogService {
     Map<UUID, SuccessionFinding> succession = successionSource.findingsAmong(content, false);
     Map<UUID, AssetRole> roles = roles(content, caller);
     Map<UUID, AssetCatalogFacts> facts = facts(content);
+    Set<UUID> marked =
+        content.isEmpty()
+            ? Set.of()
+            : favorites.findMarkedAmong(
+                caller.id(), content.stream().map(AssetCatalogRow::getId).toList());
     List<AssetCatalogEntry> entries =
         content.stream()
             .map(
@@ -131,7 +155,8 @@ public class AssetCatalogService {
                       names.get(row.getOwnerId()),
                       succession.get(id),
                       itemCounts.getOrDefault(id, 0L),
-                      spaceCounts.getOrDefault(id, 0L));
+                      spaceCounts.getOrDefault(id, 0L),
+                      marked.contains(id));
                 })
             .toList();
     return new AssetCatalogPage(entries, page, size, rows.getTotalElements(), rows.getTotalPages());

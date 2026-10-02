@@ -9,11 +9,15 @@ import {
   mockSpaceAssetAssociations,
   mockLibraryGrants,
   resetMockLibraryGrants,
+  favoriteKey,
+  mockFavoriteAssets,
+  resetMockFavorites,
 } from './assetFixtures'
 import type { AssetGrantRequest, AssetRole, AssetType } from '../types/api'
 
 export function resetGrantMockState() {
   resetMockLibraryGrants()
+  resetMockFavorites()
 }
 
 const ASSET_ROLE_ORDER: AssetRole[] = ['VIEWER', 'EDITOR', 'MANAGER', 'OWNER']
@@ -59,6 +63,22 @@ function countOtherActiveMockOwnerGrants(libraryId: string, excludingGrantId: st
 }
 
 export const assetHandlers = [
+  // Marking needs a readable asset of the named type; unmarking always answers 204.
+  http.put('/api/v1/assets/:assetType/:assetId/favorite', ({ params }) => {
+    const assetType = String(params.assetType)
+    const assetId = String(params.assetId)
+    if (!mockAssetOf(assetType, assetId)) {
+      return HttpResponse.json({ error: 'Nicht gefunden' }, { status: 404 })
+    }
+    mockFavoriteAssets.add(favoriteKey(assetType, assetId))
+    return new HttpResponse(null, { status: 204 })
+  }),
+
+  http.delete('/api/v1/assets/:assetType/:assetId/favorite', ({ params }) => {
+    mockFavoriteAssets.delete(favoriteKey(String(params.assetType), String(params.assetId)))
+    return new HttpResponse(null, { status: 204 })
+  }),
+
   // A space id without an entry has nothing associated and answers an empty list rather than a
   // 404, mirroring the real endpoint for any space the caller may see.
   http.get('/api/v1/spaces/:spaceId/assets', ({ params }) => {

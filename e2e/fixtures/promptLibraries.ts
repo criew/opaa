@@ -136,9 +136,12 @@ export async function searchCatalog(page: Page, query: string): Promise<void> {
   ])
 }
 
-/** Ein Katalogeintrag - eine Kachel, die als Link zur Detailseite führt. */
+/**
+ * A catalog tile: the card around the link that names the asset. The link carries only the name and
+ * stretches over the card, so clicking the card opens the detail page.
+ */
 export function catalogEntry(page: Page, name: string): Locator {
-  return page.getByRole('link', { name: new RegExp(escapeRegExp(name)) })
+  return page.getByRole('link', { name: new RegExp(escapeRegExp(name)) }).locator('xpath=..')
 }
 
 export function escapeRegExp(text: string): string {

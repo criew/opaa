@@ -12,6 +12,8 @@ export interface CatalogQuery {
   visibility?: CatalogVisibility
   /** Only assets granted to or owned by one of the caller's groups. */
   fromMyGroups?: boolean
+  /** Only the caller's own favorites. */
+  favorites?: boolean
   /** Name A to Z when absent; `updatedAt` puts the most recent change first. */
   sort?: CatalogSort
   page: number
@@ -30,6 +32,7 @@ export async function getCatalog(query: CatalogQuery): Promise<CatalogPageRespon
         q: query.q?.trim() ? query.q.trim() : undefined,
         visibility: query.visibility,
         fromMyGroups: query.fromMyGroups ? true : undefined,
+        favorites: query.favorites ? true : undefined,
         sort: query.sort && query.sort !== 'name' ? query.sort : undefined,
         page: query.page,
         size: query.size,

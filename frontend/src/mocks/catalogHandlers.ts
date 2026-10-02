@@ -6,6 +6,7 @@ import type {
   CatalogVisibility,
   LibraryListResponse,
 } from '../types/api'
+import { favoriteKey, mockFavoriteAssets } from './assetFixtures'
 import { mockLibraries, mockLibraryDetails } from './libraryFixtures'
 import { mockPromptLibraries, mockUnreadablePromptLibraryIds } from './promptLibraryFixtures'
 
@@ -54,6 +55,7 @@ function readableEntries(): CatalogEntryResponse[] {
     },
     itemCount: library.documentCount,
     spaceCount: 0,
+    favorite: mockFavoriteAssets.has(favoriteKey('KNOWLEDGE_LIBRARY', library.id)),
     succession: library.succession ?? null,
   }))
   const prompts: CatalogEntryResponse[] = Object.values(mockPromptLibraries)
@@ -73,6 +75,7 @@ function readableEntries(): CatalogEntryResponse[] {
       updatedAt: library.updatedAt,
       itemCount: library.promptCount,
       spaceCount: 1,
+      favorite: mockFavoriteAssets.has(favoriteKey('PROMPT_LIBRARY', library.id)),
       succession: library.succession ?? null,
     }))
   return [...knowledge, ...prompts]
@@ -81,6 +84,7 @@ function readableEntries(): CatalogEntryResponse[] {
 /**
  * The server's catalog: only what the mock user may read, filtered, searched, sorted and paged.
  * "Aus meinen Gruppen" is approximated by group ownership - the fixtures name no memberships.
+ * The caller's favorites come first in either order, as on the server.
  */
 export const catalogHandlers = [
   http.get('/api/v1/catalog', ({ request }) => {
@@ -89,6 +93,7 @@ export const catalogHandlers = [
     const q = (params.get('q') ?? '').trim().toLowerCase()
     const visibility = params.get('visibility')
     const fromMyGroups = params.get('fromMyGroups') === 'true'
+    const favoritesOnly = params.get('favorites') === 'true'
     const sort = params.get('sort') ?? 'name'
     const page = Number(params.get('page') ?? '0')
     const size = Number(params.get('size') ?? '50')
@@ -105,16 +110,19 @@ export const catalogHandlers = [
       .filter((entry) => !type || entry.assetType === type)
       .filter((entry) => !visibility || entry.visibility === visibility)
       .filter((entry) => !fromMyGroups || entry.ownerType === 'GROUP')
+      .filter((entry) => !favoritesOnly || entry.favorite)
       .filter(
         (entry) =>
           !q ||
           entry.name.toLowerCase().includes(q) ||
           (entry.description ?? '').toLowerCase().includes(q),
       )
-      .sort((a, b) =>
-        sort === 'updatedAt'
-          ? b.updatedAt.localeCompare(a.updatedAt) || a.assetId.localeCompare(b.assetId)
-          : a.name.localeCompare(b.name),
+      .sort(
+        (a, b) =>
+          Number(b.favorite) - Number(a.favorite) ||
+          (sort === 'updatedAt'
+            ? b.updatedAt.localeCompare(a.updatedAt) || a.assetId.localeCompare(b.assetId)
+            : a.name.localeCompare(b.name)),
       )
     return HttpResponse.json({
       entries: all.slice(page * size, page * size + size),

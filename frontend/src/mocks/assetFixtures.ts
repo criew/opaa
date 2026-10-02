@@ -143,3 +143,17 @@ export let mockLibraryGrants: Record<string, AssetGrantResponse[]> =
 export function resetMockLibraryGrants() {
   mockLibraryGrants = structuredClone(INITIAL_LIBRARY_GRANTS)
 }
+
+/**
+ * The mock user's own favorites, keyed `assetType:assetId` - the server only ever reads the
+ * caller's marks, so the mock needs no person dimension. Starts empty, like a new account.
+ */
+export const mockFavoriteAssets = new Set<string>()
+
+export function favoriteKey(assetType: string, assetId: string): string {
+  return `${assetType}:${assetId}`
+}
+
+export function resetMockFavorites() {
+  mockFavoriteAssets.clear()
+}
