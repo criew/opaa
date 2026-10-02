@@ -179,9 +179,9 @@ Rolle über eine Gruppe oder die Freigabe an „Alle Konten". Die Adressen `/lib
 | Element | Inhalt |
 |---|---|
 | **Suche** | Über Name und Beschreibung, ohne Rücksicht auf Groß- und Kleinschreibung; der Suchtext ist begrenzt |
-| **Filter** | Art: „Alle", „Wissen" oder „Prompts"; Sichtbarkeit: „Alle", „Für alle" oder „Eingeschränkt"; dazu „Aus meinen Gruppen". Die Filter wirken zusammen; gewählte Filter und Sortierung stehen in der Adresse der Seite |
-| **Sortierung** | „Name" (Vorgabe, A bis Z) oder „Zuletzt geändert" (jüngste Änderung zuerst) |
-| **Eintrag** | Eine Kachel: Art (Wissens- oder Prompt-Bibliothek) als Etikett mit Symbol, Sichtbarkeit und die eigene Rolle als Etiketten, Name, Beschreibung, Umfang (Dokumente bzw. Prompts), in wie vielen Räumen sie bereitsteht, zuständige Stelle und Stand oder Zustand. Jede Kachel führt zur Detailseite der Bibliothek; eine Tabellenansicht gibt es nicht |
+| **Filter** | Art: „Alle", „Wissen" oder „Prompts"; Sichtbarkeit: „Alle", „Für alle" oder „Eingeschränkt"; dazu „Aus meinen Gruppen" und „Favoriten" für die eigenen Favoriten. Die Filter wirken zusammen; gewählte Filter und Sortierung stehen in der Adresse der Seite |
+| **Sortierung** | „Name" (Vorgabe, A bis Z) oder „Zuletzt geändert" (jüngste Änderung zuerst); in beiden stehen die eigenen Favoriten vorn |
+| **Eintrag** | Eine Kachel: Art (Wissens- oder Prompt-Bibliothek) als Etikett mit Symbol, Sichtbarkeit und die eigene Rolle als Etiketten, Stern für den eigenen Favoriten, Name, Beschreibung, Umfang (Dokumente bzw. Prompts), in wie vielen Räumen sie bereitsteht, zuständige Stelle und Stand oder Zustand. Jede Kachel führt zur Detailseite der Bibliothek; eine Tabellenansicht gibt es nicht |
 | **Seiten** | Die Einträge kommen seitenweise; „Weitere laden" hängt die nächste Seite an |
 | **Neu** | Oben rechts, nur wenn die Person mindestens ein Anlegerecht für eine Art hat (siehe unten, „Anlegen über ‚Neu'") |
 
@@ -209,6 +209,28 @@ Die Systemverwaltung sieht im Katalog nicht mehr als andere: **Verwalten ist nic
 Bibliothek, die sie nur verwaltet, erscheint dort nicht. Der Katalog zeigt nie etwas aus einer
 anderen Organisation, und ein Eintrag enthält Beschreibungen, nie Inhalte: keine Dokumente, keine
 Prompts.
+
+#### Favoriten
+
+Jede Person kann jede Bibliothek, die sie im Katalog sieht, mit dem **Stern** auf der Kachel als
+**Favorit** markieren und mit einem zweiten Druck wieder entfernen. Favoriten stehen im Katalog
+oben; der Filter „Favoriten" zeigt nur sie. Der Stern ist ein eigenes Bedienelement neben dem Link
+der Kachel: Er ist mit der Tabulatortaste erreichbar, Enter und Leertaste schalten ihn um, und ein
+Bildschirmleser liest vor, was der nächste Druck bewirkt („… als Favorit markieren" oder „… aus den
+Favoriten entfernen"). Nach dem Umschalten bleibt die Kachel bis zum nächsten Laden an ihrem Platz.
+
+Favoriten sind eine rein persönliche Ordnung und ändern keine Rechte:
+
+- **Nur die Person selbst sieht sie.** Weder die Systemverwaltung noch die Verantwortlichen einer
+  Bibliothek oder eines Raums erfahren, wer was markiert hat; es gibt keine Zahl der Favoriten je
+  Bibliothek.
+- **Kein Nachweis.** Setzen und Entfernen erscheinen weder im Nachweisprotokoll noch in einer
+  Historie und in keinem Bericht oder Export.
+- **Nur Lesbares.** Markieren lässt sich nur, was die Person lesen darf. Verliert sie das
+  Leserecht, verschwindet der Favorit aus dem Katalog; entfernen kann sie ihre Markierung trotzdem
+  jederzeit.
+- **Mit dem Konto gelöscht.** Wird das Konto gelöscht, gehen seine Favoriten mit, und sie halten
+  die Löschung nicht auf. Wird eine Bibliothek gelöscht, verschwinden die Favoriten daran ebenso.
 
 #### Anlegen über „Neu"
 

@@ -432,11 +432,21 @@ paths:
           schema:
             type: boolean
             default: false
+        - name: favorites
+          in: query
+          required: false
+          description: >
+            When true, only the caller's own favorites (ADR-0039, Entscheidung 7). False or absent
+            applies no such restriction. Only the caller's marks are ever read.
+          schema:
+            type: boolean
+            default: false
         - name: sort
           in: query
           required: false
           description: >
-            name orders by name (case-insensitive, A to Z); updatedAt orders by
+            The caller's own favorites always come first, in either order. Within them and
+            within the rest, name orders by name (case-insensitive, A to Z); updatedAt orders by
             CatalogEntryResponse.updatedAt, most recent first. Ties are broken by assetId, so the
             pages of one order neither repeat nor skip an entry. Any other value is refused with
             400.
@@ -508,6 +518,7 @@ components:
           updatedAt,
           itemCount,
           spaceCount,
+          favorite,
         ]
       description: >
         One asset in the catalog, always one the caller may read - a description, never a content
@@ -579,6 +590,11 @@ components:
           type: integer
           format: int64
           description: The spread - in how many spaces of the organization the asset is associated.
+        favorite:
+          type: boolean
+          description: >
+            Whether the caller marked this asset as a favorite. Only ever the caller's own mark -
+            no entry says anything about anybody else's, and there is no count of them.
         succession:
           description: >
             Set while the asset has no capable owner (ADR-0036, Entscheidung 6) - state and

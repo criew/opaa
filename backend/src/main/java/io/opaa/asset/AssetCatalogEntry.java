@@ -14,6 +14,7 @@ import io.opaa.permission.SuccessionFinding;
  * @param succession {@code null} while the asset has a capable owner.
  * @param itemCount what the asset holds - documents, prompts - by its type's count.
  * @param spaceCount in how many spaces the asset is associated.
+ * @param favorite whether the caller marked the asset; nobody else's mark is ever read.
  */
 public record AssetCatalogEntry(
     AssetCatalogRow asset,
@@ -24,4 +25,30 @@ public record AssetCatalogEntry(
     String ownerLabel,
     SuccessionFinding succession,
     long itemCount,
-    long spaceCount) {}
+    long spaceCount,
+    boolean favorite) {
+
+  /** An entry the caller has not marked. */
+  public AssetCatalogEntry(
+      AssetCatalogRow asset,
+      AssetRole myRole,
+      CatalogVisibility visibility,
+      CatalogEntryStatus status,
+      AssetCatalogFacts facts,
+      String ownerLabel,
+      SuccessionFinding succession,
+      long itemCount,
+      long spaceCount) {
+    this(
+        asset,
+        myRole,
+        visibility,
+        status,
+        facts,
+        ownerLabel,
+        succession,
+        itemCount,
+        spaceCount,
+        false);
+  }
+}

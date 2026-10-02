@@ -1,6 +1,8 @@
 package io.opaa.asset;
 
 import java.time.Instant;
+import java.util.Collection;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -13,6 +15,13 @@ import org.springframework.data.repository.query.Param;
  * {@code count} reaches across persons.
  */
 public interface AssetFavoriteRepository extends Repository<AssetFavorite, AssetFavorite.Key> {
+
+  /** Which of {@code assetIds} {@code userId} has marked. */
+  @Query(
+      "select f.assetId from AssetFavorite f where f.userId = :userId"
+          + " and f.assetId in :assetIds")
+  Set<UUID> findMarkedAmong(
+      @Param("userId") UUID userId, @Param("assetIds") Collection<UUID> assetIds);
 
   /** Idempotent: an asset already marked keeps the time of its first mark. */
   @Modifying

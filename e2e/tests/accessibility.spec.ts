@@ -1,6 +1,8 @@
 import { expect, test } from "../fixtures/auth";
 import { expectNoSeriousA11yViolations } from "../fixtures/a11y";
 import { startFreshChat } from "../fixtures/chat";
+import { apiAs } from "../fixtures/externalAccess";
+import { createPromptLibraryViaApi } from "../fixtures/promptLibraries";
 
 /**
  * Automated accessibility checks with axe-core (#586): every page listed in the issue is opened
@@ -8,7 +10,8 @@ import { startFreshChat } from "../fixtures/chat";
  * fixtures/a11y.ts for the threshold and docs/design/accessibility.md §3.1 for the policy).
  *
  * These scenarios do not mutate shared state (no uploads, no indexing), so they are safe to run
- * in any position of the serial suite.
+ * in any position of the serial suite. The catalog scenario creates one prompt library of its own
+ * and deletes it again.
  */
 test.describe("Barrierefreiheit (axe-core, #586)", () => {
   test("Anmeldeseite", async ({ page }) => {
@@ -184,26 +187,49 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
     await expectNoSeriousA11yViolations(page, "Quellart (dunkles Farbschema)");
   });
 
-  // Der Katalog: Typfilter als Umschaltgruppe, Kacheln mit Typ-Etikett. #957: Etiketten fielen
-  // einmal nur im Dunkelschema durch, deshalb beide Schemata.
+  // Der Katalog: Typfilter als Umschaltgruppe, Kacheln mit Typ-Etikett, ein gesetzter
+  // Favoriten-Stern und der aktive Filter „Favoriten" (#2095). #957: Etiketten fielen einmal nur im
+  // Dunkelschema durch, deshalb beide Schemata.
   test("Katalog in beiden Farbschemata", async ({ authenticatedPage: page }) => {
-    await Promise.all([
-      page.waitForResponse(
-        (response) =>
-          response.request().method() === "GET" &&
-          new URL(response.url()).pathname === "/api/v1/catalog",
-      ),
-      page.goto("/catalog"),
-    ]);
-    await expect(
-      page.getByRole("heading", { level: 1, name: "Katalog" }),
-    ).toBeVisible();
-    await expect(page.getByRole("group", { name: "Typ" })).toBeVisible();
+    const name = `A11y Favorit ${Date.now()}`;
+    const libraryId = await createPromptLibraryViaApi("dev-admin", { name });
+    try {
+      await Promise.all([
+        page.waitForResponse(
+          (response) =>
+            response.request().method() === "GET" &&
+            new URL(response.url()).pathname === "/api/v1/catalog",
+        ),
+        page.goto("/catalog"),
+      ]);
+      await expect(
+        page.getByRole("heading", { level: 1, name: "Katalog" }),
+      ).toBeVisible();
+      await expect(page.getByRole("group", { name: "Typ" })).toBeVisible();
 
-    await page.emulateMedia({ colorScheme: "light" });
-    await expectNoSeriousA11yViolations(page, "Katalog (helles Farbschema)");
-    await page.emulateMedia({ colorScheme: "dark" });
-    await expectNoSeriousA11yViolations(page, "Katalog (dunkles Farbschema)");
+      await page.getByRole("button", { name: `„${name}“ als Favorit markieren` }).click();
+      await expect(
+        page.getByRole("button", { name: `„${name}“ aus den Favoriten entfernen` }),
+      ).toBeVisible();
+      await page.getByRole("button", { name: "Favoriten", exact: true }).click();
+      await expect(page.getByRole("button", { name: "Favoriten", exact: true })).toHaveAttribute(
+        "aria-pressed",
+        "true",
+      );
+      await expect(page.getByRole("link", { name })).toBeVisible();
+
+      await page.emulateMedia({ colorScheme: "light" });
+      await expectNoSeriousA11yViolations(page, "Katalog (helles Farbschema)");
+      await page.emulateMedia({ colorScheme: "dark" });
+      await expectNoSeriousA11yViolations(page, "Katalog (dunkles Farbschema)");
+    } finally {
+      const api = await apiAs("dev-admin");
+      try {
+        await api.delete(`/api/v1/prompt-libraries/${libraryId}`);
+      } finally {
+        await api.dispose();
+      }
+    }
   });
 
   // #1541/#1601: die Benutzerverwaltung führt die dichteste Kombination des Bereichs — eine

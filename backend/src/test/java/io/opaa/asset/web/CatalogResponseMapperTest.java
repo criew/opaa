@@ -62,7 +62,8 @@ class CatalogResponseMapperTest {
             SuccessionFinding.ofAsset(
                 PROMPTS, ASSET_ID, "Vorlagen", SuccessionAddressee.GROUP_STEWARDS),
             7,
-            3);
+            3,
+            true);
 
     CatalogPageResponse page =
         mapper.toResponse(new AssetCatalogPage(List.of(entry), 2, 10, 21, 3));
@@ -86,6 +87,7 @@ class CatalogResponseMapperTest {
     assertThat(response.getUpdatedAt()).isEqualTo(UPDATED_AT);
     assertThat(response.getItemCount()).isEqualTo(7);
     assertThat(response.getSpaceCount()).isEqualTo(3);
+    assertThat(response.getFavorite()).isTrue();
     assertThat(response.getSuccession()).isNotNull();
     assertThat(response.getSuccession().getAddressee())
         .isEqualTo(SuccessionAddressee.GROUP_STEWARDS);
