@@ -156,12 +156,13 @@ ersten Stufe nicht geschrieben.
   einschließlich Mitfreigaben aus der Freigabekette
 - Ablauf einer Befristung, sobald sie wirkt — ein Recht, das ohne Eintrag endet, ist im Nachweis eine
   Lücke wie eines, das ohne Eintrag beginnt
-- Änderung der Auffindbarkeit eines Assets (`listed`) — die Reichweite selbst ist seit
-  [ADR-0037](../decisions/0037-reichweite-als-freigabe-an-alle.md) ein Grant und wird als solcher
-  protokolliert
+- Die organisationsweite Reichweite eines Assets ist seit
+  [ADR-0037](../decisions/0037-reichweite-als-freigabe-an-alle.md) ein Grant an „Alle Konten" und
+  wird als solcher protokolliert; ein eigenes Auffindbarkeitsfeld (`listed`) gibt es seit
+  [ADR-0039](../decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md) nicht mehr
 - Setzen, Zurücknehmen, Erlöschen und Aussetzen der **Freigabe einer Wissensbibliothek für
   Fremdzugänge** ([external-access.md](./external-access.md#die-freigabe-der-bibliothek)) — sie ist
-  dieselbe Art Reichweitenfeld wie die beiden oben und entscheidet zusätzlich über die Hausgrenze;
+  das verbliebene Reichweitenfeld neben den Grants und entscheidet zusätzlich über die Hausgrenze;
   beim Erlöschen mit dem Anlass (Fristablauf, gesenkte Freigabe-Obergrenze)
 - Aussetzen von Grants durch eine nachträglich gesenkte Freigabe-Obergrenze
 
@@ -179,9 +180,8 @@ ersten Stufe nicht geschrieben.
   und ist für „wer konnte am Tag X was lesen" ohne Bedeutung
   ([ADR-0036](../decisions/0036-berechtigungsmodell-gruppen-und-faehigkeiten.md), Entscheidungen 4
   und 8)
-- **Freigabe einer internen Gruppe zur Verwendung** und deren Rücknahme — dieselbe Art
-  Reichweitenfeld wie `listed` bei einem Asset: sie entscheidet, wer die Gruppe überhaupt als
-  Empfänger benennen kann
+- **Freigabe einer internen Gruppe zur Verwendung** und deren Rücknahme — ein Reichweitenfeld an
+  der Gruppe: sie entscheidet, wer die Gruppe überhaupt als Empfänger benennen kann
 - **Setzen und Lösen des Schutzkennzeichens einer Gruppe** (Personalvertretung,
   Schwerbehindertenvertretung, Gleichstellung, Personalvorgänge) — allein durch die
   Systemverwaltung (ADR-0036, Entscheidung 9, Nachtrag vom 26.09.2026)
@@ -244,7 +244,7 @@ ersten Stufe nicht geschrieben.
 Die Liste oben beschreibt das **Zielverhalten**; welche Arten heute tatsächlich einen Eintrag
 schreiben, hängt davon ab, ob die zugrunde liegende Funktion im Code schon existiert. Verdrahtet
 sind: Rechte an Assets (Vergabe/Änderung/Entzug von Grants — Empfänger „Alle Konten"
-eingeschlossen —, Änderung von `listed`),
+eingeschlossen —, Änderung von `listed`, die mit #2092 samt Ereignis entfällt),
 Anlegen/Ändern/Löschen von Bibliotheken, Spaces und Gruppen — seit #1901 auch von Prompt-Bibliotheken
 und Prompts (`PROMPT_LIBRARY_CREATED`/`_CHANGED`/`_DELETED`, `PROMPT_CREATED`/`_CHANGED`/`_DELETED`,
 Objekte `PROMPT_LIBRARY` und `PROMPT`) —, Aufnahme/Rollenänderung/Entfernen von
@@ -319,6 +319,7 @@ die zugehörige Funktion existiert — die Liste selbst bleibt geschlossen und �
 | **Fehlgeschlagene Anmeldungen und abgewiesene Verbindungsversuche** | Sicherheitsereignisse, die in das zentrale Sicherheitsmonitoring gehören und nicht in das Nachweisprotokoll. Sie kommen mit der [SIEM-Anbindung](#anbindung-an-ein-zentrales-sicherheitsmonitoring), nicht mit dieser Stufe. Das gilt unverändert für die lokale Anmeldung ([ADR-0033](../decisions/0033-lokale-benutzerverwaltung.md)): Der einzelne Fehlversuch steht nur im technischen Anwendungslog (kurze Frist, keine Auswertungsoberfläche, Konto-Kennung statt Adresse); in das Nachweisprotokoll gelangt allein die daraus folgende **Kontosperre** als Zustandsänderung. Der Fehlversuchszähler eines Kontos wird weder ausgegeben noch historisiert und geht bei jeder erfolgreichen Anmeldung, jedem Zurücksetzen und jeder Entsperrung auf null |
 | **Der Schwellenwertalarm des Fremdzugangskanals** | Dasselbe Muster wie eine Zeile höher: Er ist ein Sicherheitsereignis, keine Zugriffsänderung. Die Überschreitung erzeugt eine Meldung an die Systemverwaltung und einen Eintrag im technischen Anwendungslog (kurze Frist, keine Auswertungsoberfläche); der Zähler lebt nur im Arbeitsspeicher und wird nicht historisiert. In das Nachweisprotokoll gelangt allein die daraus folgende **Sperre des Tokens** als Zustandsänderung. Einzelheiten: [external-access.md](./external-access.md#kontingente-und-der-abflussalarm) |
 | **Lesezugriffe auf Dokumente und Chats** | Verhalten; wer worauf zugreifen **durfte**, belegt die Rechtehistorie |
+| **Favoriten an Assets** — Setzen, Entfernen, Bestand | Persönliche Ordnung, keine Zugriffsänderung; in der Menge ein Interessenprofil. Favoriten werden weder protokolliert noch historisiert, nicht gezählt und sind für niemanden außer der Person selbst abrufbar; exportiert werden sie nur in ihrer Selbstauskunft, und als personenbeziehbares Feld gehören sie in die Auskunft über die Datenerhebung ([ADR-0039](../decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md), Entscheidung 7) |
 
 **Spätere Stufen** — nicht verworfen, nur nicht hier: das Teilen und Zurückziehen von Chats und
 Artefakten (es ändert Reichweite und gehört dazu, sobald die Funktion existiert), Agentenaktionen mit
@@ -594,9 +595,11 @@ und belegen Sie, dass die Bibliothek `Personalvorgänge` nicht dazugehörte."* D
 schwierigere, und ein Ereignisprotokoll kann sie nicht beantworten, solange es Lücken haben kann.
 
 Deshalb werden **alle Quellen historisiert**: Grants — Empfänger Person, Gruppe **und „Alle
-Beschäftigten"** —, Gruppenmitgliedschaften und die verbleibenden Reichweitenfelder am Asset (`listed`
-sowie die Freigabe einer Wissensbibliothek für Fremdzugänge, siehe
-[external-access.md](./external-access.md#die-freigabe-der-bibliothek)). Zu jedem Zeitpunkt ist
+Beschäftigten"** —, Gruppenmitgliedschaften und das verbleibende Reichweitenfeld am Asset (die
+Freigabe einer Wissensbibliothek für Fremdzugänge, siehe
+[external-access.md](./external-access.md#die-freigabe-der-bibliothek); `listed` entfällt mit
+[ADR-0039](../decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md) samt seiner
+Intervalle). Die Space-Zuordnung wird nicht historisiert: Sie gewährt keinen Zugriff. Zu jedem Zeitpunkt ist
 rekonstruierbar, wer welche Rechte hatte, seit wann und aufgrund welchen Vorgangs.
 
 Eine Bibliothek, die vom 1. bis zum 10. März dem ganzen Haus offenstand, verschaffte in dieser Zeit
@@ -700,9 +703,9 @@ schreiben, fällt dort auf, bevor er in Betrieb geht. Welche Klassen dabei über
 derselbe Test gegen den Anwendungskontext, damit eine neue Klasse an den Rechtetabellen nicht unbemerkt
 hinzukommt.
 
-Für die **Reichweitenfelder** (`listed` und die Fremdzugangsfreigabe) trägt diese
+Für das **Reichweitenfeld** der Fremdzugangsfreigabe (bis #2092 auch für `listed`) trägt diese
 Einschränkung zusätzlich der Compiler:
-Über die Bibliothek selbst sind sie nur aus dem Paket heraus veränderbar, das die Historienzeile schreibt
+Über die Bibliothek selbst ist es nur aus dem Paket heraus veränderbar, das die Historienzeile schreibt
 — ein Schreibpfad außerhalb dieses Pakets lässt sich gar nicht erst übersetzen. Am Compiler vorbei ginge
 es weiterhin über direktes SQL, eine Datenbankmigration oder Reflection; diese Wege sieht keine der
 Prüfungen.
@@ -734,8 +737,8 @@ Recht falsch, nicht bloß lückenhaft. Die Historie überlebt die Löschung eine
 bewusst keinen Fremdschlüssel, damit eine reguläre Lösch-Operation die Beweislage nicht mit sich reißt.
 
 **Umsetzungsstand der Fremdzugangsfreigabe (#1731):** Die Freigabe einer
-Wissensbibliothek für Fremdzugänge ist gebaut und liegt im selben Intervall wie
-`listed`, mit demselben Schreibpfadschutz (`KnowledgeLibrary#updateExternalAccess` ist
+Wissensbibliothek für Fremdzugänge ist gebaut und liegt in `asset_visibility_history` (bis #2092 im
+selben Intervall wie `listed`), mit demselben Schreibpfadschutz (`KnowledgeLibrary#updateExternalAccess` ist
 paketprivat). Setzen, Zurücknehmen und Erlöschen erzeugen je einen Protokolleintrag
 (`ASSET_EXTERNAL_ACCESS_CHANGED`, `ASSET_EXTERNAL_ACCESS_EXPIRED`) und öffnen je ein neues Intervall;
 der Ablauflauf schreibt ohne handelnde Person, unter einem Systemakteur. Die
@@ -746,8 +749,8 @@ Bibliothek freigegeben?" wird aus der Historie allein beantwortet
 (`AssetVisibilityHistoryService#externalAccessActiveAsOf`), also auch nach der monatsweisen Löschung des
 Protokollzeitraums. **Aussetzen** ist im Modell vorgesehen (Zustand `SUSPENDED`), wird aber weiterhin
 von nichts gesetzt: [#797](https://github.com/criew/opaa/issues/797) hat die Freigabe-Obergrenze
-konnektor-gespeister Bibliotheken ausdrücklich auf die Freigabe an „Alle Konten" und auf
-`listed` begrenzt und lässt die
+konnektor-gespeister Bibliotheken ausdrücklich auf die Freigabe an „Alle Konten" (bis ADR-0039
+zusätzlich auf `listed`) begrenzt und lässt die
 Fremdzugangsfreigabe unberührt (siehe [external-access.md](./external-access.md#die-freigabe-ist-ein-reichweitenfeld-und-wird-wie-eines-behandelt)).
 
 **Auflösung der Intervallgrenzen (#1497, [ADR-0032](../decisions/0032-zeitquelle-rechtehistorie.md)):**
@@ -1060,6 +1063,14 @@ und auch gegenüber Systemverwaltung, Revision und Dienststellenleitung — und 
 Ein privater Chat verfügt über dasselbe Wissen und denselben Suchbereich wie ein geteilter im selben
 Space. Ohne diese Gleichwertigkeit wäre die Ausweichmöglichkeit nur formal und der Zwang zum sichtbaren
 Raum faktisch.
+
+**Geänderte Zusage gegenüber der Personalvertretung**
+([ADR-0039](../decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md), Entscheidung 6):
+Zurückgenommen ist die weitergehende Zusage, ein **Raum**, in dem jemand allein arbeitet, stehe fachlich
+nie schlechter da als ein gemeinsamer, weil er alles Lesbare durchsuche. Jeder Space durchsucht genau,
+was ihm zugeordnet ist; wer allein arbeitet, ordnet sich das benötigte Wissen selbst zu. Die
+Gleichwertigkeit privater und geteilter Chats **im selben Space** und die Unbeobachtetheit privater
+Inhalte bleiben unverändert. Die Änderung ist der Personalvertretung als geänderte Zusage vorzulegen.
 
 Geschützt ist der **Inhalt**, nicht die Tatsache der Nutzung: Dass jemand arbeitet, wird protokolliert;
 was er schreibt, nicht. Das gehört ausgesprochen, damit die Auskunft an die Beschäftigten stimmt.

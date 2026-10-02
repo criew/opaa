@@ -308,8 +308,11 @@ Zugangsdaten immer als Kennwortfeld, nie im Klartext zurückgespiegelt.
 ### 5.3 Tabellen
 
 Spaltenköpfe im Eyebrow-Muster (`fg-3`), Zeilen durch `border` getrennt, keine Zebrastreifen.
-Zeilen-Hover `bg-2`; ist die Zeile Navigationsziel (z. B. Wissensbibliotheken → Detailseite),
-ist die **ganze Zeile ein Link** mit einer Tab-Position. Zahlen rechtsbündig in Mono, Stände
+Zeilen-Hover `bg-2`; ist die Zeile Navigationsziel (z. B. Gruppenverwaltung → Gruppe),
+ist die **ganze Zeile ein Link** mit einer Tab-Position. **Übersichten von Assets sind keine
+Tabellen**: Der Katalog zeigt Wissen, Prompts und künftige Asset-Arten ausschließlich als Kacheln
+(5.4, [ADR-0039](../decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md)); Tabellen
+bleiben Verwaltungslisten vorbehalten. Zahlen rechtsbündig in Mono, Stände
 und Metadaten in `fg-3`. Unterhalb Tablet-Breite werden breite Tabellen zu Kartenlisten
 (Muster: Mockup 1d, Issue #595).
 
@@ -319,16 +322,24 @@ und Metadaten in `fg-3`. Unterhalb Tablet-Breite werden breite Tabellen zu Karte
 Karten heben sich im Hover über `border-strong` und `bg-2` ab, nicht über Schatten oder
 Skalierung.
 
+**Asset-Kachel im Katalog.** Kopfzeile mit Asset-Art (Icon und Wort) und Sichtbarkeit, darunter
+Name, Beschreibung, zuständige Stelle mit eigener Rolle und eine Zeile Stand oder Status samt Zahl
+der Spaces. Trägt eine Kachel eigene Bedienelemente (Favoriten-Stern, „In Space verwenden"), ist sie
+**kein umschließender Link**: Der Name ist der Link, seine Klickfläche wird über die Kachel gestreckt,
+und die Bedienelemente liegen darüber als eigene Tab-Positionen — nie ein Knopf in einem Link.
+
 ### 5.5 Chips und Etiketten
 
 Pill-Radius, 12 px, Gewicht 500, dezent — Umriss (`border-strong` + `fg-2`) oder stille
 Tintfläche (`bg-3`), **keine Signalfarben**. Feste Wortlisten:
 
 - **Rollen:** Leser · Bearbeiter · Verwalter · Eigentümer
-- **Verteilungsstufen:** privat · geteilt · organisationsweit
+- **Sichtbarkeit:** öffentlich · geschlossen (Begriffe der Spezifikation; die Beschriftung in der
+  Oberfläche legt #2094 fest, Vorschlag „Für alle" · „Eingeschränkt", weil „öffentlich" in Behörden
+  nach Internet klingt). Abgeleitet aus den Freigaben, nie eingestellt
 - **Herkunft:** Upload · Dateisystem · Webverzeichnis · RSS-Feed · Confluence · S3-Objektspeicher;
   als Badge auf Kacheln die Kurzform Upload · Dateisystem · Web · Feed · Confluence · S3
-- **Asset-Art:** Wissen · Prompts
+- **Asset-Art:** Wissen · Prompts — stets mit dem Icon der Art
 
 Ein laufender Vorgang („Lauf läuft · 62 %") ist Text mit Fortschrittsangabe in `fg-2`, kein
 farbiger Chip.
@@ -431,6 +442,44 @@ heller Fläche rund 1,8:1 und verfehlt 4,5:1 (dieselbe Regel wie in 4.1 und bei 
 oder fremde Arbeit trifft. Eine Bestätigung, die reflexhaft weggeklickt wird, schützt nichts und
 kostet jeden Vorgang einen Klick.
 
+### 5.11 Kachelauswahl mit Icon
+
+**Das durchgängige Muster für jede Wahl aus einer überschaubaren Menge gleichartiger Dinge**
+([ADR-0039](../decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md), Entscheidung 1).
+Wo eine Person zwischen Arten, Quellen oder Objekten wählt, sieht sie Kacheln mit Icon — keine
+Auswahlliste, kein Dropdown, keine Checkbox-Liste. Es gilt für:
+
+| Wahl | Auswahl | Wo |
+| --- | --- | --- |
+| **Asset-Art** beim Anlegen | einfach | erster Schritt von „Neu" im Katalog; nur Arten mit Anlegerecht |
+| **Quellart** einer Wissensbibliothek | einfach | Assistent „Neue Wissensbibliothek" |
+| **Zuordnung** von Assets zu einem Space | mehrfach | Space-Assistent, Space-Einstellungen, „In Space verwenden" |
+| **Bibliotheken eines Zugangstokens** | mehrfach | Ausstellung eines Fremdzugangs-Tokens |
+
+Weitere Wahlen dieser Art folgen dem Muster ohne eigene Entscheidung. Ein **Dropdown** bleibt
+richtig, wo die Menge lang und homogen ist und kein Icon unterscheidet (Rolle, Sprache, Zeitraum).
+
+**Aufbau.** Jede Kachel trägt ein Icon (dekorativ, `aria-hidden`), ein Wort als Namen und einen
+kurzen Satz darunter in `fg-2`; bei Assets die Asset-Art und die Sichtbarkeit als Etiketten (5.5).
+Die Kachel hat Kartenform (5.4). **Gewählt** zeigt sich an Rahmen in `accent` **und** einem
+Häkchen-Symbol — nie allein über Farbe. Eine **gesperrte** Kachel (fehlendes Recht, nicht
+verfügbare Quellart) bleibt sichtbar, ausgegraut, mit dem Grund im Satz darunter, wenn ihr Fehlen
+sonst Fragen aufwirft; Arten ohne Anlegerecht werden dagegen gar nicht angeboten.
+
+**Bedienung und Ansage.** Einfachauswahl ist eine `radiogroup`: eine Tab-Position für die Gruppe,
+Pfeiltasten wechseln (gesperrte Kacheln werden übersprungen), Leertaste und Enter wählen.
+Mehrfachauswahl ist eine beschriftete Gruppe von Umschaltern (`role="checkbox"` je Kachel), jede
+Kachel eine eigene Tab-Position, Leertaste schaltet. Die Gruppe trägt einen sichtbaren Titel, der
+zugleich ihr zugänglicher Name ist. Die ganze Kachel ist Klickfläche; Fokus nach 4.4
+([Barrierefreiheits-Richtlinie](./accessibility.md)).
+
+**Große Mengen.** Für Mehrfachauswahl aus vielen Assets (Zuordnung, Token) liegen über den Kacheln
+dieselben Filter wie im Katalog — Suche, Asset-Art, „nur Favoriten", „aus meinen Gruppen", „alle" —
+und eine Zeile „n ausgewählt". Angeboten wird nur, was die Person lesen darf.
+
+**Ein Baustein.** Das Muster ist im Frontend eine Komponente (Arbeitsname `ChoiceTileGroup`, #2094),
+nicht je Stelle nachgebaut; Übersichten, Auswahl und Katalog nutzen dieselbe Kachel.
+
 ---
 
 ## 6 · Sprache und Begriffe
@@ -443,10 +492,14 @@ UI-Sprache ist Deutsch, Anrede „Sie", `aria-label` deutsch. Verbindliche Begri
 | **Chat**                  | in sich geschlossene Unterhaltung in einem Space; benennbar                                  |
 | **Wissensbibliothek**     | benannter Wissensbestand; kurz „Bibliothek", im Fließtext auch „Bestand"                     |
 | **Datenquellen**          | die einem Space zugeordneten Bibliotheken                                                    |
+| **Katalog**               | der eine Einstieg für alle Assets (Wissen, Prompts, später Skills und Agenten); zeigt nur Lesbares, nur als Kacheln |
+| **Zuordnung / zuordnen**  | ein Asset einem Space bereitstellen; die harte Grenze dessen, was der Space im Chat nutzt. Nicht „assoziieren" in Nutzertexten |
+| **Favorit**               | persönliche Markierung an einem Asset, nur für die Person selbst sichtbar                    |
+| **@Space-Wissen**         | der vorbelegte Chip am Eingabefeld: das dem Space zugeordnete, für die Person lesbare Wissen |
+| **Sichtbarkeit**          | öffentlich (an alle Konten freigegeben) · geschlossen; Beschriftung in der Oberfläche siehe 5.5 |
 | **Herkunft**              | woher eine Bibliothek ihre Dokumente bezieht (Upload, Dateisystem, Webverzeichnis, RSS-Feed, Confluence, S3-Objektspeicher) |
 | **Geltungsbereich**       | ein Bucket mit optionalem Präfix, aus dem eine S3-Bibliothek liest; eine Bibliothek hat einen bis fünfzig, die sich nicht überschneiden |
 | **Endpoint**              | die Adresse eines S3-Objektspeichers (`https://host[:port]`, ohne Pfad) |
-| **Verteilungsstufe**      | privat · geteilt · organisationsweit                                                         |
 | **Rolle**                 | Leser · Bearbeiter · Verwalter · Eigentümer                                                  |
 | **Fundstellen**           | die Stellen in Dokumenten, auf die sich eine Antwort stützt                                  |
 | **Belege / Belegfenster** | alle Fundstellen einer Antwort in der seitlichen Leiste                                      |

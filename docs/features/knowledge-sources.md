@@ -790,14 +790,17 @@ Auslieferungszustand offen, aber auf eine benannte Gruppe einschränkbar. Was bl
 | Eigentümer der Bibliothek | wer den Bestand lesen darf, bis zur **Obergrenze der Freigabe** jeder Konnektorbibliothek (gebaut, #797) |
 
 Ohne die Obergrenze könnte ein Bibliothekseigentümer einen konnektorgespeisten Bestand
-organisationsweit öffnen. Sie deckelt, wo gesetzt, `visibility`/`listed` und ist deshalb kein
-Randthema. **Issue #797** hat sie entschieden (Maintainer-Festlegung vom 21.09.2026, siehe
-[access-control.md](./access-control.md#dokumentenfluss-konnektoren-gegen-benutzer-uploads)):
+organisationsweit öffnen. Sie deckelt, wo gesetzt, die Freigabe an „Alle Konten" und ist deshalb
+kein Randthema. **Issue #797** hat sie entschieden (Maintainer-Festlegung vom 21.09.2026, siehe
+[access-control.md](./access-control.md#dokumentenfluss-konnektoren-gegen-benutzer-uploads); Form seit
+[ADR-0037](../decisions/0037-reichweite-als-freigabe-an-alle.md) und
+[ADR-0039](../decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md), die `visibility` und
+`listed` abgelöst haben):
 Die Systemverwaltung setzt sie je Bibliothek — ausgeliefert ist die **Obergrenze** unrestriktiv
-(`ORGANIZATION`/`true`), wirksam wird sie erst, sobald die Systemverwaltung sie für diese Bibliothek
-eigens senkt; die Bibliothek selbst startet bei `PRIVATE` und `listed = false` —, und ein
-nachträgliches Senken
-nimmt eine bereits weitergehende `visibility`/`listed`-Einstellung sofort zurück; erteilte Rechte an
+(`all_accounts_grant_allowed = true`), wirksam wird sie erst, sobald die Systemverwaltung sie für
+diese Bibliothek eigens senkt; die Bibliothek selbst startet geschlossen, nur mit den Rechten, die ihr
+jemand erteilt —, und ein nachträgliches Senken
+nimmt eine bestehende Freigabe an „Alle Konten" sofort zurück; erteilte Rechte an
 Personen und Gruppen sowie eine bestehende Fremdzugangsfreigabe bleiben davon unberührt. Die
 Grundannahme, auf der sie ursprünglich beruhte — „die Systemverwaltung speist ein, der Eigentümer
 gibt frei" —, gilt mit der freien Anlageberechtigung nicht mehr uneingeschränkt; die Obergrenze

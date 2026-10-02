@@ -2,7 +2,14 @@
 
 ## Status
 
-**Vorgeschlagen (24.09.2026)** — Issue [#1931](https://github.com/criew/opaa/issues/1931).
+**Akzeptiert (24.09.2026)** — umgesetzt mit Issue [#1931](https://github.com/criew/opaa/issues/1931).
+
+**Geändert durch [ADR-0039](0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md) (02.10.2026,
+Epic #2070):** `listed` entfällt vollständig, auch in Historie und Audit. Abgelöst sind damit
+Entscheidung 4 ganz und der `listed`-Teil der Entscheidungen 5, 6, 7 und 9 sowie der Konsequenz
+„Katalog: lesbar ∪ `listed`"; die Stellen tragen je einen Nachtrag. Die Freigabe an „Alle Konten"
+und alles Übrige dieses ADR gelten unverändert.
+
 Ändert [ADR-0036](0036-berechtigungsmodell-gruppen-und-faehigkeiten.md) (Entscheidung 5 und 12) und
 löst die Verteilungsstufe aus [ADR-0006](0006-openapi-dto-generation.md)-Zeiten ab. Betrifft
 [ADR-0032](0032-zeitquelle-rechtehistorie.md) (Zeitquelle der Rechtehistorie) und die
@@ -163,6 +170,12 @@ zuständige Stelle) und nicht der Inhalt.
 Katalogs (zugänglich/nicht zugänglich × gelistet/nicht gelistet) bleibt unverändert gültig; nur die
 Vorbedingung für die rechte obere Zelle fällt weg.
 
+> **Nachtrag (02.10.2026, #2091): Abgelöst durch
+> [ADR-0039](0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md), Entscheidung 3.** `listed`
+> bleibt nicht, sondern entfällt vollständig — Feld, Schalter, Obergrenze und Historie. Der Katalog
+> zeigt nur noch Lesbares; die 2×2-Tabelle und das Schaufenster gibt es nicht mehr. Ein Asset ist
+> öffentlich (Freigabe an „Alle Konten") oder geschlossen.
+
 ### 5. Die Freigabe-Obergrenze (#797) wird ein Boolean — und wandert an den Freigabe-Pfad
 
 `knowledge_libraries.visibility_cap` (ein Enum mit Ordinal-Vergleich) wird zu
@@ -180,6 +193,10 @@ der verlangte Zustand widerspricht einer Decke. Ohne diesen Schritt wäre #797 n
 wirkungslos. Für `listed` bleibt die Prüfung am Schalen-Pfad und heißt dort
 `AssetTypeDefinition#requireListedWithinLimits`.
 
+> **Nachtrag (02.10.2026, #2091):** Mit [ADR-0039](0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md)
+> entfallen `listed_cap` und `requireListedWithinLimits`. Die Obergrenze besteht nur noch aus
+> `all_accounts_grant_allowed`; ihr Absenken widerruft wie oben beschrieben die Freigabe an „Alle".
+
 **Das nachträgliche Absenken der Obergrenze widerruft die Freigabe**, statt ein Enum abzusenken. Die
 Maintainer-Festlegung vom 21.09.2026 („bestehende weitergehende Freigaben werden sofort
 zurückgenommen, kein Zustand ‚verletzt, aber geduldet‘") bleibt damit gewahrt — der Widerruf läuft
@@ -195,6 +212,9 @@ neben `AssetGrantService#widensReach`. Nach der Umstellung gilt:
 - **Eine neue Freigabe an „Alle"** ist eine neue Freigabe wie jede andere und wird von
   `AssetGrantService#requireReachNotFrozenIfWidening` ohne Sonderregel gesperrt.
 - **`listed` zu setzen** bleibt die einzige Erweiterung, die der Schalen-Pfad selbst sperrt.
+
+> **Nachtrag (02.10.2026, #2091):** Mit `listed` ([ADR-0039](0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md))
+> entfällt diese zweite Zeile. Die Nachfolge-Sperre der Reichweite liegt dann allein am Freigabe-Pfad.
 
 ### 7. Was aus der Historisierung wird
 
@@ -214,6 +234,11 @@ Ebenso bleibt das Audit-Ereignis **`ASSET_VISIBILITY_CHANGED`** bestehen: Es pro
 nur noch `listed`. Die Freigabe an „Alle" wird über das bestehende Grant-Ereignis
 (`ASSET_GRANT_GRANTED` / `ASSET_GRANT_CHANGED` / `ASSET_GRANT_REVOKED`) protokolliert, mit dem
 Empfänger im Nutzinhalt.
+
+> **Nachtrag (02.10.2026, #2091):** Mit [ADR-0039](0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md),
+> Entscheidung 3, verliert `asset_visibility_history` auch die Spalte `listed` und trägt nur noch die
+> Fremdzugangsfreigabe; `ASSET_VISIBILITY_CHANGED` entfällt, soweit es nur `listed` protokolliert.
+> Bestehende `listed`-Intervalle werden nicht überführt — alle Installationen werden neu aufgebaut.
 
 **Kein Subjekt im Audit-Eintrag.** `audit_log.subject_kind` kennt `USER` und `GROUP`
 (`chk_audit_log_subject`), und die Spalte ist nullable. Eine Freigabe an „Alle" setzt deshalb kein
@@ -263,6 +288,10 @@ ungenauer.
   Organisation geteilt" aus #1916.
 - **Verwaltung:** `listed` als Schalter mit der Beschriftung aus Entscheidung 4.
 
+> **Nachtrag (02.10.2026, #2091):** Der Schalter entfällt mit `listed`
+> ([ADR-0039](0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md)). Die abgeleitete Badge bleibt
+> und unterscheidet im Katalog „öffentlich" (Freigabe an „Alle") von „geschlossen".
+
 ### 10. `SpaceVisibility` bleibt unberührt
 
 `SpaceVisibility` (`PRIVATE` / `DISCOVERABLE` / `OPEN`) ist ein anderes Objekt (der Space, nicht das
@@ -285,6 +314,8 @@ beiden. Diese Entscheidung ändert daran nichts.
 - **Die Rücknahme ist ein gewöhnlicher Widerruf** mit sofortiger Wirkung, statt eines eigenen
   Vorgangs mit eigenem Protokoll.
 - **Der Katalog (#1904) baut auf zwei Quellen statt auf drei**: lesbar ∪ `listed`.
+  *Nachtrag (02.10.2026, #2091): Seit [ADR-0039](0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md)
+  auf eine — nur lesbar.*
 
 **Schwieriger oder teurer:**
 
