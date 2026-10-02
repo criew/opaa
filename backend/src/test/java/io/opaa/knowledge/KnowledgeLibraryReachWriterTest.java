@@ -15,6 +15,7 @@ import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.springframework.asm.ClassReader;
 import org.springframework.asm.ClassVisitor;
+import org.springframework.asm.Handle;
 import org.springframework.asm.MethodVisitor;
 import org.springframework.asm.Opcodes;
 
@@ -54,7 +55,10 @@ class KnowledgeLibraryReachWriterTest {
   /** A call site of a guarded method; {@code caller} in internal class-name form. */
   private record Call(String caller, String method) {
 
-    /** Lambdas compile into the declaring class, nested and anonymous classes into Outer$Inner. */
+    /**
+     * Lambdas and method references stay in the declaring class, nested and anonymous classes
+     * compile into Outer$Inner.
+     */
     String callerTopLevel() {
       int nested = caller.indexOf('$');
       return nested < 0 ? caller : caller.substring(0, nested);
@@ -88,6 +92,19 @@ class KnowledgeLibraryReachWriterTest {
                     int opcode, String owner, String method, String desc, boolean itf) {
                   if (owner.equals(ENTITY) && ALLOWED_WRITERS.containsKey(method)) {
                     calls.add(new Call(caller, method));
+                  }
+                }
+
+                /** A method reference names its target only as a bootstrap-argument handle. */
+                @Override
+                public void visitInvokeDynamicInsn(
+                    String name, String desc, Handle bootstrap, Object... bootstrapArgs) {
+                  for (Object arg : bootstrapArgs) {
+                    if (arg instanceof Handle target
+                        && target.getOwner().equals(ENTITY)
+                        && ALLOWED_WRITERS.containsKey(target.getName())) {
+                      calls.add(new Call(caller, target.getName()));
+                    }
                   }
                 }
               };

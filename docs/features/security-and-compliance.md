@@ -728,8 +728,8 @@ kommt ein Strukturtest hinzu (`KnowledgeLibraryReachWriterTest`): Er liest die �
 und lässt jede ändernde Methode der Bibliothek nur aus genau einem Dienst zu — `updateExternalAccess`
 aus `LibraryExternalAccessService`, `expireExternalAccess` aus `LibraryExternalAccessExpiryService`,
 `markExternalAccessReminderSent` aus `LibraryExternalAccessReminderService` und `updateShareCap` aus
-`KnowledgeLibraryService`. Jeder weitere Aufrufer, auch eine neue Klasse im selben Paket, lässt den
-Test fehlschlagen. Dass die zugelassenen Schreibpfade der Freigabe ihre Historienzeile tatsächlich schreiben, prüft
+`KnowledgeLibraryService`. Jeder weitere Aufrufer, auch eine neue Klasse im selben Paket und auch
+über eine Methodenreferenz, lässt den Test fehlschlagen. Dass die zugelassenen Schreibpfade der Freigabe ihre Historienzeile tatsächlich schreiben, prüft
 der Integrationstest je Operation (`externalAccessWritePaths`: Setzen, Zurücknehmen, Ablauflauf).
 Der Compiler trägt diese Einschränkung nicht: Die Methoden sind öffentlich, weil die Bibliothek in
 `io.opaa.knowledge` liegt und dieses Paket nach der Modulschichtung nicht von `io.opaa.library`
