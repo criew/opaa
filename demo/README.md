@@ -189,9 +189,9 @@ Herkunft und Zwang jeder einzelnen Variable:
   Eintrag `objectstore` in `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST` oben betrifft ausschließlich die
   Konnektoren.
 - `OPAA_DEMO_CHAT_IMPORT_ENABLED=true` schaltet den Einspielweg für die vorbereiteten Chats ein
-  (#2071, siehe „Vorbereitete Chats" unten): Nur damit existiert die Route
-  `POST /api/v1/spaces/{spaceId}/chat-imports`, über die der letzte Seed-Schritt Andreas Chats ohne
-  Modellaufruf anlegt. Ohne die Zeile bricht der Seed an dieser Stelle mit einem Hinweis auf die
+  (#2071, siehe „Vorbereitete Chats" unten): Nur damit existieren die Routen
+  `POST` und `GET /api/v1/spaces/{spaceId}/chat-imports`, über die der letzte Seed-Schritt Andreas
+  Chats ohne Modellaufruf anlegt bzw. die schon eingespielten findet. Ohne die Zeile bricht der Seed an dieser Stelle mit einem Hinweis auf die
   Variable ab – alles davor ist dann schon eingerichtet, ein erneuter Lauf nach dem Neustart des
   Backends holt nur die Chats nach. **Der Schalter gilt nur für die Dauer des Seed-Laufs:** Danach
   wird die Zeile entfernt und das Backend neu gestartet, denn solange er gesetzt ist, kann jedes
@@ -563,21 +563,30 @@ Korpus liegt und der Space die Bibliothek zugeordnet hat.
 Andreas eigener Sitzung – sie wird Autorin, genau wie bei einem selbst begonnenen Chat. Die Route
 existiert nur mit `OPAA_DEMO_CHAT_IMPORT_ENABLED=true` (Schritt 1 oben) und verlangt dieselbe
 Space-Mitgliedschaft wie ein neuer Chat; jeder Beleg muss auf ein Dokument zeigen, das Andrea lesen
-darf. Dateiname, Quellentyp und Metadaten eines Belegs liest das Backend aus dem Dokument selbst,
-der Seed liefert nur die Dokument-ID. Anheften und Archivieren laufen über die regulären Endpunkte.
+darf, und jede Fundstellenmarke im Antworttext auf einen Beleg derselben Runde mit dessen
+Dateinamen – sonst lehnt das Backend den Chat mit `400` ab. Dateiname, Quellentyp und Metadaten
+eines Belegs liest das Backend aus dem Dokument selbst, der Seed liefert nur die Dokument-ID; ein
+eingespielter Beleg zeigt dieselben Felder wie ein frisch erzeugter, also neben Titel, Dokumentart
+und Datum auch die Formatfelder (etwa Betreff einer Mail) und die Bibliotheksfelder mit
+Zitierposition. Anheften und Archivieren laufen über die regulären Endpunkte.
 Eine Gesprächsnotiz haben die eingespielten Chats nicht; sie entsteht erst mit der nächsten
 gestellten Frage.
 
-**Idempotenz:** Ein Chat ist an seinem Titel erkennbar. Hat Andrea im Space schon einen Chat dieses
-Titels – aktiv oder archiviert –, legt der Seed ihn nicht noch einmal an. Fehlt einem solchen Chat
-eine Markierung, die die Datei verlangt (etwa weil er in einer Vorführung wieder gelöst wurde), setzt
-der Seed sie erneut; Markierungen, die die Datei nicht verlangt, bleiben unangetastet. Ein neuer Chat
-eines späteren Laufs bekommt Zeitpunkte relativ zu diesem Lauf.
+**Idempotenz:** Jeder Chat wird unter einem **Importschlüssel** eingespielt – seinem Titel, wie er in
+der Datei steht. Den Schlüssel setzt nur der Import, eine Umbenennung lässt ihn stehen, und in der
+Oberfläche erscheint er nicht. Vor dem Einspielen liest der Seed Andreas eingespielte Chats des Space
+samt Schlüssel (`GET /api/v1/spaces/{spaceId}/chat-imports`, aktiv und archiviert). Gibt es zu einem
+Schlüssel schon einen Chat, legt der Seed ihn nicht noch einmal an – auch wenn er inzwischen anders
+heißt; das Backend weist einen zweiten Import unter demselben Schlüssel ohnehin mit `409` ab. Fehlt
+einem solchen Chat eine Markierung, die die Datei verlangt (etwa weil er in einer Vorführung wieder
+gelöst wurde), setzt der Seed sie erneut; Markierungen, die die Datei nicht verlangt, bleiben
+unangetastet. Einen Chat, den eine besuchende Person selbst angelegt hat, hält der Seed nie für einen
+vorbereiteten, auch nicht bei gleichem Titel, und markiert ihn nicht. Ein neuer Chat eines späteren
+Laufs bekommt Zeitpunkte relativ zu diesem Lauf.
 
-Die Erkennung über den Titel hat bei geteilten Demo-Konten zwei Grenzen: Wird ein eingespielter Chat
-umbenannt, legt der nächste Lauf ihn unter dem Originaltitel noch einmal an. Hat eine besuchende
-Person zufällig einen eigenen Chat mit gleichem Titel angelegt, fehlt der vorbereitete Chat, und
-eine verlangte Markierung trifft ihren Chat. Nach einem Neuaufsatz der Demo tritt beides nicht auf.
+Chats, die vor #2082 eingespielt wurden, haben keinen Importschlüssel. Ein Seed-Lauf gegen eine
+solche Instanz legt alle vorbereiteten Chats ein zweites Mal an; vorher die Demo neu aufsetzen oder
+die alten Chats löschen.
 
 ---
 
@@ -732,9 +741,10 @@ Der Lauf richtet über die API ein:
    Dokumentlisten der zitierten Bibliotheken (`GET /api/v1/libraries/{id}/documents`, Ordnerbaum
    inklusive) und ordnet jede Korpusdatei genau einem Dokument zu – über den Dateinamen oder, bei
    den Pressemitteilungen, deren Adresse. Passt kein oder mehr als ein Dokument, bricht er ab, bevor
-   ein Chat entsteht. Danach liest er Andreas vorhandene Chats des Space (aktiv und archiviert),
-   spielt die fehlenden über `POST /api/v1/spaces/{id}/chat-imports` ein und setzt fehlende
-   Markierungen über `PUT /api/v1/chats/{id}/pin` bzw. `…/archive`. Antwortet der Import mit `404`,
+   ein Chat entsteht. Danach liest er Andreas eingespielte Chats des Space samt Importschlüssel
+   (`GET /api/v1/spaces/{id}/chat-imports`, aktiv und archiviert), spielt die fehlenden über
+   `POST /api/v1/spaces/{id}/chat-imports` ein und setzt fehlende Markierungen über
+   `PUT /api/v1/chats/{id}/pin` bzw. `…/archive`. Antwortet eine der beiden Import-Routen mit `404`,
    ist `OPAA_DEMO_CHAT_IMPORT_ENABLED` im Backend nicht gesetzt; der Seed nennt die Variable. Das
    `e2e`-Profil hat keine vorbereiteten Chats.
 
@@ -765,7 +775,7 @@ python seed.py --profile e2e --base-url http://localhost:18081/api
 ```
 
 **Idempotent:** Ein zweiter Lauf gegen dieselbe Instanz legt nichts doppelt an — Chats werden per
-Titel erkannt (siehe „Vorbereitete Chats" oben), Spaces und
+Importschlüssel erkannt (siehe „Vorbereitete Chats" oben), Spaces und
 Bibliotheken werden vor dem Anlegen per Namenssuche geprüft (Spaces über die Session des jeweiligen
 Eigentümers, da ein Space nur für seine eigenen Mitglieder sichtbar ist), Uploads werden anhand von
 Dateiname und Status übersprungen (ein zuvor `FAILED`es Dokument wird dagegen erneut hochgeladen),

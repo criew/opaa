@@ -116,6 +116,14 @@ public class Chat {
   @Column(name = "metadata_filter", columnDefinition = "jsonb")
   private String metadataFilter;
 
+  /**
+   * The importing caller's stable name for an imported chat, unique per author and space; {@code
+   * null} for every chat the author started. Set once by {@link ChatImportService}, never by a
+   * rename.
+   */
+  @Column(name = "import_key", length = 255, updatable = false)
+  private String importKey;
+
   @Column(name = "created_at", nullable = false, updatable = false)
   private Instant createdAt;
 
@@ -165,6 +173,16 @@ public class Chat {
   void backdate(Instant createdAt, Instant updatedAt) {
     this.createdAt = createdAt;
     this.updatedAt = updatedAt;
+  }
+
+  /** Marks a chat that is not persisted yet as imported under {@code importKey}. */
+  void markImported(String importKey) {
+    this.importKey = importKey;
+  }
+
+  /** The key an import gave this chat, {@code null} for a chat its author started. */
+  public String getImportKey() {
+    return importKey;
   }
 
   @PreUpdate
