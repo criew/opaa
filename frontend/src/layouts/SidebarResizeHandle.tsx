@@ -64,6 +64,9 @@ export default function SidebarResizeHandle() {
       onPointerMove={onPointerMove}
       onPointerUp={endDrag}
       onPointerCancel={endDrag}
+      onLostPointerCapture={() => {
+        drag.current = null
+      }}
       onDoubleClick={() => setWidth(SIDEBAR_DEFAULT_WIDTH)}
       onKeyDown={onKeyDown}
       sx={{
@@ -75,7 +78,7 @@ export default function SidebarResizeHandle() {
         zIndex: 1,
         cursor: 'col-resize',
         touchAction: 'none',
-        // The visible cue is a thin line centred on the column edge, shown on hover and focus.
+        // The visible cue is a thin line centred on the column edge, shown on hover and while dragging.
         '&::after': {
           content: '""',
           position: 'absolute',
@@ -87,8 +90,13 @@ export default function SidebarResizeHandle() {
           opacity: 0,
           transition: 'opacity 120ms',
         },
-        '&:hover::after, &:focus-visible::after, &:active::after': { opacity: 1 },
-        '&:focus-visible': { outline: 'none' },
+        '&:hover::after, &:active::after': { opacity: 1 },
+        // Keyboard focus keeps the design system's focus ring, distinct from the hover cue.
+        '&:focus-visible': {
+          outline: '2px solid',
+          outlineColor: 'primary.main',
+          outlineOffset: -2,
+        },
       }}
     />
   )

@@ -111,6 +111,8 @@ export default function Sidebar({ resizable = false }: { resizable?: boolean }) 
       aria-label="Space-Bereich"
       sx={{
         width: columnWidth,
+        // A wide stored column must not crowd out the chat on a narrow window.
+        maxWidth: resizable ? '45vw' : undefined,
         position: 'relative',
         // In the mobile drawer the column shares 92vw with the rail and must give way; on desktop
         // it keeps the width the person dragged it to.

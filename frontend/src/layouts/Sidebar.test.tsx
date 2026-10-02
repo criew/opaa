@@ -482,6 +482,10 @@ describe('Sidebar', () => {
       ])
       expect(useUiStore.getState().sidebarWidth).toBe(SIDEBAR_DEFAULT_WIDTH + 60)
 
+      // After release, moving over the handle must no longer resize the column.
+      await user.pointer({ target: handle, coords: { clientX: 420 } })
+      expect(useUiStore.getState().sidebarWidth).toBe(SIDEBAR_DEFAULT_WIDTH + 60)
+
       await user.dblClick(handle)
       expect(useUiStore.getState().sidebarWidth).toBe(SIDEBAR_DEFAULT_WIDTH)
     })
