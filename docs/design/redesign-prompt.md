@@ -204,8 +204,9 @@ Assistenten; vom Katalog aus führt „In Space verwenden" in höchstens zwei Kl
 
 **Fehlende Leserechte an einer Space-Quelle** — die Rechte hängen an der Wissensbibliothek, nicht am
 Space, und nicht jedes Mitglied darf jeden Bestand lesen. Wer eine Quelle nicht lesen darf, sieht sie
-nicht benannt. Die Einrichtung zeigt deshalb „n zugeordnet, davon m für Sie lesbar", ohne die übrigen
-zu nennen. **Fällt eine Antwort deshalb dünner aus, steht ein Hinweis dabei** — dass dieser Space
+nicht, weder als Eintrag noch als Zahl. Die Einrichtung zeigt nur, was man lesen darf, und darüber
+gegebenenfalls den Hinweis „Nicht alle zugeordneten Inhalte sind für Sie lesbar." — ohne Anzahl und
+ohne Namen. **Fällt eine Antwort deshalb dünner aus, steht ein Hinweis dabei** — dass dieser Space
 Bestände enthält, die einem nicht zugänglich sind, ohne zu nennen, welche. Der Hinweis erscheint bei
 Wirkung, nicht auf Vorrat.
 

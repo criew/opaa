@@ -218,7 +218,7 @@ Ein Asset „an die ganze Abteilung freigeben" heißt also: **Grant an die Grupp
 | **öffentlich** | einer Freigabe an „Alle Konten" | jedes Konto der Organisation |
 | **geschlossen** | Freigaben nur an Personen oder Gruppen | nur, wer darüber lesen darf |
 
-Auch die Sichtbarkeit ist **kein Feld**, sondern eine Ableitung aus den Grants. **Sichtbar ist gleich lesbar:** Ein Asset, das jemand nicht lesen darf, erscheint für ihn nirgends — nicht im Katalog, nicht in einer Auswahl, nicht in einer API-Antwort. Einen Anfrage- oder Genehmigungsweg zu einem geschlossenen Asset gibt es nicht. Das frühere Schaufenster `listed` („im Katalog auffindbar, auch ohne Berechtigung") entfällt samt Historie und Audit-Ereignis (Umsetzung #2092). Die Beschriftung des Paars in der Oberfläche legt #2094 fest („öffentlich" klingt in Behörden nach Internet; Vorschlag „Für alle" / „Eingeschränkt").
+Auch die Sichtbarkeit ist **kein Feld**, sondern eine Ableitung aus den Grants. **Sichtbar ist gleich lesbar:** Ein Asset, das jemand nicht lesen darf, erscheint für ihn nirgends — nicht im Katalog, nicht in einer Auswahl, nicht in den Space-Einstellungen, nicht in einer API-Antwort; weder sein Name noch seine Anzahl werden genannt. Die einzige Auskunft ist ein Hinweis **ohne Anzahl und ohne Namen** innerhalb eines Space, dem die Person angehört: „Nicht alle zugeordneten Inhalte sind für Sie lesbar." (siehe [Assets in einen Space assoziieren](#assets-in-einen-space-assoziieren)). Einen Anfrage- oder Genehmigungsweg zu einem geschlossenen Asset gibt es nicht. Das frühere Schaufenster `listed` („im Katalog auffindbar, auch ohne Berechtigung") entfällt samt Historie und Audit-Ereignis (Umsetzung #2092). Die Beschriftung des Paars in der Oberfläche legt #2094 fest („öffentlich" klingt in Behörden nach Internet; Vorschlag „Für alle" / „Eingeschränkt").
 
 ### Eigentümerschaft und Verwaisung
 
@@ -499,7 +499,7 @@ Eine Liste von Favoriten ist ein Interessenprofil. Deshalb gilt, als Bedingung d
 
 - **Nur für die Person selbst abrufbar** — weder für die Systemverwaltung noch für Space-Verwaltung oder Asset-Verantwortliche.
 - **Keine Zählung** und keine Anzeige von Favoriten je Asset, auch nicht aggregiert in der [Nutzungstransparenz](#nutzungstransparenz).
-- **Kein Protokolleintrag und keine Historie**; nicht Teil von Exporten.
+- **Kein Protokolleintrag und keine Historie.** Nicht Teil von Berichten und Exporten an Dritte; enthalten nur in der [Selbstauskunft](./security-and-compliance.md) der Person — dasselbe Muster wie die persönlichen Ordnungsmerkmale der [Chatliste](./chat-list.md).
 - **Gelöscht mit dem Konto**, ohne die Löschung zu blockieren. Ein favorisiertes Asset, das die Person nicht mehr lesen darf, erscheint nicht mehr.
 
 ### Vorlagenkatalog nach Fachbereich
@@ -592,7 +592,7 @@ Eine Gruppe kann selbst Mitglied eines Space sein, mit einer Space-Rolle (siehe 
 Das ist fachlich richtig — er gehört dazu beziehungsweise nicht mehr —, aber es ist eine Rechteänderung ohne menschlichen Entscheidungspunkt, und sie trifft Inhalte, für die ein Beschäftigter persönlich die Weitergabe verantwortet hat. Deshalb gilt zusätzlich:
 
 - **Die Autoren-Benachrichtigung löst auch bei Sync-Zuwachs aus.** Die unter [Chats](#chats) zugesagte Nachricht „der Leserkreis eines von dir geteilten Inhalts hat sich wesentlich erweitert" darf nicht davon abhängen, ob ein Mensch das Mitglied aufgenommen hat oder ein Verzeichnislauf. Andernfalls ist die Zusage genau dort wirkungslos, wo der Zuwachs am wenigsten sichtbar ist.
-- **Der Zuwachs zählt als Mitgliederaufnahme.** Er ändert auch, wer im Space wie viel vom Zugeordneten lesen kann; die Anzeige „n zugeordnet, davon m für Sie lesbar" (siehe [Assets in einen Space assoziieren](#assets-in-einen-space-assoziieren)) folgt dem ohne eigenen Schritt.
+- **Der Zuwachs zählt als Mitgliederaufnahme.** Er ändert auch, wer im Space wie viel vom Zugeordneten lesen kann; die Space-Einstellungen und der Hinweis „Nicht alle zugeordneten Inhalte sind für Sie lesbar." (siehe [Assets in einen Space assoziieren](#assets-in-einen-space-assoziieren)) folgen dem ohne eigenen Schritt.
 
 ### Reorganisation, Umbenennung, Zusammenlegung
 
@@ -717,7 +717,7 @@ Die Zahl selbst ist bewusst kein Geheimnis: Sie sagt, dass die Liste unvollstän
 **Der Space-Assistent und „In Space verwenden"** (Umsetzung #2097). Weil die Zuordnung eine Grenze ist, muss sie leicht und an zwei Stellen erreichbar sein:
 
 - **Im Space-Assistenten** ist die Zuordnung ein eigener Schritt (Grunddaten, Mitglieder, Zuordnung, Zusammenfassung). Ausgewählt wird aus derselben Kachelliste wie im [Katalog](#der-katalog), mit Mehrfachauswahl, Typfilter, den Filtern „nur Favoriten", „aus meinen Gruppen" und „alle" sowie einer Suche. Angeboten wird nur, was die Person lesen darf. Der Schritt ist **überspringbar**; die Zusammenfassung sagt dann ausdrücklich, dass der Space kein Wissen durchsucht, bis jemand etwas zuordnet.
-- **In den Space-Einstellungen** nutzen die Reiter für Wissen und Prompts dieselbe Auswahl. Sie zeigen „n zugeordnet, davon m für Sie lesbar"; eine zugeordnete, für die betrachtende Person nicht lesbare Zuordnung ist als solche markiert, ohne ihren Namen preiszugeben.
+- **In den Space-Einstellungen** nutzen die Reiter für Wissen und Prompts dieselbe Auswahl. Sie zeigen jedem Mitglied nur die für es lesbaren Zuordnungen. Ist dem Space darüber hinaus etwas zugeordnet, das die Person nicht lesen darf, steht dort ein Hinweis **ohne Anzahl und ohne Namen**: „Nicht alle zugeordneten Inhalte sind für Sie lesbar." Nicht lesbare Zuordnungen erscheinen weder als Eintrag noch als Zahl.
 - **Am Katalog** führt „In Space verwenden" an jeder Kachel und auf der Detailseite in höchstens zwei Klicks zur Zuordnung — in einen Space, in dem die Person `CURATOR` oder `ADMIN` ist, oder in einen neuen Space mit dieser Vorbelegung.
 
 **Ohne Zuordnung kein stiller Leerlauf.** Ein Space ohne zugeordnetes Wissen zeigt im Chat und auf der Space-Seite einen Hinweis: für `CURATOR` und `ADMIN` mit dem Direktlink „Wissen zuordnen", für andere Mitglieder mit der Angabe, wer zuordnen kann. Die Signale dafür stehen unter [Suchbereich je Chatart](#suchbereich-je-chatart).
@@ -726,7 +726,7 @@ Die Zahl selbst ist bewusst kein Geheimnis: Sie sagt, dass die Liste unvollstän
 
 **Selbstschutz des Eigentümers** bleiben die Benachrichtigung, das jederzeitige Lösen einer Zuordnung und die Nennung des Eigentümers im Teilen-Dialog. Eine Kennzeichnung „strikt-only" (nur in Strikt-Spaces bereitstellbar, nur von dort aufrufbaren Agenten bindbar) war spezifiziert, aber nie gebaut; sie entfällt mit dem [Strikt-Modus](#der-strikt-modus-entfällt) (ADR-0039).
 
-**Folge für die Oberfläche:** Zwei Mitglieder desselben Space können unterschiedlich viel vom Zugeordneten nutzen, weil ihre Leserechte verschieden sind. Das ist gewollt, wirkt aber ohne Erklärung wie ein Fehler; die Anzeige „n zugeordnet, davon m für Sie lesbar" benennt es.
+**Folge für die Oberfläche:** Zwei Mitglieder desselben Space können unterschiedlich viel vom Zugeordneten nutzen, weil ihre Leserechte verschieden sind. Das ist gewollt, wirkt aber ohne Erklärung wie ein Fehler; der Hinweis „Nicht alle zugeordneten Inhalte sind für Sie lesbar." benennt es, ohne zu sagen, wie viel oder was fehlt.
 
 #### Leitbeispiel: gemeinsame Rechtsquellen
 
@@ -1058,7 +1058,7 @@ Naheliegend wäre, Zitate beim Lesen gegen die Rechte des Lesenden zu maskieren.
 
 Spezifiziert, aber nie gebaut war ein **Strikt-Modus je Space** für Räume wie Rechnungsprüfung, Revision oder Personal: nur Bibliotheken zuordnen, deren Leserkreis alle Mitglieder umfasst, Agenten mit anderer Bindung dort nicht aufrufen, eine Mitgliederaufnahme ablehnen, die die Voraussetzung bräche, @Alles-Wissen fest setzen und bei nachträglich gebrochener Voraussetzung den Zustand „Voraussetzung verletzt" mit Frist auf der Governance-Arbeitsliste. Dazu gehörte die Kennzeichnung „strikt-only" an einer Bibliothek.
 
-**Mit [ADR-0039](../decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md) entfällt er samt allen genannten Bestandteilen.** Sein Kern für den Suchbereich — nur Zugeordnetes, keine Chips darüber hinaus — gilt jetzt für **jeden** Space; ein eigener Schalter dafür wäre leer. Was er darüber hinaus zusicherte, eine technische Garantie „alle Mitglieder dürfen alles Zugeordnete lesen", gibt es nicht mehr. Ein Raum, der so geführt werden soll, wird so kuratiert: Seine Kuratierenden ordnen nur Bestände und Agenten zu, deren Leserkreis alle Mitglieder umfasst; die Anzeige „n zugeordnet, davon m für Sie lesbar" macht eine Abweichung für jedes Mitglied sichtbar. Gegen das Ableitungsleck wirken weiter die vier Mittel unter [Was daraufhin entfallen ist](#was-daraufhin-entfallen-ist) („Was bleibt").
+**Mit [ADR-0039](../decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md) entfällt er samt allen genannten Bestandteilen.** Sein Kern für den Suchbereich — nur Zugeordnetes, keine Chips darüber hinaus — gilt jetzt für **jeden** Space; ein eigener Schalter dafür wäre leer. Was er darüber hinaus zusicherte, eine technische Garantie „alle Mitglieder dürfen alles Zugeordnete lesen", gibt es nicht mehr. Ein Raum, der so geführt werden soll, wird so kuratiert: Seine Kuratierenden ordnen nur Bestände und Agenten zu, deren Leserkreis alle Mitglieder umfasst; der Hinweis „Nicht alle zugeordneten Inhalte sind für Sie lesbar." zeigt jedem Mitglied, ohne Anzahl und ohne Namen, ob die Voraussetzung für es hält. Gegen das Ableitungsleck wirken weiter die vier Mittel unter [Was daraufhin entfallen ist](#was-daraufhin-entfallen-ist) („Was bleibt").
 
 Unverändert gilt die Agenten-Asymmetrie: Der Space verengt einen Agenten nie, weil ein geprüftes Agenten-Release sonst nicht reproduzierbar wäre (siehe [Suchbereich je Chatart](#suchbereich-je-chatart)). Ein Agent, dessen Bindung über den Leserkreis eines Raums hinausreicht, wird dort nicht durch eine Aufrufsperre ferngehalten, sondern dadurch, dass niemand ihn dem Raum zuordnet — angeboten wird im Chat nur Zugeordnetes.
 
@@ -1123,7 +1123,7 @@ Die bisherige Zusage lautete: *„Der Nutzer weiß nie, dass Dokumente existiere
 |---|---|
 | **Chunk / Suche** | **Unverändert.** Der Filter über die Bibliothek ist Teil der Vektorsuche; unberechtigte Chunks werden nie geladen und nie gerankt |
 | **Asset / Katalog** | **Unverändert** seit [ADR-0039](../decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md): Der Nutzer sieht nur Assets, auf die er Zugriff hat. Das Schaufenster `listed`, das die Existenz nicht lesbarer Assets bewusst preisgab, ist entfallen |
-| **Space-Ansicht** | Nur zugängliche Assets werden benannt; Hinweise im Chat nennen keine Anzahlen. **Bewusste Ausnahme** ([ADR-0039](../decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md), #2097): Die Space-Einstellungen zeigen „n zugeordnet, davon m für Sie lesbar", weil die Zuordnung eine harte Grenze ist und Mitglieder sonst ohne Erklärung unterschiedliche Antworten erhalten. Die nicht lesbaren Zuordnungen bleiben dabei unbenannt |
+| **Space-Ansicht** | Nur zugängliche Assets; Meldungen nennen keine Anzahlen und keine Namen nicht lesbarer Assets. Sind einem Space Inhalte zugeordnet, die die Person nicht lesen darf, erfährt sie das nur als Hinweis ohne Anzahl: „Nicht alle zugeordneten Inhalte sind für Sie lesbar." ([ADR-0039](../decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md), Entscheidung 2) |
 | **Agent** | **Unverändert.** Ein Agent liest immer mit den Rechten des Nutzers; es gibt keinen Umgehungsweg |
 | **Privater Inhalt** | **Unverändert.** Ein nicht geteilter Chat oder ein nicht geteiltes Artefakt ist ausschließlich für seinen Ersteller sichtbar — auch für Space-Admins und System-Admins nicht |
 | **Geteilter Inhalt** | **Gilt nicht — und das ist eine bewusste Handlung.** Wer teilt, gibt weiter, was er selbst lesen durfte, und verantwortet das. Der Vorgang wird protokolliert |

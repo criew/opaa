@@ -1107,7 +1107,9 @@ Abgleichmodus mit dem Zeitpunkt des Laufs.
    `(Issuer, Subject)`, ohne Verzeichnisgruppen und ohne Erstadministrator-Regel.
 2. **Erste Anmeldung.** Der Standard-Space (`isDefault`) entsteht dabei; eine Wissensbibliothek legt die Person
    bei Bedarf selbst an (siehe [Wissensquellen](./knowledge-sources.md)). Ein Anlaufbestand an
-   Assets ergibt sich aus den Gruppen der Person.
+   Assets ergibt sich aus den Gruppen der Person — sichtbar im Katalog, im Chat nutzbar erst nach
+   der Zuordnung zu einem Space; auch der Standard-Space startet ohne Zuordnung
+   ([ADR-0039](../decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md)).
 3. **Änderung.** Wechselt jemand das Referat, ändern sich seine Gruppenmitgliedschaften — und damit
    seine Rechte, **ohne dass jemand in OPAA etwas tut**. Das ist der Regelfall und der Grund, warum die
    Synchronisation als Rechteereignis behandelt wird (siehe unten).
@@ -1745,8 +1747,8 @@ Agenten zugeordnet werden, deren Leserkreis alle Mitglieder umfasst**, damit in 
 Inhalte an Unberechtigte gelangen und die Prüfakte sauber abgegrenzt bleibt. Seit
 [ADR-0039](../decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md) ist das eine Frage der
 Kuratierung, kein eigener Modus: Ein Space nutzt ohnehin nur, was ihm zugeordnet ist, und der früher
-dafür vorgesehene Strikt-Modus ist entfallen. Die Anzeige „n zugeordnet, davon m für Sie lesbar" zeigt
-jedem Mitglied, ob die Voraussetzung für ihn hält.
+dafür vorgesehene Strikt-Modus ist entfallen. Der Hinweis „Nicht alle zugeordneten Inhalte sind für Sie
+lesbar." zeigt jedem Mitglied ohne Anzahl und ohne Namen, ob die Voraussetzung für es hält.
 
 **Der Preis gehört an dieselbe Stelle wie die Empfehlung:** Ein hausweit geteilter Agent ist in aller
 Regel an mindestens eine Bibliothek gebunden, deren Leserkreis die Prüfstelle nicht umfasst — wer die

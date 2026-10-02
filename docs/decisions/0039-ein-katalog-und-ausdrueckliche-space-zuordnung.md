@@ -2,11 +2,11 @@
 
 ## Status
 
-**Vorgeschlagen (02.10.2026)** — Issue [#2091](https://github.com/criew/opaa/issues/2091), Epic
+**Akzeptiert (02.10.2026)** — Issue [#2091](https://github.com/criew/opaa/issues/2091), Epic
 [#2070](https://github.com/criew/opaa/issues/2070), Phase 1. Hält die Beschlüsse des Maintainers vom
 02.10.2026 fest, die nach der Abstimmung vom 30.09.2026 und der Bewertung durch sechs
-Stakeholder-Rollen getroffen wurden (Kommentare im Epic). Der Maintainer setzt den Status auf
-„Akzeptiert" (`docs/AGENT-ORGANIZATION.md`, „ADRs"); umgesetzt wird mit #2092 bis #2098.
+Stakeholder-Rollen getroffen wurden (Kommentare im Epic). Umgesetzt wird mit #2092 bis #2098 und dem
+Demo-Seed #2103.
 
 **Ändert:**
 
@@ -19,7 +19,7 @@ Stakeholder-Rollen getroffen wurden (Kommentare im Epic). Der Maintainer setzt d
   Reichweitenfeld und die Zusage „Was die Web-Oberfläche nicht findet, findet auch der Fremdzugang
   nicht — und umgekehrt" (Entscheidung 5, „Folgen").
 
-**Nimmt eine Zusage gegenüber der Personalvertretung zurück** — siehe Entscheidung 6. Alle vier
+**Nimmt eine Zusage gegenüber der Personalvertretung zurück** — siehe Entscheidung 6. Alle drei
 geänderten ADRs tragen einen Nachtrag mit Verweis hierher; ADR-0014, 0016, 0018 und 0019 einen Hinweis.
 
 ## Kontext
@@ -61,7 +61,7 @@ Typ-Registry, keinen Menüpunkt.
   Sichtbarkeit, Eigentümer, die eigene Rolle, Stand oder Status und die Zahl der Spaces, in denen das
   Asset zugeordnet ist. Wer verwaltet, findet die Übersicht über Sortierung (Name, Änderungsdatum) und
   Filter, nicht über eine Tabelle.
-- **Filter:** Typ, Sichtbarkeit, „aus meinen Gruppen", später Favoriten; dazu eine Suche über Name und
+- **Filter:** Typ, Sichtbarkeit, „aus meinen Gruppen", Favoriten (Entscheidung 7); dazu eine Suche über Name und
   Beschreibung.
 - **„Neu"** ist generisch: Schritt 1 ist die Typwahl als Kacheln mit Icon, angeboten werden nur Typen,
   für die die Person das Anlegerecht hat; danach folgt der typeigene Assistent.
@@ -77,8 +77,15 @@ Ein Asset ist entweder
 - **geschlossen** — es ist nur über Freigaben an Personen oder Gruppen erreichbar.
 
 Die Sichtbarkeit ist **kein neues Feld**, sondern wird aus den Freigaben abgeleitet, wie schon die
-Reichweiten-Badge aus ADR-0037, Entscheidung 9. Einen Anfrage- oder Genehmigungsweg gibt es nicht:
-Wer ein geschlossenes Asset nicht lesen darf, sieht es nirgends. Die Beschriftung in der Oberfläche
+Reichweiten-Badge aus ADR-0037, Entscheidung 9. Einen Anfrage- oder Genehmigungsweg gibt es nicht.
+
+**Die Existenz eines nicht lesbaren Assets wird nicht preisgegeben.** Weder Katalog noch Auswahl, Space-Einstellungen
+oder API-Antwort nennen einen Namen, eine Beschreibung, eine Kennung oder eine **Anzahl** nicht lesbarer Assets. Die
+einzige zulässige Auskunft steht innerhalb eines Space, dem die Person angehört: ein Hinweis **ohne Anzahl und ohne
+Namen**, dass dort nicht alle zugeordneten Inhalte für sie lesbar sind („Nicht alle zugeordneten Inhalte sind für Sie
+lesbar.") — in den Space-Einstellungen und, wenn deshalb nichts durchsucht werden kann, als Signal im Chat
+(Entscheidung 4). Er erklärt, warum zwei Mitglieder unterschiedliche Antworten erhalten, ohne ein einzelnes Asset
+erkennbar zu machen. Die Beschriftung in der Oberfläche
 legt #2094 fest; „öffentlich" klingt in Behörden nach Internet, der Vorschlag ist „Für alle" /
 „Eingeschränkt". „Öffentlich" und „geschlossen" sind die Begriffe der Spezifikation.
 
@@ -86,7 +93,8 @@ legt #2094 fest; „öffentlich" klingt in Behörden nach Internet, der Vorschla
 
 Das Schaufenster (`assets.listed`, die Obergrenze `listed_cap`, `requireListedWithinLimits`, der
 Teilindex `idx_assets_organization_listed`, das Antwortfeld `accessible`, der Schalter „Im Katalog
-auffindbar, auch ohne Berechtigung") entfällt ersatzlos. **Sichtbar ist gleich lesbar.**
+auffindbar, auch ohne Berechtigung") entfällt ersatzlos. **Sichtbar ist gleich lesbar**, mit der
+einen zahlen- und namenlosen Ausnahme aus Entscheidung 2.
 
 Es entfällt **auch rückwirkend**: Die Spalte `listed` verschwindet aus `asset_visibility_history`, und
 das Audit-Ereignis `ASSET_VISIBILITY_CHANGED` entfällt, soweit es nur `listed` trägt. Die
@@ -132,7 +140,8 @@ Daraus folgt:
   alles.
 - **Die Zuordnung gewährt weiterhin keinen Zugriff.** Zuordnen darf, wer im Space `CURATOR` ist und das
   Asset selbst lesen kann; Mitglieder ohne Leserecht finden darin nichts. Die Space-Einstellungen zeigen
-  deshalb „n zugeordnet, davon m für Sie lesbar" (#2097).
+  jedem Mitglied nur die für es lesbaren Zuordnungen und, falls zutreffend, den Hinweis ohne Anzahl
+  „Nicht alle zugeordneten Inhalte sind für Sie lesbar." (Entscheidung 2, #2097).
 - **Die Zuordnung wird nicht historisiert.** Sie gewährt keinen Zugriff; die Stichtagsfrage „wer konnte
   lesen?" beantwortet die Grant-Historie. Was ein einzelner Chat durchsucht hat, wird wie bisher
   nicht protokolliert (Mitbestimmung).
@@ -190,7 +199,8 @@ Favoriten ein Interessenprofil ist (Einwand Personalrat, Betrieb), gilt:
 - Abrufbar **nur für die Person selbst** — auch nicht für Systemverwaltung, Space-Verwaltung oder
   Asset-Verantwortliche.
 - **Keine Zählung** und keine Anzeige von Favoriten je Asset, auch nicht aggregiert.
-- **Kein Protokolleintrag, keine Historie**, nicht Teil von Exporten.
+- **Kein Protokolleintrag, keine Historie.** Nicht Teil von Berichten und Exporten an Dritte; enthalten
+  nur in der Selbstauskunft der Person (Muster der persönlichen Ordnungsmerkmale in `chat-list.md`).
 - **Löschung mit dem Konto**; Favoriten sind kein Löschblocker. Ein favorisiertes Asset, das nicht mehr
   lesbar ist, erscheint nicht mehr.
 
@@ -199,7 +209,7 @@ Favoriten ein Interessenprofil ist (Einwand Personalrat, Betrieb), gilt:
 Altes und neues Modell laufen nicht nebeneinander. Eine Umschaltung je Person wäre bei geteilten
 Spaces sinnlos, eine je Space eine zweite Semantik, die nach der Einführung niemand zurückbaut. Die
 Demo-Instanz wird parallel so bestückt, dass jedem Space inhaltlich passendes Wissen zugeordnet ist,
-und nach der Umsetzung neu aufgesetzt.
+und nach der Umsetzung neu aufgesetzt (#2096, Seed #2103).
 
 ## Konsequenzen
 
@@ -207,8 +217,9 @@ und nach der Umsetzung neu aufgesetzt.
 
 - **Eine Regel für alle Typen:** Was zugeordnet und lesbar ist, ist im Space nutzbar. Keine Stufe, die
   vom Zuordnungsstand abhängt, kein Unterschied zwischen Wissen und Prompts, kein Schalter je Space.
-- **„Sichtbar = lesbar":** Die Existenz eines nicht lesbaren Assets wird nirgends mehr preisgegeben —
-  weder im Katalog noch in einer API-Antwort.
+- **„Sichtbar = lesbar":** Name, Kennung und Anzahl nicht lesbarer Assets werden nirgends mehr
+  preisgegeben — weder im Katalog noch in einer Auswahl, den Space-Einstellungen oder einer
+  API-Antwort. Es bleibt allein der zahlen- und namenlose Hinweis aus Entscheidung 2.
 - **Ein Einstieg statt vier**, ein Kachelbaustein statt dreier fast gleicher Übersichten; ein neuer
   Typ braucht einen Registry-Eintrag.
 - **Weniger Datenmodell:** `listed`, `listed_cap`, `accessible` und ein Audit-Ereignis entfallen, der
@@ -221,8 +232,8 @@ und nach der Umsetzung neu aufgesetzt.
 - **Neue Konten und neue Spaces starten leer.** Bewusst angenommen; der Hinweis führt direkt in die
   Zuordnung.
 - **Zwei Mitglieder desselben Space erhalten unterschiedliche Antworten**, wenn ihre Leserechte am
-  Zugeordneten verschieden sind. Das galt schon vorher; neu ist die Anzeige „n zugeordnet, davon m für
-  Sie lesbar".
+  Zugeordneten verschieden sind. Das galt schon vorher; neu ist der Hinweis ohne Anzahl „Nicht alle
+  zugeordneten Inhalte sind für Sie lesbar." Wie viel fehlt, erfährt das Mitglied bewusst nicht.
 - **Die Zusage an die Personalvertretung ist schwächer** (Entscheidung 6).
 - **API-Bruch** in `assets.yaml`, `libraries.yaml`, `prompts.yaml`, `search.yaml`, `chats.yaml`,
   `spaces.yaml` und `audit.yaml`; tragbar, weil alle Installationen neu aufgebaut werden.

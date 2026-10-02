@@ -133,8 +133,9 @@ eines Arbeitsraums bleibt über die Space-Übersicht erreichbar, die Verwaltung 
 „Einstellungen“ am Fuß der Seitenleiste (`/spaces/:spaceId/settings/:tab`, Reiter Stammdaten,
 Mitglieder, Wissen, Prompts; die frühere Adresse `/spaces/:spaceId/manage` leitet dorthin weiter). Die
 Reiter Wissen und Prompts verwalten die **Zuordnung** — die harte Grenze dessen, was der Arbeitsraum im
-Chat nutzt; im Zielbild mit derselben Kachelauswahl wie der Space-Assistent und der Angabe „n
-zugeordnet, davon m für Sie lesbar" (#2097). Ein Neuladen der Seite stellt Verlauf und Liste wieder her. Es
+Chat nutzt; im Zielbild mit derselben Kachelauswahl wie der Space-Assistent und nur den für
+die Person lesbaren Zuordnungen, gegebenenfalls ergänzt um den Hinweis ohne Anzahl „Nicht alle
+zugeordneten Inhalte sind für Sie lesbar." (#2097). Ein Neuladen der Seite stellt Verlauf und Liste wieder her. Es
 entsteht als Entwurf, sichtbar nur für den Autor, und wird für die Mitglieder des
 Arbeitsraums erst sichtbar, sobald der Autor es dort teilt (`SHARED`/`WITHDRAWN`, Zielbild — siehe
 [Chats](./spaces-and-assets.md#chats)). Ebenfalls Zielbild: das Löschen des eigenen Verlaufs im
@@ -283,7 +284,7 @@ Zweck, nicht nach Pfad.
 
 | Zweck | Endpunkt | Heute gebaut |
 |---|---|---|
-| Frage stellen und belegte Antwort erhalten — mit Fundstellen, Relevanz je Quelle, Kennzeichnung der tatsächlich zitierten Quellen und einer Gesprächskennung für Rückfragen; der Suchbereich wird über die Chip-Leiste des Gesprächs gesteuert, nicht per Space-Auswahl je Anfrage, und bleibt auf das dem Arbeitsraum Zugeordnete begrenzt | `POST /api/v1/query` | ja — Frage, Antwort, Fundstellen und die Chip-Leiste (@-Referenzen, leere Leiste) sind gebaut; die Space↔Bibliothek-Assoziation (#203/#706) ist umgesetzt. Die harte Grenze und „@Space-Wissen" statt „@Alles-Wissen" folgen mit #2096 |
+| Frage stellen und belegte Antwort erhalten — mit Fundstellen, Relevanz je Quelle, Kennzeichnung der tatsächlich zitierten Quellen und einer Gesprächskennung für Rückfragen; der Suchbereich wird über die Chip-Leiste des Gesprächs gesteuert, nicht per Space-Auswahl je Anfrage, und bleibt auf das dem Arbeitsraum Zugeordnete begrenzt | `POST /api/v1/query` | teilweise — Frage, Antwort, Fundstellen und die Chip-Leiste (@-Referenzen, leere Leiste) sind gebaut; die Space↔Bibliothek-Assoziation (#203/#706) ist umgesetzt. Die harte Grenze und „@Space-Wissen" statt „@Alles-Wissen" folgen mit #2096 |
 | Treffer ohne erzeugte Antwort erhalten — Fundstellen mit Auszug, Herkunft (Bibliothek, Dokument, Fundstelle), Metadaten, Relevanz und dem Downloadpfad des Originals; derselbe Retrieval-Pfad wie `POST /api/v1/query` (Teilfragen, Vektor- und Volltextsuche, Fusion, Reranking, Rechtefilter in der Suche), nur ohne Generierung. Hängt bewusst **nicht** am Fremdzugangsschalter — der ist der Notaus des Fremdzugangskanals, nicht der dieses Endpunkts | `POST /api/v1/search` | ja (#1720) |
 | Text zu einer Trefferkennung abrufen — Vorgabe ist der Abschnitt mit angrenzendem Kontext und Überschriftenpfad, das ganze Dokument nur über `full=true` und nur bis zu einem serverseitigen Zeichen-Deckel. Eine Kennung außerhalb der eigenen Sicht ist von einer unbekannten nicht unterscheidbar | `GET /api/v1/search/hits/{hitId}` | ja (#1720) |
 | Die Bibliotheken auflisten, in denen der Aufrufer suchen kann — Kennung, Name, Beschreibung; für eine Person ihre lesbaren, für ein Zugangstoken die effektive Sicht, aus derselben Stelle, die auch den Suchbereich bestimmt. Diese Endpunkte haben keinen Space-Bezug und sind deshalb nicht an eine Zuordnung gebunden ([ADR-0039](../decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md), Entscheidung 5) | `GET /api/v1/search/libraries` | ja (#1720) |
