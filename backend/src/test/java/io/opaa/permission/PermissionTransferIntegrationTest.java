@@ -1002,7 +1002,7 @@ class PermissionTransferIntegrationTest {
     return libraryRepository
         .save(
             KnowledgeLibrary.ownedByUser(
-                organizationId, "Bibliothek " + UUID.randomUUID(), null, ownerUserId, false))
+                organizationId, "Bibliothek " + UUID.randomUUID(), null, ownerUserId))
         .getId();
   }
 
@@ -1039,11 +1039,7 @@ class PermissionTransferIntegrationTest {
     return libraryRepository
         .save(
             KnowledgeLibrary.ownedByGroup(
-                organizationId,
-                "Referatsbibliothek " + UUID.randomUUID(),
-                null,
-                ownerGroupId,
-                false))
+                organizationId, "Referatsbibliothek " + UUID.randomUUID(), null, ownerGroupId))
         .getId();
   }
 

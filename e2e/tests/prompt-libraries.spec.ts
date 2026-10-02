@@ -2,14 +2,13 @@ import { expect, test } from '../fixtures/auth'
 import { startFreshChat } from '../fixtures/chat'
 import { apiAs } from '../fixtures/externalAccess'
 import {
-  accessibleCatalogEntry,
+  catalogEntry,
   createKnowledgeLibraryViaApi,
   createPromptLibraryViaApi,
   createReleasedGroupViaApi,
   escapeRegExp,
   gotoPromptLibraries,
   gotoPromptLibraryDetail,
-  listedCatalogEntry,
   searchCatalog,
 } from '../fixtures/promptLibraries'
 import type { Page } from '@playwright/test'
@@ -22,8 +21,9 @@ const PROMPT_COMMAND = `anhoerung-${runId.toString(36)}`
 const PROMPT_TEXT = 'Entwirf ein Anhörungsschreiben zum Aktenzeichen {{aktenzeichen}}.'
 const RESOLVED_TEXT = 'Entwirf ein Anhörungsschreiben zum Aktenzeichen AZ 50-123.'
 const GROUP_NAME = `E2E Prompt-Gruppe ${runId}`
-const LISTED_LIBRARY_NAME = `E2E Gelistete Prompts ${runId}`
-const LISTED_KNOWLEDGE_NAME = `E2E Gelistetes Wissen ${runId}`
+const CLOSED_LIBRARY_NAME = `E2E Geschlossene Prompts ${runId}`
+const CLOSED_DESCRIPTION = `Personalsachen Referat 12 ${runId}`
+const KNOWLEDGE_NAME = `E2E Wissen ${runId}`
 
 /** The owner's own view of the library, found by name - the id the outsider must never reach. */
 async function promptLibraryId(name: string): Promise<string> {
@@ -56,20 +56,6 @@ function grantsSection(page: Page) {
   return page.getByRole('region', { name: 'Berechtigungen' })
 }
 
-async function saveRelease(page: Page): Promise<void> {
-  await Promise.all([
-    page.waitForResponse(
-      (response) =>
-        response.request().method() === 'PUT' &&
-        /\/api\/v1\/prompt-libraries\/[^/]+$/.test(new URL(response.url()).pathname) &&
-        response.ok(),
-    ),
-    // #1941: Die Auffindbarkeit ist ein eigener Abschnitt mit eigenem Speichern-Knopf; den
-    // gemeinsamen „Freigabe speichern" über mehrere Abschnitte hinweg gibt es nicht mehr.
-    page.getByRole('button', { name: 'Auffindbarkeit speichern' }).click(),
-  ])
-}
-
 /**
  * The rendered empty result of this very search - without it, an absent entry would also pass
  * before the result is on the page.
@@ -95,8 +81,9 @@ async function expectInPromptList(page: Page, name: string): Promise<void> {
  * Covers test(e2e) #1904, the evidence of Epic #1726: a person without any system role creates a
  * prompt library with a prompt and a required variable, gives it to a person, to a group and to the
  * whole organization - and a person it was never given to finds nothing of it, not in the list, not
- * in the catalog, not at its address. The catalog finds a listed asset of either type without
- * opening it, and a person the grant to "Alle Konten" reaches inserts the prompt in the chat.
+ * in the catalog, not at its address. The catalog shows exactly what a person may read - a closed
+ * library stays invisible even by its description - and a person the grant to "Alle Konten"
+ * reaches inserts the prompt in the chat.
  *
  * dev-user owns everything here. dev-admin receives the person grant and dev-format-pipelines is
  * the one member of the group: dev-outsider must stay unrelated until the grant to "Alle
@@ -111,7 +98,6 @@ test.describe.serial('Prompt-Bibliotheken: Freigabewege und Katalog (#1904)', ()
     await owner.getByLabel(/^Name/).fill(LIBRARY_NAME)
     await owner.getByRole('button', { name: 'Weiter', exact: true }).click()
     await owner.getByRole('button', { name: 'Weiter zu Rechten' }).click()
-    await expect(owner.getByLabel('Im Katalog auffindbar')).not.toBeChecked()
     await owner.getByRole('button', { name: 'Prompt-Bibliothek anlegen' }).click()
     await expect(owner.getByRole('heading', { level: 1, name: LIBRARY_NAME })).toBeVisible()
 
@@ -182,8 +168,7 @@ test.describe.serial('Prompt-Bibliotheken: Freigabewege und Katalog (#1904)', ()
 
     await searchCatalog(outsider, LIBRARY_NAME)
     await expectNoCatalogMatch(outsider, LIBRARY_NAME)
-    await expect(accessibleCatalogEntry(outsider, LIBRARY_NAME)).toHaveCount(0)
-    await expect(listedCatalogEntry(outsider, LIBRARY_NAME)).toHaveCount(0)
+    await expect(catalogEntry(outsider, LIBRARY_NAME)).toHaveCount(0)
 
     await outsider.goto(`/prompts/${id}`)
     await expect(outsider.getByRole('alert')).toContainText('nicht gefunden')
@@ -210,7 +195,7 @@ test.describe.serial('Prompt-Bibliotheken: Freigabewege und Katalog (#1904)', ()
 
     await expectInPromptList(outsider, LIBRARY_NAME)
     await searchCatalog(outsider, LIBRARY_NAME)
-    const entry = accessibleCatalogEntry(outsider, LIBRARY_NAME)
+    const entry = catalogEntry(outsider, LIBRARY_NAME)
     await expect(entry).toBeVisible()
     await expect(entry).toContainText('Prompt-Bibliothek')
     await expect(entry).toContainText('zuständig: Dev User')
@@ -219,68 +204,54 @@ test.describe.serial('Prompt-Bibliotheken: Freigabewege und Katalog (#1904)', ()
     await expect(outsider.getByText(`/${PROMPT_COMMAND}`)).toBeVisible()
   })
 
-  test('6. Im Katalog auffindbar erst nach der Listung - ohne Zugriff', async ({
+  test('6. Geschlossene Bibliothek bleibt im Katalog unsichtbar', async ({
     regularUserPage: owner,
     outsiderPage: outsider,
   }) => {
     const id = await createPromptLibraryViaApi('dev-user', {
-      name: LISTED_LIBRARY_NAME,
-      description: 'Bescheidbausteine nach Hausstandard',
+      name: CLOSED_LIBRARY_NAME,
+      description: CLOSED_DESCRIPTION,
     })
 
-    await searchCatalog(outsider, LISTED_LIBRARY_NAME)
-    await expectNoCatalogMatch(outsider, LISTED_LIBRARY_NAME)
-    await expect(listedCatalogEntry(outsider, LISTED_LIBRARY_NAME)).toHaveCount(0)
-
-    await openManagement(owner, LISTED_LIBRARY_NAME)
-    // Nicht getByLabel: Seit #1941 ist „Im Katalog auffindbar" auch der Name des Abschnitts, und
-    // ein `section` mit `aria-labelledby` trägt damit dasselbe Label wie das Kästchen darin.
-    await owner
-      .getByRole('checkbox', { name: 'Im Katalog auffindbar, auch ohne Berechtigung' })
-      .check()
-    await saveRelease(owner)
-
-    await searchCatalog(outsider, LISTED_LIBRARY_NAME)
-    const entry = listedCatalogEntry(outsider, LISTED_LIBRARY_NAME)
-    await expect(entry).toBeVisible()
-    await expect(entry).toContainText('Bescheidbausteine nach Hausstandard')
-    await expect(entry).toContainText('Auffindbar ohne Berechtigung — zuständig: Dev User')
-    await expect(accessibleCatalogEntry(outsider, LISTED_LIBRARY_NAME)).toHaveCount(0)
-
-    // Findable is not accessible: neither the list nor the address opens it.
-    await expectNotInPromptList(outsider, LISTED_LIBRARY_NAME)
+    for (const query of [CLOSED_LIBRARY_NAME, CLOSED_DESCRIPTION]) {
+      await searchCatalog(outsider, query)
+      await expectNoCatalogMatch(outsider, query)
+      await expect(catalogEntry(outsider, CLOSED_LIBRARY_NAME)).toHaveCount(0)
+    }
+    await expectNotInPromptList(outsider, CLOSED_LIBRARY_NAME)
     await outsider.goto(`/prompts/${id}`)
     await expect(outsider.getByRole('alert')).toContainText('nicht gefunden')
+
+    // The owner, who may read it, finds it by its description.
+    await searchCatalog(owner, CLOSED_DESCRIPTION)
+    await expect(catalogEntry(owner, CLOSED_LIBRARY_NAME)).toBeVisible()
   })
 
-  test('7. Katalog: gelistete Wissensbibliothek ohne Zugriff, Typfilter', async ({
-    outsiderPage: outsider,
-  }) => {
+  test('7. Katalog: beide Typen, Typfilter', async ({ regularUserPage: owner }) => {
     await createKnowledgeLibraryViaApi('dev-user', {
-      name: LISTED_KNOWLEDGE_NAME,
+      name: KNOWLEDGE_NAME,
       description: 'Satzungen und Dienstanweisungen',
-      listed: true,
     })
 
-    await searchCatalog(outsider, runId.toString())
-    const knowledge = listedCatalogEntry(outsider, LISTED_KNOWLEDGE_NAME)
+    await searchCatalog(owner, runId.toString())
+    const knowledge = catalogEntry(owner, KNOWLEDGE_NAME)
     await expect(knowledge).toBeVisible()
     await expect(knowledge).toContainText('Wissensbibliothek')
-    await expect(knowledge).toContainText('Auffindbar ohne Berechtigung — zuständig: Dev User')
-    await expect(listedCatalogEntry(outsider, LISTED_LIBRARY_NAME)).toBeVisible()
-    await expect(accessibleCatalogEntry(outsider, LIBRARY_NAME)).toBeVisible()
+    await expect(knowledge).toContainText('zuständig: Dev User')
+    await expect(catalogEntry(owner, CLOSED_LIBRARY_NAME)).toBeVisible()
+    await expect(catalogEntry(owner, LIBRARY_NAME)).toBeVisible()
 
     await Promise.all([
-      outsider.waitForResponse(
+      owner.waitForResponse(
         (response) =>
           new URL(response.url()).searchParams.get('type') === 'KNOWLEDGE_LIBRARY' &&
           response.ok(),
       ),
-      outsider.getByRole('button', { name: 'Wissen', exact: true }).click(),
+      owner.getByRole('button', { name: 'Wissen', exact: true }).click(),
     ])
     await expect(knowledge).toBeVisible()
-    await expect(listedCatalogEntry(outsider, LISTED_LIBRARY_NAME)).toHaveCount(0)
-    await expect(accessibleCatalogEntry(outsider, LIBRARY_NAME)).toHaveCount(0)
+    await expect(catalogEntry(owner, CLOSED_LIBRARY_NAME)).toHaveCount(0)
+    await expect(catalogEntry(owner, LIBRARY_NAME)).toHaveCount(0)
   })
 
   test('8. Im Chat per Befehl einsetzen, mit Variablenformular und Hinweis im Verlauf', async ({

@@ -11,8 +11,8 @@ import java.util.UUID;
 
 /**
  * The second asset type (docs/features/spaces-and-assets.md#prompt-bibliothek): a named collection
- * of {@link Prompt}s. Everything it has besides its prompts - name, owner, release level,
- * findability - is the shell's; the table {@code prompt_libraries} only holds the type.
+ * of {@link Prompt}s. Everything it has besides its prompts - name, owner, release level - is the
+ * shell's; the table {@code prompt_libraries} only holds the type.
  */
 @Entity
 @Table(name = "prompt_libraries")
@@ -33,9 +33,8 @@ public class PromptLibrary extends Asset {
       String name,
       String description,
       AssetOwnerType ownerType,
-      UUID ownerId,
-      boolean listed) {
-    super(ASSET_TYPE, organizationId, name, description, ownerType, ownerId, listed);
+      UUID ownerId) {
+    super(ASSET_TYPE, organizationId, name, description, ownerType, ownerId);
     this.libraryOrganizationId = organizationId;
   }
 
@@ -45,14 +44,12 @@ public class PromptLibrary extends Asset {
   }
 
   public static PromptLibrary ownedByUser(
-      UUID organizationId, String name, String description, UUID ownerUserId, boolean listed) {
-    return new PromptLibrary(
-        organizationId, name, description, AssetOwnerType.USER, ownerUserId, listed);
+      UUID organizationId, String name, String description, UUID ownerUserId) {
+    return new PromptLibrary(organizationId, name, description, AssetOwnerType.USER, ownerUserId);
   }
 
   public static PromptLibrary ownedByGroup(
-      UUID organizationId, String name, String description, UUID ownerGroupId, boolean listed) {
-    return new PromptLibrary(
-        organizationId, name, description, AssetOwnerType.GROUP, ownerGroupId, listed);
+      UUID organizationId, String name, String description, UUID ownerGroupId) {
+    return new PromptLibrary(organizationId, name, description, AssetOwnerType.GROUP, ownerGroupId);
   }
 }

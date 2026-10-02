@@ -511,10 +511,10 @@ Der Seed legt zwei Prompt-Bibliotheken an (`demo/seed/profiles.py`, `PromptLibra
 `CREATE_PROMPT_LIBRARY` an „Alle Konten" ausgeliefert ist — die Systemverwaltung braucht es dafür
 nicht, und sie könnte die Prompts ohne eigenes Recht auch nicht lesen.
 
-| Prompt-Bibliothek | Reichweite | Katalog | Zugeordnete Spaces |
-|---|---|---|---|
-| Textbausteine Bürgerbüro | „Alle Konten" (`VIEWER`) | gelistet | „Meldewesen & Ausweise", „Kfz-Zulassung", „Amtsleitung Bürgerbüro" |
-| Vorlagen Amtsleitung | nur Andrea | nicht gelistet | „Amtsleitung Bürgerbüro" |
+| Prompt-Bibliothek | Reichweite | Zugeordnete Spaces |
+|---|---|---|
+| Textbausteine Bürgerbüro | „Alle Konten" (`VIEWER`) | „Meldewesen & Ausweise", „Kfz-Zulassung", „Amtsleitung Bürgerbüro" |
+| Vorlagen Amtsleitung | nur Andrea | „Amtsleitung Bürgerbüro" |
 
 | Slash-Befehl | Bibliothek | Variablen |
 |---|---|---|

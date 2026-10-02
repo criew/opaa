@@ -275,7 +275,6 @@ class KnowledgeLibraryServiceIntegrationTest {
     assertThat(response.library().getOwnerId()).isEqualTo(owner);
     // #1931: the reach is derived - a fresh library carries exactly its creator's OWNER grant.
     assertThat(response.reach()).isEqualTo(new AssetReach(false, 0, 1));
-    assertThat(response.library().isListed()).isFalse();
   }
 
   @Test
@@ -1154,9 +1153,8 @@ class KnowledgeLibraryServiceIntegrationTest {
   @Test
   void updateLibraryRecordsALibrarySourceUpdatedAuditEntryForAPureSourceConfigurationChange() {
     // #545: a pure source-configuration change (credential rotation here) previously left no
-    // audit trace at all - neither LIBRARY_CHANGED (name/description) nor
-    // ASSET_VISIBILITY_CHANGED (visibility/listed) fires for it, since this request resends
-    // name/description/visibility/listed unchanged and only touches sourceCredentials.
+    // audit trace at all - LIBRARY_CHANGED (name/description) does not fire for it, since this
+    // request resends name/description unchanged and only touches sourceCredentials.
     UUID owner = createUser(organizationA);
     LibraryDetail library =
         libraryService.createLibrary(
@@ -1256,9 +1254,8 @@ class KnowledgeLibraryServiceIntegrationTest {
   @Test
   void updateLibraryRecordsBothLibraryChangedAndLibrarySourceUpdatedWhenNameAndSourceBothChange() {
     // Code review finding 3 (PR #578): a rename combined with a source configuration change
-    // must write both events, not just one - pinning the same "independent events" guarantee
-    // #392's ASSET_VISIBILITY_CHANGED/LIBRARY_CHANGED pairing already has, now for
-    // LIBRARY_CHANGED/LIBRARY_SOURCE_UPDATED.
+    // must write both events, not just one - LIBRARY_CHANGED and LIBRARY_SOURCE_UPDATED are
+    // independent events.
     UUID owner = createUser(organizationA);
     LibraryDetail library =
         libraryService.createLibrary(
@@ -2746,7 +2743,7 @@ class KnowledgeLibraryServiceIntegrationTest {
   void savingALibraryWithANonExistentOwnerUserFailsInsteadOfSilentlyPersisting() {
     KnowledgeLibrary library =
         KnowledgeLibrary.ownedByUser(
-            organizationA, "Ghost", "Owner does not exist", UUID.randomUUID(), false);
+            organizationA, "Ghost", "Owner does not exist", UUID.randomUUID());
 
     assertThatThrownBy(() -> libraryRepository.saveAndFlush(library))
         .isInstanceOf(DataIntegrityViolationException.class)
@@ -2757,7 +2754,7 @@ class KnowledgeLibraryServiceIntegrationTest {
   void savingALibraryWithANonExistentOwnerGroupFailsInsteadOfSilentlyPersisting() {
     KnowledgeLibrary library =
         KnowledgeLibrary.ownedByGroup(
-            organizationA, "Ghost", "Owner group does not exist", UUID.randomUUID(), false);
+            organizationA, "Ghost", "Owner group does not exist", UUID.randomUUID());
 
     assertThatThrownBy(() -> libraryRepository.saveAndFlush(library))
         .isInstanceOf(DataIntegrityViolationException.class)

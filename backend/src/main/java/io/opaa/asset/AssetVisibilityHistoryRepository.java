@@ -19,9 +19,9 @@ public interface AssetVisibilityHistoryRepository
   }
 
   /**
-   * This table's part of the retention deletion - see {@link PermissionHistorySweeper}. Findability
-   * and the Fremdzugang age out with the grant tables, so the reach of the retention period is the
-   * same for every reach statement.
+   * This table's part of the retention deletion - see {@link PermissionHistorySweeper}. The
+   * Fremdzugang ages out with the grant tables, so the reach of the retention period is the same
+   * for every reach statement.
    */
   @Override
   @Modifying(clearAutomatically = true, flushAutomatically = true)

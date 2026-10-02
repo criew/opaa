@@ -248,7 +248,7 @@ class GroupServiceIntegrationTest {
     Group group = new Group(organizationA, GroupKind.AD_HOC, "Team", null, null, null, null, null);
     Group saved = groupRepository.save(group);
     KnowledgeLibrary library =
-        KnowledgeLibrary.ownedByGroup(organizationA, "Rechtsquellen", null, saved.getId(), false);
+        KnowledgeLibrary.ownedByGroup(organizationA, "Rechtsquellen", null, saved.getId());
     libraryRepository.save(library);
 
     assertThatThrownBy(() -> groupService.deleteGroup(saved.getId(), currentUserOf(admin)))
@@ -276,7 +276,7 @@ class GroupServiceIntegrationTest {
         new Group(organizationA, GroupKind.AD_HOC, "Abteilung 5", null, null, null, null, null);
     Group saved = groupRepository.save(group);
     KnowledgeLibrary library =
-        KnowledgeLibrary.ownedByUser(organizationA, "Rechtsquellen", null, owner, false);
+        KnowledgeLibrary.ownedByUser(organizationA, "Rechtsquellen", null, owner);
     KnowledgeLibrary savedLibrary = libraryRepository.save(library);
     AssetGrant grant =
         AssetGrant.forGroup(

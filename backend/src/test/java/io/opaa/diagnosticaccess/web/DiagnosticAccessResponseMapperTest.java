@@ -242,8 +242,7 @@ class DiagnosticAccessResponseMapperTest {
   @Test
   void mapsTheDiagnosticsLock() {
     KnowledgeLibrary library =
-        KnowledgeLibrary.ownedByUser(
-            ORGANIZATION_ID, "Personalvorgänge", null, UUID.randomUUID(), false);
+        KnowledgeLibrary.ownedByUser(ORGANIZATION_ID, "Personalvorgänge", null, UUID.randomUUID());
 
     LibraryDiagnosticsLockResponse response = DiagnosticAccessResponseMapper.toResponse(library);
 

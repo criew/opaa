@@ -110,14 +110,13 @@ class PromptLibraryServiceIntegrationTest {
   }
 
   @Test
-  void aPersonCreatesAPrivateUnlistedLibraryAndOwnsIt() {
+  void aPersonCreatesAPrivateLibraryAndOwnsIt() {
     PromptLibraryView created =
         libraryService.create(creation("Formulierungshilfen", null, null), callerOf(owner));
 
     PromptLibrary library = created.library();
     assertThat(library.getOwnerType()).isEqualTo(AssetOwnerType.USER);
     assertThat(library.getOwnerId()).isEqualTo(owner);
-    assertThat(library.isListed()).as("listing is a deliberate act").isFalse();
     assertThat(library.getOrigin()).isEqualTo(AssetOrigin.LOCAL);
     assertThat(library.getAssetType()).isEqualTo(PromptLibrary.ASSET_TYPE);
     assertThat(created.myRole()).isEqualTo(AssetRole.OWNER);
@@ -218,9 +217,7 @@ class PromptLibraryServiceIntegrationTest {
         callerOf(owner));
     UUID organizationWide = libraryOf(owner, "Organisationsweit");
     libraryService.update(
-        organizationWide,
-        new PromptLibraryUpdate("Organisationsweit", null, false),
-        callerOf(owner));
+        organizationWide, new PromptLibraryUpdate("Organisationsweit", null), callerOf(owner));
     UUID groupOwned =
         libraryService
             .create(creation("Gruppeneigen", AssetOwnerType.GROUP, group), callerOf(member))
@@ -247,7 +244,7 @@ class PromptLibraryServiceIntegrationTest {
   @Test
   void theOrganizationBoundaryHoldsOnEveryWay() {
     UUID id = libraryOf(owner, "Hausintern");
-    libraryService.update(id, new PromptLibraryUpdate("Hausintern", null, false), callerOf(owner));
+    libraryService.update(id, new PromptLibraryUpdate("Hausintern", null), callerOf(owner));
 
     assertThat(readableBy(foreigner)).as("the list").doesNotContain(id);
     assertThatThrownBy(() -> libraryService.get(id, callerOf(foreigner)))
@@ -310,13 +307,6 @@ class PromptLibraryServiceIntegrationTest {
         .isInstanceOf(ConflictException.class)
         .hasMessageStartingWith("Für dieses Objekt ist die Nachfolge offen")
         .hasMessageContaining("Zuständig: die Systemverwaltung");
-    assertThatThrownBy(
-            () ->
-                libraryService.update(
-                    id,
-                    new PromptLibraryUpdate("Verwaist", null, true),
-                    callerOf(administrator, true)))
-        .isInstanceOf(ConflictException.class);
   }
 
   @Test
@@ -396,7 +386,7 @@ class PromptLibraryServiceIntegrationTest {
     promptService.update(
         id, prompt.getId(), content("vermerk", "Vermerk neu", List.of()), callerOf(owner));
     libraryService.update(
-        id, new PromptLibraryUpdate("Protokoll neu", "Beschreibung", false), callerOf(owner));
+        id, new PromptLibraryUpdate("Protokoll neu", "Beschreibung"), callerOf(owner));
     promptService.delete(id, prompt.getId(), callerOf(owner));
 
     assertThat(auditEvents(prompt.getId()))
@@ -523,7 +513,7 @@ class PromptLibraryServiceIntegrationTest {
 
   private static PromptLibraryCreation creation(
       String name, AssetOwnerType ownerType, UUID ownerId) {
-    return new PromptLibraryCreation(name, null, ownerType, ownerId, null);
+    return new PromptLibraryCreation(name, null, ownerType, ownerId);
   }
 
   private static PromptContent content(String name, String title, List<PromptVariable> variables) {

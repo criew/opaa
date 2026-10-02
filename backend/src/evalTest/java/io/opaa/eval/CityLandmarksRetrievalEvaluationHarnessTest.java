@@ -425,7 +425,6 @@ class CityLandmarksRetrievalEvaluationHarnessTest {
                 "Eval-Zielbibliothek",
                 null,
                 evalUserId,
-                false,
                 SourceTypes.FILESYSTEM,
                 corpusWorkingDir.toAbsolutePath().toString(),
                 null,

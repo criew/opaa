@@ -23,13 +23,12 @@ interface EditLibraryScheduleDialogProps {
   schedule: LibrarySchedule | null | undefined
   /** Present only for a CONFLUENCE library - the dialog then offers the full-sync rhythm (#1200). */
   confluence?: ConfluenceFullSyncRhythm
-  // KnowledgeLibraryService#updateLibrary overwrites name/description/listed unconditionally when
+  // KnowledgeLibraryService#updateLibrary overwrites name/description unconditionally when
   // present in the request (see EditLibrarySourceDialog's identical reasoning) - this dialog only
   // touches the schedule, so the current values must be resent unchanged rather than omitted.
   library: {
     name: string
     description?: string | null
-    listed: boolean
   }
 }
 
@@ -69,7 +68,6 @@ export default function EditLibraryScheduleDialog({
       await updateExistingLibrary(libraryId, {
         name: library.name,
         description: library.description ?? undefined,
-        listed: library.listed,
         // Bewusst kein Quellkonfigurationsfeld gesetzt - mirrors LibraryDetailPage's own
         // Stammdaten-Formular: das Backend lässt die gespeicherte Quellkonfiguration unverändert,
         // solange keines ihrer Felder in der Anfrage vorhanden ist.

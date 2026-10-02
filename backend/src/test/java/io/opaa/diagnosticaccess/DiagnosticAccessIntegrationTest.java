@@ -437,8 +437,7 @@ class DiagnosticAccessIntegrationTest {
   void aFreshlyCreatedLibraryIsDiagnosegesperrt() {
     KnowledgeLibrary saved =
         libraryRepository.save(
-            KnowledgeLibrary.ownedByUser(
-                organizationId, "Personalvorgänge", null, holderId, false));
+            KnowledgeLibrary.ownedByUser(organizationId, "Personalvorgänge", null, holderId));
 
     assertThat(
             jdbcTemplate.queryForObject(
@@ -765,11 +764,7 @@ class DiagnosticAccessIntegrationTest {
     KnowledgeLibrary library =
         libraryRepository.save(
             KnowledgeLibrary.ownedByUser(
-                organizationId,
-                "Personalvorgaenge " + UUID.randomUUID(),
-                null,
-                ownerUserId,
-                false));
+                organizationId, "Personalvorgaenge " + UUID.randomUUID(), null, ownerUserId));
     assetGrantRepository.save(
         AssetGrant.forUser(
             KnowledgeLibrary.ASSET_TYPE,

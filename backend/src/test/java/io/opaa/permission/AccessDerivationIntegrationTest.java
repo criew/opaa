@@ -271,7 +271,7 @@ class AccessDerivationIntegrationTest {
 
   private UUID library() {
     KnowledgeLibrary library =
-        KnowledgeLibrary.ownedByUser(organizationId, "Bibliothek", null, spaceAdmin.id(), false);
+        KnowledgeLibrary.ownedByUser(organizationId, "Bibliothek", null, spaceAdmin.id());
     UUID id = libraryRepository.save(library).getId();
     createdLibraryIds.add(id);
     return id;

@@ -317,7 +317,7 @@ class PromptInChatIntegrationTest {
 
   private UUID libraryOf(UUID person, String name) {
     return libraryService
-        .create(new PromptLibraryCreation(name, null, null, null, null), callerOf(person))
+        .create(new PromptLibraryCreation(name, null, null, null), callerOf(person))
         .library()
         .getId();
   }

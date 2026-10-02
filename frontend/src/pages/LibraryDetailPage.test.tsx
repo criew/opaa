@@ -255,7 +255,6 @@ const managerLibrary: LibraryListResponse = {
   description: 'SGB II, SGB XII',
   ownerType: 'GROUP',
   reach: { allAccounts: false, groupCount: 0, userCount: 1 },
-  listed: true,
   myRole: 'MANAGER',
   sourceType: 'UPLOAD',
   documentCount: 431,
@@ -269,7 +268,6 @@ const viewerLibrary: LibraryListResponse = {
   description: 'Organisationsweit',
   ownerType: 'GROUP',
   reach: { allAccounts: true, groupCount: 0, userCount: 1 },
-  listed: true,
   myRole: 'VIEWER',
   sourceType: 'UPLOAD',
   documentCount: 87,
@@ -283,7 +281,6 @@ const personalLibrary: LibraryListResponse = {
   description: 'Private Dokumente',
   ownerType: 'USER',
   reach: { allAccounts: false, groupCount: 0, userCount: 1 },
-  listed: false,
   myRole: 'OWNER',
   sourceType: 'UPLOAD',
   documentCount: 12,
@@ -600,28 +597,6 @@ describe('LibraryDetailPage', () => {
       expect(mockUpdateLibrary).toHaveBeenCalledWith('library-team', {
         name: 'Rechtsquellen Soziales (neu)',
         description: 'Aktualisierte Beschreibung',
-        listed: true,
-        sourceInsecureSsl: null,
-      } satisfies LibraryUpdateRequest)
-    })
-  }, 15000)
-
-  // Die Auffindbarkeit ist ein eigener Abschnitt mit eigenem Knopf (#1941) und speichert mit den
-  // gespeicherten Stammdaten, nicht mit einem Entwurf daneben.
-  it('saves the findability from its own section', async () => {
-    setLibraryState(managerLibrary, detailsOf(managerLibrary))
-    renderWithProviders(<LibraryDetailPage />, { withRouter: true })
-    const user = userEvent.setup()
-
-    await user.click(await screen.findByRole('tab', { name: 'Freigaben' }))
-    await user.click(await screen.findByLabelText('Im Katalog auffindbar, auch ohne Berechtigung'))
-    await user.click(screen.getByRole('button', { name: 'Auffindbarkeit speichern' }))
-
-    await waitFor(() => {
-      expect(mockUpdateLibrary).toHaveBeenCalledWith('library-team', {
-        name: 'Rechtsquellen Soziales',
-        description: 'SGB II, SGB XII',
-        listed: false,
         sourceInsecureSsl: null,
       } satisfies LibraryUpdateRequest)
     })
@@ -776,7 +751,7 @@ describe('LibraryDetailPage', () => {
       const adminBypassLibrary = { ...managerLibrary, myRole: 'OWNER' as const }
       setLibraryState(
         adminBypassLibrary,
-        detailsOf(adminBypassLibrary, { allAccountsGrantAllowed: true, listedCap: true }),
+        detailsOf(adminBypassLibrary, { allAccountsGrantAllowed: true }),
       )
       renderWithProviders(<LibraryDetailPage />, { withRouter: true })
 
@@ -794,7 +769,6 @@ describe('LibraryDetailPage', () => {
           sourceType: 'FILESYSTEM',
           sourcePath: '/data/dokumente',
           allAccountsGrantAllowed: true,
-          listedCap: true,
         }),
       )
       renderWithProviders(<LibraryDetailPage />, { withRouter: true })
@@ -814,30 +788,23 @@ describe('LibraryDetailPage', () => {
           sourceType: 'FILESYSTEM',
           sourcePath: '/data/dokumente',
           reach: { allAccounts: true, groupCount: 0, userCount: 1 },
-          listed: true,
           allAccountsGrantAllowed: true,
-          listedCap: true,
         }),
       )
       // #1870 review, "hält eine Bedingung, die vor wie nach dem Speichern gilt": the button is
       // disabled whether or not a PUT ever went out, so the request itself is captured and
       // asserted on, not just the button state afterwards.
-      let putRequestBody: { allAccountsGrantAllowed: boolean; listedCap: boolean } | null = null
+      let putRequestBody: { allAccountsGrantAllowed: boolean } | null = null
       server.use(
         http.put('/api/v1/libraries/:libraryId/share-cap', async ({ params, request }) => {
-          putRequestBody = (await request.json()) as {
-            allAccountsGrantAllowed: boolean
-            listedCap: boolean
-          }
+          putRequestBody = (await request.json()) as { allAccountsGrantAllowed: boolean }
           return HttpResponse.json({
             ...detailsOf(adminBypassLibrary, {
               sourceType: 'FILESYSTEM',
               sourcePath: '/data/dokumente',
             }),
             id: String(params.libraryId),
-            listed: putRequestBody.listedCap,
             allAccountsGrantAllowed: putRequestBody.allAccountsGrantAllowed,
-            listedCap: putRequestBody.listedCap,
           })
         }),
       )
@@ -845,150 +812,16 @@ describe('LibraryDetailPage', () => {
       renderWithProviders(<LibraryDetailPage />, { withRouter: true })
 
       await user.click(await screen.findByRole('tab', { name: 'Freigaben' }))
-      await user.click(await screen.findByLabelText('Auffindbarkeit im Katalog erlaubt'))
+      await user.click(await screen.findByLabelText('Freigabe an Alle erlaubt'))
       await user.click(
         await screen.findByRole('button', {
-          name: 'Obergrenze „Auffindbarkeit im Katalog erlaubt“ speichern',
+          name: 'Obergrenze „Freigabe an Alle erlaubt“ speichern',
         }),
       )
 
       await waitFor(() => {
-        expect(putRequestBody).toEqual({ allAccountsGrantAllowed: true, listedCap: false })
+        expect(putRequestBody).toEqual({ allAccountsGrantAllowed: false })
       })
-      // the response replaces the cached detail - the owner-facing checkbox below reflects it
-      expect(
-        await screen.findByLabelText('Im Katalog auffindbar, auch ohne Berechtigung'),
-      ).toBeDisabled()
-    })
-
-    // #1941: Die beiden Hälften stehen in verschiedenen Abschnitten und speichern einzeln. Eine
-    // abgewiesene Hälfte darf die andere weder sperren noch mit einer Meldung behängen, die ihr
-    // nicht gilt.
-    it('keeps a refused half from spilling its error onto the other', async () => {
-      setSystemAdmin()
-      const adminBypassLibrary = { ...managerLibrary, myRole: 'OWNER' as const }
-      setLibraryState(
-        adminBypassLibrary,
-        detailsOf(adminBypassLibrary, {
-          sourceType: 'FILESYSTEM',
-          sourcePath: '/data/dokumente',
-          allAccountsGrantAllowed: true,
-          listedCap: true,
-        }),
-      )
-      server.use(
-        http.put('/api/v1/libraries/:libraryId/share-cap', () =>
-          HttpResponse.json({ error: 'Obergrenze abgelehnt' }, { status: 409 }),
-        ),
-      )
-      const user = userEvent.setup()
-      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
-
-      await user.click(await screen.findByRole('tab', { name: 'Freigaben' }))
-      await user.click(await screen.findByLabelText('Freigabe an Alle erlaubt'))
-      await user.click(
-        screen.getByRole('button', { name: 'Obergrenze „Freigabe an Alle erlaubt“ speichern' }),
-      )
-
-      expect(await screen.findByText('Obergrenze abgelehnt')).toBeInTheDocument()
-      // Genau eine Meldung, und der Knopf der anderen Hälfte ist weder gesperrt noch beschriftet
-      // wie ein laufender Speichervorgang.
-      expect(screen.getAllByText('Obergrenze abgelehnt')).toHaveLength(1)
-      const other = screen.getByRole('button', {
-        name: 'Obergrenze „Auffindbarkeit im Katalog erlaubt“ speichern',
-      })
-      expect(other).toHaveTextContent('Obergrenze speichern')
-    }, 15000)
-
-    it('locks the findability under a lowered cap and explains why', async () => {
-      const ownerLibrary = { ...managerLibrary, myRole: 'OWNER' as const }
-      setLibraryState(
-        ownerLibrary,
-        detailsOf(ownerLibrary, {
-          sourceType: 'FILESYSTEM',
-          sourcePath: '/data/dokumente',
-          reach: { allAccounts: false, groupCount: 0, userCount: 1 },
-          listed: false,
-          allAccountsGrantAllowed: false,
-          listedCap: false,
-        }),
-      )
-      const user = userEvent.setup()
-      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
-
-      await user.click(await screen.findByRole('tab', { name: 'Freigaben' }))
-      expect(
-        await screen.findByText(
-          'Die Systemverwaltung hat die Auffindbarkeit dieser Bibliothek im' + ' Katalog gesperrt.',
-        ),
-      ).toBeInTheDocument()
-      expect(screen.getByLabelText('Im Katalog auffindbar, auch ohne Berechtigung')).toBeDisabled()
-    })
-
-    it('shows the backend 409 message in German when an already-listed library is re-saved above the cap', async () => {
-      // #1870 review: with the checkbox locked, a caller cannot set it through the form - this
-      // covers the remaining path, a value that was already above the cap before this page loaded
-      // (the cap tightened elsewhere) and is resubmitted unchanged with the master data.
-      const ownerLibrary = { ...managerLibrary, myRole: 'OWNER' as const }
-      setLibraryState(
-        ownerLibrary,
-        detailsOf(ownerLibrary, {
-          sourceType: 'FILESYSTEM',
-          sourcePath: '/data/dokumente',
-          reach: { allAccounts: false, groupCount: 0, userCount: 1 },
-          listed: true,
-          allAccountsGrantAllowed: false,
-          listedCap: false,
-        }),
-      )
-      mockUpdateLibrary.mockRejectedValueOnce(
-        new Error('Diese Bibliothek darf laut Systemverwaltung nicht im Katalog gelistet werden.'),
-      )
-      const user = userEvent.setup()
-      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
-
-      // Seit #1939 ist der Kopf der eine Weg, der die gespeicherte Reichweite unveraendert
-      // mitschickt - der Freigabeabschnitt selbst speichert nur eine geaenderte.
-      await user.click(await screen.findByRole('button', { name: /name und beschreibung/i }))
-      await user.click(await screen.findByRole('button', { name: /^speichern$/i }))
-
-      expect(
-        await screen.findByText(/laut Systemverwaltung nicht im Katalog gelistet/),
-      ).toBeInTheDocument()
-    })
-
-    // ADR-0036, Entscheidung 6: Die eingefrorene Reichweite ist eine erklärte Grenze - die
-    // Ablehnung nennt neben dem Grund den Ausgang, die Übernahme.
-    it('names the takeover when an open succession freezes the reach', async () => {
-      setLibraryState(managerLibrary, detailsOf(managerLibrary))
-      const refusal = new Error(
-        'Für dieses Objekt ist die Nachfolge offen: eine größere Reichweite (Sichtbarkeit oder' +
-          ' Auffindbarkeit) ist deshalb nicht möglich. Bestehende Rechte bleiben unverändert, und' +
-          ' nichts wird gelöscht. Zuständig: die Systemverwaltung',
-      )
-      // Ein echter AxiosError als Ursache: `apiErrorCode` liest den Code nur aus ihm.
-      const axiosError = new AxiosError('Request failed')
-      axiosError.response = {
-        status: 409,
-        statusText: 'Conflict',
-        headers: {},
-        config: { headers: {} } as never,
-        data: { error: refusal.message, code: 'SUCCESSION_OPEN' },
-      }
-      Object.defineProperty(refusal, 'cause', { value: axiosError })
-      mockUpdateLibrary.mockRejectedValueOnce(refusal)
-      const user = userEvent.setup()
-      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
-
-      await user.click(await screen.findByRole('tab', { name: 'Freigaben' }))
-      // Nur eine Erweiterung läuft in die Sperre: auffindbar schalten, dann speichern.
-      await user.click(
-        await screen.findByLabelText('Im Katalog auffindbar, auch ohne Berechtigung'),
-      )
-      await user.click(screen.getByRole('button', { name: 'Auffindbarkeit speichern' }))
-
-      expect(await screen.findByText(/Nachfolge offen/)).toBeInTheDocument()
-      expect(screen.getByText(/Übernahme/)).toBeInTheDocument()
     })
   })
 
@@ -1591,7 +1424,6 @@ describe('LibraryDetailPage', () => {
       expect(mockUpdateLibrary).toHaveBeenCalledWith('library-team', {
         name: ownerLibrary.name,
         description: ownerLibrary.description,
-        listed: ownerLibrary.listed,
         sourcePath: '/data/umgezogen',
         sourceUrl: undefined,
         sourceProxy: undefined,
@@ -1661,7 +1493,6 @@ describe('LibraryDetailPage', () => {
       expect(mockUpdateLibrary).toHaveBeenCalledWith('library-team', {
         name: ownerLibrary.name,
         description: ownerLibrary.description,
-        listed: ownerLibrary.listed,
         sourceInsecureSsl: null,
         schedule: {
           frequency: 'HOURLY',

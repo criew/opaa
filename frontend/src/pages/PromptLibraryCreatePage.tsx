@@ -27,7 +27,7 @@ const STEP_TITLES = ['Stammdaten', 'Wem gehört die Prompt-Bibliothek?', 'Rechte
 /**
  * The creation wizard of a prompt library: master data, owner (person or group), rights. The
  * steps are the knowledge library wizard's own components; only the origin step is left out,
- * since a prompt library has no source. `listed` starts off - listing is a deliberate act.
+ * since a prompt library has no source.
  */
 export default function PromptLibraryCreatePage() {
   const navigate = useNavigate()
@@ -42,7 +42,6 @@ export default function PromptLibraryCreatePage() {
   const [description, setDescription] = useState('')
   const [ownerType, setOwnerType] = useState<AssetOwnerType>('USER')
   const [selectedGroup, setSelectedGroup] = useState<GroupListResponse | null>(null)
-  const [listed, setListed] = useState(false)
   const [pendingGrants, setPendingGrants] = useState<PendingGrant[]>([])
 
   const missingCapability = isMissing('CREATE_PROMPT_LIBRARY')
@@ -81,7 +80,6 @@ export default function PromptLibraryCreatePage() {
         description: description.trim() || null,
         ownerType,
         ownerId: ownerType === 'GROUP' ? (selectedGroup?.id ?? null) : null,
-        listed,
       })
       await applyPendingGrantsAfterCreation('PROMPT_LIBRARY', id, pendingGrants)
       navigate(promptLibraryRoute(id))
@@ -147,7 +145,6 @@ export default function PromptLibraryCreatePage() {
           {activeStep === 2 && (
             <AssetRightsFields
               idPrefix="prompt-library-create"
-              listed={{ value: listed, onChange: setListed }}
               pendingGrants={pendingGrants}
               onPendingGrantsChange={setPendingGrants}
             />

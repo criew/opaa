@@ -44,7 +44,6 @@ final class LibraryResponseMapper {
         request.getDescription(),
         request.getOwnerType(),
         request.getOwnerId(),
-        request.getListed(),
         toSourceType(request.getSourceType()),
         request.getSourcePath(),
         request.getSourceUrl(),
@@ -59,7 +58,6 @@ final class LibraryResponseMapper {
     return new LibraryUpdate(
         request.getName(),
         request.getDescription(),
-        request.getListed(),
         toSourceType(request.getSourceType()),
         request.getSourcePath(),
         request.getSourceUrl(),
@@ -112,7 +110,6 @@ final class LibraryResponseMapper {
                 library.getOwnerType(),
                 library.getOwnerId(),
                 toReachResponse(detail.reach()),
-                library.isListed(),
                 detail.myRole(),
                 library.getSourceType().key(),
                 library.getCreatedAt(),
@@ -138,8 +135,7 @@ final class LibraryResponseMapper {
             managementDetail.externalAccess() == null
                 ? null
                 : LibraryExternalAccessResponseMapper.toResponse(managementDetail.externalAccess()))
-        .allAccountsGrantAllowed(managementDetail.allAccountsGrantAllowed())
-        .listedCap(managementDetail.listedCap());
+        .allAccountsGrantAllowed(managementDetail.allAccountsGrantAllowed());
     // a manager sees the connector's whole settings, every other reader what the connector shows
     ConnectorData settings =
         managementDetail.connectorSettings() != null
@@ -170,7 +166,6 @@ final class LibraryResponseMapper {
             library.getName(),
             library.getOwnerType(),
             toReachResponse(summary.reach()),
-            library.isListed(),
             summary.myRole(),
             library.getSourceType().key(),
             summary.documentCount(),

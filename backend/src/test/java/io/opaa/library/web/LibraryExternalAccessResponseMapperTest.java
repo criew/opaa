@@ -67,7 +67,7 @@ class LibraryExternalAccessResponseMapperTest {
   void toListResponseNamesTheLibraryBesideItsRelease() {
     KnowledgeLibrary library =
         KnowledgeLibrary.ownedByUser(
-            UUID.randomUUID(), "Baugenehmigungen 2024", null, UUID.randomUUID(), false);
+            UUID.randomUUID(), "Baugenehmigungen 2024", null, UUID.randomUUID());
     LibraryExternalAccess access =
         new LibraryExternalAccess(
             library.getId(),

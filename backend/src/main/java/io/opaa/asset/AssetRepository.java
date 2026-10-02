@@ -60,7 +60,7 @@ public interface AssetRepository extends JpaRepository<Asset, UUID> {
 
   /**
    * The catalog in one query over every type: the assets of {@code assetTypes} in the organization
-   * that are listed or among {@code readableIds}, whose name or description matches {@code pattern}
+   * that are among {@code readableIds}, whose name or description matches {@code pattern}
    * case-insensitively (a {@code LIKE} pattern escaped with a backslash), ordered by name.
    */
   @Query(
@@ -68,7 +68,7 @@ public interface AssetRepository extends JpaRepository<Asset, UUID> {
           "select a.id as id, a.assetType as assetType, a.name as name,"
               + " a.description as description, a.ownerType as ownerType,"
               + " a.ownerUserId as ownerUserId, a.ownerGroupId as ownerGroupId,"
-              + " a.origin as origin, a.listed as listed"
+              + " a.origin as origin"
               + CATALOG_CONDITION
               + " order by lower(a.name), a.id",
       countQuery = "select count(a)" + CATALOG_CONDITION)
@@ -99,7 +99,7 @@ public interface AssetRepository extends JpaRepository<Asset, UUID> {
   String CATALOG_CONDITION =
       " from Asset a where a.organizationId = :organizationId"
           + " and a.assetType in :assetTypes"
-          + " and (a.listed = true or a.id in :readableIds)"
+          + " and a.id in :readableIds"
           + " and (lower(a.name) like lower(:pattern) escape '\\'"
           + " or lower(coalesce(a.description, '')) like lower(:pattern) escape '\\')";
 

@@ -1,7 +1,6 @@
 package io.opaa.asset;
 
 import io.opaa.api.types.AssetGrantSubjectType;
-import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.AuditOutcome;
 import io.opaa.api.types.AuditSubjectKind;
 import io.opaa.audit.AuditEvent;
@@ -69,10 +68,7 @@ class AssetAuditListener {
         AuditEvent.builder()
             .organizationId(asset.getOrganizationId())
             .actor(event.actorUserId())
-            .type(
-                event.cause() == AssetChanged.Cause.CREATED
-                    ? definition.createdAuditEventType()
-                    : AuditEventType.ASSET_VISIBILITY_CHANGED)
+            .type(definition.createdAuditEventType())
             .object(definition.auditObjectType(), asset.getId(), asset.getName())
             .before(event.auditBefore())
             .after(event.auditAfter())

@@ -45,7 +45,6 @@ import io.opaa.permission.CapabilityService;
 import io.opaa.permission.GroupMembershipResolver;
 import io.opaa.permission.GroupSubjectDirectory;
 import io.opaa.permission.PermissionHistoryService;
-import io.opaa.permission.SuccessionReachGuard;
 import io.opaa.test.SourceTypes;
 import java.time.Clock;
 import java.util.List;
@@ -150,8 +149,7 @@ class KnowledgeLibraryServiceConnectorDeleteOrderTest {
                 permissionHistoryService,
                 visibilityHistoryService,
                 auditEventRecorder,
-                eventPublisher,
-                mock(SuccessionReachGuard.class)),
+                eventPublisher),
             accessService,
             auditEventRecorder,
             vectorChunkStore,
@@ -186,7 +184,6 @@ class KnowledgeLibraryServiceConnectorDeleteOrderTest {
             "Konnektor-Bibliothek",
             null,
             ownerId,
-            false,
             SourceTypes.FILESYSTEM,
             "/tmp/does-not-matter",
             null,

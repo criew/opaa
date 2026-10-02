@@ -24,8 +24,6 @@ function entry(name: string, overrides: Partial<CatalogEntryResponse> = {}): Cat
     ownerType: 'USER',
     ownerLabel: 'Dana Beispiel',
     origin: 'LOCAL',
-    accessible: true,
-    listed: true,
     itemCount: 3,
     spaceCount: 1,
     succession: null,
@@ -46,7 +44,7 @@ describe('CatalogPage (#1904)', () => {
     server.events.removeListener('request:start', recordCatalogRequests)
   })
 
-  it('mixes both asset types and links the accessible entries to their own pages', async () => {
+  it('mixes both asset types and links every entry to its own page', async () => {
     renderWithProviders(<CatalogPage />, { withRouter: true })
 
     expect(screen.getByRole('heading', { level: 1, name: 'Katalog' })).toBeInTheDocument()
@@ -59,20 +57,30 @@ describe('CatalogPage (#1904)', () => {
     expect(within(prompts).getByText('zuständig: Referat 50')).toBeInTheDocument()
   })
 
-  it('shows a listed entry without access with its responsible party, but not as a link', async () => {
+  it('names the addressee of an open succession as the one to turn to', async () => {
+    server.use(
+      http.get('/api/v1/catalog', () =>
+        HttpResponse.json({
+          entries: [
+            entry('Bescheidbausteine Ordnungsamt', {
+              ownerLabel: null,
+              succession: {
+                addressee: 'SYSTEM_ADMINISTRATION',
+                addresseeLabel: 'die Systemverwaltung',
+              },
+            }),
+          ],
+          page: 0,
+          size: 50,
+          totalElements: 1,
+          totalPages: 1,
+        }),
+      ),
+    )
     renderWithProviders(<CatalogPage />, { withRouter: true })
 
-    const listed = await screen.findByRole('article', { name: 'Satzungen der Kämmerei' })
-    expect(
-      within(listed).getByText('Auffindbar ohne Berechtigung — zuständig: Kämmerei'),
-    ).toBeInTheDocument()
-    expect(within(listed).getByText('38 Dokumente · in 2 Spaces')).toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: /Satzungen der Kämmerei/ })).not.toBeInTheDocument()
-    // While the succession is open, its addressee is the one to turn to.
-    const orphaned = screen.getByRole('article', { name: 'Bescheidbausteine Ordnungsamt' })
-    expect(
-      within(orphaned).getByText('Auffindbar ohne Berechtigung — zuständig: die Systemverwaltung'),
-    ).toBeInTheDocument()
+    const orphaned = await screen.findByRole('link', { name: /Bescheidbausteine Ordnungsamt/ })
+    expect(within(orphaned).getByText('zuständig: die Systemverwaltung')).toBeInTheDocument()
   })
 
   it('filters by type on the server', async () => {
@@ -88,9 +96,6 @@ describe('CatalogPage (#1904)', () => {
       ).not.toBeInTheDocument(),
     )
     expect(screen.getByRole('link', { name: /Formulierungshilfen Referat 50/ })).toBeInTheDocument()
-    expect(
-      screen.getByRole('article', { name: 'Bescheidbausteine Ordnungsamt' }),
-    ).toBeInTheDocument()
     expect(requestedUrls.at(-1)?.searchParams.get('type')).toBe('PROMPT_LIBRARY')
   })
 
@@ -99,17 +104,15 @@ describe('CatalogPage (#1904)', () => {
     renderWithProviders(<CatalogPage />, { withRouter: true })
     await screen.findByRole('link', { name: /Rechtsquellen Soziales/ })
 
-    await user.type(screen.getByRole('textbox', { name: 'Suchen' }), 'gebühren')
+    await user.type(screen.getByRole('textbox', { name: 'Suchen' }), 'phoenix')
 
-    expect(
-      await screen.findByRole('article', { name: 'Satzungen der Kämmerei' }),
-    ).toBeInTheDocument()
+    expect(await screen.findByRole('link', { name: /Projektakte Phoenix/ })).toBeInTheDocument()
     await waitFor(() =>
       expect(
         screen.queryByRole('link', { name: /Rechtsquellen Soziales/ }),
       ).not.toBeInTheDocument(),
     )
-    expect(requestedUrls.at(-1)?.searchParams.get('q')).toBe('gebühren')
+    expect(requestedUrls.at(-1)?.searchParams.get('q')).toBe('phoenix')
     expect(screen.getByText('1 Eintrag')).toBeInTheDocument()
 
     await user.clear(screen.getByRole('textbox', { name: 'Suchen' }))
@@ -154,14 +157,12 @@ describe('CatalogPage (#1904)', () => {
 
     await user.click(screen.getByRole('button', { name: 'Tabelle' }))
 
-    const row = screen.getByRole('row', { name: /Satzungen der Kämmerei/ })
-    expect(within(row).getByText('Wissensbibliothek')).toBeInTheDocument()
-    expect(within(row).getByText('Kämmerei')).toBeInTheDocument()
+    const row = screen.getByRole('row', { name: /Formulierungshilfen Referat 50/ })
+    expect(within(row).getByText('Prompt-Bibliothek')).toBeInTheDocument()
+    expect(within(row).getByText('Referat 50')).toBeInTheDocument()
     expect(within(row).getByText('lokal angelegt')).toBeInTheDocument()
-    expect(within(row).getByText('38 Dokumente')).toBeInTheDocument()
     expect(
-      within(row).getByText('Auffindbar ohne Berechtigung — zuständig: Kämmerei'),
-    ).toBeInTheDocument()
-    expect(within(row).queryByRole('link')).not.toBeInTheDocument()
+      within(row).getByRole('link', { name: 'Formulierungshilfen Referat 50' }),
+    ).toHaveAttribute('href', '/prompts/prompt-library-referat-50')
   })
 })

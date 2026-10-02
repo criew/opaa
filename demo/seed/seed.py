@@ -227,9 +227,6 @@ def ensure_library(admin_client: Client, library_def: LibraryDef) -> str:
         # No grant to "Alle Konten" on any knowledge library of the demo (#1931,
         # docs/features/spaces-and-assets.md): such a grant reaches every account regardless of the
         # demo's own VIEWER matrix (Thomas must not read the internal Meldewesen instructions).
-        # "listed" still surfaces the library in the marketplace for everyone
-        # (auffindbar-ohne-Zugriff, same doc section) without granting read access.
-        "listed": True,
     }
     if library_def.source_url:
         body["sourceUrl"] = library_def.source_url
@@ -556,7 +553,6 @@ def ensure_prompt_library(
         json={
             "name": library_def.name,
             "description": library_def.description,
-            "listed": library_def.listed,
         },
         expected=(201,),
     )

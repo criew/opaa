@@ -99,7 +99,6 @@ class MetadataBackfillServiceIntegrationTest {
                 "Altbestand",
                 null,
                 userId,
-                false,
                 SourceTypes.FILESYSTEM,
                 classTempDir.toString(),
                 null,

@@ -54,19 +54,9 @@ class KnowledgeLibraryAssetType implements AssetTypeDefinition {
     return "Bibliotheken";
   }
 
-  @Override
-  public void requireListedWithinLimits(Asset asset, boolean listed) {
-    KnowledgeLibrary library = cappedLibrary(asset);
-    if (library != null && listed && !library.isListedCap()) {
-      throw new ConflictException(
-          "Diese Bibliothek darf laut Systemverwaltung nicht im Katalog gelistet werden.");
-    }
-  }
-
   /**
-   * The half of the cap that moved to the grant path with #1931: organization-wide reach is a grant
-   * to "Alle Konten", so the ceiling has to be asked where that grant is written and not where a
-   * reach field used to be set.
+   * Organization-wide reach is a grant to "Alle Konten" (#1931), so the ceiling is asked where that
+   * grant is written.
    */
   @Override
   public void requireAllAccountsGrantAllowed(Asset asset) {

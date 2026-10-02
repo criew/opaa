@@ -92,7 +92,6 @@ class StaleDocumentCleanupIntegrationTest {
                 "Zielbibliothek",
                 null,
                 userId,
-                false,
                 SourceTypes.FILESYSTEM,
                 classTempDir.toAbsolutePath().toString(),
                 null,

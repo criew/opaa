@@ -13,8 +13,6 @@ public interface AssetCatalogRow extends OwnedAsset {
 
   AssetOrigin getOrigin();
 
-  boolean isListed();
-
   @Override
   default UUID getOwnerId() {
     return getOwnerGroupId() != null ? getOwnerGroupId() : getOwnerUserId();

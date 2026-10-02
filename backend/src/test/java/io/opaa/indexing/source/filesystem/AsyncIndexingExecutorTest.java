@@ -101,7 +101,6 @@ class AsyncIndexingExecutorTest {
             "Bibliothek",
             null,
             UUID.randomUUID(),
-            false,
             SourceTypes.FILESYSTEM,
             documentDir.toAbsolutePath().toString(),
             null,
