@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.jayway.jsonpath.JsonPath;
@@ -186,6 +187,31 @@ class AssetFavoriteControllerIntegrationTest {
         .andExpect(status().isNoContent());
 
     assertThat(favoriteRows(library, admin)).isEqualTo(1);
+  }
+
+  /** The catalog carries the caller's own mark and selects by it with {@code favorites=true}. */
+  @Test
+  void theCatalogShowsAndFiltersTheCallersFavorites() throws Exception {
+    String marked = createLibrary(devAdmin());
+    createLibrary(devAdmin());
+    mockMvc.perform(mark(marked, devAdmin())).andExpect(status().isNoContent());
+
+    mockMvc
+        .perform(get("/api/v1/catalog?q=Favoriten%20Test&favorites=true").with(devAdmin()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.totalElements").value(1))
+        .andExpect(jsonPath("$.entries[0].assetId").value(marked))
+        .andExpect(jsonPath("$.entries[0].favorite").value(true));
+    mockMvc
+        .perform(get("/api/v1/catalog?q=Favoriten%20Test").with(devAdmin()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.totalElements").value(2))
+        .andExpect(jsonPath("$.entries[0].assetId").value(marked))
+        .andExpect(jsonPath("$.entries[1].favorite").value(false));
+    mockMvc
+        .perform(get("/api/v1/catalog?q=Favoriten%20Test&favorites=true").with(devUser()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.totalElements").value(0));
   }
 
   /** A favorite is personal order, not an act: no protocol entry and no history (ADR-0039). */

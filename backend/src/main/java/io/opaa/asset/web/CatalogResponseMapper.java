@@ -50,7 +50,8 @@ final class CatalogResponseMapper {
                 entry.status(),
                 asset.getUpdatedAt(),
                 entry.itemCount(),
-                entry.spaceCount())
+                entry.spaceCount(),
+                entry.favorite())
             .description(asset.getDescription())
             .ownerLabel(entry.ownerLabel())
             .succession(SuccessionStateResponseMapper.toStateResponse(entry.succession()));

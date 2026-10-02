@@ -12,16 +12,28 @@ import java.util.Objects;
  *     or {@code null} matches everything.
  * @param visibility only this visibility, or both when {@code null}.
  * @param fromMyGroups only assets granted to or owned by a group the caller belongs to.
+ * @param favoritesOnly only the caller's own favorites.
  */
 public record AssetCatalogQuery(
     AssetType assetType,
     String text,
     CatalogVisibility visibility,
     boolean fromMyGroups,
-    AssetCatalogSort sort) {
+    AssetCatalogSort sort,
+    boolean favoritesOnly) {
 
   public AssetCatalogQuery {
     Objects.requireNonNull(sort, "sort");
+  }
+
+  /** Without the favorites filter. */
+  public AssetCatalogQuery(
+      AssetType assetType,
+      String text,
+      CatalogVisibility visibility,
+      boolean fromMyGroups,
+      AssetCatalogSort sort) {
+    this(assetType, text, visibility, fromMyGroups, sort, false);
   }
 
   /** Every readable asset of {@code assetType} matching {@code text}, ordered by name. */
