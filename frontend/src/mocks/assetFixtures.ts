@@ -7,13 +7,13 @@ import type { AssetGrantResponse, SpaceAssetAssociationListResponse } from '../t
 const INITIAL_SPACE_ASSET_ASSOCIATIONS: Record<string, SpaceAssetAssociationListResponse> = {
   'space-phoenix': {
     hasAssociations: true,
+    hasUnreadableAssociations: false,
     narrowsSearch: true,
     items: [
       {
         assetType: 'KNOWLEDGE_LIBRARY',
         assetId: 'library-referat-50',
         name: 'Rechtsquellen Soziales',
-        readableByCaller: true,
         createdByUserId: 'owner-2',
         createdAt: '2026-03-01T10:00:00Z',
       },

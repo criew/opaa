@@ -26,6 +26,7 @@ import {
 import PageHeading from '../components/a11y/PageHeading'
 import PageSection from '../components/PageSection'
 import AreaTabs from '../components/AreaTabs'
+import UseInSpaceButton from '../components/assets/UseInSpaceButton'
 import MetaBadge from '../components/MetaBadge'
 import FieldLabel from '../components/wizard/FieldLabel'
 import SuccessionStateNote from '../components/succession/SuccessionStateNote'
@@ -401,6 +402,12 @@ export default function PromptLibraryDetailPage() {
           >
             <PageHeading title={library.name} />
             <MetaBadge accent>{assetRoleLabel(library.myRole)}</MetaBadge>
+            <UseInSpaceButton
+              assetType="PROMPT_LIBRARY"
+              assetId={library.id}
+              name={library.name}
+              size="small"
+            />
           </Stack>
           {library.description && (
             <Typography sx={{ fontSize: 13.5, color: 'text.secondary', maxWidth: 640 }}>

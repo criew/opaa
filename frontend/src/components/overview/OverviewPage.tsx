@@ -244,12 +244,25 @@ export default function OverviewPage<T>({
  * The card shell of an overview: a real link (new tab, middle click, history) with the quiet
  * border and hover lift of mockup 1c. Motion stays on transform only (guidelines 4.5).
  */
-export function OverviewCard({ to, children }: { to: string; children: ReactNode }) {
-  return (
+/**
+ * A card that is one link. An `action` stands beside the link, at the card's foot, never inside
+ * it - a control nested in a link is neither reachable nor announced on its own.
+ */
+export function OverviewCard({
+  to,
+  children,
+  action,
+}: {
+  to: string
+  children: ReactNode
+  action?: ReactNode
+}) {
+  const card = (
     <ButtonBase
       component={RouterLink}
       to={to}
       sx={{
+        ...(action ? { width: '100%', pb: 7 } : {}),
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'stretch',
@@ -272,5 +285,12 @@ export function OverviewCard({ to, children }: { to: string; children: ReactNode
     >
       {children}
     </ButtonBase>
+  )
+  if (!action) return card
+  return (
+    <Box sx={{ position: 'relative', display: 'flex' }}>
+      {card}
+      <Box sx={{ position: 'absolute', left: 20, bottom: 16 }}>{action}</Box>
+    </Box>
   )
 }

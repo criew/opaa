@@ -130,7 +130,7 @@ describe('api service', () => {
       })
     })
 
-    it('sends libraryIds when provided (#686)', async () => {
+    it('sends the chosen assets of every type when provided', async () => {
       let capturedBody: unknown = null
       server.use(
         http.post('/api/v1/spaces', async ({ request }) => {
@@ -150,9 +150,13 @@ describe('api service', () => {
         }),
       )
 
-      await createSpace('New Space', 'A description', 'PRIVATE', ['lib-1', 'lib-2'])
+      const assets = [
+        { assetType: 'KNOWLEDGE_LIBRARY' as const, assetId: 'lib-1' },
+        { assetType: 'PROMPT_LIBRARY' as const, assetId: 'prompts-1' },
+      ]
+      await createSpace('New Space', 'A description', 'PRIVATE', assets)
 
-      expect(capturedBody).toMatchObject({ libraryIds: ['lib-1', 'lib-2'] })
+      expect(capturedBody).toMatchObject({ assets })
     })
   })
 

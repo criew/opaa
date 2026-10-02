@@ -16,6 +16,7 @@ import {
   type AssetTypeDefinition,
 } from '../components/assets/assetTypeRegistry'
 import OverviewPage, { OverviewCard } from '../components/overview/OverviewPage'
+import UseInSpaceButton from '../components/assets/UseInSpaceButton'
 import SuccessionStateNote from '../components/succession/SuccessionStateNote'
 import { CATALOG_NEW_ROUTE } from '../routes'
 
@@ -74,7 +75,17 @@ function CatalogCard({
   definition: AssetTypeDefinition
 }) {
   return (
-    <OverviewCard to={definition.detailRoute(entry.assetId)}>
+    <OverviewCard
+      to={definition.detailRoute(entry.assetId)}
+      action={
+        <UseInSpaceButton
+          assetType={entry.assetType}
+          assetId={entry.assetId}
+          name={entry.name}
+          size="small"
+        />
+      }
+    >
       <TypeBadge definition={definition} />
       <Typography component="span" sx={{ fontSize: 16.5, fontWeight: 600 }}>
         {entry.name}

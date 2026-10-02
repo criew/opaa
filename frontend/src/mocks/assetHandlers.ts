@@ -69,6 +69,7 @@ export const assetHandlers = [
     }
     const associations = mockSpaceAssetAssociations[spaceId] ?? {
       hasAssociations: false,
+      hasUnreadableAssociations: false,
       narrowsSearch: false,
       items: [],
     }
@@ -88,6 +89,7 @@ export const assetHandlers = [
     }
     const current = mockSpaceAssetAssociations[spaceId] ?? {
       hasAssociations: false,
+      hasUnreadableAssociations: false,
       narrowsSearch: false,
       items: [],
     }
@@ -95,13 +97,13 @@ export const assetHandlers = [
       assetType: body.assetType,
       assetId: body.assetId,
       name: asset.name,
-      readableByCaller: true,
       createdByUserId: mockUser.id,
       createdAt: new Date().toISOString(),
     }
     const items = [...current.items.filter((item) => item.assetId !== body.assetId), entry]
     mockSpaceAssetAssociations[spaceId] = {
       hasAssociations: true,
+      hasUnreadableAssociations: false,
       narrowsSearch: items.some((item) => item.assetType === 'KNOWLEDGE_LIBRARY'),
       items,
     }
@@ -115,6 +117,7 @@ export const assetHandlers = [
       const items = current.items.filter((item) => item.assetId !== String(params.assetId))
       mockSpaceAssetAssociations[spaceId] = {
         hasAssociations: items.length > 0,
+        hasUnreadableAssociations: false,
         narrowsSearch: items.some((item) => item.assetType === 'KNOWLEDGE_LIBRARY'),
         items,
       }

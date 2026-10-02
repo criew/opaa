@@ -11,18 +11,15 @@ import Select from '@mui/material/Select'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import DeleteIcon from '@mui/icons-material/Delete'
-import { useNavigate } from 'react-router'
-import { useEffect } from 'react'
-import Checkbox from '@mui/material/Checkbox'
-import List from '@mui/material/List'
-import ListItemButton from '@mui/material/ListItemButton'
-import ListItemIcon from '@mui/material/ListItemIcon'
-import ListItemText from '@mui/material/ListItemText'
+import { useLocation, useNavigate } from 'react-router'
 import PageHeading from '../components/a11y/PageHeading'
+import AssetTilePicker, {
+  type AssetPick,
+  type SpaceCreateLocationState,
+} from '../components/assets/AssetTilePicker'
 import ChatAutoCleanupField from '../components/space/ChatAutoCleanupField'
 import FieldLabel from '../components/wizard/FieldLabel'
 import WizardStepBar from '../components/wizard/WizardStepBar'
-import { getLibraries } from '../services/libraryApi'
 import { confirmAction } from '../stores/confirmStore'
 import { notify } from '../stores/notificationStore'
 import { useSpaceStore } from '../stores/spaceStore'
@@ -35,9 +32,12 @@ import {
   spaceVisibilityDescription,
   spaceVisibilityLabel,
 } from '../utils/labels'
-import type { LibraryListResponse, SpaceRole, SpaceVisibility, UserSummary } from '../types/api'
+import type { SpaceRole, SpaceVisibility, UserSummary } from '../types/api'
 
-const STEPS = ['Grunddaten', 'Mitglieder', 'Datenquellen', 'Zusammenfassung'] as const
+const STEPS = ['Grunddaten', 'Mitglieder', 'Inhalte', 'Zusammenfassung'] as const
+
+export const NO_KNOWLEDGE_SUMMARY =
+  'Kein Wissen zugeordnet — der Space durchsucht kein Wissen, bis Sie etwas zuordnen.'
 
 const MEMBER_ROLES: SpaceRole[] = ['MEMBER', 'CURATOR', 'ADMIN']
 
@@ -47,11 +47,14 @@ interface PendingMember {
 }
 
 /**
- * The space creation wizard (#594, mockup 1b), replacing the former dialog. Grunddaten, Mitglieder,
- * Datenquellen (#203/#686), Zusammenfassung.
+ * The space creation wizard (#594, mockup 1b): Grunddaten, Mitglieder, Inhalte, Zusammenfassung.
+ * "Inhalte" associates assets of every type from the catalog's tile list and may be skipped; the
+ * space and its associations are created in one call.
  */
 export default function SpaceCreatePage() {
   const navigate = useNavigate()
+  const location = useLocation()
+  const preselect = (location.state as SpaceCreateLocationState | null)?.preselect
   const createNewSpace = useSpaceStore((s) => s.createNewSpace)
   const addMember = useSpaceStore((s) => s.addMember)
 
@@ -76,38 +79,17 @@ export default function SpaceCreatePage() {
   // visible and says why it cannot be used. The backend refuses the same call regardless.
   const { isMissing } = useMyCapabilities()
   const mayNotCreate = isMissing('CREATE_SPACE')
-  // #686: only libraries the creator may themselves read are offered - GET /v1/libraries already
-  // returns exactly that set, and the backend re-checks the same rule when the space is created
-  // (SpaceAssetAssociationService#associate).
-  const [availableLibraries, setAvailableLibraries] = useState<LibraryListResponse[]>([])
-  const [selectedLibraryIds, setSelectedLibraryIds] = useState<string[]>([])
-  // #706 review: a failed load must not read as "you have no libraries" - that is a legitimate,
-  // silent state, while a failed request needs its own visible message.
-  const [libraryLoadError, setLibraryLoadError] = useState<string | null>(null)
-
-  useEffect(() => {
-    void getLibraries()
-      .then(setAvailableLibraries)
-      .catch((err) => {
-        setAvailableLibraries([])
-        setLibraryLoadError(
-          err instanceof Error ? err.message : 'Bibliotheken konnten nicht geladen werden.',
-        )
-      })
-  }, [])
-
-  function toggleLibrary(libraryId: string) {
-    setSelectedLibraryIds((prev) =>
-      prev.includes(libraryId) ? prev.filter((id) => id !== libraryId) : [...prev, libraryId],
-    )
-  }
+  // Only what the creator may read is offered; the backend re-checks the same rule on creation.
+  const [selectedAssets, setSelectedAssets] = useState<AssetPick[]>(preselect ? [preselect] : [])
 
   const availableUsers = useMemo(() => {
     const pendingIds = new Set(pendingMembers.map((m) => m.user.id))
     return userResults.filter((u) => !pendingIds.has(u.id))
   }, [userResults, pendingMembers])
 
-  const isDirty = name.trim() !== '' || description.trim() !== '' || pendingMembers.length > 0
+  const isDirty = name.trim() !== '' || description.trim() !== '' ||
+    pendingMembers.length > 0 ||
+    selectedAssets.length > 0
 
   const handleCancel = async () => {
     if (isDirty) {
@@ -129,7 +111,7 @@ export default function SpaceCreatePage() {
         name.trim(),
         description.trim(),
         visibility,
-        selectedLibraryIds,
+        selectedAssets.map(({ assetType, assetId }) => ({ assetType, assetId })),
         chatAutoCleanup,
       )
       const failed: string[] = []
@@ -344,40 +326,15 @@ export default function SpaceCreatePage() {
         {activeStep === 2 && (
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
             <Typography sx={{ fontSize: 13.5, color: 'text.secondary' }}>
-              Wählen Sie die Bibliotheken, die dieser Space durchsuchen soll — nur Bibliotheken, auf
-              die Sie selbst Zugriff haben, stehen zur Auswahl. Die Zuordnung gewährt niemandem
-              zusätzlichen Zugriff und lässt sich später jederzeit in der Space-Verwaltung ändern.
+              Ein Chat in diesem Space nutzt nur, was Sie hier zuordnen. Zur Auswahl steht, was Sie
+              selbst lesen dürfen. Die Zuordnung gewährt niemandem zusätzlichen Zugriff und lässt
+              sich später in den Einstellungen des Space ändern — dieser Schritt ist optional.
             </Typography>
-            {libraryLoadError ? (
-              <Alert severity="error">{libraryLoadError}</Alert>
-            ) : availableLibraries.length === 0 ? (
-              <Typography sx={{ color: 'text.secondary' }}>
-                Sie haben derzeit keinen Zugriff auf eine Bibliothek.
-              </Typography>
-            ) : (
-              <List dense sx={{ border: 1, borderColor: 'divider', borderRadius: '10px', py: 0 }}>
-                {availableLibraries.map((library) => (
-                  <ListItemButton
-                    key={library.id}
-                    onClick={() => toggleLibrary(library.id)}
-                    sx={{ '& + &': { borderTop: 1, borderColor: 'divider' } }}
-                  >
-                    <ListItemIcon sx={{ minWidth: 36 }}>
-                      <Checkbox
-                        edge="start"
-                        checked={selectedLibraryIds.includes(library.id)}
-                        tabIndex={-1}
-                        disableRipple
-                        slotProps={{
-                          input: { 'aria-label': `Bibliothek ${library.name} zuordnen` },
-                        }}
-                      />
-                    </ListItemIcon>
-                    <ListItemText primary={library.name} />
-                  </ListItemButton>
-                ))}
-              </List>
-            )}
+            <AssetTilePicker
+              value={selectedAssets}
+              onChange={setSelectedAssets}
+              aria-label="Inhalte für diesen Space"
+            />
           </Box>
         )}
 
@@ -406,14 +363,11 @@ export default function SpaceCreatePage() {
                         .join(', '),
               },
               {
-                label: 'Datenquellen',
+                label: 'Inhalte',
                 value:
-                  selectedLibraryIds.length === 0
-                    ? 'keine — durchsucht bis auf Weiteres alles Lesbare'
-                    : availableLibraries
-                        .filter((l) => selectedLibraryIds.includes(l.id))
-                        .map((l) => l.name)
-                        .join(', '),
+                  selectedAssets.length === 0
+                    ? 'keine'
+                    : selectedAssets.map((pick) => pick.name).join(', '),
               },
             ].map((row) => (
               <Box key={row.label} sx={{ display: 'flex', gap: 2 }}>
@@ -428,6 +382,9 @@ export default function SpaceCreatePage() {
                 </Typography>
               </Box>
             ))}
+            {!selectedAssets.some((pick) => pick.assetType === 'KNOWLEDGE_LIBRARY') && (
+              <Alert severity="info">{NO_KNOWLEDGE_SUMMARY}</Alert>
+            )}
           </Box>
         )}
 

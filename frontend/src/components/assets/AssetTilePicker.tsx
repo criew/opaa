@@ -18,6 +18,11 @@ export interface AssetPick {
   name: string
 }
 
+/** What "In Space verwenden" hands the space wizard when it starts a new space with an asset. */
+export interface SpaceCreateLocationState {
+  preselect?: AssetPick
+}
+
 export function assetPickKey(pick: { assetType: AssetType | string; assetId: string }): string {
   return `${pick.assetType}:${pick.assetId}`
 }

@@ -36,6 +36,7 @@ import { assetRoleLabel, formatFileSize } from '../utils/labels'
 import { documentSourceTypeLabel } from '../components/library/sources/sourceLabels'
 import AssetAccessDerivationSection from '../components/assets/AssetAccessDerivationSection'
 import AssetHeadlineEditor from '../components/assets/AssetHeadlineEditor'
+import UseInSpaceButton from '../components/assets/UseInSpaceButton'
 import AssetOwnerSection from '../components/assets/AssetOwnerSection'
 import AssetSpacesSection from '../components/assets/AssetSpacesSection'
 import AssetGrantsSection from '../components/permissions/AssetGrantsSection'
@@ -581,6 +582,11 @@ export default function LibraryDetailPage() {
             useFlexGap
             sx={{ flexWrap: 'wrap', flexShrink: 0, pt: { md: 0.5 }, alignItems: 'flex-start' }}
           >
+            <UseInSpaceButton
+              assetType="KNOWLEDGE_LIBRARY"
+              assetId={library.id}
+              name={library.name}
+            />
             {connectorSourceType && canTrigger && (
               <>
                 <Button
@@ -952,7 +958,7 @@ export default function LibraryDetailPage() {
             <>
               <AssetGrantsSection
                 assetType="KNOWLEDGE_LIBRARY"
-                assetId={libraryId}
+                assetId={library.id}
                 capControl={
                   shareCapVisible ? (
                     <ShareCapSwitch

@@ -26,6 +26,7 @@ function mockAssociations(
   spaceId: string,
   response: {
     hasAssociations: boolean
+    hasUnreadableAssociations: boolean
     narrowsSearch: boolean
     items: SpaceAssetAssociationResponse[]
   },
@@ -120,6 +121,7 @@ describe('ChatInput', () => {
     it('shows the established "kein Wissen verfügbar" notice when nothing associated is readable', async () => {
       mockAssociations('space-gewerbeamt', {
         hasAssociations: true,
+        hasUnreadableAssociations: false,
         narrowsSearch: true,
         items: [],
       })
@@ -136,13 +138,13 @@ describe('ChatInput', () => {
     it('shows the neutral hint again once associated knowledge is readable', async () => {
       mockAssociations('space-gewerbeamt', {
         hasAssociations: true,
+        hasUnreadableAssociations: false,
         narrowsSearch: true,
         items: [
           {
             assetType: 'KNOWLEDGE_LIBRARY',
             assetId: rechtsquellen.id,
             name: rechtsquellen.name,
-            readableByCaller: true,
             createdByUserId: 'user-1',
             createdAt: '2026-03-01T10:00:00Z',
           },
@@ -169,7 +171,6 @@ describe('ChatInput', () => {
             assetType: 'KNOWLEDGE_LIBRARY',
             assetId: rechtsquellen.id,
             name: rechtsquellen.name,
-            readableByCaller: true,
             createdByUserId: 'user-1',
             createdAt: '2026-03-01T10:00:00Z',
           },
