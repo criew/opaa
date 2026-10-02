@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
+import Chip from '@mui/material/Chip'
 import Dialog from '@mui/material/Dialog'
 import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
@@ -14,6 +15,8 @@ import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import visuallyHidden from '@mui/utils/visuallyHidden'
 import SearchIcon from '@mui/icons-material/Search'
+import StarIcon from '@mui/icons-material/Star'
+import StarBorderIcon from '@mui/icons-material/StarBorder'
 import type {
   CreatedExternalAccessTokenResponse,
   EligibleExternalAccessLibraryResponse,
@@ -59,23 +62,47 @@ function matchesQuery(library: EligibleExternalAccessLibraryResponse, query: str
     .every((term) => haystack.includes(term))
 }
 
-function searchResultMessage(count: number): string {
-  if (count === 0) return 'Keine Bibliothek passt zur Suche.'
-  return count === 1 ? '1 Bibliothek passt zur Suche.' : `${count} Bibliotheken passen zur Suche.`
+/** The filters above the tiles; all of them only hide tiles and combine with AND. */
+interface TileFilters {
+  favorites: boolean
+  fromMyGroups: boolean
+  selectedOnly: boolean
+}
+
+const NO_FILTERS: TileFilters = { favorites: false, fromMyGroups: false, selectedOnly: false }
+
+function anyFilter(filters: TileFilters): boolean {
+  return filters.favorites || filters.fromMyGroups || filters.selectedOnly
+}
+
+function resultMessage(count: number, searching: boolean, filtering: boolean): string {
+  const by =
+    searching && filtering
+      ? 'zur Suche und zu den Filtern'
+      : searching
+        ? 'zur Suche'
+        : 'zu den Filtern'
+  if (count === 0) return `Keine Bibliothek passt ${by}.`
+  return count === 1 ? `1 Bibliothek passt ${by}.` : `${count} Bibliotheken passen ${by}.`
 }
 
 /**
- * One tile per selectable library matching the search (guidelines 5.11). The search only hides
- * tiles, it never drops a choice. The sentence under the name carries the end of the release: if it
- * ends before the token, the token loses the library first.
+ * One tile per selectable library matching the search and the filters (guidelines 5.11). Search
+ * and filters only hide tiles, they never drop a choice. The sentence under the name carries the
+ * end of the release: if it ends before the token, the token loses the library first.
  */
 function libraryTiles(
   libraries: EligibleExternalAccessLibraryResponse[],
   query: string,
+  filters: TileFilters,
+  selected: string[],
 ): ChoiceTile<string>[] {
   const Icon = assetTypeDefinition('KNOWLEDGE_LIBRARY')?.Icon
   return libraries
     .filter((library) => matchesQuery(library, query))
+    .filter((library) => !filters.favorites || library.favorite)
+    .filter((library) => !filters.fromMyGroups || library.fromMyGroups)
+    .filter((library) => !filters.selectedOnly || selected.includes(library.id))
     .map((library) => ({
       value: library.id,
       label: library.name,
@@ -123,6 +150,7 @@ export default function CreateExternalAccessTokenDialog({
   const [name, setName] = useState('')
   const [selected, setSelected] = useState<string[]>([])
   const [query, setQuery] = useState('')
+  const [filters, setFilters] = useState<TileFilters>(NO_FILTERS)
   // Der Entwurf lebt nur, solange der Dialog montiert ist - der Aufrufer montiert ihn je Vorgang
   // neu. Ein Zurücksetzen im Effekt wäre derselbe Zustand, nur einen Renderdurchlauf später.
   const [expiresOn, setExpiresOn] = useState(() =>
@@ -156,7 +184,16 @@ export default function CreateExternalAccessTokenDialog({
     }
   }, [])
 
-  const tiles = useMemo(() => libraryTiles(libraries ?? [], query), [libraries, query])
+  const tiles = useMemo(
+    () => libraryTiles(libraries ?? [], query, filters, selected),
+    [libraries, query, filters, selected],
+  )
+  const searching = query.trim() !== ''
+  const filtering = anyFilter(filters)
+
+  function toggleFilter(key: keyof TileFilters) {
+    setFilters((current) => ({ ...current, [key]: !current[key] }))
+  }
 
   function validate(): FieldErrors {
     const errors: FieldErrors = {}
@@ -261,8 +298,46 @@ export default function CreateExternalAccessTokenDialog({
                     {selected.length} ausgewählt
                   </Typography>
                 </Stack>
-                {/* Searching does not move the focus, so the result is announced in a live
-                    region. Without a match the same message is visible as well. */}
+                <Stack
+                  direction="row"
+                  spacing={1}
+                  useFlexGap
+                  sx={{ flexWrap: 'wrap', mb: 1.5 }}
+                  role="group"
+                  aria-label="Filter"
+                >
+                  <Chip
+                    label="Alle"
+                    size="small"
+                    variant={filtering ? 'outlined' : 'filled'}
+                    aria-pressed={!filtering}
+                    onClick={() => setFilters(NO_FILTERS)}
+                  />
+                  <Chip
+                    label="Favoriten"
+                    size="small"
+                    icon={filters.favorites ? <StarIcon /> : <StarBorderIcon />}
+                    variant={filters.favorites ? 'filled' : 'outlined'}
+                    aria-pressed={filters.favorites}
+                    onClick={() => toggleFilter('favorites')}
+                  />
+                  <Chip
+                    label="Aus meinen Gruppen"
+                    size="small"
+                    variant={filters.fromMyGroups ? 'filled' : 'outlined'}
+                    aria-pressed={filters.fromMyGroups}
+                    onClick={() => toggleFilter('fromMyGroups')}
+                  />
+                  <Chip
+                    label="Nur ausgewählte"
+                    size="small"
+                    variant={filters.selectedOnly ? 'filled' : 'outlined'}
+                    aria-pressed={filters.selectedOnly}
+                    onClick={() => toggleFilter('selectedOnly')}
+                  />
+                </Stack>
+                {/* Searching and filtering do not move the focus, so the result is announced in a
+                    live region. Without a match the same message is visible as well. */}
                 <Box
                   role="status"
                   aria-live="polite"
@@ -270,7 +345,7 @@ export default function CreateExternalAccessTokenDialog({
                     tiles.length === 0 ? { fontSize: 13, color: 'text.secondary' } : visuallyHidden
                   }
                 >
-                  {query.trim() ? searchResultMessage(tiles.length) : ''}
+                  {searching || filtering ? resultMessage(tiles.length, searching, filtering) : ''}
                 </Box>
                 {tiles.length > 0 && (
                   <ChoiceTileGroup<string>

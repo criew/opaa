@@ -72,7 +72,11 @@ final class ExternalAccessTokenResponseMapper {
   static EligibleExternalAccessLibraryResponse toEligible(EligibleLibrary library) {
     EligibleExternalAccessLibraryResponse response =
         new EligibleExternalAccessLibraryResponse(
-            library.id(), library.name(), library.releaseExpiresAt());
+            library.id(),
+            library.name(),
+            library.releaseExpiresAt(),
+            library.favorite(),
+            library.fromMyGroups());
     response.setDescription(library.description());
     return response;
   }

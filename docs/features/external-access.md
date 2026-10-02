@@ -426,7 +426,10 @@ die Bibliothek gerade wirkt — eine Zahl, ohne Personenauflösung.
 
 `GET /api/v1/external-access/eligible-libraries` gibt genau die Menge zurück, die eine Ausstellung
 annimmt — lesbar **und** freigegeben, mit dem Ablauf der Freigabe je Eintrag; was dort nicht steht,
-wird beim Anlegen mit `400` abgewiesen. Bei geschlossenem Kanal ist sie leer, weil dann auch keine
+wird beim Anlegen mit `400` abgewiesen. Jeder Eintrag trägt außerdem die beiden persönlichen
+Kennzeichen des Katalogs: `favorite` (nur die eigene Markierung) und `fromMyGroups` (Freigabe an eine
+oder Eigentum einer Gruppe, in der die Person direkt Mitglied ist — dieselbe Regel wie der
+Katalogfilter „Aus meinen Gruppen“). Nach beiden filtert die Auswahl im Dialog (#2098). Bei geschlossenem Kanal ist sie leer, weil dann auch keine
 Ausstellung angenommen würde.
 
 Die Freigabeliste der erreichbaren Pfade führt seit

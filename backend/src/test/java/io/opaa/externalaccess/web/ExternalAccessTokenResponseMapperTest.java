@@ -185,7 +185,8 @@ class ExternalAccessTokenResponseMapperTest {
   void leavesTheDescriptionOfASelectableLibraryUnsetWhenThereIsNone() {
     assertThat(
             ExternalAccessTokenResponseMapper.toEligible(
-                    new EligibleLibrary(libraryId, "Ohne Beschreibung", null, EXPIRES, false, false))
+                    new EligibleLibrary(
+                        libraryId, "Ohne Beschreibung", null, EXPIRES, false, false))
                 .getDescription())
         .isNull();
   }
