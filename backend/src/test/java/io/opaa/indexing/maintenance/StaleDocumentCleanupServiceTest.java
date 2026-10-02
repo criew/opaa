@@ -4,14 +4,17 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.IndexingRunMode;
+import io.opaa.asset.AssetRepository;
 import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.indexing.job.IndexingEventCategory;
 import io.opaa.indexing.job.IndexingRunEventRecorder;
@@ -22,6 +25,7 @@ import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.test.SourceTypes;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -42,8 +46,9 @@ class StaleDocumentCleanupServiceTest {
 
   private final DocumentRepository documentRepository = mock(DocumentRepository.class);
   private final VectorChunkStore vectorChunkStore = mock(VectorChunkStore.class);
+  private final AssetRepository assetRepository = mock(AssetRepository.class);
   private final StaleDocumentCleanupService service =
-      new StaleDocumentCleanupService(documentRepository, vectorChunkStore);
+      new StaleDocumentCleanupService(documentRepository, vectorChunkStore, assetRepository);
   private final IndexingRunEventRepository eventRepository = mock(IndexingRunEventRepository.class);
   private final IndexingRunEventRecorder events =
       new IndexingRunEventRecorder(eventRepository, null, null);
@@ -98,6 +103,41 @@ class StaleDocumentCleanupServiceTest {
     order.verify(documentRepository).delete(child);
     order.verify(vectorChunkStore).deleteByDocumentId(parent.getId());
     order.verify(documentRepository).delete(parent);
+  }
+
+  /** A removal is a content change of the library - the catalog's "last change" (#2093). */
+  @Test
+  void aRemovalMarksTheLibrarysContentAsChanged() {
+    Document vanished = document("Eintrag", "https://feed.example/entry", null);
+    when(documentRepository.findByLibraryIdAndSourceType(library.getId(), SourceTypes.RSS_FEED))
+        .thenReturn(List.of(vanished));
+
+    service.cleanupVanished(
+        library,
+        SourceTypes.RSS_FEED,
+        Set.of("https://unrelated.example/still-there"),
+        events,
+        removingOnAbsence(),
+        IndexingRunMode.FULL);
+
+    verify(assetRepository).markContentChanged(eq(library.getId()), any(Instant.class));
+  }
+
+  @Test
+  void nothingRemovedMarksNoChange() {
+    Document present = document("Eintrag", "https://feed.example/entry", null);
+    when(documentRepository.findByLibraryIdAndSourceType(library.getId(), SourceTypes.RSS_FEED))
+        .thenReturn(List.of(present));
+
+    service.cleanupVanished(
+        library,
+        SourceTypes.RSS_FEED,
+        Set.of("https://feed.example/entry"),
+        events,
+        removingOnAbsence(),
+        IndexingRunMode.FULL);
+
+    verifyNoInteractions(assetRepository);
   }
 
   /**

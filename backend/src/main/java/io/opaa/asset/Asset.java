@@ -14,7 +14,6 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Inheritance;
 import jakarta.persistence.InheritanceType;
 import jakarta.persistence.PrePersist;
-import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.Objects;
@@ -110,12 +109,10 @@ public class Asset implements OwnedAsset {
     this.updatedAt = now;
   }
 
-  @PreUpdate
-  void onUpdate() {
-    this.updatedAt = Instant.now();
-  }
-
-  /** Marks the asset as changed, so a change that touches only the type table bumps it too. */
+  /**
+   * Marks a change of master data or content. {@code updatedAt} moves only here and at creation, so
+   * a technical write - a reminder sent, an automatic expiry - leaves it standing.
+   */
   protected void touch() {
     this.updatedAt = Instant.now();
   }
@@ -129,6 +126,7 @@ public class Asset implements OwnedAsset {
   public void rename(String name, String description) {
     this.name = name;
     this.description = description;
+    touch();
   }
 
   /**
