@@ -54,8 +54,8 @@ paths:
         future. Every source names a document by id; the document must lie in a library the caller
         may read, otherwise the request is refused with 400 - an unknown and an unreadable document
         are not told apart. Every citation marker in an answer must name a document among the
-        sources of its own turn, with that document's file name; otherwise the request is refused
-        with 400. File name, source type and the document's metadata - core, format and library
+        sources of its own turn, with one of that document's sections and its file name; otherwise
+        the request is refused with 400. File name, source type and the document's metadata - core, format and library
         fields, exactly as a generated answer shows them - are read from the document itself, never
         from the request. The import key identifies the chat for listChatImports; a second import
         with a key the caller already used in this space is refused with 409. The route exists only
@@ -130,7 +130,9 @@ components:
           description: >
             The answer text, citation markers (【source: <documentId>#<chunk> | <fileName>】)
             included as the chat renders them. A marker must name a document of this turn's
-            sources and carry its file name (compared case-insensitively in Unicode NFC).
+            sources, one of that document's sections (0 to its chunk count minus one) and its file
+            name (compared case-insensitively in Unicode NFC). Text that opens a marker the import
+            cannot read as one is refused as well.
         askedAt:
           type: string
           format: date-time

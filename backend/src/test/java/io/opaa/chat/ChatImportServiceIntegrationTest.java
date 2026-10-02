@@ -351,6 +351,48 @@ class ChatImportServiceIntegrationTest {
   }
 
   @Test
+  void aMarkerTheBelegfensterReadsButTheImportCannotParseIsRefused() {
+    // The Belegfenster's JavaScript \s and . accept characters Java's do not: a no-break space
+    // after "source:" and U+0085 inside the file name. Both markers point at no source of the turn.
+    String noBreakSpace =
+        "【source: " + UUID.randomUUID() + "#0 | 01_verwaltungsgebuehrensatzung.pdf】";
+    String nextLineInName =
+        "【source: " + UUID.randomUUID() + "#0 | 01_verwaltungs\u0085satzung.pdf】";
+
+    for (String foreignMarker : List.of(noBreakSpace, nextLineInName)) {
+      ChatImport transcript =
+          new ChatImport(
+              "unlesbare-marke",
+              "Unlesbare Marke",
+              List.of(citingTurn("Frage", "Antwort" + foreignMarker, FIRST_ASKED, satzung)));
+
+      assertThatThrownBy(() -> chatImportService.importChat(spaceId, author, transcript))
+          .isInstanceOf(ValidationException.class)
+          .hasMessage(ChatImportService.UNMATCHED_MARKER);
+    }
+    assertThat(chatCountOf(author)).isZero();
+  }
+
+  @Test
+  void aMarkerNamingASectionTheDocumentDoesNotHaveIsRefused() {
+    ChatImport transcript =
+        new ChatImport(
+            "fremder-abschnitt",
+            "Fremder Abschnitt",
+            List.of(
+                citingTurn(
+                    "Frage",
+                    "Antwort【source: " + satzung + "#2 | 01_verwaltungsgebuehrensatzung.pdf】",
+                    FIRST_ASKED,
+                    satzung)));
+
+    assertThatThrownBy(() -> chatImportService.importChat(spaceId, author, transcript))
+        .isInstanceOf(ValidationException.class)
+        .hasMessage(ChatImportService.UNMATCHED_MARKER);
+    assertThat(chatCountOf(author)).isZero();
+  }
+
+  @Test
   void aMarkerOfItsTurnsSourceIsKeptAsWritten() {
     String answer =
         "Laut Satzung 42,60 Euro" + marker(satzung, "01_Verwaltungsgebuehrensatzung.PDF");
@@ -566,6 +608,7 @@ class ChatImportServiceIntegrationTest {
     document.setOrganizationId(organizationId);
     document.setStatus(DocumentStatus.INDEXED);
     document.setIndexedAt(Instant.now());
+    document.setChunkCount(2);
     return documentRepository.save(document).getId();
   }
 }
