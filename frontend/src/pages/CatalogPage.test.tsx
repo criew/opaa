@@ -248,11 +248,39 @@ describe('CatalogPage (ADR-0039)', () => {
       expect(within(knowledge).getByText('Stand 18.08.2026')).toBeInTheDocument()
       const prompts = screen.getByRole('link', { name: /Bescheidbausteine/ })
       expect(within(prompts).getByText('Eingeschränkt')).toBeInTheDocument()
-      expect(within(prompts).getByText('Betrachter')).toBeInTheDocument()
+      expect(within(prompts).getByText('Leser')).toBeInTheDocument()
       // A type without a measure of its own is READY; its Stand is the last change.
       expect(within(prompts).getByText('Stand 30.09.2026')).toBeInTheDocument()
       // Both words are explained on the page, not only behind a tooltip.
       expect(screen.getByText(/„Für alle“: an alle Konten freigegeben/)).toBeInTheDocument()
+    })
+
+    // An upload library has no runs and so no lastIndexedAt; its Stand is its last change.
+    it('gives a ready upload library its last change as Stand', async () => {
+      serve([
+        entry('Hochgeladenes', {
+          assetType: 'KNOWLEDGE_LIBRARY',
+          updatedAt: '2026-09-12T08:00:00Z',
+          knowledgeLibrary: { sourceType: 'UPLOAD', indexingStatus: 'READY' },
+        }),
+      ])
+      renderCatalog()
+
+      const card = await screen.findByRole('link', { name: /Hochgeladenes/ })
+      expect(within(card).getByText('Stand 12.09.2026')).toBeInTheDocument()
+    })
+
+    it('titles every filter group and the sort visibly, and names them by that title', async () => {
+      renderCatalog()
+      await screen.findByRole('link', { name: /Rechtsquellen Soziales/ })
+
+      for (const title of ['Typ', 'Sichtbarkeit', 'Sortierung']) {
+        const group = screen.getByRole('group', { name: title })
+        const labelId = group.getAttribute('aria-labelledby')
+        expect(labelId).toBeTruthy()
+        expect(document.getElementById(labelId!)).toHaveTextContent(title)
+        expect(document.getElementById(labelId!)).toBeVisible()
+      }
     })
 
     it('names a state that is not ready in words, and keeps it visible under an open succession', async () => {

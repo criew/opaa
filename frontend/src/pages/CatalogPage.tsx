@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -73,11 +73,13 @@ const STATUS_DOT: Record<CatalogEntryStatus, string> = {
 
 /**
  * "Stand <date>" when ready - the last successful run of a knowledge library, otherwise the last
- * change - and the state in words when not. The colour sits in the dot, never in the text.
+ * change - and the state in words when not. The colour sits in the dot, never in the text, as in
+ * the shared StatusLine; this compact form fits a tile and knows the "updating" tone.
  */
-function StatusLine({ entry }: { entry: CatalogEntryResponse }) {
+function CatalogStatusLine({ entry }: { entry: CatalogEntryResponse }) {
   const status = ownStatus(entry)
-  const standAt = entry.knowledgeLibrary ? entry.knowledgeLibrary.lastIndexedAt : entry.updatedAt
+  // An upload library has no runs, so no lastIndexedAt; its Stand is then its last change.
+  const standAt = entry.knowledgeLibrary?.lastIndexedAt ?? entry.updatedAt
   const text =
     status === 'READY'
       ? standAt
@@ -186,9 +188,34 @@ function CatalogCard({
       <Typography component="span" sx={{ fontSize: 11.5, color: 'text.secondary' }}>
         zuständig: {responsibleLabel(entry)}
       </Typography>
-      <StatusLine entry={entry} />
+      <CatalogStatusLine entry={entry} />
       <SuccessionStateNote succession={entry.succession} variant="badge" />
     </OverviewCard>
+  )
+}
+
+/** A filter group with its visible title, which is also the group's accessible name. */
+function FilterGroup({
+  id,
+  title,
+  children,
+  push = false,
+}: {
+  id: string
+  title: string
+  children: (labelId: string) => ReactNode
+  push?: boolean
+}) {
+  const labelId = `catalog-filter-${id}`
+  return (
+    <Box
+      sx={{ display: 'inline-flex', alignItems: 'center', gap: 1, ...(push ? { ml: 'auto' } : {}) }}
+    >
+      <Typography id={labelId} component="span" sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+        {title}
+      </Typography>
+      {children(labelId)}
+    </Box>
   )
 }
 
@@ -258,50 +285,58 @@ export default function CatalogPage() {
       }}
       filters={
         <>
-          <ToggleButtonGroup
-            size="small"
-            exclusive
-            value={typeFilter?.slug ?? ALL}
-            onChange={(_event, next: string | null) =>
-              next && setParam('type', next === ALL ? null : next)
-            }
-            aria-label="Typ"
-          >
-            <ToggleButton value={ALL} sx={{ px: 1.5 }}>
-              Alle
-            </ToggleButton>
-            {ASSET_TYPES.map((definition) => {
-              const Icon = definition.Icon
-              return (
-                <ToggleButton
-                  key={definition.type}
-                  value={definition.slug}
-                  sx={{ px: 1.5, gap: 0.75 }}
-                >
-                  <Icon aria-hidden sx={{ fontSize: 16 }} />
-                  {definition.label}
+          <FilterGroup id="type" title="Typ">
+            {(labelId) => (
+              <ToggleButtonGroup
+                size="small"
+                exclusive
+                value={typeFilter?.slug ?? ALL}
+                onChange={(_event, next: string | null) =>
+                  next && setParam('type', next === ALL ? null : next)
+                }
+                aria-labelledby={labelId}
+              >
+                <ToggleButton value={ALL} sx={{ px: 1.5 }}>
+                  Alle
                 </ToggleButton>
-              )
-            })}
-          </ToggleButtonGroup>
-          <ToggleButtonGroup
-            size="small"
-            exclusive
-            value={visibility ? VISIBILITY_SLUGS[visibility] : ALL}
-            onChange={(_event, next: string | null) =>
-              next && setParam('visibility', next === ALL ? null : next)
-            }
-            aria-label="Sichtbarkeit"
-          >
-            <ToggleButton value={ALL} sx={{ px: 1.5 }}>
-              Alle
-            </ToggleButton>
-            {(Object.keys(VISIBILITY_SLUGS) as CatalogVisibility[]).map((value) => (
-              <ToggleButton key={value} value={VISIBILITY_SLUGS[value]} sx={{ px: 1.5 }}>
-                {catalogVisibilityLabel(value)}
-              </ToggleButton>
-            ))}
-          </ToggleButtonGroup>
+                {ASSET_TYPES.map((definition) => {
+                  const Icon = definition.Icon
+                  return (
+                    <ToggleButton
+                      key={definition.type}
+                      value={definition.slug}
+                      sx={{ px: 1.5, gap: 0.75 }}
+                    >
+                      <Icon aria-hidden sx={{ fontSize: 16 }} />
+                      {definition.label}
+                    </ToggleButton>
+                  )
+                })}
+              </ToggleButtonGroup>
+            )}
+          </FilterGroup>
+          <FilterGroup id="visibility" title="Sichtbarkeit">
+            {(labelId) => (
+              <ToggleButtonGroup
+                size="small"
+                exclusive
+                value={visibility ? VISIBILITY_SLUGS[visibility] : ALL}
+                onChange={(_event, next: string | null) =>
+                  next && setParam('visibility', next === ALL ? null : next)
+                }
+                aria-labelledby={labelId}
+              >
+                <ToggleButton value={ALL} sx={{ px: 1.5 }}>
+                  Alle
+                </ToggleButton>
+                {(Object.keys(VISIBILITY_SLUGS) as CatalogVisibility[]).map((value) => (
+                  <ToggleButton key={value} value={VISIBILITY_SLUGS[value]} sx={{ px: 1.5 }}>
+                    {catalogVisibilityLabel(value)}
+                  </ToggleButton>
+                ))}
+              </ToggleButtonGroup>
+            )}
+          </FilterGroup>
           <FormControlLabel
             control={
               <Checkbox
@@ -313,23 +348,26 @@ export default function CatalogPage() {
             label="Aus meinen Gruppen"
             sx={{ mr: 0, '& .MuiFormControlLabel-label': { fontSize: 13 } }}
           />
-          <ToggleButtonGroup
-            size="small"
-            exclusive
-            value={SORT_SLUGS[sort]}
-            onChange={(_event, next: string | null) =>
-              next && setParam('sort', next === SORT_SLUGS.name ? null : next)
-            }
-            aria-label="Sortierung"
-            sx={{ ml: 'auto' }}
-          >
-            <ToggleButton value={SORT_SLUGS.name} sx={{ px: 1.5 }}>
-              Name
-            </ToggleButton>
-            <ToggleButton value={SORT_SLUGS.updatedAt} sx={{ px: 1.5 }}>
-              Zuletzt geändert
-            </ToggleButton>
-          </ToggleButtonGroup>
+          <FilterGroup id="sort" title="Sortierung" push>
+            {(labelId) => (
+              <ToggleButtonGroup
+                size="small"
+                exclusive
+                value={SORT_SLUGS[sort]}
+                onChange={(_event, next: string | null) =>
+                  next && setParam('sort', next === SORT_SLUGS.name ? null : next)
+                }
+                aria-labelledby={labelId}
+              >
+                <ToggleButton value={SORT_SLUGS.name} sx={{ px: 1.5 }}>
+                  Name
+                </ToggleButton>
+                <ToggleButton value={SORT_SLUGS.updatedAt} sx={{ px: 1.5 }}>
+                  Zuletzt geändert
+                </ToggleButton>
+              </ToggleButtonGroup>
+            )}
+          </FilterGroup>
         </>
       }
       filtered={typeFilter !== undefined || visibility !== undefined || fromMyGroups}

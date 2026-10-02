@@ -147,7 +147,7 @@ export function spaceMembershipLabel(counts: SpaceMembershipCounts | undefined):
 }
 
 const assetRoleLabels: Record<AssetRole, string> = {
-  VIEWER: 'Betrachter',
+  VIEWER: 'Leser',
   EDITOR: 'Bearbeiter',
   MANAGER: 'Verwalter',
   OWNER: 'Eigentümer',
