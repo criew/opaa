@@ -23,11 +23,13 @@ import { spaceSettingsRoute } from '../routes'
 import ChatList from '../components/chat/ChatList'
 import { useChatStore } from '../stores/chatStore'
 import { useSpaceStore } from '../stores/spaceStore'
+import { SIDEBAR_DEFAULT_WIDTH, useUiStore } from '../stores/uiStore'
+import SidebarResizeHandle from './SidebarResizeHandle'
 import { rememberSpaceUse, spacesByRecentUse, useRecentSpaceIds } from '../utils/recentSpaces'
 import { darkRoles, fontFamily, lightRoles, shadow } from '../theme/tokens'
 import { spaceMembershipLabel } from '../utils/labels'
 
-const SIDEBAR_WIDTH = 248
+const SIDEBAR_WIDTH = SIDEBAR_DEFAULT_WIDTH
 
 export { SIDEBAR_WIDTH }
 
@@ -40,7 +42,7 @@ export { SIDEBAR_WIDTH }
  * Since #1922 it carries the same light submenu surface as the secondary column of the global
  * areas; the rail alone stays the dark navigation level.
  */
-export default function Sidebar() {
+export default function Sidebar({ resizable = false }: { resizable?: boolean }) {
   const location = useLocation()
   const navigate = useNavigate()
   const { spaceId: routeSpaceId } = useParams<{ spaceId?: string }>()
@@ -49,6 +51,8 @@ export default function Sidebar() {
   const isLoadingSpaces = useSpaceStore((s) => s.isLoadingList)
   const loadSpaces = useSpaceStore((s) => s.loadSpaces)
   const [spaceMenuAnchor, setSpaceMenuAnchor] = useState<HTMLElement | null>(null)
+  const sidebarWidth = useUiStore((s) => s.sidebarWidth)
+  const columnWidth = resizable ? sidebarWidth : SIDEBAR_WIDTH
 
   // #1922: the space column carries the same muted surface as the secondary column of the global
   // areas (GlobalAreaLayout) - one light submenu bar everywhere, no navy block next to a light
@@ -106,9 +110,10 @@ export default function Sidebar() {
       component="aside"
       aria-label="Space-Bereich"
       sx={{
-        width: SIDEBAR_WIDTH,
-        // In the mobile drawer the column shares 92vw with the rail and must give way;
-        // on desktop it keeps its fixed width.
+        width: columnWidth,
+        position: 'relative',
+        // In the mobile drawer the column shares 92vw with the rail and must give way; on desktop
+        // it keeps the width the person dragged it to.
         flexShrink: { xs: 1, md: 0 },
         minWidth: 0,
         height: '100vh',
@@ -165,7 +170,7 @@ export default function Sidebar() {
           open={Boolean(spaceMenuAnchor)}
           onClose={closeSpaceMenu}
           slotProps={{
-            paper: { sx: { width: SIDEBAR_WIDTH - 32, boxShadow: shadow.overlay } },
+            paper: { sx: { width: columnWidth - 32, boxShadow: shadow.overlay } },
             list: { sx: { py: 0.5 } },
           }}
         >
@@ -313,6 +318,7 @@ export default function Sidebar() {
           </Box>
         </>
       )}
+      {resizable && <SidebarResizeHandle />}
     </Box>
   )
 }
