@@ -6,6 +6,8 @@ export interface CatalogQuery {
   type?: AssetType
   /** Part of the name or the description; the server matches it literally. */
   q?: string
+  /** Only the caller's own favorites. */
+  favorites?: boolean
   page: number
   size: number
 }
@@ -20,6 +22,7 @@ export async function getCatalog(query: CatalogQuery): Promise<CatalogPageRespon
       params: {
         type: query.type,
         q: query.q?.trim() ? query.q.trim() : undefined,
+        favorites: query.favorites ? true : undefined,
         page: query.page,
         size: query.size,
       },

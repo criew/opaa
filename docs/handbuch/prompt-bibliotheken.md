@@ -147,7 +147,8 @@ gekennzeichnet.
 
 Der **Katalog** in der Hauptnavigation zeigt genau die Prompt- und Wissensbibliotheken, die die
 Person lesen darf — mit Suche über Name und Beschreibung und dem Filter „Alle", „Wissen" oder
-„Prompts". Jeder Eintrag führt auf die Detailseite. Eine Prompt-Bibliothek ohne Leserecht erscheint
+„Prompts" sowie dem Filter „Favoriten"; eigene Favoriten stehen oben. Jeder Eintrag führt auf die
+Detailseite. Eine Prompt-Bibliothek ohne Leserecht erscheint
 dort nicht, auch nicht über die Suche. Die Regeln im Einzelnen stehen in
 [Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), Abschnitt 4, „Der Katalog".
 
@@ -255,8 +256,9 @@ Eigentum und Nachfolge protokolliert und historisiert OPAA wie bei jeder Wissens
 
 ## 9. Was nicht gebaut ist
 
-- **Versionen, Freigabeweg, Favoriten und Nutzungszähler** für Prompts; der Katalog nennt deshalb
-  weder einen Freigabestand noch Nutzungsangaben.
+- **Versionen, Freigabeweg und Nutzungszähler** für Prompts; der Katalog nennt deshalb weder einen
+  Freigabestand noch Nutzungsangaben. Favoriten gibt es für die ganze Bibliothek im Katalog, nicht
+  für einzelne Prompts.
 - **Mitgelieferte Prompt-Bibliotheken** und **Export und Import** als Paket.
 - **Eine eigene Reihenfolge der Prompts** in der Oberfläche; die Liste folgt der gespeicherten
   Reihenfolge, dann dem Befehl.

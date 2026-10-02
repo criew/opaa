@@ -2,10 +2,14 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
+import Chip from '@mui/material/Chip'
+import IconButton from '@mui/material/IconButton'
 import ToggleButton from '@mui/material/ToggleButton'
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import Typography from '@mui/material/Typography'
 import { alpha } from '@mui/material/styles'
+import StarIcon from '@mui/icons-material/Star'
+import StarBorderIcon from '@mui/icons-material/StarBorder'
 import type { CatalogEntryResponse } from '../types/api'
 import { CATALOG_QUERY_MAX_LENGTH, useCatalogStore } from '../stores/catalogStore'
 import { useMyCapabilities } from '../hooks/useMyCapabilities'
@@ -15,7 +19,7 @@ import {
   creatableAssetTypes,
   type AssetTypeDefinition,
 } from '../components/assets/assetTypeRegistry'
-import OverviewPage, { OverviewCard } from '../components/overview/OverviewPage'
+import OverviewPage, { OverviewCard, OverviewCardLink } from '../components/overview/OverviewPage'
 import SuccessionStateNote from '../components/succession/SuccessionStateNote'
 import { CATALOG_NEW_ROUTE } from '../routes'
 
@@ -66,6 +70,41 @@ function TypeBadge({ definition }: { definition: AssetTypeDefinition }) {
   )
 }
 
+/**
+ * The caller's own favorite mark (ADR-0039, Entscheidung 7): a toggle beside the card's link, never
+ * inside it. Its name says what the next press does and thereby the state; `aria-pressed` would say
+ * the state a second time, in the opposite direction.
+ */
+function FavoriteToggle({ entry }: { entry: CatalogEntryResponse }) {
+  const setFavorite = useCatalogStore((s) => s.setFavorite)
+  const [busy, setBusy] = useState(false)
+  const label = entry.favorite
+    ? `„${entry.name}“ aus den Favoriten entfernen`
+    : `„${entry.name}“ als Favorit markieren`
+
+  async function toggle() {
+    setBusy(true)
+    await setFavorite(entry, !entry.favorite)
+    setBusy(false)
+  }
+
+  return (
+    <IconButton
+      size="small"
+      aria-label={label}
+      disabled={busy}
+      onClick={() => void toggle()}
+      sx={{ position: 'relative', zIndex: 1, m: -0.75, ml: 'auto' }}
+    >
+      {entry.favorite ? (
+        <StarIcon sx={{ fontSize: 20, color: 'primary.main' }} />
+      ) : (
+        <StarBorderIcon sx={{ fontSize: 20 }} />
+      )}
+    </IconButton>
+  )
+}
+
 function CatalogCard({
   entry,
   definition,
@@ -74,11 +113,16 @@ function CatalogCard({
   definition: AssetTypeDefinition
 }) {
   return (
-    <OverviewCard to={definition.detailRoute(entry.assetId)}>
-      <TypeBadge definition={definition} />
-      <Typography component="span" sx={{ fontSize: 16.5, fontWeight: 600 }}>
-        {entry.name}
-      </Typography>
+    <OverviewCard>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <TypeBadge definition={definition} />
+        <FavoriteToggle entry={entry} />
+      </Box>
+      <OverviewCardLink to={definition.detailRoute(entry.assetId)}>
+        <Typography component="span" sx={{ fontSize: 16.5, fontWeight: 600 }}>
+          {entry.name}
+        </Typography>
+      </OverviewCardLink>
       <Typography
         component="p"
         sx={{
@@ -116,6 +160,7 @@ export default function CatalogPage() {
   const typeFilter = ASSET_TYPES.find((definition) => definition.slug === searchParams.get('type'))
   const [query, setQuery] = useState('')
   const [appliedQuery, setAppliedQuery] = useState('')
+  const [favoritesOnly, setFavoritesOnly] = useState(false)
   const entries = useCatalogStore((s) => s.entries)
   const page = useCatalogStore((s) => s.page)
   const totalPages = useCatalogStore((s) => s.totalPages)
@@ -135,8 +180,8 @@ export default function CatalogPage() {
 
   const filterType = typeFilter?.type
   useEffect(() => {
-    void load({ type: filterType, q: appliedQuery })
-  }, [load, filterType, appliedQuery])
+    void load({ type: filterType, q: appliedQuery, favorites: favoritesOnly })
+  }, [load, filterType, appliedQuery, favoritesOnly])
 
   function changeType(slug: string | null) {
     if (!slug) return
@@ -158,32 +203,41 @@ export default function CatalogPage() {
         maxLength: CATALOG_QUERY_MAX_LENGTH,
       }}
       filters={
-        <ToggleButtonGroup
-          size="small"
-          exclusive
-          value={typeFilter?.slug ?? ALL_TYPES}
-          onChange={(_event, next: string | null) => changeType(next)}
-          aria-label="Typ"
-        >
-          <ToggleButton value={ALL_TYPES} sx={{ px: 1.5 }}>
-            Alle
-          </ToggleButton>
-          {ASSET_TYPES.map((definition) => {
-            const Icon = definition.Icon
-            return (
-              <ToggleButton
-                key={definition.type}
-                value={definition.slug}
-                sx={{ px: 1.5, gap: 0.75 }}
-              >
-                <Icon aria-hidden sx={{ fontSize: 16 }} />
-                {definition.label}
-              </ToggleButton>
-            )
-          })}
-        </ToggleButtonGroup>
+        <>
+          <ToggleButtonGroup
+            size="small"
+            exclusive
+            value={typeFilter?.slug ?? ALL_TYPES}
+            onChange={(_event, next: string | null) => changeType(next)}
+            aria-label="Typ"
+          >
+            <ToggleButton value={ALL_TYPES} sx={{ px: 1.5 }}>
+              Alle
+            </ToggleButton>
+            {ASSET_TYPES.map((definition) => {
+              const Icon = definition.Icon
+              return (
+                <ToggleButton
+                  key={definition.type}
+                  value={definition.slug}
+                  sx={{ px: 1.5, gap: 0.75 }}
+                >
+                  <Icon aria-hidden sx={{ fontSize: 16 }} />
+                  {definition.label}
+                </ToggleButton>
+              )
+            })}
+          </ToggleButtonGroup>
+          <Chip
+            label="Favoriten"
+            icon={favoritesOnly ? <StarIcon /> : <StarBorderIcon />}
+            variant={favoritesOnly ? 'filled' : 'outlined'}
+            aria-pressed={favoritesOnly}
+            onClick={() => setFavoritesOnly((current) => !current)}
+          />
+        </>
       }
-      filtered={typeFilter !== undefined}
+      filtered={typeFilter !== undefined || favoritesOnly}
       total={total}
       isLoading={isLoading}
       error={error}

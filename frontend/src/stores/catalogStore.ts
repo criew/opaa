@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { AssetType, CatalogEntryResponse } from '../types/api'
 import { getCatalog } from '../services/catalogApi'
+import { markAssetFavorite, unmarkAssetFavorite } from '../services/assetApi'
 import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
 
 export const CATALOG_PAGE_SIZE = 50
@@ -11,6 +12,8 @@ export interface CatalogFilter {
   /** Every type when absent. */
   type?: AssetType
   q: string
+  /** Only the caller's own favorites. */
+  favorites?: boolean
 }
 
 interface CatalogState {
@@ -27,6 +30,11 @@ interface CatalogState {
   load: (filter: CatalogFilter) => Promise<void>
   /** Appends the next page of the filter last loaded. */
   loadMore: () => Promise<void>
+  /**
+   * Marks or unmarks one entry as the caller's favorite. The entry keeps its place until the next
+   * load, so a tile does not jump away under the pointer; a failure is reported in `error`.
+   */
+  setFavorite: (entry: CatalogEntryResponse, favorite: boolean) => Promise<void>
 }
 
 let lastFilter: CatalogFilter = { q: '' }
@@ -92,6 +100,31 @@ export const useCatalogStore = create<CatalogState>((set, get) => {
 
     loadMore: async () => {
       await fetchPage(lastFilter, get().page + 1)
+    },
+
+    setFavorite: async (entry, favorite) => {
+      const sessionEpoch = currentSessionEpoch()
+      try {
+        if (favorite) {
+          await markAssetFavorite(entry.assetType, entry.assetId)
+        } else {
+          await unmarkAssetFavorite(entry.assetType, entry.assetId)
+        }
+        if (isStaleSessionEpoch(sessionEpoch)) return
+        set({
+          error: null,
+          entries: get().entries.map((candidate) =>
+            candidate.assetType === entry.assetType && candidate.assetId === entry.assetId
+              ? { ...candidate, favorite }
+              : candidate,
+          ),
+        })
+      } catch (err) {
+        if (isStaleSessionEpoch(sessionEpoch)) return
+        set({
+          error: err instanceof Error ? err.message : 'Der Favorit konnte nicht gespeichert werden',
+        })
+      }
     },
   }
 })

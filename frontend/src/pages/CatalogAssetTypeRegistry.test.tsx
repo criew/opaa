@@ -42,6 +42,7 @@ const skillEntry = {
   origin: 'LOCAL',
   itemCount: 4,
   spaceCount: 0,
+  favorite: false,
   succession: null,
 } as unknown as CatalogEntryResponse
 
@@ -75,8 +76,10 @@ describe('a new asset type through the registry alone', () => {
     const user = userEvent.setup()
     renderWithProviders(<CatalogPage />, { withRouter: true, initialRoute: '/catalog' })
 
-    const card = await screen.findByRole('link', { name: /Aktenvermerk schreiben/ })
-    expect(card).toHaveAttribute('href', '/skills/skill-1')
+    const link = await screen.findByRole('link', { name: /Aktenvermerk schreiben/ })
+    expect(link).toHaveAttribute('href', '/skills/skill-1')
+    // the link names the card; badge and extent sit beside it in the card
+    const card = link.parentElement as HTMLElement
     expect(within(card).getByText('Skill')).toBeInTheDocument()
     expect(within(card).getByText('4 Schritte · in keinem Space')).toBeInTheDocument()
 

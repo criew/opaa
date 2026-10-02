@@ -32,9 +32,17 @@ function entry(name: string, overrides: Partial<CatalogEntryResponse> = {}): Cat
     updatedAt: '2026-09-30T08:00:00Z',
     itemCount: 3,
     spaceCount: 1,
+    favorite: false,
     succession: null,
     ...overrides,
   } as CatalogEntryResponse
+}
+
+/** The card around a card's link - the link carries only the name, the card everything else. */
+function cardOf(link: HTMLElement): HTMLElement {
+  const card = link.parentElement
+  if (!card) throw new Error('link outside a card')
+  return card
 }
 
 function LocationProbe() {
@@ -73,11 +81,11 @@ describe('CatalogPage (ADR-0039)', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'Katalog' })).toBeInTheDocument()
     const knowledge = await screen.findByRole('link', { name: /Rechtsquellen Soziales/ })
     expect(knowledge).toHaveAttribute('href', '/libraries/library-referat-50')
-    expect(within(knowledge).getByText('Wissensbibliothek')).toBeInTheDocument()
+    expect(within(cardOf(knowledge)).getByText('Wissensbibliothek')).toBeInTheDocument()
     const prompts = screen.getByRole('link', { name: /Formulierungshilfen Referat 50/ })
     expect(prompts).toHaveAttribute('href', '/prompts/prompt-library-referat-50')
-    expect(within(prompts).getByText('Prompt-Bibliothek')).toBeInTheDocument()
-    expect(within(prompts).getByText('zuständig: Referat 50')).toBeInTheDocument()
+    expect(within(cardOf(prompts)).getByText('Prompt-Bibliothek')).toBeInTheDocument()
+    expect(within(cardOf(prompts)).getByText('zuständig: Referat 50')).toBeInTheDocument()
   })
 
   it('offers only cards - no table and no switch to one', async () => {
@@ -184,9 +192,70 @@ describe('CatalogPage (ADR-0039)', () => {
     )
     renderCatalog()
 
-    const card = await screen.findByRole('link', { name: /Verwaiste Bausteine/ })
+    const card = cardOf(await screen.findByRole('link', { name: /Verwaiste Bausteine/ }))
     expect(within(card).getByText('zuständig: die Systemverwaltung')).toBeInTheDocument()
     expect(within(card).getByText('3 Prompts · in 1 Space')).toBeInTheDocument()
+  })
+
+  it('marks and unmarks a favorite with a star beside the link, by keyboard', async () => {
+    const user = userEvent.setup()
+    const favoriteRequests: string[] = []
+    const recordFavorite = ({ request }: { request: Request }) => {
+      if (new URL(request.url).pathname.endsWith('/favorite')) {
+        favoriteRequests.push(`${request.method} ${new URL(request.url).pathname}`)
+      }
+    }
+    server.events.on('request:start', recordFavorite)
+    renderCatalog()
+
+    const link = await screen.findByRole('link', { name: 'Formulierungshilfen Referat 50' })
+    expect(within(link).queryByRole('button')).not.toBeInTheDocument()
+    const star = within(cardOf(link)).getByRole('button', {
+      name: '„Formulierungshilfen Referat 50“ als Favorit markieren',
+    })
+
+    star.focus()
+    await user.keyboard('{Enter}')
+    const marked = await within(cardOf(link)).findByRole('button', {
+      name: '„Formulierungshilfen Referat 50“ aus den Favoriten entfernen',
+    })
+    await user.click(marked)
+    expect(
+      await within(cardOf(link)).findByRole('button', {
+        name: '„Formulierungshilfen Referat 50“ als Favorit markieren',
+      }),
+    ).toBeInTheDocument()
+
+    server.events.removeListener('request:start', recordFavorite)
+    expect(favoriteRequests).toEqual([
+      'PUT /api/v1/assets/PROMPT_LIBRARY/prompt-library-referat-50/favorite',
+      'DELETE /api/v1/assets/PROMPT_LIBRARY/prompt-library-referat-50/favorite',
+    ])
+  })
+
+  it('narrows to the own favorites with the "Favoriten" chip', async () => {
+    const user = userEvent.setup()
+    renderCatalog()
+    const link = await screen.findByRole('link', { name: 'Formulierungshilfen Referat 50' })
+    await user.click(
+      within(cardOf(link)).getByRole('button', {
+        name: '„Formulierungshilfen Referat 50“ als Favorit markieren',
+      }),
+    )
+    await within(cardOf(link)).findByRole('button', { name: /aus den Favoriten entfernen/ })
+
+    const chip = screen.getByRole('button', { name: 'Favoriten' })
+    expect(chip).toHaveAttribute('aria-pressed', 'false')
+    await user.click(chip)
+
+    expect(chip).toHaveAttribute('aria-pressed', 'true')
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('link', { name: /Rechtsquellen Soziales/ }),
+      ).not.toBeInTheDocument(),
+    )
+    expect(screen.getByRole('link', { name: 'Formulierungshilfen Referat 50' })).toBeInTheDocument()
+    expect(requestedUrls.at(-1)?.searchParams.get('favorites')).toBe('true')
   })
 
   it('leads "Neu" to the type choice', async () => {
