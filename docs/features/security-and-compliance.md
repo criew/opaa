@@ -944,6 +944,15 @@ sicher zu sein — er soll etwas einschalten müssen, um es nicht zu sein, und d
   eine feste Frist. Die Client-Adresse dafür wird nur aus einem Weiterleitungs-Header übernommen, wenn
   die Verbindung selbst aus einem als vertrauenswürdig benannten Netz kommt; die Vorgabe ist, dem
   Header nicht zu trauen. Die konkreten Werte stehen im Produkthandbuch, nicht hier.
+- **Ausgehende Verbindungen zu eingetragenen Adressen werden gegen interne Netze geprüft.** Was eine
+  Verwaltung als Adresse einträgt — Datenquellen, Identitätsanbieter samt Schlüsselverzeichnis, die
+  Verwaltungsschnittstelle des Verzeichnisabgleichs —, wird vor dem Abruf aufgelöst und gegen private
+  und lokale Adressbereiche geprüft; Ausnahmen stehen in einer Allowlist. **Bewusst hingenommene
+  Grenze:** Prüfung und Verbindungsaufbau lösen den Namen getrennt auf. Ein Namensdienst, der
+  dazwischen die Antwort wechselt (DNS-Rebinding), wird nicht erkannt. Die Adressen trägt heute nur die
+  Systemverwaltung ein; einen eigenen HTTP-Client, der die Verbindung an die geprüfte Adresse bindet,
+  baut OPAA dafür nicht. Wer das Restrisiko ausschließen muss, beschränkt die ausgehenden Verbindungen
+  des Backends zusätzlich auf Netzebene (Egress-Regeln oder ein Proxy mit Zielliste).
 - **Härtungs- und Konfigurationsleitfäden** sind Teil des Produkts, nicht Beratungsleistung: eine
   dokumentierte Referenzkonfiguration, eine Liste der sicherheitsrelevanten Einstellungen mit ihrer
   Voreinstellung und eine Prüfliste für die Inbetriebnahme.
