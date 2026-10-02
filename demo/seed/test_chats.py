@@ -12,6 +12,7 @@ Run from the repository root:
 
 from __future__ import annotations
 
+import json
 import re
 import sys
 from datetime import datetime, timedelta, timezone
@@ -245,53 +246,60 @@ def test_a_document_that_is_missing_or_ambiguous_stops_the_seed(listing: list[di
 
 
 class FakeChatApi:
-    """In-memory stand-in for the owner's chat endpoints the seed calls; it pages the archive in
-    pages of two to exercise the seed's paging."""
+    """In-memory stand-in for the owner's chat endpoints the seed calls. Like the backend, it keeps
+    the import key apart from the title: a rename changes only the title, and a chat the owner
+    started themselves has no key. With the import switch off, both import routes answer 404."""
 
-    PAGE = 2
-
-    def __init__(self, import_status: int = 201) -> None:
+    def __init__(self, switched_on: bool = True) -> None:
         self.chats: dict[str, dict] = {}
         self.calls: list[tuple[str, str]] = []
-        self.import_status = import_status
+        self.switched_on = switched_on
 
     def _summary(self, chat: dict) -> dict:
         return {k: chat[k] for k in ("id", "title", "pinnedAt", "archivedAt")}
 
-    def get_ok(self, path: str, params: dict | None = None, **kwargs):
+    def _response(self, method: str, path: str, status: int, body) -> requests.Response:
+        built = requests.Response()
+        built.status_code = status
+        built.request = requests.Request(method, f"http://localhost{path}").prepare()
+        built._content = json.dumps(body).encode()
+        return built
+
+    def add_own_chat(self, title: str) -> dict:
+        """A chat the owner (or a visitor on the shared account) started in the UI - no import key."""
+        chat_id = f"chat-{len(self.chats) + 1}"
+        self.chats[chat_id] = {
+            "id": chat_id,
+            "title": title,
+            "pinnedAt": None,
+            "archivedAt": None,
+            "importKey": None,
+        }
+        return self.chats[chat_id]
+
+    def get(self, path: str, **kwargs) -> requests.Response:
         self.calls.append(("GET", path))
-        if path == "/v1/spaces/space-1/chats":
-            return [self._summary(c) for c in self.chats.values() if not c["archivedAt"]]
-        if path == "/v1/spaces/space-1/chats/archived":
-            archived = [self._summary(c) for c in self.chats.values() if c["archivedAt"]]
-            page, size = params["page"], min(params["size"], self.PAGE)
-            return {
-                "items": archived[page * size : (page + 1) * size],
-                "page": page,
-                "size": size,
-                "totalElements": len(archived),
-            }
-        raise AssertionError(f"unerwarteter GET {path}")
+        assert path == "/v1/spaces/space-1/chat-imports", f"unerwarteter GET {path}"
+        if not self.switched_on:
+            return self._response("GET", path, 404, {"error": "Not Found"})
+        imported = [
+            {"importKey": c["importKey"], "chat": self._summary(c)}
+            for c in self.chats.values()
+            if c["importKey"] is not None
+        ]
+        return self._response("GET", path, 200, imported)
 
     def post(self, path: str, json=None, **kwargs) -> requests.Response:
         self.calls.append(("POST", path))
         assert path == "/v1/spaces/space-1/chat-imports"
-        built = requests.Response()
-        built.status_code = self.import_status
-        built.request = requests.Request("POST", f"http://localhost{path}").prepare()
-        if self.import_status == 201:
-            chat_id = f"chat-{len(self.chats) + 1}"
-            self.chats[chat_id] = {
-                "id": chat_id,
-                "title": json["title"],
-                "pinnedAt": None,
-                "archivedAt": None,
-                "request": json,
-            }
-            built._content = __import__("json").dumps(self._summary(self.chats[chat_id])).encode()
-        else:
-            built._content = b'{"error": "Not Found"}'
-        return built
+        if not self.switched_on:
+            return self._response("POST", path, 404, {"error": "Not Found"})
+        if any(c["importKey"] == json["importKey"] for c in self.chats.values()):
+            return self._response("POST", path, 409, {"error": "Conflict"})
+        chat = self.add_own_chat(json["title"])
+        chat["importKey"] = json["importKey"]
+        chat["request"] = json
+        return self._response("POST", path, 201, self._summary(chat))
 
     def put_ok(self, path: str, **kwargs):
         self.calls.append(("PUT", path))
@@ -368,11 +376,52 @@ def test_a_repeat_run_restores_a_missing_mark_but_leaves_others_alone() -> None:
     assert by_title["Fünf"]["pinnedAt"] == "2026-09-30T13:00:00Z"
 
 
+def test_a_renamed_imported_chat_is_not_imported_again_and_keeps_its_marks() -> None:
+    api = FakeChatApi()
+    chats.seed_chat_set(api, "space-1", small_set(), RESOLVED, NOW)
+    eins = next(c for c in api.chats.values() if c["title"] == "Eins")
+    eins["title"] = "Umbenannt"
+    eins["pinnedAt"] = None
+    api.calls.clear()
+
+    imported, present = chats.seed_chat_set(api, "space-1", small_set(), RESOLVED, NOW)
+
+    assert (imported, present) == (0, 5)
+    assert len(api.chats) == 5
+    assert [call for call in api.calls if call[0] != "GET"] == [
+        ("PUT", f"/v1/chats/{eins['id']}/pin")
+    ]
+
+
+def test_a_foreign_chat_of_the_same_title_neither_stands_in_nor_gets_marked() -> None:
+    api = FakeChatApi()
+    foreign = api.add_own_chat("Eins")
+    archived_foreign = api.add_own_chat("Zwei")
+
+    imported, present = chats.seed_chat_set(api, "space-1", small_set(), RESOLVED, NOW)
+
+    assert (imported, present) == (5, 0)
+    assert foreign["pinnedAt"] is None and foreign["archivedAt"] is None
+    assert archived_foreign["archivedAt"] is None
+    prepared = {c["title"]: c for c in api.chats.values() if c["importKey"] is not None}
+    assert prepared["Eins"]["pinnedAt"] and prepared["Zwei"]["archivedAt"]
+
+
+def test_every_chat_is_imported_under_its_title_as_key() -> None:
+    api = FakeChatApi()
+
+    chats.seed_chat_set(api, "space-1", small_set(), RESOLVED, NOW)
+
+    requests_sent = [c["request"] for c in api.chats.values()]
+    assert [r["importKey"] for r in requests_sent] == [r["title"] for r in requests_sent]
+
+
 def test_a_backend_without_the_import_switch_is_named_as_the_cause() -> None:
-    api = FakeChatApi(import_status=404)
+    api = FakeChatApi(switched_on=False)
 
     with pytest.raises(SystemExit, match="OPAA_DEMO_CHAT_IMPORT_ENABLED=true"):
         chats.seed_chat_set(api, "space-1", small_set(), RESOLVED, NOW)
+    assert [call for call in api.calls if call[0] != "GET"] == []
 
 
 def test_the_e2e_profile_seeds_no_chats() -> None:

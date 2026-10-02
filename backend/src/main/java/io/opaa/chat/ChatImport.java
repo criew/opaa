@@ -4,8 +4,11 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
-/** A prepared chat transcript for {@link ChatImportService}: the title and the turns in order. */
-public record ChatImport(String title, List<Turn> turns) {
+/**
+ * A prepared chat transcript for {@link ChatImportService}: the caller's key for the chat, its
+ * title and the turns in order.
+ */
+public record ChatImport(String importKey, String title, List<Turn> turns) {
 
   public ChatImport {
     turns = List.copyOf(turns);
