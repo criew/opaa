@@ -60,6 +60,25 @@ public interface ChatRepository extends JpaRepository<Chat, UUID> {
       nativeQuery = true)
   List<UUID> findDueForAutoCleanupDeletion(@Param("cutoff") Instant cutoff);
 
+  /**
+   * The chats among {@code ids} that {@link #findDueForAutoCleanupDeletion} would still return now,
+   * locked until the end of the transaction: a chat pinned or brought back, or a space switched off
+   * since the candidates were found, drops out, and none of them can change before the delete.
+   */
+  @Query(
+      value =
+          """
+          SELECT c.id FROM chats c JOIN spaces s ON s.id = c.space_id
+          JOIN chat_personal_marks m ON m.chat_id = c.id AND m.user_id = c.author_id
+          WHERE c.id IN (:ids)
+            AND s.chat_auto_cleanup_enabled_at < :cutoff AND m.archived_at < :cutoff
+            AND m.pinned_at IS NULL
+          FOR UPDATE OF c, m FOR SHARE OF s
+          """,
+      nativeQuery = true)
+  List<UUID> lockStillDueForAutoCleanupDeletion(
+      @Param("ids") Collection<UUID> ids, @Param("cutoff") Instant cutoff);
+
   /** Whether the user authored any chat ({@code fk_chats_author_organization} is RESTRICT). */
   boolean existsByAuthorId(UUID authorId);
 

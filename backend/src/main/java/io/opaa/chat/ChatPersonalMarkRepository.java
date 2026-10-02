@@ -124,8 +124,9 @@ public interface ChatPersonalMarkRepository
 
   /**
    * Moves every chat whose last activity and whose space's cleanup start both lie before {@code
-   * cutoff} into its author's chat archive, unless the author pinned or archived it already. Only
-   * spaces with the automatic chat cleanup switched on take part.
+   * cutoff} into its author's chat archive, unless the author pinned or archived it already - also
+   * when that happens concurrently, so a pin never makes the statement fail. Only spaces with the
+   * automatic chat cleanup switched on take part.
    *
    * @return the number of chats archived
    */
@@ -140,6 +141,7 @@ public interface ChatPersonalMarkRepository
                             WHERE m.chat_id = c.id AND m.user_id = c.author_id
                               AND (m.pinned_at IS NOT NULL OR m.archived_at IS NOT NULL))
           ON CONFLICT (chat_id, user_id) DO UPDATE SET archived_at = EXCLUDED.archived_at
+            WHERE chat_personal_marks.pinned_at IS NULL AND chat_personal_marks.archived_at IS NULL
           """,
       nativeQuery = true)
   int archiveInactiveForAutoCleanup(@Param("cutoff") Instant cutoff, @Param("now") Instant now);

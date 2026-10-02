@@ -66,12 +66,18 @@ public class ChatAutoCleanupService {
     return deleted;
   }
 
-  /** Deletes the chats among {@code candidates} in one transaction; returns how many. */
+  /**
+   * Deletes the chats among {@code candidates} that are still due at {@code cutoff}, in one
+   * transaction; returns how many. Each candidate is checked again under a lock, so one rescued or
+   * switched off since it was found is kept.
+   */
   int deleteBatch(List<UUID> candidates, Instant cutoff) {
     Integer count =
         transactionTemplate.execute(
             status -> {
-              List<Chat> chats = chatRepository.findAllById(candidates);
+              List<Chat> chats =
+                  chatRepository.findAllById(
+                      chatRepository.lockStillDueForAutoCleanupDeletion(candidates, cutoff));
               chatRepository.deleteAll(chats);
               return chats.size();
             });

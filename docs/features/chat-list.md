@@ -202,9 +202,13 @@ Archivieren ist **eine persönliche Ablage**, keine Zustandsänderung am Chat:
 
 ### Verhältnis zu Aufbewahrung und Löschen
 
-- **Archivieren ist kein Löschen** und **kein Aufbewahren über eine Frist hinaus.** Eine
-  Aufbewahrungsfrist für Chats wirkt auf archivierte und aktive Chats gleich. Ein Archiv mit eigener
-  Lebensdauer wäre ein zweiter Bestand, den niemand überblickt.
+- **Archivieren ist kein Löschen** und **kein Aufbewahren über eine Frist hinaus.** Ohne
+  eingeschaltete Bereinigung hat das Archiv keine eigene Lebensdauer. Mit ihr ist das Archiv
+  bewusst die Vorstufe der Löschung: Ein Chat wird erst nach der Archivfrist archiviert und erst nach
+  der Löschfrist im Archiv gelöscht; das Löschdatum steht am archivierten Chat. Die Regel, dass das
+  Archiv kein zweiter, unüberblickter Bestand mit eigener Lebensdauer sein darf, bleibt damit
+  gewahrt: Die Lebensdauer gilt nur im eingeschalteten Space, für alle nicht angehefteten Chats
+  gleich, und ist am Chat ablesbar.
 - Eine allgemeine Aufbewahrungsfrist für Chats ist nicht gebaut (der vorgesehene Umfang wurde mit #216
   als nicht geplant geschlossen, siehe [security-and-compliance.md](./security-and-compliance.md#aufbewahrung)).
   Gebaut ist die **automatische Bereinigung je Space** (#1923, nächster Abschnitt): Ist sie im Space
@@ -358,7 +362,7 @@ Entschieden vom Maintainer am 18.09.2026 (Epic #1762, Phase 1):
 | Ordner oder Schlagworte | **Keines.** Phase 5 nur bei gemeldetem Bedarf nach Einführung der Phasen 2–4 | Schlagworte im Datenmodell vorsehen; Ordner |
 | Archivsemantik | **Persönliche Ablage**, lesbar und fortsetzbar; eigene neue Nachricht holt automatisch zurück, mit Hinweis | schreibgeschützt bis zum Zurückholen; fortsetzbar, bleibt archiviert |
 | Ort für Verwalten und Inhaltssuche | **Seitenleiste** für Filter, Zeitgruppen, Anheften; **Seite „Chats" je Space** mit Reitern Aktiv/Archiv, Mehrfachauswahl und Inhaltssuche | alles in der Seitenleiste; Suchdialog plus Archiv in den persönlichen Einstellungen |
-| Aufbewahrungsanzeige im Archiv | **Entfällt**, weil es keine Chat-Aufbewahrung gibt; Anzeige „archiviert am" | Chat-Aufbewahrung als Voraussetzung ins Epic holen |
+| Aufbewahrungsanzeige im Archiv | Ursprünglich **entfallen**, weil es keine Chat-Aufbewahrung gab; Anzeige „archiviert am". Seit #1923 zeigt ein archivierter Chat in einem Space mit eingeschalteter Bereinigung zusätzlich sein Löschdatum | Chat-Aufbewahrung als Voraussetzung ins Epic holen |
 
 Im Konzept festgelegt, ohne gesonderte Maintainer-Frage: Suche nur im aktiven Space; Suchbegriffe nicht
 protokolliert; Archiv in der Suche einbezogen; persönliche Merkmale als eigene Zeilen je Person und
