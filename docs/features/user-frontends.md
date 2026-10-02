@@ -54,10 +54,10 @@ der alle Fähigkeiten vollständig sichtbar sind, und der Maßstab für alles We
 |---|---|---|
 | **Fragen und Antworten** | Frage stellen, Antwort mit Fundstellen erhalten, Relevanz und Trefferzahl je Quelle sehen, erkennen, welche Quelle tatsächlich zitiert wurde | ja |
 | **Gesprächsverlauf** | Rückfragen im laufenden Gespräch, die den bisherigen Verlauf berücksichtigen | ja — Gespräche liegen persistent in genau einem Arbeitsraum und überleben ein Neuladen der Seite (#525/#527). Die Kopfzeile des Chats trägt ab der dritten abgeschlossenen Runde die Schaltfläche „Gesprächsnotiz · n“: ein aufklappbares Panel mit den Angaben, die OPAA aus den eigenen Nachrichten dieses Chats festgehalten hat, jede einzeln entfernbar (#1488, [conversation-memory.md](./conversation-memory.md)) |
-| **Suchfilter** | den Suchbereich einer Anfrage ausschließlich über die Chip-Leiste am Eingabefeld steuern (Spezial-Chip @Alles-Wissen, konkrete @-Bibliotheksreferenzen, oder eine geleerte Leiste), nicht mehr über eine Space-Auswahl oder einen separaten Schalter | ja — die Space-Auswahl ist entfernt; Chip-Leiste, @-Autocomplete und sticky Chips sind gebaut und werden am persistierten Gespräch gespeichert (siehe unten). Die Space↔Bibliothek-Assoziation (#203/#706) ist umgesetzt; die Fußzeile unter dem Eingabefeld zeigt bei @Alles-Wissen in einem kuratierten Space die Schnittmenge aus zugeordneten und lesbaren Bibliotheken, nicht mehr alle lesbaren (#782) |
+| **Suchfilter** | den Suchbereich eines Gesprächs ausschließlich über die Chip-Leiste am Eingabefeld steuern (Spezial-Chip @Space-Wissen, konkrete @-Referenzen auf zugeordnete Bibliotheken, oder eine geleerte Leiste), nicht über eine Space-Auswahl oder einen separaten Schalter; nie über das hinaus, was dem Arbeitsraum zugeordnet ist | teilweise — die Space-Auswahl ist entfernt; Chip-Leiste, @-Autocomplete und sticky Chips sind gebaut und werden am persistierten Gespräch gespeichert (siehe unten). Gebaut ist noch der Chip „@Alles-Wissen" mit der Übergangsregel und Vorschlägen aus allen lesbaren Bibliotheken; die harte Grenze, „@Space-Wissen" und der Hinweis bei leerem Space folgen mit #2096 |
 | **Arbeitsräume** | Chats und Artefakte eines Themas, Entwurf und Ablage getrennt (siehe [spaces-and-assets.md](./spaces-and-assets.md)) | teilweise — Übersicht, Mitglieder, Rollen, Eigentumsübergabe und die Gesprächsliste je Arbeitsraum (anlegen, umbenennen, löschen) sind vorhanden |
 | **Wissen** | Dokumente einer Wissensbibliothek einsehen, hochladen, Indizierungsstand erkennen | ja — Bibliotheksdetailseite mit Bestandsdarstellung, Upload/Löschen für Upload-Bibliotheken und Indizierungsstand für Konnektor-Bibliotheken |
-| **Assets** | Agenten, Prompt-Bibliotheken und Wissensbibliotheken anlegen, beschreiben, freigeben, finden | teilweise — Wissens- und Prompt-Bibliotheken lassen sich anlegen, beschreiben und freigeben: je Typ ein Punkt in der globalen Leiste („Wissen" → `/libraries`, „Prompts" → `/prompts`) mit derselben Übersicht, denselben Assistentenschritten und demselben Freigabeabschnitt (`AssetDistributionSection`: Verteilungsstufe, Auffindbarkeit, Rechte, Räume, Herleitung) auf der Detailseite (#1902). Prompts werden in einem Editor mit Variablentabelle, Prüfung und Vorschau gepflegt und im Chat per `/befehl` mit Variablenformular eingesetzt (#1903). Gefunden wird über den **Katalog** (`/catalog`, eigener Punkt der Leiste neben „Wissen" und „Prompts"): beide Typen gemischt, Suche und Typfilter auf dem Server, gelistete Einträge ohne Zugriff mit dem Hinweis „Auffindbar ohne Berechtigung — zuständig: …" und ohne Link (#1904). Agenten sind Zielbild |
+| **Katalog** | **ein** Einstieg der Hauptnavigation für alle Asset-Typen (Wissen, Prompts, später Skills und Agenten): finden, anlegen, öffnen, freigeben, als Favorit markieren und „In Space verwenden" — nur Kacheln, nur Lesbares, Filter nach Typ, Sichtbarkeit (öffentlich/geschlossen), „aus meinen Gruppen" und Favoriten, Sortierung nach Name oder Änderung; „Neu" beginnt mit der Typwahl als Kacheln mit Icon ([spaces-and-assets.md](./spaces-and-assets.md#der-katalog), [ADR-0039](../decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md)) | teilweise — heute noch drei Einstiege: je Typ ein Punkt in der globalen Leiste („Wissen" → `/libraries`, „Prompts" → `/prompts`) mit derselben Übersicht (Kacheln und Tabelle), denselben Assistentenschritten und demselben Freigabeabschnitt (`AssetDistributionSection`: Verteilungsstufe, Auffindbarkeit, Rechte, Räume, Herleitung) auf der Detailseite (#1902), dazu der Katalog (`/catalog`) mit gelisteten Einträgen ohne Zugriff (#1904). Prompts werden in einem Editor mit Variablentabelle, Prüfung und Vorschau gepflegt und im Chat per `/befehl` mit Variablenformular eingesetzt (#1903). Den einen Einstieg, die Typ-Registry und „Neu" mit Typwahl liefert #2094, Favoriten #2095, „In Space verwenden" #2097; `listed` entfällt mit #2092. Agenten sind Zielbild |
 | **Rückmeldung** | Antworten und Treffer bewerten; die Rückmeldung fließt in die Suchqualität ein (siehe [search-quality-evaluation.md](./search-quality-evaluation.md)) | nein — Zielbild (siehe unten) |
 | **Systemverwaltung** | Gruppen und Verzeichnisabgleich, Rollen, Auslösen und Stand der Indizierung | teilweise — Gruppen, Verzeichnisabgleich, Rollen und Indizierung sind vorhanden; Modellvorgaben und Protokolleinsicht sind Zielbild (siehe [access-control.md](./access-control.md) und [llm-integration.md](./llm-integration.md)) |
 | **Persönliche Einstellungen** | Darstellung, später eigene Zugänge zur Schnittstelle | teilweise — nur die Darstellung; eine Verwaltung eigener API-Zugänge gibt es nicht |
@@ -131,7 +131,10 @@ annehmen und deshalb weiterhin auf ihre Übersichtsseite (`/spaces/:spaceId`) f�
 Gespräch wird nur fortgesetzt, wenn es bewusst in der Liste angeklickt wird; die Übersichtsseite
 eines Arbeitsraums bleibt über die Space-Übersicht erreichbar, die Verwaltung über das Zahnrad
 „Einstellungen“ am Fuß der Seitenleiste (`/spaces/:spaceId/settings/:tab`, Reiter Stammdaten,
-Mitglieder, Wissen, Prompts; die frühere Adresse `/spaces/:spaceId/manage` leitet dorthin weiter). Ein Neuladen der Seite stellt Verlauf und Liste wieder her. Es
+Mitglieder, Wissen, Prompts; die frühere Adresse `/spaces/:spaceId/manage` leitet dorthin weiter). Die
+Reiter Wissen und Prompts verwalten die **Zuordnung** — die harte Grenze dessen, was der Arbeitsraum im
+Chat nutzt; im Zielbild mit derselben Kachelauswahl wie der Space-Assistent und der Angabe „n
+zugeordnet, davon m für Sie lesbar" (#2097). Ein Neuladen der Seite stellt Verlauf und Liste wieder her. Es
 entsteht als Entwurf, sichtbar nur für den Autor, und wird für die Mitglieder des
 Arbeitsraums erst sichtbar, sobald der Autor es dort teilt (`SHARED`/`WITHDRAWN`, Zielbild — siehe
 [Chats](./spaces-and-assets.md#chats)). Ebenfalls Zielbild: das Löschen des eigenen Verlaufs im
@@ -147,26 +150,35 @@ bereits in genau einem Arbeitsraum, eine zusätzliche Space-Auswahl je Anfrage w
 und hätte eine Wirkung suggeriert, die es nicht gab. An ihre Stelle tritt eine gesprächsbezogene, keine
 anfragebezogene Steuerung (siehe [Suchbereich je Chatart](./spaces-and-assets.md#suchbereich-je-chatart)):
 die **Chip-Leiste** am Eingabefeld, die einzige Suchbereichssteuerung — kein separater Schalter daneben.
-„Durchsucht wird, was in der Leiste steht" — die Leiste kennt drei Zustände:
+„Durchsucht wird, was in der Leiste steht" — und nie mehr, als dem Arbeitsraum zugeordnet ist
+([ADR-0039](../decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md)). Die Leiste kennt drei
+Zustände:
 
-- **@Alles-Wissen** (Standard, vorbelegter Spezial-Chip) — durchsucht die dem Arbeitsraum
-  zugeordneten Wissensbibliotheken, eingeschränkt auf die, die der Nutzer selbst lesen darf
-  (#203/#706); hat der Arbeitsraum keine Zuordnungen, bleibt es bei allen lesbaren Bibliotheken
-  (Übergangsregel, siehe [Suchbereich je Chatart](./spaces-and-assets.md#suchbereich-je-chatart)).
-  Die Fußzeile unter dem Eingabefeld nennt die tatsächliche Anzahl dieser Schnittmenge, nicht die
-  Zahl aller lesbaren Bibliotheken (#782); ist die Schnittmenge leer, erscheint statt einer Zahl die
-  aus der Antwort bekannte Formulierung „In diesem Space ist für Sie derzeit kein Wissen verfügbar.",
+- **@Space-Wissen** (Standard, vorbelegter Spezial-Chip) — durchsucht die dem Arbeitsraum
+  zugeordneten Wissensbibliotheken, eingeschränkt auf die, die der Nutzer selbst lesen darf.
+  Die Fußzeile unter dem Eingabefeld nennt die tatsächliche Anzahl dieser Schnittmenge (#782). Ist
+  dem Arbeitsraum kein Wissen zugeordnet, durchsucht er kein Wissen; dann erscheinen im Chat und auf
+  der Arbeitsraum-Seite der Hinweis „Diesem Space ist kein Wissen zugeordnet" mit dem Direktlink
+  „Wissen zuordnen" für Kuratierende, und für alle anderen die Angabe, wer zuordnen kann. Ist Wissen
+  zugeordnet, aber keines für den Nutzer lesbar, erscheint statt einer Zahl „In diesem Space ist für
+  Sie derzeit kein Wissen verfügbar." Beide Hinweise nennen keine Anzahlen
+  (siehe [Suchbereich je Chatart](./spaces-and-assets.md#suchbereich-je-chatart)),
 - **konkrete Bibliotheks-Chips** — durchsucht ausschließlich die referenzierten. Tippen von `@` im
-  Eingabefeld schlägt alle Bibliotheken vor, die der Nutzer lesen darf, unabhängig vom Arbeitsraum,
-  dazu als erster Eintrag (bei leerer Eingabe) @Alles-Wissen selbst, per Tastatur oder Maus auswählbar. Der erste
-  konkrete Chip ersetzt @Alles-Wissen; @Alles-Wissen erneut hinzuzufügen ersetzt umgekehrt die
+  Eingabefeld schlägt die zugeordneten Bibliotheken vor, die der Nutzer lesen darf, dazu als erster
+  Eintrag (bei leerer Eingabe) @Space-Wissen selbst, per Tastatur oder Maus auswählbar. Der erste
+  konkrete Chip ersetzt @Space-Wissen; @Space-Wissen erneut hinzuzufügen ersetzt umgekehrt die
   konkreten Chips,
 - **leere Leiste** — kein Retrieval, das Modell antwortet ohne Wissensbasis, sichtbar gekennzeichnet in
-  Eingabefeld und Antwort, mit einem Ein-Klick-Weg zurück zu @Alles-Wissen.
+  Eingabefeld und Antwort, mit einem Ein-Klick-Weg zurück zu @Space-Wissen.
 
-Jeder Chip ist entfernbar, auch @Alles-Wissen. Der Zustand bleibt als entfernbare Chips **sticky am
+Jeder Chip ist entfernbar, auch @Space-Wissen. Der Zustand bleibt als entfernbare Chips **sticky am
 Gespräch** erhalten, nicht nur für eine einzelne Anfrage — er wird mit dem Gespräch persistiert
 (`PATCH /api/v1/chats/{chatId}`, #527) und überlebt damit ein Neuladen der Seite.
+
+Ebenso begrenzt die Zuordnung die **Prompt-Auswahl** per `/`: Angeboten und eingesetzt werden nur
+Prompts aus Prompt-Bibliotheken, die dem Arbeitsraum zugeordnet und für den Nutzer lesbar sind. Bis
+#2096 heißt der Standard-Chip noch „@Alles-Wissen", ein Arbeitsraum ohne Zuordnung durchsucht noch alle
+lesbaren Bibliotheken, und die `/`-Auswahl bietet alle lesbaren Prompts an.
 
 Im Zielbild kommen dazu die Eingrenzung auf den Dokumenttyp und auf den Stand der Indizierung. Ein
 Filter, der die Rechteprüfung ersetzen würde, ist ausgeschlossen: Filter verengen die Sicht, sie
@@ -271,10 +283,10 @@ Zweck, nicht nach Pfad.
 
 | Zweck | Endpunkt | Heute gebaut |
 |---|---|---|
-| Frage stellen und belegte Antwort erhalten — mit Fundstellen, Relevanz je Quelle, Kennzeichnung der tatsächlich zitierten Quellen und einer Gesprächskennung für Rückfragen; der Suchbereich wird über die Chip-Leiste des Gesprächs gesteuert, nicht per Space-Auswahl je Anfrage | `POST /api/v1/query` | ja — Frage, Antwort, Fundstellen und die Chip-Leiste (@Alles-Wissen, @-Referenzen, leere Leiste) sind gebaut; die Space↔Bibliothek-Assoziation (#203/#706) ist umgesetzt |
+| Frage stellen und belegte Antwort erhalten — mit Fundstellen, Relevanz je Quelle, Kennzeichnung der tatsächlich zitierten Quellen und einer Gesprächskennung für Rückfragen; der Suchbereich wird über die Chip-Leiste des Gesprächs gesteuert, nicht per Space-Auswahl je Anfrage, und bleibt auf das dem Arbeitsraum Zugeordnete begrenzt | `POST /api/v1/query` | ja — Frage, Antwort, Fundstellen und die Chip-Leiste (@-Referenzen, leere Leiste) sind gebaut; die Space↔Bibliothek-Assoziation (#203/#706) ist umgesetzt. Die harte Grenze und „@Space-Wissen" statt „@Alles-Wissen" folgen mit #2096 |
 | Treffer ohne erzeugte Antwort erhalten — Fundstellen mit Auszug, Herkunft (Bibliothek, Dokument, Fundstelle), Metadaten, Relevanz und dem Downloadpfad des Originals; derselbe Retrieval-Pfad wie `POST /api/v1/query` (Teilfragen, Vektor- und Volltextsuche, Fusion, Reranking, Rechtefilter in der Suche), nur ohne Generierung. Hängt bewusst **nicht** am Fremdzugangsschalter — der ist der Notaus des Fremdzugangskanals, nicht der dieses Endpunkts | `POST /api/v1/search` | ja (#1720) |
 | Text zu einer Trefferkennung abrufen — Vorgabe ist der Abschnitt mit angrenzendem Kontext und Überschriftenpfad, das ganze Dokument nur über `full=true` und nur bis zu einem serverseitigen Zeichen-Deckel. Eine Kennung außerhalb der eigenen Sicht ist von einer unbekannten nicht unterscheidbar | `GET /api/v1/search/hits/{hitId}` | ja (#1720) |
-| Die Bibliotheken auflisten, in denen der Aufrufer suchen kann — Kennung, Name, Beschreibung; für eine Person ihre lesbaren, für ein Zugangstoken die effektive Sicht, aus derselben Stelle, die auch den Suchbereich bestimmt | `GET /api/v1/search/libraries` | ja (#1720) |
+| Die Bibliotheken auflisten, in denen der Aufrufer suchen kann — Kennung, Name, Beschreibung; für eine Person ihre lesbaren, für ein Zugangstoken die effektive Sicht, aus derselben Stelle, die auch den Suchbereich bestimmt. Diese Endpunkte haben keinen Space-Bezug und sind deshalb nicht an eine Zuordnung gebunden ([ADR-0039](../decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md), Entscheidung 5) | `GET /api/v1/search/libraries` | ja (#1720) |
 | Antwort auf eine Antwort geben (Bewertung, Fehltreffer melden) | — | nein — Zielbild, siehe [Rückmeldung](#rückmeldung-zur-antwortqualität) |
 
 **Wissensbestände verwalten**
@@ -284,7 +296,7 @@ Zweck, nicht nach Pfad.
 | Wissensbibliotheken anlegen, umbenennen, beschreiben, auflisten, löschen | `/api/v1/libraries` und `/api/v1/libraries/{id}` | ja |
 | Bestand einer Wissensbibliothek einsehen — welche Dokumente sind drin, in welchem Indizierungsstand | `GET /api/v1/libraries/{id}/documents` | ja |
 | Lesezugriff auf eine Wissensbibliothek erteilen, einsehen und entziehen — Rechte hängen an der Bibliothek, nicht am einzelnen Dokument | `/api/v1/assets/KNOWLEDGE_LIBRARY/{id}/grants` | ja |
-| Assets aller Typen finden — lesbare vereinigt mit gelisteten, gelistete ohne Zugriff als solche gekennzeichnet; Suche über Name und Beschreibung, Typfilter, seitenweise | `GET /api/v1/catalog` | ja (#1904) |
+| Assets aller Typen finden — nur lesbare, mit Sichtbarkeit (öffentlich/geschlossen), eigener Rolle, Eigentümer und Status; Suche über Name und Beschreibung, Filter nach Typ, Sichtbarkeit, „aus meinen Gruppen" und Favoriten, Sortierung nach Name oder Änderung, seitenweise | `GET /api/v1/catalog` | teilweise (#1904) — gebaut sind Suche, Typfilter und Seiten über lesbare vereinigt mit gelisteten Assets; „nur lesbar", die übrigen Felder und Filter folgen mit #2092, #2093 und #2095 |
 | Indizierung einer Bibliothek auslösen — aus ihrer eigenen, gespeicherten Quellkonfiguration; wer an der Bibliothek mindestens `EDITOR` ist, darf anstoßen | `POST /api/v1/libraries/{id}/indexing` | ja |
 | Stand des letzten Indizierungslaufs einer Bibliothek abfragen — verarbeitet, übersprungen, fehlgeschlagen, mit Fehlertext; bei einem RSS-Lauf zusätzlich die Gesamtzahl indizierter Dokumente einschließlich Anhängen (`documentsIndexedTotal`), getrennt von der Zahl verarbeiteter Feed-Einträge (`documentCount`) (#518) | `GET /api/v1/libraries/{id}/indexing/status` | ja |
 | Dokument hochladen und wieder entfernen | `POST`/`DELETE /api/v1/libraries/{libraryId}/documents` | ja (#420, #422) |

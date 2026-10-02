@@ -13,6 +13,12 @@ Prüfweg, kein zusätzlicher Betriebsmodus), zu [ADR-0033](0033-lokale-benutzerv
 [ADR-0021](0021-single-instance-betrieb.md) (zwei weitere Einträge prozesslokalen Zustands: das
 Kontingentfenster je Token und das Zählfenster des Abflussalarms).
 
+**Nachtrag mit [ADR-0039](0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md) (02.10.2026,
+#2091):** `listed` entfällt; die Fremdzugangsfreigabe ist danach das einzige Reichweitenfeld neben den
+Grants. Die Zusage „Was die Web-Oberfläche nicht findet, findet auch der Fremdzugang nicht — und
+umgekehrt" (Entscheidung 5, „Folgen") ist umformuliert, weil der Chat jetzt nur das Zugeordnete eines
+Space durchsucht. Der Fremdzugang bleibt bewusst ohne Space.
+
 Das **Verhalten** dieses Kanals steht in
 [`docs/features/external-access.md`](../features/external-access.md) — Schalter, Freigabe,
 Tokeneigenschaften, effektive Sicht, Werkzeuge, Kontingent, Abflussalarm, Protokollierung. Dieser ADR
@@ -292,6 +298,11 @@ Auswahl enger ziehen will, zieht die Leserechte enger.
 Das Merkmal ist fachlich dasselbe wie `visibility` und `listed`: eine Stufe der **Reichweite** an der
 Bibliothek. Daraus folgt unmittelbar und ohne neue Mechanik:
 
+> **Nachtrag (02.10.2026, #2091):** `visibility` ist mit ADR-0037 entfallen, `listed` mit
+> [ADR-0039](0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md). Die Fremdzugangsfreigabe bleibt
+> ein Reichweitenfeld und wird weiter in `asset_visibility_history` historisiert; die drei Folgen unten
+> gelten unverändert.
+
 - **Es wird historisiert, nicht nur protokolliert** — dieselbe Intervall-Historisierung wie die
   übrigen Reichweitenfelder, mit demselben Schreibpfadschutz. Damit gelten für es auch
   [ADR-0016](0016-loeschschicksal-rechtehistorie.md) (die Historie überlebt die Löschung ihres
@@ -365,6 +376,16 @@ die des Suchwegs, und einen Deckel dagegen liefert der MCP-Server **nicht**.
 Betriebsart; `McpStatelessAsyncServer` nimmt den Wert im Konstruktor entgegen und legt ihn nirgends
 ab. Der Deckel gehört deshalb auf die HTTP-/Servlet-Ebene oder in den Domain-Dienst — wer ihn über
 die MCP-Eigenschaft zu setzen glaubt, hat keinen.
+
+> **Nachtrag (02.10.2026, #2091): Die Gleichheitszusage ist umformuliert.** Seit
+> [ADR-0039](0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md) durchsucht ein Chat nur, was
+> seinem Space zugeordnet und lesbar ist; der Fremdzugang bleibt bewusst ohne Space und durchsucht
+> lesbar ∩ Fremdzugangsfreigabe ∩ Token-Auswahl. Der Satz „Was die Web-Oberfläche nicht findet, findet
+> auch der Fremdzugang nicht — und umgekehrt" gilt deshalb nicht mehr wörtlich. Er lautet jetzt:
+> **Beide Kanäle laufen über denselben Suchweg mit derselben Rechteprüfung; was sie durchsuchen,
+> bestimmt im Chat die Zuordnung des Space, im Fremdzugang die Auswahl des Tokens.** Eine Bibliothek,
+> die die Person nicht lesen darf, findet sie in keinem der beiden Kanäle; jede Verbesserung des
+> Suchwegs wirkt weiter in beiden.
 
 ### 6. Der Fassungswechsel der MCP-Spezifikation ist geplant, nicht abgewartet
 

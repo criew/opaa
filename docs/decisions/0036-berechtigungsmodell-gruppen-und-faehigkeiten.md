@@ -23,6 +23,9 @@ ließ — die Voreinstellung der Mindestgruppengröße und der ausgelieferte Wer
 Aufbewahrungshöchstdauer —, hat der Maintainer entschieden; sie stehen in „Zahlen, die dieser ADR
 setzt".
 
+**Nachtrag mit [ADR-0039](0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md) (02.10.2026,
+#2091):** In Entscheidung 9 entfällt der Bezug auf `listed`; die Regel selbst gilt unverändert.
+
 **Präzisiert, ohne aufzuheben:** [ADR-0016](0016-loeschschicksal-rechtehistorie.md) (Entscheidung 8),
 [ADR-0025](0025-mehrere-oidc-anbieter.md) (Entscheidungen 2 und 3),
 [ADR-0033](0033-lokale-benutzerverwaltung.md) (Entscheidung 2).
@@ -665,6 +668,12 @@ Auffindbarkeit ist eine bewusste Handlung. Drei Festlegungen:
    „nicht gefunden" (`404`, wie über die Organisationsgrenze).
 3. **Die Bestandsänderung wird ausgesprochen:** Ein `MANAGER` kann eine neue interne Gruppe erst dann
    als Empfänger wählen, wenn deren Verantwortliche sie freigegeben haben.
+
+> **Nachtrag (02.10.2026, #2091):** Mit [ADR-0039](0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md)
+> entfällt `listed` bei Assets; der Vergleich „Gegenstück zu `listed`" hat damit keinen Bezugspunkt
+> mehr. Die Freigabe einer internen Gruppe zur Verwendung bleibt unverändert — sie begründet sich
+> allein daraus, dass die Auswahl eines Empfängers eine bewusste Handlung der Verantwortlichen
+> voraussetzt.
 
 **Die Regel — „wer ein Recht gibt, sieht, an wen":**
 

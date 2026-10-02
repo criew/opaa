@@ -4,6 +4,12 @@
 
 Akzeptiert
 
+**Hinweis (02.10.2026, [ADR-0039](0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md)):** Die
+Space-Zuordnung eines Assets ist seither eine harte Grenze dessen, was ein Chat nutzt, wird aber
+weiterhin **nicht** historisiert: Sie gewährt keinen Zugriff, und die Stichtagsfrage „wer konnte
+lesen?" beantwortet die Rechtehistorie. Die `listed`-Intervalle der Sichtbarkeitshistorie entfallen
+mit ADR-0039 ersatzlos.
+
 ## Kontext
 
 #238 historisiert AssetGrants, Gruppenmitgliedschaften und Bibliotheks-Sichtbarkeit als

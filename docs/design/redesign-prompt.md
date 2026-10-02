@@ -61,7 +61,8 @@ Leute. Der Wechsel des Space ist die häufigste Navigationshandlung überhaupt u
 schnell und sichtbar sein.
 
 **Der persönliche Space ist ein Space wie jeder andere**, nur mit einem Mitglied — mit frei
-wählbaren eigenen Datenquellen. Er ist kein Sonderfall und keine reduzierte Fassung.
+wählbaren eigenen Datenquellen. Er ist kein Sonderfall und keine reduzierte Fassung: Wie jeder Space
+startet er ohne Datenquellen und durchsucht genau das, was ihm zugeordnet ist.
 
 ### Ein Chat ist eine geschlossene Unterhaltung
 
@@ -80,8 +81,11 @@ Ort für Vorhaben, die gar keinen Team-Bezug haben.
 Schalter „Wissen nutzen" und keine Auswahlliste am Eingabefeld — die Datenbasis ist eine Eigenschaft
 des Raums, in dem man sich befindet, und dort einmal eingerichtet.
 
-Verengen ist möglich, erweitern nicht: Mit `@` grenzt man eine einzelne Frage auf eine bestimmte
-Quelle **aus dem Space** ein („nur im Erlass nachsehen"). **Der Space bleibt immer die Obergrenze.**
+Verengen ist möglich, erweitern nicht: Mit `@` grenzt man das Gespräch auf eine bestimmte Quelle
+**aus dem Space** ein („nur im Erlass nachsehen"); die Auswahl bleibt am Chat stehen, bis man sie
+ändert. **Der Space bleibt immer die Obergrenze** — für Datenquellen, Prompts und Agenten gleichermaßen:
+Was dem Space nicht zugeordnet ist, wird dort nicht angeboten. Ist ihm noch nichts zugeordnet, sagt
+der Chat das und führt mit einem Klick dorthin, wo man zuordnet.
 
 ---
 
@@ -189,25 +193,30 @@ Ein Design, das hier ein rotes Ausrufezeichen setzt, hat das Produkt nicht verst
 Der Ort, an dem ein Projekt seine Ausstattung bekommt. Erreichbar aus dem Space, nicht aus einem
 fernen Verwaltungsbereich.
 
-- **Datenquellen zuordnen** — aus den Wissensbibliotheken wählen, die man selbst lesen darf
-- **Agenten zuordnen** — welche Werkzeuge hier zur Verfügung stehen
+- **Datenquellen, Prompt-Sammlungen und Agenten zuordnen** — aus dem, was man selbst lesen darf
 - **Mitglieder und Rollen** — aufnehmen, Rolle ändern, Eigentum übergeben
-- **Name, Beschreibung, Strikt-Modus**
+- **Name, Beschreibung**
 
-Das Zuordnen ist die häufigste Handlung hier und muss leichtfallen: suchen, auswählen, fertig.
+Das Zuordnen ist die häufigste Handlung hier und muss leichtfallen: Es ist eine **Kachelauswahl** aus
+derselben Liste wie der Katalog, mit Mehrfachwahl, den Filtern „nur Favoriten", „aus meinen Gruppen"
+und „alle" sowie einer Suche. Beim Anlegen eines Space ist es ein eigener, überspringbarer Schritt des
+Assistenten; vom Katalog aus führt „In Space verwenden" in höchstens zwei Klicks dorthin.
 
-**Fehlende Leserechte an einer Space-Quelle** bleiben unsichtbar — die Rechte hängen an der
-Wissensbibliothek, nicht am Space, und nicht jedes Mitglied darf jeden Bestand lesen. Wer eine Quelle
-nicht lesen darf, sieht sie nicht in der Liste. **Fällt eine Antwort deshalb dünner aus, steht ein
-Hinweis dabei** — dass dieser Space Bestände enthält, die einem nicht zugänglich sind, ohne zu
-nennen, welche. Der Hinweis erscheint bei Wirkung, nicht auf Vorrat.
+**Fehlende Leserechte an einer Space-Quelle** — die Rechte hängen an der Wissensbibliothek, nicht am
+Space, und nicht jedes Mitglied darf jeden Bestand lesen. Wer eine Quelle nicht lesen darf, sieht sie
+nicht benannt. Die Einrichtung zeigt deshalb „n zugeordnet, davon m für Sie lesbar", ohne die übrigen
+zu nennen. **Fällt eine Antwort deshalb dünner aus, steht ein Hinweis dabei** — dass dieser Space
+Bestände enthält, die einem nicht zugänglich sind, ohne zu nennen, welche. Der Hinweis erscheint bei
+Wirkung, nicht auf Vorrat.
 
 ### 4.4 Wissensbibliotheken
 
 Eine Wissensbibliothek ist ein Dokumentenbestand **mit eigenen Rechten** — ein eigenständiges Objekt,
 kein Ordner in einem Raum. Sie kann in mehreren Spaces verwendet werden.
 
-**Übersicht:** alle lesbaren Bestände mit Name, Beschreibung, eigener Rolle, Sichtbarkeit.
+**Übersicht:** Eine eigene Liste der Wissensbibliotheken gibt es nicht — man findet sie im
+[Katalog](#46-katalog), Typfilter „Wissen", als Kachel mit Name, Beschreibung, eigener Rolle,
+Sichtbarkeit und Stand.
 
 **Detailseite:** Stammdaten, Rechtevergabe, Bestand — und ein Bereich, der **je nach Herkunft anders
 aussieht**:
@@ -225,11 +234,13 @@ Diese Seite trägt am meisten Information und braucht die klarste Ordnung der ga
 ### 4.5 Agenten und Prompt-Bibliotheken
 
 Die zweite Produktsäule: Ein Agent erledigt eine wiederkehrende Aufgabe — Widerspruch prüfen,
-Aktenvermerk entwerfen, in Leichte Sprache übertragen —, immer an das Wissen des Space gebunden und
-immer mit den Rechten der fragenden Person.
+Aktenvermerk entwerfen, in Leichte Sprache übertragen —, immer mit seinem eigenen, gebundenen Wissen
+und immer mit den Rechten der fragenden Person. Angeboten wird er in einem Space nur, wenn er ihm
+zugeordnet ist.
 
 Agenten sind **dieselbe Art Objekt wie Wissensbibliotheken**: benannt, beschrieben, mit eigenen
-Rechten, versionierbar, einem Space zuordenbar, per `@` aufrufbar. Sie brauchen dieselbe
+Rechten, versionierbar, einem Space zuordenbar, per `@` aufrufbar. Prompt-Sammlungen ebenso; ihre
+Prompts setzt man im Chat per `/` ein, angeboten werden nur die der zugeordneten Sammlungen. Sie brauchen dieselbe
 Gestaltungssprache — wer eine Bibliothek verstanden hat, versteht einen Agenten.
 
 Dazu gehören: anlegen und beschreiben, erproben bevor man freigibt, Fassungen verwalten, zurückziehen
@@ -237,9 +248,19 @@ ohne zu löschen, Herkunft eines abgeleiteten Agenten erkennen.
 
 ### 4.6 Katalog
 
-Der Ort, an dem verteilte Fähigkeit auffindbar wird: freigegebene Agenten, Prompt-Sammlungen und
-Wissensbestände aus der ganzen Organisation, durchsuchbar, mit Angabe wer sie verantwortet und auf
-welcher Verteilungsstufe sie stehen. Von hier übernimmt man etwas in den eigenen Space.
+**Der eine Einstieg für alles Teilbare** — Wissensbestände, Prompt-Sammlungen, Agenten und künftige
+Arten; getrennte Menüpunkte je Art gibt es nicht. Er zeigt alles, was man lesen darf, aus der ganzen
+Organisation, **und nichts sonst**: kein Eintrag, den man nicht öffnen kann.
+
+- **Nur Kacheln**, keine Tabelle. Jede Kachel: Art mit Icon, Name, Beschreibung, Sichtbarkeit
+  (für alle / eingeschränkt), wer verantwortet, die eigene Rolle, Stand und in wie vielen Spaces
+  das Objekt verwendet wird.
+- **Filter** nach Art, Sichtbarkeit, „aus meinen Gruppen" und Favoriten, eine Suche, Sortierung nach
+  Name oder Änderung. **Favoriten** sind ein Stern an der Kachel, nur für einen selbst sichtbar; sie
+  stehen oben.
+- **„Neu"** beginnt mit der Wahl der Art als Kacheln mit Icon, danach folgt der eigene Assistent.
+- **„In Space verwenden"** an jeder Kachel ordnet das Objekt in höchstens zwei Klicks einem eigenen
+  Space zu.
 
 Der Katalog ist die sichtbare Einlösung des Prinzips Verteilbarkeit — ohne ihn bleibt Können dort,
 wo es entstanden ist.
@@ -260,15 +281,21 @@ aber der erste Eindruck des Produkts.
 
 ## 5 · Was überall wiederkehrt
 
-Diese vier Dinge erscheinen in mehreren Bereichen und müssen **überall gleich aussehen**. Sie sind
+Diese fünf Dinge erscheinen in mehreren Bereichen und müssen **überall gleich aussehen**. Sie sind
 die eigentliche Systemarbeit dieses Entwurfs.
 
 **Rollen an einem Objekt** — vier gestapelte Stufen: `Leser` (benutzen) → `Bearbeiter` (ändern) →
 `Verwalter` (weitergeben, Rechte vergeben) → `Eigentümer` (löschen, übergeben). Die eigene Rolle ist
 an jedem Objekt ablesbar und entscheidet, welche Bedienelemente überhaupt erscheinen.
 
-**Verteilungsstufe** — `privat`, `geteilt`, `organisationsweit`, dazu unabhängig der Schalter „im
-Katalog auffindbar". Gilt gleichermaßen für Bibliotheken, Agenten und Prompt-Sammlungen.
+**Sichtbarkeit** — `für alle` (freigegeben an alle Konten) oder `eingeschränkt` (nur an Personen und
+Gruppen freigegeben), abgeleitet aus den Freigaben, nicht eingestellt. Gilt gleichermaßen für
+Bibliotheken, Agenten und Prompt-Sammlungen. Einen Schalter „im Katalog auffindbar" gibt es nicht:
+Sichtbar ist, was man lesen darf.
+
+**Die Kachelauswahl** — Kacheln mit Icon für jede Wahl aus einer überschaubaren Menge: Art beim
+Anlegen, Quellart, Zuordnung zu einem Space, Bibliotheken eines Zugangs. Einzel- oder Mehrfachwahl,
+per Tastatur bedienbar (siehe [guidelines.md](./guidelines.md)).
 
 **Der Beleg** — Ziffer im Text, Fundstelle in der Liste, Sprung ins Dokument. Erscheint im Chat, im
 Export und in allem, was aus einem Gespräch heraus entsteht.
@@ -286,7 +313,9 @@ Sie werden erfahrungsgemäß vergessen und entscheiden trotzdem über die Alltag
 - **Nicht feststellbar** — die begründete Verweigerung als vollwertige Auskunft (4.2)
 - **Antwort dünner wegen fehlender Rechte** — Hinweis ohne Nennung der Quelle (4.3)
 - **Leere Zustände** — kein Space, kein Chat, kein Bestand, kein Treffer
-- **Neuer, noch leerer Space** — der Moment, in dem jemand zum ersten Mal Quellen zuordnet
+- **Neuer, noch leerer Space** — der Moment, in dem jemand zum ersten Mal Quellen zuordnet. Ein Space
+  ohne zugeordnetes Wissen sagt das im Chat ausdrücklich und führt mit einem Klick zur Zuordnung; wer
+  nicht zuordnen darf, erfährt, wer es kann. Nie ein stiller Leerlauf
 - **Antwort entsteht** — sie erscheint fortlaufend, Wort für Wort; Belege setzen sich danach
 - **Vorgang läuft** — Indizierung, Upload, Verzeichnisabgleich
 - **Fehler** — deutsche, verständliche Meldung, nie mit technischem Innenleben
