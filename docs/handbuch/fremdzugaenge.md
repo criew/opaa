@@ -156,9 +156,9 @@ dafür nicht gebraucht.
 - **Bibliotheken** — eine konkrete Liste, mindestens eine. Auswählbar ist nur, was die Person selbst
   lesen darf **und** was freigegeben ist. Eine Option „alle, auch künftige" gibt es nicht, und die
   Auswahl ist nach der Ausstellung **unveränderlich**: Eine Änderung ist ein neues Token.
-  Gewählt wird über Kacheln, wie bei der Zuordnung zu einem Space: Jede wählbare Bibliothek ist eine
-  Kachel mit Name, Beschreibung und dem Ende ihrer Freigabe; ein Klick oder die Leertaste wählt sie
-  aus und wieder ab, eine gewählte Kachel trägt Rahmen und Häkchen. Die Suche über den Kacheln
+  Gewählt wird über Kacheln, wie bei der Wahl der Art unter „Neu" im Katalog oder der Quellart einer
+  neuen Wissensbibliothek: Jede wählbare Bibliothek ist eine Kachel mit Name, Beschreibung und dem
+  Ende ihrer Freigabe; ein Klick, die Leertaste oder Enter wählt sie aus und wieder ab, eine gewählte Kachel trägt Rahmen und Häkchen. Die Suche über den Kacheln
   grenzt nach Name und Beschreibung ein, ohne die bisherige Auswahl zu verwerfen; die Zeile
   „n ausgewählt" daneben zählt alle gewählten Bibliotheken, auch die gerade ausgeblendeten.
 - **Ablauf** — Pflicht, begrenzt durch die Höchstlaufzeit der Installation. Die Person wird vor dem

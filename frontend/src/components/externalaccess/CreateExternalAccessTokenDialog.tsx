@@ -65,8 +65,9 @@ function searchResultMessage(count: number): string {
 }
 
 /**
- * Eine Kachel je wählbarer Bibliothek, die zur Suche passt. Der Satz unter dem Namen trägt das Ende
- * der Freigabe: Läuft sie vor dem Token aus, verliert das Token die Bibliothek vorher.
+ * One tile per selectable library matching the search (guidelines 5.11). The search only hides
+ * tiles, it never drops a choice. The sentence under the name carries the end of the release: if it
+ * ends before the token, the token loses the library first.
  */
 function libraryTiles(
   libraries: EligibleExternalAccessLibraryResponse[],
@@ -111,8 +112,7 @@ function libraryTiles(
  *
  * Die Auswahl kommt aus `eligible-libraries` und ist damit genau die Menge, die die Ausstellung
  * annimmt - lesbar und freigegeben. Alles, was der Dialog anbietet, ist ausstellbar; eine
- * Bibliothek mehr anzubieten hieße, die Person in eine Abweisung laufen zu lassen. Gewählt wird
- * über die Kachelauswahl (guidelines 5.11); die Suche blendet nur aus und lässt die Auswahl stehen.
+ * Bibliothek mehr anzubieten hieße, die Person in eine Abweisung laufen zu lassen.
  */
 export default function CreateExternalAccessTokenDialog({
   tokenMaxLifetimeDays,
@@ -261,8 +261,8 @@ export default function CreateExternalAccessTokenDialog({
                     {selected.length} ausgewählt
                   </Typography>
                 </Stack>
-                {/* Die Suche verschiebt den Fokus nicht; ohne Live-Bereich bliebe das Ergebnis am
-                    Screenreader unbemerkt. Ohne Treffer ist dieselbe Meldung auch sichtbar. */}
+                {/* Searching does not move the focus, so the result is announced in a live
+                    region. Without a match the same message is visible as well. */}
                 <Box
                   role="status"
                   aria-live="polite"

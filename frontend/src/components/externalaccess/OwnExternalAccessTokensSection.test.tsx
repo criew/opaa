@@ -152,10 +152,17 @@ describe('OwnExternalAccessTokensSection', () => {
       'aria-checked',
       'true',
     )
+
+    // Submitted while the search hides the chosen "Meine Dokumente": it is still sent.
+    await user.type(within(dialog).getByRole('searchbox', { name: 'Bibliotheken suchen' }), 'recht')
+    expect(
+      within(dialog).queryByRole('checkbox', { name: /Meine Dokumente/ }),
+    ).not.toBeInTheDocument()
     await user.type(within(dialog).getByLabelText('Name / Zweck'), 'Claude Code (Notebook)')
     await user.click(within(dialog).getByRole('button', { name: 'Erzeugen' }))
 
     await waitFor(() => expect(sent).toHaveLength(2))
+    expect(sent).toEqual(expect.arrayContaining(['library-mine', 'library-referat-50']))
   })
 
   it('lässt das Formular ohne Namen und ohne Bibliothek nicht absenden und benennt das Feld', async () => {
