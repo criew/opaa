@@ -316,11 +316,12 @@ Eigentümerin **eine** Benachrichtigung, die alle ihre Bestände nennt.
 
 **Was eine Person nicht lesen darf, sieht sie auch in der Zuordnungsliste nicht** — in keiner
 Rolle, auch nicht als Kurator, Administrator oder Systemverwaltung. Die Liste nennt weder Namen
-noch Anzahl solcher Bereitstellungen, und die Zahl der Quellen in der Space-Übersicht zählt sie
-nicht mit. Sind nicht alle Zuordnungen lesbar, steht in den Reitern „Wissen" und „Prompts" der
-Einstellungen nur der Hinweis „Nicht alle zugeordneten Inhalte sind für Sie lesbar." Eine
-Bereitstellung, die man nicht lesen darf, löst die Verwaltung der Bibliothek von deren Seite aus,
-Reiter „Zuordnungen".
+noch Anzahl solcher Bereitstellungen. Sind nicht alle Zuordnungen lesbar, steht in den Reitern
+„Wissen" und „Prompts" der Einstellungen der Hinweis „Nicht alle zugeordneten Inhalte sind für Sie
+lesbar."; ist nur Nicht-Lesbares zugeordnet, steht allein dieser Hinweis da. Lösen kann eine
+Bereitstellung im Raum nur, wer die Bibliothek lesen darf; jeder andere Versuch wird wie bei einer
+unbekannten Bibliothek mit „nicht gefunden" beantwortet. Eine Bereitstellung, die man nicht lesen
+darf, löst die Verwaltung der Bibliothek von deren Seite aus, Reiter „Zuordnungen".
 
 Die Mitgliederliste eines Raums sehen **nur** seine Administratoren, sein Eigentümer und die
 Systemverwaltung. Mitglieder und Kuratoren sehen ausschließlich, wie viele Mitglieder je Rolle es

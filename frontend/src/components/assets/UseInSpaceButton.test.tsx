@@ -4,6 +4,8 @@ import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { renderWithProviders } from '../../test/test-utils'
 import { server } from '../../mocks/server'
+import { mockSpaces } from '../../mocks/spaceFixtures'
+import type { SpaceListResponse } from '../../types/api'
 import UseInSpaceButton from './UseInSpaceButton'
 
 const mockNavigate = vi.fn()
@@ -88,5 +90,37 @@ describe('UseInSpaceButton', () => {
         },
       },
     })
+  })
+
+  it('offers only spaces the person curates or administers, and no archived one', async () => {
+    const space = (id: string, overrides: Partial<SpaceListResponse>): SpaceListResponse => ({
+      ...mockSpaces[0],
+      id,
+      name: id,
+      isDefault: false,
+      ...overrides,
+    })
+    server.use(
+      http.get('/api/v1/spaces', () =>
+        HttpResponse.json([
+          space('Als Mitglied', { userRole: 'MEMBER' }),
+          space('Als Kurator', { userRole: 'CURATOR' }),
+          space('Als Administrator', { userRole: 'ADMIN' }),
+          space('Archiviert', { userRole: 'ADMIN', archived: true }),
+        ]),
+      ),
+    )
+    const user = userEvent.setup()
+    renderButton()
+
+    await user.click(screen.getByRole('button', { name: '„Dienstanweisungen“ in Space verwenden' }))
+    const list = await within(await screen.findByRole('dialog')).findByRole('list', {
+      name: 'Spaces, die Sie kuratieren',
+    })
+
+    expect(await within(list).findByRole('button', { name: 'Als Kurator' })).toBeInTheDocument()
+    expect(within(list).getByRole('button', { name: 'Als Administrator' })).toBeInTheDocument()
+    expect(within(list).queryByRole('button', { name: 'Als Mitglied' })).not.toBeInTheDocument()
+    expect(within(list).queryByRole('button', { name: 'Archiviert' })).not.toBeInTheDocument()
   })
 })

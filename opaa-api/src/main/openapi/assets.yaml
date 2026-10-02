@@ -372,6 +372,12 @@ paths:
         above on the asset itself
         (docs/features/spaces-and-assets.md#assets-in-einen-space-assoziieren: "Der Eigentümer des
         Assets ... kann jede davon jederzeit einseitig lösen").
+      description: >
+        On the space side the caller must also be able to read the asset, so no role learns of an
+        asset it may not read (ADR-0039, Entscheidung 2). A caller who neither may read nor manage
+        the asset gets the same 404 as for an unknown asset, whatever their role in the space;
+        403 means the caller may read the asset but is neither CURATOR in the space nor MANAGER on
+        the asset.
       responses:
         "204":
           description: Association removed (or did not exist)

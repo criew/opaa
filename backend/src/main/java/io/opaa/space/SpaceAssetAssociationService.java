@@ -56,6 +56,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class SpaceAssetAssociationService {
 
+  private static final String UNKNOWN_ASSET_MESSAGE = "Objekt nicht gefunden";
+
   private final SpaceAssetAssociationRepository associationRepository;
   private final SpaceRepository spaceRepository;
   private final AssetRepository assetRepository;
@@ -266,7 +268,8 @@ public class SpaceAssetAssociationService {
    * Removes an association - allowed for a CURATOR or above on the space, or unilaterally for a
    * MANAGER or above on the asset itself, regardless of the caller's own space membership (#203:
    * "Der Eigentümer des Assets ... kann jede davon jederzeit einseitig lösen"). A no-op if no such
-   * association exists.
+   * association exists. Without read access and without managing the asset the caller gets the same
+   * 404 as for an unknown asset, whatever their role in the space.
    */
   @Transactional
   public void detach(UUID spaceId, UUID assetId, CurrentUser caller) {
@@ -274,9 +277,14 @@ public class SpaceAssetAssociationService {
     Asset asset = requireAsset(assetId, space.getOrganizationId());
     AssetTypeDefinition definition = definitionOf(asset);
 
+    boolean assetManager = assetAuthorization.canManage(asset, caller.id(), caller.isSystemAdmin());
+    // On the space side the asset must be readable, or the answer would tell an existing asset
+    // from an unknown one (ADR-0039, Entscheidung 2) - the same 404 for every role.
+    if (!assetManager && !assetAuthorization.canRead(asset, caller.id(), false)) {
+      throw new NotFoundException(UNKNOWN_ASSET_MESSAGE);
+    }
     boolean spaceCurator =
         accessPolicy.hasAtLeast(space, caller.id(), SpaceRole.CURATOR) || caller.isSystemAdmin();
-    boolean assetManager = assetAuthorization.canManage(asset, caller.id(), caller.isSystemAdmin());
     if (!spaceCurator && !assetManager) {
       throw new AccessDeniedException(
           "Nur Kuratoren dieses Space oder Verwaltende der "
@@ -526,7 +534,7 @@ public class SpaceAssetAssociationService {
         assetRepository
             .findById(assetId)
             .filter(found -> found.getOrganizationId().equals(organizationId))
-            .orElseThrow(() -> new NotFoundException("Objekt nicht gefunden"));
+            .orElseThrow(() -> new NotFoundException(UNKNOWN_ASSET_MESSAGE));
     return assetAuthorization.load(asset.getAssetType(), asset.getId(), organizationId);
   }
 

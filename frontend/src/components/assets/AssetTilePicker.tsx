@@ -66,6 +66,8 @@ export default function AssetTilePicker({
   const [appliedQuery, setAppliedQuery] = useState('')
   const [loaded, setLoaded] = useState<Loaded | null>(null)
   const [loadingMore, setLoadingMore] = useState(false)
+  // A failed further page keeps the tiles already shown; only the first page replaces them.
+  const [moreError, setMoreError] = useState<{ key: string; message: string } | null>(null)
   const latestRequest = useRef(0)
 
   useEffect(() => {
@@ -117,13 +119,19 @@ export default function AssetTilePicker({
     if (!loaded) return
     const request = ++latestRequest.current
     setLoadingMore(true)
+    setMoreError(null)
     const result = await fetchPage(loaded.page + 1)
     setLoadingMore(false)
     if (request !== latestRequest.current) return
+    if (result.error) {
+      setMoreError({ key: filterKey, message: result.error })
+      return
+    }
     setLoaded({
-      key: filterKey,
-      ...result,
-      entries: result.error ? loaded.entries : [...loaded.entries, ...result.entries],
+      ...loaded,
+      page: result.page,
+      totalPages: result.totalPages,
+      entries: [...loaded.entries, ...result.entries],
     })
   }
 
@@ -236,7 +244,25 @@ export default function AssetTilePicker({
         />
       )}
 
-      {page + 1 < totalPages && !error && (
+      {moreError?.key === filterKey && (
+        <Alert
+          severity="error"
+          action={
+            <Button
+              color="inherit"
+              size="small"
+              disabled={loadingMore}
+              onClick={() => void loadMore()}
+            >
+              Erneut versuchen
+            </Button>
+          }
+        >
+          Weitere Einträge konnten nicht geladen werden: {moreError.message}
+        </Alert>
+      )}
+
+      {page + 1 < totalPages && !error && moreError?.key !== filterKey && (
         <Box>
           <Button
             variant="outlined"

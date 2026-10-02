@@ -26,6 +26,7 @@ import {
 import PageHeading from '../components/a11y/PageHeading'
 import PageSection from '../components/PageSection'
 import AreaTabs from '../components/AreaTabs'
+import { useAuthStore } from '../stores/authStore'
 import UseInSpaceButton from '../components/assets/UseInSpaceButton'
 import MetaBadge from '../components/MetaBadge'
 import FieldLabel from '../components/wizard/FieldLabel'
@@ -343,10 +344,20 @@ export default function PromptLibraryDetailPage() {
   )
   const storeError = usePromptLibraryStore((s) => s.error)
   const loadLibrary = usePromptLibraryStore((s) => s.loadLibrary)
+  const loadLibraries = usePromptLibraryStore((s) => s.loadLibraries)
+  const isSystemAdmin = useAuthStore((s) => s.user?.systemRole === 'SYSTEM_ADMIN')
+  // The list holds only what the caller may read, without the administrative bypass that makes
+  // a system administrator OWNER of every single library.
+  const listed = usePromptLibraryStore((s) => s.libraries.some((l) => l.id === promptLibraryId))
+  const mayUseInSpace = !isSystemAdmin || listed
 
   useEffect(() => {
     if (promptLibraryId) void loadLibrary(promptLibraryId)
   }, [promptLibraryId, loadLibrary])
+
+  useEffect(() => {
+    if (isSystemAdmin && !listed) void loadLibraries()
+  }, [isSystemAdmin, listed, loadLibraries])
 
   if (!promptLibraryId) return <Navigate to={CATALOG_ROUTE} replace />
 
@@ -402,12 +413,14 @@ export default function PromptLibraryDetailPage() {
           >
             <PageHeading title={library.name} />
             <MetaBadge accent>{assetRoleLabel(library.myRole)}</MetaBadge>
-            <UseInSpaceButton
-              assetType="PROMPT_LIBRARY"
-              assetId={library.id}
-              name={library.name}
-              size="small"
-            />
+            {mayUseInSpace && (
+              <UseInSpaceButton
+                assetType="PROMPT_LIBRARY"
+                assetId={library.id}
+                name={library.name}
+                size="small"
+              />
+            )}
           </Stack>
           {library.description && (
             <Typography sx={{ fontSize: 13.5, color: 'text.secondary', maxWidth: 640 }}>

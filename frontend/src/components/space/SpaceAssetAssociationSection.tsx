@@ -103,7 +103,10 @@ export default function SpaceAssetAssociationSection({
       {isLoading ? (
         <Typography sx={{ color: 'text.secondary' }}>{texts.loading}</Typography>
       ) : associations.length === 0 ? (
-        <Typography sx={{ color: 'text.secondary' }}>{texts.empty}</Typography>
+        // With unreadable associations, "nothing associated" would be false; the hint says it all.
+        hasUnreadable ? null : (
+          <Typography sx={{ color: 'text.secondary' }}>{texts.empty}</Typography>
+        )
       ) : (
         <Stack spacing={0}>
           {associations.map((association) => (

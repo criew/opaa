@@ -805,11 +805,16 @@ describe('SpaceSettingsPage', () => {
     })
     setSpaceState(teamSpace)
 
-    renderTab('knowledge')
+    for (const tab of ['knowledge', 'prompts'] as const) {
+      const { unmount } = renderTab(tab)
 
-    const hint = await screen.findByText('Nicht alle zugeordneten Inhalte sind für Sie lesbar.')
-    expect(hint.textContent).not.toMatch(/\d/)
-    expect(screen.queryByRole('button', { name: /lösen$/i })).not.toBeInTheDocument()
+      const hint = await screen.findByText('Nicht alle zugeordneten Inhalte sind für Sie lesbar.')
+      expect(hint.textContent).not.toMatch(/\d/)
+      // The hint stands alone: "nothing associated" would contradict it.
+      expect(screen.queryByText(/^Diesem Space sind keine/)).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /lösen$/i })).not.toBeInTheDocument()
+      unmount()
+    }
   })
 
   it('shows no hint when every association is readable', async () => {

@@ -1,6 +1,23 @@
 import { expect, test } from "../fixtures/auth";
 import { expectNoSeriousA11yViolations } from "../fixtures/a11y";
 import { startFreshChat } from "../fixtures/chat";
+import { apiAs } from "../fixtures/externalAccess";
+
+/**
+ * A prompt library of dev-admin's own, so the catalog and the space wizard's tile choice are
+ * guaranteed to hold at least one tile when axe looks at them.
+ */
+async function ensureOwnCatalogEntry(): Promise<string> {
+  const name = `A11y-Vorlagen-${Date.now()}`;
+  const api = await apiAs("dev-admin");
+  try {
+    const response = await api.post("/api/v1/prompt-libraries", { data: { name } });
+    expect(response.status(), await response.text()).toBe(201);
+    return name;
+  } finally {
+    await api.dispose();
+  }
+}
 
 /**
  * Automated accessibility checks with axe-core (#586): every page listed in the issue is opened
@@ -187,6 +204,7 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
   // Der Katalog: Typfilter als Umschaltgruppe, Kacheln mit Typ-Etikett. #957: Etiketten fielen
   // einmal nur im Dunkelschema durch, deshalb beide Schemata.
   test("Katalog in beiden Farbschemata", async ({ authenticatedPage: page }) => {
+    const ownEntry = await ensureOwnCatalogEntry();
     await Promise.all([
       page.waitForResponse(
         (response) =>
@@ -205,31 +223,29 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
     await page.emulateMedia({ colorScheme: "dark" });
     await expectNoSeriousA11yViolations(page, "Katalog (dunkles Farbschema)");
 
-    // „In Space verwenden": die Auswahl der kuratierten Spaces im Dialog - sofern der Stapel
-    // schon einen Katalogeintrag führt.
-    const useInSpace = page.getByRole("button", { name: /in Space verwenden$/ }).first();
-    if ((await useInSpace.count()) > 0) {
-      await useInSpace.click();
-      await expect(
-        page.getByRole("dialog").getByRole("button", { name: "Neuen Space damit anlegen" }),
-      ).toBeVisible();
-      await expectNoSeriousA11yViolations(page, "In Space verwenden (dunkles Farbschema)");
-    }
+    // „In Space verwenden": die Auswahl der kuratierten Spaces im Dialog.
+    await page.getByLabel("Suchen", { exact: true }).fill(ownEntry);
+    await page
+      .getByRole("button", { name: `„${ownEntry}“ in Space verwenden` })
+      .click();
+    await expect(
+      page.getByRole("dialog").getByRole("button", { name: "Neuen Space damit anlegen" }),
+    ).toBeVisible();
+    await expectNoSeriousA11yViolations(page, "In Space verwenden (dunkles Farbschema)");
   });
 
   // Der Schritt „Inhalte" des Space-Assistenten: Mehrfachauswahl als Kacheln mit Typfilter und Suche.
   test("Space-Assistent: Inhalte als Kachelauswahl in beiden Farbschemata", async ({
     authenticatedPage: page,
   }) => {
+    const ownEntry = await ensureOwnCatalogEntry();
     await page.goto("/spaces/new");
     await page.getByLabel("Name", { exact: true }).fill("Barrierefreiheit");
     await page.getByRole("button", { name: "Weiter", exact: true }).click();
     await page.getByRole("button", { name: "Weiter", exact: true }).click();
+    await page.getByRole("searchbox", { name: "Suche" }).fill(ownEntry);
     await expect(
-      page
-        .getByRole("group", { name: "Inhalte für diesen Space" })
-        .or(page.getByText("Es gibt derzeit nichts, was Sie lesen dürfen"))
-        .first(),
+      page.getByRole("checkbox", { name: new RegExp(`^${ownEntry}`) }),
     ).toBeVisible();
 
     await page.emulateMedia({ colorScheme: "light" });

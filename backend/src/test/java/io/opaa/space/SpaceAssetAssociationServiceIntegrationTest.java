@@ -2,6 +2,7 @@ package io.opaa.space;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.catchThrowable;
 
 import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.AuditObjectType;
@@ -47,6 +48,7 @@ class SpaceAssetAssociationServiceIntegrationTest {
 
   @Autowired private SpaceAssetAssociationService associationService;
   @Autowired private SpaceService spaceService;
+  @Autowired private org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
   @Autowired private PromptLibraryRepository promptLibraryRepository;
   @Autowired private SpaceRepository spaceRepository;
   @Autowired private KnowledgeLibraryRepository libraryRepository;
@@ -339,12 +341,20 @@ class SpaceAssetAssociationServiceIntegrationTest {
         .containsExactlyInAnyOrder(KnowledgeLibrary.ASSET_TYPE, PromptLibrary.ASSET_TYPE);
   }
 
+  /**
+   * Space, members, assets, audit and notifications are created together or not at all: an asset
+   * the creator cannot read, last in the request, leaves none of them behind.
+   */
   @Test
   void anAssetTheCreatorCannotReadRollsTheWholeCreationBack() {
     UUID owner = createUser();
+    UUID shared = createLibrary(owner, "Geteilt");
+    grant(shared, owner, AssetRole.OWNER);
     UUID foreign = createPromptLibrary(owner);
     grant(PromptLibrary.ASSET_TYPE, foreign, owner, AssetRole.OWNER);
     UUID creator = createUser();
+    grant(shared, creator, AssetRole.VIEWER);
+    UUID member = createUser();
 
     assertThatThrownBy(
             () ->
@@ -354,11 +364,24 @@ class SpaceAssetAssociationServiceIntegrationTest {
                         null,
                         null,
                         null,
-                        List.of(),
-                        List.of(new SpaceAssetSeed(PromptLibrary.ASSET_TYPE, foreign))),
+                        List.of(new SpaceMemberSeed(member, SpaceRole.MEMBER)),
+                        List.of(
+                            new SpaceAssetSeed(KnowledgeLibrary.ASSET_TYPE, shared),
+                            new SpaceAssetSeed(PromptLibrary.ASSET_TYPE, foreign))),
                     currentUserOf(creator)))
         .isInstanceOf(NotFoundException.class);
+
     assertThat(spaceRepository.findDistinctByMembershipsUserIdWithMemberships(creator)).isEmpty();
+    assertThat(spaceRepository.findDistinctByMembershipsUserIdWithMemberships(member)).isEmpty();
+    assertThat(associationRepository.findByAssetIdOrderByCreatedAtAsc(shared)).isEmpty();
+    assertThat(notificationRepository.findByRecipientUserIdOrderByCreatedAtDesc(owner)).isEmpty();
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM audit_log WHERE organization_id = ? AND event_type IN"
+                    + " ('SPACE_CREATED', 'SPACE_MEMBER_ADDED', 'ASSET_SHARED_TO_SPACE')",
+                Long.class,
+                organizationA))
+        .isZero();
   }
 
   /**
@@ -444,17 +467,17 @@ class SpaceAssetAssociationServiceIntegrationTest {
   }
 
   @Test
-  void ordinaryCuratorCannotDetachAnotherLibrarysAssociationTheyDoNotManage() {
+  void aReaderWhoIsNoCuratorCannotDetachAnAssociation() {
     UUID owner = createUser();
     UUID library = createLibrary(owner);
     grant(library, owner, AssetRole.OWNER);
     UUID curator = createUser();
     grant(library, curator, AssetRole.VIEWER);
+    UUID stranger = createUser();
+    grant(library, stranger, AssetRole.VIEWER);
     UUID space = createSpace(curator, SpaceRole.ADMIN);
     associationService.associate(
         space, KnowledgeLibrary.ASSET_TYPE, library, currentUserOf(curator));
-
-    UUID stranger = createUser();
 
     assertThatThrownBy(() -> associationService.detach(space, library, currentUserOf(stranger)))
         .isInstanceOf(AccessDeniedException.class);
@@ -467,15 +490,49 @@ class SpaceAssetAssociationServiceIntegrationTest {
     UUID owner = createUser();
     UUID library = createLibrary(owner);
     grant(library, owner, AssetRole.OWNER);
-    UUID space = createSpace(owner, SpaceRole.ADMIN);
-    associationService.associate(space, KnowledgeLibrary.ASSET_TYPE, library, currentUserOf(owner));
-
     UUID plainMember = createUser();
+    grant(library, plainMember, AssetRole.VIEWER);
+    UUID space = createSpace(owner, SpaceRole.ADMIN);
     addMember(space, plainMember, SpaceRole.MEMBER);
+    associationService.associate(space, KnowledgeLibrary.ASSET_TYPE, library, currentUserOf(owner));
 
     assertThatThrownBy(() -> associationService.detach(space, library, currentUserOf(plainMember)))
         .isInstanceOf(AccessDeniedException.class);
 
+    assertThat(associationRepository.existsBySpaceIdAndAssetId(space, library)).isTrue();
+  }
+
+  /**
+   * ADR-0039, Entscheidung 2: detaching an asset one may not read answers like an unknown asset, in
+   * every role of the space - a curator cannot detach what they cannot see, and nobody learns that
+   * the asset exists.
+   */
+  @Test
+  void detachingAnUnreadableAssetAnswersLikeAnUnknownOneInEveryRole() {
+    UUID owner = createUser();
+    UUID library = createLibrary(owner);
+    grant(library, owner, AssetRole.OWNER);
+    UUID space = createSpace(owner, SpaceRole.ADMIN);
+    Map<SpaceRole, UUID> callers = new LinkedHashMap<>();
+    for (SpaceRole role : List.of(SpaceRole.ADMIN, SpaceRole.CURATOR, SpaceRole.MEMBER)) {
+      UUID caller = createUser();
+      addMember(space, caller, role);
+      callers.put(role, caller);
+    }
+    UUID outsider = createUser();
+    associationService.associate(space, KnowledgeLibrary.ASSET_TYPE, library, currentUserOf(owner));
+
+    String unknownMessage =
+        catchThrowable(
+                () -> associationService.detach(space, UUID.randomUUID(), currentUserOf(owner)))
+            .getMessage();
+    List<UUID> everyone = new java.util.ArrayList<>(callers.values());
+    everyone.add(outsider);
+    for (UUID caller : everyone) {
+      assertThatThrownBy(() -> associationService.detach(space, library, currentUserOf(caller)))
+          .isInstanceOf(NotFoundException.class)
+          .hasMessage(unknownMessage);
+    }
     assertThat(associationRepository.existsBySpaceIdAndAssetId(space, library)).isTrue();
   }
 
