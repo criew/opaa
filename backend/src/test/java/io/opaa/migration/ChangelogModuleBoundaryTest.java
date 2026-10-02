@@ -84,6 +84,7 @@ class ChangelogModuleBoundaryTest extends AbstractMigrationTest {
                   "asset_grants",
                   "asset_grant_history",
                   "asset_ownership_history",
+                  "asset_favorites",
                   "capability_grants",
                   "capability_grant_history",
                   "group_membership_history",

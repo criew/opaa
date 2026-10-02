@@ -831,6 +831,36 @@ class LocalUserAdminIntegrationTest {
    * revoked first, with the event a regular revocation writes - ADR-0016's Auflage, without which
    * the cascade would take those grants in silence.
    */
+  /** Favorites are personal order, not content: they go with the account (ADR-0039, #2095). */
+  @Test
+  void deletionRemovesTheAccountsFavoritesAndIsNotBlockedByThem() throws Exception {
+    LocalAccount user = fixtures.activeUser("stern-" + UUID.randomUUID() + "@stadt.example");
+    UUID pseudonym = audit.pseudonymFor(user.id(), Organization.DEFAULT_ID);
+    KnowledgeLibrary library =
+        libraries.save(
+            KnowledgeLibrary.ownedByUser(
+                Organization.DEFAULT_ID, "Favorisiert", null, admin.id(), false));
+    try {
+      jdbc.update(
+          "INSERT INTO asset_favorites (asset_id, user_id, organization_id) VALUES (?, ?, ?)",
+          library.getId(),
+          user.id(),
+          Organization.DEFAULT_ID);
+
+      asAdmin(delete(LOCAL_USERS + "/" + user.id())).andExpect(status().isNoContent());
+
+      assertThat(users.findById(user.id())).isEmpty();
+      assertThat(
+              jdbc.queryForObject(
+                  "SELECT count(*) FROM asset_favorites WHERE user_id = ?", Long.class, user.id()))
+          .isZero();
+    } finally {
+      jdbc.update("DELETE FROM asset_favorites WHERE asset_id = ?", library.getId());
+      libraries.delete(library);
+      fixtures.deleteAuditRowsNaming(pseudonym);
+    }
+  }
+
   @Test
   void deletionRevokesWhatTheAccountStillConfersAndIsNotBlockedByItsGrants() throws Exception {
     LocalAccount issuer = fixtures.activeAdmin("geberin-" + UUID.randomUUID() + "@stadt.example");

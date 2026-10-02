@@ -163,6 +163,44 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /api/v1/assets/{assetType}/{assetId}/favorite:
+    parameters:
+      - $ref: "#/components/parameters/AssetTypePath"
+      - $ref: "#/components/parameters/AssetIdPath"
+
+    put:
+      operationId: markAssetFavorite
+      tags: [asset]
+      summary: >
+        Mark an asset the caller may read as one of their favorites (ADR-0039, Entscheidung 7).
+        Idempotent: marking it again changes nothing.
+      description: >
+        A favorite is a purely personal mark: it changes no right, writes no protocol entry and no
+        history, and no endpoint returns another account's favorites or a count of them. Only an
+        asset the caller reads by the rights formula can be marked; any other asset - unknown,
+        foreign, or reached only through the system administration - answers 404 like an unknown
+        one. The mark goes with the account and with the asset.
+      responses:
+        "204":
+          description: The asset is one of the caller's favorites
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    delete:
+      operationId: unmarkAssetFavorite
+      tags: [asset]
+      summary: >
+        Remove an asset from the caller's favorites. Idempotent: an asset that is no favorite
+        answers 204 as well.
+      description: >
+        Like marking, only for an asset the caller reads by the rights formula; any other asset
+        answers 404, so the answer never confirms that an asset the caller cannot read exists.
+      responses:
+        "204":
+          description: The asset is not one of the caller's favorites
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /api/v1/assets/{assetType}/{assetId}/spaces:
     parameters:
       - $ref: "#/components/parameters/AssetTypePath"
