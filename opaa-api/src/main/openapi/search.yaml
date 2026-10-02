@@ -43,9 +43,11 @@ paths:
           description: >
             The author of the named chat is no longer a member of its space (#525): querying
             is chatting, so the turn is refused where merely reading the chat is not. Or
-            usedPromptId names a prompt the caller may not read (anymore), with code
-            PROMPT_NOT_USABLE - an unknown prompt and one of another organization answer the same
-            way, so a foreign id is never confirmed.
+            usedPromptId names a prompt the caller may not use (anymore), with code
+            PROMPT_NOT_USABLE: its library is not readable by the caller or not associated with
+            the chat's space, or there is no persisted chat and therefore no space at all. An
+            unknown prompt and one of another organization answer the same way, so a foreign id is
+            never confirmed.
           content:
             application/json:
               schema:
@@ -394,7 +396,8 @@ components:
             The persisted chat (#525) this question and its answer belong to - the question,
             answer and sources are appended to it as ChatMessages, and the search scope for this
             query is taken from the chat's useKnowledge/referencedLibraryIds settings rather than
-            useKnowledge/libraryIds below. Must be a chat the caller authored (see POST
+            useKnowledge/libraryIds below - always within the knowledge libraries associated with
+            the chat's space. Must be a chat the caller authored (see POST
             /api/v1/spaces/{spaceId}/chats) or the request runs ephemerally instead of being
             rejected, exactly as if chatId had been omitted (see useKnowledge below) - not
             persisted, and remembered only for the lifetime of the in-memory conversation cache
@@ -438,9 +441,10 @@ components:
             The prompt the question was built from
             (docs/features/spaces-and-assets.md#prompt-im-chat). The client resolves the prompt's
             text and variables itself and sends the finished question; the server only checks that
-            the caller may read the prompt's library (403 otherwise) and, for a persisted chat,
-            keeps the prompt's id and its current title as a snapshot on the question's message.
-            It changes nothing about the model call.
+            the caller may read the prompt's library and that the library is associated with the
+            space of the named chat (403 otherwise, also without a persisted chat), and keeps the
+            prompt's id and its current title as a snapshot on the question's message. It changes
+            nothing about the model call.
 
     QueryResponse:
       type: object
@@ -651,21 +655,30 @@ components:
             frontend uses this to show the corresponding hint instead of inferring it from an empty
             sources list, which alone cannot distinguish "no knowledge searched" from "searched but
             found nothing".
+        noKnowledgeAssignedToSpace:
+          type: boolean
+          nullable: true
+          default: false
+          description: >
+            True when no knowledge library is associated with the chat's space: the space offers
+            nothing to search, so no search ran and the answer carries no sources. The client shows
+            the hint that leads to the association instead of an answer that looks sourced. Takes
+            precedence over, and is mutually exclusive with, answeredWithoutKnowledge and
+            noKnowledgeAvailableInSpace. Never true for an ephemeral query without a persisted
+            chat.
         noKnowledgeAvailableInSpace:
           type: boolean
           nullable: true
           default: false
           description: >
-            True for the distinct #203 fail-open case: the chat's space has @Alles-Wissen active
-            and carries at least one library association, but none of the associated libraries are
-            readable by the caller - the search scope resolves to empty even though the space is
-            curated, not because the caller chose to search nothing
-            (docs/features/spaces-and-assets.md#suchbereich-je-chatart, "In diesem Space ist für
-            dich derzeit kein Wissen verfügbar"). Mutually exclusive with
+            True when the chat's space has @Space-Wissen active and carries at least one knowledge
+            library association, but none of the associated libraries are readable by the caller -
+            the search scope resolves to empty even though the space is curated, not because the
+            caller chose to search nothing ("In diesem Space ist für Sie derzeit kein Wissen
+            verfügbar", deliberately without a count). Mutually exclusive with
             answeredWithoutKnowledge, which covers the unrelated case of useKnowledge being
-            deliberately false. Never true for an ephemeral query without a persisted chat, and
-            never true for a space without any association (that case falls back to every readable
-            library instead, per the permanent transition rule).
+            deliberately false, and with noKnowledgeAssignedToSpace. Never true for an ephemeral
+            query without a persisted chat.
 
         searchedLibraries:
           type: array
@@ -677,7 +690,8 @@ components:
             effective search scope after permissions and the chat's own settings were applied,
             sorted by name. Lets a client print mockup 1a's "Durchsucht wurden: …" line under an
             answer that could not be substantiated, naming exactly what was looked at. Empty when no
-            search ran (answeredWithoutKnowledge / noKnowledgeAvailableInSpace).
+            search ran (answeredWithoutKnowledge / noKnowledgeAssignedToSpace /
+            noKnowledgeAvailableInSpace).
 
     SearchedLibrary:
       type: object

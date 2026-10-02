@@ -8,10 +8,11 @@ import java.util.UUID;
 import org.springframework.stereotype.Component;
 
 /**
- * The search scope a question runs in - a persisted chat's own settings govern it entirely; only an
- * ephemeral query falls back to the request-level {@code useKnowledge}/{@code requestedLibraryIds}.
- * Never wider than the readable set. Shared by {@code QueryService} and the metadata filter
- * options, so the options are built over exactly the libraries the next question would search.
+ * The search scope a question runs in - a persisted chat's own settings govern it entirely, within
+ * its space's associations; only an ephemeral query, which has no space, falls back to the
+ * request-level {@code useKnowledge}/{@code requestedLibraryIds}. Never wider than the readable
+ * set. Shared by {@code QueryService} and the metadata filter options, so the options are built
+ * over exactly the libraries the next question would search.
  */
 @Component
 public class SearchScopeResolver {
@@ -39,8 +40,8 @@ public class SearchScopeResolver {
    * {@code requestedLibraryIds ∩ readableLibraryIds} - the search scope of an ephemeral query with
    * {@code useKnowledge = false}. Never adds anything beyond {@code readableLibraryIds}: a
    * reference to a library the caller cannot read is dropped, not honoured. A persisted chat's
-   * sticky references go through {@link ChatService#effectiveLibraryScope}, which applies the same
-   * rule.
+   * sticky references go through {@link ChatService#effectiveLibraryScope}, which additionally
+   * bounds them by the space's associations.
    */
   private Set<UUID> intersectWithReadable(
       List<UUID> requestedLibraryIds, Set<UUID> readableLibraryIds) {

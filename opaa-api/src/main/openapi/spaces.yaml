@@ -458,9 +458,9 @@ components:
             Libraries to associate with the space on creation (#203/#686) - each must be at least
             readable (VIEWER or above) by the creator, exactly the same rule the dedicated POST
             /v1/spaces/{spaceId}/assets endpoint enforces afterwards. Optional: a space created
-            without this is not narrower for search, it simply has no associations yet (the
-            permanent transition rule in docs/features/spaces-and-assets.md#suchbereich-je-chatart
-            - "ein Space ohne Assoziationen verengt nie"). Associated atomically with the space
+            without this has no knowledge yet, and a chat in it searches nothing until a library
+            is associated - the association is the space's hard boundary for every asset type.
+            Associated atomically with the space
             itself (SpaceService#createSpace) - if any id cannot be associated (not found, or not
             readable by the creator), the whole space creation is rolled back rather than left
             half-created.

@@ -233,6 +233,7 @@ public class SpikeToolLoopQueryHandler {
             durationMs,
             false,
             false,
+            false,
             chatSourceAssembler.searchedLibraries(searchScope));
     return Optional.of(
         new QueryResult(displayAnswer, sources, metadata, effectiveChatId, chatTitle, notePoints));

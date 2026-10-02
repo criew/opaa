@@ -201,11 +201,14 @@ class SpaceAssetAssociationServiceIntegrationTest {
     assertThat(seenByMemberWithAccess.items())
         .extracting(link -> link.association().getAssetId())
         .containsExactly(library);
-    // #706 review, finding 2: a plain MEMBER with no readable association gets an empty items
-    // list, but hasAssociations still reports the true, unfiltered state of the space - the
-    // frontend needs both to tell "no curation" apart from "curated, nothing readable".
+    // A plain MEMBER with no readable association gets an empty items list, but the flags still
+    // report the unfiltered state of the space - the frontend needs them to tell "no knowledge
+    // associated" apart from "associated, nothing readable".
     assertThat(seenByMemberWithoutAccess.items()).isEmpty();
     assertThat(seenByMemberWithoutAccess.hasAssociations()).isTrue();
+    assertThat(seenByMemberWithoutAccess.hasKnowledge()).isTrue();
+    assertThat(seenByMemberWithoutAccess.hasReadableKnowledge()).isFalse();
+    assertThat(seenByMemberWithAccess.hasReadableKnowledge()).isTrue();
   }
 
   @Test
@@ -217,6 +220,8 @@ class SpaceAssetAssociationServiceIntegrationTest {
 
     assertThat(response.items()).isEmpty();
     assertThat(response.hasAssociations()).isFalse();
+    assertThat(response.hasKnowledge()).isFalse();
+    assertThat(response.hasReadableKnowledge()).isFalse();
   }
 
   // #706 review, finding 5: a CURATOR/ADMIN/owner sees every association, including one they

@@ -165,9 +165,9 @@ public class QueryService {
   /**
    * The same query, built from the prompt {@code usedPromptId} names ({@code null}: none). The
    * question arrives already resolved - the prompt changes nothing about retrieval or the model
-   * call. It is checked before anything is paid for: a prompt the caller may not read refuses the
-   * turn with {@code 403}. A persisted chat keeps its id and current title on the question's
-   * message; no audit entry is written.
+   * call. It is checked before anything is paid for: a prompt the caller may not read, or one not
+   * associated with the chat's space, refuses the turn with {@code 403}. A persisted chat keeps its
+   * id and current title on the question's message; no audit entry is written.
    */
   public QueryResult query(
       String question,
@@ -194,7 +194,7 @@ public class QueryService {
                 // no answer is paid for that appendTurn would discard. appendTurn's own call to
                 // the same guard remains the race guard for a space archived after this point.
                 chat.ifPresent(c -> chatService.requireSpaceNotArchived(c.getSpaceId()));
-                UsedPrompt usedPrompt = usedPrompt(usedPromptId, caller);
+                UsedPrompt usedPrompt = usedPrompt(usedPromptId, chat, caller);
                 // A chatId that does not resolve to an owned persisted chat (including "none
                 // given") runs ephemerally rather than being rejected, reused as the in-memory
                 // conversation-cache key when the caller supplied one, or freshly generated
@@ -258,17 +258,21 @@ public class QueryService {
                   }
                 }
 
+                // Why an empty scope is empty - at most one of the three, and only for a
+                // persisted chat do the two space signals apply: nothing associated with the
+                // space, or associated but nothing of it readable by this caller.
                 boolean effectiveUseKnowledge = chat.map(Chat::isUseKnowledge).orElse(useKnowledge);
-                boolean answeredWithoutKnowledge = !effectiveUseKnowledge && searchScope.isEmpty();
-                // Distinct from answeredWithoutKnowledge above: the chat's space is curated
-                // but none of its associated libraries are readable by this caller, so the scope
-                // legitimately resolves to empty. Only meaningful for a persisted chat - an
-                // ephemeral query's empty scope means the caller has no readable library at all.
-                boolean noKnowledgeAvailableInSpace =
-                    effectiveUseKnowledge
-                        && searchScope.isEmpty()
-                        && chat.map(c -> chatService.spaceHasLibraryAssociations(c.getSpaceId()))
+                boolean noKnowledgeAssignedToSpace =
+                    searchScope.isEmpty()
+                        && chat.map(c -> !chatService.spaceHasLibraryAssociations(c.getSpaceId()))
                             .orElse(false);
+                boolean answeredWithoutKnowledge =
+                    !noKnowledgeAssignedToSpace && !effectiveUseKnowledge && searchScope.isEmpty();
+                boolean noKnowledgeAvailableInSpace =
+                    !noKnowledgeAssignedToSpace
+                        && effectiveUseKnowledge
+                        && searchScope.isEmpty()
+                        && chat.isPresent();
 
                 // The decomposition LLM call only runs once there is actually something to
                 // search - an empty scope would otherwise pay for it and discard the result.
@@ -340,6 +344,7 @@ public class QueryService {
                         tokenCount,
                         durationMs,
                         answeredWithoutKnowledge,
+                        noKnowledgeAssignedToSpace,
                         noKnowledgeAvailableInSpace,
                         chatSourceAssembler.searchedLibraries(searchScope));
                 return new QueryResult(
@@ -351,11 +356,16 @@ public class QueryService {
             });
   }
 
-  private UsedPrompt usedPrompt(UUID usedPromptId, CurrentUser caller) {
+  /**
+   * A prompt is usable only in a space it is associated with; an ephemeral query has no space and
+   * therefore offers no prompt at all.
+   */
+  private UsedPrompt usedPrompt(UUID usedPromptId, Optional<Chat> chat, CurrentUser caller) {
     if (usedPromptId == null) {
       return null;
     }
-    Prompt prompt = promptService.requireUsable(usedPromptId, caller);
+    Prompt prompt =
+        promptService.requireUsable(usedPromptId, chat.map(Chat::getSpaceId).orElse(null), caller);
     return new UsedPrompt(prompt.getId(), prompt.getTitle());
   }
 

@@ -34,6 +34,7 @@ class QueryResponseMapperTest {
             1200L,
             true,
             false,
+            false,
             List.of(new SearchedLibraryRef(libraryId, "Dienstanweisungen")));
     QueryResult result =
         new QueryResult(
@@ -62,6 +63,7 @@ class QueryResponseMapperTest {
     assertThat(response.getMetadata().getTokenCount()).isEqualTo(500);
     assertThat(response.getMetadata().getDurationMs()).isEqualTo(1200L);
     assertThat(response.getMetadata().getAnsweredWithoutKnowledge()).isTrue();
+    assertThat(response.getMetadata().getNoKnowledgeAssignedToSpace()).isFalse();
     assertThat(response.getMetadata().getNoKnowledgeAvailableInSpace()).isFalse();
     assertThat(response.getMetadata().getSearchedLibraries()).hasSize(1);
     assertThat(response.getMetadata().getSearchedLibraries().getFirst().getId())
@@ -71,8 +73,35 @@ class QueryResponseMapperTest {
   }
 
   @Test
+  void toResponseCarriesBothSpaceSignalsSeparately() {
+    QueryResponse assigned =
+        QueryResponseMapper.toResponse(
+            new QueryResult(
+                "Antwort",
+                List.of(),
+                new QueryOutcome("gpt-4o", 0, 0L, false, true, false, List.of()),
+                UUID.randomUUID(),
+                null,
+                null));
+    QueryResponse readable =
+        QueryResponseMapper.toResponse(
+            new QueryResult(
+                "Antwort",
+                List.of(),
+                new QueryOutcome("gpt-4o", 0, 0L, false, false, true, List.of()),
+                UUID.randomUUID(),
+                null,
+                null));
+
+    assertThat(assigned.getMetadata().getNoKnowledgeAssignedToSpace()).isTrue();
+    assertThat(assigned.getMetadata().getNoKnowledgeAvailableInSpace()).isFalse();
+    assertThat(readable.getMetadata().getNoKnowledgeAssignedToSpace()).isFalse();
+    assertThat(readable.getMetadata().getNoKnowledgeAvailableInSpace()).isTrue();
+  }
+
+  @Test
   void toResponseLeavesSearchedLibrariesNullWhenAbsent() {
-    QueryOutcome metadata = new QueryOutcome("gpt-4o", 0, 0L, false, false, null);
+    QueryOutcome metadata = new QueryOutcome("gpt-4o", 0, 0L, false, false, false, null);
     QueryResult result =
         new QueryResult("Antwort", List.of(), metadata, UUID.randomUUID(), null, null);
 

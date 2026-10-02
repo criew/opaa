@@ -309,7 +309,7 @@ class QueryServiceTest {
         new QueryResult(
             "Spike-Antwort",
             List.of(),
-            new QueryOutcome("gpt-4o", 10, 5L, false, false, List.of()),
+            new QueryOutcome("gpt-4o", 10, 5L, false, false, false, List.of()),
             UUID.randomUUID(),
             null,
             null);
@@ -958,10 +958,9 @@ class QueryServiceTest {
     assertThat(filter).doesNotContain(otherReadableLibraryId.toString());
   }
 
-  // #706 review, finding 3: the space-curated fail-open case - useKnowledge stays true
-  // (@Alles-Wissen), the chat's space has at least one library association, but none of them are
-  // readable by this caller, so effectiveLibraryScope legitimately resolves to empty. This must be
-  // marked distinctly from answeredWithoutKnowledge (which only ever covers useKnowledge=false).
+  // The space is curated, but none of its associated libraries are readable by this caller, so
+  // the scope resolves to empty: marked distinctly from "nothing associated" and from
+  // answeredWithoutKnowledge (which only ever covers useKnowledge=false).
   @Test
   void queryMarksNoKnowledgeAvailableInSpaceWhenTheSpaceIsCuratedButNothingIsReadable() {
     Chat chat = new Chat(UUID.randomUUID(), currentUserId, organizationId, null, true, Set.of());
@@ -978,34 +977,44 @@ class QueryServiceTest {
     QueryResult response = queryService.query("Question", chatId, caller, true, List.of());
 
     assertThat(response.metadata().noKnowledgeAvailableInSpace()).isTrue();
+    assertThat(response.metadata().noKnowledgeAssignedToSpace()).isFalse();
     assertThat(response.metadata().answeredWithoutKnowledge()).isFalse();
     org.mockito.Mockito.verifyNoInteractions(vectorStore);
   }
 
-  // The unrelated ordinary case must stay unmarked: a space without any association resolving to
-  // an empty scope would mean the caller simply has no readable library at all - not curation.
+  /**
+   * A space without associated knowledge searches nothing and says so - for @Space-Wissen and for
+   * an emptied chip bar alike: the answer never looks sourced, and the signal is the "nothing
+   * associated" one, not "nothing readable" or "answered without knowledge".
+   */
   @Test
-  void queryDoesNotMarkNoKnowledgeAvailableInSpaceWhenTheSpaceHasNoAssociations() {
-    Chat chat = new Chat(UUID.randomUUID(), currentUserId, organizationId, null, true, Set.of());
-    UUID chatId = chat.getId();
-    when(chatService.findOwnedChat(chatId, currentUserId)).thenReturn(Optional.of(chat));
-    when(chatMemory.get(currentUserId + ":" + chatId)).thenReturn(List.of());
-    when(chatService.historyAsSpringAiMessages(chatId, 20)).thenReturn(List.of());
-    when(chatService.effectiveLibraryScope(chat, Set.of(readableLibraryId)))
-        .thenReturn(Set.of(readableLibraryId));
-    lenient().when(chatService.spaceHasLibraryAssociations(chat.getSpaceId())).thenReturn(false);
-    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
-    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
-    when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
-        .thenReturn(chatResponse);
+  void queryMarksNoKnowledgeAssignedToSpaceWhenTheSpaceHasNoKnowledge() {
+    for (boolean useKnowledge : List.of(true, false)) {
+      Chat chat =
+          new Chat(UUID.randomUUID(), currentUserId, organizationId, null, useKnowledge, Set.of());
+      UUID chatId = chat.getId();
+      when(chatService.findOwnedChat(chatId, currentUserId)).thenReturn(Optional.of(chat));
+      when(chatMemory.get(currentUserId + ":" + chatId)).thenReturn(List.of());
+      when(chatService.historyAsSpringAiMessages(chatId, 20)).thenReturn(List.of());
+      when(chatService.effectiveLibraryScope(chat, Set.of(readableLibraryId))).thenReturn(Set.of());
+      when(chatService.spaceHasLibraryAssociations(chat.getSpaceId())).thenReturn(false);
+      var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
+      when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
+          .thenReturn(chatResponse);
 
-    QueryResult response = queryService.query("Question", chatId, caller, true, List.of());
+      QueryResult response = queryService.query("Question", chatId, caller, true, List.of());
 
-    assertThat(response.metadata().noKnowledgeAvailableInSpace()).isFalse();
+      assertThat(response.metadata().noKnowledgeAssignedToSpace()).isTrue();
+      assertThat(response.metadata().noKnowledgeAvailableInSpace()).isFalse();
+      assertThat(response.metadata().answeredWithoutKnowledge()).isFalse();
+      assertThat(response.sources()).isEmpty();
+      assertThat(response.metadata().searchedLibraries()).isEmpty();
+    }
+    org.mockito.Mockito.verifyNoInteractions(vectorStore);
   }
 
-  // An ephemeral query (no persisted chat) never marks this flag, regardless of scope - curation
-  // only exists at the chat/space level.
+  // An ephemeral query (no persisted chat) never marks either space flag, regardless of scope -
+  // curation only exists at the chat/space level.
   @Test
   void queryNeverMarksNoKnowledgeAvailableInSpaceForAnEphemeralQuery() {
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
@@ -1015,6 +1024,7 @@ class QueryServiceTest {
     QueryResult response = queryService.query("Question", null, caller, false, List.of());
 
     assertThat(response.metadata().noKnowledgeAvailableInSpace()).isFalse();
+    assertThat(response.metadata().noKnowledgeAssignedToSpace()).isFalse();
   }
 
   @Test
@@ -1076,7 +1086,7 @@ class QueryServiceTest {
     UUID chatId = chat.getId();
     UUID promptId = UUID.randomUUID();
     when(chatService.findOwnedChat(chatId, currentUserId)).thenReturn(Optional.of(chat));
-    when(promptService.requireUsable(promptId, caller))
+    when(promptService.requireUsable(promptId, chat.getSpaceId(), caller))
         .thenThrow(new AccessDeniedException("Dieser Prompt steht Ihnen nicht zur Verfügung"));
 
     assertThatThrownBy(
@@ -1102,7 +1112,7 @@ class QueryServiceTest {
     UUID promptId = UUID.randomUUID();
     when(prompt.getId()).thenReturn(promptId);
     when(prompt.getTitle()).thenReturn("Zusammenfassung");
-    when(promptService.requireUsable(promptId, caller)).thenReturn(prompt);
+    when(promptService.requireUsable(promptId, chat.getSpaceId(), caller)).thenReturn(prompt);
     when(chatService.findOwnedChat(chatId, currentUserId)).thenReturn(Optional.of(chat));
     when(chatMemory.get(conversationKey)).thenReturn(List.of());
     when(chatService.historyAsSpringAiMessages(chatId, 20)).thenReturn(List.of());

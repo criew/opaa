@@ -36,7 +36,7 @@ class AvailablePromptResponseMapperTest {
 
     AvailablePrompt response =
         AvailablePromptResponseMapper.toResponse(
-            new io.opaa.prompt.AvailablePrompt(prompt, library, true));
+            new io.opaa.prompt.AvailablePrompt(prompt, library));
 
     assertThat(response.getId()).isEqualTo(promptId);
     assertThat(response.getLibraryId()).isEqualTo(libraryId);
@@ -45,7 +45,6 @@ class AvailablePromptResponseMapperTest {
     assertThat(response.getTitle()).isEqualTo("Zusammenfassung");
     assertThat(response.getDescription()).isEqualTo("Stand zu einem Stichtag");
     assertThat(response.getHasVariables()).isTrue();
-    assertThat(response.getAssociatedWithSpace()).isTrue();
   }
 
   @Test
@@ -56,9 +55,8 @@ class AvailablePromptResponseMapperTest {
 
     AvailablePrompt response =
         AvailablePromptResponseMapper.toResponse(
-            new io.opaa.prompt.AvailablePrompt(prompt, library, false));
+            new io.opaa.prompt.AvailablePrompt(prompt, library));
 
     assertThat(response.getHasVariables()).isFalse();
-    assertThat(response.getAssociatedWithSpace()).isFalse();
   }
 }

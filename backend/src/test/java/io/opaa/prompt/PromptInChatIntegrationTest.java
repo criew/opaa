@@ -52,8 +52,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
 /**
  * A prompt inserted in the chat (#1903), end to end against the Liquibase schema: the question
  * keeps the prompt as a snapshot on its message, a prompt the person may no longer read refuses the
- * next question, and the chat's selection offers exactly the readable prompt libraries of the
- * person's organization, the ones associated with the space first.
+ * next question, and the chat's selection offers exactly the prompt libraries associated with the
+ * space that the person may read - the space is a hard boundary for offer and use alike.
  */
 @OpaaMockedChatModelIntegrationTest
 class PromptInChatIntegrationTest {
@@ -119,6 +119,7 @@ class PromptInChatIntegrationTest {
     UUID library = libraryOf(owner, "Formulierungshilfen");
     Prompt prompt = zusammenfassung(library);
     UUID grant = grantViewer(library, reader);
+    associationService.associate(space, PromptLibrary.ASSET_TYPE, library, callerOf(reader));
     UUID chat = chatService.createChat(space, reader, new ChatCreation()).getId();
     ArgumentCaptor<org.springframework.ai.chat.prompt.Prompt> modelCall =
         ArgumentCaptor.forClass(org.springframework.ai.chat.prompt.Prompt.class);
@@ -144,16 +145,15 @@ class PromptInChatIntegrationTest {
         .as("inserting a prompt writes no audit entry - only PROMPT_CREATED stands there")
         .isEqualTo(1L);
     assertThatThrownBy(
+            () -> promptService.requireUsable(prompt.getId(), space, callerOf(administrator, true)))
+        .as("administering is not reading: the system administration without a grant may not")
+        .isInstanceOf(AccessDeniedException.class)
+        .hasMessage(PromptService.NOT_USABLE);
+    assertThatThrownBy(
             () ->
                 queryService.query(
-                    QUESTION,
-                    null,
-                    callerOf(administrator, true),
-                    true,
-                    List.of(),
-                    null,
-                    prompt.getId()))
-        .as("administering is not reading: the system administration without a grant may not")
+                    QUESTION, null, callerOf(reader), true, List.of(), null, prompt.getId()))
+        .as("an ephemeral query has no space and therefore offers no prompt")
         .isInstanceOf(AccessDeniedException.class)
         .hasMessage(PromptService.NOT_USABLE);
 
@@ -210,12 +210,74 @@ class PromptInChatIntegrationTest {
     assertThat(chatService.getChat(chat, reader).getMessages()).isEmpty();
   }
 
+  /**
+   * The test matrix of the hard boundary for prompts: associated and readable is offered and
+   * usable; associated but not readable, and readable but not associated, are neither.
+   */
   @Test
-  void theSelectionRespectsTheReadRightAndTheOrganizationAndPutsTheSpaceFirst() {
-    UUID associated = libraryOf(owner, "Zeta Referat");
-    zusammenfassung(associated);
-    grantViewer(associated, reader);
-    associationService.associate(space, PromptLibrary.ASSET_TYPE, associated, callerOf(reader));
+  void theSpaceIsAHardBoundaryForThePromptOfferAndItsUse() {
+    UUID associatedReadable = libraryOf(owner, "Zeta Referat");
+    Prompt offered = zusammenfassung(associatedReadable);
+    grantViewer(associatedReadable, reader);
+    associationService.associate(
+        space, PromptLibrary.ASSET_TYPE, associatedReadable, callerOf(reader));
+
+    UUID readableNotAssociated = libraryOf(owner, "Alpha Haus");
+    grantService.upsertGrant(
+        PromptLibrary.ASSET_TYPE,
+        readableNotAssociated,
+        AssetGrantUpsert.forAllAccounts(AssetRole.VIEWER),
+        callerOf(owner));
+    Prompt notAssociated =
+        promptService.create(
+            readableNotAssociated,
+            new PromptContent("vermerk", "Vermerk", "Kurzer Vermerk", "Bitte.", List.of(), 0),
+            callerOf(owner));
+
+    UUID associatedUnreadable = libraryOf(owner, "Beta Privat");
+    Prompt unreadable =
+        promptService.create(
+            associatedUnreadable,
+            new PromptContent("privat", "Privat", null, "Bitte.", List.of(), 0),
+            callerOf(owner));
+    jdbcTemplate.update(
+        "INSERT INTO space_asset_associations (id, space_id, asset_id, organization_id,"
+            + " created_by_user_id, created_at) VALUES (?, ?, ?, ?, ?, now())",
+        UUID.randomUUID(),
+        space,
+        associatedUnreadable,
+        organization,
+        owner);
+
+    List<AvailablePrompt> inSpace =
+        availablePromptController.listAvailablePrompts(space, callerOf(reader));
+    assertThat(inSpace)
+        .as("only what is associated and readable")
+        .extracting(AvailablePrompt::getName)
+        .containsExactly("zusammenfassung");
+    assertThat(inSpace.get(0).getLibraryName()).isEqualTo("Zeta Referat");
+    assertThat(inSpace.get(0).getHasVariables()).isTrue();
+    assertThat(inSpace.get(0).getDescription()).isEqualTo("Stand eines Vorgangs zu einem Stichtag");
+
+    UUID chat = chatService.createChat(space, reader, new ChatCreation()).getId();
+    queryService.query(QUESTION, chat, callerOf(reader), true, List.of(), null, offered.getId());
+    for (Prompt refused : List.of(notAssociated, unreadable)) {
+      assertThatThrownBy(
+              () ->
+                  queryService.query(
+                      QUESTION, chat, callerOf(reader), true, List.of(), null, refused.getId()))
+          .as("a prompt outside the space, or one not readable, is refused by the server")
+          .isInstanceOf(AccessDeniedException.class)
+          .hasMessage(PromptService.NOT_USABLE)
+          .hasFieldOrPropertyWithValue("code", PromptService.NOT_USABLE_CODE);
+    }
+    assertThat(chatService.getChat(chat, reader).getMessages())
+        .as("only the turn with the usable prompt is persisted")
+        .hasSize(2);
+  }
+
+  @Test
+  void theSelectionRespectsTheMembershipAndTheOrganization() {
     UUID organizationWide = libraryOf(owner, "Alpha Haus");
     grantService.upsertGrant(
         PromptLibrary.ASSET_TYPE,
@@ -224,56 +286,17 @@ class PromptInChatIntegrationTest {
         callerOf(owner));
     promptService.create(
         organizationWide,
-        new PromptContent("vermerk", "Vermerk", "Kurzer Vermerk", "Bitte.", List.of(), 0),
+        new PromptContent("vermerk", "Vermerk", null, "Bitte.", List.of(), 0),
         callerOf(owner));
-    UUID unreadable = libraryOf(owner, "Beta Privat");
-    promptService.create(
-        unreadable,
-        new PromptContent("privat", "Privat", null, "Bitte.", List.of(), 0),
-        callerOf(owner));
-    UUID foreignLibrary = libraryOf(foreigner, "Fremd");
-    grantService.upsertGrant(
-        PromptLibrary.ASSET_TYPE,
-        foreignLibrary,
-        AssetGrantUpsert.forAllAccounts(AssetRole.VIEWER),
-        callerOf(foreigner));
-    promptService.create(
-        foreignLibrary,
-        new PromptContent("fremd", "Fremd", null, "Bitte.", List.of(), 0),
-        callerOf(foreigner));
+    associationService.associate(
+        space, PromptLibrary.ASSET_TYPE, organizationWide, callerOf(reader));
 
-    List<AvailablePrompt> inSpace =
-        availablePromptController.listAvailablePrompts(space, callerOf(reader));
-    assertThat(inSpace)
-        .extracting(AvailablePrompt::getName, AvailablePrompt::getAssociatedWithSpace)
-        .containsExactly(
-            org.assertj.core.groups.Tuple.tuple("zusammenfassung", true),
-            org.assertj.core.groups.Tuple.tuple("vermerk", false));
-    assertThat(inSpace.get(0).getLibraryName()).isEqualTo("Zeta Referat");
-    assertThat(inSpace.get(0).getHasVariables()).isTrue();
-    assertThat(inSpace.get(1).getHasVariables()).isFalse();
-    assertThat(inSpace.get(1).getDescription()).isEqualTo("Kurzer Vermerk");
-
-    assertThat(availablePromptController.listAvailablePrompts(null, callerOf(reader)))
-        .as("without a space: by library name, nothing marked")
-        .extracting(AvailablePrompt::getName, AvailablePrompt::getAssociatedWithSpace)
-        .containsExactly(
-            org.assertj.core.groups.Tuple.tuple("vermerk", false),
-            org.assertj.core.groups.Tuple.tuple("zusammenfassung", false));
-    assertThat(availablePromptController.listAvailablePrompts(null, callerOf(outsider)))
+    assertThat(availablePromptController.listAvailablePrompts(space, callerOf(reader)))
         .extracting(AvailablePrompt::getName)
         .containsExactly("vermerk");
-    assertThat(availablePromptController.listAvailablePrompts(null, callerOf(administrator, true)))
-        .as("administering is not reading: the system administration sees the formula's set")
-        .extracting(AvailablePrompt::getName)
-        .containsExactly("vermerk");
-    assertThat(availablePromptController.listAvailablePrompts(null, callerOf(foreigner)))
-        .as("the organization boundary")
-        .extracting(AvailablePrompt::getName)
-        .containsExactly("fremd");
     assertThatThrownBy(
             () -> availablePromptController.listAvailablePrompts(space, callerOf(outsider)))
-        .as("the space orders only for its members")
+        .as("the space offers its prompts only to its members")
         .isInstanceOf(AccessDeniedException.class);
   }
 

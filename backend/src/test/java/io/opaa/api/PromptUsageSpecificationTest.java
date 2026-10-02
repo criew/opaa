@@ -117,8 +117,9 @@ class PromptUsageSpecificationTest {
             ((Map<String, Object>) paths.get("/api/v1/prompts/available")).get("get");
 
     assertThat(parameters("/api/v1/prompts/available", get))
-        .extracting(parameter -> parameter.get("name"))
-        .containsExactly("spaceId");
+        .extracting(parameter -> parameter.get("name"), parameter -> parameter.get("required"))
+        .as("the space is a hard boundary - there is no selection without one")
+        .containsExactly(org.assertj.core.groups.Tuple.tuple("spaceId", true));
     assertThat(properties("AvailablePrompt").keySet())
         .as("no usage figure, no person, no sort key")
         .noneMatch(

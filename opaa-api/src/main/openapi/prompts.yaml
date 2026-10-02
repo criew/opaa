@@ -246,16 +246,16 @@ paths:
       operationId: listAvailablePrompts
       tags: [prompt]
       summary: >
-        The prompts the caller can insert in the chat: every prompt of every prompt library
-        the caller may read by the formula, within the caller's organization. With spaceId, the
-        libraries associated with that space come first and are marked associatedWithSpace; then
-        by library name, within a library by sortOrder and name. Deliberately lightweight - the
-        text and the variables come from GET .../prompts/{promptId} once one is chosen. There is no
-        parameter by person and no usage figure: inserting a prompt is not evaluated.
+        The prompts the caller can insert in a chat of the space: every prompt of every prompt
+        library that is associated with the space and readable by the caller by the formula -
+        nothing else. Ordered by library name, within a library by sortOrder and name.
+        Deliberately lightweight - the text and the variables come from GET
+        .../prompts/{promptId} once one is chosen. There is no parameter by person and no usage
+        figure: inserting a prompt is not evaluated.
       parameters:
         - name: spaceId
           in: query
-          required: false
+          required: true
           description: The space of the chat; the caller must be a member of it.
           schema:
             type: string
@@ -328,7 +328,7 @@ components:
 
     AvailablePrompt:
       type: object
-      required: [id, libraryId, libraryName, name, title, hasVariables, associatedWithSpace]
+      required: [id, libraryId, libraryName, name, title, hasVariables]
       description: One entry of the slash-command selection in the chat.
       properties:
         id:
@@ -352,9 +352,6 @@ components:
         hasVariables:
           type: boolean
           description: Whether inserting the prompt asks for values first.
-        associatedWithSpace:
-          type: boolean
-          description: Whether the prompt's library is associated with the space named by spaceId.
 
     PromptRequest:
       type: object
