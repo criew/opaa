@@ -7,6 +7,7 @@ import type {
   OwnExternalAccessTokenResponse,
 } from '../types/api'
 import { mockLibraries } from './libraryFixtures'
+import { favoriteKey, mockFavoriteAssets } from './assetFixtures'
 import { mockExternalAccessSettings } from './externalAccessHandlers'
 
 /**
@@ -107,10 +108,6 @@ export function resetMockExternalAccessTokens() {
   mockAdminExternalAccessTokens = initialAdminTokens()
 }
 
-/** Favorites and group reach of the mock person, so both filters of the selection have hits. */
-const FAVORITE_LIBRARY_IDS = new Set(['library-referat-50'])
-const FROM_MY_GROUPS_LIBRARY_IDS = new Set(['library-referat-50', mockLibraries[2].id])
-
 /** Genau die Menge, die das Anlegen annimmt - bei geschlossenem Kanal leer, wie im Backend. */
 function eligibleLibraries(): EligibleExternalAccessLibraryResponse[] {
   if (!mockExternalAccessSettings.enabled) return []
@@ -119,8 +116,9 @@ function eligibleLibraries(): EligibleExternalAccessLibraryResponse[] {
     name: library.name,
     description: library.description ?? undefined,
     releaseExpiresAt: inDays(300),
-    favorite: FAVORITE_LIBRARY_IDS.has(library.id),
-    fromMyGroups: FROM_MY_GROUPS_LIBRARY_IDS.has(library.id),
+    favorite: mockFavoriteAssets.has(favoriteKey('KNOWLEDGE_LIBRARY', library.id)),
+    // Approximated by group ownership, like the catalog mock: the fixtures name no memberships.
+    fromMyGroups: library.ownerType === 'GROUP',
   }))
 }
 

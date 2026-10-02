@@ -162,8 +162,10 @@ dafür nicht gebraucht.
   gewählte Kachel trägt Rahmen und Häkchen. Über den Kacheln grenzen eine Suche nach Name und
   Beschreibung und drei Filter die Anzeige ein: **Favoriten** (die eigenen, wie im Katalog), **Aus
   meinen Gruppen** (an eine eigene Gruppe freigegeben oder in ihrem Eigentum, wie im Katalog) und
-  **Nur ausgewählte**; **Alle** hebt die Filter wieder auf. Suche und Filter blenden nur aus und
-  verwerfen keine Auswahl; die Zeile „n ausgewählt" zählt alle gewählten Bibliotheken, auch die
+  **Nur ausgewählte** (die Auswahl beim Einschalten; eine danach abgewählte Kachel bleibt stehen,
+  bis der Filter neu gesetzt wird). Die Filter sind unabhängige Umschalter und verbinden sich mit
+  der Suche; keiner gedrückt zeigt alle. Suche und Filter blenden nur aus und verwerfen keine
+  Auswahl; die Zeile „n ausgewählt" zählt alle gewählten Bibliotheken, auch die
   gerade ausgeblendeten.
 - **Ablauf** — Pflicht, begrenzt durch die Höchstlaufzeit der Installation. Die Person wird vor dem
   Ablauf per Mail erinnert (Abschnitt 15), und die eigene Liste weist rechtzeitig darauf hin.

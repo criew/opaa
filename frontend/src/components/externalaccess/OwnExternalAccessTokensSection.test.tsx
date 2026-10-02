@@ -256,8 +256,9 @@ describe('OwnExternalAccessTokensSection', () => {
         within(dialog).getByText('Keine Bibliothek passt zur Suche und zu den Filtern.'),
       ).toBeInTheDocument()
 
-      // Back to "alle": every filter off again.
-      await user.click(within(dialog).getByRole('button', { name: 'Alle' }))
+      // Both filters off again is "alle".
+      await user.click(within(dialog).getByRole('button', { name: 'Favoriten' }))
+      await user.click(within(dialog).getByRole('button', { name: 'Aus meinen Gruppen' }))
       expect(within(dialog).getByRole('button', { name: 'Favoriten' })).toHaveAttribute(
         'aria-pressed',
         'false',
@@ -269,7 +270,7 @@ describe('OwnExternalAccessTokensSection', () => {
       expect(tileNames(dialog)).toEqual(['Eigene Notizen'])
     })
 
-    it('zeigt mit „Nur ausgewählte“ die Auswahl, und das Abwählen lässt die Auswahl schrumpfen', async () => {
+    it('zeigt mit „Nur ausgewählte“ die Auswahl beim Einschalten; Abgewähltes bleibt bis dahin stehen', async () => {
       const user = userEvent.setup()
       let sent: string[] | null = null
       server.use(
@@ -289,6 +290,13 @@ describe('OwnExternalAccessTokensSection', () => {
 
       await user.click(within(dialog).getByRole('checkbox', { name: /Vergaberecht/ }))
       expect(within(dialog).getByText('1 ausgewählt')).toBeInTheDocument()
+      // The filter holds the choice as it stood when switched on: the tile chosen away stays, so
+      // the keyboard focus keeps its place.
+      expect(within(dialog).getByRole('checkbox', { name: /Vergaberecht/ })).toHaveAttribute(
+        'aria-checked',
+        'false',
+      )
+      expect(tileNames(dialog)).toEqual(['Eigene Notizen', 'Vergaberecht'])
 
       await user.type(within(dialog).getByLabelText('Name / Zweck'), 'Claude Code (Notebook)')
       await user.click(within(dialog).getByRole('button', { name: 'Erzeugen' }))

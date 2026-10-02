@@ -476,7 +476,10 @@ zugleich ihr zugänglicher Name ist. Die ganze Kachel ist Klickfläche; Fokus na
 
 **Große Mengen.** Für Mehrfachauswahl aus vielen Assets (Zuordnung, Token) liegen über den Kacheln
 dieselben Filter wie im Katalog — Suche, Asset-Art, „nur Favoriten", „aus meinen Gruppen", „alle" —
-und eine Zeile „n ausgewählt". Angeboten wird nur, was die Person lesen darf.
+und eine Zeile „n ausgewählt". Angeboten wird nur, was die Person lesen darf. „Nur Favoriten" und
+„aus meinen Gruppen" sind überall dieselbe Filterleiste (`AssetFilterChips`): unabhängige
+Umschalter, die sich mit UND verbinden; keiner gedrückt heißt „alle". Wo gewählt wird, kommt
+„Nur ausgewählte" hinzu — es zeigt die Auswahl zum Zeitpunkt des Einschaltens.
 
 **Ein Baustein.** Das Muster ist im Frontend eine Komponente (Arbeitsname `ChoiceTileGroup`, #2094),
 nicht je Stelle nachgebaut; Übersichten, Auswahl und Katalog nutzen dieselbe Kachel.

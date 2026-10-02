@@ -2,10 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import Checkbox from '@mui/material/Checkbox'
-import Chip from '@mui/material/Chip'
 import IconButton from '@mui/material/IconButton'
-import FormControlLabel from '@mui/material/FormControlLabel'
 import ToggleButton from '@mui/material/ToggleButton'
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import Tooltip from '@mui/material/Tooltip'
@@ -25,6 +22,7 @@ import {
 } from '../components/assets/assetTypeRegistry'
 import OverviewPage, { OverviewCard, OverviewCardLink } from '../components/overview/OverviewPage'
 import MetaBadge from '../components/MetaBadge'
+import AssetFilterChips from '../components/assets/AssetFilterChips'
 import SuccessionStateNote from '../components/succession/SuccessionStateNote'
 import {
   assetRoleLabel,
@@ -392,23 +390,13 @@ export default function CatalogPage() {
               </ToggleButtonGroup>
             )}
           </FilterGroup>
-          <FormControlLabel
-            control={
-              <Checkbox
-                size="small"
-                checked={fromMyGroups}
-                onChange={(event) => setParam('groups', event.target.checked ? '1' : null)}
-              />
+          <AssetFilterChips
+            value={{ favorites: favoritesOnly, fromMyGroups }}
+            onToggle={(key) =>
+              key === 'favorites'
+                ? setParam('favorites', favoritesOnly ? null : '1')
+                : setParam('groups', fromMyGroups ? null : '1')
             }
-            label="Aus meinen Gruppen"
-            sx={{ mr: 0, '& .MuiFormControlLabel-label': { fontSize: 13 } }}
-          />
-          <Chip
-            label="Favoriten"
-            icon={favoritesOnly ? <StarIcon /> : <StarBorderIcon />}
-            variant={favoritesOnly ? 'filled' : 'outlined'}
-            aria-pressed={favoritesOnly}
-            onClick={() => setParam('favorites', favoritesOnly ? null : '1')}
           />
           <FilterGroup id="sort" title="Sortierung" push>
             {(labelId) => (
