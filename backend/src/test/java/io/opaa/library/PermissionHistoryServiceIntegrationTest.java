@@ -1064,13 +1064,15 @@ class PermissionHistoryServiceIntegrationTest {
    * (#1904) reads the formula only to mark which catalog entries are accessible and writes nothing.
    * {@code AssetOwnerNames} only reads the display names of owning groups; {@code
    * KnowledgeLibraryService} reaches groups only through it and through {@code AssetGrantService},
-   * and its write paths are covered above.
+   * and its write paths are covered above. {@code AssetFavoriteService} (#2095) reads the formula
+   * only to refuse a favorite on an asset the caller cannot read; it writes favorites only.
    */
   private static final Set<String> BEANS_REACHING_THE_RIGHTS_TABLES =
       Set.of(
           "AssetAccessService",
           "AssetAuthorization",
           "AssetCatalogService",
+          "AssetFavoriteService",
           "AssetOwnerNames",
           "PromptService",
           "AssetShellService",
