@@ -500,7 +500,9 @@ jede Änderung an Freigabe und Schutzkennzeichen stehen im Nachweisprotokoll; ei
 führen sie nicht — Verantwortung trägt kein Leserecht. Ruft die **Systemverwaltung** die
 Mitgliederliste einer Gruppe ab, die sie nicht selbst verantwortet, steht auch dieser Abruf im
 Nachweisprotokoll — mit der Zahl der Mitglieder, ohne die Namen. Verantwortliche erzeugen beim Lesen
-ihrer eigenen Gruppe keinen Eintrag.
+ihrer eigenen Gruppe keinen Eintrag. Auch der Bericht des Verzeichnisabgleichs nennt aufgenommene
+und entfernte Mitglieder namentlich; jede Auslieferung dieses Berichts an die Systemverwaltung steht
+ebenfalls im Nachweisprotokoll, mit der Zahl der genannten Gruppen und Personen.
 
 **Gruppen aus dem Verzeichnis oder dem Anmeldetoken lassen sich hier nicht bearbeiten.** Sie haben
 keine Verantwortlichen; Name und Mitglieder pflegt ihre Quelle. In der Gruppenverwaltung lässt sich an

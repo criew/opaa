@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -65,13 +65,24 @@ export default function DirectorySyncProviderCard({
   const [busy, setBusy] = useState(false)
 
   const pendingSummary = status?.pendingPlan ?? null
+  const pendingPlanId = pendingSummary?.id ?? null
+  // Every retrieval of a plan is an audit entry, so a plan is loaded once per id - a status reload
+  // naming the same plan does not fetch it again.
+  const loadedPlanId = useRef<string | null>(null)
 
   useEffect(() => {
-    if (!pendingSummary) return
+    if (!pendingPlanId || loadedPlanId.current === pendingPlanId) return
+    loadedPlanId.current = pendingPlanId
     void getPendingPlan(provider.id)
-      .then(setPlan)
-      .catch(() => setPlan(null))
-  }, [pendingSummary, provider.id])
+      .then((loaded) => {
+        loadedPlanId.current = loaded?.id ?? null
+        setPlan(loaded)
+      })
+      .catch(() => {
+        loadedPlanId.current = null
+        setPlan(null)
+      })
+  }, [pendingPlanId, provider.id])
 
   /**
    * Eine abgewiesene Bestätigung hinterlässt serverseitig einen **neuen** Plan mit neuer Kennung
@@ -87,7 +98,9 @@ export default function DirectorySyncProviderCard({
     } catch (err) {
       setError(apiErrorMessage(err, DIRECTORY_SYNC_CONFLICT_MESSAGES, fallback))
       if (apiErrorCode(err) === 'DIRECTORY_SYNC_PLAN_CHANGED') {
-        setPlan(await getPendingPlan(provider.id).catch(() => null))
+        const replacement = await getPendingPlan(provider.id).catch(() => null)
+        loadedPlanId.current = replacement?.id ?? null
+        setPlan(replacement)
         await onChanged()
       }
     } finally {
