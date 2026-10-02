@@ -181,6 +181,7 @@ Die Art der Änderung wird über den Conventional-Commit-Typ ausgedrückt (`fix`
 ### GitHub-Issues
 
 - Beim Erstellen eines GitHub-Issues IMMER passende Labels basierend auf dem Inhalt zuweisen
+- **Vor Arbeitsbeginn das Issue selbst zuweisen** (`gh issue edit <nr> --add-assignee @me`). Ist es bereits jemand anderem zugewiesen, nicht anfangen, sondern Bescheid geben — Details in [docs/AGENT-ORGANIZATION.md](docs/AGENT-ORGANIZATION.md#bearbeitung-anzeigen-issue-selbst-zuweisen)
 - Vorhandene Labels verwenden (z. B. `bug`, `enhancement`, `backend`, `frontend`, `security`, `auth`, `size:S/M/L`, usw.)
 - Issue-Titel und -Beschreibungen MÜSSEN auf Deutsch verfasst werden (siehe [Projektsprache](#projektsprache))
 - **Epics führen ihre Tickets als native Sub-Issues**, nicht als Checkliste im Body. GitHub führt Status und Fortschritt dann selbst, und der Tagesreport liest dieselbe Beziehung. Aufbau des Epic-Bodys: [.github/ISSUE_TEMPLATE/epic.md](.github/ISSUE_TEMPLATE/epic.md)
