@@ -12,5 +12,8 @@ package io.opaa.llm;
  * only connection path Spring AI wires here, Ollama included, via its own {@code /v1} endpoint. The
  * field stays part of this record (and the API response built from it) rather than being dropped,
  * since a future, genuinely different connection path is not ruled out.
+ *
+ * <p>{@code baseUrl} is the effective endpoint, or {@code null} when it carries credentials - it is
+ * shown to administrators and must never reproduce them.
  */
-public record EmbeddingInfo(String provider, String model, int dimensions) {}
+public record EmbeddingInfo(String provider, String model, int dimensions, String baseUrl) {}

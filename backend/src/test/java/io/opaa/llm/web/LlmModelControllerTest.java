@@ -193,7 +193,8 @@ class LlmModelControllerTest {
   @Test
   void getEmbeddingInfoReturnsTheConfiguredEmbeddingModel() throws Exception {
     when(embeddingInfoService.getEmbeddingInfo())
-        .thenReturn(new EmbeddingInfo("ollama", "nomic-embed-text", 1536));
+        .thenReturn(
+            new EmbeddingInfo("ollama", "nomic-embed-text", 1536, "http://localhost:11434/v1"));
 
     mockMvc
         .perform(get("/api/v1/admin/models/embedding-info").with(asAdmin()))
