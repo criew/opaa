@@ -16,10 +16,12 @@
  * retention deletion and the guarded {@code vector_store} changeSets, which keep classes of their
  * own.
  *
- * <p><b>A new changeset</b> gets its own delta test here: its {@code baseFixtureChangelogs()} is
- * {@link io.opaa.migration.MasterChangelog#filesExcept(String...)} of its file - the state of an
- * existing installation that receives it - then it seeds representative rows through JDBC, applies
- * only the new file and asserts on the resulting schema and data. {@link
+ * <p><b>A new changeset with logic</b> (data movement, a constraint on a possibly filled table,
+ * preconditions, roles and grants, triggers, functions) gets its own delta test here; purely
+ * additive DDL relies on the layout, boundary and order tests alone. A delta test's {@code
+ * baseFixtureChangelogs()} is {@link io.opaa.migration.MasterChangelog#filesExcept(String...)} of
+ * its file - the state of an existing installation that receives it - then it seeds representative
+ * rows through JDBC, applies only the new file and asserts on the resulting schema and data. {@link
  * io.opaa.migration.MasterChangelog#filesBefore(String)} gives the state of a fresh installation
  * instead; {@link io.opaa.migration.ChangelogOrderTest} checks that both orders leave the same
  * schema.
