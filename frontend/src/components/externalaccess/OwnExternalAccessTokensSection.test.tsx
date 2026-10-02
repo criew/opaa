@@ -165,6 +165,137 @@ describe('OwnExternalAccessTokensSection', () => {
     expect(sent).toEqual(expect.arrayContaining(['library-mine', 'library-referat-50']))
   })
 
+  describe('Filter der Auswahl', () => {
+    const RELEASE = new Date(Date.now() + 300 * 86_400_000).toISOString()
+    const offered = [
+      {
+        id: 'lib-own',
+        name: 'Eigene Notizen',
+        releaseExpiresAt: RELEASE,
+        favorite: false,
+        fromMyGroups: false,
+      },
+      {
+        id: 'lib-fav-group',
+        name: 'Rechtsquellen Soziales',
+        releaseExpiresAt: RELEASE,
+        favorite: true,
+        fromMyGroups: true,
+      },
+      {
+        id: 'lib-group',
+        name: 'Dienstanweisungen',
+        releaseExpiresAt: RELEASE,
+        favorite: false,
+        fromMyGroups: true,
+      },
+      {
+        id: 'lib-fav',
+        name: 'Vergaberecht',
+        releaseExpiresAt: RELEASE,
+        favorite: true,
+        fromMyGroups: false,
+      },
+    ]
+
+    beforeEach(() => {
+      server.use(
+        http.get('*/api/v1/external-access/eligible-libraries', () =>
+          HttpResponse.json({ libraries: offered }),
+        ),
+      )
+    })
+
+    function tileNames(dialog: HTMLElement): string[] {
+      return within(dialog)
+        .queryAllByRole('checkbox')
+        .map((tile) => within(tile).getAllByText(/./)[0].textContent ?? '')
+    }
+
+    it('zeigt mit „Favoriten“ nur die eigenen Favoriten', async () => {
+      const user = userEvent.setup()
+      render()
+      const dialog = await openCreateDialog(user)
+      await within(dialog).findByRole('checkbox', { name: /Eigene Notizen/ })
+
+      const chip = within(dialog).getByRole('button', { name: 'Favoriten' })
+      expect(chip).toHaveAttribute('aria-pressed', 'false')
+      await user.click(chip)
+
+      expect(chip).toHaveAttribute('aria-pressed', 'true')
+      expect(tileNames(dialog)).toEqual(['Rechtsquellen Soziales', 'Vergaberecht'])
+    })
+
+    it('zeigt mit „Aus meinen Gruppen“ nur, was über die eigenen Gruppen kommt', async () => {
+      const user = userEvent.setup()
+      render()
+      const dialog = await openCreateDialog(user)
+      await within(dialog).findByRole('checkbox', { name: /Eigene Notizen/ })
+
+      await user.click(within(dialog).getByRole('button', { name: 'Aus meinen Gruppen' }))
+
+      expect(tileNames(dialog)).toEqual(['Rechtsquellen Soziales', 'Dienstanweisungen'])
+    })
+
+    it('kombiniert die Filter und meldet, wenn nichts mehr passt', async () => {
+      const user = userEvent.setup()
+      render()
+      const dialog = await openCreateDialog(user)
+      await within(dialog).findByRole('checkbox', { name: /Eigene Notizen/ })
+
+      await user.click(within(dialog).getByRole('button', { name: 'Favoriten' }))
+      await user.click(within(dialog).getByRole('button', { name: 'Aus meinen Gruppen' }))
+      expect(tileNames(dialog)).toEqual(['Rechtsquellen Soziales'])
+
+      await user.type(
+        within(dialog).getByRole('searchbox', { name: 'Bibliotheken suchen' }),
+        'eigene',
+      )
+      expect(tileNames(dialog)).toEqual([])
+      expect(
+        within(dialog).getByText('Keine Bibliothek passt zur Suche und zu den Filtern.'),
+      ).toBeInTheDocument()
+
+      // Back to "alle": every filter off again.
+      await user.click(within(dialog).getByRole('button', { name: 'Alle' }))
+      expect(within(dialog).getByRole('button', { name: 'Favoriten' })).toHaveAttribute(
+        'aria-pressed',
+        'false',
+      )
+      expect(within(dialog).getByRole('button', { name: 'Aus meinen Gruppen' })).toHaveAttribute(
+        'aria-pressed',
+        'false',
+      )
+      expect(tileNames(dialog)).toEqual(['Eigene Notizen'])
+    })
+
+    it('zeigt mit „Nur ausgewählte“ die Auswahl, und das Abwählen lässt die Auswahl schrumpfen', async () => {
+      const user = userEvent.setup()
+      let sent: string[] | null = null
+      server.use(
+        http.post('*/api/v1/external-access/tokens', async ({ request }) => {
+          sent = ((await request.json()) as { libraryIds: string[] }).libraryIds
+          return HttpResponse.json({ message: 'stop' }, { status: 409 })
+        }),
+      )
+      render()
+      const dialog = await openCreateDialog(user)
+      await user.click(await within(dialog).findByRole('checkbox', { name: /Eigene Notizen/ }))
+      await user.click(within(dialog).getByRole('checkbox', { name: /Vergaberecht/ }))
+
+      await user.click(within(dialog).getByRole('button', { name: 'Nur ausgewählte' }))
+      expect(tileNames(dialog)).toEqual(['Eigene Notizen', 'Vergaberecht'])
+      expect(within(dialog).getByText('2 ausgewählt')).toBeInTheDocument()
+
+      await user.click(within(dialog).getByRole('checkbox', { name: /Vergaberecht/ }))
+      expect(within(dialog).getByText('1 ausgewählt')).toBeInTheDocument()
+
+      await user.type(within(dialog).getByLabelText('Name / Zweck'), 'Claude Code (Notebook)')
+      await user.click(within(dialog).getByRole('button', { name: 'Erzeugen' }))
+      await waitFor(() => expect(sent).toEqual(['lib-own']))
+    })
+  })
+
   it('lässt das Formular ohne Namen und ohne Bibliothek nicht absenden und benennt das Feld', async () => {
     const user = userEvent.setup()
     render()
