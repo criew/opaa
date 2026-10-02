@@ -2,9 +2,12 @@ package io.opaa.indexing.source;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
 import io.opaa.format.DocumentService;
 import io.opaa.indexing.attachment.AttachmentOutcome;
@@ -126,5 +129,29 @@ class IndexingRunProgressTest {
 
   private String quota() {
     return QUOTA_MESSAGE;
+  }
+
+  @Test
+  void aCompletedRunThatIndexedADocumentRecordsAContentChange() {
+    when(jobService.completeJob(jobId, 1, 0, 0, 1)).thenReturn(true);
+    progress.recordProcessed();
+
+    progress.complete();
+
+    verify(jobService).recordContentChange(jobId);
+  }
+
+  @Test
+  void aRunWithoutAnIndexedDocumentOrAlreadyRecoveredRecordsNone() {
+    when(jobService.completeJob(any(), anyInt(), anyInt(), anyInt(), anyInt())).thenReturn(true);
+    progress.recordSkipped();
+    progress.complete();
+
+    IndexingRunProgress recovered = new IndexingRunProgress(jobService, jobId);
+    when(jobService.completeJob(jobId, 1, 0, 0, 1)).thenReturn(false);
+    recovered.recordProcessed();
+    recovered.complete();
+
+    verify(jobService, never()).recordContentChange(any());
   }
 }

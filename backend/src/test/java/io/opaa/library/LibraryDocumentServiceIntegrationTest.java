@@ -8,6 +8,8 @@ import static org.awaitility.Awaitility.await;
 import com.sun.net.httpserver.HttpServer;
 import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.DocumentStatus;
+import io.opaa.api.types.ExternalAccessState;
+import io.opaa.api.types.IndexingRunMode;
 import io.opaa.api.types.SystemRole;
 import io.opaa.asset.AssetGrantService;
 import io.opaa.asset.AssetGrantUpsert;
@@ -19,6 +21,9 @@ import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.PayloadTooLargeException;
 import io.opaa.common.ValidationException;
+import io.opaa.indexing.job.IndexingJobService;
+import io.opaa.indexing.job.JobTriggerSource;
+import io.opaa.indexing.source.IndexingRunProgress;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentContent;
 import io.opaa.knowledge.DocumentRepository;
@@ -42,6 +47,9 @@ import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.sql.Timestamp;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
@@ -115,6 +123,7 @@ class LibraryDocumentServiceIntegrationTest {
   @Autowired private AssetGrantHistoryRepository grantHistoryRepository;
   @Autowired private GroupMembershipHistoryRepository membershipHistoryRepository;
   @Autowired private AssetGrantRepository assetGrantRepository;
+  @Autowired private IndexingJobService indexingJobService;
 
   private UUID organizationId;
   private User editor;
@@ -176,6 +185,7 @@ class LibraryDocumentServiceIntegrationTest {
             "SELECT id FROM knowledge_libraries WHERE organization_id = ?",
             UUID.class,
             organizationId);
+    jdbcTemplate.update("DELETE FROM indexing_jobs WHERE organization_id = ?", organizationId);
     ownLibraryFixtures.removeLibraries(ownLibraryIds.toArray(new UUID[0]));
     // #238 code review, finding 2+4: asset_grant_history.subject_user_id is ON DELETE RESTRICT
     // (see ADR-0016) - every library/grant
@@ -193,6 +203,69 @@ class LibraryDocumentServiceIntegrationTest {
     // (fk_audit_log_organization is ON DELETE RESTRICT).
     jdbcTemplate.update("DELETE FROM audit_log WHERE organization_id = ?", organizationId);
     organizationRepository.deleteById(organizationId);
+  }
+
+  /**
+   * The catalog's "last change" of a knowledge library (#2093): an upload, a deletion and a
+   * completed run that indexed a document move it; a technical write and a run without a change
+   * leave it standing.
+   */
+  @Test
+  void contentChangesMoveTheLibrarysUpdatedAtAndTechnicalWritesDoNot() {
+    Instant past = Instant.parse("2026-01-01T00:00:00Z");
+
+    setUpdatedAt(past);
+    LibraryDocumentEntry uploaded =
+        documentService.uploadDocument(
+            libraryId, textFile("vermerk.txt", "Ein Vermerk."), null, currentUserOf(editor));
+    assertThat(updatedAt()).as("an upload").isAfter(past);
+    awaitDocumentStatus(uploaded.document().getId(), DocumentStatus.INDEXED);
+
+    KnowledgeLibrary released = libraryRepository.findById(libraryId).orElseThrow();
+    released.updateExternalAccess(
+        ExternalAccessState.ACTIVE,
+        Instant.now().plus(30, ChronoUnit.DAYS),
+        editor.getId(),
+        Instant.now());
+    libraryRepository.saveAndFlush(released);
+    setUpdatedAt(past);
+    KnowledgeLibrary library = libraryRepository.findById(libraryId).orElseThrow();
+    library.markExternalAccessReminderSent(Instant.now());
+    libraryRepository.saveAndFlush(library);
+    assertThat(updatedAt()).as("a reminder sent is technical bookkeeping").isEqualTo(past);
+
+    UUID quietRun =
+        indexingJobService
+            .startJob(libraryId, organizationId, JobTriggerSource.MANUAL, IndexingRunMode.FULL)
+            .getId();
+    IndexingRunProgress quiet = new IndexingRunProgress(indexingJobService, quietRun);
+    quiet.recordSkipped();
+    quiet.complete();
+    assertThat(updatedAt()).as("a run that changed nothing").isEqualTo(past);
+
+    UUID changingRun =
+        indexingJobService
+            .startJob(libraryId, organizationId, JobTriggerSource.MANUAL, IndexingRunMode.FULL)
+            .getId();
+    IndexingRunProgress changing = new IndexingRunProgress(indexingJobService, changingRun);
+    changing.recordProcessed();
+    changing.complete();
+    assertThat(updatedAt()).as("a completed run that indexed a document").isAfter(past);
+
+    setUpdatedAt(past);
+    documentService.deleteDocument(libraryId, uploaded.document().getId(), currentUserOf(editor));
+    assertThat(updatedAt()).as("a deletion").isAfter(past);
+  }
+
+  private void setUpdatedAt(Instant at) {
+    jdbcTemplate.update(
+        "UPDATE assets SET updated_at = ? WHERE id = ?", Timestamp.from(at), libraryId);
+  }
+
+  private Instant updatedAt() {
+    return jdbcTemplate
+        .queryForObject("SELECT updated_at FROM assets WHERE id = ?", Timestamp.class, libraryId)
+        .toInstant();
   }
 
   private MultipartFile textFile(String originalFileName, String content) {

@@ -16,6 +16,7 @@ import static org.mockito.Mockito.when;
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.opaa.api.types.IndexingRunMode;
+import io.opaa.asset.AssetRepository;
 import io.opaa.format.DocumentService;
 import io.opaa.format.chunk.ChunkingService;
 import io.opaa.indexing.IndexingProperties;
@@ -91,7 +92,9 @@ class AsyncIndexingExecutorTest {
     documentRepository = mock(DocumentRepository.class);
     when(documentRepository.findByLibraryIdAndSourceType(any(), any())).thenReturn(List.of());
     staleDocumentCleanupService =
-        spy(new StaleDocumentCleanupService(documentRepository, mock(VectorChunkStore.class)));
+        spy(
+            new StaleDocumentCleanupService(
+                documentRepository, mock(VectorChunkStore.class), mock(AssetRepository.class)));
     FilesystemPathAllowlist allowlist = mock(FilesystemPathAllowlist.class);
     when(allowlist.isAllowed(any())).thenReturn(true);
 

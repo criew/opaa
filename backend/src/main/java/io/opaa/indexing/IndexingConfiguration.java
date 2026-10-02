@@ -1,6 +1,7 @@
 package io.opaa.indexing;
 
 import io.micrometer.core.instrument.MeterRegistry;
+import io.opaa.asset.AssetRepository;
 import io.opaa.format.DocumentFormatRegistry;
 import io.opaa.format.SupportedDocumentFormats;
 import io.opaa.format.file.mail.MailProperties;
@@ -62,8 +63,9 @@ public class IndexingConfiguration {
   }
 
   @Bean
-  IndexingJobService indexingJobService(IndexingJobRepository indexingJobRepository) {
-    return new IndexingJobService(indexingJobRepository);
+  IndexingJobService indexingJobService(
+      IndexingJobRepository indexingJobRepository, AssetRepository assetRepository) {
+    return new IndexingJobService(indexingJobRepository, assetRepository);
   }
 
   @Bean
@@ -214,8 +216,10 @@ public class IndexingConfiguration {
 
   @Bean
   StaleDocumentCleanupService staleDocumentCleanupService(
-      DocumentRepository documentRepository, VectorChunkStore vectorChunkStore) {
-    return new StaleDocumentCleanupService(documentRepository, vectorChunkStore);
+      DocumentRepository documentRepository,
+      VectorChunkStore vectorChunkStore,
+      AssetRepository assetRepository) {
+    return new StaleDocumentCleanupService(documentRepository, vectorChunkStore, assetRepository);
   }
 
   /**

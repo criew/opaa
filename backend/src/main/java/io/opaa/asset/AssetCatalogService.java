@@ -1,9 +1,13 @@
 package io.opaa.asset;
 
+import io.opaa.api.types.AssetRole;
+import io.opaa.api.types.CatalogEntryStatus;
+import io.opaa.api.types.CatalogVisibility;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.ValidationException;
 import io.opaa.permission.AssetAccessService;
 import io.opaa.permission.AssetType;
+import io.opaa.permission.ReadableAssets;
 import io.opaa.permission.SuccessionFinding;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -20,10 +24,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * The catalog (docs/features/spaces-and-assets.md#der-katalog): exactly the assets a person may
- * read by {@link AssetAccessService#readableAssetIds}, over every served type and within the
- * person's organization - one query on the shell, paged and searched in SQL. An asset the person
- * may not read never appears; the administration's floor never counts here. Extent and spread of a
- * page come in grouped queries, one per type and one for the spaces.
+ * read by {@link AssetAccessService#readableAssets}, over every served type and within the person's
+ * organization - one query on the shell, paged, searched and sorted in SQL. Every filter narrows
+ * the readable set before the query, so no entry and no count ever includes an unreadable asset;
+ * the administration's floor never counts here. What a page shows beyond the shell comes in grouped
+ * queries per type present on it.
  */
 @Service
 @Transactional(readOnly = true)
@@ -40,6 +45,7 @@ public class AssetCatalogService {
   private final AssetOwnerNames ownerNames;
   private final AssetSuccessionSource successionSource;
   private final Map<AssetType, AssetExtent> extents;
+  private final Map<AssetType, AssetCatalogFactSource> factSources;
 
   AssetCatalogService(
       AssetRepository assetRepository,
@@ -47,7 +53,8 @@ public class AssetCatalogService {
       AssetTypes assetTypes,
       AssetOwnerNames ownerNames,
       AssetSuccessionSource successionSource,
-      List<AssetExtent> extents) {
+      List<AssetExtent> extents,
+      List<AssetCatalogFactSource> factSources) {
     this.assetRepository = assetRepository;
     this.accessService = accessService;
     this.assetTypes = assetTypes;
@@ -55,79 +62,163 @@ public class AssetCatalogService {
     this.successionSource = successionSource;
     this.extents =
         extents.stream().collect(Collectors.toMap(AssetExtent::assetType, extent -> extent));
+    this.factSources =
+        factSources.stream()
+            .collect(Collectors.toMap(AssetCatalogFactSource::assetType, source -> source));
   }
 
-  /**
-   * One page of the catalog for {@code caller}, ordered by name.
-   *
-   * @param assetType only this type, or every served type when {@code null}.
-   * @param query part of the name or the description, matched literally and case-insensitively;
-   *     blank matches everything.
-   */
+  /** One page of every readable asset of {@code assetType} matching {@code text}, by name. */
   public AssetCatalogPage list(
-      CurrentUser caller, AssetType assetType, String query, int page, int size) {
+      CurrentUser caller, AssetType assetType, String text, int page, int size) {
+    return list(caller, AssetCatalogQuery.of(assetType, text), page, size);
+  }
+
+  /** One page of the catalog for {@code caller}. */
+  public AssetCatalogPage list(CurrentUser caller, AssetCatalogQuery query, int page, int size) {
     if (page < 0) {
       throw new ValidationException("page darf nicht negativ sein");
     }
     if (size < 1 || size > MAX_PAGE_SIZE) {
       throw new ValidationException("size muss zwischen 1 und " + MAX_PAGE_SIZE + " liegen");
     }
-    if (query != null && query.length() > MAX_QUERY_LENGTH) {
+    if (query.text() != null && query.text().length() > MAX_QUERY_LENGTH) {
       throw new ValidationException(
           "Der Suchtext darf höchstens " + MAX_QUERY_LENGTH + " Zeichen lang sein");
     }
+    AssetType assetType = query.assetType();
     List<AssetType> types = assetType == null ? assetTypes.registered() : List.of(assetType);
     if (assetType != null && assetTypes.find(assetType).isEmpty()) {
       throw new ValidationException("Unbekannter Asset-Typ: " + assetType);
     }
 
-    Set<UUID> readable = new HashSet<>();
-    for (AssetType type : types) {
-      readable.addAll(accessService.readableAssetIds(type, caller.id(), caller.organizationId()));
-    }
-    if (readable.isEmpty()) {
+    Selection selection = select(caller, types, query);
+    if (selection.ids().isEmpty()) {
       return new AssetCatalogPage(List.of(), page, size, 0, 0);
     }
+    PageRequest pageRequest = PageRequest.of(page, size);
+    String pattern = likePattern(query.text());
     Page<AssetCatalogRow> rows =
-        assetRepository.findCatalogPage(
-            caller.organizationId(),
-            types,
-            readable,
-            likePattern(query),
-            PageRequest.of(page, size));
+        switch (query.sort()) {
+          case NAME ->
+              assetRepository.findCatalogPage(
+                  caller.organizationId(), types, selection.ids(), pattern, pageRequest);
+          case UPDATED_AT ->
+              assetRepository.findCatalogPageByUpdatedAt(
+                  caller.organizationId(), types, selection.ids(), pattern, pageRequest);
+        };
 
-    Map<UUID, Long> itemCounts = itemCounts(rows.getContent());
-    Map<UUID, Long> spaceCounts = spaceCounts(rows.getContent());
-    Map<UUID, String> names = ownerNames.of(rows.getContent());
-    Map<UUID, SuccessionFinding> succession =
-        successionSource.findingsAmong(rows.getContent(), false);
+    List<AssetCatalogRow> content = rows.getContent();
+    Map<UUID, Long> itemCounts = itemCounts(content);
+    Map<UUID, Long> spaceCounts = spaceCounts(content);
+    Map<UUID, String> names = ownerNames.of(content);
+    Map<UUID, SuccessionFinding> succession = successionSource.findingsAmong(content, false);
+    Map<UUID, AssetRole> roles = roles(content, caller);
+    Map<UUID, AssetCatalogFacts> facts = facts(content);
     List<AssetCatalogEntry> entries =
-        rows.getContent().stream()
+        content.stream()
             .map(
-                row ->
-                    new AssetCatalogEntry(
-                        row,
-                        names.get(row.getOwnerId()),
-                        succession.get(row.getId()),
-                        itemCounts.getOrDefault(row.getId(), 0L),
-                        spaceCounts.getOrDefault(row.getId(), 0L)))
+                row -> {
+                  UUID id = row.getId();
+                  AssetCatalogFacts rowFacts = facts.get(id);
+                  return new AssetCatalogEntry(
+                      row,
+                      Optional.ofNullable(roles.get(id)).orElse(AssetRole.VIEWER),
+                      selection.publicIds().contains(id)
+                          ? CatalogVisibility.PUBLIC
+                          : CatalogVisibility.RESTRICTED,
+                      statusOf(succession.get(id), rowFacts),
+                      rowFacts,
+                      names.get(row.getOwnerId()),
+                      succession.get(id),
+                      itemCounts.getOrDefault(id, 0L),
+                      spaceCounts.getOrDefault(id, 0L));
+                })
             .toList();
     return new AssetCatalogPage(entries, page, size, rows.getTotalElements(), rows.getTotalPages());
+  }
+
+  /** The ids the page query may return, and which of the readable ones are public. */
+  private record Selection(Set<UUID> ids, Set<UUID> publicIds) {}
+
+  /**
+   * The readable assets of {@code types}, narrowed by the visibility and the group filter of {@code
+   * query}. "Aus meinen Gruppen" is a grant to one of the caller's groups or ownership by one.
+   */
+  private Selection select(CurrentUser caller, List<AssetType> types, AssetCatalogQuery query) {
+    Set<UUID> readable = new HashSet<>();
+    Set<UUID> publicIds = new HashSet<>();
+    Set<UUID> grantedToMyGroups = new HashSet<>();
+    Set<UUID> myGroupIds = new HashSet<>();
+    for (AssetType type : types) {
+      ReadableAssets reach =
+          accessService.readableAssets(type, caller.id(), caller.organizationId());
+      readable.addAll(reach.all());
+      publicIds.addAll(reach.byAllAccountsGrant());
+      grantedToMyGroups.addAll(reach.byGroupGrant());
+      myGroupIds.addAll(reach.callerGroupIds());
+    }
+
+    Set<UUID> selected = new HashSet<>(readable);
+    if (query.visibility() == CatalogVisibility.PUBLIC) {
+      selected.retainAll(publicIds);
+    } else if (query.visibility() == CatalogVisibility.RESTRICTED) {
+      selected.removeAll(publicIds);
+    }
+    if (query.fromMyGroups()) {
+      Set<UUID> mine = new HashSet<>(grantedToMyGroups);
+      if (!myGroupIds.isEmpty() && !selected.isEmpty()) {
+        mine.addAll(
+            assetRepository.findIdsOwnedByGroups(caller.organizationId(), types, myGroupIds));
+      }
+      selected.retainAll(mine);
+    }
+    return new Selection(selected, publicIds);
+  }
+
+  private static CatalogEntryStatus statusOf(
+      SuccessionFinding succession, AssetCatalogFacts facts) {
+    if (succession != null) {
+      return CatalogEntryStatus.SUCCESSION_OPEN;
+    }
+    return facts == null ? CatalogEntryStatus.READY : facts.status();
+  }
+
+  /** The caller's role on each asset of the page by the formula, one query per type. */
+  private Map<UUID, AssetRole> roles(List<AssetCatalogRow> rows, CurrentUser caller) {
+    Map<UUID, AssetRole> roles = new HashMap<>();
+    idsByType(rows)
+        .forEach((type, ids) -> roles.putAll(accessService.effectiveRoles(type, ids, caller.id())));
+    return roles;
+  }
+
+  /** The type-specific facts of the page's assets, from the source of each type present. */
+  private Map<UUID, AssetCatalogFacts> facts(List<AssetCatalogRow> rows) {
+    Map<UUID, AssetCatalogFacts> facts = new HashMap<>();
+    idsByType(rows)
+        .forEach(
+            (type, ids) ->
+                Optional.ofNullable(factSources.get(type))
+                    .ifPresent(source -> facts.putAll(source.factsOf(ids))));
+    return facts;
   }
 
   /** The extent of the page's assets, one grouped query per type present on it. */
   private Map<UUID, Long> itemCounts(List<AssetCatalogRow> rows) {
     Map<UUID, Long> counts = new HashMap<>();
-    rows.stream()
-        .collect(
-            Collectors.groupingBy(
-                AssetCatalogRow::getAssetType,
-                Collectors.mapping(AssetCatalogRow::getId, Collectors.toSet())))
+    idsByType(rows)
         .forEach(
             (type, ids) ->
                 Optional.ofNullable(extents.get(type))
                     .ifPresent(extent -> counts.putAll(extent.itemCounts(ids))));
     return counts;
+  }
+
+  private static Map<AssetType, Set<UUID>> idsByType(List<AssetCatalogRow> rows) {
+    return rows.stream()
+        .collect(
+            Collectors.groupingBy(
+                AssetCatalogRow::getAssetType,
+                Collectors.mapping(AssetCatalogRow::getId, Collectors.toSet())));
   }
 
   private Map<UUID, Long> spaceCounts(List<AssetCatalogRow> rows) {
