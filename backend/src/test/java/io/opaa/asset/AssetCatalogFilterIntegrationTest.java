@@ -212,7 +212,8 @@ class AssetCatalogFilterIntegrationTest {
     setUpdatedAt(newer, base.plus(2, ChronoUnit.DAYS));
     setUpdatedAt(tieOne, base.plus(1, ChronoUnit.DAYS));
     setUpdatedAt(tieTwo, base.plus(1, ChronoUnit.DAYS));
-    UUID firstTie = tieOne.compareTo(tieTwo) < 0 ? tieOne : tieTwo;
+    // PostgreSQL orders uuid bytewise, as their hex strings compare - not as UUID#compareTo does.
+    UUID firstTie = tieOne.toString().compareTo(tieTwo.toString()) < 0 ? tieOne : tieTwo;
     UUID secondTie = firstTie.equals(tieOne) ? tieTwo : tieOne;
 
     AssetCatalogPage byUpdate =
