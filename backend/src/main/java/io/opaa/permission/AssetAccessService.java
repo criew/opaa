@@ -114,20 +114,25 @@ public class AssetAccessService {
    * Beschaeftigten". Space associations appear nowhere in this formula.
    */
   public Set<UUID> readableAssetIds(AssetType assetType, UUID userId, UUID organizationId) {
+    return readableAssets(assetType, userId, organizationId).all();
+  }
+
+  /**
+   * The assets of {@link #readableAssetIds}, split by the way of the formula that reaches each -
+   * one asset may stand in several parts. Uncached like {@link #readableAssetIds}.
+   */
+  public ReadableAssets readableAssets(AssetType assetType, UUID userId, UUID organizationId) {
     Instant now = Instant.now();
     Set<UUID> groupIds = membershipResolver.groupIdsForUser(userId);
-
-    Set<UUID> readable =
-        new HashSet<>(
-            grantRepository.findReadableAssetIdsByDirectGrant(
-                assetType, userId, organizationId, now));
-    if (!groupIds.isEmpty()) {
-      readable.addAll(
-          grantRepository.findReadableAssetIdsByGroupGrant(
-              assetType, groupIds, organizationId, now));
-    }
-    readable.addAll(allAccountsAssetIds(assetType, organizationId, now));
-    return readable;
+    Set<UUID> byDirectGrant =
+        grantRepository.findReadableAssetIdsByDirectGrant(assetType, userId, organizationId, now);
+    Set<UUID> byGroupGrant =
+        groupIds.isEmpty()
+            ? Set.of()
+            : grantRepository.findReadableAssetIdsByGroupGrant(
+                assetType, groupIds, organizationId, now);
+    return new ReadableAssets(
+        byDirectGrant, byGroupGrant, allAccountsAssetIds(assetType, organizationId, now), groupIds);
   }
 
   /**

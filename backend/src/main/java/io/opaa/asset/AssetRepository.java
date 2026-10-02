@@ -64,13 +64,7 @@ public interface AssetRepository extends JpaRepository<Asset, UUID> {
    * case-insensitively (a {@code LIKE} pattern escaped with a backslash), ordered by name.
    */
   @Query(
-      value =
-          "select a.id as id, a.assetType as assetType, a.name as name,"
-              + " a.description as description, a.ownerType as ownerType,"
-              + " a.ownerUserId as ownerUserId, a.ownerGroupId as ownerGroupId,"
-              + " a.origin as origin"
-              + CATALOG_CONDITION
-              + " order by lower(a.name), a.id",
+      value = CATALOG_SELECT + CATALOG_CONDITION + " order by lower(a.name), a.id",
       countQuery = "select count(a)" + CATALOG_CONDITION)
   Page<AssetCatalogRow> findCatalogPage(
       @Param("organizationId") UUID organizationId,
@@ -78,6 +72,26 @@ public interface AssetRepository extends JpaRepository<Asset, UUID> {
       @Param("readableIds") Set<UUID> readableIds,
       @Param("pattern") String pattern,
       Pageable pageable);
+
+  /** {@link #findCatalogPage}, ordered by the last change, most recent first. */
+  @Query(
+      value = CATALOG_SELECT + CATALOG_CONDITION + " order by a.updatedAt desc, a.id",
+      countQuery = "select count(a)" + CATALOG_CONDITION)
+  Page<AssetCatalogRow> findCatalogPageByUpdatedAt(
+      @Param("organizationId") UUID organizationId,
+      @Param("assetTypes") Collection<AssetType> assetTypes,
+      @Param("readableIds") Set<UUID> readableIds,
+      @Param("pattern") String pattern,
+      Pageable pageable);
+
+  /** The assets of {@code assetTypes} in the organization owned by one of the groups. */
+  @Query(
+      "select a.id from Asset a where a.organizationId = :organizationId"
+          + " and a.assetType in :assetTypes and a.ownerGroupId in :groupIds")
+  Set<UUID> findIdsOwnedByGroups(
+      @Param("organizationId") UUID organizationId,
+      @Param("assetTypes") Collection<AssetType> assetTypes,
+      @Param("groupIds") Collection<UUID> groupIds);
 
   /**
    * In how many spaces each of the assets is associated, in one grouped query - the spread the
@@ -95,6 +109,12 @@ public interface AssetRepository extends JpaRepository<Asset, UUID> {
 
     long getSpaceCount();
   }
+
+  String CATALOG_SELECT =
+      "select a.id as id, a.assetType as assetType, a.name as name,"
+          + " a.description as description, a.ownerType as ownerType,"
+          + " a.ownerUserId as ownerUserId, a.ownerGroupId as ownerGroupId,"
+          + " a.origin as origin, a.updatedAt as updatedAt";
 
   String CATALOG_CONDITION =
       " from Asset a where a.organizationId = :organizationId"

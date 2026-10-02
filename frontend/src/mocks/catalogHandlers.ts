@@ -1,7 +1,32 @@
 import { http, HttpResponse } from 'msw'
-import type { AssetType, CatalogEntryResponse } from '../types/api'
-import { mockLibraries } from './libraryFixtures'
+import type {
+  AssetType,
+  CatalogEntryResponse,
+  CatalogEntryStatus,
+  CatalogVisibility,
+  LibraryListResponse,
+} from '../types/api'
+import { mockLibraries, mockLibraryDetails } from './libraryFixtures'
 import { mockPromptLibraries, mockUnreadablePromptLibraryIds } from './promptLibraryFixtures'
+
+/** The tile status the server derives for a knowledge library, see CatalogEntryStatus. */
+function knowledgeStatus(library: LibraryListResponse): CatalogEntryStatus {
+  if (library.succession) return 'SUCCESSION_OPEN'
+  switch (library.lastRunStatus) {
+    case 'RUNNING':
+      return 'UPDATING'
+    case 'FAILED':
+      return 'UPDATE_FAILED'
+    case 'COMPLETED':
+      return 'READY'
+    default:
+      return library.sourceType === 'UPLOAD' ? 'READY' : 'NOT_YET_AVAILABLE'
+  }
+}
+
+function visibilityOf(allAccounts: boolean): CatalogVisibility {
+  return allAccounts ? 'PUBLIC' : 'RESTRICTED'
+}
 
 function readableEntries(): CatalogEntryResponse[] {
   const knowledge: CatalogEntryResponse[] = mockLibraries.map((library) => ({
@@ -10,8 +35,14 @@ function readableEntries(): CatalogEntryResponse[] {
     name: library.name,
     description: library.description ?? null,
     ownerType: library.ownerType,
+    ownerId: mockLibraryDetails[library.id]?.ownerId ?? 'mock-user-id',
     ownerLabel: library.ownerName ?? null,
     origin: 'LOCAL',
+    visibility: visibilityOf(library.reach.allAccounts),
+    myRole: library.myRole,
+    status: knowledgeStatus(library),
+    updatedAt: library.updatedAt,
+    knowledgeLibrary: { sourceType: library.sourceType, lastIndexedAt: library.lastIndexedAt },
     itemCount: library.documentCount,
     spaceCount: 0,
     succession: library.succession ?? null,
@@ -24,8 +55,13 @@ function readableEntries(): CatalogEntryResponse[] {
       name: library.name,
       description: library.description ?? null,
       ownerType: library.ownerType,
+      ownerId: library.ownerId,
       ownerLabel: library.ownerName ?? null,
       origin: 'LOCAL',
+      visibility: visibilityOf(library.reach.allAccounts),
+      myRole: library.myRole,
+      status: library.succession ? 'SUCCESSION_OPEN' : 'READY',
+      updatedAt: library.updatedAt,
       itemCount: library.promptCount,
       spaceCount: 1,
       succession: library.succession ?? null,
@@ -33,26 +69,44 @@ function readableEntries(): CatalogEntryResponse[] {
   return [...knowledge, ...prompts]
 }
 
-/** The server's catalog: only what the mock user may read, filtered, searched and paged by name. */
+/**
+ * The server's catalog: only what the mock user may read, filtered, searched, sorted and paged.
+ * "Aus meinen Gruppen" is approximated by group ownership - the fixtures name no memberships.
+ */
 export const catalogHandlers = [
   http.get('/api/v1/catalog', ({ request }) => {
     const params = new URL(request.url).searchParams
     const type = params.get('type') as AssetType | null
     const q = (params.get('q') ?? '').trim().toLowerCase()
+    const visibility = params.get('visibility')
+    const fromMyGroups = params.get('fromMyGroups') === 'true'
+    const sort = params.get('sort') ?? 'name'
     const page = Number(params.get('page') ?? '0')
     const size = Number(params.get('size') ?? '50')
     if (page < 0 || size < 1 || size > 200) {
       return HttpResponse.json({ error: 'page oder size außerhalb der Grenzen' }, { status: 400 })
     }
+    if (sort !== 'name' && sort !== 'updatedAt') {
+      return HttpResponse.json({ error: 'Unbekannte Sortierung' }, { status: 400 })
+    }
+    if (visibility && visibility !== 'PUBLIC' && visibility !== 'RESTRICTED') {
+      return HttpResponse.json({ error: 'Unbekannte Sichtbarkeit' }, { status: 400 })
+    }
     const all = readableEntries()
       .filter((entry) => !type || entry.assetType === type)
+      .filter((entry) => !visibility || entry.visibility === visibility)
+      .filter((entry) => !fromMyGroups || entry.ownerType === 'GROUP')
       .filter(
         (entry) =>
           !q ||
           entry.name.toLowerCase().includes(q) ||
           (entry.description ?? '').toLowerCase().includes(q),
       )
-      .sort((a, b) => a.name.localeCompare(b.name))
+      .sort((a, b) =>
+        sort === 'updatedAt'
+          ? b.updatedAt.localeCompare(a.updatedAt) || a.assetId.localeCompare(b.assetId)
+          : a.name.localeCompare(b.name),
+      )
     return HttpResponse.json({
       entries: all.slice(page * size, page * size + size),
       page,

@@ -350,9 +350,13 @@ paths:
         carries its content.
       description: >
         Visible means readable: an asset the caller may not read appears in no entry, not even by
-        name. Readability follows the rights formula alone, so a system administrator without a
-        grant sees no more than anybody else. Ordered by name; the search matches name and
-        description, case-insensitive, every character literally.
+        name, and no count includes it - not totalElements, not under any filter. Readability
+        follows the rights formula alone, so a system administrator without a grant sees no more
+        than anybody else. Every filter only narrows the readable set, and the filters combine with
+        AND. The search matches name and description, case-insensitive, every character literally.
+        Known limit: the readable set goes into the query as a list of ids, and PostgreSQL takes at
+        most 65 535 parameters per statement; a person who may read more assets gets an error
+        instead of a page.
       parameters:
         - name: type
           in: query
@@ -367,6 +371,38 @@ paths:
           schema:
             type: string
             maxLength: 200
+        - name: visibility
+          in: query
+          required: false
+          description: >
+            Only public (PUBLIC) or only restricted (RESTRICTED) assets, as CatalogEntryResponse
+            .visibility names them; both when absent.
+          schema:
+            $ref: "#/components/schemas/CatalogVisibility"
+        - name: fromMyGroups
+          in: query
+          required: false
+          description: >
+            "Aus meinen Gruppen": when true, only assets that carry an unexpired grant, of any
+            role, to a group the caller is currently a direct member of, or that are owned by such
+            a group. A grant to all accounts is no group grant and a grant to the caller in person
+            does not count. The groups are the caller's own, protected groups included, resolved
+            as the rights formula resolves them. False or absent applies no such restriction.
+          schema:
+            type: boolean
+            default: false
+        - name: sort
+          in: query
+          required: false
+          description: >
+            name orders by name (case-insensitive, A to Z); updatedAt orders by
+            CatalogEntryResponse.updatedAt, most recent first. Ties are broken by assetId, so the
+            pages of one order neither repeat nor skip an entry. Any other value is refused with
+            400.
+          schema:
+            type: string
+            enum: [name, updatedAt]
+            default: name
         - name: page
           in: query
           required: false
@@ -391,8 +427,8 @@ paths:
                 $ref: "#/components/schemas/CatalogPageResponse"
         "400":
           description: >
-            A page, size or search text outside the bounds declared above - refused rather than
-            silently answering a different page than the one asked for.
+            A page, size, search text, visibility or sort outside the values declared above -
+            refused rather than silently answering a different page than the one asked for.
           content:
             application/json:
               schema:
@@ -417,10 +453,26 @@ components:
 
     CatalogEntryResponse:
       type: object
-      required: [assetType, assetId, name, ownerType, origin, itemCount, spaceCount]
+      required:
+        [
+          assetType,
+          assetId,
+          name,
+          ownerType,
+          ownerId,
+          origin,
+          visibility,
+          myRole,
+          status,
+          updatedAt,
+          itemCount,
+          spaceCount,
+        ]
       description: >
-        One asset in the catalog - a description, never a content
-        (docs/features/spaces-and-assets.md#der-katalog).
+        One asset in the catalog, always one the caller may read - a description, never a content
+        (docs/features/spaces-and-assets.md#der-katalog). Everything a tile shows comes with the
+        entry; a field only one asset type has sits in the optional object named after that type
+        (knowledgeLibrary), absent for every other type.
       properties:
         assetType:
           $ref: "#/components/schemas/AssetType"
@@ -434,6 +486,10 @@ components:
           nullable: true
         ownerType:
           $ref: "#/components/schemas/AssetOwnerType"
+        ownerId:
+          type: string
+          format: uuid
+          description: The owning user or group, whichever ownerType names.
         ownerLabel:
           type: string
           nullable: true
@@ -444,6 +500,28 @@ components:
           example: Referat 50
         origin:
           $ref: "#/components/schemas/AssetOrigin"
+        visibility:
+          $ref: "#/components/schemas/CatalogVisibility"
+        myRole:
+          description: >
+            The role the caller holds by the rights formula - at least VIEWER, since the catalog
+            holds only what the caller may read. Never raised to OWNER for a system administrator:
+            administering is not reading (ADR-0036, Entscheidung 1).
+          allOf:
+            - $ref: "#/components/schemas/AssetRole"
+        status:
+          $ref: "#/components/schemas/CatalogEntryStatus"
+        updatedAt:
+          type: string
+          format: date-time
+          description: >
+            When the asset's own data last changed - name, description, settings, ownership. A
+            change to its grants or its contents (documents, prompts) does not move it. The sort
+            updatedAt orders by this value.
+        knowledgeLibrary:
+          description: Present exactly when assetType is KNOWLEDGE_LIBRARY.
+          allOf:
+            - $ref: "#/components/schemas/CatalogKnowledgeLibraryFacts"
         itemCount:
           type: integer
           format: int64
@@ -479,6 +557,43 @@ components:
           format: int64
         totalPages:
           type: integer
+
+    CatalogVisibility:
+      type: string
+      description: >
+        Who can find and read an asset, derived from its grants and never stored (ADR-0039,
+        Entscheidung 2). PUBLIC: the asset carries an unexpired grant to all accounts
+        (ALL_ACCOUNTS) - exactly when reach.allAccounts of its detail view is true. RESTRICTED:
+        it is reachable only through grants to persons or groups.
+      enum: [PUBLIC, RESTRICTED]
+
+    CatalogEntryStatus:
+      type: string
+      description: >
+        The one state a tile shows, the same words for every asset type. SUCCESSION_OPEN: the
+        asset has no capable owner (succession carries the addressee); it outranks every other
+        state. Otherwise the type's own measure - for a knowledge library its newest indexing run:
+        UPDATING while it runs, UPDATE_FAILED when it failed, NOT_YET_AVAILABLE for a connector
+        library that has never been indexed, READY when the newest run completed and for an upload
+        library, which has no runs. A type without a measure of its own, such as a prompt library,
+        is READY.
+      enum: [READY, UPDATING, UPDATE_FAILED, NOT_YET_AVAILABLE, SUCCESSION_OPEN]
+
+    CatalogKnowledgeLibraryFacts:
+      type: object
+      required: [sourceType]
+      description: >
+        What only a knowledge library shows on its tile - the same values the library list
+        (LibraryListResponse) carries.
+      properties:
+        sourceType:
+          $ref: "#/components/schemas/SourceTypeKey"
+        lastIndexedAt:
+          type: string
+          format: date-time
+          description: >
+            Completion time of the newest successful indexing run - the "Stand". Absent while no
+            run has completed, and always for an upload library.
 
     SpaceAssetAssociationRequest:
       type: object

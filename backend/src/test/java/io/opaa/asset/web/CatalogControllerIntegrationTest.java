@@ -135,7 +135,62 @@ class CatalogControllerIntegrationTest {
   }
 
   @Test
+  void anEntryCarriesTheTileFieldsAndTheVisibilityOfTheDetailView() throws Exception {
+    String name = "Kachel " + UUID.randomUUID();
+    String id = createPromptLibrary(devUser(), "{\"name\":\"" + name + "\"}");
+
+    mockMvc
+        .perform(get("/api/v1/catalog").param("q", name).with(devUser()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.entries[0].ownerId").isString())
+        .andExpect(jsonPath("$.entries[0].visibility").value("RESTRICTED"))
+        .andExpect(jsonPath("$.entries[0].myRole").value("OWNER"))
+        .andExpect(jsonPath("$.entries[0].status").value("READY"))
+        .andExpect(jsonPath("$.entries[0].updatedAt").isString())
+        .andExpect(jsonPath("$.entries[0].knowledgeLibrary").doesNotExist());
+    mockMvc
+        .perform(
+            post("/api/v1/assets/PROMPT_LIBRARY/" + id + "/grants")
+                .with(devUser())
+                .content("{\"subjectType\":\"ALL_ACCOUNTS\",\"role\":\"VIEWER\"}"))
+        .andExpect(status().isOk());
+
+    mockMvc
+        .perform(get("/api/v1/prompt-libraries/" + id).with(devUser()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.reach.allAccounts").value(true));
+    mockMvc
+        .perform(
+            get("/api/v1/catalog").param("q", name).param("visibility", "PUBLIC").with(devAdmin()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.totalElements").value(1))
+        .andExpect(jsonPath("$.entries[0].visibility").value("PUBLIC"))
+        .andExpect(jsonPath("$.entries[0].myRole").value("VIEWER"));
+    mockMvc
+        .perform(
+            get("/api/v1/catalog")
+                .param("q", name)
+                .param("visibility", "RESTRICTED")
+                .param("fromMyGroups", "false")
+                .param("sort", "updatedAt")
+                .with(devUser()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.totalElements").value(0));
+    mockMvc
+        .perform(
+            get("/api/v1/catalog").param("q", name).param("fromMyGroups", "true").with(devUser()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.totalElements").value(0));
+  }
+
+  @Test
   void theCatalogRefusesParametersOutsideItsBounds() throws Exception {
+    mockMvc
+        .perform(get("/api/v1/catalog").param("sort", "createdAt").with(devUser()))
+        .andExpect(status().isBadRequest());
+    mockMvc
+        .perform(get("/api/v1/catalog").param("visibility", "ORGANIZATION").with(devUser()))
+        .andExpect(status().isBadRequest());
     mockMvc
         .perform(get("/api/v1/catalog").param("size", "0").with(devUser()))
         .andExpect(status().isBadRequest());
