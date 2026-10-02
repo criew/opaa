@@ -259,7 +259,7 @@ wird; der Bibliotheks-Eigentümer entscheidet, **wer es sieht**.
 Bibliotheks-Eigentümer (gebaut, #797, Maintainer-Festlegung vom 21.09.2026; Form seit
 [ADR-0037](../decisions/0037-reichweite-als-freigabe-an-alle.md) und
 [ADR-0039](../decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md)).** Die frühere zweite
-Erlaubnis, die Auffindbarkeit (`listed_cap`), entfällt mit `listed` (Umsetzung #2092).
+Erlaubnis, die Auffindbarkeit (`listed_cap`), ist mit `listed` entfallen (#2092).
 Sie wirkt aber erst, **nachdem** sie gesetzt wurde:
 
 - Gedeckelt wird **ausschließlich die Freigabe an „Alle Konten"** der

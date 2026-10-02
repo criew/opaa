@@ -165,7 +165,7 @@ nicht der Reiter selbst.
 | **Dokumente** | der Bestand der Bibliothek, für jeden Quellentyp dieselbe Liste (siehe unten) |
 | **Quelle** | Umfang · Anbindung · Zeitplan · Läufe (siehe unten); entfällt bei einer Upload-Bibliothek |
 | **Metadaten** | „Metadatenfelder" — die eigenen Felder dieser Bibliothek samt Wertelisten — und, ab der Verwalterrolle, „Modellgestützte Extraktion". Beides beschreibt das Kapitel [Metadaten](metadaten.md) |
-| **Freigaben** | Eigentümer, Berechtigungen, Auffindbarkeit im Katalog, externer Zugang, Zuordnungen, Diagnosesperre und die Herleitung „Warum sehe ich diese Wissensbibliothek?" — die sieben Abschnitte beschreibt [Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), Abschnitt 4 |
+| **Freigaben** | Eigentümer, Berechtigungen, externer Zugang, Zuordnungen, Diagnosesperre und die Herleitung „Warum sehe ich diese Wissensbibliothek?" — die sechs Abschnitte beschreibt [Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), Abschnitt 4 |
 
 Der Reiter **„Quelle"** hat vier Abschnitte in dieser Reihenfolge:
 

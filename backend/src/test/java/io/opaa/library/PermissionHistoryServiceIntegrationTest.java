@@ -989,14 +989,14 @@ class PermissionHistoryServiceIntegrationTest {
    *
    * <p>{@code KnowledgeLibraryRepository} is deliberately not scanned: some thirty beans inject it,
    * nearly all of them only to load a library by id, so the list would flag unrelated indexing work
-   * without naming a write path. What carries the omission for the reach fields is the compiler,
-   * not an observation. Who may read a library follows from the grants alone since #1931, and those
-   * are covered by the write paths above. A library's existence stays an observation: rows are
-   * created and removed through the repository, which every holder can call. The three beans
-   * outside the service that do save library rows ({@code LibraryDiagnosticsLockService}, {@code
-   * LibraryMetadataExtractionService}, {@code LibraryMetadataFieldService}) each touch only their
-   * own fields. A write issued through {@code JdbcTemplate} instead of a repository is out of reach
-   * of both checks.
+   * without naming a write path. The remaining reach field at the library, the release for
+   * Fremdzugaenge, is held by {@link #externalAccessWritePaths} instead. Who may read a library
+   * follows from the grants alone since #1931, and those are covered by the write paths above. A
+   * library's existence stays an observation: rows are created and removed through the repository,
+   * which every holder can call. The three beans outside the service that do save library rows
+   * ({@code LibraryDiagnosticsLockService}, {@code LibraryMetadataExtractionService}, {@code
+   * LibraryMetadataFieldService}) each touch only their own fields. A write issued through {@code
+   * JdbcTemplate} instead of a repository is out of reach of both checks.
    */
   @Test
   void everyBeanReachingTheGrantOrMembershipTablesIsAccountedFor() {
@@ -1076,7 +1076,7 @@ class PermissionHistoryServiceIntegrationTest {
    * library's creation, reach change and deletion it leaves to {@code AssetShellService}, covered
    * above. {@code PromptService} (#1903) reads the formula to offer the prompts a person may insert
    * in the chat and to check an inserted one; it writes prompts only. {@code AssetCatalogService}
-   * (#1904) reads the formula only to mark which catalog entries are accessible and writes nothing.
+   * (#1904) reads the formula only to restrict the catalog to readable entries and writes nothing.
    * {@code AssetOwnerNames} only reads the display names of owning groups; {@code
    * KnowledgeLibraryService} reaches groups only through it and through {@code AssetGrantService},
    * and its write paths are covered above.
@@ -1157,7 +1157,7 @@ class PermissionHistoryServiceIntegrationTest {
           // note an object carries - neither moves a library into or out of anybody's set.
           "PermissionTransferService#preview",
           "PermissionTransferService#markOf",
-          // #1931: Umbenennen und Auffindbarkeit - wer lesen darf, entscheiden allein die
+          // #1931: Umbenennen und Quellkonfiguration - wer lesen darf, entscheiden allein die
           // Freigaben, und die aendert dieser Pfad nicht.
           "KnowledgeLibraryService#updateLibrary",
           "KnowledgeLibraryService#getLibrary",

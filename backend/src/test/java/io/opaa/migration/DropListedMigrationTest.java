@@ -88,6 +88,35 @@ class DropListedMigrationTest extends AbstractBaselineTest {
     assertThat(countWhere("asset_visibility_history", "asset_id = '" + asset + "'")).isEqualTo(1);
   }
 
+  /**
+   * An installation that switched findability has VISIBILITY_CHANGED intervals; they carry the
+   * release state of their predecessor and stay in the chain as BACKFILL, open interval included.
+   */
+  @Test
+  void aFormerChangeOfFindabilityStaysInTheChainAsBackfill() throws Exception {
+    UUID asset = insertAsset("KNOWLEDGE_LIBRARY", insertUser());
+    execute(
+        historySql(
+            asset, "CREATED", "ACTIVE", "now() - interval '2 days'", "now() - interval '1 day'"));
+    execute(historySql(asset, "VISIBILITY_CHANGED", "ACTIVE", "now() - interval '1 day'", "NULL"));
+
+    applyBoth();
+
+    String ofAsset = "asset_id = '" + asset + "'";
+    assertThat(countWhere("asset_visibility_history", ofAsset)).isEqualTo(2);
+    assertThat(countWhere("asset_visibility_history", ofAsset + " AND cause = 'CREATED'"))
+        .isEqualTo(1);
+    assertThat(
+            countWhere(
+                "asset_visibility_history",
+                ofAsset
+                    + " AND cause = 'BACKFILL' AND valid_to IS NULL"
+                    + " AND external_access_state = 'ACTIVE'"))
+        .as("the open interval keeps its place and its release state")
+        .isEqualTo(1);
+    assertThat(countWhere("asset_visibility_history", "cause = 'VISIBILITY_CHANGED'")).isZero();
+  }
+
   private void applyBoth() throws Exception {
     applyChangelog(connection, RIGHTS_FILE);
     applyChangelog(connection, KNOWLEDGE_FILE);
@@ -102,6 +131,26 @@ class DropListedMigrationTest extends AbstractBaselineTest {
                 + column
                 + "'")
         > 0;
+  }
+
+  /** A history row as an existing installation holds it, {@code listed} still present. */
+  private static String historySql(
+      UUID asset, String cause, String externalAccessState, String validFrom, String validTo) {
+    return "INSERT INTO asset_visibility_history (id, asset_type, asset_id, organization_id,"
+        + " listed, cause, external_access_state, external_access_expires_at, valid_from,"
+        + " valid_to) VALUES (gen_random_uuid(), 'KNOWLEDGE_LIBRARY', '"
+        + asset
+        + "', '"
+        + SEEDED_ORGANIZATION_ID
+        + "', true, '"
+        + cause
+        + "', '"
+        + externalAccessState
+        + "', now() + interval '30 days', "
+        + validFrom
+        + ", "
+        + validTo
+        + ")";
   }
 
   private static String visibilitySql(UUID asset, String cause) {
