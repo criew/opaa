@@ -101,12 +101,69 @@ describe('OwnExternalAccessTokensSection', () => {
     expect(within(dialog).getByText(/Auswahl lässt sich später nicht ändern/)).toBeInTheDocument()
   })
 
+  it('bietet genau die lesbaren und freigegebenen Bibliotheken als Kacheln an', async () => {
+    const user = userEvent.setup()
+    render()
+
+    const dialog = await openCreateDialog(user)
+    const group = await within(dialog).findByRole('group', { name: 'Bibliotheken' })
+
+    const tiles = await within(group).findAllByRole('checkbox')
+    expect(tiles.map((tile) => tile.textContent)).toEqual([
+      expect.stringContaining('Meine Dokumente'),
+      expect.stringContaining('Rechtsquellen Soziales'),
+      expect.stringContaining('Dienstanweisungen'),
+    ])
+    // Lesbar, aber nicht für Fremdzugänge freigegeben: erscheint nicht.
+    expect(within(dialog).queryByText('Projektakte Phoenix')).not.toBeInTheDocument()
+    for (const tile of tiles) {
+      expect(tile).toHaveTextContent(/Freigabe bis \d{2}\.\d{2}\.\d{4}/)
+      expect(tile).toHaveAttribute('aria-checked', 'false')
+    }
+  })
+
+  it('grenzt die Kacheln per Suche ein und behält die Auswahl über die Suche hinweg', async () => {
+    const user = userEvent.setup()
+    let sent: string[] | null = null
+    server.use(
+      http.post('*/api/v1/external-access/tokens', async ({ request }) => {
+        sent = ((await request.json()) as { libraryIds: string[] }).libraryIds
+        return HttpResponse.json({ message: 'stop' }, { status: 409 })
+      }),
+    )
+    render()
+
+    const dialog = await openCreateDialog(user)
+    await user.click(await within(dialog).findByRole('checkbox', { name: /Meine Dokumente/ }))
+    expect(within(dialog).getByText('1 ausgewählt')).toBeInTheDocument()
+
+    await user.type(within(dialog).getByRole('searchbox', { name: 'Bibliotheken suchen' }), 'recht')
+
+    expect(within(dialog).getAllByRole('checkbox')).toHaveLength(1)
+    await user.click(within(dialog).getByRole('checkbox', { name: /Rechtsquellen Soziales/ }))
+    expect(within(dialog).getByText('2 ausgewählt')).toBeInTheDocument()
+
+    await user.type(within(dialog).getByRole('searchbox', { name: 'Bibliotheken suchen' }), 'xyz')
+    expect(within(dialog).queryAllByRole('checkbox')).toHaveLength(0)
+    expect(within(dialog).getByText(/Keine Bibliothek passt zur Suche/)).toBeInTheDocument()
+
+    await user.clear(within(dialog).getByRole('searchbox', { name: 'Bibliotheken suchen' }))
+    expect(within(dialog).getByRole('checkbox', { name: /Meine Dokumente/ })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    )
+    await user.type(within(dialog).getByLabelText('Name / Zweck'), 'Claude Code (Notebook)')
+    await user.click(within(dialog).getByRole('button', { name: 'Erzeugen' }))
+
+    await waitFor(() => expect(sent).toHaveLength(2))
+  })
+
   it('lässt das Formular ohne Namen und ohne Bibliothek nicht absenden und benennt das Feld', async () => {
     const user = userEvent.setup()
     render()
 
     const dialog = await openCreateDialog(user)
-    await within(dialog).findByLabelText(/Meine Dokumente/)
+    await within(dialog).findByRole('checkbox', { name: /Meine Dokumente/ })
 
     await user.click(within(dialog).getByRole('button', { name: 'Erzeugen' }))
 
@@ -124,7 +181,7 @@ describe('OwnExternalAccessTokensSection', () => {
 
     const dialog = await openCreateDialog(user)
     await user.type(within(dialog).getByLabelText('Name / Zweck'), 'Claude Code (Notebook)')
-    await user.click(await within(dialog).findByLabelText(/Meine Dokumente/))
+    await user.click(await within(dialog).findByRole('checkbox', { name: /Meine Dokumente/ }))
     await user.clear(within(dialog).getByLabelText('Läuft ab'))
 
     await user.click(within(dialog).getByRole('button', { name: 'Erzeugen' }))
@@ -156,7 +213,7 @@ describe('OwnExternalAccessTokensSection', () => {
 
     const dialog = await openCreateDialog(user)
     await user.type(within(dialog).getByLabelText('Name / Zweck'), 'Claude Code (Notebook)')
-    await user.click(await within(dialog).findByLabelText(/Meine Dokumente/))
+    await user.click(await within(dialog).findByRole('checkbox', { name: /Meine Dokumente/ }))
     await user.click(within(dialog).getByRole('button', { name: 'Erzeugen' }))
 
     const valueDialog = await screen.findByRole('dialog', { name: 'Token erzeugt' })
