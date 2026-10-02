@@ -215,6 +215,11 @@ ersten Stufe nicht geschrieben.
   über `correlation_ref`; dazu ein Kopfeintrag des Laufs mit Ergebnis und, oberhalb der Schwelle, mit
   der bestätigenden Person und ihrem Anlass. **Das Verwerfen** eines vorgelegten Plans ist ein
   eigenes Ereignis mit derselben Angabe — eine Entscheidung, die keine Spur hinterlässt, ist keine
+- **Die Auslieferung eines Abgleichsberichts mit Namen an die Systemverwaltung** — Abruf des
+  ausstehenden Plans, Probelauf, Lauf von Hand und Bestätigung; ein zusammenfassender Eintrag mit
+  Anbieter und der Zahl der genannten Gruppen und Personen, nie mit den Namen
+  ([ADR-0036](../decisions/0036-berechtigungsmodell-gruppen-und-faehigkeiten.md), Entscheidung 9,
+  Nachtrag vom 02.10.2026)
 
 **Systemeinstellungen**
 
@@ -287,11 +292,14 @@ Verantwortlichen interner Gruppen samt Reichweitenfeldern (`GROUP_STEWARD_APPOIN
 letzten mit Vorher/Nachher des Kennzeichens; die betroffene Person steht als Pseudonym im Subjekt,
 und keines der vier erzeugt eine Historienzeile) und — ebenfalls seit #1814 — der Abruf der
 Mitgliederliste einer Gruppe durch die Systemverwaltung, die diese Gruppe nicht selbst verantwortet
-(`GROUP_MEMBERS_READ` mit der Zahl der Mitglieder) und — seit #1834 — die Übertragung der Rechte
+(`GROUP_MEMBERS_READ` mit der Zahl der Mitglieder) und — seit #1991 — jede Auslieferung eines
+Abgleichsberichts mit Namen an die Systemverwaltung (`DIRECTORY_SYNC_REPORT_READ` mit Anbieter,
+Weg und der Zahl der genannten Gruppen und Personen; ein Bericht ohne Namen schreibt nichts) und —
+seit #1834 — die Übertragung der Rechte
 eines Subjekts auf ein anderes (`PERMISSION_TRANSFER_EXECUTED` mit Quelle, Ziel, Umfang und Zahl
 der Zeilen, und `PERMISSION_TRANSFER_PREVIEWED` für **jeden** Abruf der Vorschau, auch den
 abgebrochenen — die Vorschau liest alles, was ein Subjekt hält). Das sind, neben dem Abruf der
-Mitgliederliste, die einzigen **Leseereignisse** dieser
+Mitgliederliste und des Abgleichsberichts, die einzigen **Leseereignisse** dieser
 Liste und die bewusste Ausnahme von „Abfragen werden nicht protokolliert": ADR-0036,
 Entscheidung 9, räumt der Verwaltung die volle Mitgliederliste ein — und hält dafür fest, dass sie
 sie abgerufen hat. Wer die Gruppe selbst verantwortet, erzeugt beim Lesen nichts; es ist die

@@ -1370,6 +1370,13 @@ Bibliothek und in jedem Space. Wer die Gruppe selbst verantwortet, erzeugt beim 
 der Rechtevergebende ohne Systemrolle ebenfalls nicht**: Er liest, wen er selbst an sein Objekt
 geholt hat, und das steht mit Zeitpunkt an der Berechtigung.
 
+**Der Bericht des Verzeichnisabgleichs ist ein zweiter Weg zu denselben Namen** (#1991): Er nennt
+die Mitglieder, die ein Lauf aufnimmt oder entzieht, für eine neu angelegte Gruppe die vollständige
+Liste. Jede Antwort, die ihn mit Namen an die Systemverwaltung ausliefert — Abruf des ausstehenden
+Plans, Probelauf, Lauf von Hand, Bestätigung —, schreibt deshalb ein zusammenfassendes
+`DIRECTORY_SYNC_REPORT_READ` mit Anbieter und der Zahl der genannten Gruppen und Personen, nie mit
+den Namen (ADR-0036, Entscheidung 9, Nachtrag vom 02.10.2026).
+
 > Festgeschrieben in [ADR-0036](../decisions/0036-berechtigungsmodell-gruppen-und-faehigkeiten.md),
 > Entscheidungen 4 und 9.
 
