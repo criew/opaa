@@ -105,7 +105,7 @@ export default function AssetOwnerSection({
   return (
     <PageSection
       title="Eigentümer"
-      description={`Die Stelle, die für diese ${noun} geradesteht — sie vergibt Rechte, ändert die Auffindbarkeit und kann sie löschen.`}
+      description={`Die Stelle, die für diese ${noun} geradesteht — sie vergibt Rechte und kann sie löschen.`}
       action={
         canTransfer && !open ? (
           <Button variant="outlined" size="small" onClick={() => setOpen(true)}>

@@ -110,7 +110,7 @@ class GrantLibraryChangedEventIntegrationTest {
 
   private KnowledgeLibrary newLibrary() {
     KnowledgeLibrary library =
-        KnowledgeLibrary.ownedByUser(organizationId, "Bibliothek", null, actorUserId, false);
+        KnowledgeLibrary.ownedByUser(organizationId, "Bibliothek", null, actorUserId);
     createdLibraryIds.add(library.getId());
     return library;
   }

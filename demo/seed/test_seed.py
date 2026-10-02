@@ -951,10 +951,9 @@ def test_e2e_profile_stays_without_prompt_libraries() -> None:
     assert profiles.E2E_PROFILE.prompt_libraries == ()
 
 
-def test_buergerbuero_textbausteine_reach_all_accounts_and_are_listed() -> None:
+def test_buergerbuero_textbausteine_reach_all_accounts() -> None:
     library = demo_prompt_library(BUERGERBUERO_LIBRARY)
     assert library.all_accounts_viewer
-    assert library.listed
     prompt_names = {prompt.name for prompt in library.prompts}
     assert {
         "antwort-buergeranfrage",
@@ -969,9 +968,6 @@ def test_amtsleitung_templates_reach_only_andrea() -> None:
     assert library.owner_key == "andrea"
     assert not library.all_accounts_viewer
     assert library.viewer_keys == ()
-    # Unlisted: a listed library would appear in the catalog of every account, if only as an
-    # entry without access.
-    assert not library.listed
     assert library.space_names == ("Amtsleitung Bürgerbüro",)
     assert {"wochenbericht-dezernentin", "stellungnahme-hauptausschuss"} <= {
         prompt.name for prompt in library.prompts
@@ -1092,7 +1088,6 @@ class FakePromptClient:
                 "description": json.get("description"),
                 "ownerType": "USER",
                 "ownerId": self.user_id,
-                "listed": bool(json.get("listed")),
             }
             self.api.libraries[lib_id] = library
             self.api.prompts[lib_id] = []
@@ -1150,7 +1145,6 @@ def test_seed_creates_prompt_libraries_with_prompts_grants_and_associations() ->
     for library_def in profiles.DEMO_PROFILE.prompt_libraries:
         library = by_name[library_def.name]
         assert library["ownerId"] == user_ids[library_def.owner_key]
-        assert library["listed"] == library_def.listed
         assert [p["name"] for p in api.prompts[library["id"]]] == [
             p.name for p in library_def.prompts
         ]
@@ -1213,7 +1207,7 @@ def test_same_named_prompt_library_of_another_owner_is_not_taken_over() -> None:
     api = FakePromptApi()
     foreign = api.client("user-maria").post_ok(
         "/v1/prompt-libraries",
-        json={"name": AMTSLEITUNG_LIBRARY, "listed": False},
+        json={"name": AMTSLEITUNG_LIBRARY},
         expected=(201,),
     )
     api.client("user-maria").post_ok(

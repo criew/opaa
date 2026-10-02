@@ -45,7 +45,7 @@ class PromptServiceSaveTest {
 
   @BeforeEach
   void setUp() {
-    library = PromptLibrary.ownedByUser(organization, "Vorlagen", null, caller.id(), false);
+    library = PromptLibrary.ownedByUser(organization, "Vorlagen", null, caller.id());
     when(libraryService.load(library.getId(), caller)).thenReturn(library);
   }
 

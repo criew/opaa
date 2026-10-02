@@ -54,7 +54,6 @@ class StaleDocumentCleanupServiceTest {
           "Bibliothek",
           null,
           UUID.randomUUID(),
-          false,
           SourceTypes.RSS_FEED,
           null,
           null,

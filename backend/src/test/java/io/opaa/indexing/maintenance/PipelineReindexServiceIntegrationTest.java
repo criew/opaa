@@ -116,7 +116,6 @@ class PipelineReindexServiceIntegrationTest {
                 "Zielbibliothek",
                 null,
                 userId,
-                false,
                 SourceTypes.FILESYSTEM,
                 classTempDir.toString(),
                 null,
@@ -126,7 +125,7 @@ class PipelineReindexServiceIntegrationTest {
     uploadLibrary =
         libraryRepository.save(
             KnowledgeLibrary.ownedByUser(
-                Organization.DEFAULT_ID, "Uploadbibliothek", null, userId, false));
+                Organization.DEFAULT_ID, "Uploadbibliothek", null, userId));
   }
 
   // Scoped by owner rather than by the two fields above: a test method may add a third library
@@ -894,7 +893,6 @@ class PipelineReindexServiceIntegrationTest {
                 "Zurückgezogene Bibliothek",
                 null,
                 userId,
-                false,
                 SourceTypes.FILESYSTEM,
                 withdrawnDirectory.toString(),
                 null,

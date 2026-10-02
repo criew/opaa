@@ -36,7 +36,6 @@ import { assetRoleLabel, formatFileSize } from '../utils/labels'
 import { documentSourceTypeLabel } from '../components/library/sources/sourceLabels'
 import AssetAccessDerivationSection from '../components/assets/AssetAccessDerivationSection'
 import AssetHeadlineEditor from '../components/assets/AssetHeadlineEditor'
-import AssetListedSection from '../components/assets/AssetListedSection'
 import AssetOwnerSection from '../components/assets/AssetOwnerSection'
 import AssetSpacesSection from '../components/assets/AssetSpacesSection'
 import AssetGrantsSection from '../components/permissions/AssetGrantsSection'
@@ -193,13 +192,10 @@ interface ShareCapSwitchProps {
 }
 
 /**
- * Eine Hälfte der Obergrenze, die die Systemverwaltung einer Konnektorbibliothek setzt (#797, in
- * der Gestalt aus #1931) - sichtbar und setzbar nur hier, nie für den Eigentümer der Bibliothek:
- * Der sieht die Wirkung (eine Freigabe über der Grenze antwortet 409), nicht den Schalter. Die
- * beiden Hälften stehen in den Abschnitten, auf die sie wirken - „Freigabe an Alle erlaubt" bei den
- * Berechtigungen, „Auffindbarkeit im Katalog erlaubt" beim Katalog. Jede führt ihren eigenen
- * Speicher- und Fehlerzustand: Eine abgewiesene Hälfte darf die andere weder sperren noch mit
- * einer Meldung behängen, die ihr nicht gilt.
+ * Die Obergrenze, die die Systemverwaltung einer Konnektorbibliothek setzt (#797, in der Gestalt
+ * aus #1931): ob sie an „Alle Konten" freigegeben werden darf. Sichtbar und setzbar nur hier, nie
+ * für den Eigentümer der Bibliothek: Der sieht die Wirkung (eine Freigabe über der Grenze antwortet
+ * 409), nicht den Schalter.
  */
 function ShareCapSwitch({ label, description, checked, onSave }: ShareCapSwitchProps) {
   const [draft, setDraft] = useState(checked)
@@ -313,8 +309,7 @@ export default function LibraryDetailPage() {
     isSystemAdmin &&
     details != null &&
     details.sourceType !== 'UPLOAD' &&
-    details.allAccountsGrantAllowed != null &&
-    details.listedCap != null
+    details.allAccountsGrantAllowed != null
   const activeTab: LibraryDetailTab = resolveTab(searchParams.get('tab'), showSourceTab)
 
   // Status polling lives at page level, not inside the (hideable) "Indizierung" area: a running
@@ -362,20 +357,12 @@ export default function LibraryDetailPage() {
     return query ? `?${query}` : ''
   }
 
-  /**
-   * The PUT replaces name, description and reach as a whole; each form sends its own fields and
-   * the saved values of the other, so saving the master data never changes the reach.
-   */
-  async function saveLibrary(fields: {
-    name: string
-    description: string | null | undefined
-    listed: boolean
-  }) {
+  /** The PUT replaces name and description as a whole. */
+  async function saveLibrary(fields: { name: string; description: string | null | undefined }) {
     if (!libraryId) return
     await updateExistingLibrary(libraryId, {
       name: fields.name.trim(),
       description: fields.description?.trim() || undefined,
-      listed: fields.listed,
       // Bewusst kein Quellkonfigurationsfeld gesetzt: das Backend lässt die gespeicherte
       // Konfiguration unverändert, solange keines der sourcePath/sourceUrl/sourceProxy/
       // sourceCredentials/sourceInsecureSsl-Felder in der Anfrage vorhanden ist (ADR-0018). Das
@@ -398,14 +385,8 @@ export default function LibraryDetailPage() {
   async function saveHeadline(nextName: string, nextDescription: string) {
     if (!library) return
     try {
-      await saveLibrary({
-        name: nextName,
-        description: nextDescription,
-        listed: library.listed,
-      })
+      await saveLibrary({ name: nextName, description: nextDescription })
     } catch (err) {
-      // Die Reichweite ist der eine Weg, den eine offene Nachfolge sperrt (ADR-0036/6): Die
-      // Ablehnung nennt deshalb auch den Ausgang.
       throw new Error(successionAwareMessage(err, 'Aktualisierung fehlgeschlagen'), { cause: err })
     }
   }
@@ -452,14 +433,10 @@ export default function LibraryDetailPage() {
     }
   }
 
-  /**
-   * Beide Hälften der Obergrenze gehen als Paar an denselben Endpunkt; die nicht angefasste geht
-   * unverändert mit. Eine Ablehnung wird weitergereicht - sie gehört in den Schalter, der sie
-   * ausgelöst hat.
-   */
-  async function handleSaveShareCap(allAccountsGrantAllowed: boolean, listedCap: boolean) {
+  /** Eine Ablehnung wird weitergereicht - sie gehört in den Schalter, der sie ausgelöst hat. */
+  async function handleSaveShareCap(allAccountsGrantAllowed: boolean) {
     if (!libraryId) return
-    await setLibraryShareCap(libraryId, { allAccountsGrantAllowed, listedCap })
+    await setLibraryShareCap(libraryId, { allAccountsGrantAllowed })
   }
 
   if (!libraryId) {
@@ -955,9 +932,9 @@ export default function LibraryDetailPage() {
         aria-labelledby="library-tab-freigaben"
         hidden={activeTab !== 'freigaben'}
       >
-        {/* Die Reihenfolge des Zielentwurfs (#1927): Eigentümer · Berechtigungen · Katalog ·
-            Externer Zugang · Zuordnungen · Diagnosesperre · Herleitung. Jeder Abschnitt speichert
-            für sich; es gibt keinen gemeinsamen „Speichern"-Knopf über Abschnitte hinweg. */}
+        {/* Die Reihenfolge des Zielentwurfs (#1927): Eigentümer · Berechtigungen · Externer
+            Zugang · Zuordnungen · Diagnosesperre · Herleitung. Jeder Abschnitt speichert für sich;
+            es gibt keinen gemeinsamen „Speichern"-Knopf über Abschnitte hinweg. */}
         <Stack>
           <AssetOwnerSection
             assetType="KNOWLEDGE_LIBRARY"
@@ -981,28 +958,7 @@ export default function LibraryDetailPage() {
                       label="Freigabe an Alle erlaubt"
                       description="Legt fest, ob diese Konnektorbibliothek überhaupt an alle Konten freigegeben werden darf. Wird die Erlaubnis entzogen, wird eine bereits bestehende Freigabe sofort zurückgenommen."
                       checked={details?.allAccountsGrantAllowed ?? true}
-                      onSave={(allowed) => handleSaveShareCap(allowed, details?.listedCap ?? true)}
-                    />
-                  ) : null
-                }
-              />
-
-              <AssetListedSection
-                assetType="KNOWLEDGE_LIBRARY"
-                listed={library.listed}
-                onSave={(listed) =>
-                  saveLibrary({ name: library.name, description: library.description, listed })
-                }
-                listedCap={details?.listedCap}
-                capControl={
-                  shareCapVisible ? (
-                    <ShareCapSwitch
-                      label="Auffindbarkeit im Katalog erlaubt"
-                      description="Legt fest, ob diese Konnektorbibliothek überhaupt im Katalog auffindbar sein darf. Wird die Erlaubnis entzogen, verschwindet ein bereits gesetzter Eintrag sofort."
-                      checked={details?.listedCap ?? true}
-                      onSave={(allowed) =>
-                        handleSaveShareCap(details?.allAccountsGrantAllowed ?? true, allowed)
-                      }
+                      onSave={(allowed) => handleSaveShareCap(allowed)}
                     />
                   ) : null
                 }

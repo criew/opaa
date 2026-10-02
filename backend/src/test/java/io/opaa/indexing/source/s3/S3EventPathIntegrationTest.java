@@ -100,7 +100,6 @@ class S3EventPathIntegrationTest {
             "Ereignisse",
             null,
             userId,
-            false,
             SourceTypes.S3,
             null,
             store.endpoint().toString(),

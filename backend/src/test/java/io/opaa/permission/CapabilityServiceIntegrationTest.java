@@ -300,11 +300,7 @@ class CapabilityServiceIntegrationTest {
   private UUID persistPrivateLibraryOwnedBy(UUID ownerId) {
     KnowledgeLibrary library =
         KnowledgeLibrary.ownedByUser(
-            Organization.DEFAULT_ID,
-            "Fremde Bibliothek " + UUID.randomUUID(),
-            null,
-            ownerId,
-            false);
+            Organization.DEFAULT_ID, "Fremde Bibliothek " + UUID.randomUUID(), null, ownerId);
     UUID libraryId = libraryRepository.save(library).getId();
     libraryIds.add(libraryId);
     return libraryId;

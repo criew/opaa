@@ -150,10 +150,7 @@ public class LibraryController {
       @Caller CurrentUser caller) {
     return LibraryResponseMapper.toResponse(
         libraryService.updateShareCap(
-            libraryId,
-            Boolean.TRUE.equals(request.getAllAccountsGrantAllowed()),
-            Boolean.TRUE.equals(request.getListedCap()),
-            caller));
+            libraryId, Boolean.TRUE.equals(request.getAllAccountsGrantAllowed()), caller));
   }
 
   /**

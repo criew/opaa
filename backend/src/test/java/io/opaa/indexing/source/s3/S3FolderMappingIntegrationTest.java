@@ -107,7 +107,6 @@ class S3FolderMappingIntegrationTest {
             "Objektspeicher",
             null,
             userId,
-            false,
             SourceTypes.S3,
             null,
             "https://minio.intern.example:9000",

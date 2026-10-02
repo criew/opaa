@@ -410,7 +410,6 @@ class PermissionHistoryRetentionDeletionIntegrationTest {
         KnowledgeLibrary.ASSET_TYPE,
         UUID.randomUUID(),
         Organization.DEFAULT_ID,
-        false,
         ExternalAccessState.NEVER_SET,
         null,
         AssetVisibilityHistoryCause.CREATED,

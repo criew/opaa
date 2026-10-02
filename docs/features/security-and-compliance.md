@@ -250,7 +250,7 @@ ersten Stufe nicht geschrieben.
 Die Liste oben beschreibt das **Zielverhalten**; welche Arten heute tatsächlich einen Eintrag
 schreiben, hängt davon ab, ob die zugrunde liegende Funktion im Code schon existiert. Verdrahtet
 sind: Rechte an Assets (Vergabe/Änderung/Entzug von Grants — Empfänger „Alle Konten"
-eingeschlossen —, Änderung von `listed`, die mit #2092 samt Ereignis entfällt),
+eingeschlossen —),
 Anlegen/Ändern/Löschen von Bibliotheken, Spaces und Gruppen — seit #1901 auch von Prompt-Bibliotheken
 und Prompts (`PROMPT_LIBRARY_CREATED`/`_CHANGED`/`_DELETED`, `PROMPT_CREATED`/`_CHANGED`/`_DELETED`,
 Objekte `PROMPT_LIBRARY` und `PROMPT`) —, Aufnahme/Rollenänderung/Entfernen von
@@ -712,7 +712,7 @@ schreiben, fällt dort auf, bevor er in Betrieb geht. Welche Klassen dabei über
 derselbe Test gegen den Anwendungskontext, damit eine neue Klasse an den Rechtetabellen nicht unbemerkt
 hinzukommt.
 
-Für das **Reichweitenfeld** der Fremdzugangsfreigabe (bis #2092 auch für `listed`) trägt diese
+Für das **Reichweitenfeld** der Fremdzugangsfreigabe trägt diese
 Einschränkung zusätzlich der Compiler:
 Über die Bibliothek selbst ist es nur aus dem Paket heraus veränderbar, das die Historienzeile schreibt
 — ein Schreibpfad außerhalb dieses Pakets lässt sich gar nicht erst übersetzen. Am Compiler vorbei ginge
@@ -746,8 +746,7 @@ Recht falsch, nicht bloß lückenhaft. Die Historie überlebt die Löschung eine
 bewusst keinen Fremdschlüssel, damit eine reguläre Lösch-Operation die Beweislage nicht mit sich reißt.
 
 **Umsetzungsstand der Fremdzugangsfreigabe (#1731):** Die Freigabe einer
-Wissensbibliothek für Fremdzugänge ist gebaut und liegt in `asset_visibility_history` (bis #2092 im
-selben Intervall wie `listed`), mit demselben Schreibpfadschutz (`KnowledgeLibrary#updateExternalAccess` ist
+Wissensbibliothek für Fremdzugänge ist gebaut und liegt in `asset_visibility_history`, mit demselben Schreibpfadschutz (`KnowledgeLibrary#updateExternalAccess` ist
 paketprivat). Setzen, Zurücknehmen und Erlöschen erzeugen je einen Protokolleintrag
 (`ASSET_EXTERNAL_ACCESS_CHANGED`, `ASSET_EXTERNAL_ACCESS_EXPIRED`) und öffnen je ein neues Intervall;
 der Ablauflauf schreibt ohne handelnde Person, unter einem Systemakteur. Die

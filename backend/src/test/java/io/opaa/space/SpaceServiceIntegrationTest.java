@@ -99,8 +99,7 @@ class SpaceServiceIntegrationTest {
 
   private UUID createReadableLibrary(UUID organizationId, UUID ownerId) {
     io.opaa.knowledge.KnowledgeLibrary library =
-        io.opaa.knowledge.KnowledgeLibrary.ownedByUser(
-            organizationId, "Bibliothek", null, ownerId, false);
+        io.opaa.knowledge.KnowledgeLibrary.ownedByUser(organizationId, "Bibliothek", null, ownerId);
     UUID libraryId = libraryRepository.save(library).getId();
     jdbcTemplate.update(
         "INSERT INTO asset_grants (id, asset_type, asset_id, organization_id, subject_type,"

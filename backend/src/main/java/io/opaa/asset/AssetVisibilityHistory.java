@@ -15,10 +15,10 @@ import java.time.Instant;
 import java.util.UUID;
 
 /**
- * A half-open interval {@code [validFrom, validTo)} recording one state of an asset's findability
- * ({@code listed}) and its release for Fremdzugaenge (#238, #1731, see
- * docs/features/security-and-compliance.md#nachweisbarkeit-historisierung-von-rechten). Neither is
- * access: who may read the asset follows from the grants alone, and their history lives in {@code
+ * A half-open interval {@code [validFrom, validTo)} recording one state of an asset's release for
+ * Fremdzugaenge (#238, #1731, see
+ * docs/features/security-and-compliance.md#nachweisbarkeit-historisierung-von-rechten). Who may
+ * read the asset follows from the grants alone, and their history lives in {@code
  * asset_grant_history} (#1931, ADR-0037 Entscheidung 7). {@code validTo == null} is the current
  * state. Written and closed exclusively by {@link AssetVisibilityHistoryService}; a type without
  * Fremdzugang carries {@code NEVER_SET}.
@@ -38,9 +38,6 @@ public class AssetVisibilityHistory {
 
   @Column(name = "organization_id", nullable = false)
   private UUID organizationId;
-
-  @Column(name = "listed", nullable = false)
-  private boolean listed;
 
   @Enumerated(EnumType.STRING)
   @Column(name = "external_access_state", nullable = false, length = 20)
@@ -71,7 +68,6 @@ public class AssetVisibilityHistory {
       AssetType assetType,
       UUID assetId,
       UUID organizationId,
-      boolean listed,
       ExternalAccessState externalAccessState,
       Instant externalAccessExpiresAt,
       AssetVisibilityHistoryCause cause,
@@ -81,7 +77,6 @@ public class AssetVisibilityHistory {
     this.assetType = assetType;
     this.assetId = assetId;
     this.organizationId = organizationId;
-    this.listed = listed;
     this.externalAccessState = externalAccessState;
     this.externalAccessExpiresAt = externalAccessExpiresAt;
     this.cause = cause;
@@ -112,10 +107,6 @@ public class AssetVisibilityHistory {
 
   public UUID getOrganizationId() {
     return organizationId;
-  }
-
-  public boolean isListed() {
-    return listed;
   }
 
   public ExternalAccessState getExternalAccessState() {

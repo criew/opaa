@@ -80,8 +80,7 @@ class ChunkReplacementOrderIntegrationTest {
 
     targetLibrary =
         libraryRepository.save(
-            KnowledgeLibrary.ownedByUser(
-                Organization.DEFAULT_ID, "Zielbibliothek", null, userId, false));
+            KnowledgeLibrary.ownedByUser(Organization.DEFAULT_ID, "Zielbibliothek", null, userId));
   }
 
   @Test

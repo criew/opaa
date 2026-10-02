@@ -754,8 +754,7 @@ class SuccessionLifecycleIntegrationTest {
     owner.setSystemRole(SystemRole.USER);
     UUID ownerId = users.save(owner).getId();
     libraries.save(
-        KnowledgeLibrary.ownedByUser(
-            foreignId, "Bibliothek " + UUID.randomUUID(), null, ownerId, false));
+        KnowledgeLibrary.ownedByUser(foreignId, "Bibliothek " + UUID.randomUUID(), null, ownerId));
     lock(ownerId);
     return foreignId;
   }
@@ -772,7 +771,7 @@ class SuccessionLifecycleIntegrationTest {
     return libraries
         .save(
             KnowledgeLibrary.ownedByUser(
-                organizationId, "Bibliothek " + UUID.randomUUID(), null, ownerId, false))
+                organizationId, "Bibliothek " + UUID.randomUUID(), null, ownerId))
         .getId();
   }
 
@@ -780,7 +779,7 @@ class SuccessionLifecycleIntegrationTest {
     return libraries
         .save(
             KnowledgeLibrary.ownedByGroup(
-                organizationId, "Referatsbibliothek " + UUID.randomUUID(), null, groupId, false))
+                organizationId, "Referatsbibliothek " + UUID.randomUUID(), null, groupId))
         .getId();
   }
 

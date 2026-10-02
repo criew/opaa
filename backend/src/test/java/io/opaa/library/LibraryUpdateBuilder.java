@@ -16,7 +16,6 @@ public final class LibraryUpdateBuilder {
 
   private final String name;
   private String description;
-  private Boolean listed;
   private SourceType sourceType;
   private String sourcePath;
   private URI sourceUrl;
@@ -39,11 +38,6 @@ public final class LibraryUpdateBuilder {
 
   public LibraryUpdateBuilder description(String description) {
     this.description = description;
-    return this;
-  }
-
-  public LibraryUpdateBuilder listed(Boolean listed) {
-    this.listed = listed;
     return this;
   }
 
@@ -106,7 +100,6 @@ public final class LibraryUpdateBuilder {
     return new LibraryUpdate(
         name,
         description,
-        listed,
         sourceType,
         sourcePath,
         sourceUrl,

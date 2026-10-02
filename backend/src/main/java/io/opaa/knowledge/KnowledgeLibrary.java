@@ -19,12 +19,12 @@ import org.hibernate.type.SqlTypes;
 
 /**
  * The first asset type (#201, see docs/features/spaces-and-assets.md#assets): a document container
- * on the asset shell. Name, owner, release level and findability are the shell's ({@link Asset},
- * table {@code assets}); this entity and its table {@code knowledge_libraries} carry only what a
- * library alone has - its single quellentyp and quellkonfiguration (ADR-0018), the share cap, the
- * release for Fremdzugaenge, the schedule and the index and metadata switches. A document belongs
- * to exactly one library; a library can be associated with any number of spaces without that
- * association granting any access.
+ * on the asset shell. Name, owner and release level are the shell's ({@link Asset}, table {@code
+ * assets}); this entity and its table {@code knowledge_libraries} carry only what a library alone
+ * has - its single quellentyp and quellkonfiguration (ADR-0018), the share cap, the release for
+ * Fremdzugaenge, the schedule and the index and metadata switches. A document belongs to exactly
+ * one library; a library can be associated with any number of spaces without that association
+ * granting any access.
  *
  * <p><b>{@code @DynamicUpdate} is part of the contract, not a tuning knob</b> (#1806): {@link
  * #sourceCredentials} and {@link #webhookSecret} read as {@code null} while their key is missing
@@ -64,18 +64,10 @@ public class KnowledgeLibrary extends Asset {
   private boolean allAccountsGrantAllowed = true;
 
   /**
-   * The counterpart ceiling for the shell's {@code listed} - {@code false} forbids listing this
-   * library at all. Delivered {@code true} (unrestricted), same reasoning as {@link
-   * #allAccountsGrantAllowed}.
-   */
-  @Column(name = "listed_cap", nullable = false)
-  private boolean listedCap = true;
-
-  /**
-   * The reach field beside the shell's listed and the grants: whether this library may be used
-   * through a Fremdzugang, and where it may not, why not (#1731, docs/features/external-access.md).
-   * {@code NEVER_SET} for every new and every pre-existing library - a Bestand never leaves the
-   * house because nobody decided it should.
+   * The reach field beside the grants: whether this library may be used through a Fremdzugang, and
+   * where it may not, why not (#1731, docs/features/external-access.md). {@code NEVER_SET} for
+   * every new and every pre-existing library - a Bestand never leaves the house because nobody
+   * decided it should.
    */
   @Enumerated(EnumType.STRING)
   @Column(name = "external_access_state", nullable = false, length = 20)
@@ -238,7 +230,6 @@ public class KnowledgeLibrary extends Asset {
       AssetOwnerType ownerType,
       UUID ownerUserId,
       UUID ownerGroupId,
-      boolean listed,
       SourceType sourceType,
       String sourcePath,
       String sourceUrl,
@@ -251,8 +242,7 @@ public class KnowledgeLibrary extends Asset {
         name,
         description,
         ownerType,
-        ownerType == AssetOwnerType.USER ? ownerUserId : ownerGroupId,
-        listed);
+        ownerType == AssetOwnerType.USER ? ownerUserId : ownerGroupId);
     this.libraryOrganizationId = organizationId;
     this.sourceType = sourceType;
     this.sourcePath = sourcePath;
@@ -267,13 +257,12 @@ public class KnowledgeLibrary extends Asset {
    * SourceType#UPLOAD} with no configuration, the type every library predating ADR-0018 was given.
    */
   public static KnowledgeLibrary ownedByUser(
-      UUID organizationId, String name, String description, UUID ownerUserId, boolean listed) {
+      UUID organizationId, String name, String description, UUID ownerUserId) {
     return ownedByUser(
         organizationId,
         name,
         description,
         ownerUserId,
-        listed,
         SourceType.UPLOAD,
         null,
         null,
@@ -287,7 +276,6 @@ public class KnowledgeLibrary extends Asset {
       String name,
       String description,
       UUID ownerUserId,
-      boolean listed,
       SourceType sourceType,
       String sourcePath,
       String sourceUrl,
@@ -301,7 +289,6 @@ public class KnowledgeLibrary extends Asset {
         AssetOwnerType.USER,
         ownerUserId,
         null,
-        listed,
         sourceType,
         sourcePath,
         sourceUrl,
@@ -313,16 +300,15 @@ public class KnowledgeLibrary extends Asset {
   /**
    * Convenience overload for callers that do not care about the quellentyp - defaults to {@link
    * SourceType#UPLOAD} with no configuration, mirroring the no-config overload of {@link
-   * #ownedByUser(UUID, String, String, UUID, boolean)}.
+   * #ownedByUser(UUID, String, String, UUID)}.
    */
   public static KnowledgeLibrary ownedByGroup(
-      UUID organizationId, String name, String description, UUID ownerGroupId, boolean listed) {
+      UUID organizationId, String name, String description, UUID ownerGroupId) {
     return ownedByGroup(
         organizationId,
         name,
         description,
         ownerGroupId,
-        listed,
         SourceType.UPLOAD,
         null,
         null,
@@ -336,7 +322,6 @@ public class KnowledgeLibrary extends Asset {
       String name,
       String description,
       UUID ownerGroupId,
-      boolean listed,
       SourceType sourceType,
       String sourcePath,
       String sourceUrl,
@@ -350,7 +335,6 @@ public class KnowledgeLibrary extends Asset {
         AssetOwnerType.GROUP,
         null,
         ownerGroupId,
-        listed,
         sourceType,
         sourcePath,
         sourceUrl,
@@ -408,19 +392,14 @@ public class KnowledgeLibrary extends Asset {
     return allAccountsGrantAllowed;
   }
 
-  public boolean isListedCap() {
-    return listedCap;
-  }
-
   /**
    * Sets the share cap alone (#797) - never the clamp its narrowing may require. {@code
    * KnowledgeLibraryService#updateShareCap} validates {@code SYSTEM_ADMIN} and the {@code UPLOAD}
-   * exclusion before calling this, then revokes the grant to "Alle Konten" and clears {@code
-   * listed} in the same transaction where the newly set cap forbids them (#1931).
+   * exclusion before calling this, then revokes the grant to "Alle Konten" in the same transaction
+   * where the newly set cap forbids it (#1931).
    */
-  public void updateShareCap(boolean allAccountsGrantAllowed, boolean listedCap) {
+  public void updateShareCap(boolean allAccountsGrantAllowed) {
     this.allAccountsGrantAllowed = allAccountsGrantAllowed;
-    this.listedCap = listedCap;
   }
 
   public ExternalAccessState getExternalAccessState() {
@@ -474,7 +453,7 @@ public class KnowledgeLibrary extends Asset {
   }
 
   /**
-   * The release is a reach field sharing one history interval with the shell's listed ({@code
+   * The release is a reach field with its own history interval ({@code
    * AssetVisibilityHistoryService#recordExternalAccessChanged}), so whoever changes it must write
    * that interval - in production code only the library administration's external-access services
    * do.

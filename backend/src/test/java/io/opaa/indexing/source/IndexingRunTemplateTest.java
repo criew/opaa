@@ -71,7 +71,6 @@ class IndexingRunTemplateTest {
           "Bibliothek",
           null,
           UUID.randomUUID(),
-          false,
           SourceTypes.FILESYSTEM,
           "/srv/dokumente",
           null,

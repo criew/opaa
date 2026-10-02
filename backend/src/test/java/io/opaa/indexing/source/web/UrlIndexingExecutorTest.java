@@ -94,7 +94,6 @@ class UrlIndexingExecutorTest {
             "Bibliothek",
             null,
             UUID.randomUUID(),
-            false,
             SourceTypes.HTTP_DIRECTORY,
             null,
             // Loopback - never reachable from outside the server itself, exactly the class of

@@ -38,7 +38,6 @@ export const libraryHandlers = [
       description?: string
       ownerType?: AssetOwnerType
       ownerId?: string
-      listed?: boolean
       sourceType: SourceTypeKey
       sourcePath?: string | null
       sourceUrl?: string | null
@@ -193,7 +192,6 @@ export const libraryHandlers = [
       description: body.description?.trim() ?? null,
       ownerType,
       reach: { allAccounts: false, groupCount: 0, userCount: 1 },
-      listed: body.listed ?? false,
       myRole: 'OWNER',
       sourceType: body.sourceType,
       documentCount: 0,
@@ -445,7 +443,6 @@ export const libraryHandlers = [
     const body = (await request.json()) as {
       name: string
       description?: string
-      listed?: boolean
       schedule?: LibraryScheduleRequest
       sourceUrl?: string | null
       sourceProxy?: string | null
@@ -461,7 +458,6 @@ export const libraryHandlers = [
       if (body.sourceSettings) library.sourceSettings = body.sourceSettings
     }
     library.description = body.description ?? null
-    library.listed = body.listed ?? library.listed
     if (body.schedule) {
       library.schedule = {
         frequency: body.schedule.frequency,
@@ -478,7 +474,6 @@ export const libraryHandlers = [
     }
     listEntry.name = library.name
     listEntry.description = library.description
-    listEntry.listed = library.listed
     return HttpResponse.json(library)
   }),
 

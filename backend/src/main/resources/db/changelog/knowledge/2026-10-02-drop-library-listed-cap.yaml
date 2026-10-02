@@ -1,0 +1,11 @@
+databaseChangeLog:
+  - changeSet:
+      id: knowledge-2026-10-02-drop-library-listed-cap
+      author: opaa
+      comment: "The share cap of a connector library keeps only all_accounts_grant_allowed; listed_cap goes with the findability flag it capped, and the upload library's unrestricted cap is checked on the remaining column."
+      changes:
+        - sql:
+            sql: |
+              ALTER TABLE knowledge_libraries DROP CONSTRAINT chk_knowledge_libraries_share_cap_upload_unrestricted;
+              ALTER TABLE knowledge_libraries DROP COLUMN listed_cap;
+              ALTER TABLE knowledge_libraries ADD CONSTRAINT chk_knowledge_libraries_share_cap_upload_unrestricted CHECK ((((source_type)::text <> 'UPLOAD'::text) OR (all_accounts_grant_allowed = true)));

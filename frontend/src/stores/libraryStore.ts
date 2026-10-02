@@ -123,7 +123,7 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
   },
 
   // #797: unlike setLibraryDiagnosticsLock's small response, PUT .../share-cap answers the full
-  // library (visibility/listed clamped already, if the new cap narrowed) - cached wholesale, no
+  // library (the grant to "Alle Konten" revoked already, if the new cap narrowed) - cached wholesale, no
   // extra round trip, mirroring createNewLibrary's own full-response caching above.
   setLibraryShareCap: async (libraryId, request) => {
     const library = await updateLibraryShareCap(libraryId, request)

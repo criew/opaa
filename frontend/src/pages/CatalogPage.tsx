@@ -57,14 +57,6 @@ function spreadLabel(spaceCount: number): string {
   return spaceCount === 1 ? 'in 1 Space' : `in ${spaceCount} Spaces`
 }
 
-function NoAccessNote({ entry }: { entry: CatalogEntryResponse }) {
-  return (
-    <Typography component="span" sx={{ fontSize: 12, color: 'text.secondary' }}>
-      Auffindbar ohne Berechtigung — zuständig: {responsibleLabel(entry)}
-    </Typography>
-  )
-}
-
 function CardContent({ entry }: { entry: CatalogEntryResponse }) {
   return (
     <>
@@ -92,50 +84,20 @@ function CardContent({ entry }: { entry: CatalogEntryResponse }) {
       <Typography component="span" sx={{ fontSize: 11.5, color: 'text.secondary' }}>
         {extentLabel(entry)} · {spreadLabel(entry.spaceCount)}
       </Typography>
-      {entry.accessible ? (
-        <>
-          <Typography component="span" sx={{ fontSize: 11.5, color: 'text.secondary' }}>
-            zuständig: {responsibleLabel(entry)}
-          </Typography>
-          <SuccessionStateNote succession={entry.succession} variant="badge" />
-        </>
-      ) : (
-        <NoAccessNote entry={entry} />
-      )}
+      <Typography component="span" sx={{ fontSize: 11.5, color: 'text.secondary' }}>
+        zuständig: {responsibleLabel(entry)}
+      </Typography>
+      <SuccessionStateNote succession={entry.succession} variant="badge" />
     </>
   )
 }
 
-/**
- * A listed entry without access is shown, but leads nowhere: its detail view would answer 404 or
- * 403. It therefore renders as a plain article instead of a link.
- */
+/** Every entry is readable, so every card leads to the asset's own page. */
 function CatalogCard({ entry }: { entry: CatalogEntryResponse }) {
-  if (entry.accessible) {
-    return (
-      <OverviewCard to={detailRoute(entry)}>
-        <CardContent entry={entry} />
-      </OverviewCard>
-    )
-  }
   return (
-    <Box
-      component="article"
-      aria-label={entry.name}
-      sx={{
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 1,
-        p: 2.5,
-        border: 1,
-        borderStyle: 'dashed',
-        borderColor: 'divider',
-        borderRadius: '16px',
-        bgcolor: 'background.paper',
-      }}
-    >
+    <OverviewCard to={detailRoute(entry)}>
       <CardContent entry={entry} />
-    </Box>
+    </OverviewCard>
   )
 }
 
@@ -143,13 +105,7 @@ function CatalogRow({ entry }: { entry: CatalogEntryResponse }) {
   return (
     <>
       <TableCell>
-        {entry.accessible ? (
-          <OverviewRowLink to={detailRoute(entry)}>{entry.name}</OverviewRowLink>
-        ) : (
-          <Typography component="span" sx={{ fontSize: 13.5, fontWeight: 500 }}>
-            {entry.name}
-          </Typography>
-        )}
+        <OverviewRowLink to={detailRoute(entry)}>{entry.name}</OverviewRowLink>
         {entry.description && (
           <Typography component="div" sx={{ fontSize: 11.5, color: 'text.disabled' }}>
             {entry.description}
@@ -166,11 +122,7 @@ function CatalogRow({ entry }: { entry: CatalogEntryResponse }) {
         {originLabels[entry.origin]}
       </TableCell>
       <TableCell>
-        {entry.accessible ? (
-          <SuccessionStateNote succession={entry.succession} variant="badge" />
-        ) : (
-          <NoAccessNote entry={entry} />
-        )}
+        <SuccessionStateNote succession={entry.succession} variant="badge" />
       </TableCell>
     </>
   )
@@ -183,13 +135,12 @@ const columns = [
   { key: 'spread', label: 'Spaces' },
   { key: 'owner', label: 'Zuständig' },
   { key: 'origin', label: 'Herkunft' },
-  { key: 'access', label: 'Zugang' },
+  { key: 'status', label: 'Status' },
 ]
 
 /**
- * The catalog across every asset type (docs/features/spaces-and-assets.md#der-katalog): what the
- * person may use, and what is listed for the whole organization without a right to use it. The
- * overviews under "Wissen" and "Prompts" stay the places where one's own assets are managed.
+ * The catalog across every asset type (docs/features/spaces-and-assets.md#der-katalog): exactly
+ * what the person may read - an asset without a right appears nowhere. The overviews under "Wissen" and "Prompts" stay the places where one's own assets are managed.
  */
 export default function CatalogPage() {
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('ALL')
@@ -253,7 +204,7 @@ export default function CatalogPage() {
       emptyState={
         <Typography sx={{ color: 'text.secondary' }}>
           Der Katalog ist noch leer. Er zeigt alle Wissens- und Prompt-Bibliotheken, die Sie nutzen
-          dürfen, und alle, die für die Organisation auffindbar gemacht wurden.
+          dürfen.
         </Typography>
       }
       listFooter={
@@ -265,7 +216,6 @@ export default function CatalogPage() {
           </Box>
         ) : undefined
       }
-      footNote="Einträge ohne Zugriff sind auffindbar gemacht worden; nutzen kann sie nur, wer eine Berechtigung erhält."
     />
   )
 }

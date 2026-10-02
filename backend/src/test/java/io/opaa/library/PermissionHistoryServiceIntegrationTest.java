@@ -7,6 +7,7 @@ import io.opaa.api.types.AssetGrantSubjectType;
 import io.opaa.api.types.AssetOwnerType;
 import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.DirectorySyncOutcome;
+import io.opaa.api.types.ExternalAccessState;
 import io.opaa.api.types.GroupKind;
 import io.opaa.api.types.PermissionSubjectType;
 import io.opaa.api.types.PermissionTransferScope;
@@ -84,7 +85,6 @@ import org.junit.jupiter.api.TestFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.util.ClassUtils;
 
 /**
@@ -434,15 +434,15 @@ class PermissionHistoryServiceIntegrationTest {
   }
 
   @Test
-  void twoVisibilityChangesWithinOneClockTickStayReconstructableAtAnInstantBetweenThem() {
+  void twoReleaseChangesWithinOneClockTickStayReconstructableAtAnInstantBetweenThem() {
     // regression guard for #1497: the wall clock stands still for both changes - deterministically,
     // without a wait or a retry loop - which is exactly what a coarse clock tick does to two
     // changes that follow each other closely. Taking the boundaries straight from the wall clock
     // gave the organization-wide state validFrom == validTo, an interval no asOf can satisfy, so
     // the reconstruction reported "no access" for a period in which access existed.
-    // Recording through a locally built service replaces KnowledgeLibraryService#updateLibrary ->
-    // AssetShellService#changeListed -> AssetHistoryListener; it therefore says nothing about how
-    // many boundaries that production path consumes per change - the tests above cover that.
+    // Recording through a locally built service replaces LibraryExternalAccessService ->
+    // PermissionHistoryListener; it therefore says nothing about how many boundaries that
+    // production path consumes per change - the tests above cover that.
     UUID owner = createUser();
     UUID otherUser = createUser();
     UUID libraryId = createLibrary(owner);
@@ -459,26 +459,41 @@ class PermissionHistoryServiceIntegrationTest {
         new AssetVisibilityHistoryService(visibilityHistoryRepository, standingClock);
 
     KnowledgeLibrary library = libraryRepository.findById(libraryId).orElseThrow();
-    ReflectionTestUtils.setField(library, "listed", true);
-    serviceOnAStandingClock.recordVisibilityChanged(libraryRepository.save(library), owner);
+    Instant expiresAt = standstill.plus(30, ChronoUnit.DAYS);
+    serviceOnAStandingClock.recordExternalAccessChanged(
+        library,
+        ExternalAccessState.ACTIVE,
+        expiresAt,
+        AssetVisibilityHistoryCause.EXTERNAL_ACCESS_CHANGED,
+        owner);
+    serviceOnAStandingClock.recordExternalAccessChanged(
+        library,
+        ExternalAccessState.WITHDRAWN,
+        expiresAt,
+        AssetVisibilityHistoryCause.EXTERNAL_ACCESS_CHANGED,
+        owner);
 
-    ReflectionTestUtils.setField(library, "listed", false);
-    serviceOnAStandingClock.recordVisibilityChanged(libraryRepository.save(library), owner);
-
-    AssetVisibilityHistory whileListed =
-        visibilityIntervalOf(libraryId, AssetVisibilityHistoryCause.VISIBILITY_CHANGED, true);
-    assertThat(whileListed.getValidTo())
+    AssetVisibilityHistory whileReleased =
+        visibilityIntervalOf(
+            libraryId,
+            AssetVisibilityHistoryCause.EXTERNAL_ACCESS_CHANGED,
+            ExternalAccessState.ACTIVE);
+    assertThat(whileReleased.getValidTo())
         .as("a state the object really held must occupy a non-empty interval")
-        .isAfter(whileListed.getValidFrom());
+        .isAfter(whileReleased.getValidFrom());
 
     // The chaining the strictly increasing boundaries must not cost: no instant falls between two
     // successive intervals of the same library.
     AssetVisibilityHistory created =
-        visibilityIntervalOf(libraryId, AssetVisibilityHistoryCause.CREATED, false);
-    AssetVisibilityHistory unlistedAgain =
-        visibilityIntervalOf(libraryId, AssetVisibilityHistoryCause.VISIBILITY_CHANGED, false);
-    assertThat(created.getValidTo()).isEqualTo(whileListed.getValidFrom());
-    assertThat(whileListed.getValidTo()).isEqualTo(unlistedAgain.getValidFrom());
+        visibilityIntervalOf(
+            libraryId, AssetVisibilityHistoryCause.CREATED, ExternalAccessState.NEVER_SET);
+    AssetVisibilityHistory withdrawn =
+        visibilityIntervalOf(
+            libraryId,
+            AssetVisibilityHistoryCause.EXTERNAL_ACCESS_CHANGED,
+            ExternalAccessState.WITHDRAWN);
+    assertThat(created.getValidTo()).isEqualTo(whileReleased.getValidFrom());
+    assertThat(whileReleased.getValidTo()).isEqualTo(withdrawn.getValidFrom());
   }
 
   @Test
@@ -516,11 +531,13 @@ class PermissionHistoryServiceIntegrationTest {
   }
 
   private AssetVisibilityHistory visibilityIntervalOf(
-      UUID libraryId, AssetVisibilityHistoryCause cause, boolean listed) {
+      UUID libraryId, AssetVisibilityHistoryCause cause, ExternalAccessState state) {
     return visibilityHistoryRepository.findAll().stream()
         .filter(
             h ->
-                h.getAssetId().equals(libraryId) && h.getCause() == cause && h.isListed() == listed)
+                h.getAssetId().equals(libraryId)
+                    && h.getCause() == cause
+                    && h.getExternalAccessState() == state)
         .findFirst()
         .orElseThrow();
   }
@@ -666,9 +683,9 @@ class PermissionHistoryServiceIntegrationTest {
   private record ExternalAccessChange(UUID libraryId, boolean releasedAfterwards) {}
 
   /**
-   * The release for Fremdzugaenge (#1731) is the third reach field at the library and shares one
-   * history interval with visibility/listed - so every operation that changes it is held against
-   * both the live entity and the Stichtag reconstruction, exactly as {@link
+   * The release for Fremdzugaenge (#1731) is a reach field at the library with its own history
+   * interval - so every operation that changes it is held against both the live entity and the
+   * Stichtag reconstruction, exactly as {@link
    * #everyWritePathChangingReadabilityKeepsLiveAndHistoryInAgreement} does for the readable set. It
    * deliberately does not go through {@code readabilityWritePaths}: the release changes no read
    * right today, its enforcement follows with the Zugangstokens.
@@ -972,14 +989,12 @@ class PermissionHistoryServiceIntegrationTest {
    *
    * <p>{@code KnowledgeLibraryRepository} is deliberately not scanned: some thirty beans inject it,
    * nearly all of them only to load a library by id, so the list would flag unrelated indexing work
-   * without naming a write path. What carries the omission for the reach fields is the compiler,
-   * not an observation: {@code Asset#applyListed} is package-private and the only door to {@code
-   * listed} outside the constructor, so it can be changed only from {@code io.opaa.asset} - the
-   * package that publishes {@code AssetChanged}. Who may read a library follows from the grants
-   * alone since #1931, and those are covered by the write paths above. A library's existence stays
-   * an observation: rows are created and removed through the repository, which every holder can
-   * call. The three beans outside the service that do save library rows ({@code
-   * LibraryDiagnosticsLockService}, {@code LibraryMetadataExtractionService}, {@code
+   * without naming a write path. The remaining reach field at the library, the release for
+   * Fremdzugaenge, is held by {@link #externalAccessWritePaths} instead. Who may read a library
+   * follows from the grants alone since #1931, and those are covered by the write paths above. A
+   * library's existence stays an observation: rows are created and removed through the repository,
+   * which every holder can call. The three beans outside the service that do save library rows
+   * ({@code LibraryDiagnosticsLockService}, {@code LibraryMetadataExtractionService}, {@code
    * LibraryMetadataFieldService}) each touch only their own fields. A write issued through {@code
    * JdbcTemplate} instead of a repository is out of reach of both checks.
    */
@@ -1061,7 +1076,7 @@ class PermissionHistoryServiceIntegrationTest {
    * library's creation, reach change and deletion it leaves to {@code AssetShellService}, covered
    * above. {@code PromptService} (#1903) reads the formula to offer the prompts a person may insert
    * in the chat and to check an inserted one; it writes prompts only. {@code AssetCatalogService}
-   * (#1904) reads the formula only to mark which catalog entries are accessible and writes nothing.
+   * (#1904) reads the formula only to restrict the catalog to readable entries and writes nothing.
    * {@code AssetOwnerNames} only reads the display names of owning groups; {@code
    * KnowledgeLibraryService} reaches groups only through it and through {@code AssetGrantService},
    * and its write paths are covered above.
@@ -1112,10 +1127,6 @@ class PermissionHistoryServiceIntegrationTest {
   private static final Set<String> CANNOT_CHANGE_READABILITY =
       Set.of(
           "AssetGrantService#listGrants",
-          // #1931: Auffindbarkeit ist eine Aussage ueber den Katalog, nie ueber den Zugriff -
-          // die lesbare Menge ist vor und nach dem Schalten dieselbe.
-          "AssetShellService#changeListed",
-          "AssetShellService#clearListedForLoweredCap",
           // #1880: Wer ein Recht gibt, sieht, an wen - der Lesepfad nennt Mitglieder einer
           // Gruppe, die hier schon ein Recht haelt, und erteilt selbst keines.
           "AssetGrantService#listGroupMembers",
@@ -1146,7 +1157,7 @@ class PermissionHistoryServiceIntegrationTest {
           // note an object carries - neither moves a library into or out of anybody's set.
           "PermissionTransferService#preview",
           "PermissionTransferService#markOf",
-          // #1931: Umbenennen und Auffindbarkeit - wer lesen darf, entscheiden allein die
+          // #1931: Umbenennen und Quellkonfiguration - wer lesen darf, entscheiden allein die
           // Freigaben, und die aendert dieser Pfad nicht.
           "KnowledgeLibraryService#updateLibrary",
           "KnowledgeLibraryService#getLibrary",
@@ -1622,7 +1633,7 @@ class PermissionHistoryServiceIntegrationTest {
     UUID otherUser = createUser();
     grantToAllAccounts(libraryId, owner);
 
-    libraryService.updateShareCap(libraryId, false, true, systemAdminCaller());
+    libraryService.updateShareCap(libraryId, false, systemAdminCaller());
 
     return new ReadabilityChange(otherUser, libraryId, false);
   }

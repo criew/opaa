@@ -22,7 +22,6 @@ function library(overrides: Partial<LibraryListResponse> = {}): LibraryListRespo
     description: null,
     ownerType: 'USER',
     reach: { allAccounts: false, groupCount: 0, userCount: 1 },
-    listed: false,
     myRole: 'OWNER',
     sourceType: 'UPLOAD',
     documentCount: 0,
