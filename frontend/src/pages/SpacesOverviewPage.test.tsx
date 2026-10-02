@@ -117,22 +117,13 @@ describe('SpacesOverviewPage (#593, Mockup 1c)', () => {
     expect(teamCard).not.toHaveTextContent('Chat')
   })
 
-  it('offers a table view with one row per space (#1913)', async () => {
-    const user = userEvent.setup()
+  // ADR-0039, Entscheidung 1: like the catalog, the Spaces overview shows only cards.
+  it('shows only cards, without a table view', () => {
     renderWithProviders(<SpacesOverviewPage />, { withRouter: true })
 
-    await user.click(screen.getByRole('button', { name: 'Tabelle' }))
-
-    for (const head of ['Name', 'Chats', 'Mitglieder', 'Ihre Rolle', 'Zustand']) {
-      expect(screen.getByRole('columnheader', { name: head })).toBeInTheDocument()
-    }
-    expect(screen.getByRole('cell', { name: 'nur Sie' })).toBeInTheDocument()
-    expect(screen.getByRole('cell', { name: '2 Gruppen, 7 Personen' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Widerspruchsstelle' })).toHaveAttribute(
-      'href',
-      '/spaces/space-team',
-    )
-    expect(screen.getByText('Archiviert')).toBeInTheDocument()
+    expect(screen.getAllByRole('link')).toHaveLength(2)
+    expect(screen.queryByRole('table')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Tabelle' })).not.toBeInTheDocument()
   })
 
   it('filters the cards by name and description (#1913)', async () => {

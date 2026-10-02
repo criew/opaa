@@ -1,5 +1,6 @@
 import { expect, test } from '../fixtures/auth'
 import type { Page, Response } from '@playwright/test'
+import { openNewLibraryWizard } from '../fixtures/chat'
 
 // The mail fixture is mounted into the backend container by e2e/docker-compose.e2e.yml
 // (demo/seed/e2e-data/filesystem-library/ -> /data/e2e-mail-bibliothek, on the dev profile's
@@ -14,25 +15,13 @@ const MAIL_FILE_NAME = 'mail-mit-zwei-anhaengen.eml'
 const runId = Date.now()
 const LIBRARY_NAME = `E2E Anhangsbibliothek ${runId}`
 
-// Same waiting pattern as rss-feed-library.spec.ts's own gotoLibraries (kept module-local there,
-// mirrored here for the same single-caller reason).
-async function gotoLibraries(page: Page) {
-  await Promise.all([
-    page.waitForResponse(
-      (response) =>
-        response.request().method() === 'GET' && response.url().endsWith('/api/v1/libraries'),
-    ),
-    page.goto('/libraries'),
-  ])
-}
 
 /**
  * Creates a FILESYSTEM library over SOURCE_PATH via the create wizard's origin step (ADR-0018)
  * and returns its id, read back from the URL LibraryCreatePage navigates to on success.
  */
 async function createFilesystemLibrary(page: Page, name: string): Promise<string> {
-  await gotoLibraries(page)
-  await page.getByRole('button', { name: 'Neue Bibliothek' }).click()
+  await openNewLibraryWizard(page)
   await page.getByRole('radio', { name: /Dateisystem/ }).click()
   await page.getByRole('button', { name: 'Weiter', exact: true }).click()
   await page.getByLabel('Verzeichnispfad').fill(SOURCE_PATH)

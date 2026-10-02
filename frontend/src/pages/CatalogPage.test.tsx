@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
+import { Route, Routes, useLocation } from 'react-router'
 import { renderWithProviders, setMockAuthState } from '../test/test-utils'
 import { server } from '../mocks/server'
 import type { CatalogEntryResponse } from '../types/api'
@@ -28,24 +29,41 @@ function entry(name: string, overrides: Partial<CatalogEntryResponse> = {}): Cat
     spaceCount: 1,
     succession: null,
     ...overrides,
-  }
+  } as CatalogEntryResponse
 }
 
-describe('CatalogPage (#1904)', () => {
+function LocationProbe() {
+  const location = useLocation()
+  return <div data-testid="location">{location.pathname + location.search}</div>
+}
+
+function renderCatalog(initialRoute = '/catalog') {
+  return renderWithProviders(
+    <>
+      <Routes>
+        <Route path="/catalog" element={<CatalogPage />} />
+        <Route path="/catalog/new" element={<div>Typwahl</div>} />
+      </Routes>
+      <LocationProbe />
+    </>,
+    { withRouter: true, initialRoute },
+  )
+}
+
+describe('CatalogPage (ADR-0039)', () => {
   beforeEach(() => {
     setMockAuthState()
     useCatalogStore.getState().reset()
     requestedUrls.length = 0
     server.events.on('request:start', recordCatalogRequests)
-    window.localStorage.removeItem('opaa.overview.catalog.view')
   })
 
   afterEach(() => {
     server.events.removeListener('request:start', recordCatalogRequests)
   })
 
-  it('mixes both asset types and links every entry to its own page', async () => {
-    renderWithProviders(<CatalogPage />, { withRouter: true })
+  it('mixes both asset types as cards with type badge, extent and responsible party', async () => {
+    renderCatalog()
 
     expect(screen.getByRole('heading', { level: 1, name: 'Katalog' })).toBeInTheDocument()
     const knowledge = await screen.findByRole('link', { name: /Rechtsquellen Soziales/ })
@@ -57,35 +75,17 @@ describe('CatalogPage (#1904)', () => {
     expect(within(prompts).getByText('zuständig: Referat 50')).toBeInTheDocument()
   })
 
-  it('names the addressee of an open succession as the one to turn to', async () => {
-    server.use(
-      http.get('/api/v1/catalog', () =>
-        HttpResponse.json({
-          entries: [
-            entry('Bescheidbausteine Ordnungsamt', {
-              ownerLabel: null,
-              succession: {
-                addressee: 'SYSTEM_ADMINISTRATION',
-                addresseeLabel: 'die Systemverwaltung',
-              },
-            }),
-          ],
-          page: 0,
-          size: 50,
-          totalElements: 1,
-          totalPages: 1,
-        }),
-      ),
-    )
-    renderWithProviders(<CatalogPage />, { withRouter: true })
+  it('offers only cards - no table and no switch to one', async () => {
+    renderCatalog()
+    await screen.findByRole('link', { name: /Rechtsquellen Soziales/ })
 
-    const orphaned = await screen.findByRole('link', { name: /Bescheidbausteine Ordnungsamt/ })
-    expect(within(orphaned).getByText('zuständig: die Systemverwaltung')).toBeInTheDocument()
+    expect(screen.queryByRole('table')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Tabelle' })).not.toBeInTheDocument()
   })
 
-  it('filters by type on the server', async () => {
+  it('filters by type on the server and keeps the filter in the address', async () => {
     const user = userEvent.setup()
-    renderWithProviders(<CatalogPage />, { withRouter: true })
+    renderCatalog()
     await screen.findByRole('link', { name: /Rechtsquellen Soziales/ })
 
     await user.click(screen.getByRole('button', { name: 'Prompts' }))
@@ -97,30 +97,38 @@ describe('CatalogPage (#1904)', () => {
     )
     expect(screen.getByRole('link', { name: /Formulierungshilfen Referat 50/ })).toBeInTheDocument()
     expect(requestedUrls.at(-1)?.searchParams.get('type')).toBe('PROMPT_LIBRARY')
+    expect(screen.getByTestId('location')).toHaveTextContent('/catalog?type=prompts')
+
+    await user.click(screen.getByRole('button', { name: 'Alle' }))
+    expect(await screen.findByRole('link', { name: /Rechtsquellen Soziales/ })).toBeInTheDocument()
+    expect(screen.getByTestId('location')).toHaveTextContent(/^\/catalog$/)
+  })
+
+  // /libraries and /prompts lead here with the type preselected.
+  it('starts narrowed to the type the address names', async () => {
+    renderCatalog('/catalog?type=knowledge')
+
+    expect(await screen.findByRole('link', { name: /Rechtsquellen Soziales/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Wissen' })).toHaveAttribute('aria-pressed', 'true')
+    expect(requestedUrls.every((url) => url.searchParams.get('type') === 'KNOWLEDGE_LIBRARY')).toBe(
+      true,
+    )
+    expect(
+      screen.queryByRole('link', { name: /Formulierungshilfen Referat 50/ }),
+    ).not.toBeInTheDocument()
   })
 
   it('searches on the server and keeps the search in reach when nothing matches', async () => {
     const user = userEvent.setup()
-    renderWithProviders(<CatalogPage />, { withRouter: true })
+    renderCatalog()
     await screen.findByRole('link', { name: /Rechtsquellen Soziales/ })
 
-    await user.type(screen.getByRole('textbox', { name: 'Suchen' }), 'phoenix')
-
-    expect(await screen.findByRole('link', { name: /Projektakte Phoenix/ })).toBeInTheDocument()
-    await waitFor(() =>
-      expect(
-        screen.queryByRole('link', { name: /Rechtsquellen Soziales/ }),
-      ).not.toBeInTheDocument(),
-    )
-    expect(requestedUrls.at(-1)?.searchParams.get('q')).toBe('phoenix')
-    expect(screen.getByText('1 Eintrag')).toBeInTheDocument()
-
-    await user.clear(screen.getByRole('textbox', { name: 'Suchen' }))
     await user.type(screen.getByRole('textbox', { name: 'Suchen' }), 'nichts dergleichen')
 
     expect(
       await screen.findByText('Kein Eintrag passt zu „nichts dergleichen“.', { selector: 'p' }),
     ).toBeInTheDocument()
+    expect(requestedUrls.at(-1)?.searchParams.get('q')).toBe('nichts dergleichen')
     expect(screen.getByRole('textbox', { name: 'Suchen' })).toBeInTheDocument()
   })
 
@@ -138,7 +146,7 @@ describe('CatalogPage (#1904)', () => {
       }),
     )
     const user = userEvent.setup()
-    renderWithProviders(<CatalogPage />, { withRouter: true })
+    renderCatalog()
 
     expect(await screen.findByRole('link', { name: /Erste Seite/ })).toBeInTheDocument()
     expect(screen.getByText('51 Einträge')).toBeInTheDocument()
@@ -150,19 +158,49 @@ describe('CatalogPage (#1904)', () => {
     expect(screen.queryByRole('button', { name: 'Weitere laden' })).not.toBeInTheDocument()
   })
 
-  it('names type, responsible party and origin in the table', async () => {
+  it('names the open succession and its addressee on the card', async () => {
+    server.use(
+      http.get('/api/v1/catalog', () =>
+        HttpResponse.json({
+          entries: [
+            entry('Verwaiste Bausteine', {
+              succession: {
+                addressee: 'SYSTEM_ADMINISTRATION',
+                addresseeLabel: 'die Systemverwaltung',
+              },
+            }),
+          ],
+          page: 0,
+          size: 50,
+          totalElements: 1,
+          totalPages: 1,
+        }),
+      ),
+    )
+    renderCatalog()
+
+    const card = await screen.findByRole('link', { name: /Verwaiste Bausteine/ })
+    expect(within(card).getByText('zuständig: die Systemverwaltung')).toBeInTheDocument()
+    expect(within(card).getByText('3 Prompts · in 1 Space')).toBeInTheDocument()
+  })
+
+  it('leads "Neu" to the type choice', async () => {
     const user = userEvent.setup()
-    renderWithProviders(<CatalogPage />, { withRouter: true })
+    renderCatalog()
+
+    await user.click(await screen.findByRole('button', { name: 'Neu' }))
+
+    expect(await screen.findByText('Typwahl')).toBeInTheDocument()
+    expect(screen.getByTestId('location')).toHaveTextContent('/catalog/new')
+  })
+
+  it('offers no "Neu" to a person without any creation right', async () => {
+    server.use(http.get('/api/v1/me/capabilities', () => HttpResponse.json({ capabilities: [] })))
+    renderCatalog()
     await screen.findByRole('link', { name: /Rechtsquellen Soziales/ })
 
-    await user.click(screen.getByRole('button', { name: 'Tabelle' }))
-
-    const row = screen.getByRole('row', { name: /Formulierungshilfen Referat 50/ })
-    expect(within(row).getByText('Prompt-Bibliothek')).toBeInTheDocument()
-    expect(within(row).getByText('Referat 50')).toBeInTheDocument()
-    expect(within(row).getByText('lokal angelegt')).toBeInTheDocument()
-    expect(
-      within(row).getByRole('link', { name: 'Formulierungshilfen Referat 50' }),
-    ).toHaveAttribute('href', '/prompts/prompt-library-referat-50')
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: 'Neu' })).not.toBeInTheDocument(),
+    )
   })
 })

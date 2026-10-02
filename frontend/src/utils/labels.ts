@@ -183,28 +183,6 @@ export function assetRoleDescription(
   return assetRoleDescriptions[assetType]?.[role as AssetRole] ?? ''
 }
 
-const assetTypeLabels: Record<AssetType, string> = {
-  KNOWLEDGE_LIBRARY: 'Bibliothek',
-  PROMPT_LIBRARY: 'Prompt-Bibliothek',
-}
-
-/** The singular noun of an asset type, as a sentence names it ("diese Bibliothek"). */
-export function assetTypeLabel(assetType: AssetType | string | undefined): string {
-  if (!assetType) return ''
-  return assetTypeLabels[assetType as AssetType] ?? assetType
-}
-
-const assetTypeTitles: Record<AssetType, string> = {
-  KNOWLEDGE_LIBRARY: 'Wissensbibliothek',
-  PROMPT_LIBRARY: 'Prompt-Bibliothek',
-}
-
-/** The full name of an asset type, as the type marker of a mixed list shows it. */
-export function assetTypeTitle(assetType: AssetType | string | undefined): string {
-  if (!assetType) return ''
-  return assetTypeTitles[assetType as AssetType] ?? assetType
-}
-
 const promptVariableTypeLabels: Record<PromptVariableType, string> = {
   TEXT: 'Text (eine Zeile)',
   TEXTAREA: 'Text (mehrere Zeilen)',

@@ -1,6 +1,7 @@
 import { expect, test } from '../fixtures/auth'
 import { DEV_USER_HEADER } from '../fixtures/libraries'
 import type { Page, Response } from '@playwright/test'
+import { openNewLibraryWizard } from '../fixtures/chat'
 
 // Deterministic, generic, fully invented RSS-2.0 fixtures for a fictional "Beispielbehörde" -
 // served statically by the "rss-feed" service (e2e/docker-compose.e2e.yml), reachable from the
@@ -42,19 +43,6 @@ interface IndexingStatusResponse {
   message: string | null
 }
 
-// Same waiting pattern as knowledge-libraries.spec.ts's gotoLibraries (not imported from there:
-// that file keeps its helpers module-local, and duplicating one tiny wait here is cheaper than
-// introducing a new shared fixtures module for a single caller elsewhere) - GET /api/v1/libraries
-// is what decides whether the overview lists a library at all.
-async function gotoLibraries(page: Page) {
-  await Promise.all([
-    page.waitForResponse(
-      (response) =>
-        response.request().method() === 'GET' && response.url().endsWith('/api/v1/libraries'),
-    ),
-    page.goto('/libraries'),
-  ])
-}
 
 /**
  * Creates a library from the RSS-Feed origin (#480/#481, ADR-0018: the source type is chosen at
@@ -62,8 +50,7 @@ async function gotoLibraries(page: Page) {
  * id, read back from the URL LibraryCreatePage navigates to on success.
  */
 async function createRssLibrary(page: Page, name: string, feedUrl: string): Promise<string> {
-  await gotoLibraries(page)
-  await page.getByRole('button', { name: 'Neue Bibliothek' }).click()
+  await openNewLibraryWizard(page)
   await page.getByRole('radio', { name: /RSS-Feed/ }).click()
   await page.getByRole('button', { name: 'Weiter', exact: true }).click()
   await page.getByLabel('Adresse (URL)').fill(feedUrl)

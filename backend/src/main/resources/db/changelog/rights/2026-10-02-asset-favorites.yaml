@@ -1,0 +1,19 @@
+databaseChangeLog:
+  - changeSet:
+      id: rights-2026-10-02-asset-favorites
+      author: opaa
+      comment: "Favorites: one person's own mark on an asset they may read (ADR-0039, Entscheidung 7). No history, no audit; the row goes with the asset and with the account."
+      changes:
+        - sql:
+            sql: |
+              CREATE TABLE asset_favorites (
+                  asset_id uuid NOT NULL,
+                  user_id uuid NOT NULL,
+                  organization_id uuid NOT NULL,
+                  created_at timestamp with time zone DEFAULT now() NOT NULL,
+                  CONSTRAINT asset_favorites_pkey PRIMARY KEY (asset_id, user_id),
+                  CONSTRAINT fk_asset_favorites_asset_organization FOREIGN KEY (asset_id, organization_id) REFERENCES assets(id, organization_id) ON DELETE CASCADE,
+                  CONSTRAINT fk_asset_favorites_user_organization FOREIGN KEY (user_id, organization_id) REFERENCES users(id, organization_id) ON DELETE CASCADE
+              );
+
+              CREATE INDEX idx_asset_favorites_user ON asset_favorites USING btree (user_id);
