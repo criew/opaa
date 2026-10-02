@@ -22,7 +22,6 @@ import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.OrganizationScopedLoader;
 import io.opaa.common.ValidationException;
-import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.permission.AccessPath;
 import io.opaa.permission.AssetOwnershipHistoryService;
 import io.opaa.permission.CapabilityService;
@@ -179,18 +178,27 @@ public class SpaceService {
             .after(spaceAuditPayload(saved))
             .outcome(AuditOutcome.SUCCESS)
             .build());
-
-    // #686/#706 review: associated in the same transaction as the space itself, not in a
-    // best-effort loop at the controller - a library that cannot be associated (not found, or not
-    // readable by the creator) rolls the whole creation back rather than leaving a half-created
-    // space behind. associationService.associate participates in this method's own transaction
-    // (default REQUIRES propagation on a Spring-managed bean call), so a failure here rolls back
-    // both the space row and every association already inserted for it.
-    if (creation.libraryIds() != null) {
-      for (UUID libraryId : creation.libraryIds()) {
-        associationService.associate(saved.getId(), KnowledgeLibrary.ASSET_TYPE, libraryId, caller);
+    // Every member taken in at creation is audited like one added later; the owner's own
+    // membership is the creation itself.
+    for (SpaceMembership membership : saved.getMemberships()) {
+      if (membership.isUserSubject() && membership.getUserId().equals(saved.getOwnerId())) {
+        continue;
       }
+      auditEventRecorder.recordUserActionOnSubject(
+          AuditEvent.builder()
+              .organizationId(saved.getOrganizationId())
+              .actor(caller.id())
+              .type(AuditEventType.SPACE_MEMBER_ADDED)
+              .object(AuditObjectType.SPACE, saved.getId(), saved.getName())
+              .subject(auditSubjectKind(membership), membership.subjectId())
+              .after(Map.of("role", membership.getRole().name()))
+              .outcome(AuditOutcome.SUCCESS)
+              .build());
     }
+
+    // Associated in this method's own transaction: an asset that cannot be associated (not found,
+    // or not readable by the creator) rolls back the space row and every association before it.
+    associationService.associateOnCreation(saved.getId(), creation.assets(), caller);
 
     return saved;
   }

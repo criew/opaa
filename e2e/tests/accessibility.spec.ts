@@ -5,6 +5,16 @@ import { apiAs } from "../fixtures/externalAccess";
 import { createPromptLibraryViaApi } from "../fixtures/promptLibraries";
 
 /**
+ * A prompt library of dev-admin's own, so the space wizard's tile choice is guaranteed to hold at
+ * least one tile when axe looks at it.
+ */
+async function ensureOwnCatalogEntry(): Promise<string> {
+  const name = `A11y-Vorlagen-${Date.now()}`;
+  await createPromptLibraryViaApi("dev-admin", { name });
+  return name;
+}
+
+/**
  * Automated accessibility checks with axe-core (#586): every page listed in the issue is opened
  * in its default state and analysed; serious/critical WCAG 2.1 AA violations fail the suite (see
  * fixtures/a11y.ts for the threshold and docs/design/accessibility.md §3.1 for the policy).
@@ -222,6 +232,13 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
       await expectNoSeriousA11yViolations(page, "Katalog (helles Farbschema)");
       await page.emulateMedia({ colorScheme: "dark" });
       await expectNoSeriousA11yViolations(page, "Katalog (dunkles Farbschema)");
+
+      // „In Space verwenden": die Auswahl der kuratierten Spaces im Dialog.
+      await page.getByRole("button", { name: `„${name}“ in Space verwenden` }).click();
+      await expect(
+        page.getByRole("dialog").getByRole("button", { name: "Neuen Space damit anlegen" }),
+      ).toBeVisible();
+      await expectNoSeriousA11yViolations(page, "In Space verwenden (dunkles Farbschema)");
     } finally {
       const api = await apiAs("dev-admin");
       try {
@@ -230,6 +247,26 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
         await api.dispose();
       }
     }
+  });
+
+  // Der Schritt „Inhalte" des Space-Assistenten: Mehrfachauswahl als Kacheln mit Typfilter und Suche.
+  test("Space-Assistent: Inhalte als Kachelauswahl in beiden Farbschemata", async ({
+    authenticatedPage: page,
+  }) => {
+    const ownEntry = await ensureOwnCatalogEntry();
+    await page.goto("/spaces/new");
+    await page.getByLabel("Name", { exact: true }).fill("Barrierefreiheit");
+    await page.getByRole("button", { name: "Weiter", exact: true }).click();
+    await page.getByRole("button", { name: "Weiter", exact: true }).click();
+    await page.getByRole("searchbox", { name: "Suche" }).fill(ownEntry);
+    await expect(
+      page.getByRole("checkbox", { name: new RegExp(`^${ownEntry}`) }),
+    ).toBeVisible();
+
+    await page.emulateMedia({ colorScheme: "light" });
+    await expectNoSeriousA11yViolations(page, "Space-Inhalte (helles Farbschema)");
+    await page.emulateMedia({ colorScheme: "dark" });
+    await expectNoSeriousA11yViolations(page, "Space-Inhalte (dunkles Farbschema)");
   });
 
   // #1541/#1601: die Benutzerverwaltung führt die dichteste Kombination des Bereichs — eine

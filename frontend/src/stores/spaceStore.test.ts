@@ -108,6 +108,7 @@ const mockGetSpaceAssetAssociations = vi.fn(async (spaceId: string) => {
   void spaceId
   return {
     hasAssociations: true,
+    hasUnreadableAssociations: false,
     hasKnowledge: true,
     hasReadableKnowledge: true,
     items: [
@@ -115,7 +116,6 @@ const mockGetSpaceAssetAssociations = vi.fn(async (spaceId: string) => {
         assetType: 'KNOWLEDGE_LIBRARY',
         assetId: 'lib-1',
         name: 'Rechtsquellen',
-        readableByCaller: true,
         createdByUserId: 'u1',
         createdAt: '2026-03-01T10:00:00Z',
       },
@@ -178,11 +178,12 @@ describe('spaceStore', () => {
       'DISCOVERABLE',
       undefined,
       undefined,
+      undefined,
     )
     expect(useSpaceStore.getState().selectedSpaceId).toBe('space-new')
   })
 
-  it('passes libraryIds through to createSpace when provided (#686)', async () => {
+  it('passes the chosen assets through to createSpace when provided', async () => {
     mockCreateSpace.mockResolvedValueOnce({
       id: 'space-new',
       name: 'New Space',
@@ -198,15 +199,15 @@ describe('spaceStore', () => {
       updatedAt: '2026-03-01T10:00:00Z',
     })
 
-    await useSpaceStore
-      .getState()
-      .createNewSpace('New Space', 'desc', 'DISCOVERABLE', ['lib-1', 'lib-2'])
+    const assets = [{ assetType: 'KNOWLEDGE_LIBRARY' as const, assetId: 'lib-1' }]
+    await useSpaceStore.getState().createNewSpace('New Space', 'desc', 'DISCOVERABLE', assets)
 
     expect(mockCreateSpace).toHaveBeenCalledWith(
       'New Space',
       'desc',
       'DISCOVERABLE',
-      ['lib-1', 'lib-2'],
+      assets,
+      undefined,
       undefined,
     )
   })
@@ -222,7 +223,6 @@ describe('spaceStore', () => {
         assetType: 'KNOWLEDGE_LIBRARY',
         assetId: 'lib-1',
         name: 'Rechtsquellen',
-        readableByCaller: true,
         createdByUserId: 'u1',
         createdAt: '2026-03-01T10:00:00Z',
       },
@@ -241,13 +241,13 @@ describe('spaceStore', () => {
   it('ignores a stale response for a space no longer being loaded', async () => {
     const first = deferred<{
       hasAssociations: boolean
+      hasUnreadableAssociations: boolean
       hasKnowledge: boolean
       hasReadableKnowledge: boolean
       items: {
         assetType: string
         assetId: string
         name: string
-        readableByCaller: boolean
         createdByUserId: string
         createdAt: string
       }[]
@@ -265,6 +265,7 @@ describe('spaceStore', () => {
 
     first.resolve({
       hasAssociations: true,
+      hasUnreadableAssociations: false,
       hasKnowledge: true,
       hasReadableKnowledge: true,
       items: [
@@ -272,7 +273,6 @@ describe('spaceStore', () => {
           assetType: 'KNOWLEDGE_LIBRARY',
           assetId: 'lib-a',
           name: 'A',
-          readableByCaller: true,
           createdByUserId: 'u1',
           createdAt: '2026-03-01T10:00:00Z',
         },
@@ -288,7 +288,6 @@ describe('spaceStore', () => {
         assetType: 'KNOWLEDGE_LIBRARY',
         assetId: 'lib-1',
         name: 'Rechtsquellen',
-        readableByCaller: true,
         createdByUserId: 'u1',
         createdAt: '2026-03-01T10:00:00Z',
       },

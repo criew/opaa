@@ -21,6 +21,7 @@ import io.opaa.permission.PermissionTransferService;
 import io.opaa.permission.web.GroupMemberDisclosureResponseMapper;
 import io.opaa.space.Space;
 import io.opaa.space.SpaceAssetAssociationService;
+import io.opaa.space.SpaceAssetSeed;
 import io.opaa.space.SpaceCreation;
 import io.opaa.space.SpaceMemberSeed;
 import io.opaa.space.SpaceMemberView;
@@ -66,9 +67,8 @@ public class SpaceController {
   @PostMapping
   public ResponseEntity<SpaceResponse> createSpace(
       @Valid @RequestBody SpaceRequest request, @Caller CurrentUser caller) {
-    // #686/#706 review: SpaceService#createSpace associates request.getLibraryIds() itself, in
-    // the same transaction as the space row - a library that cannot be associated rolls the whole
-    // creation back instead of leaving a half-created space behind.
+    // SpaceService#createSpace associates request.getAssets() itself, in the same transaction as
+    // the space row - an asset that cannot be associated rolls the whole creation back.
     Space created = spaceService.createSpace(toSpaceCreation(request), caller);
     SpaceResponse response = SpaceResponseMapper.toResponse(spaceService.detailOf(created, caller));
     return ResponseEntity.status(HttpStatus.CREATED).body(response);
@@ -237,13 +237,25 @@ public class SpaceController {
                             ? null
                             : new SpaceMemberSeed(member.getUserId(), member.getRole()))
                 .toList();
+    List<SpaceAssetSeed> assets =
+        request.getAssets() == null
+            ? null
+            : request.getAssets().stream()
+                .map(
+                    asset ->
+                        asset == null
+                            ? null
+                            : new SpaceAssetSeed(
+                                io.opaa.permission.AssetType.of(asset.getAssetType().getValue()),
+                                asset.getAssetId()))
+                .toList();
     return new SpaceCreation(
         request.getName(),
         request.getDescription(),
         request.getOwnerId(),
         request.getVisibility(),
         initialMembers,
-        request.getLibraryIds(),
+        assets,
         request.getChatAutoCleanup());
   }
 }

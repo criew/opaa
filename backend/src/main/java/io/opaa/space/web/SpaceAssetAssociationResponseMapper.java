@@ -26,10 +26,9 @@ final class SpaceAssetAssociationResponseMapper {
     return new SpaceAssetAssociationResponse(
             AssetType.fromValue(link.assetType().value()),
             association.getAssetId(),
-            link.readableByCaller(),
+            link.name(),
             association.getCreatedByUserId(),
             association.getCreatedAt())
-        .name(link.name())
         .description(link.description())
         .createdByDisplayName(link.createdByDisplayName());
   }
@@ -38,7 +37,11 @@ final class SpaceAssetAssociationResponseMapper {
     List<SpaceAssetAssociationResponse> items =
         links.items().stream().map(SpaceAssetAssociationResponseMapper::toResponse).toList();
     return new SpaceAssetAssociationListResponse(
-        links.hasAssociations(), links.hasKnowledge(), links.hasReadableKnowledge(), items);
+        links.hasAssociations(),
+        links.hasUnreadableAssociations(),
+        links.hasKnowledge(),
+        links.hasReadableKnowledge(),
+        items);
   }
 
   /**

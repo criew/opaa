@@ -9,6 +9,8 @@ import java.util.UUID;
  * {@link SpaceService#createSpace} boundary. {@code ownerId} may be {@code null} - {@link
  * SpaceService#createSpace} then defaults it to the caller. {@code chatAutoCleanup} {@code null}
  * leaves the automatic chat cleanup off.
+ *
+ * @param assets associated in the same transaction as the space; {@code null} means none
  */
 public record SpaceCreation(
     String name,
@@ -16,7 +18,7 @@ public record SpaceCreation(
     UUID ownerId,
     SpaceVisibility visibility,
     List<SpaceMemberSeed> initialMembers,
-    List<UUID> libraryIds,
+    List<SpaceAssetSeed> assets,
     Boolean chatAutoCleanup) {
 
   public SpaceCreation(
@@ -25,7 +27,7 @@ public record SpaceCreation(
       UUID ownerId,
       SpaceVisibility visibility,
       List<SpaceMemberSeed> initialMembers,
-      List<UUID> libraryIds) {
-    this(name, description, ownerId, visibility, initialMembers, libraryIds, null);
+      List<SpaceAssetSeed> assets) {
+    this(name, description, ownerId, visibility, initialMembers, assets, null);
   }
 }

@@ -182,6 +182,7 @@ Rolle über eine Gruppe oder die Freigabe an „Alle Konten". Die Adressen `/lib
 | **Filter** | Art: „Alle", „Wissen" oder „Prompts"; Sichtbarkeit: „Alle", „Für alle" oder „Eingeschränkt"; dazu „Aus meinen Gruppen" und „Favoriten" für die eigenen Favoriten. Die Filter wirken zusammen; gewählte Filter und Sortierung stehen in der Adresse der Seite |
 | **Sortierung** | „Name" (Vorgabe, A bis Z) oder „Zuletzt geändert" (jüngste Änderung zuerst); in beiden stehen die eigenen Favoriten vorn |
 | **Eintrag** | Eine Kachel: Art (Wissens- oder Prompt-Bibliothek) als Etikett mit Symbol, Sichtbarkeit und die eigene Rolle als Etiketten, Stern für den eigenen Favoriten, Name, Beschreibung, Umfang (Dokumente bzw. Prompts), in wie vielen Räumen sie bereitsteht, zuständige Stelle und Stand oder Zustand. Jede Kachel führt zur Detailseite der Bibliothek; eine Tabellenansicht gibt es nicht |
+| **In Space verwenden** | An jeder Kachel und auf der Detailseite: ordnet die Bibliothek einem Raum zu (Abschnitt 5, „Zuordnen aus dem Katalog") |
 | **Seiten** | Die Einträge kommen seitenweise; „Weitere laden" hängt die nächste Seite an |
 | **Neu** | Oben rechts, nur wenn die Person mindestens ein Anlegerecht für eine Art hat (siehe unten, „Anlegen über ‚Neu'") |
 
@@ -346,9 +347,18 @@ Kuratorenrolle **im Raum** und mindestens die Leserrolle **an der Bibliothek** v
 bereitstellt, muss es selbst lesen dürfen. Die Bereitstellung **verschafft niemandem ein
 Leserecht** — sie legt fest, worin die Chats dieses Raums suchen. Sind im Raum
 Mitglieder ohne Leserecht an dieser Bibliothek, wird die Eigentümerin der Bibliothek darüber
-benachrichtigt; eine Zustimmung braucht es nicht, die Bereitstellung wirkt sofort. Wer im Raum
-mindestens Kurator ist, sieht auch eine Bereitstellung, die er selbst nicht lesen darf — sonst
-könnte er eine zu weite Bereitstellung nicht zurücknehmen.
+benachrichtigt; eine Zustimmung braucht es nicht, die Bereitstellung wirkt sofort. Das gilt für jede
+Art von Bestand. Entstehen beim Anlegen eines Raums mehrere solche Bereitstellungen, erhält jede
+Eigentümerin **eine** Benachrichtigung, die alle ihre Bestände nennt.
+
+**Was eine Person nicht lesen darf, sieht sie auch in der Zuordnungsliste nicht** — in keiner
+Rolle, auch nicht als Kurator, Administrator oder Systemverwaltung. Die Liste nennt weder Namen
+noch Anzahl solcher Bereitstellungen. Sind nicht alle Zuordnungen lesbar, steht in den Reitern
+„Wissen" und „Prompts" der Einstellungen der Hinweis „Nicht alle zugeordneten Inhalte sind für Sie
+lesbar."; ist nur Nicht-Lesbares zugeordnet, steht allein dieser Hinweis da. Lösen kann eine
+Bereitstellung im Raum nur, wer die Bibliothek lesen darf; jeder andere Versuch wird wie bei einer
+unbekannten Bibliothek mit „nicht gefunden" beantwortet. Eine Bereitstellung, die man nicht lesen
+darf, löst die Verwaltung der Bibliothek von deren Seite aus, Reiter „Zuordnungen".
 
 Die Mitgliederliste eines Raums sehen **nur** seine Administratoren, sein Eigentümer und die
 Systemverwaltung. Mitglieder und Kuratoren sehen ausschließlich, wie viele Mitglieder je Rolle es
@@ -363,8 +373,8 @@ Seitenleiste. Es sehen nur Administratoren und Kuratoren des Raums. Die Seite ha
 |---|---|
 | **Stammdaten** | Name, Beschreibung, Sichtbarkeit, der Schalter „Inaktive Chats automatisch archivieren und löschen" ([Suche](suche.md), Abschnitt 2) — und am Ende der abgesetzte **Gefahrenbereich** mit „Space archivieren" und „Space löschen" |
 | **Mitglieder** | Die Mitgliederliste mit Rollen, das Aufnehmen von Personen und Gruppen, die Übertragung der Verantwortung und die Herleitung je Zeile |
-| **Wissen** | Die dem Raum zugeordneten Wissensbibliotheken; Zuordnen und Lösen ab der Kuratorenrolle |
-| **Prompts** | Die dem Raum zugeordneten [Prompt-Bibliotheken](prompt-bibliotheken.md); Zuordnen und Lösen ab der Kuratorenrolle |
+| **Wissen** | Die dem Raum zugeordneten Wissensbibliotheken, die man lesen darf; Zuordnen über die Kachelauswahl und Lösen ab der Kuratorenrolle |
+| **Prompts** | Die dem Raum zugeordneten [Prompt-Bibliotheken](prompt-bibliotheken.md), die man lesen darf; Zuordnen über die Kachelauswahl und Lösen ab der Kuratorenrolle |
 
 **Die ersten beiden Reiter gehören den Administratoren.** Ein Kurator öffnet dieselbe Seite, sieht
 die Stammdaten aber nur lesend, und im Reiter „Mitglieder" steht für ihn der Hinweis, dass die
@@ -374,6 +384,38 @@ Systemverwaltung nicht. Deshalb lässt sich ein Standard-Raum auch nicht übertr
 Eigentümer machen" fehlt dort, und eine Übertragung wird abgewiesen. Den
 Gefahrenbereich sieht nur der Eigentümer, und nicht im eigenen Standard-Raum: Der lässt sich weder
 archivieren noch löschen.
+
+### Einen Raum anlegen: der Space-Assistent
+
+„Neuer Space" führt durch vier Schritte: **Grunddaten**, **Mitglieder**, **Inhalte** und
+**Zusammenfassung**. Nur der Name ist Pflicht; die Schritte „Mitglieder" und „Inhalte" lassen sich
+mit „Weiter" überspringen.
+
+Im Schritt **Inhalte** stehen alle Bestände als Kacheln, die die Person lesen darf — dieselbe Menge
+wie im Katalog. Mehrere Kacheln lassen sich zugleich wählen; ein Filter grenzt auf eine Art ein
+(„Alle", „Wissen", „Prompts"), ein zweiter auf „Alle", „Nur Favoriten" oder „Aus meinen Gruppen",
+ein Suchfeld auf Name und Beschreibung. Eine Wahl bleibt bestehen,
+wenn Filter oder Suche ihre Kachel ausblenden; die Zeile unter den Kacheln nennt alles Gewählte.
+Jede Kachel ist ein Kontrollkästchen mit eigenem Tabstopp: Leertaste und Enter wählen oder
+heben die Wahl auf.
+
+„Space anlegen" legt den Raum samt vorgemerkten Mitgliedern und allen Zuordnungen in einem Schritt
+an. Lässt sich ein Mitglied nicht aufnehmen oder ein gewählter Bestand nicht zuordnen, entsteht kein
+Raum; der Assistent bleibt mit allen Eingaben offen und nennt den Grund. Die Aufnahme jedes
+Mitglieds steht wie beim späteren Hinzufügen im Nachweisprotokoll. Ist kein Wissen gewählt, sagt die Zusammenfassung „Kein
+Wissen zugeordnet — der Space durchsucht kein Wissen, bis Sie etwas zuordnen."
+
+Dieselbe Kachelauswahl steht in den Reitern „Wissen" und „Prompts" der Einstellungen, dort auf die
+Art des Reiters beschränkt. Bereits zugeordnete Bestände erscheinen gesperrt mit „Bereits
+zugeordnet"; „Zuordnen" ordnet alles Gewählte zu.
+
+### Zuordnen aus dem Katalog: „In Space verwenden"
+
+An jeder Kachel des Katalogs und auf der Detailseite einer Bibliothek steht **„In Space
+verwenden"**. Es öffnet die Liste der Räume, in denen die Person Kurator oder Administrator ist;
+archivierte Räume fehlen, Räume mit dieser Bibliothek sind als „Bereits zugeordnet" gesperrt. Ein
+Klick auf einen Raum ordnet zu — zwei Klicks vom Katalog bis zur Zuordnung. „Neuen Space damit
+anlegen" öffnet den Space-Assistenten mit der Bibliothek als bereits gewählter Kachel.
 
 ### Die Space-Übersicht
 

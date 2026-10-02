@@ -512,9 +512,9 @@ zugeordnet hat, steht als Übersicht in
 [`../features/demo-instance.md`](../features/demo-instance.md#eigentum-sichtbarkeit-favoriten-und-zuordnung).
 
 **Stand der Oberfläche:** Eigentum und Sichtbarkeit an der Kachel, die Filter und die Sortierung
-des Katalogs sind gebaut (#2113, #2116). Den Stern und den Filter „nur Favoriten" sowie den Hinweis
-auf nicht lesbare Zuordnungen baut Epic #2070 noch (#2095, #2097). Die Beschriftungen dieser Teile
-folgen der Spezifikation und sind nach dem Neuaufsetzen der Demo gegenzuprüfen.
+des Katalogs sind gebaut (#2113, #2116), ebenso Stern und Filter „Favoriten", der Space-Assistent
+mit Kachelauswahl, „In Space verwenden" und der Hinweis auf nicht lesbare Zuordnungen. Die
+Beschriftungen sind nach dem Neuaufsetzen der Demo gegenzuprüfen.
 
 Für die Teile 1 und 3 lohnen sich zwei Browserfenster, eines davon privat.
 

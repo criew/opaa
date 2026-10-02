@@ -36,6 +36,7 @@ import { assetRoleLabel, formatFileSize } from '../utils/labels'
 import { documentSourceTypeLabel } from '../components/library/sources/sourceLabels'
 import AssetAccessDerivationSection from '../components/assets/AssetAccessDerivationSection'
 import AssetHeadlineEditor from '../components/assets/AssetHeadlineEditor'
+import UseInSpaceButton from '../components/assets/UseInSpaceButton'
 import AssetOwnerSection from '../components/assets/AssetOwnerSection'
 import AssetSpacesSection from '../components/assets/AssetSpacesSection'
 import AssetGrantsSection from '../components/permissions/AssetGrantsSection'
@@ -292,6 +293,9 @@ export default function LibraryDetailPage() {
   const canEdit = roleGrantsEdit || isSystemAdmin
   const canDelete = roleGrantsDelete || isSystemAdmin
   const isAdministrativeOverride = isSystemAdmin && !roleGrantsEdit
+  // The list holds only what the caller may read, without the administrative bypass: a system
+  // administrator without a grant may open the page, but cannot associate the library anywhere.
+  const mayUseInSpace = !isSystemAdmin || listEntry !== undefined
   const canTrigger = canManageDocuments(library?.myRole) || isSystemAdmin
 
   // The connector-only concerns (status polling, trigger actions, the "Indizierung" area) hang
@@ -581,6 +585,13 @@ export default function LibraryDetailPage() {
             useFlexGap
             sx={{ flexWrap: 'wrap', flexShrink: 0, pt: { md: 0.5 }, alignItems: 'flex-start' }}
           >
+            {mayUseInSpace && (
+              <UseInSpaceButton
+                assetType="KNOWLEDGE_LIBRARY"
+                assetId={library.id}
+                name={library.name}
+              />
+            )}
             {connectorSourceType && canTrigger && (
               <>
                 <Button
@@ -952,7 +963,7 @@ export default function LibraryDetailPage() {
             <>
               <AssetGrantsSection
                 assetType="KNOWLEDGE_LIBRARY"
-                assetId={libraryId}
+                assetId={library.id}
                 capControl={
                   shareCapVisible ? (
                     <ShareCapSwitch
