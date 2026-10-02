@@ -35,6 +35,7 @@ import io.opaa.library.LibraryExternalAccessService;
 import io.opaa.library.LibraryExternalAccessTokenCounter;
 import io.opaa.permission.AssetGrant;
 import io.opaa.permission.AssetGrantRepository;
+import io.opaa.permission.GroupMembershipResolver;
 import io.opaa.security.LocalAuthKeyService;
 import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.OwnLibraryFixtures;
@@ -87,6 +88,7 @@ class ExternalAccessTokenIntegrationTest {
   @Autowired private LibraryExternalAccessService libraryRelease;
   @Autowired private Clock clock;
   @Autowired private GroupRepository groupRepository;
+  @Autowired private GroupMembershipResolver membershipResolver;
 
   private UUID libraryId;
   private UUID foreignLibraryId;
@@ -152,6 +154,8 @@ class ExternalAccessTokenIntegrationTest {
       jdbcTemplate.update("DELETE FROM group_membership_history WHERE group_id = ?", groupId);
       jdbcTemplate.update("DELETE FROM group_memberships WHERE group_id = ?", groupId);
       jdbcTemplate.update("DELETE FROM groups WHERE id = ?", groupId);
+      membershipResolver.invalidateUser(owner.getId());
+      groupId = null;
     }
     ownLibraryFixtures.removeLibraries(libraryId, foreignLibraryId);
   }
@@ -378,6 +382,8 @@ class ExternalAccessTokenIntegrationTest {
     group.release(true);
     group.addMembership(new GroupMembership(owner.getId(), owner.getOrganizationId()));
     groupId = groupRepository.save(group).getId();
+    // Written past the group service, which evicts the cached memberships after its commit.
+    membershipResolver.invalidateUser(owner.getId());
     grants.save(
         AssetGrant.forGroup(
             KnowledgeLibrary.ASSET_TYPE,
