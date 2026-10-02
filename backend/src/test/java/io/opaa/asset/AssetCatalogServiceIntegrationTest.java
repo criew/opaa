@@ -132,6 +132,9 @@ class AssetCatalogServiceIntegrationTest {
                 PromptLibrary.ownedByUser(
                     organization, "Geschlossene Vorlagen", "Personalsachen Referat 12", owner))
             .getId();
+    grantRepository.save(
+        AssetGrant.forUser(
+            PromptLibrary.ASSET_TYPE, closed, organization, owner, AssetRole.OWNER, null, owner));
 
     assertThat(namesFor(callerOf(outsider))).doesNotContain("Geschlossene Vorlagen");
     for (String query : List.of("Geschlossene", "Personalsachen")) {
