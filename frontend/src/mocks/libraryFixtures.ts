@@ -396,6 +396,14 @@ export const mockSourceTypes: SourceTypeDescriptor[] = [
     browsable: true,
   },
   {
+    type: 'NEXTCLOUD',
+    displayName: 'Nextcloud',
+    indexingRun: true,
+    uploads: false,
+    pushIntake: false,
+    browsable: true,
+  },
+  {
     type: 'UPLOAD',
     displayName: 'Upload',
     indexingRun: false,

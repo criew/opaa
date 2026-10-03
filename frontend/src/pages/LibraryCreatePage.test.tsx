@@ -283,7 +283,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
     // Rückwärts über den Anfang hinaus landet am Ende - und die gesperrte Upload-Kachel wird
     // übersprungen, statt den Fokus zu verschlucken.
     await user.keyboard('{ArrowLeft}{ArrowLeft}')
-    expect(screen.getByRole('radio', { name: /S3-Objektspeicher/ })).toHaveAttribute(
+    expect(screen.getByRole('radio', { name: /Nextcloud/ })).toHaveAttribute(
       'aria-checked',
       'true',
     )

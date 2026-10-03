@@ -285,6 +285,23 @@ export const libraryHandlers = [
         message: null,
       } satisfies SourceBrowseResponse)
     }
+    if (sourceType === 'NEXTCLOUD') {
+      if (!body.sourceCredentials && !body.libraryId) {
+        return HttpResponse.json(
+          { error: 'sourceCredentials sind für die Ordnerauswahl erforderlich' },
+          { status: 400 },
+        )
+      }
+      return HttpResponse.json({
+        complete: true,
+        entries: [
+          { key: '/Projekte', name: 'Projekte' },
+          { key: '/Bauamt', name: 'Bauamt (Gruppenordner)' },
+          { key: '/Satzungen', name: 'Satzungen (Freigabe)' },
+        ],
+        message: null,
+      } satisfies SourceBrowseResponse)
+    }
     return HttpResponse.json(
       { error: `Für sourceType ${sourceType} gibt es keine Auflistung` },
       { status: 400 },
