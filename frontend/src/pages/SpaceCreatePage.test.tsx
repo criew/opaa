@@ -209,6 +209,26 @@ describe('SpaceCreatePage (#594, Mockup 1b)', () => {
     ).toBeInTheDocument()
   })
 
+  /** Review #2137: a failed lookup of the periods must not hide that the cleanup is on. */
+  it('names the cleanup without numbers when the periods cannot be loaded', async () => {
+    server.use(http.get('/api/v1/spaces/chat-auto-cleanup', () => HttpResponse.error()))
+    const user = userEvent.setup()
+    renderWithProviders(<SpaceCreatePage />, { withRouter: true })
+
+    await user.type(screen.getByLabelText(/Name/), 'Widerspruchsstelle')
+    await user.click(
+      screen.getByRole('switch', { name: 'Inaktive Chats automatisch archivieren und löschen' }),
+    )
+    await user.click(screen.getByRole('button', { name: 'Weiter' }))
+    await user.click(screen.getByRole('button', { name: 'Weiter' }))
+    await user.click(screen.getByRole('button', { name: 'Weiter' }))
+
+    expect(screen.getByText('Chats')).toBeInTheDocument()
+    expect(
+      screen.getByText('Inaktive Chats werden automatisch archiviert und später gelöscht.'),
+    ).toBeInTheDocument()
+  })
+
   it('leaves the cleanup out of the summary while it is off', async () => {
     const user = userEvent.setup()
     renderWithProviders(<SpaceCreatePage />, { withRouter: true })

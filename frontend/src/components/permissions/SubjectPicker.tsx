@@ -185,8 +185,12 @@ export default function SubjectPicker({
       .filter((group) => !excludedGroupIds.includes(group.id))
       .map((group) => ({ kind: 'GROUP' as const, group })),
   ]
+  // "Alle Konten" only where the input is empty or names it - otherwise it would be the one
+  // option left whenever nothing matches, and the empty-result hint would never appear.
+  const offersAllAccounts =
+    allowAllAccounts && (query.trim() === '' || matchRank(allAccountsLabel, query) < 4)
   const options = rankSubjectOptions(
-    allowAllAccounts ? [ALL_ACCOUNTS_OPTION, ...found] : found,
+    offersAllAccounts ? [ALL_ACCOUNTS_OPTION, ...found] : found,
     query,
   )
   const error = userSearch.error ?? groupSearch.error

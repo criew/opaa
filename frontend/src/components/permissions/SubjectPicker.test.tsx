@@ -288,6 +288,30 @@ describe('SubjectPicker (#1820, #2131, ADR-0036 Entscheidung 9)', () => {
     expect(mockGetUserSummaries).toHaveBeenCalledTimes(1)
   })
 
+  /** Review #2137: "Alle Konten" must not stand in for an empty result in the grants. */
+  it('shows the empty-result hint in the grants too, without "Alle Konten" in its way', async () => {
+    mockGetUserSummaries.mockResolvedValue([])
+    mockSearchSelectableGroups.mockResolvedValue([])
+    renderWithProviders(<Harness allowAllAccounts />)
+    const user = userEvent.setup()
+
+    await user.type(screen.getByRole('combobox', { name: SEARCH }), 'Personalrat')
+
+    expect(await screen.findByText(/vollständige Bezeichnung/)).toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: /Alle Konten/ })).not.toBeInTheDocument()
+  })
+
+  it('keeps offering "Alle Konten" for an input that names it', async () => {
+    mockGetUserSummaries.mockResolvedValue([])
+    mockSearchSelectableGroups.mockResolvedValue([])
+    renderWithProviders(<Harness allowAllAccounts />)
+    const user = userEvent.setup()
+
+    await user.type(screen.getByRole('combobox', { name: SEARCH }), 'Konten')
+
+    expect(await screen.findByRole('option', { name: /Alle Konten/ })).toBeInTheDocument()
+  })
+
   it('names the rule that hides a protected group when the search finds nothing', async () => {
     mockGetUserSummaries.mockResolvedValue([])
     mockSearchSelectableGroups.mockResolvedValue([])

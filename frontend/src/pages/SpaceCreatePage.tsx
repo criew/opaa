@@ -399,10 +399,11 @@ export default function SpaceCreatePage() {
                 </Box>
               )}
             </SummaryRow>
-            {chatAutoCleanup && cleanupPeriods && (
+            {chatAutoCleanup && (
               <SummaryRow label="Chats">
-                Inaktive Chats werden nach {cleanupPeriods.archiveAfterDays} Tagen archiviert und
-                nach weiteren {cleanupPeriods.deleteAfterDays} Tagen gelöscht.
+                {cleanupPeriods
+                  ? `Inaktive Chats werden nach ${cleanupPeriods.archiveAfterDays} Tagen archiviert und nach weiteren ${cleanupPeriods.deleteAfterDays} Tagen gelöscht.`
+                  : 'Inaktive Chats werden automatisch archiviert und später gelöscht.'}
               </SummaryRow>
             )}
             {!selectedAssets.some((pick) => pick.assetType === 'KNOWLEDGE_LIBRARY') && (

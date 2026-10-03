@@ -201,7 +201,6 @@ def ensure_space(
     body = {
         "name": space_def.name,
         "description": space_def.description,
-        "visibility": "PRIVATE",
         "ownerId": user_ids[space_def.owner_key],
         "initialMembers": [
             {
