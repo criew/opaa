@@ -664,31 +664,16 @@ components:
           nullable: true
           description: >
             Group rows only: true for a group of the staff council and the comparable bodies. Its
-            name is withheld here and it carries no growth signal - there the size is the actual
+            name is withheld here and it carries no size - there the size is the actual
             disclosure. The row itself stays, so an ADMIN can end a membership they cannot see.
         role:
           $ref: "#/components/schemas/SpaceRole"
-        memberCountAtGrant:
+        activeMemberCount:
           type: integer
           nullable: true
           description: >
-            Group rows only: how many active accounts the group had when it became a member
-            (ADR-0036 Entscheidung 9) - the passive growth signal for whoever admitted it. Null
-            for a person, and null whenever smallGroup is true.
-        memberCountNow:
-          type: integer
-          nullable: true
-          description: >
-            Group rows only: how many active accounts the group has right now, for the comparison
-            "23 bei Erteilung, heute 41". Null for a person, and null whenever smallGroup is true.
-        smallGroup:
-          type: boolean
-          nullable: true
-          description: >
-            Group rows only: true when either figure lies below the enforced minimum group size,
-            in which case both are withheld - the difference alone would reconstruct the withheld
-            one (ADR-0036 Entscheidung 9, "einschliesslich der Werte, die sich aus dem Vergleich
-            errechnen liessen").
+            Group rows only: how many active accounts the group reaches right now, whatever its
+            size (ADR-0036 Entscheidung 9). Null for a person and for a protected group.
         emptyGroup:
           type: boolean
           nullable: true

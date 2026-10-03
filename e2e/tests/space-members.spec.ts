@@ -88,7 +88,7 @@ test.describe.serial("Space-Anlage und Mitglieder (#2131)", () => {
     await expect(
       page.getByRole("heading", { name: "Mitglieder", exact: true }),
     ).toHaveCount(0);
-    await expect(page.getByText(`${GROUP_NAME} · Gruppe`)).toBeVisible();
+    await expect(page.getByText(GROUP_NAME, { exact: true })).toBeVisible();
 
     const search = page.getByRole("combobox", {
       name: "Person oder Gruppe suchen",
@@ -96,11 +96,9 @@ test.describe.serial("Space-Anlage und Mitglieder (#2131)", () => {
     await search.click();
     await search.fill("Dev");
     await expect(page.getByRole("option").first()).toBeVisible();
-    // The danger text colour misses 4.5:1 at button size everywhere, not only here (#2139).
     await expectNoSeriousA11yViolations(
       page,
       "Space-Einstellungen: Mitglied hinzufügen",
-      { exclude: ['button[aria-label$=" entfernen"]'] },
     );
   });
 });

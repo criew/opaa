@@ -47,7 +47,7 @@ import {
   assetGrantScopeHint,
   assetRoleDescription,
   assetRoleLabel,
-  groupGrowthLabel,
+  groupMemberCountLabel,
   permissionSubjectTypeLabel,
 } from '../../utils/labels'
 import { assetTypeLabel } from '../assets/assetTypeRegistry'
@@ -314,10 +314,7 @@ export default function AssetGrantsSection({
           {grants.map((grant) => {
             const expired = isExpired(grant.expiresAt)
             const subjectName = subjectDisplayName(grant)
-            // #1820, ADR-0036 Entscheidung 9: „Referat 50: 23 bei Erteilung, heute 41" - eine
-            // Zeile, die jemand liest, der für die Freigabe geradesteht.
-            const growthHint =
-              grant.subjectType === 'GROUP' ? groupGrowthLabel(grant, 'Erteilung') : null
+            const sizeHint = grant.subjectType === 'GROUP' ? groupMemberCountLabel(grant) : null
             const roleSelectId = `grant-role-${grant.id}`
             return (
               <Box
@@ -342,7 +339,7 @@ export default function AssetGrantsSection({
                     {permissionSubjectTypeLabel(grant.subjectType)} · Rolle vergeben von{' '}
                     {grantedByDisplayName(grant)} · zuletzt geändert am{' '}
                     {new Date(grant.updatedAt).toLocaleDateString('de-DE')}
-                    {growthHint ? ` · ${growthHint}` : ''}
+                    {sizeHint ? ` · ${sizeHint}` : ''}
                   </Typography>
                   {/* #1880, ADR-0036 Entscheidung 9: Wer einer Gruppe hier ein Recht eingeräumt
                       hat, sieht, an wen — erst auf ausdrücklichen Wunsch, nie als Beiwerk dieser

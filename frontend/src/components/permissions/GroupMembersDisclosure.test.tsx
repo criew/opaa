@@ -9,7 +9,6 @@ const twoOfThree: GroupMemberDisclosureResponse = {
   groupId: 'group-referat-50',
   name: 'Referat 50',
   protectedGroup: false,
-  smallGroup: false,
   activeMemberCount: 3,
   members: [
     { userId: 'user-anna', displayName: 'Anna Bauer' },
@@ -82,7 +81,6 @@ describe('GroupMembersDisclosure', () => {
       groupId: 'group-personalrat',
       name: null,
       protectedGroup: true,
-      smallGroup: false,
       activeMemberCount: null,
       members: [],
       responsible: ['Andrea Vogt'],
@@ -110,15 +108,17 @@ describe('GroupMembersDisclosure', () => {
     await waitFor(() => expect(screen.getByText('Gruppe nicht gefunden')).toBeVisible())
   })
 
-  /** Begrenzung (e), Auflage A2: unterhalb der Mindestgruppengröße gibt es weder Namen noch Zahl. */
-  it('sagt bei einer kleinen Gruppe, dass weder Namen noch Zahl genannt werden', async () => {
+  /** #2134: auch eine kleine Gruppe nennt ihre Mitglieder und ihre Zahl. */
+  it('nennt bei einer kleinen Gruppe Namen und Zahl', async () => {
     const load = vi.fn(async () => ({
       groupId: 'group-kleine-runde',
       name: 'Kleine Runde',
       protectedGroup: false,
-      smallGroup: true,
-      activeMemberCount: null,
-      members: [],
+      activeMemberCount: 2,
+      members: [
+        { userId: 'user-anna', displayName: 'Anna Bauer' },
+        { userId: 'user-bert', displayName: 'Bert Conrad' },
+      ],
       responsible: [] as string[],
     }))
     renderWithProviders(<GroupMembersDisclosure groupLabel="Kleine Runde" load={load} />)
@@ -127,8 +127,9 @@ describe('GroupMembersDisclosure', () => {
       screen.getByRole('button', { name: 'Mitglieder der Gruppe „Kleine Runde“ anzeigen' }),
     )
 
-    await waitFor(() => expect(screen.getByText(/Kleine Gruppe/)).toBeVisible())
-    expect(screen.queryByText(/aktiven Konten/)).toBeNull()
+    await waitFor(() => expect(screen.getByText('Bert Conrad')).toBeVisible())
+    expect(screen.getByText('2 von 2 aktiven Konten')).toBeVisible()
+    expect(screen.queryByText(/Kleine Gruppe/)).toBeNull()
   })
 
   /**

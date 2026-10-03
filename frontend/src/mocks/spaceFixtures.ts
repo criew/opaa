@@ -141,7 +141,7 @@ export const mockSpaceMembers: Record<string, SpaceMemberResponse[]> = {
       role: 'CURATOR',
       createdAt: '2026-03-01T10:00:00Z',
     },
-    // #1815: a group as a member, with the growth signal of ADR-0036, Entscheidung 9.
+    // #1815: a group as a member, with its current size (ADR-0036, Entscheidung 9).
     {
       id: 'membership-engineering-referat-50',
       subjectType: 'GROUP',
@@ -149,9 +149,7 @@ export const mockSpaceMembers: Record<string, SpaceMemberResponse[]> = {
       displayName: 'Referat 50',
       role: 'MEMBER',
       protectedGroup: false,
-      memberCountAtGrant: 23,
-      memberCountNow: 41,
-      smallGroup: false,
+      activeMemberCount: 41,
       emptyGroup: false,
       createdAt: '2026-03-01T10:00:00Z',
     },
@@ -164,9 +162,7 @@ export const mockSpaceMembers: Record<string, SpaceMemberResponse[]> = {
       displayName: null,
       role: 'MEMBER',
       protectedGroup: true,
-      memberCountAtGrant: null,
-      memberCountNow: null,
-      smallGroup: null,
+      activeMemberCount: null,
       emptyGroup: null,
       createdAt: '2026-03-01T10:00:00Z',
     },

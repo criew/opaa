@@ -11,9 +11,10 @@ import java.util.UUID;
  * io.opaa.group}, so the dependency direction stays {@code group} &rarr; {@code permission}
  * (Entscheidung 12).
  *
- * <p><b>This interface is the one place the disclosure rule is written down.</b> Four of the five
- * limits are properties of the group and decided by the implementation; the fifth belongs to the
- * caller and is enforced by each caller before it asks:
+ * <p><b>This interface is the one place the disclosure rule is written down.</b> Three of the four
+ * limits are properties of the group and decided by the implementation; the first belongs to the
+ * caller and is enforced by each caller before it asks. The group's size limits nothing here
+ * (ADR-0036, Entscheidung 9, Nachtrag of 03.10.2026):
  *
  * <ul>
  *   <li><b>(a) the right held at the object</b> - <em>the caller's</em>: only while the group still
@@ -22,12 +23,6 @@ import java.util.UUID;
  *       provider group needs no release - its existence is not a decision of this house.
  *   <li><b>(d) never for a protected group</b>: no name, no size, no members - only the people to
  *       ask instead ({@link GroupMemberDisclosure#responsible()}).
- *   <li><b>(e) never below the Mindestgruppengröße</b> ({@link GroupSizeProperties}): no members
- *       and no figure, only {@link GroupMemberDisclosure#smallGroup()}. The same suppression the
- *       growth signal of the very same row carries (Auflage A2) - without it, one row would say
- *       "kleine Gruppe" on the left and name four people on the right. Provisional decision of the
- *       coordinator (22.09.2026, #1882), taken in favour of data thrift while the maintainer was
- *       unavailable.
  * </ul>
  *
  * <p>Every one of them answers {@link Optional#empty()} or a withheld field rather than an

@@ -10,7 +10,6 @@ import io.opaa.api.types.SpaceRole;
 import io.opaa.api.types.SpaceVisibility;
 import io.opaa.api.types.SuccessionAddressee;
 import io.opaa.api.types.SuccessionObjectType;
-import io.opaa.permission.GroupSizeSignal;
 import io.opaa.permission.SuccessionFinding;
 import io.opaa.space.ChatAutoCleanupProperties;
 import io.opaa.space.Space;
@@ -160,8 +159,7 @@ class SpaceResponseMapperTest {
     Space space = new Space("Team", null, false, SpaceVisibility.PRIVATE, owner, organization);
     space.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, organization));
     space.addMembership(SpaceMembership.ofUser(UUID.randomUUID(), SpaceRole.MEMBER, organization));
-    space.addMembership(
-        SpaceMembership.ofGroup(UUID.randomUUID(), SpaceRole.MEMBER, 40, organization));
+    space.addMembership(SpaceMembership.ofGroup(UUID.randomUUID(), SpaceRole.MEMBER, organization));
     SpaceOverview overview = new SpaceOverview(space, 0, 0, SpaceRole.ADMIN, false, null);
 
     SpaceListResponse response = SpaceResponseMapper.toListResponse(overview);
@@ -214,9 +212,7 @@ class SpaceResponseMapperTest {
     assertThat(response.getSubjectType()).isEqualTo(PermissionSubjectType.USER);
     assertThat(response.getSubjectId()).isEqualTo(userId);
     assertThat(response.getRole()).isEqualTo(SpaceRole.CURATOR);
-    assertThat(response.getMemberCountAtGrant()).isNull();
-    assertThat(response.getMemberCountNow()).isNull();
-    assertThat(response.getSmallGroup()).as("a person is never a small group").isNull();
+    assertThat(response.getActiveMemberCount()).isNull();
     assertThat(response.getEmptyGroup()).isNull();
     assertThat(response.getDisplayName()).isEqualTo("Ada Lovelace");
     assertThat(response.getCreatedAt()).isEqualTo(membership.getCreatedAt());
@@ -248,76 +244,63 @@ class SpaceResponseMapperTest {
         .containsExactly("First", "Second");
   }
 
-  /** #1815: a group row names the group and carries the growth signal of ADR-0036/9. */
+  /** #1815, #2134: a group row names the group and carries its current size. */
   @Test
-  void toMemberResponseCarriesTheGroupSubjectAndItsSizeSignal() {
+  void toMemberResponseCarriesTheGroupSubjectAndItsCurrentSize() {
     UUID groupId = UUID.randomUUID();
     UUID organization = UUID.randomUUID();
-    SpaceMembership membership =
-        SpaceMembership.ofGroup(groupId, SpaceRole.CURATOR, 23, organization);
-    SpaceMemberView view =
-        new SpaceMemberView(membership, "Referat 50", GroupSizeSignal.of(23, 41, 5), false);
+    SpaceMembership membership = SpaceMembership.ofGroup(groupId, SpaceRole.CURATOR, organization);
+    SpaceMemberView view = new SpaceMemberView(membership, "Referat 50", 41, false);
 
     SpaceMemberResponse response = SpaceResponseMapper.toMemberResponse(view);
 
     assertThat(response.getSubjectType()).isEqualTo(PermissionSubjectType.GROUP);
     assertThat(response.getSubjectId()).isEqualTo(groupId);
     assertThat(response.getDisplayName()).isEqualTo("Referat 50");
-    assertThat(response.getMemberCountAtGrant()).isEqualTo(23);
-    assertThat(response.getMemberCountNow()).isEqualTo(41);
-    assertThat(response.getSmallGroup()).isFalse();
+    assertThat(response.getActiveMemberCount()).isEqualTo(41);
     assertThat(response.getEmptyGroup()).isFalse();
   }
 
-  /**
-   * ADR-0036/9: below the enforced minimum group size both figures are withheld - publishing one of
-   * them beside the difference would reconstruct the other.
-   */
+  /** #2134: no minimum group size applies to the figure of a member row. */
   @Test
-  void toMemberResponseWithholdsBothFiguresForASmallGroup() {
+  void toMemberResponseCarriesTheFigureOfASmallGroupToo() {
     SpaceMembership membership =
-        SpaceMembership.ofGroup(UUID.randomUUID(), SpaceRole.MEMBER, 23, UUID.randomUUID());
-    SpaceMemberView view =
-        new SpaceMemberView(membership, "Referat 50", GroupSizeSignal.of(23, 4, 5), false);
+        SpaceMembership.ofGroup(UUID.randomUUID(), SpaceRole.MEMBER, UUID.randomUUID());
+    SpaceMemberView view = new SpaceMemberView(membership, "Referat 50", 2, false);
 
     SpaceMemberResponse response = SpaceResponseMapper.toMemberResponse(view);
 
-    assertThat(response.getSmallGroup()).isTrue();
-    assertThat(response.getMemberCountAtGrant()).isNull();
-    assertThat(response.getMemberCountNow()).isNull();
+    assertThat(response.getActiveMemberCount()).isEqualTo(2);
   }
 
   @Test
   void toMemberResponseMarksAnEffectiveButEmptyGroup() {
     SpaceMembership membership =
-        SpaceMembership.ofGroup(UUID.randomUUID(), SpaceRole.MEMBER, 0, UUID.randomUUID());
-    SpaceMemberView view =
-        new SpaceMemberView(membership, "Neu", GroupSizeSignal.of(0, 0, 5), false);
+        SpaceMembership.ofGroup(UUID.randomUUID(), SpaceRole.MEMBER, UUID.randomUUID());
+    SpaceMemberView view = new SpaceMemberView(membership, "Neu", 0, false);
 
     SpaceMemberResponse response = SpaceResponseMapper.toMemberResponse(view);
 
     assertThat(response.getEmptyGroup()).isTrue();
-    assertThat(response.getSmallGroup()).isTrue();
+    assertThat(response.getActiveMemberCount()).isZero();
   }
 
   /**
    * ADR-0036/9 (#1820): a protected group is a nameless row in another person's list, and it
-   * carries no figure at all - not even "not small, not empty", which would already be a statement
-   * about its size. The row itself stays, so an ADMIN can end a membership they cannot see.
+   * carries no figure at all - not even "not empty", which would already be a statement about its
+   * size. The row itself stays, so an ADMIN can end a membership they cannot see.
    */
   @Test
   void toMemberResponseLeavesAProtectedGroupNamelessAndWithoutASignal() {
     SpaceMembership membership =
-        SpaceMembership.ofGroup(UUID.randomUUID(), SpaceRole.MEMBER, 12, UUID.randomUUID());
-    SpaceMemberView view = new SpaceMemberView(membership, null, GroupSizeSignal.NONE, true);
+        SpaceMembership.ofGroup(UUID.randomUUID(), SpaceRole.MEMBER, UUID.randomUUID());
+    SpaceMemberView view = new SpaceMemberView(membership, null, null, true);
 
     SpaceMemberResponse response = SpaceResponseMapper.toMemberResponse(view);
 
     assertThat(response.getDisplayName()).isNull();
     assertThat(response.getProtectedGroup()).isTrue();
-    assertThat(response.getMemberCountAtGrant()).isNull();
-    assertThat(response.getMemberCountNow()).isNull();
-    assertThat(response.getSmallGroup()).isNull();
+    assertThat(response.getActiveMemberCount()).isNull();
     assertThat(response.getEmptyGroup()).isNull();
     assertThat(response.getId()).isEqualTo(membership.getId());
     assertThat(response.getRole()).isEqualTo(SpaceRole.MEMBER);

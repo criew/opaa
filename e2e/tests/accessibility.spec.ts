@@ -170,6 +170,56 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
     await expectNoSeriousA11yViolations(page, "Spaces-Übersicht (dunkles Farbschema)");
   });
 
+  // #2134: die Mitgliederliste der Space-Einstellungen mit Personen-/Gruppensymbol, Rollenauswahl
+  // und „⋯“-Menü - einmal geschlossen, einmal per Tastatur geöffnet. Der Space entsteht dafür
+  // über die API und wird am Ende wieder gelöscht.
+  test("Space-Einstellungen: Mitgliederliste mit Zeilenmenü in beiden Farbschemata", async ({
+    authenticatedPage: page,
+  }) => {
+    const admin = await apiAs("dev-admin");
+    const colleague = await apiAs("dev-user");
+    let spaceId: string | undefined;
+    try {
+      const me = await colleague.get("/api/v1/auth/me");
+      expect(me.status(), await me.text()).toBe(200);
+      const colleagueId = ((await me.json()) as { id: string }).id;
+      const created = await admin.post("/api/v1/spaces", {
+        data: { name: `A11y-Mitglieder-${Date.now()}` },
+      });
+      expect(created.status(), await created.text()).toBe(201);
+      spaceId = ((await created.json()) as { id: string }).id;
+      const added = await admin.post(`/api/v1/spaces/${spaceId}/members`, {
+        data: { subjectType: "USER", subjectId: colleagueId, role: "CURATOR" },
+      });
+      expect(added.status(), await added.text()).toBe(201);
+
+      await page.goto(`/spaces/${spaceId}/settings/members`);
+      const menuButton = page.getByRole("button", { name: /^Weitere Aktionen für „/ });
+      await expect(menuButton).toHaveCount(1);
+
+      await page.emulateMedia({ colorScheme: "light" });
+      await expectNoSeriousA11yViolations(page, "Space-Mitglieder (helles Farbschema)");
+      await page.emulateMedia({ colorScheme: "dark" });
+      await expectNoSeriousA11yViolations(page, "Space-Mitglieder (dunkles Farbschema)");
+
+      await menuButton.focus();
+      await page.keyboard.press("Enter");
+      await expect(page.getByRole("menuitem", { name: /^Warum hat .* Zugriff\?$/ })).toBeFocused();
+      await expectNoSeriousA11yViolations(page, "Space-Mitglieder, Zeilenmenü (dunkles Farbschema)");
+      await page.emulateMedia({ colorScheme: "light" });
+      await expectNoSeriousA11yViolations(page, "Space-Mitglieder, Zeilenmenü (helles Farbschema)");
+      await page.keyboard.press("Escape");
+      await expect(page.getByRole("menu")).toHaveCount(0);
+    } finally {
+      if (spaceId) {
+        const removed = await admin.delete(`/api/v1/spaces/${spaceId}`);
+        expect([200, 204], await removed.text()).toContain(removed.status());
+      }
+      await admin.dispose();
+      await colleague.dispose();
+    }
+  });
+
   // Die Kachelauswahl mit Icon (Gestaltungsleitlinien 5.11) an ihren beiden Stellen: Typwahl unter
   // „Neu" und Quellart-Wahl im Wissens-Assistenten - Auswahlgruppe, Häkchen und gesperrte Kachel.
   test("Kachelauswahl: Typwahl und Quellart in beiden Farbschemata", async ({

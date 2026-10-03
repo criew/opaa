@@ -80,7 +80,6 @@ class SpaceServiceTest {
             mock(GroupSubjectDirectory.class),
             mock(io.opaa.permission.GroupMemberDisclosureDirectory.class),
             capabilityService,
-            new io.opaa.permission.GroupSizeProperties(null),
             successionGuard,
             mock(SpaceSuccessionSource.class),
             new ChatAutoCleanupProperties(90, 365),

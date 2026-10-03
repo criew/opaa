@@ -150,7 +150,10 @@ export const spaceHandlers = [
       displayName: subjectType === 'GROUP' ? (group?.name ?? null) : null,
       role,
       ...(subjectType === 'GROUP'
-        ? { memberCountAtGrant: null, memberCountNow: null, smallGroup: true, emptyGroup: false }
+        ? {
+            activeMemberCount: group?.memberCount ?? 0,
+            emptyGroup: (group?.memberCount ?? 0) === 0,
+          }
         : {}),
       createdAt: new Date().toISOString(),
     }

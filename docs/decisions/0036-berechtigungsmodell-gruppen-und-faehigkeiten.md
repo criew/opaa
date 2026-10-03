@@ -814,6 +814,40 @@ unterliegen deren Höchstdauer.
 > sie mit; der Eigentümer-Grant einer gruppengehörenden Bibliothek trägt keine — Eigentum ist keine
 > Freigabe.
 
+> **Nachtrag (03.10.2026, Maintainer-Entscheidung, #2134): Das Signal bei Gruppenzuwachs
+> entfällt, und Verwaltende sehen die Namen auch kleiner Gruppen.** Freigaben und Space-Mitgliedschaften an Gruppen speichern keine Zahl zum Zeitpunkt
+> der Erteilung mehr; `asset_grants.member_count_at_grant`, `space_memberships.member_count_at_grant`
+> und die gleichnamige Spalte der Mitgliedschaftshistorie sind entfernt. Die Freigabeansicht und die
+> Mitgliederliste eines Space zeigen bei einer Gruppe stattdessen ihre **heutige** Zahl aktiver
+> Konten, **ohne** Mindestgruppengröße. Folgen:
+>
+> - **Geschützte Gruppen** zeigen weiterhin weder Zahl noch Namen, sondern „Geschützte Gruppe“ und
+>   die Verantwortlichen.
+> - **Die Namen auch kleiner Gruppen** kann aufklappen, wer der Gruppe am Objekt ein Recht
+>   eingeräumt hat oder es verwaltet („Mitglieder der Gruppe anzeigen“ in den Space-Mitgliedern,
+>   „Mitglieder anzeigen“ in den Asset-Freigaben). Die vorläufige fünfte Begrenzung „nicht unterhalb
+>   der Mindestgruppengröße“ (#1882) ist zurückgenommen; es gelten wieder die vier Begrenzungen
+>   dieser Entscheidung. Die Antwort trägt kein Kennzeichen `smallGroup` mehr.
+> - **Unverändert** gilt die Mindestgruppengröße für den Geltungsbereich von „Sicht als“, für die
+>   Suchdiagnose (#1879) und für die Größenangabe in der Subjekt-Auswahl. Dort hat sie einen eigenen
+>   Zweck: Sie gilt für Gruppen, an denen der Fragende noch kein Recht hält, und für Profile, die eine
+>   benannte Person betreffen. Die Personalrat-Zusagen A2 und Z6 sind entsprechend als **geändert**
+>   markiert.
+> - Der Satz „Die gespeicherten Zahlen sind Teil der Grant-Historie“ oben und der Nachtrag zur
+>   Ablage der Zahl haben damit keinen Gegenstand mehr.
+>
+> **Abwägung.** Ohne Erklärung war „23 bei Erteilung, heute 41“ in der Oberfläche nicht verständlich,
+> und die Unterdrückung unterhalb der Mindestgruppengröße schützte an dieser Stelle nichts: Wer die
+> Zeile sieht, verwaltet die Freigabe oder die Mitgliedschaft und darf die Mitglieder der Gruppe
+> ohnehin aufklappen — mit diesem Nachtrag auch bei kleinen Gruppen, weil die Tabelle oben dem
+> Rechtevergebenden die volle Mitgliederliste zuspricht und #1882 nur vorläufig davon abwich.
+> Damit ist die Mindestgröße in der Subjekt-Auswahl nur noch eine Voreinstellung und kein Schutz
+> mehr: Wer verwaltet, kann sie umgehen, indem er der Gruppe ein Recht gibt, die Mitglieder
+> aufklappt und das Recht wieder entzieht. Als Spur davon bleibt die Rechtehistorie.
+> Die aktuelle Zahl bleibt sichtbar. Die Frage, wer seit wann über welche Gruppe
+> Zugriff hat, beantworten Rechtehistorie, Protokoll und die Herleitung „Warum hat … Zugriff?“ — eine
+> zweite, gespeicherte Zahl am Recht trug dazu nichts bei.
+
 ### 10. Die Übertragungsoperation
 
 **Eine allgemeine, protokollierte Operation auf der Gruppenachse** überträgt Grants,
@@ -984,7 +1018,9 @@ Entscheidung und nicht in ein Sub-Issue verschiebbar:**
 **Personalrat, Sichtbarkeit (A1–A6):** Die Herleitung nennt den Gruppennamen Dritten nur dort, wo sie
 die Mitgliedschaft verwalten (A1, **geändert** gegenüber der Forderung, weil die Space-Mitgliederliste
 heute schon nur `ADMIN`/Eigentümer/`SYSTEM_ADMIN` zugänglich ist) · „kleine Gruppe" statt Zahl
-unterhalb der Mindestgruppengröße (A2) · geschützte Gruppen (A3, **geändert**: namenlose Zeile in
+unterhalb der Mindestgruppengröße (A2, **geändert** mit dem Nachtrag vom 03.10.2026 zu Entscheidung 9:
+gilt nur noch in der Subjekt-Auswahl; an der Zeile einer bestehenden Freigabe oder Mitgliedschaft
+stehen die heutige Zahl und auf Wunsch die Namen) · geschützte Gruppen (A3, **geändert**: namenlose Zeile in
 fremden Listen, weil ein Space-`ADMIN` sonst eine Mitgliedschaft nicht beenden könnte, die er nicht
 sieht) · Mitglieder sehen ihre Verantwortlichen, Aufnahme und Entfernung werden angezeigt (A4) ·
 Hinweis beim Anlegen einer internen Gruppe (A5) · der Mitgliederlisten-Abruf durch `SYSTEM_ADMIN` ist
@@ -1022,7 +1058,8 @@ Objekt je Abfrage** (Z3) · `RESTRICT` für alle fünf neuen Tabellen, mit den Z
 Person als Quelle nur Eigentum und Verantwortung, Vorschau als Protokollereignis auch bei Abbruch,
 Objekthinweis nennt den Vorgang statt der Person (Z4) · Kennzeichnung am Objekt ohne Eigentümer,
 Grund und Datum (Z5) · „kleine Gruppe" für **beide** Zahlen des Zuwachssignals, kein Signal bei
-geschützten Gruppen (Z6) · **keine Auswertungsachse über die handelnde Person** in der Betriebsliste
+geschützten Gruppen (Z6, **geändert** mit dem Nachtrag vom 03.10.2026 zu Entscheidung 9: das Signal
+entfällt; geschützte Gruppen tragen weiterhin keine Zahl) · **keine Auswertungsachse über die handelnde Person** in der Betriebsliste
 (Z7).
 
 **Die vier Begrenzungen der Mitgliederlisten-Ausweitung** stehen vollständig in Entscheidung 9.
@@ -1091,8 +1128,9 @@ weil es die Oberflächen aus #1820 und #1821 beschreibt.
 - **Befristete Grants und Rezertifizierung** (#241, nicht geplant): Das Modell hindert sie nicht.
 - **Die Obergrenze der Freigabe für Konnektorbibliotheken** (#797): Dieser ADR trennt nur die
   Fähigkeit ab.
-- **Die allgemeine Autoren-Benachrichtigung** bei wesentlicher Erweiterung des Leserkreises: Das
-  passive Zuwachssignal ist ihr kleinster Vorläufer, nicht ihr Ersatz.
+- **Die allgemeine Autoren-Benachrichtigung** bei wesentlicher Erweiterung des Leserkreises. Das
+  passive Zuwachssignal, ihr kleinster Vorläufer, ist mit dem Nachtrag vom 03.10.2026 zu
+  Entscheidung 9 entfallen; ersetzt hat es sie nie.
 - **Die allgemeine Protokollpflicht für Profil-Läufe ohne Space-Kontext.**
 - **Das Lastverhalten** des abgeleiteten Zustands „Nachfolge offen" und der Schnittmengen-Prüfung.
   Falls die Ableitung teuer wird, ist die Antwort der Feststellungslauf mit materialisiertem
