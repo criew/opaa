@@ -28,7 +28,8 @@ public interface FileStore extends AutoCloseable {
 
   /**
    * The current state of one file - for a reported change, or for an entry whose name says nothing
-   * about its format, when the {@link FileEntry#mediaType()} decides.
+   * about its format, when the {@link FileEntry#mediaType()} decides. An entry with {@link
+   * Exclusion.Deselected} is skipped without a download and without counting as present.
    *
    * @throws FileAccessException.Gone when the file no longer exists
    */

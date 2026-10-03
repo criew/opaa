@@ -9,6 +9,7 @@ import io.opaa.organization.Organization;
 import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.SourceTypes;
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -19,7 +20,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
  * The change cursors of {@link SourceSyncState} against the Liquibase schema: they survive a round
- * trip through {@code change_cursors}, and a connector without a change log leaves it {@code NULL}.
+ * trip through {@code change_cursors} as a set of stream keys, in no particular order, and a
+ * connector without a change log leaves it {@code NULL}.
  */
 @OpaaIntegrationTest
 class SourceSyncStateRepositoryIntegrationTest {
@@ -67,21 +69,26 @@ class SourceSyncStateRepositoryIntegrationTest {
   }
 
   @Test
-  void heldAndValidCursorsSurviveTheRoundTripInOrder() {
+  void heldAndValidCursorsOfSeveralStreamsSurviveTheRoundTrip() {
     SourceSyncState state = new SourceSyncState(library.getId());
     state.beginFullSync(UUID.randomUUID());
-    state.holdPendingChangeCursors(Map.of("drive:1", "100"));
+    // jsonb sorts keys by length first, so this insertion order does not survive - nor need it
+    Map<String, String> cursors = new LinkedHashMap<>();
+    cursors.put("drive:10", "a");
+    cursors.put("drive:1", "b");
+    cursors.put("folder:x", "c");
+    state.holdPendingChangeCursors(cursors);
     repository.save(state);
 
     SourceSyncState held = repository.findByLibraryId(library.getId()).orElseThrow();
-    assertThat(held.pendingChangeCursors()).containsExactly(Map.entry("drive:1", "100"));
+    assertThat(held.pendingChangeCursors()).isEqualTo(cursors);
     assertThat(held.changeCursors()).isEmpty();
 
     held.completeFullSync(Instant.parse("2026-10-03T10:00:00Z"));
     repository.save(held);
 
     SourceSyncState completed = repository.findByLibraryId(library.getId()).orElseThrow();
-    assertThat(completed.changeCursors()).containsExactly(Map.entry("drive:1", "100"));
+    assertThat(completed.changeCursors()).isEqualTo(cursors);
     assertThat(completed.pendingChangeCursors()).isEmpty();
   }
 

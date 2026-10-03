@@ -142,6 +142,27 @@ final class S3FullSync implements AutoCloseable, FileSyncWording {
     return DROPPED_EVENTS_SUFFIX;
   }
 
+  @Override
+  public String budgetStallAdvice() {
+    return "Der Lauf hat kein Objekt neu aufgenommen. Budget anheben oder die Geltungsbereiche"
+        + " aufteilen.";
+  }
+
+  @Override
+  public String eventRunContinuation() {
+    return "die übrigen gemeldeten Objekte nimmt der nächste geplante Lauf auf";
+  }
+
+  @Override
+  public String listedSummary(long listed, long deselected) {
+    return listed + " Objekte gelistet, " + deselected + " durch Muster ausgeschlossen, ";
+  }
+
+  @Override
+  public String checkedSummary(long checked) {
+    return checked + " gemeldete Objekte geprüft, ";
+  }
+
   /** {@code s3://<bucket>/<key>}, the key as it is - the identity per library (Entscheidung 5). */
   static String filePath(String bucket, String key) {
     return S3ObjectRef.filePath(bucket, key);

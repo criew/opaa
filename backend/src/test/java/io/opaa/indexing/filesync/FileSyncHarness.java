@@ -328,5 +328,25 @@ public final class FileSyncHarness {
         public String droppedReferencesNote() {
           return " gemeldete Einträge verworfen";
         }
+
+        @Override
+        public String budgetStallAdvice() {
+          return "Kein Eintrag neu aufgenommen.";
+        }
+
+        @Override
+        public String eventRunContinuation() {
+          return "der nächste geplante Lauf setzt fort";
+        }
+
+        @Override
+        public String listedSummary(long listed, long deselected) {
+          return listed + " Einträge gelistet, " + deselected + " abgewählt, ";
+        }
+
+        @Override
+        public String checkedSummary(long checked) {
+          return checked + " gemeldete Einträge geprüft, ";
+        }
       };
 }

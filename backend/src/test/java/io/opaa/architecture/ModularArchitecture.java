@@ -213,8 +213,12 @@ public final class ModularArchitecture {
   /** The only packages outside the root the file sync may use: the JDK and logging. */
   static final List<String> FILE_SYNC_EXTERNALS = List.of("java.", "org.slf4j.");
 
-  /** Top-level packages, relative to the root, that speak to one provider. */
-  static final List<String> PROVIDER_ACCESS = List.of("s3");
+  /**
+   * The packages inside the root the file sync may use besides the indexing core: neutral ones
+   * only, so a provider access package - present or future - is refused without being named.
+   */
+  static final List<String> FILE_SYNC_ALLOWED =
+      List.of("common", "sourceaccess", "format", "knowledge", "api.types");
 
   /** Packages of the separate {@code opaa-api} Gradle module: a library below all layers. */
   static final List<String> OUTSIDE_THE_LAYERING = List.of("api.dto", "api.types");
@@ -552,8 +556,8 @@ public final class ModularArchitecture {
   }
 
   /**
-   * The file sync knows no provider: no provider access package, no connector, no third-party
-   * client - only the JDK, logging and the backend's neutral packages.
+   * The file sync knows no provider: it uses only the JDK, logging, the indexing core and the
+   * neutral packages of {@link #FILE_SYNC_ALLOWED} - no connector, no provider access, no client.
    */
   ArchRule theFileSyncKnowsNoProvider() {
     return classes()
@@ -567,7 +571,7 @@ public final class ModularArchitecture {
                 }))
         .should(
             dependOnly(
-                "depend on no provider, no connector and no third-party client",
+                "depend only on the JDK, logging, the indexing core and neutral packages",
                 (origin, target) -> {
                   JavaClass base = target.getBaseComponentType();
                   if (base.isPrimitive()) {
@@ -580,12 +584,16 @@ public final class ModularArchitecture {
                         ? null
                         : FILE_SYNC + " -> " + name + " is a third-party client";
                   }
-                  if (isConnector(base)) {
-                    return FILE_SYNC + " -> " + relative + " knows a connector";
-                  }
-                  return !relative.isEmpty() && PROVIDER_ACCESS.contains(topLevel(relative))
-                      ? FILE_SYNC + " -> " + relative + " knows a provider"
-                      : null;
+                  boolean allowed =
+                      INDEXING_CORE.contains(relative)
+                          || FILE_SYNC_ALLOWED.stream()
+                              .anyMatch(
+                                  allowedPackage ->
+                                      relative.equals(allowedPackage)
+                                          || relative.startsWith(allowedPackage + "."));
+                  return allowed
+                      ? null
+                      : FILE_SYNC + " -> " + relative + " is no package the file sync may use";
                 }))
         .allowEmptyShould(true);
   }

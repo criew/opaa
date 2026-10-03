@@ -59,11 +59,4 @@ public abstract sealed class FileAccessException extends Exception {
       super(message);
     }
   }
-
-  /** The change cursor is no longer valid: the stream is discarded, the next run is a full sync. */
-  public static final class CursorExpired extends FileAccessException {
-    public CursorExpired(String message) {
-      super(message);
-    }
-  }
 }

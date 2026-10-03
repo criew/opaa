@@ -147,9 +147,13 @@ class ModularArchitectureFixtureTest {
 
     assertThat(scenario.violations(ModularArchitecture::theFileSyncKnowsNoProvider))
         .hasSize(3)
-        .anySatisfy(violation -> assertThat(violation).contains("-> s3 knows a provider"))
         .anySatisfy(
-            violation -> assertThat(violation).contains("-> indexing.source.s3 knows a connector"))
+            violation ->
+                assertThat(violation).contains("-> s3 is no package the file sync may use"))
+        .anySatisfy(
+            violation ->
+                assertThat(violation)
+                    .contains("-> indexing.source.s3 is no package the file sync may use"))
         .anySatisfy(
             violation ->
                 assertThat(violation)

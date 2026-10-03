@@ -7,8 +7,6 @@ import jakarta.persistence.Table;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
@@ -152,7 +150,7 @@ public class SourceSyncState {
     touch();
   }
 
-  /** The valid change cursor of every stream, keyed by stream; empty without a change log. */
+  /** The valid change cursor of every stream, keyed by stream, in no particular order. */
   public Map<String, String> changeCursors() {
     return readChangeCursors().current();
   }
@@ -171,14 +169,14 @@ public class SourceSyncState {
     touch();
   }
 
-  /** The persisted form of the change cursors; both maps keep their insertion order. */
+  /**
+   * The persisted form of the change cursors; {@code jsonb} keeps no key order, so neither do they.
+   */
   record ChangeCursors(Map<String, String> current, Map<String, String> pending) {
 
     ChangeCursors {
-      current =
-          current == null ? Map.of() : Collections.unmodifiableMap(new LinkedHashMap<>(current));
-      pending =
-          pending == null ? Map.of() : Collections.unmodifiableMap(new LinkedHashMap<>(pending));
+      current = current == null ? Map.of() : Map.copyOf(current);
+      pending = pending == null ? Map.of() : Map.copyOf(pending);
     }
   }
 

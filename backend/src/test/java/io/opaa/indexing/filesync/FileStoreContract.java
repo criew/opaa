@@ -4,16 +4,22 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.indexing.job.IndexingEventCategory;
 import io.opaa.indexing.job.IndexingRunEvent;
+import io.opaa.sourceaccess.SourceRequestMeter;
+import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * The connector contract of a file store (#1293), run through {@link FileSync} against the store a
- * subclass supplies: complete and incomplete enumeration, change detection, deletion by absence and
- * the protocol categories. Every file connector extends it once per test level it has - a test
- * double and, where one exists, a substitute system in a container.
+ * The connector contract of a file store, run through {@link FileSync} against the store a subclass
+ * supplies: complete and incomplete enumeration over several pages, change detection, deletion by
+ * absence, the failure kinds and the protocol categories. Every file connector extends it once per
+ * test level it has - a test double and, where one exists, a substitute system in a container.
  */
 public abstract class FileStoreContract {
+
+  /** The page size every scenario lists with, small enough that several pages occur. */
+  protected static final int PAGE_SIZE = 3;
 
   /** The store under test over two containers, {@code 0} and {@code 1}, filled by the contract. */
   protected interface Fixture {
@@ -27,12 +33,18 @@ public abstract class FileStoreContract {
     /** From now on {@code container} cannot be listed with the store's credentials. */
     void denyListing(int container) throws Exception;
 
+    /** From now on no file of {@code container} can be read; listing still works. */
+    void denyReading(int container) throws Exception;
+
+    /** From now on the store's credentials are refused for every request. */
+    void rejectCredentials() throws Exception;
+
     String containerKey(int container);
 
     String filePath(int container, String name);
 
-    /** A fresh store for one run, closed by the run. */
-    FileStore open() throws Exception;
+    /** A fresh store for one run listing {@code pageSize} entries per page, closed by the run. */
+    FileStore open(int pageSize) throws Exception;
   }
 
   /** A fresh fixture with both containers empty. */
@@ -48,7 +60,7 @@ public abstract class FileStoreContract {
   }
 
   private FileSyncHarness.Run fullSync() throws Exception {
-    return harness.fullSync(fixture.open());
+    return harness.fullSync(fixture.open(PAGE_SIZE));
   }
 
   @Test
@@ -68,6 +80,32 @@ public abstract class FileStoreContract {
     assertThat(run.listingComplete()).isTrue();
     assertThat(run.unlistedContainerKeys()).isEmpty();
     assertThat(run.processed()).isEqualTo(3);
+  }
+
+  @Test
+  void aListingOverSeveralPagesIsFollowedToItsLastPage() throws Exception {
+    List<String> names =
+        List.of("d1.txt", "d2.txt", "d3.txt", "d4.txt", "d5.txt", "d6.txt", "d7.txt");
+    for (String name : names) {
+      fixture.put(0, name, "Inhalt von " + name);
+    }
+
+    FileSyncHarness.Run first = fullSync();
+
+    assertThat(first.ingested())
+        .as("every page of %s entries per page is listed", PAGE_SIZE)
+        .containsExactlyInAnyOrderElementsOf(
+            names.stream().map(name -> fixture.filePath(0, name)).toList());
+    assertThat(first.listingComplete()).isTrue();
+
+    fixture.remove(0, "d7.txt");
+    FileSyncHarness.Run second = fullSync();
+
+    assertThat(second.eventsOf(IndexingEventCategory.REMOVED))
+        .as("only the file gone from the last page is removed")
+        .extracting(IndexingRunEvent::getReference)
+        .containsExactly(fixture.filePath(0, "d7.txt"));
+    assertThat(harness.storedPaths()).hasSize(6);
   }
 
   @Test
@@ -127,6 +165,63 @@ public abstract class FileStoreContract {
   }
 
   @Test
+  void aFileGoneBetweenListingAndDownloadIsAbsentAndNotFetched() throws Exception {
+    fixture.put(0, "bleibt.txt", "Bleibt.");
+    fixture.put(0, "weg.txt", "Verschwindet beim Abruf.");
+    String gone = fixture.filePath(0, "weg.txt");
+
+    FileSyncHarness.Run run =
+        harness.fullSync(
+            new RemovingBeforeFetch(
+                fixture.open(PAGE_SIZE), gone, () -> fixture.remove(0, "weg.txt")));
+
+    assertThat(run.ingested()).containsExactly(fixture.filePath(0, "bleibt.txt"));
+    assertThat(run.eventsOf(IndexingEventCategory.REJECTED))
+        .extracting(IndexingRunEvent::getReference)
+        .containsExactly(gone);
+    assertThat(run.listingComplete()).isTrue();
+    assertThat(harness.storedPaths()).containsExactly(fixture.filePath(0, "bleibt.txt"));
+  }
+
+  @Test
+  void anUnreadableFileKeepsItsStoredVersion() throws Exception {
+    fixture.put(0, "offen.txt", "Offen.");
+    fixture.put(1, "gesperrt.txt", "Erste Fassung.");
+    fullSync();
+    String locked = fixture.filePath(1, "gesperrt.txt");
+    String storedMarker = harness.stored(locked).orElseThrow().getLastModifiedRemote();
+
+    fixture.put(1, "gesperrt.txt", "Zweite, längere Fassung.");
+    fixture.denyReading(1);
+    FileSyncHarness.Run run = fullSync();
+
+    assertThat(run.failure()).isNull();
+    assertThat(run.ingested()).isEmpty();
+    assertThat(run.eventsOf(IndexingEventCategory.REJECTED))
+        .extracting(IndexingRunEvent::getReference)
+        .containsExactly(locked);
+    assertThat(run.listingComplete()).isTrue();
+    assertThat(harness.stored(locked).orElseThrow().getLastModifiedRemote())
+        .isEqualTo(storedMarker);
+  }
+
+  @Test
+  void refusedCredentialsFailTheRunAndKeepTheBestand() throws Exception {
+    fixture.put(0, "a.txt", "Erster Text.");
+    fixture.put(1, "b.txt", "Zweiter Text.");
+    fullSync();
+
+    fixture.remove(1, "b.txt");
+    fixture.rejectCredentials();
+    FileSyncHarness.Run run = fullSync();
+
+    assertThat(run.failure()).isNotBlank();
+    assertThat(run.listingComplete()).isNull();
+    assertThat(harness.storedPaths())
+        .containsExactlyInAnyOrder(fixture.filePath(0, "a.txt"), fixture.filePath(1, "b.txt"));
+  }
+
+  @Test
   void theProtocolNamesEachSkippedFileInItsCategoryAndSummarisesTheRun() throws Exception {
     fixture.put(0, "text.txt", "Ein Text.");
     fixture.put(0, "foto.png", new byte[64], "image/png");
@@ -146,5 +241,60 @@ public abstract class FileStoreContract {
     assertThat(run.listingComplete())
         .as("a skipped file is still present: the listing stays complete")
         .isTrue();
+  }
+
+  /** Removes one file at the source right before its download, after the listing showed it. */
+  private record RemovingBeforeFetch(FileStore store, String filePath, Removal removal)
+      implements FileStore {
+
+    @FunctionalInterface
+    interface Removal {
+      void run() throws Exception;
+    }
+
+    @Override
+    public List<FileContainer> containers() {
+      return store.containers();
+    }
+
+    @Override
+    public FilePage list(FileContainer container, String continuation)
+        throws FileAccessException, InterruptedException {
+      return store.list(container, continuation);
+    }
+
+    @Override
+    public FileEntry head(FileContainer container, String id)
+        throws FileAccessException, InterruptedException {
+      return store.head(container, id);
+    }
+
+    @Override
+    public FetchedFile fetch(FileEntry entry, long maxBytes)
+        throws FileAccessException, InterruptedException {
+      if (entry.filePath().equals(filePath)) {
+        try {
+          removal.run();
+        } catch (Exception e) {
+          throw new IllegalStateException(e);
+        }
+      }
+      return store.fetch(entry, maxBytes);
+    }
+
+    @Override
+    public Optional<ChangeFeed> changes() {
+      return store.changes();
+    }
+
+    @Override
+    public SourceRequestMeter meter() {
+      return store.meter();
+    }
+
+    @Override
+    public void close() {
+      store.close();
+    }
   }
 }

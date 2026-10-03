@@ -14,4 +14,16 @@ public interface FileSyncWording {
 
   /** The note after the count of reported references the connector dropped before the run. */
   String droppedReferencesNote();
+
+  /** What to change when a full sync spent its budget without storing anything. */
+  String budgetStallAdvice();
+
+  /** Where an event run that spent its budget continues, the tail of the budget note. */
+  String eventRunContinuation();
+
+  /** The listing part of a full sync's summary, followed by the skip and failure figures. */
+  String listedSummary(long listed, long deselected);
+
+  /** The checking part of an event run's summary, followed by the skip and failure figures. */
+  String checkedSummary(long checked);
 }

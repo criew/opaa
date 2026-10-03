@@ -96,15 +96,16 @@ class SourceSyncStateTest {
     assertThat(state.pendingChangeCursors()).isEmpty();
 
     state.beginFullSync(UUID.randomUUID());
-    state.holdPendingChangeCursors(Map.of("drive:1", "100"));
+    state.holdPendingChangeCursors(Map.of("drive:1", "100", "drive:10", "110"));
     state.beginFullSync(UUID.randomUUID());
     assertThat(state.pendingChangeCursors())
         .as("kept on resumption")
-        .containsEntry("drive:1", "100");
+        .containsOnly(Map.entry("drive:1", "100"), Map.entry("drive:10", "110"));
     assertThat(state.changeCursors()).isEmpty();
 
     state.completeFullSync(Instant.parse("2026-10-03T10:00:00Z"));
-    assertThat(state.changeCursors()).containsExactly(Map.entry("drive:1", "100"));
+    assertThat(state.changeCursors())
+        .containsOnly(Map.entry("drive:1", "100"), Map.entry("drive:10", "110"));
     assertThat(state.pendingChangeCursors()).isEmpty();
 
     state.beginFullSync(UUID.randomUUID());
@@ -114,7 +115,7 @@ class SourceSyncStateTest {
     assertThat(state.pendingChangeCursors()).as("a fresh full sync starts without").isEmpty();
     assertThat(state.changeCursors())
         .as("the valid cursors stay until a full sync completes")
-        .containsExactly(Map.entry("drive:1", "200"));
+        .containsOnly(Map.entry("drive:1", "200"));
   }
 
   @Test

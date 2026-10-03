@@ -43,6 +43,30 @@ class S3FileStoreContractTest extends FileStoreContract {
       }
 
       @Override
+      public void denyReading(int container) {
+        String bucket = BUCKETS.get(container);
+        S3Scope scope = S3Scope.of(bucket, "");
+        try {
+          for (S3ObjectSummary object : store.listObjects(scope, null).objects()) {
+            store.failRead(
+                bucket,
+                object.key(),
+                () -> new S3AccessException.ReadForbidden(bucket, object.key()));
+          }
+        } catch (S3AccessException e) {
+          throw new IllegalStateException(e);
+        }
+      }
+
+      @Override
+      public void rejectCredentials() {
+        for (String bucket : BUCKETS) {
+          store.failBucket(
+              bucket, () -> new S3AccessException.Authentication("InvalidAccessKeyId"));
+        }
+      }
+
+      @Override
       public String containerKey(int container) {
         return BUCKETS.get(container);
       }
@@ -53,8 +77,8 @@ class S3FileStoreContractTest extends FileStoreContract {
       }
 
       @Override
-      public FileStore open() {
-        return new S3FileStore(store, settings);
+      public FileStore open(int pageSize) {
+        return new S3FileStore(store.pageSize(pageSize), settings);
       }
     };
   }

@@ -1,11 +1,22 @@
 package io.opaa.indexing.filesync;
 
-/** The contract against the reference store: it holds without any connector. */
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import org.junit.jupiter.api.Test;
+
+/**
+ * The contract against the reference store: it holds without any connector, and it fails for a
+ * store that reports its first page as the last one.
+ */
 class InMemoryFileStoreContractTest extends FileStoreContract {
 
   @Override
   protected Fixture fixture() {
-    InMemoryFileStore store = new InMemoryFileStore().container("A").container("B");
+    return fixtureOver(new InMemoryFileStore());
+  }
+
+  static Fixture fixtureOver(InMemoryFileStore store) {
+    store.container("A").container("B");
     return new Fixture() {
       @Override
       public void put(int container, String name, String text) {
@@ -28,6 +39,16 @@ class InMemoryFileStoreContractTest extends FileStoreContract {
       }
 
       @Override
+      public void denyReading(int container) {
+        store.denyReading(containerKey(container));
+      }
+
+      @Override
+      public void rejectCredentials() {
+        store.rejectCredentials();
+      }
+
+      @Override
       public String containerKey(int container) {
         return container == 0 ? "A" : "B";
       }
@@ -38,9 +59,25 @@ class InMemoryFileStoreContractTest extends FileStoreContract {
       }
 
       @Override
-      public FileStore open() {
-        return store;
+      public FileStore open(int pageSize) {
+        return store.pageSize(pageSize);
       }
     };
+  }
+
+  @Test
+  void theContractCatchesAStoreThatEndsItsListingAfterTheFirstPage() throws Exception {
+    FileStoreContract broken =
+        new FileStoreContract() {
+          @Override
+          protected Fixture fixture() {
+            return fixtureOver(new InMemoryFileStore().endAfterFirstPage());
+          }
+        };
+    broken.setUpContract();
+
+    assertThatThrownBy(broken::aListingOverSeveralPagesIsFollowedToItsLastPage)
+        .isInstanceOf(AssertionError.class)
+        .hasMessageContaining("every page");
   }
 }

@@ -49,20 +49,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * The file sync of one library over one open {@link FileStore} (ADR-0040, Entscheidung 1; the rules
- * of ADR-0027, Entscheidungen 3 to 5): every container is listed page by page to its last page,
- * every listed entry is marked present whatever its outcome, the change feature decides before any
- * download, and only a listing that reached the last page of every container reports {@link
- * ListingOutcome.Complete}. An unlistable container leaves its bestand alone and is named in
- * protocol and assessment; a spent request budget ends the run truncated; a {@link
- * FileAccessException.RunEnding} fails it with the store's own sentence.
- *
- * <p>Resumption ({@link SourceSyncState}): a run after an interrupted one lists every container
- * again, the unfinished ones first. A store with a {@link ChangeFeed} has its start cursors held
- * back from the first begin of a full sync until it completes. Downloads run {@code
- * downloadConcurrency} at a time while the listing goes on and are ingested on the listing thread
- * in listing order. The sync must be {@link #close() closed} so no download thread or temp file
- * outlives the run.
+ * The file sync of one library over one open {@link FileStore} (ADR-0040, Entscheidung 1): every
+ * container is listed to its last page, every listed entry is present whatever its outcome, the
+ * change feature decides before any download, and only a listing that reached the last page of
+ * every container is {@link ListingOutcome.Complete}. An unlistable container keeps its bestand; a
+ * {@link FileAccessException.RunEnding} fails the run. A resumed run lists the unfinished
+ * containers first and keeps the start cursors its first begin held ({@link SourceSyncState}).
+ * Downloads run concurrently but are ingested in listing order; {@link #close()} ends every
+ * download thread and deletes every temp file.
  */
 public final class FileSync implements AutoCloseable {
 
@@ -75,9 +69,6 @@ public final class FileSync implements AutoCloseable {
   public static final String GONE_SUFFIX = " Zwischen Auflistung und Abruf entfernt.";
   public static final String RECONCILIATION_FAILED_MESSAGE =
       "Abgleich des Bestands fehlgeschlagen; der nächste Lauf holt ihn nach";
-  static final String BUDGET_STALL_ADVICE =
-      "Der Lauf hat kein Objekt neu aufgenommen. Budget anheben oder die Geltungsbereiche"
-          + " aufteilen.";
 
   private final IndexingRun frame;
   private final FileStore store;
@@ -151,7 +142,7 @@ public final class FileSync implements AutoCloseable {
     SourceSyncState saved = syncStateRepository.save(state);
     // the state holds every container listed completely so far - the next run starts with the rest
     frame.budgetContinuation(this::fullSyncContinuation);
-    frame.budgetStallAdvice(BUDGET_STALL_ADVICE);
+    frame.budgetStallAdvice(wording.budgetStallAdvice());
     try {
       for (FileContainer container : ordered) {
         Instant start = clock.instant();
@@ -206,8 +197,7 @@ public final class FileSync implements AutoCloseable {
     frame.progress().setTotal(references.size() + outside);
     frame.progress().report();
     // no next event run continues this batch: the scheduled run covers the rest
-    frame.budgetContinuation(
-        () -> "die übrigen gemeldeten Objekte nimmt der nächste geplante Lauf auf");
+    frame.budgetContinuation(wording::eventRunContinuation);
     try {
       for (int i = 0; i < outside; i++) {
         frame.progress().recordSkipped();
@@ -240,6 +230,11 @@ public final class FileSync implements AutoCloseable {
       return;
     } catch (FileAccessException e) {
       handleFailure(reference.filePath(), e);
+      return;
+    }
+    if (entry.exclusion() instanceof Exclusion.Deselected) {
+      // outside the patterns: not part of the bestand, neither present nor fetched
+      frame.progress().recordSkipped();
       return;
     }
     if (entry.exclusion() instanceof Exclusion.Unavailable unavailable) {
@@ -597,6 +592,10 @@ public final class FileSync implements AutoCloseable {
     } catch (FileAccessException e) {
       return handleFailure(entry.filePath(), e);
     }
+    if (head.exclusion() instanceof Exclusion.Deselected) {
+      frame.progress().recordSkipped();
+      return false;
+    }
     if (head.exclusion() instanceof Exclusion.Unavailable unavailable) {
       skip(IndexingEventCategory.REJECTED, unavailable.message(), entry.filePath());
       return false;
@@ -740,9 +739,10 @@ public final class FileSync implements AutoCloseable {
             .append(" Anfragen, ")
             .append(ByteSizes.format(meter.bytesDownloaded()))
             .append(" geladen; ")
-            .append(eventRun() ? checked : listed)
-            .append(eventRun() ? " gemeldete Objekte geprüft, " : " Objekte gelistet, ")
-            .append(eventRun() ? "" : deselected + " durch Muster ausgeschlossen, ")
+            .append(
+                eventRun()
+                    ? wording.checkedSummary(checked)
+                    : wording.listedSummary(listed, deselected))
             .append(frame.progress().skippedCount())
             .append(" übersprungen, ")
             .append(frame.progress().processedCount())

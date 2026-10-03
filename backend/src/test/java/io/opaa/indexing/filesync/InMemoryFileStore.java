@@ -29,12 +29,16 @@ public final class InMemoryFileStore implements FileStore {
 
   private final Map<String, TreeMap<String, StoredFile>> containers = new LinkedHashMap<>();
   private final Set<String> unlistable = new HashSet<>();
+  private final Set<String> unreadable = new HashSet<>();
+  private final Set<String> deselected = new HashSet<>();
   private final Map<String, List<String>> unchangedSubtrees = new LinkedHashMap<>();
   private final List<String> calls = new ArrayList<>();
   private SourceRequestMeter meter = new SourceRequestMeter();
   private int pageSize = 1000;
   private ChangeFeed feed;
   private int cursors;
+  private boolean credentialsRejected;
+  private boolean endAfterFirstPage;
 
   public InMemoryFileStore container(String key) {
     containers.computeIfAbsent(key, k -> new TreeMap<>());
@@ -65,6 +69,30 @@ public final class InMemoryFileStore implements FileStore {
     return this;
   }
 
+  /** From now on no file of {@code container} can be read; listing still works. */
+  public InMemoryFileStore denyReading(String container) {
+    unreadable.add(container);
+    return this;
+  }
+
+  /** From now on every request fails as if the credentials were revoked. */
+  public InMemoryFileStore rejectCredentials() {
+    credentialsRejected = true;
+    return this;
+  }
+
+  /** {@code name} lies outside the library's patterns, in listing and single check alike. */
+  public InMemoryFileStore deselect(String name) {
+    deselected.add(name);
+    return this;
+  }
+
+  /** A broken store for the contract's own test: it reports the first page as the last one. */
+  public InMemoryFileStore endAfterFirstPage() {
+    endAfterFirstPage = true;
+    return this;
+  }
+
   public InMemoryFileStore pageSize(int pageSize) {
     this.pageSize = pageSize;
     return this;
@@ -88,15 +116,9 @@ public final class InMemoryFileStore implements FileStore {
           }
 
           @Override
-          public String startCursor(String feedKey) {
+          public String startCursor(String feedKey) throws FileAccessException {
             call("startCursor " + feedKey);
             return "cursor-" + (++cursors);
-          }
-
-          @Override
-          public ChangePage read(String feedKey, String cursor) {
-            call("read " + feedKey + " @" + cursor);
-            return new ChangePage(List.of(), null, cursor, false);
           }
         };
     return this;
@@ -124,8 +146,7 @@ public final class InMemoryFileStore implements FileStore {
   }
 
   @Override
-  public FilePage list(FileContainer container, String continuation)
-      throws FileAccessException.ContainerUnlistable {
+  public FilePage list(FileContainer container, String continuation) throws FileAccessException {
     call("list " + container.key() + (continuation == null ? "" : " @" + continuation));
     if (unlistable.contains(container.key())) {
       throw new FileAccessException.ContainerUnlistable(
@@ -142,7 +163,7 @@ public final class InMemoryFileStore implements FileStore {
     for (String name : names.subList(start, end)) {
       entries.add(entry(container, name));
     }
-    String next = end < names.size() ? Integer.toString(end) : null;
+    String next = end < names.size() && !endAfterFirstPage ? Integer.toString(end) : null;
     List<String> subtrees =
         start == 0
             ? skipped.stream().map(folder -> filePath(container.key(), folder) + "/").toList()
@@ -151,7 +172,7 @@ public final class InMemoryFileStore implements FileStore {
   }
 
   @Override
-  public FileEntry head(FileContainer container, String id) throws FileAccessException.Gone {
+  public FileEntry head(FileContainer container, String id) throws FileAccessException {
     call("head " + container.key() + "/" + id);
     if (!containers.get(container.key()).containsKey(id)) {
       throw new FileAccessException.Gone(
@@ -161,9 +182,11 @@ public final class InMemoryFileStore implements FileStore {
   }
 
   @Override
-  public FetchedFile fetch(FileEntry entry, long maxBytes)
-      throws FileAccessException.Gone, FileAccessException.TooLarge {
+  public FetchedFile fetch(FileEntry entry, long maxBytes) throws FileAccessException {
     call("fetch " + entry.container().key() + "/" + entry.id());
+    if (unreadable.contains(entry.container().key())) {
+      throw new FileAccessException.Unreadable("„" + entry.id() + "“ darf nicht gelesen werden.");
+    }
     StoredFile file = containers.get(entry.container().key()).get(entry.id());
     if (file == null) {
       throw new FileAccessException.Gone("„" + entry.id() + "“ existiert nicht mehr.");
@@ -194,9 +217,12 @@ public final class InMemoryFileStore implements FileStore {
   @Override
   public void close() {}
 
-  private void call(String call) {
+  private void call(String call) throws FileAccessException.RunEnding {
     calls.add(call);
     meter.recordRequest();
+    if (credentialsRejected) {
+      throw new FileAccessException.RunEnding("Die Zugangsdaten wurden abgelehnt.");
+    }
   }
 
   private FileEntry entry(FileContainer container, String name) {
@@ -218,7 +244,7 @@ public final class InMemoryFileStore implements FileStore {
         file.bytes().length,
         marker(file),
         file.mediaType(),
-        null);
+        deselected.contains(name) ? new Exclusion.Deselected(" außerhalb der Muster") : null);
   }
 
   private static String marker(StoredFile file) {

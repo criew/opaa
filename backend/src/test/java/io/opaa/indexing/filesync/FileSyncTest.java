@@ -1,6 +1,7 @@
 package io.opaa.indexing.filesync;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 
@@ -42,7 +43,7 @@ class FileSyncTest {
         .as("one start cursor per stream, before anything is listed")
         .startsWith("startCursor stream:A", "startCursor stream:B", "list A");
     assertThat(harness.state().pendingChangeCursors())
-        .containsExactly(
+        .containsOnly(
             java.util.Map.entry("stream:A", "cursor-1"),
             java.util.Map.entry("stream:B", "cursor-2"));
     assertThat(harness.state().changeCursors()).as("an incomplete sync validates none").isEmpty();
@@ -54,7 +55,7 @@ class FileSyncTest {
         .as("the resumed sync keeps the cursors its first begin held")
         .noneMatch(call -> call.startsWith("startCursor"));
     assertThat(harness.state().changeCursors())
-        .containsExactly(
+        .containsOnly(
             java.util.Map.entry("stream:A", "cursor-1"),
             java.util.Map.entry("stream:B", "cursor-2"));
     assertThat(harness.state().pendingChangeCursors()).isEmpty();
@@ -64,7 +65,7 @@ class FileSyncTest {
     assertThat(resumed.calls()).startsWith("startCursor stream:A", "startCursor stream:B");
     assertThat(harness.state().changeCursors())
         .as("a new full sync replaces them once it completes")
-        .containsExactly(
+        .containsOnly(
             java.util.Map.entry("stream:A", "cursor-3"),
             java.util.Map.entry("stream:B", "cursor-4"));
   }
@@ -87,6 +88,7 @@ class FileSyncTest {
             .container("A")
             .put("A", "alt/x.txt", "X.")
             .put("A", "alt/tief/y.txt", "Y.")
+            .put("A", "altlasten/z.txt", "Z.")
             .put("A", "neu.txt", "Neu.");
     harness.fullSync(store);
     UUID altFolder = UUID.randomUUID();
@@ -95,11 +97,14 @@ class FileSyncTest {
         .orElseThrow()
         .setFolderId(altFolder);
 
-    store.reset().unchangedSubtree("A", "alt");
+    store.reset().unchangedSubtree("A", "alt").remove("A", "altlasten/z.txt");
     FileSyncHarness.Run run = harness.fullSync(store);
 
     assertThat(run.listingComplete()).isTrue();
-    assertThat(run.eventsOf(IndexingEventCategory.REMOVED)).isEmpty();
+    assertThat(run.eventsOf(IndexingEventCategory.REMOVED))
+        .as("the subtree ends at its path boundary: a sibling sharing its name prefix is not kept")
+        .extracting(IndexingRunEvent::getReference)
+        .containsExactly(InMemoryFileStore.filePath("A", "altlasten/z.txt"));
     assertThat(harness.storedPaths())
         .containsExactlyInAnyOrder(
             InMemoryFileStore.filePath("A", "alt/x.txt"),
@@ -108,6 +113,34 @@ class FileSyncTest {
     assertThat(store.calls()).noneMatch(call -> call.contains("alt/"));
     verify(harness.folderService())
         .pruneOrphanedFolders(eq(harness.library()), eq(Set.of(altFolder)));
+  }
+
+  @Test
+  void anUnchangedSubtreeMustEndAtAPathBoundary() {
+    assertThatThrownBy(() -> new FilePage(List.of(), null, List.of("mem://A/alt")))
+        .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  @Test
+  void anEventRunSkipsADeselectedFileWithoutFetchingItOrKeepingItPresent() throws Exception {
+    InMemoryFileStore store =
+        new InMemoryFileStore()
+            .container("A")
+            .put("A", "entwurf.txt", "Entwurf.")
+            .deselect("entwurf.txt");
+
+    FileSyncHarness.Run run =
+        harness.refresh(
+            store,
+            List.of(
+                new FileReference(
+                    new FileContainer("A"),
+                    "entwurf.txt",
+                    InMemoryFileStore.filePath("A", "entwurf.txt"))));
+
+    assertThat(run.ingested()).isEmpty();
+    assertThat(run.skipped()).isEqualTo(1);
+    assertThat(store.calls()).containsExactly("head A/entwurf.txt");
   }
 
   @Test
