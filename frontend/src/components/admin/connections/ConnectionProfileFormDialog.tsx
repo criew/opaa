@@ -42,6 +42,7 @@ interface Draft {
   tenant: string
   scopes: string
   clientSecretExpiresOn: string
+  connectorSettings: string
 }
 
 function draftFrom(profile: ConnectionProfileResponse | null): Draft {
@@ -54,12 +55,32 @@ function draftFrom(profile: ConnectionProfileResponse | null): Draft {
     tenant: profile?.tenant ?? '',
     scopes: profile?.scopes ?? '',
     clientSecretExpiresOn: profile?.clientSecretExpiresOn ?? '',
+    connectorSettings: profile?.connectorSettings
+      ? JSON.stringify(profile.connectorSettings, null, 2)
+      : '',
   }
 }
 
 function blankToNull(value: string): string | null {
   const trimmed = value.trim()
   return trimmed === '' ? null : trimmed
+}
+
+/** The connector defaults as an object, `null` for none, `undefined` for no JSON object. */
+function parseSettings(text: string): Record<string, unknown> | null | undefined {
+  if (text.trim() === '') return null
+  try {
+    const value: unknown = JSON.parse(text)
+    return typeof value === 'object' && value !== null && !Array.isArray(value)
+      ? (value as Record<string, unknown>)
+      : undefined
+  } catch {
+    return undefined
+  }
+}
+
+function count(n: number, one: string, many: string) {
+  return `${n} ${n === 1 ? one : many}`
 }
 
 interface ConnectionProfileFormDialogProps {
@@ -73,8 +94,9 @@ interface ConnectionProfileFormDialogProps {
 
 /**
  * Anlegen und Bearbeiten eines Zugangs (#2160). Beim Anlegen wählt die Systemverwaltung zuerst
- * die Quellart als Kachel; Quellarten ohne Zugänge bleiben mit Grund sichtbar. Eine Änderung, die
- * Geheimnisse verwirft, fragt vorher mit der Zahl der betroffenen Verbindungen nach.
+ * die Quellart als Kachel; Quellarten ohne Zugänge bleiben mit Grund sichtbar. Bearbeiten sendet
+ * alle Felder samt Konnektor-Vorgaben zurück; eine Änderung, die Geheimnisse verwirft, fragt
+ * vorher mit der Zahl der betroffenen Verbindungen und Bibliotheken nach.
  */
 export default function ConnectionProfileFormDialog({
   open,
@@ -91,11 +113,22 @@ export default function ConnectionProfileFormDialog({
 
   const isEdit = profile !== null
   const descriptor = sourceTypes.find((type) => type.type === sourceType) ?? null
-  const methods = descriptor?.authMethods ?? []
+  // While editing, the profile's own method stays offered even if the list has not loaded yet.
+  const methods: ConnectionAuthMethod[] =
+    descriptor?.authMethods ?? (profile ? [profile.authMethod] : [])
   const method = draft.authMethod === '' ? null : draft.authMethod
   const usesRegistration = method !== null && WITH_REGISTRATION.includes(method)
   const usesScopes = method !== null && WITH_SCOPES.includes(method)
   const connectorTypes = sourceTypes.filter((type) => !type.uploads)
+  const showFields = isEdit || (descriptor !== null && descriptor.profileSupport !== 'FORBIDDEN')
+  const settingsValid = parseSettings(draft.connectorSettings) !== undefined
+  const complete =
+    showFields &&
+    draft.name.trim() !== '' &&
+    draft.serverUrl.trim() !== '' &&
+    method !== null &&
+    (!usesRegistration || draft.clientId.trim() !== '') &&
+    settingsValid
 
   function close() {
     if (!submitting) onClose()
@@ -112,6 +145,7 @@ export default function ConnectionProfileFormDialog({
       clientSecretExpiresOn: usesRegistration ? blankToNull(draft.clientSecretExpiresOn) : null,
       scopes: usesScopes ? blankToNull(draft.scopes) : null,
       clientSecret: usesRegistration && secret.trim() !== '' ? secret.trim() : undefined,
+      connectorSettings: parseSettings(draft.connectorSettings) ?? null,
     }
   }
 
@@ -123,15 +157,7 @@ export default function ConnectionProfileFormDialog({
   }
 
   async function handleSubmit() {
-    if (
-      sourceType === null ||
-      draft.name.trim() === '' ||
-      draft.serverUrl.trim() === '' ||
-      !method
-    ) {
-      setError('Quellart, Name, Server-Adresse und Anmeldeart sind erforderlich.')
-      return
-    }
+    if (!complete) return
     setError(null)
     setSubmitting(true)
     try {
@@ -143,11 +169,7 @@ export default function ConnectionProfileFormDialog({
         const impact = await getConnectionProfileImpact(profile.id)
         const confirmed = await confirmAction({
           question: `Zugangsdaten von „${profile.name}“ verwerfen?`,
-          consequence: `Die Änderung betrifft ${impact.connections} ${
-            impact.connections === 1 ? 'Verbindung' : 'Verbindungen'
-          } und ${impact.libraries} ${
-            impact.libraries === 1 ? 'Bibliothek' : 'Bibliotheken'
-          }. Alle hinterlegten Geheimnisse werden verworfen und müssen neu eingetragen werden.`,
+          consequence: `Die Änderung betrifft ${count(impact.connections, 'Verbindung', 'Verbindungen')} und ${count(impact.libraries, 'Bibliothek', 'Bibliotheken')}. Alle hinterlegten Geheimnisse werden verworfen und müssen neu eingetragen werden.`,
           confirmLabel: 'Verwerfen und speichern',
           tone: 'danger',
         })
@@ -191,13 +213,13 @@ export default function ConnectionProfileFormDialog({
                   icon: <SourceTypeIcon sourceType={type.type} fontSize={22} />,
                   disabledReason:
                     type.profileSupport === 'FORBIDDEN'
-                      ? 'Diese Quellart kennt keine Zugänge.'
+                      ? 'Für diese Quellart sind in dieser Version keine Zugänge möglich.'
                       : null,
                 }))}
               />
             </>
           )}
-          {descriptor && (
+          {showFields && (
             <>
               <TextField
                 label="Name"
@@ -296,6 +318,20 @@ export default function ConnectionProfileFormDialog({
                   helperText="Durch Leerzeichen getrennt, z. B. „Files.Read offline_access“."
                 />
               )}
+              <TextField
+                label="Konnektor-Vorgaben (JSON)"
+                size="small"
+                multiline
+                minRows={2}
+                value={draft.connectorSettings}
+                onChange={(e) => setDraft({ ...draft, connectorSettings: e.target.value })}
+                error={!settingsValid}
+                helperText={
+                  settingsValid
+                    ? 'Optional. Überschreiben die gleichnamigen Einstellungen jeder Bibliothek auf diesem Zugang.'
+                    : 'Die Vorgaben müssen ein JSON-Objekt sein.'
+                }
+              />
             </>
           )}
         </Stack>
@@ -304,7 +340,11 @@ export default function ConnectionProfileFormDialog({
         <Button onClick={close} disabled={submitting}>
           Abbrechen
         </Button>
-        <Button variant="contained" onClick={() => void handleSubmit()} disabled={submitting}>
+        <Button
+          variant="contained"
+          onClick={() => void handleSubmit()}
+          disabled={submitting || !complete}
+        >
           {isEdit ? 'Speichern' : 'Anlegen'}
         </Button>
       </DialogActions>

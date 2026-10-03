@@ -1,12 +1,11 @@
-import { AxiosError } from 'axios'
 import type {
   ConnectionProfileCreateRequest,
   ConnectionProfileImpactResponse,
   ConnectionProfileResponse,
   ConnectionProfileUpdateRequest,
 } from '../types/api'
-import { isErrorResponse } from '../types/api'
 import { apiClient as client, normalizeError } from './api'
+import { apiErrorCode } from './apiErrorDetails'
 
 const ADMIN = '/v1/admin/connection-profiles'
 
@@ -15,10 +14,7 @@ export const CONFIRMATION_REQUIRED = 'CONNECTION_PROFILE_CONFIRMATION_REQUIRED'
 
 /** Whether `err` is the refusal of a change that discards secrets without confirmation. */
 export function needsConfirmation(err: unknown): boolean {
-  const cause = err instanceof Error ? err.cause : undefined
-  if (!(cause instanceof AxiosError)) return false
-  const data: unknown = cause.response?.data
-  return isErrorResponse(data) && data.code === CONFIRMATION_REQUIRED
+  return apiErrorCode(err) === CONFIRMATION_REQUIRED
 }
 
 // Connection profiles ("Zugänge", #2160) - SYSTEM_ADMIN only. The client secret is write-only:

@@ -23,17 +23,17 @@ describe('LibrarySourceSection - Zugang (#2160)', () => {
     expect(screen.queryByTestId('connection-profile-removed')).not.toBeInTheDocument()
   })
 
-  it('says that the profile was removed and what happens to the content', () => {
+  it('tells every reader that the profile was removed, who acts and what happens to the content', () => {
     renderWithProviders(
       <LibrarySourceSection
         libraryId="library-1"
         library={{ ...library, connectionProfileRemoved: true }}
-        canEditSource
+        canEditSource={false}
       />,
     )
 
     expect(screen.getByTestId('connection-profile-removed')).toHaveTextContent(
-      /Zugang entfernt.*bleibt durchsuchbar/,
+      /Zugang entfernt.*bleibt durchsuchbar.*Verwaltenden der Bibliothek/,
     )
   })
 })

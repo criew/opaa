@@ -31,6 +31,19 @@ import {
 } from '../components/admin/connections/connectionProfileLabels'
 import { contentWidth } from '../theme/tokens'
 
+/** "31.03.2027" for an ISO date, read as a calendar day without a time zone shift. */
+function formatDay(isoDate: string) {
+  const [year, month, day] = isoDate.split('-')
+  return `${day}.${month}.${year}`
+}
+
+/** Whether the ISO date lies before today. */
+function isPast(isoDate: string) {
+  const today = new Date()
+  const iso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+  return isoDate < iso
+}
+
 function connectionCount(count: number) {
   return count === 1 ? '1 Verbindung' : `${count} Verbindungen`
 }
@@ -42,7 +55,8 @@ function connectionCount(count: number) {
  */
 export default function ConnectionProfileManagementPage() {
   const isSystemAdmin = useAuthStore((s) => s.user?.systemRole === 'SYSTEM_ADMIN')
-  const { sourceTypes } = useSourceTypes()
+  const { sourceTypes, loaded: sourceTypesLoaded } = useSourceTypes()
+  const anyTypeAdmitsProfiles = sourceTypes.some((type) => type.profileSupport !== 'FORBIDDEN')
   const [profiles, setProfiles] = useState<ConnectionProfileResponse[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -148,10 +162,21 @@ export default function ConnectionProfileManagementPage() {
           <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
             {profiles.length === 1 ? '1 Zugang' : `${profiles.length} Zugänge`}
           </Typography>
-          <Button variant="contained" onClick={() => setForm({ open: true, profile: null })}>
+          <Button
+            variant="contained"
+            disabled={!anyTypeAdmitsProfiles}
+            onClick={() => setForm({ open: true, profile: null })}
+          >
             Neuer Zugang
           </Button>
         </Box>
+
+        {sourceTypesLoaded && !anyTypeAdmitsProfiles && (
+          <Alert severity="info" sx={{ mb: 2 }} data-testid="no-profile-source-type">
+            Zugänge stehen zur Verfügung, sobald eine Quellart sie unterstützt. In dieser Version
+            bietet noch keine Quellart Zugänge an.
+          </Alert>
+        )}
 
         {error && (
           <Alert severity="error" sx={{ mb: 2 }}>
@@ -185,11 +210,15 @@ export default function ConnectionProfileManagementPage() {
                   <TableCell>
                     <Stack spacing={0.5} sx={{ alignItems: 'flex-start' }}>
                       <span>{profile.name}</span>
-                      {profile.clientSecretExpiresSoon && (
+                      {profile.clientSecretExpiresSoon && profile.clientSecretExpiresOn && (
                         <Chip
                           size="small"
-                          color="warning"
-                          label={`Secret läuft ab am ${profile.clientSecretExpiresOn ?? ''}`}
+                          color={isPast(profile.clientSecretExpiresOn) ? 'error' : 'warning'}
+                          label={
+                            isPast(profile.clientSecretExpiresOn)
+                              ? `Secret abgelaufen am ${formatDay(profile.clientSecretExpiresOn)}`
+                              : `Secret läuft ab am ${formatDay(profile.clientSecretExpiresOn)}`
+                          }
                         />
                       )}
                     </Stack>
@@ -209,7 +238,11 @@ export default function ConnectionProfileManagementPage() {
                       spacing={1}
                       sx={{ justifyContent: 'flex-end', flexWrap: 'wrap' }}
                     >
-                      <Button size="small" onClick={() => setForm({ open: true, profile })}>
+                      <Button
+                        size="small"
+                        onClick={() => setForm({ open: true, profile })}
+                        aria-label={`${profile.name} bearbeiten`}
+                      >
                         Bearbeiten
                       </Button>
                       <Button

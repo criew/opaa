@@ -37,6 +37,7 @@ export const connectionProfileHandlers = [
       clientSecretExpiresSoon: false,
       tenant: body.tenant ?? null,
       scopes: body.scopes ?? null,
+      connectorSettings: body.connectorSettings ?? null,
       connectionCount: 0,
       createdAt: now,
       updatedAt: now,
@@ -73,6 +74,10 @@ export const connectionProfileHandlers = [
       ownership: body.ownership,
       clientId: body.clientId ?? null,
       clientSecretSet: body.clientSecret ? true : current.clientSecretSet,
+      clientSecretExpiresOn: body.clientSecretExpiresOn ?? null,
+      tenant: body.tenant ?? null,
+      scopes: body.scopes ?? null,
+      connectorSettings: body.connectorSettings ?? null,
       updatedAt: new Date().toISOString(),
     }
     mockConnectionProfiles[index] = updated
@@ -91,7 +96,7 @@ export const connectionProfileHandlers = [
     if (!profile) return notFound()
     return HttpResponse.json({
       connections: profile.connectionCount,
-      libraries: profile.connectionCount,
+      libraries: Math.ceil(profile.connectionCount / 2),
     })
   }),
 

@@ -3,14 +3,15 @@ import type { ConnectionProfileResponse } from '../types/api'
 function initialProfiles(): ConnectionProfileResponse[] {
   return [
     {
-      id: 'connection-profile-wiki',
-      name: 'Zugang Wiki intern',
-      sourceType: 'CONFLUENCE',
-      serverUrl: 'https://wiki.rheinfurt.example',
+      id: 'connection-profile-nextcloud',
+      name: 'Zugang Nextcloud intern',
+      sourceType: 'NEXTCLOUD',
+      serverUrl: 'https://cloud.rheinfurt.example',
       authMethod: 'PERSONAL_SECRET',
       ownership: 'LIBRARY',
       clientSecretSet: false,
       clientSecretExpiresSoon: false,
+      connectorSettings: { edition: 'INTERN' },
       connectionCount: 2,
       createdAt: '2026-10-01T09:00:00Z',
       updatedAt: '2026-10-01T09:00:00Z',
