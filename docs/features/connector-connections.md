@@ -397,8 +397,9 @@ Versetzung oder Gruppenwechsel. Für lange Abwesenheit oder Versetzung gibt das 
    eingeschlossen, und wo möglich beim Anbieter widerrufen.
 2. **Sofort:** Ihre privaten Bibliotheken stoppen und sind für niemanden lesbar.
 3. **Nach der Löschfrist:** Die privaten Bibliotheken werden gelöscht. Die Frist stellt die Installation
-   ein; sie hat eine **feste Obergrenze**, die keine Installation überschreiten kann. Innerhalb der
-   Frist kann eine reaktivierte Person neu verbinden.
+   ein; sie hat eine **feste Obergrenze**, die keine Installation überschreiten kann (Vorgabe 30
+   Tage, einstellbar von 1 bis 90 Tagen, ADR-0041). Innerhalb der Frist kann eine reaktivierte Person
+   neu verbinden.
 
 **Sofortlöschung:** Die Besitzerin kann eine private Bibliothek jederzeit selbst sofort löschen.
 
@@ -421,8 +422,11 @@ in ein **eigenes Verbindungsprotokoll**:
 
 - Inhalt: wer, welches Profil, welches Ereignis, wann. Keine Token, keine Kontoadresse beim Anbieter
   (außer bei Quellverbindungen, wo sie ohnehin in den Bibliotheksdetails steht).
-- **Eigene Leserolle;** die Systemverwaltung liest es nicht automatisch mit.
-- **Aufbewahrungsfrist,** danach wird gelöscht.
+- **Eigene Leserolle:** `AUDITOR`, mit Anlass und begrenztem Zeitraum wie beim Revisionsprotokoll
+  ([ADR-0036](../decisions/0036-berechtigungsmodell-gruppen-und-faehigkeiten.md), Nachtrag vom
+  03.10.2026). Die Systemverwaltung liest es nicht mit.
+- **Aufbewahrungsfrist,** danach wird gelöscht: Vorgabe 12 Monate, einstellbar von 6 bis 24 Monaten
+  ([ADR-0041](../decisions/0041-verbindungen-als-eigenes-modul.md)).
 
 Token und Geheimnisse erscheinen nie in Logs, Antworten oder Audit. Neben den beiden heutigen Plätzen
 (Zugangsdaten und Push-Geheimnis der Bibliothek) entstehen zwei neue: das **Client-Secret am Profil**
@@ -487,7 +491,8 @@ Unabhängig davon: Spike zum Token-Austausch gegen openDesk. Der MCP-Client folg
 | [ADR-0036](../decisions/0036-berechtigungsmodell-gruppen-und-faehigkeiten.md) | `CREATE_CONNECTOR_LIBRARY` wird je Profil bzw. je Konnektortyp erteilt; neue Konnektoren und Profile ab Werk aus; Entzug wirkt nur auf die Neuanlage (Neuverbinden ist keine), Sperre auf Läufe; **Nur-Besitzerin-Regel** für private Bibliotheken als eigene Sperre am Grant- und Fremdzugangspfad, von der Systemverwaltung nicht lockerbar; „Sicht als“ für private Bibliotheken ausgeschlossen; **Vorfallszugriff auf Inhalte** als neue Befugnis neben den Rollen (Antrag `AUDITOR`, Bestätigung durch eine zweite benannte Rolle, `SYSTEM_ADMIN` nicht eingeschlossen); Leserolle des Verbindungsprotokolls |
 | [ADR-0038](../decisions/0038-steckbare-konnektoren.md) | Profilangabe (verboten, optional, Pflicht) und Anmeldearten gehören in die Konnektor-Beschreibung; das Ziel der Zugangsdaten leitet sich bei Profilen aus der Server-Adresse des Profils ab; Entscheidung 3 („genau zwei Plätze für Geheimnisse“) wird um das Client-Secret am Profil und den Token-Speicher erweitert, beide auf demselben Verschlüsselungsweg |
 
-Ob Token-Speicher und Verbindungsmodell einen eigenen ADR brauchen, entscheidet das Konzept-Issue.
+Die Nachträge sind geschrieben (#2159). Modulschnitt, Token-Speicher, Lebenszyklus und Fristen
+legt [ADR-0041](../decisions/0041-verbindungen-als-eigenes-modul.md) fest.
 
 ---
 
@@ -509,10 +514,8 @@ Ob Token-Speicher und Verbindungsmodell einen eigenen ADR brauchen, entscheidet 
 
 - **Sicherungen innerhalb der Löschfrist:** Ob und wie gelöschte private Bibliotheken aus Sicherungen
   entfernt oder deren Wiedereinspielung verhindert wird, klärt der Datenschutz.
-- **Werte der Fristen:** Vorgabe und Obergrenze der Löschfrist, Aufbewahrungsfrist des
-  Verbindungsprotokolls; Abstimmung mit Personalrat und Datenschutz.
-- **Leserolle des Verbindungsprotokolls:** eigene Systemrolle oder Fähigkeit, festzulegen im
-  ADR-Nachtrag zu ADR-0036.
+- **Werte der Fristen:** Die Abstimmung mit Personalrat und Datenschutz steht noch aus. Sie kann die
+  Vorgaben innerhalb der Grenzen aus ADR-0041 (Entscheidung 7) ändern.
 - **Live-Abfrage** verbundener Konten im Chat ohne Indexierung: mit #1747.
 - **Token-Austausch** als weitere Anmeldeart, abhängig vom Spike.
 - **Weitere Kanäle** für Ablaufwarnungen und Abbrüche (E-Mail, Zusammenfassung): Heute gibt es die

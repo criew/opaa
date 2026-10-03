@@ -26,6 +26,11 @@ setzt".
 **Nachtrag mit [ADR-0039](0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md) (02.10.2026,
 #2091):** In Entscheidung 9 entfällt der Bezug auf `listed`; die Regel selbst gilt unverändert.
 
+**Nachtrag mit [ADR-0041](0041-verbindungen-als-eigenes-modul.md) (03.10.2026, #2159):**
+`CREATE_CONNECTOR_LIBRARY` bekommt einen Geltungsbereich (Profil oder Konnektortyp). Dazu kommen die
+Nur-Besitzerin-Regel, der Ausschluss von „Sicht als“, die Vollmacht „Vorfallszugriff“ und die
+Leserolle des Verbindungsprotokolls. Der Nachtrag steht in Entscheidung 5.
+
 **Präzisiert, ohne aufzuheben:** [ADR-0016](0016-loeschschicksal-rechtehistorie.md) (Entscheidung 8),
 [ADR-0025](0025-mehrere-oidc-anbieter.md) (Entscheidungen 2 und 3),
 [ADR-0033](0033-lokale-benutzerverwaltung.md) (Entscheidung 2).
@@ -423,6 +428,60 @@ Entscheidung 1 widerspräche.
 > „offen" hat der Koordinator gesetzt, die Bestätigung durch den Maintainer steht im Ticket aus. Das
 > Historienintervall beginnt mit der Migration, nicht mit der Organisation: Das Recht gab es vorher
 > nicht.
+
+> **Nachtrag (03.10.2026, #2159, Epic #2147): Verbindungsprofile, private Bibliotheken,
+> Vorfallszugriff.** Grundlage sind [connector-connections.md](../features/connector-connections.md)
+> und [ADR-0041](0041-verbindungen-als-eigenes-modul.md).
+>
+> 1. **`CREATE_CONNECTOR_LIBRARY` hat einen Geltungsbereich.** Er lautet `TYPE:<Schlüssel>` für eine
+>    Bibliothek mit frei eingetragener Adresse oder `PROFILE:<Kennung>` für eine Bibliothek oder ein
+>    verbundenes Konto über ein Profil. `capability_grants` und `capability_grant_history` bekommen
+>    dafür eine Spalte. Sie ist Pflicht für diese Fähigkeit und für alle anderen leer, und die
+>    Eindeutigkeit gilt je (Organisation, Fähigkeit, Subjekt, Geltungsbereich). rights deutet den
+>    Wert nicht; connections prüft ihn und entfernt beim Löschen eines Profils dessen Grants, wobei
+>    die Historie schließt. Jede Prüfung nennt den Geltungsbereich, eine Prüfung ohne gibt es für
+>    diese Fähigkeit nicht mehr.
+>    - **Präzisierung der Begriffe:** Der Geltungsbereich wählt einen Anlegepfad und ist kein
+>      Gegenstand im Sinn einer Befugnis. Er öffnet keinen Inhalt und bleibt an Gruppen und
+>      „Alle Konten“ vergebbar.
+>    - **Auslieferung:** Die bisherigen Grants werden je Typ für die fünf bestehenden Konnektoren
+>      (`FILESYSTEM`, `HTTP_DIRECTORY`, `RSS_FEED`, `CONFLUENCE`, `S3`) vervielfacht, und der
+>      Organisations-Seed vergibt diese fünf. Die Liste ist geschlossen und historisch. Ein neuer
+>      Typ oder ein neues Profil hat keine Zeile und ist damit aus. Eine Beschreibung, mit der ein
+>      Konnektor sich selbst öffnen könnte, gibt es bewusst nicht.
+> 2. **Entzug wirkt nur auf die Neuanlage.** Neuanlage sind das Anlegen einer Bibliothek und das
+>    erstmalige Verbinden eines Kontos auf einem Profil. Neu verbinden, trennen und löschen zählen
+>    nicht dazu. Läufe stoppt nur die **Sperre** von Konnektortyp oder Profil. Sie ist ein Zustand in
+>    connections und keine Fähigkeit.
+> 3. **Nur-Besitzerin-Regel.** Die Asset-Schale (`assets`) bekommt ein Merkmal „nur Besitzerin“. Es
+>    wird beim Anlegen gesetzt, ist unveränderlich und verlangt `owner_type = USER`. rights
+>    erzwingt es an jedem Grant (Person, Gruppe, „Alle Konten“), an der Freigabestufe, an der
+>    Eigentumsübertragung und in der Nachfolge: Eine private Bibliothek wird nie zum Fall „Nachfolge
+>    offen“ und folgt stattdessen dem Lebenszyklus aus ADR-0041. library erzwingt es an der
+>    Fremdzugangsfreigabe.
+>    - Die Regel ist **keine Stufe der Freigabe-Obergrenze** (#797) und hat keine Einstellung. Auch
+>      die Systemverwaltung kann sie nicht lockern.
+>    - Space-Zuordnungen privater Bibliotheken sieht nur die Besitzerin, in Oberfläche, API, Zählern
+>      und beim Löschen eines Space. Das setzt workspace mit dem Merkmal aus rights durch.
+> 4. **„Sicht als“ ist für private Bibliotheken ausgeschlossen.** Die Formel liefert eine private
+>    Bibliothek nur im eigenen Rechtekontext der Besitzerin, nie unter einer Vollmacht (Entscheidung
+>    7).
+> 5. **Vorfallszugriff auf Inhalte ist eine neue Vollmacht** im Sinn der Begriffe oben: befristet, an
+>    genau eine Person gebunden, mit genau einer privaten Bibliothek als Gegenstand und mit
+>    Begründung. Sie setzt vier Dinge voraus: Antrag durch `AUDITOR`, Bestätigung durch eine zweite,
+>    andere Person in einer eigens benannten Rolle, Benachrichtigung der Betroffenen und
+>    dokumentierte Beteiligung des Personalrats. `SYSTEM_ADMIN` ist nicht eingeschlossen. Weil die
+>    Formel die Vollmacht kennen muss, liegt sie in rights oder darunter, nicht in connections. Rolle
+>    und Ablauf legt #2171 fest; bis dahin gibt es keinen Inhaltszugriff auf private Bibliotheken.
+> 6. **Das Verbindungsprotokoll liest die Systemrolle `AUDITOR`**, über dasselbe Tor wie das
+>    Revisionsprotokoll (`AuditAccessGate`: Anlass, begrenzter Zeitraum, eigener Zugriffseintrag).
+>    `SYSTEM_ADMIN` liest es nicht mit. Abwägung:
+>    - Eine Fähigkeit scheidet aus, weil eine Fähigkeit nie ein Leserecht ist (oben, „Verhältnis zu
+>      Rollen und Vollmachten“).
+>    - Eine neue Systemrolle scheidet aus, weil `SystemRole` einwertig ist. Ein Konto müsste dann
+>      zwischen Revision und Verbindungsprotokoll wählen, und „Keine neue Systemrolle“ gilt weiter.
+>    - Die Forderung „eigene Leserolle, die Systemverwaltung liest nicht mit“ (Epic #2147,
+>      Beschluss 12) erfüllt `AUDITOR`, weil die Rolle von der Systemverwaltung getrennt ist.
 
 ### 6. Lebenszyklus: „Nachfolge offen" als abgeleiteter Zustand
 
