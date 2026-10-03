@@ -223,7 +223,15 @@ public class KnowledgeLibraryService {
     KnowledgeLibrary library = loadLibrary(libraryId, caller);
     accessService.requireRole(library, caller.id(), caller.isSystemAdmin(), AssetRole.MANAGER);
     // A new profile is a new target: its release counts, not the one the library was created under.
-    connectorRelease.requireCreatable(caller, library.getSourceType(), profileId);
+    boolean sameProfile =
+        libraryConnections
+            .connectionOf(libraryId)
+            .map(LibraryConnectionService.LibraryConnectionView::profile)
+            .map(profile -> profile.getId().equals(profileId))
+            .orElse(false);
+    if (!sameProfile) {
+      connectorRelease.requireCreatable(caller, library.getSourceType(), profileId);
+    }
     String previousUrl = library.getSourceUrl();
     boolean hadCredentials = library.getSourceCredentials() != null;
     libraryConnections.connect(library, profileId);
