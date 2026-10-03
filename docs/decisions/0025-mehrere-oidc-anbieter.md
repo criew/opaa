@@ -25,6 +25,29 @@ betroffenen Person selbst durch Anmeldung beim Anbieter eingelöste Übergabe ei
 eine noch nicht vergebene Anbieteridentität — das Subject stammt aus ihrem Token, nie aus einer Eingabe
 (ADR-0033, Entscheidung 12).
 
+**Nachtrag (03.10.2026, #2159, Epic #2147): Token für Quellen und verbundene Konten.** Grundlage
+sind [connector-connections.md](../features/connector-connections.md) und
+[ADR-0041](0041-verbindungen-als-eigenes-modul.md).
+
+- **„OPAA speichert keine Tokens“ (Entscheidung 1) gilt für die Anmeldung an OPAA.** Für
+  Quellverbindungen und verbundene Konten speichert OPAA Refresh- und Zugriffstoken sowie
+  persönliche Geheimnisse, verschlüsselt im Token-Speicher (ADR-0041).
+- **Anmeldetoken der OIDC-Anbieter werden nie als Quell-Token genutzt oder gespeichert.** Ob ein
+  Token-Austausch über den Identitätsanbieter möglich wird, klärt der Spike #2174. Eine weitere
+  Anmeldeart braucht einen eigenen Nachtrag. Die vierte, den Dienstkonto-Schlüssel (JWT-Assertion),
+  legt [ADR-0040](0040-google-drive-konnektor.md) fest. Sie speichert kein Token; das Zugriffstoken
+  lebt nur im Lauf.
+- **Der OAuth-Ablauf für Quellen widerspricht der Ablehnung von Variante B nicht.** Variante B war
+  die Anmeldung über `oauth2Login` mit HTTP-Sitzung und eigenem Token-Format. Der Ablauf für Quellen
+  meldet niemanden an OPAA an und braucht beides nicht:
+  - `state` und PKCE-Verifier liegen kurzlebig in einer Tabelle von connections und sind an die
+    angemeldete Person gebunden.
+  - Der Rücksprung des Anbieters landet in der SPA. Die SPA reicht `code` und `state` mit ihrem
+    Bearer-Token an das Backend weiter, und das Backend tauscht den Code als vertraulicher Client
+    mit dem Client-Secret des Profils.
+  - Das Backend bleibt zustandsloser Resource-Server. Ein `state` einer anderen Person wird
+    abgewiesen.
+
 ## Kontext
 
 OPAA kennt genau einen OIDC-Issuer: `OPAA_OIDC_ISSUER_URI`, `OPAA_OIDC_JWK_SET_URI`,
@@ -98,7 +121,8 @@ Clients, app-eigene Sitzung mit Refresh-Ledger), sondern bleibt bei der Architek
   nächsten Token dieses Issuers erneut, frühestens nach einer kurzen Wartezeit; die
   Anbieterverwaltung zeigt einen dauerhaft fehlerhaften Anbieter als solchen an (#1333).
 - Die Sitzungsverwaltung bleibt beim Anbieter (Access-Token-Lebensdauer, Refresh, SSO-Sitzung);
-  OPAA speichert keine Tokens und prägt keine eigenen.
+  OPAA speichert keine Tokens und prägt keine eigenen. (Gilt für die Anmeldung; Quellen und
+  verbundene Konten regelt der Nachtrag vom 03.10.2026 unter „Status“.)
 - **`azp` wird geprüft, `aud` nicht.** Trägt ein Token einen `azp`-Claim (authorized party),
   muss er der `client_id` der Anbieterzeile entsprechen; fehlt der Claim, gilt keine Prüfung.
   Einzige Ausnahme: Nennt `aud` die `client_id`, hat der Anbieter das Token ausdrücklich für

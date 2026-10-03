@@ -446,7 +446,6 @@ export default function LibraryCreatePage() {
               onSelectedGroupChange={setSelectedGroup}
             />
             <AssetRightsFields
-              idPrefix="library-create"
               pendingGrants={pendingGrants}
               onPendingGrantsChange={setPendingGrants}
             />

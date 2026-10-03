@@ -227,8 +227,8 @@ paths:
         recomputed live here, not stored, since space membership and asset grants both change
         independently afterwards. It, the creator and the creation time are disclosed to a caller
         with at least MANAGER only; a plain reader learns which spaces the asset stands in, nothing
-        about who put it there or who in them may read it - and a PRIVATE space keeps the promise
-        of its own visibility, that only its members know it exists.
+        about who put it there or who in them may read it - and a space stays unnamed to anyone
+        outside its members, since only its members know it exists.
       responses:
         "200":
           description: The associations of this asset the caller may see, plus the count of the rest
@@ -428,6 +428,23 @@ paths:
           schema:
             type: boolean
             default: false
+        - name: ids
+          in: query
+          required: false
+          description: >
+            Only the assets with these ids - e.g. the entries a space has associated, to show them
+            as full tiles. Like every filter it narrows the readable set: an id the caller may not
+            read yields no entry and counts nowhere. Absent applies no such restriction. At most 50,
+            so the repeated parameters keep the request line under the usual 8 KB limit; a client
+            names more in several requests.
+          style: form
+          explode: true
+          schema:
+            type: array
+            maxItems: 50
+            items:
+              type: string
+              format: uuid
         - name: page
           in: query
           required: false
@@ -452,8 +469,9 @@ paths:
                 $ref: "#/components/schemas/CatalogPageResponse"
         "400":
           description: >
-            A page, size or search text outside the values declared above -
-            refused rather than silently answering a different page than the one asked for.
+            A page, size or search text outside the values declared above, more than 50 ids, or
+            an id that is empty or not a UUID - refused rather than silently answering a
+            different page than the one asked for.
           content:
             application/json:
               schema:
@@ -736,7 +754,7 @@ components:
           minimum: 0
           description: >
             How many further spaces the asset stands in that this caller must not learn about -
-            PRIVATE spaces they are no member of. Always 0 for a caller with at least MANAGER on
+            spaces they are no member of. Always 0 for a caller with at least MANAGER on
             the asset, who sees every association by name.
           example: 2
 

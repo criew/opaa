@@ -49,8 +49,31 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: >
+            An initial member names a person or group that is unknown in the caller's
+            organization, or a group the caller may not select (ADR-0036, Entscheidung 9).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "409":
           $ref: "#/components/responses/Conflict"
+
+  /api/v1/spaces/chat-auto-cleanup:
+    get:
+      operationId: getChatAutoCleanupPeriods
+      tags: [space]
+      summary: >
+        The installation-wide periods of the automatic chat cleanup, for a space that does not
+        exist yet - the creation wizard names them beside its switch.
+      responses:
+        "200":
+          description: The configured periods
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatAutoCleanupPeriodsResponse"
 
   /api/v1/spaces/{spaceId}:
     parameters:
@@ -80,7 +103,7 @@ paths:
     put:
       operationId: updateSpace
       tags: [space]
-      summary: Update space name, description and visibility (admin or owner only)
+      summary: Update space name and description (admin or owner only)
       requestBody:
         required: true
         content:
@@ -419,11 +442,6 @@ components:
       enum: [MEMBER, CURATOR, ADMIN]
       example: CURATOR
 
-    SpaceVisibility:
-      type: string
-      enum: [PRIVATE, DISCOVERABLE, OPEN]
-      example: PRIVATE
-
     SpaceRequest:
       type: object
       required: [name]
@@ -438,8 +456,6 @@ components:
           maxLength: 2000
           nullable: true
           example: Engineering project space
-        visibility:
-          $ref: "#/components/schemas/SpaceVisibility"
         ownerId:
           type: string
           format: uuid
@@ -448,8 +464,11 @@ components:
         initialMembers:
           type: array
           nullable: true
+          description: >
+            Persons and groups admitted together with the space, under the same rules as
+            POST /v1/spaces/{spaceId}/members. The owner is always ADMIN, whatever is named here.
           items:
-            $ref: "#/components/schemas/SpaceMemberRequest"
+            $ref: "#/components/schemas/SpaceAddMemberRequest"
         chatAutoCleanup:
           type: boolean
           nullable: true
@@ -491,8 +510,6 @@ components:
           maxLength: 2000
           nullable: true
           example: Engineering project space
-        visibility:
-          $ref: "#/components/schemas/SpaceVisibility"
         chatAutoCleanup:
           type: boolean
           nullable: true
@@ -500,16 +517,6 @@ components:
             Switches the automatic archiving and deletion of inactive chats on or off.
             Omitted or null leaves the current setting unchanged. Switching it on starts both
             periods anew; nothing is archived or deleted retroactively.
-
-    SpaceMemberRequest:
-      type: object
-      required: [userId, role]
-      properties:
-        userId:
-          type: string
-          format: uuid
-        role:
-          $ref: "#/components/schemas/SpaceRole"
 
     SpaceListResponse:
       type: object
@@ -536,8 +543,6 @@ components:
             neither the owner nor a system admin - see
             docs/features/spaces-and-assets.md#einen-space-stilllegen-archivieren-statt-löschen.
           example: false
-        visibility:
-          $ref: "#/components/schemas/SpaceVisibility"
         memberCount:
           type: integer
           description: >
@@ -704,8 +709,6 @@ components:
             See docs/features/spaces-and-assets.md#einen-space-stilllegen-archivieren-statt-
             löschen.
           example: false
-        visibility:
-          $ref: "#/components/schemas/SpaceVisibility"
         ownerId:
           type: string
           format: uuid
@@ -765,6 +768,20 @@ components:
         enabled:
           type: boolean
           example: false
+        archiveAfterDays:
+          type: integer
+          description: Days without activity after which a chat that is not pinned is archived.
+          example: 90
+        deleteAfterDays:
+          type: integer
+          description: Days in the chat archive after which a chat is deleted.
+          example: 365
+
+    ChatAutoCleanupPeriodsResponse:
+      type: object
+      required: [archiveAfterDays, deleteAfterDays]
+      description: The installation-wide periods of ChatAutoCleanupResponse, without a space.
+      properties:
         archiveAfterDays:
           type: integer
           description: Days without activity after which a chat that is not pinned is archived.

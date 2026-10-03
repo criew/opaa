@@ -185,6 +185,55 @@ class AuditQueryServiceIntegrationTest {
         .containsExactlyInAnyOrder("LIBRARY_SHARED_TO_SPACE", "LIBRARY_DETACHED_FROM_SPACE");
   }
 
+  /**
+   * Space payloads no longer carry a visibility (#2156); entries written before keep it and are
+   * returned verbatim.
+   */
+  @Test
+  void aSpaceEntryWithTheFormerVisibilityInItsPayloadStaysReadable() {
+    String before = "{\"changedFields\": [\"visibility\"], \"visibility\": \"PRIVATE\"}";
+    String after = "{\"changedFields\": [\"visibility\"], \"visibility\": \"OPEN\"}";
+    AuditLogEntry entry =
+        auditLogService.record(
+            AuditLogEntry.withoutSubject(
+                organizationId,
+                ActorKind.USER,
+                "pseud-actor-space",
+                AuditEventType.SPACE_CHANGED,
+                AuditObjectType.SPACE,
+                "space-1",
+                "Team",
+                before,
+                after,
+                AuditOutcome.SUCCESS,
+                null,
+                null));
+    jdbcTemplate.update(
+        "UPDATE audit_log SET recorded_at = ? WHERE event_id = ?",
+        Timestamp.from(base),
+        entry.getEventId());
+
+    Page<AuditLogEntry> result =
+        queryService.byObject(
+            organizationId,
+            auditorId,
+            REASON,
+            AuditObjectType.SPACE,
+            "space-1",
+            base.minus(1, ChronoUnit.HOURS),
+            base.plus(1, ChronoUnit.HOURS),
+            0,
+            50);
+
+    assertThat(result.getContent())
+        .singleElement()
+        .satisfies(
+            e -> {
+              assertThat(e.getBefore()).contains("\"visibility\": \"PRIVATE\"");
+              assertThat(e.getAfter()).contains("\"visibility\": \"OPEN\"");
+            });
+  }
+
   @Test
   void byTimeRangeIgnoresObjectAndReturnsEverythingInWindow() {
     writeEntry("lib-1", AuditEventType.LIBRARY_CREATED, null, base);

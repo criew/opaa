@@ -93,6 +93,10 @@ public class AssetCatalogService {
       throw new ValidationException(
           "Der Suchtext darf höchstens " + MAX_QUERY_LENGTH + " Zeichen lang sein");
     }
+    if (query.assetIds() != null && query.assetIds().size() > AssetCatalogQuery.MAX_IDS) {
+      throw new ValidationException(
+          "Es lassen sich höchstens " + AssetCatalogQuery.MAX_IDS + " Kennungen angeben");
+    }
     AssetType assetType = query.assetType();
     List<AssetType> types = assetType == null ? assetTypes.registered() : List.of(assetType);
     if (assetType != null && assetTypes.find(assetType).isEmpty()) {
@@ -100,6 +104,9 @@ public class AssetCatalogService {
     }
 
     Selection selection = select(caller, types);
+    if (query.assetIds() != null) {
+      selection.ids().retainAll(query.assetIds());
+    }
     if (selection.ids().isEmpty()) {
       return new AssetCatalogPage(List.of(), page, size, 0, 0);
     }

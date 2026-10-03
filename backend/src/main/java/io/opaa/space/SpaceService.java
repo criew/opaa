@@ -10,7 +10,6 @@ import io.opaa.api.types.AuditSubjectKind;
 import io.opaa.api.types.Capability;
 import io.opaa.api.types.PermissionSubjectType;
 import io.opaa.api.types.SpaceRole;
-import io.opaa.api.types.SpaceVisibility;
 import io.opaa.api.types.SuccessionObjectType;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
@@ -139,18 +138,10 @@ public class SpaceService {
       requireUserInOrganization(ownerId, caller.organizationId());
     }
 
-    SpaceVisibility visibility =
-        creation.visibility() != null ? creation.visibility() : SpaceVisibility.PRIVATE;
-
     Space space =
         buildValidatedSpace(
-            creation.name(),
-            creation.description(),
-            false,
-            visibility,
-            ownerId,
-            caller.organizationId());
-    appendInitialMemberships(space, ownerId, creation.initialMembers());
+            creation.name(), creation.description(), false, ownerId, caller.organizationId());
+    appendInitialMemberships(space, ownerId, creation.initialMembers(), caller);
     if (Boolean.TRUE.equals(creation.chatAutoCleanup())) {
       space.switchChatAutoCleanup(true, Instant.now());
     }
@@ -201,7 +192,6 @@ public class SpaceService {
   private Map<String, Object> spaceAuditPayload(Space space) {
     Map<String, Object> payload = new LinkedHashMap<>();
     payload.put("name", space.getName());
-    payload.put("visibility", space.getVisibility().name());
     payload.put("ownerId", space.getOwnerId().toString());
     payload.put("chatAutoCleanup", space.isChatAutoCleanupEnabled());
     return payload;
@@ -721,9 +711,8 @@ public class SpaceService {
     validateDescription(update.description());
     String previousName = space.getName();
     String previousDescription = space.getDescription();
-    SpaceVisibility previousVisibility = space.getVisibility();
     boolean previousChatAutoCleanup = space.isChatAutoCleanupEnabled();
-    space.updateDetails(normalizedName, update.description(), update.visibility());
+    space.updateDetails(normalizedName, update.description());
     if (update.chatAutoCleanup() != null
         && update.chatAutoCleanup() != previousChatAutoCleanup
         && space.isDefault()
@@ -739,14 +728,11 @@ public class SpaceService {
     Space updated = spaceRepository.save(space);
     boolean nameChanged = !Objects.equals(previousName, updated.getName());
     boolean descriptionChanged = !Objects.equals(previousDescription, updated.getDescription());
-    boolean visibilityChanged = previousVisibility != updated.getVisibility();
     boolean chatAutoCleanupChanged = previousChatAutoCleanup != updated.isChatAutoCleanupEnabled();
-    if (nameChanged || descriptionChanged || visibilityChanged || chatAutoCleanupChanged) {
-      // #392 code review, finding 4: before/after are limited to what the specification calls
-      // "rechtlich Erheblich" - visibility is (it feeds who can see the space), free-text
-      // name/description content is not, and is never written here even though it changed;
-      // changedFields names which fields changed without carrying the free-text values. Visibility
-      // and the chat cleanup switch (a retention setting) carry their before/after.
+    if (nameChanged || descriptionChanged || chatAutoCleanupChanged) {
+      // before/after are limited to what the specification calls "rechtlich Erheblich": the
+      // free-text name/description is not and is never written, changedFields only names it. The
+      // chat cleanup switch (a retention setting) carries its before/after.
       List<String> changedFields = new ArrayList<>();
       if (nameChanged) {
         changedFields.add("name");
@@ -758,11 +744,6 @@ public class SpaceService {
       Map<String, Object> after = new LinkedHashMap<>();
       before.put("changedFields", changedFields);
       after.put("changedFields", changedFields);
-      if (visibilityChanged) {
-        changedFields.add("visibility");
-        before.put("visibility", previousVisibility.name());
-        after.put("visibility", updated.getVisibility().name());
-      }
       if (chatAutoCleanupChanged) {
         changedFields.add("chatAutoCleanup");
         before.put("chatAutoCleanup", previousChatAutoCleanup);
@@ -962,15 +943,10 @@ public class SpaceService {
   }
 
   private Space buildValidatedSpace(
-      String name,
-      String description,
-      boolean isDefault,
-      SpaceVisibility visibility,
-      UUID ownerId,
-      UUID organizationId) {
+      String name, String description, boolean isDefault, UUID ownerId, UUID organizationId) {
     String normalizedName = validateName(name);
     validateDescription(description);
-    return new Space(normalizedName, description, isDefault, visibility, ownerId, organizationId);
+    return new Space(normalizedName, description, isDefault, ownerId, organizationId);
   }
 
   private String validateName(String name) {
@@ -1046,27 +1022,31 @@ public class SpaceService {
     return userRepository.displayNamesById(userIds);
   }
 
+  /**
+   * The owner as ADMIN plus every person and group named on creation, each validated like {@link
+   * #addMember}: a person of another organization and a group the caller may not select answer as
+   * not found, an ineffective group as a conflict. Naming a subject twice keeps the last role.
+   */
   private void appendInitialMemberships(
-      Space space, UUID ownerId, List<SpaceMemberSeed> initialMembers) {
-    Map<UUID, SpaceRole> resolvedRoles = new LinkedHashMap<>();
+      Space space, UUID ownerId, List<SpaceMemberSeed> initialMembers, CurrentUser caller) {
+    Map<UUID, SpaceRole> userRoles = new LinkedHashMap<>();
+    Map<UUID, SpaceRole> groupRoles = new LinkedHashMap<>();
     if (initialMembers != null) {
       for (SpaceMemberSeed member : initialMembers) {
         if (member == null) {
           continue;
         }
-        resolvedRoles.put(member.userId(), member.role());
+        SpaceRole role = member.role() == null ? SpaceRole.MEMBER : member.role();
+        if (member.subjectType() == PermissionSubjectType.GROUP) {
+          groupRoles.put(member.subjectId(), role);
+        } else {
+          userRoles.put(member.subjectId(), role);
+        }
       }
     }
-    resolvedRoles.put(ownerId, SpaceRole.ADMIN);
-    resolvedRoles.forEach(
-        (userId, role) -> {
-          // Every initial member - not just the owner - must belong to the same organization as
-          // the space being created; otherwise any user could be added to a space without ever
-          // being validated as an admin action, and the membership would violate the
-          // organization invariant.
-          requireUserInOrganization(userId, space.getOrganizationId());
-          space.addMembership(SpaceMembership.ofUser(userId, role, space.getOrganizationId()));
-        });
+    userRoles.put(ownerId, SpaceRole.ADMIN);
+    userRoles.forEach((userId, role) -> addUserMembership(space, userId, role));
+    groupRoles.forEach((groupId, role) -> addGroupMembership(space, groupId, role, caller));
   }
 
   /** The person's own membership row, if they hold one - never a group row. */

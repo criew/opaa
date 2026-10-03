@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.api.types.PermissionSubjectType;
 import io.opaa.api.types.SpaceRole;
-import io.opaa.api.types.SpaceVisibility;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
@@ -163,6 +162,62 @@ class SpaceGroupMembershipIntegrationTest {
     assertThat(spaceService.listSpaces(currentUserOf(person)))
         .extracting(overview -> overview.space().getId())
         .contains(space.getId());
+  }
+
+  // -------------------------------------------------------------------------------------------
+  // Groups named on creation
+  // -------------------------------------------------------------------------------------------
+
+  @Test
+  void aGroupNamedOnCreationBecomesAMemberLikeOneAddedLater() {
+    UUID owner = createUser(organizationA);
+    UUID person = createUser(organizationA);
+    UUID group = createGroup(organizationA, "Referat 50", person);
+
+    Space space =
+        spaceService.createSpace(
+            new SpaceCreation(
+                "Team",
+                null,
+                owner,
+                List.of(SpaceMemberSeed.group(group, SpaceRole.CURATOR)),
+                null),
+            currentUserOf(owner));
+
+    assertThat(membershipRepository.findBySpaceId(space.getId()))
+        .filteredOn(membership -> group.equals(membership.getGroupId()))
+        .singleElement()
+        .satisfies(membership -> assertThat(membership.getRole()).isEqualTo(SpaceRole.CURATOR));
+    assertThat(effectiveRoleOf(space.getId(), person)).isEqualTo(SpaceRole.CURATOR);
+    assertThat(historyRepository.findAll())
+        .anyMatch(
+            row ->
+                group.equals(row.getSubjectGroupId())
+                    && row.getCause() == SpaceMembershipHistoryCause.ADDED);
+  }
+
+  @Test
+  void anUnreleasedGroupNamedOnCreationAnswersLikeAnUnknownOneAndNoSpaceIsCreated() {
+    UUID owner = createUser(organizationA);
+    UUID group = createUnreleasedGroup(organizationA, "Personalrat", createUser(organizationA));
+
+    assertThatThrownBy(
+            () ->
+                spaceService.createSpace(
+                    new SpaceCreation(
+                        "Team",
+                        null,
+                        owner,
+                        List.of(SpaceMemberSeed.group(group, SpaceRole.MEMBER)),
+                        null),
+                    currentUserOf(owner)))
+        .isInstanceOf(NotFoundException.class);
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM spaces WHERE owner_id = ? AND is_default = false",
+                Long.class,
+                owner))
+        .isZero();
   }
 
   // -------------------------------------------------------------------------------------------
@@ -566,8 +621,7 @@ class SpaceGroupMembershipIntegrationTest {
 
   private Space createSpace(UUID owner) {
     return spaceService.createSpace(
-        new SpaceCreation("Team", "Team docs", owner, SpaceVisibility.PRIVATE, List.of(), null),
-        currentUserOf(owner));
+        new SpaceCreation("Team", "Team docs", owner, List.of(), null), currentUserOf(owner));
   }
 
   /**

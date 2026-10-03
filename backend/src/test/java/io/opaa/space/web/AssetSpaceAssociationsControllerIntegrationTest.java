@@ -25,9 +25,8 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
 /**
  * HTTP-layer coverage of {@code GET /api/v1/assets/{assetType}/{assetId}/spaces} (#1939): which
  * role learns which space. The threshold is {@code MANAGER} - below it the entry is reduced to the
- * space's id and name, and a {@code PRIVATE} space the caller is no member of is not named at all
- * but only counted in {@code hiddenCount}, keeping the promise of that visibility that only its
- * members know the space exists.
+ * space's id and name, and a space the caller is no member of is not named at all but only counted
+ * in {@code hiddenCount}: only the members of a space know it exists.
  */
 @OpaaIntegrationTest
 class AssetSpaceAssociationsControllerIntegrationTest {
@@ -66,13 +65,13 @@ class AssetSpaceAssociationsControllerIntegrationTest {
   }
 
   /**
-   * The whole role matrix on one fixture: a library in a {@code PRIVATE} space the caller does not
-   * belong to. VIEWER and EDITOR learn the count and nothing else; MANAGER learns the space.
+   * The whole role matrix on one fixture: a library in a space the caller does not belong to.
+   * VIEWER and EDITOR learn the count and nothing else; MANAGER learns the space.
    */
   @Test
-  void aPrivateSpaceIsOnlyCountedBelowManagerAndNamedFromManagerOn() throws Exception {
+  void aSpaceIsOnlyCountedBelowManagerAndNamedFromManagerOn() throws Exception {
     String library = createLibrary(devAdmin());
-    String space = createSpace(devAdmin(), "Disziplinarverfahren 2026", null);
+    String space = createSpace(devAdmin(), "{ \"name\": \"Disziplinarverfahren 2026\" }");
     associate(space, library);
     UUID callerId = userIdOf("dev-user@opaa.local");
 
@@ -96,32 +95,32 @@ class AssetSpaceAssociationsControllerIntegrationTest {
   }
 
   /**
-   * A space that stands in the space directory anyway is named to a reader - but still without the
-   * management detail, which stays at MANAGER.
+   * No request makes a space nameable to a non-member: a former visibility value in the creation
+   * body has no field to land in, and the space stays anonymous to a plain reader of the asset.
    */
   @Test
-  void aDiscoverableSpaceIsNamedToAReaderWithoutAnyManagementDetail() throws Exception {
+  void aSpaceStaysAnonymousToANonMemberWhateverTheCreationRequestCarried() throws Exception {
     String library = createLibrary(devAdmin());
-    String space = createSpace(devAdmin(), "Fachbereich Soziales", "DISCOVERABLE");
+    String space =
+        createSpace(devAdmin(), "{ \"name\": \"Fachbereich Soziales\", \"visibility\": \"OPEN\" }");
     associate(space, library);
     grantToUser(library, userIdOf("dev-user@opaa.local"), "VIEWER");
 
     mockMvc
         .perform(get(spacesRoute(library)).with(devUser()))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.hiddenCount").value(0))
-        .andExpect(jsonPath("$.items.length()").value(1))
-        .andExpect(jsonPath("$.items[0].spaceName").value("Fachbereich Soziales"))
-        .andExpect(jsonPath("$.items[0].narrowerReaderCircle").doesNotExist())
-        .andExpect(jsonPath("$.items[0].createdByUserId").doesNotExist())
-        .andExpect(jsonPath("$.items[0].createdAt").doesNotExist());
+        .andExpect(jsonPath("$.items.length()").value(0))
+        .andExpect(jsonPath("$.hiddenCount").value(1));
   }
 
-  /** A member of the PRIVATE space already knows it exists - the count stays at zero for them. */
+  /**
+   * A member of the space already knows it exists - the count stays at zero for them, while the
+   * management detail stays at MANAGER.
+   */
   @Test
-  void aReaderWhoBelongsToThePrivateSpaceSeesItByName() throws Exception {
+  void aReaderWhoBelongsToTheSpaceSeesItByNameWithoutAnyManagementDetail() throws Exception {
     String library = createLibrary(devAdmin());
-    String space = createSpace(devAdmin(), "Projektgruppe Ost", null);
+    String space = createSpace(devAdmin(), "{ \"name\": \"Projektgruppe Ost\" }");
     associate(space, library);
     UUID callerId = userIdOf("dev-user@opaa.local");
     grantToUser(library, callerId, "VIEWER");
@@ -140,7 +139,10 @@ class AssetSpaceAssociationsControllerIntegrationTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.hiddenCount").value(0))
         .andExpect(jsonPath("$.items.length()").value(1))
-        .andExpect(jsonPath("$.items[0].spaceName").value("Projektgruppe Ost"));
+        .andExpect(jsonPath("$.items[0].spaceName").value("Projektgruppe Ost"))
+        .andExpect(jsonPath("$.items[0].narrowerReaderCircle").doesNotExist())
+        .andExpect(jsonPath("$.items[0].createdByUserId").doesNotExist())
+        .andExpect(jsonPath("$.items[0].createdAt").doesNotExist());
   }
 
   /** Below VIEWER the asset is not there at all - the same 404 as for an unknown id (#436). */
@@ -179,12 +181,7 @@ class AssetSpaceAssociationsControllerIntegrationTest {
     return id;
   }
 
-  private String createSpace(RequestPostProcessor caller, String name, String visibility)
-      throws Exception {
-    String body =
-        visibility == null
-            ? "{ \"name\": \"" + name + "\" }"
-            : "{ \"name\": \"" + name + "\", \"visibility\": \"" + visibility + "\" }";
+  private String createSpace(RequestPostProcessor caller, String body) throws Exception {
     String response =
         mockMvc
             .perform(post("/api/v1/spaces").with(caller).content(body))

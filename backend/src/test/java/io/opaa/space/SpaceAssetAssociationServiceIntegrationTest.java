@@ -8,7 +8,6 @@ import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.AuditObjectType;
 import io.opaa.api.types.NotificationType;
 import io.opaa.api.types.SpaceRole;
-import io.opaa.api.types.SpaceVisibility;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.User;
@@ -84,11 +83,7 @@ class SpaceAssetAssociationServiceIntegrationTest {
   }
 
   private UUID createSpace(UUID ownerId, SpaceRole ownerRole) {
-    return createSpace(ownerId, ownerRole, SpaceVisibility.PRIVATE);
-  }
-
-  private UUID createSpace(UUID ownerId, SpaceRole ownerRole, SpaceVisibility visibility) {
-    Space space = new Space("Fachbereich", null, false, visibility, ownerId, organizationA);
+    Space space = new Space("Fachbereich", null, false, ownerId, organizationA);
     space.addMembership(SpaceMembership.ofUser(ownerId, ownerRole, organizationA));
     return spaceRepository.save(space).getId();
   }
@@ -328,7 +323,6 @@ class SpaceAssetAssociationServiceIntegrationTest {
                 "Widerspruchsstelle",
                 null,
                 null,
-                null,
                 List.of(),
                 List.of(
                     new SpaceAssetSeed(KnowledgeLibrary.ASSET_TYPE, library),
@@ -363,8 +357,7 @@ class SpaceAssetAssociationServiceIntegrationTest {
                         "Ohne Zugriff",
                         null,
                         null,
-                        null,
-                        List.of(new SpaceMemberSeed(member, SpaceRole.MEMBER)),
+                        List.of(SpaceMemberSeed.user(member, SpaceRole.MEMBER)),
                         List.of(
                             new SpaceAssetSeed(KnowledgeLibrary.ASSET_TYPE, shared),
                             new SpaceAssetSeed(PromptLibrary.ASSET_TYPE, foreign))),
@@ -406,8 +399,7 @@ class SpaceAssetAssociationServiceIntegrationTest {
                 "Widerspruchsstelle",
                 null,
                 null,
-                null,
-                List.of(new SpaceMemberSeed(memberWithoutAccess, SpaceRole.MEMBER)),
+                List.of(SpaceMemberSeed.user(memberWithoutAccess, SpaceRole.MEMBER)),
                 List.of(
                     new SpaceAssetSeed(KnowledgeLibrary.ASSET_TYPE, library),
                     new SpaceAssetSeed(PromptLibrary.ASSET_TYPE, prompts))),
@@ -624,8 +616,9 @@ class SpaceAssetAssociationServiceIntegrationTest {
     grant(library, owner, AssetRole.OWNER);
     UUID reader = createUser();
     grant(library, reader, AssetRole.VIEWER);
-    // DISCOVERABLE: der Space steht ohnehin im Verzeichnis, sein Name ist keine Preisgabe.
-    UUID space = createSpace(owner, SpaceRole.ADMIN, SpaceVisibility.DISCOVERABLE);
+    // Als Mitglied weiß der VIEWER ohnehin vom Space, sein Name ist keine Preisgabe.
+    UUID space = createSpace(owner, SpaceRole.ADMIN);
+    addMember(space, reader, SpaceRole.MEMBER);
     // A member without their own read access - exactly what narrowerReaderCircle would report.
     addMember(space, createUser(), SpaceRole.MEMBER);
     associationService.associate(space, KnowledgeLibrary.ASSET_TYPE, library, currentUserOf(owner));
@@ -659,17 +652,17 @@ class SpaceAssetAssociationServiceIntegrationTest {
   }
 
   /**
-   * #1939: Ein PRIVATE-Space verspricht, dass nur seine Mitglieder von ihm wissen
-   * (docs/features/spaces-and-assets.md, „Space-Sichtbarkeit"). Unterhalb von MANAGER wird eine
-   * Zuordnung dorthin deshalb nicht benannt, sondern nur gezählt - auch für einen EDITOR, der die
-   * Schwelle `canManage` ebenfalls nicht erreicht.
+   * Nur die Mitglieder eines Space wissen von ihm (docs/features/spaces-and-assets.md,
+   * „Space-Sichtbarkeit"). Unterhalb von MANAGER wird eine Zuordnung in einen fremden Space deshalb
+   * nicht benannt, sondern nur gezählt - auch für einen EDITOR, der die Schwelle `canManage`
+   * ebenfalls nicht erreicht.
    */
   @Test
-  void aPrivateSpaceIsOnlyCountedBelowManagerAndNamedFromManagerOn() {
+  void aSpaceIsOnlyCountedForNonMembersBelowManagerAndNamedFromManagerOn() {
     UUID owner = createUser();
     UUID library = createLibrary(owner);
     grant(library, owner, AssetRole.OWNER);
-    UUID space = createSpace(owner, SpaceRole.ADMIN, SpaceVisibility.PRIVATE);
+    UUID space = createSpace(owner, SpaceRole.ADMIN);
     // Jede Berechtigung steht, bevor ein Dienstaufruf den Grant-Zwischenspeicher der Bibliothek
     // füllt - dieser Test schreibt sie am Dienst vorbei direkt ins Repository.
     Map<AssetRole, UUID> callers = new LinkedHashMap<>();
@@ -701,15 +694,15 @@ class SpaceAssetAssociationServiceIntegrationTest {
         .isEqualTo("Fachbereich");
   }
 
-  /** Wer im PRIVATE-Space Mitglied ist, weiß ohnehin von ihm - für ihn ist nichts verborgen. */
+  /** Wer im Space Mitglied ist, weiß ohnehin von ihm - für ihn ist nichts verborgen. */
   @Test
-  void aReaderWhoBelongsToThePrivateSpaceSeesItByName() {
+  void aReaderWhoBelongsToTheSpaceSeesItByName() {
     UUID owner = createUser();
     UUID library = createLibrary(owner);
     grant(library, owner, AssetRole.OWNER);
     UUID reader = createUser();
     grant(library, reader, AssetRole.VIEWER);
-    UUID space = createSpace(owner, SpaceRole.ADMIN, SpaceVisibility.PRIVATE);
+    UUID space = createSpace(owner, SpaceRole.ADMIN);
     addMember(space, reader, SpaceRole.MEMBER);
     associationService.associate(space, KnowledgeLibrary.ASSET_TYPE, library, currentUserOf(owner));
 

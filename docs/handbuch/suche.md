@@ -117,8 +117,9 @@ eine Anheftung. Ein **archivierter Chat** ist etwas anderes als ein **archiviert
 Space nimmt für alle keine neuen Inhalte mehr an, auch keine Frage in einem archivierten Chat; das
 Archivieren eines Chats ist dort trotzdem möglich und ändert an der Sichtbarkeit des Space nichts.
 
-**Automatisches Archivieren und Löschen.** Je Space gibt es den Schalter „Inaktive Chats
-automatisch archivieren und löschen", ab Werk aus. Gesetzt wird er beim Anlegen des Space im
+**Automatisches Archivieren und Löschen.** Je Space gibt es den Schalter „Inaktive Chats nach …
+Tagen archivieren und nach weiteren … Tagen löschen", ab Werk aus; er nennt die Fristen der
+Installation. Gesetzt wird er beim Anlegen des Space im
 Assistenten oder später in den Einstellungen des Space im Reiter „Stammdaten"; umlegen darf ihn,
 wer die Stammdaten ändern darf. Im persönlichen Standard-Space legt ihn nur die Person selbst um,
 auch die Systemverwaltung nicht; ein Standard-Space lässt sich dafür auch nicht übertragen. Ist er an, nennt die Seite „Chats" allen Mitgliedern die Fristen

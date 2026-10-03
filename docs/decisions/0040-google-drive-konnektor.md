@@ -5,8 +5,9 @@
 Vorgeschlagen (03.10.2026). Issue [#2148](https://github.com/criew/opaa/issues/2148), Epic
 [#2146](https://github.com/criew/opaa/issues/2146). Bindet [#2149](https://github.com/criew/opaa/issues/2149)
 (gemeinsamer Datei-Abgleich) und [#2151](https://github.com/criew/opaa/issues/2151) (Konnektor).
-Ergänzt [ADR-0027](0027-s3-konnektor.md) und [ADR-0038](0038-steckbare-konnektoren.md),
-Entscheidung 3 (Nachtrag in Entscheidung 3 hier).
+Ergänzt [ADR-0027](0027-s3-konnektor.md), [ADR-0038](0038-steckbare-konnektoren.md) (vierte
+Anmeldeart im Nachtrag „Verbindungsprofile“) und [ADR-0041](0041-verbindungen-als-eigenes-modul.md).
+Setzt den Umbau der Lauf-SPI voraus ([#2178](https://github.com/criew/opaa/issues/2178)).
 
 ## Kontext
 
@@ -126,17 +127,29 @@ Container, Fehlerabbildung auf Protokollkategorien, Zusammenfassung. Der Konnekt
 Auflistung, Merkmalsform, Identität, Ordnersegmente, Exportwahl und die Übersetzung seiner Fehler in
 die neutralen Arten. Der Vertragstest aus #2149 läuft gegen den Port.
 
-### 2. Anmeldung: Dienstkonto-Schlüssel des Betreibers, Scope `drive.readonly`
+### 2. Anmeldung: Dienstkonto-Schlüssel als vierte Anmeldeart, signiert im Kern
 
 - Jeder Betreiber nutzt **sein eigenes GCP-Projekt** und ein Dienstkonto mit JSON-Schlüssel. Es gibt
   keine zentrale OPAA-App: Sie bräuchte die Verifizierung eines eingeschränkten Scopes samt
   jährlicher Sicherheitsprüfung, Dienstkonten brauchen keine.
-- Der Konnektor holt Zugriffstoken per JWT-Assertion (RFC 7523, RS256) mit Scope
-  `https://www.googleapis.com/auth/drive.readonly`, optional mit `sub` (Entscheidung 4). Token liegen
-  nur im Speicher des Laufs.
-- **`source_credentials` trägt die Schlüsseldatei.** Gelesen werden nur `client_email`,
-  `private_key_id` und `private_key`. Alle übrigen Felder (`token_uri`, `auth_uri`, …) bestimmen kein
-  Ziel (Entscheidung 3).
+- **Neue Anmeldeart „Dienstkonto-Schlüssel“** im Verbindungsmodell. Sie steht im Nachtrag
+  „Verbindungsprofile“ zu ADR-0038, in `connector-connections.md` und mit einem Hinweis in ADR-0025.
+  - Ablauf: JWT-Assertion nach RFC 7523, RS256, Zugriffstoken für eine Stunde.
+  - Kein Refresh-Token, kein Eintrag im Token-Speicher.
+  - Besitzart nur Bibliothek.
+  - Die Beschreibung des Konnektors meldet die Art mit Token-Endpunkt
+    (`https://oauth2.googleapis.com/token`) und Scope (`https://www.googleapis.com/auth/drive.readonly`).
+- **Der Konnektor sieht den Schlüssel nie.** Die Assertion bildet und signiert der Kern: zuerst der
+  Übergangs-Resolver aus #2178, später connections (ADR-0041, Entscheidung 3).
+  - Signiert wird mit Nimbus, abgeschickt über einen POST-Weg in `sourceaccess` (Entscheidung 3).
+  - Der Konnektor bekommt über `SourceSettings` nur ein Geheimnis der Art Zugriffstoken.
+  - Ein Lauf kann länger als eine Stunde dauern. Deshalb muss dieses Geheimnis erneuerbar sein: Der
+    Konnektor fragt es je Anfrage beim Port ab, und der Kern erneuert es vor Ablauf. Dieselbe
+    Anforderung haben OAuth-Zugriffstoken. #2178 legt den Port so an.
+- **Ablage des Schlüssels:** Ohne Profil liegt er in `source_credentials`, mit Profil am Platz des
+  Client-Secrets (ADR-0038, Nachtrag). Gelesen werden nur `client_email`, `private_key_id` und
+  `private_key`. Die übrigen Felder (`token_uri`, `auth_uri`, …) bestimmen kein Ziel
+  (Entscheidung 3).
 - **Spalte und Spec werden gemeinsam erweitert.** Die Datei (rund 2,4 KB) passt verschlüsselt
   (`"enc:v1:" + base64(IV‖Geheimtext‖Tag)`) nicht in `source_credentials varchar(3000)`; die Spalte
   trägt höchstens 2216 Byte Klartext. Darum wird sie auf `text` erweitert, und die Spec-Grenze von
@@ -147,31 +160,36 @@ die neutralen Arten. Der Vertragstest aus #2149 läuft gegen den Port.
 - **Migration als Aufgabe von #2151:** ein Changeset in `db/changelog/knowledge/`
   (`knowledge_libraries.source_credentials` → `text`), die Längenangabe an der Entity und die
   Spec-Grenze in einem Zug. Die Breite ändert keine vorhandenen Werte. Als Typänderung braucht sie
-  nach `backend/AGENTS.md` trotzdem einen Delta-Test.
+  nach `backend/AGENTS.md` trotzdem einen Delta-Test. Das Client-Secret am Profil (#2160) braucht
+  dieselbe Breite.
 - Die Standard-Anmeldekette von Google (Umgebungsvariable, Metadatendienst) wird nie benutzt, aus
   demselben Grund wie bei S3 (ADR-0027, Entscheidung 7).
 - Das Handbuch nennt die Organisationsrichtlinie, die Schlüssel standardmäßig verbietet, und wie
   der Betreiber eine Ausnahme für das eine Projekt setzt.
 
-### 3. Ursprungsbindung bei festem Ziel — Nachtrag zu ADR-0038, Entscheidung 3
+### 3. Ursprungsbindung bei festem Ziel
 
 `sourceUrl` ist für Google Drive **fest `https://www.googleapis.com`**; die Validierung setzt den
 Wert und weist jeden anderen ab, das Formular zeigt ihn nicht. Material aus den Zugangsdaten geht an
-genau zwei Ziele, beide Konstanten des Konnektors:
+genau zwei Ziele:
 
-- die signierte Assertion an `https://oauth2.googleapis.com/token`,
+- die signierte Assertion an den **Token-Endpunkt aus der Beschreibung**
+  (`https://oauth2.googleapis.com/token`),
 - das Zugriffstoken an `https://www.googleapis.com` (= `sourceUrl`).
 
-Kein Ziel kommt aus der Schlüsseldatei, aus `source_settings` oder aus einer Antwort.
+Das ist die Regel aus dem Nachtrag „Verbindungsprofile“ zu ADR-0038. Der Token-Endpunkt aus der
+Beschreibung ist mit und ohne Profil das einzige Ziel außerhalb von `sourceUrl`. Einen eigenen
+Nachtrag zur Invariante gibt es nicht. Kein Ziel kommt aus der Schlüsseldatei, aus
+`source_settings` oder aus einer Antwort.
 
 - **Weiterleitungen:** API-Aufrufe und Downloads nutzen `REJECT_OFF_ORIGIN`, die Hausregel für
   JSON-APIs und Downloads. Eine Weiterleitung auf einen anderen Ursprung ist ein Fehler. Zeigt #2151,
   dass Google `alt=media` nachweislich auf einen anderen Host weiterleitet, entscheidet ein Nachtrag
   über `DROP_AUTHORIZATION_OFF_ORIGIN` für genau diesen Aufruf, mit Begründung.
 - **Token-Abruf:** Er ist ein POST, und `sourceaccess` kennt heute nur GET. #2151 ergänzt dort einen
-  POST-Weg mit Zieladressprüfung, Proxy, Zeitlimit, Größengrenze und ohne Weiterleitung. Ein eigener
-  Client im Konnektor, wie ihn `KeycloakAdminApi` baut, wäre eine zweite Stelle für dieselben
-  Schutzmechanismen.
+  POST-Weg mit Zieladressprüfung, Proxy, Zeitlimit, Größengrenze und ohne Weiterleitung. Ihn nutzen
+  der Resolver im Kern und später connections für jeden Token-Endpunkt. Ein eigener Client, wie ihn
+  `KeycloakAdminApi` baut, wäre eine zweite Stelle für dieselben Schutzmechanismen.
 - `exportLinks`, `webContentLink` und die Download-URI von `files.download` werden nie mit Token
   abgerufen.
 - **Übernahme gespeicherter Zugangsdaten:** `requestedSettingsChange` übernimmt einen gespeicherten
@@ -181,26 +199,28 @@ Kein Ziel kommt aus der Schlüsseldatei, aus `source_settings` oder aus einer An
   den Schlüssel. Ein Leck entsteht dabei nicht. Deshalb vergleicht der Kern gegen die von `validate`
   **normalisierte** Adresse. #2151 testet, dass eine Proxy-Änderung den Schlüssel behält.
 
-**Nachtrag zu ADR-0038:** Die Invariante lautet künftig „Jedes Ziel, an das Zugangsdaten gehen,
-leitet sich aus `sourceUrl` ab **oder ist eine Konstante des Konnektors**“. Ihr Zweck bleibt
-erhalten: Wer die Konfiguration ändern darf, kann Zugangsdaten nicht umleiten. Eine Konstante ändert
-nur ein Release.
+### 4. Profilangabe und domänenweite Delegation
 
-### 4. Domänenweite Delegation: optional, nur mit Funktionskonto, Ziel ist das Profil
-
+- **Profilangabe „optional“**, einmal für den Typ und ohne Sonderfall. Der Schlüssel enthält seine
+  App-Registrierung selbst. Deshalb erzwingt die Anmeldeart, anders als OAuth und
+  Client-Credentials, keine Profilpflicht.
 - **Ohne Delegation (Regelfall):** Das Dienstkonto sieht, was mit ihm geteilt ist, also geteilte
   Ablagen mit ihm als Mitglied und freigegebene Ordner. Es entspricht einem eingeschränkten
   S3-Schlüssel.
-- **Mit Delegation:** `source_settings.subject` nennt das zu imitierende Konto. Das Handbuch
-  verlangt ein **Funktionskonto**, kein persönliches; technisch prüfen kann OPAA das nicht. Das Konto
-  steht sichtbar in den Bibliotheksdetails und im Audit.
-- **`subject` ist ein Ziel der Zugangsdaten.** Seine Änderung weist der Konnektor in
-  `validateChange` ohne neu eingegebenen Schlüssel ab, wie ADR-0038 es für Ziele in
-  `source_settings` verlangt.
-- **Verbindungsprofile** ([connector-connections.md](../features/connector-connections.md)): Drive
-  hat die Profilangabe **optional**. Sobald Profile existieren, ist Delegation **nur über ein Profil**
-  möglich, und `subject` steht im Profil. Ein Schlüssel mit Delegation kann jedes Konto der Domäne
-  lesen; dieses Ziel gehört in die Hand der Systemverwaltung.
+- **Mit Delegation** nennt `subject` das zu imitierende Konto.
+  - Es ist eine Konnektor-Einstellung, in `source_settings` oder bei einem Profil in dessen
+    konnektoreigenen Vorgaben.
+  - Der Kern braucht `subject` für die Assertion, kennt aber keine Einstellungsschlüssel. Darum
+    liefert der Konnektor es über einen schmalen SPI-Aufruf (Arbeitsname
+    `SourceConnector#assertionSubject(ConnectorData)`). Ein Geheimnis ist es nicht.
+  - Das Handbuch verlangt ein **Funktionskonto**, kein persönliches; technisch prüfen kann OPAA das
+    nicht. Das Konto steht sichtbar in den Bibliotheksdetails und im Audit.
+  - Das Handbuch empfiehlt für Delegation ein Profil: Ein solcher Schlüssel kann jedes Konto der
+    Domäne lesen, und am Profil legt die Systemverwaltung das Konto fest.
+- **`subject` ist ein Ziel der Zugangsdaten.** Ohne Profil weist der Konnektor eine Änderung in
+  `validateChange` ab, wenn der Schlüssel nicht neu eingegeben wird, wie ADR-0038 es für Ziele in
+  `source_settings` verlangt. Am Profil gilt die Änderung als eine, die eine neue Zustimmung
+  verlangt (Spezifikation, „Was eine neue Zustimmung verlangt“).
 - Persönliche Ablagen echter Personen sind nicht Teil dieses ADR. Ihr Weg wäre ein verbundenes Konto
   über eine *interne* OAuth-App des Betreibers, die keine Verifizierung braucht (Epic #2147).
 
@@ -308,8 +328,9 @@ Ordnerverknüpfungen auch rekursiv. Dubletten entstehen so nicht.
 ### 11. REST über `io.opaa.sourceaccess` statt Google-Client-Bibliothek
 
 Der Konnektor spricht die Drive-REST-API selbst an: HTTP über `SourceHttpClientFactory` und
-`RedirectFollowingFetcher`, JSON mit Jackson, die Assertion mit Nimbus (schon Abhängigkeit, siehe
-`LocalAccessTokenService`). Es kommt keine neue Abhängigkeit hinzu. Gebraucht werden rund acht
+`RedirectFollowingFetcher`, JSON mit Jackson. Die Assertion signiert der Kern mit Nimbus
+(Entscheidung 2; schon eine Abhängigkeit, siehe `LocalAccessTokenService`). Es kommt keine neue
+Abhängigkeit hinzu. Gebraucht werden rund acht
 Endpunkte. Zieladressprüfung, Proxy, TLS-Schalter, Byte-Grenze, Weiterleitungsregel und
 Anfragezähler gelten damit zentral. Bei S3 mussten sie am SDK nachgebaut werden (ADR-0027,
 „Schwieriger“).
@@ -352,6 +373,8 @@ eine Anfrage, und Push bräuchte einen öffentlich erreichbaren Eingang mit Kana
   als Text enthalten.
 - Delegation ohne Profil hängt am Handbuch (Funktionskonto) und an der Pflicht, den Schlüssel neu
   einzugeben.
+- Der Konnektor wartet auf #2178. Der Kern bekommt eine Signatur je Anmeldeart, und sein Port muss
+  erneuerbare Zugriffstoken liefern.
 
 ## Verworfene Alternativen
 
@@ -374,21 +397,27 @@ eine Anfrage, und Push bräuchte einen öffentlich erreichbaren Eingang mit Kana
 - **Verknüpfungen auflösen:** erweitert den Geltungsbereich still.
 - **Nur Vollabgleich wie S3:** Drive bietet ein verlässliches Änderungsprotokoll, der Vollabgleich
   bleibt als Rhythmus.
-- **Delegation nur über Profile ab dem ersten Ausbau:** Profile existieren noch nicht, und ohne
-  Delegation bleibt bei eingeschränkter externer Freigabe womöglich kein Weg (Beleg unsicher).
+- **Profilpflicht nur mit Delegation:** Die Profilangabe gilt einmal je Typ, so ließe sich das
+  nicht ausdrücken. Eine Pflicht für jede Drive-Bibliothek sperrte den Regelfall ohne Delegation.
+- **Dienstkonto-Schlüssel als Client-Credentials einordnen:** Der Ablauf ist ein anderer (Assertion
+  statt Client-Secret). Außerdem machte Client-Credentials das Profil zur Pflicht.
+- **Signieren im Konnektor:** Der Konnektor sähe den Schlüssel, entgegen ADR-0041, Entscheidung 3.
+- **Ziel als „Konstante des Konnektors“ in einem eigenen Nachtrag:** Das wäre eine zweite
+  Formulierung neben dem Token-Endpunkt aus der Beschreibung.
 
 ## Zuschnitt der Folge-Issues
 
 | Issue | Folgt aus diesem ADR |
 |---|---|
 | #2149 | Paket `indexing.filesync`, letzter Eintrag in `INDEXING_CORE`; Port nach Entscheidung 1 mit neutralen Fehlerarten (einschließlich `CursorExpired`), optionalem `ChangeFeed`, `unchangedSubtrees` und `fullSyncNeeded`; ausstehende Startcursor beim ersten Beginn des Vollabgleichs gesichert, bei Wiederaufnahme behalten; S3 als erster Nutzer ohne Verhaltensänderung; Spalte `change_cursors` kann hier oder in #2151 kommen; Vertragstest gegen den Port |
-| #2151 | Paket `indexing.source.googledrive`, Typ `GOOGLE_DRIVE`; Changeset `source_credentials` → `text` mit Delta-Test, Entity-Länge und Spec-Grenze 4096; feste `sourceUrl`, zwei konstante Ziele, `REJECT_OFF_ORIGIN`, POST-Weg in `sourceaccess`, Übernahme der Zugangsdaten gegen die normalisierte Adresse (Test: Proxy-Änderung behält den Schlüssel); `subject` mit Neueingabe des Schlüssels; Bereiche, Erreichbarkeitsprüfung, Cursor je Strom, Strukturänderung erzwingt Vollabgleich; Merkmal, Exporttabelle, Verknüpfungen überspringen; Drosselung über `403`-Gründe; unsichere Befunde gegen ein echtes Workspace belegen und hier nachtragen; Handbuch mit Schlüsselrichtlinie und Funktionskonto |
+| #2151 | Paket `indexing.source.googledrive`, Typ `GOOGLE_DRIVE`; Changeset `source_credentials` → `text` mit Delta-Test, Entity-Länge und Spec-Grenze 4096; **nach #2178**; im Kern: Anmeldeart „Dienstkonto-Schlüssel“ in der Beschreibung (Token-Endpunkt, Scope), Signatur im Übergangs-Resolver, erneuerbares Zugriffstoken über den Port, `assertionSubject`; POST-Weg in `sourceaccess`; feste `sourceUrl`, `REJECT_OFF_ORIGIN`, Übernahme der Zugangsdaten gegen die normalisierte Adresse (Test: Proxy-Änderung behält den Schlüssel); `subject` nur mit neu eingegebenem Schlüssel änderbar; ArchUnit belegt, dass kein Konnektorpaket den Schlüssel liest; Bereiche, Erreichbarkeitsprüfung, Cursor je Strom, Strukturänderung erzwingt Vollabgleich; Merkmal, Exporttabelle, Verknüpfungen überspringen; Drosselung über `403`-Gründe; unsichere Befunde gegen ein echtes Workspace belegen und hier nachtragen; Handbuch mit Schlüsselrichtlinie und Funktionskonto |
 
 ## Referenzen
 
 - [ADR-0017](0017-quellentypmodell-indizierung.md), [ADR-0018](0018-quellkonfiguration-in-der-bibliothek.md)
 - [ADR-0023](0023-confluence-konnektor.md) — Laufrahmen, Anker, Löschbefund
 - [ADR-0027](0027-s3-konnektor.md) — S3, Vorbild für Bereiche, Merkmal, Ordner
-- [ADR-0038](0038-steckbare-konnektoren.md) — steckbare Konnektoren (Nachtrag hier, Entscheidung 3)
+- [ADR-0038](0038-steckbare-konnektoren.md) — steckbare Konnektoren (vierte Anmeldeart im Nachtrag „Verbindungsprofile“)
+- [ADR-0041](0041-verbindungen-als-eigenes-modul.md) — Verbindungen, Port, Umbau der Lauf-SPI (#2178)
 - [connector-connections.md](../features/connector-connections.md) — Verbindungsprofile
 - `backend/src/main/java/io/opaa/indexing/source/AGENTS.md`, `ModularArchitectureTest`

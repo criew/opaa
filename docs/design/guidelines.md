@@ -316,6 +316,17 @@ Rahmen und Meldungstext in Gefahr, Meldung programmatisch dem Feld zugeordnet
 Pflichtfelder werden nicht mit Sternchen markiert — optionale Felder tragen „(optional)".
 Zugangsdaten immer als Kennwortfeld, nie im Klartext zurückgespiegelt.
 
+**Personen- und Gruppensuche.** Wo Personen und Gruppen Empfänger sein können (Freigaben,
+Space-Mitglieder, Eigentum), gibt es **ein** Suchfeld ohne Umschalter „Person / Gruppe"
+(`SubjectPicker`, Platzhalter und `aria-label` „Person oder Gruppe suchen"). Die Treffer stehen
+gemischt in einer Liste, die passendsten zuerst. Eine Person trägt ein Kopf-Symbol, eine Gruppe
+ein Gruppen-Symbol und zusätzlich „Gruppe" im Text, damit die Art auch ohne Symbol erkennbar ist;
+die Gruppe eines externen Anbieters trägt ein eigenes Warnsymbol. „Alle Konten" erscheint nur, wo
+es diesen Empfänger gibt (Freigaben an einem bestehenden Asset), als eigener Eintrag mit
+Welt-Symbol. Das Formular dazu steht in einer Zeile: Suche (breit), Rolle (schmal), Schaltfläche in
+normaler Breite (`SubjectFormRow`); unter 600 px steht die Suche allein oben, Rolle und
+Schaltfläche darunter.
+
 ### 5.3 Tabellen
 
 Spaltenköpfe im Eyebrow-Muster (`fg-3`), Zeilen durch `border` getrennt, keine Zebrastreifen.
@@ -333,14 +344,23 @@ und Metadaten in `fg-3`. Unterhalb Tablet-Breite werden breite Tabellen zu Karte
 Karten heben sich im Hover über `border-strong` und `bg-2` ab, nicht über Schatten oder
 Skalierung.
 
-**Asset-Kachel im Katalog.** Kompakt. Kopfzeile: links die Asset-Art (Icon und Wort), direkt daneben
-das Welt-Symbol (nur bei Freigabe an alle, 5.5), rechts der Favoriten-Stern und „⋯" für weitere Aktionen
-(„In Space verwenden"). Darunter Name, Beschreibung, Umfang samt Zahl der Spaces, die zuständige
-Stelle mit Personen- oder Gruppensymbol statt eines Präfixes und eine Zeile „Aktualisiert am" oder
-Status. Die eigene Rolle steht nicht auf der Kachel, nur auf der Detailseite. Weil die Kachel eigene
-Bedienelemente trägt, ist sie **kein umschließender Link**: Der Name ist der Link, seine Klickfläche
-wird über die Kachel gestreckt, und Stern und „⋯" liegen darüber als eigene Tab-Positionen — nie ein
-Knopf in einem Link. „⋯" heißt „Weitere Aktionen für ‚<Name>'" und öffnet ein Menü.
+**Asset-Kachel.** Eine Kachel für jedes Asset, im Katalog wie in jeder Auswahl (`AssetTile`, #2131).
+Kompakt. Kopfzeile: links die Asset-Art (Icon und Wort), direkt daneben das Welt-Symbol (nur bei
+Freigabe an alle, 5.5), rechts der Favoriten-Stern. Darunter Name, Beschreibung (auf zwei Zeilen
+gekürzt, ohne die Art noch einmal zu nennen), Umfang samt Zahl der Spaces, die zuständige Stelle mit
+Personen- oder Gruppensymbol statt eines Präfixes und eine Zeile „Aktualisiert am" oder Status. Was
+eine Quelle nicht kennt (die Token-Auswahl kennt etwa keine Zahlen), lässt die Kachel weg; zugeordnete Assets zeigt sie mit den Daten des Katalogs. Die eigene
+Rolle steht nicht auf der Kachel, nur auf der Detailseite. Weil die Kachel eigene Bedienelemente
+trägt, ist sie **kein umschließendes Bedienelement**: Ihr Hauptelement ist der Name, seine
+Klickfläche wird über die Kachel gestreckt, und der Stern liegt darüber als eigene Tab-Position.
+
+- **Im Katalog** ist der Name ein Link zur Detailseite. Nur hier steht neben dem Stern „⋯" für
+  weitere Aktionen („In Space verwenden"); es heißt „Weitere Aktionen für ‚<Name>'" und öffnet ein
+  Menü.
+- **In einer Auswahl** ist der Name ein Umschalter (`role="checkbox"`), dessen Beschreibung der Rest
+  der Kachel ist. Links oben steht ein Häkchen (gewählt) oder ein leerer Kreis, und eine gewählte
+  Kachel trägt einen Rahmen in `accent` (5.11). Ein Klick auf die Kachel wählt, ein Klick auf den
+  Stern setzt nur den Favoriten.
 
 ### 5.5 Chips und Etiketten
 
@@ -510,8 +530,9 @@ Bildschirmen bricht die Zeile um. Weitere Filter (Sichtbarkeit, Gruppenherkunft)
 Sortierauswahl gibt es nicht; die Reihenfolge ist fest: Favoriten zuerst, dann nach Name. Angeboten
 wird nur, was die Person lesen darf. Über „Weitere laden" steht „n von m angezeigt".
 
-**Ein Baustein.** Das Muster ist im Frontend eine Komponente (Arbeitsname `ChoiceTileGroup`, #2094),
-nicht je Stelle nachgebaut; Übersichten, Auswahl und Katalog nutzen dieselbe Kachel.
+**Ein Baustein je Art von Kachel.** Die Wahl von Arten und Quellen ist im Frontend eine Komponente
+(`ChoiceTileGroup`, #2094). Assets – im Katalog, in der Zuordnung zu einem Space und in der
+Token-Auswahl – zeigt immer die Asset-Kachel aus 5.4 (`AssetTile`, #2131), nie ein Nachbau je Stelle.
 
 ---
 

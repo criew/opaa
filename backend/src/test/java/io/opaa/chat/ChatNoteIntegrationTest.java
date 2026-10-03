@@ -427,8 +427,8 @@ class ChatNoteIntegrationTest {
   private UUID insertSpaceWithMembership(UUID memberId) {
     UUID id = UUID.randomUUID();
     jdbcTemplate.update(
-        "INSERT INTO spaces (id, name, is_default, visibility, owner_id, organization_id,"
-            + " created_at, updated_at) VALUES (?, 'Notiz-Fachbereich', false, 'PRIVATE', ?, ?,"
+        "INSERT INTO spaces (id, name, is_default, owner_id, organization_id,"
+            + " created_at, updated_at) VALUES (?, 'Notiz-Fachbereich', false, ?, ?,"
             + " now(), now())",
         id,
         memberId,

@@ -34,8 +34,9 @@ jede Bibliothek trägt ihre Zieladresse frei, und OPAA speichert keine OAuth-Tok
 3. **Freigabe regelt die Neuanlage.** Bestehende Bibliotheken laufen weiter; nur eine **Sperre** von
    Konnektor oder Profil stoppt Läufe.
 4. **Profilpflicht** je Konnektor: nur über ein Profil nutzbar, ohne frei eingetragene Adresse.
-5. **Drei Anmeldearten:** persönliches Geheimnis (App-Passwort, Token), OAuth (Autorisierungscode
-   mit PKCE) und Client-Credentials. Token-Austausch über den Identitätsanbieter ist nur ein Spike.
+5. **Vier Anmeldearten:** persönliches Geheimnis (App-Passwort, Token), OAuth (Autorisierungscode
+   mit PKCE), Client-Credentials und Dienstkonto-Schlüssel (JWT-Assertion). Token-Austausch über den
+   Identitätsanbieter ist nur ein Spike.
 6. **Verbundene Konten** einer Person speisen eine **private Bibliothek**: genau eine Besitzerin,
    nicht teilbar, keine Nachfolge, für die Verwaltung nur zusammengefasst sichtbar.
 7. **Verbindliche Schutzregeln:** „Sicht als“ ist ausgeschlossen, ein Vorfallszugriff braucht vier
@@ -157,8 +158,8 @@ selbst ein.
 | Name | „Zugang Exchange Rheinfurt“ | erscheint in der Auswahl |
 | Konnektor | Exchange | genau einer; beim Profiltyp „MCP-Server“ keiner (siehe [MCP-Grundlage](#mcp-grundlage)) |
 | Server-Adresse | Nextcloud-URL, `https://graph.microsoft.com` | einziges Ziel der Zugangsdaten |
-| Anmeldeart | persönliches Geheimnis, OAuth, Client-Credentials | nur die Arten, die der Konnektor anbietet |
-| App-Registrierung | Client-ID, Client-Secret, Mandant | bei OAuth und Client-Credentials; Secret verschlüsselt, nie in Antworten |
+| Anmeldeart | persönliches Geheimnis, OAuth, Client-Credentials, Dienstkonto-Schlüssel | nur die Arten, die der Konnektor anbietet |
+| App-Registrierung | Client-ID, Client-Secret, Mandant; beim Dienstkonto der Schlüssel | bei OAuth, Client-Credentials und Dienstkonto-Schlüssel; Secret bzw. Schlüssel verschlüsselt, nie in Antworten |
 | Ablaufdatum des Secrets | 2027-03-31 | OPAA warnt vorher |
 | Scopes | `Files.Read offline_access` | bei OAuth und Client-Credentials |
 | Besitzart | Bibliothek, Person oder beides | welche Verbindungen darauf entstehen dürfen |
@@ -199,14 +200,15 @@ Jeder Konnektor meldet, wie er zu Profilen steht:
 | Angabe | Bedeutung | Konnektoren |
 |---|---|---|
 | **verboten** | kein entferntes Ziel | Upload (keine Quelle), Dateisystem (lokale Serverpfade, begrenzt durch die Pfad-Allowlist des Betriebs) |
-| **optional** | Profil oder freie Adresse | Webverzeichnis, RSS, Confluence, S3, Nextcloud, Google Drive (ohne Delegation) |
-| **Pflicht** | nur mit Profil | Konnektoren mit OAuth oder Client-Credentials, etwa Dropbox, Exchange; Google Drive mit domänenweiter Delegation |
+| **optional** | Profil oder freie Adresse | Webverzeichnis, RSS, Confluence, S3, Nextcloud, Google Drive |
+| **Pflicht** | nur mit Profil | Konnektoren mit OAuth oder Client-Credentials, etwa Dropbox, Exchange |
 
 **Google Drive** ([ADR-0040](../decisions/0040-google-drive-konnektor.md)) meldet sich mit einem
 Dienstkonto-Schlüssel an. Der Schlüssel enthält seine App-Registrierung selbst und kann deshalb
 auch ohne Profil an der Bibliothek liegen. Die Server-Adresse ist fest (`https://www.googleapis.com`),
-der Token-Endpunkt eine Konstante des Konnektors. Mit domänenweiter Delegation liest der Schlüssel
-jedes Konto der Domäne; das imitierte Konto (ein Funktionskonto) steht dann im Profil.
+der Token-Endpunkt steht in der Konnektor-Beschreibung. Mit domänenweiter Delegation liest der
+Schlüssel jedes Konto der Domäne. Das Handbuch empfiehlt dafür ein Profil, das das imitierte
+Funktionskonto festlegt; eine Pflicht ist es nicht.
 
 Webverzeichnis und RSS tragen heute schon Zugangsdaten (Benutzername und Passwort). Ein Profil für sie
 trägt die Server-Adresse und optional die Anmeldeart „persönliches Geheimnis“ mit der Bibliothek als
@@ -239,7 +241,8 @@ Die bestehende Zielprüfung gegen private und lokale Adressbereiche bleibt daneb
 |---|---|---|---|
 | **Persönliches Geheimnis** | App-Passwort, persönliches Token oder Benutzername und Passwort | Person oder Bibliothek | Nextcloud, Confluence Data Center; Webverzeichnis und RSS (optional, nur Bibliothek) |
 | **OAuth** | Autorisierungscode mit PKCE und `state`; Zustimmung beim Anbieter, Rücksprung in OPAA; Refresh- und Zugriffstoken verschlüsselt | Person oder Bibliothek | Dropbox, Exchange (delegiert) |
-| **Client-Credentials** | Anwendung meldet sich mit Client-ID und Secret des Profils an, ohne Person | Bibliothek | Funktionspostfächer, Microsoft 365 ([#2153](https://github.com/criew/opaa/issues/2153)); Google Drive mit Dienstkonto-Schlüssel (JWT-Assertion) |
+| **Client-Credentials** | Anwendung meldet sich mit Client-ID und Secret des Profils an, ohne Person | Bibliothek | Funktionspostfächer, Microsoft 365 ([#2153](https://github.com/criew/opaa/issues/2153)) |
+| **Dienstkonto-Schlüssel** | OPAA signiert mit dem Schlüssel eine JWT-Assertion (RFC 7523) und erhält ein kurzlebiges Zugriffstoken; kein Refresh-Token, kein Token-Speicher. Signiert wird im Kern, nie im Konnektor | Bibliothek | Google Drive ([ADR-0040](../decisions/0040-google-drive-konnektor.md)) |
 
 Ein Konnektor meldet, welche Anmeldearten er anbietet; das Profil wählt eine.
 
@@ -257,7 +260,7 @@ derselben Transaktion. Je Verbindung läuft höchstens eine Erneuerung zugleich.
 **Token-Austausch (nur Spike).** In openDesk melden sich alle Dienste über dasselbe Keycloak an. Ein
 Spike prüft, ob OPAA das Anmeldetoken einer Person gegen ein Token für Nextcloud bzw. Open-Xchange
 tauschen kann. Bekannte Grenzen: OPAA bräuchte einen vertraulichen Client, und getauschte Token gelten
-nur in der laufenden Sitzung. Erst danach wird über eine vierte Anmeldeart entschieden.
+nur in der laufenden Sitzung. Erst danach wird über eine weitere Anmeldeart entschieden.
 
 ---
 
@@ -403,8 +406,24 @@ Versetzung oder Gruppenwechsel. Für lange Abwesenheit oder Versetzung gibt das 
    eingeschlossen, und wo möglich beim Anbieter widerrufen.
 2. **Sofort:** Ihre privaten Bibliotheken stoppen und sind für niemanden lesbar.
 3. **Nach der Löschfrist:** Die privaten Bibliotheken werden gelöscht. Die Frist stellt die Installation
-   ein; sie hat eine **feste Obergrenze**, die keine Installation überschreiten kann. Innerhalb der
-   Frist kann eine reaktivierte Person neu verbinden.
+   ein; sie hat eine **feste Obergrenze**, die keine Installation überschreiten kann (Vorgabe 30
+   Tage, einstellbar von 1 bis 90 Tagen, ADR-0041). Innerhalb der Frist kann eine reaktivierte Person
+   neu verbinden.
+
+**Wann ein Konto deaktiviert ist,** beantwortet eine zentrale Abfrage für alle Kontoarten: lokal
+gesperrt, befristet abgelaufen, Verzeichnissperre, Anbieter gelöscht. OPAA prüft die Abfrage vor
+jeder Nutzung eines Tokens und gleicht täglich ab; Ereignisse lösen den Abgleich sofort aus
+([ADR-0041](../decisions/0041-verbindungen-als-eigenes-modul.md), Entscheidung 4).
+
+**Ruhen ist keine Deaktivierung.** Die Verbindungen einer Person ruhen, wenn ihr Anbieter
+deaktiviert ist oder wenn sie sich seit 90 Tagen nicht angemeldet hat (einstellbar 30–365). Ruhen
+stoppt Läufe, löscht aber nichts und startet keine Löschfrist. Vor dem Deaktivieren und Löschen
+eines Anbieters nennt die Verwaltung die Zahl der betroffenen Verbindungen und privaten
+Bibliotheken.
+
+**Restlücke:** Sperrt ein OIDC-Anbieter eine Person und gibt es keinen Verzeichnis-Konnektor, erfährt
+OPAA davon nichts. Die Inaktivitätsschwelle stoppt dann die Läufe, das Token bleibt bis zu einer
+Sperre in OPAA gespeichert.
 
 **Sofortlöschung:** Die Besitzerin kann eine private Bibliothek jederzeit selbst sofort löschen.
 
@@ -427,8 +446,11 @@ in ein **eigenes Verbindungsprotokoll**:
 
 - Inhalt: wer, welches Profil, welches Ereignis, wann. Keine Token, keine Kontoadresse beim Anbieter
   (außer bei Quellverbindungen, wo sie ohnehin in den Bibliotheksdetails steht).
-- **Eigene Leserolle;** die Systemverwaltung liest es nicht automatisch mit.
-- **Aufbewahrungsfrist,** danach wird gelöscht.
+- **Eigene Leserolle:** `AUDITOR` (Beschluss 13), mit Anlass und begrenztem Zeitraum wie beim Revisionsprotokoll
+  ([ADR-0036](../decisions/0036-berechtigungsmodell-gruppen-und-faehigkeiten.md), Nachtrag vom
+  03.10.2026). Die Systemverwaltung liest es nicht mit.
+- **Aufbewahrungsfrist,** danach wird gelöscht: Vorgabe 12 Monate, einstellbar von 6 bis 24 Monaten
+  ([ADR-0041](../decisions/0041-verbindungen-als-eigenes-modul.md)).
 
 Token und Geheimnisse erscheinen nie in Logs, Antworten oder Audit. Neben den beiden heutigen Plätzen
 (Zugangsdaten und Push-Geheimnis der Bibliothek) entstehen zwei neue: das **Client-Secret am Profil**
@@ -493,7 +515,8 @@ Unabhängig davon: Spike zum Token-Austausch gegen openDesk. Der MCP-Client folg
 | [ADR-0036](../decisions/0036-berechtigungsmodell-gruppen-und-faehigkeiten.md) | `CREATE_CONNECTOR_LIBRARY` wird je Profil bzw. je Konnektortyp erteilt; neue Konnektoren und Profile ab Werk aus; Entzug wirkt nur auf die Neuanlage (Neuverbinden ist keine), Sperre auf Läufe; **Nur-Besitzerin-Regel** für private Bibliotheken als eigene Sperre am Grant- und Fremdzugangspfad, von der Systemverwaltung nicht lockerbar; „Sicht als“ für private Bibliotheken ausgeschlossen; **Vorfallszugriff auf Inhalte** als neue Befugnis neben den Rollen (Antrag `AUDITOR`, Bestätigung durch eine zweite benannte Rolle, `SYSTEM_ADMIN` nicht eingeschlossen); Leserolle des Verbindungsprotokolls |
 | [ADR-0038](../decisions/0038-steckbare-konnektoren.md) | Profilangabe (verboten, optional, Pflicht) und Anmeldearten gehören in die Konnektor-Beschreibung; das Ziel der Zugangsdaten leitet sich bei Profilen aus der Server-Adresse des Profils ab; Entscheidung 3 („genau zwei Plätze für Geheimnisse“) wird um das Client-Secret am Profil und den Token-Speicher erweitert, beide auf demselben Verschlüsselungsweg |
 
-Ob Token-Speicher und Verbindungsmodell einen eigenen ADR brauchen, entscheidet das Konzept-Issue.
+Die Nachträge sind geschrieben (#2159). Modulschnitt, Token-Speicher, Lebenszyklus und Fristen
+legt [ADR-0041](../decisions/0041-verbindungen-als-eigenes-modul.md) fest.
 
 ---
 
@@ -515,10 +538,8 @@ Ob Token-Speicher und Verbindungsmodell einen eigenen ADR brauchen, entscheidet 
 
 - **Sicherungen innerhalb der Löschfrist:** Ob und wie gelöschte private Bibliotheken aus Sicherungen
   entfernt oder deren Wiedereinspielung verhindert wird, klärt der Datenschutz.
-- **Werte der Fristen:** Vorgabe und Obergrenze der Löschfrist, Aufbewahrungsfrist des
-  Verbindungsprotokolls; Abstimmung mit Personalrat und Datenschutz.
-- **Leserolle des Verbindungsprotokolls:** eigene Systemrolle oder Fähigkeit, festzulegen im
-  ADR-Nachtrag zu ADR-0036.
+- **Werte der Fristen:** Die Abstimmung mit Personalrat und Datenschutz steht noch aus. Sie kann die
+  Vorgaben innerhalb der Grenzen aus ADR-0041 (Entscheidung 7) ändern.
 - **Live-Abfrage** verbundener Konten im Chat ohne Indexierung: mit #1747.
 - **Token-Austausch** als weitere Anmeldeart, abhängig vom Spike.
 - **Weitere Kanäle** für Ablaufwarnungen und Abbrüche (E-Mail, Zusammenfassung): Heute gibt es die

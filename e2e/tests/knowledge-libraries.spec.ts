@@ -201,10 +201,9 @@ test.describe.serial('Wissensbibliotheken: Upload, Freigabe, rechtebewusste Such
     await gotoLibraryDetail(adminPage, LIBRARY_NAME)
     await adminPage.getByRole('tab', { name: 'Freigaben' }).click()
     await adminPage.getByRole('button', { name: 'Freigeben' }).click()
-    await adminPage.getByRole('radio', { name: 'Gruppe' }).click()
     // #1820: Die Subjekt-Auswahl sucht serverseitig; die Zeile traegt Name und Herkunft, weshalb
     // der Treffer ueber den Namen als Teilzeichenkette gefunden wird.
-    const groupInput = adminPage.getByRole('combobox', { name: 'Gruppe suchen' })
+    const groupInput = adminPage.getByRole('combobox', { name: 'Person oder Gruppe suchen' })
     await groupInput.click()
     await groupInput.fill(GROUP_NAME)
     await adminPage.getByRole('option', { name: GROUP_NAME }).click()

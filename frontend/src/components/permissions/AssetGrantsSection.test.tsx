@@ -264,7 +264,7 @@ describe('AssetGrantsSection', () => {
     await userEventInstance.click(await screen.findByRole('button', { name: /freigeben/i }))
     // #778 review, finding 4: the picker no longer preloads the whole organization - a query
     // (min. 2 characters) has to be typed before GET /v1/users is even attempted.
-    await userEventInstance.type(await screen.findByLabelText(/^person suchen$/i), 'al')
+    await userEventInstance.type(await screen.findByLabelText(/^person oder gruppe suchen$/i), 'al')
     await userEventInstance.click(await screen.findByRole('option', { name: /Alice/ }))
     await userEventInstance.click(
       screen.getAllByRole('button', { name: /^freigeben$/i })[
@@ -299,8 +299,10 @@ describe('AssetGrantsSection', () => {
     const userEventInstance = userEvent.setup()
 
     await userEventInstance.click(await screen.findByRole('button', { name: /freigeben/i }))
-    await userEventInstance.click(await screen.findByRole('radio', { name: /gruppe/i }))
-    await userEventInstance.type(await screen.findByLabelText(/^gruppe suchen$/i), 'Referat')
+    await userEventInstance.type(
+      await screen.findByLabelText(/^person oder gruppe suchen$/i),
+      'Referat',
+    )
     await userEventInstance.click(await screen.findByRole('option', { name: /Referat 50/ }))
     const submitButtons = screen.getAllByRole('button', { name: /^freigeben$/i })
     await userEventInstance.click(submitButtons[submitButtons.length - 1])
@@ -332,7 +334,8 @@ describe('AssetGrantsSection', () => {
     const userEventInstance = userEvent.setup()
 
     await userEventInstance.click(await screen.findByRole('button', { name: /freigeben/i }))
-    await userEventInstance.click(await screen.findByRole('radio', { name: /alle konten/i }))
+    await userEventInstance.click(await screen.findByLabelText(/^person oder gruppe suchen$/i))
+    await userEventInstance.click(await screen.findByRole('option', { name: /Alle Konten/ }))
     const submitButtons = screen.getAllByRole('button', { name: /^freigeben$/i })
     await userEventInstance.click(submitButtons[submitButtons.length - 1])
 
@@ -397,7 +400,8 @@ describe('AssetGrantsSection', () => {
     const userEventInstance = userEvent.setup()
 
     await userEventInstance.click(await screen.findByRole('button', { name: /freigeben/i }))
-    await userEventInstance.click(await screen.findByRole('radio', { name: /alle konten/i }))
+    await userEventInstance.click(await screen.findByLabelText(/^person oder gruppe suchen$/i))
+    await userEventInstance.click(await screen.findByRole('option', { name: /Alle Konten/ }))
     const submitButtons = screen.getAllByRole('button', { name: /^freigeben$/i })
     await userEventInstance.click(submitButtons[submitButtons.length - 1])
 
@@ -412,7 +416,7 @@ describe('AssetGrantsSection', () => {
     const userEventInstance = userEvent.setup()
 
     await userEventInstance.click(await screen.findByRole('button', { name: /freigeben/i }))
-    await userEventInstance.type(await screen.findByLabelText(/^person suchen$/i), 'al')
+    await userEventInstance.type(await screen.findByLabelText(/^person oder gruppe suchen$/i), 'al')
     await userEventInstance.click(await screen.findByRole('option', { name: /Alice/ }))
     const dateField = screen.getByLabelText(/befristung/i)
     fireEvent.change(dateField, { target: { value: '2020-01-01' } })
@@ -509,7 +513,7 @@ describe('AssetGrantsSection', () => {
     const userEventInstance = userEvent.setup()
 
     await userEventInstance.click(await screen.findByRole('button', { name: /freigeben/i }))
-    await userEventInstance.type(await screen.findByLabelText(/^person suchen$/i), 'al')
+    await userEventInstance.type(await screen.findByLabelText(/^person oder gruppe suchen$/i), 'al')
     await userEventInstance.click(await screen.findByRole('option', { name: /Alice/ }))
     const submitButtons = screen.getAllByRole('button', { name: /^freigeben$/i })
     await userEventInstance.click(submitButtons[submitButtons.length - 1])
@@ -528,10 +532,10 @@ describe('AssetGrantsSection', () => {
     const userEventInstance = userEvent.setup()
 
     await userEventInstance.click(await screen.findByRole('button', { name: /freigeben/i }))
-    await userEventInstance.type(await screen.findByLabelText(/^person suchen$/i), 'al')
+    await userEventInstance.type(await screen.findByLabelText(/^person oder gruppe suchen$/i), 'al')
 
     expect(await screen.findByText(/Netzwerkfehler/)).toBeInTheDocument()
-    await userEventInstance.click(screen.getByRole('button', { name: /nutzer-id eingeben/i }))
+    await userEventInstance.click(screen.getByRole('button', { name: /kennung eingeben/i }))
     expect(await screen.findByLabelText(/nutzer-id/i)).toBeInTheDocument()
     expect(mockGetUserSummaries).toHaveBeenCalledWith('al')
   })
@@ -554,9 +558,7 @@ describe('AssetGrantsSection', () => {
     const userEventInstance = userEvent.setup()
 
     await userEventInstance.click(await screen.findByRole('button', { name: /freigeben/i }))
-    await userEventInstance.click(
-      await screen.findByRole('button', { name: /nutzer-id eingeben/i }),
-    )
+    await userEventInstance.click(await screen.findByRole('button', { name: /kennung eingeben/i }))
     await userEventInstance.type(
       await screen.findByLabelText(/nutzer-id/i),
       '11111111-2222-4333-8444-555555555555',
@@ -580,9 +582,7 @@ describe('AssetGrantsSection', () => {
     const userEventInstance = userEvent.setup()
 
     await userEventInstance.click(await screen.findByRole('button', { name: /freigeben/i }))
-    await userEventInstance.click(
-      await screen.findByRole('button', { name: /nutzer-id eingeben/i }),
-    )
+    await userEventInstance.click(await screen.findByRole('button', { name: /kennung eingeben/i }))
     await userEventInstance.type(await screen.findByLabelText(/nutzer-id/i), 'anna.beispiel')
     const submitButtons = screen.getAllByRole('button', { name: /^freigeben$/i })
     await userEventInstance.click(submitButtons[submitButtons.length - 1])
@@ -664,7 +664,7 @@ describe('AssetGrantsSection', () => {
 
     await userEventInstance.click(await screen.findByRole('button', { name: /freigeben/i }))
 
-    const personField = await screen.findByLabelText(/^person suchen$/i)
+    const personField = await screen.findByLabelText(/^person oder gruppe suchen$/i)
     expect(screen.queryByLabelText(/^nutzer-id$/i)).not.toBeInTheDocument()
 
     // #778 review, finding 4: no preload on mount - the search only runs once queried.
@@ -697,10 +697,8 @@ describe('AssetGrantsSection', () => {
     const userEventInstance = userEvent.setup()
 
     await userEventInstance.click(await screen.findByRole('button', { name: /freigeben/i }))
-    await userEventInstance.click(await screen.findByRole('radio', { name: /gruppe/i }))
-    await userEventInstance.click(
-      await screen.findByRole('button', { name: /gruppen-id eingeben/i }),
-    )
+    await userEventInstance.click(await screen.findByRole('button', { name: /kennung eingeben/i }))
+    await userEventInstance.click(await screen.findByRole('radio', { name: 'Gruppe' }))
     await userEventInstance.type(
       await screen.findByLabelText(/gruppen-id/i),
       '22222222-3333-4444-8555-666666666666',
@@ -771,8 +769,10 @@ describe('AssetGrantsSection', () => {
     const userEventInstance = userEvent.setup()
 
     await userEventInstance.click(await screen.findByRole('button', { name: /freigeben/i }))
-    await userEventInstance.click(await screen.findByRole('radio', { name: /gruppe/i }))
-    await userEventInstance.type(await screen.findByLabelText(/^gruppe suchen$/i), 'Referat')
+    await userEventInstance.type(
+      await screen.findByLabelText(/^person oder gruppe suchen$/i),
+      'Referat',
+    )
     await userEventInstance.click(await screen.findByRole('option', { name: /Referat 50/ }))
     const submitButtons = screen.getAllByRole('button', { name: /^freigeben$/i })
     await userEventInstance.click(submitButtons[submitButtons.length - 1])
@@ -931,10 +931,8 @@ describe('AssetGrantsSection', () => {
     const userEventInstance = userEvent.setup()
 
     await userEventInstance.click(await screen.findByRole('button', { name: /freigeben/i }))
-    await userEventInstance.click(await screen.findByRole('radio', { name: /gruppe/i }))
-    await userEventInstance.click(
-      await screen.findByRole('button', { name: /gruppen-id eingeben/i }),
-    )
+    await userEventInstance.click(await screen.findByRole('button', { name: /kennung eingeben/i }))
+    await userEventInstance.click(await screen.findByRole('radio', { name: 'Gruppe' }))
     await userEventInstance.type(
       await screen.findByLabelText(/gruppen-id/i),
       '22222222-3333-4444-8555-666666666666',
@@ -962,10 +960,8 @@ describe('AssetGrantsSection', () => {
     const userEventInstance = userEvent.setup()
 
     await userEventInstance.click(await screen.findByRole('button', { name: /freigeben/i }))
-    await userEventInstance.click(await screen.findByRole('radio', { name: /gruppe/i }))
-    await userEventInstance.click(
-      await screen.findByRole('button', { name: /gruppen-id eingeben/i }),
-    )
+    await userEventInstance.click(await screen.findByRole('button', { name: /kennung eingeben/i }))
+    await userEventInstance.click(await screen.findByRole('radio', { name: 'Gruppe' }))
     await userEventInstance.type(
       await screen.findByLabelText(/gruppen-id/i),
       '22222222-3333-4444-8555-666666666666',
@@ -984,10 +980,8 @@ describe('AssetGrantsSection', () => {
     const userEventInstance = userEvent.setup()
 
     await userEventInstance.click(await screen.findByRole('button', { name: /freigeben/i }))
-    await userEventInstance.click(await screen.findByRole('radio', { name: /gruppe/i }))
-    await userEventInstance.click(
-      await screen.findByRole('button', { name: /gruppen-id eingeben/i }),
-    )
+    await userEventInstance.click(await screen.findByRole('button', { name: /kennung eingeben/i }))
+    await userEventInstance.click(await screen.findByRole('radio', { name: 'Gruppe' }))
     await userEventInstance.type(
       await screen.findByLabelText(/gruppen-id/i),
       '22222222-3333-4444-8555-666666666666',

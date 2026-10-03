@@ -127,6 +127,8 @@ const VERWALTUNGSDATEIEN = Object.keys(QUELLEN).filter((pfad) => {
  * - `PromptTextHighlight`, `PromptPreview`: der Wortlaut eines Prompts als Monospace-Block und der
  *   daraus eingesetzte Text als Ergebnisfläche — fremder Inhalt in der Seite, derselbe Fall wie
  *   beim `MailTemplateEditor`.
+ * - `AssetTile`: die Kachel eines Assets im Katalog und in jeder Auswahl (#2131) — eine Karte im
+ *   Raster (Leitlinien 5.4), kein Inhaltsblock einer Seite; der umrandete Typ ist ein Etikett (5.5).
  */
 const AUSNAHMEN = [
   'BrandingPreview.tsx',
@@ -144,6 +146,7 @@ const AUSNAHMEN = [
   'SpaceGeneralSection.tsx',
   'PromptTextHighlight.tsx',
   'PromptPreview.tsx',
+  'AssetTile.tsx',
 ]
 
 /**

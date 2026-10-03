@@ -63,8 +63,7 @@ describe('Prompt-Bibliothek anlegen, füllen und freigeben', () => {
     await user.click(screen.getByRole('button', { name: 'Weiter zu Rechten' }))
 
     // Rechte
-    await user.click(screen.getByRole('radio', { name: 'Gruppe' }))
-    await user.type(await screen.findByLabelText('Gruppe suchen'), 'Referat')
+    await user.type(await screen.findByLabelText('Person oder Gruppe suchen'), 'Referat')
     const [referat] = await screen.findAllByRole('option', { name: /Referat 50/ })
     await user.click(referat)
     await user.click(screen.getByRole('button', { name: 'Vormerken' }))
@@ -138,8 +137,7 @@ describe('Prompt-Bibliothek anlegen, füllen und freigeben', () => {
     await user.type(screen.getByLabelText(/^Name/), 'Vorlagen')
     await user.click(screen.getByRole('button', { name: 'Weiter' }))
     await user.click(screen.getByRole('button', { name: 'Weiter zu Rechten' }))
-    await user.click(screen.getByRole('radio', { name: 'Gruppe' }))
-    await user.type(await screen.findByLabelText('Gruppe suchen'), 'Referat')
+    await user.type(await screen.findByLabelText('Person oder Gruppe suchen'), 'Referat')
     const [referat] = await screen.findAllByRole('option', { name: /Referat 50/ })
     await user.click(referat)
     await user.click(screen.getByRole('button', { name: 'Vormerken' }))

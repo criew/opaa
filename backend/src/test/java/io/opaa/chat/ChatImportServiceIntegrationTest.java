@@ -7,7 +7,6 @@ import static org.assertj.core.api.Assertions.tuple;
 import io.opaa.api.types.ChatRole;
 import io.opaa.api.types.DocumentStatus;
 import io.opaa.api.types.SpaceRole;
-import io.opaa.api.types.SpaceVisibility;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.common.AccessDeniedException;
@@ -573,8 +572,7 @@ class ChatImportServiceIntegrationTest {
   }
 
   private UUID createSpace(UUID owner) {
-    Space space =
-        new Space("Amtsleitung", null, false, SpaceVisibility.PRIVATE, owner, organizationId);
+    Space space = new Space("Amtsleitung", null, false, owner, organizationId);
     space.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, organizationId));
     return spaceRepository.save(space).getId();
   }

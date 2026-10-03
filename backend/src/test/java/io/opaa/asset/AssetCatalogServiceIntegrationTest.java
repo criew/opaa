@@ -7,7 +7,6 @@ import io.opaa.api.types.AssetOrigin;
 import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.GroupKind;
 import io.opaa.api.types.SpaceRole;
-import io.opaa.api.types.SpaceVisibility;
 import io.opaa.api.types.SuccessionAddressee;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
@@ -386,7 +385,7 @@ class AssetCatalogServiceIntegrationTest {
   }
 
   private UUID createSpace() {
-    Space space = new Space("Space", null, false, SpaceVisibility.PRIVATE, owner, organization);
+    Space space = new Space("Space", null, false, owner, organization);
     space.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, organization));
     return spaceRepository.save(space).getId();
   }

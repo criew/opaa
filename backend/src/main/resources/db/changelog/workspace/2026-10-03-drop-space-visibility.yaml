@@ -1,0 +1,10 @@
+databaseChangeLog:
+  - changeSet:
+      id: workspace-2026-10-03-drop-space-visibility
+      author: opaa
+      comment: "Every space is private, only its members know it exists (#2156): spaces loses the visibility column and its check."
+      changes:
+        - sql:
+            sql: |
+              ALTER TABLE spaces DROP CONSTRAINT chk_spaces_visibility;
+              ALTER TABLE spaces DROP COLUMN visibility;

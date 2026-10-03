@@ -8,6 +8,7 @@ import Typography from '@mui/material/Typography'
 import type { SpaceResponse, SpaceRole } from '../../types/api'
 import { useSpaceStore } from '../../stores/spaceStore'
 import { spaceRoleLabel } from '../../utils/labels'
+import SubjectFormRow from '../permissions/SubjectFormRow'
 import SubjectPicker from '../permissions/SubjectPicker'
 import {
   confirmExternalSubject,
@@ -57,8 +58,6 @@ export default function SpaceMembersSection({
 
   return (
     <Stack spacing={2}>
-      {/* Die h2 dieses Panels unter der h1 der Seite - „Mitglied hinzufügen" darunter ist h3. */}
-      <SectionHead>Mitglieder</SectionHead>
       {(localError || storeError) && <Alert severity="error">{localError ?? storeError}</Alert>}
       {successMessage && <Alert severity="success">{successMessage}</Alert>}
       {space.isDefault && space.memberCount === 1 && (
@@ -124,63 +123,71 @@ export default function SpaceMembersSection({
           />
 
           {canManage && (
-            <Stack spacing={1.5} sx={{ pt: 2 }}>
-              <SectionHead component="h3">Mitglied hinzufügen</SectionHead>
+            <Stack spacing={1} sx={{ pt: 2 }}>
+              {/* The tab already reads "Mitglieder": this form is the panel's h2. */}
+              <SectionHead>Mitglied hinzufügen</SectionHead>
               <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                Eine Gruppe als Mitglied gibt ihre Rolle an alle Mitglieder weiter — ohne eigene
-                Zeile, und sie endet mit dem Austritt aus der Gruppe.
+                Gruppen geben ihre Rolle an alle ihre Mitglieder weiter.
               </Typography>
-              <SubjectPicker
-                labelId="space-member-subject-label"
-                value={subject}
-                onChange={setSubject}
-                excludedUserIds={members
-                  .filter((member) => member.subjectType === 'USER')
-                  .map((member) => member.subjectId)}
-                excludedGroupIds={members
-                  .filter((member) => member.subjectType === 'GROUP')
-                  .map((member) => member.subjectId)}
+              <SubjectFormRow
+                picker={
+                  <SubjectPicker
+                    value={subject}
+                    onChange={setSubject}
+                    excludedUserIds={members
+                      .filter((member) => member.subjectType === 'USER')
+                      .map((member) => member.subjectId)}
+                    excludedGroupIds={members
+                      .filter((member) => member.subjectType === 'GROUP')
+                      .map((member) => member.subjectId)}
+                  />
+                }
+                role={
+                  <Select
+                    size="small"
+                    fullWidth
+                    value={newMemberRole}
+                    onChange={(event) => setNewMemberRole(event.target.value as SpaceRole)}
+                    aria-label="Rolle des neuen Mitglieds"
+                  >
+                    {editableRoles.map((role) => (
+                      <MenuItem key={role} value={role}>
+                        {spaceRoleLabel(role)}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                }
+                action={
+                  <Button
+                    variant="contained"
+                    disabled={!selectedSubjectId(subject)}
+                    onClick={async () => {
+                      const subjectId = selectedSubjectId(subject)
+                      // Eine Space-Mitgliedschaft kennt kein Subjekt „Alle“ (ADR-0037,
+                      // Entscheidung 3); die Auswahl bietet es hier nicht an.
+                      if (!subjectId || subject.type === 'ALL_ACCOUNTS') return
+                      if (!(await confirmExternalSubject(subject))) return
+                      setLocalError(null)
+                      try {
+                        await addMember(spaceId, subject.type, subjectId, newMemberRole)
+                        setSubject(emptySubjectSelection)
+                        setSuccessMessage(
+                          subject.type === 'GROUP' ? 'Gruppe hinzugefügt' : 'Mitglied hinzugefügt',
+                        )
+                      } catch (err) {
+                        setLocalError(
+                          successionAwareMessage(
+                            err,
+                            'Das Mitglied konnte nicht hinzugefügt werden',
+                          ),
+                        )
+                      }
+                    }}
+                  >
+                    Hinzufügen
+                  </Button>
+                }
               />
-              <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5}>
-                <Select
-                  size="small"
-                  value={newMemberRole}
-                  onChange={(event) => setNewMemberRole(event.target.value as SpaceRole)}
-                  aria-label="Rolle des neuen Mitglieds"
-                  sx={{ width: 180 }}
-                >
-                  {editableRoles.map((role) => (
-                    <MenuItem key={role} value={role}>
-                      {spaceRoleLabel(role)}
-                    </MenuItem>
-                  ))}
-                </Select>
-                <Button
-                  variant="contained"
-                  disabled={!selectedSubjectId(subject)}
-                  onClick={async () => {
-                    const subjectId = selectedSubjectId(subject)
-                    // Eine Space-Mitgliedschaft kennt kein Subjekt „Alle“ (ADR-0037,
-                    // Entscheidung 3); die Auswahl bietet es hier nicht an.
-                    if (!subjectId || subject.type === 'ALL_ACCOUNTS') return
-                    if (!(await confirmExternalSubject(subject))) return
-                    setLocalError(null)
-                    try {
-                      await addMember(spaceId, subject.type, subjectId, newMemberRole)
-                      setSubject(emptySubjectSelection)
-                      setSuccessMessage(
-                        subject.type === 'GROUP' ? 'Gruppe hinzugefügt' : 'Mitglied hinzugefügt',
-                      )
-                    } catch (err) {
-                      setLocalError(
-                        successionAwareMessage(err, 'Das Mitglied konnte nicht hinzugefügt werden'),
-                      )
-                    }
-                  }}
-                >
-                  Hinzufügen
-                </Button>
-              </Stack>
             </Stack>
           )}
         </Stack>

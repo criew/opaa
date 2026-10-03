@@ -95,17 +95,25 @@ async function pastTheDebounce(): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, 400))
 }
 
-function Harness({ initial = emptySubjectSelection }: { initial?: SubjectSelection }) {
+function Harness({
+  initial = emptySubjectSelection,
+  allowAllAccounts = false,
+}: {
+  initial?: SubjectSelection
+  allowAllAccounts?: boolean
+}) {
   const [subject, setSubject] = useState<SubjectSelection>(initial)
   return (
     <>
-      <SubjectPicker labelId="subject-label" value={subject} onChange={setSubject} />
+      <SubjectPicker value={subject} onChange={setSubject} allowAllAccounts={allowAllAccounts} />
       <output data-testid="selection">{`${subject.type}:${subject.group?.id ?? subject.user?.id ?? ''}`}</output>
     </>
   )
 }
 
-describe('SubjectPicker (#1820, ADR-0036 Entscheidung 9)', () => {
+const SEARCH = 'Person oder Gruppe suchen'
+
+describe('SubjectPicker (#1820, #2131, ADR-0036 Entscheidung 9)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockSearchSelectableGroups.mockResolvedValue([fromDirectory, fromPartner, smallInternal])
@@ -114,12 +122,54 @@ describe('SubjectPicker (#1820, ADR-0036 Entscheidung 9)', () => {
     ])
   })
 
+  it('has one search field and no switch between person and group', () => {
+    renderWithProviders(<Harness />)
+
+    expect(screen.getByRole('combobox', { name: SEARCH })).toBeInTheDocument()
+    expect(screen.queryByRole('radio')).not.toBeInTheDocument()
+  })
+
+  it('searches persons and groups with the same input and mixes them by closeness', async () => {
+    mockGetUserSummaries.mockResolvedValue([
+      { id: 'user-thomas', email: 'thomas.meier@opaa.local', displayName: 'Thomas Meier' },
+      { id: 'user-meike', email: 'meike.brandt@opaa.local', displayName: 'Meike Brandt' },
+    ])
+    mockSearchSelectableGroups.mockResolvedValue([
+      { ...fromDirectory, id: 'group-meldewesen', name: 'Gemeinwohl' },
+      { ...smallInternal, id: 'group-mei', name: 'Mei' },
+    ])
+    renderWithProviders(<Harness />)
+    const user = userEvent.setup()
+
+    await user.type(screen.getByRole('combobox', { name: SEARCH }), 'mei')
+
+    await waitFor(() => expect(screen.getAllByRole('option')).toHaveLength(4))
+    expect(mockGetUserSummaries).toHaveBeenCalledWith('mei')
+    expect(mockSearchSelectableGroups).toHaveBeenCalledWith('mei')
+    const names = screen.getAllByRole('option').map((option) => option.textContent ?? '')
+    expect(names[0]).toMatch(/^Mei · Gruppe/)
+    expect(names[1]).toMatch(/^Meike Brandt/)
+    expect(names[2]).toMatch(/^Thomas Meier/)
+    expect(names[3]).toMatch(/^Gemeinwohl · Gruppe/)
+  })
+
+  it('names a group as a group in its text, not only with a symbol', async () => {
+    renderWithProviders(<Harness />)
+    const user = userEvent.setup()
+
+    await user.type(screen.getByRole('combobox', { name: SEARCH }), 'Referat 5')
+
+    const group = await screen.findByRole('option', { name: /Referat 5 Projektteam · Gruppe/ })
+    expect(group).toBeInTheDocument()
+    const person = screen.queryByRole('option', { name: /Alice/ })
+    expect(person?.textContent ?? '').not.toContain('Gruppe')
+  })
+
   it('tells two same-named groups apart by origin and source path', async () => {
     renderWithProviders(<Harness />)
     const user = userEvent.setup()
 
-    await user.click(screen.getByRole('radio', { name: 'Gruppe' }))
-    await user.type(screen.getByLabelText('Gruppe suchen'), 'Referat 5')
+    await user.type(screen.getByRole('combobox', { name: SEARCH }), 'Referat 5')
 
     const options = await screen.findAllByRole('option')
     const fromHausA = options.find((option) => option.textContent?.includes('Verzeichnis Haus A'))
@@ -136,8 +186,7 @@ describe('SubjectPicker (#1820, ADR-0036 Entscheidung 9)', () => {
     renderWithProviders(<Harness />)
     const user = userEvent.setup()
 
-    await user.click(screen.getByRole('radio', { name: 'Gruppe' }))
-    await user.type(screen.getByLabelText('Gruppe suchen'), 'Referat 5')
+    await user.type(screen.getByRole('combobox', { name: SEARCH }), 'Referat 5')
 
     const options = await screen.findAllByRole('option')
     const external = options.find((option) => option.textContent?.includes('Verzeichnis Partner'))
@@ -150,8 +199,7 @@ describe('SubjectPicker (#1820, ADR-0036 Entscheidung 9)', () => {
     renderWithProviders(<Harness />)
     const user = userEvent.setup()
 
-    await user.click(screen.getByRole('radio', { name: 'Gruppe' }))
-    await user.type(screen.getByLabelText('Gruppe suchen'), 'Referat 5')
+    await user.type(screen.getByRole('combobox', { name: SEARCH }), 'Referat 5')
 
     const options = await screen.findAllByRole('option')
     const internal = options.find((option) => option.textContent?.includes('Projektteam'))
@@ -164,8 +212,7 @@ describe('SubjectPicker (#1820, ADR-0036 Entscheidung 9)', () => {
     renderWithProviders(<Harness />)
     const user = userEvent.setup()
 
-    await user.click(screen.getByRole('radio', { name: 'Gruppe' }))
-    await user.type(screen.getByLabelText('Gruppe suchen'), 'Referat 52')
+    await user.type(screen.getByRole('combobox', { name: SEARCH }), 'Referat 52')
 
     const option = await screen.findByRole('option', { name: /Referat 52/ })
     expect(option).toHaveTextContent('aufgelöst — bestehende Rechte bleiben')
@@ -173,11 +220,12 @@ describe('SubjectPicker (#1820, ADR-0036 Entscheidung 9)', () => {
   })
 
   it('is operable by keyboard and reports the selected group', async () => {
+    mockGetUserSummaries.mockResolvedValue([])
+    mockSearchSelectableGroups.mockResolvedValue([fromDirectory])
     renderWithProviders(<Harness />)
     const user = userEvent.setup()
 
-    await user.click(screen.getByRole('radio', { name: 'Gruppe' }))
-    const field = screen.getByLabelText('Gruppe suchen')
+    const field = screen.getByRole('combobox', { name: SEARCH })
     field.focus()
     await user.keyboard('Referat 5')
     await screen.findAllByRole('option')
@@ -188,15 +236,20 @@ describe('SubjectPicker (#1820, ADR-0036 Entscheidung 9)', () => {
     )
   })
 
-  it('searches persons when the subject is a person', async () => {
-    renderWithProviders(<Harness />)
+  it('offers "Alle Konten" as an entry of its own only where the caller allows it', async () => {
+    const { unmount } = renderWithProviders(<Harness allowAllAccounts />)
     const user = userEvent.setup()
 
-    await user.type(screen.getByLabelText('Person suchen'), 'al')
+    await user.click(screen.getByRole('combobox', { name: SEARCH }))
+    await user.click(await screen.findByRole('option', { name: /Alle Konten/ }))
 
-    await waitFor(() => expect(mockGetUserSummaries).toHaveBeenCalledWith('al'))
-    expect(await screen.findByRole('option', { name: /Alice/ })).toBeInTheDocument()
-    expect(mockSearchSelectableGroups).not.toHaveBeenCalled()
+    await waitFor(() => expect(screen.getByTestId('selection')).toHaveTextContent('ALL_ACCOUNTS:'))
+    unmount()
+
+    renderWithProviders(<Harness />)
+    await user.type(screen.getByRole('combobox', { name: SEARCH }), 'Alle')
+    await pastTheDebounce()
+    expect(screen.queryByRole('option', { name: /Alle Konten/ })).not.toBeInTheDocument()
   })
 
   /**
@@ -207,7 +260,7 @@ describe('SubjectPicker (#1820, ADR-0036 Entscheidung 9)', () => {
     renderWithProviders(<Harness />)
     const user = userEvent.setup()
 
-    await user.type(screen.getByLabelText('Person suchen'), 'al')
+    await user.type(screen.getByRole('combobox', { name: SEARCH }), 'al')
     await user.click(await screen.findByRole('option', { name: /Alice/ }))
 
     await waitFor(() =>
@@ -217,14 +270,14 @@ describe('SubjectPicker (#1820, ADR-0036 Entscheidung 9)', () => {
     // und eine Behauptung davor bestuende auch auf dem fehlerhaften Stand.
     await pastTheDebounce()
     expect(mockGetUserSummaries).toHaveBeenCalledTimes(1)
+    expect(mockSearchSelectableGroups).toHaveBeenCalledTimes(1)
   })
 
   it('runs no second search after a group was selected', async () => {
     renderWithProviders(<Harness />)
     const user = userEvent.setup()
 
-    await user.click(screen.getByRole('radio', { name: 'Gruppe' }))
-    await user.type(screen.getByLabelText('Gruppe suchen'), 'Referat 5')
+    await user.type(screen.getByRole('combobox', { name: SEARCH }), 'Referat 5')
     await user.click(await screen.findByRole('option', { name: /Referat 5 Projektteam/ }))
 
     await waitFor(() =>
@@ -232,15 +285,42 @@ describe('SubjectPicker (#1820, ADR-0036 Entscheidung 9)', () => {
     )
     await pastTheDebounce()
     expect(mockSearchSelectableGroups).toHaveBeenCalledTimes(1)
+    expect(mockGetUserSummaries).toHaveBeenCalledTimes(1)
   })
 
-  it('names the rule that hides a protected group from the search', async () => {
+  /** Review #2137: "Alle Konten" must not stand in for an empty result in the grants. */
+  it('shows the empty-result hint in the grants too, without "Alle Konten" in its way', async () => {
+    mockGetUserSummaries.mockResolvedValue([])
+    mockSearchSelectableGroups.mockResolvedValue([])
+    renderWithProviders(<Harness allowAllAccounts />)
+    const user = userEvent.setup()
+
+    await user.type(screen.getByRole('combobox', { name: SEARCH }), 'Personalrat')
+
+    expect(await screen.findByText(/vollständige Bezeichnung/)).toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: /Alle Konten/ })).not.toBeInTheDocument()
+  })
+
+  it('keeps offering "Alle Konten" for an input that names it', async () => {
+    mockGetUserSummaries.mockResolvedValue([])
+    mockSearchSelectableGroups.mockResolvedValue([])
+    renderWithProviders(<Harness allowAllAccounts />)
+    const user = userEvent.setup()
+
+    await user.type(screen.getByRole('combobox', { name: SEARCH }), 'Konten')
+
+    expect(await screen.findByRole('option', { name: /Alle Konten/ })).toBeInTheDocument()
+  })
+
+  it('names the rule that hides a protected group when the search finds nothing', async () => {
+    mockGetUserSummaries.mockResolvedValue([])
+    mockSearchSelectableGroups.mockResolvedValue([])
     renderWithProviders(<Harness />)
     const user = userEvent.setup()
 
-    await user.click(screen.getByRole('radio', { name: 'Gruppe' }))
+    await user.type(screen.getByRole('combobox', { name: SEARCH }), 'Personalrat')
 
-    expect(screen.getByText(/vollständige Bezeichnung/)).toBeInTheDocument()
+    expect(await screen.findByText(/vollständige Bezeichnung/)).toBeInTheDocument()
   })
 })
 

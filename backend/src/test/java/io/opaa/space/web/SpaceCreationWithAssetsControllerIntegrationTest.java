@@ -10,6 +10,8 @@ import com.jayway.jsonpath.JsonPath;
 import io.opaa.auth.DevAuthFilter;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.group.Group;
+import io.opaa.group.GroupRepository;
 import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.OwnLibraryFixtures;
 import java.nio.charset.StandardCharsets;
@@ -37,11 +39,13 @@ class SpaceCreationWithAssetsControllerIntegrationTest {
   @Autowired private JdbcTemplate jdbcTemplate;
   @Autowired private OwnLibraryFixtures ownLibraryFixtures;
   @Autowired private UserRepository userRepository;
+  @Autowired private GroupRepository groupRepository;
 
   private final List<UUID> createdLibraryIds = new ArrayList<>();
   private final List<UUID> createdPromptLibraryIds = new ArrayList<>();
   private final List<UUID> createdSpaceIds = new ArrayList<>();
   private final List<UUID> createdUserIds = new ArrayList<>();
+  private final List<UUID> createdGroupIds = new ArrayList<>();
 
   @BeforeEach
   void provisionCallers() throws Exception {
@@ -49,6 +53,7 @@ class SpaceCreationWithAssetsControllerIntegrationTest {
     createdPromptLibraryIds.clear();
     createdSpaceIds.clear();
     createdUserIds.clear();
+    createdGroupIds.clear();
     mockMvc.perform(get("/api/v1/spaces").with(devUser())).andExpect(status().isOk());
     mockMvc.perform(get("/api/v1/spaces").with(devAdmin())).andExpect(status().isOk());
   }
@@ -82,6 +87,9 @@ class SpaceCreationWithAssetsControllerIntegrationTest {
           "DELETE FROM asset_ownership_history WHERE asset_id = ?", promptLibraryId);
     }
     ownLibraryFixtures.removeLibraries(createdLibraryIds.toArray(new UUID[0]));
+    for (UUID groupId : createdGroupIds) {
+      jdbcTemplate.update("DELETE FROM groups WHERE id = ?", groupId);
+    }
     for (UUID userId : createdUserIds) {
       jdbcTemplate.update("DELETE FROM users WHERE id = ?", userId);
     }
@@ -123,7 +131,7 @@ class SpaceCreationWithAssetsControllerIntegrationTest {
     String space =
         createSpace(
             devAdmin(),
-            "{\"name\":\"Gemischt\",\"initialMembers\":[{\"userId\":\""
+            "{\"name\":\"Gemischt\",\"initialMembers\":[{\"subjectType\":\"USER\",\"subjectId\":\""
                 + devUserId
                 + "\",\"role\":\"ADMIN\"}],\"assets\":["
                 + assetJson("KNOWLEDGE_LIBRARY", library)
@@ -172,7 +180,7 @@ class SpaceCreationWithAssetsControllerIntegrationTest {
     String space =
         createSpace(
             devUser(),
-            "{\"name\":\"Gemischt aus dem Assistenten\",\"initialMembers\":[{\"userId\":\""
+            "{\"name\":\"Gemischt aus dem Assistenten\",\"initialMembers\":[{\"subjectType\":\"USER\",\"subjectId\":\""
                 + memberWithoutAccess
                 + "\",\"role\":\"MEMBER\"}],\"assets\":["
                 + assetJson("KNOWLEDGE_LIBRARY", library)
@@ -205,12 +213,60 @@ class SpaceCreationWithAssetsControllerIntegrationTest {
     assertThat(memberAdded).containsExactly("USER");
   }
 
+  /** The wizard admits a group in the same call, audited as a group like one added later. */
+  @Test
+  void aGroupIsAdmittedOnCreation() throws Exception {
+    UUID group = createReleasedGroupInOrganizationOf(userIdOf("dev-user@opaa.local"));
+
+    String space =
+        createSpace(
+            devUser(),
+            "{\"name\":\"Mit Gruppe\",\"initialMembers\":[{\"subjectType\":\"GROUP\","
+                + "\"subjectId\":\""
+                + group
+                + "\",\"role\":\"CURATOR\"}]}");
+
+    mockMvc
+        .perform(get("/api/v1/spaces/" + space + "/members").with(devUser()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$[?(@.subjectId == '" + group + "')].subjectType").value("GROUP"))
+        .andExpect(jsonPath("$[?(@.subjectId == '" + group + "')].role").value("CURATOR"));
+    List<String> memberAdded =
+        jdbcTemplate.queryForList(
+            "SELECT subject_kind FROM audit_log"
+                + " WHERE event_type = 'SPACE_MEMBER_ADDED' AND object_id = ?",
+            String.class,
+            space);
+    assertThat(memberAdded).containsExactly("GROUP");
+  }
+
+  /** A space that does not exist yet still names the installation's cleanup periods. */
+  @Test
+  void theCleanupPeriodsAreReadableWithoutASpace() throws Exception {
+    mockMvc
+        .perform(get("/api/v1/spaces/chat-auto-cleanup").with(devUser()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.archiveAfterDays").value(90))
+        .andExpect(jsonPath("$.deleteAfterDays").value(365));
+  }
+
   // -------------------------------------------------------------------------------------------
   // Fixture
   // -------------------------------------------------------------------------------------------
 
   private static String assetJson(String assetType, String assetId) {
     return "{\"assetType\":\"" + assetType + "\",\"assetId\":\"" + assetId + "\"}";
+  }
+
+  private UUID createReleasedGroupInOrganizationOf(UUID colleague) {
+    UUID organizationId =
+        jdbcTemplate.queryForObject(
+            "SELECT organization_id FROM users WHERE id = ?", UUID.class, colleague);
+    Group group = Group.internal(organizationId, "Referat " + UUID.randomUUID(), null, null);
+    group.release(true);
+    UUID id = groupRepository.save(group).getId();
+    createdGroupIds.add(id);
+    return id;
   }
 
   private UUID createUserInOrganizationOf(UUID colleague) {

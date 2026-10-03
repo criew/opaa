@@ -2175,7 +2175,7 @@ class KnowledgeLibraryServiceIntegrationTest {
             currentUserOf(libraryOwner));
     var space =
         spaceService.createSpace(
-            new SpaceCreation("Team Leistungsgewaehrung", null, null, null, null, null),
+            new SpaceCreation("Team Leistungsgewaehrung", null, null, null, null),
             currentUserOf(spaceAdmin, false));
     createdSpaceIds.add(space.getId());
 

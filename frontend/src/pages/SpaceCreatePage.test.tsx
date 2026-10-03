@@ -110,7 +110,6 @@ describe('SpaceCreatePage (#594, Mockup 1b)', () => {
     expect(mockCreateNewSpace).toHaveBeenCalledWith(
       'Widerspruchsstelle',
       'Referat 12',
-      'PRIVATE',
       [],
       false,
       [],
@@ -122,8 +121,8 @@ describe('SpaceCreatePage (#594, Mockup 1b)', () => {
     const user = userEvent.setup()
     renderWithProviders(<SpaceCreatePage />, { withRouter: true })
 
-    const cleanup = screen.getByRole('switch', {
-      name: 'Inaktive Chats automatisch archivieren und löschen',
+    const cleanup = await screen.findByRole('switch', {
+      name: 'Inaktive Chats nach 90 Tagen archivieren und nach weiteren 365 Tagen löschen',
     })
     expect(cleanup).not.toBeChecked()
     await user.type(screen.getByLabelText(/Name/), 'Widerspruchsstelle')
@@ -132,17 +131,14 @@ describe('SpaceCreatePage (#594, Mockup 1b)', () => {
     await user.click(screen.getByRole('button', { name: 'Weiter' }))
     await user.click(screen.getByRole('button', { name: 'Weiter' }))
 
-    expect(screen.getByText('werden automatisch archiviert und gelöscht')).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        'Inaktive Chats werden nach 90 Tagen archiviert und nach weiteren 365 Tagen gelöscht.',
+      ),
+    ).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Space anlegen' }))
 
-    expect(mockCreateNewSpace).toHaveBeenCalledWith(
-      'Widerspruchsstelle',
-      '',
-      'PRIVATE',
-      [],
-      true,
-      [],
-    )
+    expect(mockCreateNewSpace).toHaveBeenCalledWith('Widerspruchsstelle', '', [], true, [])
   })
 
   it('#777: offers the user picker on the Mitglieder step, powered by GET /v1/users', async () => {
@@ -168,14 +164,114 @@ describe('SpaceCreatePage (#594, Mockup 1b)', () => {
     await user.click(screen.getByRole('button', { name: 'Weiter' }))
     // #778 review, finding 4: the picker no longer preloads the whole organization - a query
     // (min. 2 characters) has to be typed before GET /v1/users is even attempted.
-    await user.type(screen.getByLabelText('Benutzer'), 'al')
+    await user.type(screen.getByLabelText('Person oder Gruppe suchen'), 'al')
     expect(await screen.findByRole('option', { name: /Alice/ })).toBeInTheDocument()
   })
+
+  /** #2131: Ohne Space-Verzeichnis bewirkt eine Sichtbarkeit nichts - jeder Space ist privat. */
+  it('asks for no visibility, neither in the basics nor in the summary', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<SpaceCreatePage />, { withRouter: true })
+
+    expect(screen.queryByText(/Sichtbarkeit/)).not.toBeInTheDocument()
+    await user.type(screen.getByLabelText(/Name/), 'Widerspruchsstelle')
+    await user.click(screen.getByRole('button', { name: 'Weiter' }))
+    await user.click(screen.getByRole('button', { name: 'Weiter' }))
+    await user.click(screen.getByRole('button', { name: 'Weiter' }))
+
+    expect(screen.queryByText(/Sichtbarkeit/)).not.toBeInTheDocument()
+  })
+
+  /** #2131: Die Fristen stammen aus der Systemeinstellung, nicht aus dem Frontend. */
+  it('names the cleanup periods the operator configured', async () => {
+    server.use(
+      http.get('/api/v1/spaces/chat-auto-cleanup', () =>
+        HttpResponse.json({ archiveAfterDays: 120, deleteAfterDays: 400 }),
+      ),
+    )
+    const user = userEvent.setup()
+    renderWithProviders(<SpaceCreatePage />, { withRouter: true })
+
+    const cleanup = await screen.findByRole('switch', {
+      name: 'Inaktive Chats nach 120 Tagen archivieren und nach weiteren 400 Tagen löschen',
+    })
+    expect(screen.getByText('Angeheftete Chats sind ausgenommen.')).toBeInTheDocument()
+    await user.type(screen.getByLabelText(/Name/), 'Widerspruchsstelle')
+    await user.click(cleanup)
+    await user.click(screen.getByRole('button', { name: 'Weiter' }))
+    await user.click(screen.getByRole('button', { name: 'Weiter' }))
+    await user.click(screen.getByRole('button', { name: 'Weiter' }))
+
+    expect(
+      screen.getByText(
+        'Inaktive Chats werden nach 120 Tagen archiviert und nach weiteren 400 Tagen gelöscht.',
+      ),
+    ).toBeInTheDocument()
+  })
+
+  /** Review #2137: a failed lookup of the periods must not hide that the cleanup is on. */
+  it('names the cleanup without numbers when the periods cannot be loaded', async () => {
+    server.use(http.get('/api/v1/spaces/chat-auto-cleanup', () => HttpResponse.error()))
+    const user = userEvent.setup()
+    renderWithProviders(<SpaceCreatePage />, { withRouter: true })
+
+    await user.type(screen.getByLabelText(/Name/), 'Widerspruchsstelle')
+    await user.click(
+      screen.getByRole('switch', { name: 'Inaktive Chats automatisch archivieren und löschen' }),
+    )
+    await user.click(screen.getByRole('button', { name: 'Weiter' }))
+    await user.click(screen.getByRole('button', { name: 'Weiter' }))
+    await user.click(screen.getByRole('button', { name: 'Weiter' }))
+
+    expect(screen.getByText('Chats')).toBeInTheDocument()
+    expect(
+      screen.getByText('Inaktive Chats werden automatisch archiviert und später gelöscht.'),
+    ).toBeInTheDocument()
+  })
+
+  it('leaves the cleanup out of the summary while it is off', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<SpaceCreatePage />, { withRouter: true })
+
+    await screen.findByRole('switch', { name: /nach 90 Tagen archivieren/ })
+    await user.type(screen.getByLabelText(/Name/), 'Widerspruchsstelle')
+    await user.click(screen.getByRole('button', { name: 'Weiter' }))
+    await user.click(screen.getByRole('button', { name: 'Weiter' }))
+    await user.click(screen.getByRole('button', { name: 'Weiter' }))
+
+    expect(screen.queryByText('Chats')).not.toBeInTheDocument()
+    expect(screen.queryByText(/Inaktive Chats werden/)).not.toBeInTheDocument()
+  })
+
+  /** #2131: Personen und Gruppen werden im Assistenten gleich aufgenommen. */
+  it('admits a group as a member, names it as a group and passes it on', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<SpaceCreatePage />, { withRouter: true })
+
+    await user.type(screen.getByLabelText(/Name/), 'Widerspruchsstelle')
+    await user.click(screen.getByRole('button', { name: 'Weiter' }))
+    expect(
+      screen.getByText(/Gruppen geben ihre Rolle an alle ihre Mitglieder weiter/),
+    ).toBeInTheDocument()
+    await user.type(screen.getByLabelText('Person oder Gruppe suchen'), 'Projektteam')
+    await user.click(await screen.findByRole('option', { name: /Referat 5 Projektteam · Gruppe/ }))
+    await user.click(screen.getByRole('combobox', { name: 'Rolle des neuen Mitglieds' }))
+    await user.click(await screen.findByRole('option', { name: 'Kurator' }))
+    await user.click(screen.getByRole('button', { name: 'Vormerken' }))
+    await user.click(screen.getByRole('button', { name: 'Weiter' }))
+    await user.click(screen.getByRole('button', { name: 'Weiter' }))
+
+    expect(screen.getByText(/Referat 5 Projektteam · Gruppe · Kurator/)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Space anlegen' }))
+    expect(mockCreateNewSpace).toHaveBeenCalledWith('Widerspruchsstelle', '', [], false, [
+      { subjectType: 'GROUP', subjectId: 'group-phoenix', role: 'CURATOR' },
+    ])
+  }, 15000)
 
   async function noteAlice(user: ReturnType<typeof userEvent.setup>) {
     await user.type(screen.getByLabelText(/Name/), 'Widerspruchsstelle')
     await user.click(screen.getByRole('button', { name: 'Weiter' }))
-    await user.type(screen.getByLabelText('Benutzer'), 'al')
+    await user.type(screen.getByLabelText('Person oder Gruppe suchen'), 'al')
     await user.click(await screen.findByRole('option', { name: /Alice/ }))
     await user.click(screen.getByRole('button', { name: 'Vormerken' }))
     await user.click(screen.getByRole('button', { name: 'Weiter' }))
@@ -190,14 +286,9 @@ describe('SpaceCreatePage (#594, Mockup 1b)', () => {
     await user.click(screen.getByRole('button', { name: 'Space anlegen' }))
 
     expect(mockCreateNewSpace).toHaveBeenCalledTimes(1)
-    expect(mockCreateNewSpace).toHaveBeenCalledWith(
-      'Widerspruchsstelle',
-      '',
-      'PRIVATE',
-      [],
-      false,
-      [{ userId: expect.any(String), role: 'MEMBER' }],
-    )
+    expect(mockCreateNewSpace).toHaveBeenCalledWith('Widerspruchsstelle', '', [], false, [
+      { subjectType: 'USER', subjectId: expect.any(String), role: 'MEMBER' },
+    ])
     expect(mockNavigate).toHaveBeenCalledWith('/spaces/space-neu')
   }, 15000)
 
@@ -245,14 +336,7 @@ describe('SpaceCreatePage (#594, Mockup 1b)', () => {
 
       expect(screen.getByText(NO_KNOWLEDGE_SUMMARY)).toBeInTheDocument()
       await user.click(screen.getByRole('button', { name: 'Space anlegen' }))
-      expect(mockCreateNewSpace).toHaveBeenCalledWith(
-        'Widerspruchsstelle',
-        '',
-        'PRIVATE',
-        [],
-        false,
-        [],
-      )
+      expect(mockCreateNewSpace).toHaveBeenCalledWith('Widerspruchsstelle', '', [], false, [])
     })
 
     it('creates the space with knowledge and prompts chosen as tiles, in one call', async () => {
@@ -272,7 +356,6 @@ describe('SpaceCreatePage (#594, Mockup 1b)', () => {
       expect(mockCreateNewSpace).toHaveBeenCalledWith(
         'Widerspruchsstelle',
         '',
-        'PRIVATE',
         [
           { assetType: 'KNOWLEDGE_LIBRARY', assetId: 'library-dienstanweisungen' },
           { assetType: 'PROMPT_LIBRARY', assetId: 'prompt-library-referat-50' },
