@@ -202,6 +202,9 @@ const stretchedSx = {
   '&:focus-visible::after': { outline: 2, outlineColor: 'primary.main', outlineOffset: 2 },
 } as const
 
+/** Marks the tile's main control - the title link or the choice checkbox. */
+const MAIN_CONTROL = '[data-tile-main]'
+
 /**
  * The one tile of an asset - in the catalog and in every choice of assets. The type badge,
  * the star and further actions are separate controls above the tile's main control, never inside
@@ -251,8 +254,12 @@ export default function AssetTile({ tile, mode, onFavoriteChange, actions }: Ass
               theme.palette.mode === 'dark' ? alpha(theme.palette.primary.main, 0.16) : blue[50]
           : 'background.paper',
         cursor: readOnly ? 'default' : 'pointer',
-        '&:hover': readOnly ? {} : { borderColor: selected ? 'primary.main' : blue[300] },
-        '&:focus-within': { borderColor: selected ? 'primary.main' : blue[300] },
+        // Only the main control marks the tile: pointing at or pressing the star or "⋯" marks
+        // just that control. The stretched main control covers every other spot of the tile.
+        [`&:has(> ${MAIN_CONTROL}:hover)`]: readOnly
+          ? {}
+          : { borderColor: selected ? 'primary.main' : blue[300] },
+        [`&:has(> ${MAIN_CONTROL}:focus)`]: { borderColor: selected ? 'primary.main' : blue[300] },
       }}
     >
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
@@ -276,6 +283,7 @@ export default function AssetTile({ tile, mode, onFavoriteChange, actions }: Ass
         <Box
           component={RouterLink}
           to={mode.to}
+          data-tile-main=""
           sx={{ color: 'inherit', textDecoration: 'none', ...stretchedSx }}
         >
           {title}
@@ -285,6 +293,7 @@ export default function AssetTile({ tile, mode, onFavoriteChange, actions }: Ass
           component="button"
           type="button"
           role="checkbox"
+          data-tile-main=""
           data-asset-tile={`${tile.assetType}:${tile.assetId}`}
           aria-checked={selected}
           aria-describedby={describedBy || undefined}
