@@ -459,6 +459,27 @@ class IndexingRunTemplateTest {
   }
 
   @Test
+  void aRunThatMetNothingButUnreadableAreasRetainsNothingAndSoDeletesNothing() {
+    template.run(
+        jobId,
+        library,
+        IndexingRunMode.FULL,
+        fullListingExecutor,
+        run -> ListingOutcome.completeExcept(1, key -> true));
+
+    verify(documentRepository, never()).findByLibraryIdAndSourceType(any(), any());
+    verify(cleanupService)
+        .reconcile(
+            eq(library),
+            eq(SourceTypes.FILESYSTEM),
+            eq(Set.of()),
+            eq(Set.of()),
+            any(),
+            eq(fullListingExecutor),
+            eq(IndexingRunMode.FULL));
+  }
+
+  @Test
   void unreadableAreasWhoseDocumentsCannotBeLoadedReconcileNothing() {
     AtomicReference<Boolean> hook = new AtomicReference<>();
     when(documentRepository.findByLibraryIdAndSourceType(any(), any()))

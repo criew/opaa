@@ -118,8 +118,9 @@ Der Lauf durchläuft den Baum rekursiv und betrachtet alle regulären Dateien.
 - **Existiert der Pfad nicht**, ist er kein Verzeichnis oder lässt er sich selbst nicht auflisten,
   scheitert der Lauf sofort. Das ist bewusst so, damit ein nicht eingebundenes Netzlaufwerk nie
   als „leerer, erfolgreicher Bestand" gewertet wird und Dokumente löscht.
-- **Nicht lesbare Unterverzeichnisse** werden übersprungen (Abschnitt 3). Die Aufzählung gilt dann
-  als unvollständig.
+- **Nicht lesbare Unterverzeichnisse und Dateien** werden übersprungen (Abschnitt 3). Die
+  Aufzählung gilt dann für diese Bereiche als unvollständig, für alles andere als vollständig
+  (Abschnitt 9).
 
 ## 6. Änderungserkennung
 
@@ -172,9 +173,16 @@ Nicht gelöscht wird:
 
 - wenn der Lauf gescheitert ist, etwa weil das Verzeichnis nicht existiert,
 - wenn der Lauf keine Dateien gefunden hat,
-- wenn der Lauf ein nicht lesbares Unterverzeichnis übersprungen hat — dann bleibt der ganze
-  Bestand stehen, und auch die Ordner werden nicht aufgeräumt,
+- ein bekanntes Dokument in oder unter einem nicht lesbaren Unterverzeichnis und eine nicht
+  lesbare Datei selbst, samt ihren Anhängen,
 - ein Anhang, dessen Mail unverändert und daher nicht neu ausgepackt wurde.
+
+Ein nicht lesbarer Bereich setzt die Löscherkennung also nur für sich selbst aus. Außerhalb davon
+werden verschwundene Dokumente im selben Lauf entfernt und leere Ordner aufgeräumt. Der Vergleich
+geht nach ganzen Pfadbestandteilen: Ist `projekte/intern` nicht lesbar, bleibt
+`projekte/intern-alt` davon unberührt. Die Laufhistorie nennt die Zahl der nicht lesbaren Bereiche
+als „N Bereiche nicht lesbar", die Pfade stehen im Protokoll des Laufs (Abschnitt 10). Ist der
+Verzeichnispfad selbst nicht lesbar, scheitert der Lauf (Abschnitt 5).
 
 ## 10. Protokolleinträge dieses Konnektors
 
@@ -183,7 +191,7 @@ Nicht gelöscht wird:
 | Allowlist | Verzeichnispfad liegt außerhalb der vom Betrieb freigegebenen Verzeichnisse | Freigabeliste verletzt, Lauf endet sofort |
 | Format nicht unterstützt | Dateiformat wird nicht unterstützt | Inhalt nicht zugelassen oder Datei nicht lesbar |
 | Formatabweichung | Dateiendung passt nicht zum erkannten Inhalt (erkannt: …) | wird trotzdem indiziert |
-| nicht erreichbar | Nicht lesbar, übersprungen | Unterverzeichnis darf nicht betreten werden; Aufzählung unvollständig |
+| nicht erreichbar | Nicht lesbar, übersprungen | Unterverzeichnis darf nicht betreten oder Datei nicht geprüft werden; bekannter Bestand darin bleibt erhalten |
 | abgewiesen | Speicherkontingent-Meldung | Kontingent der Bibliothek erreicht |
 | abgewiesen | kein extrahierbarer Text | typisch Scan-PDF |
 | Fehler | Verarbeitung fehlgeschlagen | Pipeline-Fehler oder Ausnahme |
@@ -199,7 +207,7 @@ Anhangs-Einträge (nicht unterstützt, Formatabweichung, nicht lesbar, Verarbeit
 |---|---|
 | Netzlaufwerk nicht eingebunden, Pfad fehlt | Lauf `FAILED` mit Fehlermeldung, nichts gelöscht |
 | Verzeichnis leer | Lauf erfolgreich mit null Dokumenten, nichts gelöscht |
-| Unterverzeichnis nicht lesbar | übersprungen, übrige Dateien werden indiziert, nichts gelöscht |
+| Unterverzeichnis nicht lesbar | übersprungen, Bestand darin bleibt erhalten; übrige Dateien werden indiziert, außerhalb verschwundene Dokumente entfernt |
 | Freigabeliste nachträglich verengt | nächster Lauf endet sofort mit „Allowlist" |
 | Datei zwischen Aufzählung und Verarbeitung gelöscht oder gesperrt | Eintrag „Format nicht unterstützt" oder „Fehler", Lauf läuft weiter |
 | Datei nach Normalisierung außerhalb des Quellpfads | Warnung im Log, Datei wird der Wurzel zugeordnet |
