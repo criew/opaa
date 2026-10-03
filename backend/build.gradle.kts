@@ -67,6 +67,7 @@ dependencies {
         exclude(group = "software.amazon.awssdk", module = "netty-nio-client")
         exclude(group = "software.amazon.awssdk", module = "url-connection-client")
     }
+    implementation(libs.smbj)
     runtimeOnly(libs.bundles.runtime)
     testImplementation(libs.bundles.test.deps)
     testRuntimeOnly(libs.bundles.test.runtime.deps)
