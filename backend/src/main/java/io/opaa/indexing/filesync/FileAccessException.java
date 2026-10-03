@@ -53,6 +53,16 @@ public abstract sealed class FileAccessException extends Exception {
     }
   }
 
+  /**
+   * The source no longer accepts a stream's change cursor: the stream is dropped and the next run
+   * is a full sync.
+   */
+  public static final class CursorExpired extends FileAccessException {
+    public CursorExpired(String message) {
+      super(message);
+    }
+  }
+
   /** This one request failed (a throttle that outlasted its retries, an odd answer). */
   public static final class Transient extends FileAccessException {
     public Transient(String message) {

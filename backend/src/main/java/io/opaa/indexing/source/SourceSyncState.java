@@ -7,6 +7,7 @@ import jakarta.persistence.Table;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
@@ -175,6 +176,43 @@ public class SourceSyncState {
   public void holdPendingChangeCursors(Map<String, String> cursors) {
     writeChangeCursors(new ChangeCursors(readChangeCursors().current(), cursors));
     touch();
+  }
+
+  /** A clean read of stream {@code feedKey}: its next read starts at {@code cursor}. */
+  public void advanceChangeCursor(String feedKey, String cursor) {
+    Map<String, String> current = new HashMap<>(readChangeCursors().current());
+    current.put(feedKey, cursor);
+    writeChangeCursors(new ChangeCursors(current, readChangeCursors().pending()));
+    touch();
+  }
+
+  /** Drops the cursor of stream {@code feedKey}, which the source no longer accepts. */
+  public void discardChangeCursor(String feedKey) {
+    Map<String, String> current = new HashMap<>(readChangeCursors().current());
+    current.remove(feedKey);
+    writeChangeCursors(new ChangeCursors(current, readChangeCursors().pending()));
+    touch();
+  }
+
+  /**
+   * The next run is a full sync, whatever the interval says - after a change of structure or a
+   * dropped stream. The completed full sync it starts clears the mark.
+   */
+  public void requireFullSync() {
+    fullSyncCompletedAt = null;
+    touch();
+  }
+
+  /**
+   * Whether the next run of a connector with a change log reads its streams: a full sync completed
+   * within {@code interval}, none is pending, and every stream in {@code feedKeys} has a cursor.
+   */
+  public boolean canReadChanges(Set<String> feedKeys, Duration interval, Instant now) {
+    return fullSyncCompletedAt != null
+        && !isFullSyncInterrupted()
+        && fullSyncCompletedAt.plus(interval).isAfter(now)
+        && changeCursors().keySet().containsAll(feedKeys)
+        && !feedKeys.isEmpty();
   }
 
   /**
