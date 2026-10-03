@@ -1,0 +1,731 @@
+package io.opaa.indexing.source.smb;
+
+import com.hierynomus.msdtyp.AccessMask;
+import com.hierynomus.mserref.NtStatus;
+import com.hierynomus.msfscc.FileAttributes;
+import com.hierynomus.msfscc.fileinformation.FileIdBothDirectoryInformation;
+import com.hierynomus.msfscc.fileinformation.FileInternalInformation;
+import com.hierynomus.mssmb2.SMB2CreateDisposition;
+import com.hierynomus.mssmb2.SMB2CreateOptions;
+import com.hierynomus.mssmb2.SMB2ShareAccess;
+import com.hierynomus.mssmb2.SMBApiException;
+import com.hierynomus.protocol.transport.PacketHandlers;
+import com.hierynomus.protocol.transport.TransportException;
+import com.hierynomus.protocol.transport.TransportLayer;
+import com.hierynomus.smb.SMBPacket;
+import com.hierynomus.smb.SMBPacketData;
+import com.hierynomus.smbj.SMBClient;
+import com.hierynomus.smbj.SmbConfig;
+import com.hierynomus.smbj.auth.AuthenticationContext;
+import com.hierynomus.smbj.auth.NtlmAuthenticator;
+import com.hierynomus.smbj.connection.Connection;
+import com.hierynomus.smbj.session.Session;
+import com.hierynomus.smbj.share.Directory;
+import com.hierynomus.smbj.share.DiskShare;
+import com.hierynomus.smbj.share.File;
+import com.hierynomus.smbj.share.Share;
+import com.hierynomus.smbj.transport.TransportLayerFactory;
+import com.hierynomus.smbj.transport.tcp.direct.DirectTcpTransportFactory;
+import io.opaa.indexing.job.RequestBudgetExhaustedException;
+import io.opaa.indexing.source.ConnectorChecks;
+import io.opaa.indexing.source.RequestBudget;
+import io.opaa.security.TargetAddressValidator;
+import io.opaa.sourceaccess.SourceRequestMeter;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.Socket;
+import java.net.SocketTimeoutException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.time.Duration;
+import java.util.EnumSet;
+import java.util.Iterator;
+import java.util.NoSuchElementException;
+import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import javax.net.SocketFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+/**
+ * One signed-in share of one run or probe: listing, a single look-up and bounded downloads, every
+ * SMB message charged to the {@link RequestBudget} before it leaves. The socket is opened only
+ * after the target validation passed for the host of {@code sourceUrl}, signing is required,
+ * encryption is used where the server offers it, and DFS referrals are not followed - credentials
+ * never leave that host. A guest or anonymous session is refused.
+ */
+final class SmbShareClient implements AutoCloseable {
+
+  private static final Logger log = LoggerFactory.getLogger(SmbShareClient.class);
+
+  static final String ALLOWLIST_HINT = TargetAddressValidator.ALLOWLIST_HINT;
+
+  private static final long REPARSE_TAG_NAME_SURROGATE = 0x20000000L;
+  private static final long REPARSE_TAG_DFS = 0x8000000AL;
+  private static final long ATTRIBUTE_RECALL_ON_OPEN = 0x00040000L;
+  private static final long ATTRIBUTE_RECALL_ON_DATA_ACCESS = 0x00400000L;
+
+  private static final Set<Long> AUTHENTICATION_STATUSES =
+      Set.of(
+          NtStatus.STATUS_LOGON_FAILURE.getValue(),
+          NtStatus.STATUS_ACCOUNT_DISABLED.getValue(),
+          NtStatus.STATUS_PASSWORD_EXPIRED.getValue(),
+          NtStatus.STATUS_LOGON_TYPE_NOT_GRANTED.getValue(),
+          0xC000006EL, // STATUS_ACCOUNT_RESTRICTION
+          0xC000006FL, // STATUS_INVALID_LOGON_HOURS
+          0xC0000070L, // STATUS_INVALID_WORKSTATION
+          0xC0000193L, // STATUS_ACCOUNT_EXPIRED
+          0xC0000224L, // STATUS_PASSWORD_MUST_CHANGE
+          0xC0000234L); // STATUS_ACCOUNT_LOCKED_OUT
+
+  private static final Set<Long> NOT_FOUND_STATUSES =
+      Set.of(
+          NtStatus.STATUS_OBJECT_NAME_NOT_FOUND.getValue(),
+          NtStatus.STATUS_OBJECT_PATH_NOT_FOUND.getValue(),
+          NtStatus.STATUS_NO_SUCH_FILE.getValue(),
+          NtStatus.STATUS_NOT_FOUND.getValue(),
+          NtStatus.STATUS_DELETE_PENDING.getValue(),
+          NtStatus.STATUS_FILE_DELETED.getValue(),
+          NtStatus.STATUS_NOT_A_DIRECTORY.getValue(),
+          NtStatus.STATUS_FILE_IS_A_DIRECTORY.getValue());
+
+  private static final Set<SMB2ShareAccess> SHARE_ALL = EnumSet.allOf(SMB2ShareAccess.class);
+
+  private final SmbAddress address;
+  private final SmbCredentials credentials;
+  private final RequestBudget budget;
+  private final BudgetedTransportFactory transport;
+  private final SMBClient client;
+  private Connection connection;
+  private Session session;
+  private volatile DiskShare share;
+  private SmbAccessException failure;
+
+  /** One entry of a folder as the server lists it. */
+  record Item(
+      String name,
+      boolean directory,
+      long size,
+      long lastWriteTicks,
+      long attributes,
+      long reparseTag,
+      long fileId) {
+
+    /** A symbolic link, junction, mount point or DFS link - never followed. */
+    boolean link() {
+      return (attributes & FileAttributes.FILE_ATTRIBUTE_REPARSE_POINT.getValue()) != 0
+          && ((reparseTag & REPARSE_TAG_NAME_SURROGATE) != 0 || reparseTag == REPARSE_TAG_DFS);
+    }
+
+    /** Moved to other storage; reading it would recall it first. */
+    boolean offline() {
+      return (attributes
+              & (FileAttributes.FILE_ATTRIBUTE_OFFLINE.getValue()
+                  | ATTRIBUTE_RECALL_ON_OPEN
+                  | ATTRIBUTE_RECALL_ON_DATA_ACCESS))
+          != 0;
+    }
+
+    private static Item of(FileIdBothDirectoryInformation info) {
+      long attributes = info.getFileAttributes();
+      boolean reparse = (attributes & FileAttributes.FILE_ATTRIBUTE_REPARSE_POINT.getValue()) != 0;
+      return new Item(
+          info.getFileName(),
+          (attributes & FileAttributes.FILE_ATTRIBUTE_DIRECTORY.getValue()) != 0,
+          info.getEndOfFile(),
+          info.getLastWriteTime().getWindowsTimeStamp(),
+          attributes,
+          // a reparse point carries its tag where the extended-attribute size would be
+          reparse ? info.getEaSize() : 0,
+          info.getFileId());
+    }
+  }
+
+  private SmbShareClient(
+      SmbAddress address,
+      SmbCredentials credentials,
+      RequestBudget budget,
+      SmbConfig.Builder config) {
+    this.address = address;
+    this.credentials = credentials;
+    this.budget = budget;
+    this.transport = new BudgetedTransportFactory(budget);
+    this.client = new SMBClient(config.withTransportLayerFactory(transport).build());
+  }
+
+  /** A client for the share that connects on its first request. */
+  static SmbShareClient of(
+      SmbAddress address,
+      SmbCredentials credentials,
+      TargetAddressValidator targetAddressValidator,
+      RequestBudget budget,
+      Duration timeout) {
+    SmbConfig.Builder config =
+        SmbConfig.builder()
+            .withAuthenticators(new NtlmAuthenticator.Factory())
+            .withSigningRequired(true)
+            .withEncryptData(true)
+            .withDfsEnabled(false)
+            .withDirectoryLeasingEnabled(false)
+            .withTimeout(timeout.toMillis(), TimeUnit.MILLISECONDS)
+            .withSocketFactory(new ValidatingSocketFactory(targetAddressValidator, timeout));
+    return new SmbShareClient(address, credentials, budget, config);
+  }
+
+  /**
+   * Connects to the share's host, signs in and opens the share, unless that already happened.
+   *
+   * @throws SmbAccessException.Authentication for a refused or guest sign-in
+   * @throws SmbAccessException.ShareNotFound when the server has no such share
+   * @throws SmbAccessException.AccessDenied when the account may not open the share
+   * @throws SmbAccessException.Unreachable when the host is blocked, unreachable or no file server
+   */
+  synchronized void connect() throws SmbAccessException, InterruptedException {
+    if (share != null) {
+      return;
+    }
+    if (failure != null) {
+      throw failure;
+    }
+    try {
+      signIn();
+    } catch (SmbAccessException e) {
+      failure = e;
+      throw e;
+    }
+  }
+
+  private DiskShare share() throws SmbAccessException, InterruptedException {
+    connect();
+    return share;
+  }
+
+  private void signIn() throws SmbAccessException, InterruptedException {
+    try {
+      connection = client.connect(address.socketHost(), address.port());
+    } catch (TargetAddressValidator.UnknownTargetHostException e) {
+      throw new SmbAccessException.Unreachable(e.getMessage());
+    } catch (TargetAddressValidator.TargetAddressBlockedException e) {
+      throw new SmbAccessException.Unreachable(e.getMessage() + " " + ALLOWLIST_HINT);
+    } catch (IOException | RuntimeException e) {
+      throw translate(e, "den Server „" + address.host() + "“");
+    }
+    try {
+      session =
+          connection.authenticate(
+              new AuthenticationContext(
+                  credentials.username(),
+                  credentials.password().toCharArray(),
+                  credentials.domain()));
+    } catch (RuntimeException e) {
+      if (transport.refused != null) {
+        throw transport.refused;
+      }
+      if (isGuestRefusal(e)) {
+        throw guestOnly(credentials);
+      }
+      SmbAccessException translated = translate(e, "die Anmeldung");
+      if (translated instanceof SmbAccessException.Authentication) {
+        throw refusedSignIn(credentials);
+      }
+      throw translated;
+    }
+    if (session.isGuest() || session.isAnonymous()) {
+      throw guestOnly(credentials);
+    }
+    Share opened;
+    try {
+      opened = session.connectShare(address.share());
+    } catch (RuntimeException e) {
+      throw translate(e, "die Freigabe „" + address.share() + "“");
+    }
+    if (!(opened instanceof DiskShare disk)) {
+      closeQuietly(opened);
+      throw new SmbAccessException.Unreachable(
+          "„" + address.share() + "“ ist keine Dateifreigabe (etwa ein Drucker).");
+    }
+    share = disk;
+  }
+
+  SourceRequestMeter meter() {
+    return budget.meter();
+  }
+
+  /**
+   * The entries of the folder {@code path} ({@code ""} for the share's root), fetched batch by
+   * batch as the caller iterates; {@code .} and {@code ..} are left out. The caller closes the
+   * listing.
+   */
+  Listing list(String path) throws SmbAccessException, InterruptedException {
+    return list(path, null);
+  }
+
+  /** The entry {@code path} names, empty when neither it nor its folder exists. */
+  Optional<Item> find(String path) throws SmbAccessException, InterruptedException {
+    int slash = path.lastIndexOf('/');
+    String parent = slash < 0 ? "" : path.substring(0, slash);
+    String name = path.substring(slash + 1);
+    try (Listing listing = list(parent, name)) {
+      while (listing.hasNext()) {
+        Item item = listing.next();
+        if (item.name().equals(name)) {
+          return Optional.of(item);
+        }
+      }
+      return Optional.empty();
+    } catch (SmbAccessException.NotFound e) {
+      return Optional.empty();
+    } catch (ListingFailure e) {
+      if (e.failure() instanceof SmbAccessException.NotFound) {
+        return Optional.empty();
+      }
+      throw e.failure();
+    }
+  }
+
+  private Listing list(String path, String pattern)
+      throws SmbAccessException, InterruptedException {
+    String what = path.isEmpty() ? "den Stammordner der Freigabe" : "den Ordner „" + path + "“";
+    DiskShare disk = share();
+    Directory directory;
+    try {
+      directory =
+          disk.openDirectory(
+              path,
+              EnumSet.of(AccessMask.FILE_LIST_DIRECTORY, AccessMask.FILE_READ_ATTRIBUTES),
+              null,
+              SHARE_ALL,
+              SMB2CreateDisposition.FILE_OPEN,
+              EnumSet.of(SMB2CreateOptions.FILE_DIRECTORY_FILE));
+    } catch (RuntimeException e) {
+      throw translate(e, what);
+    }
+    try {
+      return new Listing(
+          directory, directory.iterator(FileIdBothDirectoryInformation.class, pattern), what);
+    } catch (RuntimeException e) {
+      closeQuietly(directory);
+      throw translate(e, what);
+    }
+  }
+
+  /**
+   * Copies the file {@code path} into a temporary file <b>the caller deletes</b>, refusing it as
+   * soon as it grows past {@code maxBytes}; a partial file never survives.
+   */
+  Path download(String path, String fileName, long maxBytes)
+      throws SmbAccessException, InterruptedException {
+    String what = "die Datei „" + path + "“";
+    DiskShare disk = share();
+    File file;
+    try {
+      file =
+          disk.openFile(
+              path,
+              EnumSet.of(AccessMask.GENERIC_READ),
+              null,
+              SHARE_ALL,
+              SMB2CreateDisposition.FILE_OPEN,
+              EnumSet.of(SMB2CreateOptions.FILE_NON_DIRECTORY_FILE));
+    } catch (RuntimeException e) {
+      throw translate(e, what);
+    }
+    Path target = null;
+    try (file) {
+      target = Files.createTempFile("opaa-smb-", suffixOf(fileName));
+      long written = 0;
+      try (InputStream in = file.getInputStream();
+          OutputStream out = Files.newOutputStream(target)) {
+        byte[] buffer = new byte[64 * 1024];
+        int read;
+        while ((read = in.read(buffer)) >= 0) {
+          written += read;
+          if (written > maxBytes) {
+            throw new SmbAccessException.TooLarge(
+                "Die Datei „" + fileName + "“ ist größer als " + maxBytes + " Bytes.");
+          }
+          out.write(buffer, 0, read);
+        }
+      }
+      budget.meter().recordBytes(written);
+      Path done = target;
+      target = null;
+      return done;
+    } catch (IOException | RuntimeException e) {
+      throw translate(e, what);
+    } finally {
+      if (target != null) {
+        deleteQuietly(target);
+      }
+    }
+  }
+
+  @Override
+  public void close() {
+    closeQuietly(share);
+    if (session != null) {
+      try {
+        session.close();
+      } catch (IOException | RuntimeException e) {
+        log.debug("Closing the SMB session to {} failed: {}", address.host(), e.toString());
+      }
+    }
+    if (connection != null) {
+      try {
+        connection.close(true);
+      } catch (IOException | RuntimeException e) {
+        log.debug("Closing the SMB connection to {} failed: {}", address.host(), e.toString());
+      }
+    }
+    client.close();
+  }
+
+  /** A folder's entries, fetched as they are iterated. */
+  final class Listing implements Iterator<Item>, AutoCloseable {
+
+    private final Directory directory;
+    private final String what;
+    private final Iterator<FileIdBothDirectoryInformation> iterator;
+    private Item next;
+
+    private Listing(
+        Directory directory, Iterator<FileIdBothDirectoryInformation> iterator, String what) {
+      this.directory = directory;
+      this.iterator = iterator;
+      this.what = what;
+    }
+
+    /**
+     * @throws SmbAccessException wrapped in {@link ListingFailure} when the next batch fails
+     */
+    @Override
+    public boolean hasNext() {
+      while (next == null) {
+        FileIdBothDirectoryInformation info;
+        try {
+          if (!iterator.hasNext()) {
+            return false;
+          }
+          info = iterator.next();
+        } catch (RuntimeException e) {
+          throw new ListingFailure(translateUnchecked(e, what));
+        }
+        String name = info.getFileName();
+        if (!name.equals(".") && !name.equals("..")) {
+          next = Item.of(info);
+        }
+      }
+      return true;
+    }
+
+    @Override
+    public Item next() {
+      if (!hasNext()) {
+        throw new NoSuchElementException();
+      }
+      Item item = next;
+      next = null;
+      return item;
+    }
+
+    /** The listed folder's own file id, {@code 0} when the server tells none. */
+    long folderId() throws SmbAccessException, InterruptedException {
+      try {
+        return directory.getFileInformation(FileInternalInformation.class).getIndexNumber();
+      } catch (RuntimeException e) {
+        SmbAccessException failure = translate(e, what);
+        if (failure instanceof SmbAccessException.Transient) {
+          return 0;
+        }
+        throw failure;
+      }
+    }
+
+    @Override
+    public void close() {
+      closeQuietly(directory);
+    }
+  }
+
+  /** A failed batch of a {@link Listing}, carrying the translated failure. */
+  static final class ListingFailure extends RuntimeException {
+    private final transient SmbAccessException failure;
+
+    ListingFailure(SmbAccessException failure) {
+      super(failure.getMessage(), null, false, false);
+      this.failure = failure;
+    }
+
+    SmbAccessException failure() {
+      return failure;
+    }
+  }
+
+  private SmbAccessException translateUnchecked(RuntimeException e, String what) {
+    try {
+      return translate(e, what);
+    } catch (InterruptedException interrupted) {
+      Thread.currentThread().interrupt();
+      return new SmbAccessException.Transient("Der Lauf wurde unterbrochen.");
+    }
+  }
+
+  /**
+   * The kind of a failed request, as a German sentence about {@code what}. A request the budget
+   * refused rethrows its {@link RequestBudgetExhaustedException}; an interrupt is rethrown.
+   */
+  private SmbAccessException translate(Exception e, String what) throws InterruptedException {
+    if (transport.refused != null) {
+      throw transport.refused;
+    }
+    if (e instanceof SmbAccessException access) {
+      return access;
+    }
+    for (Throwable cause = e; cause != null; cause = cause.getCause()) {
+      if (cause instanceof InterruptedException) {
+        Thread.currentThread().interrupt();
+        throw new InterruptedException("SMB request interrupted");
+      }
+    }
+    log.debug("SMB request for {} on {} failed: {}", what, address.host(), e.toString());
+    SMBApiException api = find(e, SMBApiException.class);
+    if (api != null) {
+      long status = api.getStatusCode();
+      if (AUTHENTICATION_STATUSES.contains(status)) {
+        return new SmbAccessException.Authentication(
+            "Der Server „" + address.host() + "“ hat die Anmeldung abgelehnt.");
+      }
+      if (status == NtStatus.STATUS_BAD_NETWORK_NAME.getValue()) {
+        return new SmbAccessException.ShareNotFound(
+            "Die Freigabe „"
+                + address.share()
+                + "“ gibt es auf dem Server „"
+                + address.host()
+                + "“ nicht.");
+      }
+      if (status == NtStatus.STATUS_ACCESS_DENIED.getValue()) {
+        return new SmbAccessException.AccessDenied(
+            "Das Dienstkonto darf " + what + " nicht lesen (Zugriff verweigert).");
+      }
+      if (NOT_FOUND_STATUSES.contains(status)) {
+        return new SmbAccessException.NotFound(capitalize(what) + " gibt es nicht (mehr).");
+      }
+      if (status == NtStatus.STATUS_PATH_NOT_COVERED.getValue()
+          || status == NtStatus.STATUS_DFS_UNAVAILABLE.getValue()) {
+        return new SmbAccessException.Unreachable(
+            "„"
+                + address.share()
+                + "“ ist ein DFS-Namensraum. OPAA folgt DFS-Verweisen nicht; bitte die Zielfreigabe"
+                + " direkt angeben.");
+      }
+      if (status == NtStatus.STATUS_SHARING_VIOLATION.getValue()
+          || status == NtStatus.STATUS_FILE_LOCK_CONFLICT.getValue()) {
+        return new SmbAccessException.Transient(
+            capitalize(what) + " ist von einem anderen Programm gesperrt.");
+      }
+      if (status == NtStatus.STATUS_NETWORK_SESSION_EXPIRED.getValue()
+          || status == NtStatus.STATUS_USER_SESSION_DELETED.getValue()
+          || status == NtStatus.STATUS_NETWORK_NAME_DELETED.getValue()) {
+        return new SmbAccessException.Unreachable(
+            "Der Server „" + address.host() + "“ hat die Sitzung beendet.");
+      }
+      return new SmbAccessException.Transient(
+          "Der Server hat die Anfrage für "
+              + what
+              + " abgelehnt (Status "
+              + (api.getStatus() == NtStatus.STATUS_OTHER
+                  ? String.format("0x%08X", status)
+                  : api.getStatus().name())
+              + ").");
+    }
+    if (find(e, TimeoutException.class) != null || find(e, SocketTimeoutException.class) != null) {
+      return new SmbAccessException.Unreachable(
+          "Der Server „" + address.host() + "“ hat nicht rechtzeitig geantwortet.");
+    }
+    IOException io = e instanceof IOException direct ? direct : find(e, IOException.class);
+    if (io != null && !(io instanceof TransportException)) {
+      return new SmbAccessException.Unreachable(
+          ConnectorChecks.translateConnectionError(io) + " (Server „" + address.host() + "“)");
+    }
+    if (e instanceof IOException) {
+      return new SmbAccessException.Transient(
+          "Lesen von " + what + " ist fehlgeschlagen; die Verbindung brach ab.");
+    }
+    return new SmbAccessException.Unreachable(
+        "Die Verbindung zum Server „"
+            + address.host()
+            + "“ ist gescheitert (SMB 2 oder 3 mit Signatur erforderlich).");
+  }
+
+  private static boolean isGuestRefusal(RuntimeException e) {
+    for (Throwable cause = e; cause != null; cause = cause.getCause()) {
+      if (cause.getClass().getSimpleName().equals("SMB2GuestSigningRequiredException")) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private SmbAccessException.Authentication guestOnly(SmbCredentials credentials) {
+    return new SmbAccessException.Authentication(
+        "Der Server „"
+            + address.host()
+            + "“ hat „"
+            + credentials.account()
+            + "“ nur als Gast angemeldet; Benutzername oder Passwort stimmen nicht.");
+  }
+
+  private SmbAccessException.Authentication refusedSignIn(SmbCredentials credentials) {
+    return new SmbAccessException.Authentication(
+        "Der Server „"
+            + address.host()
+            + "“ hat die Anmeldung von „"
+            + credentials.account()
+            + "“ abgelehnt. Benutzername, Domäne und Passwort prüfen; das Konto darf nicht gesperrt"
+            + " oder abgelaufen sein.");
+  }
+
+  private static <T extends Throwable> T find(Throwable e, Class<T> type) {
+    for (Throwable cause = e; cause != null; cause = cause.getCause()) {
+      if (type.isInstance(cause)) {
+        return type.cast(cause);
+      }
+    }
+    return null;
+  }
+
+  private static String capitalize(String text) {
+    return Character.toUpperCase(text.charAt(0)) + text.substring(1);
+  }
+
+  private static String suffixOf(String fileName) {
+    int dot = fileName.lastIndexOf('.');
+    if (dot < 0 || fileName.length() - dot > 16) {
+      return ".tmp";
+    }
+    String suffix = fileName.substring(dot);
+    return suffix.chars().allMatch(c -> c == '.' || Character.isLetterOrDigit(c)) ? suffix : ".tmp";
+  }
+
+  private static void deleteQuietly(Path path) {
+    try {
+      Files.deleteIfExists(path);
+    } catch (IOException e) {
+      log.warn("Could not delete temp file {}", path);
+    }
+  }
+
+  private void closeQuietly(AutoCloseable closeable) {
+    if (closeable == null) {
+      return;
+    }
+    try {
+      closeable.close();
+    } catch (Exception e) {
+      log.debug("Closing an SMB handle on {} failed: {}", address.host(), e.toString());
+    }
+  }
+
+  /**
+   * Charges every outgoing SMB message to the budget; a refused one is never written, and the
+   * refusal is kept so the caller rethrows it instead of a transport failure.
+   */
+  private static final class BudgetedTransportFactory
+      implements TransportLayerFactory<SMBPacketData<?>, SMBPacket<?, ?>> {
+
+    private final RequestBudget budget;
+    private final TransportLayerFactory<SMBPacketData<?>, SMBPacket<?, ?>> delegate =
+        new DirectTcpTransportFactory<>();
+    private volatile RequestBudgetExhaustedException refused;
+
+    private BudgetedTransportFactory(RequestBudget budget) {
+      this.budget = budget;
+    }
+
+    @Override
+    public TransportLayer<SMBPacket<?, ?>> createTransportLayer(
+        PacketHandlers<SMBPacketData<?>, SMBPacket<?, ?>> handlers, SmbConfig config) {
+      TransportLayer<SMBPacket<?, ?>> inner = delegate.createTransportLayer(handlers, config);
+      return new TransportLayer<>() {
+        @Override
+        public void write(SMBPacket<?, ?> packet) throws TransportException {
+          if (refused != null) {
+            throw new TransportException("request budget spent");
+          }
+          try {
+            budget.charge();
+          } catch (RequestBudgetExhaustedException e) {
+            refused = e;
+            throw new TransportException("request budget spent");
+          }
+          inner.write(packet);
+        }
+
+        @Override
+        public void connect(InetSocketAddress remoteAddress) throws IOException {
+          inner.connect(remoteAddress);
+        }
+
+        @Override
+        public void disconnect() throws IOException {
+          inner.disconnect();
+        }
+
+        @Override
+        public boolean isConnected() {
+          return inner.isConnected();
+        }
+      };
+    }
+  }
+
+  /**
+   * Opens every socket of the client: the host passes the target validation first, then the
+   * connection is made within {@code timeout}.
+   */
+  private static final class ValidatingSocketFactory extends SocketFactory {
+
+    private final TargetAddressValidator validator;
+    private final int timeoutMillis;
+
+    private ValidatingSocketFactory(TargetAddressValidator validator, Duration timeout) {
+      this.validator = validator;
+      this.timeoutMillis = (int) Math.min(Integer.MAX_VALUE, timeout.toMillis());
+    }
+
+    @Override
+    public Socket createSocket(String host, int port) throws IOException {
+      validator.validateHost(host);
+      Socket socket = new Socket();
+      try {
+        socket.connect(new InetSocketAddress(host, port), timeoutMillis);
+        return socket;
+      } catch (IOException e) {
+        socket.close();
+        throw e;
+      }
+    }
+
+    @Override
+    public Socket createSocket(String host, int port, InetAddress localHost, int localPort)
+        throws IOException {
+      return createSocket(host, port);
+    }
+
+    @Override
+    public Socket createSocket(InetAddress host, int port) throws IOException {
+      return createSocket(host.getHostAddress(), port);
+    }
+
+    @Override
+    public Socket createSocket(
+        InetAddress address, int port, InetAddress localAddress, int localPort) throws IOException {
+      return createSocket(address.getHostAddress(), port);
+    }
+  }
+}

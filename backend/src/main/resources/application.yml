@@ -355,6 +355,16 @@ opaa:
       max-response-bytes: ${OPAA_INDEXING_NEXTCLOUD_MAX_RESPONSE_BYTES:67108864}
       # how long remembered folder ETags may spare a listing before a run lists every folder again
       full-descent-interval: ${OPAA_INDEXING_NEXTCLOUD_FULL_DESCENT_INTERVAL:7d}
+    # Bounds of the SMB connector (io.opaa.indexing.source.smb, SmbProperties); 0 falls back to the
+    # default.
+    smb:
+      max-file-size-bytes: ${OPAA_INDEXING_SMB_MAX_FILE_SIZE_BYTES:52428800}
+      request-timeout: ${OPAA_INDEXING_SMB_REQUEST_TIMEOUT:30s}
+      # SMB messages one run may send before it ends as "unvollständig, wird fortgesetzt"
+      request-budget-per-run: ${OPAA_INDEXING_SMB_REQUEST_BUDGET_PER_RUN:100000}
+      max-entries-per-run: ${OPAA_INDEXING_SMB_MAX_ENTRIES_PER_RUN:1000000}
+      download-concurrency: ${OPAA_INDEXING_SMB_DOWNLOAD_CONCURRENCY:2}
+      list-page-size: ${OPAA_INDEXING_SMB_LIST_PAGE_SIZE:1000}
     # Bounds of the Google Drive connector (ADR-0040, Entscheidung 10; GoogleDriveProperties).
     google-drive:
       page-size: ${OPAA_INDEXING_GOOGLE_DRIVE_PAGE_SIZE:1000}
