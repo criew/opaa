@@ -112,6 +112,29 @@ interface SpaceState {
   detachAsset: (spaceId: string, assetId: string) => Promise<void>
 }
 
+/** Shown when a membership change succeeded but the members could not be re-read afterwards. */
+export const MEMBERS_NOT_REFRESHED =
+  'Die Änderung ist gespeichert, die Mitgliederliste konnte aber nicht aktualisiert werden. Laden Sie die Seite neu.'
+
+/**
+ * Re-reads the selected space and its members after the caller's own membership change, in place:
+ * no loading state and no emptied list in between, so an open members tab keeps its rows and the
+ * focus. Never throws - the change itself already succeeded; a failed re-read becomes the store
+ * error and leaves the shown state as it was.
+ */
+async function refreshMembership(spaceId: string): Promise<void> {
+  const sessionEpoch = currentSessionEpoch()
+  try {
+    const [space, members] = await Promise.all([getSpace(spaceId), listSpaceMembers(spaceId)])
+    if (isStaleSessionEpoch(sessionEpoch)) return
+    if (useSpaceStore.getState().selectedSpaceId !== spaceId) return
+    useSpaceStore.setState({ selectedSpace: space, members })
+  } catch {
+    if (isStaleSessionEpoch(sessionEpoch)) return
+    useSpaceStore.setState({ error: MEMBERS_NOT_REFRESHED })
+  }
+}
+
 function sortSpaces(list: SpaceListResponse[]): SpaceListResponse[] {
   return [...list].sort((a, b) => {
     if (a.isDefault && !b.isDefault) return -1
@@ -241,22 +264,22 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
   addMember: async (spaceId, subjectType, subjectId, role) => {
     await addSpaceMember(spaceId, subjectType, subjectId, role)
     // The list carries the member figures too - reloading it keeps "nur Sie" current.
-    await Promise.all([get().loadSpaces(), get().selectSpace(spaceId), get().loadMembers(spaceId)])
+    await Promise.all([get().loadSpaces(), refreshMembership(spaceId)])
   },
 
   updateMemberRole: async (spaceId, membershipId, role) => {
     await updateSpaceMemberRole(spaceId, membershipId, role)
-    await Promise.all([get().selectSpace(spaceId), get().loadMembers(spaceId)])
+    await refreshMembership(spaceId)
   },
 
   removeMember: async (spaceId, membershipId) => {
     await removeSpaceMember(spaceId, membershipId)
-    await Promise.all([get().loadSpaces(), get().selectSpace(spaceId), get().loadMembers(spaceId)])
+    await Promise.all([get().loadSpaces(), refreshMembership(spaceId)])
   },
 
   transferOwnership: async (spaceId, userId) => {
     await transferSpaceOwnership(spaceId, userId)
-    await Promise.all([get().selectSpace(spaceId), get().loadMembers(spaceId)])
+    await refreshMembership(spaceId)
   },
 
   updateDetails: async (spaceId, name, description, chatAutoCleanup) => {

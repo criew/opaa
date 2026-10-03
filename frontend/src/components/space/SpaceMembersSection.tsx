@@ -6,6 +6,7 @@ import Select from '@mui/material/Select'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import type { SpaceResponse, SpaceRole } from '../../types/api'
+import { notify } from '../../stores/notificationStore'
 import { useSpaceStore } from '../../stores/spaceStore'
 import { spaceRoleLabel } from '../../utils/labels'
 import SubjectFormRow from '../permissions/SubjectFormRow'
@@ -19,8 +20,19 @@ import {
 import { successionAwareMessage } from '../succession/successionConflict'
 import SectionHead from '../SectionHead'
 import SpaceMemberList from './SpaceMemberList'
+import { memberLabelOf, memberNoticeLabelOf } from './memberLabel'
 
 const editableRoles: SpaceRole[] = ['MEMBER', 'CURATOR', 'ADMIN']
+
+/** Wie die Rückmeldung nach dem Hinzufügen das gewählte Subjekt nennt. */
+function addedSubjectLabel(subject: SubjectSelection): string {
+  if (subject.type === 'GROUP') {
+    return subject.group?.protectedGroup
+      ? 'Geschützte Gruppe'
+      : `Gruppe ${subject.group?.name ?? ''}`.trim()
+  }
+  return subject.user?.displayName ?? subject.user?.email ?? 'Mitglied'
+}
 
 interface SpaceMembersSectionProps {
   spaceId: string
@@ -47,8 +59,8 @@ export default function SpaceMembersSection({
   const transferOwnership = useSpaceStore((s) => s.transferOwnership)
   const [subject, setSubject] = useState<SubjectSelection>(emptySubjectSelection)
   const [newMemberRole, setNewMemberRole] = useState<SpaceRole>('MEMBER')
+  // A failure stays until it is closed or the next action starts; a success is a popup only.
   const [localError, setLocalError] = useState<string | null>(null)
-  const [successMessage, setSuccessMessage] = useState<string | null>(null)
 
   // #144: der Dienst beantwortet die Liste nur für ADMIN, Eigentümer und Systemverwaltung; für
   // alle anderen bleibt sie leer, und der Hinweis unten nennt den Grund.
@@ -58,8 +70,17 @@ export default function SpaceMembersSection({
 
   return (
     <Stack spacing={2}>
-      {(localError || storeError) && <Alert severity="error">{localError ?? storeError}</Alert>}
-      {successMessage && <Alert severity="success">{successMessage}</Alert>}
+      {(localError || storeError) && (
+        <Alert
+          severity="error"
+          onClose={() => {
+            if (localError) setLocalError(null)
+            else useSpaceStore.setState({ error: null })
+          }}
+        >
+          {localError ?? storeError}
+        </Alert>
+      )}
       {space.isDefault && space.memberCount === 1 && (
         // #777: this hint used to replace the whole members section, including the
         // "Mitglied hinzufügen"-Formular it explicitly promises - the default space is "ein
@@ -93,6 +114,7 @@ export default function SpaceMembersSection({
               setLocalError(null)
               try {
                 await updateMemberRole(spaceId, member.id, role)
+                notify(`Rolle von ${memberLabelOf(member)}: ${spaceRoleLabel(role)}`, 'success')
               } catch (err) {
                 setLocalError(err instanceof Error ? err.message : 'Rollenänderung fehlgeschlagen')
               }
@@ -101,6 +123,7 @@ export default function SpaceMembersSection({
               setLocalError(null)
               try {
                 await removeMember(spaceId, member.id)
+                notify(`${memberNoticeLabelOf(member)} entfernt`, 'success')
               } catch (err) {
                 setLocalError(
                   err instanceof Error ? err.message : 'Entfernen des Mitglieds fehlgeschlagen',
@@ -111,7 +134,7 @@ export default function SpaceMembersSection({
               setLocalError(null)
               try {
                 await transferOwnership(spaceId, member.subjectId)
-                setSuccessMessage('Verantwortung übertragen')
+                notify(`Verantwortung an ${memberLabelOf(member)} übertragen`, 'success')
               } catch (err) {
                 setLocalError(
                   err instanceof Error
@@ -126,9 +149,6 @@ export default function SpaceMembersSection({
             <Stack spacing={1} sx={{ pt: 2 }}>
               {/* The tab already reads "Mitglieder": this form is the panel's h2. */}
               <SectionHead>Mitglied hinzufügen</SectionHead>
-              <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                Gruppen geben ihre Rolle an alle ihre Mitglieder weiter.
-              </Typography>
               <SubjectFormRow
                 picker={
                   <SubjectPicker
@@ -171,9 +191,7 @@ export default function SpaceMembersSection({
                       try {
                         await addMember(spaceId, subject.type, subjectId, newMemberRole)
                         setSubject(emptySubjectSelection)
-                        setSuccessMessage(
-                          subject.type === 'GROUP' ? 'Gruppe hinzugefügt' : 'Mitglied hinzugefügt',
-                        )
+                        notify(`${addedSubjectLabel(subject)} hinzugefügt`, 'success')
                       } catch (err) {
                         setLocalError(
                           successionAwareMessage(

@@ -39,7 +39,9 @@ describe('AssetAccessDerivationSection', () => {
   })
 
   it('names the reader and closes back to the button that opened it', async () => {
-    renderWithProviders(<AssetAccessDerivationSection assetType="PROMPT_LIBRARY" assetId="prompts-1" />)
+    renderWithProviders(
+      <AssetAccessDerivationSection assetType="PROMPT_LIBRARY" assetId="prompts-1" />,
+    )
     const user = userEvent.setup()
 
     await user.click(screen.getByRole('button', { name: 'Herleitung anzeigen' }))

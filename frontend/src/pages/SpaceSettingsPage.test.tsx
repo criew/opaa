@@ -739,7 +739,9 @@ describe('SpaceSettingsPage', () => {
     await user.click(within(menu).getByRole('menuitem', { name: 'Warum hat Colleague Zugriff?' }))
 
     expect(
-      await screen.findByText('Colleague ist Mitglied in diesem Space – über die Gruppe Referat 50.'),
+      await screen.findByText(
+        'Colleague ist Mitglied in diesem Space – über die Gruppe Referat 50.',
+      ),
     ).toBeInTheDocument()
     expect(mockGetSpaceAccessDerivation).toHaveBeenCalledWith('space-team', 'u2')
     const groupMenu = await openMemberMenu(user, 'Geschützte Gruppe')
