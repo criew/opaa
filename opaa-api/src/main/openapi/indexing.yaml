@@ -722,8 +722,10 @@ components:
           description: >
             How many areas below a FILESYSTEM library's source path (directories or single files)
             this run could not read. Their already indexed documents were kept; everything else
-            was reconciled as usual. The paths themselves are in the run's UNREACHABLE events.
-            Absent on every run without such areas.
+            was reconciled as usual - except when the run found nothing besides these areas, or
+            when loading the documents to keep failed: then nothing was removed. The paths
+            themselves are in the run's UNREACHABLE events. Absent on every run without such
+            areas.
           example: 2
         metrics:
           $ref: "#/components/schemas/IndexingRunMetrics"

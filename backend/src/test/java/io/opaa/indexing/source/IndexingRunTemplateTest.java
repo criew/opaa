@@ -459,6 +459,37 @@ class IndexingRunTemplateTest {
   }
 
   @Test
+  void anAttachmentIsNeverRetainedByItsOwnKeyOnlyThroughItsParent() {
+    // a crafted attachment name can make an attachment key point into an unreadable area; the
+    // attachment must then not outlive its vanished parent mail
+    Document mail = document("/srv/dokumente/weg.eml");
+    Document attachment = document("/srv/dokumente/weg.eml/0/../../gesperrt/x.pdf");
+    attachment.setParentDocumentId(mail.getId());
+    when(documentRepository.findByLibraryIdAndSourceType(library.getId(), SourceTypes.FILESYSTEM))
+        .thenReturn(List.of(mail, attachment));
+
+    template.run(
+        jobId,
+        library,
+        IndexingRunMode.FULL,
+        fullListingExecutor,
+        run -> {
+          run.markReprocessed("/srv/dokumente/b.txt");
+          return ListingOutcome.completeExcept(1, key -> key.contains("gesperrt"));
+        });
+
+    verify(cleanupService)
+        .reconcile(
+            eq(library),
+            eq(SourceTypes.FILESYSTEM),
+            eq(Set.of("/srv/dokumente/b.txt")),
+            any(),
+            any(),
+            eq(fullListingExecutor),
+            eq(IndexingRunMode.FULL));
+  }
+
+  @Test
   void aRunThatMetNothingButUnreadableAreasRetainsNothingAndSoDeletesNothing() {
     template.run(
         jobId,

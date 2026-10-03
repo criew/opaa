@@ -219,10 +219,11 @@ public class IndexingRunTemplate {
   }
 
   /**
-   * Marks every known document of the run's source whose key {@code retained} matches present. A
-   * run that met nothing itself retains nothing, so its empty bestand still deletes nothing. A
-   * failure is logged and returned as {@code false}: without the retained keys nothing may be
-   * reconciled, but the run itself does not fail.
+   * Marks every known top-level document of the run's source whose key {@code retained} matches
+   * present; attachments follow their retained parent in the reconciliation, never their own key,
+   * which a crafted attachment name could point anywhere. A run that met nothing itself retains
+   * nothing, so its empty bestand still deletes nothing. A failure is logged and returned as {@code
+   * false}: without the retained keys nothing may be reconciled, but the run itself does not fail.
    */
   private boolean retainKnown(IndexingRun run, Predicate<String> retained) {
     if (run.currentPaths().isEmpty()) {
@@ -232,7 +233,7 @@ public class IndexingRunTemplate {
       for (Document document :
           documentRepository.findByLibraryIdAndSourceType(
               run.library().getId(), run.sourceType())) {
-        if (retained.test(document.getFilePath())) {
+        if (document.getParentDocumentId() == null && retained.test(document.getFilePath())) {
           run.markPresent(document.getFilePath());
         }
       }

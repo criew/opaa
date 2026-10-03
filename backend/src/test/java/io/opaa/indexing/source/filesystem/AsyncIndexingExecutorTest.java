@@ -352,6 +352,38 @@ class AsyncIndexingExecutorTest {
   }
 
   @Test
+  void attachmentsFollowTheirParentNotTheirOwnKeyNextToAnUnreadableDirectory() throws IOException {
+    // the attachment of a mail below the unreadable directory survives with its parent; the
+    // attachment of a vanished mail goes with it, even when its crafted name points into the
+    // unreadable directory - otherwise the parent's deletion would hit fk_documents_parent
+    Path readable = documentDir.resolve("lesbar.txt");
+    Files.writeString(readable, "content");
+    Path locked = Files.createDirectory(documentDir.resolve("gesperrt"));
+    String hiddenMailPath = locked.resolve("verborgen.eml").toAbsolutePath().toString();
+    Document hiddenMail = filesystemDocument("verborgen.eml", hiddenMailPath, null);
+    Document hiddenAttachment =
+        filesystemDocument("anlage.pdf", hiddenMailPath + "/0/anlage.pdf", hiddenMail.getId());
+    String goneMailPath = documentDir.resolve("weg.eml").toAbsolutePath().toString();
+    Document goneMail = filesystemDocument("weg.eml", goneMailPath, null);
+    Document craftedAttachment =
+        filesystemDocument("x.pdf", goneMailPath + "/0/../../gesperrt/x.pdf", goneMail.getId());
+    when(documentRepository.findByLibraryIdAndSourceType(library.getId(), SourceTypes.FILESYSTEM))
+        .thenReturn(List.of(hiddenMail, hiddenAttachment, goneMail, craftedAttachment));
+    when(documentIngestService.ingest(
+            DocumentIngests.that().file().file(readable).in(library).inFolder(null).match(), any()))
+        .thenReturn(DocumentIngestResult.PROCESSED);
+
+    try (UnreadableDirectory ignored = UnreadableDirectory.of(locked)) {
+      executor.execute(UUID.randomUUID(), library, IndexingRunMode.FULL);
+    }
+
+    verify(documentRepository, timeout(2000)).delete(goneMail);
+    verify(documentRepository).delete(craftedAttachment);
+    verify(documentRepository, never()).delete(hiddenMail);
+    verify(documentRepository, never()).delete(hiddenAttachment);
+  }
+
+  @Test
   void aRemovedAttachmentOfAReprocessedMailIsCleanedUpAsVanished() throws IOException {
     // ADR-0022, Entscheidung 3: for a mail that was actually re-parsed this run, only the
     // attachments the attachment path re-reported count as present - a bestand row of a since-
