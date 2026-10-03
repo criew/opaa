@@ -127,6 +127,25 @@ class SourceConnectorRegistryTest {
   }
 
   @Test
+  void aServiceAccountKeyConnectorAdmittingProfilesFailsStartup() {
+    List<SourceConnector> connectors = complete();
+    connectors.removeIf(c -> c.descriptor().type().equals(SourceTypes.RSS_FEED));
+    connectors.add(
+        plain(
+            SourceConnectorDescriptor.remoteRun(SourceTypes.RSS_FEED, "RSS")
+                .withProfiles(
+                    io.opaa.api.types.ConnectionProfileSupport.OPTIONAL,
+                    java.util.Set.of(io.opaa.api.types.ConnectionAuthMethod.SERVICE_ACCOUNT_KEY))
+                .withServiceAccountKey(
+                    new ServiceAccountKeyAuth(
+                        java.net.URI.create("https://oauth.example.org/token"), "scope"))));
+
+    assertThatThrownBy(() -> new SourceConnectorRegistry(connectors))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("RSS_FEED signs in with a service account key");
+  }
+
+  @Test
   void aDeepLinkNeedsARemoteSource() {
     assertThatThrownBy(
             () ->

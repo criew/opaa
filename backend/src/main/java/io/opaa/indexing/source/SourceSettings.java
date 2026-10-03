@@ -38,6 +38,12 @@ public record SourceSettings(
         sourcePath, url, sourceProxy, sourceCredentials, sourceInsecureSsl, connectorSettings);
   }
 
+  /** A copy carrying {@code credentials} as its secret. */
+  public SourceSettings withSourceCredentials(String credentials) {
+    return new SourceSettings(
+        sourcePath, sourceUrl, sourceProxy, credentials, sourceInsecureSsl, connectorSettings);
+  }
+
   /** A copy without the secret. */
   public SourceSettings withoutCredentials() {
     return new SourceSettings(
