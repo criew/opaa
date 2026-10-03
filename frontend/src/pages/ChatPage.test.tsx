@@ -5,6 +5,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { renderWithProviders } from '../test/test-utils'
 import ChatPage from './ChatPage'
 import { ANSWER_ARRIVED_ANNOUNCEMENT } from '../components/chat/MessageList'
+import { KEEP_FOCUS_STATE } from '../components/a11y/routeFocus'
 import { clearRemovedNoteItemCache, useChatStore } from '../stores/chatStore'
 import { useSpaceStore } from '../stores/spaceStore'
 import { useChatListStore } from '../stores/chatListStore'
@@ -107,7 +108,7 @@ describe('ChatPage', () => {
     // The URL is replaced to point at the now-persisted chat, so a reload restores it.
     expect(mockNavigate).toHaveBeenCalledWith(
       expect.stringMatching(/^\/spaces\/space-personal\/chats\/.+$/),
-      { replace: true },
+      { replace: true, state: KEEP_FOCUS_STATE },
     )
   }, 15000)
 
@@ -140,6 +141,85 @@ describe('ChatPage', () => {
 
     expect(screen.getByText('Womit kann ich Ihnen heute helfen?')).toBeInTheDocument()
     expect(screen.queryByText(ANSWER_ARRIVED_ANNOUNCEMENT)).not.toBeInTheDocument()
+  })
+
+  // regression guard for #2135: while an answer is generated the next question can be prepared.
+  it('keeps the input editable and focused while an answer is pending, sending only afterwards', async () => {
+    currentChatId = 'chat-personal-1'
+    const questions: string[] = []
+    let release: () => void = () => {}
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    server.use(
+      http.post('/api/v1/query', async ({ request }) => {
+        const body = (await request.json()) as { question: string; chatId: string }
+        questions.push(body.question)
+        if (questions.length === 1) await gate
+        return HttpResponse.json({
+          answer: `Antwort auf ${body.question}`,
+          sources: [],
+          metadata: { model: 'gpt-4o', tokenCount: 1, durationMs: 1 },
+          chatId: body.chatId,
+        })
+      }),
+    )
+    const user = userEvent.setup()
+    renderWithProviders(<ChatPage />, { withRouter: true })
+    await waitFor(() => expect(useChatStore.getState().chatId).toBe('chat-personal-1'))
+    await waitFor(() => expect(useChatStore.getState().isLoadingChat).toBe(false))
+
+    const input = screen.getByPlaceholderText('Nachricht eingeben …')
+    await user.click(input)
+    await user.keyboard('Erste Frage{Enter}')
+    await waitFor(() => expect(useChatStore.getState().isLoading).toBe(true))
+
+    await user.keyboard('Zweite Frage{Enter}')
+    expect(input).toHaveValue('Zweite Frage')
+    expect(input).toHaveFocus()
+    expect(screen.getByLabelText('Senden')).toBeDisabled()
+    expect(questions).toEqual(['Erste Frage'])
+
+    release()
+    expect(await screen.findByText('Antwort auf Erste Frage')).toBeInTheDocument()
+    expect(input).toHaveFocus()
+    await user.keyboard('{Enter}')
+
+    expect(await screen.findByText('Antwort auf Zweite Frage')).toBeInTheDocument()
+    expect(questions).toEqual(['Erste Frage', 'Zweite Frage'])
+  })
+
+  it('puts a question refused while the next one was prepared before that draft', async () => {
+    currentChatId = 'chat-personal-1'
+    let release: () => void = () => {}
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    server.use(
+      http.post('/api/v1/query', async () => {
+        await gate
+        return HttpResponse.json(
+          { error: 'Zu viele Anfragen.', status: 429, timestamp: new Date().toISOString() },
+          { status: 429 },
+        )
+      }),
+    )
+    const user = userEvent.setup()
+    renderWithProviders(<ChatPage />, { withRouter: true })
+    await waitFor(() => expect(useChatStore.getState().chatId).toBe('chat-personal-1'))
+    await waitFor(() => expect(useChatStore.getState().isLoadingChat).toBe(false))
+
+    const input = screen.getByPlaceholderText('Nachricht eingeben …')
+    await user.click(input)
+    await user.keyboard('Erste Frage{Enter}')
+    await waitFor(() => expect(useChatStore.getState().isLoading).toBe(true))
+    await user.keyboard('Zweite Frage')
+    release()
+
+    await waitFor(() => expect(input).toHaveValue('Erste Frage\n\nZweite Frage'))
+    expect(
+      await screen.findByText('Zu viele Anfragen. Die Frage steht wieder im Eingabefeld.'),
+    ).toBeInTheDocument()
   })
 
   it('puts a question the server rejects with 400 back into the input and explains why', async () => {

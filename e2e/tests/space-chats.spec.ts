@@ -225,6 +225,26 @@ test.describe.serial('Chats im Space, @-Referenzen und Suchbereich-Chip-Leiste (
     await expect(page.getByRole('button', { name: 'Belege anzeigen' })).toHaveCount(0)
   })
 
+  // regression guard for #2135: the send button is locked while the answer is generated, and a
+  // browser moves the focus off a disabled element - it has to stay in the input instead.
+  test('3a. Senden per Knopf: der Fokus bleibt im Eingabefeld, auch nach der Antwort', async (
+    { authenticatedPage: page },
+    testInfo,
+  ) => {
+    const id = uniqueId(testInfo)
+    const input = page.getByPlaceholder('Nachricht eingeben …')
+
+    await startFreshChat(page)
+    await clearSearchScope(page)
+    await askQuestion(page, `Erste Frage zum Fokus (${id})?`)
+    await expect(input).toBeFocused()
+
+    await expect(page.getByText('Diese Antwort wurde ohne Wissensbasis erstellt.')).toBeVisible()
+    await expect(input).toBeFocused()
+    await page.keyboard.type(`Zweite Frage zum Fokus (${id})?`)
+    await expect(input).toHaveValue(`Zweite Frage zum Fokus (${id})?`)
+  })
+
   test('4. Rechte-Negativfall: nicht lesbare Bibliothek erscheint nicht in den @-Vorschlägen', async (
     { authenticatedPage: adminPage, regularUserPage: bPage },
     testInfo,
