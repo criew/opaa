@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { sourceRegistration } from '../components/library/sources/registry'
 import {
   EMPTY_GOOGLE_DRIVE_VALUES,
   googleDrivePayloadOf,
@@ -69,5 +70,19 @@ describe('googleDriveSource (ADR-0040)', () => {
       { kind: 'folder', id: 'f1', name: 'F' },
       { kind: 'myDrive', id: 'root', name: 'Meine Ablage' },
     ])
+  })
+
+  it("resends the library's own full-sync rhythm, since the settings are replaced whole", () => {
+    expect(googleDrivePayloadOf(values({ fullSyncIntervalDays: 30 })).sourceSettings).toEqual({
+      scopes: [{ folder: 'f1', name: 'Freigabe' }],
+      subject: null,
+      fullSyncIntervalDays: 30,
+    })
+    expect(
+      sourceRegistration('GOOGLE_DRIVE')?.configuration?.fromLibrary({
+        sourceType: 'GOOGLE_DRIVE',
+        sourceSettings: { scopes: [{ folder: 'f1' }], fullSyncIntervalDays: 30 },
+      }).fullSyncIntervalDays,
+    ).toBe(30)
   })
 })

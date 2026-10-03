@@ -69,7 +69,9 @@ export default function GoogleDriveSourceForm({
   const [testMessage, setTestMessage] = useState<Message | null>(null)
   const [checks, setChecks] = useState<GoogleDriveScopeCheck[] | null>(null)
   const [folderId, setFolderId] = useState('')
-  const generation = useRef(0)
+  // two counters: an edit of a scope must not discard a listing that is still in flight
+  const testGeneration = useRef(0)
+  const listingGeneration = useRef(0)
   const fileInput = useRef<HTMLInputElement | null>(null)
 
   const keyServes = values.keyFile !== '' || storedKeyServes(values, credentialsStored)
@@ -77,9 +79,17 @@ export default function GoogleDriveSourceForm({
     mode === 'edit' && credentialsStored && values.keyFile === '' && !keyServes
 
   const change = (patch: Partial<GoogleDriveSourceValues>) => {
-    generation.current++
+    testGeneration.current++
+    setTesting(false)
     setTestMessage(null)
     setChecks(null)
+    // a listing belongs to the key, the account and the route it was made with
+    if ('keyFile' in patch || 'subject' in patch || 'sourceProxy' in patch) {
+      listingGeneration.current++
+      setListing(false)
+      setOptions([])
+      setListingMessage(null)
+    }
     onChange(patch)
   }
 
@@ -117,7 +127,7 @@ export default function GoogleDriveSourceForm({
   }
 
   const loadScopes = async () => {
-    const mine = ++generation.current
+    const mine = ++listingGeneration.current
     setListing(true)
     setListingMessage(null)
     try {
@@ -125,7 +135,7 @@ export default function GoogleDriveSourceForm({
         ...connection(),
         query: { subject: values.subject.trim() || undefined },
       })
-      if (generation.current !== mine) return
+      if (listingGeneration.current !== mine) return
       if (result.complete) {
         const found = result.entries
           .map((entry) => googleDriveScopeFromKey(entry.key, entry.name ?? null))
@@ -142,13 +152,13 @@ export default function GoogleDriveSourceForm({
         setListingMessage({ severity: 'warning', text: result.message ?? 'Keine Auflistung.' })
       }
     } catch (err) {
-      if (generation.current !== mine) return
+      if (listingGeneration.current !== mine) return
       setListingMessage({
         severity: 'error',
         text: err instanceof Error ? err.message : 'Die Auflistung ist fehlgeschlagen.',
       })
     } finally {
-      if (generation.current === mine) setListing(false)
+      if (listingGeneration.current === mine) setListing(false)
     }
   }
 
@@ -168,7 +178,7 @@ export default function GoogleDriveSourceForm({
   }
 
   const runTest = async () => {
-    const mine = ++generation.current
+    const mine = ++testGeneration.current
     setTesting(true)
     setTestMessage(null)
     setChecks(null)
@@ -178,17 +188,17 @@ export default function GoogleDriveSourceForm({
         ...connection(),
         sourceSettings: googleDriveSettingsOf(values),
       })
-      if (generation.current !== mine) return
+      if (testGeneration.current !== mine) return
       setTestMessage({ severity: result.reachable ? 'success' : 'warning', text: result.message })
       setChecks(googleDriveScopeChecksOf(result.details))
     } catch (err) {
-      if (generation.current !== mine) return
+      if (testGeneration.current !== mine) return
       setTestMessage({
         severity: 'error',
         text: err instanceof Error ? err.message : 'Der Verbindungstest ist fehlgeschlagen.',
       })
     } finally {
-      if (generation.current === mine) setTesting(false)
+      if (testGeneration.current === mine) setTesting(false)
     }
   }
 
@@ -360,11 +370,23 @@ export default function GoogleDriveSourceForm({
         >
           {testing ? 'Prüft …' : 'Verbindung testen'}
         </Button>
-        {testMessage && (
-          <Alert severity={testMessage.severity} sx={{ mt: 1 }} role="status">
-            {testMessage.text}
-          </Alert>
-        )}
+        {/* always in the DOM, so a screen reader announces the text that appears in it */}
+        <Box role="status" aria-live="polite" data-testid="google-drive-test-status">
+          {testMessage && (
+            <Alert severity={testMessage.severity} sx={{ mt: 1 }} role="none">
+              {testMessage.text}
+              {checks?.some((check) => !check.reachable) && (
+                <>
+                  {' '}
+                  {checks
+                    .filter((check) => !check.reachable)
+                    .map((check) => `${check.scope}: ${check.message ?? 'nicht erreichbar'}`)
+                    .join('; ')}
+                </>
+              )}
+            </Alert>
+          )}
+        </Box>
       </Box>
     </Stack>
   )

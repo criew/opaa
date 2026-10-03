@@ -37,6 +37,8 @@ export interface GoogleDriveSourceValues {
   storedSubject: string
   scopes: GoogleDriveScope[]
   sourceProxy: string
+  /** The library's own full-sync rhythm, resent as it is: the connector replaces its settings whole. */
+  fullSyncIntervalDays: number | null
 }
 
 export const EMPTY_GOOGLE_DRIVE_VALUES: GoogleDriveSourceValues = {
@@ -46,6 +48,7 @@ export const EMPTY_GOOGLE_DRIVE_VALUES: GoogleDriveSourceValues = {
   storedSubject: '',
   scopes: [],
   sourceProxy: '',
+  fullSyncIntervalDays: null,
 }
 
 /** The Google Drive settings a library response carries, null for any other library. */
@@ -155,6 +158,9 @@ export function googleDriveSettingsOf(values: GoogleDriveSourceValues): Record<s
         : { [scope.kind]: scope.id, ...(scope.name ? { name: scope.name } : {}) },
     ),
     subject: values.subject.trim() || null,
+    ...(values.fullSyncIntervalDays != null
+      ? { fullSyncIntervalDays: values.fullSyncIntervalDays }
+      : {}),
   }
 }
 

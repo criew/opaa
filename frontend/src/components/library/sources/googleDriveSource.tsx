@@ -29,6 +29,7 @@ export const googleDriveSource: SourceRegistration = {
         storedSubject: settings?.subject ?? '',
         scopes: googleDriveScopesOf(settings),
         sourceProxy: library.sourceProxy ?? '',
+        fullSyncIntervalDays: settings?.fullSyncIntervalDays ?? null,
       }
     },
     isDirty: (values: GoogleDriveSourceValues) =>

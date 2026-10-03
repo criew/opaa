@@ -73,6 +73,9 @@ Das Dienstkonto sieht, was mit ihm geteilt ist:
 
 Ein Dienstkonto besitzt selbst keine Dateien; seine eigene „Meine Ablage" ist leer.
 
+> **Noch nicht an einem echten Workspace bestätigt:** ob ein Dienstkonto Mitglied einer geteilten
+> Ablage werden kann, wenn die Organisation externe Freigaben einschränkt. Siehe Abschnitt 13.
+
 ### 2.4 Domänenweite Delegation
 
 Mit Delegation imitiert das Dienstkonto ein Konto der Domäne (Feld „Imitiertes Konto") und liest
@@ -136,6 +139,10 @@ imitiertem Konto zusätzlich „Meine Ablage".
   er am Änderungsmerkmal und lädt es nicht.
 - Wird ein Ordner umbenannt, verschoben oder gelöscht, ist der nächste Lauf ein Vollabgleich.
 
+> **Noch nicht an einem echten Workspace bestätigt:** ob Änderungen in einem Ordner einer geteilten
+> Ablage, der dem Konto nur per Ordnerfreigabe sichtbar ist, im Strom des Kontos erscheinen.
+> Erscheinen sie dort nicht, erkennt erst der nächste Vollabgleich diese Änderungen.
+
 ## 5. Löscherkennung
 
 Ein Dokument wird entfernt,
@@ -166,6 +173,10 @@ tiefe Ketten folgen den Regeln des Kapitels [Indexierung](indexierung.md).
 Die Exportgrenze legt Google fest; sie liegt bei 10 MB. Eine als Text exportierte Datei verliert
 Überschriften und Tabellen.
 
+> **Noch nicht an einem echten Workspace bestätigt:** das Fehlerbild, mit dem Google einen Export
+> über der Grenze ablehnt. OPAA erwartet den Grund `exportSizeLimitExceeded`. Meldet Google einen
+> anderen, erscheint die Datei als „nicht lesbar“ statt als Textexport bzw. übersprungene Tabelle.
+
 Außerdem übersprungen werden:
 
 - **Verknüpfungen.** Ihr Ziel wird nur indexiert, wenn es selbst in einem Bereich liegt. So
@@ -181,6 +192,10 @@ Vor jedem Download vergleicht OPAA ein Änderungsmerkmal:
 
 Verbindlich bleibt die Prüfsumme nach dem Laden: Ändert sich nur das Merkmal, nicht der Inhalt,
 wird nichts neu verarbeitet.
+
+> **Noch nicht an einem echten Workspace bestätigt:** ob Google einen unveränderten Export
+> bytegleich wiederholt. Ist das nicht so, verarbeitet OPAA ein Google-Format nach jeder Änderung
+> seiner Änderungszeit neu, auch wenn sich nur ein Kommentar geändert hat.
 
 ## 9. Original öffnen
 
@@ -235,6 +250,9 @@ Alle Schlüssel unter `opaa.indexing.google-drive.*`.
 Die Obergrenze von fünfzig Bereichen ist eine feste Konstante.
 
 ## 13. Grenzen
+
+- Die vier mit „noch nicht an einem echten Workspace bestätigt“ gekennzeichneten Stellen beruhen
+  auf der Dokumentation von Google, nicht auf einer Messung.
 
 - Tabellen über der Exportgrenze fehlen ganz, Docs und Präsentationen darüber nur als Text.
 - Viele Ordnerbereiche kosten je Ordner eine Auflistung.

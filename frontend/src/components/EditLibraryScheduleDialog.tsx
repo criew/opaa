@@ -34,11 +34,6 @@ interface EditLibraryScheduleDialogProps {
   }
 }
 
-/**
- * The Bearbeiten-Weg of the Zeitplan (#485). The fields themselves live in {@link
- * LibraryScheduleForm}, which the Anlage-Assistent uses in its own Betriebsart; this dialog only
- * adds the save.
- */
 /** The schedule update with its settings part laid over {@code base}, when there is one. */
 function withSettingsBase<T extends { sourceSettings?: Record<string, unknown> }>(
   update: T,
@@ -49,6 +44,11 @@ function withSettingsBase<T extends { sourceSettings?: Record<string, unknown> }
     : update
 }
 
+/**
+ * The Bearbeiten-Weg of the Zeitplan (#485). The fields themselves live in {@link
+ * LibraryScheduleForm}, which the Anlage-Assistent uses in its own Betriebsart; this dialog only
+ * adds the save.
+ */
 export default function EditLibraryScheduleDialog({
   open,
   onClose,

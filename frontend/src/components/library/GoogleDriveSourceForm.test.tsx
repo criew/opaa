@@ -192,4 +192,48 @@ describe('GoogleDriveSourceForm (ADR-0040)', () => {
       }),
     )
   })
+
+  it('frees the test button when a field changes while the test is running', async () => {
+    const user = userEvent.setup()
+    let resolve: (value: SourceConnectionTestResponse) => void = () => {}
+    mockTestLibrarySource.mockReturnValue(
+      new Promise((done) => {
+        resolve = done
+      }),
+    )
+    renderWithProviders(
+      <Harness
+        initial={{ keyFile: KEY_FILE, scopes: [{ kind: 'folder', id: 'f1', name: 'Freigabe' }] }}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Verbindung testen' }))
+    expect(screen.getByRole('button', { name: 'Prüft …' })).toBeDisabled()
+    await user.type(screen.getByLabelText('Proxy (optional)'), 'p')
+    resolve({ reachable: true, message: 'alt', details: null })
+
+    expect(await screen.findByRole('button', { name: 'Verbindung testen' })).toBeEnabled()
+    expect(screen.getByTestId('google-drive-test-status')).not.toHaveTextContent('alt')
+  })
+
+  it('drops the listing of the old account when key or account change', async () => {
+    const user = userEvent.setup()
+    mockBrowseSource.mockResolvedValue({
+      complete: true,
+      entries: [{ key: 'drive:d1', name: 'Projektablage' }],
+    })
+    renderWithProviders(<Harness initial={{ keyFile: KEY_FILE }} />)
+
+    await user.click(screen.getByRole('button', { name: 'Bereiche laden' }))
+    expect(await screen.findByLabelText('Projektablage (Geteilte Ablage)')).toBeInTheDocument()
+    await user.type(screen.getByLabelText('Imitiertes Konto (optional)'), 'x@example.org')
+
+    expect(screen.queryByLabelText('Projektablage (Geteilte Ablage)')).not.toBeInTheDocument()
+  })
+
+  it('keeps the status region in the DOM before any test', () => {
+    renderWithProviders(<Harness />)
+
+    expect(screen.getByRole('status')).toBeEmptyDOMElement()
+  })
 })
