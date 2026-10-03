@@ -133,6 +133,8 @@ public final class FileSync implements AutoCloseable {
   /** Containers a change run added to or removed from. */
   private final Set<String> changedContainers = new LinkedHashSet<>();
 
+  private final List<PendingRemoval> pendingRemovals = new ArrayList<>();
+
   private long listed;
   private long deselected;
 
@@ -289,6 +291,7 @@ public final class FileSync implements AutoCloseable {
         }
         readStream(feed, stream.getKey(), stream.getValue(), cursor);
       }
+      applyRemovals();
     } finally {
       forgetChangedContainers();
       syncStateRepository.save(state);
@@ -372,15 +375,9 @@ public final class FileSync implements AutoCloseable {
       throws InterruptedException {
     switch (change) {
       case Change.Removed removed -> {
-        Optional<Document> document =
-            documentRepository.findByLibraryIdAndFilePath(
-                frame.library().getId(), removed.filePath());
-        String container = document.map(Document::getSourceContainerKey).orElse(null);
-        if (reachable && (container == null || own.contains(container))) {
-          if (container != null) {
-            changedContainers.add(container);
-          }
-          removeGone(removed.filePath());
+        if (reachable) {
+          // judged once every stream is read: another stream may report the file moved to its area
+          pendingRemovals.add(new PendingRemoval(removed.filePath(), own));
         } else {
           frame.progress().recordSkipped();
         }
@@ -398,6 +395,32 @@ public final class FileSync implements AutoCloseable {
       }
     }
   }
+
+  /**
+   * The removals the streams reported, each for a document that still belongs to one of its
+   * stream's containers - a document another stream placed elsewhere this run stays.
+   */
+  private void applyRemovals() {
+    for (PendingRemoval removal : pendingRemovals) {
+      String container =
+          documentRepository
+              .findByLibraryIdAndFilePath(frame.library().getId(), removal.filePath())
+              .map(Document::getSourceContainerKey)
+              .orElse(null);
+      if (container == null || removal.own().contains(container)) {
+        if (container != null) {
+          changedContainers.add(container);
+        }
+        removeGone(removal.filePath());
+      } else {
+        frame.progress().recordSkipped();
+      }
+    }
+    pendingRemovals.clear();
+  }
+
+  /** A removal a stream reported, with the containers that stream serves. */
+  private record PendingRemoval(String filePath, Set<String> own) {}
 
   /** Drops the folder memory of every container a change run touched. */
   private void forgetChangedContainers() {
@@ -772,7 +795,7 @@ public final class FileSync implements AutoCloseable {
     Optional<Document> existing =
         documentRepository.findByLibraryIdAndFilePath(frame.library().getId(), filePath);
     UUID folderId = existing.isPresent() ? folderFor(entry) : null;
-    existing.ifPresent(document -> mirrorFolder(document, folderId));
+    existing.ifPresent(document -> placeSeen(document, entry, folderId));
     if (entry.exclusion() instanceof Exclusion.Unavailable unavailable) {
       // it may become readable without its folder changing: not settled
       unsettle(entry);
@@ -933,6 +956,23 @@ public final class FileSync implements AutoCloseable {
    * Places an existing row in {@code folderId} and pins the folder; its attachments follow only
    * when the row actually moved.
    */
+  /**
+   * Mirrors the folder of a stored row and moves it to the container it was seen in: that container
+   * decides which change stream may report it removed. One save covers both.
+   */
+  private void placeSeen(Document document, FileEntry entry, UUID folderId) {
+    boolean otherContainer =
+        !Objects.equals(document.getSourceContainerKey(), entry.context().containerKey());
+    if (otherContainer) {
+      document.applySourceContext(entry.context());
+    }
+    boolean folderMoves = !Objects.equals(document.getFolderId(), folderId);
+    mirrorFolder(document, folderId);
+    if (otherContainer && !folderMoves) {
+      documentRepository.save(document);
+    }
+  }
+
   private void mirrorFolder(Document document, UUID folderId) {
     try {
       folderMirror.markSeen(folderId);

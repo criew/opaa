@@ -1728,7 +1728,7 @@ components:
       description: >
         The open key of a source type (ADR-0038) - which keys exist GET /api/v1/source-types
         says. Delivered today: UPLOAD, FILESYSTEM, HTTP_DIRECTORY, RSS_FEED, CONFLUENCE, S3,
-        GOOGLE_DRIVE.
+        NEXTCLOUD, GOOGLE_DRIVE.
       example: FILESYSTEM
 
     LibraryDocumentResponse:

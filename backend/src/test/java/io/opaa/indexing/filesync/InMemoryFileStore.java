@@ -36,6 +36,7 @@ public final class InMemoryFileStore implements FileStore {
   private boolean folderMarkers;
   private boolean shallowMarkers;
   private boolean stableIds;
+  private boolean globalIds;
   private final Map<String, Long> ids = new HashMap<>();
   private long nextId;
   private final List<String> calls = new ArrayList<>();
@@ -163,6 +164,9 @@ public final class InMemoryFileStore implements FileStore {
 
   /** The {@code file_path} the store gives {@code name}, also after a removal. */
   public String filePathOf(String container, String name) {
+    if (globalIds) {
+      return "mem://#" + ids.get(container + "\n" + name);
+    }
     if (!stableIds) {
       return filePath(container, name);
     }
@@ -227,6 +231,28 @@ public final class InMemoryFileStore implements FileStore {
             }
           }
         };
+    return this;
+  }
+
+  /**
+   * From now on a file's identity is its id alone, independent of its container, like a store that
+   * tracks files across areas; {@link #moveAcross} keeps it.
+   */
+  public InMemoryFileStore withGlobalIds() {
+    globalIds = true;
+    return this;
+  }
+
+  /**
+   * Moves {@code name} unchanged from container {@code from} to {@code to}, keeping its id, and
+   * notes the change in both streams: an update in {@code to}'s, a removal in {@code from}'s.
+   */
+  public InMemoryFileStore moveAcross(String from, String name, String to) {
+    StoredFile file = containers.get(from).remove(name);
+    container(to).containers.get(to).put(name, file);
+    ids.put(to + "\n" + name, ids.get(from + "\n" + name));
+    changed(to, name);
+    changed(from, name);
     return this;
   }
 

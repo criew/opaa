@@ -78,6 +78,15 @@ class GoogleDriveFileStoreContractTest extends FileStoreChangeFeedContract {
     }
 
     @Override
+    public void moveAcross(int from, String name, int to) {
+      FakeDriveServer.Item item = server.get(id(from, name));
+      item.parent = to == 0 ? "drive0" : "folder1";
+      item.driveId = to == 0 ? "drive0" : null;
+      server.changed(item.id, to == 0 ? "drive0" : null);
+      server.removed(item.id, from == 0 ? "drive0" : null);
+    }
+
+    @Override
     public void expireCursors() {
       server.expireCursors();
     }

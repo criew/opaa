@@ -1,0 +1,57 @@
+name: Nextcloud-Integration
+
+# Bewusst NICHT bei jedem Pull Request (#2152): der Lauf startet das offizielle Nextcloud-Image in
+# Docker. Gemessen auf der Referenzmaschine: rund 14 Sekunden bis zur Installation mit SQLite und
+# rund 180 MiB für den Container, aber ein Image von rund 2,1 GB, das jeder CI-Lauf neu lädt -
+# gegenüber rund 1 Sekunde und 400 MB beim S3-Speicher-Fixture, das innerhalb von `test` läuft. Der
+# Group-Folders-Test braucht außerdem den App-Store. Das Testdoppel des Konnektors
+# (io.opaa.indexing.source.nextcloud.FakeNextcloudServer) läuft mit jedem PR im regulären
+# Backend-Job; diese Suite ist die zusätzliche Abnahme gegen eine echte Nextcloud.
+on:
+  schedule:
+    # Nach Keycloak (5:25 UTC), damit nicht mehrere Container-Suiten um denselben Runner konkurrieren.
+    - cron: '55 5 * * *'
+  workflow_dispatch: {}
+  # Kein branches-Filter: die Suite muss auch auf gestapelten PRs (Basis = anderer Feature-Branch)
+  # per Label startbar sein; das Opt-in regelt die if-Bedingung des Jobs.
+  pull_request:
+    types: [labeled]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nextcloud-integration-${{ github.event_name }}-${{ github.event.pull_request.number || 'none' }}-${{ github.event.label.name || 'none' }}
+  cancel-in-progress: false
+
+jobs:
+  nextcloud:
+    name: Nextcloud im Container
+    # Bei pull_request nur, wenn das Label "nextcloud-suite" gesetzt wurde - ein Opt-in je PR für
+    # Änderungen am Nextcloud-Konnektor oder am Datei-Abgleich, ohne jeden PR zu belasten.
+    if: github.event_name != 'pull_request' || github.event.label.name == 'nextcloud-suite'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: backend/
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25.0.4+101.0.LTS'
+
+      - uses: gradle/actions/setup-gradle@v6
+
+      - name: Nextcloud-Integrationstests ausführen
+        run: ./gradlew nextcloudIntegrationTest
+
+      - name: Testberichte hochladen
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: nextcloud-integration-test-reports
+          path: backend/build/reports/tests/
+          retention-days: 14
