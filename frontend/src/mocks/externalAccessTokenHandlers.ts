@@ -117,8 +117,6 @@ function eligibleLibraries(): EligibleExternalAccessLibraryResponse[] {
     description: library.description ?? undefined,
     releaseExpiresAt: inDays(300),
     favorite: mockFavoriteAssets.has(favoriteKey('KNOWLEDGE_LIBRARY', library.id)),
-    // Approximated by group ownership, like the catalog mock: the fixtures name no memberships.
-    fromMyGroups: library.ownerType === 'GROUP',
   }))
 }
 

@@ -81,11 +81,26 @@ describe('CatalogPage (ADR-0039)', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'Katalog' })).toBeInTheDocument()
     const knowledge = await screen.findByRole('link', { name: /Rechtsquellen Soziales/ })
     expect(knowledge).toHaveAttribute('href', '/libraries/library-referat-50')
-    expect(within(cardOf(knowledge)).getByText('Wissensbibliothek')).toBeInTheDocument()
+    expect(within(cardOf(knowledge)).getByText('Wissen')).toBeInTheDocument()
+    expect(within(cardOf(knowledge)).queryByText('Wissensbibliothek')).not.toBeInTheDocument()
     const prompts = screen.getByRole('link', { name: /Formulierungshilfen Referat 50/ })
     expect(prompts).toHaveAttribute('href', '/prompts/prompt-library-referat-50')
     expect(within(cardOf(prompts)).getByText('Prompt-Bibliothek')).toBeInTheDocument()
-    expect(within(cardOf(prompts)).getByText('zuständig: Referat 50')).toBeInTheDocument()
+    expect(within(cardOf(prompts)).getByText('Referat 50')).toBeInTheDocument()
+    expect(within(cardOf(prompts)).getByTitle('Zuständige Gruppe')).toBeInTheDocument()
+    expect(within(cardOf(prompts)).queryByText(/zuständig:/)).not.toBeInTheDocument()
+  })
+
+  it('says under the heading what the catalog holds, without a footnote', async () => {
+    renderCatalog()
+    await screen.findByRole('link', { name: /Rechtsquellen Soziales/ })
+
+    expect(
+      screen.getByText('Alles, was Sie nutzen dürfen. Ihre Favoriten stehen oben.'),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByText(/Der Katalog zeigt nur, was Sie lesen dürfen/),
+    ).not.toBeInTheDocument()
   })
 
   it('offers only cards - no table and no switch to one', async () => {
@@ -138,13 +153,13 @@ describe('CatalogPage (ADR-0039)', () => {
     renderCatalog()
     await screen.findByRole('link', { name: /Rechtsquellen Soziales/ })
 
-    await user.type(screen.getByRole('textbox', { name: 'Suchen' }), 'nichts dergleichen')
+    await user.type(screen.getByRole('searchbox', { name: 'Suchen' }), 'nichts dergleichen')
 
     expect(
       await screen.findByText('Kein Eintrag passt zu „nichts dergleichen“.', { selector: 'p' }),
     ).toBeInTheDocument()
     expect(requestedUrls.at(-1)?.searchParams.get('q')).toBe('nichts dergleichen')
-    expect(screen.getByRole('textbox', { name: 'Suchen' })).toBeInTheDocument()
+    expect(screen.getByRole('searchbox', { name: 'Suchen' })).toBeInTheDocument()
   })
 
   it('loads further pages on request and names the total', async () => {
@@ -165,12 +180,14 @@ describe('CatalogPage (ADR-0039)', () => {
 
     expect(await screen.findByRole('link', { name: /Erste Seite/ })).toBeInTheDocument()
     expect(screen.getByText('51 Einträge')).toBeInTheDocument()
+    expect(screen.getByText('1 von 51 angezeigt')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Weitere laden' }))
 
     expect(await screen.findByRole('link', { name: /Zweite Seite/ })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /Erste Seite/ })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Weitere laden' })).not.toBeInTheDocument()
+    expect(screen.queryByText(/angezeigt$/)).not.toBeInTheDocument()
   })
 
   it('names the open succession and its addressee on the card', async () => {
@@ -195,7 +212,8 @@ describe('CatalogPage (ADR-0039)', () => {
     renderCatalog()
 
     const card = cardOf(await screen.findByRole('link', { name: /Verwaiste Bausteine/ }))
-    expect(within(card).getByText('zuständig: die Systemverwaltung')).toBeInTheDocument()
+    expect(within(card).getByText('die Systemverwaltung')).toBeInTheDocument()
+    expect(within(card).getByTitle('Zuständige Gruppe')).toBeInTheDocument()
     expect(within(card).getByText('3 Prompts · in 1 Space')).toBeInTheDocument()
   })
 
@@ -350,7 +368,51 @@ describe('CatalogPage (ADR-0039)', () => {
     )
   })
 
-  describe('tile fields, filters and sort (#2093)', () => {
+  it('offers "In Space verwenden" in a menu beside the star, never inside the link', async () => {
+    const user = userEvent.setup()
+    renderCatalog()
+    const link = await screen.findByRole('link', { name: 'Formulierungshilfen Referat 50' })
+    const card = cardOf(link)
+
+    expect(
+      within(card).queryByRole('button', { name: /in Space verwenden/ }),
+    ).not.toBeInTheDocument()
+    const more = within(card).getByRole('button', {
+      name: 'Weitere Aktionen für ‚Formulierungshilfen Referat 50‘',
+    })
+    expect(within(link).queryByRole('button')).not.toBeInTheDocument()
+    expect(more).toHaveAttribute('aria-haspopup', 'menu')
+
+    more.focus()
+    await user.keyboard('{Enter}')
+    const item = await screen.findByRole('menuitem', { name: 'In Space verwenden' })
+    await user.click(item)
+
+    const dialog = await screen.findByRole('dialog', {
+      name: '„Formulierungshilfen Referat 50“ in Space verwenden',
+    })
+    expect(
+      await within(dialog).findByRole('button', { name: 'Neuen Space damit anlegen' }),
+    ).toBeInTheDocument()
+  })
+
+  it('offers no visibility, no group filter and no sort - search, type, favorites in one row', async () => {
+    renderCatalog()
+    const search = await screen.findByRole('searchbox', { name: 'Suchen' })
+    await screen.findByRole('link', { name: /Rechtsquellen Soziales/ })
+
+    expect(screen.queryByRole('group', { name: 'Sichtbarkeit' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('group', { name: 'Sortierung' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Aus meinen Gruppen' })).not.toBeInTheDocument()
+    const type = screen.getByRole('group', { name: 'Typ' })
+    const favorites = screen.getByRole('button', { name: 'Favoriten' })
+    expect(search.compareDocumentPosition(type) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(type.compareDocumentPosition(favorites) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(requestedUrls.at(-1)?.searchParams.get('sort')).toBeNull()
+    expect(requestedUrls.at(-1)?.searchParams.get('fromMyGroups')).toBeNull()
+  })
+
+  describe('tile fields and filters (#2093, #2129)', () => {
     function serve(entries: CatalogEntryResponse[]) {
       server.use(
         http.get('/api/v1/catalog', () =>
@@ -365,7 +427,7 @@ describe('CatalogPage (ADR-0039)', () => {
       )
     }
 
-    it('shows visibility, own role and the Stand of a ready entry', async () => {
+    it('marks only an entry released to all accounts, shows no role and the date of a ready entry', async () => {
       serve([
         entry('Bauordnung', {
           assetType: 'KNOWLEDGE_LIBRARY',
@@ -382,20 +444,26 @@ describe('CatalogPage (ADR-0039)', () => {
       renderCatalog()
 
       const knowledge = cardOf(await screen.findByRole('link', { name: /Bauordnung/ }))
-      expect(within(knowledge).getByText('Für alle')).toBeInTheDocument()
-      expect(within(knowledge).getByText('Verwalter')).toBeInTheDocument()
-      expect(within(knowledge).getByText('Stand 18.08.2026')).toBeInTheDocument()
+      expect(
+        within(knowledge).getByRole('img', { name: 'Für alle Konten freigegeben' }),
+      ).toBeInTheDocument()
+      expect(within(knowledge).queryByText('Für alle')).not.toBeInTheDocument()
+      expect(within(knowledge).queryByText('Verwalter')).not.toBeInTheDocument()
+      expect(within(knowledge).getByText('Aktualisiert am 18.08.2026')).toBeInTheDocument()
       const prompts = cardOf(screen.getByRole('link', { name: /Bescheidbausteine/ }))
-      expect(within(prompts).getByText('Eingeschränkt')).toBeInTheDocument()
-      expect(within(prompts).getByText('Leser')).toBeInTheDocument()
-      // A type without a measure of its own is READY; its Stand is the last change.
-      expect(within(prompts).getByText('Stand 30.09.2026')).toBeInTheDocument()
-      // Both words are explained on the page, not only behind a tooltip.
-      expect(screen.getByText(/„Für alle“: an alle Konten freigegeben/)).toBeInTheDocument()
+      expect(
+        within(prompts).queryByRole('img', { name: 'Für alle Konten freigegeben' }),
+      ).not.toBeInTheDocument()
+      expect(within(prompts).queryByText('Eingeschränkt')).not.toBeInTheDocument()
+      expect(within(prompts).queryByText('Leser')).not.toBeInTheDocument()
+      // A type without a measure of its own is READY; its date is the last change.
+      const updated = within(prompts).getByText('Aktualisiert am 30.09.2026')
+      // A ready entry carries no coloured dot: the date stands alone, not beside one.
+      expect(updated.parentElement).toBe(prompts)
     })
 
-    // An upload library has no runs and so no lastIndexedAt; its Stand is its last change.
-    it('gives a ready upload library its last change as Stand', async () => {
+    // An upload library has no runs and so no lastIndexedAt; its date is its last change.
+    it('gives a ready upload library its last change as date', async () => {
       serve([
         entry('Hochgeladenes', {
           assetType: 'KNOWLEDGE_LIBRARY',
@@ -406,20 +474,18 @@ describe('CatalogPage (ADR-0039)', () => {
       renderCatalog()
 
       const card = cardOf(await screen.findByRole('link', { name: /Hochgeladenes/ }))
-      expect(within(card).getByText('Stand 12.09.2026')).toBeInTheDocument()
+      expect(within(card).getByText('Aktualisiert am 12.09.2026')).toBeInTheDocument()
     })
 
-    it('titles every filter group and the sort visibly, and names them by that title', async () => {
+    it('titles the type filter visibly and names it by that title', async () => {
       renderCatalog()
       await screen.findByRole('link', { name: /Rechtsquellen Soziales/ })
 
-      for (const title of ['Typ', 'Sichtbarkeit', 'Sortierung']) {
-        const group = screen.getByRole('group', { name: title })
-        const labelId = group.getAttribute('aria-labelledby')
-        expect(labelId).toBeTruthy()
-        expect(document.getElementById(labelId!)).toHaveTextContent(title)
-        expect(document.getElementById(labelId!)).toBeVisible()
-      }
+      const group = screen.getByRole('group', { name: 'Typ' })
+      const labelId = group.getAttribute('aria-labelledby')
+      expect(labelId).toBeTruthy()
+      expect(document.getElementById(labelId!)).toHaveTextContent('Typ')
+      expect(document.getElementById(labelId!)).toBeVisible()
     })
 
     it('names a state that is not ready in words, and keeps it visible under an open succession', async () => {
@@ -447,7 +513,8 @@ describe('CatalogPage (ADR-0039)', () => {
       renderCatalog()
 
       const failed = cardOf(await screen.findByRole('link', { name: /Fehlgeschlagen/ }))
-      expect(within(failed).getByText('Aktualisierung fehlgeschlagen')).toBeInTheDocument()
+      const failedState = within(failed).getByText('Aktualisierung fehlgeschlagen')
+      expect(failedState.parentElement?.querySelector('[aria-hidden="true"]')).not.toBeNull()
       const orphaned = cardOf(screen.getByRole('link', { name: /Verwaist/ }))
       expect(within(orphaned).getByText('Wird aktualisiert')).toBeInTheDocument()
       expect(within(orphaned).getByText(/Nachfolge offen/)).toBeInTheDocument()
@@ -455,70 +522,13 @@ describe('CatalogPage (ADR-0039)', () => {
       expect(within(empty).getByText('Noch kein Inhalt')).toBeInTheDocument()
     })
 
-    it('filters by visibility on the server and keeps it in the address', async () => {
-      const user = userEvent.setup()
-      renderCatalog()
-      await screen.findByRole('link', { name: /Rechtsquellen Soziales/ })
-
-      const visibility = screen.getByRole('group', { name: 'Sichtbarkeit' })
-      await user.click(within(visibility).getByRole('button', { name: 'Eingeschränkt' }))
-
-      await waitFor(() =>
-        expect(requestedUrls.at(-1)?.searchParams.get('visibility')).toBe('RESTRICTED'),
-      )
-      expect(screen.getByTestId('location')).toHaveTextContent('visibility=restricted')
-      await waitFor(() =>
-        expect(screen.queryByText('Dienstanweisungen', { exact: true })).not.toBeInTheDocument(),
-      )
-    })
-
-    it('narrows to assets from my groups on the server', async () => {
-      const user = userEvent.setup()
-      renderCatalog()
-      await screen.findByRole('link', { name: /Rechtsquellen Soziales/ })
-
-      await user.click(screen.getByRole('button', { name: 'Aus meinen Gruppen' }))
-
-      await waitFor(() =>
-        expect(requestedUrls.at(-1)?.searchParams.get('fromMyGroups')).toBe('true'),
-      )
-      expect(screen.getByTestId('location')).toHaveTextContent('groups=1')
-      await waitFor(() =>
-        expect(screen.queryByRole('link', { name: /Meine Dokumente/ })).not.toBeInTheDocument(),
-      )
-      expect(screen.getByRole('link', { name: /Rechtsquellen Soziales/ })).toBeInTheDocument()
-    })
-
-    it('sorts by the last change on the server, by name by default', async () => {
-      const user = userEvent.setup()
-      renderCatalog()
-      await screen.findByRole('link', { name: /Rechtsquellen Soziales/ })
-      expect(requestedUrls.at(-1)?.searchParams.get('sort')).toBeNull()
-
-      const sort = screen.getByRole('group', { name: 'Sortierung' })
-      expect(within(sort).getByRole('button', { name: 'Name' })).toHaveAttribute(
-        'aria-pressed',
-        'true',
-      )
-      await user.click(within(sort).getByRole('button', { name: 'Zuletzt geändert' }))
-
-      await waitFor(() => expect(requestedUrls.at(-1)?.searchParams.get('sort')).toBe('updatedAt'))
-      expect(screen.getByTestId('location')).toHaveTextContent('sort=updated')
-    })
-
-    it('starts with every filter and the sort the address names', async () => {
-      renderCatalog('/catalog?type=knowledge&visibility=public&groups=1&sort=updated')
+    it('starts with every filter the address names', async () => {
+      renderCatalog('/catalog?type=knowledge&favorites=1')
 
       await waitFor(() => expect(requestedUrls.length).toBeGreaterThan(0))
       const params = requestedUrls.at(-1)!.searchParams
       expect(params.get('type')).toBe('KNOWLEDGE_LIBRARY')
-      expect(params.get('visibility')).toBe('PUBLIC')
-      expect(params.get('fromMyGroups')).toBe('true')
-      expect(params.get('sort')).toBe('updatedAt')
-      expect(screen.getByRole('button', { name: 'Aus meinen Gruppen' })).toHaveAttribute(
-        'aria-pressed',
-        'true',
-      )
+      expect(params.get('favorites')).toBe('true')
     })
   })
 })

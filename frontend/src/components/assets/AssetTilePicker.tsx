@@ -2,16 +2,14 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import TextField from '@mui/material/TextField'
-import ToggleButton from '@mui/material/ToggleButton'
-import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import Typography from '@mui/material/Typography'
 import type { AssetType, CatalogEntryResponse } from '../../types/api'
 import { getCatalog } from '../../services/catalogApi'
 import ChoiceTileGroup, { type ChoiceTile } from '../choice/ChoiceTileGroup'
 import { ASSET_TYPES, assetTypeDefinition } from './assetTypeRegistry'
 import { assetPickKey, type AssetPick } from './assetPick'
-import AssetFilterChips, { type AssetFilters } from './AssetFilterChips'
+import { type AssetFilters } from './AssetFilterChips'
+import AssetFilterBar from './AssetFilterBar'
 
 /** The loaded tiles for one filter; a different key means the shown result is outdated. */
 interface Loaded {
@@ -19,12 +17,12 @@ interface Loaded {
   entries: CatalogEntryResponse[]
   page: number
   totalPages: number
+  totalElements: number
   error: string | null
 }
 
 const PAGE_SIZE = 50
 const SEARCH_DELAY_MS = 300
-const ALL_TYPES = 'all'
 
 interface AssetTilePickerProps {
   /** The types on offer; more than one shows a type filter. */
@@ -38,7 +36,8 @@ interface AssetTilePickerProps {
 
 /**
  * The tile choice of assets to associate with a space (ADR-0039, Entscheidung 4): the catalog's
- * own list - only what the person may read - with type filter and search, several tiles at once.
+ * own list and order - only what the person may read - with the catalog's filter row (search, type,
+ * favorites), several tiles at once.
  * A choice survives a changed filter; the line under the tiles names everything chosen.
  */
 export default function AssetTilePicker({
@@ -54,8 +53,8 @@ export default function AssetTilePicker({
     const keys = typesKey.split(',')
     return typesKey ? ASSET_TYPES.filter((d) => keys.includes(d.type)) : ASSET_TYPES
   }, [typesKey])
-  const [typeFilter, setTypeFilter] = useState<string>(ALL_TYPES)
-  const [filters, setFilters] = useState<AssetFilters>({ favorites: false, fromMyGroups: false })
+  const [typeFilter, setTypeFilter] = useState<AssetType | undefined>(undefined)
+  const [filters, setFilters] = useState<AssetFilters>({ favorites: false })
   const [query, setQuery] = useState('')
   const [appliedQuery, setAppliedQuery] = useState('')
   const [loaded, setLoaded] = useState<Loaded | null>(null)
@@ -72,7 +71,7 @@ export default function AssetTilePicker({
   const filterType: AssetType | undefined =
     offered.length === 1 ? offered[0].type : offered.find((d) => d.type === typeFilter)?.type
 
-  const filterKey = `${filterType ?? ''}|${filters.favorites}|${filters.fromMyGroups}|${appliedQuery.trim()}|${typesKey}`
+  const filterKey = `${filterType ?? ''}|${filters.favorites}|${appliedQuery.trim()}|${typesKey}`
 
   async function fetchPage(page: number): Promise<Omit<Loaded, 'key'>> {
     try {
@@ -80,7 +79,6 @@ export default function AssetTilePicker({
         type: filterType,
         q: appliedQuery,
         favorites: filters.favorites,
-        fromMyGroups: filters.fromMyGroups,
         page,
         size: PAGE_SIZE,
       })
@@ -88,6 +86,7 @@ export default function AssetTilePicker({
         entries: result.entries.filter((entry) => offered.some((d) => d.type === entry.assetType)),
         page: result.page,
         totalPages: result.totalPages,
+        totalElements: result.totalElements,
         error: null,
       }
     } catch (err) {
@@ -95,6 +94,7 @@ export default function AssetTilePicker({
         entries: [],
         page,
         totalPages: 0,
+        totalElements: 0,
         error: err instanceof Error ? err.message : 'Die Auswahl konnte nicht geladen werden.',
       }
     }
@@ -126,6 +126,7 @@ export default function AssetTilePicker({
       ...loaded,
       page: result.page,
       totalPages: result.totalPages,
+      totalElements: result.totalElements,
       entries: [...loaded.entries, ...result.entries],
     })
   }
@@ -135,6 +136,7 @@ export default function AssetTilePicker({
   const error = isLoading ? null : (loaded?.error ?? null)
   const page = loaded?.page ?? 0
   const totalPages = isLoading ? 0 : (loaded?.totalPages ?? 0)
+  const totalElements = isLoading ? 0 : (loaded?.totalElements ?? 0)
 
   const chosenKeys = useMemo(() => new Set(value.map(assetPickKey)), [value])
   const shownKeys = entries.map(assetPickKey)
@@ -164,49 +166,12 @@ export default function AssetTilePicker({
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-      <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', alignItems: 'center' }}>
-        {offered.length > 1 && (
-          <ToggleButtonGroup
-            size="small"
-            exclusive
-            value={typeFilter}
-            onChange={(_event, next: string | null) => {
-              if (next) setTypeFilter(next)
-            }}
-            aria-label="Typ"
-          >
-            <ToggleButton value={ALL_TYPES} sx={{ px: 1.5 }}>
-              Alle
-            </ToggleButton>
-            {offered.map((definition) => {
-              const Icon = definition.Icon
-              return (
-                <ToggleButton
-                  key={definition.type}
-                  value={definition.type}
-                  sx={{ px: 1.5, gap: 0.75 }}
-                >
-                  <Icon aria-hidden sx={{ fontSize: 16 }} />
-                  {definition.label}
-                </ToggleButton>
-              )
-            })}
-          </ToggleButtonGroup>
-        )}
-        <AssetFilterChips
-          value={filters}
-          onToggle={(key) => setFilters((current) => ({ ...current, [key]: !current[key] }))}
-        />
-        <TextField
-          size="small"
-          type="search"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder="Name oder Beschreibung …"
-          slotProps={{ htmlInput: { 'aria-label': 'Suche', maxLength: 200 } }}
-          sx={{ flex: 1, minWidth: 220 }}
-        />
-      </Box>
+      <AssetFilterBar
+        search={{ value: query, onChange: setQuery, label: 'Suche', maxLength: 200 }}
+        types={{ offered, value: filterType, onChange: setTypeFilter }}
+        filters={filters}
+        onToggle={(key) => setFilters((current) => ({ ...current, [key]: !current[key] }))}
+      />
 
       {error ? (
         <Alert severity="error">{error}</Alert>
@@ -214,7 +179,7 @@ export default function AssetTilePicker({
         <Typography sx={{ color: 'text.secondary', fontSize: 13.5 }}>
           {isLoading
             ? 'Wird geladen …'
-            : appliedQuery.trim() || filterType || filters.favorites || filters.fromMyGroups
+            : appliedQuery.trim() || filterType || filters.favorites
               ? 'Keine Treffer.'
               : 'Es gibt derzeit nichts, was Sie lesen dürfen und zuordnen könnten.'}
         </Typography>
@@ -247,7 +212,10 @@ export default function AssetTilePicker({
       )}
 
       {page + 1 < totalPages && !error && moreError?.key !== filterKey && (
-        <Box>
+        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 1 }}>
+          <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+            {entries.length} von {totalElements} angezeigt
+          </Typography>
           <Button
             variant="outlined"
             size="small"

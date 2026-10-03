@@ -11,7 +11,7 @@ export interface AssetTypeDefinition {
   slug: string
   /** The type as a group of things - type filter and type choice ("Wissen"). */
   label: string
-  /** The full name of one asset, as the type badge shows it ("Wissensbibliothek"). */
+  /** The name of one asset's type, as the type badge shows it ("Wissen", "Prompt-Bibliothek"). */
   title: string
   /** The singular noun as a sentence names it ("diese Bibliothek"). */
   noun: string
@@ -43,7 +43,7 @@ export const ASSET_TYPES: AssetTypeDefinition[] = [
     type: 'KNOWLEDGE_LIBRARY',
     slug: 'knowledge',
     label: 'Wissen',
-    title: 'Wissensbibliothek',
+    title: 'Wissen',
     noun: 'Bibliothek',
     description:
       'Dokumente, die der Chat durchsucht – hochgeladen oder aus einer Quelle eingelesen.',
@@ -81,7 +81,7 @@ export function assetTypeLabel(assetType: AssetType | string | null | undefined)
   return assetTypeDefinition(assetType)?.noun ?? assetType ?? ''
 }
 
-/** The full name of an asset type, as the type marker of a mixed list shows it. */
+/** The name of an asset type, as the type marker of a mixed list shows it. */
 export function assetTypeTitle(assetType: AssetType | string | null | undefined): string {
   return assetTypeDefinition(assetType)?.title ?? assetType ?? ''
 }
