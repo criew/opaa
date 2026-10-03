@@ -114,7 +114,7 @@ class SpaceAccessPolicyTest {
     UUID person = UUID.randomUUID();
     Space space = spaceWithOwner(owner);
     space.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, ORGANIZATION));
-    space.addMembership(SpaceMembership.ofGroup(group, groupRole, 7, ORGANIZATION));
+    space.addMembership(SpaceMembership.ofGroup(group, groupRole, ORGANIZATION));
 
     assertThat(SpaceAccessPolicy.effectiveRole(space, person, Set.of(group))).isEqualTo(groupRole);
     assertThat(roleOf(space, person)).as("without that group membership").isNull();
@@ -129,7 +129,7 @@ class SpaceAccessPolicyTest {
     Space space = spaceWithOwner(owner);
     space.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, ORGANIZATION));
     space.addMembership(SpaceMembership.ofUser(person, SpaceRole.MEMBER, ORGANIZATION));
-    space.addMembership(SpaceMembership.ofGroup(group, SpaceRole.CURATOR, 7, ORGANIZATION));
+    space.addMembership(SpaceMembership.ofGroup(group, SpaceRole.CURATOR, ORGANIZATION));
 
     assertThat(SpaceAccessPolicy.effectiveRole(space, person, Set.of(group)))
         .isEqualTo(SpaceRole.CURATOR);
@@ -143,8 +143,8 @@ class SpaceAccessPolicyTest {
     UUID person = UUID.randomUUID();
     Space space = spaceWithOwner(owner);
     space.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, ORGANIZATION));
-    space.addMembership(SpaceMembership.ofGroup(higher, SpaceRole.ADMIN, 7, ORGANIZATION));
-    space.addMembership(SpaceMembership.ofGroup(lower, SpaceRole.MEMBER, 7, ORGANIZATION));
+    space.addMembership(SpaceMembership.ofGroup(higher, SpaceRole.ADMIN, ORGANIZATION));
+    space.addMembership(SpaceMembership.ofGroup(lower, SpaceRole.MEMBER, ORGANIZATION));
 
     assertThat(SpaceAccessPolicy.effectiveRole(space, person, Set.of(higher, lower)))
         .isEqualTo(SpaceRole.ADMIN);
@@ -194,7 +194,7 @@ class SpaceAccessPolicyTest {
     Space space = spaceWithOwner(owner);
     SpaceMembership ownerRow = SpaceMembership.ofUser(owner, SpaceRole.MEMBER, ORGANIZATION);
     space.addMembership(ownerRow);
-    space.addMembership(SpaceMembership.ofGroup(group, SpaceRole.ADMIN, 7, ORGANIZATION));
+    space.addMembership(SpaceMembership.ofGroup(group, SpaceRole.ADMIN, ORGANIZATION));
     when(groupCapability.isCapable(group)).thenReturn(capable);
 
     // The owner's row is removed in the hypothetical, so only the group can still hold the space.

@@ -69,15 +69,6 @@ public class AssetGrant {
   @Column(name = "granted_by_user_id")
   private UUID grantedByUserId;
 
-  /**
-   * How many active accounts the group reached when this grant was written - the growth signal of
-   * ADR-0036, Entscheidung 9, compared against "today" in the Freigabeansicht. Null for a person,
-   * and null for a grant from before the figure was recorded. A later role change leaves it as it
-   * is: the signal answers how far the reach has grown since this group was let in.
-   */
-  @Column(name = "member_count_at_grant")
-  private Integer memberCountAtGrant;
-
   @Column(name = "created_at", nullable = false, updatable = false)
   private Instant createdAt;
 
@@ -95,8 +86,7 @@ public class AssetGrant {
       UUID subjectGroupId,
       AssetRole role,
       Instant expiresAt,
-      UUID grantedByUserId,
-      Integer memberCountAtGrant) {
+      UUID grantedByUserId) {
     this.id = UUID.randomUUID();
     this.assetType = assetType;
     this.assetId = assetId;
@@ -107,7 +97,6 @@ public class AssetGrant {
     this.role = role;
     this.expiresAt = expiresAt;
     this.grantedByUserId = grantedByUserId;
-    this.memberCountAtGrant = memberCountAtGrant;
   }
 
   public static AssetGrant forUser(
@@ -127,15 +116,9 @@ public class AssetGrant {
         null,
         role,
         expiresAt,
-        grantedByUserId,
-        null);
+        grantedByUserId);
   }
 
-  /**
-   * @param memberCountAtGrant the group's active accounts at this moment, or null where the grant
-   *     is not a Freigabe somebody answers for - the owner grant a group-owned library is created
-   *     with carries ownership, not a released reach.
-   */
   public static AssetGrant forGroup(
       AssetType assetType,
       UUID assetId,
@@ -143,8 +126,7 @@ public class AssetGrant {
       UUID subjectGroupId,
       AssetRole role,
       Instant expiresAt,
-      UUID grantedByUserId,
-      Integer memberCountAtGrant) {
+      UUID grantedByUserId) {
     return new AssetGrant(
         assetType,
         assetId,
@@ -154,14 +136,12 @@ public class AssetGrant {
         subjectGroupId,
         role,
         expiresAt,
-        grantedByUserId,
-        memberCountAtGrant);
+        grantedByUserId);
   }
 
   /**
-   * A grant to every account of the organization - "Alle Konten". Both subject columns stay empty,
-   * and no growth signal is recorded: the reach is the organization itself, and a figure would only
-   * invite a comparison that says nothing.
+   * A grant to every account of the organization - "Alle Konten". Both subject columns stay empty:
+   * the reach is the organization itself.
    */
   public static AssetGrant forAllAccounts(
       AssetType assetType,
@@ -179,8 +159,7 @@ public class AssetGrant {
         null,
         role,
         expiresAt,
-        grantedByUserId,
-        null);
+        grantedByUserId);
   }
 
   @PrePersist
@@ -223,10 +202,6 @@ public class AssetGrant {
 
   public boolean isExpired(Instant now) {
     return expiresAt != null && expiresAt.isBefore(now);
-  }
-
-  public Integer getMemberCountAtGrant() {
-    return memberCountAtGrant;
   }
 
   public UUID getId() {

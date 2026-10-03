@@ -228,9 +228,7 @@ class AssetShellOwnershipDirectory implements AssetOwnershipDirectory {
                       newOwner.id(),
                       ownerRole,
                       null,
-                      actorUserId,
-                      // Ownership, not a release: the growth signal belongs to a granted role.
-                      null)
+                      actorUserId)
                   : AssetGrant.forUser(
                       asset.getAssetType(),
                       asset.getId(),
@@ -277,8 +275,7 @@ class AssetShellOwnershipDirectory implements AssetOwnershipDirectory {
                       newOwner.id(),
                       ownerRole,
                       null,
-                      actorUserId,
-                      null)
+                      actorUserId)
                   : AssetGrant.forUser(
                       asset.getAssetType(),
                       asset.getId(),

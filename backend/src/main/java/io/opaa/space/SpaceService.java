@@ -29,8 +29,6 @@ import io.opaa.permission.GroupAttribution;
 import io.opaa.permission.GroupMemberDisclosure;
 import io.opaa.permission.GroupMemberDisclosureDirectory;
 import io.opaa.permission.GroupMembershipResolver;
-import io.opaa.permission.GroupSizeProperties;
-import io.opaa.permission.GroupSizeSignal;
 import io.opaa.permission.GroupSubject;
 import io.opaa.permission.GroupSubjectDirectory;
 import io.opaa.permission.PermissionSubject;
@@ -71,7 +69,6 @@ public class SpaceService {
   private final GroupSubjectDirectory groupDirectory;
   private final GroupMemberDisclosureDirectory disclosureDirectory;
   private final CapabilityService capabilityService;
-  private final GroupSizeProperties groupSizeProperties;
   private final SuccessionReachGuard successionGuard;
   private final SpaceSuccessionSource successionSource;
   private final ChatAutoCleanupProperties chatAutoCleanup;
@@ -98,7 +95,6 @@ public class SpaceService {
       GroupSubjectDirectory groupDirectory,
       GroupMemberDisclosureDirectory disclosureDirectory,
       CapabilityService capabilityService,
-      GroupSizeProperties groupSizeProperties,
       SuccessionReachGuard successionGuard,
       SpaceSuccessionSource successionSource,
       ChatAutoCleanupProperties chatAutoCleanup,
@@ -118,7 +114,6 @@ public class SpaceService {
     this.groupDirectory = groupDirectory;
     this.disclosureDirectory = disclosureDirectory;
     this.capabilityService = capabilityService;
-    this.groupSizeProperties = groupSizeProperties;
     this.requiresNewTransactionTemplate = new TransactionTemplate(transactionManager);
     this.requiresNewTransactionTemplate.setPropagationBehavior(
         TransactionDefinition.PROPAGATION_REQUIRES_NEW);
@@ -329,7 +324,7 @@ public class SpaceService {
                     : SpaceMemberView.ofGroup(
                         membership,
                         groups.get(membership.getGroupId()),
-                        groupSizeSignal(membership)))
+                        activeMemberCount(membership)))
         .toList();
   }
 
@@ -464,15 +459,9 @@ public class SpaceService {
         space.getId(), subjectId, effectiveRole, List.copyOf(paths), withheld);
   }
 
-  /**
-   * The growth signal of a group membership (ADR-0036, Entscheidung 9), with the "kleine Gruppe"
-   * suppression applied - see {@link GroupSizeSignal}.
-   */
-  private GroupSizeSignal groupSizeSignal(SpaceMembership membership) {
-    return GroupSizeSignal.of(
-        membership.getMemberCountAtGrant(),
-        groupMemberships.activeMemberCount(membership.getGroupId(), membership.getOrganizationId()),
-        groupSizeProperties.minimumGroupSize());
+  private int activeMemberCount(SpaceMembership membership) {
+    return groupMemberships.activeMemberCount(
+        membership.getGroupId(), membership.getOrganizationId());
   }
 
   /**
@@ -575,12 +564,7 @@ public class SpaceService {
               + " kann sie nicht mehr Mitglied eines Space werden; bestehende Mitgliedschaften"
               + " bleiben unverändert. Nehmen Sie die entsprechende Organisationseinheit auf.");
     }
-    SpaceMembership membership =
-        SpaceMembership.ofGroup(
-            groupId,
-            role,
-            groupMemberships.activeMemberCount(groupId, space.getOrganizationId()),
-            space.getOrganizationId());
+    SpaceMembership membership = SpaceMembership.ofGroup(groupId, role, space.getOrganizationId());
     space.addMembership(membership);
     return membership;
   }
@@ -1132,6 +1116,6 @@ public class SpaceService {
         groupDirectory
             .attributionsById(List.of(membership.getGroupId()))
             .get(membership.getGroupId()),
-        groupSizeSignal(membership));
+        activeMemberCount(membership));
   }
 }

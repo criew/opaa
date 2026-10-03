@@ -72,7 +72,7 @@ class GroupMemberDisclosureAdapter implements GroupMemberDisclosureDirectory {
           new GroupMemberDisclosure(
               group.getId(), null, true, false, null, List.of(), responsibleNamesOf(group)));
     }
-    // Limit (e): below the Mindestgruppengröße the list is the figure the growth signal withholds.
+    // Limit (e): below the Mindestgruppengröße no names are handed out.
     if (active < groupSizeProperties.minimumGroupSize()) {
       return Optional.of(
           new GroupMemberDisclosure(

@@ -55,9 +55,6 @@ public class SpaceMembershipHistory {
   @Column(name = "role", nullable = false, length = 20)
   private SpaceRole role;
 
-  @Column(name = "member_count_at_grant")
-  private Integer memberCountAtGrant;
-
   @Enumerated(EnumType.STRING)
   @Column(name = "cause", nullable = false, length = 30)
   private SpaceMembershipHistoryCause cause;
@@ -96,7 +93,6 @@ public class SpaceMembershipHistory {
     this.subjectUserId = membership.getUserId();
     this.subjectGroupId = membership.getGroupId();
     this.role = role;
-    this.memberCountAtGrant = membership.getMemberCountAtGrant();
     this.cause = cause;
     this.actorUserId = actorUserId;
     this.validFrom = validFrom;
@@ -169,10 +165,6 @@ public class SpaceMembershipHistory {
 
   public SpaceRole getRole() {
     return role;
-  }
-
-  public Integer getMemberCountAtGrant() {
-    return memberCountAtGrant;
   }
 
   public SpaceMembershipHistoryCause getCause() {

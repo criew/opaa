@@ -6,7 +6,6 @@ import io.opaa.api.types.AssetGrantSubjectType;
 import io.opaa.asset.AssetGrantUpsert;
 import io.opaa.asset.AssetGrantView;
 import io.opaa.permission.AssetGrant;
-import io.opaa.permission.GroupSizeSignal;
 import java.util.List;
 
 /**
@@ -28,11 +27,7 @@ final class AssetGrantResponseMapper {
 
   static AssetGrantResponse toResponse(AssetGrantView view) {
     AssetGrant grant = view.grant();
-    GroupSizeSignal size = view.groupSize();
-    // A protected group carries no signal at all, not even "not small, not empty" - every figure
-    // about it is withheld (ADR-0036, Entscheidung 9).
-    boolean isGroup =
-        grant.getSubjectType() == AssetGrantSubjectType.GROUP && !view.protectedGroup();
+    Integer activeMembers = view.activeMemberCount();
     return new AssetGrantResponse(
             grant.getId(),
             grant.getSubjectType(),
@@ -46,10 +41,8 @@ final class AssetGrantResponseMapper {
         .grantedByDisplayName(view.grantedByDisplayName())
         .protectedGroup(
             grant.getSubjectType() == AssetGrantSubjectType.GROUP ? view.protectedGroup() : null)
-        .memberCountAtGrant(size.memberCountAtGrant())
-        .memberCountNow(size.memberCountNow())
-        .smallGroup(isGroup ? size.smallGroup() : null)
-        .emptyGroup(isGroup ? size.emptyGroup() : null);
+        .activeMemberCount(activeMembers)
+        .emptyGroup(activeMembers == null ? null : activeMembers == 0);
   }
 
   static List<AssetGrantResponse> toResponses(List<AssetGrantView> views) {

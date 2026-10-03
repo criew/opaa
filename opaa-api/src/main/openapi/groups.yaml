@@ -838,7 +838,7 @@ components:
         provider group always is; (c) the delivered default is "not released"; (d) never for a
         protected group - no name, no count, no members, and responsible instead, whom to ask;
         (e) never below the enforced minimum group size - no members and no figure either, only
-        smallGroup, the same suppression the growth signal of that very row carries (Auflage A2).
+        smallGroup (Auflage A2).
 
         A retrieval carried by the system role is an audit event (GROUP_MEMBERS_READ) on both
         paths, because a system administrator passes the threshold of every library and every

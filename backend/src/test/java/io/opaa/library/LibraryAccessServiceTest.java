@@ -369,8 +369,7 @@ class LibraryAccessServiceTest {
             groupId,
             AssetRole.EDITOR,
             null,
-            userId,
-            null);
+            userId);
     when(grantRepository.findByAssetTypeAndAssetId(KnowledgeLibrary.ASSET_TYPE, libraryId))
         .thenReturn(List.of(grant));
     when(membershipResolver.groupIdsForUser(userId)).thenReturn(Set.of(groupId));
@@ -475,8 +474,7 @@ class LibraryAccessServiceTest {
                     groupId,
                     AssetRole.MANAGER,
                     null,
-                    userId,
-                    null)));
+                    userId)));
 
     var roles =
         accessService.effectiveRolesForReadableLibraries(

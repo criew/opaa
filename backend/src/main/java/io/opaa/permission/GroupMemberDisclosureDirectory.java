@@ -23,11 +23,9 @@ import java.util.UUID;
  *   <li><b>(d) never for a protected group</b>: no name, no size, no members - only the people to
  *       ask instead ({@link GroupMemberDisclosure#responsible()}).
  *   <li><b>(e) never below the Mindestgruppengröße</b> ({@link GroupSizeProperties}): no members
- *       and no figure, only {@link GroupMemberDisclosure#smallGroup()}. The same suppression the
- *       growth signal of the very same row carries (Auflage A2) - without it, one row would say
- *       "kleine Gruppe" on the left and name four people on the right. Provisional decision of the
- *       coordinator (22.09.2026, #1882), taken in favour of data thrift while the maintainer was
- *       unavailable.
+ *       and no figure, only {@link GroupMemberDisclosure#smallGroup()} (Auflage A2). Provisional
+ *       decision of the coordinator (22.09.2026, #1882), taken in favour of data thrift while the
+ *       maintainer was unavailable.
  * </ul>
  *
  * <p>Every one of them answers {@link Optional#empty()} or a withheld field rather than an

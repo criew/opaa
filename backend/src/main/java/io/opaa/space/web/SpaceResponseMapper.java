@@ -6,7 +6,6 @@ import io.opaa.api.dto.SpaceMemberResponse;
 import io.opaa.api.dto.SpaceMembershipCountsResponse;
 import io.opaa.api.dto.SpaceResponse;
 import io.opaa.api.types.SpaceRole;
-import io.opaa.permission.GroupSizeSignal;
 import io.opaa.permission.PermissionTransferMark;
 import io.opaa.permission.SuccessionFinding;
 import io.opaa.permission.web.PermissionTransferResponseMapper;
@@ -124,10 +123,7 @@ final class SpaceResponseMapper {
 
   static SpaceMemberResponse toMemberResponse(SpaceMemberView view) {
     SpaceMembership membership = view.membership();
-    GroupSizeSignal size = view.groupSize();
-    // A protected group carries no signal at all, not even "not small, not empty" - every figure
-    // about it is withheld (ADR-0036, Entscheidung 9).
-    boolean signals = membership.isGroupSubject() && !view.protectedGroup();
+    Integer activeMembers = view.activeMemberCount();
     return new SpaceMemberResponse(
             membership.getId(),
             membership.getSubjectType(),
@@ -135,10 +131,8 @@ final class SpaceResponseMapper {
             membership.getRole(),
             membership.getCreatedAt())
         .displayName(view.displayName())
-        .memberCountAtGrant(size.memberCountAtGrant())
-        .memberCountNow(size.memberCountNow())
-        .smallGroup(signals ? size.smallGroup() : null)
-        .emptyGroup(signals ? size.emptyGroup() : null)
+        .activeMemberCount(activeMembers)
+        .emptyGroup(activeMembers == null ? null : activeMembers == 0)
         .protectedGroup(membership.isGroupSubject() ? view.protectedGroup() : null);
   }
 

@@ -312,7 +312,7 @@ class AssetCatalogServiceIntegrationTest {
       assets.put("Privat" + suffix, asset(type, "Privat" + suffix, OWNER_ONLY));
       UUID shared = asset(type, "Gruppe" + suffix, OWNER_ONLY);
       grantRepository.save(
-          AssetGrant.forGroup(type, shared, organization, group, AssetRole.VIEWER, null, owner, 1));
+          AssetGrant.forGroup(type, shared, organization, group, AssetRole.VIEWER, null, owner));
       assets.put("Gruppe" + suffix, shared);
       assets.put("Organisation" + suffix, asset(type, "Organisation" + suffix, ALL_ACCOUNTS));
     }
