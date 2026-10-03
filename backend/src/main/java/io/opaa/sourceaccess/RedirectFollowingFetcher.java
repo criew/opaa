@@ -7,7 +7,6 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -149,10 +148,12 @@ public final class RedirectFollowingFetcher {
   }
 
   /**
-   * Sends one {@code method} request carrying {@code body} - a WebDAV {@code PROPFIND} - under the
-   * target validation and {@code rateLimit}, like {@link #sendFollowingRedirects}. A redirect is
-   * returned as it is, never followed: where a request with a body may be sent again is not this
-   * class's decision.
+   * The one way to send a request with a body to a source (a WebDAV {@code PROPFIND}, a form {@code
+   * POST}): {@code method} carrying {@code body} as {@code contentType}, with {@code headers} -
+   * {@code User-Agent} and {@code Authorization} from {@link SourceRequestPolicy#headers} - under
+   * the target validation before every attempt and {@code rateLimit} for {@code 429}/{@code
+   * Retry-After} ({@link RateLimitHandling#NONE} for none). A redirect is returned as it is, never
+   * followed; the body is the caller's to bound.
    *
    * @throws RedirectRejectedException when the answer comes from another origin than {@code url}
    */
@@ -160,7 +161,8 @@ public final class RedirectFollowingFetcher {
       HttpClient httpClient,
       String method,
       String url,
-      String body,
+      HttpRequest.BodyPublisher body,
+      String contentType,
       Duration timeout,
       Map<String, String> headers,
       TargetAddressValidator targetAddressValidator,
@@ -171,12 +173,9 @@ public final class RedirectFollowingFetcher {
         () -> {
           targetAddressValidator.validate(uri);
           HttpRequest.Builder builder =
-              HttpRequest.newBuilder()
-                  .uri(uri)
-                  .timeout(timeout)
-                  .method(
-                      method, HttpRequest.BodyPublishers.ofString(body, StandardCharsets.UTF_8));
+              HttpRequest.newBuilder().uri(uri).timeout(timeout).method(method, body);
           headers.forEach(builder::header);
+          builder.setHeader("Content-Type", contentType);
           HttpResponse<InputStream> response =
               httpClient.send(builder.build(), HttpResponse.BodyHandlers.ofInputStream());
           if (!isRedirectOriginTrusted(uri, response.uri())) {

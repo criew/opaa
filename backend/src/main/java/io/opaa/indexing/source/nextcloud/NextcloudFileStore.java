@@ -1,5 +1,6 @@
 package io.opaa.indexing.source.nextcloud;
 
+import io.opaa.indexing.filesync.Exclusion;
 import io.opaa.indexing.filesync.FetchedFile;
 import io.opaa.indexing.filesync.FileAccessException;
 import io.opaa.indexing.filesync.FileContainer;
@@ -18,6 +19,8 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * The files of a Nextcloud user as the {@link FileStore} of a full sync: a container is a
@@ -27,6 +30,8 @@ import java.util.Set;
  * that opens it in the web interface, so renaming and moving keep the document.
  */
 final class NextcloudFileStore implements FileStore {
+
+  private static final Logger log = LoggerFactory.getLogger(NextcloudFileStore.class);
 
   private final NextcloudDav dav;
   private final Set<String> folders = new LinkedHashSet<>();
@@ -72,11 +77,8 @@ final class NextcloudFileStore implements FileStore {
       resources =
           dav.propfind(folder.encodedPath(), 1, "den Ordner „" + display(root, folder) + "“");
     } catch (NextcloudAccessException.NotFound e) {
-      if (folder.hierarchyPath().isEmpty()) {
-        throw new FileAccessException.ContainerUnlistable(e.getMessage());
-      }
-      // removed between its parent's listing and its own: its files are absent
-      return new FilePage(List.of(), next(queue));
+      // a folder gone since its parent's listing may only have been renamed: no deletion finding
+      throw new FileAccessException.ContainerUnlistable(e.getMessage());
     } catch (NextcloudAccessException.Authentication | NextcloudAccessException.Unreachable e) {
       throw new FileAccessException.RunEnding(e.getMessage());
     } catch (NextcloudAccessException e) {
@@ -101,11 +103,25 @@ final class NextcloudFileStore implements FileStore {
     }
     List<FileEntry> entries = new ArrayList<>();
     List<String> unchanged = new ArrayList<>();
+    String filesRoot = filesRoot();
     for (DavResource resource : resources) {
       if (resource == self) {
         continue;
       }
       String name = resource.name();
+      if (!dav.connection().isOwnFilePath(resource.href(), filesRoot)) {
+        // credentials only ever go to this instance; a folder behind such an address keeps its
+        // bestand, a file is skipped like an unavailable one
+        log.warn("Nextcloud answered a foreign address for an entry of {}", container.key());
+        if (resource.collection()) {
+          throw new FileAccessException.ContainerUnlistable(
+              "Nextcloud nannte für einen Ordner in „"
+                  + display(root, folder)
+                  + "“ eine Adresse außerhalb der Instanz; er wird nicht abgeglichen.");
+        }
+        entries.add(foreign(container, root, folder, resource));
+        continue;
+      }
       if (resource.collection()) {
         String hierarchy = child(folder.hierarchyPath(), name);
         if (resource.etag() != null && resource.etag().equals(recalledHere.get(hierarchy))) {
@@ -155,12 +171,18 @@ final class NextcloudFileStore implements FileStore {
             "",
             String.join(SourceDocumentContext.HIERARCHY_SEPARATOR, segments),
             List.copyOf(segments));
-    return entry(container, root, folder, resource);
+    return dav.connection().isOwnFilePath(resource.href(), filesRoot())
+        ? entry(container, root, folder, resource)
+        : foreign(container, root, folder, resource);
   }
 
   @Override
   public FetchedFile fetch(FileEntry entry, long maxBytes)
       throws FileAccessException, InterruptedException {
+    if (!dav.connection().isOwnFilePath(entry.id(), filesRoot())) {
+      throw new FileAccessException.Unavailable(
+          "„" + entry.fileName() + "“ liegt nicht unter der Adresse der Nextcloud.");
+    }
     BoundedDownloader.DownloadedFile file;
     try {
       file = dav.download(entry.id(), entry.fileName(), maxBytes);
@@ -205,6 +227,35 @@ final class NextcloudFileStore implements FileStore {
         NextcloudChangeMarker.of(resource.etag(), resource.size()),
         resource.contentType(),
         null);
+  }
+
+  /** A file behind a foreign address: present, never requested, named in the protocol. */
+  private FileEntry foreign(
+      FileContainer container, String root, Folder folder, DavResource resource)
+      throws FileAccessException {
+    FileEntry entry = entry(container, root, folder, resource);
+    return new FileEntry(
+        container,
+        "",
+        entry.filePath(),
+        entry.fileName(),
+        entry.folder(),
+        entry.context(),
+        entry.size(),
+        entry.changeMarker(),
+        entry.mediaType(),
+        new Exclusion.Unavailable(
+            "Nextcloud nannte für „"
+                + entry.fileName()
+                + "“ eine Adresse außerhalb der Instanz; die Datei wird nicht abgerufen."));
+  }
+
+  private String filesRoot() throws FileAccessException, InterruptedException {
+    try {
+      return dav.filesRoot();
+    } catch (NextcloudAccessException e) {
+      throw translate(e);
+    }
   }
 
   /** The encoded absolute path of the configured {@code folder} below the user's files. */

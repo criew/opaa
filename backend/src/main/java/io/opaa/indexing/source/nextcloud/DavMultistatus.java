@@ -1,5 +1,6 @@
 package io.opaa.indexing.source.nextcloud;
 
+import io.opaa.sourceaccess.BoundedStreams;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
@@ -40,7 +41,8 @@ final class DavMultistatus {
   private DavMultistatus() {}
 
   /** The answer's resources in document order. */
-  static List<DavResource> parse(InputStream body) throws DavFormatException {
+  static List<DavResource> parse(InputStream body)
+      throws DavFormatException, BoundedStreams.LimitExceededException {
     try {
       XMLStreamReader reader = FACTORY.createXMLStreamReader(body);
       try {
@@ -49,12 +51,32 @@ final class DavMultistatus {
         reader.close();
       }
     } catch (XMLStreamException | RuntimeException e) {
-      throw new DavFormatException("unreadable multistatus: " + e.getMessage());
+      throw limitOr(e, "unreadable multistatus: ");
     }
   }
 
+  /**
+   * The size-bound failure inside {@code e}, rethrown as it is - the reader wraps it and would
+   * otherwise report an oversized answer as a malformed one - or a format failure.
+   */
+  private static DavFormatException limitOr(Exception e, String prefix)
+      throws BoundedStreams.LimitExceededException {
+    Throwable cause = e;
+    while (cause != null) {
+      if (cause instanceof BoundedStreams.LimitExceededException limit) {
+        throw limit;
+      }
+      cause =
+          cause instanceof XMLStreamException stream && stream.getNestedException() != null
+              ? stream.getNestedException()
+              : cause.getCause() == cause ? null : cause.getCause();
+    }
+    return new DavFormatException(prefix + e.getMessage());
+  }
+
   /** The {@code href} of the {@code current-user-principal}, {@code null} when none is named. */
-  static String principalHref(InputStream body) throws DavFormatException {
+  static String principalHref(InputStream body)
+      throws DavFormatException, BoundedStreams.LimitExceededException {
     try {
       XMLStreamReader reader = FACTORY.createXMLStreamReader(body);
       try {
@@ -77,7 +99,7 @@ final class DavMultistatus {
         reader.close();
       }
     } catch (XMLStreamException | RuntimeException e) {
-      throw new DavFormatException("unreadable principal answer: " + e.getMessage());
+      throw limitOr(e, "unreadable principal answer: ");
     }
   }
 

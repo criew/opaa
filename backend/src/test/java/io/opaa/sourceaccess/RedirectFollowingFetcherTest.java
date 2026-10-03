@@ -583,6 +583,8 @@ class RedirectFollowingFetcherTest {
                   + " "
                   + exchange.getRequestHeaders().getFirst("Depth")
                   + " "
+                  + exchange.getRequestHeaders().getFirst("Content-Type")
+                  + " "
                   + new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
           redirectTo(exchange, originUrl + "/elsewhere");
         });
@@ -598,14 +600,15 @@ class RedirectFollowingFetcherTest {
             productionClient(),
             "PROPFIND",
             originUrl + "/dav",
-            "<d:propfind/>",
+            HttpRequest.BodyPublishers.ofString("<d:propfind/>"),
+            "application/xml",
             Duration.ofSeconds(5),
             Map.of("Depth", "1"),
             TargetAddressValidator.disabled(),
             RateLimitHandling.NONE);
 
     assertThat(response.statusCode()).isEqualTo(302);
-    assertThat(received.get()).isEqualTo("PROPFIND 1 <d:propfind/>");
+    assertThat(received.get()).isEqualTo("PROPFIND 1 application/xml <d:propfind/>");
     assertThat(elsewhereHits.get()).as("a body is never sent to another location").isZero();
   }
 
@@ -631,7 +634,8 @@ class RedirectFollowingFetcherTest {
             productionClient(),
             "PROPFIND",
             originUrl + "/dav",
-            "<d:propfind/>",
+            HttpRequest.BodyPublishers.ofString("<d:propfind/>"),
+            "application/xml",
             Duration.ofSeconds(5),
             Map.of(),
             validator,
