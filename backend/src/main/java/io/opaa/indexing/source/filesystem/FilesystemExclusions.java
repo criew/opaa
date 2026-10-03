@@ -1,5 +1,6 @@
 package io.opaa.indexing.source.filesystem;
 
+import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -44,6 +45,31 @@ public final class FilesystemExclusions {
       levels.add(level.toString());
     }
     return globs.stream().anyMatch(glob -> glob.matches(levels, directory));
+  }
+
+  /**
+   * Whether the document key {@code key} lies in an excluded entry below {@code root}: the entry
+   * itself (as a file) or one of its ancestors (as a directory) is excluded. A key that is no path
+   * below {@code root} is not excluded.
+   */
+  public boolean excludesDocument(Path root, String key) {
+    Path relative;
+    try {
+      Path path = Path.of(key).toAbsolutePath().normalize();
+      if (!path.startsWith(root) || path.equals(root)) {
+        return false;
+      }
+      relative = root.relativize(path);
+    } catch (InvalidPathException e) {
+      return false;
+    }
+    int levels = relative.getNameCount();
+    for (int i = 1; i <= levels; i++) {
+      if (excludes(relative.subpath(0, i), i < levels)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   static boolean isExcludedByDefault(String name) {

@@ -366,6 +366,14 @@ function LibraryIndexingHistorySection({
                       data-testid={`run-incomplete-${run.id}`}
                     />
                   )}
+                  {run.unreadableScopeCount != null && run.unreadableScopeCount > 0 && (
+                    <Chip
+                      label={`${run.unreadableScopeCount} ${run.unreadableScopeCount === 1 ? 'Bereich' : 'Bereiche'} nicht lesbar`}
+                      size="small"
+                      color="warning"
+                      data-testid={`run-unreadable-${run.id}`}
+                    />
+                  )}
                   {run.events.length > 0 && (
                     <Chip
                       label={runEventsLabel(run.events)}

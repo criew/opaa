@@ -339,6 +339,7 @@ public class LibraryController {
         .incomplete(job.isIncomplete())
         .unlistedScopeKeys(
             Boolean.FALSE.equals(job.getListingComplete()) ? job.getUnlistedScopeKeys() : null)
+        .unreadableScopeCount(job.getUnreadableScopeCount())
         .metrics(toIndexingRunMetrics(job.getMetrics()));
   }
 

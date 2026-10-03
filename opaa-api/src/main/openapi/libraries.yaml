@@ -852,7 +852,7 @@ components:
           example: proxy.example.com:8080
         sourceCredentials:
           type: string
-          maxLength: 500
+          maxLength: 4096
           nullable: true
           description: >
             Credentials, write-only: never returned by any API response (ADR-0018). For
@@ -934,7 +934,7 @@ components:
           example: proxy.example.com:8080
         sourceCredentials:
           type: string
-          maxLength: 500
+          maxLength: 4096
           nullable: true
           description: >
             Basic auth credentials in user:password format - only for sourceType
@@ -1031,7 +1031,7 @@ components:
           description: The source's address, as LibraryRequest.sourceUrl for the type.
         sourceCredentials:
           type: string
-          maxLength: 500
+          maxLength: 4096
           nullable: true
           description: Credentials in the connector's format (see LibraryRequest.sourceCredentials).
         sourceProxy:
@@ -1271,7 +1271,7 @@ components:
           example: proxy.example.com:8080
         sourceCredentials:
           type: string
-          maxLength: 500
+          maxLength: 4096
           nullable: true
           description: >
             Credentials, write-only: never returned by any API response (ADR-0018). For
