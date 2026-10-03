@@ -167,6 +167,11 @@ Das **Eingabefeld** sendet mit dem Senden-Knopf oder mit Enter. Darunter steht �
 für Aktionen". Solange der Suchbereich des Space noch ermittelt wird, steht dort stattdessen
 „Suchbereich wird ermittelt …".
 
+Während eine Antwort entsteht, bleibt das Eingabefeld bedienbar: Die nächste Frage lässt sich schon
+schreiben, auch ein Prompt per `/` lässt sich einsetzen. Senden geht erst, wenn die Antwort da ist.
+Bis dahin lassen sich Suchbereich und Filter nicht ändern, und `@` öffnet keine Auswahl; die
+laufende Antwort behält den Suchbereich, mit dem die Frage gestellt wurde.
+
 Ein Raum enthält genau das, was ihm **zugeordnet** ist: Im Chat sucht er nur in den zugeordneten
 Bibliotheken und bietet nur die Prompts der zugeordneten Prompt-Bibliotheken an. Was die Person
 lesen darf, aber dem Raum nicht zugeordnet ist, bleibt im Chat dieses Raums außen vor. Das gilt
