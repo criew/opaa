@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import type {
   SpaceAssetAssociationRequest,
-  SpaceMemberRequest,
+  SpaceAddMemberRequest,
   AssetType,
   PermissionSubjectType,
   SpaceAssetAssociationResponse,
@@ -9,7 +9,6 @@ import type {
   SpaceMemberResponse,
   SpaceRole,
   SpaceResponse,
-  SpaceVisibility,
 } from '../types/api'
 import {
   addSpaceMember,
@@ -92,7 +91,6 @@ interface SpaceState {
     spaceId: string,
     name: string,
     description: string,
-    visibility?: SpaceVisibility,
     chatAutoCleanup?: boolean,
   ) => Promise<void>
   deleteSelectedSpace: (spaceId: string) => Promise<void>
@@ -100,10 +98,9 @@ interface SpaceState {
   createNewSpace: (
     name: string,
     description: string,
-    visibility?: SpaceVisibility,
     assets?: SpaceAssetAssociationRequest[],
     chatAutoCleanup?: boolean,
-    initialMembers?: SpaceMemberRequest[],
+    initialMembers?: SpaceAddMemberRequest[],
   ) => Promise<string>
   /**
    * `keepCurrent` keeps the shown associations of the same space until the answer replaces them,
@@ -262,8 +259,8 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
     await Promise.all([get().selectSpace(spaceId), get().loadMembers(spaceId)])
   },
 
-  updateDetails: async (spaceId, name, description, visibility, chatAutoCleanup) => {
-    await updateSpaceDetails(spaceId, name, description, visibility, chatAutoCleanup)
+  updateDetails: async (spaceId, name, description, chatAutoCleanup) => {
+    await updateSpaceDetails(spaceId, name, description, chatAutoCleanup)
     await Promise.all([get().loadSpaces(), get().selectSpace(spaceId), get().loadMembers(spaceId)])
   },
 
@@ -290,22 +287,8 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
     await Promise.all([get().loadSpaces(), get().selectSpace(spaceId), get().loadMembers(spaceId)])
   },
 
-  createNewSpace: async (
-    name,
-    description,
-    visibility,
-    assets,
-    chatAutoCleanup,
-    initialMembers,
-  ) => {
-    const space = await createSpace(
-      name,
-      description,
-      visibility,
-      assets,
-      chatAutoCleanup,
-      initialMembers,
-    )
+  createNewSpace: async (name, description, assets, chatAutoCleanup, initialMembers) => {
+    const space = await createSpace(name, description, assets, chatAutoCleanup, initialMembers)
     await get().loadSpaces()
     await get().selectSpace(space.id)
     return space.id

@@ -364,7 +364,7 @@ class SpaceAssetAssociationServiceIntegrationTest {
                         null,
                         null,
                         null,
-                        List.of(new SpaceMemberSeed(member, SpaceRole.MEMBER)),
+                        List.of(SpaceMemberSeed.user(member, SpaceRole.MEMBER)),
                         List.of(
                             new SpaceAssetSeed(KnowledgeLibrary.ASSET_TYPE, shared),
                             new SpaceAssetSeed(PromptLibrary.ASSET_TYPE, foreign))),
@@ -407,7 +407,7 @@ class SpaceAssetAssociationServiceIntegrationTest {
                 null,
                 null,
                 null,
-                List.of(new SpaceMemberSeed(memberWithoutAccess, SpaceRole.MEMBER)),
+                List.of(SpaceMemberSeed.user(memberWithoutAccess, SpaceRole.MEMBER)),
                 List.of(
                     new SpaceAssetSeed(KnowledgeLibrary.ASSET_TYPE, library),
                     new SpaceAssetSeed(PromptLibrary.ASSET_TYPE, prompts))),

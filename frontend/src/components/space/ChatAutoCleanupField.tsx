@@ -10,15 +10,19 @@ interface ChatAutoCleanupFieldProps {
   disabled?: boolean
   /** Im persönlichen Space einer anderen Person legt nur diese selbst den Schalter fest. */
   personalSpaceOfOther?: boolean
-  /** Die Fristen der Installation; fehlen sie (im Assistenten), nennt der Hinweis keine Zahlen. */
+  /** The installation's periods; while they are unknown the switch names no numbers. */
   archiveAfterDays?: number
   deleteAfterDays?: number
 }
 
-/**
- * Der Schalter „Inaktive Chats automatisch archivieren und löschen" eines Space, mit der
- * Erklärung, was er bewirkt. Die Fristen sind systemweit fest und nur vom Betrieb einstellbar.
- */
+/** The switch label, with the installation's periods once they are known. */
+function chatAutoCleanupLabel(archiveAfterDays?: number, deleteAfterDays?: number) {
+  return archiveAfterDays != null && deleteAfterDays != null
+    ? `Inaktive Chats nach ${archiveAfterDays} Tagen archivieren und nach weiteren ${deleteAfterDays} Tagen löschen`
+    : 'Inaktive Chats automatisch archivieren und löschen'
+}
+
+/** The automatic chat cleanup switch of a space; the operator sets the periods. */
 export default function ChatAutoCleanupField({
   id,
   checked,
@@ -28,10 +32,6 @@ export default function ChatAutoCleanupField({
   archiveAfterDays,
   deleteAfterDays,
 }: ChatAutoCleanupFieldProps) {
-  const periods =
-    archiveAfterDays != null && deleteAfterDays != null
-      ? `Chats ohne Aktivität werden nach ${archiveAfterDays} Tagen archiviert und nach weiteren ${deleteAfterDays} Tagen im Archiv endgültig gelöscht.`
-      : 'Chats ohne Aktivität werden nach einer festen Frist archiviert und nach einer weiteren Frist im Archiv endgültig gelöscht.'
   return (
     <FormControl disabled={disabled}>
       <FormControlLabel
@@ -43,12 +43,10 @@ export default function ChatAutoCleanupField({
             slotProps={{ input: { 'aria-describedby': `${id}-helper` } }}
           />
         }
-        label="Inaktive Chats automatisch archivieren und löschen"
+        label={chatAutoCleanupLabel(archiveAfterDays, deleteAfterDays)}
       />
       <FormHelperText id={`${id}-helper`} sx={{ mx: 0 }}>
-        {periods} Angeheftete Chats sind ausgenommen; eine neue Frage, das Anheften oder das
-        Zurückholen aus dem Archiv lässt die Frist neu beginnen. Die Fristen beginnen frühestens mit
-        dem Einschalten und gelten für alle Mitglieder; festgelegt werden sie vom Betrieb.
+        Angeheftete Chats sind ausgenommen.
         {personalSpaceOfOther &&
           ' Im persönlichen Space legt nur die Person selbst fest, ob ihre Chats bereinigt werden.'}
       </FormHelperText>

@@ -170,12 +170,11 @@ describe('spaceStore', () => {
       updatedAt: '2026-03-01T10:00:00Z',
     })
 
-    const id = await useSpaceStore.getState().createNewSpace('New Space', 'desc', 'DISCOVERABLE')
+    const id = await useSpaceStore.getState().createNewSpace('New Space', 'desc')
     expect(id).toBe('space-new')
     expect(mockCreateSpace).toHaveBeenCalledWith(
       'New Space',
       'desc',
-      'DISCOVERABLE',
       undefined,
       undefined,
       undefined,
@@ -200,16 +199,9 @@ describe('spaceStore', () => {
     })
 
     const assets = [{ assetType: 'KNOWLEDGE_LIBRARY' as const, assetId: 'lib-1' }]
-    await useSpaceStore.getState().createNewSpace('New Space', 'desc', 'DISCOVERABLE', assets)
+    await useSpaceStore.getState().createNewSpace('New Space', 'desc', assets)
 
-    expect(mockCreateSpace).toHaveBeenCalledWith(
-      'New Space',
-      'desc',
-      'DISCOVERABLE',
-      assets,
-      undefined,
-      undefined,
-    )
+    expect(mockCreateSpace).toHaveBeenCalledWith('New Space', 'desc', assets, undefined, undefined)
   })
 
   // #203: library associations - loaded on demand, not part of selectSpace, since only pages that

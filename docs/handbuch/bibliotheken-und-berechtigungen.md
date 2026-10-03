@@ -139,9 +139,11 @@ Gruppe sein. **Gruppeneigentum ist die haltbarere Wahl**: Es übersteht den Wegg
 Personen, und genau dafür ist Abschnitt 13 sonst zuständig.
 
 Weitere Rollen lassen sich schon beim Anlegen vergeben. Der Schritt „Freigaben" des Assistenten
-wählt Person oder Gruppe mit derselben Auswahl wie der Abschnitt „Berechtigungen" an einer
-bestehenden Bibliothek — mit denselben Regeln für geschützte Gruppen (Abschnitt 8) und derselben
-Rückfrage vor einer Freigabe an die Gruppe eines externen Anbieters. Den Empfänger **„Alle Konten"**
+sucht Personen und Gruppen im selben Suchfeld „Person oder Gruppe suchen" wie der Abschnitt
+„Berechtigungen" an einer bestehenden Bibliothek — mit denselben Regeln für geschützte Gruppen
+(Abschnitt 8) und derselben Rückfrage vor einer Freigabe an die Gruppe eines externen Anbieters.
+Die Treffer stehen gemischt, die passendsten zuerst; eine Gruppe trägt „Gruppe" im Namen der
+Zeile. Suche, Rolle und „Vormerken" stehen in einer Zeile. Den Empfänger **„Alle Konten"**
 bietet der Assistent nicht an: Ein Bestand, den es noch nicht gibt, hat keine Reichweite zu weiten,
 und die Obergrenze, die über eine solche Freigabe entscheidet, gehört der angelegten Bibliothek.
 
@@ -149,7 +151,8 @@ und die Obergrenze, die über eine solche Freigabe entscheidet, gehört der ange
 
 **Es gibt keine getrennte Verteilungsstufe mehr.** Wie weit eine Bibliothek reicht, ergibt sich
 allein aus ihrer Rechteliste. Wer sie dem ganzen Haus öffnen will, erteilt ein Recht an den
-Empfänger **„Alle Konten"** — im selben Abschnitt „Berechtigungen" und mit demselben Ablaufdatum
+Empfänger **„Alle Konten"** — als eigener Eintrag im Suchfeld des Abschnitts „Berechtigungen",
+mit demselben Ablaufdatum
 wie bei einer Person oder einer Gruppe, aber **höchstens mit der Rolle „Bearbeiter"**: Verwaltung
 und Eigentum sind Zuständigkeiten und bleiben an eine benannte Stelle gebunden; mehr steht gar
 nicht erst zur Wahl und würde auch abgewiesen. Vor dem Erteilen fragt die Anwendung eigens zurück
@@ -363,9 +366,8 @@ darf, löst die Verwaltung der Bibliothek von deren Seite aus, Reiter „Zuordnu
 
 Die Mitgliederliste eines Raums sehen **nur** seine Administratoren, sein Eigentümer und die
 Systemverwaltung. Mitglieder und Kuratoren sehen ausschließlich, wie viele Mitglieder je Rolle es
-gibt. Wieweit ein Raum überhaupt auffindbar ist, entscheidet seine Sichtbarkeit: nur für
-Mitglieder, im Verzeichnis sichtbar mit Beitritt auf Antrag, oder im Verzeichnis sichtbar mit
-Selbstbeitritt.
+gibt. Ein Raum ist nur für seine Mitglieder auffindbar; ein Verzeichnis der Räume gibt es
+nicht, und eine Einstellung zur Sichtbarkeit eines Raums deshalb auch nicht.
 
 **In der Oberfläche liegt all das auf einer Seite je Raum:** dem Zahnrad „Einstellungen" am Fuß der
 Seitenleiste. Das Zahnrad sehen nur Administratoren, Kuratoren und der Eigentümer des Raums; ein
@@ -374,8 +376,8 @@ hat drei Reiter:
 
 | Reiter | Inhalt |
 |---|---|
-| **Stammdaten** | Name, Beschreibung, Sichtbarkeit, der Schalter „Inaktive Chats automatisch archivieren und löschen" ([Suche](suche.md), Abschnitt 2) — und am Ende der abgesetzte **Gefahrenbereich** mit „Space archivieren" und „Space löschen" |
-| **Mitglieder** | Die Mitgliederliste und das Aufnehmen von Personen und Gruppen. Die Liste beginnt mit dem Eigentümer, danach folgen Administratoren, Kuratoren und Mitglieder, je Rolle nach Name, Personen und Gruppen gemischt; eine lange Liste bekommt darüber ein Suchfeld. Jede Zeile trägt nur die Rolle — als Auswahl für Administratoren, beim Eigentümer das Etikett „Eigentümer" — und ein Menü „⋯" mit „Warum hat … Zugriff?", „Mitglieder der Gruppe anzeigen", „Zum Eigentümer machen" und „Aus Space entfernen", soweit der Eintrag für Zeile und eigene Rolle gilt |
+| **Stammdaten** | Name, Beschreibung, der Schalter der automatischen Chat-Bereinigung mit den Fristen der Installation ([Suche](suche.md), Abschnitt 2) — und am Ende der abgesetzte **Gefahrenbereich** mit „Space archivieren" und „Space löschen" |
+| **Mitglieder** | Die Mitgliederliste und das Aufnehmen von Personen und Gruppen. Die Liste beginnt mit dem Eigentümer, danach folgen Administratoren, Kuratoren und Mitglieder, je Rolle nach Name, Personen und Gruppen gemischt; eine lange Liste bekommt darüber ein Suchfeld. Jede Zeile trägt nur die Rolle — als Auswahl für Administratoren, beim Eigentümer das Etikett „Eigentümer" — und ein Menü „⋯" mit „Warum hat … Zugriff?", „Mitglieder der Gruppe anzeigen", „Zum Eigentümer machen" und „Aus Space entfernen", soweit der Eintrag für Zeile und eigene Rolle gilt. Darunter steht „Mitglied hinzufügen" mit einem Suchfeld für Personen und Gruppen, der Rolle und „Hinzufügen" in einer Zeile |
 | **Inhalte** | Eine Kachelliste aller Arten von Bestand — Wissensbibliotheken und [Prompt-Bibliotheken](prompt-bibliotheken.md). Ein Häkchen heißt „dem Raum zugeordnet"; anhaken und abhaken dürfen Kuratoren, Administratoren und der Eigentümer des Raums |
 
 **Im Reiter „Inhalte" wirkt ein Häkchen sofort.** Anhaken ordnet zu und bestätigt das kurz; Abhaken
@@ -400,6 +402,19 @@ archivieren noch löschen.
 „Neuer Space" führt durch vier Schritte: **Grunddaten**, **Mitglieder**, **Inhalte** und
 **Zusammenfassung**. Nur der Name ist Pflicht; die Schritte „Mitglieder" und „Inhalte" lassen sich
 mit „Weiter" überspringen.
+
+Die **Grunddaten** sind Name, Beschreibung und der Schalter der automatischen Chat-Bereinigung. Der
+Schalter nennt die Fristen, die der Betrieb festgelegt hat; was sie bewirken, steht in
+[Suche](suche.md), Abschnitt 2. Jeder Raum ist nur für seine Mitglieder sichtbar.
+
+Im Schritt **Mitglieder** nimmt der Assistent Personen **und** Gruppen auf, über dasselbe Suchfeld
+wie der Reiter „Mitglieder" der Einstellungen: Suche, Rolle und „Vormerken" in einer Zeile, mit
+denselben Angaben zu Gruppengröße und denselben Regeln für geschützte Gruppen (Abschnitt 8). Eine
+Gruppe gibt ihre Rolle an alle ihre Mitglieder weiter.
+
+Die **Zusammenfassung** nennt Mitglieder und Inhalte je mit einem kleinen Symbol; Gruppen tragen
+zusätzlich „Gruppe", Inhalte ihre Art im Text. Die Chat-Bereinigung erscheint nur, wenn der Schalter
+an ist, als Satz mit beiden Fristen.
 
 Im Schritt **Inhalte** stehen alle Bestände als Kacheln, die die Person lesen darf — dieselbe Menge
 wie im Katalog, in derselben Reihenfolge. Mehrere Kacheln lassen sich zugleich wählen. Darüber

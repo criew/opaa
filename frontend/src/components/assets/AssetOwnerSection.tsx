@@ -132,11 +132,7 @@ export default function AssetOwnerSection({
           <Stack spacing={2} sx={{ pt: 1, borderTop: 1, borderColor: 'divider' }}>
             <SectionHead component="h3">Eigentum übergeben</SectionHead>
             {error && <Alert severity="error">{error}</Alert>}
-            <SubjectPicker
-              labelId="asset-owner-transfer-subject-label"
-              value={subject}
-              onChange={setSubject}
-            />
+            <SubjectPicker value={subject} onChange={setSubject} />
             <Typography variant="caption" sx={{ color: 'text.secondary' }}>
               Eine Gruppe erhält die Rolle „Verwaltung" — die Eigentümerrolle selbst bleibt an eine
               Person gebunden, damit sie nicht mit jedem neuen Mitglied mitwächst.

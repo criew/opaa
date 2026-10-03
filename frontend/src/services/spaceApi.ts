@@ -1,17 +1,17 @@
 import { AxiosError } from 'axios'
 import type {
+  ChatAutoCleanupPeriods,
   GroupMemberDisclosureResponse,
   SpaceAccessDerivationResponse,
   PermissionSubjectType,
   SpaceAssetAssociationRequest,
   SpaceListResponse,
-  SpaceMemberRequest,
+  SpaceAddMemberRequest,
   SpaceMemberResponse,
   SpaceRequest,
   SpaceRole,
   SpaceResponse,
   SpaceUpdateRequest,
-  SpaceVisibility,
 } from '../types/api'
 import { useAuthStore } from '../stores/authStore'
 import { apiClient as client, normalizeError } from './api'
@@ -108,11 +108,10 @@ export async function updateSpaceDetails(
   spaceId: string,
   name: string,
   description: string,
-  visibility?: SpaceVisibility,
   chatAutoCleanup?: boolean,
 ): Promise<SpaceResponse> {
   try {
-    const body: SpaceUpdateRequest = { name, description, visibility, chatAutoCleanup }
+    const body: SpaceUpdateRequest = { name, description, chatAutoCleanup }
     const { data } = await client.put<SpaceResponse>(`/v1/spaces/${spaceId}`, body)
     return data
   } catch (err) {
@@ -123,17 +122,15 @@ export async function updateSpaceDetails(
 export async function createSpace(
   name: string,
   description: string,
-  visibility?: SpaceVisibility,
   assets?: SpaceAssetAssociationRequest[],
   chatAutoCleanup?: boolean,
-  initialMembers: SpaceMemberRequest[] = [],
+  initialMembers: SpaceAddMemberRequest[] = [],
 ): Promise<SpaceResponse> {
   try {
     const currentUserId = useAuthStore.getState().user?.id ?? null
     const body: SpaceRequest = {
       name,
       description,
-      visibility,
       ownerId: currentUserId,
       // Members and assets go in the same call as the space: one that cannot be added rolls
       // the whole creation back, so nothing is left half-created.
@@ -144,6 +141,16 @@ export async function createSpace(
       chatAutoCleanup: chatAutoCleanup || undefined,
     }
     const { data } = await client.post<SpaceResponse>('/v1/spaces', body)
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/** The automatic chat cleanup periods as configured by the operator. */
+export async function getChatAutoCleanupPeriods(): Promise<ChatAutoCleanupPeriods> {
+  try {
+    const { data } = await client.get<ChatAutoCleanupPeriods>('/v1/spaces/chat-auto-cleanup')
     return data
   } catch (err) {
     normalizeError(err)

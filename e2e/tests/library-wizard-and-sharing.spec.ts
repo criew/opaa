@@ -60,7 +60,7 @@ async function walkThroughSharingTab(page: Page): Promise<void> {
   // 2. Grants - a list on the page, no longer behind a "Rechte verwalten" dialog.
   const grants = section(page, 'Berechtigungen')
   await grants.getByRole('button', { name: 'Freigeben' }).click()
-  const personInput = grants.getByRole('combobox', { name: 'Person suchen' })
+  const personInput = grants.getByRole('combobox', { name: 'Person oder Gruppe suchen' })
   await personInput.click()
   await personInput.fill('Dev User')
   await page.getByRole('option', { name: /Dev User/ }).click()
@@ -73,7 +73,8 @@ async function walkThroughSharingTab(page: Page): Promise<void> {
   // 3. "Alle Konten" is a recipient like any other (#1931) - with a confirmation in front of it
   //    that spells out the reach (ADR-0037).
   await grants.getByRole('button', { name: 'Freigeben' }).click()
-  await grants.getByRole('radio', { name: 'Alle Konten' }).click()
+  await grants.getByRole('combobox', { name: 'Person oder Gruppe suchen' }).click()
+  await page.getByRole('option', { name: /Alle Konten/ }).click()
   await grants.getByRole('button', { name: 'Freigeben' }).last().click()
   const confirm = page.getByRole('dialog').filter({ has: page.locator('#confirm-question') })
   await expect(confirm).toContainText('An alle Konten freigeben?')
