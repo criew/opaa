@@ -18,7 +18,8 @@ export interface AppNotification {
 interface NotificationState {
   /** FIFO queue - NotificationHost shows the head and moves on as entries are dismissed. */
   queue: AppNotification[]
-  notify: (message: string, severity?: NotificationSeverity, action?: NotificationAction) => void
+  /** Queues a notification and returns its id, for dismissing it before its time. */
+  notify: (message: string, severity?: NotificationSeverity, action?: NotificationAction) => number
   dismiss: (id: number) => void
   reset: () => void
 }
@@ -33,10 +34,11 @@ let nextNotificationId = 1
  */
 export const useNotificationStore = create<NotificationState>((set) => ({
   queue: [],
-  notify: (message, severity = 'info', action) =>
-    set((state) => ({
-      queue: [...state.queue, { id: nextNotificationId++, message, severity, action }],
-    })),
+  notify: (message, severity = 'info', action) => {
+    const id = nextNotificationId++
+    set((state) => ({ queue: [...state.queue, { id, message, severity, action }] }))
+    return id
+  },
   dismiss: (id) => set((state) => ({ queue: state.queue.filter((n) => n.id !== id) })),
   reset: () => set({ queue: [] }),
 }))
@@ -46,6 +48,6 @@ export function notify(
   message: string,
   severity: NotificationSeverity = 'info',
   action?: NotificationAction,
-) {
-  useNotificationStore.getState().notify(message, severity, action)
+): number {
+  return useNotificationStore.getState().notify(message, severity, action)
 }

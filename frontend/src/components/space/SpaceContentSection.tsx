@@ -3,7 +3,7 @@ import Alert from '@mui/material/Alert'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import { useSpaceStore } from '../../stores/spaceStore'
-import { notify } from '../../stores/notificationStore'
+import { notify, useNotificationStore } from '../../stores/notificationStore'
 import AssetTilePicker from '../assets/AssetTilePicker'
 import { assetPickKey, type AssetPick } from '../assets/assetPick'
 import { successionAwareMessage } from '../succession/successionConflict'
@@ -37,6 +37,8 @@ export default function SpaceContentSection({ spaceId, canManage }: SpaceContent
   const [heading, setHeading] = useState<ReadonlyMap<string, AssetPick | null>>(new Map())
   // Catches a second click before the first one's state has rendered; `disabled` would drop focus.
   const pending = useRef(new Set<string>())
+  // Only the latest outcome is worth reading; an older notice of this tab gives way at once.
+  const lastNotice = useRef<number | null>(null)
 
   useEffect(() => {
     void loadAssetAssociations(spaceId)
@@ -83,16 +85,15 @@ export default function SpaceContentSection({ spaceId, canManage }: SpaceContent
     }
     pending.current.delete(key)
     withHeading(key, undefined)
-    if (failure) {
-      notify(failure, 'error')
-    } else if (associated) {
-      notify(`„${pick.name}“ zugeordnet.`, 'success')
-    } else {
-      notify(`„${pick.name}“ gelöst.`, 'info', {
-        label: 'Rückgängig',
-        onClick: () => void setAssociated(pick, true),
-      })
-    }
+    if (lastNotice.current !== null) useNotificationStore.getState().dismiss(lastNotice.current)
+    lastNotice.current = failure
+      ? notify(failure, 'error')
+      : associated
+        ? notify(`„${pick.name}“ zugeordnet.`, 'success')
+        : notify(`„${pick.name}“ gelöst.`, 'info', {
+            label: 'Rückgängig',
+            onClick: () => void setAssociated(pick, true),
+          })
   }
 
   function handleChange(next: AssetPick[]) {

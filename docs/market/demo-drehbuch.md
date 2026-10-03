@@ -495,8 +495,9 @@ Drei Fragen, die sich nur aus einem Nicht-Text-Format beantworten lassen (#2028)
      steht „Diesem Space ist kein Wissen zugeordnet." mit der Schaltfläche „Wissen zuordnen".
   3. Die Gebührenfrage aus Frage 1 stellen. Die Antwort trägt den Hinweis „Diesem Space ist kein
      Wissen zugeordnet. Diese Antwort stützt sich auf keine Dokumente." und keine Belege.
-  4. „Wissen zuordnen" klicken. Es öffnet sich der Reiter „Wissen" der Space-Einstellungen. Dort
-     „Leistungen Meldewesen & Ausweise" zuordnen.
+  4. „Wissen zuordnen" klicken. Es öffnet sich der Reiter „Inhalte" der Space-Einstellungen. Dort
+     den Filter „Nur zugeordnete" ausschalten und „Leistungen Meldewesen & Ausweise" anhaken. Das
+     Häkchen wirkt sofort, die Meldung „zugeordnet" bestätigt es.
   5. Zurück in den Space, einen neuen Chat beginnen und dieselbe Frage stellen: Die Antwort nennt
      26,20 Euro, belegt aus der Leistungsbeschreibung.
 - **Zurücksetzen:** in den Space-Einstellungen, Reiter „Stammdaten", im Gefahrenbereich „Space
@@ -540,7 +541,7 @@ Für die Teile 1 und 3 lohnen sich zwei Browserfenster, eines davon privat.
     genau, was lesbar ist.
 - **3. Nicht alles Zugeordnete ist für jedes Mitglied lesbar:**
   1. Als `thomas.klein` den Space „Dienstbesprechung Bürgerbüro" wählen und die Space-Einstellungen
-     öffnen, Reiter „Wissen". Er sieht vier Bibliotheken und den Hinweis „Nicht alle zugeordneten
+     öffnen, Reiter „Inhalte". Er sieht vier Bibliotheken und den Hinweis „Nicht alle zugeordneten
      Inhalte sind für Sie lesbar." Ohne Namen und ohne Zahl: Ihm fehlen die „Leistungen
      Meldewesen & Ausweise".
   2. Als `maria.weber` im selben Space: derselbe Hinweis. Ihr fehlen die „Leistungen
