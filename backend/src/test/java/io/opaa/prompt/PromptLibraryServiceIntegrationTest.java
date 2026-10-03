@@ -11,7 +11,6 @@ import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.GroupKind;
 import io.opaa.api.types.PromptVariableType;
 import io.opaa.api.types.SpaceRole;
-import io.opaa.api.types.SpaceVisibility;
 import io.opaa.api.types.SystemRole;
 import io.opaa.asset.AssetGrantService;
 import io.opaa.asset.AssetGrantUpsert;
@@ -556,7 +555,7 @@ class PromptLibraryServiceIntegrationTest {
   }
 
   private UUID createSpace(UUID admin, UUID organizationId) {
-    Space space = new Space("Space", null, false, SpaceVisibility.PRIVATE, admin, organizationId);
+    Space space = new Space("Space", null, false, admin, organizationId);
     space.addMembership(SpaceMembership.ofUser(admin, SpaceRole.ADMIN, organizationId));
     return spaceRepository.save(space).getId();
   }

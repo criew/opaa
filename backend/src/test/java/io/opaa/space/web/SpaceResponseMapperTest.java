@@ -7,7 +7,6 @@ import io.opaa.api.dto.SpaceMemberResponse;
 import io.opaa.api.dto.SpaceResponse;
 import io.opaa.api.types.PermissionSubjectType;
 import io.opaa.api.types.SpaceRole;
-import io.opaa.api.types.SpaceVisibility;
 import io.opaa.api.types.SuccessionAddressee;
 import io.opaa.api.types.SuccessionObjectType;
 import io.opaa.permission.SuccessionFinding;
@@ -36,7 +35,7 @@ class SpaceResponseMapperTest {
     UUID owner = UUID.randomUUID();
     UUID organization = UUID.randomUUID();
     UUID member = UUID.randomUUID();
-    Space space = new Space("Team", "Docs", false, SpaceVisibility.PRIVATE, owner, organization);
+    Space space = new Space("Team", "Docs", false, owner, organization);
     space.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, organization));
     space.addMembership(SpaceMembership.ofUser(member, SpaceRole.MEMBER, organization));
 
@@ -48,7 +47,6 @@ class SpaceResponseMapperTest {
     assertThat(response.getDescription()).isEqualTo("Docs");
     assertThat(response.getIsDefault()).isFalse();
     assertThat(response.getArchived()).isFalse();
-    assertThat(response.getVisibility()).isEqualTo(SpaceVisibility.PRIVATE);
     assertThat(response.getOwnerId()).isEqualTo(owner);
     assertThat(response.getMemberCount()).isEqualTo(2);
     assertThat(response.getCreatedAt()).isEqualTo(space.getCreatedAt());
@@ -72,7 +70,7 @@ class SpaceResponseMapperTest {
     UUID owner = UUID.randomUUID();
     UUID organization = UUID.randomUUID();
     UUID systemAdmin = UUID.randomUUID();
-    Space space = new Space("Team", null, false, SpaceVisibility.PRIVATE, owner, organization);
+    Space space = new Space("Team", null, false, owner, organization);
     space.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, organization));
 
     SpaceResponse response =
@@ -91,7 +89,7 @@ class SpaceResponseMapperTest {
   void toResponseReportsAdminUserRoleForAnOwnerWithABelowAdminMembership() {
     UUID owner = UUID.randomUUID();
     UUID organization = UUID.randomUUID();
-    Space space = new Space("Team", null, false, SpaceVisibility.PRIVATE, owner, organization);
+    Space space = new Space("Team", null, false, owner, organization);
     space.addMembership(SpaceMembership.ofUser(owner, SpaceRole.MEMBER, organization));
 
     SpaceResponse response =
@@ -107,7 +105,7 @@ class SpaceResponseMapperTest {
   void toListResponseReportsAdminUserRoleForAnOwnerWithABelowAdminMembership() {
     UUID owner = UUID.randomUUID();
     UUID organization = UUID.randomUUID();
-    Space space = new Space("Team", null, false, SpaceVisibility.PRIVATE, owner, organization);
+    Space space = new Space("Team", null, false, owner, organization);
     space.addMembership(SpaceMembership.ofUser(owner, SpaceRole.CURATOR, organization));
     SpaceOverview overview = new SpaceOverview(space, 0, 0, SpaceRole.ADMIN, false, null);
 
@@ -120,7 +118,7 @@ class SpaceResponseMapperTest {
   void toListResponseNamesTheChatCleanupWithItsPeriods() {
     UUID owner = UUID.randomUUID();
     UUID organization = UUID.randomUUID();
-    Space space = new Space("Team", null, false, SpaceVisibility.PRIVATE, owner, organization);
+    Space space = new Space("Team", null, false, owner, organization);
     space.switchChatAutoCleanup(true, java.time.Instant.now());
 
     SpaceListResponse response =
@@ -136,7 +134,7 @@ class SpaceResponseMapperTest {
   void toListResponseCarriesOverviewFiguresAlongsideSpaceFields() {
     UUID owner = UUID.randomUUID();
     UUID organization = UUID.randomUUID();
-    Space space = new Space("Team", "Docs", false, SpaceVisibility.OPEN, owner, organization);
+    Space space = new Space("Team", "Docs", false, owner, organization);
     space.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, organization));
     SpaceOverview overview = new SpaceOverview(space, 3, 5, SpaceRole.ADMIN, false, null);
 
@@ -145,7 +143,6 @@ class SpaceResponseMapperTest {
     assertThat(response.getId()).isEqualTo(space.getId());
     assertThat(response.getName()).isEqualTo("Team");
     assertThat(response.getDescription()).isEqualTo("Docs");
-    assertThat(response.getVisibility()).isEqualTo(SpaceVisibility.OPEN);
     assertThat(response.getMemberCount()).isEqualTo(1);
     assertThat(response.getLibraryCount()).isEqualTo(3);
     assertThat(response.getChatCount()).isEqualTo(5);
@@ -156,7 +153,7 @@ class SpaceResponseMapperTest {
   void toListResponseSplitsMembershipsIntoGroupAndPersonRowsWithoutResolvingGroups() {
     UUID owner = UUID.randomUUID();
     UUID organization = UUID.randomUUID();
-    Space space = new Space("Team", null, false, SpaceVisibility.PRIVATE, owner, organization);
+    Space space = new Space("Team", null, false, owner, organization);
     space.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, organization));
     space.addMembership(SpaceMembership.ofUser(UUID.randomUUID(), SpaceRole.MEMBER, organization));
     space.addMembership(SpaceMembership.ofGroup(UUID.randomUUID(), SpaceRole.MEMBER, organization));
@@ -173,7 +170,7 @@ class SpaceResponseMapperTest {
   void toListResponseCountsTheOwnerAloneAsOnePersonRow() {
     UUID owner = UUID.randomUUID();
     UUID organization = UUID.randomUUID();
-    Space space = new Space("Team", null, false, SpaceVisibility.PRIVATE, owner, organization);
+    Space space = new Space("Team", null, false, owner, organization);
     space.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, organization));
     SpaceOverview overview = new SpaceOverview(space, 0, 0, SpaceRole.ADMIN, false, null);
 
@@ -187,8 +184,8 @@ class SpaceResponseMapperTest {
   void toListResponsesMapsEveryOverviewInOrder() {
     UUID owner = UUID.randomUUID();
     UUID organization = UUID.randomUUID();
-    Space first = new Space("A", null, false, SpaceVisibility.PRIVATE, owner, organization);
-    Space second = new Space("B", null, false, SpaceVisibility.PRIVATE, owner, organization);
+    Space first = new Space("A", null, false, owner, organization);
+    Space second = new Space("B", null, false, owner, organization);
     List<SpaceOverview> overviews =
         List.of(
             new SpaceOverview(first, 0, 0, SpaceRole.ADMIN, false, null),
@@ -311,7 +308,7 @@ class SpaceResponseMapperTest {
   void bothResponsesCarryTheDerivedSuccessionState() {
     UUID owner = UUID.randomUUID();
     UUID organization = UUID.randomUUID();
-    Space space = new Space("Team", null, false, SpaceVisibility.PRIVATE, owner, organization);
+    Space space = new Space("Team", null, false, owner, organization);
     space.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, organization));
 
     assertThat(
@@ -339,7 +336,7 @@ class SpaceResponseMapperTest {
   void theOverviewOfASpaceInOrderCarriesNoSuccessionState() {
     UUID owner = UUID.randomUUID();
     UUID organization = UUID.randomUUID();
-    Space space = new Space("Team", null, false, SpaceVisibility.PRIVATE, owner, organization);
+    Space space = new Space("Team", null, false, owner, organization);
 
     SpaceListResponse response =
         SpaceResponseMapper.toListResponse(

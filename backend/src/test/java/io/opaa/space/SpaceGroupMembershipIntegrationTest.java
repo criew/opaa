@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.api.types.PermissionSubjectType;
 import io.opaa.api.types.SpaceRole;
-import io.opaa.api.types.SpaceVisibility;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
@@ -181,7 +180,6 @@ class SpaceGroupMembershipIntegrationTest {
                 "Team",
                 null,
                 owner,
-                null,
                 List.of(SpaceMemberSeed.group(group, SpaceRole.CURATOR)),
                 null),
             currentUserOf(owner));
@@ -210,7 +208,6 @@ class SpaceGroupMembershipIntegrationTest {
                         "Team",
                         null,
                         owner,
-                        null,
                         List.of(SpaceMemberSeed.group(group, SpaceRole.MEMBER)),
                         null),
                     currentUserOf(owner)))
@@ -624,8 +621,7 @@ class SpaceGroupMembershipIntegrationTest {
 
   private Space createSpace(UUID owner) {
     return spaceService.createSpace(
-        new SpaceCreation("Team", "Team docs", owner, SpaceVisibility.PRIVATE, List.of(), null),
-        currentUserOf(owner));
+        new SpaceCreation("Team", "Team docs", owner, List.of(), null), currentUserOf(owner));
   }
 
   /**

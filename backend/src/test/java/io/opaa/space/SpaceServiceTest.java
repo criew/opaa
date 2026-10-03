@@ -12,7 +12,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.SpaceRole;
-import io.opaa.api.types.SpaceVisibility;
 import io.opaa.api.types.SystemRole;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.CurrentUser;
@@ -100,7 +99,7 @@ class SpaceServiceTest {
     UUID organizationId = UUID.randomUUID();
     UUID owner = UUID.randomUUID();
     UUID admin = UUID.randomUUID();
-    Space space = new Space("Team", null, false, SpaceVisibility.PRIVATE, owner, organizationId);
+    Space space = new Space("Team", null, false, owner, organizationId);
     SpaceMembership adminRow = SpaceMembership.ofUser(admin, SpaceRole.ADMIN, organizationId);
     space.addMembership(adminRow);
     when(spaceRepository.findByIdWithMemberships(any(UUID.class))).thenReturn(Optional.of(space));
@@ -123,7 +122,7 @@ class SpaceServiceTest {
   void aSpaceThatAlreadyHasNoCapableAdminStillLosesAMember() {
     UUID organizationId = UUID.randomUUID();
     UUID owner = UUID.randomUUID();
-    Space space = new Space("Team", null, false, SpaceVisibility.PRIVATE, owner, organizationId);
+    Space space = new Space("Team", null, false, owner, organizationId);
     SpaceMembership memberRow =
         SpaceMembership.ofUser(UUID.randomUUID(), SpaceRole.MEMBER, organizationId);
     space.addMembership(memberRow);
@@ -142,7 +141,7 @@ class SpaceServiceTest {
   void aMemberIsRemovedWhenACapableAdminRemains() {
     UUID organizationId = UUID.randomUUID();
     UUID owner = UUID.randomUUID();
-    Space space = new Space("Team", null, false, SpaceVisibility.PRIVATE, owner, organizationId);
+    Space space = new Space("Team", null, false, owner, organizationId);
     SpaceMembership memberRow =
         SpaceMembership.ofUser(UUID.randomUUID(), SpaceRole.MEMBER, organizationId);
     space.addMembership(memberRow);
