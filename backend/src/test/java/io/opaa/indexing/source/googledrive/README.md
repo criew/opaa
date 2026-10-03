@@ -54,3 +54,13 @@ OPAA_GDRIVE_IT_FOLDER_ID=<ID des Ordners OPAA-Test> \
 Schlüssel, Assertion und Zugriffstoken erscheinen weder in Logs noch in Reports oder
 Fehlermeldungen. Der Test prüft die mitgeschnittenen Logzeilen am Ende jeder Methode. Fällt Google
 aus, scheitert schon die Anmeldung. Das ist dann „nicht prüfbar“ und kein Befund über OPAA.
+
+## Was der Lauf zusätzlich belegen soll
+
+Die folgenden Befunde gehören danach als Nachtrag in ADR-0040:
+
+- das Fehlerbild über der Exportgrenze (`403 exportSizeLimitExceeded`),
+- ob `alt=media` auf einen anderen Host weiterleitet,
+- ob der Strom `user` Änderungen geteilter Ablagen liefert,
+- wie oft Ordneränderungen im Strom `user` einen Vollabgleich auslösen, besonders mit `subject`,
+- ob der Deep Link `open?id=` zum richtigen Editor führt.
