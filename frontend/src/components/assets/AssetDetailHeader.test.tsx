@@ -44,6 +44,15 @@ describe('AssetDetailHeader (#2208)', () => {
     expect(screen.getByText('Aktualisiert am 03.10.2026')).toBeInTheDocument()
   })
 
+  it('marks a role that comes from the administrative bypass', () => {
+    const { unmount } = renderHeader({ administrative: true })
+    expect(screen.getByText('administrativ')).toBeInTheDocument()
+    unmount()
+
+    renderHeader({ administrative: false })
+    expect(screen.queryByText('administrativ')).not.toBeInTheDocument()
+  })
+
   it('carries no globe for an asset that is not released to all accounts', () => {
     renderHeader({ isPublic: false })
 

@@ -6,7 +6,7 @@ import UseInSpaceButton from './UseInSpaceButton'
 import type { AssetType } from '../../types/api'
 
 /**
- * The content of the tab „Zuordnungen" (#2208): „In Space verwenden" above the spaces the asset
+ * The content of the tab „Zuordnungen": „In Space verwenden" above the spaces the asset
  * stands in. Without a heading of its own - the tab already names it.
  */
 export default function AssetSpacesSection({

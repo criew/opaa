@@ -109,7 +109,7 @@ bietet er nicht an.
 
 Die Detailseite ist wie die einer Wissensbibliothek aufgebaut
 ([Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), Abschnitt 4): Der Kopf
-trägt Art, Welt-Symbol und eigene Rolle, Stern und „⋯" mit „In Space verwenden" und — nur für den
+trägt Art, Welt-Symbol, eigene Rolle (für die Systemverwaltung ohne eigene Berechtigung zusätzlich „administrativ"), Stern und „⋯" mit „In Space verwenden" und — nur für den
 Eigentümer — „Löschen", darunter Name und Beschreibung, die ab der Verwalterrolle über den Stift
 geändert werden, und die Kennzahlen: Anzahl der Prompts, Zahl der Räume, zuständige Stelle und
 „Aktualisiert am". Ein „Zurück" gibt es nicht.
@@ -120,7 +120,7 @@ sieht sie schreibgeschützt:
 | Reiter | Inhalt |
 |---|---|
 | **Prompts** | Die Prompts der Bibliothek, aufklappbar mit Text und Variablen; ab der Bearbeiterrolle oben „Neuer Prompt" und je Prompt „Bearbeiten" und „Löschen" |
-| **Freigaben** | „Eigentümer", ab der Verwalterrolle „Berechtigungen" und „Warum sehe ich diese Prompt-Bibliothek?" |
+| **Freigaben** | „Eigentümer" und „Warum sehe ich diese Prompt-Bibliothek?" für jede Rolle, dazwischen ab der Verwalterrolle „Berechtigungen" |
 | **Zuordnungen** | „In Space verwenden" und die Räume, denen die Bibliothek zugeordnet ist |
 
 Die Abschnitte der Reiter „Freigaben" und „Zuordnungen" sind dieselben Bausteine wie bei einer

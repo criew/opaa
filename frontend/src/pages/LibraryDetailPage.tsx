@@ -453,9 +453,9 @@ export default function LibraryDetailPage() {
           <>
             {details && <MetaBadge>{documentSourceTypeLabel(details.sourceType)}</MetaBadge>}
             <MetaBadge accent>{assetRoleLabel(library.myRole)}</MetaBadge>
-            {isAdministrativeOverride && <MetaBadge>administrativ</MetaBadge>}
           </>
         }
+        administrative={isAdministrativeOverride}
         headline={{
           idPrefix: 'library-detail',
           nameLabel: 'Name der Bibliothek',
@@ -466,7 +466,7 @@ export default function LibraryDetailPage() {
         extent={`${(library.documentCount ?? 0).toLocaleString('de-DE')} ${
           (library.documentCount ?? 0) === 1 ? 'Dokument' : 'Dokumente'
         }`}
-        // #119: storageQuotaBytes/storageUsedBytes reach a caller with at least MANAGER only.
+        // storageQuotaBytes/storageUsedBytes reach a caller with at least MANAGER only.
         figures={
           <>
             {details?.storageQuotaBytes != null && details.storageUsedBytes != null && (

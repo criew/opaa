@@ -6,6 +6,7 @@ import { http, HttpResponse } from 'msw'
 import { server } from '../mocks/server'
 import { resetMockFavorites } from '../mocks/assetFixtures'
 import { answerConfirm, renderWithProviders, setMockAuthState } from '../test/test-utils'
+import { useAuthStore } from '../stores/authStore'
 import { usePromptLibraryStore } from '../stores/promptLibraryStore'
 import type { AssetGrantRequest, PromptLibraryRequest, PromptRequest } from '../types/api'
 import PromptLibraryCreatePage from './PromptLibraryCreatePage'
@@ -356,5 +357,32 @@ describe('Detailseite einer Prompt-Bibliothek (#2208)', () => {
     await answerConfirm(user, 'Prompt-Bibliothek „Vorlagen Personalrat“ löschen?', 'Löschen')
 
     expect(await screen.findByText('Katalogseite')).toBeInTheDocument()
+  })
+
+  it('kennzeichnet die Rolle der Systemverwaltung ohne eigene Berechtigung als „administrativ“', async () => {
+    useAuthStore.setState({
+      user: {
+        id: 'admin-1',
+        email: 'admin@opaa.local',
+        displayName: 'Admin',
+        systemRole: 'SYSTEM_ADMIN',
+      },
+    })
+    try {
+      const { unmount } = renderDetail('/prompts/prompt-library-verwaltet')
+      expect(await screen.findByText('administrativ')).toBeInTheDocument()
+      unmount()
+
+      // Dieselbe Rolle wie nach der Formel: kein Etikett.
+      renderDetail('/prompts/prompt-library-referat-50')
+      expect(
+        await screen.findByRole('button', {
+          name: '„Formulierungshilfen Referat 50“ als Favorit markieren',
+        }),
+      ).toBeInTheDocument()
+      expect(screen.queryByText('administrativ')).not.toBeInTheDocument()
+    } finally {
+      useAuthStore.setState({ user: null })
+    }
   })
 })

@@ -13,13 +13,20 @@ export interface AssetCatalogEntry {
   setFavorite: (favorite: boolean) => Promise<void>
 }
 
+/** The loaded entry together with the asset it belongs to. */
+interface Loaded {
+  assetId: string
+  entry: CatalogEntryResponse | null
+}
+
 /**
  * One asset's own catalog entry - the same source for favorite mark and spread as the catalog's
  * tile. The catalog holds only what the caller may read, so an administrator without a right of
- * the formula gets `null`, and with it no star.
+ * the formula gets `null`, and with it no star. After a change of asset the entry is `undefined`
+ * until the new one has arrived; the previous asset's mark is never shown for the next.
  */
 export function useAssetCatalogEntry(assetType: AssetType, assetId: string): AssetCatalogEntry {
-  const [entry, setEntry] = useState<CatalogEntryResponse | null | undefined>(undefined)
+  const [loaded, setLoaded] = useState<Loaded | undefined>(undefined)
   const [version, setVersion] = useState(0)
 
   useEffect(() => {
@@ -27,10 +34,11 @@ export function useAssetCatalogEntry(assetType: AssetType, assetId: string): Ass
     let cancelled = false
     getCatalog({ type: assetType, ids: [assetId], page: 0, size: 1 })
       .then((page) => {
-        if (!cancelled) setEntry(page.entries.find((e) => e.assetId === assetId) ?? null)
+        if (cancelled) return
+        setLoaded({ assetId, entry: page.entries.find((e) => e.assetId === assetId) ?? null })
       })
       .catch(() => {
-        if (!cancelled) setEntry(null)
+        if (!cancelled) setLoaded({ assetId, entry: null })
       })
     return () => {
       cancelled = true
@@ -44,7 +52,11 @@ export function useAssetCatalogEntry(assetType: AssetType, assetId: string): Ass
       try {
         if (favorite) await markAssetFavorite(assetType, assetId)
         else await unmarkAssetFavorite(assetType, assetId)
-        setEntry((current) => (current ? { ...current, favorite } : current))
+        setLoaded((current) =>
+          current?.assetId === assetId && current.entry
+            ? { assetId, entry: { ...current.entry, favorite } }
+            : current,
+        )
       } catch (err) {
         notify(
           err instanceof Error ? err.message : 'Der Favorit konnte nicht gespeichert werden',
@@ -55,5 +67,6 @@ export function useAssetCatalogEntry(assetType: AssetType, assetId: string): Ass
     [assetType, assetId],
   )
 
+  const entry = loaded?.assetId === assetId ? loaded.entry : undefined
   return { entry, reload, setFavorite }
 }

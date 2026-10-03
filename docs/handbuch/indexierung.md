@@ -121,25 +121,28 @@ Fortschritt eines Laufs und warum er gescheitert ist, zeigt erst die Detailansic
 ### Die Detailansicht einer Bibliothek
 
 Ein Klick auf eine Kachel im Katalog führt auf die Detailansicht. Sie besteht aus einem **Kopf**
-und vier **Reitern**; einen Weg „zurück zur Übersicht" gibt es nicht, der Einstieg ist die
+und fünf **Reitern**; einen Weg „zurück zur Übersicht" gibt es nicht, der Einstieg ist die
 Hauptnavigation.
 
-**Der Kopf** trägt, von oben nach unten:
+**Der Kopf** ist derselbe wie bei einer Prompt-Bibliothek
+([Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), Abschnitt 4) und trägt, von
+oben nach unten:
 
 | Element | Inhalt |
 |---|---|
-| **Überschrift** | Name der Bibliothek, daneben das Symbol des Quellentyps und drei Abzeichen: der Quellentyp, die eigene Rolle und — für eine Systemverwaltung ohne eigene Berechtigung — „administrativ". Der Quellentyp steht genau hier und sonst nirgends auf der Seite |
+| **Kopfzeile** | das Etikett „Wissen", das Welt-Symbol, wenn die Bibliothek an „Alle Konten" freigegeben ist, dann drei Abzeichen: der Quellentyp, die eigene Rolle und — für eine Systemverwaltung ohne eigene Berechtigung — „administrativ". Der Quellentyp steht genau hier und sonst nirgends auf der Seite. Rechts stehen die Aktionen (siehe unten), der Stern für den eigenen Favoriten und das Menü „⋯" |
+| **Überschrift** | der Name der Bibliothek |
 | **Beschreibung** | unter dem Namen; beide ändert, wer mindestens Verwalter ist, über den Stift „Name und Beschreibung bearbeiten" — ein eigener Bearbeitungsmodus mit „Speichern" und „Abbrechen", kein Klick in den Text |
 | **Nachfolge** | steht die Nachfolge offen, sagt es eine Zeile darunter ([Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), Abschnitt 13) |
-| **Kennzahlen** | Anzahl der Dokumente; belegtes Speicherkontingent ab der Verwalterrolle; der letzte Lauf mit Ausgang, Zählern und Datum ab der Bearbeiterrolle, sobald eine Konnektorbibliothek einen hatte |
+| **Kennzahlen** | Anzahl der Dokumente; belegtes Speicherkontingent ab der Verwalterrolle; der letzte Lauf mit Ausgang, Zählern und Datum ab der Bearbeiterrolle, sobald eine Konnektorbibliothek einen hatte; in wie vielen Räumen die Bibliothek bereitsteht; die zuständige Stelle mit Personen- oder Gruppensymbol; „Aktualisiert am" |
 | **Umfang** | bei Confluence und S3 eine Kurzzeile („3 Spaces · Data Center · Details") mit Sprung in den Reiter „Quelle"; die Warnung über einen unvollständig gelesenen Umfang bleibt dagegen im Kopf, weil sie den Bestand betrifft, den jede Ansicht zeigt |
-| **Aktionen** | „Jetzt indizieren" (ab der Bearbeiterrolle, bei einer Konnektorbibliothek), bei Confluence zusätzlich „Vollabgleich starten", und für den **Eigentümer** (sowie die Systemverwaltung) ein „⋯"-Menü mit dem einzigen folgenschweren Punkt der Seite: „Bibliothek löschen". Wer die Bibliothek nur verwaltet oder bearbeitet, hat dort kein Menü; bei einer Upload-Bibliothek steht es umgekehrt allein, weil es dort nichts zu indizieren gibt |
+| **Aktionen** | „Jetzt indizieren" (ab der Bearbeiterrolle, bei einer Konnektorbibliothek), bei Confluence zusätzlich „Vollabgleich starten". Das Menü „⋯" führt für jede lesende Rolle „In Space verwenden" und, abgesetzt, für den **Eigentümer** (sowie die Systemverwaltung) den einzigen folgenschweren Punkt der Seite: „Löschen" |
 
 Darunter steht eine Zeile zur eigenen Rolle, wo sie die Bedienung erklärt: „Sie haben in dieser
 Bibliothek nur Leserechte" beziehungsweise „Sie können Dokumente dieser Bibliothek pflegen, ihre
 Einstellungen aber nicht ändern" — nie beide, und nie zweimal.
 
-**Die Reiter** heißen **Dokumente · Quelle · Metadaten · Freigaben**; eine Upload-Bibliothek hat
+**Die Reiter** heißen **Dokumente · Quelle · Metadaten · Freigaben · Zuordnungen**; eine Upload-Bibliothek hat
 keinen Reiter „Quelle". Jeder Reiter trägt seine eigene Adresse (`?tab=`), lässt sich also
 verlinken und in einem neuen Browser-Tab öffnen, legt aber keinen eigenen Schritt in der
 Browser-Historie an: Ein „Zurück" verlässt die Seite, egal wie viele Reiter dazwischen lagen. Alle
@@ -151,7 +154,8 @@ nicht der Reiter selbst.
 | **Dokumente** | der Bestand der Bibliothek, für jeden Quellentyp dieselbe Liste (siehe unten) |
 | **Quelle** | Umfang · Anbindung · Zeitplan · Läufe (siehe unten); entfällt bei einer Upload-Bibliothek |
 | **Metadaten** | „Metadatenfelder" — die eigenen Felder dieser Bibliothek samt Wertelisten — und, ab der Verwalterrolle, „Modellgestützte Extraktion". Beides beschreibt das Kapitel [Metadaten](metadaten.md) |
-| **Freigaben** | Eigentümer, Berechtigungen, externer Zugang, Zuordnungen, Diagnosesperre und die Herleitung „Warum sehe ich diese Wissensbibliothek?" — die sechs Abschnitte beschreibt [Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), Abschnitt 4 |
+| **Freigaben** | Eigentümer, Berechtigungen, externer Zugang, Diagnosesperre und die Herleitung „Warum sehe ich diese Wissensbibliothek?" — die fünf Abschnitte beschreibt [Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), Abschnitt 4 |
+| **Zuordnungen** | „In Space verwenden" und die Räume, in denen die Bibliothek als Datenquelle bereitsteht, mit „Aus Space lösen" im Menü „⋯" jeder Zeile — beschrieben in [Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), Abschnitt 4 |
 
 Der Reiter **„Quelle"** hat vier Abschnitte in dieser Reihenfolge:
 
@@ -190,7 +194,7 @@ später an derselben Stelle wieder:
 
 | Schritt | Inhalt |
 |---|---|
-| **1. Art des Wissens** | je Quellentyp eine Kachel mit demselben Symbol, das später der Kopf der Detailansicht trägt, und einem Satz dazu. Fehlt das Anlegerecht für diese Art — „Bibliotheken für Uploads anlegen" und „Konnektorbibliotheken anlegen" sind zwei getrennte Rechte —, ist die Kachel gesperrt und nennt den Grund auf sich selbst. Zwischen den Kacheln führen die Pfeiltasten |
+| **1. Art des Wissens** | je Quellentyp eine Kachel mit Symbol und einem Satz dazu. Fehlt das Anlegerecht für diese Art — „Bibliotheken für Uploads anlegen" und „Konnektorbibliotheken anlegen" sind zwei getrennte Rechte —, ist die Kachel gesperrt und nennt den Grund auf sich selbst. Zwischen den Kacheln führen die Pfeiltasten |
 | **2. Quelle** | Anbindung und Verbindungstest wie im gleichnamigen Reiter, dazu der **Zeitplan** und der Schalter „Erste Indizierung sofort nach dem Anlegen starten". Beide gelten für **jeden** Konnektortyp. Bei einer Upload-Bibliothek entfällt der Schritt, der Assistent hat dann drei |
 | **3. Name & Beschreibung** | der Name ist vorbelegt, wo die Quelle ihn hergibt — der einzelne Confluence-Space, der erste Bucket, der letzte Pfadabschnitt, der Hostname — und bleibt überschreibbar |
 | **4. Freigaben** | Eigentümer („Mein Konto" oder eine Gruppe, in der die anlegende Person Mitglied ist) und vorgemerkte Freigaben an Personen und Gruppen. Eine Freigabe an „Alle Konten" gibt es hier nicht: Sie wird an der fertigen Bibliothek erteilt, wo auch die Obergrenze dafür gilt |

@@ -92,7 +92,8 @@ gleich, und beide Detailseiten sind gleich aufgebaut.
 
 **Der Kopf der Detailseite.** In der ersten Zeile stehen die Art als Etikett („Wissen" bzw.
 „Prompts"), das Welt-Symbol, wenn die Bibliothek an „Alle Konten" freigegeben ist, bei einer
-Wissensbibliothek die Quellart und dann die eigene Rolle; rechts davon der **Stern** für den
+Wissensbibliothek die Quellart und dann die eigene Rolle, für die Systemverwaltung ohne eigene
+Berechtigung zusätzlich „administrativ"; rechts davon der **Stern** für den
 eigenen Favoriten — er wirkt wie der Stern einer Kachel im Katalog — und das Menü **„⋯"** mit
 „In Space verwenden" und, abgesetzt, „Löschen" für den Eigentümer. Darunter stehen Name und
 Beschreibung; wer die Bibliothek verwaltet, ändert beide über den Stift daneben. Die Kennzahlen

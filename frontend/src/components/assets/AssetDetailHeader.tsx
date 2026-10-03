@@ -13,6 +13,7 @@ import EventOutlinedIcon from '@mui/icons-material/EventOutlined'
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz'
 import WorkspacesOutlinedIcon from '@mui/icons-material/WorkspacesOutlined'
 import type { AssetType } from '../../types/api'
+import MetaBadge from '../MetaBadge'
 import AssetHeadlineEditor, { type AssetHeadlineEditorProps } from './AssetHeadlineEditor'
 import { FavoriteToggle, PublicMark, ResponsibleLine, TypeBadge } from './assetMarks'
 import { spreadLabel } from './assetTileData'
@@ -26,8 +27,10 @@ export interface AssetDetailHeaderProps {
   description?: string | null
   /** Released to all accounts: the globe beside the type badge. */
   isPublic: boolean
-  /** Badges after type badge and globe - source type, own role, administrative bypass. */
+  /** Badges after type badge and globe - source type and own role. */
   badges?: ReactNode
+  /** The role shown comes from the system administration's bypass, not from an own grant. */
+  administrative?: boolean
   headline: Omit<AssetHeadlineEditorProps, 'name' | 'description' | 'badges'>
   /** What the asset holds, in the words of its type ("12 Prompts"). */
   extent: string
@@ -62,7 +65,7 @@ function formatDate(value: string): string {
 }
 
 /**
- * One figure of the head's band (#1609): a flat statement („87 Dokumente") with a pictogram that
+ * One figure of the head's band: a flat statement („87 Dokumente") with a pictogram that
  * carries no text of its own, set off from the next one by a hairline.
  */
 export function HeaderFigure({ icon, children }: { icon?: ReactNode; children: ReactNode }) {
@@ -171,7 +174,7 @@ function MoreActions({
 }
 
 /**
- * The head of every asset detail page (#2208): type, reach and role on one line with star and
+ * The head of every asset detail page: type, reach and role on one line with star and
  * „⋯" at its end, name and description editable behind the pencil, and the figures the catalog
  * tile shows - extent, spread, responsibility, last change. The type's own figures and states
  * come in through slots, so every type keeps the same order.
@@ -183,6 +186,7 @@ export default function AssetDetailHeader({
   description,
   isPublic,
   badges,
+  administrative = false,
   headline,
   extent,
   figures,
@@ -248,6 +252,7 @@ export default function AssetDetailHeader({
           {definition && <TypeBadge definition={definition} />}
           {isPublic && <PublicMark />}
           {badges}
+          {administrative && <MetaBadge>administrativ</MetaBadge>}
         </Stack>
         <Stack
           direction="row"

@@ -225,7 +225,7 @@ function PromptsArea({
 }
 
 /**
- * One prompt library, built like the knowledge library's page (#2208): the shared head with star
+ * One prompt library, built like the knowledge library's page: the shared head with star
  * and „⋯", then the areas „Prompts", „Freigaben" and „Zuordnungen" - each a route of its own
  * (`/prompts/:id`, `/prompts/:id/freigaben`, `/prompts/:id/zuordnungen`) and open to every
  * reader, who finds them read-only.
@@ -282,6 +282,12 @@ export default function PromptLibraryDetailPage() {
   const canManage = holds(library.myRole, 'MANAGER')
   const canEditPrompts = holds(library.myRole, 'EDITOR')
   const canDelete = library.myRole === 'OWNER'
+  // The catalog holds the role of the formula, never raised for the system administration; a
+  // shown role above it comes from the bypass.
+  const administrative =
+    isSystemAdmin &&
+    catalog.entry !== undefined &&
+    (catalog.entry === null || catalog.entry.myRole !== library.myRole)
   const libraryId = library.id
 
   /** The PUT replaces name and description as a whole; a rejection stays in the head. */
@@ -326,6 +332,7 @@ export default function PromptLibraryDetailPage() {
           description={library.description}
           isPublic={library.reach.allAccounts}
           badges={<MetaBadge accent>{assetRoleLabel(library.myRole)}</MetaBadge>}
+          administrative={administrative}
           headline={{
             idPrefix: 'prompt-library-detail',
             nameLabel: 'Name der Prompt-Bibliothek',
