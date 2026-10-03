@@ -150,15 +150,20 @@ describe('SpaceMemberList', () => {
     ])
   })
 
-  it('zeigt beim Eigentümer nur „Eigentümer“, ohne Rollenetikett, Auswahl und Menü', () => {
+  /** #2207: dieselbe Auswahl wie bei den anderen Rollen, aber schreibgeschützt. */
+  it('zeigt beim Eigentümer „Eigentümer“ als schreibgeschützte Auswahl, ohne Menü', async () => {
     renderList()
+    const user = userEvent.setup()
 
     const row = rowOf('Andrea Vogt')
-    expect(within(row).getByText('Eigentümer')).toBeInTheDocument()
+    const owner = within(row).getByRole('combobox', { name: 'Rolle von „Andrea Vogt“' })
+    expect(owner).toHaveTextContent('Eigentümer')
+    expect(owner).toHaveAttribute('aria-readonly', 'true')
     expect(within(row).queryByText('Administrator')).not.toBeInTheDocument()
-    expect(within(row).queryByText(/· Eigentümer/)).not.toBeInTheDocument()
-    expect(within(row).queryByRole('combobox')).not.toBeInTheDocument()
     expect(within(row).queryByRole('button')).not.toBeInTheDocument()
+
+    await user.click(owner)
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
   })
 
   it('nennt bei Gruppen „Gruppe“ und die heutige Mitgliederzahl, bei geschützten keine Zahl', () => {

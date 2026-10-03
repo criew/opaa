@@ -10,7 +10,7 @@ function follows(first: Element, second: Element): boolean {
 }
 
 describe('AssetFilterBar (guidelines 5.11)', () => {
-  it('orders search, type and favorites in one row, the type titled visibly', async () => {
+  it('orders search, type and favorites in one row, the type named without a title', async () => {
     const user = userEvent.setup()
     const onType = vi.fn()
     renderWithProviders(
@@ -25,6 +25,9 @@ describe('AssetFilterBar (guidelines 5.11)', () => {
     const search = screen.getByRole('searchbox', { name: 'Suchen' })
     const type = screen.getByRole('group', { name: 'Typ' })
     const favorites = screen.getByRole('button', { name: 'Favoriten' })
+    // #2207: the group is named "Typ" without a visible title.
+    expect(screen.queryByText('Typ')).not.toBeInTheDocument()
+    expect(type).toHaveAttribute('aria-label', 'Typ')
     expect(follows(search, type)).toBe(true)
     expect(follows(type, favorites)).toBe(true)
     expect(within(type).getByRole('button', { name: 'Alle' })).toHaveAttribute(

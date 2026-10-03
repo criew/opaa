@@ -361,10 +361,10 @@ describe('SpaceSettingsPage', () => {
         .map((tab) => tab.textContent),
     ).toEqual(['Stammdaten', 'Mitglieder', 'Inhalte'])
     expect(screen.getByRole('heading', { level: 1, name: 'Einstellungen' })).toBeInTheDocument()
-    // Die Reiterleiste trägt keine Überschrift: Ohne die h2 des Panels spränge die Gliederung von
-    // h1 auf die h3 des Gefahrenbereichs (docs/design/accessibility.md 2.3).
-    expect(screen.getByRole('heading', { level: 2, name: 'Stammdaten' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { level: 3, name: 'Gefahrenbereich' })).toBeInTheDocument()
+    // #2207: Keine Überschrift wiederholt den Reiternamen; der Gefahrenbereich ist deshalb die
+    // h2 des Panels, ohne Sprung in der Gliederung (docs/design/accessibility.md 2.3).
+    expect(screen.queryByRole('heading', { name: 'Stammdaten' })).not.toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 2, name: 'Gefahrenbereich' })).toBeInTheDocument()
     expect(within(tablist).getByRole('tab', { name: 'Mitglieder' })).toHaveAttribute(
       'href',
       '/spaces/space-team/settings/members',
@@ -716,18 +716,18 @@ describe('SpaceSettingsPage', () => {
     expect(screen.getByText(/Nachfolge offen — zuständig: Systemverwaltung/)).toBeInTheDocument()
   })
 
-  it('#777: renders the owner role as a static badge instead of an editable dropdown', async () => {
-    // Before this fix, the owner's row rendered the same editable role Select as any other
-    // member - changing it always failed against the backend's "Die Rolle des Eigentümers kann
-    // nicht geändert werden" rejection.
+  it('#777: renders the owner role as a read-only choice instead of an editable dropdown', async () => {
+    // An editable Select on the owner's row always failed against the backend's "Die Rolle des
+    // Eigentümers kann nicht geändert werden"; #2207 keeps its look but makes it read-only.
     setSpaceState(teamSpace)
     renderTab('members')
 
     await screen.findByText('Owner')
     const ownerRow = memberRow('Owner')
-    expect(within(ownerRow).queryByRole('combobox')).not.toBeInTheDocument()
+    const ownerRole = within(ownerRow).getByRole('combobox', { name: 'Rolle von „Owner“' })
+    expect(ownerRole).toHaveAttribute('aria-readonly', 'true')
     // #2134: the owner carries "Eigentümer" alone, without the role label beside it.
-    expect(within(ownerRow).getByText('Eigentümer')).toBeInTheDocument()
+    expect(ownerRole).toHaveTextContent('Eigentümer')
     expect(within(ownerRow).queryByText('Administrator')).not.toBeInTheDocument()
 
     // The (non-owner) colleague's row keeps its editable role Select.
@@ -774,13 +774,53 @@ describe('SpaceSettingsPage', () => {
     expect(within(groupMenu).queryByText(/Warum hat/)).not.toBeInTheDocument()
   })
 
-  it('explains the empty member list instead of showing nothing for a non-admin, non-owner viewer', async () => {
+  /**
+   * #2207: Ein Mitglied sieht die Größe des Space nach Rollen, aber keinen Namen - die
+   * Mitgliederliste bleibt Administratoren, Eigentümer und Systemverwaltung vorbehalten.
+   */
+  it('shows a plain member the counts per role and no name', async () => {
     mockListSpaceMembers.mockResolvedValueOnce([])
-    setSpaceState(nonAdminSpace)
+    setSpaceState({
+      ...nonAdminSpace,
+      memberCount: 12,
+      roleCounts: { MEMBER: 9, CURATOR: 1, ADMIN: 2 },
+    })
     renderTab('members')
 
-    expect(await screen.findByText(/nicht die erforderliche rolle/i)).toBeInTheDocument()
+    expect(
+      await screen.findByText('12 Mitglieder, davon 2 Administratoren, 1 Kurator'),
+    ).toBeInTheDocument()
+    expect(screen.queryByText(/nicht die erforderliche rolle/i)).not.toBeInTheDocument()
+    expect(screen.queryByTestId('space-member-row')).not.toBeInTheDocument()
+    expect(screen.queryByText('Owner')).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Mitglied hinzufügen' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /entfernen/i })).not.toBeInTheDocument()
+  })
+
+  it('names a single member and leaves out roles nobody holds', async () => {
+    mockListSpaceMembers.mockResolvedValueOnce([])
+    setSpaceState({
+      ...nonAdminSpace,
+      memberCount: 1,
+      roleCounts: { MEMBER: 1, CURATOR: 0, ADMIN: 0 },
+    })
+    renderTab('members')
+
+    expect(await screen.findByText('1 Mitglied')).toBeInTheDocument()
+  })
+
+  /** #2207: Stammdaten sind für ein Mitglied lesbar, aber nicht änderbar, ohne Gefahrenbereich. */
+  it('shows a plain member the general data read-only', () => {
+    setSpaceState(nonAdminSpace)
+    renderTab('general')
+
+    expect(screen.getByLabelText('Name des Space')).toHaveValue('Fremdverwaltet')
+    expect(screen.getByLabelText('Name des Space')).toHaveAttribute('readonly')
+    expect(screen.getByLabelText('Beschreibung')).toHaveAttribute('readonly')
+    expect(
+      screen.queryByRole('button', { name: /einstellungen speichern/i }),
+    ).not.toBeInTheDocument()
+    expect(screen.queryByText('Gefahrenbereich')).not.toBeInTheDocument()
   })
 
   it('shows the delete button only for the owner of a non-personal space', () => {
