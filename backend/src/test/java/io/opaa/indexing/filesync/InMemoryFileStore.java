@@ -9,6 +9,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -33,6 +34,10 @@ public final class InMemoryFileStore implements FileStore {
   private final Set<String> deselected = new HashSet<>();
   private final Map<String, Map<String, String>> recalled = new LinkedHashMap<>();
   private boolean folderMarkers;
+  private boolean shallowMarkers;
+  private boolean stableIds;
+  private final Map<String, Long> ids = new HashMap<>();
+  private long nextId;
   private final List<String> calls = new ArrayList<>();
   private SourceRequestMeter meter = new SourceRequestMeter();
   private int pageSize = 1000;
@@ -52,6 +57,7 @@ public final class InMemoryFileStore implements FileStore {
 
   public InMemoryFileStore put(String container, String name, byte[] bytes, String mediaType) {
     container(container).containers.get(container).put(name, new StoredFile(bytes, mediaType));
+    ids.computeIfAbsent(container + "\n" + name, key -> ++nextId);
     return this;
   }
 
@@ -107,6 +113,53 @@ public final class InMemoryFileStore implements FileStore {
   public InMemoryFileStore withFolderMarkers() {
     folderMarkers = true;
     return this;
+  }
+
+  /**
+   * A broken store for the contract's own test: a folder's marker covers only its own files, so a
+   * change two levels down never reaches the root.
+   */
+  public InMemoryFileStore withShallowFolderMarkers() {
+    folderMarkers = true;
+    shallowMarkers = true;
+    return this;
+  }
+
+  /**
+   * From now on a file keeps its identity ({@code file_path}) and its change feature when it is
+   * renamed or moved, like a store that tracks files by id.
+   */
+  public InMemoryFileStore withStableIds() {
+    stableIds = true;
+    return this;
+  }
+
+  /**
+   * Renames or moves the file or folder {@code from} to {@code to}; ids follow under stable ids.
+   */
+  public InMemoryFileStore move(String container, String from, String to) {
+    TreeMap<String, StoredFile> files = containers.get(container);
+    Map<String, StoredFile> moved = new LinkedHashMap<>();
+    for (String name : List.copyOf(files.keySet())) {
+      if (name.equals(from) || name.startsWith(from + "/")) {
+        String target = to + name.substring(from.length());
+        moved.put(target, files.remove(name));
+        Long id = ids.get(container + "\n" + name);
+        if (id != null) {
+          ids.put(container + "\n" + target, id);
+        }
+      }
+    }
+    files.putAll(moved);
+    return this;
+  }
+
+  /** The {@code file_path} the store gives {@code name}, also after a removal. */
+  public String filePathOf(String container, String name) {
+    if (!stableIds) {
+      return filePath(container, name);
+    }
+    return "mem://" + container + "/#" + ids.get(container + "\n" + name);
   }
 
   /** The markers {@link #recall} last handed over, per container. */
@@ -205,12 +258,11 @@ public final class InMemoryFileStore implements FileStore {
   }
 
   /** Every folder, root first and parents before children, with a hash over all files below it. */
-  private static Map<String, String> folderMarkers(TreeMap<String, StoredFile> files) {
+  private Map<String, String> folderMarkers(TreeMap<String, StoredFile> files) {
     Map<String, Integer> hashes = new TreeMap<>();
     hashes.put("", 1);
     files.forEach(
         (name, file) -> {
-          int contribution = name.hashCode() * 31 + Arrays.hashCode(file.bytes());
           String folder = of(name);
           List<String> chain = new ArrayList<>(List.of(""));
           if (!folder.isEmpty()) {
@@ -222,7 +274,16 @@ public final class InMemoryFileStore implements FileStore {
                       Arrays.asList(segments).subList(0, i)));
             }
           }
-          chain.forEach(path -> hashes.merge(path, contribution, (a, b) -> a * 31 + b));
+          if (shallowMarkers) {
+            chain = List.of(folder);
+          }
+          for (String path : chain) {
+            // relative to the folder: a renamed folder keeps its own marker, as Nextcloud does
+            String relative =
+                path.isEmpty() ? name : name.substring(path.replace(" / ", "/").length());
+            int contribution = relative.hashCode() * 31 + Arrays.hashCode(file.bytes());
+            hashes.merge(path, contribution, (a, b) -> a * 31 + b);
+          }
         });
     Map<String, String> markers = new LinkedHashMap<>();
     hashes.forEach((folder, hash) -> markers.put(folder, "m:" + hash));
@@ -291,7 +352,7 @@ public final class InMemoryFileStore implements FileStore {
     return new FileEntry(
         container,
         name,
-        filePath(container.key(), name),
+        filePathOf(container.key(), name),
         slash < 0 ? name : name.substring(slash + 1),
         SourceFolderPath.capped(folders),
         new SourceDocumentContext(

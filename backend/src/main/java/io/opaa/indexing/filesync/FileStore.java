@@ -21,6 +21,14 @@ public interface FileStore extends AutoCloseable {
    * The folder markers the last complete full sync remembered for {@code container}, keyed by
    * hierarchy path ({@link FilePage}), handed over before its first page; empty when there are none
    * or they no longer apply. Ignored by default.
+   *
+   * <p>A store that reports folders keeps this contract: a folder's marker changes whenever
+   * anything in or below it changes - content, a name, a file or folder added, removed, renamed or
+   * moved. A folder may be reported unchanged only when its marker equals the one handed over for
+   * exactly its path; a renamed or moved folder has no marker at its new path and is listed. {@link
+   * FileSync} hands over no marker for a folder holding a document awaiting a visit or after a
+   * document was removed outside a run, and remembers none for a folder whose path a row cannot
+   * carry uncut.
    */
   default void recall(FileContainer container, Map<String, String> subtreeMarkers) {}
 

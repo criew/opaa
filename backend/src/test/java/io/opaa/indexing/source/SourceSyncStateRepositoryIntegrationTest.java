@@ -127,7 +127,8 @@ class SourceSyncStateRepositoryIntegrationTest {
         new SourceSyncState.SubtreeMemory(
             "v1|1024|pdf,txt",
             Instant.parse("2026-10-03T10:00:00Z"),
-            Map.of("/Projekte", Map.of("", "\"6ac1\"", "Akten / 2026", "\"6ac2\"")));
+            Map.of("/Projekte", Map.of("", "\"6ac1\"", "Akten / 2026", "\"6ac2\"")),
+            Map.of("/Projekte", 42L));
     state.rememberSubtrees(memory);
     repository.save(state);
 
@@ -155,6 +156,30 @@ class SourceSyncStateRepositoryIntegrationTest {
                 documentRepository.findByLibraryIdAndSourceContainerKey(
                     library.getId(), "Projekte")))
         .containsExactlyInAnyOrder("1", "2", "3", "4", "5", "7");
+  }
+
+  @Test
+  void documentsAwaitingAVisitAreFoundByTheirFolderAndCounted() {
+    saveDocument("1", "Projekte", "alt");
+    saveDocument("2", "Projekte", "neu");
+    saveDocument("3", "Projekte", null);
+    for (Document document :
+        documentRepository.findByLibraryIdAndSourceContainerKey(library.getId(), "Projekte")) {
+      if (!document.getFilePath().equals("2")) {
+        document.setStatus(io.opaa.api.types.DocumentStatus.INDEXED);
+        document.setLastModifiedRemote("m:1");
+        documentRepository.save(document);
+      }
+    }
+    documentRepository.markForReindexOnNextRun(
+        documentRepository.findByLibraryIdAndFilePath(library.getId(), "1").orElseThrow().getId());
+
+    assertThat(documentRepository.findHierarchyPathsAwaitingAVisit(library.getId(), "Projekte"))
+        .as("1 is marked for the next run, 2 was never indexed, 3 is settled")
+        .containsExactlyInAnyOrder("alt", "neu");
+    assertThat(
+            documentRepository.countByLibraryIdAndSourceContainerKey(library.getId(), "Projekte"))
+        .isEqualTo(3);
   }
 
   private void saveDocument(String filePath, String containerKey, String hierarchyPath) {

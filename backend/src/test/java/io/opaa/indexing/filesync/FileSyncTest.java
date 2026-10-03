@@ -9,6 +9,7 @@ import io.opaa.indexing.job.IndexingRunEvent;
 import io.opaa.indexing.source.SourceSyncState;
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -195,7 +196,7 @@ class FileSyncTest {
         .state()
         .rememberSubtrees(
             new SourceSyncState.SubtreeMemory(
-                "v1|1|txt", memory.establishedAt(), memory.containers()));
+                "v1|1|txt", memory.establishedAt(), memory.containers(), memory.documentCounts()));
 
     harness.fullSync(store.reset());
 
@@ -209,6 +210,69 @@ class FileSyncTest {
     harness.fullSync(store);
 
     assertThat(harness.state().subtreeMemory()).isEqualTo(SourceSyncState.SubtreeMemory.NONE);
+  }
+
+  @Test
+  void aFolderReportedUnchangedWithoutAHandedOverMarkerKeepsTheBestandButReconcilesNothing()
+      throws Exception {
+    InMemoryFileStore store =
+        new InMemoryFileStore().withFolderMarkers().container("A").put("A", "a/x.txt", "X.");
+    harness.fullSync(store);
+    store.put("A", "a/y.txt", "Y.");
+
+    FileStore lying =
+        new FileStore() {
+          @Override
+          public List<FileContainer> containers() {
+            return store.containers();
+          }
+
+          @Override
+          public FilePage list(FileContainer container, String continuation) {
+            return new FilePage(List.of(), null, List.of("nie übergeben"), Map.of("", "m:1"));
+          }
+
+          @Override
+          public FileEntry head(FileContainer container, String id) {
+            throw new UnsupportedOperationException();
+          }
+
+          @Override
+          public FetchedFile fetch(FileEntry entry, long maxBytes) {
+            throw new UnsupportedOperationException();
+          }
+
+          @Override
+          public io.opaa.sourceaccess.SourceRequestMeter meter() {
+            return store.meter();
+          }
+
+          @Override
+          public void close() {}
+        };
+    FileSyncHarness.Run run = harness.fullSync(lying);
+
+    assertThat(run.listingComplete()).isFalse();
+    assertThat(run.unlistedContainerKeys()).containsExactly("A");
+    assertThat(harness.storedPaths()).containsExactly(InMemoryFileStore.filePath("A", "a/x.txt"));
+  }
+
+  @Test
+  void aNewFileThatIsNotAvailableAndAPathTooLongForTheRowKeepTheirFoldersOutOfTheMemory()
+      throws Exception {
+    String longFolder = "x".repeat(2100);
+    InMemoryFileStore store =
+        new InMemoryFileStore()
+            .withFolderMarkers()
+            .container("A")
+            .put("A", "gut/a.txt", "A.")
+            .put("A", longFolder + "/b.txt", "B.");
+
+    harness.fullSync(store);
+
+    assertThat(harness.state().subtreeMemory().containers().get("A"))
+        .as("the cut path keeps its folder and the root out")
+        .containsOnlyKeys("gut");
   }
 
   @Test

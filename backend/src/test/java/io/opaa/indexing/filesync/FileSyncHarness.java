@@ -126,6 +126,24 @@ public final class FileSyncHarness {
                 stored.stream()
                     .filter(d -> invocation.getArgument(1).equals(d.getSourceContainerKey()))
                     .toList());
+    when(documentRepository.countByLibraryIdAndSourceContainerKey(any(), any()))
+        .thenAnswer(
+            invocation ->
+                stored.stream()
+                    .filter(d -> invocation.getArgument(1).equals(d.getSourceContainerKey()))
+                    .count());
+    when(documentRepository.findHierarchyPathsAwaitingAVisit(any(), any()))
+        .thenAnswer(
+            invocation ->
+                stored.stream()
+                    .filter(d -> invocation.getArgument(1).equals(d.getSourceContainerKey()))
+                    .filter(
+                        d ->
+                            d.getLastModifiedRemote() == null
+                                || d.getStatus() != DocumentStatus.INDEXED)
+                    .map(Document::getSourceHierarchyPath)
+                    .distinct()
+                    .toList());
     when(documentRepository.findInHierarchy(any(), any(), any()))
         .thenAnswer(
             invocation -> {
@@ -163,6 +181,7 @@ public final class FileSyncHarness {
                           });
               document.setStatus(DocumentStatus.INDEXED);
               document.setLastModifiedRemote(ingest.changeMarker());
+              document.setFileName(ingest.fileName());
               document.applySourceContext(ingest.context());
               return DocumentIngestResult.PROCESSED;
             });
@@ -273,6 +292,20 @@ public final class FileSyncHarness {
 
   public SourceSyncState state() {
     return state;
+  }
+
+  /** Marks the stored {@code filePath} for its next run, as a reprocessing request does. */
+  public FileSyncHarness markForReindex(String filePath) {
+    Document document = stored(filePath).orElseThrow();
+    document.setChecksum(null);
+    document.setLastModifiedRemote(null);
+    return this;
+  }
+
+  /** Removes the stored {@code filePath} outside a run, as a manual deletion does. */
+  public FileSyncHarness deleteStored(String filePath) {
+    stored.remove(stored(filePath).orElseThrow());
+    return this;
   }
 
   /** From now on the ingest of {@code filePath} throws, as a failing embedding call would. */

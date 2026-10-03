@@ -28,6 +28,26 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
   /** Every row of {@code libraryId} from the source container {@code containerKey}. */
   List<Document> findByLibraryIdAndSourceContainerKey(UUID libraryId, String containerKey);
 
+  /** How many rows, attachments included, {@code libraryId} holds from {@code containerKey}. */
+  long countByLibraryIdAndSourceContainerKey(UUID libraryId, String containerKey);
+
+  /**
+   * The hierarchy paths of the documents (no attachments) of {@code containerKey} that the next run
+   * must visit: marked for reprocessing ({@link #markForReindexOnNextRun}) or not indexed.
+   */
+  default List<String> findHierarchyPathsAwaitingAVisit(UUID libraryId, String containerKey) {
+    return findHierarchyPathsNotIn(libraryId, containerKey, DocumentStatus.INDEXED);
+  }
+
+  @Query(
+      "select distinct d.sourceHierarchyPath from Document d where d.libraryId = :libraryId"
+          + " and d.sourceContainerKey = :containerKey and d.parentDocumentId is null"
+          + " and (d.lastModifiedRemote is null or d.status <> :settled)")
+  List<String> findHierarchyPathsNotIn(
+      @Param("libraryId") UUID libraryId,
+      @Param("containerKey") String containerKey,
+      @Param("settled") DocumentStatus settled);
+
   /**
    * Every row of {@code libraryId} from {@code containerKey} whose hierarchy path is {@code path}
    * or lies below it ({@code path} followed by {@link SourceDocumentContext#HIERARCHY_SEPARATOR}).
