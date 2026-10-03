@@ -1,6 +1,10 @@
 package io.opaa.externalaccess.token;
 
 import io.opaa.account.LocalAccountAccessEndedEvent;
+import io.opaa.auth.OidcIssuerUris;
+import io.opaa.auth.OidcProviderDeletedEvent;
+import io.opaa.auth.User;
+import io.opaa.auth.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
@@ -27,9 +31,27 @@ public class ExternalAccessTokenAccountLifecycleListener {
       LoggerFactory.getLogger(ExternalAccessTokenAccountLifecycleListener.class);
 
   private final ExternalAccessTokenLapseService lapses;
+  private final UserRepository users;
 
-  public ExternalAccessTokenAccountLifecycleListener(ExternalAccessTokenLapseService lapses) {
+  public ExternalAccessTokenAccountLifecycleListener(
+      ExternalAccessTokenLapseService lapses, UserRepository users) {
     this.lapses = lapses;
+    this.users = users;
+  }
+
+  /**
+   * A deleted provider ends the tokens of its accounts for good, so a provider created later with
+   * the same issuer does not bring them back.
+   */
+  @EventListener
+  public void onProviderDeleted(OidcProviderDeletedEvent event) {
+    int ended = 0;
+    for (User user : users.findByNormalizedIssuer(OidcIssuerUris.normalize(event.issuerUri()))) {
+      ended += lapses.endTokensOfAccount(user, event.actorUserId());
+    }
+    if (ended > 0) {
+      log.info("External access tokens: {} token(s) ended with their identity provider", ended);
+    }
   }
 
   @EventListener

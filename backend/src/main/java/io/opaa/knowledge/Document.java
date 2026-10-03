@@ -8,6 +8,7 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.Instant;
+import java.util.Objects;
 import java.util.UUID;
 
 @Entity
@@ -351,7 +352,18 @@ public class Document {
       return;
     }
     this.sourceContainerKey = context.containerKey();
-    this.sourceHierarchyPath = truncate(context.hierarchyPath(), 2000);
+    this.sourceHierarchyPath = truncate(context.hierarchyPath(), MAX_HIERARCHY_PATH);
+  }
+
+  /** The width of {@code source_hierarchy_path}; a longer path is stored cut. */
+  public static final int MAX_HIERARCHY_PATH = 2000;
+
+  /** Whether the stored source context is exactly {@code context}, a cut hierarchy path not. */
+  public boolean holdsSourceContext(SourceDocumentContext context) {
+    String path = context.hierarchyPath();
+    return (path == null || path.length() <= MAX_HIERARCHY_PATH)
+        && Objects.equals(sourceContainerKey, context.containerKey())
+        && Objects.equals(sourceHierarchyPath, path);
   }
 
   private static String truncate(String value, int max) {

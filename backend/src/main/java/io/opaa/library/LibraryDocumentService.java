@@ -21,6 +21,7 @@ import io.opaa.indexing.document.DocumentIngestService;
 import io.opaa.indexing.source.OriginalAccess;
 import io.opaa.indexing.source.OriginalUnavailableException;
 import io.opaa.indexing.source.ServedOriginals;
+import io.opaa.indexing.source.SourceConnectionBlockedException;
 import io.opaa.indexing.source.SourceConnectionResolver;
 import io.opaa.indexing.source.SourceConnectorRegistry;
 import io.opaa.indexing.source.SourceCredentialsException;
@@ -127,6 +128,10 @@ import org.springframework.web.multipart.MultipartFile;
 public class LibraryDocumentService implements FolderDocumentDeleter {
 
   private static final Logger log = LoggerFactory.getLogger(LibraryDocumentService.class);
+
+  /** The 503 a reader sees when the core cannot sign in; account and endpoint stay in the log. */
+  static final String ORIGINAL_SIGN_IN_FAILED =
+      "Das Original ist derzeit nicht abrufbar. Bitte später erneut versuchen.";
 
   private final KnowledgeLibraryRepository libraryRepository;
   private final LibraryAccessService accessService;
@@ -576,10 +581,12 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
           document.getId(),
           e.getCause() == null ? e.getMessage() : e.getCause().getMessage());
       throw new ServiceUnavailableException(e.userMessage());
+    } catch (SourceConnectionBlockedException e) {
+      throw new ServiceUnavailableException(e.getMessage());
     } catch (SourceCredentialsException e) {
       log.warn(
           "Original of document {} has no usable secret: {}", document.getId(), e.getMessage());
-      throw new ServiceUnavailableException(e.getMessage());
+      throw new ServiceUnavailableException(ORIGINAL_SIGN_IN_FAILED);
     }
   }
 

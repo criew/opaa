@@ -6,10 +6,10 @@ import java.util.Optional;
 import java.util.function.Function;
 
 /**
- * Resolves a library's connection from its own stored fields. The secret goes out as stored, except
- * for a connector that signs in with a service account key: there the core signs and hands out the
- * access token alone (ADR-0040, Entscheidung 2). The only resolver until connection profiles exist
- * (#2160).
+ * Resolves a library's connection from its own stored fields: what holds for every library without
+ * a connection profile. The secret goes out as stored, except for a connector that signs in with a
+ * service account key: there the core signs and hands out the access token alone (ADR-0040,
+ * Entscheidung 2).
  */
 public class LibrarySourceConnectionResolver implements SourceConnectionResolver {
 
@@ -68,5 +68,10 @@ public class LibrarySourceConnectionResolver implements SourceConnectionResolver
         library.getSourceCredentials(),
         library.isSourceInsecureSsl(),
         ConnectorData.storedIn(library));
+  }
+
+  @Override
+  public ConnectorData effectiveSettings(KnowledgeLibrary library) {
+    return ConnectorData.storedIn(library);
   }
 }

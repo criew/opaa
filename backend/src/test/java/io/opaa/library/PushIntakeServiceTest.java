@@ -10,6 +10,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.opaa.common.UnauthorizedException;
+import io.opaa.indexing.source.LibrarySourceConnectionResolver;
 import io.opaa.indexing.source.PushIntakeHandler;
 import io.opaa.indexing.source.SourceConnectorRegistry;
 import io.opaa.knowledge.KnowledgeLibrary;
@@ -38,7 +39,8 @@ class PushIntakeServiceTest {
   private final SourceConnectorRegistry connectors = mock(SourceConnectorRegistry.class);
   private final PushIntakeHandler confluence = mock(PushIntakeHandler.class);
   private final PushIntakeHandler s3 = mock(PushIntakeHandler.class);
-  private final PushIntakeService service = new PushIntakeService(libraries, connectors);
+  private final PushIntakeService service =
+      new PushIntakeService(libraries, connectors, new LibrarySourceConnectionResolver());
 
   {
     when(connectors.pushIntakeHandlers()).thenReturn(List.of(confluence, s3));

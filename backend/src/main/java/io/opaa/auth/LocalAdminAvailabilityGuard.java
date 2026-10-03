@@ -1,28 +1,20 @@
 package io.opaa.auth;
 
-import io.opaa.api.types.ProviderType;
 import io.opaa.api.types.SystemRole;
 import io.opaa.common.ConflictException;
-import java.time.Clock;
-import java.time.Instant;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
  * The one place that checks "never without a login-capable system administrator" (ADR-0033,
- * Entscheidung 4). Login capable is a {@code SYSTEM_ADMIN} that is either a local account for which
- * {@link LocalAccountAccess#isLoginCapable} holds - the one rule the login, the rotation and the
- * token validator apply, not a second formulation - or an account of an <em>enabled</em> OIDC
- * provider (in the {@code dev} mode: of the dev issuer, the trusted provider of ADR-0005). An
- * administrator of a disabled provider, a locked, expired or still invited local account, and one
- * the directory synchronisation locked (#1818) does not count.
+ * Entscheidung 4). Login capable is a {@code SYSTEM_ADMIN} whose account {@link AccountUsability}
+ * reports usable - inactivity is not asked here. An administrator of a disabled provider, a locked,
+ * expired or still invited local account, and one the directory synchronisation locked does not
+ * count.
  *
  * <p>Every path that could remove the last such administrator runs through here under the advisory
  * lock {@link UserRepository#lockRoleChanges} of the organization, so two concurrent changes never
@@ -46,25 +38,12 @@ public class LocalAdminAvailabilityGuard {
       "Ohne diesen Anbieter bliebe kein anmeldefähiger Systemverwalter übrig. Richten Sie zuerst"
           + " ein lokales Systemverwalterkonto mit Passwort ein.";
 
-  private static final String DEV_MODE = "dev";
-
   private final UserRepository users;
-  private final LocalCredentialsRepository credentials;
-  private final OidcProviderRepository providers;
-  private final AuthProperties authProperties;
-  private final Clock clock;
+  private final AccountUsability usability;
 
-  public LocalAdminAvailabilityGuard(
-      UserRepository users,
-      LocalCredentialsRepository credentials,
-      OidcProviderRepository providers,
-      AuthProperties authProperties,
-      Clock clock) {
+  public LocalAdminAvailabilityGuard(UserRepository users, AccountUsability usability) {
     this.users = users;
-    this.credentials = credentials;
-    this.providers = providers;
-    this.authProperties = authProperties;
-    this.clock = clock;
+    this.usability = usability;
   }
 
   /**
@@ -139,55 +118,12 @@ public class LocalAdminAvailabilityGuard {
 
   private long countLoginCapable(
       UUID organizationId, Set<UUID> excludedUserIds, UUID excludedProviderId) {
-    Instant now = clock.instant();
-    List<OidcProvider> enabledProviders =
-        providers.findAllByEnabledTrueOrderBySortOrderAscDisplayNameAsc().stream()
-            .filter(provider -> provider.getProviderType() == ProviderType.OIDC)
-            .filter(provider -> !provider.getId().equals(excludedProviderId))
-            .toList();
-    String devIssuer =
-        DEV_MODE.equals(authProperties.mode()) ? authProperties.dev().issuer() : null;
     List<User> admins =
         users.findByOrganizationIdAndSystemRole(organizationId, SystemRole.SYSTEM_ADMIN).stream()
             .filter(admin -> !excludedUserIds.contains(admin.getId()))
             .toList();
-    Map<UUID, LocalCredentials> localRows =
-        credentials
-            .findAllById(
-                admins.stream()
-                    .filter(admin -> LocalIssuer.URN.equals(admin.getIssuer()))
-                    .map(User::getId)
-                    .toList())
-            .stream()
-            .collect(Collectors.toMap(LocalCredentials::getUserId, Function.identity()));
-    return admins.stream()
-        .filter(admin -> isLoginCapable(admin, localRows, enabledProviders, devIssuer, now))
+    return usability.snapshotWithoutProvider(excludedProviderId).statesOf(admins).values().stream()
+        .filter(AccountUsability.State::isUsable)
         .count();
-  }
-
-  private static boolean isLoginCapable(
-      User admin,
-      Map<UUID, LocalCredentials> localRows,
-      List<OidcProvider> enabledProviders,
-      String devIssuer,
-      Instant now) {
-    // #1818: a lock from the directory takes the access away regardless of the issuer behind it.
-    if (admin.isDirectoryLocked()) {
-      return false;
-    }
-    if (LocalIssuer.URN.equals(admin.getIssuer())) {
-      LocalCredentials row = localRows.get(admin.getId());
-      return row != null && LocalAccountAccess.isLoginCapable(row, now);
-    }
-    if (devIssuer != null && OidcIssuerUris.normalize(devIssuer).equals(normalize(admin))) {
-      return true;
-    }
-    return enabledProviders.stream()
-        .anyMatch(
-            provider -> OidcIssuerUris.normalize(provider.getIssuerUri()).equals(normalize(admin)));
-  }
-
-  private static String normalize(User admin) {
-    return OidcIssuerUris.normalize(admin.getIssuer());
   }
 }

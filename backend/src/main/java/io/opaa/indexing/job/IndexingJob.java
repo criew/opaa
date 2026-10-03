@@ -137,6 +137,13 @@ public class IndexingJob {
   @Column(name = "unlisted_scope_keys")
   private String unlistedScopeKeys;
 
+  /**
+   * how many areas this run could not read while listing everything else - their known documents
+   * were kept, the rest reconciled. {@code null} for every run without such areas.
+   */
+  @Column(name = "unreadable_scope_count")
+  private Integer unreadableScopeCount;
+
   /** the run's own cost figures; {@code null} until the executor records them at the end. */
   @Column(name = "requests_sent")
   private Integer requestsSent;
@@ -304,6 +311,14 @@ public class IndexingJob {
   public void recordListingAssessment(boolean complete, List<String> keys) {
     this.listingComplete = complete;
     this.unlistedScopeKeys = complete || keys.isEmpty() ? null : String.join(",", keys);
+  }
+
+  public Integer getUnreadableScopeCount() {
+    return unreadableScopeCount;
+  }
+
+  public void recordUnreadableScopes(int count) {
+    this.unreadableScopeCount = count;
   }
 
   /** The metrics the run recorded, or {@code null} when it recorded none. */

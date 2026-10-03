@@ -159,6 +159,15 @@ class ServiceAccountTokensTest {
   }
 
   @Test
+  void anOversizedAnswerIsNamedAsSuch() {
+    endpoint.answer(new FakeTokenEndpoint.Answer(200, "{\"x\":\"" + "a".repeat(70_000) + "\"}"));
+
+    assertThatThrownBy(() -> tokens.accessToken(storedKey(), null, auth, null))
+        .isInstanceOf(SourceCredentialsException.class)
+        .hasMessageContaining("zu große Antwort");
+  }
+
+  @Test
   void aBlockedTokenEndpointIsNeverContacted() {
     ServiceAccountTokens guarded =
         new ServiceAccountTokens(new TargetAddressValidator(true, List.of()), clock);

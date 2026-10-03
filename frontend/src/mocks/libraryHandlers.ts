@@ -406,8 +406,8 @@ export const libraryHandlers = [
       }
       return HttpResponse.json({
         reachable: true,
-        documentCount: 3,
-        message: 'Verzeichnis erreichbar, 3 Dokumente gefunden.',
+        documentCount: null,
+        message: 'Verzeichnis erreichbar.',
       })
     }
     if (body.sourceType === 'HTTP_DIRECTORY') {

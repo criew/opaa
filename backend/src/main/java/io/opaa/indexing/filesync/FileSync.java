@@ -20,6 +20,7 @@ import io.opaa.indexing.source.SourceSyncStateRepository;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.LibraryFolderService;
+import io.opaa.knowledge.SourceDocumentContext;
 import io.opaa.sourceaccess.SourceRequestMeter;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -30,6 +31,8 @@ import java.time.Instant;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -54,9 +57,10 @@ import org.slf4j.LoggerFactory;
  * change feature decides before any download, and only a listing that reached the last page of
  * every container is {@link ListingOutcome.Complete}. An unlistable container keeps its bestand; a
  * {@link FileAccessException.RunEnding} fails the run. A resumed run lists the unfinished
- * containers first and keeps the start cursors its first begin held ({@link SourceSyncState}).
- * Downloads run concurrently but are ingested in listing order; {@link #close()} ends every
- * download thread and deletes every temp file.
+ * containers first and keeps the start cursors its first begin held ({@link SourceSyncState}). A
+ * store may skip folders whose marker it was recalled unchanged; a complete full sync remembers the
+ * markers of every folder without an unsettled entry. Downloads run concurrently but are ingested
+ * in listing order; {@link #close()} ends every download thread and deletes every temp file.
  */
 public final class FileSync implements AutoCloseable {
 
@@ -94,6 +98,29 @@ public final class FileSync implements AutoCloseable {
 
   private final AtomicInteger downloadThreads = new AtomicInteger();
   private ExecutorService downloadPool;
+
+  /** What the last complete full sync remembered, if still valid. */
+  private SourceSyncState.SubtreeMemory remembered = SourceSyncState.SubtreeMemory.NONE;
+
+  /** Per container key, the folder markers the store was recalled. */
+  private final Map<String, Map<String, String>> recalled = new HashMap<>();
+
+  /** The containers whose store reports folders: their entries are checked against their place. */
+  private final Set<String> reportingFolders = new HashSet<>();
+
+  private Instant memoryEstablishedAt;
+
+  /** Per container key, the markers of the folders listed this run. */
+  private final Map<String, Map<String, String>> listedMarkers = new LinkedHashMap<>();
+
+  /** Per container key, the recalled markers in and below the folders reported unchanged. */
+  private final Map<String, Map<String, String>> carriedMarkers = new LinkedHashMap<>();
+
+  /**
+   * Per container key, the hierarchy paths of entries whose stored state does not reflect this
+   * run's listing - a folder above one is listed again next time.
+   */
+  private final Map<String, Set<String>> unsettled = new HashMap<>();
 
   private final Map<String, Duration> containerDurations = new LinkedHashMap<>();
   private final Map<String, Long> notADocumentNotes = new LinkedHashMap<>();
@@ -137,6 +164,7 @@ public final class FileSync implements AutoCloseable {
     List<FileContainer> containers = store.containers();
     List<FileContainer> ordered = orderForResumption(containers, state);
     boolean resumed = state.isFullSyncInterrupted();
+    recallSubtrees(state.subtreeMemory());
     state.beginFullSync(frame.jobId());
     holdStartCursors(containers, resumed);
     SourceSyncState saved = syncStateRepository.save(state);
@@ -146,6 +174,9 @@ public final class FileSync implements AutoCloseable {
     try {
       for (FileContainer container : ordered) {
         Instant start = clock.instant();
+        Map<String, String> markers = recallFor(container);
+        recalled.put(container.key(), markers);
+        store.recall(container, markers);
         boolean listedCompletely = listContainer(container);
         drainAll();
         containerDurations.put(container.key(), Duration.between(start, clock.instant()));
@@ -173,6 +204,7 @@ public final class FileSync implements AutoCloseable {
         reconciled -> {
           folderMirror.prune();
           if (reconciled) {
+            completedState.rememberSubtrees(rememberedSubtrees());
             completedState.completeFullSync(clock.instant());
             syncStateRepository.save(completedState);
           } else {
@@ -257,6 +289,99 @@ public final class FileSync implements AutoCloseable {
     cleanupService.removeWithAttachments(document.get(), frame.events(), wording.goneConfirmed());
     frame.markAbsent(filePath);
     frame.progress().recordSkipped();
+  }
+
+  /**
+   * Recalls the remembered folder markers when they were judged under this run's size bound and
+   * formats and are younger than {@link FileSyncSettings#subtreeMemoryMaxAge()}; otherwise this run
+   * lists every folder and starts a new memory.
+   */
+  private void recallSubtrees(SourceSyncState.SubtreeMemory memory) {
+    Instant now = clock.instant();
+    Duration maxAge = settings.subtreeMemoryMaxAge();
+    boolean valid =
+        memoryBasis().equals(memory.basis())
+            && memory.establishedAt() != null
+            && (maxAge == null || memory.establishedAt().plus(maxAge).isAfter(now));
+    remembered = valid ? memory : SourceSyncState.SubtreeMemory.NONE;
+    memoryEstablishedAt = valid ? memory.establishedAt() : now;
+  }
+
+  /**
+   * The markers {@code container} is recalled: none once a document was removed outside a run
+   * (fewer rows than the sync left), and none for a folder holding a document awaiting a visit -
+   * marked for reprocessing or not indexed - so such a folder is listed again.
+   */
+  private Map<String, String> recallFor(FileContainer container) {
+    Map<String, String> markers = remembered.containers().get(container.key());
+    Long count = remembered.documentCounts().get(container.key());
+    UUID libraryId = frame.library().getId();
+    if (markers == null
+        || count == null
+        || documentRepository.countByLibraryIdAndSourceContainerKey(libraryId, container.key())
+            < count) {
+      return Map.of();
+    }
+    List<String> awaiting =
+        documentRepository.findHierarchyPathsAwaitingAVisit(libraryId, container.key()).stream()
+            .map(path -> path == null ? "" : path)
+            .toList();
+    Map<String, String> effective = new HashMap<>(markers);
+    effective.keySet().removeIf(folder -> awaiting.stream().anyMatch(p -> covers(folder, p)));
+    return effective;
+  }
+
+  /** What a remembered marker presumes besides the folder: the size bound and the formats. */
+  private String memoryBasis() {
+    return "v1|"
+        + settings.maxFileSizeBytes()
+        + "|"
+        + String.join(",", supportedFormats.extensions().stream().sorted().toList());
+  }
+
+  /**
+   * The markers the next run is recalled: those of every listed folder and those carried over from
+   * unchanged ones, except a folder in or above an entry this run left unsettled.
+   */
+  private SourceSyncState.SubtreeMemory rememberedSubtrees() {
+    Map<String, Map<String, String>> containers = new LinkedHashMap<>();
+    Map<String, Long> counts = new LinkedHashMap<>();
+    Set<String> keys = new LinkedHashSet<>(carriedMarkers.keySet());
+    keys.addAll(listedMarkers.keySet());
+    for (String key : keys) {
+      Map<String, String> markers = new HashMap<>(carriedMarkers.getOrDefault(key, Map.of()));
+      markers.putAll(listedMarkers.getOrDefault(key, Map.of()));
+      Set<String> open = unsettled.getOrDefault(key, Set.of());
+      markers.keySet().removeIf(folder -> open.stream().anyMatch(path -> covers(folder, path)));
+      if (!markers.isEmpty()) {
+        containers.put(key, markers);
+        counts.put(
+            key,
+            documentRepository.countByLibraryIdAndSourceContainerKey(frame.library().getId(), key));
+      }
+    }
+    return new SourceSyncState.SubtreeMemory(
+        memoryBasis(), memoryEstablishedAt, containers, counts);
+  }
+
+  /** Whether a row can carry {@code hierarchyPath} uncut, so its folder finds it again. */
+  private static boolean inPlace(String hierarchyPath) {
+    return hierarchyPath == null || hierarchyPath.length() <= Document.MAX_HIERARCHY_PATH;
+  }
+
+  /** Whether {@code path} is the folder {@code folder} or lies below it. */
+  static boolean covers(String folder, String path) {
+    return folder.isEmpty()
+        || path.equals(folder)
+        || path.startsWith(folder + SourceDocumentContext.HIERARCHY_SEPARATOR);
+  }
+
+  /** The entry's stored state does not reflect this run: its folders are listed again next time. */
+  private void unsettle(FileEntry entry) {
+    String path = entry.context().hierarchyPath();
+    unsettled
+        .computeIfAbsent(entry.container().key(), key -> new HashSet<>())
+        .add(path == null ? "" : path);
   }
 
   /** Unfinished containers of an interrupted full sync first, then the already completed ones. */
@@ -377,8 +502,41 @@ public final class FileSync implements AutoCloseable {
       total += admitted.size();
       frame.progress().setTotal(total);
       frame.progress().report();
+      if (!page.unchangedSubtrees().isEmpty() || !page.listedSubtrees().isEmpty()) {
+        requireContainerContext(container, page);
+        reportingFolders.add(container.key());
+        Map<String, String> handedOver = recalled.getOrDefault(container.key(), Map.of());
+        String unknown =
+            page.unchangedSubtrees().stream()
+                .filter(folder -> !handedOver.containsKey(folder))
+                .findFirst()
+                .orElse(null);
+        if (unknown != null) {
+          // a folder whose marker was never handed over cannot be known unchanged: keep the bestand
+          log.warn(
+              "Store reported folder \"{}\" of {} unchanged without a recalled marker",
+              unknown,
+              container.key());
+          frame
+              .events()
+              .record(
+                  IndexingEventCategory.REJECTED,
+                  "Geltungsbereich „"
+                      + container.key()
+                      + "“: Der Ordner „"
+                      + unknown
+                      + "“ wurde ohne Prüfung als unverändert gemeldet."
+                      + UNLISTABLE_CONTAINER_SUFFIX,
+                  container.key());
+          unlistedContainerKeys.add(container.key());
+          return false;
+        }
+        listedMarkers
+            .computeIfAbsent(container.key(), key -> new HashMap<>())
+            .putAll(page.listedSubtrees());
+      }
       for (String subtree : page.unchangedSubtrees()) {
-        keepUnchangedSubtree(subtree);
+        keepUnchangedSubtree(container, subtree);
       }
       for (FileEntry entry : admitted) {
         visit(entry);
@@ -388,13 +546,42 @@ public final class FileSync implements AutoCloseable {
     return true;
   }
 
-  /** Every stored row below {@code prefix} stays present and keeps its folder. */
-  private void keepUnchangedSubtree(String prefix) {
-    for (Document document :
-        documentRepository.findByLibraryIdAndFilePathStartingWith(
-            frame.library().getId(), prefix)) {
+  /**
+   * Every stored row of the container in or below {@code folder} stays present and keeps its
+   * folder; the recalled markers there carry over to the next run.
+   */
+  private void keepUnchangedSubtree(FileContainer container, String folder) {
+    UUID libraryId = frame.library().getId();
+    List<Document> documents =
+        folder.isEmpty()
+            ? documentRepository.findByLibraryIdAndSourceContainerKey(libraryId, container.key())
+            : documentRepository.findInHierarchy(libraryId, container.key(), folder);
+    for (Document document : documents) {
       frame.markPresent(document.getFilePath());
       folderMirror.markSeen(document.getFolderId());
+    }
+    Map<String, String> carried =
+        carriedMarkers.computeIfAbsent(container.key(), key -> new HashMap<>());
+    recalled
+        .getOrDefault(container.key(), Map.of())
+        .forEach(
+            (path, marker) -> {
+              if (covers(folder, path)) {
+                carried.put(path, marker);
+              }
+            });
+  }
+
+  /** A store that reports folders names the container in every entry's context (FileStore#list). */
+  private static void requireContainerContext(FileContainer container, FilePage page) {
+    for (FileEntry entry : page.entries()) {
+      if (!container.key().equals(entry.context().containerKey())) {
+        throw new IllegalStateException(
+            "entry "
+                + entry.filePath()
+                + " of a store reporting folders carries another container key than "
+                + container.key());
+      }
     }
   }
 
@@ -426,10 +613,18 @@ public final class FileSync implements AutoCloseable {
     UUID folderId = existing.isPresent() ? folderFor(entry) : null;
     existing.ifPresent(document -> mirrorFolder(document, folderId));
     if (entry.exclusion() instanceof Exclusion.Unavailable unavailable) {
+      // it may become readable without its folder changing: not settled
+      unsettle(entry);
       skip(IndexingEventCategory.REJECTED, unavailable.message(), filePath);
       return;
     }
+    if (reportingFolders.contains(entry.container().key())
+        && !inPlace(entry.context().hierarchyPath())) {
+      // a cut path cannot be found again under its folder: that folder is never skipped
+      unsettle(entry);
+    }
     if (entry.size() > settings.maxFileSizeBytes()) {
+      existing.ifPresent(document -> unsettle(entry));
       skip(
           IndexingEventCategory.REJECTED,
           wording.tooLarge(entry, settings.maxFileSizeBytes()),
@@ -437,12 +632,24 @@ public final class FileSync implements AutoCloseable {
       return;
     }
     String marker = entry.changeMarker();
-    if (marker != null && existing.filter(document -> document.isUnchangedAt(marker)).isPresent()) {
+    // For a store that reports folders the row must also stand at the listed place - a folder is
+    // kept by the hierarchy path of its rows; a renamed or moved file is fetched once and moves.
+    boolean reportsFolders = reportingFolders.contains(entry.container().key());
+    if (marker != null
+        && existing
+            .filter(document -> document.isUnchangedAt(marker))
+            .filter(
+                document ->
+                    !reportsFolders
+                        || (document.holdsSourceContext(entry.context())
+                            && entry.fileName().equals(document.getFileName())))
+            .isPresent()) {
       log.debug("Skipping unchanged file: {}", filePath);
       frame.progress().recordSkipped();
       return;
     }
     if (!supportedByName && !headAdmits(entry)) {
+      existing.ifPresent(document -> unsettle(entry));
       return;
     }
     enqueueDownload(entry, existing.isPresent() ? folderId : folderFor(entry));
@@ -514,6 +721,7 @@ public final class FileSync implements AutoCloseable {
       if (e.getCause() instanceof RequestBudgetExhaustedException exhausted) {
         throw exhausted;
       }
+      unsettle(item.entry());
       if (e.getCause() instanceof FileAccessException failure) {
         handleFailure(item.entry().filePath(), failure);
       } else {
@@ -590,6 +798,7 @@ public final class FileSync implements AutoCloseable {
     try {
       head = store.head(entry.container(), entry.id());
     } catch (FileAccessException e) {
+      unsettle(entry);
       return handleFailure(entry.filePath(), e);
     }
     if (head.exclusion() instanceof Exclusion.Deselected) {
@@ -597,6 +806,7 @@ public final class FileSync implements AutoCloseable {
       return false;
     }
     if (head.exclusion() instanceof Exclusion.Unavailable unavailable) {
+      unsettle(entry);
       skip(IndexingEventCategory.REJECTED, unavailable.message(), entry.filePath());
       return false;
     }
@@ -618,6 +828,7 @@ public final class FileSync implements AutoCloseable {
     try {
       return store.fetch(entry, settings.maxFileSizeBytes());
     } catch (FileAccessException e) {
+      unsettle(entry);
       handleFailure(entry.filePath(), e);
       return null;
     }
@@ -643,6 +854,11 @@ public final class FileSync implements AutoCloseable {
                   .folder(folderId)
                   .build(),
               attachmentAccess);
+      if (result != DocumentIngestResult.PROCESSED
+          && result != DocumentIngestResult.SKIPPED
+          && result != DocumentIngestResult.NO_EXTRACTABLE_TEXT) {
+        unsettle(entry);
+      }
       if (frame.recordOutcome(result, filePath)) {
         frame.markReprocessed(filePath);
         log.info("Indexed {} file: {}", frame.sourceType(), filePath);
@@ -656,6 +872,7 @@ public final class FileSync implements AutoCloseable {
         log.info("{} changed its feature but not its checksum, provenance refreshed", filePath);
       }
     } catch (Exception e) {
+      unsettle(entry);
       IndexingRun.rethrowRunEnding(e);
       frame.recordFailure(filePath, e);
     } finally {
