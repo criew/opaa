@@ -433,6 +433,9 @@ describe('SpaceSettingsPage', () => {
     expect(
       screen.getByText('Gruppen geben ihre Rolle an alle ihre Mitglieder weiter.'),
     ).toBeInTheDocument()
+    // Each row's controls name their member, so a screen reader can tell the rows apart.
+    expect(await screen.findByRole('combobox', { name: 'Rolle von Colleague' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Colleague entfernen' })).toBeInTheDocument()
   })
 
   it('marks the owner and hides remove/transfer actions for their own row', async () => {

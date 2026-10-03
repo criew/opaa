@@ -192,6 +192,7 @@ export default function SpaceMembersSection({
                     <Select
                       size="small"
                       value={member.role}
+                      aria-label={`Rolle von ${memberLabel}`}
                       onChange={async (event) => {
                         const nextRole = event.target.value as SpaceRole
                         setLocalError(null)
@@ -216,6 +217,7 @@ export default function SpaceMembersSection({
                   {canManage && !memberIsOwner && (
                     <Button
                       color="error"
+                      aria-label={`${memberLabel} entfernen`}
                       size="small"
                       onClick={async () => {
                         const confirmed = await confirmAction({
