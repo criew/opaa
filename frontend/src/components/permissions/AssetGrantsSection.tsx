@@ -5,10 +5,13 @@ import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
 import Divider from '@mui/material/Divider'
 import FormControl from '@mui/material/FormControl'
+import FormControlLabel from '@mui/material/FormControlLabel'
 import IconButton from '@mui/material/IconButton'
 import InputLabel from '@mui/material/InputLabel'
 import Link from '@mui/material/Link'
 import MenuItem from '@mui/material/MenuItem'
+import Radio from '@mui/material/Radio'
+import RadioGroup from '@mui/material/RadioGroup'
 import Select from '@mui/material/Select'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
@@ -412,51 +415,68 @@ export default function AssetGrantsSection({
           <SectionHead component="h3">Freigeben</SectionHead>
           {formError && <Alert severity="error">{formError}</Alert>}
 
-          <SubjectPicker
-            labelId="grant-subject-type-label"
-            allowAllAccounts
-            value={subject}
-            onChange={(next) => {
-              // Eine getippte Kennung gehört zu genau einer Art von Empfänger: Wer von Gruppe
-              // auf Person umstellt, hätte sonst dieselbe UUID unter „Nutzer-ID" stehen.
-              if (next.type !== subject.type) setManualId('')
-              // Der Deckel für „Alle Konten" gilt auch für eine vorher gewählte Rolle.
-              if (!rolesFor(next.type).includes(role)) setRole('VIEWER')
-              setSubject(next)
-            }}
-            hideSearch={manualIdEntry}
-          />
-
-          {manualIdEntry && subject.type !== 'ALL_ACCOUNTS' && (
-            <TextField
-              label={subject.type === 'GROUP' ? 'Gruppen-ID' : 'Nutzer-ID'}
-              placeholder={subject.type === 'GROUP' ? 'UUID der Gruppe' : 'UUID des Nutzers'}
-              value={manualId}
-              onChange={(e) => setManualId(e.target.value)}
-              size="small"
+          {manualIdEntry ? (
+            <>
+              <FormControl>
+                <Typography
+                  id="grant-manual-id-kind-label"
+                  component="span"
+                  sx={{ fontSize: 13, fontWeight: 600 }}
+                >
+                  Art der Kennung
+                </Typography>
+                <RadioGroup
+                  row
+                  aria-labelledby="grant-manual-id-kind-label"
+                  value={subject.type}
+                  onChange={(event) => {
+                    // A typed id belongs to exactly one kind of recipient.
+                    setManualId('')
+                    setSubject({
+                      type: event.target.value as AssetGrantSubjectType,
+                      user: null,
+                      group: null,
+                    })
+                  }}
+                >
+                  <FormControlLabel value="USER" control={<Radio />} label="Person" />
+                  <FormControlLabel value="GROUP" control={<Radio />} label="Gruppe" />
+                </RadioGroup>
+              </FormControl>
+              <TextField
+                label={subject.type === 'GROUP' ? 'Gruppen-ID' : 'Nutzer-ID'}
+                placeholder={subject.type === 'GROUP' ? 'UUID der Gruppe' : 'UUID des Nutzers'}
+                value={manualId}
+                onChange={(e) => setManualId(e.target.value)}
+                size="small"
+              />
+            </>
+          ) : (
+            <SubjectPicker
+              allowAllAccounts
+              value={subject}
+              onChange={(next) => {
+                // Der Deckel für „Alle Konten" gilt auch für eine vorher gewählte Rolle.
+                if (!rolesFor(next.type).includes(role)) setRole('VIEWER')
+                setSubject(next)
+              }}
             />
           )}
 
           <Typography variant="caption" sx={{ color: 'text.secondary' }}>
             {manualIdEntry
               ? 'Für die Eingabe per Kennung gilt dieselbe Regel wie für die Suche: Was Ihnen die Suche nicht zeigt, ist auch hier nicht zu finden.'
-              : subject.type === 'GROUP'
-                ? 'Angezeigt werden Anbietergruppen und interne Gruppen, die ihre Verantwortlichen zur Verwendung freigegeben haben.'
-                : 'Gesucht wird in Ihrer Organisation.'}{' '}
+              : 'Gesucht wird in Ihrer Organisation. Gruppen erscheinen, wenn sie aus einem Anbieter stammen oder ihre Verantwortlichen sie zur Verwendung freigegeben haben.'}{' '}
             <Link
               component="button"
               type="button"
               onClick={() => {
                 setManualIdEntry((current) => !current)
-                setSubject({ ...subject, user: null, group: null })
+                setSubject(emptySubjectSelection)
                 setManualId('')
               }}
             >
-              {manualIdEntry
-                ? 'Stattdessen suchen'
-                : subject.type === 'GROUP'
-                  ? 'Gruppen-ID eingeben'
-                  : 'Nutzer-ID eingeben'}
+              {manualIdEntry ? 'Stattdessen suchen' : 'Kennung eingeben'}
             </Link>
           </Typography>
 

@@ -255,7 +255,6 @@ const personalSpace: SpaceResponse = {
   description: 'Private docs',
   isDefault: true,
   archived: false,
-  visibility: 'PRIVATE',
   ownerId: 'u1',
   memberCount: 1,
   userRole: 'ADMIN',
@@ -271,7 +270,6 @@ const teamSpace: SpaceResponse = {
   description: 'Team docs',
   isDefault: false,
   archived: false,
-  visibility: 'PRIVATE',
   ownerId: 'u1',
   memberCount: 2,
   userRole: 'ADMIN',
@@ -292,7 +290,6 @@ const nonAdminSpace: SpaceResponse = {
   description: 'Team docs',
   isDefault: false,
   archived: false,
-  visibility: 'PRIVATE',
   ownerId: 'someone-else',
   memberCount: 2,
   userRole: 'MEMBER',
@@ -420,8 +417,22 @@ describe('SpaceSettingsPage', () => {
     renderTab('members')
 
     expect(screen.getByText(/standard-space/i)).toBeInTheDocument()
-    expect(await screen.findByPlaceholderText('Person suchen …')).toBeInTheDocument()
+    expect(await screen.findByPlaceholderText('Person oder Gruppe suchen …')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /^hinzufügen$/i })).toBeInTheDocument()
+  })
+
+  /** #2131: Der Reiter heißt schon „Mitglieder"; das Formular ist die Überschrift des Panels. */
+  it('heads the members tab with the add form only and names what a group passes on', async () => {
+    setSpaceState(teamSpace)
+    renderTab('members')
+
+    expect(
+      await screen.findByRole('heading', { level: 2, name: 'Mitglied hinzufügen' }),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Mitglieder' })).not.toBeInTheDocument()
+    expect(
+      screen.getByText('Gruppen geben ihre Rolle an alle ihre Mitglieder weiter.'),
+    ).toBeInTheDocument()
   })
 
   it('marks the owner and hides remove/transfer actions for their own row', async () => {
@@ -515,8 +526,7 @@ describe('SpaceSettingsPage', () => {
     renderTab('members')
     const user = userEvent.setup()
 
-    await user.click(await screen.findByRole('radio', { name: 'Gruppe' }))
-    await user.type(screen.getByLabelText('Gruppe suchen'), 'Projekt')
+    await user.type(await screen.findByLabelText('Person oder Gruppe suchen'), 'Projekt')
     await user.click(await screen.findByRole('option', { name: /Projektbeteiligte Phoenix/ }))
     await user.click(screen.getByRole('button', { name: /^hinzufügen$/i }))
 
@@ -559,8 +569,7 @@ describe('SpaceSettingsPage', () => {
     renderTab('members')
     const user = userEvent.setup()
 
-    await user.click(await screen.findByRole('radio', { name: 'Gruppe' }))
-    await user.type(screen.getByLabelText('Gruppe suchen'), 'Projekt')
+    await user.type(await screen.findByLabelText('Person oder Gruppe suchen'), 'Projekt')
 
     expect(await screen.findByText(/offline/)).toBeInTheDocument()
   })
@@ -649,12 +658,8 @@ describe('SpaceSettingsPage', () => {
     expect(screen.queryByRole('button', { name: /space löschen/i })).not.toBeInTheDocument()
   })
 
-  it('saves settings by calling updateSpaceDetails with name, description and the unchanged visibility', async () => {
-    // #671 review: OPEN here (not PRIVATE, which is both the draft's initial value and the
-    // fallback for a missing space.visibility) - only this way can the test actually catch a page
-    // that fails to read the space's own visibility and silently sends PRIVATE instead, which
-    // would downgrade an OPEN space on a plain rename.
-    setSpaceState({ ...teamSpace, visibility: 'OPEN' })
+  it('saves settings by calling updateSpaceDetails with name and description only', async () => {
+    setSpaceState(teamSpace)
     renderTab('general')
     const user = userEvent.setup()
 
@@ -667,32 +672,17 @@ describe('SpaceSettingsPage', () => {
         'space-team',
         'Team Renamed',
         'Team docs',
-        'OPEN',
         undefined,
       )
     })
   })
 
-  // #272: the visibility axis (docs/features/spaces-and-assets.md#space-sichtbarkeit) must be
-  // changeable in space management, not just at creation time.
-  it('saves the chosen visibility when it is changed', async () => {
+  /** #2131: Ohne Space-Verzeichnis bewirkt eine Sichtbarkeit nichts - jeder Space ist privat. */
+  it('offers no visibility setting', () => {
     setSpaceState(teamSpace)
     renderTab('general')
-    const user = userEvent.setup()
 
-    await user.click(screen.getByRole('combobox', { name: /sichtbarkeit/i }))
-    await user.click(await screen.findByRole('option', { name: /^offen$/i }))
-    await user.click(screen.getByRole('button', { name: /einstellungen speichern/i }))
-
-    await waitFor(() => {
-      expect(mockUpdateSpaceDetails).toHaveBeenCalledWith(
-        'space-team',
-        'Team',
-        'Team docs',
-        'OPEN',
-        undefined,
-      )
-    })
+    expect(screen.queryByText(/sichtbarkeit/i)).not.toBeInTheDocument()
   })
 
   it('#1923: an admin switches the chat cleanup on, with the periods of the installation', async () => {
@@ -700,20 +690,16 @@ describe('SpaceSettingsPage', () => {
     renderTab('general')
     const user = userEvent.setup()
 
-    expect(screen.getByText(/nach 90 Tagen archiviert und nach weiteren 365 Tagen/)).toBeVisible()
+    expect(screen.getByText('Angeheftete Chats sind ausgenommen.')).toBeVisible()
     await user.click(
-      screen.getByRole('switch', { name: 'Inaktive Chats automatisch archivieren und löschen' }),
+      screen.getByRole('switch', {
+        name: 'Inaktive Chats nach 90 Tagen archivieren und nach weiteren 365 Tagen löschen',
+      }),
     )
     await user.click(screen.getByRole('button', { name: /einstellungen speichern/i }))
 
     await waitFor(() => {
-      expect(mockUpdateSpaceDetails).toHaveBeenCalledWith(
-        'space-team',
-        'Team',
-        'Team docs',
-        'PRIVATE',
-        true,
-      )
+      expect(mockUpdateSpaceDetails).toHaveBeenCalledWith('space-team', 'Team', 'Team docs', true)
     })
   })
 
@@ -722,7 +708,9 @@ describe('SpaceSettingsPage', () => {
     renderTab('general')
 
     expect(
-      screen.getByRole('switch', { name: 'Inaktive Chats automatisch archivieren und löschen' }),
+      screen.getByRole('switch', {
+        name: 'Inaktive Chats nach 90 Tagen archivieren und nach weiteren 365 Tagen löschen',
+      }),
     ).toBeDisabled()
     expect(screen.getByText(/legt nur die Person selbst fest/)).toBeInTheDocument()
   })
@@ -735,7 +723,7 @@ describe('SpaceSettingsPage', () => {
     renderTab('general')
 
     const cleanup = screen.getByRole('switch', {
-      name: 'Inaktive Chats automatisch archivieren und löschen',
+      name: 'Inaktive Chats nach 90 Tagen archivieren und nach weiteren 365 Tagen löschen',
     })
     expect(cleanup).toBeChecked()
     expect(cleanup).toBeDisabled()

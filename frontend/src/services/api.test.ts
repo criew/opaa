@@ -37,7 +37,7 @@ describe('api service', () => {
   })
 
   describe('updateSpaceDetails', () => {
-    it('sends only name, description and visibility - no kind, ownerId or initialMembers', async () => {
+    it('sends only name and description - no visibility, kind, ownerId or initialMembers', async () => {
       let capturedBody: unknown = null
       server.use(
         http.put('/api/v1/spaces/:spaceId', async ({ request }) => {
@@ -46,11 +46,9 @@ describe('api service', () => {
             id: 'space-1',
             name: 'Renamed',
             isDefault: false,
-            reach: { allAccounts: false, groupCount: 0, userCount: 1 },
             ownerId: 'u1',
             memberCount: 1,
             roleCounts: { MEMBER: 0, CURATOR: 0, ADMIN: 1 },
-            members: [],
             createdAt: '2026-03-01T10:00:00Z',
             updatedAt: '2026-03-01T10:00:00Z',
           })
@@ -59,75 +57,41 @@ describe('api service', () => {
 
       await updateSpaceDetails('space-1', 'Renamed', 'A new description')
 
-      expect(capturedBody).toEqual({
-        name: 'Renamed',
-        description: 'A new description',
-        visibility: undefined,
-      })
-    })
-
-    // #272: visibility is merged rather than replaced server-side (SpaceUpdateRequest), but the
-    // caller still sends the value it wants applied - this is the request body the UI produces
-    // when the user actually changes the visibility.
-    it('sends the chosen visibility when the caller changes it', async () => {
-      let capturedBody: unknown = null
-      server.use(
-        http.put('/api/v1/spaces/:spaceId', async ({ request }) => {
-          capturedBody = await request.json()
-          return HttpResponse.json({
-            id: 'space-1',
-            name: 'Renamed',
-            isDefault: false,
-            visibility: 'OPEN',
-            ownerId: 'u1',
-            memberCount: 1,
-            roleCounts: { MEMBER: 0, CURATOR: 0, ADMIN: 1 },
-            members: [],
-            createdAt: '2026-03-01T10:00:00Z',
-            updatedAt: '2026-03-01T10:00:00Z',
-          })
-        }),
-      )
-
-      await updateSpaceDetails('space-1', 'Renamed', 'A new description', 'OPEN')
-
-      expect(capturedBody).toEqual({
-        name: 'Renamed',
-        description: 'A new description',
-        visibility: 'OPEN',
-      })
+      expect(capturedBody).toStrictEqual({ name: 'Renamed', description: 'A new description' })
     })
   })
 
   describe('createSpace', () => {
-    it('sends the chosen visibility in the create request body', async () => {
-      let capturedBody: unknown = null
+    it('sends persons and groups as initial members and no visibility', async () => {
+      let capturedBody: Record<string, unknown> | null = null
       server.use(
         http.post('/api/v1/spaces', async ({ request }) => {
-          capturedBody = await request.json()
+          capturedBody = (await request.json()) as Record<string, unknown>
           return HttpResponse.json({
             id: 'space-new',
             name: 'New Space',
             isDefault: false,
-            visibility: 'DISCOVERABLE',
             ownerId: 'u1',
-            memberCount: 1,
-            roleCounts: { MEMBER: 0, CURATOR: 0, ADMIN: 1 },
-            members: [],
+            memberCount: 3,
+            roleCounts: { MEMBER: 1, CURATOR: 1, ADMIN: 1 },
             createdAt: '2026-03-01T10:00:00Z',
             updatedAt: '2026-03-01T10:00:00Z',
           })
         }),
       )
 
-      await createSpace('New Space', 'A description', 'DISCOVERABLE')
+      const initialMembers = [
+        { subjectType: 'USER' as const, subjectId: 'user-1', role: 'CURATOR' as const },
+        { subjectType: 'GROUP' as const, subjectId: 'group-1', role: 'MEMBER' as const },
+      ]
+      await createSpace('New Space', 'A description', undefined, undefined, initialMembers)
 
       expect(capturedBody).toMatchObject({
         name: 'New Space',
         description: 'A description',
-        visibility: 'DISCOVERABLE',
-        initialMembers: [],
+        initialMembers,
       })
+      expect(capturedBody).not.toHaveProperty('visibility')
     })
 
     it('sends the chosen assets of every type when provided', async () => {
@@ -154,7 +118,7 @@ describe('api service', () => {
         { assetType: 'KNOWLEDGE_LIBRARY' as const, assetId: 'lib-1' },
         { assetType: 'PROMPT_LIBRARY' as const, assetId: 'prompts-1' },
       ]
-      await createSpace('New Space', 'A description', 'PRIVATE', assets)
+      await createSpace('New Space', 'A description', assets)
 
       expect(capturedBody).toMatchObject({ assets })
     })

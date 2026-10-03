@@ -304,7 +304,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
 
     await next(user)
     await nameItAndContinue(user, 'Rechtsquellen Soziales')
-    await user.type(screen.getByRole('combobox', { name: 'Person suchen' }), 'al')
+    await user.type(screen.getByRole('combobox', { name: 'Person oder Gruppe suchen' }), 'al')
     await user.click(await screen.findByRole('option', { name: /Alice/ }))
     await user.click(screen.getByRole('button', { name: 'Vormerken' }))
     await user.click(screen.getByRole('button', { name: 'Bibliothek anlegen' }))
@@ -330,7 +330,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
 
     await next(user)
     await nameItAndContinue(user, 'Rechtsquellen Soziales')
-    await user.type(screen.getByRole('combobox', { name: 'Person suchen' }), 'al')
+    await user.type(screen.getByRole('combobox', { name: 'Person oder Gruppe suchen' }), 'al')
     await user.click(await screen.findByRole('option', { name: /Alice/ }))
     await user.click(screen.getByRole('button', { name: 'Vormerken' }))
     await user.click(screen.getByRole('button', { name: 'Bibliothek anlegen' }))
@@ -370,8 +370,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
 
     await next(user)
     await nameItAndContinue(user, 'Rechtsquellen Soziales')
-    await user.click(await screen.findByRole('radio', { name: /^gruppe$/i }))
-    await user.type(await screen.findByLabelText(/^gruppe suchen$/i), 'Referat')
+    await user.type(await screen.findByLabelText('Person oder Gruppe suchen'), 'Referat')
     await user.click(await screen.findByRole('option', { name: /Referat 50/ }))
     await user.click(screen.getByRole('button', { name: 'Vormerken' }))
 

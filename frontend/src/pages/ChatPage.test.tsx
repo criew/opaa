@@ -56,7 +56,6 @@ function setEngineeringSpace(archived: boolean) {
         description: null,
         isDefault: false,
         archived,
-        visibility: 'PRIVATE',
         memberCount: 1,
         memberships: { groupCount: 0, userCount: 1 },
         userRole: 'ADMIN',

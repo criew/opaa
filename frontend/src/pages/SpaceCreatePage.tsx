@@ -1,20 +1,29 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import Alert from '@mui/material/Alert'
-import Autocomplete from '@mui/material/Autocomplete'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import FormControl from '@mui/material/FormControl'
-import FormHelperText from '@mui/material/FormHelperText'
 import IconButton from '@mui/material/IconButton'
 import MenuItem from '@mui/material/MenuItem'
 import Select from '@mui/material/Select'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import DeleteIcon from '@mui/icons-material/Delete'
+import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
+import PersonOutlineIcon from '@mui/icons-material/PersonOutlined'
 import { useLocation, useNavigate } from 'react-router'
 import PageHeading from '../components/a11y/PageHeading'
 import AssetTilePicker from '../components/assets/AssetTilePicker'
 import type { AssetPick, SpaceCreateLocationState } from '../components/assets/assetPick'
+import { assetTypeDefinition } from '../components/assets/assetTypeRegistry'
+import SubjectFormRow from '../components/permissions/SubjectFormRow'
+import SubjectPicker from '../components/permissions/SubjectPicker'
+import {
+  confirmExternalSubject,
+  emptySubjectSelection,
+  groupLabel,
+  selectedSubjectId,
+  type SubjectSelection,
+} from '../components/permissions/subjectSelection'
 import ChatAutoCleanupField from '../components/space/ChatAutoCleanupField'
 import FieldLabel from '../components/wizard/FieldLabel'
 import WizardStepBar from '../components/wizard/WizardStepBar'
@@ -22,15 +31,9 @@ import { confirmAction } from '../stores/confirmStore'
 import { useAuthStore } from '../stores/authStore'
 import { useSpaceStore } from '../stores/spaceStore'
 import { useMyCapabilities } from '../hooks/useMyCapabilities'
-import { useUserSearch } from '../hooks/useUserSearch'
-import {
-  capabilityMissingMessage,
-  spaceRoleLabel,
-  spaceVisibilities,
-  spaceVisibilityDescription,
-  spaceVisibilityLabel,
-} from '../utils/labels'
-import type { SpaceRole, SpaceVisibility, UserSummary } from '../types/api'
+import { getChatAutoCleanupPeriods } from '../services/spaceApi'
+import { capabilityMissingMessage, spaceRoleLabel } from '../utils/labels'
+import type { ChatAutoCleanupPeriods, PermissionSubjectType, SpaceRole } from '../types/api'
 
 const STEPS = ['Grunddaten', 'Mitglieder', 'Inhalte', 'Zusammenfassung'] as const
 
@@ -40,9 +43,46 @@ export const NO_KNOWLEDGE_SUMMARY =
 const MEMBER_ROLES: SpaceRole[] = ['MEMBER', 'CURATOR', 'ADMIN']
 
 interface PendingMember {
-  user: UserSummary
+  subjectType: PermissionSubjectType
+  subjectId: string
+  label: string
   role: SpaceRole
 }
+
+function pendingKey(member: { subjectType: string; subjectId: string }): string {
+  return `${member.subjectType}:${member.subjectId}`
+}
+
+/** One summary row; its value may be a list. */
+function SummaryRow({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <Box sx={{ display: 'flex', gap: 2 }}>
+      <Typography
+        component="span"
+        sx={{ fontSize: 12.5, color: 'text.secondary', width: 120, flex: 'none', pt: 0.25 }}
+      >
+        {label}
+      </Typography>
+      <Box sx={{ fontSize: 13.5, minWidth: 0 }}>{children}</Box>
+    </Box>
+  )
+}
+
+/** One summary list item: a small symbol, while the text carries the meaning. */
+function SummaryItem({ icon, children }: { icon: ReactNode; children: ReactNode }) {
+  return (
+    <Box component="li" sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+      <Box component="span" aria-hidden sx={{ display: 'inline-flex', color: 'text.secondary' }}>
+        {icon}
+      </Box>
+      <Typography component="span" sx={{ fontSize: 13.5 }}>
+        {children}
+      </Typography>
+    </Box>
+  )
+}
+
+const summaryListSx = { listStyle: 'none', m: 0, p: 0, display: 'grid', gap: 0.5 } as const
 
 /**
  * The space creation wizard (#594, mockup 1b): Grunddaten, Mitglieder, Inhalte, Zusammenfassung.
@@ -59,18 +99,11 @@ export default function SpaceCreatePage() {
   const [activeStep, setActiveStep] = useState(0)
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
-  const [visibility, setVisibility] = useState<SpaceVisibility>('PRIVATE')
   const [chatAutoCleanup, setChatAutoCleanup] = useState(false)
+  const [cleanupPeriods, setCleanupPeriods] = useState<ChatAutoCleanupPeriods | null>(null)
   const [pendingMembers, setPendingMembers] = useState<PendingMember[]>([])
-  const [selectedUser, setSelectedUser] = useState<UserSummary | null>(null)
+  const [subject, setSubject] = useState<SubjectSelection>(emptySubjectSelection)
   const [selectedRole, setSelectedRole] = useState<SpaceRole>('MEMBER')
-  const {
-    query: userQuery,
-    setQuery: setUserQuery,
-    users: userResults,
-    isLoading: isSearchingUsers,
-    error: userSearchError,
-  } = useUserSearch()
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   // ADR-0036, Entscheidung 5: a missing Anlegerecht is explained, not hidden - the button stays
@@ -80,11 +113,40 @@ export default function SpaceCreatePage() {
   // Only what the creator may read is offered; the backend re-checks the same rule on creation.
   const [selectedAssets, setSelectedAssets] = useState<AssetPick[]>(preselect ? [preselect] : [])
 
-  const availableUsers = useMemo(() => {
-    // The creator becomes the owner and ADMIN anyway; offering them would only be overruled.
-    const excluded = new Set([...pendingMembers.map((m) => m.user.id), currentUserId])
-    return userResults.filter((u) => !excluded.has(u.id))
-  }, [userResults, pendingMembers, currentUserId])
+  // The operator sets the periods; without an answer the switch names no numbers.
+  useEffect(() => {
+    let active = true
+    getChatAutoCleanupPeriods()
+      .then((periods) => {
+        if (active) setCleanupPeriods(periods)
+      })
+      .catch(() => undefined)
+    return () => {
+      active = false
+    }
+  }, [])
+
+  // The creator becomes the owner and ADMIN anyway; offering them would only be overruled.
+  const excludedUserIds = [
+    ...pendingMembers.filter((m) => m.subjectType === 'USER').map((m) => m.subjectId),
+    ...(currentUserId ? [currentUserId] : []),
+  ]
+  const excludedGroupIds = pendingMembers
+    .filter((m) => m.subjectType === 'GROUP')
+    .map((m) => m.subjectId)
+
+  const handleNoteMember = async () => {
+    const subjectId = selectedSubjectId(subject)
+    if (!subjectId || subject.type === 'ALL_ACCOUNTS') return
+    if (!(await confirmExternalSubject(subject))) return
+    const label =
+      subject.type === 'GROUP' && subject.group
+        ? groupLabel(subject.group)
+        : (subject.user?.displayName ?? subject.user?.email ?? subjectId)
+    const subjectType: PermissionSubjectType = subject.type
+    setPendingMembers((prev) => [...prev, { subjectType, subjectId, label, role: selectedRole }])
+    setSubject(emptySubjectSelection)
+  }
 
   const isDirty =
     name.trim() !== '' ||
@@ -111,10 +173,13 @@ export default function SpaceCreatePage() {
       const spaceId = await createNewSpace(
         name.trim(),
         description.trim(),
-        visibility,
         selectedAssets.map(({ assetType, assetId }) => ({ assetType, assetId })),
         chatAutoCleanup,
-        pendingMembers.map((member) => ({ userId: member.user.id, role: member.role })),
+        pendingMembers.map(({ subjectType, subjectId, role }) => ({
+          subjectType,
+          subjectId,
+          role,
+        })),
       )
       navigate(`/spaces/${spaceId}`)
     } catch (err) {
@@ -176,29 +241,12 @@ export default function SpaceCreatePage() {
                 fullWidth
               />
             </Box>
-            <FormControl fullWidth>
-              <FieldLabel id="space-create-visibility-label">Sichtbarkeit</FieldLabel>
-              <Select
-                labelId="space-create-visibility-label"
-                size="small"
-                value={visibility}
-                onChange={(e) => setVisibility(e.target.value as SpaceVisibility)}
-                aria-describedby="space-create-visibility-helper"
-              >
-                {spaceVisibilities.map((option) => (
-                  <MenuItem key={option} value={option}>
-                    {spaceVisibilityLabel(option)}
-                  </MenuItem>
-                ))}
-              </Select>
-              <FormHelperText id="space-create-visibility-helper">
-                {spaceVisibilityDescription(visibility)}
-              </FormHelperText>
-            </FormControl>
             <ChatAutoCleanupField
               id="space-create-chat-auto-cleanup"
               checked={chatAutoCleanup}
               onChange={setChatAutoCleanup}
+              archiveAfterDays={cleanupPeriods?.archiveAfterDays}
+              deleteAfterDays={cleanupPeriods?.deleteAfterDays}
             />
           </Box>
         )}
@@ -207,80 +255,47 @@ export default function SpaceCreatePage() {
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             <Typography sx={{ fontSize: 13.5, color: 'text.secondary' }}>
               Mitglieder lassen sich auch später jederzeit in der Space-Verwaltung ergänzen — dieser
-              Schritt ist optional.
+              Schritt ist optional. Gruppen geben ihre Rolle an alle ihre Mitglieder weiter.
             </Typography>
-            {userSearchError && (
-              // #778 review, finding 3: a failed search must not just read as "no matches" - the
-              // field looks identically empty either way otherwise.
-              <Alert severity="error">{userSearchError}</Alert>
-            )}
-            <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
-              <Autocomplete
-                options={availableUsers}
-                size="small"
-                loading={isSearchingUsers}
-                filterOptions={(x) => x}
-                inputValue={userQuery}
-                onInputChange={(_e, value, reason) => {
-                  // 'reset' fires when the input text is set to match a just-selected option's
-                  // label (or reverted on blur) - propagating that as a fresh query would re-fire
-                  // a search for text the caller never typed.
-                  if (reason !== 'reset') setUserQuery(value)
-                }}
-                noOptionsText={
-                  userQuery.trim().length < 2 ? 'Mindestens 2 Zeichen eingeben' : 'Keine Treffer'
-                }
-                getOptionLabel={(option) =>
-                  option.displayName
-                    ? `${option.displayName} (${option.email ?? option.id})`
-                    : (option.email ?? option.id)
-                }
-                value={selectedUser}
-                onChange={(_e, value) => setSelectedUser(value)}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    placeholder="Benutzer suchen …"
-                    slotProps={{
-                      ...params.slotProps,
-                      htmlInput: { ...params.slotProps.htmlInput, 'aria-label': 'Benutzer' },
-                    }}
-                  />
-                )}
-                isOptionEqualToValue={(option, value) => option.id === value.id}
-                sx={{ minWidth: 280, flex: 1 }}
-              />
-              <Select
-                size="small"
-                value={selectedRole}
-                onChange={(e) => setSelectedRole(e.target.value as SpaceRole)}
-                aria-label="Rolle des neuen Mitglieds"
-                sx={{ width: 170 }}
-              >
-                {MEMBER_ROLES.map((role) => (
-                  <MenuItem key={role} value={role}>
-                    {spaceRoleLabel(role)}
-                  </MenuItem>
-                ))}
-              </Select>
-              <Button
-                variant="outlined"
-                disabled={!selectedUser}
-                onClick={() => {
-                  if (!selectedUser) return
-                  setPendingMembers((prev) => [...prev, { user: selectedUser, role: selectedRole }])
-                  setSelectedUser(null)
-                  setUserQuery('')
-                }}
-              >
-                Vormerken
-              </Button>
-            </Box>
+            <SubjectFormRow
+              picker={
+                <SubjectPicker
+                  value={subject}
+                  onChange={setSubject}
+                  excludedUserIds={excludedUserIds}
+                  excludedGroupIds={excludedGroupIds}
+                />
+              }
+              role={
+                <Select
+                  size="small"
+                  fullWidth
+                  value={selectedRole}
+                  onChange={(e) => setSelectedRole(e.target.value as SpaceRole)}
+                  aria-label="Rolle des neuen Mitglieds"
+                >
+                  {MEMBER_ROLES.map((role) => (
+                    <MenuItem key={role} value={role}>
+                      {spaceRoleLabel(role)}
+                    </MenuItem>
+                  ))}
+                </Select>
+              }
+              action={
+                <Button
+                  variant="outlined"
+                  disabled={!selectedSubjectId(subject)}
+                  onClick={() => void handleNoteMember()}
+                >
+                  Vormerken
+                </Button>
+              }
+            />
             {pendingMembers.length > 0 && (
               <Box sx={{ border: 1, borderColor: 'divider', borderRadius: '10px' }}>
                 {pendingMembers.map((member) => (
                   <Box
-                    key={member.user.id}
+                    key={pendingKey(member)}
                     sx={{
                       display: 'flex',
                       alignItems: 'center',
@@ -290,18 +305,24 @@ export default function SpaceCreatePage() {
                       '& + &': { borderTop: 1, borderColor: 'divider' },
                     }}
                   >
+                    {member.subjectType === 'GROUP' ? (
+                      <GroupsOutlinedIcon fontSize="small" color="action" aria-hidden />
+                    ) : (
+                      <PersonOutlineIcon fontSize="small" color="action" aria-hidden />
+                    )}
                     <Typography sx={{ fontSize: 13.5, flex: 1 }} noWrap>
-                      {member.user.displayName ?? member.user.email ?? member.user.id}
+                      {member.label}
+                      {member.subjectType === 'GROUP' ? ' · Gruppe' : ''}
                     </Typography>
                     <Typography sx={{ fontSize: 11.5, color: 'text.secondary' }}>
                       {spaceRoleLabel(member.role)}
                     </Typography>
                     <IconButton
                       size="small"
-                      aria-label={`Vorgemerktes Mitglied ${member.user.displayName ?? member.user.email ?? member.user.id} entfernen`}
+                      aria-label={`Vorgemerktes Mitglied ${member.label} entfernen`}
                       onClick={() =>
                         setPendingMembers((prev) =>
-                          prev.filter((m) => m.user.id !== member.user.id),
+                          prev.filter((m) => pendingKey(m) !== pendingKey(member)),
                         )
                       }
                     >
@@ -331,48 +352,59 @@ export default function SpaceCreatePage() {
 
         {activeStep === 3 && (
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-            {[
-              { label: 'Name', value: name.trim() },
-              { label: 'Beschreibung', value: description.trim() || '–' },
-              { label: 'Sichtbarkeit', value: spaceVisibilityLabel(visibility) },
-              {
-                label: 'Inaktive Chats',
-                value: chatAutoCleanup
-                  ? 'werden automatisch archiviert und gelöscht'
-                  : 'bleiben, bis sie jemand selbst archiviert oder löscht',
-              },
-              {
-                label: 'Mitglieder',
-                value:
-                  pendingMembers.length === 0
-                    ? 'nur Sie'
-                    : pendingMembers
-                        .map(
-                          (m) =>
-                            `${m.user.displayName ?? m.user.email ?? m.user.id} (${spaceRoleLabel(m.role)})`,
+            <SummaryRow label="Name">{name.trim()}</SummaryRow>
+            <SummaryRow label="Beschreibung">{description.trim() || '–'}</SummaryRow>
+            <SummaryRow label="Mitglieder">
+              {pendingMembers.length === 0 ? (
+                'nur Sie'
+              ) : (
+                <Box component="ul" sx={summaryListSx}>
+                  {pendingMembers.map((member) => (
+                    <SummaryItem
+                      key={pendingKey(member)}
+                      icon={
+                        member.subjectType === 'GROUP' ? (
+                          <GroupsOutlinedIcon sx={{ fontSize: 16 }} />
+                        ) : (
+                          <PersonOutlineIcon sx={{ fontSize: 16 }} />
                         )
-                        .join(', '),
-              },
-              {
-                label: 'Inhalte',
-                value:
-                  selectedAssets.length === 0
-                    ? 'keine'
-                    : selectedAssets.map((pick) => pick.name).join(', '),
-              },
-            ].map((row) => (
-              <Box key={row.label} sx={{ display: 'flex', gap: 2 }}>
-                <Typography
-                  component="span"
-                  sx={{ fontSize: 12.5, color: 'text.secondary', width: 120, flex: 'none' }}
-                >
-                  {row.label}
-                </Typography>
-                <Typography component="span" sx={{ fontSize: 13.5 }}>
-                  {row.value}
-                </Typography>
-              </Box>
-            ))}
+                      }
+                    >
+                      {member.label}
+                      {member.subjectType === 'GROUP' ? ' · Gruppe' : ''} ·{' '}
+                      {spaceRoleLabel(member.role)}
+                    </SummaryItem>
+                  ))}
+                </Box>
+              )}
+            </SummaryRow>
+            <SummaryRow label="Inhalte">
+              {selectedAssets.length === 0 ? (
+                'keine'
+              ) : (
+                <Box component="ul" sx={summaryListSx}>
+                  {selectedAssets.map((pick) => {
+                    const definition = assetTypeDefinition(pick.assetType)
+                    const TypeIcon = definition?.Icon
+                    return (
+                      <SummaryItem
+                        key={`${pick.assetType}:${pick.assetId}`}
+                        icon={TypeIcon ? <TypeIcon sx={{ fontSize: 16 }} /> : null}
+                      >
+                        {pick.name}
+                        {definition ? ` · ${definition.title}` : ''}
+                      </SummaryItem>
+                    )
+                  })}
+                </Box>
+              )}
+            </SummaryRow>
+            {chatAutoCleanup && cleanupPeriods && (
+              <SummaryRow label="Chats">
+                Inaktive Chats werden nach {cleanupPeriods.archiveAfterDays} Tagen archiviert und
+                nach weiteren {cleanupPeriods.deleteAfterDays} Tagen gelöscht.
+              </SummaryRow>
+            )}
             {!selectedAssets.some((pick) => pick.assetType === 'KNOWLEDGE_LIBRARY') && (
               <Alert severity="info">{NO_KNOWLEDGE_SUMMARY}</Alert>
             )}

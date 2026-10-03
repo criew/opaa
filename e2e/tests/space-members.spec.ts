@@ -1,0 +1,104 @@
+import { expect, test } from "../fixtures/auth";
+import { expectNoSeriousA11yViolations } from "../fixtures/a11y";
+import { createReleasedGroupViaApi } from "../fixtures/promptLibraries";
+
+const runId = Date.now();
+const GROUP_NAME = `E2E-Meldewesen-${runId}`;
+const SPACE_NAME = `E2E-Mitglieder-${runId}`;
+let spacePath = "";
+
+/**
+ * #2131: Der Space-Assistent nimmt Personen und Gruppen über dasselbe Suchfeld auf wie die
+ * Space-Einstellungen, ohne Sichtbarkeit und mit den Bereinigungsfristen der Installation. Die
+ * Gruppe ist Vorbedingung, nicht Gegenstand, und entsteht deshalb über die API.
+ */
+test.describe.serial("Space-Anlage und Mitglieder (#2131)", () => {
+  test("Assistent: Person und Gruppe aufnehmen, Zusammenfassung prüfen, Space anlegen", async ({
+    authenticatedPage: page,
+  }) => {
+    await createReleasedGroupViaApi(GROUP_NAME, "Dev Outsider");
+
+    await page.goto("/spaces/new");
+    await expect(page.getByText("Sichtbarkeit")).toHaveCount(0);
+    await page.getByLabel("Name", { exact: true }).fill(SPACE_NAME);
+    await page
+      .getByRole("switch", {
+        name: /^Inaktive Chats nach \d+ Tagen archivieren/,
+      })
+      .check();
+    await page.getByRole("button", { name: "Weiter", exact: true }).click();
+
+    // One field for persons and groups. Not getByLabel: with the listbox open, its
+    // aria-labelledby also points at the field.
+    const search = page.getByRole("combobox", {
+      name: "Person oder Gruppe suchen",
+    });
+    await search.click();
+    await search.fill("Dev User");
+    await page
+      .getByRole("option", { name: /Dev User/ })
+      .first()
+      .click();
+    await page.getByRole("button", { name: "Vormerken" }).click();
+
+    await search.click();
+    await search.fill(GROUP_NAME);
+    await page.getByRole("option", { name: `${GROUP_NAME} · Gruppe` }).click();
+    await page
+      .getByRole("combobox", { name: "Rolle des neuen Mitglieds" })
+      .click();
+    await page.getByRole("option", { name: "Kurator" }).click();
+    await page.getByRole("button", { name: "Vormerken" }).click();
+    await expect(page.getByText("2 Mitglieder vorgemerkt")).toBeVisible();
+
+    await page.getByRole("button", { name: "Weiter", exact: true }).click();
+    await page.getByRole("button", { name: "Weiter", exact: true }).click();
+    await expect(
+      page.getByText(`${GROUP_NAME} · Gruppe · Kurator`),
+    ).toBeVisible();
+    await expect(
+      page.getByText(
+        /^Inaktive Chats werden nach \d+ Tagen archiviert und nach weiteren \d+ Tagen gelöscht\.$/,
+      ),
+    ).toBeVisible();
+    await expectNoSeriousA11yViolations(
+      page,
+      "Space-Assistent: Zusammenfassung",
+    );
+
+    await Promise.all([
+      page.waitForURL(/\/spaces\/(?!new$)[^/]+$/),
+      page.getByRole("button", { name: "Space anlegen" }).click(),
+    ]);
+    await expect(page.getByRole("heading", { name: SPACE_NAME })).toBeVisible();
+    spacePath = new URL(page.url()).pathname;
+  });
+
+  test("Einstellungen: Mitglieder in einer Zeile, Gruppe aus dem Assistenten in der Liste", async ({
+    authenticatedPage: page,
+  }) => {
+    expect(spacePath, "der erste Schritt hat keinen Space angelegt").not.toBe(
+      "",
+    );
+    await page.goto(`${spacePath}/settings/members`);
+
+    await expect(
+      page.getByRole("heading", { level: 2, name: "Mitglied hinzufügen" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Mitglieder", exact: true }),
+    ).toHaveCount(0);
+    await expect(page.getByText(`${GROUP_NAME} · Gruppe`)).toBeVisible();
+
+    const search = page.getByRole("combobox", {
+      name: "Person oder Gruppe suchen",
+    });
+    await search.click();
+    await search.fill("Dev");
+    await expect(page.getByRole("option").first()).toBeVisible();
+    await expectNoSeriousA11yViolations(
+      page,
+      "Space-Einstellungen: Mitglied hinzufügen",
+    );
+  });
+});

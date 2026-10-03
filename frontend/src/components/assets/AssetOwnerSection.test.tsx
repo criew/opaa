@@ -65,7 +65,7 @@ function renderSection(
 
 async function chooseSuccessor(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole('button', { name: 'Eigentum übergeben' }))
-  await user.type(screen.getByLabelText('Person suchen'), 'Nina')
+  await user.type(screen.getByLabelText('Person oder Gruppe suchen'), 'Nina')
   await user.click(await screen.findByRole('option', { name: /Nina Klein/ }))
   await user.click(screen.getByRole('button', { name: 'Übergeben' }))
 }

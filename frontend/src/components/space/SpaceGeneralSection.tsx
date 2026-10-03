@@ -2,22 +2,13 @@ import { useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import FormControl from '@mui/material/FormControl'
-import FormHelperText from '@mui/material/FormHelperText'
-import MenuItem from '@mui/material/MenuItem'
-import Select from '@mui/material/Select'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import { useNavigate } from 'react-router'
-import type { SpaceResponse, SpaceVisibility } from '../../types/api'
+import type { SpaceResponse } from '../../types/api'
 import { confirmAction } from '../../stores/confirmStore'
 import { useSpaceStore } from '../../stores/spaceStore'
-import {
-  spaceVisibilities,
-  spaceVisibilityDescription,
-  spaceVisibilityLabel,
-} from '../../utils/labels'
 import FieldLabel from '../wizard/FieldLabel'
 import ChatAutoCleanupField from './ChatAutoCleanupField'
 import SectionHead from '../SectionHead'
@@ -25,16 +16,16 @@ import SectionHead from '../SectionHead'
 interface SpaceGeneralSectionProps {
   spaceId: string
   space: SpaceResponse
-  /** Nur ein Administrator ändert Name, Beschreibung, Sichtbarkeit und die Chat-Bereinigung. */
+  /** Nur ein Administrator ändert Name, Beschreibung und die Chat-Bereinigung. */
   canManage: boolean
   /** Archivieren und Löschen bleiben dem Eigentümer vorbehalten. */
   isOwner: boolean
 }
 
 /**
- * Der Reiter „Stammdaten" der Space-Einstellungen: Name, Beschreibung, Sichtbarkeit und der Schalter
- * der automatischen Chat-Bereinigung, den jedes Mitglied sieht, und am
- * Ende der abgesetzte Gefahrenbereich mit Archivieren und Löschen (#1917).
+ * Der Reiter „Stammdaten" der Space-Einstellungen: Name, Beschreibung und der Schalter der
+ * automatischen Chat-Bereinigung, den jedes Mitglied sieht, und am Ende der abgesetzte
+ * Gefahrenbereich mit Archivieren und Löschen (#1917).
  */
 export default function SpaceGeneralSection({
   spaceId,
@@ -51,9 +42,8 @@ export default function SpaceGeneralSection({
     spaceId: string | null
     name: string
     description: string
-    visibility: SpaceVisibility
     chatAutoCleanup: boolean
-  }>({ spaceId: null, name: '', description: '', visibility: 'PRIVATE', chatAutoCleanup: false })
+  }>({ spaceId: null, name: '', description: '', chatAutoCleanup: false })
   const [localError, setLocalError] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   // #543: deleteSpace's 409 - "Der Space enthält noch Chats ... Archivieren Sie den Space
@@ -63,10 +53,9 @@ export default function SpaceGeneralSection({
 
   const name = draft.spaceId === spaceId ? draft.name : (space.name ?? '')
   const description = draft.spaceId === spaceId ? draft.description : (space.description ?? '')
-  const visibility = draft.spaceId === spaceId ? draft.visibility : (space.visibility ?? 'PRIVATE')
   const chatAutoCleanup =
     draft.spaceId === spaceId ? draft.chatAutoCleanup : space.chatAutoCleanup.enabled
-  const current = { spaceId, name, description, visibility, chatAutoCleanup }
+  const current = { spaceId, name, description, chatAutoCleanup }
 
   async function archive() {
     setLocalError(null)
@@ -132,27 +121,6 @@ export default function SpaceGeneralSection({
               disabled={!canManage}
             />
           </Box>
-          <FormControl disabled={!canManage} fullWidth>
-            <FieldLabel id="space-visibility-label">Sichtbarkeit</FieldLabel>
-            <Select
-              labelId="space-visibility-label"
-              size="small"
-              value={visibility}
-              onChange={(event) =>
-                setDraft({ ...current, visibility: event.target.value as SpaceVisibility })
-              }
-              aria-describedby="space-visibility-helper"
-            >
-              {spaceVisibilities.map((option) => (
-                <MenuItem key={option} value={option}>
-                  {spaceVisibilityLabel(option)}
-                </MenuItem>
-              ))}
-            </Select>
-            <FormHelperText id="space-visibility-helper">
-              {spaceVisibilityDescription(visibility)}
-            </FormHelperText>
-          </FormControl>
           <ChatAutoCleanupField
             id="space-chat-auto-cleanup"
             checked={chatAutoCleanup}
@@ -175,7 +143,6 @@ export default function SpaceGeneralSection({
                       spaceId,
                       name,
                       description,
-                      visibility,
                       chatAutoCleanup !== space.chatAutoCleanup.enabled &&
                         !(space.isDefault && !isOwner)
                         ? chatAutoCleanup
