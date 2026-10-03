@@ -21,6 +21,7 @@ import { groupMemberCountLabel, spaceRoleLabel } from '../../utils/labels'
 import AccessDerivation from '../permissions/AccessDerivation'
 import GroupMembersDisclosure from '../permissions/GroupMembersDisclosure'
 import MetaBadge from '../MetaBadge'
+import { memberLabelOf } from './memberLabel'
 
 const editableRoles: SpaceRole[] = ['MEMBER', 'CURATOR', 'ADMIN']
 
@@ -28,15 +29,6 @@ const editableRoles: SpaceRole[] = ['MEMBER', 'CURATOR', 'ADMIN']
 const FILTER_THRESHOLD = 10
 
 const roleOrder: Record<SpaceRole, number> = { ADMIN: 0, CURATOR: 1, MEMBER: 2 }
-
-/**
- * Eine geschützte Gruppe erscheint in fremden Listen ohne Namen, der Dienst liefert keinen
- * (ADR-0036, Entscheidung 9). Die Zeile bleibt, damit ein ADMIN die Mitgliedschaft beenden kann.
- */
-function memberLabelOf(member: SpaceMemberResponse): string {
-  if (member.protectedGroup) return 'Geschützte Gruppe'
-  return member.displayName ?? member.subjectId
-}
 
 function ownsSpace(member: SpaceMemberResponse, ownerId: string): boolean {
   return member.subjectType === 'USER' && member.subjectId === ownerId
@@ -235,14 +227,17 @@ export default function SpaceMemberList({
               </Box>
               {expanded === 'derivation' && (
                 <Stack spacing={0.5} sx={{ pl: 4.5, pt: 0.5 }}>
-                  <AccessDerivation target={{ kind: 'space', spaceId, userId: member.subjectId }} />
+                  <AccessDerivation
+                    target={{ kind: 'space', spaceId, userId: member.subjectId }}
+                    subjectName={label}
+                  />
                   <Link
                     component="button"
                     type="button"
-                    sx={{ alignSelf: 'flex-start', fontSize: 12 }}
+                    sx={{ alignSelf: 'flex-end', fontSize: 12 }}
                     onClick={() => hideExpansion(member.id)}
                   >
-                    Herleitung ausblenden
+                    Schließen
                   </Link>
                 </Stack>
               )}
