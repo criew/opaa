@@ -5,11 +5,15 @@ import io.opaa.api.types.Capability;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
+import io.opaa.indexing.source.ConnectorChecks;
 import io.opaa.indexing.source.ConnectorData;
+import io.opaa.indexing.source.ServiceAccountKey;
+import io.opaa.indexing.source.ServiceAccountTokens;
 import io.opaa.indexing.source.SourceBrowser;
 import io.opaa.indexing.source.SourceConnectionTestResult;
 import io.opaa.indexing.source.SourceConnector;
 import io.opaa.indexing.source.SourceConnectorRegistry;
+import io.opaa.indexing.source.SourceCredentialsException;
 import io.opaa.indexing.source.SourceListing;
 import io.opaa.indexing.source.SourceSettings;
 import io.opaa.knowledge.KnowledgeLibrary;
@@ -17,6 +21,8 @@ import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.LibraryAccessService;
 import io.opaa.knowledge.SourceType;
 import io.opaa.permission.CapabilityService;
+import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 
@@ -63,16 +69,19 @@ public class SourceConnectionTestService {
   private final LibraryAccessService libraryAccessService;
   private final SourceConnectorRegistry connectors;
   private final CapabilityService capabilityService;
+  private final ServiceAccountTokens serviceAccountTokens;
 
   public SourceConnectionTestService(
       KnowledgeLibraryRepository libraryRepository,
       LibraryAccessService libraryAccessService,
       SourceConnectorRegistry connectors,
-      CapabilityService capabilityService) {
+      CapabilityService capabilityService,
+      ServiceAccountTokens serviceAccountTokens) {
     this.libraryRepository = libraryRepository;
     this.libraryAccessService = libraryAccessService;
     this.connectors = connectors;
     this.capabilityService = capabilityService;
+    this.serviceAccountTokens = serviceAccountTokens;
   }
 
   /**
@@ -96,7 +105,8 @@ public class SourceConnectionTestService {
     SourceSettings settings =
         new SourceSettings(
             request.sourcePath(),
-            request.sourceUrl() == null ? null : request.sourceUrl().toString(),
+            connector.normalizeSourceUrl(
+                request.sourceUrl() == null ? null : request.sourceUrl().toString()),
             request.sourceProxy(),
             request.sourceCredentials(),
             Boolean.TRUE.equals(request.sourceInsecureSsl()),
@@ -110,10 +120,34 @@ public class SourceConnectionTestService {
         throw new ValidationException(
             "sourceType passt nicht zum gespeicherten Quellentyp dieser Bibliothek");
       }
-      settings = withStoredCredentialsIfOmitted(settings, library);
       stored = ConnectorData.storedIn(library);
+      settings = withStoredCredentialsIfOmitted(connector, settings, library, stored);
+    }
+    try {
+      settings = signedIn(connector, settings, stored);
+    } catch (SourceCredentialsException e) {
+      return ConnectorChecks.unreachable(e.getMessage());
     }
     return connector.testConnection(settings, stored);
+  }
+
+  /**
+   * The settings a connector that signs in with a service account key may see: the uploaded or
+   * stored key exchanged for an access token by the core (ADR-0040, Entscheidung 2); others as they
+   * are.
+   */
+  private SourceSettings signedIn(
+      SourceConnector connector, SourceSettings settings, ConnectorData stored) {
+    if (connector.descriptor().serviceAccountKey() == null
+        || blankToNull(settings.sourceCredentials()) == null) {
+      return settings;
+    }
+    String key = ServiceAccountKey.parse(settings.sourceCredentials()).storedForm();
+    ConnectorData effective =
+        settings.connectorSettings() != null ? settings.connectorSettings() : stored;
+    return settings.withSourceCredentials(
+        serviceAccountTokens.forConnector(
+            connector, settings.withSourceCredentials(key), effective));
   }
 
   /**
@@ -127,9 +161,6 @@ public class SourceConnectionTestService {
     if (request.libraryId() == null) {
       capabilityService.requireCapability(caller, Capability.CREATE_CONNECTOR_LIBRARY);
     }
-    if (request.sourceUrl() == null) {
-      throw new ValidationException("sourceUrl ist erforderlich");
-    }
     SourceBrowser browser =
         connectors
             .browser(request.sourceType())
@@ -137,10 +168,17 @@ public class SourceConnectionTestService {
                 () ->
                     new ValidationException(
                         "Für sourceType " + request.sourceType() + " gibt es keine Auflistung"));
+    SourceConnector connector = connectors.connector(request.sourceType());
+    String sourceUrl =
+        connector.normalizeSourceUrl(
+            request.sourceUrl() == null ? null : request.sourceUrl().toString());
+    if (sourceUrl == null) {
+      throw new ValidationException("sourceUrl ist erforderlich");
+    }
     SourceSettings settings =
         new SourceSettings(
             null,
-            request.sourceUrl().toString(),
+            sourceUrl,
             request.sourceProxy(),
             request.sourceCredentials(),
             Boolean.TRUE.equals(request.sourceInsecureSsl()),
@@ -151,8 +189,13 @@ public class SourceConnectionTestService {
       if (!request.sourceType().equals(library.getSourceType())) {
         throw new ValidationException(browser.otherTypeMessage());
       }
-      settings = withStoredCredentialsIfOmitted(settings, library);
       stored = ConnectorData.storedIn(library);
+      settings = withStoredCredentialsIfOmitted(connector, settings, library, stored);
+    }
+    try {
+      settings = signedIn(connector, settings, stored);
+    } catch (SourceCredentialsException e) {
+      return new SourceListing(false, List.of(), e.getMessage());
     }
     return browser.browse(new SourceBrowser.Query(settings, stored));
   }
@@ -205,13 +248,22 @@ public class SourceConnectionTestService {
    * begin with, so nothing a real caller relied on changes.
    *
    * <p>The library's stored connector settings are no secret; whether they stand in for the
-   * request's, regardless of the origin, the connector decides (it receives them beside).
+   * request's, regardless of the origin, the connector decides (it receives them beside). A stored
+   * key never serves another imitated account than its own (ADR-0040, Entscheidung 4).
    */
   private static SourceSettings withStoredCredentialsIfOmitted(
-      SourceSettings request, KnowledgeLibrary library) {
+      SourceConnector connector,
+      SourceSettings request,
+      KnowledgeLibrary library,
+      ConnectorData stored) {
+    ConnectorData requested =
+        request.connectorSettings() != null ? request.connectorSettings() : stored;
     boolean fallback =
         blankToNull(request.sourceCredentials()) == null
-            && SourceOriginMatcher.sameOrigin(library.getSourceUrl(), request.sourceUrl());
+            && SourceOriginMatcher.sameOrigin(library.getSourceUrl(), request.sourceUrl())
+            && Objects.equals(
+                ServiceAccountTokens.subjectOf(connector, stored),
+                ServiceAccountTokens.subjectOf(connector, requested));
     return new SourceSettings(
         request.sourcePath(),
         request.sourceUrl(),

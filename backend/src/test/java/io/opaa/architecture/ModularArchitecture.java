@@ -223,13 +223,16 @@ public final class ModularArchitecture {
           "indexing.source.ConnectorData#storedIn");
 
   /**
-   * The core's resolvers, relative to the root. A connector that held one could resolve the secret
-   * of any library, so it never depends on them.
+   * The core's resolvers and its service account sign-in, relative to the root. A connector that
+   * held one could resolve the secret of any library or read a service account key (ADR-0040,
+   * Entscheidung 2), so it never depends on them.
    */
   static final Set<String> CORE_ONLY_RESOLVERS =
       Set.of(
           "indexing.source.SourceConnectionResolver",
-          "indexing.source.LibrarySourceConnectionResolver");
+          "indexing.source.LibrarySourceConnectionResolver",
+          "indexing.source.ServiceAccountKey",
+          "indexing.source.ServiceAccountTokens");
 
   /** The shared file sync (ADR-0040, Entscheidung 1): connectors use it, it knows none of them. */
   static final String FILE_SYNC = "indexing.filesync";

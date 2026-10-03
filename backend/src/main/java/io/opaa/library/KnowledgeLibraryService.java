@@ -25,6 +25,8 @@ import io.opaa.indexing.job.IndexingJobService;
 import io.opaa.indexing.job.JobStatus;
 import io.opaa.indexing.job.LibraryScheduleCodec;
 import io.opaa.indexing.source.ConnectorData;
+import io.opaa.indexing.source.ServiceAccountKey;
+import io.opaa.indexing.source.ServiceAccountTokens;
 import io.opaa.indexing.source.SourceConnectionResolver;
 import io.opaa.indexing.source.SourceConnector;
 import io.opaa.indexing.source.SourceConnectorDescriptor;
@@ -60,6 +62,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -117,6 +120,10 @@ public class KnowledgeLibraryService {
 
   private static final int MAX_NAME_LENGTH = 255;
   private static final int MAX_DESCRIPTION_LENGTH = 2000;
+
+  /** ADR-0040, Entscheidung 4: a stored key never follows a changed imitated account. */
+  static final String SUBJECT_CHANGE_NEEDS_CREDENTIALS =
+      "Das imitierte Konto ändert sich: Die Zugangsdaten müssen dafür neu eingegeben werden";
 
   private final KnowledgeLibraryRepository libraryRepository;
   private final AssetOwnerNames assetOwnerNames;
@@ -395,8 +402,15 @@ public class KnowledgeLibraryService {
         requestedSettingsChange(library, request, replacesSourceConfiguration);
     SourceConnector connector = connectors.connector(library.getSourceType());
     SourceSettings validatedSettings =
-        connector.validateChange(
-            connectionResolver.resolve(library), requestedSettings, replacesSourceConfiguration);
+        replacesSourceConfiguration
+            ? withServiceAccountKey(
+                connector,
+                requestedSettings,
+                withoutKey ->
+                    connector.validateChange(
+                        connectionResolver.resolveForChange(library), withoutKey, true))
+            : connector.validateChange(
+                connectionResolver.resolveForChange(library), requestedSettings, false);
     boolean replacesOwnSettings = requestedSettings.connectorSettings() != null;
     // #485: schedule follows the same replace-as-a-whole rule as the source configuration above -
     // only present when the caller actually intends to change it (LibraryUpdate.schedule), so a
@@ -1011,8 +1025,31 @@ public class KnowledgeLibraryService {
             blankToNull(request.sourceCredentials()),
             Boolean.TRUE.equals(request.sourceInsecureSsl()),
             readSettings(sourceType, request.sourceSettings()));
-    SourceSettings validated = connectors.connector(sourceType).validate(requested);
+    SourceConnector connector = connectors.connector(sourceType);
+    SourceSettings validated = withServiceAccountKey(connector, requested, connector::validate);
     return new SourceConfiguration(sourceType, validated);
+  }
+
+  /**
+   * Validates {@code requested} with {@code validation}. For a connector that signs in with a
+   * service account key (ADR-0040, Entscheidung 2) the core reads the key itself and stores only
+   * the fields it signs with; the connector validates the rest and never sees the key.
+   */
+  private static SourceSettings withServiceAccountKey(
+      SourceConnector connector,
+      SourceSettings requested,
+      UnaryOperator<SourceSettings> validation) {
+    if (connector.descriptor().serviceAccountKey() == null) {
+      return validation.apply(requested);
+    }
+    if (requested.sourceCredentials() == null) {
+      throw new ValidationException(
+          "sourceCredentials (Dienstkonto-Schlüssel) sind erforderlich, wenn sourceType "
+              + connector.descriptor().type()
+              + " ist");
+    }
+    String key = ServiceAccountKey.parse(requested.sourceCredentials()).storedForm();
+    return validation.apply(requested.withoutCredentials()).withSourceCredentials(key);
   }
 
   /**
@@ -1054,14 +1091,25 @@ public class KnowledgeLibraryService {
    */
   private SourceSettings requestedSettingsChange(
       KnowledgeLibrary library, LibraryUpdate request, boolean replacesConnection) {
+    SourceConnector connector = connectors.connector(library.getSourceType());
     ConnectorData connectorSettings =
         readSettings(library.getSourceType(), request.sourceSettings());
+    ConnectorData storedSettings = ConnectorData.storedIn(library);
+    boolean sameSubject =
+        Objects.equals(
+            ServiceAccountTokens.subjectOf(connector, storedSettings),
+            ServiceAccountTokens.subjectOf(
+                connector, connectorSettings != null ? connectorSettings : storedSettings));
+    String sourceCredentials = blankToNull(request.sourceCredentials());
+    if (!sameSubject && sourceCredentials == null && library.getSourceCredentials() != null) {
+      throw new ValidationException(SUBJECT_CHANGE_NEEDS_CREDENTIALS);
+    }
     if (!replacesConnection) {
       return new SourceSettings(null, null, null, null, false, connectorSettings);
     }
     String sourceUrl =
-        blankToNull(request.sourceUrl() == null ? null : request.sourceUrl().toString());
-    String sourceCredentials = blankToNull(request.sourceCredentials());
+        connector.normalizeSourceUrl(
+            blankToNull(request.sourceUrl() == null ? null : request.sourceUrl().toString()));
     if (sourceCredentials == null
         && SourceOriginMatcher.sameOrigin(library.getSourceUrl(), sourceUrl)) {
       sourceCredentials = library.getSourceCredentials();

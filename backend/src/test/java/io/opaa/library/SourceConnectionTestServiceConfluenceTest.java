@@ -19,6 +19,7 @@ import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ValidationException;
+import io.opaa.indexing.source.ServiceAccountTokens;
 import io.opaa.indexing.source.SourceConnectionTestResult;
 import io.opaa.indexing.source.SourceListing;
 import io.opaa.indexing.source.TestSourceConnectors;
@@ -31,8 +32,10 @@ import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.LibraryAccessService;
 import io.opaa.permission.CapabilityService;
+import io.opaa.security.TargetAddressValidator;
 import io.opaa.test.SourceTypes;
 import java.net.URI;
+import java.time.Clock;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -73,7 +76,8 @@ class SourceConnectionTestServiceConfluenceTest {
             TestSourceConnectors.connectors()
                 .confluenceConnectionService(confluenceConnectionService)
                 .registry(),
-            capabilityService);
+            capabilityService,
+            new ServiceAccountTokens(TargetAddressValidator.disabled(), Clock.systemUTC()));
   }
 
   private KnowledgeLibrary confluenceLibrary(UUID libraryId, String url) {

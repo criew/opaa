@@ -26,6 +26,7 @@ import io.opaa.indexing.source.LibraryIndexingScheduler;
 import io.opaa.indexing.source.LibrarySourceConnectionResolver;
 import io.opaa.indexing.source.RemoteContentProperties;
 import io.opaa.indexing.source.RemoteOriginalAccess;
+import io.opaa.indexing.source.ServiceAccountTokens;
 import io.opaa.indexing.source.SourceConnectionResolver;
 import io.opaa.indexing.source.SourceConnector;
 import io.opaa.indexing.source.SourceConnectorRegistry;
@@ -249,8 +250,18 @@ public class IndexingConfiguration {
    * Hands every connector the target and secret of a library; see {@link SourceConnectionResolver}.
    */
   @Bean
-  SourceConnectionResolver sourceConnectionResolver() {
-    return new LibrarySourceConnectionResolver();
+  SourceConnectionResolver sourceConnectionResolver(
+      ObjectProvider<SourceConnectorRegistry> connectors,
+      ServiceAccountTokens serviceAccountTokens) {
+    return new LibrarySourceConnectionResolver(
+        type -> connectors.getObject().find(type), serviceAccountTokens);
+  }
+
+  /** Signs service account assertions for the connectors that sign in with a key (ADR-0040). */
+  @Bean
+  ServiceAccountTokens serviceAccountTokens(
+      TargetAddressValidator targetAddressValidator, Clock clock) {
+    return new ServiceAccountTokens(targetAddressValidator, clock);
   }
 
   @Bean

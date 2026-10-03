@@ -225,9 +225,9 @@ Nachtrag zur Invariante gibt es nicht. Kein Ziel kommt aus der Schlüsseldatei, 
   des Ursprungs. Andernfalls könnte jede Person mit Verwaltungsrecht an der Bibliothek einen
   vorhandenen Delegationsschlüssel auf ein beliebiges Konto der Domäne umlenken. Die Regel gilt für
   jede künftige Anmeldeart mit Subjekt.
-- **`subject` am Profil:** Eine Änderung verwirft, wie eine neue Client-ID, alle Verbindungen auf dem
-  Profil. Die Bibliotheken ruhen mit Hinweis, bis sie neu verbunden sind; dabei wird der Schlüssel
-  bestätigt. Ein Dienstkonto kennt keine Zustimmung je Verbindung, deshalb nicht „neue Zustimmung“.
+- **`subject` am Profil:** Eine Änderung verwirft, wie eine geänderte Server-Adresse, alle
+  Verbindungen auf dem Profil. Die Bibliotheken ruhen mit Hinweis, bis sie neu verbunden sind; dabei
+  wird der Schlüssel bestätigt. Ein Dienstkonto kennt keine Zustimmung je Verbindung, deshalb nicht „neue Zustimmung“.
   Die Spezifikation führt das als eigene Zeile.
 - Persönliche Ablagen echter Personen sind nicht Teil dieses ADR. Ihr Weg wäre ein verbundenes Konto
   über eine *interne* OAuth-App des Betreibers, die keine Verifizierung braucht (Epic #2147).

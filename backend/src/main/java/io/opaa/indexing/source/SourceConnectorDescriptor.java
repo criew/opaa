@@ -21,6 +21,8 @@ import java.util.Objects;
  * @param pushIntake the push intake the connector offers, {@code null} for none
  * @param fullSyncInterval the instance-wide rhythm of the connector's full reconciliation, which a
  *     library may lengthen; {@code null} for a connector whose every run is a full one
+ * @param serviceAccountKey the sign-in by service account key the core performs for the connector,
+ *     {@code null} when {@code sourceCredentials} reach the connector as stored
  */
 public record SourceConnectorDescriptor(
     SourceType type,
@@ -30,7 +32,8 @@ public record SourceConnectorDescriptor(
     boolean deepLink,
     boolean uploads,
     PushIntake pushIntake,
-    Duration fullSyncInterval) {
+    Duration fullSyncInterval,
+    ServiceAccountKeyAuth serviceAccountKey) {
 
   public SourceConnectorDescriptor {
     Objects.requireNonNull(type, "type");
@@ -41,6 +44,10 @@ public record SourceConnectorDescriptor(
     if (uploads && (indexingRun || remote)) {
       throw new IllegalArgumentException("a library filled by uploads has no run and no remote");
     }
+    if (serviceAccountKey != null && !remote) {
+      throw new IllegalArgumentException(
+          "only a remote source signs in with a service account key");
+    }
   }
 
   /**
@@ -48,31 +55,72 @@ public record SourceConnectorDescriptor(
    * intake or full-sync rhythm; the {@code with...} methods adjust it.
    */
   public static SourceConnectorDescriptor remoteRun(SourceType type, String displayName) {
-    return new SourceConnectorDescriptor(type, displayName, true, true, true, false, null, null);
+    return new SourceConnectorDescriptor(
+        type, displayName, true, true, true, false, null, null, null);
   }
 
   /** A run-based connector over files this machine reads itself. */
   public static SourceConnectorDescriptor localRun(SourceType type, String displayName) {
-    return new SourceConnectorDescriptor(type, displayName, true, false, false, false, null, null);
+    return new SourceConnectorDescriptor(
+        type, displayName, true, false, false, false, null, null, null);
   }
 
   /** The library curated through uploads, without run and without source configuration. */
   public static SourceConnectorDescriptor acceptingUploads(SourceType type, String displayName) {
-    return new SourceConnectorDescriptor(type, displayName, false, false, false, true, null, null);
+    return new SourceConnectorDescriptor(
+        type, displayName, false, false, false, true, null, null, null);
   }
 
   public SourceConnectorDescriptor withoutDeepLink() {
     return new SourceConnectorDescriptor(
-        type, displayName, indexingRun, remote, false, uploads, pushIntake, fullSyncInterval);
+        type,
+        displayName,
+        indexingRun,
+        remote,
+        false,
+        uploads,
+        pushIntake,
+        fullSyncInterval,
+        serviceAccountKey);
   }
 
   public SourceConnectorDescriptor withPushIntake(PushIntake intake) {
     return new SourceConnectorDescriptor(
-        type, displayName, indexingRun, remote, deepLink, uploads, intake, fullSyncInterval);
+        type,
+        displayName,
+        indexingRun,
+        remote,
+        deepLink,
+        uploads,
+        intake,
+        fullSyncInterval,
+        serviceAccountKey);
   }
 
   public SourceConnectorDescriptor withFullSyncInterval(Duration interval) {
     return new SourceConnectorDescriptor(
-        type, displayName, indexingRun, remote, deepLink, uploads, pushIntake, interval);
+        type,
+        displayName,
+        indexingRun,
+        remote,
+        deepLink,
+        uploads,
+        pushIntake,
+        interval,
+        serviceAccountKey);
+  }
+
+  /** The connector signs in with a service account key the core exchanges for an access token. */
+  public SourceConnectorDescriptor withServiceAccountKey(ServiceAccountKeyAuth auth) {
+    return new SourceConnectorDescriptor(
+        type,
+        displayName,
+        indexingRun,
+        remote,
+        deepLink,
+        uploads,
+        pushIntake,
+        fullSyncInterval,
+        auth);
   }
 }

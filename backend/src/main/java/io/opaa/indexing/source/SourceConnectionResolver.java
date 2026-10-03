@@ -15,6 +15,14 @@ public interface SourceConnectionResolver {
    */
   SourceSettings resolve(KnowledgeLibrary library);
 
+  /**
+   * What a change of {@code library}'s configuration is validated against: as {@link #resolve}, but
+   * without a secret the core would first have to obtain.
+   */
+  default SourceSettings resolveForChange(KnowledgeLibrary library) {
+    return resolve(library);
+  }
+
   /** The secret {@code library} is reached with now, {@code null} for none. */
   default String currentCredentials(KnowledgeLibrary library) {
     return resolve(library).sourceCredentials();

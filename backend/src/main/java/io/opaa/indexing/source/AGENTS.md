@@ -18,29 +18,29 @@ von foundation, format und knowledge ab.
   `PushIntakeHandler`); eine laufbasierte Art registriert zusätzlich einen `SourceIndexingExecutor`.
 - **Kein Konnektor kennt einen anderen, und nichts außerhalb kennt einen Konnektor.** Kern,
   Verwaltung und API erreichen ihn nur über die Registry.
-- **Der Typ ist ein offener Schlüssel** (Großbuchstaben, Ziffern, Unterstrich, höchstens 20
-  Zeichen). Welche es gibt, weiß nur die Registry; eine Schlüssel-Konstante liegt im Konnektor.
+- **Der Typ ist ein offener Schlüssel** (`A-Z0-9_`, höchstens 20 Zeichen); nur die Registry kennt alle.
 - **Einstellungen:** Alles Konnektoreigene ist ein Record im Konnektorpaket und steht als ein
   JSON-Objekt in `source_settings`; der Kern reicht es als `ConnectorData` durch.
 - **Ziel, Geheimnis und Einstellungen kommen nur vom Kern** (ADR-0041, 3a): im Lauf über
   `IndexingRun#settings()` (ohne Geheimnis) und `#currentCredentials()`, das bei jedem Aufruf das
   jetzt gültige Geheimnis vom Port holt; sonst im Aufruf. Kein Konnektor hält oder erzeugt einen
   `SourceConnectionResolver` oder liest aus `KnowledgeLibrary` mehr als `getSourcePath`/`getWebhookSecret`.
+- **Dienstkonto-Schlüssel signiert der Kern** (ADR-0040): Der Konnektor bekommt nur das Token aus
+  `ServiceAccountTokens` und meldet imitiertes Konto und feste Adresse (`assertionSubject`).
 - **Geheimnisse stehen nie in `source_settings`** — die Spalte ist unverschlüsselt und erscheint in
   Antworten. Plätze für Geheimnisse sind nur `source_credentials` und `source_webhook_secret`,
   beide verschlüsselt. Antworten tragen nur Ja/Nein, das Audit nur Feldnamen.
 - **Jedes Ziel, an das Zugangsdaten gehen, leitet sich aus `sourceUrl` ab.** Die Ursprungsbindung
   (`SourceOriginMatcher`) verwirft Zugangsdaten, sobald sich der Ursprung ändert. Steht ein Ziel nur
   in `source_settings`, verlangt der Konnektor bei dessen Änderung selbst neue Zugangsdaten.
-- **Der Laufrahmen ist `IndexingRunTemplate`:** Der Körper zählt nur die Quelle auf, gibt jedes
-  Element über `IndexingRun` weiter und meldet einen `ListingOutcome`. Fortschritt, Protokoll,
-  Fehlerübersetzung und Abgleich durch Abwesenheit besitzt der Rahmen.
+- **Der Laufrahmen ist `IndexingRunTemplate`:** Der Körper zählt nur die Quelle auf und meldet
+  einen `ListingOutcome`; Fortschritt, Protokoll und Abgleich durch Abwesenheit besitzt der Rahmen.
 - **Dateiablagen** implementieren `FileStore` aus `indexing.filesync` mit dessen neutralen
   Fehlerarten; den Abgleich besitzt `FileSync`. Ihre Tests erweitern `FileStoreContract`.
-- **Push-Adapter** (`confluence.webhook`, `s3.events`) liegen über ihrem Konnektor; der Konnektor
-  erreicht sie über einen eigenen Port (`ConfluencePushReceiver`, `S3PushReceiver`).
-- **Netzzugriff:** HTTP über `io.opaa.sourceaccess`, S3 über `io.opaa.s3`.
-- **Die S3-Tests** nutzen die geteilte `S3TestFixture` (foundation); ohne Docker übersprungen.
+- **Push-Adapter** (`confluence.webhook`, `s3.events`) liegen über ihrem Konnektor, erreicht über
+  einen eigenen Port (`ConfluencePushReceiver`, `S3PushReceiver`).
+- **Netzzugriff:** HTTP über `io.opaa.sourceaccess`, S3 über `io.opaa.s3`. Die S3-Tests nutzen
+  die geteilte `S3TestFixture` (foundation); ohne Docker übersprungen.
 
 ## Verweise
 

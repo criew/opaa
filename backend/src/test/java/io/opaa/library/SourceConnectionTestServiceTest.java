@@ -19,6 +19,7 @@ import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
 import io.opaa.format.DocumentService;
 import io.opaa.indexing.source.FilesystemPathAllowlist;
+import io.opaa.indexing.source.ServiceAccountTokens;
 import io.opaa.indexing.source.SourceConnectionTestResult;
 import io.opaa.indexing.source.TestSourceConnectors;
 import io.opaa.indexing.source.rss.RssFeedParser;
@@ -29,6 +30,7 @@ import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.LibraryAccessService;
 import io.opaa.knowledge.SourceType;
 import io.opaa.permission.CapabilityService;
+import io.opaa.security.TargetAddressValidator;
 import io.opaa.test.SourceTypes;
 import io.opaa.test.UnreadableDirectory;
 import java.io.IOException;
@@ -37,6 +39,7 @@ import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Clock;
 import java.util.Base64;
 import java.util.Optional;
 import java.util.UUID;
@@ -94,7 +97,8 @@ class SourceConnectionTestServiceTest {
             libraryRepository,
             libraryAccessService,
             TestSourceConnectors.connectors().filesystemAllowlist(filesystemAllowlist).registry(),
-            capabilityService);
+            capabilityService,
+            new ServiceAccountTokens(TargetAddressValidator.disabled(), Clock.systemUTC()));
   }
 
   @AfterEach
@@ -579,7 +583,8 @@ class SourceConnectionTestServiceTest {
                 .filesystemAllowlist(filesystemAllowlist)
                 .rssProperties(new RssFeedProperties(200, 10, 10, 0, null, null, 0, 0))
                 .registry(),
-            capabilityService);
+            capabilityService,
+            new ServiceAccountTokens(TargetAddressValidator.disabled(), Clock.systemUTC()));
     String html = "<table>" + "x".repeat(100) + "</table>";
     server.createContext(
         "/dir/",
@@ -714,7 +719,8 @@ class SourceConnectionTestServiceTest {
                 .filesystemAllowlist(filesystemAllowlist)
                 .rssProperties(new RssFeedProperties(1, 0, 0, 0, null, null, 0, 0))
                 .registry(),
-            capabilityService);
+            capabilityService,
+            new ServiceAccountTokens(TargetAddressValidator.disabled(), Clock.systemUTC()));
     String rss =
         """
         <?xml version="1.0"?>
@@ -760,7 +766,8 @@ class SourceConnectionTestServiceTest {
                 .filesystemAllowlist(filesystemAllowlist)
                 .rssProperties(new RssFeedProperties(200, 10, 10, 0, null, null, 0, 0))
                 .registry(),
-            capabilityService);
+            capabilityService,
+            new ServiceAccountTokens(TargetAddressValidator.disabled(), Clock.systemUTC()));
     String rss =
         "<?xml version=\"1.0\"?><rss version=\"2.0\"><channel>"
             + "x".repeat(50)

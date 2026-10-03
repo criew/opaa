@@ -23,6 +23,7 @@ import io.opaa.indexing.source.OriginalUnavailableException;
 import io.opaa.indexing.source.ServedOriginals;
 import io.opaa.indexing.source.SourceConnectionResolver;
 import io.opaa.indexing.source.SourceConnectorRegistry;
+import io.opaa.indexing.source.SourceCredentialsException;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentContent;
 import io.opaa.knowledge.DocumentRepository;
@@ -575,6 +576,10 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
           document.getId(),
           e.getCause() == null ? e.getMessage() : e.getCause().getMessage());
       throw new ServiceUnavailableException(e.userMessage());
+    } catch (SourceCredentialsException e) {
+      log.warn(
+          "Original of document {} has no usable secret: {}", document.getId(), e.getMessage());
+      throw new ServiceUnavailableException(e.getMessage());
     }
   }
 
