@@ -36,11 +36,12 @@ import org.springframework.scheduling.annotation.Async;
  * own {@link KnowledgeLibrary#getSourcePath()} (ADR-0018). Every discovered file's directory is
  * mirrored into {@code library_folders} (ADR-0020) before the file is processed.
  *
- * <p>The listing is always complete: every physically found file - indexable or not - is present,
- * so the run frame's reconciliation removes what was not rediscovered, and only then are the
- * folders pruned, so a folder emptied by that cleanup is pruned in the same run. A missing or
- * non-directory {@code sourcePath} fails the run instead of reporting an empty, "successful"
- * bestand.
+ * <p>Every physically found file - indexable or not - is present, so the run frame's reconciliation
+ * removes what was not rediscovered, and only then are the folders pruned, so a folder emptied by
+ * that cleanup is pruned in the same run. An entry below {@code sourcePath} the walk cannot read
+ * keeps the known documents in and below it ({@link ListingOutcome.CompleteExcept}). A missing,
+ * unlistable or non-directory {@code sourcePath} fails the run instead of reporting an empty,
+ * "successful" bestand.
  */
 public class AsyncIndexingExecutor implements SourceIndexingExecutor {
 
@@ -188,11 +189,13 @@ public class AsyncIndexingExecutor implements SourceIndexingExecutor {
     for (Path rejected : discovered.rejected()) {
       run.markPresent(rejected.toAbsolutePath().toString());
     }
-    // What lies below an unreadable entry is unknown, so absence proves nothing: no reconciliation.
-    if (!discovered.unreadable().isEmpty()) {
-      return ListingOutcome.incomplete(List.of());
-    }
     run.afterReconciliation(reconciled -> folderMirror.prune());
+    // What lies below an unreadable entry is unknown, so absence there proves nothing: its known
+    // documents are kept, everything else is reconciled.
+    if (!discovered.unreadable().isEmpty()) {
+      return ListingOutcome.completeExcept(
+          discovered.unreadable().size(), new UnreadableAreas(discovered.unreadable()));
+    }
     return ListingOutcome.complete();
   }
 

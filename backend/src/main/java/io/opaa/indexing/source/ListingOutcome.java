@@ -1,6 +1,8 @@
 package io.opaa.indexing.source;
 
 import java.util.List;
+import java.util.Objects;
+import java.util.function.Predicate;
 
 /**
  * How much of its source a run's enumeration covered - what the run frame needs to decide whether
@@ -25,6 +27,21 @@ public sealed interface ListingOutcome {
   }
 
   /**
+   * Everything was listed except {@code unreadableScopes} areas the source could not read: the
+   * frame keeps every known document whose key {@code retained} matches, reconciles the rest and
+   * records an incomplete assessment with the number of unreadable areas.
+   */
+  record CompleteExcept(int unreadableScopes, Predicate<String> retained)
+      implements ListingOutcome {
+    public CompleteExcept {
+      if (unreadableScopes < 1) {
+        throw new IllegalArgumentException("unreadableScopes must be positive");
+      }
+      Objects.requireNonNull(retained, "retained");
+    }
+  }
+
+  /**
    * The run stopped in an orderly way before covering everything and the next run continues where
    * it left off (a spent request budget): no reconciliation, no assessment, the cost is marked
    * incomplete.
@@ -44,6 +61,10 @@ public sealed interface ListingOutcome {
 
   static ListingOutcome incomplete(List<String> unlistedScopeKeys) {
     return new Incomplete(unlistedScopeKeys);
+  }
+
+  static ListingOutcome completeExcept(int unreadableScopes, Predicate<String> retained) {
+    return new CompleteExcept(unreadableScopes, retained);
   }
 
   static ListingOutcome truncated() {

@@ -6,6 +6,7 @@ import io.opaa.indexing.job.IndexingJobService;
 import io.opaa.indexing.job.IndexingRunEventRecorder;
 import io.opaa.indexing.job.IndexingRunEventRepository;
 import io.opaa.indexing.job.RequestBudgetExhaustedException;
+import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.LibraryStorageQuotaService;
@@ -13,6 +14,7 @@ import io.opaa.sourceaccess.SourceRequestMeter;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.function.Predicate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -194,8 +196,10 @@ public class IndexingRunTemplate {
 
   /**
    * What a fully listing run mode does with its listing: a complete one reconciles and is assessed
-   * complete, an incomplete one is assessed as such and reconciles nothing, a truncated one leaves
-   * the previous assessment standing. A partial listing is a contract violation of the executor.
+   * complete, one with unreadable areas reconciles all but their retained documents and is assessed
+   * incomplete, an incomplete one is assessed as such and reconciles nothing, a truncated one
+   * leaves the previous assessment standing. A partial listing is a contract violation of the
+   * executor.
    */
   private void finishCompleteListing(
       IndexingRun run, SourceIndexingExecutor executor, ListingOutcome listing) {
@@ -203,6 +207,11 @@ public class IndexingRunTemplate {
       case ListingOutcome.Complete complete -> {
         run.reconciliationFinished(reconcile(run, executor));
         indexingJobService.recordListingAssessment(run.jobId(), true, List.of());
+      }
+      case ListingOutcome.CompleteExcept except -> {
+        run.reconciliationFinished(retainKnown(run, except.retained()) && reconcile(run, executor));
+        indexingJobService.recordListingAssessment(run.jobId(), false, List.of());
+        indexingJobService.recordUnreadableScopes(run.jobId(), except.unreadableScopes());
       }
       case ListingOutcome.Incomplete incomplete ->
           indexingJobService.recordListingAssessment(
@@ -214,6 +223,36 @@ public class IndexingRunTemplate {
                   + " declares "
                   + run.runMode()
                   + " as REMOVE_ON_ABSENCE but reported a partial listing");
+    }
+  }
+
+  /**
+   * Marks every known top-level document of the run's source whose key {@code retained} matches
+   * present; attachments follow their retained parent in the reconciliation, never their own key,
+   * which a crafted attachment name could point anywhere. A run that met nothing itself retains
+   * nothing, so its empty bestand still deletes nothing. A failure is logged and returned as {@code
+   * false}: without the retained keys nothing may be reconciled, but the run itself does not fail.
+   */
+  private boolean retainKnown(IndexingRun run, Predicate<String> retained) {
+    if (run.currentPaths().isEmpty()) {
+      return true;
+    }
+    try {
+      for (Document document :
+          documentRepository.findByLibraryIdAndSourceType(
+              run.library().getId(), run.sourceType())) {
+        if (document.getParentDocumentId() == null && retained.test(document.getFilePath())) {
+          run.markPresent(document.getFilePath());
+        }
+      }
+      return true;
+    } catch (Exception e) {
+      log.warn(
+          "Failed to load the retained {} documents of library {}, skipping the reconciliation",
+          run.sourceType(),
+          run.library().getId(),
+          e);
+      return false;
     }
   }
 

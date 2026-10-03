@@ -652,6 +652,7 @@ genutzt); die Tiefe ist allgemein (`opaa.indexing.attachments.max-depth`).
 | S3-Objekt übersprungen (Ordnermarker, Archivklasse, nicht unterstütztes Format, zu groß, nicht lesbar) | gilt als gesehen, nichts wird entfernt; das Protokoll nennt es |
 | S3-Schlüssel außerhalb der Ein-/Ausschlussmuster oder eines abgewählten Geltungsbereichs | nicht mehr Teil des Bestands, wird am Ende des vollständigen Laufs entfernt |
 | Quelle nicht erreichbar, Teil der Quelle nicht lesbar | Lauf `FAILED` bzw. Aufzählung unvollständig, **nichts** wird entfernt |
+| Verzeichnis-Konnektor: Unterverzeichnis oder Datei unterhalb des Verzeichnispfads nicht lesbar | nur der Bestand in diesem Teilbaum bleibt stehen, außerhalb wird normal entfernt ([Dateisystem-Konnektor](konnektor-filesystem.md), Abschnitt 9) |
 
 Die letzte Zeile ist die wichtigste Sicherung: Ein Lauf, der null Dateien sieht, kann eine leere
 Quelle oder ein nicht eingebundenes Netzlaufwerk bedeuten. Deshalb löscht ein leeres Ergebnis nie,
@@ -661,6 +662,12 @@ lässt den ganzen Bestand stehen, ebenso ein S3-Geltungsbereich, den die Zugangs
 auflisten dürfen oder dessen Bucket fehlt. Ein entzogenes Recht ist kein Löschbefund. Ein
 S3-Lauf, dessen Anfragebudget erschöpft ist, endet unvollständig und bereinigt ebenfalls nicht;
 der nächste Lauf listet alle Geltungsbereiche erneut und lädt nur, was noch fehlt.
+
+Einzige Ausnahme ist der Verzeichnis-Konnektor: Kann er unterhalb des lesbaren Verzeichnispfads ein
+Unterverzeichnis oder eine Datei nicht lesen, schont er nur die bekannten Dokumente in diesem
+Teilbaum und bereinigt den Rest wie nach einer vollständigen Aufzählung. Hat er außer solchen
+Bereichen nichts gefunden, löscht er nichts. Einzelheiten stehen im Kapitel
+[Dateisystem-Konnektor](konnektor-filesystem.md), Abschnitt 9.
 
 Für S3 ist das Änderungsmerkmal vor dem Download die Kombination aus ETag und Größe des
 Objekts (`e:<ETag>|<Größe>` in `last_modified_remote`), nicht der Zeitstempel: Ein erneuter
