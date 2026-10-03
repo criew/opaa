@@ -204,7 +204,11 @@ def ensure_space(
         "visibility": "PRIVATE",
         "ownerId": user_ids[space_def.owner_key],
         "initialMembers": [
-            {"userId": user_ids[member.user_key], "role": member.role}
+            {
+                "subjectType": "USER",
+                "subjectId": user_ids[member.user_key],
+                "role": member.role,
+            }
             for member in space_def.members
         ],
     }

@@ -162,7 +162,7 @@ class SpaceServiceIntegrationTest {
             "Engineering docs",
             ownerId,
             null,
-            List.of(new SpaceMemberSeed(curatorId, SpaceRole.CURATOR)),
+            List.of(SpaceMemberSeed.user(curatorId, SpaceRole.CURATOR)),
             null);
 
     Space created = spaceService.createSpace(creation, currentUserOf(adminUserId, true));
@@ -713,7 +713,7 @@ class SpaceServiceIntegrationTest {
             null,
             null,
             null,
-            List.of(new SpaceMemberSeed(outsider, SpaceRole.MEMBER)),
+            List.of(SpaceMemberSeed.user(outsider, SpaceRole.MEMBER)),
             null);
 
     assertThatThrownBy(() -> spaceService.createSpace(request, currentUserOf(admin, true)))

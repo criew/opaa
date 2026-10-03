@@ -155,7 +155,7 @@ public class SpaceService {
             visibility,
             ownerId,
             caller.organizationId());
-    appendInitialMemberships(space, ownerId, creation.initialMembers());
+    appendInitialMemberships(space, ownerId, creation.initialMembers(), caller);
     if (Boolean.TRUE.equals(creation.chatAutoCleanup())) {
       space.switchChatAutoCleanup(true, Instant.now());
     }
@@ -1062,27 +1062,31 @@ public class SpaceService {
     return userRepository.displayNamesById(userIds);
   }
 
+  /**
+   * The owner as ADMIN plus every person and group named on creation, each validated like {@link
+   * #addMember}: a person of another organization and a group the caller may not select answer as
+   * not found, an ineffective group as a conflict. Naming a subject twice keeps the last role.
+   */
   private void appendInitialMemberships(
-      Space space, UUID ownerId, List<SpaceMemberSeed> initialMembers) {
-    Map<UUID, SpaceRole> resolvedRoles = new LinkedHashMap<>();
+      Space space, UUID ownerId, List<SpaceMemberSeed> initialMembers, CurrentUser caller) {
+    Map<UUID, SpaceRole> userRoles = new LinkedHashMap<>();
+    Map<UUID, SpaceRole> groupRoles = new LinkedHashMap<>();
     if (initialMembers != null) {
       for (SpaceMemberSeed member : initialMembers) {
         if (member == null) {
           continue;
         }
-        resolvedRoles.put(member.userId(), member.role());
+        SpaceRole role = member.role() == null ? SpaceRole.MEMBER : member.role();
+        if (member.subjectType() == PermissionSubjectType.GROUP) {
+          groupRoles.put(member.subjectId(), role);
+        } else {
+          userRoles.put(member.subjectId(), role);
+        }
       }
     }
-    resolvedRoles.put(ownerId, SpaceRole.ADMIN);
-    resolvedRoles.forEach(
-        (userId, role) -> {
-          // Every initial member - not just the owner - must belong to the same organization as
-          // the space being created; otherwise any user could be added to a space without ever
-          // being validated as an admin action, and the membership would violate the
-          // organization invariant.
-          requireUserInOrganization(userId, space.getOrganizationId());
-          space.addMembership(SpaceMembership.ofUser(userId, role, space.getOrganizationId()));
-        });
+    userRoles.put(ownerId, SpaceRole.ADMIN);
+    userRoles.forEach((userId, role) -> addUserMembership(space, userId, role));
+    groupRoles.forEach((groupId, role) -> addGroupMembership(space, groupId, role, caller));
   }
 
   /** The person's own membership row, if they hold one - never a group row. */
