@@ -5,8 +5,11 @@ import io.opaa.api.types.Capability;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
+import io.opaa.connection.LibraryConnectionService;
 import io.opaa.indexing.source.ConnectorData;
 import io.opaa.indexing.source.SourceBrowser;
+import io.opaa.indexing.source.SourceConnectionBlockedException;
+import io.opaa.indexing.source.SourceConnectionResolver;
 import io.opaa.indexing.source.SourceConnectionTestResult;
 import io.opaa.indexing.source.SourceConnector;
 import io.opaa.indexing.source.SourceConnectorRegistry;
@@ -63,16 +66,22 @@ public class SourceConnectionTestService {
   private final LibraryAccessService libraryAccessService;
   private final SourceConnectorRegistry connectors;
   private final CapabilityService capabilityService;
+  private final SourceConnectionResolver connectionResolver;
+  private final LibraryConnectionService libraryConnections;
 
   public SourceConnectionTestService(
       KnowledgeLibraryRepository libraryRepository,
       LibraryAccessService libraryAccessService,
       SourceConnectorRegistry connectors,
-      CapabilityService capabilityService) {
+      CapabilityService capabilityService,
+      SourceConnectionResolver connectionResolver,
+      LibraryConnectionService libraryConnections) {
     this.libraryRepository = libraryRepository;
     this.libraryAccessService = libraryAccessService;
     this.connectors = connectors;
     this.capabilityService = capabilityService;
+    this.connectionResolver = connectionResolver;
+    this.libraryConnections = libraryConnections;
   }
 
   /**
@@ -111,7 +120,7 @@ public class SourceConnectionTestService {
             "sourceType passt nicht zum gespeicherten Quellentyp dieser Bibliothek");
       }
       settings = withStoredCredentialsIfOmitted(settings, library);
-      stored = ConnectorData.storedIn(library);
+      stored = connectionResolver.effectiveSettings(library);
     }
     return connector.testConnection(settings, stored);
   }
@@ -152,7 +161,7 @@ public class SourceConnectionTestService {
         throw new ValidationException(browser.otherTypeMessage());
       }
       settings = withStoredCredentialsIfOmitted(settings, library);
-      stored = ConnectorData.storedIn(library);
+      stored = connectionResolver.effectiveSettings(library);
     }
     return browser.browse(new SourceBrowser.Query(settings, stored));
   }
@@ -207,8 +216,9 @@ public class SourceConnectionTestService {
    * <p>The library's stored connector settings are no secret; whether they stand in for the
    * request's, regardless of the origin, the connector decides (it receives them beside).
    */
-  private static SourceSettings withStoredCredentialsIfOmitted(
+  private SourceSettings withStoredCredentialsIfOmitted(
       SourceSettings request, KnowledgeLibrary library) {
+    libraryConnections.requireAddressAllowed(library, request.sourceUrl());
     boolean fallback =
         blankToNull(request.sourceCredentials()) == null
             && SourceOriginMatcher.sameOrigin(library.getSourceUrl(), request.sourceUrl());
@@ -216,9 +226,18 @@ public class SourceConnectionTestService {
         request.sourcePath(),
         request.sourceUrl(),
         fallback ? library.getSourceProxy() : request.sourceProxy(),
-        fallback ? library.getSourceCredentials() : request.sourceCredentials(),
+        fallback ? storedSecret(library) : request.sourceCredentials(),
         fallback ? library.isSourceInsecureSsl() : request.sourceInsecureSsl(),
         request.connectorSettings());
+  }
+
+  /** The stored secret through the port, as a run would get it; a blocked connection is a 400. */
+  private String storedSecret(KnowledgeLibrary library) {
+    try {
+      return connectionResolver.currentCredentials(library);
+    } catch (SourceConnectionBlockedException e) {
+      throw new ValidationException(e.getMessage());
+    }
   }
 
   private static String blankToNull(String value) {

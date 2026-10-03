@@ -23,6 +23,7 @@ import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ValidationException;
+import io.opaa.connection.LibraryConnectionService;
 import io.opaa.indexing.chunk.FullTextChunkStore;
 import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.indexing.chunk.VectorStoreWriter;
@@ -145,7 +146,8 @@ class KnowledgeLibraryServiceShareCapTest {
                 .confluenceConnectionService(mock(ConfluenceConnectionService.class))
                 .confluenceProperties(confluenceProperties)
                 .registry(),
-            new LibrarySourceConnectionResolver());
+            new LibrarySourceConnectionResolver(),
+            mock(LibraryConnectionService.class));
 
     organizationId = UUID.randomUUID();
     ownerId = UUID.randomUUID();

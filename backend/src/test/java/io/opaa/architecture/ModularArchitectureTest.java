@@ -78,6 +78,23 @@ class ModularArchitectureTest {
   }
 
   @Test
+  void theConnectionPackagesDependOnlyDownward() {
+    ARCHITECTURE.theConnectionPackagesDependOnlyDownward().check(mainClasses);
+  }
+
+  /** Guards the premise of the connection rule: every package it orders still has classes. */
+  @Test
+  void everyConnectionPackageHasClasses() {
+    Set<String> packages =
+        mainClasses.stream()
+            .map(JavaClass::getPackageName)
+            .filter(name -> name.startsWith("io.opaa."))
+            .map(name -> name.substring("io.opaa.".length()))
+            .collect(Collectors.toSet());
+    assertThat(packages).containsAll(ModularArchitecture.CONNECTION_PACKAGES);
+  }
+
+  @Test
   void connectorsDoNotKnowEachOther() {
     ARCHITECTURE.connectorsDoNotKnowEachOther().check(mainClasses);
   }

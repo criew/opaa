@@ -110,7 +110,10 @@ class SpecEnumParityTest {
         Arguments.of("LocalAccountActivity", LocalAccountActivity.values()),
         Arguments.of("MailDeliveryPath", MailDeliveryPath.values()),
         Arguments.of("ExternalAccessTokenStatus", ExternalAccessTokenStatus.values()),
-        Arguments.of("PromptVariableType", PromptVariableType.values()));
+        Arguments.of("PromptVariableType", PromptVariableType.values()),
+        Arguments.of("ConnectionProfileSupport", ConnectionProfileSupport.values()),
+        Arguments.of("ConnectionAuthMethod", ConnectionAuthMethod.values()),
+        Arguments.of("ConnectionOwnership", ConnectionOwnership.values()));
   }
 
   @ParameterizedTest(name = "{0}")
