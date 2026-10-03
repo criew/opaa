@@ -116,6 +116,27 @@ describe('tokens', () => {
 })
 
 describe('createAppTheme', () => {
+  // regression guard for #2150: error.main is the danger text colour (menu entries, helper texts,
+  // text buttons) and the surface of filled danger actions - both must reach 4.5:1.
+  test('danger works as text on every surface and carries its contrast text (#2150)', () => {
+    for (const [mode, roles] of [
+      ['light', lightRoles],
+      ['dark', darkRoles],
+    ] as const) {
+      const { error } = createAppTheme(mode).palette
+      for (const background of [roles.bg1, roles.bg2, roles.bg3]) {
+        expect(
+          contrastRatio(error.main, background),
+          `error.main on ${background} (${mode})`,
+        ).toBeGreaterThanOrEqual(TEXT_CONTRAST_MINIMUM)
+      }
+      expect(
+        contrastRatio(error.contrastText, error.main),
+        `error.contrastText on error.main (${mode})`,
+      ).toBeGreaterThanOrEqual(TEXT_CONTRAST_MINIMUM)
+    }
+  })
+
   test('light scheme maps the semantic roles onto the MUI palette', () => {
     const theme = createAppTheme('light')
 

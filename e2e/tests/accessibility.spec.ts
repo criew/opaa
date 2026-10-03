@@ -1,6 +1,11 @@
 import { expect, test } from "../fixtures/auth";
 import { expectNoSeriousA11yViolations } from "../fixtures/a11y";
-import { startFreshChat } from "../fixtures/chat";
+import {
+  askQuestion,
+  chatSidebarEntries,
+  clearSearchScope,
+  startFreshChat,
+} from "../fixtures/chat";
 import { apiAs } from "../fixtures/externalAccess";
 import { createPromptLibraryViaApi } from "../fixtures/promptLibraries";
 
@@ -108,6 +113,31 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
     await page.emulateMedia({ colorScheme: "dark" });
     await expect(input).toBeVisible();
     await expectNoSeriousA11yViolations(page, "Chat (dunkles Farbschema)");
+  });
+
+  // regression guard for #2150: the danger entry „Löschen" is text in error.main and has to reach
+  // 4.5:1 on the menu surface in both schemes.
+  test("Chat-Menü mit Gefahr-Eintrag in beiden Farbschemata", async ({
+    authenticatedPage: page,
+  }) => {
+    await startFreshChat(page);
+    await clearSearchScope(page);
+    await askQuestion(page, `Frage für das Chat-Menü (${Date.now()})`);
+    await expect(page).toHaveURL(/\/spaces\/[^/]+\/chats\/(?!new$)[^/]+$/);
+
+    const menuTrigger = chatSidebarEntries(page).first();
+    const deleteEntry = page.getByRole("menuitem", { name: /löschen$/ });
+    for (const scheme of ["light", "dark"] as const) {
+      await page.emulateMedia({ colorScheme: scheme });
+      await menuTrigger.click();
+      await expect(deleteEntry).toBeVisible();
+      await expectNoSeriousA11yViolations(
+        page,
+        `Chat-Menü mit Löschen (${scheme === "dark" ? "dunkles" : "helles"} Farbschema)`,
+      );
+      await page.keyboard.press("Escape");
+      await expect(deleteEntry).toHaveCount(0);
+    }
   });
 
   test("Space-Seite", async ({ authenticatedPage: page }) => {
