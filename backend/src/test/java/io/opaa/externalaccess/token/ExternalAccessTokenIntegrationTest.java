@@ -367,7 +367,7 @@ class ExternalAccessTokenIntegrationTest {
   }
 
   @Test
-  void theOfferMarksTheCallersOwnFavoritesAndWhatComesFromTheirGroups() throws Exception {
+  void theOfferMarksOnlyTheCallersOwnFavorites() throws Exception {
     // The foreign library reaches the person through a grant to a group they are a member of.
     Group group =
         new Group(
@@ -411,14 +411,12 @@ class ExternalAccessTokenIntegrationTest {
     String own = "$.libraries[?(@.id == '" + libraryId + "')]";
     String foreign = "$.libraries[?(@.id == '" + foreignLibraryId + "')]";
     assertThat(JsonPath.<List<Boolean>>read(offered, own + ".favorite")).containsExactly(true);
-    assertThat(JsonPath.<List<Boolean>>read(offered, own + ".fromMyGroups"))
-        .as("owned in person - no group involved")
-        .containsExactly(false);
     assertThat(JsonPath.<List<Boolean>>read(offered, foreign + ".favorite"))
         .as("another person's mark")
         .containsExactly(false);
-    assertThat(JsonPath.<List<Boolean>>read(offered, foreign + ".fromMyGroups"))
-        .containsExactly(true);
+    assertThat(JsonPath.<List<Object>>read(offered, "$.libraries[*].fromMyGroups"))
+        .as("the selection has no group mark")
+        .isEmpty();
   }
 
   private String eligibleLibraries() throws Exception {

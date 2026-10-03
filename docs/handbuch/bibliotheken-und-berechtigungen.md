@@ -173,32 +173,33 @@ ebenso historisiert.
 
 Der **Katalog** ist der eine Punkt der Hauptnavigation für Bestände jeder Art. Er zeigt Wissens- und
 Prompt-Bibliotheken gemischt: genau die, die die Person lesen darf — über eine eigene Rolle, eine
-Rolle über eine Gruppe oder die Freigabe an „Alle Konten". Die Adressen `/libraries` und
-`/prompts` führen auf den Katalog, eingegrenzt auf die jeweilige Art.
+Rolle über eine Gruppe oder die Freigabe an „Alle Konten". Unter der Überschrift steht „Alles, was
+Sie nutzen dürfen. Ihre Favoriten stehen oben." Die Adressen `/libraries` und `/prompts` führen auf
+den Katalog, eingegrenzt auf die jeweilige Art.
 
 | Element | Inhalt |
 |---|---|
 | **Suche** | Über Name und Beschreibung, ohne Rücksicht auf Groß- und Kleinschreibung; der Suchtext ist begrenzt |
-| **Filter** | Art: „Alle", „Wissen" oder „Prompts"; Sichtbarkeit: „Alle", „Für alle" oder „Eingeschränkt"; dazu „Aus meinen Gruppen" und „Favoriten" für die eigenen Favoriten. Die Filter wirken zusammen; gewählte Filter und Sortierung stehen in der Adresse der Seite |
-| **Sortierung** | „Name" (Vorgabe, A bis Z) oder „Zuletzt geändert" (jüngste Änderung zuerst); in beiden stehen die eigenen Favoriten vorn |
-| **Eintrag** | Eine Kachel: Art (Wissens- oder Prompt-Bibliothek) als Etikett mit Symbol, Sichtbarkeit und die eigene Rolle als Etiketten, Stern für den eigenen Favoriten, Name, Beschreibung, Umfang (Dokumente bzw. Prompts), in wie vielen Räumen sie bereitsteht, zuständige Stelle und Stand oder Zustand. Jede Kachel führt zur Detailseite der Bibliothek; eine Tabellenansicht gibt es nicht |
-| **In Space verwenden** | An jeder Kachel und auf der Detailseite: ordnet die Bibliothek einem Raum zu (Abschnitt 5, „Zuordnen aus dem Katalog") |
-| **Seiten** | Die Einträge kommen seitenweise; „Weitere laden" hängt die nächste Seite an |
+| **Filterzeile** | In einer Zeile, die auf schmalen Bildschirmen umbricht: Suche, dann die Art („Alle", „Wissen" oder „Prompts"), dann abgesetzt der Schalter „Favoriten" für die eigenen Favoriten. Die Filter wirken zusammen; Art und „Favoriten" stehen in der Adresse der Seite |
+| **Reihenfolge** | Fest: die eigenen Favoriten zuerst, dann nach Name von A bis Z. Eine Sortierauswahl gibt es nicht |
+| **Eintrag** | Eine Kachel: die Art als Etikett mit Symbol („Wissen" oder „Prompts"), direkt daneben das Welt-Symbol, wenn die Bibliothek an „Alle Konten" freigegeben ist; Stern für den eigenen Favoriten und „⋯" für weitere Aktionen; Name, Beschreibung, Umfang (Dokumente bzw. Prompts), in wie vielen Räumen sie bereitsteht, zuständige Stelle mit Personen- oder Gruppensymbol und „Aktualisiert am" oder der Zustand. Jede Kachel führt zur Detailseite der Bibliothek; eine Tabellenansicht gibt es nicht |
+| **In Space verwenden** | Im Menü „⋯" jeder Kachel und auf der Detailseite: ordnet die Bibliothek einem Raum zu (Abschnitt 5, „Zuordnen aus dem Katalog") |
+| **Seiten** | Die Einträge kommen seitenweise; über „Weitere laden" steht, wie viele von wie vielen angezeigt sind, und der Knopf hängt die nächste Seite an |
 | **Neu** | Oben rechts, nur wenn die Person mindestens ein Anlegerecht für eine Art hat (siehe unten, „Anlegen über ‚Neu'") |
 
-**Sichtbarkeit.** „Für alle" heißt: an „Alle Konten" freigegeben; „Eingeschränkt" heißt: nur über
-Freigaben an Personen oder Gruppen erreichbar. Die Sichtbarkeit wird aus der Rechteliste abgeleitet
-und ist keine eigene Einstellung; die Kachel erklärt das Etikett beim Darüberfahren, die Seite unter
-der Liste. **„Aus meinen Gruppen"** zeigt nur, was einer Gruppe, in der die Person derzeit Mitglied
-ist, freigegeben ist oder gehört; eine Freigabe an „Alle Konten" oder an die Person selbst zählt
-dafür nicht.
+**Freigabe an alle.** Das Welt-Symbol heißt: an „Alle Konten" freigegeben; beim Darüberfahren und
+für Screenreader lautet es „Für alle Konten freigegeben". Eine Bibliothek, die nur über Freigaben an
+Personen oder Gruppen erreichbar ist, trägt kein Symbol. Das Symbol wird aus der Rechteliste
+abgeleitet und ist keine eigene Einstellung. Die eigene Rolle steht nicht auf der Kachel, sondern
+auf der Detailseite.
 
-**Stand und Zustand.** Ist eine Bibliothek bereit, nennt die Kachel ihren Stand: bei einer
-Konnektorbibliothek das Datum des letzten erfolgreichen Laufs, sonst das Datum der letzten Änderung
-an Stammdaten oder Inhalt. Sonst nennt sie den Zustand in Worten, mit einem farbigen Punkt davor:
+**Aktualisiert und Zustand.** Ist eine Bibliothek bereit, nennt die Kachel „Aktualisiert am" mit
+Datum, ohne farbigen Punkt: bei einer Konnektorbibliothek das Datum des letzten erfolgreichen Laufs,
+sonst das Datum der letzten Änderung an Stammdaten oder Inhalt. Sonst nennt sie den Zustand in
+Worten, mit einem farbigen Punkt davor:
 „Wird aktualisiert", „Aktualisierung fehlgeschlagen" oder „Noch kein Inhalt". Ist die Nachfolge
-offen, steht zusätzlich „Nachfolge offen — zuständig: …"; der Stand der Indexierung bleibt dann
-sichtbar. Als Änderung zählt, was Stammdaten oder Inhalt ändert; Freigaben zählen nicht.
+offen, steht zusätzlich die Zeile „Nachfolge offen", ebenfalls mit Punkt; der Adressat steht als
+zuständige Stelle, und der Stand der Indexierung bleibt sichtbar. Als Änderung zählt, was Stammdaten oder Inhalt ändert; Freigaben zählen nicht.
 
 Eine Bibliothek ohne Leserecht steht nicht im Katalog; auch die Suche über Name oder Beschreibung
 findet sie nicht, und ihre Adresse antwortet „nicht gefunden" wie bei einer unbekannten Bibliothek.
@@ -392,9 +393,9 @@ archivieren noch löschen.
 mit „Weiter" überspringen.
 
 Im Schritt **Inhalte** stehen alle Bestände als Kacheln, die die Person lesen darf — dieselbe Menge
-wie im Katalog. Mehrere Kacheln lassen sich zugleich wählen; ein Filter grenzt auf eine Art ein
-(„Alle", „Wissen", „Prompts"); die Umschalter „Favoriten" und „Aus meinen Gruppen" grenzen wie im
-Katalog ein und wirken gedrückt zusammen; ein Suchfeld grenzt auf Name und Beschreibung ein. Eine Wahl bleibt bestehen,
+wie im Katalog, in derselben Reihenfolge. Mehrere Kacheln lassen sich zugleich wählen. Darüber
+steht dieselbe Filterzeile wie im Katalog: Suche über Name und Beschreibung, Art („Alle", „Wissen",
+„Prompts") und „Favoriten". Über „Weitere laden" steht, wie viele von wie vielen angezeigt sind. Eine Wahl bleibt bestehen,
 wenn Filter oder Suche ihre Kachel ausblenden; die Zeile unter den Kacheln nennt alles Gewählte.
 Jede Kachel ist ein Kontrollkästchen mit eigenem Tabstopp: Leertaste und Enter wählen oder
 heben die Wahl auf.
@@ -411,11 +412,12 @@ zugeordnet"; „Zuordnen" ordnet alles Gewählte zu.
 
 ### Zuordnen aus dem Katalog: „In Space verwenden"
 
-An jeder Kachel des Katalogs und auf der Detailseite einer Bibliothek steht **„In Space
+Im Menü „⋯" jeder Kachel des Katalogs und auf der Detailseite einer Bibliothek steht **„In Space
 verwenden"**. Es öffnet die Liste der Räume, in denen die Person Kurator oder Administrator ist;
 archivierte Räume fehlen, Räume mit dieser Bibliothek sind als „Bereits zugeordnet" gesperrt. Ein
-Klick auf einen Raum ordnet zu — zwei Klicks vom Katalog bis zur Zuordnung. „Neuen Space damit
-anlegen" öffnet den Space-Assistenten mit der Bibliothek als bereits gewählter Kachel.
+Klick auf einen Raum ordnet zu — vom Katalog aus sind es drei Klicks: „⋯", „In Space verwenden",
+der Raum. „Neuen Space damit anlegen" öffnet den Space-Assistenten mit der Bibliothek als bereits
+gewählter Kachel.
 
 ### Die Space-Übersicht
 

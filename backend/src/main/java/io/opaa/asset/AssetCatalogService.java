@@ -26,11 +26,11 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * The catalog (docs/features/spaces-and-assets.md#der-katalog): exactly the assets a person may
  * read by {@link AssetAccessService#readableAssets}, over every served type and within the person's
- * organization - one query on the shell, paged, searched and sorted in SQL. Every filter narrows
+ * organization - one query on the shell, paged, searched and ordered in SQL. Every filter narrows
  * the readable set before the query, so no entry and no count ever includes an unreadable asset;
  * the administration's floor never counts here. What a page shows beyond the shell comes in grouped
- * queries per type present on it. The caller's own favorites come first in every order; no other
- * person's mark is read.
+ * queries per type present on it. The order is fixed: the caller's own favorites first, then by
+ * name; no other person's mark is read.
  */
 @Service
 @Transactional(readOnly = true)
@@ -99,33 +99,21 @@ public class AssetCatalogService {
       throw new ValidationException("Unbekannter Asset-Typ: " + assetType);
     }
 
-    Selection selection = select(caller, types, query);
+    Selection selection = select(caller, types);
     if (selection.ids().isEmpty()) {
       return new AssetCatalogPage(List.of(), page, size, 0, 0);
     }
     PageRequest pageRequest = PageRequest.of(page, size);
     String pattern = likePattern(query.text());
     Page<AssetCatalogRow> rows =
-        switch (query.sort()) {
-          case NAME ->
-              assetRepository.findCatalogPage(
-                  caller.organizationId(),
-                  types,
-                  selection.ids(),
-                  pattern,
-                  caller.id(),
-                  query.favoritesOnly(),
-                  pageRequest);
-          case UPDATED_AT ->
-              assetRepository.findCatalogPageByUpdatedAt(
-                  caller.organizationId(),
-                  types,
-                  selection.ids(),
-                  pattern,
-                  caller.id(),
-                  query.favoritesOnly(),
-                  pageRequest);
-        };
+        assetRepository.findCatalogPage(
+            caller.organizationId(),
+            types,
+            selection.ids(),
+            pattern,
+            caller.id(),
+            query.favoritesOnly(),
+            pageRequest);
 
     List<AssetCatalogRow> content = rows.getContent();
     Map<UUID, Long> itemCounts = itemCounts(content);
@@ -163,70 +151,25 @@ public class AssetCatalogService {
     return new AssetCatalogPage(entries, page, size, rows.getTotalElements(), rows.getTotalPages());
   }
 
-  /**
-   * The catalog's two personal marks among {@code assetIds} of one type: which {@code userId}
-   * marked as favorites, and which come from one of their groups by the rule of the filter "Aus
-   * meinen Gruppen". An id the person cannot read is never marked as coming from their groups.
-   */
-  public AssetCatalogMarks marksAmong(
-      UUID userId, UUID organizationId, AssetType assetType, Collection<UUID> assetIds) {
-    if (assetIds.isEmpty()) {
-      return new AssetCatalogMarks(Set.of(), Set.of());
-    }
-    ReadableAssets reach = accessService.readableAssets(assetType, userId, organizationId);
-    Set<UUID> fromMyGroups =
-        fromMyGroups(
-            organizationId, List.of(assetType), reach.byGroupGrant(), reach.callerGroupIds());
-    fromMyGroups.retainAll(reach.all());
-    fromMyGroups.retainAll(assetIds);
-    return new AssetCatalogMarks(favorites.findMarkedAmong(userId, assetIds), fromMyGroups);
+  /** The assets among {@code assetIds} that {@code userId} marked as favorites - only theirs. */
+  public Set<UUID> favoritesAmong(UUID userId, Collection<UUID> assetIds) {
+    return assetIds.isEmpty() ? Set.of() : favorites.findMarkedAmong(userId, assetIds);
   }
 
   /** The ids the page query may return, and which of the readable ones are public. */
   private record Selection(Set<UUID> ids, Set<UUID> publicIds) {}
 
-  /**
-   * The readable assets of {@code types}, narrowed by the visibility and the group filter of {@code
-   * query}. "Aus meinen Gruppen" is a grant to one of the caller's groups or ownership by one.
-   */
-  private Selection select(CurrentUser caller, List<AssetType> types, AssetCatalogQuery query) {
+  /** The readable assets of {@code types} and which of them are public. */
+  private Selection select(CurrentUser caller, List<AssetType> types) {
     Set<UUID> readable = new HashSet<>();
     Set<UUID> publicIds = new HashSet<>();
-    Set<UUID> grantedToMyGroups = new HashSet<>();
-    Set<UUID> myGroupIds = new HashSet<>();
     for (AssetType type : types) {
       ReadableAssets reach =
           accessService.readableAssets(type, caller.id(), caller.organizationId());
       readable.addAll(reach.all());
       publicIds.addAll(reach.byAllAccountsGrant());
-      grantedToMyGroups.addAll(reach.byGroupGrant());
-      myGroupIds.addAll(reach.callerGroupIds());
     }
-
-    Set<UUID> selected = new HashSet<>(readable);
-    if (query.visibility() == CatalogVisibility.PUBLIC) {
-      selected.retainAll(publicIds);
-    } else if (query.visibility() == CatalogVisibility.RESTRICTED) {
-      selected.removeAll(publicIds);
-    }
-    if (query.fromMyGroups() && !selected.isEmpty()) {
-      selected.retainAll(
-          fromMyGroups(caller.organizationId(), types, grantedToMyGroups, myGroupIds));
-    }
-    return new Selection(selected, publicIds);
-  }
-
-  /** "Aus meinen Gruppen": granted to one of the caller's groups or owned by one. */
-  private Set<UUID> fromMyGroups(
-      UUID organizationId,
-      List<AssetType> types,
-      Set<UUID> grantedToMyGroups,
-      Set<UUID> myGroupIds) {
-    Set<UUID> mine = new HashSet<>(grantedToMyGroups);
-    if (!myGroupIds.isEmpty()) {
-      mine.addAll(assetRepository.findIdsOwnedByGroups(organizationId, types, myGroupIds));
-    }
-    return mine;
+    return new Selection(readable, publicIds);
   }
 
   private static CatalogEntryStatus statusOf(

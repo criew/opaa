@@ -887,20 +887,17 @@ describe('SpaceSettingsPage', () => {
     expect(screen.queryByRole('checkbox', { name: /^Projektakte Phoenix/ })).not.toBeInTheDocument()
   })
 
-  it('narrows the tiles to assets from my groups, as in the space wizard', async () => {
+  it('offers only the favorites chip, as in the space wizard', async () => {
     setSpaceState(teamSpace)
     renderTab('knowledge')
-    const user = userEvent.setup()
 
     expect(await screen.findByRole('checkbox', { name: /^Projektakte Phoenix/ })).toBeVisible()
-    await user.click(
-      within(screen.getByRole('group', { name: 'Filter' })).getByRole('button', {
-        name: 'Aus meinen Gruppen',
-      }),
-    )
-
-    expect(await screen.findByRole('checkbox', { name: /^Dienstanweisungen/ })).toBeVisible()
-    expect(screen.queryByRole('checkbox', { name: /^Projektakte Phoenix/ })).not.toBeInTheDocument()
+    const filters = screen.getByRole('group', { name: 'Filter' })
+    expect(
+      within(filters)
+        .getAllByRole('button')
+        .map((b) => b.textContent),
+    ).toEqual(['Favoriten'])
   })
 
   it("offers only the tab's own type and narrows the tiles by search", async () => {
@@ -913,7 +910,7 @@ describe('SpaceSettingsPage', () => {
       screen.queryByRole('checkbox', { name: /^Formulierungshilfen Referat 50/ }),
     ).not.toBeInTheDocument()
 
-    await user.type(screen.getByRole('searchbox', { name: 'Suche' }), 'gibt es nicht')
+    await user.type(screen.getByRole('searchbox', { name: 'Suchen' }), 'gibt es nicht')
 
     expect(await screen.findByText('Keine Treffer.')).toBeInTheDocument()
     expect(screen.queryByRole('checkbox', { name: /^Dienstanweisungen/ })).not.toBeInTheDocument()

@@ -283,8 +283,12 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
       await page.emulateMedia({ colorScheme: "dark" });
       await expectNoSeriousA11yViolations(page, "Katalog (dunkles Farbschema)");
 
-      // „In Space verwenden": die Auswahl der kuratierten Spaces im Dialog.
-      await page.getByRole("button", { name: `„${name}“ in Space verwenden` }).click();
+      // „⋯" neben dem Stern: das geöffnete Menü, dann „In Space verwenden" mit der Auswahl der
+      // kuratierten Spaces im Dialog.
+      await page.getByRole("button", { name: `Weitere Aktionen für ‚${name}‘` }).click();
+      await expect(page.getByRole("menuitem", { name: "In Space verwenden" })).toBeVisible();
+      await expectNoSeriousA11yViolations(page, "Katalog, Menü Weitere Aktionen");
+      await page.getByRole("menuitem", { name: "In Space verwenden" }).click();
       await expect(
         page.getByRole("dialog").getByRole("button", { name: "Neuen Space damit anlegen" }),
       ).toBeVisible();
@@ -308,7 +312,7 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
     await page.getByLabel("Name", { exact: true }).fill("Barrierefreiheit");
     await page.getByRole("button", { name: "Weiter", exact: true }).click();
     await page.getByRole("button", { name: "Weiter", exact: true }).click();
-    await page.getByRole("searchbox", { name: "Suche" }).fill(ownEntry);
+    await page.getByRole("searchbox", { name: "Suchen" }).fill(ownEntry);
     await expect(
       page.getByRole("checkbox", { name: new RegExp(`^${ownEntry}`) }),
     ).toBeVisible();

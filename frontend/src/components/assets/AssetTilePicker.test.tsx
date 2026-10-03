@@ -60,7 +60,9 @@ describe('AssetTilePicker', () => {
     const user = userEvent.setup()
     renderWithProviders(<Harness />)
 
-    await user.click(await screen.findByRole('button', { name: 'Weitere laden' }))
+    const more = await screen.findByRole('button', { name: 'Weitere laden' })
+    expect(screen.getByText('1 von 2 angezeigt')).toBeVisible()
+    await user.click(more)
 
     expect(await screen.findByText(/Weitere Einträge konnten nicht geladen werden/)).toBeVisible()
     expect(screen.getByRole('checkbox', { name: /^Erste Bibliothek/ })).toBeVisible()

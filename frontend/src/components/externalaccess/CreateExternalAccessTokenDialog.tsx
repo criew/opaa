@@ -7,13 +7,11 @@ import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
 import FormHelperText from '@mui/material/FormHelperText'
-import InputAdornment from '@mui/material/InputAdornment'
 import Skeleton from '@mui/material/Skeleton'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import visuallyHidden from '@mui/utils/visuallyHidden'
-import SearchIcon from '@mui/icons-material/Search'
 import type {
   CreatedExternalAccessTokenResponse,
   EligibleExternalAccessLibraryResponse,
@@ -25,10 +23,8 @@ import {
 import { radius } from '../../theme/tokens'
 import ChoiceTileGroup, { type ChoiceTile } from '../choice/ChoiceTileGroup'
 import { assetTypeDefinition } from '../assets/assetTypeRegistry'
-import AssetFilterChips, {
-  type AssetFilterKey,
-  type AssetFilters,
-} from '../assets/AssetFilterChips'
+import { type AssetFilterKey, type AssetFilters } from '../assets/AssetFilterChips'
+import AssetFilterBar from '../assets/AssetFilterBar'
 import {
   DISCLOSURE_HINT,
   NO_LIBRARIES_HINT,
@@ -63,10 +59,10 @@ function matchesQuery(library: EligibleExternalAccessLibraryResponse, query: str
     .every((term) => haystack.includes(term))
 }
 
-const NO_FILTERS: AssetFilters = { favorites: false, fromMyGroups: false, selectedOnly: false }
+const NO_FILTERS: AssetFilters = { favorites: false, selectedOnly: false }
 
 function anyFilter(filters: AssetFilters): boolean {
-  return filters.favorites || filters.fromMyGroups || Boolean(filters.selectedOnly)
+  return filters.favorites || Boolean(filters.selectedOnly)
 }
 
 function resultMessage(count: number, searching: boolean, filtering: boolean): string {
@@ -96,7 +92,6 @@ function libraryTiles(
   return libraries
     .filter((library) => matchesQuery(library, query))
     .filter((library) => !filters.favorites || library.favorite)
-    .filter((library) => !filters.fromMyGroups || library.fromMyGroups)
     .filter((library) => !filters.selectedOnly || shown.includes(library.id))
     .map((library) => ({
       value: library.id,
@@ -268,35 +263,17 @@ export default function CreateExternalAccessTokenDialog({
               <Skeleton variant="rounded" height={96} sx={{ mt: 1 }} />
             ) : hasLibraries ? (
               <>
-                <Stack
-                  direction="row"
-                  spacing={1.5}
-                  sx={{ alignItems: 'center', mt: 1, mb: 1.5, flexWrap: 'wrap' }}
-                >
-                  <TextField
-                    type="search"
-                    size="small"
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    placeholder="Name oder Beschreibung …"
-                    sx={{ flex: '1 1 220px' }}
-                    slotProps={{
-                      input: {
-                        startAdornment: (
-                          <InputAdornment position="start">
-                            <SearchIcon sx={{ fontSize: 16 }} />
-                          </InputAdornment>
-                        ),
-                      },
-                      htmlInput: { 'aria-label': 'Bibliotheken suchen' },
-                    }}
+                <Box sx={{ mt: 1, mb: 1.5 }}>
+                  <AssetFilterBar
+                    search={{ value: query, onChange: setQuery }}
+                    filters={filters}
+                    onToggle={toggleFilter}
+                    trailing={
+                      <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+                        {selected.length} ausgewählt
+                      </Typography>
+                    }
                   />
-                  <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
-                    {selected.length} ausgewählt
-                  </Typography>
-                </Stack>
-                <Box sx={{ mb: 1.5 }}>
-                  <AssetFilterChips value={filters} onToggle={toggleFilter} />
                 </Box>
                 {/* Searching and filtering do not move the focus, so the result is announced in a
                     live region. Without a match the same message is visible as well. */}

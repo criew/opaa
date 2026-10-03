@@ -214,7 +214,7 @@ Modell.
    fachliche Prüfung, Test gegen Referenzfälle, Freigabe mit Namen und Datum.
 4. Nach Freigabe ist er an alle Konten freigegeben und steht damit für jede Person im **Katalog** —
    auffindbar über Fachbereich, Anwendungsfall und Verantwortlichen statt über eine Mail-Weiterleitung.
-   Mit „In Space verwenden" ordnet ihn jedes Team in zwei Klicks seinem eigenen Space zu.
+   Mit „In Space verwenden" ordnet ihn jedes Team in drei Klicks seinem eigenen Space zu.
 5. Verbessert der Eigentümer den Agenten, erhalten alle die neue **Version**; die Historie bleibt, ein
    Zurückrollen ist möglich.
 6. Die Nutzungsauswertung zeigt aggregiert, welche Assets tatsächlich tragen und welche eingestellt werden

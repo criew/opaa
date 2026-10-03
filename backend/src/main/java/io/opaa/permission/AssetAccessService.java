@@ -132,7 +132,7 @@ public class AssetAccessService {
             : grantRepository.findReadableAssetIdsByGroupGrant(
                 assetType, groupIds, organizationId, now);
     return new ReadableAssets(
-        byDirectGrant, byGroupGrant, allAccountsAssetIds(assetType, organizationId, now), groupIds);
+        byDirectGrant, byGroupGrant, allAccountsAssetIds(assetType, organizationId, now));
   }
 
   /**
