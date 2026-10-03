@@ -7,14 +7,17 @@ import io.opaa.connection.profile.LibraryConnectionRepository;
 import io.opaa.connection.profile.ServerAddress;
 import io.opaa.indexing.source.ConnectorData;
 import io.opaa.indexing.source.LibrarySourceConnectionResolver;
+import io.opaa.indexing.source.ServiceAccountTokens;
 import io.opaa.indexing.source.SourceConnectionBlockedException;
 import io.opaa.indexing.source.SourceConnectionBlockedException.Category;
 import io.opaa.indexing.source.SourceConnectionResolver;
+import io.opaa.indexing.source.SourceConnectorRegistry;
 import io.opaa.indexing.source.SourceSettings;
 import io.opaa.knowledge.KnowledgeLibrary;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Component;
 
 /**
@@ -31,12 +34,22 @@ public class ProfileSourceConnectionResolver implements SourceConnectionResolver
 
   private final LibraryConnectionRepository connections;
   private final ConnectionProfileRepository profiles;
-  private final SourceConnectionResolver ownFields = new LibrarySourceConnectionResolver();
+  private final SourceConnectionResolver ownFields;
 
+  /**
+   * A library without profile resolves from its own fields; a connector that signs in with a
+   * service account key gets the access token the core signs for (ADR-0040, Entscheidung 2).
+   */
   public ProfileSourceConnectionResolver(
-      LibraryConnectionRepository connections, ConnectionProfileRepository profiles) {
+      LibraryConnectionRepository connections,
+      ConnectionProfileRepository profiles,
+      ObjectProvider<SourceConnectorRegistry> registry,
+      ServiceAccountTokens serviceAccountTokens) {
     this.connections = connections;
     this.profiles = profiles;
+    this.ownFields =
+        new LibrarySourceConnectionResolver(
+            type -> registry.getObject().find(type), serviceAccountTokens);
   }
 
   @Override
@@ -52,6 +65,13 @@ public class ProfileSourceConnectionResolver implements SourceConnectionResolver
         secretOf(library, profile.get()),
         library.isSourceInsecureSsl(),
         merged(profile.get(), library));
+  }
+
+  @Override
+  public SourceSettings resolveForChange(KnowledgeLibrary library) {
+    return requireProfile(library).isEmpty()
+        ? ownFields.resolveForChange(library)
+        : resolve(library);
   }
 
   @Override
