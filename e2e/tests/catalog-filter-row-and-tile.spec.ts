@@ -62,6 +62,21 @@ test.describe('Katalog: Filterzeile und Kachel (#2180)', () => {
       Math.abs((await centreY(favorites)) - (await centreY(types))),
       'Favoriten-Chip steht neben der Typgruppe, nicht allein',
     ).toBeLessThan(4)
+
+    // Phone width: the group drops its visible title and the icons, yet keeps its name "Typ".
+    await page.setViewportSize({ width: 400, height: 800 })
+    await expect(favorites).toBeVisible()
+    expect(
+      Math.abs((await centreY(favorites)) - (await centreY(types))),
+      'Favoriten-Chip steht bei 400 px neben der Typgruppe',
+    ).toBeLessThan(4)
+    const narrowTypes = (await types.boundingBox())!
+    const narrowFavorites = (await favorites.boundingBox())!
+    expect(
+      narrowFavorites.x + narrowFavorites.width,
+      'Typgruppe und Favoriten passen in die Breite',
+    ).toBeLessThanOrEqual(400)
+    expect(narrowTypes.x).toBeGreaterThanOrEqual(0)
   })
 
   test('Stern und „⋯“ heben die Kachel nicht hervor, der Fokus auf dem Titel schon', async ({
