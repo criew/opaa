@@ -148,6 +148,39 @@ class LibraryControllerCredentialsIntegrationTest {
     assertThat(rawResponseBody).contains("\"sourceCredentialsSet\":true");
   }
 
+  /** The spec admits 4096 characters for every connector, and the column carries them. */
+  @Test
+  void credentialsUpTo4096CharactersAreStoredAndLongerOnesAreA400() throws Exception {
+    String longest = "admin:" + "p".repeat(4090);
+    String body =
+        """
+        {
+          "name": "Lange Zugangsdaten",
+          "sourceType": "HTTP_DIRECTORY",
+          "sourceUrl": "https://files.example.com/documents/",
+          "sourceCredentials": "%s"
+        }
+        """;
+
+    String created =
+        mockMvc
+            .perform(post("/api/v1/libraries").with(devUser()).content(body.formatted(longest)))
+            .andExpect(status().isCreated())
+            .andReturn()
+            .getResponse()
+            .getContentAsString(StandardCharsets.UTF_8);
+    assertThat(created).contains("\"sourceCredentialsSet\":true").doesNotContain(longest);
+    String rejected =
+        mockMvc
+            .perform(
+                post("/api/v1/libraries").with(devUser()).content(body.formatted(longest + "p")))
+            .andExpect(status().isBadRequest())
+            .andReturn()
+            .getResponse()
+            .getContentAsString(StandardCharsets.UTF_8);
+    assertThat(rejected).doesNotContain(longest);
+  }
+
   @Test
   void aConfluenceValidationErrorNeverEchoesTheSubmittedCredentials() throws Exception {
     // ADR-0023: a Cloud credential without the e-mail separator is rejected before anything is
