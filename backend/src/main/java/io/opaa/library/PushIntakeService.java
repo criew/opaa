@@ -1,8 +1,8 @@
 package io.opaa.library;
 
 import io.opaa.common.UnauthorizedException;
-import io.opaa.indexing.source.ConnectorData;
 import io.opaa.indexing.source.PushIntakeHandler;
+import io.opaa.indexing.source.SourceConnectionResolver;
 import io.opaa.indexing.source.SourceConnectorRegistry;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
@@ -22,11 +22,15 @@ public class PushIntakeService {
 
   private final KnowledgeLibraryRepository libraryRepository;
   private final SourceConnectorRegistry connectors;
+  private final SourceConnectionResolver connectionResolver;
 
   public PushIntakeService(
-      KnowledgeLibraryRepository libraryRepository, SourceConnectorRegistry connectors) {
+      KnowledgeLibraryRepository libraryRepository,
+      SourceConnectorRegistry connectors,
+      SourceConnectionResolver connectionResolver) {
     this.libraryRepository = libraryRepository;
     this.connectors = connectors;
+    this.connectionResolver = connectionResolver;
   }
 
   /**
@@ -46,6 +50,6 @@ public class PushIntakeService {
     if (own == null) {
       throw new UnauthorizedException(PushIntakeHandler.UNAUTHORIZED_MESSAGE);
     }
-    own.acceptNotification(library, ConnectorData.storedIn(library), body, header);
+    own.acceptNotification(library, connectionResolver.effectiveSettings(library), body, header);
   }
 }

@@ -101,7 +101,7 @@ class SourceConnectorRegistryTest {
     assertThatThrownBy(
             () ->
                 new SourceConnectorDescriptor(
-                    SourceType.UPLOAD, "Upload", true, false, false, true, null, null, null))
+                    SourceType.UPLOAD, "Upload", true, false, false, true, null, null))
         .isInstanceOf(IllegalArgumentException.class);
   }
 
@@ -131,15 +131,7 @@ class SourceConnectorRegistryTest {
     assertThatThrownBy(
             () ->
                 new SourceConnectorDescriptor(
-                    SourceTypes.FILESYSTEM,
-                    "Dateisystem",
-                    true,
-                    false,
-                    true,
-                    false,
-                    null,
-                    null,
-                    null))
+                    SourceTypes.FILESYSTEM, "Dateisystem", true, false, true, false, null, null))
         .isInstanceOf(IllegalArgumentException.class);
   }
 

@@ -162,6 +162,16 @@ class LocalAdminAvailabilityGuardIntegrationTest {
     assertThat(guard.countLoginCapableSystemAdmins(organizationId)).isEqualTo(4);
   }
 
+  /** Inactivity rests connections (ADR-0041, Entscheidung 4), it never takes a sign-in away. */
+  @Test
+  void anAdministratorWithoutSignInForMonthsStillCounts() {
+    User longAway = oidcAdmin(ENABLED_ISSUER);
+    longAway.setLastLoginAt(Instant.now().minus(Duration.ofDays(400)));
+    users.save(longAway);
+
+    assertThat(guard.countLoginCapableSystemAdmins(organizationId)).isEqualTo(1);
+  }
+
   @Test
   void anAdministratorOfAnotherOrganizationDoesNotCount() {
     UUID other = organizations.save(new Organization(UUID.randomUUID(), "Andere")).getId();

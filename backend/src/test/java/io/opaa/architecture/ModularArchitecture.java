@@ -5,6 +5,7 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 import static com.tngtech.archunit.library.dependencies.SlicesRuleDefinition.slices;
 import static io.opaa.architecture.ModularArchitecture.Module.APP;
 import static io.opaa.architecture.ModularArchitecture.Module.ASSISTANT;
+import static io.opaa.architecture.ModularArchitecture.Module.CONNECTIONS;
 import static io.opaa.architecture.ModularArchitecture.Module.CONNECTORS;
 import static io.opaa.architecture.ModularArchitecture.Module.EXTERNAL;
 import static io.opaa.architecture.ModularArchitecture.Module.FORMAT;
@@ -79,6 +80,7 @@ public final class ModularArchitecture {
           "llm",
           "metadata",
           "indexing",
+          "connection",
           "library",
           "retrieval",
           "health",
@@ -101,6 +103,7 @@ public final class ModularArchitecture {
     RIGHTS,
     KNOWLEDGE,
     CONNECTORS,
+    CONNECTIONS,
     WORKSPACE,
     LIBRARY,
     RETRIEVAL,
@@ -135,6 +138,7 @@ public final class ModularArchitecture {
           entry("llm", KNOWLEDGE),
           entry("metadata", KNOWLEDGE),
           entry("indexing", KNOWLEDGE),
+          entry("connection", CONNECTIONS),
           entry("space", WORKSPACE),
           entry("revision", WORKSPACE),
           entry("diagnosticaccess", WORKSPACE),
@@ -158,6 +162,7 @@ public final class ModularArchitecture {
    * EXTERNAL reaches RIGHTS for members a library inherits from {@code io.opaa.asset.Asset} (a
    * method reference such as {@code KnowledgeLibrary::getId} names the declaring class) and for the
    * favorite marks the token selection filters by ({@code AssetCatalogService#favoritesAmong}).
+   * CONNECTIONS implements the core's port and is reached by LIBRARY alone (ADR-0041).
    */
   public static final Map<Module, Set<Module>> ALLOWED_MODULE_EDGES =
       Map.ofEntries(
@@ -167,8 +172,9 @@ public final class ModularArchitecture {
           entry(RIGHTS, EnumSet.of(FOUNDATION, IDENTITY)),
           entry(KNOWLEDGE, EnumSet.of(FOUNDATION, FORMAT, IDENTITY, RIGHTS)),
           entry(CONNECTORS, EnumSet.of(FOUNDATION, FORMAT, KNOWLEDGE)),
+          entry(CONNECTIONS, EnumSet.of(FOUNDATION, IDENTITY, RIGHTS, KNOWLEDGE)),
           entry(WORKSPACE, EnumSet.of(FOUNDATION, IDENTITY, RIGHTS, KNOWLEDGE)),
-          entry(LIBRARY, EnumSet.of(FOUNDATION, FORMAT, IDENTITY, RIGHTS, KNOWLEDGE)),
+          entry(LIBRARY, EnumSet.of(FOUNDATION, FORMAT, IDENTITY, RIGHTS, KNOWLEDGE, CONNECTIONS)),
           entry(RETRIEVAL, EnumSet.of(FOUNDATION, FORMAT, KNOWLEDGE)),
           entry(
               ASSISTANT,
@@ -203,6 +209,15 @@ public final class ModularArchitecture {
           "indexing.source",
           "indexing.maintenance",
           "indexing.filesync");
+
+  /** The root package of the module connections: it wires and implements the core's port. */
+  static final String CONNECTION = "connection";
+
+  /**
+   * The subpackages of {@link #CONNECTION}, lowest first (ADR-0041, Entscheidung 8). One depends
+   * only on itself and on the ones before it; the root package and its web package sit above all.
+   */
+  static final List<String> CONNECTION_PACKAGES = List.of("connection.profile");
 
   /** Every direct subpackage of this one, relative to the root, is a connector. */
   static final String CONNECTOR_PARENT = "indexing.source";
@@ -542,6 +557,69 @@ public final class ModularArchitecture {
   }
 
   /**
+   * The subpackages of {@link #CONNECTION} depend only downward in {@link #CONNECTION_PACKAGES}; a
+   * subpackage outside the list is reported, so none can name the root package unnoticed.
+   */
+  ArchRule theConnectionPackagesDependOnlyDownward() {
+    return classes()
+        .that(areInTheRoot())
+        .should(
+            new ArchCondition<>("depend only downward in ModularArchitecture.CONNECTION_PACKAGES") {
+              private final Set<String> unlisted = new TreeSet<>();
+
+              @Override
+              public void check(JavaClass origin, ConditionEvents events) {
+                String from = relative(origin.getBaseComponentType().getPackageName());
+                if (from == null || !from.startsWith(CONNECTION + ".") || isWebPackage(from)) {
+                  return;
+                }
+                int index = CONNECTION_PACKAGES.indexOf(from);
+                if (index < 0) {
+                  unlisted.add(from);
+                  return;
+                }
+                for (Dependency dependency : origin.getDirectDependenciesFromSelf()) {
+                  String to =
+                      relative(dependency.getTargetClass().getBaseComponentType().getPackageName());
+                  if (to == null || !(to.equals(CONNECTION) || to.startsWith(CONNECTION + "."))) {
+                    continue;
+                  }
+                  int target = CONNECTION_PACKAGES.indexOf(to);
+                  if (target < 0 || target > index) {
+                    events.add(
+                        SimpleConditionEvent.violated(
+                            dependency,
+                            from
+                                + " -> "
+                                + to
+                                + (target < 0
+                                    ? " leaves the connection subpackages for a package above them"
+                                    : " points upward in ModularArchitecture.CONNECTION_PACKAGES")
+                                + ": "
+                                + dependency.getDescription()));
+                  }
+                }
+              }
+
+              @Override
+              public void finish(ConditionEvents events) {
+                unlisted.forEach(
+                    name ->
+                        events.add(
+                            SimpleConditionEvent.violated(
+                                name,
+                                root
+                                    + "."
+                                    + name
+                                    + " is not ordered: insert it into"
+                                    + " ModularArchitecture.CONNECTION_PACKAGES above every"
+                                    + " package it uses")));
+              }
+            })
+        .allowEmptyShould(true);
+  }
+
+  /**
    * A new package below {@code indexing} is ordered in {@link #INDEXING_CORE} or is a connector.
    */
   ArchRule everyIndexingPackageIsInTheCore() {
@@ -693,6 +771,7 @@ public final class ModularArchitecture {
         subpackagesAreFreeOfCycles(),
         theIndexingCoreDependsOnlyDownward(),
         everyIndexingPackageIsInTheCore(),
+        theConnectionPackagesDependOnlyDownward(),
         theFileSyncKnowsNoProvider(),
         connectorsDoNotKnowEachOther(),
         noOneOutsideAConnectorKnowsIt(),

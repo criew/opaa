@@ -1,0 +1,463 @@
+# Topic "connections": connection profiles ("Zugänge", #2160, ADR-0041) and their selection.
+# Merged with all other fragments at build time, see root.yaml.
+tags:
+  - name: connection-profile
+    description: Connection profiles ("Zugänge") the system administration sets per connector.
+paths:
+  /api/v1/admin/connection-profiles:
+    get:
+      operationId: listConnectionProfiles
+      tags: [connection-profile]
+      summary: List every connection profile (system admin only)
+      description: >
+        Never carries a client secret - only clientSecretSet, whether one is stored.
+      responses:
+        "200":
+          description: Every connection profile, by name
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ConnectionProfileResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+    post:
+      operationId: createConnectionProfile
+      tags: [connection-profile]
+      summary: Create a connection profile (system admin only)
+      description: >
+        The connector of sourceType must admit profiles and offer authMethod (see
+        SourceTypeDescriptor). clientId, tenant and clientSecretExpiresOn belong only to a
+        sign-in method with an app registration, scopes only to OAUTH and CLIENT_CREDENTIALS.
+        A clientSecret given here is stored encrypted and needs the credentials encryption key
+        (OPAA_CREDENTIALS_ENCRYPTION_KEY); without it the answer is 503.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConnectionProfileCreateRequest"
+      responses:
+        "201":
+          description: Connection profile created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConnectionProfileResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          description: Another profile already carries this name.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+  /api/v1/admin/connection-profiles/{profileId}:
+    parameters:
+      - name: profileId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      operationId: getConnectionProfile
+      tags: [connection-profile]
+      summary: One connection profile (system admin only)
+      responses:
+        "200":
+          description: The connection profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConnectionProfileResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    put:
+      operationId: updateConnectionProfile
+      tags: [connection-profile]
+      summary: Replace the editable fields of a connection profile (system admin only)
+      description: >
+        clientSecret follows the three-way convention of updateLlmModel: omitted keeps the stored
+        secret, an empty string clears it, any other value replaces it - without touching any
+        connection. A new serverUrl, clientId, tenant, scope list or authMethod discards every
+        secret held under the profile; a library address under the old server address moves
+        under the new one. While connections exist this needs confirmDiscard (otherwise 409 with
+        code CONNECTION_PROFILE_CONFIRMATION_REQUIRED); getConnectionProfileImpact names the
+        number beforehand. The connector of a profile never changes.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConnectionProfileUpdateRequest"
+      responses:
+        "200":
+          description: Connection profile updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConnectionProfileResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: >
+            The name is taken, or the change would discard secrets of existing connections and
+            confirmDiscard is not set (code CONNECTION_PROFILE_CONFIRMATION_REQUIRED).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+    delete:
+      operationId: deleteConnectionProfile
+      tags: [connection-profile]
+      summary: Delete a connection profile (system admin only)
+      description: >
+        Every connection of the profile loses its secret. Its libraries stay with their content
+        and the note "Zugang entfernt" and run no more until they are connected through another
+        profile of the same connector or deleted.
+      responses:
+        "204":
+          description: Connection profile deleted
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/admin/connection-profiles/{profileId}/impact:
+    get:
+      operationId: getConnectionProfileImpact
+      tags: [connection-profile]
+      summary: What a change, a shutdown or a deletion of the profile would cut off (system admin only)
+      parameters:
+        - name: profileId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: The connections and libraries on the profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConnectionProfileImpactResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/admin/connection-profiles/{profileId}/disconnect-all:
+    post:
+      operationId: disconnectAllConnectionProfileConnections
+      tags: [connection-profile]
+      summary: Emergency shutdown "Alle Verbindungen trennen" (system admin only)
+      description: >
+        Discards every secret held under the profile at once and keeps the profile. Its libraries
+        stop running until their secret is entered again.
+      parameters:
+        - name: profileId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: The connections that were cut off
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConnectionProfileImpactResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/connection-profiles:
+    get:
+      operationId: listConnectionProfileOptions
+      tags: [connection-profile]
+      summary: The profiles a library of one source type may be connected through
+      description: >
+        Profiles whose ownership admits libraries, by name, without anything of the app
+        registration. Needs the capability CREATE_CONNECTOR_LIBRARY.
+      parameters:
+        - name: sourceType
+          in: query
+          required: true
+          schema:
+            $ref: "#/components/schemas/SourceTypeKey"
+      responses:
+        "200":
+          description: The selectable profiles
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ConnectionProfileOption"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+components:
+  schemas:
+    ConnectionProfileSupport:
+      type: string
+      description: >
+        How a connector stands to connection profiles ("Profilangabe"): FORBIDDEN (no remote
+        target), OPTIONAL (profile or own address), REQUIRED (only with a profile).
+      enum: [FORBIDDEN, OPTIONAL, REQUIRED]
+
+    ConnectionAuthMethod:
+      type: string
+      description: >
+        How a connection signs in: NONE (anonymous), PERSONAL_SECRET (app password, token or user
+        name and password), OAUTH, CLIENT_CREDENTIALS, SERVICE_ACCOUNT_KEY.
+      enum: [NONE, PERSONAL_SECRET, OAUTH, CLIENT_CREDENTIALS, SERVICE_ACCOUNT_KEY]
+
+    ConnectionOwnership:
+      type: string
+      description: Which connections a profile admits ("Besitzart").
+      enum: [LIBRARY, PERSON, BOTH]
+
+    ConnectionProfileCreateRequest:
+      type: object
+      required: [sourceType, name, serverUrl, authMethod, ownership]
+      properties:
+        sourceType:
+          $ref: "#/components/schemas/SourceTypeKey"
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+          example: Zugang Nextcloud intern
+        serverUrl:
+          type: string
+          maxLength: 2000
+          description: >
+            The only target of the profile's secrets - http or https, without user info, query or
+            fragment. Stored without a trailing slash.
+          example: https://cloud.example.org
+        authMethod:
+          $ref: "#/components/schemas/ConnectionAuthMethod"
+        ownership:
+          $ref: "#/components/schemas/ConnectionOwnership"
+        clientId:
+          type: string
+          maxLength: 255
+          nullable: true
+        clientSecret:
+          type: string
+          maxLength: 2000
+          nullable: true
+          description: Write-only; never returned (see clientSecretSet).
+        clientSecretExpiresOn:
+          type: string
+          pattern: "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+          nullable: true
+          description: An ISO date (YYYY-MM-DD); OPAA warns 14 days before it.
+          example: "2027-03-31"
+        tenant:
+          type: string
+          maxLength: 255
+          nullable: true
+        scopes:
+          type: string
+          maxLength: 2000
+          nullable: true
+          example: Files.Read offline_access
+        connectorSettings:
+          type: object
+          additionalProperties: true
+          nullable: true
+          description: >
+            Connector defaults in the shape of the connector's own settings; they override a
+            library's settings key by key. Never a secret.
+
+    ConnectionProfileUpdateRequest:
+      type: object
+      required: [name, serverUrl, authMethod, ownership]
+      description: The connector of a profile never changes, so sourceType is not part of it.
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+          example: Zugang Nextcloud intern
+        serverUrl:
+          type: string
+          maxLength: 2000
+          description: >
+            The only target of the profile's secrets - http or https, without user info, query or
+            fragment. Stored without a trailing slash.
+          example: https://cloud.example.org
+        authMethod:
+          $ref: "#/components/schemas/ConnectionAuthMethod"
+        ownership:
+          $ref: "#/components/schemas/ConnectionOwnership"
+        clientId:
+          type: string
+          maxLength: 255
+          nullable: true
+        clientSecret:
+          type: string
+          maxLength: 2000
+          nullable: true
+          description: Write-only; never returned (see clientSecretSet).
+        clientSecretExpiresOn:
+          type: string
+          pattern: "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+          nullable: true
+          description: An ISO date (YYYY-MM-DD); OPAA warns 14 days before it.
+          example: "2027-03-31"
+        tenant:
+          type: string
+          maxLength: 255
+          nullable: true
+        scopes:
+          type: string
+          maxLength: 2000
+          nullable: true
+          example: Files.Read offline_access
+        connectorSettings:
+          type: object
+          additionalProperties: true
+          nullable: true
+          description: >
+            Connector defaults in the shape of the connector's own settings; they override a
+            library's settings key by key. Never a secret.
+        confirmDiscard:
+          type: boolean
+          description: >
+            Confirms that a change of serverUrl, clientId, tenant, scopes or authMethod discards
+            the secrets of the existing connections.
+
+    ConnectionProfileResponse:
+      type: object
+      required:
+        [
+          id,
+          name,
+          sourceType,
+          serverUrl,
+          authMethod,
+          ownership,
+          clientSecretSet,
+          clientSecretExpiresSoon,
+          connectionCount,
+          createdAt,
+          updatedAt,
+        ]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        sourceType:
+          $ref: "#/components/schemas/SourceTypeKey"
+        serverUrl:
+          type: string
+        authMethod:
+          $ref: "#/components/schemas/ConnectionAuthMethod"
+        ownership:
+          $ref: "#/components/schemas/ConnectionOwnership"
+        clientId:
+          type: string
+          nullable: true
+        clientSecretSet:
+          type: boolean
+          description: Whether a client secret is stored; its value is never returned.
+        clientSecretExpiresOn:
+          type: string
+          nullable: true
+          description: An ISO date (YYYY-MM-DD).
+        clientSecretExpiresSoon:
+          type: boolean
+          description: Whether the client secret expires within 14 days or has expired.
+        tenant:
+          type: string
+          nullable: true
+        scopes:
+          type: string
+          nullable: true
+        connectorSettings:
+          type: object
+          additionalProperties: true
+          nullable: true
+        connectionCount:
+          type: integer
+          format: int64
+          description: The connections on this profile.
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    ConnectionProfileImpactResponse:
+      type: object
+      required: [connections, libraries]
+      properties:
+        connections:
+          type: integer
+          format: int64
+        libraries:
+          type: integer
+          format: int64
+
+    ConnectionProfileOption:
+      type: object
+      required: [id, name, sourceType, serverUrl, authMethod]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        sourceType:
+          $ref: "#/components/schemas/SourceTypeKey"
+        serverUrl:
+          type: string
+        authMethod:
+          $ref: "#/components/schemas/ConnectionAuthMethod"
+
+    ConnectionProfileRef:
+      type: object
+      required: [id, name]
+      description: The profile a library is connected through.
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+
+    LibraryConnectionProfileRequest:
+      type: object
+      required: [profileId]
+      properties:
+        profileId:
+          type: string
+          format: uuid

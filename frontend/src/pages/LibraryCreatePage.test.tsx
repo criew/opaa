@@ -158,6 +158,8 @@ describe('LibraryCreatePage (#596, #1942)', () => {
         uploads: false,
         pushIntake: false,
         browsable: false,
+        profileSupport: 'FORBIDDEN',
+        authMethods: [],
       },
     ])
     await renderPage()

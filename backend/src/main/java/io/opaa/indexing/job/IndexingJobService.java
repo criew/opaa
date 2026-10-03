@@ -255,6 +255,23 @@ public class IndexingJobService {
   }
 
   /**
+   * Records how many areas {@code jobId}'s run could not read while it reconciled the rest; a no-op
+   * once the job is no longer {@link JobStatus#RUNNING}, like {@link #recordListingAssessment}.
+   */
+  @Transactional(propagation = Propagation.REQUIRES_NEW)
+  public void recordUnreadableScopes(UUID jobId, int count) {
+    var job =
+        indexingJobRepository
+            .findById(jobId)
+            .orElseThrow(() -> new IllegalArgumentException("Job not found: " + jobId));
+    if (job.getStatus() != JobStatus.RUNNING) {
+      return;
+    }
+    job.recordUnreadableScopes(count);
+    indexingJobRepository.save(job);
+  }
+
+  /**
    * The most recent run for {@code libraryId} that assessed its source listing, or empty while none
    * has. This - not the most recent run overall - is what the library's warning about an incomplete
    * listing hangs on; see {@link

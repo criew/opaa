@@ -4,6 +4,7 @@ import io.opaa.format.chunk.PageMarkingContentHandler;
 import java.io.IOException;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
@@ -69,6 +70,28 @@ public class DocumentService {
    */
   public DiscoveredFiles discoverFiles(Path directory, SupportedDocumentFormats supportedFormats)
       throws IOException {
+    return discoverFiles(directory, supportedFormats, (relative, isDirectory) -> false);
+  }
+
+  /** Decides whether an entry below the walked directory is left out of the walk. */
+  @FunctionalInterface
+  public interface EntryFilter {
+
+    /**
+     * @param relative the entry's path relative to the walked directory, never empty
+     * @param directory whether the entry is a directory (a symbolic link never is)
+     */
+    boolean excludes(Path relative, boolean directory);
+  }
+
+  /**
+   * Like {@link #discoverFiles(Path, SupportedDocumentFormats)}, but an entry {@code excluded}
+   * excludes is not part of the result at all: an excluded directory is not entered, and an
+   * excluded entry that cannot be read is not unreadable.
+   */
+  public DiscoveredFiles discoverFiles(
+      Path directory, SupportedDocumentFormats supportedFormats, EntryFilter excluded)
+      throws IOException {
     if (!Files.exists(directory)) {
       throw new IOException("Document directory does not exist: " + directory);
     }
@@ -83,9 +106,14 @@ public class DocumentService {
         directory,
         new SimpleFileVisitor<>() {
           @Override
+          public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
+            return isExcluded(dir, true) ? FileVisitResult.SKIP_SUBTREE : FileVisitResult.CONTINUE;
+          }
+
+          @Override
           public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
             // a symlink to a file counts as that file; a linked directory is a leaf, never entered
-            if (!Files.isRegularFile(file)) {
+            if (isExcluded(file, attrs.isDirectory()) || !Files.isRegularFile(file)) {
               return FileVisitResult.CONTINUE;
             }
             SupportedDocumentFormats.ContentDecision decision = classify(file, supportedFormats);
@@ -105,6 +133,9 @@ public class DocumentService {
             if (file.equals(directory)) {
               throw e;
             }
+            if (isExcluded(file, Files.isDirectory(file, LinkOption.NOFOLLOW_LINKS))) {
+              return FileVisitResult.CONTINUE;
+            }
             log.warn("Skipping unreadable {}: {}", file, e.toString());
             unreadable.add(file);
             return FileVisitResult.CONTINUE;
@@ -121,6 +152,11 @@ public class DocumentService {
             log.warn("Listing of {} broke off: {}", dir, e.toString());
             unreadable.add(dir);
             return FileVisitResult.CONTINUE;
+          }
+
+          private boolean isExcluded(Path entry, boolean isDirectory) {
+            return !entry.equals(directory)
+                && excluded.excludes(directory.relativize(entry), isDirectory);
           }
         });
     return new DiscoveredFiles(supported, rejected, mismatches, unreadable);

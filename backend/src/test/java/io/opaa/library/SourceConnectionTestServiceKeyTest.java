@@ -7,8 +7,10 @@ import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
+import io.opaa.connection.LibraryConnectionService;
 import io.opaa.indexing.source.ConnectorData;
 import io.opaa.indexing.source.FakeTokenEndpoint;
+import io.opaa.indexing.source.LibrarySourceConnectionResolver;
 import io.opaa.indexing.source.ServiceAccountKey;
 import io.opaa.indexing.source.ServiceAccountKeyFixture;
 import io.opaa.indexing.source.ServiceAccountTokens;
@@ -45,6 +47,8 @@ class SourceConnectionTestServiceKeyTest {
   private ProbeKeySourceConnector connector;
   private KnowledgeLibraryRepository libraryRepository;
   private SourceConnectionTestService service;
+  private ServiceAccountTokens tokens;
+  private SourceConnectorRegistry registry;
   private CurrentUser caller;
 
   @BeforeEach
@@ -53,14 +57,20 @@ class SourceConnectionTestServiceKeyTest {
     connector = new ProbeKeySourceConnector(endpoint.uri());
     libraryRepository = mock(KnowledgeLibraryRepository.class);
     caller = CurrentUser.of(UUID.randomUUID(), UUID.randomUUID(), SystemRole.USER, "Caller");
+    tokens = new ServiceAccountTokens(TargetAddressValidator.disabled(), Clock.systemUTC());
+    registry =
+        new SourceConnectorRegistry(
+            List.of(connector, new UploadSourceConnector(mock(UploadedOriginalStore.class))));
     service =
         new SourceConnectionTestService(
             libraryRepository,
             mock(LibraryAccessService.class),
-            new SourceConnectorRegistry(
-                List.of(connector, new UploadSourceConnector(mock(UploadedOriginalStore.class)))),
+            registry,
             mock(CapabilityService.class),
-            new ServiceAccountTokens(TargetAddressValidator.disabled(), Clock.systemUTC()));
+            new LibrarySourceConnectionResolver(
+                type -> Optional.ofNullable(registry.find(type).orElse(null)), tokens),
+            mock(LibraryConnectionService.class),
+            tokens);
   }
 
   @AfterEach

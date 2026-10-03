@@ -38,12 +38,14 @@ class ServiceAccountKeyLibraryIntegrationTest {
   @Autowired private MockMvc mockMvc;
   @Autowired private KnowledgeLibraryRepository libraryRepository;
   @Autowired private ProbeKeySourceConnector connector;
+  @Autowired private org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
 
   private final ServiceAccountKeyFixture key = new ServiceAccountKeyFixture();
   private String libraryId;
 
   @BeforeEach
   void createLibrary() throws Exception {
+    connector.forget();
     String created =
         mockMvc
             .perform(
@@ -76,6 +78,7 @@ class ServiceAccountKeyLibraryIntegrationTest {
 
   @Test
   void theConnectorNeverSeesTheKeyAndOnlyTheSignedFieldsAreStored() {
+    assertThat(connector.sawKeyMaterial()).as("in any SPI method, configureNew included").isFalse();
     assertThat(connector.lastSecret()).isNull();
     assertThat(storedCredentials())
         .isEqualTo(ServiceAccountKey.parse(key.json()).storedForm())
@@ -135,7 +138,29 @@ class ServiceAccountKeyLibraryIntegrationTest {
 
     assertThat(storedSubject()).isEqualTo("fach-b@example.org");
     assertThat(storedCredentials()).isEqualTo(ServiceAccountKey.parse(key.json()).storedForm());
+    assertThat(connector.sawKeyMaterial()).as("in any SPI method, applyChange included").isFalse();
     assertThat(connector.lastSecret()).isNull();
+  }
+
+  /** Fail-closed: an unreadable ciphertext still counts as a stored key. */
+  @Test
+  void aChangedSubjectIsRefusedEvenWhileTheStoredKeyCannotBeDecrypted() throws Exception {
+    jdbcTemplate.update(
+        "UPDATE knowledge_libraries SET source_credentials = ? WHERE id = ?",
+        "enc:v1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        UUID.fromString(libraryId));
+
+    mockMvc
+        .perform(
+            as(put("/api/v1/libraries/" + libraryId))
+                .content(
+                    """
+                    {"name": "Dienstkonto",
+                     "sourceSettings": {"subject": "fach-b@example.org"}}
+                    """))
+        .andExpect(status().isBadRequest());
+
+    assertThat(storedSubject()).isEqualTo("fach-a@example.org");
   }
 
   @Test

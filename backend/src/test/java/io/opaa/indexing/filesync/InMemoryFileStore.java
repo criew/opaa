@@ -32,7 +32,12 @@ public final class InMemoryFileStore implements FileStore {
   private final Set<String> unlistable = new HashSet<>();
   private final Set<String> unreadable = new HashSet<>();
   private final Set<String> deselected = new HashSet<>();
-  private final Map<String, List<String>> unchangedSubtrees = new LinkedHashMap<>();
+  private final Map<String, Map<String, String>> recalled = new LinkedHashMap<>();
+  private boolean folderMarkers;
+  private boolean shallowMarkers;
+  private boolean stableIds;
+  private final Map<String, Long> ids = new HashMap<>();
+  private long nextId;
   private final List<String> calls = new ArrayList<>();
   private SourceRequestMeter meter = new SourceRequestMeter();
   private int pageSize = 1000;
@@ -42,6 +47,8 @@ public final class InMemoryFileStore implements FileStore {
   private final Map<String, Integer> cursorPositions = new HashMap<>();
   private boolean cursorsExpired;
   private boolean structureChanged;
+  private boolean earlyNewStart;
+  private boolean swallowExpiry;
   private final Set<String> textExports = new HashSet<>();
   private boolean credentialsRejected;
   private boolean endAfterFirstPage;
@@ -57,6 +64,7 @@ public final class InMemoryFileStore implements FileStore {
 
   public InMemoryFileStore put(String container, String name, byte[] bytes, String mediaType) {
     container(container).containers.get(container).put(name, new StoredFile(bytes, mediaType));
+    ids.computeIfAbsent(container + "\n" + name, key -> ++nextId);
     return this;
   }
 
@@ -105,18 +113,68 @@ public final class InMemoryFileStore implements FileStore {
   }
 
   /**
-   * The container's listing leaves out every file below {@code folder} and reports it unchanged.
+   * From now on a folder's marker is a hash over the names and bytes below it, the way a store with
+   * propagating folder ETags reports it, and a folder whose marker equals the recalled one is
+   * reported unchanged instead of listed.
    */
-  public InMemoryFileStore unchangedSubtree(String container, String folder) {
-    unchangedSubtrees.computeIfAbsent(container, k -> new ArrayList<>()).add(folder);
+  public InMemoryFileStore withFolderMarkers() {
+    folderMarkers = true;
     return this;
   }
 
   /**
-   * Gives the store a change log with one stream per container and numbered cursors. A change is
-   * noted with {@link #changed}; a read reports the file's state at that moment - updated while it
-   * exists, removed once it does not.
+   * A broken store for the contract's own test: a folder's marker covers only its own files, so a
+   * change two levels down never reaches the root.
    */
+  public InMemoryFileStore withShallowFolderMarkers() {
+    folderMarkers = true;
+    shallowMarkers = true;
+    return this;
+  }
+
+  /**
+   * From now on a file keeps its identity ({@code file_path}) and its change feature when it is
+   * renamed or moved, like a store that tracks files by id.
+   */
+  public InMemoryFileStore withStableIds() {
+    stableIds = true;
+    return this;
+  }
+
+  /**
+   * Renames or moves the file or folder {@code from} to {@code to}; ids follow under stable ids.
+   */
+  public InMemoryFileStore move(String container, String from, String to) {
+    TreeMap<String, StoredFile> files = containers.get(container);
+    Map<String, StoredFile> moved = new LinkedHashMap<>();
+    for (String name : List.copyOf(files.keySet())) {
+      if (name.equals(from) || name.startsWith(from + "/")) {
+        String target = to + name.substring(from.length());
+        moved.put(target, files.remove(name));
+        Long id = ids.get(container + "\n" + name);
+        if (id != null) {
+          ids.put(container + "\n" + target, id);
+        }
+      }
+    }
+    files.putAll(moved);
+    return this;
+  }
+
+  /** The {@code file_path} the store gives {@code name}, also after a removal. */
+  public String filePathOf(String container, String name) {
+    if (!stableIds) {
+      return filePath(container, name);
+    }
+    return "mem://" + container + "/#" + ids.get(container + "\n" + name);
+  }
+
+  /** The markers {@link #recall} last handed over, per container. */
+  public Map<String, Map<String, String>> recalled() {
+    return recalled;
+  }
+
+  /** Gives the store a change log with one stream per container and numbered start cursors. */
   public InMemoryFileStore withChangeFeed() {
     feed =
         new ChangeFeed() {
@@ -136,6 +194,9 @@ public final class InMemoryFileStore implements FileStore {
             call("read " + feedKey + " @" + cursor);
             Integer position = cursorPositions.get(cursor);
             if (cursorsExpired || position == null) {
+              if (swallowExpiry) {
+                return new ChangePage(List.of(), null, cursorAt(changeLog.size()), false);
+              }
               throw new FileAccessException.CursorExpired("Der Änderungszeiger ist verfallen.");
             }
             List<Change> changes = new ArrayList<>();
@@ -143,7 +204,7 @@ public final class InMemoryFileStore implements FileStore {
             for (; index < changeLog.size() && changes.size() < pageSize; index++) {
               String[] logged = changeLog.get(index);
               if (feedKey.equals("stream:" + logged[0])) {
-                changes.add(change(logged[0], logged[1]));
+                changes.add(change(logged[1], logged[2]));
               }
             }
             boolean more = false;
@@ -152,7 +213,7 @@ public final class InMemoryFileStore implements FileStore {
             }
             boolean structure = structureChanged;
             structureChanged = false;
-            return more
+            return more && !earlyNewStart
                 ? new ChangePage(changes, cursorAt(index), null, structure)
                 : new ChangePage(changes, null, cursorAt(changeLog.size()), structure);
           }
@@ -169,15 +230,18 @@ public final class InMemoryFileStore implements FileStore {
     return this;
   }
 
-  /** Notes a change of {@code name} in {@code container}'s stream. */
+  /** Notes a change of {@code name} in {@code container}'s own stream. */
   public InMemoryFileStore changed(String container, String name) {
-    changeLog.add(new String[] {container, name});
-    return this;
+    return changedIn(container, container, name);
   }
 
-  /** {@code name} is fetched as plain text under a {@code .txt} name, with a protocol note. */
-  public InMemoryFileStore exportAsText(String name) {
-    textExports.add(name);
+  /**
+   * Notes a change of {@code name} in {@code container} on the stream of {@code stream} - a stream
+   * that also reports files of a container it does not serve, as a provider's account-wide log
+   * does.
+   */
+  public InMemoryFileStore changedIn(String stream, String container, String name) {
+    changeLog.add(new String[] {stream, container, name});
     return this;
   }
 
@@ -193,6 +257,24 @@ public final class InMemoryFileStore implements FileStore {
     return this;
   }
 
+  /** A broken feed for the contract's own test: the first page already names the new start. */
+  public InMemoryFileStore withEarlyNewStart() {
+    earlyNewStart = true;
+    return this;
+  }
+
+  /** A broken feed for the contract's own test: an expired cursor silently starts over. */
+  public InMemoryFileStore withSwallowedExpiry() {
+    swallowExpiry = true;
+    return this;
+  }
+
+  /** {@code name} is fetched as plain text under a {@code .txt} name, with a protocol note. */
+  public InMemoryFileStore exportAsText(String name) {
+    textExports.add(name);
+    return this;
+  }
+
   private String cursorAt(int position) {
     String cursor = "cursor-" + (++cursors);
     cursorPositions.put(cursor, position);
@@ -202,7 +284,7 @@ public final class InMemoryFileStore implements FileStore {
   private Change change(String container, String name) {
     return containers.get(container).containsKey(name)
         ? new Change.Updated(entry(new FileContainer(container), name))
-        : new Change.Removed(filePath(container, name));
+        : new Change.Removed(filePathOf(container, name));
   }
 
   public static String filePath(String container, String name) {
@@ -233,10 +315,25 @@ public final class InMemoryFileStore implements FileStore {
       throw new FileAccessException.ContainerUnlistable(
           "Der Bereich „" + container.key() + "“ darf nicht aufgelistet werden.");
     }
-    List<String> skipped = unchangedSubtrees.getOrDefault(container.key(), List.of());
+    TreeMap<String, StoredFile> files = containers.get(container.key());
+    Map<String, String> markers = folderMarkers ? folderMarkers(files) : Map.of();
+    Map<String, String> previous = recalled.getOrDefault(container.key(), Map.of());
+    List<String> skipped = new ArrayList<>();
+    Map<String, String> listed = new TreeMap<>();
+    markers.forEach(
+        (folder, marker) -> {
+          if (skipped.stream().anyMatch(outer -> FileSync.covers(outer, folder))) {
+            return;
+          }
+          if (marker.equals(previous.get(folder))) {
+            skipped.add(folder);
+          } else {
+            listed.put(folder, marker);
+          }
+        });
     List<String> names =
-        containers.get(container.key()).keySet().stream()
-            .filter(name -> skipped.stream().noneMatch(folder -> name.startsWith(folder + "/")))
+        files.keySet().stream()
+            .filter(name -> skipped.stream().noneMatch(folder -> FileSync.covers(folder, of(name))))
             .toList();
     int start = continuation == null ? 0 : Integer.parseInt(continuation);
     int end = Math.min(start + pageSize, names.size());
@@ -245,11 +342,54 @@ public final class InMemoryFileStore implements FileStore {
       entries.add(entry(container, name));
     }
     String next = end < names.size() && !endAfterFirstPage ? Integer.toString(end) : null;
-    List<String> subtrees =
-        start == 0
-            ? skipped.stream().map(folder -> filePath(container.key(), folder) + "/").toList()
-            : List.of();
-    return new FilePage(entries, next, subtrees);
+    return start == 0 ? new FilePage(entries, next, skipped, listed) : new FilePage(entries, next);
+  }
+
+  @Override
+  public void recall(FileContainer container, Map<String, String> subtreeMarkers) {
+    recalled.put(container.key(), Map.copyOf(subtreeMarkers));
+  }
+
+  /** The hierarchy path of the folder {@code name} lies in, {@code ""} at the container's root. */
+  private static String of(String name) {
+    int slash = name.lastIndexOf('/');
+    return slash < 0
+        ? ""
+        : String.join(
+            SourceDocumentContext.HIERARCHY_SEPARATOR, name.substring(0, slash).split("/"));
+  }
+
+  /** Every folder, root first and parents before children, with a hash over all files below it. */
+  private Map<String, String> folderMarkers(TreeMap<String, StoredFile> files) {
+    Map<String, Integer> hashes = new TreeMap<>();
+    hashes.put("", 1);
+    files.forEach(
+        (name, file) -> {
+          String folder = of(name);
+          List<String> chain = new ArrayList<>(List.of(""));
+          if (!folder.isEmpty()) {
+            String[] segments = folder.split(SourceDocumentContext.HIERARCHY_SEPARATOR);
+            for (int i = 1; i <= segments.length; i++) {
+              chain.add(
+                  String.join(
+                      SourceDocumentContext.HIERARCHY_SEPARATOR,
+                      Arrays.asList(segments).subList(0, i)));
+            }
+          }
+          if (shallowMarkers) {
+            chain = List.of(folder);
+          }
+          for (String path : chain) {
+            // relative to the folder: a renamed folder keeps its own marker, as Nextcloud does
+            String relative =
+                path.isEmpty() ? name : name.substring(path.replace(" / ", "/").length());
+            int contribution = relative.hashCode() * 31 + Arrays.hashCode(file.bytes());
+            hashes.merge(path, contribution, (a, b) -> a * 31 + b);
+          }
+        });
+    Map<String, String> markers = new LinkedHashMap<>();
+    hashes.forEach((folder, hash) -> markers.put(folder, "m:" + hash));
+    return markers;
   }
 
   @Override
@@ -322,7 +462,7 @@ public final class InMemoryFileStore implements FileStore {
     return new FileEntry(
         container,
         name,
-        filePath(container.key(), name),
+        filePathOf(container.key(), name),
         slash < 0 ? name : name.substring(slash + 1),
         SourceFolderPath.capped(folders),
         new SourceDocumentContext(

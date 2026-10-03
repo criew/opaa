@@ -361,6 +361,57 @@ genannten Dinge mit.
 > [Webverzeichnis](konnektor-http-directory.md), [Feed](konnektor-rss-feed.md),
 > [Confluence](konnektor-confluence.md) und [S3-Objektspeicher](konnektor-s3.md).
 
+### Zugänge
+
+Ein **Zugang** ist ein Rahmen, den die Systemverwaltung für einen Konnektor vorgibt: Name,
+Server-Adresse, Anmeldeart, bei Anmeldearten mit App-Registrierung Client-ID, Client-Secret,
+Mandant, Ablaufdatum des Secrets und Scopes, dazu die Besitzart (Bibliothek, Person oder beides)
+und Vorgaben für die Einstellungen des Konnektors. Wer eine Bibliothek auf einem Zugang anlegt,
+wählt ihn aus und trägt Server und Registrierung nicht selbst ein.
+
+**Welcher Konnektor Zugänge kennt**, meldet er selbst: Zugänge verboten, möglich oder Pflicht,
+dazu die Anmeldearten, die er anbietet (ohne Anmeldung, persönliches Geheimnis, OAuth,
+Client-Credentials, Dienstkonto-Schlüssel). Ein Zugang wählt eine davon. Die mitgelieferten
+Konnektoren melden keine Zugänge.
+
+**Was für eine Bibliothek auf einem Zugang gilt:**
+
+- Ihre Adresse liegt unter der Server-Adresse des Zugangs. Beim Anlegen ohne Adresse übernimmt sie
+  die Server-Adresse; eine Adresse außerhalb wird abgewiesen.
+- Die Vorgaben des Zugangs überschreiben die gleichnamigen Einstellungen der Bibliothek.
+- Ihr persönliches Geheimnis (etwa Benutzername und Passwort) tragen die Verwaltenden der
+  Bibliothek ein wie bisher. Bei einem Zugang ohne Anmeldung geht keines an die Quelle.
+- Die Verwaltenden der Bibliothek ordnen sie einem anderen Zugang desselben Konnektors zu oder
+  lösen sie vom Zugang. Eine Adresse unter dem bisherigen Zugang wandert dabei unter den neuen;
+  wechselt der Ursprung, wird das Geheimnis verworfen.
+
+**Was die Systemverwaltung am Zugang auslöst:**
+
+| Handlung | Folge |
+|---|---|
+| Server-Adresse ändern | Nach Bestätigung werden alle Geheimnisse der Bibliotheken auf dem Zugang verworfen; ihre Adressen wandern unter die neue Server-Adresse. Vorher nennt OPAA die Zahl der betroffenen Verbindungen und Bibliotheken |
+| Client-ID, Mandant, Scopes oder Anmeldeart ändern | wie oben, ohne Adresswechsel: alle Verbindungen müssen neu verbunden werden |
+| nur ein neues Client-Secret zur selben Client-ID | keine; die Verbindungen bleiben |
+| „Alle Verbindungen trennen“ (Notabschaltung) | alle Geheimnisse sofort verworfen, der Zugang bleibt |
+| Zugang löschen | alle Geheimnisse verworfen; die Bibliotheken bleiben mit Bestand und dem Hinweis „Zugang entfernt“ stehen |
+
+Das Client-Secret liegt verschlüsselt mit demselben Schlüssel wie die Zugangsdaten der
+Bibliotheken. Keine Antwort, kein Protokoll und kein Revisionseintrag enthält es; angezeigt wird
+nur, ob eines hinterlegt ist, und eine Warnung, wenn sein Ablaufdatum in weniger als 14 Tagen
+erreicht ist. Anlegen, Ändern, Löschen und die Notabschaltung stehen im Revisionsprotokoll.
+
+**Wenn ein Lauf nicht starten darf**, endet er vor dem ersten Element mit einer eigenen Meldung,
+die die zuständige Stelle nennt; der Bestand bleibt durchsuchbar und wird nicht aktualisiert:
+
+| Meldung enthält | Ursache | Zuständig |
+|---|---|---|
+| „Zugang entfernt“ | Der Zugang der Bibliothek wurde gelöscht | Verwaltende der Bibliothek: anderen Zugang zuordnen oder löschen |
+| „Verbindung getrennt“ | Das Geheimnis fehlt, etwa nach Adressänderung oder Notabschaltung | Verwaltende der Bibliothek: Geheimnis neu eintragen |
+| „Nicht verbunden“ | Die Anmeldeart des Zugangs (OAuth, Client-Credentials, Dienstkonto-Schlüssel) kann eine Bibliothek nicht verbinden | Systemverwaltung |
+| „Die Adresse der Bibliothek liegt nicht unter …“ | Die Adresse verließ den Zugang | Verwaltende der Bibliothek |
+
+Umbenennen und das Korrigieren von Adresse oder Geheimnis bleiben in all diesen Fällen möglich.
+
 ## 5. Die Dokumentstrecke: was mit jedem Element passiert
 
 Das ist der Kern. Jedes Element, gleich welcher Herkunft, durchläuft diese Schritte in dieser
@@ -599,7 +650,9 @@ genutzt); die Tiefe ist allgemein (`opaa.indexing.attachments.max-depth`).
 | S3-Objekt mit neuem ETag, aber gleichem Inhalt (erneuter Upload, Multipart, Verschlüsselungswechsel) | heruntergeladen, Prüfsumme gleich: Merkmal nachgetragen, Dokument-ID und Chunks bleiben |
 | S3-Objekt übersprungen (Ordnermarker, Archivklasse, nicht unterstütztes Format, zu groß, nicht lesbar) | gilt als gesehen, nichts wird entfernt; das Protokoll nennt es |
 | S3-Schlüssel außerhalb der Ein-/Ausschlussmuster oder eines abgewählten Geltungsbereichs | nicht mehr Teil des Bestands, wird am Ende des vollständigen Laufs entfernt |
+| Datei im Verzeichnis-Konnektor, die ein Ausschlussmuster oder ein Standardausschluss (versteckt, Systemordner) trifft | nicht mehr Teil der Quelle, wird am Ende des vollständigen Laufs entfernt |
 | Quelle nicht erreichbar, Teil der Quelle nicht lesbar | Lauf `FAILED` bzw. Aufzählung unvollständig, **nichts** wird entfernt |
+| Verzeichnis-Konnektor: Unterverzeichnis oder Datei unterhalb des Verzeichnispfads nicht lesbar | nur der Bestand in diesem Teilbaum bleibt stehen, außerhalb wird normal entfernt ([Dateisystem-Konnektor](konnektor-filesystem.md), Abschnitt 9) |
 
 Die letzte Zeile ist die wichtigste Sicherung: Ein Lauf, der null Dateien sieht, kann eine leere
 Quelle oder ein nicht eingebundenes Netzlaufwerk bedeuten. Deshalb löscht ein leeres Ergebnis nie,
@@ -609,6 +662,12 @@ lässt den ganzen Bestand stehen, ebenso ein S3-Geltungsbereich, den die Zugangs
 auflisten dürfen oder dessen Bucket fehlt. Ein entzogenes Recht ist kein Löschbefund. Ein
 S3-Lauf, dessen Anfragebudget erschöpft ist, endet unvollständig und bereinigt ebenfalls nicht;
 der nächste Lauf listet alle Geltungsbereiche erneut und lädt nur, was noch fehlt.
+
+Einzige Ausnahme ist der Verzeichnis-Konnektor: Kann er unterhalb des lesbaren Verzeichnispfads ein
+Unterverzeichnis oder eine Datei nicht lesen, schont er nur die bekannten Dokumente in diesem
+Teilbaum und bereinigt den Rest wie nach einer vollständigen Aufzählung. Hat er außer solchen
+Bereichen nichts gefunden, löscht er nichts. Einzelheiten stehen im Kapitel
+[Dateisystem-Konnektor](konnektor-filesystem.md), Abschnitt 9.
 
 Für S3 ist das Änderungsmerkmal vor dem Download die Kombination aus ETag und Größe des
 Objekts (`e:<ETag>|<Größe>` in `last_modified_remote`), nicht der Zeitstempel: Ein erneuter
