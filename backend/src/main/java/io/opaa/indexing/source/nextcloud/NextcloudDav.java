@@ -13,8 +13,10 @@ import java.io.InputStream;
 import java.net.ConnectException;
 import java.net.UnknownHostException;
 import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.net.http.HttpTimeoutException;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
@@ -160,13 +162,13 @@ final class NextcloudDav implements AutoCloseable {
       throws IOException, InterruptedException, NextcloudAccessException {
     Map<String, String> headers = requestPolicy.headers(connection.authorizationHeader());
     headers.put("Depth", Integer.toString(depth));
-    headers.put("Content-Type", "application/xml; charset=utf-8");
     HttpResponse<InputStream> response =
         RedirectFollowingFetcher.sendWithBody(
             httpClient,
             "PROPFIND",
             connection.url(encodedPath),
-            request,
+            HttpRequest.BodyPublishers.ofString(request, StandardCharsets.UTF_8),
+            "application/xml; charset=utf-8",
             timeout,
             headers,
             targetAddressValidator,

@@ -62,7 +62,7 @@ class NextcloudContainerTest {
   @Test
   void aRenamedFolderKeepsItsDocumentsAndTheirFileIds() {
     int scenario = SCENARIOS.incrementAndGet();
-    String folder = "/Umbenannt-" + scenario;
+    String folder = "/Umbenannt (Akten) + Bär " + scenario;
     put(folder + "/Alt/a.txt", "A.");
     nextcloud.share(folder);
     fullSync(List.of(folder));

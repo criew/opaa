@@ -103,6 +103,34 @@ record NextcloudConnection(
     return baseUrl.getScheme() + "://" + baseUrl.getRawAuthority() + encodedAbsolutePath;
   }
 
+  /**
+   * Whether a {@code href} the server answered may be requested with the credentials: an absolute
+   * path - no URL, no {@code //} or {@code @} authority, no backslash, no {@code .} or {@code ..}
+   * segment - below {@code filesRoot}, so every request stays on this instance's origin.
+   */
+  boolean isOwnFilePath(String href, String filesRoot) {
+    if (!href.startsWith("/") || href.startsWith("//") || href.indexOf('\\') >= 0) {
+      return false;
+    }
+    String path = DavPaths.decode(href);
+    for (String segment : path.split("/")) {
+      if (segment.equals(".") || segment.equals("..")) {
+        return false;
+      }
+    }
+    URI target;
+    try {
+      target = URI.create(url(href));
+    } catch (IllegalArgumentException e) {
+      return false;
+    }
+    String root = DavPaths.decode(filesRoot) + "/";
+    return baseUrl.getHost().equalsIgnoreCase(target.getHost())
+        && baseUrl.getPort() == target.getPort()
+        && target.getRawUserInfo() == null
+        && (path + "/").startsWith(root);
+  }
+
   /** The WebDAV root every principal and file address lies below. */
   String davRoot() {
     return contextPath() + "/remote.php/dav/";

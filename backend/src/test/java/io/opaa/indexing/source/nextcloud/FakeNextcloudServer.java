@@ -5,6 +5,7 @@ import com.sun.net.httpserver.HttpServer;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
+import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -40,6 +41,9 @@ final class FakeNextcloudServer implements AutoCloseable {
   private final List<String> requests = new CopyOnWriteArrayList<>();
   private final Set<String> unlistable = new HashSet<>();
   private final Set<String> unreadable = new HashSet<>();
+  private final Set<String> unopenable = new HashSet<>();
+  private final Set<String> vanishing = new HashSet<>();
+  private volatile String foreignFileHref;
   private volatile boolean credentialsRejected;
 
   FakeNextcloudServer(String contextPath) throws IOException {
@@ -112,6 +116,52 @@ final class FakeNextcloudServer implements AutoCloseable {
     return this;
   }
 
+  /** From now on {@code GET} of the file {@code path} answers {@code 503}, listing still works. */
+  FakeNextcloudServer unopenable(String path) {
+    unopenable.add(path);
+    return this;
+  }
+
+  /**
+   * From now on {@code folder} answers its own {@code PROPFIND} with {@code 404} while its parent
+   * still lists it - a folder renamed in the middle of a run.
+   */
+  FakeNextcloudServer vanishOnVisit(String folder) {
+    vanishing.add(folder);
+    return this;
+  }
+
+  /** From now on every href the server answers for a file is {@code href} instead. */
+  FakeNextcloudServer answerFileHrefsWith(String href) {
+    foreignFileHref = href;
+    return this;
+  }
+
+  /**
+   * Sabre's own path encoding, deliberately not the connector's: letters, digits and {@code _ - . ~
+   * ( ) / : @} stay raw, every other UTF-8 byte becomes {@code %XX}.
+   */
+  static String sabreEncode(String path) {
+    StringBuilder encoded = new StringBuilder();
+    for (byte b : path.getBytes(StandardCharsets.UTF_8)) {
+      char c = (char) (b & 0xff);
+      if ((c >= 'a' && c <= 'z')
+          || (c >= 'A' && c <= 'Z')
+          || (c >= '0' && c <= '9')
+          || "_-.~()/:@".indexOf(c) >= 0) {
+        encoded.append(c);
+      } else {
+        encoded.append('%').append(String.format("%02X", b & 0xff));
+      }
+    }
+    return encoded.toString();
+  }
+
+  /** {@link URLDecoder} turns {@code +} into a space; a path keeps it. */
+  private static String plusSafe(String raw) {
+    return raw.replace("+", "%2B");
+  }
+
   FakeNextcloudServer rejectCredentials() {
     credentialsRejected = true;
     return this;
@@ -156,7 +206,10 @@ final class FakeNextcloudServer implements AutoCloseable {
         respond(exchange, 404, "");
         return;
       }
-      String path = trim(DavPaths.decode(rawPath.substring(filesRoot.length())));
+      String path =
+          trim(
+              URLDecoder.decode(
+                  plusSafe(rawPath.substring(filesRoot.length())), StandardCharsets.UTF_8));
       if (exchange.getRequestMethod().equals("PROPFIND")) {
         String depth = exchange.getRequestHeaders().getFirst("Depth");
         requests.add("PROPFIND " + depth + " " + path);
@@ -174,6 +227,10 @@ final class FakeNextcloudServer implements AutoCloseable {
       HttpExchange exchange, String filesRoot, String path, int depth) throws IOException {
     Node node = nodes.get(path);
     if (node == null) {
+      respond(exchange, 404, "");
+      return;
+    }
+    if (node.folder() && vanishing.contains(path)) {
       respond(exchange, 404, "");
       return;
     }
@@ -207,6 +264,10 @@ final class FakeNextcloudServer implements AutoCloseable {
         return;
       }
     }
+    if (unopenable.contains(path)) {
+      respond(exchange, 503, "");
+      return;
+    }
     exchange.getResponseHeaders().add("Content-Type", node.contentType());
     exchange.sendResponseHeaders(200, node.bytes().length);
     try (OutputStream out = exchange.getResponseBody()) {
@@ -215,9 +276,12 @@ final class FakeNextcloudServer implements AutoCloseable {
   }
 
   private String response(String filesRoot, String path, Node node) {
-    String href = filesRoot + "/" + DavPaths.encodePath(path) + (node.folder() ? "/" : "");
+    String href = filesRoot + "/" + sabreEncode(path) + (node.folder() ? "/" : "");
     if (path.isEmpty()) {
       href = filesRoot + "/";
+    }
+    if (!node.folder() && foreignFileHref != null) {
+      href = foreignFileHref;
     }
     StringBuilder xml = new StringBuilder("<d:response><d:href>").append(href);
     xml.append("</d:href><d:propstat><d:prop>");
