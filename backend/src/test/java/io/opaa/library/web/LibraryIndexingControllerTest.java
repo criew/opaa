@@ -163,6 +163,27 @@ class LibraryIndexingControllerTest {
   }
 
   @Test
+  void aRunListsHowManyAreasItCouldNotRead() throws Exception {
+    UUID libraryId = UUID.randomUUID();
+    var job = new IndexingJob(JobStatus.RUNNING);
+    job.recordUnreadableScopes(2);
+    job.setStatus(JobStatus.COMPLETED);
+    var plain = new IndexingJob(JobStatus.RUNNING);
+    plain.setStatus(JobStatus.COMPLETED);
+    when(indexingService.getRecentRuns(eq(libraryId), eq(caller)))
+        .thenReturn(
+            List.of(
+                new IndexingRunDetail(job, List.of()), new IndexingRunDetail(plain, List.of())));
+
+    mockMvc
+        .perform(get("/api/v1/libraries/" + libraryId + "/indexing/runs").with(asTestUser()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.runs[0].unreadableScopeCount").value(2))
+        .andExpect(
+            jsonPath("$.runs[1].unreadableScopeCount").value(org.hamcrest.Matchers.nullValue()));
+  }
+
+  @Test
   void triggerIndexingHandsARequestedRunModeThroughAndReportsItOnTheRun() throws Exception {
     // ADR-0023, Entscheidung 4 (#1136): the Betriebsart is a query parameter on the trigger and a
     // field of every run in the list.

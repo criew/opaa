@@ -33,6 +33,7 @@ public class ProbeKeySourceConnector implements SourceConnector, SourceBrowser {
 
   private final URI tokenEndpoint;
   private volatile String lastSecret;
+  private volatile boolean sawKeyMaterial;
 
   public ProbeKeySourceConnector() {
     this(URI.create("https://oauth.probe-key.example.org/token"));
@@ -45,15 +46,8 @@ public class ProbeKeySourceConnector implements SourceConnector, SourceBrowser {
   @Override
   public SourceConnectorDescriptor descriptor() {
     return new SourceConnectorDescriptor(
-        TYPE,
-        "Testquelle mit Dienstkonto",
-        false,
-        true,
-        false,
-        false,
-        null,
-        null,
-        new ServiceAccountKeyAuth(tokenEndpoint, SCOPE));
+            TYPE, "Testquelle mit Dienstkonto", false, true, false, false, null, null)
+        .withServiceAccountKey(new ServiceAccountKeyAuth(tokenEndpoint, SCOPE));
   }
 
   @Override
@@ -74,7 +68,7 @@ public class ProbeKeySourceConnector implements SourceConnector, SourceBrowser {
 
   @Override
   public SourceSettings validate(SourceSettings requested) {
-    lastSecret = requested.sourceCredentials();
+    seen(requested);
     String url = normalizeSourceUrl(requested.sourceUrl());
     if (!ADDRESS.equals(url)) {
       throw new ValidationException("sourceUrl ist für diese Testquelle fest " + ADDRESS);
@@ -85,12 +79,14 @@ public class ProbeKeySourceConnector implements SourceConnector, SourceBrowser {
   @Override
   public SourceSettings validateChange(
       SourceSettings stored, SourceSettings requested, boolean replacesConnection) {
-    lastSecret = requested.sourceCredentials();
+    seen(stored);
+    seen(requested);
     return replacesConnection ? validate(requested) : requested;
   }
 
   @Override
   public void configureNew(KnowledgeLibrary library, SourceSettings validated) {
+    seen(validated);
     if (validated.connectorSettings() != null) {
       library.updateSourceSettings(validated.connectorSettings().toJson());
     }
@@ -99,6 +95,7 @@ public class ProbeKeySourceConnector implements SourceConnector, SourceBrowser {
   @Override
   public void applyChange(
       KnowledgeLibrary library, ConnectorData stored, SourceSettings validated) {
+    seen(validated);
     if (validated.connectorSettings() != null) {
       library.updateSourceSettings(validated.connectorSettings().toJson());
     }
@@ -112,7 +109,7 @@ public class ProbeKeySourceConnector implements SourceConnector, SourceBrowser {
 
   @Override
   public SourceConnectionTestResult testConnection(SourceSettings settings, ConnectorData stored) {
-    lastSecret = settings.sourceCredentials();
+    seen(settings);
     return new SourceConnectionTestResult(true, "Testquelle mit Dienstkonto erreichbar.", 0L);
   }
 
@@ -123,12 +120,34 @@ public class ProbeKeySourceConnector implements SourceConnector, SourceBrowser {
 
   @Override
   public SourceListing browse(Query query) {
-    lastSecret = query.settings().sourceCredentials();
+    seen(query.settings());
     return new SourceListing(true, List.of(), null);
   }
 
   /** The secret this connector was handed last, by any method. */
   public String lastSecret() {
     return lastSecret;
+  }
+
+  /** Whether any method was ever handed something that looks like key material. */
+  public boolean sawKeyMaterial() {
+    return sawKeyMaterial;
+  }
+
+  /** Forgets what earlier calls handed over. */
+  public void forget() {
+    lastSecret = null;
+    sawKeyMaterial = false;
+  }
+
+  private void seen(SourceSettings settings) {
+    if (settings == null) {
+      return;
+    }
+    lastSecret = settings.sourceCredentials();
+    if (lastSecret != null
+        && (lastSecret.contains("private_key") || lastSecret.contains("PRIVATE KEY"))) {
+      sawKeyMaterial = true;
+    }
   }
 }

@@ -101,7 +101,8 @@ class DocumentIndexingServiceTest {
             registry,
             libraryRepository,
             libraryAccessService,
-            indexingRunEventRepository);
+            indexingRunEventRepository,
+            new LibrarySourceConnectionResolver());
 
     currentUser = new User("subject", "issuer", "user@example.com", "Test User");
     currentUser.setOrganizationId(organizationId);

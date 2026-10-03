@@ -97,10 +97,11 @@ class GoogleDriveWorkspaceIntegrationTest {
     }
     if (key != null) {
       String body = key.substring(key.indexOf("PRIVATE KEY-----") + 20);
-      assertThat(logs).doesNotContain(body.substring(0, 40));
+      // a boolean, so a leak never puts the key itself into the report
+      assertThat(logs.contains(body.substring(0, 40))).as("key material in the logs").isFalse();
     }
     if (token != null) {
-      assertThat(logs).doesNotContain(token);
+      assertThat(logs.contains(token)).as("access token in the logs").isFalse();
     }
   }
 

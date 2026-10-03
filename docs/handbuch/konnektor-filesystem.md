@@ -31,12 +31,18 @@ Wo diese Felder stehen: Detailansicht der Bibliothek, Reiter **„Quelle"**, Abs
 Anlegen im gleichnamigen Schritt des Assistenten. Im selben Reiter stehen der **„Zeitplan"** und,
 als **„Läufe"**, das Laufprotokoll.
 
+**„Verbindung testen"** prüft nur, ob sich das Verzeichnis öffnen lässt: Es muss existieren, ein
+Verzeichnis sein und sich auflisten lassen. Der Test liest keine Unterverzeichnisse und keine
+Dateien und zählt keine Dokumente; er antwortet „Verzeichnis erreichbar." oder nennt den Grund, aus
+dem das Verzeichnis nicht erreichbar ist. Die Zahl der Dokumente liefert erst der Lauf.
+
 | Feld der Bibliothek | Regel |
 |---|---|
 | Verzeichnispfad (`sourcePath`) | Pflicht. Absoluter Pfad aus Sicht des Backend-Prozesses, also im Container, nicht auf dem Host. |
+| Ausschlussmuster (`sourceSettings.excludePatterns`) | Optional, höchstens 50 Glob-Muster bis 255 Zeichen, in der Oberfläche eines pro Zeile. Regeln in Abschnitt 5.1. Beim Speichern abgewiesen, mit einer Meldung, die das Muster nennt, wird ein Muster mit ungültiger Syntax und eines, das nie treffen kann: führendes oder abschließendes `/`, leere Ebene (`//`), Ebene `.` oder `..`, Rückwärtsschrägstrich `\`, oder mehr als 32 Alternativen aus `{…}`. |
 
-Weitere Felder gibt es für diesen Quellentyp nicht. Der Quellentyp einer Bibliothek ist nach dem Anlegen unveränderlich. Der Pfad darf später
-geändert werden.
+Weitere Felder gibt es für diesen Quellentyp nicht. Der Quellentyp einer Bibliothek ist nach dem Anlegen unveränderlich. Pfad und
+Ausschlussmuster dürfen später geändert werden; eine Änderung wirkt mit dem nächsten Lauf.
 
 Bereits beim Anlegen oder Ändern wird der Pfad gegen die Freigabeliste geprüft (Abschnitt 4).
 Zwei Fehlermeldungen sind dabei möglich: „sourceType FILESYSTEM ist deaktiviert", wenn der
@@ -73,8 +79,9 @@ Backend-Containers". Ein Netzlaufwerk sollte schreibgeschützt eingebunden werde
 
 Ein **Unterverzeichnis**, das der Prozess nicht betreten darf, wird übersprungen, statt den Lauf
 abzubrechen. Es erscheint im Protokoll als „Nicht lesbar, übersprungen" mit seinem Pfad relativ zum
-Verzeichnispfad; „Verbindung testen" nennt nur die Anzahl solcher Einträge. Typisch sind
-Verwaltungsordner eingebundener Cloud-Laufwerke, etwa `.shortcut-targets-by-id` bei Google Drive.
+Verzeichnispfad; „Verbindung testen" sieht solche Unterverzeichnisse nicht (Abschnitt 2).
+Versteckte Ordner wie `.shortcut-targets-by-id` bei Google Drive und die Windows-Systemordner
+betrifft das nicht: Sie sind ausgeschlossen und werden gar nicht erst betreten (Abschnitt 5.1).
 
 ## 4. Schutzmechanismen
 
@@ -101,8 +108,6 @@ einem Protokolleintrag der Kategorie „Allowlist" und dem Status `FAILED`.
   laufen, solange er Fortschritt meldet.
 - **Keine Dateigrößenbegrenzung im Konnektor.** Wirksam sind die Deckel der Format-Pipelines
   (etwa für Mails, Tabellen und OpenDocument) und das Speicherkontingent der Bibliothek.
-- **Keine Ausschlussmuster.** Alles unter dem Pfad wird gelesen. Wer Teile ausnehmen will,
-  legt die Bibliothek auf ein Unterverzeichnis oder schließt einzelne Dokumente nachträglich aus.
 
 ## 5. Aufzählung
 
@@ -118,8 +123,39 @@ Der Lauf durchläuft den Baum rekursiv und betrachtet alle regulären Dateien.
 - **Existiert der Pfad nicht**, ist er kein Verzeichnis oder lässt er sich selbst nicht auflisten,
   scheitert der Lauf sofort. Das ist bewusst so, damit ein nicht eingebundenes Netzlaufwerk nie
   als „leerer, erfolgreicher Bestand" gewertet wird und Dokumente löscht.
-- **Nicht lesbare Unterverzeichnisse** werden übersprungen (Abschnitt 3). Die Aufzählung gilt dann
-  als unvollständig.
+- **Nicht lesbare Unterverzeichnisse und Dateien** werden übersprungen (Abschnitt 3). Die
+  Aufzählung gilt dann für diese Bereiche als unvollständig, für alles andere als vollständig
+  (Abschnitt 9).
+- **Ausgeschlossene Einträge** gehören nicht zur Quelle (Abschnitt 5.1).
+
+### 5.1 Ausschlüsse
+
+Immer ausgeschlossen sind:
+
+- **versteckte Einträge**, deren Name mit einem Punkt beginnt, etwa `.git`, `.DS_Store` oder
+  `.shortcut-targets-by-id`,
+- die Windows-Systemordner **`$RECYCLE.BIN`** und **`System Volume Information`**, ohne Rücksicht
+  auf Groß- und Kleinschreibung.
+
+Diese Standardausschlüsse lassen sich nicht abschalten. Dazu kommen die Ausschlussmuster der
+Bibliothek. Für sie gilt:
+
+| Regel | Beispiel |
+|---|---|
+| Ein Muster gilt für den Pfad relativ zum Verzeichnispfad, getrennt mit `/` | `Archiv/2020/*.pdf` trifft `/data/dokumente/Archiv/2020/Plan.pdf` |
+| `*` steht für beliebige Zeichen innerhalb einer Ordnerebene | `*.tmp` trifft nur Dateien direkt im Verzeichnispfad |
+| `**` als ganze Ebene steht für beliebig viele Ordnerebenen, auch für keine | `**/*.tmp` trifft `notiz.tmp` und `a/b/notiz.tmp`; `a/**/z.txt` trifft auch `a/z.txt` |
+| `**` innerhalb einer Ebene wirkt wie `*` | `Ar**v` trifft `Archiv`, aber nicht `Ar/chiv` |
+| Ein abschließendes `/**` schließt auch den Ordner selbst aus, aber nie eine gleichnamige Datei | `Archiv*/**` lässt den Ordner `Archiv2020` unbetreten, die Datei `Archiv2020.pdf` bleibt |
+| `?` steht für ein Zeichen, `[abc]`, `[a-z]` und `[!abc]` für ein Zeichen einer Klasse, `{a,b}` für Alternativen | `{Entwürfe,Papierkorb}/**`, `Plan-20[0-9]?.pdf` |
+
+Ein ausgeschlossener Ordner wird nicht betreten. Ist er nicht lesbar, erscheint er deshalb auch
+nicht als „Nicht lesbar, übersprungen", und die Aufzählung bleibt vollständig. Ausgeschlossene
+Dateien zählen weder als gefunden noch als abgewiesen. „Verbindung testen" öffnet nur das
+Verzeichnis selbst (Abschnitt 2); für ihn spielen die Ausschlüsse keine Rolle.
+
+Die Muster unterscheiden Groß- und Kleinschreibung. Ihre Auswertung kostet höchstens Musterlänge
+mal Namenslänge, auch bei vielen `*`; ein Muster kann einen Lauf daher nicht aufhalten.
 
 ## 6. Änderungserkennung
 
@@ -165,16 +201,26 @@ fünf Ebenen Mail-in-Mail).
 ## 9. Löscherkennung
 
 Der Konnektor meldet am Ende eines **erfolgreichen** Laufs alle physisch gefundenen Dateien,
-einschließlich der abgewiesenen. Dokumente der Bibliothek, deren Pfad nicht darunter ist, werden
-mit ihren Chunks entfernt und als „In der Quelle nicht mehr gefunden, entfernt" protokolliert.
+einschließlich der abgewiesenen, aber ohne die ausgeschlossenen. Dokumente der Bibliothek, deren
+Pfad nicht darunter ist, werden mit ihren Chunks entfernt und als „In der Quelle nicht mehr
+gefunden, entfernt" protokolliert. Das gilt auch für ein Dokument, das erst nachträglich unter ein
+Ausschlussmuster fällt: Ausgeschlossen heißt nicht mehr Teil der Quelle.
 
 Nicht gelöscht wird:
 
 - wenn der Lauf gescheitert ist, etwa weil das Verzeichnis nicht existiert,
 - wenn der Lauf keine Dateien gefunden hat,
-- wenn der Lauf ein nicht lesbares Unterverzeichnis übersprungen hat — dann bleibt der ganze
-  Bestand stehen, und auch die Ordner werden nicht aufgeräumt,
+- ein bekanntes Dokument in oder unter einem nicht lesbaren Unterverzeichnis und eine nicht
+  lesbare Datei selbst, samt ihren Anhängen, sofern kein Ausschluss es trifft — ein
+  ausgeschlossenes Dokument wird auch dort entfernt,
 - ein Anhang, dessen Mail unverändert und daher nicht neu ausgepackt wurde.
+
+Ein nicht lesbarer Bereich setzt die Löscherkennung also nur für sich selbst aus. Außerhalb davon
+werden verschwundene Dokumente im selben Lauf entfernt und leere Ordner aufgeräumt. Der Vergleich
+geht nach ganzen Pfadbestandteilen: Ist `projekte/intern` nicht lesbar, bleibt
+`projekte/intern-alt` davon unberührt. Die Laufhistorie nennt die Zahl der nicht lesbaren Bereiche
+als „N Bereiche nicht lesbar", die Pfade stehen im Protokoll des Laufs (Abschnitt 10). Ist der
+Verzeichnispfad selbst nicht lesbar, scheitert der Lauf (Abschnitt 5).
 
 ## 10. Protokolleinträge dieses Konnektors
 
@@ -183,7 +229,7 @@ Nicht gelöscht wird:
 | Allowlist | Verzeichnispfad liegt außerhalb der vom Betrieb freigegebenen Verzeichnisse | Freigabeliste verletzt, Lauf endet sofort |
 | Format nicht unterstützt | Dateiformat wird nicht unterstützt | Inhalt nicht zugelassen oder Datei nicht lesbar |
 | Formatabweichung | Dateiendung passt nicht zum erkannten Inhalt (erkannt: …) | wird trotzdem indiziert |
-| nicht erreichbar | Nicht lesbar, übersprungen | Unterverzeichnis darf nicht betreten werden; Aufzählung unvollständig |
+| nicht erreichbar | Nicht lesbar, übersprungen | Unterverzeichnis darf nicht betreten oder Datei nicht geprüft werden; bekannter Bestand darin bleibt erhalten |
 | abgewiesen | Speicherkontingent-Meldung | Kontingent der Bibliothek erreicht |
 | abgewiesen | kein extrahierbarer Text | typisch Scan-PDF |
 | Fehler | Verarbeitung fehlgeschlagen | Pipeline-Fehler oder Ausnahme |
@@ -199,7 +245,10 @@ Anhangs-Einträge (nicht unterstützt, Formatabweichung, nicht lesbar, Verarbeit
 |---|---|
 | Netzlaufwerk nicht eingebunden, Pfad fehlt | Lauf `FAILED` mit Fehlermeldung, nichts gelöscht |
 | Verzeichnis leer | Lauf erfolgreich mit null Dokumenten, nichts gelöscht |
-| Unterverzeichnis nicht lesbar | übersprungen, übrige Dateien werden indiziert, nichts gelöscht |
+| Unterverzeichnis nicht lesbar | übersprungen, Bestand darin bleibt erhalten, soweit nicht ausgeschlossen; übrige Dateien werden indiziert, außerhalb verschwundene Dokumente entfernt |
+| Versteckter oder ausgeschlossener Ordner nicht lesbar | nicht betreten, kein Eintrag, Löscherkennung läuft normal |
+| Ausschlussmuster nachträglich ergänzt | nächster erfolgreicher Lauf entfernt die nun ausgeschlossenen Dokumente |
+| Muster schließt alles aus (etwa `**`) | Lauf erfolgreich mit null Dokumenten; wie bei einem leeren Verzeichnis wird nichts gelöscht, der bisherige Bestand bleibt stehen |
 | Freigabeliste nachträglich verengt | nächster Lauf endet sofort mit „Allowlist" |
 | Datei zwischen Aufzählung und Verarbeitung gelöscht oder gesperrt | Eintrag „Format nicht unterstützt" oder „Fehler", Lauf läuft weiter |
 | Datei nach Normalisierung außerhalb des Quellpfads | Warnung im Log, Datei wird der Wurzel zugeordnet |
@@ -219,7 +268,8 @@ Chunking- und Embedding-Einstellungen gelten für alle Quellen und stehen im Kap
 
 ## 13. Nicht gebaut
 
-- Ausschlussmuster oder Zuschnitt der Quelle über Dateimuster
+- Einschlussmuster, also ein Zuschnitt der Quelle auf passende Dateien
+- Abschalten der Standardausschlüsse für versteckte Einträge und Systemordner
 - Übernahme von Zugriffsrechten aus dem Dateisystem. Verbindlich bleibt: Die Bibliothek ist der
   Rechteanker, wer sie sehen darf, sieht alle ihre Dokumente.
 - Schonzeitraum, in dem eine Quelle nicht gelesen wird

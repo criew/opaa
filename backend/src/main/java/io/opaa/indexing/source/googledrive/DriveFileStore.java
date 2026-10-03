@@ -36,6 +36,9 @@ import tools.jackson.databind.JsonNode;
  */
 final class DriveFileStore implements FileStore, ChangeFeed {
 
+  private static final org.slf4j.Logger log =
+      org.slf4j.LoggerFactory.getLogger(DriveFileStore.class);
+
   static final String USER_STREAM = "user";
   static final String OPEN_PREFIX = "https://drive.google.com/open?id=";
 
@@ -67,6 +70,7 @@ final class DriveFileStore implements FileStore, ChangeFeed {
   private final Map<String, Listing> listings = new HashMap<>();
   private final Map<String, DriveFile> folders = new ConcurrentHashMap<>();
   private final Map<String, GoogleFormats.Export> exports = new ConcurrentHashMap<>();
+  private final java.util.Set<String> listedIds = ConcurrentHashMap.newKeySet();
   private String myDriveRoot;
 
   DriveFileStore(DriveApi api, GoogleDriveSettings settings, int pageSize) {
@@ -142,7 +146,9 @@ final class DriveFileStore implements FileStore, ChangeFeed {
       JsonNode answer = api.get("files", query);
       List<FileEntry> entries = new ArrayList<>();
       for (DriveFile file : files(answer)) {
-        entries.add(entry(scope, file, chain(file, scope.id())));
+        if (firstListing(file)) {
+          entries.add(entry(scope, file, placed(file, chain(file, scope.id()))));
+        }
       }
       pageToken = text(answer, "nextPageToken");
       return new FilePage(entries, pageToken == null ? null : continuation());
@@ -198,7 +204,7 @@ final class DriveFileStore implements FileStore, ChangeFeed {
           List<String> segments = new ArrayList<>(level.segments());
           segments.add(file.name());
           levels.add(new Level(file.id(), List.copyOf(segments)));
-        } else {
+        } else if (firstListing(file)) {
           entries.add(entry(scope, file, level.segments()));
         }
       }
@@ -325,7 +331,7 @@ final class DriveFileStore implements FileStore, ChangeFeed {
     try {
       answer = api.get("changes", query);
     } catch (DriveApiException e) {
-      if (e.status() == 410 || e.status() == 400) {
+      if (e.status() == 410 || (e.status() == 400 && "invalid".equals(e.reason()))) {
         throw new FileAccessException.CursorExpired(
             "Google Drive nimmt den gespeicherten Stand des Änderungsprotokolls nicht mehr an.");
       }
@@ -347,11 +353,17 @@ final class DriveFileStore implements FileStore, ChangeFeed {
           String fileId = text(item, "fileId");
           JsonNode fileNode = item.get("file");
           boolean removed = item.get("removed") != null && item.get("removed").asBoolean();
+          DriveFile file;
           if (removed || fileNode == null || fileNode.isNull()) {
-            changes.add(new Change.Removed(OPEN_PREFIX + fileId));
-            continue;
+            // gone from this stream - deleted, out of reach, or moved into another scope
+            file = stillPresent(fileId);
+            if (file == null) {
+              changes.add(new Change.Removed(OPEN_PREFIX + fileId));
+              continue;
+            }
+          } else {
+            file = DriveFile.of(fileNode);
           }
-          DriveFile file = DriveFile.of(fileNode);
           if (file.isFolder()) {
             structure = true;
             folders.remove(file.id());
@@ -361,7 +373,10 @@ final class DriveFileStore implements FileStore, ChangeFeed {
             changes.add(new Change.Removed(OPEN_PREFIX + file.id()));
             continue;
           }
-          changes.add(locate(feedKey, file));
+          Change located = locate(feedKey, file);
+          if (located != null) {
+            changes.add(located);
+          }
         }
       }
     } catch (DriveApiException e) {
@@ -384,24 +399,42 @@ final class DriveFileStore implements FileStore, ChangeFeed {
   }
 
   /**
-   * The first container of {@code feedKey}'s stream {@code file} lies in, as an update; a file in
-   * none is gone from the library.
+   * The change {@code feedKey}'s stream reports for {@code file}, judged against every scope of the
+   * library (ADR-0040, Entscheidung 6): an update when the first scope holding it is one of this
+   * stream's, nothing when it belongs to another stream's scope - that stream reports it -, and a
+   * removal when no scope holds it any more.
    */
   private Change locate(String feedKey, DriveFile file)
       throws DriveApiException, InterruptedException {
     for (GoogleDriveScope scope : scopes) {
-      if (!feedKey(scope.container()).equals(feedKey)) {
-        continue;
-      }
       if (scope.kind() == GoogleDriveScope.Kind.DRIVE && !scope.id().equals(file.driveId())) {
         continue;
       }
       List<String> segments = chain(file, rootOf(scope));
       if (segments != null) {
-        return new Change.Updated(entry(scope, file, segments));
+        return feedKey(scope.container()).equals(feedKey)
+            ? new Change.Updated(entry(scope, file, segments))
+            : null;
       }
     }
     return new Change.Removed(OPEN_PREFIX + file.id());
+  }
+
+  /** The file a stream reported removed, if it still exists and is not trashed. */
+  private DriveFile stillPresent(String fileId) throws DriveApiException, InterruptedException {
+    if (fileId == null) {
+      return null;
+    }
+    try {
+      DriveFile file = getFile(fileId);
+      return file.trashed() || file.isFolder() ? null : file;
+    } catch (DriveApiException e) {
+      if (e.kind() == DriveApiException.Kind.NOT_FOUND
+          || e.kind() == DriveApiException.Kind.FORBIDDEN) {
+        return null;
+      }
+      throw e;
+    }
   }
 
   @Override
@@ -501,7 +534,8 @@ final class DriveFileStore implements FileStore, ChangeFeed {
         api.get("files/" + id, Map.of("fields", DriveFile.FIELDS, "supportsAllDrives", "true")));
   }
 
-  private FileEntry entry(GoogleDriveScope scope, DriveFile file, List<String> chain) {
+  private FileEntry entry(GoogleDriveScope scope, DriveFile file, List<String> known) {
+    List<String> chain = known == null ? List.of() : known;
     List<String> segments = new ArrayList<>();
     if (scopes.size() > 1) {
       segments.add(containerNames.getOrDefault(scope.key(), scope.key()));
@@ -550,6 +584,25 @@ final class DriveFileStore implements FileStore, ChangeFeed {
         marker,
         mediaType,
         exclusion);
+  }
+
+  /**
+   * Whether this run meets {@code file} for the first time: a file in two overlapping scopes keeps
+   * the folder of the first scope that lists it (ADR-0040, Entscheidung 5).
+   */
+  private boolean firstListing(DriveFile file) {
+    return listedIds.add(file.id());
+  }
+
+  /** The chain of a listed file, its scope's root when a parent folder cannot be read. */
+  private static List<String> placed(DriveFile file, List<String> chain) {
+    if (chain == null) {
+      log.warn(
+          "Folder chain of Drive file {} cannot be read - placing it at its scope's root",
+          file.id());
+      return List.of();
+    }
+    return chain;
   }
 
   private static long millis(DriveFile file) {

@@ -45,6 +45,7 @@ final class FakeDriveServer implements AutoCloseable {
     boolean canDownload = true;
     boolean sharedWithMe;
     boolean exportTooLarge;
+    String redirectTo;
     byte[] content = new byte[0];
     Instant modifiedTime = Instant.parse("2026-10-01T10:00:00Z");
 
@@ -227,6 +228,9 @@ final class FakeDriveServer implements AutoCloseable {
       } else if ("media".equals(query.get("alt"))) {
         if (!item.canDownload) {
           error(exchange, 403, "cannotDownloadFile");
+        } else if (item.redirectTo != null) {
+          exchange.getResponseHeaders().add("Location", item.redirectTo);
+          exchange.sendResponseHeaders(302, -1);
         } else {
           bytes(exchange, item.content);
         }
@@ -286,7 +290,7 @@ final class FakeDriveServer implements AutoCloseable {
     int index = start;
     for (; index < changeLog.size() && changes.size() < size; index++) {
       String[] logged = changeLog.get(index);
-      if (!logged[0].equals(stream)) {
+      if (!inStream(logged, stream, query)) {
         continue;
       }
       Map<String, Object> change = new LinkedHashMap<>();
@@ -304,7 +308,7 @@ final class FakeDriveServer implements AutoCloseable {
     answer.put("changes", changes);
     boolean more = false;
     for (int rest = index; rest < changeLog.size(); rest++) {
-      more |= changeLog.get(rest)[0].equals(stream);
+      more |= inStream(changeLog.get(rest), stream, query);
     }
     if (more) {
       answer.put("nextPageToken", Integer.toString(index));
@@ -312,6 +316,22 @@ final class FakeDriveServer implements AutoCloseable {
       answer.put("newStartPageToken", Integer.toString(changeLog.size()));
     }
     json(exchange, answer);
+  }
+
+  /**
+   * A shared drive's stream holds that drive's changes; the account's stream holds every change the
+   * account sees, those of shared drives included when it asks for them, as Google's does.
+   */
+  private static boolean inStream(String[] logged, String stream, Map<String, String> query) {
+    if (!stream.equals("user")) {
+      return logged[0].equals(stream);
+    }
+    return logged[0].equals("user") || "true".equals(query.get("includeItemsFromAllDrives"));
+  }
+
+  /** A broken answer for a malformed request, not an expired cursor. */
+  void failChangesWith(int status, String reason) {
+    failNext("changes", status, reason, 1000);
   }
 
   private void page(

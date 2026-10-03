@@ -137,6 +137,9 @@ public class ServiceAccountTokens {
       throw new SourceCredentialsException(e.getMessage());
     } catch (TargetAddressValidator.TargetAddressBlockedException e) {
       throw new SourceCredentialsException(e.getMessage());
+    } catch (io.opaa.sourceaccess.BoundedStreams.LimitExceededException e) {
+      throw new SourceCredentialsException(
+          "Der Token-Endpunkt " + auth.tokenEndpoint() + " hat eine zu große Antwort geliefert.");
     } catch (IOException e) {
       log.warn(
           "Token endpoint {} not reachable: {}",

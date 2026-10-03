@@ -302,10 +302,11 @@ class AsyncIndexingExecutorTest {
   }
 
   @Test
-  void anUnreadableSubdirectoryIsSkippedAndItsBestandKeptWhileReadableFilesAreIndexed()
+  void anUnreadableSubdirectoryKeepsOnlyItsOwnBestandWhileEverythingElseIsReconciled()
       throws IOException {
-    // regression guard for #2124: the run completes instead of failing, and since the listing is
-    // incomplete, the documents below the unreadable directory are not taken for vanished
+    // regression guard for #2124/#2128: the run completes instead of failing; the documents below
+    // the unreadable directory are kept, a document deleted outside it is still removed - also one
+    // whose name merely starts with the unreadable directory's name
     Path readable = documentDir.resolve("lesbar.txt");
     Files.writeString(readable, "content");
     Path locked = Files.createDirectory(documentDir.resolve("gesperrt"));
@@ -313,8 +314,18 @@ class AsyncIndexingExecutorTest {
     Files.writeString(hidden, "content");
     Document hiddenDoc =
         filesystemDocument("verborgen.txt", hidden.toAbsolutePath().toString(), null);
+    Document deletedDoc =
+        filesystemDocument(
+            "geloescht.txt",
+            documentDir.resolve("geloescht.txt").toAbsolutePath().toString(),
+            null);
+    Document lookalikeDoc =
+        filesystemDocument(
+            "alt.txt",
+            documentDir.resolve("gesperrt-alt").resolve("alt.txt").toAbsolutePath().toString(),
+            null);
     when(documentRepository.findByLibraryIdAndSourceType(library.getId(), SourceTypes.FILESYSTEM))
-        .thenReturn(List.of(hiddenDoc));
+        .thenReturn(List.of(hiddenDoc, deletedDoc, lookalikeDoc));
     when(documentIngestService.ingest(
             DocumentIngests.that().file().file(readable).in(library).inFolder(null).match(), any()))
         .thenReturn(DocumentIngestResult.PROCESSED);
@@ -326,6 +337,9 @@ class AsyncIndexingExecutorTest {
 
     verify(indexingJobService, timeout(2000)).completeJob(eq(jobId), eq(1), eq(0), eq(0), anyInt());
     verify(indexingJobService, never()).failJob(any(), any());
+    verify(documentRepository).delete(deletedDoc);
+    verify(documentRepository).delete(lookalikeDoc);
+    verify(documentRepository, never()).delete(hiddenDoc);
     verify(indexingRunEventRepository)
         .save(
             argThat(
@@ -333,9 +347,156 @@ class AsyncIndexingExecutorTest {
                     event.getCategory() == IndexingEventCategory.UNREACHABLE
                         && "gesperrt".equals(event.getReference())));
     verify(indexingJobService).recordListingAssessment(jobId, false, List.of());
-    verify(staleDocumentCleanupService, never())
-        .reconcile(any(), any(), any(), any(), any(), any(), any());
-    verify(documentRepository, never()).delete(any(Document.class));
+    verify(indexingJobService).recordUnreadableScopes(jobId, 1);
+    verify(folderService).pruneOrphanedFolders(eq(library), any());
+  }
+
+  @Test
+  void anExcludedDocumentBelowAnUnreadableDirectoryIsRemovedNotKept() throws IOException {
+    Path locked = Files.createDirectory(documentDir.resolve("Projekte"));
+    Path kept = locked.resolve("plan.txt");
+    Files.writeString(kept, "content");
+    Path archive = Files.createDirectory(locked.resolve("Archiv"));
+    Path archived = archive.resolve("alt.txt");
+    Files.writeString(archived, "content");
+    Document keptDoc = filesystemDocument("plan.txt", kept.toAbsolutePath().toString(), null);
+    Document archivedDoc =
+        filesystemDocument("alt.txt", archived.toAbsolutePath().toString(), null);
+    Document tempDoc =
+        filesystemDocument(
+            "notiz.tmp", locked.resolve("notiz.tmp").toAbsolutePath().toString(), null);
+    when(documentRepository.findByLibraryIdAndSourceType(library.getId(), SourceTypes.FILESYSTEM))
+        .thenReturn(List.of(keptDoc, archivedDoc, tempDoc));
+    library.updateSourceSettings("{\"excludePatterns\":[\"Projekte/Archiv/**\",\"**/*.tmp\"]}");
+    Path readable = documentDir.resolve("lesbar.txt");
+    Files.writeString(readable, "content");
+    when(documentIngestService.ingest(
+            DocumentIngests.that().file().file(readable).in(library).inFolder(null).match(), any()))
+        .thenReturn(DocumentIngestResult.PROCESSED);
+    UUID jobId = UUID.randomUUID();
+
+    try (UnreadableDirectory ignored = UnreadableDirectory.of(locked)) {
+      executor.execute(jobId, library, IndexingRunMode.FULL);
+    }
+
+    verify(indexingJobService, timeout(2000)).completeJob(eq(jobId), eq(1), eq(0), eq(0), anyInt());
+    verify(indexingJobService).recordUnreadableScopes(jobId, 1);
+    verify(documentRepository).delete(archivedDoc);
+    verify(documentRepository).delete(tempDoc);
+    verify(documentRepository, never()).delete(keptDoc);
+  }
+
+  @Test
+  void attachmentsFollowTheirParentNotTheirOwnKeyNextToAnUnreadableDirectory() throws IOException {
+    // the attachment of a mail below the unreadable directory survives with its parent; the
+    // attachment of a vanished mail goes with it, even when its crafted name points into the
+    // unreadable directory - otherwise the parent's deletion would hit fk_documents_parent
+    Path readable = documentDir.resolve("lesbar.txt");
+    Files.writeString(readable, "content");
+    Path locked = Files.createDirectory(documentDir.resolve("gesperrt"));
+    String hiddenMailPath = locked.resolve("verborgen.eml").toAbsolutePath().toString();
+    Document hiddenMail = filesystemDocument("verborgen.eml", hiddenMailPath, null);
+    Document hiddenAttachment =
+        filesystemDocument("anlage.pdf", hiddenMailPath + "/0/anlage.pdf", hiddenMail.getId());
+    String goneMailPath = documentDir.resolve("weg.eml").toAbsolutePath().toString();
+    Document goneMail = filesystemDocument("weg.eml", goneMailPath, null);
+    Document craftedAttachment =
+        filesystemDocument("x.pdf", goneMailPath + "/0/../../gesperrt/x.pdf", goneMail.getId());
+    when(documentRepository.findByLibraryIdAndSourceType(library.getId(), SourceTypes.FILESYSTEM))
+        .thenReturn(List.of(hiddenMail, hiddenAttachment, goneMail, craftedAttachment));
+    when(documentIngestService.ingest(
+            DocumentIngests.that().file().file(readable).in(library).inFolder(null).match(), any()))
+        .thenReturn(DocumentIngestResult.PROCESSED);
+
+    try (UnreadableDirectory ignored = UnreadableDirectory.of(locked)) {
+      executor.execute(UUID.randomUUID(), library, IndexingRunMode.FULL);
+    }
+
+    verify(documentRepository, timeout(2000)).delete(goneMail);
+    verify(documentRepository).delete(craftedAttachment);
+    verify(documentRepository, never()).delete(hiddenMail);
+    verify(documentRepository, never()).delete(hiddenAttachment);
+  }
+
+  @Test
+  void hiddenAndSystemFoldersAreNeitherIndexedNorReportedAsUnreadable() throws IOException {
+    Path readable = documentDir.resolve("lesbar.txt");
+    Files.writeString(readable, "content");
+    Path git = Files.createDirectory(documentDir.resolve(".git"));
+    Files.writeString(git.resolve("config.txt"), "content");
+    Path recycleBin = Files.createDirectory(documentDir.resolve("$RECYCLE.BIN"));
+    Files.writeString(recycleBin.resolve("geloescht.txt"), "content");
+    Path shortcuts = Files.createDirectory(documentDir.resolve(".shortcut-targets-by-id"));
+    Files.writeString(shortcuts.resolve("verknuepft.txt"), "content");
+    when(documentIngestService.ingest(
+            DocumentIngests.that().file().file(readable).in(library).inFolder(null).match(), any()))
+        .thenReturn(DocumentIngestResult.PROCESSED);
+    UUID jobId = UUID.randomUUID();
+
+    try (UnreadableDirectory ignored = UnreadableDirectory.of(shortcuts)) {
+      executor.execute(jobId, library, IndexingRunMode.FULL);
+    }
+
+    verify(indexingJobService, timeout(2000)).completeJob(eq(jobId), eq(1), eq(0), eq(0), anyInt());
+    verify(indexingRunEventRepository, never())
+        .save(argThat(event -> event.getCategory() == IndexingEventCategory.UNREACHABLE));
+    // the listing is complete, so the reconciliation runs
+    assertThat(capturedCurrentFilePaths()).containsExactly(readable.toAbsolutePath().toString());
+  }
+
+  @Test
+  void aSourceDirectoryBelowAHiddenFolderIsIndexedNormally() throws IOException {
+    Path hiddenRoot = Files.createDirectory(documentDir.resolve(".archiv"));
+    Path file = hiddenRoot.resolve("plan.txt");
+    Files.writeString(file, "content");
+    KnowledgeLibrary hiddenLibrary =
+        KnowledgeLibrary.ownedByUser(
+            UUID.randomUUID(),
+            "Versteckt",
+            null,
+            UUID.randomUUID(),
+            SourceTypes.FILESYSTEM,
+            hiddenRoot.toAbsolutePath().toString(),
+            null,
+            null,
+            null,
+            false);
+    when(documentIngestService.ingest(
+            DocumentIngests.that().file().file(file).in(hiddenLibrary).inFolder(null).match(),
+            any()))
+        .thenReturn(DocumentIngestResult.PROCESSED);
+    UUID jobId = UUID.randomUUID();
+
+    executor.execute(jobId, hiddenLibrary, IndexingRunMode.FULL);
+
+    verify(indexingJobService, timeout(2000)).completeJob(eq(jobId), eq(1), eq(0), eq(0), anyInt());
+  }
+
+  @Test
+  void aDocumentThatNowFallsUnderAnExclusionPatternIsRemovedFromTheIndex() throws IOException {
+    Path kept = documentDir.resolve("aktuell.txt");
+    Files.writeString(kept, "content");
+    Path archive = Files.createDirectory(documentDir.resolve("Archiv"));
+    Path archived = archive.resolve("alt.txt");
+    Files.writeString(archived, "content");
+    Document archivedDoc =
+        filesystemDocument("alt.txt", archived.toAbsolutePath().toString(), null);
+    Document keptDoc = filesystemDocument("aktuell.txt", kept.toAbsolutePath().toString(), null);
+    when(documentRepository.findByLibraryIdAndSourceType(library.getId(), SourceTypes.FILESYSTEM))
+        .thenReturn(List.of(keptDoc, archivedDoc));
+    when(documentIngestService.ingest(
+            DocumentIngests.that().file().file(kept).in(library).inFolder(null).match(), any()))
+        .thenReturn(DocumentIngestResult.SKIPPED);
+    library.updateSourceSettings("{\"excludePatterns\":[\"Archiv/**\"]}");
+
+    executor.execute(UUID.randomUUID(), library, IndexingRunMode.FULL);
+
+    assertThat(capturedCurrentFilePaths()).containsExactly(kept.toAbsolutePath().toString());
+    verify(documentRepository).delete(archivedDoc);
+    verify(documentRepository, never()).delete(keptDoc);
+    verify(documentIngestService, never())
+        .ingest(
+            DocumentIngests.that().file().file(archived).in(library).inFolder(null).match(), any());
   }
 
   @Test

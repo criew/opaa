@@ -39,6 +39,27 @@ public abstract class FileStoreContract {
     /** From now on the store's credentials are refused for every request. */
     void rejectCredentials() throws Exception;
 
+    /**
+     * Renames or moves the file or folder {@code from} to {@code to} within {@code container}; only
+     * a store under {@link FileStoreFolderContract} needs it.
+     */
+    default void move(int container, String from, String to) throws Exception {
+      throw new UnsupportedOperationException("this fixture cannot move");
+    }
+
+    /**
+     * Notes a change of {@code name} in {@code container}'s change log; only a store under {@link
+     * FileStoreChangeFeedContract} needs it.
+     */
+    default void changed(int container, String name) throws Exception {
+      throw new UnsupportedOperationException("this fixture has no change log");
+    }
+
+    /** From now on the store accepts no stored cursor. */
+    default void expireCursors() throws Exception {
+      throw new UnsupportedOperationException("this fixture has no change log");
+    }
+
     String containerKey(int container);
 
     String filePath(int container, String name);
@@ -50,8 +71,8 @@ public abstract class FileStoreContract {
   /** A fresh fixture with both containers empty. */
   protected abstract Fixture fixture() throws Exception;
 
-  private Fixture fixture;
-  private FileSyncHarness harness;
+  protected Fixture fixture;
+  protected FileSyncHarness harness;
 
   @BeforeEach
   void setUpContract() throws Exception {
@@ -59,7 +80,7 @@ public abstract class FileStoreContract {
     harness = new FileSyncHarness();
   }
 
-  private FileSyncHarness.Run fullSync() throws Exception {
+  protected FileSyncHarness.Run fullSync() throws Exception {
     return harness.fullSync(fixture.open(PAGE_SIZE));
   }
 

@@ -23,7 +23,6 @@ import io.opaa.indexing.source.FilesystemPathAllowlist;
 import io.opaa.indexing.source.IndexingRunTemplate;
 import io.opaa.indexing.source.IndexingSourceExecutorRegistry;
 import io.opaa.indexing.source.LibraryIndexingScheduler;
-import io.opaa.indexing.source.LibrarySourceConnectionResolver;
 import io.opaa.indexing.source.RemoteContentProperties;
 import io.opaa.indexing.source.RemoteOriginalAccess;
 import io.opaa.indexing.source.ServiceAccountTokens;
@@ -246,17 +245,6 @@ public class IndexingConfiguration {
         sourceConnectionResolver);
   }
 
-  /**
-   * Hands every connector the target and secret of a library; see {@link SourceConnectionResolver}.
-   */
-  @Bean
-  SourceConnectionResolver sourceConnectionResolver(
-      ObjectProvider<SourceConnectorRegistry> connectors,
-      ServiceAccountTokens serviceAccountTokens) {
-    return new LibrarySourceConnectionResolver(
-        type -> connectors.getObject().find(type), serviceAccountTokens);
-  }
-
   /** Signs service account assertions for the connectors that sign in with a key (ADR-0040). */
   @Bean
   ServiceAccountTokens serviceAccountTokens(
@@ -311,13 +299,15 @@ public class IndexingConfiguration {
       IndexingSourceExecutorRegistry indexingSourceExecutorRegistry,
       KnowledgeLibraryRepository libraryRepository,
       LibraryAccessService libraryAccessService,
-      IndexingRunEventRepository indexingRunEventRepository) {
+      IndexingRunEventRepository indexingRunEventRepository,
+      SourceConnectionResolver sourceConnectionResolver) {
     return new DocumentIndexingService(
         indexingJobService,
         indexingSourceExecutorRegistry,
         libraryRepository,
         libraryAccessService,
-        indexingRunEventRepository);
+        indexingRunEventRepository,
+        sourceConnectionResolver);
   }
 
   /**

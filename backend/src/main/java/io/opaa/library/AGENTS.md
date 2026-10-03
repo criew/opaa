@@ -7,7 +7,8 @@ Pakete (`io.opaa.*`): library. Ergänzt `backend/AGENTS.md`.
 Die Verwaltung der Wissensbibliothek, des ersten Asset-Typs: anlegen, Quelle konfigurieren und
 testen, Zeitplan, Push-Eingang, Freigabe für Fremdzugänge, Aufräumen verwaister Originale. Der
 Bestand selbst (Bibliothek, Ordner, Dokumente) liegt in `io.opaa.knowledge`. library hängt nur von
-foundation, identity, rights und knowledge ab und besitzt keine eigene Tabelle.
+foundation, identity, rights, knowledge und connections ab (Zuordnung einer Bibliothek zu einem
+Zugang, Prüfung ihrer Adresse) und besitzt keine eigene Tabelle.
 
 ## Invarianten und Stolpersteine
 

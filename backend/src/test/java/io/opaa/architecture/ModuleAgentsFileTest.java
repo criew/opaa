@@ -46,6 +46,7 @@ class ModuleAgentsFileTest {
           entry(Module.RIGHTS, "permission"),
           entry(Module.KNOWLEDGE, "knowledge"),
           entry(Module.CONNECTORS, CONNECTOR_PARENT),
+          entry(Module.CONNECTIONS, "connection"),
           entry(Module.WORKSPACE, "space"),
           entry(Module.LIBRARY, "library"),
           entry(Module.RETRIEVAL, "retrieval"),

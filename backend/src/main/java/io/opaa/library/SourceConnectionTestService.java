@@ -5,11 +5,14 @@ import io.opaa.api.types.Capability;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
+import io.opaa.connection.LibraryConnectionService;
 import io.opaa.indexing.source.ConnectorChecks;
 import io.opaa.indexing.source.ConnectorData;
 import io.opaa.indexing.source.ServiceAccountKey;
 import io.opaa.indexing.source.ServiceAccountTokens;
 import io.opaa.indexing.source.SourceBrowser;
+import io.opaa.indexing.source.SourceConnectionBlockedException;
+import io.opaa.indexing.source.SourceConnectionResolver;
 import io.opaa.indexing.source.SourceConnectionTestResult;
 import io.opaa.indexing.source.SourceConnector;
 import io.opaa.indexing.source.SourceConnectorRegistry;
@@ -70,18 +73,24 @@ public class SourceConnectionTestService {
   private final SourceConnectorRegistry connectors;
   private final CapabilityService capabilityService;
   private final ServiceAccountTokens serviceAccountTokens;
+  private final SourceConnectionResolver connectionResolver;
+  private final LibraryConnectionService libraryConnections;
 
   public SourceConnectionTestService(
       KnowledgeLibraryRepository libraryRepository,
       LibraryAccessService libraryAccessService,
       SourceConnectorRegistry connectors,
       CapabilityService capabilityService,
+      SourceConnectionResolver connectionResolver,
+      LibraryConnectionService libraryConnections,
       ServiceAccountTokens serviceAccountTokens) {
     this.libraryRepository = libraryRepository;
     this.libraryAccessService = libraryAccessService;
     this.connectors = connectors;
     this.capabilityService = capabilityService;
     this.serviceAccountTokens = serviceAccountTokens;
+    this.connectionResolver = connectionResolver;
+    this.libraryConnections = libraryConnections;
   }
 
   /**
@@ -113,6 +122,9 @@ public class SourceConnectionTestService {
             request.connectorSettings() == null
                 ? null
                 : connector.readSettings(request.connectorSettings()));
+    // a stored key reaches the connector through the port already exchanged; only an uploaded one
+    // is exchanged here
+    boolean uploaded = blankToNull(settings.sourceCredentials()) != null;
     ConnectorData stored = null;
     if (request.libraryId() != null) {
       KnowledgeLibrary library = requireManagedLibrary(request.libraryId(), caller);
@@ -120,13 +132,19 @@ public class SourceConnectionTestService {
         throw new ValidationException(
             "sourceType passt nicht zum gespeicherten Quellentyp dieser Bibliothek");
       }
-      stored = ConnectorData.storedIn(library);
-      settings = withStoredCredentialsIfOmitted(connector, settings, library, stored);
+      stored = connectionResolver.effectiveSettings(library);
+      try {
+        settings = withStoredCredentialsIfOmitted(connector, settings, library, stored);
+      } catch (SourceCredentialsException e) {
+        return ConnectorChecks.unreachable(e.getMessage());
+      }
     }
-    try {
-      settings = signedIn(connector, settings, stored);
-    } catch (SourceCredentialsException e) {
-      return ConnectorChecks.unreachable(e.getMessage());
+    if (uploaded) {
+      try {
+        settings = signedIn(connector, settings, stored);
+      } catch (SourceCredentialsException e) {
+        return ConnectorChecks.unreachable(e.getMessage());
+      }
     }
     return connector.testConnection(settings, stored);
   }
@@ -183,19 +201,28 @@ public class SourceConnectionTestService {
             request.sourceCredentials(),
             Boolean.TRUE.equals(request.sourceInsecureSsl()),
             request.query());
+    // a stored key reaches the connector through the port already exchanged; only an uploaded one
+    // is exchanged here
+    boolean uploaded = blankToNull(settings.sourceCredentials()) != null;
     ConnectorData stored = null;
     if (request.libraryId() != null) {
       KnowledgeLibrary library = requireManagedLibrary(request.libraryId(), caller);
       if (!request.sourceType().equals(library.getSourceType())) {
         throw new ValidationException(browser.otherTypeMessage());
       }
-      stored = ConnectorData.storedIn(library);
-      settings = withStoredCredentialsIfOmitted(connector, settings, library, stored);
+      stored = connectionResolver.effectiveSettings(library);
+      try {
+        settings = withStoredCredentialsIfOmitted(connector, settings, library, stored);
+      } catch (SourceCredentialsException e) {
+        return new SourceListing(false, List.of(), e.getMessage());
+      }
     }
-    try {
-      settings = signedIn(connector, settings, stored);
-    } catch (SourceCredentialsException e) {
-      return new SourceListing(false, List.of(), e.getMessage());
+    if (uploaded) {
+      try {
+        settings = signedIn(connector, settings, stored);
+      } catch (SourceCredentialsException e) {
+        return new SourceListing(false, List.of(), e.getMessage());
+      }
     }
     return browser.browse(new SourceBrowser.Query(settings, stored));
   }
@@ -251,11 +278,12 @@ public class SourceConnectionTestService {
    * request's, regardless of the origin, the connector decides (it receives them beside). A stored
    * key never serves another imitated account than its own (ADR-0040, Entscheidung 4).
    */
-  private static SourceSettings withStoredCredentialsIfOmitted(
+  private SourceSettings withStoredCredentialsIfOmitted(
       SourceConnector connector,
       SourceSettings request,
       KnowledgeLibrary library,
       ConnectorData stored) {
+    libraryConnections.requireAddressAllowed(library, request.sourceUrl());
     ConnectorData requested =
         request.connectorSettings() != null ? request.connectorSettings() : stored;
     boolean fallback =
@@ -268,9 +296,18 @@ public class SourceConnectionTestService {
         request.sourcePath(),
         request.sourceUrl(),
         fallback ? library.getSourceProxy() : request.sourceProxy(),
-        fallback ? library.getSourceCredentials() : request.sourceCredentials(),
+        fallback ? storedSecret(library) : request.sourceCredentials(),
         fallback ? library.isSourceInsecureSsl() : request.sourceInsecureSsl(),
         request.connectorSettings());
+  }
+
+  /** The stored secret through the port, as a run would get it; a blocked connection is a 400. */
+  private String storedSecret(KnowledgeLibrary library) {
+    try {
+      return connectionResolver.currentCredentials(library);
+    } catch (SourceConnectionBlockedException e) {
+      throw new ValidationException(e.getMessage());
+    }
   }
 
   private static String blankToNull(String value) {

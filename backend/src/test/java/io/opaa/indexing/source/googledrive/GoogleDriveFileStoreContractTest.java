@@ -1,7 +1,7 @@
 package io.opaa.indexing.source.googledrive;
 
 import io.opaa.indexing.filesync.FileStore;
-import io.opaa.indexing.filesync.FileStoreContract;
+import io.opaa.indexing.filesync.FileStoreChangeFeedContract;
 import io.opaa.indexing.source.ConnectorData;
 import io.opaa.indexing.source.RequestBudget;
 import io.opaa.indexing.source.SourceSettings;
@@ -11,11 +11,11 @@ import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
 
 /**
- * The file connector contract against the Drive store on the {@link FakeDriveServer}: container
- * {@code 0} is a shared drive (listed flat after its folders), container {@code 1} a folder (listed
- * level by level).
+ * The file connector and change log contracts against the Drive store on the {@link
+ * FakeDriveServer}: container {@code 0} is a shared drive (listed flat after its folders),
+ * container {@code 1} a folder (listed level by level).
  */
-class GoogleDriveFileStoreContractTest extends FileStoreContract {
+class GoogleDriveFileStoreContractTest extends FileStoreChangeFeedContract {
 
   private FakeDriveServer server;
 
@@ -70,6 +70,16 @@ class GoogleDriveFileStoreContractTest extends FileStoreContract {
     @Override
     public void remove(int container, String name) {
       server.remove(id(container, name));
+    }
+
+    @Override
+    public void changed(int container, String name) {
+      server.changed(id(container, name), container == 0 ? "drive0" : null);
+    }
+
+    @Override
+    public void expireCursors() {
+      server.expireCursors();
     }
 
     @Override

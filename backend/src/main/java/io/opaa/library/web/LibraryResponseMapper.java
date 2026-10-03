@@ -1,6 +1,7 @@
 package io.opaa.library.web;
 
 import io.opaa.api.dto.AssetReachResponse;
+import io.opaa.api.dto.ConnectionProfileRef;
 import io.opaa.api.dto.IndexingStatus;
 import io.opaa.api.dto.LibraryListResponse;
 import io.opaa.api.dto.LibraryRequest;
@@ -16,6 +17,7 @@ import io.opaa.knowledge.SourceType;
 import io.opaa.library.LibraryCreation;
 import io.opaa.library.LibraryDetail;
 import io.opaa.library.LibraryManagementDetail;
+import io.opaa.library.LibraryProfileState;
 import io.opaa.library.LibraryScheduleDetail;
 import io.opaa.library.LibraryScheduleUpdate;
 import io.opaa.library.LibrarySummary;
@@ -51,7 +53,8 @@ final class LibraryResponseMapper {
         request.getSourceCredentials(),
         request.getSourceInsecureSsl(),
         toSettings(request.getSourceSettings()),
-        toScheduleUpdate(request.getSchedule()));
+        toScheduleUpdate(request.getSchedule()),
+        request.getConnectionProfileId());
   }
 
   static LibraryUpdate toUpdate(LibraryUpdateRequest request) {
@@ -121,6 +124,15 @@ final class LibraryResponseMapper {
             .diagnosticsLockToggleable(detail.diagnosticsLockToggleable())
             .lastTransfer(PermissionTransferResponseMapper.toResponse(lastTransfer))
             .succession(SuccessionStateResponseMapper.toStateResponse(detail.succession()));
+    LibraryProfileState profile = detail.connectionProfile();
+    if (profile != null) {
+      response
+          .connectionProfile(
+              profile.removed()
+                  ? null
+                  : new ConnectionProfileRef().id(profile.id()).name(profile.name()))
+          .connectionProfileRemoved(profile.removed());
+    }
     LibraryManagementDetail managementDetail = detail.managementDetail();
     response
         .sourcePath(managementDetail.sourcePath())

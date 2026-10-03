@@ -38,9 +38,15 @@ describe('the source registry (ADR-0038)', () => {
   })
 
   it('sends only the fields of the chosen type for the generic sources', () => {
-    expect(configurationOf('FILESYSTEM').toPayload(generic)).toEqual({
+    expect(
+      configurationOf('FILESYSTEM').toPayload({
+        ...generic,
+        excludePatterns: ' Archiv/** \n\n**/*.tmp\n',
+      }),
+    ).toEqual({
       sourcePath: '/data/dokumente',
       sourceInsecureSsl: false,
+      sourceSettings: { excludePatterns: ['Archiv/**', '**/*.tmp'] },
     })
     expect(configurationOf('HTTP_DIRECTORY').toPayload(generic)).toEqual({
       sourceUrl: 'https://docs.example/',
@@ -53,10 +59,16 @@ describe('the source registry (ADR-0038)', () => {
   it('keeps the generic checks for path and URL sources', () => {
     expect(
       configurationOf('FILESYSTEM').validate(
-        { ...generic, sourcePath: 'relativ' },
+        { ...generic, sourcePath: 'relativ', excludePatterns: '' },
         context('FILESYSTEM'),
       ),
     ).toBe('Verzeichnispfad muss ein absoluter Pfad sein, z. B. /data/dokumente')
+    expect(
+      configurationOf('FILESYSTEM').validate(
+        { ...generic, excludePatterns: '/data/Archiv/**' },
+        context('FILESYSTEM'),
+      ),
+    ).toMatch(/relativ zum Verzeichnispfad/)
     expect(
       configurationOf('HTTP_DIRECTORY').validate(
         { ...generic, sourceUrl: 'docs.example' },

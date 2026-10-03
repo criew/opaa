@@ -13,6 +13,7 @@ import io.opaa.account.OidcSecurityConfig;
 import io.opaa.auth.PushIntakeSecurityConfig;
 import io.opaa.auth.UserService;
 import io.opaa.common.UnauthorizedException;
+import io.opaa.indexing.source.LibrarySourceConnectionResolver;
 import io.opaa.indexing.source.SourceConnectorRegistry;
 import io.opaa.indexing.source.SourceSyncStateRepository;
 import io.opaa.indexing.source.confluence.ConfluenceConnectionService;
@@ -55,6 +56,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
   OidcSecurityConfig.class,
   PushIntakeSecurityConfig.class,
   PushIntakeService.class,
+  LibrarySourceConnectionResolver.class,
   ConfluenceWebhookPublicAccessTest.CorsStub.class
 })
 @ActiveProfiles("oidc")

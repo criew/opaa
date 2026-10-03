@@ -468,5 +468,18 @@ public enum AuditEventType {
    * request to a foreign model, and the closed list of docs/features/security-and-compliance.md
    * does not name it.
    */
-  EXTERNAL_ACCESS_SETTINGS_CHANGED
+  EXTERNAL_ACCESS_SETTINGS_CHANGED,
+
+  // Verbindungsprofile ("Zugänge", #2160, ADR-0041 Entscheidung 7)
+  /** A connection profile was created; the client secret appears only as whether one is set. */
+  CONNECTION_PROFILE_CREATED,
+  /**
+   * A connection profile changed; carries how many connections lost their secret when the server
+   * address or the app registration changed.
+   */
+  CONNECTION_PROFILE_CHANGED,
+  /** A connection profile was deleted; its connections lost their secrets. */
+  CONNECTION_PROFILE_DELETED,
+  /** The emergency shutdown "Alle Verbindungen trennen" discarded every secret of a profile. */
+  CONNECTION_PROFILE_DISCONNECTED
 }
