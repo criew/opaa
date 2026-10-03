@@ -7,6 +7,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -22,7 +23,8 @@ import org.slf4j.LoggerFactory;
  * by {@link RedirectPolicy}. {@code targetAddressValidator} runs against the current URI at the top
  * of every iteration, before a single further byte is requested. A {@code 429} is waited out and
  * retried under the caller's {@link RateLimitHandling}; once its retries are spent, the last {@code
- * 429} is returned as-is.
+ * 429} is returned as-is. {@link #sendWithBody} sends a request with a body under the same rules
+ * but follows no redirect.
  *
  * <p>Only under {@link RedirectPolicy#REJECT_OFF_ORIGIN} is the response actually received also
  * checked against the original URL, closing the gap a caller-supplied auto-following {@link
@@ -133,19 +135,77 @@ public final class RedirectFollowingFetcher {
       RateLimitHandling rateLimit,
       Predicate<URI> authorizationScope)
       throws IOException, InterruptedException {
+    return retryingThrottled(
+        () ->
+            sendOnce(
+                httpClient,
+                url,
+                timeout,
+                headers,
+                targetAddressValidator,
+                policy,
+                authorizationScope),
+        rateLimit);
+  }
+
+  /**
+   * Sends one {@code method} request carrying {@code body} - a WebDAV {@code PROPFIND} - under the
+   * target validation and {@code rateLimit}, like {@link #sendFollowingRedirects}. A redirect is
+   * returned as it is, never followed: where a request with a body may be sent again is not this
+   * class's decision.
+   *
+   * @throws RedirectRejectedException when the answer comes from another origin than {@code url}
+   */
+  public static HttpResponse<InputStream> sendWithBody(
+      HttpClient httpClient,
+      String method,
+      String url,
+      String body,
+      Duration timeout,
+      Map<String, String> headers,
+      TargetAddressValidator targetAddressValidator,
+      RateLimitHandling rateLimit)
+      throws IOException, InterruptedException {
+    URI uri = URI.create(url);
+    return retryingThrottled(
+        () -> {
+          targetAddressValidator.validate(uri);
+          HttpRequest.Builder builder =
+              HttpRequest.newBuilder()
+                  .uri(uri)
+                  .timeout(timeout)
+                  .method(
+                      method, HttpRequest.BodyPublishers.ofString(body, StandardCharsets.UTF_8));
+          headers.forEach(builder::header);
+          HttpResponse<InputStream> response =
+              httpClient.send(builder.build(), HttpResponse.BodyHandlers.ofInputStream());
+          if (!isRedirectOriginTrusted(uri, response.uri())) {
+            closeQuietly(response.body());
+            throw new RedirectRejectedException(
+                RedirectRejectionReason.FOREIGN_HOST, response.uri());
+          }
+          return response;
+        },
+        rateLimit);
+  }
+
+  /** One attempt of a request. */
+  @FunctionalInterface
+  private interface Attempt {
+    HttpResponse<InputStream> send() throws IOException, InterruptedException;
+  }
+
+  /**
+   * Runs {@code attempt}, waiting out a {@code 429} and running it again under {@code rateLimit};
+   * the listener is told before every attempt and before every wait.
+   */
+  private static HttpResponse<InputStream> retryingThrottled(
+      Attempt attempt, RateLimitHandling rateLimit) throws IOException, InterruptedException {
     RateLimitPolicy rateLimitPolicy = rateLimit.policy();
-    for (int attempt = 0; ; attempt++) {
+    for (int tried = 0; ; tried++) {
       rateLimit.listener().sending();
-      HttpResponse<InputStream> response =
-          sendOnce(
-              httpClient,
-              url,
-              timeout,
-              headers,
-              targetAddressValidator,
-              policy,
-              authorizationScope);
-      if (response.statusCode() != TOO_MANY_REQUESTS || attempt >= rateLimitPolicy.maxRetries()) {
+      HttpResponse<InputStream> response = attempt.send();
+      if (response.statusCode() != TOO_MANY_REQUESTS || tried >= rateLimitPolicy.maxRetries()) {
         return response;
       }
       Duration wait = rateLimitPolicy.waitFor(response);
@@ -155,7 +215,7 @@ public final class RedirectFollowingFetcher {
           response.statusCode(),
           sanitizedOrigin(response.uri()),
           wait,
-          attempt + 1,
+          tried + 1,
           rateLimitPolicy.maxRetries());
       rateLimit.listener().throttled(response.statusCode(), wait);
       rateLimit.sleeper().sleep(wait);
