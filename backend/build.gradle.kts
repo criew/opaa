@@ -433,6 +433,29 @@ tasks.register<Test>("keycloakIntegrationTest") {
     outputs.cacheIf { false }
 }
 
+// #2152: the Nextcloud container suite (io.opaa.integration.nextcloud.*) runs the official image.
+// Measured on the reference machine: ~14 s to an installed instance and ~180 MiB for the container,
+// but a ~2.1 GB image every CI run pulls afresh, against ~1 s and ~400 MB for the S3 store fixture
+// inside `test`; its group-folder test also needs the app store. CI runs it nightly and on demand
+// (.github/workflows/nextcloud-integration.yml).
+tasks.register<Test>("nextcloudIntegrationTest") {
+    description = "Integration tests against a real Nextcloud in Docker " +
+        "(io.opaa.integration.nextcloud.*). Needs Docker; not part of build/check."
+    group = "verification"
+    testClassesDirs = sourceSets.test.get().output.classesDirs
+    classpath = sourceSets.test.get().runtimeClasspath
+    useJUnitPlatform()
+    filter {
+        includeTestsMatching("io.opaa.integration.nextcloud.*")
+    }
+    testLogging {
+        events("passed", "skipped", "failed")
+        exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+    }
+    outputs.upToDateWhen { false }
+    outputs.cacheIf { false }
+}
+
 tasks.register<Test>("openAiIntegrationTest") {
     description = "End-to-end tests against the real OpenAI API (io.opaa.integration.*). " +
         "Needs OPAA_OPENAI_API_KEY and Docker; not part of build/check."
@@ -444,6 +467,7 @@ tasks.register<Test>("openAiIntegrationTest") {
         includeTestsMatching("io.opaa.integration.*")
         excludeTestsMatching("io.opaa.integration.confluence.*")
         excludeTestsMatching("io.opaa.integration.keycloak.*")
+        excludeTestsMatching("io.opaa.integration.nextcloud.*")
     }
     // Never cache or skip: whether the tests actually run depends on OPAA_OPENAI_API_KEY (a
     // JUnit @EnabledIfEnvironmentVariable condition, invisible to Gradle's input tracking) and

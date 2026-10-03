@@ -18,8 +18,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * The POST way to a token endpoint: form encoding, target validation before anything is sent, a
- * redirect returned instead of followed, and the bound on the answer.
+ * The form adapter on {@link RedirectFollowingFetcher#sendWithBody}: form encoding and the bound on
+ * the answer. Redirect and target validation are the fetcher's, tested there.
  */
 class SourceFormPostTest {
 
@@ -82,30 +82,6 @@ class SourceFormPostTest {
         .startsWith("POST application/x-www-form-urlencoded ")
         .contains("grant_type=a%3Ab")
         .contains("assertion=x+y%26z");
-  }
-
-  @Test
-  void aRedirectIsReturnedAndNeverFollowed() throws Exception {
-    SourceFormPost.Response response = post("/moved", Map.of("assertion", "geheim"), 1024);
-
-    assertThat(response.statusCode()).isEqualTo(302);
-    assertThat(response.isSuccess()).isFalse();
-    assertThat(requests).containsExactly("moved");
-  }
-
-  @Test
-  void aBlockedTargetIsNeverContacted() {
-    assertThatThrownBy(
-            () ->
-                SourceFormPost.post(
-                    SourceHttpClientFactory.buildHttpClient(null, -1, false),
-                    URI.create(base() + "/token"),
-                    Map.of("assertion", "geheim"),
-                    Duration.ofSeconds(5),
-                    1024,
-                    new TargetAddressValidator(true, List.of())))
-        .isInstanceOf(TargetAddressValidator.TargetAddressBlockedException.class);
-    assertThat(requests).isEmpty();
   }
 
   @Test

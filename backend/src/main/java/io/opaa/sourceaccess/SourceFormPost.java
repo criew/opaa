@@ -6,6 +6,7 @@ import java.io.InputStream;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -52,10 +53,10 @@ public final class SourceFormPost {
             httpClient,
             "POST",
             target.toString(),
-            encode(form),
+            HttpRequest.BodyPublishers.ofString(encode(form), StandardCharsets.UTF_8),
+            "application/x-www-form-urlencoded",
             timeout,
-            Map.of(
-                "Content-Type", "application/x-www-form-urlencoded", "Accept", "application/json"),
+            Map.of("Accept", "application/json"),
             targetAddressValidator,
             RateLimitHandling.NONE);
     try (InputStream body = response.body()) {
