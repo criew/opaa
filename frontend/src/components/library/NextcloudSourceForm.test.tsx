@@ -26,18 +26,26 @@ vi.mock('../../services/libraryApi', async () => {
   return { ...actual, testLibrarySource: mockTestLibrarySource, browseSource: mockBrowseSource }
 })
 
-function Harness({ onValues }: { onValues?: (values: NextcloudSourceValues) => void }) {
+function Harness({
+  onValues,
+  mode = 'create',
+}: {
+  onValues?: (values: NextcloudSourceValues) => void
+  mode?: 'create' | 'edit'
+}) {
   const [values, setValues] = useState<NextcloudSourceValues>({
     ...EMPTY_NEXTCLOUD_VALUES,
     sourceUrl: 'https://cloud.example.org',
-    username: 'opaa',
-    appPassword: 'geheim',
+    username: mode === 'create' ? 'opaa' : '',
+    appPassword: mode === 'create' ? 'geheim' : '',
   })
   return (
     <NextcloudSourceForm
-      mode="create"
+      mode={mode}
       idPrefix="test-nextcloud"
-      credentialsStored={false}
+      libraryId={mode === 'edit' ? 'lib-1' : undefined}
+      credentialsStored={mode === 'edit'}
+      originalSourceUrl={mode === 'edit' ? 'https://cloud.example.org' : undefined}
       values={values}
       onChange={(patch) =>
         setValues((previous) => {
@@ -92,5 +100,75 @@ describe('NextcloudSourceForm', () => {
     expect(mockTestLibrarySource).toHaveBeenCalledWith(
       expect.objectContaining({ sourceType: 'NEXTCLOUD', sourceSettings: { folders: ['/'] } }),
     )
+  })
+
+  it('hides a test result and the offered folders once the address changes', async () => {
+    mockTestLibrarySource.mockResolvedValue({
+      reachable: true,
+      message: 'Verbindung hergestellt; 1 Ordner lesbar.',
+    } as SourceConnectionTestResponse)
+    mockBrowseSource.mockResolvedValue({
+      complete: true,
+      entries: [{ key: '/Projekte', name: 'Projekte' }],
+    })
+    renderWithProviders(<Harness />)
+    await userEvent.click(screen.getByRole('button', { name: 'Verbindung testen' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Ordner laden' }))
+    await screen.findByText('Verbindung hergestellt; 1 Ordner lesbar.')
+    await screen.findByRole('button', { name: 'Ordner /Projekte übernehmen' })
+
+    await userEvent.type(screen.getByLabelText('Adresse der Nextcloud'), '/andere')
+
+    expect(screen.queryByText('Verbindung hergestellt; 1 Ordner lesbar.')).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Ordner /Projekte übernehmen' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('shows no answer that arrives after the values changed', async () => {
+    let answer: (value: SourceConnectionTestResponse) => void = () => {}
+    mockTestLibrarySource.mockReturnValue(
+      new Promise((resolve) => {
+        answer = resolve
+      }),
+    )
+    renderWithProviders(<Harness />)
+    await userEvent.click(screen.getByRole('button', { name: 'Verbindung testen' }))
+
+    await userEvent.type(screen.getByLabelText('Ordner'), '\n/Projekte')
+    answer({ reachable: true, message: 'Verspätet.' } as SourceConnectionTestResponse)
+
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Verbindung testen' })).toBeEnabled(),
+    )
+    expect(screen.queryByText('Verspätet.')).not.toBeInTheDocument()
+  })
+
+  it('in edit mode tests through the library with the stored credentials', async () => {
+    mockTestLibrarySource.mockResolvedValue({
+      reachable: true,
+      message: 'Verbindung hergestellt; 1 Ordner lesbar.',
+    } as SourceConnectionTestResponse)
+    renderWithProviders(<Harness mode="edit" />)
+
+    expect(
+      screen.getByText('Leer lassen, um die gespeicherten Zugangsdaten beizubehalten.'),
+    ).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Verbindung testen' }))
+
+    expect(mockTestLibrarySource).toHaveBeenCalledWith(
+      expect.objectContaining({ libraryId: 'lib-1', sourceCredentials: undefined }),
+    )
+  })
+
+  it('in edit mode warns about another server only once an address is entered', async () => {
+    renderWithProviders(<Harness mode="edit" />)
+    const address = screen.getByLabelText('Adresse der Nextcloud')
+
+    await userEvent.clear(address)
+    expect(screen.queryByText(/anderen Server/)).not.toBeInTheDocument()
+
+    await userEvent.type(address, 'https://andere.example.org')
+    expect(screen.getByText(/anderen Server/)).toBeInTheDocument()
   })
 })

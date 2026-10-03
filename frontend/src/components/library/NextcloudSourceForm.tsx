@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -38,7 +38,9 @@ interface Message {
  * The source form of a Nextcloud library: address, technical user with app password, proxy,
  * certificate switch and the folders, one per line. „Ordner laden" offers the folders in the
  * user's root (own ones, shares, group folders) as chips that add a line; „Verbindung testen"
- * signs in and checks every folder. Results belong to the values they were measured with.
+ * signs in and checks every folder. Each result carries the values it was measured with and is
+ * shown only while they are unchanged - a changed address, user, password, proxy, switch or (for
+ * the test) folder hides it, an answer arriving after a change included.
  */
 export default function NextcloudSourceForm({
   mode,
@@ -50,19 +52,39 @@ export default function NextcloudSourceForm({
   onChange,
 }: NextcloudSourceFormProps) {
   const isCreate = mode === 'create'
-  const [testMessage, setTestMessage] = useState<Message | null>(null)
-  const [folderOptions, setFolderOptions] = useState<SourceBrowseEntry[] | null>(null)
-  const [folderMessage, setFolderMessage] = useState<Message | null>(null)
-  const [busy, setBusy] = useState(false)
-  const generation = useRef(0)
+  const [test, setTest] = useState<{ token: string; message: Message } | null>(null)
+  const [listing, setListing] = useState<{
+    token: string
+    options: SourceBrowseEntry[] | null
+    message: Message | null
+  } | null>(null)
+  const [testing, setTesting] = useState(false)
+  const [loading, setLoading] = useState(false)
 
+  const connectionToken = JSON.stringify({
+    libraryId,
+    sourceUrl: values.sourceUrl,
+    username: values.username,
+    appPassword: values.appPassword,
+    sourceProxy: values.sourceProxy,
+    sourceInsecureSsl: values.sourceInsecureSsl,
+  })
+  const testToken = JSON.stringify({ connectionToken, folders: values.folders })
+  const visibleTest = test?.token === testToken ? test.message : null
+  const visibleListing = listing?.token === connectionToken ? listing : null
+  const folderOptions = visibleListing?.options ?? null
+  const folderMessage = visibleListing?.message ?? null
+
+  const addressEntered = values.sourceUrl.trim() !== ''
   const credentialsKept =
     credentialsStored && sameLibrarySourceOrigin(originalSourceUrl, values.sourceUrl)
   const credentialsHint = isCreate
     ? 'Ein App-Passwort des technischen Nutzers (Einstellungen › Sicherheit). Wird nie ausgegeben.'
-    : credentialsKept
-      ? 'Leer lassen, um die gespeicherten Zugangsdaten beizubehalten.'
-      : 'Die Adresse zeigt auf einen anderen Server - bitte die Zugangsdaten neu eingeben.'
+    : !credentialsStored
+      ? 'Für diese Bibliothek sind keine Zugangsdaten gespeichert.'
+      : credentialsKept || !addressEntered
+        ? 'Leer lassen, um die gespeicherten Zugangsdaten beizubehalten.'
+        : 'Die Adresse zeigt auf einen anderen Server - bitte die Zugangsdaten neu eingeben.'
 
   function connectionPayload() {
     return {
@@ -75,50 +97,55 @@ export default function NextcloudSourceForm({
   }
 
   async function handleTest() {
-    const mine = ++generation.current
-    setBusy(true)
-    setTestMessage(null)
+    const token = testToken
+    setTesting(true)
     try {
       const result = await testLibrarySource({
         sourceType: 'NEXTCLOUD',
         ...connectionPayload(),
         sourceSettings: { folders: nextcloudFoldersOf(values) },
       })
-      if (generation.current !== mine) return
-      setTestMessage({ severity: result.reachable ? 'success' : 'warning', text: result.message })
+      setTest({
+        token,
+        message: { severity: result.reachable ? 'success' : 'warning', text: result.message },
+      })
     } catch (err) {
-      if (generation.current !== mine) return
-      setTestMessage({
-        severity: 'error',
-        text: err instanceof Error ? err.message : 'Verbindung konnte nicht getestet werden',
+      setTest({
+        token,
+        message: {
+          severity: 'error',
+          text: err instanceof Error ? err.message : 'Verbindung konnte nicht getestet werden',
+        },
       })
     } finally {
-      if (generation.current === mine) setBusy(false)
+      setTesting(false)
     }
   }
 
   async function handleLoadFolders() {
-    const mine = ++generation.current
-    setBusy(true)
-    setFolderMessage(null)
+    const token = connectionToken
+    setLoading(true)
     try {
       const result = await browseSource('NEXTCLOUD', connectionPayload())
-      if (generation.current !== mine) return
-      setFolderOptions(result.entries)
-      setFolderMessage(
-        result.entries.length === 0
-          ? { severity: 'warning', text: 'Der technische Nutzer sieht keine Ordner.' }
-          : null,
-      )
+      setListing({
+        token,
+        options: result.entries,
+        message:
+          result.entries.length === 0
+            ? { severity: 'warning', text: 'Der technische Nutzer sieht keine Ordner.' }
+            : null,
+      })
     } catch (err) {
-      if (generation.current !== mine) return
-      setFolderOptions(null)
-      setFolderMessage({
-        severity: 'error',
-        text: err instanceof Error ? err.message : 'Ordner konnten nicht geladen werden',
+      setListing({
+        token,
+        options: null,
+        message: {
+          severity: 'error',
+          text: err instanceof Error ? err.message : 'Ordner konnten nicht geladen werden',
+        },
       })
     } finally {
-      if (generation.current === mine) setBusy(false)
+      setLoading(false)
     }
   }
 
@@ -243,16 +270,16 @@ export default function NextcloudSourceForm({
           )}
         </Box>
         <Stack direction="row" spacing={1} sx={{ gridColumn: '1 / -1' }}>
-          <Button variant="outlined" onClick={() => void handleLoadFolders()} disabled={busy}>
-            Ordner laden
+          <Button variant="outlined" onClick={() => void handleLoadFolders()} disabled={loading}>
+            {loading ? 'Ordner werden geladen …' : 'Ordner laden'}
           </Button>
-          <Button variant="outlined" onClick={() => void handleTest()} disabled={busy}>
-            {busy ? 'Wird geprüft …' : 'Verbindung testen'}
+          <Button variant="outlined" onClick={() => void handleTest()} disabled={testing}>
+            {testing ? 'Wird geprüft …' : 'Verbindung testen'}
           </Button>
         </Stack>
-        {testMessage && (
-          <Alert severity={testMessage.severity} sx={{ gridColumn: '1 / -1' }}>
-            {testMessage.text}
+        {visibleTest && (
+          <Alert severity={visibleTest.severity} sx={{ gridColumn: '1 / -1' }}>
+            {visibleTest.text}
           </Alert>
         )}
       </Box>

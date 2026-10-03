@@ -210,22 +210,28 @@ export const libraryHandlers = [
         body.sourceType === 'HTTP_DIRECTORY' ||
         body.sourceType === 'RSS_FEED' ||
         body.sourceType === 'CONFLUENCE' ||
-        body.sourceType === 'S3'
+        body.sourceType === 'S3' ||
+        body.sourceType === 'NEXTCLOUD'
           ? (body.sourceUrl ?? null)
           : null,
       sourceProxy:
         body.sourceType === 'HTTP_DIRECTORY' ||
         body.sourceType === 'RSS_FEED' ||
         body.sourceType === 'CONFLUENCE' ||
-        body.sourceType === 'S3'
+        body.sourceType === 'S3' ||
+        body.sourceType === 'NEXTCLOUD'
           ? (body.sourceProxy ?? null)
           : null,
       sourceSettings:
-        body.sourceType === 'CONFLUENCE' || body.sourceType === 'S3'
+        body.sourceType === 'CONFLUENCE' ||
+        body.sourceType === 'S3' ||
+        body.sourceType === 'NEXTCLOUD'
           ? (body.sourceSettings ?? null)
           : null,
       sourceCredentialsSet:
-        body.sourceType === 'S3' || body.sourceType === 'CONFLUENCE'
+        body.sourceType === 'S3' ||
+        body.sourceType === 'CONFLUENCE' ||
+        body.sourceType === 'NEXTCLOUD'
           ? Boolean(body.sourceCredentials)
           : undefined,
       // sourceCredentials ist Nur-Schreiben (ADR-0018) - bewusst nicht in der Detailantwort.
@@ -233,7 +239,8 @@ export const libraryHandlers = [
         body.sourceType === 'HTTP_DIRECTORY' ||
         body.sourceType === 'RSS_FEED' ||
         body.sourceType === 'CONFLUENCE' ||
-        body.sourceType === 'S3'
+        body.sourceType === 'S3' ||
+        body.sourceType === 'NEXTCLOUD'
           ? Boolean(body.sourceInsecureSsl)
           : null,
     }
@@ -318,6 +325,7 @@ export const libraryHandlers = [
       sourceUrl?: string | null
       sourceCredentials?: string | null
       sourceSettings?: Record<string, unknown> | null
+      libraryId?: string | null
     }
     if (body.sourceType === 'S3') {
       // Mirrors S3ConnectionService#probe just enough for the mock: every scope passes with a
@@ -354,6 +362,27 @@ export const libraryHandlers = [
         documentCount: 12 * scopes.length,
         message: `${scopes.length === 1 ? 'Der Bereich ist' : `Alle ${scopes.length} Bereiche sind`} erreichbar, Auflistung und Lesen sind erlaubt. ${12 * scopes.length} Objekte gefunden.`,
         details: { scopes },
+      })
+    }
+    if (body.sourceType === 'NEXTCLOUD') {
+      // Mirrors NextcloudSourceConnector#testConnection: sign-in, then every folder read.
+      if (!body.sourceUrl) {
+        return HttpResponse.json({ error: 'sourceUrl ist erforderlich' }, { status: 400 })
+      }
+      if (!body.sourceCredentials && !body.libraryId) {
+        return HttpResponse.json({
+          reachable: false,
+          credentialsVerified: false,
+          message: 'Nextcloud hat Benutzername oder App-Passwort abgelehnt (HTTP 401).',
+        })
+      }
+      const folders = (body.sourceSettings as { folders?: string[] } | null | undefined)
+        ?.folders ?? ['/']
+      return HttpResponse.json({
+        reachable: true,
+        credentialsVerified: true,
+        documentCount: 12 * folders.length,
+        message: `Verbindung hergestellt; ${folders.length} Ordner lesbar.`,
       })
     }
     if (body.sourceType === 'CONFLUENCE') {

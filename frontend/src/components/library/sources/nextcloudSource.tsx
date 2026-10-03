@@ -30,7 +30,10 @@ export const nextcloudSource: SourceRegistration = {
       folders: (nextcloudSettingsOf(library).folders ?? ['/']).join('\n'),
     }),
     isDirty: (values: NextcloudSourceValues) =>
-      values.sourceUrl !== '' || values.username !== '' || values.appPassword !== '',
+      values.sourceUrl !== '' ||
+      values.username !== '' ||
+      values.appPassword !== '' ||
+      values.folders.trim() !== '/',
     validate: (values: NextcloudSourceValues, context) =>
       validateNextcloudValues(
         values,

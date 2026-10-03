@@ -8,8 +8,9 @@
 
 1. Nextcloud im privaten Netz? Ihren Hostnamen in `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST`
    eintragen ([Deployment](deployment.md)).
-2. In der Nextcloud einen **technischen Nutzer** anlegen. Die gewünschten Ordner, Freigaben und
-   Gruppenordner mit ihm teilen, Lesen genügt. Für ihn ein **App-Passwort** erzeugen.
+2. In der Nextcloud einen **technischen Nutzer** anlegen. Die gewünschten Ordner mit ihm teilen
+   (Lesen genügt) oder ihn in die Gruppe eines Gruppenordners aufnehmen. Für ihn ein
+   **App-Passwort** erzeugen.
 3. Bibliothek anlegen: Adresse, Benutzername, App-Passwort, Ordner („Ordner laden“ hilft),
    „Verbindung testen“. Alles aus diesen Ordnern ist für **alle** Leseberechtigten der Bibliothek
    sichtbar.
@@ -131,7 +132,8 @@ entlang gefundener Dokumente und sind nicht bearbeitbar; die Quelle ist führend
 | Protokoll oder Testmeldung | Bedeutung | Abhilfe |
 |---|---|---|
 | „Nextcloud hat Benutzername oder App-Passwort abgelehnt (HTTP 401).“ | Zugangsdaten falsch oder widerrufen; der Lauf endet ohne Änderung am Bestand. | Neues App-Passwort erzeugen und eintragen. |
-| „Geltungsbereich „/…“: Nextcloud kennt den Ordner „/…“ nicht (HTTP 404).“ | Ordner gelöscht, umbenannt oder Freigabe entzogen; sein Bestand bleibt, es wird nichts entfernt. | Ordner in der Bibliothek anpassen oder Freigabe wiederherstellen. |
+| „Geltungsbereich „/…“: Nextcloud kennt den Ordner „/…“ nicht (HTTP 404).“ | Ordner gelöscht, umbenannt oder Freigabe entzogen, auch ein Unterordner, der während des Laufs verschwand; der Bestand des Geltungsbereichs bleibt, es wird nichts entfernt. Ein umbenannter Unterordner ist im nächsten Lauf unter seinem neuen Namen da. | Bei einem konfigurierten Ordner: in der Bibliothek anpassen oder Freigabe wiederherstellen. |
+| „Nextcloud nannte für … eine Adresse außerhalb der Instanz“ | Die Nextcloud antwortete mit einer Adresse, die nicht unter ihren eigenen Dateien liegt. OPAA schickt dorthin keine Zugangsdaten; eine Datei wird übersprungen und behält ihre Fassung, ein Ordner macht seinen Geltungsbereich unvollständig. | Vorgeschalteten Proxy oder Umschreibregeln der Nextcloud prüfen. |
 | „Keine Leseberechtigung für … (HTTP 403).“ | Der Nutzer darf den Ordner oder die Datei nicht lesen; eine Datei behält ihre gespeicherte Fassung. | Freigabe prüfen. |
 | „Nextcloud kann die Datei … derzeit nicht öffnen (HTTP 503).“ | Die Nextcloud listet die Datei, kann sie aber nicht lesen (etwa Rechte im Speicher). Die gespeicherte Fassung bleibt; der Ordner wird im nächsten Lauf erneut geprüft. | Speicher der Nextcloud prüfen. |
 | „Unter … antwortet … kein WebDAV einer Nextcloud“ | Falsche Adresse oder ein vorgeschaltetes Anmeldeportal. | Adresse prüfen; die WebDAV-Adresse aus der Nextcloud funktioniert auch. |
@@ -167,6 +169,12 @@ Instanzweit unter `opaa.indexing.nextcloud.*`, als Umgebungsvariablen `OPAA_INDE
   unterstützt**.
 
 ## 10. Was nicht gebaut ist
+
+- **Mehr Ordner als Anfragebudget.** Jeder gelistete Ordner kostet eine Anfrage, und ein Lauf
+  setzt seine Ordnerliste nicht über das Laufende hinaus fort. Hat eine Bibliothek mehr geänderte
+  Ordner, als `request-budget-per-run` erlaubt, listet jeder Lauf dieselben ersten Ordner: Sie
+  wird nie vollständig, entfernt nichts und merkt sich keine Prüfsummen. Abhilfe bis dahin:
+  Budget anheben oder die Ordner auf mehrere Bibliotheken verteilen (#2202).
 
 - **Ein- und Ausschlussmuster** wie beim S3-Konnektor. Heute schränken nur die Ordner ein.
 - **Benachrichtigungen** der Nextcloud an OPAA. Änderungen kommen mit dem nächsten geplanten Lauf.
