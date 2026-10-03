@@ -28,7 +28,7 @@ nicht eindeutig; #2151 belegt es gegen ein echtes Workspace.
 | Drosselung | `429 rateLimitExceeded` **und** `403 rateLimitExceeded`/`userRateLimitExceeded`; `403 dailyLimitExceeded` | belegt |
 | `404 notFound` | „keine Leserechte oder existiert nicht“, nicht unterscheidbar | belegt |
 | Exportgrenze | `files.export` liefert höchstens 10 MB | belegt |
-| Fehlerbild über 10 MB | Grund-Code nicht dokumentiert | **unsicher** |
+| Fehlerbild über 10 MB | nicht dokumentiert; vermutlich `403 exportSizeLimitExceeded` | **unsicher** |
 | `files.download` (LRO) | liefert eine Download-URI aus der Antwort; eine Größengrenze ist nicht genannt | **unsicher** |
 | Exportformate | Docs: docx, odt, pdf, txt, md, …; Sheets: xlsx, ods, pdf, csv (nur erstes Blatt); Slides: pptx, odp, pdf, txt | belegt |
 | Dienstkonten | haben kein Speicherkontingent und besitzen keine Dateien; „Meine Ablage“ eines Dienstkontos ist leer | belegt |
@@ -42,6 +42,7 @@ nicht eindeutig; #2151 belegt es gegen ein echtes Workspace.
 | Exporte bytegleich wiederholbar | nicht beschrieben | **unsicher** |
 | Verknüpfungen | eigener MIME-Typ, `shortcutDetails.targetId`, ein Elternordner, brechen bei Rechteverlust | belegt |
 | Dienstkonto als Mitglied einer Ablage bei eingeschränkter externer Freigabe | nicht beschrieben | **unsicher** |
+| Ordner in einer geteilten Ablage, nur per Ordnerfreigabe sichtbar: erscheinen seine Änderungen im Strom des Kontos? | nicht beschrieben | **unsicher** |
 
 Quellen: Drive API Guides `limits`, `handle-errors`, `manage-downloads`, `long-running-operations`,
 `ref-export-formats`, `manage-changes`, `shortcuts`, `about-shareddrives`, `folder`,
@@ -90,10 +91,22 @@ interface ChangeFeed {
   String startCursor(String feedKey);
   ChangePage read(String feedKey, String cursor);         // Änderungen, nächste Seite, neuer Start
 }
+record FilePage(List<FileEntry> entries, String next,
+    List<String> unchangedSubtrees) {}                    // nicht gelistet, gilt als vorhanden
+record ChangePage(List<Change> changes, String next, String newStart,
+    boolean fullSyncNeeded) {}                            // etwa nach einer Strukturänderung
 record FileEntry(String id, String filePath, String fileName, List<String> folderSegments,
     long size /* -1 unbekannt */, String changeMarker, String mediaType, Exclusion exclusion) {}
-// Fehler als neutrale Arten: ContainerUnlistable, Gone, Unreadable, TooLarge, RunEnding, Transient
+// Fehler als neutrale Arten: ContainerUnlistable, Gone, Unreadable, TooLarge, RunEnding, Transient,
+// CursorExpired (Cursor verfallen: Strom verwerfen, nächster Lauf ist ein Vollabgleich)
 ```
+
+Die drei Signale braucht Drive nur teilweise, die übrigen Datei-Konnektoren aber sicher.
+`unchangedSubtrees` trägt den ETag-Abstieg von Nextcloud: Ein unveränderter Teilbaum wird nicht
+gelistet. `filesync` wertet dann jedes gespeicherte Dokument darunter als vorhanden, sonst entfernte
+`REMOVE_ON_ABSENCE` den Teilbaum. `CursorExpired` deckt verfallende Delta-Token ab (Graph
+`410 resyncRequired`, Dropbox `reset`). `fullSyncNeeded` meldet die Strukturänderung aus
+Entscheidung 6.
 
 | | S3 | Google Drive |
 |---|---|---|
@@ -121,14 +134,20 @@ die neutralen Arten. Der Vertragstest aus #2149 läuft gegen den Port.
 - Der Konnektor holt Zugriffstoken per JWT-Assertion (RFC 7523, RS256) mit Scope
   `https://www.googleapis.com/auth/drive.readonly`, optional mit `sub` (Entscheidung 4). Token liegen
   nur im Speicher des Laufs.
-- **`source_credentials` trägt eine verdichtete Form**, nicht die Datei: `client_email`,
-  `private_key_id` und den PKCS#8-Schlüssel ohne PEM-Rahmen. Grund: Die Datei (rund 2,4 KB) passt
-  verschlüsselt nicht in `source_credentials varchar(3000)`, die verdichtete Form (rund 1,8 KB) schon.
-  Alle übrigen Felder (`token_uri`, `auth_uri`, …) werden verworfen. Ein Schlüssel, der verdichtet
-  nicht passt (etwa RSA-4096), wird mit deutscher `400`-Meldung abgewiesen.
-- **Spec-Änderung:** `sourceCredentials` ist in der OpenAPI-Spezifikation auf 500 Zeichen begrenzt.
-  Die Grenze steigt an allen vier Stellen auf 4096. Das ist typneutral und widerspricht ADR-0038
-  nicht.
+- **`source_credentials` trägt die Schlüsseldatei.** Gelesen werden nur `client_email`,
+  `private_key_id` und `private_key`. Alle übrigen Felder (`token_uri`, `auth_uri`, …) bestimmen kein
+  Ziel (Entscheidung 3).
+- **Spalte und Spec werden gemeinsam erweitert.** Die Datei (rund 2,4 KB) passt verschlüsselt
+  (`"enc:v1:" + base64(IV‖Geheimtext‖Tag)`) nicht in `source_credentials varchar(3000)`; die Spalte
+  trägt höchstens 2216 Byte Klartext. Darum wird sie auf `text` erweitert, und die Spec-Grenze von
+  `sourceCredentials` steigt an allen vier Stellen von 500 auf 4096. Erst die breitere Spalte macht
+  die 4096 zu einer typneutralen Zusage. Sonst liefe jeder Wert zwischen 2217 und 4096 Byte bei
+  jedem Konnektor auf einen Spaltenüberlauf, und der käme als nichtssagendes `409` an. Auch
+  RSA-4096-Schlüssel passen dann.
+- **Migration als Aufgabe von #2151:** ein Changeset in `db/changelog/knowledge/`
+  (`knowledge_libraries.source_credentials` → `text`), die Längenangabe an der Entity und die
+  Spec-Grenze in einem Zug. Die Breite ändert keine vorhandenen Werte. Als Typänderung braucht sie
+  nach `backend/AGENTS.md` trotzdem einen Delta-Test.
 - Die Standard-Anmeldekette von Google (Umgebungsvariable, Metadatendienst) wird nie benutzt, aus
   demselben Grund wie bei S3 (ADR-0027, Entscheidung 7).
 - Das Handbuch nennt die Organisationsrichtlinie, die Schlüssel standardmäßig verbietet, und wie
@@ -143,10 +162,24 @@ genau zwei Ziele, beide Konstanten des Konnektors:
 - die signierte Assertion an `https://oauth2.googleapis.com/token`,
 - das Zugriffstoken an `https://www.googleapis.com` (= `sourceUrl`).
 
-Kein Ziel kommt aus der Schlüsseldatei, aus `source_settings` oder aus einer Antwort. Weiterleitungen
-folgen ohne `Authorization` (`DROP_AUTHORIZATION_OFF_ORIGIN`), mit Zieladressprüfung je Schritt.
-`exportLinks`, `webContentLink` und die Download-URI von `files.download` werden nie mit Token
-abgerufen.
+Kein Ziel kommt aus der Schlüsseldatei, aus `source_settings` oder aus einer Antwort.
+
+- **Weiterleitungen:** API-Aufrufe und Downloads nutzen `REJECT_OFF_ORIGIN`, die Hausregel für
+  JSON-APIs und Downloads. Eine Weiterleitung auf einen anderen Ursprung ist ein Fehler. Zeigt #2151,
+  dass Google `alt=media` nachweislich auf einen anderen Host weiterleitet, entscheidet ein Nachtrag
+  über `DROP_AUTHORIZATION_OFF_ORIGIN` für genau diesen Aufruf, mit Begründung.
+- **Token-Abruf:** Er ist ein POST, und `sourceaccess` kennt heute nur GET. #2151 ergänzt dort einen
+  POST-Weg mit Zieladressprüfung, Proxy, Zeitlimit, Größengrenze und ohne Weiterleitung. Ein eigener
+  Client im Konnektor, wie ihn `KeycloakAdminApi` baut, wäre eine zweite Stelle für dieselben
+  Schutzmechanismen.
+- `exportLinks`, `webContentLink` und die Download-URI von `files.download` werden nie mit Token
+  abgerufen.
+- **Übernahme gespeicherter Zugangsdaten:** `requestedSettingsChange` übernimmt einen gespeicherten
+  Schlüssel heute nur, wenn die *Anfrage* denselben Ursprung trägt. Ein `sourceUrl`, das fehlt, zählt
+  dabei als anderer Ursprung, und der Vergleich läuft vor `validate`. Sendet das Formular die feste
+  Adresse nicht mit, verwürfe darum jede Änderung eines Verbindungsfelds (etwa `sourceProxy`) still
+  den Schlüssel. Ein Leck entsteht dabei nicht. Deshalb vergleicht der Kern gegen die von `validate`
+  **normalisierte** Adresse. #2151 testet, dass eine Proxy-Änderung den Schlüssel behält.
 
 **Nachtrag zu ADR-0038:** Die Invariante lautet künftig „Jedes Ziel, an das Zugangsdaten gehen,
 leitet sich aus `sourceUrl` ab **oder ist eine Konstante des Konnektors**“. Ihr Zweck bleibt
@@ -199,17 +232,22 @@ denn ein Dienstkonto besitzt nichts). Der Container-Schlüssel ist `drive:<id>`,
   alle übrigen Bereiche teilen den Strom des Kontos. Die Cursor liegen in einer neuen, nullbaren
   Spalte `change_cursors` an `source_sync_state` (Modul knowledge, rein additiv). Eine
   Konnektortabelle entsteht nicht.
-- **Vollabgleich:** holt `startCursor` für jeden Strom **vor** der Auflistung und übernimmt ihn erst
-  nach vollständigem Abgleich. Damit gehen Änderungen während der Auflistung nicht verloren; das
-  entspricht dem Anker von Confluence (ADR-0023, Entscheidung 4).
+- **Vollabgleich:** Beim **ersten** Beginn eines Vollabgleichs holt der Lauf `startCursor` für
+  jeden Strom, **vor** der Auflistung. Die Cursor werden sofort als *ausstehend* in `change_cursors`
+  gesichert. Ein fortgesetzter Lauf (`beginFullSync` bei unterbrochenem Vorlauf) behält sie und holt
+  keine neuen. Erst `completeFullSync` macht sie zu den gültigen Cursorn. So gehen weder Änderungen
+  während der Auflistung verloren noch Änderungen in schon abgeschlossenen Bereichen zwischen
+  Abbruch und Fortsetzung. Das entspricht dem Anker von Confluence (ADR-0023, Entscheidung 4).
+- **Verfallener Cursor** (`CursorExpired`; bei Drive laut Doku nie): Der Strom wird verworfen, und
+  der nächste Lauf ist ein Vollabgleich.
 - **Änderungslauf:** liest jeden Strom ab seinem Cursor. Er übernimmt den neuen Cursor nur, wenn
   kein Element vorübergehend scheiterte; ein Wiederholen ist dank Merkmal billig.
 - **Löschbefund** im Änderungslauf: `removed=true`, `file.trashed=true` oder eine Datei, die in
   keinem Bereich mehr liegt. Er gilt nur für Bereiche, die in diesem Lauf erreichbar sind. Das
   entspricht dem Fehlen in einer vollständigen Auflistung. Ein `404` auf `files.get` ist **kein**
   Befund.
-- **Strukturänderung** (Ordner verschoben, umbenannt, gelöscht): Der Lauf merkt im Zustand vor, dass
-  der nächste Lauf ein Vollabgleich ist. Sonst blieben Dateien eines herausgeschobenen Ordners bis
+- **Strukturänderung** (Ordner verschoben, umbenannt, gelöscht): `ChangePage.fullSyncNeeded`; der
+  Lauf merkt im Zustand vor, dass der nächste Lauf ein Vollabgleich ist. Sonst blieben Dateien eines herausgeschobenen Ordners bis
   zum Rhythmus durchsuchbar.
 
 ### 7. Identität, Änderungsmerkmal, Ordner, Deep Link
@@ -241,9 +279,9 @@ Markdown bleibt außen vor, weil nicht belegt ist, wie es Bilder einbettet. `fil
 Zielendung (`Protokoll.docx`), damit der Vorfilter in `filesync` ohne Sonderfall greift; die Größe
 eines Google-Formats gilt als unbekannt, die Byte-Grenze beim Kopieren sichert. Dateien mit
 `capabilities.canDownload=false` und als missbräuchlich markierte Dateien werden übersprungen;
-`acknowledgeAbuse` wird nie gesetzt. Woran das Überschreiten der Exportgrenze erkannt wird, legt
-#2151 am echten Fehlerbild fest. Bis dahin gilt jedes `403` des Exports, das keine Drosselung ist,
-als nicht lesbar und bricht den Lauf nicht ab.
+`acknowledgeAbuse` wird nie gesetzt. Der Textweg hängt am Grund `exportSizeLimitExceeded`
+(vermutlich `403`, **unsicher**). #2151 bestätigt das am echten Fehlerbild. Jedes andere `403` des
+Exports, das keine Drosselung ist, gilt als nicht lesbar und bricht den Lauf nicht ab.
 
 ### 9. Verknüpfungen werden übersprungen
 
@@ -293,9 +331,12 @@ eine Anfrage, und Push bräuchte einen öffentlich erreichbaren Eingang mit Kana
 
 ### Einfacher
 
-- Ein weiterer Datei-Konnektor (Nextcloud, SMB, SharePoint, Dropbox) implementiert nur den Port;
-  Abgleich, Protokoll und Ordnerspiegel kommen aus `filesync`.
-- Die Schutzmechanismen für den Netzzugriff gibt es für Drive nur einmal, in `sourceaccess`.
+- Ein weiterer Datei-Konnektor (Nextcloud, SMB, SharePoint, Dropbox) implementiert nur den Port,
+  einschließlich der Signale für unveränderte Teilbäume und verfallene Cursor. Abgleich, Protokoll
+  und Ordnerspiegel kommen aus `filesync`.
+- Die Schutzmechanismen für den Netzzugriff gibt es für Drive nur einmal, in `sourceaccess`
+  (einschließlich des neuen POST-Wegs).
+- `source_credentials` nimmt für jeden Konnektor bis zu 4096 Zeichen an.
 - Umbenennen und Verschieben in Drive bauen keine Dokumente neu.
 - Keine Verifizierung, keine Sicherheitsprüfung, keine OPAA-eigene Google-App.
 
@@ -304,7 +345,8 @@ eine Anfrage, und Push bräuchte einen öffentlich erreichbaren Eingang mit Kana
 - `INDEXING_CORE` wächst um ein Paket; was `filesync` von oben bräuchte, muss als Port kommen.
 - Eigene REST-Anbindung: Paging, Fehlerkörper und API-Änderungen pflegt OPAA selbst; WireMock-Tests
   müssen die JSON-Formen von Google treffen.
-- Die Spec ändert sich trotz steckbarer Konnektoren (`sourceCredentials` 500 → 4096).
+- Die Spec ändert sich trotz steckbarer Konnektoren (`sourceCredentials` 500 → 4096). Dazu kommt
+  eine Typänderung an `knowledge_libraries` mit Delta-Test.
 - Viele Ordnerbereiche kosten je Ordner eine Auflistung.
 - Dateien, deren Export über 10 MB liegt, fehlen bei Sheets ganz und sind bei Docs und Slides nur
   als Text enthalten.
@@ -321,8 +363,11 @@ eine Anfrage, und Push bräuchte einen öffentlich erreichbaren Eingang mit Kana
   Installationen.
 - **`google-api-services-drive` mit `google-auth-library`:** zweiter HTTP-Stack, Schutzmechanismen
   doppelt, `token_uri` aus der Schlüsseldatei, Standard-Anmeldekette.
-- **Schlüsseldatei unverändert speichern:** passt nicht in die Spalte und trägt Ziele, die nicht aus
-  `sourceUrl` kommen.
+- **Schlüssel verdichtet speichern, Spalte unverändert lassen:** Er hätte in `varchar(3000)` gepasst.
+  Die Spec-Grenze 4096 hätte dann aber jedem Konnektor Werte zugesagt, die die Spalte nicht trägt.
+  RSA-4096 wäre ausgeschlossen gewesen.
+- **Spec-Grenze nur im Drive-Konnektor prüfen:** Die `400` gäbe es dann nur dort, jeder andere
+  Konnektor bekäme ein `409`.
 - **`version` als Merkmal für Google-Formate:** zu viele Fehlalarme (Entscheidung 7).
 - **PDF als einheitliches Zielformat:** verliert Überschriften, Tabellen und Blätter.
 - **`exportLinks` als Ausweg über 10 MB:** Token an ein Ziel aus der Antwort, Grenze nicht belegt.
@@ -336,8 +381,8 @@ eine Anfrage, und Push bräuchte einen öffentlich erreichbaren Eingang mit Kana
 
 | Issue | Folgt aus diesem ADR |
 |---|---|
-| #2149 | Paket `indexing.filesync`, letzter Eintrag in `INDEXING_CORE`; Port nach Entscheidung 1 mit neutralen Fehlerarten und optionalem `ChangeFeed`; S3 als erster Nutzer ohne Verhaltensänderung; Spalte `change_cursors` kann hier oder in #2151 kommen; Vertragstest gegen den Port |
-| #2151 | Paket `indexing.source.googledrive`, Typ `GOOGLE_DRIVE`; verdichteter Schlüssel und Spec-Grenze 4096; feste `sourceUrl`, zwei konstante Ziele; `subject` mit Neueingabe des Schlüssels; Bereiche, Erreichbarkeitsprüfung, Cursor je Strom, Strukturänderung erzwingt Vollabgleich; Merkmal, Exporttabelle, Verknüpfungen überspringen; Drosselung über `403`-Gründe; unsichere Befunde gegen ein echtes Workspace belegen und hier nachtragen; Handbuch mit Schlüsselrichtlinie und Funktionskonto |
+| #2149 | Paket `indexing.filesync`, letzter Eintrag in `INDEXING_CORE`; Port nach Entscheidung 1 mit neutralen Fehlerarten (einschließlich `CursorExpired`), optionalem `ChangeFeed`, `unchangedSubtrees` und `fullSyncNeeded`; ausstehende Startcursor beim ersten Beginn des Vollabgleichs gesichert, bei Wiederaufnahme behalten; S3 als erster Nutzer ohne Verhaltensänderung; Spalte `change_cursors` kann hier oder in #2151 kommen; Vertragstest gegen den Port |
+| #2151 | Paket `indexing.source.googledrive`, Typ `GOOGLE_DRIVE`; Changeset `source_credentials` → `text` mit Delta-Test, Entity-Länge und Spec-Grenze 4096; feste `sourceUrl`, zwei konstante Ziele, `REJECT_OFF_ORIGIN`, POST-Weg in `sourceaccess`, Übernahme der Zugangsdaten gegen die normalisierte Adresse (Test: Proxy-Änderung behält den Schlüssel); `subject` mit Neueingabe des Schlüssels; Bereiche, Erreichbarkeitsprüfung, Cursor je Strom, Strukturänderung erzwingt Vollabgleich; Merkmal, Exporttabelle, Verknüpfungen überspringen; Drosselung über `403`-Gründe; unsichere Befunde gegen ein echtes Workspace belegen und hier nachtragen; Handbuch mit Schlüsselrichtlinie und Funktionskonto |
 
 ## Referenzen
 
