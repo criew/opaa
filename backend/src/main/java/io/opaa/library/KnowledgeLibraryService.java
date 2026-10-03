@@ -19,6 +19,7 @@ import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
+import io.opaa.connection.LibraryConnectionService;
 import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.indexing.job.IndexingJobRepository;
 import io.opaa.indexing.job.IndexingJobService;
@@ -27,6 +28,7 @@ import io.opaa.indexing.job.LibraryScheduleCodec;
 import io.opaa.indexing.source.ConnectorData;
 import io.opaa.indexing.source.ServiceAccountKey;
 import io.opaa.indexing.source.ServiceAccountTokens;
+import io.opaa.indexing.source.SourceConnectionBlockedException;
 import io.opaa.indexing.source.SourceConnectionResolver;
 import io.opaa.indexing.source.SourceConnector;
 import io.opaa.indexing.source.SourceConnectorDescriptor;
@@ -45,6 +47,7 @@ import io.opaa.metadata.CoreMetadataField;
 import io.opaa.permission.AssetReach;
 import io.opaa.permission.CapabilityService;
 import io.opaa.permission.SuccessionFinding;
+import java.net.URI;
 import java.security.SecureRandom;
 import java.time.Clock;
 import java.time.Instant;
@@ -144,6 +147,7 @@ public class KnowledgeLibraryService {
   private final SourceConnectorRegistry connectors;
   private final AssetSuccessionSource successionSource;
   private final SourceConnectionResolver connectionResolver;
+  private final LibraryConnectionService libraryConnections;
 
   public KnowledgeLibraryService(
       AssetSuccessionSource successionSource,
@@ -164,9 +168,11 @@ public class KnowledgeLibraryService {
       LibraryFolderRepository folderRepository,
       ApplicationEventPublisher eventPublisher,
       SourceConnectorRegistry connectors,
-      SourceConnectionResolver connectionResolver) {
+      SourceConnectionResolver connectionResolver,
+      LibraryConnectionService libraryConnections) {
     this.successionSource = successionSource;
     this.connectionResolver = connectionResolver;
+    this.libraryConnections = libraryConnections;
     this.libraryRepository = libraryRepository;
     this.assetOwnerNames = assetOwnerNames;
     this.capabilityService = capabilityService;
@@ -187,6 +193,78 @@ public class KnowledgeLibraryService {
   }
 
   /**
+   * The configuration a change is validated against: as the port resolves it, or - while the
+   * connection is blocked - the library's own fields, so a blocked library can still be repaired.
+   */
+  private SourceSettings currentForChange(KnowledgeLibrary library) {
+    try {
+      return connectionResolver.resolveForChange(library);
+    } catch (SourceConnectionBlockedException e) {
+      return new SourceSettings(
+          library.getSourcePath(),
+          library.getSourceUrl(),
+          library.getSourceProxy(),
+          library.getSourceCredentials(),
+          library.isSourceInsecureSsl(),
+          connectionResolver.effectiveSettings(library));
+    }
+  }
+
+  /**
+   * Connects the library through {@code profileId} - {@code MANAGER} on the library. The audit
+   * names the changed fields only.
+   */
+  @Transactional
+  public LibraryDetail connectProfile(UUID libraryId, UUID profileId, CurrentUser caller) {
+    KnowledgeLibrary library = loadLibrary(libraryId, caller);
+    accessService.requireRole(library, caller.id(), caller.isSystemAdmin(), AssetRole.MANAGER);
+    String previousUrl = library.getSourceUrl();
+    boolean hadCredentials = library.getSourceCredentials() != null;
+    libraryConnections.connect(library, profileId);
+    KnowledgeLibrary updated = libraryRepository.findById(libraryId).orElseThrow();
+    List<String> changed = new ArrayList<>(List.of("connectionProfile"));
+    if (!Objects.equals(previousUrl, updated.getSourceUrl())) {
+      changed.add("sourceUrl");
+    }
+    if (hadCredentials && updated.getSourceCredentials() == null) {
+      changed.add("sourceCredentials");
+    }
+    recordSourceUpdate(updated, caller.id(), changed);
+    return toLibraryDetail(
+        updated,
+        accessService.effectiveRole(updated, caller.id(), caller.isSystemAdmin()),
+        caller.id());
+  }
+
+  /** Releases the library from its profile - {@code MANAGER} on the library. */
+  @Transactional
+  public LibraryDetail disconnectProfile(UUID libraryId, CurrentUser caller) {
+    KnowledgeLibrary library = loadLibrary(libraryId, caller);
+    accessService.requireRole(library, caller.id(), caller.isSystemAdmin(), AssetRole.MANAGER);
+    if (libraryConnections.connectionOf(libraryId).isPresent()) {
+      libraryConnections.disconnect(library);
+      recordSourceUpdate(library, caller.id(), List.of("connectionProfile"));
+    }
+    return toLibraryDetail(
+        library,
+        accessService.effectiveRole(library, caller.id(), caller.isSystemAdmin()),
+        caller.id());
+  }
+
+  private void recordSourceUpdate(KnowledgeLibrary library, UUID actor, List<String> fields) {
+    auditEventRecorder.recordUserAction(
+        AuditEvent.builder()
+            .organizationId(library.getOrganizationId())
+            .actor(actor)
+            .type(AuditEventType.LIBRARY_SOURCE_UPDATED)
+            .object(AuditObjectType.KNOWLEDGE_LIBRARY, library.getId(), library.getName())
+            .before(Map.of("changedFields", fields))
+            .after(Map.of("changedFields", fields))
+            .outcome(AuditOutcome.SUCCESS)
+            .build());
+  }
+
+  /**
    * Which capability a library of this source type needs (ADR-0036, Entscheidung 5). A connector
    * library is its own capability because it reaches server paths and stored credentials; a missing
    * source type - rejected by {@code validateSourceConfiguration} inside {@link #createLibrary} -
@@ -201,6 +279,14 @@ public class KnowledgeLibraryService {
   @Transactional
   public LibraryDetail createLibrary(LibraryCreation request, CurrentUser caller) {
     capabilityService.requireCapability(caller, capabilityFor(request.sourceType()));
+    if (request.connectionProfileId() != null) {
+      String address =
+          libraryConnections.addressForNewLibrary(
+              request.connectionProfileId(),
+              request.sourceType(),
+              request.sourceUrl() == null ? null : request.sourceUrl().toString());
+      request = request.withSourceUrl(URI.create(address));
+    }
     UUID currentUserId = caller.id();
     String normalizedName = validateName(request.name());
     validateDescription(request.description());
@@ -246,7 +332,7 @@ public class KnowledgeLibraryService {
     }
     connectors
         .connector(sourceConfiguration.sourceType())
-        .configureNew(library, sourceConfiguration.settings());
+        .configureNew(library, sourceConfiguration.settings().withoutCredentials());
     // #1942: the rhythm is set with the library, not in a second call right after it - same
     // validation as on an update, so an UPLOAD library is refused here too instead of by the
     // database's own chk_knowledge_libraries_schedule.
@@ -257,6 +343,9 @@ public class KnowledgeLibraryService {
     }
 
     KnowledgeLibrary saved = libraryRepository.save(library);
+    if (request.connectionProfileId() != null) {
+      libraryConnections.connect(saved, request.connectionProfileId());
+    }
     // The creator holds OWNER, an owning group MANAGER - never OWNER, see AssetShellService. The
     // shell also opens the ownership and reach intervals and writes LIBRARY_CREATED.
     shellService.registerCreated(saved, currentUserId, libraryAuditPayload(saved));
@@ -401,17 +490,20 @@ public class KnowledgeLibraryService {
     SourceSettings requestedSettings =
         requestedSettingsChange(library, request, replacesSourceConfiguration);
     SourceConnector connector = connectors.connector(library.getSourceType());
+    boolean replacesOwnSettings = requestedSettings.connectorSettings() != null;
+    // A rename resolves nothing: a blocked connection must not stop it.
     SourceSettings validatedSettings =
         replacesSourceConfiguration
             ? withServiceAccountKey(
                 connector,
                 requestedSettings,
-                withoutKey ->
-                    connector.validateChange(
-                        connectionResolver.resolveForChange(library), withoutKey, true))
-            : connector.validateChange(
-                connectionResolver.resolveForChange(library), requestedSettings, false);
-    boolean replacesOwnSettings = requestedSettings.connectorSettings() != null;
+                withoutKey -> connector.validateChange(currentForChange(library), withoutKey, true))
+            : replacesOwnSettings
+                ? connector.validateChange(currentForChange(library), requestedSettings, false)
+                : requestedSettings;
+    if (replacesSourceConfiguration) {
+      libraryConnections.requireAddressAllowed(library, validatedSettings.sourceUrl());
+    }
     // #485: schedule follows the same replace-as-a-whole rule as the source configuration above -
     // only present when the caller actually intends to change it (LibraryUpdate.schedule), so a
     // request that only renames the library leaves an already-configured schedule untouched.
@@ -453,7 +545,8 @@ public class KnowledgeLibraryService {
         libraryRepository.eraseSourceCredentials(library.getId());
       }
     }
-    connector.applyChange(library, ConnectorData.storedIn(library), validatedSettings);
+    connector.applyChange(
+        library, ConnectorData.storedIn(library), validatedSettings.withoutCredentials());
     KnowledgeLibrary updated = libraryRepository.save(library);
     boolean nameChanged = !Objects.equals(previousName, updated.getName());
     boolean descriptionChanged = !Objects.equals(previousDescription, updated.getDescription());
@@ -1101,7 +1194,10 @@ public class KnowledgeLibraryService {
             ServiceAccountTokens.subjectOf(
                 connector, connectorSettings != null ? connectorSettings : storedSettings));
     String sourceCredentials = blankToNull(request.sourceCredentials());
-    if (!sameSubject && sourceCredentials == null && library.getSourceCredentials() != null) {
+    // fail-closed: the column counts, not whether its ciphertext can be read right now
+    if (!sameSubject
+        && sourceCredentials == null
+        && libraryRepository.hasStoredSourceCredentials(library.getId())) {
       throw new ValidationException(SUBJECT_CHANGE_NEEDS_CREDENTIALS);
     }
     if (!replacesConnection) {
@@ -1324,7 +1420,17 @@ public class KnowledgeLibraryService {
         // #1941: who is responsible for a library is not a secret from its readers - the same
         // resolution the overview uses, and the same silence about a name it may not disclose.
         assetOwnerNames.of(List.of(library)).get(library.getOwnerId()),
-        connector.settingsView(library, ConnectorData.storedIn(library), false));
+        connector.settingsView(library, ConnectorData.storedIn(library), false),
+        null,
+        libraryConnections
+            .connectionOf(library.getId())
+            .map(
+                connection ->
+                    connection.removed()
+                        ? new LibraryProfileState(null, null, true)
+                        : new LibraryProfileState(
+                            connection.profile().getId(), connection.profile().getName(), false))
+            .orElse(null));
   }
 
   private LibraryManagementDetail toManagementDetail(

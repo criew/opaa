@@ -1,6 +1,7 @@
 package io.opaa.migration;
 
 import static io.opaa.architecture.ModularArchitecture.Module.ASSISTANT;
+import static io.opaa.architecture.ModularArchitecture.Module.CONNECTIONS;
 import static io.opaa.architecture.ModularArchitecture.Module.CONNECTORS;
 import static io.opaa.architecture.ModularArchitecture.Module.EXTERNAL;
 import static io.opaa.architecture.ModularArchitecture.Module.FOUNDATION;
@@ -119,6 +120,7 @@ class ChangelogModuleBoundaryTest extends AbstractMigrationTest {
                   "llm_model_seed_marker",
                   "vector_store")),
           Map.entry(CONNECTORS, List.of("rss_feed_state")),
+          Map.entry(CONNECTIONS, List.of("connection_profiles", "library_connections")),
           Map.entry(
               WORKSPACE,
               List.of(

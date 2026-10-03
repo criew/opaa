@@ -45,12 +45,16 @@ public class DocumentIndexingService {
   private final LibraryAccessService libraryAccessService;
   private final IndexingRunEventRepository indexingRunEventRepository;
 
+  private final SourceConnectionResolver connectionResolver;
+
   public DocumentIndexingService(
       IndexingJobService indexingJobService,
       IndexingSourceExecutorRegistry executorRegistry,
       KnowledgeLibraryRepository libraryRepository,
       LibraryAccessService libraryAccessService,
-      IndexingRunEventRepository indexingRunEventRepository) {
+      IndexingRunEventRepository indexingRunEventRepository,
+      SourceConnectionResolver connectionResolver) {
+    this.connectionResolver = connectionResolver;
     this.indexingJobService = indexingJobService;
     this.executorRegistry = executorRegistry;
     this.libraryRepository = libraryRepository;
@@ -174,7 +178,7 @@ public class DocumentIndexingService {
    * none completed yet, after a selection change or once the full-sync interval passed, incremental
    * otherwise).
    */
-  private static IndexingRunMode resolveRunMode(
+  private IndexingRunMode resolveRunMode(
       SourceIndexingExecutor executor, KnowledgeLibrary library, IndexingRunMode requested) {
     Set<IndexingRunMode> supported = executor.runModes().keySet();
     if (requested == IndexingRunMode.EVENT) {
@@ -200,7 +204,7 @@ public class DocumentIndexingService {
       }
       return requested;
     }
-    return executor.defaultRunMode(library, ConnectorData.storedIn(library));
+    return executor.defaultRunMode(library, connectionResolver.effectiveSettings(library));
   }
 
   /**

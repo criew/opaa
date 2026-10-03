@@ -1227,6 +1227,44 @@ describe('LibraryDetailPage', () => {
     expect(line).not.toHaveTextContent('gedrosselt')
   })
 
+  it('names how many areas a run could not read (#2128)', async () => {
+    setLibraryState(
+      managerLibrary,
+      detailsOf(managerLibrary, { sourceType: 'FILESYSTEM', sourcePath: '/data/dokumente' }),
+    )
+    const run: Omit<IndexingRunListResponse['runs'][number], 'id'> = {
+      status: 'COMPLETED',
+      triggeredBy: 'MANUAL',
+      runMode: 'FULL',
+      documentCount: 12,
+      totalDocuments: 12,
+      documentsSkipped: 0,
+      documentsFailed: 0,
+      documentsIndexedTotal: 12,
+      startedAt: '2026-10-03T09:00:00Z',
+      events: [],
+      eventsTruncatedCount: 0,
+    }
+    server.use(
+      http.get('/api/v1/libraries/:libraryId/indexing/runs', () =>
+        HttpResponse.json({
+          runs: [
+            { ...run, id: 'run-two', unreadableScopeCount: 2 },
+            { ...run, id: 'run-one', unreadableScopeCount: 1 },
+            { ...run, id: 'run-none' },
+          ],
+        } satisfies IndexingRunListResponse),
+      ),
+    )
+    renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+
+    expect(await screen.findByTestId('run-unreadable-run-two')).toHaveTextContent(
+      '2 Bereiche nicht lesbar',
+    )
+    expect(screen.getByTestId('run-unreadable-run-one')).toHaveTextContent('1 Bereich nicht lesbar')
+    expect(screen.queryByTestId('run-unreadable-run-none')).not.toBeInTheDocument()
+  })
+
   it('shows the webhook row to a manager of a Confluence library only (#1140)', async () => {
     const ownerLibrary = { ...managerLibrary, myRole: 'MANAGER' as const }
     setLibraryState(
@@ -1429,6 +1467,7 @@ describe('LibraryDetailPage', () => {
         sourceProxy: undefined,
         sourceCredentials: undefined,
         sourceInsecureSsl: false,
+        sourceSettings: { excludePatterns: [] },
       } satisfies LibraryUpdateRequest)
     })
   })

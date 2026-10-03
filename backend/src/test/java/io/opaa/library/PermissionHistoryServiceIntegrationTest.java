@@ -1162,6 +1162,9 @@ class PermissionHistoryServiceIntegrationTest {
           // #1931: Umbenennen und Quellkonfiguration - wer lesen darf, entscheiden allein die
           // Freigaben, und die aendert dieser Pfad nicht.
           "KnowledgeLibraryService#updateLibrary",
+          // #2160: the profile a library is connected through changes no grant
+          "KnowledgeLibraryService#connectProfile",
+          "KnowledgeLibraryService#disconnectProfile",
           "KnowledgeLibraryService#getLibrary",
           "KnowledgeLibraryService#listLibraries",
           "KnowledgeLibraryService#listDocuments",

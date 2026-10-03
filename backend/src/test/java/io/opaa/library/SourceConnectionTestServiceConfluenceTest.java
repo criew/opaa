@@ -19,6 +19,8 @@ import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ValidationException;
+import io.opaa.connection.LibraryConnectionService;
+import io.opaa.indexing.source.LibrarySourceConnectionResolver;
 import io.opaa.indexing.source.ServiceAccountTokens;
 import io.opaa.indexing.source.SourceConnectionTestResult;
 import io.opaa.indexing.source.SourceListing;
@@ -77,6 +79,8 @@ class SourceConnectionTestServiceConfluenceTest {
                 .confluenceConnectionService(confluenceConnectionService)
                 .registry(),
             capabilityService,
+            new LibrarySourceConnectionResolver(),
+            mock(LibraryConnectionService.class),
             new ServiceAccountTokens(TargetAddressValidator.disabled(), Clock.systemUTC()));
   }
 

@@ -11,6 +11,8 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.PosixFileAttributeView;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -78,6 +80,52 @@ class DocumentServiceTest {
 
     assertThatThrownBy(() -> service.discoverFiles(file, supportedFormats))
         .isInstanceOf(IOException.class);
+  }
+
+  @Test
+  void discoverFilesLeavesExcludedEntriesOutAndNeverEntersAnExcludedDirectory() throws IOException {
+    Files.writeString(tempDir.resolve("top.txt"), "Top");
+    Files.writeString(tempDir.resolve("skip.txt"), "Skip");
+    Path archive = Files.createDirectories(tempDir.resolve("archiv").resolve("alt"));
+    Files.writeString(archive.resolve("old.txt"), "Old");
+    List<Path> asked = new ArrayList<>();
+
+    var discovered =
+        service.discoverFiles(
+            tempDir,
+            supportedFormats,
+            (relative, directory) -> {
+              asked.add(relative);
+              return relative.equals(Path.of("archiv")) || relative.equals(Path.of("skip.txt"));
+            });
+
+    assertThat(discovered.supported())
+        .extracting(p -> p.getFileName().toString())
+        .containsExactly("top.txt");
+    assertThat(discovered.rejected()).isEmpty();
+    assertThat(discovered.unreadable()).isEmpty();
+    assertThat(asked).doesNotContain(Path.of("archiv", "alt"), Path.of("archiv", "alt", "old.txt"));
+  }
+
+  @Test
+  void discoverFilesDoesNotReportAnExcludedUnreadableDirectory() throws IOException {
+    Files.writeString(tempDir.resolve("top.txt"), "Top");
+    Path locked = Files.createDirectory(tempDir.resolve("gesperrt"));
+    Files.writeString(locked.resolve("hidden.txt"), "Hidden");
+
+    DocumentService.DiscoveredFiles discovered;
+    try (UnreadableDirectory ignored = UnreadableDirectory.of(locked)) {
+      discovered =
+          service.discoverFiles(
+              tempDir,
+              supportedFormats,
+              (relative, directory) -> relative.equals(Path.of("gesperrt")));
+    }
+
+    assertThat(discovered.supported())
+        .extracting(p -> p.getFileName().toString())
+        .containsExactly("top.txt");
+    assertThat(discovered.unreadable()).isEmpty();
   }
 
   @Test

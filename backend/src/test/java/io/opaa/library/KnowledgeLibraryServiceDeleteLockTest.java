@@ -20,6 +20,7 @@ import io.opaa.auth.CurrentUser;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.common.ConflictException;
+import io.opaa.connection.LibraryConnectionService;
 import io.opaa.indexing.chunk.FullTextChunkStore;
 import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.indexing.chunk.VectorStoreWriter;
@@ -147,7 +148,8 @@ class KnowledgeLibraryServiceDeleteLockTest {
                     org.mockito.Mockito.mock(ConfluenceConnectionService.class))
                 .confluenceProperties(confluenceProperties)
                 .registry(),
-            new LibrarySourceConnectionResolver());
+            new LibrarySourceConnectionResolver(),
+            mock(LibraryConnectionService.class));
 
     ownerId = UUID.randomUUID();
     UUID organizationId = UUID.randomUUID();

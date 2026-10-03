@@ -1965,6 +1965,25 @@ class LibraryDocumentServiceTest {
         .hasMessageNotContaining("Verbindung wurde abgelehnt");
   }
 
+  /** A failed sign-in names account and endpoint in the log only; a reader sees a neutral 503. */
+  @Test
+  void aFailedSignInIsANeutral503() throws Exception {
+    grantViewerOnUploadLibrary();
+    Document document = s3Document("2025/protokoll.pdf", "application/pdf");
+    when(documentRepository.findById(document.getId())).thenReturn(Optional.of(document));
+    when(s3OriginalAccess.download(any(), any(), any()))
+        .thenThrow(
+            new io.opaa.indexing.source.SourceCredentialsException(
+                "Die domänenweite Delegation fehlt: Das Dienstkonto leser@p.iam.gserviceaccount.com"
+                    + " darf das Konto chef@example.org nicht imitieren."));
+
+    assertThatThrownBy(() -> service.loadContent(document.getId(), caller))
+        .isInstanceOf(ServiceUnavailableException.class)
+        .hasMessage(LibraryDocumentService.ORIGINAL_SIGN_IN_FAILED)
+        .hasMessageNotContaining("chef@example.org")
+        .hasMessageNotContaining("gserviceaccount");
+  }
+
   @Test
   void anUnreachableUploadStoreIs503OnTheWritePathJustAsOnTheReadPath() throws IOException {
     // #1805: the same outage of the same upload storage (ADR-0030, Entscheidung 9) must answer

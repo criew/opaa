@@ -1,0 +1,9 @@
+databaseChangeLog:
+  - changeSet:
+      id: knowledge-2026-10-03-source-sync-subtree-markers
+      author: opaa
+      comment: "Folder markers of the last complete full sync for a file store that skips unchanged folders (ADR-0040). NULL for every other connector."
+      changes:
+        - sql:
+            sql: |
+              ALTER TABLE source_sync_state ADD COLUMN subtree_markers jsonb;

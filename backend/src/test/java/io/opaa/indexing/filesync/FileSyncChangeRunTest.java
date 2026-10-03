@@ -114,6 +114,74 @@ class FileSyncChangeRunTest {
   }
 
   @Test
+  void aDurableFailureOfTheContentDoesNotHoldTheCursor() {
+    Map<String, String> before = harness.state().changeCursors();
+    store.put("A", "a.txt", "Zweite, längere Fassung.").changed("A", "a.txt");
+    harness.rejectContentOf(InMemoryFileStore.filePath("A", "a.txt"));
+
+    harness.changeRun(store.reset());
+
+    assertThat(harness.state().changeCursors().get("stream:A"))
+        .as("a broken file would otherwise be read again by every run")
+        .isNotEqualTo(before.get("stream:A"));
+  }
+
+  @Test
+  void aThrownIngestHoldsTheCursor() {
+    Map<String, String> before = harness.state().changeCursors();
+    store.put("A", "a.txt", "Zweite, längere Fassung.").changed("A", "a.txt");
+    harness.failIngestOf(InMemoryFileStore.filePath("A", "a.txt"));
+
+    harness.changeRun(store.reset());
+
+    assertThat(harness.state().changeCursors().get("stream:A")).isEqualTo(before.get("stream:A"));
+  }
+
+  @Test
+  void aFileThatFallsOutsideThePatternsIsRemovedLikeInAFullSync() {
+    store.deselect("a.txt").changed("A", "a.txt");
+
+    FileSyncHarness.Run run = harness.changeRun(store.reset());
+
+    assertThat(run.eventsOf(IndexingEventCategory.REMOVED))
+        .extracting(IndexingRunEvent::getReference)
+        .containsExactly(InMemoryFileStore.filePath("A", "a.txt"));
+    assertThat(harness.stored(InMemoryFileStore.filePath("A", "a.txt"))).isEmpty();
+  }
+
+  /**
+   * A provider's account-wide stream also reports files of a container another stream serves; its
+   * removal is no finding for that container's documents.
+   */
+  @Test
+  void aRemovalReportedByAnotherStreamKeepsTheDocumentOfItsContainer() {
+    store.remove("B", "c.txt").changedIn("A", "B", "c.txt");
+
+    FileSyncHarness.Run run = harness.changeRun(store.reset());
+
+    assertThat(run.eventsOf(IndexingEventCategory.REMOVED)).isEmpty();
+    assertThat(harness.stored(InMemoryFileStore.filePath("B", "c.txt"))).isPresent();
+  }
+
+  @Test
+  void aChangeRunDropsTheFolderMemoryOfTheContainersItChanged() {
+    harness
+        .state()
+        .rememberSubtrees(
+            new io.opaa.indexing.source.SourceSyncState.SubtreeMemory(
+                "basis",
+                FileSyncHarness.NOW,
+                Map.of("A", Map.of("q", "m1"), "B", Map.of("r", "m2")),
+                Map.of("A", 2L, "B", 1L)));
+    store.put("A", "neu.txt", "Neu.").changed("A", "neu.txt");
+
+    harness.changeRun(store.reset());
+
+    assertThat(harness.state().subtreeMemory().containers()).containsOnlyKeys("B");
+    assertThat(harness.state().subtreeMemory().documentCounts()).containsOnlyKeys("B");
+  }
+
+  @Test
   void aChangeOfStructureMakesTheNextRunAFullSync() {
     store.put("A", "a.txt", "Zweite, längere Fassung.").changed("A", "a.txt").structureChanged();
 

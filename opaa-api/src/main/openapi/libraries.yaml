@@ -303,6 +303,66 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /api/v1/libraries/{libraryId}/connection-profile:
+    parameters:
+      - name: libraryId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    put:
+      operationId: connectLibraryProfile
+      tags: [library]
+      summary: Connect a library through a connection profile of its source type (#2160)
+      description: >
+        Needs AssetRole.MANAGER on the library. The profile must belong to the library's source
+        type and admit libraries as owners. An address under the previous profile moves under
+        the new one; otherwise it must already lie under the profile's server address (400). A
+        stored secret is kept only while the origin stays the same. Also the way back for a
+        library whose profile was deleted ("Zugang entfernt").
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LibraryConnectionProfileRequest"
+      responses:
+        "200":
+          description: The library, connected
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LibraryResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    delete:
+      operationId: disconnectLibraryProfile
+      tags: [library]
+      summary: Release a library from its connection profile (#2160)
+      description: >
+        Needs AssetRole.MANAGER on the library. The library keeps its address and secret and
+        runs with them as its own. Refused with 400 for a source type that requires a profile.
+      responses:
+        "200":
+          description: The library, without a profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LibraryResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /api/v1/libraries/{libraryId}/documents:
     parameters:
       - name: libraryId
@@ -792,8 +852,8 @@ components:
         never changed afterwards (see LibraryUpdateRequest). Which of sourcePath/sourceUrl/
         sourceProxy/sourceCredentials/sourceInsecureSsl/sourceSettings may be set depends on
         sourceType, whose connector validates them (ADR-0038) - UPLOAD accepts none of them,
-        FILESYSTEM accepts sourcePath only, HTTP_DIRECTORY and RSS_FEED both accept sourceUrl
-        (sourceProxy/sourceCredentials/sourceInsecureSsl optional). CONFLUENCE (ADR-0023)
+        FILESYSTEM accepts sourcePath and optionally sourceSettings, HTTP_DIRECTORY and RSS_FEED
+        both accept sourceUrl (sourceProxy/sourceCredentials/sourceInsecureSsl optional). CONFLUENCE (ADR-0023)
         requires sourceUrl (the instance's base address), sourceCredentials (format depends on
         the edition) and sourceSettings with edition and a non-empty space selection. A
         combination that contradicts sourceType, or a sourceType no connector serves, is
@@ -821,6 +881,14 @@ components:
             Ignored for ownerType USER, which always owns as the creator.
         sourceType:
           $ref: "#/components/schemas/SourceTypeKey"
+        connectionProfileId:
+          type: string
+          format: uuid
+          nullable: true
+          description: >
+            Creates the library connected through this connection profile (#2160) - one of
+            listConnectionProfileOptions for sourceType. sourceUrl may then be omitted (the
+            profile's server address) and must otherwise lie under it.
         sourcePath:
           type: string
           maxLength: 2000
@@ -876,7 +944,8 @@ components:
             DATA_CENTER, as the connection test detected it), spaces (1-500 entries {key, name})
             and fullSyncIntervalDays (1-365, absent for the instance-wide default); S3 takes
             region, pathStyle, scopes (1-50 non-overlapping {bucket, prefix}), includePatterns and
-            excludePatterns. Types without settings take none.
+            excludePatterns; FILESYSTEM takes excludePatterns (0-50 globs relative to sourcePath,
+            "/" as separator, an invalid one answered with 400). Types without settings take none.
           nullable: true
           type: object
           additionalProperties: true
@@ -972,8 +1041,8 @@ components:
       required: [reachable, message]
       description: >
         Structured result of a source connection test (#514). message is always German and
-        always safe to show to the caller verbatim - both on success ("Verzeichnis erreichbar,
-        42 Dokumente gefunden") and on failure ("Der RSS-Feed konnte nicht gelesen werden: kein
+        always safe to show to the caller verbatim - both on success ("RSS-Feed erreichbar,
+        12 Einträge gefunden.") and on failure ("Der RSS-Feed konnte nicht gelesen werden: kein
         gültiges XML."); no exception text or stack trace ever reaches it.
       properties:
         reachable:
@@ -984,19 +1053,19 @@ components:
           format: int64
           nullable: true
           description: >
-            Number of supported documents found (FILESYSTEM: recursively, matching the run's
-            own SupportedDocumentFormats filter; HTTP_DIRECTORY: only the top-level listing,
+            Number of supported documents found (HTTP_DIRECTORY: only the top-level listing,
             filtered the same way, not a recursive crawl of the whole tree; RSS_FEED: entries,
             capped at opaa.indexing.rss.max-entries like the run itself; S3: the objects the
             first listing page of every scope showed, at most opaa.indexing.s3.list-page-size per
             scope - a lower bound when a scope has more, see details.scopes) - null when reachable is
-            false, since nothing could be counted, and always null for CONFLUENCE, whose test
-            verifies the credentials with a single request and leaves counting to the space
-            listing endpoint.
+            false, since nothing could be counted; always null for FILESYSTEM, whose test only
+            opens the configured directory and leaves counting to the indexing run, and for
+            CONFLUENCE, whose test verifies the credentials with a single request and leaves
+            counting to the space listing endpoint.
         message:
           type: string
           description: German, user-facing summary of the result.
-          example: Verzeichnis erreichbar, 42 Dokumente gefunden
+          example: RSS-Feed erreichbar, 12 Einträge gefunden.
         credentialsVerified:
           type: boolean
           nullable: true
@@ -1086,7 +1155,8 @@ components:
 
     SourceTypeDescriptor:
       type: object
-      required: [type, displayName, indexingRun, uploads, pushIntake, browsable]
+      required:
+        [type, displayName, indexingRun, uploads, pushIntake, browsable, profileSupport, authMethods]
       description: >
         One registered connector as the registry describes it (ADR-0038). The shape of its
         sourceSettings is documented in its handbook chapter and known to its form in the
@@ -1116,6 +1186,15 @@ components:
         browsable:
           type: boolean
           description: Whether browseSource answers for this type.
+        profileSupport:
+          $ref: "#/components/schemas/ConnectionProfileSupport"
+        authMethods:
+          type: array
+          description: >
+            The sign-in methods a connection profile of this type may choose; empty when the
+            type admits no profile.
+          items:
+            $ref: "#/components/schemas/ConnectionAuthMethod"
         fullSyncIntervalDefaultDays:
           type: integer
           nullable: true
@@ -1295,7 +1374,8 @@ components:
             present object replaces the connector decides: CONFLUENCE replaces each part it
             carries - spaces as a whole (non-empty; every change forces a full sync),
             fullSyncIntervalDays (1-365, 0 returns to the instance-wide default) - and accepts
-            edition only when it equals the stored one; S3 replaces its settings as a whole.
+            edition only when it equals the stored one; S3 and FILESYSTEM replace their settings as
+            a whole.
           nullable: true
           type: object
           additionalProperties: true
@@ -1420,6 +1500,18 @@ components:
         - createdAt
         - updatedAt
       properties:
+        connectionProfile:
+          nullable: true
+          description: >
+            The connection profile ("Zugang") the library is connected through (#2160); absent for
+            a library with its own address and after its profile was deleted.
+          allOf:
+            - $ref: "#/components/schemas/ConnectionProfileRef"
+        connectionProfileRemoved:
+          type: boolean
+          description: >
+            The library's profile was deleted ("Zugang entfernt"): it keeps its content, runs no
+            more, and its managers connect it through another profile or delete it.
         id:
           type: string
           format: uuid

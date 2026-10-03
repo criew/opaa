@@ -18,6 +18,8 @@ import java.util.UUID;
  * @param schedule the indexing rhythm to set together with the library (#1942); {@code null} leaves
  *     the library without one, and anything but {@code DISABLED} on an {@code UPLOAD} library is
  *     refused exactly as it is on an update
+ * @param connectionProfileId the connection profile the library is created on, {@code null} for a
+ *     library with its own address
  */
 public record LibraryCreation(
     String name,
@@ -31,4 +33,54 @@ public record LibraryCreation(
     String sourceCredentials,
     Boolean sourceInsecureSsl,
     ConnectorData sourceSettings,
-    LibraryScheduleUpdate schedule) {}
+    LibraryScheduleUpdate schedule,
+    UUID connectionProfileId) {
+
+  /** A library with its own address. */
+  public LibraryCreation(
+      String name,
+      String description,
+      AssetOwnerType ownerType,
+      UUID ownerId,
+      SourceType sourceType,
+      String sourcePath,
+      URI sourceUrl,
+      String sourceProxy,
+      String sourceCredentials,
+      Boolean sourceInsecureSsl,
+      ConnectorData sourceSettings,
+      LibraryScheduleUpdate schedule) {
+    this(
+        name,
+        description,
+        ownerType,
+        ownerId,
+        sourceType,
+        sourcePath,
+        sourceUrl,
+        sourceProxy,
+        sourceCredentials,
+        sourceInsecureSsl,
+        sourceSettings,
+        schedule,
+        null);
+  }
+
+  /** This request with {@code url} as its address. */
+  LibraryCreation withSourceUrl(URI url) {
+    return new LibraryCreation(
+        name,
+        description,
+        ownerType,
+        ownerId,
+        sourceType,
+        sourcePath,
+        url,
+        sourceProxy,
+        sourceCredentials,
+        sourceInsecureSsl,
+        sourceSettings,
+        schedule,
+        connectionProfileId);
+  }
+}

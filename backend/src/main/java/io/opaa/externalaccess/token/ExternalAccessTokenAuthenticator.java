@@ -1,7 +1,6 @@
 package io.opaa.externalaccess.token;
 
-import io.opaa.auth.LocalCredentials;
-import io.opaa.auth.LocalCredentialsRepository;
+import io.opaa.auth.AccountUsability;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.externalaccess.ExternalAccessSettingsService;
@@ -18,9 +17,9 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Resolves a presented bearer value into a person plus a token id, or into a named reason for
  * refusing it (ADR-0035, Entscheidung 2). The whole chain runs on <b>every single call</b>: switch,
- * token row, expiry, revocation and the lifecycle of the account behind it. Nothing is cached and
- * nothing is carried over from a previous call, so a Notaus or a revocation takes effect with the
- * next request of an already open connection.
+ * token row, expiry, revocation and the lifecycle of the account behind it ({@link
+ * AccountUsability}). Nothing is cached and nothing is carried over from a previous call, so a
+ * Notaus or a revocation takes effect with the next request of an already open connection.
  *
  * <p>It costs one indexed lookup by HMAC hash - the price ADR-0035 accepts for a Sofortwiderruf
  * that a self-contained token could not give.
@@ -33,7 +32,7 @@ public class ExternalAccessTokenAuthenticator {
 
   private final ExternalAccessTokenRepository tokens;
   private final UserRepository users;
-  private final LocalCredentialsRepository credentials;
+  private final AccountUsability usability;
   private final LocalAuthKeyService keys;
   private final ExternalAccessSettingsService settings;
   private final Clock clock;
@@ -41,13 +40,13 @@ public class ExternalAccessTokenAuthenticator {
   public ExternalAccessTokenAuthenticator(
       ExternalAccessTokenRepository tokens,
       UserRepository users,
-      LocalCredentialsRepository credentials,
+      AccountUsability usability,
       LocalAuthKeyService keys,
       ExternalAccessSettingsService settings,
       Clock clock) {
     this.tokens = tokens;
     this.users = users;
-    this.credentials = credentials;
+    this.usability = usability;
     this.keys = keys;
     this.settings = settings;
     this.clock = clock;
@@ -110,15 +109,9 @@ public class ExternalAccessTokenAuthenticator {
     if (user == null) {
       return new Result.Refused(ExternalAccessTokenRejection.INVALID_TOKEN);
     }
-    if (user.isDirectoryLocked()) {
-      // #1818: the same rule for an account of an identity provider - the directory reports it as
-      // gone, and a token of it must stop working with the next call, not with the next sign-in.
-      return new Result.Refused(ExternalAccessTokenRejection.ACCOUNT_NOT_ACTIVE);
-    }
-    LocalCredentials row = credentials.findById(user.getId()).orElse(null);
-    if (row != null && !row.isLoginCapable(now)) {
-      // A token that outlives a lock or an expiry would be the most convenient way around the
-      // account lifecycle - access-control.md applies the same rule to everything else.
+    if (!usability.stateOf(user).isUsable()) {
+      // A token that outlives a lock, an expiry or the provider of its account would be the most
+      // convenient way around the account lifecycle; inactivity is a rule for connections only.
       return new Result.Refused(ExternalAccessTokenRejection.ACCOUNT_NOT_ACTIVE);
     }
     return new Result.Authenticated(user, token.getId(), token.getLastUsedOn());
