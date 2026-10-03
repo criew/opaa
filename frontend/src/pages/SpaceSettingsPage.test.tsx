@@ -257,6 +257,7 @@ const personalSpace: SpaceResponse = {
   archived: false,
   ownerId: 'u1',
   memberCount: 1,
+  memberships: { groupCount: 0, userCount: 1 },
   userRole: 'ADMIN',
   roleCounts: { MEMBER: 0, CURATOR: 0, ADMIN: 1 },
   chatAutoCleanup: { enabled: false, archiveAfterDays: 90, deleteAfterDays: 365 },
@@ -272,6 +273,7 @@ const teamSpace: SpaceResponse = {
   archived: false,
   ownerId: 'u1',
   memberCount: 2,
+  memberships: { groupCount: 0, userCount: 2 },
   userRole: 'ADMIN',
   roleCounts: { MEMBER: 0, CURATOR: 0, ADMIN: 2 },
   chatAutoCleanup: { enabled: false, archiveAfterDays: 90, deleteAfterDays: 365 },
@@ -292,6 +294,7 @@ const nonAdminSpace: SpaceResponse = {
   archived: false,
   ownerId: 'someone-else',
   memberCount: 2,
+  memberships: { groupCount: 0, userCount: 2 },
   userRole: 'MEMBER',
   roleCounts: { MEMBER: 1, CURATOR: 0, ADMIN: 1 },
   chatAutoCleanup: { enabled: false, archiveAfterDays: 90, deleteAfterDays: 365 },
@@ -361,10 +364,10 @@ describe('SpaceSettingsPage', () => {
         .map((tab) => tab.textContent),
     ).toEqual(['Stammdaten', 'Mitglieder', 'Inhalte'])
     expect(screen.getByRole('heading', { level: 1, name: 'Einstellungen' })).toBeInTheDocument()
-    // Die Reiterleiste trägt keine Überschrift: Ohne die h2 des Panels spränge die Gliederung von
-    // h1 auf die h3 des Gefahrenbereichs (docs/design/accessibility.md 2.3).
-    expect(screen.getByRole('heading', { level: 2, name: 'Stammdaten' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { level: 3, name: 'Gefahrenbereich' })).toBeInTheDocument()
+    // #2207: Keine Überschrift wiederholt den Reiternamen; der Gefahrenbereich ist deshalb die
+    // h2 des Panels, ohne Sprung in der Gliederung (docs/design/accessibility.md 2.3).
+    expect(screen.queryByRole('heading', { name: 'Stammdaten' })).not.toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 2, name: 'Gefahrenbereich' })).toBeInTheDocument()
     expect(within(tablist).getByRole('tab', { name: 'Mitglieder' })).toHaveAttribute(
       'href',
       '/spaces/space-team/settings/members',
@@ -716,18 +719,18 @@ describe('SpaceSettingsPage', () => {
     expect(screen.getByText(/Nachfolge offen — zuständig: Systemverwaltung/)).toBeInTheDocument()
   })
 
-  it('#777: renders the owner role as a static badge instead of an editable dropdown', async () => {
-    // Before this fix, the owner's row rendered the same editable role Select as any other
-    // member - changing it always failed against the backend's "Die Rolle des Eigentümers kann
-    // nicht geändert werden" rejection.
+  it('#777: renders the owner role as a read-only choice instead of an editable dropdown', async () => {
+    // An editable Select on the owner's row always failed against the backend's "Die Rolle des
+    // Eigentümers kann nicht geändert werden"; #2207 keeps its look but makes it read-only.
     setSpaceState(teamSpace)
     renderTab('members')
 
     await screen.findByText('Owner')
     const ownerRow = memberRow('Owner')
-    expect(within(ownerRow).queryByRole('combobox')).not.toBeInTheDocument()
+    const ownerRole = within(ownerRow).getByRole('combobox', { name: 'Rolle von „Owner“' })
+    expect(ownerRole).toHaveAttribute('aria-readonly', 'true')
     // #2134: the owner carries "Eigentümer" alone, without the role label beside it.
-    expect(within(ownerRow).getByText('Eigentümer')).toBeInTheDocument()
+    expect(ownerRole).toHaveTextContent('Eigentümer')
     expect(within(ownerRow).queryByText('Administrator')).not.toBeInTheDocument()
 
     // The (non-owner) colleague's row keeps its editable role Select.
@@ -774,13 +777,58 @@ describe('SpaceSettingsPage', () => {
     expect(within(groupMenu).queryByText(/Warum hat/)).not.toBeInTheDocument()
   })
 
-  it('explains the empty member list instead of showing nothing for a non-admin, non-owner viewer', async () => {
+  /**
+   * #2207: Ein Mitglied sieht, wie viele Personen und Gruppen dem Space angehören und wie sich
+   * die Rollen verteilen, aber keinen Namen - die Mitgliederliste bleibt Administratoren,
+   * Eigentümer und Systemverwaltung vorbehalten.
+   */
+  it('shows a plain member persons, groups and roles as counts and no name', async () => {
     mockListSpaceMembers.mockResolvedValueOnce([])
-    setSpaceState(nonAdminSpace)
+    setSpaceState({
+      ...nonAdminSpace,
+      memberCount: 12,
+      memberships: { groupCount: 2, userCount: 10 },
+      roleCounts: { MEMBER: 9, CURATOR: 1, ADMIN: 2 },
+    })
     renderTab('members')
 
-    expect(await screen.findByText(/nicht die erforderliche rolle/i)).toBeInTheDocument()
+    expect(await screen.findByText('10 Personen und 2 Gruppen')).toBeInTheDocument()
+    expect(
+      screen.getByText('Rollen: 2 Administratoren, 1 Kurator, 9 Mitglieder'),
+    ).toBeInTheDocument()
+    expect(screen.queryByText(/nicht die erforderliche rolle/i)).not.toBeInTheDocument()
+    expect(screen.queryByTestId('space-member-row')).not.toBeInTheDocument()
+    expect(screen.queryByText('Owner')).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Mitglied hinzufügen' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /entfernen/i })).not.toBeInTheDocument()
+  })
+
+  it('names a single person without groups and leaves out roles nobody holds', async () => {
+    mockListSpaceMembers.mockResolvedValueOnce([])
+    setSpaceState({
+      ...nonAdminSpace,
+      memberCount: 1,
+      memberships: { groupCount: 0, userCount: 1 },
+      roleCounts: { MEMBER: 1, CURATOR: 0, ADMIN: 0 },
+    })
+    renderTab('members')
+
+    expect(await screen.findByText('1 Person')).toBeInTheDocument()
+    expect(screen.getByText('Rollen: 1 Mitglied')).toBeInTheDocument()
+  })
+
+  /** #2207: Stammdaten sind für ein Mitglied lesbar, aber nicht änderbar, ohne Gefahrenbereich. */
+  it('shows a plain member the general data read-only', () => {
+    setSpaceState(nonAdminSpace)
+    renderTab('general')
+
+    expect(screen.getByLabelText('Name des Space')).toHaveValue('Fremdverwaltet')
+    expect(screen.getByLabelText('Name des Space')).toHaveAttribute('readonly')
+    expect(screen.getByLabelText('Beschreibung')).toHaveAttribute('readonly')
+    expect(
+      screen.queryByRole('button', { name: /einstellungen speichern/i }),
+    ).not.toBeInTheDocument()
+    expect(screen.queryByText('Gefahrenbereich')).not.toBeInTheDocument()
   })
 
   it('shows the delete button only for the owner of a non-personal space', () => {

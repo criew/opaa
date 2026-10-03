@@ -206,6 +206,54 @@ describe('AssetTilePicker', () => {
     expect(requested).toContainEqual(expect.arrayContaining(['erste', 'fremde']))
   })
 
+  /** #2207: narrowed to the chosen, the catalog's order holds - favorites first, then by name. */
+  it('orders the chosen like the catalog, favorites first and then by name', async () => {
+    const favorites = new Set(['zeta', 'beta'])
+    server.use(
+      http.get('/api/v1/catalog', ({ request }) => {
+        const ids = new URL(request.url).searchParams.getAll('ids')
+        const entries = ids.map((id) => ({
+          ...entry(id, `${id[0].toUpperCase()}${id.slice(1)}`),
+          favorite: favorites.has(id),
+        }))
+        return HttpResponse.json({
+          entries,
+          page: 0,
+          size: 50,
+          totalElements: entries.length,
+          totalPages: 1,
+        })
+      }),
+    )
+    const pick = (assetId: string): AssetPick => ({
+      assetType: 'KNOWLEDGE_LIBRARY',
+      assetId,
+      name: `${assetId[0].toUpperCase()}${assetId.slice(1)}`,
+    })
+    renderWithProviders(
+      <AssetTilePicker
+        value={['alpha', 'zeta', 'gamma', 'beta'].map(pick)}
+        onChange={() => undefined}
+        chosenOnlyLabel="Nur zugeordnete"
+        aria-label="Inhalte"
+      />,
+    )
+
+    const group = await screen.findByRole('group', { name: 'Inhalte' })
+    await waitFor(() =>
+      expect(
+        within(group)
+          .getAllByRole('checkbox')
+          .map((tile) => tile.getAttribute('aria-label') ?? tile.textContent),
+      ).toEqual([
+        expect.stringMatching(/^Beta/),
+        expect.stringMatching(/^Zeta/),
+        expect.stringMatching(/^Alpha/),
+        expect.stringMatching(/^Gamma/),
+      ]),
+    )
+  })
+
   /** Review #2145: a filter change while a further page loads must not lock its buttons. */
   it('keeps "Weitere laden" and "Erneut versuchen" usable after a filter change mid-load', async () => {
     let releaseStale: () => void = () => undefined

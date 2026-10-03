@@ -521,22 +521,34 @@ zugleich ihr zugänglicher Name ist. Die ganze Kachel ist Klickfläche; Fokus na
 
 **Große Mengen: eine Filterzeile.** Katalog, Zuordnung und Token-Auswahl haben dieselbe Zeile
 (`AssetFilterBar`), in dieser Reihenfolge: **Suche → Asset-Art → Favoriten**. Die Asset-Art ist eine
-Umschaltgruppe mit sichtbarem Titel „Typ" und erscheint nur, wo mehr als eine Art angeboten wird.
+Umschaltgruppe ohne sichtbaren Titel; ihr zugänglicher Name ist „Typ" (`aria-label`), und sie
+erscheint nur, wo mehr als eine Art angeboten wird.
 „Favoriten" ist ein Umschalter mit Stern-Icon, gefüllt, wenn aktiv, und durch einen senkrechten
 Trenner von der Typgruppe abgesetzt, damit er nicht wie eine weitere Art wirkt. Wo gewählt wird,
 folgt „Nur ausgewählte" — es zeigt die Auswahl zum Zeitpunkt des Einschaltens — und die Zahl „n
 ausgewählt". Die Umschalter verbinden sich mit UND; keiner gedrückt heißt „alle". Auf schmalen
 Bildschirmen bricht die Zeile als Einheit um: Die Suche steht oben, Typgruppe und Umschalter darunter;
-ein Umschalter steht nie allein in einer Zeile. Unter etwa 600 px Breite entfallen der sichtbare
-Titel „Typ" (der zugängliche Name der Gruppe bleibt) und die Icons der Typknöpfe, und Knöpfe und
+ein Umschalter steht nie allein in einer Zeile. Unter etwa 600 px Breite entfallen die Icons der
+Typknöpfe, und Knöpfe und
 Chips rücken enger zusammen, damit Typgruppe und Favoriten bis hinab zu 320 px (Reflow-Breite nach
 WCAG 1.4.10) in eine Zeile passen. Weitere Filter (Sichtbarkeit, Gruppenherkunft) und eine
-Sortierauswahl gibt es nicht; die Reihenfolge ist fest: Favoriten zuerst, dann nach Name. Angeboten
+Sortierauswahl gibt es nicht; die Reihenfolge ist fest: Favoriten zuerst, dann nach Name — auch
+unter „Nur ausgewählte" bzw. „Nur zugeordnete". Angeboten
 wird nur, was die Person lesen darf. Über „Weitere laden" steht „n von m angezeigt".
 
 **Ein Baustein je Art von Kachel.** Die Wahl von Arten und Quellen ist im Frontend eine Komponente
 (`ChoiceTileGroup`, #2094). Assets – im Katalog, in der Zuordnung zu einem Space und in der
 Token-Auswahl – zeigt immer die Asset-Kachel aus 5.4 (`AssetTile`, #2131), nie ein Nachbau je Stelle.
+
+### 5.12 Reiter und Überschriften
+
+**Keine Überschrift wiederholt den Reiternamen.** Unter dem Reiter „Stammdaten" steht keine
+Abschnittsüberschrift „Stammdaten", unter „Inhalte" keine „Inhalte"; der gewählte Reiter benennt das
+Panel bereits. Eine Überschrift im Panel steht nur dort, wo sie etwas Eigenes gliedert, etwa
+„Mitglied hinzufügen" oder „Gefahrenbereich". Die Gliederung bleibt lückenlos: Die erste Überschrift
+eines Panels ist eine h2 unter der h1 der Seite (siehe
+[Barrierefreiheits-Richtlinie](./accessibility.md), 2.3). Ein Panel braucht keine Überschrift, wenn
+es nichts weiter zu gliedern gibt.
 
 ---
 

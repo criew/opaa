@@ -250,9 +250,8 @@ describe('SpaceCreatePage (#594, Mockup 1b)', () => {
 
     await user.type(screen.getByLabelText(/Name/), 'Widerspruchsstelle')
     await user.click(screen.getByRole('button', { name: 'Weiter' }))
-    expect(
-      screen.getByText(/Gruppen geben ihre Rolle an alle ihre Mitglieder weiter/),
-    ).toBeInTheDocument()
+    // #2207: the step carries no hint on what a group passes on.
+    expect(screen.queryByText(/Gruppen geben ihre Rolle/)).not.toBeInTheDocument()
     await user.type(screen.getByLabelText('Person oder Gruppe suchen'), 'Projektteam')
     await user.click(await screen.findByRole('option', { name: /Referat 5 Projektteam · Gruppe/ }))
     await user.click(screen.getByRole('combobox', { name: 'Rolle des neuen Mitglieds' }))

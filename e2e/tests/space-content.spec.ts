@@ -32,9 +32,9 @@ test.describe('Space-Einstellungen: Reiter „Inhalte“', () => {
     await page.goto(`/spaces/${spaceId}/settings/prompts`)
     await expect(page).toHaveURL(new RegExp(`/spaces/${spaceId}/settings/content$`))
     await expect(page.getByRole('tab', { name: 'Inhalte', selected: true })).toBeVisible()
-    await expect(
-      page.getByText('Ein Chat in diesem Space nutzt nur, was hier ausgewählt ist.'),
-    ).toBeVisible()
+    // #2207: no heading repeats the tab's name, and no lead sentence.
+    await expect(page.getByRole('heading', { name: 'Inhalte' })).toHaveCount(0)
+    await expect(page.getByText(/nutzt nur, was hier ausgewählt ist/)).toHaveCount(0)
     const onlyAssociated = page.getByRole('button', { name: 'Nur zugeordnete' })
     await expect(onlyAssociated).toHaveAttribute('aria-pressed', 'true')
     await expect(page.getByText(/Diesem Space ist noch nichts zugeordnet/)).toBeVisible()

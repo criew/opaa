@@ -166,6 +166,25 @@ class SpaceResponseMapperTest {
     assertThat(response.getMemberCount()).isEqualTo(3);
   }
 
+  // #2207: a member who may not read the list tells persons from groups by these two figures.
+  @Test
+  void toResponseSplitsMembershipsIntoGroupAndPersonRowsForAPlainMember() {
+    UUID owner = UUID.randomUUID();
+    UUID organization = UUID.randomUUID();
+    Space space = new Space("Team", null, false, owner, organization);
+    space.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, organization));
+    space.addMembership(SpaceMembership.ofUser(UUID.randomUUID(), SpaceRole.MEMBER, organization));
+    space.addMembership(
+        SpaceMembership.ofGroup(UUID.randomUUID(), SpaceRole.CURATOR, organization));
+
+    SpaceResponse response =
+        SpaceResponseMapper.toResponse(new SpaceDetail(space, SpaceRole.MEMBER, false, CLEANUP));
+
+    assertThat(response.getMemberships().getUserCount()).isEqualTo(2);
+    assertThat(response.getMemberships().getGroupCount()).isEqualTo(1);
+    assertThat(response.getMemberCount()).isEqualTo(3);
+  }
+
   @Test
   void toListResponseCountsTheOwnerAloneAsOnePersonRow() {
     UUID owner = UUID.randomUUID();
