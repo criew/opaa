@@ -327,7 +327,7 @@ Kompakt. Kopfzeile: links die Asset-Art (Icon und Wort), direkt daneben das Welt
 Freigabe an alle, 5.5), rechts der Favoriten-Stern. Darunter Name, Beschreibung (auf zwei Zeilen
 gekürzt, ohne die Art noch einmal zu nennen), Umfang samt Zahl der Spaces, die zuständige Stelle mit
 Personen- oder Gruppensymbol statt eines Präfixes und eine Zeile „Aktualisiert am" oder Status. Was
-eine Quelle nicht kennt (eine Zuordnung kennt etwa keine Zahlen), lässt die Kachel weg. Die eigene
+eine Quelle nicht kennt (die Token-Auswahl kennt etwa keine Zahlen), lässt die Kachel weg; zugeordnete Assets zeigt sie mit den Daten des Katalogs. Die eigene
 Rolle steht nicht auf der Kachel, nur auf der Detailseite. Weil die Kachel eigene Bedienelemente
 trägt, ist sie **kein umschließendes Bedienelement**: Ihr Hauptelement ist der Name, seine
 Klickfläche wird über die Kachel gestreckt, und der Stern liegt darüber als eigene Tab-Position.

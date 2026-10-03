@@ -276,54 +276,13 @@ const cardSx = {
 
 /**
  * The card shell of an overview with the quiet border and hover lift of mockup 1c. Motion stays on
- * transform only (guidelines 4.5). With `to` the whole card is one real link (new tab, middle
- * click, history). Without it the card carries its own controls: an {@link OverviewCardLink} inside
- * stretches its click area over the card, and the controls stay separate tab stops - never a button
- * inside a link (guidelines 5.4).
+ * transform only (guidelines 4.5). The whole card is one real link (new tab, middle click,
+ * history); a card with controls of its own is an asset tile (`AssetTile`) instead.
  */
-export function OverviewCard({ to, children }: { to?: string; children: ReactNode }) {
-  if (to === undefined) {
-    return (
-      <Box
-        sx={{
-          ...cardSx,
-          position: 'relative',
-          '&:focus-within': { borderColor: blue[300] },
-        }}
-      >
-        {children}
-      </Box>
-    )
-  }
+export function OverviewCard({ to, children }: { to: string; children: ReactNode }) {
   return (
     <ButtonBase component={RouterLink} to={to} sx={cardSx}>
       {children}
     </ButtonBase>
-  )
-}
-
-/**
- * The link of a card with its own controls: its text names the card, its click area covers the
- * whole card. Controls beside it need `position: relative` to stay above that area.
- */
-export function OverviewCardLink({ to, children }: { to: string; children: ReactNode }) {
-  return (
-    <Box
-      component={RouterLink}
-      to={to}
-      sx={{
-        color: 'inherit',
-        textDecoration: 'none',
-        '&::after': { content: '""', position: 'absolute', inset: 0, borderRadius: '16px' },
-        '&:focus-visible': { outline: 'none' },
-        '&:focus-visible::after': {
-          outline: 2,
-          outlineColor: 'primary.main',
-          outlineOffset: 2,
-        },
-      }}
-    >
-      {children}
-    </Box>
   )
 }

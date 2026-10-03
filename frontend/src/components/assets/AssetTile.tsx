@@ -203,7 +203,7 @@ const stretchedSx = {
 } as const
 
 /**
- * The one tile of an asset - in the catalog and in every choice of assets (#2131). The type badge,
+ * The one tile of an asset - in the catalog and in every choice of assets. The type badge,
  * the star and further actions are separate controls above the tile's main control, never inside
  * it: in the catalog that is the title as a link, in a choice a checkbox named by the title. A
  * click on the star therefore never changes the choice.

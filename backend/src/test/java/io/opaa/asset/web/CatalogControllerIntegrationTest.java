@@ -122,6 +122,21 @@ class CatalogControllerIntegrationTest {
         .andExpect(status().isNotFound());
   }
 
+  /** {@code ids} repeats as a query parameter and narrows to the readable among the named. */
+  @Test
+  void theIdFilterNamesAssetsAndKeepsAnUnreadableOneOut() throws Exception {
+    String own = createPromptLibrary(devUser(), "{\"name\":\"Eigen " + UUID.randomUUID() + "\"}");
+    createPromptLibrary(devUser(), "{\"name\":\"Nicht genannt " + UUID.randomUUID() + "\"}");
+    String foreign =
+        createPromptLibrary(devAdmin(), "{\"name\":\"Fremd " + UUID.randomUUID() + "\"}");
+
+    mockMvc
+        .perform(get("/api/v1/catalog").param("ids", own).param("ids", foreign).with(devUser()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.totalElements").value(1))
+        .andExpect(jsonPath("$.entries[0].assetId").value(own));
+  }
+
   @Test
   void aSystemAdministratorWithoutAGrantDoesNotFindALibraryInTheCatalog() throws Exception {
     String name = "Unauffindbar " + UUID.randomUUID();

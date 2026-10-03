@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { screen } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { useState } from 'react'
@@ -112,5 +112,97 @@ describe('AssetTilePicker', () => {
     await user.click(checkbox)
     expect(checkbox).toHaveAttribute('aria-checked', 'true')
     expect(screen.getByText('Ausgewählt: Erste Bibliothek')).toBeInTheDocument()
+  })
+
+  /** Review #2145: after a star, the next page by offset would repeat one entry and skip another. */
+  it('loads further pages after a star without repeating or skipping an entry', async () => {
+    const names = Array.from({ length: 60 }, (_, i) => `Eintrag ${String(i).padStart(2, '0')}`)
+    const favorites = new Set<string>(['Eintrag 55'])
+    server.use(
+      http.get('/api/v1/catalog', ({ request }) => {
+        const params = new URL(request.url).searchParams
+        const page = Number(params.get('page') ?? '0')
+        const size = Number(params.get('size') ?? '50')
+        const all = [...names]
+          .sort((a, b) => Number(favorites.has(b)) - Number(favorites.has(a)) || a.localeCompare(b))
+          .map((name) => ({ ...entry(name, name), favorite: favorites.has(name) }))
+        return HttpResponse.json({
+          entries: all.slice(page * size, page * size + size),
+          page,
+          size,
+          totalElements: all.length,
+          totalPages: Math.ceil(all.length / size),
+        })
+      }),
+      http.delete('/api/v1/assets/:assetType/:assetId/favorite', ({ params }) => {
+        favorites.delete(String(params.assetId))
+        return new HttpResponse(null, { status: 204 })
+      }),
+    )
+    const user = userEvent.setup()
+    renderWithProviders(<Harness />)
+
+    await screen.findByRole('checkbox', { name: 'Eintrag 55' })
+    await user.click(
+      screen.getByRole('button', { name: '„Eintrag 55“ aus den Favoriten entfernen' }),
+    )
+    await screen.findByRole('button', { name: '„Eintrag 55“ als Favorit markieren' })
+    await user.click(screen.getByRole('button', { name: 'Weitere laden' }))
+
+    await waitFor(() => expect(screen.getAllByRole('checkbox')).toHaveLength(60))
+    expect(screen.getAllByRole('checkbox', { name: 'Eintrag 55' })).toHaveLength(1)
+    expect(screen.getByRole('checkbox', { name: 'Eintrag 49' })).toBeInTheDocument()
+  })
+
+  /** Review #2145: narrowed to the chosen, a tile is the same full tile as in the list. */
+  it('shows the chosen as full catalog tiles and leaves out what is not readable', async () => {
+    const requested: string[][] = []
+    server.use(
+      http.get('/api/v1/catalog', ({ request }) => {
+        const ids = new URL(request.url).searchParams.getAll('ids')
+        requested.push(ids)
+        const readable = [
+          {
+            ...entry('erste', 'Erste Bibliothek'),
+            itemCount: 12,
+            spaceCount: 2,
+            ownerLabel: 'Bürgerbüro',
+            ownerType: 'GROUP',
+            favorite: true,
+          },
+        ]
+        const entries = readable.filter((e) => ids.length === 0 || ids.includes(e.assetId))
+        return HttpResponse.json({
+          entries,
+          page: 0,
+          size: 200,
+          totalElements: entries.length,
+          totalPages: 1,
+        })
+      }),
+    )
+    const chosen: AssetPick[] = [
+      { assetType: 'KNOWLEDGE_LIBRARY', assetId: 'erste', name: 'Erste Bibliothek' },
+      { assetType: 'KNOWLEDGE_LIBRARY', assetId: 'fremde', name: 'Fremde Bibliothek' },
+    ]
+    renderWithProviders(
+      <AssetTilePicker
+        value={chosen}
+        onChange={() => undefined}
+        chosenOnlyLabel="Nur zugeordnete"
+        aria-label="Inhalte"
+      />,
+    )
+
+    const group = await screen.findByRole('group', { name: 'Inhalte' })
+    await waitFor(() =>
+      expect(within(group).getByText('12 Dokumente · in 2 Spaces')).toBeInTheDocument(),
+    )
+    expect(
+      within(group).getByRole('button', { name: '„Erste Bibliothek“ aus den Favoriten entfernen' }),
+    ).toBeInTheDocument()
+    expect(within(group).getByText('Bürgerbüro')).toBeInTheDocument()
+    expect(within(group).queryByRole('checkbox', { name: 'Fremde Bibliothek' })).toBeNull()
+    expect(requested).toContainEqual(expect.arrayContaining(['erste', 'fremde']))
   })
 })

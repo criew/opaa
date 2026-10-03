@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { AssetType, CatalogEntryResponse, CatalogPageResponse } from '../types/api'
 import { getCatalog } from '../services/catalogApi'
+import { appendNewEntries, pagesForMore } from '../services/catalogPaging'
 import { markAssetFavorite, unmarkAssetFavorite } from '../services/assetApi'
 import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
 
@@ -40,22 +41,8 @@ interface CatalogState {
 let lastFilter: CatalogFilter = { q: '' }
 // Only the answer to the latest request may land; a slower, older one is dropped.
 let latestRequest = 0
-// A favorite toggled since the last load moves on the server at once while its tile stays put, so
-// the next page by offset would repeat one entry and skip another.
+// A favorite toggled since the last load; see pagesForMore.
 let reorderedSinceLoad = false
-
-function entryKey(entry: CatalogEntryResponse): string {
-  return `${entry.assetType}:${entry.assetId}`
-}
-
-/** `next` after `shown`, without an entry `shown` already holds. */
-function appendNew(
-  shown: CatalogEntryResponse[],
-  next: CatalogEntryResponse[],
-): CatalogEntryResponse[] {
-  const keys = new Set(shown.map(entryKey))
-  return [...shown, ...next.filter((entry) => !keys.has(entryKey(entry)))]
-}
 
 /**
  * The catalog as the server pages it (docs/features/spaces-and-assets.md#der-katalog). Search and
@@ -76,7 +63,7 @@ export const useCatalogStore = create<CatalogState>((set, get) => {
       for (let page = from; page <= through; page++) {
         result = await getCatalog({ ...filter, page, size: CATALOG_PAGE_SIZE })
         if (request !== latestRequest || isStaleSessionEpoch(sessionEpoch)) return
-        entries = appendNew(entries, result.entries)
+        entries = appendNewEntries(entries, result.entries)
         if (page + 1 >= result.totalPages) break
       }
       if (!result) return
@@ -128,14 +115,9 @@ export const useCatalogStore = create<CatalogState>((set, get) => {
     },
 
     loadMore: async () => {
-      const next = get().page + 1
-      if (reorderedSinceLoad) {
-        // Everything shown so far plus one page, fetched again in the server's current order.
-        reorderedSinceLoad = false
-        await fetchPages(lastFilter, 0, next)
-      } else {
-        await fetchPages(lastFilter, next, next)
-      }
+      const { from, through } = pagesForMore(get().page, reorderedSinceLoad)
+      reorderedSinceLoad = false
+      await fetchPages(lastFilter, from, through)
     },
 
     setFavorite: async (entry, favorite) => {

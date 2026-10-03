@@ -382,7 +382,8 @@ hat drei Reiter:
 löst die Zuordnung, und die Meldung dazu bietet „Rückgängig" an. Schlägt die Änderung fehl, springt
 das Häkchen zurück, und eine Fehlermeldung nennt den Grund. Beim Öffnen ist der Filter „Nur
 zugeordnete" eingeschaltet; ausgeschaltet zeigt die Liste alles, was man lesen darf und deshalb
-zuordnen könnte. Darüber stehen dieselben Filter wie im Katalog: Suche, Typ und Favoriten. Wer
+zuordnen könnte. In beiden Ansichten sind es dieselben Kacheln wie im Katalog. Darüber stehen
+dieselben Filter wie im Katalog: Suche, Typ und Favoriten. Wer
 weder Kurator noch Administrator noch Eigentümer des Raums ist, sieht die zugeordneten Inhalte, die
 er lesen darf, nur lesend.
 

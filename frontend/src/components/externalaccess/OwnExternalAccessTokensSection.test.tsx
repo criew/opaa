@@ -223,6 +223,26 @@ describe('OwnExternalAccessTokensSection', () => {
       expect(tileNames(dialog)).toEqual(['Rechtsquellen Soziales', 'Vergaberecht'])
     })
 
+    /** Review #2145: clearing a star under „Favoriten" keeps the tile and the focus in place. */
+    it('lässt eine Kachel unter „Favoriten“ stehen, wenn ihr Stern entfernt wird', async () => {
+      const user = userEvent.setup()
+      render()
+      const dialog = await openCreateDialog(user)
+      await within(dialog).findByRole('checkbox', { name: /Eigene Notizen/ })
+      await user.click(within(dialog).getByRole('button', { name: 'Favoriten' }))
+
+      const star = within(dialog).getByRole('button', {
+        name: '„Vergaberecht“ aus den Favoriten entfernen',
+      })
+      await user.click(star)
+
+      const unmarked = await within(dialog).findByRole('button', {
+        name: '„Vergaberecht“ als Favorit markieren',
+      })
+      expect(unmarked).toHaveFocus()
+      expect(tileNames(dialog)).toEqual(['Rechtsquellen Soziales', 'Vergaberecht'])
+    })
+
     it('führt eine Filterzeile: Suche, Favoriten, Nur ausgewählte - ohne Gruppenfilter', async () => {
       const user = userEvent.setup()
       render()

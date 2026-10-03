@@ -7,6 +7,8 @@ import io.opaa.asset.AssetCatalogService;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
 import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -31,12 +33,16 @@ public class CatalogController {
       @RequestParam(required = false) AssetType type,
       @RequestParam(required = false) String q,
       @RequestParam(defaultValue = "false") boolean favorites,
+      @RequestParam(required = false) List<UUID> ids,
       @RequestParam(defaultValue = "0") int page,
       @RequestParam(defaultValue = "50") int size,
       @Caller CurrentUser caller) {
     AssetCatalogQuery query =
         new AssetCatalogQuery(
-            type == null ? null : io.opaa.permission.AssetType.of(type.getValue()), q, favorites);
+            type == null ? null : io.opaa.permission.AssetType.of(type.getValue()),
+            q,
+            favorites,
+            ids == null ? null : Set.copyOf(ids));
     return responseMapper.toResponse(catalogService.list(caller, query, page, size));
   }
 }

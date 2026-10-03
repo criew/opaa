@@ -79,19 +79,20 @@ function resultMessage(count: number, searching: boolean, filtering: boolean): s
 
 /**
  * One tile per selectable library matching the search and the filters. Search and filters only
- * hide tiles, they never drop a choice. "Nur ausgewählte" filters by `shown`, the choice as it stood
- * when the filter was switched on: a tile chosen away stays, so the focus does not lose its tile.
- * The tile's last line carries the end of the release.
+ * hide tiles, they never drop a choice. "Nur ausgewählte" and "Favoriten" filter by snapshots
+ * taken when switched on (`shown`, `favoriteIds`), so a tile chosen away or unstarred stays and
+ * the focus does not lose it. The tile's last line carries the end of the release.
  */
 function libraryTiles(
   libraries: EligibleExternalAccessLibraryResponse[],
   query: string,
   filters: AssetFilters,
   shown: string[],
+  favoriteIds: string[],
 ): AssetTileData[] {
   return libraries
     .filter((library) => matchesQuery(library, query))
-    .filter((library) => !filters.favorites || library.favorite)
+    .filter((library) => !filters.favorites || favoriteIds.includes(library.id))
     .filter((library) => !filters.selectedOnly || shown.includes(library.id))
     .map((library) => ({
       assetType: 'KNOWLEDGE_LIBRARY',
@@ -125,6 +126,7 @@ export default function CreateExternalAccessTokenDialog({
   const [query, setQuery] = useState('')
   const [filters, setFilters] = useState<AssetFilters>(NO_FILTERS)
   const [selectedSnapshot, setSelectedSnapshot] = useState<string[]>([])
+  const [favoritesSnapshot, setFavoritesSnapshot] = useState<string[]>([])
   // Der Entwurf lebt nur, solange der Dialog montiert ist - der Aufrufer montiert ihn je Vorgang
   // neu. Ein Zurücksetzen im Effekt wäre derselbe Zustand, nur einen Renderdurchlauf später.
   const [expiresOn, setExpiresOn] = useState(() =>
@@ -159,8 +161,8 @@ export default function CreateExternalAccessTokenDialog({
   }, [])
 
   const tiles = useMemo(
-    () => libraryTiles(libraries ?? [], query, filters, selectedSnapshot),
-    [libraries, query, filters, selectedSnapshot],
+    () => libraryTiles(libraries ?? [], query, filters, selectedSnapshot, favoritesSnapshot),
+    [libraries, query, filters, selectedSnapshot, favoritesSnapshot],
   )
   const searching = query.trim() !== ''
   const filtering = anyFilter(filters)
@@ -182,6 +184,9 @@ export default function CreateExternalAccessTokenDialog({
 
   function toggleFilter(key: AssetFilterKey) {
     if (key === 'selectedOnly' && !filters.selectedOnly) setSelectedSnapshot(selected)
+    if (key === 'favorites' && !filters.favorites) {
+      setFavoritesSnapshot((libraries ?? []).filter((l) => l.favorite).map((l) => l.id))
+    }
     setFilters((current) => ({ ...current, [key]: !current[key] }))
   }
 
