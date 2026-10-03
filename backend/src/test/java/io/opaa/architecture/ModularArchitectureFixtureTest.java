@@ -160,8 +160,9 @@ class ModularArchitectureFixtureTest {
   }
 
   /**
-   * A call, a method reference and the static read of the stored settings are reported; the push
-   * secret, the filesystem path and the core's own resolver pass.
+   * A call, a method reference, the static read of the stored settings, a held resolver and a
+   * created one are reported; the push secret, the filesystem path and the core's own resolver
+   * pass.
    */
   @Test
   void aConnectorReadingItsSourceConfigurationFromTheLibraryIsReported() {
@@ -170,7 +171,13 @@ class ModularArchitectureFixtureTest {
     assertThat(
             scenario.violations(
                 ModularArchitecture::connectorsTakeTheirSourceConfigurationFromTheCore))
-        .hasSize(3)
+        .hasSize(5)
+        .anySatisfy(
+            violation -> assertThat(violation).contains("web.WebRun", "SourceConnectionResolver"))
+        .anySatisfy(
+            violation ->
+                assertThat(violation)
+                    .contains("upload.UploadRun", "LibrarySourceConnectionResolver.<init>"))
         .anySatisfy(
             violation ->
                 assertThat(violation).contains("s3.S3Run", "KnowledgeLibrary.getSourceCredentials"))
@@ -183,7 +190,7 @@ class ModularArchitectureFixtureTest {
                     .contains("confluence.ConfluenceSettings", "ConnectorData.storedIn"))
         .noneSatisfy(violation -> assertThat(violation).contains("getWebhookSecret"))
         .noneSatisfy(violation -> assertThat(violation).contains("getSourcePath"))
-        .noneSatisfy(violation -> assertThat(violation).contains("SourceResolver"));
+        .noneSatisfy(violation -> assertThat(violation).contains("source.SourceResolver"));
   }
 
   /** The connector package {@code indexing.source.web} is no web package. */

@@ -23,10 +23,11 @@ von foundation, format und knowledge ab.
   Zeichen). Welche es gibt, weiß nur die Registry; eine Schlüssel-Konstante liegt im Konnektor.
 - **Einstellungen:** Alles Konnektoreigene ist ein Record im Konnektorpaket und steht als ein
   JSON-Objekt in `source_settings`; der Kern reicht es als `ConnectorData` durch.
-- **Ziel, Geheimnis und Einstellungen kommen nur vom Kern** (`SourceConnectionResolver`, ADR-0041,
-  3a): im Lauf über `IndexingRun#settings()` und `#currentCredentials()` (je Bedarf neu, nie fest
-  zum Laufbeginn), sonst als `SourceSettings` oder `ConnectorData` im Aufruf. Aus `KnowledgeLibrary`
-  liest ein Konnektor nur `getSourcePath` (Dateisystem) und `getWebhookSecret` (Push-Adapter).
+- **Ziel, Geheimnis und Einstellungen kommen nur vom Kern** (ADR-0041, 3a): im Lauf über
+  `IndexingRun#settings()` (ohne Geheimnis) und `#currentCredentials()`, das bei jedem Aufruf das
+  jetzt gültige Geheimnis vom Port holt; sonst als `SourceSettings` oder `ConnectorData` im Aufruf.
+  Einen `SourceConnectionResolver` hält oder erzeugt kein Konnektor. Aus `KnowledgeLibrary` liest er
+  nur `getSourcePath` (Dateisystem) und `getWebhookSecret` (Push-Adapter).
 - **Geheimnisse stehen nie in `source_settings`** — die Spalte ist unverschlüsselt und erscheint in
   Antworten. Plätze für Geheimnisse sind nur `source_credentials` und `source_webhook_secret`,
   beide verschlüsselt. Antworten tragen nur Ja/Nein, das Audit nur Feldnamen.

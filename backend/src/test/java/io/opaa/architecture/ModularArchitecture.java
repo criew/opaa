@@ -221,6 +221,15 @@ public final class ModularArchitecture {
           "knowledge.KnowledgeLibrary#getSourceSettings",
           "indexing.source.ConnectorData#storedIn");
 
+  /**
+   * The core's resolvers, relative to the root. A connector that held one could resolve the secret
+   * of any library, so it never depends on them.
+   */
+  static final Set<String> CORE_ONLY_RESOLVERS =
+      Set.of(
+          "indexing.source.SourceConnectionResolver",
+          "indexing.source.LibrarySourceConnectionResolver");
+
   /** Packages of the separate {@code opaa-api} Gradle module: a library below all layers. */
   static final List<String> OUTSIDE_THE_LAYERING = List.of("api.dto", "api.types");
 
@@ -578,7 +587,10 @@ public final class ModularArchitecture {
         .allowEmptyShould(true);
   }
 
-  /** Calls and method references alike; the push secret and the filesystem path are exempt. */
+  /**
+   * Calls and method references alike; the push secret and the filesystem path are exempt. A
+   * connector neither holds nor creates a resolver of the core.
+   */
   ArchRule connectorsTakeTheirSourceConfigurationFromTheCore() {
     return noClasses()
         .that(DescribedPredicate.describe("are connector classes", this::isConnector))
@@ -593,6 +605,15 @@ public final class ModularArchitecture {
                             + access.getTargetOwner().getSimpleName()
                             + "#"
                             + access.getName())))
+        .orShould()
+        .dependOnClassesThat(
+            DescribedPredicate.describe(
+                "are listed in ModularArchitecture.CORE_ONLY_RESOLVERS",
+                target -> {
+                  String relative = relative(target.getBaseComponentType().getPackageName());
+                  return CORE_ONLY_RESOLVERS.contains(
+                      relative + "." + target.getBaseComponentType().getSimpleName());
+                }))
         .because(
             "a connector takes target, secret and settings from the core, which resolves them"
                 + " (ADR-0041, Entscheidung 3a)")
