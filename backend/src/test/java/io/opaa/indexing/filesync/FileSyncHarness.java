@@ -78,6 +78,7 @@ public final class FileSyncHarness {
   private final List<IndexingRunEvent> events = new ArrayList<>();
   private final List<String> ingested = new ArrayList<>();
   private final Set<String> failingIngests = new HashSet<>();
+  private final Set<String> rejectedIngests = new HashSet<>();
   private Duration subtreeMemoryMaxAge;
   private Instant now = Instant.parse("2026-10-03T12:00:00Z");
   private final IndexingJobService jobService = mock(IndexingJobService.class);
@@ -166,6 +167,9 @@ public final class FileSyncHarness {
               if (failingIngests.contains(ingest.filePath())) {
                 throw new IllegalStateException("embedding service unavailable");
               }
+              if (rejectedIngests.contains(ingest.filePath())) {
+                return DocumentIngestResult.FAILED;
+              }
               ingested.add(ingest.filePath());
               Document document =
                   stored.stream()
@@ -241,6 +245,8 @@ public final class FileSyncHarness {
             return Map.of(
                 IndexingRunMode.FULL,
                 VanishedDocumentPolicy.REMOVE_ON_ABSENCE,
+                IndexingRunMode.INCREMENTAL,
+                VanishedDocumentPolicy.KEEP_ON_ABSENCE,
                 IndexingRunMode.EVENT,
                 VanishedDocumentPolicy.KEEP_ON_ABSENCE);
           }
@@ -264,6 +270,14 @@ public final class FileSyncHarness {
   public Run fullSync(FileStore store) {
     return run(IndexingRunMode.FULL, store, FileSync::run);
   }
+
+  /** One change run over the store's change log, which the store must have. */
+  public Run changeRun(FileStore store) {
+    return run(IndexingRunMode.INCREMENTAL, store, FileSync::runChanges);
+  }
+
+  /** The instant every run of this harness happens at. */
+  public static final Instant NOW = Instant.parse("2026-10-03T12:00:00Z");
 
   /** One event run over {@code references}, all inside the store's containers. */
   public Run refresh(FileStore store, List<FileReference> references) {
@@ -311,6 +325,12 @@ public final class FileSyncHarness {
   /** From now on the ingest of {@code filePath} throws, as a failing embedding call would. */
   public FileSyncHarness failIngestOf(String filePath) {
     failingIngests.add(filePath);
+    return this;
+  }
+
+  /** From now on the ingest of {@code filePath} rejects the content, as a broken file would. */
+  public FileSyncHarness rejectContentOf(String filePath) {
+    rejectedIngests.add(filePath);
     return this;
   }
 

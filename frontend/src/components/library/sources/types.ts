@@ -78,6 +78,11 @@ export interface SourceConfiguration<V> {
    * rhythm (Confluence).
    */
   fullSyncRhythm?: boolean
+  /**
+   * The stored settings a change of the rhythm resends whole, for a connector that replaces its
+   * settings as a whole instead of keeping the parts a request leaves out (Google Drive).
+   */
+  rhythmSettingsBase?: (library: StoredLibrarySource) => Record<string, unknown> | null
   /** The sentence under the wizard's immediate-first-run switch. */
   firstRunHint?: string
   /** The explanation above the run history. */

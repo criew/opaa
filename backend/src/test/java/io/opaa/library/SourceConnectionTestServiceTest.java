@@ -20,6 +20,7 @@ import io.opaa.common.ValidationException;
 import io.opaa.connection.LibraryConnectionService;
 import io.opaa.indexing.source.FilesystemPathAllowlist;
 import io.opaa.indexing.source.LibrarySourceConnectionResolver;
+import io.opaa.indexing.source.ServiceAccountTokens;
 import io.opaa.indexing.source.SourceConnectionTestResult;
 import io.opaa.indexing.source.TestSourceConnectors;
 import io.opaa.indexing.source.rss.RssFeedParser;
@@ -30,6 +31,7 @@ import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.LibraryAccessService;
 import io.opaa.knowledge.SourceType;
 import io.opaa.permission.CapabilityService;
+import io.opaa.security.TargetAddressValidator;
 import io.opaa.test.SourceTypes;
 import io.opaa.test.UnreadableDirectory;
 import java.io.IOException;
@@ -38,6 +40,7 @@ import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Clock;
 import java.util.Base64;
 import java.util.Optional;
 import java.util.UUID;
@@ -97,7 +100,8 @@ class SourceConnectionTestServiceTest {
             TestSourceConnectors.connectors().filesystemAllowlist(filesystemAllowlist).registry(),
             capabilityService,
             new LibrarySourceConnectionResolver(),
-            mock(LibraryConnectionService.class));
+            mock(LibraryConnectionService.class),
+            new ServiceAccountTokens(TargetAddressValidator.disabled(), Clock.systemUTC()));
   }
 
   @AfterEach
@@ -579,7 +583,8 @@ class SourceConnectionTestServiceTest {
                 .registry(),
             capabilityService,
             new LibrarySourceConnectionResolver(),
-            mock(LibraryConnectionService.class));
+            mock(LibraryConnectionService.class),
+            new ServiceAccountTokens(TargetAddressValidator.disabled(), Clock.systemUTC()));
     String html = "<table>" + "x".repeat(100) + "</table>";
     server.createContext(
         "/dir/",
@@ -716,7 +721,8 @@ class SourceConnectionTestServiceTest {
                 .registry(),
             capabilityService,
             new LibrarySourceConnectionResolver(),
-            mock(LibraryConnectionService.class));
+            mock(LibraryConnectionService.class),
+            new ServiceAccountTokens(TargetAddressValidator.disabled(), Clock.systemUTC()));
     String rss =
         """
         <?xml version="1.0"?>
@@ -764,7 +770,8 @@ class SourceConnectionTestServiceTest {
                 .registry(),
             capabilityService,
             new LibrarySourceConnectionResolver(),
-            mock(LibraryConnectionService.class));
+            mock(LibraryConnectionService.class),
+            new ServiceAccountTokens(TargetAddressValidator.disabled(), Clock.systemUTC()));
     String rss =
         "<?xml version=\"1.0\"?><rss version=\"2.0\"><channel>"
             + "x".repeat(50)

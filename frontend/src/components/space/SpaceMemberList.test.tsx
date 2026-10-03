@@ -242,7 +242,9 @@ describe('SpaceMemberList', () => {
       within(menu).getByRole('menuitem', { name: 'Warum hat Thomas Klein Zugriff?' }),
     )
 
-    expect(await screen.findByText(/Wirksame Rolle/)).toBeInTheDocument()
+    expect(
+      await screen.findByText('Thomas Klein ist Kurator in diesem Space – direkt aufgenommen.'),
+    ).toBeInTheDocument()
     expect(mockGetSpaceAccessDerivation).toHaveBeenCalledWith('space-team', 'u-thomas')
   })
 
@@ -323,7 +325,7 @@ describe('SpaceMemberList', () => {
     )
   })
 
-  it('gibt den Fokus nach „Herleitung ausblenden“ an den Menüknopf der Zeile zurück', async () => {
+  it('gibt den Fokus nach „Schließen“ der Herleitung an den Menüknopf der Zeile zurück', async () => {
     renderList()
     const user = userEvent.setup()
 
@@ -331,7 +333,8 @@ describe('SpaceMemberList', () => {
     await user.click(
       within(menu).getByRole('menuitem', { name: 'Warum hat Thomas Klein Zugriff?' }),
     )
-    await user.click(await screen.findByRole('button', { name: 'Herleitung ausblenden' }))
+    await screen.findByText(/Thomas Klein ist Kurator/)
+    await user.click(screen.getByRole('button', { name: 'Schließen' }))
 
     expect(
       screen.getByRole('button', { name: 'Weitere Aktionen für „Thomas Klein“' }),

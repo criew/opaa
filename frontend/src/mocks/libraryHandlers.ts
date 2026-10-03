@@ -211,6 +211,7 @@ export const libraryHandlers = [
         body.sourceType === 'RSS_FEED' ||
         body.sourceType === 'CONFLUENCE' ||
         body.sourceType === 'S3' ||
+        body.sourceType === 'GOOGLE_DRIVE' ||
         body.sourceType === 'NEXTCLOUD'
           ? (body.sourceUrl ?? null)
           : null,
@@ -219,18 +220,21 @@ export const libraryHandlers = [
         body.sourceType === 'RSS_FEED' ||
         body.sourceType === 'CONFLUENCE' ||
         body.sourceType === 'S3' ||
+        body.sourceType === 'GOOGLE_DRIVE' ||
         body.sourceType === 'NEXTCLOUD'
           ? (body.sourceProxy ?? null)
           : null,
       sourceSettings:
         body.sourceType === 'CONFLUENCE' ||
         body.sourceType === 'S3' ||
+        body.sourceType === 'GOOGLE_DRIVE' ||
         body.sourceType === 'NEXTCLOUD'
           ? (body.sourceSettings ?? null)
           : null,
       sourceCredentialsSet:
         body.sourceType === 'S3' ||
         body.sourceType === 'CONFLUENCE' ||
+        body.sourceType === 'GOOGLE_DRIVE' ||
         body.sourceType === 'NEXTCLOUD'
           ? Boolean(body.sourceCredentials)
           : undefined,
@@ -274,6 +278,25 @@ export const libraryHandlers = [
       return HttpResponse.json({
         complete: true,
         entries: mockConfluenceSpaces.map((space) => ({ key: space.key, name: space.name })),
+      } satisfies SourceBrowseResponse)
+    }
+    if (sourceType === 'GOOGLE_DRIVE') {
+      // what the mock service account sees: one shared drive and one shared folder (ADR-0040)
+      if (!body.sourceCredentials && !body.libraryId) {
+        return HttpResponse.json(
+          {
+            error: 'sourceCredentials (Dienstkonto-Schlüssel) sind für die Auflistung erforderlich',
+          },
+          { status: 400 },
+        )
+      }
+      return HttpResponse.json({
+        complete: true,
+        entries: [
+          { key: 'drive:0AMockDrive', name: 'Projektablage' },
+          { key: 'folder:1MockFolder', name: 'Freigegebene Akten' },
+        ],
+        message: null,
       } satisfies SourceBrowseResponse)
     }
     if (sourceType === 'S3') {
@@ -326,6 +349,24 @@ export const libraryHandlers = [
       sourceCredentials?: string | null
       sourceSettings?: Record<string, unknown> | null
       libraryId?: string | null
+    }
+    if (body.sourceType === 'GOOGLE_DRIVE') {
+      // every requested area is reachable for the mock service account (ADR-0040)
+      const settings = body.sourceSettings as { scopes?: Record<string, unknown>[] } | null
+      const scopes = (settings?.scopes ?? []).map((scope) => ({
+        scope: scope.drive
+          ? `drive:${scope.drive}`
+          : scope.folder
+            ? `folder:${scope.folder}`
+            : 'myDrive',
+        reachable: true,
+      }))
+      return HttpResponse.json({
+        reachable: true,
+        credentialsVerified: true,
+        message: `Anmeldung erfolgreich; alle ${scopes.length} Bereiche sind erreichbar.`,
+        details: { scopes },
+      })
     }
     if (body.sourceType === 'S3') {
       // Mirrors S3ConnectionService#probe just enough for the mock: every scope passes with a

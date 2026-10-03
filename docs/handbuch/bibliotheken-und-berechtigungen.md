@@ -380,6 +380,11 @@ hat drei Reiter:
 | **Mitglieder** | Die Mitgliederliste und das Aufnehmen von Personen und Gruppen. Die Liste beginnt mit dem Eigentümer, danach folgen Administratoren, Kuratoren und Mitglieder, je Rolle nach Name, Personen und Gruppen gemischt; eine lange Liste bekommt darüber ein Suchfeld. Jede Zeile trägt nur die Rolle — als Auswahl für Administratoren, beim Eigentümer das Etikett „Eigentümer" — und ein Menü „⋯" mit „Warum hat … Zugriff?", „Mitglieder der Gruppe anzeigen", „Zum Eigentümer machen" und „Aus Space entfernen", soweit der Eintrag für Zeile und eigene Rolle gilt. Darunter steht „Mitglied hinzufügen" mit einem Suchfeld für Personen und Gruppen, der Rolle und „Hinzufügen" in einer Zeile |
 | **Inhalte** | Eine Kachelliste aller Arten von Bestand — Wissensbibliotheken und [Prompt-Bibliotheken](prompt-bibliotheken.md). Ein Häkchen heißt „dem Raum zugeordnet"; anhaken und abhaken dürfen Kuratoren, Administratoren und der Eigentümer des Raums |
 
+**Im Reiter „Mitglieder" meldet sich jede Änderung kurz.** Hinzufügen, Entfernen, Rollenwechsel und
+Übertragung bestätigt je eine Meldung, die von selbst verschwindet („Gruppe Meldewesen
+hinzugefügt", „Rolle von Thomas Klein: Kurator"). Die Liste aktualisiert sich dabei ohne neues
+Laden. Ein Fehler bleibt stehen, bis er geschlossen wird.
+
 **Im Reiter „Inhalte" wirkt ein Häkchen sofort.** Anhaken ordnet zu und bestätigt das kurz; Abhaken
 löst die Zuordnung, und die Meldung dazu bietet „Rückgängig" an. Schlägt die Änderung fehl, springt
 das Häkchen zurück, und eine Fehlermeldung nennt den Grund. Beim Öffnen ist der Filter „Nur
@@ -790,14 +795,31 @@ Für jede Bibliothek und jeden Raum, den eine Person sieht, zeigt die Oberfläch
 Weg** zur wirksamen Rolle — ohne Vollmacht, ohne Protokolleintrag, und **ohne die Mitglieder einer
 Gruppe offenzulegen**. Die Herleitung steht auf der Detailseite der Bibliothek und am Raum.
 
-| Grundlage | Was die Zeile nennt |
+**Aufbau.** Der erste Satz nennt die wirksame Rolle: „Thomas Klein ist Kurator in diesem Space."
+bzw. „Maria Weber darf diese Bibliothek lesen." Gibt es nur einen Weg, folgt seine Herkunft im
+selben Satz („… – direkt aufgenommen."). Bei mehreren Wegen steht darunter eine Zeile je Weg mit
+der Rolle, die er verleiht, und zum Schluss „Es gilt die höhere Rolle.":
+
+```
+Maria Weber ist Administrator in diesem Space.
+  Direkt aufgenommen: Kurator
+  Über die Gruppe Meldewesen: Administrator
+Es gilt die höhere Rolle.
+```
+
+Space und Bibliothek zeigen die Herleitung gleich; „Schließen" klappt sie wieder zu. Der Zeitpunkt
+eines Wegs steht nur als Tooltip an seiner Zeile. Herkunft und Mechanismus einer Gruppe nennt die
+Herleitung nicht; wer verwaltet, sieht die Mitglieder über „Mitglieder der Gruppe anzeigen".
+
+| Grundlage | Wie der Weg heißt |
 |---|---|
-| Freigabe an Sie | die Rolle |
-| Freigabe an eine Gruppe | die Rolle, den Gruppennamen, Herkunft und **Mechanismus** („gepflegt über Token" / „über Verzeichnisabgleich") und den Zeitpunkt |
-| Freigabe an alle Konten | die Rolle, ohne jemanden zu benennen |
-| Eigene Mitgliedschaft / Mitgliedschaft über eine Gruppe | die Raumrolle, bei einer Gruppe mit Name, Herkunft und Mechanismus |
-| Eigentum | dass das Objekt Ihnen gehört |
-| Systemverwaltung | dass der Zugang allein aus der Systemrolle folgt — **ohne** Rolle, weil es keine Mitgliedschaftsrolle ist |
+| Freigabe an Sie | „direkt freigegeben" |
+| Freigabe an eine Gruppe | „über die Gruppe …" mit dem Gruppennamen |
+| Freigabe an alle Konten | „für alle Konten freigegeben", ohne jemanden zu benennen |
+| Eigene Mitgliedschaft | „direkt aufgenommen" |
+| Mitgliedschaft über eine Gruppe | „über die Gruppe …" mit dem Gruppennamen |
+| Eigentum | „als Eigentümer" |
+| Systemverwaltung | Am Raum „über die Systemverwaltung", **ohne** Rolle, weil es keine Mitgliedschaftsrolle ist. An einer Bibliothek ein eigener Satz: „… verwaltet diese Bibliothek über die Systemverwaltung (ohne Leserecht am Inhalt)." Verwalten ist nicht Lesen (Abschnitt 4); die wirksame Rolle im ersten Satz und „Es gilt die höhere Rolle." ergeben sich deshalb nur aus den übrigen Wegen |
 
 **Gegenüber anderen ist die Herleitung enger.** Für einen anderen Menschen gibt sie ein
 Administrator oder der Eigentümer eines Raums ab — dieselben Personen, die die Mitgliederliste
