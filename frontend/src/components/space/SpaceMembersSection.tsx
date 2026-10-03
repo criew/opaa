@@ -25,7 +25,31 @@ import { memberLabelOf, memberNoticeLabelOf } from './memberLabel'
 
 const editableRoles: SpaceRole[] = ['MEMBER', 'CURATOR', 'ADMIN']
 
-/** Wie die Rückmeldung nach dem Hinzufügen das gewählte Subjekt nennt. */
+function counted(count: number, one: string, many: string): string {
+  return `${count} ${count === 1 ? one : many}`
+}
+
+/** Who belongs to the space without a name, e.g. "10 Personen und 2 Gruppen". */
+function subjectCountsLabel(space: SpaceResponse): string {
+  const persons = counted(space.memberships.userCount, 'Person', 'Personen')
+  const groups = space.memberships.groupCount
+  return groups > 0 ? `${persons} und ${counted(groups, 'Gruppe', 'Gruppen')}` : persons
+}
+
+/**
+ * The membership rows per role, e.g. "Rollen: 2 Administratoren, 1 Kurator, 9 Mitglieder"; a group
+ * row counts once, like in the line above. Roles nobody holds are left out.
+ */
+function roleCountsLabel(space: SpaceResponse): string {
+  const parts = [
+    counted(space.roleCounts?.ADMIN ?? 0, 'Administrator', 'Administratoren'),
+    counted(space.roleCounts?.CURATOR ?? 0, 'Kurator', 'Kuratoren'),
+    counted(space.roleCounts?.MEMBER ?? 0, 'Mitglied', 'Mitglieder'),
+  ].filter((part) => !part.startsWith('0 '))
+  return `Rollen: ${parts.join(', ')}`
+}
+
+/** How the notice after adding names the chosen subject. */
 function addedSubjectLabel(subject: SubjectSelection): string {
   if (subject.type === 'GROUP') {
     return subject.group?.protectedGroup
@@ -69,8 +93,8 @@ export default function SpaceMembersSection({
     useSpaceStore.setState({ error: null })
   }
 
-  // #144: der Dienst beantwortet die Liste nur für ADMIN, Eigentümer und Systemverwaltung; für
-  // alle anderen bleibt sie leer, und der Hinweis unten nennt den Grund.
+  // #144: the service answers the list only for ADMIN, the owner and the system administration;
+  // for everybody else it stays empty and the tab shows the counts instead.
   useEffect(() => {
     void loadMembers(spaceId)
   }, [loadMembers, spaceId])
@@ -101,13 +125,14 @@ export default function SpaceMembersSection({
       {isLoadingMembers ? (
         <Typography sx={{ color: 'text.secondary' }}>Mitgliederliste wird geladen …</Typography>
       ) : members.length === 0 && !canManage && !isOwner ? (
-        // #674 review, nit c: a MEMBER or CURATOR reaching this page directly by URL gets a
-        // silent empty list from listSpaceMembers's 403 handling (#144) - without this, that
-        // renders as an unexplained blank block instead of naming why nothing is shown.
-        <Alert severity="info">
-          Sie haben nicht die erforderliche Rolle, um die Mitgliederliste dieses Space einzusehen.
-          Nur Administratoren, der Eigentümer und Systemadministratoren können sie sehen.
-        </Alert>
+        // A MEMBER or CURATOR gets no names (the service answers the list with an empty one),
+        // only how large the space is per role.
+        <Stack spacing={0.5}>
+          <Typography sx={{ fontSize: 13.5 }}>{subjectCountsLabel(space)}</Typography>
+          <Typography sx={{ fontSize: 13.5, color: 'text.secondary' }}>
+            {roleCountsLabel(space)}
+          </Typography>
+        </Stack>
       ) : (
         <Stack spacing={0}>
           <SpaceMemberList

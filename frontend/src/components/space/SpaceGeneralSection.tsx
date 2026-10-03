@@ -87,9 +87,6 @@ export default function SpaceGeneralSection({
       {successMessage && <Alert severity="success">{successMessage}</Alert>}
 
       <Box>
-        {/* Die Reiterleiste bringt keine Überschrift mit: Jedes Panel beginnt deshalb mit seiner
-            eigenen h2 unter der h1 der Seite, damit die Ebenen lückenlos bleiben. */}
-        <SectionHead>Stammdaten</SectionHead>
         {space.archived && (
           <Alert severity="info" sx={{ mb: 2 }}>
             Dieser Space ist archiviert und nimmt keinen neuen Inhalt mehr an. Private Chats bleiben
@@ -105,7 +102,7 @@ export default function SpaceGeneralSection({
               fullWidth
               value={name}
               onChange={(event) => setDraft({ ...current, name: event.target.value })}
-              disabled={!canManage}
+              slotProps={{ htmlInput: { readOnly: !canManage } }}
             />
           </Box>
           <Box>
@@ -118,7 +115,7 @@ export default function SpaceGeneralSection({
               onChange={(event) => setDraft({ ...current, description: event.target.value })}
               multiline
               minRows={2}
-              disabled={!canManage}
+              slotProps={{ htmlInput: { readOnly: !canManage } }}
             />
           </Box>
           <ChatAutoCleanupField
@@ -175,7 +172,8 @@ export default function SpaceGeneralSection({
             p: 2.5,
           }}
         >
-          <SectionHead component="h3">Gefahrenbereich</SectionHead>
+          {/* No heading repeats the tab's name, so this is the panel's h2. */}
+          <SectionHead>Gefahrenbereich</SectionHead>
           <Stack spacing={2} sx={{ mt: 1.5 }}>
             {!space.archived && (
               <Stack

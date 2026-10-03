@@ -63,6 +63,7 @@ final class SpaceResponseMapper {
             space.isArchived(),
             space.getOwnerId(),
             space.getMemberships().size(),
+            toMembershipCounts(space),
             roleCounts,
             new ChatAutoCleanupResponse(
                 space.isChatAutoCleanupEnabled(),

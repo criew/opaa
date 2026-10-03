@@ -132,10 +132,13 @@ Gespräch wird nur fortgesetzt, wenn es bewusst in der Liste angeklickt wird; di
 eines Arbeitsraums bleibt über die Space-Übersicht erreichbar, die Verwaltung über das Zahnrad
 „Einstellungen“ am Fuß der Seitenleiste (`/spaces/:spaceId/settings/:tab`, Reiter Stammdaten,
 Mitglieder, Inhalte; die frühere Adresse `/spaces/:spaceId/manage` und die früheren Reiter
-`knowledge` und `prompts` leiten dorthin weiter). Der Reiter Inhalte verwaltet die **Zuordnung** aller
-Typen — die harte Grenze dessen, was der Arbeitsraum im Chat nutzt — als eine Kachelliste mit
-Häkchen, das sofort wirkt („Ein Chat in diesem Space nutzt nur, was hier ausgewählt ist.“). Er
-zeigt nur die für die Person lesbaren Zuordnungen, beim Öffnen gefiltert auf „Nur zugeordnete“,
+`knowledge` und `prompts` leiten dorthin weiter). Das Zahnrad sieht jedes Mitglied; wer nicht
+verwalten darf, liest dort nur und sieht im Reiter Mitglieder statt Namen nur Zahlen (Personen, Gruppen, Rollen).
+Keine Überschrift in einem Reiter wiederholt dessen Namen. Der Reiter Inhalte verwaltet die
+**Zuordnung** aller Typen — die harte Grenze dessen, was der Arbeitsraum im Chat nutzt — als eine
+Kachelliste mit Häkchen, das sofort wirkt. Er
+zeigt nur die für die Person lesbaren Zuordnungen, beim Öffnen gefiltert auf „Nur zugeordnete“
+(Favoriten zuerst, dann nach Name),
 gegebenenfalls ergänzt um den Hinweis ohne Anzahl „Nicht alle zugeordneten Inhalte sind für Sie
 lesbar." Ein Neuladen der Seite stellt Verlauf und Liste wieder her. Es
 entsteht als Entwurf, sichtbar nur für den Autor, und wird für die Mitglieder des

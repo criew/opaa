@@ -255,7 +255,7 @@ export default function SpaceCreatePage() {
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             <Typography sx={{ fontSize: 13.5, color: 'text.secondary' }}>
               Mitglieder lassen sich auch später jederzeit in der Space-Verwaltung ergänzen — dieser
-              Schritt ist optional. Gruppen geben ihre Rolle an alle ihre Mitglieder weiter.
+              Schritt ist optional.
             </Typography>
             <SubjectFormRow
               picker={
