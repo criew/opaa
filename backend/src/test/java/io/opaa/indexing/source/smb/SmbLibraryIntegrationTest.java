@@ -23,9 +23,9 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * An SMB library through the HTTP API against a real Samba: listed as a source type, created with
- * the normalised address and the whole share as default, indexed by a run, and the credentials kept
- * only while the server stays the same.
+ * An SMB library through the HTTP API against a real Samba: listed as a source type released to no
+ * one by default, created by the system administration with the normalised address, indexed by a
+ * run, and the credentials kept only while the server stays the same.
  */
 @OpaaIntegrationTest
 class SmbLibraryIntegrationTest {
@@ -54,6 +54,17 @@ class SmbLibraryIntegrationTest {
             jsonPath("$[?(@.type == 'SMB')].displayName").value("Windows-Dateifreigabe (SMB)"))
         .andExpect(jsonPath("$[?(@.type == 'SMB')].browsable").value(true))
         .andExpect(jsonPath("$[?(@.type == 'SMB')].indexingRun").value(true));
+  }
+
+  @Test
+  void aNewSourceTypeIsReleasedToNoOneByDefault() throws Exception {
+    mockMvc
+        .perform(
+            get("/api/v1/source-types")
+                .header(DevAuthFilter.DEV_USER_HEADER, "dev-user")
+                .contentType(MediaType.APPLICATION_JSON))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$[?(@.type == 'SMB')].creatable").value(false));
   }
 
   @Test
