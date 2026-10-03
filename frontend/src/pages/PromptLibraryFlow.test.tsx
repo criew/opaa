@@ -229,9 +229,12 @@ describe('Detailseite einer Prompt-Bibliothek (#2208)', () => {
       screen.getByRole('heading', { name: 'Warum sehe ich diese Prompt-Bibliothek?' }),
     ).toBeInTheDocument()
 
+    // Lesen schließt das Verwenden nicht aus; Lösen hängt am Space, siehe AssetSpacesList.test.
     await user.click(screen.getByRole('tab', { name: 'Zuordnungen' }))
     expect(await screen.findByText('Engineering')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /aktionen für space/i })).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: '„Hausweite Vorlagen“ in Space verwenden' }),
+    ).toBeInTheDocument()
   }, 15000)
 
   it('leitet die frühere Adresse …/settings auf den Reiter „Freigaben“ weiter', async () => {
@@ -288,8 +291,12 @@ describe('Detailseite einer Prompt-Bibliothek (#2208)', () => {
     await user.type(nameField, 'Textbausteine Bürgerbüro')
     await user.click(screen.getByRole('button', { name: 'Speichern' }))
 
+    // The form closes only after the save; until then the h1 is the form's hidden one.
+    await waitFor(() =>
+      expect(screen.queryByLabelText('Name der Prompt-Bibliothek')).not.toBeInTheDocument(),
+    )
     expect(
-      await screen.findByRole('heading', { level: 1, name: 'Textbausteine Bürgerbüro' }),
+      screen.getByRole('heading', { level: 1, name: 'Textbausteine Bürgerbüro' }),
     ).toBeInTheDocument()
     expect(puts).toEqual([
       {

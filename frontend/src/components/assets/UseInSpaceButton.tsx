@@ -24,6 +24,8 @@ interface UseInSpaceTarget {
   assetType: AssetType
   assetId: string
   name: string
+  /** Called after an association was created, e.g. to reload counts and lists. */
+  onAssociated?: () => void
 }
 
 interface UseInSpaceButtonProps extends UseInSpaceTarget {
@@ -52,6 +54,7 @@ export function UseInSpaceDialog({
   name,
   open,
   onClose,
+  onAssociated,
 }: UseInSpaceDialogProps) {
   const navigate = useNavigate()
   const [spaces, setSpaces] = useState<SpaceListResponse[] | null>(null)
@@ -94,6 +97,7 @@ export function UseInSpaceDialog({
     try {
       await associateSpaceAsset(space.id, assetType, assetId)
       notify(`„${name}“ ist jetzt im Space „${space.name}“ zugeordnet.`, 'success')
+      onAssociated?.()
       close()
     } catch (err) {
       setError(successionAwareMessage(err, 'Zuordnung fehlgeschlagen'))
@@ -167,6 +171,7 @@ export default function UseInSpaceButton({
   assetId,
   name,
   size = 'medium',
+  onAssociated,
 }: UseInSpaceButtonProps) {
   const [open, setOpen] = useState(false)
   return (
@@ -186,6 +191,7 @@ export default function UseInSpaceButton({
         name={name}
         open={open}
         onClose={() => setOpen(false)}
+        onAssociated={onAssociated}
       />
     </>
   )

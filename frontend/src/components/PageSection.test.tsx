@@ -129,6 +129,8 @@ const VERWALTUNGSDATEIEN = Object.keys(QUELLEN).filter((pfad) => {
  *   beim `MailTemplateEditor`.
  * - `AssetTile`: die Kachel eines Assets im Katalog und in jeder Auswahl (#2131) — eine Karte im
  *   Raster (Leitlinien 5.4), kein Inhaltsblock einer Seite; der umrandete Typ ist ein Etikett (5.5).
+ * - `assetMarks`: das Typ-Etikett, das Kachel und Kopf der Detailseite teilen (#2208) — ein
+ *   Etikett wie ein Chip (5.5), kein Block.
  */
 const AUSNAHMEN = [
   'BrandingPreview.tsx',
@@ -147,6 +149,7 @@ const AUSNAHMEN = [
   'PromptTextHighlight.tsx',
   'PromptPreview.tsx',
   'AssetTile.tsx',
+  'assetMarks.tsx',
 ]
 
 /**

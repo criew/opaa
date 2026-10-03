@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react'
-import type { ReactNode } from 'react'
 import { Link as RouterLink, useNavigate, useParams, useSearchParams } from 'react-router'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
@@ -7,24 +6,17 @@ import Button from '@mui/material/Button'
 import Checkbox from '@mui/material/Checkbox'
 import Chip from '@mui/material/Chip'
 import FormControlLabel from '@mui/material/FormControlLabel'
-import IconButton from '@mui/material/IconButton'
 import LinearProgress from '@mui/material/LinearProgress'
 import Link from '@mui/material/Link'
-import Menu from '@mui/material/Menu'
-import MenuItem from '@mui/material/MenuItem'
 import Stack from '@mui/material/Stack'
 import Tab from '@mui/material/Tab'
 import Tabs from '@mui/material/Tabs'
-import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
-import MoreVertIcon from '@mui/icons-material/MoreVert'
 import DataUsageIcon from '@mui/icons-material/DataUsage'
-import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined'
 import HistoryIcon from '@mui/icons-material/History'
 import PlayArrowIcon from '@mui/icons-material/PlayArrow'
 import WarningAmberIcon from '@mui/icons-material/WarningAmber'
 import { alpha } from '@mui/material/styles'
-import { fontFamily } from '../theme/tokens'
 import type { AssetRole } from '../types/api'
 import { confluenceSettingsOf } from '../utils/confluenceSource'
 import { sourceRegistration } from '../components/library/sources/registry'
@@ -35,13 +27,13 @@ import { IDLE_RUN_STATE, useIndexingStore } from '../stores/indexingStore'
 import { assetRoleLabel, formatFileSize } from '../utils/labels'
 import { documentSourceTypeLabel } from '../components/library/sources/sourceLabels'
 import AssetAccessDerivationSection from '../components/assets/AssetAccessDerivationSection'
-import AssetHeadlineEditor from '../components/assets/AssetHeadlineEditor'
-import UseInSpaceButton from '../components/assets/UseInSpaceButton'
+import AssetDetailHeader, { HeaderFigure } from '../components/assets/AssetDetailHeader'
 import AssetOwnerSection from '../components/assets/AssetOwnerSection'
 import AssetSpacesSection from '../components/assets/AssetSpacesSection'
+import { responsibleParty } from '../components/assets/assetTileData'
+import { useAssetCatalogEntry } from '../components/assets/useAssetCatalogEntry'
 import AssetGrantsSection from '../components/permissions/AssetGrantsSection'
 import LibraryExternalAccessSection from '../components/library/LibraryExternalAccessSection'
-import SourceTypeIcon from '../components/library/sourceTypeIcon'
 import LibraryDocumentsSection from '../components/library/LibraryDocumentsSection'
 import LibrarySourceSection from '../components/library/LibrarySourceSection'
 import LibraryMetadataFieldsSection from '../components/metadata/LibraryMetadataFieldsSection'
@@ -72,7 +64,7 @@ function formatIndexedAt(indexedAt: string | null | undefined): string {
 }
 
 /** The page's areas; the active one is shareable via the "tab" search param (URL as state). */
-type LibraryDetailTab = 'dokumente' | 'quelle' | 'metadaten' | 'freigaben'
+type LibraryDetailTab = 'dokumente' | 'quelle' | 'metadaten' | 'freigaben' | 'zuordnungen'
 
 /**
  * The area named by `?tab=`. Every role sees every area, so only the source area can be missing -
@@ -87,44 +79,11 @@ function resolveTab(requested: string | null, hasSourceTab: boolean): LibraryDet
       return 'metadaten'
     case 'freigaben':
       return 'freigaben'
+    case 'zuordnungen':
+      return 'zuordnungen'
     default:
       return 'dokumente'
   }
-}
-
-interface HeroStatTileProps {
-  /** Small leading pictogram (aria-hidden) - or a status dot for the last-run tile. */
-  icon: ReactNode
-  children: ReactNode
-}
-
-/**
- * Eine Kennzahl der Bühne als Glied eines Bandes (#1609): keine Kachel, sondern ein Eintrag, den
- * eine senkrechte Haarlinie vom nächsten trennt. Der Text bleibt eine flache Aussage
- * („87 Dokumente") — ein Element für Screenreader und Textsuche gleichermaßen; das Symbol trägt
- * keinen eigenen Text.
- */
-function HeroStatTile({ icon, children }: HeroStatTileProps) {
-  return (
-    <Box
-      sx={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 1,
-        pr: 2.25,
-        // Die Linie steht rechts statt links: Bricht das Band um, beginnt die erste Kennzahl jeder
-        // Zeile bündig an der Seitenkante, ohne hängenden Strich davor.
-        borderRight: 1,
-        borderColor: 'divider',
-        '&:last-of-type': { borderRight: 0, pr: 0 },
-      }}
-    >
-      <Box aria-hidden sx={{ display: 'flex', color: 'text.disabled' }}>
-        {icon}
-      </Box>
-      <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>{children}</Typography>
-    </Box>
-  )
 }
 
 interface DiagnosticsLockControlProps {
@@ -269,10 +228,11 @@ export default function LibraryDetailPage() {
   const storeError = useLibraryStore((s) => s.error)
 
   const [localError, setLocalError] = useState<string | null>(null)
-  const [actionMenuAnchor, setActionMenuAnchor] = useState<HTMLElement | null>(null)
   const [diagnosticsLockError, setDiagnosticsLockError] = useState<string | null>(null)
   const [diagnosticsLockSaving, setDiagnosticsLockSaving] = useState(false)
   const [searchParams] = useSearchParams()
+  const catalog = useAssetCatalogEntry('KNOWLEDGE_LIBRARY', libraryId ?? '')
+  const [associationsVersion, setAssociationsVersion] = useState(0)
 
   useEffect(() => {
     // The list entry (myRole, documentCount, sourceType) may not be loaded yet if this page was
@@ -473,230 +433,114 @@ export default function LibraryDetailPage() {
     ...(showSourceTab ? ([{ value: 'quelle', label: 'Quelle' }] as const) : []),
     { value: 'metadaten', label: 'Metadaten' },
     { value: 'freigaben', label: 'Freigaben' },
+    { value: 'zuordnungen', label: 'Zuordnungen' },
   ]
+
+  function associationsChanged() {
+    catalog.reload()
+    setAssociationsVersion((version) => version + 1)
+  }
 
   return (
     <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, overflowY: 'auto' }}>
-      {/* Quellen-Bühne (#1609): Identität, Kennzahlen, Umfang und Aktionen der Bibliothek — als
-          Bühne mit einer Grundlinie, nicht als Kasten. Der zurückhaltende Akzentschein bleibt: Er
-          gibt der Seite ihre Atmosphäre, ohne eine Fläche zu behaupten, und läuft nach unten in
-          den Seitengrund aus. Der Auftritt ist ein gerichteter 200-ms-Einblendvorgang; reduzierte
-          Bewegung schaltet ihn ab (guidelines 4.5). */}
-      <Box
-        component="header"
-        sx={(theme) => ({
-          position: 'relative',
-          borderBottom: 1,
-          borderColor: 'divider',
-          pb: { xs: 2.5, md: 3 },
-          mb: 3,
-          '&::before': {
-            content: '""',
-            position: 'absolute',
-            // Der Schein greift über die linke Seitenkante hinaus, damit er als Lichtstimmung
-            // liest und nicht als Fläche mit einer eigenen Kante.
-            top: -24,
-            left: { xs: -20, md: -56 },
-            right: 0,
-            bottom: 0,
-            pointerEvents: 'none',
-            background: `radial-gradient(560px 240px at 0% 0%, ${alpha(theme.palette.primary.main, 0.1)}, transparent 72%)`,
-          },
-          '@keyframes opaaHeroIn': {
-            from: { opacity: 0, transform: 'translateY(6px)' },
-            to: { opacity: 1, transform: 'none' },
-          },
-          animation: 'opaaHeroIn 200ms cubic-bezier(0.22, 1, 0.36, 1) both',
-          '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
-        })}
-      >
-        <Stack
-          direction={{ xs: 'column', md: 'row' }}
-          sx={{
-            justifyContent: 'space-between',
-            alignItems: { md: 'flex-start' },
-            gap: 2,
-            position: 'relative',
-          }}
-        >
-          <Stack direction="row" spacing={2} sx={{ minWidth: 0, alignItems: 'flex-start' }}>
-            <Box
-              aria-hidden
-              sx={(theme) => ({
-                width: 48,
-                height: 48,
-                flexShrink: 0,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                borderRadius: '10px',
-                color: 'primary.main',
-                bgcolor: alpha(theme.palette.primary.main, 0.1),
-                border: `1px solid ${alpha(theme.palette.primary.main, 0.4)}`,
-              })}
-            >
-              <SourceTypeIcon sourceType={details?.sourceType} />
-            </Box>
-            <Box sx={{ minWidth: 0 }}>
-              {/* Eyebrow (guidelines 3.3) - the source type is no longer repeated here: it is the
-                  badge on the heading's baseline and the glyph beside it, and nowhere else. */}
-              <Typography
-                sx={{
-                  fontFamily: fontFamily.mono,
-                  fontSize: 10,
-                  fontWeight: 500,
-                  letterSpacing: '0.08em',
-                  color: 'primary.main',
-                  mb: 0.5,
-                }}
-              >
-                WISSENSBIBLIOTHEK
-              </Typography>
-              <AssetHeadlineEditor
-                // A fresh editor per library, so a draft never survives a change of library.
-                key={`headline-${libraryId}`}
-                name={library.name}
-                description={library.description}
-                idPrefix="library-detail"
-                nameLabel="Name der Bibliothek"
-                editLabel="Name und Beschreibung bearbeiten"
-                canEdit={canEdit}
-                onSave={saveHeadline}
-                badges={
-                  <>
-                    {details && (
-                      <MetaBadge>{documentSourceTypeLabel(details.sourceType)}</MetaBadge>
-                    )}
-                    <MetaBadge accent>{assetRoleLabel(library.myRole)}</MetaBadge>
-                    {isAdministrativeOverride && <MetaBadge>administrativ</MetaBadge>}
-                  </>
-                }
-              />
-              {/* ADR-0036, Entscheidung 6: Zustand und Adressat für jeden Leseberechtigten -
-                  ohne Datum, früheren Eigentümer oder Grund. */}
-              <Box sx={{ maxWidth: 640 }}>
-                <SuccessionStateNote succession={details?.succession} />
-              </Box>
-            </Box>
-          </Stack>
-          <Stack
-            direction="row"
-            spacing={1.5}
-            useFlexGap
-            sx={{ flexWrap: 'wrap', flexShrink: 0, pt: { md: 0.5 }, alignItems: 'flex-start' }}
-          >
-            {mayUseInSpace && (
-              <UseInSpaceButton
-                assetType="KNOWLEDGE_LIBRARY"
-                assetId={library.id}
-                name={library.name}
-              />
+      <AssetDetailHeader
+        assetType="KNOWLEDGE_LIBRARY"
+        assetId={libraryId}
+        name={library.name}
+        description={library.description}
+        isPublic={library.reach.allAccounts}
+        badges={
+          <>
+            {details && <MetaBadge>{documentSourceTypeLabel(details.sourceType)}</MetaBadge>}
+            <MetaBadge accent>{assetRoleLabel(library.myRole)}</MetaBadge>
+            {isAdministrativeOverride && <MetaBadge>administrativ</MetaBadge>}
+          </>
+        }
+        headline={{
+          idPrefix: 'library-detail',
+          nameLabel: 'Name der Bibliothek',
+          editLabel: 'Name und Beschreibung bearbeiten',
+          canEdit,
+          onSave: saveHeadline,
+        }}
+        extent={`${(library.documentCount ?? 0).toLocaleString('de-DE')} ${
+          (library.documentCount ?? 0) === 1 ? 'Dokument' : 'Dokumente'
+        }`}
+        // #119: storageQuotaBytes/storageUsedBytes reach a caller with at least MANAGER only.
+        figures={
+          <>
+            {details?.storageQuotaBytes != null && details.storageUsedBytes != null && (
+              <HeaderFigure icon={<DataUsageIcon sx={{ fontSize: 16 }} />}>
+                {formatFileSize(details.storageUsedBytes)} von{' '}
+                {formatFileSize(details.storageQuotaBytes)} Speicherkontingent belegt
+              </HeaderFigure>
             )}
-            {connectorSourceType && canTrigger && (
-              <>
+            {connectorSourceType && canTrigger && !isRunning && run.status !== 'IDLE' && (
+              <HeaderFigure
+                icon={
+                  <HistoryIcon
+                    sx={{
+                      fontSize: 16,
+                      color: run.status === 'COMPLETED' ? 'success.main' : 'error.main',
+                    }}
+                  />
+                }
+              >
+                Letzter Lauf: {run.status === 'COMPLETED' ? 'Abgeschlossen' : 'Fehlgeschlagen'}
+                {' · '}
+                {isRssFeedRun
+                  ? `${run.totalDocuments} Feed-Einträge, ${run.documentsSkipped} übersprungen, ${run.documentCount} indiziert (${run.documentsIndexedTotal} Dokumente insgesamt)${runFailedSuffix}`
+                  : `Dokumente: ${run.documentCount} verarbeitet${run.documentsSkipped > 0 ? ` (${run.documentsSkipped} übersprungen)` : ''}${runFailedSuffix}`}
+                {run.timestamp ? ` · ${formatIndexedAt(run.timestamp)}` : ''}
+              </HeaderFigure>
+            )}
+          </>
+        }
+        spaceCount={catalog.entry?.spaceCount}
+        responsible={responsibleParty({
+          ownerType: library.ownerType,
+          ownerLabel: library.ownerName,
+          succession: details?.succession ?? library.succession,
+        })}
+        // An upload library has no runs, so no lastIndexedAt; its date is then its last change.
+        updatedAt={listEntry?.lastIndexedAt ?? library.updatedAt}
+        favorite={catalog.entry?.favorite}
+        onFavoriteChange={catalog.setFavorite}
+        mayUseInSpace={mayUseInSpace}
+        onAssociated={associationsChanged}
+        onDelete={canDelete ? () => void handleDelete() : undefined}
+        actions={
+          connectorSourceType &&
+          canTrigger && (
+            <>
+              <Button
+                variant="contained"
+                size="small"
+                startIcon={<PlayArrowIcon />}
+                onClick={() => void triggerIndexing(libraryId, connectorSourceType)}
+                disabled={isRunning}
+              >
+                {isRunning ? 'Indizierung läuft …' : 'Jetzt indizieren'}
+              </Button>
+              {/* ADR-0023, Entscheidung 4 (#1139): "Jetzt indizieren" follows the library's state
+                  (incremental between two full runs); the full reconciliation can be forced. */}
+              {connectorConfiguration?.fullSyncRhythm && (
                 <Button
-                  variant="contained"
-                  startIcon={<PlayArrowIcon />}
-                  onClick={() => void triggerIndexing(libraryId, connectorSourceType)}
+                  variant="outlined"
+                  size="small"
+                  onClick={() => void triggerIndexing(libraryId, connectorSourceType, 'FULL')}
                   disabled={isRunning}
                 >
-                  {isRunning ? 'Indizierung läuft …' : 'Jetzt indizieren'}
+                  Vollabgleich starten
                 </Button>
-                {/* ADR-0023, Entscheidung 4 (#1139): "Jetzt indizieren" follows the library's state
-                    (incremental between two full runs); the full reconciliation can be forced. */}
-                {connectorConfiguration?.fullSyncRhythm && (
-                  <Button
-                    variant="outlined"
-                    onClick={() => void triggerIndexing(libraryId, connectorSourceType, 'FULL')}
-                    disabled={isRunning}
-                  >
-                    Vollabgleich starten
-                  </Button>
-                )}
-              </>
-            )}
-            {/* Das Löschen ist die eine folgenschwere Aktion der Seite - sie steht im „⋯"-Menü,
-                nirgends sonst (#1939). Für eine Upload-Bibliothek steht das Menü allein. */}
-            {canDelete && (
-              <>
-                <Tooltip title="Weitere Aktionen">
-                  <IconButton
-                    aria-label="Weitere Aktionen"
-                    aria-haspopup="menu"
-                    aria-expanded={actionMenuAnchor != null}
-                    onClick={(event) => setActionMenuAnchor(event.currentTarget)}
-                  >
-                    <MoreVertIcon />
-                  </IconButton>
-                </Tooltip>
-                <Menu
-                  anchorEl={actionMenuAnchor}
-                  open={actionMenuAnchor != null}
-                  onClose={() => setActionMenuAnchor(null)}
-                >
-                  <MenuItem
-                    onClick={() => {
-                      setActionMenuAnchor(null)
-                      void handleDelete()
-                    }}
-                    sx={{ color: 'error.main' }}
-                  >
-                    Bibliothek löschen
-                  </MenuItem>
-                </Menu>
-              </>
-            )}
-          </Stack>
-        </Stack>
-
-        {/* Key figures - each tile one flat statement ("87 Dokumente"), one element for screen
-            readers and text queries alike.
-            #119: storageQuotaBytes/storageUsedBytes are only sent to a caller with at least
-            MANAGER - a VIEWER's library object simply carries neither field.
-            #518 review, finding 1: which wording the last-run tile uses (feed entries vs. plain
-            document count) is decided by the library's own, unchanging sourceType. */}
-        <Stack
-          direction="row"
-          spacing={2.25}
-          useFlexGap
-          sx={{ flexWrap: 'wrap', rowGap: 1, mt: 2.5, position: 'relative' }}
-        >
-          <HeroStatTile icon={<DescriptionOutlinedIcon sx={{ fontSize: 16 }} />}>
-            {(library.documentCount ?? 0).toLocaleString('de-DE')}{' '}
-            {(library.documentCount ?? 0) === 1 ? 'Dokument' : 'Dokumente'}
-          </HeroStatTile>
-          {details?.storageQuotaBytes != null && details.storageUsedBytes != null && (
-            <HeroStatTile icon={<DataUsageIcon sx={{ fontSize: 16 }} />}>
-              {formatFileSize(details.storageUsedBytes)} von{' '}
-              {formatFileSize(details.storageQuotaBytes)} Speicherkontingent belegt
-            </HeroStatTile>
-          )}
-          {connectorSourceType && canTrigger && !isRunning && run.status !== 'IDLE' && (
-            <HeroStatTile
-              icon={
-                <Box
-                  component="span"
-                  sx={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 0.75,
-                    color: run.status === 'COMPLETED' ? 'success.main' : 'error.main',
-                  }}
-                >
-                  <HistoryIcon sx={{ fontSize: 16 }} />
-                </Box>
-              }
-            >
-              Letzter Lauf: {run.status === 'COMPLETED' ? 'Abgeschlossen' : 'Fehlgeschlagen'}
-              {' · '}
-              {isRssFeedRun
-                ? `${run.totalDocuments} Feed-Einträge, ${run.documentsSkipped} übersprungen, ${run.documentCount} indiziert (${run.documentsIndexedTotal} Dokumente insgesamt)${runFailedSuffix}`
-                : `Dokumente: ${run.documentCount} verarbeitet${run.documentsSkipped > 0 ? ` (${run.documentsSkipped} übersprungen)` : ''}${runFailedSuffix}`}
-              {run.timestamp ? ` · ${formatIndexedAt(run.timestamp)}` : ''}
-            </HeroStatTile>
-          )}
-        </Stack>
-
+              )}
+            </>
+          )
+        }
+        // ADR-0036, Entscheidung 6: state and addressee for every reader - no date, no former
+        // owner, no reason.
+        note={<SuccessionStateNote succession={details?.succession} />}
+      >
         {/* #1939: Der Umfang steht im Kopf nur noch als Kurzzeile mit Sprung in den Reiter
             „Quelle"; dort steht er vollständig, für jede Rolle. Die Warnung über einen
             unvollständig gelesenen Umfang bleibt dagegen hier: Sie betrifft den Bestand, den
@@ -798,7 +642,7 @@ export default function LibraryDetailPage() {
             </Stack>
           </Box>
         )}
-      </Box>
+      </AssetDetailHeader>
 
       {localError && (
         <Alert severity="error" sx={{ mb: 2 }} onClose={() => setLocalError(null)}>
@@ -945,7 +789,7 @@ export default function LibraryDetailPage() {
         hidden={activeTab !== 'freigaben'}
       >
         {/* Die Reihenfolge des Zielentwurfs (#1927): Eigentümer · Berechtigungen · Externer
-            Zugang · Zuordnungen · Diagnosesperre · Herleitung. Jeder Abschnitt speichert für sich;
+            Zugang · Diagnosesperre · Herleitung. Jeder Abschnitt speichert für sich;
             es gibt keinen gemeinsamen „Speichern"-Knopf über Abschnitte hinweg. */}
         <Stack>
           <AssetOwnerSection
@@ -985,12 +829,6 @@ export default function LibraryDetailPage() {
             </>
           )}
 
-          <AssetSpacesSection
-            assetType="KNOWLEDGE_LIBRARY"
-            assetId={libraryId}
-            canManage={canEdit}
-          />
-
           {details && (
             <PageSection
               title="Diagnosesperre"
@@ -1013,6 +851,25 @@ export default function LibraryDetailPage() {
 
           <AssetAccessDerivationSection assetType="KNOWLEDGE_LIBRARY" assetId={libraryId} />
         </Stack>
+      </Box>
+
+      <Box
+        role="tabpanel"
+        id="library-tabpanel-zuordnungen"
+        aria-labelledby="library-tab-zuordnungen"
+        hidden={activeTab !== 'zuordnungen'}
+      >
+        {activeTab === 'zuordnungen' && (
+          <AssetSpacesSection
+            assetType="KNOWLEDGE_LIBRARY"
+            assetId={libraryId}
+            name={library.name}
+            canManage={canEdit}
+            mayUseInSpace={mayUseInSpace}
+            refreshToken={associationsVersion}
+            onChanged={() => catalog.reload()}
+          />
+        )}
       </Box>
     </Box>
   )
