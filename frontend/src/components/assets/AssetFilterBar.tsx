@@ -35,6 +35,8 @@ interface AssetFilterBarProps {
   onToggle: (key: AssetFilterKey) => void
   /** After the chips, e.g. the count of a choice. */
   trailing?: ReactNode
+  /** The name of the `selectedOnly` chip, see {@link AssetFilterChips}. */
+  selectedOnlyLabel?: string
 }
 
 /**
@@ -48,6 +50,7 @@ export default function AssetFilterBar({
   filters,
   onToggle,
   trailing,
+  selectedOnlyLabel,
 }: AssetFilterBarProps) {
   const typeLabelId = `asset-filter-type-${useId()}`
   const showTypes = types !== undefined && types.offered.length > 1
@@ -123,7 +126,12 @@ export default function AssetFilterBar({
           </ToggleButtonGroup>
         </Box>
       )}
-      <AssetFilterChips separated={showTypes} value={filters} onToggle={onToggle} />
+      <AssetFilterChips
+        separated={showTypes}
+        value={filters}
+        onToggle={onToggle}
+        selectedOnlyLabel={selectedOnlyLabel}
+      />
       {trailing}
     </Box>
   )

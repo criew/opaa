@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { server } from '../../mocks/server'
@@ -124,6 +124,27 @@ describe('ChatInput: inserting a prompt', () => {
     await user.type(input, '{Enter}')
 
     expect(onSend).toHaveBeenCalledTimes(1)
+    expect(onSend.mock.calls[0]).toEqual([text])
+  })
+
+  // A prompt id belongs to its space; the chip must not travel into another space's chat.
+  it('drops the prompt chip when the chat moves to another space', async () => {
+    const user = userEvent.setup()
+    const { onSend, input } = renderInput()
+
+    await user.type(input, '/vermerk')
+    await screen.findByRole('option', { name: /\/vermerk/ })
+    await user.keyboard('{Enter}')
+    const text = 'Fasse den Sachverhalt als Vermerk für Erika Muster zusammen.'
+    await waitFor(() => expect(input).toHaveValue(text))
+    expect(screen.getByTestId('used-prompt-chip')).toBeInTheDocument()
+
+    act(() => {
+      useChatStore.setState({ spaceId: 'space-personal' })
+    })
+
+    expect(screen.queryByTestId('used-prompt-chip')).not.toBeInTheDocument()
+    await user.type(input, '{Enter}')
     expect(onSend.mock.calls[0]).toEqual([text])
   })
 

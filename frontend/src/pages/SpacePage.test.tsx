@@ -200,7 +200,7 @@ describe('SpacePage', () => {
     expect(await screen.findByText(/Diesem Space ist kein Wissen zugeordnet\./)).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Wissen zuordnen' })).toHaveAttribute(
       'href',
-      '/spaces/space-personal/settings/knowledge',
+      '/spaces/space-personal/settings/content',
     )
     expect(screen.getByText('Diesem Space ist noch nichts zugeordnet.')).toBeInTheDocument()
     expect(screen.queryByText(/alle für Sie lesbaren/)).not.toBeInTheDocument()

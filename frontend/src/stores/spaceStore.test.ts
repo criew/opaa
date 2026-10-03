@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
-import { useSpaceStore } from './spaceStore'
+import { ASSOCIATIONS_NOT_REFRESHED, useSpaceStore } from './spaceStore'
 import { resetAllStores } from './resettableStores'
 import { getSpaces } from '../services/spaceApi'
 
@@ -301,6 +301,8 @@ describe('spaceStore', () => {
   })
 
   it('associates a library and reloads the association list', async () => {
+    await useSpaceStore.getState().loadAssetAssociations('space-project')
+    mockGetSpaceAssetAssociations.mockClear()
     await useSpaceStore.getState().associateAsset('space-project', 'KNOWLEDGE_LIBRARY', 'lib-2')
 
     expect(mockAssociateSpaceAsset).toHaveBeenCalledWith(
@@ -311,7 +313,60 @@ describe('spaceStore', () => {
     expect(mockGetSpaceAssetAssociations).toHaveBeenCalledWith('space-project')
   })
 
+  // The tab "Inhalte" changes one association at a time; its list must not empty in between.
+  it('keeps the current associations while refreshing after its own change', async () => {
+    await useSpaceStore.getState().loadAssetAssociations('space-project')
+    const before = useSpaceStore.getState().assetAssociations
+    type Answer = Awaited<ReturnType<typeof mockGetSpaceAssetAssociations>>
+    let resolveReload: (value: Answer) => void = () => {}
+    mockGetSpaceAssetAssociations.mockImplementationOnce(
+      () => new Promise((resolve) => (resolveReload = resolve)),
+    )
+
+    const detaching = useSpaceStore.getState().detachAsset('space-project', 'lib-1')
+    await vi.waitFor(() => expect(mockGetSpaceAssetAssociations).toHaveBeenCalledTimes(2))
+
+    expect(useSpaceStore.getState().assetAssociations).toBe(before)
+    expect(useSpaceStore.getState().isLoadingAssetAssociations).toBe(false)
+    resolveReload({
+      hasAssociations: false,
+      hasUnreadableAssociations: false,
+      hasKnowledge: false,
+      hasReadableKnowledge: false,
+      items: [],
+    })
+    await detaching
+    expect(useSpaceStore.getState().assetAssociations).toEqual([])
+  })
+
+  // A change in a space left behind (an in-flight request, an undo) must not replace the list now
+  // on display with that space's.
+  it('leaves the associations of the space on display alone after a change in another', async () => {
+    await useSpaceStore.getState().loadAssetAssociations('space-shown')
+    mockGetSpaceAssetAssociations.mockClear()
+
+    await useSpaceStore.getState().detachAsset('space-left', 'lib-1')
+    await useSpaceStore.getState().associateAsset('space-left', 'KNOWLEDGE_LIBRARY', 'lib-1')
+
+    expect(mockGetSpaceAssetAssociations).not.toHaveBeenCalled()
+    expect(useSpaceStore.getState().assetAssociationsSpaceId).toBe('space-shown')
+  })
+
+  it('keeps the list and names the failed refresh after a successful change', async () => {
+    await useSpaceStore.getState().loadAssetAssociations('space-project')
+    const before = useSpaceStore.getState().assetAssociations
+    mockGetSpaceAssetAssociations.mockRejectedValueOnce(new Error('Netzwerkfehler'))
+
+    await useSpaceStore.getState().detachAsset('space-project', 'lib-1')
+
+    expect(useSpaceStore.getState().assetAssociations).toBe(before)
+    expect(useSpaceStore.getState().assetAssociationsSpaceId).toBe('space-project')
+    expect(useSpaceStore.getState().error).toBe(ASSOCIATIONS_NOT_REFRESHED)
+  })
+
   it('detaches a library and reloads the association list', async () => {
+    await useSpaceStore.getState().loadAssetAssociations('space-project')
+    mockGetSpaceAssetAssociations.mockClear()
     await useSpaceStore.getState().detachAsset('space-project', 'lib-1')
 
     expect(mockDetachSpaceAsset).toHaveBeenCalledWith('space-project', 'lib-1')

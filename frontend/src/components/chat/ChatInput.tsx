@@ -60,7 +60,13 @@ interface ChatInputProps {
     message: string,
     usedPrompt?: SelectedPrompt,
   ) => void | SendOutcome | Promise<void | SendOutcome>
+  /** Locks the whole input, typing included. */
   disabled?: boolean
+  /**
+   * An answer is still being generated: sending and changing the search scope are locked, so the
+   * running answer keeps the scope it was asked with; typing the next question stays possible.
+   */
+  answerPending?: boolean
   /** A question refused while another chat was shown; put into the input if it is empty. */
   returnedQuestion?: SendOutcome | null
   /** Called once `returnedQuestion` has been handled, whether it was taken or not. */
@@ -94,6 +100,14 @@ type MentionSuggestion = { kind: 'all' } | { kind: 'library'; library: SpaceLibr
  * What the next question searches is stated by the chip bar above it.
  */
 const INPUT_HINT = '@ für Quellen, / für Aktionen'
+
+/** The hint while an answer is pending: '@' changes the search scope and stays closed until then. */
+const PENDING_INPUT_HINT = '/ für Aktionen'
+
+/** A refused question goes back before whatever the person has typed since. */
+function withRestoredQuestion(question: string, draft: string): string {
+  return draft.trim() === '' ? question : `${question}\n\n${draft}`
+}
 
 /** From this share of {@link QUESTION_MAX_LENGTH} on, the input counts the characters. */
 const LENGTH_COUNTER_THRESHOLD = 0.9
@@ -142,6 +156,7 @@ function findActiveMention(text: string, cursor: number): ActiveMention | null {
 export default function ChatInput({
   onSend,
   disabled = false,
+  answerPending = false,
   returnedQuestion = null,
   onReturnedQuestionHandled,
 }: ChatInputProps) {
@@ -164,6 +179,9 @@ export default function ChatInput({
   const questionLength = value.trim().length
   const questionTooLong = questionLength > QUESTION_MAX_LENGTH
   const lengthCounter = lengthCounterText(questionLength)
+  const sendLocked = disabled || answerPending
+  // The running answer keeps the scope it was asked with.
+  const scopeLocked = sendLocked
 
   // The chip bar is the only search-scope control (#560): "Durchsucht wird, was in der Leiste
   // steht." scope 'all' -> the special @Space-Wissen chip, 'libraries' -> concrete chips,
@@ -205,8 +223,8 @@ export default function ChatInput({
   const [returnedTaken, setReturnedTaken] = useState(false)
   if (returnedQuestion !== seenReturned) {
     setSeenReturned(returnedQuestion)
-    const taken = !!returnedQuestion?.restoreDraft && value.trim() === ''
-    if (taken) setValue(returnedQuestion.restoreDraft!)
+    const taken = !!returnedQuestion?.restoreDraft
+    if (taken) setValue(withRestoredQuestion(returnedQuestion.restoreDraft!, value))
     setReturnedTaken(taken)
   }
   useEffect(() => {
@@ -376,7 +394,8 @@ export default function ChatInput({
     setValue(nextValue)
     const cursor = e.target.selectionStart ?? nextValue.length
     promptCommand.track(nextValue, cursor)
-    const detected = findActiveMention(nextValue, cursor)
+    // The '@' selection changes the search scope, so it stays closed while the scope is locked.
+    const detected = scopeLocked ? null : findActiveMention(nextValue, cursor)
     if (detected === null) {
       // Left the fragment entirely (space, deleted past '@', ...) - any earlier dismissal no
       // longer applies.
@@ -395,7 +414,8 @@ export default function ChatInput({
 
   const handleSend = () => {
     const trimmed = value.trim()
-    if (!trimmed || trimmed.length > QUESTION_MAX_LENGTH || promptCommand.isInserting) return
+    if (sendLocked || !trimmed || trimmed.length > QUESTION_MAX_LENGTH || promptCommand.isInserting)
+      return
     const outcome = promptCommand.selected
       ? onSend(trimmed, promptCommand.selected)
       : onSend(trimmed)
@@ -403,13 +423,14 @@ export default function ChatInput({
     setDismissedMentionStart(null)
     closeMention()
     promptCommand.reset()
-    // A refused question comes back without its prompt, unless the person has already started
-    // the next one or the input is gone.
+    // Sending by button would leave the focus on the button, which is locked from now on.
+    inputRef.current?.focus()
+    // A refused question comes back without its prompt, before any draft typed since, unless the
+    // input is gone.
     void Promise.resolve(outcome).then((result) => {
-      if (!result?.restoreDraft) return
-      const input = inputRef.current
-      if (!input || input.value.trim() !== '') return
-      setValue(result.restoreDraft)
+      const restoreDraft = result?.restoreDraft
+      if (!restoreDraft || !inputRef.current) return
+      setValue((draft) => withRestoredQuestion(restoreDraft, draft))
       result.onRestored?.()
     })
   }
@@ -535,7 +556,7 @@ export default function ChatInput({
             label="@Space-Wissen"
             size="small"
             color="primary"
-            onDelete={disabled ? undefined : clearScope}
+            onDelete={scopeLocked ? undefined : clearScope}
             // The default delete icon carries aria-hidden from MUI, so the accessible name has to
             // sit on the chip itself rather than on that icon (review finding #539).
             aria-label="Referenz Space-Wissen entfernen"
@@ -551,7 +572,7 @@ export default function ChatInput({
                   size="small"
                   variant="filled"
                   color="primary"
-                  onDelete={disabled ? undefined : () => removeReferencedLibrary(chip.libraryId)}
+                  onDelete={scopeLocked ? undefined : () => removeReferencedLibrary(chip.libraryId)}
                   aria-label={`Bibliotheksreferenz ${chip.library.name} entfernen`}
                 />
               )
@@ -575,7 +596,7 @@ export default function ChatInput({
                 size="small"
                 variant="outlined"
                 color="warning"
-                onDelete={disabled ? undefined : () => removeReferencedLibrary(chip.libraryId)}
+                onDelete={scopeLocked ? undefined : () => removeReferencedLibrary(chip.libraryId)}
                 aria-label="Nicht verfügbare Bibliotheksreferenz entfernen"
               />
             )
@@ -593,8 +614,8 @@ export default function ChatInput({
               label="@Space-Wissen nutzen"
               size="small"
               variant="outlined"
-              onClick={disabled ? undefined : setScopeAll}
-              disabled={disabled}
+              onClick={scopeLocked ? undefined : setScopeAll}
+              disabled={scopeLocked}
               aria-label="Wieder das Wissen des Space durchsuchen"
             />
           </>
@@ -607,7 +628,7 @@ export default function ChatInput({
                 size="small"
                 variant="outlined"
                 color="secondary"
-                onDelete={disabled ? undefined : removeDocumentTypeFilter}
+                onDelete={scopeLocked ? undefined : removeDocumentTypeFilter}
                 aria-label="Filter nach Dokumentart entfernen"
                 data-testid="metadata-filter-chip-document-type"
               />
@@ -618,7 +639,7 @@ export default function ChatInput({
                 size="small"
                 variant="outlined"
                 color="secondary"
-                onDelete={disabled ? undefined : removeDateFilter}
+                onDelete={scopeLocked ? undefined : removeDateFilter}
                 aria-label="Filter nach Datum entfernen"
                 data-testid="metadata-filter-chip-document-date"
               />
@@ -631,7 +652,7 @@ export default function ChatInput({
                 variant="outlined"
                 color="secondary"
                 onDelete={
-                  disabled
+                  scopeLocked
                     ? undefined
                     : () => {
                         if (metadataFilter)
@@ -650,7 +671,7 @@ export default function ChatInput({
                 variant="outlined"
                 color="secondary"
                 onDelete={
-                  disabled
+                  scopeLocked
                     ? undefined
                     : () => {
                         if (metadataFilter)
@@ -665,7 +686,7 @@ export default function ChatInput({
               scope={filterScope}
               filter={metadataFilter}
               onChange={setMetadataFilter}
-              disabled={disabled}
+              disabled={scopeLocked}
             />
           </>
         )}
@@ -733,7 +754,7 @@ export default function ChatInput({
         <IconButton
           color="primary"
           onClick={handleSend}
-          disabled={disabled || !value.trim() || questionTooLong || promptCommand.isInserting}
+          disabled={sendLocked || !value.trim() || questionTooLong || promptCommand.isInserting}
           aria-label="Senden"
           sx={{
             alignSelf: 'flex-end',
@@ -881,7 +902,7 @@ export default function ChatInput({
       {/* Mockup 1a (#591): the quiet line under the input, neutral since #1920. */}
       <Box sx={{ maxWidth: CHAT_MAX_WIDTH, mx: 'auto', mt: 0.875 }}>
         <Typography component="div" sx={{ fontSize: 12, color: 'text.secondary' }}>
-          {scopeNotice ?? INPUT_HINT}
+          {scopeNotice ?? (answerPending ? PENDING_INPUT_HINT : INPUT_HINT)}
         </Typography>
         {lengthCounter && (
           <Typography
