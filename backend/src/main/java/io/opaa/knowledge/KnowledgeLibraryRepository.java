@@ -131,6 +131,17 @@ public interface KnowledgeLibraryRepository extends JpaRepository<KnowledgeLibra
           + " where l.id = :id and l.sourceCredentials is not null")
   int eraseSourceCredentials(@Param("id") UUID id);
 
+  /**
+   * Whether the column holds credentials, readable or not - the entity reads an undecryptable value
+   * as {@code null}, a rule that must fail closed may not rely on that.
+   */
+  @Query(
+      value =
+          "select count(*) > 0 from knowledge_libraries where id = :id"
+              + " and source_credentials is not null",
+      nativeQuery = true)
+  boolean hasStoredSourceCredentials(@Param("id") UUID id);
+
   /** The push secret's counterpart of {@link #eraseSourceCredentials} - same reasoning (#1806). */
   @Modifying(flushAutomatically = true)
   @Query(

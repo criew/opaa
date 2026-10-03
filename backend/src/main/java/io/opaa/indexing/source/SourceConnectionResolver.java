@@ -18,6 +18,16 @@ public interface SourceConnectionResolver {
   SourceSettings resolve(KnowledgeLibrary library);
 
   /**
+   * What a change of {@code library}'s configuration is validated against: as {@link #resolve}, but
+   * without a secret the core would first have to obtain.
+   *
+   * @throws SourceConnectionBlockedException when the library may not be reached now
+   */
+  default SourceSettings resolveForChange(KnowledgeLibrary library) {
+    return resolve(library);
+  }
+
+  /**
    * The secret {@code library} is reached with now, {@code null} for none.
    *
    * @throws SourceConnectionBlockedException when the library may not be reached now

@@ -343,6 +343,18 @@ opaa:
       # object downloads one run keeps in flight while its listing goes on (a bound on the load
       # put on the store; 1 downloads serially, see S3Properties.DEFAULT_DOWNLOAD_CONCURRENCY).
       download-concurrency: ${OPAA_INDEXING_S3_DOWNLOAD_CONCURRENCY:2}
+    # #2152: bounds of the Nextcloud connector (io.opaa.indexing.source.nextcloud), see
+    # NextcloudProperties; 0 falls back to the default.
+    nextcloud:
+      max-file-size-bytes: ${OPAA_INDEXING_NEXTCLOUD_MAX_FILE_SIZE_BYTES:52428800}
+      request-timeout: ${OPAA_INDEXING_NEXTCLOUD_REQUEST_TIMEOUT:30s}
+      # requests one run may send before it ends as "unvollständig, wird fortgesetzt"
+      request-budget-per-run: ${OPAA_INDEXING_NEXTCLOUD_REQUEST_BUDGET_PER_RUN:20000}
+      max-entries-per-run: ${OPAA_INDEXING_NEXTCLOUD_MAX_ENTRIES_PER_RUN:1000000}
+      download-concurrency: ${OPAA_INDEXING_NEXTCLOUD_DOWNLOAD_CONCURRENCY:2}
+      max-response-bytes: ${OPAA_INDEXING_NEXTCLOUD_MAX_RESPONSE_BYTES:67108864}
+      # how long remembered folder ETags may spare a listing before a run lists every folder again
+      full-descent-interval: ${OPAA_INDEXING_NEXTCLOUD_FULL_DESCENT_INTERVAL:7d}
     # The shared event intake behind every push path (Confluence webhooks, S3 event
     # notifications): how long reported keys are collected before one targeted run checks them,
     # how many keys a batch holds before the connector's ordinary run takes over, and how often a

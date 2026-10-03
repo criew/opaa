@@ -20,6 +20,7 @@ import io.opaa.common.ValidationException;
 import io.opaa.connection.ConnectorReleaseService;
 import io.opaa.connection.LibraryConnectionService;
 import io.opaa.indexing.source.LibrarySourceConnectionResolver;
+import io.opaa.indexing.source.ServiceAccountTokens;
 import io.opaa.indexing.source.SourceConnectionTestResult;
 import io.opaa.indexing.source.SourceListing;
 import io.opaa.indexing.source.TestSourceConnectors;
@@ -32,8 +33,10 @@ import io.opaa.indexing.source.s3.S3TestSettings;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.LibraryAccessService;
+import io.opaa.security.TargetAddressValidator;
 import io.opaa.test.SourceTypes;
 import java.net.URI;
+import java.time.Clock;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -79,7 +82,8 @@ class SourceConnectionTestServiceS3Test {
             TestSourceConnectors.connectors().s3ConnectionService(s3ConnectionService).registry(),
             connectorRelease,
             new LibrarySourceConnectionResolver(),
-            mock(LibraryConnectionService.class));
+            mock(LibraryConnectionService.class),
+            new ServiceAccountTokens(TargetAddressValidator.disabled(), Clock.systemUTC()));
   }
 
   private KnowledgeLibrary s3Library(UUID libraryId, String url) {

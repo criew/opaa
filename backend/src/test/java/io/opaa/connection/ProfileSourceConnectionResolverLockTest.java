@@ -8,12 +8,18 @@ import static org.mockito.Mockito.when;
 import io.opaa.connection.profile.ConnectionProfileRepository;
 import io.opaa.connection.profile.ConnectorLockService;
 import io.opaa.connection.profile.LibraryConnectionRepository;
+import io.opaa.indexing.source.ServiceAccountTokens;
 import io.opaa.indexing.source.SourceConnectionBlockedException;
+import io.opaa.indexing.source.SourceConnectorRegistry;
+import io.opaa.indexing.source.TestSourceConnectors;
 import io.opaa.knowledge.KnowledgeLibrary;
+import io.opaa.security.TargetAddressValidator;
 import io.opaa.test.SourceTypes;
+import java.time.Clock;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.ObjectProvider;
 
 /**
  * A lock stops the start of a run and the fetch of an original ({@code resolve}), but not the
@@ -26,7 +32,18 @@ class ProfileSourceConnectionResolverLockTest {
   private final ConnectorLockService locks = mock(ConnectorLockService.class);
   private final ProfileSourceConnectionResolver resolver =
       new ProfileSourceConnectionResolver(
-          connections, mock(ConnectionProfileRepository.class), locks);
+          connections,
+          mock(ConnectionProfileRepository.class),
+          registry(),
+          new ServiceAccountTokens(TargetAddressValidator.disabled(), Clock.systemUTC()),
+          locks);
+
+  @SuppressWarnings("unchecked")
+  private static ObjectProvider<SourceConnectorRegistry> registry() {
+    ObjectProvider<SourceConnectorRegistry> provider = mock(ObjectProvider.class);
+    when(provider.getObject()).thenReturn(TestSourceConnectors.connectors().registry());
+    return provider;
+  }
 
   private final KnowledgeLibrary library =
       KnowledgeLibrary.ownedByUser(
