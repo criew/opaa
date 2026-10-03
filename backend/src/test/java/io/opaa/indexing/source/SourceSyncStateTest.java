@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
@@ -86,6 +87,34 @@ class SourceSyncStateTest {
     assertThat(state.getFullSyncCompletedAt())
         .as("the anchor does not restart the interval")
         .isEqualTo(completedAt);
+  }
+
+  @Test
+  void heldStartCursorsBecomeValidOnCompletionAndAFreshFullSyncDropsThemButNotTheValidOnes() {
+    SourceSyncState state = new SourceSyncState(UUID.randomUUID());
+    assertThat(state.changeCursors()).isEmpty();
+    assertThat(state.pendingChangeCursors()).isEmpty();
+
+    state.beginFullSync(UUID.randomUUID());
+    state.holdPendingChangeCursors(Map.of("drive:1", "100"));
+    state.beginFullSync(UUID.randomUUID());
+    assertThat(state.pendingChangeCursors())
+        .as("kept on resumption")
+        .containsEntry("drive:1", "100");
+    assertThat(state.changeCursors()).isEmpty();
+
+    state.completeFullSync(Instant.parse("2026-10-03T10:00:00Z"));
+    assertThat(state.changeCursors()).containsExactly(Map.entry("drive:1", "100"));
+    assertThat(state.pendingChangeCursors()).isEmpty();
+
+    state.beginFullSync(UUID.randomUUID());
+    state.holdPendingChangeCursors(Map.of("drive:1", "200"));
+    state.completeFullSync(Instant.parse("2026-10-03T11:00:00Z"));
+    state.beginFullSync(UUID.randomUUID());
+    assertThat(state.pendingChangeCursors()).as("a fresh full sync starts without").isEmpty();
+    assertThat(state.changeCursors())
+        .as("the valid cursors stay until a full sync completes")
+        .containsExactly(Map.entry("drive:1", "200"));
   }
 
   @Test

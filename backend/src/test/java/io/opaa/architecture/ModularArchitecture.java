@@ -201,10 +201,20 @@ public final class ModularArchitecture {
           "indexing.attachment",
           "indexing.document",
           "indexing.source",
-          "indexing.maintenance");
+          "indexing.maintenance",
+          "indexing.filesync");
 
   /** Every direct subpackage of this one, relative to the root, is a connector. */
   static final String CONNECTOR_PARENT = "indexing.source";
+
+  /** The shared file sync (ADR-0040, Entscheidung 1): connectors use it, it knows none of them. */
+  static final String FILE_SYNC = "indexing.filesync";
+
+  /** The only packages outside the root the file sync may use: the JDK and logging. */
+  static final List<String> FILE_SYNC_EXTERNALS = List.of("java.", "org.slf4j.");
+
+  /** Top-level packages, relative to the root, that speak to one provider. */
+  static final List<String> PROVIDER_ACCESS = List.of("s3");
 
   /** Packages of the separate {@code opaa-api} Gradle module: a library below all layers. */
   static final List<String> OUTSIDE_THE_LAYERING = List.of("api.dto", "api.types");
@@ -541,6 +551,45 @@ public final class ModularArchitecture {
         .allowEmptyShould(true);
   }
 
+  /**
+   * The file sync knows no provider: no provider access package, no connector, no third-party
+   * client - only the JDK, logging and the backend's neutral packages.
+   */
+  ArchRule theFileSyncKnowsNoProvider() {
+    return classes()
+        .that(
+            DescribedPredicate.describe(
+                "are in " + root + "." + FILE_SYNC,
+                javaClass -> {
+                  String relative = relative(javaClass.getPackageName());
+                  return relative != null
+                      && (relative.equals(FILE_SYNC) || relative.startsWith(FILE_SYNC + "."));
+                }))
+        .should(
+            dependOnly(
+                "depend on no provider, no connector and no third-party client",
+                (origin, target) -> {
+                  JavaClass base = target.getBaseComponentType();
+                  if (base.isPrimitive()) {
+                    return null;
+                  }
+                  String name = base.getName();
+                  String relative = relative(base.getPackageName());
+                  if (relative == null) {
+                    return FILE_SYNC_EXTERNALS.stream().anyMatch(name::startsWith)
+                        ? null
+                        : FILE_SYNC + " -> " + name + " is a third-party client";
+                  }
+                  if (isConnector(base)) {
+                    return FILE_SYNC + " -> " + relative + " knows a connector";
+                  }
+                  return !relative.isEmpty() && PROVIDER_ACCESS.contains(topLevel(relative))
+                      ? FILE_SYNC + " -> " + relative + " knows a provider"
+                      : null;
+                }))
+        .allowEmptyShould(true);
+  }
+
   ArchRule connectorsDoNotKnowEachOther() {
     return slices()
         .matching(root + "." + CONNECTOR_PARENT + ".(*)..")
@@ -572,6 +621,7 @@ public final class ModularArchitecture {
         subpackagesAreFreeOfCycles(),
         theIndexingCoreDependsOnlyDownward(),
         everyIndexingPackageIsInTheCore(),
+        theFileSyncKnowsNoProvider(),
         connectorsDoNotKnowEachOther(),
         noOneOutsideAConnectorKnowsIt(),
         webClassesResideInAWebPackage(),

@@ -148,7 +148,7 @@ public class S3IndexingExecutor implements SourceIndexingExecutor {
    * layer's own German sentence, before any object is touched.
    */
   ListingOutcome indexScopes(IndexingRun run) throws InterruptedException {
-    return withStore(run, sync -> sync.run(S3SourceSettingsJson.of(run.library()).scopes()));
+    return withStore(run, S3FullSync::run);
   }
 
   private ListingOutcome withStore(IndexingRun run, SyncBody body) throws InterruptedException {
@@ -172,11 +172,11 @@ public class S3IndexingExecutor implements SourceIndexingExecutor {
         syncStateRepository
             .findByLibraryId(libraryId)
             .orElseGet(() -> new SourceSyncState(libraryId));
-    try (store;
+    try (S3FileStore fileStore = new S3FileStore(store, settings);
         S3FullSync sync =
             new S3FullSync(
                 run,
-                store,
+                fileStore,
                 settings,
                 properties,
                 documentIngestService,

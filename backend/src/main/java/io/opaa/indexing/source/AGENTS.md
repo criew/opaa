@@ -32,6 +32,8 @@ von foundation, format und knowledge ab.
 - **Der Laufrahmen ist `IndexingRunTemplate`:** Der Körper zählt nur die Quelle auf, gibt jedes
   Element über `IndexingRun` weiter und meldet einen `ListingOutcome`. Fortschritt, Protokoll,
   Fehlerübersetzung und Abgleich durch Abwesenheit besitzt der Rahmen.
+- **Dateiablagen** implementieren `FileStore` aus `indexing.filesync` mit dessen neutralen
+  Fehlerarten; den Abgleich besitzt `FileSync`. Ihre Tests erweitern `FileStoreContract`.
 - **Push-Adapter** (`confluence.webhook`, `s3.events`) liegen über ihrem Konnektor; der Konnektor
   erreicht sie über einen eigenen Port (`ConfluencePushReceiver`, `S3PushReceiver`).
 - **Netzzugriff:** HTTP über `io.opaa.sourceaccess`, S3 über `io.opaa.s3`.
@@ -40,7 +42,7 @@ von foundation, format und knowledge ab.
 
 ## Verweise
 
-- ADRs (`docs/decisions/`): 0017, 0018, 0023, 0027, 0038
+- ADRs (`docs/decisions/`): 0017, 0018, 0023, 0027, 0038, 0040
 - Handbuch: `docs/handbuch/indexierung.md`, Abschnitt 4; `docs/handbuch/konnektor-*.md`
 - Strukturtests: `ModularArchitectureTest` (`connectorsDoNotKnowEachOther`,
   `noOneOutsideAConnectorKnowsIt`)

@@ -26,6 +26,12 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
   Optional<Document> findByLibraryIdAndFilePath(UUID libraryId, String filePath);
 
   /**
+   * Every row of {@code libraryId} whose {@code file_path} starts with {@code prefix}, attachments
+   * included; the derived query escapes {@code %} and {@code _} in the prefix.
+   */
+  List<Document> findByLibraryIdAndFilePathStartingWith(UUID libraryId, String prefix);
+
+  /**
    * Whether at least one attachment document for {@code sourceEntryUrl} (an RSS entry's own {@code
    * file_path}) already exists in {@code libraryId}. Backs the "an entry indexed before attachments
    * existed must still get them backfilled" check in {@code RssFeedIndexingExecutor#isUnchanged}'s
