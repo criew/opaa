@@ -486,6 +486,52 @@ Verworfen:
 - **Merkmale im Konnektor speichern:** Ein Konnektor hat keinen Zustand, und nur `FileSync` weiß,
   welcher Eintrag ungeklärt blieb.
 
+## Nachtrag: SMB (#2155, 03.10.2026)
+
+Windows-Dateifreigaben sind der Vollscan-Fall des Ports: kein Änderungsprotokoll, kein
+Ordnermerkmal. Paket `indexing.source.smb`, Typ `SMB`, nur über `filesync` und den Kern; keine
+neue Modulkante.
+
+1. **Bibliothek smbj** (Apache 2.0, Version 0.15.0 vom 08/2026): SMB 2.0.2 bis 3.1.1, Signatur,
+   Verschlüsselung; Laufzeitabhängigkeiten asn-one, mbassador und Bouncy Castle (über den
+   bestehenden Pin). SMB 1 spricht smbj nicht, OPAA also auch nicht. Der Zugriff liegt im
+   Konnektorpaket (`SmbShareClient`), nicht in foundation: Nur der Konnektor braucht ihn.
+2. **Ziel und Ursprung:** `sourceUrl` ist `smb://server[:port]/freigabe`, ein UNC-Pfad wird in
+   diese Form gebracht. Gespeichert wird sie normalisiert (Server klein, Port 445 weggelassen,
+   Freigabe prozentkodiert), damit die Ursprungsbindung des Kerns greift. Jeder Socket entsteht in
+   einer eigenen `SocketFactory`, die zuerst `TargetAddressValidator#validateHost` prüft. DFS-Verweise
+   folgt der Client nicht (`withDfsEnabled(false)`); Zugangsdaten verlassen den Server also nie.
+3. **Anmeldung:** NTLM mit Dienstkonto aus `source_credentials` (`DOMÄNE\Benutzer:Passwort`).
+   Signatur ist Pflicht, Verschlüsselung wird genutzt, wo der Server SMB 3 anbietet. Eine Sitzung
+   als Gast oder anonym gilt als abgelehnte Anmeldung. **Kerberos fehlt:** smbj bräuchte dafür ein
+   JAAS-Subject mit `krb5.conf`, KDC-Erreichbarkeit und Keytab oder Ticket; das ist eigene
+   Betriebsinfrastruktur je Installation und nicht Teil dieses Issues. Domänen, die NTLM
+   abgeschaltet haben, lassen sich deshalb noch nicht anbinden.
+4. **Identität und Merkmal:** `file_path` ist `smb://server/freigabe/pfad` (unkodiert). Umbenennen
+   oder Verschieben ist Löschen und Neuanlegen, wie bei Dateisystem und S3. Das Merkmal ist
+   `m:<Änderungszeit in Windows-Ticks>|<Größe>`. Kein Deep Link; das Original liest
+   `OriginalAccess` von der Freigabe.
+5. **Kein Ordnergedächtnis:** Die Änderungszeit eines Ordners ändert sich unter NTFS und Samba nur,
+   wenn sich ein direkter Eintrag ändert, nicht beim Schreiben einer Datei und nicht bei Änderungen
+   tiefer im Baum. Sie erfüllt den Vertrag von `FileStore#recall` nicht. Jeder Lauf listet alles.
+6. **Verknüpfungen werden nicht verfolgt:** Ein Eintrag mit Reparse-Punkt, dessen Tag ein
+   Namensersatz ist (symbolischer Link, Junction, Mount-Point) oder ein DFS-Verweis, wird als
+   „kein Dokument“ gezählt. Andere Reparse-Punkte (Deduplizierung) werden gelesen. Ein Samba-Server
+   löst Unix-Links selbst auf; ein Ordner, dessen Datei-ID der Lauf schon kennt, gilt deshalb als
+   Verknüpfung. Das beendet Schleifen. Zusätzlich endet der Abstieg nach 64 Ebenen.
+   Folgen hätte bedeutet: Schleifen, doppelte Dokumente und Ziele außerhalb der Freigabe.
+7. **Unlesbare Unterordner:** Ein Ordner, den das Dienstkonto nicht öffnen darf, wird übersprungen
+   und im Protokoll genannt. Der Rest wird gelistet, der Bereich gilt aber als unvollständig: Im
+   Bereich wird nichts entfernt. Ist der konfigurierte Ordner selbst unlesbar, gilt das sofort.
+8. **Ausgelagerte Dateien** (Offline, Recall bei Zugriff) werden nicht abgerufen; ein Abruf löste
+   eine Rückholung vom Archiv aus. Sie gelten als vorhanden.
+9. **Große Ordner und Budget:** Eine Seite hat höchstens `list-page-size` Einträge, ein Ordner wird
+   stapelweise über mehrere Seiten gelesen. Jede SMB-Nachricht kostet eine Anfrage des Budgets und
+   wird vor dem Senden abgelehnt, wenn es erschöpft ist; der Standard liegt deshalb höher als bei
+   Nextcloud (ein Download sind mindestens drei Nachrichten).
+10. **Tests:** Ein echter Samba (`dockurr/samba`, rund 100 MB, Start in rund 1 s, wenige MiB
+    Speicher) läuft im regulären `test`, wie der S3-Speicher. `FileStoreContract` läuft gegen ihn.
+
 ## Referenzen
 
 - [ADR-0017](0017-quellentypmodell-indizierung.md), [ADR-0018](0018-quellkonfiguration-in-der-bibliothek.md)

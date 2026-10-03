@@ -116,6 +116,15 @@
         '// renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)\\s*\\n\\s*static final String IMAGE = "[^:"]+:(?<currentValue>[^"]+)"',
       ],
     },
+    // Das Samba-Testcontainer-Image des SMB-Konnektors (#2155) ist als Java-Konstante gepinnt, für
+    // den docker-Manager unsichtbar. Gleicher matchString wie bei Keycloak und Nextcloud.
+    {
+      customType: 'regex',
+      managerFilePatterns: ['backend/src/test/java/io/opaa/indexing/source/smb/SambaFixture.java'],
+      matchStrings: [
+        '// renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)\\s*\\n\\s*static final String IMAGE = "[^:"]+:(?<currentValue>[^"]+)"',
+      ],
+    },
     // Der cdxgen-Aufruf in sbom.yml läuft über "pnpm dlx" statt über eine Manifestdatei — für den
     // github-actions-Manager unsichtbar.
     {
