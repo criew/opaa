@@ -194,7 +194,7 @@ export async function searchLibraries(page: Page, query: string): Promise<void> 
       const url = new URL(response.url())
       return url.pathname === '/api/v1/catalog' && url.searchParams.get('q') === query
     }),
-    page.getByRole('textbox', { name: 'Suchen' }).fill(query),
+    page.getByRole('searchbox', { name: 'Suchen' }).fill(query),
   ])
 }
 
@@ -219,7 +219,7 @@ export async function gotoLibraryDetail(page: Page, libraryName: string): Promis
       const url = new URL(response.url())
       return url.pathname === '/api/v1/catalog' && url.searchParams.get('q') === libraryName
     }),
-    page.getByRole('textbox', { name: 'Suchen' }).fill(libraryName),
+    page.getByRole('searchbox', { name: 'Suchen' }).fill(libraryName),
   ])
   await Promise.all([
     page.waitForURL(/\/libraries\/[^/]+$/),

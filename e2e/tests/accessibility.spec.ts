@@ -233,8 +233,12 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
       await page.emulateMedia({ colorScheme: "dark" });
       await expectNoSeriousA11yViolations(page, "Katalog (dunkles Farbschema)");
 
-      // „In Space verwenden": die Auswahl der kuratierten Spaces im Dialog.
-      await page.getByRole("button", { name: `„${name}“ in Space verwenden` }).click();
+      // „⋯" neben dem Stern: das geöffnete Menü, dann „In Space verwenden" mit der Auswahl der
+      // kuratierten Spaces im Dialog.
+      await page.getByRole("button", { name: `Weitere Aktionen für ‚${name}‘` }).click();
+      await expect(page.getByRole("menuitem", { name: "In Space verwenden" })).toBeVisible();
+      await expectNoSeriousA11yViolations(page, "Katalog, Menü Weitere Aktionen");
+      await page.getByRole("menuitem", { name: "In Space verwenden" }).click();
       await expect(
         page.getByRole("dialog").getByRole("button", { name: "Neuen Space damit anlegen" }),
       ).toBeVisible();
