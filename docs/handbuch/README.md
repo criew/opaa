@@ -29,6 +29,8 @@ flowchart LR
         Q3[Feed]
         Q4[Confluence]
         Q5[S3]
+        Q7[Google Drive]
+        Q8[Nextcloud]
         Q6[Upload]
     end
     Q1 --> I[Indexierung<br/>Aufzählen, Parsen, Chunken, Embedden]
@@ -36,6 +38,8 @@ flowchart LR
     Q3 --> I
     Q4 --> I
     Q5 --> I
+    Q7 --> I
+    Q8 --> I
     Q6 --> I
     I --> DB[(PostgreSQL<br/>Vektoren, Volltext, Metadaten)]
     DB --> S[Suche<br/>Rechtefilter, zwei Pfade, Fusion]
@@ -62,7 +66,7 @@ Drei Eigenschaften prägen alles Weitere:
 
 | Funktion | Ein Satz | Kapitel |
 |---|---|---|
-| Quellen anschließen | Verzeichnisse, Webverzeichnisse, Feeds, Confluence-Spaces und S3-Buckets werden per Lauf gespiegelt; Uploads sofort verarbeitet | [Indexierung](indexierung.md), Abschnitte 2 bis 4 |
+| Quellen anschließen | Verzeichnisse, Webverzeichnisse, Feeds, Confluence-Spaces, S3-Buckets, Google-Drive-Ablagen und Nextcloud-Ordner werden per Lauf gespiegelt; Uploads sofort verarbeitet | [Indexierung](indexierung.md), Abschnitte 2 bis 4 |
 | Formate verarbeiten | PDF, Office, OpenDocument, Tabellen, HTML, Markdown, E-Mail samt Anhängen; Zulassung nach Inhalt, nicht nach Endung | [Indexierung](indexierung.md), Formatübersicht |
 | Änderungen und Löschungen | Prüfsummen, Löscherkennung nur nach vollständiger Aufzählung, Anhänge als eigene Dokumente | [Indexierung](indexierung.md), Abschnitte 6 und 7 |
 | Metadaten | Titel, Dokumentart, Datum/Stand je Dokument, dazu Bibliotheks- und Formatfelder; Filter, Kontextpräfix, Beleg | [Metadaten](metadaten.md) |
@@ -92,7 +96,7 @@ Drei Eigenschaften prägen alles Weitere:
 | [Suche](suche.md) | Abfragestrecke: Suchbereich, Filter, Teilfragen, zwei Suchpfade, Fusion, Reranking, Vervollständigung, Antwort, Belegprüfung, Diagnose, Aufbewahrung der Rechtehistorie, Konfiguration |
 | [Metadaten](metadaten.md) | Kernfelder, Format- und Bibliotheksfelder, Vokabular, Ermittlung, Bestandslauf, Pflege, Wirkung in Filter, Kontextpräfix und Beleg |
 | [Fremdzugänge](fremdzugaenge.md) | Der Kanal für fremde KI-Werkzeuge: vor dem Einschalten, Schalter und Netzbereich, Freigabe einer Bibliothek, Zugangstokens aus Personen- und Verwaltungssicht, MCP-Server, Einrichtung in Claude Code, Cursor, VS Code und OpenCode, Kontingent und Abflussalarm, Protokollierung, Störungssuche, Prüfliste nach einer Wiederherstellung |
-| Konnektoren: [Dateisystem](konnektor-filesystem.md), [Webverzeichnis](konnektor-http-directory.md), [Feed](konnektor-rss-feed.md), [Confluence](konnektor-confluence.md), [S3](konnektor-s3.md) | je Quellentyp: Einrichtung, Schutzmechanismen, Betriebsarten, Löschsemantik, Grenzwerte, Fehlerbilder |
+| Konnektoren: [Dateisystem](konnektor-filesystem.md), [Webverzeichnis](konnektor-http-directory.md), [Feed](konnektor-rss-feed.md), [Confluence](konnektor-confluence.md), [S3](konnektor-s3.md), [Google Drive](konnektor-google-drive.md), [Nextcloud](konnektor-nextcloud.md) | je Quellentyp: Einrichtung, Schutzmechanismen, Betriebsarten, Löschsemantik, Grenzwerte, Fehlerbilder |
 | Formate: [PDF](format-pdf.md), [Word](format-docx.md), [PowerPoint](format-pptx.md), [Tabellen](format-tabular.md), [OpenDocument Text](format-odt.md), [OpenDocument Präsentation](format-odp.md), [HTML](format-html.md), [Markdown](format-markdown.md), [E-Mail](format-mail.md), [Confluence-Seite](format-confluence.md), [Auffang-Pipeline](format-fallback.md) | je Format: Zulassung, erkannte Struktur, Zuschnitt, Metadaten, Grenzen |
 
 ### In Vorbereitung
@@ -138,7 +142,7 @@ Begriffe, die in allen Kapiteln in genau dieser Bedeutung verwendet werden.
 | **Katalog** | Der eine Einstieg der Hauptnavigation für Bestände jeder Art, nur als Kacheln: genau die Wissens- und Prompt-Bibliotheken, die die Person lesen darf; was sie nicht lesen darf, erscheint dort nicht. Über „Neu" beginnt dort das Anlegen mit der Wahl der Art |
 | **Prompt** | Eine benannte, wiederverwendbare Anweisung in genau einer Prompt-Bibliothek, mit Titel, Befehl (`/name`), Text und Variablen |
 | **Variable** | Eine Stelle im Text eines Prompts, geschrieben als `{{name}}`, die beim Einsetzen gefüllt wird; `{{CURRENT_DATE}}` und `{{USER_NAME}}` füllt OPAA selbst |
-| **Quelle** | Woher eine Bibliothek ihre Dokumente bezieht: Upload oder ein Quellentyp mit Konnektor (Dateisystem, Webverzeichnis, Feed, Confluence, S3) |
+| **Quelle** | Woher eine Bibliothek ihre Dokumente bezieht: Upload oder ein Quellentyp mit Konnektor (Dateisystem, Webverzeichnis, Feed, Confluence, S3, Google Drive, Nextcloud) |
 | **Konnektor** | Der Teil der Indexierung, der die Eigenheiten eines Quellentyps kennt: Aufzählen, Abrufen, Betriebsarten |
 | **Indexierungslauf** (Lauf) | Ein Durchgang über die Quelle einer Bibliothek mit Status, Zählern und Protokoll |
 | **Betriebsart** | Ob ein Lauf die Quelle vollständig auflistet (und Verschwundenes entfernen darf) oder nur ergänzt |

@@ -2,6 +2,8 @@ import UploadFileIcon from '@mui/icons-material/UploadFile'
 import type { SourceTypeKey } from '../../../types/api'
 import { confluenceSource } from './confluenceSource'
 import { filesystemSource, httpDirectorySource, rssFeedSource } from './genericSources'
+import { googleDriveSource } from './googleDriveSource'
+import { nextcloudSource } from './nextcloudSource'
 import { s3Source } from './s3Source'
 import type { SourceRegistration } from './types'
 
@@ -27,6 +29,8 @@ const registrations: Record<SourceTypeKey, SourceRegistration> = {
   RSS_FEED: rssFeedSource,
   CONFLUENCE: confluenceSource,
   S3: s3Source,
+  GOOGLE_DRIVE: googleDriveSource,
+  NEXTCLOUD: nextcloudSource,
 }
 
 /** The registration of {@code sourceType}, undefined for a type this client has none for. */

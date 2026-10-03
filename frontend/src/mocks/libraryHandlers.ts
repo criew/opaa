@@ -210,22 +210,32 @@ export const libraryHandlers = [
         body.sourceType === 'HTTP_DIRECTORY' ||
         body.sourceType === 'RSS_FEED' ||
         body.sourceType === 'CONFLUENCE' ||
-        body.sourceType === 'S3'
+        body.sourceType === 'S3' ||
+        body.sourceType === 'GOOGLE_DRIVE' ||
+        body.sourceType === 'NEXTCLOUD'
           ? (body.sourceUrl ?? null)
           : null,
       sourceProxy:
         body.sourceType === 'HTTP_DIRECTORY' ||
         body.sourceType === 'RSS_FEED' ||
         body.sourceType === 'CONFLUENCE' ||
-        body.sourceType === 'S3'
+        body.sourceType === 'S3' ||
+        body.sourceType === 'GOOGLE_DRIVE' ||
+        body.sourceType === 'NEXTCLOUD'
           ? (body.sourceProxy ?? null)
           : null,
       sourceSettings:
-        body.sourceType === 'CONFLUENCE' || body.sourceType === 'S3'
+        body.sourceType === 'CONFLUENCE' ||
+        body.sourceType === 'S3' ||
+        body.sourceType === 'GOOGLE_DRIVE' ||
+        body.sourceType === 'NEXTCLOUD'
           ? (body.sourceSettings ?? null)
           : null,
       sourceCredentialsSet:
-        body.sourceType === 'S3' || body.sourceType === 'CONFLUENCE'
+        body.sourceType === 'S3' ||
+        body.sourceType === 'CONFLUENCE' ||
+        body.sourceType === 'GOOGLE_DRIVE' ||
+        body.sourceType === 'NEXTCLOUD'
           ? Boolean(body.sourceCredentials)
           : undefined,
       // sourceCredentials ist Nur-Schreiben (ADR-0018) - bewusst nicht in der Detailantwort.
@@ -233,7 +243,8 @@ export const libraryHandlers = [
         body.sourceType === 'HTTP_DIRECTORY' ||
         body.sourceType === 'RSS_FEED' ||
         body.sourceType === 'CONFLUENCE' ||
-        body.sourceType === 'S3'
+        body.sourceType === 'S3' ||
+        body.sourceType === 'NEXTCLOUD'
           ? Boolean(body.sourceInsecureSsl)
           : null,
     }
@@ -269,6 +280,25 @@ export const libraryHandlers = [
         entries: mockConfluenceSpaces.map((space) => ({ key: space.key, name: space.name })),
       } satisfies SourceBrowseResponse)
     }
+    if (sourceType === 'GOOGLE_DRIVE') {
+      // what the mock service account sees: one shared drive and one shared folder (ADR-0040)
+      if (!body.sourceCredentials && !body.libraryId) {
+        return HttpResponse.json(
+          {
+            error: 'sourceCredentials (Dienstkonto-Schlüssel) sind für die Auflistung erforderlich',
+          },
+          { status: 400 },
+        )
+      }
+      return HttpResponse.json({
+        complete: true,
+        entries: [
+          { key: 'drive:0AMockDrive', name: 'Projektablage' },
+          { key: 'folder:1MockFolder', name: 'Freigegebene Akten' },
+        ],
+        message: null,
+      } satisfies SourceBrowseResponse)
+    }
     if (sourceType === 'S3') {
       if (!body.sourceUrl) {
         return HttpResponse.json({ error: 'sourceUrl ist erforderlich' }, { status: 400 })
@@ -282,6 +312,23 @@ export const libraryHandlers = [
       return HttpResponse.json({
         complete: true,
         entries: ['protokolle', 'satzungen', 'archiv'].map((key) => ({ key, name: null })),
+        message: null,
+      } satisfies SourceBrowseResponse)
+    }
+    if (sourceType === 'NEXTCLOUD') {
+      if (!body.sourceCredentials && !body.libraryId) {
+        return HttpResponse.json(
+          { error: 'sourceCredentials sind für die Ordnerauswahl erforderlich' },
+          { status: 400 },
+        )
+      }
+      return HttpResponse.json({
+        complete: true,
+        entries: [
+          { key: '/Projekte', name: 'Projekte' },
+          { key: '/Bauamt', name: 'Bauamt (Gruppenordner)' },
+          { key: '/Satzungen', name: 'Satzungen (Freigabe)' },
+        ],
         message: null,
       } satisfies SourceBrowseResponse)
     }
@@ -301,6 +348,25 @@ export const libraryHandlers = [
       sourceUrl?: string | null
       sourceCredentials?: string | null
       sourceSettings?: Record<string, unknown> | null
+      libraryId?: string | null
+    }
+    if (body.sourceType === 'GOOGLE_DRIVE') {
+      // every requested area is reachable for the mock service account (ADR-0040)
+      const settings = body.sourceSettings as { scopes?: Record<string, unknown>[] } | null
+      const scopes = (settings?.scopes ?? []).map((scope) => ({
+        scope: scope.drive
+          ? `drive:${scope.drive}`
+          : scope.folder
+            ? `folder:${scope.folder}`
+            : 'myDrive',
+        reachable: true,
+      }))
+      return HttpResponse.json({
+        reachable: true,
+        credentialsVerified: true,
+        message: `Anmeldung erfolgreich; alle ${scopes.length} Bereiche sind erreichbar.`,
+        details: { scopes },
+      })
     }
     if (body.sourceType === 'S3') {
       // Mirrors S3ConnectionService#probe just enough for the mock: every scope passes with a
@@ -337,6 +403,27 @@ export const libraryHandlers = [
         documentCount: 12 * scopes.length,
         message: `${scopes.length === 1 ? 'Der Bereich ist' : `Alle ${scopes.length} Bereiche sind`} erreichbar, Auflistung und Lesen sind erlaubt. ${12 * scopes.length} Objekte gefunden.`,
         details: { scopes },
+      })
+    }
+    if (body.sourceType === 'NEXTCLOUD') {
+      // Mirrors NextcloudSourceConnector#testConnection: sign-in, then every folder read.
+      if (!body.sourceUrl) {
+        return HttpResponse.json({ error: 'sourceUrl ist erforderlich' }, { status: 400 })
+      }
+      if (!body.sourceCredentials && !body.libraryId) {
+        return HttpResponse.json({
+          reachable: false,
+          credentialsVerified: false,
+          message: 'Nextcloud hat Benutzername oder App-Passwort abgelehnt (HTTP 401).',
+        })
+      }
+      const folders = (body.sourceSettings as { folders?: string[] } | null | undefined)
+        ?.folders ?? ['/']
+      return HttpResponse.json({
+        reachable: true,
+        credentialsVerified: true,
+        documentCount: 12 * folders.length,
+        message: `Verbindung hergestellt; ${folders.length} Ordner lesbar.`,
       })
     }
     if (body.sourceType === 'CONFLUENCE') {
