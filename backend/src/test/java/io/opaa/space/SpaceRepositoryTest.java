@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.api.types.SpaceRole;
-import io.opaa.api.types.SpaceVisibility;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.organization.Organization;
@@ -84,12 +83,11 @@ class SpaceRepositoryTest {
     UUID userA = createUser();
     UUID userB = createUser();
 
-    Space eng =
-        new Space("Engineering", "Engineering docs", false, SpaceVisibility.PRIVATE, userA, org);
+    Space eng = new Space("Engineering", "Engineering docs", false, userA, org);
     eng.addMembership(SpaceMembership.ofUser(userA, SpaceRole.ADMIN, org));
     eng.addMembership(SpaceMembership.ofUser(userB, SpaceRole.CURATOR, org));
 
-    Space hr = new Space("HR", "HR docs", false, SpaceVisibility.PRIVATE, userB, org);
+    Space hr = new Space("HR", "HR docs", false, userB, org);
     hr.addMembership(SpaceMembership.ofUser(userB, SpaceRole.ADMIN, org));
 
     spaceRepository.saveAll(List.of(eng, hr));
@@ -107,7 +105,7 @@ class SpaceRepositoryTest {
   void findBySpaceIdReturnsMembersForSpace() {
     UUID owner = createUser();
     UUID curator = createUser();
-    Space space = new Space("Phoenix", "Project space", false, SpaceVisibility.PRIVATE, owner, org);
+    Space space = new Space("Phoenix", "Project space", false, owner, org);
     space.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, org));
     space.addMembership(SpaceMembership.ofUser(curator, SpaceRole.CURATOR, org));
 
@@ -124,8 +122,7 @@ class SpaceRepositoryTest {
   @Test
   void deletingSpaceRemovesMemberships() {
     UUID owner = createUser();
-    Space space =
-        new Space("Company", "Company-wide space", false, SpaceVisibility.PRIVATE, owner, org);
+    Space space = new Space("Company", "Company-wide space", false, owner, org);
     space.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, org));
 
     Space savedSpace = spaceRepository.save(space);
@@ -143,11 +140,9 @@ class SpaceRepositoryTest {
   void twoUsersCanEachOwnAProjectSpaceWithTheSameName() {
     UUID userA = createUser();
     UUID userB = createUser();
-    Space projectA =
-        new Space("Phoenix", "User A's project", false, SpaceVisibility.PRIVATE, userA, org);
+    Space projectA = new Space("Phoenix", "User A's project", false, userA, org);
     projectA.addMembership(SpaceMembership.ofUser(userA, SpaceRole.ADMIN, org));
-    Space projectB =
-        new Space("Phoenix", "User B's project", false, SpaceVisibility.PRIVATE, userB, org);
+    Space projectB = new Space("Phoenix", "User B's project", false, userB, org);
     projectB.addMembership(SpaceMembership.ofUser(userB, SpaceRole.ADMIN, org));
 
     List<Space> saved = spaceRepository.saveAll(List.of(projectA, projectB));
@@ -162,9 +157,7 @@ class SpaceRepositoryTest {
   @Test
   void savingASpaceWithANonExistentOwnerFailsInsteadOfSilentlyPersisting() {
     UUID nonExistentOwner = UUID.randomUUID();
-    Space space =
-        new Space(
-            "Ghost", "Owner does not exist", false, SpaceVisibility.PRIVATE, nonExistentOwner, org);
+    Space space = new Space("Ghost", "Owner does not exist", false, nonExistentOwner, org);
 
     assertThatThrownBy(() -> spaceRepository.saveAndFlush(space))
         .isInstanceOf(DataIntegrityViolationException.class)
@@ -176,13 +169,7 @@ class SpaceRepositoryTest {
     UUID owner = createUser();
     UUID nonExistentOrganization = UUID.randomUUID();
     Space space =
-        new Space(
-            "Ghost",
-            "Organization does not exist",
-            false,
-            SpaceVisibility.PRIVATE,
-            owner,
-            nonExistentOrganization);
+        new Space("Ghost", "Organization does not exist", false, owner, nonExistentOrganization);
 
     assertThatThrownBy(() -> spaceRepository.saveAndFlush(space))
         .isInstanceOf(DataIntegrityViolationException.class)

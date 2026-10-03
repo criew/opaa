@@ -1,12 +1,9 @@
 package io.opaa.space;
 
-import io.opaa.api.types.SpaceVisibility;
 import io.opaa.permission.AssetType;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.PrePersist;
@@ -45,10 +42,6 @@ public class Space {
   @Column(name = "archived", nullable = false)
   private boolean archived;
 
-  @Enumerated(EnumType.STRING)
-  @Column(name = "visibility", nullable = false, length = 20)
-  private SpaceVisibility visibility;
-
   @Column(name = "owner_id", nullable = false)
   private UUID ownerId;
 
@@ -71,17 +64,11 @@ public class Space {
   protected Space() {}
 
   public Space(
-      String name,
-      String description,
-      boolean isDefault,
-      SpaceVisibility visibility,
-      UUID ownerId,
-      UUID organizationId) {
+      String name, String description, boolean isDefault, UUID ownerId, UUID organizationId) {
     this.id = UUID.randomUUID();
     this.name = name;
     this.description = description;
     this.isDefault = isDefault;
-    this.visibility = visibility;
     this.ownerId = ownerId;
     this.organizationId = organizationId;
   }
@@ -108,12 +95,9 @@ public class Space {
     membership.assignSpace(null);
   }
 
-  public void updateDetails(String name, String description, SpaceVisibility visibility) {
+  public void updateDetails(String name, String description) {
     this.name = name;
     this.description = description;
-    if (visibility != null) {
-      this.visibility = visibility;
-    }
   }
 
   /**
@@ -175,10 +159,6 @@ public class Space {
 
   public String getDescription() {
     return description;
-  }
-
-  public SpaceVisibility getVisibility() {
-    return visibility;
   }
 
   public UUID getOwnerId() {

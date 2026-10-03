@@ -83,7 +83,7 @@ public interface ChatRepository extends JpaRepository<Chat, UUID> {
   boolean existsByAuthorId(UUID authorId);
 
   /**
-   * Backs the overview card's "Chats" figure and the archived-space visibility rule of {@code
+   * Backs the overview card's "Chats" figure and the archived-space listing rule of {@code
    * SpaceService#listSpaces} with one grouped query for the whole list instead of a lookup per
    * space. Counts only the author's own chats: chats are private to their author, so no figure over
    * another member's chats exists. Spaces without a chat of the author's have no row here - the

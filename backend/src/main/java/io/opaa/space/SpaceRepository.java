@@ -79,9 +79,9 @@ public interface SpaceRepository extends JpaRepository<Space, UUID> {
       value =
           "WITH new_space AS ("
               + "  INSERT INTO spaces"
-              + "    (id, name, description, is_default, visibility, owner_id, organization_id, created_at, updated_at)"
+              + "    (id, name, description, is_default, owner_id, organization_id, created_at, updated_at)"
               + "  VALUES"
-              + "    (:spaceId, :name, :description, true, 'PRIVATE', :ownerId, :organizationId, now(), now())"
+              + "    (:spaceId, :name, :description, true, :ownerId, :organizationId, now(), now())"
               + "  ON CONFLICT (owner_id) WHERE is_default DO NOTHING"
               + "  RETURNING id"
               + ") "

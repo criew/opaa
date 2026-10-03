@@ -12,7 +12,6 @@ import static org.mockito.Mockito.mock;
 
 import io.opaa.api.types.ChatRole;
 import io.opaa.api.types.SpaceRole;
-import io.opaa.api.types.SpaceVisibility;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.common.AccessDeniedException;
@@ -147,8 +146,7 @@ class ChatServiceIntegrationTest {
   }
 
   private UUID createSpaceWithMember(UUID memberId) {
-    Space space =
-        new Space("Fachbereich", null, false, SpaceVisibility.PRIVATE, memberId, organizationA);
+    Space space = new Space("Fachbereich", null, false, memberId, organizationA);
     space.addMembership(SpaceMembership.ofUser(memberId, SpaceRole.MEMBER, organizationA));
     return spaceRepository.save(space).getId();
   }

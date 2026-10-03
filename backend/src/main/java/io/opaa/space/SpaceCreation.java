@@ -1,6 +1,5 @@
 package io.opaa.space;
 
-import io.opaa.api.types.SpaceVisibility;
 import java.util.List;
 import java.util.UUID;
 
@@ -16,7 +15,6 @@ public record SpaceCreation(
     String name,
     String description,
     UUID ownerId,
-    SpaceVisibility visibility,
     List<SpaceMemberSeed> initialMembers,
     List<SpaceAssetSeed> assets,
     Boolean chatAutoCleanup) {
@@ -25,9 +23,8 @@ public record SpaceCreation(
       String name,
       String description,
       UUID ownerId,
-      SpaceVisibility visibility,
       List<SpaceMemberSeed> initialMembers,
       List<SpaceAssetSeed> assets) {
-    this(name, description, ownerId, visibility, initialMembers, assets, null);
+    this(name, description, ownerId, initialMembers, assets, null);
   }
 }

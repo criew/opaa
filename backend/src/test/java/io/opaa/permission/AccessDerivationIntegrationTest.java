@@ -9,7 +9,6 @@ import io.opaa.api.types.GroupKind;
 import io.opaa.api.types.GroupMechanism;
 import io.opaa.api.types.GroupOrigin;
 import io.opaa.api.types.SpaceRole;
-import io.opaa.api.types.SpaceVisibility;
 import io.opaa.api.types.SystemRole;
 import io.opaa.asset.AssetAccessDerivation;
 import io.opaa.asset.AssetAccessDerivationService;
@@ -302,7 +301,7 @@ class AccessDerivationIntegrationTest {
   }
 
   private UUID space(UUID ownerId, UUID groupId, SpaceRole role) {
-    Space space = new Space("Space", null, false, SpaceVisibility.PRIVATE, ownerId, organizationId);
+    Space space = new Space("Space", null, false, ownerId, organizationId);
     space.addMembership(SpaceMembership.ofUser(ownerId, SpaceRole.ADMIN, organizationId));
     space.addMembership(SpaceMembership.ofGroup(groupId, role, organizationId));
     UUID id = spaceRepository.save(space).getId();

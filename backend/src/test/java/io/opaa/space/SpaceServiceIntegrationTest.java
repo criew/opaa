@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.api.types.PermissionSubjectType;
 import io.opaa.api.types.SpaceRole;
-import io.opaa.api.types.SpaceVisibility;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.User;
@@ -161,7 +160,6 @@ class SpaceServiceIntegrationTest {
             "Engineering",
             "Engineering docs",
             ownerId,
-            null,
             List.of(SpaceMemberSeed.user(curatorId, SpaceRole.CURATOR)),
             null);
 
@@ -183,10 +181,10 @@ class SpaceServiceIntegrationTest {
 
     Space first =
         spaceService.createSpace(
-            new SpaceCreation("Vorhaben A", null, null, null, null, null), currentUserOf(userId));
+            new SpaceCreation("Vorhaben A", null, null, null, null), currentUserOf(userId));
     Space second =
         spaceService.createSpace(
-            new SpaceCreation("Vorhaben B", null, null, null, null, null), currentUserOf(userId));
+            new SpaceCreation("Vorhaben B", null, null, null, null), currentUserOf(userId));
 
     assertThat(first.isDefault()).isFalse();
     assertThat(second.isDefault()).isFalse();
@@ -197,8 +195,7 @@ class SpaceServiceIntegrationTest {
   @Test
   void anyUserCanCreateAProjectSpace() {
     UUID userId = createUser(organizationA);
-    SpaceCreation creation =
-        new SpaceCreation("Phoenix", "My project", null, null, List.of(), null);
+    SpaceCreation creation = new SpaceCreation("Phoenix", "My project", null, List.of(), null);
 
     Space created = spaceService.createSpace(creation, currentUserOf(userId));
 
@@ -210,8 +207,8 @@ class SpaceServiceIntegrationTest {
   void twoUsersCanEachOwnAProjectSpaceWithTheSameName() {
     UUID userA = createUser(organizationA);
     UUID userB = createUser(organizationA);
-    SpaceCreation requestA = new SpaceCreation("Phoenix", null, null, null, List.of(), null);
-    SpaceCreation requestB = new SpaceCreation("Phoenix", null, null, null, List.of(), null);
+    SpaceCreation requestA = new SpaceCreation("Phoenix", null, null, List.of(), null);
+    SpaceCreation requestB = new SpaceCreation("Phoenix", null, null, List.of(), null);
 
     Space createdA = spaceService.createSpace(requestA, currentUserOf(userA));
     Space createdB = spaceService.createSpace(requestB, currentUserOf(userB));
@@ -225,17 +222,10 @@ class SpaceServiceIntegrationTest {
   void listReturnsOnlyMembershipSpaces() {
     UUID userA = createUser(organizationA);
     UUID userB = createUser(organizationA);
-    Space eng =
-        new Space(
-            "Engineering",
-            "Engineering docs",
-            false,
-            SpaceVisibility.PRIVATE,
-            userA,
-            organizationA);
+    Space eng = new Space("Engineering", "Engineering docs", false, userA, organizationA);
     eng.addMembership(SpaceMembership.ofUser(userA, SpaceRole.ADMIN, organizationA));
     eng.addMembership(SpaceMembership.ofUser(userB, SpaceRole.CURATOR, organizationA));
-    Space hr = new Space("HR", "HR docs", false, SpaceVisibility.PRIVATE, userB, organizationA);
+    Space hr = new Space("HR", "HR docs", false, userB, organizationA);
     hr.addMembership(SpaceMembership.ofUser(userB, SpaceRole.ADMIN, organizationA));
     spaceRepository.saveAll(List.of(eng, hr));
 
@@ -255,19 +245,10 @@ class SpaceServiceIntegrationTest {
     // (ADR-0039, Entscheidung 2).
     UUID userA = createUser(organizationA);
     UUID userB = createUser(organizationA);
-    Space eng =
-        new Space(
-            "Engineering",
-            "Engineering docs",
-            false,
-            SpaceVisibility.PRIVATE,
-            userA,
-            organizationA);
+    Space eng = new Space("Engineering", "Engineering docs", false, userA, organizationA);
     eng.addMembership(SpaceMembership.ofUser(userA, SpaceRole.ADMIN, organizationA));
     eng.addMembership(SpaceMembership.ofUser(userB, SpaceRole.MEMBER, organizationA));
-    Space empty =
-        new Space(
-            "Leer", "Noch ohne Inhalte", false, SpaceVisibility.PRIVATE, userA, organizationA);
+    Space empty = new Space("Leer", "Noch ohne Inhalte", false, userA, organizationA);
     empty.addMembership(SpaceMembership.ofUser(userA, SpaceRole.ADMIN, organizationA));
     spaceRepository.saveAll(List.of(eng, empty));
     UUID libraryOne = createReadableLibrary(organizationA, userA);
@@ -311,8 +292,7 @@ class SpaceServiceIntegrationTest {
   void detailsIncludeMemberCountAndCurrentUsersRole() {
     UUID owner = createUser(organizationA);
     UUID member = createUser(organizationA);
-    Space space =
-        new Space("Phoenix", "Project docs", false, SpaceVisibility.PRIVATE, owner, organizationA);
+    Space space = new Space("Phoenix", "Project docs", false, owner, organizationA);
     space.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, organizationA));
     space.addMembership(SpaceMembership.ofUser(member, SpaceRole.MEMBER, organizationA));
     Space saved = spaceRepository.save(space);
@@ -329,8 +309,7 @@ class SpaceServiceIntegrationTest {
   void deletingSpaceRemovesMemberships() {
     UUID owner = createUser(organizationA);
     UUID curator = createUser(organizationA);
-    Space space =
-        new Space("Company", "Company docs", false, SpaceVisibility.PRIVATE, owner, organizationA);
+    Space space = new Space("Company", "Company docs", false, owner, organizationA);
     space.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, organizationA));
     space.addMembership(SpaceMembership.ofUser(curator, SpaceRole.CURATOR, organizationA));
     Space saved = spaceRepository.save(space);
@@ -347,8 +326,7 @@ class SpaceServiceIntegrationTest {
     // löschung-geschützt - a chat must survive its space being deleted, so the space itself must
     // not be deletable while it still contains one.
     UUID owner = createUser(organizationA);
-    Space space =
-        new Space("Company", "Company docs", false, SpaceVisibility.PRIVATE, owner, organizationA);
+    Space space = new Space("Company", "Company docs", false, owner, organizationA);
     space.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, organizationA));
     Space saved = spaceRepository.save(space);
     chatRepository.save(
@@ -362,9 +340,7 @@ class SpaceServiceIntegrationTest {
   @Test
   void deletingPersonalSpaceReturnsBadRequest() {
     UUID owner = createUser(organizationA);
-    Space personal =
-        new Space(
-            "My Documents", "Private docs", true, SpaceVisibility.PRIVATE, owner, organizationA);
+    Space personal = new Space("My Documents", "Private docs", true, owner, organizationA);
     personal.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, organizationA));
     Space saved = spaceRepository.save(personal);
 
@@ -378,8 +354,7 @@ class SpaceServiceIntegrationTest {
     UUID admin = createUser(organizationA);
     UUID member = createUser(organizationA);
     UUID curator = createUser(organizationA);
-    Space space =
-        new Space("Team", "Team docs", false, SpaceVisibility.PRIVATE, owner, organizationA);
+    Space space = new Space("Team", "Team docs", false, owner, organizationA);
     space.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, organizationA));
     space.addMembership(SpaceMembership.ofUser(admin, SpaceRole.ADMIN, organizationA));
     Space saved = spaceRepository.save(space);
@@ -407,8 +382,7 @@ class SpaceServiceIntegrationTest {
     // space is an ordinary space in every respect but deletion: what protects the owner is not the
     // room, it is that private content stays private regardless of who else is a member.
     UUID owner = createUser(organizationA);
-    Space defaultSpace =
-        new Space("My Documents", "Private", true, SpaceVisibility.PRIVATE, owner, organizationA);
+    Space defaultSpace = new Space("My Documents", "Private", true, owner, organizationA);
     defaultSpace.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, organizationA));
     Space saved = spaceRepository.save(defaultSpace);
 
@@ -425,8 +399,7 @@ class SpaceServiceIntegrationTest {
   @Test
   void theDefaultSpaceCannotBeDeleted() {
     UUID owner = createUser(organizationA);
-    Space defaultSpace =
-        new Space("My Documents", "Private", true, SpaceVisibility.PRIVATE, owner, organizationA);
+    Space defaultSpace = new Space("My Documents", "Private", true, owner, organizationA);
     defaultSpace.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, organizationA));
     Space saved = spaceRepository.save(defaultSpace);
 
@@ -438,8 +411,7 @@ class SpaceServiceIntegrationTest {
   void adminCannotRemoveOwner() {
     UUID owner = createUser(organizationA);
     UUID admin = createUser(organizationA);
-    Space space =
-        new Space("Team", "Team docs", false, SpaceVisibility.PRIVATE, owner, organizationA);
+    Space space = new Space("Team", "Team docs", false, owner, organizationA);
     space.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, organizationA));
     space.addMembership(SpaceMembership.ofUser(admin, SpaceRole.ADMIN, organizationA));
     Space saved = spaceRepository.save(space);
@@ -455,8 +427,7 @@ class SpaceServiceIntegrationTest {
   void ownerCanTransferOwnership() {
     UUID owner = createUser(organizationA);
     UUID admin = createUser(organizationA);
-    Space space =
-        new Space("Team", "Team docs", false, SpaceVisibility.PRIVATE, owner, organizationA);
+    Space space = new Space("Team", "Team docs", false, owner, organizationA);
     space.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, organizationA));
     space.addMembership(SpaceMembership.ofUser(admin, SpaceRole.ADMIN, organizationA));
     Space saved = spaceRepository.save(space);
@@ -476,8 +447,7 @@ class SpaceServiceIntegrationTest {
   void anAdminMemberCanTakeOverTheOwnership() {
     UUID owner = createUser(organizationA);
     UUID admin = createUser(organizationA);
-    Space space =
-        new Space("Team", "Team docs", false, SpaceVisibility.PRIVATE, owner, organizationA);
+    Space space = new Space("Team", "Team docs", false, owner, organizationA);
     space.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, organizationA));
     space.addMembership(SpaceMembership.ofUser(admin, SpaceRole.ADMIN, organizationA));
     Space saved = spaceRepository.save(space);
@@ -491,8 +461,7 @@ class SpaceServiceIntegrationTest {
   void aMemberBelowAdminStillCannotTransferOwnership() {
     UUID owner = createUser(organizationA);
     UUID curator = createUser(organizationA);
-    Space space =
-        new Space("Team", "Team docs", false, SpaceVisibility.PRIVATE, owner, organizationA);
+    Space space = new Space("Team", "Team docs", false, owner, organizationA);
     space.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, organizationA));
     space.addMembership(SpaceMembership.ofUser(curator, SpaceRole.CURATOR, organizationA));
     Space saved = spaceRepository.save(space);
@@ -508,8 +477,7 @@ class SpaceServiceIntegrationTest {
     UUID owner = createUser(organizationA);
     UUID admin = createUser(organizationA);
     UUID member = createUser(organizationA);
-    Space space =
-        new Space("Team", "Team docs", false, SpaceVisibility.PRIVATE, owner, organizationA);
+    Space space = new Space("Team", "Team docs", false, owner, organizationA);
     space.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, organizationA));
     space.addMembership(SpaceMembership.ofUser(admin, SpaceRole.ADMIN, organizationA));
     space.addMembership(SpaceMembership.ofUser(member, SpaceRole.MEMBER, organizationA));
@@ -530,8 +498,7 @@ class SpaceServiceIntegrationTest {
     UUID owner = createUser(organizationA);
     UUID member = createUser(organizationA);
     UUID target = createUser(organizationA);
-    Space space =
-        new Space("Team", "Team docs", false, SpaceVisibility.PRIVATE, owner, organizationA);
+    Space space = new Space("Team", "Team docs", false, owner, organizationA);
     space.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, organizationA));
     space.addMembership(SpaceMembership.ofUser(member, SpaceRole.MEMBER, organizationA));
     space.addMembership(SpaceMembership.ofUser(target, SpaceRole.CURATOR, organizationA));
@@ -562,8 +529,7 @@ class SpaceServiceIntegrationTest {
   void ownerWithBelowAdminMembershipCanNowPerformManagerActions() {
     UUID owner = createUser(organizationA);
     UUID newOwner = createUser(organizationA);
-    Space space =
-        new Space("Team", "Team docs", false, SpaceVisibility.PRIVATE, owner, organizationA);
+    Space space = new Space("Team", "Team docs", false, owner, organizationA);
     space.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, organizationA));
     // transferOwnership only requires the target to already be a member, of any role - it never
     // raises the new owner's own membership role (see that method's Javadoc), so a MEMBER can
@@ -586,8 +552,7 @@ class SpaceServiceIntegrationTest {
   void requestCrossingOrganizationBoundaryIsRejected() {
     UUID owner = createUser(organizationA);
     UUID outsider = createUser(organizationB);
-    Space space =
-        new Space("Team", "Team docs", false, SpaceVisibility.PRIVATE, owner, organizationA);
+    Space space = new Space("Team", "Team docs", false, owner, organizationA);
     space.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, organizationA));
     Space saved = spaceRepository.save(space);
 
@@ -599,8 +564,7 @@ class SpaceServiceIntegrationTest {
   void requestCrossingOrganizationBoundaryIsRejectedEvenForSystemAdmin() {
     UUID owner = createUser(organizationA);
     UUID otherOrgAdmin = createUser(organizationB);
-    Space space =
-        new Space("Team", "Team docs", false, SpaceVisibility.PRIVATE, owner, organizationA);
+    Space space = new Space("Team", "Team docs", false, owner, organizationA);
     space.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, organizationA));
     Space saved = spaceRepository.save(space);
 
@@ -638,8 +602,7 @@ class SpaceServiceIntegrationTest {
   void addMemberRejectsAUserFromAnotherOrganization() {
     UUID owner = createUser(organizationA);
     UUID outsider = createUser(organizationB);
-    Space space =
-        new Space("Team", "Team docs", false, SpaceVisibility.PRIVATE, owner, organizationA);
+    Space space = new Space("Team", "Team docs", false, owner, organizationA);
     space.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, organizationA));
     Space saved = spaceRepository.save(space);
 
@@ -657,8 +620,7 @@ class SpaceServiceIntegrationTest {
   @Test
   void addMemberRejectsANonExistentUserWithNotFoundInsteadOfAServerError() {
     UUID owner = createUser(organizationA);
-    Space space =
-        new Space("Team", "Team docs", false, SpaceVisibility.PRIVATE, owner, organizationA);
+    Space space = new Space("Team", "Team docs", false, owner, organizationA);
     space.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, organizationA));
     Space saved = spaceRepository.save(space);
 
@@ -678,8 +640,7 @@ class SpaceServiceIntegrationTest {
     // as new content in the specification's sense.
     UUID owner = createUser(organizationA);
     UUID newMember = createUser(organizationA);
-    Space space =
-        new Space("Team", "Team docs", false, SpaceVisibility.PRIVATE, owner, organizationA);
+    Space space = new Space("Team", "Team docs", false, owner, organizationA);
     space.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, organizationA));
     Space saved = spaceRepository.save(space);
     spaceService.archiveSpace(saved.getId(), currentUserOf(owner));
@@ -696,7 +657,7 @@ class SpaceServiceIntegrationTest {
   void createSpaceRejectsAnOwnerFromAnotherOrganizationEvenForSystemAdmin() {
     UUID admin = createUser(organizationA);
     UUID outsider = createUser(organizationB);
-    SpaceCreation request = new SpaceCreation("Engineering", null, outsider, null, List.of(), null);
+    SpaceCreation request = new SpaceCreation("Engineering", null, outsider, List.of(), null);
 
     assertThatThrownBy(() -> spaceService.createSpace(request, currentUserOf(admin, true)))
         .isInstanceOf(NotFoundException.class);
@@ -712,7 +673,6 @@ class SpaceServiceIntegrationTest {
             "Engineering",
             null,
             null,
-            null,
             List.of(SpaceMemberSeed.user(outsider, SpaceRole.MEMBER)),
             null);
 
@@ -725,8 +685,7 @@ class SpaceServiceIntegrationTest {
   void adminCannotChangeTheOwnersRoleAwayFromAdmin() {
     UUID owner = createUser(organizationA);
     UUID admin = createUser(organizationA);
-    Space space =
-        new Space("Team", "Team docs", false, SpaceVisibility.PRIVATE, owner, organizationA);
+    Space space = new Space("Team", "Team docs", false, owner, organizationA);
     space.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, organizationA));
     space.addMembership(SpaceMembership.ofUser(admin, SpaceRole.ADMIN, organizationA));
     Space saved = spaceRepository.save(space);
@@ -751,8 +710,7 @@ class SpaceServiceIntegrationTest {
   void systemAdminCanListMembersWithoutBeingAMember() {
     UUID owner = createUser(organizationA);
     UUID admin = createUser(organizationA);
-    Space space =
-        new Space("Team", "Team docs", false, SpaceVisibility.PRIVATE, owner, organizationA);
+    Space space = new Space("Team", "Team docs", false, owner, organizationA);
     space.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, organizationA));
     Space saved = spaceRepository.save(space);
 
@@ -763,8 +721,7 @@ class SpaceServiceIntegrationTest {
   void nonMemberCannotListMembers() {
     UUID owner = createUser(organizationA);
     UUID outsider = createUser(organizationA);
-    Space space =
-        new Space("Team", "Team docs", false, SpaceVisibility.PRIVATE, owner, organizationA);
+    Space space = new Space("Team", "Team docs", false, owner, organizationA);
     space.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, organizationA));
     Space saved = spaceRepository.save(space);
 
@@ -781,8 +738,7 @@ class SpaceServiceIntegrationTest {
   void ownerCanListMembersIncludingDisplayNames() {
     UUID owner = createUser(organizationA);
     UUID member = createUser(organizationA);
-    Space space =
-        new Space("Team", "Team docs", false, SpaceVisibility.PRIVATE, owner, organizationA);
+    Space space = new Space("Team", "Team docs", false, owner, organizationA);
     space.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, organizationA));
     space.addMembership(SpaceMembership.ofUser(member, SpaceRole.MEMBER, organizationA));
     Space saved = spaceRepository.save(space);
@@ -797,8 +753,7 @@ class SpaceServiceIntegrationTest {
   void memberCannotListMembers() {
     UUID owner = createUser(organizationA);
     UUID member = createUser(organizationA);
-    Space space =
-        new Space("Team", "Team docs", false, SpaceVisibility.PRIVATE, owner, organizationA);
+    Space space = new Space("Team", "Team docs", false, owner, organizationA);
     space.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, organizationA));
     space.addMembership(SpaceMembership.ofUser(member, SpaceRole.MEMBER, organizationA));
     Space saved = spaceRepository.save(space);
@@ -811,8 +766,7 @@ class SpaceServiceIntegrationTest {
   void curatorCannotListMembers() {
     UUID owner = createUser(organizationA);
     UUID curator = createUser(organizationA);
-    Space space =
-        new Space("Team", "Team docs", false, SpaceVisibility.PRIVATE, owner, organizationA);
+    Space space = new Space("Team", "Team docs", false, owner, organizationA);
     space.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, organizationA));
     space.addMembership(SpaceMembership.ofUser(curator, SpaceRole.CURATOR, organizationA));
     Space saved = spaceRepository.save(space);
@@ -829,8 +783,7 @@ class SpaceServiceIntegrationTest {
     // rather than assume "owner implies ADMIN".
     UUID owner = createUser(organizationA);
     UUID newOwner = createUser(organizationA);
-    Space space =
-        new Space("Team", "Team docs", false, SpaceVisibility.PRIVATE, owner, organizationA);
+    Space space = new Space("Team", "Team docs", false, owner, organizationA);
     space.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, organizationA));
     space.addMembership(SpaceMembership.ofUser(newOwner, SpaceRole.MEMBER, organizationA));
     Space saved = spaceRepository.save(space);
@@ -847,8 +800,7 @@ class SpaceServiceIntegrationTest {
     // ADMIN, owner and system admins.
     UUID owner = createUser(organizationA);
     UUID member = createUser(organizationA);
-    Space space =
-        new Space("Team", "Team docs", false, SpaceVisibility.PRIVATE, owner, organizationA);
+    Space space = new Space("Team", "Team docs", false, owner, organizationA);
     space.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, organizationA));
     space.addMembership(SpaceMembership.ofUser(member, SpaceRole.MEMBER, organizationA));
     Space saved = spaceRepository.save(space);
@@ -863,40 +815,9 @@ class SpaceServiceIntegrationTest {
   }
 
   @Test
-  void updateSpaceAppliesVisibilityInsteadOfSilentlyIgnoringIt() {
-    UUID owner = createUser(organizationA);
-    Space space =
-        new Space("Team", "Team docs", false, SpaceVisibility.PRIVATE, owner, organizationA);
-    space.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, organizationA));
-    Space saved = spaceRepository.save(space);
-
-    SpaceUpdate update = new SpaceUpdate("Team", "Team docs", SpaceVisibility.OPEN);
-    Space response = spaceService.updateSpace(saved.getId(), update, currentUserOf(owner));
-
-    assertThat(response.getVisibility()).isEqualTo(SpaceVisibility.OPEN);
-    Space reloaded = spaceRepository.findById(saved.getId()).orElseThrow();
-    assertThat(reloaded.getVisibility()).isEqualTo(SpaceVisibility.OPEN);
-  }
-
-  @Test
-  void updateSpaceKeepsVisibilityWhenNotProvided() {
-    UUID owner = createUser(organizationA);
-    Space space =
-        new Space("Team", "Team docs", false, SpaceVisibility.DISCOVERABLE, owner, organizationA);
-    space.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, organizationA));
-    Space saved = spaceRepository.save(space);
-
-    SpaceUpdate update = new SpaceUpdate("Team", "Team docs", null);
-    spaceService.updateSpace(saved.getId(), update, currentUserOf(owner));
-
-    Space reloaded = spaceRepository.findById(saved.getId()).orElseThrow();
-    assertThat(reloaded.getVisibility()).isEqualTo(SpaceVisibility.DISCOVERABLE);
-  }
-
-  @Test
   void createSpaceRejectsNameLongerThanTheAllowedLength() {
     UUID userId = createUser(organizationA);
-    SpaceCreation request = new SpaceCreation("x".repeat(256), null, null, null, List.of(), null);
+    SpaceCreation request = new SpaceCreation("x".repeat(256), null, null, List.of(), null);
 
     assertThatThrownBy(() -> spaceService.createSpace(request, currentUserOf(userId)))
         .isInstanceOf(ValidationException.class);
@@ -909,8 +830,7 @@ class SpaceServiceIntegrationTest {
   void deletingSpaceWithAForeignChatMentionsArchivingInTheConflictMessage() {
     UUID owner = createUser(organizationA);
     UUID otherMember = createUser(organizationA);
-    Space space =
-        new Space("Company", "Company docs", false, SpaceVisibility.PRIVATE, owner, organizationA);
+    Space space = new Space("Company", "Company docs", false, owner, organizationA);
     space.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, organizationA));
     space.addMembership(SpaceMembership.ofUser(otherMember, SpaceRole.MEMBER, organizationA));
     Space saved = spaceRepository.save(space);
@@ -931,8 +851,7 @@ class SpaceServiceIntegrationTest {
   void ownerCanArchiveASpaceThatCannotBeDeletedBecauseOfAForeignChat() {
     UUID owner = createUser(organizationA);
     UUID otherMember = createUser(organizationA);
-    Space space =
-        new Space("Company", "Company docs", false, SpaceVisibility.PRIVATE, owner, organizationA);
+    Space space = new Space("Company", "Company docs", false, owner, organizationA);
     space.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, organizationA));
     space.addMembership(SpaceMembership.ofUser(otherMember, SpaceRole.MEMBER, organizationA));
     Space saved = spaceRepository.save(space);
@@ -951,8 +870,7 @@ class SpaceServiceIntegrationTest {
   @Test
   void archivingAnAlreadyArchivedSpaceIsIdempotent() {
     UUID owner = createUser(organizationA);
-    Space space =
-        new Space("Company", "Company docs", false, SpaceVisibility.PRIVATE, owner, organizationA);
+    Space space = new Space("Company", "Company docs", false, owner, organizationA);
     space.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, organizationA));
     Space saved = spaceRepository.save(space);
     spaceService.archiveSpace(saved.getId(), currentUserOf(owner));
@@ -966,8 +884,7 @@ class SpaceServiceIntegrationTest {
   void onlyOwnerOrSystemAdminCanArchiveASpace() {
     UUID owner = createUser(organizationA);
     UUID otherMember = createUser(organizationA);
-    Space space =
-        new Space("Company", "Company docs", false, SpaceVisibility.PRIVATE, owner, organizationA);
+    Space space = new Space("Company", "Company docs", false, owner, organizationA);
     space.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, organizationA));
     space.addMembership(SpaceMembership.ofUser(otherMember, SpaceRole.MEMBER, organizationA));
     Space saved = spaceRepository.save(space);
@@ -979,8 +896,7 @@ class SpaceServiceIntegrationTest {
   @Test
   void theDefaultSpaceCannotBeArchived() {
     UUID owner = createUser(organizationA);
-    Space defaultSpace =
-        new Space("My Documents", "Private", true, SpaceVisibility.PRIVATE, owner, organizationA);
+    Space defaultSpace = new Space("My Documents", "Private", true, owner, organizationA);
     defaultSpace.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, organizationA));
     Space saved = spaceRepository.save(defaultSpace);
 
@@ -992,8 +908,7 @@ class SpaceServiceIntegrationTest {
   void listSpacesHidesAnArchivedSpaceFromAMemberWithoutAChatOfTheirOwnInIt() {
     UUID owner = createUser(organizationA);
     UUID otherMember = createUser(organizationA);
-    Space space =
-        new Space("Company", "Company docs", false, SpaceVisibility.PRIVATE, owner, organizationA);
+    Space space = new Space("Company", "Company docs", false, owner, organizationA);
     space.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, organizationA));
     space.addMembership(SpaceMembership.ofUser(otherMember, SpaceRole.MEMBER, organizationA));
     Space saved = spaceRepository.save(space);
@@ -1008,8 +923,7 @@ class SpaceServiceIntegrationTest {
     // nobody else - not even the owner - can see or remove.
     UUID owner = createUser(organizationA);
     UUID otherMember = createUser(organizationA);
-    Space space =
-        new Space("Company", "Company docs", false, SpaceVisibility.PRIVATE, owner, organizationA);
+    Space space = new Space("Company", "Company docs", false, owner, organizationA);
     space.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, organizationA));
     space.addMembership(SpaceMembership.ofUser(otherMember, SpaceRole.MEMBER, organizationA));
     Space saved = spaceRepository.save(space);
@@ -1031,8 +945,7 @@ class SpaceServiceIntegrationTest {
     // become unreachable except by guessing its URL.
     UUID owner = createUser(organizationA);
     UUID otherMember = createUser(organizationA);
-    Space space =
-        new Space("Company", "Company docs", false, SpaceVisibility.PRIVATE, owner, organizationA);
+    Space space = new Space("Company", "Company docs", false, owner, organizationA);
     space.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, organizationA));
     space.addMembership(SpaceMembership.ofUser(otherMember, SpaceRole.MEMBER, organizationA));
     Space saved = spaceRepository.save(space);
@@ -1050,8 +963,7 @@ class SpaceServiceIntegrationTest {
   void listSpacesKeepsAnArchivedSpaceVisibleForASystemAdminMember() {
     UUID owner = createUser(organizationA);
     UUID adminMember = createUser(organizationA);
-    Space space =
-        new Space("Company", "Company docs", false, SpaceVisibility.PRIVATE, owner, organizationA);
+    Space space = new Space("Company", "Company docs", false, owner, organizationA);
     space.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, organizationA));
     space.addMembership(SpaceMembership.ofUser(adminMember, SpaceRole.MEMBER, organizationA));
     Space saved = spaceRepository.save(space);
@@ -1078,7 +990,6 @@ class SpaceServiceIntegrationTest {
             null,
             null,
             null,
-            null,
             List.of(knowledge(readableLibrary), knowledge(nonExistentLibrary)));
 
     assertThatThrownBy(() -> spaceService.createSpace(request, currentUserOf(creator)))
@@ -1094,12 +1005,7 @@ class SpaceServiceIntegrationTest {
     UUID libraryTwo = createReadableLibrary(organizationA, creator);
     SpaceCreation request =
         new SpaceCreation(
-            "Datenraum",
-            null,
-            null,
-            null,
-            null,
-            List.of(knowledge(libraryOne), knowledge(libraryTwo)));
+            "Datenraum", null, null, null, List.of(knowledge(libraryOne), knowledge(libraryTwo)));
 
     Space created = spaceService.createSpace(request, currentUserOf(creator));
 

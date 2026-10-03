@@ -3,7 +3,6 @@ package io.opaa.chat;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.api.types.SpaceRole;
-import io.opaa.api.types.SpaceVisibility;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.organization.Organization;
@@ -387,14 +386,7 @@ class ChatAutoCleanupIntegrationTest {
   }
 
   private UUID createSpace(UUID owner, Instant cleanupEnabledAt) {
-    Space space =
-        new Space(
-            "Referat " + UUID.randomUUID(),
-            null,
-            false,
-            SpaceVisibility.PRIVATE,
-            owner,
-            organizationId);
+    Space space = new Space("Referat " + UUID.randomUUID(), null, false, owner, organizationId);
     space.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, organizationId));
     if (cleanupEnabledAt != null) {
       space.switchChatAutoCleanup(true, cleanupEnabledAt);

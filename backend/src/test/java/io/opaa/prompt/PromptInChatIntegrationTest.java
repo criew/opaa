@@ -10,7 +10,6 @@ import io.opaa.api.types.AssetGrantSubjectType;
 import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.PromptVariableType;
 import io.opaa.api.types.SpaceRole;
-import io.opaa.api.types.SpaceVisibility;
 import io.opaa.api.types.SystemRole;
 import io.opaa.asset.AssetGrantService;
 import io.opaa.asset.AssetGrantUpsert;
@@ -363,8 +362,7 @@ class PromptInChatIntegrationTest {
   }
 
   private UUID createSpace(UUID admin, UUID organizationId) {
-    Space created =
-        new Space("Referat 50", null, false, SpaceVisibility.PRIVATE, admin, organizationId);
+    Space created = new Space("Referat 50", null, false, admin, organizationId);
     created.addMembership(SpaceMembership.ofUser(admin, SpaceRole.ADMIN, organizationId));
     return spaceRepository.save(created).getId();
   }

@@ -51,7 +51,6 @@ class PersonalSpaceDeletionListener {
   private static Map<String, Object> spaceAuditPayload(Space space) {
     Map<String, Object> payload = new LinkedHashMap<>();
     payload.put("name", space.getName());
-    payload.put("visibility", space.getVisibility().name());
     payload.put("ownerId", space.getOwnerId().toString());
     return payload;
   }

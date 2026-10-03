@@ -9,7 +9,6 @@ import io.opaa.api.types.AssetGrantSubjectType;
 import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.ExternalAccessState;
 import io.opaa.api.types.SpaceRole;
-import io.opaa.api.types.SpaceVisibility;
 import io.opaa.api.types.SuccessionAddressee;
 import io.opaa.api.types.SuccessionKind;
 import io.opaa.api.types.SuccessionObjectType;
@@ -785,8 +784,7 @@ class SuccessionLifecycleIntegrationTest {
 
   private Space space(CurrentUser owner) {
     return spaceService.createSpace(
-        new SpaceCreation("Team", null, owner.id(), SpaceVisibility.PRIVATE, List.of(), null),
-        owner);
+        new SpaceCreation("Team", null, owner.id(), List.of(), null), owner);
   }
 
   private UUID group(String name, UUID... memberIds) {

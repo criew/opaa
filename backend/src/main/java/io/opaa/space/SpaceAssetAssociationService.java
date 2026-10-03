@@ -6,7 +6,6 @@ import io.opaa.api.types.AuditObjectType;
 import io.opaa.api.types.AuditOutcome;
 import io.opaa.api.types.NotificationType;
 import io.opaa.api.types.SpaceRole;
-import io.opaa.api.types.SpaceVisibility;
 import io.opaa.api.types.SuccessionObjectType;
 import io.opaa.asset.Asset;
 import io.opaa.asset.AssetAuthorization;
@@ -316,10 +315,9 @@ public class SpaceAssetAssociationService {
    * to.
    *
    * <p>Below MANAGER the answer carries the space and nothing else - neither the reader circle nor
-   * the creator is resolved - and an association in a PRIVATE space the caller is no member of is
-   * not named at all, only counted in {@link AssetSpaceLinks#hiddenCount}: a PRIVATE space keeps
-   * the promise of its own visibility, that only its members know it exists
-   * (docs/features/spaces-and-assets.md, "Space-Sichtbarkeit").
+   * the creator is resolved - and an association in a space the caller is no member of is not named
+   * at all, only counted in {@link AssetSpaceLinks#hiddenCount}: only the members of a space know
+   * it exists (docs/features/spaces-and-assets.md, "Space-Sichtbarkeit").
    */
   public AssetSpaceLinks listForAsset(AssetType assetType, UUID assetId, CurrentUser caller) {
     Asset asset = assetAuthorization.load(assetType, assetId, caller.organizationId());
@@ -363,19 +361,12 @@ public class SpaceAssetAssociationService {
   }
 
   /**
-   * Whether the caller may be told that {@code space} exists: a PRIVATE space only reaches its own
-   * members, every other visibility stands in the space directory anyway. A vanished space (the
-   * association outlives nothing, but the read is not transactional with a deletion) is treated as
-   * unnameable.
+   * Whether the caller may be told that {@code space} exists: only its own members may. A vanished
+   * space (the association outlives nothing, but the read is not transactional with a deletion) is
+   * treated as unnameable.
    */
   private boolean mayLearnOfSpace(Space space, CurrentUser caller) {
-    if (space == null) {
-      return false;
-    }
-    if (space.getVisibility() != SpaceVisibility.PRIVATE) {
-      return true;
-    }
-    return accessPolicy.effectiveRole(space, caller.id()) != null;
+    return space != null && accessPolicy.effectiveRole(space, caller.id()) != null;
   }
 
   /**

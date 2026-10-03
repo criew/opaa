@@ -71,7 +71,6 @@ final class SpaceResponseMapper {
             space.getCreatedAt(),
             space.getUpdatedAt())
         .description(space.getDescription())
-        .visibility(space.getVisibility())
         .userRole(detail.userRole())
         .successionOpen(detail.successionOpen())
         .lastTransfer(PermissionTransferResponseMapper.toResponse(lastTransfer))
@@ -90,7 +89,6 @@ final class SpaceResponseMapper {
             space.getCreatedAt(),
             space.getUpdatedAt())
         .description(space.getDescription())
-        .visibility(space.getVisibility())
         .userRole(overview.userRole())
         .successionOpen(overview.successionOpen())
         .succession(SuccessionStateResponseMapper.toStateResponse(overview.succession()))

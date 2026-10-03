@@ -15,7 +15,6 @@ import io.opaa.api.types.AuditOutcome;
 import io.opaa.api.types.AuditSubjectKind;
 import io.opaa.api.types.GroupKind;
 import io.opaa.api.types.SpaceRole;
-import io.opaa.api.types.SpaceVisibility;
 import io.opaa.api.types.SystemRole;
 import io.opaa.asset.AssetGrantService;
 import io.opaa.asset.AssetGrantUpsert;
@@ -564,8 +563,7 @@ class AuditEventRecordingIntegrationTest {
     UUID owner = createUser();
     Space created =
         spaceService.createSpace(
-            new SpaceCreation("Team Alpha", null, null, SpaceVisibility.PRIVATE, null, null),
-            currentUserOf(owner, false));
+            new SpaceCreation("Team Alpha", null, null, null, null), currentUserOf(owner, false));
     UUID spaceId = created.getId();
 
     assertThat(

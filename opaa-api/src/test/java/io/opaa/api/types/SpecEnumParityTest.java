@@ -55,7 +55,6 @@ class SpecEnumParityTest {
   static Stream<Arguments> mappedEnums() {
     return Stream.of(
         Arguments.of("SpaceRole", SpaceRole.values()),
-        Arguments.of("SpaceVisibility", SpaceVisibility.values()),
         Arguments.of("SystemRole", SystemRole.values()),
         Arguments.of("GroupKind", GroupKind.values()),
         Arguments.of("GroupOrigin", GroupOrigin.values()),

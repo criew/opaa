@@ -8,7 +8,6 @@ import io.opaa.api.types.AccessBasis;
 import io.opaa.api.types.AssetGrantSubjectType;
 import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.SpaceRole;
-import io.opaa.api.types.SpaceVisibility;
 import io.opaa.api.types.SuccessionKind;
 import io.opaa.api.types.SuccessionObjectType;
 import io.opaa.api.types.SystemRole;
@@ -283,8 +282,7 @@ class AssetShellTypeIndependenceIntegrationTest {
   }
 
   private UUID createSpace(UUID admin) {
-    Space space =
-        new Space("Testobjekte", null, false, SpaceVisibility.PRIVATE, admin, organizationId);
+    Space space = new Space("Testobjekte", null, false, admin, organizationId);
     space.addMembership(SpaceMembership.ofUser(admin, SpaceRole.ADMIN, organizationId));
     return spaceRepository.save(space).getId();
   }

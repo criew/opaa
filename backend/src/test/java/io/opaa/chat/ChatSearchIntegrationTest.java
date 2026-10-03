@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.api.types.ChatRole;
 import io.opaa.api.types.SpaceRole;
-import io.opaa.api.types.SpaceVisibility;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
@@ -403,9 +402,7 @@ class ChatSearchIntegrationTest {
   }
 
   private UUID createSpace(UUID owner, UUID... otherMembers) {
-    Space space =
-        new Space(
-            "Widerspruchsstelle", null, false, SpaceVisibility.PRIVATE, owner, organizationId);
+    Space space = new Space("Widerspruchsstelle", null, false, owner, organizationId);
     space.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, organizationId));
     for (UUID member : otherMembers) {
       space.addMembership(SpaceMembership.ofUser(member, SpaceRole.MEMBER, organizationId));
