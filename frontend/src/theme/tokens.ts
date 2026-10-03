@@ -61,12 +61,19 @@ export const offWhite = '#F6F8FB'
 /** Light muted surface and rules. */
 export const smoke = '#EEF2F7'
 
-/** Meaning-only colors (guidelines 2.1): success, warning, danger - never decorative. */
+/**
+ * Meaning-only colors (guidelines 2.1): success, warning - never decorative. Danger is a
+ * per-scheme role ({@link SchemeRoles.danger}) because it also serves as text colour.
+ */
 export const semanticColors = {
   success: '#16B77B',
   warning: '#F5B83D',
-  danger: '#E5484D',
 } as const
+
+/** Danger tone of the light schemes; >= 4.5:1 against white, off-white and smoke. */
+const dangerLight = '#CE2C31'
+/** Danger tone of the dark grounds; >= 4.5:1 against carbon and navy-900..700. */
+const dangerDark = '#FF6369'
 
 /**
  * Semantic roles - the vocabulary every component uses (guidelines 2.2). One value set per
@@ -106,6 +113,11 @@ export interface SchemeRoles {
   border: string
   /** Emphasised border (inputs, tables). */
   borderStrong: string
+  /**
+   * Danger - destructive actions and errors, as text, icon and filled surface. Proven >= 4.5:1
+   * as text against bg-1..3 of the light and dark scheme; bg-1 is the text on its surface.
+   */
+  danger: string
 }
 
 export const lightRoles: SchemeRoles = {
@@ -128,6 +140,7 @@ export const lightRoles: SchemeRoles = {
   accentPress: blue[900],
   border: gray[100],
   borderStrong: gray[200],
+  danger: dangerLight,
 }
 
 export const darkRoles: SchemeRoles = {
@@ -144,6 +157,7 @@ export const darkRoles: SchemeRoles = {
   accentPress: blue[900],
   border: carbon[800],
   borderStrong: carbon[700],
+  danger: dangerDark,
 }
 
 /**
@@ -165,6 +179,7 @@ export const navyRoles: SchemeRoles = {
   accentPress: blue[900],
   border: navy[700],
   borderStrong: navy[600],
+  danger: dangerDark,
 }
 
 /**
@@ -190,6 +205,7 @@ export const railRoles: SchemeRoles = {
   accentPress: blue[900],
   border: navy[800],
   borderStrong: navy[600],
+  danger: dangerDark,
 }
 
 /**

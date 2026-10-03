@@ -111,7 +111,7 @@ function buildTheme(mode: PaletteMode, roles: SchemeRoles, branding?: BrandingOv
           main: roles.fg2,
           contrastText: roles.bg1,
         },
-        error: { main: semanticColors.danger },
+        error: { main: roles.danger, contrastText: roles.bg1 },
         warning: { main: semanticColors.warning },
         success: { main: semanticColors.success },
         background: {

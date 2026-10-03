@@ -11,7 +11,6 @@ import {
   navyRoles,
   radius,
   railRoles,
-  semanticColors,
   white,
 } from './tokens'
 import { contrastRatio, TEXT_CONTRAST_MINIMUM } from '../utils/contrast'
@@ -145,7 +144,7 @@ describe('createAppTheme', () => {
     expect(theme.palette.text.secondary).toBe(gray[600])
     expect(theme.palette.primary.main).toBe(blue[700])
     expect(theme.palette.divider).toBe(lightRoles.border)
-    expect(theme.palette.error.main).toBe(semanticColors.danger)
+    expect(theme.palette.error.main).toBe(lightRoles.danger)
   })
 
   // The scrim behind a dialog or the Belegfenster takes the scheme's own ground: the dark scheme
