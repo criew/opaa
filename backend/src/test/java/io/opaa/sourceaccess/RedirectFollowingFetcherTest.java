@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.sun.net.httpserver.HttpServer;
@@ -566,6 +568,79 @@ class RedirectFollowingFetcherTest {
         .hasMessage("budget spent");
     assertThat(hits.get()).as("no retry was sent").isEqualTo(1);
     assertThat(sleeps).hasSize(1);
+  }
+
+  @Test
+  void sendWithBody_sendsMethodBodyAndHeadersAndReturnsARedirectUnfollowed()
+      throws IOException, InterruptedException {
+    AtomicReference<String> received = new AtomicReference<>();
+    AtomicInteger elsewhereHits = new AtomicInteger();
+    origin.createContext(
+        "/dav",
+        exchange -> {
+          received.set(
+              exchange.getRequestMethod()
+                  + " "
+                  + exchange.getRequestHeaders().getFirst("Depth")
+                  + " "
+                  + new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
+          redirectTo(exchange, originUrl + "/elsewhere");
+        });
+    origin.createContext(
+        "/elsewhere",
+        exchange -> {
+          elsewhereHits.incrementAndGet();
+          respond(exchange, 207, "<d:multistatus/>");
+        });
+
+    HttpResponse<InputStream> response =
+        RedirectFollowingFetcher.sendWithBody(
+            productionClient(),
+            "PROPFIND",
+            originUrl + "/dav",
+            "<d:propfind/>",
+            Duration.ofSeconds(5),
+            Map.of("Depth", "1"),
+            TargetAddressValidator.disabled(),
+            RateLimitHandling.NONE);
+
+    assertThat(response.statusCode()).isEqualTo(302);
+    assertThat(received.get()).isEqualTo("PROPFIND 1 <d:propfind/>");
+    assertThat(elsewhereHits.get()).as("a body is never sent to another location").isZero();
+  }
+
+  @Test
+  void sendWithBody_waitsOutAThrottleAndValidatesTheTargetBeforeEveryAttempt()
+      throws IOException, InterruptedException {
+    AtomicInteger hits = new AtomicInteger();
+    origin.createContext(
+        "/dav",
+        exchange -> {
+          exchange.getRequestBody().readAllBytes();
+          if (hits.getAndIncrement() == 0) {
+            throttle(exchange, "2");
+          } else {
+            respond(exchange, 207, "<d:multistatus/>");
+          }
+        });
+    RecordingListener listener = new RecordingListener();
+    TargetAddressValidator validator = mock(TargetAddressValidator.class);
+
+    HttpResponse<InputStream> response =
+        RedirectFollowingFetcher.sendWithBody(
+            productionClient(),
+            "PROPFIND",
+            originUrl + "/dav",
+            "<d:propfind/>",
+            Duration.ofSeconds(5),
+            Map.of(),
+            validator,
+            handling(RateLimitPolicy.of(3, Duration.ofMinutes(2)), listener));
+
+    assertThat(response.statusCode()).isEqualTo(207);
+    assertThat(sleeps).containsExactly(Duration.ofSeconds(2));
+    assertThat(listener.attempts).isEqualTo(2);
+    verify(validator, times(2)).validate(URI.create(originUrl + "/dav"));
   }
 
   private static HttpClient productionClient() {
