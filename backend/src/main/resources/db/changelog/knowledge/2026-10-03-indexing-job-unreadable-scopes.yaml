@@ -1,0 +1,9 @@
+databaseChangeLog:
+  - changeSet:
+      id: knowledge-2026-10-03-indexing-job-unreadable-scopes
+      author: opaa
+      comment: "Number of areas a fully listing run could not read and whose known documents it kept (FILESYSTEM). NULL for every run without such areas."
+      changes:
+        - sql:
+            sql: |
+              ALTER TABLE indexing_jobs ADD COLUMN unreadable_scope_count integer;
