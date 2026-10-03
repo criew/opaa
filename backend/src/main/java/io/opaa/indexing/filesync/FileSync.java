@@ -135,6 +135,9 @@ public final class FileSync implements AutoCloseable {
 
   private final List<PendingRemoval> pendingRemovals = new ArrayList<>();
 
+  /** The new cursor of every stream read cleanly, written once the run's removals are done. */
+  private final Map<String, String> pendingCursors = new LinkedHashMap<>();
+
   private long listed;
   private long deselected;
 
@@ -266,7 +269,8 @@ public final class FileSync implements AutoCloseable {
    * reported file goes the full sync's way; a deselected one and a reported removal take the
    * document with its attachments - a removal only for a document of the stream's own containers,
    * and only while all of them are reachable. A stream's new cursor is kept unless a file failed
-   * transiently; a durable failure (an unreadable format) does not hold it. A change of structure,
+   * transiently; a durable failure (an unreadable format) does not hold it. The cursors move only
+   * once every stream is read and the removals are applied, so a run that ends early loses none. A change of structure,
    * an expired cursor or a stream without a cursor make the next run a full sync. The folder memory
    * of every container the run changed is dropped, so its count guard stays sound. A new container
    * on an existing stream has no full listing behind it: the connector discards the run state when
@@ -292,6 +296,8 @@ public final class FileSync implements AutoCloseable {
         readStream(feed, stream.getKey(), stream.getValue(), cursor);
       }
       applyRemovals();
+      // all at once, after the removals: a run that ends early moves no cursor past a removal
+      pendingCursors.forEach(state::advanceChangeCursor);
     } finally {
       forgetChangedContainers();
       syncStateRepository.save(state);
@@ -363,7 +369,7 @@ public final class FileSync implements AutoCloseable {
       return;
     }
     if (reachable && transientFailures == transientBefore) {
-      state.advanceChangeCursor(feedKey, newStart);
+      pendingCursors.put(feedKey, newStart);
     }
   }
 

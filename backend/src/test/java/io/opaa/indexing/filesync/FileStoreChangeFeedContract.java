@@ -127,6 +127,98 @@ public abstract class FileStoreChangeFeedContract extends FileStoreContract {
                 assertThat(document.getSourceContainerKey()).isEqualTo(fixture.containerKey(to)));
   }
 
+  /** A run that ends while reading a later stream moves no cursor past a reported removal. */
+  @Test
+  void aRemovalSurvivesARunThatEndsInALaterStream() throws Exception {
+    fixture.put(0, "geht.txt", "Geht.");
+    fixture.put(1, "b.txt", "Zweiter Text.");
+    fullSync();
+
+    fixture.remove(0, "geht.txt");
+    fixture.changed(0, "geht.txt");
+    FileSyncHarness.Run aborted =
+        harness.changeRun(new EndingInSecondStream(fixture.open(PAGE_SIZE)));
+    FileSyncHarness.Run next = changeRun();
+
+    assertThat(aborted.failure()).isNotBlank();
+    assertThat(harness.storedPaths())
+        .as("the next run still reads the removal")
+        .doesNotContain(fixture.filePath(0, "geht.txt"));
+    assertThat(next.failure()).isNull();
+  }
+
+  /** A store whose change log ends the run on the second stream it is asked to read. */
+  private record EndingInSecondStream(FileStore store) implements FileStore {
+
+    @Override
+    public java.util.List<FileContainer> containers() {
+      return store.containers();
+    }
+
+    @Override
+    public FilePage list(FileContainer container, String continuation)
+        throws FileAccessException, InterruptedException {
+      return store.list(container, continuation);
+    }
+
+    @Override
+    public FileEntry head(FileContainer container, String id)
+        throws FileAccessException, InterruptedException {
+      return store.head(container, id);
+    }
+
+    @Override
+    public FetchedFile fetch(FileEntry entry, long maxBytes)
+        throws FileAccessException, InterruptedException {
+      return store.fetch(entry, maxBytes);
+    }
+
+    @Override
+    public java.util.Optional<ChangeFeed> changes() {
+      ChangeFeed feed = store.changes().orElseThrow();
+      java.util.Set<String> read = new java.util.LinkedHashSet<>();
+      return java.util.Optional.of(
+          new ChangeFeed() {
+            @Override
+            public String feedKey(FileContainer container) {
+              return feed.feedKey(container);
+            }
+
+            @Override
+            public String startCursor(String feedKey)
+                throws FileAccessException, InterruptedException {
+              return feed.startCursor(feedKey);
+            }
+
+            @Override
+            public ChangePage read(String feedKey, String cursor)
+                throws FileAccessException, InterruptedException {
+              read.add(feedKey);
+              if (read.size() > 1) {
+                throw new FileAccessException.RunEnding("Die Zugangsdaten wurden abgelehnt.");
+              }
+              return feed.read(feedKey, cursor);
+            }
+
+            @Override
+            public void requireReachable(FileContainer container)
+                throws FileAccessException, InterruptedException {
+              feed.requireReachable(container);
+            }
+          });
+    }
+
+    @Override
+    public io.opaa.sourceaccess.SourceRequestMeter meter() {
+      return store.meter();
+    }
+
+    @Override
+    public void close() {
+      store.close();
+    }
+  }
+
   @Test
   void theChangesOfEveryContainerAreRead() throws Exception {
     fixture.put(0, "a.txt", "Erster Text.");
