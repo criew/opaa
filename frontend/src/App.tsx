@@ -50,6 +50,7 @@ import { useUiStore } from './stores/uiStore'
 import { resolveThemeMode } from './theme/colorScheme'
 import BrandingSettingsPage from './pages/BrandingSettingsPage'
 import LlmModelManagementPage from './pages/LlmModelManagementPage'
+import ConnectionProfileManagementPage from './pages/ConnectionProfileManagementPage'
 import OidcProviderManagementPage from './pages/OidcProviderManagementPage'
 import RightsHistoryPage from './pages/RightsHistoryPage'
 import SearchIndexingAdminPage from './pages/SearchIndexingAdminPage'
@@ -70,6 +71,7 @@ const ADMIN_SECTIONS = [
   { label: 'Identitätsanbieter', to: '/admin/identity-providers' },
   { label: 'Verzeichnisabgleich', to: '/admin/directory-sync' },
   { label: 'E-Mail', to: '/admin/mail' },
+  { label: 'Zugänge', to: '/admin/connection-profiles' },
   { label: 'Fremdzugänge', to: '/admin/external-access' },
   { label: 'Fremdzugangsfreigaben', to: '/admin/library-releases' },
   { label: 'Suche & Indexierung', to: '/admin/search' },
@@ -213,6 +215,10 @@ export default function App() {
                   element={<ProviderGroupWorklistPage />}
                 />
                 <Route path="admin/directory-sync" element={<DirectorySyncPage />} />
+                <Route
+                  path="admin/connection-profiles"
+                  element={<ConnectionProfileManagementPage />}
+                />
                 <Route path="admin/capabilities" element={<CapabilityManagementPage />} />
                 <Route
                   path="admin/succession"
