@@ -300,7 +300,6 @@ export default function SpaceMemberList({
               closeMenu()
               void remove(menuMember)
             }}
-            sx={{ color: 'error.main' }}
           >
             Aus Space entfernen
           </MenuItem>
