@@ -41,8 +41,9 @@ interface AssetFilterBarProps {
 
 /**
  * The one filter row of catalog, asset choice and token selection (guidelines 5.11): search, then
- * the type as a titled toggle group, then the personal chips set apart from it. It wraps cleanly on
- * narrow screens. The search is named "Suchen" wherever the row stands.
+ * the type as a titled toggle group, then the personal chips set apart from it. Type, chips and
+ * `trailing` wrap below the search as one unit, so a chip never ends up alone on a line unless even
+ * that unit is wider than the row. The search is named "Suchen" wherever the row stands.
  */
 export default function AssetFilterBar({
   search,
@@ -89,50 +90,52 @@ export default function AssetFilterBar({
           htmlInput: { 'aria-label': 'Suchen', maxLength: search.maxLength },
         }}
       />
-      {showTypes && (
-        <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 1 }}>
-          <Typography
-            id={typeLabelId}
-            component="span"
-            sx={{ fontSize: 12.5, color: 'text.secondary' }}
-          >
-            Typ
-          </Typography>
-          <ToggleButtonGroup
-            size="small"
-            exclusive
-            value={types.value ?? ALL_TYPES}
-            onChange={(_event, next: string | null) => {
-              if (next) types.onChange(next === ALL_TYPES ? undefined : (next as AssetType))
-            }}
-            aria-labelledby={typeLabelId}
-          >
-            <ToggleButton value={ALL_TYPES} sx={{ px: 1.5 }}>
-              Alle
-            </ToggleButton>
-            {types.offered.map((definition) => {
-              const Icon = definition.Icon
-              return (
-                <ToggleButton
-                  key={definition.type}
-                  value={definition.type}
-                  sx={{ px: 1.5, gap: 0.75 }}
-                >
-                  <Icon aria-hidden sx={{ fontSize: 16 }} />
-                  {definition.label}
-                </ToggleButton>
-              )
-            })}
-          </ToggleButtonGroup>
-        </Box>
-      )}
-      <AssetFilterChips
-        separated={showTypes}
-        value={filters}
-        onToggle={onToggle}
-        selectedOnlyLabel={selectedOnlyLabel}
-      />
-      {trailing}
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
+        {showTypes && (
+          <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 1 }}>
+            <Typography
+              id={typeLabelId}
+              component="span"
+              sx={{ fontSize: 12.5, color: 'text.secondary' }}
+            >
+              Typ
+            </Typography>
+            <ToggleButtonGroup
+              size="small"
+              exclusive
+              value={types.value ?? ALL_TYPES}
+              onChange={(_event, next: string | null) => {
+                if (next) types.onChange(next === ALL_TYPES ? undefined : (next as AssetType))
+              }}
+              aria-labelledby={typeLabelId}
+            >
+              <ToggleButton value={ALL_TYPES} sx={{ px: 1.5 }}>
+                Alle
+              </ToggleButton>
+              {types.offered.map((definition) => {
+                const Icon = definition.Icon
+                return (
+                  <ToggleButton
+                    key={definition.type}
+                    value={definition.type}
+                    sx={{ px: 1.5, gap: 0.75 }}
+                  >
+                    <Icon aria-hidden sx={{ fontSize: 16 }} />
+                    {definition.label}
+                  </ToggleButton>
+                )
+              })}
+            </ToggleButtonGroup>
+          </Box>
+        )}
+        <AssetFilterChips
+          separated={showTypes}
+          value={filters}
+          onToggle={onToggle}
+          selectedOnlyLabel={selectedOnlyLabel}
+        />
+        {trailing}
+      </Box>
     </Box>
   )
 }
