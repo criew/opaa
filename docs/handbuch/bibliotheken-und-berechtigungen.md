@@ -88,10 +88,23 @@ OPAA eine **leere** Gruppe — eine Freigabe an sie erreicht niemanden.
 Die Bibliotheken, die eine Person lesen darf, findet sie im **Katalog**, dem einen Punkt der
 Hauptnavigation für jede Art von Bestand; die [Prompt-Bibliotheken](prompt-bibliotheken.md) stehen
 dort neben den Wissensbibliotheken. Rollen, Herleitung und „Nachfolge offen" gelten für beide Arten
-gleich; dafür stehen bei beiden dieselben Abschnitte — **„Berechtigungen"** als Liste auf der Seite
-(nicht mehr hinter einem Knopf „Rechte verwalten"), **„Zuordnungen"** und **„Warum sehe ich das?"**
-— bei einer Wissensbibliothek im Reiter „Freigaben", bei einer Prompt-Bibliothek im Reiter
-„Verwaltung".
+gleich, und beide Detailseiten sind gleich aufgebaut.
+
+**Der Kopf der Detailseite.** In der ersten Zeile stehen die Art als Etikett („Wissen" bzw.
+„Prompts"), das Welt-Symbol, wenn die Bibliothek an „Alle Konten" freigegeben ist, bei einer
+Wissensbibliothek die Quellart und dann die eigene Rolle; rechts davon der **Stern** für den
+eigenen Favoriten — er wirkt wie der Stern einer Kachel im Katalog — und das Menü **„⋯"** mit
+„In Space verwenden" und, abgesetzt, „Löschen" für den Eigentümer. Darunter stehen Name und
+Beschreibung; wer die Bibliothek verwaltet, ändert beide über den Stift daneben. Die Kennzahlen
+darunter nennen den Umfang (Dokumente bzw. Prompts), in wie vielen Räumen die Bibliothek
+bereitsteht, die zuständige Stelle und „Aktualisiert am". Ein „Zurück" gibt es nicht; der Weg
+zurück führt über den Katalog in der Hauptnavigation.
+
+**Die Reiter.** Eine Wissensbibliothek hat „Dokumente", „Quelle" (nur bei einer
+Konnektorbibliothek), „Metadaten", „Freigaben" und „Zuordnungen", eine Prompt-Bibliothek
+„Prompts", „Freigaben" und „Zuordnungen". Jede Rolle sieht jeden Reiter; wer nur liest, sieht ihn
+schreibgeschützt. **„Berechtigungen"** steht als Liste auf der Seite, nicht hinter einem Knopf
+„Rechte verwalten".
 
 Der Reiter **„Freigaben"** einer Wissensbibliothek führt sie in dieser Reihenfolge:
 
@@ -100,22 +113,23 @@ Der Reiter **„Freigaben"** einer Wissensbibliothek führt sie in dieser Reihen
 | **Eigentümer** | die zuständige Stelle mit Namen; über „Eigentum übergeben" reicht der Eigentümer sie an eine Person oder eine Gruppe weiter — mit Rückfrage, und die Eigentümerrolle geht mit. Auch die **Systemverwaltung** kann übergeben: So bekommt eine Bibliothek mit offener Nachfolge wieder eine handlungsfähige Stelle, ohne das Konto der ausgeschiedenen Person. Jede Übergabe steht mit Namen im Nachweisprotokoll |
 | **Berechtigungen** | Personen, Gruppen und „Alle Konten" mit Rolle, Befristung und Entzug, dazu das Formular „Freigeben". Für „Alle Konten" stehen dabei nur **Leser** und **Bearbeiter** zur Wahl — in der Liste wie im Formular; für die Systemverwaltung darunter die Obergrenze „Freigabe an Alle erlaubt" |
 | **Externer Zugang** | die Freigabe für Fremdzugänge |
-| **Zuordnungen** | die Spaces, in denen die Bibliothek als Datenquelle bereitsteht |
 | **Diagnosesperre** | ob die Bibliothek in einer fremden Suchdiagnose auftauchen darf |
 | **Warum sehe ich diese Wissensbibliothek?** | die eigene Herleitung |
 
 Jeder Abschnitt speichert für sich; einen gemeinsamen „Speichern"-Knopf über Abschnitte hinweg gibt
-es nicht. Eine lesende Rolle sieht Eigentümer, Zuordnungen, Diagnosesperre und die Herleitung —
+es nicht. Eine lesende Rolle sieht Eigentümer, Diagnosesperre und die Herleitung —
 schreibgeschützt.
 
-**Zuordnungen: wer welchen Space erfährt.** Die Liste der Spaces, in denen ein Bestand
-bereitsteht, sehen alle Leseberechtigten — aber nur so weit, wie der Space selbst sichtbar ist.
-Ab der Verwalterrolle steht jede Zuordnung mit Namen da, samt Urheber, Zeitpunkt und dem Hinweis
-„nicht alle Mitglieder lesen", und jede lässt sich einzeln lösen. Wer nur liest oder bearbeitet,
-sieht die Namen der Spaces, die ohnehin im Space-Verzeichnis stehen oder in denen er Mitglied ist;
-private Spaces, zu denen er nicht gehört, erscheinen nur als Zahl — „+ 2 weitere, die Sie nicht
-sehen können". Ein privater Space verspricht, dass nur seine Mitglieder von ihm wissen, und dieses
-Versprechen gilt auch hier.
+**Der Reiter „Zuordnungen": wer welchen Space erfährt.** Oben steht „In Space verwenden" mit
+derselben Auswahl wie im Katalog, darunter die Liste der Spaces, in denen der Bestand bereitsteht.
+Sie sehen alle Leseberechtigten — aber nur so weit, wie der Space selbst sichtbar ist. Ab der
+Verwalterrolle steht jede Zuordnung mit Namen da, samt „zugeordnet von", Datum und dem Hinweis
+„nicht alle Mitglieder lesen". Wer nur liest oder bearbeitet, sieht die Namen der Spaces, die
+ohnehin im Space-Verzeichnis stehen oder in denen er Mitglied ist; private Spaces, zu denen er
+nicht gehört, erscheinen nur als Zahl — „+ 2 weitere Spaces, die Sie nicht sehen dürfen". Ein
+privater Space verspricht, dass nur seine Mitglieder von ihm wissen, und dieses Versprechen gilt
+auch hier. **Lösen** lässt sich eine Zuordnung über „⋯" ihrer Zeile, „Aus Space lösen" — von der
+Verwaltung der Bibliothek und von jedem, der den Space kuratiert oder administriert.
 
 | Rolle | Darf |
 |---|---|
@@ -186,7 +200,7 @@ den Katalog, eingegrenzt auf die jeweilige Art.
 | **Filterzeile** | In einer Zeile, die auf schmalen Bildschirmen umbricht: Suche, dann die Art („Alle", „Wissen" oder „Prompts"), dann abgesetzt der Schalter „Favoriten" für die eigenen Favoriten. Die Filter wirken zusammen; Art und „Favoriten" stehen in der Adresse der Seite |
 | **Reihenfolge** | Fest: die eigenen Favoriten zuerst, dann nach Name von A bis Z. Eine Sortierauswahl gibt es nicht |
 | **Eintrag** | Eine Kachel: die Art als Etikett mit Symbol („Wissen" oder „Prompts"), direkt daneben das Welt-Symbol, wenn die Bibliothek an „Alle Konten" freigegeben ist; Stern für den eigenen Favoriten und „⋯" für weitere Aktionen; Name, Beschreibung, Umfang (Dokumente bzw. Prompts), in wie vielen Räumen sie bereitsteht, zuständige Stelle mit Personen- oder Gruppensymbol und „Aktualisiert am" oder der Zustand. Jede Kachel führt zur Detailseite der Bibliothek; eine Tabellenansicht gibt es nicht |
-| **In Space verwenden** | Im Menü „⋯" jeder Kachel und auf der Detailseite: ordnet die Bibliothek einem Raum zu (Abschnitt 5, „Zuordnen aus dem Katalog") |
+| **In Space verwenden** | Im Menü „⋯" jeder Kachel und auf der Detailseite (Menü „⋯" und Reiter „Zuordnungen"): ordnet die Bibliothek einem Raum zu (Abschnitt 5, „Zuordnen aus dem Katalog") |
 | **Seiten** | Die Einträge kommen seitenweise; über „Weitere laden" steht, wie viele von wie vielen angezeigt sind, und der Knopf hängt die nächste Seite an |
 | **Neu** | Oben rechts, nur wenn die Person mindestens ein Anlegerecht für eine Art hat (siehe unten, „Anlegen über ‚Neu'") |
 
@@ -446,8 +460,8 @@ allem Gewählten und einen Knopf „Zuordnen" gibt es dort nicht.
 
 ### Zuordnen aus dem Katalog: „In Space verwenden"
 
-Im Menü „⋯" jeder Kachel des Katalogs und auf der Detailseite einer Bibliothek steht **„In Space
-verwenden"**. Es öffnet die Liste der Räume, in denen die Person Kurator oder Administrator ist;
+Im Menü „⋯" jeder Kachel des Katalogs, im Menü „⋯" im Kopf der Detailseite einer Bibliothek und
+oben in ihrem Reiter „Zuordnungen" steht **„In Space verwenden"**. Es öffnet die Liste der Räume, in denen die Person Kurator oder Administrator ist;
 archivierte Räume fehlen, Räume mit dieser Bibliothek sind als „Bereits zugeordnet" gesperrt. Ein
 Klick auf einen Raum ordnet zu — vom Katalog aus sind es drei Klicks: „⋯", „In Space verwenden",
 der Raum. „Neuen Space damit anlegen" öffnet den Space-Assistenten mit der Bibliothek als bereits

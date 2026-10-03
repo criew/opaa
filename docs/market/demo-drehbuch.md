@@ -516,7 +516,8 @@ zugeordnet hat, steht als Übersicht in
 und trägt ein Welt-Symbol, wenn das Asset an alle Konten freigegeben ist; die Filterzeile ist Suche →
 Typ → Favoriten, die Reihenfolge fest (Favoriten zuerst, dann Name). Gebaut sind außerdem Stern und
 „⋯"-Menü mit „In Space verwenden", der Space-Assistent mit Kachelauswahl und der Hinweis auf nicht
-lesbare Zuordnungen (#2113, #2116, #2129).
+lesbare Zuordnungen (#2113, #2116, #2129). Die Detailseiten von Wissen und Prompts tragen denselben
+Kopf mit Stern und „⋯" und den Reiter „Zuordnungen" (#2208).
 
 Für die Teile 1 und 3 lohnen sich zwei Browserfenster, eines davon privat.
 
@@ -561,6 +562,18 @@ Für die Teile 1 und 3 lohnen sich zwei Browserfenster, eines davon privat.
     Kein Mitglied sieht den Hinweis aus Teil 3.
   - Die Gebührenfrage aus Frage 1 liefert dort für jedes Konto dieselbe Antwort aus der Satzung. Die
     Aktualitätsfrage aus Frage 3 bleibt ohne Pressemitteilung.
+- **5. Die Detailseite: derselbe Kopf für Wissen und Prompts** (Konto `maria.weber`):
+  1. Im „Katalog" die Kachel „Textbausteine Bürgerbüro" öffnen. Der Kopf zeigt das Etikett
+     „Prompts", das Welt-Symbol und die Rolle „Leser", rechts den gefüllten Stern (Marias Favorit)
+     und „⋯" mit „In Space verwenden". „Löschen" fehlt: Die Bibliothek gehört Andrea Vogt.
+  2. Darunter die Kennzahlen: vier Prompts, die Zahl der Spaces, Andrea Vogt mit Personensymbol und
+     „Aktualisiert am". Ein Stift fehlt, denn Maria liest nur.
+  3. Die Reiter heißen „Prompts", „Freigaben" und „Zuordnungen"; Maria sieht alle drei,
+     schreibgeschützt. Im Reiter „Zuordnungen" stehen die Spaces, in denen sie selbst Mitglied ist;
+     die übrigen erscheinen nur als Zahl, etwa die Amtsleitung.
+  4. Zum Vergleich „Interne Dienstanweisungen Meldewesen" öffnen: derselbe Kopf mit „Wissen", der
+     Quellart und „Eigentümer", im „⋯" zusätzlich „Löschen" — hier nicht ausführen.
+  - **Zeigt:** Jede Art von Bestand liest sich gleich; was jemand tun darf, steht an derselben Stelle.
 - **Zurücksetzen:** Wer einen Favoriten setzt oder entfernt, ändert nur die eigene Ordnung. Ein
   erneuter Seed setzt die Favoriten des Profils wieder, entfernt aber keinen zusätzlich gesetzten.
   Auf der öffentlichen Instanz teilen sich alle Besuchenden die Konten; einen in der Vorführung

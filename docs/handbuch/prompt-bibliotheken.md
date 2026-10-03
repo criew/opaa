@@ -93,7 +93,7 @@ Schritt „Freigaben":
    **Gruppeneigentum ist die haltbarere Wahl** für Prompts, die ein Referat gemeinsam pflegt.
 3. **Rechte** — optional vorgemerkte Rollen für **Personen und Gruppen**, die gleich nach dem
    Anlegen erteilt werden. Den Empfänger „Alle Konten" bietet der Assistent **nicht** an; diese
-   Freigabe wird erst an der fertigen Bibliothek erteilt, im Reiter „Verwaltung" unter
+   Freigabe wird erst an der fertigen Bibliothek erteilt, im Reiter „Freigaben" unter
    „Berechtigungen".
 
 Anlegen darf, wer das Anlegerecht **„Prompt-Bibliotheken anlegen"** hat; ausgeliefert ist es an
@@ -102,31 +102,36 @@ Fehlt es, bietet „Neu" im Katalog die Art „Prompts" nicht an; wer den Assist
 aufruft, liest das fehlende Recht beim Namen. Kann eine
 vorgemerkte Rolle nicht erteilt werden, ist die Bibliothek trotzdem angelegt: Der Assistent führt
 auf ihre Detailseite, nennt in einem Hinweis die betroffenen Personen oder Gruppen, und die Rolle
-lässt sich dort im Reiter „Verwaltung" unter „Berechtigungen" nachtragen. Ein zweites Anlegen
+lässt sich dort im Reiter „Freigaben" unter „Berechtigungen" nachtragen. Ein zweites Anlegen
 bietet er nicht an.
 
 ### Die Detailseite
 
-Die Detailseite hat zwei Reiter, jeder mit eigener Adresse:
+Die Detailseite ist wie die einer Wissensbibliothek aufgebaut
+([Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), Abschnitt 4): Der Kopf
+trägt Art, Welt-Symbol und eigene Rolle, Stern und „⋯" mit „In Space verwenden" und — nur für den
+Eigentümer — „Löschen", darunter Name und Beschreibung, die ab der Verwalterrolle über den Stift
+geändert werden, und die Kennzahlen: Anzahl der Prompts, Zahl der Räume, zuständige Stelle und
+„Aktualisiert am". Ein „Zurück" gibt es nicht.
 
-| Reiter | Inhalt | Sichtbar für |
-|---|---|---|
-| **Prompts** | Die Prompts der Bibliothek, aufklappbar mit Text und Variablen; ab der Bearbeiterrolle „Neuer Prompt", „Bearbeiten" und „Löschen" | alle Leser |
-| **Verwaltung** | „Stammdaten", dann drei der Freigabeabschnitte einer Wissensbibliothek und für den Eigentümer „Prompt-Bibliothek löschen" | ab der Verwalterrolle |
+Darunter stehen drei Reiter, jeder mit eigener Adresse und für jede Rolle sichtbar; wer nur liest,
+sieht sie schreibgeschützt:
 
-Der Reiter **„Verwaltung"** führt in dieser Reihenfolge: **„Stammdaten"** — Name und Beschreibung
-mit eigenem „Speichern" —, **„Berechtigungen"** als Liste auf der Seite (Personen, Gruppen und
+| Reiter | Inhalt |
+|---|---|
+| **Prompts** | Die Prompts der Bibliothek, aufklappbar mit Text und Variablen; ab der Bearbeiterrolle oben „Neuer Prompt" und je Prompt „Bearbeiten" und „Löschen" |
+| **Freigaben** | „Eigentümer", ab der Verwalterrolle „Berechtigungen" und „Warum sehe ich diese Prompt-Bibliothek?" |
+| **Zuordnungen** | „In Space verwenden" und die Räume, denen die Bibliothek zugeordnet ist |
+
+Die Abschnitte der Reiter „Freigaben" und „Zuordnungen" sind dieselben Bausteine wie bei einer
+Wissensbibliothek, und jeder speichert für sich. „Berechtigungen" führt Personen, Gruppen und
 „Alle Konten" mit Rolle, Befristung und Entzug, dazu das Formular „Freigeben"; für „Alle Konten"
-auch hier nur Leser und Bearbeiter), **„Zuordnungen"** mit den Räumen, denen die Bibliothek
-zugeordnet ist (jede einzeln lösbar), und **„Warum sehe ich diese Prompt-Bibliothek?"**. Die
-letzten drei sind dieselben
-Bausteine wie im Reiter „Freigaben" einer Wissensbibliothek, und jeder speichert für sich; einen
-gemeinsamen Knopf über Abschnitte hinweg gibt es nicht.
+auch hier nur Leser und Bearbeiter. Über „Eigentum übergeben" reicht der Eigentümer die Bibliothek
+an eine Person oder eine Gruppe weiter. Zwei Abschnitte der Wissensbibliothek fehlen hier:
+**„Externer Zugang"** und **„Diagnosesperre"** — beides sind Eigenschaften eines durchsuchbaren
+Bestands, den eine Prompt-Bibliothek nicht hat.
 
-Drei Abschnitte der Wissensbibliothek fehlen hier: **„Eigentümer"**, weil die Antwort einer
-Prompt-Bibliothek den Namen ihrer zuständigen Stelle nicht trägt, sowie **„Externer Zugang"** und
-**„Diagnosesperre"** — beides sind Eigenschaften eines durchsuchbaren Bestands, den eine
-Prompt-Bibliothek nicht hat.
+Die frühere Adresse des Reiters „Verwaltung" führt auf den Reiter „Freigaben".
 
 Die **Herleitung** „Warum sehe ich das?" zeigt den eigenen Weg zur wirksamen Rolle, genau wie bei
 der Wissensbibliothek ([Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md),
