@@ -814,6 +814,28 @@ unterliegen deren Höchstdauer.
 > sie mit; der Eigentümer-Grant einer gruppengehörenden Bibliothek trägt keine — Eigentum ist keine
 > Freigabe.
 
+> **Nachtrag (03.10.2026, Maintainer-Entscheidung, #2134): Das Signal bei Gruppenzuwachs
+> entfällt.** Freigaben und Space-Mitgliedschaften an Gruppen speichern keine Zahl zum Zeitpunkt
+> der Erteilung mehr; `asset_grants.member_count_at_grant`, `space_memberships.member_count_at_grant`
+> und die gleichnamige Spalte der Mitgliedschaftshistorie sind entfernt. Die Freigabeansicht und die
+> Mitgliederliste eines Space zeigen bei einer Gruppe stattdessen ihre **heutige** Zahl aktiver
+> Konten, **ohne** Mindestgruppengröße. Folgen:
+>
+> - **Geschützte Gruppen** zeigen weiterhin weder Zahl noch Namen, sondern „Geschützte Gruppe“ und
+>   die Verantwortlichen.
+> - **Unverändert** gilt die Mindestgruppengröße für den Geltungsbereich von „Sicht als“, für die
+>   Suchdiagnose (#1879), für die Größenangabe in der Subjekt-Auswahl und für die Mitgliederliste,
+>   die ein Rechtevergebender an seinem Objekt aufklappen kann (Begrenzung (e), #1882).
+> - Der Satz „Die gespeicherten Zahlen sind Teil der Grant-Historie“ oben und der Nachtrag zur
+>   Ablage der Zahl haben damit keinen Gegenstand mehr.
+>
+> **Abwägung.** Ohne Erklärung war „23 bei Erteilung, heute 41“ in der Oberfläche nicht verständlich,
+> und die Unterdrückung unterhalb der Mindestgruppengröße schützte an dieser Stelle nichts: Wer die
+> Zeile sieht, verwaltet die Freigabe oder die Mitgliedschaft und darf die Mitglieder der Gruppe
+> ohnehin aufklappen. Die aktuelle Zahl bleibt sichtbar. Die Frage, wer seit wann über welche Gruppe
+> Zugriff hat, beantworten Rechtehistorie, Protokoll und die Herleitung „Warum hat … Zugriff?“ — eine
+> zweite, gespeicherte Zahl am Recht trug dazu nichts bei.
+
 ### 10. Die Übertragungsoperation
 
 **Eine allgemeine, protokollierte Operation auf der Gruppenachse** überträgt Grants,

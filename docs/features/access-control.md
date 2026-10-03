@@ -1350,17 +1350,16 @@ Anbietergruppe leer).
 
 **Eine fünfte Grenze kommt aus Auflage A2, und sie ist eine vorläufige Festlegung des Koordinators
 (22.09.2026, #1882): Unterhalb der Mindestgruppengröße gibt es keine Liste** — keine Namen, keine
-Zahl, nur das Kennzeichen „kleine Gruppe" (`smallGroup`), dieselbe Unterdrückung, die das
-Zuwachssignal derselben Zeile trägt. Sonst hätte dieselbe Person in derselben Zeile links „kleine
-Gruppe" und rechts vier Klarnamen, und die Unterdrückung wäre Kosmetik. Die Alternative — A2 für den
+Zahl, nur das Kennzeichen „kleine Gruppe" (`smallGroup`). Die Alternative — A2 für den
 Objektinhaber durch Entscheidung 9 aufgehoben — steht dem Maintainer offen; ausgeliefert wird die
-datensparsame Auslegung.
+datensparsame Auslegung. Seit dem Wegfall des Zuwachssignals (#2134) nennt die Zeile selbst die
+heutige Zahl auch einer kleinen Gruppe; die Grenze hält seitdem nur noch die Namen zurück.
 
 Gelistet werden **aktive Konten** (Definition `io.opaa.account.AccountActivityService`); die Antwort
 trägt die Gesamtzahl und eine Seite, deren Deckel (200) die `LIMIT`-Klausel der Abfrage selbst ist —
 eine Gruppe von fünftausend wird nie zu fünftausend Zeilen im Speicher. Die Oberfläche lädt die
 Liste **erst auf ausdrücklichen Wunsch** („Mitglieder anzeigen" an der Gruppenzeile der
-Freigabeansicht und der Raum-Mitgliederliste).
+Freigabeansicht, „Mitglieder der Gruppe anzeigen" im Menü „⋯" der Raum-Mitgliederliste).
 
 **Der Abruf der Mitgliederliste durch die Systemverwaltung ist ein Audit-Ereignis**
 (`GROUP_MEMBERS_READ` mit der Zahl der Mitglieder) — ADR-0036, Entscheidung 9 räumt ihr die volle
