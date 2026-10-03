@@ -11,6 +11,10 @@ Space-Auswahl, Edition und Vollabgleichsrhythmus), und [ADR-0027](0027-s3-konnek
 Entscheidung 1 (`CHECK`-Zweige je Typ, „Ausdrücklich offen": Umzug der bestehenden Typen). Alle
 drei tragen einen Nachtrag mit Verweis hierher.
 
+**Nachtrag (03.10.2026):** [ADR-0040](0040-google-drive-konnektor.md), Entscheidung 3, erweitert die
+Invariante aus Entscheidung 3: Ein Ziel der Zugangsdaten darf auch eine Konstante des Konnektors
+sein (Token-Endpunkt bei Google Drive).
+
 ## Kontext
 
 Seit #1976 erreicht die Verwaltung jeden Konnektor über die Konnektor-SPI

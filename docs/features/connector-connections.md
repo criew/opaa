@@ -199,8 +199,14 @@ Jeder Konnektor meldet, wie er zu Profilen steht:
 | Angabe | Bedeutung | Konnektoren |
 |---|---|---|
 | **verboten** | kein entferntes Ziel | Upload (keine Quelle), Dateisystem (lokale Serverpfade, begrenzt durch die Pfad-Allowlist des Betriebs) |
-| **optional** | Profil oder freie Adresse | Webverzeichnis, RSS, Confluence, S3, Nextcloud |
-| **Pflicht** | nur mit Profil | Konnektoren mit OAuth oder Client-Credentials, etwa Dropbox, Exchange |
+| **optional** | Profil oder freie Adresse | Webverzeichnis, RSS, Confluence, S3, Nextcloud, Google Drive (ohne Delegation) |
+| **Pflicht** | nur mit Profil | Konnektoren mit OAuth oder Client-Credentials, etwa Dropbox, Exchange; Google Drive mit domänenweiter Delegation |
+
+**Google Drive** ([ADR-0040](../decisions/0040-google-drive-konnektor.md)) meldet sich mit einem
+Dienstkonto-Schlüssel an. Der Schlüssel enthält seine App-Registrierung selbst und kann deshalb
+auch ohne Profil an der Bibliothek liegen. Die Server-Adresse ist fest (`https://www.googleapis.com`),
+der Token-Endpunkt eine Konstante des Konnektors. Mit domänenweiter Delegation liest der Schlüssel
+jedes Konto der Domäne; das imitierte Konto (ein Funktionskonto) steht dann im Profil.
 
 Webverzeichnis und RSS tragen heute schon Zugangsdaten (Benutzername und Passwort). Ein Profil für sie
 trägt die Server-Adresse und optional die Anmeldeart „persönliches Geheimnis“ mit der Bibliothek als
@@ -233,7 +239,7 @@ Die bestehende Zielprüfung gegen private und lokale Adressbereiche bleibt daneb
 |---|---|---|---|
 | **Persönliches Geheimnis** | App-Passwort, persönliches Token oder Benutzername und Passwort | Person oder Bibliothek | Nextcloud, Confluence Data Center; Webverzeichnis und RSS (optional, nur Bibliothek) |
 | **OAuth** | Autorisierungscode mit PKCE und `state`; Zustimmung beim Anbieter, Rücksprung in OPAA; Refresh- und Zugriffstoken verschlüsselt | Person oder Bibliothek | Dropbox, Exchange (delegiert) |
-| **Client-Credentials** | Anwendung meldet sich mit Client-ID und Secret des Profils an, ohne Person | Bibliothek | Funktionspostfächer, Microsoft 365 ([#2153](https://github.com/criew/opaa/issues/2153)) |
+| **Client-Credentials** | Anwendung meldet sich mit Client-ID und Secret des Profils an, ohne Person | Bibliothek | Funktionspostfächer, Microsoft 365 ([#2153](https://github.com/criew/opaa/issues/2153)); Google Drive mit Dienstkonto-Schlüssel (JWT-Assertion) |
 
 Ein Konnektor meldet, welche Anmeldearten er anbietet; das Profil wählt eine.
 
