@@ -37,12 +37,13 @@ async function nextStep(page: Page): Promise<void> {
   await page.getByRole('button', { name: 'Weiter', exact: true }).click()
 }
 
-/** The four tabs of the detail page; an UPLOAD library has no tab "Quelle" (#1939). */
+/** The tabs of the detail page; an UPLOAD library has no tab "Quelle" (#1939, #2208). */
 async function expectTabs(page: Page, withSource: boolean): Promise<void> {
   await expect(page.getByRole('tab', { name: 'Dokumente' })).toBeVisible()
   await expect(page.getByRole('tab', { name: 'Quelle' })).toHaveCount(withSource ? 1 : 0)
   await expect(page.getByRole('tab', { name: 'Metadaten' })).toBeVisible()
   await expect(page.getByRole('tab', { name: 'Freigaben' })).toBeVisible()
+  await expect(page.getByRole('tab', { name: 'Zuordnungen' })).toBeVisible()
 }
 
 /**

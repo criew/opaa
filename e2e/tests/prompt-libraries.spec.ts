@@ -44,7 +44,7 @@ async function promptLibraryId(name: string): Promise<string> {
 
 async function openManagement(page: Page, libraryName: string): Promise<void> {
   await gotoPromptLibraryDetail(page, libraryName)
-  await page.getByRole('tab', { name: 'Verwaltung' }).click()
+  await page.getByRole('tab', { name: 'Freigaben' }).click()
 }
 
 /**
