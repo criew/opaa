@@ -6,7 +6,6 @@ import java.io.InputStream;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -14,10 +13,10 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * Sends one form-encoded POST to a token endpoint (ADR-0040, Entscheidung 3): the target passes the
- * {@link TargetAddressValidator} first, the client comes from {@link SourceHttpClientFactory}
- * (proxy, TLS), a redirect is never followed but returned as it is, and the answer is read up to
- * {@code maxResponseBytes}. The form carries secrets and is never logged.
+ * Sends one form-encoded POST to a token endpoint (ADR-0040, Entscheidung 3) over {@link
+ * RedirectFollowingFetcher#sendWithBody}: target validation first, no redirect followed, an answer
+ * from another origin refused. The answer is read up to {@code maxResponseBytes}. The form carries
+ * secrets and is never logged.
  */
 public final class SourceFormPost {
 
@@ -48,17 +47,17 @@ public final class SourceFormPost {
       long maxResponseBytes,
       TargetAddressValidator targetAddressValidator)
       throws IOException, InterruptedException {
-    targetAddressValidator.validate(target);
-    HttpRequest request =
-        HttpRequest.newBuilder()
-            .uri(target)
-            .timeout(timeout)
-            .header("Content-Type", "application/x-www-form-urlencoded")
-            .header("Accept", "application/json")
-            .POST(HttpRequest.BodyPublishers.ofString(encode(form)))
-            .build();
     HttpResponse<InputStream> response =
-        httpClient.send(request, HttpResponse.BodyHandlers.ofInputStream());
+        RedirectFollowingFetcher.sendWithBody(
+            httpClient,
+            "POST",
+            target.toString(),
+            encode(form),
+            timeout,
+            Map.of(
+                "Content-Type", "application/x-www-form-urlencoded", "Accept", "application/json"),
+            targetAddressValidator,
+            RateLimitHandling.NONE);
     try (InputStream body = response.body()) {
       return new Response(response.statusCode(), BoundedStreams.readFully(body, maxResponseBytes));
     }
