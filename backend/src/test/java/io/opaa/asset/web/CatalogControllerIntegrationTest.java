@@ -138,6 +138,23 @@ class CatalogControllerIntegrationTest {
   }
 
   @Test
+  void moreIdsThanTheLimitAreRefused() throws Exception {
+    var request = get("/api/v1/catalog").with(devUser());
+    for (int i = 0; i <= 50; i++) {
+      request = request.param("ids", UUID.randomUUID().toString());
+    }
+
+    mockMvc.perform(request).andExpect(status().isBadRequest());
+  }
+
+  @Test
+  void anEmptyIdIsRefusedAsABadRequest() throws Exception {
+    mockMvc
+        .perform(get("/api/v1/catalog").param("ids", "").param("ids", "").with(devUser()))
+        .andExpect(status().isBadRequest());
+  }
+
+  @Test
   void aSystemAdministratorWithoutAGrantDoesNotFindALibraryInTheCatalog() throws Exception {
     String name = "Unauffindbar " + UUID.randomUUID();
     createPromptLibrary(devUser(), "{\"name\":\"" + name + "\"}");

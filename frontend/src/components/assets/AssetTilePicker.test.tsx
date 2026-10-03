@@ -205,4 +205,47 @@ describe('AssetTilePicker', () => {
     expect(within(group).queryByRole('checkbox', { name: 'Fremde Bibliothek' })).toBeNull()
     expect(requested).toContainEqual(expect.arrayContaining(['erste', 'fremde']))
   })
+
+  /** Review #2145: a filter change while a further page loads must not lock its buttons. */
+  it('keeps "Weitere laden" and "Erneut versuchen" usable after a filter change mid-load', async () => {
+    let releaseStale: () => void = () => undefined
+    const stale = new Promise<void>((resolve) => {
+      releaseStale = resolve
+    })
+    const names = Array.from({ length: 60 }, (_, i) => `Eintrag ${String(i).padStart(2, '0')}`)
+    server.use(
+      http.get('/api/v1/catalog', async ({ request }) => {
+        const params = new URL(request.url).searchParams
+        const page = Number(params.get('page') ?? '0')
+        const filtered = params.get('type') !== null
+        if (page === 1 && !filtered) await stale
+        if (page === 1 && filtered) {
+          return HttpResponse.json({ error: 'Dienst nicht erreichbar' }, { status: 503 })
+        }
+        const all = names.map((name) => entry(name, name))
+        return HttpResponse.json({
+          entries: all.slice(page * 50, page * 50 + 50),
+          page,
+          size: 50,
+          totalElements: all.length,
+          totalPages: 2,
+        })
+      }),
+    )
+    const user = userEvent.setup()
+    renderWithProviders(<Harness />)
+
+    await user.click(await screen.findByRole('button', { name: 'Weitere laden' }))
+    expect(screen.getByRole('button', { name: 'Weitere laden' })).toBeDisabled()
+    await user.click(
+      within(screen.getByRole('group', { name: 'Typ' })).getByRole('button', { name: /Wissen/ }),
+    )
+
+    const more = await screen.findByRole('button', { name: 'Weitere laden' })
+    await waitFor(() => expect(more).toBeEnabled())
+    await user.click(more)
+    const retry = await screen.findByRole('button', { name: 'Erneut versuchen' })
+    expect(retry).toBeEnabled()
+    releaseStale()
+  })
 })

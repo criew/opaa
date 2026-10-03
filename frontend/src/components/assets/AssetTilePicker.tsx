@@ -42,8 +42,8 @@ function tileOfPick(pick: AssetPick): AssetTileData {
 }
 
 const PAGE_SIZE = 50
-/** The most ids the catalog takes in one request. */
-const IDS_PER_REQUEST = 200
+/** The most ids the catalog takes in one request; 50 UUIDs keep the request line under 8 KB. */
+const IDS_PER_REQUEST = 50
 const SEARCH_DELAY_MS = 300
 const LOAD_ERROR = 'Die Auswahl konnte nicht geladen werden.'
 
@@ -94,7 +94,8 @@ export default function AssetTilePicker({
   const [query, setQuery] = useState('')
   const [appliedQuery, setAppliedQuery] = useState('')
   const [loaded, setLoaded] = useState<Loaded | null>(null)
-  const [loadingMore, setLoadingMore] = useState(false)
+  // The filter a further page is loading for; a changed filter is not blocked by it.
+  const [loadingMoreFor, setLoadingMoreFor] = useState<string | null>(null)
   // A failed further page keeps the tiles already shown; only the first page replaces them.
   const [moreError, setMoreError] = useState<{ key: string; message: string } | null>(null)
   const [details, setDetails] = useState<ChosenDetails | null>(null)
@@ -104,6 +105,8 @@ export default function AssetTilePicker({
   const [favorites, setFavorites] = useState<ReadonlyMap<string, boolean>>(new Map())
   const [favoriteError, setFavoriteError] = useState<string | null>(null)
   const latestRequest = useRef(0)
+  // The latest "Weitere laden"; only it may end the loading state, even when its answer is stale.
+  const latestMore = useRef(0)
   // A favorite toggled since the last first page; see pagesForMore.
   const reorderedSinceLoad = useRef(false)
 
@@ -205,19 +208,23 @@ export default function AssetTilePicker({
   async function loadMore() {
     if (!loaded || catalogKey === null) return
     const request = ++latestRequest.current
-    setLoadingMore(true)
+    const more = ++latestMore.current
+    setLoadingMoreFor(catalogKey)
     setMoreError(null)
     const { from, through } = pagesForMore(loaded.page, reorderedSinceLoad.current)
     let entries = from === 0 ? [] : loaded.entries
     let result: Omit<Loaded, 'key'> | null = null
-    for (let page = from; page <= through; page++) {
-      result = await fetchPage(page)
-      if (request !== latestRequest.current) return
-      if (result.error) break
-      entries = appendNewEntries(entries, result.entries)
-      if (page + 1 >= result.totalPages) break
+    try {
+      for (let page = from; page <= through; page++) {
+        result = await fetchPage(page)
+        if (request !== latestRequest.current) return
+        if (result.error) break
+        entries = appendNewEntries(entries, result.entries)
+        if (page + 1 >= result.totalPages) break
+      }
+    } finally {
+      if (more === latestMore.current) setLoadingMoreFor(null)
     }
-    setLoadingMore(false)
     if (!result) return
     if (result.error) {
       setMoreError({ key: catalogKey, message: result.error })
@@ -285,6 +292,7 @@ export default function AssetTilePicker({
   const currentPage = !showsChosenOnly && loaded?.key === filterKey
   const totalPages = currentPage ? (loaded?.totalPages ?? 0) : 0
   const totalElements = currentPage ? (loaded?.totalElements ?? 0) : 0
+  const loadingMore = loadingMoreFor !== null && loadingMoreFor === catalogKey
   const narrowed = Boolean(appliedQuery.trim() || filterType || filters.favorites)
 
   const tiles = sources.map((source) => {

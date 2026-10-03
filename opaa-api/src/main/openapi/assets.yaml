@@ -434,12 +434,14 @@ paths:
           description: >
             Only the assets with these ids - e.g. the entries a space has associated, to show them
             as full tiles. Like every filter it narrows the readable set: an id the caller may not
-            read yields no entry and counts nowhere. Absent applies no such restriction.
+            read yields no entry and counts nowhere. Absent applies no such restriction. At most 50,
+            so the repeated parameters keep the request line under the usual 8 KB limit; a client
+            names more in several requests.
           style: form
           explode: true
           schema:
             type: array
-            maxItems: 200
+            maxItems: 50
             items:
               type: string
               format: uuid
@@ -467,8 +469,9 @@ paths:
                 $ref: "#/components/schemas/CatalogPageResponse"
         "400":
           description: >
-            A page, size or search text outside the values declared above -
-            refused rather than silently answering a different page than the one asked for.
+            A page, size or search text outside the values declared above, more than 50 ids, or
+            an id that is empty or not a UUID - refused rather than silently answering a
+            different page than the one asked for.
           content:
             application/json:
               schema:

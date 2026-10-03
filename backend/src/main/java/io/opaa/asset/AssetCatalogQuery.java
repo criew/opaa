@@ -17,8 +17,11 @@ import java.util.UUID;
 public record AssetCatalogQuery(
     AssetType assetType, String text, boolean favoritesOnly, Set<UUID> assetIds) {
 
-  /** The maximum number of ids one request may name, as the specification declares. */
-  public static final int MAX_IDS = 200;
+  /**
+   * The maximum number of ids one request may name, as the specification declares: 50 UUIDs as
+   * repeated query parameters keep the request line well under the common 8 KB header limit.
+   */
+  public static final int MAX_IDS = 50;
 
   public AssetCatalogQuery(AssetType assetType, String text, boolean favoritesOnly) {
     this(assetType, text, favoritesOnly, null);

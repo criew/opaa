@@ -6,7 +6,9 @@ import io.opaa.asset.AssetCatalogQuery;
 import io.opaa.asset.AssetCatalogService;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
+import io.opaa.common.ValidationException;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -37,6 +39,10 @@ public class CatalogController {
       @RequestParam(defaultValue = "0") int page,
       @RequestParam(defaultValue = "50") int size,
       @Caller CurrentUser caller) {
+    // An empty "ids=" binds as null; it names no asset and is refused like a malformed id.
+    if (ids != null && ids.stream().anyMatch(Objects::isNull)) {
+      throw new ValidationException("ids darf keine leeren Kennungen enthalten");
+    }
     AssetCatalogQuery query =
         new AssetCatalogQuery(
             type == null ? null : io.opaa.permission.AssetType.of(type.getValue()),
