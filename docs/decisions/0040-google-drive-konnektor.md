@@ -506,11 +506,17 @@ neue Modulkante.
    als Gast oder anonym gilt als abgelehnte Anmeldung. **Kerberos fehlt:** smbj bräuchte dafür ein
    JAAS-Subject mit `krb5.conf`, KDC-Erreichbarkeit und Keytab oder Ticket; das ist eigene
    Betriebsinfrastruktur je Installation und nicht Teil dieses Issues. Domänen, die NTLM
-   abgeschaltet haben, lassen sich deshalb noch nicht anbinden.
+   abgeschaltet haben, lassen sich deshalb noch nicht anbinden; der Verbindungstest nennt das
+   (`STATUS_NTLM_BLOCKED`). Jede Ablehnung des Sitzungsaufbaus, auch „Zugriff verweigert“, ist ein
+   Anmeldebefund.
 4. **Identität und Merkmal:** `file_path` ist `smb://server/freigabe/pfad` (unkodiert). Umbenennen
    oder Verschieben ist Löschen und Neuanlegen, wie bei Dateisystem und S3. Das Merkmal ist
    `m:<Änderungszeit in Windows-Ticks>|<Größe>`. Kein Deep Link; das Original liest
-   `OriginalAccess` von der Freigabe.
+   `OriginalAccess` von der Freigabe. **Grenzen:** Ändert sich der Inhalt bei gleicher
+   Änderungszeit und gleicher Größe (ein Werkzeug setzt die Zeit zurück), bemerkt der Lauf das
+   nicht. Teilen sich zwei Ordner eine Datei-ID (etwa bei Samba mit mehreren Dateisystemen unter
+   einer Freigabe), gilt der zweite als Verknüpfung (Punkt 6); er fehlt dann ohne Befund, und sein
+   Bestand wird entfernt.
 5. **Kein Ordnergedächtnis:** Die Änderungszeit eines Ordners ändert sich unter NTFS und Samba nur,
    wenn sich ein direkter Eintrag ändert, nicht beim Schreiben einer Datei und nicht bei Änderungen
    tiefer im Baum. Sie erfüllt den Vertrag von `FileStore#recall` nicht. Jeder Lauf listet alles.
@@ -520,9 +526,26 @@ neue Modulkante.
    löst Unix-Links selbst auf; ein Ordner, dessen Datei-ID der Lauf schon kennt, gilt deshalb als
    Verknüpfung. Das beendet Schleifen. Zusätzlich endet der Abstieg nach 64 Ebenen.
    Folgen hätte bedeutet: Schleifen, doppelte Dokumente und Ziele außerhalb der Freigabe.
+   **Auch beim Öffnen** wird nicht gefolgt: Jeder Pfad (Ordner zum Auflisten, Datei zum Abruf,
+   Original, konfigurierter Ordner) wird mit `FILE_OPEN_REPARSE_POINT` geöffnet. Ist das Geöffnete
+   eine Verknüpfung (Tag über `FSCTL_GET_REPARSE_POINT`), wird es abgewiesen; ein anderer
+   Reparse-Punkt wird ohne die Option neu geöffnet. Samba öffnet einen Unix-Link mit dieser Option
+   gar nicht; ein Eintrag, den die Auflistung zeigte, der sich so aber nicht öffnen lässt, gilt als
+   Verknüpfung bzw. als verschwunden. Eine Verknüpfung weiter vorn im Pfad löst smbj selbst auf
+   (`SymlinkPathResolver`, immer aktiv, ohne Grenze); der Transport bricht ein Öffnen nach 16
+   solchen Sprüngen ab, die Verbindung wird neu aufgebaut. Eine Schleife endet so mit einem
+   Befund statt mit einem `StackOverflowError`.
+   **Namen:** Ein Name aus der Auflistung mit `/`, `\`, `:` oder Steuerzeichen (nur von einem
+   Nicht-Windows-Server oder einem manipulierten Server möglich) wird als „kein Dokument“ gezählt;
+   ein gespeicherter Pfad mit solchen Zeichen liegt in keinem Ordner der Bibliothek.
 7. **Unlesbare Unterordner:** Ein Ordner, den das Dienstkonto nicht öffnen darf, wird übersprungen
    und im Protokoll genannt. Der Rest wird gelistet, der Bereich gilt aber als unvollständig: Im
    Bereich wird nichts entfernt. Ist der konfigurierte Ordner selbst unlesbar, gilt das sofort.
+   **Grenze, Access-Based Enumeration:** Ist sie auf der Freigabe aktiv, liefert der Server einen
+   Ordner ohne Leserecht gar nicht erst, statt den Zugriff zu verweigern. Für OPAA ist er dann
+   verschwunden; die Auflistung gilt als vollständig, und seine Dokumente werden entfernt. Das lässt
+   sich am Protokoll nicht erkennen. Betreiber geben dem Dienstkonto deshalb Leserecht auf alles im
+   Bereich.
 8. **Ausgelagerte Dateien** (Offline, Recall bei Zugriff) werden nicht abgerufen; ein Abruf löste
    eine Rückholung vom Archiv aus. Sie gelten als vorhanden.
 9. **Große Ordner und Budget:** Eine Seite hat höchstens `list-page-size` Einträge, ein Ordner wird

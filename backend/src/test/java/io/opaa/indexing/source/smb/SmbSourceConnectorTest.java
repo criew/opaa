@@ -5,6 +5,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import com.hierynomus.mserref.NtStatus;
+import com.hierynomus.mssmb2.SMB2MessageCommandCode;
+import com.hierynomus.mssmb2.SMBApiException;
 import io.opaa.common.ValidationException;
 import io.opaa.indexing.source.ConnectorData;
 import io.opaa.indexing.source.SourceBrowser;
@@ -228,6 +231,26 @@ class SmbSourceConnectorTest {
                   library(),
                   configured))
           .isEmpty();
+      assertThat(
+              CONNECTOR.openOriginal(
+                  document(folder + "\\..\\Außerhalb " + folder + ".txt", "x.txt"),
+                  library(),
+                  configured))
+          .isEmpty();
+    }
+
+    @Test
+    void theOriginalBehindALinkIsNotServed() {
+      samba.put("Ziel von " + folder + ".txt", "Nicht freigegeben.");
+      samba.mkdirs(folder);
+      samba.symlink("../Ziel von " + folder + ".txt", folder + "/verweis.txt");
+
+      assertThat(
+              CONNECTOR.openOriginal(
+                  document(folder + "/verweis.txt", "verweis.txt"),
+                  library(),
+                  samba.settings(samba.credentials(), List.of("/" + folder))))
+          .isEmpty();
     }
 
     private Document document(String relative, String fileName) {
@@ -243,6 +266,63 @@ class SmbSourceConnectorTest {
       when(library.getId()).thenReturn(UUID.randomUUID());
       return library;
     }
+  }
+
+  @Nested
+  class SignInFindings {
+
+    private final SmbShareClient client =
+        SmbShareClient.of(
+            SmbAddress.parse("smb://fileserver/Daten"),
+            SmbCredentials.parse("RATHAUS\\svc-opaa:geheim"),
+            TargetAddressValidator.disabled(),
+            io.opaa.indexing.source.RequestBudget.unbounded(),
+            java.time.Duration.ofSeconds(1));
+
+    @Test
+    void aRefusedSessionSetupIsASignInFindingEvenAsAccessDenied() throws Exception {
+      SmbAccessException finding =
+          client.signInFailure(
+              new SMBApiException(
+                  NtStatus.STATUS_ACCESS_DENIED.getValue(),
+                  SMB2MessageCommandCode.SMB2_SESSION_SETUP,
+                  null));
+
+      assertThat(finding).isInstanceOf(SmbAccessException.Authentication.class);
+      assertThat(finding.getMessage()).contains("RATHAUS\\svc-opaa").contains("verweigert");
+    }
+
+    @Test
+    void blockedNtlmNamesTheMissingKerberos() throws Exception {
+      SmbAccessException finding =
+          client.signInFailure(
+              new SMBApiException(
+                  SmbShareClient.STATUS_NTLM_BLOCKED,
+                  SMB2MessageCommandCode.SMB2_SESSION_SETUP,
+                  null));
+
+      assertThat(finding).isInstanceOf(SmbAccessException.Authentication.class);
+      assertThat(finding.getMessage()).contains("NTLM").contains("Kerberos");
+    }
+
+    @Test
+    void anUnknownStatusOfTheSessionSetupIsStillASignInFinding() throws Exception {
+      SmbAccessException finding =
+          client.signInFailure(
+              new SMBApiException(0xC00000BBL, SMB2MessageCommandCode.SMB2_SESSION_SETUP, null));
+
+      assertThat(finding).isInstanceOf(SmbAccessException.Authentication.class);
+    }
+  }
+
+  @Test
+  void aStoredPathWithABackslashOrControlCharacterLiesInNoFolder() {
+    SmbSourceSettings settings =
+        SmbSourceSettings.read(ConnectorData.of(Map.of("folders", List.of("/Akten"))));
+
+    assertThat(SmbSourceConnector.inFolders("Akten/a.txt", settings)).isTrue();
+    assertThat(SmbSourceConnector.inFolders("Akten/..\\Personal\\x.txt", settings)).isFalse();
+    assertThat(SmbSourceConnector.inFolders("Akten/a\u0001.txt", settings)).isFalse();
   }
 
   @Test

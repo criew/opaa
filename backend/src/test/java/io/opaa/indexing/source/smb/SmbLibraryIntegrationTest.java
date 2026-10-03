@@ -64,7 +64,20 @@ class SmbLibraryIntegrationTest {
                 .header(DevAuthFilter.DEV_USER_HEADER, "dev-user")
                 .contentType(MediaType.APPLICATION_JSON))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$[?(@.type == 'SMB')].creatable").value(false));
+        .andExpect(jsonPath("$[?(@.type == 'SMB')].creatable").value(false))
+        // positive control: the same account may create a shipped source type
+        .andExpect(jsonPath("$[?(@.type == 'RSS_FEED')].creatable").value(true));
+    mockMvc
+        .perform(
+            post("/api/v1/libraries")
+                .header(DevAuthFilter.DEV_USER_HEADER, "dev-user")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    "{\"name\": \"Freigabe\", \"sourceType\": \"SMB\","
+                        + " \"sourceUrl\": \"smb://fileserver.example/daten\","
+                        + " \"sourceCredentials\": \"OPAA\\\\opaa:geheim\"}"))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.code").value("CAPABILITY_REQUIRED"));
   }
 
   @Test

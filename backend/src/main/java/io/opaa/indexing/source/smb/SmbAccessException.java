@@ -38,6 +38,16 @@ sealed class SmbAccessException extends Exception {
     }
   }
 
+  /**
+   * The path ends in or runs through a link the connector does not follow - a symbolic link, a
+   * junction, a DFS link - or through more links than it allows.
+   */
+  static final class Link extends SmbAccessException {
+    Link(String message) {
+      super(message);
+    }
+  }
+
   /** A download exceeded its size bound. */
   static final class TooLarge extends SmbAccessException {
     TooLarge(String message) {
