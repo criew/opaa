@@ -19,6 +19,8 @@ import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ValidationException;
+import io.opaa.connection.LibraryConnectionService;
+import io.opaa.indexing.source.LibrarySourceConnectionResolver;
 import io.opaa.indexing.source.SourceConnectionTestResult;
 import io.opaa.indexing.source.SourceListing;
 import io.opaa.indexing.source.TestSourceConnectors;
@@ -73,7 +75,9 @@ class SourceConnectionTestServiceConfluenceTest {
             TestSourceConnectors.connectors()
                 .confluenceConnectionService(confluenceConnectionService)
                 .registry(),
-            capabilityService);
+            capabilityService,
+            new LibrarySourceConnectionResolver(),
+            mock(LibraryConnectionService.class));
   }
 
   private KnowledgeLibrary confluenceLibrary(UUID libraryId, String url) {

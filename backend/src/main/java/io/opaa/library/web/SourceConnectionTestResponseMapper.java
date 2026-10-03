@@ -61,13 +61,15 @@ final class SourceConnectionTestResponseMapper {
   }
 
   static SourceTypeDescriptor toResponse(SourceConnectorDescriptor descriptor, boolean browsable) {
-    return new SourceTypeDescriptor(
-            descriptor.type().key(),
-            descriptor.displayName(),
-            descriptor.indexingRun(),
-            descriptor.uploads(),
-            descriptor.pushIntake() != null,
-            browsable)
+    return new SourceTypeDescriptor()
+        .type(descriptor.type().key())
+        .displayName(descriptor.displayName())
+        .indexingRun(descriptor.indexingRun())
+        .uploads(descriptor.uploads())
+        .pushIntake(descriptor.pushIntake() != null)
+        .browsable(browsable)
+        .profileSupport(descriptor.profileSupport())
+        .authMethods(descriptor.authMethods().stream().sorted().toList())
         .fullSyncIntervalDefaultDays(
             descriptor.fullSyncInterval() == null
                 ? null

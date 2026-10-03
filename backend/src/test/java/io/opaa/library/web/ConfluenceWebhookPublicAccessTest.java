@@ -21,6 +21,7 @@ import io.opaa.indexing.source.confluence.ConfluenceSourceConnector;
 import io.opaa.indexing.source.confluence.webhook.ConfluenceWebhookService;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
+import io.opaa.indexing.source.LibrarySourceConnectionResolver;
 import io.opaa.library.PushIntakeService;
 import io.opaa.test.SourceTypes;
 import jakarta.servlet.http.HttpServletRequest;
@@ -55,6 +56,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
   OidcSecurityConfig.class,
   PushIntakeSecurityConfig.class,
   PushIntakeService.class,
+  LibrarySourceConnectionResolver.class,
   ConfluenceWebhookPublicAccessTest.CorsStub.class
 })
 @ActiveProfiles("oidc")

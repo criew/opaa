@@ -24,6 +24,7 @@ import io.opaa.indexing.source.s3.S3SourceConnector;
 import io.opaa.indexing.source.s3.events.S3EventService;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
+import io.opaa.indexing.source.LibrarySourceConnectionResolver;
 import io.opaa.library.PushIntakeService;
 import io.opaa.test.SourceTypes;
 import jakarta.servlet.http.HttpServletRequest;
@@ -58,6 +59,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
   OidcSecurityConfig.class,
   PushIntakeSecurityConfig.class,
   PushIntakeService.class,
+  LibrarySourceConnectionResolver.class,
   S3EventPublicAccessTest.CorsStub.class
 })
 @ActiveProfiles("oidc")

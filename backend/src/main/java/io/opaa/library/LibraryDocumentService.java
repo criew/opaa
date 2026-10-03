@@ -21,6 +21,7 @@ import io.opaa.indexing.document.DocumentIngestService;
 import io.opaa.indexing.source.OriginalAccess;
 import io.opaa.indexing.source.OriginalUnavailableException;
 import io.opaa.indexing.source.ServedOriginals;
+import io.opaa.indexing.source.SourceConnectionBlockedException;
 import io.opaa.indexing.source.SourceConnectionResolver;
 import io.opaa.indexing.source.SourceConnectorRegistry;
 import io.opaa.knowledge.Document;
@@ -575,6 +576,8 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
           document.getId(),
           e.getCause() == null ? e.getMessage() : e.getCause().getMessage());
       throw new ServiceUnavailableException(e.userMessage());
+    } catch (SourceConnectionBlockedException e) {
+      throw new ServiceUnavailableException(e.getMessage());
     }
   }
 

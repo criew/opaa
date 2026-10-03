@@ -17,8 +17,10 @@ import io.opaa.auth.CurrentUser;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
+import io.opaa.connection.LibraryConnectionService;
 import io.opaa.format.DocumentService;
 import io.opaa.indexing.source.FilesystemPathAllowlist;
+import io.opaa.indexing.source.LibrarySourceConnectionResolver;
 import io.opaa.indexing.source.SourceConnectionTestResult;
 import io.opaa.indexing.source.TestSourceConnectors;
 import io.opaa.indexing.source.rss.RssFeedParser;
@@ -94,7 +96,9 @@ class SourceConnectionTestServiceTest {
             libraryRepository,
             libraryAccessService,
             TestSourceConnectors.connectors().filesystemAllowlist(filesystemAllowlist).registry(),
-            capabilityService);
+            capabilityService,
+            new LibrarySourceConnectionResolver(),
+            mock(LibraryConnectionService.class));
   }
 
   @AfterEach
@@ -579,7 +583,9 @@ class SourceConnectionTestServiceTest {
                 .filesystemAllowlist(filesystemAllowlist)
                 .rssProperties(new RssFeedProperties(200, 10, 10, 0, null, null, 0, 0))
                 .registry(),
-            capabilityService);
+            capabilityService,
+            new LibrarySourceConnectionResolver(),
+            mock(LibraryConnectionService.class));
     String html = "<table>" + "x".repeat(100) + "</table>";
     server.createContext(
         "/dir/",
@@ -714,7 +720,9 @@ class SourceConnectionTestServiceTest {
                 .filesystemAllowlist(filesystemAllowlist)
                 .rssProperties(new RssFeedProperties(1, 0, 0, 0, null, null, 0, 0))
                 .registry(),
-            capabilityService);
+            capabilityService,
+            new LibrarySourceConnectionResolver(),
+            mock(LibraryConnectionService.class));
     String rss =
         """
         <?xml version="1.0"?>
@@ -760,7 +768,9 @@ class SourceConnectionTestServiceTest {
                 .filesystemAllowlist(filesystemAllowlist)
                 .rssProperties(new RssFeedProperties(200, 10, 10, 0, null, null, 0, 0))
                 .registry(),
-            capabilityService);
+            capabilityService,
+            new LibrarySourceConnectionResolver(),
+            mock(LibraryConnectionService.class));
     String rss =
         "<?xml version=\"1.0\"?><rss version=\"2.0\"><channel>"
             + "x".repeat(50)

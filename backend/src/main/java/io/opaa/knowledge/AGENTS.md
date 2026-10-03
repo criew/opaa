@@ -14,7 +14,7 @@ identity und rights ab.
 
 - **`knowledge` liegt unter `indexing` und `library` und nennt keines von beiden.** Was es von oben
   braucht, deklariert es als Schnittstelle, die das obere Paket implementiert
-  (`FolderDocumentDeleter`, `SourceConnectionResolver` für Ziel und Geheimnis einer Quelle).
+  (`FolderDocumentDeleter`; `SourceConnectionResolver` für Ziel und Geheimnis, implementiert in connections).
 - **`metadata` liegt zwischen `knowledge` und `indexing`** (Schema, Kernfelder, Vokabular,
   Extraktion, Korrektur, Filter, Kontextpräfix) und kennt keine Pipeline-Klasse. Den Chunk-Store und
   den Nachlauf erreicht es über `ChunkMetadataStore` und `ContextPrefixBacklog`. Bestandslauf und

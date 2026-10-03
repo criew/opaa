@@ -26,6 +26,8 @@ import io.opaa.permission.SuccessionFinding;
  *     (ADR-0038), {@code null} for none
  * @param succession the derived state "Nachfolge offen" (ADR-0036, Entscheidung 6), set only by
  *     {@link KnowledgeLibraryService#getLibrary}; {@code null} for none and for every other result
+ * @param connectionProfile the connection profile of the library (#2160), {@code null} for a
+ *     library with its own address
  */
 public record LibraryDetail(
     KnowledgeLibrary library,
@@ -36,7 +38,32 @@ public record LibraryDetail(
     AssetReach reach,
     String ownerName,
     ConnectorData connectorSettings,
-    SuccessionFinding succession) {
+    SuccessionFinding succession,
+    LibraryProfileState connectionProfile) {
+
+  /** A detail without a connection profile. */
+  public LibraryDetail(
+      KnowledgeLibrary library,
+      AssetRole myRole,
+      long documentCount,
+      LibraryManagementDetail managementDetail,
+      boolean diagnosticsLockToggleable,
+      AssetReach reach,
+      String ownerName,
+      ConnectorData connectorSettings,
+      SuccessionFinding succession) {
+    this(
+        library,
+        myRole,
+        documentCount,
+        managementDetail,
+        diagnosticsLockToggleable,
+        reach,
+        ownerName,
+        connectorSettings,
+        succession,
+        null);
+  }
 
   /** A detail without the succession state - what creating and updating a library answer. */
   public LibraryDetail(
@@ -71,6 +98,7 @@ public record LibraryDetail(
         reach,
         ownerName,
         connectorSettings,
-        succession);
+        succession,
+        connectionProfile);
   }
 }
