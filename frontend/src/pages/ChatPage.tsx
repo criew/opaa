@@ -352,7 +352,7 @@ export default function ChatPage() {
       />
       <ChatInput
         onSend={(message, usedPrompt) => sendMessage(message, usedPrompt)}
-        disabled={isLoading}
+        answerPending={isLoading}
         returnedQuestion={returnedQuestionForView}
         onReturnedQuestionHandled={clearReturnedQuestion}
       />
