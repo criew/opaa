@@ -179,7 +179,6 @@ const {
       groupId: 'g1',
       name: 'Referat 50',
       protectedGroup: false,
-      smallGroup: false,
       activeMemberCount: 1,
       members: [{ userId: 'user-anna', displayName: 'Anna Bauer' }],
       responsible: [] as string[],

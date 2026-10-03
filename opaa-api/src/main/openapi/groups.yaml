@@ -831,20 +831,19 @@ components:
       description: >
         The members of a group as the person who granted it a right on an object sees them (#1880,
         ADR-0036 Entscheidung 9) - only active accounts, capped and paged, with the cap as the
-        query's own LIMIT. The five limits of the rule, enforced in the service and nowhere else:
+        query's own LIMIT. The four limits of the rule, enforced in the service and nowhere else:
 
         (a) only while the group holds a right at the object named in the path - an expired grant
         and an ended space membership hold nothing; (b) only for a group released for use, which a
         provider group always is; (c) the delivered default is "not released"; (d) never for a
-        protected group - no name, no count, no members, and responsible instead, whom to ask;
-        (e) never below the enforced minimum group size - no members and no figure either, only
-        smallGroup (Auflage A2).
+        protected group - no name, no count, no members, and responsible instead, whom to ask.
+        The size of the group limits nothing here (#2134): a small group is listed like any other.
 
         A retrieval carried by the system role is an audit event (GROUP_MEMBERS_READ) on both
         paths, because a system administrator passes the threshold of every library and every
         space; a grant giver without that role writes nothing - the grant already names who gave
         it and when.
-      required: [groupId, protectedGroup, smallGroup, members, responsible]
+      required: [groupId, protectedGroup, members, responsible]
       properties:
         groupId:
           type: string
@@ -860,18 +859,12 @@ components:
           description: >
             True for a group of the staff council and the comparable bodies. The member list is
             then empty on purpose - responsible names whom to ask.
-        smallGroup:
-          type: boolean
-          description: >
-            True below the enforced minimum group size - the list and both figures are then
-            withheld, and this is what the interface says instead ("kleine Gruppe").
         activeMemberCount:
           type: integer
           nullable: true
           description: >
             How many active accounts the group reaches in total - the figure the page is a window
-            into. Null for a protected group, where the size is itself the disclosure, and null
-            for a small group.
+            into. Null for a protected group, where the size is itself the disclosure.
         members:
           type: array
           description: >

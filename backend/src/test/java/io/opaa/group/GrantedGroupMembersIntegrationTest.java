@@ -109,7 +109,6 @@ class GrantedGroupMembersIntegrationTest {
 
     assertThat(disclosure.name()).isEqualTo("Referat 50");
     assertThat(disclosure.protectedGroup()).isFalse();
-    assertThat(disclosure.smallGroup()).isFalse();
     assertThat(disclosure.activeMemberCount()).isEqualTo(5);
     assertThat(disclosure.members())
         .extracting(DisclosedGroupMember::displayName)
@@ -242,37 +241,51 @@ class GrantedGroupMembersIntegrationTest {
   }
 
   /**
-   * Limit (e), Auflage A2: below the Mindestgruppengröße neither the names nor the figure are
-   * handed out - otherwise the same row would say "kleine Gruppe" beside its growth signal and name
-   * four people right next to it.
+   * #2134: the minimum group size no longer withholds the list - whoever manages the right sees the
+   * names and the figure of a group of four, over a library and over a space alike.
    */
   @Test
-  void agroupBelowTheMinimumSizeDisclosesNeitherNamesNorFigure() {
+  void aGroupBelowTheMinimumSizeDisclosesItsNamesAndFigure() {
     UUID manager = createUser();
     UUID[] members = fiveNamedMembers();
     UUID ofFourId =
         createReleasedGroup("Kleine Runde", members[0], members[1], members[2], members[3]);
-    UUID ofFiveId = createReleasedGroup("Referat 50", fiveNamedMembers());
     UUID library = createLibrary(manager);
     grantTo(library, ofFourId, manager);
-    grantTo(library, ofFiveId, manager);
+    Space space = createSpace(manager);
+    admitGroup(space, ofFourId, manager);
 
-    GroupMemberDisclosure ofFour =
+    GroupMemberDisclosure overLibrary =
         grantService.listGroupMembers(
             KnowledgeLibrary.ASSET_TYPE, library, ofFourId, 0, 50, callerOf(manager));
+    GroupMemberDisclosure overSpace =
+        spaceService.listGroupMembers(space.getId(), ofFourId, 0, 50, callerOf(manager));
 
-    assertThat(ofFour.smallGroup()).isTrue();
-    assertThat(ofFour.activeMemberCount()).isNull();
-    assertThat(ofFour.members()).isEmpty();
-    assertThat(ofFour.name()).as("the group is named in the grant list anyway").isNotNull();
+    for (GroupMemberDisclosure disclosure : List.of(overLibrary, overSpace)) {
+      assertThat(disclosure.activeMemberCount()).isEqualTo(4);
+      assertThat(disclosure.members()).hasSize(4);
+      assertThat(disclosure.name()).isEqualTo("Kleine Runde");
+    }
+  }
 
-    GroupMemberDisclosure ofFive =
+  /** #2134: a protected group stays closed whatever its size - only the people to ask. */
+  @Test
+  void aSmallProtectedGroupStillNamesOnlyItsStewards() {
+    UUID manager = createUser();
+    UUID[] members = fiveNamedMembers();
+    UUID group = createReleasedGroup("Personalrat", members[0], members[1]);
+    markProtected(group);
+    UUID library = createLibrary(manager);
+    grantTo(library, group, manager);
+
+    GroupMemberDisclosure disclosure =
         grantService.listGroupMembers(
-            KnowledgeLibrary.ASSET_TYPE, library, ofFiveId, 0, 50, callerOf(manager));
+            KnowledgeLibrary.ASSET_TYPE, library, group, 0, 50, callerOf(manager));
 
-    assertThat(ofFive.smallGroup()).isFalse();
-    assertThat(ofFive.activeMemberCount()).isEqualTo(5);
-    assertThat(ofFive.members()).hasSize(5);
+    assertThat(disclosure.protectedGroup()).isTrue();
+    assertThat(disclosure.name()).isNull();
+    assertThat(disclosure.activeMemberCount()).isNull();
+    assertThat(disclosure.members()).isEmpty();
   }
 
   @Test

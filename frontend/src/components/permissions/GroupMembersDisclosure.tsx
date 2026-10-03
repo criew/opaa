@@ -30,7 +30,7 @@ interface GroupMembersDisclosureProps {
  * Wunsch** — eine Mitgliederliste ist eine Aussage über Personen und entsteht nicht als Beiwerk
  * einer Übersicht.
  *
- * <p>Was die Antwort zurückhält — geschützte Gruppe, kleine Gruppe — entscheidet der Dienst; hier
+ * <p>Was die Antwort zurückhält — bei einer geschützten Gruppe — entscheidet der Dienst; hier
  * steht nur, wie es erklärt wird.
  */
 export default function GroupMembersDisclosure({
@@ -104,11 +104,6 @@ export default function GroupMembersDisclosure({
           {disclosure.responsible.length > 0
             ? `Geschützte Gruppe — die Mitglieder werden nicht genannt. Verantwortlich: ${disclosure.responsible.join(', ')}`
             : 'Geschützte Gruppe — die Mitglieder werden nicht genannt. Auskunft gibt die Systemverwaltung.'}
-        </Typography>
-      ) : disclosure?.smallGroup ? (
-        <Typography sx={{ fontSize: 12.5 }}>
-          Kleine Gruppe — die Mitglieder werden nicht genannt. In einem Referat wäre eine Gruppe
-          dieser Größe eine Person mit Namen.
         </Typography>
       ) : (
         disclosure && (
