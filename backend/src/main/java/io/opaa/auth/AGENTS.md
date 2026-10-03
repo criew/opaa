@@ -20,9 +20,8 @@ von foundation ab.
 - **Die Kontoidentität ist `users(subject, issuer)` in `io.opaa.auth`**, lokale Konten tragen
   `LocalIssuer#URN`. Das Profil `oidc` startet nicht ohne starkes `OPAA_AUTH_JWT_SECRET`
   (`LocalAuthSecretGuard`).
-- **`auth` kennt `account` nicht, außer `auth.web`.** Was Tokenverarbeitung und Rollenpflege vom lokalen Konto
-  brauchen, liegt im Kern: `LocalCredentials`, die Regel `LocalAccountAccess` und
-  `LocalAdminAvailabilityGuard` („nie ohne anmeldefähigen Systemverwalter“). Den Schalter der
+- **`auth` kennt `account` nicht, außer `auth.web`.** Im Kern liegen `LocalCredentials`, `LocalAccountAccess`,
+  `AccountUsability` (einzige Regel „Konto nutzbar“, ADR-0041) und `LocalAdminAvailabilityGuard`. Den Schalter der
   lokalen Konten erreicht `account` nur über den Port `LocalAccountsSwitch`; die Verwaltung der
   Anbieter liegt in `io.opaa.directory` (rights).
 - **Das Revisionsprotokoll ist nur anfügbar.** Geschrieben wird über `AuditLogService#record` (oder

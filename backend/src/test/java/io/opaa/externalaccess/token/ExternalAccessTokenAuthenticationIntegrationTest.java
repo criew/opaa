@@ -17,6 +17,10 @@ import io.opaa.api.types.LockReason;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.DevAuthFilter;
 import io.opaa.auth.LocalCredentials;
+import io.opaa.auth.LocalIssuer;
+import io.opaa.auth.OidcClaimMapping;
+import io.opaa.auth.OidcProvider;
+import io.opaa.auth.OidcProviderRepository;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.externalaccess.ExternalAccessSettings;
@@ -73,6 +77,7 @@ class ExternalAccessTokenAuthenticationIntegrationTest {
   @Autowired private JdbcTemplate jdbcTemplate;
   @Autowired private OwnLibraryFixtures ownLibraryFixtures;
   @Autowired private UserRepository users;
+  @Autowired private OidcProviderRepository providers;
   @Autowired private KnowledgeLibraryService libraryService;
   @Autowired private ExternalAccessTokenRepository tokens;
   @Autowired private ExternalAccessSettingsService settings;
@@ -327,6 +332,43 @@ class ExternalAccessTokenAuthenticationIntegrationTest {
     fixtures.save(row);
 
     assertRefusedWith(value, "account_not_active");
+  }
+
+  /**
+   * ADR-0041, Entscheidung 4: a token goes with the provider of its account - refused while the
+   * provider is disabled and once it is deleted, like a sign-in through it.
+   */
+  @Test
+  void aTokenOfAnAccountWhoseProviderIsDisabledOrGoneIsRefused() throws Exception {
+    LocalAccount person = fixtures.activeUser("anbieter-" + UUID.randomUUID() + "@intern.example");
+    String value = issueRawFor(person);
+    String issuer = "https://idp.example/realms/token-" + UUID.randomUUID();
+    OidcProvider provider =
+        new OidcProvider(
+            "Token-Anbieter", issuer, "opaa-frontend", null, OidcClaimMapping.keycloakDefaults());
+    provider.disable();
+    providers.save(provider);
+    try {
+      // The state a handover leaves behind: the account now carries the provider's issuer.
+      jdbcTemplate.update(
+          "UPDATE users SET issuer = ?, subject = ? WHERE id = ?",
+          issuer,
+          "sub-" + person.id(),
+          person.id());
+
+      assertRefusedWith(value, "account_not_active");
+
+      providers.deleteById(provider.getId());
+
+      assertRefusedWith(value, "account_not_active");
+    } finally {
+      jdbcTemplate.update(
+          "UPDATE users SET issuer = ?, subject = ? WHERE id = ?",
+          LocalIssuer.URN,
+          person.id().toString(),
+          person.id());
+      providers.findById(provider.getId()).ifPresent(providers::delete);
+    }
   }
 
   @Test
