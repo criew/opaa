@@ -105,14 +105,14 @@ flowchart TB
 
 Die Bibliotheken, die Sie lesen dürfen, stehen im **Katalog** der Hauptnavigation, zusammen mit den
 Prompt-Bibliotheken; der Filter „Wissen" grenzt ihn auf Wissensbibliotheken ein. Eine Kachel nennt
-Name, Beschreibung, Sichtbarkeit, Ihre Rolle, die Anzahl der Dokumente, in wie vielen Räumen die
-Bibliothek bereitsteht, die zuständige Stelle und den Stand, gegebenenfalls mit „Nachfolge offen".
-Suche, Filter, Sortierung und Seiten beschreibt
+Name, Beschreibung, ob sie an „Alle Konten" freigegeben ist, die Anzahl der Dokumente, in wie vielen
+Räumen die Bibliothek bereitsteht, die zuständige Stelle und „Aktualisiert am" oder den Zustand,
+gegebenenfalls mit „Nachfolge offen". Suche, Filter, Reihenfolge und Seiten beschreibt
 [Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), Abschnitt 4, „Der Katalog".
 
 **Was die Kachel über Läufe sagt.** Eine Konnektorbibliothek richtet sich nach ihrem jüngsten Lauf:
 „Wird aktualisiert", solange er läuft, „Aktualisierung fehlgeschlagen", wenn er gescheitert ist, und
-sonst „Stand" mit dem Datum des letzten erfolgreichen Laufs; ohne jeden Lauf steht dort „Noch kein
+sonst „Aktualisiert am" mit dem Datum des letzten erfolgreichen Laufs; ohne jeden Lauf steht dort „Noch kein
 Inhalt". Eine Upload-Bibliothek hat keine Läufe und richtet sich nach ihren Dokumenten, die erste
 zutreffende Regel gilt: eines noch in Verarbeitung, eines gescheitert, eines indexiert, keines. Den
 Fortschritt eines Laufs und warum er gescheitert ist, zeigt erst die Detailansicht: Kopf, Reiter

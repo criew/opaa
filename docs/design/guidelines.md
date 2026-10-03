@@ -333,11 +333,14 @@ und Metadaten in `fg-3`. Unterhalb Tablet-Breite werden breite Tabellen zu Karte
 Karten heben sich im Hover über `border-strong` und `bg-2` ab, nicht über Schatten oder
 Skalierung.
 
-**Asset-Kachel im Katalog.** Kopfzeile mit Asset-Art (Icon und Wort) und Sichtbarkeit, darunter
-Name, Beschreibung, zuständige Stelle mit eigener Rolle und eine Zeile Stand oder Status samt Zahl
-der Spaces. Trägt eine Kachel eigene Bedienelemente (Favoriten-Stern, „In Space verwenden"), ist sie
-**kein umschließender Link**: Der Name ist der Link, seine Klickfläche wird über die Kachel gestreckt,
-und die Bedienelemente liegen darüber als eigene Tab-Positionen — nie ein Knopf in einem Link.
+**Asset-Kachel im Katalog.** Kompakt. Kopfzeile: links die Asset-Art (Icon und Wort), direkt daneben
+das Welt-Symbol (nur bei Freigabe an alle, 5.5), rechts der Favoriten-Stern und „⋯" für weitere Aktionen
+(„In Space verwenden"). Darunter Name, Beschreibung, Umfang samt Zahl der Spaces, die zuständige
+Stelle mit Personen- oder Gruppensymbol statt eines Präfixes und eine Zeile „Aktualisiert am" oder
+Status. Die eigene Rolle steht nicht auf der Kachel, nur auf der Detailseite. Weil die Kachel eigene
+Bedienelemente trägt, ist sie **kein umschließender Link**: Der Name ist der Link, seine Klickfläche
+wird über die Kachel gestreckt, und Stern und „⋯" liegen darüber als eigene Tab-Positionen — nie ein
+Knopf in einem Link. „⋯" heißt „Weitere Aktionen für ‚<Name>'" und öffnet ein Menü.
 
 ### 5.5 Chips und Etiketten
 
@@ -345,13 +348,17 @@ Pill-Radius, 12 px, Gewicht 500, dezent — Umriss (`border-strong` + `fg-2`) od
 Tintfläche (`bg-3`), **keine Signalfarben**. Feste Wortlisten:
 
 - **Rollen:** Leser · Bearbeiter · Verwalter · Eigentümer
-- **Sichtbarkeit:** in der Oberfläche „Für alle" · „Eingeschränkt" — in der Spezifikation öffentlich ·
-  geschlossen; „öffentlich" klingt in Behörden nach Internet. Die Erklärung („an alle Konten
-  freigegeben" · „nur über Freigaben an Personen oder Gruppen erreichbar") steht als Tooltip am
-  Etikett und zusätzlich als Text auf der Seite. Abgeleitet aus den Freigaben, nie eingestellt
+- **Sichtbarkeit:** kein Textetikett. Ein öffentliches Asset (Spezifikation: öffentlich, an alle
+  Konten freigegeben) trägt auf der Kachel ein Welt-Symbol mit Tooltip und `aria-label` „Für alle
+  Konten freigegeben"; ein geschlossenes trägt nichts, insbesondere kein Schloss. Abgeleitet aus den
+  Freigaben, nie eingestellt
+- **Stand:** „Aktualisiert am TT.MM.JJJJ" ohne Punkt, wenn bereit; ein farbiger Punkt nur vor
+  „Wird aktualisiert", „Aktualisierung fehlgeschlagen", „Noch kein Inhalt" und „Nachfolge offen".
+  „Nachfolge offen" ist auf der Kachel eine eigene Zustandszeile ohne „zuständig:"; den Adressaten
+  nennt die Zeile der zuständigen Stelle
 - **Herkunft:** Upload · Dateisystem · Webverzeichnis · RSS-Feed · Confluence · S3-Objektspeicher;
   als Badge auf Kacheln die Kurzform Upload · Dateisystem · Web · Feed · Confluence · S3
-- **Asset-Art:** Wissen · Prompts — stets mit dem Icon der Art
+- **Asset-Art:** Wissen · Prompts — im Filter wie als Etikett, stets mit dem Icon der Art
 
 Ein laufender Vorgang („Lauf läuft · 62 %") ist Text mit Fortschrittsangabe in `fg-2`, kein
 farbiger Chip.
@@ -472,7 +479,7 @@ Weitere Wahlen dieser Art folgen dem Muster ohne eigene Entscheidung. Ein **Drop
 richtig, wo die Menge lang und homogen ist und kein Icon unterscheidet (Rolle, Sprache, Zeitraum).
 
 **Aufbau.** Jede Kachel trägt ein Icon (dekorativ, `aria-hidden`), ein Wort als Namen und einen
-kurzen Satz darunter in `fg-2`; bei Assets die Asset-Art und die Sichtbarkeit als Etiketten (5.5).
+kurzen Satz darunter in `fg-2`; bei Assets die Asset-Art (5.5).
 Die Kachel hat Kartenform (5.4). **Gewählt** zeigt sich an Rahmen in `accent` **und** einem
 Häkchen-Symbol — nie allein über Farbe. Eine **gesperrte** Kachel (fehlendes Recht, nicht
 verfügbare Quellart) bleibt sichtbar, ausgegraut, mit dem Grund im Satz darunter, wenn ihr Fehlen
@@ -485,12 +492,16 @@ Kachel eine eigene Tab-Position, Leertaste schaltet. Die Gruppe trägt einen sic
 zugleich ihr zugänglicher Name ist. Die ganze Kachel ist Klickfläche; Fokus nach 4.4
 ([Barrierefreiheits-Richtlinie](./accessibility.md)).
 
-**Große Mengen.** Für Mehrfachauswahl aus vielen Assets (Zuordnung, Token) liegen über den Kacheln
-dieselben Filter wie im Katalog — Suche, Asset-Art, „nur Favoriten", „aus meinen Gruppen", „alle" —
-und eine Zeile „n ausgewählt". Angeboten wird nur, was die Person lesen darf. „Nur Favoriten" und
-„aus meinen Gruppen" sind überall dieselbe Filterleiste (`AssetFilterChips`): unabhängige
-Umschalter, die sich mit UND verbinden; keiner gedrückt heißt „alle". Wo gewählt wird, kommt
-„Nur ausgewählte" hinzu — es zeigt die Auswahl zum Zeitpunkt des Einschaltens.
+**Große Mengen: eine Filterzeile.** Katalog, Zuordnung und Token-Auswahl haben dieselbe Zeile
+(`AssetFilterBar`), in dieser Reihenfolge: **Suche → Asset-Art → Favoriten**. Die Asset-Art ist eine
+Umschaltgruppe mit sichtbarem Titel „Typ" und erscheint nur, wo mehr als eine Art angeboten wird.
+„Favoriten" ist ein Umschalter mit Stern-Icon, gefüllt, wenn aktiv, und durch einen senkrechten
+Trenner von der Typgruppe abgesetzt, damit er nicht wie eine weitere Art wirkt. Wo gewählt wird,
+folgt „Nur ausgewählte" — es zeigt die Auswahl zum Zeitpunkt des Einschaltens — und die Zahl „n
+ausgewählt". Die Umschalter verbinden sich mit UND; keiner gedrückt heißt „alle". Auf schmalen
+Bildschirmen bricht die Zeile um. Weitere Filter (Sichtbarkeit, Gruppenherkunft) und eine
+Sortierauswahl gibt es nicht; die Reihenfolge ist fest: Favoriten zuerst, dann nach Name. Angeboten
+wird nur, was die Person lesen darf. Über „Weitere laden" steht „n von m angezeigt".
 
 **Ein Baustein.** Das Muster ist im Frontend eine Komponente (Arbeitsname `ChoiceTileGroup`, #2094),
 nicht je Stelle nachgebaut; Übersichten, Auswahl und Katalog nutzen dieselbe Kachel.

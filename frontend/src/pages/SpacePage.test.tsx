@@ -179,7 +179,7 @@ describe('SpacePage', () => {
     renderWithProviders(<SpacePage />, { withRouter: true })
 
     const entry = (await screen.findByText('Formulierungshilfen')).parentElement as HTMLElement
-    expect(within(entry).getByText('Prompt-Bibliothek')).toBeInTheDocument()
+    expect(within(entry).getByText('Prompts')).toBeInTheDocument()
     // A prompt library carries no documents: the space still has no knowledge to search.
     expect(screen.getByText(/Diesem Space ist kein Wissen zugeordnet\./)).toBeInTheDocument()
   })

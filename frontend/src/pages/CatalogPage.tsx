@@ -1,17 +1,21 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import IconButton from '@mui/material/IconButton'
-import ToggleButton from '@mui/material/ToggleButton'
-import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
+import Menu from '@mui/material/Menu'
+import MenuItem from '@mui/material/MenuItem'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import { alpha } from '@mui/material/styles'
+import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
+import MoreHorizIcon from '@mui/icons-material/MoreHoriz'
+import PersonOutlinedIcon from '@mui/icons-material/PersonOutlined'
+import PublicIcon from '@mui/icons-material/Public'
 import StarIcon from '@mui/icons-material/Star'
 import StarBorderIcon from '@mui/icons-material/StarBorder'
-import type { CatalogEntryResponse, CatalogEntryStatus, CatalogVisibility } from '../types/api'
-import type { CatalogSort } from '../services/catalogApi'
+import WorkspacesOutlinedIcon from '@mui/icons-material/WorkspacesOutlined'
+import type { CatalogEntryResponse, CatalogEntryStatus } from '../types/api'
 import { CATALOG_QUERY_MAX_LENGTH, useCatalogStore } from '../stores/catalogStore'
 import { useMyCapabilities } from '../hooks/useMyCapabilities'
 import {
@@ -21,33 +25,13 @@ import {
   type AssetTypeDefinition,
 } from '../components/assets/assetTypeRegistry'
 import OverviewPage, { OverviewCard, OverviewCardLink } from '../components/overview/OverviewPage'
-import UseInSpaceButton from '../components/assets/UseInSpaceButton'
-import MetaBadge from '../components/MetaBadge'
-import AssetFilterChips from '../components/assets/AssetFilterChips'
-import SuccessionStateNote from '../components/succession/SuccessionStateNote'
-import {
-  assetRoleLabel,
-  catalogStatusLabel,
-  catalogVisibilityDescription,
-  catalogVisibilityLabel,
-} from '../utils/labels'
+import { UseInSpaceDialog } from '../components/assets/UseInSpaceButton'
+import AssetFilterBar from '../components/assets/AssetFilterBar'
+import { catalogStatusLabel } from '../utils/labels'
 import { CATALOG_NEW_ROUTE } from '../routes'
 
 /** Long enough to let a word be typed out before the server is asked. */
 const SEARCH_DELAY_MS = 300
-
-const ALL = 'all'
-
-/** The address values of the filters and the sort; the API's own values stay out of the URL. */
-const VISIBILITY_SLUGS: Record<CatalogVisibility, string> = {
-  PUBLIC: 'public',
-  RESTRICTED: 'restricted',
-}
-const SORT_SLUGS: Record<CatalogSort, string> = { name: 'name', updatedAt: 'updated' }
-
-function fromSlug<K extends string>(slugs: Record<K, string>, slug: string | null): K | undefined {
-  return (Object.keys(slugs) as K[]).find((key) => slugs[key] === slug)
-}
 
 function formatDate(value: string): string {
   return new Date(value).toLocaleDateString('de-DE', {
@@ -66,30 +50,16 @@ function ownStatus(entry: CatalogEntryResponse): CatalogEntryStatus {
   return entry.status === 'SUCCESSION_OPEN' ? 'READY' : entry.status
 }
 
-const STATUS_DOT: Record<CatalogEntryStatus, string> = {
-  READY: 'success.main',
+/** Only a state that needs attention carries a dot; READY has none. */
+const STATUS_DOT: Record<Exclude<CatalogEntryStatus, 'READY'>, string> = {
   UPDATING: 'info.main',
   UPDATE_FAILED: 'error.main',
   NOT_YET_AVAILABLE: 'text.disabled',
   SUCCESSION_OPEN: 'warning.main',
 }
 
-/**
- * "Stand <date>" when ready - the last successful run of a knowledge library, otherwise the last
- * change - and the state in words when not. The colour sits in the dot, never in the text, as in
- * the shared StatusLine; this compact form fits a tile and knows the "updating" tone.
- */
-function CatalogStatusLine({ entry }: { entry: CatalogEntryResponse }) {
-  const status = ownStatus(entry)
-  // An upload library has no runs, so no lastIndexedAt; its Stand is then its last change.
-  const standAt = entry.knowledgeLibrary?.lastIndexedAt ?? entry.updatedAt
-  const text =
-    status === 'READY'
-      ? standAt
-        ? `Stand ${formatDate(standAt)}`
-        : ''
-      : catalogStatusLabel(status)
-  if (!text) return null
+/** A state that needs attention, in words behind a coloured dot - the colour never in the text. */
+function StateDotLine({ status }: { status: Exclude<CatalogEntryStatus, 'READY'> }) {
   return (
     <Box
       component="span"
@@ -101,10 +71,30 @@ function CatalogStatusLine({ entry }: { entry: CatalogEntryResponse }) {
         sx={{ width: 7, height: 7, borderRadius: '50%', bgcolor: STATUS_DOT[status] }}
       />
       <Typography component="span" sx={{ fontSize: 11.5, color: 'text.secondary' }}>
-        {text}
+        {catalogStatusLabel(status)}
       </Typography>
     </Box>
   )
+}
+
+/**
+ * "Aktualisiert am <date>" when ready - the last successful run of a knowledge library, otherwise
+ * the last change - and the state behind a dot when not. An open succession is a line of its own;
+ * its addressee is already the responsible party.
+ */
+function CatalogStatusLine({ entry }: { entry: CatalogEntryResponse }) {
+  const status = ownStatus(entry)
+  if (status === 'READY') {
+    // An upload library has no runs, so no lastIndexedAt; its date is then its last change.
+    const updatedAt = entry.knowledgeLibrary?.lastIndexedAt ?? entry.updatedAt
+    if (!updatedAt) return null
+    return (
+      <Typography component="span" sx={{ fontSize: 11.5, color: 'text.secondary' }}>
+        Aktualisiert am {formatDate(updatedAt)}
+      </Typography>
+    )
+  }
+  return <StateDotLine status={status} />
 }
 
 /**
@@ -115,6 +105,42 @@ function responsibleLabel(entry: CatalogEntryResponse): string {
   if (entry.succession) return entry.succession.addresseeLabel
   if (entry.ownerLabel) return entry.ownerLabel
   return entry.ownerType === 'GROUP' ? 'eine Gruppe' : 'eine Person'
+}
+
+/** The responsible party behind a person or group symbol; a succession addresses a group. */
+function ResponsibleLine({ entry }: { entry: CatalogEntryResponse }) {
+  const group = entry.succession !== null && entry.succession !== undefined
+  const Icon = group || entry.ownerType === 'GROUP' ? GroupsOutlinedIcon : PersonOutlinedIcon
+  return (
+    <Box
+      component="span"
+      sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75, minWidth: 0 }}
+    >
+      <Icon
+        titleAccess={
+          group || entry.ownerType === 'GROUP' ? 'Zuständige Gruppe' : 'Zuständige Person'
+        }
+        sx={{ fontSize: 15, color: 'text.secondary' }}
+      />
+      <Typography component="span" noWrap sx={{ fontSize: 11.5, color: 'text.secondary' }}>
+        {responsibleLabel(entry)}
+      </Typography>
+    </Box>
+  )
+}
+
+/** Only an asset released to all accounts carries the globe; a restricted one carries nothing. */
+function PublicMark() {
+  const label = 'Für alle Konten freigegeben'
+  return (
+    <Tooltip title={label}>
+      <PublicIcon
+        titleAccess={label}
+        aria-label={label}
+        sx={{ fontSize: 16, color: 'text.secondary' }}
+      />
+    </Tooltip>
+  )
 }
 
 function spreadLabel(spaceCount: number): string {
@@ -189,6 +215,59 @@ function FavoriteToggle({ entry }: { entry: CatalogEntryResponse }) {
   )
 }
 
+/**
+ * "⋯": the card's further actions in a menu beside the star - like the star its own tab stop above
+ * the card's stretched link, never inside it.
+ */
+function MoreActions({ entry }: { entry: CatalogEntryResponse }) {
+  const [anchor, setAnchor] = useState<HTMLElement | null>(null)
+  const [useInSpace, setUseInSpace] = useState(false)
+  const buttonId = `catalog-actions-${entry.assetType}-${entry.assetId}`
+  const menuId = `${buttonId}-menu`
+  return (
+    <>
+      <IconButton
+        id={buttonId}
+        size="small"
+        aria-label={`Weitere Aktionen für ‚${entry.name}‘`}
+        aria-haspopup="menu"
+        aria-controls={anchor ? menuId : undefined}
+        aria-expanded={anchor ? true : undefined}
+        onClick={(event) => setAnchor(event.currentTarget)}
+        sx={{ position: 'relative', zIndex: 1, m: -0.75, ml: 0.25 }}
+      >
+        <MoreHorizIcon sx={{ fontSize: 20 }} />
+      </IconButton>
+      <Menu
+        id={menuId}
+        anchorEl={anchor}
+        open={anchor !== null}
+        onClose={() => setAnchor(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+        slotProps={{ list: { 'aria-labelledby': buttonId } }}
+      >
+        <MenuItem
+          onClick={() => {
+            setAnchor(null)
+            setUseInSpace(true)
+          }}
+        >
+          <WorkspacesOutlinedIcon aria-hidden sx={{ fontSize: 18, mr: 1.5 }} />
+          In Space verwenden
+        </MenuItem>
+      </Menu>
+      <UseInSpaceDialog
+        assetType={entry.assetType}
+        assetId={entry.assetId}
+        name={entry.name}
+        open={useInSpace}
+        onClose={() => setUseInSpace(false)}
+      />
+    </>
+  )
+}
+
 function CatalogCard({
   entry,
   definition,
@@ -198,96 +277,54 @@ function CatalogCard({
 }) {
   return (
     <OverviewCard>
-      <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 0.75 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
         <TypeBadge definition={definition} />
-        <Tooltip title={catalogVisibilityDescription(entry.visibility)} describeChild>
-          <span>
-            <MetaBadge>{catalogVisibilityLabel(entry.visibility)}</MetaBadge>
-          </span>
-        </Tooltip>
-        <MetaBadge accent>{assetRoleLabel(entry.myRole)}</MetaBadge>
+        {entry.visibility === 'PUBLIC' && <PublicMark />}
         <FavoriteToggle entry={entry} />
+        <MoreActions entry={entry} />
       </Box>
       <OverviewCardLink to={definition.detailRoute(entry.assetId)}>
         <Typography component="span" sx={{ fontSize: 16.5, fontWeight: 600 }}>
           {entry.name}
         </Typography>
       </OverviewCardLink>
-      <Typography
-        component="p"
-        sx={{
-          fontSize: 12.5,
-          color: 'text.secondary',
-          m: 0,
-          flex: 1,
-          display: '-webkit-box',
-          WebkitLineClamp: 2,
-          WebkitBoxOrient: 'vertical',
-          overflow: 'hidden',
-        }}
-      >
-        {entry.description ?? ''}
-      </Typography>
-      <Typography component="span" sx={{ fontSize: 11.5, color: 'text.secondary' }}>
+      {entry.description && (
+        <Typography
+          component="p"
+          sx={{
+            fontSize: 12.5,
+            color: 'text.secondary',
+            m: 0,
+            display: '-webkit-box',
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: 'vertical',
+            overflow: 'hidden',
+          }}
+        >
+          {entry.description}
+        </Typography>
+      )}
+      <Typography component="span" sx={{ fontSize: 11.5, color: 'text.secondary', mt: 'auto' }}>
         {definition.extentLabel(entry.itemCount)} · {spreadLabel(entry.spaceCount)}
       </Typography>
-      <Typography component="span" sx={{ fontSize: 11.5, color: 'text.secondary' }}>
-        zuständig: {responsibleLabel(entry)}
-      </Typography>
+      <ResponsibleLine entry={entry} />
       <CatalogStatusLine entry={entry} />
-      <SuccessionStateNote succession={entry.succession} variant="badge" />
-      {/* Like the star: its own tab stop above the card's stretched link, never inside it. */}
-      <Box sx={{ position: 'relative', zIndex: 1, alignSelf: 'flex-start', mt: 0.5 }}>
-        <UseInSpaceButton
-          assetType={entry.assetType}
-          assetId={entry.assetId}
-          name={entry.name}
-          size="small"
-        />
-      </Box>
+      {entry.succession && <StateDotLine status="SUCCESSION_OPEN" />}
     </OverviewCard>
-  )
-}
-
-/** A filter group with its visible title, which is also the group's accessible name. */
-function FilterGroup({
-  id,
-  title,
-  children,
-  push = false,
-}: {
-  id: string
-  title: string
-  children: (labelId: string) => ReactNode
-  push?: boolean
-}) {
-  const labelId = `catalog-filter-${id}`
-  return (
-    <Box
-      sx={{ display: 'inline-flex', alignItems: 'center', gap: 1, ...(push ? { ml: 'auto' } : {}) }}
-    >
-      <Typography id={labelId} component="span" sx={{ fontSize: 12.5, color: 'text.secondary' }}>
-        {title}
-      </Typography>
-      {children(labelId)}
-    </Box>
   )
 }
 
 /**
  * The one entry for every asset type (ADR-0039, Entscheidung 1): what the person may read, as
- * cards. Search, filters and sort run on the server; filters and sort stand in the address
- * (`?type=&visibility=&groups=1&favorites=1&sort=`), so `/libraries` and `/prompts` can lead here narrowed to
- * their type and a filtered view survives a reload.
+ * cards, in the fixed order favorites first, then by name. Search and filters run on the server;
+ * the filters stand in the address (`?type=&favorites=1`), so `/libraries` and `/prompts` can lead
+ * here narrowed to their type and a filtered view survives a reload.
  */
 export default function CatalogPage() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const typeFilter = ASSET_TYPES.find((definition) => definition.slug === searchParams.get('type'))
-  const visibility = fromSlug(VISIBILITY_SLUGS, searchParams.get('visibility'))
-  const fromMyGroups = searchParams.get('groups') === '1'
   const favoritesOnly = searchParams.get('favorites') === '1'
-  const sort = fromSlug(SORT_SLUGS, searchParams.get('sort')) ?? 'name'
   const [query, setQuery] = useState('')
   const [appliedQuery, setAppliedQuery] = useState('')
   const entries = useCatalogStore((s) => s.entries)
@@ -309,15 +346,8 @@ export default function CatalogPage() {
 
   const filterType = typeFilter?.type
   useEffect(() => {
-    void load({
-      type: filterType,
-      q: appliedQuery,
-      visibility,
-      fromMyGroups,
-      favorites: favoritesOnly,
-      sort,
-    })
-  }, [load, filterType, appliedQuery, visibility, fromMyGroups, favoritesOnly, sort])
+    void load({ type: filterType, q: appliedQuery, favorites: favoritesOnly })
+  }, [load, filterType, appliedQuery, favoritesOnly])
 
   /** Sets one address parameter; `null` removes it, so the default view has a bare address. */
   function setParam(key: string, value: string | null) {
@@ -336,6 +366,7 @@ export default function CatalogPage() {
     <OverviewPage<CatalogEntryResponse>
       title="Katalog"
       countLabel={(count) => (count === 1 ? '1 Eintrag' : `${count} Einträge`)}
+      subtitle="Alles, was Sie nutzen dürfen. Ihre Favoriten stehen oben."
       createLabel={canCreate ? 'Neu' : undefined}
       onCreate={canCreate ? () => navigate(CATALOG_NEW_ROUTE) : undefined}
       items={entries}
@@ -346,93 +377,23 @@ export default function CatalogPage() {
         resultFor: loadedQuery ?? undefined,
         maxLength: CATALOG_QUERY_MAX_LENGTH,
       }}
-      filters={
-        <>
-          <FilterGroup id="type" title="Typ">
-            {(labelId) => (
-              <ToggleButtonGroup
-                size="small"
-                exclusive
-                value={typeFilter?.slug ?? ALL}
-                onChange={(_event, next: string | null) =>
-                  next && setParam('type', next === ALL ? null : next)
-                }
-                aria-labelledby={labelId}
-              >
-                <ToggleButton value={ALL} sx={{ px: 1.5 }}>
-                  Alle
-                </ToggleButton>
-                {ASSET_TYPES.map((definition) => {
-                  const Icon = definition.Icon
-                  return (
-                    <ToggleButton
-                      key={definition.type}
-                      value={definition.slug}
-                      sx={{ px: 1.5, gap: 0.75 }}
-                    >
-                      <Icon aria-hidden sx={{ fontSize: 16 }} />
-                      {definition.label}
-                    </ToggleButton>
-                  )
-                })}
-              </ToggleButtonGroup>
-            )}
-          </FilterGroup>
-          <FilterGroup id="visibility" title="Sichtbarkeit">
-            {(labelId) => (
-              <ToggleButtonGroup
-                size="small"
-                exclusive
-                value={visibility ? VISIBILITY_SLUGS[visibility] : ALL}
-                onChange={(_event, next: string | null) =>
-                  next && setParam('visibility', next === ALL ? null : next)
-                }
-                aria-labelledby={labelId}
-              >
-                <ToggleButton value={ALL} sx={{ px: 1.5 }}>
-                  Alle
-                </ToggleButton>
-                {(Object.keys(VISIBILITY_SLUGS) as CatalogVisibility[]).map((value) => (
-                  <ToggleButton key={value} value={VISIBILITY_SLUGS[value]} sx={{ px: 1.5 }}>
-                    {catalogVisibilityLabel(value)}
-                  </ToggleButton>
-                ))}
-              </ToggleButtonGroup>
-            )}
-          </FilterGroup>
-          <AssetFilterChips
-            value={{ favorites: favoritesOnly, fromMyGroups }}
-            onToggle={(key) =>
-              key === 'favorites'
-                ? setParam('favorites', favoritesOnly ? null : '1')
-                : setParam('groups', fromMyGroups ? null : '1')
-            }
-          />
-          <FilterGroup id="sort" title="Sortierung" push>
-            {(labelId) => (
-              <ToggleButtonGroup
-                size="small"
-                exclusive
-                value={SORT_SLUGS[sort]}
-                onChange={(_event, next: string | null) =>
-                  next && setParam('sort', next === SORT_SLUGS.name ? null : next)
-                }
-                aria-labelledby={labelId}
-              >
-                <ToggleButton value={SORT_SLUGS.name} sx={{ px: 1.5 }}>
-                  Name
-                </ToggleButton>
-                <ToggleButton value={SORT_SLUGS.updatedAt} sx={{ px: 1.5 }}>
-                  Zuletzt geändert
-                </ToggleButton>
-              </ToggleButtonGroup>
-            )}
-          </FilterGroup>
-        </>
+      filterBar={
+        <AssetFilterBar
+          search={{
+            value: query,
+            onChange: setQuery,
+            maxLength: CATALOG_QUERY_MAX_LENGTH,
+          }}
+          types={{
+            offered: ASSET_TYPES,
+            value: typeFilter?.type,
+            onChange: (type) => setParam('type', assetTypeDefinition(type)?.slug ?? null),
+          }}
+          filters={{ favorites: favoritesOnly }}
+          onToggle={() => setParam('favorites', favoritesOnly ? null : '1')}
+        />
       }
-      filtered={
-        typeFilter !== undefined || visibility !== undefined || fromMyGroups || favoritesOnly
-      }
+      filtered={typeFilter !== undefined || favoritesOnly}
       total={total}
       isLoading={isLoading}
       error={error}
@@ -447,14 +408,24 @@ export default function CatalogPage() {
       }
       listFooter={
         page + 1 < totalPages ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2.5 }}>
+          <Box
+            sx={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: 1,
+              mt: 2.5,
+            }}
+          >
+            <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+              {entries.length} von {total} angezeigt
+            </Typography>
             <Button variant="outlined" onClick={() => void loadMore()} disabled={isLoading}>
               Weitere laden
             </Button>
           </Box>
         ) : undefined
       }
-      footNote="Der Katalog zeigt nur, was Sie lesen dürfen. „Für alle“: an alle Konten freigegeben; „Eingeschränkt“: nur über Freigaben an Personen oder Gruppen erreichbar."
     />
   )
 }

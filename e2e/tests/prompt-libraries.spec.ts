@@ -80,7 +80,7 @@ async function searchPromptLibraries(page: Page, name: string): Promise<void> {
       const url = new URL(response.url())
       return url.pathname === '/api/v1/catalog' && url.searchParams.get('q') === name
     }),
-    page.getByRole('textbox', { name: 'Suchen' }).fill(name),
+    page.getByRole('searchbox', { name: 'Suchen' }).fill(name),
   ])
 }
 
@@ -215,8 +215,8 @@ test.describe.serial('Prompt-Bibliotheken: Freigabewege und Katalog (#1904)', ()
     await searchCatalog(outsider, LIBRARY_NAME)
     const entry = catalogEntry(outsider, LIBRARY_NAME)
     await expect(entry).toBeVisible()
-    await expect(entry).toContainText('Prompt-Bibliothek')
-    await expect(entry).toContainText('zuständig: Dev User')
+    await expect(entry).toContainText('Prompts')
+    await expect(entry).toContainText('Dev User')
     await entry.click()
     await expect(outsider.getByRole('heading', { level: 1, name: LIBRARY_NAME })).toBeVisible()
     await expect(outsider.getByText(`/${PROMPT_COMMAND}`)).toBeVisible()
@@ -254,8 +254,8 @@ test.describe.serial('Prompt-Bibliotheken: Freigabewege und Katalog (#1904)', ()
     await searchCatalog(owner, runId.toString())
     const knowledge = catalogEntry(owner, KNOWLEDGE_NAME)
     await expect(knowledge).toBeVisible()
-    await expect(knowledge).toContainText('Wissensbibliothek')
-    await expect(knowledge).toContainText('zuständig: Dev User')
+    await expect(knowledge).toContainText('Wissen')
+    await expect(knowledge).toContainText('Dev User')
     await expect(catalogEntry(owner, CLOSED_LIBRARY_NAME)).toBeVisible()
     await expect(catalogEntry(owner, LIBRARY_NAME)).toBeVisible()
 

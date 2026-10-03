@@ -34,6 +34,8 @@ export interface OverviewPageProps<T> {
   heading?: (count: number) => string
   /** The quiet figure beside a fixed heading; use instead of `heading`. */
   countLabel?: (count: number) => string
+  /** One sentence under the heading, saying what the overview holds. */
+  subtitle?: string
   /** Both omitted where an overview offers no creation at all. */
   createLabel?: string
   onCreate?: () => void
@@ -48,6 +50,8 @@ export interface OverviewPageProps<T> {
   search?: ControlledSearch
   /** Further controls beside the search, e.g. a type filter. */
   filters?: ReactNode
+  /** Replaces the whole row of search and `filters`, e.g. with the asset filter row. */
+  filterBar?: ReactNode
   /** Whether `filters` currently narrow `items` - an empty result then reads as "no match". */
   filtered?: boolean
   /** The size of the whole result where `items` hold only a part of it, e.g. one page. */
@@ -58,8 +62,6 @@ export interface OverviewPageProps<T> {
   /** Shown instead of the list when the overview holds no items at all. */
   emptyState?: ReactNode
   renderCard: (item: T) => ReactNode
-  /** Quiet note below the list, e.g. which items the list cannot show. */
-  footNote?: ReactNode
   /** Rendered below the list, e.g. a button that loads the next page. */
   listFooter?: ReactNode
 }
@@ -94,6 +96,7 @@ export default function OverviewPage<T>({
   title,
   heading,
   countLabel,
+  subtitle,
   createLabel,
   onCreate,
   items,
@@ -101,6 +104,7 @@ export default function OverviewPage<T>({
   searchText,
   search,
   filters,
+  filterBar,
   filtered = false,
   total,
   searchPlaceholder = 'Name oder Beschreibung …',
@@ -108,7 +112,6 @@ export default function OverviewPage<T>({
   error = null,
   emptyState,
   renderCard,
-  footNote,
   listFooter,
 }: OverviewPageProps<T>) {
   const [ownQuery, setOwnQuery] = useState('')
@@ -134,7 +137,15 @@ export default function OverviewPage<T>({
 
   return (
     <Box sx={{ flexGrow: 1, overflowY: 'auto', p: { xs: 2.5, md: 5 } }}>
-      <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 2, mb: 2.5, flexWrap: 'wrap' }}>
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'baseline',
+          gap: 2,
+          mb: subtitle ? 0.5 : 2.5,
+          flexWrap: 'wrap',
+        }}
+      >
         <PageHeading title={firstLoad || !heading ? title : heading(count)} documentTitle={title} />
         {countLabel && !firstLoad && (
           <Typography component="span" sx={{ fontSize: 13, color: 'text.secondary' }}>
@@ -147,6 +158,11 @@ export default function OverviewPage<T>({
           </Button>
         )}
       </Box>
+      {subtitle && (
+        <Typography sx={{ fontSize: 13.5, color: 'text.secondary', mb: 2.5 }}>
+          {subtitle}
+        </Typography>
+      )}
 
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
@@ -154,7 +170,9 @@ export default function OverviewPage<T>({
         </Alert>
       )}
 
-      {!isEmpty && (
+      {!isEmpty && filterBar && <Box sx={{ mb: 2.5 }}>{filterBar}</Box>}
+
+      {!isEmpty && !filterBar && (
         <Box
           sx={{
             display: 'flex',
@@ -231,12 +249,6 @@ export default function OverviewPage<T>({
       )}
 
       {showList && listFooter}
-
-      {showList && footNote && (
-        <Typography sx={{ fontSize: 11.5, color: 'text.secondary', mt: 1.5 }}>
-          {footNote}
-        </Typography>
-      )}
     </Box>
   )
 }

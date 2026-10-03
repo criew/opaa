@@ -82,34 +82,22 @@ function readableEntries(): CatalogEntryResponse[] {
 }
 
 /**
- * The server's catalog: only what the mock user may read, filtered, searched, sorted and paged.
- * "Aus meinen Gruppen" is approximated by group ownership - the fixtures name no memberships.
- * The caller's favorites come first in either order, as on the server.
+ * The server's catalog: only what the mock user may read, filtered, searched and paged, in the
+ * server's fixed order - the caller's favorites first, then by name.
  */
 export const catalogHandlers = [
   http.get('/api/v1/catalog', ({ request }) => {
     const params = new URL(request.url).searchParams
     const type = params.get('type') as AssetType | null
     const q = (params.get('q') ?? '').trim().toLowerCase()
-    const visibility = params.get('visibility')
-    const fromMyGroups = params.get('fromMyGroups') === 'true'
     const favoritesOnly = params.get('favorites') === 'true'
-    const sort = params.get('sort') ?? 'name'
     const page = Number(params.get('page') ?? '0')
     const size = Number(params.get('size') ?? '50')
     if (page < 0 || size < 1 || size > 200) {
       return HttpResponse.json({ error: 'page oder size außerhalb der Grenzen' }, { status: 400 })
     }
-    if (sort !== 'name' && sort !== 'updatedAt') {
-      return HttpResponse.json({ error: 'Unbekannte Sortierung' }, { status: 400 })
-    }
-    if (visibility && visibility !== 'PUBLIC' && visibility !== 'RESTRICTED') {
-      return HttpResponse.json({ error: 'Unbekannte Sichtbarkeit' }, { status: 400 })
-    }
     const all = readableEntries()
       .filter((entry) => !type || entry.assetType === type)
-      .filter((entry) => !visibility || entry.visibility === visibility)
-      .filter((entry) => !fromMyGroups || entry.ownerType === 'GROUP')
       .filter((entry) => !favoritesOnly || entry.favorite)
       .filter(
         (entry) =>
@@ -120,9 +108,8 @@ export const catalogHandlers = [
       .sort(
         (a, b) =>
           Number(b.favorite) - Number(a.favorite) ||
-          (sort === 'updatedAt'
-            ? b.updatedAt.localeCompare(a.updatedAt) || a.assetId.localeCompare(b.assetId)
-            : a.name.localeCompare(b.name)),
+          a.name.toLowerCase().localeCompare(b.name.toLowerCase()) ||
+          a.assetId.localeCompare(b.assetId),
       )
     return HttpResponse.json({
       entries: all.slice(page * size, page * size + size),

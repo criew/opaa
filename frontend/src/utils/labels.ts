@@ -3,7 +3,6 @@ import type {
   AssetRole,
   AssetType,
   CatalogEntryStatus,
-  CatalogVisibility,
   Capability,
   GroupMechanism,
   GroupOrigin,
@@ -483,31 +482,6 @@ export function groupGrowthLabel(
   return `${signal.memberCountAtGrant} bei ${grantWord}, heute ${signal.memberCountNow}`
 }
 
-const catalogVisibilityLabels: Record<CatalogVisibility, string> = {
-  PUBLIC: 'Für alle',
-  RESTRICTED: 'Eingeschränkt',
-}
-
-/**
- * The visibility of an asset in the interface (ADR-0039, Entscheidung 2). "Öffentlich" would read
- * as "on the internet" in a public authority, hence "Für alle" / "Eingeschränkt".
- */
-export function catalogVisibilityLabel(visibility: CatalogVisibility | string | undefined): string {
-  if (!visibility) return ''
-  return catalogVisibilityLabels[visibility as CatalogVisibility] ?? visibility
-}
-
-const catalogVisibilityDescriptions: Record<CatalogVisibility, string> = {
-  PUBLIC: 'An alle Konten freigegeben.',
-  RESTRICTED: 'Nur über Freigaben an Personen oder Gruppen erreichbar.',
-}
-
-export function catalogVisibilityDescription(
-  visibility: CatalogVisibility | string | undefined,
-): string {
-  return catalogVisibilityDescriptions[visibility as CatalogVisibility] ?? ''
-}
-
 const catalogStatusLabels: Record<Exclude<CatalogEntryStatus, 'READY'>, string> = {
   UPDATING: 'Wird aktualisiert',
   UPDATE_FAILED: 'Aktualisierung fehlgeschlagen',
@@ -515,7 +489,7 @@ const catalogStatusLabels: Record<Exclude<CatalogEntryStatus, 'READY'>, string> 
   SUCCESSION_OPEN: 'Nachfolge offen',
 }
 
-/** The word for a state that is not READY - READY shows as the "Stand" date instead. */
+/** The word for a state that is not READY - READY shows as the "Aktualisiert am" date instead. */
 export function catalogStatusLabel(status: CatalogEntryStatus | string | undefined): string {
   if (!status || status === 'READY') return ''
   return catalogStatusLabels[status as Exclude<CatalogEntryStatus, 'READY'>] ?? status
