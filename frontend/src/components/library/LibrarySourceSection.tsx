@@ -39,6 +39,8 @@ export interface LibrarySourceSectionProps {
     fullSyncIntervalDefaultDays?: number | null
     schedule?: LibrarySchedule | null
     lastScheduledRunsFailed?: boolean | null
+    connectionProfile?: { id: string; name: string } | null
+    connectionProfileRemoved?: boolean
   }
   canEditSource: boolean
 }
@@ -65,6 +67,13 @@ export default function LibrarySourceSection({
 
   return (
     <Stack>
+      {library.connectionProfileRemoved && (
+        <Alert severity="warning" sx={{ mb: 2 }} data-testid="connection-profile-removed">
+          Zugang entfernt: Der Zugang dieser Bibliothek wurde von der Systemverwaltung gelöscht. Der
+          Inhalt bleibt durchsuchbar, wird aber nicht mehr aktualisiert. Die Verwaltenden der
+          Bibliothek ordnen sie einem anderen Zugang zu oder löschen sie.
+        </Alert>
+      )}
       {/* #1138 (ADR-0023) / ADR-0027: Umfang und seine Freigabefolge gelten für alle
           Leseberechtigten - seit #1939 stehen sie hier statt im Kopf, mit Erklärung. */}
       {Scope && (
@@ -107,6 +116,11 @@ export default function LibrarySourceSection({
                 proxy hosts - the backend only serves them to a caller with at least MANAGER, and
                 this whole area only renders behind the same bar. */}
             <Stack spacing={0.75}>
+              {library.connectionProfile && (
+                <Typography variant="body2" data-testid="connection-profile">
+                  Zugang: {library.connectionProfile.name}
+                </Typography>
+              )}
               {StoredView ? (
                 <StoredView library={library} libraryId={libraryId} />
               ) : (

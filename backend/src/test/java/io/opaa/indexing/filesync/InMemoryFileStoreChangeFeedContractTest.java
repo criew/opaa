@@ -12,7 +12,8 @@ class InMemoryFileStoreChangeFeedContractTest extends FileStoreChangeFeedContrac
 
   @Override
   protected Fixture fixture() {
-    return InMemoryFileStoreContractTest.fixtureOver(new InMemoryFileStore().withChangeFeed());
+    return InMemoryFileStoreContractTest.fixtureOver(
+        new InMemoryFileStore().withChangeFeed().withGlobalIds());
   }
 
   @Test

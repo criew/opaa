@@ -104,6 +104,29 @@ public abstract class FileStoreChangeFeedContract extends FileStoreContract {
     assertThat(harness.storedPaths()).containsExactly(fixture.filePath(1, "c.txt"));
   }
 
+  /**
+   * An unchanged file moved into the other container stays a document there, whichever stream is
+   * read first: the removal its old container's stream reports is no finding for it any more.
+   */
+  @org.junit.jupiter.params.ParameterizedTest
+  @org.junit.jupiter.params.provider.CsvSource({"0, 1", "1, 0"})
+  void aFileMovedBetweenContainersStaysADocument(int from, int to) throws Exception {
+    fixture.put(from, "wandert.txt", "Bleibt gleich.");
+    fullSync();
+    String path = fixture.filePath(from, "wandert.txt");
+
+    fixture.moveAcross(from, "wandert.txt", to);
+    FileSyncHarness.Run run = changeRun();
+
+    assertThat(run.failure()).isNull();
+    assertThat(run.eventsOf(IndexingEventCategory.REMOVED)).isEmpty();
+    assertThat(harness.stored(path))
+        .as("the document now belongs to container %s", to)
+        .hasValueSatisfying(
+            document ->
+                assertThat(document.getSourceContainerKey()).isEqualTo(fixture.containerKey(to)));
+  }
+
   @Test
   void theChangesOfEveryContainerAreRead() throws Exception {
     fixture.put(0, "a.txt", "Erster Text.");
