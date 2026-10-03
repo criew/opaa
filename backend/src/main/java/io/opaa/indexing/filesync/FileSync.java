@@ -270,11 +270,12 @@ public final class FileSync implements AutoCloseable {
    * document with its attachments - a removal only for a document of the stream's own containers,
    * and only while all of them are reachable. A stream's new cursor is kept unless a file failed
    * transiently; a durable failure (an unreadable format) does not hold it. The cursors move only
-   * once every stream is read and the removals are applied, so a run that ends early loses none. A change of structure,
-   * an expired cursor or a stream without a cursor make the next run a full sync. The folder memory
-   * of every container the run changed is dropped, so its count guard stays sound. A new container
-   * on an existing stream has no full listing behind it: the connector discards the run state when
-   * its containers change. No listing, no reconciliation: {@link ListingOutcome#partial()}.
+   * once every stream is read and the removals are applied, so a run that ends early loses none. A
+   * change of structure, an expired cursor or a stream without a cursor make the next run a full
+   * sync. The folder memory of every container the run changed is dropped, so its count guard stays
+   * sound. A new container on an existing stream has no full listing behind it: the connector
+   * discards the run state when its containers change. No listing, no reconciliation: {@link
+   * ListingOutcome#partial()}.
    */
   public ListingOutcome runChanges() throws InterruptedException {
     ChangeFeed feed =
