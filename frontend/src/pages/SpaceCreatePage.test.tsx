@@ -301,7 +301,7 @@ describe('SpaceCreatePage (#594, Mockup 1b)', () => {
       await user.click(
         within(screen.getByRole('group', { name: 'Typ' })).getByRole('button', { name: 'Alle' }),
       )
-      await user.type(screen.getByRole('searchbox', { name: 'Suche' }), 'gibt es nicht')
+      await user.type(screen.getByRole('searchbox', { name: 'Suchen' }), 'gibt es nicht')
       expect(await screen.findByText('Keine Treffer.')).toBeInTheDocument()
       expect(screen.getByText('Ausgewählt: Dienstanweisungen')).toBeInTheDocument()
     })
@@ -312,7 +312,7 @@ describe('SpaceCreatePage (#594, Mockup 1b)', () => {
 
       await toContentStep(user)
       expect(await screen.findByRole('checkbox', { name: /^Meine Dokumente/ })).toBeVisible()
-      const search = screen.getByRole('searchbox', { name: 'Suche' })
+      const search = screen.getByRole('searchbox', { name: 'Suchen' })
       const type = screen.getByRole('group', { name: 'Typ' })
       const filters = screen.getByRole('group', { name: 'Filter' })
       expect(search.compareDocumentPosition(type) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()

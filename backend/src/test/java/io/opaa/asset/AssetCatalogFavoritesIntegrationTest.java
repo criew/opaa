@@ -128,8 +128,7 @@ class AssetCatalogFavoritesIntegrationTest {
     List<String> paged = new ArrayList<>();
     for (int page = 0; page < 3; page++) {
       AssetCatalogPage result =
-          catalogService.list(
-              callerOf(member), new AssetCatalogQuery(null, null, null, false), page, 2);
+          catalogService.list(callerOf(member), new AssetCatalogQuery(null, null, false), page, 2);
       assertThat(result.totalElements()).isEqualTo(5);
       paged.addAll(names(result));
     }
@@ -174,7 +173,7 @@ class AssetCatalogFavoritesIntegrationTest {
 
   private AssetCatalogPage list(UUID caller, boolean favoritesOnly) {
     return catalogService.list(
-        callerOf(caller), new AssetCatalogQuery(null, null, null, favoritesOnly), 0, 50);
+        callerOf(caller), new AssetCatalogQuery(null, null, favoritesOnly), 0, 50);
   }
 
   private void mark(UUID userId, UUID libraryId) {

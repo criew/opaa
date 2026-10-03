@@ -322,8 +322,8 @@ und Metadaten in `fg-3`. Unterhalb Tablet-Breite werden breite Tabellen zu Karte
 Karten heben sich im Hover über `border-strong` und `bg-2` ab, nicht über Schatten oder
 Skalierung.
 
-**Asset-Kachel im Katalog.** Kompakt. Kopfzeile: links das Welt-Symbol (nur bei Freigabe an alle,
-5.5) und die Asset-Art (Icon und Wort), rechts der Favoriten-Stern und „⋯" für weitere Aktionen
+**Asset-Kachel im Katalog.** Kompakt. Kopfzeile: links die Asset-Art (Icon und Wort), direkt daneben
+das Welt-Symbol (nur bei Freigabe an alle, 5.5), rechts der Favoriten-Stern und „⋯" für weitere Aktionen
 („In Space verwenden"). Darunter Name, Beschreibung, Umfang samt Zahl der Spaces, die zuständige
 Stelle mit Personen- oder Gruppensymbol statt eines Präfixes und eine Zeile „Aktualisiert am" oder
 Status. Die eigene Rolle steht nicht auf der Kachel, nur auf der Detailseite. Weil die Kachel eigene
@@ -342,11 +342,12 @@ Tintfläche (`bg-3`), **keine Signalfarben**. Feste Wortlisten:
   Konten freigegeben"; ein geschlossenes trägt nichts, insbesondere kein Schloss. Abgeleitet aus den
   Freigaben, nie eingestellt
 - **Stand:** „Aktualisiert am TT.MM.JJJJ" ohne Punkt, wenn bereit; ein farbiger Punkt nur vor
-  „Wird aktualisiert", „Aktualisierung fehlgeschlagen", „Noch kein Inhalt" und „Nachfolge offen"
+  „Wird aktualisiert", „Aktualisierung fehlgeschlagen", „Noch kein Inhalt" und „Nachfolge offen".
+  „Nachfolge offen" ist auf der Kachel eine eigene Zustandszeile ohne „zuständig:"; den Adressaten
+  nennt die Zeile der zuständigen Stelle
 - **Herkunft:** Upload · Dateisystem · Webverzeichnis · RSS-Feed · Confluence · S3-Objektspeicher;
   als Badge auf Kacheln die Kurzform Upload · Dateisystem · Web · Feed · Confluence · S3
-- **Asset-Art:** im Filter Wissen · Prompts, als Etikett auf der Kachel Wissen · Prompt-Bibliothek —
-  stets mit dem Icon der Art
+- **Asset-Art:** Wissen · Prompts — im Filter wie als Etikett, stets mit dem Icon der Art
 
 Ein laufender Vorgang („Lauf läuft · 62 %") ist Text mit Fortschrittsangabe in `fg-2`, kein
 farbiger Chip.

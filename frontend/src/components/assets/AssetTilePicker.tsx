@@ -167,7 +167,7 @@ export default function AssetTilePicker({
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
       <AssetFilterBar
-        search={{ value: query, onChange: setQuery, label: 'Suche', maxLength: 200 }}
+        search={{ value: query, onChange: setQuery, maxLength: 200 }}
         types={{ offered, value: filterType, onChange: setTypeFilter }}
         filters={filters}
         onToggle={(key) => setFilters((current) => ({ ...current, [key]: !current[key] }))}

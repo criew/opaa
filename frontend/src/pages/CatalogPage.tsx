@@ -27,7 +27,6 @@ import {
 import OverviewPage, { OverviewCard, OverviewCardLink } from '../components/overview/OverviewPage'
 import { UseInSpaceDialog } from '../components/assets/UseInSpaceButton'
 import AssetFilterBar from '../components/assets/AssetFilterBar'
-import SuccessionStateNote from '../components/succession/SuccessionStateNote'
 import { catalogStatusLabel } from '../utils/labels'
 import { CATALOG_NEW_ROUTE } from '../routes'
 
@@ -59,23 +58,8 @@ const STATUS_DOT: Record<Exclude<CatalogEntryStatus, 'READY'>, string> = {
   SUCCESSION_OPEN: 'warning.main',
 }
 
-/**
- * "Aktualisiert am <date>" when ready - the last successful run of a knowledge library, otherwise
- * the last change - and the state in words, behind a coloured dot, when not. The colour sits in the
- * dot, never in the text, as in the shared StatusLine.
- */
-function CatalogStatusLine({ entry }: { entry: CatalogEntryResponse }) {
-  const status = ownStatus(entry)
-  if (status === 'READY') {
-    // An upload library has no runs, so no lastIndexedAt; its date is then its last change.
-    const updatedAt = entry.knowledgeLibrary?.lastIndexedAt ?? entry.updatedAt
-    if (!updatedAt) return null
-    return (
-      <Typography component="span" sx={{ fontSize: 11.5, color: 'text.secondary' }}>
-        Aktualisiert am {formatDate(updatedAt)}
-      </Typography>
-    )
-  }
+/** A state that needs attention, in words behind a coloured dot - the colour never in the text. */
+function StateDotLine({ status }: { status: Exclude<CatalogEntryStatus, 'READY'> }) {
   return (
     <Box
       component="span"
@@ -91,6 +75,26 @@ function CatalogStatusLine({ entry }: { entry: CatalogEntryResponse }) {
       </Typography>
     </Box>
   )
+}
+
+/**
+ * "Aktualisiert am <date>" when ready - the last successful run of a knowledge library, otherwise
+ * the last change - and the state behind a dot when not. An open succession is a line of its own;
+ * its addressee is already the responsible party.
+ */
+function CatalogStatusLine({ entry }: { entry: CatalogEntryResponse }) {
+  const status = ownStatus(entry)
+  if (status === 'READY') {
+    // An upload library has no runs, so no lastIndexedAt; its date is then its last change.
+    const updatedAt = entry.knowledgeLibrary?.lastIndexedAt ?? entry.updatedAt
+    if (!updatedAt) return null
+    return (
+      <Typography component="span" sx={{ fontSize: 11.5, color: 'text.secondary' }}>
+        Aktualisiert am {formatDate(updatedAt)}
+      </Typography>
+    )
+  }
+  return <StateDotLine status={status} />
 }
 
 /**
@@ -274,8 +278,8 @@ function CatalogCard({
   return (
     <OverviewCard>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
-        {entry.visibility === 'PUBLIC' && <PublicMark />}
         <TypeBadge definition={definition} />
+        {entry.visibility === 'PUBLIC' && <PublicMark />}
         <FavoriteToggle entry={entry} />
         <MoreActions entry={entry} />
       </Box>
@@ -305,7 +309,7 @@ function CatalogCard({
       </Typography>
       <ResponsibleLine entry={entry} />
       <CatalogStatusLine entry={entry} />
-      <SuccessionStateNote succession={entry.succession} variant="badge" />
+      {entry.succession && <StateDotLine status="SUCCESSION_OPEN" />}
     </OverviewCard>
   )
 }
@@ -378,7 +382,6 @@ export default function CatalogPage() {
           search={{
             value: query,
             onChange: setQuery,
-            label: 'Suchen',
             maxLength: CATALOG_QUERY_MAX_LENGTH,
           }}
           types={{

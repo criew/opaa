@@ -99,7 +99,7 @@ public class AssetCatalogService {
       throw new ValidationException("Unbekannter Asset-Typ: " + assetType);
     }
 
-    Selection selection = select(caller, types, query);
+    Selection selection = select(caller, types);
     if (selection.ids().isEmpty()) {
       return new AssetCatalogPage(List.of(), page, size, 0, 0);
     }
@@ -159,8 +159,8 @@ public class AssetCatalogService {
   /** The ids the page query may return, and which of the readable ones are public. */
   private record Selection(Set<UUID> ids, Set<UUID> publicIds) {}
 
-  /** The readable assets of {@code types}, narrowed by the visibility filter of {@code query}. */
-  private Selection select(CurrentUser caller, List<AssetType> types, AssetCatalogQuery query) {
+  /** The readable assets of {@code types} and which of them are public. */
+  private Selection select(CurrentUser caller, List<AssetType> types) {
     Set<UUID> readable = new HashSet<>();
     Set<UUID> publicIds = new HashSet<>();
     for (AssetType type : types) {
@@ -169,14 +169,7 @@ public class AssetCatalogService {
       readable.addAll(reach.all());
       publicIds.addAll(reach.byAllAccountsGrant());
     }
-
-    Set<UUID> selected = new HashSet<>(readable);
-    if (query.visibility() == CatalogVisibility.PUBLIC) {
-      selected.retainAll(publicIds);
-    } else if (query.visibility() == CatalogVisibility.RESTRICTED) {
-      selected.removeAll(publicIds);
-    }
-    return new Selection(selected, publicIds);
+    return new Selection(readable, publicIds);
   }
 
   private static CatalogEntryStatus statusOf(

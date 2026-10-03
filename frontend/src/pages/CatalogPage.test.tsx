@@ -85,7 +85,7 @@ describe('CatalogPage (ADR-0039)', () => {
     expect(within(cardOf(knowledge)).queryByText('Wissensbibliothek')).not.toBeInTheDocument()
     const prompts = screen.getByRole('link', { name: /Formulierungshilfen Referat 50/ })
     expect(prompts).toHaveAttribute('href', '/prompts/prompt-library-referat-50')
-    expect(within(cardOf(prompts)).getByText('Prompt-Bibliothek')).toBeInTheDocument()
+    expect(within(cardOf(prompts)).getByText('Prompts')).toBeInTheDocument()
     expect(within(cardOf(prompts)).getByText('Referat 50')).toBeInTheDocument()
     expect(within(cardOf(prompts)).getByTitle('Zuständige Gruppe')).toBeInTheDocument()
     expect(within(cardOf(prompts)).queryByText(/zuständig:/)).not.toBeInTheDocument()
@@ -215,6 +215,11 @@ describe('CatalogPage (ADR-0039)', () => {
     expect(within(card).getByText('die Systemverwaltung')).toBeInTheDocument()
     expect(within(card).getByTitle('Zuständige Gruppe')).toBeInTheDocument()
     expect(within(card).getByText('3 Prompts · in 1 Space')).toBeInTheDocument()
+    // "Nachfolge offen" is a state line behind a dot; the addressee stands once, without a prefix.
+    const succession = within(card).getByText('Nachfolge offen')
+    expect(succession.parentElement?.querySelector('[aria-hidden="true"]')).not.toBeNull()
+    expect(within(card).getAllByText('die Systemverwaltung')).toHaveLength(1)
+    expect(within(card).queryByText(/zuständig:/)).not.toBeInTheDocument()
   })
 
   it('marks and unmarks a favorite with a star beside the link, by keyboard', async () => {
@@ -444,9 +449,10 @@ describe('CatalogPage (ADR-0039)', () => {
       renderCatalog()
 
       const knowledge = cardOf(await screen.findByRole('link', { name: /Bauordnung/ }))
-      expect(
-        within(knowledge).getByRole('img', { name: 'Für alle Konten freigegeben' }),
-      ).toBeInTheDocument()
+      const globe = within(knowledge).getByRole('img', { name: 'Für alle Konten freigegeben' })
+      // right beside the type badge, as the sketch shows it
+      const badge = within(knowledge).getByText('Wissen')
+      expect(badge.compareDocumentPosition(globe) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
       expect(within(knowledge).queryByText('Für alle')).not.toBeInTheDocument()
       expect(within(knowledge).queryByText('Verwalter')).not.toBeInTheDocument()
       expect(within(knowledge).getByText('Aktualisiert am 18.08.2026')).toBeInTheDocument()
@@ -517,7 +523,7 @@ describe('CatalogPage (ADR-0039)', () => {
       expect(failedState.parentElement?.querySelector('[aria-hidden="true"]')).not.toBeNull()
       const orphaned = cardOf(screen.getByRole('link', { name: /Verwaist/ }))
       expect(within(orphaned).getByText('Wird aktualisiert')).toBeInTheDocument()
-      expect(within(orphaned).getByText(/Nachfolge offen/)).toBeInTheDocument()
+      expect(within(orphaned).getByText('Nachfolge offen')).toBeInTheDocument()
       const empty = cardOf(screen.getByRole('link', { name: /Leer/ }))
       expect(within(empty).getByText('Noch kein Inhalt')).toBeInTheDocument()
     })

@@ -15,7 +15,7 @@ describe('AssetFilterBar (guidelines 5.11)', () => {
     const onType = vi.fn()
     renderWithProviders(
       <AssetFilterBar
-        search={{ value: '', onChange: vi.fn(), label: 'Suchen' }}
+        search={{ value: '', onChange: vi.fn() }}
         types={{ offered: ASSET_TYPES, value: undefined, onChange: onType }}
         filters={{ favorites: false }}
         onToggle={vi.fn()}
@@ -41,7 +41,7 @@ describe('AssetFilterBar (guidelines 5.11)', () => {
     const onSearch = vi.fn()
     renderWithProviders(
       <AssetFilterBar
-        search={{ value: 'recht', onChange: onSearch, label: 'Suche' }}
+        search={{ value: 'recht', onChange: onSearch }}
         types={{ offered: ASSET_TYPES.slice(0, 1), value: undefined, onChange: vi.fn() }}
         filters={{ favorites: false, selectedOnly: false }}
         onToggle={vi.fn()}

@@ -897,7 +897,7 @@ describe('SpaceSettingsPage', () => {
       screen.queryByRole('checkbox', { name: /^Formulierungshilfen Referat 50/ }),
     ).not.toBeInTheDocument()
 
-    await user.type(screen.getByRole('searchbox', { name: 'Suche' }), 'gibt es nicht')
+    await user.type(screen.getByRole('searchbox', { name: 'Suchen' }), 'gibt es nicht')
 
     expect(await screen.findByText('Keine Treffer.')).toBeInTheDocument()
     expect(screen.queryByRole('checkbox', { name: /^Dienstanweisungen/ })).not.toBeInTheDocument()

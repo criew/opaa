@@ -137,24 +137,24 @@ describe('OwnExternalAccessTokensSection', () => {
     await user.click(await within(dialog).findByRole('checkbox', { name: /Meine Dokumente/ }))
     expect(within(dialog).getByText('1 ausgewählt')).toBeInTheDocument()
 
-    await user.type(within(dialog).getByRole('searchbox', { name: 'Bibliotheken suchen' }), 'recht')
+    await user.type(within(dialog).getByRole('searchbox', { name: 'Suchen' }), 'recht')
 
     expect(within(dialog).getAllByRole('checkbox')).toHaveLength(1)
     await user.click(within(dialog).getByRole('checkbox', { name: /Rechtsquellen Soziales/ }))
     expect(within(dialog).getByText('2 ausgewählt')).toBeInTheDocument()
 
-    await user.type(within(dialog).getByRole('searchbox', { name: 'Bibliotheken suchen' }), 'xyz')
+    await user.type(within(dialog).getByRole('searchbox', { name: 'Suchen' }), 'xyz')
     expect(within(dialog).queryAllByRole('checkbox')).toHaveLength(0)
     expect(within(dialog).getByText(/Keine Bibliothek passt zur Suche/)).toBeInTheDocument()
 
-    await user.clear(within(dialog).getByRole('searchbox', { name: 'Bibliotheken suchen' }))
+    await user.clear(within(dialog).getByRole('searchbox', { name: 'Suchen' }))
     expect(within(dialog).getByRole('checkbox', { name: /Meine Dokumente/ })).toHaveAttribute(
       'aria-checked',
       'true',
     )
 
     // Submitted while the search hides the chosen "Meine Dokumente": it is still sent.
-    await user.type(within(dialog).getByRole('searchbox', { name: 'Bibliotheken suchen' }), 'recht')
+    await user.type(within(dialog).getByRole('searchbox', { name: 'Suchen' }), 'recht')
     expect(
       within(dialog).queryByRole('checkbox', { name: /Meine Dokumente/ }),
     ).not.toBeInTheDocument()
@@ -228,7 +228,7 @@ describe('OwnExternalAccessTokensSection', () => {
       const dialog = await openCreateDialog(user)
       await within(dialog).findByRole('checkbox', { name: /Eigene Notizen/ })
 
-      const search = within(dialog).getByRole('searchbox', { name: 'Bibliotheken suchen' })
+      const search = within(dialog).getByRole('searchbox', { name: 'Suchen' })
       const favorites = within(dialog).getByRole('button', { name: 'Favoriten' })
       const selectedOnly = within(dialog).getByRole('button', { name: 'Nur ausgewählte' })
       expect(
@@ -251,10 +251,7 @@ describe('OwnExternalAccessTokensSection', () => {
       await user.click(within(dialog).getByRole('button', { name: 'Favoriten' }))
       expect(tileNames(dialog)).toEqual(['Rechtsquellen Soziales', 'Vergaberecht'])
 
-      await user.type(
-        within(dialog).getByRole('searchbox', { name: 'Bibliotheken suchen' }),
-        'eigene',
-      )
+      await user.type(within(dialog).getByRole('searchbox', { name: 'Suchen' }), 'eigene')
       expect(tileNames(dialog)).toEqual([])
       expect(
         within(dialog).getByText('Keine Bibliothek passt zur Suche und zu den Filtern.'),

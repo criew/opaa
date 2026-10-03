@@ -421,14 +421,6 @@ paths:
           schema:
             type: string
             maxLength: 200
-        - name: visibility
-          in: query
-          required: false
-          description: >
-            Only public (PUBLIC) or only restricted (RESTRICTED) assets, as CatalogEntryResponse
-            .visibility names them; both when absent.
-          schema:
-            $ref: "#/components/schemas/CatalogVisibility"
         - name: favorites
           in: query
           required: false
@@ -462,7 +454,7 @@ paths:
                 $ref: "#/components/schemas/CatalogPageResponse"
         "400":
           description: >
-            A page, size, search text or visibility outside the values declared above -
+            A page, size or search text outside the values declared above -
             refused rather than silently answering a different page than the one asked for.
           content:
             application/json:

@@ -51,9 +51,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * The catalog's filters, order and tile fields (#2093): visibility, the fixed order by name, the
- * caller's role, the owner, the status and the facts of a knowledge library - each filter narrowing
- * only the readable set, so an asset the caller may not read is absent under every combination.
+ * The catalog's filters, order and tile fields (#2093): type and search, the fixed order by name,
+ * the caller's role, the owner, the status and the facts of a knowledge library - each filter
+ * narrowing only the readable set, so an asset the caller may not read is absent under every
+ * combination.
  */
 @OpaaIntegrationTest
 class AssetCatalogFilterIntegrationTest {
@@ -140,16 +141,21 @@ class AssetCatalogFilterIntegrationTest {
   }
 
   @Test
-  void theVisibilityFilterSplitsTheReadableSetByTheGrantToAllAccounts() {
+  void theVisibilitySplitsTheReadableSetByTheGrantToAllAccounts() {
     createTheMembersCatalog();
 
-    assertThat(names(query(null, CatalogVisibility.PUBLIC)))
+    List<AssetCatalogEntry> entries = query(null).entries();
+    assertThat(entries)
+        .filteredOn(entry -> entry.visibility() == CatalogVisibility.PUBLIC)
+        .extracting(entry -> entry.asset().getName())
         .containsExactlyInAnyOrder(PUBLIC, PUBLIC_AND_GROUP, PUBLIC_KNOWLEDGE);
-    assertThat(names(query(null, CatalogVisibility.RESTRICTED)))
+    assertThat(entries)
+        .filteredOn(entry -> entry.visibility() == CatalogVisibility.RESTRICTED)
+        .extracting(entry -> entry.asset().getName())
         .as("an expired grant to all accounts makes nothing public")
         .containsExactlyInAnyOrder(
             GROUP_GRANT, GROUP_OWNED, DIRECT, EXPIRED_PUBLIC, EXPIRED_GROUP_GRANT);
-    assertThat(names(query(null, null)))
+    assertThat(names(query(null)))
         .containsExactlyInAnyOrder(
             PUBLIC,
             PUBLIC_AND_GROUP,
@@ -167,10 +173,10 @@ class AssetCatalogFilterIntegrationTest {
 
     List<String> combinations = new ArrayList<>();
     for (AssetType type : TYPES_AND_ALL) {
-      for (CatalogVisibility visibility : visibilitiesAndBoth()) {
-        for (String text : Arrays.asList(null, "e")) {
-          AssetCatalogQuery query = new AssetCatalogQuery(type, text, visibility, false);
-          String combination = type + "/" + visibility + "/" + text;
+      for (String text : Arrays.asList(null, "e")) {
+        for (boolean favoritesOnly : List.of(false, true)) {
+          AssetCatalogQuery query = new AssetCatalogQuery(type, text, favoritesOnly);
+          String combination = type + "/" + text + "/" + favoritesOnly;
           combinations.add(combination);
           List<String> walked = new ArrayList<>();
           AssetCatalogPage first = catalogService.list(callerOf(member), query, 0, 2);
@@ -188,7 +194,7 @@ class AssetCatalogFilterIntegrationTest {
         }
       }
     }
-    assertThat(combinations).hasSize(3 * 3 * 2);
+    assertThat(combinations).hasSize(3 * 2 * 2);
   }
 
   /** The last change never decides the order: by name, case-insensitive, ties broken by id. */
@@ -207,7 +213,7 @@ class AssetCatalogFilterIntegrationTest {
     UUID firstTie = tieOne.toString().compareTo(tieTwo.toString()) < 0 ? tieOne : tieTwo;
     UUID secondTie = firstTie.equals(tieOne) ? tieTwo : tieOne;
 
-    AssetCatalogPage all = query(null, null);
+    AssetCatalogPage all = query(null);
 
     assertThat(ids(all)).containsExactly(older, firstTie, secondTie, newer);
     assertThat(ids(catalogService.list(callerOf(member), unfiltered(), 1, 2)))
@@ -238,7 +244,7 @@ class AssetCatalogFilterIntegrationTest {
             null,
             owner));
 
-    List<AssetCatalogEntry> entries = query(null, null).entries();
+    List<AssetCatalogEntry> entries = query(null).entries();
 
     assertThat(entries).hasSizeGreaterThanOrEqualTo(9);
     for (AssetCatalogEntry entry : entries) {
@@ -283,7 +289,7 @@ class AssetCatalogFilterIntegrationTest {
             null));
     UUID released = promptLibrary("Für alle", owner, true);
 
-    List<AssetCatalogEntry> forMember = query(null, null).entries();
+    List<AssetCatalogEntry> forMember = query(null).entries();
     List<AssetCatalogEntry> forAdministrator =
         catalogService.list(callerOf(administrator, true), null, null, 0, 200).entries();
 
@@ -318,7 +324,7 @@ class AssetCatalogFilterIntegrationTest {
         callerOf(owner));
     Instant afterPrompt = updatedAtOf(library);
     assertThat(afterPrompt).as("a new prompt is a content change").isAfter(past);
-    assertThat(entryFor(query(null, null).entries(), library).asset().getUpdatedAt())
+    assertThat(entryFor(query(null).entries(), library).asset().getUpdatedAt())
         .isEqualTo(afterPrompt);
   }
 
@@ -355,7 +361,7 @@ class AssetCatalogFilterIntegrationTest {
     indexingRun(orphanedKnowledge, JobStatus.FAILED, later, null);
     jdbcTemplate.update("UPDATE users SET directory_locked_at = now() WHERE id = ?", leaver);
 
-    List<AssetCatalogEntry> entries = query(null, null).entries();
+    List<AssetCatalogEntry> entries = query(null).entries();
 
     assertThat(entryFor(entries, prompts).status()).isEqualTo(CatalogEntryStatus.READY);
     assertThat(entryFor(entries, prompts).facts()).isNull();
@@ -423,20 +429,12 @@ class AssetCatalogFilterIntegrationTest {
     groupOwnedPromptLibrary("Gruppeneigentum ohne Recht", myGroup);
   }
 
-  private AssetCatalogPage query(AssetType type, CatalogVisibility visibility) {
-    return catalogService.list(
-        callerOf(member), new AssetCatalogQuery(type, null, visibility, false), 0, 200);
+  private AssetCatalogPage query(AssetType type) {
+    return catalogService.list(callerOf(member), new AssetCatalogQuery(type, null, false), 0, 200);
   }
 
   private static AssetCatalogQuery unfiltered() {
-    return new AssetCatalogQuery(null, null, null, false);
-  }
-
-  private static List<CatalogVisibility> visibilitiesAndBoth() {
-    List<CatalogVisibility> values = new ArrayList<>();
-    values.add(null);
-    values.addAll(List.of(CatalogVisibility.values()));
-    return values;
+    return new AssetCatalogQuery(null, null, false);
   }
 
   private UUID promptLibrary(String name, UUID ownerId, boolean allAccounts) {

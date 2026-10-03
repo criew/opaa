@@ -11,7 +11,7 @@ export interface AssetTypeDefinition {
   slug: string
   /** The type as a group of things - type filter and type choice ("Wissen"). */
   label: string
-  /** The name of one asset's type, as the type badge shows it ("Wissen", "Prompt-Bibliothek"). */
+  /** The name of one asset's type, as the type badge shows it ("Wissen", "Prompts"). */
   title: string
   /** The singular noun as a sentence names it ("diese Bibliothek"). */
   noun: string
@@ -58,7 +58,7 @@ export const ASSET_TYPES: AssetTypeDefinition[] = [
     type: 'PROMPT_LIBRARY',
     slug: 'prompts',
     label: 'Prompts',
-    title: 'Prompt-Bibliothek',
+    title: 'Prompts',
     noun: 'Prompt-Bibliothek',
     description: 'Wiederkehrende Formulierungshilfen mit Platzhaltern, im Chat per „/“ einsetzbar.',
     Icon: TextSnippetOutlinedIcon,

@@ -280,14 +280,15 @@ bände den Kanal an einen Arbeitsraum, dessen Zuordnung sich ändert, ohne dass 
 Nach der Umsetzung hat der Maintainer am 03.10.2026 den Katalog verschlankt. Es ändern sich:
 
 - **Entscheidung 1, Kachel:** Die Sichtbarkeit steht nicht mehr als Textetikett, sondern als
-  Welt-Symbol nur bei öffentlichen Assets; ein geschlossenes trägt kein Symbol. Die eigene Rolle
+  Welt-Symbol neben dem Typ-Badge, nur bei öffentlichen Assets; ein geschlossenes trägt kein Symbol. Die eigene Rolle
   steht nur noch auf der Detailseite. Die Sortierauswahl entfällt; die Reihenfolge ist fest:
   Favoriten zuerst, dann nach Name.
 - **Entscheidung 1, Filter:** Die Filter „Sichtbarkeit" und „aus meinen Gruppen" entfallen. Es
   bleibt eine Filterzeile aus Suche, Typ und Favoriten, die Katalog, Space-Assistent,
-  Space-Einstellungen und Token-Auswahl gleich führen. Mit dem Gruppenfilter entfallen der
-  API-Parameter `fromMyGroups` des Katalogs und das gleichnamige Kennzeichen in
-  `eligible-libraries`; mit der Sortierauswahl der Parameter `sort`.
+  Space-Einstellungen und Token-Auswahl gleich führen. Mit den Filtern entfallen die
+  API-Parameter `visibility` und `fromMyGroups` des Katalogs und das Kennzeichen `fromMyGroups` in
+  `eligible-libraries`; mit der Sortierauswahl der Parameter `sort`. Das Feld `visibility` des
+  Eintrags bleibt, es trägt das Welt-Symbol.
 - **Entscheidung 4, Ausgleich der Kuratierungslast:** Die Kachelauswahl filtert nach Suche, Typ und
   Favoriten. „In Space verwenden" liegt im Menü „⋯" der Kachel; vom Katalog bis zur Zuordnung sind
   es damit drei Klicks statt höchstens zwei. Auf der Detailseite bleibt es ein eigener Knopf.

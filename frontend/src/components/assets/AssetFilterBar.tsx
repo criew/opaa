@@ -17,8 +17,6 @@ const ALL_TYPES = 'all'
 export interface AssetFilterBarSearch {
   value: string
   onChange: (value: string) => void
-  /** The field's accessible name. */
-  label: string
   maxLength?: number
 }
 
@@ -42,7 +40,7 @@ interface AssetFilterBarProps {
 /**
  * The one filter row of catalog, asset choice and token selection (guidelines 5.11): search, then
  * the type as a titled toggle group, then the personal chips set apart from it. It wraps cleanly on
- * narrow screens.
+ * narrow screens. The search is named "Suchen" wherever the row stands.
  */
 export default function AssetFilterBar({
   search,
@@ -85,7 +83,7 @@ export default function AssetFilterBar({
               </InputAdornment>
             ) : undefined,
           },
-          htmlInput: { 'aria-label': search.label, maxLength: search.maxLength },
+          htmlInput: { 'aria-label': 'Suchen', maxLength: search.maxLength },
         }}
       />
       {showTypes && (

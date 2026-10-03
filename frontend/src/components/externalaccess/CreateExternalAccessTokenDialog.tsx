@@ -265,7 +265,7 @@ export default function CreateExternalAccessTokenDialog({
               <>
                 <Box sx={{ mt: 1, mb: 1.5 }}>
                   <AssetFilterBar
-                    search={{ value: query, onChange: setQuery, label: 'Bibliotheken suchen' }}
+                    search={{ value: query, onChange: setQuery }}
                     filters={filters}
                     onToggle={toggleFilter}
                     trailing={

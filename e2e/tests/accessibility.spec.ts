@@ -262,7 +262,7 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
     await page.getByLabel("Name", { exact: true }).fill("Barrierefreiheit");
     await page.getByRole("button", { name: "Weiter", exact: true }).click();
     await page.getByRole("button", { name: "Weiter", exact: true }).click();
-    await page.getByRole("searchbox", { name: "Suche" }).fill(ownEntry);
+    await page.getByRole("searchbox", { name: "Suchen" }).fill(ownEntry);
     await expect(
       page.getByRole("checkbox", { name: new RegExp(`^${ownEntry}`) }),
     ).toBeVisible();

@@ -245,7 +245,7 @@ offen"**. Sie bleibt nutzbar, alle Rollen bleiben, nichts wird gelöscht — **n
 eingefroren**: keine neuen oder größeren Rollen, keine Freigabe an „Alle Konten", keine neue
 Zuordnung zu einem Raum. Prompts anlegen und ändern bleibt möglich.
 
-Die Kennzeichnung „Nachfolge offen — zuständig: …" steht im Katalog und auf der Detailseite. In der Betriebsliste unter **Administration → Lebenszyklus** erscheint die
+Die Kennzeichnung „Nachfolge offen — zuständig: …" steht auf der Detailseite; im Katalog steht „Nachfolge offen" als Zustandszeile mit Punkt, und der Adressat steht als zuständige Stelle. In der Betriebsliste unter **Administration → Lebenszyklus** erscheint die
 Prompt-Bibliothek als eigene Zeile; ihr Name führt auf ihre Detailseite, und der Ausgang ist
 dieselbe Übertragung wie bei jeder anderen Bibliothek.
 
