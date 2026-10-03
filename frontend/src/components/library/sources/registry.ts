@@ -5,6 +5,7 @@ import { filesystemSource, httpDirectorySource, rssFeedSource } from './genericS
 import { googleDriveSource } from './googleDriveSource'
 import { nextcloudSource } from './nextcloudSource'
 import { s3Source } from './s3Source'
+import { smbSource } from './smbSource'
 import type { SourceRegistration } from './types'
 
 const uploadSource: SourceRegistration = {
@@ -31,6 +32,7 @@ const registrations: Record<SourceTypeKey, SourceRegistration> = {
   S3: s3Source,
   GOOGLE_DRIVE: googleDriveSource,
   NEXTCLOUD: nextcloudSource,
+  SMB: smbSource,
 }
 
 /** The registration of {@code sourceType}, undefined for a type this client has none for. */

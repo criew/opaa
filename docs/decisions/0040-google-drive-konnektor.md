@@ -551,7 +551,7 @@ neue Modulkante.
 9. **Große Ordner und Budget:** Eine Seite hat höchstens `list-page-size` Einträge, ein Ordner wird
    stapelweise über mehrere Seiten gelesen. Jede SMB-Nachricht kostet eine Anfrage des Budgets und
    wird vor dem Senden abgelehnt, wenn es erschöpft ist; der Standard liegt deshalb höher als bei
-   Nextcloud (ein Download sind mindestens drei Nachrichten).
+   Nextcloud (ein Download sind mindestens vier Nachrichten: öffnen, prüfen, lesen, schließen).
 10. **Tests:** Ein echter Samba (`dockurr/samba`, rund 100 MB, Start in rund 1 s, wenige MiB
     Speicher) läuft im regulären `test`, wie der S3-Speicher. `FileStoreContract` läuft gegen ihn.
 
