@@ -146,10 +146,10 @@ gekennzeichnet.
 ### Im Katalog finden
 
 Der **Katalog** in der Hauptnavigation zeigt genau die Prompt- und Wissensbibliotheken, die die
-Person lesen darf — mit Suche über Name und Beschreibung, den Filtern nach Art, Sichtbarkeit und
-„Aus meinen Gruppen", dem Filter „Favoriten" und der Sortierung nach Name oder letzter Änderung;
-eigene Favoriten stehen oben. Eine Kachel nennt
-Sichtbarkeit, die eigene Rolle und als Stand das Datum der letzten Änderung, etwa eines Prompts.
+Person lesen darf — mit Suche über Name und Beschreibung, dem Filter nach Art und dem Filter
+„Favoriten"; eigene Favoriten stehen oben, danach geht es nach Name. Eine Kachel zeigt das
+Welt-Symbol, wenn die Bibliothek an „Alle Konten" freigegeben ist, und „Aktualisiert am" mit dem
+Datum der letzten Änderung, etwa eines Prompts.
 Jeder Eintrag führt auf die Detailseite. Eine Prompt-Bibliothek ohne Leserecht erscheint
 dort nicht, auch nicht über die Suche. Die Regeln im Einzelnen stehen in
 [Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), Abschnitt 4, „Der Katalog".
