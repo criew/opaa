@@ -54,6 +54,11 @@ OPAA_CONFLUENCE_IT=true ./gradlew confluenceIntegrationTest
                                   # Startzeit und ~880 MiB allein für den Container (dazu Postgres
                                   # und die Test-JVM). In CI nightly und per Label
                                   # "keycloak-suite" (#1817, ADR-0036 Entscheidung 3)
+OPAA_GDRIVE_IT_KEY_FILE=… OPAA_GDRIVE_IT_FOLDER_ID=… ./gradlew googleDriveIntegrationTest
+                                  # Google-Drive-Konnektor gegen ein echtes Workspace, nur
+                                  # lesend; läuft nur lokal beim Maintainer, Schlüsseldatei
+                                  # außerhalb des Repos, kein CI-Job und kein Secret. Einrichtung:
+                                  # README.md im Testpaket indexing.source.googledrive (ADR-0040)
 ./gradlew spotlessCheck
 ./gradlew spotlessApply
 

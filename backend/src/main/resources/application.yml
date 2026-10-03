@@ -343,6 +343,17 @@ opaa:
       # object downloads one run keeps in flight while its listing goes on (a bound on the load
       # put on the store; 1 downloads serially, see S3Properties.DEFAULT_DOWNLOAD_CONCURRENCY).
       download-concurrency: ${OPAA_INDEXING_S3_DOWNLOAD_CONCURRENCY:2}
+    # Bounds of the Google Drive connector (ADR-0040, Entscheidung 10; GoogleDriveProperties).
+    google-drive:
+      page-size: ${OPAA_INDEXING_GOOGLE_DRIVE_PAGE_SIZE:1000}
+      max-file-size-bytes: ${OPAA_INDEXING_GOOGLE_DRIVE_MAX_FILE_SIZE_BYTES:52428800}
+      request-timeout: ${OPAA_INDEXING_GOOGLE_DRIVE_REQUEST_TIMEOUT:30s}
+      max-retries: ${OPAA_INDEXING_GOOGLE_DRIVE_MAX_RETRIES:5}
+      retry-backoff: ${OPAA_INDEXING_GOOGLE_DRIVE_RETRY_BACKOFF:1s}
+      request-budget-per-run: ${OPAA_INDEXING_GOOGLE_DRIVE_REQUEST_BUDGET_PER_RUN:20000}
+      max-files-per-run: ${OPAA_INDEXING_GOOGLE_DRIVE_MAX_FILES_PER_RUN:1000000}
+      download-concurrency: ${OPAA_INDEXING_GOOGLE_DRIVE_DOWNLOAD_CONCURRENCY:2}
+      full-sync-interval: ${OPAA_INDEXING_GOOGLE_DRIVE_FULL_SYNC_INTERVAL:7d}
     # The shared event intake behind every push path (Confluence webhooks, S3 event
     # notifications): how long reported keys are collected before one targeted run checks them,
     # how many keys a batch holds before the connector's ordinary run takes over, and how often a

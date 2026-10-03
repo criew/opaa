@@ -1,7 +1,8 @@
 # Modul connectors
 
-Pakete (`io.opaa.indexing.source.*`): confluence, filesystem, rss, s3, upload, web — jedes direkte
-Unterpaket ist ein Konnektor. Der Vertrag liegt in `indexing.source` (knowledge). Ergänzt `backend/AGENTS.md`.
+Pakete (`io.opaa.indexing.source.*`): confluence, filesystem, googledrive, rss, s3, upload, web —
+jedes direkte Unterpaket ist ein Konnektor. Der Vertrag liegt in `indexing.source` (knowledge).
+Ergänzt `backend/AGENTS.md`.
 
 ## Zweck und Grenze
 
@@ -56,5 +57,4 @@ von foundation, format und knowledge ab.
 OPAA_CONFLUENCE_IT=true ./gradlew confluenceIntegrationTest   # nur bei Confluence-Änderungen
 ```
 
-Bei Schemaänderungen: neue Datei unter `db/changelog/connectors/`, Regeln in `backend/AGENTS.md`,
-„Liquibase: Changelog je Modul“ (Delta-Test nur bei rein additiver DDL entbehrlich).
+Schemaänderungen: neue Datei unter `db/changelog/connectors/`, Regeln in `backend/AGENTS.md`.

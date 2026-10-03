@@ -364,6 +364,7 @@ val testShards = mapOf(
 tasks.named<Test>("test") {
     filter {
         excludeTestsMatching("io.opaa.integration.*")
+        excludeTestsMatching("*.GoogleDriveWorkspaceIntegrationTest")
     }
     providers.gradleProperty("testShard").orNull?.let { shard ->
         filter {
@@ -428,6 +429,26 @@ tasks.register<Test>("keycloakIntegrationTest") {
     testLogging {
         events("passed", "skipped", "failed")
         exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+    }
+    outputs.upToDateWhen { false }
+    outputs.cacheIf { false }
+}
+
+// ADR-0040: the Google Drive suite against a real Workspace, read-only. It runs only on the
+// maintainer's machine with OPAA_GDRIVE_IT_KEY_FILE pointing at a key file outside the repository
+// and is skipped without it; no CI job, label or secret (README.md beside the test).
+tasks.register<Test>("googleDriveIntegrationTest") {
+    description = "Read-only tests against a real Google Workspace " +
+        "(GoogleDriveWorkspaceIntegrationTest). Needs OPAA_GDRIVE_IT_KEY_FILE; not part of build/check."
+    group = "verification"
+    testClassesDirs = sourceSets.test.get().output.classesDirs
+    classpath = sourceSets.test.get().runtimeClasspath
+    useJUnitPlatform()
+    filter {
+        includeTestsMatching("io.opaa.indexing.source.googledrive.GoogleDriveWorkspaceIntegrationTest")
+    }
+    testLogging {
+        events("passed", "skipped", "failed")
     }
     outputs.upToDateWhen { false }
     outputs.cacheIf { false }
