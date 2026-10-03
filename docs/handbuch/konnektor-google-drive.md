@@ -240,12 +240,14 @@ Die Obergrenze von fünfzig Bereichen ist eine feste Konstante.
 - Viele Ordnerbereiche kosten je Ordner eine Auflistung.
 - Eine Ordneränderung im Änderungsstrom löst immer einen Vollabgleich aus, auch wenn der Ordner
   außerhalb der Bereiche liegt.
-- Delegation ohne Verbindungsprofil hängt an der Sorgfalt der Verwaltenden (Funktionskonto).
+- Delegation hängt an der Sorgfalt der Verwaltenden (Funktionskonto), solange Google Drive keine
+  Zugänge kennt.
 
 ## 14. Nicht gebaut
 
 - **Push-Benachrichtigungen** (`changes.watch`); der Änderungslauf im Zeitplan ersetzt sie
-- **Verbindungsprofile**, an denen die Systemverwaltung das imitierte Konto festlegt (#2160)
+- **Zugänge** (Verbindungsprofile) für Google Drive, an denen die Systemverwaltung Schlüssel und
+  imitiertes Konto festlegt; heute liegt der Schlüssel an der Bibliothek
 - **Persönliche Ablagen** über verbundene Konten (#2147)
 - **Großer Export** über die Exportgrenze hinaus
 - **Rechteübernahme** aus Drive

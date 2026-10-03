@@ -87,6 +87,7 @@ export default function GoogleDriveSourceForm({
     sourceUrl: GOOGLE_DRIVE_API,
     sourceProxy: values.sourceProxy.trim() || undefined,
     sourceCredentials: values.keyFile || undefined,
+    sourceInsecureSsl: false,
     libraryId: mode === 'edit' ? libraryId : undefined,
   })
 
