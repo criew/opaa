@@ -656,15 +656,9 @@ Ein Space wird **nicht automatisch für jede Organisationseinheit angelegt**. Vi
 
 ### Space-Sichtbarkeit
 
-Mitgliedschaft und Assetzugriff sind entkoppelt; deshalb braucht der Space eine eigene Sichtbarkeitsachse:
+**Jeder Space ist privat:** Nur seine Mitglieder wissen, dass er existiert ([#2131](https://github.com/criew/opaa/issues/2131)). Die früher vorgesehenen Stufen „Auffindbar" (`DISCOVERABLE`, im Space-Verzeichnis sichtbar, Beitritt auf Antrag) und „Offen" (`OPEN`, Selbstbeitritt) setzen ein Space-Verzeichnis voraus, das es nicht gibt; die Oberfläche bietet sie deshalb nirgends an. Das Feld `visibility` bleibt in der API mit der Voreinstellung `PRIVATE`, bis ein Verzeichnis kommt; ohne Angabe legt das Backend jeden Space privat an.
 
-| `visibility` | Bedeutung |
-|---|---|
-| `PRIVATE` | nur Mitglieder wissen, dass er existiert — Vorgabe für jeden neu angelegten Space |
-| `DISCOVERABLE` | im Space-Verzeichnis sichtbar, Beitritt auf Antrag |
-| `OPEN` | im Verzeichnis sichtbar, Selbstbeitritt mit einem Klick |
-
-**Chatten setzt Mitgliedschaft voraus.** Das ist keine Hürde, sondern eine Folge des Modells: Der Chat *liegt* im Space, und ohne Mitgliedschaft gäbe es keinen definierten Zurechnungspunkt für Aufbewahrung, Kosten und Audit. Bei `OPEN`-Spaces ist der Beitritt ein Klick und wird protokolliert.
+**Chatten setzt Mitgliedschaft voraus.** Das ist keine Hürde, sondern eine Folge des Modells: Der Chat *liegt* im Space, und ohne Mitgliedschaft gäbe es keinen definierten Zurechnungspunkt für Aufbewahrung, Kosten und Audit.
 
 ### Space-Rollen
 
@@ -709,12 +703,12 @@ Daraus folgt eine Schwelle, nicht zwei Listen:
 | Rolle am Asset | Was die Zuordnungen zeigen |
 | --- | --- |
 | ab `MANAGER` | jede Assoziation mit Name, Urheber, Zeitpunkt und dem Hinweis „nicht alle Mitglieder lesen"; ungefiltert, auch Spaces, in denen der Aufrufer nicht Mitglied ist — er soll eine zu weite Zuordnung auch lösen können |
-| `VIEWER`/`EDITOR` | Name und Verweis der Spaces, die der Aufrufer ohnehin sehen darf (Mitgliedschaft oder eine Sichtbarkeit ungleich `PRIVATE`). Die übrigen erscheinen nur als Zahl (`hiddenCount`), die Oberfläche nennt sie „+ N weitere, die Sie nicht sehen können" |
+| `VIEWER`/`EDITOR` | Name und Verweis der Spaces, die der Aufrufer ohnehin sehen darf — da jeder Space privat ist, die, in denen er Mitglied ist. Die übrigen erscheinen nur als Zahl (`hiddenCount`), die Oberfläche nennt sie „+ N weitere, die Sie nicht sehen können" |
 | unter `VIEWER` | `404` wie für ein unbekanntes Asset |
 
 Die Zahl selbst ist bewusst kein Geheimnis: Sie sagt, dass die Liste unvollständig ist, ohne einen einzigen Space zu benennen — ein unkommentiert gekürztes Ergebnis wäre die schlechtere Auskunft.
 
-**Die Assoziation hängt an der Schale** ([#1900](https://github.com/criew/opaa/issues/1900)). `space_asset_associations.asset_id` verweist mit der Organisation auf `assets`; das Löschen eines Assets nimmt seine Assoziationen mit, gleich welchen Typs es ist. Ein Space führt seine Assets über `GET/POST /api/v1/spaces/{spaceId}/assets` und `DELETE /api/v1/spaces/{spaceId}/assets/{assetId}`, die Gegenrichtung über `GET /api/v1/assets/{assetType}/{assetId}/spaces`; jeder Eintrag nennt den Asset-Typ. Assoziieren darf, wer im Space `CURATOR` ist und das Asset selbst lesen kann; lösen darf auch der Verwalter des Assets. Den Suchbereich bestimmen nur zugeordnete **Wissensbibliotheken** — andere Typen tragen keine Dokumente; für sie begrenzt die Zuordnung das Angebot im Chat (Tabelle oben). Ein neuer Space wird in einem Aufruf mit Mitgliedern (`initialMembers`) und Zuordnungen aller Typen angelegt (`SpaceRequest.assets`, eine Liste aus Typ und Kennung); scheitert ein Teil, entsteht nichts. `GET /api/v1/spaces/{spaceId}/assets` liefert jeder Rolle nur die lesbaren Zuordnungen und daneben das zahlenlose Merkmal `hasUnreadableAssociations`; `libraryCount` der Space-Liste zählt ebenso nur Lesbares. Lösen über `DELETE /api/v1/spaces/{spaceId}/assets/{assetId}` setzt Leserecht am Asset voraus, ausgenommen dessen Verwaltung; ohne beides antwortet es wie bei einem unbekannten Asset mit `404`.
+**Die Assoziation hängt an der Schale** ([#1900](https://github.com/criew/opaa/issues/1900)). `space_asset_associations.asset_id` verweist mit der Organisation auf `assets`; das Löschen eines Assets nimmt seine Assoziationen mit, gleich welchen Typs es ist. Ein Space führt seine Assets über `GET/POST /api/v1/spaces/{spaceId}/assets` und `DELETE /api/v1/spaces/{spaceId}/assets/{assetId}`, die Gegenrichtung über `GET /api/v1/assets/{assetType}/{assetId}/spaces`; jeder Eintrag nennt den Asset-Typ. Assoziieren darf, wer im Space `CURATOR` ist und das Asset selbst lesen kann; lösen darf auch der Verwalter des Assets. Den Suchbereich bestimmen nur zugeordnete **Wissensbibliotheken** — andere Typen tragen keine Dokumente; für sie begrenzt die Zuordnung das Angebot im Chat (Tabelle oben). Ein neuer Space wird in einem Aufruf mit Mitgliedern (`initialMembers`, Personen und Gruppen in der Form von `SpaceAddMemberRequest` und unter denselben Regeln wie die spätere Aufnahme) und Zuordnungen aller Typen angelegt (`SpaceRequest.assets`, eine Liste aus Typ und Kennung); scheitert ein Teil, entsteht nichts. `GET /api/v1/spaces/{spaceId}/assets` liefert jeder Rolle nur die lesbaren Zuordnungen und daneben das zahlenlose Merkmal `hasUnreadableAssociations`; `libraryCount` der Space-Liste zählt ebenso nur Lesbares. Lösen über `DELETE /api/v1/spaces/{spaceId}/assets/{assetId}` setzt Leserecht am Asset voraus, ausgenommen dessen Verwaltung; ohne beides antwortet es wie bei einem unbekannten Asset mit `404`.
 
 **Der Space-Assistent und „In Space verwenden"**. Weil die Zuordnung eine Grenze ist, muss sie leicht und an zwei Stellen erreichbar sein:
 

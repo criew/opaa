@@ -1,5 +1,6 @@
 package io.opaa.space.web;
 
+import io.opaa.api.dto.ChatAutoCleanupPeriodsResponse;
 import io.opaa.api.dto.GroupMemberDisclosureResponse;
 import io.opaa.api.dto.SpaceAccessDerivationResponse;
 import io.opaa.api.dto.SpaceAddMemberRequest;
@@ -19,6 +20,7 @@ import io.opaa.auth.CurrentUser;
 import io.opaa.permission.PermissionSubject;
 import io.opaa.permission.PermissionTransferService;
 import io.opaa.permission.web.GroupMemberDisclosureResponseMapper;
+import io.opaa.space.ChatAutoCleanupProperties;
 import io.opaa.space.Space;
 import io.opaa.space.SpaceAssetAssociationService;
 import io.opaa.space.SpaceAssetSeed;
@@ -52,16 +54,25 @@ public class SpaceController {
   private final SpaceAssetAssociationService associationService;
   private final PermissionTransferService transferService;
   private final SuccessionService successionService;
+  private final ChatAutoCleanupProperties chatAutoCleanup;
 
   public SpaceController(
       SpaceService spaceService,
       SpaceAssetAssociationService associationService,
       PermissionTransferService transferService,
-      SuccessionService successionService) {
+      SuccessionService successionService,
+      ChatAutoCleanupProperties chatAutoCleanup) {
     this.spaceService = spaceService;
     this.associationService = associationService;
     this.transferService = transferService;
     this.successionService = successionService;
+    this.chatAutoCleanup = chatAutoCleanup;
+  }
+
+  @GetMapping("/chat-auto-cleanup")
+  public ChatAutoCleanupPeriodsResponse getChatAutoCleanupPeriods() {
+    return new ChatAutoCleanupPeriodsResponse(
+        chatAutoCleanup.archiveAfterDays(), chatAutoCleanup.deleteAfterDays());
   }
 
   @PostMapping
@@ -235,7 +246,8 @@ public class SpaceController {
                     member ->
                         member == null
                             ? null
-                            : new SpaceMemberSeed(member.getUserId(), member.getRole()))
+                            : new SpaceMemberSeed(
+                                member.getSubjectType(), member.getSubjectId(), member.getRole()))
                 .toList();
     List<SpaceAssetSeed> assets =
         request.getAssets() == null

@@ -549,7 +549,7 @@ async function shareWithPerson(adminPage: Page, libraryName: string) {
   await gotoLibraryDetail(adminPage, libraryName)
   await adminPage.getByRole('tab', { name: 'Freigaben' }).click()
   await adminPage.getByRole('button', { name: 'Freigeben' }).click()
-  const personInput = adminPage.getByRole('combobox', { name: 'Person suchen' })
+  const personInput = adminPage.getByRole('combobox', { name: 'Person oder Gruppe suchen' })
   await personInput.click()
   await personInput.fill('Format')
   await adminPage.getByRole('option', { name: new RegExp(PERSON_DISPLAY_NAME) }).click()

@@ -6,6 +6,7 @@ import MenuItem from '@mui/material/MenuItem'
 import Select from '@mui/material/Select'
 import Typography from '@mui/material/Typography'
 import DeleteIcon from '@mui/icons-material/Delete'
+import SubjectFormRow from '../permissions/SubjectFormRow'
 import SubjectPicker from '../permissions/SubjectPicker'
 import {
   confirmExternalSubject,
@@ -21,7 +22,6 @@ import type { PendingGrant } from './pendingGrants'
 const GRANT_ROLES: AssetRole[] = ['VIEWER', 'EDITOR', 'MANAGER']
 
 interface AssetRightsFieldsProps {
-  idPrefix: string
   pendingGrants: PendingGrant[]
   onPendingGrantsChange: (grants: PendingGrant[]) => void
 }
@@ -33,7 +33,6 @@ interface AssetRightsFieldsProps {
  * that governs such a grant is a property of the created asset.
  */
 export default function AssetRightsFields({
-  idPrefix,
   pendingGrants,
   onPendingGrantsChange,
 }: AssetRightsFieldsProps) {
@@ -61,7 +60,7 @@ export default function AssetRightsFields({
           ? groupLabel(grantSubject.group)
           : subjectId
     onPendingGrantsChange([...pendingGrants, { subjectType, subjectId, label, role: grantRole }])
-    setGrantSubject({ type: grantSubject.type, user: null, group: null })
+    setGrantSubject(emptySubjectSelection)
   }
 
   return (
@@ -70,35 +69,40 @@ export default function AssetRightsFields({
         Freigaben lassen sich auch später jederzeit auf der Detailseite ergänzen — dieser Schritt
         ist optional.
       </Typography>
-      <SubjectPicker
-        labelId={`${idPrefix}-grant-subject-label`}
-        value={grantSubject}
-        onChange={setGrantSubject}
-        excludedUserIds={pendingUserIds}
-        excludedGroupIds={pendingGroupIds}
+      <SubjectFormRow
+        picker={
+          <SubjectPicker
+            value={grantSubject}
+            onChange={setGrantSubject}
+            excludedUserIds={pendingUserIds}
+            excludedGroupIds={pendingGroupIds}
+          />
+        }
+        role={
+          <Select
+            size="small"
+            fullWidth
+            value={grantRole}
+            onChange={(e) => setGrantRole(e.target.value as AssetRole)}
+            aria-label="Rolle der Freigabe"
+          >
+            {GRANT_ROLES.map((role) => (
+              <MenuItem key={role} value={role}>
+                {assetRoleLabel(role)}
+              </MenuItem>
+            ))}
+          </Select>
+        }
+        action={
+          <Button
+            variant="outlined"
+            disabled={!selectedSubjectId(grantSubject)}
+            onClick={() => void handleAddGrant()}
+          >
+            Vormerken
+          </Button>
+        }
       />
-      <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', mt: 1.5 }}>
-        <Select
-          size="small"
-          value={grantRole}
-          onChange={(e) => setGrantRole(e.target.value as AssetRole)}
-          aria-label="Rolle der Freigabe"
-          sx={{ width: 150 }}
-        >
-          {GRANT_ROLES.map((role) => (
-            <MenuItem key={role} value={role}>
-              {assetRoleLabel(role)}
-            </MenuItem>
-          ))}
-        </Select>
-        <Button
-          variant="outlined"
-          disabled={!selectedSubjectId(grantSubject)}
-          onClick={() => void handleAddGrant()}
-        >
-          Vormerken
-        </Button>
-      </Box>
       {pendingGrants.length > 0 && (
         <Box sx={{ mt: 1.5, borderTop: 1, borderColor: 'divider' }}>
           {pendingGrants.map((grant) => (

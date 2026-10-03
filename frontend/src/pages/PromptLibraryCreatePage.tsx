@@ -144,7 +144,6 @@ export default function PromptLibraryCreatePage() {
           )}
           {activeStep === 2 && (
             <AssetRightsFields
-              idPrefix="prompt-library-create"
               pendingGrants={pendingGrants}
               onPendingGrantsChange={setPendingGrants}
             />

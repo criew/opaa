@@ -166,6 +166,64 @@ class SpaceGroupMembershipIntegrationTest {
   }
 
   // -------------------------------------------------------------------------------------------
+  // Groups named on creation
+  // -------------------------------------------------------------------------------------------
+
+  @Test
+  void aGroupNamedOnCreationBecomesAMemberLikeOneAddedLater() {
+    UUID owner = createUser(organizationA);
+    UUID person = createUser(organizationA);
+    UUID group = createGroup(organizationA, "Referat 50", person);
+
+    Space space =
+        spaceService.createSpace(
+            new SpaceCreation(
+                "Team",
+                null,
+                owner,
+                null,
+                List.of(SpaceMemberSeed.group(group, SpaceRole.CURATOR)),
+                null),
+            currentUserOf(owner));
+
+    assertThat(membershipRepository.findBySpaceId(space.getId()))
+        .filteredOn(membership -> group.equals(membership.getGroupId()))
+        .singleElement()
+        .satisfies(membership -> assertThat(membership.getRole()).isEqualTo(SpaceRole.CURATOR));
+    assertThat(effectiveRoleOf(space.getId(), person)).isEqualTo(SpaceRole.CURATOR);
+    assertThat(historyRepository.findAll())
+        .anyMatch(
+            row ->
+                group.equals(row.getSubjectGroupId())
+                    && row.getCause() == SpaceMembershipHistoryCause.ADDED);
+  }
+
+  @Test
+  void anUnreleasedGroupNamedOnCreationAnswersLikeAnUnknownOneAndNoSpaceIsCreated() {
+    UUID owner = createUser(organizationA);
+    UUID group = createUnreleasedGroup(organizationA, "Personalrat", createUser(organizationA));
+
+    assertThatThrownBy(
+            () ->
+                spaceService.createSpace(
+                    new SpaceCreation(
+                        "Team",
+                        null,
+                        owner,
+                        null,
+                        List.of(SpaceMemberSeed.group(group, SpaceRole.MEMBER)),
+                        null),
+                    currentUserOf(owner)))
+        .isInstanceOf(NotFoundException.class);
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM spaces WHERE owner_id = ? AND is_default = false",
+                Long.class,
+                owner))
+        .isZero();
+  }
+
+  // -------------------------------------------------------------------------------------------
   // Which groups may be admitted
   // -------------------------------------------------------------------------------------------
 
