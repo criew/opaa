@@ -1,10 +1,12 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { Route, Routes } from 'react-router'
+import { Route, Routes, useLocation } from 'react-router'
 import { http, HttpResponse } from 'msw'
 import { server } from '../mocks/server'
-import { renderWithProviders, setMockAuthState } from '../test/test-utils'
+import { resetMockFavorites } from '../mocks/assetFixtures'
+import { answerConfirm, renderWithProviders, setMockAuthState } from '../test/test-utils'
+import { useAuthStore } from '../stores/authStore'
 import { usePromptLibraryStore } from '../stores/promptLibraryStore'
 import type { AssetGrantRequest, PromptLibraryRequest, PromptRequest } from '../types/api'
 import PromptLibraryCreatePage from './PromptLibraryCreatePage'
@@ -149,65 +151,238 @@ describe('Prompt-Bibliothek anlegen, füllen und freigeben', () => {
   }, 30000)
 
   it('zeigt der Verwaltung ohne Leserecht statt der Prompts den verweigerten Zugriff', async () => {
-    renderWithProviders(
-      <Routes>
-        <Route path="/prompts/:promptLibraryId" element={<PromptLibraryDetailPage />} />
-      </Routes>,
-      { withRouter: true, initialRoute: '/prompts/prompt-library-verwaltet' },
-    )
+    renderDetail('/prompts/prompt-library-verwaltet')
 
     expect(
       await screen.findByText('Kein Zugriff auf die Prompts dieser Prompt-Bibliothek'),
     ).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Neuer Prompt' })).not.toBeInTheDocument()
-    // Verwalten bleibt möglich: der Reiter „Verwaltung“ steht zur Verfügung.
-    expect(screen.getByRole('tab', { name: 'Verwaltung' })).toBeInTheDocument()
+    // Verwalten bleibt möglich: Freigaben und Zuordnungen stehen zur Verfügung.
+    expect(tabNames()).toEqual(['Prompts', 'Freigaben', 'Zuordnungen'])
+  })
+})
+
+/** Shows the address the page ended up at, so a redirect is visible to the test. */
+function LocationProbe() {
+  const location = useLocation()
+  return <output data-testid="location">{location.pathname}</output>
+}
+
+function renderDetail(initialRoute: string) {
+  const page = (
+    <>
+      <PromptLibraryDetailPage />
+      <LocationProbe />
+    </>
+  )
+  return renderWithProviders(
+    <Routes>
+      <Route path="/prompts/:promptLibraryId" element={page} />
+      <Route path="/prompts/:promptLibraryId/:tab" element={page} />
+      <Route path="/catalog" element={<p>Katalogseite</p>} />
+    </Routes>,
+    { withRouter: true, initialRoute },
+  )
+}
+
+function tabNames(): string[] {
+  return screen.getAllByRole('tab').map((tab) => tab.textContent ?? '')
+}
+
+describe('Detailseite einer Prompt-Bibliothek (#2208)', () => {
+  beforeEach(() => {
+    setMockAuthState()
+    usePromptLibraryStore.getState().reset()
+    server.events.removeAllListeners()
+    resetMockFavorites()
   })
 
-  it('zeigt einer Leserin die Prompts, aber weder Verwaltung noch Bearbeiten', async () => {
+  afterEach(() => {
+    resetMockFavorites()
+  })
+
+  it('zeigt einer Leserin alle drei Reiter schreibgeschützt, ohne Zurück und ohne Verwaltung', async () => {
     const user = userEvent.setup()
-    renderWithProviders(
-      <Routes>
-        <Route path="/prompts/:promptLibraryId" element={<PromptLibraryDetailPage />} />
-      </Routes>,
-      { withRouter: true, initialRoute: '/prompts/prompt-library-organisation' },
-    )
+    renderDetail('/prompts/prompt-library-organisation')
 
     expect(
       await screen.findByRole('heading', { level: 1, name: 'Hausweite Vorlagen' }),
     ).toBeInTheDocument()
     expect(await screen.findByText('/ablehnung')).toBeInTheDocument()
-    expect(screen.queryByRole('tab', { name: 'Verwaltung' })).not.toBeInTheDocument()
+    expect(tabNames()).toEqual(['Prompts', 'Freigaben', 'Zuordnungen'])
+    expect(screen.queryByText(/zurück zum katalog/i)).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Neuer Prompt' })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Name und Beschreibung bearbeiten' }),
+    ).not.toBeInTheDocument()
+    // Keine Abschnittsüberschrift wiederholt den Reiternamen.
+    expect(screen.queryByRole('heading', { name: 'Prompts' })).not.toBeInTheDocument()
     await user.click(screen.getByText('Ablehnungsbescheid'))
     expect(
       screen.queryByRole('button', { name: 'Prompt Ablehnungsbescheid bearbeiten' }),
     ).not.toBeInTheDocument()
-  })
 
-  it('führt einen Verwalter in die Verwaltung mit demselben Freigabeabschnitt', async () => {
-    renderWithProviders(
-      <Routes>
-        <Route path="/prompts/:promptLibraryId/:tab" element={<PromptLibraryDetailPage />} />
-      </Routes>,
-      { withRouter: true, initialRoute: '/prompts/prompt-library-referat-50/settings' },
-    )
-
-    expect(await screen.findByRole('tab', { name: 'Verwaltung' })).toHaveAttribute(
-      'aria-selected',
-      'true',
-    )
-    expect(screen.getByRole('heading', { name: 'Berechtigungen' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Zuordnungen' })).toBeInTheDocument()
-    // #1941: Die Berechtigungen stehen als Liste auf der Seite, nicht hinter einem Dialog.
-    expect(screen.getByRole('button', { name: 'Freigeben' })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Rechte verwalten' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('tab', { name: 'Freigaben' }))
+    expect(await screen.findByRole('heading', { name: 'Eigentümer' })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Berechtigungen' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Eigentum übergeben' })).not.toBeInTheDocument()
     expect(
       screen.getByRole('heading', { name: 'Warum sehe ich diese Prompt-Bibliothek?' }),
     ).toBeInTheDocument()
-    // Löschen bleibt dem Eigentümer vorbehalten.
+
+    // Lesen schließt das Verwenden nicht aus; Lösen hängt am Space, siehe AssetSpacesList.test.
+    await user.click(screen.getByRole('tab', { name: 'Zuordnungen' }))
+    expect(await screen.findByText('Engineering')).toBeInTheDocument()
     expect(
-      screen.queryByRole('button', { name: 'Prompt-Bibliothek löschen' }),
-    ).not.toBeInTheDocument()
+      screen.getByRole('button', { name: '„Hausweite Vorlagen“ in Space verwenden' }),
+    ).toBeInTheDocument()
+  }, 15000)
+
+  it('leitet die frühere Adresse …/settings auf den Reiter „Freigaben“ weiter', async () => {
+    renderDetail('/prompts/prompt-library-referat-50/settings')
+
+    expect(await screen.findByRole('tab', { name: 'Freigaben' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
+    expect(screen.getByTestId('location')).toHaveTextContent(
+      '/prompts/prompt-library-referat-50/freigaben',
+    )
+    expect(await screen.findByRole('heading', { name: 'Berechtigungen' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Freigeben' })).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { name: 'Warum sehe ich diese Prompt-Bibliothek?' }),
+    ).toBeInTheDocument()
+    // Die Zuordnungen haben einen eigenen Reiter, die Stammdaten stehen im Kopf.
+    expect(screen.queryByRole('heading', { name: 'Zuordnungen' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Stammdaten' })).not.toBeInTheDocument()
+  })
+
+  it('leitet eine unbekannte Reiter-Adresse auf die Prompts', async () => {
+    renderDetail('/prompts/prompt-library-referat-50/unbekannt')
+
+    expect(await screen.findByRole('tab', { name: 'Prompts' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
+    expect(screen.getByTestId('location')).toHaveTextContent(
+      /^\/prompts\/prompt-library-referat-50$/,
+    )
+  })
+
+  it('bearbeitet Name und Beschreibung über den Stift im Kopf', async () => {
+    const puts: unknown[] = []
+    server.events.on('request:start', async ({ request }) => {
+      const path = new URL(request.url).pathname
+      if (
+        request.method === 'PUT' &&
+        path === '/api/v1/prompt-libraries/prompt-library-referat-50'
+      ) {
+        puts.push(await request.clone().json())
+      }
+    })
+    const user = userEvent.setup()
+    renderDetail('/prompts/prompt-library-referat-50')
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Name und Beschreibung bearbeiten' }),
+    )
+    const nameField = screen.getByLabelText('Name der Prompt-Bibliothek')
+    await user.clear(nameField)
+    await user.type(nameField, 'Textbausteine Bürgerbüro')
+    await user.click(screen.getByRole('button', { name: 'Speichern' }))
+
+    // The form closes only after the save; until then the h1 is the form's hidden one.
+    await waitFor(() =>
+      expect(screen.queryByLabelText('Name der Prompt-Bibliothek')).not.toBeInTheDocument(),
+    )
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'Textbausteine Bürgerbüro' }),
+    ).toBeInTheDocument()
+    expect(puts).toEqual([
+      {
+        name: 'Textbausteine Bürgerbüro',
+        description: 'Anhörung, Vermerk und Ablehnung nach Hausstandard',
+      },
+    ])
+  }, 15000)
+
+  it('setzt den Stern im Kopf wie im Katalog', async () => {
+    const user = userEvent.setup()
+    renderDetail('/prompts/prompt-library-referat-50')
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: '„Formulierungshilfen Referat 50“ als Favorit markieren',
+      }),
+    )
+
+    expect(
+      await screen.findByRole('button', {
+        name: '„Formulierungshilfen Referat 50“ aus den Favoriten entfernen',
+      }),
+    ).toBeInTheDocument()
+  })
+
+  it('bietet „In Space verwenden“ im Menü und im Reiter „Zuordnungen“, Löschen nur dem Eigentümer', async () => {
+    const user = userEvent.setup()
+    renderDetail('/prompts/prompt-library-referat-50/zuordnungen')
+
+    expect(await screen.findByRole('tab', { name: 'Zuordnungen' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
+    expect(
+      await screen.findByRole('button', {
+        name: '„Formulierungshilfen Referat 50“ in Space verwenden',
+      }),
+    ).toBeInTheDocument()
+    expect(await screen.findByText('Engineering')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Weitere Aktionen' }))
+    const menu = await screen.findByRole('menu')
+    expect(
+      within(menu)
+        .getAllByRole('menuitem')
+        .map((item) => item.textContent),
+    ).toEqual(['In Space verwenden'])
+  })
+
+  it('führt einen Eigentümer über „Löschen“ im Menü zurück in den Katalog', async () => {
+    const user = userEvent.setup()
+    renderDetail('/prompts/prompt-library-verwaltet')
+
+    await user.click(await screen.findByRole('button', { name: 'Weitere Aktionen' }))
+    await user.click(await screen.findByRole('menuitem', { name: 'Löschen' }))
+    await answerConfirm(user, 'Prompt-Bibliothek „Vorlagen Personalrat“ löschen?', 'Löschen')
+
+    expect(await screen.findByText('Katalogseite')).toBeInTheDocument()
+  })
+
+  it('kennzeichnet die Rolle der Systemverwaltung ohne eigene Berechtigung als „administrativ“', async () => {
+    useAuthStore.setState({
+      user: {
+        id: 'admin-1',
+        email: 'admin@opaa.local',
+        displayName: 'Admin',
+        systemRole: 'SYSTEM_ADMIN',
+      },
+    })
+    try {
+      const { unmount } = renderDetail('/prompts/prompt-library-verwaltet')
+      expect(await screen.findByText('administrativ')).toBeInTheDocument()
+      unmount()
+
+      // Dieselbe Rolle wie nach der Formel: kein Etikett.
+      renderDetail('/prompts/prompt-library-referat-50')
+      expect(
+        await screen.findByRole('button', {
+          name: '„Formulierungshilfen Referat 50“ als Favorit markieren',
+        }),
+      ).toBeInTheDocument()
+      expect(screen.queryByText('administrativ')).not.toBeInTheDocument()
+    } finally {
+      useAuthStore.setState({ user: null })
+    }
   })
 })

@@ -1,16 +1,13 @@
 import { useEffect, useState } from 'react'
-import { Link as RouterLink, Navigate, useNavigate, useParams } from 'react-router'
+import { Navigate, useNavigate, useParams } from 'react-router'
 import Accordion from '@mui/material/Accordion'
 import AccordionDetails from '@mui/material/AccordionDetails'
 import AccordionSummary from '@mui/material/AccordionSummary'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import Link from '@mui/material/Link'
 import Stack from '@mui/material/Stack'
-import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
-import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import type { AssetRole, PromptLibraryResponse, PromptResponse } from '../types/api'
 import { usePromptLibraryStore } from '../stores/promptLibraryStore'
@@ -19,20 +16,22 @@ import { assetRoleLabel, promptVariableTypeLabel } from '../utils/labels'
 import { fontFamily } from '../theme/tokens'
 import {
   CATALOG_ROUTE,
+  FORMER_PROMPT_LIBRARY_TABS,
   PROMPT_LIBRARY_TABS,
   promptLibraryRoute,
   type PromptLibraryTab,
 } from '../routes'
-import PageHeading from '../components/a11y/PageHeading'
-import PageSection from '../components/PageSection'
 import AreaTabs from '../components/AreaTabs'
 import { useAuthStore } from '../stores/authStore'
-import UseInSpaceButton from '../components/assets/UseInSpaceButton'
 import MetaBadge from '../components/MetaBadge'
-import FieldLabel from '../components/wizard/FieldLabel'
 import SuccessionStateNote from '../components/succession/SuccessionStateNote'
+import { successionAwareMessage } from '../components/succession/successionConflict'
 import AssetAccessDerivationSection from '../components/assets/AssetAccessDerivationSection'
+import AssetDetailHeader from '../components/assets/AssetDetailHeader'
+import AssetOwnerSection from '../components/assets/AssetOwnerSection'
 import AssetSpacesSection from '../components/assets/AssetSpacesSection'
+import { responsibleParty } from '../components/assets/assetTileData'
+import { useAssetCatalogEntry } from '../components/assets/useAssetCatalogEntry'
 import AssetGrantsSection from '../components/permissions/AssetGrantsSection'
 import PromptEditorDialog from '../components/prompts/PromptEditorDialog'
 import PromptTextHighlight from '../components/prompts/PromptTextHighlight'
@@ -45,7 +44,8 @@ function holds(role: AssetRole | undefined, minimum: AssetRole): boolean {
 
 const tabs: Array<{ value: PromptLibraryTab; label: string }> = [
   { value: 'prompts', label: 'Prompts' },
-  { value: 'settings', label: 'Verwaltung' },
+  { value: 'freigaben', label: 'Freigaben' },
+  { value: 'zuordnungen', label: 'Zuordnungen' },
 ]
 
 function isPromptLibraryTab(value: string | undefined): value is PromptLibraryTab {
@@ -98,18 +98,29 @@ function PromptsArea({
 
   const mayCreate = canEditPrompts && !promptsError
 
+  // No heading of its own: the tab „Prompts" already names the area.
   return (
-    <PageSection
-      title="Prompts"
-      description="Benannte Anweisungen dieser Prompt-Bibliothek. Der Befehl ist der Name, unter dem ein Prompt im Chat aufgerufen wird."
-      action={
-        mayCreate ? (
+    <Box>
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 2,
+          flexWrap: 'wrap',
+          mb: 2,
+        }}
+      >
+        <Typography sx={{ fontSize: 12.5, color: 'text.secondary', maxWidth: '80ch' }}>
+          Benannte Anweisungen dieser Prompt-Bibliothek. Der Befehl ist der Name, unter dem ein
+          Prompt im Chat aufgerufen wird.
+        </Typography>
+        {mayCreate && (
           <Button variant="contained" size="small" onClick={() => setEditing(null)}>
             Neuer Prompt
           </Button>
-        ) : undefined
-      }
-    >
+        )}
+      </Box>
       {actionError && (
         <Alert severity="error" sx={{ mb: 2 }} onClose={() => setActionError(null)}>
           {actionError}
@@ -129,7 +140,7 @@ function PromptsArea({
         <Box>
           {prompts.map((prompt) => (
             // The summary is the prompt's heading (MUI's heading slot); the title inside is a span.
-            <Accordion key={prompt.id} slotProps={{ heading: { component: 'h3' } }}>
+            <Accordion key={prompt.id} slotProps={{ heading: { component: 'h2' } }}>
               <AccordionSummary
                 expandIcon={<ExpandMoreIcon />}
                 aria-controls={`prompt-${prompt.id}-content`}
@@ -209,147 +220,35 @@ function PromptsArea({
           onClose={() => setEditing(undefined)}
         />
       )}
-    </PageSection>
-  )
-}
-
-/** Master data, release and deletion - the area for MANAGER and above. */
-function SettingsArea({ library }: { library: PromptLibraryResponse }) {
-  const navigate = useNavigate()
-  const updateLibrary = usePromptLibraryStore((s) => s.updateLibrary)
-  const deleteLibrary = usePromptLibraryStore((s) => s.deleteLibrary)
-  const [draft, setDraft] = useState<{ name: string; description: string } | null>(null)
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const name = draft?.name ?? library.name
-  const description = draft?.description ?? library.description ?? ''
-
-  // The PUT replaces name and description as a whole.
-  async function save(fields: { name: string; description: string | null | undefined }) {
-    await updateLibrary(library.id, {
-      name: fields.name.trim(),
-      description: fields.description?.trim() || null,
-    })
-  }
-
-  async function handleSave() {
-    setError(null)
-    setSaving(true)
-    try {
-      await save({ name, description })
-      setDraft(null)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Speichern fehlgeschlagen')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  async function handleDelete() {
-    const confirmed = await confirmAction({
-      question: `Prompt-Bibliothek „${library.name}“ löschen?`,
-      consequence:
-        'Das entfernt auch alle Prompts, Rechte und Space-Zuordnungen dieser Prompt-Bibliothek. Diese Aktion kann nicht rückgängig gemacht werden.',
-      confirmLabel: 'Löschen',
-      tone: 'danger',
-    })
-    if (!confirmed) return
-    setError(null)
-    try {
-      await deleteLibrary(library.id)
-      navigate(CATALOG_ROUTE)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Löschen fehlgeschlagen')
-    }
-  }
-
-  return (
-    <Stack>
-      <PageSection title="Stammdaten" description="Name und Beschreibung dieser Prompt-Bibliothek.">
-        <Stack spacing={2}>
-          {error && (
-            <Alert severity="error" onClose={() => setError(null)}>
-              {error}
-            </Alert>
-          )}
-          <Box>
-            <FieldLabel htmlFor="prompt-library-detail-name">Name der Prompt-Bibliothek</FieldLabel>
-            <TextField
-              id="prompt-library-detail-name"
-              size="small"
-              fullWidth
-              value={name}
-              onChange={(e) => setDraft({ name: e.target.value, description })}
-              slotProps={{ htmlInput: { maxLength: 255 } }}
-            />
-          </Box>
-          <Box>
-            <FieldLabel htmlFor="prompt-library-detail-description">Beschreibung</FieldLabel>
-            <TextField
-              id="prompt-library-detail-description"
-              size="small"
-              fullWidth
-              multiline
-              minRows={2}
-              value={description}
-              onChange={(e) => setDraft({ name, description: e.target.value })}
-              slotProps={{ htmlInput: { maxLength: 2000 } }}
-            />
-          </Box>
-          <Stack direction="row" spacing={1}>
-            <Button
-              variant="contained"
-              size="small"
-              onClick={() => void handleSave()}
-              disabled={saving || !name.trim()}
-            >
-              {saving ? 'Wird gespeichert …' : 'Speichern'}
-            </Button>
-          </Stack>
-        </Stack>
-      </PageSection>
-
-      {/* Dieselben Bausteine wie im Reiter „Freigaben" der Wissensbibliothek (#1941) - der
-          Eigentümer-Abschnitt bleibt dort, solange die Antwort einer Prompt-Bibliothek den
-          Anzeigenamen ihrer zuständigen Stelle nicht trägt. */}
-      <AssetGrantsSection assetType="PROMPT_LIBRARY" assetId={library.id} />
-
-      <AssetSpacesSection assetType="PROMPT_LIBRARY" assetId={library.id} canManage />
-
-      <AssetAccessDerivationSection assetType="PROMPT_LIBRARY" assetId={library.id} />
-
-      {library.myRole === 'OWNER' && (
-        <PageSection
-          title="Prompt-Bibliothek löschen"
-          description="Entfernt die Prompt-Bibliothek unwiderruflich — einschließlich aller Prompts."
-        >
-          <Button color="error" variant="outlined" size="small" onClick={() => void handleDelete()}>
-            Prompt-Bibliothek löschen
-          </Button>
-        </PageSection>
-      )}
-    </Stack>
+    </Box>
   )
 }
 
 /**
- * One prompt library: its prompts for every reader, and for MANAGER and above the management
- * area with master data, the shared release section and deletion. Each area is a route of its own
- * (`/prompts/:id`, `/prompts/:id/settings`), so a link lands in the right one.
+ * One prompt library, built like the knowledge library's page: the shared head with star
+ * and „⋯", then the areas „Prompts", „Freigaben" and „Zuordnungen" - each a route of its own
+ * (`/prompts/:id`, `/prompts/:id/freigaben`, `/prompts/:id/zuordnungen`) and open to every
+ * reader, who finds them read-only.
  */
 export default function PromptLibraryDetailPage() {
   const { promptLibraryId, tab } = useParams()
+  const navigate = useNavigate()
   const library = usePromptLibraryStore((s) =>
     promptLibraryId ? s.details[promptLibraryId] : undefined,
   )
   const storeError = usePromptLibraryStore((s) => s.error)
   const loadLibrary = usePromptLibraryStore((s) => s.loadLibrary)
   const loadLibraries = usePromptLibraryStore((s) => s.loadLibraries)
+  const updateLibrary = usePromptLibraryStore((s) => s.updateLibrary)
+  const deleteLibrary = usePromptLibraryStore((s) => s.deleteLibrary)
   const isSystemAdmin = useAuthStore((s) => s.user?.systemRole === 'SYSTEM_ADMIN')
   // The list holds only what the caller may read, without the administrative bypass that makes
   // a system administrator OWNER of every single library.
   const listed = usePromptLibraryStore((s) => s.libraries.some((l) => l.id === promptLibraryId))
   const mayUseInSpace = !isSystemAdmin || listed
+  const catalog = useAssetCatalogEntry('PROMPT_LIBRARY', promptLibraryId ?? '')
+  const [associationsVersion, setAssociationsVersion] = useState(0)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
 
   useEffect(() => {
     if (promptLibraryId) void loadLibrary(promptLibraryId)
@@ -360,6 +259,12 @@ export default function PromptLibraryDetailPage() {
   }, [isSystemAdmin, listed, loadLibraries])
 
   if (!promptLibraryId) return <Navigate to={CATALOG_ROUTE} replace />
+
+  const formerTab = tab !== undefined ? FORMER_PROMPT_LIBRARY_TABS[tab] : undefined
+  if (formerTab) return <Navigate to={promptLibraryRoute(promptLibraryId, formerTab)} replace />
+  if (tab !== undefined && (!isPromptLibraryTab(tab) || tab === PROMPT_LIBRARY_TABS[0])) {
+    return <Navigate to={promptLibraryRoute(promptLibraryId)} replace />
+  }
 
   if (!library) {
     return (
@@ -373,94 +278,134 @@ export default function PromptLibraryDetailPage() {
     )
   }
 
+  const activeTab: PromptLibraryTab = tab ?? PROMPT_LIBRARY_TABS[0]
   const canManage = holds(library.myRole, 'MANAGER')
   const canEditPrompts = holds(library.myRole, 'EDITOR')
-  const activeTab: PromptLibraryTab = tab === undefined ? 'prompts' : (tab as PromptLibraryTab)
-  if (tab !== undefined && (!isPromptLibraryTab(tab) || tab === 'prompts' || !canManage)) {
-    return <Navigate to={promptLibraryRoute(promptLibraryId)} replace />
+  const canDelete = library.myRole === 'OWNER'
+  // The catalog holds the role of the formula, never raised for the system administration; a
+  // shown role above it comes from the bypass.
+  const administrative =
+    isSystemAdmin &&
+    catalog.entry !== undefined &&
+    (catalog.entry === null || catalog.entry.myRole !== library.myRole)
+  const libraryId = library.id
+
+  /** The PUT replaces name and description as a whole; a rejection stays in the head. */
+  async function saveHeadline(name: string, description: string) {
+    try {
+      await updateLibrary(libraryId, { name: name.trim(), description: description.trim() || null })
+    } catch (err) {
+      throw new Error(successionAwareMessage(err, 'Speichern fehlgeschlagen'), { cause: err })
+    }
+  }
+
+  async function handleDelete() {
+    const confirmed = await confirmAction({
+      question: `Prompt-Bibliothek „${library?.name}“ löschen?`,
+      consequence:
+        'Das entfernt auch alle Prompts, Rechte und Space-Zuordnungen dieser Prompt-Bibliothek. Diese Aktion kann nicht rückgängig gemacht werden.',
+      confirmLabel: 'Löschen',
+      tone: 'danger',
+    })
+    if (!confirmed) return
+    setDeleteError(null)
+    try {
+      await deleteLibrary(libraryId)
+      navigate(CATALOG_ROUTE)
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : 'Löschen fehlgeschlagen')
+    }
+  }
+
+  function associationsChanged() {
+    catalog.reload()
+    setAssociationsVersion((version) => version + 1)
   }
 
   return (
     <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, overflowY: 'auto' }}>
       <Box sx={{ maxWidth: 880 }}>
-        <Link
-          component={RouterLink}
-          to={CATALOG_ROUTE}
-          underline="hover"
-          sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5, mb: 2, fontSize: 13 }}
+        <AssetDetailHeader
+          assetType="PROMPT_LIBRARY"
+          assetId={libraryId}
+          name={library.name}
+          description={library.description}
+          isPublic={library.reach.allAccounts}
+          badges={<MetaBadge accent>{assetRoleLabel(library.myRole)}</MetaBadge>}
+          administrative={administrative}
+          headline={{
+            idPrefix: 'prompt-library-detail',
+            nameLabel: 'Name der Prompt-Bibliothek',
+            editLabel: 'Name und Beschreibung bearbeiten',
+            canEdit: canManage,
+            onSave: saveHeadline,
+          }}
+          extent={library.promptCount === 1 ? '1 Prompt' : `${library.promptCount} Prompts`}
+          spaceCount={catalog.entry?.spaceCount}
+          responsible={responsibleParty({
+            ownerType: library.ownerType,
+            ownerLabel: library.ownerName,
+            succession: library.succession,
+          })}
+          updatedAt={library.updatedAt}
+          favorite={catalog.entry?.favorite}
+          onFavoriteChange={catalog.setFavorite}
+          mayUseInSpace={mayUseInSpace}
+          onAssociated={associationsChanged}
+          onDelete={canDelete ? () => void handleDelete() : undefined}
+          // ADR-0036, Entscheidung 6: state and addressee for every reader - no date, no former
+          // owner, no reason.
+          note={<SuccessionStateNote succession={library.succession} />}
+        />
+
+        {deleteError && (
+          <Alert severity="error" sx={{ mb: 2 }} onClose={() => setDeleteError(null)}>
+            {deleteError}
+          </Alert>
+        )}
+
+        <AreaTabs
+          tabs={tabs}
+          value={activeTab}
+          href={(value) => promptLibraryRoute(libraryId, value)}
+          label="Bereiche der Prompt-Bibliothek"
+          idPrefix="prompt-library"
         >
-          <ArrowBackIcon fontSize="small" />
-          Zurück zum Katalog
-        </Link>
-
-        <Box component="header" sx={{ borderBottom: 1, borderColor: 'divider', pb: 2.5, mb: 3 }}>
-          <Typography
-            sx={{
-              fontFamily: fontFamily.mono,
-              fontSize: 10,
-              fontWeight: 500,
-              letterSpacing: '0.08em',
-              color: 'primary.main',
-              mb: 0.5,
-            }}
-          >
-            PROMPT-BIBLIOTHEK
-          </Typography>
-          <Stack
-            direction="row"
-            spacing={1.5}
-            sx={{ alignItems: 'center', flexWrap: 'wrap', mb: 0.5 }}
-          >
-            <PageHeading title={library.name} />
-            <MetaBadge accent>{assetRoleLabel(library.myRole)}</MetaBadge>
-            {mayUseInSpace && (
-              <UseInSpaceButton
-                assetType="PROMPT_LIBRARY"
-                assetId={library.id}
-                name={library.name}
-                size="small"
-              />
-            )}
-          </Stack>
-          {library.description && (
-            <Typography sx={{ fontSize: 13.5, color: 'text.secondary', maxWidth: 640 }}>
-              {library.description}
-            </Typography>
-          )}
-          <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 0.5 }}>
-            {[
-              library.ownerName ? `Eigentum: ${library.ownerName}` : null,
-              library.promptCount === 1 ? '1 Prompt' : `${library.promptCount} Prompts`,
-            ]
-              .filter(Boolean)
-              .join(' · ')}
-          </Typography>
-          {/* ADR-0036, Entscheidung 6: state and addressee for every reader - no date, no former
-              owner, no reason. */}
-          <Box sx={{ maxWidth: 640 }}>
-            <SuccessionStateNote succession={library.succession} />
-          </Box>
-        </Box>
-
-        {canManage ? (
-          <AreaTabs
-            tabs={tabs}
-            value={activeTab}
-            href={(value) => promptLibraryRoute(promptLibraryId, value)}
-            label="Bereiche der Prompt-Bibliothek"
-            idPrefix="prompt-library"
-          >
-            {(value) =>
-              value === 'settings' ? (
-                <SettingsArea library={library} />
-              ) : (
-                <PromptsArea library={library} canEditPrompts={canEditPrompts} />
+          {(value) => {
+            if (value === 'freigaben') {
+              return (
+                <Stack>
+                  <AssetOwnerSection
+                    assetType="PROMPT_LIBRARY"
+                    assetId={libraryId}
+                    ownerType={library.ownerType}
+                    ownerName={library.ownerName}
+                    canTransfer={library.myRole === 'OWNER'}
+                    onTransferred={() => loadLibrary(libraryId)}
+                  />
+                  {canManage && (
+                    <AssetGrantsSection assetType="PROMPT_LIBRARY" assetId={libraryId} />
+                  )}
+                  <AssetAccessDerivationSection assetType="PROMPT_LIBRARY" assetId={libraryId} />
+                </Stack>
               )
             }
-          </AreaTabs>
-        ) : (
-          <PromptsArea library={library} canEditPrompts={canEditPrompts} />
-        )}
+            if (value === 'zuordnungen') {
+              return (
+                <AssetSpacesSection
+                  assetType="PROMPT_LIBRARY"
+                  assetId={libraryId}
+                  name={library.name}
+                  canManage={canManage}
+                  mayUseInSpace={mayUseInSpace}
+                  refreshToken={associationsVersion}
+                  onChanged={() => catalog.reload()}
+                />
+              )
+            }
+            return <PromptsArea library={library} canEditPrompts={canEditPrompts} />
+          }}
+        </AreaTabs>
       </Box>
     </Box>
   )

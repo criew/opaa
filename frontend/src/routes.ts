@@ -35,9 +35,17 @@ export function spaceSettingsRoute(
 ): string {
   return `/spaces/${spaceId}/settings/${tab}`
 }
-/** The areas of a prompt library's detail page; the first one is where `/prompts/:id` lands. */
-export const PROMPT_LIBRARY_TABS = ['prompts', 'settings'] as const
+/**
+ * The areas of a prompt library's detail page; the first one is where `/prompts/:id` lands. The
+ * area names are those of the knowledge library's `?tab=`, so both detail pages read alike.
+ */
+export const PROMPT_LIBRARY_TABS = ['prompts', 'freigaben', 'zuordnungen'] as const
 export type PromptLibraryTab = (typeof PROMPT_LIBRARY_TABS)[number]
+
+/** Former areas that bookmarks and links may still name, and the area that replaced them. */
+export const FORMER_PROMPT_LIBRARY_TABS: Readonly<Record<string, PromptLibraryTab>> = {
+  settings: 'freigaben',
+}
 
 export function promptLibraryRoute(
   promptLibraryId: string,
