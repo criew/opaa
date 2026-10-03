@@ -55,6 +55,10 @@ public interface UserRepository extends JpaRepository<User, UUID> {
    */
   long countByIssuer(String issuer);
 
+  /** The accounts whose issuer matches {@code normalizedIssuer} up to trailing slashes. */
+  @Query("select u from User u where trim(trailing '/' from u.issuer) = :issuer")
+  List<User> findByNormalizedIssuer(@Param("issuer") String normalizedIssuer);
+
   /**
    * Used by {@code AuditIncidentScopeService#request} (#393 code review, finding 8) to reject an
    * anlassbezogene Klärung named against a person outside the requester's own organization before a

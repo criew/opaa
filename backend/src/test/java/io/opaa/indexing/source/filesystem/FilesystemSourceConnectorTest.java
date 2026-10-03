@@ -1,9 +1,12 @@
 package io.opaa.indexing.source.filesystem;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import io.opaa.common.ValidationException;
+import io.opaa.indexing.source.ConnectorData;
 import io.opaa.indexing.source.FilesystemPathAllowlist;
 import io.opaa.indexing.source.SourceConnectionTestResult;
 import io.opaa.indexing.source.SourceSettings;
@@ -11,6 +14,8 @@ import io.opaa.test.UnreadableDirectory;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -39,5 +44,30 @@ class FilesystemSourceConnectorTest {
         .isIn(
             "Das Verzeichnis ist für den Server nicht lesbar.",
             "Das Verzeichnis konnte nicht gelesen werden.");
+  }
+
+  @Test
+  void settingsWithAnInvalidPatternAreRefusedBeforeAnythingIsStored() {
+    FilesystemSourceConnector connector =
+        new FilesystemSourceConnector(mock(FilesystemPathAllowlist.class));
+
+    assertThatThrownBy(
+            () ->
+                connector.readSettings(
+                    ConnectorData.of(Map.of("excludePatterns", List.of("{Archiv")))))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("„{Archiv“ ist kein gültiges Glob-Muster, es enthält eine „{“");
+  }
+
+  @Test
+  void validPatternsAreReadIntoTheirNormalisedForm() {
+    FilesystemSourceConnector connector =
+        new FilesystemSourceConnector(mock(FilesystemPathAllowlist.class));
+
+    assertThat(
+            connector
+                .readSettings(ConnectorData.of(Map.of("excludePatterns", List.of(" Archiv/** "))))
+                .asMap())
+        .isEqualTo(Map.of("excludePatterns", List.of("Archiv/**")));
   }
 }

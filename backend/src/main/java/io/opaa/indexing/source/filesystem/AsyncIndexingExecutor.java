@@ -34,7 +34,9 @@ import org.springframework.scheduling.annotation.Async;
 /**
  * Executes indexing runs for {@link FilesystemSourceConnector#TYPE} (ADR-0017) over the library's
  * own {@link KnowledgeLibrary#getSourcePath()} (ADR-0018). Every discovered file's directory is
- * mirrored into {@code library_folders} (ADR-0020) before the file is processed.
+ * mirrored into {@code library_folders} (ADR-0020) before the file is processed. What {@link
+ * FilesystemExclusions} excludes is not part of the source: not listed, so already indexed
+ * documents there are removed like vanished ones.
  *
  * <p>Every physically found file - indexable or not - is present, so the run frame's reconciliation
  * removes what was not rediscovered, and only then are the folders pruned, so a folder emptied by
@@ -110,8 +112,10 @@ public class AsyncIndexingExecutor implements SourceIndexingExecutor {
     // document key, so a sourcePath that is not in canonical form would re-key the library's
     // documents on every run.
     Path documentDir = Path.of(targetLibrary.getSourcePath()).toAbsolutePath().normalize();
+    FilesystemExclusions exclusions =
+        FilesystemExclusions.of(FilesystemSourceSettings.of(run.settings().connectorSettings()));
     DocumentService.DiscoveredFiles discovered =
-        documentService.discoverFiles(documentDir, supportedFormats);
+        documentService.discoverFiles(documentDir, supportedFormats, exclusions::excludes);
     List<Path> files = discovered.supported();
     log.info(
         "Discovered {} files in {}, {} of them indexable",
@@ -191,10 +195,12 @@ public class AsyncIndexingExecutor implements SourceIndexingExecutor {
     }
     run.afterReconciliation(reconciled -> folderMirror.prune());
     // What lies below an unreadable entry is unknown, so absence there proves nothing: its known
-    // documents are kept, everything else is reconciled.
+    // documents are kept unless excluded, everything else is reconciled.
     if (!discovered.unreadable().isEmpty()) {
+      UnreadableAreas unreadableAreas = new UnreadableAreas(discovered.unreadable());
       return ListingOutcome.completeExcept(
-          discovered.unreadable().size(), new UnreadableAreas(discovered.unreadable()));
+          discovered.unreadable().size(),
+          key -> unreadableAreas.test(key) && !exclusions.excludesDocument(documentDir, key));
     }
     return ListingOutcome.complete();
   }

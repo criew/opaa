@@ -20,6 +20,7 @@ import io.opaa.auth.OidcAddressPolicy;
 import io.opaa.auth.OidcClaimMapping;
 import io.opaa.auth.OidcIssuerUris;
 import io.opaa.auth.OidcProvider;
+import io.opaa.auth.OidcProviderDeletedEvent;
 import io.opaa.auth.OidcProviderRegistry;
 import io.opaa.auth.OidcProviderRepository;
 import io.opaa.auth.OidcProvidersChangedEvent;
@@ -317,6 +318,7 @@ public class OidcProviderService implements LocalAccountsSwitch {
             .before(before)
             .outcome(AuditOutcome.SUCCESS)
             .build());
+    eventPublisher.publishEvent(new OidcProviderDeletedEvent(provider.getIssuerUri(), actorUserId));
     eventPublisher.publishEvent(new OidcProvidersChangedEvent());
   }
 
