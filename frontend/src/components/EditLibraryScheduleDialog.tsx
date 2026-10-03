@@ -23,6 +23,8 @@ interface EditLibraryScheduleDialogProps {
   schedule: LibrarySchedule | null | undefined
   /** Present only for a CONFLUENCE library - the dialog then offers the full-sync rhythm (#1200). */
   confluence?: ConfluenceFullSyncRhythm
+  /** The stored settings a rhythm change resends whole, for a connector without partial updates. */
+  settingsBase?: Record<string, unknown>
   // KnowledgeLibraryService#updateLibrary overwrites name/description unconditionally when
   // present in the request (see EditLibrarySourceDialog's identical reasoning) - this dialog only
   // touches the schedule, so the current values must be resent unchanged rather than omitted.
@@ -37,12 +39,23 @@ interface EditLibraryScheduleDialogProps {
  * LibraryScheduleForm}, which the Anlage-Assistent uses in its own Betriebsart; this dialog only
  * adds the save.
  */
+/** The schedule update with its settings part laid over {@code base}, when there is one. */
+function withSettingsBase<T extends { sourceSettings?: Record<string, unknown> }>(
+  update: T,
+  base: Record<string, unknown> | undefined,
+): T {
+  return base && update.sourceSettings
+    ? { ...update, sourceSettings: { ...base, ...update.sourceSettings } }
+    : update
+}
+
 export default function EditLibraryScheduleDialog({
   open,
   onClose,
   libraryId,
   schedule,
   confluence,
+  settingsBase,
   library,
 }: EditLibraryScheduleDialogProps) {
   const updateExistingLibrary = useLibraryStore((s) => s.updateExistingLibrary)
@@ -72,7 +85,7 @@ export default function EditLibraryScheduleDialog({
         // Stammdaten-Formular: das Backend lässt die gespeicherte Quellkonfiguration unverändert,
         // solange keines ihrer Felder in der Anfrage vorhanden ist.
         sourceInsecureSsl: null,
-        ...scheduleUpdateFrom(values, confluence),
+        ...withSettingsBase(scheduleUpdateFrom(values, confluence), settingsBase),
       })
       onClose()
     } catch (err) {
