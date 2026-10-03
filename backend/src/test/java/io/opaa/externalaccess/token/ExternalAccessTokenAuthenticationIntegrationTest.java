@@ -23,6 +23,7 @@ import io.opaa.auth.OidcProvider;
 import io.opaa.auth.OidcProviderRepository;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.directory.OidcProviderService;
 import io.opaa.externalaccess.ExternalAccessSettings;
 import io.opaa.externalaccess.ExternalAccessSettingsService;
 import io.opaa.knowledge.SourceType;
@@ -78,6 +79,8 @@ class ExternalAccessTokenAuthenticationIntegrationTest {
   @Autowired private OwnLibraryFixtures ownLibraryFixtures;
   @Autowired private UserRepository users;
   @Autowired private OidcProviderRepository providers;
+  @Autowired private OidcProviderService providerService;
+  @Autowired private ExternalAccessTokenAuthenticator authenticator;
   @Autowired private KnowledgeLibraryService libraryService;
   @Autowired private ExternalAccessTokenRepository tokens;
   @Autowired private ExternalAccessSettingsService settings;
@@ -335,19 +338,24 @@ class ExternalAccessTokenAuthenticationIntegrationTest {
   }
 
   /**
-   * ADR-0041, Entscheidung 4: a token goes with the provider of its account - refused while the
-   * provider is disabled and once it is deleted, like a sign-in through it.
+   * ADR-0041, Entscheidung 4: a token goes with the provider of its account - accepted while the
+   * provider is enabled, refused while it is disabled and accepted again once it is re-enabled. A
+   * deletion ends it for good: a provider created again with the same issuer does not revive it.
    */
   @Test
-  void aTokenOfAnAccountWhoseProviderIsDisabledOrGoneIsRefused() throws Exception {
+  void aTokenFollowsTheProviderOfItsAccountAndEndsWithItsDeletion() throws Exception {
     LocalAccount person = fixtures.activeUser("anbieter-" + UUID.randomUUID() + "@intern.example");
     String value = issueRawFor(person);
     String issuer = "https://idp.example/realms/token-" + UUID.randomUUID();
     OidcProvider provider =
-        new OidcProvider(
-            "Token-Anbieter", issuer, "opaa-frontend", null, OidcClaimMapping.keycloakDefaults());
-    provider.disable();
-    providers.save(provider);
+        providers.save(
+            new OidcProvider(
+                "Token-Anbieter",
+                issuer,
+                "opaa-frontend",
+                null,
+                OidcClaimMapping.keycloakDefaults()));
+    OidcProvider recreated = null;
     try {
       // The state a handover leaves behind: the account now carries the provider's issuer.
       jdbcTemplate.update(
@@ -355,12 +363,33 @@ class ExternalAccessTokenAuthenticationIntegrationTest {
           issuer,
           "sub-" + person.id(),
           person.id());
+      assertThat(authenticator.authenticate(value))
+          .isInstanceOf(ExternalAccessTokenAuthenticator.Result.Authenticated.class);
 
+      provider.disable();
+      provider = providers.save(provider);
       assertRefusedWith(value, "account_not_active");
 
-      providers.deleteById(provider.getId());
+      provider.enable();
+      provider = providers.save(provider);
+      assertThat(authenticator.authenticate(value))
+          .isInstanceOf(ExternalAccessTokenAuthenticator.Result.Authenticated.class);
 
-      assertRefusedWith(value, "account_not_active");
+      provider.disable();
+      provider = providers.save(provider);
+      providerService.deleteProvider(
+          administrator.getOrganizationId(), administrator.getId(), provider.getId());
+      assertRefusedWith(value, "token_revoked");
+
+      recreated =
+          providers.save(
+              new OidcProvider(
+                  "Token-Anbieter neu",
+                  issuer + "/",
+                  "opaa-frontend",
+                  null,
+                  OidcClaimMapping.keycloakDefaults()));
+      assertRefusedWith(value, "token_revoked");
     } finally {
       jdbcTemplate.update(
           "UPDATE users SET issuer = ?, subject = ? WHERE id = ?",
@@ -368,6 +397,9 @@ class ExternalAccessTokenAuthenticationIntegrationTest {
           person.id().toString(),
           person.id());
       providers.findById(provider.getId()).ifPresent(providers::delete);
+      if (recreated != null) {
+        providers.delete(recreated);
+      }
     }
   }
 

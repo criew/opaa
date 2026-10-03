@@ -210,9 +210,11 @@ sperren**. Beides wirkt ab dem nächsten Aufruf und wird protokolliert. Den Toke
 **Tokens folgen dem Lebenszyklus ihrer Person.** Wird ein Konto gesperrt, deaktiviert, gelöscht oder
 an eine Anbieteridentität übergeben, treten seine Tokens in derselben Transaktion außer Kraft. Ein
 Token, das die Deaktivierung überdauert, wäre der bequemste Weg, den Kontenlebenszyklus zu umgehen.
-Dazu prüft jeder Aufruf das Konto: Ist der Identitätsanbieter der Person deaktiviert oder gelöscht,
-wird das Token abgewiesen wie eine Anmeldung über diesen Anbieter. Nach dem Wiedereinschalten des
-Anbieters gilt es wieder.
+Dazu prüft jeder Aufruf das Konto: Ist der Identitätsanbieter der Person deaktiviert, wird das
+Token abgewiesen wie eine Anmeldung über diesen Anbieter, und nach dem Wiedereinschalten gilt es
+wieder. Dasselbe gilt für ein reguläres lokales Konto, solange die lokale Kontenverwaltung
+abgeschaltet ist. Wird der Anbieter gelöscht, treten die Tokens seiner Konten endgültig außer
+Kraft; ein später mit derselben Issuer-URI neu angelegter Anbieter belebt sie nicht wieder.
 
 **Abgelaufene und widerrufene Tokenzeilen werden gelöscht**, sobald die Protokollfrist der
 Installation über ihr Außerkrafttreten hinweggelaufen ist — nicht früher, sonst fehlt der Beleg, dass
@@ -596,7 +598,7 @@ beantworten sich gleich, damit der Kanal nie bestätigt, dass ein Token existier
 |---|---|---|
 | `401`, `reason: token_expired` | Das Token hat sein Ablaufdatum erreicht | Die Person legt in ihren Einstellungen ein neues an. Ein abgelaufenes Token lässt sich nicht verlängern |
 | `401`, `reason: token_revoked` | Die Person hat widerrufen — oder die Systemverwaltung hat gesperrt | Neues Token. Bei einer Sperre zuerst deren Anlass klären |
-| `401`, `reason: account_not_active` | Das **Konto** ist gesperrt, abgelaufen, deaktiviert oder übergeben; alle seine Tokens sind damit außer Kraft. Oder sein Identitätsanbieter ist deaktiviert oder gelöscht | [Benutzerverwaltung](benutzerverwaltung.md), Abschnitt 4. Danach ist ein neues Token nötig — die alten leben nicht wieder auf. Nur bei einem wieder eingeschalteten Anbieter gelten sie wieder |
+| `401`, `reason: account_not_active` | Das **Konto** ist gesperrt, abgelaufen, deaktiviert oder übergeben; alle seine Tokens sind damit außer Kraft. Oder sein Identitätsanbieter beziehungsweise die lokale Kontenverwaltung ist abgeschaltet | [Benutzerverwaltung](benutzerverwaltung.md), Abschnitt 4. Danach ist ein neues Token nötig — die alten leben nicht wieder auf. Nur nach dem Wiedereinschalten des Anbieters oder der lokalen Kontenverwaltung gelten sie wieder; ein gelöschter Anbieter beendet sie dagegen endgültig (`token_revoked`) |
 | `401`, `reason: invalid_token` | Wert unbekannt, verstümmelt oder unvollständig kopiert | Neu einrichten. Der Wert ist nach der Einmalanzeige nirgends abrufbar; im Zweifel neues Token |
 | `401`, `reason: network_not_allowed` | Der Aufruf kam von außerhalb der zugelassenen Netzbereiche — Heimarbeit ohne Hausnetzverbindung, ein anderes Netzsegment, oder ein Reverse Proxy ohne Eintrag in `OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS` (Abschnitt 3) | Verbindung ins Hausnetz herstellen, oder die Netzbereiche der Installation prüfen. **Trifft der Fehler alle Beschäftigten gleichzeitig, ist es die Proxy-Auflösung, nicht das Netz** |
 | `401`/`503`, `reason: channel_closed` | Der Schalter der Installation steht auf aus — Notaus, geplante Abschaltung oder ein Restore (Abschnitt 14) | *Administration → Fremdzugänge → Kanaleinstellungen*. Tokens sind dabei nicht verloren |

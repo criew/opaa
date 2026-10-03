@@ -1,6 +1,5 @@
 package io.opaa.auth;
 
-import io.opaa.api.types.LockReason;
 import io.opaa.api.types.ProviderType;
 import java.time.Clock;
 import java.time.Duration;
@@ -16,8 +15,9 @@ import org.springframework.stereotype.Component;
 
 /**
  * The one rule whether an account may be used right now (ADR-0041, Entscheidung 4), for every kind
- * of account: the directory lock first, a local account by its credentials, every other one by the
- * provider of its issuer. Inactivity counts only where a caller asks for it with a threshold.
+ * of account: the directory lock first, a local account by {@link LocalAccountAccess} and the
+ * switch of the local management, every other one by the provider of its issuer. Inactivity counts
+ * only where a caller asks for it with a threshold.
  */
 @Component
 public class AccountUsability {
@@ -32,6 +32,8 @@ public class AccountUsability {
     /** A local invitation not yet completed. */
     INVITED,
     DORMANT_PROVIDER_DISABLED,
+    /** A regular local account while the local account management is switched off. */
+    DORMANT_LOCAL_ACCOUNTS_DISABLED,
     DORMANT_INACTIVE,
     /** Locked, expired, locked by the directory, or its provider is gone. */
     DEACTIVATED;
@@ -41,7 +43,9 @@ public class AccountUsability {
     }
 
     public boolean isDormant() {
-      return this == DORMANT_PROVIDER_DISABLED || this == DORMANT_INACTIVE;
+      return this == DORMANT_PROVIDER_DISABLED
+          || this == DORMANT_LOCAL_ACCOUNTS_DISABLED
+          || this == DORMANT_INACTIVE;
     }
 
     public boolean isDeactivated() {
@@ -80,8 +84,11 @@ public class AccountUsability {
    */
   public Snapshot snapshotWithoutProvider(UUID providerId) {
     Map<String, Boolean> enabledByIssuer = new LinkedHashMap<>();
+    boolean localAccountsEnabled = false;
     for (OidcProvider provider : providers.findAllByOrderBySortOrderAscDisplayNameAsc()) {
-      if (provider.getProviderType() == ProviderType.OIDC) {
+      if (provider.getProviderType() == ProviderType.LOCAL) {
+        localAccountsEnabled = provider.isEnabled();
+      } else if (provider.getProviderType() == ProviderType.OIDC) {
         enabledByIssuer.put(
             OidcIssuerUris.normalize(provider.getIssuerUri()),
             provider.isEnabled() && !provider.getId().equals(providerId));
@@ -91,23 +98,26 @@ public class AccountUsability {
         DEV_MODE.equals(authProperties.mode())
             ? OidcIssuerUris.normalize(authProperties.dev().issuer())
             : null;
-    return new Snapshot(enabledByIssuer, devIssuer, clock.instant(), null);
+    return new Snapshot(enabledByIssuer, localAccountsEnabled, devIssuer, clock.instant(), null);
   }
 
   /** One reading of the providers and the clock; see {@link AccountUsability}. */
   public final class Snapshot {
 
     private final Map<String, Boolean> enabledByIssuer;
+    private final boolean localAccountsEnabled;
     private final String devIssuer;
     private final Instant now;
     private final Duration inactivityThreshold;
 
     private Snapshot(
         Map<String, Boolean> enabledByIssuer,
+        boolean localAccountsEnabled,
         String devIssuer,
         Instant now,
         Duration inactivityThreshold) {
       this.enabledByIssuer = enabledByIssuer;
+      this.localAccountsEnabled = localAccountsEnabled;
       this.devIssuer = devIssuer;
       this.now = now;
       this.inactivityThreshold = inactivityThreshold;
@@ -119,7 +129,11 @@ public class AccountUsability {
      */
     public Snapshot withInactivityThreshold(Duration threshold) {
       return new Snapshot(
-          enabledByIssuer, devIssuer, now, Objects.requireNonNull(threshold, "threshold"));
+          enabledByIssuer,
+          localAccountsEnabled,
+          devIssuer,
+          now,
+          Objects.requireNonNull(threshold, "threshold"));
     }
 
     public State stateOf(User user) {
@@ -155,7 +169,14 @@ public class AccountUsability {
         return State.DEACTIVATED;
       }
       if (isLocal(user)) {
-        return row == null ? State.DEACTIVATED : localState(row);
+        if (row == null) {
+          return State.DEACTIVATED;
+        }
+        State local = LocalAccountAccess.usability(row, now);
+        return local == State.USABLE
+                && !LocalAccountAccess.passesManagementSwitch(localAccountsEnabled, user)
+            ? State.DORMANT_LOCAL_ACCOUNTS_DISABLED
+            : local;
       }
       String issuer = OidcIssuerUris.normalize(user.getIssuer());
       if (devIssuer != null && devIssuer.equals(issuer)) {
@@ -166,23 +187,6 @@ public class AccountUsability {
         return State.DEACTIVATED;
       }
       return enabled ? State.USABLE : State.DORMANT_PROVIDER_DISABLED;
-    }
-
-    /** The expiry is read before the lock, which would otherwise hide it. */
-    private State localState(LocalCredentials row) {
-      Instant expiresAt = row.getExpiresAt();
-      if (expiresAt != null && !expiresAt.isAfter(now)) {
-        return State.DEACTIVATED;
-      }
-      return switch (row.state(now)) {
-        case ACTIVE -> State.USABLE;
-        case INVITED -> State.INVITED;
-        case EXPIRED -> State.DEACTIVATED;
-        case LOCKED ->
-            row.getLockedReason() == LockReason.FAILED_LOGINS
-                ? State.LOCKED_OUT
-                : State.DEACTIVATED;
-      };
     }
 
     /** An account that never signed in counts from its creation. */

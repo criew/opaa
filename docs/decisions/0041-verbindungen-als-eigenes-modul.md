@@ -106,7 +106,8 @@ Verzeichnis-Konnektor erfährt OPAA gar nicht.
 - **Zentrale Abfrage in identity** (`io.opaa.auth`, Arbeitsname `AccountUsability`): Ist das Konto
   jetzt nutzbar? Vorbild ist `LocalAdminAvailabilityGuard#isLoginCapable`, die heute vollständigste
   Regel: Verzeichnissperre vor allem anderen, lokaler Issuer über `LocalAccountAccess`, Dev-Issuer
-  und Anbieter über `OidcIssuerUris.normalize`, nur `ProviderType.OIDC`.
+  und Anbieter über `OidcIssuerUris.normalize`, nur `ProviderType.OIDC`; vom Anbieter `LOCAL`
+  zählt nur sein Schalter.
 
   | Zustand | Ergebnis |
   |---|---|
@@ -115,6 +116,7 @@ Verzeichnis-Konnektor erfährt OPAA gar nicht.
   | Verzeichnissperre (`User#isDirectoryLocked`) | deaktiviert |
   | kein Anbieter mehr zum normalisierten Issuer (gelöscht), außer dem Dev-Issuer | deaktiviert |
   | Anbieter des Issuers deaktiviert | ruht |
+  | reguläres lokales Konto (nicht `SYSTEM_ADMIN`) bei abgeschalteter lokaler Kontenverwaltung | ruht |
   | ohne Aktivität seit der Inaktivitätsschwelle (`users.last_login_at`) | ruht |
   | sonst | nutzbar |
 

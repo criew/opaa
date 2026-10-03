@@ -6,6 +6,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.LockReason;
+import io.opaa.api.types.SystemRole;
 import io.opaa.auth.AccountUsability.State;
 import java.time.Clock;
 import java.time.Duration;
@@ -28,6 +29,7 @@ class AccountUsabilityTest {
   private final OidcProviderRepository providers = mock(OidcProviderRepository.class);
   private final List<OidcProvider> providerRows = new ArrayList<>();
   private OidcProvider enabledProvider;
+  private OidcProvider localRow;
   private AccountUsability usability;
 
   @BeforeEach
@@ -35,7 +37,9 @@ class AccountUsabilityTest {
     enabledProvider = provider("Enabled", ENABLED_ISSUER, true);
     providerRows.add(enabledProvider);
     providerRows.add(provider("Disabled", DISABLED_ISSUER, false));
-    providerRows.add(OidcProvider.localProvider("Lokale Konten"));
+    localRow = OidcProvider.localProvider("Lokale Konten");
+    localRow.enable();
+    providerRows.add(localRow);
     when(providers.findAllByOrderBySortOrderAscDisplayNameAsc()).thenReturn(providerRows);
     when(credentials.findById(any())).thenReturn(Optional.empty());
     usability = usability("oidc");
@@ -128,6 +132,23 @@ class AccountUsabilityTest {
 
     assertThat(state).isEqualTo(State.INVITED);
     assertThat(state.isDeactivated()).isFalse();
+  }
+
+  /** A regular local account rests while the local management is off; an administrator not. */
+  @Test
+  void theSwitchOfTheLocalManagementLetsRegularLocalAccountsRest() {
+    localRow.disable();
+    User regular = User.localAccount("regulaer@example.com", "Regulär");
+    localRow(regular);
+    User admin = User.localAccount("admin@example.com", "Admin");
+    admin.setSystemRole(SystemRole.SYSTEM_ADMIN);
+    localRow(admin);
+
+    State state = usability.stateOf(regular);
+    assertThat(state).isEqualTo(State.DORMANT_LOCAL_ACCOUNTS_DISABLED);
+    assertThat(state.isDormant()).isTrue();
+    assertThat(state.isDeactivated()).isFalse();
+    assertThat(usability.stateOf(admin)).isEqualTo(State.USABLE);
   }
 
   @Test

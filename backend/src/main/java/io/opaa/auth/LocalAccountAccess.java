@@ -3,14 +3,15 @@ package io.opaa.auth;
 import io.opaa.api.types.LocalAccountState;
 import io.opaa.api.types.LockReason;
 import io.opaa.api.types.SystemRole;
+import io.opaa.auth.AccountUsability.State;
 import java.time.Instant;
 
 /**
  * The one formulation of who may use the local sign-in right now (ADR-0033, Entscheidungen 3 and
- * 4), shared by the login, the refresh rotation and the token validator: the account must be {@code
- * ACTIVE} by {@link LocalCredentials#isLoginCapable} - never by {@code locked_at} alone, which
- * outlives an expired lockout - and while the management is switched off only a local {@code
- * SYSTEM_ADMIN} passes.
+ * 4), shared by the login, the refresh rotation, the token validator and {@link AccountUsability}:
+ * the account must be {@code ACTIVE} by {@link LocalCredentials#isLoginCapable} - never by {@code
+ * locked_at} alone, which outlives an expired lockout - and while the management is switched off
+ * only a local {@code SYSTEM_ADMIN} passes.
  *
  * <p>Every rule here is about a <em>local</em> account; the caller must already have established
  * that much. Login and rotation do so through the {@code local_credentials} row they require
@@ -50,11 +51,36 @@ public final class LocalAccountAccess {
   }
 
   /**
+   * The local half of {@link AccountUsability}: an expiry is read before the lock, which would
+   * otherwise hide it; a failed-login lockout ends by itself and is no deactivation.
+   */
+  public static State usability(LocalCredentials credentials, Instant now) {
+    Instant expiresAt = credentials.getExpiresAt();
+    if (expiresAt != null && !expiresAt.isAfter(now)) {
+      return State.DEACTIVATED;
+    }
+    if (isLoginCapable(credentials, now)) {
+      return State.USABLE;
+    }
+    if (credentials.state(now) == LocalAccountState.INVITED) {
+      return State.INVITED;
+    }
+    return credentials.getLockedReason() == LockReason.FAILED_LOGINS
+        ? State.LOCKED_OUT
+        : State.DEACTIVATED;
+  }
+
+  /**
    * Whether the switch of the local management (Entscheidung 4) lets this account through. Only
    * meaningful for a local account - the caller must have established that beforehand, because a
    * handed-over one would be refused here for a switch that does not govern it.
    */
   public static boolean passesManagementSwitch(OidcProviderRegistry registry, User user) {
-    return registry.localAccountsEnabled() || user.getSystemRole() == SystemRole.SYSTEM_ADMIN;
+    return passesManagementSwitch(registry.localAccountsEnabled(), user);
+  }
+
+  /** The same rule with the switch already read. */
+  public static boolean passesManagementSwitch(boolean localAccountsEnabled, User user) {
+    return localAccountsEnabled || user.getSystemRole() == SystemRole.SYSTEM_ADMIN;
   }
 }
