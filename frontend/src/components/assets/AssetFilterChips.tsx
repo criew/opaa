@@ -16,13 +16,19 @@ export type AssetFilterKey = keyof AssetFilters
 interface AssetFilterChipsProps {
   value: AssetFilters
   onToggle: (key: AssetFilterKey) => void
+  /** The name of the `selectedOnly` chip, after what choosing means in its place. */
+  selectedOnlyLabel?: string
 }
 
 /**
  * The one filter bar of catalog, asset choice and token selection (guidelines 5.11): independent
  * toggle chips whose state `aria-pressed` carries. All off is "alle".
  */
-export default function AssetFilterChips({ value, onToggle }: AssetFilterChipsProps) {
+export default function AssetFilterChips({
+  value,
+  onToggle,
+  selectedOnlyLabel = 'Nur ausgewählte',
+}: AssetFilterChipsProps) {
   return (
     <Stack
       direction="row"
@@ -47,7 +53,7 @@ export default function AssetFilterChips({ value, onToggle }: AssetFilterChipsPr
       />
       {value.selectedOnly !== undefined && (
         <Chip
-          label="Nur ausgewählte"
+          label={selectedOnlyLabel}
           variant={value.selectedOnly ? 'filled' : 'outlined'}
           aria-pressed={value.selectedOnly}
           onClick={() => onToggle('selectedOnly')}

@@ -99,7 +99,11 @@ interface SpaceState {
     chatAutoCleanup?: boolean,
     initialMembers?: SpaceMemberRequest[],
   ) => Promise<string>
-  loadAssetAssociations: (spaceId: string) => Promise<void>
+  /**
+   * `keepCurrent` keeps the shown associations of the same space until the answer replaces them,
+   * so a refresh after the caller's own change neither flickers nor empties the list meanwhile.
+   */
+  loadAssetAssociations: (spaceId: string, options?: { keepCurrent?: boolean }) => Promise<void>
   associateAsset: (spaceId: string, assetType: AssetType, assetId: string) => Promise<void>
   detachAsset: (spaceId: string, assetId: string) => Promise<void>
 }
@@ -307,19 +311,23 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
   // making the wrong space's association count render. On failure, assetAssociationsSpaceId stays
   // null rather than becoming "this space has no associations" - #783 review nit 1: an unresolved
   // load must render as unknown, not silently as a claim about what the space searches.
-  loadAssetAssociations: async (spaceId) => {
+  loadAssetAssociations: async (spaceId, options) => {
     const sessionEpoch = currentSessionEpoch()
     const requestId = ++assetAssociationsRequestSeq
-    set({
-      isLoadingAssetAssociations: true,
-      error: null,
-      assetAssociations: [],
-      hasAssetAssociations: false,
-      hasKnowledge: false,
-      hasReadableKnowledge: false,
-      hasUnreadableAssociations: false,
-      assetAssociationsSpaceId: null,
-    })
+    if (options?.keepCurrent && get().assetAssociationsSpaceId === spaceId) {
+      set({ error: null })
+    } else {
+      set({
+        isLoadingAssetAssociations: true,
+        error: null,
+        assetAssociations: [],
+        hasAssetAssociations: false,
+        hasKnowledge: false,
+        hasReadableKnowledge: false,
+        hasUnreadableAssociations: false,
+        assetAssociationsSpaceId: null,
+      })
+    }
     try {
       const response = await getSpaceAssetAssociations(spaceId)
       if (isStaleSessionEpoch(sessionEpoch) || requestId !== assetAssociationsRequestSeq) return
@@ -351,11 +359,11 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
 
   associateAsset: async (spaceId, assetType, assetId) => {
     await associateSpaceAsset(spaceId, assetType, assetId)
-    await get().loadAssetAssociations(spaceId)
+    await get().loadAssetAssociations(spaceId, { keepCurrent: true })
   },
 
   detachAsset: async (spaceId, assetId) => {
     await detachSpaceAsset(spaceId, assetId)
-    await get().loadAssetAssociations(spaceId)
+    await get().loadAssetAssociations(spaceId, { keepCurrent: true })
   },
 }))

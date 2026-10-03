@@ -1,6 +1,6 @@
-import { act, render, screen } from '@testing-library/react'
+import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import NotificationHost from './NotificationHost'
 import { notify, useNotificationStore } from '../stores/notificationStore'
 
@@ -29,5 +29,22 @@ describe('NotificationHost', () => {
     await user.click(screen.getByRole('button', { name: /schließen|close/i }))
 
     expect(await screen.findByText('bescheid.docx wird heruntergeladen')).toBeVisible()
+  })
+
+  it('runs the action of a notification and dismisses it', async () => {
+    render(<NotificationHost />)
+    const user = userEvent.setup()
+    const undo = vi.fn()
+
+    act(() => {
+      notify('„Dienstanweisungen“ gelöst.', 'info', { label: 'Rückgängig', onClick: undo })
+    })
+
+    const alert = await screen.findByRole('alert')
+    expect(within(alert).getByRole('button', { name: 'Schließen' })).toBeVisible()
+    await user.click(within(alert).getByRole('button', { name: 'Rückgängig' }))
+
+    expect(undo).toHaveBeenCalledTimes(1)
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 })

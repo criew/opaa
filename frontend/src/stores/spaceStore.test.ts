@@ -319,6 +319,32 @@ describe('spaceStore', () => {
     expect(mockGetSpaceAssetAssociations).toHaveBeenCalledWith('space-project')
   })
 
+  // The tab "Inhalte" changes one association at a time; its list must not empty in between.
+  it('keeps the current associations while refreshing after its own change', async () => {
+    await useSpaceStore.getState().loadAssetAssociations('space-project')
+    const before = useSpaceStore.getState().assetAssociations
+    type Answer = Awaited<ReturnType<typeof mockGetSpaceAssetAssociations>>
+    let resolveReload: (value: Answer) => void = () => {}
+    mockGetSpaceAssetAssociations.mockImplementationOnce(
+      () => new Promise((resolve) => (resolveReload = resolve)),
+    )
+
+    const detaching = useSpaceStore.getState().detachAsset('space-project', 'lib-1')
+    await vi.waitFor(() => expect(mockGetSpaceAssetAssociations).toHaveBeenCalledTimes(2))
+
+    expect(useSpaceStore.getState().assetAssociations).toBe(before)
+    expect(useSpaceStore.getState().isLoadingAssetAssociations).toBe(false)
+    resolveReload({
+      hasAssociations: false,
+      hasUnreadableAssociations: false,
+      hasKnowledge: false,
+      hasReadableKnowledge: false,
+      items: [],
+    })
+    await detaching
+    expect(useSpaceStore.getState().assetAssociations).toEqual([])
+  })
+
   it('detaches a library and reloads the association list', async () => {
     await useSpaceStore.getState().detachAsset('space-project', 'lib-1')
 

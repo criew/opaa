@@ -9,21 +9,21 @@ import { useSpaceStore } from '../stores/spaceStore'
 import PageHeading from '../components/a11y/PageHeading'
 import AreaTabs from '../components/AreaTabs'
 import MetaBadge from '../components/MetaBadge'
+import SpaceContentSection from '../components/space/SpaceContentSection'
 import SpaceGeneralSection from '../components/space/SpaceGeneralSection'
-import SpaceKnowledgeSection from '../components/space/SpaceKnowledgeSection'
 import SpaceMembersSection from '../components/space/SpaceMembersSection'
-import SpacePromptsSection from '../components/space/SpacePromptsSection'
-import { SPACE_SETTINGS_TABS, spaceSettingsRoute, type SpaceSettingsTab } from '../routes'
+import {
+  FORMER_SPACE_SETTINGS_TABS,
+  SPACE_SETTINGS_TABS,
+  spaceSettingsRoute,
+  type SpaceSettingsTab,
+} from '../routes'
 
-/**
- * Die Reiter in der Reihenfolge der Leiste. Ein weiterer Asset-Typ ist eine weitere Zeile hier,
- * ein weiterer Wert in {@link SPACE_SETTINGS_TABS} und ein weiterer Zweig unten.
- */
+/** Die Reiter in der Reihenfolge der Leiste; jeder Wert in {@link SPACE_SETTINGS_TABS} hat einen. */
 const tabs: Array<{ value: SpaceSettingsTab; label: string }> = [
   { value: 'general', label: 'Stammdaten' },
   { value: 'members', label: 'Mitglieder' },
-  { value: 'knowledge', label: 'Wissen' },
-  { value: 'prompts', label: 'Prompts' },
+  { value: 'content', label: 'Inhalte' },
 ]
 
 function isSpaceSettingsTab(value: string | undefined): value is SpaceSettingsTab {
@@ -74,7 +74,8 @@ export default function SpaceSettingsPage() {
   // Ein Tippfehler im Pfad wird nicht stillschweigend als Stammdaten gelesen: Die Adresszeile
   // sagt am Ende, was tatsächlich zu sehen ist.
   if (!isSpaceSettingsTab(tab)) {
-    return <Navigate to={spaceSettingsRoute(spaceId)} replace />
+    const successor = tab ? FORMER_SPACE_SETTINGS_TABS[tab] : undefined
+    return <Navigate to={spaceSettingsRoute(spaceId, successor)} replace />
   }
 
   return (
@@ -133,16 +134,9 @@ export default function SpaceSettingsPage() {
                     isOwner={isOwner}
                   />
                 )
-              case 'knowledge':
+              case 'content':
                 return (
-                  <SpaceKnowledgeSection
-                    spaceId={spaceId}
-                    canManage={canManageAssets(space.userRole, isOwner)}
-                  />
-                )
-              case 'prompts':
-                return (
-                  <SpacePromptsSection
+                  <SpaceContentSection
                     spaceId={spaceId}
                     canManage={canManageAssets(space.userRole, isOwner)}
                   />

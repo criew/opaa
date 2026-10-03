@@ -1,10 +1,11 @@
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { server } from '../../mocks/server'
 import { favoriteKey, mockFavoriteAssets } from '../../mocks/assetFixtures'
 import { renderWithProviders } from '../../test/test-utils'
+import { resetAllStores } from '../../stores/resettableStores'
 import type { AssetType, SpaceAssetAssociationResponse } from '../../types/api'
 import SpaceContentSection from './SpaceContentSection'
 
@@ -92,6 +93,9 @@ function onlyAssociatedChip() {
 }
 
 describe('SpaceContentSection', () => {
+  // The space store outlives a test; a previous test's associations would show up in the next.
+  beforeEach(() => resetAllStores())
+
   it('opens on the associated contents, with the explanation and "Nur zugeordnete" switched on', async () => {
     serveAssociations([association('KNOWLEDGE_LIBRARY', 'library-referat-50')])
     renderSection()
@@ -154,7 +158,9 @@ describe('SpaceContentSection', () => {
     await user.click(within(screen.getByRole('group', { name: 'Typ' })).getByText('Alle'))
     await user.type(screen.getByRole('searchbox', { name: 'Suche' }), 'rechtsquellen')
     await waitFor(() =>
-      expect(screen.queryByRole('checkbox', { name: /^Dienstanweisungen/ })).not.toBeInTheDocument(),
+      expect(
+        screen.queryByRole('checkbox', { name: /^Dienstanweisungen/ }),
+      ).not.toBeInTheDocument(),
     )
     expect(await tile('Rechtsquellen Soziales')).toBeVisible()
 
@@ -182,7 +188,9 @@ describe('SpaceContentSection', () => {
     await user.click(await tile('Dienstanweisungen'))
 
     expect(await screen.findByRole('alert')).toHaveTextContent(/Dienstanweisungen.*zugeordnet/)
-    expect(posts).toEqual([{ assetType: 'KNOWLEDGE_LIBRARY', assetId: 'library-dienstanweisungen' }])
+    expect(posts).toEqual([
+      { assetType: 'KNOWLEDGE_LIBRARY', assetId: 'library-dienstanweisungen' },
+    ])
     expect(await tile('Dienstanweisungen')).toHaveAttribute('aria-checked', 'true')
     expect(screen.queryByRole('button', { name: 'Zuordnen' })).not.toBeInTheDocument()
   })
