@@ -1,7 +1,7 @@
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
-import { Route, Routes, useNavigate } from 'react-router'
+import { MemoryRouter, Route, Routes, useNavigate } from 'react-router'
 import { renderWithProviders } from '../test/test-utils'
 import AppShell from './AppShell'
 import { useAuthStore } from '../stores/authStore'
@@ -237,6 +237,40 @@ describe('AppShell', () => {
 
     await waitFor(() => expect(screen.getByLabelText('Eingabe')).toHaveFocus())
     expect(screen.getByRole('heading', { level: 1, name: 'Chat' })).not.toHaveFocus()
+  })
+
+  // The marker stays in the history entry; returning to it via back/forward is a page change again.
+  it('moves the focus to the heading when going back to an entry that kept the focus', async () => {
+    function BackView() {
+      const navigate = useNavigate()
+      return (
+        <>
+          <PageHeading title="Chat" />
+          <button type="button" onClick={() => navigate(-1)}>
+            Zurück
+          </button>
+        </>
+      )
+    }
+    const user = userEvent.setup()
+    renderWithProviders(
+      <MemoryRouter
+        initialEntries={[{ pathname: '/chat/a', state: KEEP_FOCUS_STATE }, '/chat/b']}
+        initialIndex={1}
+      >
+        <Routes>
+          <Route element={<AppShell />}>
+            <Route path="/chat/*" element={<BackView />} />
+          </Route>
+        </Routes>
+      </MemoryRouter>,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Zurück' }))
+
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { level: 1, name: 'Chat' })).toHaveFocus(),
+    )
   })
 
   it('falls back to focusing main when the new page has no heading yet', async () => {

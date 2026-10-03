@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { getPrompt, listAvailablePrompts } from '../../services/promptLibraryApi'
 import { notify } from '../../stores/notificationStore'
 import type { AvailablePrompt, PromptResponse } from '../../types/api'
@@ -55,10 +55,13 @@ export function usePromptCommand({ spaceId, userName, insertText }: UsePromptCom
     setPromptSpaceId(spaceId)
     setCommand(null)
     setPrompts([])
+    setIsLoading(false)
     setPendingForm(null)
     setSelected(null)
   }
-  useEffect(() => {
+  // A layout effect runs in the same task as the commit of that reset, so no response for the
+  // previous space can resolve in between.
+  useLayoutEffect(() => {
     loadToken.current++
     insertionToken.current++
   }, [spaceId])

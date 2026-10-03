@@ -3,7 +3,7 @@ import Box from '@mui/material/Box'
 import Drawer from '@mui/material/Drawer'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import { useTheme } from '@mui/material/styles'
-import { Outlet, useLocation } from 'react-router'
+import { NavigationType, Outlet, useLocation, useNavigationType } from 'react-router'
 import GlobalRail, { RAIL_WIDTH } from './GlobalRail'
 import { isGlobalAreaPath } from './globalArea'
 import Sidebar, { SIDEBAR_WIDTH } from './Sidebar'
@@ -22,7 +22,8 @@ export default function AppShell() {
   const sidebarOpen = useUiStore((s) => s.sidebarOpen)
   const setSidebarOpen = useUiStore((s) => s.setSidebarOpen)
   const { pathname, state: locationState } = useLocation()
-  const keepFocus = keepsFocus(locationState)
+  // The marker stays in its history entry; back/forward to that entry is a page change again.
+  const keepFocus = useNavigationType() !== NavigationType.Pop && keepsFocus(locationState)
   const previousPathname = useRef(pathname)
   // Mockup 2b (#787): global areas drop the space column; the rail and the area's own light
   // frame carry the navigation there.
