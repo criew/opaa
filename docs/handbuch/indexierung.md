@@ -369,6 +369,14 @@ Mandant, Ablaufdatum des Secrets und Scopes, dazu die Besitzart (Bibliothek, Per
 und Vorgaben für die Einstellungen des Konnektors. Wer eine Bibliothek auf einem Zugang anlegt,
 wählt ihn aus und trägt Server und Registrierung nicht selbst ein.
 
+Die Systemverwaltung pflegt Zugänge unter **Administration → Zugänge**. „Neuer Zugang“ fragt zuerst
+die Quellart als Kachel ab; Quellarten ohne Zugänge bleiben mit diesem Grund gesperrt sichtbar. Die
+Liste zeigt je Zugang Quellart, Server-Adresse, Anmeldeart, Besitzart und die Zahl der
+Verbindungen, dazu einen Hinweis, wenn das Client-Secret bald abläuft. „Alle Verbindungen trennen“
+und „Löschen“ nennen vor der Bestätigung die Zahl der Betroffenen, ebenso eine Änderung, die
+Geheimnisse verwirft. In der Detailansicht einer Bibliothek steht unter „Anbindung“ ihr Zugang
+oder der Hinweis „Zugang entfernt“.
+
 **Welcher Konnektor Zugänge kennt**, meldet er selbst: Zugänge verboten, möglich oder Pflicht,
 dazu die Anmeldearten, die er anbietet (ohne Anmeldung, persönliches Geheimnis, OAuth,
 Client-Credentials, Dienstkonto-Schlüssel). Ein Zugang wählt eine davon. Die mitgelieferten
