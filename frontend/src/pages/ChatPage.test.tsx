@@ -188,6 +188,39 @@ describe('ChatPage', () => {
     expect(questions).toEqual(['Erste Frage', 'Zweite Frage'])
   })
 
+  it('puts a question refused while the next one was prepared before that draft', async () => {
+    currentChatId = 'chat-personal-1'
+    let release: () => void = () => {}
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    server.use(
+      http.post('/api/v1/query', async () => {
+        await gate
+        return HttpResponse.json(
+          { error: 'Zu viele Anfragen.', status: 429, timestamp: new Date().toISOString() },
+          { status: 429 },
+        )
+      }),
+    )
+    const user = userEvent.setup()
+    renderWithProviders(<ChatPage />, { withRouter: true })
+    await waitFor(() => expect(useChatStore.getState().chatId).toBe('chat-personal-1'))
+    await waitFor(() => expect(useChatStore.getState().isLoadingChat).toBe(false))
+
+    const input = screen.getByPlaceholderText('Nachricht eingeben …')
+    await user.click(input)
+    await user.keyboard('Erste Frage{Enter}')
+    await waitFor(() => expect(useChatStore.getState().isLoading).toBe(true))
+    await user.keyboard('Zweite Frage')
+    release()
+
+    await waitFor(() => expect(input).toHaveValue('Erste Frage\n\nZweite Frage'))
+    expect(
+      await screen.findByText('Zu viele Anfragen. Die Frage steht wieder im Eingabefeld.'),
+    ).toBeInTheDocument()
+  })
+
   it('puts a question the server rejects with 400 back into the input and explains why', async () => {
     server.use(
       http.post('/api/v1/query', () =>

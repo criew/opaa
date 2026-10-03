@@ -544,7 +544,7 @@ describe('ChatInput', () => {
       expect(onHandled).toHaveBeenCalledTimes(1)
     })
 
-    it('keeps a typed draft when a question comes back from another chat', async () => {
+    it('puts a question coming back from another chat before a typed draft', async () => {
       const onRestored = vi.fn()
       const onHandled = vi.fn()
       const { rerender } = render(<ChatInput onSend={vi.fn()} />)
@@ -560,11 +560,11 @@ describe('ChatInput', () => {
       )
 
       await waitFor(() => expect(onHandled).toHaveBeenCalledTimes(1))
-      expect(input).toHaveValue('Eigene Frage')
-      expect(onRestored).not.toHaveBeenCalled()
+      expect(input).toHaveValue('Zurückgegeben\n\nEigene Frage')
+      expect(onRestored).toHaveBeenCalledTimes(1)
     })
 
-    it('does not overwrite a new draft and does not confirm a restore', async () => {
+    it('puts the refused question before a new draft and confirms the restore', async () => {
       const onRestored = vi.fn()
       const refused = deferredOutcome()
       render(<ChatInput onSend={() => refused.promise} />)
@@ -576,8 +576,8 @@ describe('ChatInput', () => {
       refused.resolve({ restoreDraft: 'Alte Frage', onRestored })
       await refused.promise
 
-      await waitFor(() => expect(input).toHaveValue('Neue Frage'))
-      expect(onRestored).not.toHaveBeenCalled()
+      await waitFor(() => expect(input).toHaveValue('Alte Frage\n\nNeue Frage'))
+      expect(onRestored).toHaveBeenCalledTimes(1)
     })
   })
 
@@ -608,6 +608,25 @@ describe('ChatInput', () => {
       await user.keyboard('{Enter}')
 
       expect(onSend).toHaveBeenCalledWith('Nächste Frage')
+    })
+
+    it('keeps the focus in the input after sending with the button', async () => {
+      const user = userEvent.setup()
+      render(<ChatInput onSend={vi.fn()} />)
+
+      const input = screen.getByPlaceholderText('Nachricht eingeben …')
+      await user.click(input)
+      await user.keyboard('Frage')
+      await user.click(screen.getByLabelText('Senden'))
+
+      expect(input).toHaveFocus()
+    })
+
+    it('names only the / prefix under the input', () => {
+      render(<ChatInput onSend={vi.fn()} answerPending />)
+
+      expect(screen.getByText('/ für Aktionen')).toBeInTheDocument()
+      expect(screen.queryByText(/@ für Quellen/)).not.toBeInTheDocument()
     })
 
     it('keeps the search scope as it was sent', async () => {
