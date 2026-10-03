@@ -150,6 +150,32 @@ class SourceEventIntakeTest {
     verify(executor).execute(any(), eq(library), eq(IndexingRunMode.INCREMENTAL));
   }
 
+  /** A locked source takes the event and drops it - no run, no failed run per event. */
+  @Test
+  void aBatchForALockedLibraryIsDroppedWithoutARun() {
+    SourceConnectionResolver locked =
+        new LibrarySourceConnectionResolver() {
+          @Override
+          public boolean isLocked(KnowledgeLibrary candidate) {
+            return true;
+          }
+        };
+    intake =
+        new SourceEventIntake(
+            libraryRepository,
+            indexingJobService,
+            new SourceEventProperties(Duration.ofSeconds(5), 3, 2),
+            scheduler,
+            Clock.fixed(NOW, ZoneOffset.UTC),
+            locked);
+    enqueue("102");
+
+    scheduled.get(0).run();
+
+    verifyNoInteractions(indexingJobService, executor);
+    verify(target, never()).refresh(any(), any(), any(), anyInt());
+  }
+
   @Test
   void aLibraryOfAnotherSourceTypeIsDroppedAtDrainTime() {
     when(target.sourceType()).thenReturn(SourceTypes.S3);

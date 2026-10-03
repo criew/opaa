@@ -42,6 +42,9 @@ public class ConnectorLockService {
   /** The {@code code} of the {@code 403} a creation on a locked type or profile produces. */
   public static final String CONNECTOR_LOCKED = "CONNECTOR_LOCKED";
 
+  /** The {@code code} of the {@code 409} when an existing library's locked source is reached. */
+  public static final String SOURCE_LOCKED = "SOURCE_LOCKED";
+
   private static final String CONTENT_STAYS =
       "; der vorhandene Inhalt bleibt durchsuchbar. Zuständig ist die Systemverwaltung.";
 

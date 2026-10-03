@@ -118,6 +118,14 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "409":
+          description: >
+            With libraryId: the library's connector type or connection profile is locked (code SOURCE_LOCKED); the
+            source is not reached until the system administration lifts the lock.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "429":
           $ref: "#/components/responses/TooManyRequests"
 
@@ -183,6 +191,14 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "409":
+          description: >
+            With libraryId: the library's connector type or connection profile is locked (code SOURCE_LOCKED); the
+            source is not reached until the system administration lifts the lock.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "429":
           $ref: "#/components/responses/TooManyRequests"
 
@@ -842,6 +858,14 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "409":
+          description: >
+            The library's connector type or connection profile is locked (code SOURCE_LOCKED); the
+            source is not reached until the system administration lifts the lock.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "429":
           $ref: "#/components/responses/TooManyRequests"
         "503":

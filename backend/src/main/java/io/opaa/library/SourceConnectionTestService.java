@@ -2,10 +2,12 @@ package io.opaa.library;
 
 import io.opaa.api.types.AssetRole;
 import io.opaa.auth.CurrentUser;
+import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
 import io.opaa.connection.ConnectorReleaseService;
 import io.opaa.connection.LibraryConnectionService;
+import io.opaa.connection.profile.ConnectorLockService;
 import io.opaa.indexing.source.ConnectorChecks;
 import io.opaa.indexing.source.ConnectorData;
 import io.opaa.indexing.source.ServiceAccountKey;
@@ -132,6 +134,7 @@ public class SourceConnectionTestService {
     ConnectorData stored = null;
     if (request.libraryId() != null) {
       KnowledgeLibrary library = requireManagedLibrary(request.libraryId(), caller);
+      requireUnlocked(library);
       if (!sourceType.equals(library.getSourceType())) {
         throw new ValidationException(
             "sourceType passt nicht zum gespeicherten Quellentyp dieser Bibliothek");
@@ -211,6 +214,7 @@ public class SourceConnectionTestService {
     ConnectorData stored = null;
     if (request.libraryId() != null) {
       KnowledgeLibrary library = requireManagedLibrary(request.libraryId(), caller);
+      requireUnlocked(library);
       if (!request.sourceType().equals(library.getSourceType())) {
         throw new ValidationException(browser.otherTypeMessage());
       }
@@ -229,6 +233,16 @@ public class SourceConnectionTestService {
       }
     }
     return browser.browse(new SourceBrowser.Query(settings, stored));
+  }
+
+  /** An existing library's locked source is not reached, like its original (409). */
+  private void requireUnlocked(KnowledgeLibrary library) {
+    libraryConnections
+        .lockNotice(library)
+        .ifPresent(
+            notice -> {
+              throw new ConflictException(notice, ConnectorLockService.SOURCE_LOCKED);
+            });
   }
 
   /**

@@ -63,9 +63,8 @@ public interface CapabilityGrantRepository extends JpaRepository<CapabilityGrant
       @Param("capability") Capability capability,
       @Param("groupIds") Collection<UUID> groupIds);
 
-  /** Every grant of one capability in one scope - what removing the scope withdraws. */
-  List<CapabilityGrant> findByOrganizationIdAndCapabilityAndScope(
-      UUID organizationId, Capability capability, String scope);
+  /** Every grant of one capability in one scope, in every organization. */
+  List<CapabilityGrant> findByCapabilityAndScope(Capability capability, String scope);
 
   /** Every grant of one organization, for the administration overview. */
   List<CapabilityGrant> findByOrganizationId(UUID organizationId);

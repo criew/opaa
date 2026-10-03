@@ -11,6 +11,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.jayway.jsonpath.JsonPath;
 import io.opaa.auth.DevAuthFilter;
+import io.opaa.indexing.source.DocumentIndexingService;
+import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.organization.Organization;
 import io.opaa.test.ConnectorReleases;
 import io.opaa.test.OpaaIntegrationTest;
@@ -45,6 +47,8 @@ class ConnectorReleaseIntegrationTest {
   @Autowired private MockMvc mockMvc;
   @Autowired private JdbcTemplate jdbc;
   @Autowired private OwnLibraryFixtures libraryFixtures;
+  @Autowired private DocumentIndexingService indexingService;
+  @Autowired private KnowledgeLibraryRepository libraryRepository;
 
   private final List<UUID> profiles = new ArrayList<>();
   private final List<UUID> libraries = new ArrayList<>();
@@ -63,6 +67,7 @@ class ConnectorReleaseIntegrationTest {
       jdbc.update("DELETE FROM connection_profiles WHERE id = ?", profile);
     }
     jdbc.update("DELETE FROM connector_type_policies WHERE source_type = 'PROFILE_PROBE'");
+    ConnectorReleases.withdraw(jdbc, "TYPE:PROFILE_PROBE");
     List<UUID> own = new ArrayList<>(historyIds());
     own.removeAll(foreignHistoryIds);
     if (!own.isEmpty()) {
@@ -223,6 +228,122 @@ class ConnectorReleaseIntegrationTest {
     assertThat(auditTypes(profile)).contains("CONNECTOR_LOCKED", "CONNECTOR_UNLOCKED");
   }
 
+  /**
+   * Reassigning a library needs the release of the target profile; the profile it already has needs
+   * none, also after its release was withdrawn.
+   */
+  @Test
+  void reassigningNeedsTheTargetsReleaseButTheSameProfileNone() throws Exception {
+    UUID current = createProfile("Zugang jetzt " + UUID.randomUUID());
+    UUID grant = grantToAllAccounts("PROFILE:" + current);
+    UUID other = createProfile("Zugang anders " + UUID.randomUUID());
+    UUID library = createLibrary("dev-user", current);
+
+    mockMvc
+        .perform(assign(library, other))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.code").value("CAPABILITY_REQUIRED"));
+
+    mockMvc
+        .perform(as("dev-admin", delete(GRANTS + "/" + grant)))
+        .andExpect(status().isNoContent());
+    mockMvc
+        .perform(assign(library, current))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.connectionProfile.id").value(current.toString()));
+  }
+
+  /**
+   * Releasing a library from its profile gives it an own address: that needs the type's release,
+   * and a locked profile stays locked for everyone until the lock is lifted.
+   */
+  @Test
+  void releasingFromAProfileNeedsTheTypesReleaseAndNeverLiftsALock() throws Exception {
+    UUID profile = createProfile("Zugang lösen " + UUID.randomUUID());
+    grantToAllAccounts("PROFILE:" + profile);
+    UUID library = createLibrary("dev-user", profile);
+
+    mockMvc
+        .perform(release("dev-user", library))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.code").value("CAPABILITY_REQUIRED"))
+        .andExpect(jsonPath("$.error").value(Matchers.containsString("Quellart")));
+
+    ConnectorReleases.releaseToAllAccounts(jdbc, "TYPE:PROFILE_PROBE");
+    lockProfile(profile, true);
+    for (String user : List.of("dev-user", "dev-admin")) {
+      mockMvc
+          .perform(release(user, library))
+          .andExpect(status().isForbidden())
+          .andExpect(jsonPath("$.code").value("CONNECTOR_LOCKED"));
+    }
+    mockMvc
+        .perform(as("dev-user", get("/api/v1/libraries/" + library)))
+        .andExpect(jsonPath("$.connectionProfile.id").value(profile.toString()));
+
+    lockProfile(profile, false);
+    mockMvc
+        .perform(release("dev-user", library))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.connectionProfile").doesNotExist());
+  }
+
+  /** The connection test and the listing before saving, against the real services. */
+  @Test
+  void testAndListingThroughAProfileNeedItsReleaseAndAnAddressUnderIt() throws Exception {
+    UUID released = createProfile("Zugang Test " + UUID.randomUUID());
+    grantToAllAccounts("PROFILE:" + released);
+    UUID other = createProfile("Zugang ohne " + UUID.randomUUID());
+
+    mockMvc
+        .perform(sourceTest(other, null))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.code").value("CAPABILITY_REQUIRED"));
+    mockMvc
+        .perform(sourceTest(released, "https://fremd.example.org"))
+        .andExpect(status().isBadRequest());
+    mockMvc
+        .perform(sourceTest(released, null))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.reachable").value(true));
+
+    mockMvc
+        .perform(browse(other, "https://probe.example.org"))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.code").value("CAPABILITY_REQUIRED"));
+    mockMvc
+        .perform(browse(released, "https://fremd.example.org"))
+        .andExpect(status().isBadRequest());
+  }
+
+  /**
+   * A locked library is not reached: neither by the connection test nor by its schedule, which
+   * skips it without a failed run.
+   */
+  @Test
+  void aLockedLibraryIsNeitherTestedNorRunOnSchedule() throws Exception {
+    UUID profile = createProfile("Zugang still " + UUID.randomUUID());
+    grantToAllAccounts("PROFILE:" + profile);
+    UUID library = createLibrary("dev-user", profile);
+    lockProfile(profile, true);
+
+    mockMvc
+        .perform(
+            as("dev-user", post("/api/v1/libraries/source-test"))
+                .content("{\"sourceType\": \"PROFILE_PROBE\", \"libraryId\": \"" + library + "\"}"))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("SOURCE_LOCKED"));
+
+    assertThat(
+            indexingService.triggerScheduledIndexing(
+                libraryRepository.findById(library).orElseThrow()))
+        .isNull();
+    assertThat(
+            jdbc.queryForObject(
+                "SELECT count(*) FROM indexing_jobs WHERE library_id = ?", Long.class, library))
+        .isZero();
+  }
+
   /** Deleting a profile withdraws its releases, so a later profile starts off. */
   @Test
   void deletingAProfileWithdrawsItsReleases() throws Exception {
@@ -258,6 +379,30 @@ class ConnectorReleaseIntegrationTest {
             as("dev-admin", put("/api/v1/admin/connector-types/UPLOAD/lock"))
                 .content("{\"locked\": true}"))
         .andExpect(status().isBadRequest());
+  }
+
+  private MockHttpServletRequestBuilder assign(UUID library, UUID profile) {
+    return as("dev-user", put("/api/v1/libraries/" + library + "/connection-profile"))
+        .content("{\"profileId\": \"" + profile + "\"}");
+  }
+
+  private MockHttpServletRequestBuilder release(String user, UUID library) {
+    return as(user, delete("/api/v1/libraries/" + library + "/connection-profile"));
+  }
+
+  private MockHttpServletRequestBuilder sourceTest(UUID profile, String url) {
+    return as("dev-user", post("/api/v1/libraries/source-test"))
+        .content(
+            "{\"sourceType\": \"PROFILE_PROBE\", \"connectionProfileId\": \""
+                + profile
+                + "\""
+                + (url == null ? "" : ", \"sourceUrl\": \"" + url + "\"")
+                + "}");
+  }
+
+  private MockHttpServletRequestBuilder browse(UUID profile, String url) {
+    return as("dev-user", post("/api/v1/source-types/PROFILE_PROBE/browse"))
+        .content("{\"connectionProfileId\": \"" + profile + "\", \"sourceUrl\": \"" + url + "\"}");
   }
 
   private UUID createProfile(String name) throws Exception {

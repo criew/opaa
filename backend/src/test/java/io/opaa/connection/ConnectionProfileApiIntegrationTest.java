@@ -282,6 +282,9 @@ class ConnectionProfileApiIntegrationTest {
         .andExpect(jsonPath("$.connectionProfileRemoved").value(false));
     assertThat(run(library, "COMPLETED").credentials()).isNull();
 
+    // an own address is the type's target, released here like the delivered types
+    releasedScopes.add("TYPE:PROFILE_PROBE");
+    ConnectorReleases.releaseToAllAccounts(jdbc, "TYPE:PROFILE_PROBE");
     mockMvc
         .perform(as("dev-user", delete("/api/v1/libraries/" + library + "/connection-profile")))
         .andExpect(status().isOk())

@@ -64,6 +64,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.UnaryOperator;
@@ -255,7 +256,13 @@ public class KnowledgeLibraryService {
   public LibraryDetail disconnectProfile(UUID libraryId, CurrentUser caller) {
     KnowledgeLibrary library = loadLibrary(libraryId, caller);
     accessService.requireRole(library, caller.id(), caller.isSystemAdmin(), AssetRole.MANAGER);
-    if (libraryConnections.connectionOf(libraryId).isPresent()) {
+    Optional<LibraryConnectionService.LibraryConnectionView> connection =
+        libraryConnections.connectionOf(libraryId);
+    if (connection.isPresent()) {
+      // An own address is a new target: the type's release counts, and a locked profile stays
+      // locked.
+      connectorRelease.requireDetachable(
+          caller, library.getSourceType(), connection.get().profile());
       libraryConnections.disconnect(library);
       recordSourceUpdate(library, caller.id(), List.of("connectionProfile"));
     }

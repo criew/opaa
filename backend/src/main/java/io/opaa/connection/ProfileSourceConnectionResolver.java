@@ -86,6 +86,11 @@ public class ProfileSourceConnectionResolver implements SourceConnectionResolver
   }
 
   @Override
+  public boolean isLocked(KnowledgeLibrary library) {
+    return locks.lockNotice(library).isPresent();
+  }
+
+  @Override
   public SourceSettings resolveForChange(KnowledgeLibrary library) {
     return requireProfile(library).isEmpty()
         ? ownFields.resolveForChange(library)

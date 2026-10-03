@@ -75,6 +75,22 @@ public class ConnectorReleaseService {
     }
   }
 
+  /**
+   * Refuses releasing a library from {@code profile} ({@code null} once deleted) to an own address:
+   * a locked profile stays locked for everyone, and the own address needs the type's release.
+   */
+  public void requireDetachable(CurrentUser caller, SourceType type, ConnectionProfile profile) {
+    if (profile != null && profile.isLocked()) {
+      throw new AccessDeniedException(
+          "Der Zugang „"
+              + profile.getName()
+              + "“ ist gesperrt. Die Bibliothek läuft erst wieder, wenn die Systemverwaltung die"
+              + " Sperre aufhebt oder sie einem anderen, freigegebenen Zugang zugeordnet wird.",
+          ConnectorLockService.CONNECTOR_LOCKED);
+    }
+    requireCreatable(caller, type, null);
+  }
+
   /** Refuses the caller unless they hold the release in at least one scope. */
   public void requireAnyRelease(CurrentUser caller) {
     if (!capabilities.scopesOf(caller, RELEASE).any()) {
@@ -111,10 +127,7 @@ public class ConnectorReleaseService {
       creations.put(
           type,
           new TypeCreation(
-              creatable,
-              ownAddress,
-              false,
-              creatable ? null : CapabilityService.missingInScope(RELEASE, typeLabel(type))));
+              creatable, ownAddress, false, creatable ? null : creationNotice(descriptor, held)));
     }
     return creations;
   }
@@ -140,6 +153,27 @@ public class ConnectorReleaseService {
                       : CapabilityService.missingInScope(RELEASE, profileLabel(profile)));
             })
         .toList();
+  }
+
+  /** Why nothing of {@code descriptor} can be created, naming who can change that. */
+  private String creationNotice(SourceConnectorDescriptor descriptor, HeldScopes held) {
+    if (descriptor.profileSupport() != ConnectionProfileSupport.REQUIRED) {
+      return CapabilityService.missingInScope(RELEASE, typeLabel(descriptor.type()));
+    }
+    boolean anyProfile =
+        profileService.selectableFor(descriptor.type()).stream()
+            .anyMatch(profile -> !profile.isLocked());
+    String name = "„" + descriptor.displayName() + "“";
+    if (!anyProfile || held.all()) {
+      return "Die Quellart "
+          + name
+          + " ist nur über einen Zugang nutzbar, und es gibt noch keinen. Zugänge legt die"
+          + " Systemverwaltung an.";
+    }
+    return "Die Quellart "
+        + name
+        + " ist nur über einen Zugang nutzbar, und für keinen davon haben Sie das Anlegerecht."
+        + " Wenden Sie sich an die Systemverwaltung, wenn Sie es benötigen.";
   }
 
   private String typeLabel(SourceType type) {

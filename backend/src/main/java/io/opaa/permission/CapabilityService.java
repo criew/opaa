@@ -358,18 +358,18 @@ public class CapabilityService {
   }
 
   /**
-   * Withdraws every grant of {@code capability} in {@code scope} in the actor's organization - what
-   * removing the target of a scope takes with it. Each withdrawal closes its interval and is a
-   * governance event, exactly like {@link #revoke}.
+   * Withdraws every grant of {@code capability} in {@code scope} in every organization - what
+   * removing an installation-wide target takes with it. Each withdrawal closes its interval and is
+   * a governance event, exactly like {@link #revoke}; in another organization than the actor's, the
+   * interval carries no actor.
    */
   @Transactional
   public int revokeScope(Capability capability, String scope, CurrentUser actor) {
     requireScoped(capability);
-    List<CapabilityGrant> grants =
-        grantRepository.findByOrganizationIdAndCapabilityAndScope(
-            actor.organizationId(), capability, scope);
+    List<CapabilityGrant> grants = grantRepository.findByCapabilityAndScope(capability, scope);
     for (CapabilityGrant grant : grants) {
-      permissionHistoryService.recordCapabilityRevoked(grant, actor.id());
+      boolean ownOrganization = grant.getOrganizationId().equals(actor.organizationId());
+      permissionHistoryService.recordCapabilityRevoked(grant, ownOrganization ? actor.id() : null);
       recordGovernanceEvent(AuditEventType.CAPABILITY_REVOKED, grant, actor);
       grantRepository.delete(grant);
     }
