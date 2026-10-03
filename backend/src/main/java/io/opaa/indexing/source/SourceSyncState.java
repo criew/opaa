@@ -8,16 +8,20 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.LinkedHashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+import tools.jackson.databind.json.JsonMapper;
 
 /**
  * The resumption state of one library whose connector lists its source completely (ADR-0023,
  * Entscheidung 4; ADR-0027, Entscheidung 3): which scopes - Confluence space keys, S3 {@code
  * bucket/prefix} keys - the running full sync has already completed, so an aborted run is resumed
  * scope by scope instead of from scratch; when the last full sync completed; and, for a connector
- * with an incremental mode, the anchor the next incremental run searches from. Keyed by library
- * alone. Absent for a library that never ran a full sync, and deleted by {@code
+ * with an incremental mode, the anchor or the change cursors the next incremental run reads from.
+ * Keyed by library alone. Absent for a library that never ran a full sync, and deleted by {@code
  * KnowledgeLibraryService} whenever the address or the selection changes: "no state" is how the
  * next run learns it has to be a full one that starts over.
  */
@@ -27,6 +31,8 @@ public class SourceSyncState {
 
   /** No scope key carries a line break (space keys and prefixes are validated on the library). */
   private static final String KEY_SEPARATOR = "\n";
+
+  private static final JsonMapper CURSOR_JSON = JsonMapper.builder().build();
 
   @Id private UUID id;
 
@@ -49,6 +55,14 @@ public class SourceSyncState {
    */
   @Column(name = "incremental_anchor")
   private Instant incrementalAnchor;
+
+  /**
+   * The change cursors per stream of a connector with a change log (ADR-0040, Entscheidung 6), as
+   * {@link ChangeCursors} JSON; {@code null} for every other connector.
+   */
+  @JdbcTypeCode(SqlTypes.JSON)
+  @Column(name = "change_cursors", columnDefinition = "jsonb")
+  private String changeCursors;
 
   @Column(name = "updated_at", nullable = false)
   private Instant updatedAt;
@@ -105,6 +119,8 @@ public class SourceSyncState {
   public void beginFullSync(UUID jobId) {
     if (!isFullSyncInterrupted()) {
       completedScopeKeys = null;
+      ChangeCursors cursors = readChangeCursors();
+      writeChangeCursors(new ChangeCursors(cursors.current(), Map.of()));
     }
     fullSyncJobId = jobId;
     fullSyncCompletedAt = null;
@@ -127,7 +143,55 @@ public class SourceSyncState {
     fullSyncCompletedAt = completedAt;
     completedScopeKeys = null;
     fullSyncJobId = null;
+    ChangeCursors cursors = readChangeCursors();
+    if (!cursors.pending().isEmpty()) {
+      writeChangeCursors(new ChangeCursors(cursors.pending(), Map.of()));
+    }
     touch();
+  }
+
+  /** The valid change cursor of every stream, keyed by stream, in no particular order. */
+  public Map<String, String> changeCursors() {
+    return readChangeCursors().current();
+  }
+
+  /**
+   * The start cursors the full sync in progress holds back; {@link #completeFullSync(Instant)}
+   * makes them the valid ones, and a full sync that starts over drops them.
+   */
+  public Map<String, String> pendingChangeCursors() {
+    return readChangeCursors().pending();
+  }
+
+  /** Holds {@code cursors} (stream to start cursor) until the full sync completes. */
+  public void holdPendingChangeCursors(Map<String, String> cursors) {
+    writeChangeCursors(new ChangeCursors(readChangeCursors().current(), cursors));
+    touch();
+  }
+
+  /**
+   * The persisted form of the change cursors; {@code jsonb} keeps no key order, so neither do they.
+   */
+  record ChangeCursors(Map<String, String> current, Map<String, String> pending) {
+
+    ChangeCursors {
+      current = current == null ? Map.of() : Map.copyOf(current);
+      pending = pending == null ? Map.of() : Map.copyOf(pending);
+    }
+  }
+
+  private ChangeCursors readChangeCursors() {
+    if (changeCursors == null) {
+      return new ChangeCursors(Map.of(), Map.of());
+    }
+    return CURSOR_JSON.readValue(changeCursors, ChangeCursors.class);
+  }
+
+  private void writeChangeCursors(ChangeCursors cursors) {
+    changeCursors =
+        cursors.current().isEmpty() && cursors.pending().isEmpty()
+            ? null
+            : CURSOR_JSON.writeValueAsString(cursors);
   }
 
   /**

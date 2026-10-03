@@ -138,6 +138,31 @@ class ModularArchitectureFixtureTest {
             "ModularArchitecture.MODULES");
   }
 
+  /**
+   * {@code indexing.filesync} reaches the provider package, a connector and a third-party class.
+   */
+  @Test
+  void aFileSyncThatKnowsAProviderIsReported() {
+    Scenario scenario = new Scenario("filesyncprovider");
+
+    assertThat(scenario.violations(ModularArchitecture::theFileSyncKnowsNoProvider))
+        .hasSize(3)
+        .anySatisfy(
+            violation ->
+                assertThat(violation).contains("-> s3 is no package the file sync may use"))
+        .anySatisfy(
+            violation ->
+                assertThat(violation)
+                    .contains("-> indexing.source.s3 is no package the file sync may use"))
+        .anySatisfy(
+            violation ->
+                assertThat(violation)
+                    .contains("-> org.springframework.util.StringUtils is a third-party client"));
+    assertThat(scenario.violations(ModularArchitecture::theIndexingCoreDependsOnlyDownward))
+        .singleElement(STRING)
+        .contains("indexing.filesync -> indexing.source.s3 leaves the indexing core");
+  }
+
   @Test
   void anEdgeBetweenConnectorsIsReported() {
     Scenario scenario = new Scenario("connectoredge");
