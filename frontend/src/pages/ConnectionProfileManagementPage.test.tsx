@@ -31,6 +31,9 @@ const NEXTCLOUD: SourceTypeDescriptor = {
   browsable: false,
   profileSupport: 'OPTIONAL',
   authMethods: ['NONE', 'PERSONAL_SECRET', 'OAUTH'],
+  creatable: true,
+  creatableWithOwnAddress: true,
+  locked: false,
 }
 
 const PROFILE = 'Zugang Nextcloud intern'

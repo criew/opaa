@@ -33,6 +33,9 @@ public class CapabilityGrantHistory {
   @Column(name = "capability", nullable = false, length = 40)
   private Capability capability;
 
+  @Column(name = "scope", length = 200)
+  private String scope;
+
   @Enumerated(EnumType.STRING)
   @Column(name = "subject_type", nullable = false, length = 20)
   private CapabilitySubjectType subjectType;
@@ -75,6 +78,7 @@ public class CapabilityGrantHistory {
     this.id = UUID.randomUUID();
     this.organizationId = grant.getOrganizationId();
     this.capability = grant.getCapability();
+    this.scope = grant.getScope();
     this.subjectType = grant.getSubjectType();
     this.subjectUserId = grant.getSubjectUserId();
     this.subjectGroupId = grant.getSubjectGroupId();
@@ -131,6 +135,10 @@ public class CapabilityGrantHistory {
 
   public Capability getCapability() {
     return capability;
+  }
+
+  public String getScope() {
+    return scope;
   }
 
   public CapabilitySubjectType getSubjectType() {

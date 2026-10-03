@@ -19,6 +19,7 @@ import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
+import io.opaa.connection.ConnectorReleaseService;
 import io.opaa.connection.LibraryConnectionService;
 import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.indexing.job.IndexingJobRepository;
@@ -141,6 +142,7 @@ public class KnowledgeLibraryService {
   private final AssetSuccessionSource successionSource;
   private final SourceConnectionResolver connectionResolver;
   private final LibraryConnectionService libraryConnections;
+  private final ConnectorReleaseService connectorRelease;
 
   public KnowledgeLibraryService(
       AssetSuccessionSource successionSource,
@@ -162,8 +164,10 @@ public class KnowledgeLibraryService {
       ApplicationEventPublisher eventPublisher,
       SourceConnectorRegistry connectors,
       SourceConnectionResolver connectionResolver,
-      LibraryConnectionService libraryConnections) {
+      LibraryConnectionService libraryConnections,
+      ConnectorReleaseService connectorRelease) {
     this.successionSource = successionSource;
+    this.connectorRelease = connectorRelease;
     this.connectionResolver = connectionResolver;
     this.libraryConnections = libraryConnections;
     this.libraryRepository = libraryRepository;
@@ -211,6 +215,8 @@ public class KnowledgeLibraryService {
   public LibraryDetail connectProfile(UUID libraryId, UUID profileId, CurrentUser caller) {
     KnowledgeLibrary library = loadLibrary(libraryId, caller);
     accessService.requireRole(library, caller.id(), caller.isSystemAdmin(), AssetRole.MANAGER);
+    // A new profile is a new target: its release counts, not the one the library was created under.
+    connectorRelease.requireCreatable(caller, library.getSourceType(), profileId);
     String previousUrl = library.getSourceUrl();
     boolean hadCredentials = library.getSourceCredentials() != null;
     libraryConnections.connect(library, profileId);
@@ -258,20 +264,23 @@ public class KnowledgeLibraryService {
   }
 
   /**
-   * Which capability a library of this source type needs (ADR-0036, Entscheidung 5). A connector
-   * library is its own capability because it reaches server paths and stored credentials; a missing
-   * source type - rejected by {@code validateSourceConfiguration} inside {@link #createLibrary} -
-   * takes the upload capability, so an unreadable request never decides which right is checked.
+   * The right a new library needs (ADR-0036, Entscheidung 5): {@code CREATE_LIBRARY} for an upload
+   * library, the connector release of its type or profile for every other one. A missing source
+   * type - rejected by {@code validateSourceConfiguration} inside {@link #createLibrary} - takes
+   * the upload capability, so an unreadable request never decides which right is checked.
    */
-  private Capability capabilityFor(SourceType sourceType) {
-    return sourceType == null || connectors.descriptor(sourceType).uploads()
-        ? Capability.CREATE_LIBRARY
-        : Capability.CREATE_CONNECTOR_LIBRARY;
+  private void requireCreationRight(LibraryCreation request, CurrentUser caller) {
+    SourceType sourceType = request.sourceType();
+    if (sourceType == null || connectors.descriptor(sourceType).uploads()) {
+      capabilityService.requireCapability(caller, Capability.CREATE_LIBRARY);
+    } else {
+      connectorRelease.requireCreatable(caller, sourceType, request.connectionProfileId());
+    }
   }
 
   @Transactional
   public LibraryDetail createLibrary(LibraryCreation request, CurrentUser caller) {
-    capabilityService.requireCapability(caller, capabilityFor(request.sourceType()));
+    requireCreationRight(request, caller);
     if (request.connectionProfileId() != null) {
       String address =
           libraryConnections.addressForNewLibrary(
@@ -432,6 +441,7 @@ public class KnowledgeLibraryService {
     Map<UUID, SuccessionFinding> succession = successionSource.findingsAmong(libraries, false);
     // #1931: the reach badge, one grouped query for the whole page like the counts above.
     Map<UUID, AssetReach> reach = accessService.reachOf(libraries);
+    Map<UUID, String> lockNotices = libraryConnections.lockNotices(libraries);
 
     return libraries.stream()
         .map(
@@ -444,7 +454,8 @@ public class KnowledgeLibraryService {
                     lastIndexedAt.get(library.getId()),
                     lastRunStatus.get(library.getId()),
                     succession.get(library.getId()),
-                    reach.getOrDefault(library.getId(), AssetReach.NONE)))
+                    reach.getOrDefault(library.getId(), AssetReach.NONE),
+                    lockNotices.get(library.getId())))
         .toList();
   }
 
@@ -1381,7 +1392,8 @@ public class KnowledgeLibraryService {
                         ? new LibraryProfileState(null, null, true)
                         : new LibraryProfileState(
                             connection.profile().getId(), connection.profile().getName(), false))
-            .orElse(null));
+            .orElse(null),
+        libraryConnections.lockNotice(library).orElse(null));
   }
 
   private LibraryManagementDetail toManagementDetail(

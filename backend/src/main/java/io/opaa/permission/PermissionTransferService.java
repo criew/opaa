@@ -481,9 +481,10 @@ public class PermissionTransferService {
       permissionHistoryService.recordCapabilityTransferredOut(grant, caller.id(), transferId, at);
       boolean targetHasIt =
           capabilityGrantRepository
-              .findByOrganizationIdAndCapabilityAndSubjectTypeAndSubjectGroupId(
+              .findGrant(
                   grant.getOrganizationId(),
                   grant.getCapability(),
+                  grant.getScope(),
                   CapabilitySubjectType.GROUP,
                   parties.target().id())
               .isPresent();
@@ -493,6 +494,7 @@ public class PermissionTransferService {
                 CapabilityGrant.forGroup(
                     grant.getOrganizationId(),
                     grant.getCapability(),
+                    grant.getScope(),
                     parties.target().id(),
                     grant.getGrantedByUserId()));
         permissionHistoryService.recordCapabilityTransferredIn(moved, caller.id(), transferId, at);

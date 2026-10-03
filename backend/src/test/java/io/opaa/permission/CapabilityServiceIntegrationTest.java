@@ -45,6 +45,9 @@ import org.springframework.jdbc.core.JdbcTemplate;
 @OpaaIntegrationTest
 class CapabilityServiceIntegrationTest {
 
+  private static final String RSS = "TYPE:RSS_FEED";
+  private static final String CONFLUENCE = "TYPE:CONFLUENCE";
+
   @Autowired private CapabilityService capabilityService;
   @Autowired private CapabilityGrantRepository grantRepository;
   @Autowired private CapabilityGrantHistoryRepository historyRepository;
@@ -153,18 +156,73 @@ class CapabilityServiceIntegrationTest {
 
   @Test
   void reachesACapabilityThroughAGroupTheAccountIsAMemberOf() {
-    revokeFromAllAccounts(Capability.CREATE_CONNECTOR_LIBRARY);
+    revokeFromAllAccounts(Capability.CREATE_CONNECTOR_LIBRARY, RSS);
     UUID groupId = persistGroupWithMember(member.id());
 
     capabilityService.grant(
-        Capability.CREATE_CONNECTOR_LIBRARY, CapabilitySubjectType.GROUP, groupId, admin);
+        Capability.CREATE_CONNECTOR_LIBRARY, RSS, CapabilitySubjectType.GROUP, groupId, admin);
 
-    assertThat(capabilityService.hasCapability(member, Capability.CREATE_CONNECTOR_LIBRARY))
+    assertThat(capabilityService.hasCapability(member, Capability.CREATE_CONNECTOR_LIBRARY, RSS))
         .isTrue();
     CurrentUser outsider = persistUser(SystemRole.USER);
-    assertThat(capabilityService.hasCapability(outsider, Capability.CREATE_CONNECTOR_LIBRARY))
+    assertThat(capabilityService.hasCapability(outsider, Capability.CREATE_CONNECTOR_LIBRARY, RSS))
         .as("only the members of the group, plus the system administration")
         .isFalse();
+  }
+
+  /** ADR-0036, Nachtrag of 03.10.2026: a grant in one scope opens no other scope. */
+  @Test
+  void aScopedGrantOpensItsScopeOnly() {
+    revokeFromAllAccounts(Capability.CREATE_CONNECTOR_LIBRARY, RSS);
+    revokeFromAllAccounts(Capability.CREATE_CONNECTOR_LIBRARY, CONFLUENCE);
+
+    capabilityService.grant(
+        Capability.CREATE_CONNECTOR_LIBRARY, RSS, CapabilitySubjectType.USER, member.id(), admin);
+
+    assertThat(capabilityService.hasCapability(member, Capability.CREATE_CONNECTOR_LIBRARY, RSS))
+        .isTrue();
+    assertThat(
+            capabilityService.hasCapability(
+                member, Capability.CREATE_CONNECTOR_LIBRARY, CONFLUENCE))
+        .isFalse();
+    assertThat(capabilityService.capabilitiesOf(member))
+        .as("/me names the capability once it is held in any scope")
+        .contains(Capability.CREATE_CONNECTOR_LIBRARY);
+    assertThat(
+            capabilityService
+                .scopesOf(admin, Capability.CREATE_CONNECTOR_LIBRARY)
+                .covers(CONFLUENCE))
+        .isTrue();
+  }
+
+  @Test
+  void aScopedCapabilityIsGrantedAndCheckedOnlyWithAKnownScope() {
+    assertThatThrownBy(
+            () ->
+                capabilityService.grant(
+                    Capability.CREATE_CONNECTOR_LIBRARY,
+                    CapabilitySubjectType.USER,
+                    member.id(),
+                    admin))
+        .isInstanceOf(ValidationException.class);
+    assertThatThrownBy(
+            () ->
+                capabilityService.grant(
+                    Capability.CREATE_CONNECTOR_LIBRARY,
+                    "TYPE:NO_SUCH_TYPE",
+                    CapabilitySubjectType.USER,
+                    member.id(),
+                    admin))
+        .isInstanceOf(ValidationException.class);
+    assertThatThrownBy(
+            () ->
+                capabilityService.grant(
+                    Capability.CREATE_SPACE, RSS, CapabilitySubjectType.USER, member.id(), admin))
+        .isInstanceOf(ValidationException.class);
+    assertThatThrownBy(
+            () -> capabilityService.hasCapability(member, Capability.CREATE_CONNECTOR_LIBRARY))
+        .as("a check without a scope does not exist for this capability")
+        .isInstanceOf(IllegalArgumentException.class);
   }
 
   /**
@@ -194,12 +252,12 @@ class CapabilityServiceIntegrationTest {
             Capability.CREATE_INTERNAL_GROUP, CapabilitySubjectType.USER, member.id(), admin);
 
     assertThat(
-            historyRepository
-                .findByOrganizationIdAndCapabilityAndSubjectTypeAndSubjectUserIdAndValidToIsNull(
-                    Organization.DEFAULT_ID,
-                    Capability.CREATE_INTERNAL_GROUP,
-                    CapabilitySubjectType.USER,
-                    member.id()))
+            historyRepository.findOpenInterval(
+                Organization.DEFAULT_ID,
+                Capability.CREATE_INTERNAL_GROUP,
+                null,
+                CapabilitySubjectType.USER,
+                member.id()))
         .as("an open interval is the right in force")
         .isPresent();
     assertThat(auditTypesFor(Capability.CREATE_INTERNAL_GROUP))
@@ -208,12 +266,12 @@ class CapabilityServiceIntegrationTest {
     capabilityService.revoke(Capability.CREATE_INTERNAL_GROUP, grant.getId(), admin);
 
     assertThat(
-            historyRepository
-                .findByOrganizationIdAndCapabilityAndSubjectTypeAndSubjectUserIdAndValidToIsNull(
-                    Organization.DEFAULT_ID,
-                    Capability.CREATE_INTERNAL_GROUP,
-                    CapabilitySubjectType.USER,
-                    member.id()))
+            historyRepository.findOpenInterval(
+                Organization.DEFAULT_ID,
+                Capability.CREATE_INTERNAL_GROUP,
+                null,
+                CapabilitySubjectType.USER,
+                member.id()))
         .as("the withdrawal closes it")
         .isEmpty();
     assertThat(auditTypesFor(Capability.CREATE_INTERNAL_GROUP))
@@ -263,9 +321,15 @@ class CapabilityServiceIntegrationTest {
 
   @Test
   void listsEveryCapabilityIncludingTheOnesNobodyHolds() {
-    assertThat(capabilityService.overview(Organization.DEFAULT_ID))
-        .extracting(CapabilityOverview::capability)
+    List<CapabilityOverview> overview = capabilityService.overview(Organization.DEFAULT_ID);
+    assertThat(overview.stream().map(CapabilityOverview::capability).distinct())
         .containsExactly(Capability.values());
+    assertThat(overview)
+        .filteredOn(entry -> entry.capability() == Capability.CREATE_CONNECTOR_LIBRARY)
+        .as("one line per scope, including a type nobody may use yet")
+        .extracting(CapabilityOverview::scope)
+        .contains(RSS, CONFLUENCE, "TYPE:PROBE")
+        .doesNotContainNull();
     assertThat(
             capabilityService.overview(Organization.DEFAULT_ID).stream()
                 .filter(entry -> entry.capability() == Capability.CREATE_INTERNAL_GROUP)
@@ -285,7 +349,10 @@ class CapabilityServiceIntegrationTest {
   void noCapabilityWidensTheSetOfReadableLibraries() {
     UUID foreign = persistPrivateLibraryOwnedBy(admin.id());
     for (Capability capability : Capability.values()) {
-      if (!capabilityService.hasCapability(member, capability)) {
+      if (CapabilityService.isScoped(capability)) {
+        capabilityService.grant(
+            capability, "TYPE:PROBE", CapabilitySubjectType.USER, member.id(), admin);
+      } else if (!capabilityService.hasCapability(member, capability)) {
         capabilityService.grant(capability, CapabilitySubjectType.USER, member.id(), admin);
       }
     }
@@ -352,9 +419,10 @@ class CapabilityServiceIntegrationTest {
     // land on the wrong side of the boundary.
     Instant whileHeld =
         historyRepository
-            .findByOrganizationIdAndCapabilityAndSubjectTypeAndSubjectUserIdAndValidToIsNull(
+            .findOpenInterval(
                 Organization.DEFAULT_ID,
                 Capability.CREATE_INTERNAL_GROUP,
+                null,
                 CapabilitySubjectType.USER,
                 member.id())
             .orElseThrow()
@@ -379,10 +447,18 @@ class CapabilityServiceIntegrationTest {
   }
 
   private void revokeFromAllAccounts(Capability capability) {
+    revokeFromAllAccounts(capability, null);
+  }
+
+  private void revokeFromAllAccounts(Capability capability, String scope) {
     CapabilityGrant delivered =
         grantRepository
-            .findByOrganizationIdAndCapabilityAndSubjectType(
-                Organization.DEFAULT_ID, capability, CapabilitySubjectType.ALL_ACCOUNTS)
+            .findGrant(
+                Organization.DEFAULT_ID,
+                capability,
+                scope,
+                CapabilitySubjectType.ALL_ACCOUNTS,
+                null)
             .orElseThrow();
     capabilityService.revoke(capability, delivered.getId(), admin);
   }

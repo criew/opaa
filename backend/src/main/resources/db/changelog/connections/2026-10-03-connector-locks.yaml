@@ -1,0 +1,16 @@
+databaseChangeLog:
+  - changeSet:
+      id: connections-2026-10-03-connector-locks
+      author: opaa
+      comment: "The lock of a connector type and of a connection profile (#2161, ADR-0041): locked_at set means no new library and no run; the content stays searchable. A type without a row is not locked."
+      changes:
+        - sql:
+            sql: |
+              CREATE TABLE connector_type_policies (
+                  source_type character varying(20) NOT NULL,
+                  locked_at timestamp with time zone,
+                  updated_at timestamp with time zone NOT NULL,
+                  CONSTRAINT connector_type_policies_pkey PRIMARY KEY (source_type)
+              );
+
+              ALTER TABLE connection_profiles ADD COLUMN locked_at timestamp with time zone;

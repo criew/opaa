@@ -12,6 +12,8 @@ import java.util.UUID;
  *
  * @param query the listing's own parameters as the type's connector reads them, {@code null} for
  *     none
+ * @param connectionProfileId without {@code libraryId}: the profile the library is to be created
+ *     through, {@code null} for its own address
  */
 public record SourceBrowseRequest(
     SourceType sourceType,
@@ -20,4 +22,26 @@ public record SourceBrowseRequest(
     String sourceProxy,
     Boolean sourceInsecureSsl,
     ConnectorData query,
-    UUID libraryId) {}
+    UUID libraryId,
+    UUID connectionProfileId) {
+
+  /** A request with its own address. */
+  public SourceBrowseRequest(
+      SourceType sourceType,
+      URI sourceUrl,
+      String sourceCredentials,
+      String sourceProxy,
+      Boolean sourceInsecureSsl,
+      ConnectorData query,
+      UUID libraryId) {
+    this(
+        sourceType,
+        sourceUrl,
+        sourceCredentials,
+        sourceProxy,
+        sourceInsecureSsl,
+        query,
+        libraryId,
+        null);
+  }
+}

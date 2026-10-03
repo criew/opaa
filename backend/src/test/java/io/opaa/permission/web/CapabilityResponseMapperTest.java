@@ -64,8 +64,47 @@ class CapabilityResponseMapperTest {
 
   @Test
   void statesTheDeliveredStateAsOneLine() {
-    assertThat(statementOf(Capability.CREATE_CONNECTOR_LIBRARY, allAccounts()))
-        .isEqualTo("Alle Konten dürfen Konnektorbibliotheken anlegen.");
+    assertThat(statementOf(Capability.CREATE_LIBRARY, allAccounts()))
+        .isEqualTo("Alle Konten dürfen Bibliotheken für Uploads anlegen.");
+  }
+
+  /** A scoped capability has one line per scope, led by its name (spec "Verwaltungsübersicht"). */
+  @Test
+  void statesAScopeWithItsNameAndCarriesItIntoTheResponse() {
+    CapabilityGrant grant =
+        CapabilityGrant.forAllAccounts(
+            ORGANIZATION, Capability.CREATE_CONNECTOR_LIBRARY, "TYPE:RSS_FEED", null);
+    CapabilityOverviewResponse released =
+        CapabilityResponseMapper.toOverviewResponse(
+            new CapabilityOverview(
+                Capability.CREATE_CONNECTOR_LIBRARY,
+                "TYPE:RSS_FEED",
+                "Quellart RSS",
+                List.of(new CapabilityGrantView(grant, null))));
+
+    assertThat(released.getScope()).isEqualTo("TYPE:RSS_FEED");
+    assertThat(released.getScopeLabel()).isEqualTo("Quellart RSS");
+    assertThat(released.getStatement()).isEqualTo("Quellart RSS: frei für Alle Konten.");
+    assertThat(released.getGrants().getFirst().getScope()).isEqualTo("TYPE:RSS_FEED");
+    assertThat(
+            CapabilityResponseMapper.toOverviewResponse(
+                    new CapabilityOverview(
+                        Capability.CREATE_CONNECTOR_LIBRARY,
+                        "PROFILE:1",
+                        "Zugang Nextcloud intern",
+                        List.of()))
+                .getStatement())
+        .isEqualTo("Zugang Nextcloud intern: aus, nur die Systemverwaltung.");
+    assertThat(
+            CapabilityResponseMapper.toOverviewResponse(
+                    new CapabilityOverview(
+                        Capability.CREATE_CONNECTOR_LIBRARY,
+                        "PROFILE:1",
+                        "Zugang Nextcloud intern",
+                        List.of(group("Projekt X"))))
+                .getStatement())
+        .isEqualTo(
+            "Zugang Nextcloud intern: frei für Gruppe Projekt X sowie die Systemverwaltung.");
   }
 
   @Test
@@ -133,7 +172,8 @@ class CapabilityResponseMapperTest {
 
   private static String statementOf(Capability capability, List<CapabilityGrantView> grants) {
     CapabilityOverviewResponse response =
-        CapabilityResponseMapper.toOverviewResponse(new CapabilityOverview(capability, grants));
+        CapabilityResponseMapper.toOverviewResponse(
+            new CapabilityOverview(capability, null, null, grants));
     assertThat(response.getCapability()).isEqualTo(capability);
     assertThat(response.getLabel()).isNotBlank();
     assertThat(response.getGrants()).hasSize(grants.size());
@@ -143,8 +183,7 @@ class CapabilityResponseMapperTest {
   private static List<CapabilityGrantView> allAccounts() {
     return List.of(
         new CapabilityGrantView(
-            CapabilityGrant.forAllAccounts(ORGANIZATION, Capability.CREATE_CONNECTOR_LIBRARY, null),
-            null));
+            CapabilityGrant.forAllAccounts(ORGANIZATION, Capability.CREATE_LIBRARY, null), null));
   }
 
   private static CapabilityGrantView group(String name) {

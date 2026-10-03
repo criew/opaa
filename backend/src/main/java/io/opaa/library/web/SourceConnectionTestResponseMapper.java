@@ -6,6 +6,7 @@ import io.opaa.api.dto.SourceBrowseResponse;
 import io.opaa.api.dto.SourceConnectionTestRequest;
 import io.opaa.api.dto.SourceConnectionTestResponse;
 import io.opaa.api.dto.SourceTypeDescriptor;
+import io.opaa.connection.ConnectorReleaseService.TypeCreation;
 import io.opaa.indexing.source.SourceConnectionTestResult;
 import io.opaa.indexing.source.SourceConnectorDescriptor;
 import io.opaa.indexing.source.SourceListing;
@@ -29,7 +30,8 @@ final class SourceConnectionTestResponseMapper {
         request.getSourceCredentials(),
         request.getSourceInsecureSsl(),
         request.getLibraryId(),
-        LibraryResponseMapper.toSettings(request.getSourceSettings()));
+        LibraryResponseMapper.toSettings(request.getSourceSettings()),
+        request.getConnectionProfileId());
   }
 
   static SourceConnectionTestResponse toResponse(SourceConnectionTestResult result) {
@@ -48,7 +50,8 @@ final class SourceConnectionTestResponseMapper {
         request.getSourceProxy(),
         request.getSourceInsecureSsl(),
         LibraryResponseMapper.toSettings(request.getQuery()),
-        request.getLibraryId());
+        request.getLibraryId(),
+        request.getConnectionProfileId());
   }
 
   static SourceBrowseResponse toResponse(SourceListing listing) {
@@ -60,8 +63,13 @@ final class SourceConnectionTestResponseMapper {
         .message(listing.message());
   }
 
-  static SourceTypeDescriptor toResponse(SourceConnectorDescriptor descriptor, boolean browsable) {
+  static SourceTypeDescriptor toResponse(
+      SourceConnectorDescriptor descriptor, boolean browsable, TypeCreation creation) {
     return new SourceTypeDescriptor()
+        .creatable(creation.creatable())
+        .creatableWithOwnAddress(creation.withOwnAddress())
+        .locked(creation.locked())
+        .creationNotice(creation.notice())
         .type(descriptor.type().key())
         .displayName(descriptor.displayName())
         .indexingRun(descriptor.indexingRun())

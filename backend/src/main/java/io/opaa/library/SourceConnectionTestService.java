@@ -1,10 +1,10 @@
 package io.opaa.library;
 
 import io.opaa.api.types.AssetRole;
-import io.opaa.api.types.Capability;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
+import io.opaa.connection.ConnectorReleaseService;
 import io.opaa.connection.LibraryConnectionService;
 import io.opaa.indexing.source.ConnectorData;
 import io.opaa.indexing.source.SourceBrowser;
@@ -19,7 +19,6 @@ import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.LibraryAccessService;
 import io.opaa.knowledge.SourceType;
-import io.opaa.permission.CapabilityService;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 
@@ -31,14 +30,15 @@ import org.springframework.stereotype.Service;
  * SourceConnectorRegistry}.
  *
  * <p><b>Security (#514 acceptance criteria, PR #537 review finding 3; capability bar #1856).</b>
- * Without a {@code libraryId}, a probe or a listing needs {@link
- * Capability#CREATE_CONNECTOR_LIBRARY} (ADR-0036, Entscheidung 5), the same right {@code
+ * Without a {@code libraryId}, a probe or a listing needs the connector release of its type or of
+ * the named profile ({@link ConnectorReleaseService#requireCreatable}), the same right {@code
  * KnowledgeLibraryService#createLibrary} requires for the connector library the probe is a step
- * towards - before #1856, this endpoint let any authenticated caller probe arbitrary server-local
- * paths and arbitrary URLs regardless of whether that caller could ever create the library the
- * probe served. Every connector bounds its probe in time and applies the target validation and path
- * allowlist exactly as a run would; {@code RateLimitConfiguration} additionally caps this endpoint
- * per IP and globally. No response reveals more about a source's contents than a count.
+ * towards - otherwise any authenticated caller could probe arbitrary server-local paths and
+ * arbitrary URLs regardless of whether that caller could ever create the library the probe served.
+ * Through a profile, the address must lie under the profile's server address. Every connector
+ * bounds its probe in time and applies the target validation and path allowlist exactly as a run
+ * would; {@code RateLimitConfiguration} additionally caps this endpoint per IP and globally. No
+ * response reveals more about a source's contents than a count.
  *
  * <p><b>Testing an existing library's stored quellkonfiguration (#544).</b> {@link
  * SourceConnectionTest#libraryId()} lets {@code EditLibrarySourceDialog} test a password-protected
@@ -65,7 +65,7 @@ public class SourceConnectionTestService {
   private final KnowledgeLibraryRepository libraryRepository;
   private final LibraryAccessService libraryAccessService;
   private final SourceConnectorRegistry connectors;
-  private final CapabilityService capabilityService;
+  private final ConnectorReleaseService connectorRelease;
   private final SourceConnectionResolver connectionResolver;
   private final LibraryConnectionService libraryConnections;
 
@@ -73,39 +73,44 @@ public class SourceConnectionTestService {
       KnowledgeLibraryRepository libraryRepository,
       LibraryAccessService libraryAccessService,
       SourceConnectorRegistry connectors,
-      CapabilityService capabilityService,
+      ConnectorReleaseService connectorRelease,
       SourceConnectionResolver connectionResolver,
       LibraryConnectionService libraryConnections) {
     this.libraryRepository = libraryRepository;
     this.libraryAccessService = libraryAccessService;
     this.connectors = connectors;
-    this.capabilityService = capabilityService;
+    this.connectorRelease = connectorRelease;
     this.connectionResolver = connectionResolver;
     this.libraryConnections = libraryConnections;
   }
 
   /**
-   * Without a {@code libraryId}, this is a step towards creating a connector library and needs
-   * {@link Capability#CREATE_CONNECTOR_LIBRARY} (ADR-0036, Entscheidung 5) - the same right {@code
-   * KnowledgeLibraryService#createLibrary} requires for the library the probe serves (#1856). With
+   * Without a {@code libraryId}, this is a step towards creating a connector library and needs the
+   * same release {@code KnowledgeLibraryService#createLibrary} requires for the library the probe
+   * serves (#1856); an upload type, which its connector refuses, needs a release in any scope. With
    * {@code libraryId} set (#544), the caller instead needs {@link AssetRole#MANAGER} on that
    * library, checked by {@link #requireManagedLibrary} below - creating a connector library already
    * required the capability, so re-demanding it here would only block a caller who already holds
    * {@code MANAGER} without adding a boundary.
    */
   public SourceConnectionTestResult test(SourceConnectionTest request, CurrentUser caller) {
-    if (request.libraryId() == null) {
-      capabilityService.requireCapability(caller, Capability.CREATE_CONNECTOR_LIBRARY);
-    }
     SourceType sourceType = request.sourceType();
     if (sourceType == null) {
       throw new ValidationException("sourceType ist erforderlich");
     }
     SourceConnector connector = connectors.connector(sourceType);
+    String sourceUrl = request.sourceUrl() == null ? null : request.sourceUrl().toString();
+    if (request.libraryId() == null) {
+      if (connector.descriptor().uploads()) {
+        connectorRelease.requireAnyRelease(caller);
+      } else {
+        sourceUrl = requireCreatable(caller, sourceType, request.connectionProfileId(), sourceUrl);
+      }
+    }
     SourceSettings settings =
         new SourceSettings(
             request.sourcePath(),
-            request.sourceUrl() == null ? null : request.sourceUrl().toString(),
+            sourceUrl,
             request.sourceProxy(),
             request.sourceCredentials(),
             Boolean.TRUE.equals(request.sourceInsecureSsl()),
@@ -129,14 +134,15 @@ public class SourceConnectionTestService {
    * What a source of the request's type offers for selection before it is saved - the buckets of an
    * S3 key (ADR-0027, #1376), the spaces of a Confluence token (ADR-0023) - behind the very same
    * permission bar and {@link #withStoredCredentialsIfOmitted} as {@link #test}, so the paths
-   * cannot drift apart. Without {@code libraryId}, the {@link Capability#CREATE_CONNECTOR_LIBRARY}
-   * bar applies (#1856).
+   * cannot drift apart. Without {@code libraryId}, the release bar applies (#1856).
    */
   public SourceListing browse(SourceBrowseRequest request, CurrentUser caller) {
+    String sourceUrl = request.sourceUrl() == null ? null : request.sourceUrl().toString();
     if (request.libraryId() == null) {
-      capabilityService.requireCapability(caller, Capability.CREATE_CONNECTOR_LIBRARY);
+      sourceUrl =
+          requireCreatable(caller, request.sourceType(), request.connectionProfileId(), sourceUrl);
     }
-    if (request.sourceUrl() == null) {
+    if (sourceUrl == null) {
       throw new ValidationException("sourceUrl ist erforderlich");
     }
     SourceBrowser browser =
@@ -149,7 +155,7 @@ public class SourceConnectionTestService {
     SourceSettings settings =
         new SourceSettings(
             null,
-            request.sourceUrl().toString(),
+            sourceUrl,
             request.sourceProxy(),
             request.sourceCredentials(),
             Boolean.TRUE.equals(request.sourceInsecureSsl()),
@@ -164,6 +170,18 @@ public class SourceConnectionTestService {
       stored = connectionResolver.effectiveSettings(library);
     }
     return browser.browse(new SourceBrowser.Query(settings, stored));
+  }
+
+  /**
+   * The release bar of a step towards a new library, and its address: through a profile, {@code
+   * sourceUrl} must lie under it and defaults to its server address.
+   */
+  private String requireCreatable(
+      CurrentUser caller, SourceType sourceType, UUID profileId, String sourceUrl) {
+    connectorRelease.requireCreatable(caller, sourceType, profileId);
+    return profileId == null
+        ? sourceUrl
+        : libraryConnections.addressForNewLibrary(profileId, sourceType, sourceUrl);
   }
 
   /**

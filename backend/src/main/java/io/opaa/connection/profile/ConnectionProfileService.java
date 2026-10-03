@@ -3,6 +3,7 @@ package io.opaa.connection.profile;
 import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.AuditObjectType;
 import io.opaa.api.types.AuditOutcome;
+import io.opaa.api.types.Capability;
 import io.opaa.api.types.ConnectionAuthMethod;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
@@ -17,6 +18,7 @@ import io.opaa.indexing.source.SourceConnectorRegistry;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.SourceType;
+import io.opaa.permission.CapabilityService;
 import io.opaa.security.CredentialsEncryptor;
 import java.time.Clock;
 import java.time.Instant;
@@ -58,6 +60,7 @@ public class ConnectionProfileService {
   private final SourceConnectorRegistry connectors;
   private final CredentialsEncryptor encryptor;
   private final AuditEventRecorder audit;
+  private final CapabilityService capabilities;
   private final Clock clock;
 
   public ConnectionProfileService(
@@ -67,6 +70,7 @@ public class ConnectionProfileService {
       SourceConnectorRegistry connectors,
       CredentialsEncryptor encryptor,
       AuditEventRecorder audit,
+      CapabilityService capabilities,
       Clock clock) {
     this.profiles = profiles;
     this.connections = connections;
@@ -74,6 +78,7 @@ public class ConnectionProfileService {
     this.connectors = connectors;
     this.encryptor = encryptor;
     this.audit = audit;
+    this.capabilities = capabilities;
     this.clock = clock;
   }
 
@@ -207,7 +212,8 @@ public class ConnectionProfileService {
 
   /**
    * Deletes the profile. Its connections lose their secrets and stay without a profile ("Zugang
-   * entfernt"); their libraries keep their content and run no more.
+   * entfernt"); their libraries keep their content and run no more. Its releases are withdrawn, so
+   * a profile is never released before it exists.
    */
   @Transactional
   public void delete(CurrentUser caller, UUID id) {
@@ -221,6 +227,8 @@ public class ConnectionProfileService {
     connections.saveAll(affected);
     Map<String, Object> before = auditState(profile);
     before.put("connectionsRemoved", affected.size());
+    capabilities.revokeScope(
+        Capability.CREATE_CONNECTOR_LIBRARY, ConnectorScope.ofProfile(id), caller);
     profiles.delete(profile);
     record(caller, AuditEventType.CONNECTION_PROFILE_DELETED, profile, before, null);
   }

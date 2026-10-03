@@ -17,6 +17,7 @@ import io.opaa.common.ValidationException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.EnumSet;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -31,6 +32,10 @@ import org.springframework.transaction.annotation.Transactional;
  * OR grant to one of its groups}. A capability opens a creation path and never an existing content
  * - nothing in this class widens what {@code LibraryAccessService#readableLibraryIds} returns, and
  * the role {@code AUDITOR} confers no capability of its own.
+ *
+ * <p>{@code CREATE_CONNECTOR_LIBRARY} is granted per scope (ADR-0036, Nachtrag of 03.10.2026):
+ * every check of it names the scope, and a check without one is a programming error. Which scopes
+ * exist and what they are called answers {@link CapabilityScopeCatalog}.
  *
  * <p><b>Deliberately uncached</b>, unlike {@link AssetAccessService#effectiveRole}: a withdrawal
  * has to take effect without a new sign-in, and a check runs once per creation attempt - a handful
@@ -70,12 +75,16 @@ public class CapabilityService {
           Capability.CREATE_INTERNAL_GROUP, "interne Gruppen",
           Capability.CREATE_PROMPT_LIBRARY, "Prompt-Bibliotheken");
 
+  /** The capabilities granted per scope. */
+  private static final Set<Capability> SCOPED = EnumSet.of(Capability.CREATE_CONNECTOR_LIBRARY);
+
   private final CapabilityGrantRepository grantRepository;
   private final GroupMembershipResolver membershipResolver;
   private final GroupSubjectDirectory groupDirectory;
   private final UserRepository userRepository;
   private final PermissionHistoryService permissionHistoryService;
   private final AuditEventRecorder auditEventRecorder;
+  private final CapabilityScopeCatalog scopeCatalog;
 
   CapabilityService(
       CapabilityGrantRepository grantRepository,
@@ -83,13 +92,32 @@ public class CapabilityService {
       GroupSubjectDirectory groupDirectory,
       UserRepository userRepository,
       PermissionHistoryService permissionHistoryService,
-      AuditEventRecorder auditEventRecorder) {
+      AuditEventRecorder auditEventRecorder,
+      CapabilityScopeCatalog scopeCatalog) {
     this.grantRepository = grantRepository;
     this.membershipResolver = membershipResolver;
     this.groupDirectory = groupDirectory;
     this.userRepository = userRepository;
     this.permissionHistoryService = permissionHistoryService;
     this.auditEventRecorder = auditEventRecorder;
+    this.scopeCatalog = scopeCatalog;
+  }
+
+  /** Whether {@code capability} is granted per scope. */
+  public static boolean isScoped(Capability capability) {
+    return SCOPED.contains(capability);
+  }
+
+  /**
+   * The refusal of a scoped capability, also the notice before the attempt: names the right, the
+   * scope and who to turn to.
+   */
+  public static String missingInScope(Capability capability, String scopeLabel) {
+    return "Ihnen fehlt das Anlegerecht „"
+        + label(capability)
+        + "“ für "
+        + scopeLabel
+        + ". Wenden Sie sich an die Systemverwaltung, wenn Sie es benötigen.";
   }
 
   /** The German name of a capability - the one wording the interface and the manual use. */
@@ -103,8 +131,9 @@ public class CapabilityService {
   }
 
   /**
-   * Every capability the caller holds. A system administrator holds all of them implicitly: the
-   * capabilities sit below that role, they never sit beside it.
+   * Every capability the caller holds, a scoped one once it is held in at least one scope. A system
+   * administrator holds all of them implicitly: the capabilities sit below that role, they never
+   * sit beside it.
    */
   @Transactional(readOnly = true)
   public Set<Capability> capabilitiesOf(CurrentUser caller) {
@@ -124,7 +153,40 @@ public class CapabilityService {
 
   @Transactional(readOnly = true)
   public boolean hasCapability(CurrentUser caller, Capability capability) {
+    requireUnscoped(capability);
     return capabilitiesOf(caller).contains(capability);
+  }
+
+  /** The scopes of {@code capability} the caller holds. */
+  @Transactional(readOnly = true)
+  public HeldScopes scopesOf(CurrentUser caller, Capability capability) {
+    requireScoped(capability);
+    if (caller.isSystemAdmin()) {
+      return HeldScopes.ALL;
+    }
+    Set<String> held =
+        new HashSet<>(
+            grantRepository.findScopesGrantedDirectly(
+                caller.organizationId(), capability, caller.id()));
+    Set<UUID> groupIds = membershipResolver.groupIdsForUser(caller.id());
+    if (!groupIds.isEmpty()) {
+      held.addAll(
+          grantRepository.findScopesGrantedToGroups(caller.organizationId(), capability, groupIds));
+    }
+    return new HeldScopes(false, held);
+  }
+
+  @Transactional(readOnly = true)
+  public boolean hasCapability(CurrentUser caller, Capability capability, String scope) {
+    return scopesOf(caller, capability).covers(scope);
+  }
+
+  /** The scoped counterpart of {@link #requireCapability(CurrentUser, Capability)}. */
+  public void requireCapability(
+      CurrentUser caller, Capability capability, String scope, String scopeLabel) {
+    if (!hasCapability(caller, capability, scope)) {
+      throw new AccessDeniedException(missingInScope(capability, scopeLabel), CAPABILITY_REQUIRED);
+    }
   }
 
   /**
@@ -134,12 +196,15 @@ public class CapabilityService {
    */
   public void requireCapability(CurrentUser caller, Capability capability) {
     if (!hasCapability(caller, capability)) {
-      throw new AccessDeniedException(
-          "Ihnen fehlt das Anlegerecht „"
-              + label(capability)
-              + "“. Wenden Sie sich an die Systemverwaltung, wenn Sie es benötigen.",
-          CAPABILITY_REQUIRED);
+      throw new AccessDeniedException(missing(capability), CAPABILITY_REQUIRED);
     }
+  }
+
+  /** The refusal of a missing capability, also the notice before the attempt. */
+  public static String missing(Capability capability) {
+    return "Ihnen fehlt das Anlegerecht „"
+        + label(capability)
+        + "“. Wenden Sie sich an die Systemverwaltung, wenn Sie es benötigen.";
   }
 
   // -------------------------------------------------------------------------------------------
@@ -155,18 +220,35 @@ public class CapabilityService {
     List<CapabilityGrant> grants = grantRepository.findByOrganizationId(organizationId);
     Map<UUID, String> names = subjectNames(grants);
 
-    Map<Capability, List<CapabilityGrantView>> byCapability = new LinkedHashMap<>();
+    List<CapabilityOverview> overviews = new ArrayList<>();
     for (Capability capability : Capability.values()) {
-      byCapability.put(capability, new ArrayList<>());
+      Map<String, List<CapabilityGrantView>> byScope = new LinkedHashMap<>();
+      Map<String, String> labels = new LinkedHashMap<>();
+      if (isScoped(capability)) {
+        for (CapabilityScopeCatalog.CapabilityScope scope : scopeCatalog.scopes(capability)) {
+          byScope.put(scope.value(), new ArrayList<>());
+          labels.put(scope.value(), scope.label());
+        }
+      } else {
+        byScope.put(null, new ArrayList<>());
+      }
+      for (CapabilityGrant grant : grants) {
+        if (grant.getCapability() == capability) {
+          byScope
+              .computeIfAbsent(grant.getScope(), unknown -> new ArrayList<>())
+              .add(new CapabilityGrantView(grant, names.get(grant.getSubjectId())));
+        }
+      }
+      byScope.forEach(
+          (scope, views) ->
+              overviews.add(
+                  new CapabilityOverview(
+                      capability,
+                      scope,
+                      scope == null ? null : labels.getOrDefault(scope, scope),
+                      List.copyOf(views))));
     }
-    for (CapabilityGrant grant : grants) {
-      byCapability
-          .get(grant.getCapability())
-          .add(new CapabilityGrantView(grant, names.get(grant.getSubjectId())));
-    }
-    return byCapability.entrySet().stream()
-        .map(entry -> new CapabilityOverview(entry.getKey(), List.copyOf(entry.getValue())))
-        .toList();
+    return overviews;
   }
 
   /** The display name of one grant's subject - {@code null} for {@code ALL_ACCOUNTS}. */
@@ -208,7 +290,23 @@ public class CapabilityService {
   @Transactional
   public CapabilityGrant grant(
       Capability capability, CapabilitySubjectType subjectType, UUID subjectId, CurrentUser actor) {
+    return grant(capability, null, subjectType, subjectId, actor);
+  }
+
+  /**
+   * {@link #grant(Capability, CapabilitySubjectType, UUID, CurrentUser)} in {@code scope}, which a
+   * scoped capability requires and every other one refuses; the scope must be one the {@link
+   * CapabilityScopeCatalog} knows.
+   */
+  @Transactional
+  public CapabilityGrant grant(
+      Capability capability,
+      String scope,
+      CapabilitySubjectType subjectType,
+      UUID subjectId,
+      CurrentUser actor) {
     UUID organizationId = actor.organizationId();
+    requireKnownScope(capability, scope);
     // Ahead of the conflict check on purpose: a request that names a subject where none may stand
     // is malformed, and answering it with the 409 of the grant it did not ask for would tell the
     // caller their request went through in a different shape.
@@ -216,20 +314,25 @@ public class CapabilityService {
       throw new ValidationException(
           "subjectType ALL_ACCOUNTS benennt kein Subjekt - subjectId ist hier unzulässig");
     }
-    requireNoExistingGrant(capability, subjectType, subjectId, organizationId);
+    if (grantRepository
+        .findGrant(organizationId, capability, scope, subjectType, subjectId)
+        .isPresent()) {
+      throw new ConflictException("Dieses Anlegerecht besteht für dieses Subjekt bereits");
+    }
 
     CapabilityGrant grant =
         switch (subjectType) {
           case USER -> {
             requireUserInOrganization(subjectId, organizationId);
-            yield CapabilityGrant.forUser(organizationId, capability, subjectId, actor.id());
+            yield CapabilityGrant.forUser(organizationId, capability, scope, subjectId, actor.id());
           }
           case GROUP -> {
             requireEffectiveGroup(subjectId, organizationId);
-            yield CapabilityGrant.forGroup(organizationId, capability, subjectId, actor.id());
+            yield CapabilityGrant.forGroup(
+                organizationId, capability, scope, subjectId, actor.id());
           }
           case ALL_ACCOUNTS ->
-              CapabilityGrant.forAllAccounts(organizationId, capability, actor.id());
+              CapabilityGrant.forAllAccounts(organizationId, capability, scope, actor.id());
         };
 
     CapabilityGrant saved = grantRepository.save(grant);
@@ -254,31 +357,53 @@ public class CapabilityService {
     grantRepository.delete(grant);
   }
 
-  private void requireNoExistingGrant(
-      Capability capability,
-      CapabilitySubjectType subjectType,
-      UUID subjectId,
-      UUID organizationId) {
-    boolean exists =
-        switch (subjectType) {
-          case USER ->
-              grantRepository
-                  .findByOrganizationIdAndCapabilityAndSubjectTypeAndSubjectUserId(
-                      organizationId, capability, subjectType, subjectId)
-                  .isPresent();
-          case GROUP ->
-              grantRepository
-                  .findByOrganizationIdAndCapabilityAndSubjectTypeAndSubjectGroupId(
-                      organizationId, capability, subjectType, subjectId)
-                  .isPresent();
-          case ALL_ACCOUNTS ->
-              grantRepository
-                  .findByOrganizationIdAndCapabilityAndSubjectType(
-                      organizationId, capability, subjectType)
-                  .isPresent();
-        };
-    if (exists) {
-      throw new ConflictException("Dieses Anlegerecht besteht für dieses Subjekt bereits");
+  /**
+   * Withdraws every grant of {@code capability} in {@code scope} in the actor's organization - what
+   * removing the target of a scope takes with it. Each withdrawal closes its interval and is a
+   * governance event, exactly like {@link #revoke}.
+   */
+  @Transactional
+  public int revokeScope(Capability capability, String scope, CurrentUser actor) {
+    requireScoped(capability);
+    List<CapabilityGrant> grants =
+        grantRepository.findByOrganizationIdAndCapabilityAndScope(
+            actor.organizationId(), capability, scope);
+    for (CapabilityGrant grant : grants) {
+      permissionHistoryService.recordCapabilityRevoked(grant, actor.id());
+      recordGovernanceEvent(AuditEventType.CAPABILITY_REVOKED, grant, actor);
+      grantRepository.delete(grant);
+    }
+    return grants.size();
+  }
+
+  private void requireKnownScope(Capability capability, String scope) {
+    if (!isScoped(capability)) {
+      if (scope != null) {
+        throw new ValidationException(
+            "scope gehört nur zu CREATE_CONNECTOR_LIBRARY, nicht zu " + capability.name());
+      }
+      return;
+    }
+    if (scope == null || scope.isBlank()) {
+      throw new ValidationException(
+          "scope ist für " + capability.name() + " erforderlich: eine Quellart oder ein Zugang");
+    }
+    boolean known =
+        scopeCatalog.scopes(capability).stream().anyMatch(entry -> entry.value().equals(scope));
+    if (!known) {
+      throw new ValidationException("Unbekannter Geltungsbereich: " + scope);
+    }
+  }
+
+  private static void requireScoped(Capability capability) {
+    if (!isScoped(capability)) {
+      throw new IllegalArgumentException(capability + " has no scope");
+    }
+  }
+
+  private static void requireUnscoped(Capability capability) {
+    if (isScoped(capability)) {
+      throw new IllegalArgumentException(capability + " is checked in a scope");
     }
   }
 
@@ -346,12 +471,12 @@ public class CapabilityService {
                 capabilityObjectId(grant.getCapability()),
                 "Anlegerecht: " + label(grant.getCapability()))
             .outcome(AuditOutcome.SUCCESS);
-    Map<String, Object> payload =
-        Map.of(
-            "capability",
-            grant.getCapability().name(),
-            "subjectType",
-            grant.getSubjectType().name());
+    Map<String, Object> payload = new LinkedHashMap<>();
+    payload.put("capability", grant.getCapability().name());
+    if (grant.getScope() != null) {
+      payload.put("scope", grant.getScope());
+    }
+    payload.put("subjectType", grant.getSubjectType().name());
     if (type == AuditEventType.CAPABILITY_GRANTED) {
       event.after(payload);
     } else {

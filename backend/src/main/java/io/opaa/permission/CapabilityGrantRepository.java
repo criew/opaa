@@ -37,25 +37,58 @@ public interface CapabilityGrantRepository extends JpaRepository<CapabilityGrant
   Set<Capability> findCapabilitiesGrantedToGroups(
       @Param("organizationId") UUID organizationId, @Param("groupIds") Collection<UUID> groupIds);
 
+  /**
+   * The scopes of {@code capability} the account reaches without any group of its own - the scoped
+   * counterpart of {@link #findCapabilitiesGrantedDirectly}.
+   */
+  @Query(
+      "select distinct g.scope from CapabilityGrant g "
+          + "where g.organizationId = :organizationId and g.capability = :capability "
+          + "and ((g.subjectType = io.opaa.api.types.CapabilitySubjectType.ALL_ACCOUNTS) "
+          + "  or (g.subjectType = io.opaa.api.types.CapabilitySubjectType.USER "
+          + "      and g.subjectUserId = :userId))")
+  Set<String> findScopesGrantedDirectly(
+      @Param("organizationId") UUID organizationId,
+      @Param("capability") Capability capability,
+      @Param("userId") UUID userId);
+
+  /** The group half of {@link #findScopesGrantedDirectly}; never called with an empty set. */
+  @Query(
+      "select distinct g.scope from CapabilityGrant g "
+          + "where g.organizationId = :organizationId and g.capability = :capability "
+          + "and g.subjectType = io.opaa.api.types.CapabilitySubjectType.GROUP "
+          + "and g.subjectGroupId in :groupIds")
+  Set<String> findScopesGrantedToGroups(
+      @Param("organizationId") UUID organizationId,
+      @Param("capability") Capability capability,
+      @Param("groupIds") Collection<UUID> groupIds);
+
+  /** Every grant of one capability in one scope - what removing the scope withdraws. */
+  List<CapabilityGrant> findByOrganizationIdAndCapabilityAndScope(
+      UUID organizationId, Capability capability, String scope);
+
   /** Every grant of one organization, for the administration overview. */
   List<CapabilityGrant> findByOrganizationId(UUID organizationId);
 
   Optional<CapabilityGrant> findByIdAndOrganizationId(UUID id, UUID organizationId);
 
-  Optional<CapabilityGrant> findByOrganizationIdAndCapabilityAndSubjectTypeAndSubjectUserId(
-      UUID organizationId,
-      Capability capability,
-      CapabilitySubjectType subjectType,
-      UUID subjectUserId);
-
-  Optional<CapabilityGrant> findByOrganizationIdAndCapabilityAndSubjectTypeAndSubjectGroupId(
-      UUID organizationId,
-      Capability capability,
-      CapabilitySubjectType subjectType,
-      UUID subjectGroupId);
-
-  Optional<CapabilityGrant> findByOrganizationIdAndCapabilityAndSubjectType(
-      UUID organizationId, Capability capability, CapabilitySubjectType subjectType);
+  /**
+   * The grant of {@code capability} in {@code scope} to one subject, if any; {@code scope} {@code
+   * null} matches the unscoped grant. One query for the three subject kinds, {@code subjectId}
+   * {@code null} for {@code ALL_ACCOUNTS}.
+   */
+  @Query(
+      "select g from CapabilityGrant g where g.organizationId = :organizationId"
+          + " and g.capability = :capability and g.subjectType = :subjectType"
+          + " and ((:scope is null and g.scope is null) or g.scope = :scope)"
+          + " and (g.subjectType = io.opaa.api.types.CapabilitySubjectType.ALL_ACCOUNTS"
+          + "  or g.subjectUserId = :subjectId or g.subjectGroupId = :subjectId)")
+  Optional<CapabilityGrant> findGrant(
+      @Param("organizationId") UUID organizationId,
+      @Param("capability") Capability capability,
+      @Param("scope") String scope,
+      @Param("subjectType") CapabilitySubjectType subjectType,
+      @Param("subjectId") UUID subjectId);
 
   /**
    * Whether the given group holds any capability - read by {@code GroupService#deleteGroup} before

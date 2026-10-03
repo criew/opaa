@@ -363,6 +363,9 @@ export const mockSourceTypes: SourceTypeDescriptor[] = [
     browsable: true,
     profileSupport: 'FORBIDDEN',
     authMethods: [],
+    creatable: true,
+    creatableWithOwnAddress: true,
+    locked: false,
     fullSyncIntervalDefaultDays: 7,
   },
   {
@@ -374,6 +377,9 @@ export const mockSourceTypes: SourceTypeDescriptor[] = [
     browsable: false,
     profileSupport: 'FORBIDDEN',
     authMethods: [],
+    creatable: true,
+    creatableWithOwnAddress: true,
+    locked: false,
   },
   {
     type: 'HTTP_DIRECTORY',
@@ -384,6 +390,9 @@ export const mockSourceTypes: SourceTypeDescriptor[] = [
     browsable: false,
     profileSupport: 'FORBIDDEN',
     authMethods: [],
+    creatable: true,
+    creatableWithOwnAddress: true,
+    locked: false,
   },
   {
     type: 'RSS_FEED',
@@ -394,6 +403,9 @@ export const mockSourceTypes: SourceTypeDescriptor[] = [
     browsable: false,
     profileSupport: 'FORBIDDEN',
     authMethods: [],
+    creatable: true,
+    creatableWithOwnAddress: true,
+    locked: false,
   },
   {
     type: 'S3',
@@ -404,6 +416,9 @@ export const mockSourceTypes: SourceTypeDescriptor[] = [
     browsable: true,
     profileSupport: 'FORBIDDEN',
     authMethods: [],
+    creatable: true,
+    creatableWithOwnAddress: true,
+    locked: false,
   },
   {
     type: 'UPLOAD',
@@ -414,6 +429,9 @@ export const mockSourceTypes: SourceTypeDescriptor[] = [
     browsable: false,
     profileSupport: 'FORBIDDEN',
     authMethods: [],
+    creatable: true,
+    creatableWithOwnAddress: true,
+    locked: false,
   },
 ]
 

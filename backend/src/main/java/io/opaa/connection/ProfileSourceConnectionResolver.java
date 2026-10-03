@@ -2,6 +2,7 @@ package io.opaa.connection;
 
 import io.opaa.connection.profile.ConnectionProfile;
 import io.opaa.connection.profile.ConnectionProfileRepository;
+import io.opaa.connection.profile.ConnectorLockService;
 import io.opaa.connection.profile.LibraryConnection;
 import io.opaa.connection.profile.LibraryConnectionRepository;
 import io.opaa.connection.profile.ServerAddress;
@@ -22,6 +23,9 @@ import org.springframework.stereotype.Component;
  * library without one is resolved from its own fields. With one, the address must lie under the
  * profile's server address, the secret comes only as the profile's sign-in method allows, and the
  * profile's connector defaults override the library's own settings key by key.
+ *
+ * <p>A lock of the type or the profile blocks {@link #resolve}, which starts a run or fetches an
+ * original; {@link #currentCredentials} does not, so a run already going ends regularly.
  */
 @Component
 public class ProfileSourceConnectionResolver implements SourceConnectionResolver {
@@ -31,16 +35,26 @@ public class ProfileSourceConnectionResolver implements SourceConnectionResolver
 
   private final LibraryConnectionRepository connections;
   private final ConnectionProfileRepository profiles;
+  private final ConnectorLockService locks;
   private final SourceConnectionResolver ownFields = new LibrarySourceConnectionResolver();
 
   public ProfileSourceConnectionResolver(
-      LibraryConnectionRepository connections, ConnectionProfileRepository profiles) {
+      LibraryConnectionRepository connections,
+      ConnectionProfileRepository profiles,
+      ConnectorLockService locks) {
     this.connections = connections;
     this.profiles = profiles;
+    this.locks = locks;
   }
 
   @Override
   public SourceSettings resolve(KnowledgeLibrary library) {
+    locks
+        .lockNotice(library)
+        .ifPresent(
+            notice -> {
+              throw new SourceConnectionBlockedException(Category.LOCKED, notice);
+            });
     Optional<ConnectionProfile> profile = requireProfile(library);
     if (profile.isEmpty()) {
       return ownFields.resolve(library);

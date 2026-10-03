@@ -85,6 +85,8 @@ Der Test prüft außerdem:
   Unterpaket von `indexing` gehört in diese Liste, sonst schlägt der Test fehl.
 - **Unterpakete von `connection`:** `CONNECTION_PACKAGES` ordnet sie ebenso; keines nennt das
   Wurzelpaket oder `connection.web`, und ein nicht eingetragenes schlägt fehl (ADR-0041).
+- **Konnektor-Freigabe:** `CREATE_CONNECTOR_LIBRARY` und die Methoden von `CapabilityService` mit
+  Geltungsbereich nennen nur rights und connections (ADR-0041, Entscheidung 8).
 - **Konnektoren:** Kein Konnektor kennt einen anderen, und keine Klasse außerhalb eines Konnektors
   kennt ihn. Kern, Verwaltung und API erreichen Konnektoren nur über die `SourceConnectorRegistry`.
 - Die Pakete des Gradle-Moduls `opaa-api` (`io.opaa.api.dto`, `io.opaa.api.types`) liegen

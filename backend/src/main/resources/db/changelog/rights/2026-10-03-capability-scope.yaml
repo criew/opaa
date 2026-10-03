@@ -1,0 +1,97 @@
+databaseChangeLog:
+  - changeSet:
+      id: rights-2026-10-03-capability-scope
+      author: opaa
+      comment: "CREATE_CONNECTOR_LIBRARY gets a scope, TYPE:<key> or PROFILE:<id> (ADR-0036, Nachtrag of 03.10.2026; ADR-0041; #2161). Every existing grant and interval of it is multiplied into the five connector types delivered before, the uniqueness covers the scope, and the organization seed delivers the five types instead of the unscoped grant. A new type or profile has no row and is therefore off."
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE capability_grants ADD COLUMN scope character varying(200);
+              ALTER TABLE capability_grant_history ADD COLUMN scope character varying(200);
+
+              DROP INDEX uk_capability_grants_all_accounts;
+              DROP INDEX uk_capability_grants_group_subject;
+              DROP INDEX uk_capability_grants_user_subject;
+              DROP INDEX uk_capability_grant_history_open_all_accounts;
+              DROP INDEX uk_capability_grant_history_open_group;
+              DROP INDEX uk_capability_grant_history_open_user;
+
+              INSERT INTO capability_grants
+                (id, organization_id, capability, scope, subject_type, subject_user_id,
+                 subject_group_id, granted_by_user_id, created_at)
+              SELECT gen_random_uuid(), g.organization_id, g.capability, 'TYPE:' || t.source_type,
+                     g.subject_type, g.subject_user_id, g.subject_group_id, g.granted_by_user_id,
+                     g.created_at
+                FROM capability_grants g
+                CROSS JOIN (VALUES ('FILESYSTEM'), ('HTTP_DIRECTORY'), ('RSS_FEED'), ('CONFLUENCE'),
+                                   ('S3')) AS t(source_type)
+               WHERE g.capability = 'CREATE_CONNECTOR_LIBRARY' AND g.scope IS NULL;
+              DELETE FROM capability_grants
+               WHERE capability = 'CREATE_CONNECTOR_LIBRARY' AND scope IS NULL;
+
+              INSERT INTO capability_grant_history
+                (id, organization_id, capability, scope, subject_type, subject_user_id,
+                 subject_group_id, cause, actor_user_id, valid_from, valid_to, created_at,
+                 transfer_id)
+              SELECT gen_random_uuid(), h.organization_id, h.capability, 'TYPE:' || t.source_type,
+                     h.subject_type, h.subject_user_id, h.subject_group_id, h.cause,
+                     h.actor_user_id, h.valid_from, h.valid_to, h.created_at, h.transfer_id
+                FROM capability_grant_history h
+                CROSS JOIN (VALUES ('FILESYSTEM'), ('HTTP_DIRECTORY'), ('RSS_FEED'), ('CONFLUENCE'),
+                                   ('S3')) AS t(source_type)
+               WHERE h.capability = 'CREATE_CONNECTOR_LIBRARY' AND h.scope IS NULL;
+              DELETE FROM capability_grant_history
+               WHERE capability = 'CREATE_CONNECTOR_LIBRARY' AND scope IS NULL;
+
+              ALTER TABLE capability_grants ADD CONSTRAINT chk_capability_grants_scope
+                CHECK (((capability)::text = 'CREATE_CONNECTOR_LIBRARY'::text) = (scope IS NOT NULL));
+              ALTER TABLE capability_grant_history ADD CONSTRAINT chk_capability_grant_history_scope
+                CHECK (((capability)::text = 'CREATE_CONNECTOR_LIBRARY'::text) = (scope IS NOT NULL));
+
+              CREATE UNIQUE INDEX uk_capability_grants_all_accounts ON capability_grants
+                USING btree (organization_id, capability, scope) NULLS NOT DISTINCT
+                WHERE ((subject_type)::text = 'ALL_ACCOUNTS'::text);
+              CREATE UNIQUE INDEX uk_capability_grants_group_subject ON capability_grants
+                USING btree (organization_id, capability, scope, subject_group_id) NULLS NOT DISTINCT
+                WHERE ((subject_type)::text = 'GROUP'::text);
+              CREATE UNIQUE INDEX uk_capability_grants_user_subject ON capability_grants
+                USING btree (organization_id, capability, scope, subject_user_id) NULLS NOT DISTINCT
+                WHERE ((subject_type)::text = 'USER'::text);
+              CREATE UNIQUE INDEX uk_capability_grant_history_open_all_accounts ON capability_grant_history
+                USING btree (organization_id, capability, scope) NULLS NOT DISTINCT
+                WHERE (((subject_type)::text = 'ALL_ACCOUNTS'::text) AND (valid_to IS NULL));
+              CREATE UNIQUE INDEX uk_capability_grant_history_open_group ON capability_grant_history
+                USING btree (organization_id, capability, scope, subject_group_id) NULLS NOT DISTINCT
+                WHERE (((subject_type)::text = 'GROUP'::text) AND (valid_to IS NULL));
+              CREATE UNIQUE INDEX uk_capability_grant_history_open_user ON capability_grant_history
+                USING btree (organization_id, capability, scope, subject_user_id) NULLS NOT DISTINCT
+                WHERE (((subject_type)::text = 'USER'::text) AND (valid_to IS NULL));
+
+              CREATE OR REPLACE FUNCTION organizations_seed_capability_grants() RETURNS trigger
+                  LANGUAGE plpgsql
+                  SET search_path TO 'pg_catalog', '${database.defaultSchemaName}', 'pg_temp'
+                  AS $$
+              DECLARE
+                delivered_capability text;
+                delivered_scope text;
+                granted_at timestamp with time zone := now();
+              BEGIN
+                FOREACH delivered_capability IN ARRAY ARRAY['CREATE_SPACE', 'CREATE_LIBRARY', 'CREATE_PROMPT_LIBRARY'] LOOP
+                  INSERT INTO capability_grants (id, organization_id, capability, subject_type, created_at)
+                  VALUES (gen_random_uuid(), NEW.id, delivered_capability, 'ALL_ACCOUNTS', granted_at);
+
+                  INSERT INTO capability_grant_history
+                    (id, organization_id, capability, subject_type, cause, valid_from, created_at)
+                  VALUES (gen_random_uuid(), NEW.id, delivered_capability, 'ALL_ACCOUNTS', 'DELIVERED', granted_at, granted_at);
+                END LOOP;
+                FOREACH delivered_scope IN ARRAY ARRAY['TYPE:FILESYSTEM', 'TYPE:HTTP_DIRECTORY', 'TYPE:RSS_FEED', 'TYPE:CONFLUENCE', 'TYPE:S3'] LOOP
+                  INSERT INTO capability_grants (id, organization_id, capability, scope, subject_type, created_at)
+                  VALUES (gen_random_uuid(), NEW.id, 'CREATE_CONNECTOR_LIBRARY', delivered_scope, 'ALL_ACCOUNTS', granted_at);
+
+                  INSERT INTO capability_grant_history
+                    (id, organization_id, capability, scope, subject_type, cause, valid_from, created_at)
+                  VALUES (gen_random_uuid(), NEW.id, 'CREATE_CONNECTOR_LIBRARY', delivered_scope, 'ALL_ACCOUNTS', 'DELIVERED', granted_at, granted_at);
+                END LOOP;
+                RETURN NEW;
+              END; $$;
