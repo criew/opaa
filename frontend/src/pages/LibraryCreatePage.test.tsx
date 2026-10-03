@@ -36,7 +36,7 @@ const {
   mockListSourceTypes: vi.fn(),
   mockGetUserSummaries: vi.fn().mockResolvedValue([]),
   mockUpsertAssetGrant: vi.fn(),
-  mockSearchSelectableGroups: vi.fn(),
+  mockSearchSelectableGroups: vi.fn().mockResolvedValue([]),
 }))
 
 vi.mock('../services/groupApi', async () => {
