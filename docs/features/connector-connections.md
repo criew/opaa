@@ -202,7 +202,9 @@ Jeder Konnektor meldet, wie er zu Profilen steht:
 | **optional** | Profil oder freie Adresse | Webverzeichnis, RSS, Confluence, S3, Nextcloud |
 | **Pflicht** | nur mit Profil | Konnektoren mit OAuth oder Client-Credentials, etwa Dropbox, Exchange |
 
-Ein Profil für Webverzeichnis oder RSS trägt nur die Server-Adresse (Ursprung), ohne Anmeldeart.
+Webverzeichnis und RSS tragen heute schon Zugangsdaten (Benutzername und Passwort). Ein Profil für sie
+trägt die Server-Adresse und optional die Anmeldeart „persönliches Geheimnis“ mit der Bibliothek als
+Besitzerin; ohne Anmeldeart greift die Bibliothek anonym zu.
 
 Bei „optional“ kann die Systemverwaltung die Profilpflicht einschalten:
 
@@ -216,8 +218,11 @@ Bei „optional“ kann die Systemverwaltung die Profilpflicht einschalten:
 Wer einen fehlenden Server braucht, kann im Assistenten einen **Zugangswunsch** mit Server-Adresse
 an die Systemverwaltung stellen (optional).
 
-Mit Profilpflicht für alle Konnektoren der Angabe „optional“ liegen alle entfernten Ziele an einer
-Stelle in der Hand der Systemverwaltung.
+Mit Profilpflicht für alle Konnektoren der Angabe „optional“ liegen alle entfernten Ziele, an die
+Zugangsdaten gehen, an einer Stelle in der Hand der Systemverwaltung. **Einschränkung RSS:** Die
+Detailseiten eines Feeds stammen aus dessen `<link>`-Einträgen und können auf fremden Ursprüngen
+liegen. Die Profilpflicht legt nur die Feed-Adresse fest, nicht diese Ziele; Zugangsdaten gehen
+weiterhin nur an den Ursprung des Feeds, fremde Detailseiten werden ohne Zugangsdaten abgerufen.
 Die bestehende Zielprüfung gegen private und lokale Adressbereiche bleibt daneben bestehen.
 
 ---
@@ -226,7 +231,7 @@ Die bestehende Zielprüfung gegen private und lokale Adressbereiche bleibt daneb
 
 | Anmeldeart | Ablauf | Besitz | Typische Konnektoren |
 |---|---|---|---|
-| **Persönliches Geheimnis** | Person trägt App-Passwort oder persönliches Token ein | Person oder Bibliothek | Nextcloud, Confluence Data Center |
+| **Persönliches Geheimnis** | App-Passwort, persönliches Token oder Benutzername und Passwort | Person oder Bibliothek | Nextcloud, Confluence Data Center; Webverzeichnis und RSS (optional, nur Bibliothek) |
 | **OAuth** | Autorisierungscode mit PKCE und `state`; Zustimmung beim Anbieter, Rücksprung in OPAA; Refresh- und Zugriffstoken verschlüsselt | Person oder Bibliothek | Dropbox, Exchange (delegiert) |
 | **Client-Credentials** | Anwendung meldet sich mit Client-ID und Secret des Profils an, ohne Person | Bibliothek | Funktionspostfächer, Microsoft 365 ([#2153](https://github.com/criew/opaa/issues/2153)) |
 
