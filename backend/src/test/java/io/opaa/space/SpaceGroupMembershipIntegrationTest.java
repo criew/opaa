@@ -268,6 +268,25 @@ class SpaceGroupMembershipIntegrationTest {
     assertThat(groupRow(space.getId(), owner).activeMemberCount()).isEqualTo(1);
   }
 
+  /** ADR-0036, Entscheidung 9: a protected group row stays nameless and carries no figure. */
+  @Test
+  void aProtectedGroupRowCarriesNeitherNameNorFigure() {
+    UUID owner = createUser(organizationA);
+    UUID group = createGroup(organizationA, "Personalrat", fiveUsers(organizationA));
+    Space space = createSpace(owner);
+    spaceService.addMember(
+        space.getId(), groupSubject(group), SpaceRole.MEMBER, currentUserOf(owner));
+    Group stored = groupRepository.findById(group).orElseThrow();
+    stored.markProtected(true);
+    groupRepository.save(stored);
+
+    SpaceMemberView view = groupRow(space.getId(), owner);
+
+    assertThat(view.protectedGroup()).isTrue();
+    assertThat(view.displayName()).isNull();
+    assertThat(view.activeMemberCount()).isNull();
+  }
+
   /**
    * ADR-0036, Entscheidung 7, Schutzpunkt 3 (#1818): counted are active accounts, not membership
    * rows. Six members with two of them locked by the directory synchronisation are a group of four.
