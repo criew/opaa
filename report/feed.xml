@@ -5,8 +5,24 @@
   <link href="https://criew.github.io/opaa/report/feed.xml" rel="self"/>
   <link href="https://criew.github.io/opaa/report/"/>
   <id>https://criew.github.io/opaa/report/</id>
-  <updated>2026-10-02T05:58:46Z</updated>
+  <updated>2026-10-03T05:34:43Z</updated>
   <author><name>criew/opaa</name></author>
+  <entry>
+    <title>Tagesreport Freitag, 2. Oktober 2026</title>
+    <link href="https://criew.github.io/opaa/report/reports/2026-10-02.html"/>
+    <id>https://criew.github.io/opaa/report/reports/2026-10-02.html</id>
+    <updated>2026-10-03T05:34:43Z</updated>
+    <summary type="text">feat: Eine Asset-Übersicht mit öffentlich/geschlossen, Favoriten und ausdrücklicher Space-Zuordnung:
+— Katalog als einziger Einstieg mit Kacheln und Typwahl umgesetzt
+— Favoriten als persönliche Markierung im Katalog eingeführt
+— Space-Zuordnung zur harten Grenze für alle Asset-Typen
+— Schaufenster `listed` vollständig entfernt
+Sonstiges:
+— Verzeichnis-Konnektor: unlesbare Unterordner überspringen, Verbindungstest optimiert
+— Suchstatus zeigt Endpunkt der Einbettungsrolle korrekt an
+— Fremdzugangsfreigabe: Schreibschutz dokumentiert und Strukturtest verschärft
+— Inaktive Chats je Space automatisch archivieren und löschen</summary>
+  </entry>
   <entry>
     <title>Tagesreport Donnerstag, 1. Oktober 2026</title>
     <link href="https://criew.github.io/opaa/report/reports/2026-10-01.html"/>
@@ -861,16 +877,5 @@ Sonstiges:
 — Audit-Logging, Organisationsgrenze und Zitierzwang implementiert
 — Landing-Page als Startseite, Tagesreport mit Blättern zwischen Tagen
 — Auth-Modi auf oidc und dev reduziert, ADR-Bestand aktualisiert</summary>
-  </entry>
-  <entry>
-    <title>Tagesreport Dienstag, 4. August 2026</title>
-    <link href="https://criew.github.io/opaa/report/reports/2026-08-04.html"/>
-    <id>https://criew.github.io/opaa/report/reports/2026-08-04.html</id>
-    <updated>2026-08-14T14:53:35Z</updated>
-    <summary type="text">Epic: Space and asset model — replace the workspace model:
-— Asset-Rechte und rechtebewusste Vektorsuche implementiert
-Sonstiges:
-— Zeitfenster des Tagesreports nachvollziehbar und lückenlos gemacht
-— Retrieval-Regression erkannt</summary>
   </entry>
 </feed>

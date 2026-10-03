@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tagesreport 2026-10-02</title>
+<link rel="alternate" type="application/atom+xml" title="OPAA Tagesreport" href="../feed.xml">
+<style>:root {
+  color-scheme: light dark;
+  --bg: #ffffff;
+  --fg: #1a1a1a;
+  --muted: #5c6370;
+  --line: #e2e5e9;
+  --accent: #2f6feb;
+  --card: #f7f8fa;
+  --green: #1a7f37;
+  --red: #cf222e;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14161a;
+    --fg: #e6e8eb;
+    --muted: #9aa1ab;
+    --line: #2a2e35;
+    --accent: #6ea0ff;
+    --card: #1b1e24;
+    --green: #3fb950;
+    --red: #f85149;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 2rem 1.25rem 4rem;
+  background: var(--bg);
+  color: var(--fg);
+  font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+main { max-width: 46rem; margin: 0 auto; }
+a { color: var(--accent); }
+header { border-bottom: 1px solid var(--line); padding-bottom: 1.25rem; margin-bottom: 2rem; }
+h1 { font-size: 1.6rem; margin: 0 0 .35rem; letter-spacing: -.01em; }
+h2 { font-size: 1.1rem; margin: 2.25rem 0 .85rem; letter-spacing: -.01em; }
+.sub { color: var(--muted); font-size: .9rem; margin: 0; }
+.num { font-variant-numeric: tabular-nums; color: var(--muted); margin-right: .4rem; }
+.empty { color: var(--muted); font-style: italic; }
+
+.blaettern { color: var(--muted); font-size: .9rem; }
+.blaettern a { text-decoration: none; }
+.blaettern a:hover { text-decoration: underline; }
+
+.linkbar { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .85rem; }
+.linkbar a {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  font-size: .85rem;
+  padding: .3rem .7rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--card);
+  text-decoration: none;
+}
+.linkbar a:hover { border-color: var(--accent); }
+.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.dot.green { background: var(--green); }
+.dot.red { background: var(--red); }
+
+.kpi-row { display: flex; gap: .75rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+.kpi {
+  flex: 1;
+  min-width: 7rem;
+  padding: .75rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+  text-align: center;
+}
+.kpi-value {
+  font-size: 1.8rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+.kpi-value.green { color: var(--green); }
+.kpi-label {
+  font-size: .78rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.epic-section {
+  margin-bottom: 1.25rem;
+  padding: .85rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+}
+.epic-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  margin-bottom: .5rem;
+}
+.epic-title { font-weight: 600; font-size: .95rem; }
+.epic-progress {
+  font-size: .8rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.progress-bar {
+  height: 4px;
+  background: var(--line);
+  border-radius: 2px;
+  margin-bottom: .6rem;
+  overflow: hidden;
+}
+.progress-fill { height: 100%; background: var(--accent); border-radius: 2px; }
+.epic-section ul { margin: 0; padding-left: 1.25rem; font-size: .9rem; }
+.epic-section li { margin-bottom: .25rem; }
+
+.merged-summary {
+  margin-top: .5rem;
+  padding-top: .5rem;
+  border-top: 1px dashed var(--line);
+  font-size: .85rem;
+  color: var(--muted);
+}
+.merged-summary ul { margin: .25rem 0 0; padding-left: 1.25rem; }
+.merged-summary li { margin-bottom: .2rem; }
+
+ul.items { list-style: none; margin: 0; padding: 0; }
+ul.items li {
+  padding: .7rem .9rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  margin-bottom: .5rem;
+  background: var(--card);
+}
+.meta { display: block; color: var(--muted); font-size: .82rem; margin-top: .25rem; }
+
+footer { margin-top: 3rem; padding-top: 1.25rem; border-top: 1px solid var(--line); color: var(--muted); font-size: .85rem; }
+.status.bad { color: var(--red); font-weight: 600; }
+</style>
+</head>
+<body>
+<main>
+<header>
+<h1>Tagesreport Freitag, 2. Oktober 2026</h1>
+<nav class="blaettern"><a href="2026-10-01.html" rel="prev" title="Donnerstag, 1. Oktober 2026">← Vorheriger Tag</a> · <a href="../index.html">Alle Reports</a></nav>
+<div class="linkbar"><a href="https://opaa.ewerlin.com/chat">Testumgebung</a><a href="https://github.com/criew/opaa">Repository</a><a href="https://github.com/criew/opaa/issues">Issues</a><a href="https://github.com/criew/opaa/pulls">Pull Requests</a><a href="https://github.com/criew/opaa/actions/runs/37063850058" title="Letzter CI-Lauf auf dem Hauptbranch: erfolgreich">CI <span class="dot green"></span></a></div>
+</header>
+
+<div class="kpi-row"><div class="kpi"><div class="kpi-value">45</div><div class="kpi-label">Issues offen</div></div><div class="kpi"><div class="kpi-value green">+17</div><div class="kpi-label">Neu angelegt</div></div><div class="kpi"><div class="kpi-value">23</div><div class="kpi-label">Abgeschlossen</div></div><div class="kpi"><div class="kpi-value">23</div><div class="kpi-label">PRs gemergt</div></div></div>
+
+<div class="epic-section">
+<div class="epic-header">
+<span class="epic-title"><a href="https://github.com/criew/opaa/issues/2070">#2070</a> feat: Eine Asset-Übersicht mit öffentlich/geschlossen, Favoriten und ausdrücklicher Space-Zuordnung</span>
+<span class="epic-progress">9 / 9 erledigt</span>
+</div>
+<div class="progress-bar"><div class="progress-fill" style="width: 100%"></div></div>
+<ul><li>Katalog als einziger Einstieg mit Kacheln und Typwahl umgesetzt</li><li>Favoriten als persönliche Markierung im Katalog eingeführt</li><li>Space-Zuordnung zur harten Grenze für alle Asset-Typen</li><li>Schaufenster `listed` vollständig entfernt</li></ul>
+<div class="merged-summary">Gemergte Pull Requests:<ul><li><span class="num"><a href="https://github.com/criew/opaa/pull/2120">#2120</a></span>feat(external-access): Token-Auswahl filtert nach Favoriten, eigenen Gruppen und Ausgewählten (+556/−92, 22 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2118">#2118</a></span>feat(spaces): Space-Assistent und Einstellungen ordnen alle Asset-Typen per Kachelauswahl zu, „In Space verwenden“ im Katalog (+2143/−522, 48 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2117">#2117</a></span>feat(catalog): Favoriten im Katalog – Stern, Filter und Favoriten zuerst (+942/−107, 27 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2116">#2116</a></span>feat(frontend): Katalogkachel mit Sichtbarkeit, Rolle und Stand, Filter und Sortierung (+495/−60, 12 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2113">#2113</a></span>feat(assets): Katalog-API liefert nur Lesbares mit Sichtbarkeit, Rolle, Status, Filtern und Sortierung (+1945/−135, 47 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2107">#2107</a></span>feat(spaces): Zuordnung als harte Grenze – @Space-Wissen, Hinweis bei leerem Space, Demo-Zuordnungen (+2312/−999, 93 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2106">#2106</a></span>refactor(assets): Schaufenster `listed` vollständig entfernen (+997/−1974, 216 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2104">#2104</a></span>docs(spaces): ADR-0039 und Spezifikation für einen Katalog und ausdrückliche Space-Zuordnung (+904/−285, 29 Dateien)</li></ul></div>
+</div>
+<div class="epic-section">
+<div class="epic-header"><span class="epic-title">Sonstiges</span></div>
+<ul><li>Verzeichnis-Konnektor: unlesbare Unterordner überspringen, Verbindungstest optimiert</li><li>Suchstatus zeigt Endpunkt der Einbettungsrolle korrekt an</li><li>Fremdzugangsfreigabe: Schreibschutz dokumentiert und Strukturtest verschärft</li><li>Inaktive Chats je Space automatisch archivieren und löschen</li></ul>
+<div class="merged-summary">Gemergte Pull Requests:<ul><li><span class="num"><a href="https://github.com/criew/opaa/pull/2126">#2126</a></span>fix(searchadmin): Endpunkt der Einbettungsrolle im Suchstatus anzeigen (+45/−8, 6 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2125">#2125</a></span>fix(indexing): unlesbare Unterordner im Verzeichnis-Konnektor überspringen (+334/−27, 9 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2122">#2122</a></span>docs(security): Schreibschutz der Fremdzugangsfreigabe korrekt beschreiben (+68/−36, 3 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2119">#2119</a></span>feat(demo): Seed mit Kombinationen aus Eigentum, Sichtbarkeit, Favoriten und Space-Zuordnung (+965/−180, 10 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2115">#2115</a></span>feat(frontend): Token-Ausstellung wählt Bibliotheken über die Kachelauswahl (+187/−47, 3 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2114">#2114</a></span>feat(frontend): Katalog als einziger Einstieg mit Typ-Registry und Kachelauswahl (+1300/−1532, 57 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2112">#2112</a></span>feat(chat): inaktive Chats je Space automatisch archivieren und löschen (+1973/−103, 54 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2111">#2111</a></span>feat(assets): Favoriten an Assets setzen und entfernen (Backend, Teil 1) (+682/−5, 11 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2105">#2105</a></span>feat(directory): Auslieferung des Abgleichsberichts mit Namen protokollieren (+709/−19, 15 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2102">#2102</a></span>docs(migration): Delta-Test nur noch für Changesets mit Logik (+36/−29, 10 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2101">#2101</a></span>docs(security): DNS-Rebinding als bewusst hingenommene Grenze dokumentieren (+13/−1, 2 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2090">#2090</a></span>docs(agents): Issues vor Arbeitsbeginn selbst zuweisen (+13/−0, 2 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2088">#2088</a></span>feat(frontend): Space-Spalte per Ziehen verbreiterbar machen (+225/−11, 7 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2087">#2087</a></span>feat(chat): Demo-Chat-Import prüft Fundstellenmarken, vervollständigt Belegfelder, erkennt Dubletten per Importschlüssel (+829/−134, 17 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2086">#2086</a></span>fix(chat): abgelehnte Frage nach Chatwechsel zurückgeben (+352/−8, 6 Dateien)</li></ul></div>
+</div>
+
+<footer>
+Erzeugt am 2026-10-03 um 07:34 Uhr ·
+<a href="../feed.xml">Feed abonnieren</a>
+<br><span class="empty">Berichtszeitraum: 2026-10-02T00:00:00 bis 2026-10-02T23:59:59 (Europe/Berlin)</span>
+</footer>
+</main>
+</body>
+</html>
