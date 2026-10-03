@@ -9,6 +9,7 @@ import io.opaa.common.NotFoundException;
 import io.opaa.common.PayloadTooLargeException;
 import io.opaa.common.ServiceUnavailableException;
 import io.opaa.common.ValidationException;
+import io.opaa.connection.profile.ConnectorLockService;
 import io.opaa.format.SupportedDocumentFormats;
 import io.opaa.indexing.attachment.AttachmentProperties;
 import io.opaa.indexing.attachment.StandaloneAttachmentAccess;
@@ -582,6 +583,10 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
           e.getCause() == null ? e.getMessage() : e.getCause().getMessage());
       throw new ServiceUnavailableException(e.userMessage());
     } catch (SourceConnectionBlockedException e) {
+      if (e.category() == SourceConnectionBlockedException.Category.LOCKED) {
+        // a lock lasts until the administration lifts it - not a temporary unavailability
+        throw new ConflictException(e.getMessage(), ConnectorLockService.SOURCE_LOCKED);
+      }
       throw new ServiceUnavailableException(e.getMessage());
     } catch (SourceCredentialsException e) {
       log.warn(

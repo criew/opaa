@@ -39,7 +39,10 @@ final class PermissionTransferFingerprint {
       lines.add(line("space", membership.spaceId().toString()));
     }
     for (CapabilityGrant capability : snapshot.capabilities()) {
-      lines.add(line("capability", capability.getCapability().name()));
+      lines.add(
+          capability.getScope() == null
+              ? line("capability", capability.getCapability().name())
+              : line("capability", capability.getCapability().name(), capability.getScope()));
     }
     snapshot
         .ownedAssets()

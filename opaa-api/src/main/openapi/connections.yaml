@@ -193,14 +193,101 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /api/v1/admin/connection-profiles/{profileId}/lock:
+    put:
+      operationId: lockConnectionProfile
+      tags: [connection-profile]
+      summary: Lock or unlock a connection profile (system admin only)
+      description: >
+        A locked profile admits no new library and no new connection, and the runs of its
+        libraries stop; a run already going ends regularly. The content stays searchable and
+        carries the note "Gesperrt". Unlocking lets the libraries run again without being set up
+        anew. A governance event either way (CONNECTOR_LOCKED, CONNECTOR_UNLOCKED).
+      parameters:
+        - name: profileId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConnectorLockRequest"
+      responses:
+        "200":
+          description: The profile with its new lock state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConnectionProfileResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/admin/connector-types:
+    get:
+      operationId: listConnectorTypeStates
+      tags: [connection-profile]
+      summary: The lock state of every connector type (system admin only)
+      description: >
+        One entry per registered connector except the upload, which reaches no source.
+      responses:
+        "200":
+          description: Every connector type, by type key
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ConnectorTypeStateResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/admin/connector-types/{sourceType}/lock:
+    put:
+      operationId: lockConnectorType
+      tags: [connection-profile]
+      summary: Lock or unlock a connector type (system admin only)
+      description: >
+        Like lockConnectionProfile, for every library of the type - with or without a profile.
+      parameters:
+        - name: sourceType
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/SourceTypeKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConnectorLockRequest"
+      responses:
+        "200":
+          description: The connector type with its new lock state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConnectorTypeStateResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
   /api/v1/connection-profiles:
     get:
       operationId: listConnectionProfileOptions
       tags: [connection-profile]
       summary: The profiles a library of one source type may be connected through
       description: >
-        Profiles whose ownership admits libraries, by name, without anything of the app
-        registration. Needs the capability CREATE_CONNECTOR_LIBRARY.
+        Every profile whose ownership admits libraries, by name, without anything of the app
+        registration - each with whether the caller may create a library through it and, where
+        not, a notice naming who can change that, so a profile the caller may not use is shown
+        rather than hidden. Needs the capability CREATE_CONNECTOR_LIBRARY in at least one scope.
       parameters:
         - name: sourceType
           in: query
@@ -365,6 +452,7 @@ components:
           clientSecretSet,
           clientSecretExpiresSoon,
           connectionCount,
+          locked,
           createdAt,
           updatedAt,
         ]
@@ -409,6 +497,13 @@ components:
           type: integer
           format: int64
           description: The connections on this profile.
+        locked:
+          type: boolean
+          description: Whether the profile is locked (see lockConnectionProfile).
+        lockedAt:
+          type: string
+          format: date-time
+          nullable: true
         createdAt:
           type: string
           format: date-time
@@ -429,8 +524,18 @@ components:
 
     ConnectionProfileOption:
       type: object
-      required: [id, name, sourceType, serverUrl, authMethod]
+      required: [id, name, sourceType, serverUrl, authMethod, creatable]
       properties:
+        creatable:
+          type: boolean
+          description: >
+            Whether the caller may create a library through this profile now - released to them
+            and neither the profile nor its connector locked.
+        creationNotice:
+          type: string
+          nullable: true
+          description: >
+            Why the caller may not, naming who can change it; absent when creatable.
         id:
           type: string
           format: uuid
@@ -442,6 +547,30 @@ components:
           type: string
         authMethod:
           $ref: "#/components/schemas/ConnectionAuthMethod"
+
+    ConnectorLockRequest:
+      type: object
+      required: [locked]
+      properties:
+        locked:
+          type: boolean
+
+    ConnectorTypeStateResponse:
+      type: object
+      required: [sourceType, displayName, locked]
+      properties:
+        sourceType:
+          $ref: "#/components/schemas/SourceTypeKey"
+        displayName:
+          type: string
+          example: Confluence
+        locked:
+          type: boolean
+          description: Whether the connector type is locked (see lockConnectorType).
+        lockedAt:
+          type: string
+          format: date-time
+          nullable: true
 
     ConnectionProfileRef:
       type: object

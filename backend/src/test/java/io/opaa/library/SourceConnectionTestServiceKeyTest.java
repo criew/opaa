@@ -7,6 +7,7 @@ import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
+import io.opaa.connection.ConnectorReleaseService;
 import io.opaa.connection.LibraryConnectionService;
 import io.opaa.indexing.source.ConnectorData;
 import io.opaa.indexing.source.FakeTokenEndpoint;
@@ -23,7 +24,6 @@ import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.LibraryAccessService;
 import io.opaa.knowledge.UploadedOriginalStore;
-import io.opaa.permission.CapabilityService;
 import io.opaa.security.TargetAddressValidator;
 import java.time.Clock;
 import java.util.List;
@@ -66,7 +66,7 @@ class SourceConnectionTestServiceKeyTest {
             libraryRepository,
             mock(LibraryAccessService.class),
             registry,
-            mock(CapabilityService.class),
+            mock(ConnectorReleaseService.class),
             new LibrarySourceConnectionResolver(
                 type -> Optional.ofNullable(registry.find(type).orElse(null)), tokens),
             mock(LibraryConnectionService.class),

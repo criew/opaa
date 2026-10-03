@@ -20,6 +20,7 @@ import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.connection.ConnectorReleaseService;
 import io.opaa.connection.LibraryConnectionService;
 import io.opaa.indexing.chunk.FullTextChunkStore;
 import io.opaa.indexing.chunk.VectorChunkStore;
@@ -173,7 +174,8 @@ class KnowledgeLibraryServiceConnectorDeleteOrderTest {
                 .confluenceProperties(confluenceProperties)
                 .registry(),
             new LibrarySourceConnectionResolver(),
-            mock(LibraryConnectionService.class));
+            mock(LibraryConnectionService.class),
+            mock(ConnectorReleaseService.class));
 
     ownerId = UUID.randomUUID();
     UUID organizationId = UUID.randomUUID();

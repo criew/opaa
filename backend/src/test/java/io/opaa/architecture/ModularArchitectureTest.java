@@ -110,6 +110,11 @@ class ModularArchitectureTest {
   }
 
   @Test
+  void theConnectorReleaseIsDecidedInConnections() {
+    ARCHITECTURE.theConnectorReleaseIsDecidedInConnections().check(mainClasses);
+  }
+
+  @Test
   void webClassesResideInAWebPackage() {
     ARCHITECTURE.webClassesResideInAWebPackage().check(mainClasses);
   }

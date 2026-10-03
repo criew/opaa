@@ -108,9 +108,13 @@ public class DocumentIndexingService {
    * Triggers a scheduled run for {@code library}, called only by {@link LibraryIndexingScheduler}:
    * there is no caller to authorize, since the library was selected by its own stored schedule.
    * Otherwise the same shape as {@link #triggerIndexing}, except that a conflict simply propagates
-   * as the 409 {@code startJob} already throws for the TOCTOU case.
+   * as the 409 {@code startJob} already throws for the TOCTOU case. A locked library starts no run
+   * and yields {@code null}; its detail carries the lock notice instead of a failed run per tick.
    */
   public IndexingJob triggerScheduledIndexing(KnowledgeLibrary library) {
+    if (connectionResolver.isLocked(library)) {
+      return null;
+    }
     SourceIndexingExecutor executor = executorFor(library.getSourceType());
     IndexingRunMode runMode = resolveRunMode(executor, library, null);
     var job =

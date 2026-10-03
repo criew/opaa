@@ -110,6 +110,13 @@ public class SourceEventIntake {
         return;
       }
       library = loaded.get();
+      if (connectionResolver.isLocked(library)) {
+        log.info(
+            "Dropping {} event batch for library {}: its source is locked",
+            target.sourceType(),
+            libraryId);
+        return;
+      }
       running = indexingJobService.isJobRunning(library.getId(), library.getOrganizationId());
     } catch (RuntimeException e) {
       // the batch already left the queue; a lookup that fails (database briefly away) must not

@@ -34,22 +34,101 @@ import {
 } from '../components/permissions/subjectSelection'
 import { contentWidth } from '../theme/tokens'
 
-function CapabilityCard({
+/** Die Subjekte, die ein Anlegerecht (in einem Geltungsbereich) halten, je mit „Entziehen". */
+function GrantList({
   overview,
-  onChanged,
+  run,
 }: {
   overview: CapabilityOverviewResponse
+  run: (action: () => Promise<void>, fallback: string) => Promise<void>
+}) {
+  const subject = overview.scopeLabel
+    ? `„${overview.label}" für ${overview.scopeLabel}`
+    : `„${overview.label}"`
+  return (
+    <Stack spacing={1}>
+      {overview.grants.length === 0 && (
+        <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
+          Niemand hält dieses Anlegerecht.
+        </Typography>
+      )}
+      {overview.grants.map((grant) => (
+        <Box
+          key={grant.id}
+          sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}
+        >
+          <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+            <Typography sx={{ fontSize: 13.5 }}>
+              {grant.subjectType === 'ALL_ACCOUNTS'
+                ? 'Alle Konten'
+                : (grant.subjectName ?? grant.subjectId)}
+            </Typography>
+            <MetaBadge>
+              {grant.subjectType === 'ALL_ACCOUNTS'
+                ? 'alle'
+                : grant.subjectType === 'GROUP'
+                  ? 'Gruppe'
+                  : 'Person'}
+            </MetaBadge>
+          </Stack>
+          <Button
+            size="small"
+            color="error"
+            aria-label={`${subject} entziehen: ${
+              grant.subjectType === 'ALL_ACCOUNTS'
+                ? 'Alle Konten'
+                : (grant.subjectName ?? grant.subjectId)
+            }`}
+            onClick={async () => {
+              const confirmed = await confirmAction({
+                question: `${subject} entziehen?`,
+                consequence:
+                  grant.subjectType === 'ALL_ACCOUNTS'
+                    ? 'Der Entzug von „Alle Konten" wirkt sofort und für jedes Konto der Organisation. Er wird als Governance-Ereignis protokolliert.'
+                    : 'Der Entzug wirkt ohne Neuanmeldung und wird protokolliert.',
+                confirmLabel: 'Entziehen',
+                tone: 'danger',
+              })
+              if (!confirmed) return
+              await run(
+                () => revokeCapability(overview.capability, grant.id),
+                'Das Anlegerecht konnte nicht entzogen werden.',
+              )
+            }}
+          >
+            Entziehen
+          </Button>
+        </Box>
+      ))}
+    </Stack>
+  )
+}
+
+/**
+ * Ein Anlegerecht. Hat es Geltungsbereiche („Konnektorbibliotheken anlegen" je Quellart und je
+ * Zugang), steht je Geltungsbereich eine Klartextzeile mit ihren Subjekten, und die Vergabe fragt
+ * den Geltungsbereich ab.
+ */
+function CapabilityCard({
+  entries,
+  onChanged,
+}: {
+  entries: CapabilityOverviewResponse[]
   onChanged: () => Promise<void>
 }) {
   const [subjectType, setSubjectType] = useState<CapabilitySubjectType>('GROUP')
   const [group, setGroup] = useState<SelectableGroupResponse | null>(null)
   const [user, setUser] = useState<UserSummary | null>(null)
+  const [scope, setScope] = useState<string>(entries[0]?.scope ?? '')
   const [error, setError] = useState<string | null>(null)
 
-  const capability: Capability = overview.capability
+  const first = entries[0]
+  const capability: Capability = first.capability
+  const scoped = Boolean(first.scope)
   const subjectId =
     subjectType === 'GROUP' ? group?.id : subjectType === 'USER' ? user?.id : undefined
-  const ready = subjectType === 'ALL_ACCOUNTS' || Boolean(subjectId)
+  const ready = (subjectType === 'ALL_ACCOUNTS' || Boolean(subjectId)) && (!scoped || scope !== '')
+  const scopeLabel = entries.find((entry) => entry.scope === scope)?.scopeLabel
 
   async function run(action: () => Promise<void>, fallback: string) {
     setError(null)
@@ -64,15 +143,18 @@ function CapabilityCard({
   return (
     <Box
       component="section"
-      aria-label={overview.label}
+      aria-label={first.label}
       sx={{ borderBottom: 1, borderColor: 'divider', pb: 2 }}
     >
       <Typography component="h3" sx={{ fontSize: 14.5, fontWeight: 600 }}>
-        {overview.label}
+        {first.label}
       </Typography>
-      {/* Die Klartextzeile des ausgelieferten Stands (ADR-0036, Entscheidung 5) — eine
-          Anzeigezeile, kein Einrichtungsassistent. */}
-      <Typography sx={{ fontSize: 13.5, mt: 0.5 }}>{overview.statement}</Typography>
+      {scoped && (
+        <Typography sx={{ fontSize: 13, color: 'text.secondary', mt: 0.5 }}>
+          Erteilt je Quellart (Bibliothek mit eigener Adresse) und je Zugang. Die Freigabe eines
+          Zugangs öffnet keinen anderen.
+        </Typography>
+      )}
 
       {error && (
         <Alert severity="error" sx={{ mt: 1.5 }} onClose={() => setError(null)}>
@@ -80,62 +162,45 @@ function CapabilityCard({
         </Alert>
       )}
 
-      <Divider sx={{ my: 1.5 }} />
-
-      <Stack spacing={1}>
-        {overview.grants.length === 0 && (
-          <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
-            Niemand hält dieses Anlegerecht.
-          </Typography>
-        )}
-        {overview.grants.map((grant) => (
-          <Box
-            key={grant.id}
-            sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}
-          >
-            <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-              <Typography sx={{ fontSize: 13.5 }}>
-                {grant.subjectType === 'ALL_ACCOUNTS'
-                  ? 'Alle Konten'
-                  : (grant.subjectName ?? grant.subjectId)}
-              </Typography>
-              <MetaBadge>
-                {grant.subjectType === 'ALL_ACCOUNTS'
-                  ? 'alle'
-                  : grant.subjectType === 'GROUP'
-                    ? 'Gruppe'
-                    : 'Person'}
-              </MetaBadge>
-            </Stack>
-            <Button
-              size="small"
-              color="error"
-              onClick={async () => {
-                const confirmed = await confirmAction({
-                  question: `„${overview.label}" entziehen?`,
-                  consequence:
-                    grant.subjectType === 'ALL_ACCOUNTS'
-                      ? 'Der Entzug von „Alle Konten" wirkt sofort und für jedes Konto der Organisation. Er wird als Governance-Ereignis protokolliert.'
-                      : 'Der Entzug wirkt ohne Neuanmeldung und wird protokolliert.',
-                  confirmLabel: 'Entziehen',
-                  tone: 'danger',
-                })
-                if (!confirmed) return
-                await run(
-                  () => revokeCapability(capability, grant.id),
-                  'Das Anlegerecht konnte nicht entzogen werden.',
-                )
-              }}
-            >
-              Entziehen
-            </Button>
-          </Box>
-        ))}
-      </Stack>
+      {entries.map((entry) => (
+        <Box
+          key={entry.scope ?? entry.capability}
+          component={scoped ? 'section' : 'div'}
+          aria-label={entry.scopeLabel ?? undefined}
+        >
+          {scoped && (
+            <Typography component="h4" sx={{ fontSize: 13.5, fontWeight: 600, mt: 1.5 }}>
+              {entry.scopeLabel}
+            </Typography>
+          )}
+          {/* Die Klartextzeile des Stands (ADR-0036, Entscheidung 5) — eine Anzeigezeile, kein
+              Einrichtungsassistent. */}
+          <Typography sx={{ fontSize: 13.5, mt: 0.5 }}>{entry.statement}</Typography>
+          <Divider sx={{ my: 1.5 }} />
+          <GrantList overview={entry} run={run} />
+        </Box>
+      ))}
 
       <Divider sx={{ my: 1.5 }} />
 
       <Stack direction={{ xs: 'column', md: 'row' }} spacing={1} sx={{ alignItems: 'flex-start' }}>
+        {scoped && (
+          <TextField
+            select
+            size="small"
+            label="Geltungsbereich"
+            value={scope}
+            onChange={(e) => setScope(e.target.value)}
+            sx={{ minWidth: 220 }}
+          >
+            {entries.map((entry) => (
+              <MenuItem key={entry.scope} value={entry.scope ?? ''}>
+                {entry.scopeLabel}
+              </MenuItem>
+            ))}
+          </TextField>
+        )}
+
         <TextField
           select
           size="small"
@@ -183,10 +248,19 @@ function CapabilityCard({
             // Zwischenfrage vor einem Recht an eine Gruppe eines externen Anbieters (ADR-0036/2).
             if (subjectType === 'GROUP' && group && !(await confirmGroupSubject(group))) return
             await run(async () => {
-              await grantCapability(capability, { subjectType, subjectId })
+              await grantCapability(capability, {
+                subjectType,
+                subjectId,
+                ...(scoped ? { scope } : {}),
+              })
               setUser(null)
               setGroup(null)
-              notify(`„${overview.label}" wurde erteilt.`, 'success')
+              notify(
+                scoped
+                  ? `„${first.label}" für ${scopeLabel} wurde erteilt.`
+                  : `„${first.label}" wurde erteilt.`,
+                'success',
+              )
             }, 'Das Anlegerecht konnte nicht erteilt werden.')
           }}
         >
@@ -195,6 +269,15 @@ function CapabilityCard({
       </Stack>
     </Box>
   )
+}
+
+/** Die Zeilen eines Anlegerechts beisammen, in der Reihenfolge der Übersicht. */
+function groupByCapability(overviews: CapabilityOverviewResponse[]) {
+  const groups = new Map<Capability, CapabilityOverviewResponse[]>()
+  for (const overview of overviews) {
+    groups.set(overview.capability, [...(groups.get(overview.capability) ?? []), overview])
+  }
+  return [...groups.values()]
 }
 
 /**
@@ -230,6 +313,8 @@ export default function CapabilityManagementPage() {
     void load()
   }, [isSystemAdmin, load])
 
+  const capabilityCount = groupByCapability(overviews).length
+
   if (!isSystemAdmin) {
     return (
       <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, maxWidth: contentWidth.notice }}>
@@ -248,7 +333,7 @@ export default function CapabilityManagementPage() {
         <AreaPageHeader
           icon={KeyOutlinedIcon}
           title="Anlegerechte"
-          meta={overviews.length === 1 ? '1 Anlegerecht' : `${overviews.length} Anlegerechte`}
+          meta={capabilityCount === 1 ? '1 Anlegerecht' : `${capabilityCount} Anlegerechte`}
           description="Gilt für die gesamte Anwendung. Ein Anlegerecht öffnet einen Anlegepfad und nie einen Inhalt. Vergabe und Entzug wirken ohne Neuanmeldung und werden als Governance-Ereignis protokolliert."
         />
 
@@ -262,8 +347,8 @@ export default function CapabilityManagementPage() {
           <Typography sx={{ color: 'text.secondary' }}>Anlegerechte werden geladen …</Typography>
         ) : (
           <Stack spacing={2}>
-            {overviews.map((overview) => (
-              <CapabilityCard key={overview.capability} overview={overview} onChanged={load} />
+            {groupByCapability(overviews).map((entries) => (
+              <CapabilityCard key={entries[0].capability} entries={entries} onChanged={load} />
             ))}
           </Stack>
         )}

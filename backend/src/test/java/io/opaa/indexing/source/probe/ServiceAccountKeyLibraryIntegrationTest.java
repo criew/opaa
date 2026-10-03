@@ -11,6 +11,7 @@ import io.opaa.auth.DevAuthFilter;
 import io.opaa.indexing.source.ServiceAccountKey;
 import io.opaa.indexing.source.ServiceAccountKeyFixture;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
+import io.opaa.test.ConnectorReleases;
 import io.opaa.test.OpaaIntegrationTest;
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
@@ -45,6 +46,8 @@ class ServiceAccountKeyLibraryIntegrationTest {
 
   @BeforeEach
   void createLibrary() throws Exception {
+    // a connector the installation did not ship with is off until released
+    ConnectorReleases.releaseToAllAccounts(jdbcTemplate, "TYPE:PROBE_KEY");
     connector.forget();
     String created =
         mockMvc
@@ -74,6 +77,7 @@ class ServiceAccountKeyLibraryIntegrationTest {
           .perform(as(delete("/api/v1/libraries/" + libraryId)))
           .andExpect(status().isNoContent());
     }
+    ConnectorReleases.withdraw(jdbcTemplate, "TYPE:PROBE_KEY");
   }
 
   @Test

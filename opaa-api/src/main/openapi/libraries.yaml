@@ -48,7 +48,10 @@ paths:
           description: >
             The caller lacks the capability the source type requires (code CAPABILITY_REQUIRED):
             CREATE_LIBRARY for an upload library, CREATE_CONNECTOR_LIBRARY for every connector
-            type. Or the named owner group is one the caller is not a member of.
+            type - in the scope of the connection profile when connectionProfileId is set, in the
+            scope of the source type otherwise. Or the connector type or the profile is locked
+            (code CONNECTOR_LOCKED). Or the named owner group is one the caller is not a member
+            of.
           content:
             application/json:
               schema:
@@ -66,8 +69,9 @@ paths:
         Test a quellkonfiguration before a library is created, or an existing library's
         quellkonfiguration while editing it (#514, #544). Without libraryId, there is no library
         yet to hold a role on, so the caller instead needs the capability
-        CREATE_CONNECTOR_LIBRARY (ADR-0036, Entscheidung 5) - the same right creating that
-        connector library needs (#1856). The operator-configured path allowlist and the address
+        CREATE_CONNECTOR_LIBRARY (ADR-0036, Entscheidung 5) in the scope creating that connector
+        library needs - of connectionProfileId when set, of sourceType otherwise (#1856) - and
+        neither may be locked. The operator-configured path allowlist and the address
         validator remain independent of any permission, as before. With libraryId, the caller
         additionally needs AssetRole.MANAGER on that library (see
         SourceConnectionTestRequest.libraryId).
@@ -114,6 +118,14 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "409":
+          description: >
+            With libraryId: the library's connector type or connection profile is locked (code SOURCE_LOCKED); the
+            source is not reached until the system administration lifts the lock.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "429":
           $ref: "#/components/responses/TooManyRequests"
 
@@ -156,7 +168,8 @@ paths:
         AssetRole.MANAGER on that library with it (#1856); with libraryId, omitted credentials
         fall back to the stored ones when sourceUrl names the same origin. Rate-limited like the
         connection test (opaa.rate-limit.source-test) and subject to the same outbound target
-        validation. Credentials appear in no response and no error message.
+        validation. Credentials appear in no response and no error message. Without libraryId,
+        connectionProfileId selects the scope of the capability as for the connection test.
       requestBody:
         required: true
         content:
@@ -178,6 +191,14 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "409":
+          description: >
+            With libraryId: the library's connector type or connection profile is locked (code SOURCE_LOCKED); the
+            source is not reached until the system administration lifts the lock.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "429":
           $ref: "#/components/responses/TooManyRequests"
 
@@ -837,6 +858,14 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "409":
+          description: >
+            The library's connector type or connection profile is locked (code SOURCE_LOCKED); the
+            source is not reached until the system administration lifts the lock.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "429":
           $ref: "#/components/responses/TooManyRequests"
         "503":
@@ -979,6 +1008,14 @@ components:
       properties:
         sourceType:
           $ref: "#/components/schemas/SourceTypeKey"
+        connectionProfileId:
+          type: string
+          format: uuid
+          nullable: true
+          description: >
+            Without libraryId: the connection profile the library is to be created through, as
+            LibraryRequest.connectionProfileId. The capability is then checked in its scope, and
+            sourceUrl must lie under its server address.
         sourcePath:
           type: string
           maxLength: 2000
@@ -1116,6 +1153,14 @@ components:
           type: string
           format: uuid
           nullable: true
+        connectionProfileId:
+          type: string
+          format: uuid
+          nullable: true
+          description: >
+            Without libraryId: the connection profile the library is to be created through. The
+            capability is then checked in its scope, and sourceUrl must lie under its server
+            address.
         query:
           description: >
             The listing's own parameters, read by the type's connector: CONFLUENCE takes edition,
@@ -1158,7 +1203,19 @@ components:
     SourceTypeDescriptor:
       type: object
       required:
-        [type, displayName, indexingRun, uploads, pushIntake, browsable, profileSupport, authMethods]
+        [
+          type,
+          displayName,
+          indexingRun,
+          uploads,
+          pushIntake,
+          browsable,
+          profileSupport,
+          authMethods,
+          creatable,
+          creatableWithOwnAddress,
+          locked,
+        ]
       description: >
         One registered connector as the registry describes it (ADR-0038). The shape of its
         sourceSettings is documented in its handbook chapter and known to its form in the
@@ -1203,6 +1260,26 @@ components:
           description: >
             The instance-wide rhythm of the type's full reconciliation in whole days, which a
             library may lengthen; absent for a type whose every run is a full one.
+        creatable:
+          type: boolean
+          description: >
+            Whether the caller may create a library of this type now, with its own address or
+            through at least one connection profile (listConnectionProfileOptions says which).
+        creatableWithOwnAddress:
+          type: boolean
+          description: >
+            Whether the caller may create one with its own address - the release of the type
+            itself. False for a type whose libraries need a profile.
+        locked:
+          type: boolean
+          description: >
+            Whether the system administration locked the type: no new library, no run, the
+            content of existing libraries stays searchable.
+        creationNotice:
+          type: string
+          nullable: true
+          description: >
+            Why the caller may not create one, naming who can change it; absent when creatable.
 
     ScheduleFrequency:
       type: string
@@ -1411,6 +1488,10 @@ components:
           updatedAt,
         ]
       properties:
+        sourceLockNotice:
+          type: string
+          nullable: true
+          description: As LibraryResponse.sourceLockNotice.
         id:
           type: string
           format: uuid
@@ -1514,6 +1595,13 @@ components:
           description: >
             The library's profile was deleted ("Zugang entfernt"): it keeps its content, runs no
             more, and its managers connect it through another profile or delete it.
+        sourceLockNotice:
+          type: string
+          nullable: true
+          description: >
+            Present while the library's connector type or connection profile is locked: the note
+            "Gesperrt - Inhalt wird nicht mehr aktualisiert" with who is in charge. The library
+            keeps its content and runs no more until the lock is lifted.
         id:
           type: string
           format: uuid

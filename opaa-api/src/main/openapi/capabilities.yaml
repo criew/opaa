@@ -28,7 +28,10 @@ paths:
       summary: >
         Every capability with the subjects that currently hold it (system admin only) - one line
         per capability including the ones nobody holds, so the delivered state is visible and can
-        be confirmed or changed rather than discovered later (ADR-0036, Entscheidung 5).
+        be confirmed or changed rather than discovered later (ADR-0036, Entscheidung 5). A
+        capability with a scope (CREATE_CONNECTOR_LIBRARY) has one line per scope instead: every
+        connector type with its own address and every connection profile, including those nobody
+        may use yet.
       responses:
         "200":
           description: One entry per capability
@@ -81,7 +84,8 @@ paths:
             subjectId is missing for a USER or GROUP subject, or given for an ALL_ACCOUNTS one,
             which names no subject; or the group is no effective one - dissolved, or belonging to a
             switched-off identity provider. Such a group keeps the rights it has and receives no
-            new one.
+            new one. Also when scope is missing for CREATE_CONNECTOR_LIBRARY, given for any other
+            capability, or names no connector type or connection profile of the installation.
           content:
             application/json:
               schema:
@@ -191,6 +195,17 @@ components:
           description: >
             The account or group the capability is granted to. Required for USER and GROUP,
             rejected for ALL_ACCOUNTS, which names no subject.
+        scope:
+          type: string
+          nullable: true
+          maxLength: 200
+          description: >
+            Where the capability applies (ADR-0036, Nachtrag of 03.10.2026). Required for
+            CREATE_CONNECTOR_LIBRARY and rejected for every other capability: TYPE:<source type
+            key> for libraries with their own address, PROFILE:<profile id> for libraries and
+            connected accounts through a connection profile. Releasing one profile never opens
+            another profile of the same connector.
+          example: TYPE:CONFLUENCE
 
     CapabilityGrantResponse:
       type: object
@@ -203,6 +218,10 @@ components:
           $ref: "#/components/schemas/Capability"
         subjectType:
           $ref: "#/components/schemas/CapabilitySubjectType"
+        scope:
+          type: string
+          nullable: true
+          description: The scope of a CREATE_CONNECTOR_LIBRARY grant; absent for every other one.
         subjectId:
           type: string
           format: uuid
@@ -229,6 +248,18 @@ components:
       properties:
         capability:
           $ref: "#/components/schemas/Capability"
+        scope:
+          type: string
+          nullable: true
+          description: >
+            The scope this line covers, for CREATE_CONNECTOR_LIBRARY only (see
+            CapabilityGrantRequest.scope).
+          example: TYPE:CONFLUENCE
+        scopeLabel:
+          type: string
+          nullable: true
+          description: The German name of the scope, present together with scope.
+          example: Quellart Confluence
         label:
           type: string
           description: The German name of the capability, as interface and manual use it.
@@ -237,8 +268,9 @@ components:
           type: string
           description: >
             The plain-text line of who currently holds this capability - one display line, not a
-            wizard ("Alle Konten dürfen Konnektorbibliotheken anlegen").
-          example: Alle Konten dürfen Konnektorbibliotheken anlegen.
+            wizard ("Alle Konten dürfen Spaces anlegen"); for a scope it starts with the scope
+            ("Zugang Nextcloud intern: frei für Alle Konten.").
+          example: Alle Konten dürfen Spaces anlegen.
         grants:
           type: array
           items:

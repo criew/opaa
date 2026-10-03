@@ -53,7 +53,11 @@ public class CapabilityController {
       @Caller CurrentUser caller) {
     CapabilityGrant grant =
         capabilityService.grant(
-            capability, request.getSubjectType(), request.getSubjectId(), caller);
+            capability,
+            request.getScope(),
+            request.getSubjectType(),
+            request.getSubjectId(),
+            caller);
     return ResponseEntity.status(HttpStatus.CREATED)
         .body(
             CapabilityResponseMapper.toResponse(

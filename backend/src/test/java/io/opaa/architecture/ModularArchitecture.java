@@ -19,6 +19,7 @@ import static io.opaa.architecture.ModularArchitecture.Module.WORKSPACE;
 import static java.util.Map.entry;
 
 import com.tngtech.archunit.base.DescribedPredicate;
+import com.tngtech.archunit.core.domain.AccessTarget.CodeUnitAccessTarget;
 import com.tngtech.archunit.core.domain.Dependency;
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.lang.ArchCondition;
@@ -218,6 +219,19 @@ public final class ModularArchitecture {
    * only on itself and on the ones before it; the root package and its web package sit above all.
    */
   static final List<String> CONNECTION_PACKAGES = List.of("connection.profile");
+
+  /**
+   * The capability granted per connector type or profile, relative to the root (ADR-0036, Nachtrag
+   * of 03.10.2026): only rights, which stores the scope, and connections, which decides it, name
+   * it.
+   */
+  static final String CONNECTOR_RELEASE = "api.types.Capability#CREATE_CONNECTOR_LIBRARY";
+
+  /**
+   * The capability service, relative to the root: its methods that take a scope ({@code String})
+   * and {@code #scopesOf} belong to the same two modules as {@link #CONNECTOR_RELEASE}.
+   */
+  static final String CAPABILITY_SERVICE = "permission.CapabilityService";
 
   /** Every direct subpackage of this one, relative to the root, is a connector. */
   static final String CONNECTOR_PARENT = "indexing.source";
@@ -762,8 +776,49 @@ public final class ModularArchitecture {
         .allowEmptyShould(true);
   }
 
+  /**
+   * Field reads of {@link #CONNECTOR_RELEASE} and calls of the scoped methods of {@link
+   * #CAPABILITY_SERVICE}, outside rights and connections. Classes outside every module ({@code
+   * opaa-api}) are exempt.
+   */
+  ArchRule theConnectorReleaseIsDecidedInConnections() {
+    return noClasses()
+        .that(
+            DescribedPredicate.describe(
+                "are outside the modules RIGHTS and CONNECTIONS",
+                javaClass -> {
+                  Module module = moduleOf(javaClass);
+                  return module != null && module != RIGHTS && module != CONNECTIONS;
+                }))
+        .should()
+        .accessTargetWhere(
+            DescribedPredicate.describe(
+                "read " + CONNECTOR_RELEASE + " or call a scoped method of " + CAPABILITY_SERVICE,
+                access -> {
+                  String owner =
+                      relative(access.getTargetOwner().getPackageName())
+                          + "."
+                          + access.getTargetOwner().getSimpleName();
+                  if ((owner + "#" + access.getName()).equals(CONNECTOR_RELEASE)) {
+                    return true;
+                  }
+                  if (!owner.equals(CAPABILITY_SERVICE)
+                      || !(access.getTarget() instanceof CodeUnitAccessTarget target)) {
+                    return false;
+                  }
+                  return target.getName().equals("scopesOf")
+                      || target.getRawParameterTypes().stream()
+                          .anyMatch(type -> type.getName().equals(String.class.getName()));
+                }))
+        .because(
+            "the scope of CREATE_CONNECTOR_LIBRARY is stored in rights and decided in connections;"
+                + " every other module asks ConnectorReleaseService (ADR-0041, Entscheidung 8)")
+        .allowEmptyShould(true);
+  }
+
   List<ArchRule> all() {
     return List.of(
+        theConnectorReleaseIsDecidedInConnections(),
         everyPackageIsAssigned(),
         noPackageDependsOnAHigherLayer(),
         modulesDependOnlyOnAllowedModules(),

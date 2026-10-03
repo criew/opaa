@@ -28,6 +28,8 @@ import io.opaa.permission.SuccessionFinding;
  *     {@link KnowledgeLibraryService#getLibrary}; {@code null} for none and for every other result
  * @param connectionProfile the connection profile of the library, {@code null} for a library with
  *     its own address
+ * @param sourceLockNotice the note of a locked connector type or profile, {@code null} while the
+ *     library is not locked
  */
 public record LibraryDetail(
     KnowledgeLibrary library,
@@ -39,7 +41,34 @@ public record LibraryDetail(
     String ownerName,
     ConnectorData connectorSettings,
     SuccessionFinding succession,
-    LibraryProfileState connectionProfile) {
+    LibraryProfileState connectionProfile,
+    String sourceLockNotice) {
+
+  /** A detail of a library that is not locked. */
+  public LibraryDetail(
+      KnowledgeLibrary library,
+      AssetRole myRole,
+      long documentCount,
+      LibraryManagementDetail managementDetail,
+      boolean diagnosticsLockToggleable,
+      AssetReach reach,
+      String ownerName,
+      ConnectorData connectorSettings,
+      SuccessionFinding succession,
+      LibraryProfileState connectionProfile) {
+    this(
+        library,
+        myRole,
+        documentCount,
+        managementDetail,
+        diagnosticsLockToggleable,
+        reach,
+        ownerName,
+        connectorSettings,
+        succession,
+        connectionProfile,
+        null);
+  }
 
   /** A detail without a connection profile. */
   public LibraryDetail(
@@ -99,6 +128,7 @@ public record LibraryDetail(
         ownerName,
         connectorSettings,
         succession,
-        connectionProfile);
+        connectionProfile,
+        sourceLockNotice);
   }
 }

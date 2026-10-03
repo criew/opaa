@@ -61,6 +61,9 @@ public class ConnectionProfile {
   @Column(name = "connector_settings")
   private String connectorSettings;
 
+  @Column(name = "locked_at")
+  private Instant lockedAt;
+
   @Column(name = "created_at", nullable = false)
   private Instant createdAt;
 
@@ -147,6 +150,20 @@ public class ConnectionProfile {
   /** The connector defaults as stored JSON, {@code null} for none. */
   public String getConnectorSettings() {
     return connectorSettings;
+  }
+
+  /** Since when the profile is locked, {@code null} while it is not. */
+  public Instant getLockedAt() {
+    return lockedAt;
+  }
+
+  public boolean isLocked() {
+    return lockedAt != null;
+  }
+
+  void lockedSince(Instant at, Instant now) {
+    this.lockedAt = at;
+    this.updatedAt = now;
   }
 
   public Instant getCreatedAt() {

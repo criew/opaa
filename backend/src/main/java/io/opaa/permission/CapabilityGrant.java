@@ -23,8 +23,11 @@ import java.util.UUID;
  * real foreign key to its own target table; {@code ALL_ACCOUNTS} leaves both empty. {@code
  * chk_capability_grants_subject} enforces exactly the column matching {@link #getSubjectType()}.
  *
- * <p>Rows are inserted and deleted, never updated: capability plus subject are the identity of the
- * row, so a change of either is a different grant.
+ * <p>{@link #getScope() scope} is set for {@code CREATE_CONNECTOR_LIBRARY} only ({@code
+ * chk_capability_grants_scope}); rights stores it and never interprets it.
+ *
+ * <p>Rows are inserted and deleted, never updated: capability, scope plus subject are the identity
+ * of the row, so a change of any is a different grant.
  */
 @Entity
 @Table(name = "capability_grants")
@@ -38,6 +41,9 @@ public class CapabilityGrant {
   @Enumerated(EnumType.STRING)
   @Column(name = "capability", nullable = false, length = 40)
   private Capability capability;
+
+  @Column(name = "scope", length = 200)
+  private String scope;
 
   @Enumerated(EnumType.STRING)
   @Column(name = "subject_type", nullable = false, length = 20)
@@ -60,6 +66,7 @@ public class CapabilityGrant {
   private CapabilityGrant(
       UUID organizationId,
       Capability capability,
+      String scope,
       CapabilitySubjectType subjectType,
       UUID subjectUserId,
       UUID subjectGroupId,
@@ -67,6 +74,7 @@ public class CapabilityGrant {
     this.id = UUID.randomUUID();
     this.organizationId = organizationId;
     this.capability = capability;
+    this.scope = scope;
     this.subjectType = subjectType;
     this.subjectUserId = subjectUserId;
     this.subjectGroupId = subjectGroupId;
@@ -75,9 +83,19 @@ public class CapabilityGrant {
 
   public static CapabilityGrant forUser(
       UUID organizationId, Capability capability, UUID subjectUserId, UUID grantedByUserId) {
+    return forUser(organizationId, capability, null, subjectUserId, grantedByUserId);
+  }
+
+  public static CapabilityGrant forUser(
+      UUID organizationId,
+      Capability capability,
+      String scope,
+      UUID subjectUserId,
+      UUID grantedByUserId) {
     return new CapabilityGrant(
         organizationId,
         capability,
+        scope,
         CapabilitySubjectType.USER,
         subjectUserId,
         null,
@@ -86,9 +104,19 @@ public class CapabilityGrant {
 
   public static CapabilityGrant forGroup(
       UUID organizationId, Capability capability, UUID subjectGroupId, UUID grantedByUserId) {
+    return forGroup(organizationId, capability, null, subjectGroupId, grantedByUserId);
+  }
+
+  public static CapabilityGrant forGroup(
+      UUID organizationId,
+      Capability capability,
+      String scope,
+      UUID subjectGroupId,
+      UUID grantedByUserId) {
     return new CapabilityGrant(
         organizationId,
         capability,
+        scope,
         CapabilitySubjectType.GROUP,
         null,
         subjectGroupId,
@@ -97,9 +125,15 @@ public class CapabilityGrant {
 
   public static CapabilityGrant forAllAccounts(
       UUID organizationId, Capability capability, UUID grantedByUserId) {
+    return forAllAccounts(organizationId, capability, null, grantedByUserId);
+  }
+
+  public static CapabilityGrant forAllAccounts(
+      UUID organizationId, Capability capability, String scope, UUID grantedByUserId) {
     return new CapabilityGrant(
         organizationId,
         capability,
+        scope,
         CapabilitySubjectType.ALL_ACCOUNTS,
         null,
         null,
@@ -121,6 +155,11 @@ public class CapabilityGrant {
 
   public Capability getCapability() {
     return capability;
+  }
+
+  /** The scope of a {@code CREATE_CONNECTOR_LIBRARY} grant, {@code null} for every other one. */
+  public String getScope() {
+    return scope;
   }
 
   public CapabilitySubjectType getSubjectType() {

@@ -179,6 +179,26 @@ class ModularArchitectureFixtureTest {
             violation -> assertThat(violation).contains("indexing -> connection points upward"));
   }
 
+  /**
+   * library reads the scoped capability and calls the scoped checks itself; connections and rights
+   * may, an unscoped check from workspace passes.
+   */
+  @Test
+  void aConnectorReleaseDecidedOutsideConnectionsIsReported() {
+    Scenario scenario = new Scenario("connectorrelease");
+
+    assertThat(scenario.violations(ModularArchitecture::theConnectorReleaseIsDecidedInConnections))
+        .hasSize(3)
+        .allSatisfy(violation -> assertThat(violation).contains("library.LibraryCreation"))
+        .anySatisfy(
+            violation -> assertThat(violation).contains("Capability.CREATE_CONNECTOR_LIBRARY"))
+        .anySatisfy(
+            violation ->
+                assertThat(violation)
+                    .contains("CapabilityService.hasCapability(", "Capability, java.lang.String)"))
+        .anySatisfy(violation -> assertThat(violation).contains("CapabilityService.scopesOf("));
+  }
+
   @Test
   void anUnassignedTopLevelPackageIsNamedWithWhereToAssignIt() {
     Scenario scenario = new Scenario("unassigned");

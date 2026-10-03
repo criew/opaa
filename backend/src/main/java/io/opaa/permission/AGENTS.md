@@ -15,7 +15,10 @@ hängt nur von foundation und identity ab.
 - **`permission` kennt kein Fachpaket und nicht die Asset-Schale.** Was es von oben braucht,
   deklariert es als Port, den das obere Paket implementiert (`GroupMembershipSource`,
   `GroupSubjectDirectory`, `AssetOwnershipDirectory`, `SuccessionFindingSource`,
-  `GroupSpaceMembershipDirectory`, `SpaceAssetDirectory`).
+  `GroupSpaceMembershipDirectory`, `SpaceAssetDirectory`, `CapabilityScopeCatalog`).
+- **Geltungsbereich einer Fähigkeit** hat nur `CREATE_CONNECTOR_LIBRARY` (`CapabilityService#isScoped`):
+  rights speichert `scope` und deutet ihn nie; jede Prüfung dieser Fähigkeit nennt ihn. Entschieden
+  wird die Freigabe in connections (`ConnectorReleaseService`, ADR-0041).
 - **Grants sind typunabhängig:** Ein Grant nennt sein Asset über `AssetType` plus ID; `permission`
   zählt die Typen nie auf. `asset_grants` verweist mit der Organisation im Schlüssel und
   `ON DELETE CASCADE` auf `assets` — kein Grant überlebt sein Asset.
@@ -52,9 +55,5 @@ hängt nur von foundation und identity ab.
   --tests 'io.opaa.directory.*' --tests 'io.opaa.succession.*' --tests 'io.opaa.architecture.*'
 ```
 
-Bei Änderungen am Verzeichnis-Konnektor (`directory.sync`) zusätzlich `./gradlew keycloakIntegrationTest`
-(braucht Docker).
-
-Bei Schemaänderungen: neue Datei unter `db/changelog/rights/`. Regeln und
-Tests in `backend/AGENTS.md`, „Liquibase: Changelog je Modul“ — ein eigener Delta-Test ist nur
-für rein additive DDL entbehrlich.
+Bei Änderungen an `directory.sync` zusätzlich `./gradlew keycloakIntegrationTest` (braucht Docker).
+Schemaänderungen: neue Datei unter `db/changelog/rights/`; Regeln in `backend/AGENTS.md`, „Liquibase“.

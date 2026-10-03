@@ -14,11 +14,11 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.AssetRole;
-import io.opaa.api.types.Capability;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ValidationException;
+import io.opaa.connection.ConnectorReleaseService;
 import io.opaa.connection.LibraryConnectionService;
 import io.opaa.indexing.source.LibrarySourceConnectionResolver;
 import io.opaa.indexing.source.ServiceAccountTokens;
@@ -33,7 +33,6 @@ import io.opaa.indexing.source.confluence.ConfluenceTestSettings;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.LibraryAccessService;
-import io.opaa.permission.CapabilityService;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.test.SourceTypes;
 import java.net.URI;
@@ -56,7 +55,7 @@ class SourceConnectionTestServiceConfluenceTest {
   private KnowledgeLibraryRepository libraryRepository;
   private LibraryAccessService libraryAccessService;
   private ConfluenceConnectionService confluenceConnectionService;
-  private CapabilityService capabilityService;
+  private ConnectorReleaseService connectorRelease;
   private SourceConnectionTestService service;
   private UUID currentUserId;
   private UUID organizationId;
@@ -67,7 +66,7 @@ class SourceConnectionTestServiceConfluenceTest {
     libraryRepository = mock(KnowledgeLibraryRepository.class);
     libraryAccessService = mock(LibraryAccessService.class);
     confluenceConnectionService = mock(ConfluenceConnectionService.class);
-    capabilityService = mock(CapabilityService.class);
+    connectorRelease = mock(ConnectorReleaseService.class);
     currentUserId = UUID.randomUUID();
     organizationId = UUID.randomUUID();
     caller = CurrentUser.of(currentUserId, organizationId, SystemRole.USER, "Caller");
@@ -78,7 +77,7 @@ class SourceConnectionTestServiceConfluenceTest {
             TestSourceConnectors.connectors()
                 .confluenceConnectionService(confluenceConnectionService)
                 .registry(),
-            capabilityService,
+            connectorRelease,
             new LibrarySourceConnectionResolver(),
             mock(LibraryConnectionService.class),
             new ServiceAccountTokens(TargetAddressValidator.disabled(), Clock.systemUTC()));
@@ -149,14 +148,12 @@ class SourceConnectionTestServiceConfluenceTest {
         .hasMessageContaining("sourcePath");
   }
 
-  /**
-   * #1856: the same connector capability {@code createLibrary} needs, checked ahead of validation.
-   */
+  /** #1856: the same connector release {@code createLibrary} needs, checked ahead of validation. */
   @Test
   void spaceListingWithoutLibraryIdRequiresTheConnectorCapability() {
     doThrow(new AccessDeniedException("Ihnen fehlt das Anlegerecht", "CAPABILITY_REQUIRED"))
-        .when(capabilityService)
-        .requireCapability(caller, Capability.CREATE_CONNECTOR_LIBRARY);
+        .when(connectorRelease)
+        .requireCreatable(caller, SourceTypes.CONFLUENCE, null);
 
     assertThatThrownBy(
             () ->

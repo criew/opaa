@@ -45,12 +45,15 @@ export const mockCapabilityOverview: CapabilityOverviewResponse[] = [
   },
   {
     capability: 'CREATE_CONNECTOR_LIBRARY',
+    scope: 'TYPE:RSS_FEED',
+    scopeLabel: 'Quellart RSS-Feed',
     label: 'Konnektorbibliotheken anlegen',
-    statement: 'Alle Konten dürfen Konnektorbibliotheken anlegen.',
+    statement: 'Quellart RSS-Feed: frei für Alle Konten.',
     grants: [
       {
         id: 'capability-grant-connector-all',
         capability: 'CREATE_CONNECTOR_LIBRARY',
+        scope: 'TYPE:RSS_FEED',
         subjectType: 'ALL_ACCOUNTS',
         subjectId: null,
         subjectName: null,
@@ -58,6 +61,14 @@ export const mockCapabilityOverview: CapabilityOverviewResponse[] = [
         createdAt: '2026-09-01T08:00:00Z',
       },
     ],
+  },
+  {
+    capability: 'CREATE_CONNECTOR_LIBRARY',
+    scope: 'PROFILE:connection-profile-nextcloud',
+    scopeLabel: 'Zugang Nextcloud intern',
+    label: 'Konnektorbibliotheken anlegen',
+    statement: 'Zugang Nextcloud intern: aus, nur die Systemverwaltung.',
+    grants: [],
   },
   {
     capability: 'CREATE_INTERNAL_GROUP',

@@ -5,12 +5,14 @@ import io.opaa.api.dto.ConnectionProfileImpactResponse;
 import io.opaa.api.dto.ConnectionProfileOption;
 import io.opaa.api.dto.ConnectionProfileResponse;
 import io.opaa.api.dto.ConnectionProfileUpdateRequest;
-import io.opaa.api.types.Capability;
+import io.opaa.api.dto.ConnectorLockRequest;
+import io.opaa.api.dto.ConnectorTypeStateResponse;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
+import io.opaa.connection.ConnectorReleaseService;
 import io.opaa.connection.profile.ConnectionProfile;
 import io.opaa.connection.profile.ConnectionProfileService;
-import io.opaa.permission.CapabilityService;
+import io.opaa.connection.profile.ConnectorLockService;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.Map;
@@ -28,8 +30,8 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * The administration of connection profiles ({@code SYSTEM_ADMIN} only) and the selection a library
- * is connected from. No answer carries the client secret.
+ * The administration of connection profiles and connector locks ({@code SYSTEM_ADMIN} only) and the
+ * selection a library is connected from. No answer carries the client secret.
  */
 @RestController
 public class ConnectionProfileController {
@@ -37,12 +39,16 @@ public class ConnectionProfileController {
   private static final String ADMIN = "/api/v1/admin/connection-profiles";
 
   private final ConnectionProfileService profiles;
-  private final CapabilityService capabilities;
+  private final ConnectorReleaseService release;
+  private final ConnectorLockService locks;
 
   public ConnectionProfileController(
-      ConnectionProfileService profiles, CapabilityService capabilities) {
+      ConnectionProfileService profiles,
+      ConnectorReleaseService release,
+      ConnectorLockService locks) {
     this.profiles = profiles;
-    this.capabilities = capabilities;
+    this.release = release;
+    this.locks = locks;
   }
 
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
@@ -114,11 +120,39 @@ public class ConnectionProfileController {
     return ConnectionProfileResponseMapper.toResponse(profiles.disconnectAll(caller, profileId));
   }
 
+  @PreAuthorize("hasRole('SYSTEM_ADMIN')")
+  @PutMapping(ADMIN + "/{profileId}/lock")
+  public ConnectionProfileResponse lockConnectionProfile(
+      @PathVariable UUID profileId,
+      @Valid @RequestBody ConnectorLockRequest request,
+      @Caller CurrentUser caller) {
+    return toResponse(locks.lockProfile(caller, profileId, request.getLocked()));
+  }
+
+  @PreAuthorize("hasRole('SYSTEM_ADMIN')")
+  @GetMapping("/api/v1/admin/connector-types")
+  public List<ConnectorTypeStateResponse> listConnectorTypeStates() {
+    return locks.typeStates().stream().map(ConnectionProfileResponseMapper::toResponse).toList();
+  }
+
+  @PreAuthorize("hasRole('SYSTEM_ADMIN')")
+  @PutMapping("/api/v1/admin/connector-types/{sourceType}/lock")
+  public ConnectorTypeStateResponse lockConnectorType(
+      @PathVariable String sourceType,
+      @Valid @RequestBody ConnectorLockRequest request,
+      @Caller CurrentUser caller) {
+    return ConnectionProfileResponseMapper.toResponse(
+        locks.lockType(
+            caller, ConnectionProfileResponseMapper.toSourceType(sourceType), request.getLocked()));
+  }
+
   @GetMapping("/api/v1/connection-profiles")
   public List<ConnectionProfileOption> listConnectionProfileOptions(
       @RequestParam String sourceType, @Caller CurrentUser caller) {
-    capabilities.requireCapability(caller, Capability.CREATE_CONNECTOR_LIBRARY);
-    return profiles.selectableFor(ConnectionProfileResponseMapper.toSourceType(sourceType)).stream()
+    release.requireAnyRelease(caller);
+    return release
+        .profileOptions(caller, ConnectionProfileResponseMapper.toSourceType(sourceType))
+        .stream()
         .map(ConnectionProfileResponseMapper::toOption)
         .toList();
   }

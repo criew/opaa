@@ -13,6 +13,7 @@ function initialProfiles(): ConnectionProfileResponse[] {
       clientSecretExpiresSoon: false,
       connectorSettings: { edition: 'INTERN' },
       connectionCount: 2,
+      locked: false,
       createdAt: '2026-10-01T09:00:00Z',
       updatedAt: '2026-10-01T09:00:00Z',
     },

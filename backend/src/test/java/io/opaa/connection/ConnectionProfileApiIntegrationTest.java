@@ -13,6 +13,7 @@ import com.jayway.jsonpath.JsonPath;
 import io.opaa.auth.DevAuthFilter;
 import io.opaa.indexing.source.profileprobe.ProfileProbeIndexingExecutor;
 import io.opaa.indexing.source.profileprobe.ProfileProbeIndexingExecutor.Seen;
+import io.opaa.test.ConnectorReleases;
 import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.OwnLibraryFixtures;
 import java.nio.charset.StandardCharsets;
@@ -46,10 +47,14 @@ class ConnectionProfileApiIntegrationTest {
 
   private final List<UUID> profiles = new ArrayList<>();
   private final List<UUID> libraries = new ArrayList<>();
+  private final List<String> releasedScopes = new ArrayList<>();
 
   @AfterEach
   void tearDown() {
     libraryFixtures.removeLibraries(libraries.toArray(UUID[]::new));
+    for (String scope : releasedScopes) {
+      ConnectorReleases.withdraw(jdbc, scope);
+    }
     for (UUID profile : profiles) {
       jdbc.update("DELETE FROM connection_profiles WHERE id = ?", profile);
     }
@@ -277,6 +282,9 @@ class ConnectionProfileApiIntegrationTest {
         .andExpect(jsonPath("$.connectionProfileRemoved").value(false));
     assertThat(run(library, "COMPLETED").credentials()).isNull();
 
+    // an own address is the type's target, released here like the delivered types
+    releasedScopes.add("TYPE:PROFILE_PROBE");
+    ConnectorReleases.releaseToAllAccounts(jdbc, "TYPE:PROFILE_PROBE");
     mockMvc
         .perform(as("dev-user", delete("/api/v1/libraries/" + library + "/connection-profile")))
         .andExpect(status().isOk())
@@ -362,6 +370,9 @@ class ConnectionProfileApiIntegrationTest {
             .getContentAsString(StandardCharsets.UTF_8);
     UUID id = UUID.fromString(JsonPath.read(body, "$.id"));
     profiles.add(id);
+    // a new profile is off; this class is about what a released one does
+    releasedScopes.add("PROFILE:" + id);
+    ConnectorReleases.releaseToAllAccounts(jdbc, "PROFILE:" + id);
     return id;
   }
 
