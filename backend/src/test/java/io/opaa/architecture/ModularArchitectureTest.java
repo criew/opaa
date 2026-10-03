@@ -73,6 +73,11 @@ class ModularArchitectureTest {
   }
 
   @Test
+  void theFileSyncKnowsNoProvider() {
+    ARCHITECTURE.theFileSyncKnowsNoProvider().check(mainClasses);
+  }
+
+  @Test
   void connectorsDoNotKnowEachOther() {
     ARCHITECTURE.connectorsDoNotKnowEachOther().check(mainClasses);
   }

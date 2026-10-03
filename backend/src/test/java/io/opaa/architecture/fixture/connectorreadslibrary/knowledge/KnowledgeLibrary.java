@@ -9,6 +9,10 @@ public class KnowledgeLibrary {
     return null;
   }
 
+  public String getSourceProxy() {
+    return null;
+  }
+
   public String getSourceSettings() {
     return null;
   }

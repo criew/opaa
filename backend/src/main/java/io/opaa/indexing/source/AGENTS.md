@@ -1,8 +1,7 @@
 # Modul connectors
 
 Pakete (`io.opaa.indexing.source.*`): confluence, filesystem, rss, s3, upload, web — jedes direkte
-Unterpaket ist ein Konnektor. Der Vertrag selbst liegt in `indexing.source` und gehört zu knowledge (siehe
-`knowledge/AGENTS.md`). Ergänzt `backend/AGENTS.md`.
+Unterpaket ist ein Konnektor. Der Vertrag liegt in `indexing.source` (knowledge). Ergänzt `backend/AGENTS.md`.
 
 ## Zweck und Grenze
 
@@ -25,9 +24,8 @@ von foundation, format und knowledge ab.
   JSON-Objekt in `source_settings`; der Kern reicht es als `ConnectorData` durch.
 - **Ziel, Geheimnis und Einstellungen kommen nur vom Kern** (ADR-0041, 3a): im Lauf über
   `IndexingRun#settings()` (ohne Geheimnis) und `#currentCredentials()`, das bei jedem Aufruf das
-  jetzt gültige Geheimnis vom Port holt; sonst als `SourceSettings` oder `ConnectorData` im Aufruf.
-  Einen `SourceConnectionResolver` hält oder erzeugt kein Konnektor. Aus `KnowledgeLibrary` liest er
-  nur `getSourcePath` (Dateisystem) und `getWebhookSecret` (Push-Adapter).
+  jetzt gültige Geheimnis vom Port holt; sonst im Aufruf. Kein Konnektor hält oder erzeugt einen
+  `SourceConnectionResolver` oder liest aus `KnowledgeLibrary` mehr als `getSourcePath`/`getWebhookSecret`.
 - **Geheimnisse stehen nie in `source_settings`** — die Spalte ist unverschlüsselt und erscheint in
   Antworten. Plätze für Geheimnisse sind nur `source_credentials` und `source_webhook_secret`,
   beide verschlüsselt. Antworten tragen nur Ja/Nein, das Audit nur Feldnamen.
@@ -37,6 +35,8 @@ von foundation, format und knowledge ab.
 - **Der Laufrahmen ist `IndexingRunTemplate`:** Der Körper zählt nur die Quelle auf, gibt jedes
   Element über `IndexingRun` weiter und meldet einen `ListingOutcome`. Fortschritt, Protokoll,
   Fehlerübersetzung und Abgleich durch Abwesenheit besitzt der Rahmen.
+- **Dateiablagen** implementieren `FileStore` aus `indexing.filesync` mit dessen neutralen
+  Fehlerarten; den Abgleich besitzt `FileSync`. Ihre Tests erweitern `FileStoreContract`.
 - **Push-Adapter** (`confluence.webhook`, `s3.events`) liegen über ihrem Konnektor; der Konnektor
   erreicht sie über einen eigenen Port (`ConfluencePushReceiver`, `S3PushReceiver`).
 - **Netzzugriff:** HTTP über `io.opaa.sourceaccess`, S3 über `io.opaa.s3`.
@@ -44,7 +44,7 @@ von foundation, format und knowledge ab.
 
 ## Verweise
 
-- ADRs (`docs/decisions/`): 0017, 0018, 0023, 0027, 0038, 0041 (Entscheidung 3a: Lauf-SPI)
+- ADRs (`docs/decisions/`): 0017, 0018, 0023, 0027, 0038, 0040, 0041 (Entscheidung 3a: Lauf-SPI)
 - Handbuch: `docs/handbuch/indexierung.md`, Abschnitt 4; `docs/handbuch/konnektor-*.md`
 - Strukturtests: `ModularArchitectureTest` (`connectorsDoNotKnowEachOther`,
   `noOneOutsideAConnectorKnowsIt`, `connectorsTakeTheirSourceConfigurationFromTheCore`)

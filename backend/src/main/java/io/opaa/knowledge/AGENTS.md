@@ -23,9 +23,9 @@ identity und rights ab.
   (parsen, schneiden, speichern, markieren). Die `Document`-Zeile gehört `knowledge`.
 - **Richtung im Kern von `indexing`** (`ModularArchitecture.INDEXING_CORE`): `chunk`, `job` (Lauf,
   Protokoll), `attachment` (Übergabe an den Anhangspfad), `document` (Aufnahme samt Anhängen),
-  `source` (Vertrag, Laufrahmen, Auslöser), `maintenance`; darüber Wurzel, `web` und Konnektoren.
-  Rückwege sind Ports: `VanishedDocumentReconciler`, Properties als Schnittstellen
-  (`EmbeddingBatching` u. a.).
+  `source` (Vertrag, Laufrahmen, Auslöser), `maintenance`, `filesync` (Datei-Abgleich, ADR-0040,
+  kennt keinen Konnektor und keinen Anbieter); darüber Wurzel, `web` und Konnektoren. Rückwege
+  sind Ports: `VanishedDocumentReconciler`, Properties als Schnittstellen (`EmbeddingBatching`).
 - **Formate** liegen im Modul format (`io.opaa.format`, siehe `format/AGENTS.md`).
   `FormatConfiguration` registriert die Dateiformate als Beans; `DocumentIngestService` lehnt ein
   Format ab, das einen Schemaschlüssel als Passthrough-Schlüssel deklariert.
@@ -41,7 +41,7 @@ identity und rights ab.
 
 ## Verweise
 
-- ADRs (`docs/decisions/`): 0017, 0018, 0020, 0022, 0024, 0026, 0028, 0030
+- ADRs (`docs/decisions/`): 0017, 0018, 0020, 0022, 0024, 0026, 0028, 0030, 0040
 - Handbuch: `docs/handbuch/indexierung.md`, `docs/handbuch/metadaten.md`
 - Strukturtests: `ModularArchitectureTest`
 

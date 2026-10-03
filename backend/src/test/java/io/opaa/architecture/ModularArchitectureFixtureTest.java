@@ -138,6 +138,31 @@ class ModularArchitectureFixtureTest {
             "ModularArchitecture.MODULES");
   }
 
+  /**
+   * {@code indexing.filesync} reaches the provider package, a connector and a third-party class.
+   */
+  @Test
+  void aFileSyncThatKnowsAProviderIsReported() {
+    Scenario scenario = new Scenario("filesyncprovider");
+
+    assertThat(scenario.violations(ModularArchitecture::theFileSyncKnowsNoProvider))
+        .hasSize(3)
+        .anySatisfy(
+            violation ->
+                assertThat(violation).contains("-> s3 is no package the file sync may use"))
+        .anySatisfy(
+            violation ->
+                assertThat(violation)
+                    .contains("-> indexing.source.s3 is no package the file sync may use"))
+        .anySatisfy(
+            violation ->
+                assertThat(violation)
+                    .contains("-> org.springframework.util.StringUtils is a third-party client"));
+    assertThat(scenario.violations(ModularArchitecture::theIndexingCoreDependsOnlyDownward))
+        .singleElement(STRING)
+        .contains("indexing.filesync -> indexing.source.s3 leaves the indexing core");
+  }
+
   @Test
   void anEdgeBetweenConnectorsIsReported() {
     Scenario scenario = new Scenario("connectoredge");
@@ -160,9 +185,9 @@ class ModularArchitectureFixtureTest {
   }
 
   /**
-   * A call, a method reference, the static read of the stored settings, a held resolver and a
-   * created one are reported; the push secret, the filesystem path and the core's own resolver
-   * pass.
+   * A call, a method reference, the static read of the stored settings, a held resolver, a created
+   * one and a read from the file sync are reported; the push secret, the filesystem path and the
+   * core's own resolver pass.
    */
   @Test
   void aConnectorReadingItsSourceConfigurationFromTheLibraryIsReported() {
@@ -171,7 +196,11 @@ class ModularArchitectureFixtureTest {
     assertThat(
             scenario.violations(
                 ModularArchitecture::connectorsTakeTheirSourceConfigurationFromTheCore))
-        .hasSize(5)
+        .hasSize(6)
+        .anySatisfy(
+            violation ->
+                assertThat(violation)
+                    .contains("filesync.FileSyncRun", "KnowledgeLibrary.getSourceProxy"))
         .anySatisfy(
             violation -> assertThat(violation).contains("web.WebRun", "SourceConnectionResolver"))
         .anySatisfy(
