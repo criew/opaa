@@ -480,8 +480,8 @@ Entscheidung 1 widerspräche.
 >    dokumentierte Beteiligung des Personalrats. `SYSTEM_ADMIN` ist nicht eingeschlossen. Weil die
 >    Formel die Vollmacht kennen muss, liegt sie in rights oder darunter, nicht in connections. Rolle
 >    und Ablauf legt #2171 fest; bis dahin gibt es keinen Inhaltszugriff auf private Bibliotheken.
-> 6. **Vorläufig liest die Systemrolle `AUDITOR` das Verbindungsprotokoll.** Die Bestätigung des
->    Maintainers gegen Beschluss 12 steht aus. Gelesen wird über dasselbe Tor wie das
+> 6. **Das Verbindungsprotokoll liest die Systemrolle `AUDITOR`** (Beschluss 13 des Maintainers
+>    vom 03.10.2026, Epic #2147). Gelesen wird über dasselbe Tor wie das
 >    Revisionsprotokoll (`AuditAccessGate`: Anlass, begrenzter Zeitraum, eigener Zugriffseintrag).
 >    `SYSTEM_ADMIN` liest es nicht mit. Abwägung:
 >    - Eine Fähigkeit scheidet aus, weil eine Fähigkeit nie ein Leserecht ist (oben, „Verhältnis zu
@@ -490,10 +490,10 @@ Entscheidung 1 widerspräche.
 >      zwischen Revision und Verbindungsprotokoll wählen, und „Keine neue Systemrolle“ gilt weiter.
 >    - Die Forderung „eigene Leserolle, die Systemverwaltung liest nicht mit“ (Epic #2147,
 >      Beschluss 12) erfüllt `AUDITOR`, weil die Rolle von der Systemverwaltung getrennt ist.
->    - **Zu bewerten (Personalrat):** Dieselbe Rolle stellt auch den Antrag auf Vorfallszugriff
+>    - **Bewusst in Kauf genommen:** Dieselbe Rolle stellt auch den Antrag auf Vorfallszugriff
 >      (Punkt 5). Wer das Protokoll liest, kann also auch den Zugriff auf Inhalte beantragen, aber
 >      nicht allein bestätigen.
->    - **Zu bewerten (Personalrat):** `AUDITOR` kann aus dem Rollen-Claim eines Anbieters stammen
+>    - **Bewusst in Kauf genommen:** `AUDITOR` kann aus dem Rollen-Claim eines Anbieters stammen
 >      (`TokenRoleSynchronizer`, ADR-0025, Entscheidung 4). Wer die Rolle beim Anbieter vergibt,
 >      bestimmt dann auch, wer das Verbindungsprotokoll liest.
 

@@ -402,14 +402,19 @@ Versetzung oder Gruppenwechsel. Für lange Abwesenheit oder Versetzung gibt das 
    neu verbinden.
 
 **Wann ein Konto deaktiviert ist,** beantwortet eine zentrale Abfrage für alle Kontoarten: lokal
-gesperrt, befristet abgelaufen, Verzeichnissperre, Anbieter gelöscht. Ein deaktivierter Anbieter
-lässt die Verbindungen ruhen. OPAA prüft die Abfrage vor jeder Nutzung eines Tokens und gleicht
-täglich ab; Ereignisse lösen den Abgleich sofort aus
+gesperrt, befristet abgelaufen, Verzeichnissperre, Anbieter gelöscht. OPAA prüft die Abfrage vor
+jeder Nutzung eines Tokens und gleicht täglich ab; Ereignisse lösen den Abgleich sofort aus
 ([ADR-0041](../decisions/0041-verbindungen-als-eigenes-modul.md), Entscheidung 4).
 
+**Ruhen ist keine Deaktivierung.** Die Verbindungen einer Person ruhen, wenn ihr Anbieter
+deaktiviert ist oder wenn sie sich seit 90 Tagen nicht angemeldet hat (einstellbar 30–365). Ruhen
+stoppt Läufe, löscht aber nichts und startet keine Löschfrist. Vor dem Deaktivieren und Löschen
+eines Anbieters nennt die Verwaltung die Zahl der betroffenen Verbindungen und privaten
+Bibliotheken.
+
 **Restlücke:** Sperrt ein OIDC-Anbieter eine Person und gibt es keinen Verzeichnis-Konnektor, erfährt
-OPAA davon nichts. Vorgeschlagen ist eine Inaktivitätsschwelle: Ohne Anmeldung seit 90 Tagen
-(einstellbar) ruhen die Verbindungen. Darüber entscheidet der Maintainer.
+OPAA davon nichts. Die Inaktivitätsschwelle stoppt dann die Läufe, das Token bleibt bis zu einer
+Sperre in OPAA gespeichert.
 
 **Sofortlöschung:** Die Besitzerin kann eine private Bibliothek jederzeit selbst sofort löschen.
 
@@ -432,7 +437,7 @@ in ein **eigenes Verbindungsprotokoll**:
 
 - Inhalt: wer, welches Profil, welches Ereignis, wann. Keine Token, keine Kontoadresse beim Anbieter
   (außer bei Quellverbindungen, wo sie ohnehin in den Bibliotheksdetails steht).
-- **Eigene Leserolle:** vorläufig `AUDITOR` (Bestätigung durch den Maintainer steht aus), mit Anlass und begrenztem Zeitraum wie beim Revisionsprotokoll
+- **Eigene Leserolle:** `AUDITOR` (Beschluss 13), mit Anlass und begrenztem Zeitraum wie beim Revisionsprotokoll
   ([ADR-0036](../decisions/0036-berechtigungsmodell-gruppen-und-faehigkeiten.md), Nachtrag vom
   03.10.2026). Die Systemverwaltung liest es nicht mit.
 - **Aufbewahrungsfrist,** danach wird gelöscht: Vorgabe 12 Monate, einstellbar von 6 bis 24 Monaten

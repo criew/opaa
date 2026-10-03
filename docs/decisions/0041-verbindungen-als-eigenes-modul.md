@@ -87,9 +87,11 @@ aus Entscheidung 3 nicht am Port. Deshalb:
   sind bei Profilen mit den Vorgaben des Profils zusammengeführt.
 - Die Entität dient dem Konnektor nur noch für Identität und Bestand.
 - **ArchUnit-Regel:** Keine Klasse eines Konnektorpakets ruft `KnowledgeLibrary#getSourceCredentials`,
-  `#getSourceUrl`, `#getSourceProxy`, `#isSourceInsecureSsl`, `#getSourceSettings`,
-  `#getWebhookSecret` oder `ConnectorData#storedIn` auf. Ausgenommen ist `#getSourcePath`: Das
-  Dateisystem verbietet Profile, und der Pfad ist kein Geheimnis.
+  `#getSourceUrl`, `#getSourceProxy`, `#isSourceInsecureSsl`, `#getSourceSettings` oder
+  `ConnectorData#storedIn` auf. Zwei Ausnahmen:
+  - `#getSourcePath`, weil das Dateisystem Profile verbietet und der Pfad kein Geheimnis ist.
+  - `#getWebhookSecret`, weil das Push-Geheimnis an der Bibliothek bleibt und nicht am Profil
+    hängt. Die Push-Adapter (`ConfluenceWebhookService`, `S3EventService`) lesen es weiter selbst.
 - Der Umbau ist ein eigenes, vorbereitendes Issue vor #2160:
   [#2178](https://github.com/criew/opaa/issues/2178). Bis #2160 löst ein Übergangs-Resolver im
   Kern die Felder der Bibliothek wie heute auf, sodass sich nichts sichtbar ändert.
@@ -102,63 +104,81 @@ für das Deaktivieren eines OIDC-Anbieters fehlt es, und die Sperre bei einem An
 Verzeichnis-Konnektor erfährt OPAA gar nicht.
 
 - **Zentrale Abfrage in identity** (`io.opaa.auth`, Arbeitsname `AccountUsability`): Ist das Konto
-  jetzt nutzbar? Sie führt die heute verstreuten Quellen zusammen, nach dem Muster von
-  `ExternalAccessTokenAuthenticator`:
+  jetzt nutzbar? Vorbild ist `LocalAdminAvailabilityGuard#isLoginCapable`, die heute vollständigste
+  Regel: Verzeichnissperre vor allem anderen, lokaler Issuer über `LocalAccountAccess`, Dev-Issuer
+  und Anbieter über `OidcIssuerUris.normalize`, nur `ProviderType.OIDC`.
 
   | Zustand | Ergebnis |
   |---|---|
   | lokal gesperrt (`LocalCredentials`), außer der vorübergehenden Sperre nach Fehlversuchen (`FAILED_LOGINS`) | deaktiviert |
   | befristetes lokales Konto abgelaufen (`LocalAccountState.EXPIRED`) | deaktiviert |
   | Verzeichnissperre (`User#isDirectoryLocked`) | deaktiviert |
-  | Anbieter des Issuers gelöscht | deaktiviert |
+  | kein Anbieter mehr zum normalisierten Issuer (gelöscht), außer dem Dev-Issuer | deaktiviert |
   | Anbieter des Issuers deaktiviert | ruht |
-  | sonst | nutzbar, mit dem Zeitpunkt der letzten Aktivität (`users.last_login_at`) |
+  | ohne Aktivität seit der Inaktivitätsschwelle (`users.last_login_at`) | ruht |
+  | sonst | nutzbar |
 
   `AccountState` (rights) ist keine Quelle, weil dort nur der Verzeichnisabgleich schreibt.
+- **Eine Regel statt drei:** `LocalAdminAvailabilityGuard` und `ExternalAccessTokenAuthenticator`
+  stellen auf die Abfrage um. Für den Authenticator ändert sich dabei Verhalten: Fremdzugangstokens
+  von Personen eines deaktivierten oder gelöschten Anbieters werden künftig abgelehnt, wie heute
+  schon deren Anmeldung. Die Inaktivitätsschwelle gilt dort nicht, weil sie eine Regel für
+  Verbindungen ist. Die Abfrage meldet „ruht wegen Inaktivität“ deshalb gesondert.
+- **Ruhen ist keine Deaktivierung** (Beschluss 15). „Ruht“ stoppt Läufe und die Herausgabe von
+  Geheimnissen, löscht aber nichts und startet keine Löschfrist. Mit dem nächsten Zustand „nutzbar“
+  geht es ohne Neuverbinden weiter.
+- **Deaktivierter Anbieter zählt als Ruhen.** Ein vorübergehendes Abschalten, etwa für eine
+  Migration, soll nicht massenhaft löschen. Erst das Löschen des Anbieters deaktiviert dessen
+  Konten.
+  - Vor dem Deaktivieren nennt die Anbieterverwaltung der Systemverwaltung die Zahl der ruhenden
+    Verbindungen und privaten Bibliotheken.
+  - Vor dem Löschen nennt sie zusätzlich, dass für deren private Bibliotheken die Löschfrist
+    beginnt.
 - **Prüfung vor jeder Herausgabe:** Der Port (Entscheidung 3) gibt das Geheimnis einer Person nur
-  heraus, wenn ihr Konto nutzbar ist. So wirkt jede Deaktivierung spätestens beim nächsten Lauf.
+  heraus, wenn ihr Konto nutzbar ist. So wirkt jede Deaktivierung und jedes Ruhen spätestens beim
+  nächsten Lauf.
 - **Täglicher Abgleich in connections:**
-  - Deaktivierte Konten: Token und Geheimnisse löschen, beim Anbieter widerrufen.
-  - Ruhende Konten: Verbindungen ruhen lassen.
-  - Nutzbare Konten: hebt die Ruhe auf.
-  - connections hält je Konto fest, seit wann es nicht nutzbar ist; dieser Zeitpunkt beginnt die
-    Löschfrist.
-- **Ereignisse lösen den Abgleich eines Kontos sofort aus**, in der Transaktion des Auslösers:
-  `LocalAccountAccessEndedEvent` für das betroffene Konto, `OidcProvidersChangedEvent` für alle
-  Konten (das Ereignis trägt keinen Anbieter). Der Widerruf beim Anbieter läuft nach dem Commit als
-  Versuch und hält die Sperre nie auf.
+  - Deaktivierte Konten: Token und Geheimnisse löschen, beim Anbieter widerrufen. connections hält
+    fest, seit wann das Konto deaktiviert ist; nur dieser Zeitpunkt beginnt die Löschfrist.
+  - Ruhende Konten: Verbindungen ruhen lassen, ohne Frist.
+  - Nutzbare Konten: Ruhe und Fristbeginn aufheben.
+- **Ereignisse lösen den Abgleich sofort aus, nach dem Commit** des Auslösers
+  (`@TransactionalEventListener(AFTER_COMMIT)`):
+  - `LocalAccountAccessEndedEvent` für das betroffene Konto.
+  - `OidcProvidersChangedEvent` für alle Konten. Das Ereignis trägt keinen Anbieter und kommt auch
+    beim Umbenennen und beim Start (`LocalAdminSeeder`).
+  - Eine Anbieteränderung hängt so nie am Abgleich aller Verbindungen. Die Herausgabesperre im Port
+    wirkt ohnehin ab dem Commit.
+  - Fällt der Abgleich aus, holt ihn der tägliche Lauf nach. Der Widerruf beim Anbieter ist ein
+    Versuch.
 - **Die Übergabe eines lokalen Kontos (ADR-0033, Entscheidung 12) ist keine Deaktivierung.** Weil
   das Ereignis nur die Abfrage auslöst und das übergebene Konto danach nutzbar ist, fällt die
   Übergabe ohne eigenen Anlass heraus. Das gilt für connections und library gleich.
 - **Private Bibliotheken:** library hat keinen eigenen Listener, sondern einen Löschlauf. Er löscht,
-  wenn ein Konto seit länger als die Löschfrist nicht nutzbar ist. Die Frist und den Beginn liest er
-  aus connections. Ist das Konto beim Lauf wieder nutzbar, löscht er nicht. Läufe privater
-  Bibliotheken stoppen schon vorher, weil der Port kein Geheimnis herausgibt.
+  wenn ein Konto seit länger als die Löschfrist **deaktiviert** ist; ein ruhendes Konto zählt nicht.
+  Frist und Beginn liest er aus connections. Ist das Konto beim Lauf nicht mehr deaktiviert, löscht
+  er nicht. Läufe privater Bibliotheken stoppen schon vorher, weil der Port kein Geheimnis
+  herausgibt.
 - **Kontolöschung:** Ein Konto mit Verbindungen oder privaten Bibliotheken ist benutzt und wird
   nach ADR-0033 (Entscheidung 11) gesperrt, nicht gelöscht. Die Bibliotheken blockieren als Assets
   die Löschung bereits heute (`countDeletionBlockers`). Token und Geheimnisse einer Person hängen
   mit `ON DELETE CASCADE` an `users`.
 - Trennen, Notabschaltung und gelöschte Profile erreichen die Bibliothek ohne Ereignis: Der Port
   meldet beim nächsten Lauf „ruhend“ oder „Zugang entfernt“.
-- **Nach dem Einspielen einer Sicherung** läuft der Abgleich beim Start: Token nicht nutzbarer
-  Konten löschen, abgelaufene zählen.
+- **Nach dem Einspielen einer Sicherung** läuft der Abgleich beim Start: Token deaktivierter Konten
+  löschen, abgelaufene zählen.
+
+**Inaktivitätsschwelle** (Beschluss 15): Ohne Anmeldung seit 90 Tagen ruhen die Verbindungen einer
+Person (einstellbar 30–365, Einstellung der Installation).
+- Sie gilt für alle Kontoarten. Praktisch wirkt sie bei OIDC-Konten ohne Verzeichnis, weil lokale
+  Konten nach `local_auth_settings.inactive_days` ohnehin gesperrt werden.
+- 90 Tage entsprechen der Vorgabe der lokalen Inaktivitätssperre.
 
 **Restlücke: OIDC-Konten ohne Verzeichnis-Konnektor.** Deaktiviert ein Anbieter eine Person, erfährt
-OPAA das nicht (`access-control.md`: serverseitig gibt es dafür keine Operation). Ihre Verbindungen
-blieben nutzbar, solange die Abfrage sie für nutzbar hält.
-
-**Vorschlag, Entscheidung beim Maintainer:** eine Inaktivitätsschwelle für Verbindungen.
-- Ohne Aktivität an OPAA seit N Tagen (`users.last_login_at`) ruhen die Verbindungen der Person:
-  Läufe pausieren, das Token bleibt gespeichert, aber der Port gibt es nicht heraus.
-- Mit der nächsten Anmeldung geht es ohne Neuverbinden weiter. Gelöscht wird erst bei echter
-  Deaktivierung.
-- Die Schwelle gilt für alle Kontoarten, wirkt praktisch aber nur bei OIDC-Konten ohne Verzeichnis,
-  weil lokale Konten nach `local_auth_settings.inactive_days` ohnehin gesperrt werden.
-- Werte: Vorgabe 90 Tage, einstellbar von 30 bis 365 Tagen, als Einstellung der Installation. 90
-  Tage entsprechen der Vorgabe der lokalen Inaktivitätssperre.
-- Die Schwelle stoppt die Indexierung, aber nicht den Fortbestand des Tokens. Den schließt nur der
-  Verzeichnis-Konnektor (ADR-0036, Entscheidung 3), dessen Einsatz das Handbuch für Häuser mit
-  verbundenen Konten empfiehlt.
+OPAA das nicht (`access-control.md`: serverseitig gibt es dafür keine Operation).
+- Die Schwelle stoppt die Indexierung nach spätestens 90 Tagen, löscht das Token aber nicht.
+- Das schließt nur der Verzeichnis-Konnektor (ADR-0036, Entscheidung 3). Das Handbuch empfiehlt ihn
+  für Häuser mit verbundenen Konten.
 
 ### 5. MCP-Profil
 
@@ -189,7 +209,7 @@ Verbindung, dem verbundenen Konto ihrer Besitzerin.
 | Löschfrist privater Bibliotheken nach Deaktivierung | 1–90 Tage | 30 Tage | Einstellung der Installation, Grenzen als `CHECK` |
 | Aufbewahrung des Verbindungsprotokolls | 6–24 Monate | 12 Monate | Einstellung der Installation, Grenzen als `CHECK` |
 | Warnung vor Token- und Secret-Ablauf | — | 14 Tage | fest (Spezifikation) |
-| Inaktivitätsschwelle für Verbindungen (**Vorschlag**, Entscheidung 4) | 30–365 Tage | 90 Tage | Einstellung der Installation, Grenzen als `CHECK` |
+| Inaktivitätsschwelle für Verbindungen (Entscheidung 4) | 30–365 Tage | 90 Tage | Einstellung der Installation, Grenzen als `CHECK` |
 
 Begründung:
 
@@ -208,8 +228,9 @@ Begründung:
 - **#2178, vorher:** Umbau der Lauf-SPI und die ArchUnit-Regel aus Entscheidung 3a, mit
   Negativfall in `ModularArchitectureFixtureTest`.
 - **#2160:** Die zentrale Abfrage `AccountUsability` in `io.opaa.auth` (Entscheidung 4) entsteht
-  mit dem ersten Konsumenten. `ExternalAccessTokenAuthenticator` stellt auf sie um, damit es nur
-  eine Regel gibt.
+  mit dem ersten Konsumenten. `LocalAdminAvailabilityGuard` und `ExternalAccessTokenAuthenticator`
+  stellen auf sie um, damit es nur eine Regel gibt. Die Verhaltensänderung des Authenticators steht
+  in Entscheidung 4.
 - **Spezifikation zuerst (ADR-0006),** für den Geltungsbereich der Fähigkeit (ADR-0036, Nachtrag
   vom 03.10.2026, Punkt 1):
   - `GET /api/v1/me` führt `CREATE_CONNECTOR_LIBRARY` weiter als Zeichenkette, wenn die Person die
@@ -261,8 +282,10 @@ Begründung:
 - **`AccountState` als Quelle für „gesperrt“:** Dort schreibt nur der Verzeichnisabgleich, die
   Sperre lokaler Konten fehlt.
 - **Verbundene Konten nur für Konten mit bekanntem Zustand** (lokal oder Verzeichnis): Das ist
-  sicher, schließt aber jedes Haus mit reinem OIDC aus. Die Inaktivitätsschwelle ist der mildere
-  Vorschlag, die Entscheidung liegt beim Maintainer.
+  sicher, schließt aber jedes Haus mit reinem OIDC aus. Entschieden ist der mildere Weg, die
+  Inaktivitätsschwelle (Beschluss 15).
+- **Deaktivierter Anbieter als Deaktivierung seiner Konten:** Ein vorübergehendes Abschalten würde
+  nach der Löschfrist massenhaft private Bibliotheken löschen.
 
 ## Konsequenzen
 
@@ -274,10 +297,12 @@ Begründung:
   Umbau der Lauf-SPI (#2178): etwa 14 Hauptklassen in 4 Konnektoren und im Kern, dazu etwa 30
   Testklassen.
 - **Restrisiko:** Bei OIDC-Konten ohne Verzeichnis-Konnektor bleibt ein Token nach einer
-  Deaktivierung beim Anbieter gespeichert, bis die Schwelle greift oder das Konto in OPAA gesperrt
-  wird (Entscheidung 4).
-- **Neutral:** Ereignisse laufen in der Transaktion des Auslösers. Fällt ein Listener, scheitert die
-  Sperre; das ist dieselbe Zusage wie bei den Fremdzugangstokens.
+  Deaktivierung beim Anbieter gespeichert, bis das Konto in OPAA gesperrt wird. Die Schwelle stoppt
+  nach 90 Tagen nur die Nutzung (Entscheidung 4).
+- **Verhaltensänderung:** Fremdzugangstokens von Personen eines deaktivierten oder gelöschten
+  Anbieters werden abgelehnt (Entscheidung 4).
+- **Neutral:** Der Abgleich läuft nach dem Commit des Auslösers. Eine Sperre scheitert nie an ihm,
+  und bis zum Abgleich hält die Herausgabesperre im Port.
 
 ## Referenzen
 
