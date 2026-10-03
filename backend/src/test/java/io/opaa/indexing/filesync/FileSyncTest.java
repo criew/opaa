@@ -169,4 +169,22 @@ class FileSyncTest {
     assertThat(harness.storedPaths())
         .containsExactly(InMemoryFileStore.filePath("A", "bleibt.txt"));
   }
+
+  @Test
+  void aFetchInAnotherFormatIsIngestedUnderItsOwnNameWithItsNote() throws Exception {
+    InMemoryFileStore store =
+        new InMemoryFileStore()
+            .container("A")
+            .put("A", "protokoll.docx", "Ein Text.")
+            .exportAsText("protokoll.docx");
+
+    FileSyncHarness.Run run = harness.fullSync(store);
+
+    String path = InMemoryFileStore.filePath("A", "protokoll.docx");
+    assertThat(run.ingested()).containsExactly(path);
+    assertThat(harness.stored(path).orElseThrow().getFileName()).isEqualTo("protokoll.txt");
+    assertThat(run.eventsOf(IndexingEventCategory.FORMAT_MISMATCH))
+        .extracting(IndexingRunEvent::getMessage, IndexingRunEvent::getReference)
+        .containsExactly(org.assertj.core.groups.Tuple.tuple("Als Text exportiert.", path));
+  }
 }

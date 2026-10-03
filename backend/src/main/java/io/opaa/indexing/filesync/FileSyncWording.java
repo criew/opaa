@@ -26,4 +26,9 @@ public interface FileSyncWording {
 
   /** The checking part of an event run's summary, followed by the skip and failure figures. */
   String checkedSummary(long checked);
+
+  /** The note of a change run whose stream cannot be read: the next run is a full sync. */
+  default String fullSyncFollows() {
+    return "Der nächste Lauf ist ein Vollabgleich.";
+  }
 }

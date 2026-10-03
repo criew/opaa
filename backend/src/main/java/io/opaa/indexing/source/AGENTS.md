@@ -35,8 +35,8 @@ von foundation, format und knowledge ab.
   in `source_settings`, verlangt der Konnektor bei dessen Änderung selbst neue Zugangsdaten.
 - **Der Laufrahmen ist `IndexingRunTemplate`:** Der Körper zählt nur die Quelle auf und meldet
   einen `ListingOutcome`; Fortschritt, Protokoll und Abgleich durch Abwesenheit besitzt der Rahmen.
-- **Dateiablagen** implementieren `FileStore` aus `indexing.filesync` mit dessen neutralen
-  Fehlerarten; den Abgleich besitzt `FileSync`. Ihre Tests erweitern `FileStoreContract`.
+- **Dateiablagen** implementieren `FileStore` (mit Änderungsprotokoll auch `ChangeFeed`) aus
+  `indexing.filesync`; Abgleich und Änderungslauf besitzt `FileSync`. Tests: `FileStoreContract`.
 - **Push-Adapter** (`confluence.webhook`, `s3.events`) liegen über ihrem Konnektor, erreicht über
   einen eigenen Port (`ConfluencePushReceiver`, `S3PushReceiver`).
 - **Netzzugriff:** HTTP über `io.opaa.sourceaccess`, S3 über `io.opaa.s3`. Die S3-Tests nutzen

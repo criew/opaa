@@ -9,6 +9,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -37,6 +38,11 @@ public final class InMemoryFileStore implements FileStore {
   private int pageSize = 1000;
   private ChangeFeed feed;
   private int cursors;
+  private final List<String[]> changeLog = new ArrayList<>();
+  private final Map<String, Integer> cursorPositions = new HashMap<>();
+  private boolean cursorsExpired;
+  private boolean structureChanged;
+  private final Set<String> textExports = new HashSet<>();
   private boolean credentialsRejected;
   private boolean endAfterFirstPage;
 
@@ -106,7 +112,11 @@ public final class InMemoryFileStore implements FileStore {
     return this;
   }
 
-  /** Gives the store a change log with one stream per container and numbered start cursors. */
+  /**
+   * Gives the store a change log with one stream per container and numbered cursors. A change is
+   * noted with {@link #changed}; a read reports the file's state at that moment - updated while it
+   * exists, removed once it does not.
+   */
   public InMemoryFileStore withChangeFeed() {
     feed =
         new ChangeFeed() {
@@ -118,10 +128,81 @@ public final class InMemoryFileStore implements FileStore {
           @Override
           public String startCursor(String feedKey) throws FileAccessException {
             call("startCursor " + feedKey);
-            return "cursor-" + (++cursors);
+            return cursorAt(changeLog.size());
+          }
+
+          @Override
+          public ChangePage read(String feedKey, String cursor) throws FileAccessException {
+            call("read " + feedKey + " @" + cursor);
+            Integer position = cursorPositions.get(cursor);
+            if (cursorsExpired || position == null) {
+              throw new FileAccessException.CursorExpired("Der Änderungszeiger ist verfallen.");
+            }
+            List<Change> changes = new ArrayList<>();
+            int index = position;
+            for (; index < changeLog.size() && changes.size() < pageSize; index++) {
+              String[] logged = changeLog.get(index);
+              if (feedKey.equals("stream:" + logged[0])) {
+                changes.add(change(logged[0], logged[1]));
+              }
+            }
+            boolean more = false;
+            for (int rest = index; rest < changeLog.size(); rest++) {
+              more |= feedKey.equals("stream:" + changeLog.get(rest)[0]);
+            }
+            boolean structure = structureChanged;
+            structureChanged = false;
+            return more
+                ? new ChangePage(changes, cursorAt(index), null, structure)
+                : new ChangePage(changes, null, cursorAt(changeLog.size()), structure);
+          }
+
+          @Override
+          public void requireReachable(FileContainer container) throws FileAccessException {
+            call("reachable " + container.key());
+            if (unlistable.contains(container.key())) {
+              throw new FileAccessException.ContainerUnlistable(
+                  "Der Bereich „" + container.key() + "“ ist nicht erreichbar.");
+            }
           }
         };
     return this;
+  }
+
+  /** Notes a change of {@code name} in {@code container}'s stream. */
+  public InMemoryFileStore changed(String container, String name) {
+    changeLog.add(new String[] {container, name});
+    return this;
+  }
+
+  /** {@code name} is fetched as plain text under a {@code .txt} name, with a protocol note. */
+  public InMemoryFileStore exportAsText(String name) {
+    textExports.add(name);
+    return this;
+  }
+
+  /** The next read reports a change of structure. */
+  public InMemoryFileStore structureChanged() {
+    structureChanged = true;
+    return this;
+  }
+
+  /** From now on no cursor is accepted. */
+  public InMemoryFileStore expireCursors() {
+    cursorsExpired = true;
+    return this;
+  }
+
+  private String cursorAt(int position) {
+    String cursor = "cursor-" + (++cursors);
+    cursorPositions.put(cursor, position);
+    return cursor;
+  }
+
+  private Change change(String container, String name) {
+    return containers.get(container).containsKey(name)
+        ? new Change.Updated(entry(new FileContainer(container), name))
+        : new Change.Removed(filePath(container, name));
   }
 
   public static String filePath(String container, String name) {
@@ -198,6 +279,14 @@ public final class InMemoryFileStore implements FileStore {
       Path temp = Files.createTempFile("opaa-mem-", ".bin");
       Files.write(temp, file.bytes());
       meter.recordBytes(file.bytes().length);
+      if (textExports.contains(entry.id())) {
+        return new FetchedFile(
+            temp,
+            file.bytes().length,
+            marker(file),
+            entry.fileName().replaceAll("\\.[^.]+$", "") + ".txt",
+            "Als Text exportiert.");
+      }
       return new FetchedFile(temp, file.bytes().length, marker(file));
     } catch (IOException e) {
       throw new UncheckedIOException(e);

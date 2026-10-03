@@ -220,6 +220,127 @@ public final class FileSync implements AutoCloseable {
     return ListingOutcome.partial();
   }
 
+  /**
+   * The change run (ADR-0040, Entscheidung 6): every stream is read from its stored cursor, a
+   * reported file goes the full sync's way, a reported removal takes the document with its
+   * attachments - but only while every container of the stream is reachable. A stream's new cursor
+   * is kept only when none of its files failed on the way; a change of structure, an expired cursor
+   * or a stream without a cursor make the next run a full sync. No listing, no reconciliation:
+   * {@link ListingOutcome#partial()}.
+   */
+  public ListingOutcome runChanges() throws InterruptedException {
+    ChangeFeed feed =
+        store.changes().orElseThrow(() -> new IllegalStateException("the store has no change log"));
+    Map<String, List<FileContainer>> streams = new LinkedHashMap<>();
+    for (FileContainer container : store.containers()) {
+      streams.computeIfAbsent(feed.feedKey(container), key -> new ArrayList<>()).add(container);
+    }
+    Map<String, String> cursors = state.changeCursors();
+    frame.budgetContinuation(wording::eventRunContinuation);
+    try {
+      for (Map.Entry<String, List<FileContainer>> stream : streams.entrySet()) {
+        String cursor = cursors.get(stream.getKey());
+        if (cursor == null) {
+          state.requireFullSync();
+          frame.events().recordRunNote(IndexingEventCategory.SUMMARY, wording.fullSyncFollows());
+          continue;
+        }
+        readStream(feed, stream.getKey(), stream.getValue(), cursor);
+      }
+    } finally {
+      syncStateRepository.save(state);
+      recordSummaries();
+    }
+    return ListingOutcome.partial();
+  }
+
+  private void readStream(
+      ChangeFeed feed, String feedKey, List<FileContainer> containers, String cursor)
+      throws InterruptedException {
+    boolean reachable = true;
+    for (FileContainer container : containers) {
+      try {
+        feed.requireReachable(container);
+      } catch (FileAccessException.ContainerUnlistable e) {
+        reachable = false;
+        frame
+            .events()
+            .record(
+                IndexingEventCategory.REJECTED,
+                "Geltungsbereich „"
+                    + container.key()
+                    + "“: "
+                    + e.getMessage()
+                    + UNLISTABLE_CONTAINER_SUFFIX,
+                container.key());
+      } catch (FileAccessException e) {
+        throw new IndexingRunFailedException(e.getMessage(), e);
+      }
+    }
+    long failedBefore = frame.progress().failedCount();
+    String newStart = null;
+    String next = cursor;
+    try {
+      while (next != null) {
+        ChangePage page = feed.read(feedKey, next);
+        total += page.changes().size();
+        frame.progress().setTotal(total);
+        frame.progress().report();
+        for (Change change : page.changes()) {
+          apply(change, reachable);
+          frame.progress().report();
+        }
+        drainAll();
+        if (page.fullSyncNeeded()) {
+          state.requireFullSync();
+        }
+        next = page.next();
+        newStart = page.newStart();
+      }
+    } catch (FileAccessException.CursorExpired e) {
+      log.info("Change cursor of stream {} expired: {}", feedKey, e.getMessage());
+      state.discardChangeCursor(feedKey);
+      state.requireFullSync();
+      frame
+          .events()
+          .recordRunNote(
+              IndexingEventCategory.REJECTED, e.getMessage() + " " + wording.fullSyncFollows());
+      return;
+    } catch (FileAccessException.RunEnding e) {
+      throw new IndexingRunFailedException(e.getMessage(), e);
+    } catch (FileAccessException e) {
+      // the stream stays where it was; the next run reads it again
+      frame.events().record(IndexingEventCategory.UNREACHABLE, e.getMessage(), feedKey);
+      frame.progress().recordFailed();
+      return;
+    }
+    if (reachable && frame.progress().failedCount() == failedBefore) {
+      state.advanceChangeCursor(feedKey, newStart);
+    }
+  }
+
+  /** One reported change; a removal counts only for a stream whose containers are reachable. */
+  private void apply(Change change, boolean reachable) throws InterruptedException {
+    switch (change) {
+      case Change.Removed removed -> {
+        if (reachable) {
+          removeGone(removed.filePath());
+        } else {
+          frame.progress().recordSkipped();
+        }
+      }
+      case Change.Updated updated -> {
+        FileEntry entry = updated.entry();
+        if (entry.exclusion() instanceof Exclusion.Deselected) {
+          frame.progress().recordSkipped();
+        } else {
+          listed++;
+          visit(entry);
+        }
+      }
+    }
+  }
+
   private void checkReported(FileReference reference) throws InterruptedException {
     FileEntry entry;
     try {
@@ -636,7 +757,7 @@ public final class FileSync implements AutoCloseable {
               DocumentIngest.builder(frame.library())
                   .file(file, fetched.size())
                   .filePath(filePath)
-                  .fileName(entry.fileName())
+                  .fileName(fetched.fileName() != null ? fetched.fileName() : entry.fileName())
                   .sourceType(frame.sourceType())
                   .context(entry.context())
                   .changeMarker(changeMarker)
@@ -645,6 +766,9 @@ public final class FileSync implements AutoCloseable {
               attachmentAccess);
       if (frame.recordOutcome(result, filePath)) {
         frame.markReprocessed(filePath);
+        if (fetched.note() != null) {
+          frame.events().record(IndexingEventCategory.FORMAT_MISMATCH, fetched.note(), filePath);
+        }
         log.info("Indexed {} file: {}", frame.sourceType(), filePath);
         // the row pins its folder now; attachments a re-parse enumerated are new rows without one
         folderMirror.markSeen(folderId);
@@ -722,8 +846,9 @@ public final class FileSync implements AutoCloseable {
     frame.events().recordRunNote(IndexingEventCategory.SUMMARY, summaryMessage());
   }
 
+  /** A run over reported files rather than a listing - an event or a change run. */
   private boolean eventRun() {
-    return frame.runMode() == IndexingRunMode.EVENT;
+    return frame.runMode() != IndexingRunMode.FULL;
   }
 
   /** The run's figures in one German sentence - what an operator reads throughput against. */

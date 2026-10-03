@@ -14,4 +14,20 @@ public interface ChangeFeed {
    * so no change during the listing is lost.
    */
   String startCursor(String feedKey) throws FileAccessException, InterruptedException;
+
+  /**
+   * One page of the changes of {@code feedKey} from {@code cursor} on - a stored cursor or the
+   * {@link ChangePage#next()} of the page before.
+   *
+   * @throws FileAccessException.CursorExpired when the source no longer accepts {@code cursor}
+   */
+  ChangePage read(String feedKey, String cursor) throws FileAccessException, InterruptedException;
+
+  /**
+   * Whether {@code container} can be reached now. A removal reported by a stream counts only while
+   * every container it serves is reachable - a withdrawn right is no deletion finding.
+   *
+   * @throws FileAccessException.ContainerUnlistable when it cannot
+   */
+  void requireReachable(FileContainer container) throws FileAccessException, InterruptedException;
 }
