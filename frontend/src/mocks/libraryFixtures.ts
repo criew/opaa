@@ -391,6 +391,9 @@ export const mockSourceTypes: SourceTypeDescriptor[] = [
     profileSupport: 'FORBIDDEN',
     authMethods: [],
     fullSyncIntervalDefaultDays: 7,
+    creatable: true,
+    creatableWithOwnAddress: true,
+    locked: false,
   },
   {
     type: 'HTTP_DIRECTORY',
