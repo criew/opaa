@@ -419,8 +419,32 @@ die die zuständige Stelle nennt; der Bestand bleibt durchsuchbar und wird nicht
 | „Verbindung getrennt“ | Das Geheimnis fehlt, etwa nach Adressänderung oder Notabschaltung | Verwaltende der Bibliothek: Geheimnis neu eintragen |
 | „Nicht verbunden“ | Die Anmeldeart des Zugangs (OAuth, Client-Credentials, Dienstkonto-Schlüssel) kann eine Bibliothek nicht verbinden | Systemverwaltung |
 | „Die Adresse der Bibliothek liegt nicht unter …“ | Die Adresse verließ den Zugang | Verwaltende der Bibliothek |
+| „Gesperrt – Inhalt wird nicht mehr aktualisiert“ | Die Quellart oder der Zugang ist gesperrt; gilt auch für Bibliotheken ohne Zugang | Systemverwaltung |
 
 Umbenennen und das Korrigieren von Adresse oder Geheimnis bleiben in all diesen Fällen möglich.
+
+**Wer einen Zugang nutzen darf**, regelt das Anlegerecht „Konnektorbibliotheken anlegen", erteilt je
+Zugang; eine Bibliothek mit eigener Adresse braucht es für ihre Quellart (Kapitel
+[Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), Abschnitt 9). Ein neu
+angelegter Zugang ist für niemanden außer der Systemverwaltung freigegeben.
+
+#### Sperre einer Quellart oder eines Zugangs
+
+Die Systemverwaltung kann eine **Quellart** (für alle ihre Bibliotheken, mit und ohne Zugang) oder
+einen **Zugang** sperren:
+
+- Neue Bibliotheken der Quellart oder auf dem Zugang sind nicht mehr möglich, auch nicht für die
+  Systemverwaltung.
+- Läufe starten nicht mehr und enden vor dem ersten Element mit der Meldung „Gesperrt – Inhalt wird
+  nicht mehr aktualisiert"; ein Lauf, der beim Sperren schon läuft, endet regulär. Originale aus
+  der Quelle lassen sich nicht abrufen.
+- Der Bestand bleibt durchsuchbar. Detailansicht und Liste der Bibliothek tragen den Hinweis
+  „Gesperrt – Inhalt wird nicht mehr aktualisiert" mit der gesperrten Quellart oder dem Zugang und
+  der Systemverwaltung als zuständiger Stelle.
+- Wird die Sperre aufgehoben, laufen die Bibliotheken ohne Neueinrichtung weiter.
+
+Sperren und Entsperren sind Governance-Ereignisse im Revisionsprotokoll. Der Entzug einer Freigabe
+stoppt dagegen keinen Lauf.
 
 ## 5. Die Dokumentstrecke: was mit jedem Element passiert
 

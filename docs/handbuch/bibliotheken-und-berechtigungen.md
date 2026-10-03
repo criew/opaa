@@ -712,7 +712,7 @@ gleich ob lokal oder aus einem Identitätsanbieter, und werden an eine Person, e
 |---|---|
 | **Spaces anlegen** (Räume) | Alle Konten |
 | **Bibliotheken für Uploads anlegen** | Alle Konten |
-| **Konnektorbibliotheken anlegen** | Alle Konten |
+| **Konnektorbibliotheken anlegen** | je Quellart und je Zugang (unten); die mitgelieferten Quellarten an Alle Konten |
 | **Interne Gruppen anlegen** | niemanden — die Systemverwaltung hat es ohnehin |
 | **Prompt-Bibliotheken anlegen** | Alle Konten |
 
@@ -738,8 +738,36 @@ Fünf Punkte dazu:
   fehlende Recht beim Namen und erfährt, an wen man sich wendet; dasselbe gilt für eine Quellart
   im Wissens-Assistenten, deren Recht fehlt.
 
+### Konnektor-Freigabe: je Quellart und je Zugang
+
+„Konnektorbibliotheken anlegen" wird nicht als Ganzes erteilt, sondern **für eine Quellart** oder
+**für einen Zugang** (Kapitel [Indexierung](indexierung.md), „Zugänge"):
+
+| Neue Bibliothek | Das Recht muss gelten für |
+|---|---|
+| mit eigener Adresse | ihre Quellart, etwa „Quellart RSS-Feed" |
+| über einen Zugang | genau diesen Zugang, etwa „Zugang Nextcloud intern" |
+
+Die Freigabe eines Zugangs öffnet keinen zweiten Zugang derselben Quellart, und die Freigabe einer
+Quellart öffnet keinen ihrer Zugänge.
+
+- **Auslieferung:** Die mitgelieferten Quellarten Dateisystem, Webverzeichnis, RSS-Feed, Confluence
+  und S3-Objektspeicher sind für Alle Konten frei, wie vor der Einführung der Freigabe. Jede weitere
+  Quellart und jeder neu angelegte Zugang ist **aus**: Bis zur Freigabe legt dort nur die
+  Systemverwaltung an. Ein Update öffnet so nie stillschweigend einen neuen Weg nach draußen.
+- **Die Freigabe regelt nur die Neuanlage:** eine Bibliothek anlegen, sie einem anderen Zugang
+  zuordnen, und vor dem Anlegen die Verbindung testen oder die Quelle auflisten. Wird sie entzogen,
+  laufen bestehende Bibliotheken weiter. Läufe stoppt nur die **Sperre** einer Quellart oder eines
+  Zugangs (Kapitel [Indexierung](indexierung.md), „Zugänge").
+- **Wer anlegen darf, sagt OPAA vor dem Versuch:** Die Liste der Quellarten und die Auswahl der
+  Zugänge, aus denen der Wissens-Assistent seine Auswahl baut, tragen je Eintrag, ob die Person
+  dort anlegen darf, und sonst einen Hinweis, wer es freischalten kann. Als Anlegerecht der Person erscheint „Konnektorbibliotheken
+  anlegen", sobald sie es für mindestens eine Quellart oder einen Zugang hat.
+- **Ein gelöschter Zugang nimmt seine Freigaben mit**; ihr Entzug steht in der Rechtehistorie.
+
 Vergeben und entzogen werden Anlegerechte unter **Administration → Anlegerechte**. Dort steht je
-Anlegerecht eine Zeile in Klartext („Alle Konten dürfen Konnektorbibliotheken anlegen."), darunter
+Anlegerecht eine Zeile in Klartext („Alle Konten dürfen Spaces anlegen."), bei „Konnektorbibliotheken
+anlegen" je Quellart und je Zugang eine („Zugang Nextcloud intern: frei für Alle Konten."), darunter
 die berechtigten Personen, Gruppen und „Alle Konten" — jede mit der Handlung „Entziehen" — und ein
 Feld, um es einer Person, einer Gruppe oder allen Konten zu erteilen. Der Entzug von „Alle Konten"
 verlangt eine Rückfrage: Er ändert die Arbeitsbedingungen aller Beschäftigten. **Vergabe und Entzug
