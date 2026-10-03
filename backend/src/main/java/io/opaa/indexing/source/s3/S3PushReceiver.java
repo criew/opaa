@@ -1,5 +1,6 @@
 package io.opaa.indexing.source.s3;
 
+import io.opaa.indexing.source.ConnectorData;
 import io.opaa.knowledge.KnowledgeLibrary;
 import java.util.UUID;
 
@@ -11,11 +12,13 @@ public interface S3PushReceiver {
 
   /**
    * Authenticates and queues the notification for {@code libraryId}; {@code loaded} is the library
-   * the caller already loaded, {@code null} for none.
+   * the caller already loaded, {@code null} for none, {@code settings} its stored connector
+   * settings.
    */
   void accept(
       UUID libraryId,
       KnowledgeLibrary loaded,
+      ConnectorData settings,
       byte[] body,
       String authorization,
       String sharedSecret);

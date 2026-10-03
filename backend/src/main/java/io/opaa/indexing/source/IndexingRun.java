@@ -52,6 +52,8 @@ public final class IndexingRun {
 
   private final UUID jobId;
   private final KnowledgeLibrary library;
+  private final SourceSettings settings;
+  private final Supplier<String> credentials;
   private final IndexingRunMode runMode;
   private final SourceType sourceType;
   private final IndexingRunProgress progress;
@@ -68,6 +70,8 @@ public final class IndexingRun {
   public IndexingRun(
       UUID jobId,
       KnowledgeLibrary library,
+      SourceSettings settings,
+      Supplier<String> credentials,
       IndexingRunMode runMode,
       SourceType sourceType,
       IndexingRunProgress progress,
@@ -76,6 +80,8 @@ public final class IndexingRun {
       LibraryStorageQuotaService storageQuotaService) {
     this.jobId = jobId;
     this.library = library;
+    this.settings = settings.withoutCredentials();
+    this.credentials = credentials;
     this.runMode = runMode;
     this.sourceType = sourceType;
     this.progress = progress;
@@ -88,8 +94,28 @@ public final class IndexingRun {
     return jobId;
   }
 
+  /**
+   * The library the run writes into - its identity and its inventory. Its source configuration
+   * comes from {@link #settings()} and {@link #currentCredentials()}.
+   */
   public KnowledgeLibrary library() {
     return library;
+  }
+
+  /**
+   * Target, proxy, TLS switch and connector settings as the core resolved them at the start of the
+   * run; never the secret, which {@link #currentCredentials()} answers.
+   */
+  public SourceSettings settings() {
+    return settings;
+  }
+
+  /**
+   * The secret valid now, {@code null} for none - asked again whenever a body needs it, so one that
+   * expires during a long run is renewed by the core.
+   */
+  public String currentCredentials() {
+    return credentials.get();
   }
 
   public IndexingRunMode runMode() {

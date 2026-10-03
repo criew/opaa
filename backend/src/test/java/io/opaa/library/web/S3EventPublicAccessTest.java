@@ -127,7 +127,8 @@ class S3EventPublicAccessTest {
                 .content(BODY))
         .andExpect(status().isAccepted());
 
-    verify(eventService).accept(any(), any(), eq(BODY), eq("Bearer minio-auth-token"), eq(null));
+    verify(eventService)
+        .accept(any(), any(), any(), eq(BODY), eq("Bearer minio-auth-token"), eq(null));
     verifyNoInteractions(oidcAuthenticationManagerResolver);
   }
 
@@ -136,7 +137,7 @@ class S3EventPublicAccessTest {
     UUID libraryId = UUID.randomUUID();
     doThrow(new UnauthorizedException("Ereignisbenachrichtigung nicht autorisiert"))
         .when(eventService)
-        .accept(any(), any(), any(), any(), any());
+        .accept(any(), any(), any(), any(), any(), any());
 
     mockMvc
         .perform(
@@ -145,7 +146,7 @@ class S3EventPublicAccessTest {
                 .header("X-OPAA-Webhook-Secret", "falsch")
                 .content(BODY))
         .andExpect(status().isUnauthorized());
-    verify(eventService).accept(any(), any(), eq(BODY), eq(null), eq("falsch"));
+    verify(eventService).accept(any(), any(), any(), eq(BODY), eq(null), eq("falsch"));
   }
 
   @Test

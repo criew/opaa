@@ -77,10 +77,14 @@ class DocumentIndexingServiceTest {
     when(s3IndexingExecutor.sourceType()).thenReturn(SourceTypes.S3);
     // ADR-0023, Entscheidung 4: without a requested mode the executor decides; the mocks
     // answer like the one-mode executors do
-    lenient().when(asyncIndexingExecutor.defaultRunMode(any())).thenReturn(IndexingRunMode.FULL);
-    lenient().when(urlIndexingExecutor.defaultRunMode(any())).thenReturn(IndexingRunMode.FULL);
     lenient()
-        .when(rssFeedIndexingExecutor.defaultRunMode(any()))
+        .when(asyncIndexingExecutor.defaultRunMode(any(), any()))
+        .thenReturn(IndexingRunMode.FULL);
+    lenient()
+        .when(urlIndexingExecutor.defaultRunMode(any(), any()))
+        .thenReturn(IndexingRunMode.FULL);
+    lenient()
+        .when(rssFeedIndexingExecutor.defaultRunMode(any(), any()))
         .thenReturn(IndexingRunMode.INCREMENTAL);
     var registry =
         new IndexingSourceExecutorRegistry(
@@ -341,7 +345,8 @@ class DocumentIndexingServiceTest {
     // an executor with two modes decides from the library's own state - the service only hands
     // the decision through to the job row and the run
     stubEditableLibrary();
-    when(asyncIndexingExecutor.defaultRunMode(library)).thenReturn(IndexingRunMode.INCREMENTAL);
+    when(asyncIndexingExecutor.defaultRunMode(eq(library), any()))
+        .thenReturn(IndexingRunMode.INCREMENTAL);
     var job = new IndexingJob(JobStatus.RUNNING);
     when(indexingJobService.startJob(
             library.getId(), organizationId, JobTriggerSource.MANUAL, IndexingRunMode.INCREMENTAL))

@@ -14,10 +14,9 @@ import java.util.UUID;
  * this interface and declaring the bean in the connector package's own {@code @Configuration},
  * never by editing the indexing core, an existing implementation or the registry itself.
  *
- * <p>{@code targetLibrary} is the only source of configuration (ADR-0018): {@code sourcePath},
- * {@code sourceUrl}, {@code sourceProxy}, {@code sourceCredentials} and {@code sourceInsecureSsl}
- * all live on the library itself, and every executor reads whichever of them its own type carries,
- * ignoring the rest.
+ * <p>An executor takes target, secret and settings from the {@link IndexingRun} its frame hands
+ * over ({@link IndexingRun#settings()}, {@link IndexingRun#currentCredentials()}), never from the
+ * library (ADR-0041, Entscheidung 3a).
  */
 public interface SourceIndexingExecutor {
 
@@ -33,11 +32,11 @@ public interface SourceIndexingExecutor {
   /**
    * The mode a run of {@code library} takes when none is requested (scheduler, plain "Jetzt
    * indizieren"). A one-mode executor has nothing to decide; an executor with several modes must
-   * override this and decide from the library's own state (ADR-0023, Entscheidung 4: the first run
-   * and every run after a selection change are full ones, a full reconciliation stays due
-   * regularly).
+   * override this and decide from the library's own state and its stored connector {@code settings}
+   * (ADR-0023, Entscheidung 4: the first run and every run after a selection change are full ones,
+   * a full reconciliation stays due regularly).
    */
-  default IndexingRunMode defaultRunMode(KnowledgeLibrary library) {
+  default IndexingRunMode defaultRunMode(KnowledgeLibrary library, ConnectorData settings) {
     Set<IndexingRunMode> modes = runModes().keySet();
     if (modes.size() != 1) {
       throw new IllegalStateException(
@@ -51,8 +50,8 @@ public interface SourceIndexingExecutor {
 
   /**
    * Runs asynchronously and reports progress/completion through {@code IndexingJobService}, the
-   * same way every executor has always done. {@code targetLibrary} carries both the destination for
-   * every document/chunk this run writes and, since ADR-0018, the run's own quellkonfiguration.
+   * same way every executor has always done. {@code targetLibrary} is the destination for every
+   * document/chunk this run writes.
    */
   void execute(UUID jobId, KnowledgeLibrary targetLibrary, IndexingRunMode runMode);
 }

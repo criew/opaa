@@ -51,7 +51,8 @@ public class ProbeSourceConnector implements SourceConnector {
   }
 
   @Override
-  public void applyChange(KnowledgeLibrary library, SourceSettings validated) {
+  public void applyChange(
+      KnowledgeLibrary library, ConnectorData stored, SourceSettings validated) {
     if (validated.connectorSettings() != null) {
       library.updateSourceSettings(validated.connectorSettings().toJson());
     }

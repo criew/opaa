@@ -95,10 +95,11 @@ public class S3SourceConnector
    * original"; a store that cannot be reached is {@link OriginalUnavailableException}.
    */
   @Override
-  public Optional<DocumentContent> openOriginal(Document document, KnowledgeLibrary library) {
+  public Optional<DocumentContent> openOriginal(
+      Document document, KnowledgeLibrary library, SourceSettings settings) {
     Optional<S3Download> download;
     try {
-      download = originalAccess.download(library, document.getFilePath());
+      download = originalAccess.download(library, settings, document.getFilePath());
     } catch (S3AccessException e) {
       throw new OriginalUnavailableException(
           OBJECT_STORE_UNAVAILABLE,
@@ -139,10 +140,11 @@ public class S3SourceConnector
 
   @Override
   public void acceptNotification(
-      KnowledgeLibrary library, byte[] body, UnaryOperator<String> header) {
+      KnowledgeLibrary library, ConnectorData settings, byte[] body, UnaryOperator<String> header) {
     eventService.accept(
         library.getId(),
         library,
+        settings,
         body,
         header.apply(HttpHeaders.AUTHORIZATION),
         header.apply(S3EventAuthentication.SHARED_SECRET_HEADER));
@@ -217,12 +219,12 @@ public class S3SourceConnector
    */
   @Override
   public SourceSettings validateChange(
-      KnowledgeLibrary library, SourceSettings requested, boolean replacesConnection) {
+      SourceSettings stored, SourceSettings requested, boolean replacesConnection) {
     if (replacesConnection) {
       ConnectorData effective =
           requested.connectorSettings() != null
               ? requested.connectorSettings()
-              : ConnectorData.storedIn(library);
+              : stored.connectorSettings();
       SourceSettings validated = validate(requested.withConnectorSettings(effective));
       return requested.connectorSettings() == null
           ? validated.withConnectorSettings(null)
@@ -231,10 +233,10 @@ public class S3SourceConnector
     if (requested.connectorSettings() != null) {
       S3SourceSettings settings = settingsOf(requested.connectorSettings());
       requireReachableTargets(
-          library.getSourceUrl(),
-          library.getSourceProxy(),
-          library.isSourceInsecureSsl(),
-          library.getSourceCredentials(),
+          stored.sourceUrl(),
+          stored.sourceProxy(),
+          stored.sourceInsecureSsl(),
+          stored.sourceCredentials(),
           settings);
       return requested.withConnectorSettings(S3SourceSettingsJson.toData(settings));
     }
@@ -285,7 +287,8 @@ public class S3SourceConnector
   }
 
   @Override
-  public void applyChange(KnowledgeLibrary library, SourceSettings validated) {
+  public void applyChange(
+      KnowledgeLibrary library, ConnectorData stored, SourceSettings validated) {
     if (validated.connectorSettings() != null) {
       library.updateSourceSettings(validated.connectorSettings().toJson());
     }
@@ -296,9 +299,10 @@ public class S3SourceConnector
    * document the record no longer accepts is left out rather than failing the whole read.
    */
   @Override
-  public ConnectorData settingsView(KnowledgeLibrary library, boolean manager) {
+  public ConnectorData settingsView(
+      KnowledgeLibrary library, ConnectorData stored, boolean manager) {
     try {
-      S3SourceSettings settings = S3SourceSettingsJson.of(library);
+      S3SourceSettings settings = S3SourceSettingsJson.of(stored);
       return settings == null ? null : S3SourceSettingsJson.toData(settings);
     } catch (S3Scope.InvalidS3ScopeException
         | S3SourceSettings.InvalidS3SourceSettingsException e) {
@@ -311,9 +315,9 @@ public class S3SourceConnector
   }
 
   @Override
-  public Map<String, Object> settingsState(KnowledgeLibrary library) {
+  public Map<String, Object> settingsState(KnowledgeLibrary library, ConnectorData stored) {
     Map<String, Object> state = new HashMap<>();
-    state.put(SETTINGS_STATE, S3SourceSettingsJson.write(S3SourceSettingsJson.of(library)));
+    state.put(SETTINGS_STATE, S3SourceSettingsJson.write(S3SourceSettingsJson.of(stored)));
     return state;
   }
 

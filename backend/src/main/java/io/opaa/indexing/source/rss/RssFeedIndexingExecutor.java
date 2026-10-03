@@ -19,6 +19,7 @@ import io.opaa.indexing.source.IndexingRunTemplate;
 import io.opaa.indexing.source.ListingOutcome;
 import io.opaa.indexing.source.RequestBudget;
 import io.opaa.indexing.source.SourceIndexingExecutor;
+import io.opaa.indexing.source.SourceSettings;
 import io.opaa.indexing.source.VanishedDocumentPolicy;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
@@ -122,13 +123,11 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
 
   private ListingOutcome indexFeed(IndexingRun run) throws IOException, InterruptedException {
     KnowledgeLibrary targetLibrary = run.library();
-    // ADR-0018: the feed's address is the library's own sourceUrl, not a per-request field.
-    String feedUrl = targetLibrary.getSourceUrl();
+    SourceSettings settings = run.settings();
+    String feedUrl = settings.sourceUrl();
     ProxyAndCredentials config;
     try {
-      config =
-          ProxyAndCredentials.parse(
-              targetLibrary.getSourceProxy(), targetLibrary.getSourceCredentials());
+      config = ProxyAndCredentials.parse(settings.sourceProxy(), run.currentCredentials());
     } catch (ProxyAndCredentials.InvalidProxyConfigurationException e) {
       throw new IndexingRunFailedException(e.getMessage());
     }
@@ -141,7 +140,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
     HttpClient secureClient =
         SourceHttpClientFactory.buildHttpClient(config.proxyHost(), config.proxyPort(), false);
     HttpClient insecureClient =
-        targetLibrary.isSourceInsecureSsl()
+        settings.sourceInsecureSsl()
             ? SourceHttpClientFactory.buildHttpClient(config.proxyHost(), config.proxyPort(), true)
             : secureClient;
 

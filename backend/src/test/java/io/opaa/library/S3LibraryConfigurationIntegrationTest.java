@@ -15,6 +15,7 @@ import io.opaa.auth.DevAuthFilter;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.common.ValidationException;
+import io.opaa.indexing.source.ConnectorData;
 import io.opaa.indexing.source.s3.S3Scope;
 import io.opaa.indexing.source.s3.S3SourceSettings;
 import io.opaa.indexing.source.s3.S3SourceSettingsJson;
@@ -112,14 +113,16 @@ class S3LibraryConfigurationIntegrationTest {
     KnowledgeLibrary library = detail.library();
     assertThat(library.getSourceType()).isEqualTo(SourceTypes.S3);
     assertThat(library.getSourceUrl()).isEqualTo(ENDPOINT);
-    assertThat(S3SourceSettingsJson.of(library).scopes())
+    assertThat(S3SourceSettingsJson.of(ConnectorData.storedIn(library)).scopes())
         .containsExactly(S3Scope.of("protokolle", "2025/"), S3Scope.of("satzungen", ""));
-    assertThat(S3SourceSettingsJson.of(library).region()).isEqualTo("eu-central-1");
-    assertThat(S3SourceSettingsJson.of(library).pathStyle()).isTrue();
+    assertThat(S3SourceSettingsJson.of(ConnectorData.storedIn(library)).region())
+        .isEqualTo("eu-central-1");
+    assertThat(S3SourceSettingsJson.of(ConnectorData.storedIn(library)).pathStyle()).isTrue();
     assertThat(detail.managementDetail().sourceCredentialsSet()).isTrue();
 
     KnowledgeLibrary reloaded = libraryRepository.findById(library.getId()).orElseThrow();
-    assertThat(S3SourceSettingsJson.of(reloaded)).isEqualTo(S3SourceSettingsJson.of(library));
+    assertThat(S3SourceSettingsJson.of(ConnectorData.storedIn(reloaded)))
+        .isEqualTo(S3SourceSettingsJson.of(ConnectorData.storedIn(library)));
     assertThat(reloaded.getSourceCredentials()).isEqualTo("AKIAEXAMPLE:geheim/4711:session-token");
     String storedSettings =
         jdbcTemplate.queryForObject(
@@ -355,9 +358,10 @@ class S3LibraryConfigurationIntegrationTest {
                         S3Scope.of("protokolle", "2024/")))
                 .build(),
             caller);
-    assertThat(S3SourceSettingsJson.of(widened.library()).scopes())
+    assertThat(S3SourceSettingsJson.of(ConnectorData.storedIn(widened.library())).scopes())
         .containsExactly(S3Scope.of("protokolle", "2025/"), S3Scope.of("protokolle", "2024/"));
-    assertThat(S3SourceSettingsJson.of(widened.library()).region()).isEqualTo("eu-west-1");
+    assertThat(S3SourceSettingsJson.of(ConnectorData.storedIn(widened.library())).region())
+        .isEqualTo("eu-west-1");
     assertThat(widened.library().getSourceCredentials()).isEqualTo("AKIAEXAMPLE:geheim");
     assertThat(syncStateRepository.findByLibraryId(libraryId))
         .as("a changed selection discards the resumption state (ADR-0027, Entscheidung 3)")
@@ -376,8 +380,8 @@ class S3LibraryConfigurationIntegrationTest {
     syncStateRepository.save(new io.opaa.indexing.source.SourceSyncState(libraryId));
     LibraryDetail renamed =
         libraryService.updateLibrary(libraryId, libraryUpdate("Sitzungen").build(), caller);
-    assertThat(S3SourceSettingsJson.of(renamed.library()))
-        .isEqualTo(S3SourceSettingsJson.of(widened.library()));
+    assertThat(S3SourceSettingsJson.of(ConnectorData.storedIn(renamed.library())))
+        .isEqualTo(S3SourceSettingsJson.of(ConnectorData.storedIn(widened.library())));
     assertThat(syncStateRepository.findByLibraryId(libraryId)).isPresent();
 
     // an endpoint edit on the same origin keeps the stored key; a new origin drops it

@@ -29,6 +29,7 @@ import io.opaa.indexing.job.IndexingJobService;
 import io.opaa.indexing.job.IndexingRunEventRepository;
 import io.opaa.indexing.maintenance.StaleDocumentCleanupService;
 import io.opaa.indexing.source.IndexingRunTemplate;
+import io.opaa.indexing.source.LibrarySourceConnectionResolver;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
@@ -180,7 +181,8 @@ class RssFeedIndexingExecutorTest {
             indexingRunEventRepository,
             mock(StaleDocumentCleanupService.class),
             documentRepository,
-            storageQuotaService));
+            storageQuotaService,
+            new LibrarySourceConnectionResolver()));
   }
 
   @AfterEach

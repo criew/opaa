@@ -178,8 +178,9 @@ class SourceConnectorRegistryTest {
     SourceConnector connector =
         plain(SourceConnectorDescriptor.remoteRun(SourceTypes.HTTP_DIRECTORY, "Webverzeichnis"));
 
-    assertThat(connector.settingsView(library, false)).isNull();
-    assertThat(connector.settingsView(library, true).asMap()).containsEntry("root", "/intern/pfad");
+    assertThat(connector.settingsView(library, ConnectorData.storedIn(library), false)).isNull();
+    assertThat(connector.settingsView(library, ConnectorData.storedIn(library), true).asMap())
+        .containsEntry("root", "/intern/pfad");
   }
 
   /** One connector per built-in source type, with the abilities the production ones offer. */
@@ -240,7 +241,10 @@ class SourceConnectorRegistryTest {
 
     @Override
     public void acceptNotification(
-        KnowledgeLibrary library, byte[] body, UnaryOperator<String> header) {}
+        KnowledgeLibrary library,
+        ConnectorData settings,
+        byte[] body,
+        UnaryOperator<String> header) {}
 
     @Override
     public void rejectForeign(byte[] body, UnaryOperator<String> header) {}
@@ -253,7 +257,8 @@ class SourceConnectorRegistryTest {
     }
 
     @Override
-    public Optional<DocumentContent> openOriginal(Document document, KnowledgeLibrary library) {
+    public Optional<DocumentContent> openOriginal(
+        Document document, KnowledgeLibrary library, SourceSettings settings) {
       return Optional.empty();
     }
   }

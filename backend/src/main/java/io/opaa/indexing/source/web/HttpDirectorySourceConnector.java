@@ -80,8 +80,9 @@ public class HttpDirectorySourceConnector implements SourceConnector, OriginalAc
   }
 
   @Override
-  public Optional<DocumentContent> openOriginal(Document document, KnowledgeLibrary library) {
-    return remoteOriginals.openOriginal(document, library);
+  public Optional<DocumentContent> openOriginal(
+      Document document, KnowledgeLibrary library, SourceSettings settings) {
+    return remoteOriginals.openOriginal(document, library, settings);
   }
 
   @Override

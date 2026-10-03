@@ -25,6 +25,7 @@ import io.opaa.indexing.job.IndexingJobService;
 import io.opaa.indexing.job.JobStatus;
 import io.opaa.indexing.job.LibraryScheduleCodec;
 import io.opaa.indexing.source.ConnectorData;
+import io.opaa.indexing.source.SourceConnectionResolver;
 import io.opaa.indexing.source.SourceConnector;
 import io.opaa.indexing.source.SourceConnectorDescriptor;
 import io.opaa.indexing.source.SourceConnectorRegistry;
@@ -135,6 +136,7 @@ public class KnowledgeLibraryService {
   private final ApplicationEventPublisher eventPublisher;
   private final SourceConnectorRegistry connectors;
   private final AssetSuccessionSource successionSource;
+  private final SourceConnectionResolver connectionResolver;
 
   public KnowledgeLibraryService(
       AssetSuccessionSource successionSource,
@@ -154,8 +156,10 @@ public class KnowledgeLibraryService {
       LibraryExternalAccessService externalAccessService,
       LibraryFolderRepository folderRepository,
       ApplicationEventPublisher eventPublisher,
-      SourceConnectorRegistry connectors) {
+      SourceConnectorRegistry connectors,
+      SourceConnectionResolver connectionResolver) {
     this.successionSource = successionSource;
+    this.connectionResolver = connectionResolver;
     this.libraryRepository = libraryRepository;
     this.assetOwnerNames = assetOwnerNames;
     this.capabilityService = capabilityService;
@@ -391,7 +395,8 @@ public class KnowledgeLibraryService {
         requestedSettingsChange(library, request, replacesSourceConfiguration);
     SourceConnector connector = connectors.connector(library.getSourceType());
     SourceSettings validatedSettings =
-        connector.validateChange(library, requestedSettings, replacesSourceConfiguration);
+        connector.validateChange(
+            connectionResolver.resolve(library), requestedSettings, replacesSourceConfiguration);
     boolean replacesOwnSettings = requestedSettings.connectorSettings() != null;
     // #485: schedule follows the same replace-as-a-whole rule as the source configuration above -
     // only present when the caller actually intends to change it (LibraryUpdate.schedule), so a
@@ -409,7 +414,8 @@ public class KnowledgeLibraryService {
     String previousSourceProxy = library.getSourceProxy();
     String previousSourceCredentials = library.getSourceCredentials();
     boolean previousSourceInsecureSsl = library.isSourceInsecureSsl();
-    Map<String, Object> previousSettingsState = connector.settingsState(library);
+    Map<String, Object> previousSettingsState =
+        connector.settingsState(library, ConnectorData.storedIn(library));
     library.rename(normalizedName, request.description());
     if (replacesSchedule) {
       library.updateSchedule(validatedSchedule.enabled(), validatedSchedule.cron());
@@ -433,7 +439,7 @@ public class KnowledgeLibraryService {
         libraryRepository.eraseSourceCredentials(library.getId());
       }
     }
-    connector.applyChange(library, validatedSettings);
+    connector.applyChange(library, ConnectorData.storedIn(library), validatedSettings);
     KnowledgeLibrary updated = libraryRepository.save(library);
     boolean nameChanged = !Objects.equals(previousName, updated.getName());
     boolean descriptionChanged = !Objects.equals(previousDescription, updated.getDescription());
@@ -487,7 +493,8 @@ public class KnowledgeLibraryService {
       }
       // Connector-owned settings leave the same trail as the connection fields; the connector
       // discards whatever run state the change invalidates.
-      Map<String, Object> currentSettingsState = connector.settingsState(updated);
+      Map<String, Object> currentSettingsState =
+          connector.settingsState(updated, ConnectorData.storedIn(updated));
       Set<String> changedSettings = new LinkedHashSet<>();
       for (Map.Entry<String, Object> previous : previousSettingsState.entrySet()) {
         if (!Objects.equals(previous.getValue(), currentSettingsState.get(previous.getKey()))) {
@@ -1269,7 +1276,7 @@ public class KnowledgeLibraryService {
         // #1941: who is responsible for a library is not a secret from its readers - the same
         // resolution the overview uses, and the same silence about a name it may not disclose.
         assetOwnerNames.of(List.of(library)).get(library.getOwnerId()),
-        connector.settingsView(library, false));
+        connector.settingsView(library, ConnectorData.storedIn(library), false));
   }
 
   private LibraryManagementDetail toManagementDetail(
@@ -1304,7 +1311,7 @@ public class KnowledgeLibraryService {
         // one is actually stored.
         library.getSourceCredentials() != null,
         pushSecretSet,
-        connector.settingsView(library, true),
+        connector.settingsView(library, ConnectorData.storedIn(library), true),
         // #1200: the instance-wide rhythm in whole days, so the schedule dialog can name the
         // default instead of hard-coding it; a sub-day interval still reads as one day.
         descriptor.fullSyncInterval() == null

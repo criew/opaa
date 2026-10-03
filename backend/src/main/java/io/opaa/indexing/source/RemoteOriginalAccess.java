@@ -20,9 +20,9 @@ import org.slf4j.LoggerFactory;
 /**
  * Streams the original of a URL-fetched document from the source URL stored at indexing time - no
  * part of the request decides which URL is fetched. The target validation is applied again on every
- * hop and to the proxy, a redirect is only followed within the same origin, and the library's own
- * proxy, credentials and TLS switch apply as for a run; the credentials reach only the outbound
- * {@code Authorization} header.
+ * hop and to the proxy, a redirect is only followed within the same origin, and the resolved proxy,
+ * credentials and TLS switch apply as for a run; the credentials reach only the outbound {@code
+ * Authorization} header.
  *
  * <p>The body is bounded by {@link RemoteContentProperties#maxBytes()} while streaming and each hop
  * by its own short timeout: a reader waits on this click, not an unattended run. Every failure -
@@ -47,7 +47,8 @@ public class RemoteOriginalAccess implements OriginalAccess {
   }
 
   @Override
-  public Optional<DocumentContent> openOriginal(Document document, KnowledgeLibrary library) {
+  public Optional<DocumentContent> openOriginal(
+      Document document, KnowledgeLibrary library, SourceSettings settings) {
     String sourceUrl = document.getFilePath();
     if (sourceUrl == null || sourceUrl.isBlank()) {
       return Optional.empty();
@@ -55,10 +56,10 @@ public class RemoteOriginalAccess implements OriginalAccess {
     HttpClient httpClient = null;
     try {
       ProxyAndCredentials config =
-          ProxyAndCredentials.parse(library.getSourceProxy(), library.getSourceCredentials());
+          ProxyAndCredentials.parse(settings.sourceProxy(), settings.sourceCredentials());
       httpClient =
           SourceHttpClientFactory.buildHttpClient(
-              config.proxyHost(), config.proxyPort(), library.isSourceInsecureSsl());
+              config.proxyHost(), config.proxyPort(), settings.sourceInsecureSsl());
       // the proxy decides where the connection (and Authorization below) goes
       targetAddressValidator.validateHost(config.proxyHost());
       String authHeader =

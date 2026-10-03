@@ -39,6 +39,7 @@ import io.opaa.indexing.document.DocumentIngest;
 import io.opaa.indexing.document.DocumentIngestService;
 import io.opaa.indexing.document.DocumentIngests;
 import io.opaa.indexing.source.FilesystemPathAllowlist;
+import io.opaa.indexing.source.LibrarySourceConnectionResolver;
 import io.opaa.indexing.source.RemoteContentProperties;
 import io.opaa.indexing.source.TestSourceConnectors;
 import io.opaa.indexing.source.s3.S3Download;
@@ -296,7 +297,8 @@ class LibraryDocumentServiceTest {
             .s3OriginalAccess(s3OriginalAccess)
             .registry(),
         assetRepository,
-        NO_OP_TRANSACTION_MANAGER);
+        NO_OP_TRANSACTION_MANAGER,
+        new LibrarySourceConnectionResolver());
   }
 
   @Test
@@ -1719,7 +1721,8 @@ class LibraryDocumentServiceTest {
                 .s3OriginalAccess(s3OriginalAccess)
                 .registry(),
             assetRepository,
-            NO_OP_TRANSACTION_MANAGER);
+            NO_OP_TRANSACTION_MANAGER,
+            new LibrarySourceConnectionResolver());
     grantViewerOnUploadLibrary();
     KnowledgeLibrary library = remoteLibrary(null);
     when(libraryRepository.findById(libraryId)).thenReturn(Optional.of(library));
@@ -1900,7 +1903,7 @@ class LibraryDocumentServiceTest {
     Document document = s3Document("2025/protokoll.pdf", "application/pdf");
     when(documentRepository.findById(document.getId())).thenReturn(Optional.of(document));
     S3Download download = s3Download("Originalinhalt aus dem Objektspeicher", "application/pdf");
-    when(s3OriginalAccess.download(any(), eq("s3://protokolle/2025/protokoll.pdf")))
+    when(s3OriginalAccess.download(any(), any(), eq("s3://protokolle/2025/protokoll.pdf")))
         .thenReturn(Optional.of(download));
 
     DocumentContent content = service.loadContent(document.getId(), caller);
@@ -1921,7 +1924,7 @@ class LibraryDocumentServiceTest {
     grantViewerOnUploadLibrary();
     Document document = s3Document("2025/protokoll.pdf", null);
     when(documentRepository.findById(document.getId())).thenReturn(Optional.of(document));
-    when(s3OriginalAccess.download(any(), eq("s3://protokolle/2025/protokoll.pdf")))
+    when(s3OriginalAccess.download(any(), any(), eq("s3://protokolle/2025/protokoll.pdf")))
         .thenReturn(Optional.of(s3Download("inhalt", "application/pdf; charset=utf-8")));
 
     DocumentContent content = service.loadContent(document.getId(), caller);
@@ -1938,7 +1941,7 @@ class LibraryDocumentServiceTest {
     grantViewerOnUploadLibrary();
     Document document = s3Document("2025/protokoll.pdf", "application/pdf");
     when(documentRepository.findById(document.getId())).thenReturn(Optional.of(document));
-    when(s3OriginalAccess.download(any(), any())).thenReturn(Optional.empty());
+    when(s3OriginalAccess.download(any(), any(), any())).thenReturn(Optional.empty());
 
     assertThatThrownBy(() -> service.loadContent(document.getId(), caller))
         .isInstanceOf(NotFoundException.class)
@@ -1950,7 +1953,7 @@ class LibraryDocumentServiceTest {
     grantViewerOnUploadLibrary();
     Document document = s3Document("2025/protokoll.pdf", "application/pdf");
     when(documentRepository.findById(document.getId())).thenReturn(Optional.of(document));
-    when(s3OriginalAccess.download(any(), any()))
+    when(s3OriginalAccess.download(any(), any(), any()))
         .thenThrow(new S3AccessException.Unreachable("Die Verbindung wurde abgelehnt."));
 
     assertThatThrownBy(() -> service.loadContent(document.getId(), caller))
@@ -2134,7 +2137,7 @@ class LibraryDocumentServiceTest {
     when(documentRepository.findById(mail.getId())).thenReturn(Optional.of(mail));
     when(documentRepository.findById(attachment.getId())).thenReturn(Optional.of(attachment));
     S3Download download = s3Download("nachricht mit anlage", "message/rfc822");
-    when(s3OriginalAccess.download(any(), eq("s3://protokolle/post/nachricht.eml")))
+    when(s3OriginalAccess.download(any(), any(), eq("s3://protokolle/post/nachricht.eml")))
         .thenReturn(Optional.of(download));
     when(s3OriginalAccess.maxObjectSizeBytes()).thenReturn(50L * 1024 * 1024);
     AtomicReference<String> parentBytes = new AtomicReference<>();
@@ -2177,7 +2180,7 @@ class LibraryDocumentServiceTest {
     when(documentRepository.findById(mail.getId())).thenReturn(Optional.of(mail));
     when(documentRepository.findById(attachment.getId())).thenReturn(Optional.of(attachment));
     String oversizedForUploads = "m".repeat((int) uploadProperties.maxFileSize() + 1);
-    when(s3OriginalAccess.download(any(), eq("s3://protokolle/post/gross.eml")))
+    when(s3OriginalAccess.download(any(), any(), eq("s3://protokolle/post/gross.eml")))
         .thenReturn(Optional.of(s3Download(oversizedForUploads, "message/rfc822")));
     when(s3OriginalAccess.maxObjectSizeBytes()).thenReturn(1024L * 1024);
     Path extracted = Files.createTempFile("opaa-attachment-test-", ".txt");

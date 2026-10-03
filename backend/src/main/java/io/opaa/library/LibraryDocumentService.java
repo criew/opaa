@@ -21,6 +21,7 @@ import io.opaa.indexing.document.DocumentIngestService;
 import io.opaa.indexing.source.OriginalAccess;
 import io.opaa.indexing.source.OriginalUnavailableException;
 import io.opaa.indexing.source.ServedOriginals;
+import io.opaa.indexing.source.SourceConnectionResolver;
 import io.opaa.indexing.source.SourceConnectorRegistry;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentContent;
@@ -143,6 +144,7 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
   private final SupportedDocumentFormats supportedFormats;
   private final SourceConnectorRegistry connectors;
   private final AssetRepository assetRepository;
+  private final SourceConnectionResolver connectionResolver;
 
   /** One transaction per document for {@link #deleteDocuments} - see its contract. */
   private final TransactionTemplate transactionTemplate;
@@ -165,7 +167,8 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
       SupportedDocumentFormats supportedFormats,
       SourceConnectorRegistry connectors,
       AssetRepository assetRepository,
-      PlatformTransactionManager transactionManager) {
+      PlatformTransactionManager transactionManager,
+      SourceConnectionResolver connectionResolver) {
     this.libraryRepository = libraryRepository;
     this.accessService = accessService;
     this.documentRepository = documentRepository;
@@ -184,6 +187,7 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
     this.connectors = connectors;
     this.assetRepository = assetRepository;
     this.transactionTemplate = new TransactionTemplate(transactionManager);
+    this.connectionResolver = connectionResolver;
   }
 
   /**
@@ -563,7 +567,7 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
             .orElseThrow(LibraryDocumentService::noOriginalAvailable);
     try {
       return access
-          .openOriginal(document, library)
+          .openOriginal(document, library, connectionResolver.resolve(library))
           .orElseThrow(LibraryDocumentService::noOriginalAvailable);
     } catch (OriginalUnavailableException e) {
       log.warn(

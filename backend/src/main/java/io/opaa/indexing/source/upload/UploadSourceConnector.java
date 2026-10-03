@@ -55,7 +55,8 @@ public class UploadSourceConnector implements SourceConnector, OriginalAccess {
   }
 
   @Override
-  public Optional<DocumentContent> openOriginal(Document document, KnowledgeLibrary library) {
+  public Optional<DocumentContent> openOriginal(
+      Document document, KnowledgeLibrary library, SourceSettings settings) {
     return UploadedOriginalRef.of(document)
         .flatMap(
             ref ->

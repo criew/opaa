@@ -44,7 +44,8 @@ final class ConfluenceRun {
     this.library = frame.library();
     this.progress = frame.progress();
     this.events = frame.events();
-    for (ConfluenceSpaceSelection space : ConfluenceSourceSettings.of(library).spaceSelection()) {
+    for (ConfluenceSpaceSelection space :
+        ConfluenceSourceSettings.stored(frame.settings().connectorSettings()).spaceSelection()) {
       selectedKeys.add(space.getSpaceKey());
     }
   }

@@ -3,6 +3,7 @@ package io.opaa.indexing.source.confluence;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
+import io.opaa.indexing.source.ConnectorData;
 import io.opaa.indexing.source.SourceSyncStateRepository;
 import io.opaa.indexing.source.confluence.webhook.ConfluenceWebhookService;
 import io.opaa.knowledge.KnowledgeLibrary;
@@ -42,10 +43,10 @@ class ConfluenceSourceConnectorViewTest {
         library, ConfluenceEdition.CLOUD, List.of(new ConfluenceSpaceSelection("ENG", null)));
     ConfluenceTestSettings.fullSyncIntervalDays(library, 14);
 
-    assertThat(connector.settingsView(library, false).asMap())
+    assertThat(connector.settingsView(library, ConnectorData.storedIn(library), false).asMap())
         .containsKeys("edition", "spaces")
         .doesNotContainKey("fullSyncIntervalDays");
-    assertThat(connector.settingsView(library, true).asMap())
+    assertThat(connector.settingsView(library, ConnectorData.storedIn(library), true).asMap())
         .containsEntry("fullSyncIntervalDays", 14);
   }
 
@@ -56,8 +57,11 @@ class ConfluenceSourceConnectorViewTest {
     KnowledgeLibrary spacesNoList = library();
     spacesNoList.updateSourceSettings("{\"edition\": \"CLOUD\", \"spaces\": \"ENG\"}");
 
-    assertThat(connector.settingsView(unknownEdition, true)).isNull();
-    assertThat(connector.settingsView(spacesNoList, false)).isNull();
-    assertThat(connector.settingsState(spacesNoList)).containsEntry("confluenceSpaces", List.of());
+    assertThat(connector.settingsView(unknownEdition, ConnectorData.storedIn(unknownEdition), true))
+        .isNull();
+    assertThat(connector.settingsView(spacesNoList, ConnectorData.storedIn(spacesNoList), false))
+        .isNull();
+    assertThat(connector.settingsState(spacesNoList, ConnectorData.storedIn(spacesNoList)))
+        .containsEntry("confluenceSpaces", List.of());
   }
 }

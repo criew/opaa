@@ -3,6 +3,7 @@ package io.opaa.indexing.source.s3;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.opaa.indexing.source.LibrarySourceConnectionResolver;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.s3.S3AccessException;
 import io.opaa.s3.S3Credentials;
@@ -74,6 +75,13 @@ class S3OriginalAccessIntegrationTest {
         new S3ClientFactory(properties, TargetAddressValidator.disabled()), properties);
   }
 
+  private static Optional<S3Download> download(
+      S3OriginalAccess access, KnowledgeLibrary library, String filePath)
+      throws S3AccessException, InterruptedException {
+    return access.download(
+        library, new LibrarySourceConnectionResolver().resolve(library), filePath);
+  }
+
   private S3OriginalAccess access() {
     return access(0);
   }
@@ -81,9 +89,10 @@ class S3OriginalAccessIntegrationTest {
   @Test
   void servesTheObjectBodyWithTheContentTypeTheStoreDeclares() throws Exception {
     Optional<S3Download> download =
-        access()
-            .download(
-                library(S3Scope.of(bucket, "2025/")), "s3://" + bucket + "/2025/protokoll.pdf");
+        download(
+            access(),
+            library(S3Scope.of(bucket, "2025/")),
+            "s3://" + bucket + "/2025/protokoll.pdf");
 
     assertThat(download).isPresent();
     assertThat(Files.readString(download.get().file(), StandardCharsets.UTF_8))
@@ -98,9 +107,10 @@ class S3OriginalAccessIntegrationTest {
     store.deleteObject(bucket, "2025/vergaenglich.pdf");
 
     Optional<S3Download> download =
-        access()
-            .download(
-                library(S3Scope.of(bucket, "2025/")), "s3://" + bucket + "/2025/vergaenglich.pdf");
+        download(
+            access(),
+            library(S3Scope.of(bucket, "2025/")),
+            "s3://" + bucket + "/2025/vergaenglich.pdf");
 
     assertThat(download).isEmpty();
   }
@@ -110,17 +120,17 @@ class S3OriginalAccessIntegrationTest {
     // The scopes can be narrowed after indexing; a row left over from a wider configuration must
     // not stay readable through this path.
     Optional<S3Download> download =
-        access()
-            .download(library(S3Scope.of(bucket, "2025/")), "s3://" + bucket + "/2024/altes.pdf");
+        download(
+            access(), library(S3Scope.of(bucket, "2025/")), "s3://" + bucket + "/2024/altes.pdf");
 
     assertThat(download).isEmpty();
   }
 
   @Test
   void answersEmptyForAFilePathThatIsNoObjectLocator() throws Exception {
-    assertThat(access().download(library(S3Scope.of(bucket, "")), "/var/opaa/uploads/a.pdf"))
+    assertThat(download(access(), library(S3Scope.of(bucket, "")), "/var/opaa/uploads/a.pdf"))
         .isEmpty();
-    assertThat(access().download(library(S3Scope.of(bucket, "")), "s3://" + bucket)).isEmpty();
+    assertThat(download(access(), library(S3Scope.of(bucket, "")), "s3://" + bucket)).isEmpty();
   }
 
   @Test
@@ -128,8 +138,8 @@ class S3OriginalAccessIntegrationTest {
     store.putObject(bucket, "2025/gross.pdf", "%PDF-1.4 " + "x".repeat(4096), "application/pdf");
 
     Optional<S3Download> download =
-        access(64)
-            .download(library(S3Scope.of(bucket, "2025/")), "s3://" + bucket + "/2025/gross.pdf");
+        download(
+            access(64), library(S3Scope.of(bucket, "2025/")), "s3://" + bucket + "/2025/gross.pdf");
 
     assertThat(download).isEmpty();
     assertThat(downloadDirectory).isEmptyDirectory();
@@ -142,7 +152,7 @@ class S3OriginalAccessIntegrationTest {
     KnowledgeLibrary library =
         library("http://127.0.0.1:1", store.rootCredentials(), S3Scope.of(bucket, "2025/"));
 
-    assertThatThrownBy(() -> access().download(library, "s3://" + bucket + "/2025/protokoll.pdf"))
+    assertThatThrownBy(() -> download(access(), library, "s3://" + bucket + "/2025/protokoll.pdf"))
         .isInstanceOf(S3AccessException.class);
   }
 
@@ -157,7 +167,7 @@ class S3OriginalAccessIntegrationTest {
             properties);
     KnowledgeLibrary library = library(S3Scope.of(bucket, "2025/"));
 
-    assertThatThrownBy(() -> blocking.download(library, "s3://" + bucket + "/2025/protokoll.pdf"))
+    assertThatThrownBy(() -> download(blocking, library, "s3://" + bucket + "/2025/protokoll.pdf"))
         .isInstanceOf(S3AccessException.TargetBlocked.class);
   }
 
@@ -172,6 +182,6 @@ class S3OriginalAccessIntegrationTest {
     KnowledgeLibrary library =
         library(store.endpoint().toString(), listOnly, S3Scope.of(bucket, "2025/"));
 
-    assertThat(access().download(library, "s3://" + bucket + "/2025/protokoll.pdf")).isEmpty();
+    assertThat(download(access(), library, "s3://" + bucket + "/2025/protokoll.pdf")).isEmpty();
   }
 }

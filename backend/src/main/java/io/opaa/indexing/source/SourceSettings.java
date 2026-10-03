@@ -38,6 +38,12 @@ public record SourceSettings(
         sourcePath, url, sourceProxy, sourceCredentials, sourceInsecureSsl, connectorSettings);
   }
 
+  /** A copy without the secret. */
+  public SourceSettings withoutCredentials() {
+    return new SourceSettings(
+        sourcePath, sourceUrl, sourceProxy, null, sourceInsecureSsl, connectorSettings);
+  }
+
   /** A copy carrying {@code settings} as the connector-owned part. */
   public SourceSettings withConnectorSettings(ConnectorData settings) {
     return new SourceSettings(

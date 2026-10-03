@@ -34,7 +34,9 @@ import io.opaa.indexing.job.IndexingRunCost;
 import io.opaa.indexing.job.IndexingRunEvent;
 import io.opaa.indexing.job.IndexingRunEventRepository;
 import io.opaa.indexing.maintenance.StaleDocumentCleanupService;
+import io.opaa.indexing.source.ConnectorData;
 import io.opaa.indexing.source.IndexingRunTemplate;
+import io.opaa.indexing.source.LibrarySourceConnectionResolver;
 import io.opaa.indexing.source.SourceSyncState;
 import io.opaa.indexing.source.SourceSyncStateRepository;
 import io.opaa.knowledge.Document;
@@ -297,7 +299,8 @@ class ConfluenceIndexingExecutorTest {
         eventRepository,
         cleanupService,
         documentRepository,
-        storageQuotaService);
+        storageQuotaService,
+        new LibrarySourceConnectionResolver());
   }
 
   /** The real generalized attachment path over the mocked processing. */
@@ -1010,34 +1013,38 @@ class ConfluenceIndexingExecutorTest {
   @MethodSource("editions")
   void theDefaultRunModeFollowsTheSyncState(ConfluenceEdition edition) throws Exception {
     start(edition, null, "ENG");
-    assertThat(executor.defaultRunMode(library)).as("no state yet").isEqualTo(IndexingRunMode.FULL);
+    assertThat(executor.defaultRunMode(library, ConnectorData.storedIn(library)))
+        .as("no state yet")
+        .isEqualTo(IndexingRunMode.FULL);
 
     SourceSyncState state = completedFullSync(NOW.minus(Duration.ofDays(2)));
-    assertThat(executor.defaultRunMode(library))
+    assertThat(executor.defaultRunMode(library, ConnectorData.storedIn(library)))
         .as("recent full sync")
         .isEqualTo(IndexingRunMode.INCREMENTAL);
 
     state.beginFullSync(UUID.randomUUID());
-    assertThat(executor.defaultRunMode(library)).as("interrupted").isEqualTo(IndexingRunMode.FULL);
+    assertThat(executor.defaultRunMode(library, ConnectorData.storedIn(library)))
+        .as("interrupted")
+        .isEqualTo(IndexingRunMode.FULL);
 
     SourceSyncState old = new SourceSyncState(library.getId());
     old.beginFullSync(UUID.randomUUID());
     old.completeFullSync(NOW.minus(Duration.ofDays(8)), NOW.minus(Duration.ofDays(8)));
     when(syncStateRepository.findByLibraryId(library.getId())).thenReturn(Optional.of(old));
-    assertThat(executor.defaultRunMode(library))
+    assertThat(executor.defaultRunMode(library, ConnectorData.storedIn(library)))
         .as("older than the weekly interval")
         .isEqualTo(IndexingRunMode.FULL);
 
     // the library's own rhythm takes precedence over the instance-wide default - the same
     // 8-day-old state reads as recent under a 30-day rhythm ...
     ConfluenceTestSettings.fullSyncIntervalDays(library, 30);
-    assertThat(executor.defaultRunMode(library))
+    assertThat(executor.defaultRunMode(library, ConnectorData.storedIn(library)))
         .as("8 days old, own rhythm 30 days")
         .isEqualTo(IndexingRunMode.INCREMENTAL);
     // ... and a 2-day-old state as due under a 1-day rhythm
     completedFullSync(NOW.minus(Duration.ofDays(2)));
     ConfluenceTestSettings.fullSyncIntervalDays(library, 1);
-    assertThat(executor.defaultRunMode(library))
+    assertThat(executor.defaultRunMode(library, ConnectorData.storedIn(library)))
         .as("2 days old, own rhythm 1 day")
         .isEqualTo(IndexingRunMode.FULL);
   }

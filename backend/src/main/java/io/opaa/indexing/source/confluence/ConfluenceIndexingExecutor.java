@@ -9,6 +9,7 @@ import io.opaa.indexing.document.DocumentIngestResult;
 import io.opaa.indexing.document.DocumentIngestService;
 import io.opaa.indexing.job.IndexingEventCategory;
 import io.opaa.indexing.maintenance.StaleDocumentCleanupService;
+import io.opaa.indexing.source.ConnectorData;
 import io.opaa.indexing.source.IndexingRun;
 import io.opaa.indexing.source.IndexingRunFailedException;
 import io.opaa.indexing.source.IndexingRunTemplate;
@@ -130,9 +131,9 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
    * that fell due while an incremental one was running is taken at the next tick, not lost.
    */
   @Override
-  public IndexingRunMode defaultRunMode(KnowledgeLibrary library) {
+  public IndexingRunMode defaultRunMode(KnowledgeLibrary library, ConnectorData settings) {
     // the library's own rhythm, where set, takes precedence over the instance-wide one.
-    Integer ownDays = ConfluenceSourceSettings.of(library).fullSyncIntervalDays();
+    Integer ownDays = ConfluenceSourceSettings.stored(settings).fullSyncIntervalDays();
     Duration fullSyncInterval =
         ownDays != null ? Duration.ofDays(ownDays) : properties.fullSyncInterval();
     return syncStateRepository
@@ -188,7 +189,7 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
   private ListingOutcome withClient(IndexingRun frame, Sync sync) throws InterruptedException {
     ConfluenceConnection connection;
     try {
-      connection = ConfluenceLibraryConnection.of(frame.library());
+      connection = ConfluenceLibraryConnection.of(frame.settings(), frame.currentCredentials());
     } catch (ConfluenceLibraryConnection.InvalidConfluenceConfigurationException e) {
       throw new IndexingRunFailedException(e.getMessage());
     }
@@ -226,7 +227,8 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
         syncStateRepository
             .findByLibraryId(libraryId)
             .orElseGet(() -> new SourceSyncState(libraryId));
-    List<ConfluenceSpaceSelection> spaces = orderForResumption(run.library, state);
+    List<ConfluenceSpaceSelection> spaces =
+        orderForResumption(run.frame.settings().connectorSettings(), state);
     run.resumed = state.isFullSyncInterrupted();
     state.beginFullSync(run.frame.jobId());
     state = syncStateRepository.save(state);
@@ -514,10 +516,10 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
 
   /** Unfinished spaces of an interrupted full sync first, then the already completed ones. */
   static List<ConfluenceSpaceSelection> orderForResumption(
-      KnowledgeLibrary library, SourceSyncState state) {
+      ConnectorData settings, SourceSyncState state) {
     Set<String> completed = state.isFullSyncInterrupted() ? state.completedScopeKeys() : Set.of();
     List<ConfluenceSpaceSelection> selection =
-        ConfluenceSourceSettings.of(library).spaceSelection();
+        ConfluenceSourceSettings.stored(settings).spaceSelection();
     List<ConfluenceSpaceSelection> ordered = new ArrayList<>();
     for (ConfluenceSpaceSelection space : selection) {
       if (!completed.contains(space.getSpaceKey())) {

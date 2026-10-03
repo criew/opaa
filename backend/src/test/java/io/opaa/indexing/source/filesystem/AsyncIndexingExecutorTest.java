@@ -37,6 +37,7 @@ import io.opaa.indexing.job.IndexingRunEventRepository;
 import io.opaa.indexing.maintenance.StaleDocumentCleanupService;
 import io.opaa.indexing.source.FilesystemPathAllowlist;
 import io.opaa.indexing.source.IndexingRunTemplate;
+import io.opaa.indexing.source.LibrarySourceConnectionResolver;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
@@ -129,7 +130,8 @@ class AsyncIndexingExecutorTest {
         indexingRunEventRepository,
         staleDocumentCleanupService,
         repository,
-        quotaService);
+        quotaService,
+        new LibrarySourceConnectionResolver());
   }
 
   @Test

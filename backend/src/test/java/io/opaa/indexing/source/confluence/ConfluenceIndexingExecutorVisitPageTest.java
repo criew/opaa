@@ -29,6 +29,7 @@ import io.opaa.indexing.maintenance.StaleDocumentCleanupService;
 import io.opaa.indexing.source.IndexingRun;
 import io.opaa.indexing.source.IndexingRunProgress;
 import io.opaa.indexing.source.IndexingRunTemplate;
+import io.opaa.indexing.source.LibrarySourceConnectionResolver;
 import io.opaa.indexing.source.SourceSyncStateRepository;
 import io.opaa.indexing.source.confluence.ConfluenceIndexingExecutor.PageVisitPolicy;
 import io.opaa.knowledge.Document;
@@ -122,6 +123,8 @@ class ConfluenceIndexingExecutorVisitPageTest {
         new IndexingRun(
             jobId,
             library,
+            new LibrarySourceConnectionResolver().resolve(library),
+            library::getSourceCredentials,
             IndexingRunMode.FULL,
             SourceTypes.CONFLUENCE,
             new IndexingRunProgress(indexingJobService, jobId),

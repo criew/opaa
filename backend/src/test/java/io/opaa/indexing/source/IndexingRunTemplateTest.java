@@ -30,6 +30,7 @@ import io.opaa.knowledge.SourceType;
 import io.opaa.sourceaccess.SourceRequestMeter;
 import io.opaa.test.SourceTypes;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -55,7 +56,12 @@ class IndexingRunTemplateTest {
   private final LibraryStorageQuotaService quotaService = mock(LibraryStorageQuotaService.class);
   private final IndexingRunTemplate template =
       new IndexingRunTemplate(
-          jobService, eventRepository, cleanupService, documentRepository, quotaService);
+          jobService,
+          eventRepository,
+          cleanupService,
+          documentRepository,
+          quotaService,
+          new LibrarySourceConnectionResolver());
   private final SourceIndexingExecutor fullListingExecutor =
       executor(
           SourceTypes.FILESYSTEM,
@@ -107,6 +113,63 @@ class IndexingRunTemplateTest {
         .failJob(jobId, "Betriebsart INCREMENTAL wird für diesen Quellentyp nicht unterstützt");
     verify(jobService, never()).recordRunMetrics(any(), any());
     verify(jobService, never()).completeJob(any(), anyInt(), anyInt(), anyInt(), anyInt());
+  }
+
+  // --- the resolved source -----------------------------------------------------------------
+
+  /** The secret is asked again on every read, never fixed at the start of the run. */
+  @Test
+  void theBodySeesTheResolvedSettingsWithoutTheSecretAndAsksForTheSecretOnDemand() {
+    SourceConnectionResolver resolver = mock(SourceConnectionResolver.class);
+    when(resolver.resolve(library))
+        .thenReturn(new SourceSettings(null, "https://quelle.example", null, "alt", false, null));
+    when(resolver.currentCredentials(library)).thenReturn("erstes", "erneuert");
+    AtomicReference<SourceSettings> settings = new AtomicReference<>();
+    List<String> secrets = new ArrayList<>();
+
+    templateWith(resolver)
+        .run(
+            jobId,
+            library,
+            IndexingRunMode.INCREMENTAL,
+            windowExecutor,
+            run -> {
+              settings.set(run.settings());
+              secrets.add(run.currentCredentials());
+              secrets.add(run.currentCredentials());
+              return ListingOutcome.partial();
+            });
+
+    assertThat(settings.get().sourceUrl()).isEqualTo("https://quelle.example");
+    assertThat(settings.get().sourceCredentials()).isNull();
+    assertThat(secrets).containsExactly("erstes", "erneuert");
+  }
+
+  @Test
+  void aSourceThatCannotBeResolvedFailsTheJobWithoutRunningTheBody() {
+    SourceConnectionResolver resolver = mock(SourceConnectionResolver.class);
+    when(resolver.resolve(library)).thenThrow(new IllegalStateException("Zugang gesperrt"));
+    AtomicReference<IndexingRun> seen = new AtomicReference<>();
+
+    templateWith(resolver)
+        .run(
+            jobId,
+            library,
+            IndexingRunMode.FULL,
+            fullListingExecutor,
+            run -> {
+              seen.set(run);
+              return ListingOutcome.complete();
+            });
+
+    assertThat(seen.get()).isNull();
+    verify(jobService).failJob(jobId, "Zugang gesperrt");
+    verify(jobService, never()).completeJob(any(), anyInt(), anyInt(), anyInt(), anyInt());
+  }
+
+  private IndexingRunTemplate templateWith(SourceConnectionResolver resolver) {
+    return new IndexingRunTemplate(
+        jobService, eventRepository, cleanupService, documentRepository, quotaService, resolver);
   }
 
   @Test

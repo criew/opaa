@@ -2,6 +2,7 @@ package io.opaa.indexing.source.s3.events;
 
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.common.UnauthorizedException;
+import io.opaa.indexing.source.ConnectorData;
 import io.opaa.indexing.source.PushIntakeHandler;
 import io.opaa.indexing.source.SourceEventIntake;
 import io.opaa.indexing.source.SourceEventTarget;
@@ -15,7 +16,6 @@ import io.opaa.indexing.source.s3.S3SourceConnector;
 import io.opaa.indexing.source.s3.S3SourceSettings;
 import io.opaa.indexing.source.s3.S3SourceSettingsJson;
 import io.opaa.knowledge.KnowledgeLibrary;
-import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.SourceType;
 import java.util.LinkedHashSet;
 import java.util.Optional;
@@ -45,17 +45,12 @@ public class S3EventService implements S3PushReceiver {
 
   static final String UNAUTHORIZED_MESSAGE = PushIntakeHandler.UNAUTHORIZED_MESSAGE;
 
-  private final KnowledgeLibraryRepository libraryRepository;
   private final SourceEventIntake intake;
   private final JsonMapper jsonMapper;
   private final SourceEventTarget target;
 
   public S3EventService(
-      KnowledgeLibraryRepository libraryRepository,
-      S3IndexingExecutor executor,
-      SourceEventIntake intake,
-      JsonMapper jsonMapper) {
-    this.libraryRepository = libraryRepository;
+      S3IndexingExecutor executor, SourceEventIntake intake, JsonMapper jsonMapper) {
     this.intake = intake;
     this.jsonMapper = jsonMapper;
     this.target =
@@ -83,27 +78,16 @@ public class S3EventService implements S3PushReceiver {
   }
 
   /**
-   * Authenticates and queues one notification. Throws {@link UnauthorizedException} (401) when the
-   * request does not prove knowledge of the library's token; returns normally - also for the set-up
-   * test message and for a body that names no object - once it does.
-   */
-  public void accept(UUID libraryId, byte[] body, String authorization, String sharedSecret) {
-    accept(
-        libraryId,
-        libraryRepository.findById(libraryId).orElse(null),
-        body,
-        authorization,
-        sharedSecret);
-  }
-
-  /**
-   * The same for a library the caller has already loaded, {@code null} for none - the shared push
-   * intake loads it once for every request, so no path costs an extra query.
+   * Authenticates and queues one notification for a library the caller has already loaded, {@code
+   * null} for none, with its stored {@code settings}. Throws {@link UnauthorizedException} (401)
+   * when the request does not prove knowledge of the library's token; returns normally - also for
+   * the set-up test message and for a body that names no object - once it does.
    */
   @Override
   public void accept(
       UUID libraryId,
       KnowledgeLibrary loaded,
+      ConnectorData settings,
       byte[] body,
       String authorization,
       String sharedSecret) {
@@ -120,12 +104,12 @@ public class S3EventService implements S3PushReceiver {
       log.info("S3 set-up test event for library {} accepted", libraryId);
       return;
     }
-    S3SourceSettings settings = S3SourceSettingsJson.of(library.get());
+    S3SourceSettings scopes = S3SourceSettingsJson.of(settings);
     Set<String> admitted = new LinkedHashSet<>();
     int dropped = 0;
-    S3KeyPatterns patterns = settings == null ? null : S3KeyPatterns.of(settings);
+    S3KeyPatterns patterns = scopes == null ? null : S3KeyPatterns.of(scopes);
     for (S3ObjectEvent event : parsed.events()) {
-      if (settings != null && inScope(settings, event) && patterns.admits(event.key())) {
+      if (scopes != null && inScope(scopes, event) && patterns.admits(event.key())) {
         admitted.add(event.reference());
       } else {
         dropped++;

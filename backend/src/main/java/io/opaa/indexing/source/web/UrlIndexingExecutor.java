@@ -15,6 +15,7 @@ import io.opaa.indexing.source.RequestBudget;
 import io.opaa.indexing.source.SourceFolderMirror;
 import io.opaa.indexing.source.SourceFolderPath;
 import io.opaa.indexing.source.SourceIndexingExecutor;
+import io.opaa.indexing.source.SourceSettings;
 import io.opaa.indexing.source.VanishedDocumentPolicy;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
@@ -106,8 +107,7 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
   }
 
   private ListingOutcome crawlDirectory(IndexingRun run) throws IOException, InterruptedException {
-    KnowledgeLibrary targetLibrary = run.library();
-    UrlIndexingRequest request = toUrlIndexingRequest(targetLibrary);
+    UrlIndexingRequest request = toUrlIndexingRequest(run.settings(), run.currentCredentials());
     ProxyAndCredentials config;
     try {
       config = ProxyAndCredentials.parse(request.proxy(), request.credentials());
@@ -190,7 +190,7 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
     String authHeader =
         SourceHttpClientFactory.buildAuthHeader(config.username(), config.password());
     ReconcilingAttachmentAccess attachmentAccess = run.attachmentAccess();
-    var folderMirror = new SourceFolderMirror(folderService, targetLibrary);
+    var folderMirror = new SourceFolderMirror(folderService, run.library());
     String normalizedUrl = url;
 
     for (AutoindexCrawlerService.CrawledFileEntry entry : allFiles) {
@@ -471,17 +471,12 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
   }
 
   /**
-   * Extracts this executor's own configuration from {@code targetLibrary} (ADR-0018) - the
-   * library's persisted quellkonfiguration, not a per-request field. {@code getSourceCredentials()}
-   * is already plaintext here, since {@code SourceCredentialsConverter} decrypts on load.
-   * Package-private so {@code UrlIndexingExecutorCredentialsTest} can assert on it with a freshly
-   * reloaded entity, over the same decryption path a real run takes.
+   * This executor's own configuration from the run's resolved {@code settings} and the {@code
+   * credentials} valid now, both plaintext. Package-private so {@code
+   * UrlIndexingExecutorCredentialsTest} can assert on it over the decryption path a real run takes.
    */
-  static UrlIndexingRequest toUrlIndexingRequest(KnowledgeLibrary targetLibrary) {
+  static UrlIndexingRequest toUrlIndexingRequest(SourceSettings settings, String credentials) {
     return new UrlIndexingRequest(
-        targetLibrary.getSourceUrl(),
-        targetLibrary.getSourceProxy(),
-        targetLibrary.getSourceCredentials(),
-        targetLibrary.isSourceInsecureSsl());
+        settings.sourceUrl(), settings.sourceProxy(), credentials, settings.sourceInsecureSsl());
   }
 }

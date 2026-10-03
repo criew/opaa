@@ -18,12 +18,14 @@ public interface PushIntakeHandler {
    * nothing to look at - once the request proves knowledge of the library's secret.
    *
    * @param library the addressed library, already loaded and of this handler's source type
+   * @param settings the connector settings stored on {@code library}, {@code null} for none
    * @param body the raw request body, already bounded by the caller
    * @param header the request header of the given name, or {@code null}
    * @throws io.opaa.common.UnauthorizedException (401) for every request that does not - no secret
    *     or a wrong one alike
    */
-  void acceptNotification(KnowledgeLibrary library, byte[] body, UnaryOperator<String> header);
+  void acceptNotification(
+      KnowledgeLibrary library, ConnectorData settings, byte[] body, UnaryOperator<String> header);
 
   /**
    * Does the work of refusing a notification for a library without this handler's secret - the same

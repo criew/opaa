@@ -78,7 +78,8 @@ public class FilesystemSourceConnector implements SourceConnector, OriginalAcces
   }
 
   @Override
-  public Optional<DocumentContent> openOriginal(Document document, KnowledgeLibrary library) {
+  public Optional<DocumentContent> openOriginal(
+      Document document, KnowledgeLibrary library, SourceSettings settings) {
     Path file = fileWithinConfiguredDirectory(document, library);
     if (file == null || !Files.isRegularFile(file)) {
       return Optional.empty();

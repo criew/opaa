@@ -1,6 +1,7 @@
 package io.opaa.library;
 
 import io.opaa.common.UnauthorizedException;
+import io.opaa.indexing.source.ConnectorData;
 import io.opaa.indexing.source.PushIntakeHandler;
 import io.opaa.indexing.source.SourceConnectorRegistry;
 import io.opaa.knowledge.KnowledgeLibrary;
@@ -45,6 +46,6 @@ public class PushIntakeService {
     if (own == null) {
       throw new UnauthorizedException(PushIntakeHandler.UNAUTHORIZED_MESSAGE);
     }
-    own.acceptNotification(library, body, header);
+    own.acceptNotification(library, ConnectorData.storedIn(library), body, header);
   }
 }
