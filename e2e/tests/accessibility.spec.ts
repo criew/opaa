@@ -333,6 +333,45 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
     }
   });
 
+  // Die Detailseite einer Prompt-Bibliothek (#2208): Kopf mit Stern und „⋯", dann jeder der drei
+  // Reiter. Der Kopf ist derselbe Baustein wie auf der Seite einer Wissensbibliothek.
+  test("Detailseite einer Prompt-Bibliothek mit allen Reitern", async ({
+    authenticatedPage: page,
+  }) => {
+    const name = `A11y Detail ${Date.now()}`;
+    const libraryId = await createPromptLibraryViaApi("dev-admin", { name });
+    try {
+      await page.goto(`/prompts/${libraryId}`);
+      await expect(page.getByRole("heading", { level: 1, name })).toBeVisible();
+      await expect(
+        page.getByRole("button", { name: `„${name}“ als Favorit markieren` }),
+      ).toBeVisible();
+      await expectNoSeriousA11yViolations(page, "Prompt-Bibliothek, Reiter Prompts");
+
+      await page.getByRole("button", { name: "Weitere Aktionen" }).click();
+      await expect(page.getByRole("menuitem", { name: "Löschen" })).toBeVisible();
+      await expectNoSeriousA11yViolations(page, "Prompt-Bibliothek, Menü Weitere Aktionen");
+      await page.keyboard.press("Escape");
+
+      await page.getByRole("tab", { name: "Freigaben" }).click();
+      await expect(page.getByRole("region", { name: "Berechtigungen" })).toBeVisible();
+      await expectNoSeriousA11yViolations(page, "Prompt-Bibliothek, Reiter Freigaben");
+
+      await page.getByRole("tab", { name: "Zuordnungen" }).click();
+      await expect(
+        page.getByRole("button", { name: `„${name}“ in Space verwenden` }),
+      ).toBeVisible();
+      await expectNoSeriousA11yViolations(page, "Prompt-Bibliothek, Reiter Zuordnungen");
+    } finally {
+      const api = await apiAs("dev-admin");
+      try {
+        await api.delete(`/api/v1/prompt-libraries/${libraryId}`);
+      } finally {
+        await api.dispose();
+      }
+    }
+  });
+
   // Der Schritt „Inhalte" des Space-Assistenten: Mehrfachauswahl als Kacheln mit Typfilter und Suche.
   test("Space-Assistent: Inhalte als Kachelauswahl in beiden Farbschemata", async ({
     authenticatedPage: page,
