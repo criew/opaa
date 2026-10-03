@@ -384,7 +384,8 @@ hat drei Reiter:
 löst die Zuordnung, und die Meldung dazu bietet „Rückgängig" an. Schlägt die Änderung fehl, springt
 das Häkchen zurück, und eine Fehlermeldung nennt den Grund. Beim Öffnen ist der Filter „Nur
 zugeordnete" eingeschaltet; ausgeschaltet zeigt die Liste alles, was man lesen darf und deshalb
-zuordnen könnte. Darüber stehen dieselben Filter wie im Katalog: Suche, Typ und Favoriten. Wer
+zuordnen könnte. In beiden Ansichten sind es dieselben Kacheln wie im Katalog. Darüber stehen
+dieselben Filter wie im Katalog: Suche, Typ und Favoriten. Wer
 weder Kurator noch Administrator noch Eigentümer des Raums ist, sieht die zugeordneten Inhalte, die
 er lesen darf, nur lesend.
 
@@ -421,8 +422,12 @@ wie im Katalog, in derselben Reihenfolge. Mehrere Kacheln lassen sich zugleich w
 steht dieselbe Filterzeile wie im Katalog: Suche über Name und Beschreibung, Art („Alle", „Wissen",
 „Prompts") und „Favoriten". Über „Weitere laden" steht, wie viele von wie vielen angezeigt sind. Eine Wahl bleibt bestehen,
 wenn Filter oder Suche ihre Kachel ausblenden; die Zeile unter den Kacheln nennt alles Gewählte.
-Jede Kachel ist ein Kontrollkästchen mit eigenem Tabstopp: Leertaste und Enter wählen oder
-heben die Wahl auf.
+Die Kacheln sind dieselben wie im Katalog — Art, Welt-Symbol, Stern, Name, Beschreibung, Umfang,
+zuständige Stelle und „Aktualisiert am" —, nur ohne „⋯". Eine gewählte Kachel trägt links oben ein
+Häkchen und einen hervorgehobenen Rahmen. Ein Klick auf die Kachel wählt sie oder hebt die Wahl
+auf; ein Klick auf den Stern setzt nur den eigenen Favoriten und ändert die Wahl nicht. Jede Kachel
+ist ein Kontrollkästchen mit eigenem Tabstopp, der Stern ein eigener Tabstopp daneben: Leertaste und
+Enter wählen oder heben die Wahl auf.
 
 „Space anlegen" legt den Raum samt vorgemerkten Mitgliedern und allen Zuordnungen in einem Schritt
 an. Lässt sich ein Mitglied nicht aufnehmen oder ein gewählter Bestand nicht zuordnen, entsteht kein

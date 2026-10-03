@@ -5,8 +5,11 @@ import Button from '@mui/material/Button'
 import Typography from '@mui/material/Typography'
 import type { AssetType, CatalogEntryResponse } from '../../types/api'
 import { getCatalog } from '../../services/catalogApi'
-import ChoiceTileGroup, { type ChoiceTile } from '../choice/ChoiceTileGroup'
-import { ASSET_TYPES, assetTypeDefinition } from './assetTypeRegistry'
+import { appendNewEntries, pagesForMore } from '../../services/catalogPaging'
+import { markAssetFavorite, unmarkAssetFavorite } from '../../services/assetApi'
+import AssetTile from './AssetTile'
+import { tileFromCatalogEntry, type AssetTileData } from './assetTileData'
+import { ASSET_TYPES } from './assetTypeRegistry'
 import { assetPickKey, type AssetPick } from './assetPick'
 import { type AssetFilters } from './AssetFilterChips'
 import AssetFilterBar from './AssetFilterBar'
@@ -21,18 +24,26 @@ interface Loaded {
   error: string | null
 }
 
-/** The keys a personal filter lets through, for narrowing the chosen tiles alone. */
-interface PersonalKeys {
+/** The catalog entries of the chosen assets, for showing them as full tiles. */
+interface ChosenDetails {
   key: string
-  keys: ReadonlySet<string> | null
+  entries: ReadonlyMap<string, CatalogEntryResponse>
   error: string | null
 }
 
-/** What a tile needs, whether it comes from the catalog or from the chosen picks. */
-type TileSource = Pick<AssetPick, 'assetType' | 'assetId' | 'name' | 'description'>
+/** A pick's tile while its catalog entry is still on its way: name, description and type. */
+function tileOfPick(pick: AssetPick): AssetTileData {
+  return {
+    assetType: pick.assetType,
+    assetId: pick.assetId,
+    name: pick.name,
+    description: pick.description ?? null,
+  }
+}
 
 const PAGE_SIZE = 50
-const PERSONAL_PAGE_SIZE = 200
+/** The most ids the catalog takes in one request; 50 UUIDs keep the request line under 8 KB. */
+const IDS_PER_REQUEST = 50
 const SEARCH_DELAY_MS = 300
 const LOAD_ERROR = 'Die Auswahl konnte nicht geladen werden.'
 
@@ -41,8 +52,6 @@ interface AssetTilePickerProps {
   types?: AssetType[]
   value: AssetPick[]
   onChange: (value: AssetPick[]) => void
-  /** Already associated: shown, but not choosable. */
-  excludedKeys?: ReadonlySet<string>
   /** Offers a chip of this name that narrows the tiles to the chosen ones; it starts switched on. */
   chosenOnlyLabel?: string
   /** Shows the chosen tiles only, without letting the choice change. */
@@ -66,7 +75,6 @@ export default function AssetTilePicker({
   types,
   value,
   onChange,
-  excludedKeys,
   chosenOnlyLabel,
   readOnly = false,
   busyKeys,
@@ -86,13 +94,21 @@ export default function AssetTilePicker({
   const [query, setQuery] = useState('')
   const [appliedQuery, setAppliedQuery] = useState('')
   const [loaded, setLoaded] = useState<Loaded | null>(null)
-  const [loadingMore, setLoadingMore] = useState(false)
+  // The filter a further page is loading for; a changed filter is not blocked by it.
+  const [loadingMoreFor, setLoadingMoreFor] = useState<string | null>(null)
   // A failed further page keeps the tiles already shown; only the first page replaces them.
   const [moreError, setMoreError] = useState<{ key: string; message: string } | null>(null)
-  const [personal, setPersonal] = useState<PersonalKeys | null>(null)
+  const [details, setDetails] = useState<ChosenDetails | null>(null)
   // Every pick chosen since the narrowing to the chosen was switched on.
   const [seen, setSeen] = useState<AssetPick[]>(value)
+  // Favorites set on a tile here; the server holds them, the tiles show them at once.
+  const [favorites, setFavorites] = useState<ReadonlyMap<string, boolean>>(new Map())
+  const [favoriteError, setFavoriteError] = useState<string | null>(null)
   const latestRequest = useRef(0)
+  // The latest "Weitere laden"; only it may end the loading state, even when its answer is stale.
+  const latestMore = useRef(0)
+  // A favorite toggled since the last first page; see pagesForMore.
+  const reorderedSinceLoad = useRef(false)
 
   const offersChosenOnly = chosenOnlyLabel !== undefined && !readOnly
   const showsChosenOnly = readOnly || (offersChosenOnly && chosenOnly)
@@ -111,8 +127,13 @@ export default function AssetTilePicker({
 
   const filterKey = `${filterType ?? ''}|${filters.favorites}|${appliedQuery.trim()}|${typesKey}`
   const catalogKey = showsChosenOnly ? null : filterKey
-  const personalFiltered = filters.favorites
-  const personalKey = showsChosenOnly && personalFiltered ? 'favorites' : null
+  const chosenSource = readOnly ? value : seen
+  const detailsKey = showsChosenOnly
+    ? chosenSource
+        .map((pick) => pick.assetId)
+        .sort()
+        .join(',')
+    : null
 
   async function fetchPage(page: number): Promise<Omit<Loaded, 'key'>> {
     try {
@@ -146,60 +167,76 @@ export default function AssetTilePicker({
     if (catalogKey === null) return
     const request = ++latestRequest.current
     void fetchPage(0).then((result) => {
-      if (request === latestRequest.current) setLoaded({ key: catalogKey, ...result })
+      if (request !== latestRequest.current) return
+      reorderedSinceLoad.current = false
+      setLoaded({ key: catalogKey, ...result })
     })
     // fetchPage reads exactly what catalogKey names.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [catalogKey])
 
-  // Favorites exist on the server only; narrowed to the chosen, their keys come from the catalog
-  // in full - a person's own favorites are few.
+  // Narrowed to the chosen, their catalog entries make the same full tiles as the list. What the
+  // catalog does not return, the person may not read, and it stays out.
   useEffect(() => {
-    if (personalKey === null) return
+    if (detailsKey === null) return
     let current = true
-    async function fetchKeys(): Promise<Omit<PersonalKeys, 'key'>> {
-      const keys = new Set<string>()
+    async function fetchDetails(ids: string[]): Promise<Omit<ChosenDetails, 'key'>> {
+      const entries = new Map<string, CatalogEntryResponse>()
       try {
-        for (let page = 0, pages = 1; page < pages; page++) {
+        for (let from = 0; from < ids.length; from += IDS_PER_REQUEST) {
           const result = await getCatalog({
-            favorites: true,
-            page,
-            size: PERSONAL_PAGE_SIZE,
+            ids: ids.slice(from, from + IDS_PER_REQUEST),
+            page: 0,
+            size: IDS_PER_REQUEST,
           })
-          result.entries.forEach((entry) => keys.add(assetPickKey(entry)))
-          pages = result.totalPages
+          result.entries.forEach((entry) => entries.set(assetPickKey(entry), entry))
         }
-        return { keys, error: null }
+        return { entries, error: null }
       } catch (err) {
-        return { keys: null, error: err instanceof Error ? err.message : LOAD_ERROR }
+        return { entries, error: err instanceof Error ? err.message : LOAD_ERROR }
       }
     }
-    void fetchKeys().then((result) => {
-      if (current) setPersonal({ key: personalKey, ...result })
+    const ids = detailsKey ? detailsKey.split(',') : []
+    void fetchDetails(ids).then((result) => {
+      if (current) setDetails({ key: detailsKey, ...result })
     })
     return () => {
       current = false
     }
-  }, [personalKey])
+  }, [detailsKey])
 
   async function loadMore() {
     if (!loaded || catalogKey === null) return
     const request = ++latestRequest.current
-    setLoadingMore(true)
+    const more = ++latestMore.current
+    setLoadingMoreFor(catalogKey)
     setMoreError(null)
-    const result = await fetchPage(loaded.page + 1)
-    setLoadingMore(false)
-    if (request !== latestRequest.current) return
+    const { from, through } = pagesForMore(loaded.page, reorderedSinceLoad.current)
+    let entries = from === 0 ? [] : loaded.entries
+    let result: Omit<Loaded, 'key'> | null = null
+    try {
+      for (let page = from; page <= through; page++) {
+        result = await fetchPage(page)
+        if (request !== latestRequest.current) return
+        if (result.error) break
+        entries = appendNewEntries(entries, result.entries)
+        if (page + 1 >= result.totalPages) break
+      }
+    } finally {
+      if (more === latestMore.current) setLoadingMoreFor(null)
+    }
+    if (!result) return
     if (result.error) {
       setMoreError({ key: catalogKey, message: result.error })
       return
     }
+    reorderedSinceLoad.current = false
     setLoaded({
       ...loaded,
       page: result.page,
       totalPages: result.totalPages,
       totalElements: result.totalElements,
-      entries: [...loaded.entries, ...result.entries],
+      entries,
     })
   }
 
@@ -211,22 +248,25 @@ export default function AssetTilePicker({
 
   // While a new filter loads, the tiles of the previous answer stay in place, so a focused tile
   // keeps its focus; only the very first load shows the loading text.
-  let sources: TileSource[]
+  let sources: AssetTileData[]
   let isLoading: boolean
   let refreshing: boolean
   let error: string | null
   if (showsChosenOnly) {
     const needle = appliedQuery.trim().toLowerCase()
-    const personalReady = personalKey === null || personal?.key === personalKey
-    const previousKeys = personal?.error ? null : (personal?.keys ?? null)
-    isLoading = !personalReady && previousKeys === null
-    refreshing = !personalReady && !isLoading
-    error = personalKey !== null && personalReady ? (personal?.error ?? null) : null
-    const allowed = personalKey === null ? null : personalReady ? personal?.keys : previousKeys
+    const detailsReady = details?.key === detailsKey
+    isLoading = !detailsReady && details === null
+    refreshing = !detailsReady && !isLoading
+    error = detailsReady ? (details?.error ?? null) : null
+    const known = details?.entries ?? new Map<string, CatalogEntryResponse>()
+    // As loaded, like the catalog's own filter: a star cleared here keeps its tile in place.
+    const favoriteOf = (key: string) => known.get(key)?.favorite ?? false
     sources = isLoading
       ? []
-      : (readOnly ? value : seen)
+      : chosenSource
           .map((pick) => valueByKey.get(assetPickKey(pick)) ?? pick)
+          // Once the entries for exactly these picks are in, a missing one is not readable.
+          .filter((pick) => !detailsReady || error !== null || known.has(assetPickKey(pick)))
           .filter((pick) => offered.some((d) => d.type === pick.assetType))
           .filter((pick) => !filterType || pick.assetType === filterType)
           .filter(
@@ -235,49 +275,60 @@ export default function AssetTilePicker({
               pick.name.toLowerCase().includes(needle) ||
               (pick.description ?? '').toLowerCase().includes(needle),
           )
-          .filter((pick) => !allowed || allowed.has(assetPickKey(pick)))
+          .filter((pick) => !filters.favorites || favoriteOf(assetPickKey(pick)))
           .sort((a, b) => a.name.localeCompare(b.name, 'de'))
+          .map((pick) => {
+            const entry = known.get(assetPickKey(pick))
+            return entry ? tileFromCatalogEntry(entry) : tileOfPick(pick)
+          })
   } else {
     const current = loaded?.key === filterKey
     isLoading = !current && (!loaded || loaded.error !== null)
     refreshing = !current && !isLoading
     error = current ? (loaded?.error ?? null) : null
-    sources = isLoading ? [] : (loaded?.entries ?? [])
+    sources = isLoading ? [] : (loaded?.entries ?? []).map(tileFromCatalogEntry)
   }
   const page = loaded?.page ?? 0
   const currentPage = !showsChosenOnly && loaded?.key === filterKey
   const totalPages = currentPage ? (loaded?.totalPages ?? 0) : 0
   const totalElements = currentPage ? (loaded?.totalElements ?? 0) : 0
-  const shownKeys = sources.map(assetPickKey)
-  const narrowed = Boolean(appliedQuery.trim() || filterType || personalFiltered)
+  const loadingMore = loadingMoreFor !== null && loadingMoreFor === catalogKey
+  const narrowed = Boolean(appliedQuery.trim() || filterType || filters.favorites)
 
-  const tiles: ChoiceTile<string>[] = sources.map((source) => {
-    const definition = assetTypeDefinition(source.assetType)
-    const Icon = definition?.Icon
+  const tiles = sources.map((source) => {
     const key = assetPickKey(source)
-    return {
-      value: key,
-      label: source.name,
-      description: [definition?.title, source.description].filter(Boolean).join(' – '),
-      icon: Icon ? <Icon /> : null,
-      disabledReason: excludedKeys?.has(key) ? 'Bereits zugeordnet' : null,
-      busy: busyKeys?.has(key),
-    }
+    return favorites.has(key) ? { ...source, favorite: favorites.get(key) } : source
   })
 
-  function handleTiles(next: string[]) {
-    const nextSet = new Set(next)
-    // Choices outside the shown tiles stay; only the shown ones follow the tile group.
-    const kept = value.filter((pick) => !shownKeys.includes(assetPickKey(pick)))
-    const fromTiles = sources
-      .filter((source) => nextSet.has(assetPickKey(source)))
-      .map((source) => ({
-        assetType: source.assetType,
-        assetId: source.assetId,
-        name: source.name,
-        description: source.description ?? null,
-      }))
-    onChange([...kept, ...fromTiles])
+  function toggle(tile: AssetTileData) {
+    const key = assetPickKey(tile)
+    if (chosenKeys.has(key)) {
+      onChange(value.filter((pick) => assetPickKey(pick) !== key))
+      return
+    }
+    onChange([
+      ...value,
+      {
+        assetType: tile.assetType,
+        assetId: tile.assetId,
+        name: tile.name,
+        description: tile.description ?? null,
+      },
+    ])
+  }
+
+  async function setFavorite(tile: AssetTileData, favorite: boolean) {
+    setFavoriteError(null)
+    try {
+      if (favorite) await markAssetFavorite(tile.assetType, tile.assetId)
+      else await unmarkAssetFavorite(tile.assetType, tile.assetId)
+      reorderedSinceLoad.current = true
+      setFavorites((current) => new Map(current).set(assetPickKey(tile), favorite))
+    } catch (err) {
+      setFavoriteError(
+        err instanceof Error ? err.message : 'Der Favorit konnte nicht gespeichert werden',
+      )
+    }
   }
 
   function toggleFilter(key: keyof AssetFilters) {
@@ -310,6 +361,12 @@ export default function AssetTilePicker({
         selectedOnlyLabel={chosenOnlyLabel}
       />
 
+      {favoriteError && (
+        <Alert severity="error" onClose={() => setFavoriteError(null)}>
+          {favoriteError}
+        </Alert>
+      )}
+
       {error ? (
         <Alert severity="error">{error}</Alert>
       ) : tiles.length === 0 ? (
@@ -317,15 +374,30 @@ export default function AssetTilePicker({
           <Typography sx={{ color: 'text.secondary', fontSize: 13.5 }}>{emptyText}</Typography>
         )
       ) : (
-        <Box aria-busy={refreshing || undefined}>
-          <ChoiceTileGroup
-            multiple
-            tiles={tiles}
-            value={shownKeys.filter((key) => chosenKeys.has(key))}
-            onChange={handleTiles}
-            readOnly={readOnly}
-            aria-label={ariaLabel}
-          />
+        <Box
+          role="group"
+          aria-label={ariaLabel}
+          aria-busy={refreshing || undefined}
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
+            gap: 2,
+          }}
+        >
+          {tiles.map((tile) => (
+            <AssetTile
+              key={assetPickKey(tile)}
+              tile={tile}
+              mode={{
+                kind: 'select',
+                selected: chosenKeys.has(assetPickKey(tile)),
+                onToggle: () => toggle(tile),
+                busy: busyKeys?.has(assetPickKey(tile)),
+                readOnly,
+              }}
+              onFavoriteChange={(favorite) => setFavorite(tile, favorite)}
+            />
+          ))}
         </Box>
       )}
 

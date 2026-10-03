@@ -43,6 +43,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -195,6 +196,25 @@ class AssetCatalogFilterIntegrationTest {
       }
     }
     assertThat(combinations).hasSize(3 * 2 * 2);
+  }
+
+  /** The id filter narrows the readable set: an unreadable id yields nothing and counts nowhere. */
+  @Test
+  void theIdFilterReturnsOnlyTheReadableAmongTheNamedAssets() {
+    UUID readable = promptLibrary(DIRECT, owner, false);
+    grantToUser(readable, member, null);
+    UUID unreadable = promptLibrary("Geschlossen", owner, false);
+    promptLibrary(PUBLIC, owner, true);
+
+    AssetCatalogPage page =
+        catalogService.list(
+            callerOf(member),
+            new AssetCatalogQuery(null, null, false, Set.of(readable, unreadable)),
+            0,
+            50);
+
+    assertThat(names(page)).containsExactly(DIRECT);
+    assertThat(page.totalElements()).isEqualTo(1);
   }
 
   /** The last change never decides the order: by name, case-insensitive, ties broken by id. */
