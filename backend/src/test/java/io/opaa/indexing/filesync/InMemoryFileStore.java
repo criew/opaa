@@ -31,7 +31,8 @@ public final class InMemoryFileStore implements FileStore {
   private final Set<String> unlistable = new HashSet<>();
   private final Set<String> unreadable = new HashSet<>();
   private final Set<String> deselected = new HashSet<>();
-  private final Map<String, List<String>> unchangedSubtrees = new LinkedHashMap<>();
+  private final Map<String, Map<String, String>> recalled = new LinkedHashMap<>();
+  private boolean folderMarkers;
   private final List<String> calls = new ArrayList<>();
   private SourceRequestMeter meter = new SourceRequestMeter();
   private int pageSize = 1000;
@@ -99,11 +100,18 @@ public final class InMemoryFileStore implements FileStore {
   }
 
   /**
-   * The container's listing leaves out every file below {@code folder} and reports it unchanged.
+   * From now on a folder's marker is a hash over the names and bytes below it, the way a store with
+   * propagating folder ETags reports it, and a folder whose marker equals the recalled one is
+   * reported unchanged instead of listed.
    */
-  public InMemoryFileStore unchangedSubtree(String container, String folder) {
-    unchangedSubtrees.computeIfAbsent(container, k -> new ArrayList<>()).add(folder);
+  public InMemoryFileStore withFolderMarkers() {
+    folderMarkers = true;
     return this;
+  }
+
+  /** The markers {@link #recall} last handed over, per container. */
+  public Map<String, Map<String, String>> recalled() {
+    return recalled;
   }
 
   /** Gives the store a change log with one stream per container and numbered start cursors. */
@@ -152,10 +160,25 @@ public final class InMemoryFileStore implements FileStore {
       throw new FileAccessException.ContainerUnlistable(
           "Der Bereich „" + container.key() + "“ darf nicht aufgelistet werden.");
     }
-    List<String> skipped = unchangedSubtrees.getOrDefault(container.key(), List.of());
+    TreeMap<String, StoredFile> files = containers.get(container.key());
+    Map<String, String> markers = folderMarkers ? folderMarkers(files) : Map.of();
+    Map<String, String> previous = recalled.getOrDefault(container.key(), Map.of());
+    List<String> skipped = new ArrayList<>();
+    Map<String, String> listed = new TreeMap<>();
+    markers.forEach(
+        (folder, marker) -> {
+          if (skipped.stream().anyMatch(outer -> FileSync.covers(outer, folder))) {
+            return;
+          }
+          if (marker.equals(previous.get(folder))) {
+            skipped.add(folder);
+          } else {
+            listed.put(folder, marker);
+          }
+        });
     List<String> names =
-        containers.get(container.key()).keySet().stream()
-            .filter(name -> skipped.stream().noneMatch(folder -> name.startsWith(folder + "/")))
+        files.keySet().stream()
+            .filter(name -> skipped.stream().noneMatch(folder -> FileSync.covers(folder, of(name))))
             .toList();
     int start = continuation == null ? 0 : Integer.parseInt(continuation);
     int end = Math.min(start + pageSize, names.size());
@@ -164,11 +187,46 @@ public final class InMemoryFileStore implements FileStore {
       entries.add(entry(container, name));
     }
     String next = end < names.size() && !endAfterFirstPage ? Integer.toString(end) : null;
-    List<String> subtrees =
-        start == 0
-            ? skipped.stream().map(folder -> filePath(container.key(), folder) + "/").toList()
-            : List.of();
-    return new FilePage(entries, next, subtrees);
+    return start == 0 ? new FilePage(entries, next, skipped, listed) : new FilePage(entries, next);
+  }
+
+  @Override
+  public void recall(FileContainer container, Map<String, String> subtreeMarkers) {
+    recalled.put(container.key(), Map.copyOf(subtreeMarkers));
+  }
+
+  /** The hierarchy path of the folder {@code name} lies in, {@code ""} at the container's root. */
+  private static String of(String name) {
+    int slash = name.lastIndexOf('/');
+    return slash < 0
+        ? ""
+        : String.join(
+            SourceDocumentContext.HIERARCHY_SEPARATOR, name.substring(0, slash).split("/"));
+  }
+
+  /** Every folder, root first and parents before children, with a hash over all files below it. */
+  private static Map<String, String> folderMarkers(TreeMap<String, StoredFile> files) {
+    Map<String, Integer> hashes = new TreeMap<>();
+    hashes.put("", 1);
+    files.forEach(
+        (name, file) -> {
+          int contribution = name.hashCode() * 31 + Arrays.hashCode(file.bytes());
+          String folder = of(name);
+          List<String> chain = new ArrayList<>(List.of(""));
+          if (!folder.isEmpty()) {
+            String[] segments = folder.split(SourceDocumentContext.HIERARCHY_SEPARATOR);
+            for (int i = 1; i <= segments.length; i++) {
+              chain.add(
+                  String.join(
+                      SourceDocumentContext.HIERARCHY_SEPARATOR,
+                      Arrays.asList(segments).subList(0, i)));
+            }
+          }
+          chain.forEach(path -> hashes.merge(path, contribution, (a, b) -> a * 31 + b));
+        });
+    Map<String, String> markers = new LinkedHashMap<>();
+    hashes.forEach((folder, hash) -> markers.put(folder, "m:" + hash));
+    return markers;
   }
 
   @Override

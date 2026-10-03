@@ -2,6 +2,7 @@ package io.opaa.indexing.filesync;
 
 import io.opaa.sourceaccess.SourceRequestMeter;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -17,9 +18,18 @@ public interface FileStore extends AutoCloseable {
   List<FileContainer> containers();
 
   /**
+   * The folder markers the last complete full sync remembered for {@code container}, keyed by
+   * hierarchy path ({@link FilePage}), handed over before its first page; empty when there are none
+   * or they no longer apply. Ignored by default.
+   */
+  default void recall(FileContainer container, Map<String, String> subtreeMarkers) {}
+
+  /**
    * One page of {@code container}'s files, starting from {@code continuation} ({@code null} for the
-   * first page). Every file in the container appears on exactly one page unless it lies below one
-   * of the page's {@link FilePage#unchangedSubtrees()}.
+   * first page). Every file in the container appears on exactly one page unless it lies in one of
+   * the page's {@link FilePage#unchangedSubtrees()}. A store that reports subtrees gives every
+   * entry the container's key as {@link FileEntry#context()} container key, and none of its folder
+   * names contains {@link io.opaa.knowledge.SourceDocumentContext#HIERARCHY_SEPARATOR}.
    *
    * @throws FileAccessException.ContainerUnlistable when the container cannot be listed completely
    */

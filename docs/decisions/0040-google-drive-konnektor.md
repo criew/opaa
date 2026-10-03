@@ -420,6 +420,63 @@ eine Anfrage, und Push bräuchte einen öffentlich erreichbaren Eingang mit Kana
 | #2149 | Paket `indexing.filesync`, letzter Eintrag in `INDEXING_CORE`; Port nach Entscheidung 1 mit neutralen Fehlerarten (einschließlich `CursorExpired`), optionalem `ChangeFeed`, `unchangedSubtrees` und `fullSyncNeeded`; ausstehende Startcursor beim ersten Beginn des Vollabgleichs gesichert, bei Wiederaufnahme behalten; S3 als erster Nutzer ohne Verhaltensänderung; Spalte `change_cursors` kann hier oder in #2151 kommen; Vertragstest gegen den Port |
 | #2151 | Paket `indexing.source.googledrive`, Typ `GOOGLE_DRIVE`; Changeset `source_credentials` → `text` mit Delta-Test, Entity-Länge und Spec-Grenze 4096; **nach #2178**; im Kern: Anmeldeart „Dienstkonto-Schlüssel“ in der Beschreibung (Token-Endpunkt, Scope), Signatur im Übergangs-Resolver, erneuerbares Zugriffstoken über den Port, `assertionSubject`; POST-Weg in `sourceaccess`; feste `sourceUrl`, `REJECT_OFF_ORIGIN`, Übernahme der Zugangsdaten gegen die normalisierte Adresse (Test: Proxy-Änderung behält den Schlüssel); Kernregel: gespeicherte Zugangsdaten nur bei gleichem Ursprung **und** gleichem `assertionSubject` übernehmen (Test: `subject`-Änderung ohne Schlüssel → `400`, mit Schlüssel → gespeichert); `subject`-Änderung am Profil verwirft dessen Verbindungen (mit #2160); ArchUnit belegt, dass kein Konnektorpaket den Schlüssel liest; Bereiche, Erreichbarkeitsprüfung, Cursor je Strom, Strukturänderung erzwingt Vollabgleich; Merkmal, Exporttabelle, Verknüpfungen überspringen; Drosselung über `403`-Gründe; unsichere Befunde gegen ein echtes Workspace belegen und hier nachtragen; Handbuch mit Schlüsselrichtlinie und Funktionskonto |
 
+## Nachtrag: Unveränderte Ordner und Nextcloud (#2152, 03.10.2026)
+
+Nextcloud hat für Dateien kein Änderungsprotokoll. Die Prüfsumme (ETag) eines Ordners ändert sich
+aber, sobald sich darunter etwas ändert, bis hinauf zur Wurzel des Nutzers. Am offiziellen Image
+(Nextcloud 34) geprüft: Das gilt auch für Freigaben an den technischen Nutzer und für Group
+Folders. Ein umbenannter Ordner behält dagegen seine eigene Prüfsumme.
+
+Zwei Annahmen aus #2149 tragen das nicht:
+
+- **`unchangedSubtrees` als `file_path`-Präfixe** setzen voraus, dass die Identität den Ordnerpfad
+  enthält. Nextcloud soll Umbenennungen und Verschiebungen über `oc:fileid` erkennen wie Drive
+  (Entscheidung 7). Dann ist `file_path` die Adresse `…/index.php/f/<fileid>` und hat keine
+  Ordnerstruktur mehr.
+- **Woher die Prüfsummen des letzten Laufs kommen**, sagt der Port nicht. Ein Konnektor hat keinen
+  eigenen Zustand.
+
+Entscheidung:
+
+1. **Ein Ordner wird über den Hierarchiepfad benannt**, den seine Dokumente tragen
+   (`SourceDocumentContext`, Spalten `source_container_key` und `source_hierarchy_path`), `""` für
+   die Wurzel des Containers. `FilePage.unchangedSubtrees` nennt solche Pfade. `FileSync` behält
+   jedes gespeicherte Dokument des Containers in oder unter einem davon. Ein Store, der Ordner
+   meldet, setzt den Container-Schlüssel als Kontext jedes Eintrags, und kein Ordnername enthält
+   den Trenner ` / `. `FileSync` prüft das Erste.
+2. **`FileSync` merkt sich die Ordnermerkmale.** Eine Seite meldet in `listedSubtrees` die Merkmale
+   der Ordner, die sie gelistet hat. Ein vollständiger Vollabgleich speichert sie in der neuen,
+   nullbaren Spalte `source_sync_state.subtree_markers` (rein additiv). Der nächste Lauf übergibt
+   sie dem Store vor der ersten Seite (`FileStore#recall`). Unveränderte Ordner tragen ihre Merkmale
+   samt der darunter weiter.
+3. **Ein Ordner mit einem ungeklärten Eintrag wird nicht gemerkt**, ebenso wenig jeder Ordner
+   darüber. Ungeklärt ist ein Eintrag, dessen gespeicherter Stand diesen Lauf nicht abbildet:
+   fehlgeschlagener Abruf oder Aufnahme, Kontingent, nicht lesbar, und ein vorhandenes Dokument,
+   das übersprungen wurde (zu groß, nicht verfügbar). Sonst holte ihn kein späterer Lauf nach,
+   solange sich der Ordner nicht ändert.
+4. **Das Gedächtnis verfällt.** Es gilt nur unter der Größengrenze und dem Formatsatz, unter denen
+   es entstand. Sonst blieben Dateien eines neu unterstützten Formats in unveränderten Ordnern
+   liegen. Außerdem gilt es nur bis zu einem Höchstalter (`FileSyncSettings.subtreeMemoryMaxAge`),
+   gemessen ab dem letzten Lauf, der alle Ordner gelistet hat. Danach listet ein Lauf wieder alles.
+   Das fängt Änderungen ab, die keine Prüfsumme weitertragen (externer Speicher ohne
+   Änderungserkennung).
+5. **Eine Umbenennung kostet einen Download, keine Neuverarbeitung.** Das Merkmal einer
+   Nextcloud-Datei enthält ihren Ort. Bei gleicher SHA-256 übernimmt die Aufnahme Titel,
+   Hierarchiepfad und Ordner, ohne neu zu schneiden. Ein umbenannter Ordner hat einen neuen Pfad
+   und damit kein gemerktes Merkmal: Er wird gelistet, seine Dokumente bekommen den neuen
+   Hierarchiepfad. Ein Dokument mit veraltetem Hierarchiepfad kann so nicht unter einem
+   unveränderten Ordner verschwinden.
+
+Verworfen:
+
+- **Identität aus dem Ordnerpfad, Umbenennung als Löschen und Neuanlegen:** jede Umbenennung eines
+  Ordners verarbeitete alle Dokumente darunter neu.
+- **Kette aus Ordner-IDs als `file_path`** (`…/<ordnerId>/<ordnerId>/<fileId>`): hielte die
+  Präfixe, aber jede Verschiebung erzeugte ein neues Dokument, und der Deep Link bräuchte eine
+  eigene Schnittstelle neben `file_path`.
+- **Merkmale im Konnektor speichern:** Ein Konnektor hat keinen Zustand, und nur `FileSync` weiß,
+  welcher Eintrag ungeklärt blieb.
+
 ## Referenzen
 
 - [ADR-0017](0017-quellentypmodell-indizierung.md), [ADR-0018](0018-quellkonfiguration-in-der-bibliothek.md)

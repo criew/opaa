@@ -35,12 +35,15 @@ import io.opaa.knowledge.LibraryStorageQuotaService;
 import io.opaa.knowledge.SourceType;
 import io.opaa.test.ProductionDocumentFormats;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -74,6 +77,9 @@ public final class FileSyncHarness {
   private final List<Document> stored = new ArrayList<>();
   private final List<IndexingRunEvent> events = new ArrayList<>();
   private final List<String> ingested = new ArrayList<>();
+  private final Set<String> failingIngests = new HashSet<>();
+  private Duration subtreeMemoryMaxAge;
+  private Instant now = Instant.parse("2026-10-03T12:00:00Z");
   private final IndexingJobService jobService = mock(IndexingJobService.class);
   private final IndexingRunEventRepository eventRepository = mock(IndexingRunEventRepository.class);
   private final DocumentRepository documentRepository = mock(DocumentRepository.class);
@@ -114,12 +120,24 @@ public final class FileSyncHarness {
                     .findFirst());
     when(documentRepository.findByLibraryIdAndSourceType(any(), any()))
         .thenAnswer(invocation -> List.copyOf(stored));
-    when(documentRepository.findByLibraryIdAndFilePathStartingWith(any(), any()))
+    when(documentRepository.findByLibraryIdAndSourceContainerKey(any(), any()))
         .thenAnswer(
             invocation ->
                 stored.stream()
-                    .filter(d -> d.getFilePath().startsWith(invocation.getArgument(1)))
+                    .filter(d -> invocation.getArgument(1).equals(d.getSourceContainerKey()))
                     .toList());
+    when(documentRepository.findInHierarchy(any(), any(), any()))
+        .thenAnswer(
+            invocation -> {
+              String path = invocation.getArgument(2);
+              return stored.stream()
+                  .filter(d -> invocation.getArgument(1).equals(d.getSourceContainerKey()))
+                  .filter(
+                      d ->
+                          d.getSourceHierarchyPath() != null
+                              && FileSync.covers(path, d.getSourceHierarchyPath()))
+                  .toList();
+            });
     doAnswer(invocation -> stored.remove((Document) invocation.getArgument(0)))
         .when(documentRepository)
         .delete(any(Document.class));
@@ -127,6 +145,9 @@ public final class FileSyncHarness {
         .thenAnswer(
             invocation -> {
               DocumentIngest ingest = invocation.getArgument(0);
+              if (failingIngests.contains(ingest.filePath())) {
+                throw new IllegalStateException("embedding service unavailable");
+              }
               ingested.add(ingest.filePath());
               Document document =
                   stored.stream()
@@ -142,6 +163,7 @@ public final class FileSyncHarness {
                           });
               document.setStatus(DocumentStatus.INDEXED);
               document.setLastModifiedRemote(ingest.changeMarker());
+              document.applySourceContext(ingest.context());
               return DocumentIngestResult.PROCESSED;
             });
     when(eventRepository.save(any()))
@@ -253,6 +275,28 @@ public final class FileSyncHarness {
     return state;
   }
 
+  /** From now on the ingest of {@code filePath} throws, as a failing embedding call would. */
+  public FileSyncHarness failIngestOf(String filePath) {
+    failingIngests.add(filePath);
+    return this;
+  }
+
+  public FileSyncHarness healIngests() {
+    failingIngests.clear();
+    return this;
+  }
+
+  public FileSyncHarness subtreeMemoryMaxAge(Duration maxAge) {
+    subtreeMemoryMaxAge = maxAge;
+    return this;
+  }
+
+  /** Moves the runs' clock forward by {@code duration}. */
+  public FileSyncHarness advanceClock(Duration duration) {
+    now = now.plus(duration);
+    return this;
+  }
+
   public LibraryFolderService folderService() {
     return folderService;
   }
@@ -286,7 +330,8 @@ public final class FileSyncHarness {
                   new FileSync(
                       frame,
                       store,
-                      new FileSyncSettings(MAX_FILE_SIZE, 1_000, 1, "test-download-"),
+                      new FileSyncSettings(
+                          MAX_FILE_SIZE, 1_000, 1, "test-download-", subtreeMemoryMaxAge),
                       WORDING,
                       ingestService,
                       documentRepository,
@@ -294,7 +339,7 @@ public final class FileSyncHarness {
                       cleanupService,
                       state,
                       syncStateRepository,
-                      Clock.fixed(Instant.parse("2026-10-03T12:00:00Z"), ZoneOffset.UTC),
+                      Clock.fixed(now, ZoneOffset.UTC),
                       ProductionDocumentFormats.supportedFormats())) {
             return body.run(sync);
           }

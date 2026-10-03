@@ -25,11 +25,28 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
    */
   Optional<Document> findByLibraryIdAndFilePath(UUID libraryId, String filePath);
 
+  /** Every row of {@code libraryId} from the source container {@code containerKey}. */
+  List<Document> findByLibraryIdAndSourceContainerKey(UUID libraryId, String containerKey);
+
   /**
-   * Every row of {@code libraryId} whose {@code file_path} starts with {@code prefix}, attachments
-   * included; the derived query escapes {@code %} and {@code _} in the prefix.
+   * Every row of {@code libraryId} from {@code containerKey} whose hierarchy path is {@code path}
+   * or lies below it ({@code path} followed by {@link SourceDocumentContext#HIERARCHY_SEPARATOR}).
    */
-  List<Document> findByLibraryIdAndFilePathStartingWith(UUID libraryId, String prefix);
+  default List<Document> findInHierarchy(UUID libraryId, String containerKey, String path) {
+    String escaped = path.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
+    return findInHierarchyMatching(
+        libraryId, containerKey, path, escaped + SourceDocumentContext.HIERARCHY_SEPARATOR + "%");
+  }
+
+  @Query(
+      "select d from Document d where d.libraryId = :libraryId"
+          + " and d.sourceContainerKey = :containerKey"
+          + " and (d.sourceHierarchyPath = :path or d.sourceHierarchyPath like :below escape '\\')")
+  List<Document> findInHierarchyMatching(
+      @Param("libraryId") UUID libraryId,
+      @Param("containerKey") String containerKey,
+      @Param("path") String path,
+      @Param("below") String belowPattern);
 
   /**
    * Whether at least one attachment document for {@code sourceEntryUrl} (an RSS entry's own {@code

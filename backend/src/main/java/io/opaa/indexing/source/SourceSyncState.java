@@ -64,6 +64,14 @@ public class SourceSyncState {
   @Column(name = "change_cursors", columnDefinition = "jsonb")
   private String changeCursors;
 
+  /**
+   * The folder markers of the last complete full sync of a store that skips unchanged folders, as
+   * {@link SubtreeMemory} JSON; {@code null} for every other connector.
+   */
+  @JdbcTypeCode(SqlTypes.JSON)
+  @Column(name = "subtree_markers", columnDefinition = "jsonb")
+  private String subtreeMarkers;
+
   @Column(name = "updated_at", nullable = false)
   private Instant updatedAt;
 
@@ -192,6 +200,40 @@ public class SourceSyncState {
         cursors.current().isEmpty() && cursors.pending().isEmpty()
             ? null
             : CURSOR_JSON.writeValueAsString(cursors);
+  }
+
+  /**
+   * What the last complete full sync remembered of a store's folders (ADR-0040, Nachtrag
+   * Nextcloud).
+   *
+   * @param basis what the markers were judged under (size bound, formats); another basis voids them
+   * @param establishedAt when a full sync last listed every folder without them
+   * @param containers per container key, the marker of every folder by hierarchy path
+   */
+  public record SubtreeMemory(
+      String basis, Instant establishedAt, Map<String, Map<String, String>> containers) {
+
+    public static final SubtreeMemory NONE = new SubtreeMemory(null, null, Map.of());
+
+    public SubtreeMemory {
+      containers = containers == null ? Map.of() : Map.copyOf(containers);
+    }
+  }
+
+  /** The remembered folder markers, {@link SubtreeMemory#NONE} when there are none. */
+  public SubtreeMemory subtreeMemory() {
+    return subtreeMarkers == null
+        ? SubtreeMemory.NONE
+        : CURSOR_JSON.readValue(subtreeMarkers, SubtreeMemory.class);
+  }
+
+  /** Replaces the remembered folder markers; an empty memory clears them. */
+  public void rememberSubtrees(SubtreeMemory memory) {
+    subtreeMarkers =
+        memory == null || memory.containers().isEmpty()
+            ? null
+            : CURSOR_JSON.writeValueAsString(memory);
+    touch();
   }
 
   /**

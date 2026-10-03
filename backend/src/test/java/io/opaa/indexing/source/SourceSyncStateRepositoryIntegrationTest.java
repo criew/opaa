@@ -3,13 +3,17 @@ package io.opaa.indexing.source;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.api.types.SystemRole;
+import io.opaa.knowledge.Document;
+import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
+import io.opaa.knowledge.SourceDocumentContext;
 import io.opaa.organization.Organization;
 import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.SourceTypes;
 import java.time.Instant;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -19,14 +23,15 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * The change cursors of {@link SourceSyncState} against the Liquibase schema: they survive a round
- * trip through {@code change_cursors} as a set of stream keys, in no particular order, and a
- * connector without a change log leaves it {@code NULL}.
+ * The change cursors and folder markers of {@link SourceSyncState} against the Liquibase schema:
+ * they survive a round trip through their {@code jsonb} columns, which stay {@code NULL} for a
+ * connector without them; and the hierarchy query the file sync keeps unchanged folders with.
  */
 @OpaaIntegrationTest
 class SourceSyncStateRepositoryIntegrationTest {
 
   @Autowired private SourceSyncStateRepository repository;
+  @Autowired private DocumentRepository documentRepository;
   @Autowired private KnowledgeLibraryRepository libraryRepository;
   @Autowired private JdbcTemplate jdbcTemplate;
 
@@ -62,6 +67,7 @@ class SourceSyncStateRepositoryIntegrationTest {
   @AfterEach
   void tearDown() {
     if (library != null) {
+      jdbcTemplate.update("DELETE FROM documents WHERE library_id = ?", library.getId());
       jdbcTemplate.update("DELETE FROM source_sync_state WHERE library_id = ?", library.getId());
       libraryRepository.deleteById(library.getId());
     }
@@ -106,5 +112,60 @@ class SourceSyncStateRepositoryIntegrationTest {
                 String.class,
                 library.getId()))
         .isNull();
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT subtree_markers::text FROM source_sync_state WHERE library_id = ?",
+                String.class,
+                library.getId()))
+        .isNull();
+  }
+
+  @Test
+  void rememberedFolderMarkersSurviveTheRoundTrip() {
+    SourceSyncState state = new SourceSyncState(library.getId());
+    SourceSyncState.SubtreeMemory memory =
+        new SourceSyncState.SubtreeMemory(
+            "v1|1024|pdf,txt",
+            Instant.parse("2026-10-03T10:00:00Z"),
+            Map.of("/Projekte", Map.of("", "\"6ac1\"", "Akten / 2026", "\"6ac2\"")));
+    state.rememberSubtrees(memory);
+    repository.save(state);
+
+    assertThat(repository.findByLibraryId(library.getId()).orElseThrow().subtreeMemory())
+        .isEqualTo(memory);
+  }
+
+  @Test
+  void theHierarchyQueryFindsAFolderAndWhatLiesBelowItButNoNamesake() {
+    saveDocument("1", "Projekte", "alt");
+    saveDocument("2", "Projekte", "alt / tief");
+    saveDocument("3", "Projekte", "altlasten");
+    saveDocument("4", "Projekte", "a_t / x");
+    saveDocument("5", "Projekte", "a%t");
+    saveDocument("6", "Andere", "alt");
+    saveDocument("7", "Projekte", null);
+
+    assertThat(paths(documentRepository.findInHierarchy(library.getId(), "Projekte", "alt")))
+        .containsExactlyInAnyOrder("1", "2");
+    assertThat(paths(documentRepository.findInHierarchy(library.getId(), "Projekte", "a_t")))
+        .as("a LIKE wildcard in the folder name matches only itself")
+        .containsExactly("4");
+    assertThat(
+            paths(
+                documentRepository.findByLibraryIdAndSourceContainerKey(
+                    library.getId(), "Projekte")))
+        .containsExactlyInAnyOrder("1", "2", "3", "4", "5", "7");
+  }
+
+  private void saveDocument(String filePath, String containerKey, String hierarchyPath) {
+    Document document = new Document(filePath, filePath, "text/plain", 1L, SourceTypes.S3);
+    document.setLibraryId(library.getId());
+    document.setOrganizationId(Organization.DEFAULT_ID);
+    document.applySourceContext(new SourceDocumentContext(containerKey, hierarchyPath));
+    documentRepository.save(document);
+  }
+
+  private static List<String> paths(List<Document> documents) {
+    return documents.stream().map(Document::getFilePath).toList();
   }
 }
