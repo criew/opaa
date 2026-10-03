@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Map;
 import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,6 +37,9 @@ import org.slf4j.LoggerFactory;
  * <p>An original is served only when its path resolves - symlinks included - underneath the
  * library's own {@code sourcePath}, and only while that path is still inside the allowlist: an
  * allowlist narrowed or emptied after indexing must not leave the files readable here.
+ *
+ * <p>The connector settings are {@link FilesystemSourceSettings}; test and run skip the same
+ * entries through {@link FilesystemExclusions}.
  */
 public class FilesystemSourceConnector implements SourceConnector, OriginalAccess {
 
@@ -119,6 +123,33 @@ public class FilesystemSourceConnector implements SourceConnector, OriginalAcces
   }
 
   @Override
+  public ConnectorData readSettings(ConnectorData requested) {
+    return FilesystemSourceSettings.of(requested).toData();
+  }
+
+  @Override
+  public void configureNew(KnowledgeLibrary library, SourceSettings validated) {
+    if (validated.connectorSettings() != null) {
+      library.updateSourceSettings(validated.connectorSettings().toJson());
+    }
+  }
+
+  @Override
+  public void applyChange(
+      KnowledgeLibrary library, ConnectorData stored, SourceSettings validated) {
+    if (validated.connectorSettings() != null) {
+      library.updateSourceSettings(validated.connectorSettings().toJson());
+    }
+  }
+
+  @Override
+  public Map<String, Object> settingsState(KnowledgeLibrary library, ConnectorData stored) {
+    return Map.of(
+        FilesystemSourceSettings.EXCLUDE_PATTERNS,
+        FilesystemSourceSettings.of(stored).excludePatterns());
+  }
+
+  @Override
   public SourceSettings validate(SourceSettings requested) {
     String sourcePath = requested.sourcePath();
     if (sourcePath == null) {
@@ -151,7 +182,8 @@ public class FilesystemSourceConnector implements SourceConnector, OriginalAcces
   /**
    * Checks absoluteness with {@link Path#isAbsolute()} rather than {@link #validate}'s literal
    * {@code "/"}: this method touches the filesystem, and a portable check keeps it testable against
-   * a real directory on every OS.
+   * a real directory on every OS. Exclusions come from the requested settings, else the stored
+   * library's.
    */
   @Override
   public SourceConnectionTestResult testConnection(SourceSettings settings, ConnectorData stored) {
@@ -183,8 +215,12 @@ public class FilesystemSourceConnector implements SourceConnector, OriginalAcces
       return unreachable("Das Verzeichnis ist für den Server nicht lesbar.");
     }
     try {
+      ConnectorData exclusionSettings =
+          settings.connectorSettings() != null ? settings.connectorSettings() : stored;
+      FilesystemExclusions exclusions =
+          FilesystemExclusions.of(FilesystemSourceSettings.of(exclusionSettings));
       DocumentService.DiscoveredFiles discovered =
-          documentService.discoverFiles(directory, supportedFormats);
+          documentService.discoverFiles(directory, supportedFormats, exclusions::excludes);
       long count = discovered.supported().size();
       int unreadable = discovered.unreadable().size();
       return reachable(

@@ -339,6 +339,59 @@ class AsyncIndexingExecutorTest {
   }
 
   @Test
+  void hiddenAndSystemFoldersAreNeitherIndexedNorReportedAsUnreadable() throws IOException {
+    Path readable = documentDir.resolve("lesbar.txt");
+    Files.writeString(readable, "content");
+    Path git = Files.createDirectory(documentDir.resolve(".git"));
+    Files.writeString(git.resolve("config.txt"), "content");
+    Path recycleBin = Files.createDirectory(documentDir.resolve("$RECYCLE.BIN"));
+    Files.writeString(recycleBin.resolve("geloescht.txt"), "content");
+    Path shortcuts = Files.createDirectory(documentDir.resolve(".shortcut-targets-by-id"));
+    Files.writeString(shortcuts.resolve("verknuepft.txt"), "content");
+    when(documentIngestService.ingest(
+            DocumentIngests.that().file().file(readable).in(library).inFolder(null).match(), any()))
+        .thenReturn(DocumentIngestResult.PROCESSED);
+    UUID jobId = UUID.randomUUID();
+
+    try (UnreadableDirectory ignored = UnreadableDirectory.of(shortcuts)) {
+      executor.execute(jobId, library, IndexingRunMode.FULL);
+    }
+
+    verify(indexingJobService, timeout(2000)).completeJob(eq(jobId), eq(1), eq(0), eq(0), anyInt());
+    verify(indexingRunEventRepository, never())
+        .save(argThat(event -> event.getCategory() == IndexingEventCategory.UNREACHABLE));
+    // the listing is complete, so the reconciliation runs
+    assertThat(capturedCurrentFilePaths()).containsExactly(readable.toAbsolutePath().toString());
+  }
+
+  @Test
+  void aDocumentThatNowFallsUnderAnExclusionPatternIsRemovedFromTheIndex() throws IOException {
+    Path kept = documentDir.resolve("aktuell.txt");
+    Files.writeString(kept, "content");
+    Path archive = Files.createDirectory(documentDir.resolve("Archiv"));
+    Path archived = archive.resolve("alt.txt");
+    Files.writeString(archived, "content");
+    Document archivedDoc =
+        filesystemDocument("alt.txt", archived.toAbsolutePath().toString(), null);
+    Document keptDoc = filesystemDocument("aktuell.txt", kept.toAbsolutePath().toString(), null);
+    when(documentRepository.findByLibraryIdAndSourceType(library.getId(), SourceTypes.FILESYSTEM))
+        .thenReturn(List.of(keptDoc, archivedDoc));
+    when(documentIngestService.ingest(
+            DocumentIngests.that().file().file(kept).in(library).inFolder(null).match(), any()))
+        .thenReturn(DocumentIngestResult.SKIPPED);
+    library.updateSourceSettings("{\"excludePatterns\":[\"Archiv/**\"]}");
+
+    executor.execute(UUID.randomUUID(), library, IndexingRunMode.FULL);
+
+    assertThat(capturedCurrentFilePaths()).containsExactly(kept.toAbsolutePath().toString());
+    verify(documentRepository).delete(archivedDoc);
+    verify(documentRepository, never()).delete(keptDoc);
+    verify(documentIngestService, never())
+        .ingest(
+            DocumentIngests.that().file().file(archived).in(library).inFolder(null).match(), any());
+  }
+
+  @Test
   void aRemovedAttachmentOfAReprocessedMailIsCleanedUpAsVanished() throws IOException {
     // ADR-0022, Entscheidung 3: for a mail that was actually re-parsed this run, only the
     // attachments the attachment path re-reported count as present - a bestand row of a since-

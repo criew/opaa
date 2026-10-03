@@ -9,6 +9,7 @@ import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Predicate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.reader.ExtractedTextFormatter;
@@ -69,6 +70,17 @@ public class DocumentService {
    */
   public DiscoveredFiles discoverFiles(Path directory, SupportedDocumentFormats supportedFormats)
       throws IOException {
+    return discoverFiles(directory, supportedFormats, relative -> false);
+  }
+
+  /**
+   * Like {@link #discoverFiles(Path, SupportedDocumentFormats)}, but an entry {@code excluded}
+   * accepts - given its path relative to {@code directory} - is not part of the result at all: an
+   * excluded directory is not entered, and an excluded entry that cannot be read is not unreadable.
+   */
+  public DiscoveredFiles discoverFiles(
+      Path directory, SupportedDocumentFormats supportedFormats, Predicate<Path> excluded)
+      throws IOException {
     if (!Files.exists(directory)) {
       throw new IOException("Document directory does not exist: " + directory);
     }
@@ -83,9 +95,14 @@ public class DocumentService {
         directory,
         new SimpleFileVisitor<>() {
           @Override
+          public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
+            return isExcluded(dir) ? FileVisitResult.SKIP_SUBTREE : FileVisitResult.CONTINUE;
+          }
+
+          @Override
           public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
             // a symlink to a file counts as that file; a linked directory is a leaf, never entered
-            if (!Files.isRegularFile(file)) {
+            if (isExcluded(file) || !Files.isRegularFile(file)) {
               return FileVisitResult.CONTINUE;
             }
             SupportedDocumentFormats.ContentDecision decision = classify(file, supportedFormats);
@@ -105,6 +122,9 @@ public class DocumentService {
             if (file.equals(directory)) {
               throw e;
             }
+            if (isExcluded(file)) {
+              return FileVisitResult.CONTINUE;
+            }
             log.warn("Skipping unreadable {}: {}", file, e.toString());
             unreadable.add(file);
             return FileVisitResult.CONTINUE;
@@ -121,6 +141,10 @@ public class DocumentService {
             log.warn("Listing of {} broke off: {}", dir, e.toString());
             unreadable.add(dir);
             return FileVisitResult.CONTINUE;
+          }
+
+          private boolean isExcluded(Path entry) {
+            return !entry.equals(directory) && excluded.test(directory.relativize(entry));
           }
         });
     return new DiscoveredFiles(supported, rejected, mismatches, unreadable);
