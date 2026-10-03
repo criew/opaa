@@ -47,6 +47,8 @@ test.describe('Katalog: Filterzeile und Kachel (#2180)', () => {
     await page.setViewportSize({ width: 1280, height: 800 })
     await page.goto('/catalog')
     await expect(favorites).toBeVisible()
+    // #2207: the type group carries its name "Typ" without a visible title, at every width.
+    await expect(page.getByText('Typ', { exact: true })).toHaveCount(0)
     const row = await centreY(search)
     expect(Math.abs((await centreY(types)) - row)).toBeLessThan(4)
     expect(Math.abs((await centreY(favorites)) - row)).toBeLessThan(4)
@@ -63,8 +65,8 @@ test.describe('Katalog: Filterzeile und Kachel (#2180)', () => {
       'Favoriten-Chip steht neben der Typgruppe, nicht allein',
     ).toBeLessThan(4)
 
-    // Reflow width (WCAG 1.4.10): the group drops its visible title and the icons, yet keeps its
-    // name "Typ", and the unit runs with less padding.
+    // Reflow width (WCAG 1.4.10): the type buttons drop their icons, the group keeps its name
+    // "Typ", and the unit runs with less padding.
     await page.setViewportSize({ width: 320, height: 800 })
     await expect(favorites).toBeVisible()
     expect(

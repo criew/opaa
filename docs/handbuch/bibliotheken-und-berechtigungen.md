@@ -370,14 +370,13 @@ gibt. Ein Raum ist nur für seine Mitglieder auffindbar; ein Verzeichnis der Rä
 nicht, und eine Einstellung zur Sichtbarkeit eines Raums deshalb auch nicht.
 
 **In der Oberfläche liegt all das auf einer Seite je Raum:** dem Zahnrad „Einstellungen" am Fuß der
-Seitenleiste. Das Zahnrad sehen nur Administratoren, Kuratoren und der Eigentümer des Raums; ein
-einfaches Mitglied erreicht die Seite nur über einen direkten Verweis und liest dort nur. Die Seite
-hat drei Reiter:
+Seitenleiste. Das Zahnrad sieht jedes Mitglied; wer den Raum nicht verwalten darf, liest dort nur.
+Die Seite hat drei Reiter, und keine Überschrift im Reiter wiederholt seinen Namen:
 
 | Reiter | Inhalt |
 |---|---|
 | **Stammdaten** | Name, Beschreibung, der Schalter der automatischen Chat-Bereinigung mit den Fristen der Installation ([Suche](suche.md), Abschnitt 2) — und am Ende der abgesetzte **Gefahrenbereich** mit „Space archivieren" und „Space löschen" |
-| **Mitglieder** | Die Mitgliederliste und das Aufnehmen von Personen und Gruppen. Die Liste beginnt mit dem Eigentümer, danach folgen Administratoren, Kuratoren und Mitglieder, je Rolle nach Name, Personen und Gruppen gemischt; eine lange Liste bekommt darüber ein Suchfeld. Jede Zeile trägt nur die Rolle — als Auswahl für Administratoren, beim Eigentümer das Etikett „Eigentümer" — und ein Menü „⋯" mit „Warum hat … Zugriff?", „Mitglieder der Gruppe anzeigen", „Zum Eigentümer machen" und „Aus Space entfernen", soweit der Eintrag für Zeile und eigene Rolle gilt. Darunter steht „Mitglied hinzufügen" mit einem Suchfeld für Personen und Gruppen, der Rolle und „Hinzufügen" in einer Zeile |
+| **Mitglieder** | Die Mitgliederliste und das Aufnehmen von Personen und Gruppen. Die Liste beginnt mit dem Eigentümer, danach folgen Administratoren, Kuratoren und Mitglieder, je Rolle nach Name, Personen und Gruppen gemischt; eine lange Liste bekommt darüber ein Suchfeld. Jede Zeile trägt nur die Rolle — für Administratoren als Auswahl, beim Eigentümer als schreibgeschützte Auswahl „Eigentümer" mit Schloss statt Pfeil — und ein Menü „⋯" mit „Warum hat … Zugriff?", „Mitglieder der Gruppe anzeigen", „Zum Eigentümer machen" und „Aus Space entfernen", soweit der Eintrag für Zeile und eigene Rolle gilt. Darunter steht „Mitglied hinzufügen" mit einem Suchfeld für Personen und Gruppen, der Rolle und „Hinzufügen" in einer Zeile |
 | **Inhalte** | Eine Kachelliste aller Arten von Bestand — Wissensbibliotheken und [Prompt-Bibliotheken](prompt-bibliotheken.md). Ein Häkchen heißt „dem Raum zugeordnet"; anhaken und abhaken dürfen Kuratoren, Administratoren und der Eigentümer des Raums |
 
 **Im Reiter „Mitglieder" meldet sich jede Änderung kurz.** Hinzufügen, Entfernen, Rollenwechsel und
@@ -389,14 +388,17 @@ Laden. Ein Fehler bleibt stehen, bis er geschlossen wird.
 löst die Zuordnung, und die Meldung dazu bietet „Rückgängig" an. Schlägt die Änderung fehl, springt
 das Häkchen zurück, und eine Fehlermeldung nennt den Grund. Beim Öffnen ist der Filter „Nur
 zugeordnete" eingeschaltet; ausgeschaltet zeigt die Liste alles, was man lesen darf und deshalb
-zuordnen könnte. In beiden Ansichten sind es dieselben Kacheln wie im Katalog. Darüber stehen
-dieselben Filter wie im Katalog: Suche, Typ und Favoriten. Wer
+zuordnen könnte. In beiden Ansichten sind es dieselben Kacheln wie im Katalog, in derselben
+Reihenfolge: Favoriten zuerst, dann nach Name. Darüber stehen dieselben Filter wie im Katalog:
+Suche, Typ und Favoriten. Wer
 weder Kurator noch Administrator noch Eigentümer des Raums ist, sieht die zugeordneten Inhalte, die
 er lesen darf, nur lesend.
 
-**Die ersten beiden Reiter gehören den Administratoren.** Ein Kurator öffnet dieselbe Seite, sieht
-die Stammdaten aber nur lesend, und im Reiter „Mitglieder" steht für ihn der Hinweis, dass die
-Liste seiner Rolle nicht offensteht — seine Arbeit liegt im Reiter „Inhalte".
+**Die ersten beiden Reiter gehören den Administratoren.** Kuratoren und Mitglieder öffnen dieselbe
+Seite und sehen die Stammdaten nur lesend. Im Reiter „Mitglieder" steht für sie keine Liste und
+kein Name, nur die Größe des Raums je Rolle, etwa „12 Mitglieder, davon 2 Administratoren,
+1 Kurator"; gezählt werden Mitgliedschaften, eine Gruppe zählt einmal. Die Arbeit eines Kurators
+liegt im Reiter „Inhalte".
 Den Schalter der Chat-Bereinigung im eigenen Standard-Raum legt nur dessen Eigentümer um, auch die
 Systemverwaltung nicht. Deshalb lässt sich ein Standard-Raum auch nicht übertragen: Der Knopf „Zum
 Eigentümer machen" fehlt dort, und eine Übertragung wird abgewiesen. Den

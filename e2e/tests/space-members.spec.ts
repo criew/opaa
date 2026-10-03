@@ -1,5 +1,6 @@
 import { expect, test } from "../fixtures/auth";
 import { expectNoSeriousA11yViolations } from "../fixtures/a11y";
+import { apiAs } from "../fixtures/externalAccess";
 import { createReleasedGroupViaApi } from "../fixtures/promptLibraries";
 
 const runId = Date.now();
@@ -149,4 +150,77 @@ test.describe.serial("Space-Anlage und Mitglieder (#2131)", () => {
     await row.getByRole("button", { name: "Schließen", exact: true }).click();
     await expect(row.getByText(/in diesem Space/)).toHaveCount(0);
   });
+
+  /** #2207: Die Eigentümerzeile zeigt eine schreibgeschützte Auswahl im Aussehen der anderen. */
+  test("Einstellungen: Eigentümer als schreibgeschützte Auswahl", async ({
+    authenticatedPage: page,
+  }) => {
+    expect(spacePath, "der erste Schritt hat keinen Space angelegt").not.toBe(
+      "",
+    );
+    await page.goto(`${spacePath}/settings/members`);
+    const ownerRow = page
+      .getByTestId("space-member-row")
+      .filter({ hasText: "Eigentümer" });
+    const ownerRole = ownerRow.getByRole("combobox");
+    await expect(ownerRole).toHaveText("Eigentümer");
+    await expect(ownerRole).toHaveAttribute("aria-readonly", "true");
+    await ownerRole.click();
+    await expect(page.getByRole("listbox")).toHaveCount(0);
+    await expectNoSeriousA11yViolations(
+      page,
+      "Space-Einstellungen: Eigentümerzeile",
+    );
+  });
+});
+
+/**
+ * #2207: Ein einfaches Mitglied öffnet die Einstellungen über das Zahnrad und sieht alles
+ * schreibgeschützt; im Reiter „Mitglieder" nur die Zählung je Rolle, keinen Namen.
+ */
+test("Einstellungen lesend für ein Mitglied, Mitglieder nur als Zählung", async ({
+  regularUserPage: page,
+}) => {
+  const admin = await apiAs("dev-admin");
+  const member = await apiAs("dev-user");
+  const me = await member.get("/api/v1/auth/me");
+  expect(me.status(), await me.text()).toBe(200);
+  const memberId = ((await me.json()) as { id: string }).id;
+  const created = await admin.post("/api/v1/spaces", {
+    data: { name: `E2E-Lesend-${Date.now()}` },
+  });
+  expect(created.status(), await created.text()).toBe(201);
+  const spaceId = ((await created.json()) as { id: string }).id;
+  try {
+    const added = await admin.post(`/api/v1/spaces/${spaceId}/members`, {
+      data: { subjectType: "USER", subjectId: memberId, role: "MEMBER" },
+    });
+    expect(added.status(), await added.text()).toBe(201);
+
+    await page.goto(`/spaces/${spaceId}`);
+    await page.getByRole("link", { name: "Einstellungen" }).click();
+    await expect(page).toHaveURL(
+      new RegExp(`/spaces/${spaceId}/settings/general$`),
+    );
+    await expect(page.getByLabel("Name des Space")).toHaveAttribute(
+      "readonly",
+      "",
+    );
+    await expect(
+      page.getByRole("button", { name: "Einstellungen speichern" }),
+    ).toHaveCount(0);
+    await expect(page.getByText("Gefahrenbereich")).toHaveCount(0);
+
+    await page.getByRole("tab", { name: "Mitglieder" }).click();
+    await expect(
+      page.getByText(/^2 Mitglieder, davon 1 Administrator$/),
+    ).toBeVisible();
+    await expect(page.getByTestId("space-member-row")).toHaveCount(0);
+    await expectNoSeriousA11yViolations(
+      page,
+      "Space-Einstellungen eines Mitglieds: Mitglieder",
+    );
+  } finally {
+    await admin.delete(`/api/v1/spaces/${spaceId}`);
+  }
 });

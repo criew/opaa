@@ -96,10 +96,9 @@ export default function Sidebar({ resizable = false }: { resizable?: boolean }) 
     [spaces, recentSpaceIds],
   )
 
-  // #1917: Den Einstieg sieht, wer an diesem Space etwas zu verwalten hat - ein Administrator
-  // (Stammdaten, Mitglieder) oder ein Kurator (zugeordnetes Wissen). Für alle anderen sind die
-  // Einstellungen leer, und der Dienst weist ihre Schreibzugriffe ohnehin ab.
-  const mayOpenSettings = activeSpace?.userRole === 'ADMIN' || activeSpace?.userRole === 'CURATOR'
+  // Den Einstieg sieht jedes Mitglied; wer nicht verwalten darf, sieht die Einstellungen
+  // schreibgeschützt und in der Mitgliederliste nur die Zählung je Rolle.
+  const mayOpenSettings = Boolean(activeSpace?.userRole)
   const settingsRoute = activeChatSpaceId ? spaceSettingsRoute(activeChatSpaceId) : ''
   const inSettings = location.pathname.startsWith(`/spaces/${activeChatSpaceId}/settings`)
 
@@ -292,8 +291,7 @@ export default function Sidebar({ resizable = false }: { resizable?: boolean }) 
                 parent, an axe "serious" violation (#792). */}
           <Box component="nav" aria-label="Space-Navigation">
             <List sx={{ px: '14px', py: '10px' }}>
-              {/* #1917: ein Einstiegspunkt statt zweier - alles Verwaltende dieses Space liegt
-                    hinter dem Zahnrad. Wer den Space nicht verwalten darf, sieht ihn nicht. */}
+              {/* Ein Einstiegspunkt: alles Verwaltende dieses Space liegt hinter dem Zahnrad. */}
               <ListItem disablePadding>
                 <ListItemButton
                   component={RouterLink}

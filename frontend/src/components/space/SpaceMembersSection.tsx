@@ -25,6 +25,25 @@ import { memberLabelOf, memberNoticeLabelOf } from './memberLabel'
 
 const editableRoles: SpaceRole[] = ['MEMBER', 'CURATOR', 'ADMIN']
 
+function counted(count: number, one: string, many: string): string {
+  return `${count} ${count === 1 ? one : many}`
+}
+
+/**
+ * Die Größe des Space ohne Namen, z. B. „12 Mitglieder, davon 2 Administratoren, 1 Kurator“. Gezählt
+ * werden Mitgliedschaften, eine Gruppe zählt einmal.
+ */
+function memberCountsLabel(space: SpaceResponse): string {
+  const admins = space.roleCounts?.ADMIN ?? 0
+  const curators = space.roleCounts?.CURATOR ?? 0
+  const parts = [
+    admins > 0 ? counted(admins, 'Administrator', 'Administratoren') : null,
+    curators > 0 ? counted(curators, 'Kurator', 'Kuratoren') : null,
+  ].filter((part): part is string => part !== null)
+  const total = counted(space.memberCount, 'Mitglied', 'Mitglieder')
+  return parts.length > 0 ? `${total}, davon ${parts.join(', ')}` : total
+}
+
 /** Wie die Rückmeldung nach dem Hinzufügen das gewählte Subjekt nennt. */
 function addedSubjectLabel(subject: SubjectSelection): string {
   if (subject.type === 'GROUP') {
@@ -70,7 +89,7 @@ export default function SpaceMembersSection({
   }
 
   // #144: der Dienst beantwortet die Liste nur für ADMIN, Eigentümer und Systemverwaltung; für
-  // alle anderen bleibt sie leer, und der Hinweis unten nennt den Grund.
+  // alle anderen bleibt sie leer, und der Reiter zeigt nur die Zählung je Rolle.
   useEffect(() => {
     void loadMembers(spaceId)
   }, [loadMembers, spaceId])
@@ -101,13 +120,9 @@ export default function SpaceMembersSection({
       {isLoadingMembers ? (
         <Typography sx={{ color: 'text.secondary' }}>Mitgliederliste wird geladen …</Typography>
       ) : members.length === 0 && !canManage && !isOwner ? (
-        // #674 review, nit c: a MEMBER or CURATOR reaching this page directly by URL gets a
-        // silent empty list from listSpaceMembers's 403 handling (#144) - without this, that
-        // renders as an unexplained blank block instead of naming why nothing is shown.
-        <Alert severity="info">
-          Sie haben nicht die erforderliche Rolle, um die Mitgliederliste dieses Space einzusehen.
-          Nur Administratoren, der Eigentümer und Systemadministratoren können sie sehen.
-        </Alert>
+        // A MEMBER or CURATOR gets no names (the service answers the list with an empty one),
+        // only how large the space is per role.
+        <Typography sx={{ fontSize: 13.5 }}>{memberCountsLabel(space)}</Typography>
       ) : (
         <Stack spacing={0}>
           <SpaceMemberList

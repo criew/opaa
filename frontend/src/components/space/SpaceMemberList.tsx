@@ -12,6 +12,7 @@ import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined'
 import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
+import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz'
 import PersonOutlineIcon from '@mui/icons-material/PersonOutlined'
 import type { SpaceMemberResponse, SpaceRole } from '../../types/api'
@@ -24,6 +25,17 @@ import MetaBadge from '../MetaBadge'
 import { memberLabelOf } from './memberLabel'
 
 const editableRoles: SpaceRole[] = ['MEMBER', 'CURATOR', 'ADMIN']
+
+/** Stands where an editable role choice carries its arrow; MUI passes the arrow's class. */
+function OwnerLockIcon({ className }: { className?: string }) {
+  return (
+    <LockOutlinedIcon
+      aria-hidden
+      className={className}
+      sx={{ fontSize: 16, color: 'text.secondary' }}
+    />
+  )
+}
 
 /** Ab dieser Zahl von Einträgen steht ein Suchfeld über der Liste. */
 const FILTER_THRESHOLD = 10
@@ -186,7 +198,21 @@ export default function SpaceMemberList({
                     </Typography>
                   )}
                 </Stack>
-                {ownerRow ? (
+                {ownerRow && canManage ? (
+                  // Same look as the other role choices, but the owner's role is not changed here:
+                  // read-only, with a lock instead of the arrow.
+                  <Select
+                    size="small"
+                    value="OWNER"
+                    readOnly
+                    IconComponent={OwnerLockIcon}
+                    inputProps={{ 'aria-label': `Rolle von „${label}“` }}
+                    title="Die Rolle des Eigentümers lässt sich nicht ändern"
+                    sx={{ minWidth: 140 }}
+                  >
+                    <MenuItem value="OWNER">Eigentümer</MenuItem>
+                  </Select>
+                ) : ownerRow ? (
                   <MetaBadge>Eigentümer</MetaBadge>
                 ) : canManage ? (
                   <Select

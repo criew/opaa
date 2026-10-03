@@ -276,7 +276,12 @@ export default function AssetTilePicker({
               (pick.description ?? '').toLowerCase().includes(needle),
           )
           .filter((pick) => !filters.favorites || favoriteOf(assetPickKey(pick)))
-          .sort((a, b) => a.name.localeCompare(b.name, 'de'))
+          // The catalog's fixed order: favorites first, then by name.
+          .sort(
+            (a, b) =>
+              Number(favoriteOf(assetPickKey(b))) - Number(favoriteOf(assetPickKey(a))) ||
+              a.name.localeCompare(b.name, 'de', { sensitivity: 'base' }),
+          )
           .map((pick) => {
             const entry = known.get(assetPickKey(pick))
             return entry ? tileFromCatalogEntry(entry) : tileOfPick(pick)
