@@ -483,15 +483,14 @@ describe('CatalogPage (ADR-0039)', () => {
       expect(within(card).getByText('Aktualisiert am 12.09.2026')).toBeInTheDocument()
     })
 
-    it('titles the type filter visibly and names it by that title', async () => {
+    // #2207: no visible title before the type group; its accessible name stays "Typ".
+    it('names the type filter "Typ" without a visible title', async () => {
       renderCatalog()
       await screen.findByRole('link', { name: /Rechtsquellen Soziales/ })
 
       const group = screen.getByRole('group', { name: 'Typ' })
-      const labelId = group.getAttribute('aria-labelledby')
-      expect(labelId).toBeTruthy()
-      expect(document.getElementById(labelId!)).toHaveTextContent('Typ')
-      expect(document.getElementById(labelId!)).toBeVisible()
+      expect(group).toHaveAttribute('aria-label', 'Typ')
+      expect(screen.queryByText('Typ', { exact: true })).not.toBeInTheDocument()
     })
 
     it('names a state that is not ready in words, and keeps it visible under an open succession', async () => {

@@ -1,12 +1,10 @@
-import { useId, type ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import Box from '@mui/material/Box'
 import IconButton from '@mui/material/IconButton'
 import InputAdornment from '@mui/material/InputAdornment'
 import TextField from '@mui/material/TextField'
 import ToggleButton from '@mui/material/ToggleButton'
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
-import Typography from '@mui/material/Typography'
-import visuallyHidden from '@mui/utils/visuallyHidden'
 import type { Theme } from '@mui/material/styles'
 import CloseIcon from '@mui/icons-material/Close'
 import SearchIcon from '@mui/icons-material/Search'
@@ -49,9 +47,10 @@ interface AssetFilterBarProps {
 
 /**
  * The one filter row of catalog, asset choice and token selection (guidelines 5.11): search, then
- * the type as a titled toggle group, then the personal chips set apart from it. Type, chips and
- * `trailing` wrap below the search as one unit; on phone widths the type group drops its visible
- * title (its name stays) and its icons, so the unit fits one line there too. The search is named "Suchen" wherever the row stands.
+ * the type as a toggle group named "Typ" without a visible title, then the personal chips set
+ * apart from it. Type, chips and `trailing` wrap below the search as one unit; on phone widths the
+ * type buttons drop their icons, so the unit fits one line there too. The search is named
+ * "Suchen" wherever the row stands.
  */
 export default function AssetFilterBar({
   search,
@@ -61,7 +60,6 @@ export default function AssetFilterBar({
   trailing,
   selectedOnlyLabel,
 }: AssetFilterBarProps) {
-  const typeLabelId = `asset-filter-type-${useId()}`
   const showTypes = types !== undefined && types.offered.length > 1
   return (
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
@@ -103,17 +101,6 @@ export default function AssetFilterBar({
       >
         {showTypes && (
           <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 1 }}>
-            <Typography
-              id={typeLabelId}
-              component="span"
-              sx={(theme) => ({
-                fontSize: 12.5,
-                color: 'text.secondary',
-                [narrow(theme)]: visuallyHidden,
-              })}
-            >
-              Typ
-            </Typography>
             <ToggleButtonGroup
               size="small"
               exclusive
@@ -121,7 +108,7 @@ export default function AssetFilterBar({
               onChange={(_event, next: string | null) => {
                 if (next) types.onChange(next === ALL_TYPES ? undefined : (next as AssetType))
               }}
-              aria-labelledby={typeLabelId}
+              aria-label="Typ"
             >
               <ToggleButton value={ALL_TYPES} sx={{ px: { xs: 1, sm: 1.5 } }}>
                 Alle

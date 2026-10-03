@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Stack from '@mui/material/Stack'
-import Typography from '@mui/material/Typography'
 import { useSpaceStore } from '../../stores/spaceStore'
 import {
   notify,
@@ -11,7 +10,6 @@ import {
 import AssetTilePicker from '../assets/AssetTilePicker'
 import { assetPickKey, type AssetPick } from '../assets/assetPick'
 import { successionAwareMessage } from '../succession/successionConflict'
-import SectionHead from '../SectionHead'
 
 /** The one disclosure about unreadable associations: no number, no name (ADR-0039). */
 export const NOT_ALL_READABLE = 'Nicht alle zugeordneten Inhalte sind für Sie lesbar.'
@@ -150,11 +148,6 @@ export default function SpaceContentSection({ spaceId, canManage }: SpaceContent
 
   return (
     <Stack spacing={2} ref={container}>
-      {/* Die h2 dieses Panels unter der h1 der Seite. */}
-      <SectionHead>Inhalte</SectionHead>
-      <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-        Ein Chat in diesem Space nutzt nur, was hier ausgewählt ist.
-      </Typography>
       {storeError && <Alert severity="error">{storeError}</Alert>}
       {hasUnreadable && loaded && <Alert severity="info">{NOT_ALL_READABLE}</Alert>}
       <AssetTilePicker

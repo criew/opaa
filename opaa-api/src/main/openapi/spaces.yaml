@@ -681,6 +681,7 @@ components:
           archived,
           ownerId,
           memberCount,
+          memberships,
           roleCounts,
           chatAutoCleanup,
           createdAt,
@@ -718,6 +719,13 @@ components:
             Number of membership rows, not of people - see SpaceListResponse.memberCount. The same
             holds for roleCounts, which counts rows per role.
           example: 5
+        memberships:
+          allOf:
+            - $ref: "#/components/schemas/SpaceMembershipCountsResponse"
+          description: >
+            The membership rows split into persons and groups - for every member, like roleCounts,
+            so that a member who may not see the list can still tell persons from groups. Counts
+            only: no name and no id (ADR-0036, Entscheidung 9).
         userRole:
           $ref: "#/components/schemas/SpaceRole"
         roleCounts:

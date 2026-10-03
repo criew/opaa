@@ -125,14 +125,13 @@ describe('SpaceContentSection', () => {
   // The space store outlives a test; a previous test's associations would show up in the next.
   beforeEach(() => resetAllStores())
 
-  it('opens on the associated contents, with the explanation and "Nur zugeordnete" switched on', async () => {
+  // #2207: the tab already reads "Inhalte" - no heading repeats it, and no lead sentence.
+  it('opens on the associated contents, with "Nur zugeordnete" switched on and no heading', async () => {
     serveAssociations([association('KNOWLEDGE_LIBRARY', 'library-referat-50')])
     renderSection()
 
-    expect(screen.getByRole('heading', { level: 2, name: 'Inhalte' })).toBeInTheDocument()
-    expect(
-      screen.getByText('Ein Chat in diesem Space nutzt nur, was hier ausgewählt ist.'),
-    ).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Inhalte' })).not.toBeInTheDocument()
+    expect(screen.queryByText(/nutzt nur, was hier ausgewählt ist/)).not.toBeInTheDocument()
     expect(await tile('Rechtsquellen Soziales')).toHaveAttribute('aria-checked', 'true')
     expect(onlyAssociatedChip()).toHaveAttribute('aria-pressed', 'true')
     expect(screen.queryByRole('checkbox', { name: /^Dienstanweisungen/ })).not.toBeInTheDocument()
