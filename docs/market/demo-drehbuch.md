@@ -511,10 +511,11 @@ Wem welches Asset gehört, was öffentlich ist, wer welche Favoriten hat und wel
 zugeordnet hat, steht als Übersicht in
 [`../features/demo-instance.md`](../features/demo-instance.md#eigentum-sichtbarkeit-favoriten-und-zuordnung).
 
-**Stand der Oberfläche:** Eigentum und Sichtbarkeit an der Kachel, die Filter und die Sortierung
-des Katalogs sind gebaut (#2113, #2116), ebenso Stern und Filter „Favoriten", der Space-Assistent
-mit Kachelauswahl, „In Space verwenden" und der Hinweis auf nicht lesbare Zuordnungen. Die
-Beschriftungen sind nach dem Neuaufsetzen der Demo gegenzuprüfen.
+**Stand der Oberfläche:** Die Kachel nennt die zuständige Stelle mit Personen- oder Gruppensymbol
+und trägt ein Welt-Symbol, wenn das Asset an alle Konten freigegeben ist; die Filterzeile ist Suche →
+Typ → Favoriten, die Reihenfolge fest (Favoriten zuerst, dann Name). Gebaut sind außerdem Stern und
+„⋯"-Menü mit „In Space verwenden", der Space-Assistent mit Kachelauswahl und der Hinweis auf nicht
+lesbare Zuordnungen (#2113, #2116, #2129).
 
 Für die Teile 1 und 3 lohnen sich zwei Browserfenster, eines davon privat.
 
@@ -524,16 +525,18 @@ Für die Teile 1 und 3 lohnen sich zwei Browserfenster, eines davon privat.
      Gebührenordnungen" und „Textbausteine Bürgerbüro".
   2. Als `thomas.klein` dasselbe: Oben stehen „Leistungen Kfz-Zulassung", „Ratsinformationen Stadt
      Rheinfurt" und seine „Arbeitshilfen Kfz-Zulassung".
-  3. Als `selin.kaya`: Sie hat keine Favoriten. Der Filter „nur Favoriten" bleibt leer, der Katalog
+  3. Als `selin.kaya`: Sie hat keine Favoriten. Der Filter „Favoriten" bleibt leer, der Katalog
      ist nach Name geordnet.
   - **Zeigt:** Jede Person ordnet ihren Katalog selbst. Niemand sieht die Favoriten anderer, auch
     nicht als Zahl am Asset.
 - **2. Eigentum und Sichtbarkeit an der Kachel** (Konto `maria.weber`):
-  - „Satzungen & Gebührenordnungen" gehört Andrea Vogt und trägt die Sichtbarkeit „Für alle".
-  - „Leistungen Meldewesen & Ausweise" gehört der Keycloak-Gruppe „Meldewesen" und ist
-    „Eingeschränkt". Maria hat die Bibliothek für die Gruppe angelegt; Selin verwaltet sie als
-    Gruppenmitglied mit.
-  - „Interne Dienstanweisungen Meldewesen" gehört Maria selbst und ist „Eingeschränkt".
+  - „Satzungen & Gebührenordnungen" gehört Andrea Vogt (Personensymbol) und trägt das Welt-Symbol:
+    an alle Konten freigegeben. Der Tooltip sagt „Für alle Konten freigegeben".
+  - „Leistungen Meldewesen & Ausweise" gehört der Keycloak-Gruppe „Meldewesen" (Gruppensymbol) und
+    trägt kein Welt-Symbol, ist also eingeschränkt. Maria hat die Bibliothek für die Gruppe
+    angelegt; Selin verwaltet sie als Gruppenmitglied mit.
+  - „Interne Dienstanweisungen Meldewesen" gehört Maria selbst und trägt ebenfalls kein
+    Welt-Symbol.
   - Als `thomas.klein` fehlen „Leistungen Meldewesen & Ausweise" und die „Vorlagen Amtsleitung" im
     Katalog ganz: Was eine Person nicht lesen darf, sieht sie nirgends.
   - **Zeigt:** Wissen gehört Fachleuten und Fachgruppen, nicht der Systemverwaltung. Sichtbar ist

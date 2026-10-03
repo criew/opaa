@@ -20,11 +20,19 @@ import { notify } from '../../stores/notificationStore'
 import { successionAwareMessage } from '../succession/successionConflict'
 import type { SpaceCreateLocationState } from './assetPick'
 
-interface UseInSpaceButtonProps {
+interface UseInSpaceTarget {
   assetType: AssetType
   assetId: string
   name: string
+}
+
+interface UseInSpaceButtonProps extends UseInSpaceTarget {
   size?: 'small' | 'medium'
+}
+
+interface UseInSpaceDialogProps extends UseInSpaceTarget {
+  open: boolean
+  onClose: () => void
 }
 
 /** The spaces in which the person may associate: CURATOR or ADMIN, and not archived. */
@@ -35,17 +43,17 @@ function curatedSpaces(spaces: SpaceListResponse[]): SpaceListResponse[] {
 }
 
 /**
- * "In Space verwenden" (ADR-0039, Entscheidung 4): one click opens the choice of the spaces the
- * person curates, the second associates - or starts a new space with the asset already chosen.
+ * The choice behind "In Space verwenden" (ADR-0039, Entscheidung 4): the spaces the person curates,
+ * one click associates - or starts a new space with the asset already chosen.
  */
-export default function UseInSpaceButton({
+export function UseInSpaceDialog({
   assetType,
   assetId,
   name,
-  size = 'medium',
-}: UseInSpaceButtonProps) {
+  open,
+  onClose,
+}: UseInSpaceDialogProps) {
   const navigate = useNavigate()
-  const [open, setOpen] = useState(false)
   const [spaces, setSpaces] = useState<SpaceListResponse[] | null>(null)
   const [associated, setAssociated] = useState<Set<string>>(new Set())
   const [error, setError] = useState<string | null>(null)
@@ -73,13 +81,20 @@ export default function UseInSpaceButton({
     }
   }, [open, assetType, assetId])
 
+  /** Closes and forgets the loaded choice, so the next opening starts from "wird geladen". */
+  function close() {
+    setSpaces(null)
+    setError(null)
+    onClose()
+  }
+
   async function associate(space: SpaceListResponse) {
     setBusy(true)
     setError(null)
     try {
       await associateSpaceAsset(space.id, assetType, assetId)
       notify(`„${name}“ ist jetzt im Space „${space.name}“ zugeordnet.`, 'success')
-      setOpen(false)
+      close()
     } catch (err) {
       setError(successionAwareMessage(err, 'Zuordnung fehlgeschlagen'))
     } finally {
@@ -89,74 +104,89 @@ export default function UseInSpaceButton({
 
   function startNewSpace() {
     const state: SpaceCreateLocationState = { preselect: { assetType, assetId, name } }
-    setOpen(false)
+    close()
     navigate('/spaces/new', { state })
   }
 
   const titleId = `use-in-space-${assetId}`
+  return (
+    <Dialog open={open} onClose={close} aria-labelledby={titleId} fullWidth>
+      <DialogTitle id={titleId}>„{name}“ in Space verwenden</DialogTitle>
+      <DialogContent>
+        {error && (
+          <Alert severity="error" sx={{ mb: 1.5 }}>
+            {error}
+          </Alert>
+        )}
+        {spaces === null ? (
+          <Typography sx={{ color: 'text.secondary' }}>Spaces werden geladen …</Typography>
+        ) : (
+          <>
+            {spaces.length === 0 && (
+              <Typography sx={{ color: 'text.secondary', mb: 1 }}>
+                Sie kuratieren noch keinen Space. Legen Sie einen neuen an.
+              </Typography>
+            )}
+            <List aria-label="Spaces, die Sie kuratieren" sx={{ py: 0 }}>
+              {spaces.map((space) => {
+                const already = associated.has(space.id)
+                return (
+                  <ListItem key={space.id} disablePadding>
+                    <ListItemButton
+                      disabled={busy || already}
+                      onClick={() => void associate(space)}
+                    >
+                      <ListItemText
+                        primary={space.name}
+                        secondary={already ? 'Bereits zugeordnet' : undefined}
+                      />
+                    </ListItemButton>
+                  </ListItem>
+                )
+              })}
+              <ListItem disablePadding>
+                <ListItemButton disabled={busy} onClick={startNewSpace}>
+                  <AddIcon aria-hidden sx={{ mr: 1.5, color: 'text.secondary' }} />
+                  <ListItemText primary="Neuen Space damit anlegen" />
+                </ListItemButton>
+              </ListItem>
+            </List>
+          </>
+        )}
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={close}>Abbrechen</Button>
+      </DialogActions>
+    </Dialog>
+  )
+}
+
+/** "In Space verwenden" as a button of its own, opening {@link UseInSpaceDialog}. */
+export default function UseInSpaceButton({
+  assetType,
+  assetId,
+  name,
+  size = 'medium',
+}: UseInSpaceButtonProps) {
+  const [open, setOpen] = useState(false)
   return (
     <>
       <Button
         variant="outlined"
         size={size}
         startIcon={<WorkspacesOutlinedIcon />}
-        onClick={() => {
-          setError(null)
-          setSpaces(null)
-          setOpen(true)
-        }}
+        onClick={() => setOpen(true)}
         aria-label={`„${name}“ in Space verwenden`}
       >
         In Space verwenden
       </Button>
-      <Dialog open={open} onClose={() => setOpen(false)} aria-labelledby={titleId} fullWidth>
-        <DialogTitle id={titleId}>„{name}“ in Space verwenden</DialogTitle>
-        <DialogContent>
-          {error && (
-            <Alert severity="error" sx={{ mb: 1.5 }}>
-              {error}
-            </Alert>
-          )}
-          {spaces === null ? (
-            <Typography sx={{ color: 'text.secondary' }}>Spaces werden geladen …</Typography>
-          ) : (
-            <>
-              {spaces.length === 0 && (
-                <Typography sx={{ color: 'text.secondary', mb: 1 }}>
-                  Sie kuratieren noch keinen Space. Legen Sie einen neuen an.
-                </Typography>
-              )}
-              <List aria-label="Spaces, die Sie kuratieren" sx={{ py: 0 }}>
-                {spaces.map((space) => {
-                  const already = associated.has(space.id)
-                  return (
-                    <ListItem key={space.id} disablePadding>
-                      <ListItemButton
-                        disabled={busy || already}
-                        onClick={() => void associate(space)}
-                      >
-                        <ListItemText
-                          primary={space.name}
-                          secondary={already ? 'Bereits zugeordnet' : undefined}
-                        />
-                      </ListItemButton>
-                    </ListItem>
-                  )
-                })}
-                <ListItem disablePadding>
-                  <ListItemButton disabled={busy} onClick={startNewSpace}>
-                    <AddIcon aria-hidden sx={{ mr: 1.5, color: 'text.secondary' }} />
-                    <ListItemText primary="Neuen Space damit anlegen" />
-                  </ListItemButton>
-                </ListItem>
-              </List>
-            </>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpen(false)}>Abbrechen</Button>
-        </DialogActions>
-      </Dialog>
+      <UseInSpaceDialog
+        assetType={assetType}
+        assetId={assetId}
+        name={name}
+        open={open}
+        onClose={() => setOpen(false)}
+      />
     </>
   )
 }

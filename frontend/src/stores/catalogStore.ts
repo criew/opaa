@@ -1,11 +1,6 @@
 import { create } from 'zustand'
-import type {
-  AssetType,
-  CatalogEntryResponse,
-  CatalogPageResponse,
-  CatalogVisibility,
-} from '../types/api'
-import { getCatalog, type CatalogSort } from '../services/catalogApi'
+import type { AssetType, CatalogEntryResponse, CatalogPageResponse } from '../types/api'
+import { getCatalog } from '../services/catalogApi'
 import { markAssetFavorite, unmarkAssetFavorite } from '../services/assetApi'
 import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
 
@@ -17,11 +12,8 @@ export interface CatalogFilter {
   /** Every type when absent. */
   type?: AssetType
   q: string
-  visibility?: CatalogVisibility
-  fromMyGroups?: boolean
   /** Only the caller's own favorites. */
   favorites?: boolean
-  sort?: CatalogSort
 }
 
 interface CatalogState {

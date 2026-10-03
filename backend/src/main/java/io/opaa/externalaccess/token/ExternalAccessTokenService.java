@@ -3,7 +3,6 @@ package io.opaa.externalaccess.token;
 import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.AuditObjectType;
 import io.opaa.api.types.AuditOutcome;
-import io.opaa.asset.AssetCatalogMarks;
 import io.opaa.asset.AssetCatalogService;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
@@ -173,12 +172,8 @@ public class ExternalAccessTokenService {
       return List.of();
     }
     List<KnowledgeLibrary> released = release.releasedLibrariesAmong(readable);
-    AssetCatalogMarks marks =
-        catalog.marksAmong(
-            ownerId,
-            organizationId,
-            KnowledgeLibrary.ASSET_TYPE,
-            released.stream().map(KnowledgeLibrary::getId).toList());
+    Set<UUID> favorites =
+        catalog.favoritesAmong(ownerId, released.stream().map(KnowledgeLibrary::getId).toList());
     return released.stream()
         .map(
             library ->
@@ -187,23 +182,17 @@ public class ExternalAccessTokenService {
                     library.getName(),
                     library.getDescription(),
                     library.getExternalAccessExpiresAt(),
-                    marks.favorites().contains(library.getId()),
-                    marks.fromMyGroups().contains(library.getId())))
+                    favorites.contains(library.getId())))
         .sorted(Comparator.comparing(EligibleLibrary::name).thenComparing(EligibleLibrary::id))
         .toList();
   }
 
   /**
    * A library a new token may name, with the end of the release that makes it selectable and the
-   * catalog's personal marks the selection filters by.
+   * caller's favorite mark the selection filters by.
    */
   public record EligibleLibrary(
-      UUID id,
-      String name,
-      String description,
-      Instant releaseExpiresAt,
-      boolean favorite,
-      boolean fromMyGroups) {}
+      UUID id, String name, String description, Instant releaseExpiresAt, boolean favorite) {}
 
   /** The caller's own tokens, newest first, each with the names of its selected libraries. */
   @Transactional(readOnly = true)
