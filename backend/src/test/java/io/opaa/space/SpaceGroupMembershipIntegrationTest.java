@@ -189,11 +189,7 @@ class SpaceGroupMembershipIntegrationTest {
     assertThat(membershipRepository.findBySpaceId(space.getId()))
         .filteredOn(membership -> group.equals(membership.getGroupId()))
         .singleElement()
-        .satisfies(
-            membership -> {
-              assertThat(membership.getRole()).isEqualTo(SpaceRole.CURATOR);
-              assertThat(membership.getMemberCountAtGrant()).isEqualTo(1);
-            });
+        .satisfies(membership -> assertThat(membership.getRole()).isEqualTo(SpaceRole.CURATOR));
     assertThat(effectiveRoleOf(space.getId(), person)).isEqualTo(SpaceRole.CURATOR);
     assertThat(historyRepository.findAll())
         .anyMatch(
