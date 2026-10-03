@@ -4,6 +4,7 @@ import io.opaa.api.types.CatalogEntryStatus;
 import io.opaa.api.types.DocumentStatus;
 import io.opaa.asset.AssetCatalogFactSource;
 import io.opaa.asset.AssetCatalogFacts;
+import io.opaa.connection.LibraryConnectionService;
 import io.opaa.indexing.job.IndexingJobRepository;
 import io.opaa.indexing.job.JobStatus;
 import io.opaa.knowledge.DocumentRepository;
@@ -24,7 +25,8 @@ import org.springframework.stereotype.Component;
 /**
  * A knowledge library's catalog facts: source type, the "Stand" of the library list and its status.
  * A connector library goes by its newest indexing run; an upload library has no runs and goes by
- * its documents - one being processed, one failed, one indexed, none at all, first match wins.
+ * its documents - one being processed, one failed, one indexed, none at all, first match wins. A
+ * locked source adds its notice; the status stays the indexing one.
  */
 @Component
 class KnowledgeLibraryCatalogFactSource implements AssetCatalogFactSource {
@@ -32,14 +34,17 @@ class KnowledgeLibraryCatalogFactSource implements AssetCatalogFactSource {
   private final KnowledgeLibraryRepository libraryRepository;
   private final IndexingJobRepository indexingJobRepository;
   private final DocumentRepository documentRepository;
+  private final LibraryConnectionService libraryConnections;
 
   KnowledgeLibraryCatalogFactSource(
       KnowledgeLibraryRepository libraryRepository,
       IndexingJobRepository indexingJobRepository,
-      DocumentRepository documentRepository) {
+      DocumentRepository documentRepository,
+      LibraryConnectionService libraryConnections) {
     this.libraryRepository = libraryRepository;
     this.indexingJobRepository = indexingJobRepository;
     this.documentRepository = documentRepository;
+    this.libraryConnections = libraryConnections;
   }
 
   @Override
@@ -73,6 +78,7 @@ class KnowledgeLibraryCatalogFactSource implements AssetCatalogFactSource {
     Set<UUID> pending = librariesWith(uploadIds, DocumentStatus.PENDING);
     Set<UUID> failed = librariesWith(uploadIds, DocumentStatus.FAILED);
     Set<UUID> indexed = librariesWith(uploadIds, DocumentStatus.INDEXED);
+    Map<UUID, String> lockNotices = libraryConnections.lockNotices(libraries);
 
     Map<UUID, AssetCatalogFacts> facts = new HashMap<>();
     for (KnowledgeLibrary library : libraries) {
@@ -84,7 +90,7 @@ class KnowledgeLibraryCatalogFactSource implements AssetCatalogFactSource {
       facts.put(
           id,
           new KnowledgeLibraryCatalogFacts(
-              library.getSourceType().key(), lastIndexedAt.get(id), status));
+              library.getSourceType().key(), lastIndexedAt.get(id), status, lockNotices.get(id)));
     }
     return facts;
   }

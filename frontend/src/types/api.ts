@@ -179,6 +179,8 @@ export type ConnectionProfileUpdateRequest = components['schemas']['ConnectionPr
 export type ConnectionProfileImpactResponse =
   components['schemas']['ConnectionProfileImpactResponse']
 export type ConnectionProfileOption = components['schemas']['ConnectionProfileOption']
+export type ConnectorLockRequest = components['schemas']['ConnectorLockRequest']
+export type ConnectorTypeStateResponse = components['schemas']['ConnectorTypeStateResponse']
 export type SourceBrowseRequest = components['schemas']['SourceBrowseRequest']
 export type SourceBrowseResponse = components['schemas']['SourceBrowseResponse']
 export type SourceBrowseEntry = components['schemas']['SourceBrowseEntry']

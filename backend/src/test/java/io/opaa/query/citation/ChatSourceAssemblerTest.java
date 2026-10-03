@@ -8,6 +8,7 @@ import static org.mockito.Mockito.when;
 import io.opaa.api.types.MetadataFilterMatch;
 import io.opaa.chat.ChatSource;
 import io.opaa.chat.ChatSourceLocation;
+import io.opaa.indexing.source.LibrarySourceConnectionResolver;
 import io.opaa.indexing.source.SourceConnectorStubs;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
@@ -38,7 +39,8 @@ class ChatSourceAssemblerTest {
           documentMetadataService,
           mock(CitationMetadataReader.class),
           mock(KnowledgeLibraryRepository.class),
-          SourceConnectorStubs.registry());
+          SourceConnectorStubs.registry(),
+          new LibrarySourceConnectionResolver());
 
   private static Document chunk(String fileName, String documentId, String text, double score) {
     return Document.builder()
@@ -252,6 +254,50 @@ class ChatSourceAssemblerTest {
               tuple("satzung.md", MetadataFilterMatch.MATCHED),
               tuple("ohne.md", MetadataFilterMatch.NO_VALUE));
     }
+  }
+
+  /** A source from a locked library is marked: the answer shows "Stand vom" with its date. */
+  @Test
+  void marksASourceOfALockedLibraryAsFrozen() {
+    UUID lockedLibrary = UUID.randomUUID();
+    UUID lockedDocumentId = UUID.randomUUID();
+    UUID freeDocumentId = UUID.randomUUID();
+    io.opaa.knowledge.Document locked =
+        new io.opaa.knowledge.Document(
+            "alt.md", "/alt.md", "text/markdown", 1L, SourceTypes.FILESYSTEM);
+    locked.setLibraryId(lockedLibrary);
+    io.opaa.knowledge.Document free =
+        new io.opaa.knowledge.Document(
+            "neu.md", "/neu.md", "text/markdown", 1L, SourceTypes.FILESYSTEM);
+    free.setLibraryId(UUID.randomUUID());
+    when(documentRepository.findById(lockedDocumentId)).thenReturn(Optional.of(locked));
+    when(documentRepository.findById(freeDocumentId)).thenReturn(Optional.of(free));
+    ChatSourceAssembler withLock =
+        new ChatSourceAssembler(
+            documentRepository,
+            documentMetadataService,
+            mock(CitationMetadataReader.class),
+            mock(KnowledgeLibraryRepository.class),
+            SourceConnectorStubs.registry(),
+            new LibrarySourceConnectionResolver() {
+              @Override
+              public java.util.Set<UUID> lockedAmong(
+                  java.util.Collection<io.opaa.knowledge.KnowledgeLibrary> libraries) {
+                return java.util.Set.of(lockedLibrary);
+              }
+            });
+
+    List<ChatSource> sources =
+        withLock.assemble(
+            List.of(
+                chunk("alt.md", lockedDocumentId.toString(), "alt", 0.9),
+                chunk("neu.md", freeDocumentId.toString(), "neu", 0.8)),
+            List.of(),
+            MetadataFilter.NONE);
+
+    assertThat(sources)
+        .extracting(ChatSource::getFileName, ChatSource::getFrozen)
+        .containsExactly(tuple("alt.md", true), tuple("neu.md", null));
   }
 
   /**
