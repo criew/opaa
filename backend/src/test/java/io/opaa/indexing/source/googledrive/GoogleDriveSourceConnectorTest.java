@@ -192,6 +192,28 @@ class GoogleDriveSourceConnectorTest {
     assertThat(missing).isEmpty();
   }
 
+  /** A new scope - even on an existing stream - discards the run state: the next run is full. */
+  @Test
+  void aChangedScopeOrImitatedAccountDiscardsTheRunState() {
+    SourceSyncStateRepository repository = mock(SourceSyncStateRepository.class);
+    GoogleDriveSourceConnector withRepository =
+        new GoogleDriveSourceConnector(
+            server.base(),
+            URI.create("https://oauth2.example.org/token"),
+            new DriveApiFactory(
+                GoogleDriveProperties.defaults(), TargetAddressValidator.disabled(), wait -> {}),
+            repository);
+    KnowledgeLibrary library = mock(KnowledgeLibrary.class);
+    java.util.UUID id = java.util.UUID.randomUUID();
+    org.mockito.Mockito.when(library.getId()).thenReturn(id);
+
+    withRepository.onSourceChanged(library, false, java.util.Set.of("googleDriveScopes"));
+    withRepository.onSourceChanged(library, false, java.util.Set.of("googleDriveSubject"));
+    withRepository.onSourceChanged(library, false, java.util.Set.of());
+
+    org.mockito.Mockito.verify(repository, org.mockito.Mockito.times(2)).deleteByLibraryId(id);
+  }
+
   private static SourceSettings request(String url, ConnectorData settings) {
     return new SourceSettings(null, url, null, null, false, settings);
   }

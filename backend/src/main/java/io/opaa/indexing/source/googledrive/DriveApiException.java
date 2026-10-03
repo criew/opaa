@@ -29,6 +29,7 @@ final class DriveApiException extends Exception {
 
   private final Kind kind;
   private final int status;
+  private String reason;
 
   DriveApiException(Kind kind, int status, String message) {
     super(message);
@@ -42,5 +43,15 @@ final class DriveApiException extends Exception {
 
   int status() {
     return status;
+  }
+
+  /** The first {@code errors[].reason} of Google's answer, {@code null} for none. */
+  String reason() {
+    return reason;
+  }
+
+  DriveApiException withReason(String reason) {
+    this.reason = reason;
+    return this;
   }
 }

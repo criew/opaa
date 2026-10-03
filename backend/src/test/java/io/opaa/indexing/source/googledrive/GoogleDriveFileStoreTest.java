@@ -183,6 +183,7 @@ class GoogleDriveFileStoreTest {
     server.changed("bericht", "drive0");
     server.file("neu", "Neu.txt", "text/plain", "prot", "drive0", "Neu.");
     server.changed("neu", "drive0");
+    server.remove("notiz");
     server.removed("notiz", null);
     server.get("weg").parent = FakeDriveServer.ROOT_ID;
     server.changed("weg", null);
@@ -232,6 +233,122 @@ class GoogleDriveFileStoreTest {
 
     assertThat(run.eventsOf(IndexingEventCategory.REMOVED)).isEmpty();
     assertThat(harness.stored(path("bericht"))).isPresent();
+  }
+
+  /**
+   * Google's account stream also reports changes of a shared drive that has its own stream; the
+   * file stays a document of that drive, whichever stream is read first.
+   */
+  @org.junit.jupiter.params.ParameterizedTest
+  @org.junit.jupiter.params.provider.ValueSource(booleans = {true, false})
+  void anEditInASharedDriveReportedByTheAccountStreamRemovesNothing(boolean driveFirst)
+      throws Exception {
+    harness.fullSync(store(driveFirst));
+    FakeDriveServer.Item bericht = server.get("bericht");
+    bericht.content = "Ein geänderter Bericht.".getBytes();
+    bericht.modifiedTime = Instant.now();
+    server.changed("bericht", "drive0");
+
+    FileSyncHarness.Run run = harness.changeRun(store(driveFirst));
+
+    assertThat(run.failure()).isNull();
+    assertThat(run.eventsOf(IndexingEventCategory.REMOVED)).isEmpty();
+    assertThat(harness.stored(path("bericht"))).isPresent();
+  }
+
+  @Test
+  void aFileMovedBetweenTwoConfiguredDrivesStaysADocument() throws Exception {
+    server.addDrive("drive2", "Zweite Ablage");
+    DriveFileStore first = store(List.of(Map.of("drive", "drive2"), Map.of("drive", "drive0")));
+    harness.fullSync(first);
+    FakeDriveServer.Item bericht = server.get("bericht");
+    bericht.driveId = "drive2";
+    bericht.parent = "drive2";
+    server.changed("bericht", "drive2");
+    server.removed("bericht", "drive0");
+
+    FileSyncHarness.Run run =
+        harness.changeRun(store(List.of(Map.of("drive", "drive2"), Map.of("drive", "drive0"))));
+
+    assertThat(run.eventsOf(IndexingEventCategory.REMOVED)).isEmpty();
+    assertThat(harness.stored(path("bericht"))).isPresent();
+  }
+
+  @Test
+  void aFileInTwoOverlappingScopesKeepsTheFolderOfTheFirst() {
+    server.folder("sub", "Unterordner", "prot", "drive0");
+    server.file("tief", "Tief.txt", "text/plain", "sub", "drive0", "Tief unten.");
+
+    harness.fullSync(store(List.of(Map.of("drive", "drive0"), Map.of("folder", "sub"))));
+
+    assertThat(harness.stored(path("tief")).orElseThrow().getSourceContainerKey())
+        .isEqualTo("drive:drive0");
+    assertThat(harness.stored(path("tief")).orElseThrow().getSourceHierarchyPath())
+        .contains("Unterordner");
+  }
+
+  @Test
+  void aDownloadRedirectedToAnotherHostIsRefusedAndHoldsNoCursor() throws Exception {
+    try (FakeDriveServer foreign = new FakeDriveServer()) {
+      harness.fullSync(store());
+      FakeDriveServer.Item bericht = server.get("bericht");
+      bericht.content = "Neu.".getBytes();
+      bericht.modifiedTime = Instant.now();
+      bericht.redirectTo = "http://localhost:" + foreign.base().getPort() + "/drive/v3/files/x";
+      server.changed("bericht", "drive0");
+      var before = harness.state().changeCursors();
+
+      FileSyncHarness.Run run = harness.changeRun(store());
+
+      assertThat(run.eventsOf(IndexingEventCategory.REJECTED))
+          .extracting(IndexingRunEvent::getReference)
+          .contains(path("bericht"));
+      assertThat(foreign.requests()).as("no request, no token reaches the other host").isEmpty();
+      assertThat(harness.state().changeCursors())
+          .as("a refused redirect is no transient failure")
+          .isNotEqualTo(before);
+    }
+  }
+
+  @Test
+  void aMalformedRequestIsNoExpiredCursor() {
+    harness.fullSync(store());
+    var before = harness.state().changeCursors();
+    server.failChangesWith(400, "badRequest");
+
+    FileSyncHarness.Run run = harness.changeRun(store());
+
+    assertThat(run.failure()).isNull();
+    assertThat(harness.state().changeCursors()).isEqualTo(before);
+    assertThat(harness.state().canReadChanges(STREAMS, WEEK, FileSyncHarness.NOW)).isTrue();
+  }
+
+  @Test
+  void aFileWhoseParentCannotBeReadIsPlacedAtTheRootAndTheRunGoesOn() {
+    server.file("waise", "Waise.txt", "text/plain", "gibtsnicht", "drive0", "Ohne Ordner.");
+
+    FileSyncHarness.Run run = harness.fullSync(store());
+
+    assertThat(run.failure()).isNull();
+    assertThat(run.ingested()).contains(path("waise"));
+  }
+
+  private DriveFileStore store(boolean driveFirst) {
+    return driveFirst
+        ? store()
+        : store(List.of(Map.of("folder", "folder1"), Map.of("drive", "drive0")));
+  }
+
+  private DriveFileStore store(List<Map<String, Object>> scopes) {
+    DriveApiFactory apis =
+        new DriveApiFactory(
+            GoogleDriveProperties.defaults(), TargetAddressValidator.disabled(), wait -> {});
+    SourceSettings settings =
+        new SourceSettings(null, server.base().toString(), null, null, false, null);
+    return new DriveFileStore(
+        apis.open(settings, () -> FakeDriveServer.TOKEN, RequestBudget.unbounded()),
+        GoogleDriveSettings.read(ConnectorData.of(Map.of("scopes", scopes))),
+        2);
   }
 
   private DriveFileStore store() {

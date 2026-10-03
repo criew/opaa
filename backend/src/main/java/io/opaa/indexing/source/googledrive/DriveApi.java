@@ -146,8 +146,9 @@ final class DriveApi {
       } catch (TargetAddressValidator.TargetAddressBlockedException e) {
         throw new DriveApiException(DriveApiException.Kind.BLOCKED, 0, e.getMessage());
       } catch (RedirectFollowingFetcher.RedirectRejectedException e) {
+        // deterministic: the same request is refused the same way every time
         throw new DriveApiException(
-            DriveApiException.Kind.TRANSIENT,
+            DriveApiException.Kind.FORBIDDEN,
             0,
             "Google Drive hat auf eine fremde Adresse weitergeleitet; die Anfrage wurde nicht"
                 + " gesendet.");
@@ -172,7 +173,7 @@ final class DriveApi {
         sleeper.sleep(wait);
         continue;
       }
-      throw failure(status, reason, throttled);
+      throw failure(status, reason, throttled).withReason(reason);
     }
   }
 
