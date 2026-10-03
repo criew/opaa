@@ -179,6 +179,7 @@ sind, und verlangt eine Bestätigung. Danach verwirft es alle Token und Geheimni
 |---|---|
 | Server-Adresse | alle Verbindungen verworfen |
 | neue Client-ID, neuer Mandant, geänderte Scopes | neue Zustimmung aller Verbindungen |
+| imitiertes Konto (Dienstkonto-Schlüssel) | alle Verbindungen verworfen; die Bibliotheken ruhen, bis sie neu verbunden sind |
 | neues Client-Secret zur selben Client-ID | keine; Verbindungen bleiben |
 
 **Notabschaltung „Alle Verbindungen trennen“** je Profil: löscht sofort alle Token und Geheimnisse

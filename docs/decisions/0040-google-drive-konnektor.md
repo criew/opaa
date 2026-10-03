@@ -217,10 +217,18 @@ Nachtrag zur Invariante gibt es nicht. Kein Ziel kommt aus der Schlüsseldatei, 
     nicht. Das Konto steht sichtbar in den Bibliotheksdetails und im Audit.
   - Das Handbuch empfiehlt für Delegation ein Profil: Ein solcher Schlüssel kann jedes Konto der
     Domäne lesen, und am Profil legt die Systemverwaltung das Konto fest.
-- **`subject` ist ein Ziel der Zugangsdaten.** Ohne Profil weist der Konnektor eine Änderung in
-  `validateChange` ab, wenn der Schlüssel nicht neu eingegeben wird, wie ADR-0038 es für Ziele in
-  `source_settings` verlangt. Am Profil gilt die Änderung als eine, die eine neue Zustimmung
-  verlangt (Spezifikation, „Was eine neue Zustimmung verlangt“).
+- **`subject` ist ein Ziel der Zugangsdaten, und der Kern schützt es.** Der Konnektor sieht den
+  Schlüssel nicht und könnte nicht unterscheiden, ob er neu eingegeben oder übernommen wurde; der
+  Kern ergänzt die gespeicherten Zugangsdaten schon vor `validateChange`. Deshalb gilt im Kern: **Er
+  übernimmt gespeicherte Zugangsdaten nur, wenn der Ursprung gleich bleibt und `assertionSubject`
+  vor und nach der Änderung gleich ist.** Sonst sind die Zugangsdaten Pflicht, wie bei einem Wechsel
+  des Ursprungs. Andernfalls könnte jede Person mit Verwaltungsrecht an der Bibliothek einen
+  vorhandenen Delegationsschlüssel auf ein beliebiges Konto der Domäne umlenken. Die Regel gilt für
+  jede künftige Anmeldeart mit Subjekt.
+- **`subject` am Profil:** Eine Änderung verwirft, wie eine neue Client-ID, alle Verbindungen auf dem
+  Profil. Die Bibliotheken ruhen mit Hinweis, bis sie neu verbunden sind; dabei wird der Schlüssel
+  bestätigt. Ein Dienstkonto kennt keine Zustimmung je Verbindung, deshalb nicht „neue Zustimmung“.
+  Die Spezifikation führt das als eigene Zeile.
 - Persönliche Ablagen echter Personen sind nicht Teil dieses ADR. Ihr Weg wäre ein verbundenes Konto
   über eine *interne* OAuth-App des Betreibers, die keine Verifizierung braucht (Epic #2147).
 
@@ -410,7 +418,7 @@ eine Anfrage, und Push bräuchte einen öffentlich erreichbaren Eingang mit Kana
 | Issue | Folgt aus diesem ADR |
 |---|---|
 | #2149 | Paket `indexing.filesync`, letzter Eintrag in `INDEXING_CORE`; Port nach Entscheidung 1 mit neutralen Fehlerarten (einschließlich `CursorExpired`), optionalem `ChangeFeed`, `unchangedSubtrees` und `fullSyncNeeded`; ausstehende Startcursor beim ersten Beginn des Vollabgleichs gesichert, bei Wiederaufnahme behalten; S3 als erster Nutzer ohne Verhaltensänderung; Spalte `change_cursors` kann hier oder in #2151 kommen; Vertragstest gegen den Port |
-| #2151 | Paket `indexing.source.googledrive`, Typ `GOOGLE_DRIVE`; Changeset `source_credentials` → `text` mit Delta-Test, Entity-Länge und Spec-Grenze 4096; **nach #2178**; im Kern: Anmeldeart „Dienstkonto-Schlüssel“ in der Beschreibung (Token-Endpunkt, Scope), Signatur im Übergangs-Resolver, erneuerbares Zugriffstoken über den Port, `assertionSubject`; POST-Weg in `sourceaccess`; feste `sourceUrl`, `REJECT_OFF_ORIGIN`, Übernahme der Zugangsdaten gegen die normalisierte Adresse (Test: Proxy-Änderung behält den Schlüssel); `subject` nur mit neu eingegebenem Schlüssel änderbar; ArchUnit belegt, dass kein Konnektorpaket den Schlüssel liest; Bereiche, Erreichbarkeitsprüfung, Cursor je Strom, Strukturänderung erzwingt Vollabgleich; Merkmal, Exporttabelle, Verknüpfungen überspringen; Drosselung über `403`-Gründe; unsichere Befunde gegen ein echtes Workspace belegen und hier nachtragen; Handbuch mit Schlüsselrichtlinie und Funktionskonto |
+| #2151 | Paket `indexing.source.googledrive`, Typ `GOOGLE_DRIVE`; Changeset `source_credentials` → `text` mit Delta-Test, Entity-Länge und Spec-Grenze 4096; **nach #2178**; im Kern: Anmeldeart „Dienstkonto-Schlüssel“ in der Beschreibung (Token-Endpunkt, Scope), Signatur im Übergangs-Resolver, erneuerbares Zugriffstoken über den Port, `assertionSubject`; POST-Weg in `sourceaccess`; feste `sourceUrl`, `REJECT_OFF_ORIGIN`, Übernahme der Zugangsdaten gegen die normalisierte Adresse (Test: Proxy-Änderung behält den Schlüssel); Kernregel: gespeicherte Zugangsdaten nur bei gleichem Ursprung **und** gleichem `assertionSubject` übernehmen (Test: `subject`-Änderung ohne Schlüssel → `400`, mit Schlüssel → gespeichert); `subject`-Änderung am Profil verwirft dessen Verbindungen (mit #2160); ArchUnit belegt, dass kein Konnektorpaket den Schlüssel liest; Bereiche, Erreichbarkeitsprüfung, Cursor je Strom, Strukturänderung erzwingt Vollabgleich; Merkmal, Exporttabelle, Verknüpfungen überspringen; Drosselung über `403`-Gründe; unsichere Befunde gegen ein echtes Workspace belegen und hier nachtragen; Handbuch mit Schlüsselrichtlinie und Funktionskonto |
 
 ## Referenzen
 
