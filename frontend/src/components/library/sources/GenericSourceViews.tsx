@@ -1,7 +1,6 @@
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import {
-  filesystemSettingsOf,
   storedFilesystemPatterns,
   type FilesystemSourceValues,
 } from '../../../utils/filesystemSource'
@@ -28,7 +27,6 @@ export function PathForm({ values, onChange, context }: SourceFormProps<Filesyst
         sourceType={context.sourceType}
         kind="path"
         values={values}
-        sourceSettings={filesystemSettingsOf(values)}
         libraryId={context.libraryId}
         size={context.mode === 'edit' ? 'small' : 'medium'}
       />

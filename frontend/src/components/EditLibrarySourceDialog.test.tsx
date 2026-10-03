@@ -171,7 +171,7 @@ describe('EditLibrarySourceDialog', () => {
     expect(onClose).toHaveBeenCalled()
   })
 
-  it('prefills the stored exclusion patterns and saves and tests the edited ones (#2184)', async () => {
+  it('prefills the stored exclusion patterns and saves the edited ones (#2184)', async () => {
     renderWithProviders(
       <EditLibrarySourceDialog
         open
@@ -186,16 +186,6 @@ describe('EditLibrarySourceDialog', () => {
     expect(patternsField).toHaveValue('Archiv/**')
     expect(patternsField).toHaveAccessibleDescription(/ein muster pro zeile/i)
     await user.type(patternsField, '{Enter}**/*.tmp')
-    await user.click(screen.getByRole('button', { name: /verbindung testen/i }))
-    await waitFor(() => {
-      expect(mockTestLibrarySource).toHaveBeenCalledWith(
-        expect.objectContaining({
-          sourceType: 'FILESYSTEM',
-          sourcePath: '/data/dokumente',
-          sourceSettings: { excludePatterns: ['Archiv/**', '**/*.tmp'] },
-        }),
-      )
-    })
     await user.click(screen.getByRole('button', { name: /^speichern$/i }))
 
     await waitFor(() => {

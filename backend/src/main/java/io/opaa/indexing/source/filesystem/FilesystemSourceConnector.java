@@ -1,12 +1,9 @@
 package io.opaa.indexing.source.filesystem;
 
 import static io.opaa.indexing.source.ConnectorChecks.blankToNull;
-import static io.opaa.indexing.source.ConnectorChecks.reachable;
 import static io.opaa.indexing.source.ConnectorChecks.unreachable;
 
 import io.opaa.common.ValidationException;
-import io.opaa.format.DocumentService;
-import io.opaa.format.SupportedDocumentFormats;
 import io.opaa.indexing.source.ConnectorData;
 import io.opaa.indexing.source.FilesystemPathAllowlist;
 import io.opaa.indexing.source.OriginalAccess;
@@ -20,7 +17,7 @@ import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.ServedContentTypes;
 import io.opaa.knowledge.SourceType;
 import java.io.IOException;
-import java.io.UncheckedIOException;
+import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
@@ -32,14 +29,14 @@ import org.slf4j.LoggerFactory;
  * A directory on the server (ADR-0018). The operator's {@link FilesystemPathAllowlist} is the
  * security boundary against path enumeration (#484, ADR-0018 Entscheidung 6): an empty allowlist
  * disables the type, and both saving and testing check a path against it before anything on disk is
- * touched. A test reports no more than a count - never a file name or listing.
+ * touched. A test only opens the directory itself - it reads nothing below it and reports neither a
+ * count nor a file name.
  *
  * <p>An original is served only when its path resolves - symlinks included - underneath the
  * library's own {@code sourcePath}, and only while that path is still inside the allowlist: an
  * allowlist narrowed or emptied after indexing must not leave the files readable here.
  *
- * <p>The connector settings are {@link FilesystemSourceSettings}; test and run skip the same
- * entries through {@link FilesystemExclusions}.
+ * <p>The connector settings are {@link FilesystemSourceSettings}, applied by the run.
  */
 public class FilesystemSourceConnector implements SourceConnector, OriginalAccess {
 
@@ -64,16 +61,9 @@ public class FilesystemSourceConnector implements SourceConnector, OriginalAcces
       "sourceInsecureSsl ist für sourceType FILESYSTEM nicht zulässig";
 
   private final FilesystemPathAllowlist allowlist;
-  private final DocumentService documentService;
-  private final SupportedDocumentFormats supportedFormats;
 
-  public FilesystemSourceConnector(
-      FilesystemPathAllowlist allowlist,
-      DocumentService documentService,
-      SupportedDocumentFormats supportedFormats) {
+  public FilesystemSourceConnector(FilesystemPathAllowlist allowlist) {
     this.allowlist = allowlist;
-    this.documentService = documentService;
-    this.supportedFormats = supportedFormats;
   }
 
   @Override
@@ -182,8 +172,8 @@ public class FilesystemSourceConnector implements SourceConnector, OriginalAcces
   /**
    * Checks absoluteness with {@link Path#isAbsolute()} rather than {@link #validate}'s literal
    * {@code "/"}: this method touches the filesystem, and a portable check keeps it testable against
-   * a real directory on every OS. Exclusions come from the requested settings, else the stored
-   * library's.
+   * a real directory on every OS. Opening the directory is the whole test: no walk, no file read,
+   * no count - the indexing run reports the documents.
    */
   @Override
   public SourceConnectionTestResult testConnection(SourceSettings settings, ConnectorData stored) {
@@ -214,31 +204,9 @@ public class FilesystemSourceConnector implements SourceConnector, OriginalAcces
     if (!Files.isReadable(directory)) {
       return unreachable("Das Verzeichnis ist für den Server nicht lesbar.");
     }
-    try {
-      ConnectorData exclusionSettings =
-          settings.connectorSettings() != null ? settings.connectorSettings() : stored;
-      FilesystemExclusions exclusions =
-          FilesystemExclusions.of(FilesystemSourceSettings.of(exclusionSettings));
-      DocumentService.DiscoveredFiles discovered =
-          documentService.discoverFiles(directory, supportedFormats, exclusions::excludes);
-      long count = discovered.supported().size();
-      int unreadable = discovered.unreadable().size();
-      return reachable(
-          "Verzeichnis erreichbar, "
-              + count
-              + " "
-              + (count == 1 ? "Dokument" : "Dokumente")
-              + " gefunden"
-              + (unreadable == 0
-                  ? ""
-                  : "; "
-                      + unreadable
-                      + (unreadable == 1
-                          ? " nicht lesbarer Eintrag übersprungen"
-                          : " nicht lesbare Einträge übersprungen"))
-              + ".",
-          count);
-    } catch (IOException | UncheckedIOException e) {
+    try (DirectoryStream<Path> ignored = Files.newDirectoryStream(directory)) {
+      return new SourceConnectionTestResult(true, "Verzeichnis erreichbar.", null);
+    } catch (IOException e) {
       log.warn("Filesystem source test failed to read {}: {}", sourcePath, e.getMessage());
       return unreachable("Das Verzeichnis konnte nicht gelesen werden.");
     }

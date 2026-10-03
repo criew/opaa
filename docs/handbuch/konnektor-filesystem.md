@@ -31,6 +31,11 @@ Wo diese Felder stehen: Detailansicht der Bibliothek, Reiter **„Quelle"**, Abs
 Anlegen im gleichnamigen Schritt des Assistenten. Im selben Reiter stehen der **„Zeitplan"** und,
 als **„Läufe"**, das Laufprotokoll.
 
+**„Verbindung testen"** prüft nur, ob sich das Verzeichnis öffnen lässt: Es muss existieren, ein
+Verzeichnis sein und sich auflisten lassen. Der Test liest keine Unterverzeichnisse und keine
+Dateien und zählt keine Dokumente; er antwortet „Verzeichnis erreichbar." oder nennt den Grund, aus
+dem das Verzeichnis nicht erreichbar ist. Die Zahl der Dokumente liefert erst der Lauf.
+
 | Feld der Bibliothek | Regel |
 |---|---|
 | Verzeichnispfad (`sourcePath`) | Pflicht. Absoluter Pfad aus Sicht des Backend-Prozesses, also im Container, nicht auf dem Host. |
@@ -74,9 +79,9 @@ Backend-Containers". Ein Netzlaufwerk sollte schreibgeschützt eingebunden werde
 
 Ein **Unterverzeichnis**, das der Prozess nicht betreten darf, wird übersprungen, statt den Lauf
 abzubrechen. Es erscheint im Protokoll als „Nicht lesbar, übersprungen" mit seinem Pfad relativ zum
-Verzeichnispfad; „Verbindung testen" nennt nur die Anzahl solcher Einträge. Versteckte Ordner wie
-`.shortcut-targets-by-id` bei Google Drive und die Windows-Systemordner betrifft das nicht: Sie
-sind ausgeschlossen und werden gar nicht erst betreten (Abschnitt 5.1).
+Verzeichnispfad; „Verbindung testen" sieht solche Unterverzeichnisse nicht (Abschnitt 2).
+Versteckte Ordner wie `.shortcut-targets-by-id` bei Google Drive und die Windows-Systemordner
+betrifft das nicht: Sie sind ausgeschlossen und werden gar nicht erst betreten (Abschnitt 5.1).
 
 ## 4. Schutzmechanismen
 
@@ -144,8 +149,8 @@ Bibliothek. Für sie gilt:
 
 Ein ausgeschlossener Ordner wird nicht betreten. Ist er nicht lesbar, erscheint er deshalb auch
 nicht als „Nicht lesbar, übersprungen", und die Aufzählung bleibt vollständig. Ausgeschlossene
-Dateien zählen weder als gefunden noch als abgewiesen. „Verbindung testen" wendet dieselben
-Ausschlüsse an wie der Lauf, beim Bearbeiten die eingegebenen Muster, sonst die gespeicherten.
+Dateien zählen weder als gefunden noch als abgewiesen. „Verbindung testen" öffnet nur das
+Verzeichnis selbst (Abschnitt 2); für ihn spielen die Ausschlüsse keine Rolle.
 
 Groß- und Kleinschreibung in den Mustern folgt dem Betriebssystem des Servers; unter Linux, also im
 Container, wird sie unterschieden.
