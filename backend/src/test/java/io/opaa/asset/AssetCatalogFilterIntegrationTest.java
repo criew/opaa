@@ -271,8 +271,7 @@ class AssetCatalogFilterIntegrationTest {
             myGroup,
             AssetRole.EDITOR,
             null,
-            owner,
-            1));
+            owner));
     UUID groupOwned =
         promptLibraryRepository
             .save(PromptLibrary.ownedByGroup(organization, "Referatsvorlagen", null, myGroup))
@@ -285,8 +284,7 @@ class AssetCatalogFilterIntegrationTest {
             myGroup,
             AssetRole.MANAGER,
             null,
-            owner,
-            null));
+            owner));
     UUID released = promptLibrary("Für alle", owner, true);
 
     List<AssetCatalogEntry> forMember = query(null).entries();
@@ -506,8 +504,7 @@ class AssetCatalogFilterIntegrationTest {
             groupId,
             AssetRole.VIEWER,
             expiresAt,
-            owner,
-            1));
+            owner));
   }
 
   private void grantToUser(UUID promptLibraryId, UUID userId, Instant expiresAt) {

@@ -497,26 +497,16 @@ export function groupMechanismLabel(mechanism: GroupMechanism | string | undefin
 }
 
 /**
- * Das Zuwachssignal an einer Freigabe oder Mitgliedschaft: „23 bei Erteilung, heute 41“. Beide
- * Zahlen unterliegen der „kleine Gruppe“-Unterdrückung; für eine geschützte Gruppe entfällt das
- * Signal ganz (ADR-0036, Entscheidung 9).
+ * Die heutige Größe einer Gruppe an einer Freigabe oder Space-Mitgliedschaft, ohne
+ * Mindestgruppengröße. Für eine geschützte Gruppe entfällt jede Angabe (ADR-0036, Entscheidung 9).
  */
-export function groupGrowthLabel(
-  signal: {
-    memberCountAtGrant?: number | null
-    memberCountNow?: number | null
-    smallGroup?: boolean | null
-    emptyGroup?: boolean | null
-    protectedGroup?: boolean | null
-  },
-  grantWord: string,
-): string | null {
-  if (signal.protectedGroup) return null
-  if (signal.emptyGroup) return 'erreicht derzeit niemanden'
-  if (signal.smallGroup) return 'kleine Gruppe'
-  if (signal.memberCountNow == null) return null
-  if (signal.memberCountAtGrant == null) return `heute ${signal.memberCountNow} Mitglieder`
-  return `${signal.memberCountAtGrant} bei ${grantWord}, heute ${signal.memberCountNow}`
+export function groupMemberCountLabel(row: {
+  activeMemberCount?: number | null
+  protectedGroup?: boolean | null
+}): string | null {
+  if (row.protectedGroup || row.activeMemberCount == null) return null
+  if (row.activeMemberCount === 0) return 'erreicht derzeit niemanden'
+  return row.activeMemberCount === 1 ? '1 Mitglied' : `${row.activeMemberCount} Mitglieder`
 }
 
 const catalogStatusLabels: Record<Exclude<CatalogEntryStatus, 'READY'>, string> = {

@@ -1,0 +1,11 @@
+databaseChangeLog:
+  - changeSet:
+      id: workspace-2026-10-03-drop-membership-member-count
+      author: opaa
+      comment: "The growth signal of a group membership is gone (ADR-0036, Entscheidung 9, Nachtrag of 03.10.2026): space_memberships and its history lose the member count recorded at admission, the membership its check with it."
+      changes:
+        - sql:
+            sql: |
+              ALTER TABLE space_memberships DROP CONSTRAINT chk_space_memberships_member_count;
+              ALTER TABLE space_memberships DROP COLUMN member_count_at_grant;
+              ALTER TABLE space_membership_history DROP COLUMN member_count_at_grant;

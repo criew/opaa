@@ -264,9 +264,8 @@ public class DiagnosticImpersonationGrantService {
    * same in both.
    *
    * <p><b>The refusal never carries the size.</b> Below the Mindestgruppengröße a house withholds
-   * the figure (ADR-0036, Entscheidung 9; {@code GroupSizeSignal}, {@code
-   * GroupMemberDisclosureAdapter}), and "reaches one active account" about a named person's unit
-   * would be the disclosure the mark exists to prevent.
+   * the figure (ADR-0036, Entscheidung 9; {@code GroupMemberDisclosureAdapter}), and "reaches one
+   * active account" about a named person's unit would be the disclosure the mark exists to prevent.
    */
   private void requireUsableScope(
       UUID scopeGroupId, UUID organizationId, Function<String, RuntimeException> refusal) {
