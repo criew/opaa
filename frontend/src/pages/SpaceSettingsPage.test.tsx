@@ -1,8 +1,6 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { HttpResponse, http } from 'msw'
-import { server } from '../mocks/server'
-import { favoriteKey, mockFavoriteAssets } from '../mocks/assetFixtures'
+import { useLocation } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { answerConfirm, renderWithProviders } from '../test/test-utils'
 import SpaceSettingsPage from './SpaceSettingsPage'
@@ -24,8 +22,13 @@ vi.mock('react-router', async () => {
   }
 })
 
+/** Shows the router's current path, to observe a redirect. */
+function LocationProbe() {
+  return <span data-testid="location">{useLocation().pathname}</span>
+}
+
 /** Rendert die Einstellungsseite auf einem bestimmten Reiter. */
-function renderTab(tab: 'general' | 'members' | 'knowledge' | 'prompts') {
+function renderTab(tab: 'general' | 'members' | 'content') {
   routeParams.tab = tab
   return renderWithProviders(<SpaceSettingsPage />, { withRouter: true })
 }
@@ -337,10 +340,10 @@ describe('SpaceSettingsPage', () => {
   })
 
   /**
-   * #1917: eine Einstellungsseite je Space, gegliedert in Reiter. Die Leiste ist die Stelle, an
-   * der ein weiterer Asset-Typ („Prompts") einen Reiter bekommt.
+   * #1917: eine Einstellungsseite je Space, gegliedert in Reiter; alle Asset-Typen teilen sich
+   * den Reiter „Inhalte".
    */
-  it('gliedert die Einstellungen in Stammdaten, Mitglieder, Wissen und Prompts', () => {
+  it('gliedert die Einstellungen in Stammdaten, Mitglieder und Inhalte', () => {
     setSpaceState(teamSpace)
     renderTab('general')
 
@@ -349,7 +352,7 @@ describe('SpaceSettingsPage', () => {
       within(tablist)
         .getAllByRole('tab')
         .map((tab) => tab.textContent),
-    ).toEqual(['Stammdaten', 'Mitglieder', 'Wissen', 'Prompts'])
+    ).toEqual(['Stammdaten', 'Mitglieder', 'Inhalte'])
     expect(screen.getByRole('heading', { level: 1, name: 'Einstellungen' })).toBeInTheDocument()
     // Die Reiterleiste trägt keine Überschrift: Ohne die h2 des Panels spränge die Gliederung von
     // h1 auf die h3 des Gefahrenbereichs (docs/design/accessibility.md 2.3).
@@ -794,124 +797,20 @@ describe('SpaceSettingsPage', () => {
     expect(screen.getByText('Space archiviert')).toBeInTheDocument()
   })
 
-  // ADR-0039, Entscheidung 2: an association the caller cannot read leaves no name, id or number,
-  // whatever the role - only the count-free hint.
-  it('shows only the count-free hint for associations the caller cannot read', async () => {
-    mockGetSpaceAssetAssociations.mockResolvedValue({
-      hasAssociations: true,
-      hasUnreadableAssociations: true,
-      hasKnowledge: true,
-      hasReadableKnowledge: false,
-      items: [],
-    })
-    setSpaceState(teamSpace)
-
-    for (const tab of ['knowledge', 'prompts'] as const) {
-      const { unmount } = renderTab(tab)
-
-      const hint = await screen.findByText('Nicht alle zugeordneten Inhalte sind für Sie lesbar.')
-      expect(hint.textContent).not.toMatch(/\d/)
-      // The hint stands alone: "nothing associated" would contradict it.
-      expect(screen.queryByText(/^Diesem Space sind keine/)).not.toBeInTheDocument()
-      expect(screen.queryByRole('button', { name: /lösen$/i })).not.toBeInTheDocument()
-      unmount()
-    }
-  })
-
-  it('shows no hint when every association is readable', async () => {
-    setSpaceState(teamSpace)
-
-    renderTab('knowledge')
-
-    expect(
-      await screen.findByRole('group', { name: 'Weitere Bibliotheken zuordnen' }),
-    ).toBeVisible()
-    expect(
-      screen.queryByText('Nicht alle zugeordneten Inhalte sind für Sie lesbar.'),
-    ).not.toBeInTheDocument()
-  })
-
-  it('names the takeover when an open succession refuses a new association', async () => {
-    server.use(
-      http.post('/api/v1/spaces/:spaceId/assets', () =>
-        HttpResponse.json(
-          {
-            error:
-              'Für dieses Objekt ist die Nachfolge offen: eine neue Bereitstellung ist deshalb' +
-              ' nicht möglich. Bestehende Rechte bleiben unverändert, und nichts wird gelöscht.' +
-              ' Zuständig: die Systemverwaltung',
-            code: 'SUCCESSION_OPEN',
-          },
-          { status: 409 },
-        ),
-      ),
-    )
-    setSpaceState(teamSpace)
-    renderTab('knowledge')
-    const user = userEvent.setup()
-
-    await user.click(await screen.findByRole('checkbox', { name: /^Dienstanweisungen/ }))
-    await user.click(screen.getByRole('button', { name: 'Zuordnen' }))
-
-    expect(await screen.findByText(/Nachfolge offen/)).toBeInTheDocument()
-    expect(screen.getByText(/Übernahme/)).toBeInTheDocument()
-  })
-
-  it('narrows the tiles to my favorites, as in the space wizard', async () => {
-    mockFavoriteAssets.add(favoriteKey('KNOWLEDGE_LIBRARY', 'library-dienstanweisungen'))
-    setSpaceState(teamSpace)
-    renderTab('knowledge')
-    const user = userEvent.setup()
-
-    expect(await screen.findByRole('checkbox', { name: /^Projektakte Phoenix/ })).toBeVisible()
-    await user.click(
-      within(screen.getByRole('group', { name: 'Filter' })).getByRole('button', {
-        name: 'Favoriten',
-      }),
-    )
-
-    expect(await screen.findByRole('checkbox', { name: /^Dienstanweisungen/ })).toBeVisible()
-    expect(screen.queryByRole('checkbox', { name: /^Projektakte Phoenix/ })).not.toBeInTheDocument()
-  })
-
-  it('narrows the tiles to assets from my groups, as in the space wizard', async () => {
-    setSpaceState(teamSpace)
-    renderTab('knowledge')
-    const user = userEvent.setup()
-
-    expect(await screen.findByRole('checkbox', { name: /^Projektakte Phoenix/ })).toBeVisible()
-    await user.click(
-      within(screen.getByRole('group', { name: 'Filter' })).getByRole('button', {
-        name: 'Aus meinen Gruppen',
-      }),
-    )
-
-    expect(await screen.findByRole('checkbox', { name: /^Dienstanweisungen/ })).toBeVisible()
-    expect(screen.queryByRole('checkbox', { name: /^Projektakte Phoenix/ })).not.toBeInTheDocument()
-  })
-
-  it("offers only the tab's own type and narrows the tiles by search", async () => {
-    setSpaceState(teamSpace)
-    renderTab('knowledge')
-    const user = userEvent.setup()
-
-    expect(await screen.findByRole('checkbox', { name: /^Dienstanweisungen/ })).toBeVisible()
-    expect(
-      screen.queryByRole('checkbox', { name: /^Formulierungshilfen Referat 50/ }),
-    ).not.toBeInTheDocument()
-
-    await user.type(screen.getByRole('searchbox', { name: 'Suche' }), 'gibt es nicht')
-
-    expect(await screen.findByText('Keine Treffer.')).toBeInTheDocument()
-    expect(screen.queryByRole('checkbox', { name: /^Dienstanweisungen/ })).not.toBeInTheDocument()
-  })
-
   /**
-   * Der Reiter „Prompts" ordnet Prompt-Bibliotheken über dieselben Space-Endpunkte zu wie
-   * „Wissen" die Wissensbibliotheken; jeder Reiter zeigt nur die Zuordnungen seines Typs.
+   * Ein Reiter „Inhalte" für alle Asset-Typen; die Zuordnung selbst prüft
+   * SpaceContentSection.test.tsx. Hier: welche Rolle anhaken darf.
    */
-  describe('Reiter „Prompts"', () => {
-    const mixedAssociations: SpaceAssetAssociationListResponse = {
+  it('lets a curator check contents on the tab "Inhalte"', async () => {
+    setSpaceState({ ...nonAdminSpace, userRole: 'CURATOR' })
+    renderTab('content')
+
+    expect(await screen.findByRole('button', { name: 'Nur zugeordnete' })).toBeInTheDocument()
+    expect(mockGetSpaceAssetAssociations).toHaveBeenCalledWith('space-team')
+  })
+
+  it('shows a plain member the contents of the tab "Inhalte" read-only', async () => {
+    mockGetSpaceAssetAssociations.mockResolvedValue({
       hasAssociations: true,
       hasUnreadableAssociations: false,
       hasKnowledge: true,
@@ -919,58 +818,38 @@ describe('SpaceSettingsPage', () => {
       items: [
         {
           assetType: 'KNOWLEDGE_LIBRARY',
-          assetId: 'lib-1',
+          assetId: 'library-referat-50',
           name: 'Rechtsquellen Soziales',
           createdByUserId: 'u1',
           createdAt: '2026-03-01T10:00:00Z',
         },
-        {
-          assetType: 'PROMPT_LIBRARY',
-          assetId: 'prompt-library-organisation',
-          name: 'Hausweite Vorlagen',
-          createdByUserId: 'u1',
-          createdAt: '2026-03-01T10:00:00Z',
-        },
       ],
-    }
-
-    it('zeigt je Reiter nur die Zuordnungen seines Typs', async () => {
-      mockGetSpaceAssetAssociations.mockResolvedValue(mixedAssociations)
-      setSpaceState(teamSpace)
-      const { unmount } = renderTab('prompts')
-
-      expect(await screen.findByText('Hausweite Vorlagen')).toBeInTheDocument()
-      expect(screen.queryByText('Rechtsquellen Soziales')).not.toBeInTheDocument()
-      unmount()
-
-      renderTab('knowledge')
-      expect(await screen.findByText('Rechtsquellen Soziales')).toBeInTheDocument()
-      expect(screen.queryByText('Hausweite Vorlagen')).not.toBeInTheDocument()
     })
+    setSpaceState(nonAdminSpace)
+    renderTab('content')
 
-    it('ordnet eine lesbare Prompt-Bibliothek mit ihrem Typ zu', async () => {
-      const requests: unknown[] = []
-      server.use(
-        http.post('/api/v1/spaces/:spaceId/assets', async ({ request }) => {
-          requests.push(await request.json())
-          return HttpResponse.json({}, { status: 201 })
-        }),
-      )
-      setSpaceState(teamSpace)
-      renderTab('prompts')
-      const user = userEvent.setup()
+    expect(
+      await screen.findByRole('checkbox', { name: /^Rechtsquellen Soziales/ }),
+    ).toHaveAttribute('aria-readonly', 'true')
+    expect(screen.queryByRole('button', { name: 'Nur zugeordnete' })).not.toBeInTheDocument()
+  })
 
-      await user.click(
-        await screen.findByRole('checkbox', { name: /^Formulierungshilfen Referat 50/ }),
-      )
-      await user.click(screen.getByRole('button', { name: 'Zuordnen' }))
+  // The former tabs "Wissen" and "Prompts" live on in bookmarks and links.
+  it.each(['knowledge', 'prompts'])('forwards the former tab "%s" to "Inhalte"', async (tab) => {
+    setSpaceState(teamSpace)
+    routeParams.tab = tab
+    renderWithProviders(
+      <>
+        <SpaceSettingsPage />
+        <LocationProbe />
+      </>,
+      { withRouter: true, initialRoute: `/spaces/space-team/settings/${tab}` },
+    )
 
-      await waitFor(() =>
-        expect(requests).toEqual([
-          { assetType: 'PROMPT_LIBRARY', assetId: 'prompt-library-referat-50' },
-        ]),
-      )
-      expect(await screen.findByText('Prompt-Bibliothek zugeordnet')).toBeInTheDocument()
-    })
+    await waitFor(() =>
+      expect(screen.getByTestId('location')).toHaveTextContent(
+        '/spaces/space-team/settings/content',
+      ),
+    )
   })
 })
