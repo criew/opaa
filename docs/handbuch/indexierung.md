@@ -438,9 +438,9 @@ angelegter Zugang ist für niemanden außer der Systemverwaltung freigegeben.
 #### Sperre einer Quellart oder eines Zugangs
 
 Die Systemverwaltung kann eine **Quellart** (für alle ihre Bibliotheken, mit und ohne Zugang) oder
-einen **Zugang** sperren. Eine Bedienoberfläche dafür gibt es nicht; gesperrt und entsperrt wird über
-die Verwaltungs-API (`PUT /api/v1/admin/connector-types/{Quellart}/lock`,
-`PUT /api/v1/admin/connection-profiles/{Zugang}/lock`). Die Folgen:
+einen **Zugang** sperren, unter **Administration → Zugänge**: je Zugang mit „Sperren“ bzw.
+„Entsperren“ in der Liste, je Quellart im Abschnitt „Quellarten“ darunter. Beides fragt vorher nach
+und nennt die Folgen; ein gesperrter Zugang trägt in der Liste die Marke „Gesperrt“. Die Folgen:
 
 - Neue Bibliotheken der Quellart oder auf dem Zugang sind nicht mehr möglich, auch nicht für die
   Systemverwaltung; im Wissens-Assistenten ist die Kachel der Quellart gesperrt.
@@ -455,7 +455,11 @@ die Verwaltungs-API (`PUT /api/v1/admin/connector-types/{Quellart}/lock`,
   einem anderen, für sie freigegebenen Zugang zuordnen.
 - Der Bestand bleibt durchsuchbar. Der Reiter „Quelle" der Bibliothek trägt für alle
   Leseberechtigten den Hinweis „Gesperrt – Inhalt wird nicht mehr aktualisiert" mit der gesperrten
-  Quellart oder dem Zugang und der Systemverwaltung als zuständiger Stelle.
+  Quellart oder dem Zugang und der Systemverwaltung als zuständiger Stelle; die Kachel im Katalog
+  trägt die Zeile „Gesperrt – Inhalt wird nicht mehr aktualisiert".
+- Ein Beleg einer Antwort, der aus einer gesperrten Bibliothek stammt, trägt in den Belegen „Stand
+  vom …“ mit dem Datum seines Inhalts und der Systemverwaltung als zuständiger Stelle. Maßgeblich ist
+  die Sperre zum Zeitpunkt der Antwort.
 - Wird die Sperre aufgehoben, laufen die Bibliotheken ohne Neueinrichtung weiter.
 
 Sperren und Entsperren sind Governance-Ereignisse im Revisionsprotokoll. Der Entzug einer Freigabe

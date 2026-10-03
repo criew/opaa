@@ -22,6 +22,7 @@ import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.LibraryAccessService;
 import io.opaa.organization.Organization;
 import io.opaa.test.OpaaIntegrationTest;
+import io.opaa.test.OwnOrganizationFixtures;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -56,6 +57,7 @@ class CapabilityServiceIntegrationTest {
   @Autowired private GroupRepository groupRepository;
   @Autowired private GroupService groupService;
   @Autowired private JdbcTemplate jdbcTemplate;
+  @Autowired private OwnOrganizationFixtures ownOrganizationFixtures;
   @Autowired private KnowledgeLibraryRepository libraryRepository;
   @Autowired private LibraryAccessService libraryAccessService;
 
@@ -193,6 +195,45 @@ class CapabilityServiceIntegrationTest {
                 .scopesOf(admin, Capability.CREATE_CONNECTOR_LIBRARY)
                 .covers(CONFLUENCE))
         .isTrue();
+  }
+
+  /**
+   * Removing a scope withdraws its grants in every organization; in a foreign one the governance
+   * event names the system process, never the acting person of another organization.
+   */
+  @Test
+  void removingAScopeWithdrawsItInEveryOrganizationUnderTheSystemProcessElsewhere() {
+    UUID foreign = UUID.randomUUID();
+    jdbcTemplate.update(
+        "INSERT INTO organizations (id, name) VALUES (?, ?)", foreign, "Fremd " + foreign);
+    try {
+      String scope = "PROFILE:" + UUID.randomUUID();
+      for (UUID organization : List.of(Organization.DEFAULT_ID, foreign)) {
+        jdbcTemplate.update(
+            "INSERT INTO capability_grants (id, organization_id, capability, scope, subject_type)"
+                + " VALUES (?, ?, 'CREATE_CONNECTOR_LIBRARY', ?, 'ALL_ACCOUNTS')",
+            UUID.randomUUID(),
+            organization,
+            scope);
+      }
+
+      assertThat(capabilityService.revokeScope(Capability.CREATE_CONNECTOR_LIBRARY, scope, admin))
+          .isEqualTo(2);
+
+      assertThat(
+              jdbcTemplate.queryForObject(
+                  "SELECT count(*) FROM capability_grants WHERE scope = ?", Long.class, scope))
+          .isZero();
+      assertThat(
+              jdbcTemplate.queryForList(
+                  "SELECT actor_kind || ':' || actor_ref FROM audit_log WHERE organization_id = ?"
+                      + " AND event_type = 'CAPABILITY_REVOKED'",
+                  String.class,
+                  foreign))
+          .containsExactly("SYSTEM_PROCESS:" + CapabilityService.SCOPE_REMOVAL_ACTOR);
+    } finally {
+      ownOrganizationFixtures.removeOrganizations(foreign);
+    }
   }
 
   @Test

@@ -197,6 +197,14 @@ class ConnectorReleaseIntegrationTest {
             jsonPath("$[?(@.id == '" + library + "')].sourceLockNotice")
                 .value(Matchers.hasItem(Matchers.startsWith("Gesperrt"))));
     mockMvc
+        .perform(as("dev-user", get("/api/v1/catalog")))
+        .andExpect(
+            jsonPath(
+                    "$.entries[?(@.assetId == '"
+                        + library
+                        + "')].knowledgeLibrary.sourceLockNotice")
+                .value(Matchers.hasItem(Matchers.startsWith("Gesperrt"))));
+    mockMvc
         .perform(as("dev-admin", post("/api/v1/libraries")).content(libraryJson(profile)))
         .andExpect(status().isForbidden())
         .andExpect(jsonPath("$.code").value("CONNECTOR_LOCKED"));
@@ -301,7 +309,10 @@ class ConnectorReleaseIntegrationTest {
         .andExpect(jsonPath("$.code").value("CAPABILITY_REQUIRED"));
     mockMvc
         .perform(sourceTest(released, "https://fremd.example.org"))
-        .andExpect(status().isBadRequest());
+        .andExpect(status().isBadRequest())
+        .andExpect(
+            jsonPath("$.error")
+                .value(Matchers.containsString("unter der Server-Adresse des Zugangs liegen")));
     mockMvc
         .perform(sourceTest(released, null))
         .andExpect(status().isOk())
@@ -313,7 +324,10 @@ class ConnectorReleaseIntegrationTest {
         .andExpect(jsonPath("$.code").value("CAPABILITY_REQUIRED"));
     mockMvc
         .perform(browse(released, "https://fremd.example.org"))
-        .andExpect(status().isBadRequest());
+        .andExpect(status().isBadRequest())
+        .andExpect(
+            jsonPath("$.error")
+                .value(Matchers.containsString("unter der Server-Adresse des Zugangs liegen")));
   }
 
   /**

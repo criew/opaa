@@ -15,9 +15,12 @@ import io.opaa.indexing.source.SourceConnectionResolver;
 import io.opaa.indexing.source.SourceConnectorRegistry;
 import io.opaa.indexing.source.SourceSettings;
 import io.opaa.knowledge.KnowledgeLibrary;
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Component;
 
@@ -88,6 +91,11 @@ public class ProfileSourceConnectionResolver implements SourceConnectionResolver
   @Override
   public boolean isLocked(KnowledgeLibrary library) {
     return locks.lockNotice(library).isPresent();
+  }
+
+  @Override
+  public Set<UUID> lockedAmong(Collection<KnowledgeLibrary> libraries) {
+    return Set.copyOf(locks.lockNotices(libraries).keySet());
   }
 
   @Override

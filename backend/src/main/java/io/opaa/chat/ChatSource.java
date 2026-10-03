@@ -33,6 +33,7 @@ public final class ChatSource {
   private List<ChatSourceLocation> chunkLocations;
   private List<ChatSourceMetadataEntry> metadata;
   private MetadataFilterMatch metadataFilterMatch;
+  private Boolean frozen;
 
   public ChatSource() {}
 
@@ -94,6 +95,20 @@ public final class ChatSource {
   public ChatSource metadataFilterMatch(MetadataFilterMatch metadataFilterMatch) {
     this.metadataFilterMatch = metadataFilterMatch;
     return this;
+  }
+
+  /** Marks the source as not updated any more when the answer was given ("Stand vom"). */
+  public ChatSource frozen(Boolean frozen) {
+    this.frozen = frozen;
+    return this;
+  }
+
+  public Boolean getFrozen() {
+    return frozen;
+  }
+
+  public void setFrozen(Boolean frozen) {
+    this.frozen = frozen;
   }
 
   public String getFileName() {

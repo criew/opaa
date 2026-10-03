@@ -8,6 +8,7 @@ import io.opaa.chat.ChatSourceLocation;
 import io.opaa.chat.ChatSourceMetadataEntry;
 import io.opaa.chat.SearchedLibraryRef;
 import io.opaa.format.chunk.ChunkMetadataKeys;
+import io.opaa.indexing.source.SourceConnectionResolver;
 import io.opaa.indexing.source.SourceConnectorRegistry;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
@@ -21,6 +22,7 @@ import io.opaa.retrieval.scope.MetadataFilterExpressions;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -58,14 +60,17 @@ public class ChatSourceAssembler {
   private final CitationMetadataReader citationMetadataReader;
   private final KnowledgeLibraryRepository knowledgeLibraryRepository;
   private final SourceConnectorRegistry connectors;
+  private final SourceConnectionResolver connectionResolver;
 
   public ChatSourceAssembler(
       DocumentRepository documentRepository,
       DocumentMetadataService documentMetadataService,
       CitationMetadataReader citationMetadataReader,
       KnowledgeLibraryRepository knowledgeLibraryRepository,
-      SourceConnectorRegistry connectors) {
+      SourceConnectorRegistry connectors,
+      SourceConnectionResolver connectionResolver) {
     this.connectors = connectors;
+    this.connectionResolver = connectionResolver;
     this.documentRepository = documentRepository;
     this.documentMetadataService = documentMetadataService;
     this.citationMetadataReader = citationMetadataReader;
@@ -87,14 +92,44 @@ public class ChatSourceAssembler {
     Map<UUID, CoreMetadata> coreMetadataByDocId = lookupCoreMetadata(sourceDocumentsByDocId);
     Map<UUID, List<CitationFieldValue>> citationFieldsByDocId =
         lookupCitationFields(sourceDocumentsByDocId);
-    return mapSources(
-        chunks,
-        validatedCitations,
-        matchCounts,
-        sourceDocumentsByDocId,
-        coreMetadataByDocId,
-        citationFieldsByDocId,
-        metadataFilter);
+    List<ChatSource> sources =
+        mapSources(
+            chunks,
+            validatedCitations,
+            matchCounts,
+            sourceDocumentsByDocId,
+            coreMetadataByDocId,
+            citationFieldsByDocId,
+            metadataFilter);
+    markFrozen(sources, sourceDocumentsByDocId);
+    return sources;
+  }
+
+  /**
+   * Marks the sources whose library is locked: their content is as of {@code indexedAt} and is not
+   * updated any more, which the answer shows as "Stand vom" (spec "Konnektor-Freigabe und Sperre").
+   */
+  private void markFrozen(
+      List<ChatSource> sources, Map<String, io.opaa.knowledge.Document> sourceDocumentsByDocId) {
+    Map<UUID, UUID> libraryByDocument = new HashMap<>();
+    sourceDocumentsByDocId.forEach(
+        (documentId, document) -> {
+          if (document.getLibraryId() != null) {
+            libraryByDocument.put(UUID.fromString(documentId), document.getLibraryId());
+          }
+        });
+    if (libraryByDocument.isEmpty()) {
+      return;
+    }
+    Set<UUID> locked =
+        connectionResolver.lockedAmong(
+            knowledgeLibraryRepository.findAllById(Set.copyOf(libraryByDocument.values())));
+    for (ChatSource source : sources) {
+      UUID library = libraryByDocument.get(source.getDocumentId());
+      if (library != null && locked.contains(library)) {
+        source.setFrozen(true);
+      }
+    }
   }
 
   /**

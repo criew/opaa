@@ -1,13 +1,32 @@
 import { http, HttpResponse } from 'msw'
 import type {
+  ConnectorLockRequest,
+  ConnectorTypeStateResponse,
   ConnectionProfileCreateRequest,
   ConnectionProfileResponse,
   ConnectionProfileUpdateRequest,
 } from '../types/api'
 import { mockConnectionProfiles, resetMockConnectionProfiles } from './connectionProfileFixtures'
 
+let lockedTypes = new Set<string>()
+
 export function resetConnectionProfileMockState() {
   resetMockConnectionProfiles()
+  lockedTypes = new Set<string>()
+}
+
+const CONNECTOR_TYPES: Array<{ sourceType: string; displayName: string }> = [
+  { sourceType: 'CONFLUENCE', displayName: 'Confluence' },
+  { sourceType: 'FILESYSTEM', displayName: 'Dateisystem' },
+  { sourceType: 'HTTP_DIRECTORY', displayName: 'Webverzeichnis' },
+  { sourceType: 'NEXTCLOUD', displayName: 'Nextcloud' },
+  { sourceType: 'RSS_FEED', displayName: 'RSS-Feed' },
+  { sourceType: 'S3', displayName: 'S3-Objektspeicher' },
+]
+
+function typeState(type: { sourceType: string; displayName: string }): ConnectorTypeStateResponse {
+  const locked = lockedTypes.has(type.sourceType)
+  return { ...type, locked, lockedAt: locked ? new Date().toISOString() : null }
 }
 
 const ADMIN = '/api/v1/admin/connection-profiles'
@@ -108,5 +127,33 @@ export const connectionProfileHandlers = [
       connections: profile.connectionCount,
       libraries: profile.connectionCount,
     })
+  }),
+
+  http.put(`${ADMIN}/:profileId/lock`, async ({ params, request }) => {
+    const index = mockConnectionProfiles.findIndex((p) => p.id === params.profileId)
+    if (index < 0) return notFound()
+    const { locked } = (await request.json()) as ConnectorLockRequest
+    const updated: ConnectionProfileResponse = {
+      ...mockConnectionProfiles[index],
+      locked,
+      lockedAt: locked ? new Date().toISOString() : null,
+    }
+    mockConnectionProfiles[index] = updated
+    return HttpResponse.json(updated)
+  }),
+
+  http.get('/api/v1/admin/connector-types', () =>
+    HttpResponse.json(CONNECTOR_TYPES.map(typeState)),
+  ),
+
+  http.put('/api/v1/admin/connector-types/:sourceType/lock', async ({ params, request }) => {
+    const type = CONNECTOR_TYPES.find((t) => t.sourceType === params.sourceType)
+    if (!type) {
+      return HttpResponse.json({ error: 'Quellart unbekannt', status: 400 }, { status: 400 })
+    }
+    const { locked } = (await request.json()) as ConnectorLockRequest
+    if (locked) lockedTypes.add(type.sourceType)
+    else lockedTypes.delete(type.sourceType)
+    return HttpResponse.json(typeState(type))
   }),
 ]

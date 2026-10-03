@@ -130,7 +130,8 @@ public final class ChatResponseMapper {
         .citationValid(source.getCitationValid())
         .chunkLocations(toChunkLocations(source.getChunkLocations()))
         .metadata(toMetadataEntries(source.getMetadata()))
-        .metadataFilterMatch(source.getMetadataFilterMatch());
+        .metadataFilterMatch(source.getMetadataFilterMatch())
+        .frozen(source.getFrozen());
   }
 
   /**

@@ -506,6 +506,13 @@ components:
       type: object
       required: [fileName, relevanceScore, matchCount, cited]
       properties:
+        frozen:
+          type: boolean
+          nullable: true
+          description: >
+            The source's library was not being updated when the answer was given - its connector
+            type or connection profile was locked. A client shows "Stand vom" with indexedAt.
+            Absent for answers given before the field existed.
         fileName:
           type: string
           example: architecture-overview.md

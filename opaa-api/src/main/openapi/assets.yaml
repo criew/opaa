@@ -657,6 +657,12 @@ components:
           description: >
             Completion time of the newest successful indexing run - the "Stand". Absent while no
             run has completed, and always for an upload library.
+        sourceLockNotice:
+          type: string
+          nullable: true
+          description: >
+            Present while the library's connector type or connection profile is locked, as
+            LibraryResponse.sourceLockNotice: the content stays searchable and is not updated.
 
     SpaceAssetAssociationRequest:
       type: object
