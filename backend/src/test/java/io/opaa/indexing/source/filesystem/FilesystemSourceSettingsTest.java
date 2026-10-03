@@ -34,7 +34,31 @@ class FilesystemSourceSettingsTest {
     assertThatThrownBy(() -> new FilesystemSourceSettings(List.of("Archiv/[2020")))
         .isInstanceOf(ValidationException.class)
         .hasMessage(
-            "sourceSettings: Ausschlussmuster: „Archiv/[2020“ ist kein gültiges Glob-Muster.");
+            "sourceSettings: Ausschlussmuster: „Archiv/[2020“ ist kein gültiges Glob-Muster, es"
+                + " enthält eine „[“ ohne schließende „]“.");
+  }
+
+  @Test
+  void patternsThatCouldNeverMatchAreRefused() {
+    assertThatThrownBy(() -> new FilesystemSourceSettings(List.of("Archiv/")))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("leere Ebene");
+    assertThatThrownBy(() -> new FilesystemSourceSettings(List.of("./Archiv/**")))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("die Ebene „.“");
+    assertThatThrownBy(() -> new FilesystemSourceSettings(List.of("Archiv/../Plan.pdf")))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("die Ebene „..“");
+    assertThatThrownBy(() -> new FilesystemSourceSettings(List.of("Archiv\\2020\\*")))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("Ebenen werden mit „/“ getrennt");
+  }
+
+  @Test
+  void tooManyAlternativesAreRefused() {
+    assertThatThrownBy(() -> new FilesystemSourceSettings(List.of("{a,b,c,d}{a,b,c,d}{a,b,c}")))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("mehr als 32 Alternativen");
   }
 
   @Test

@@ -39,7 +39,7 @@ dem das Verzeichnis nicht erreichbar ist. Die Zahl der Dokumente liefert erst de
 | Feld der Bibliothek | Regel |
 |---|---|
 | Verzeichnispfad (`sourcePath`) | Pflicht. Absoluter Pfad aus Sicht des Backend-Prozesses, also im Container, nicht auf dem Host. |
-| Ausschlussmuster (`sourceSettings.excludePatterns`) | Optional, höchstens 50 Glob-Muster bis 255 Zeichen, in der Oberfläche eines pro Zeile. Regeln in Abschnitt 5.1. Ein Muster mit ungültiger Syntax oder mit führendem `/` wird beim Speichern mit einer Fehlermeldung abgewiesen, die das Muster nennt. |
+| Ausschlussmuster (`sourceSettings.excludePatterns`) | Optional, höchstens 50 Glob-Muster bis 255 Zeichen, in der Oberfläche eines pro Zeile. Regeln in Abschnitt 5.1. Beim Speichern abgewiesen, mit einer Meldung, die das Muster nennt, wird ein Muster mit ungültiger Syntax und eines, das nie treffen kann: führendes oder abschließendes `/`, leere Ebene (`//`), Ebene `.` oder `..`, Rückwärtsschrägstrich `\`, oder mehr als 32 Alternativen aus `{…}`. |
 
 Weitere Felder gibt es für diesen Quellentyp nicht. Der Quellentyp einer Bibliothek ist nach dem Anlegen unveränderlich. Pfad und
 Ausschlussmuster dürfen später geändert werden; eine Änderung wirkt mit dem nächsten Lauf.
@@ -143,17 +143,18 @@ Bibliothek. Für sie gilt:
 |---|---|
 | Ein Muster gilt für den Pfad relativ zum Verzeichnispfad, getrennt mit `/` | `Archiv/2020/*.pdf` trifft `/data/dokumente/Archiv/2020/Plan.pdf` |
 | `*` steht für beliebige Zeichen innerhalb einer Ordnerebene | `*.tmp` trifft nur Dateien direkt im Verzeichnispfad |
-| `**` steht für beliebig viele Ordnerebenen; am Anfang auch für keine | `**/*.tmp` trifft `notiz.tmp` und `a/b/notiz.tmp` |
-| Ein Muster `Ordner/**` schließt auch den Ordner selbst aus | `Archiv/**` lässt den Ordner `Archiv` unbetreten |
-| `?`, `[abc]` und `{a,b}` gelten wie üblich | `{Entwürfe,Papierkorb}/**` |
+| `**` als ganze Ebene steht für beliebig viele Ordnerebenen, auch für keine | `**/*.tmp` trifft `notiz.tmp` und `a/b/notiz.tmp`; `a/**/z.txt` trifft auch `a/z.txt` |
+| `**` innerhalb einer Ebene wirkt wie `*` | `Ar**v` trifft `Archiv`, aber nicht `Ar/chiv` |
+| Ein abschließendes `/**` schließt auch den Ordner selbst aus, aber nie eine gleichnamige Datei | `Archiv*/**` lässt den Ordner `Archiv2020` unbetreten, die Datei `Archiv2020.pdf` bleibt |
+| `?` steht für ein Zeichen, `[abc]`, `[a-z]` und `[!abc]` für ein Zeichen einer Klasse, `{a,b}` für Alternativen | `{Entwürfe,Papierkorb}/**`, `Plan-20[0-9]?.pdf` |
 
 Ein ausgeschlossener Ordner wird nicht betreten. Ist er nicht lesbar, erscheint er deshalb auch
 nicht als „Nicht lesbar, übersprungen", und die Aufzählung bleibt vollständig. Ausgeschlossene
 Dateien zählen weder als gefunden noch als abgewiesen. „Verbindung testen" öffnet nur das
 Verzeichnis selbst (Abschnitt 2); für ihn spielen die Ausschlüsse keine Rolle.
 
-Groß- und Kleinschreibung in den Mustern folgt dem Betriebssystem des Servers; unter Linux, also im
-Container, wird sie unterschieden.
+Die Muster unterscheiden Groß- und Kleinschreibung. Ihre Auswertung kostet höchstens Musterlänge
+mal Namenslänge, auch bei vielen `*`; ein Muster kann einen Lauf daher nicht aufhalten.
 
 ## 6. Änderungserkennung
 
@@ -238,6 +239,7 @@ Anhangs-Einträge (nicht unterstützt, Formatabweichung, nicht lesbar, Verarbeit
 | Unterverzeichnis nicht lesbar | übersprungen, übrige Dateien werden indiziert, nichts gelöscht |
 | Versteckter oder ausgeschlossener Ordner nicht lesbar | nicht betreten, kein Eintrag, Löscherkennung läuft normal |
 | Ausschlussmuster nachträglich ergänzt | nächster erfolgreicher Lauf entfernt die nun ausgeschlossenen Dokumente |
+| Muster schließt alles aus (etwa `**`) | Lauf erfolgreich mit null Dokumenten; wie bei einem leeren Verzeichnis wird nichts gelöscht, der bisherige Bestand bleibt stehen |
 | Freigabeliste nachträglich verengt | nächster Lauf endet sofort mit „Allowlist" |
 | Datei zwischen Aufzählung und Verarbeitung gelöscht oder gesperrt | Eintrag „Format nicht unterstützt" oder „Fehler", Lauf läuft weiter |
 | Datei nach Normalisierung außerhalb des Quellpfads | Warnung im Log, Datei wird der Wurzel zugeordnet |

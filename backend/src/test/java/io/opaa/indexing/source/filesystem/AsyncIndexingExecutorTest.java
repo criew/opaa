@@ -365,6 +365,34 @@ class AsyncIndexingExecutorTest {
   }
 
   @Test
+  void aSourceDirectoryBelowAHiddenFolderIsIndexedNormally() throws IOException {
+    Path hiddenRoot = Files.createDirectory(documentDir.resolve(".archiv"));
+    Path file = hiddenRoot.resolve("plan.txt");
+    Files.writeString(file, "content");
+    KnowledgeLibrary hiddenLibrary =
+        KnowledgeLibrary.ownedByUser(
+            UUID.randomUUID(),
+            "Versteckt",
+            null,
+            UUID.randomUUID(),
+            SourceTypes.FILESYSTEM,
+            hiddenRoot.toAbsolutePath().toString(),
+            null,
+            null,
+            null,
+            false);
+    when(documentIngestService.ingest(
+            DocumentIngests.that().file().file(file).in(hiddenLibrary).inFolder(null).match(),
+            any()))
+        .thenReturn(DocumentIngestResult.PROCESSED);
+    UUID jobId = UUID.randomUUID();
+
+    executor.execute(jobId, hiddenLibrary, IndexingRunMode.FULL);
+
+    verify(indexingJobService, timeout(2000)).completeJob(eq(jobId), eq(1), eq(0), eq(0), anyInt());
+  }
+
+  @Test
   void aDocumentThatNowFallsUnderAnExclusionPatternIsRemovedFromTheIndex() throws IOException {
     Path kept = documentDir.resolve("aktuell.txt");
     Files.writeString(kept, "content");

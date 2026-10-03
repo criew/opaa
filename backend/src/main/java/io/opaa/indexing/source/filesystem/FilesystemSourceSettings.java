@@ -2,7 +2,6 @@ package io.opaa.indexing.source.filesystem;
 
 import io.opaa.common.ValidationException;
 import io.opaa.indexing.source.ConnectorData;
-import java.nio.file.FileSystems;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -81,10 +80,20 @@ public record FilesystemSourceSettings(List<String> excludePatterns) {
                 + "“ beginnt mit „/“. Muster gelten relativ zum Verzeichnispfad, z. B."
                 + " „Archiv/**“.");
       }
+      if (pattern.indexOf('\\') >= 0) {
+        throw new ValidationException(
+            LABEL + ": „" + pattern + "“ enthält „\\“. Ebenen werden mit „/“ getrennt.");
+      }
       try {
-        FileSystems.getDefault().getPathMatcher("glob:" + pattern);
+        FilesystemGlob.compile(pattern);
       } catch (IllegalArgumentException e) {
-        throw new ValidationException(LABEL + ": „" + pattern + "“ ist kein gültiges Glob-Muster.");
+        throw new ValidationException(
+            LABEL
+                + ": „"
+                + pattern
+                + "“ ist kein gültiges Glob-Muster, es "
+                + e.getMessage()
+                + ".");
       }
       if (patterns.contains(pattern)) {
         throw new ValidationException(

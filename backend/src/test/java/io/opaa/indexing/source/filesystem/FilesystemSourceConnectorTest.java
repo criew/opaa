@@ -56,7 +56,7 @@ class FilesystemSourceConnectorTest {
                 connector.readSettings(
                     ConnectorData.of(Map.of("excludePatterns", List.of("{Archiv")))))
         .isInstanceOf(ValidationException.class)
-        .hasMessage("sourceSettings: Ausschlussmuster: „{Archiv“ ist kein gültiges Glob-Muster.");
+        .hasMessageContaining("„{Archiv“ ist kein gültiges Glob-Muster, es enthält eine „{“");
   }
 
   @Test

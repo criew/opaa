@@ -94,7 +94,7 @@ class DocumentServiceTest {
         service.discoverFiles(
             tempDir,
             supportedFormats,
-            relative -> {
+            (relative, directory) -> {
               asked.add(relative);
               return relative.equals(Path.of("archiv")) || relative.equals(Path.of("skip.txt"));
             });
@@ -117,7 +117,9 @@ class DocumentServiceTest {
     try (UnreadableDirectory ignored = UnreadableDirectory.of(locked)) {
       discovered =
           service.discoverFiles(
-              tempDir, supportedFormats, relative -> relative.equals(Path.of("gesperrt")));
+              tempDir,
+              supportedFormats,
+              (relative, directory) -> relative.equals(Path.of("gesperrt")));
     }
 
     assertThat(discovered.supported())

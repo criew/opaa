@@ -47,7 +47,7 @@ export function storedFilesystemValues(library: {
   }
 }
 
-/** The connector settings sent with every save and test, so clearing the patterns is a change too. */
+/** The connector settings sent with every save, so clearing the patterns is a change too. */
 export function filesystemSettingsOf(values: FilesystemSourceValues): Record<string, unknown> {
   return { excludePatterns: filesystemPatternsOf(values.excludePatterns) }
 }

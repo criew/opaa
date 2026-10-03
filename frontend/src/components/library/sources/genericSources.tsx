@@ -44,7 +44,7 @@ function urlConfiguration(): SourceConfiguration<GenericSourceValues> {
   }
 }
 
-/** The path form plus the exclusion patterns (#2184). */
+/** The path form plus the exclusion patterns. */
 function filesystemConfiguration(): SourceConfiguration<FilesystemSourceValues> {
   return {
     empty: EMPTY_FILESYSTEM_VALUES,

@@ -99,7 +99,7 @@ class FilesystemLibraryConfigurationIntegrationTest {
                 .formatted(name),
             400);
 
-    assertThat(response).contains("„Archiv/[2020“ ist kein gültiges Glob-Muster.");
+    assertThat(response).contains("„Archiv/[2020“ ist kein gültiges Glob-Muster");
     assertThat(libraryRepository.findAll()).noneMatch(library -> name.equals(library.getName()));
   }
 
