@@ -382,8 +382,7 @@ der Hinweis „Zugang entfernt“ steht im Reiter „Quelle“ für alle Leseber
 **Welcher Konnektor Zugänge kennt**, meldet er selbst: Zugänge verboten, möglich oder Pflicht,
 dazu die Anmeldearten, die er anbietet (ohne Anmeldung, persönliches Geheimnis, OAuth,
 Client-Credentials, Dienstkonto-Schlüssel). Ein Zugang wählt eine davon. Die mitgelieferten
-Konnektoren melden noch keine Zugänge; das folgt mit der Profilpflicht
-([#2162](https://github.com/criew/opaa/issues/2162)).
+Konnektoren melden keine Zugänge.
 
 **Was für eine Bibliothek auf einem Zugang gilt:**
 
@@ -418,7 +417,7 @@ die die zuständige Stelle nennt; der Bestand bleibt durchsuchbar und wird nicht
 |---|---|---|
 | „Zugang entfernt“ | Der Zugang der Bibliothek wurde gelöscht | Verwaltende der Bibliothek: anderen Zugang zuordnen oder löschen |
 | „Verbindung getrennt“ | Das Geheimnis fehlt, etwa nach Adressänderung oder Notabschaltung | Verwaltende der Bibliothek: Geheimnis neu eintragen |
-| „Nicht verbunden“ | Die Anmeldeart des Zugangs (OAuth, Client-Credentials, Dienstkonto-Schlüssel) ist für Bibliotheken noch nicht gebaut | Systemverwaltung |
+| „Nicht verbunden“ | Die Anmeldeart des Zugangs (OAuth, Client-Credentials, Dienstkonto-Schlüssel) kann eine Bibliothek nicht verbinden | Systemverwaltung |
 | „Die Adresse der Bibliothek liegt nicht unter …“ | Die Adresse verließ den Zugang | Verwaltende der Bibliothek |
 
 Umbenennen und das Korrigieren von Adresse oder Geheimnis bleiben in all diesen Fällen möglich.
@@ -661,6 +660,7 @@ genutzt); die Tiefe ist allgemein (`opaa.indexing.attachments.max-depth`).
 | S3-Objekt mit neuem ETag, aber gleichem Inhalt (erneuter Upload, Multipart, Verschlüsselungswechsel) | heruntergeladen, Prüfsumme gleich: Merkmal nachgetragen, Dokument-ID und Chunks bleiben |
 | S3-Objekt übersprungen (Ordnermarker, Archivklasse, nicht unterstütztes Format, zu groß, nicht lesbar) | gilt als gesehen, nichts wird entfernt; das Protokoll nennt es |
 | S3-Schlüssel außerhalb der Ein-/Ausschlussmuster oder eines abgewählten Geltungsbereichs | nicht mehr Teil des Bestands, wird am Ende des vollständigen Laufs entfernt |
+| Datei im Verzeichnis-Konnektor, die ein Ausschlussmuster oder ein Standardausschluss (versteckt, Systemordner) trifft | nicht mehr Teil der Quelle, wird am Ende des vollständigen Laufs entfernt |
 | Quelle nicht erreichbar, Teil der Quelle nicht lesbar | Lauf `FAILED` bzw. Aufzählung unvollständig, **nichts** wird entfernt |
 | Verzeichnis-Konnektor: Unterverzeichnis oder Datei unterhalb des Verzeichnispfads nicht lesbar | nur der Bestand in diesem Teilbaum bleibt stehen, außerhalb wird normal entfernt ([Dateisystem-Konnektor](konnektor-filesystem.md), Abschnitt 9) |
 

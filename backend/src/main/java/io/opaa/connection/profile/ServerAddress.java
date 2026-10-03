@@ -3,6 +3,8 @@ package io.opaa.connection.profile;
 import io.opaa.common.ValidationException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.Locale;
 import java.util.Objects;
 
@@ -59,8 +61,11 @@ public final class ServerAddress {
         || port(base) != port(candidate)) {
       return false;
     }
-    String basePath = base.getRawPath() == null ? "" : base.getRawPath();
-    String path = candidate.getRawPath() == null ? "" : candidate.getRawPath();
+    String basePath = pathOf(base);
+    String path = pathOf(candidate);
+    if (path == null || basePath == null) {
+      return false;
+    }
     return basePath.isEmpty() || path.equals(basePath) || path.startsWith(basePath + "/");
   }
 
@@ -93,6 +98,32 @@ public final class ServerAddress {
         && a.getScheme().equalsIgnoreCase(b.getScheme())
         && a.getHost().equalsIgnoreCase(b.getHost())
         && port(a) == port(b);
+  }
+
+  /**
+   * The path with dot segments resolved and without a trailing slash; {@code null} when it climbs
+   * above the root or encodes a dot segment, which a server might resolve after this check.
+   */
+  private static String pathOf(URI uri) {
+    String raw = uri.getRawPath() == null ? "" : uri.getRawPath();
+    if (raw.toLowerCase(Locale.ROOT).contains("%2e")) {
+      return null;
+    }
+    Deque<String> segments = new ArrayDeque<>();
+    for (String segment : raw.split("/")) {
+      if (segment.isEmpty() || segment.equals(".")) {
+        continue;
+      }
+      if (segment.equals("..")) {
+        if (segments.isEmpty()) {
+          return null;
+        }
+        segments.removeLast();
+      } else {
+        segments.addLast(segment);
+      }
+    }
+    return segments.isEmpty() ? "" : "/" + String.join("/", segments);
   }
 
   private static int port(URI uri) {

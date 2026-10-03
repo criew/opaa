@@ -154,7 +154,7 @@ public class LibraryController {
             libraryId, Boolean.TRUE.equals(request.getAllAccountsGrantAllowed()), caller));
   }
 
-  /** Connects the library through a connection profile (#2160); see the service. */
+  /** Connects the library through a connection profile; see the service. */
   @PutMapping("/{libraryId}/connection-profile")
   public LibraryResponse connectLibraryProfile(
       @PathVariable UUID libraryId,
@@ -164,7 +164,7 @@ public class LibraryController {
         libraryService.connectProfile(libraryId, request.getProfileId(), caller));
   }
 
-  /** Releases the library from its connection profile (#2160). */
+  /** Releases the library from its connection profile. */
   @DeleteMapping("/{libraryId}/connection-profile")
   public LibraryResponse disconnectLibraryProfile(
       @PathVariable UUID libraryId, @Caller CurrentUser caller) {

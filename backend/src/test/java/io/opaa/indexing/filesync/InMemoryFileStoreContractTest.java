@@ -55,7 +55,12 @@ class InMemoryFileStoreContractTest extends FileStoreContract {
 
       @Override
       public String filePath(int container, String name) {
-        return InMemoryFileStore.filePath(containerKey(container), name);
+        return store.filePathOf(containerKey(container), name);
+      }
+
+      @Override
+      public void move(int container, String from, String to) {
+        store.move(containerKey(container), from, to);
       }
 
       @Override

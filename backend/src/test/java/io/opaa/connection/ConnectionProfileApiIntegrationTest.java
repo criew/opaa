@@ -283,6 +283,42 @@ class ConnectionProfileApiIntegrationTest {
         .andExpect(jsonPath("$.connectionProfile").doesNotExist());
   }
 
+  /** Connecting and releasing need MANAGER on the library; a reader is refused. */
+  @Test
+  void aReaderOfTheLibraryNeitherConnectsNorReleasesIt() throws Exception {
+    UUID profile = createProfile(profileJson("Zugang Rechte " + UUID.randomUUID(), "NONE", null));
+    String body =
+        mockMvc
+            .perform(
+                as("dev-admin", post("/api/v1/libraries"))
+                    .content(
+                        "{\"name\": \"Fremd "
+                            + UUID.randomUUID()
+                            + "\", \"sourceType\": \"PROFILE_PROBE\", \"connectionProfileId\": \""
+                            + profile
+                            + "\"}"))
+            .andExpect(status().isCreated())
+            .andReturn()
+            .getResponse()
+            .getContentAsString(StandardCharsets.UTF_8);
+    UUID library = UUID.fromString(JsonPath.read(body, "$.id"));
+    libraries.add(library);
+    jdbc.update(
+        "INSERT INTO asset_grants (id, asset_type, asset_id, organization_id, subject_type, role)"
+            + " SELECT gen_random_uuid(), 'KNOWLEDGE_LIBRARY', id, organization_id, 'ALL_ACCOUNTS',"
+            + " 'VIEWER' FROM knowledge_libraries WHERE id = ?",
+        library);
+
+    mockMvc
+        .perform(
+            as("dev-user", put("/api/v1/libraries/" + library + "/connection-profile"))
+                .content("{\"profileId\": \"" + profile + "\"}"))
+        .andExpect(status().isForbidden());
+    mockMvc
+        .perform(as("dev-user", delete("/api/v1/libraries/" + library + "/connection-profile")))
+        .andExpect(status().isForbidden());
+  }
+
   @Test
   void theSelectionListsOnlyProfilesThatAdmitLibraries() throws Exception {
     String suffix = UUID.randomUUID().toString();

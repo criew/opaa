@@ -13,6 +13,7 @@ import io.opaa.connection.profile.ConnectionProfileService;
 import io.opaa.permission.CapabilityService;
 import jakarta.validation.Valid;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -47,7 +48,16 @@ public class ConnectionProfileController {
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
   @GetMapping(ADMIN)
   public List<ConnectionProfileResponse> listConnectionProfiles() {
-    return profiles.list().stream().map(this::toResponse).toList();
+    List<ConnectionProfile> all = profiles.list();
+    Map<UUID, Long> counts = profiles.connectionCounts(all);
+    return all.stream()
+        .map(
+            profile ->
+                ConnectionProfileResponseMapper.toResponse(
+                    profile,
+                    profiles.secretExpiresSoon(profile),
+                    counts.getOrDefault(profile.getId(), 0L)))
+        .toList();
   }
 
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")

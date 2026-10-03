@@ -47,6 +47,19 @@ class ServerAddressTest {
   }
 
   @Test
+  void dotSegmentsCannotLeaveTheAddress() {
+    String address = "https://cloud.example.org/base";
+
+    assertThat(ServerAddress.covers(address, "https://cloud.example.org/base/../admin")).isFalse();
+    assertThat(ServerAddress.covers(address, "https://cloud.example.org/base/a/../../x")).isFalse();
+    assertThat(ServerAddress.covers(address, "https://cloud.example.org/base/%2e%2e/admin"))
+        .isFalse();
+    assertThat(ServerAddress.covers(address, "https://cloud.example.org/../base/a")).isFalse();
+    assertThat(ServerAddress.covers(address, "https://cloud.example.org/base/a/../b")).isTrue();
+    assertThat(ServerAddress.covers(address, "https://cloud.example.org/base/./a")).isTrue();
+  }
+
+  @Test
   void rebaseKeepsWhatLiesBelowTheOldAddress() {
     assertThat(
             ServerAddress.rebase(
