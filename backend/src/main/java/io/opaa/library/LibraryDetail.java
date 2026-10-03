@@ -26,8 +26,8 @@ import io.opaa.permission.SuccessionFinding;
  *     (ADR-0038), {@code null} for none
  * @param succession the derived state "Nachfolge offen" (ADR-0036, Entscheidung 6), set only by
  *     {@link KnowledgeLibraryService#getLibrary}; {@code null} for none and for every other result
- * @param connectionProfile the connection profile of the library (#2160), {@code null} for a
- *     library with its own address
+ * @param connectionProfile the connection profile of the library, {@code null} for a library with
+ *     its own address
  */
 public record LibraryDetail(
     KnowledgeLibrary library,

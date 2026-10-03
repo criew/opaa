@@ -204,8 +204,8 @@ public class KnowledgeLibraryService {
   }
 
   /**
-   * Connects the library through {@code profileId} (#2160) - {@code MANAGER} on the library. The
-   * audit names the changed fields only.
+   * Connects the library through {@code profileId} - {@code MANAGER} on the library. The audit
+   * names the changed fields only.
    */
   @Transactional
   public LibraryDetail connectProfile(UUID libraryId, UUID profileId, CurrentUser caller) {
@@ -229,7 +229,7 @@ public class KnowledgeLibraryService {
         caller.id());
   }
 
-  /** Releases the library from its profile (#2160) - {@code MANAGER} on the library. */
+  /** Releases the library from its profile - {@code MANAGER} on the library. */
   @Transactional
   public LibraryDetail disconnectProfile(UUID libraryId, CurrentUser caller) {
     KnowledgeLibrary library = loadLibrary(libraryId, caller);

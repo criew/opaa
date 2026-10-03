@@ -18,8 +18,8 @@ import java.util.UUID;
  * @param schedule the indexing rhythm to set together with the library (#1942); {@code null} leaves
  *     the library without one, and anything but {@code DISABLED} on an {@code UPLOAD} library is
  *     refused exactly as it is on an update
- * @param connectionProfileId the connection profile the library is created on (#2160), {@code null}
- *     for a library with its own address
+ * @param connectionProfileId the connection profile the library is created on, {@code null} for a
+ *     library with its own address
  */
 public record LibraryCreation(
     String name,

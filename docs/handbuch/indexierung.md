@@ -372,8 +372,7 @@ wählt ihn aus und trägt Server und Registrierung nicht selbst ein.
 **Welcher Konnektor Zugänge kennt**, meldet er selbst: Zugänge verboten, möglich oder Pflicht,
 dazu die Anmeldearten, die er anbietet (ohne Anmeldung, persönliches Geheimnis, OAuth,
 Client-Credentials, Dienstkonto-Schlüssel). Ein Zugang wählt eine davon. Die mitgelieferten
-Konnektoren melden noch keine Zugänge; das folgt mit der Profilpflicht
-([#2162](https://github.com/criew/opaa/issues/2162)).
+Konnektoren melden keine Zugänge.
 
 **Was für eine Bibliothek auf einem Zugang gilt:**
 
@@ -408,7 +407,7 @@ die die zuständige Stelle nennt; der Bestand bleibt durchsuchbar und wird nicht
 |---|---|---|
 | „Zugang entfernt“ | Der Zugang der Bibliothek wurde gelöscht | Verwaltende der Bibliothek: anderen Zugang zuordnen oder löschen |
 | „Verbindung getrennt“ | Das Geheimnis fehlt, etwa nach Adressänderung oder Notabschaltung | Verwaltende der Bibliothek: Geheimnis neu eintragen |
-| „Nicht verbunden“ | Die Anmeldeart des Zugangs (OAuth, Client-Credentials, Dienstkonto-Schlüssel) ist für Bibliotheken noch nicht gebaut | Systemverwaltung |
+| „Nicht verbunden“ | Die Anmeldeart des Zugangs (OAuth, Client-Credentials, Dienstkonto-Schlüssel) kann eine Bibliothek nicht verbinden | Systemverwaltung |
 | „Die Adresse der Bibliothek liegt nicht unter …“ | Die Adresse verließ den Zugang | Verwaltende der Bibliothek |
 
 Umbenennen und das Korrigieren von Adresse oder Geheimnis bleiben in all diesen Fällen möglich.

@@ -99,6 +99,19 @@ public class ConnectionProfileService {
     return new ProfileImpact(libraryConnections, libraryConnections);
   }
 
+  /** The connections of each of {@code profiles}, with one query for all of them. */
+  public Map<UUID, Long> connectionCounts(List<ConnectionProfile> profiles) {
+    Map<UUID, Long> counts = new LinkedHashMap<>();
+    if (profiles.isEmpty()) {
+      return counts;
+    }
+    for (LibraryConnectionRepository.ProfileConnectionCount row :
+        connections.countByProfileIdIn(profiles.stream().map(ConnectionProfile::getId).toList())) {
+      counts.put(row.getProfileId(), row.getConnections());
+    }
+    return counts;
+  }
+
   /** Whether the client secret of {@code profile} expires within the warning period. */
   public boolean secretExpiresSoon(ConnectionProfile profile) {
     LocalDate expiresOn = profile.getClientSecretExpiresOn();
