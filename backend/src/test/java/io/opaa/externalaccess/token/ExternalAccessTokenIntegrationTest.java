@@ -392,8 +392,7 @@ class ExternalAccessTokenIntegrationTest {
             groupId,
             AssetRole.VIEWER,
             null,
-            administrator.getId(),
-            1));
+            administrator.getId()));
     libraryAccess.invalidateLibrary(foreignLibraryId);
 
     // The person marks their own library; somebody else's mark on the foreign one is not theirs.

@@ -166,7 +166,6 @@ class GroupEffectsServiceIntegrationTest {
         groupId,
         AssetRole.VIEWER,
         null,
-        null,
         null);
   }
 

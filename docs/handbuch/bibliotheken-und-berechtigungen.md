@@ -75,8 +75,8 @@ Dazu zwei Maße, die im Text gebraucht werden und in keiner Oberfläche als Wort
 **Gruppen werden nicht in Personen aufgelöst.** Wer eine Bibliothek an „Referat 50" freigibt, gibt
 sie an die Gruppe frei: Wer dort morgen Mitglied wird, liest sie ab dann, wer heute ausscheidet,
 verliert sie mit der Mitgliedschaft. Das ist gewollt und der Grund, warum Freigaben an Gruppen
-gepflegt bleiben, ohne dass jemand sie anfasst — und der Grund für das Zuwachssignal aus
-Abschnitt 8.
+gepflegt bleiben, ohne dass jemand sie anfasst — und der Grund, warum die Zeile einer Gruppe
+ihre heutige Größe nennt (Abschnitt 8).
 
 **Gruppen verschachteln nicht.** Eine Gruppe hat genau die Mitglieder, die ihre Quelle ihr gibt;
 eine übergeordnete Einheit aus dem Verzeichnis ist eine Anzeige- und Gliederungsangabe und
@@ -375,7 +375,7 @@ hat drei Reiter:
 | Reiter | Inhalt |
 |---|---|
 | **Stammdaten** | Name, Beschreibung, Sichtbarkeit, der Schalter „Inaktive Chats automatisch archivieren und löschen" ([Suche](suche.md), Abschnitt 2) — und am Ende der abgesetzte **Gefahrenbereich** mit „Space archivieren" und „Space löschen" |
-| **Mitglieder** | Die Mitgliederliste mit Rollen, das Aufnehmen von Personen und Gruppen, die Übertragung der Verantwortung und die Herleitung je Zeile |
+| **Mitglieder** | Die Mitgliederliste und das Aufnehmen von Personen und Gruppen. Die Liste beginnt mit dem Eigentümer, danach folgen Administratoren, Kuratoren und Mitglieder, je Rolle nach Name, Personen und Gruppen gemischt; eine lange Liste bekommt darüber ein Suchfeld. Jede Zeile trägt nur die Rolle — als Auswahl für Administratoren, beim Eigentümer das Etikett „Eigentümer" — und ein Menü „⋯" mit „Warum hat … Zugriff?", „Mitglieder der Gruppe anzeigen", „Zum Eigentümer machen" und „Aus Space entfernen", soweit der Eintrag für Zeile und eigene Rolle gilt |
 | **Inhalte** | Eine Kachelliste aller Arten von Bestand — Wissensbibliotheken und [Prompt-Bibliotheken](prompt-bibliotheken.md). Ein Häkchen heißt „dem Raum zugeordnet"; anhaken und abhaken dürfen Kuratoren, Administratoren und der Eigentümer des Raums |
 
 **Im Reiter „Inhalte" wirkt ein Häkchen sofort.** Anhaken ordnet zu und bestätigt das kurz; Abhaken
@@ -637,34 +637,37 @@ eingibt.
 |---|---|---|---|
 | **Verantwortliche** einer internen Gruppe | ja | ja | ja |
 | **Systemverwaltung** | ja | ja | ja — **der Abruf ist ein Nachweiseintrag** |
-| **Wer ein Recht erteilt** (Verwalter einer Bibliothek, Administrator eines Raums) | ja, bei internen Gruppen nur nach Freigabe zur Verwendung | Zahl **aktiver Konten**, unterhalb der Mindestgruppengröße „kleine Gruppe" statt einer Zahl | ja, solange die Gruppe an **seinem** Objekt ein Recht hält — **nicht** unterhalb der Mindestgruppengröße und **nicht** bei geschützten Gruppen; dort tritt an ihre Stelle, wen man fragen kann |
+| **Wer ein Recht erteilt** (Verwalter einer Bibliothek, Administrator eines Raums) | ja, bei internen Gruppen nur nach Freigabe zur Verwendung | Zahl **aktiver Konten**: in der Auswahl unterhalb der Mindestgruppengröße „kleine Gruppe" statt einer Zahl, an der Zeile einer bestehenden Freigabe oder Mitgliedschaft immer die Zahl | ja, solange die Gruppe an **seinem** Objekt ein Recht hält, auch bei kleinen Gruppen — **nicht** bei geschützten Gruppen; dort tritt an ihre Stelle, wen man fragen kann |
 | **Mitglied** der Gruppe | seine eigenen Gruppen | ja | nein |
 | **Alle übrigen** | nichts | — | — |
 
 Vier Eigenschaften gehören dazu:
 
-- **„Kleine Gruppe" statt einer Zahl.** Liegt die Zahl aktiver Konten unter der Mindestgruppengröße
-  (Abschnitt 15), erscheint sie nicht — auch nicht als Wert, aus dem sie sich errechnen ließe. Eine
-  Gruppe von vier ist in einem Referat eine Person mit Namen.
+- **„Kleine Gruppe" statt einer Zahl in der Auswahl.** Liegt die Zahl aktiver Konten unter der
+  Mindestgruppengröße (Abschnitt 15), nennt die Auswahl eines Empfängers sie nicht. Eine Gruppe von
+  vier ist in einem Referat eine Person mit Namen.
 - **„Erreicht derzeit niemanden."** Eine leere, aber wirksame Gruppe bleibt wählbar — sonst
   scheiterte „Gruppe anlegen, freigeben, Mitglieder aufnehmen" am ersten Schritt. Die Auswahl sagt
   es dazu, und die Betriebsliste führt die Folge (Abschnitt 13).
-- **Das Zuwachssignal.** Jede Freigabe und jede Raummitgliedschaft einer Gruppe hält die Zahl
-  aktiver Mitglieder **zum Zeitpunkt der Erteilung** fest. Die Freigabeliste zeigt beide Zahlen —
-  „23 bei Erteilung, heute 41". Keine Nachricht, kein Vorgang: eine Zeile für die Person, die für
-  die Freigabe geradesteht. Für beide Zahlen gilt die Unterdrückung kleiner Gruppen, und mit dem
-  **Ende** der Freigabe verschwindet die Zahl — sie liegt am wirksamen Recht und überdauert es nie.
+- **Die heutige Größe an der Zeile.** Die Freigabeliste einer Bibliothek und die Mitgliederliste
+  eines Raums nennen bei einer Gruppe die Zahl ihrer aktiven Konten von heute („Gruppe · …
+  Mitglieder"), ohne Mindestgruppengröße: Wer die Zeile sieht, verwaltet das Recht und darf die
+  Mitglieder ohnehin aufklappen. Eine Zahl vom Tag der Erteilung wird nicht festgehalten; wer seit
+  wann über welche Gruppe Zugriff hat, beantworten Rechtehistorie, Nachweisprotokoll und die
+  Herleitung (Abschnitte 11 und 12).
 - **Geschützte Gruppen sind über die Suche nicht auffindbar.** In der Auswahl erscheinen sie nur bei
   Eingabe ihrer **vollständigen** Bezeichnung; wer ihre Kennung eingibt, erhält sie zur Bestätigung
   **ohne** Namen. In fremden Listen — Mitgliederliste eines Raums, Freigabeliste einer Bibliothek,
   Liste der Anlegerechte — steht „Geschützte Gruppe"
   statt der Bezeichnung. Die Zeile bleibt, damit eine Mitgliedschaft beendet werden kann, die
-  niemand sieht; Größe und Zuwachssignal entfallen dort ganz.
+  niemand sieht; die Größe entfällt dort ganz.
 
-**Wer ein Recht gibt, sieht, an wen.** An der Zeile einer Gruppe — in der Freigabeliste einer
-Bibliothek und in der Mitgliederliste eines Raums — steht „Mitglieder anzeigen". Die Liste wird
+**Wer ein Recht gibt, sieht, an wen.** An der Zeile einer Gruppe steht in der Freigabeliste einer
+Bibliothek „Mitglieder anzeigen", in der Mitgliederliste eines Raums im Menü „⋯" der Eintrag
+„Mitglieder der Gruppe anzeigen". Die Liste wird
 **erst auf ausdrücklichen Wunsch** geladen, zeigt die **aktiven Konten** mit Namen und sagt dazu,
-wie viele es insgesamt sind; bei langen Listen wird seitenweise nachgeladen. Fünf Grenzen gelten:
+wie viele es insgesamt sind; bei langen Listen wird seitenweise nachgeladen. Die Größe der Gruppe
+begrenzt dabei nichts, auch eine kleine Gruppe zeigt ihre Namen. Vier Grenzen gelten:
 
 - **Nur am eigenen Objekt, und nur solange die Gruppe dort ein Recht hält.** Wer die Freigabe
   entzieht oder die Mitgliedschaft im Raum beendet, sieht die Mitglieder nicht mehr; eine
@@ -676,9 +679,6 @@ wie viele es insgesamt sind; bei langen Listen wird seitenweise nachgeladen. Fü
 - **Bei einer geschützten Gruppe gibt es keine Liste**, keinen Namen und keine Größe: An ihre Stelle
   tritt, **wen man fragen kann** — die Verantwortlichen einer internen Gruppe; bei einer Gruppe
   eines Identitätsanbieters gibt die Systemverwaltung Auskunft.
-- **Unterhalb der Mindestgruppengröße gibt es keine Liste** und keine Zahl, sondern „kleine Gruppe"
-  — dieselbe Unterdrückung wie beim Zuwachssignal derselben Zeile. Eine Gruppe von vier ist in einem
-  Referat eine Person mit Namen.
 
 **Der Abruf durch die Systemverwaltung steht im Nachweisprotokoll, auch hier.** Wer über seine
 Systemrolle an die Liste kommt — und eine Systemrolle trägt an jeder Bibliothek und in jedem Raum —,
@@ -1021,7 +1021,7 @@ eingebaut.
 
 | Größe | Vorgabe | Grenzen | Wirkung |
 |---|---|---|---|
-| `OPAA_MINIMUM_GROUP_SIZE` | **5** | **erzwungene Untergrenze 5**, nur nach oben änderbar | Mindestgruppengröße: ab wann eine Gruppengröße als Zahl erscheint statt als „kleine Gruppe" (Abschnitt 8), und wie viele aktive Konten ein Rechteprofil mit Raumkontext braucht (Abschnitt 14). Ein Start mit einem kleineren Wert bricht ab — abschalten kann den Schutz niemand |
+| `OPAA_MINIMUM_GROUP_SIZE` | **5** | **erzwungene Untergrenze 5**, nur nach oben änderbar | Mindestgruppengröße: ab wann die Auswahl eines Empfängers eine Gruppengröße als Zahl nennt statt „kleine Gruppe" (Abschnitt 8), und wie viele aktive Konten ein Rechteprofil mit Raumkontext braucht (Abschnitt 14). Ein Start mit einem kleineren Wert bricht ab — abschalten kann den Schutz niemand |
 | Abgleichintervall je Anbieter | **360 Minuten** (6 Stunden) | 5 Minuten bis 1 Woche | Wie oft der Verzeichnisabgleich eines Anbieters fällig ist; Einstellung der Anbieterzeile, nicht der Umgebung |
 | `OPAA_DIRECTORY_SYNC_CHANGE_THRESHOLD_FRACTION` | **0,3** (30 %) | größer als 0, höchstens 1 | Plausibilitätsschwelle: Ein Lauf, der mehr als diesen Anteil der Mitgliedschaften entziehen oder Konten sperren würde, schreibt nichts und legt seinen Plan zur Bestätigung vor |
 | `OPAA_SUCCESSION_AGING_THRESHOLD_MONTHS` | **12 Monate** | frei nach oben; ein Wert **≤ 0 fällt still auf 12 zurück** (kein Startabbruch, anders als bei der Mindestgruppengröße) | Ab welchem Alter ein Eintrag der Betriebsliste hervorgehoben wird — und wie lange ein Sichtungsvermerk die Hervorhebung aufhebt. Hebt hervor, löst nichts aus |
@@ -1064,8 +1064,8 @@ Drei Dinge gehören vor die Inbetriebnahme, nicht danach:
   „alles, was diese Person darf"** (Abschnitt 13.2).
 - **Keine Historie der Systemrollen.** Was mit einer Systemrolle geschah, steht im
   Nachweisprotokoll und unterliegt dessen Frist.
-- **Keine Zustimmung des Freigebenden bei Gruppenzuwachs.** Die Gruppe bleibt Subjekt der Freigabe;
-  was bleibt, ist das passive Zuwachssignal (Abschnitt 8).
+- **Keine Zustimmung des Freigebenden bei Gruppenzuwachs** und kein Signal dafür. Die Gruppe bleibt
+  Subjekt der Freigabe; ihre Zeile nennt die heutige Größe (Abschnitt 8).
 - **Keine Rezertifizierung.** Ein Recht kann befristet werden, aber niemand wird zur Wiedervorlage
   gezwungen.
 - **Keinen Freigabestand, keine Versionen und keine Nutzungsangaben im Katalog** (Abschnitt 4,

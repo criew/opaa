@@ -108,7 +108,7 @@ class GrantedGroupMembersControllerIntegrationTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.groupId").value(group.toString()))
         .andExpect(jsonPath("$.protectedGroup").value(false))
-        .andExpect(jsonPath("$.smallGroup").value(false))
+        .andExpect(jsonPath("$.smallGroup").doesNotExist())
         .andExpect(jsonPath("$.activeMemberCount").value(5))
         // No offset and no limit in the request: the declared defaults (0 and 50) carry the whole
         // group, so a missing parameter is never an empty answer.

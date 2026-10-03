@@ -78,9 +78,7 @@ public class AssetShellService {
               asset.getOwnerGroupId(),
               AssetRole.MANAGER,
               null,
-              creatorUserId,
-              // Ownership, not a release: the growth signal belongs to a granted role.
-              null),
+              creatorUserId),
           creatorUserId);
     }
     ownershipHistory.recordCreated(

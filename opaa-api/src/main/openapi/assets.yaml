@@ -898,30 +898,15 @@ components:
           nullable: true
           description: >
             Group grants only: true for a group of the staff council and the comparable bodies.
-            Its name is withheld here and it carries no growth signal; the grant stays visible and
+            Its name is withheld here and it carries no size; the grant stays visible and
             revocable.
-        memberCountAtGrant:
+        activeMemberCount:
           type: integer
           nullable: true
           description: >
-            Group grants only: how many active accounts the group had when the grant was given
-            (ADR-0036 Entscheidung 9) - the passive growth signal for whoever released to it. Null
-            for a person, for a protected group, whenever smallGroup is true, and for a grant from
-            before this figure was recorded.
-        memberCountNow:
-          type: integer
-          nullable: true
-          description: >
-            Group grants only: how many active accounts the group reaches right now, for the
-            comparison "23 bei Erteilung, heute 41". Null in the same cases as memberCountAtGrant,
-            except that it is present for a grant from before the figure was recorded.
-        smallGroup:
-          type: boolean
-          nullable: true
-          description: >
-            Group grants only: true when either figure lies below the enforced minimum group size,
-            in which case both are withheld - the difference alone would reconstruct the withheld
-            one.
+            Group grants only: how many active accounts the group reaches right now, whatever its
+            size (ADR-0036 Entscheidung 9). Null for a person, for ALL_ACCOUNTS and for a
+            protected group.
         emptyGroup:
           type: boolean
           nullable: true

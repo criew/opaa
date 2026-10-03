@@ -181,8 +181,7 @@ class RightsBaselineTest extends AbstractBaselineTest {
     UUID transfer = insertPermissionTransfer();
 
     assertRejected(
-        grantSql("Knowledge_Library", asset, "USER", owner, null),
-        "chk_asset_grants_asset_type_format");
+        grantSql("Knowledge_Library", asset, "USER", owner), "chk_asset_grants_asset_type_format");
     assertRejected(
         grantHistorySql("knowledgeLibrary", asset, "USER", owner, "VIEWER", "GRANTED", null),
         "chk_asset_grant_history_asset_type_format");
@@ -226,14 +225,14 @@ class RightsBaselineTest extends AbstractBaselineTest {
     UUID owner = insertUser();
     UUID library = insertAsset("KNOWLEDGE_LIBRARY", owner);
     UUID prompts = insertAsset("PROMPT_LIBRARY", owner);
-    execute(grantSql("KNOWLEDGE_LIBRARY", library, "USER", owner, null));
-    execute(grantSql("PROMPT_LIBRARY", prompts, "USER", owner, null));
+    execute(grantSql("KNOWLEDGE_LIBRARY", library, "USER", owner));
+    execute(grantSql("PROMPT_LIBRARY", prompts, "USER", owner));
 
     assertRejected(
-        grantSql("KNOWLEDGE_LIBRARY", UUID.randomUUID(), "USER", owner, null),
+        grantSql("KNOWLEDGE_LIBRARY", UUID.randomUUID(), "USER", owner),
         "fk_asset_grants_asset_organization");
     assertRejected(
-        grantSql("PROMPT_LIBRARY", library, "USER", insertUser(), null),
+        grantSql("PROMPT_LIBRARY", library, "USER", insertUser()),
         "fk_asset_grants_asset_organization");
 
     execute("DELETE FROM assets WHERE id = '" + library + "'");
@@ -246,37 +245,15 @@ class RightsBaselineTest extends AbstractBaselineTest {
   void aGrantToAllAccountsNamesNoSubjectAndExistsOncePerAsset() throws SQLException {
     UUID owner = insertUser();
     UUID asset = insertAsset("KNOWLEDGE_LIBRARY", owner);
-    execute(grantSql("KNOWLEDGE_LIBRARY", asset, "ALL_ACCOUNTS", null, null));
+    execute(grantSql("KNOWLEDGE_LIBRARY", asset, "ALL_ACCOUNTS", null));
 
     assertRejected(
-        grantSql("KNOWLEDGE_LIBRARY", asset, "ALL_ACCOUNTS", null, null),
-        "uk_asset_grants_all_accounts");
+        grantSql("KNOWLEDGE_LIBRARY", asset, "ALL_ACCOUNTS", null), "uk_asset_grants_all_accounts");
     assertRejected(
         grantSql(
-            "KNOWLEDGE_LIBRARY",
-            insertAsset("KNOWLEDGE_LIBRARY", owner),
-            "ALL_ACCOUNTS",
-            owner,
-            null),
+            "KNOWLEDGE_LIBRARY", insertAsset("KNOWLEDGE_LIBRARY", owner), "ALL_ACCOUNTS", owner),
         "chk_asset_grants_subject");
-    assertRejected(
-        grantSql("KNOWLEDGE_LIBRARY", asset, "USER", null, null), "chk_asset_grants_subject");
-  }
-
-  /** ADR-0036, Entscheidung 9: the size of a group at the moment of the grant, never a person's. */
-  @Test
-  void onlyAGroupGrantCarriesANonNegativeMemberCount() throws SQLException {
-    UUID owner = insertUser();
-    UUID asset = insertAsset("KNOWLEDGE_LIBRARY", owner);
-    UUID group = insertInternalGroup();
-    execute(grantSql("KNOWLEDGE_LIBRARY", asset, "GROUP", group, 23));
-
-    assertRejected(
-        grantSql("KNOWLEDGE_LIBRARY", asset, "USER", insertUser(), 1),
-        "chk_asset_grants_member_count");
-    assertRejected(
-        grantSql("KNOWLEDGE_LIBRARY", asset, "GROUP", insertInternalGroup(), -1),
-        "chk_asset_grants_member_count");
+    assertRejected(grantSql("KNOWLEDGE_LIBRARY", asset, "USER", null), "chk_asset_grants_subject");
   }
 
   // ---------------------------------------------------------------------------------------------
@@ -835,11 +812,10 @@ class RightsBaselineTest extends AbstractBaselineTest {
         + "')";
   }
 
-  private static String grantSql(
-      String assetType, UUID asset, String subjectType, UUID subject, Integer memberCount) {
+  private static String grantSql(String assetType, UUID asset, String subjectType, UUID subject) {
     boolean group = "GROUP".equals(subjectType);
     return "INSERT INTO asset_grants (id, asset_type, asset_id, organization_id, subject_type,"
-        + " subject_user_id, subject_group_id, role, member_count_at_grant) VALUES"
+        + " subject_user_id, subject_group_id, role) VALUES"
         + " (gen_random_uuid(), '"
         + assetType
         + "', '"
@@ -852,9 +828,7 @@ class RightsBaselineTest extends AbstractBaselineTest {
         + (group ? "NULL" : quoted(subject))
         + ", "
         + (group ? quoted(subject) : "NULL")
-        + ", 'VIEWER', "
-        + (memberCount == null ? "NULL" : memberCount)
-        + ")";
+        + ", 'VIEWER')";
   }
 
   private static String grantHistorySql(

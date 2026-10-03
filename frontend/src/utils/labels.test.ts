@@ -5,6 +5,7 @@ import {
   assetRoleDescription,
   capabilityMissingMessage,
   documentCountLabel,
+  groupMemberCountLabel,
 } from './labels'
 import { documentSourceTypeShortLabel } from '../components/library/sources/sourceLabels'
 import type { Capability } from '../types/api'
@@ -121,5 +122,20 @@ describe('assetRoleDescription', () => {
     expect(assetRoleDescription('EDITOR', 'PROMPT_LIBRARY')).toBe(
       'Darf zusätzlich Prompts anlegen, ändern und löschen.',
     )
+  })
+})
+
+/** #2134: die heutige Größe einer Gruppe an Freigabe und Mitgliedschaft, ohne Mindestgröße. */
+describe('groupMemberCountLabel', () => {
+  it('nennt jede Zahl, auch unterhalb der Mindestgruppengröße', () => {
+    expect(groupMemberCountLabel({ activeMemberCount: 41 })).toBe('41 Mitglieder')
+    expect(groupMemberCountLabel({ activeMemberCount: 2 })).toBe('2 Mitglieder')
+    expect(groupMemberCountLabel({ activeMemberCount: 1 })).toBe('1 Mitglied')
+    expect(groupMemberCountLabel({ activeMemberCount: 0 })).toBe('erreicht derzeit niemanden')
+  })
+
+  it('nennt bei einer geschützten Gruppe nichts', () => {
+    expect(groupMemberCountLabel({ activeMemberCount: 7, protectedGroup: true })).toBeNull()
+    expect(groupMemberCountLabel({ activeMemberCount: null })).toBeNull()
   })
 })
