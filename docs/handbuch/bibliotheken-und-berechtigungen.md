@@ -633,7 +633,7 @@ eingibt.
 |---|---|---|---|
 | **Verantwortliche** einer internen Gruppe | ja | ja | ja |
 | **Systemverwaltung** | ja | ja | ja — **der Abruf ist ein Nachweiseintrag** |
-| **Wer ein Recht erteilt** (Verwalter einer Bibliothek, Administrator eines Raums) | ja, bei internen Gruppen nur nach Freigabe zur Verwendung | Zahl **aktiver Konten**: in der Auswahl unterhalb der Mindestgruppengröße „kleine Gruppe" statt einer Zahl, an der Zeile einer bestehenden Freigabe oder Mitgliedschaft immer die Zahl | ja, solange die Gruppe an **seinem** Objekt ein Recht hält — **nicht** unterhalb der Mindestgruppengröße und **nicht** bei geschützten Gruppen; dort tritt an ihre Stelle, wen man fragen kann |
+| **Wer ein Recht erteilt** (Verwalter einer Bibliothek, Administrator eines Raums) | ja, bei internen Gruppen nur nach Freigabe zur Verwendung | Zahl **aktiver Konten**: in der Auswahl unterhalb der Mindestgruppengröße „kleine Gruppe" statt einer Zahl, an der Zeile einer bestehenden Freigabe oder Mitgliedschaft immer die Zahl | ja, solange die Gruppe an **seinem** Objekt ein Recht hält, auch bei kleinen Gruppen — **nicht** bei geschützten Gruppen; dort tritt an ihre Stelle, wen man fragen kann |
 | **Mitglied** der Gruppe | seine eigenen Gruppen | ja | nein |
 | **Alle übrigen** | nichts | — | — |
 
@@ -662,7 +662,8 @@ Vier Eigenschaften gehören dazu:
 Bibliothek „Mitglieder anzeigen", in der Mitgliederliste eines Raums im Menü „⋯" der Eintrag
 „Mitglieder der Gruppe anzeigen". Die Liste wird
 **erst auf ausdrücklichen Wunsch** geladen, zeigt die **aktiven Konten** mit Namen und sagt dazu,
-wie viele es insgesamt sind; bei langen Listen wird seitenweise nachgeladen. Fünf Grenzen gelten:
+wie viele es insgesamt sind; bei langen Listen wird seitenweise nachgeladen. Die Größe der Gruppe
+begrenzt dabei nichts, auch eine kleine Gruppe zeigt ihre Namen. Vier Grenzen gelten:
 
 - **Nur am eigenen Objekt, und nur solange die Gruppe dort ein Recht hält.** Wer die Freigabe
   entzieht oder die Mitgliedschaft im Raum beendet, sieht die Mitglieder nicht mehr; eine
@@ -674,8 +675,6 @@ wie viele es insgesamt sind; bei langen Listen wird seitenweise nachgeladen. Fü
 - **Bei einer geschützten Gruppe gibt es keine Liste**, keinen Namen und keine Größe: An ihre Stelle
   tritt, **wen man fragen kann** — die Verantwortlichen einer internen Gruppe; bei einer Gruppe
   eines Identitätsanbieters gibt die Systemverwaltung Auskunft.
-- **Unterhalb der Mindestgruppengröße gibt es keine Liste**, sondern „kleine Gruppe". Eine Gruppe
-  von vier ist in einem Referat eine Person mit Namen.
 
 **Der Abruf durch die Systemverwaltung steht im Nachweisprotokoll, auch hier.** Wer über seine
 Systemrolle an die Liste kommt — und eine Systemrolle trägt an jeder Bibliothek und in jedem Raum —,
@@ -1018,7 +1017,7 @@ eingebaut.
 
 | Größe | Vorgabe | Grenzen | Wirkung |
 |---|---|---|---|
-| `OPAA_MINIMUM_GROUP_SIZE` | **5** | **erzwungene Untergrenze 5**, nur nach oben änderbar | Mindestgruppengröße: ab wann die Auswahl eines Empfängers eine Gruppengröße als Zahl nennt statt „kleine Gruppe" und ab wann die Mitglieder einer berechtigten Gruppe aufklappbar sind (Abschnitt 8), und wie viele aktive Konten ein Rechteprofil mit Raumkontext braucht (Abschnitt 14). Ein Start mit einem kleineren Wert bricht ab — abschalten kann den Schutz niemand |
+| `OPAA_MINIMUM_GROUP_SIZE` | **5** | **erzwungene Untergrenze 5**, nur nach oben änderbar | Mindestgruppengröße: ab wann die Auswahl eines Empfängers eine Gruppengröße als Zahl nennt statt „kleine Gruppe" (Abschnitt 8), und wie viele aktive Konten ein Rechteprofil mit Raumkontext braucht (Abschnitt 14). Ein Start mit einem kleineren Wert bricht ab — abschalten kann den Schutz niemand |
 | Abgleichintervall je Anbieter | **360 Minuten** (6 Stunden) | 5 Minuten bis 1 Woche | Wie oft der Verzeichnisabgleich eines Anbieters fällig ist; Einstellung der Anbieterzeile, nicht der Umgebung |
 | `OPAA_DIRECTORY_SYNC_CHANGE_THRESHOLD_FRACTION` | **0,3** (30 %) | größer als 0, höchstens 1 | Plausibilitätsschwelle: Ein Lauf, der mehr als diesen Anteil der Mitgliedschaften entziehen oder Konten sperren würde, schreibt nichts und legt seinen Plan zur Bestätigung vor |
 | `OPAA_SUCCESSION_AGING_THRESHOLD_MONTHS` | **12 Monate** | frei nach oben; ein Wert **≤ 0 fällt still auf 12 zurück** (kein Startabbruch, anders als bei der Mindestgruppengröße) | Ab welchem Alter ein Eintrag der Betriebsliste hervorgehoben wird — und wie lange ein Sichtungsvermerk die Hervorhebung aufhebt. Hebt hervor, löst nichts aus |

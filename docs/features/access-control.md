@@ -1348,12 +1348,12 @@ freigegeben** sind, was Anbietergruppen immer sind; (c) die **Vorgabe ist nicht 
 Mitglieder, sondern die Verantwortlichen einer internen Gruppe (`responsible`, bei einer
 Anbietergruppe leer).
 
-**Eine fünfte Grenze kommt aus Auflage A2, und sie ist eine vorläufige Festlegung des Koordinators
-(22.09.2026, #1882): Unterhalb der Mindestgruppengröße gibt es keine Liste** — keine Namen, keine
-Zahl, nur das Kennzeichen „kleine Gruppe" (`smallGroup`). Die Alternative — A2 für den
-Objektinhaber durch Entscheidung 9 aufgehoben — steht dem Maintainer offen; ausgeliefert wird die
-datensparsame Auslegung. Seit dem Wegfall des Zuwachssignals (#2134) nennt die Zeile selbst die
-heutige Zahl auch einer kleinen Gruppe; die Grenze hält seitdem nur noch die Namen zurück.
+**Die Größe der Gruppe begrenzt nichts** (Maintainer-Entscheidung vom 03.10.2026, #2134). Auch eine
+Gruppe unterhalb der Mindestgruppengröße nennt dem Rechtevergebenden Namen und Zahl. Die vorläufige
+fünfte Grenze aus Auflage A2 (#1882, „keine Liste unterhalb der Mindestgruppengröße", Kennzeichen
+`smallGroup`) ist zurückgenommen: Die Zeile nennt die Zahl ohnehin, und wer das Recht verwaltet,
+trägt die Verantwortung für den Kreis, dem er es gegeben hat. Die Mindestgruppengröße gilt weiter in
+der Subjekt-Auswahl, für „Sicht als" und für die Suchdiagnose.
 
 Gelistet werden **aktive Konten** (Definition `io.opaa.account.AccountActivityService`); die Antwort
 trägt die Gesamtzahl und eine Seite, deren Deckel (200) die `LIMIT`-Klausel der Abfrage selbst ist —
