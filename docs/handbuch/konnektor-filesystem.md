@@ -31,6 +31,11 @@ Wo diese Felder stehen: Detailansicht der Bibliothek, Reiter **„Quelle"**, Abs
 Anlegen im gleichnamigen Schritt des Assistenten. Im selben Reiter stehen der **„Zeitplan"** und,
 als **„Läufe"**, das Laufprotokoll.
 
+**„Verbindung testen"** prüft nur, ob sich das Verzeichnis öffnen lässt: Es muss existieren, ein
+Verzeichnis sein und sich auflisten lassen. Der Test liest keine Unterverzeichnisse und keine
+Dateien und zählt keine Dokumente; er antwortet „Verzeichnis erreichbar." oder nennt den Grund, aus
+dem das Verzeichnis nicht erreichbar ist. Die Zahl der Dokumente liefert erst der Lauf.
+
 | Feld der Bibliothek | Regel |
 |---|---|
 | Verzeichnispfad (`sourcePath`) | Pflicht. Absoluter Pfad aus Sicht des Backend-Prozesses, also im Container, nicht auf dem Host. |
@@ -73,8 +78,9 @@ Backend-Containers". Ein Netzlaufwerk sollte schreibgeschützt eingebunden werde
 
 Ein **Unterverzeichnis**, das der Prozess nicht betreten darf, wird übersprungen, statt den Lauf
 abzubrechen. Es erscheint im Protokoll als „Nicht lesbar, übersprungen" mit seinem Pfad relativ zum
-Verzeichnispfad; „Verbindung testen" nennt nur die Anzahl solcher Einträge. Typisch sind
-Verwaltungsordner eingebundener Cloud-Laufwerke, etwa `.shortcut-targets-by-id` bei Google Drive.
+Verzeichnispfad; „Verbindung testen" sieht solche Unterverzeichnisse nicht (Abschnitt 2).
+Typisch sind Verwaltungsordner eingebundener Cloud-Laufwerke, etwa `.shortcut-targets-by-id` bei
+Google Drive.
 
 ## 4. Schutzmechanismen
 

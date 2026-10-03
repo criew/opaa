@@ -18,7 +18,6 @@ import io.opaa.common.AccessDeniedException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
 import io.opaa.connection.LibraryConnectionService;
-import io.opaa.format.DocumentService;
 import io.opaa.indexing.source.FilesystemPathAllowlist;
 import io.opaa.indexing.source.LibrarySourceConnectionResolver;
 import io.opaa.indexing.source.SourceConnectionTestResult;
@@ -50,9 +49,9 @@ import org.junit.jupiter.api.io.TempDir;
 
 /**
  * Unit-level coverage of {@link SourceConnectionTestService} for all three testable quellentypen
- * (#514) - real building blocks throughout ({@link DocumentService}, {@link
- * AutoindexCrawlerService}, {@link RssFeedParser}), only {@link FilesystemPathAllowlist} is mocked
- * so the FILESYSTEM branch can be exercised without depending on operator configuration.
+ * (#514) - real building blocks throughout ({@link AutoindexCrawlerService}, {@link
+ * RssFeedParser}), only {@link FilesystemPathAllowlist} is mocked so the FILESYSTEM branch can be
+ * exercised without depending on operator configuration.
  */
 class SourceConnectionTestServiceTest {
 
@@ -109,15 +108,12 @@ class SourceConnectionTestServiceTest {
   // --- FILESYSTEM ---------------------------------------------------------
 
   @Test
-  void filesystemReportsSupportedDocumentCount(@TempDir Path dir) throws IOException {
+  void filesystemReportsAnOpenableDirectoryWithoutCountingDocuments(@TempDir Path dir)
+      throws IOException {
     when(filesystemAllowlist.isConfigured()).thenReturn(true);
     when(filesystemAllowlist.isAllowed(dir.toString())).thenReturn(true);
     Files.writeString(dir.resolve("a.txt"), "hello");
     Files.write(dir.resolve("b.pdf"), "%PDF-1.4\n%mock-pdf-body".getBytes(StandardCharsets.UTF_8));
-    // #404: c.xyz is unsupported by its actual content (arbitrary binary, no accepted media type
-    // matches) - a supported-looking extension on genuinely readable text (the old fixture used
-    // "unsupported" as literal file content) would now be accepted, since content decides.
-    Files.write(dir.resolve("c.xyz"), new byte[] {(byte) 0x89, 0x50, 0x4e, 0x47, 0, 1, 2, 3});
 
     SourceConnectionTestResult response =
         service.test(
@@ -128,19 +124,20 @@ class SourceConnectionTestServiceTest {
             caller);
 
     assertThat(response.reachable()).isTrue();
-    assertThat(response.documentCount()).isEqualTo(2L);
-    assertThat(response.message()).contains("2").contains("Dokumente");
+    assertThat(response.documentCount()).isNull();
+    assertThat(response.message()).isEqualTo("Verzeichnis erreichbar.");
   }
 
   @Test
-  void filesystemSkipsAnUnreadableSubdirectoryAndReportsItsCount(@TempDir Path dir)
-      throws IOException {
-    // regression guard for #2124: an unlistable subdirectory used to escape as a 500
+  void filesystemReadsNothingBelowTheTopLevel(@TempDir Path dir) throws IOException {
+    // regression guard for #2124 and #2127: an unlistable subdirectory neither escapes as a 500
+    // nor shows up in the result, because the test only opens the configured directory itself
     when(filesystemAllowlist.isConfigured()).thenReturn(true);
     when(filesystemAllowlist.isAllowed(dir.toString())).thenReturn(true);
-    Files.writeString(dir.resolve("a.txt"), "hello");
     Path locked = Files.createDirectory(dir.resolve("gesperrt"));
     Files.writeString(locked.resolve("b.txt"), "hidden");
+    Path nested = Files.createDirectories(dir.resolve("ebene1").resolve("ebene2"));
+    Files.writeString(nested.resolve("c.txt"), "deep");
 
     SourceConnectionTestResult response;
     try (UnreadableDirectory ignored = UnreadableDirectory.of(locked)) {
@@ -154,11 +151,8 @@ class SourceConnectionTestServiceTest {
     }
 
     assertThat(response.reachable()).isTrue();
-    assertThat(response.documentCount()).isEqualTo(1L);
-    assertThat(response.message())
-        .isEqualTo(
-            "Verzeichnis erreichbar, 1 Dokument gefunden; 1 nicht lesbarer Eintrag übersprungen.")
-        .doesNotContain("gesperrt");
+    assertThat(response.documentCount()).isNull();
+    assertThat(response.message()).isEqualTo("Verzeichnis erreichbar.");
   }
 
   @Test
