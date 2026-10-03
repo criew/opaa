@@ -327,7 +327,7 @@ export async function shareLibraryWithPerson(
   // Not getByLabel: once the Autocomplete's listbox is open, its aria-labelledby also points back
   // at the field, so getByLabel resolves to both the input and the listbox.
   // getByRole('combobox', ...) only ever matches the input itself.
-  const personInput = adminPage.getByRole('combobox', { name: 'Person suchen' })
+  const personInput = adminPage.getByRole('combobox', { name: 'Person oder Gruppe suchen' })
   await personInput.click()
   await personInput.fill(personQuery)
   await adminPage.getByRole('option', { name: personOption }).click()

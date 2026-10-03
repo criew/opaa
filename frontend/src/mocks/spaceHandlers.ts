@@ -40,7 +40,6 @@ export const spaceHandlers = [
       description: body.description?.trim() ?? null,
       isDefault: false,
       archived: false,
-      visibility: 'PRIVATE',
       memberCount: 1,
       memberships: { groupCount: 0, userCount: 1 },
       libraryCount: 0,
@@ -71,6 +70,14 @@ export const spaceHandlers = [
 
   http.get('/api/v1/spaces', () => {
     return HttpResponse.json(mockSpaces)
+  }),
+
+  // Registered before ':spaceId', which would otherwise take the literal segment for an id.
+  http.get('/api/v1/spaces/chat-auto-cleanup', () => {
+    return HttpResponse.json({
+      archiveAfterDays: defaultChatAutoCleanup.archiveAfterDays,
+      deleteAfterDays: defaultChatAutoCleanup.deleteAfterDays,
+    })
   }),
 
   http.get('/api/v1/spaces/:spaceId', ({ params }) => {

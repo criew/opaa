@@ -1647,3 +1647,50 @@ def test_a_public_library_is_granted_to_all_accounts_and_a_closed_one_to_its_vie
     assert {g["subjectId"] for g in api.grants if g["libraryId"] == "zu"} == {
         user_ids[key] for key in closed.viewer_keys
     }
+
+
+# --- Space creation: members in the subject form of SpaceAddMemberRequest (#2131) ---------------
+
+
+class FakeSpaceApi:
+    """The owner's and the admin's session against listSpaces and createSpace."""
+
+    def __init__(self) -> None:
+        self.created: list[dict] = []
+
+    def get_ok(self, path: str, **kwargs):
+        assert path == "/v1/spaces"
+        return []
+
+    def post_ok(self, path: str, expected=(200,), json=None, **kwargs):
+        assert path == "/v1/spaces" and expected == (201,)
+        self.created.append(dict(json))
+        return {"id": f"s-{json['name']}"}
+
+
+def test_a_space_is_created_with_persons_and_groups_in_one_subject_form() -> None:
+    """initialMembers carries persons as subjectType USER - the same form the group step sends
+    for a group; the old userId field and the visibility are gone."""
+    # The demo admits its people through groups; a person named directly takes this path.
+    space_def = dataclasses.replace(
+        space("Kfz-Zulassung"), members=(profiles.SpaceMemberDef("selin", "CURATOR"),)
+    )
+    user_ids = {u.key: f"u-{u.key}" for u in DEMO.all_users()}
+    api = FakeSpaceApi()
+
+    seed.ensure_space(api, {space_def.owner_key: api}, user_ids, space_def)
+
+    [body] = api.created
+    assert "visibility" not in body
+    assert body["initialMembers"] == [
+        {"subjectType": "USER", "subjectId": user_ids[m.user_key], "role": m.role}
+        for m in space_def.members
+    ]
+
+    groups = FakeGroupApi()
+    seed_groups(groups)
+    group_rows = [row for rows in groups.space_members.values() for row in rows]
+    assert group_rows and all(row["subjectType"] == "GROUP" for row in group_rows)
+    assert {frozenset(row) for row in body["initialMembers"] + group_rows} == {
+        frozenset({"subjectType", "subjectId", "role"})
+    }
