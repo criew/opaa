@@ -107,10 +107,16 @@ Freigabe zur Bibliothek.
 So öffnet die Freigabe eines Profils nie ein zweites Ziel desselben Konnektors, etwa einen
 externen statt des internen Nextcloud-Servers.
 
-**Stufen der Freigabe:** aus (niemand) · für alle Konten · für bestimmte Gruppen oder Personen. Die
-Freigabe ist die Fähigkeit `CREATE_CONNECTOR_LIBRARY`, erteilt je Profil bzw. je Konnektortyp, mit
-den bestehenden Subjekten und der bestehenden Auswertung. Sie öffnet einen Anlegepfad, nie einen
-Inhalt. `SYSTEM_ADMIN` hat sie implizit.
+**Stufen der Freigabe:** aus (niemand) · für alle Konten · für bestimmte Gruppen oder Personen. Für
+Konnektoren ist die Freigabe die Fähigkeit `CREATE_CONNECTOR_LIBRARY`, erteilt je Profil bzw. je
+Konnektortyp, mit den bestehenden Subjekten und der bestehenden Auswertung. Sie öffnet einen
+Anlegepfad, nie einen Inhalt. `SYSTEM_ADMIN` hat sie implizit. Für MCP-Profile siehe
+[MCP-Grundlage](#mcp-grundlage).
+
+**Was als Neuanlage zählt:** eine Bibliothek anlegen und ein Konto auf einem Profil erstmals
+verbinden. **Keine** Neuanlage sind: eine bestehende Verbindung neu verbinden (nach Ablauf, Widerruf
+oder geänderten Scopes), trennen und löschen. Diese Handlungen bleiben auch nach Entzug der Freigabe
+möglich.
 
 **Auslieferungszustand:** Die bisherigen Konnektoren (Dateisystem, Webverzeichnis, RSS, Confluence,
 S3) sind je Typ für alle Konten frei, wie heute. Jeder neue Konnektor und jedes neue Profil steht auf
@@ -123,13 +129,18 @@ S3) sind je Typ für alle Konten frei, wie heute. Jeder neue Konnektor und jedes
 | Freigabe einschränken oder einer Person entziehen | nicht mehr möglich | **laufen weiter** | unverändert |
 | Profil **sperren** | nicht möglich | Läufe stoppen | durchsuchbar, gekennzeichnet |
 | Konnektor **sperren** (gilt für alle seine Profile) | nicht möglich | Läufe stoppen | durchsuchbar, gekennzeichnet |
+| Bibliothek mit freier Adresse **sperren** (nur beim Einschalten der [Profilpflicht](#profilpflicht)) | — | Läufe dieser Bibliothek stoppen | durchsuchbar, gekennzeichnet |
 | Sperre aufheben | wieder nach Freigabe | laufen ohne Neueinrichtung weiter | — |
 
-Eine gesperrte Bibliothek trägt den Hinweis „Gesperrt – Inhalt wird nicht mehr aktualisiert“ samt
-zuständiger Stelle. Im Chat erscheint bei Treffern aus ihr „Stand vom …“.
+Eine gesperrte Bibliothek trägt den Hinweis „Gesperrt – Inhalt wird nicht mehr aktualisiert“. Im
+Chat erscheint bei Treffern aus ihr „Stand vom …“.
 
 **Kein toter Weg.** Ein Konnektor oder Zugang, der für die Person nicht freigegeben ist, erscheint im
-Anlage-Assistenten mit dem Hinweis, wer ihn freischalten kann, statt zu fehlen oder zu scheitern.
+Anlage-Assistenten mit einem Hinweis, statt zu fehlen oder zu scheitern.
+
+**Regel für alle Hinweise dieses Dokuments:** Jeder Hinweis (gesperrt, ruhend, abgelaufen, nicht
+freigegeben, Zugang entfernt, Abbruch) nennt die **zuständige Stelle** und sagt, **was mit dem Inhalt
+geschieht** (bleibt durchsuchbar, wird nicht aktualisiert, wird zum Datum gelöscht).
 
 **Verwaltungsübersicht:** je Konnektor und Profil eine Klartextzeile („Zugang Nextcloud intern:
 frei für Alle Konten“). Vergabe, Entzug und Sperre sind Governance-Ereignisse.
@@ -144,7 +155,7 @@ selbst ein.
 | Feld | Beispiel | Hinweis |
 |---|---|---|
 | Name | „Zugang Exchange Rheinfurt“ | erscheint in der Auswahl |
-| Konnektor | Exchange | genau einer |
+| Konnektor | Exchange | genau einer; beim Profiltyp „MCP-Server“ keiner (siehe [MCP-Grundlage](#mcp-grundlage)) |
 | Server-Adresse | Nextcloud-URL, `https://graph.microsoft.com` | einziges Ziel der Zugangsdaten |
 | Anmeldeart | persönliches Geheimnis, OAuth, Client-Credentials | nur die Arten, die der Konnektor anbietet |
 | App-Registrierung | Client-ID, Client-Secret, Mandant | bei OAuth und Client-Credentials; Secret verschlüsselt, nie in Antworten |
@@ -173,29 +184,40 @@ sind, und verlangt eine Bestätigung. Danach verwirft es alle Token und Geheimni
 darauf, ohne das Profil zu löschen.
 
 **Löschen eines Profils** trennt alle Verbindungen. Bibliotheken bleiben mit Bestand und dem Hinweis
-„Zugang entfernt“ stehen, ohne Läufe, bis sie einem anderen Profil zugeordnet oder gelöscht werden.
+„Zugang entfernt“ stehen, ohne Läufe, bis sie einem anderen Profil desselben Konnektors zugeordnet
+oder gelöscht werden.
+
+**Wer eine Bibliothek einem anderen Profil zuordnet:** bei Bibliotheken mit Quellverbindung oder
+freier Adresse die Verwaltenden der Bibliothek; bei einer privaten Bibliothek nur die Besitzerin,
+indem sie ihr Konto auf dem neuen Profil verbindet. Die Systemverwaltung hängt keine private
+Bibliothek um.
 
 ### Profilpflicht
 
 Jeder Konnektor meldet, wie er zu Profilen steht:
 
-| Angabe | Bedeutung | Beispiele |
+| Angabe | Bedeutung | Konnektoren |
 |---|---|---|
-| **verboten** | Profile ergeben keinen Sinn | Upload, RSS |
-| **optional** | Profil oder freie Adresse | Confluence, S3, Nextcloud |
-| **Pflicht** | nur mit Profil | OAuth-Konnektoren wie Dropbox, Exchange |
+| **verboten** | kein entferntes Ziel | Upload (keine Quelle), Dateisystem (lokale Serverpfade, begrenzt durch die Pfad-Allowlist des Betriebs) |
+| **optional** | Profil oder freie Adresse | Webverzeichnis, RSS, Confluence, S3, Nextcloud |
+| **Pflicht** | nur mit Profil | Konnektoren mit OAuth oder Client-Credentials, etwa Dropbox, Exchange |
+
+Ein Profil für Webverzeichnis oder RSS trägt nur die Server-Adresse (Ursprung), ohne Anmeldeart.
 
 Bei „optional“ kann die Systemverwaltung die Profilpflicht einschalten:
 
 - **erst, wenn ein passendes Profil existiert;**
-- beim Einschalten zeigt eine Liste die Bibliotheken mit freier Adresse, und die Verwaltung wählt,
-  ob sie **weiterlaufen** oder **gesperrt** werden;
+- beim Einschalten zeigt eine Liste die Bibliotheken mit freier Adresse, und die Verwaltung wählt
+  für den ganzen Bestand, ob er **weiterläuft** oder **gesperrt** wird (Sperre je Bibliothek, siehe
+  [Wirkung](#konnektor-freigabe-und-sperre)); eine gesperrte Bibliothek läuft wieder, sobald sie
+  einem Profil zugeordnet ist;
 - danach bietet der Anlage-Assistent nur noch die Profilauswahl an.
 
 Wer einen fehlenden Server braucht, kann im Assistenten einen **Zugangswunsch** mit Server-Adresse
 an die Systemverwaltung stellen (optional).
 
-Die Profilpflicht legt alle angesprochenen Server an eine Stelle in die Hand der Systemverwaltung.
+Mit Profilpflicht für alle Konnektoren der Angabe „optional“ liegen alle entfernten Ziele an einer
+Stelle in der Hand der Systemverwaltung.
 Die bestehende Zielprüfung gegen private und lokale Adressbereiche bleibt daneben bestehen.
 
 ---
@@ -216,7 +238,7 @@ derselben Transaktion. Je Verbindung läuft höchstens eine Erneuerung zugleich.
 **Ablauf und Widerruf:** Ein Lauf scheitert mit eigener Kategorie, nie stumm.
 
 - Nennt der Anbieter ein Ablaufdatum, warnt OPAA die Besitzerin bzw. die Verantwortlichen **14 Tage**
-  vorher.
+  vorher, über die bestehende In-App-Benachrichtigung (Glocke, ADR-0019) und an der Verbindung.
 - Abgelaufene Verbindungen zeigen „Verbindung abgelaufen – neu verbinden“.
 - Die Verwaltungsübersicht zeigt die Anzahl abgelaufener Verbindungen je Profil mit Warnung ab einem
   einstellbaren Schwellenwert.
@@ -243,7 +265,8 @@ Anlage-Assistent: Quellart „Dropbox“ → Zugang „Dropbox Bauamt“
 - Der Token gehört der **Bibliothek**, nicht der zustimmenden Person.
 - Die Kontoadresse beim Anbieter steht **dauerhaft** in den Bibliotheksdetails.
 - Je Verbindung ist eine **Person oder Gruppe verantwortlich**; sie erhält Ablaufwarnungen und
-  verbindet neu.
+  verbindet neu. Neu verbinden ist keine Neuanlage und bleibt auch nach Entzug der Freigabe möglich,
+  solange das Profil nicht gesperrt ist.
 - Die Systemverwaltung sieht eine **Liste ruhender Quellverbindungen** (abgelaufen, getrennt,
   gesperrt). Private Bibliotheken erscheinen darin nicht.
 - Rechte und Teilen folgen dem bestehenden Modell einschließlich der Freigabe-Obergrenze.
@@ -262,6 +285,8 @@ Verbundene Konten
 │   genutzt von: „Meine Ablage“            [Trennen]              │
 │ Zugang Exchange           —              [Verbinden]            │
 │ Zugang Dropbox            abgelaufen     [Neu verbinden]        │
+│ Zugang Nextcloud Partner  verbunden      [Trennen]              │
+│   nicht mehr freigegeben – läuft weiter; zuständig: IT-Referat  │
 │                                                                 │
 │ Warum fehlt mein Zugang?  → wer Zugänge freischaltet            │
 └─────────────────────────────────────────────────────────────────┘
@@ -272,7 +297,13 @@ Verbundene Konten
 - Je Person und Profil höchstens ein verbundenes Konto.
 - **Trennen** löscht Token bzw. Geheimnis sofort und widerruft es, wo der Anbieter das anbietet. Private
   Bibliotheken auf der Verbindung ruhen danach mit Hinweis.
-- Die Seite zeigt nur freigegebene Profile; „Warum fehlt mein Zugang?“ nennt die zuständige Stelle.
+- Die Seite zeigt **alle bestehenden Verbindungen** der Person, auch zu Profilen, die für sie nicht
+  mehr freigegeben sind; diese tragen den Hinweis „nicht mehr freigegeben“. Zum **neuen** Verbinden
+  bietet sie nur freigegebene Profile an. „Warum fehlt mein Zugang?“ nennt die zuständige Stelle.
+- **Trennen und Löschen gehen immer**, auch bei entzogener Freigabe oder gesperrtem Profil. **Neu
+  verbinden** einer bestehenden Verbindung geht nach Entzug der Freigabe weiter (keine Neuanlage),
+  nicht aber bei gesperrtem Profil. Ein **neues** Konto auf einem nicht freigegebenen Profil ist
+  gesperrt.
 - Nutzung zunächst nur für private Bibliotheken; die Live-Nutzung im Chat folgt mit #1747.
 
 ---
@@ -282,24 +313,35 @@ Verbundene Konten
 Eine private Bibliothek wird über ein verbundenes Konto gespeist. Ihr Inhalt ist, was die Person beim
 Anbieter selbst sehen darf. Niemand sonst darf ihn sehen.
 
+**Nur-Besitzerin-Regel.** Eine private Bibliothek hat außer ihrer Besitzerin keine Leserin. Das ist
+eine **eigene, harte Regel**, nicht eine Stufe der bestehenden Freigabe-Obergrenze: Jene deckelt nur
+den Grant an „Alle Konten“ und ist von der Systemverwaltung je Bibliothek einstellbar. Diese Regel
+sitzt am Grant-Pfad und am Pfad der Fremdzugangsfreigabe und gilt für jede private Bibliothek, ohne
+Einstellung. **Die Systemverwaltung kann sie nicht lockern.**
+
 | Regel | Durchsetzung |
 |---|---|
 | Genau eine Besitzerin, eine Person | beim Anlegen festgelegt, nicht übertragbar |
-| Keine Grants an Personen, Gruppen oder „Alle Konten“ | Freigabe-Obergrenze, technisch erzwungen |
-| Keine Fremdzugangsfreigabe | technisch erzwungen |
+| Keine Grants an Personen, Gruppen oder „Alle Konten“ | Nur-Besitzerin-Regel am Grant-Pfad |
+| Keine Fremdzugangsfreigabe | Nur-Besitzerin-Regel am Pfad der Fremdzugangsfreigabe |
 | Keine Nachfolge | Eigentum geht an niemanden über |
-| **„Sicht als“ ausgeschlossen** | gilt auch für die Systemverwaltung |
+| **„Sicht als“ ausgeschlossen** | private Bibliotheken liegen nie im fremden Rechtekontext |
 | Inhalt folgt der Rechteformel | die Verwaltungsrolle öffnet ihn nicht |
 
-**Verwaltungshandlungen**, abschließend: Die Systemverwaltung kann an privaten Bibliotheken nur
+**Verwaltungshandlungen**, abschließend: Die Systemverwaltung kann private Bibliotheken nur über
+folgende Handlungen berühren:
 
-1. Konnektor oder Profil sperren (wirkt auf alle Bibliotheken des Profils),
-2. „Alle Verbindungen trennen“ am Profil auslösen,
-3. das Kontingent hausweit festsetzen,
-4. ein Konto deaktivieren (löst den [Lebenszyklus](#lebenszyklus-und-löschung) aus),
-5. einen [Vorfallszugriff](#vorfallszugriff) unter dessen Bedingungen durchführen.
+1. Konnektor oder Profil sperren (Läufe stoppen),
+2. „Alle Verbindungen trennen“ am Profil (Notabschaltung),
+3. ein Profil löschen (Verbindungen getrennt, Bibliotheken ruhen),
+4. die Server-Adresse eines Profils ändern (Verbindungen verworfen),
+5. Client-ID, Mandant oder Scopes eines Profils ändern (neue Zustimmung nötig),
+6. das Kontingent hausweit festsetzen,
+7. ein Konto deaktivieren (löst den [Lebenszyklus](#lebenszyklus-und-löschung) aus).
 
-Umbenennen, Rechte ändern, Läufe auslösen, Inhalte einsehen oder einzeln löschen kann sie nicht.
+Umbenennen, Rechte ändern, einem anderen Profil zuordnen, Läufe auslösen, Inhalte einsehen oder
+einzeln löschen kann sie nicht. Der [Vorfallszugriff](#vorfallszugriff) ist keine Handlung der
+Systemverwaltung.
 
 **Was die Verwaltung sieht:** je Profil die Anzahl verbundener Konten und privater Bibliotheken,
 Laufdaten und Kontingentnutzung nur zusammengefasst, Fehler nur als Kategorie ohne Inhaltsbezug (keine
@@ -323,14 +365,20 @@ diesem Epic und muss stehen, bevor Postfächer angebunden werden.
 
 ### Vorfallszugriff
 
-Ein Zugriff auf den Inhalt einer privaten Bibliothek ist nur im Vorfallsbereich möglich und nur, wenn
-alle drei Bedingungen erfüllt sind:
+Der bestehende Vorfallsbereich ist eine Protokollabfrage mit Personenfilter und öffnet keine Inhalte.
+Ein Zugriff auf den **Inhalt** einer privaten Bibliothek ist deshalb eine **neue Befugnis** neben den
+Rollen, nach dem Muster der bestehenden Befugnisse: einzeln, benannt, befristet, auf eine Bibliothek
+beschränkt. Sie setzt alle vier Bedingungen voraus:
 
-1. **Vier Augen:** zwei verschiedene berechtigte Personen bestätigen ihn.
-2. **Benachrichtigung der Betroffenen** über Zugriff, Zeitpunkt und Grund.
-3. **Beteiligung des Personalrats**, im Vorgang dokumentiert.
+1. **Antrag** durch eine Person mit `AUDITOR`, mit Zweck und Zeitraum.
+2. **Bestätigung** durch eine zweite, andere Person in einer eigens benannten Rolle (etwa
+   Datenschutz). Vier Augen; die beiden Personen sind verschieden.
+3. **Benachrichtigung der Betroffenen** über Zugriff, Zeitpunkt und Grund.
+4. **Beteiligung des Personalrats**, im Vorgang dokumentiert.
 
-Bis dieser Weg gebaut ist, gibt es keinen Vorfallszugriff auf private Bibliotheken.
+`SYSTEM_ADMIN` schließt diese Befugnis nicht ein und erreicht den Weg nicht. Die genaue
+Ausgestaltung der Rollen legt [#2171](https://github.com/criew/opaa/issues/2171) fest. **Bis dahin
+gibt es keinen Vorfallszugriff auf private Bibliotheken.**
 
 ---
 
@@ -371,9 +419,11 @@ in ein **eigenes Verbindungsprotokoll**:
 - **Eigene Leserolle;** die Systemverwaltung liest es nicht automatisch mit.
 - **Aufbewahrungsfrist,** danach wird gelöscht.
 
-Token und Geheimnisse erscheinen nie in Logs, Antworten oder Audit. Sie liegen verschlüsselt auf
-demselben Weg wie die heutigen Quell-Zugangsdaten; Antworten tragen nur „gesetzt / nicht gesetzt“
-und den Status.
+Token und Geheimnisse erscheinen nie in Logs, Antworten oder Audit. Neben den beiden heutigen Plätzen
+(Zugangsdaten und Push-Geheimnis der Bibliothek) entstehen zwei neue: das **Client-Secret am Profil**
+und der **Token-Speicher** (Besitzer Bibliothek oder Person). Beide nutzen denselben
+Verschlüsselungsweg wie die heutigen Quell-Zugangsdaten; Antworten tragen nur „gesetzt / nicht
+gesetzt“ und den Status.
 
 ---
 
@@ -395,10 +445,13 @@ kann.
 OPAA wird fremde MCP-Server als Werkzeuge anbinden. Dieses Epic legt nur die Grundlage, damit dafür
 kein zweiter Verbindungsweg entsteht:
 
-- **Profiltyp „MCP-Server“:** Server-Adresse (nur Streamable HTTP, kein lokaler Prozess), Anmeldeart und
-  verantwortliche Gruppe. Das ist die Zulassungsliste aus
+- **Profiltyp „MCP-Server“:** ein Profil ohne Konnektor, mit Server-Adresse (nur Streamable HTTP,
+  kein lokaler Prozess), Anmeldeart und verantwortlicher Gruppe. Das ist die Zulassungsliste aus
   [agents-and-tools.md](./agents-and-tools.md#mcp-als-standardisierte-anbindung).
-- Freigabe und Sperre gelten wie bei jedem Profil.
+- **Freigabe und Sperre** haben dieselbe Form wie bei jedem Profil (aus, alle, Gruppen; Sperre). Weil
+  ein MCP-Profil keine Bibliothek anlegt, ist seine Freigabe nicht `CREATE_CONNECTOR_LIBRARY`,
+  sondern eine Nutzungsfreigabe für das Profil; ihre Form legt das Folge-Epic zum MCP-Client fest.
+- **Der Profiltyp bleibt in der Oberfläche verborgen**, bis der MCP-Client existiert.
 - **Token-Speicher nach MCP-Autorisierung:** OAuth 2.1 mit PKCE, Ressourcen-Indikator je Server,
   Erkennung des Autorisierungsservers über die Metadaten des Servers. Ein Token gilt nur für den
   Server, für den es ausgestellt wurde, und wird nie weitergereicht.
@@ -413,7 +466,7 @@ Werkzeugaufrufe, Freigabe schreibender Aufrufe und Ausgangstor gehören zu #1747
 1. **Freigabe und Profile:** Verbindungsprofile, Freigabe je Profil bzw. Typ, Sperre, Profilpflicht.
 2. **Verbundene Konten mit persönlichem Geheimnis** und private Bibliotheken mit Lebenszyklus; erster
    Nutzer ist Nextcloud mit App-Passwort (lokal testbar, Dateiablage von openDesk).
-3. **OAuth-Baustein** mit Client-Credentials und „Quelle verbinden“.
+3. **OAuth-Baustein** mit Client-Credentials, „Quelle verbinden“ und der MCP-Grundlage.
 4. **Dropbox** (Quelle verbinden) und **Exchange** (verbundenes Konto, Funktionspostfächer); Exchange
    erst nach der Rechtsklärung und dem Kontingent.
 
@@ -426,8 +479,8 @@ Unabhängig davon: Spike zum Token-Austausch gegen openDesk. Der MCP-Client folg
 | ADR | Nachtrag |
 |---|---|
 | [ADR-0025](../decisions/0025-mehrere-oidc-anbieter.md) | „OPAA speichert keine Tokens“ gilt für die Anmeldung an OPAA, nicht für Quellverbindungen und verbundene Konten |
-| [ADR-0036](../decisions/0036-berechtigungsmodell-gruppen-und-faehigkeiten.md) | `CREATE_CONNECTOR_LIBRARY` wird je Profil bzw. je Konnektortyp erteilt; neue Konnektoren und Profile ab Werk aus; Entzug wirkt nur auf die Neuanlage, Sperre auf Läufe; „Sicht als“ und Vorfallszugriff für private Bibliotheken |
-| [ADR-0038](../decisions/0038-steckbare-konnektoren.md) | Profilangabe (verboten, optional, Pflicht) und Anmeldearten gehören in die Konnektor-Beschreibung; das Ziel der Zugangsdaten leitet sich bei Profilen aus der Server-Adresse des Profils ab |
+| [ADR-0036](../decisions/0036-berechtigungsmodell-gruppen-und-faehigkeiten.md) | `CREATE_CONNECTOR_LIBRARY` wird je Profil bzw. je Konnektortyp erteilt; neue Konnektoren und Profile ab Werk aus; Entzug wirkt nur auf die Neuanlage (Neuverbinden ist keine), Sperre auf Läufe; **Nur-Besitzerin-Regel** für private Bibliotheken als eigene Sperre am Grant- und Fremdzugangspfad, von der Systemverwaltung nicht lockerbar; „Sicht als“ für private Bibliotheken ausgeschlossen; **Vorfallszugriff auf Inhalte** als neue Befugnis neben den Rollen (Antrag `AUDITOR`, Bestätigung durch eine zweite benannte Rolle, `SYSTEM_ADMIN` nicht eingeschlossen); Leserolle des Verbindungsprotokolls |
+| [ADR-0038](../decisions/0038-steckbare-konnektoren.md) | Profilangabe (verboten, optional, Pflicht) und Anmeldearten gehören in die Konnektor-Beschreibung; das Ziel der Zugangsdaten leitet sich bei Profilen aus der Server-Adresse des Profils ab; Entscheidung 3 („genau zwei Plätze für Geheimnisse“) wird um das Client-Secret am Profil und den Token-Speicher erweitert, beide auf demselben Verschlüsselungsweg |
 
 Ob Token-Speicher und Verbindungsmodell einen eigenen ADR brauchen, entscheidet das Konzept-Issue.
 
@@ -439,7 +492,7 @@ Ob Token-Speicher und Verbindungsmodell einen eigenen ADR brauchen, entscheidet 
 |---|---|
 | [knowledge-sources.md](./knowledge-sources.md) | Konnektoren, Zielprüfung, Zugangsdaten; Profile ersetzen die freie Adresse, wo Profilpflicht gilt |
 | [spaces-and-assets.md](./spaces-and-assets.md) | Freigabe-Obergrenze, Nachfolge, Space-Zuordnung; private Bibliotheken als Sonderfall |
-| [access-control.md](./access-control.md) | Fähigkeiten, Gruppen, Kontodeaktivierung, „Sicht als“, Vorfallsbereich |
+| [access-control.md](./access-control.md) | Fähigkeiten, Gruppen, Kontodeaktivierung, Freigabe-Obergrenze (durch die Nur-Besitzerin-Regel ergänzt), „Sicht als“, Vorfallsbereich und die neue Befugnis des Vorfallszugriffs |
 | [agents-and-tools.md](./agents-and-tools.md) | MCP-Client, Zulassungsliste, Ausgangstor (Phase 2) |
 | [external-access.md](./external-access.md) | Gegenrichtung: OPAA als MCP-Server |
 | Epic [#2146](https://github.com/criew/opaa/issues/2146) | Datei-Konnektoren: Nextcloud (#2152), SharePoint/OneDrive (#2153), Dropbox (#2154) |
@@ -457,8 +510,9 @@ Ob Token-Speicher und Verbindungsmodell einen eigenen ADR brauchen, entscheidet 
   ADR-Nachtrag zu ADR-0036.
 - **Live-Abfrage** verbundener Konten im Chat ohne Indexierung: mit #1747.
 - **Token-Austausch** als weitere Anmeldeart, abhängig vom Spike.
-- **Benachrichtigung** über Ablauf und Abbrüche im Postfach aus
-  [#1297](https://github.com/criew/opaa/issues/1297), sobald es existiert.
+- **Weitere Kanäle** für Ablaufwarnungen und Abbrüche (E-Mail, Zusammenfassung): Heute gibt es die
+  minimale In-App-Benachrichtigung (ADR-0019); der Ausbau gehört zu
+  [#1297](https://github.com/criew/opaa/issues/1297).
 
 ---
 
