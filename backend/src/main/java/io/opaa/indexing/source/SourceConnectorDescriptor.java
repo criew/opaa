@@ -28,6 +28,8 @@ import java.util.Set;
  * @param profileSupport how the connector stands to connection profiles ("Profilangabe")
  * @param authMethods the sign-in methods a profile of this connector may choose; empty exactly when
  *     profiles are forbidden
+ * @param serviceAccountKey the sign-in by service account key the core performs for a library
+ *     without profile, {@code null} when {@code sourceCredentials} reach the connector as stored
  */
 public record SourceConnectorDescriptor(
     SourceType type,
@@ -39,7 +41,8 @@ public record SourceConnectorDescriptor(
     PushIntake pushIntake,
     Duration fullSyncInterval,
     ConnectionProfileSupport profileSupport,
-    Set<ConnectionAuthMethod> authMethods) {
+    Set<ConnectionAuthMethod> authMethods,
+    ServiceAccountKeyAuth serviceAccountKey) {
 
   public SourceConnectorDescriptor {
     Objects.requireNonNull(type, "type");
@@ -61,6 +64,10 @@ public record SourceConnectorDescriptor(
     }
     if (uploads && (indexingRun || remote)) {
       throw new IllegalArgumentException("a library filled by uploads has no run and no remote");
+    }
+    if (serviceAccountKey != null && !remote) {
+      throw new IllegalArgumentException(
+          "only a remote source signs in with a service account key");
     }
   }
 
@@ -84,7 +91,8 @@ public record SourceConnectorDescriptor(
         pushIntake,
         fullSyncInterval,
         ConnectionProfileSupport.FORBIDDEN,
-        Set.of());
+        Set.of(),
+        null);
   }
 
   /**
@@ -116,7 +124,8 @@ public record SourceConnectorDescriptor(
         pushIntake,
         fullSyncInterval,
         profileSupport,
-        authMethods);
+        authMethods,
+        serviceAccountKey);
   }
 
   public SourceConnectorDescriptor withPushIntake(PushIntake intake) {
@@ -130,7 +139,8 @@ public record SourceConnectorDescriptor(
         intake,
         fullSyncInterval,
         profileSupport,
-        authMethods);
+        authMethods,
+        serviceAccountKey);
   }
 
   public SourceConnectorDescriptor withFullSyncInterval(Duration interval) {
@@ -144,7 +154,8 @@ public record SourceConnectorDescriptor(
         pushIntake,
         interval,
         profileSupport,
-        authMethods);
+        authMethods,
+        serviceAccountKey);
   }
 
   /** The connector admits profiles as {@code support} says, signing in with {@code methods}. */
@@ -160,7 +171,24 @@ public record SourceConnectorDescriptor(
         pushIntake,
         fullSyncInterval,
         support,
-        methods);
+        methods,
+        serviceAccountKey);
+  }
+
+  /** The connector signs in with a service account key the core exchanges for an access token. */
+  public SourceConnectorDescriptor withServiceAccountKey(ServiceAccountKeyAuth auth) {
+    return new SourceConnectorDescriptor(
+        type,
+        displayName,
+        indexingRun,
+        remote,
+        deepLink,
+        uploads,
+        pushIntake,
+        fullSyncInterval,
+        profileSupport,
+        authMethods,
+        auth);
   }
 
   /** Whether a library of this connector may be connected through a profile. */

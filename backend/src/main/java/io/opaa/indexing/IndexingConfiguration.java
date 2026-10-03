@@ -25,6 +25,7 @@ import io.opaa.indexing.source.IndexingSourceExecutorRegistry;
 import io.opaa.indexing.source.LibraryIndexingScheduler;
 import io.opaa.indexing.source.RemoteContentProperties;
 import io.opaa.indexing.source.RemoteOriginalAccess;
+import io.opaa.indexing.source.ServiceAccountTokens;
 import io.opaa.indexing.source.SourceConnectionResolver;
 import io.opaa.indexing.source.SourceConnector;
 import io.opaa.indexing.source.SourceConnectorRegistry;
@@ -242,6 +243,13 @@ public class IndexingConfiguration {
         documentRepository,
         libraryStorageQuotaService,
         sourceConnectionResolver);
+  }
+
+  /** Signs service account assertions for the connectors that sign in with a key (ADR-0040). */
+  @Bean
+  ServiceAccountTokens serviceAccountTokens(
+      TargetAddressValidator targetAddressValidator, Clock clock) {
+    return new ServiceAccountTokens(targetAddressValidator, clock);
   }
 
   @Bean

@@ -14,8 +14,9 @@ import java.util.Optional;
  * reaches a connector, and the only list of source types there is (ADR-0038). Built from the
  * connector beans; startup fails when two connectors serve the same type, when no connector serves
  * {@link SourceType#UPLOAD}, when a connector other than that one accepts uploads (the upload
- * store, its folders and originals are keyed to {@code UPLOAD}), or when a connector names a push
- * intake without handling one or the other way round.
+ * store, its folders and originals are keyed to {@code UPLOAD}), when a connector names a push
+ * intake without handling one or the other way round, or when a connector that signs in with a
+ * service account key admits profiles (ADR-0040: the core signs only for a library's own key).
  */
 public class SourceConnectorRegistry {
 
@@ -31,6 +32,13 @@ public class SourceConnectorRegistry {
       if ((descriptor.pushIntake() != null) != (connector instanceof PushIntakeHandler)) {
         throw new IllegalStateException(
             "SourceConnector for " + type + " must name a push intake exactly when it handles one");
+      }
+      // until connections signs a key itself, a profile would hand the stored key on raw
+      if (descriptor.serviceAccountKey() != null && descriptor.admitsProfiles()) {
+        throw new IllegalStateException(
+            "SourceConnector for "
+                + type
+                + " signs in with a service account key and may not admit profiles yet");
       }
       if (descriptor.uploads() != SourceType.UPLOAD.equals(type)) {
         throw new IllegalStateException(

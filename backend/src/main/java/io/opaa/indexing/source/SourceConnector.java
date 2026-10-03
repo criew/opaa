@@ -30,6 +30,24 @@ public interface SourceConnector {
   }
 
   /**
+   * The address {@link #validate} stores for {@code requested}, {@code null} included - what the
+   * core compares against the stored origin before it keeps stored credentials. A connector with a
+   * fixed target returns it here; by default the request is taken as sent.
+   */
+  default String normalizeSourceUrl(String requested) {
+    return requested;
+  }
+
+  /**
+   * The account a service account key imitates under {@code settings}, {@code null} for none
+   * (ADR-0040, Entscheidung 4). The core signs the assertion with it and keeps stored credentials
+   * only while it stays the same. No secret.
+   */
+  default String assertionSubject(ConnectorData settings) {
+    return null;
+  }
+
+  /**
    * Validates the complete configuration of a new library and returns its normalised form - the
    * connection fields as they are stored, the connector settings as {@link #configureNew} applies
    * them.
