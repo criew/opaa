@@ -32,6 +32,7 @@ describe('the source registry (ADR-0038)', () => {
       'CONFLUENCE',
       'S3',
       'GOOGLE_DRIVE',
+      'NEXTCLOUD',
     ])
     expect(sourceRegistration('UPLOAD')?.configuration).toBeNull()
     expect(sourceRegistration('PROBE')).toBeUndefined()
