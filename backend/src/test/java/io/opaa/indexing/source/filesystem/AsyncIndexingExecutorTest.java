@@ -302,10 +302,11 @@ class AsyncIndexingExecutorTest {
   }
 
   @Test
-  void anUnreadableSubdirectoryIsSkippedAndItsBestandKeptWhileReadableFilesAreIndexed()
+  void anUnreadableSubdirectoryKeepsOnlyItsOwnBestandWhileEverythingElseIsReconciled()
       throws IOException {
-    // regression guard for #2124: the run completes instead of failing, and since the listing is
-    // incomplete, the documents below the unreadable directory are not taken for vanished
+    // regression guard for #2124/#2128: the run completes instead of failing; the documents below
+    // the unreadable directory are kept, a document deleted outside it is still removed - also one
+    // whose name merely starts with the unreadable directory's name
     Path readable = documentDir.resolve("lesbar.txt");
     Files.writeString(readable, "content");
     Path locked = Files.createDirectory(documentDir.resolve("gesperrt"));
@@ -313,8 +314,18 @@ class AsyncIndexingExecutorTest {
     Files.writeString(hidden, "content");
     Document hiddenDoc =
         filesystemDocument("verborgen.txt", hidden.toAbsolutePath().toString(), null);
+    Document deletedDoc =
+        filesystemDocument(
+            "geloescht.txt",
+            documentDir.resolve("geloescht.txt").toAbsolutePath().toString(),
+            null);
+    Document lookalikeDoc =
+        filesystemDocument(
+            "alt.txt",
+            documentDir.resolve("gesperrt-alt").resolve("alt.txt").toAbsolutePath().toString(),
+            null);
     when(documentRepository.findByLibraryIdAndSourceType(library.getId(), SourceTypes.FILESYSTEM))
-        .thenReturn(List.of(hiddenDoc));
+        .thenReturn(List.of(hiddenDoc, deletedDoc, lookalikeDoc));
     when(documentIngestService.ingest(
             DocumentIngests.that().file().file(readable).in(library).inFolder(null).match(), any()))
         .thenReturn(DocumentIngestResult.PROCESSED);
@@ -326,6 +337,9 @@ class AsyncIndexingExecutorTest {
 
     verify(indexingJobService, timeout(2000)).completeJob(eq(jobId), eq(1), eq(0), eq(0), anyInt());
     verify(indexingJobService, never()).failJob(any(), any());
+    verify(documentRepository).delete(deletedDoc);
+    verify(documentRepository).delete(lookalikeDoc);
+    verify(documentRepository, never()).delete(hiddenDoc);
     verify(indexingRunEventRepository)
         .save(
             argThat(
@@ -333,9 +347,8 @@ class AsyncIndexingExecutorTest {
                     event.getCategory() == IndexingEventCategory.UNREACHABLE
                         && "gesperrt".equals(event.getReference())));
     verify(indexingJobService).recordListingAssessment(jobId, false, List.of());
-    verify(staleDocumentCleanupService, never())
-        .reconcile(any(), any(), any(), any(), any(), any(), any());
-    verify(documentRepository, never()).delete(any(Document.class));
+    verify(indexingJobService).recordUnreadableScopes(jobId, 1);
+    verify(folderService).pruneOrphanedFolders(eq(library), any());
   }
 
   @Test

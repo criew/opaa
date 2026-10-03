@@ -716,6 +716,15 @@ components:
             on every other run, and on an assessing run that listed everything.
           items:
             type: string
+        unreadableScopeCount:
+          type: integer
+          nullable: true
+          description: >
+            How many areas below a FILESYSTEM library's source path (directories or single files)
+            this run could not read. Their already indexed documents were kept; everything else
+            was reconciled as usual. The paths themselves are in the run's UNREACHABLE events.
+            Absent on every run without such areas.
+          example: 2
         metrics:
           $ref: "#/components/schemas/IndexingRunMetrics"
     IndexingRunMetrics:
