@@ -39,7 +39,7 @@ export default function SpaceKnowledgeNotice({ spaceId, gap, role }: SpaceKnowle
         mayAssign ? (
           <Button
             component={RouterLink}
-            to={spaceSettingsRoute(spaceId, 'knowledge')}
+            to={spaceSettingsRoute(spaceId, 'content')}
             color="inherit"
             size="small"
           >

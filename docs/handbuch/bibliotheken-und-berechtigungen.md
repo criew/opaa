@@ -339,7 +339,7 @@ Prompts der zugeordneten Prompt-Bibliotheken an. Was eine Person lesen darf, abe
 zugeordnet ist, steht dort nicht zur Verfügung. Ein Raum ohne zugeordnetes Wissen durchsucht nichts;
 das gilt auch für den persönlichen Standard-Raum, der zunächst leer ist. Der Chat und die Seite des
 Raums sagen das mit „Diesem Space ist kein Wissen zugeordnet."; Kuratoren und Administratoren
-führt „Wissen zuordnen" direkt in den Reiter „Wissen" der Einstellungen. Die Durchsetzung liegt im
+führt „Wissen zuordnen" direkt in den Reiter „Inhalte" der Einstellungen. Die Durchsetzung liegt im
 Backend, nicht nur in der Oberfläche: Einen `@`-Bezug auf eine nicht zugeordnete Bibliothek und
 einen Prompt aus einer nicht zugeordneten Prompt-Bibliothek lehnt es ab.
 
@@ -354,8 +354,8 @@ Eigentümerin **eine** Benachrichtigung, die alle ihre Bestände nennt.
 
 **Was eine Person nicht lesen darf, sieht sie auch in der Zuordnungsliste nicht** — in keiner
 Rolle, auch nicht als Kurator, Administrator oder Systemverwaltung. Die Liste nennt weder Namen
-noch Anzahl solcher Bereitstellungen. Sind nicht alle Zuordnungen lesbar, steht in den Reitern
-„Wissen" und „Prompts" der Einstellungen der Hinweis „Nicht alle zugeordneten Inhalte sind für Sie
+noch Anzahl solcher Bereitstellungen. Sind nicht alle Zuordnungen lesbar, steht im Reiter
+„Inhalte" der Einstellungen der Hinweis „Nicht alle zugeordneten Inhalte sind für Sie
 lesbar."; ist nur Nicht-Lesbares zugeordnet, steht allein dieser Hinweis da. Lösen kann eine
 Bereitstellung im Raum nur, wer die Bibliothek lesen darf; jeder andere Versuch wird wie bei einer
 unbekannten Bibliothek mit „nicht gefunden" beantwortet. Eine Bereitstellung, die man nicht lesen
@@ -368,18 +368,27 @@ Mitglieder, im Verzeichnis sichtbar mit Beitritt auf Antrag, oder im Verzeichnis
 Selbstbeitritt.
 
 **In der Oberfläche liegt all das auf einer Seite je Raum:** dem Zahnrad „Einstellungen" am Fuß der
-Seitenleiste. Es sehen nur Administratoren und Kuratoren des Raums. Die Seite hat vier Reiter:
+Seitenleiste. Das Zahnrad sehen nur Administratoren, Kuratoren und der Eigentümer des Raums; ein
+einfaches Mitglied erreicht die Seite nur über einen direkten Verweis und liest dort nur. Die Seite
+hat drei Reiter:
 
 | Reiter | Inhalt |
 |---|---|
 | **Stammdaten** | Name, Beschreibung, Sichtbarkeit, der Schalter „Inaktive Chats automatisch archivieren und löschen" ([Suche](suche.md), Abschnitt 2) — und am Ende der abgesetzte **Gefahrenbereich** mit „Space archivieren" und „Space löschen" |
 | **Mitglieder** | Die Mitgliederliste mit Rollen, das Aufnehmen von Personen und Gruppen, die Übertragung der Verantwortung und die Herleitung je Zeile |
-| **Wissen** | Die dem Raum zugeordneten Wissensbibliotheken, die man lesen darf; Zuordnen über die Kachelauswahl und Lösen ab der Kuratorenrolle |
-| **Prompts** | Die dem Raum zugeordneten [Prompt-Bibliotheken](prompt-bibliotheken.md), die man lesen darf; Zuordnen über die Kachelauswahl und Lösen ab der Kuratorenrolle |
+| **Inhalte** | Eine Kachelliste aller Arten von Bestand — Wissensbibliotheken und [Prompt-Bibliotheken](prompt-bibliotheken.md). Ein Häkchen heißt „dem Raum zugeordnet"; anhaken und abhaken dürfen Kuratoren, Administratoren und der Eigentümer des Raums |
+
+**Im Reiter „Inhalte" wirkt ein Häkchen sofort.** Anhaken ordnet zu und bestätigt das kurz; Abhaken
+löst die Zuordnung, und die Meldung dazu bietet „Rückgängig" an. Schlägt die Änderung fehl, springt
+das Häkchen zurück, und eine Fehlermeldung nennt den Grund. Beim Öffnen ist der Filter „Nur
+zugeordnete" eingeschaltet; ausgeschaltet zeigt die Liste alles, was man lesen darf und deshalb
+zuordnen könnte. Darüber stehen dieselben Filter wie im Katalog: Suche, Typ und Favoriten. Wer
+weder Kurator noch Administrator noch Eigentümer des Raums ist, sieht die zugeordneten Inhalte, die
+er lesen darf, nur lesend.
 
 **Die ersten beiden Reiter gehören den Administratoren.** Ein Kurator öffnet dieselbe Seite, sieht
 die Stammdaten aber nur lesend, und im Reiter „Mitglieder" steht für ihn der Hinweis, dass die
-Liste seiner Rolle nicht offensteht — seine Arbeit liegt in den Reitern „Wissen" und „Prompts".
+Liste seiner Rolle nicht offensteht — seine Arbeit liegt im Reiter „Inhalte".
 Den Schalter der Chat-Bereinigung im eigenen Standard-Raum legt nur dessen Eigentümer um, auch die
 Systemverwaltung nicht. Deshalb lässt sich ein Standard-Raum auch nicht übertragen: Der Knopf „Zum
 Eigentümer machen" fehlt dort, und eine Übertragung wird abgewiesen. Den
@@ -406,9 +415,9 @@ Raum; der Assistent bleibt mit allen Eingaben offen und nennt den Grund. Die Auf
 Mitglieds steht wie beim späteren Hinzufügen im Nachweisprotokoll. Ist kein Wissen gewählt, sagt die Zusammenfassung „Kein
 Wissen zugeordnet — der Space durchsucht kein Wissen, bis Sie etwas zuordnen."
 
-Dieselbe Kachelauswahl steht in den Reitern „Wissen" und „Prompts" der Einstellungen, dort auf die
-Art des Reiters beschränkt. Bereits zugeordnete Bestände erscheinen gesperrt mit „Bereits
-zugeordnet"; „Zuordnen" ordnet alles Gewählte zu.
+Dieselbe Kachelauswahl steht im Reiter „Inhalte" der Einstellungen. Dort ist das Häkchen die
+Zuordnung selbst und wirkt sofort (Abschnitt „Zuordnung: was ein Raum enthält"); eine Zeile mit
+allem Gewählten und einen Knopf „Zuordnen" gibt es dort nicht.
 
 ### Zuordnen aus dem Katalog: „In Space verwenden"
 

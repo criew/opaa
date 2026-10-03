@@ -365,7 +365,7 @@ test.describe.serial('Chats im Space, @-Referenzen und Suchbereich-Chip-Leiste (
     await expect(page.getByRole('button', { name: 'Belege anzeigen' })).toHaveCount(0)
 
     await assign.click()
-    await expect(page).toHaveURL(new RegExp(`/spaces/${spaceId}/settings/knowledge$`))
+    await expect(page).toHaveURL(new RegExp(`/spaces/${spaceId}/settings/content$`))
   })
 
   test('6. Einstieg und Space-Wechsel landen auf einem leeren Gespräch', async (

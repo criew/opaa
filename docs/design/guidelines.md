@@ -400,6 +400,11 @@ einmal durch `NotificationHost` in der AppShell) — nie über eine komponentene
 **nie als Inline-Alert, der über einer Tabelle oder Liste eingeschoben wird** und dabei fremden
 Inhalt verdrängt.
 
+Eine Benachrichtigung darf **eine** Aktion tragen, etwa „Rückgängig" nach einer sofort wirksamen
+Änderung (`notify(message, severity, { label, onClick })`). Die Aktion ist nie der einzige Weg: Was
+sie rückgängig macht, lässt sich auch am Ort der Änderung zurücknehmen, weil die Meldung nach
+sechs Sekunden verschwindet.
+
 Inline-`Alert`s bleiben Zuständen vorbehalten, die an ihren Ort gebunden sind und dort bestehen
 bleiben: der Validierungsfehler am Formular, der Ladefehler des Bereichs, ein dauerhafter
 Zustandshinweis („nur Leserechte"). Faustregel: Was nach einem Seitenwechsel noch gilt, ist ein

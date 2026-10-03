@@ -171,7 +171,7 @@ describe('ChatInput', () => {
       ).toBeInTheDocument()
       expect(screen.getByRole('link', { name: 'Wissen zuordnen' })).toHaveAttribute(
         'href',
-        '/spaces/space-gewerbeamt/settings/knowledge',
+        '/spaces/space-gewerbeamt/settings/content',
       )
     })
 

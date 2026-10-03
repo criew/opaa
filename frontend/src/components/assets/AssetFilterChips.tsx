@@ -18,6 +18,8 @@ interface AssetFilterChipsProps {
   onToggle: (key: AssetFilterKey) => void
   /** Sets the chips apart from a type group before them with a vertical rule. */
   separated?: boolean
+  /** The name of the `selectedOnly` chip, after what choosing means in its place. */
+  selectedOnlyLabel?: string
 }
 
 /**
@@ -29,6 +31,7 @@ export default function AssetFilterChips({
   value,
   onToggle,
   separated = false,
+  selectedOnlyLabel = 'Nur ausgewählte',
 }: AssetFilterChipsProps) {
   return (
     <Stack
@@ -50,7 +53,7 @@ export default function AssetFilterChips({
       />
       {value.selectedOnly !== undefined && (
         <Chip
-          label="Nur ausgewählte"
+          label={selectedOnlyLabel}
           variant={value.selectedOnly ? 'filled' : 'outlined'}
           aria-pressed={value.selectedOnly}
           onClick={() => onToggle('selectedOnly')}

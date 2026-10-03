@@ -292,17 +292,15 @@ paths:
       operationId: listSpaceAssetAssociations
       tags: [asset]
       summary: >
-        The assets associated with this space, of every type. For a plain MEMBER, filtered to what
-        they may themselves read (#203 acceptance criterion "two members with different grants see
-        different asset lists"). For a CURATOR, ADMIN or the space owner, unfiltered - every
-        association is listed so they can also detach one they cannot themselves read. Requires
-        space membership.
+        The assets associated with this space, of every type, filtered to what the caller may
+        read - in every role, CURATOR, ADMIN and the space owner included (ADR-0039, Entscheidung
+        2). Requires space membership.
       description: >
         docs/features/spaces-and-assets.md#assets-in-einen-space-assoziieren. An association
-        grants no access by itself - for a plain MEMBER, an asset is listed only if they already
-        have at least VIEWER on it through their own grants, a group grant, or organization-wide
-        visibility. An entry the caller cannot read carries readableByCaller=false and neither name
-        nor description.
+        grants no access by itself - an asset is listed only if the caller already has at least
+        VIEWER on it through their own grants, a group grant, or a grant to all accounts. An
+        association the caller cannot read appears in no entry and no count; only
+        hasUnreadableAssociations says that there is one.
       responses:
         "200":
           description: Associated assets
