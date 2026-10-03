@@ -98,7 +98,8 @@ class SourceEventIntakeTest {
             indexingJobService,
             new SourceEventProperties(Duration.ofSeconds(5), 3, 2),
             scheduler,
-            Clock.fixed(NOW, ZoneOffset.UTC));
+            Clock.fixed(NOW, ZoneOffset.UTC),
+            new LibrarySourceConnectionResolver());
   }
 
   private void enqueue(String... keys) {

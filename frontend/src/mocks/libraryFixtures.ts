@@ -361,6 +361,8 @@ export const mockSourceTypes: SourceTypeDescriptor[] = [
     uploads: false,
     pushIntake: true,
     browsable: true,
+    profileSupport: 'FORBIDDEN',
+    authMethods: [],
     fullSyncIntervalDefaultDays: 7,
   },
   {
@@ -370,6 +372,8 @@ export const mockSourceTypes: SourceTypeDescriptor[] = [
     uploads: false,
     pushIntake: false,
     browsable: false,
+    profileSupport: 'FORBIDDEN',
+    authMethods: [],
   },
   {
     type: 'HTTP_DIRECTORY',
@@ -378,6 +382,8 @@ export const mockSourceTypes: SourceTypeDescriptor[] = [
     uploads: false,
     pushIntake: false,
     browsable: false,
+    profileSupport: 'FORBIDDEN',
+    authMethods: [],
   },
   {
     type: 'RSS_FEED',
@@ -386,6 +392,8 @@ export const mockSourceTypes: SourceTypeDescriptor[] = [
     uploads: false,
     pushIntake: false,
     browsable: false,
+    profileSupport: 'FORBIDDEN',
+    authMethods: [],
   },
   {
     type: 'S3',
@@ -394,6 +402,8 @@ export const mockSourceTypes: SourceTypeDescriptor[] = [
     uploads: false,
     pushIntake: true,
     browsable: true,
+    profileSupport: 'FORBIDDEN',
+    authMethods: [],
   },
   {
     type: 'NEXTCLOUD',
@@ -410,6 +420,8 @@ export const mockSourceTypes: SourceTypeDescriptor[] = [
     uploads: true,
     pushIntake: false,
     browsable: false,
+    profileSupport: 'FORBIDDEN',
+    authMethods: [],
   },
 ]
 

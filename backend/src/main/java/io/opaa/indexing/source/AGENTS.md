@@ -27,11 +27,11 @@ von foundation, format und knowledge ab.
   jetzt gültige Geheimnis vom Port holt; sonst im Aufruf. Kein Konnektor hält oder erzeugt einen
   `SourceConnectionResolver` oder liest aus `KnowledgeLibrary` mehr als `getSourcePath`/`getWebhookSecret`.
 - **Geheimnisse stehen nie in `source_settings`** — die Spalte ist unverschlüsselt und erscheint in
-  Antworten. Plätze für Geheimnisse sind nur `source_credentials` und `source_webhook_secret`,
-  beide verschlüsselt. Antworten tragen nur Ja/Nein, das Audit nur Feldnamen.
-- **Jedes Ziel, an das Zugangsdaten gehen, leitet sich aus `sourceUrl` ab.** Die Ursprungsbindung
-  (`SourceOriginMatcher`) verwirft Zugangsdaten, sobald sich der Ursprung ändert. Steht ein Ziel nur
-  in `source_settings`, verlangt der Konnektor bei dessen Änderung selbst neue Zugangsdaten.
+  Antworten. Plätze für Geheimnisse: `source_credentials`, `source_webhook_secret`, Client-Secret
+  am Zugang, Token-Speicher - alle verschlüsselt; Antworten nur Ja/Nein, Audit nur Feldnamen.
+- **Jedes Ziel von Zugangsdaten leitet sich aus `sourceUrl` ab**, bei einem Zugang aus dessen
+  Server-Adresse; ein Ursprungswechsel verwirft sie (`SourceOriginMatcher`). Ein Ziel nur in
+  `source_settings` verlangt bei Änderung neue Zugangsdaten. Profilangabe: `withProfiles`.
 - **Der Laufrahmen ist `IndexingRunTemplate`:** Der Körper zählt nur die Quelle auf, gibt jedes
   Element über `IndexingRun` weiter und meldet einen `ListingOutcome`. Fortschritt, Protokoll,
   Fehlerübersetzung und Abgleich durch Abwesenheit besitzt der Rahmen.

@@ -89,6 +89,14 @@ public class IndexingRunTemplate {
     SourceSettings settings;
     try {
       settings = connectionResolver.resolve(library);
+    } catch (SourceConnectionBlockedException e) {
+      log.warn(
+          "Indexing run {} found the connection of library {} blocked: {}",
+          jobId,
+          library.getId(),
+          e.category());
+      progress.fail(e.getMessage());
+      return;
     } catch (RuntimeException e) {
       log.error(
           "Indexing run {} could not resolve the source of library {}", jobId, library.getId(), e);

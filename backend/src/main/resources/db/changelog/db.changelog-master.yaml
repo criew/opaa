@@ -21,6 +21,9 @@ databaseChangeLog:
       path: db/changelog/connectors/
       endsWithFilter: .yaml
   - includeAll:
+      path: db/changelog/connections/
+      endsWithFilter: .yaml
+  - includeAll:
       path: db/changelog/workspace/
       endsWithFilter: .yaml
   - includeAll:

@@ -303,6 +303,66 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /api/v1/libraries/{libraryId}/connection-profile:
+    parameters:
+      - name: libraryId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    put:
+      operationId: connectLibraryProfile
+      tags: [library]
+      summary: Connect a library through a connection profile of its source type (#2160)
+      description: >
+        Needs AssetRole.MANAGER on the library. The profile must belong to the library's source
+        type and admit libraries as owners. An address under the previous profile moves under
+        the new one; otherwise it must already lie under the profile's server address (400). A
+        stored secret is kept only while the origin stays the same. Also the way back for a
+        library whose profile was deleted ("Zugang entfernt").
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LibraryConnectionProfileRequest"
+      responses:
+        "200":
+          description: The library, connected
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LibraryResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    delete:
+      operationId: disconnectLibraryProfile
+      tags: [library]
+      summary: Release a library from its connection profile (#2160)
+      description: >
+        Needs AssetRole.MANAGER on the library. The library keeps its address and secret and
+        runs with them as its own. Refused with 400 for a source type that requires a profile.
+      responses:
+        "200":
+          description: The library, without a profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LibraryResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /api/v1/libraries/{libraryId}/documents:
     parameters:
       - name: libraryId
@@ -821,6 +881,14 @@ components:
             Ignored for ownerType USER, which always owns as the creator.
         sourceType:
           $ref: "#/components/schemas/SourceTypeKey"
+        connectionProfileId:
+          type: string
+          format: uuid
+          nullable: true
+          description: >
+            Creates the library connected through this connection profile (#2160) - one of
+            listConnectionProfileOptions for sourceType. sourceUrl may then be omitted (the
+            profile's server address) and must otherwise lie under it.
         sourcePath:
           type: string
           maxLength: 2000
@@ -1087,7 +1155,8 @@ components:
 
     SourceTypeDescriptor:
       type: object
-      required: [type, displayName, indexingRun, uploads, pushIntake, browsable]
+      required:
+        [type, displayName, indexingRun, uploads, pushIntake, browsable, profileSupport, authMethods]
       description: >
         One registered connector as the registry describes it (ADR-0038). The shape of its
         sourceSettings is documented in its handbook chapter and known to its form in the
@@ -1117,6 +1186,15 @@ components:
         browsable:
           type: boolean
           description: Whether browseSource answers for this type.
+        profileSupport:
+          $ref: "#/components/schemas/ConnectionProfileSupport"
+        authMethods:
+          type: array
+          description: >
+            The sign-in methods a connection profile of this type may choose; empty when the
+            type admits no profile.
+          items:
+            $ref: "#/components/schemas/ConnectionAuthMethod"
         fullSyncIntervalDefaultDays:
           type: integer
           nullable: true
@@ -1422,6 +1500,18 @@ components:
         - createdAt
         - updatedAt
       properties:
+        connectionProfile:
+          nullable: true
+          description: >
+            The connection profile ("Zugang") the library is connected through (#2160); absent for
+            a library with its own address and after its profile was deleted.
+          allOf:
+            - $ref: "#/components/schemas/ConnectionProfileRef"
+        connectionProfileRemoved:
+          type: boolean
+          description: >
+            The library's profile was deleted ("Zugang entfernt"): it keeps its content, runs no
+            more, and its managers connect it through another profile or delete it.
         id:
           type: string
           format: uuid

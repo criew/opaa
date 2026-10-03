@@ -1,0 +1,45 @@
+databaseChangeLog:
+  - changeSet:
+      id: connections-2026-10-03-connection-profiles
+      author: opaa
+      comment: "Connection profiles (Zugänge) and the profile a library is connected through (#2160, ADR-0041). The client secret is stored encrypted only; a deleted profile leaves the library's row with profile_id NULL, the state Zugang entfernt."
+      changes:
+        - sql:
+            sql: |
+              CREATE TABLE connection_profiles (
+                  id uuid NOT NULL,
+                  name character varying(255) NOT NULL,
+                  source_type character varying(20) NOT NULL,
+                  server_url character varying(2000) NOT NULL,
+                  auth_method character varying(32) NOT NULL,
+                  ownership character varying(16) NOT NULL,
+                  client_id character varying(255),
+                  client_secret_ciphertext character varying(3000),
+                  client_secret_expires_on date,
+                  tenant character varying(255),
+                  scopes character varying(2000),
+                  connector_settings text,
+                  created_at timestamp with time zone NOT NULL,
+                  updated_at timestamp with time zone NOT NULL,
+                  version bigint NOT NULL,
+                  CONSTRAINT connection_profiles_pkey PRIMARY KEY (id),
+                  CONSTRAINT chk_connection_profiles_auth_method CHECK (auth_method IN
+                      ('NONE', 'PERSONAL_SECRET', 'OAUTH', 'CLIENT_CREDENTIALS', 'SERVICE_ACCOUNT_KEY')),
+                  CONSTRAINT chk_connection_profiles_ownership CHECK (ownership IN
+                      ('LIBRARY', 'PERSON', 'BOTH'))
+              );
+              CREATE UNIQUE INDEX ux_connection_profiles_name ON connection_profiles (lower(name));
+
+              CREATE TABLE library_connections (
+                  library_id uuid NOT NULL,
+                  profile_id uuid,
+                  created_at timestamp with time zone NOT NULL,
+                  updated_at timestamp with time zone NOT NULL,
+                  version bigint NOT NULL,
+                  CONSTRAINT library_connections_pkey PRIMARY KEY (library_id),
+                  CONSTRAINT fk_library_connections_library FOREIGN KEY (library_id)
+                      REFERENCES knowledge_libraries(id) ON DELETE CASCADE,
+                  CONSTRAINT fk_library_connections_profile FOREIGN KEY (profile_id)
+                      REFERENCES connection_profiles(id) ON DELETE SET NULL
+              );
+              CREATE INDEX ix_library_connections_profile ON library_connections (profile_id);

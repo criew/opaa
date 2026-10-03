@@ -126,6 +126,59 @@ class ModularArchitectureFixtureTest {
         .isEmpty();
   }
 
+  /**
+   * {@code connection.profile -> connection} names the root package, {@code connection.misc} is not
+   * ordered; the web package may use both.
+   */
+  @Test
+  void aConnectionSubpackageThatNamesItsRootOrIsUnorderedIsReported() {
+    Scenario scenario = new Scenario("connectionorder");
+
+    assertThat(scenario.violations(ModularArchitecture::theConnectionPackagesDependOnlyDownward))
+        .hasSize(2)
+        .anySatisfy(
+            violation ->
+                assertThat(violation)
+                    .contains(
+                        "connection.profile -> connection leaves the connection subpackages",
+                        "profile.Profile"))
+        .anySatisfy(
+            violation ->
+                assertThat(violation)
+                    .contains(
+                        "connectionorder.connection.misc is not ordered", "CONNECTION_PACKAGES"))
+        .noneSatisfy(violation -> assertThat(violation).contains("ProfileApi"));
+  }
+
+  /**
+   * ADR-0041, Entscheidung 2: neither the core nor a connector knows connections, and connections
+   * never reaches library; library reaching connections passes.
+   */
+  @Test
+  void anEdgeIntoConnectionsFromBelowOrOutOfItUpwardIsReported() {
+    Scenario scenario = new Scenario("connectionedges");
+
+    assertThat(scenario.violations(ModularArchitecture::modulesDependOnlyOnAllowedModules))
+        .hasSize(3)
+        .anySatisfy(
+            violation ->
+                assertThat(violation)
+                    .contains("module KNOWLEDGE -> CONNECTIONS is no allowed edge", "IndexingCore"))
+        .anySatisfy(
+            violation ->
+                assertThat(violation)
+                    .contains(
+                        "module CONNECTORS -> CONNECTIONS is no allowed edge", "WebConnector"))
+        .anySatisfy(
+            violation ->
+                assertThat(violation)
+                    .contains("module CONNECTIONS -> LIBRARY is no allowed edge", "Resolver"))
+        .noneSatisfy(violation -> assertThat(violation).contains("LibraryAdministration.resolver"));
+    assertThat(scenario.violations(ModularArchitecture::noPackageDependsOnAHigherLayer))
+        .anySatisfy(
+            violation -> assertThat(violation).contains("indexing -> connection points upward"));
+  }
+
   @Test
   void anUnassignedTopLevelPackageIsNamedWithWhereToAssignIt() {
     Scenario scenario = new Scenario("unassigned");

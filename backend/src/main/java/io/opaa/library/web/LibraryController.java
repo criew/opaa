@@ -10,6 +10,7 @@ import io.opaa.api.dto.IndexingRunResponse;
 import io.opaa.api.dto.IndexingStatus;
 import io.opaa.api.dto.IndexingStatusResponse;
 import io.opaa.api.dto.IndexingTriggerSource;
+import io.opaa.api.dto.LibraryConnectionProfileRequest;
 import io.opaa.api.dto.LibraryDocumentPageResponse;
 import io.opaa.api.dto.LibraryDocumentResponse;
 import io.opaa.api.dto.LibraryFolderRenameRequest;
@@ -151,6 +152,23 @@ public class LibraryController {
     return LibraryResponseMapper.toResponse(
         libraryService.updateShareCap(
             libraryId, Boolean.TRUE.equals(request.getAllAccountsGrantAllowed()), caller));
+  }
+
+  /** Connects the library through a connection profile; see the service. */
+  @PutMapping("/{libraryId}/connection-profile")
+  public LibraryResponse connectLibraryProfile(
+      @PathVariable UUID libraryId,
+      @Valid @RequestBody LibraryConnectionProfileRequest request,
+      @Caller CurrentUser caller) {
+    return LibraryResponseMapper.toResponse(
+        libraryService.connectProfile(libraryId, request.getProfileId(), caller));
+  }
+
+  /** Releases the library from its connection profile. */
+  @DeleteMapping("/{libraryId}/connection-profile")
+  public LibraryResponse disconnectLibraryProfile(
+      @PathVariable UUID libraryId, @Caller CurrentUser caller) {
+    return LibraryResponseMapper.toResponse(libraryService.disconnectProfile(libraryId, caller));
   }
 
   /**
