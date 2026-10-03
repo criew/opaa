@@ -412,6 +412,8 @@ export const mockSourceTypes: SourceTypeDescriptor[] = [
     uploads: false,
     pushIntake: false,
     browsable: true,
+    profileSupport: 'FORBIDDEN',
+    authMethods: [],
   },
   {
     type: 'UPLOAD',
