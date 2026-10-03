@@ -21,8 +21,9 @@ import {
   listEligibleExternalAccessLibraries,
 } from '../../services/externalAccessApi'
 import { radius } from '../../theme/tokens'
-import ChoiceTileGroup, { type ChoiceTile } from '../choice/ChoiceTileGroup'
-import { assetTypeDefinition } from '../assets/assetTypeRegistry'
+import { markAssetFavorite, unmarkAssetFavorite } from '../../services/assetApi'
+import AssetTile from '../assets/AssetTile'
+import type { AssetTileData } from '../assets/assetTileData'
 import { type AssetFilterKey, type AssetFilters } from '../assets/AssetFilterChips'
 import AssetFilterBar from '../assets/AssetFilterBar'
 import {
@@ -77,46 +78,28 @@ function resultMessage(count: number, searching: boolean, filtering: boolean): s
 }
 
 /**
- * One tile per selectable library matching the search and the filters (guidelines 5.11). Search
- * and filters only hide tiles, they never drop a choice. "Nur ausgewählte" filters by `shown`, the
- * choice as it stood when the filter was switched on: a tile chosen away stays, so the focus does
- * not lose its tile. The sentence under the name carries the end of the release.
+ * One tile per selectable library matching the search and the filters. Search and filters only
+ * hide tiles, they never drop a choice. "Nur ausgewählte" filters by `shown`, the choice as it stood
+ * when the filter was switched on: a tile chosen away stays, so the focus does not lose its tile.
+ * The tile's last line carries the end of the release.
  */
 function libraryTiles(
   libraries: EligibleExternalAccessLibraryResponse[],
   query: string,
   filters: AssetFilters,
   shown: string[],
-): ChoiceTile<string>[] {
-  const Icon = assetTypeDefinition('KNOWLEDGE_LIBRARY')?.Icon
+): AssetTileData[] {
   return libraries
     .filter((library) => matchesQuery(library, query))
     .filter((library) => !filters.favorites || library.favorite)
     .filter((library) => !filters.selectedOnly || shown.includes(library.id))
     .map((library) => ({
-      value: library.id,
-      label: library.name,
-      icon: Icon ? <Icon sx={{ fontSize: 20 }} /> : null,
-      description: (
-        <>
-          {library.description && (
-            <Box
-              component="span"
-              sx={{
-                display: '-webkit-box',
-                WebkitLineClamp: 2,
-                WebkitBoxOrient: 'vertical',
-                overflow: 'hidden',
-              }}
-            >
-              {library.description}
-            </Box>
-          )}
-          <Box component="span" sx={{ display: 'block' }}>
-            Freigabe bis {formatDate(library.releaseExpiresAt)}
-          </Box>
-        </>
-      ),
+      assetType: 'KNOWLEDGE_LIBRARY',
+      assetId: library.id,
+      name: library.name,
+      description: library.description ?? null,
+      favorite: library.favorite,
+      note: `Freigabe bis ${formatDate(library.releaseExpiresAt)}`,
     }))
 }
 
@@ -181,6 +164,21 @@ export default function CreateExternalAccessTokenDialog({
   )
   const searching = query.trim() !== ''
   const filtering = anyFilter(filters)
+
+  async function setFavorite(libraryId: string, favorite: boolean) {
+    try {
+      if (favorite) await markAssetFavorite('KNOWLEDGE_LIBRARY', libraryId)
+      else await unmarkAssetFavorite('KNOWLEDGE_LIBRARY', libraryId)
+      setLibraries(
+        (current) =>
+          current?.map((library) =>
+            library.id === libraryId ? { ...library, favorite } : library,
+          ) ?? current,
+      )
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Der Favorit konnte nicht gespeichert werden')
+    }
+  }
 
   function toggleFilter(key: AssetFilterKey) {
     if (key === 'selectedOnly' && !filters.selectedOnly) setSelectedSnapshot(selected)
@@ -287,13 +285,33 @@ export default function CreateExternalAccessTokenDialog({
                   {searching || filtering ? resultMessage(tiles.length, searching, filtering) : ''}
                 </Box>
                 {tiles.length > 0 && (
-                  <ChoiceTileGroup<string>
-                    multiple
+                  <Box
+                    role="group"
                     aria-labelledby="create-token-libraries-title"
-                    tiles={tiles}
-                    value={selected}
-                    onChange={setSelected}
-                  />
+                    sx={{
+                      display: 'grid',
+                      gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' },
+                      gap: 2,
+                    }}
+                  >
+                    {tiles.map((tile) => (
+                      <AssetTile
+                        key={tile.assetId}
+                        tile={tile}
+                        mode={{
+                          kind: 'select',
+                          selected: selected.includes(tile.assetId),
+                          onToggle: () =>
+                            setSelected((current) =>
+                              current.includes(tile.assetId)
+                                ? current.filter((id) => id !== tile.assetId)
+                                : [...current, tile.assetId],
+                            ),
+                        }}
+                        onFavoriteChange={(favorite) => setFavorite(tile.assetId, favorite)}
+                      />
+                    ))}
+                  </Box>
                 )}
                 <FormHelperText error={Boolean(fieldErrors.libraryIds)}>
                   {fieldErrors.libraryIds ?? SELECTION_IS_FINAL_HINT}

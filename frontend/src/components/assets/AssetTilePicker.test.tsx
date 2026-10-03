@@ -75,4 +75,42 @@ describe('AssetTilePicker', () => {
       screen.queryByText(/Weitere Einträge konnten nicht geladen werden/),
     ).not.toBeInTheDocument()
   })
+
+  /** #2131: the star is a control of its own - it marks the favorite and leaves the choice. */
+  it('marks a favorite from a tile without changing the choice', async () => {
+    const marked: string[] = []
+    server.use(
+      http.get('/api/v1/catalog', () =>
+        HttpResponse.json({
+          entries: [{ ...entry('erste', 'Erste Bibliothek'), favorite: false }],
+          page: 0,
+          size: 50,
+          totalElements: 1,
+          totalPages: 1,
+        }),
+      ),
+      http.put('/api/v1/assets/:assetType/:assetId/favorite', ({ params }) => {
+        marked.push(String(params.assetId))
+        return new HttpResponse(null, { status: 204 })
+      }),
+    )
+    const user = userEvent.setup()
+    renderWithProviders(<Harness />)
+
+    const checkbox = await screen.findByRole('checkbox', { name: 'Erste Bibliothek' })
+    await user.click(
+      screen.getByRole('button', { name: '„Erste Bibliothek“ als Favorit markieren' }),
+    )
+
+    expect(
+      await screen.findByRole('button', { name: '„Erste Bibliothek“ aus den Favoriten entfernen' }),
+    ).toBeInTheDocument()
+    expect(marked).toEqual(['erste'])
+    expect(checkbox).toHaveAttribute('aria-checked', 'false')
+    expect(screen.getByText('Nichts ausgewählt.')).toBeInTheDocument()
+
+    await user.click(checkbox)
+    expect(checkbox).toHaveAttribute('aria-checked', 'true')
+    expect(screen.getByText('Ausgewählt: Erste Bibliothek')).toBeInTheDocument()
+  })
 })

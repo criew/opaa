@@ -5,8 +5,10 @@ import Button from '@mui/material/Button'
 import Typography from '@mui/material/Typography'
 import type { AssetType, CatalogEntryResponse } from '../../types/api'
 import { getCatalog } from '../../services/catalogApi'
-import ChoiceTileGroup, { type ChoiceTile } from '../choice/ChoiceTileGroup'
-import { ASSET_TYPES, assetTypeDefinition } from './assetTypeRegistry'
+import { markAssetFavorite, unmarkAssetFavorite } from '../../services/assetApi'
+import AssetTile from './AssetTile'
+import { tileFromCatalogEntry, type AssetTileData } from './assetTileData'
+import { ASSET_TYPES } from './assetTypeRegistry'
 import { assetPickKey, type AssetPick } from './assetPick'
 import { type AssetFilters } from './AssetFilterChips'
 import AssetFilterBar from './AssetFilterBar'
@@ -28,8 +30,17 @@ interface PersonalKeys {
   error: string | null
 }
 
-/** What a tile needs, whether it comes from the catalog or from the chosen picks. */
-type TileSource = Pick<AssetPick, 'assetType' | 'assetId' | 'name' | 'description'>
+/** A pick's tile: what it showed when chosen, else name, description and type. */
+function tileOfPick(pick: AssetPick): AssetTileData {
+  return (
+    pick.tile ?? {
+      assetType: pick.assetType,
+      assetId: pick.assetId,
+      name: pick.name,
+      description: pick.description ?? null,
+    }
+  )
+}
 
 const PAGE_SIZE = 50
 const PERSONAL_PAGE_SIZE = 200
@@ -41,8 +52,6 @@ interface AssetTilePickerProps {
   types?: AssetType[]
   value: AssetPick[]
   onChange: (value: AssetPick[]) => void
-  /** Already associated: shown, but not choosable. */
-  excludedKeys?: ReadonlySet<string>
   /** Offers a chip of this name that narrows the tiles to the chosen ones; it starts switched on. */
   chosenOnlyLabel?: string
   /** Shows the chosen tiles only, without letting the choice change. */
@@ -66,7 +75,6 @@ export default function AssetTilePicker({
   types,
   value,
   onChange,
-  excludedKeys,
   chosenOnlyLabel,
   readOnly = false,
   busyKeys,
@@ -92,6 +100,9 @@ export default function AssetTilePicker({
   const [personal, setPersonal] = useState<PersonalKeys | null>(null)
   // Every pick chosen since the narrowing to the chosen was switched on.
   const [seen, setSeen] = useState<AssetPick[]>(value)
+  // Favorites set on a tile here; the server holds them, the tiles show them at once.
+  const [favorites, setFavorites] = useState<ReadonlyMap<string, boolean>>(new Map())
+  const [favoriteError, setFavoriteError] = useState<string | null>(null)
   const latestRequest = useRef(0)
 
   const offersChosenOnly = chosenOnlyLabel !== undefined && !readOnly
@@ -211,7 +222,7 @@ export default function AssetTilePicker({
 
   // While a new filter loads, the tiles of the previous answer stay in place, so a focused tile
   // keeps its focus; only the very first load shows the loading text.
-  let sources: TileSource[]
+  let sources: AssetTileData[]
   let isLoading: boolean
   let refreshing: boolean
   let error: string | null
@@ -237,47 +248,54 @@ export default function AssetTilePicker({
           )
           .filter((pick) => !allowed || allowed.has(assetPickKey(pick)))
           .sort((a, b) => a.name.localeCompare(b.name, 'de'))
+          .map(tileOfPick)
   } else {
     const current = loaded?.key === filterKey
     isLoading = !current && (!loaded || loaded.error !== null)
     refreshing = !current && !isLoading
     error = current ? (loaded?.error ?? null) : null
-    sources = isLoading ? [] : (loaded?.entries ?? [])
+    sources = isLoading ? [] : (loaded?.entries ?? []).map(tileFromCatalogEntry)
   }
   const page = loaded?.page ?? 0
   const currentPage = !showsChosenOnly && loaded?.key === filterKey
   const totalPages = currentPage ? (loaded?.totalPages ?? 0) : 0
   const totalElements = currentPage ? (loaded?.totalElements ?? 0) : 0
-  const shownKeys = sources.map(assetPickKey)
   const narrowed = Boolean(appliedQuery.trim() || filterType || personalFiltered)
 
-  const tiles: ChoiceTile<string>[] = sources.map((source) => {
-    const definition = assetTypeDefinition(source.assetType)
-    const Icon = definition?.Icon
+  const tiles = sources.map((source) => {
     const key = assetPickKey(source)
-    return {
-      value: key,
-      label: source.name,
-      description: [definition?.title, source.description].filter(Boolean).join(' – '),
-      icon: Icon ? <Icon /> : null,
-      disabledReason: excludedKeys?.has(key) ? 'Bereits zugeordnet' : null,
-      busy: busyKeys?.has(key),
-    }
+    return favorites.has(key) ? { ...source, favorite: favorites.get(key) } : source
   })
 
-  function handleTiles(next: string[]) {
-    const nextSet = new Set(next)
-    // Choices outside the shown tiles stay; only the shown ones follow the tile group.
-    const kept = value.filter((pick) => !shownKeys.includes(assetPickKey(pick)))
-    const fromTiles = sources
-      .filter((source) => nextSet.has(assetPickKey(source)))
-      .map((source) => ({
-        assetType: source.assetType,
-        assetId: source.assetId,
-        name: source.name,
-        description: source.description ?? null,
-      }))
-    onChange([...kept, ...fromTiles])
+  function toggle(tile: AssetTileData) {
+    const key = assetPickKey(tile)
+    if (chosenKeys.has(key)) {
+      onChange(value.filter((pick) => assetPickKey(pick) !== key))
+      return
+    }
+    onChange([
+      ...value,
+      {
+        assetType: tile.assetType,
+        assetId: tile.assetId,
+        name: tile.name,
+        description: tile.description ?? null,
+        tile,
+      },
+    ])
+  }
+
+  async function setFavorite(tile: AssetTileData, favorite: boolean) {
+    setFavoriteError(null)
+    try {
+      if (favorite) await markAssetFavorite(tile.assetType, tile.assetId)
+      else await unmarkAssetFavorite(tile.assetType, tile.assetId)
+      setFavorites((current) => new Map(current).set(assetPickKey(tile), favorite))
+    } catch (err) {
+      setFavoriteError(
+        err instanceof Error ? err.message : 'Der Favorit konnte nicht gespeichert werden',
+      )
+    }
   }
 
   function toggleFilter(key: keyof AssetFilters) {
@@ -310,6 +328,12 @@ export default function AssetTilePicker({
         selectedOnlyLabel={chosenOnlyLabel}
       />
 
+      {favoriteError && (
+        <Alert severity="error" onClose={() => setFavoriteError(null)}>
+          {favoriteError}
+        </Alert>
+      )}
+
       {error ? (
         <Alert severity="error">{error}</Alert>
       ) : tiles.length === 0 ? (
@@ -317,15 +341,30 @@ export default function AssetTilePicker({
           <Typography sx={{ color: 'text.secondary', fontSize: 13.5 }}>{emptyText}</Typography>
         )
       ) : (
-        <Box aria-busy={refreshing || undefined}>
-          <ChoiceTileGroup
-            multiple
-            tiles={tiles}
-            value={shownKeys.filter((key) => chosenKeys.has(key))}
-            onChange={handleTiles}
-            readOnly={readOnly}
-            aria-label={ariaLabel}
-          />
+        <Box
+          role="group"
+          aria-label={ariaLabel}
+          aria-busy={refreshing || undefined}
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
+            gap: 2,
+          }}
+        >
+          {tiles.map((tile) => (
+            <AssetTile
+              key={assetPickKey(tile)}
+              tile={tile}
+              mode={{
+                kind: 'select',
+                selected: chosenKeys.has(assetPickKey(tile)),
+                onToggle: () => toggle(tile),
+                busy: busyKeys?.has(assetPickKey(tile)),
+                readOnly,
+              }}
+              onFavoriteChange={(favorite) => setFavorite(tile, favorite)}
+            />
+          ))}
         </Box>
       )}
 

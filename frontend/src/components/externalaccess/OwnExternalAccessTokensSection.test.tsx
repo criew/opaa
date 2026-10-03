@@ -117,7 +117,8 @@ describe('OwnExternalAccessTokensSection', () => {
     // Lesbar, aber nicht für Fremdzugänge freigegeben: erscheint nicht.
     expect(within(dialog).queryByText('Projektakte Phoenix')).not.toBeInTheDocument()
     for (const tile of tiles) {
-      expect(tile).toHaveTextContent(/Freigabe bis \d{2}\.\d{2}\.\d{4}/)
+      // The checkbox is named by the title; the end of the release is its description.
+      expect(tile).toHaveAccessibleDescription(/Freigabe bis \d{2}\.\d{2}\.\d{4}/)
       expect(tile).toHaveAttribute('aria-checked', 'false')
     }
   })
