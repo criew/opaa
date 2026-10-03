@@ -401,6 +401,9 @@ paths:
         follows the rights formula alone, so a system administrator without a grant sees no more
         than anybody else. Every filter only narrows the readable set, and the filters combine with
         AND. The search matches name and description, case-insensitive, every character literally.
+        The order is fixed: the caller's own favorites first, then the rest; within each, by name
+        (case-insensitive, A to Z), ties broken by assetId, so the pages neither repeat nor skip an
+        entry.
         Known limit: the readable set goes into the query as a list of ids, and PostgreSQL takes at
         most 65 535 parameters per statement; a person who may read more assets gets an error
         instead of a page.
@@ -418,26 +421,6 @@ paths:
           schema:
             type: string
             maxLength: 200
-        - name: visibility
-          in: query
-          required: false
-          description: >
-            Only public (PUBLIC) or only restricted (RESTRICTED) assets, as CatalogEntryResponse
-            .visibility names them; both when absent.
-          schema:
-            $ref: "#/components/schemas/CatalogVisibility"
-        - name: fromMyGroups
-          in: query
-          required: false
-          description: >
-            "Aus meinen Gruppen": when true, only assets that carry an unexpired grant, of any
-            role, to a group the caller is currently a direct member of, or that are owned by such
-            a group. A grant to all accounts is no group grant and a grant to the caller in person
-            does not count. The groups are the caller's own, protected groups included, resolved
-            as the rights formula resolves them. False or absent applies no such restriction.
-          schema:
-            type: boolean
-            default: false
         - name: favorites
           in: query
           required: false
@@ -447,19 +430,6 @@ paths:
           schema:
             type: boolean
             default: false
-        - name: sort
-          in: query
-          required: false
-          description: >
-            The caller's own favorites always come first, in either order. Within them and
-            within the rest, name orders by name (case-insensitive, A to Z); updatedAt orders by
-            CatalogEntryResponse.updatedAt, most recent first. Ties are broken by assetId, so the
-            pages of one order neither repeat nor skip an entry. Any other value is refused with
-            400.
-          schema:
-            type: string
-            enum: [name, updatedAt]
-            default: name
         - name: page
           in: query
           required: false
@@ -484,7 +454,7 @@ paths:
                 $ref: "#/components/schemas/CatalogPageResponse"
         "400":
           description: >
-            A page, size, search text, visibility or sort outside the values declared above -
+            A page, size or search text outside the values declared above -
             refused rather than silently answering a different page than the one asked for.
           content:
             application/json:
@@ -580,8 +550,7 @@ components:
             documents a run removed because they left the source. Grants, a knowledge library's
             metadata schema and its folders themselves (created, renamed) are no such change, and
             neither is technical bookkeeping without a person or a content change behind it - a
-            reminder sent, an automatic expiry; none of them moves it. The sort updatedAt orders by
-            this value.
+            reminder sent, an automatic expiry; none of them moves it.
         knowledgeLibrary:
           description: Present exactly when assetType is KNOWLEDGE_LIBRARY.
           allOf:

@@ -331,8 +331,8 @@ nebenbei verrutscht; vor der Freigabe an alle Konten fragt die Anwendung eigens 
 [Katalog](#katalog) erscheint: **öffentlich**, wenn es an „Alle Konten" freigegeben ist, sonst
 **geschlossen** — sichtbar nur für die, die es über eine Freigabe an sich oder eine ihrer Gruppen
 lesen dürfen. Ein eigenes Feld dafür gibt es nicht, und es gibt keinen Weg, ein Asset sichtbar zu
-machen, ohne es lesbar zu machen. In der Oberfläche heißen die beiden Werte voraussichtlich
-„Für alle" und „Eingeschränkt".
+machen, ohne es lesbar zu machen. In der Oberfläche trägt ein öffentliches Asset ein Welt-Symbol
+(„Für alle Konten freigegeben"), ein geschlossenes kein Symbol.
 
 ---
 
@@ -340,10 +340,11 @@ machen, ohne es lesbar zu machen. In der Oberfläche heißen die beiden Werte vo
 
 Der **eine Einstieg** für alle [Assets](#ki-asset) — Wissensbibliotheken, Prompt-Bibliotheken, später
 Skills und Agenten. Er zeigt alles, was die Person lesen darf, **und nichts sonst**, ausschließlich als
-Kacheln: Asset-Art mit Icon, Name, Beschreibung, Sichtbarkeit, zuständige Stelle, eigene Rolle,
-Stand und die Zahl der Spaces, in denen das Asset zugeordnet ist. Gefiltert wird nach Art,
-Sichtbarkeit, „aus meinen Gruppen" und [Favoriten](#favorit). „Neu" beginnt mit der Wahl der Art,
-„In Space verwenden" führt in die [Zuordnung](#zuordnung).
+Kacheln: Asset-Art mit Icon, Welt-Symbol bei öffentlicher Sichtbarkeit, Name, Beschreibung,
+zuständige Stelle, Aktualisierungsdatum und die Zahl der Spaces, in denen das Asset zugeordnet ist.
+Gesucht und gefiltert wird in einer Zeile nach Art und [Favoriten](#favorit); die Favoriten stehen
+oben, danach geht es nach Name. „Neu" beginnt mit der Wahl der Art, „In Space verwenden" im Menü
+„⋯" der Kachel führt in die [Zuordnung](#zuordnung).
 
 Der Katalog ist die sichtbare Einlösung der [Verteilbarkeit](#verteilbarkeit): Was ein Referat an alle
 Konten freigibt, findet jede Person dort — nutzbar im Chat wird es in den Spaces, denen es zugeordnet

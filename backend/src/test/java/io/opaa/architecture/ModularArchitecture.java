@@ -157,8 +157,7 @@ public final class ModularArchitecture {
    * request. No module reaches {@link Module#CONNECTORS}: they are found by component scanning.
    * EXTERNAL reaches RIGHTS for members a library inherits from {@code io.opaa.asset.Asset} (a
    * method reference such as {@code KnowledgeLibrary::getId} names the declaring class) and for the
-   * catalog's personal marks the token selection filters by ({@code
-   * AssetCatalogService#marksAmong}).
+   * favorite marks the token selection filters by ({@code AssetCatalogService#favoritesAmong}).
    */
   public static final Map<Module, Set<Module>> ALLOWED_MODULE_EDGES =
       Map.ofEntries(

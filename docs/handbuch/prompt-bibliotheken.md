@@ -146,10 +146,10 @@ gekennzeichnet.
 ### Im Katalog finden
 
 Der **Katalog** in der Hauptnavigation zeigt genau die Prompt- und Wissensbibliotheken, die die
-Person lesen darf — mit Suche über Name und Beschreibung, den Filtern nach Art, Sichtbarkeit und
-„Aus meinen Gruppen", dem Filter „Favoriten" und der Sortierung nach Name oder letzter Änderung;
-eigene Favoriten stehen oben. Eine Kachel nennt
-Sichtbarkeit, die eigene Rolle und als Stand das Datum der letzten Änderung, etwa eines Prompts.
+Person lesen darf — mit Suche über Name und Beschreibung, dem Filter nach Art und dem Filter
+„Favoriten"; eigene Favoriten stehen oben, danach geht es nach Name. Eine Kachel zeigt das
+Welt-Symbol, wenn die Bibliothek an „Alle Konten" freigegeben ist, und „Aktualisiert am" mit dem
+Datum der letzten Änderung, etwa eines Prompts.
 Jeder Eintrag führt auf die Detailseite. Eine Prompt-Bibliothek ohne Leserecht erscheint
 dort nicht, auch nicht über die Suche. Die Regeln im Einzelnen stehen in
 [Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), Abschnitt 4, „Der Katalog".
@@ -245,7 +245,7 @@ offen"**. Sie bleibt nutzbar, alle Rollen bleiben, nichts wird gelöscht — **n
 eingefroren**: keine neuen oder größeren Rollen, keine Freigabe an „Alle Konten", keine neue
 Zuordnung zu einem Raum. Prompts anlegen und ändern bleibt möglich.
 
-Die Kennzeichnung „Nachfolge offen — zuständig: …" steht im Katalog und auf der Detailseite. In der Betriebsliste unter **Administration → Lebenszyklus** erscheint die
+Die Kennzeichnung „Nachfolge offen — zuständig: …" steht auf der Detailseite; im Katalog steht „Nachfolge offen" als Zustandszeile mit Punkt, und der Adressat steht als zuständige Stelle. In der Betriebsliste unter **Administration → Lebenszyklus** erscheint die
 Prompt-Bibliothek als eigene Zeile; ihr Name führt auf ihre Detailseite, und der Ausgang ist
 dieselbe Übertragung wie bei jeder anderen Bibliothek.
 

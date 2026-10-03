@@ -137,24 +137,24 @@ describe('OwnExternalAccessTokensSection', () => {
     await user.click(await within(dialog).findByRole('checkbox', { name: /Meine Dokumente/ }))
     expect(within(dialog).getByText('1 ausgewählt')).toBeInTheDocument()
 
-    await user.type(within(dialog).getByRole('searchbox', { name: 'Bibliotheken suchen' }), 'recht')
+    await user.type(within(dialog).getByRole('searchbox', { name: 'Suchen' }), 'recht')
 
     expect(within(dialog).getAllByRole('checkbox')).toHaveLength(1)
     await user.click(within(dialog).getByRole('checkbox', { name: /Rechtsquellen Soziales/ }))
     expect(within(dialog).getByText('2 ausgewählt')).toBeInTheDocument()
 
-    await user.type(within(dialog).getByRole('searchbox', { name: 'Bibliotheken suchen' }), 'xyz')
+    await user.type(within(dialog).getByRole('searchbox', { name: 'Suchen' }), 'xyz')
     expect(within(dialog).queryAllByRole('checkbox')).toHaveLength(0)
     expect(within(dialog).getByText(/Keine Bibliothek passt zur Suche/)).toBeInTheDocument()
 
-    await user.clear(within(dialog).getByRole('searchbox', { name: 'Bibliotheken suchen' }))
+    await user.clear(within(dialog).getByRole('searchbox', { name: 'Suchen' }))
     expect(within(dialog).getByRole('checkbox', { name: /Meine Dokumente/ })).toHaveAttribute(
       'aria-checked',
       'true',
     )
 
     // Submitted while the search hides the chosen "Meine Dokumente": it is still sent.
-    await user.type(within(dialog).getByRole('searchbox', { name: 'Bibliotheken suchen' }), 'recht')
+    await user.type(within(dialog).getByRole('searchbox', { name: 'Suchen' }), 'recht')
     expect(
       within(dialog).queryByRole('checkbox', { name: /Meine Dokumente/ }),
     ).not.toBeInTheDocument()
@@ -173,28 +173,24 @@ describe('OwnExternalAccessTokensSection', () => {
         name: 'Eigene Notizen',
         releaseExpiresAt: RELEASE,
         favorite: false,
-        fromMyGroups: false,
       },
       {
         id: 'lib-fav-group',
         name: 'Rechtsquellen Soziales',
         releaseExpiresAt: RELEASE,
         favorite: true,
-        fromMyGroups: true,
       },
       {
         id: 'lib-group',
         name: 'Dienstanweisungen',
         releaseExpiresAt: RELEASE,
         favorite: false,
-        fromMyGroups: true,
       },
       {
         id: 'lib-fav',
         name: 'Vergaberecht',
         releaseExpiresAt: RELEASE,
         favorite: true,
-        fromMyGroups: false,
       },
     ]
 
@@ -226,15 +222,24 @@ describe('OwnExternalAccessTokensSection', () => {
       expect(tileNames(dialog)).toEqual(['Rechtsquellen Soziales', 'Vergaberecht'])
     })
 
-    it('zeigt mit „Aus meinen Gruppen“ nur, was über die eigenen Gruppen kommt', async () => {
+    it('führt eine Filterzeile: Suche, Favoriten, Nur ausgewählte - ohne Gruppenfilter', async () => {
       const user = userEvent.setup()
       render()
       const dialog = await openCreateDialog(user)
       await within(dialog).findByRole('checkbox', { name: /Eigene Notizen/ })
 
-      await user.click(within(dialog).getByRole('button', { name: 'Aus meinen Gruppen' }))
-
-      expect(tileNames(dialog)).toEqual(['Rechtsquellen Soziales', 'Dienstanweisungen'])
+      const search = within(dialog).getByRole('searchbox', { name: 'Suchen' })
+      const favorites = within(dialog).getByRole('button', { name: 'Favoriten' })
+      const selectedOnly = within(dialog).getByRole('button', { name: 'Nur ausgewählte' })
+      expect(
+        search.compareDocumentPosition(favorites) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy()
+      expect(
+        favorites.compareDocumentPosition(selectedOnly) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy()
+      expect(
+        within(dialog).queryByRole('button', { name: 'Aus meinen Gruppen' }),
+      ).not.toBeInTheDocument()
     })
 
     it('kombiniert die Filter und meldet, wenn nichts mehr passt', async () => {
@@ -244,26 +249,17 @@ describe('OwnExternalAccessTokensSection', () => {
       await within(dialog).findByRole('checkbox', { name: /Eigene Notizen/ })
 
       await user.click(within(dialog).getByRole('button', { name: 'Favoriten' }))
-      await user.click(within(dialog).getByRole('button', { name: 'Aus meinen Gruppen' }))
-      expect(tileNames(dialog)).toEqual(['Rechtsquellen Soziales'])
+      expect(tileNames(dialog)).toEqual(['Rechtsquellen Soziales', 'Vergaberecht'])
 
-      await user.type(
-        within(dialog).getByRole('searchbox', { name: 'Bibliotheken suchen' }),
-        'eigene',
-      )
+      await user.type(within(dialog).getByRole('searchbox', { name: 'Suchen' }), 'eigene')
       expect(tileNames(dialog)).toEqual([])
       expect(
         within(dialog).getByText('Keine Bibliothek passt zur Suche und zu den Filtern.'),
       ).toBeInTheDocument()
 
-      // Both filters off again is "alle".
+      // The filter off again is "alle".
       await user.click(within(dialog).getByRole('button', { name: 'Favoriten' }))
-      await user.click(within(dialog).getByRole('button', { name: 'Aus meinen Gruppen' }))
       expect(within(dialog).getByRole('button', { name: 'Favoriten' })).toHaveAttribute(
-        'aria-pressed',
-        'false',
-      )
-      expect(within(dialog).getByRole('button', { name: 'Aus meinen Gruppen' })).toHaveAttribute(
         'aria-pressed',
         'false',
       )

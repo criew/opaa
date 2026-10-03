@@ -8,35 +8,45 @@ describe('AssetFilterChips (guidelines 5.11)', () => {
   it('is a named group of independent toggles whose state aria-pressed carries', async () => {
     const user = userEvent.setup()
     const onToggle = vi.fn()
-    renderWithProviders(
-      <AssetFilterChips value={{ favorites: true, fromMyGroups: false }} onToggle={onToggle} />,
-    )
+    renderWithProviders(<AssetFilterChips value={{ favorites: true }} onToggle={onToggle} />)
 
     const group = screen.getByRole('group', { name: 'Filter' })
     expect(within(group).getByRole('button', { name: 'Favoriten' })).toHaveAttribute(
       'aria-pressed',
       'true',
     )
-    expect(within(group).getByRole('button', { name: 'Aus meinen Gruppen' })).toHaveAttribute(
-      'aria-pressed',
-      'false',
-    )
+    expect(within(group).getAllByRole('button')).toHaveLength(1)
     // Without a choice in progress there is nothing to narrow to.
     expect(within(group).queryByRole('button', { name: 'Nur ausgewählte' })).not.toBeInTheDocument()
 
-    await user.click(within(group).getByRole('button', { name: 'Aus meinen Gruppen' }))
     await user.click(within(group).getByRole('button', { name: 'Favoriten' }))
-    expect(onToggle.mock.calls).toEqual([['fromMyGroups'], ['favorites']])
+    expect(onToggle.mock.calls).toEqual([['favorites']])
+  })
+
+  it('is operable by keyboard', async () => {
+    const user = userEvent.setup()
+    const onToggle = vi.fn()
+    renderWithProviders(<AssetFilterChips value={{ favorites: false }} onToggle={onToggle} />)
+
+    await user.tab()
+    expect(screen.getByRole('button', { name: 'Favoriten' })).toHaveFocus()
+    await user.keyboard('{Enter}')
+    expect(onToggle).toHaveBeenCalledWith('favorites')
+  })
+
+  it('sets itself apart from a type group before it when separated', () => {
+    const { container } = renderWithProviders(
+      <AssetFilterChips value={{ favorites: false }} onToggle={vi.fn()} separated />,
+    )
+
+    expect(container.querySelector('[role="separator"], hr')).toBeInTheDocument()
   })
 
   it('offers "Nur ausgewählte" where something is being chosen', async () => {
     const user = userEvent.setup()
     const onToggle = vi.fn()
     renderWithProviders(
-      <AssetFilterChips
-        value={{ favorites: false, fromMyGroups: false, selectedOnly: false }}
-        onToggle={onToggle}
-      />,
+      <AssetFilterChips value={{ favorites: false, selectedOnly: false }} onToggle={onToggle} />,
     )
 
     await user.click(screen.getByRole('button', { name: 'Nur ausgewählte' }))
