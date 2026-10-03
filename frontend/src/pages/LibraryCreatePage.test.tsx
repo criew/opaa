@@ -229,6 +229,32 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       expect(screen.getByRole('radio', { name: /Confluence/ })).toBeEnabled()
     })
 
+    // ADR-0036, Nachtrag vom 03.10.2026: die Konnektor-Freigabe gilt je Quellart - eine nicht
+    // freigegebene Art bleibt mit dem Hinweis des Backends sichtbar, statt erst beim Anlegen zu
+    // scheitern.
+    it('locks the tile of a source type that is not released, with the notice from the backend', async () => {
+      const notice =
+        'Ihnen fehlt das Anlegerecht „Konnektorbibliotheken anlegen“ für die Quellart „RSS-Feed“.'
+      mockListSourceTypes.mockResolvedValue(
+        mockSourceTypes.map((descriptor) =>
+          descriptor.type === 'RSS_FEED'
+            ? {
+                ...descriptor,
+                creatable: false,
+                creatableWithOwnAddress: false,
+                creationNotice: notice,
+              }
+            : descriptor,
+        ),
+      )
+      await renderPage()
+
+      const rss = await screen.findByRole('radio', { name: /RSS-Feed/ })
+      expect(rss).toBeDisabled()
+      expect(rss).toHaveTextContent(notice)
+      expect(screen.getByRole('radio', { name: /Confluence/ })).toBeEnabled()
+    })
+
     it('names the connector right once a connector source is chosen', async () => {
       mockGetMyCapabilities.mockResolvedValue(['CREATE_LIBRARY'])
       const user = userEvent.setup()

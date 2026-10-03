@@ -30,9 +30,12 @@ describe('CapabilityManagementPage', () => {
   it('shows one plain-text line per capability, including the one nobody holds', async () => {
     renderWithProviders(<CapabilityManagementPage />, { withRouter: true })
 
+    expect(await screen.findByText('Quellart RSS-Feed: frei für Alle Konten.')).toBeInTheDocument()
     expect(
-      await screen.findByText('Alle Konten dürfen Konnektorbibliotheken anlegen.'),
+      screen.getByText('Zugang Nextcloud intern: aus, nur die Systemverwaltung.'),
     ).toBeInTheDocument()
+    // one card per capability, however many scopes it has
+    expect(screen.getAllByRole('region', { name: 'Konnektorbibliotheken anlegen' })).toHaveLength(1)
     expect(screen.getByText(/Niemand darf interne Gruppen anlegen/)).toBeInTheDocument()
     expect(screen.getAllByText('Alle Konten').length).toBeGreaterThan(0)
   })
@@ -55,7 +58,7 @@ describe('CapabilityManagementPage', () => {
     await user.click(within(card).getByRole('button', { name: /entziehen/i }))
 
     const dialog = await screen.findByRole('dialog', {
-      name: '„Konnektorbibliotheken anlegen" entziehen?',
+      name: '„Konnektorbibliotheken anlegen" für Quellart RSS-Feed entziehen?',
     })
     expect(dialog).toHaveTextContent(/für jedes Konto der Organisation/)
     await user.click(within(dialog).getByRole('button', { name: 'Entziehen' }))
@@ -124,6 +127,33 @@ describe('CapabilityManagementPage', () => {
     await waitFor(() => expect(granted).toHaveLength(1))
     expect(granted[0].capability).toBe('CREATE_SPACE')
     expect(granted[0].subjectId).toBe('group-phoenix')
+  })
+
+  // ADR-0036, Nachtrag vom 03.10.2026: Konnektorbibliotheken werden je Quellart oder Zugang
+  // erteilt - die Vergabe trägt den gewählten Geltungsbereich.
+  it('grants the connector capability in the chosen scope', async () => {
+    const granted: Array<{ scope?: string | null; subjectType: string }> = []
+    server.use(
+      http.post('/api/v1/admin/capabilities/:capability/grants', async ({ request }) => {
+        granted.push((await request.json()) as { scope?: string | null; subjectType: string })
+        return HttpResponse.json({}, { status: 201 })
+      }),
+    )
+    renderWithProviders(<CapabilityManagementPage />, { withRouter: true })
+    const user = userEvent.setup()
+
+    const card = await screen.findByRole('region', { name: 'Konnektorbibliotheken anlegen' })
+    await user.click(within(card).getByLabelText('Geltungsbereich'))
+    await user.click(await screen.findByRole('option', { name: 'Zugang Nextcloud intern' }))
+    await user.click(within(card).getByLabelText('Empfänger'))
+    await user.click(await screen.findByRole('option', { name: 'Alle Konten' }))
+    await user.click(within(card).getByRole('button', { name: 'Erteilen' }))
+
+    await waitFor(() => expect(granted).toHaveLength(1))
+    expect(granted[0]).toMatchObject({
+      scope: 'PROFILE:connection-profile-nextcloud',
+      subjectType: 'ALL_ACCOUNTS',
+    })
   })
 
   it('explains the page to an account without the system role', async () => {

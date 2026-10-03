@@ -130,7 +130,24 @@ export default function LibraryCreatePage() {
       return 'Für diese Quellart gibt es in dieser Oberfläche keine Eingabemaske.'
     }
     const capability = capabilityFor(type)
-    return isMissing(capability) ? capabilityMissingMessage(capability) : null
+    if (isMissing(capability)) return capabilityMissingMessage(capability)
+    return releaseMissingFor(type)
+  }
+
+  /**
+   * Die Konnektor-Freigabe gilt je Quellart (ADR-0036, Nachtrag vom 03.10.2026): eine Art, die die
+   * Person nicht anlegen darf oder die gesperrt ist, bleibt mit dem Hinweis des Backends sichtbar.
+   * Dieser Assistent legt mit eigener Adresse an, ohne Zugang.
+   */
+  function releaseMissingFor(type: SourceTypeKey): string | null {
+    const descriptor = sourceTypes.find((d) => d.type === type)
+    if (descriptor === undefined || descriptor.uploads || descriptor.creatableWithOwnAddress) {
+      return null
+    }
+    return (
+      descriptor.creationNotice ??
+      `Die Quellart „${descriptor.displayName}“ ist für Sie nur über einen Zugang freigegeben; das Anlegen über einen Zugang bietet dieser Assistent noch nicht.`
+    )
   }
 
   const selectableTypes = offeredTypes.filter((type) => missingFor(type) === null)
@@ -170,7 +187,7 @@ export default function LibraryCreatePage() {
   const requiredCapability: Capability = capabilityFor(sourceType)
   const missingCapability = isMissing(requiredCapability)
     ? capabilityMissingMessage(requiredCapability)
-    : null
+    : releaseMissingFor(sourceType)
 
   // Der Fokus folgt dem Schritt (WCAG 2.4.3): Nach „Weiter" steht er auf der Überschrift des neuen
   // Schritts, nicht auf dem Knopf, der gerade verschwunden ist.

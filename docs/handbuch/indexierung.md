@@ -438,16 +438,24 @@ angelegter Zugang ist für niemanden außer der Systemverwaltung freigegeben.
 #### Sperre einer Quellart oder eines Zugangs
 
 Die Systemverwaltung kann eine **Quellart** (für alle ihre Bibliotheken, mit und ohne Zugang) oder
-einen **Zugang** sperren:
+einen **Zugang** sperren. Eine Bedienoberfläche dafür gibt es nicht; gesperrt und entsperrt wird über
+die Verwaltungs-API (`PUT /api/v1/admin/connector-types/{Quellart}/lock`,
+`PUT /api/v1/admin/connection-profiles/{Zugang}/lock`). Die Folgen:
 
 - Neue Bibliotheken der Quellart oder auf dem Zugang sind nicht mehr möglich, auch nicht für die
-  Systemverwaltung.
-- Läufe starten nicht mehr und enden vor dem ersten Element mit der Meldung „Gesperrt – Inhalt wird
-  nicht mehr aktualisiert"; ein Lauf, der beim Sperren schon läuft, endet regulär. Originale aus
-  der Quelle lassen sich nicht abrufen.
-- Der Bestand bleibt durchsuchbar. Detailansicht und Liste der Bibliothek tragen den Hinweis
-  „Gesperrt – Inhalt wird nicht mehr aktualisiert" mit der gesperrten Quellart oder dem Zugang und
-  der Systemverwaltung als zuständiger Stelle.
+  Systemverwaltung; im Wissens-Assistenten ist die Kachel der Quellart gesperrt.
+- Ein manuell ausgelöster Lauf endet vor dem ersten Element mit der Meldung „Gesperrt – Inhalt wird
+  nicht mehr aktualisiert"; ein Lauf, der beim Sperren schon läuft, endet regulär. Der Zeitplan
+  überspringt die Bibliothek, und Push-Ereignisse der Quelle werden verworfen, beides ohne
+  fehlgeschlagenen Lauf.
+- Verbindungstest, Auflistung und Abruf eines Originals erreichen die Quelle nicht; sie antworten
+  mit dem Sperrhinweis.
+- Von einem gesperrten Zugang lässt sich eine Bibliothek nicht lösen, auch nicht durch die
+  Systemverwaltung. Sie läuft wieder, wenn die Sperre aufgehoben ist oder wenn ihre Verwaltenden sie
+  einem anderen, für sie freigegebenen Zugang zuordnen.
+- Der Bestand bleibt durchsuchbar. Der Reiter „Quelle" der Bibliothek trägt für alle
+  Leseberechtigten den Hinweis „Gesperrt – Inhalt wird nicht mehr aktualisiert" mit der gesperrten
+  Quellart oder dem Zugang und der Systemverwaltung als zuständiger Stelle.
 - Wird die Sperre aufgehoben, laufen die Bibliotheken ohne Neueinrichtung weiter.
 
 Sperren und Entsperren sind Governance-Ereignisse im Revisionsprotokoll. Der Entzug einer Freigabe

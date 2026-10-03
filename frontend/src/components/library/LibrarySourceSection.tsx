@@ -41,6 +41,7 @@ export interface LibrarySourceSectionProps {
     lastScheduledRunsFailed?: boolean | null
     connectionProfile?: { id: string; name: string } | null
     connectionProfileRemoved?: boolean
+    sourceLockNotice?: string | null
   }
   canEditSource: boolean
 }
@@ -67,6 +68,11 @@ export default function LibrarySourceSection({
 
   return (
     <Stack>
+      {library.sourceLockNotice && (
+        <Alert severity="warning" sx={{ mb: 2 }} data-testid="source-lock-notice">
+          {library.sourceLockNotice}
+        </Alert>
+      )}
       {library.connectionProfileRemoved && (
         <Alert severity="warning" sx={{ mb: 2 }} data-testid="connection-profile-removed">
           Zugang entfernt: Der Zugang dieser Bibliothek wurde von der Systemverwaltung gelöscht. Der
