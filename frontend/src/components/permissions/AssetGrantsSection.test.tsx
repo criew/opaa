@@ -787,8 +787,8 @@ describe('AssetGrantsSection', () => {
     expect(mockUpsertAssetGrant).not.toHaveBeenCalled()
   })
 
-  /** ADR-0036, Entscheidung 9: „23 bei Erteilung, heute 41" - eine Zeile, kein Vorgang. */
-  it('shows the growth signal of a group grant', async () => {
+  /** #2134: eine Gruppenfreigabe nennt die heutige Mitgliederzahl, kein Zuwachssignal. */
+  it('shows the current member count of a group grant', async () => {
     setManager()
     setGrants(library.id, [
       {
@@ -797,9 +797,7 @@ describe('AssetGrantsSection', () => {
         subjectId: group.id,
         subjectDisplayName: 'Referat 50',
         protectedGroup: false,
-        memberCountAtGrant: 23,
-        memberCountNow: 41,
-        smallGroup: false,
+        activeMemberCount: 41,
         emptyGroup: false,
         role: 'VIEWER',
         expiresAt: null,
@@ -811,7 +809,8 @@ describe('AssetGrantsSection', () => {
     ])
     renderWithProviders(<AssetGrantsSection assetType="KNOWLEDGE_LIBRARY" assetId={library.id} />)
 
-    expect(await screen.findByText(/23 bei Erteilung, heute 41/)).toBeInTheDocument()
+    expect(await screen.findByText(/· 41 Mitglieder/)).toBeInTheDocument()
+    expect(screen.queryByText(/bei Erteilung/)).not.toBeInTheDocument()
   })
 
   /**
@@ -827,9 +826,7 @@ describe('AssetGrantsSection', () => {
         subjectId: group.id,
         subjectDisplayName: 'Referat 50',
         protectedGroup: false,
-        memberCountAtGrant: 23,
-        memberCountNow: 41,
-        smallGroup: false,
+        activeMemberCount: 41,
         emptyGroup: false,
         role: 'VIEWER',
         expiresAt: null,
@@ -857,7 +854,8 @@ describe('AssetGrantsSection', () => {
     )
   })
 
-  it('withholds both figures of a small group and says so', async () => {
+  /** #2134: auch eine Gruppe unterhalb der Mindestgruppengröße zeigt ihre Zahl. */
+  it('shows the figure of a small group too', async () => {
     setManager()
     setGrants(library.id, [
       {
@@ -866,9 +864,7 @@ describe('AssetGrantsSection', () => {
         subjectId: group.id,
         subjectDisplayName: 'Referat 50',
         protectedGroup: false,
-        memberCountAtGrant: null,
-        memberCountNow: null,
-        smallGroup: true,
+        activeMemberCount: 2,
         emptyGroup: false,
         role: 'VIEWER',
         expiresAt: null,
@@ -880,7 +876,8 @@ describe('AssetGrantsSection', () => {
     ])
     renderWithProviders(<AssetGrantsSection assetType="KNOWLEDGE_LIBRARY" assetId={library.id} />)
 
-    expect(await screen.findByText(/kleine Gruppe/)).toBeInTheDocument()
+    expect(await screen.findByText(/· 2 Mitglieder/)).toBeInTheDocument()
+    expect(screen.queryByText(/kleine Gruppe/)).not.toBeInTheDocument()
   })
 
   /** ADR-0036, Entscheidung 9: namenlose Zeile, kein Signal - und trotzdem entziehbar. */
@@ -893,9 +890,7 @@ describe('AssetGrantsSection', () => {
         subjectId: 'group-personalrat',
         subjectDisplayName: null,
         protectedGroup: true,
-        memberCountAtGrant: null,
-        memberCountNow: null,
-        smallGroup: null,
+        activeMemberCount: null,
         emptyGroup: null,
         role: 'VIEWER',
         expiresAt: null,

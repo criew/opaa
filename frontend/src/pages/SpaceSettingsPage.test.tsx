@@ -56,9 +56,7 @@ const {
       subjectId: string
       displayName?: string
       role: 'MEMBER' | 'CURATOR' | 'ADMIN'
-      memberCountAtGrant?: number | null
-      memberCountNow?: number | null
-      smallGroup?: boolean
+      activeMemberCount?: number | null
       emptyGroup?: boolean
       protectedGroup?: boolean
       createdAt: string
@@ -90,16 +88,14 @@ const {
         role: 'ADMIN',
         createdAt: '2026-03-01T10:00:00Z',
       },
-      // #1815: a group as a member, with the growth signal of ADR-0036, Entscheidung 9.
+      // #1815: a group as a member, with its current size (ADR-0036, Entscheidung 9).
       {
         id: 'm-team-referat-50',
         subjectType: 'GROUP',
         subjectId: 'g1',
         displayName: 'Referat 50',
         role: 'MEMBER',
-        memberCountAtGrant: 23,
-        memberCountNow: 41,
-        smallGroup: false,
+        activeMemberCount: 41,
         emptyGroup: false,
         createdAt: '2026-03-01T10:00:00Z',
       },
@@ -110,8 +106,7 @@ const {
         subjectId: 'g2',
         role: 'MEMBER',
         protectedGroup: true,
-        memberCountAtGrant: null,
-        memberCountNow: null,
+        activeMemberCount: null,
         createdAt: '2026-03-01T10:00:00Z',
       },
     ],
@@ -302,6 +297,19 @@ const nonAdminSpace: SpaceResponse = {
   updatedAt: '2026-03-01T10:00:00Z',
 }
 
+/** Die Zeile eines Mitglieds in der Liste des Reiters „Mitglieder“ (#2134). */
+function memberRow(name: string | RegExp): HTMLElement {
+  const row = screen.getByText(name).closest('[data-testid="space-member-row"]')
+  expect(row).not.toBeNull()
+  return row as HTMLElement
+}
+
+/** Öffnet das „⋯“-Menü einer Mitgliedszeile. */
+async function openMemberMenu(user: ReturnType<typeof userEvent.setup>, name: string) {
+  await user.click(await screen.findByRole('button', { name: `Weitere Aktionen für „${name}“` }))
+  return screen.findByRole('menu')
+}
+
 function setSpaceState(space: SpaceResponse) {
   useSpaceStore.setState({
     spaces: [],
@@ -431,39 +439,40 @@ describe('SpaceSettingsPage', () => {
     setSpaceState(teamSpace)
     renderTab('members')
 
-    expect(await screen.findByText(/Owner · Eigentümer/)).toBeInTheDocument()
-    // The owner's own row must not offer "Entfernen" or "Zum Eigentümer machen" for themselves -
-    // the colleague's and both group rows do offer "Entfernen", neither group offers the handover
-    // (a space owner is always a natural person, #1815); the protected group's row exists for
-    // exactly this reason (#1820).
-    expect(screen.getByText('Colleague')).toBeInTheDocument()
-    expect(screen.getAllByRole('button', { name: /entfernen/i })).toHaveLength(3)
-    expect(screen.getAllByRole('button', { name: /zum eigentümer machen/i })).toHaveLength(1)
+    expect(await screen.findByText('Owner')).toBeInTheDocument()
+    expect(within(memberRow('Owner')).getByText('Eigentümer')).toBeInTheDocument()
+    // #2134: the owner's row carries no menu; the colleague and both group rows do - the
+    // protected group's row exists for exactly this reason (#1820).
+    expect(
+      screen.queryByRole('button', { name: 'Weitere Aktionen für „Owner“' }),
+    ).not.toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: /^Weitere Aktionen für/ })).toHaveLength(3)
   })
 
   it('#1923: never offers the handover in a personal space', async () => {
     setSpaceState({ ...teamSpace, isDefault: true })
     renderTab('members')
+    const user = userEvent.setup()
 
-    expect(await screen.findByText('Colleague')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /zum eigentümer machen/i })).not.toBeInTheDocument()
+    const menu = await openMemberMenu(user, 'Colleague')
+
+    expect(within(menu).queryByText('Zum Eigentümer machen')).not.toBeInTheDocument()
   })
 
-  // #1815: a group row names the group, marks it as one, and carries the growth signal of
-  // ADR-0036, Entscheidung 9 - but never the handover, which only a natural person may receive.
-  it('renders a group member with its name, its marker and its growth signal', async () => {
+  // #1815, #2134: a group row names the group, marks it as one and carries its current size -
+  // but never the handover, which only a natural person may receive.
+  it('renders a group member with its name, its marker and its current size', async () => {
     setSpaceState(teamSpace)
     renderTab('members')
+    const user = userEvent.setup()
 
-    const groupRow = await screen.findByText(/Referat 50 · Gruppe · 23 bei Aufnahme, heute 41/)
-    const row = groupRow.closest('div')
-    expect(row).not.toBeNull()
-    expect(
-      within(row as HTMLElement).queryByRole('button', { name: /zum eigentümer machen/i }),
-    ).not.toBeInTheDocument()
+    expect(await screen.findByText('Gruppe · 41 Mitglieder')).toBeInTheDocument()
+    expect(screen.queryByText(/bei Aufnahme/)).not.toBeInTheDocument()
+    const menu = await openMemberMenu(user, 'Referat 50')
+    expect(within(menu).queryByText('Zum Eigentümer machen')).not.toBeInTheDocument()
   })
 
-  it('withholds both figures for a small group instead of showing one of them', async () => {
+  it('shows the figure of a small group too', async () => {
     mockListSpaceMembers.mockResolvedValueOnce([
       {
         id: 'm-team-u1',
@@ -479,9 +488,7 @@ describe('SpaceSettingsPage', () => {
         subjectId: 'g2',
         displayName: 'Kleine Runde',
         role: 'MEMBER',
-        memberCountAtGrant: null,
-        memberCountNow: null,
-        smallGroup: true,
+        activeMemberCount: 2,
         emptyGroup: false,
         createdAt: '2026-03-01T10:00:00Z',
       },
@@ -489,7 +496,8 @@ describe('SpaceSettingsPage', () => {
     setSpaceState(teamSpace)
     renderTab('members')
 
-    expect(await screen.findByText(/Kleine Runde · Gruppe · kleine Gruppe/)).toBeInTheDocument()
+    expect(await screen.findByText('Gruppe · 2 Mitglieder')).toBeInTheDocument()
+    expect(screen.queryByText(/kleine Gruppe/)).not.toBeInTheDocument()
   })
 
   /**
@@ -499,12 +507,11 @@ describe('SpaceSettingsPage', () => {
   it('offers the member list of a group member and loads it only on request', async () => {
     setSpaceState(teamSpace)
     renderTab('members')
-    const trigger = await screen.findByRole('button', {
-      name: 'Mitglieder der Gruppe „Referat 50“ anzeigen',
-    })
+    const user = userEvent.setup()
+    const menu = await openMemberMenu(user, 'Referat 50')
     expect(mockGetSpaceGroupMembers).not.toHaveBeenCalled()
 
-    await userEvent.click(trigger)
+    await user.click(within(menu).getByRole('menuitem', { name: 'Mitglieder der Gruppe anzeigen' }))
 
     expect(await screen.findByText('Anna Bauer')).toBeInTheDocument()
     expect(mockGetSpaceGroupMembers).toHaveBeenCalledWith('space-team', 'g1', 0, 50)
@@ -540,13 +547,19 @@ describe('SpaceSettingsPage', () => {
     renderTab('members')
     const user = userEvent.setup()
 
-    await screen.findByText('Colleague')
-    const handoverButtons = screen.getAllByRole('button', { name: /zum eigentümer machen/i })
     // Both person rows, never the group row - a space owner is always a natural person.
-    expect(handoverButtons).toHaveLength(2)
+    for (const name of ['Owner', 'Colleague']) {
+      const menu = await openMemberMenu(user, name)
+      expect(within(menu).getByRole('menuitem', { name: 'Zum Eigentümer machen' })).toBeVisible()
+      await user.keyboard('{Escape}')
+    }
+    const groupMenu = await openMemberMenu(user, 'Referat 50')
+    expect(within(groupMenu).queryByText('Zum Eigentümer machen')).not.toBeInTheDocument()
+    await user.keyboard('{Escape}')
 
-    await user.click(handoverButtons[0])
-    await user.click(await screen.findByRole('button', { name: /übertragen/i }))
+    const menu = await openMemberMenu(user, 'Owner')
+    await user.click(within(menu).getByRole('menuitem', { name: 'Zum Eigentümer machen' }))
+    await answerConfirm(user, 'Verantwortung an Owner übertragen?', 'Übertragen')
 
     await waitFor(() => {
       expect(mockTransferSpaceOwnership).toHaveBeenCalledWith('space-team', 'u1')
@@ -581,19 +594,15 @@ describe('SpaceSettingsPage', () => {
     setSpaceState(teamSpace)
     renderTab('members')
 
-    const ownerName = await screen.findByText(/Owner · Eigentümer/)
-    // Seit #1820 trägt die Zeile unter dem Namen noch den Aufruf der Herleitung - die Rolle liegt
-    // eine Ebene höher, im Zeilencontainer.
-    const ownerRow = ownerName.closest('div')?.parentElement
-    expect(ownerRow).not.toBeNull()
-    expect(within(ownerRow as HTMLElement).queryByRole('combobox')).not.toBeInTheDocument()
-    expect(within(ownerRow as HTMLElement).getByText('Administrator')).toBeInTheDocument()
+    await screen.findByText('Owner')
+    const ownerRow = memberRow('Owner')
+    expect(within(ownerRow).queryByRole('combobox')).not.toBeInTheDocument()
+    // #2134: the owner carries "Eigentümer" alone, without the role label beside it.
+    expect(within(ownerRow).getByText('Eigentümer')).toBeInTheDocument()
+    expect(within(ownerRow).queryByText('Administrator')).not.toBeInTheDocument()
 
     // The (non-owner) colleague's row keeps its editable role Select.
-    const colleagueName = screen.getByText('Colleague')
-    const colleagueRow = colleagueName.closest('div')?.parentElement
-    expect(colleagueRow).not.toBeNull()
-    expect(within(colleagueRow as HTMLElement).getByRole('combobox')).toBeInTheDocument()
+    expect(within(memberRow('Colleague')).getByRole('combobox')).toBeInTheDocument()
   })
 
   /**
@@ -603,14 +612,18 @@ describe('SpaceSettingsPage', () => {
   it('renders a protected group as a nameless row that can still be removed', async () => {
     setSpaceState(teamSpace)
     renderTab('members')
+    const user = userEvent.setup()
 
-    const protectedRow = await screen.findByText(/Geschützte Gruppe/)
+    await screen.findByText('Geschützte Gruppe')
     expect(screen.queryByText(/g2/)).not.toBeInTheDocument()
-    expect(protectedRow.textContent).not.toMatch(/bei Aufnahme/)
-    const row = protectedRow.closest('div')?.parentElement
-    expect(
-      within(row as HTMLElement).getByRole('button', { name: /entfernen/i }),
-    ).toBeInTheDocument()
+    expect(memberRow('Geschützte Gruppe').textContent).not.toMatch(/\d+ Mitglied/)
+    const menu = await openMemberMenu(user, 'Geschützte Gruppe')
+    await user.click(within(menu).getByRole('menuitem', { name: 'Aus Space entfernen' }))
+    await answerConfirm(user, 'Geschützte Gruppe aus diesem Space entfernen?', 'Entfernen')
+
+    await waitFor(() => {
+      expect(mockRemoveSpaceMember).toHaveBeenCalledWith('space-team', 'm-team-personalrat')
+    })
   })
 
   /** #1822: ob eine Rolle direkt oder ueber eine Gruppe kommt, beantwortet die Herleitung. */
@@ -619,13 +632,13 @@ describe('SpaceSettingsPage', () => {
     renderTab('members')
     const user = userEvent.setup()
 
-    await user.click(await screen.findByRole('button', { name: 'Herleitung für Colleague' }))
+    const menu = await openMemberMenu(user, 'Colleague')
+    await user.click(within(menu).getByRole('menuitem', { name: 'Warum hat Colleague Zugriff?' }))
 
     expect(await screen.findByText(/Wirksame Rolle/)).toBeInTheDocument()
     expect(mockGetSpaceAccessDerivation).toHaveBeenCalledWith('space-team', 'u2')
-    expect(
-      screen.queryByRole('button', { name: /Herleitung für Geschützte Gruppe/ }),
-    ).not.toBeInTheDocument()
+    const groupMenu = await openMemberMenu(user, 'Geschützte Gruppe')
+    expect(within(groupMenu).queryByText(/Warum hat/)).not.toBeInTheDocument()
   })
 
   it('explains the empty member list instead of showing nothing for a non-admin, non-owner viewer', async () => {

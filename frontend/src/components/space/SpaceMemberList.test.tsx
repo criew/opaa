@@ -37,7 +37,14 @@ vi.mock('../../services/spaceApi', async () => {
 const created = '2026-03-01T10:00:00Z'
 
 function person(id: string, name: string, role: SpaceMemberResponse['role']): SpaceMemberResponse {
-  return { id: `m-${id}`, subjectType: 'USER', subjectId: id, displayName: name, role, createdAt: created }
+  return {
+    id: `m-${id}`,
+    subjectType: 'USER',
+    subjectId: id,
+    displayName: name,
+    role,
+    createdAt: created,
+  }
 }
 
 function group(
@@ -161,7 +168,7 @@ describe('SpaceMemberList', () => {
     expect(within(rowOf('Bürgerbüro Rheinfurt')).getByText('Gruppe · 41 Mitglieder')).toBeVisible()
     const protectedRow = rowOf('Geschützte Gruppe')
     expect(within(protectedRow).getByText('Gruppe')).toBeInTheDocument()
-    expect(within(protectedRow).queryByText(/Mitglied/)).not.toBeInTheDocument()
+    expect(within(protectedRow).queryByText(/\d+ Mitglied/)).not.toBeInTheDocument()
   })
 
   it('trägt höchstens die Rollen-Auswahl und das „⋯“-Menü in einer Zeile', () => {
@@ -180,11 +187,11 @@ describe('SpaceMemberList', () => {
 
     const menu = await openMenu(user, 'Thomas Klein')
 
-    expect(within(menu).getAllByRole('menuitem').map((item) => item.textContent)).toEqual([
-      'Warum hat Thomas Klein Zugriff?',
-      'Zum Eigentümer machen',
-      'Aus Space entfernen',
-    ])
+    expect(
+      within(menu)
+        .getAllByRole('menuitem')
+        .map((item) => item.textContent),
+    ).toEqual(['Warum hat Thomas Klein Zugriff?', 'Zum Eigentümer machen', 'Aus Space entfernen'])
   })
 
   it('bietet bei Gruppen die Mitglieder und das Entfernen an, nie Herleitung oder Übergabe', async () => {
@@ -193,10 +200,11 @@ describe('SpaceMemberList', () => {
 
     const menu = await openMenu(user, 'Bürgerbüro Rheinfurt')
 
-    expect(within(menu).getAllByRole('menuitem').map((item) => item.textContent)).toEqual([
-      'Mitglieder der Gruppe anzeigen',
-      'Aus Space entfernen',
-    ])
+    expect(
+      within(menu)
+        .getAllByRole('menuitem')
+        .map((item) => item.textContent),
+    ).toEqual(['Mitglieder der Gruppe anzeigen', 'Aus Space entfernen'])
   })
 
   it('bietet im persönlichen Space keine Übergabe an', async () => {
@@ -219,9 +227,11 @@ describe('SpaceMemberList', () => {
     ).not.toBeInTheDocument()
 
     const menu = await openMenu(user, 'Thomas Klein')
-    expect(within(menu).getAllByRole('menuitem').map((item) => item.textContent)).toEqual([
-      'Warum hat Thomas Klein Zugriff?',
-    ])
+    expect(
+      within(menu)
+        .getAllByRole('menuitem')
+        .map((item) => item.textContent),
+    ).toEqual(['Warum hat Thomas Klein Zugriff?'])
   })
 
   it('öffnet die Herleitung einer Person aus dem Menü', async () => {
@@ -229,7 +239,9 @@ describe('SpaceMemberList', () => {
     const user = userEvent.setup()
 
     const menu = await openMenu(user, 'Thomas Klein')
-    await user.click(within(menu).getByRole('menuitem', { name: 'Warum hat Thomas Klein Zugriff?' }))
+    await user.click(
+      within(menu).getByRole('menuitem', { name: 'Warum hat Thomas Klein Zugriff?' }),
+    )
 
     expect(await screen.findByText(/Wirksame Rolle/)).toBeInTheDocument()
     expect(mockGetSpaceAccessDerivation).toHaveBeenCalledWith('space-team', 'u-thomas')

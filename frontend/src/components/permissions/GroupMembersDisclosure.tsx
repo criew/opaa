@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Link from '@mui/material/Link'
 import Stack from '@mui/material/Stack'
@@ -16,6 +16,12 @@ interface GroupMembersDisclosureProps {
   groupLabel: string
   /** Lädt eine Seite; erst auf ausdrücklichen Wunsch aufgerufen, nie beim Rendern. */
   load: (offset: number, limit: number) => Promise<GroupMemberDisclosureResponse>
+  /**
+   * Der Wunsch ist schon geäußert (etwa über ein Zeilenmenü): Die erste Seite lädt sofort, und
+   * „Mitglieder ausblenden" meldet sich über `onHide`, statt den eigenen Aufruf zu zeigen.
+   */
+  requested?: boolean
+  onHide?: () => void
 }
 
 /**
@@ -27,7 +33,12 @@ interface GroupMembersDisclosureProps {
  * <p>Was die Antwort zurückhält — geschützte Gruppe, kleine Gruppe — entscheidet der Dienst; hier
  * steht nur, wie es erklärt wird.
  */
-export default function GroupMembersDisclosure({ groupLabel, load }: GroupMembersDisclosureProps) {
+export default function GroupMembersDisclosure({
+  groupLabel,
+  load,
+  requested = false,
+  onHide,
+}: GroupMembersDisclosureProps) {
   const [disclosure, setDisclosure] = useState<GroupMemberDisclosureResponse | null>(null)
   const [isLoading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -52,7 +63,17 @@ export default function GroupMembersDisclosure({ groupLabel, load }: GroupMember
     }
   }
 
-  if (!disclosure && !isLoading && !error) {
+  // A ref, not state: StrictMode runs the effect twice, and every retrieval by the system role is
+  // an audit event.
+  const requestedLoadStarted = useRef(false)
+  useEffect(() => {
+    if (!requested || requestedLoadStarted.current) return
+    requestedLoadStarted.current = true
+    void loadPage(0)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once per mount, on the expressed wish
+  }, [requested])
+
+  if (!requested && !disclosure && !isLoading && !error) {
     return (
       <Link
         component="button"
@@ -86,8 +107,8 @@ export default function GroupMembersDisclosure({ groupLabel, load }: GroupMember
         </Typography>
       ) : disclosure?.smallGroup ? (
         <Typography sx={{ fontSize: 12.5 }}>
-          Kleine Gruppe — weder die Mitglieder noch ihre Zahl werden genannt. In einem Referat wäre
-          eine Gruppe dieser Größe eine Person mit Namen.
+          Kleine Gruppe — die Mitglieder werden nicht genannt. In einem Referat wäre eine Gruppe
+          dieser Größe eine Person mit Namen.
         </Typography>
       ) : (
         disclosure && (
@@ -128,6 +149,7 @@ export default function GroupMembersDisclosure({ groupLabel, load }: GroupMember
             setDisclosure(null)
             setError(null)
             setReachedEnd(false)
+            onHide?.()
           }}
         >
           Mitglieder ausblenden
