@@ -55,6 +55,14 @@ public abstract class FileStoreContract {
       throw new UnsupportedOperationException("this fixture has no change log");
     }
 
+    /**
+     * Moves {@code name} unchanged, with its identity, from container {@code from} to {@code to}
+     * and notes the change in both containers' change logs.
+     */
+    default void moveAcross(int from, String name, int to) throws Exception {
+      throw new UnsupportedOperationException("this fixture cannot move across containers");
+    }
+
     /** From now on the store accepts no stored cursor. */
     default void expireCursors() throws Exception {
       throw new UnsupportedOperationException("this fixture has no change log");

@@ -64,6 +64,11 @@ class InMemoryFileStoreContractTest extends FileStoreContract {
       }
 
       @Override
+      public void moveAcross(int from, String name, int to) {
+        store.moveAcross(containerKey(from), name, containerKey(to));
+      }
+
+      @Override
       public void expireCursors() {
         store.expireCursors();
       }
