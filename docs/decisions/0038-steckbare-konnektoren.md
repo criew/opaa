@@ -231,6 +231,8 @@ Grundlage sind [connector-connections.md](../features/connector-connections.md) 
   - Eine Bibliothek mit Profil trägt kein `source_credentials`, ihr Geheimnis steht nur im
     Token-Speicher.
   - Antworten tragen „gesetzt / nicht gesetzt“ und den Status, das Audit nur Feldnamen.
-- **Der Konnektor bekommt das nutzbare Geheimnis nur über `SourceSettings`**, mit Art (persönliches
-  Geheimnis oder Zugriffstoken). Profil, Refresh-Token, Client-Secret und OAuth-Ablauf sieht er nie
-  (ADR-0041, Entscheidung 3).
+- **Der Konnektor bekommt Ziel, Geheimnis und Einstellungen nur vom Kern**, als aufgelöste
+  `SourceSettings`, auch im Lauf und beim Originalabruf. Das Geheimnis kommt mit Art (persönliches
+  Geheimnis oder Zugriffstoken). Profil, Refresh-Token, Client-Secret und OAuth-Ablauf sieht er nie,
+  und aus `KnowledgeLibrary` liest er weder Zugangsdaten noch Adresse noch Einstellungen. Das
+  verlangt einen Umbau der Lauf-SPI mit eigener ArchUnit-Regel (ADR-0041, Entscheidung 3a, #2178).

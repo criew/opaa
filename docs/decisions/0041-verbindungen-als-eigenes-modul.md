@@ -48,10 +48,10 @@ knowledge deklariert den Port, connections implementiert ihn (keine Kante nach o
 | Kante | Zweck |
 |---|---|
 | connections → foundation | `CredentialsEncryptor`, `TargetAddressValidator`, HTTP über `sourceaccess` |
-| connections → identity | `User`, Kontoereignisse aus `account`, Revisionsprotokoll und `AuditAccessGate` |
-| connections → rights | Freigabe (`CapabilityService` mit Geltungsbereich), `AccountState` |
+| connections → identity | `User`, `AccountUsability`, Kontoereignisse aus `account` und `auth`, Revisionsprotokoll und `AuditAccessGate` |
+| connections → rights | Freigabe (`CapabilityService` mit Geltungsbereich) |
 | connections → knowledge | `SourceConnectorRegistry`, Port des Kerns, Bibliotheksbezug der Verbindung |
-| library → connections | Anlegen, Verbindungstest und Auflistung prüfen Freigabe, Sperre und Profilpflicht und holen das Geheimnis |
+| library → connections | Anlegen, Verbindungstest und Auflistung prüfen Freigabe, Sperre und Profilpflicht und holen das Geheimnis; der Löschlauf liest Frist und Beginn |
 | assistant/external → connections | erst mit dem MCP-Client (Folge-Epic hinter #1747), eingetragen, wenn der Code sie nutzt |
 
 **Ausgeschlossen:** knowledge → connections, connectors → connections, connections → library,
@@ -64,32 +64,101 @@ workspace, assistant oder external. Die Reihenfolge in `Module` schließt die be
   `SourceConnectionResolver`), connections implementiert ihn. Muster: `FolderDocumentDeleter`.
 - Der Kern fragt ihn vor jedem Lauf und vor jedem Abruf eines Originals (`RemoteOriginalAccess`).
   Die Antwort ist entweder eine Sperre mit Kategorie (gesperrt, ruhend, abgelaufen, Zugang
-  entfernt) oder Ziel und nutzbares Geheimnis. Ohne Verbindung gelten die Felder der Bibliothek wie
-  heute; die Sperre des Konnektortyps prüft der Port trotzdem.
-- Der Kern reicht Ziel und Geheimnis in `SourceSettings` an den Konnektor, mit Art (persönliches
-  Geheimnis oder Zugriffstoken). **Ein Konnektor sieht nie Profil, Refresh-Token, Client-Secret oder
-  den OAuth-Ablauf.**
+  entfernt, Konto nicht nutzbar) oder Ziel und nutzbares Geheimnis. Ohne Verbindung gelten die
+  Felder der Bibliothek wie heute; die Sperre des Konnektortyps prüft der Port trotzdem.
+- Vor jeder Herausgabe eines Geheimnisses einer Person prüft der Port die Nutzbarkeit ihres Kontos
+  (Entscheidung 4).
+- **Ein Konnektor sieht nie Profil, Refresh-Token, Client-Secret oder den OAuth-Ablauf.**
 - Die Erneuerung läuft im Port: höchstens eine je Verbindung (Zeilensperre), ein rotierter
   Refresh-Token wird in derselben Transaktion ersetzt.
 - Verbindungstest und Auflistung vor dem Speichern laufen über library, das connections direkt
   fragt. Der Konnektor bekommt das Geheimnis auch dort nur über `SourceSettings`.
 
-### 4. Lebenszyklus über bestehende Kontoereignisse
+### 3a. Umbau der Lauf-SPI: Konnektoren lesen nichts mehr selbst aus der Bibliothek
 
-- connections hört auf `LocalAccountAccessEndedEvent` und `LocalAccountDeletionEvent`
-  (`io.opaa.account`) in der Transaktion des Auslösers. Es löscht Token und Geheimnisse aller
-  Verbindungen der Person. Der Widerruf beim Anbieter läuft nach dem Commit als Versuch und hält
-  die Sperre nie auf. Muster: `ExternalAccessTokenAccountLifecycleListener`.
-- **Die Übergabe eines lokalen Kontos (ADR-0033, Entscheidung 12) ist keine Deaktivierung.** Das
-  Ereignis bekommt einen Anlass, und connections überspringt die Übergabe.
-- Private Bibliotheken behandelt library mit eigenen Listenern auf denselben Ereignissen und mit
-  einem eigenen Löschlauf: Löschen, wenn die Besitzerin nach Ablauf der Frist noch gesperrt ist
-  (`AccountState`, rights). Die Frist liest library aus connections. Eine Reaktivierung braucht kein
-  Ereignis, weil der Lauf den Zustand erst beim Löschen prüft.
+Heute bekommt ein Konnektor im Lauf die Entität (`IndexingRun#library()`) und liest Adresse,
+Proxy, TLS-Schalter, Zugangsdaten und Einstellungen selbst, etwa in `ConfluenceLibraryConnection`,
+`S3LibraryConnection`, `RssFeedIndexingExecutor` und `UrlIndexingExecutor`. Damit hinge die Zusage
+aus Entscheidung 3 nicht am Port. Deshalb:
+
+- Lauf, Originalabruf und die Verwaltungsmethoden von `SourceConnector` bekommen die Einstellungen
+  aufgelöst vom Kern: `SourceSettings` mit Ziel, Proxy, TLS-Schalter, Geheimnis mit Art
+  (persönliches Geheimnis oder Zugriffstoken) und Konnektor-Einstellungen. Die Konnektor-Einstellungen
+  sind bei Profilen mit den Vorgaben des Profils zusammengeführt.
+- Die Entität dient dem Konnektor nur noch für Identität und Bestand.
+- **ArchUnit-Regel:** Keine Klasse eines Konnektorpakets ruft `KnowledgeLibrary#getSourceCredentials`,
+  `#getSourceUrl`, `#getSourceProxy`, `#isSourceInsecureSsl`, `#getSourceSettings`,
+  `#getWebhookSecret` oder `ConnectorData#storedIn` auf. Ausgenommen ist `#getSourcePath`: Das
+  Dateisystem verbietet Profile, und der Pfad ist kein Geheimnis.
+- Der Umbau ist ein eigenes, vorbereitendes Issue vor #2160:
+  [#2178](https://github.com/criew/opaa/issues/2178). Bis #2160 löst ein Übergangs-Resolver im
+  Kern die Felder der Bibliothek wie heute auf, sodass sich nichts sichtbar ändert.
+
+### 4. Lebenszyklus: eine zentrale Abfrage, Ereignisse beschleunigen nur
+
+Ereignisse allein reichen nicht. `LocalAccountAccessEndedEvent` gibt es nur für die Sperre eines
+lokalen Kontos, die Übergabe und die Verzeichnissperre. Für den Ablauf eines befristeten Kontos und
+für das Deaktivieren eines OIDC-Anbieters fehlt es, und die Sperre bei einem Anbieter ohne
+Verzeichnis-Konnektor erfährt OPAA gar nicht.
+
+- **Zentrale Abfrage in identity** (`io.opaa.auth`, Arbeitsname `AccountUsability`): Ist das Konto
+  jetzt nutzbar? Sie führt die heute verstreuten Quellen zusammen, nach dem Muster von
+  `ExternalAccessTokenAuthenticator`:
+
+  | Zustand | Ergebnis |
+  |---|---|
+  | lokal gesperrt (`LocalCredentials`), außer der vorübergehenden Sperre nach Fehlversuchen (`FAILED_LOGINS`) | deaktiviert |
+  | befristetes lokales Konto abgelaufen (`LocalAccountState.EXPIRED`) | deaktiviert |
+  | Verzeichnissperre (`User#isDirectoryLocked`) | deaktiviert |
+  | Anbieter des Issuers gelöscht | deaktiviert |
+  | Anbieter des Issuers deaktiviert | ruht |
+  | sonst | nutzbar, mit dem Zeitpunkt der letzten Aktivität (`users.last_login_at`) |
+
+  `AccountState` (rights) ist keine Quelle, weil dort nur der Verzeichnisabgleich schreibt.
+- **Prüfung vor jeder Herausgabe:** Der Port (Entscheidung 3) gibt das Geheimnis einer Person nur
+  heraus, wenn ihr Konto nutzbar ist. So wirkt jede Deaktivierung spätestens beim nächsten Lauf.
+- **Täglicher Abgleich in connections:**
+  - Deaktivierte Konten: Token und Geheimnisse löschen, beim Anbieter widerrufen.
+  - Ruhende Konten: Verbindungen ruhen lassen.
+  - Nutzbare Konten: hebt die Ruhe auf.
+  - connections hält je Konto fest, seit wann es nicht nutzbar ist; dieser Zeitpunkt beginnt die
+    Löschfrist.
+- **Ereignisse lösen den Abgleich eines Kontos sofort aus**, in der Transaktion des Auslösers:
+  `LocalAccountAccessEndedEvent` für das betroffene Konto, `OidcProvidersChangedEvent` für alle
+  Konten (das Ereignis trägt keinen Anbieter). Der Widerruf beim Anbieter läuft nach dem Commit als
+  Versuch und hält die Sperre nie auf.
+- **Die Übergabe eines lokalen Kontos (ADR-0033, Entscheidung 12) ist keine Deaktivierung.** Weil
+  das Ereignis nur die Abfrage auslöst und das übergebene Konto danach nutzbar ist, fällt die
+  Übergabe ohne eigenen Anlass heraus. Das gilt für connections und library gleich.
+- **Private Bibliotheken:** library hat keinen eigenen Listener, sondern einen Löschlauf. Er löscht,
+  wenn ein Konto seit länger als die Löschfrist nicht nutzbar ist. Die Frist und den Beginn liest er
+  aus connections. Ist das Konto beim Lauf wieder nutzbar, löscht er nicht. Läufe privater
+  Bibliotheken stoppen schon vorher, weil der Port kein Geheimnis herausgibt.
+- **Kontolöschung:** Ein Konto mit Verbindungen oder privaten Bibliotheken ist benutzt und wird
+  nach ADR-0033 (Entscheidung 11) gesperrt, nicht gelöscht. Die Bibliotheken blockieren als Assets
+  die Löschung bereits heute (`countDeletionBlockers`). Token und Geheimnisse einer Person hängen
+  mit `ON DELETE CASCADE` an `users`.
 - Trennen, Notabschaltung und gelöschte Profile erreichen die Bibliothek ohne Ereignis: Der Port
   meldet beim nächsten Lauf „ruhend“ oder „Zugang entfernt“.
-- Nach dem Einspielen einer Sicherung gleicht connections beim Start die Token ab: Token gesperrter
+- **Nach dem Einspielen einer Sicherung** läuft der Abgleich beim Start: Token nicht nutzbarer
   Konten löschen, abgelaufene zählen.
+
+**Restlücke: OIDC-Konten ohne Verzeichnis-Konnektor.** Deaktiviert ein Anbieter eine Person, erfährt
+OPAA das nicht (`access-control.md`: serverseitig gibt es dafür keine Operation). Ihre Verbindungen
+blieben nutzbar, solange die Abfrage sie für nutzbar hält.
+
+**Vorschlag, Entscheidung beim Maintainer:** eine Inaktivitätsschwelle für Verbindungen.
+- Ohne Aktivität an OPAA seit N Tagen (`users.last_login_at`) ruhen die Verbindungen der Person:
+  Läufe pausieren, das Token bleibt gespeichert, aber der Port gibt es nicht heraus.
+- Mit der nächsten Anmeldung geht es ohne Neuverbinden weiter. Gelöscht wird erst bei echter
+  Deaktivierung.
+- Die Schwelle gilt für alle Kontoarten, wirkt praktisch aber nur bei OIDC-Konten ohne Verzeichnis,
+  weil lokale Konten nach `local_auth_settings.inactive_days` ohnehin gesperrt werden.
+- Werte: Vorgabe 90 Tage, einstellbar von 30 bis 365 Tagen, als Einstellung der Installation. 90
+  Tage entsprechen der Vorgabe der lokalen Inaktivitätssperre.
+- Die Schwelle stoppt die Indexierung, aber nicht den Fortbestand des Tokens. Den schließt nur der
+  Verzeichnis-Konnektor (ADR-0036, Entscheidung 3), dessen Einsatz das Handbuch für Häuser mit
+  verbundenen Konten empfiehlt.
 
 ### 5. MCP-Profil
 
@@ -120,6 +189,7 @@ Verbindung, dem verbundenen Konto ihrer Besitzerin.
 | Löschfrist privater Bibliotheken nach Deaktivierung | 1–90 Tage | 30 Tage | Einstellung der Installation, Grenzen als `CHECK` |
 | Aufbewahrung des Verbindungsprotokolls | 6–24 Monate | 12 Monate | Einstellung der Installation, Grenzen als `CHECK` |
 | Warnung vor Token- und Secret-Ablauf | — | 14 Tage | fest (Spezifikation) |
+| Inaktivitätsschwelle für Verbindungen (**Vorschlag**, Entscheidung 4) | 30–365 Tage | 90 Tage | Einstellung der Installation, Grenzen als `CHECK` |
 
 Begründung:
 
@@ -133,8 +203,22 @@ Begründung:
 - Die Abstimmung mit Personalrat und Datenschutz kann die Vorgaben innerhalb der Grenzen ändern,
   ohne dass dieser ADR geändert werden muss.
 
-### 8. Was #2160 im Code anlegt
+### 8. Was #2178 und #2160 im Code anlegen
 
+- **#2178, vorher:** Umbau der Lauf-SPI und die ArchUnit-Regel aus Entscheidung 3a, mit
+  Negativfall in `ModularArchitectureFixtureTest`.
+- **#2160:** Die zentrale Abfrage `AccountUsability` in `io.opaa.auth` (Entscheidung 4) entsteht
+  mit dem ersten Konsumenten. `ExternalAccessTokenAuthenticator` stellt auf sie um, damit es nur
+  eine Regel gibt.
+- **Spezifikation zuerst (ADR-0006),** für den Geltungsbereich der Fähigkeit (ADR-0036, Nachtrag
+  vom 03.10.2026, Punkt 1):
+  - `GET /api/v1/me` führt `CREATE_CONNECTOR_LIBRARY` weiter als Zeichenkette, wenn die Person die
+    Fähigkeit in mindestens einem Geltungsbereich hat. Die heutige Grobsteuerung im Frontend
+    (`LibraryCreatePage.tsx`, `assetTypeRegistry.ts`) bleibt dadurch gültig.
+  - `GET /api/v1/source-types` und die Liste der Zugänge tragen je Eintrag, ob die Person dort
+    anlegen darf, mit Hinweis statt totem Weg. Danach richtet sich die Kachel im Assistenten.
+  - Die Prüfungen ohne Geltungsbereich (`SourceConnectionTestService`, `KnowledgeLibraryService`)
+    nennen danach Typ oder Profil.
 - `ModularArchitecture`: `Module.CONNECTIONS` direkt nach `CONNECTORS` und `entry("connection",
   CONNECTIONS)` in `MODULES`. In `LAYERS` steht `"connection"` zwischen `"indexing"` und
   `"library"`. Kanten in `ALLOWED_MODULE_EDGES` erst eintragen, wenn der Code sie nutzt
@@ -153,11 +237,11 @@ Begründung:
   - `backend/AGENTS.md`: Modultabelle, Kantenliste, Tabelle „Anweisungen je Modul“, Liste der
     Changelog-Verzeichnisse
   - `knowledge/AGENTS.md`: neuer Port
-  - `indexing/source/AGENTS.md`: Geheimnis nur über `SourceSettings`, vier Plätze, Ziel aus dem
-    Profil
+  - `indexing/source/AGENTS.md`: Ziel, Geheimnis und Einstellungen nur über `SourceSettings`
+    (schon mit #2178), vier Plätze, Ziel aus dem Profil
   - `permission/AGENTS.md`: Geltungsbereich der Fähigkeit, Merkmal „nur Besitzerin“
-  - `library/AGENTS.md`: Kante zu connections, Lebenszyklus privater Bibliotheken
-  - `auth/AGENTS.md`: Anlass im Kontoereignis
+  - `library/AGENTS.md`: Kante zu connections, Löschlauf privater Bibliotheken
+  - `auth/AGENTS.md`: `AccountUsability` als einzige Regel „Konto nutzbar“
 
 ## Verworfene Alternativen
 
@@ -170,8 +254,15 @@ Begründung:
   Governance-Ereignis und `/me` doppeln. Stattdessen bekommt die Fähigkeit einen Geltungsbereich.
 - **Verbindung als Spalte in `knowledge_libraries`:** Das wäre ein Fremdschlüssel von knowledge
   nach oben.
-- **Lebenszyklus über ein eigenes Ereignis von connections an library:** Beide reagieren
-  unabhängig auf das Kontoereignis. Eine Kante zwischen ihnen in Gegenrichtung entfällt so.
+- **Lebenszyklus über ein eigenes Ereignis von connections an library:** Das wäre eine Kante in
+  Gegenrichtung. library liest stattdessen über die erlaubte Kante den Beginn der Frist.
+- **Lebenszyklus nur über Ereignisse:** Für den Ablauf befristeter Konten, deaktivierte Anbieter
+  und Anbieter ohne Verzeichnis gibt es keine Ereignisse. Ein vergessener Pfad bliebe unbemerkt.
+- **`AccountState` als Quelle für „gesperrt“:** Dort schreibt nur der Verzeichnisabgleich, die
+  Sperre lokaler Konten fehlt.
+- **Verbundene Konten nur für Konten mit bekanntem Zustand** (lokal oder Verzeichnis): Das ist
+  sicher, schließt aber jedes Haus mit reinem OIDC aus. Die Inaktivitätsschwelle ist der mildere
+  Vorschlag, die Entscheidung liegt beim Maintainer.
 
 ## Konsequenzen
 
@@ -179,7 +270,12 @@ Begründung:
   Beschreibung und braucht keinen Code außerhalb seines Pakets. Token und Client-Secret erreichen
   keinen Konnektor.
 - **Schwieriger:** ein Modul und ein Changelog-Verzeichnis mehr. Der Kern hängt bei jedem Lauf an
-  einem Port, dessen Antwort auch Netzzugriffe enthalten kann (Erneuerung).
+  einem Port, dessen Antwort auch Netzzugriffe enthalten kann (Erneuerung). Vor #2160 steht der
+  Umbau der Lauf-SPI (#2178): etwa 14 Hauptklassen in 4 Konnektoren und im Kern, dazu etwa 30
+  Testklassen.
+- **Restrisiko:** Bei OIDC-Konten ohne Verzeichnis-Konnektor bleibt ein Token nach einer
+  Deaktivierung beim Anbieter gespeichert, bis die Schwelle greift oder das Konto in OPAA gesperrt
+  wird (Entscheidung 4).
 - **Neutral:** Ereignisse laufen in der Transaktion des Auslösers. Fällt ein Listener, scheitert die
   Sperre; das ist dieselbe Zusage wie bei den Fremdzugangstokens.
 

@@ -441,6 +441,13 @@ Entscheidung 1 widerspräche.
 >    Wert nicht; connections prüft ihn und entfernt beim Löschen eines Profils dessen Grants, wobei
 >    die Historie schließt. Jede Prüfung nennt den Geltungsbereich, eine Prüfung ohne gibt es für
 >    diese Fähigkeit nicht mehr.
+>    - **Nach außen:** `GET /api/v1/me` führt `CREATE_CONNECTOR_LIBRARY` weiter als Zeichenkette,
+>      wenn die Person die Fähigkeit in mindestens einem Geltungsbereich hat. Die Grobsteuerung im
+>      Frontend bleibt damit gültig.
+>    - Ob die Person bei einem bestimmten Typ oder Zugang anlegen darf, liefern
+>      `GET /api/v1/source-types` und die Liste der Zugänge je Eintrag, samt Hinweis statt totem Weg.
+>    - Die Spezifikation ändert sich zuerst (ADR-0006). Der Zuschnitt steht in ADR-0041,
+>      Entscheidung 8.
 >    - **Präzisierung der Begriffe:** Der Geltungsbereich wählt einen Anlegepfad und ist kein
 >      Gegenstand im Sinn einer Befugnis. Er öffnet keinen Inhalt und bleibt an Gruppen und
 >      „Alle Konten“ vergebbar.
@@ -473,7 +480,8 @@ Entscheidung 1 widerspräche.
 >    dokumentierte Beteiligung des Personalrats. `SYSTEM_ADMIN` ist nicht eingeschlossen. Weil die
 >    Formel die Vollmacht kennen muss, liegt sie in rights oder darunter, nicht in connections. Rolle
 >    und Ablauf legt #2171 fest; bis dahin gibt es keinen Inhaltszugriff auf private Bibliotheken.
-> 6. **Das Verbindungsprotokoll liest die Systemrolle `AUDITOR`**, über dasselbe Tor wie das
+> 6. **Vorläufig liest die Systemrolle `AUDITOR` das Verbindungsprotokoll.** Die Bestätigung des
+>    Maintainers gegen Beschluss 12 steht aus. Gelesen wird über dasselbe Tor wie das
 >    Revisionsprotokoll (`AuditAccessGate`: Anlass, begrenzter Zeitraum, eigener Zugriffseintrag).
 >    `SYSTEM_ADMIN` liest es nicht mit. Abwägung:
 >    - Eine Fähigkeit scheidet aus, weil eine Fähigkeit nie ein Leserecht ist (oben, „Verhältnis zu
@@ -482,6 +490,12 @@ Entscheidung 1 widerspräche.
 >      zwischen Revision und Verbindungsprotokoll wählen, und „Keine neue Systemrolle“ gilt weiter.
 >    - Die Forderung „eigene Leserolle, die Systemverwaltung liest nicht mit“ (Epic #2147,
 >      Beschluss 12) erfüllt `AUDITOR`, weil die Rolle von der Systemverwaltung getrennt ist.
+>    - **Zu bewerten (Personalrat):** Dieselbe Rolle stellt auch den Antrag auf Vorfallszugriff
+>      (Punkt 5). Wer das Protokoll liest, kann also auch den Zugriff auf Inhalte beantragen, aber
+>      nicht allein bestätigen.
+>    - **Zu bewerten (Personalrat):** `AUDITOR` kann aus dem Rollen-Claim eines Anbieters stammen
+>      (`TokenRoleSynchronizer`, ADR-0025, Entscheidung 4). Wer die Rolle beim Anbieter vergibt,
+>      bestimmt dann auch, wer das Verbindungsprotokoll liest.
 
 ### 6. Lebenszyklus: „Nachfolge offen" als abgeleiteter Zustand
 
