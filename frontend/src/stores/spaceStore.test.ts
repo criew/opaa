@@ -1,7 +1,8 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
-import { ASSOCIATIONS_NOT_REFRESHED, useSpaceStore } from './spaceStore'
+import { ASSOCIATIONS_NOT_REFRESHED, MEMBERS_NOT_REFRESHED, useSpaceStore } from './spaceStore'
 import { resetAllStores } from './resettableStores'
-import { getSpaces } from '../services/spaceApi'
+import { getSpace, getSpaces, listSpaceMembers } from '../services/spaceApi'
+import type { SpaceMemberResponse } from '../types/api'
 
 const mockCreateSpace = vi.fn()
 
@@ -93,6 +94,7 @@ vi.mock('../services/spaceApi', () => ({
   ]),
   addSpaceMember: vi.fn(async (spaceId: string) => changeMemberships(spaceId, 1)),
   removeSpaceMember: vi.fn(async (spaceId: string) => changeMemberships(spaceId, -1)),
+  updateSpaceMemberRole: vi.fn(async () => ({})),
   createSpace: (...args: unknown[]) => mockCreateSpace(...args),
   archiveSpace: (...args: [string]) => mockArchiveSpace(...args),
 }))
@@ -401,6 +403,109 @@ describe('spaceStore', () => {
       .getState()
       .spaces.find((space) => space.id === 'space-personal')
     expect(afterRemove?.memberships).toEqual({ groupCount: 0, userCount: 1 })
+  })
+
+  // #2205: a member change refreshes in place - neither a loading state nor an emptied list in
+  // between, so the open tab neither flickers nor rebuilds its rows.
+  it('refreshes members and space after a membership change without a loading state', async () => {
+    await useSpaceStore.getState().selectSpace('space-personal')
+    await useSpaceStore.getState().loadMembers('space-personal')
+    const seen: Array<{ loading: boolean; members: number; space: boolean }> = []
+    const unsubscribe = useSpaceStore.subscribe((state) =>
+      seen.push({
+        loading: state.isLoadingMembers || state.isLoadingDetails,
+        members: state.members.length,
+        space: state.selectedSpace !== null,
+      }),
+    )
+
+    await useSpaceStore.getState().addMember('space-personal', 'USER', 'u2', 'MEMBER')
+    await useSpaceStore.getState().removeMember('space-personal', 'membership-u2')
+    unsubscribe()
+
+    expect(seen.length).toBeGreaterThan(0)
+    expect(seen.every((state) => !state.loading && state.members > 0 && state.space)).toBe(true)
+  })
+
+  describe('re-read after a membership change (#2205)', () => {
+    const memberRow = (id: string): SpaceMemberResponse => ({
+      id,
+      subjectType: 'USER',
+      subjectId: id,
+      role: 'MEMBER',
+      createdAt: '2026-03-01T10:00:00Z',
+    })
+    const httpError = (status: number) =>
+      new Error(`HTTP ${status}`, { cause: { response: { status } } })
+
+    beforeEach(async () => {
+      await useSpaceStore.getState().selectSpace('space-project')
+      await useSpaceStore.getState().loadMembers('space-project')
+    })
+
+    it('keeps the newer state when an older re-read answers last', async () => {
+      const older = deferred<SpaceMemberResponse[]>()
+      const newer = deferred<SpaceMemberResponse[]>()
+      vi.mocked(listSpaceMembers)
+        .mockReturnValueOnce(older.promise as never)
+        .mockReturnValueOnce(newer.promise as never)
+
+      const calls = vi.mocked(listSpaceMembers).mock.calls.length
+      const first = useSpaceStore.getState().updateMemberRole('space-project', 'm-a', 'CURATOR')
+      const second = useSpaceStore.getState().updateMemberRole('space-project', 'm-b', 'CURATOR')
+      await vi.waitFor(() => expect(listSpaceMembers).toHaveBeenCalledTimes(calls + 2))
+      newer.resolve([memberRow('after-second')])
+      await second
+      older.resolve([memberRow('after-first')])
+      await first
+
+      expect(useSpaceStore.getState().members.map((member) => member.id)).toEqual(['after-second'])
+    })
+
+    it('clears a previous refresh failure once a re-read succeeds', async () => {
+      useSpaceStore.setState({ error: MEMBERS_NOT_REFRESHED })
+
+      await useSpaceStore.getState().updateMemberRole('space-project', 'm-a', 'CURATOR')
+
+      expect(useSpaceStore.getState().error).toBeNull()
+    })
+
+    it('reports a failed re-read only in the space it belongs to', async () => {
+      let fail: (reason: Error) => void = () => {}
+      vi.mocked(getSpace).mockReturnValueOnce(
+        new Promise<never>((_, reject) => {
+          fail = reject
+        }),
+      )
+      const calls = vi.mocked(getSpace).mock.calls.length
+
+      const change = useSpaceStore.getState().updateMemberRole('space-project', 'm-a', 'CURATOR')
+      await vi.waitFor(() => expect(getSpace).toHaveBeenCalledTimes(calls + 1))
+      useSpaceStore.setState({ selectedSpaceId: 'space-personal' })
+      fail(httpError(500))
+      await change
+
+      expect(useSpaceStore.getState().error).toBeNull()
+    })
+
+    it('names a failed re-read of the shown space', async () => {
+      vi.mocked(getSpace).mockRejectedValueOnce(httpError(500))
+
+      await useSpaceStore.getState().updateMemberRole('space-project', 'm-a', 'CURATOR')
+
+      expect(useSpaceStore.getState().error).toBe(MEMBERS_NOT_REFRESHED)
+      expect(useSpaceStore.getState().selectedSpace).not.toBeNull()
+    })
+
+    it('drops the space when removing a membership cost the caller access', async () => {
+      vi.mocked(getSpace).mockRejectedValueOnce(httpError(403))
+
+      const result = await useSpaceStore.getState().removeMember('space-project', 'm-self')
+
+      expect(result).toBe('accessLost')
+      expect(useSpaceStore.getState().selectedSpace).toBeNull()
+      expect(useSpaceStore.getState().error).not.toBe(MEMBERS_NOT_REFRESHED)
+    })
   })
 
   // #575: loadSpaces is one of the explicitly named unguarded write paths (Issue #575) - a

@@ -101,4 +101,52 @@ test.describe.serial("Space-Anlage und Mitglieder (#2131)", () => {
       "Space-Einstellungen: Mitglied hinzufügen",
     );
   });
+
+  /**
+   * #2205: Ein Rollenwechsel meldet sich als Popup in einer Live-Region, ohne dass die Liste neu
+   * lädt; die Herleitung nennt Rolle und Herkunft in einem Satz und schließt mit „Schließen".
+   */
+  test("Einstellungen: Rollenwechsel als Popup, Herleitung in einem Satz", async ({
+    authenticatedPage: page,
+  }) => {
+    expect(spacePath, "der erste Schritt hat keinen Space angelegt").not.toBe(
+      "",
+    );
+    await page.goto(`${spacePath}/settings/members`);
+    await expect(
+      page.getByText("Gruppen geben ihre Rolle an alle ihre Mitglieder weiter."),
+    ).toHaveCount(0);
+
+    const row = page
+      .getByTestId("space-member-row")
+      .filter({ hasText: "Dev User" });
+    await row.getByRole("combobox").click();
+    await page.getByRole("option", { name: "Kurator" }).click();
+
+    await expect(
+      page.getByRole("alert").filter({ hasText: "Rolle von Dev User: Kurator" }),
+    ).toBeVisible();
+    await expect(page.getByText(/Mitgliederliste wird geladen/)).toHaveCount(0);
+    await expectNoSeriousA11yViolations(
+      page,
+      "Space-Einstellungen: Popup nach Rollenwechsel",
+    );
+
+    await row.getByRole("button", { name: "Weitere Aktionen für „Dev User“" }).click();
+    await page
+      .getByRole("menuitem", { name: "Warum hat Dev User Zugriff?" })
+      .click();
+    await expect(
+      row.getByText(
+        "Dev User ist Kurator in diesem Space – direkt aufgenommen.",
+        { exact: true },
+      ),
+    ).toBeVisible();
+    await expectNoSeriousA11yViolations(
+      page,
+      "Space-Einstellungen: Herleitung einer Person",
+    );
+    await row.getByRole("button", { name: "Schließen", exact: true }).click();
+    await expect(row.getByText(/in diesem Space/)).toHaveCount(0);
+  });
 });
