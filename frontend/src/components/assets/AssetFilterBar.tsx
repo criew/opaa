@@ -6,6 +6,8 @@ import TextField from '@mui/material/TextField'
 import ToggleButton from '@mui/material/ToggleButton'
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import Typography from '@mui/material/Typography'
+import visuallyHidden from '@mui/utils/visuallyHidden'
+import type { Theme } from '@mui/material/styles'
 import CloseIcon from '@mui/icons-material/Close'
 import SearchIcon from '@mui/icons-material/Search'
 import type { AssetType } from '../../types/api'
@@ -13,6 +15,9 @@ import type { AssetTypeDefinition } from './assetTypeRegistry'
 import AssetFilterChips, { type AssetFilterKey, type AssetFilters } from './AssetFilterChips'
 
 const ALL_TYPES = 'all'
+
+/** Below this width the type group keeps only its words, so it fits one line with the chips. */
+const narrow = (theme: Theme) => theme.breakpoints.down('sm')
 
 export interface AssetFilterBarSearch {
   value: string
@@ -42,8 +47,8 @@ interface AssetFilterBarProps {
 /**
  * The one filter row of catalog, asset choice and token selection (guidelines 5.11): search, then
  * the type as a titled toggle group, then the personal chips set apart from it. Type, chips and
- * `trailing` wrap below the search as one unit, so a chip never ends up alone on a line unless even
- * that unit is wider than the row. The search is named "Suchen" wherever the row stands.
+ * `trailing` wrap below the search as one unit; on phone widths the type group drops its visible
+ * title (its name stays) and its icons, so the unit fits one line there too. The search is named "Suchen" wherever the row stands.
  */
 export default function AssetFilterBar({
   search,
@@ -96,7 +101,11 @@ export default function AssetFilterBar({
             <Typography
               id={typeLabelId}
               component="span"
-              sx={{ fontSize: 12.5, color: 'text.secondary' }}
+              sx={(theme) => ({
+                fontSize: 12.5,
+                color: 'text.secondary',
+                [narrow(theme)]: visuallyHidden,
+              })}
             >
               Typ
             </Typography>
@@ -120,7 +129,10 @@ export default function AssetFilterBar({
                     value={definition.type}
                     sx={{ px: 1.5, gap: 0.75 }}
                   >
-                    <Icon aria-hidden sx={{ fontSize: 16 }} />
+                    <Icon
+                      aria-hidden
+                      sx={(theme) => ({ fontSize: 16, [narrow(theme)]: { display: 'none' } })}
+                    />
                     {definition.label}
                   </ToggleButton>
                 )
