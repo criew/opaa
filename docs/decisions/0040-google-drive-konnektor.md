@@ -451,8 +451,8 @@ Entscheidung:
    samt der darunter weiter.
 3. **Ein Ordner mit einem ungeklärten Eintrag wird nicht gemerkt**, ebenso wenig jeder Ordner
    darüber. Ungeklärt ist ein Eintrag, dessen gespeicherter Stand diesen Lauf nicht abbildet:
-   fehlgeschlagener Abruf oder Aufnahme, Kontingent, nicht lesbar, und ein vorhandenes Dokument,
-   das übersprungen wurde (zu groß, nicht verfügbar). Sonst holte ihn kein späterer Lauf nach,
+   fehlgeschlagener Abruf oder Aufnahme, Kontingent, nicht lesbar, eine nicht verfügbare Datei und
+   ein vorhandenes Dokument, das zu groß ist. Sonst holte ihn kein späterer Lauf nach,
    solange sich der Ordner nicht ändert.
 4. **Das Gedächtnis verfällt.** Es gilt nur unter der Größengrenze und dem Formatsatz, unter denen
    es entstand. Sonst blieben Dateien eines neu unterstützten Formats in unveränderten Ordnern
@@ -460,12 +460,21 @@ Entscheidung:
    gemessen ab dem letzten Lauf, der alle Ordner gelistet hat. Danach listet ein Lauf wieder alles.
    Das fängt Änderungen ab, die keine Prüfsumme weitertragen (externer Speicher ohne
    Änderungserkennung).
-5. **Eine Umbenennung kostet einen Download, keine Neuverarbeitung.** Das Merkmal einer
-   Nextcloud-Datei enthält ihren Ort. Bei gleicher SHA-256 übernimmt die Aufnahme Titel,
-   Hierarchiepfad und Ordner, ohne neu zu schneiden. Ein umbenannter Ordner hat einen neuen Pfad
-   und damit kein gemerktes Merkmal: Er wird gelistet, seine Dokumente bekommen den neuen
-   Hierarchiepfad. Ein Dokument mit veraltetem Hierarchiepfad kann so nicht unter einem
-   unveränderten Ordner verschwinden.
+5. **Das Gedächtnis hängt am Ort.** Ein Merkmal gilt nur für genau den Pfad, unter dem es gemerkt
+   wurde; ein umbenannter oder verschobener Ordner hat keines und wird gelistet. Ein Eintrag eines
+   Stores, der Ordner meldet, wird nur übersprungen, wenn sein Dokument am gelisteten Ort steht
+   (Container, Hierarchiepfad, Dateiname). Sonst wird er einmal geholt; bei gleicher SHA-256
+   übernimmt die Aufnahme Titel, Hierarchiepfad und Ordner, ohne neu zu schneiden. Ein Pfad, den
+   die Spalte kürzt (über 2000 Zeichen), hält seine Ordner aus dem Gedächtnis. So verschwindet kein
+   Dokument mit veraltetem Hierarchiepfad unter einem unveränderten Ordner.
+6. **Was zwischen den Läufen geschieht, entwertet Merkmale.** Ein Ordner mit einem Dokument, das
+   für den nächsten Lauf vorgemerkt (Nachzüge, ADR-0018) oder nicht indexiert ist, bekommt kein
+   Merkmal übergeben und wird gelistet. Hat ein Container weniger Zeilen als beim Merken, wurde
+   ein Dokument außerhalb eines Laufs gelöscht; sein Gedächtnis gilt dann nicht, und der Lauf
+   holt das Dokument zurück. Meldet ein Store einen Ordner als unverändert, dessen Merkmal ihm
+   nicht übergeben wurde, gilt der Container als unvollständig gelistet.
+
+Den Vertrag hält `FileStore#recall` fest, die Fälle prüft `FileStoreFolderContract`.
 
 Verworfen:
 

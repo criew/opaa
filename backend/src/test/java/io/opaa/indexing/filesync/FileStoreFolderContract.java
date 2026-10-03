@@ -59,11 +59,14 @@ public abstract class FileStoreFolderContract extends FileStoreContract {
   void aRenamedFolderKeepsItsBestandOverTheFollowingRuns() throws Exception {
     fixture.put(0, "alt/x.txt", "X.");
     fixture.put(0, "alt/tief/y.txt", "Y.");
+    fixture.put(0, "oben.txt", "Oben.");
     fixture.put(1, "anderswo.txt", "A.");
     fullSync();
 
     fixture.move(0, "alt", "neu");
     fullSync();
+    // the root changes, the renamed folder does not: it is reported unchanged under its new path
+    fixture.put(0, "oben.txt", "Oben, zweite Fassung.");
     FileSyncHarness.Run second = fullSync();
     FileSyncHarness.Run third = fullSync();
 
@@ -71,6 +74,7 @@ public abstract class FileStoreFolderContract extends FileStoreContract {
         .containsExactlyInAnyOrder(
             fixture.filePath(0, "neu/x.txt"),
             fixture.filePath(0, "neu/tief/y.txt"),
+            fixture.filePath(0, "oben.txt"),
             fixture.filePath(1, "anderswo.txt"));
     assertThat(second.eventsOf(IndexingEventCategory.REMOVED)).isEmpty();
     assertThat(third.eventsOf(IndexingEventCategory.REMOVED)).isEmpty();
