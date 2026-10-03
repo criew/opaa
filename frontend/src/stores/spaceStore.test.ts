@@ -403,6 +403,28 @@ describe('spaceStore', () => {
     expect(afterRemove?.memberships).toEqual({ groupCount: 0, userCount: 1 })
   })
 
+  // #2205: a member change refreshes in place - neither a loading state nor an emptied list in
+  // between, so the open tab neither flickers nor rebuilds its rows.
+  it('refreshes members and space after a membership change without a loading state', async () => {
+    await useSpaceStore.getState().selectSpace('space-personal')
+    await useSpaceStore.getState().loadMembers('space-personal')
+    const seen: Array<{ loading: boolean; members: number; space: boolean }> = []
+    const unsubscribe = useSpaceStore.subscribe((state) =>
+      seen.push({
+        loading: state.isLoadingMembers || state.isLoadingDetails,
+        members: state.members.length,
+        space: state.selectedSpace !== null,
+      }),
+    )
+
+    await useSpaceStore.getState().addMember('space-personal', 'USER', 'u2', 'MEMBER')
+    await useSpaceStore.getState().removeMember('space-personal', 'membership-u2')
+    unsubscribe()
+
+    expect(seen.length).toBeGreaterThan(0)
+    expect(seen.every((state) => !state.loading && state.members > 0 && state.space)).toBe(true)
+  })
+
   // #575: loadSpaces is one of the explicitly named unguarded write paths (Issue #575) - a
   // response arriving after resetAllStores() must not resurrect the previous user's spaces into
   // the now-emptied store.
