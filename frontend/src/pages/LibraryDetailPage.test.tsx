@@ -1615,6 +1615,39 @@ describe('LibraryDetailPage', () => {
     })
   })
 
+  it('resends the whole Google Drive settings with a changed rhythm (ADR-0040)', async () => {
+    const ownerLibrary = { ...managerLibrary, myRole: 'MANAGER' as const }
+    const settings = {
+      scopes: [{ folder: 'f1', name: 'Akten' }],
+      subject: 'fach@example.org',
+      fullSyncIntervalDays: null,
+    }
+    setLibraryState(
+      ownerLibrary,
+      detailsOf(ownerLibrary, {
+        sourceType: 'GOOGLE_DRIVE',
+        sourceUrl: 'https://www.googleapis.com',
+        sourceSettings: settings,
+        fullSyncIntervalDefaultDays: 7,
+        schedule: { frequency: 'HOURLY', nextRunAt: '2026-03-02T03:00:00Z' },
+      }),
+    )
+    renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+    const user = userEvent.setup()
+
+    await user.click(await screen.findByRole('tab', { name: 'Quelle' }))
+    await user.click(screen.getByRole('button', { name: /^zeitplan bearbeiten$/i }))
+    await user.type(await screen.findByLabelText('Vollabgleich alle … Tage'), '14')
+    await user.click(screen.getByRole('button', { name: /^speichern$/i }))
+
+    await waitFor(() => {
+      expect(mockUpdateLibrary).toHaveBeenCalledWith(
+        'library-team',
+        expect.objectContaining({ sourceSettings: { ...settings, fullSyncIntervalDays: 14 } }),
+      )
+    })
+  })
+
   it('shows the plain document wording for a completed FILESYSTEM run', async () => {
     setLibraryState(
       managerLibrary,

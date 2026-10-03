@@ -1,7 +1,7 @@
 # Modul connectors
 
-Pakete (`io.opaa.indexing.source.*`): confluence, filesystem, nextcloud, rss, s3, upload, web — jedes
-direkte Unterpaket ist ein Konnektor. Vertrag in `indexing.source` (knowledge). Ergänzt `backend/AGENTS.md`.
+Pakete (`io.opaa.indexing.source.*`): confluence, filesystem, googledrive, nextcloud, rss, s3,
+upload, web — jedes direkte Unterpaket ist ein Konnektor, der Vertrag in `indexing.source`.
 
 ## Zweck und Grenze
 

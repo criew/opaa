@@ -86,7 +86,10 @@ const MAX_S3_PATTERN_LENGTH = 255
 const MAX_S3_REGION_LENGTH = 64
 /** Mirrors S3ScopeRef.prefix maxLength - on the normalised form, so the trailing slash counts. */
 const MAX_S3_PREFIX_LENGTH = 1023
-/** Mirrors sourceCredentials maxLength of every request that carries the joined key. */
+/**
+ * The form's own bound on the joined key: 128 + 128 + 242 plus two separators. The API admits up to
+ * 4096 characters for every connector.
+ */
 export const MAX_S3_CREDENTIALS_LENGTH = 500
 /** Field bounds whose sum (plus two separators) stays within MAX_S3_CREDENTIALS_LENGTH. */
 export const MAX_S3_ACCESS_KEY_LENGTH = 128

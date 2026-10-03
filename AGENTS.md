@@ -60,6 +60,11 @@ OPAA_CONFLUENCE_IT=true ./gradlew confluenceIntegrationTest
                                   # braucht Docker, Group Folders zusätzlich den App-Store. Nicht
                                   # Teil von build/test: Image rund 2,1 GB. In CI nightly und per
                                   # Label "nextcloud-suite" (#2152)
+OPAA_GDRIVE_IT_KEY_FILE=… OPAA_GDRIVE_IT_FOLDER_ID=… ./gradlew googleDriveIntegrationTest
+                                  # Google-Drive-Konnektor gegen ein echtes Workspace, nur
+                                  # lesend; läuft nur lokal beim Maintainer, Schlüsseldatei
+                                  # außerhalb des Repos, kein CI-Job und kein Secret. Einrichtung:
+                                  # README.md im Testpaket indexing.source.googledrive (ADR-0040)
 ./gradlew spotlessCheck
 ./gradlew spotlessApply
 
