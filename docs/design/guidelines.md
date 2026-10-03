@@ -528,8 +528,9 @@ folgt „Nur ausgewählte" — es zeigt die Auswahl zum Zeitpunkt des Einschalte
 ausgewählt". Die Umschalter verbinden sich mit UND; keiner gedrückt heißt „alle". Auf schmalen
 Bildschirmen bricht die Zeile als Einheit um: Die Suche steht oben, Typgruppe und Umschalter darunter;
 ein Umschalter steht nie allein in einer Zeile. Unter etwa 600 px Breite entfallen der sichtbare
-Titel „Typ" (der zugängliche Name der Gruppe bleibt) und die Icons der Typknöpfe, damit Typgruppe
-und Favoriten auch auf Telefonbreite in eine Zeile passen. Weitere Filter (Sichtbarkeit, Gruppenherkunft) und eine
+Titel „Typ" (der zugängliche Name der Gruppe bleibt) und die Icons der Typknöpfe, und Knöpfe und
+Chips rücken enger zusammen, damit Typgruppe und Favoriten bis hinab zu 320 px (Reflow-Breite nach
+WCAG 1.4.10) in eine Zeile passen. Weitere Filter (Sichtbarkeit, Gruppenherkunft) und eine
 Sortierauswahl gibt es nicht; die Reihenfolge ist fest: Favoriten zuerst, dann nach Name. Angeboten
 wird nur, was die Person lesen darf. Über „Weitere laden" steht „n von m angezeigt".
 

@@ -16,7 +16,10 @@ import AssetFilterChips, { type AssetFilterKey, type AssetFilters } from './Asse
 
 const ALL_TYPES = 'all'
 
-/** Below this width the type group keeps only its words, so it fits one line with the chips. */
+/**
+ * Below this width the type group keeps only its words and all controls of the unit run tighter,
+ * so the group fits one line with the chips down to 320 px (WCAG 1.4.10).
+ */
 const narrow = (theme: Theme) => theme.breakpoints.down('sm')
 
 export interface AssetFilterBarSearch {
@@ -95,7 +98,9 @@ export default function AssetFilterBar({
           htmlInput: { 'aria-label': 'Suchen', maxLength: search.maxLength },
         }}
       />
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
+      <Box
+        sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, sm: 1.5 }, flexWrap: 'wrap' }}
+      >
         {showTypes && (
           <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 1 }}>
             <Typography
@@ -118,7 +123,7 @@ export default function AssetFilterBar({
               }}
               aria-labelledby={typeLabelId}
             >
-              <ToggleButton value={ALL_TYPES} sx={{ px: 1.5 }}>
+              <ToggleButton value={ALL_TYPES} sx={{ px: { xs: 1, sm: 1.5 } }}>
                 Alle
               </ToggleButton>
               {types.offered.map((definition) => {
@@ -127,7 +132,7 @@ export default function AssetFilterBar({
                   <ToggleButton
                     key={definition.type}
                     value={definition.type}
-                    sx={{ px: 1.5, gap: 0.75 }}
+                    sx={{ px: { xs: 1, sm: 1.5 }, gap: 0.75 }}
                   >
                     <Icon
                       aria-hidden
@@ -141,6 +146,7 @@ export default function AssetFilterBar({
           </Box>
         )}
         <AssetFilterChips
+          compact={narrow}
           separated={showTypes}
           value={filters}
           onToggle={onToggle}

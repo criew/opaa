@@ -3,6 +3,7 @@ import Divider from '@mui/material/Divider'
 import Stack from '@mui/material/Stack'
 import StarIcon from '@mui/icons-material/Star'
 import StarBorderIcon from '@mui/icons-material/StarBorder'
+import type { Theme } from '@mui/material/styles'
 
 /** The personal asset filters. Each only narrows; switched on together they combine with AND. */
 export interface AssetFilters {
@@ -20,6 +21,8 @@ interface AssetFilterChipsProps {
   separated?: boolean
   /** The name of the `selectedOnly` chip, after what choosing means in its place. */
   selectedOnlyLabel?: string
+  /** The media query under which the chips run with less padding. */
+  compact?: (theme: Theme) => string
 }
 
 /**
@@ -32,7 +35,10 @@ export default function AssetFilterChips({
   onToggle,
   separated = false,
   selectedOnlyLabel = 'Nur ausgewählte',
+  compact,
 }: AssetFilterChipsProps) {
+  const chipSx = (theme: Theme) =>
+    compact ? { [compact(theme)]: { '& .MuiChip-label': { px: 1 } } } : {}
   return (
     <Stack
       direction="row"
@@ -50,6 +56,7 @@ export default function AssetFilterChips({
         variant={value.favorites ? 'filled' : 'outlined'}
         aria-pressed={value.favorites}
         onClick={() => onToggle('favorites')}
+        sx={chipSx}
       />
       {value.selectedOnly !== undefined && (
         <Chip
@@ -57,6 +64,7 @@ export default function AssetFilterChips({
           variant={value.selectedOnly ? 'filled' : 'outlined'}
           aria-pressed={value.selectedOnly}
           onClick={() => onToggle('selectedOnly')}
+          sx={chipSx}
         />
       )}
     </Stack>

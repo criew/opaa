@@ -11,7 +11,7 @@ import type { Locator, Page } from '@playwright/test'
  * Filterzeile und Kachel des Katalogs (#2180): Suche, Typgruppe und Favoriten stehen auf breiten
  * Bildschirmen in einer Zeile und brechen auf schmalen als Einheit um; Stern und „⋯“ heben nur
  * sich selbst hervor, nie die Kachel. Beides hängt an echtem Layout und echten CSS-Zuständen
- * (`:hover`, `:focus-within`), die jsdom nicht berechnet.
+ * (`:hover`, `:focus`, `:has()`), die jsdom nicht berechnet.
  */
 
 /** The vertical centre of an element - two controls of one row share it. */
@@ -63,19 +63,20 @@ test.describe('Katalog: Filterzeile und Kachel (#2180)', () => {
       'Favoriten-Chip steht neben der Typgruppe, nicht allein',
     ).toBeLessThan(4)
 
-    // Phone width: the group drops its visible title and the icons, yet keeps its name "Typ".
-    await page.setViewportSize({ width: 400, height: 800 })
+    // Reflow width (WCAG 1.4.10): the group drops its visible title and the icons, yet keeps its
+    // name "Typ", and the unit runs with less padding.
+    await page.setViewportSize({ width: 320, height: 800 })
     await expect(favorites).toBeVisible()
     expect(
       Math.abs((await centreY(favorites)) - (await centreY(types))),
-      'Favoriten-Chip steht bei 400 px neben der Typgruppe',
+      'Favoriten-Chip steht bei 320 px neben der Typgruppe',
     ).toBeLessThan(4)
     const narrowTypes = (await types.boundingBox())!
     const narrowFavorites = (await favorites.boundingBox())!
     expect(
       narrowFavorites.x + narrowFavorites.width,
       'Typgruppe und Favoriten passen in die Breite',
-    ).toBeLessThanOrEqual(400)
+    ).toBeLessThanOrEqual(320)
     expect(narrowTypes.x).toBeGreaterThanOrEqual(0)
   })
 
