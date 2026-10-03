@@ -438,10 +438,7 @@ public class PermissionTransferService {
                 parties.target().id(),
                 grant.getRole(),
                 grant.getExpiresAt(),
-                grant.getGrantedByUserId(),
-                // Die Uebertragung nimmt die Zahl der Erteilung mit: Sie gehoert zu diesem Recht,
-                // nicht zur Gruppe, die es bisher trug (#1820, ADR-0036 Entscheidung 9).
-                grant.getMemberCountAtGrant());
+                grant.getGrantedByUserId());
         grantRepository.save(moved);
         permissionHistoryService.recordGrantTransferredIn(moved, caller.id(), transferId, at);
       }

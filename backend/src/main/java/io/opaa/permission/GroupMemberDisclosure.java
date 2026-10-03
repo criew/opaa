@@ -10,18 +10,15 @@ import java.util.UUID;
  * (#1880).
  *
  * @param name null for a protected group.
- * @param activeMemberCount null for a protected group and for a small one.
- * @param members the requested page, ordered by name so paging is stable; empty wherever the rule
- *     withholds the list.
- * @param smallGroup true below the Mindestgruppengröße - then the list and both figures are gone,
- *     and this is what the interface says instead.
+ * @param activeMemberCount null for a protected group.
+ * @param members the requested page, ordered by name so paging is stable; empty for a protected
+ *     group.
  * @param responsible whom to ask about a protected group; empty for every other group.
  */
 public record GroupMemberDisclosure(
     UUID groupId,
     String name,
     boolean protectedGroup,
-    boolean smallGroup,
     Integer activeMemberCount,
     List<DisclosedGroupMember> members,
     List<String> responsible) {

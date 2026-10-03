@@ -298,14 +298,13 @@ class AccessDerivationIntegrationTest {
             groupId,
             role,
             null,
-            spaceAdmin.id(),
-            null));
+            spaceAdmin.id()));
   }
 
   private UUID space(UUID ownerId, UUID groupId, SpaceRole role) {
     Space space = new Space("Space", null, false, SpaceVisibility.PRIVATE, ownerId, organizationId);
     space.addMembership(SpaceMembership.ofUser(ownerId, SpaceRole.ADMIN, organizationId));
-    space.addMembership(SpaceMembership.ofGroup(groupId, role, 1, organizationId));
+    space.addMembership(SpaceMembership.ofGroup(groupId, role, organizationId));
     UUID id = spaceRepository.save(space).getId();
     createdSpaceIds.add(id);
     return id;

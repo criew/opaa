@@ -823,8 +823,7 @@ class PermissionTransferIntegrationTest {
               source,
               AssetRole.VIEWER,
               null,
-              admin.id(),
-              null));
+              admin.id()));
     }
     PermissionTransferOrder order =
         order(source, target, EnumSet.of(PermissionTransferScope.ASSET_GRANTS));
@@ -946,8 +945,7 @@ class PermissionTransferIntegrationTest {
             groupId,
             role,
             expiresAt,
-            admin.id(),
-            null));
+            admin.id()));
   }
 
   private AssetRole roleOfGroup(UUID libraryId, UUID groupId) {

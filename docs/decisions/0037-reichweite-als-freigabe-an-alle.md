@@ -372,7 +372,8 @@ bräche sie — dieselbe Klasse von Fehlern, die Entscheidung 5 gerade beseitigt
 Statt eines Booleans „Freigabe an Alle erlaubt" hätte die Obergrenze eine Zahl erreichbarer Konten
 deckeln können. Verworfen, und zwar nicht neu: Die Maintainer-Festlegung vom 21.09.2026 zu #797 hat
 eine Gruppengrößen-Schwelle für Freigaben ausdrücklich gestrichen, und ADR-0036 (Entscheidung 9)
-führt den Gruppenzuwachs bewusst nur als **passives Signal**. Eine Grenze, die von einer Größe
+führte den Gruppenzuwachs bewusst nur als **passives Signal** — seit dem Nachtrag vom 03.10.2026
+(#2134) nicht einmal mehr als das, die Freigabeansicht nennt nur noch die heutige Größe. Eine Grenze, die von einer Größe
 abhängt, die sich außerhalb des Systems ändert, sperrt bei der nächsten Verzeichnisübernahme eine
 Arbeit, die gestern erlaubt war.
 

@@ -2,7 +2,6 @@ package io.opaa.space;
 
 import io.opaa.api.types.SpaceRole;
 import io.opaa.permission.AssetType;
-import io.opaa.permission.GroupMembershipResolver;
 import io.opaa.permission.GroupSpaceMembershipDirectory;
 import io.opaa.permission.GroupSpaceMembershipRef;
 import java.time.Instant;
@@ -24,17 +23,14 @@ class GroupSpaceMembershipDirectoryAdapter implements GroupSpaceMembershipDirect
   private final SpaceMembershipRepository membershipRepository;
   private final SpaceRepository spaceRepository;
   private final SpaceMembershipHistoryService membershipHistory;
-  private final GroupMembershipResolver groupMemberships;
 
   GroupSpaceMembershipDirectoryAdapter(
       SpaceMembershipRepository membershipRepository,
       SpaceRepository spaceRepository,
-      SpaceMembershipHistoryService membershipHistory,
-      GroupMembershipResolver groupMemberships) {
+      SpaceMembershipHistoryService membershipHistory) {
     this.membershipRepository = membershipRepository;
     this.spaceRepository = spaceRepository;
     this.membershipHistory = membershipHistory;
-    this.groupMemberships = groupMemberships;
   }
 
   @Override
@@ -59,10 +55,6 @@ class GroupSpaceMembershipDirectoryAdapter implements GroupSpaceMembershipDirect
    * Where the target group is already a member, the stronger of the two roles stays: a transfer
    * hands rights over, it never lowers what the target already had. The target's own interval is
    * only rewritten when its role actually rises - an unchanged state is not a new state.
-   *
-   * <p>{@code memberCountAtGrant} of a newly written membership is today's figure, not the
-   * source's: the number exists to be compared with the one of tomorrow (ADR-0036, Entscheidung 9),
-   * and carrying the source group's old count over would compare two different groups.
    */
   @Override
   public List<UUID> transferSpaceMemberships(
@@ -76,11 +68,7 @@ class GroupSpaceMembershipDirectoryAdapter implements GroupSpaceMembershipDirect
       membershipHistory.recordTransferredOut(source, actorUserId, transferId, at);
       if (existing == null) {
         SpaceMembership moved =
-            SpaceMembership.ofGroup(
-                targetGroupId,
-                source.getRole(),
-                groupMemberships.activeMemberCount(targetGroupId, space.getOrganizationId()),
-                space.getOrganizationId());
+            SpaceMembership.ofGroup(targetGroupId, source.getRole(), space.getOrganizationId());
         space.addMembership(moved);
         membershipHistory.recordTransferredIn(moved, actorUserId, transferId, at);
       } else if (source.getRole().ordinal() > existing.getRole().ordinal()) {
