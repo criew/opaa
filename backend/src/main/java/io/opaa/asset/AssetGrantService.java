@@ -22,8 +22,6 @@ import io.opaa.permission.GroupAttribution;
 import io.opaa.permission.GroupMemberDisclosure;
 import io.opaa.permission.GroupMemberDisclosureDirectory;
 import io.opaa.permission.GroupMembershipResolver;
-import io.opaa.permission.GroupSizeProperties;
-import io.opaa.permission.GroupSizeSignal;
 import io.opaa.permission.GroupSubject;
 import io.opaa.permission.GroupSubjectDirectory;
 import io.opaa.permission.SuccessionReachGuard;
@@ -92,7 +90,6 @@ public class AssetGrantService {
   private final GroupSubjectDirectory groupDirectory;
   private final GroupMemberDisclosureDirectory disclosureDirectory;
   private final GroupMembershipResolver groupMemberships;
-  private final GroupSizeProperties groupSizeProperties;
   private final AssetAuthorization authorization;
   private final AssetAccessService accessService;
   private final AssetTypes assetTypes;
@@ -106,7 +103,6 @@ public class AssetGrantService {
       GroupSubjectDirectory groupDirectory,
       GroupMemberDisclosureDirectory disclosureDirectory,
       GroupMembershipResolver groupMemberships,
-      GroupSizeProperties groupSizeProperties,
       AssetAuthorization authorization,
       AssetAccessService accessService,
       AssetTypes assetTypes,
@@ -118,7 +114,6 @@ public class AssetGrantService {
     this.groupDirectory = groupDirectory;
     this.disclosureDirectory = disclosureDirectory;
     this.groupMemberships = groupMemberships;
-    this.groupSizeProperties = groupSizeProperties;
     this.authorization = authorization;
     this.accessService = accessService;
     this.assetTypes = assetTypes;
@@ -273,9 +268,7 @@ public class AssetGrantService {
                     request.subjectId(),
                     request.role(),
                     request.expiresAt(),
-                    currentUserId,
-                    groupMemberships.activeMemberCount(
-                        request.subjectId(), asset.getOrganizationId()));
+                    currentUserId);
             case ALL_ACCOUNTS ->
                 AssetGrant.forAllAccounts(
                     assetType,
@@ -317,8 +310,7 @@ public class AssetGrantService {
 
   /**
    * Grants the role that goes with creating or owning an asset, without the manager checks of
-   * {@link #upsertGrant} - the caller is the shell itself, at the asset's creation. A group owner's
-   * grant carries no growth signal: it is ownership, not a release.
+   * {@link #upsertGrant} - the caller is the shell itself, at the asset's creation.
    */
   AssetGrant grantAtCreation(Asset asset, AssetGrant grant, UUID actorUserId) {
     AssetGrant saved = grantRepository.save(grant);
@@ -679,18 +671,11 @@ public class AssetGrantService {
                   group == null ? null : group.name(),
                   grantedByName,
                   protectedGroup,
-                  protectedGroup ? GroupSizeSignal.NONE : groupSizeSignal(grant));
+                  protectedGroup
+                      ? null
+                      : groupMemberships.activeMemberCount(
+                          grant.getSubjectId(), grant.getOrganizationId()));
             })
         .toList();
-  }
-
-  /**
-   * The growth signal of a group grant (ADR-0036, Entscheidung 9) - see {@link GroupSizeSignal}.
-   */
-  private GroupSizeSignal groupSizeSignal(AssetGrant grant) {
-    return GroupSizeSignal.of(
-        grant.getMemberCountAtGrant(),
-        groupMemberships.activeMemberCount(grant.getSubjectId(), grant.getOrganizationId()),
-        groupSizeProperties.minimumGroupSize());
   }
 }

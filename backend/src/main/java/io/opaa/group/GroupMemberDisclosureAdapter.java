@@ -11,7 +11,6 @@ import io.opaa.permission.DisclosedGroupMember;
 import io.opaa.permission.GroupMemberDisclosure;
 import io.opaa.permission.GroupMemberDisclosureDirectory;
 import io.opaa.permission.GroupMembershipResolver;
-import io.opaa.permission.GroupSizeProperties;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -32,7 +31,6 @@ class GroupMemberDisclosureAdapter implements GroupMemberDisclosureDirectory {
   private final GroupRepository groupRepository;
   private final GroupStewardRepository stewardRepository;
   private final GroupMembershipResolver membershipResolver;
-  private final GroupSizeProperties groupSizeProperties;
   private final UserRepository userRepository;
   private final AuditEventRecorder auditEventRecorder;
 
@@ -40,13 +38,11 @@ class GroupMemberDisclosureAdapter implements GroupMemberDisclosureDirectory {
       GroupRepository groupRepository,
       GroupStewardRepository stewardRepository,
       GroupMembershipResolver membershipResolver,
-      GroupSizeProperties groupSizeProperties,
       UserRepository userRepository,
       AuditEventRecorder auditEventRecorder) {
     this.groupRepository = groupRepository;
     this.stewardRepository = stewardRepository;
     this.membershipResolver = membershipResolver;
-    this.groupSizeProperties = groupSizeProperties;
     this.userRepository = userRepository;
     this.auditEventRecorder = auditEventRecorder;
   }
@@ -70,13 +66,7 @@ class GroupMemberDisclosureAdapter implements GroupMemberDisclosureDirectory {
     if (group.isProtectedGroup()) {
       return Optional.of(
           new GroupMemberDisclosure(
-              group.getId(), null, true, false, null, List.of(), responsibleNamesOf(group)));
-    }
-    // Limit (e): below the Mindestgruppengröße the list is the figure the growth signal withholds.
-    if (active < groupSizeProperties.minimumGroupSize()) {
-      return Optional.of(
-          new GroupMemberDisclosure(
-              group.getId(), group.getName(), false, true, null, List.of(), List.of()));
+              group.getId(), null, true, null, List.of(), responsibleNamesOf(group)));
     }
     int page = Math.min(Math.max(limit, 1), MAX_PAGE_SIZE);
     List<UUID> memberIds =
@@ -84,7 +74,7 @@ class GroupMemberDisclosureAdapter implements GroupMemberDisclosureDirectory {
             group.getId(), organizationId, page, Math.max(offset, 0));
     return Optional.of(
         new GroupMemberDisclosure(
-            group.getId(), group.getName(), false, false, active, toMembers(memberIds), List.of()));
+            group.getId(), group.getName(), false, active, toMembers(memberIds), List.of()));
   }
 
   /**

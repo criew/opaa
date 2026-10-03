@@ -123,8 +123,7 @@ class GrantLibraryChangedEventIntegrationTest {
         subjectGroupId,
         AssetRole.MANAGER,
         null,
-        actorUserId,
-        null);
+        actorUserId);
   }
 
   @Test

@@ -29,7 +29,6 @@ import io.opaa.permission.AssetGrant;
 import io.opaa.permission.AssetGrantRepository;
 import io.opaa.permission.GroupMemberDisclosureDirectory;
 import io.opaa.permission.GroupMembershipResolver;
-import io.opaa.permission.GroupSizeProperties;
 import io.opaa.permission.GroupSubject;
 import io.opaa.permission.GroupSubjectDirectory;
 import io.opaa.permission.SuccessionReachGuard;
@@ -86,7 +85,6 @@ class AssetGrantServiceTest {
             groupDirectory,
             disclosureDirectory,
             groupMemberships,
-            new GroupSizeProperties(null),
             accessService,
             assetAccessService,
             new AssetTypes(List.of(libraryType)),
@@ -857,8 +855,7 @@ class AssetGrantServiceTest {
             groupId,
             AssetRole.VIEWER,
             null,
-            managerId,
-            null);
+            managerId);
     when(grantRepository.findByAssetTypeAndAssetId(KnowledgeLibrary.ASSET_TYPE, libraryId))
         .thenReturn(List.of(grant));
     // #1820: Die Liste liest die Gruppe jetzt als Attribution - Name und Schutzkennzeichen in
@@ -896,8 +893,7 @@ class AssetGrantServiceTest {
             groupId,
             AssetRole.VIEWER,
             null,
-            managerId,
-            23);
+            managerId);
     when(grantRepository.findByAssetTypeAndAssetId(KnowledgeLibrary.ASSET_TYPE, libraryId))
         .thenReturn(List.of(grant));
     when(groupDirectory.attributionsById(any()))
@@ -917,41 +913,45 @@ class AssetGrantServiceTest {
     assertThat(responses).hasSize(1);
     assertThat(responses.get(0).subjectDisplayName()).isNull();
     assertThat(responses.get(0).protectedGroup()).isTrue();
-    assertThat(responses.get(0).groupSize().memberCountAtGrant()).isNull();
-    assertThat(responses.get(0).groupSize().memberCountNow()).isNull();
+    assertThat(responses.get(0).activeMemberCount()).isNull();
   }
 
   /**
-   * ADR-0036, Entscheidung 9 (#1820): Eine neue Freigabe an eine Gruppe haelt fest, wie viele
-   * aktive Konten sie im Augenblick der Erteilung erreichte - die eine Zahl, gegen die "heute"
-   * spaeter verglichen wird.
+   * ADR-0036, Entscheidung 9 (#2134): Eine Gruppenfreigabe traegt die heutige Zahl aktiver Konten,
+   * auch unterhalb der Mindestgruppengroesse.
    */
   @Test
-  void upsertGrantRecordsTheGroupsActiveMemberCountAtTheMomentOfTheGrant() {
+  void listGrantsCarriesTheGroupsCurrentMemberCountWhateverItsSize() {
     when(accessService.requireRole(any(), eq(managerId), anyBoolean(), eq(AssetRole.MANAGER)))
         .thenReturn(AssetRole.OWNER);
-    when(accessService.effectiveRole(any(), eq(managerId), anyBoolean()))
-        .thenReturn(AssetRole.OWNER);
     UUID groupId = UUID.randomUUID();
-    when(groupDirectory.find(groupId))
+    AssetGrant grant =
+        AssetGrant.forGroup(
+            KnowledgeLibrary.ASSET_TYPE,
+            libraryId,
+            organizationId,
+            groupId,
+            AssetRole.VIEWER,
+            null,
+            managerId);
+    when(grantRepository.findByAssetTypeAndAssetId(KnowledgeLibrary.ASSET_TYPE, libraryId))
+        .thenReturn(List.of(grant));
+    when(groupDirectory.attributionsById(any()))
         .thenReturn(
-            Optional.of(
-                new GroupSubject(
-                    groupId, organizationId, "Referat 50", false, false, false, false, true)));
-    when(groupMemberships.activeMemberCount(groupId, organizationId)).thenReturn(23);
-    when(grantRepository.save(any(AssetGrant.class)))
-        .thenAnswer(invocation -> invocation.getArgument(0));
+            java.util.Map.of(
+                groupId,
+                new io.opaa.permission.GroupAttribution(
+                    groupId,
+                    "Referat 50",
+                    io.opaa.api.types.GroupOrigin.INTERNAL,
+                    null,
+                    io.opaa.api.types.GroupMechanism.NONE,
+                    false)));
+    when(groupMemberships.activeMemberCount(groupId, organizationId)).thenReturn(3);
 
-    grantService.upsertGrant(
-        KnowledgeLibrary.ASSET_TYPE,
-        libraryId,
-        new AssetGrantUpsert(AssetGrantSubjectType.GROUP, groupId, AssetRole.VIEWER, null),
-        managerCaller);
+    var responses = grantService.listGrants(KnowledgeLibrary.ASSET_TYPE, libraryId, managerCaller);
 
-    org.mockito.ArgumentCaptor<AssetGrant> saved =
-        org.mockito.ArgumentCaptor.forClass(AssetGrant.class);
-    verify(grantRepository).save(saved.capture());
-    assertThat(saved.getValue().getMemberCountAtGrant()).isEqualTo(23);
+    assertThat(responses.get(0).activeMemberCount()).isEqualTo(3);
   }
 
   @Test
@@ -1030,9 +1030,7 @@ class AssetGrantServiceTest {
     assertThat(view.grant().getSubjectType()).isEqualTo(AssetGrantSubjectType.ALL_ACCOUNTS);
     assertThat(view.grant().getSubjectUserId()).isNull();
     assertThat(view.grant().getSubjectGroupId()).isNull();
-    assertThat(view.grant().getMemberCountAtGrant())
-        .as("the reach is the organization itself - a figure would invite a meaningless comparison")
-        .isNull();
+    assertThat(view.activeMemberCount()).isNull();
     assertThat(view.subjectDisplayName()).isEqualTo("Alle Konten");
   }
 

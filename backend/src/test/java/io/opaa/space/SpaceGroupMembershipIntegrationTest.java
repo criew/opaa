@@ -218,7 +218,7 @@ class SpaceGroupMembershipIntegrationTest {
         spaceService.addMember(
             space.getId(), groupSubject(group), SpaceRole.MEMBER, currentUserOf(owner));
 
-    assertThat(view.groupSize().emptyGroup()).isTrue();
+    assertThat(view.activeMemberCount()).isZero();
     assertThat(membershipRepository.findBySpaceId(space.getId())).hasSize(2);
   }
 
@@ -238,11 +238,12 @@ class SpaceGroupMembershipIntegrationTest {
   }
 
   // -------------------------------------------------------------------------------------------
-  // The growth signal (ADR-0036, Entscheidung 9)
+  // The current size of a group row (ADR-0036, Entscheidung 9)
   // -------------------------------------------------------------------------------------------
 
+  /** #2134: the row carries today's figure, so a group that grows shows its new size. */
   @Test
-  void theMemberCountAtGrantIsStoredAndComparedAgainstTodaysFigure() {
+  void aGroupRowCarriesTodaysFigure() {
     UUID owner = createUser(organizationA);
     UUID group = createGroup(organizationA, "Referat 50", fiveUsers(organizationA));
     makeSteward(group, owner);
@@ -251,37 +252,44 @@ class SpaceGroupMembershipIntegrationTest {
         space.getId(), groupSubject(group), SpaceRole.MEMBER, currentUserOf(owner));
 
     groupService.addMember(group, createUser(organizationA), currentUserOf(owner));
-    SpaceMemberView view = groupRow(space.getId(), owner);
 
-    assertThat(view.membership().getMemberCountAtGrant()).isEqualTo(5);
-    assertThat(view.groupSize().memberCountAtGrant()).isEqualTo(5);
-    assertThat(view.groupSize().memberCountNow()).isEqualTo(6);
-    assertThat(view.groupSize().smallGroup()).isFalse();
+    assertThat(groupRow(space.getId(), owner).activeMemberCount()).isEqualTo(6);
   }
 
-  /** Below the enforced minimum group size both figures are withheld, not just the smaller one. */
+  /** #2134: no minimum group size applies to the figure of a member row. */
   @Test
-  void bothFiguresAreWithheldForASmallGroup() {
+  void aSmallGroupShowsItsFigureToo() {
     UUID owner = createUser(organizationA);
     UUID group = createGroup(organizationA, "Kleine Runde", createUser(organizationA));
     Space space = createSpace(owner);
     spaceService.addMember(
         space.getId(), groupSubject(group), SpaceRole.MEMBER, currentUserOf(owner));
 
+    assertThat(groupRow(space.getId(), owner).activeMemberCount()).isEqualTo(1);
+  }
+
+  /** ADR-0036, Entscheidung 9: a protected group row stays nameless and carries no figure. */
+  @Test
+  void aProtectedGroupRowCarriesNeitherNameNorFigure() {
+    UUID owner = createUser(organizationA);
+    UUID group = createGroup(organizationA, "Personalrat", fiveUsers(organizationA));
+    Space space = createSpace(owner);
+    spaceService.addMember(
+        space.getId(), groupSubject(group), SpaceRole.MEMBER, currentUserOf(owner));
+    Group stored = groupRepository.findById(group).orElseThrow();
+    stored.markProtected(true);
+    groupRepository.save(stored);
+
     SpaceMemberView view = groupRow(space.getId(), owner);
 
-    assertThat(view.groupSize().smallGroup()).isTrue();
-    assertThat(view.groupSize().memberCountAtGrant()).isNull();
-    assertThat(view.groupSize().memberCountNow()).isNull();
-    assertThat(view.membership().getMemberCountAtGrant())
-        .as("the stored figure itself is untouched; only the disclosure is suppressed")
-        .isEqualTo(1);
+    assertThat(view.protectedGroup()).isTrue();
+    assertThat(view.displayName()).isNull();
+    assertThat(view.activeMemberCount()).isNull();
   }
 
   /**
    * ADR-0036, Entscheidung 7, Schutzpunkt 3 (#1818): counted are active accounts, not membership
-   * rows. Six members with two of them locked by the directory synchronisation are a group of four
-   * - and four is below the Mindestgruppengröße, so both figures are withheld.
+   * rows. Six members with two of them locked by the directory synchronisation are a group of four.
    */
   @Test
   void accountsLockedByTheDirectorySynchronisationDoNotCount() {
@@ -294,20 +302,12 @@ class SpaceGroupMembershipIntegrationTest {
     Space space = createSpace(owner);
     spaceService.addMember(
         space.getId(), groupSubject(group), SpaceRole.MEMBER, currentUserOf(owner));
-    assertThat(groupRow(space.getId(), owner).groupSize().smallGroup())
-        .as("six active accounts are no small group")
-        .isFalse();
+    assertThat(groupRow(space.getId(), owner).activeMemberCount()).isEqualTo(6);
 
     lockFromDirectory(members[0]);
     lockFromDirectory(members[1]);
 
-    SpaceMemberView view = groupRow(space.getId(), owner);
-    assertThat(view.groupSize().smallGroup()).isTrue();
-    assertThat(view.groupSize().memberCountNow()).isNull();
-    assertThat(view.membership().getMemberCountAtGrant())
-        .as("the stored figure of the admission is untouched by a later lock")
-        .isEqualTo(6);
-    assertThat(groupMembershipResolver.activeMemberCount(group, organizationA)).isEqualTo(4);
+    assertThat(groupRow(space.getId(), owner).activeMemberCount()).isEqualTo(4);
     assertThat(
             groupMembershipResolver.resolveUserIds(PermissionSubject.group(group, organizationA)))
         .as("the rights resolution is unchanged: a locked account keeps its membership")

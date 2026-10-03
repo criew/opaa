@@ -1,0 +1,10 @@
+databaseChangeLog:
+  - changeSet:
+      id: rights-2026-10-03-drop-grant-member-count
+      author: opaa
+      comment: "The growth signal of a group grant is gone (ADR-0036, Entscheidung 9, Nachtrag of 03.10.2026): asset_grants loses the member count recorded at granting together with its check."
+      changes:
+        - sql:
+            sql: |
+              ALTER TABLE asset_grants DROP CONSTRAINT chk_asset_grants_member_count;
+              ALTER TABLE asset_grants DROP COLUMN member_count_at_grant;

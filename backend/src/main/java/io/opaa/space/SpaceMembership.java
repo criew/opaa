@@ -48,14 +48,6 @@ public class SpaceMembership {
   @Column(name = "role", nullable = false, length = 20)
   private SpaceRole role;
 
-  /**
-   * The number of active accounts the group reached when it was admitted (ADR-0036, Entscheidung
-   * 9). Null on a person's membership, and never written again afterwards: its whole value lies in
-   * the comparison with the figure of today.
-   */
-  @Column(name = "member_count_at_grant")
-  private Integer memberCountAtGrant;
-
   @Column(name = "organization_id", nullable = false)
   private UUID organizationId;
 
@@ -69,26 +61,21 @@ public class SpaceMembership {
       UUID userId,
       UUID groupId,
       SpaceRole role,
-      Integer memberCountAtGrant,
       UUID organizationId) {
     this.id = UUID.randomUUID();
     this.subjectType = subjectType;
     this.userId = userId;
     this.groupId = groupId;
     this.role = role;
-    this.memberCountAtGrant = memberCountAtGrant;
     this.organizationId = organizationId;
   }
 
   public static SpaceMembership ofUser(UUID userId, SpaceRole role, UUID organizationId) {
-    return new SpaceMembership(
-        PermissionSubjectType.USER, userId, null, role, null, organizationId);
+    return new SpaceMembership(PermissionSubjectType.USER, userId, null, role, organizationId);
   }
 
-  public static SpaceMembership ofGroup(
-      UUID groupId, SpaceRole role, int activeMemberCount, UUID organizationId) {
-    return new SpaceMembership(
-        PermissionSubjectType.GROUP, null, groupId, role, activeMemberCount, organizationId);
+  public static SpaceMembership ofGroup(UUID groupId, SpaceRole role, UUID organizationId) {
+    return new SpaceMembership(PermissionSubjectType.GROUP, null, groupId, role, organizationId);
   }
 
   @PrePersist
@@ -144,10 +131,6 @@ public class SpaceMembership {
 
   public void setRole(SpaceRole role) {
     this.role = role;
-  }
-
-  public Integer getMemberCountAtGrant() {
-    return memberCountAtGrant;
   }
 
   public UUID getOrganizationId() {

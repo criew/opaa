@@ -24,30 +24,15 @@ class WorkspaceBaselineTest extends AbstractBaselineTest {
     UUID space = insertSpace(insertUser());
     UUID user = insertUser();
     UUID group = insertInternalGroup();
-    execute(membershipSql(space, "USER", user, null, null));
-    execute(membershipSql(space, "GROUP", null, group, 23));
+    execute(membershipSql(space, "USER", user, null));
+    execute(membershipSql(space, "GROUP", null, group));
 
     assertRejected(
-        membershipSql(space, "USER", insertUser(), insertInternalGroup(), null),
+        membershipSql(space, "USER", insertUser(), insertInternalGroup()),
         "chk_space_memberships_subject");
+    assertRejected(membershipSql(space, "GROUP", null, null), "chk_space_memberships_subject");
     assertRejected(
-        membershipSql(space, "GROUP", null, null, null), "chk_space_memberships_subject");
-    assertRejected(
-        membershipSql(space, "GROUP", insertUser(), null, null), "chk_space_memberships_subject");
-  }
-
-  /**
-   * ADR-0036, Entscheidung 9: the size of a group at the moment it was admitted, never a person's.
-   */
-  @Test
-  void onlyAGroupMembershipCarriesANonNegativeMemberCount() throws SQLException {
-    UUID space = insertSpace(insertUser());
-
-    assertRejected(
-        membershipSql(space, "USER", insertUser(), null, 1), "chk_space_memberships_member_count");
-    assertRejected(
-        membershipSql(space, "GROUP", null, insertInternalGroup(), -1),
-        "chk_space_memberships_member_count");
+        membershipSql(space, "GROUP", insertUser(), null), "chk_space_memberships_subject");
   }
 
   @Test
@@ -55,14 +40,13 @@ class WorkspaceBaselineTest extends AbstractBaselineTest {
     UUID space = insertSpace(insertUser());
     UUID user = insertUser();
     UUID group = insertInternalGroup();
-    execute(membershipSql(space, "USER", user, null, null));
-    execute(membershipSql(space, "GROUP", null, group, null));
+    execute(membershipSql(space, "USER", user, null));
+    execute(membershipSql(space, "GROUP", null, group));
 
+    assertRejected(membershipSql(space, "USER", user, null), "uk_space_memberships_user_subject");
     assertRejected(
-        membershipSql(space, "USER", user, null, null), "uk_space_memberships_user_subject");
-    assertRejected(
-        membershipSql(space, "GROUP", null, group, null), "uk_space_memberships_group_subject");
-    execute(membershipSql(insertSpace(insertUser()), "USER", user, null, null));
+        membershipSql(space, "GROUP", null, group), "uk_space_memberships_group_subject");
+    execute(membershipSql(insertSpace(insertUser()), "USER", user, null));
   }
 
   /**
@@ -73,7 +57,7 @@ class WorkspaceBaselineTest extends AbstractBaselineTest {
   void aMemberGroupCannotBeDeletedAndMustBelongToTheSpacesOrganization() throws SQLException {
     UUID space = insertSpace(insertUser());
     UUID group = insertInternalGroup();
-    execute(membershipSql(space, "GROUP", null, group, null));
+    execute(membershipSql(space, "GROUP", null, group));
 
     assertRejected(
         "DELETE FROM groups WHERE id = '" + group + "'", "fk_space_memberships_group_organization");
@@ -87,7 +71,7 @@ class WorkspaceBaselineTest extends AbstractBaselineTest {
             + otherOrganization
             + "', 'AD_HOC', 'Fremd')");
     assertRejected(
-        membershipSql(space, "GROUP", null, foreignGroup, null),
+        membershipSql(space, "GROUP", null, foreignGroup),
         "fk_space_memberships_group_organization");
   }
 
@@ -233,10 +217,9 @@ class WorkspaceBaselineTest extends AbstractBaselineTest {
   // Helpers
   // ---------------------------------------------------------------------------------------------
 
-  private static String membershipSql(
-      UUID space, String subjectType, UUID user, UUID group, Integer memberCount) {
+  private static String membershipSql(UUID space, String subjectType, UUID user, UUID group) {
     return "INSERT INTO space_memberships (id, space_id, organization_id, role, subject_type,"
-        + " user_id, group_id, member_count_at_grant) VALUES (gen_random_uuid(), '"
+        + " user_id, group_id) VALUES (gen_random_uuid(), '"
         + space
         + "', '"
         + SEEDED_ORGANIZATION_ID
@@ -246,8 +229,6 @@ class WorkspaceBaselineTest extends AbstractBaselineTest {
         + quoted(user)
         + ", "
         + quoted(group)
-        + ", "
-        + (memberCount == null ? "NULL" : memberCount)
         + ")";
   }
 
