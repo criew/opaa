@@ -106,6 +106,16 @@
         '// renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)\\s*\\n\\s*static final String IMAGE = "[^:"]+:(?<currentValue>[^"]+)"',
       ],
     },
+    // Das Nextcloud-Testcontainer-Image (#2152) ist als Java-Konstante gepinnt, für den
+    // docker-Manager unsichtbar. Eigener matchString wie bei Keycloak: die Konstante ist
+    // package-private, der Tag ("34.0.4-apache") ist reguläre docker-Versionierung mit Variante.
+    {
+      customType: 'regex',
+      managerFilePatterns: ['backend/src/test/java/io/opaa/integration/nextcloud/NextcloudFixture.java'],
+      matchStrings: [
+        '// renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)\\s*\\n\\s*static final String IMAGE = "[^:"]+:(?<currentValue>[^"]+)"',
+      ],
+    },
     // Der cdxgen-Aufruf in sbom.yml läuft über "pnpm dlx" statt über eine Manifestdatei — für den
     // github-actions-Manager unsichtbar.
     {

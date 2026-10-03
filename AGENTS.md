@@ -54,6 +54,12 @@ OPAA_CONFLUENCE_IT=true ./gradlew confluenceIntegrationTest
                                   # Startzeit und ~880 MiB allein für den Container (dazu Postgres
                                   # und die Test-JVM). In CI nightly und per Label
                                   # "keycloak-suite" (#1817, ADR-0036 Entscheidung 3)
+./gradlew nextcloudIntegrationTest
+                                  # Nextcloud-Konnektor und FileStoreFolderContract gegen das
+                                  # offizielle Nextcloud-Image (io.opaa.integration.nextcloud.*);
+                                  # braucht Docker, Group Folders zusätzlich den App-Store. Nicht
+                                  # Teil von build/test: Image rund 2,1 GB. In CI nightly und per
+                                  # Label "nextcloud-suite" (#2152)
 ./gradlew spotlessCheck
 ./gradlew spotlessApply
 
