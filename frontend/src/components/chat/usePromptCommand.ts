@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { getPrompt, listAvailablePrompts } from '../../services/promptLibraryApi'
 import { notify } from '../../stores/notificationStore'
 import type { AvailablePrompt, PromptResponse } from '../../types/api'
@@ -47,6 +47,24 @@ export function usePromptCommand({ spaceId, userName, insertText }: UsePromptCom
   const loadToken = useRef(0)
   // Bumped by every change of the input: a prompt fetched for an outdated fragment is not inserted.
   const insertionToken = useRef(0)
+
+  // Prompts belong to their space: another space starts without chip, selection or pending form,
+  // and nothing still loading for the previous space may land afterwards.
+  const [promptSpaceId, setPromptSpaceId] = useState(spaceId)
+  if (promptSpaceId !== spaceId) {
+    setPromptSpaceId(spaceId)
+    setCommand(null)
+    setPrompts([])
+    setIsLoading(false)
+    setPendingForm(null)
+    setSelected(null)
+  }
+  // A layout effect runs in the same task as the commit of that reset, so no response for the
+  // previous space can resolve in between.
+  useLayoutEffect(() => {
+    loadToken.current++
+    insertionToken.current++
+  }, [spaceId])
 
   const isOpen = command !== null
 

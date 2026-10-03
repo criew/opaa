@@ -134,9 +134,12 @@ Abschnitt 11).
 
 ### In einem Raum bereitstellen
 
-Die Einstellungen eines Raums haben einen eigenen Reiter **„Prompts"**. Dort ordnet, wer im Raum
-mindestens Kurator ist, eine Prompt-Bibliothek zu, die er selbst lesen darf, und löst Zuordnungen
-wieder. **Der Chat eines Raums bietet nur die Prompts zugeordneter Prompt-Bibliotheken an**; eine
+Prompt-Bibliotheken werden im Reiter **„Inhalte"** der Raum-Einstellungen zugeordnet, in derselben
+Kachelliste wie die Wissensbibliotheken; der Typfilter „Prompts" grenzt sie auf Prompt-Bibliotheken
+ein. Dort ordnet, wer im Raum mindestens Kurator ist, per Häkchen eine Prompt-Bibliothek zu, die er
+selbst lesen darf, und löst Zuordnungen wieder; die Änderung wirkt sofort
+([Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), „Zuordnung: was ein Raum
+enthält"). **Der Chat eines Raums bietet nur die Prompts zugeordneter Prompt-Bibliotheken an**; eine
 Bibliothek, die nicht zugeordnet ist, steht dort nicht zur Verfügung, auch wenn die Person sie
 lesen darf. Die Zuordnung **gewährt niemandem zusätzlichen Zugriff**: Wer die Bibliothek nicht
 lesen darf, sieht sie im Raum nicht. Auf der Übersichtsseite des Raums stehen zugeordnete

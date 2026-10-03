@@ -15,6 +15,8 @@ export interface ChoiceTile<K extends string> {
   icon: ReactNode
   /** Why the tile cannot be chosen. The tile stays visible, greyed out, with this reason. */
   disabledReason?: string | null
+  /** A change of this tile is underway: announced as unavailable, yet it keeps the focus. */
+  busy?: boolean
 }
 
 interface CommonProps<K extends string> {
@@ -24,6 +26,8 @@ interface CommonProps<K extends string> {
   'aria-labelledby'?: string
   /** Columns from the `sm` breakpoint on; a narrow viewport always stacks the tiles. */
   columns?: number
+  /** Shows the choice without letting it change; the tiles stay reachable and readable. */
+  readOnly?: boolean
 }
 
 interface SingleProps<K extends string> extends CommonProps<K> {
@@ -48,7 +52,7 @@ const TILE_ATTRIBUTE = 'data-choice-tile'
  * choice is a group of `checkbox` tiles, each its own tab stop. Space and Enter choose in both.
  */
 export default function ChoiceTileGroup<K extends string>(props: ChoiceTileGroupProps<K>) {
-  const { tiles, columns = 2 } = props
+  const { tiles, columns = 2, readOnly = false } = props
   const selectable = tiles.filter((tile) => !tile.disabledReason).map((tile) => tile.value)
 
   const isSelected = (value: K) =>
@@ -74,7 +78,7 @@ export default function ChoiceTileGroup<K extends string>(props: ChoiceTileGroup
   }
 
   function handleKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
-    if (props.multiple || selectable.length === 0) return
+    if (props.multiple || readOnly || selectable.length === 0) return
     const forward = event.key === 'ArrowRight' || event.key === 'ArrowDown'
     const backward = event.key === 'ArrowLeft' || event.key === 'ArrowUp'
     const home = event.key === 'Home'
@@ -111,6 +115,7 @@ export default function ChoiceTileGroup<K extends string>(props: ChoiceTileGroup
       {tiles.map((tile) => {
         const selected = isSelected(tile.value)
         const locked = Boolean(tile.disabledReason)
+        const inert = locked || readOnly
         return (
           <Box
             key={tile.value}
@@ -119,12 +124,13 @@ export default function ChoiceTileGroup<K extends string>(props: ChoiceTileGroup
             role={props.multiple ? 'checkbox' : 'radio'}
             {...{ [TILE_ATTRIBUTE]: tile.value }}
             aria-checked={selected}
-            aria-disabled={locked}
+            aria-disabled={locked || tile.busy || undefined}
+            aria-readonly={readOnly || undefined}
             disabled={locked}
             // A radio group has exactly one tab stop (roving tabindex); a checkbox group one per tile.
             tabIndex={props.multiple ? 0 : tile.value === tabStop ? 0 : -1}
             onClick={() => {
-              if (!locked) choose(tile.value)
+              if (!inert) choose(tile.value)
             }}
             sx={{
               position: 'relative',
@@ -133,7 +139,7 @@ export default function ChoiceTileGroup<K extends string>(props: ChoiceTileGroup
               gap: '12px',
               textAlign: 'left',
               font: 'inherit',
-              cursor: locked ? 'not-allowed' : 'pointer',
+              cursor: locked ? 'not-allowed' : readOnly ? 'default' : 'pointer',
               opacity: locked ? 0.6 : 1,
               p: 2,
               pr: 4.5,
@@ -147,7 +153,9 @@ export default function ChoiceTileGroup<K extends string>(props: ChoiceTileGroup
                       ? alpha(theme.palette.primary.main, 0.16)
                       : blue[50]
                 : 'transparent',
-              '&:hover': { borderColor: selected ? 'primary.main' : 'text.disabled' },
+              '&:hover': readOnly
+                ? {}
+                : { borderColor: selected ? 'primary.main' : 'text.disabled' },
             }}
           >
             <Box aria-hidden sx={{ display: 'flex', color: 'text.secondary', mt: '2px' }}>

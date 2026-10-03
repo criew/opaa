@@ -351,7 +351,7 @@ services:
   # provider-specific configuration exists anymore since #762, so activating this profile needs no
   # environment variable changes at all: the application defaults already point here.
   ollama:
-    image: ollama/ollama:0.35.0
+    image: ollama/ollama:0.35.1
     volumes:
       - opaa-ollama-data:/root/.ollama
     # Not published to the host: the backend and the ollama-pull init step below reach this
@@ -379,7 +379,7 @@ services:
   # exits (no restart) - `docker compose --profile ollama up` therefore only finishes downloading
   # once per fresh volume; watch `docker compose logs -f ollama-pull` for progress.
   ollama-pull:
-    image: ollama/ollama:0.35.0
+    image: ollama/ollama:0.35.1
     environment:
       OLLAMA_HOST: "ollama:11434"
     entrypoint: ["/bin/sh", "-c"]
@@ -402,7 +402,7 @@ services:
   # "mailpit" (the backend reaches it over the Compose network), port 1025, encryption NONE, no
   # credentials. Both ports are published to 127.0.0.1 only.
   mailpit:
-    image: axllent/mailpit:v1.31.3
+    image: axllent/mailpit:v1.31.4
     environment:
       MP_MAX_MESSAGES: 500
       MP_SMTP_AUTH_ACCEPT_ANY: 1

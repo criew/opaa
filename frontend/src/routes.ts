@@ -17,12 +17,17 @@ export const CATALOG_ROUTE = '/catalog'
 /** "Neu" in the catalog: the type choice before the type's own wizard. */
 export const CATALOG_NEW_ROUTE = '/catalog/new'
 /**
- * Die Reiter der Space-Einstellungen (#1917). Ein weiterer Asset-Typ ist ein weiterer Wert hier
- * und ein weiterer Eintrag in SpaceSettingsPage; die Reihenfolge ist die der Reiterleiste, der
- * erste Wert das Ziel eines Verweises ohne eigenen Reiter.
+ * The tabs of the space settings, in the order of the tab bar; the first is where a link without
+ * a tab of its own lands. Every asset type shares the tab `content`.
  */
-export const SPACE_SETTINGS_TABS = ['general', 'members', 'knowledge', 'prompts'] as const
+export const SPACE_SETTINGS_TABS = ['general', 'members', 'content'] as const
 export type SpaceSettingsTab = (typeof SPACE_SETTINGS_TABS)[number]
+
+/** Former tabs that bookmarks and links may still name, and the tab that replaced them. */
+export const FORMER_SPACE_SETTINGS_TABS: Readonly<Record<string, SpaceSettingsTab>> = {
+  knowledge: 'content',
+  prompts: 'content',
+}
 
 export function spaceSettingsRoute(
   spaceId: string,
