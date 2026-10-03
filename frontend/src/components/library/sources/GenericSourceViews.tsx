@@ -1,6 +1,11 @@
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import {
+  filesystemSettingsOf,
+  storedFilesystemPatterns,
+  type FilesystemSourceValues,
+} from '../../../utils/filesystemSource'
+import {
   storedGenericSourceValues,
   type GenericSourceKind,
   type GenericSourceValues,
@@ -10,7 +15,7 @@ import SourceConnectionTest from '../SourceConnectionTest'
 import UrlSourceForm from '../UrlSourceForm'
 import type { SourceFormProps, StoredLibrarySource } from './types'
 
-export function PathForm({ values, onChange, context }: SourceFormProps<GenericSourceValues>) {
+export function PathForm({ values, onChange, context }: SourceFormProps<FilesystemSourceValues>) {
   return (
     <>
       <PathSourceForm
@@ -23,6 +28,7 @@ export function PathForm({ values, onChange, context }: SourceFormProps<GenericS
         sourceType={context.sourceType}
         kind="path"
         values={values}
+        sourceSettings={filesystemSettingsOf(values)}
         libraryId={context.libraryId}
         size={context.mode === 'edit' ? 'small' : 'medium'}
       />
@@ -65,9 +71,15 @@ export function StoredConnection({
   return (
     <>
       {kind === 'path' ? (
-        <Typography variant="body2">
-          <strong>Verzeichnispfad:</strong> {library.sourcePath ?? '—'}
-        </Typography>
+        <>
+          <Typography variant="body2">
+            <strong>Verzeichnispfad:</strong> {library.sourcePath ?? '—'}
+          </Typography>
+          <Typography variant="body2">
+            <strong>Ausschlussmuster:</strong>{' '}
+            {storedFilesystemPatterns(library.sourceSettings).join(', ') || 'keine'}
+          </Typography>
+        </>
       ) : (
         <>
           <Typography variant="body2">

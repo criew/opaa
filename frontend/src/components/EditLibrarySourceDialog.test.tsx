@@ -165,9 +165,48 @@ describe('EditLibrarySourceDialog', () => {
         sourceProxy: undefined,
         sourceCredentials: undefined,
         sourceInsecureSsl: false,
+        sourceSettings: { excludePatterns: [] },
       } satisfies LibraryUpdateRequest)
     })
     expect(onClose).toHaveBeenCalled()
+  })
+
+  it('prefills the stored exclusion patterns and saves and tests the edited ones (#2184)', async () => {
+    renderWithProviders(
+      <EditLibrarySourceDialog
+        open
+        onClose={vi.fn()}
+        libraryId="library-1"
+        library={{ ...filesystemLibrary, sourceSettings: { excludePatterns: ['Archiv/**'] } }}
+      />,
+    )
+    const user = userEvent.setup()
+
+    const patternsField = await screen.findByLabelText(/ausschlussmuster/i)
+    expect(patternsField).toHaveValue('Archiv/**')
+    expect(patternsField).toHaveAccessibleDescription(/ein muster pro zeile/i)
+    await user.type(patternsField, '{Enter}**/*.tmp')
+    await user.click(screen.getByRole('button', { name: /verbindung testen/i }))
+    await waitFor(() => {
+      expect(mockTestLibrarySource).toHaveBeenCalledWith(
+        expect.objectContaining({
+          sourceType: 'FILESYSTEM',
+          sourcePath: '/data/dokumente',
+          sourceSettings: { excludePatterns: ['Archiv/**', '**/*.tmp'] },
+        }),
+      )
+    })
+    await user.click(screen.getByRole('button', { name: /^speichern$/i }))
+
+    await waitFor(() => {
+      expect(mockUpdateLibrary).toHaveBeenCalledWith(
+        'library-1',
+        expect.objectContaining({
+          sourcePath: '/data/dokumente',
+          sourceSettings: { excludePatterns: ['Archiv/**', '**/*.tmp'] },
+        }),
+      )
+    })
   })
 
   it('prefills URL, proxy and SSL switch for an HTTP_DIRECTORY library, leaving credentials blank', async () => {

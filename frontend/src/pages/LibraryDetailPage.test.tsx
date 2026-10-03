@@ -1429,6 +1429,7 @@ describe('LibraryDetailPage', () => {
         sourceProxy: undefined,
         sourceCredentials: undefined,
         sourceInsecureSsl: false,
+        sourceSettings: { excludePatterns: [] },
       } satisfies LibraryUpdateRequest)
     })
   })

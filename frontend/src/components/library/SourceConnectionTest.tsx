@@ -16,6 +16,8 @@ interface SourceConnectionTestProps {
   /** The generic shape of the source - a server path or an address. */
   kind: GenericSourceKind
   values: GenericSourceValues
+  /** The connector settings the probe applies, e.g. a FILESYSTEM library's exclusion patterns. */
+  sourceSettings?: Record<string, unknown>
   /**
    * Edit mode: lets the probe fall back to the library's stored credentials and checks the MANAGER
    * bar on that library instead of the Anlegerecht (#1856).
@@ -45,12 +47,13 @@ export default function SourceConnectionTest({
   sourceType,
   kind,
   values,
+  sourceSettings,
   libraryId,
   size = 'medium',
 }: SourceConnectionTestProps) {
   const [outcome, setOutcome] = useState<Outcome | null>(null)
   const [testing, setTesting] = useState(false)
-  const token = JSON.stringify({ sourceType, libraryId, values })
+  const token = JSON.stringify({ sourceType, libraryId, values, sourceSettings })
   const visible = outcome?.token === token ? outcome : null
 
   async function handleTest() {
@@ -65,6 +68,7 @@ export default function SourceConnectionTest({
       const result = await testLibrarySource({
         sourceType,
         ...genericSourcePayload(kind, values),
+        ...(sourceSettings ? { sourceSettings } : {}),
         ...(libraryId ? { libraryId } : {}),
       })
       setOutcome({ token, result })
