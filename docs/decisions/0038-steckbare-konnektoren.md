@@ -14,7 +14,8 @@ drei tragen einen Nachtrag mit Verweis hierher.
 **Nachtrag mit [ADR-0041](0041-verbindungen-als-eigenes-modul.md) (03.10.2026, #2159):** Die
 Konnektor-Beschreibung meldet Profilangabe und Anmeldearten. Bei Profilen leitet sich das Ziel der
 Zugangsdaten aus der Server-Adresse des Profils ab, und Entscheidung 3 bekommt zwei weitere Plätze
-für Geheimnisse. Siehe „Nachtrag: Verbindungsprofile“ am Ende.
+für Geheimnisse. Siehe „Nachtrag: Verbindungsprofile“ am Ende. Die vierte Anmeldeart
+„Dienstkonto-Schlüssel“ kommt mit [ADR-0040](0040-google-drive-konnektor.md) dazu.
 
 ## Kontext
 
@@ -208,9 +209,16 @@ Grundlage sind [connector-connections.md](../features/connector-connections.md) 
     App-Registrierung nur am Profil steht.
   - Die Registry prüft beides beim Start.
 - **Die Beschreibung meldet die Anmeldearten:** persönliches Geheimnis, OAuth (Autorisierungscode
-  mit PKCE) und Client-Credentials, je Art mit den zulässigen Besitzarten (Bibliothek, Person).
+  mit PKCE), Client-Credentials und Dienstkonto-Schlüssel (JWT-Assertion nach RFC 7523,
+  [ADR-0040](0040-google-drive-konnektor.md)), je Art mit den zulässigen Besitzarten (Bibliothek,
+  Person).
   - Für OAuth nennt sie die Endpunkte des Autorisierungsservers, entweder fest, mit dem Mandanten
     aus dem Profil oder relativ zur Server-Adresse.
+  - Für den Dienstkonto-Schlüssel nennt sie den Token-Endpunkt und die Scopes, beide fest. Nur die
+    Besitzart Bibliothek ist zulässig. Der Schlüssel enthält seine App-Registrierung selbst; die Art
+    macht deshalb keine Profilpflicht. Er liegt ohne Profil in `source_credentials` und mit Profil
+    am Platz des Client-Secrets. Signiert wird im Kern, und ein Zugriffstoken lebt nur im Speicher
+    des Laufs.
   - Ein Profil wählt nur eine Art, die sein Konnektor anbietet.
 - **Konnektoreigene Vorgaben am Profil** sind ein `ConnectorData`-Objekt wie `source_settings`
   (Entscheidung 2). Der Konnektor prüft es, und es enthält nie ein Geheimnis. Was Ziel oder Anmeldung
@@ -218,8 +226,10 @@ Grundlage sind [connector-connections.md](../features/connector-connections.md) 
 - **Ziel der Zugangsdaten (Invariante aus Entscheidung 3):** Bei einer Bibliothek mit Profil ist der
   Ursprung die Server-Adresse des Profils, und `sourceUrl` muss diesen Ursprung haben.
   - `SourceOriginMatcher` und `TargetAddressValidator` prüfen gegen das Profil.
-  - Persönliches Geheimnis und Zugriffstoken gehen nur an diesen Ursprung, Refresh-Token und
-    Client-Secret nur an den Token-Endpunkt aus der Beschreibung.
+  - Persönliches Geheimnis und Zugriffstoken gehen nur an diesen Ursprung. Refresh-Token,
+    Client-Secret und die signierte Dienstkonto-Assertion gehen nur an den Token-Endpunkt aus der
+    Beschreibung. Das gilt ebenso ohne Profil: Der Token-Endpunkt aus der Beschreibung ist das
+    einzige Ziel außerhalb von `sourceUrl`, an das Material aus Zugangsdaten gehen darf.
   - Ändern sich Server-Adresse oder Mandant, gilt das als Zieländerung: Server-Adresse verwirft die
     Geheimnisse, Mandant verlangt eine neue Zustimmung.
 - **Entscheidung 3 hat vier Plätze statt zwei:** `source_credentials` und `source_webhook_secret`
@@ -233,6 +243,7 @@ Grundlage sind [connector-connections.md](../features/connector-connections.md) 
   - Antworten tragen „gesetzt / nicht gesetzt“ und den Status, das Audit nur Feldnamen.
 - **Der Konnektor bekommt Ziel, Geheimnis und Einstellungen nur vom Kern**, als aufgelöste
   `SourceSettings`, auch im Lauf und beim Originalabruf. Das Geheimnis kommt mit Art (persönliches
-  Geheimnis oder Zugriffstoken). Profil, Refresh-Token, Client-Secret und OAuth-Ablauf sieht er nie,
+  Geheimnis oder Zugriffstoken). Profil, Refresh-Token, Client-Secret, Dienstkonto-Schlüssel und
+  OAuth-Ablauf sieht er nie,
   und aus `KnowledgeLibrary` liest er weder Zugangsdaten noch Adresse noch Einstellungen. Das
   verlangt einen Umbau der Lauf-SPI mit eigener ArchUnit-Regel (ADR-0041, Entscheidung 3a, #2178).

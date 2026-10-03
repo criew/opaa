@@ -34,8 +34,9 @@ jede Bibliothek trägt ihre Zieladresse frei, und OPAA speichert keine OAuth-Tok
 3. **Freigabe regelt die Neuanlage.** Bestehende Bibliotheken laufen weiter; nur eine **Sperre** von
    Konnektor oder Profil stoppt Läufe.
 4. **Profilpflicht** je Konnektor: nur über ein Profil nutzbar, ohne frei eingetragene Adresse.
-5. **Drei Anmeldearten:** persönliches Geheimnis (App-Passwort, Token), OAuth (Autorisierungscode
-   mit PKCE) und Client-Credentials. Token-Austausch über den Identitätsanbieter ist nur ein Spike.
+5. **Vier Anmeldearten:** persönliches Geheimnis (App-Passwort, Token), OAuth (Autorisierungscode
+   mit PKCE), Client-Credentials und Dienstkonto-Schlüssel (JWT-Assertion). Token-Austausch über den
+   Identitätsanbieter ist nur ein Spike.
 6. **Verbundene Konten** einer Person speisen eine **private Bibliothek**: genau eine Besitzerin,
    nicht teilbar, keine Nachfolge, für die Verwaltung nur zusammengefasst sichtbar.
 7. **Verbindliche Schutzregeln:** „Sicht als“ ist ausgeschlossen, ein Vorfallszugriff braucht vier
@@ -157,8 +158,8 @@ selbst ein.
 | Name | „Zugang Exchange Rheinfurt“ | erscheint in der Auswahl |
 | Konnektor | Exchange | genau einer; beim Profiltyp „MCP-Server“ keiner (siehe [MCP-Grundlage](#mcp-grundlage)) |
 | Server-Adresse | Nextcloud-URL, `https://graph.microsoft.com` | einziges Ziel der Zugangsdaten |
-| Anmeldeart | persönliches Geheimnis, OAuth, Client-Credentials | nur die Arten, die der Konnektor anbietet |
-| App-Registrierung | Client-ID, Client-Secret, Mandant | bei OAuth und Client-Credentials; Secret verschlüsselt, nie in Antworten |
+| Anmeldeart | persönliches Geheimnis, OAuth, Client-Credentials, Dienstkonto-Schlüssel | nur die Arten, die der Konnektor anbietet |
+| App-Registrierung | Client-ID, Client-Secret, Mandant; beim Dienstkonto der Schlüssel | bei OAuth, Client-Credentials und Dienstkonto-Schlüssel; Secret bzw. Schlüssel verschlüsselt, nie in Antworten |
 | Ablaufdatum des Secrets | 2027-03-31 | OPAA warnt vorher |
 | Scopes | `Files.Read offline_access` | bei OAuth und Client-Credentials |
 | Besitzart | Bibliothek, Person oder beides | welche Verbindungen darauf entstehen dürfen |
@@ -178,6 +179,7 @@ sind, und verlangt eine Bestätigung. Danach verwirft es alle Token und Geheimni
 |---|---|
 | Server-Adresse | alle Verbindungen verworfen |
 | neue Client-ID, neuer Mandant, geänderte Scopes | neue Zustimmung aller Verbindungen |
+| imitiertes Konto (Dienstkonto-Schlüssel) | alle Verbindungen verworfen; die Bibliotheken ruhen, bis sie neu verbunden sind |
 | neues Client-Secret zur selben Client-ID | keine; Verbindungen bleiben |
 
 **Notabschaltung „Alle Verbindungen trennen“** je Profil: löscht sofort alle Token und Geheimnisse
@@ -199,8 +201,15 @@ Jeder Konnektor meldet, wie er zu Profilen steht:
 | Angabe | Bedeutung | Konnektoren |
 |---|---|---|
 | **verboten** | kein entferntes Ziel | Upload (keine Quelle), Dateisystem (lokale Serverpfade, begrenzt durch die Pfad-Allowlist des Betriebs) |
-| **optional** | Profil oder freie Adresse | Webverzeichnis, RSS, Confluence, S3, Nextcloud |
+| **optional** | Profil oder freie Adresse | Webverzeichnis, RSS, Confluence, S3, Nextcloud, Google Drive |
 | **Pflicht** | nur mit Profil | Konnektoren mit OAuth oder Client-Credentials, etwa Dropbox, Exchange |
+
+**Google Drive** ([ADR-0040](../decisions/0040-google-drive-konnektor.md)) meldet sich mit einem
+Dienstkonto-Schlüssel an. Der Schlüssel enthält seine App-Registrierung selbst und kann deshalb
+auch ohne Profil an der Bibliothek liegen. Die Server-Adresse ist fest (`https://www.googleapis.com`),
+der Token-Endpunkt steht in der Konnektor-Beschreibung. Mit domänenweiter Delegation liest der
+Schlüssel jedes Konto der Domäne. Das Handbuch empfiehlt dafür ein Profil, das das imitierte
+Funktionskonto festlegt; eine Pflicht ist es nicht.
 
 Webverzeichnis und RSS tragen heute schon Zugangsdaten (Benutzername und Passwort). Ein Profil für sie
 trägt die Server-Adresse und optional die Anmeldeart „persönliches Geheimnis“ mit der Bibliothek als
@@ -234,6 +243,7 @@ Die bestehende Zielprüfung gegen private und lokale Adressbereiche bleibt daneb
 | **Persönliches Geheimnis** | App-Passwort, persönliches Token oder Benutzername und Passwort | Person oder Bibliothek | Nextcloud, Confluence Data Center; Webverzeichnis und RSS (optional, nur Bibliothek) |
 | **OAuth** | Autorisierungscode mit PKCE und `state`; Zustimmung beim Anbieter, Rücksprung in OPAA; Refresh- und Zugriffstoken verschlüsselt | Person oder Bibliothek | Dropbox, Exchange (delegiert) |
 | **Client-Credentials** | Anwendung meldet sich mit Client-ID und Secret des Profils an, ohne Person | Bibliothek | Funktionspostfächer, Microsoft 365 ([#2153](https://github.com/criew/opaa/issues/2153)) |
+| **Dienstkonto-Schlüssel** | OPAA signiert mit dem Schlüssel eine JWT-Assertion (RFC 7523) und erhält ein kurzlebiges Zugriffstoken; kein Refresh-Token, kein Token-Speicher. Signiert wird im Kern, nie im Konnektor | Bibliothek | Google Drive ([ADR-0040](../decisions/0040-google-drive-konnektor.md)) |
 
 Ein Konnektor meldet, welche Anmeldearten er anbietet; das Profil wählt eine.
 
@@ -251,7 +261,7 @@ derselben Transaktion. Je Verbindung läuft höchstens eine Erneuerung zugleich.
 **Token-Austausch (nur Spike).** In openDesk melden sich alle Dienste über dasselbe Keycloak an. Ein
 Spike prüft, ob OPAA das Anmeldetoken einer Person gegen ein Token für Nextcloud bzw. Open-Xchange
 tauschen kann. Bekannte Grenzen: OPAA bräuchte einen vertraulichen Client, und getauschte Token gelten
-nur in der laufenden Sitzung. Erst danach wird über eine vierte Anmeldeart entschieden.
+nur in der laufenden Sitzung. Erst danach wird über eine weitere Anmeldeart entschieden.
 
 ---
 

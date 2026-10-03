@@ -33,8 +33,10 @@ sind [connector-connections.md](../features/connector-connections.md) und
   Quellverbindungen und verbundene Konten speichert OPAA Refresh- und Zugriffstoken sowie
   persönliche Geheimnisse, verschlüsselt im Token-Speicher (ADR-0041).
 - **Anmeldetoken der OIDC-Anbieter werden nie als Quell-Token genutzt oder gespeichert.** Ob ein
-  Token-Austausch über den Identitätsanbieter möglich wird, klärt der Spike #2174. Eine vierte
-  Anmeldeart braucht einen eigenen Nachtrag.
+  Token-Austausch über den Identitätsanbieter möglich wird, klärt der Spike #2174. Eine weitere
+  Anmeldeart braucht einen eigenen Nachtrag. Die vierte, den Dienstkonto-Schlüssel (JWT-Assertion),
+  legt [ADR-0040](0040-google-drive-konnektor.md) fest. Sie speichert kein Token; das Zugriffstoken
+  lebt nur im Lauf.
 - **Der OAuth-Ablauf für Quellen widerspricht der Ablehnung von Variante B nicht.** Variante B war
   die Anmeldung über `oauth2Login` mit HTTP-Sitzung und eigenem Token-Format. Der Ablauf für Quellen
   meldet niemanden an OPAA an und braucht beides nicht:
