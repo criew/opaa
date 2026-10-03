@@ -171,23 +171,13 @@ class CatalogControllerIntegrationTest {
             get("/api/v1/catalog")
                 .param("q", name)
                 .param("visibility", "RESTRICTED")
-                .param("fromMyGroups", "false")
-                .param("sort", "updatedAt")
                 .with(devUser()))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.totalElements").value(0));
-    mockMvc
-        .perform(
-            get("/api/v1/catalog").param("q", name).param("fromMyGroups", "true").with(devUser()))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.totalElements").value(0));
   }
 
   @Test
   void theCatalogRefusesParametersOutsideItsBounds() throws Exception {
-    mockMvc
-        .perform(get("/api/v1/catalog").param("sort", "createdAt").with(devUser()))
-        .andExpect(status().isBadRequest());
     mockMvc
         .perform(get("/api/v1/catalog").param("visibility", "ORGANIZATION").with(devUser()))
         .andExpect(status().isBadRequest());

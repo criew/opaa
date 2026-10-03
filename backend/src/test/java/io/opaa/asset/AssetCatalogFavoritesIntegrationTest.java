@@ -29,9 +29,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * Favorites in the catalog (#2095, ADR-0039 Entscheidung 7): the caller's own favorites come first
- * in every order and can be selected alone; the flag and the order only ever reflect the caller's
- * own marks, and a favorite the caller can no longer read is gone from the catalog.
+ * Favorites in the catalog (#2095, ADR-0039 Entscheidung 7): the order is fixed, the caller's own
+ * favorites first, then by name, and the favorites can be selected alone; the flag and the order
+ * only ever reflect the caller's own marks, and a favorite the caller can no longer read is gone
+ * from the catalog.
  */
 @OpaaIntegrationTest
 class AssetCatalogFavoritesIntegrationTest {
@@ -72,22 +73,26 @@ class AssetCatalogFavoritesIntegrationTest {
   }
 
   @Test
-  void theCallersFavoritesComeFirstInEveryOrder() {
+  void theCallersFavoritesComeFirstThenByName() {
     UUID alpha = publicLibrary("Alpha");
     UUID beta = publicLibrary("Beta");
     UUID gamma = publicLibrary("Gamma");
-    setUpdatedAt(alpha, Instant.now().minus(1, ChronoUnit.DAYS));
-    setUpdatedAt(beta, Instant.now().minus(2, ChronoUnit.DAYS));
-    setUpdatedAt(gamma, Instant.now().minus(3, ChronoUnit.DAYS));
+    UUID delta = publicLibrary("delta");
+    setUpdatedAt(alpha, Instant.now().minus(3, ChronoUnit.DAYS));
+    setUpdatedAt(beta, Instant.now().minus(1, ChronoUnit.DAYS));
+    setUpdatedAt(gamma, Instant.now().minus(4, ChronoUnit.DAYS));
+    setUpdatedAt(delta, Instant.now().minus(2, ChronoUnit.DAYS));
     mark(member, gamma);
+    mark(member, delta);
 
-    assertThat(names(list(member, AssetCatalogSort.NAME, false)))
-        .containsExactly("Gamma", "Alpha", "Beta");
-    assertThat(names(list(member, AssetCatalogSort.UPDATED_AT, false)))
-        .containsExactly("Gamma", "Alpha", "Beta");
-    assertThat(list(member, AssetCatalogSort.NAME, false).entries())
+    assertThat(names(list(member, false))).containsExactly("delta", "Gamma", "Alpha", "Beta");
+    assertThat(list(member, false).entries())
         .extracting(entry -> entry.asset().getName(), AssetCatalogEntry::favorite)
-        .containsExactly(tuple("Gamma", true), tuple("Alpha", false), tuple("Beta", false));
+        .containsExactly(
+            tuple("delta", true),
+            tuple("Gamma", true),
+            tuple("Alpha", false),
+            tuple("Beta", false));
   }
 
   @Test
@@ -99,7 +104,7 @@ class AssetCatalogFavoritesIntegrationTest {
     mark(member, beta);
     mark(colleague, publicLibrary("Delta"));
 
-    AssetCatalogPage page = list(member, AssetCatalogSort.NAME, true);
+    AssetCatalogPage page = list(member, true);
 
     assertThat(names(page)).containsExactly("Beta", "Gamma");
     assertThat(page.totalElements()).isEqualTo(2);
@@ -107,8 +112,8 @@ class AssetCatalogFavoritesIntegrationTest {
   }
 
   /**
-   * Favorites first is a total order in both sorts: the pages neither repeat nor skip an entry, and
-   * a favorite that would stand on a later page by name alone leads the first one.
+   * Favorites first is a total order: the pages neither repeat nor skip an entry, and a favorite
+   * that would stand on a later page by name alone leads the first one.
    */
   @Test
   void pagesWithFavoritesNeitherRepeatNorSkipAnEntry() {
@@ -120,30 +125,15 @@ class AssetCatalogFavoritesIntegrationTest {
       }
     }
 
-    for (AssetCatalogSort sort : AssetCatalogSort.values()) {
-      List<String> paged = new ArrayList<>();
-      for (int page = 0; page < 3; page++) {
-        AssetCatalogPage result =
-            catalogService.list(
-                callerOf(member),
-                new AssetCatalogQuery(null, null, null, false, sort, false),
-                page,
-                2);
-        assertThat(result.totalElements()).isEqualTo(5);
-        paged.addAll(names(result));
-      }
-      assertThat(paged).as(sort.name()).doesNotHaveDuplicates();
-      assertThat(paged).as(sort.name()).containsExactlyInAnyOrderElementsOf(names);
-      assertThat(paged.getFirst()).as(sort.name()).isEqualTo("Gamma");
+    List<String> paged = new ArrayList<>();
+    for (int page = 0; page < 3; page++) {
+      AssetCatalogPage result =
+          catalogService.list(
+              callerOf(member), new AssetCatalogQuery(null, null, null, false), page, 2);
+      assertThat(result.totalElements()).isEqualTo(5);
+      paged.addAll(names(result));
     }
-    assertThat(
-            names(
-                catalogService.list(
-                    callerOf(member),
-                    new AssetCatalogQuery(null, null, null, false, AssetCatalogSort.NAME, false),
-                    1,
-                    2)))
-        .containsExactly("Beta", "Delta");
+    assertThat(paged).containsExactly("Gamma", "Alpha", "Beta", "Delta", "Epsilon");
   }
 
   /**
@@ -155,10 +145,9 @@ class AssetCatalogFavoritesIntegrationTest {
     UUID beta = publicLibrary("Beta");
     mark(colleague, beta);
 
-    assertThat(names(list(member, AssetCatalogSort.NAME, false))).containsExactly("Alpha", "Beta");
-    assertThat(list(member, AssetCatalogSort.NAME, false).entries())
-        .noneMatch(AssetCatalogEntry::favorite);
-    assertThat(list(member, AssetCatalogSort.NAME, true).totalElements()).isZero();
+    assertThat(names(list(member, false))).containsExactly("Alpha", "Beta");
+    assertThat(list(member, false).entries()).noneMatch(AssetCatalogEntry::favorite);
+    assertThat(list(member, true).totalElements()).isZero();
   }
 
   /** A favorite the caller may no longer read is gone - from the list, the filter and the count. */
@@ -170,8 +159,8 @@ class AssetCatalogFavoritesIntegrationTest {
     jdbcTemplate.update(
         "DELETE FROM asset_grants WHERE asset_id = ? AND subject_user_id = ?", closed, member);
 
-    AssetCatalogPage all = list(member, AssetCatalogSort.NAME, false);
-    AssetCatalogPage favorites = list(member, AssetCatalogSort.NAME, true);
+    AssetCatalogPage all = list(member, false);
+    AssetCatalogPage favorites = list(member, true);
 
     assertThat(names(all)).containsExactly("Alpha");
     assertThat(all.totalElements()).isEqualTo(1);
@@ -183,12 +172,9 @@ class AssetCatalogFavoritesIntegrationTest {
   // Fixture
   // -------------------------------------------------------------------------------------------
 
-  private AssetCatalogPage list(UUID caller, AssetCatalogSort sort, boolean favoritesOnly) {
+  private AssetCatalogPage list(UUID caller, boolean favoritesOnly) {
     return catalogService.list(
-        callerOf(caller),
-        new AssetCatalogQuery(null, null, null, false, sort, favoritesOnly),
-        0,
-        50);
+        callerOf(caller), new AssetCatalogQuery(null, null, null, favoritesOnly), 0, 50);
   }
 
   private void mark(UUID userId, UUID libraryId) {

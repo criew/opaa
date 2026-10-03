@@ -165,28 +165,25 @@ class ExternalAccessTokenResponseMapperTest {
     EligibleExternalAccessLibraryResponse response =
         ExternalAccessTokenResponseMapper.toEligible(
             new EligibleLibrary(
-                libraryId, "Vergaberecht", "Rundschreiben und Muster", EXPIRES, true, false));
+                libraryId, "Vergaberecht", "Rundschreiben und Muster", EXPIRES, true));
 
     assertThat(response.getId()).isEqualTo(libraryId);
     assertThat(response.getName()).isEqualTo("Vergaberecht");
     assertThat(response.getDescription()).isEqualTo("Rundschreiben und Muster");
     assertThat(response.getReleaseExpiresAt()).isEqualTo(EXPIRES);
     assertThat(response.getFavorite()).isTrue();
-    assertThat(response.getFromMyGroups()).isFalse();
 
     EligibleExternalAccessLibraryResponse other =
         ExternalAccessTokenResponseMapper.toEligible(
-            new EligibleLibrary(libraryId, "Vergaberecht", null, EXPIRES, false, true));
+            new EligibleLibrary(libraryId, "Vergaberecht", null, EXPIRES, false));
     assertThat(other.getFavorite()).isFalse();
-    assertThat(other.getFromMyGroups()).isTrue();
   }
 
   @Test
   void leavesTheDescriptionOfASelectableLibraryUnsetWhenThereIsNone() {
     assertThat(
             ExternalAccessTokenResponseMapper.toEligible(
-                    new EligibleLibrary(
-                        libraryId, "Ohne Beschreibung", null, EXPIRES, false, false))
+                    new EligibleLibrary(libraryId, "Ohne Beschreibung", null, EXPIRES, false))
                 .getDescription())
         .isNull();
   }
