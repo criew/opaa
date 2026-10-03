@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { alpha } from '@mui/material/styles'
+import { alpha, decomposeColor, getContrastRatio } from '@mui/material/styles'
 import { createAppTheme } from './theme'
 import {
   blue,
@@ -11,11 +11,19 @@ import {
   navyRoles,
   radius,
   railRoles,
-  semanticColors,
   white,
 } from './tokens'
 import { contrastRatio, TEXT_CONTRAST_MINIMUM } from '../utils/contrast'
 import { OPAA_BRANDING } from '../stores/brandingStore'
+
+/** Composites a possibly translucent text colour over its opaque surface, as the browser does. */
+function flatten(text: string, surface: string): string {
+  const fg = decomposeColor(text).values
+  const bg = decomposeColor(surface).values
+  const a = fg[3] ?? 1
+  const mix = (i: number) => Math.round(fg[i] * a + bg[i] * (1 - a))
+  return `rgb(${mix(0)}, ${mix(1)}, ${mix(2)})`
+}
 
 describe('tokens', () => {
   test('light and dark schemes define the identical set of roles', () => {
@@ -116,6 +124,54 @@ describe('tokens', () => {
 })
 
 describe('createAppTheme', () => {
+  // regression guard for #2150: error.main is the danger text colour (menu entries, helper texts,
+  // text buttons) and the surface of filled danger actions - both must reach 4.5:1.
+  test('danger works as text on every surface and carries its contrast text (#2150)', () => {
+    for (const [mode, roles] of [
+      ['light', lightRoles],
+      ['dark', darkRoles],
+    ] as const) {
+      const { error } = createAppTheme(mode).palette
+      for (const background of [roles.bg1, roles.bg2, roles.bg3]) {
+        expect(
+          contrastRatio(error.main, background),
+          `error.main on ${background} (${mode})`,
+        ).toBeGreaterThanOrEqual(TEXT_CONTRAST_MINIMUM)
+      }
+      expect(
+        contrastRatio(error.contrastText, error.main),
+        `error.contrastText on error.main (${mode})`,
+      ).toBeGreaterThanOrEqual(TEXT_CONTRAST_MINIMUM)
+    }
+  })
+
+  // regression guard for #2150: MUI paints the hover of contained buttons in `dark` with
+  // `contrastText`, and filled alerts in `dark` with `getContrastText(main)`. With dark text the
+  // hover tone has to get lighter, not darker.
+  test('filled status surfaces keep 4.5:1 text in every tone (#2150)', () => {
+    for (const mode of ['light', 'dark'] as const) {
+      const palette = createAppTheme(mode).palette
+      for (const key of ['error', 'warning', 'success'] as const) {
+        const color = palette[key]
+        const filledAlertText = palette.getContrastText(color.main)
+        const pairs = [
+          ['contrastText', color.contrastText, 'main', color.main],
+          ['contrastText', color.contrastText, 'dark', color.dark],
+          ['contrastText', color.contrastText, 'light', color.light],
+          ['getContrastText(main)', filledAlertText, 'dark', color.dark],
+        ] as const
+        for (const [textLabel, text, surfaceLabel, surface] of pairs) {
+          expect
+            .soft(
+              getContrastRatio(flatten(text, surface), surface),
+              `${key}.${textLabel} on ${key}.${surfaceLabel} (${mode})`,
+            )
+            .toBeGreaterThanOrEqual(TEXT_CONTRAST_MINIMUM)
+        }
+      }
+    }
+  })
+
   test('light scheme maps the semantic roles onto the MUI palette', () => {
     const theme = createAppTheme('light')
 
@@ -124,7 +180,7 @@ describe('createAppTheme', () => {
     expect(theme.palette.text.secondary).toBe(gray[600])
     expect(theme.palette.primary.main).toBe(blue[700])
     expect(theme.palette.divider).toBe(lightRoles.border)
-    expect(theme.palette.error.main).toBe(semanticColors.danger)
+    expect(theme.palette.error.main).toBe(lightRoles.danger)
   })
 
   // The scrim behind a dialog or the Belegfenster takes the scheme's own ground: the dark scheme

@@ -75,8 +75,11 @@ der Anmeldeseite im hellen Schema:
 | Carbon-800 | `#252525` | Standardrahmen dunkel           |
 | Carbon-700 | `#333333` | betonter Rahmen, Tooltip dunkel |
 
-**Semantik:** Erfolg `#16B77B` · Warnung `#F5B83D` · Gefahr `#E5484D`. In beiden Schemata
-identisch; Text auf diesen Flächen muss die Kontrastanforderung (2.4) erfüllen.
+**Semantik:** Erfolg `#16B77B` · Warnung `#F5B83D`. In beiden Schemata identisch; Text auf
+diesen Flächen muss die Kontrastanforderung (2.4) erfüllen. Gefahr ist eine Rolle je Schema
+(`danger`, siehe 2.2), weil sie auch als Textfarbe dient (#2150): Hell `#CE2C31`, Dunkel
+`#FF6369`. Der frühere gemeinsame Wert `#E5484D` erreichte als Text auf Weiß nur 3,91:1 und auf
+Carbon-850 nur 4,21:1.
 
 ### 2.2 Semantische Rollen
 
@@ -95,6 +98,9 @@ Die Rollen sind das Vokabular aller Komponenten. Werte je Schema:
 | `accent-fg`      | Text auf `accent-surface`                                        | Weiß                | Weiß                 |
 | `border`         | Standardrahmen                                                   | Grau-100 `#E6EBF1`  | Carbon-800 `#252525` |
 | `border-strong`  | betonter Rahmen (Eingaben, Tabellen)                             | Grau-200 `#CBD4DF`  | Carbon-700 `#333333` |
+| `danger`         | Gefahr: zerstörende Aktion, Fehler (Text, Icon, gefüllte Fläche) | `#CE2C31`           | `#FF6369`            |
+| `danger-hover`   | Hover/Gedrückt gefüllter Gefahrflächen, gefüllte Fehlermeldung   | `#901E22`           | `#FF7A80`            |
+| `danger-soft`    | hellere Gefahr-Variante (MUI `error.light`)                      | `#D23B40`           | `#FF8287`            |
 
 `fg-3` im hellen Schema ist Grau-500, nicht Grau-400 (#725): Grau-400 (`#778797`) erreicht gegen
 Weiß nur 3,68:1 — unter der 4,5:1-Anforderung für Fließtext (2.4) — und lag als Tertiärtext in
@@ -159,8 +165,13 @@ andere Rolle.
 Text mindestens 4,5:1 gegen seine Fläche, große Schrift (ab 24 px bzw. 19 px fett) und
 UI-Komponenten/Grafik mindestens 3:1 — in beiden Schemata. Die Rollen aus 2.2 erfüllen das in
 den vorgesehenen Kombinationen (`fg-*` auf `bg-*`, `accent-fg` auf `accent-surface`, `accent`
-als Text auf `bg-1..3` des eigenen Schemas); wer andere Kombinationen bildet, weist den
-Kontrast im PR nach. `accent-fg` auf `accent` ist seit #634 **keine** nachgewiesene Kombination
+bzw. `danger` als Text auf `bg-1..3` des eigenen Schemas, `bg-1` als Text auf `danger`,
+`danger-hover` und `danger-soft`); wer andere Kombinationen bildet, weist den Kontrast im PR
+nach. Der Hover-Zustand gefüllter Flächen zählt mit: Er behält die Textfarbe der Fläche, und
+deshalb wird er bei dunklem Text heller statt dunkler. Im dunklen Schema trägt Gefahr dunklen
+Text (`bg-1`), `danger-hover` ist dort `#FF7A80` mit 7,91:1. Im hellen Schema trägt Gefahr
+Weiß, `danger-hover` ist `#901E22` mit 8,77:1. Erfolg und Warnung tragen in beiden Schemata
+dunklen Text; ihr Hover ist deshalb heller (Erfolg `#38C18F`, Warnung `#F7C35D`) (#2150). `accent-fg` auf `accent` ist seit #634 **keine** nachgewiesene Kombination
 mehr — Weiß erreichte auf Blau-500 nur 3,3:1; gefüllte Flächen liegen deshalb auf
 `accent-surface` (Blau-700, 5,2:1), und das helle Schema führt `accent` selbst als Blau-700,
 damit Akzent-Text auf Weiß 4,5:1 hält (dunkles Schema: Blau-500 auf Carbon-950 = 6,0:1). Ausnahme: `fg-3` in `navyRoles`/`railRoles`
@@ -367,6 +378,8 @@ farbiger Chip.
 
 `bg-1`, `border`, Radius md, Schatten der Ebene 2/3, Einträge 14 px mit 8–12 px Innenabstand,
 Hover `bg-2`, zerstörende Einträge in Gefahr-Text am Ende, durch Trennlinie abgesetzt.
+Gefahr-Text (`danger`) erreicht im hellen Schema 5,21:1 gegen `bg-1`, 4,90:1 gegen `bg-2` und
+4,64:1 gegen `bg-3`, im dunklen Schema 6,86:1 / 6,18:1 / 5,68:1 (#2150).
 Vollständige Tastaturbedienung (Pfeile, Enter, Escape) ist Teil der Komponente, nicht der Kür.
 
 ### 5.7 Leer-, Lade- und Fehlerzustände
