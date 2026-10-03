@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Map;
 import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,6 +35,8 @@ import org.slf4j.LoggerFactory;
  * <p>An original is served only when its path resolves - symlinks included - underneath the
  * library's own {@code sourcePath}, and only while that path is still inside the allowlist: an
  * allowlist narrowed or emptied after indexing must not leave the files readable here.
+ *
+ * <p>The connector settings are {@link FilesystemSourceSettings}, applied by the run.
  */
 public class FilesystemSourceConnector implements SourceConnector, OriginalAccess {
 
@@ -107,6 +110,33 @@ public class FilesystemSourceConnector implements SourceConnector, OriginalAcces
     } catch (IOException e) {
       return null;
     }
+  }
+
+  @Override
+  public ConnectorData readSettings(ConnectorData requested) {
+    return FilesystemSourceSettings.of(requested).toData();
+  }
+
+  @Override
+  public void configureNew(KnowledgeLibrary library, SourceSettings validated) {
+    if (validated.connectorSettings() != null) {
+      library.updateSourceSettings(validated.connectorSettings().toJson());
+    }
+  }
+
+  @Override
+  public void applyChange(
+      KnowledgeLibrary library, ConnectorData stored, SourceSettings validated) {
+    if (validated.connectorSettings() != null) {
+      library.updateSourceSettings(validated.connectorSettings().toJson());
+    }
+  }
+
+  @Override
+  public Map<String, Object> settingsState(KnowledgeLibrary library, ConnectorData stored) {
+    return Map.of(
+        FilesystemSourceSettings.EXCLUDE_PATTERNS,
+        FilesystemSourceSettings.of(stored).excludePatterns());
   }
 
   @Override
