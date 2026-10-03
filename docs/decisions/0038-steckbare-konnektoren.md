@@ -11,6 +11,11 @@ Space-Auswahl, Edition und Vollabgleichsrhythmus), und [ADR-0027](0027-s3-konnek
 Entscheidung 1 (`CHECK`-Zweige je Typ, „Ausdrücklich offen": Umzug der bestehenden Typen). Alle
 drei tragen einen Nachtrag mit Verweis hierher.
 
+**Nachtrag mit [ADR-0041](0041-verbindungen-als-eigenes-modul.md) (03.10.2026, #2159):** Die
+Konnektor-Beschreibung meldet Profilangabe und Anmeldearten. Bei Profilen leitet sich das Ziel der
+Zugangsdaten aus der Server-Adresse des Profils ab, und Entscheidung 3 bekommt zwei weitere Plätze
+für Geheimnisse. Siehe „Nachtrag: Verbindungsprofile“ am Ende.
+
 ## Kontext
 
 Seit #1976 erreicht die Verwaltung jeden Konnektor über die Konnektor-SPI
@@ -191,3 +196,43 @@ Frontend und E2E bleiben dabei unverändert. Danach folgt der API-Bruch mit frei
 - **Nachweis:** Zwei Test-Konnektoren nur im Testcode – einer ohne Lauf, einer mit Lauf und
   Auflistung – werden über die HTTP-API angelegt, geändert, getestet, aufgelistet, geplant und
   indiziert.
+
+## Nachtrag: Verbindungsprofile (03.10.2026, #2159, Epic #2147)
+
+Grundlage sind [connector-connections.md](../features/connector-connections.md) und
+[ADR-0041](0041-verbindungen-als-eigenes-modul.md).
+
+- **Die Beschreibung meldet die Profilangabe:** verboten, optional oder Pflicht.
+  - Verboten gilt für jeden Konnektor mit `uploads` oder ohne `remote`.
+  - Pflicht gilt für jeden Konnektor, der OAuth oder Client-Credentials anbietet, weil die
+    App-Registrierung nur am Profil steht.
+  - Die Registry prüft beides beim Start.
+- **Die Beschreibung meldet die Anmeldearten:** persönliches Geheimnis, OAuth (Autorisierungscode
+  mit PKCE) und Client-Credentials, je Art mit den zulässigen Besitzarten (Bibliothek, Person).
+  - Für OAuth nennt sie die Endpunkte des Autorisierungsservers, entweder fest, mit dem Mandanten
+    aus dem Profil oder relativ zur Server-Adresse.
+  - Ein Profil wählt nur eine Art, die sein Konnektor anbietet.
+- **Konnektoreigene Vorgaben am Profil** sind ein `ConnectorData`-Objekt wie `source_settings`
+  (Entscheidung 2). Der Konnektor prüft es, und es enthält nie ein Geheimnis. Was Ziel oder Anmeldung
+  bestimmt, etwa die Confluence-Edition, steht am Profil und nicht in der Bibliothek.
+- **Ziel der Zugangsdaten (Invariante aus Entscheidung 3):** Bei einer Bibliothek mit Profil ist der
+  Ursprung die Server-Adresse des Profils, und `sourceUrl` muss diesen Ursprung haben.
+  - `SourceOriginMatcher` und `TargetAddressValidator` prüfen gegen das Profil.
+  - Persönliches Geheimnis und Zugriffstoken gehen nur an diesen Ursprung, Refresh-Token und
+    Client-Secret nur an den Token-Endpunkt aus der Beschreibung.
+  - Ändern sich Server-Adresse oder Mandant, gilt das als Zieländerung: Server-Adresse verwirft die
+    Geheimnisse, Mandant verlangt eine neue Zustimmung.
+- **Entscheidung 3 hat vier Plätze statt zwei:** `source_credentials` und `source_webhook_secret`
+  der Bibliothek, das **Client-Secret am Profil** und den **Token-Speicher** (Besitzer Bibliothek
+  oder Person).
+  - Alle vier laufen über `CredentialsEncryptor` mit demselben Schlüssel und derselben Leseregel:
+    Fehlt der Schlüssel, liest sich der Wert als nicht gesetzt, und der Geheimtext bleibt (#1806).
+    Einen zweiten Verschlüsselungsweg gibt es nicht.
+  - Eine Bibliothek mit Profil trägt kein `source_credentials`, ihr Geheimnis steht nur im
+    Token-Speicher.
+  - Antworten tragen „gesetzt / nicht gesetzt“ und den Status, das Audit nur Feldnamen.
+- **Der Konnektor bekommt Ziel, Geheimnis und Einstellungen nur vom Kern**, als aufgelöste
+  `SourceSettings`, auch im Lauf und beim Originalabruf. Das Geheimnis kommt mit Art (persönliches
+  Geheimnis oder Zugriffstoken). Profil, Refresh-Token, Client-Secret und OAuth-Ablauf sieht er nie,
+  und aus `KnowledgeLibrary` liest er weder Zugangsdaten noch Adresse noch Einstellungen. Das
+  verlangt einen Umbau der Lauf-SPI mit eigener ArchUnit-Regel (ADR-0041, Entscheidung 3a, #2178).
