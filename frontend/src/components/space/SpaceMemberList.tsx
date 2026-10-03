@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useId, useMemo, useRef, useState } from 'react'
 import Box from '@mui/material/Box'
 import Divider from '@mui/material/Divider'
 import IconButton from '@mui/material/IconButton'
@@ -9,7 +9,9 @@ import MenuItem from '@mui/material/MenuItem'
 import Select from '@mui/material/Select'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
+import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
+import visuallyHidden from '@mui/utils/visuallyHidden'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined'
 import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
@@ -25,6 +27,9 @@ import MetaBadge from '../MetaBadge'
 import { memberLabelOf } from './memberLabel'
 
 const editableRoles: SpaceRole[] = ['MEMBER', 'CURATOR', 'ADMIN']
+
+const OWNER_ROLE_HINT =
+  'Den Eigentümer ändern Sie über „Zum Eigentümer machen“ bei einem anderen Mitglied.'
 
 /** Stands where an editable role choice carries its arrow; MUI passes the arrow's class. */
 function OwnerLockIcon({ className }: { className?: string }) {
@@ -92,6 +97,7 @@ export default function SpaceMemberList({
   onMakeOwner,
 }: SpaceMemberListProps) {
   const [filter, setFilter] = useState('')
+  const ownerHintId = `space-owner-hint-${useId()}`
   const [expansion, setExpansion] = useState<Expansion>(null)
   const [menu, setMenu] = useState<{ anchor: HTMLElement; memberId: string } | null>(null)
   /** The "⋯" button of every row, so hiding an expansion can hand the focus back to its row. */
@@ -199,19 +205,27 @@ export default function SpaceMemberList({
                   )}
                 </Stack>
                 {ownerRow && canManage ? (
-                  // Same look as the other role choices, but the owner's role is not changed here:
-                  // read-only, with a lock instead of the arrow.
-                  <Select
-                    size="small"
-                    value="OWNER"
-                    readOnly
-                    IconComponent={OwnerLockIcon}
-                    inputProps={{ 'aria-label': `Rolle von „${label}“` }}
-                    title="Die Rolle des Eigentümers lässt sich nicht ändern"
-                    sx={{ minWidth: 140 }}
-                  >
-                    <MenuItem value="OWNER">Eigentümer</MenuItem>
-                  </Select>
+                  // Same look as the other role choices, but read-only with a lock instead of the
+                  // arrow. Why, and where the owner is changed instead, reaches hover, keyboard
+                  // focus and screen readers alike.
+                  <>
+                    <Tooltip title={OWNER_ROLE_HINT} describeChild>
+                      <Select
+                        size="small"
+                        value="OWNER"
+                        readOnly
+                        IconComponent={OwnerLockIcon}
+                        inputProps={{ 'aria-label': `Rolle von „${label}“` }}
+                        SelectDisplayProps={{ 'aria-describedby': ownerHintId }}
+                        sx={{ minWidth: 140 }}
+                      >
+                        <MenuItem value="OWNER">Eigentümer</MenuItem>
+                      </Select>
+                    </Tooltip>
+                    <Box component="span" id={ownerHintId} sx={visuallyHidden}>
+                      {OWNER_ROLE_HINT}
+                    </Box>
+                  </>
                 ) : ownerRow ? (
                   <MetaBadge>Eigentümer</MetaBadge>
                 ) : canManage ? (

@@ -257,6 +257,7 @@ const personalSpace: SpaceResponse = {
   archived: false,
   ownerId: 'u1',
   memberCount: 1,
+  memberships: { groupCount: 0, userCount: 1 },
   userRole: 'ADMIN',
   roleCounts: { MEMBER: 0, CURATOR: 0, ADMIN: 1 },
   chatAutoCleanup: { enabled: false, archiveAfterDays: 90, deleteAfterDays: 365 },
@@ -272,6 +273,7 @@ const teamSpace: SpaceResponse = {
   archived: false,
   ownerId: 'u1',
   memberCount: 2,
+  memberships: { groupCount: 0, userCount: 2 },
   userRole: 'ADMIN',
   roleCounts: { MEMBER: 0, CURATOR: 0, ADMIN: 2 },
   chatAutoCleanup: { enabled: false, archiveAfterDays: 90, deleteAfterDays: 365 },
@@ -292,6 +294,7 @@ const nonAdminSpace: SpaceResponse = {
   archived: false,
   ownerId: 'someone-else',
   memberCount: 2,
+  memberships: { groupCount: 0, userCount: 2 },
   userRole: 'MEMBER',
   roleCounts: { MEMBER: 1, CURATOR: 0, ADMIN: 1 },
   chatAutoCleanup: { enabled: false, archiveAfterDays: 90, deleteAfterDays: 365 },
@@ -775,20 +778,23 @@ describe('SpaceSettingsPage', () => {
   })
 
   /**
-   * #2207: Ein Mitglied sieht die Größe des Space nach Rollen, aber keinen Namen - die
-   * Mitgliederliste bleibt Administratoren, Eigentümer und Systemverwaltung vorbehalten.
+   * #2207: Ein Mitglied sieht, wie viele Personen und Gruppen dem Space angehören und wie sich
+   * die Rollen verteilen, aber keinen Namen - die Mitgliederliste bleibt Administratoren,
+   * Eigentümer und Systemverwaltung vorbehalten.
    */
-  it('shows a plain member the counts per role and no name', async () => {
+  it('shows a plain member persons, groups and roles as counts and no name', async () => {
     mockListSpaceMembers.mockResolvedValueOnce([])
     setSpaceState({
       ...nonAdminSpace,
       memberCount: 12,
+      memberships: { groupCount: 2, userCount: 10 },
       roleCounts: { MEMBER: 9, CURATOR: 1, ADMIN: 2 },
     })
     renderTab('members')
 
+    expect(await screen.findByText('10 Personen und 2 Gruppen')).toBeInTheDocument()
     expect(
-      await screen.findByText('12 Mitglieder, davon 2 Administratoren, 1 Kurator'),
+      screen.getByText('Rollen: 2 Administratoren, 1 Kurator, 9 Mitglieder'),
     ).toBeInTheDocument()
     expect(screen.queryByText(/nicht die erforderliche rolle/i)).not.toBeInTheDocument()
     expect(screen.queryByTestId('space-member-row')).not.toBeInTheDocument()
@@ -797,16 +803,18 @@ describe('SpaceSettingsPage', () => {
     expect(screen.queryByRole('button', { name: /entfernen/i })).not.toBeInTheDocument()
   })
 
-  it('names a single member and leaves out roles nobody holds', async () => {
+  it('names a single person without groups and leaves out roles nobody holds', async () => {
     mockListSpaceMembers.mockResolvedValueOnce([])
     setSpaceState({
       ...nonAdminSpace,
       memberCount: 1,
+      memberships: { groupCount: 0, userCount: 1 },
       roleCounts: { MEMBER: 1, CURATOR: 0, ADMIN: 0 },
     })
     renderTab('members')
 
-    expect(await screen.findByText('1 Mitglied')).toBeInTheDocument()
+    expect(await screen.findByText('1 Person')).toBeInTheDocument()
+    expect(screen.getByText('Rollen: 1 Mitglied')).toBeInTheDocument()
   })
 
   /** #2207: Stammdaten sind für ein Mitglied lesbar, aber nicht änderbar, ohne Gefahrenbereich. */

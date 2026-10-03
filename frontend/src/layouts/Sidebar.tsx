@@ -96,8 +96,8 @@ export default function Sidebar({ resizable = false }: { resizable?: boolean }) 
     [spaces, recentSpaceIds],
   )
 
-  // Den Einstieg sieht jedes Mitglied; wer nicht verwalten darf, sieht die Einstellungen
-  // schreibgeschützt und in der Mitgliederliste nur die Zählung je Rolle.
+  // Every member sees the entry; whoever may not manage the space reads the settings only and gets
+  // counts instead of the member list.
   const mayOpenSettings = Boolean(activeSpace?.userRole)
   const settingsRoute = activeChatSpaceId ? spaceSettingsRoute(activeChatSpaceId) : ''
   const inSettings = location.pathname.startsWith(`/spaces/${activeChatSpaceId}/settings`)
@@ -291,7 +291,7 @@ export default function Sidebar({ resizable = false }: { resizable?: boolean }) 
                 parent, an axe "serious" violation (#792). */}
           <Box component="nav" aria-label="Space-Navigation">
             <List sx={{ px: '14px', py: '10px' }}>
-              {/* Ein Einstiegspunkt: alles Verwaltende dieses Space liegt hinter dem Zahnrad. */}
+              {/* One entry point: everything that manages this space lies behind the gear. */}
               <ListItem disablePadding>
                 <ListItemButton
                   component={RouterLink}

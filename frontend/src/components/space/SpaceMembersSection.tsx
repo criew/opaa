@@ -29,22 +29,27 @@ function counted(count: number, one: string, many: string): string {
   return `${count} ${count === 1 ? one : many}`
 }
 
-/**
- * Die Größe des Space ohne Namen, z. B. „12 Mitglieder, davon 2 Administratoren, 1 Kurator“. Gezählt
- * werden Mitgliedschaften, eine Gruppe zählt einmal.
- */
-function memberCountsLabel(space: SpaceResponse): string {
-  const admins = space.roleCounts?.ADMIN ?? 0
-  const curators = space.roleCounts?.CURATOR ?? 0
-  const parts = [
-    admins > 0 ? counted(admins, 'Administrator', 'Administratoren') : null,
-    curators > 0 ? counted(curators, 'Kurator', 'Kuratoren') : null,
-  ].filter((part): part is string => part !== null)
-  const total = counted(space.memberCount, 'Mitglied', 'Mitglieder')
-  return parts.length > 0 ? `${total}, davon ${parts.join(', ')}` : total
+/** Who belongs to the space without a name, e.g. "10 Personen und 2 Gruppen". */
+function subjectCountsLabel(space: SpaceResponse): string {
+  const persons = counted(space.memberships.userCount, 'Person', 'Personen')
+  const groups = space.memberships.groupCount
+  return groups > 0 ? `${persons} und ${counted(groups, 'Gruppe', 'Gruppen')}` : persons
 }
 
-/** Wie die Rückmeldung nach dem Hinzufügen das gewählte Subjekt nennt. */
+/**
+ * The membership rows per role, e.g. "Rollen: 2 Administratoren, 1 Kurator, 9 Mitglieder"; a group
+ * row counts once, like in the line above. Roles nobody holds are left out.
+ */
+function roleCountsLabel(space: SpaceResponse): string {
+  const parts = [
+    counted(space.roleCounts?.ADMIN ?? 0, 'Administrator', 'Administratoren'),
+    counted(space.roleCounts?.CURATOR ?? 0, 'Kurator', 'Kuratoren'),
+    counted(space.roleCounts?.MEMBER ?? 0, 'Mitglied', 'Mitglieder'),
+  ].filter((part) => !part.startsWith('0 '))
+  return `Rollen: ${parts.join(', ')}`
+}
+
+/** How the notice after adding names the chosen subject. */
 function addedSubjectLabel(subject: SubjectSelection): string {
   if (subject.type === 'GROUP') {
     return subject.group?.protectedGroup
@@ -88,8 +93,8 @@ export default function SpaceMembersSection({
     useSpaceStore.setState({ error: null })
   }
 
-  // #144: der Dienst beantwortet die Liste nur für ADMIN, Eigentümer und Systemverwaltung; für
-  // alle anderen bleibt sie leer, und der Reiter zeigt nur die Zählung je Rolle.
+  // #144: the service answers the list only for ADMIN, the owner and the system administration;
+  // for everybody else it stays empty and the tab shows the counts instead.
   useEffect(() => {
     void loadMembers(spaceId)
   }, [loadMembers, spaceId])
@@ -122,7 +127,12 @@ export default function SpaceMembersSection({
       ) : members.length === 0 && !canManage && !isOwner ? (
         // A MEMBER or CURATOR gets no names (the service answers the list with an empty one),
         // only how large the space is per role.
-        <Typography sx={{ fontSize: 13.5 }}>{memberCountsLabel(space)}</Typography>
+        <Stack spacing={0.5}>
+          <Typography sx={{ fontSize: 13.5 }}>{subjectCountsLabel(space)}</Typography>
+          <Typography sx={{ fontSize: 13.5, color: 'text.secondary' }}>
+            {roleCountsLabel(space)}
+          </Typography>
+        </Stack>
       ) : (
         <Stack spacing={0}>
           <SpaceMemberList

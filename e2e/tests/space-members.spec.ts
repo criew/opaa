@@ -212,8 +212,9 @@ test("Einstellungen lesend für ein Mitglied, Mitglieder nur als Zählung", asyn
     await expect(page.getByText("Gefahrenbereich")).toHaveCount(0);
 
     await page.getByRole("tab", { name: "Mitglieder" }).click();
+    await expect(page.getByText("2 Personen", { exact: true })).toBeVisible();
     await expect(
-      page.getByText(/^2 Mitglieder, davon 1 Administrator$/),
+      page.getByText("Rollen: 1 Administrator, 1 Mitglied", { exact: true }),
     ).toBeVisible();
     await expect(page.getByTestId("space-member-row")).toHaveCount(0);
     await expectNoSeriousA11yViolations(

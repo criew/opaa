@@ -159,6 +159,10 @@ describe('SpaceMemberList', () => {
     const owner = within(row).getByRole('combobox', { name: 'Rolle von „Andrea Vogt“' })
     expect(owner).toHaveTextContent('Eigentümer')
     expect(owner).toHaveAttribute('aria-readonly', 'true')
+    // The reason reaches keyboard and screen reader too, not only a mouse hover.
+    expect(owner).toHaveAccessibleDescription(
+      'Den Eigentümer ändern Sie über „Zum Eigentümer machen“ bei einem anderen Mitglied.',
+    )
     expect(within(row).queryByText('Administrator')).not.toBeInTheDocument()
     expect(within(row).queryByRole('button')).not.toBeInTheDocument()
 

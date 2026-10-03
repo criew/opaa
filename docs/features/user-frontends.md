@@ -133,7 +133,7 @@ eines Arbeitsraums bleibt über die Space-Übersicht erreichbar, die Verwaltung 
 „Einstellungen“ am Fuß der Seitenleiste (`/spaces/:spaceId/settings/:tab`, Reiter Stammdaten,
 Mitglieder, Inhalte; die frühere Adresse `/spaces/:spaceId/manage` und die früheren Reiter
 `knowledge` und `prompts` leiten dorthin weiter). Das Zahnrad sieht jedes Mitglied; wer nicht
-verwalten darf, liest dort nur und sieht im Reiter Mitglieder statt Namen die Zählung je Rolle.
+verwalten darf, liest dort nur und sieht im Reiter Mitglieder statt Namen nur Zahlen (Personen, Gruppen, Rollen).
 Keine Überschrift in einem Reiter wiederholt dessen Namen. Der Reiter Inhalte verwaltet die
 **Zuordnung** aller Typen — die harte Grenze dessen, was der Arbeitsraum im Chat nutzt — als eine
 Kachelliste mit Häkchen, das sofort wirkt. Er
