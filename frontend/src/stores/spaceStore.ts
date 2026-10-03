@@ -85,7 +85,8 @@ interface SpaceState {
     role?: SpaceRole,
   ) => Promise<void>
   updateMemberRole: (spaceId: string, membershipId: string, role: SpaceRole) => Promise<void>
-  removeMember: (spaceId: string, membershipId: string) => Promise<void>
+  /** Resolves to `accessLost` when the removal cost the caller the space itself. */
+  removeMember: (spaceId: string, membershipId: string) => Promise<MembershipRefresh>
   transferOwnership: (spaceId: string, userId: string) => Promise<void>
   updateDetails: (
     spaceId: string,
@@ -116,22 +117,48 @@ interface SpaceState {
 export const MEMBERS_NOT_REFRESHED =
   'Die Änderung ist gespeichert, die Mitgliederliste konnte aber nicht aktualisiert werden. Laden Sie die Seite neu.'
 
+/** How the re-read after a membership change ended. */
+export type MembershipRefresh = 'refreshed' | 'accessLost' | 'notRefreshed'
+
+/** Per space, the latest re-read; an older answer arriving later is dropped. */
+const membershipRefreshSeq = new Map<string, number>()
+
+function responseStatus(err: unknown): number | null {
+  const cause = err instanceof Error ? err.cause : undefined
+  const status = (cause as { response?: { status?: unknown } } | undefined)?.response?.status
+  return typeof status === 'number' ? status : null
+}
+
 /**
  * Re-reads the selected space and its members after the caller's own membership change, in place:
  * no loading state and no emptied list in between, so an open members tab keeps its rows and the
- * focus. Never throws - the change itself already succeeded; a failed re-read becomes the store
- * error and leaves the shown state as it was.
+ * focus. Writes only for the latest re-read of a space that is still selected. Never throws - the
+ * change itself already succeeded. A 403/404 means the caller lost access: the space is dropped
+ * like a failed `selectSpace`; any other failure becomes {@link MEMBERS_NOT_REFRESHED}.
  */
-async function refreshMembership(spaceId: string): Promise<void> {
+async function refreshMembership(spaceId: string): Promise<MembershipRefresh> {
   const sessionEpoch = currentSessionEpoch()
+  const requestId = (membershipRefreshSeq.get(spaceId) ?? 0) + 1
+  membershipRefreshSeq.set(spaceId, requestId)
+  const isLatest = () =>
+    !isStaleSessionEpoch(sessionEpoch) && membershipRefreshSeq.get(spaceId) === requestId
+  const isCurrent = () => isLatest() && useSpaceStore.getState().selectedSpaceId === spaceId
   try {
     const [space, members] = await Promise.all([getSpace(spaceId), listSpaceMembers(spaceId)])
-    if (isStaleSessionEpoch(sessionEpoch)) return
-    if (useSpaceStore.getState().selectedSpaceId !== spaceId) return
-    useSpaceStore.setState({ selectedSpace: space, members })
-  } catch {
-    if (isStaleSessionEpoch(sessionEpoch)) return
-    useSpaceStore.setState({ error: MEMBERS_NOT_REFRESHED })
+    if (isCurrent()) useSpaceStore.setState({ selectedSpace: space, members, error: null })
+    return 'refreshed'
+  } catch (err) {
+    const status = responseStatus(err)
+    if (status === 403 || status === 404) {
+      // The list reload running alongside may already have moved the selection off this space;
+      // the space's details are dropped wherever they are still shown.
+      if (isLatest() && useSpaceStore.getState().selectedSpace?.id === spaceId) {
+        useSpaceStore.setState({ selectedSpace: null, members: [] })
+      }
+      return 'accessLost'
+    }
+    if (isCurrent()) useSpaceStore.setState({ error: MEMBERS_NOT_REFRESHED })
+    return 'notRefreshed'
   }
 }
 
@@ -274,7 +301,8 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
 
   removeMember: async (spaceId, membershipId) => {
     await removeSpaceMember(spaceId, membershipId)
-    await Promise.all([get().loadSpaces(), refreshMembership(spaceId)])
+    const [, refresh] = await Promise.all([get().loadSpaces(), refreshMembership(spaceId)])
+    return refresh
   },
 
   transferOwnership: async (spaceId, userId) => {

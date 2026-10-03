@@ -256,6 +256,54 @@ describe('AccessDerivation (#1822, ADR-0036 Entscheidung 9)', () => {
       ).toBeInTheDocument()
     })
 
+    // Verwalten ist nicht Lesen: the administration grants no content role, so it neither
+    // makes the reader an owner nor takes part in "die höhere Rolle".
+    it('names the administration alone as managing without a read right', async () => {
+      answerAsset('OWNER', [assetPath('SYSTEM_ADMINISTRATION', 'OWNER')])
+      renderAsset()
+
+      expect(
+        await screen.findByText(
+          'Maria Weber verwaltet diese Bibliothek über die Systemverwaltung (ohne Leserecht am Inhalt).',
+        ),
+      ).toBeInTheDocument()
+      expect(document.body).not.toHaveTextContent(/Eigentümer|Es gilt die höhere Rolle/)
+    })
+
+    it('derives the role from the other ways and names the administration apart', async () => {
+      answerAsset('OWNER', [
+        assetPath('DIRECT_GRANT', 'VIEWER'),
+        assetPath('SYSTEM_ADMINISTRATION', 'OWNER'),
+      ])
+      renderAsset()
+
+      expect(
+        await screen.findByText('Maria Weber darf diese Bibliothek lesen – direkt freigegeben.'),
+      ).toBeInTheDocument()
+      expect(
+        screen.getByText(
+          'Maria Weber verwaltet diese Bibliothek zudem über die Systemverwaltung (ohne Leserecht am Inhalt).',
+        ),
+      ).toBeInTheDocument()
+      expect(document.body).not.toHaveTextContent(/Eigentümer|Es gilt die höhere Rolle/)
+    })
+
+    it('applies the higher role among the other ways only', async () => {
+      answerAsset('OWNER', [
+        assetPath('DIRECT_GRANT', 'VIEWER'),
+        assetPath('GROUP_GRANT', 'EDITOR', meldewesen),
+        assetPath('SYSTEM_ADMINISTRATION', 'OWNER'),
+      ])
+      renderAsset()
+
+      expect(
+        await screen.findByText('Maria Weber darf diese Bibliothek bearbeiten.'),
+      ).toBeInTheDocument()
+      expect(screen.getByText('Es gilt die höhere Rolle.')).toBeInTheDocument()
+      expect(screen.queryByText(/Über die Systemverwaltung:/)).not.toBeInTheDocument()
+      expect(screen.getByText(/zudem über die Systemverwaltung/)).toBeInTheDocument()
+    })
+
     it('addresses the reader without a name', async () => {
       answerAsset('OWNER', [assetPath('DIRECT_GRANT', 'OWNER')])
       renderAsset(null)

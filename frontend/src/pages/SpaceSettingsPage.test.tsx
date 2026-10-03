@@ -7,11 +7,13 @@ import SpaceSettingsPage from './SpaceSettingsPage'
 import { useAuthStore } from '../stores/authStore'
 import { useSpaceStore } from '../stores/spaceStore'
 import { useNotificationStore } from '../stores/notificationStore'
+import { getSpace } from '../services/spaceApi'
 import type { SpaceAssetAssociationListResponse, SpaceResponse } from '../types/api'
 
 // Der sichtbare Reiter ist eine Route (#1917); der Test setzt ihn wie die Adresszeile.
-const { routeParams } = vi.hoisted(() => ({
+const { routeParams, mockNavigate } = vi.hoisted(() => ({
   routeParams: { spaceId: 'space-team', tab: 'general' as string },
+  mockNavigate: vi.fn(),
 }))
 
 vi.mock('react-router', async () => {
@@ -19,7 +21,7 @@ vi.mock('react-router', async () => {
   return {
     ...actual,
     useParams: () => routeParams,
-    useNavigate: () => vi.fn(),
+    useNavigate: () => mockNavigate,
   }
 })
 
@@ -613,6 +615,30 @@ describe('SpaceSettingsPage', () => {
     expect(within(memberRow('Colleague')).getByRole('combobox')).toBe(roleSelect)
     expect(roleSelect).toHaveFocus()
     expect(screen.queryByText(/wird geladen/)).not.toBeInTheDocument()
+  })
+
+  /**
+   * #2205: Wer sich selbst entfernt und damit den Zugang verliert, sieht keine Verwaltungsansicht
+   * mehr, sondern landet in der Space-Übersicht und erfährt, warum.
+   */
+  it('leaves the settings for the overview when removing oneself cost the access', async () => {
+    setSpaceState({ ...teamSpace, ownerId: 'someone-else' })
+    renderTab('members')
+    const user = userEvent.setup()
+    await screen.findByText('Owner')
+    vi.mocked(getSpace).mockRejectedValueOnce(
+      new Error('HTTP 403', { cause: { response: { status: 403 } } }),
+    )
+
+    const menu = await openMemberMenu(user, 'Owner')
+    await user.click(within(menu).getByRole('menuitem', { name: 'Aus Space entfernen' }))
+    await answerConfirm(user, 'Owner aus diesem Space entfernen?', 'Entfernen')
+
+    await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/spaces', { replace: true }))
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Owner entfernt. Sie haben keinen Zugang mehr zu „Team“.',
+    )
+    expect(useSpaceStore.getState().selectedSpace).toBeNull()
   })
 
   /** #2205: Ein Fehler bleibt in der Seite stehen, bis er geschlossen wird. */

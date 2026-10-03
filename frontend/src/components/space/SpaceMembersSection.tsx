@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router'
 import Alert from '@mui/material/Alert'
 import Button from '@mui/material/Button'
 import MenuItem from '@mui/material/MenuItem'
@@ -61,6 +62,12 @@ export default function SpaceMembersSection({
   const [newMemberRole, setNewMemberRole] = useState<SpaceRole>('MEMBER')
   // A failure stays until it is closed or the next action starts; a success is a popup only.
   const [localError, setLocalError] = useState<string | null>(null)
+  const navigate = useNavigate()
+
+  function clearFailure() {
+    setLocalError(null)
+    useSpaceStore.setState({ error: null })
+  }
 
   // #144: der Dienst beantwortet die Liste nur für ADMIN, Eigentümer und Systemverwaltung; für
   // alle anderen bleibt sie leer, und der Hinweis unten nennt den Grund.
@@ -111,7 +118,7 @@ export default function SpaceMembersSection({
             canManage={canManage}
             isOwner={isOwner}
             onRoleChange={async (member, role) => {
-              setLocalError(null)
+              clearFailure()
               try {
                 await updateMemberRole(spaceId, member.id, role)
                 notify(`Rolle von ${memberLabelOf(member)}: ${spaceRoleLabel(role)}`, 'success')
@@ -120,9 +127,18 @@ export default function SpaceMembersSection({
               }
             }}
             onRemove={async (member) => {
-              setLocalError(null)
+              clearFailure()
               try {
-                await removeMember(spaceId, member.id)
+                const refresh = await removeMember(spaceId, member.id)
+                if (refresh === 'accessLost') {
+                  // The removal took the caller's own access: this view no longer applies.
+                  notify(
+                    `${memberNoticeLabelOf(member)} entfernt. Sie haben keinen Zugang mehr zu „${space.name}“.`,
+                    'success',
+                  )
+                  navigate('/spaces', { replace: true })
+                  return
+                }
                 notify(`${memberNoticeLabelOf(member)} entfernt`, 'success')
               } catch (err) {
                 setLocalError(
@@ -131,7 +147,7 @@ export default function SpaceMembersSection({
               }
             }}
             onMakeOwner={async (member) => {
-              setLocalError(null)
+              clearFailure()
               try {
                 await transferOwnership(spaceId, member.subjectId)
                 notify(`Verantwortung an ${memberLabelOf(member)} übertragen`, 'success')
@@ -187,7 +203,7 @@ export default function SpaceMembersSection({
                       // Entscheidung 3); die Auswahl bietet es hier nicht an.
                       if (!subjectId || subject.type === 'ALL_ACCOUNTS') return
                       if (!(await confirmExternalSubject(subject))) return
-                      setLocalError(null)
+                      clearFailure()
                       try {
                         await addMember(spaceId, subject.type, subjectId, newMemberRole)
                         setSubject(emptySubjectSelection)

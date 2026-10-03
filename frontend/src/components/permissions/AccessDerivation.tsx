@@ -81,6 +81,27 @@ function headline(
   return subjectName ? `${subjectName} ${verb} ${rest}` : `Sie ${pluralVerbs[verb]} ${rest}`
 }
 
+const assetRoleRank: Record<AssetRole, number> = { VIEWER: 0, EDITOR: 1, MANAGER: 2, OWNER: 3 }
+
+function highestAssetRole(paths: AccessPathResponse[]): AssetRole | null {
+  return paths.reduce<AssetRole | null>((highest, path) => {
+    const role = path.assetRole ?? null
+    if (!role) return highest
+    return !highest || assetRoleRank[role] > assetRoleRank[highest] ? role : highest
+  }, null)
+}
+
+/** Der Weg über die Systemverwaltung an einem Asset: verwalten, nicht lesen. */
+function administrationSentence(
+  assetType: AssetType,
+  subjectName: string | null,
+  besideOtherWays: boolean,
+): string {
+  const subject = subjectName ? `${subjectName} verwaltet` : 'Sie verwalten'
+  const also = besideOtherWays ? ' zudem' : ''
+  return `${subject} diese ${assetTypeLabel(assetType)}${also} über die Systemverwaltung (ohne Leserecht am Inhalt).`
+}
+
 /**
  * „Warum hat … Zugriff?" / „Warum sehe ich …?" — die Herleitung von ADR-0036, Entscheidung 9:
  * ein Satz mit der wirksamen Rolle, bei genau einem Weg samt Herkunft; bei mehreren eine Zeile je
@@ -145,10 +166,27 @@ export default function AccessDerivation({ target, subjectName = null }: AccessD
     return <Alert severity="error">{answer.error}</Alert>
   }
 
-  const { paths, withheld, role } = answer
+  const { withheld } = answer
+  // Am Asset verwaltet die Systemverwaltung, ohne den Inhalt lesen zu dürfen: Ihr Weg steht für
+  // sich, die wirksame Rolle und „die höhere Rolle" folgen nur aus den Wegen der Formel.
+  const administration =
+    target.kind === 'asset' && answer.paths.some((path) => path.basis === 'SYSTEM_ADMINISTRATION')
+  const paths = administration
+    ? answer.paths.filter((path) => path.basis !== 'SYSTEM_ADMINISTRATION')
+    : answer.paths
+  const role = administration ? highestAssetRole(paths) : answer.role
+  const administrationLine =
+    administration && target.kind === 'asset' ? (
+      <Typography sx={{ fontSize: 13.5 }}>
+        {administrationSentence(target.assetType, subjectName, paths.length > 0 || withheld)}
+      </Typography>
+    ) : null
+
   if (paths.length === 0 && !withheld) {
     return (
-      <Typography sx={{ color: 'text.secondary' }}>Kein eigener Weg zu diesem Objekt.</Typography>
+      administrationLine ?? (
+        <Typography sx={{ color: 'text.secondary' }}>Kein eigener Weg zu diesem Objekt.</Typography>
+      )
     )
   }
 
@@ -156,9 +194,12 @@ export default function AccessDerivation({ target, subjectName = null }: AccessD
   const wayCount = paths.length + (withheld ? 1 : 0)
   if (wayCount === 1 && paths.length === 1) {
     return (
-      <Typography sx={{ fontSize: 13.5 }} title={sinceTitle(paths[0])}>
-        {`${first} – ${originOf(paths[0])}.`}
-      </Typography>
+      <Stack spacing={0.25}>
+        <Typography sx={{ fontSize: 13.5 }} title={sinceTitle(paths[0])}>
+          {`${first} – ${originOf(paths[0])}.`}
+        </Typography>
+        {administrationLine}
+      </Stack>
     )
   }
 
@@ -184,6 +225,7 @@ export default function AccessDerivation({ target, subjectName = null }: AccessD
         </Typography>
       )}
       {wayCount > 1 && <Typography sx={{ fontSize: 13 }}>Es gilt die höhere Rolle.</Typography>}
+      {administrationLine}
     </Stack>
   )
 }

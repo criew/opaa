@@ -819,7 +819,7 @@ Herleitung nicht; wer verwaltet, sieht die Mitglieder über „Mitglieder der Gr
 | Eigene Mitgliedschaft | „direkt aufgenommen" |
 | Mitgliedschaft über eine Gruppe | „über die Gruppe …" mit dem Gruppennamen |
 | Eigentum | „als Eigentümer" |
-| Systemverwaltung | „über die Systemverwaltung" — am Raum **ohne** Rolle, weil es keine Mitgliedschaftsrolle ist |
+| Systemverwaltung | Am Raum „über die Systemverwaltung", **ohne** Rolle, weil es keine Mitgliedschaftsrolle ist. An einer Bibliothek ein eigener Satz: „… verwaltet diese Bibliothek über die Systemverwaltung (ohne Leserecht am Inhalt)." Verwalten ist nicht Lesen (Abschnitt 4); die wirksame Rolle im ersten Satz und „Es gilt die höhere Rolle." ergeben sich deshalb nur aus den übrigen Wegen |
 
 **Gegenüber anderen ist die Herleitung enger.** Für einen anderen Menschen gibt sie ein
 Administrator oder der Eigentümer eines Raums ab — dieselben Personen, die die Mitgliederliste
