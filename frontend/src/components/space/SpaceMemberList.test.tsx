@@ -17,7 +17,6 @@ const { mockGetSpaceAccessDerivation, mockGetSpaceGroupMembers } = vi.hoisted(()
     groupId: 'g1',
     name: 'Bürgerbüro Rheinfurt',
     protectedGroup: false,
-    smallGroup: false,
     activeMemberCount: 1,
     members: [{ userId: 'user-anna', displayName: 'Anna Bauer' }],
     responsible: [] as string[],
@@ -297,6 +296,64 @@ describe('SpaceMemberList', () => {
     expect(
       await screen.findByRole('dialog', { name: 'Verantwortung an Thomas Klein übertragen?' }),
     ).toBeInTheDocument()
+  })
+
+  it('setzt „Aus Space entfernen“ durch eine Trennlinie ab', async () => {
+    renderList()
+    const user = userEvent.setup()
+
+    const menu = await openMenu(user, 'Thomas Klein')
+
+    const remove = within(menu).getByRole('menuitem', { name: 'Aus Space entfernen' })
+    expect(remove.previousElementSibling?.matches('hr, [role="separator"]')).toBe(true)
+  })
+
+  it('fragt beim Entfernen als Gefahr nach, mit „Abbrechen“ im Fokus', async () => {
+    renderList()
+    const user = userEvent.setup()
+
+    const menu = await openMenu(user, 'Thomas Klein')
+    await user.click(within(menu).getByRole('menuitem', { name: 'Aus Space entfernen' }))
+
+    const dialog = await screen.findByRole('dialog', {
+      name: 'Thomas Klein aus diesem Space entfernen?',
+    })
+    await waitFor(() =>
+      expect(within(dialog).getByRole('button', { name: 'Abbrechen' })).toHaveFocus(),
+    )
+  })
+
+  it('gibt den Fokus nach „Herleitung ausblenden“ an den Menüknopf der Zeile zurück', async () => {
+    renderList()
+    const user = userEvent.setup()
+
+    const menu = await openMenu(user, 'Thomas Klein')
+    await user.click(
+      within(menu).getByRole('menuitem', { name: 'Warum hat Thomas Klein Zugriff?' }),
+    )
+    await user.click(await screen.findByRole('button', { name: 'Herleitung ausblenden' }))
+
+    expect(
+      screen.getByRole('button', { name: 'Weitere Aktionen für „Thomas Klein“' }),
+    ).toHaveFocus()
+  })
+
+  it('gibt den Fokus nach „Mitglieder ausblenden“ an den Menüknopf der Zeile zurück', async () => {
+    renderList()
+    const user = userEvent.setup()
+
+    const menu = await openMenu(user, 'Bürgerbüro Rheinfurt')
+    await user.click(within(menu).getByRole('menuitem', { name: 'Mitglieder der Gruppe anzeigen' }))
+    await screen.findByText('Anna Bauer')
+    await user.click(
+      screen.getByRole('button', {
+        name: 'Mitglieder der Gruppe „Bürgerbüro Rheinfurt“ ausblenden',
+      }),
+    )
+
+    expect(
+      screen.getByRole('button', { name: 'Weitere Aktionen für „Bürgerbüro Rheinfurt“' }),
+    ).toHaveFocus()
   })
 
   it('zeigt bis zu zehn Einträgen kein Suchfeld', () => {

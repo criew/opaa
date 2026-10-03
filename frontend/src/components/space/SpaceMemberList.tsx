@@ -1,13 +1,16 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import Box from '@mui/material/Box'
+import Divider from '@mui/material/Divider'
 import IconButton from '@mui/material/IconButton'
 import Link from '@mui/material/Link'
+import ListItemIcon from '@mui/material/ListItemIcon'
 import Menu from '@mui/material/Menu'
 import MenuItem from '@mui/material/MenuItem'
 import Select from '@mui/material/Select'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined'
 import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz'
 import PersonOutlineIcon from '@mui/icons-material/PersonOutlined'
@@ -87,6 +90,13 @@ export default function SpaceMemberList({
   const [filter, setFilter] = useState('')
   const [expansion, setExpansion] = useState<Expansion>(null)
   const [menu, setMenu] = useState<{ anchor: HTMLElement; memberId: string } | null>(null)
+  /** The "⋯" button of every row, so hiding an expansion can hand the focus back to its row. */
+  const menuButtons = useRef(new Map<string, HTMLButtonElement>())
+
+  function hideExpansion(memberId: string) {
+    setExpansion(null)
+    menuButtons.current.get(memberId)?.focus()
+  }
 
   const isOwnerRow = (member: SpaceMemberResponse) => ownsSpace(member, ownerId)
   const sorted = useMemo(() => sortMembers(members, ownerId), [members, ownerId])
@@ -112,7 +122,7 @@ export default function SpaceMemberList({
     const confirmed = await confirmAction({
       question: `${memberLabelOf(member)} aus diesem Space entfernen?`,
       confirmLabel: 'Entfernen',
-      tone: 'caution',
+      tone: 'danger',
     })
     if (confirmed) await onRemove(member)
   }
@@ -208,6 +218,10 @@ export default function SpaceMemberList({
                     size="small"
                     aria-label={`Weitere Aktionen für „${label}“`}
                     aria-haspopup="menu"
+                    ref={(element: HTMLButtonElement | null) => {
+                      if (element) menuButtons.current.set(member.id, element)
+                      else menuButtons.current.delete(member.id)
+                    }}
                     onClick={(event) =>
                       setMenu({ anchor: event.currentTarget, memberId: member.id })
                     }
@@ -226,7 +240,7 @@ export default function SpaceMemberList({
                     component="button"
                     type="button"
                     sx={{ alignSelf: 'flex-start', fontSize: 12 }}
-                    onClick={() => setExpansion(null)}
+                    onClick={() => hideExpansion(member.id)}
                   >
                     Herleitung ausblenden
                   </Link>
@@ -244,7 +258,7 @@ export default function SpaceMemberList({
                     load={(offset, limit) =>
                       getSpaceGroupMembers(spaceId, member.subjectId, offset, limit)
                     }
-                    onHide={() => setExpansion(null)}
+                    onHide={() => hideExpansion(member.id)}
                   />
                 </Box>
               )}
@@ -294,6 +308,11 @@ export default function SpaceMemberList({
             Zum Eigentümer machen
           </MenuItem>
         )}
+        {menuMember &&
+          menuEntries?.remove &&
+          (menuEntries.derivation || menuEntries.groupMembers || menuEntries.makeOwner) && (
+            <Divider />
+          )}
         {menuMember && menuEntries?.remove && (
           <MenuItem
             onClick={() => {
@@ -301,6 +320,9 @@ export default function SpaceMemberList({
               void remove(menuMember)
             }}
           >
+            <ListItemIcon>
+              <DeleteOutlineIcon fontSize="small" color="error" />
+            </ListItemIcon>
             Aus Space entfernen
           </MenuItem>
         )}
