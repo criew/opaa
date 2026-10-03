@@ -9,7 +9,6 @@ import io.opaa.api.types.AssetOwnerType;
 import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.GroupKind;
 import io.opaa.api.types.SpaceRole;
-import io.opaa.api.types.SpaceVisibility;
 import io.opaa.api.types.SystemRole;
 import io.opaa.asset.AssetGrantService;
 import io.opaa.asset.AssetGrantUpsert;
@@ -584,8 +583,7 @@ class GrantedGroupMembersIntegrationTest {
 
   private Space createSpace(UUID owner) {
     return spaceService.createSpace(
-        new SpaceCreation("Team", "Team docs", owner, SpaceVisibility.PRIVATE, List.of(), null),
-        callerOf(owner));
+        new SpaceCreation("Team", "Team docs", owner, List.of(), null), callerOf(owner));
   }
 
   private void admitGroup(Space space, UUID groupId, UUID caller) {

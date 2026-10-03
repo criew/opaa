@@ -656,7 +656,7 @@ Ein Space wird **nicht automatisch für jede Organisationseinheit angelegt**. Vi
 
 ### Space-Sichtbarkeit
 
-**Jeder Space ist privat:** Nur seine Mitglieder wissen, dass er existiert ([#2131](https://github.com/criew/opaa/issues/2131)). Die früher vorgesehenen Stufen „Auffindbar" (`DISCOVERABLE`, im Space-Verzeichnis sichtbar, Beitritt auf Antrag) und „Offen" (`OPEN`, Selbstbeitritt) setzen ein Space-Verzeichnis voraus, das es nicht gibt; die Oberfläche bietet sie deshalb nirgends an. Das Feld `visibility` bleibt in der API mit der Voreinstellung `PRIVATE`, bis ein Verzeichnis kommt; ohne Angabe legt das Backend jeden Space privat an.
+**Jeder Space ist privat:** Nur seine Mitglieder wissen, dass er existiert ([#2131](https://github.com/criew/opaa/issues/2131)). Die früher vorgesehenen Stufen „Auffindbar" (`DISCOVERABLE`, im Space-Verzeichnis sichtbar, Beitritt auf Antrag) und „Offen" (`OPEN`, Selbstbeitritt) setzen ein Space-Verzeichnis voraus, das es nicht gibt; sie sind deshalb entfallen, in der Oberfläche ebenso wie in API und Datenmodell ([#2156](https://github.com/criew/opaa/issues/2156)). Ein Space trägt keine Sichtbarkeit mehr; wer ihn kennt, ergibt sich allein aus seinen Mitgliedschaften. Protokolleinträge aus der Zeit davor tragen das Feld `visibility` weiterhin in ihren Nutzdaten und bleiben unverändert lesbar.
 
 **Chatten setzt Mitgliedschaft voraus.** Das ist keine Hürde, sondern eine Folge des Modells: Der Chat *liegt* im Space, und ohne Mitgliedschaft gäbe es keinen definierten Zurechnungspunkt für Aufbewahrung, Kosten und Audit.
 
@@ -696,7 +696,7 @@ Eine Freigabe an „Alle Konten" macht ein Asset damit im Katalog jeder Person s
 
 Der Eigentümer des Assets sieht alle Assoziationen und kann jede davon jederzeit einseitig lösen. Das Asset bleibt Herr über seine Verbreitung.
 
-**Die Zuordnungen sind für jeden Leseberechtigten sichtbar — aber nur so weit, wie der Space selbst sichtbar ist** ([#1939](https://github.com/criew/opaa/issues/1939)). Wer ein Asset lesen darf, darf auch erfahren, in welchen Spaces es bereitsteht: Das ist Teil der Antwort auf „wer sieht das eigentlich?", und die Detailansicht zeigt es im Reiter „Freigaben". Die Preisgabe endet jedoch an der [Space-Sichtbarkeit](#space-sichtbarkeit): Ein `PRIVATE`-Space verspricht, dass nur seine Mitglieder von seiner Existenz wissen, und dieses Versprechen wiegt schwerer als die Vollständigkeit der Zuordnungsliste — sonst verriete jede organisationsweit lesbare Bibliothek den Namen jedes Verfahrens, in dem sie eingebunden ist.
+**Die Zuordnungen sind für jeden Leseberechtigten sichtbar — aber nur so weit, wie der Space selbst sichtbar ist** ([#1939](https://github.com/criew/opaa/issues/1939)). Wer ein Asset lesen darf, darf auch erfahren, in welchen Spaces es bereitsteht: Das ist Teil der Antwort auf „wer sieht das eigentlich?", und die Detailansicht zeigt es im Reiter „Freigaben". Die Preisgabe endet jedoch an der [Space-Sichtbarkeit](#space-sichtbarkeit): Ein Space verspricht, dass nur seine Mitglieder von seiner Existenz wissen, und dieses Versprechen wiegt schwerer als die Vollständigkeit der Zuordnungsliste — sonst verriete jede organisationsweit lesbare Bibliothek den Namen jedes Verfahrens, in dem sie eingebunden ist.
 
 Daraus folgt eine Schwelle, nicht zwei Listen:
 

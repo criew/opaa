@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.SpaceRole;
-import io.opaa.api.types.SpaceVisibility;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.User;
@@ -78,7 +77,8 @@ class SpaceChatAutoCleanupIntegrationTest {
     assertThat(auditPayloads(space.getId(), AuditEventType.SPACE_CREATED, "after"))
         .singleElement()
         .asString()
-        .containsPattern(flag(true));
+        .containsPattern(flag(true))
+        .doesNotContain("\"visibility\"");
   }
 
   private static String flag(boolean value) {
@@ -122,9 +122,7 @@ class SpaceChatAutoCleanupIntegrationTest {
     Space space = createSpace(owner, true);
 
     spaceService.updateSpace(
-        space.getId(),
-        new SpaceUpdate("Umbenannt", null, SpaceVisibility.PRIVATE, null),
-        currentUserOf(owner));
+        space.getId(), new SpaceUpdate("Umbenannt", null), currentUserOf(owner));
 
     assertThat(reload(space).isChatAutoCleanupEnabled()).isTrue();
   }
@@ -157,8 +155,7 @@ class SpaceChatAutoCleanupIntegrationTest {
   void inThePersonalSpaceOnlyItsOwnerSwitchesTheCleanupNotEvenTheSystemAdministration() {
     UUID owner = createUser();
     UUID systemAdmin = createUser();
-    Space personal =
-        new Space("Meine Dokumente", null, true, SpaceVisibility.PRIVATE, owner, organizationId);
+    Space personal = new Space("Meine Dokumente", null, true, owner, organizationId);
     personal.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, organizationId));
     Space space = spaceRepository.save(personal);
 
@@ -178,8 +175,7 @@ class SpaceChatAutoCleanupIntegrationTest {
     UUID owner = createUser();
     UUID colleague = createUser();
     UUID systemAdmin = createUser();
-    Space personal =
-        new Space("Meine Dokumente", null, true, SpaceVisibility.PRIVATE, owner, organizationId);
+    Space personal = new Space("Meine Dokumente", null, true, owner, organizationId);
     personal.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, organizationId));
     personal.addMembership(SpaceMembership.ofUser(colleague, SpaceRole.ADMIN, organizationId));
     Space space = spaceRepository.save(personal);
@@ -200,35 +196,25 @@ class SpaceChatAutoCleanupIntegrationTest {
   void theSystemAdministrationStillRenamesAPersonalSpaceWithoutTouchingTheSwitch() {
     UUID owner = createUser();
     UUID systemAdmin = createUser();
-    Space personal =
-        new Space("Meine Dokumente", null, true, SpaceVisibility.PRIVATE, owner, organizationId);
+    Space personal = new Space("Meine Dokumente", null, true, owner, organizationId);
     personal.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, organizationId));
     Space space = spaceRepository.save(personal);
 
     spaceService.updateSpace(
-        space.getId(),
-        new SpaceUpdate("Umbenannt", null, SpaceVisibility.PRIVATE, null),
-        systemAdminOf(systemAdmin));
+        space.getId(), new SpaceUpdate("Umbenannt", null), systemAdminOf(systemAdmin));
 
     assertThat(reload(space).getName()).isEqualTo("Umbenannt");
   }
 
   private SpaceUpdate update(Space space, boolean chatAutoCleanup) {
     Space current = reload(space);
-    return new SpaceUpdate(
-        current.getName(), current.getDescription(), current.getVisibility(), chatAutoCleanup);
+    return new SpaceUpdate(current.getName(), current.getDescription(), chatAutoCleanup);
   }
 
   private Space createSpace(UUID owner, Boolean chatAutoCleanup) {
     return spaceService.createSpace(
         new SpaceCreation(
-            "Referat " + UUID.randomUUID(),
-            null,
-            owner,
-            SpaceVisibility.PRIVATE,
-            List.of(),
-            null,
-            chatAutoCleanup),
+            "Referat " + UUID.randomUUID(), null, owner, List.of(), null, chatAutoCleanup),
         currentUserOf(owner));
   }
 

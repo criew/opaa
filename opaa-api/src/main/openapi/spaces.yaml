@@ -103,7 +103,7 @@ paths:
     put:
       operationId: updateSpace
       tags: [space]
-      summary: Update space name, description and visibility (admin or owner only)
+      summary: Update space name and description (admin or owner only)
       requestBody:
         required: true
         content:
@@ -442,14 +442,6 @@ components:
       enum: [MEMBER, CURATOR, ADMIN]
       example: CURATOR
 
-    SpaceVisibility:
-      type: string
-      description: >
-        Every space is PRIVATE: DISCOVERABLE and OPEN presuppose a space directory that does not
-        exist, and no client offers them. Omitted on creation means PRIVATE.
-      enum: [PRIVATE, DISCOVERABLE, OPEN]
-      example: PRIVATE
-
     SpaceRequest:
       type: object
       required: [name]
@@ -464,8 +456,6 @@ components:
           maxLength: 2000
           nullable: true
           example: Engineering project space
-        visibility:
-          $ref: "#/components/schemas/SpaceVisibility"
         ownerId:
           type: string
           format: uuid
@@ -520,8 +510,6 @@ components:
           maxLength: 2000
           nullable: true
           example: Engineering project space
-        visibility:
-          $ref: "#/components/schemas/SpaceVisibility"
         chatAutoCleanup:
           type: boolean
           nullable: true
@@ -555,8 +543,6 @@ components:
             neither the owner nor a system admin - see
             docs/features/spaces-and-assets.md#einen-space-stilllegen-archivieren-statt-löschen.
           example: false
-        visibility:
-          $ref: "#/components/schemas/SpaceVisibility"
         memberCount:
           type: integer
           description: >
@@ -723,8 +709,6 @@ components:
             See docs/features/spaces-and-assets.md#einen-space-stilllegen-archivieren-statt-
             löschen.
           example: false
-        visibility:
-          $ref: "#/components/schemas/SpaceVisibility"
         ownerId:
           type: string
           format: uuid

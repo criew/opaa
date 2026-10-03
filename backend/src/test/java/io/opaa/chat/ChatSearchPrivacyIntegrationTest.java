@@ -16,7 +16,6 @@ import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Tag;
 import io.opaa.api.types.ChatRole;
 import io.opaa.api.types.SpaceRole;
-import io.opaa.api.types.SpaceVisibility;
 import io.opaa.auth.DevAuthFilter;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
@@ -63,13 +62,7 @@ class ChatSearchPrivacyIntegrationTest {
     mockMvc.perform(get("/api/v1/auth/me").with(devUser("dev-admin"))).andExpect(status().isOk());
     User person = users.findBySubjectAndIssuer("dev-user", "opaa-dev").orElseThrow();
     Space space =
-        new Space(
-            "Chatsuche Protokoll",
-            null,
-            false,
-            SpaceVisibility.PRIVATE,
-            person.getId(),
-            person.getOrganizationId());
+        new Space("Chatsuche Protokoll", null, false, person.getId(), person.getOrganizationId());
     space.addMembership(
         SpaceMembership.ofUser(person.getId(), SpaceRole.ADMIN, person.getOrganizationId()));
     spaceId = spaceRepository.save(space).getId();

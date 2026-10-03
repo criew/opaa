@@ -413,9 +413,9 @@ class PointInTimeAccessIntegrationTest {
   private UUID space() {
     UUID spaceId = UUID.randomUUID();
     jdbcTemplate.update(
-        "INSERT INTO spaces (id, name, owner_id, created_at, updated_at, visibility,"
+        "INSERT INTO spaces (id, name, owner_id, created_at, updated_at,"
             + " organization_id, is_default, archived)"
-            + " VALUES (?, 'Projekt Ost', ?, now(), now(), 'PRIVATE', ?, false, false)",
+            + " VALUES (?, 'Projekt Ost', ?, now(), now(), ?, false, false)",
         spaceId,
         ordinaryUserId,
         organizationId);

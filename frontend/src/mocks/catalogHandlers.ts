@@ -91,6 +91,7 @@ export const catalogHandlers = [
     const type = params.get('type') as AssetType | null
     const q = (params.get('q') ?? '').trim().toLowerCase()
     const favoritesOnly = params.get('favorites') === 'true'
+    const ids = params.getAll('ids')
     const page = Number(params.get('page') ?? '0')
     const size = Number(params.get('size') ?? '50')
     if (page < 0 || size < 1 || size > 200) {
@@ -99,6 +100,7 @@ export const catalogHandlers = [
     const all = readableEntries()
       .filter((entry) => !type || entry.assetType === type)
       .filter((entry) => !favoritesOnly || entry.favorite)
+      .filter((entry) => ids.length === 0 || ids.includes(entry.assetId))
       .filter(
         (entry) =>
           !q ||

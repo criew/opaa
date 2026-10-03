@@ -109,7 +109,6 @@ tasks.withType<JavaCompile> {
 val typeMappingsConfig = mapOf(
     "DateTime" to "Instant",
     "SpaceRole" to "SpaceRole",
-    "SpaceVisibility" to "SpaceVisibility",
     "SystemRole" to "SystemRole",
     "GroupKind" to "GroupKind",
     "GroupOrigin" to "GroupOrigin",
@@ -212,7 +211,6 @@ tasks.named<org.openapitools.generator.gradle.plugin.tasks.GenerateTask>("openAp
     importMappings.set(mapOf(
         "Instant" to "java.time.Instant",
         "SpaceRole" to "io.opaa.api.types.SpaceRole",
-        "SpaceVisibility" to "io.opaa.api.types.SpaceVisibility",
         "SystemRole" to "io.opaa.api.types.SystemRole",
         "GroupKind" to "io.opaa.api.types.GroupKind",
         "GroupOrigin" to "io.opaa.api.types.GroupOrigin",

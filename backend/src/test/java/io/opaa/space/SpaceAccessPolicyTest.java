@@ -7,7 +7,6 @@ import static org.mockito.Mockito.when;
 
 import io.opaa.account.AccountActivityService;
 import io.opaa.api.types.SpaceRole;
-import io.opaa.api.types.SpaceVisibility;
 import io.opaa.permission.GroupCapabilityService;
 import io.opaa.permission.GroupMembershipResolver;
 import io.opaa.permission.GroupSubjectDirectory;
@@ -56,7 +55,7 @@ class SpaceAccessPolicyTest {
   }
 
   private Space spaceWithOwner(UUID ownerId) {
-    return new Space("Team", null, false, SpaceVisibility.PRIVATE, ownerId, ORGANIZATION);
+    return new Space("Team", null, false, ownerId, ORGANIZATION);
   }
 
   private static SpaceRole roleOf(Space space, UUID userId) {

@@ -130,8 +130,8 @@ export default function SpaceContentSection({ spaceId, canManage }: SpaceContent
 
   /** Returns the focus to a tile, e.g. after the popup that held it has gone. */
   function focusTile(key: string) {
-    Array.from(container.current?.querySelectorAll<HTMLElement>('[data-choice-tile]') ?? [])
-      .find((element) => element.getAttribute('data-choice-tile') === key)
+    Array.from(container.current?.querySelectorAll<HTMLElement>('[data-asset-tile]') ?? [])
+      .find((element) => element.getAttribute('data-asset-tile') === key)
       ?.focus()
   }
 

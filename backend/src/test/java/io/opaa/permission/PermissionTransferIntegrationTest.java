@@ -15,7 +15,6 @@ import io.opaa.api.types.CapabilitySubjectType;
 import io.opaa.api.types.PermissionSubjectType;
 import io.opaa.api.types.PermissionTransferScope;
 import io.opaa.api.types.SpaceRole;
-import io.opaa.api.types.SpaceVisibility;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.User;
@@ -992,8 +991,7 @@ class PermissionTransferIntegrationTest {
 
   private Space space() {
     return spaceService.createSpace(
-        new SpaceCreation("Team", null, admin.id(), SpaceVisibility.PRIVATE, List.of(), null),
-        admin);
+        new SpaceCreation("Team", null, admin.id(), List.of(), null), admin);
   }
 
   private UUID libraryOwnedBy(UUID organizationId, UUID ownerUserId) {

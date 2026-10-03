@@ -117,7 +117,8 @@ describe('OwnExternalAccessTokensSection', () => {
     // Lesbar, aber nicht für Fremdzugänge freigegeben: erscheint nicht.
     expect(within(dialog).queryByText('Projektakte Phoenix')).not.toBeInTheDocument()
     for (const tile of tiles) {
-      expect(tile).toHaveTextContent(/Freigabe bis \d{2}\.\d{2}\.\d{4}/)
+      // The checkbox is named by the title; the end of the release is its description.
+      expect(tile).toHaveAccessibleDescription(/Freigabe bis \d{2}\.\d{2}\.\d{4}/)
       expect(tile).toHaveAttribute('aria-checked', 'false')
     }
   })
@@ -219,6 +220,26 @@ describe('OwnExternalAccessTokensSection', () => {
       await user.click(chip)
 
       expect(chip).toHaveAttribute('aria-pressed', 'true')
+      expect(tileNames(dialog)).toEqual(['Rechtsquellen Soziales', 'Vergaberecht'])
+    })
+
+    /** Review #2145: clearing a star under „Favoriten" keeps the tile and the focus in place. */
+    it('lässt eine Kachel unter „Favoriten“ stehen, wenn ihr Stern entfernt wird', async () => {
+      const user = userEvent.setup()
+      render()
+      const dialog = await openCreateDialog(user)
+      await within(dialog).findByRole('checkbox', { name: /Eigene Notizen/ })
+      await user.click(within(dialog).getByRole('button', { name: 'Favoriten' }))
+
+      const star = within(dialog).getByRole('button', {
+        name: '„Vergaberecht“ aus den Favoriten entfernen',
+      })
+      await user.click(star)
+
+      const unmarked = await within(dialog).findByRole('button', {
+        name: '„Vergaberecht“ als Favorit markieren',
+      })
+      expect(unmarked).toHaveFocus()
       expect(tileNames(dialog)).toEqual(['Rechtsquellen Soziales', 'Vergaberecht'])
     })
 
