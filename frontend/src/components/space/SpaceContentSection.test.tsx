@@ -271,6 +271,27 @@ describe('SpaceContentSection', () => {
     expect(after).toHaveAttribute('aria-checked', 'true')
   })
 
+  it('associates and detaches by keyboard, the focus staying on the tile', async () => {
+    const { posts, deletes } = serveAssociations([])
+    renderSection()
+    const user = userEvent.setup()
+    await screen.findByText(/noch nichts zugeordnet/)
+    await user.click(onlyAssociatedChip())
+    ;(await tile('Dienstanweisungen')).focus()
+
+    await user.keyboard(' ')
+    await waitFor(async () =>
+      expect(await tile('Dienstanweisungen')).toHaveAttribute('aria-checked', 'true'),
+    )
+    await waitFor(() => expect(posts).toHaveLength(1))
+    expect(await tile('Dienstanweisungen')).toHaveFocus()
+
+    await user.keyboard(' ')
+    await waitFor(() => expect(deletes).toEqual(['library-dienstanweisungen']))
+    expect(await tile('Dienstanweisungen')).toHaveAttribute('aria-checked', 'false')
+    expect(await tile('Dienstanweisungen')).toHaveFocus()
+  })
+
   it('shows the associated contents read-only to someone who may not curate', async () => {
     const { posts, deletes } = serveAssociations([
       association('KNOWLEDGE_LIBRARY', 'library-referat-50'),

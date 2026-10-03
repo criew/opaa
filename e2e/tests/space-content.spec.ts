@@ -54,16 +54,17 @@ test.describe('Space-Einstellungen: Reiter „Inhalte“', () => {
     await expect(tile).toHaveAttribute('aria-checked', 'true')
     await expect(tile).toBeFocused()
 
-    await page.emulateMedia({ colorScheme: 'dark' })
-    await expectNoSeriousA11yViolations(page, 'Space-Einstellungen, Inhalte (dunkles Farbschema)')
-
     await page.keyboard.press('Space')
     const detached = page.getByRole('alert').filter({ hasText: 'gelöst' })
     await expect(detached).toBeVisible()
     await expect(tile).toHaveAttribute('aria-checked', 'false')
+    await expect(tile).toBeFocused()
 
     await detached.getByRole('button', { name: 'Rückgängig' }).click()
     await expect(tile).toHaveAttribute('aria-checked', 'true')
+
+    await page.emulateMedia({ colorScheme: 'dark' })
+    await expectNoSeriousA11yViolations(page, 'Space-Einstellungen, Inhalte (dunkles Farbschema)')
 
     // A reload shows what the server holds: the association survived the undo.
     await page.reload()
