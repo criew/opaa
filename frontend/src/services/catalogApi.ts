@@ -8,6 +8,8 @@ export interface CatalogQuery {
   q?: string
   /** Only the caller's own favorites. */
   favorites?: boolean
+  /** Only these assets; the server leaves out every one the caller may not read. */
+  ids?: string[]
   page: number
   size: number
 }
@@ -23,9 +25,12 @@ export async function getCatalog(query: CatalogQuery): Promise<CatalogPageRespon
         type: query.type,
         q: query.q?.trim() ? query.q.trim() : undefined,
         favorites: query.favorites ? true : undefined,
+        ids: query.ids,
         page: query.page,
         size: query.size,
       },
+      // `ids=a&ids=b`, as the specification declares the repeated parameter.
+      paramsSerializer: { indexes: null },
     })
     return data
   } catch (err) {
