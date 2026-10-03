@@ -350,7 +350,7 @@ describe('LibraryDetailPage', () => {
       setLibraryState(viewerLibrary, detailsOf(viewerLibrary))
       renderWithProviders(<LibraryDetailPage />, { withRouter: true })
 
-      expect(await tabNames()).toEqual(['Dokumente', 'Metadaten', 'Freigaben'])
+      expect(await tabNames()).toEqual(['Dokumente', 'Metadaten', 'Freigaben', 'Zuordnungen'])
     })
 
     it('adds the source area for a connector library, for a VIEWER as well', async () => {
@@ -360,20 +360,32 @@ describe('LibraryDetailPage', () => {
       )
       renderWithProviders(<LibraryDetailPage />, { withRouter: true })
 
-      expect(await tabNames()).toEqual(['Dokumente', 'Quelle', 'Metadaten', 'Freigaben'])
+      expect(await tabNames()).toEqual([
+        'Dokumente',
+        'Quelle',
+        'Metadaten',
+        'Freigaben',
+        'Zuordnungen',
+      ])
     })
 
-    it('shows the same four areas to a MANAGER of a connector library', async () => {
+    it('shows the same five areas to a MANAGER of a connector library', async () => {
       setLibraryState(
         managerLibrary,
         detailsOf(managerLibrary, { sourceType: 'CONFLUENCE', sourceUrl: 'https://wiki.local' }),
       )
       renderWithProviders(<LibraryDetailPage />, { withRouter: true })
 
-      expect(await tabNames()).toEqual(['Dokumente', 'Quelle', 'Metadaten', 'Freigaben'])
+      expect(await tabNames()).toEqual([
+        'Dokumente',
+        'Quelle',
+        'Metadaten',
+        'Freigaben',
+        'Zuordnungen',
+      ])
     })
 
-    it('lets a VIEWER reach the Herleitung and the Zuordnungen in the Freigaben area', async () => {
+    it('lets a VIEWER reach the Herleitung in the Freigaben area', async () => {
       setLibraryState(viewerLibrary, detailsOf(viewerLibrary))
       renderWithProviders(<LibraryDetailPage />, { withRouter: true })
       const user = userEvent.setup()
@@ -383,8 +395,23 @@ describe('LibraryDetailPage', () => {
       expect(
         await screen.findByRole('heading', { name: /warum sehe ich diese bibliothek/i }),
       ).toBeInTheDocument()
-      expect(screen.getByRole('heading', { name: 'Zuordnungen' })).toBeInTheDocument()
+      // #2208: Die Zuordnungen haben einen eigenen Reiter.
+      expect(screen.queryByRole('heading', { name: 'Zuordnungen' })).not.toBeInTheDocument()
       expect(screen.queryByRole('button', { name: /rechte verwalten/i })).not.toBeInTheDocument()
+    })
+
+    it('lists the associations in the Zuordnungen area under „In Space verwenden"', async () => {
+      setLibraryState(viewerLibrary, detailsOf(viewerLibrary))
+      renderWithProviders(<LibraryDetailPage />, {
+        withRouter: true,
+        initialRoute: '/libraries/library-readonly?tab=zuordnungen',
+      })
+
+      expect(await screen.findByRole('tab', { selected: true })).toHaveTextContent('Zuordnungen')
+      expect(
+        screen.getByRole('button', { name: '„Dienstanweisungen“ in Space verwenden' }),
+      ).toBeInTheDocument()
+      expect(screen.queryByRole('heading', { name: 'Zuordnungen' })).not.toBeInTheDocument()
     })
 
     // Die Herleitung steht für beide Rollen im selben Reiter, aber aus zwei Zweigen - für eine
@@ -500,7 +527,15 @@ describe('LibraryDetailPage', () => {
 
     expect(await screen.findByText(/87 Dokumente/i)).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /name und beschreibung/i })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /weitere aktionen/i })).not.toBeInTheDocument()
+    // #2208: „⋯" trägt für jede lesende Rolle „In Space verwenden", das Löschen aber nicht.
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: /weitere aktionen/i }))
+    const menu = await screen.findByRole('menu')
+    expect(
+      within(menu)
+        .getAllByRole('menuitem')
+        .map((item) => item.textContent),
+    ).toEqual(['In Space verwenden'])
   })
 
   it('shows storage quota usage for a MANAGER but not for a VIEWER whose response omits it', async () => {
@@ -534,11 +569,14 @@ describe('LibraryDetailPage', () => {
     expect(
       await screen.findByRole('button', { name: /name und beschreibung/i }),
     ).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /weitere aktionen/i })).not.toBeInTheDocument()
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: /weitere aktionen/i }))
+    const menu = await screen.findByRole('menu')
+    expect(within(menu).queryByRole('menuitem', { name: 'Löschen' })).not.toBeInTheDocument()
   })
 
   // #1941: Die Berechtigungen stehen als Liste auf der Seite statt hinter „Rechte verwalten";
-  // eine lesende Rolle sieht den Abschnitt gar nicht, wohl aber Eigentümer und Zuordnungen.
+  // eine lesende Rolle sieht den Abschnitt gar nicht, wohl aber den Eigentümer.
   it('lists the grants for a MANAGER and hides the whole section from a VIEWER', async () => {
     setLibraryState(managerLibrary, detailsOf(managerLibrary))
     const { unmount } = renderWithProviders(<LibraryDetailPage />, { withRouter: true })
@@ -554,7 +592,6 @@ describe('LibraryDetailPage', () => {
     const viewer = userEvent.setup()
     await viewer.click(await screen.findByRole('tab', { name: 'Freigaben' }))
     expect(await screen.findByRole('heading', { name: 'Eigentümer' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Zuordnungen' })).toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Berechtigungen' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Eigentum übergeben' })).not.toBeInTheDocument()
   })
@@ -572,7 +609,7 @@ describe('LibraryDetailPage', () => {
       await screen.findByRole('button', { name: /name und beschreibung/i }),
     ).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: /weitere aktionen/i }))
-    expect(await screen.findByRole('menuitem', { name: /bibliothek löschen/i })).toBeInTheDocument()
+    expect(await screen.findByRole('menuitem', { name: 'Löschen' })).toBeInTheDocument()
     expect(screen.getByText('administrativ')).toBeInTheDocument()
   })
 
@@ -611,7 +648,7 @@ describe('LibraryDetailPage', () => {
     const user = userEvent.setup()
 
     await user.click(await screen.findByRole('button', { name: /weitere aktionen/i }))
-    await user.click(await screen.findByRole('menuitem', { name: /bibliothek löschen/i }))
+    await user.click(await screen.findByRole('menuitem', { name: 'Löschen' }))
     await answerConfirm(user, 'Bibliothek "Rechtsquellen Soziales" löschen?', 'Löschen')
 
     await waitFor(() => {
@@ -630,7 +667,7 @@ describe('LibraryDetailPage', () => {
     const user = userEvent.setup()
 
     await user.click(await screen.findByRole('button', { name: /weitere aktionen/i }))
-    await user.click(await screen.findByRole('menuitem', { name: /bibliothek löschen/i }))
+    await user.click(await screen.findByRole('menuitem', { name: 'Löschen' }))
 
     const question = 'Bibliothek "Rechtsquellen Soziales" löschen?'
     expect(await screen.findByRole('dialog', { name: question })).toHaveTextContent(
