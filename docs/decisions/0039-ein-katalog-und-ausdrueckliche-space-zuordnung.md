@@ -275,6 +275,28 @@ Hätte die Gleichheitszusage aus ADR-0035 wörtlich erhalten. Verworfen am 02.10
 Token-Auswahl ist bereits eine ausdrückliche, unveränderliche Auswahl, und ein Space als Umweg dorthin
 bände den Kanal an einen Arbeitsraum, dessen Zuordnung sich ändert, ohne dass das Token davon weiß.
 
+## Nachtrag (10/2026, #2129): kompaktere Kachel, eine Filterzeile, feste Reihenfolge
+
+Nach der Umsetzung hat der Maintainer am 03.10.2026 den Katalog verschlankt. Es ändern sich:
+
+- **Entscheidung 1, Kachel:** Die Sichtbarkeit steht nicht mehr als Textetikett, sondern als
+  Welt-Symbol neben dem Typ-Badge, nur bei öffentlichen Assets; ein geschlossenes trägt kein Symbol. Die eigene Rolle
+  steht nur noch auf der Detailseite. Die Sortierauswahl entfällt; die Reihenfolge ist fest:
+  Favoriten zuerst, dann nach Name.
+- **Entscheidung 1, Filter:** Die Filter „Sichtbarkeit" und „aus meinen Gruppen" entfallen. Es
+  bleibt eine Filterzeile aus Suche, Typ und Favoriten, die Katalog, Space-Assistent,
+  Space-Einstellungen und Token-Auswahl gleich führen. Mit den Filtern entfallen die
+  API-Parameter `visibility` und `fromMyGroups` des Katalogs und das Kennzeichen `fromMyGroups` in
+  `eligible-libraries`; mit der Sortierauswahl der Parameter `sort`. Das Feld `visibility` des
+  Eintrags bleibt, es trägt das Welt-Symbol.
+- **Entscheidung 4, Ausgleich der Kuratierungslast:** Die Kachelauswahl filtert nach Suche, Typ und
+  Favoriten. „In Space verwenden" liegt im Menü „⋯" der Kachel; vom Katalog bis zur Zuordnung sind
+  es damit drei Klicks statt höchstens zwei. Auf der Detailseite bleibt es ein eigener Knopf.
+
+Begründung: Gruppenherkunft und Sichtbarkeit beantworten selten gesuchte Fragen und machten die
+Kachel lang; die Favoriten leisten die persönliche Eingrenzung, und die Aktion „In Space verwenden"
+braucht keine eigene Knopfzeile auf jeder Kachel.
+
 ## Verwandte Dokumente
 
 - [Epic #2070](https://github.com/criew/opaa/issues/2070) — Ist-Analyse, Stakeholder-Bewertung,

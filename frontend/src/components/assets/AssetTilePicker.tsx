@@ -2,16 +2,14 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import TextField from '@mui/material/TextField'
-import ToggleButton from '@mui/material/ToggleButton'
-import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import Typography from '@mui/material/Typography'
 import type { AssetType, CatalogEntryResponse } from '../../types/api'
 import { getCatalog } from '../../services/catalogApi'
 import ChoiceTileGroup, { type ChoiceTile } from '../choice/ChoiceTileGroup'
 import { ASSET_TYPES, assetTypeDefinition } from './assetTypeRegistry'
 import { assetPickKey, type AssetPick } from './assetPick'
-import AssetFilterChips, { type AssetFilters } from './AssetFilterChips'
+import { type AssetFilters } from './AssetFilterChips'
+import AssetFilterBar from './AssetFilterBar'
 
 /** The loaded tiles for one filter; a different key means the shown result is outdated. */
 interface Loaded {
@@ -19,6 +17,7 @@ interface Loaded {
   entries: CatalogEntryResponse[]
   page: number
   totalPages: number
+  totalElements: number
   error: string | null
 }
 
@@ -35,7 +34,6 @@ type TileSource = Pick<AssetPick, 'assetType' | 'assetId' | 'name' | 'descriptio
 const PAGE_SIZE = 50
 const PERSONAL_PAGE_SIZE = 200
 const SEARCH_DELAY_MS = 300
-const ALL_TYPES = 'all'
 const LOAD_ERROR = 'Die Auswahl konnte nicht geladen werden.'
 
 interface AssetTilePickerProps {
@@ -59,8 +57,8 @@ interface AssetTilePickerProps {
 }
 
 /**
- * The tile choice of assets for a space (ADR-0039, Entscheidung 4): the catalog's own list - only
- * what the person may read - with search, type filter and personal filters, several tiles at once.
+ * The tile choice of assets for a space (ADR-0039, Entscheidung 4): the catalog's own list and
+ * order - only what the person may read - with the catalog's filter row, several tiles at once.
  * A choice survives a changed filter. Narrowed to the chosen ones, a tile unchosen meanwhile stays
  * in place until the narrowing is switched on anew.
  */
@@ -82,8 +80,8 @@ export default function AssetTilePicker({
     const keys = typesKey.split(',')
     return typesKey ? ASSET_TYPES.filter((d) => keys.includes(d.type)) : ASSET_TYPES
   }, [typesKey])
-  const [typeFilter, setTypeFilter] = useState<string>(ALL_TYPES)
-  const [filters, setFilters] = useState<AssetFilters>({ favorites: false, fromMyGroups: false })
+  const [typeFilter, setTypeFilter] = useState<AssetType | undefined>(undefined)
+  const [filters, setFilters] = useState<AssetFilters>({ favorites: false })
   const [chosenOnly, setChosenOnly] = useState(true)
   const [query, setQuery] = useState('')
   const [appliedQuery, setAppliedQuery] = useState('')
@@ -111,11 +109,10 @@ export default function AssetTilePicker({
   const filterType: AssetType | undefined =
     offered.length === 1 ? offered[0].type : offered.find((d) => d.type === typeFilter)?.type
 
-  const filterKey = `${filterType ?? ''}|${filters.favorites}|${filters.fromMyGroups}|${appliedQuery.trim()}|${typesKey}`
+  const filterKey = `${filterType ?? ''}|${filters.favorites}|${appliedQuery.trim()}|${typesKey}`
   const catalogKey = showsChosenOnly ? null : filterKey
-  const personalFiltered = filters.favorites || filters.fromMyGroups
-  const personalKey =
-    showsChosenOnly && personalFiltered ? `${filters.favorites}|${filters.fromMyGroups}` : null
+  const personalFiltered = filters.favorites
+  const personalKey = showsChosenOnly && personalFiltered ? 'favorites' : null
 
   async function fetchPage(page: number): Promise<Omit<Loaded, 'key'>> {
     try {
@@ -123,7 +120,6 @@ export default function AssetTilePicker({
         type: filterType,
         q: appliedQuery,
         favorites: filters.favorites,
-        fromMyGroups: filters.fromMyGroups,
         page,
         size: PAGE_SIZE,
       })
@@ -131,6 +127,7 @@ export default function AssetTilePicker({
         entries: result.entries.filter((entry) => offered.some((d) => d.type === entry.assetType)),
         page: result.page,
         totalPages: result.totalPages,
+        totalElements: result.totalElements,
         error: null,
       }
     } catch (err) {
@@ -138,6 +135,7 @@ export default function AssetTilePicker({
         entries: [],
         page,
         totalPages: 0,
+        totalElements: 0,
         error: err instanceof Error ? err.message : LOAD_ERROR,
       }
     }
@@ -154,8 +152,8 @@ export default function AssetTilePicker({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [catalogKey])
 
-  // The personal filters exist on the server only; narrowed to the chosen, their keys come from
-  // the catalog in full - a person's own favorites are few.
+  // Favorites exist on the server only; narrowed to the chosen, their keys come from the catalog
+  // in full - a person's own favorites are few.
   useEffect(() => {
     if (personalKey === null) return
     let current = true
@@ -164,8 +162,7 @@ export default function AssetTilePicker({
       try {
         for (let page = 0, pages = 1; page < pages; page++) {
           const result = await getCatalog({
-            favorites: filters.favorites,
-            fromMyGroups: filters.fromMyGroups,
+            favorites: true,
             page,
             size: PERSONAL_PAGE_SIZE,
           })
@@ -183,8 +180,6 @@ export default function AssetTilePicker({
     return () => {
       current = false
     }
-    // fetchKeys reads exactly what personalKey names.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [personalKey])
 
   async function loadMore() {
@@ -203,6 +198,7 @@ export default function AssetTilePicker({
       ...loaded,
       page: result.page,
       totalPages: result.totalPages,
+      totalElements: result.totalElements,
       entries: [...loaded.entries, ...result.entries],
     })
   }
@@ -249,8 +245,9 @@ export default function AssetTilePicker({
     sources = isLoading ? [] : (loaded?.entries ?? [])
   }
   const page = loaded?.page ?? 0
-  const totalPages =
-    showsChosenOnly || loaded?.key !== filterKey ? 0 : (loaded?.totalPages ?? 0)
+  const currentPage = !showsChosenOnly && loaded?.key === filterKey
+  const totalPages = currentPage ? (loaded?.totalPages ?? 0) : 0
+  const totalElements = currentPage ? (loaded?.totalElements ?? 0) : 0
   const shownKeys = sources.map(assetPickKey)
   const narrowed = Boolean(appliedQuery.trim() || filterType || personalFiltered)
 
@@ -292,62 +289,26 @@ export default function AssetTilePicker({
     setFilters((current) => ({ ...current, [key]: !current[key] }))
   }
 
-  const emptyText = isLoading || refreshing
-    ? 'Wird geladen …'
-    : narrowed
-      ? 'Keine Treffer.'
-      : showsChosenOnly
-        ? noneChosenText === undefined
-          ? 'Nichts ausgewählt.'
-          : noneChosenText
-        : 'Es gibt derzeit nichts, was Sie lesen dürfen und zuordnen könnten.'
+  const emptyText =
+    isLoading || refreshing
+      ? 'Wird geladen …'
+      : narrowed
+        ? 'Keine Treffer.'
+        : showsChosenOnly
+          ? noneChosenText === undefined
+            ? 'Nichts ausgewählt.'
+            : noneChosenText
+          : 'Es gibt derzeit nichts, was Sie lesen dürfen und zuordnen könnten.'
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-      <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', alignItems: 'center' }}>
-        <TextField
-          size="small"
-          type="search"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder="Name oder Beschreibung …"
-          slotProps={{ htmlInput: { 'aria-label': 'Suche', maxLength: 200 } }}
-          sx={{ flex: '1 1 220px', minWidth: 220 }}
-        />
-        {offered.length > 1 && (
-          <ToggleButtonGroup
-            size="small"
-            exclusive
-            value={typeFilter}
-            onChange={(_event, next: string | null) => {
-              if (next) setTypeFilter(next)
-            }}
-            aria-label="Typ"
-          >
-            <ToggleButton value={ALL_TYPES} sx={{ px: 1.5 }}>
-              Alle
-            </ToggleButton>
-            {offered.map((definition) => {
-              const Icon = definition.Icon
-              return (
-                <ToggleButton
-                  key={definition.type}
-                  value={definition.type}
-                  sx={{ px: 1.5, gap: 0.75 }}
-                >
-                  <Icon aria-hidden sx={{ fontSize: 16 }} />
-                  {definition.label}
-                </ToggleButton>
-              )
-            })}
-          </ToggleButtonGroup>
-        )}
-        <AssetFilterChips
-          value={offersChosenOnly ? { ...filters, selectedOnly: chosenOnly } : filters}
-          onToggle={toggleFilter}
-          selectedOnlyLabel={chosenOnlyLabel}
-        />
-      </Box>
+      <AssetFilterBar
+        search={{ value: query, onChange: setQuery, maxLength: 200 }}
+        types={{ offered, value: filterType, onChange: setTypeFilter }}
+        filters={offersChosenOnly ? { ...filters, selectedOnly: chosenOnly } : filters}
+        onToggle={toggleFilter}
+        selectedOnlyLabel={chosenOnlyLabel}
+      />
 
       {error ? (
         <Alert severity="error">{error}</Alert>
@@ -369,7 +330,9 @@ export default function AssetTilePicker({
       )}
 
       {refreshing && tiles.length > 0 && (
-        <Typography sx={{ color: 'text.secondary', fontSize: 12.5 }}>Wird aktualisiert …</Typography>
+        <Typography sx={{ color: 'text.secondary', fontSize: 12.5 }}>
+          Wird aktualisiert …
+        </Typography>
       )}
 
       {catalogKey !== null && moreError?.key === catalogKey && (
@@ -391,7 +354,10 @@ export default function AssetTilePicker({
       )}
 
       {page + 1 < totalPages && !error && moreError?.key !== catalogKey && (
-        <Box>
+        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 1 }}>
+          <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+            {sources.length} von {totalElements} angezeigt
+          </Typography>
           <Button
             variant="outlined"
             size="small"

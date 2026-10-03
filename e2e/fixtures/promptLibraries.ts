@@ -94,7 +94,7 @@ export async function gotoPromptLibraryDetail(page: Page, name: string): Promise
       const url = new URL(response.url())
       return url.pathname === '/api/v1/catalog' && url.searchParams.get('q') === name
     }),
-    page.getByRole('textbox', { name: 'Suchen' }).fill(name),
+    page.getByRole('searchbox', { name: 'Suchen' }).fill(name),
   ])
   await page.getByRole('link', { name: new RegExp(escapeRegExp(name)) }).click()
   await expect(page.getByRole('heading', { level: 1, name })).toBeVisible()
@@ -132,7 +132,7 @@ export async function searchCatalog(page: Page, query: string): Promise<void> {
       const url = new URL(response.url())
       return url.pathname.endsWith('/api/v1/catalog') && url.searchParams.get('q') === query
     }),
-    page.getByRole('textbox', { name: 'Suchen' }).fill(query),
+    page.getByRole('searchbox', { name: 'Suchen' }).fill(query),
   ])
 }
 

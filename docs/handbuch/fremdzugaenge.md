@@ -159,9 +159,8 @@ dafür nicht gebraucht.
   Gewählt wird über Kacheln, wie bei der Wahl der Art unter „Neu" im Katalog oder der Quellart einer
   neuen Wissensbibliothek: Jede wählbare Bibliothek ist eine Kachel mit Name, Beschreibung und dem
   Ende ihrer Freigabe; ein Klick, die Leertaste oder Enter wählt sie aus und wieder ab, eine
-  gewählte Kachel trägt Rahmen und Häkchen. Über den Kacheln grenzen eine Suche nach Name und
-  Beschreibung und drei Filter die Anzeige ein: **Favoriten** (die eigenen, wie im Katalog), **Aus
-  meinen Gruppen** (an eine eigene Gruppe freigegeben oder in ihrem Eigentum, wie im Katalog) und
+  gewählte Kachel trägt Rahmen und Häkchen. Über den Kacheln steht dieselbe Filterzeile wie im
+  Katalog: eine Suche nach Name und Beschreibung, **Favoriten** (die eigenen, wie im Katalog) und
   **Nur ausgewählte** (die Auswahl beim Einschalten; eine danach abgewählte Kachel bleibt stehen,
   bis der Filter neu gesetzt wird). Die Filter sind unabhängige Umschalter und verbinden sich mit
   der Suche; keiner gedrückt zeigt alle. Suche und Filter blenden nur aus und verwerfen keine

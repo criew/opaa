@@ -84,24 +84,6 @@ public interface AssetRepository extends JpaRepository<Asset, UUID> {
       @Param("favoritesOnly") boolean favoritesOnly,
       Pageable pageable);
 
-  /** {@link #findCatalogPage}, favorites first, then by the last change, most recent first. */
-  @Query(
-      value =
-          CATALOG_SELECT
-              + CATALOG_CONDITION
-              + " order by "
-              + FAVORITES_FIRST
-              + ", a.updatedAt desc, a.id",
-      countQuery = "select count(a)" + CATALOG_CONDITION)
-  Page<AssetCatalogRow> findCatalogPageByUpdatedAt(
-      @Param("organizationId") UUID organizationId,
-      @Param("assetTypes") Collection<AssetType> assetTypes,
-      @Param("readableIds") Set<UUID> readableIds,
-      @Param("pattern") String pattern,
-      @Param("userId") UUID userId,
-      @Param("favoritesOnly") boolean favoritesOnly,
-      Pageable pageable);
-
   /**
    * Marks a content change written outside the asset entity - a document uploaded, deleted or
    * indexed. Touches only {@code updated_at} and never moves it backwards, so neither a concurrent
@@ -113,15 +95,6 @@ public interface AssetRepository extends JpaRepository<Asset, UUID> {
       value = "UPDATE assets SET updated_at = :at WHERE id = :assetId AND updated_at < :at",
       nativeQuery = true)
   int markContentChanged(@Param("assetId") UUID assetId, @Param("at") Instant at);
-
-  /** The assets of {@code assetTypes} in the organization owned by one of the groups. */
-  @Query(
-      "select a.id from Asset a where a.organizationId = :organizationId"
-          + " and a.assetType in :assetTypes and a.ownerGroupId in :groupIds")
-  Set<UUID> findIdsOwnedByGroups(
-      @Param("organizationId") UUID organizationId,
-      @Param("assetTypes") Collection<AssetType> assetTypes,
-      @Param("groupIds") Collection<UUID> groupIds);
 
   /**
    * In how many spaces each of the assets is associated, in one grouped query - the spread the

@@ -43,17 +43,26 @@ test.describe('Space-Einstellungen: Reiter „Inhalte“', () => {
     await expectNoSeriousA11yViolations(page, 'Space-Einstellungen, Inhalte (helles Farbschema)')
 
     await onlyAssociated.click()
-    await page.getByRole('searchbox', { name: 'Suche' }).fill(libraryName)
+    await page.getByRole('searchbox', { name: 'Suchen' }).fill(libraryName)
+    const tiles = page.getByRole('group', { name: 'Inhalte dieses Space' }).getByRole('checkbox')
     const tile = page.getByRole('checkbox', { name: new RegExp(`^${escapeRegExp(libraryName)}`) })
+    // The search has answered once only this tile is left; nothing below depends on timing.
+    await expect(tiles).toHaveCount(1)
     await expect(tile).toHaveAttribute('aria-checked', 'false')
 
     await tile.focus()
     await page.keyboard.press('Space')
-    const notice = page.getByRole('alert').filter({ hasText: libraryName })
-    await expect(notice).toContainText('zugeordnet')
+    await expect(page.getByRole('alert').filter({ hasText: libraryName })).toContainText(
+      'zugeordnet',
+    )
     await expect(tile).toHaveAttribute('aria-checked', 'true')
     await expect(tile).toBeFocused()
 
+    await page.emulateMedia({ colorScheme: 'dark' })
+    await expectNoSeriousA11yViolations(page, 'Space-Einstellungen, Inhalte (dunkles Farbschema)')
+
+    // The scheme switch leaves the focus where it was: the keyboard carries on at the tile.
+    await expect(tile).toBeFocused()
     await page.keyboard.press('Space')
     const detached = page.getByRole('alert').filter({ hasText: 'gelöst' })
     await expect(detached).toBeVisible()
@@ -62,9 +71,7 @@ test.describe('Space-Einstellungen: Reiter „Inhalte“', () => {
 
     await detached.getByRole('button', { name: 'Rückgängig' }).click()
     await expect(tile).toHaveAttribute('aria-checked', 'true')
-
-    await page.emulateMedia({ colorScheme: 'dark' })
-    await expectNoSeriousA11yViolations(page, 'Space-Einstellungen, Inhalte (dunkles Farbschema)')
+    await expect(tile).toBeFocused()
 
     // A reload shows what the server holds: the association survived the undo.
     await page.reload()

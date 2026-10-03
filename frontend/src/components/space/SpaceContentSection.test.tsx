@@ -156,7 +156,7 @@ describe('SpaceContentSection', () => {
     serveAssociations([])
     renderSection()
 
-    const search = screen.getByRole('searchbox', { name: 'Suche' })
+    const search = screen.getByRole('searchbox', { name: 'Suchen' })
     const type = screen.getByRole('group', { name: 'Typ' })
     const filters = screen.getByRole('group', { name: 'Filter' })
     const favorites = within(filters).getByRole('button', { name: 'Favoriten' })
@@ -185,7 +185,7 @@ describe('SpaceContentSection', () => {
     ).not.toBeInTheDocument()
 
     await user.click(within(screen.getByRole('group', { name: 'Typ' })).getByText('Alle'))
-    await user.type(screen.getByRole('searchbox', { name: 'Suche' }), 'rechtsquellen')
+    await user.type(screen.getByRole('searchbox', { name: 'Suchen' }), 'rechtsquellen')
     await waitFor(() =>
       expect(
         screen.queryByRole('checkbox', { name: /^Dienstanweisungen/ }),
@@ -193,7 +193,7 @@ describe('SpaceContentSection', () => {
     )
     expect(await tile('Rechtsquellen Soziales')).toBeVisible()
 
-    await user.clear(screen.getByRole('searchbox', { name: 'Suche' }))
+    await user.clear(screen.getByRole('searchbox', { name: 'Suchen' }))
     await user.click(
       within(screen.getByRole('group', { name: 'Filter' })).getByRole('button', {
         name: 'Favoriten',
@@ -448,7 +448,7 @@ describe('SpaceContentSection', () => {
     await user.click(onlyAssociatedChip())
     await tile('Projektakte Phoenix')
 
-    await user.type(screen.getByRole('searchbox', { name: 'Suche' }), 'Dienst')
+    await user.type(screen.getByRole('searchbox', { name: 'Suchen' }), 'Dienst')
     const target = await tile('Dienstanweisungen')
     target.focus()
 
@@ -502,10 +502,12 @@ describe('SpaceContentSection', () => {
     await user.click(first)
     await user.click(second)
 
-    await waitFor(() => expect(posts.map((post) => post.assetId).sort()).toEqual([
-      'library-dienstanweisungen',
-      'library-solo-owner',
-    ]))
+    await waitFor(() =>
+      expect(posts.map((post) => post.assetId).sort()).toEqual([
+        'library-dienstanweisungen',
+        'library-solo-owner',
+      ]),
+    )
     await waitFor(async () => {
       expect(await tile('Dienstanweisungen')).toHaveAttribute('aria-checked', 'true')
       expect(await tile('Projektakte Phoenix')).toHaveAttribute('aria-checked', 'true')
