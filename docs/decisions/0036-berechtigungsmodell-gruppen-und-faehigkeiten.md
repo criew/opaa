@@ -840,7 +840,11 @@ unterliegen deren Höchstdauer.
 > und die Unterdrückung unterhalb der Mindestgruppengröße schützte an dieser Stelle nichts: Wer die
 > Zeile sieht, verwaltet die Freigabe oder die Mitgliedschaft und darf die Mitglieder der Gruppe
 > ohnehin aufklappen — mit diesem Nachtrag auch bei kleinen Gruppen, weil die Tabelle oben dem
-> Rechtevergebenden die volle Mitgliederliste zuspricht und #1882 nur vorläufig davon abwich. Die aktuelle Zahl bleibt sichtbar. Die Frage, wer seit wann über welche Gruppe
+> Rechtevergebenden die volle Mitgliederliste zuspricht und #1882 nur vorläufig davon abwich.
+> Damit ist die Mindestgröße in der Subjekt-Auswahl nur noch eine Voreinstellung und kein Schutz
+> mehr: Wer verwaltet, kann sie umgehen, indem er der Gruppe ein Recht gibt, die Mitglieder
+> aufklappt und das Recht wieder entzieht. Als Spur davon bleibt die Rechtehistorie.
+> Die aktuelle Zahl bleibt sichtbar. Die Frage, wer seit wann über welche Gruppe
 > Zugriff hat, beantworten Rechtehistorie, Protokoll und die Herleitung „Warum hat … Zugriff?“ — eine
 > zweite, gespeicherte Zahl am Recht trug dazu nichts bei.
 
