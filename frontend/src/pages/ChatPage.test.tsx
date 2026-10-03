@@ -142,6 +142,52 @@ describe('ChatPage', () => {
     expect(screen.queryByText(ANSWER_ARRIVED_ANNOUNCEMENT)).not.toBeInTheDocument()
   })
 
+  // regression guard for #2135: while an answer is generated the next question can be prepared.
+  it('keeps the input editable and focused while an answer is pending, sending only afterwards', async () => {
+    currentChatId = 'chat-personal-1'
+    const questions: string[] = []
+    let release: () => void = () => {}
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    server.use(
+      http.post('/api/v1/query', async ({ request }) => {
+        const body = (await request.json()) as { question: string; chatId: string }
+        questions.push(body.question)
+        if (questions.length === 1) await gate
+        return HttpResponse.json({
+          answer: `Antwort auf ${body.question}`,
+          sources: [],
+          metadata: { model: 'gpt-4o', tokenCount: 1, durationMs: 1 },
+          chatId: body.chatId,
+        })
+      }),
+    )
+    const user = userEvent.setup()
+    renderWithProviders(<ChatPage />, { withRouter: true })
+    await waitFor(() => expect(useChatStore.getState().chatId).toBe('chat-personal-1'))
+    await waitFor(() => expect(useChatStore.getState().isLoadingChat).toBe(false))
+
+    const input = screen.getByPlaceholderText('Nachricht eingeben …')
+    await user.click(input)
+    await user.keyboard('Erste Frage{Enter}')
+    await waitFor(() => expect(useChatStore.getState().isLoading).toBe(true))
+
+    await user.keyboard('Zweite Frage{Enter}')
+    expect(input).toHaveValue('Zweite Frage')
+    expect(input).toHaveFocus()
+    expect(screen.getByLabelText('Senden')).toBeDisabled()
+    expect(questions).toEqual(['Erste Frage'])
+
+    release()
+    expect(await screen.findByText('Antwort auf Erste Frage')).toBeInTheDocument()
+    expect(input).toHaveFocus()
+    await user.keyboard('{Enter}')
+
+    expect(await screen.findByText('Antwort auf Zweite Frage')).toBeInTheDocument()
+    expect(questions).toEqual(['Erste Frage', 'Zweite Frage'])
+  })
+
   it('puts a question the server rejects with 400 back into the input and explains why', async () => {
     server.use(
       http.post('/api/v1/query', () =>

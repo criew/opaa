@@ -586,6 +586,45 @@ describe('ChatInput', () => {
     expect(screen.getByPlaceholderText('Nachricht eingeben …')).toBeDisabled()
   })
 
+  // regression guard for #2135: a running answer locks sending, never typing.
+  describe('while an answer is pending', () => {
+    it('keeps the input editable, blocks sending and sends the prepared text afterwards', async () => {
+      const user = userEvent.setup()
+      const onSend = vi.fn()
+      const { rerender } = render(<ChatInput onSend={onSend} answerPending />)
+
+      const input = screen.getByPlaceholderText('Nachricht eingeben …')
+      expect(input).toBeEnabled()
+      await user.click(input)
+      await user.keyboard('Nächste Frage{Enter}')
+
+      expect(input).toHaveValue('Nächste Frage')
+      expect(onSend).not.toHaveBeenCalled()
+      expect(screen.getByLabelText('Senden')).toBeDisabled()
+      expect(input).toHaveFocus()
+
+      rerender(<ChatInput onSend={onSend} />)
+      expect(input).toHaveFocus()
+      await user.keyboard('{Enter}')
+
+      expect(onSend).toHaveBeenCalledWith('Nächste Frage')
+    })
+
+    it('keeps the search scope as it was sent', async () => {
+      const user = userEvent.setup()
+      render(<ChatInput onSend={vi.fn()} answerPending />)
+
+      expect(
+        screen.queryByRole('button', { name: 'Referenz Space-Wissen entfernen' }),
+      ).not.toBeInTheDocument()
+      await user.click(screen.getByPlaceholderText('Nachricht eingeben …'))
+      await user.keyboard('@')
+
+      expect(screen.queryByRole('listbox', { name: 'Suchbereich' })).not.toBeInTheDocument()
+      expect(useChatStore.getState().scope).toBe('all')
+    })
+  })
+
   describe('the three chip-bar states (#560)', () => {
     it('shows the @Space-Wissen chip, removable, as the default state', async () => {
       const user = userEvent.setup()
