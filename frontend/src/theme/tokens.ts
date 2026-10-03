@@ -70,10 +70,19 @@ export const semanticColors = {
   warning: '#F5B83D',
 } as const
 
-/** Danger tone of the light schemes; >= 4.5:1 against white, off-white and smoke. */
-const dangerLight = '#CE2C31'
-/** Danger tone of the dark grounds; >= 4.5:1 against carbon and navy-900..700. */
-const dangerDark = '#FF6369'
+/**
+ * Hover tones of the filled success/warning surfaces. Both carry dark text, so the hover gets
+ * lighter, not darker - MUI's derived darker tone left success at 3.9:1.
+ */
+export const semanticHoverColors = {
+  success: '#38C18F',
+  warning: '#F7C35D',
+} as const
+
+/** Danger tones of the light schemes; the main tone is >= 4.5:1 against white, off-white, smoke. */
+const dangerLight = { main: '#CE2C31', hover: '#901E22', soft: '#D23B40' } as const
+/** Danger tones of the dark grounds; the main tone is >= 4.5:1 against carbon and navy-900..700. */
+const dangerDark = { main: '#FF6369', hover: '#FF7A80', soft: '#FF8287' } as const
 
 /**
  * Semantic roles - the vocabulary every component uses (guidelines 2.2). One value set per
@@ -118,6 +127,13 @@ export interface SchemeRoles {
    * as text against bg-1..3 of the light and dark scheme; bg-1 is the text on its surface.
    */
   danger: string
+  /**
+   * Hover/pressed tone of filled danger surfaces (MUI `error.dark`). Darker than `danger` where
+   * bg-1 is light text, lighter where bg-1 is dark text; bg-1 keeps >= 4.5:1 on it.
+   */
+  dangerHover: string
+  /** Lighter danger variant (MUI `error.light`); bg-1 keeps >= 4.5:1 on it. */
+  dangerSoft: string
 }
 
 export const lightRoles: SchemeRoles = {
@@ -140,7 +156,9 @@ export const lightRoles: SchemeRoles = {
   accentPress: blue[900],
   border: gray[100],
   borderStrong: gray[200],
-  danger: dangerLight,
+  danger: dangerLight.main,
+  dangerHover: dangerLight.hover,
+  dangerSoft: dangerLight.soft,
 }
 
 export const darkRoles: SchemeRoles = {
@@ -157,7 +175,9 @@ export const darkRoles: SchemeRoles = {
   accentPress: blue[900],
   border: carbon[800],
   borderStrong: carbon[700],
-  danger: dangerDark,
+  danger: dangerDark.main,
+  dangerHover: dangerDark.hover,
+  dangerSoft: dangerDark.soft,
 }
 
 /**
@@ -179,7 +199,9 @@ export const navyRoles: SchemeRoles = {
   accentPress: blue[900],
   border: navy[700],
   borderStrong: navy[600],
-  danger: dangerDark,
+  danger: dangerDark.main,
+  dangerHover: dangerDark.hover,
+  dangerSoft: dangerDark.soft,
 }
 
 /**
@@ -205,7 +227,9 @@ export const railRoles: SchemeRoles = {
   accentPress: blue[900],
   border: navy[800],
   borderStrong: navy[600],
-  danger: dangerDark,
+  danger: dangerDark.main,
+  dangerHover: dangerDark.hover,
+  dangerSoft: dangerDark.soft,
 }
 
 /**

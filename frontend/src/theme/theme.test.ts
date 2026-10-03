@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { alpha } from '@mui/material/styles'
+import { alpha, decomposeColor, getContrastRatio } from '@mui/material/styles'
 import { createAppTheme } from './theme'
 import {
   blue,
@@ -15,6 +15,15 @@ import {
 } from './tokens'
 import { contrastRatio, TEXT_CONTRAST_MINIMUM } from '../utils/contrast'
 import { OPAA_BRANDING } from '../stores/brandingStore'
+
+/** Composites a possibly translucent text colour over its opaque surface, as the browser does. */
+function flatten(text: string, surface: string): string {
+  const fg = decomposeColor(text).values
+  const bg = decomposeColor(surface).values
+  const a = fg[3] ?? 1
+  const mix = (i: number) => Math.round(fg[i] * a + bg[i] * (1 - a))
+  return `rgb(${mix(0)}, ${mix(1)}, ${mix(2)})`
+}
 
 describe('tokens', () => {
   test('light and dark schemes define the identical set of roles', () => {
@@ -133,6 +142,33 @@ describe('createAppTheme', () => {
         contrastRatio(error.contrastText, error.main),
         `error.contrastText on error.main (${mode})`,
       ).toBeGreaterThanOrEqual(TEXT_CONTRAST_MINIMUM)
+    }
+  })
+
+  // regression guard for #2150: MUI paints the hover of contained buttons in `dark` with
+  // `contrastText`, and filled alerts in `dark` with `getContrastText(main)`. With dark text the
+  // hover tone has to get lighter, not darker.
+  test('filled status surfaces keep 4.5:1 text in every tone (#2150)', () => {
+    for (const mode of ['light', 'dark'] as const) {
+      const palette = createAppTheme(mode).palette
+      for (const key of ['error', 'warning', 'success'] as const) {
+        const color = palette[key]
+        const filledAlertText = palette.getContrastText(color.main)
+        const pairs = [
+          ['contrastText', color.contrastText, 'main', color.main],
+          ['contrastText', color.contrastText, 'dark', color.dark],
+          ['contrastText', color.contrastText, 'light', color.light],
+          ['getContrastText(main)', filledAlertText, 'dark', color.dark],
+        ] as const
+        for (const [textLabel, text, surfaceLabel, surface] of pairs) {
+          expect
+            .soft(
+              getContrastRatio(flatten(text, surface), surface),
+              `${key}.${textLabel} on ${key}.${surfaceLabel} (${mode})`,
+            )
+            .toBeGreaterThanOrEqual(TEXT_CONTRAST_MINIMUM)
+        }
+      }
     }
   })
 
