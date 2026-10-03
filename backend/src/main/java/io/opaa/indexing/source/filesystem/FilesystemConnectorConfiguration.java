@@ -16,11 +16,8 @@ public class FilesystemConnectorConfiguration {
 
   @Bean
   FilesystemSourceConnector filesystemSourceConnector(
-      FilesystemPathAllowlist filesystemPathAllowlist,
-      DocumentService documentService,
-      SupportedDocumentFormats supportedDocumentFormats) {
-    return new FilesystemSourceConnector(
-        filesystemPathAllowlist, documentService, supportedDocumentFormats);
+      FilesystemPathAllowlist filesystemPathAllowlist) {
+    return new FilesystemSourceConnector(filesystemPathAllowlist);
   }
 
   /**

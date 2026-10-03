@@ -17,7 +17,6 @@ import io.opaa.auth.CurrentUser;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
-import io.opaa.format.DocumentService;
 import io.opaa.indexing.source.FilesystemPathAllowlist;
 import io.opaa.indexing.source.SourceConnectionTestResult;
 import io.opaa.indexing.source.TestSourceConnectors;
@@ -48,9 +47,9 @@ import org.junit.jupiter.api.io.TempDir;
 
 /**
  * Unit-level coverage of {@link SourceConnectionTestService} for all three testable quellentypen
- * (#514) - real building blocks throughout ({@link DocumentService}, {@link
- * AutoindexCrawlerService}, {@link RssFeedParser}), only {@link FilesystemPathAllowlist} is mocked
- * so the FILESYSTEM branch can be exercised without depending on operator configuration.
+ * (#514) - real building blocks throughout ({@link AutoindexCrawlerService}, {@link
+ * RssFeedParser}), only {@link FilesystemPathAllowlist} is mocked so the FILESYSTEM branch can be
+ * exercised without depending on operator configuration.
  */
 class SourceConnectionTestServiceTest {
 
@@ -151,7 +150,6 @@ class SourceConnectionTestServiceTest {
     assertThat(response.documentCount()).isNull();
     assertThat(response.message()).isEqualTo("Verzeichnis erreichbar.");
   }
-
 
   @Test
   void filesystemReportsUnreachableForMissingDirectory(@TempDir Path dir) {
