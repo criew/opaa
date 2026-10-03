@@ -6,11 +6,14 @@ import { answerConfirm, renderWithProviders } from '../test/test-utils'
 import SpaceSettingsPage from './SpaceSettingsPage'
 import { useAuthStore } from '../stores/authStore'
 import { useSpaceStore } from '../stores/spaceStore'
+import { useNotificationStore } from '../stores/notificationStore'
+import { getSpace } from '../services/spaceApi'
 import type { SpaceAssetAssociationListResponse, SpaceResponse } from '../types/api'
 
 // Der sichtbare Reiter ist eine Route (#1917); der Test setzt ihn wie die Adresszeile.
-const { routeParams } = vi.hoisted(() => ({
+const { routeParams, mockNavigate } = vi.hoisted(() => ({
   routeParams: { spaceId: 'space-team', tab: 'general' as string },
+  mockNavigate: vi.fn(),
 }))
 
 vi.mock('react-router', async () => {
@@ -18,7 +21,7 @@ vi.mock('react-router', async () => {
   return {
     ...actual,
     useParams: () => routeParams,
-    useNavigate: () => vi.fn(),
+    useNavigate: () => mockNavigate,
   }
 })
 
@@ -431,8 +434,8 @@ describe('SpaceSettingsPage', () => {
     expect(screen.getByRole('button', { name: /^hinzufügen$/i })).toBeInTheDocument()
   })
 
-  /** #2131: Der Reiter heißt schon „Mitglieder"; das Formular ist die Überschrift des Panels. */
-  it('heads the members tab with the add form only and names what a group passes on', async () => {
+  /** #2131, #2205: Das Formular ist die Überschrift des Panels, ohne Hinweistext darunter. */
+  it('heads the members tab with the add form only, without a hint on groups', async () => {
     setSpaceState(teamSpace)
     renderTab('members')
 
@@ -440,9 +443,7 @@ describe('SpaceSettingsPage', () => {
       await screen.findByRole('heading', { level: 2, name: 'Mitglied hinzufügen' }),
     ).toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Mitglieder' })).not.toBeInTheDocument()
-    expect(
-      screen.getByText('Gruppen geben ihre Rolle an alle ihre Mitglieder weiter.'),
-    ).toBeInTheDocument()
+    expect(screen.queryByText(/Gruppen geben ihre Rolle/)).not.toBeInTheDocument()
   })
 
   it('marks the owner and hides remove/transfer actions for their own row', async () => {
@@ -550,6 +551,120 @@ describe('SpaceSettingsPage', () => {
   })
 
   /**
+   * #2205: Jede Aktion meldet sich als Popup (Leitlinie 5.9); in der Seite bleibt keine
+   * Erfolgsmeldung stehen — auch nicht nach einer weiteren Aktion.
+   */
+  it('reports adding and removing as popups and leaves no success message in the page', async () => {
+    setSpaceState(teamSpace)
+    renderTab('members')
+    const user = userEvent.setup()
+    const panel = screen.getByRole('tabpanel')
+
+    await user.type(await screen.findByLabelText('Person oder Gruppe suchen'), 'Projekt')
+    await user.click(await screen.findByRole('option', { name: /Projektbeteiligte Phoenix/ }))
+    await user.click(screen.getByRole('button', { name: /^hinzufügen$/i }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Gruppe Projektbeteiligte Phoenix hinzugefügt',
+    )
+
+    const menu = await openMemberMenu(user, 'Colleague')
+    await user.click(within(menu).getByRole('menuitem', { name: 'Aus Space entfernen' }))
+    await answerConfirm(user, 'Colleague aus diesem Space entfernen?', 'Entfernen')
+
+    await waitFor(() =>
+      expect(useNotificationStore.getState().queue.map((n) => n.message)).toEqual([
+        'Gruppe Projektbeteiligte Phoenix hinzugefügt',
+        'Colleague entfernt',
+      ]),
+    )
+    expect(within(panel).queryByText(/hinzugefügt|entfernt/)).not.toBeInTheDocument()
+    expect(within(panel).queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  /**
+   * #2205: Ein Rollenwechsel aktualisiert die Liste still — kein „wird geladen“, keine neu
+   * aufgebaute Zeile, der Fokus bleibt auf der Rollenauswahl — und meldet sich als Popup.
+   */
+  it('changes a role without a loading flicker, keeps the focus and reports it as a popup', async () => {
+    setSpaceState(teamSpace)
+    renderTab('members')
+    const user = userEvent.setup()
+    await screen.findByText('Colleague')
+    await waitFor(() => expect(mockListSpaceMembers).toHaveBeenCalledTimes(1))
+    let releaseRefresh: () => void = () => {}
+    mockListSpaceMembers.mockImplementationOnce(
+      (spaceId: string) =>
+        new Promise((resolve) => {
+          releaseRefresh = () => resolve(membersBySpaceId[spaceId] ?? [])
+        }),
+    )
+
+    const roleSelect = within(memberRow('Colleague')).getByRole('combobox')
+    await user.click(roleSelect)
+    await user.click(await screen.findByRole('option', { name: 'Kurator' }))
+
+    await waitFor(() => expect(mockListSpaceMembers).toHaveBeenCalledTimes(2))
+    expect(screen.queryByText(/wird geladen/)).not.toBeInTheDocument()
+    expect(within(memberRow('Colleague')).getByRole('combobox')).toBe(roleSelect)
+
+    releaseRefresh()
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Rolle von Colleague: Kurator')
+    expect(mockUpdateSpaceMemberRole).toHaveBeenCalledWith('space-team', 'm-team-u2', 'CURATOR')
+    expect(within(memberRow('Colleague')).getByRole('combobox')).toBe(roleSelect)
+    expect(roleSelect).toHaveFocus()
+    expect(screen.queryByText(/wird geladen/)).not.toBeInTheDocument()
+  })
+
+  /**
+   * #2205: Wer sich selbst entfernt und damit den Zugang verliert, sieht keine Verwaltungsansicht
+   * mehr, sondern landet in der Space-Übersicht und erfährt, warum.
+   */
+  it('leaves the settings for the overview when removing oneself cost the access', async () => {
+    setSpaceState({ ...teamSpace, ownerId: 'someone-else' })
+    renderTab('members')
+    const user = userEvent.setup()
+    await screen.findByText('Owner')
+    vi.mocked(getSpace).mockRejectedValueOnce(
+      new Error('HTTP 403', { cause: { response: { status: 403 } } }),
+    )
+
+    const menu = await openMemberMenu(user, 'Owner')
+    await user.click(within(menu).getByRole('menuitem', { name: 'Aus Space entfernen' }))
+    await answerConfirm(user, 'Owner aus diesem Space entfernen?', 'Entfernen')
+
+    await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/spaces', { replace: true }))
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Owner entfernt. Sie haben keinen Zugang mehr zu „Team“.',
+    )
+    expect(useSpaceStore.getState().selectedSpace).toBeNull()
+  })
+
+  /** #2205: Ein Fehler bleibt in der Seite stehen, bis er geschlossen wird. */
+  it('keeps a failure on screen until it is closed', async () => {
+    mockUpdateSpaceMemberRole.mockRejectedValueOnce(
+      new Error('Die Rolle konnte nicht geändert werden'),
+    )
+    setSpaceState(teamSpace)
+    renderTab('members')
+    const user = userEvent.setup()
+    await screen.findByText('Colleague')
+
+    await user.click(within(memberRow('Colleague')).getByRole('combobox'))
+    await user.click(await screen.findByRole('option', { name: 'Kurator' }))
+
+    const failure = await screen.findByText('Die Rolle konnte nicht geändert werden')
+    expect(useNotificationStore.getState().queue).toEqual([])
+    await user.click(
+      within(failure.closest('[role="alert"]') as HTMLElement).getByRole('button', {
+        name: /schließen/i,
+      }),
+    )
+    expect(screen.queryByText('Die Rolle konnte nicht geändert werden')).not.toBeInTheDocument()
+  })
+
+  /**
    * #1815, ADR-0036 Entscheidung 6: the handover is no longer the owner's alone - every capable
    * ADMIN member that is a natural person may perform it. Driven here with an ADMIN caller who is
    * not the owner, which before this change saw no button at all.
@@ -576,6 +691,9 @@ describe('SpaceSettingsPage', () => {
     await waitFor(() => {
       expect(mockTransferSpaceOwnership).toHaveBeenCalledWith('space-team', 'u1')
     })
+    // #2205: die Übertragung meldet sich wie jede Aktion als Popup.
+    expect(await screen.findByRole('alert')).toHaveTextContent('Verantwortung an Owner übertragen')
+    expect(screen.getByRole('tabpanel')).not.toHaveTextContent('Verantwortung übertragen')
   })
 
   it('names a failed group search instead of showing an empty picker', async () => {
@@ -646,7 +764,11 @@ describe('SpaceSettingsPage', () => {
     const menu = await openMemberMenu(user, 'Colleague')
     await user.click(within(menu).getByRole('menuitem', { name: 'Warum hat Colleague Zugriff?' }))
 
-    expect(await screen.findByText(/Wirksame Rolle/)).toBeInTheDocument()
+    expect(
+      await screen.findByText(
+        'Colleague ist Mitglied in diesem Space – über die Gruppe Referat 50.',
+      ),
+    ).toBeInTheDocument()
     expect(mockGetSpaceAccessDerivation).toHaveBeenCalledWith('space-team', 'u2')
     const groupMenu = await openMemberMenu(user, 'Geschützte Gruppe')
     expect(within(groupMenu).queryByText(/Warum hat/)).not.toBeInTheDocument()

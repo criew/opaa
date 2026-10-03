@@ -1,7 +1,7 @@
 # Modul connectors
 
-Pakete (`io.opaa.indexing.source.*`): confluence, filesystem, nextcloud, rss, s3, upload, web — jedes
-direkte Unterpaket ist ein Konnektor. Vertrag in `indexing.source` (knowledge). Ergänzt `backend/AGENTS.md`.
+Pakete (`io.opaa.indexing.source.*`): confluence, filesystem, googledrive, nextcloud, rss, s3,
+upload, web — jedes direkte Unterpaket ist ein Konnektor, der Vertrag in `indexing.source`.
 
 ## Zweck und Grenze
 
@@ -35,8 +35,8 @@ von foundation, format und knowledge ab.
   `source_settings` verlangt bei Änderung neue Zugangsdaten. Profilangabe: `withProfiles`.
 - **Der Laufrahmen ist `IndexingRunTemplate`:** Der Körper zählt nur die Quelle auf und meldet
   einen `ListingOutcome`; Fortschritt, Protokoll und Abgleich durch Abwesenheit besitzt der Rahmen.
-- **Dateiablagen** implementieren `FileStore` aus `indexing.filesync` mit dessen neutralen
-  Fehlerarten; den Abgleich besitzt `FileSync`. Ihre Tests erweitern `FileStoreContract`.
+- **Dateiablagen** implementieren `FileStore` (mit Änderungsprotokoll auch `ChangeFeed`) aus
+  `indexing.filesync`; Abgleich und Änderungslauf besitzt `FileSync`. Tests: `FileStoreContract`.
 - **Push-Adapter** (`confluence.webhook`, `s3.events`) liegen über ihrem Konnektor, erreicht über
   einen eigenen Port (`ConfluencePushReceiver`, `S3PushReceiver`).
 - **Netzzugriff:** HTTP (auch WebDAV) über `io.opaa.sourceaccess`, S3 über `io.opaa.s3`.

@@ -382,6 +382,17 @@ export const mockSourceTypes: SourceTypeDescriptor[] = [
     locked: false,
   },
   {
+    type: 'GOOGLE_DRIVE',
+    displayName: 'Google Drive',
+    indexingRun: true,
+    uploads: false,
+    pushIntake: false,
+    browsable: true,
+    profileSupport: 'FORBIDDEN',
+    authMethods: [],
+    fullSyncIntervalDefaultDays: 7,
+  },
+  {
     type: 'HTTP_DIRECTORY',
     displayName: 'Webverzeichnis',
     indexingRun: true,

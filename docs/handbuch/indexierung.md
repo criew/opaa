@@ -86,6 +86,7 @@ Ordnerpfad an. Wer Ordner anlegt, hängt vom Quellentyp ab:
 | `RSS_FEED` | keine Ordner; ein Feed hat keine Struktur | entfällt |
 | `CONFLUENCE` | keine Ordner. Space und Gliederungspfad einer Seite stehen am Dokument und erscheinen in Zitat, Protokoll und Chunk-Kontext, nicht als Ordner. | entfällt |
 | `S3` | Der Lauf spiegelt die Schlüsselpräfixe der Geltungsbereiche: bei einem Bereich ist dessen Präfix die Wurzel, bei mehreren beginnt jede Kette mit dem Bucket und seinen Präfixsegmenten. Ordner entstehen nur entlang gefundener Objekte; ein Ordnermarker (`…/`) allein erzeugt keinen. Siehe [Konnektor S3](konnektor-s3.md), Abschnitt 10. | nein |
+| `GOOGLE_DRIVE` | Der Lauf spiegelt die Ordnerkette bis zum Bereich; bei mehreren Bereichen beginnt jede Kette mit dem Namen der Ablage bzw. des Ordners. Siehe [Konnektor Google Drive](konnektor-google-drive.md), Abschnitt 6. | nein |
 
 Das Löschen eines Ordners in einer Upload-Bibliothek löscht die enthaltenen Dokumente samt
 Chunks und Dateien, nach einer Bestätigung, die deren Anzahl nennt.
@@ -359,7 +360,8 @@ genannten Dinge mit.
 > Welche Mechanismen und Grenzwerte das je Quelle konkret sind, steht in den Kapiteln
 > [Verzeichnis im Dateisystem](konnektor-filesystem.md),
 > [Webverzeichnis](konnektor-http-directory.md), [Feed](konnektor-rss-feed.md),
-> [Confluence](konnektor-confluence.md) und [S3-Objektspeicher](konnektor-s3.md).
+> [Confluence](konnektor-confluence.md), [S3-Objektspeicher](konnektor-s3.md) und
+> [Google Drive](konnektor-google-drive.md).
 
 ### Zugänge
 
@@ -867,6 +869,7 @@ Die wichtigsten Schlüssel unter `opaa.indexing.*`:
 | `target-validation.*` | aktiv | Zieladressprüfung für Netzquellen |
 | `rss.*`, `crawl.*`, `confluence.*`, `mail.*`, `tabular.*`, `odf.*` | siehe Konnektor- und Format-Kapitel | Grenzwerte je Quelle und Format |
 | `s3.*` | siehe [S3-Objektspeicher, Abschnitt 15](konnektor-s3.md#15-konfiguration) (`OPAA_INDEXING_S3_*`, darunter `max-objects-per-run` als sichtbare Notbremse, `request-budget-per-run` als geordnetes Laufende, `download-concurrency` als Obergrenze gleichzeitiger Downloads und `events.*` für den Ereigniseingang) | Grenzwerte des S3-Konnektors |
+| `google-drive.*` | siehe [Google Drive, Abschnitt 12](konnektor-google-drive.md#12-konfiguration) (`OPAA_INDEXING_GOOGLE_DRIVE_*`) | Grenzwerte des Google-Drive-Konnektors |
 
 ### 10.4 Was nicht gebaut ist
 
@@ -884,7 +887,8 @@ Betriebsart) ist Teil dieser Pipeline und wächst nicht je Konnektor.
 
 - Konnektoren je Quellentyp: [Verzeichnis im Dateisystem](konnektor-filesystem.md),
   [Webverzeichnis](konnektor-http-directory.md), [Feed](konnektor-rss-feed.md),
-  [Confluence](konnektor-confluence.md), [S3-Objektspeicher](konnektor-s3.md)
+  [Confluence](konnektor-confluence.md), [S3-Objektspeicher](konnektor-s3.md),
+  [Google Drive](konnektor-google-drive.md)
 - Format-Pipelines je Dokumenttyp: siehe [Formatübersicht](#anhang-formatübersicht)
 - Wie der Index abgefragt wird, von der Frage bis zur belegten Antwort: [Suche](suche.md)
 - Kernfelder je Dokument, ihre Ermittlung, Pflege und Wirkung in der Suche: [Metadaten](metadaten.md)

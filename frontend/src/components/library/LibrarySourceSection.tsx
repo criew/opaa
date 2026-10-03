@@ -203,6 +203,7 @@ export default function LibrarySourceSection({
                     }
                   : undefined
               }
+              settingsBase={configuration?.rhythmSettingsBase?.(library) ?? undefined}
               library={library}
             />
           </PageSection>

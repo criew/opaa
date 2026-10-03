@@ -126,6 +126,18 @@ public final class FileSync implements AutoCloseable {
   private final Map<String, Long> notADocumentNotes = new LinkedHashMap<>();
   private final Map<String, Long> deselectedNotes = new LinkedHashMap<>();
   private int total;
+
+  /** Failures that may pass by themselves - they hold a change stream's cursor. */
+  private int transientFailures;
+
+  /** Containers a change run added to or removed from. */
+  private final Set<String> changedContainers = new LinkedHashSet<>();
+
+  private final List<PendingRemoval> pendingRemovals = new ArrayList<>();
+
+  /** The new cursor of every stream read cleanly, written once the run's removals are done. */
+  private final Map<String, String> pendingCursors = new LinkedHashMap<>();
+
   private long listed;
   private long deselected;
 
@@ -250,6 +262,185 @@ public final class FileSync implements AutoCloseable {
       recordSummaries();
     }
     return ListingOutcome.partial();
+  }
+
+  /**
+   * The change run (ADR-0040, Entscheidung 6): every stream is read from its stored cursor. A
+   * reported file goes the full sync's way; a deselected one and a reported removal take the
+   * document with its attachments - a removal only for a document of the stream's own containers,
+   * and only while all of them are reachable. A stream's new cursor is kept unless a file failed
+   * transiently; a durable failure (an unreadable format) does not hold it. The cursors move only
+   * once every stream is read and the removals are applied, so a run that ends early loses none. A
+   * change of structure, an expired cursor or a stream without a cursor make the next run a full
+   * sync. The folder memory of every container the run changed is dropped, so its count guard stays
+   * sound. A new container on an existing stream has no full listing behind it: the connector
+   * discards the run state when its containers change. No listing, no reconciliation: {@link
+   * ListingOutcome#partial()}.
+   */
+  public ListingOutcome runChanges() throws InterruptedException {
+    ChangeFeed feed =
+        store.changes().orElseThrow(() -> new IllegalStateException("the store has no change log"));
+    Map<String, List<FileContainer>> streams = new LinkedHashMap<>();
+    for (FileContainer container : store.containers()) {
+      streams.computeIfAbsent(feed.feedKey(container), key -> new ArrayList<>()).add(container);
+    }
+    Map<String, String> cursors = state.changeCursors();
+    frame.budgetContinuation(wording::eventRunContinuation);
+    try {
+      for (Map.Entry<String, List<FileContainer>> stream : streams.entrySet()) {
+        String cursor = cursors.get(stream.getKey());
+        if (cursor == null) {
+          state.requireFullSync();
+          frame.events().recordRunNote(IndexingEventCategory.SUMMARY, wording.fullSyncFollows());
+          continue;
+        }
+        readStream(feed, stream.getKey(), stream.getValue(), cursor);
+      }
+      applyRemovals();
+      // all at once, after the removals: a run that ends early moves no cursor past a removal
+      pendingCursors.forEach(state::advanceChangeCursor);
+    } finally {
+      forgetChangedContainers();
+      syncStateRepository.save(state);
+      recordSummaries();
+    }
+    return ListingOutcome.partial();
+  }
+
+  private void readStream(
+      ChangeFeed feed, String feedKey, List<FileContainer> containers, String cursor)
+      throws InterruptedException {
+    boolean reachable = true;
+    for (FileContainer container : containers) {
+      try {
+        feed.requireReachable(container);
+      } catch (FileAccessException.ContainerUnlistable e) {
+        reachable = false;
+        frame
+            .events()
+            .record(
+                IndexingEventCategory.REJECTED,
+                "Geltungsbereich „"
+                    + container.key()
+                    + "“: "
+                    + e.getMessage()
+                    + UNLISTABLE_CONTAINER_SUFFIX,
+                container.key());
+      } catch (FileAccessException e) {
+        throw new IndexingRunFailedException(e.getMessage(), e);
+      }
+    }
+    Set<String> own = new LinkedHashSet<>();
+    containers.forEach(container -> own.add(container.key()));
+    int transientBefore = transientFailures;
+    String newStart = null;
+    String next = cursor;
+    try {
+      while (next != null) {
+        ChangePage page = feed.read(feedKey, next);
+        total += page.changes().size();
+        frame.progress().setTotal(total);
+        frame.progress().report();
+        for (Change change : page.changes()) {
+          apply(change, reachable, own);
+          frame.progress().report();
+        }
+        drainAll();
+        if (page.fullSyncNeeded()) {
+          state.requireFullSync();
+        }
+        next = page.next();
+        newStart = page.newStart();
+      }
+    } catch (FileAccessException.CursorExpired e) {
+      log.info("Change cursor of stream {} expired: {}", feedKey, e.getMessage());
+      state.discardChangeCursor(feedKey);
+      state.requireFullSync();
+      frame
+          .events()
+          .recordRunNote(
+              IndexingEventCategory.REJECTED, e.getMessage() + " " + wording.fullSyncFollows());
+      return;
+    } catch (FileAccessException.RunEnding e) {
+      throw new IndexingRunFailedException(e.getMessage(), e);
+    } catch (FileAccessException e) {
+      // the stream stays where it was; the next run reads it again
+      frame.events().record(IndexingEventCategory.UNREACHABLE, e.getMessage(), feedKey);
+      frame.progress().recordFailed();
+      return;
+    }
+    if (reachable && transientFailures == transientBefore) {
+      pendingCursors.put(feedKey, newStart);
+    }
+  }
+
+  /**
+   * One reported change. A removal counts only for a document of {@code own} - another stream
+   * reports the files of its containers - and only while those are reachable.
+   */
+  private void apply(Change change, boolean reachable, Set<String> own)
+      throws InterruptedException {
+    switch (change) {
+      case Change.Removed removed -> {
+        if (reachable) {
+          // judged once every stream is read: another stream may report the file moved to its area
+          pendingRemovals.add(new PendingRemoval(removed.filePath(), own));
+        } else {
+          frame.progress().recordSkipped();
+        }
+      }
+      case Change.Updated updated -> {
+        FileEntry entry = updated.entry();
+        changedContainers.add(entry.container().key());
+        if (entry.exclusion() instanceof Exclusion.Deselected) {
+          // outside the patterns now: not part of the bestand, as in a full sync
+          removeGone(entry.filePath());
+        } else {
+          listed++;
+          visit(entry);
+        }
+      }
+    }
+  }
+
+  /**
+   * The removals the streams reported, each for a document that still belongs to one of its
+   * stream's containers - a document another stream placed elsewhere this run stays.
+   */
+  private void applyRemovals() {
+    for (PendingRemoval removal : pendingRemovals) {
+      String container =
+          documentRepository
+              .findByLibraryIdAndFilePath(frame.library().getId(), removal.filePath())
+              .map(Document::getSourceContainerKey)
+              .orElse(null);
+      if (container == null || removal.own().contains(container)) {
+        if (container != null) {
+          changedContainers.add(container);
+        }
+        removeGone(removal.filePath());
+      } else {
+        frame.progress().recordSkipped();
+      }
+    }
+    pendingRemovals.clear();
+  }
+
+  /** A removal a stream reported, with the containers that stream serves. */
+  private record PendingRemoval(String filePath, Set<String> own) {}
+
+  /** Drops the folder memory of every container a change run touched. */
+  private void forgetChangedContainers() {
+    SourceSyncState.SubtreeMemory memory = state.subtreeMemory();
+    if (changedContainers.isEmpty() || memory.containers().isEmpty()) {
+      return;
+    }
+    Map<String, Map<String, String>> kept = new LinkedHashMap<>(memory.containers());
+    Map<String, Long> counts = new LinkedHashMap<>(memory.documentCounts());
+    kept.keySet().removeAll(changedContainers);
+    counts.keySet().removeAll(changedContainers);
+    state.rememberSubtrees(
+        new SourceSyncState.SubtreeMemory(memory.basis(), memory.establishedAt(), kept, counts));
   }
 
   private void checkReported(FileReference reference) throws InterruptedException {
@@ -611,7 +802,7 @@ public final class FileSync implements AutoCloseable {
     Optional<Document> existing =
         documentRepository.findByLibraryIdAndFilePath(frame.library().getId(), filePath);
     UUID folderId = existing.isPresent() ? folderFor(entry) : null;
-    existing.ifPresent(document -> mirrorFolder(document, folderId));
+    existing.ifPresent(document -> placeSeen(document, entry, folderId));
     if (entry.exclusion() instanceof Exclusion.Unavailable unavailable) {
       // it may become readable without its folder changing: not settled
       unsettle(entry);
@@ -725,6 +916,7 @@ public final class FileSync implements AutoCloseable {
       if (e.getCause() instanceof FileAccessException failure) {
         handleFailure(item.entry().filePath(), failure);
       } else {
+        transientFailures++;
         frame.recordFailure(item.entry().filePath(), e.getCause() == null ? e : e.getCause());
       }
       return;
@@ -771,6 +963,23 @@ public final class FileSync implements AutoCloseable {
    * Places an existing row in {@code folderId} and pins the folder; its attachments follow only
    * when the row actually moved.
    */
+  /**
+   * Mirrors the folder of a stored row and moves it to the container it was seen in: that container
+   * decides which change stream may report it removed. One save covers both.
+   */
+  private void placeSeen(Document document, FileEntry entry, UUID folderId) {
+    boolean otherContainer =
+        !Objects.equals(document.getSourceContainerKey(), entry.context().containerKey());
+    if (otherContainer) {
+      document.applySourceContext(entry.context());
+    }
+    boolean folderMoves = !Objects.equals(document.getFolderId(), folderId);
+    mirrorFolder(document, folderId);
+    if (otherContainer && !folderMoves) {
+      documentRepository.save(document);
+    }
+  }
+
   private void mirrorFolder(Document document, UUID folderId) {
     try {
       folderMirror.markSeen(folderId);
@@ -847,7 +1056,7 @@ public final class FileSync implements AutoCloseable {
               DocumentIngest.builder(frame.library())
                   .file(file, fetched.size())
                   .filePath(filePath)
-                  .fileName(entry.fileName())
+                  .fileName(fetched.fileName() != null ? fetched.fileName() : entry.fileName())
                   .sourceType(frame.sourceType())
                   .context(entry.context())
                   .changeMarker(changeMarker)
@@ -861,6 +1070,9 @@ public final class FileSync implements AutoCloseable {
       }
       if (frame.recordOutcome(result, filePath)) {
         frame.markReprocessed(filePath);
+        if (fetched.note() != null) {
+          frame.events().record(IndexingEventCategory.FORMAT_MISMATCH, fetched.note(), filePath);
+        }
         log.info("Indexed {} file: {}", frame.sourceType(), filePath);
         // the row pins its folder now; attachments a re-parse enumerated are new rows without one
         folderMirror.markSeen(folderId);
@@ -874,6 +1086,7 @@ public final class FileSync implements AutoCloseable {
     } catch (Exception e) {
       unsettle(entry);
       IndexingRun.rethrowRunEnding(e);
+      transientFailures++;
       frame.recordFailure(filePath, e);
     } finally {
       landed.remove(file);
@@ -916,6 +1129,7 @@ public final class FileSync implements AutoCloseable {
       case FileAccessException.RunEnding runEnding ->
           throw new IndexingRunFailedException(runEnding.getMessage(), runEnding);
       default -> {
+        transientFailures++;
         frame.events().record(IndexingEventCategory.UNREACHABLE, e.getMessage(), filePath);
         frame.progress().recordFailed();
       }
@@ -939,8 +1153,9 @@ public final class FileSync implements AutoCloseable {
     frame.events().recordRunNote(IndexingEventCategory.SUMMARY, summaryMessage());
   }
 
+  /** A run over reported files rather than a listing - an event or a change run. */
   private boolean eventRun() {
-    return frame.runMode() == IndexingRunMode.EVENT;
+    return frame.runMode() != IndexingRunMode.FULL;
   }
 
   /** The run's figures in one German sentence - what an operator reads throughput against. */

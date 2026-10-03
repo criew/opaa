@@ -31,6 +31,7 @@ describe('the source registry (ADR-0038)', () => {
       'RSS_FEED',
       'CONFLUENCE',
       'S3',
+      'GOOGLE_DRIVE',
     ])
     expect(sourceRegistration('UPLOAD')?.configuration).toBeNull()
     expect(sourceRegistration('PROBE')).toBeUndefined()

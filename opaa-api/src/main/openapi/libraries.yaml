@@ -932,7 +932,9 @@ components:
             HTTP_DIRECTORY/RSS_FEED optional Basic auth in user:password format. For CONFLUENCE
             required, in the edition's format (ADR-0023, Entscheidung 3): CLOUD as
             e-mail:api-token (HTTP Basic with the e-mail as user name), DATA_CENTER as the bare
-            personal access token (Bearer).
+            personal access token (Bearer). For GOOGLE_DRIVE required, the service account's JSON
+            key file; the core signs with it and stores only client_email, private_key_id and
+            private_key (ADR-0040).
           example: admin:secret
         sourceInsecureSsl:
           type: boolean
@@ -1790,7 +1792,7 @@ components:
       description: >
         The open key of a source type (ADR-0038) - which keys exist GET /api/v1/source-types
         says. Delivered today: UPLOAD, FILESYSTEM, HTTP_DIRECTORY, RSS_FEED, CONFLUENCE, S3,
-        NEXTCLOUD.
+        NEXTCLOUD, GOOGLE_DRIVE.
       example: FILESYSTEM
 
     LibraryDocumentResponse:
