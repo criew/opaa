@@ -47,6 +47,9 @@ const WITHOUT_PROFILES: SourceTypeDescriptor[] = [
     browsable: true,
     profileSupport: 'FORBIDDEN',
     authMethods: [],
+    creatable: true,
+    creatableWithOwnAddress: true,
+    locked: false,
   },
   {
     type: 'S3',
@@ -57,6 +60,9 @@ const WITHOUT_PROFILES: SourceTypeDescriptor[] = [
     browsable: true,
     profileSupport: 'FORBIDDEN',
     authMethods: [],
+    creatable: true,
+    creatableWithOwnAddress: true,
+    locked: false,
   },
   {
     type: 'UPLOAD',
@@ -67,6 +73,9 @@ const WITHOUT_PROFILES: SourceTypeDescriptor[] = [
     browsable: false,
     profileSupport: 'FORBIDDEN',
     authMethods: [],
+    creatable: true,
+    creatableWithOwnAddress: true,
+    locked: false,
   },
 ]
 

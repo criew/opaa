@@ -390,10 +390,10 @@ export const mockSourceTypes: SourceTypeDescriptor[] = [
     browsable: true,
     profileSupport: 'FORBIDDEN',
     authMethods: [],
-    fullSyncIntervalDefaultDays: 7,
     creatable: true,
     creatableWithOwnAddress: true,
     locked: false,
+    fullSyncIntervalDefaultDays: 7,
   },
   {
     type: 'HTTP_DIRECTORY',
@@ -443,6 +443,9 @@ export const mockSourceTypes: SourceTypeDescriptor[] = [
     browsable: true,
     profileSupport: 'FORBIDDEN',
     authMethods: [],
+    creatable: true,
+    creatableWithOwnAddress: true,
+    locked: false,
   },
   {
     type: 'UPLOAD',
