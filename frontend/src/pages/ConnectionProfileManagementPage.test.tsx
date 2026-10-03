@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { http, HttpResponse } from 'msw'
 import { server } from '../mocks/server'
-import { mockSourceTypes } from '../mocks/libraryFixtures'
+
 import { mockConnectionProfiles } from '../mocks/connectionProfileFixtures'
 import { answerConfirm, renderWithProviders } from '../test/test-utils'
 import { useAuthStore } from '../stores/authStore'
@@ -33,6 +33,40 @@ const NEXTCLOUD: SourceTypeDescriptor = {
   authMethods: ['NONE', 'PERSONAL_SECRET', 'OAUTH'],
 }
 
+/** Source types without profiles - set by the tests themselves, not taken from the global mock. */
+const WITHOUT_PROFILES: SourceTypeDescriptor[] = [
+  {
+    type: 'CONFLUENCE',
+    displayName: 'Confluence',
+    indexingRun: true,
+    uploads: false,
+    pushIntake: true,
+    browsable: true,
+    profileSupport: 'FORBIDDEN',
+    authMethods: [],
+  },
+  {
+    type: 'S3',
+    displayName: 'S3-Objektspeicher',
+    indexingRun: true,
+    uploads: false,
+    pushIntake: true,
+    browsable: true,
+    profileSupport: 'FORBIDDEN',
+    authMethods: [],
+  },
+  {
+    type: 'UPLOAD',
+    displayName: 'Upload',
+    indexingRun: false,
+    uploads: true,
+    pushIntake: false,
+    browsable: false,
+    profileSupport: 'FORBIDDEN',
+    authMethods: [],
+  },
+]
+
 const PROFILE = 'Zugang Nextcloud intern'
 
 /** Captures the body of every PUT the page sends. */
@@ -55,7 +89,7 @@ describe('ConnectionProfileManagementPage', () => {
   beforeEach(() => {
     signInAs('SYSTEM_ADMIN')
     server.use(
-      http.get('/api/v1/source-types', () => HttpResponse.json([...mockSourceTypes, NEXTCLOUD])),
+      http.get('/api/v1/source-types', () => HttpResponse.json([...WITHOUT_PROFILES, NEXTCLOUD])),
     )
   })
 
@@ -73,7 +107,7 @@ describe('ConnectionProfileManagementPage', () => {
   })
 
   it('offers no dead end while no source type admits profiles', async () => {
-    server.use(http.get('/api/v1/source-types', () => HttpResponse.json(mockSourceTypes)))
+    server.use(http.get('/api/v1/source-types', () => HttpResponse.json(WITHOUT_PROFILES)))
     renderWithProviders(<ConnectionProfileManagementPage />)
 
     expect(await screen.findByTestId('no-profile-source-type')).toHaveTextContent(
