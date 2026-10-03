@@ -3,7 +3,11 @@ import Alert from '@mui/material/Alert'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import { useSpaceStore } from '../../stores/spaceStore'
-import { notify, useNotificationStore } from '../../stores/notificationStore'
+import {
+  notify,
+  useNotificationStore,
+  type NotificationSeverity,
+} from '../../stores/notificationStore'
 import AssetTilePicker from '../assets/AssetTilePicker'
 import { assetPickKey, type AssetPick } from '../assets/assetPick'
 import { successionAwareMessage } from '../succession/successionConflict'
@@ -11,6 +15,8 @@ import SectionHead from '../SectionHead'
 
 /** The one disclosure about unreadable associations: no number, no name (ADR-0039). */
 export const NOT_ALL_READABLE = 'Nicht alle zugeordneten Inhalte sind für Sie lesbar.'
+
+const NO_ASSOCIATIONS: never[] = []
 
 interface SpaceContentSectionProps {
   spaceId: string
@@ -22,7 +28,8 @@ interface SpaceContentSectionProps {
  * The tab "Inhalte" of the space settings: every asset type in one tile list, a check mark meaning
  * "associated with this space". A check mark takes effect at once; a failed request springs it
  * back. The association grants nobody access
- * (docs/features/spaces-and-assets.md#assets-in-einen-space-assoziieren).
+ * (docs/features/spaces-and-assets.md#assets-in-einen-space-assoziieren). Mounted per space: its
+ * pending changes, notices and remembered tiles never carry over to another one.
  */
 export default function SpaceContentSection({ spaceId, canManage }: SpaceContentSectionProps) {
   const storeError = useSpaceStore((s) => s.error)
@@ -37,15 +44,32 @@ export default function SpaceContentSection({ spaceId, canManage }: SpaceContent
   const [heading, setHeading] = useState<ReadonlyMap<string, AssetPick | null>>(new Map())
   // Catches a second click before the first one's state has rendered; `disabled` would drop focus.
   const pending = useRef(new Set<string>())
-  // Only the latest outcome is worth reading; an older notice of this tab gives way at once.
-  const lastNotice = useRef<number | null>(null)
+  // Only the latest outcome is worth reading: an older confirmation of this tab gives way at once,
+  // an error stays until it is read.
+  const lastNotice = useRef<{ id: number; severity: NotificationSeverity } | null>(null)
+  const container = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     void loadAssetAssociations(spaceId)
   }, [loadAssetAssociations, spaceId])
 
+  // An undo offered here belongs to this space; leaving it withdraws the offer.
+  useEffect(
+    () => () => {
+      const notice = lastNotice.current
+      if (notice && notice.severity !== 'error') {
+        useNotificationStore.getState().dismiss(notice.id)
+      }
+      lastNotice.current = null
+    },
+    [spaceId],
+  )
+
+  // The store may still hold another space's associations until this space's have loaded.
+  const own = loadedSpaceId === spaceId ? associations : NO_ASSOCIATIONS
+
   const value = useMemo(() => {
-    const settled = associations
+    const settled = own
       .filter((association) => !heading.has(assetPickKey(association)))
       .map(({ assetType, assetId, name, description }) => ({
         assetType,
@@ -55,7 +79,7 @@ export default function SpaceContentSection({ spaceId, canManage }: SpaceContent
       }))
     const headingIn = [...heading.values()].filter((pick): pick is AssetPick => pick !== null)
     return [...settled, ...headingIn]
-  }, [associations, heading])
+  }, [own, heading])
 
   const busyKeys = useMemo(() => new Set(heading.keys()), [heading])
 
@@ -85,15 +109,30 @@ export default function SpaceContentSection({ spaceId, canManage }: SpaceContent
     }
     pending.current.delete(key)
     withHeading(key, undefined)
-    if (lastNotice.current !== null) useNotificationStore.getState().dismiss(lastNotice.current)
-    lastNotice.current = failure
-      ? notify(failure, 'error')
+    const previous = lastNotice.current
+    if (previous && previous.severity !== 'error') {
+      useNotificationStore.getState().dismiss(previous.id)
+    }
+    const severity: NotificationSeverity = failure ? 'error' : associated ? 'success' : 'info'
+    const id = failure
+      ? notify(failure, severity)
       : associated
-        ? notify(`„${pick.name}“ zugeordnet.`, 'success')
-        : notify(`„${pick.name}“ gelöst.`, 'info', {
+        ? notify(`„${pick.name}“ zugeordnet.`, severity)
+        : notify(`„${pick.name}“ gelöst.`, severity, {
             label: 'Rückgängig',
-            onClick: () => void setAssociated(pick, true),
+            onClick: () => {
+              focusTile(key)
+              void setAssociated(pick, true)
+            },
           })
+    lastNotice.current = { id, severity }
+  }
+
+  /** Returns the focus to a tile, e.g. after the popup that held it has gone. */
+  function focusTile(key: string) {
+    Array.from(container.current?.querySelectorAll<HTMLElement>('[data-choice-tile]') ?? [])
+      .find((element) => element.getAttribute('data-choice-tile') === key)
+      ?.focus()
   }
 
   function handleChange(next: AssetPick[]) {
@@ -110,7 +149,7 @@ export default function SpaceContentSection({ spaceId, canManage }: SpaceContent
   const loaded = loadedSpaceId === spaceId && !isLoading
 
   return (
-    <Stack spacing={2}>
+    <Stack spacing={2} ref={container}>
       {/* Die h2 dieses Panels unter der h1 der Seite. */}
       <SectionHead>Inhalte</SectionHead>
       <Typography variant="body2" sx={{ color: 'text.secondary' }}>

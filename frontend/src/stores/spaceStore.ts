@@ -37,6 +37,12 @@ import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
 // response for the space just left overwrite state a later call already started clearing, so the
 // wrong space's association count would render (#783 review finding 1).
 let assetAssociationsRequestSeq = 0
+// The space whose associations were asked for last; a change elsewhere does not refresh them.
+let assetAssociationsRequestedSpaceId: string | null = null
+
+/** Shown when a change succeeded but the list could not be refreshed afterwards. */
+export const ASSOCIATIONS_NOT_REFRESHED =
+  'Die Änderung ist gespeichert, die Liste der Zuordnungen konnte aber nicht aktualisiert werden. Laden Sie die Seite neu.'
 
 interface SpaceState {
   spaces: SpaceListResponse[]
@@ -101,7 +107,8 @@ interface SpaceState {
   ) => Promise<string>
   /**
    * `keepCurrent` keeps the shown associations of the same space until the answer replaces them,
-   * so a refresh after the caller's own change neither flickers nor empties the list meanwhile.
+   * and keeps them on a failure too, so a refresh after the caller's own change neither flickers
+   * nor empties the list.
    */
   loadAssetAssociations: (spaceId: string, options?: { keepCurrent?: boolean }) => Promise<void>
   associateAsset: (spaceId: string, assetType: AssetType, assetId: string) => Promise<void>
@@ -314,7 +321,9 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
   loadAssetAssociations: async (spaceId, options) => {
     const sessionEpoch = currentSessionEpoch()
     const requestId = ++assetAssociationsRequestSeq
-    if (options?.keepCurrent && get().assetAssociationsSpaceId === spaceId) {
+    assetAssociationsRequestedSpaceId = spaceId
+    const keepCurrent = Boolean(options?.keepCurrent) && get().assetAssociationsSpaceId === spaceId
+    if (keepCurrent) {
       set({ error: null })
     } else {
       set({
@@ -342,6 +351,10 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
       })
     } catch (err) {
       if (isStaleSessionEpoch(sessionEpoch) || requestId !== assetAssociationsRequestSeq) return
+      if (keepCurrent) {
+        set({ error: ASSOCIATIONS_NOT_REFRESHED })
+        return
+      }
       const message =
         err instanceof Error ? err.message : 'Zugeordnete Bibliotheken konnten nicht geladen werden'
       set({
@@ -357,13 +370,19 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
     }
   },
 
+  // Refreshes only the space whose associations are on display; a change in a space left behind
+  // (an in-flight request, an undo) must not overwrite the one now shown.
   associateAsset: async (spaceId, assetType, assetId) => {
     await associateSpaceAsset(spaceId, assetType, assetId)
-    await get().loadAssetAssociations(spaceId, { keepCurrent: true })
+    if (assetAssociationsRequestedSpaceId === spaceId) {
+      await get().loadAssetAssociations(spaceId, { keepCurrent: true })
+    }
   },
 
   detachAsset: async (spaceId, assetId) => {
     await detachSpaceAsset(spaceId, assetId)
-    await get().loadAssetAssociations(spaceId, { keepCurrent: true })
+    if (assetAssociationsRequestedSpaceId === spaceId) {
+      await get().loadAssetAssociations(spaceId, { keepCurrent: true })
+    }
   },
 }))

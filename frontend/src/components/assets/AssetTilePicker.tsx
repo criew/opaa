@@ -213,15 +213,20 @@ export default function AssetTilePicker({
   )
   const chosenKeys = useMemo(() => new Set(valueByKey.keys()), [valueByKey])
 
+  // While a new filter loads, the tiles of the previous answer stay in place, so a focused tile
+  // keeps its focus; only the very first load shows the loading text.
   let sources: TileSource[]
   let isLoading: boolean
+  let refreshing: boolean
   let error: string | null
   if (showsChosenOnly) {
     const needle = appliedQuery.trim().toLowerCase()
     const personalReady = personalKey === null || personal?.key === personalKey
-    isLoading = !personalReady
+    const previousKeys = personal?.error ? null : (personal?.keys ?? null)
+    isLoading = !personalReady && previousKeys === null
+    refreshing = !personalReady && !isLoading
     error = personalKey !== null && personalReady ? (personal?.error ?? null) : null
-    const allowed = personalKey !== null && personalReady ? personal?.keys : null
+    const allowed = personalKey === null ? null : personalReady ? personal?.keys : previousKeys
     sources = isLoading
       ? []
       : (readOnly ? value : seen)
@@ -237,12 +242,15 @@ export default function AssetTilePicker({
           .filter((pick) => !allowed || allowed.has(assetPickKey(pick)))
           .sort((a, b) => a.name.localeCompare(b.name, 'de'))
   } else {
-    isLoading = loaded?.key !== filterKey
-    error = isLoading ? null : (loaded?.error ?? null)
+    const current = loaded?.key === filterKey
+    isLoading = !current && (!loaded || loaded.error !== null)
+    refreshing = !current && !isLoading
+    error = current ? (loaded?.error ?? null) : null
     sources = isLoading ? [] : (loaded?.entries ?? [])
   }
   const page = loaded?.page ?? 0
-  const totalPages = showsChosenOnly || isLoading ? 0 : (loaded?.totalPages ?? 0)
+  const totalPages =
+    showsChosenOnly || loaded?.key !== filterKey ? 0 : (loaded?.totalPages ?? 0)
   const shownKeys = sources.map(assetPickKey)
   const narrowed = Boolean(appliedQuery.trim() || filterType || personalFiltered)
 
@@ -284,7 +292,7 @@ export default function AssetTilePicker({
     setFilters((current) => ({ ...current, [key]: !current[key] }))
   }
 
-  const emptyText = isLoading
+  const emptyText = isLoading || refreshing
     ? 'Wird geladen …'
     : narrowed
       ? 'Keine Treffer.'
@@ -348,14 +356,20 @@ export default function AssetTilePicker({
           <Typography sx={{ color: 'text.secondary', fontSize: 13.5 }}>{emptyText}</Typography>
         )
       ) : (
-        <ChoiceTileGroup
-          multiple
-          tiles={tiles}
-          value={shownKeys.filter((key) => chosenKeys.has(key))}
-          onChange={handleTiles}
-          readOnly={readOnly}
-          aria-label={ariaLabel}
-        />
+        <Box aria-busy={refreshing || undefined}>
+          <ChoiceTileGroup
+            multiple
+            tiles={tiles}
+            value={shownKeys.filter((key) => chosenKeys.has(key))}
+            onChange={handleTiles}
+            readOnly={readOnly}
+            aria-label={ariaLabel}
+          />
+        </Box>
+      )}
+
+      {refreshing && tiles.length > 0 && (
+        <Typography sx={{ color: 'text.secondary', fontSize: 12.5 }}>Wird aktualisiert …</Typography>
       )}
 
       {catalogKey !== null && moreError?.key === catalogKey && (

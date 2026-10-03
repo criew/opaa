@@ -137,6 +137,7 @@ export default function SpaceSettingsPage() {
               case 'content':
                 return (
                   <SpaceContentSection
+                    key={spaceId}
                     spaceId={spaceId}
                     canManage={canManageAssets(space.userRole, isOwner)}
                   />
