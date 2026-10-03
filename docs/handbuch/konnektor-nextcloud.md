@@ -11,12 +11,16 @@
 2. In der Nextcloud einen **technischen Nutzer** anlegen. Die gewünschten Ordner mit ihm teilen
    (Lesen genügt) oder ihn in die Gruppe eines Gruppenordners aufnehmen. Für ihn ein
    **App-Passwort** erzeugen.
-3. Bibliothek anlegen: Adresse, Benutzername, App-Passwort, Ordner („Ordner laden“ hilft),
+3. Die Quellart Nextcloud ist ab Werk für niemanden außer der Systemverwaltung freigegeben. Wer
+   außer ihr Bibliotheken anlegen soll, bekommt das Anlegerecht „Konnektorbibliotheken anlegen"
+   für die Quellart Nextcloud oder für einen Zugang
+   ([Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), Abschnitt 9).
+4. Bibliothek anlegen: Adresse, Benutzername, App-Passwort, Ordner („Ordner laden“ hilft),
    „Verbindung testen“. Alles aus diesen Ordnern ist für **alle** Leseberechtigten der Bibliothek
    sichtbar.
-4. Zeitplan setzen. Jeder Lauf ist ein **Vollabgleich**, kostet aber für unveränderte Ordner nur
+5. Zeitplan setzen. Jeder Lauf ist ein **Vollabgleich**, kostet aber für unveränderte Ordner nur
    eine Anfrage (Abschnitt 4).
-5. Im Laufprotokoll auf „Geltungsbereich … nicht auflistbar“, „unvollständig, wird fortgesetzt“
+6. Im Laufprotokoll auf „Geltungsbereich … nicht auflistbar“, „unvollständig, wird fortgesetzt“
    und „nicht lesbar“ achten.
 
 ## 1. Wofür er gedacht ist

@@ -13,11 +13,15 @@
 2. Die gewünschten Ordner für die Adresse des Dienstkontos als **Betrachter** freigeben bzw. das
    Dienstkonto als Mitglied einer geteilten Ablage aufnehmen. Domänenweite Delegation ist nur für
    „Meine Ablage" eines Kontos nötig (Abschnitt 2.4).
-3. Bibliothek anlegen: Schlüsseldatei hochladen, Bereiche aus der Auflistung wählen, „Verbindung
+3. Die Quellart Google Drive ist ab Werk für niemanden außer der Systemverwaltung freigegeben. Wer
+   außer ihr Bibliotheken anlegen soll, bekommt das Anlegerecht „Konnektorbibliotheken anlegen"
+   für die Quellart Google Drive ([Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md),
+   Abschnitt 9).
+4. Bibliothek anlegen: Schlüsseldatei hochladen, Bereiche aus der Auflistung wählen, „Verbindung
    testen". Alles aus allen Bereichen ist für **alle** Leseberechtigten der Bibliothek sichtbar.
-4. Zeitplan setzen. Der erste Lauf ist ein Vollabgleich, danach liest jeder Lauf nur das
+5. Zeitplan setzen. Der erste Lauf ist ein Vollabgleich, danach liest jeder Lauf nur das
    Änderungsprotokoll; im eingestellten Rhythmus folgt wieder ein Vollabgleich.
-5. Im Laufprotokoll auf „nicht sichtbar", „Als Text exportiert" und „Tageskontingent" achten.
+6. Im Laufprotokoll auf „nicht sichtbar", „Als Text exportiert" und „Tageskontingent" achten.
 
 ## 1. Wofür er gedacht ist
 

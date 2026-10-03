@@ -11,6 +11,7 @@ import io.opaa.api.dto.SourceConnectionTestRequest;
 import io.opaa.api.dto.SourceConnectionTestResponse;
 import io.opaa.api.dto.SourceTypeDescriptor;
 import io.opaa.common.ValidationException;
+import io.opaa.connection.ConnectorReleaseService.TypeCreation;
 import io.opaa.indexing.source.ConnectorData;
 import io.opaa.indexing.source.PushIntake;
 import io.opaa.indexing.source.SourceConnectionTestResult;
@@ -141,8 +142,13 @@ class SourceConnectionTestResponseMapperTest {
             SourceConnectorDescriptor.remoteRun(SourceTypes.CONFLUENCE, "Confluence")
                 .withPushIntake(new PushIntake("confluenceWebhookSecret"))
                 .withFullSyncInterval(Duration.ofHours(36)),
-            true);
+            true,
+            new TypeCreation(false, false, true, "Die Quellart ist gesperrt."));
 
+    assertThat(descriptor.getCreatable()).isFalse();
+    assertThat(descriptor.getCreatableWithOwnAddress()).isFalse();
+    assertThat(descriptor.getLocked()).isTrue();
+    assertThat(descriptor.getCreationNotice()).isEqualTo("Die Quellart ist gesperrt.");
     assertThat(descriptor.getType()).isEqualTo("CONFLUENCE");
     assertThat(descriptor.getDisplayName()).isEqualTo("Confluence");
     assertThat(descriptor.getIndexingRun()).isTrue();

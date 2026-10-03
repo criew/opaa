@@ -39,6 +39,7 @@ export const connectionProfileHandlers = [
       scopes: body.scopes ?? null,
       connectorSettings: body.connectorSettings ?? null,
       connectionCount: 0,
+      locked: false,
       createdAt: now,
       updatedAt: now,
     }

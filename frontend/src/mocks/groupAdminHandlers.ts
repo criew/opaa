@@ -83,6 +83,7 @@ export const groupAdminHandlers = [
       {
         id: `capability-grant-${crypto.randomUUID().slice(0, 8)}`,
         capability: params.capability,
+        scope: body.scope ?? null,
         subjectType: body.subjectType,
         subjectId: body.subjectId ?? null,
         subjectName: body.subjectType === 'GROUP' ? 'Referat 50' : 'Alice',

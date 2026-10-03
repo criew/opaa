@@ -21,6 +21,8 @@ Zugang, Prüfung ihrer Adresse) und besitzt keine eigene Tabelle.
 - **Gespeicherte Zugangsdaten gelten nur für denselben Ursprung** (Schema, Host, Port) der
   `sourceUrl` (`SourceOriginMatcher`). Eine fehlende oder unlesbare URL zählt als anderer Ursprung,
   die Zugangsdaten werden dann neu verlangt.
+- **Eine neue Konnektorbibliothek** (Anlegen, Zugang zuordnen, Test und Auflistung vor dem
+  Anlegen) fragt `ConnectorReleaseService`, nie `CapabilityService` mit `CREATE_CONNECTOR_LIBRARY`.
 - **library kennt keinen Konnektor.** Beschreibung, Validierung, Verbindungstest und Fähigkeiten
   eines Konnektors kommen nur über `SourceConnectorRegistry`.
 - **Fachpakete kennen einander nicht:** library kennt weder `prompt` noch `space` noch `group`; den

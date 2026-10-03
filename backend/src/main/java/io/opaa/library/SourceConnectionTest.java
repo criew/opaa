@@ -15,6 +15,8 @@ import java.util.UUID;
  *     stored quellkonfiguration without resending a credential the caller does not know (#544).
  * @param connectorSettings the connector settings the probe uses (ADR-0038), {@code null} for none
  *     - with {@code libraryId} the connector decides whether the stored ones stand in
+ * @param connectionProfileId without {@code libraryId}: the profile the library is to be created
+ *     through, {@code null} for its own address
  */
 public record SourceConnectionTest(
     SourceType sourceType,
@@ -24,4 +26,28 @@ public record SourceConnectionTest(
     String sourceCredentials,
     Boolean sourceInsecureSsl,
     UUID libraryId,
-    ConnectorData connectorSettings) {}
+    ConnectorData connectorSettings,
+    UUID connectionProfileId) {
+
+  /** A test with its own address. */
+  public SourceConnectionTest(
+      SourceType sourceType,
+      String sourcePath,
+      URI sourceUrl,
+      String sourceProxy,
+      String sourceCredentials,
+      Boolean sourceInsecureSsl,
+      UUID libraryId,
+      ConnectorData connectorSettings) {
+    this(
+        sourceType,
+        sourcePath,
+        sourceUrl,
+        sourceProxy,
+        sourceCredentials,
+        sourceInsecureSsl,
+        libraryId,
+        connectorSettings,
+        null);
+  }
+}

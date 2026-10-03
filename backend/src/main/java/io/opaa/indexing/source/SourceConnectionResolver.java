@@ -37,6 +37,14 @@ public interface SourceConnectionResolver {
   }
 
   /**
+   * Whether the system administration locked {@code library}'s source: no scheduled run starts and
+   * a pushed event is dropped, without a failed run each time.
+   */
+  default boolean isLocked(KnowledgeLibrary library) {
+    return false;
+  }
+
+  /**
    * The connector settings {@code library} is run with - its own, merged with the defaults of its
    * profile - without any secret, without a renewal and without refusing a blocked connection.
    */

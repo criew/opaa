@@ -1,5 +1,6 @@
 package io.opaa.api;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -310,12 +311,17 @@ class CapabilityEnforcementIntegrationTest {
     mockMvc
         .perform(get("/api/v1/admin/capabilities").with(devAdmin()))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$", org.hamcrest.Matchers.hasSize(Capability.values().length)))
         .andExpect(
-            jsonPath("$[?(@.capability == 'CREATE_CONNECTOR_LIBRARY')].statement")
+            jsonPath("$[?(@.capability == 'CREATE_SPACE')].statement")
+                .value(org.hamcrest.Matchers.hasItem("Alle Konten dürfen Spaces anlegen.")))
+        .andExpect(
+            jsonPath("$[?(@.scope == 'TYPE:RSS_FEED')].statement")
+                .value(org.hamcrest.Matchers.hasItem("Quellart RSS-Feed: frei für Alle Konten.")))
+        .andExpect(
+            jsonPath("$[?(@.scope == 'TYPE:PROBE')].statement")
                 .value(
                     org.hamcrest.Matchers.hasItem(
-                        "Alle Konten dürfen Konnektorbibliotheken anlegen.")))
+                        "Quellart Testquelle: aus, nur die Systemverwaltung.")))
         .andExpect(
             jsonPath("$[?(@.capability == 'CREATE_INTERNAL_GROUP')].statement")
                 .value(
@@ -328,19 +334,23 @@ class CapabilityEnforcementIntegrationTest {
                 .value(org.hamcrest.Matchers.everyItem(org.hamcrest.Matchers.notNullValue())));
   }
 
+  /** Every grant of {@code capability} to all accounts - for a scoped one, in every scope. */
   private void revokeFromAllAccounts(Capability capability) throws Exception {
-    UUID grantId =
-        jdbcTemplate.queryForObject(
+    List<UUID> grantIds =
+        jdbcTemplate.queryForList(
             "SELECT id FROM capability_grants WHERE organization_id = ? AND capability = ?"
                 + " AND subject_type = 'ALL_ACCOUNTS'",
             UUID.class,
             Organization.DEFAULT_ID,
             capability.name());
-    mockMvc
-        .perform(
-            delete("/api/v1/admin/capabilities/" + capability + "/grants/" + grantId)
-                .with(devAdmin()))
-        .andExpect(status().isNoContent());
+    assertThat(grantIds).isNotEmpty();
+    for (UUID grantId : grantIds) {
+      mockMvc
+          .perform(
+              delete("/api/v1/admin/capabilities/" + capability + "/grants/" + grantId)
+                  .with(devAdmin()))
+          .andExpect(status().isNoContent());
+    }
   }
 
   private static String spaceBody(String name) {

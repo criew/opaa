@@ -11,13 +11,16 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import io.opaa.auth.DevAuthFilter;
 import io.opaa.indexing.source.ServiceAccountKeyFixture;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
+import io.opaa.test.ConnectorReleases;
 import io.opaa.test.OpaaIntegrationTest;
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import tools.jackson.databind.json.JsonMapper;
@@ -34,9 +37,16 @@ class GoogleDriveLibraryIntegrationTest {
 
   @Autowired private MockMvc mockMvc;
   @Autowired private KnowledgeLibraryRepository libraryRepository;
+  @Autowired private JdbcTemplate jdbc;
 
   private final ServiceAccountKeyFixture key = new ServiceAccountKeyFixture();
   private String libraryId;
+
+  /** Google Drive did not ship with the release of #2161, so it is off until released. */
+  @BeforeEach
+  void release() {
+    ConnectorReleases.releaseToAllAccounts(jdbc, "TYPE:GOOGLE_DRIVE");
+  }
 
   @AfterEach
   void deleteLibrary() throws Exception {
@@ -45,6 +55,7 @@ class GoogleDriveLibraryIntegrationTest {
           .perform(as(delete("/api/v1/libraries/" + libraryId)))
           .andExpect(status().isNoContent());
     }
+    ConnectorReleases.withdraw(jdbc, "TYPE:GOOGLE_DRIVE");
   }
 
   @Test

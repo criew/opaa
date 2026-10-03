@@ -11,12 +11,16 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import io.opaa.auth.DevAuthFilter;
+import io.opaa.test.ConnectorReleases;
 import io.opaa.test.OpaaIntegrationTest;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
@@ -31,6 +35,20 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 class ProbeConnectorApiIntegrationTest {
 
   @Autowired private MockMvc mockMvc;
+  @Autowired private JdbcTemplate jdbc;
+
+  /** A connector the installation did not ship with is off until released. */
+  @BeforeEach
+  void releaseTheTestConnectors() {
+    ConnectorReleases.releaseToAllAccounts(jdbc, "TYPE:PROBE");
+    ConnectorReleases.releaseToAllAccounts(jdbc, "TYPE:PROBE_RUN");
+  }
+
+  @AfterEach
+  void withdrawTheRelease() {
+    ConnectorReleases.withdraw(jdbc, "TYPE:PROBE");
+    ConnectorReleases.withdraw(jdbc, "TYPE:PROBE_RUN");
+  }
 
   @Test
   void aConnectorOnlyTheTestCodeKnowsIsListedAndServesALibraryThroughTheApi() throws Exception {

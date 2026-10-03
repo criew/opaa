@@ -120,7 +120,9 @@ class ChangelogModuleBoundaryTest extends AbstractMigrationTest {
                   "llm_model_seed_marker",
                   "vector_store")),
           Map.entry(CONNECTORS, List.of("rss_feed_state")),
-          Map.entry(CONNECTIONS, List.of("connection_profiles", "library_connections")),
+          Map.entry(
+              CONNECTIONS,
+              List.of("connection_profiles", "library_connections", "connector_type_policies")),
           Map.entry(
               WORKSPACE,
               List.of(

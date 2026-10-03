@@ -5,10 +5,13 @@ import io.opaa.api.dto.ConnectionProfileImpactResponse;
 import io.opaa.api.dto.ConnectionProfileOption;
 import io.opaa.api.dto.ConnectionProfileResponse;
 import io.opaa.api.dto.ConnectionProfileUpdateRequest;
+import io.opaa.api.dto.ConnectorTypeStateResponse;
 import io.opaa.common.ValidationException;
+import io.opaa.connection.ConnectorReleaseService.ProfileOption;
 import io.opaa.connection.profile.ConnectionProfile;
 import io.opaa.connection.profile.ConnectionProfileService.ProfileImpact;
 import io.opaa.connection.profile.ConnectionProfileValues;
+import io.opaa.connection.profile.ConnectorLockService.TypeState;
 import io.opaa.indexing.source.ConnectorData;
 import io.opaa.knowledge.SourceType;
 import java.time.LocalDate;
@@ -75,17 +78,30 @@ final class ConnectionProfileResponseMapper {
         .scopes(profile.getScopes())
         .connectorSettings(settings == null ? null : settings.asMap())
         .connectionCount(connectionCount)
+        .locked(profile.isLocked())
+        .lockedAt(profile.getLockedAt())
         .createdAt(profile.getCreatedAt())
         .updatedAt(profile.getUpdatedAt());
   }
 
-  static ConnectionProfileOption toOption(ConnectionProfile profile) {
+  static ConnectionProfileOption toOption(ProfileOption option) {
+    ConnectionProfile profile = option.profile();
     return new ConnectionProfileOption()
+        .creatable(option.creatable())
+        .creationNotice(option.notice())
         .id(profile.getId())
         .name(profile.getName())
         .sourceType(profile.getSourceType().key())
         .serverUrl(profile.getServerUrl())
         .authMethod(profile.getAuthMethod());
+  }
+
+  static ConnectorTypeStateResponse toResponse(TypeState state) {
+    return new ConnectorTypeStateResponse()
+        .sourceType(state.type().key())
+        .displayName(state.displayName())
+        .locked(state.locked())
+        .lockedAt(state.lockedAt());
   }
 
   static ConnectionProfileImpactResponse toResponse(ProfileImpact impact) {

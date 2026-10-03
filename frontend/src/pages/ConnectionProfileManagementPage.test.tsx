@@ -31,6 +31,9 @@ const NEXTCLOUD: SourceTypeDescriptor = {
   browsable: false,
   profileSupport: 'OPTIONAL',
   authMethods: ['NONE', 'PERSONAL_SECRET', 'OAUTH'],
+  creatable: true,
+  creatableWithOwnAddress: true,
+  locked: false,
 }
 
 /** Source types without profiles - set by the tests themselves, not taken from the global mock. */
@@ -44,6 +47,9 @@ const WITHOUT_PROFILES: SourceTypeDescriptor[] = [
     browsable: true,
     profileSupport: 'FORBIDDEN',
     authMethods: [],
+    creatable: true,
+    creatableWithOwnAddress: true,
+    locked: false,
   },
   {
     type: 'S3',
@@ -54,6 +60,9 @@ const WITHOUT_PROFILES: SourceTypeDescriptor[] = [
     browsable: true,
     profileSupport: 'FORBIDDEN',
     authMethods: [],
+    creatable: true,
+    creatableWithOwnAddress: true,
+    locked: false,
   },
   {
     type: 'UPLOAD',
@@ -64,6 +73,9 @@ const WITHOUT_PROFILES: SourceTypeDescriptor[] = [
     browsable: false,
     profileSupport: 'FORBIDDEN',
     authMethods: [],
+    creatable: true,
+    creatableWithOwnAddress: true,
+    locked: false,
   },
 ]
 

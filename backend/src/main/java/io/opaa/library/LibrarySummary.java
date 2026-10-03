@@ -25,6 +25,7 @@ import java.time.Instant;
  *     does, reduced to state and addressee by the mapper.
  * @param reach how far the library reaches right now, derived from its grants (#1931) - the
  *     overview shows it as a badge instead of the former release level.
+ * @param sourceLockNotice as {@link LibraryDetail#sourceLockNotice()}
  */
 public record LibrarySummary(
     KnowledgeLibrary library,
@@ -34,4 +35,28 @@ public record LibrarySummary(
     Instant lastIndexedAt,
     JobStatus lastRunStatus,
     SuccessionFinding succession,
-    AssetReach reach) {}
+    AssetReach reach,
+    String sourceLockNotice) {
+
+  /** A summary of a library that is not locked. */
+  public LibrarySummary(
+      KnowledgeLibrary library,
+      AssetRole myRole,
+      long documentCount,
+      String ownerName,
+      Instant lastIndexedAt,
+      JobStatus lastRunStatus,
+      SuccessionFinding succession,
+      AssetReach reach) {
+    this(
+        library,
+        myRole,
+        documentCount,
+        ownerName,
+        lastIndexedAt,
+        lastRunStatus,
+        succession,
+        reach,
+        null);
+  }
+}

@@ -481,5 +481,14 @@ public enum AuditEventType {
   /** A connection profile was deleted; its connections lost their secrets. */
   CONNECTION_PROFILE_DELETED,
   /** The emergency shutdown "Alle Verbindungen trennen" discarded every secret of a profile. */
-  CONNECTION_PROFILE_DISCONNECTED
+  CONNECTION_PROFILE_DISCONNECTED,
+
+  // Konnektor-Freigabe und Sperre (#2161, ADR-0041)
+  /**
+   * The system administration locked a connector type or a connection profile: no new library, no
+   * run. A governance event; {@code after} names the type or the profile.
+   */
+  CONNECTOR_LOCKED,
+  /** The counterpart of {@link #CONNECTOR_LOCKED}: the libraries run again. */
+  CONNECTOR_UNLOCKED
 }

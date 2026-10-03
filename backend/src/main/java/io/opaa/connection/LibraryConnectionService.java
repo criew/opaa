@@ -5,6 +5,7 @@ import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
 import io.opaa.connection.profile.ConnectionProfile;
 import io.opaa.connection.profile.ConnectionProfileRepository;
+import io.opaa.connection.profile.ConnectorLockService;
 import io.opaa.connection.profile.LibraryConnection;
 import io.opaa.connection.profile.LibraryConnectionRepository;
 import io.opaa.connection.profile.ServerAddress;
@@ -13,6 +14,8 @@ import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.SourceType;
 import java.time.Clock;
+import java.util.Collection;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -32,6 +35,7 @@ public class LibraryConnectionService {
   private final ConnectionProfileRepository profiles;
   private final KnowledgeLibraryRepository libraries;
   private final SourceConnectorRegistry connectors;
+  private final ConnectorLockService locks;
   private final Clock clock;
 
   public LibraryConnectionService(
@@ -39,12 +43,24 @@ public class LibraryConnectionService {
       ConnectionProfileRepository profiles,
       KnowledgeLibraryRepository libraries,
       SourceConnectorRegistry connectors,
+      ConnectorLockService locks,
       Clock clock) {
     this.connections = connections;
     this.profiles = profiles;
     this.libraries = libraries;
     this.connectors = connectors;
+    this.locks = locks;
     this.clock = clock;
+  }
+
+  /** The note of a locked type or profile the library carries, empty while it is not locked. */
+  public Optional<String> lockNotice(KnowledgeLibrary library) {
+    return locks.lockNotice(library);
+  }
+
+  /** {@link #lockNotice} for a whole page of libraries; a library that is not locked is absent. */
+  public Map<UUID, String> lockNotices(Collection<KnowledgeLibrary> libraries) {
+    return locks.lockNotices(libraries);
   }
 
   /** The connection of {@code libraryId}, empty for a library with its own address. */

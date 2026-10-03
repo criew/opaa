@@ -309,26 +309,12 @@ public class PermissionHistoryService {
   /** Flushes for the same reason {@link #closeOpenGrantInterval} does. */
   private void closeOpenCapabilityInterval(CapabilityGrant grant, Instant now) {
     var open =
-        switch (grant.getSubjectType()) {
-          case USER ->
-              capabilityHistoryRepository
-                  .findByOrganizationIdAndCapabilityAndSubjectTypeAndSubjectUserIdAndValidToIsNull(
-                      grant.getOrganizationId(),
-                      grant.getCapability(),
-                      grant.getSubjectType(),
-                      grant.getSubjectUserId());
-          case GROUP ->
-              capabilityHistoryRepository
-                  .findByOrganizationIdAndCapabilityAndSubjectTypeAndSubjectGroupIdAndValidToIsNull(
-                      grant.getOrganizationId(),
-                      grant.getCapability(),
-                      grant.getSubjectType(),
-                      grant.getSubjectGroupId());
-          case ALL_ACCOUNTS ->
-              capabilityHistoryRepository
-                  .findByOrganizationIdAndCapabilityAndSubjectTypeAndValidToIsNull(
-                      grant.getOrganizationId(), grant.getCapability(), grant.getSubjectType());
-        };
+        capabilityHistoryRepository.findOpenInterval(
+            grant.getOrganizationId(),
+            grant.getCapability(),
+            grant.getScope(),
+            grant.getSubjectType(),
+            grant.getSubjectId());
     open.ifPresent(
         interval -> {
           interval.close(now);

@@ -16,7 +16,9 @@ public class SourceConnectionBlockedException extends RuntimeException {
     /** The profile asks for a secret the connection does not hold (yet or any more). */
     NOT_CONNECTED,
     /** The library's address does not lie under the server address of its profile. */
-    TARGET_OUTSIDE_PROFILE
+    TARGET_OUTSIDE_PROFILE,
+    /** The system administration locked the library's connector type or profile. */
+    LOCKED
   }
 
   private final Category category;

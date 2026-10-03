@@ -20,10 +20,10 @@ public enum Capability {
   CREATE_LIBRARY,
 
   /**
-   * Creating a knowledge library fed by a connector (filesystem, web directory, RSS, Confluence,
-   * S3). Its own capability because such a library reaches server paths and stored credentials and
-   * carries the sharing ceiling of #797 - the first capability an installation is expected to
-   * narrow to a named group after the migration.
+   * Creating a knowledge library fed by a connector. Its own capability because such a library
+   * reaches server paths and stored credentials. The only capability with a scope - one connector
+   * type ({@code TYPE:<key>}) or one connection profile ({@code PROFILE:<id>}) - so releasing one
+   * target never opens another (ADR-0036, Nachtrag of 03.10.2026).
    */
   CREATE_CONNECTOR_LIBRARY,
 

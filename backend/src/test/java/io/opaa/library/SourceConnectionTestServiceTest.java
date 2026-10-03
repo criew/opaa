@@ -3,6 +3,7 @@ package io.opaa.library;
 import static io.opaa.library.SourceConnectionTestBuilder.sourceConnectionTest;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -11,12 +12,12 @@ import static org.mockito.Mockito.when;
 
 import com.sun.net.httpserver.HttpServer;
 import io.opaa.api.types.AssetRole;
-import io.opaa.api.types.Capability;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
+import io.opaa.connection.ConnectorReleaseService;
 import io.opaa.connection.LibraryConnectionService;
 import io.opaa.indexing.source.FilesystemPathAllowlist;
 import io.opaa.indexing.source.LibrarySourceConnectionResolver;
@@ -30,7 +31,6 @@ import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.LibraryAccessService;
 import io.opaa.knowledge.SourceType;
-import io.opaa.permission.CapabilityService;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.test.SourceTypes;
 import io.opaa.test.UnreadableDirectory;
@@ -65,12 +65,11 @@ class SourceConnectionTestServiceTest {
   private LibraryAccessService libraryAccessService;
 
   /**
-   * A full mock, deliberately not stubbed here: every method (including {@code requireCapability})
+   * A full mock, deliberately not stubbed here: every method (including {@code requireCreatable})
    * is a void no-op by default, so the object-less call sites below run exactly as before #1856 -
-   * {@link #sourceTestWithoutLibraryIdIsRefusedWithoutTheConnectorCapability} is the one test that
-   * stubs a refusal.
+   * the tests of the release bar stub a refusal.
    */
-  private CapabilityService capabilityService;
+  private ConnectorReleaseService connectorRelease;
 
   private SourceConnectionTestService service;
   private UUID currentUserId;
@@ -87,7 +86,7 @@ class SourceConnectionTestServiceTest {
     filesystemAllowlist = mock(FilesystemPathAllowlist.class);
     libraryRepository = mock(KnowledgeLibraryRepository.class);
     libraryAccessService = mock(LibraryAccessService.class);
-    capabilityService = mock(CapabilityService.class);
+    connectorRelease = mock(ConnectorReleaseService.class);
     currentUserId = UUID.randomUUID();
     organizationId = UUID.randomUUID();
     caller = CurrentUser.of(currentUserId, organizationId, SystemRole.USER, "Caller");
@@ -98,7 +97,7 @@ class SourceConnectionTestServiceTest {
             libraryRepository,
             libraryAccessService,
             TestSourceConnectors.connectors().filesystemAllowlist(filesystemAllowlist).registry(),
-            capabilityService,
+            connectorRelease,
             new LibrarySourceConnectionResolver(),
             mock(LibraryConnectionService.class),
             new ServiceAccountTokens(TargetAddressValidator.disabled(), Clock.systemUTC()));
@@ -581,7 +580,7 @@ class SourceConnectionTestServiceTest {
                 .filesystemAllowlist(filesystemAllowlist)
                 .rssProperties(new RssFeedProperties(200, 10, 10, 0, null, null, 0, 0))
                 .registry(),
-            capabilityService,
+            connectorRelease,
             new LibrarySourceConnectionResolver(),
             mock(LibraryConnectionService.class),
             new ServiceAccountTokens(TargetAddressValidator.disabled(), Clock.systemUTC()));
@@ -719,7 +718,7 @@ class SourceConnectionTestServiceTest {
                 .filesystemAllowlist(filesystemAllowlist)
                 .rssProperties(new RssFeedProperties(1, 0, 0, 0, null, null, 0, 0))
                 .registry(),
-            capabilityService,
+            connectorRelease,
             new LibrarySourceConnectionResolver(),
             mock(LibraryConnectionService.class),
             new ServiceAccountTokens(TargetAddressValidator.disabled(), Clock.systemUTC()));
@@ -768,7 +767,7 @@ class SourceConnectionTestServiceTest {
                 .filesystemAllowlist(filesystemAllowlist)
                 .rssProperties(new RssFeedProperties(200, 10, 10, 0, null, null, 0, 0))
                 .registry(),
-            capabilityService,
+            connectorRelease,
             new LibrarySourceConnectionResolver(),
             mock(LibraryConnectionService.class),
             new ServiceAccountTokens(TargetAddressValidator.disabled(), Clock.systemUTC()));
@@ -1107,9 +1106,9 @@ class SourceConnectionTestServiceTest {
   /**
    * PR #1868 review, finding 1: with {@code libraryId} set, the {@link AssetRole#MANAGER} bar fully
    * replaces the capability check - a MANAGER granted on the library (not derived from having
-   * created it) succeeds with their own credentials even while {@code capabilityService} would
-   * refuse {@link Capability#CREATE_CONNECTOR_LIBRARY}. The edit dialog's "Verbindung testen" must
-   * not fail 403 right before a save that {@code updateLibrary} would have allowed.
+   * created it) succeeds with their own credentials even while {@code connectorRelease} would
+   * refuse the release. The edit dialog's "Verbindung testen" must not fail 403 right before a save
+   * that {@code updateLibrary} would have allowed.
    */
   @Test
   void libraryIdWithManagerGrantSucceedsWithoutTheConnectorCapability() throws IOException {
@@ -1130,8 +1129,8 @@ class SourceConnectionTestServiceTest {
     when(libraryAccessService.requireRole(library, currentUserId, false, AssetRole.MANAGER))
         .thenReturn(AssetRole.MANAGER);
     doThrow(new AccessDeniedException("Ihnen fehlt das Anlegerecht", "CAPABILITY_REQUIRED"))
-        .when(capabilityService)
-        .requireCapability(caller, Capability.CREATE_CONNECTOR_LIBRARY);
+        .when(connectorRelease)
+        .requireCreatable(caller, SourceTypes.HTTP_DIRECTORY, null);
     String html =
         """
         <table>
@@ -1158,8 +1157,7 @@ class SourceConnectionTestServiceTest {
             caller);
 
     assertThat(response.reachable()).isTrue();
-    verify(capabilityService, never())
-        .requireCapability(caller, Capability.CREATE_CONNECTOR_LIBRARY);
+    verify(connectorRelease, never()).requireCreatable(any(), any(), any());
   }
 
   @Test
@@ -1236,8 +1234,8 @@ class SourceConnectionTestServiceTest {
   @Test
   void sourceTestWithoutLibraryIdIsRefusedWithoutTheConnectorCapability() {
     doThrow(new AccessDeniedException("Ihnen fehlt das Anlegerecht", "CAPABILITY_REQUIRED"))
-        .when(capabilityService)
-        .requireCapability(caller, Capability.CREATE_CONNECTOR_LIBRARY);
+        .when(connectorRelease)
+        .requireAnyRelease(caller);
 
     assertThatThrownBy(
             () ->
@@ -1256,6 +1254,6 @@ class SourceConnectionTestServiceTest {
                 service.test(sourceConnectionTest().sourceType(SourceType.UPLOAD).build(), caller))
         .isInstanceOf(ValidationException.class);
 
-    verify(capabilityService).requireCapability(caller, Capability.CREATE_CONNECTOR_LIBRARY);
+    verify(connectorRelease).requireAnyRelease(caller);
   }
 }

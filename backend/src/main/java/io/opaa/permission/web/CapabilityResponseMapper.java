@@ -34,16 +34,19 @@ public final class CapabilityResponseMapper {
 
   static CapabilityOverviewResponse toOverviewResponse(CapabilityOverview overview) {
     return new CapabilityOverviewResponse(
-        overview.capability(),
-        CapabilityService.label(overview.capability()),
-        statement(overview),
-        overview.grants().stream().map(CapabilityResponseMapper::toResponse).toList());
+            overview.capability(),
+            CapabilityService.label(overview.capability()),
+            statement(overview),
+            overview.grants().stream().map(CapabilityResponseMapper::toResponse).toList())
+        .scope(overview.scope())
+        .scopeLabel(overview.scopeLabel());
   }
 
   static CapabilityGrantResponse toResponse(CapabilityGrantView view) {
     CapabilityGrant grant = view.grant();
     return new CapabilityGrantResponse(
             grant.getId(), grant.getCapability(), grant.getSubjectType(), grant.getCreatedAt())
+        .scope(grant.getScope())
         .subjectId(grant.getSubjectId())
         .subjectName(view.subjectName())
         .grantedByUserId(grant.getGrantedByUserId());
@@ -57,22 +60,46 @@ public final class CapabilityResponseMapper {
    * place that has no use for one.
    */
   private static String statement(CapabilityOverview overview) {
+    if (overview.scope() != null) {
+      return scopeStatement(overview);
+    }
     String what = CapabilityService.creatable(overview.capability());
     List<CapabilityGrantView> grants = overview.grants();
     if (grants.isEmpty()) {
       return "Nur die Systemverwaltung darf " + what + " anlegen.";
     }
-    if (grants.stream()
-        .anyMatch(view -> view.grant().getSubjectType() == CapabilitySubjectType.ALL_ACCOUNTS)) {
+    if (reachesAllAccounts(grants)) {
       return "Alle Konten dürfen " + what + " anlegen.";
     }
+    return subjects(grants) + " sowie die Systemverwaltung dürfen " + what + " anlegen.";
+  }
+
+  /** "Zugang Nextcloud intern: frei für Alle Konten." - one line per scope. */
+  private static String scopeStatement(CapabilityOverview overview) {
+    List<CapabilityGrantView> grants = overview.grants();
+    String prefix = overview.scopeLabel() + ": ";
+    if (grants.isEmpty()) {
+      return prefix + "aus, nur die Systemverwaltung.";
+    }
+    if (reachesAllAccounts(grants)) {
+      return prefix + "frei für Alle Konten.";
+    }
+    return prefix + "frei für " + subjects(grants) + " sowie die Systemverwaltung.";
+  }
+
+  private static boolean reachesAllAccounts(List<CapabilityGrantView> grants) {
+    return grants.stream()
+        .anyMatch(view -> view.grant().getSubjectType() == CapabilitySubjectType.ALL_ACCOUNTS);
+  }
+
+  private static String subjects(List<CapabilityGrantView> grants) {
     List<String> named =
         grants.stream().map(CapabilityResponseMapper::subjectLabel).sorted().limit(3).toList();
     String subjects = String.join(", ", named);
     if (grants.size() > named.size()) {
       subjects += " und " + (grants.size() - named.size()) + " weitere";
     }
-    return subjects + " sowie die Systemverwaltung dürfen " + what + " anlegen.";
+    return subjects;
   }
 
   private static String subjectLabel(CapabilityGrantView view) {

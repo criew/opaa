@@ -25,22 +25,23 @@ public interface CapabilityGrantHistoryRepository
   @Query("delete from CapabilityGrantHistory h where h.validTo is not null and h.validTo < :cutoff")
   int deleteClosedIntervalsEndingBefore(@Param("cutoff") Instant cutoff);
 
-  Optional<CapabilityGrantHistory>
-      findByOrganizationIdAndCapabilityAndSubjectTypeAndSubjectUserIdAndValidToIsNull(
-          UUID organizationId,
-          Capability capability,
-          CapabilitySubjectType subjectType,
-          UUID subjectUserId);
-
-  Optional<CapabilityGrantHistory>
-      findByOrganizationIdAndCapabilityAndSubjectTypeAndSubjectGroupIdAndValidToIsNull(
-          UUID organizationId,
-          Capability capability,
-          CapabilitySubjectType subjectType,
-          UUID subjectGroupId);
-
-  Optional<CapabilityGrantHistory> findByOrganizationIdAndCapabilityAndSubjectTypeAndValidToIsNull(
-      UUID organizationId, Capability capability, CapabilitySubjectType subjectType);
+  /**
+   * The open interval of {@code capability} in {@code scope} for one subject, if any - the
+   * counterpart of {@code CapabilityGrantRepository#findGrant}, same parameters.
+   */
+  @Query(
+      "select h from CapabilityGrantHistory h where h.organizationId = :organizationId"
+          + " and h.capability = :capability and h.subjectType = :subjectType"
+          + " and ((:scope is null and h.scope is null) or h.scope = :scope)"
+          + " and (h.subjectType = io.opaa.api.types.CapabilitySubjectType.ALL_ACCOUNTS"
+          + "  or h.subjectUserId = :subjectId or h.subjectGroupId = :subjectId)"
+          + " and h.validTo is null")
+  Optional<CapabilityGrantHistory> findOpenInterval(
+      @Param("organizationId") UUID organizationId,
+      @Param("capability") Capability capability,
+      @Param("scope") String scope,
+      @Param("subjectType") CapabilitySubjectType subjectType,
+      @Param("subjectId") UUID subjectId);
 
   /**
    * The subjects that held {@code capability} at {@code asOf} - the capability half of the Stichtag

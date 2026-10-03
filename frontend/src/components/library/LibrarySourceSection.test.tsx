@@ -36,4 +36,18 @@ describe('LibrarySourceSection - Zugang (#2160)', () => {
       /Zugang entfernt.*bleibt durchsuchbar.*Verwaltenden der Bibliothek/,
     )
   })
+
+  it('shows the lock notice of a locked source to every reader', () => {
+    const notice =
+      'Gesperrt – Inhalt wird nicht mehr aktualisiert. Die Systemverwaltung hat den Zugang „Wiki“ gesperrt; der vorhandene Inhalt bleibt durchsuchbar. Zuständig ist die Systemverwaltung.'
+    renderWithProviders(
+      <LibrarySourceSection
+        libraryId="library-1"
+        library={{ ...library, sourceLockNotice: notice }}
+        canEditSource={false}
+      />,
+    )
+
+    expect(screen.getByTestId('source-lock-notice')).toHaveTextContent(notice)
+  })
 })
