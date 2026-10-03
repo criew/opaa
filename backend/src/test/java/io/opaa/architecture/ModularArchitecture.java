@@ -206,6 +206,21 @@ public final class ModularArchitecture {
   /** Every direct subpackage of this one, relative to the root, is a connector. */
   static final String CONNECTOR_PARENT = "indexing.source";
 
+  /**
+   * The reads of a library's source configuration, relative to the root, that a connector leaves to
+   * the core: it takes target, secret and settings as {@code SourceSettings} or {@code
+   * ConnectorData} (ADR-0041, Entscheidung 3a). {@code getSourcePath} and {@code getWebhookSecret}
+   * stay readable.
+   */
+  static final Set<String> CORE_ONLY_SOURCE_READS =
+      Set.of(
+          "knowledge.KnowledgeLibrary#getSourceCredentials",
+          "knowledge.KnowledgeLibrary#getSourceUrl",
+          "knowledge.KnowledgeLibrary#getSourceProxy",
+          "knowledge.KnowledgeLibrary#isSourceInsecureSsl",
+          "knowledge.KnowledgeLibrary#getSourceSettings",
+          "indexing.source.ConnectorData#storedIn");
+
   /** Packages of the separate {@code opaa-api} Gradle module: a library below all layers. */
   static final List<String> OUTSIDE_THE_LAYERING = List.of("api.dto", "api.types");
 
@@ -563,6 +578,27 @@ public final class ModularArchitecture {
         .allowEmptyShould(true);
   }
 
+  /** Calls and method references alike; the push secret and the filesystem path are exempt. */
+  ArchRule connectorsTakeTheirSourceConfigurationFromTheCore() {
+    return noClasses()
+        .that(DescribedPredicate.describe("are connector classes", this::isConnector))
+        .should()
+        .accessTargetWhere(
+            DescribedPredicate.describe(
+                "read a source configuration listed in ModularArchitecture.CORE_ONLY_SOURCE_READS",
+                access ->
+                    CORE_ONLY_SOURCE_READS.contains(
+                        relative(access.getTargetOwner().getPackageName())
+                            + "."
+                            + access.getTargetOwner().getSimpleName()
+                            + "#"
+                            + access.getName())))
+        .because(
+            "a connector takes target, secret and settings from the core, which resolves them"
+                + " (ADR-0041, Entscheidung 3a)")
+        .allowEmptyShould(true);
+  }
+
   List<ArchRule> all() {
     return List.of(
         everyPackageIsAssigned(),
@@ -576,7 +612,8 @@ public final class ModularArchitecture {
         noOneOutsideAConnectorKnowsIt(),
         webClassesResideInAWebPackage(),
         apiHoldsOnlyItsListedClasses(),
-        onlyTheWebLayerAndAppDependOnAWebPackage());
+        onlyTheWebLayerAndAppDependOnAWebPackage(),
+        connectorsTakeTheirSourceConfigurationFromTheCore());
   }
 
   /** Whether {@code javaClass} lies in the web package of a top-level package. */

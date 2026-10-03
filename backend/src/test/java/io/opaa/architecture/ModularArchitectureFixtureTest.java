@@ -159,6 +159,33 @@ class ModularArchitectureFixtureTest {
         .anySatisfy(violation -> assertThat(violation).contains("module KNOWLEDGE -> CONNECTORS"));
   }
 
+  /**
+   * A call, a method reference and the static read of the stored settings are reported; the push
+   * secret, the filesystem path and the core's own resolver pass.
+   */
+  @Test
+  void aConnectorReadingItsSourceConfigurationFromTheLibraryIsReported() {
+    Scenario scenario = new Scenario("connectorreadslibrary");
+
+    assertThat(
+            scenario.violations(
+                ModularArchitecture::connectorsTakeTheirSourceConfigurationFromTheCore))
+        .hasSize(3)
+        .anySatisfy(
+            violation ->
+                assertThat(violation).contains("s3.S3Run", "KnowledgeLibrary.getSourceCredentials"))
+        .anySatisfy(
+            violation ->
+                assertThat(violation).contains("rss.FeedRun", "KnowledgeLibrary.getSourceUrl"))
+        .anySatisfy(
+            violation ->
+                assertThat(violation)
+                    .contains("confluence.ConfluenceSettings", "ConnectorData.storedIn"))
+        .noneSatisfy(violation -> assertThat(violation).contains("getWebhookSecret"))
+        .noneSatisfy(violation -> assertThat(violation).contains("getSourcePath"))
+        .noneSatisfy(violation -> assertThat(violation).contains("SourceResolver"));
+  }
+
   /** The connector package {@code indexing.source.web} is no web package. */
   @Test
   void aWebClassOutsideAWebPackageIsReported() {
