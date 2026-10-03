@@ -96,6 +96,22 @@ class IndexingJobServiceTest {
   }
 
   @Test
+  void recordUnreadableScopesWritesTheCountOntoARunningJobOnly() {
+    var running = new IndexingJob(JobStatus.RUNNING);
+    var failed = new IndexingJob(JobStatus.FAILED);
+    when(indexingJobRepository.findById(running.getId())).thenReturn(Optional.of(running));
+    when(indexingJobRepository.findById(failed.getId())).thenReturn(Optional.of(failed));
+
+    service.recordUnreadableScopes(running.getId(), 3);
+    service.recordUnreadableScopes(failed.getId(), 2);
+
+    assertThat(running.getUnreadableScopeCount()).isEqualTo(3);
+    assertThat(failed.getUnreadableScopeCount()).isNull();
+    verify(indexingJobRepository, times(1)).save(running);
+    verify(indexingJobRepository, never()).save(failed);
+  }
+
+  @Test
   void aCompleteListingAssessmentCarriesNoKeys() {
     var running = new IndexingJob(JobStatus.RUNNING);
     when(indexingJobRepository.findById(running.getId())).thenReturn(Optional.of(running));

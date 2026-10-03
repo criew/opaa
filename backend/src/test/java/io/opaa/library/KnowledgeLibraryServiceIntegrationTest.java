@@ -613,14 +613,11 @@ class KnowledgeLibraryServiceIntegrationTest {
 
   @Test
   void aMaximumLengthCredentialSurvivesEncryptionWithoutTruncation() {
-    // #483: source_credentials was widened from varchar(500) to varchar(3000) to fit
-    // the encrypted encoding of exactly the longest plaintext LibraryCreation.sourceCredentials
-    // still
-    // allows (maxLength: 500, openapi/opaa-api.yaml) - this pins that the column is actually wide
-    // enough, not just declared so in the migration's comment.
+    // The column must carry the encrypted encoding of the longest plaintext the API admits
+    // (sourceCredentials maxLength 4096, ADR-0040, Entscheidung 2).
     UUID owner = createUser(organizationA);
-    String longCredentials = "u".repeat(245) + ":" + "p".repeat(254); // exactly 500 characters
-    assertThat(longCredentials).hasSize(500);
+    String longCredentials = "u".repeat(245) + ":" + "p".repeat(3850);
+    assertThat(longCredentials).hasSize(4096);
     LibraryCreation request =
         libraryCreation("Maximallange Zugangsdaten", SourceTypes.HTTP_DIRECTORY)
             .sourceUrl(URI.create("https://files.example.com/documents/"))

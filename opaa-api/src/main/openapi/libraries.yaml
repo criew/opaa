@@ -852,7 +852,7 @@ components:
           example: proxy.example.com:8080
         sourceCredentials:
           type: string
-          maxLength: 500
+          maxLength: 4096
           nullable: true
           description: >
             Credentials, write-only: never returned by any API response (ADR-0018). For
@@ -933,7 +933,7 @@ components:
           example: proxy.example.com:8080
         sourceCredentials:
           type: string
-          maxLength: 500
+          maxLength: 4096
           nullable: true
           description: >
             Basic auth credentials in user:password format - only for sourceType
@@ -972,8 +972,8 @@ components:
       required: [reachable, message]
       description: >
         Structured result of a source connection test (#514). message is always German and
-        always safe to show to the caller verbatim - both on success ("Verzeichnis erreichbar,
-        42 Dokumente gefunden") and on failure ("Der RSS-Feed konnte nicht gelesen werden: kein
+        always safe to show to the caller verbatim - both on success ("RSS-Feed erreichbar,
+        12 Einträge gefunden.") and on failure ("Der RSS-Feed konnte nicht gelesen werden: kein
         gültiges XML."); no exception text or stack trace ever reaches it.
       properties:
         reachable:
@@ -984,19 +984,19 @@ components:
           format: int64
           nullable: true
           description: >
-            Number of supported documents found (FILESYSTEM: recursively, matching the run's
-            own SupportedDocumentFormats filter; HTTP_DIRECTORY: only the top-level listing,
+            Number of supported documents found (HTTP_DIRECTORY: only the top-level listing,
             filtered the same way, not a recursive crawl of the whole tree; RSS_FEED: entries,
             capped at opaa.indexing.rss.max-entries like the run itself; S3: the objects the
             first listing page of every scope showed, at most opaa.indexing.s3.list-page-size per
             scope - a lower bound when a scope has more, see details.scopes) - null when reachable is
-            false, since nothing could be counted, and always null for CONFLUENCE, whose test
-            verifies the credentials with a single request and leaves counting to the space
-            listing endpoint.
+            false, since nothing could be counted; always null for FILESYSTEM, whose test only
+            opens the configured directory and leaves counting to the indexing run, and for
+            CONFLUENCE, whose test verifies the credentials with a single request and leaves
+            counting to the space listing endpoint.
         message:
           type: string
           description: German, user-facing summary of the result.
-          example: Verzeichnis erreichbar, 42 Dokumente gefunden
+          example: RSS-Feed erreichbar, 12 Einträge gefunden.
         credentialsVerified:
           type: boolean
           nullable: true
@@ -1030,7 +1030,7 @@ components:
           description: The source's address, as LibraryRequest.sourceUrl for the type.
         sourceCredentials:
           type: string
-          maxLength: 500
+          maxLength: 4096
           nullable: true
           description: Credentials in the connector's format (see LibraryRequest.sourceCredentials).
         sourceProxy:
@@ -1270,7 +1270,7 @@ components:
           example: proxy.example.com:8080
         sourceCredentials:
           type: string
-          maxLength: 500
+          maxLength: 4096
           nullable: true
           description: >
             Credentials, write-only: never returned by any API response (ADR-0018). For

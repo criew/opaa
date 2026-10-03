@@ -23,6 +23,7 @@ import io.opaa.indexing.job.IndexingRunEvent;
 import io.opaa.indexing.job.IndexingRunEventRepository;
 import io.opaa.indexing.job.RequestBudgetExhaustedException;
 import io.opaa.indexing.maintenance.StaleDocumentCleanupService;
+import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.LibraryStorageQuotaService;
@@ -418,6 +419,123 @@ class IndexingRunTemplateTest {
     assertThat(hook.get()).isNull();
     verify(jobService).recordListingAssessment(jobId, false, List.of("SEC"));
     verify(jobService).recordRunMetrics(jobId, new IndexingRunCost(0, 0, 0L, 0, 0, 0, false, 0L));
+  }
+
+  @Test
+  void aListingWithUnreadableAreasReconcilesAllButTheRetainedDocuments() {
+    AtomicReference<Boolean> hook = new AtomicReference<>();
+    when(documentRepository.findByLibraryIdAndSourceType(library.getId(), SourceTypes.FILESYSTEM))
+        .thenReturn(
+            List.of(
+                document("/srv/dokumente/gesperrt/a.txt"),
+                document("/srv/dokumente/weg.txt"),
+                document("/srv/dokumente/b.txt")));
+
+    template.run(
+        jobId,
+        library,
+        IndexingRunMode.FULL,
+        fullListingExecutor,
+        run -> {
+          run.markReprocessed("/srv/dokumente/b.txt");
+          run.afterReconciliation(hook::set);
+          return ListingOutcome.completeExcept(
+              1, key -> key.startsWith("/srv/dokumente/gesperrt/"));
+        });
+
+    verify(cleanupService)
+        .reconcile(
+            eq(library),
+            eq(SourceTypes.FILESYSTEM),
+            eq(Set.of("/srv/dokumente/b.txt", "/srv/dokumente/gesperrt/a.txt")),
+            eq(Set.of("/srv/dokumente/b.txt")),
+            any(),
+            eq(fullListingExecutor),
+            eq(IndexingRunMode.FULL));
+    assertThat(hook.get()).isTrue();
+    verify(jobService).recordListingAssessment(jobId, false, List.of());
+    verify(jobService).recordUnreadableScopes(jobId, 1);
+    verify(jobService).completeJob(eq(jobId), anyInt(), anyInt(), anyInt(), anyInt());
+  }
+
+  @Test
+  void anAttachmentIsNeverRetainedByItsOwnKeyOnlyThroughItsParent() {
+    // a crafted attachment name can make an attachment key point into an unreadable area; the
+    // attachment must then not outlive its vanished parent mail
+    Document mail = document("/srv/dokumente/weg.eml");
+    Document attachment = document("/srv/dokumente/weg.eml/0/../../gesperrt/x.pdf");
+    attachment.setParentDocumentId(mail.getId());
+    when(documentRepository.findByLibraryIdAndSourceType(library.getId(), SourceTypes.FILESYSTEM))
+        .thenReturn(List.of(mail, attachment));
+
+    template.run(
+        jobId,
+        library,
+        IndexingRunMode.FULL,
+        fullListingExecutor,
+        run -> {
+          run.markReprocessed("/srv/dokumente/b.txt");
+          return ListingOutcome.completeExcept(1, key -> key.contains("gesperrt"));
+        });
+
+    verify(cleanupService)
+        .reconcile(
+            eq(library),
+            eq(SourceTypes.FILESYSTEM),
+            eq(Set.of("/srv/dokumente/b.txt")),
+            any(),
+            any(),
+            eq(fullListingExecutor),
+            eq(IndexingRunMode.FULL));
+  }
+
+  @Test
+  void aRunThatMetNothingButUnreadableAreasRetainsNothingAndSoDeletesNothing() {
+    template.run(
+        jobId,
+        library,
+        IndexingRunMode.FULL,
+        fullListingExecutor,
+        run -> ListingOutcome.completeExcept(1, key -> true));
+
+    verify(documentRepository, never()).findByLibraryIdAndSourceType(any(), any());
+    verify(cleanupService)
+        .reconcile(
+            eq(library),
+            eq(SourceTypes.FILESYSTEM),
+            eq(Set.of()),
+            eq(Set.of()),
+            any(),
+            eq(fullListingExecutor),
+            eq(IndexingRunMode.FULL));
+  }
+
+  @Test
+  void unreadableAreasWhoseDocumentsCannotBeLoadedReconcileNothing() {
+    AtomicReference<Boolean> hook = new AtomicReference<>();
+    when(documentRepository.findByLibraryIdAndSourceType(any(), any()))
+        .thenThrow(new IllegalStateException("Datenbank nicht erreichbar"));
+
+    template.run(
+        jobId,
+        library,
+        IndexingRunMode.FULL,
+        fullListingExecutor,
+        run -> {
+          run.markPresent("/srv/dokumente/b.txt");
+          run.afterReconciliation(hook::set);
+          return ListingOutcome.completeExcept(1, key -> true);
+        });
+
+    verify(cleanupService, never()).reconcile(any(), any(), any(), any(), any(), any(), any());
+    assertThat(hook.get()).isFalse();
+    verify(jobService).completeJob(eq(jobId), anyInt(), anyInt(), anyInt(), anyInt());
+  }
+
+  private Document document(String filePath) {
+    Document document = new Document("datei", filePath, "text/plain", 1L, SourceTypes.FILESYSTEM);
+    document.setLibraryId(library.getId());
+    return document;
   }
 
   @Test
