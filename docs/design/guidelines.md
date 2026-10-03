@@ -305,6 +305,17 @@ Rahmen und Meldungstext in Gefahr, Meldung programmatisch dem Feld zugeordnet
 Pflichtfelder werden nicht mit Sternchen markiert — optionale Felder tragen „(optional)".
 Zugangsdaten immer als Kennwortfeld, nie im Klartext zurückgespiegelt.
 
+**Personen- und Gruppensuche.** Wo Personen und Gruppen Empfänger sein können (Freigaben,
+Space-Mitglieder, Eigentum), gibt es **ein** Suchfeld ohne Umschalter „Person / Gruppe"
+(`SubjectPicker`, Platzhalter und `aria-label` „Person oder Gruppe suchen"). Die Treffer stehen
+gemischt in einer Liste, die passendsten zuerst. Eine Person trägt ein Kopf-Symbol, eine Gruppe
+ein Gruppen-Symbol und zusätzlich „Gruppe" im Text, damit die Art auch ohne Symbol erkennbar ist;
+die Gruppe eines externen Anbieters trägt ein eigenes Warnsymbol. „Alle Konten" erscheint nur, wo
+es diesen Empfänger gibt (Freigaben an einem bestehenden Asset), als eigener Eintrag mit
+Welt-Symbol. Das Formular dazu steht in einer Zeile: Suche (breit), Rolle (schmal), Schaltfläche in
+normaler Breite (`SubjectFormRow`); unter 600 px steht die Suche allein oben, Rolle und
+Schaltfläche darunter.
+
 ### 5.3 Tabellen
 
 Spaltenköpfe im Eyebrow-Muster (`fg-3`), Zeilen durch `border` getrennt, keine Zebrastreifen.
