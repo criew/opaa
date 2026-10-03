@@ -101,6 +101,14 @@ type MentionSuggestion = { kind: 'all' } | { kind: 'library'; library: SpaceLibr
  */
 const INPUT_HINT = '@ für Quellen, / für Aktionen'
 
+/** The hint while an answer is pending: '@' changes the search scope and stays closed until then. */
+const PENDING_INPUT_HINT = '/ für Aktionen'
+
+/** A refused question goes back before whatever the person has typed since. */
+function withRestoredQuestion(question: string, draft: string): string {
+  return draft.trim() === '' ? question : `${question}\n\n${draft}`
+}
+
 /** From this share of {@link QUESTION_MAX_LENGTH} on, the input counts the characters. */
 const LENGTH_COUNTER_THRESHOLD = 0.9
 
@@ -215,8 +223,8 @@ export default function ChatInput({
   const [returnedTaken, setReturnedTaken] = useState(false)
   if (returnedQuestion !== seenReturned) {
     setSeenReturned(returnedQuestion)
-    const taken = !!returnedQuestion?.restoreDraft && value.trim() === ''
-    if (taken) setValue(returnedQuestion.restoreDraft!)
+    const taken = !!returnedQuestion?.restoreDraft
+    if (taken) setValue(withRestoredQuestion(returnedQuestion.restoreDraft!, value))
     setReturnedTaken(taken)
   }
   useEffect(() => {
@@ -415,13 +423,14 @@ export default function ChatInput({
     setDismissedMentionStart(null)
     closeMention()
     promptCommand.reset()
-    // A refused question comes back without its prompt, unless the person has already started
-    // the next one or the input is gone.
+    // Sending by button would leave the focus on the button, which is locked from now on.
+    inputRef.current?.focus()
+    // A refused question comes back without its prompt, before any draft typed since, unless the
+    // input is gone.
     void Promise.resolve(outcome).then((result) => {
-      if (!result?.restoreDraft) return
-      const input = inputRef.current
-      if (!input || input.value.trim() !== '') return
-      setValue(result.restoreDraft)
+      const restoreDraft = result?.restoreDraft
+      if (!restoreDraft || !inputRef.current) return
+      setValue((draft) => withRestoredQuestion(restoreDraft, draft))
       result.onRestored?.()
     })
   }
@@ -893,7 +902,7 @@ export default function ChatInput({
       {/* Mockup 1a (#591): the quiet line under the input, neutral since #1920. */}
       <Box sx={{ maxWidth: CHAT_MAX_WIDTH, mx: 'auto', mt: 0.875 }}>
         <Typography component="div" sx={{ fontSize: 12, color: 'text.secondary' }}>
-          {scopeNotice ?? INPUT_HINT}
+          {scopeNotice ?? (answerPending ? PENDING_INPUT_HINT : INPUT_HINT)}
         </Typography>
         {lengthCounter && (
           <Typography

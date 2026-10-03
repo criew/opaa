@@ -19,6 +19,7 @@ import { useChatListStore } from '../stores/chatListStore'
 import { notify } from '../stores/notificationStore'
 import { useSpaceStore } from '../stores/spaceStore'
 import PageHeading from '../components/a11y/PageHeading'
+import { KEEP_FOCUS_STATE } from '../components/a11y/routeFocus'
 
 export default function ChatPage() {
   const { spaceId, chatId: routeChatId } = useParams<{ spaceId: string; chatId: string }>()
@@ -129,7 +130,10 @@ export default function ChatPage() {
     const previousStoreChatId = previousStoreChatIdRef.current
     previousStoreChatIdRef.current = storeChatId
     if (isNewChat && storeChatId && storeSpaceId && previousStoreChatId !== storeChatId) {
-      navigate(`/spaces/${storeSpaceId}/chats/${storeChatId}`, { replace: true })
+      navigate(`/spaces/${storeSpaceId}/chats/${storeChatId}`, {
+        replace: true,
+        state: KEEP_FOCUS_STATE,
+      })
     }
   }, [isNewChat, storeChatId, storeSpaceId, navigate])
 

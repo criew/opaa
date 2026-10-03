@@ -1,12 +1,13 @@
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
-import { Route, Routes } from 'react-router'
+import { Route, Routes, useNavigate } from 'react-router'
 import { renderWithProviders } from '../test/test-utils'
 import AppShell from './AppShell'
 import { useAuthStore } from '../stores/authStore'
 import { useUiStore } from '../stores/uiStore'
 import PageHeading from '../components/a11y/PageHeading'
+import { KEEP_FOCUS_STATE } from '../components/a11y/routeFocus'
 import GlobalAreaLayout from './GlobalAreaLayout'
 
 const ADMIN_SECTIONS = [{ label: 'Benutzer & Gruppen', to: '/admin/groups' }]
@@ -204,6 +205,38 @@ describe('AppShell', () => {
     } finally {
       window.matchMedia = desktopMatchMedia
     }
+  })
+
+  // regression guard for #2135: a new chat receiving its id stays the same view - the person keeps
+  // typing in the chat input.
+  it('leaves the focus alone on a navigation that keeps the view', async () => {
+    function SameView() {
+      const navigate = useNavigate()
+      return (
+        <>
+          <PageHeading title="Chat" />
+          <input
+            aria-label="Eingabe"
+            onChange={() => navigate('/chat/kept', { replace: true, state: KEEP_FOCUS_STATE })}
+          />
+        </>
+      )
+    }
+    const user = userEvent.setup()
+    renderWithProviders(
+      <Routes>
+        <Route element={<AppShell />}>
+          <Route path="/chat/*" element={<SameView />} />
+        </Route>
+      </Routes>,
+      { withRouter: true, initialRoute: '/chat' },
+    )
+
+    await user.click(screen.getByLabelText('Eingabe'))
+    await user.keyboard('a')
+
+    await waitFor(() => expect(screen.getByLabelText('Eingabe')).toHaveFocus())
+    expect(screen.getByRole('heading', { level: 1, name: 'Chat' })).not.toHaveFocus()
   })
 
   it('falls back to focusing main when the new page has no heading yet', async () => {

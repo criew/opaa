@@ -169,8 +169,13 @@ für Aktionen". Solange der Suchbereich des Space noch ermittelt wird, steht dor
 
 Während eine Antwort entsteht, bleibt das Eingabefeld bedienbar: Die nächste Frage lässt sich schon
 schreiben, auch ein Prompt per `/` lässt sich einsetzen. Senden geht erst, wenn die Antwort da ist.
-Bis dahin lassen sich Suchbereich und Filter nicht ändern, und `@` öffnet keine Auswahl; die
-laufende Antwort behält den Suchbereich, mit dem die Frage gestellt wurde.
+Bis dahin lassen sich Suchbereich und Filter nicht ändern, und `@` öffnet keine Auswahl; der
+Hinweis unter dem Feld nennt deshalb nur „/ für Aktionen". Die laufende Antwort behält den
+Suchbereich, mit dem die Frage gestellt wurde. Lehnt OPAA die laufende Frage ab, steht sie wieder
+im Eingabefeld, vor dem schon geschriebenen Text.
+
+Ein per `/` eingesetzter Prompt gehört zu seinem Raum: Wechselt der Chat in einen anderen Raum,
+entfällt der Chip „Prompt: <Titel>", der Text bleibt stehen.
 
 Ein Raum enthält genau das, was ihm **zugeordnet** ist: Im Chat sucht er nur in den zugeordneten
 Bibliotheken und bietet nur die Prompts der zugeordneten Prompt-Bibliotheken an. Was die Person

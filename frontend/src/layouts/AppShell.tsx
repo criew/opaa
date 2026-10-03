@@ -10,6 +10,7 @@ import Sidebar, { SIDEBAR_WIDTH } from './Sidebar'
 import MobileHeader from './MobileHeader'
 import SkipLink from '../components/a11y/SkipLink'
 import { MAIN_CONTENT_ID } from '../components/a11y/PageHeading'
+import { keepsFocus } from '../components/a11y/routeFocus'
 import IndexingSnackbar from '../components/admin/IndexingSnackbar'
 import ConfirmHost from '../components/ConfirmHost'
 import NotificationHost from '../components/NotificationHost'
@@ -20,7 +21,8 @@ export default function AppShell() {
   const isDesktop = useMediaQuery(theme.breakpoints.up('md'))
   const sidebarOpen = useUiStore((s) => s.sidebarOpen)
   const setSidebarOpen = useUiStore((s) => s.setSidebarOpen)
-  const { pathname } = useLocation()
+  const { pathname, state: locationState } = useLocation()
+  const keepFocus = keepsFocus(locationState)
   const previousPathname = useRef(pathname)
   // Mockup 2b (#787): global areas drop the space column; the rail and the area's own light
   // frame carry the navigation there.
@@ -28,14 +30,16 @@ export default function AppShell() {
 
   // On every route change, move focus to the new page's heading so screen readers announce it;
   // if the heading is not rendered yet (data still loading), park focus on <main> and let
-  // PageHeading pick it up once it mounts. The initial load keeps the browser's default focus.
+  // PageHeading pick it up once it mounts. The initial load and a navigation that keeps the view
+  // (see KEEP_FOCUS_STATE) leave the focus where it is.
   useEffect(() => {
     if (previousPathname.current === pathname) return
     previousPathname.current = pathname
+    if (keepFocus) return
     const main = document.getElementById(MAIN_CONTENT_ID)
     const heading = main?.querySelector<HTMLElement>('h1')
     ;(heading ?? main)?.focus()
-  }, [pathname])
+  }, [pathname, keepFocus])
 
   // Navigating from inside the drawer must also dismiss it - otherwise it stays on top of the
   // page just navigated to. Pre-existing since #587, taken along with review #791 (finding 9)

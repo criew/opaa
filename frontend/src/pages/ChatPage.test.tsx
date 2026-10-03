@@ -5,6 +5,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { renderWithProviders } from '../test/test-utils'
 import ChatPage from './ChatPage'
 import { ANSWER_ARRIVED_ANNOUNCEMENT } from '../components/chat/MessageList'
+import { KEEP_FOCUS_STATE } from '../components/a11y/routeFocus'
 import { clearRemovedNoteItemCache, useChatStore } from '../stores/chatStore'
 import { useSpaceStore } from '../stores/spaceStore'
 import { useChatListStore } from '../stores/chatListStore'
@@ -107,7 +108,7 @@ describe('ChatPage', () => {
     // The URL is replaced to point at the now-persisted chat, so a reload restores it.
     expect(mockNavigate).toHaveBeenCalledWith(
       expect.stringMatching(/^\/spaces\/space-personal\/chats\/.+$/),
-      { replace: true },
+      { replace: true, state: KEEP_FOCUS_STATE },
     )
   }, 15000)
 
