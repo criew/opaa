@@ -31,7 +31,9 @@ import io.opaa.indexing.job.IndexingRunEvent;
 import io.opaa.indexing.job.IndexingRunEventRepository;
 import io.opaa.indexing.job.RequestBudgetExhaustedException;
 import io.opaa.indexing.maintenance.StaleDocumentCleanupService;
+import io.opaa.indexing.source.ConnectorData;
 import io.opaa.indexing.source.IndexingRunTemplate;
+import io.opaa.indexing.source.LibrarySourceConnectionResolver;
 import io.opaa.indexing.source.SourceSyncState;
 import io.opaa.indexing.source.SourceSyncStateRepository;
 import io.opaa.indexing.source.VanishedDocumentPolicy;
@@ -146,7 +148,8 @@ class S3IndexingExecutorTest {
             eventRepository,
             cleanupService,
             documentRepository,
-            mock(LibraryStorageQuotaService.class)),
+            mock(LibraryStorageQuotaService.class),
+            new LibrarySourceConnectionResolver()),
         ProductionDocumentFormats.supportedFormats());
   }
 
@@ -228,7 +231,7 @@ class S3IndexingExecutorTest {
     assertThat(executor.runModes())
         .containsEntry(IndexingRunMode.FULL, VanishedDocumentPolicy.REMOVE_ON_ABSENCE)
         .hasSize(2);
-    assertThat(executor.defaultRunMode(null)).isEqualTo(IndexingRunMode.FULL);
+    assertThat(executor.defaultRunMode(null, null)).isEqualTo(IndexingRunMode.FULL);
   }
 
   @Test
@@ -1278,7 +1281,8 @@ class S3IndexingExecutorTest {
     assertThat(executor.runModes())
         .containsEntry(IndexingRunMode.EVENT, VanishedDocumentPolicy.KEEP_ON_ABSENCE)
         .containsEntry(IndexingRunMode.FULL, VanishedDocumentPolicy.REMOVE_ON_ABSENCE);
-    assertThat(executor.defaultRunMode(library)).isEqualTo(IndexingRunMode.FULL);
+    assertThat(executor.defaultRunMode(library, ConnectorData.storedIn(library)))
+        .isEqualTo(IndexingRunMode.FULL);
   }
 
   @Test

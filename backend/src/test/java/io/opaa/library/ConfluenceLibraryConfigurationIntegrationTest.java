@@ -15,6 +15,7 @@ import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ValidationException;
+import io.opaa.indexing.source.ConnectorData;
 import io.opaa.indexing.source.SourceSyncState;
 import io.opaa.indexing.source.SourceSyncStateRepository;
 import io.opaa.indexing.source.confluence.ConfluenceEdition;
@@ -121,16 +122,17 @@ class ConfluenceLibraryConfigurationIntegrationTest {
 
     KnowledgeLibrary library = detail.library();
     assertThat(library.getSourceType()).isEqualTo(SourceTypes.CONFLUENCE);
-    assertThat(ConfluenceSourceSettings.of(library).edition())
+    assertThat(ConfluenceSourceSettings.stored(ConnectorData.storedIn(library)).edition())
         .isEqualTo(ConfluenceEdition.DATA_CENTER);
     assertThat(library.getSourceUrl()).isEqualTo(dataCenter.baseUrl());
-    assertThat(ConfluenceSourceSettings.of(library).spaceSelection())
+    assertThat(ConfluenceSourceSettings.stored(ConnectorData.storedIn(library)).spaceSelection())
         .extracting(ConfluenceSpaceSelection::getSpaceKey)
         .containsExactly("BAU", "HR");
     assertThat(detail.managementDetail().sourceCredentialsSet()).isTrue();
 
     KnowledgeLibrary reloaded = libraryRepository.findById(library.getId()).orElseThrow();
-    assertThat(ConfluenceSourceSettings.of(reloaded).spaceSelection()).hasSize(2);
+    assertThat(ConfluenceSourceSettings.stored(ConnectorData.storedIn(reloaded)).spaceSelection())
+        .hasSize(2);
     assertThat(reloaded.getSourceCredentials()).isEqualTo("pat-geheim");
   }
 
@@ -152,7 +154,7 @@ class ConfluenceLibraryConfigurationIntegrationTest {
                 .build(),
             currentUser(owner));
     assertThat(detail.library().getSourceUrl()).isEqualTo(cloud.baseUrl());
-    assertThat(ConfluenceSourceSettings.of(detail.library()).edition())
+    assertThat(ConfluenceSourceSettings.stored(ConnectorData.storedIn(detail.library())).edition())
         .isEqualTo(ConfluenceEdition.CLOUD);
   }
 
@@ -296,11 +298,14 @@ class ConfluenceLibraryConfigurationIntegrationTest {
             caller);
     assertThat(syncStateRepository.findByLibraryId(libraryId)).isEmpty();
     syncStateRepository.save(new SourceSyncState(libraryId));
-    assertThat(ConfluenceSourceSettings.of(updated.library()).spaceSelection())
+    assertThat(
+            ConfluenceSourceSettings.stored(ConnectorData.storedIn(updated.library()))
+                .spaceSelection())
         .extracting(ConfluenceSpaceSelection::getSpaceKey)
         .containsExactly("ENG", "OPS");
     assertThat(
-            ConfluenceSourceSettings.of(libraryRepository.findById(libraryId).orElseThrow())
+            ConfluenceSourceSettings.stored(
+                    ConnectorData.storedIn(libraryRepository.findById(libraryId).orElseThrow()))
                 .spaceSelection())
         .extracting(ConfluenceSpaceSelection::getSpaceKey)
         .containsExactly("ENG", "OPS");
@@ -308,7 +313,8 @@ class ConfluenceLibraryConfigurationIntegrationTest {
     // a rename leaves the selection alone - and the run state
     libraryService.updateLibrary(libraryId, libraryUpdate("Wiki umbenannt").build(), caller);
     assertThat(
-            ConfluenceSourceSettings.of(libraryRepository.findById(libraryId).orElseThrow())
+            ConfluenceSourceSettings.stored(
+                    ConnectorData.storedIn(libraryRepository.findById(libraryId).orElseThrow()))
                 .spaceSelection())
         .hasSize(2);
     assertThat(syncStateRepository.findByLibraryId(libraryId)).isPresent();
@@ -479,7 +485,8 @@ class ConfluenceLibraryConfigurationIntegrationTest {
   }
 
   private Integer storedRhythm(UUID libraryId) {
-    return ConfluenceSourceSettings.of(libraryRepository.findById(libraryId).orElseThrow())
+    return ConfluenceSourceSettings.stored(
+            ConnectorData.storedIn(libraryRepository.findById(libraryId).orElseThrow()))
         .fullSyncIntervalDays();
   }
 
@@ -554,12 +561,14 @@ class ConfluenceLibraryConfigurationIntegrationTest {
     assertThat(all).allMatch(l -> SourceTypes.CONFLUENCE.equals(l.getSourceType()));
     assertThat(all.stream().filter(l -> l.getSourceUrl().equals(instance1))).hasSize(4);
     assertThat(
-            ConfluenceSourceSettings.of(libraryRepository.findById(a).orElseThrow())
+            ConfluenceSourceSettings.stored(
+                    ConnectorData.storedIn(libraryRepository.findById(a).orElseThrow()))
                 .spaceSelection())
         .extracting(ConfluenceSpaceSelection::getSpaceKey)
         .containsExactly("S1");
     assertThat(
-            ConfluenceSourceSettings.of(libraryRepository.findById(f).orElseThrow())
+            ConfluenceSourceSettings.stored(
+                    ConnectorData.storedIn(libraryRepository.findById(f).orElseThrow()))
                 .spaceSelection())
         .extracting(ConfluenceSpaceSelection::getSpaceKey)
         .containsExactly("S1", "S2");
@@ -572,11 +581,13 @@ class ConfluenceLibraryConfigurationIntegrationTest {
             .build(),
         alice);
     assertThat(
-            ConfluenceSourceSettings.of(libraryRepository.findById(f).orElseThrow())
+            ConfluenceSourceSettings.stored(
+                    ConnectorData.storedIn(libraryRepository.findById(f).orElseThrow()))
                 .spaceSelection())
         .hasSize(2);
     assertThat(
-            ConfluenceSourceSettings.of(libraryRepository.findById(b).orElseThrow())
+            ConfluenceSourceSettings.stored(
+                    ConnectorData.storedIn(libraryRepository.findById(b).orElseThrow()))
                 .spaceSelection())
         .hasSize(1);
   }

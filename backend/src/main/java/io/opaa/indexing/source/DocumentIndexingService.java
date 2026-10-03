@@ -200,7 +200,7 @@ public class DocumentIndexingService {
       }
       return requested;
     }
-    return executor.defaultRunMode(library);
+    return executor.defaultRunMode(library, ConnectorData.storedIn(library));
   }
 
   /**

@@ -1,8 +1,7 @@
 # Modul connectors
 
 Pakete (`io.opaa.indexing.source.*`): confluence, filesystem, rss, s3, upload, web — jedes direkte
-Unterpaket ist ein Konnektor. Der Vertrag selbst liegt in `indexing.source` und gehört zu knowledge (siehe
-`knowledge/AGENTS.md`). Ergänzt `backend/AGENTS.md`.
+Unterpaket ist ein Konnektor. Der Vertrag liegt in `indexing.source` (knowledge). Ergänzt `backend/AGENTS.md`.
 
 ## Zweck und Grenze
 
@@ -23,6 +22,10 @@ von foundation, format und knowledge ab.
   Zeichen). Welche es gibt, weiß nur die Registry; eine Schlüssel-Konstante liegt im Konnektor.
 - **Einstellungen:** Alles Konnektoreigene ist ein Record im Konnektorpaket und steht als ein
   JSON-Objekt in `source_settings`; der Kern reicht es als `ConnectorData` durch.
+- **Ziel, Geheimnis und Einstellungen kommen nur vom Kern** (ADR-0041, 3a): im Lauf über
+  `IndexingRun#settings()` (ohne Geheimnis) und `#currentCredentials()`, das bei jedem Aufruf das
+  jetzt gültige Geheimnis vom Port holt; sonst im Aufruf. Kein Konnektor hält oder erzeugt einen
+  `SourceConnectionResolver` oder liest aus `KnowledgeLibrary` mehr als `getSourcePath`/`getWebhookSecret`.
 - **Geheimnisse stehen nie in `source_settings`** — die Spalte ist unverschlüsselt und erscheint in
   Antworten. Plätze für Geheimnisse sind nur `source_credentials` und `source_webhook_secret`,
   beide verschlüsselt. Antworten tragen nur Ja/Nein, das Audit nur Feldnamen.
@@ -37,15 +40,14 @@ von foundation, format und knowledge ab.
 - **Push-Adapter** (`confluence.webhook`, `s3.events`) liegen über ihrem Konnektor; der Konnektor
   erreicht sie über einen eigenen Port (`ConfluencePushReceiver`, `S3PushReceiver`).
 - **Netzzugriff:** HTTP über `io.opaa.sourceaccess`, S3 über `io.opaa.s3`.
-- **Die S3-Tests** nutzen die geteilte `S3TestFixture` (foundation, siehe `backend/AGENTS.md`,
-  „Spring-Testkontexte"); ohne Docker werden sie übersprungen.
+- **Die S3-Tests** nutzen die geteilte `S3TestFixture` (foundation); ohne Docker übersprungen.
 
 ## Verweise
 
-- ADRs (`docs/decisions/`): 0017, 0018, 0023, 0027, 0038, 0040
+- ADRs (`docs/decisions/`): 0017, 0018, 0023, 0027, 0038, 0040, 0041 (Entscheidung 3a: Lauf-SPI)
 - Handbuch: `docs/handbuch/indexierung.md`, Abschnitt 4; `docs/handbuch/konnektor-*.md`
 - Strukturtests: `ModularArchitectureTest` (`connectorsDoNotKnowEachOther`,
-  `noOneOutsideAConnectorKnowsIt`)
+  `noOneOutsideAConnectorKnowsIt`, `connectorsTakeTheirSourceConfigurationFromTheCore`)
 
 ## Tests bei Änderungen
 
@@ -54,6 +56,5 @@ von foundation, format und knowledge ab.
 OPAA_CONFLUENCE_IT=true ./gradlew confluenceIntegrationTest   # nur bei Confluence-Änderungen
 ```
 
-Bei Schemaänderungen: neue Datei unter `db/changelog/connectors/`. Regeln und
-Tests in `backend/AGENTS.md`, „Liquibase: Changelog je Modul“ — ein eigener Delta-Test ist nur
-für rein additive DDL entbehrlich.
+Bei Schemaänderungen: neue Datei unter `db/changelog/connectors/`, Regeln in `backend/AGENTS.md`,
+„Liquibase: Changelog je Modul“ (Delta-Test nur bei rein additiver DDL entbehrlich).

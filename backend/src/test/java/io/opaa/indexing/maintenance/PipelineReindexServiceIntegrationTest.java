@@ -18,6 +18,7 @@ import io.opaa.indexing.job.IndexingRunEventRecorder;
 import io.opaa.indexing.job.IndexingRunEventRepository;
 import io.opaa.indexing.source.IndexingRun;
 import io.opaa.indexing.source.IndexingRunProgress;
+import io.opaa.indexing.source.LibrarySourceConnectionResolver;
 import io.opaa.indexing.source.StoredDocumentSourceAccess;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
@@ -992,6 +993,8 @@ class PipelineReindexServiceIntegrationTest {
     return new IndexingRun(
         jobId,
         library,
+        new LibrarySourceConnectionResolver().resolve(library),
+        library::getSourceCredentials,
         IndexingRunMode.FULL,
         SourceTypes.HTTP_DIRECTORY,
         new IndexingRunProgress(jobService, jobId),

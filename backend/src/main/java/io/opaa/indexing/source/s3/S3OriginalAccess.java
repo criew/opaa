@@ -1,5 +1,6 @@
 package io.opaa.indexing.source.s3;
 
+import io.opaa.indexing.source.SourceSettings;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.s3.S3AccessException;
 import io.opaa.s3.S3Connection;
@@ -43,11 +44,11 @@ public class S3OriginalAccess {
   }
 
   /**
-   * The object {@code filePath} names, downloaded into a temp file <b>the caller deletes</b>, or
-   * empty when this library resolves it to no object at all: a path that is no {@code
-   * s3://bucket/key}, a missing or defective S3 configuration, a key outside every configured scope
-   * (the scopes can be narrowed after indexing), and an object the store reports as gone, archived
-   * or above the size bound.
+   * The object {@code filePath} names, downloaded with the library's resolved {@code source} into a
+   * temp file <b>the caller deletes</b>, or empty when this library resolves it to no object at
+   * all: a path that is no {@code s3://bucket/key}, a missing or defective S3 configuration, a key
+   * outside every configured scope (the scopes can be narrowed after indexing), and an object the
+   * store reports as gone, archived or above the size bound.
    *
    * <p>A {@code 403} on the object is "not there" too, the same way {@code
    * io.opaa.knowledge.S3UploadedOriginalStore} resolves one: without {@code s3:ListBucket} - a
@@ -58,7 +59,8 @@ public class S3OriginalAccess {
    * @throws S3AccessException when the store cannot be reached or refuses the request as a whole -
    *     deliberately not folded into the empty result, because that is not "there is no original"
    */
-  public Optional<S3Download> download(KnowledgeLibrary library, String filePath)
+  public Optional<S3Download> download(
+      KnowledgeLibrary library, SourceSettings source, String filePath)
       throws S3AccessException, InterruptedException {
     Optional<S3ObjectRef> parsed = S3ObjectRef.parse(filePath);
     if (parsed.isEmpty()) {
@@ -67,7 +69,7 @@ public class S3OriginalAccess {
     S3ObjectRef ref = parsed.get();
     S3SourceSettings settings;
     try {
-      settings = S3SourceSettingsJson.of(library);
+      settings = S3SourceSettingsJson.of(source.connectorSettings());
     } catch (S3SourceSettings.InvalidS3SourceSettingsException
         | S3Scope.InvalidS3ScopeException e) {
       log.warn(
@@ -89,7 +91,7 @@ public class S3OriginalAccess {
     }
     S3Connection connection;
     try {
-      connection = S3LibraryConnection.of(library, settings);
+      connection = S3LibraryConnection.of(source, source.sourceCredentials(), settings);
     } catch (S3LibraryConnection.InvalidS3ConfigurationException e) {
       log.warn("Library {} has a defective S3 connection: {}", library.getId(), e.getMessage());
       return Optional.empty();

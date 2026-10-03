@@ -3,6 +3,7 @@ package io.opaa.indexing.source.web;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.api.types.SystemRole;
+import io.opaa.indexing.source.LibrarySourceConnectionResolver;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.organization.Organization;
@@ -93,7 +94,10 @@ class UrlIndexingExecutorCredentialsTest {
 
     KnowledgeLibrary reloaded = libraryRepository.findById(saved.getId()).orElseThrow();
 
-    UrlIndexingRequest request = UrlIndexingExecutor.toUrlIndexingRequest(reloaded);
+    UrlIndexingRequest request =
+        UrlIndexingExecutor.toUrlIndexingRequest(
+            new LibrarySourceConnectionResolver().resolve(reloaded),
+            new LibrarySourceConnectionResolver().currentCredentials(reloaded));
 
     assertThat(request.url()).isEqualTo("https://files.example.com/documents/");
     assertThat(request.proxy()).isEqualTo("proxy.example.com:8080");

@@ -13,6 +13,7 @@ import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.common.UnauthorizedException;
+import io.opaa.indexing.source.ConnectorData;
 import io.opaa.indexing.source.SourceEventIntake;
 import io.opaa.indexing.source.SourceEventTarget;
 import io.opaa.indexing.source.s3.S3IndexingExecutor;
@@ -77,7 +78,19 @@ class S3EventServiceTest {
     library.setWebhookSecret(TOKEN);
     libraryId = UUID.randomUUID();
     when(libraryRepository.findById(libraryId)).thenReturn(Optional.of(library));
-    service = new S3EventService(libraryRepository, executor, intake, JsonMapper.builder().build());
+    service = new S3EventService(executor, intake, JsonMapper.builder().build());
+  }
+
+  /** The way the shared push intake calls in: the library loaded, its stored settings beside it. */
+  private void accept(UUID id, byte[] body, String authorization, String sharedSecret) {
+    KnowledgeLibrary loaded = libraryRepository.findById(id).orElse(null);
+    service.accept(
+        id,
+        loaded,
+        loaded == null ? null : ConnectorData.storedIn(loaded),
+        body,
+        authorization,
+        sharedSecret);
   }
 
   private static byte[] records(String... bucketAndKeys) {
@@ -95,7 +108,7 @@ class S3EventServiceTest {
   }
 
   private void acceptWithBearer(byte[] body) {
-    service.accept(libraryId, body, "Bearer " + TOKEN, null);
+    accept(libraryId, body, "Bearer " + TOKEN, null);
   }
 
   @Test
@@ -104,17 +117,17 @@ class S3EventServiceTest {
     UUID unknown = UUID.randomUUID();
     when(libraryRepository.findById(unknown)).thenReturn(Optional.empty());
 
-    assertThatThrownBy(() -> service.accept(libraryId, body, null, null))
+    assertThatThrownBy(() -> accept(libraryId, body, null, null))
         .isInstanceOf(UnauthorizedException.class)
         .hasMessage(S3EventService.UNAUTHORIZED_MESSAGE);
-    assertThatThrownBy(() -> service.accept(libraryId, body, "Bearer falsch", "falsch"))
+    assertThatThrownBy(() -> accept(libraryId, body, "Bearer falsch", "falsch"))
         .isInstanceOf(UnauthorizedException.class)
         .hasMessage(S3EventService.UNAUTHORIZED_MESSAGE);
-    assertThatThrownBy(() -> service.accept(unknown, body, "Bearer " + TOKEN, null))
+    assertThatThrownBy(() -> accept(unknown, body, "Bearer " + TOKEN, null))
         .isInstanceOf(UnauthorizedException.class)
         .hasMessage(S3EventService.UNAUTHORIZED_MESSAGE);
     library.setWebhookSecret(null);
-    assertThatThrownBy(() -> service.accept(libraryId, body, "Bearer " + TOKEN, TOKEN))
+    assertThatThrownBy(() -> accept(libraryId, body, "Bearer " + TOKEN, TOKEN))
         .as("no token stored: nothing authenticates, not even the former token")
         .isInstanceOf(UnauthorizedException.class);
     verifyNoInteractions(intake, executor);
@@ -139,9 +152,7 @@ class S3EventServiceTest {
     when(libraryRepository.findById(confluenceId)).thenReturn(Optional.of(confluence));
 
     assertThatThrownBy(
-            () ->
-                service.accept(
-                    confluenceId, records("dokumente/2025/a.pdf"), "Bearer " + TOKEN, null))
+            () -> accept(confluenceId, records("dokumente/2025/a.pdf"), "Bearer " + TOKEN, null))
         .isInstanceOf(UnauthorizedException.class);
     verifyNoInteractions(intake);
   }
@@ -149,8 +160,7 @@ class S3EventServiceTest {
   @Test
   void handsTheAdmittedKeysToTheIntakeAndCountsWhatLiesOutside() {
     acceptWithBearer(records("dokumente/2025/a.pdf", "fremd/x.pdf", "dokumente/2024/alt.pdf"));
-    service.accept(
-        libraryId, records("satzungen/haupt.txt", "dokumente/2025/entwurf-b.pdf"), null, TOKEN);
+    accept(libraryId, records("satzungen/haupt.txt", "dokumente/2025/entwurf-b.pdf"), null, TOKEN);
 
     ArgumentCaptor<SourceEventTarget> target = ArgumentCaptor.forClass(SourceEventTarget.class);
     verify(intake)
@@ -163,8 +173,7 @@ class S3EventServiceTest {
 
   @Test
   void theSetUpTestEventAndAnAllOutsideBatchQueueNothing() {
-    service.accept(
-        libraryId, "{\"Event\":\"s3:TestEvent\"}".getBytes(StandardCharsets.UTF_8), null, TOKEN);
+    accept(libraryId, "{\"Event\":\"s3:TestEvent\"}".getBytes(StandardCharsets.UTF_8), null, TOKEN);
     acceptWithBearer(records("fremd/x.pdf"));
 
     verifyNoInteractions(intake, executor);
@@ -188,7 +197,7 @@ class S3EventServiceTest {
     UUID unconfiguredId = UUID.randomUUID();
     when(libraryRepository.findById(unconfiguredId)).thenReturn(Optional.of(unconfigured));
 
-    service.accept(unconfiguredId, records("dokumente/2025/a.pdf"), "Bearer " + TOKEN, null);
+    accept(unconfiguredId, records("dokumente/2025/a.pdf"), "Bearer " + TOKEN, null);
 
     verifyNoInteractions(intake);
   }

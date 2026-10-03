@@ -21,7 +21,9 @@ import io.opaa.indexing.job.IndexingJobService;
 import io.opaa.indexing.job.IndexingRunEvent;
 import io.opaa.indexing.job.IndexingRunEventRepository;
 import io.opaa.indexing.maintenance.StaleDocumentCleanupService;
+import io.opaa.indexing.source.ConnectorData;
 import io.opaa.indexing.source.IndexingRunTemplate;
+import io.opaa.indexing.source.LibrarySourceConnectionResolver;
 import io.opaa.indexing.source.SourceSyncStateRepository;
 import io.opaa.indexing.source.confluence.ConfluenceClientFactory;
 import io.opaa.indexing.source.confluence.ConfluenceEdition;
@@ -111,7 +113,8 @@ class ConfluenceDataCenterFullSyncTest {
                 eventRepository,
                 cleanupService,
                 documentRepository,
-                mock(LibraryStorageQuotaService.class)));
+                mock(LibraryStorageQuotaService.class),
+                new LibrarySourceConnectionResolver()));
   }
 
   private KnowledgeLibrary library(String token, String... spaceKeys) {
@@ -259,7 +262,8 @@ class ConfluenceDataCenterFullSyncTest {
               return s;
             });
     executor.execute(UUID.randomUUID(), library, IndexingRunMode.FULL);
-    assertThat(executor.defaultRunMode(library)).isEqualTo(IndexingRunMode.INCREMENTAL);
+    assertThat(executor.defaultRunMode(library, ConnectorData.storedIn(library)))
+        .isEqualTo(IndexingRunMode.INCREMENTAL);
     org.mockito.Mockito.clearInvocations(documentIngestService, cleanupService);
 
     confluence.updatePage("Onboarding", 2, "<p>Erste Schritte, aktualisiert am Tag zwei.</p>");

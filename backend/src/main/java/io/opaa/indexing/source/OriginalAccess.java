@@ -14,13 +14,14 @@ import java.util.OptionalLong;
 public interface OriginalAccess {
 
   /**
-   * The original of {@code document}, which lives in {@code library}. Empty when none can be served
-   * - gone, outside the library's configured source or unreachable in a way the caller must not
-   * tell apart from "does not exist".
+   * The original of {@code document}, which lives in {@code library}, reached with {@code settings}
+   * as the core resolved them. Empty when none can be served - gone, outside the library's
+   * configured source or unreachable in a way the caller must not tell apart from "does not exist".
    *
    * @throws OriginalUnavailableException when the storage is only temporarily unreachable
    */
-  Optional<DocumentContent> openOriginal(Document document, KnowledgeLibrary library);
+  Optional<DocumentContent> openOriginal(
+      Document document, KnowledgeLibrary library, SourceSettings settings);
 
   /**
    * The bound a streamed original of this type had to pass, so it can be buffered again for an

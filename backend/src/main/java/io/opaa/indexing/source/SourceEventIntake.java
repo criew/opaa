@@ -128,7 +128,9 @@ public class SourceEventIntake {
     // overflowed batch becomes the executor's ordinary run, in the mode the library's own state
     // calls for at drain time.
     IndexingRunMode runMode =
-        batch.overflowed ? target.executor().defaultRunMode(library) : target.targetedRunMode();
+        batch.overflowed
+            ? target.executor().defaultRunMode(library, ConnectorData.storedIn(library))
+            : target.targetedRunMode();
     IndexingJob job;
     try {
       job =

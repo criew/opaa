@@ -207,6 +207,30 @@ public final class ModularArchitecture {
   /** Every direct subpackage of this one, relative to the root, is a connector. */
   static final String CONNECTOR_PARENT = "indexing.source";
 
+  /**
+   * The reads of a library's source configuration, relative to the root, that a connector leaves to
+   * the core: it takes target, secret and settings as {@code SourceSettings} or {@code
+   * ConnectorData} (ADR-0041, Entscheidung 3a). {@code getSourcePath} and {@code getWebhookSecret}
+   * stay readable.
+   */
+  static final Set<String> CORE_ONLY_SOURCE_READS =
+      Set.of(
+          "knowledge.KnowledgeLibrary#getSourceCredentials",
+          "knowledge.KnowledgeLibrary#getSourceUrl",
+          "knowledge.KnowledgeLibrary#getSourceProxy",
+          "knowledge.KnowledgeLibrary#isSourceInsecureSsl",
+          "knowledge.KnowledgeLibrary#getSourceSettings",
+          "indexing.source.ConnectorData#storedIn");
+
+  /**
+   * The core's resolvers, relative to the root. A connector that held one could resolve the secret
+   * of any library, so it never depends on them.
+   */
+  static final Set<String> CORE_ONLY_RESOLVERS =
+      Set.of(
+          "indexing.source.SourceConnectionResolver",
+          "indexing.source.LibrarySourceConnectionResolver");
+
   /** The shared file sync (ADR-0040, Entscheidung 1): connectors use it, it knows none of them. */
   static final String FILE_SYNC = "indexing.filesync";
 
@@ -620,6 +644,43 @@ public final class ModularArchitecture {
         .allowEmptyShould(true);
   }
 
+  /**
+   * Calls and method references alike; the push secret and the filesystem path are exempt. A
+   * connector - and the file sync it hands its store to - neither holds nor creates a resolver of
+   * the core.
+   */
+  ArchRule connectorsTakeTheirSourceConfigurationFromTheCore() {
+    return noClasses()
+        .that(
+            DescribedPredicate.describe(
+                "are connector or file sync classes",
+                javaClass -> isConnector(javaClass) || isInTheFileSync(javaClass)))
+        .should()
+        .accessTargetWhere(
+            DescribedPredicate.describe(
+                "read a source configuration listed in ModularArchitecture.CORE_ONLY_SOURCE_READS",
+                access ->
+                    CORE_ONLY_SOURCE_READS.contains(
+                        relative(access.getTargetOwner().getPackageName())
+                            + "."
+                            + access.getTargetOwner().getSimpleName()
+                            + "#"
+                            + access.getName())))
+        .orShould()
+        .dependOnClassesThat(
+            DescribedPredicate.describe(
+                "are listed in ModularArchitecture.CORE_ONLY_RESOLVERS",
+                target -> {
+                  String relative = relative(target.getBaseComponentType().getPackageName());
+                  return CORE_ONLY_RESOLVERS.contains(
+                      relative + "." + target.getBaseComponentType().getSimpleName());
+                }))
+        .because(
+            "a connector takes target, secret and settings from the core, which resolves them"
+                + " (ADR-0041, Entscheidung 3a)")
+        .allowEmptyShould(true);
+  }
+
   List<ArchRule> all() {
     return List.of(
         everyPackageIsAssigned(),
@@ -634,7 +695,8 @@ public final class ModularArchitecture {
         noOneOutsideAConnectorKnowsIt(),
         webClassesResideInAWebPackage(),
         apiHoldsOnlyItsListedClasses(),
-        onlyTheWebLayerAndAppDependOnAWebPackage());
+        onlyTheWebLayerAndAppDependOnAWebPackage(),
+        connectorsTakeTheirSourceConfigurationFromTheCore());
   }
 
   /** Whether {@code javaClass} lies in the web package of a top-level package. */
@@ -689,6 +751,11 @@ public final class ModularArchitecture {
       return CONNECTORS;
     }
     return MODULES.get(relative.isEmpty() ? ROOT : topLevel(relative));
+  }
+
+  private boolean isInTheFileSync(JavaClass javaClass) {
+    String relative = relative(javaClass.getBaseComponentType().getPackageName());
+    return relative != null && (relative.equals(FILE_SYNC) || relative.startsWith(FILE_SYNC + "."));
   }
 
   boolean isConnector(JavaClass javaClass) {

@@ -20,7 +20,9 @@ import io.opaa.indexing.job.IndexingJobService;
 import io.opaa.indexing.job.IndexingRunEvent;
 import io.opaa.indexing.job.IndexingRunEventRepository;
 import io.opaa.indexing.maintenance.StaleDocumentCleanupService;
+import io.opaa.indexing.source.ConnectorData;
 import io.opaa.indexing.source.IndexingRunTemplate;
+import io.opaa.indexing.source.LibrarySourceConnectionResolver;
 import io.opaa.indexing.source.SourceIndexingExecutor;
 import io.opaa.indexing.source.SourceSyncState;
 import io.opaa.indexing.source.SourceSyncStateRepository;
@@ -189,7 +191,8 @@ public final class FileSyncHarness {
             eventRepository,
             cleanupService,
             documentRepository,
-            mock(LibraryStorageQuotaService.class));
+            mock(LibraryStorageQuotaService.class),
+            new LibrarySourceConnectionResolver());
     executor =
         new SourceIndexingExecutor() {
           @Override
@@ -202,7 +205,7 @@ public final class FileSyncHarness {
           }
 
           @Override
-          public IndexingRunMode defaultRunMode(KnowledgeLibrary library) {
+          public IndexingRunMode defaultRunMode(KnowledgeLibrary library, ConnectorData settings) {
             return IndexingRunMode.FULL;
           }
 

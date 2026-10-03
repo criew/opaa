@@ -1,7 +1,6 @@
 package io.opaa.indexing.source.s3;
 
 import io.opaa.indexing.source.ConnectorData;
-import io.opaa.knowledge.KnowledgeLibrary;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -23,13 +22,14 @@ public final class S3SourceSettingsJson {
   private S3SourceSettingsJson() {}
 
   /**
-   * The settings stored on {@code library}, {@code null} when it carries none.
+   * The settings a library carries, {@code null} for none.
    *
    * @throws S3SourceSettings.InvalidS3SourceSettingsException when the stored document does not
    *     read back into a valid configuration
+   * @throws S3Scope.InvalidS3ScopeException for a stored scope that cannot be one
    */
-  public static S3SourceSettings of(KnowledgeLibrary library) {
-    return read(library.getSourceSettings());
+  public static S3SourceSettings of(ConnectorData stored) {
+    return stored == null ? null : fromData(stored);
   }
 
   public static String write(S3SourceSettings settings) {

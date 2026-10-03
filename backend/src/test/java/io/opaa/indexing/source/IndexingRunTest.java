@@ -52,6 +52,8 @@ class IndexingRunTest {
       new IndexingRun(
           jobId,
           library,
+          new LibrarySourceConnectionResolver().resolve(library),
+          library::getSourceCredentials,
           IndexingRunMode.FULL,
           SourceTypes.HTTP_DIRECTORY,
           new IndexingRunProgress(jobService, jobId),

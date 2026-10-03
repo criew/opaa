@@ -58,8 +58,8 @@ class PushIntakeServiceTest {
 
     verify(confluence).rejectForeign(BODY, HEADER);
     verify(s3).rejectForeign(BODY, HEADER);
-    verify(confluence, never()).acceptNotification(any(), any(), any());
-    verify(s3, never()).acceptNotification(any(), any(), any());
+    verify(confluence, never()).acceptNotification(any(), any(), any(), any());
+    verify(s3, never()).acceptNotification(any(), any(), any(), any());
     verify(libraries, times(1)).findById(unknown);
   }
 
@@ -75,7 +75,7 @@ class PushIntakeServiceTest {
 
     verify(confluence).rejectForeign(BODY, HEADER);
     verify(s3).rejectForeign(BODY, HEADER);
-    verify(confluence, never()).acceptNotification(any(), any(), any());
+    verify(confluence, never()).acceptNotification(any(), any(), any(), any());
   }
 
   @Test
@@ -98,7 +98,7 @@ class PushIntakeServiceTest {
 
     InOrder order = inOrder(s3, confluence);
     order.verify(s3).rejectForeign(BODY, HEADER);
-    order.verify(confluence).acceptNotification(wiki, BODY, HEADER);
+    order.verify(confluence).acceptNotification(wiki, null, BODY, HEADER);
     verify(libraries, times(1)).findById(wiki.getId());
     verify(confluence, never()).rejectForeign(any(), any());
   }

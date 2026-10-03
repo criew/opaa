@@ -1,17 +1,16 @@
 package io.opaa.indexing.source.s3;
 
-import io.opaa.knowledge.KnowledgeLibrary;
+import io.opaa.indexing.source.SourceSettings;
 import io.opaa.s3.S3Connection;
 import io.opaa.s3.S3Credentials;
 import io.opaa.sourceaccess.ProxyAndCredentials;
 import java.net.URI;
 
 /**
- * Assembles the {@link S3Connection} of an S3 library from its stored source configuration
- * (ADR-0018: the library is the only configuration) - the run-side counterpart of what {@code
- * S3ConnectionService} does for the connection test with raw request fields. Every defect in the
- * stored configuration surfaces as one German sentence a run can fail with; the credentials never
- * appear in it.
+ * Assembles the {@link S3Connection} of an S3 library from the source settings the core resolved -
+ * the run-side counterpart of what {@code S3ConnectionService} does for the connection test with
+ * raw request fields. Every defect in the configuration surfaces as one German sentence a run can
+ * fail with; the credentials never appear in it.
  */
 final class S3LibraryConnection {
 
@@ -21,20 +20,21 @@ final class S3LibraryConnection {
   private S3LibraryConnection() {}
 
   /**
-   * @param settings the library's own stored settings ({@link S3SourceSettingsJson#of}), passed in
-   *     so the caller reads them once
+   * @param source the resolved source settings, {@code credentials} the secret valid now
+   * @param settings the S3 settings read from {@code source}, passed in so the caller reads them
+   *     once
    */
-  static S3Connection of(KnowledgeLibrary library, S3SourceSettings settings) {
+  static S3Connection of(SourceSettings source, String credentials, S3SourceSettings settings) {
     if (settings == null) {
       throw new InvalidS3ConfigurationException(NO_SETTINGS);
     }
     URI endpoint;
-    S3Credentials credentials;
+    S3Credentials parsed;
     ProxyAndCredentials proxy;
     try {
-      endpoint = S3Connection.normalizeEndpoint(library.getSourceUrl());
-      credentials = S3Credentials.parse(library.getSourceCredentials());
-      proxy = ProxyAndCredentials.parse(library.getSourceProxy(), null);
+      endpoint = S3Connection.normalizeEndpoint(source.sourceUrl());
+      parsed = S3Credentials.parse(credentials);
+      proxy = ProxyAndCredentials.parse(source.sourceProxy(), null);
     } catch (S3Connection.InvalidEndpointException
         | S3Credentials.InvalidCredentialsFormatException
         | ProxyAndCredentials.InvalidProxyConfigurationException e) {
@@ -44,13 +44,13 @@ final class S3LibraryConnection {
         endpoint,
         settings.effectiveRegion(),
         settings.pathStyle(),
-        credentials,
+        parsed,
         proxy.proxyHost(),
         proxy.proxyPort(),
-        library.isSourceInsecureSsl());
+        source.sourceInsecureSsl());
   }
 
-  /** The stored configuration cannot be turned into a connection; the message is user-facing. */
+  /** The configuration cannot be turned into a connection; the message is user-facing. */
   static final class InvalidS3ConfigurationException extends RuntimeException {
     InvalidS3ConfigurationException(String message) {
       super(message);

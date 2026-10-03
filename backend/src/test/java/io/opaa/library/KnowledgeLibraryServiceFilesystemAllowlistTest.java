@@ -25,6 +25,7 @@ import io.opaa.indexing.chunk.VectorStoreWriter;
 import io.opaa.indexing.job.IndexingJobRepository;
 import io.opaa.indexing.job.IndexingJobService;
 import io.opaa.indexing.source.FilesystemPathAllowlist;
+import io.opaa.indexing.source.LibrarySourceConnectionResolver;
 import io.opaa.indexing.source.SourceConnectorStubs;
 import io.opaa.indexing.source.TestSourceConnectors;
 import io.opaa.indexing.source.confluence.ConfluenceConnectionService;
@@ -140,7 +141,8 @@ class KnowledgeLibraryServiceFilesystemAllowlistTest {
                 .confluenceConnectionService(
                     org.mockito.Mockito.mock(ConfluenceConnectionService.class))
                 .confluenceProperties(confluenceProperties)
-                .registry());
+                .registry(),
+            new LibrarySourceConnectionResolver());
 
     ownerId = UUID.randomUUID();
     User owner = new User("subject", "issuer", "owner@example.com", "Owner");

@@ -1,5 +1,6 @@
 package io.opaa.indexing.source.confluence;
 
+import io.opaa.indexing.source.ConnectorData;
 import io.opaa.knowledge.KnowledgeLibrary;
 import java.util.List;
 
@@ -15,11 +16,15 @@ public final class ConfluenceTestSettings {
     store(
         library,
         new ConfluenceSourceSettings(
-            edition, spaces, ConfluenceSourceSettings.of(library).fullSyncIntervalDays()));
+            edition,
+            spaces,
+            ConfluenceSourceSettings.stored(ConnectorData.storedIn(library))
+                .fullSyncIntervalDays()));
   }
 
   public static void fullSyncIntervalDays(KnowledgeLibrary library, Integer days) {
-    ConfluenceSourceSettings stored = ConfluenceSourceSettings.of(library);
+    ConfluenceSourceSettings stored =
+        ConfluenceSourceSettings.stored(ConnectorData.storedIn(library));
     store(library, new ConfluenceSourceSettings(stored.edition(), stored.spaceSelection(), days));
   }
 

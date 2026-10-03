@@ -5,6 +5,7 @@ import io.opaa.format.SupportedDocumentFormats;
 import io.opaa.indexing.document.DocumentIngestService;
 import io.opaa.indexing.job.IndexingEventCategory;
 import io.opaa.indexing.maintenance.StaleDocumentCleanupService;
+import io.opaa.indexing.source.ConnectorData;
 import io.opaa.indexing.source.IndexingRun;
 import io.opaa.indexing.source.IndexingRunFailedException;
 import io.opaa.indexing.source.IndexingRunTemplate;
@@ -92,7 +93,7 @@ public class S3IndexingExecutor implements SourceIndexingExecutor {
 
   /** Always the full sync: the event run is started by a notification alone, never by default. */
   @Override
-  public IndexingRunMode defaultRunMode(KnowledgeLibrary library) {
+  public IndexingRunMode defaultRunMode(KnowledgeLibrary library, ConnectorData settings) {
     return IndexingRunMode.FULL;
   }
 
@@ -143,9 +144,9 @@ public class S3IndexingExecutor implements SourceIndexingExecutor {
   }
 
   /**
-   * Opens the run's store from the library's stored configuration and runs the full sync over it. A
-   * defect in the configuration or a store the access layer cannot open fails the run with the
-   * layer's own German sentence, before any object is touched.
+   * Opens the run's store from the resolved configuration and runs the full sync over it. A defect
+   * in the configuration or a store the access layer cannot open fails the run with the layer's own
+   * German sentence, before any object is touched.
    */
   ListingOutcome indexScopes(IndexingRun run) throws InterruptedException {
     return withStore(run, S3FullSync::run);
@@ -153,10 +154,10 @@ public class S3IndexingExecutor implements SourceIndexingExecutor {
 
   private ListingOutcome withStore(IndexingRun run, SyncBody body) throws InterruptedException {
     KnowledgeLibrary library = run.library();
-    S3SourceSettings settings = S3SourceSettingsJson.of(library);
+    S3SourceSettings settings = S3SourceSettingsJson.of(run.settings().connectorSettings());
     S3Connection connection;
     try {
-      connection = S3LibraryConnection.of(library, settings);
+      connection = S3LibraryConnection.of(run.settings(), run.currentCredentials(), settings);
     } catch (S3LibraryConnection.InvalidS3ConfigurationException e) {
       throw new IndexingRunFailedException(e.getMessage());
     }

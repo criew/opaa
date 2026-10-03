@@ -491,7 +491,8 @@ class LibraryResponseMapperTest {
                 false,
                 AssetReach.NONE,
                 null,
-                confluenceConnector.settingsView(confluence, false)));
+                confluenceConnector.settingsView(
+                    confluence, ConnectorData.storedIn(confluence), false)));
 
     assertThat(reader.getSourceType()).isEqualTo("CONFLUENCE");
     assertThat(reader.getSourceSettings())
@@ -511,7 +512,7 @@ class LibraryResponseMapperTest {
             false,
             true,
             false,
-            confluenceConnector.settingsView(confluence, true),
+            confluenceConnector.settingsView(confluence, ConnectorData.storedIn(confluence), true),
             7,
             null,
             null,
@@ -529,7 +530,8 @@ class LibraryResponseMapperTest {
                 false,
                 AssetReach.NONE,
                 null,
-                confluenceConnector.settingsView(confluence, false)));
+                confluenceConnector.settingsView(
+                    confluence, ConnectorData.storedIn(confluence), false)));
     assertThat(manager.getSourceSettings()).containsEntry("fullSyncIntervalDays", 14);
     assertThat(manager.getPushSecretSet()).isFalse();
   }
@@ -567,7 +569,7 @@ class LibraryResponseMapperTest {
                 false,
                 AssetReach.NONE,
                 null,
-                s3Connector.settingsView(s3, false)));
+                s3Connector.settingsView(s3, ConnectorData.storedIn(s3), false)));
 
     assertThat(response.getSourceSettings()).containsEntry("region", "eu-central-1");
     assertThat(response.toString()).doesNotContain("hochgeheim");

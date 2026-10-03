@@ -76,7 +76,7 @@ public class ConfluenceSourceConnector
 
   @Override
   public void acceptNotification(
-      KnowledgeLibrary library, byte[] body, UnaryOperator<String> header) {
+      KnowledgeLibrary library, ConnectorData settings, byte[] body, UnaryOperator<String> header) {
     webhookService.accept(
         library.getId(),
         library,
@@ -126,9 +126,10 @@ public class ConfluenceSourceConnector
    */
   @Override
   public SourceSettings validateChange(
-      KnowledgeLibrary library, SourceSettings requested, boolean replacesConnection) {
+      SourceSettings stored, SourceSettings requested, boolean replacesConnection) {
     ConfluenceSourceSettings own = ConfluenceSourceSettings.read(requested.connectorSettings());
-    ConfluenceEdition storedEdition = ConfluenceSourceSettings.of(library).edition();
+    ConfluenceEdition storedEdition =
+        ConfluenceSourceSettings.stored(stored.connectorSettings()).edition();
     if (own.edition() != null && own.edition() != storedEdition) {
       throw new ValidationException(
           "sourceSettings.edition kann nach dem Anlegen der Bibliothek nicht mehr geändert werden");
@@ -245,12 +246,13 @@ public class ConfluenceSourceConnector
   }
 
   @Override
-  public void applyChange(KnowledgeLibrary library, SourceSettings validated) {
+  public void applyChange(
+      KnowledgeLibrary library, ConnectorData storedSettings, SourceSettings validated) {
     if (validated.connectorSettings() == null) {
       return;
     }
     ConfluenceSourceSettings change = ConfluenceSourceSettings.read(validated.connectorSettings());
-    ConfluenceSourceSettings stored = ConfluenceSourceSettings.of(library);
+    ConfluenceSourceSettings stored = ConfluenceSourceSettings.stored(storedSettings);
     Integer intervalDays = stored.fullSyncIntervalDays();
     if (change.fullSyncIntervalDays() != null) {
       intervalDays = change.fullSyncIntervalDays() == 0 ? null : change.fullSyncIntervalDays();
@@ -273,8 +275,9 @@ public class ConfluenceSourceConnector
    * settings the record no longer reads are left out rather than failing the whole read.
    */
   @Override
-  public ConnectorData settingsView(KnowledgeLibrary library, boolean manager) {
-    ConfluenceSourceSettings stored = readableStored(library);
+  public ConnectorData settingsView(
+      KnowledgeLibrary library, ConnectorData storedSettings, boolean manager) {
+    ConfluenceSourceSettings stored = readableStored(library, storedSettings);
     if (stored == null || stored.edition() == null) {
       return null;
     }
@@ -287,8 +290,8 @@ public class ConfluenceSourceConnector
 
   /** The selection is exactly what every reader may see - a change leaves an audit trail. */
   @Override
-  public Map<String, Object> settingsState(KnowledgeLibrary library) {
-    ConfluenceSourceSettings stored = readableStored(library);
+  public Map<String, Object> settingsState(KnowledgeLibrary library, ConnectorData storedSettings) {
+    ConfluenceSourceSettings stored = readableStored(library, storedSettings);
     return Map.of(
         SPACES_STATE,
         stored == null
@@ -297,9 +300,10 @@ public class ConfluenceSourceConnector
   }
 
   /** The stored settings, or {@code null} with a log entry when they no longer read. */
-  private static ConfluenceSourceSettings readableStored(KnowledgeLibrary library) {
+  private static ConfluenceSourceSettings readableStored(
+      KnowledgeLibrary library, ConnectorData storedSettings) {
     try {
-      return ConfluenceSourceSettings.of(library);
+      return ConfluenceSourceSettings.stored(storedSettings);
     } catch (ValidationException | IllegalArgumentException e) {
       log.warn(
           "Library {} carries Confluence settings the record rejects; left out: {}",

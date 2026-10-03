@@ -23,8 +23,10 @@ import io.opaa.indexing.source.FilesystemPathAllowlist;
 import io.opaa.indexing.source.IndexingRunTemplate;
 import io.opaa.indexing.source.IndexingSourceExecutorRegistry;
 import io.opaa.indexing.source.LibraryIndexingScheduler;
+import io.opaa.indexing.source.LibrarySourceConnectionResolver;
 import io.opaa.indexing.source.RemoteContentProperties;
 import io.opaa.indexing.source.RemoteOriginalAccess;
+import io.opaa.indexing.source.SourceConnectionResolver;
 import io.opaa.indexing.source.SourceConnector;
 import io.opaa.indexing.source.SourceConnectorRegistry;
 import io.opaa.indexing.source.SourceIndexingExecutor;
@@ -232,13 +234,23 @@ public class IndexingConfiguration {
       IndexingRunEventRepository indexingRunEventRepository,
       StaleDocumentCleanupService staleDocumentCleanupService,
       DocumentRepository documentRepository,
-      LibraryStorageQuotaService libraryStorageQuotaService) {
+      LibraryStorageQuotaService libraryStorageQuotaService,
+      SourceConnectionResolver sourceConnectionResolver) {
     return new IndexingRunTemplate(
         indexingJobService,
         indexingRunEventRepository,
         staleDocumentCleanupService,
         documentRepository,
-        libraryStorageQuotaService);
+        libraryStorageQuotaService,
+        sourceConnectionResolver);
+  }
+
+  /**
+   * Hands every connector the target and secret of a library; see {@link SourceConnectionResolver}.
+   */
+  @Bean
+  SourceConnectionResolver sourceConnectionResolver() {
+    return new LibrarySourceConnectionResolver();
   }
 
   @Bean

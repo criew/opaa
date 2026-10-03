@@ -19,10 +19,11 @@ import org.springframework.dao.DataIntegrityViolationException;
 
 /**
  * The frame every connector run shares: it starts the job's progress and protocol, rejects a run
- * mode the executor does not declare, runs the connector's body, reconciles by absence when the
- * body listed the source completely and the mode allows it, notes throttling and a spent budget
- * from the run's request meter, persists the listing assessment and the run's cost, and ends the
- * job exactly once - completed, or failed with a German message.
+ * mode the executor does not declare, resolves the library's source through the {@link
+ * SourceConnectionResolver}, runs the connector's body, reconciles by absence when the body listed
+ * the source completely and the mode allows it, notes throttling and a spent budget from the run's
+ * request meter, persists the listing assessment and the run's cost, and ends the job exactly once
+ * - completed, or failed with a German message.
  *
  * <p>A body ends its run early by throwing {@link IndexingRunFailedException} with the message the
  * job should carry. A {@link RequestBudgetExhaustedException} ends the run as truncated - noted
@@ -52,18 +53,21 @@ public class IndexingRunTemplate {
   private final VanishedDocumentReconciler staleDocumentCleanupService;
   private final DocumentRepository documentRepository;
   private final LibraryStorageQuotaService storageQuotaService;
+  private final SourceConnectionResolver connectionResolver;
 
   public IndexingRunTemplate(
       IndexingJobService indexingJobService,
       IndexingRunEventRepository eventRepository,
       VanishedDocumentReconciler staleDocumentCleanupService,
       DocumentRepository documentRepository,
-      LibraryStorageQuotaService storageQuotaService) {
+      LibraryStorageQuotaService storageQuotaService,
+      SourceConnectionResolver connectionResolver) {
     this.indexingJobService = indexingJobService;
     this.eventRepository = eventRepository;
     this.staleDocumentCleanupService = staleDocumentCleanupService;
     this.documentRepository = documentRepository;
     this.storageQuotaService = storageQuotaService;
+    this.connectionResolver = connectionResolver;
   }
 
   /** Runs {@code body} for {@code jobId} inside the frame described on this class. */
@@ -80,10 +84,21 @@ public class IndexingRunTemplate {
       progress.fail("Betriebsart " + runMode + " wird für diesen Quellentyp nicht unterstützt");
       return;
     }
+    SourceSettings settings;
+    try {
+      settings = connectionResolver.resolve(library);
+    } catch (RuntimeException e) {
+      log.error(
+          "Indexing run {} could not resolve the source of library {}", jobId, library.getId(), e);
+      progress.fail(failureMessage(e));
+      return;
+    }
     var run =
         new IndexingRun(
             jobId,
             library,
+            settings,
+            () -> connectionResolver.currentCredentials(library),
             runMode,
             executor.sourceType(),
             progress,
@@ -128,10 +143,7 @@ public class IndexingRunTemplate {
     } catch (Exception e) {
       log.error("Indexing run {} for library {} failed unexpectedly", jobId, library.getId(), e);
       failed = true;
-      failure =
-          e.getMessage() != null
-              ? e.getMessage()
-              : "Unerwarteter Fehler (" + e.getClass().getSimpleName() + ")";
+      failure = failureMessage(e);
     }
     reportThrottling(run);
     recordCost(run, !failed && incomplete);
@@ -164,6 +176,12 @@ public class IndexingRunTemplate {
         Thread.currentThread().interrupt();
       }
     }
+  }
+
+  private static String failureMessage(Exception e) {
+    return e.getMessage() != null
+        ? e.getMessage()
+        : "Unerwarteter Fehler (" + e.getClass().getSimpleName() + ")";
   }
 
   /**

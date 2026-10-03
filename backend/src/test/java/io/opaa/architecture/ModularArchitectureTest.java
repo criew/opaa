@@ -88,6 +88,11 @@ class ModularArchitectureTest {
   }
 
   @Test
+  void connectorsTakeTheirSourceConfigurationFromTheCore() {
+    ARCHITECTURE.connectorsTakeTheirSourceConfigurationFromTheCore().check(mainClasses);
+  }
+
+  @Test
   void webClassesResideInAWebPackage() {
     ARCHITECTURE.webClassesResideInAWebPackage().check(mainClasses);
   }

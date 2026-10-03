@@ -19,6 +19,7 @@ import io.opaa.indexing.document.DocumentIngests;
 import io.opaa.indexing.job.IndexingJobService;
 import io.opaa.indexing.job.IndexingRunEventRepository;
 import io.opaa.indexing.source.IndexingRunTemplate;
+import io.opaa.indexing.source.LibrarySourceConnectionResolver;
 import io.opaa.indexing.source.web.UrlIndexingExecutor;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
@@ -254,7 +255,8 @@ class RssFeedIndexingExecutorInsecureSslTest {
                 indexingRunEventRepository,
                 mock(io.opaa.indexing.maintenance.StaleDocumentCleanupService.class),
                 documentRepository,
-                mock(LibraryStorageQuotaService.class)));
+                mock(LibraryStorageQuotaService.class),
+                new LibrarySourceConnectionResolver()));
   }
 
   private KnowledgeLibrary library(String feedUrl, boolean sourceInsecureSsl) {

@@ -67,7 +67,7 @@ class SourceEventIntakeTest {
     when(target.sourceType()).thenReturn(SourceTypes.CONFLUENCE);
     when(target.executor()).thenReturn(executor);
     when(target.targetedRunMode()).thenReturn(IndexingRunMode.INCREMENTAL);
-    when(executor.defaultRunMode(any())).thenReturn(IndexingRunMode.FULL);
+    when(executor.defaultRunMode(any(), any())).thenReturn(IndexingRunMode.FULL);
     scheduler = mock(TaskScheduler.class);
     when(scheduler.schedule(any(Runnable.class), any(Instant.class)))
         .thenAnswer(
@@ -140,7 +140,7 @@ class SourceEventIntakeTest {
     verify(target, never()).refresh(any(), any(), any(), anyInt());
 
     // the mode is asked of the executor at drain time, from the library's state then
-    when(executor.defaultRunMode(library)).thenReturn(IndexingRunMode.INCREMENTAL);
+    when(executor.defaultRunMode(eq(library), any())).thenReturn(IndexingRunMode.INCREMENTAL);
     enqueue("1", "2", "3", "4");
     scheduled.get(1).run();
 

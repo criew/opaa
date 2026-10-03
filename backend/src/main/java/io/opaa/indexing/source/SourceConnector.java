@@ -37,37 +37,42 @@ public interface SourceConnector {
   SourceSettings validate(SourceSettings requested);
 
   /**
-   * Validates a change of {@code library}'s configuration. The connection fields are only
-   * meaningful when {@code replacesConnection}; absent connector settings, or an absent part of
-   * them, stay as stored. Returns what {@link #applyChange} applies, the connection fields
-   * normalised.
+   * Validates a change of a library's configuration against {@code stored}, its current one as the
+   * core resolved it. The connection fields are only meaningful when {@code replacesConnection};
+   * absent connector settings, or an absent part of them, stay as stored. Returns what {@link
+   * #applyChange} applies, the connection fields normalised.
    */
   default SourceSettings validateChange(
-      KnowledgeLibrary library, SourceSettings requested, boolean replacesConnection) {
+      SourceSettings stored, SourceSettings requested, boolean replacesConnection) {
     return replacesConnection ? validate(requested) : requested;
   }
 
   /** Writes the connector settings of {@link #validate}'s result onto an unsaved library. */
   default void configureNew(KnowledgeLibrary library, SourceSettings validated) {}
 
-  /** Writes the connector settings of {@link #validateChange}'s result. */
-  default void applyChange(KnowledgeLibrary library, SourceSettings validated) {}
+  /**
+   * Writes the connector settings of {@link #validateChange}'s result; {@code stored} are the ones
+   * {@code library} carries until then.
+   */
+  default void applyChange(
+      KnowledgeLibrary library, ConnectorData stored, SourceSettings validated) {}
 
   /**
-   * The connector settings of {@code library} as a caller sees them, {@code null} for none. By
-   * default only a manager ({@code manager}) sees them, whole; a connector that shows readers what
-   * the library covers overrides this deliberately. Never a secret - the settings carry none
-   * (ADR-0038, Entscheidung 3).
+   * The connector settings {@code stored} on {@code library} as a caller sees them, {@code null}
+   * for none. By default only a manager ({@code manager}) sees them, whole; a connector that shows
+   * readers what the library covers overrides this deliberately. Never a secret - the settings
+   * carry none (ADR-0038, Entscheidung 3).
    */
-  default ConnectorData settingsView(KnowledgeLibrary library, boolean manager) {
-    return manager ? ConnectorData.storedIn(library) : null;
+  default ConnectorData settingsView(
+      KnowledgeLibrary library, ConnectorData stored, boolean manager) {
+    return manager ? stored : null;
   }
 
   /**
-   * The connector settings of {@code library} in comparable form, keyed by the field name the audit
-   * records when a value changes.
+   * The connector settings {@code stored} on {@code library} in comparable form, keyed by the field
+   * name the audit records when a value changes.
    */
-  default Map<String, Object> settingsState(KnowledgeLibrary library) {
+  default Map<String, Object> settingsState(KnowledgeLibrary library, ConnectorData stored) {
     return Map.of();
   }
 

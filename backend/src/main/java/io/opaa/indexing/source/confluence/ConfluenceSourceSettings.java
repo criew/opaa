@@ -2,7 +2,6 @@ package io.opaa.indexing.source.confluence;
 
 import io.opaa.common.ValidationException;
 import io.opaa.indexing.source.ConnectorData;
-import io.opaa.knowledge.KnowledgeLibrary;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -30,9 +29,8 @@ public record ConfluenceSourceSettings(
   private static final ConfluenceSourceSettings NONE =
       new ConfluenceSourceSettings(null, List.of(), null);
 
-  /** The settings stored on {@code library}; no edition and no spaces when it carries none. */
-  public static ConfluenceSourceSettings of(KnowledgeLibrary library) {
-    ConnectorData stored = ConnectorData.storedIn(library);
+  /** The settings a library carries; no edition and no spaces for {@code null}. */
+  public static ConfluenceSourceSettings stored(ConnectorData stored) {
     return stored == null ? NONE : read(stored);
   }
 
