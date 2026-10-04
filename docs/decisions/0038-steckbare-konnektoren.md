@@ -247,3 +247,30 @@ Grundlage sind [connector-connections.md](../features/connector-connections.md) 
   OAuth-Ablauf sieht er nie,
   und aus `KnowledgeLibrary` liest er weder Zugangsdaten noch Adresse noch Einstellungen. Das
   verlangt einen Umbau der Lauf-SPI mit eigener ArchUnit-Regel (ADR-0041, Entscheidung 3a, #2178).
+
+## Nachtrag: Form der Profilangabe (04.10.2026, #2218)
+
+Die drei Felder `profileSupport`, `authMethods` und `serviceAccountKey` der Beschreibung sind in
+einem Wert `ProfileDeclaration` (`io.opaa.indexing.source`) aufgegangen. Er nennt nichts aus dem
+Modul connections.
+
+- **Profilangabe:** verboten, optional oder Pflicht wie oben.
+- **Anmeldearten** als Liste von `SignIn(method, owners, details)`. `owners` nennt Bibliothek,
+  Person oder beide. `details` ist versiegelt: keine Angaben, die Form des persönlichen Geheimnisses
+  (Token oder Benutzername und Passwort) oder der Dienstkonto-Schlüssel mit Token-Endpunkt und
+  Scope. Eine weitere Art mit eigenen Endpunkten (OAuth) ergänzt einen Typ, eine weitere Besitzart
+  einen Wert. Ein Konnektor ohne Profile nennt nur die Anmeldung, die der Kern für den eigenen
+  Schlüssel einer Bibliothek ausführt (Google Drive).
+- **Adressregel** `ServerAddressRule`: zulässige Schemata (`https`, `http`, `smb`) oder eine feste
+  Adresse, die das Formular nicht abfragt. Ein zweiter Host wäre ein weiteres Feld.
+- **Vorgaben-Schema** `ProfileDefaults`: die Einstellungsschlüssel, die ein Profil setzen darf, je
+  mit Beschriftung und Art (Text, Ja/Nein, Auswahl). `SourceConnector#readProfileDefaults` prüft die
+  Vorgaben eines Profils dagegen; ein anderer Schlüssel ist ein `400`. Die Form der
+  Bibliothekseinstellungen (`readSettings`) gilt für Vorgaben nicht mehr.
+- **Registry beim Start:** Profile verboten bei `uploads` oder ohne `remote`; Pflicht genau dann,
+  wenn OAuth oder Client-Credentials angeboten werden; jeder Vorgaben-Schlüssel steht in
+  `SourceConnector#settingsKeys`; ein Konnektor mit Dienstkonto-Schlüssel lässt noch kein Profil
+  zu. Die Umkehrung „entferntes Ziel heißt nicht verboten“ prüft die Registry erst, wenn die
+  mitgelieferten Konnektoren Profile zulassen.
+- `GET /source-types` meldet `signIns`, `profileDefaults` und `serverAddress`; die Auswahl der
+  Profile (`GET /connection-profiles`) meldet die Vorgaben eines Profils als `connectorDefaults`.

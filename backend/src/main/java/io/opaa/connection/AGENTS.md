@@ -28,7 +28,8 @@ knowledge kennt connections: Der Kern erreicht es über seine Ports `SourceConne
   nicht nur `null` an der Entität: Ohne Schlüssel liest die Entität ohnehin `null`.
 - **Ein gelöschtes Profil** lässt die Zuordnung mit `profile_id NULL` stehen („Zugang entfernt“);
   der Port sperrt dann mit eigener Kategorie und deutscher Meldung.
-- **Konnektor-Vorgaben** des Profils überschreiben die Einstellungen der Bibliothek je Schlüssel.
+- **Konnektor-Vorgaben** des Profils (nur deklarierte Schlüssel, `readProfileDefaults`) überschreiben
+  die Einstellungen der Bibliothek je Schlüssel.
   Verwaltungspfade arbeiten mit den gespeicherten, Lauf und Push-Eingang mit den zusammengeführten
   (`SourceConnectionResolver#effectiveSettings`).
 - **Freigabe nur hier:** `ConnectorReleaseService` entscheidet eine Neuanlage aus

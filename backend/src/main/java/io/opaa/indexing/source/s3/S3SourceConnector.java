@@ -163,6 +163,11 @@ public class S3SourceConnector
     return DESCRIPTOR;
   }
 
+  @Override
+  public Set<String> settingsKeys() {
+    return S3SourceSettingsJson.KEYS;
+  }
+
   /** Buckets, prefixes, overlap and patterns are checked here, before anything else is asked. */
   @Override
   public ConnectorData readSettings(ConnectorData requested) {

@@ -1,9 +1,15 @@
 package io.opaa.indexing.source.profileprobe;
 
 import io.opaa.api.types.ConnectionAuthMethod;
+import io.opaa.api.types.ConnectionOwnership;
 import io.opaa.api.types.ConnectionProfileSupport;
+import io.opaa.api.types.PersonalSecretForm;
 import io.opaa.common.ValidationException;
 import io.opaa.indexing.source.ConnectorData;
+import io.opaa.indexing.source.DefaultKey;
+import io.opaa.indexing.source.ProfileDeclaration;
+import io.opaa.indexing.source.ServerAddressRule;
+import io.opaa.indexing.source.SignIn;
 import io.opaa.indexing.source.SourceConnectionTestResult;
 import io.opaa.indexing.source.SourceConnector;
 import io.opaa.indexing.source.SourceConnectorDescriptor;
@@ -15,8 +21,9 @@ import org.springframework.stereotype.Component;
 
 /**
  * A connector that exists only in test code and admits connection profiles: it reports its profile
- * support and sign-in methods in its descriptor and needs no line outside this package (#2160). Its
- * settings {@code edition} and {@code topic} are optional texts.
+ * declaration in its descriptor and needs no line outside this package. Its settings {@code
+ * edition} and {@code topic} are optional texts; a profile may set {@code edition}, at an {@code
+ * https}, {@code http} or {@code smb} address.
  */
 @Component
 public class ProfileProbeSourceConnector implements SourceConnector {
@@ -29,11 +36,21 @@ public class ProfileProbeSourceConnector implements SourceConnector {
   public SourceConnectorDescriptor descriptor() {
     return SourceConnectorDescriptor.remoteRun(TYPE, "Testquelle mit Zugang")
         .withProfiles(
-            ConnectionProfileSupport.OPTIONAL,
-            Set.of(
-                ConnectionAuthMethod.NONE,
-                ConnectionAuthMethod.PERSONAL_SECRET,
-                ConnectionAuthMethod.OAUTH));
+            ProfileDeclaration.of(
+                    ConnectionProfileSupport.OPTIONAL,
+                    SignIn.of(
+                        ConnectionAuthMethod.NONE,
+                        ConnectionOwnership.LIBRARY,
+                        ConnectionOwnership.PERSON),
+                    SignIn.personalSecret(
+                        PersonalSecretForm.USERNAME_AND_PASSWORD, ConnectionOwnership.LIBRARY))
+                .withAddress(ServerAddressRule.schemes("https", "http", "smb"))
+                .withDefaults(DefaultKey.choice("edition", "Edition", "CLOUD", "DC")));
+  }
+
+  @Override
+  public Set<String> settingsKeys() {
+    return KEYS;
   }
 
   @Override

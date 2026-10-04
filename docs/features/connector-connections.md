@@ -157,13 +157,13 @@ selbst ein.
 |---|---|---|
 | Name | „Zugang Exchange Rheinfurt“ | erscheint in der Auswahl |
 | Konnektor | Exchange | genau einer; beim Profiltyp „MCP-Server“ keiner (siehe [MCP-Grundlage](#mcp-grundlage)) |
-| Server-Adresse | Nextcloud-URL, `https://graph.microsoft.com` | einziges Ziel der Zugangsdaten |
+| Server-Adresse | Nextcloud-URL, `https://graph.microsoft.com`, `smb://dateiserver/ablage` | einziges Ziel der Zugangsdaten; Schemata nach Konnektor, bei fester Adresse entfällt das Feld |
 | Anmeldeart | persönliches Geheimnis, OAuth, Client-Credentials, Dienstkonto-Schlüssel | nur die Arten, die der Konnektor anbietet |
 | App-Registrierung | Client-ID, Client-Secret, Mandant; beim Dienstkonto der Schlüssel | bei OAuth, Client-Credentials und Dienstkonto-Schlüssel; Secret bzw. Schlüssel verschlüsselt, nie in Antworten |
 | Ablaufdatum des Secrets | 2027-03-31 | OPAA warnt vorher |
 | Scopes | `Files.Read offline_access` | bei OAuth und Client-Credentials |
-| Besitzart | Bibliothek, Person oder beides | welche Verbindungen darauf entstehen dürfen |
-| Konnektoreigene Vorgaben | etwa die Confluence-Edition | Form bestimmt der Konnektor |
+| Besitzart | Bibliothek, Person oder beides | welche Verbindungen darauf entstehen dürfen; nur, was der Konnektor für die gewählte Anmeldeart zulässt |
+| Konnektoreigene Vorgaben | etwa die Confluence-Edition | nur die Schlüssel, die der Konnektor als Vorgaben meldet, je mit Art (Text, Ja/Nein, Auswahl); ein anderer Schlüssel wird abgewiesen |
 | Freigabe, Sperre | siehe oben | |
 
 **Keine zentrale OPAA-App.** Jede Installation registriert ihre eigene App beim Anbieter; das
@@ -201,7 +201,7 @@ Jeder Konnektor meldet, wie er zu Profilen steht:
 | Angabe | Bedeutung | Konnektoren |
 |---|---|---|
 | **verboten** | kein entferntes Ziel | Upload (keine Quelle), Dateisystem (lokale Serverpfade, begrenzt durch die Pfad-Allowlist des Betriebs) |
-| **optional** | Profil oder freie Adresse | Webverzeichnis, RSS, Confluence, S3, Nextcloud, Google Drive |
+| **optional** | Profil oder freie Adresse | Webverzeichnis, RSS, Confluence, S3, Nextcloud, SMB (Server-Adresse `smb://…`), Google Drive |
 | **Pflicht** | nur mit Profil | Konnektoren mit OAuth oder Client-Credentials, etwa Dropbox, Exchange |
 
 **Google Drive** ([ADR-0040](../decisions/0040-google-drive-konnektor.md)) meldet sich mit einem

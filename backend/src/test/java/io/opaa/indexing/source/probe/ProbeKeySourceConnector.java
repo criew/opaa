@@ -2,6 +2,7 @@ package io.opaa.indexing.source.probe;
 
 import io.opaa.common.ValidationException;
 import io.opaa.indexing.source.ConnectorData;
+import io.opaa.indexing.source.ProfileDeclaration;
 import io.opaa.indexing.source.ServiceAccountKeyAuth;
 import io.opaa.indexing.source.SourceBrowser;
 import io.opaa.indexing.source.SourceConnectionTestResult;
@@ -47,7 +48,9 @@ public class ProbeKeySourceConnector implements SourceConnector, SourceBrowser {
   public SourceConnectorDescriptor descriptor() {
     return new SourceConnectorDescriptor(
             TYPE, "Testquelle mit Dienstkonto", false, true, false, false, null, null)
-        .withServiceAccountKey(new ServiceAccountKeyAuth(tokenEndpoint, SCOPE));
+        .withProfiles(
+            ProfileDeclaration.forbiddenWithServiceAccountKey(
+                new ServiceAccountKeyAuth(tokenEndpoint, SCOPE)));
   }
 
   @Override

@@ -13,7 +13,9 @@ import type {
   ConnectionAuthMethod,
   ConnectionOwnership,
   ConnectionProfileResponse,
+  ProfileDefaultKey,
   SourceTypeDescriptor,
+  SourceTypeSignIn,
 } from '../../../types/api'
 import ChoiceTileGroup from '../../choice/ChoiceTileGroup'
 import SourceTypeIcon from '../../library/sourceTypeIcon'
@@ -42,7 +44,8 @@ interface Draft {
   tenant: string
   scopes: string
   clientSecretExpiresOn: string
-  connectorSettings: string
+  /** One entry per declared profile default; an empty string sets nothing. */
+  defaults: Record<string, string>
 }
 
 function draftFrom(profile: ConnectionProfileResponse | null): Draft {
@@ -55,9 +58,12 @@ function draftFrom(profile: ConnectionProfileResponse | null): Draft {
     tenant: profile?.tenant ?? '',
     scopes: profile?.scopes ?? '',
     clientSecretExpiresOn: profile?.clientSecretExpiresOn ?? '',
-    connectorSettings: profile?.connectorSettings
-      ? JSON.stringify(profile.connectorSettings, null, 2)
-      : '',
+    defaults: Object.fromEntries(
+      Object.entries(profile?.connectorSettings ?? {}).map(([key, value]) => [
+        key,
+        value === null || value === undefined ? '' : String(value),
+      ]),
+    ),
   }
 }
 
@@ -66,17 +72,30 @@ function blankToNull(value: string): string | null {
   return trimmed === '' ? null : trimmed
 }
 
-/** The connector defaults as an object, `null` for none, `undefined` for no JSON object. */
-function parseSettings(text: string): Record<string, unknown> | null | undefined {
-  if (text.trim() === '') return null
-  try {
-    const value: unknown = JSON.parse(text)
-    return typeof value === 'object' && value !== null && !Array.isArray(value)
-      ? (value as Record<string, unknown>)
-      : undefined
-  } catch {
-    return undefined
+/** The declared defaults the draft sets, typed by kind; `null` when it sets none. */
+function connectorDefaults(
+  keys: ProfileDefaultKey[],
+  values: Record<string, string>,
+): Record<string, string | boolean> | null {
+  const result: Record<string, string | boolean> = {}
+  for (const key of keys) {
+    const value = (values[key.key] ?? '').trim()
+    if (value === '') continue
+    result[key.key] = key.kind === 'BOOLEAN' ? value === 'true' : value
   }
+  return Object.keys(result).length === 0 ? null : result
+}
+
+/** The ownerships a profile choosing `signIn` may take; all of them while it is unknown. */
+function ownershipsFor(signIn: SourceTypeSignIn | undefined): ConnectionOwnership[] {
+  if (!signIn) return Object.keys(OWNERSHIP_LABELS) as ConnectionOwnership[]
+  const allowed: ConnectionOwnership[] = [...signIn.ownerships]
+  if (allowed.includes('LIBRARY') && allowed.includes('PERSON')) allowed.push('BOTH')
+  return allowed
+}
+
+function addressHint(schemes: string[]): string {
+  return `Beginnt mit ${schemes.map((scheme) => `${scheme}://`).join(' oder ')}. Das einzige Ziel der Zugangsdaten. Eine Änderung verwirft alle Geheimnisse des Zugangs.`
 }
 
 function count(n: number, one: string, many: string) {
@@ -94,9 +113,11 @@ interface ConnectionProfileFormDialogProps {
 
 /**
  * Anlegen und Bearbeiten eines Zugangs (#2160). Beim Anlegen wählt die Systemverwaltung zuerst
- * die Quellart als Kachel; Quellarten ohne Zugänge bleiben mit Grund sichtbar. Bearbeiten sendet
- * alle Felder samt Konnektor-Vorgaben zurück; eine Änderung, die Geheimnisse verwirft, fragt
- * vorher mit der Zahl der betroffenen Verbindungen und Bibliotheken nach.
+ * die Quellart als Kachel; Quellarten ohne Zugänge bleiben mit Grund sichtbar. Anmeldearten,
+ * Besitzarten, Adressfeld und Vorgaben-Felder folgen der Beschreibung der Quellart; bei fester
+ * Adresse entfällt das Adressfeld. Bearbeiten sendet alle Felder samt Vorgaben zurück; eine
+ * Änderung, die Geheimnisse verwirft, fragt vorher mit der Zahl der betroffenen Verbindungen und
+ * Bibliotheken nach.
  */
 export default function ConnectionProfileFormDialog({
   open,
@@ -115,20 +136,23 @@ export default function ConnectionProfileFormDialog({
   const descriptor = sourceTypes.find((type) => type.type === sourceType) ?? null
   // While editing, the profile's own method stays offered even if the list has not loaded yet.
   const methods: ConnectionAuthMethod[] =
-    descriptor?.authMethods ?? (profile ? [profile.authMethod] : [])
+    descriptor?.signIns.map((signIn) => signIn.method) ?? (profile ? [profile.authMethod] : [])
   const method = draft.authMethod === '' ? null : draft.authMethod
+  const ownerships = ownershipsFor(descriptor?.signIns.find((signIn) => signIn.method === method))
+  const defaultKeys = descriptor?.profileDefaults ?? []
+  const fixedAddress = descriptor?.serverAddress.fixed ?? null
+  const schemes = descriptor?.serverAddress.schemes ?? ['https', 'http']
   const usesRegistration = method !== null && WITH_REGISTRATION.includes(method)
   const usesScopes = method !== null && WITH_SCOPES.includes(method)
   const connectorTypes = sourceTypes.filter((type) => !type.uploads)
   const showFields = isEdit || (descriptor !== null && descriptor.profileSupport !== 'FORBIDDEN')
-  const settingsValid = parseSettings(draft.connectorSettings) !== undefined
   const complete =
     showFields &&
     draft.name.trim() !== '' &&
-    draft.serverUrl.trim() !== '' &&
+    (fixedAddress !== null || draft.serverUrl.trim() !== '') &&
     method !== null &&
-    (!usesRegistration || draft.clientId.trim() !== '') &&
-    settingsValid
+    ownerships.includes(draft.ownership) &&
+    (!usesRegistration || draft.clientId.trim() !== '')
 
   function close() {
     if (!submitting) onClose()
@@ -137,7 +161,7 @@ export default function ConnectionProfileFormDialog({
   function fields() {
     return {
       name: draft.name.trim(),
-      serverUrl: draft.serverUrl.trim(),
+      serverUrl: fixedAddress ?? draft.serverUrl.trim(),
       authMethod: method as ConnectionAuthMethod,
       ownership: draft.ownership,
       clientId: usesRegistration ? blankToNull(draft.clientId) : null,
@@ -145,7 +169,7 @@ export default function ConnectionProfileFormDialog({
       clientSecretExpiresOn: usesRegistration ? blankToNull(draft.clientSecretExpiresOn) : null,
       scopes: usesScopes ? blankToNull(draft.scopes) : null,
       clientSecret: usesRegistration && secret.trim() !== '' ? secret.trim() : undefined,
-      connectorSettings: parseSettings(draft.connectorSettings) ?? null,
+      connectorSettings: connectorDefaults(defaultKeys, draft.defaults),
     }
   }
 
@@ -205,7 +229,7 @@ export default function ConnectionProfileFormDialog({
                 value={sourceType}
                 onChange={(next) => {
                   setSourceType(next)
-                  setDraft({ ...draft, authMethod: '' })
+                  setDraft({ ...draft, authMethod: '', defaults: {} })
                 }}
                 tiles={connectorTypes.map((type) => ({
                   value: type.type,
@@ -229,23 +253,37 @@ export default function ConnectionProfileFormDialog({
                 onChange={(e) => setDraft({ ...draft, name: e.target.value })}
                 helperText="Erscheint in der Auswahl, z. B. „Zugang Nextcloud intern“."
               />
-              <TextField
-                label="Server-Adresse"
-                required
-                size="small"
-                value={draft.serverUrl}
-                onChange={(e) => setDraft({ ...draft, serverUrl: e.target.value })}
-                helperText="Das einzige Ziel der Zugangsdaten. Eine Änderung verwirft alle Geheimnisse des Zugangs."
-              />
+              {fixedAddress === null ? (
+                <TextField
+                  label="Server-Adresse"
+                  required
+                  size="small"
+                  value={draft.serverUrl}
+                  onChange={(e) => setDraft({ ...draft, serverUrl: e.target.value })}
+                  helperText={addressHint(schemes)}
+                />
+              ) : (
+                <Typography variant="body2" color="text.secondary">
+                  Die Quellart hat eine feste Adresse: {fixedAddress}
+                </Typography>
+              )}
               <TextField
                 select
                 label="Anmeldeart"
                 required
                 size="small"
                 value={draft.authMethod}
-                onChange={(e) =>
-                  setDraft({ ...draft, authMethod: e.target.value as ConnectionAuthMethod })
-                }
+                onChange={(e) => {
+                  const next = e.target.value as ConnectionAuthMethod
+                  const allowed = ownershipsFor(
+                    descriptor?.signIns.find((signIn) => signIn.method === next),
+                  )
+                  setDraft({
+                    ...draft,
+                    authMethod: next,
+                    ownership: allowed.includes(draft.ownership) ? draft.ownership : allowed[0],
+                  })
+                }}
               >
                 {methods.map((m) => (
                   <MenuItem key={m} value={m}>
@@ -264,7 +302,7 @@ export default function ConnectionProfileFormDialog({
                 }
                 helperText="Welche Verbindungen auf diesem Zugang entstehen dürfen."
               >
-                {(Object.keys(OWNERSHIP_LABELS) as ConnectionOwnership[]).map((o) => (
+                {ownerships.map((o) => (
                   <MenuItem key={o} value={o}>
                     {OWNERSHIP_LABELS[o]}
                   </MenuItem>
@@ -318,20 +356,27 @@ export default function ConnectionProfileFormDialog({
                   helperText="Durch Leerzeichen getrennt, z. B. „Files.Read offline_access“."
                 />
               )}
-              <TextField
-                label="Konnektor-Vorgaben (JSON)"
-                size="small"
-                multiline
-                minRows={2}
-                value={draft.connectorSettings}
-                onChange={(e) => setDraft({ ...draft, connectorSettings: e.target.value })}
-                error={!settingsValid}
-                helperText={
-                  settingsValid
-                    ? 'Optional. Überschreiben die gleichnamigen Einstellungen jeder Bibliothek auf diesem Zugang.'
-                    : 'Die Vorgaben müssen ein JSON-Objekt sein.'
-                }
-              />
+              {defaultKeys.length > 0 && (
+                <>
+                  <Typography variant="subtitle2" component="h3">
+                    Vorgaben für jede Bibliothek
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Optional. Eine Vorgabe gilt für jede Bibliothek auf diesem Zugang und ersetzt
+                    deren eigene Einstellung.
+                  </Typography>
+                  {defaultKeys.map((key) => (
+                    <DefaultField
+                      key={key.key}
+                      defaultKey={key}
+                      value={draft.defaults[key.key] ?? ''}
+                      onChange={(value) =>
+                        setDraft({ ...draft, defaults: { ...draft.defaults, [key.key]: value } })
+                      }
+                    />
+                  ))}
+                </>
+              )}
             </>
           )}
         </Stack>
@@ -349,5 +394,52 @@ export default function ConnectionProfileFormDialog({
         </Button>
       </DialogActions>
     </Dialog>
+  )
+}
+
+interface DefaultFieldProps {
+  defaultKey: ProfileDefaultKey
+  /** The value as text; `''` sets nothing, a yes/no is `'true'` or `'false'`. */
+  value: string
+  onChange: (value: string) => void
+}
+
+/** Ein Feld je deklarierter Vorgabe: Text, Ja/Nein oder Auswahl, jeweils mit „Keine Vorgabe“. */
+function DefaultField({ defaultKey, value, onChange }: DefaultFieldProps) {
+  if (defaultKey.kind === 'TEXT') {
+    return (
+      <TextField
+        label={defaultKey.label}
+        size="small"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        helperText="Leer lassen, um nichts vorzugeben."
+      />
+    )
+  }
+  const options: Array<{ value: string; label: string }> =
+    defaultKey.kind === 'BOOLEAN'
+      ? [
+          { value: 'true', label: 'Ja' },
+          { value: 'false', label: 'Nein' },
+        ]
+      : defaultKey.choices.map((choice) => ({ value: choice, label: choice }))
+  return (
+    <TextField
+      select
+      label={defaultKey.label}
+      size="small"
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+    >
+      <MenuItem value="">
+        <em>Keine Vorgabe</em>
+      </MenuItem>
+      {options.map((option) => (
+        <MenuItem key={option.value} value={option.value}>
+          {option.label}
+        </MenuItem>
+      ))}
+    </TextField>
   )
 }

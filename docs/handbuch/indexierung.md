@@ -381,8 +381,18 @@ wählt ihn aus und trägt Server und Registrierung nicht selbst ein.
 Die Systemverwaltung pflegt Zugänge unter **Administration → Zugänge**. Solange keine Quellart
 Zugänge anbietet, steht dort ein Hinweis, und „Neuer Zugang“ ist gesperrt. Sonst fragt „Neuer
 Zugang“ zuerst die Quellart als Kachel ab; Quellarten ohne Zugänge bleiben mit Grund gesperrt
-sichtbar. Das Formular enthält auch die Konnektor-Vorgaben als JSON-Objekt. Die
-Liste zeigt je Zugang Quellart, Server-Adresse, Anmeldeart, Besitzart und die Zahl der
+sichtbar. Das Formular richtet sich nach der Quellart:
+
+- **Anmeldeart** bietet nur die Arten an, die die Quellart meldet; **Besitzart** nur die Besitzarten,
+  die sie für die gewählte Anmeldeart zulässt.
+- **Server-Adresse** verlangt eines der Schemata der Quellart, meist `https://` oder `http://`, bei
+  einer Windows-Dateifreigabe `smb://`. Hat die Quellart eine feste Adresse, entfällt das Feld, und
+  das Formular nennt die Adresse.
+- **Vorgaben für jede Bibliothek** zeigt je Einstellung, die ein Zugang vorgeben darf, ein Feld:
+  Text, Ja/Nein oder eine Auswahl, jeweils mit „Keine Vorgabe“. Meldet die Quellart keine solche
+  Einstellung, fehlt der Abschnitt. Eine Vorgabe, die die Quellart nicht meldet, weist OPAA ab.
+
+Die Liste zeigt je Zugang Quellart, Server-Adresse, Anmeldeart, Besitzart und die Zahl der
 Verbindungen, dazu einen Hinweis, wenn das Client-Secret bald abläuft. „Alle Verbindungen trennen“
 und „Löschen“ nennen vor der Bestätigung die Zahl der Betroffenen, ebenso eine Änderung, die
 Geheimnisse verwirft. In der Detailansicht einer Bibliothek steht unter „Anbindung“ ihr Zugang;
@@ -390,8 +400,10 @@ der Hinweis „Zugang entfernt“ steht im Reiter „Quelle“ für alle Leseber
 
 **Welcher Konnektor Zugänge kennt**, meldet er selbst: Zugänge verboten, möglich oder Pflicht,
 dazu die Anmeldearten, die er anbietet (ohne Anmeldung, persönliches Geheimnis, OAuth,
-Client-Credentials, Dienstkonto-Schlüssel). Ein Zugang wählt eine davon. Die mitgelieferten
-Konnektoren melden keine Zugänge.
+Client-Credentials, Dienstkonto-Schlüssel), je mit den zulässigen Besitzarten, die zulässige
+Server-Adresse und die Einstellungen, die ein Zugang vorgeben darf. Ein Zugang wählt eine
+Anmeldeart. Pflicht sind Zugänge genau bei einer Quellart mit OAuth oder Client-Credentials, weil
+die App-Registrierung nur am Zugang steht. Die mitgelieferten Konnektoren melden keine Zugänge.
 
 **Was für eine Bibliothek auf einem Zugang gilt:**
 

@@ -8,8 +8,10 @@ import io.opaa.indexing.filesync.FileAccessException;
 import io.opaa.indexing.source.ConnectorData;
 import io.opaa.indexing.source.OriginalAccess;
 import io.opaa.indexing.source.OriginalUnavailableException;
+import io.opaa.indexing.source.ProfileDeclaration;
 import io.opaa.indexing.source.RequestBudget;
 import io.opaa.indexing.source.ServedOriginals;
+import io.opaa.indexing.source.ServerAddressRule;
 import io.opaa.indexing.source.ServiceAccountKeyAuth;
 import io.opaa.indexing.source.SourceBrowser;
 import io.opaa.indexing.source.SourceConnectionTestResult;
@@ -85,12 +87,20 @@ public class GoogleDriveSourceConnector implements SourceConnector, SourceBrowse
     this.descriptor =
         SourceConnectorDescriptor.remoteRun(TYPE, "Google Drive")
             .withFullSyncInterval(apis.properties().fullSyncInterval())
-            .withServiceAccountKey(new ServiceAccountKeyAuth(tokenEndpoint, SCOPE));
+            .withProfiles(
+                ProfileDeclaration.forbiddenWithServiceAccountKey(
+                        new ServiceAccountKeyAuth(tokenEndpoint, SCOPE))
+                    .withAddress(ServerAddressRule.fixed(apiBase.toString())));
   }
 
   @Override
   public SourceConnectorDescriptor descriptor() {
     return descriptor;
+  }
+
+  @Override
+  public Set<String> settingsKeys() {
+    return GoogleDriveSettings.KEYS;
   }
 
   @Override

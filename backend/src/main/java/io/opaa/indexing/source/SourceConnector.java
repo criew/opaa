@@ -30,6 +30,23 @@ public interface SourceConnector {
   }
 
   /**
+   * The top-level keys the connector settings may carry - the only keys a profile default may name.
+   * None by default, matching the default {@link #readSettings}.
+   */
+  default Set<String> settingsKeys() {
+    return Set.of();
+  }
+
+  /**
+   * Reads the connector defaults of a connection profile into their normalised form: only keys the
+   * {@link ProfileDeclaration#defaults()} name, each of its kind, a blank text or {@code null}
+   * dropped. Returns {@code null} when nothing is left.
+   */
+  default ConnectorData readProfileDefaults(ConnectorData requested) {
+    return ProfileDefaultsReader.read(descriptor().profileDeclaration().defaults(), requested);
+  }
+
+  /**
    * The address {@link #validate} stores for {@code requested}, {@code null} included - what the
    * core compares against the stored origin before it keeps stored credentials. A connector with a
    * fixed target returns it here; by default the request is taken as sent.

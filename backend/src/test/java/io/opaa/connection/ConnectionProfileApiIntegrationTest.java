@@ -61,16 +61,40 @@ class ConnectionProfileApiIntegrationTest {
   }
 
   @Test
-  void theDescriptorReportsProfileSupportAndSignInMethods() throws Exception {
+  void theDescriptorReportsTheProfileDeclaration() throws Exception {
+    String probe = "$[?(@.type == 'PROFILE_PROBE')]";
     mockMvc
         .perform(as("dev-user", get("/api/v1/source-types")))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$[?(@.type == 'PROFILE_PROBE')].profileSupport").value("OPTIONAL"))
+        .andExpect(jsonPath(probe + ".profileSupport").value("OPTIONAL"))
         .andExpect(
-            jsonPath("$[?(@.type == 'PROFILE_PROBE')].authMethods[*]")
-                .value(
-                    org.hamcrest.Matchers.containsInAnyOrder("NONE", "PERSONAL_SECRET", "OAUTH")))
-        .andExpect(jsonPath("$[?(@.type == 'UPLOAD')].profileSupport").value("FORBIDDEN"));
+            jsonPath(probe + ".signIns[*].method")
+                .value(org.hamcrest.Matchers.containsInAnyOrder("NONE", "PERSONAL_SECRET")))
+        .andExpect(
+            jsonPath(probe + ".signIns[?(@.method == 'NONE')].ownerships[*]")
+                .value(org.hamcrest.Matchers.containsInAnyOrder("LIBRARY", "PERSON")))
+        .andExpect(
+            jsonPath(probe + ".signIns[?(@.method == 'PERSONAL_SECRET')].ownerships[*]")
+                .value(org.hamcrest.Matchers.contains("LIBRARY")))
+        .andExpect(
+            jsonPath(probe + ".signIns[?(@.method == 'PERSONAL_SECRET')].secretForm")
+                .value("USERNAME_AND_PASSWORD"))
+        .andExpect(
+            jsonPath(probe + ".signIns[?(@.method == 'NONE')].secretForm")
+                .value(org.hamcrest.Matchers.everyItem(org.hamcrest.Matchers.nullValue())))
+        .andExpect(jsonPath(probe + ".profileDefaults[*].key").value("edition"))
+        .andExpect(jsonPath(probe + ".profileDefaults[*].kind").value("CHOICE"))
+        .andExpect(
+            jsonPath(probe + ".profileDefaults[*].choices[*]")
+                .value(org.hamcrest.Matchers.contains("CLOUD", "DC")))
+        .andExpect(
+            jsonPath(probe + ".serverAddress.schemes[*]")
+                .value(org.hamcrest.Matchers.contains("https", "http", "smb")))
+        .andExpect(
+            jsonPath("$[?(@.type == 'PROFILE_OAUTH_PROBE')].profileSupport").value("REQUIRED"))
+        .andExpect(jsonPath("$[?(@.type == 'UPLOAD')].profileSupport").value("FORBIDDEN"))
+        .andExpect(jsonPath("$[?(@.type == 'UPLOAD')].signIns[*]").isEmpty())
+        .andExpect(jsonPath("$[?(@.type == 'UPLOAD')].profileDefaults[*]").isEmpty());
   }
 
   @Test
@@ -81,6 +105,7 @@ class ConnectionProfileApiIntegrationTest {
     mockMvc.perform(as("dev-user", get(ADMIN))).andExpect(status().isForbidden());
   }
 
+  /** The ownership of a profile lies in the owners of its sign-in, else 400. */
   @Test
   void aProfileTakesOnlyWhatItsConnectorOffers() throws Exception {
     mockMvc
@@ -104,8 +129,72 @@ class ConnectionProfileApiIntegrationTest {
     mockMvc
         .perform(
             as("dev-admin", post(ADMIN))
+                .content(
+                    """
+                    {"name": "Zugang Person", "sourceType": "PROFILE_PROBE", "serverUrl":
+                     "https://probe.example.org", "authMethod": "PERSONAL_SECRET",
+                     "ownership": "PERSON"}
+                    """))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.error").value(org.hamcrest.Matchers.containsString("Besitzart")));
+  }
+
+  /** Acceptance criterion: a profile with an undeclared default key is refused with 400. */
+  @Test
+  void aProfileSetsOnlyTheDeclaredDefaultsEachOfItsKind() throws Exception {
+    mockMvc
+        .perform(
+            as("dev-admin", post(ADMIN))
                 .content(profileJson("Zugang Fremdfeld", "NONE", "{\"spaces\": []}")))
-        .andExpect(status().isBadRequest());
+        .andExpect(status().isBadRequest())
+        .andExpect(
+            jsonPath("$.error")
+                .value("connectorSettings: das Feld spaces kann ein Zugang nicht vorgeben"));
+    // topic is a settings key of the connector, but no profile default
+    mockMvc
+        .perform(
+            as("dev-admin", post(ADMIN))
+                .content(profileJson("Zugang Thema", "NONE", "{\"topic\": \"Wetter\"}")))
+        .andExpect(status().isBadRequest())
+        .andExpect(
+            jsonPath("$.error")
+                .value("connectorSettings: das Feld topic kann ein Zugang nicht vorgeben"));
+    mockMvc
+        .perform(
+            as("dev-admin", post(ADMIN))
+                .content(profileJson("Zugang Edition", "NONE", "{\"edition\": \"SERVER\"}")))
+        .andExpect(status().isBadRequest())
+        .andExpect(
+            jsonPath("$.error")
+                .value("connectorSettings.edition muss einer der Werte CLOUD, DC sein"));
+  }
+
+  @Test
+  void theServerAddressTakesTheSchemesTheConnectorDeclares() throws Exception {
+    String smb =
+        """
+        {"name": "Zugang Freigabe %s", "sourceType": "PROFILE_PROBE", "serverUrl":
+         "SMB://Fileserver.example.org/Ablage/", "authMethod": "NONE", "ownership": "LIBRARY"}
+        """
+            .formatted(UUID.randomUUID());
+    String body =
+        mockMvc
+            .perform(as("dev-admin", post(ADMIN)).content(smb))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.serverUrl").value("smb://fileserver.example.org/Ablage"))
+            .andReturn()
+            .getResponse()
+            .getContentAsString(StandardCharsets.UTF_8);
+    profiles.add(UUID.fromString(JsonPath.read(body, "$.id")));
+
+    mockMvc
+        .perform(
+            as("dev-admin", post(ADMIN))
+                .content(smb.replace("SMB://", "ftp://").replace("Freigabe", "FTP")))
+        .andExpect(status().isBadRequest())
+        .andExpect(
+            jsonPath("$.error")
+                .value(org.hamcrest.Matchers.containsString("https://, http://, smb://")));
   }
 
   @Test
@@ -223,11 +312,13 @@ class ConnectionProfileApiIntegrationTest {
     String name = "Zugang OAuth " + UUID.randomUUID();
     String json =
         """
-        {"name": "%s", "sourceType": "PROFILE_PROBE", "serverUrl": "https://probe.example.org",
-         "authMethod": "OAUTH", "ownership": "BOTH", "clientId": "%s", "clientSecret": "%s"}
+        {"name": "%s", "sourceType": "PROFILE_OAUTH_PROBE", "serverUrl":
+         "https://probe.example.org", "authMethod": "OAUTH", "ownership": "BOTH",
+         "clientId": "%s", "clientSecret": "%s"}
         """;
     UUID profile = createProfile(json.formatted(name, "opaa", "alt"));
-    UUID library = createLibrary(profile, null, "\"sourceCredentials\": \"bleibt\",");
+    UUID library =
+        createLibrary("PROFILE_OAUTH_PROBE", profile, null, "\"sourceCredentials\": \"bleibt\",");
 
     String update =
         """
@@ -377,6 +468,11 @@ class ConnectionProfileApiIntegrationTest {
   }
 
   private UUID createLibrary(UUID profile, String url, String extra) throws Exception {
+    return createLibrary("PROFILE_PROBE", profile, url, extra);
+  }
+
+  private UUID createLibrary(String sourceType, UUID profile, String url, String extra)
+      throws Exception {
     String body =
         mockMvc
             .perform(
@@ -384,7 +480,9 @@ class ConnectionProfileApiIntegrationTest {
                     .content(
                         "{\"name\": \"Bibliothek "
                             + UUID.randomUUID()
-                            + "\", \"sourceType\": \"PROFILE_PROBE\", "
+                            + "\", \"sourceType\": \""
+                            + sourceType
+                            + "\", "
                             + extra
                             + (url == null ? "" : "\"sourceUrl\": \"" + url + "\", ")
                             + "\"connectionProfileId\": \""

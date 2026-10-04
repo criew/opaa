@@ -12,6 +12,8 @@ import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
 import io.opaa.indexing.source.ConnectorData;
+import io.opaa.indexing.source.ProfileDeclaration;
+import io.opaa.indexing.source.SignIn;
 import io.opaa.indexing.source.SourceConnector;
 import io.opaa.indexing.source.SourceConnectorDescriptor;
 import io.opaa.indexing.source.SourceConnectorRegistry;
@@ -28,6 +30,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
@@ -274,21 +277,32 @@ public class ConnectionProfileService {
   private ConnectionProfileValues validate(
       SourceConnector connector, ConnectionProfileValues values, UUID existingId) {
     SourceConnectorDescriptor descriptor = connector.descriptor();
+    ProfileDeclaration declaration = descriptor.profileDeclaration();
     String name = required(values.name(), "name", MAX_NAME_LENGTH);
     if (profiles.existsByNameIgnoringCase(name, existingId)) {
       throw new ConflictException("Es gibt bereits einen Zugang mit dem Namen " + name);
     }
-    String serverUrl = ServerAddress.normalize(values.serverUrl());
+    String serverUrl = ServerAddress.normalize(values.serverUrl(), declaration.address());
     if (serverUrl.length() > MAX_URL_LENGTH) {
       throw new ValidationException("serverUrl ist zu lang");
     }
     ConnectionAuthMethod method = values.authMethod();
-    if (method == null || !descriptor.authMethods().contains(method)) {
-      throw new ValidationException(
-          "Die Anmeldeart wird von der Quellart " + descriptor.displayName() + " nicht angeboten");
-    }
+    SignIn signIn =
+        (method == null ? Optional.<SignIn>empty() : declaration.signIn(method))
+            .orElseThrow(
+                () ->
+                    new ValidationException(
+                        "Die Anmeldeart wird von der Quellart "
+                            + descriptor.displayName()
+                            + " nicht angeboten"));
     if (values.ownership() == null) {
       throw new ValidationException("ownership ist erforderlich");
+    }
+    if (!signIn.admits(values.ownership())) {
+      throw new ValidationException(
+          "Die Besitzart ist für diese Anmeldeart der Quellart "
+              + descriptor.displayName()
+              + " nicht vorgesehen");
     }
     String clientId = optional(values.clientId(), "clientId", MAX_FIELD_LENGTH);
     String tenant = optional(values.tenant(), "tenant", MAX_FIELD_LENGTH);
@@ -308,7 +322,7 @@ public class ConnectionProfileService {
     ConnectorData settings =
         values.connectorSettings() == null || values.connectorSettings().isEmpty()
             ? null
-            : connector.readSettings(values.connectorSettings());
+            : connector.readProfileDefaults(values.connectorSettings());
     return new ConnectionProfileValues(
         name,
         serverUrl,

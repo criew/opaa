@@ -146,7 +146,7 @@ public class LibraryConnectionService {
    */
   @Transactional
   public void disconnect(KnowledgeLibrary library) {
-    if (connectors.descriptor(library.getSourceType()).profileSupport()
+    if (connectors.descriptor(library.getSourceType()).profileDeclaration().support()
         == ConnectionProfileSupport.REQUIRED) {
       throw new ValidationException("Diese Quellart ist nur über einen Zugang nutzbar");
     }
