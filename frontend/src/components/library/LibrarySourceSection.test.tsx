@@ -479,6 +479,33 @@ describe('LibrarySourceSection - Zugang zuordnen, wechseln, lösen (#2162)', () 
       const dialog = await screen.findByRole('dialog', { name: 'Zugang wechseln' })
       expect(await within(dialog).findByRole('radio', { name: /Nextcloud neu/ })).toBeVisible()
       expect(within(dialog).queryByRole('radio', { name: /Nextcloud dritt/ })).toBeNull()
+      expect(dialog).not.toHaveTextContent(/Zugangsdaten verworfen/)
+    })
+
+    it('leads to "Verbundene Konten" when no other profile carries an account of the owner', async () => {
+      server.use(
+        http.get('/api/v1/me/connected-accounts', () =>
+          HttpResponse.json({ ...accounts, accounts: [] }),
+        ),
+      )
+      const user = userEvent.setup()
+      renderWithProviders(
+        <LibrarySourceSection
+          libraryId="library-1"
+          library={{ ...nextcloud, connectionProfile: internRef, privateLibrary: true }}
+          canEditSource
+        />,
+        { withRouter: true },
+      )
+
+      await user.click(await screen.findByRole('button', { name: 'Zugang wechseln' }))
+      const dialog = await screen.findByRole('dialog', { name: 'Zugang wechseln' })
+      const none = await within(dialog).findByTestId('library-connection-connection-none')
+      expect(within(none).getByRole('link', { name: 'Verbundene Konten' })).toHaveAttribute(
+        'href',
+        '/settings/accounts',
+      )
+      expect(dialog).not.toHaveTextContent(/Systemverwaltung/)
     })
   })
 

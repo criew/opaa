@@ -779,9 +779,6 @@ describe('LibraryDetailPage', () => {
     })
   })
 
-  // #797: the share cap control - visible only to a system administrator on a connector
-  // library, never to the library's own owner/manager, who only sees its consequence (the 409
-  // below).
   describe('Private Bibliothek (#2164)', () => {
     const privateLibrary: LibraryListResponse = {
       ...personalLibrary,
@@ -835,6 +832,9 @@ describe('LibraryDetailPage', () => {
     })
   })
 
+  // #797: the share cap control - visible only to a system administrator on a connector
+  // library, never to the library's own owner/manager, who only sees its consequence (the 409
+  // below).
   describe('Freigabe-Obergrenze (#797)', () => {
     it('is hidden for UPLOAD, even for a system-admin OWNER bypass', async () => {
       setSystemAdmin()

@@ -1,4 +1,7 @@
 import Alert from '@mui/material/Alert'
+import Link from '@mui/material/Link'
+import { Link as RouterLink } from 'react-router'
+import { CONNECTED_ACCOUNTS_ROUTE } from '../../routes'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import EditLocationAltOutlinedIcon from '@mui/icons-material/EditLocationAltOutlined'
@@ -74,6 +77,8 @@ interface ConnectionProfileSelectProps {
    * private library, in a group of its own. Without one that group does not exist.
    */
   ownAccountProfileIds?: readonly string[]
+  /** The options are those of the caller's own connected accounts: an empty choice leads there. */
+  onlyOwnAccounts?: boolean
   idPrefix: string
 }
 
@@ -92,6 +97,7 @@ export default function ConnectionProfileSelect({
   excludeProfileId,
   offerRequest = false,
   ownAccountProfileIds = [],
+  onlyOwnAccounts = false,
   idPrefix,
 }: ConnectionProfileSelectProps) {
   const options = state.options.filter((option) => option.id !== excludeProfileId)
@@ -194,7 +200,19 @@ export default function ConnectionProfileSelect({
           />
         </Box>
       )}
-      {state.error ? null : state.loaded && selectable.length === 0 ? (
+      {state.error ? null : onlyOwnAccounts ? (
+        state.loaded &&
+        selectable.length === 0 && (
+          <Alert severity="info" sx={{ mt: 1.5 }} data-testid={`${idPrefix}-connection-none`}>
+            Auf keinem weiteren Zugang für „{descriptor.displayName}“ haben Sie ein verbundenes
+            Konto. Konten verbinden Sie unter{' '}
+            <Link component={RouterLink} to={CONNECTED_ACCOUNTS_ROUTE}>
+              Verbundene Konten
+            </Link>
+            .
+          </Alert>
+        )
+      ) : state.loaded && selectable.length === 0 ? (
         <Alert severity="info" sx={{ mt: 1.5 }} data-testid={`${idPrefix}-connection-none`}>
           {offerRequest
             ? `Für die Quellart „${descriptor.displayName}“ steht Ihnen kein Zugang zur Verfügung. Schlagen Sie der Systemverwaltung einen vor.`

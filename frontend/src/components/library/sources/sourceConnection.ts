@@ -117,7 +117,8 @@ export interface ConnectionFields {
 
 export function connectionFields(context: SourceFormContext): ConnectionFields {
   const connection = context.connection ?? null
-  const privateLibrary = connection !== null && Boolean(context.privateLibrary)
+  // A private library never takes a secret of its own, also once its profile is gone.
+  const privateLibrary = Boolean(context.privateLibrary)
   const probe: ProbeScope =
     context.mode === 'edit'
       ? { libraryId: context.libraryId }
@@ -128,7 +129,7 @@ export function connectionFields(context: SourceFormContext): ConnectionFields {
           }
         : {}
   const asksSecret =
-    connection === null || (!privateLibrary && asksLibrarySecret(connection.authMethod))
+    !privateLibrary && (connection === null || asksLibrarySecret(connection.authMethod))
   return {
     connection,
     probe,
@@ -257,7 +258,7 @@ export function framedBy<R extends FramedRequest>(
   connection: SourceConnection | null | undefined,
   asksSecret: boolean,
 ): R {
-  if (!connection) return request
+  if (!connection) return asksSecret ? request : { ...request, sourceCredentials: undefined }
   const framed: Record<string, unknown> = {
     ...(request as Record<string, unknown>),
     sourceProxy: undefined,

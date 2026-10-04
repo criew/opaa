@@ -89,7 +89,7 @@ export const mockLibraries: LibraryListResponse[] = [
     createdAt: '2026-09-06T10:00:00Z',
     updatedAt: '2026-09-06T10:00:00Z',
   },
-  // A private library on the caller's connected account (#2164) - the one the connected-account
+  // A private library on the caller's connected account - the one the connected-account
   // mocks name under usedBy.
   {
     id: 'library-private-ablage',
@@ -121,7 +121,7 @@ export const mockLibraryDetails: Record<string, LibraryResponse> = {
     sourceSettings: { folders: [] },
     connectionProfile: {
       id: 'connection-profile-nextcloud-person',
-      name: 'Zugang Nextcloud Personen',
+      name: 'Zugang Nextcloud intern',
       serverUrl: 'https://cloud.personen.example',
       authMethod: 'PERSONAL_SECRET',
       connectorDefaults: null,

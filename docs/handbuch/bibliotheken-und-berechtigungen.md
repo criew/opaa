@@ -337,7 +337,7 @@ Kachel im Katalog und im Kopf ihrer Detailseite. Im Reiter „Freigaben“ stehe
 Diagnosesperre und ein Hinweis, warum es nicht mehr gibt; Berechtigungen, Externer Zugang,
 Obergrenze, Herleitung und „Eigentum übergeben“ fehlen. Im Reiter „Quelle“ fehlt „Zugang lösen“,
 und „Zugang wechseln“ bietet nur Zugänge an, auf denen die Besitzerin ein verbundenes Konto hat.
-Im Chat sind Quellen aus privaten Bibliotheken noch nicht gekennzeichnet (#2164).
+Im Chat sind Quellen aus privaten Bibliotheken noch nicht gekennzeichnet (#2255).
 
 **Was nicht geht — auch nicht für die Systemverwaltung:** Rechte an Personen, Gruppen oder „Alle
 Konten“, Übertragung, Fremdzugangsfreigabe, eine Freigabe-Obergrenze, Nachfolge und „Sicht als“. Die
