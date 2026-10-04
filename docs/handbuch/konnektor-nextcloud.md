@@ -73,6 +73,13 @@ oder „Gruppenordner“. Ein Klick übernimmt den Ordner. **„Verbindung teste
 prüft jeden Ordner. Gemeldet wird, welcher Ordner für den Nutzer nicht lesbar ist oder ob die
 Zugangsdaten abgelehnt wurden.
 
+**Über einen Zugang** (siehe [Indexierung, Zugänge](indexierung.md#zugänge)): Ein Zugang für
+Nextcloud gibt Server-Adresse, Proxy und Zertifikatsprüfung vor und meldet sich mit einem
+persönlichen Geheimnis an, das der Bibliothek gehört: Benutzername und App-Passwort des technischen
+Nutzers tragen ihre Verwaltenden wie oben ein. Die Adresse ist mit der Server-Adresse vorbelegt;
+ohne eigene Angabe übernimmt die Bibliothek sie. Vorgaben für Einstellungen gibt es nicht, die
+Ordner wählt jede Bibliothek selbst.
+
 ### 2.1 Der technische Nutzer
 
 - Ein eigenes Konto, kein persönliches. Es braucht **nur Leserechte**; OPAA schreibt nie.

@@ -265,12 +265,24 @@ class SourceBlocksTest {
    */
   @Test
   void theProfileRequirementHoldsOnlyForATypeWithOptionalProfiles() {
-    KnowledgeLibrary feed = arrange(EnumSet.noneOf(Fact.class), ConnectionAuthMethod.NONE);
-    ConnectorTypePolicy stale = new ConnectorTypePolicy(SourceTypes.RSS_FEED, NOW);
+    KnowledgeLibrary files =
+        KnowledgeLibrary.ownedByUser(
+            UUID.randomUUID(),
+            "Dateien",
+            null,
+            UUID.randomUUID(),
+            SourceTypes.FILESYSTEM,
+            "/srv/akten",
+            null,
+            null,
+            null,
+            false);
+    rows.put(files.getId(), files);
+    ConnectorTypePolicy stale = new ConnectorTypePolicy(SourceTypes.FILESYSTEM, NOW);
     stale.requireProfiles(OwnAddressStock.LOCKED, NOW);
     policyRows.add(stale);
 
-    assertThat(blocks.blockOf(feed, SourceBlocks.ALL)).isEmpty();
+    assertThat(blocks.blockOf(files, SourceBlocks.ALL)).isEmpty();
 
     KnowledgeLibrary probe =
         arrange(EnumSet.of(Fact.PROFILES_ONLY_LOCKED), ConnectionAuthMethod.NONE);

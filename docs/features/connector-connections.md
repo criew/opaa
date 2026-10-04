@@ -208,6 +208,14 @@ Jeder Konnektor meldet, wie er zu Profilen steht:
 | **optional** | Profil oder freie Adresse | Webverzeichnis, RSS, Confluence, S3, Nextcloud, SMB (Server-Adresse `smb://…`), Google Drive |
 | **Pflicht** | nur mit Profil | Konnektoren mit OAuth oder Client-Credentials, etwa Dropbox, Exchange |
 
+Stand der Umsetzung (#2219): Webverzeichnis, RSS, Confluence, S3, Nextcloud und SMB melden
+„optional“, jeweils mit dem persönlichen Geheimnis der Bibliothek, Webverzeichnis und RSS zusätzlich
+ohne Anmeldung. Vorgaben am Profil: Confluence `edition`, S3 `region` und `pathStyle`. Ein
+SMB-Profil hat eine `smb://`-Adresse und weder Proxy noch ausgesetzte Zertifikatsprüfung; beides
+gibt es nur bei einer `http(s)`-Adresse. Google Drive meldet noch „verboten“ (#2220), die Besitzart
+Person folgt mit #2167. Die Registry prüft die Regel in beiden Richtungen: „verboten“ genau ohne
+entferntes Ziel oder bei Uploads, mit Google Drive als einziger Ausnahme bis #2220.
+
 **Google Drive** ([ADR-0040](../decisions/0040-google-drive-konnektor.md)) meldet sich mit einem
 Dienstkonto-Schlüssel an. Der Schlüssel enthält seine App-Registrierung selbst und kann deshalb
 auch ohne Profil an der Bibliothek liegen. Die Server-Adresse ist fest (`https://www.googleapis.com`),

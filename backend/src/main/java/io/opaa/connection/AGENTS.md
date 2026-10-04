@@ -39,7 +39,7 @@ seine Ports `SourceConnectionResolver` (`ProfileSourceConnectionResolver`) und `
 - **Sperrgründe nur in `SourceBlocks`** (ob, warum, Text); Vorrang ist die Enum-Reihenfolge.
 - **Eine Zusammenführung:** `EffectiveSourceSettings` setzt Lauf, Änderung und Entwurf (`ofDraft`,
   auch `DraftOwner.PERSON`) zusammen; der Rahmen des Zugangs (`ProfileFrame`) überschreibt die
-  Bibliothek, abweichend ist `400`; Lösen schreibt den Rahmen ein.
+  Bibliothek, abweichend ist `400`; Lösen schreibt den Rahmen ein, eine entfallende Vorgabe geht in den eigenen Teil (`Move#keptDefaults`).
 - **Freigabe nur hier:** `ConnectorReleaseService` (Bibliothek) und `requireConnectable` (neues
   Konto) aus `CREATE_CONNECTOR_LIBRARY` und Sperren; ein Entzug stoppt nichts.
 - **Profilangabe nur über `ProfileRequirements`.** Eine Sperre blockiert `resolve`, nicht

@@ -46,17 +46,18 @@ public class SourceConnectorRegistry {
   }
 
   /**
-   * Profiles are forbidden for a connector filling its library by uploads or reading nothing
-   * remote; they are required exactly when the connector offers a sign-in whose app registration
-   * only a profile holds; a profile default names a settings key of the connector. A connector
-   * signing in with a service account key admits no profile: the core signs only for a library's
-   * own key (ADR-0040).
+   * Profiles are forbidden exactly for a connector filling its library by uploads or reading
+   * nothing remote; they are required exactly when the connector offers a sign-in whose app
+   * registration only a profile holds; a profile default names a settings key of the connector. A
+   * connector signing in with a service account key admits no profile yet: the core signs only for
+   * a library's own key (ADR-0040) - the one remote connector without profiles.
    */
   private static void requireProfileDeclarationFits(SourceConnector connector) {
     SourceConnectorDescriptor descriptor = connector.descriptor();
     ProfileDeclaration declaration = descriptor.profileDeclaration();
     String subject = "SourceConnector for " + descriptor.type();
-    if ((descriptor.uploads() || !descriptor.remote()) && declaration.admitsProfiles()) {
+    boolean reachesRemote = !descriptor.uploads() && descriptor.remote();
+    if (!reachesRemote && declaration.admitsProfiles()) {
       throw new IllegalStateException(
           subject
               + " fills its library by uploads or reads nothing remote and may not admit"
@@ -82,6 +83,9 @@ public class SourceConnectorRegistry {
     if (declaration.serviceAccountKey() != null && declaration.admitsProfiles()) {
       throw new IllegalStateException(
           subject + " signs in with a service account key and may not admit profiles yet");
+    }
+    if (reachesRemote && !declaration.admitsProfiles() && declaration.serviceAccountKey() == null) {
+      throw new IllegalStateException(subject + " reads a remote source and must admit profiles");
     }
   }
 

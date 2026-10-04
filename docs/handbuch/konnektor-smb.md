@@ -63,6 +63,14 @@ Abschnitt **„Umfang“** und sind für jeden Leseberechtigten sichtbar.
 
 Proxy und „Zertifikatsprüfung aussetzen“ gibt es bei SMB nicht; die API lehnt sie ab.
 
+**Über einen Zugang** (siehe [Indexierung, Zugänge](indexierung.md#zugänge)): Die Server-Adresse
+eines Zugangs für SMB ist `smb://server[:port]`; jede Bibliothek nennt ihre Freigabe in der eigenen
+Adresse darunter. Nennt die Server-Adresse schon eine Freigabe (`smb://server/freigabe`), liegen
+alle Bibliotheken des Zugangs auf dieser Freigabe. Proxy oder ausgesetzte Zertifikatsprüfung weist OPAA schon beim
+Speichern des Zugangs ab. Der Zugang meldet sich mit einem persönlichen Geheimnis an, das der
+Bibliothek gehört: Dienstkonto und Passwort tragen ihre Verwaltenden wie oben ein, und eine andere
+Freigabe verlangt auch hier das Passwort erneut. Vorgaben für Einstellungen gibt es nicht.
+
 **„Ordner laden“** zeigt die Ordner im Stamm der Freigabe. Ein Klick übernimmt den Ordner. Darf
 das Dienstkonto den Stamm nicht auflisten, lassen sich die Pfade von Hand eintragen.
 **„Verbindung testen“** meldet sich an, öffnet die Freigabe und prüft jeden Ordner. Jeder Befund

@@ -3,12 +3,17 @@ package io.opaa.indexing.source.nextcloud;
 import static io.opaa.indexing.source.ConnectorChecks.blankToNull;
 import static io.opaa.indexing.source.ConnectorChecks.unreachable;
 
+import io.opaa.api.types.ConnectionOwnership;
+import io.opaa.api.types.ConnectionProfileSupport;
+import io.opaa.api.types.PersonalSecretForm;
 import io.opaa.common.ValidationException;
 import io.opaa.indexing.source.ConnectorData;
 import io.opaa.indexing.source.OriginalAccess;
 import io.opaa.indexing.source.OriginalUnavailableException;
+import io.opaa.indexing.source.ProfileDeclaration;
 import io.opaa.indexing.source.RequestBudget;
 import io.opaa.indexing.source.ServedOriginals;
+import io.opaa.indexing.source.SignIn;
 import io.opaa.indexing.source.SourceBrowser;
 import io.opaa.indexing.source.SourceConnectionTestResult;
 import io.opaa.indexing.source.SourceConnector;
@@ -16,6 +21,7 @@ import io.opaa.indexing.source.SourceConnectorDescriptor;
 import io.opaa.indexing.source.SourceListing;
 import io.opaa.indexing.source.SourceSettings;
 import io.opaa.indexing.source.SourceSyncStateRepository;
+import io.opaa.indexing.source.SourceTargetRefusedException;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentContent;
 import io.opaa.knowledge.KnowledgeLibrary;
@@ -59,7 +65,12 @@ public class NextcloudSourceConnector implements SourceConnector, SourceBrowser,
           + " versuchen.";
 
   private static final SourceConnectorDescriptor DESCRIPTOR =
-      SourceConnectorDescriptor.remoteRun(TYPE, "Nextcloud");
+      SourceConnectorDescriptor.remoteRun(TYPE, "Nextcloud")
+          .withProfiles(
+              ProfileDeclaration.of(
+                  ConnectionProfileSupport.OPTIONAL,
+                  SignIn.personalSecret(
+                      PersonalSecretForm.USERNAME_AND_PASSWORD, ConnectionOwnership.LIBRARY)));
 
   private final NextcloudProperties properties;
   private final TargetAddressValidator targetAddressValidator;
@@ -383,7 +394,10 @@ public class NextcloudSourceConnector implements SourceConnector, SourceBrowser,
     }
   }
 
-  /** The address and the proxy pass the target validation before anything is stored. */
+  /**
+   * The address and the proxy pass the target validation before anything is stored; a refused
+   * target is a refusal of the connection, not of a setting.
+   */
   private void requireReachable(NextcloudConnection connection) {
     try {
       targetAddressValidator.validate(connection.baseUrl());
@@ -391,7 +405,7 @@ public class NextcloudSourceConnector implements SourceConnector, SourceBrowser,
         targetAddressValidator.validateHost(connection.proxyHost());
       }
     } catch (IOException e) {
-      throw new ValidationException(e.getMessage() + " " + NextcloudDav.ALLOWLIST_HINT);
+      throw new SourceTargetRefusedException(e.getMessage() + " " + NextcloudDav.ALLOWLIST_HINT);
     }
   }
 

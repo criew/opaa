@@ -3,12 +3,18 @@ package io.opaa.indexing.source.smb;
 import static io.opaa.indexing.source.ConnectorChecks.blankToNull;
 import static io.opaa.indexing.source.ConnectorChecks.unreachable;
 
+import io.opaa.api.types.ConnectionOwnership;
+import io.opaa.api.types.ConnectionProfileSupport;
+import io.opaa.api.types.PersonalSecretForm;
 import io.opaa.common.ValidationException;
 import io.opaa.indexing.source.ConnectorData;
 import io.opaa.indexing.source.OriginalAccess;
 import io.opaa.indexing.source.OriginalUnavailableException;
+import io.opaa.indexing.source.ProfileDeclaration;
 import io.opaa.indexing.source.RequestBudget;
 import io.opaa.indexing.source.ServedOriginals;
+import io.opaa.indexing.source.ServerAddressRule;
+import io.opaa.indexing.source.SignIn;
 import io.opaa.indexing.source.SourceBrowser;
 import io.opaa.indexing.source.SourceConnectionTestResult;
 import io.opaa.indexing.source.SourceConnector;
@@ -16,6 +22,7 @@ import io.opaa.indexing.source.SourceConnectorDescriptor;
 import io.opaa.indexing.source.SourceListing;
 import io.opaa.indexing.source.SourceSettings;
 import io.opaa.indexing.source.SourceSyncStateRepository;
+import io.opaa.indexing.source.SourceTargetRefusedException;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentContent;
 import io.opaa.knowledge.KnowledgeLibrary;
@@ -58,7 +65,14 @@ public class SmbSourceConnector implements SourceConnector, SourceBrowser, Origi
           + " versuchen.";
 
   private static final SourceConnectorDescriptor DESCRIPTOR =
-      SourceConnectorDescriptor.remoteRun(TYPE, "Windows-Dateifreigabe (SMB)").withoutDeepLink();
+      SourceConnectorDescriptor.remoteRun(TYPE, "Windows-Dateifreigabe (SMB)")
+          .withoutDeepLink()
+          .withProfiles(
+              ProfileDeclaration.of(
+                      ConnectionProfileSupport.OPTIONAL,
+                      SignIn.personalSecret(
+                          PersonalSecretForm.USERNAME_AND_PASSWORD, ConnectionOwnership.LIBRARY))
+                  .withAddress(ServerAddressRule.schemes("smb")));
 
   private final SmbProperties properties;
   private final TargetAddressValidator targetAddressValidator;
@@ -408,14 +422,17 @@ public class SmbSourceConnector implements SourceConnector, SourceBrowser, Origi
     }
   }
 
-  /** The server passes the target validation before anything is stored. */
+  /**
+   * The server passes the target validation before anything is stored; a refused server is a
+   * refusal of the connection, not of a setting.
+   */
   private void requireReachable(SmbAddress address) {
     try {
       targetAddressValidator.validateHost(address.socketHost());
     } catch (TargetAddressValidator.UnknownTargetHostException e) {
-      throw new ValidationException(e.getMessage());
+      throw new SourceTargetRefusedException(e.getMessage());
     } catch (IOException e) {
-      throw new ValidationException(e.getMessage() + " " + SmbShareClient.ALLOWLIST_HINT);
+      throw new SourceTargetRefusedException(e.getMessage() + " " + SmbShareClient.ALLOWLIST_HINT);
     }
   }
 
