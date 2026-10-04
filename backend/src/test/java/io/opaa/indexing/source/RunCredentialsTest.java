@@ -14,8 +14,8 @@ import org.junit.jupiter.api.Test;
 
 /**
  * One answer of the core is reused for the validity and no longer - nor past the expiry it carries,
- * nor after a rejection - a refusal ends every later ask of the run, and a derived value is
- * recomputed only for a changed secret.
+ * nor after a rejection - a refusal ends every later ask of the run, a derived value is recomputed
+ * only for a changed secret, and a rejected value asks the core at most once.
  */
 class RunCredentialsTest {
 
@@ -220,6 +220,91 @@ class RunCredentialsTest {
     assertThat(derivations).hasValue(1);
     assertThat(header.get()).isEqualTo("Basic erneuert");
     assertThat(derivations).hasValue(2);
+  }
+
+  /** Parallel downloads rejected one after the other must not each ask the core again. */
+  @Test
+  void aSecretTheCoreKeptAfterARejectionIsNotAskedForAgainWhenRejectedOnceMore() {
+    AtomicInteger renewals = new AtomicInteger();
+    RunCredentials credentials =
+        new RunCredentials(
+            core,
+            rejected -> {
+              renewals.incrementAndGet();
+              return rejected;
+            },
+            RunCredentials.VALIDITY,
+            clock);
+    credentials.check();
+
+    assertThat(credentials.renewedAfterRejection("erstes")).isFalse();
+    assertThat(credentials.renewedAfterRejection("erstes")).isFalse();
+
+    assertThat(renewals).hasValue(1);
+  }
+
+  @Test
+  void aRenewableValueAsksTheCoreForTheSecretItWasDerivedFrom() {
+    List<Secret> rejectedOnes = new ArrayList<>();
+    RunCredentials credentials =
+        new RunCredentials(
+            core,
+            rejected -> {
+              rejectedOnes.add(rejected);
+              return Secret.personal("erneuert");
+            },
+            RunCredentials.VALIDITY,
+            clock);
+    RenewableCredential<String> header =
+        credentials.renewableAfterRejection(secret -> "Basic " + secret);
+
+    String sent = header.get();
+
+    assertThat(header.renewedAfterRejection(sent)).isTrue();
+    assertThat(rejectedOnes).containsExactly(Secret.personal("erstes"));
+    assertThat(header.get()).isEqualTo("Basic erneuert");
+  }
+
+  @Test
+  void aRenewableValueNotRenewedIsNotWorthARetry() {
+    RenewableCredential<String> header =
+        credentials(RunCredentials.VALIDITY).renewableAfterRejection(secret -> "Basic " + secret);
+
+    assertThat(header.renewedAfterRejection(header.get())).isFalse();
+    assertThat(header.get()).isEqualTo("Basic erstes");
+  }
+
+  /** A request that sent an older value retries with the current one without asking the core. */
+  @Test
+  void aValueDerivedFromAnOlderSecretCountsAsRenewedWithoutAskingAgain() {
+    answers.add(Secret.personal("erneuert"));
+    AtomicInteger renewals = new AtomicInteger();
+    RunCredentials credentials =
+        new RunCredentials(
+            core,
+            rejected -> {
+              renewals.incrementAndGet();
+              return rejected;
+            },
+            Duration.ZERO,
+            clock);
+    RenewableCredential<String> header =
+        credentials.renewableAfterRejection(secret -> "Basic " + secret);
+    String sent = header.get();
+    header.get();
+
+    assertThat(header.renewedAfterRejection(sent)).isTrue();
+    assertThat(renewals).hasValue(0);
+  }
+
+  @Test
+  void aRenewableValueWithoutSecretIsNeverRenewed() {
+    answers.set(0, null);
+    RenewableCredential<String> header =
+        credentials(RunCredentials.VALIDITY).renewableAfterRejection(secret -> secret);
+
+    assertThat(header.renewedAfterRejection(header.get())).isFalse();
+    assertThat(asks).hasValue(1);
   }
 
   @Test

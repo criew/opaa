@@ -1,8 +1,8 @@
 package io.opaa.indexing.source.confluence;
 
+import io.opaa.indexing.source.RenewableCredential;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
-import java.util.function.Supplier;
 
 /**
  * Credentials of a Confluence library, typed by edition (ADR-0023, Entscheidung 3). Stored as one
@@ -23,6 +23,14 @@ public sealed interface ConfluenceCredentials {
   String authorizationHeader();
 
   ConfluenceEdition edition();
+
+  /**
+   * Whether, after the instance rejected the header {@code sent}, a different one is worth one
+   * retry; a stored credential never is.
+   */
+  default boolean renewedAfterRejection(String sent) {
+    return false;
+  }
 
   /**
    * Parses the stored form for {@code edition}.
@@ -99,12 +107,18 @@ public sealed interface ConfluenceCredentials {
    * The credentials of a run: every header is built from those {@code current} answers now, so a
    * renewed secret is sent and a refused one ends the run at its next request.
    */
-  record Current(ConfluenceEdition edition, Supplier<ConfluenceCredentials> current)
+  record Current(ConfluenceEdition edition, RenewableCredential<ConfluenceCredentials> current)
       implements ConfluenceCredentials {
 
     @Override
     public String authorizationHeader() {
       return current.get().authorizationHeader();
+    }
+
+    @Override
+    public boolean renewedAfterRejection(String sent) {
+      ConfluenceCredentials now = current.get();
+      return !now.authorizationHeader().equals(sent) || current.renewedAfterRejection(now);
     }
 
     @Override

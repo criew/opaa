@@ -1,6 +1,8 @@
 package io.opaa.indexing.source.rss;
 
 import io.opaa.indexing.source.IndexingRunFailedException;
+import io.opaa.indexing.source.RenewableCredential;
+import io.opaa.indexing.source.SourceCredentialsRejectedException;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.sourceaccess.BoundedStreams;
 import io.opaa.sourceaccess.RateLimitListener;
@@ -58,19 +60,33 @@ class FeedFetcher {
   /**
    * Fetches, reads and parses {@code feedUrl} in one step. An unchanged feed ({@code 304}) returns
    * {@link Optional#empty()} - the run ends with nothing to do; an HTTP error, an unparseable or an
-   * oversized feed ends the run with a German message ({@link IndexingRunFailedException}). {@code
-   * rateLimitListener} is told about every wait and retry on a {@code 429}.
+   * oversized feed ends the run with a German message ({@link IndexingRunFailedException}). A
+   * {@code 401} to the header sent is retried once when {@code authHeader} was renewed, and
+   * otherwise ends the run as {@link SourceCredentialsRejectedException}. {@code rateLimitListener}
+   * is told about every wait and retry on a {@code 429}.
    */
   Optional<LoadedFeed> fetchAndParse(
       HttpClient httpClient,
       UUID libraryId,
       String feedUrl,
-      String authHeader,
+      RenewableCredential<String> authHeader,
       RateLimitListener rateLimitListener)
       throws IOException, InterruptedException {
     Optional<RssFeedState> feedState = findState(libraryId, feedUrl);
+    String sent = authHeader.get();
     HttpResponse<InputStream> feedResponse =
-        fetchFeed(httpClient, feedUrl, feedState, authHeader, rateLimitListener);
+        fetchFeed(httpClient, feedUrl, feedState, sent, rateLimitListener);
+    if (rejectedCredentials(feedResponse) && authHeader.renewedAfterRejection(sent)) {
+      closeQuietly(feedResponse.body());
+      feedResponse = fetchFeed(httpClient, feedUrl, feedState, authHeader.get(), rateLimitListener);
+    }
+    if (rejectedCredentials(feedResponse)) {
+      closeQuietly(feedResponse.body());
+      log.warn("RSS feed {} rejected the credentials (HTTP 401)", feedUrl);
+      throw new SourceCredentialsRejectedException(
+          "Der RSS-Feed hat die Zugangsdaten abgelehnt (HTTP 401). Bitte Benutzername und Passwort"
+              + " prüfen.");
+    }
 
     if (feedResponse.statusCode() == 304) {
       closeQuietly(feedResponse.body());
@@ -112,6 +128,11 @@ class FeedFetcher {
       entries = entries.subList(0, properties.maxEntries());
     }
     return Optional.of(new LoadedFeed(feedResponse, entries, truncated));
+  }
+
+  /** A {@code 401} to an {@code Authorization} the feed's own origin received. */
+  private static boolean rejectedCredentials(HttpResponse<InputStream> response) {
+    return response.statusCode() == 401 && RedirectFollowingFetcher.authorizationSent(response);
   }
 
   private static void closeQuietly(InputStream in) {

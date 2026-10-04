@@ -98,6 +98,11 @@ class SmbRunSecretContractTest extends RunSecretContract {
   }
 
   @Override
+  protected boolean usesRejectionSeam() {
+    return true;
+  }
+
+  @Override
   protected String refusedSecret() {
     return WRONG;
   }

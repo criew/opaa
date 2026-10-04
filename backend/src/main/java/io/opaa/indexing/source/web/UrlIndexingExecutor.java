@@ -11,6 +11,7 @@ import io.opaa.indexing.source.IndexingRunFailedException;
 import io.opaa.indexing.source.IndexingRunTemplate;
 import io.opaa.indexing.source.ListingOutcome;
 import io.opaa.indexing.source.ReconcilingAttachmentAccess;
+import io.opaa.indexing.source.RenewableCredential;
 import io.opaa.indexing.source.RequestBudget;
 import io.opaa.indexing.source.SourceFolderMirror;
 import io.opaa.indexing.source.SourceFolderPath;
@@ -38,7 +39,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Predicate;
-import java.util.function.Supplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Async;
@@ -131,8 +131,9 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
     run.budgetContinuation(
         () -> "der Lauf endet unvollständig, der nächste Lauf durchsucht das Verzeichnis erneut");
     // the secret valid now on every request; the proxy stays as resolved at the start
-    Supplier<String> authHeader =
-        run.credentials().derived(secret -> basicAuthHeader(request.proxy(), secret));
+    RenewableCredential<String> authHeader =
+        run.credentials()
+            .renewableAfterRejection(secret -> basicAuthHeader(request.proxy(), secret));
     AutoindexCrawlerService.CrawlResult crawlResult =
         crawlerService.crawl(url, proxyHost, proxyPort, authHeader, request.insecureSsl(), budget);
     List<AutoindexCrawlerService.CrawledFileEntry> allFiles = crawlResult.entries();

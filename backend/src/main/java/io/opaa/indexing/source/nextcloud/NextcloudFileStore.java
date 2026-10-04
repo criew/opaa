@@ -301,7 +301,8 @@ final class NextcloudFileStore implements FileStore {
   }
 
   /**
-   * The neutral kind of a file-level failure; a refused login or an unreachable host ends the run.
+   * The neutral kind of a file-level failure; a rejected or refused sign-in or an unreachable host
+   * ends the run.
    */
   private static FileAccessException translate(NextcloudAccessException e) {
     String message = e.getMessage();
@@ -315,6 +316,8 @@ final class NextcloudFileStore implements FileStore {
       case NextcloudAccessException.Authentication authentication ->
           new FileAccessException.CredentialsRejected(message);
       case NextcloudAccessException.Unreachable unreachable ->
+          new FileAccessException.RunEnding(message);
+      case NextcloudAccessException.SignInRefused refused ->
           new FileAccessException.RunEnding(message);
       default -> new FileAccessException.Transient(message);
     };

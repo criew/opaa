@@ -45,6 +45,7 @@ final class FakeNextcloudServer implements AutoCloseable {
   private final Set<String> vanishing = new HashSet<>();
   private volatile String foreignFileHref;
   private volatile boolean credentialsRejected;
+  private volatile boolean signInDenied;
   private volatile String acceptedPassword = APP_PASSWORD;
   private final List<String> passwords = new CopyOnWriteArrayList<>();
 
@@ -175,6 +176,15 @@ final class FakeNextcloudServer implements AutoCloseable {
     return raw.replace("+", "%2B");
   }
 
+  /**
+   * From now on the principal lookup of the sign-in answers {@code 403} to the accepted password,
+   * as for a locked account; files and folders still answer.
+   */
+  FakeNextcloudServer denySignIn() {
+    signInDenied = true;
+    return this;
+  }
+
   FakeNextcloudServer rejectCredentials() {
     credentialsRejected = true;
     return this;
@@ -220,6 +230,10 @@ final class FakeNextcloudServer implements AutoCloseable {
       String filesRoot = davRoot + "files/" + USER_ID;
       if (exchange.getRequestMethod().equals("PROPFIND") && rawPath.equals(davRoot)) {
         requests.add("PROPFIND principal");
+        if (signInDenied) {
+          respond(exchange, 403, "");
+          return;
+        }
         respond(exchange, 207, principal());
         return;
       }
