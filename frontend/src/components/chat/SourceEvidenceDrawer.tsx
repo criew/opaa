@@ -20,7 +20,7 @@ import {
   formatMetadataLine,
   metadataFilterMatchLabel,
 } from './citations'
-import type { SourceTypeKey } from '../../types/api'
+import type { SourceFreeze, SourceFreezeReason, SourceTypeKey } from '../../types/api'
 import type { OpenableDocument } from '../../hooks/useDocumentPreview'
 import { fontFamily } from '../../theme/tokens'
 
@@ -64,6 +64,8 @@ interface EvidenceDoc {
    *  gap-free. */
   rank?: number
   indexedAt?: string | null
+  /** Present when the source's library was not updated when the answer was given. */
+  freeze?: SourceFreeze | null
   sourceEntryUrl?: string | null
   /** #739/#747: the original's document id - openable via GET /documents/{id}/content for every
    *  sourceType (that endpoint proxies HTTP_DIRECTORY/RSS_FEED server-side since #747). Undefined
@@ -86,6 +88,25 @@ interface EvidenceDoc {
 
 function formatAnsweredAt(answeredAt: Date): string {
   return `${answeredAt.toLocaleDateString('de-DE', { dateStyle: 'medium' })}, ${answeredAt.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}`
+}
+
+/** What happens to a source that is not updated, by the reason the backend reports. */
+const FREEZE_REASONS: Record<SourceFreezeReason, string> = {
+  LOCKED: 'die Quelle ist gesperrt und wird nicht mehr aktualisiert',
+  NOT_CONNECTED: 'die Verbindung zur Quelle ist getrennt, der Inhalt wird nicht aktualisiert',
+  ACCESS_REMOVED: 'der Zugang der Quelle wurde entfernt, der Inhalt wird nicht aktualisiert',
+}
+
+/**
+ * „Stand vom …“ for a source whose library was not updated when the answer was given (spec
+ * „Konnektor-Freigabe und Sperre“): the library's last successful run, what happens to the content
+ * and who is in charge - all three from the backend.
+ */
+function freezeNotice(freeze: SourceFreeze): string {
+  const date = freeze.asOf
+    ? new Date(freeze.asOf).toLocaleDateString('de-DE', { dateStyle: 'medium' })
+    : 'unbekannt'
+  return `Stand vom ${date} – ${FREEZE_REASONS[freeze.reason]} (zuständig: ${freeze.responsible})`
 }
 
 /**
@@ -158,6 +179,7 @@ export default function SourceEvidenceDrawer({
       relevanceScore: doc.source?.relevanceScore,
       sourceIndex: doc.sourceIndex,
       indexedAt: doc.source?.indexedAt,
+      freeze: doc.source?.freeze ?? null,
       sourceEntryUrl: doc.source?.sourceEntryUrl,
       documentId: doc.source?.documentId,
       sourceType: doc.source?.sourceType,
@@ -176,6 +198,7 @@ export default function SourceEvidenceDrawer({
       relevanceScore: source.relevanceScore,
       sourceIndex: citations.sourceIndexByReference.get(source) ?? Number.MAX_SAFE_INTEGER,
       indexedAt: source.indexedAt,
+      freeze: source.freeze ?? null,
       sourceEntryUrl: source.sourceEntryUrl,
       documentId: source.documentId,
       sourceType: source.sourceType,
@@ -428,6 +451,15 @@ export default function SourceEvidenceDrawer({
                     mt: 0.25,
                   }}
                 >
+                  {doc.freeze && (
+                    <Typography
+                      component="span"
+                      data-testid="source-frozen"
+                      sx={{ fontSize: 11.5, color: 'warning.main', fontWeight: 600 }}
+                    >
+                      {freezeNotice(doc.freeze)}
+                    </Typography>
+                  )}
                   <Typography component="span" sx={{ fontSize: 11.5, color: 'text.secondary' }}>
                     {[
                       doc.rank !== undefined ? `Rang ${doc.rank}` : null,

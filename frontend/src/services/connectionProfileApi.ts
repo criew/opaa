@@ -3,6 +3,7 @@ import type {
   ConnectionProfileImpactResponse,
   ConnectionProfileResponse,
   ConnectionProfileUpdateRequest,
+  ConnectorTypeStateResponse,
 } from '../types/api'
 import { apiClient as client, normalizeError } from './api'
 import { apiErrorCode } from './apiErrorDetails'
@@ -78,6 +79,47 @@ export async function disconnectAllConnections(
   try {
     const { data } = await client.post<ConnectionProfileImpactResponse>(
       `${ADMIN}/${profileId}/disconnect-all`,
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/** Locks or unlocks a profile: no new library, no run; the content stays searchable. */
+export async function lockConnectionProfile(
+  profileId: string,
+  locked: boolean,
+): Promise<ConnectionProfileResponse> {
+  try {
+    const { data } = await client.put<ConnectionProfileResponse>(`${ADMIN}/${profileId}/lock`, {
+      locked,
+    })
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/** Every connector type that reaches a source, with its lock. */
+export async function listConnectorTypeStates(): Promise<ConnectorTypeStateResponse[]> {
+  try {
+    const { data } = await client.get<ConnectorTypeStateResponse[]>('/v1/admin/connector-types')
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/** Locks or unlocks a connector type, for every library of it. */
+export async function lockConnectorType(
+  sourceType: string,
+  locked: boolean,
+): Promise<ConnectorTypeStateResponse> {
+  try {
+    const { data } = await client.put<ConnectorTypeStateResponse>(
+      `/v1/admin/connector-types/${sourceType}/lock`,
+      { locked },
     )
     return data
   } catch (err) {

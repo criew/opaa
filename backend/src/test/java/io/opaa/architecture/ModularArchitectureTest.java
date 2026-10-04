@@ -110,6 +110,11 @@ class ModularArchitectureTest {
   }
 
   @Test
+  void theSecretPortStaysWithTheCore() {
+    ARCHITECTURE.theSecretPortStaysWithTheCore().check(mainClasses);
+  }
+
+  @Test
   void theConnectorReleaseIsDecidedInConnections() {
     ARCHITECTURE.theConnectorReleaseIsDecidedInConnections().check(mainClasses);
   }

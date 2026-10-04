@@ -9,8 +9,8 @@ Konnektor-Freigabe und die Sperre von Quellart und Zugang (ADR-0041, Spezifikati
 `docs/features/connector-connections.md`). Später kommen Token-Speicher, verbundene
 Konten, OAuth und das Verbindungsprotokoll dazu. connections hängt nur von foundation, identity,
 rights und knowledge ab; nur library hängt von connections ab. Kein Konnektor und nichts in
-knowledge kennt connections: Der Kern erreicht es über seinen Port `SourceConnectionResolver`, den
-`ProfileSourceConnectionResolver` implementiert.
+knowledge kennt connections: Der Kern erreicht es über seine Ports `SourceConnectionResolver`
+(`ProfileSourceConnectionResolver`) und `SourceStateLookup` (`ConnectionSourceStateLookup`).
 
 ## Invarianten und Stolpersteine
 

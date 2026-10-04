@@ -37,4 +37,17 @@ class KnowledgeLibraryCatalogFactsMapperTest {
 
     assertThat(response.getKnowledgeLibrary().getLastIndexedAt()).isNull();
   }
+
+  @Test
+  void aLockedLibraryCarriesItsNotice() {
+    CatalogEntryResponse response = new CatalogEntryResponse();
+
+    mapper.apply(
+        new KnowledgeLibraryCatalogFacts(
+            "CONFLUENCE", null, CatalogEntryStatus.READY, "Gesperrt – Inhalt wird nicht mehr …"),
+        response);
+
+    assertThat(response.getKnowledgeLibrary().getSourceLockNotice())
+        .isEqualTo("Gesperrt – Inhalt wird nicht mehr …");
+  }
 }

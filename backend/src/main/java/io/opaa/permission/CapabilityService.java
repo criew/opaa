@@ -49,6 +49,9 @@ public class CapabilityService {
   /** The stable {@code code} of the {@code 403} a missing capability produces. */
   public static final String CAPABILITY_REQUIRED = "CAPABILITY_REQUIRED";
 
+  /** The system process that withdraws the releases of a removed target in other organizations. */
+  public static final String SCOPE_REMOVAL_ACTOR = "capability-scope-removal";
+
   /**
    * The German name of each capability, used in the refusal, in the audit entry and in the
    * administration overview's plain-text line. "Anlegerecht" is the term the interface and the
@@ -361,7 +364,8 @@ public class CapabilityService {
    * Withdraws every grant of {@code capability} in {@code scope} in every organization - what
    * removing an installation-wide target takes with it. Each withdrawal closes its interval and is
    * a governance event, exactly like {@link #revoke}; in another organization than the actor's, the
-   * interval carries no actor.
+   * interval carries no actor and the audit entry names the system process {@value
+   * #SCOPE_REMOVAL_ACTOR}, never a person of a foreign organization.
    */
   @Transactional
   public int revokeScope(Capability capability, String scope, CurrentUser actor) {
@@ -370,7 +374,8 @@ public class CapabilityService {
     for (CapabilityGrant grant : grants) {
       boolean ownOrganization = grant.getOrganizationId().equals(actor.organizationId());
       permissionHistoryService.recordCapabilityRevoked(grant, ownOrganization ? actor.id() : null);
-      recordGovernanceEvent(AuditEventType.CAPABILITY_REVOKED, grant, actor);
+      recordGovernanceEvent(
+          AuditEventType.CAPABILITY_REVOKED, grant, ownOrganization ? actor : null);
       grantRepository.delete(grant);
     }
     return grants.size();
@@ -462,15 +467,18 @@ public class CapabilityService {
   private void recordGovernanceEvent(
       AuditEventType type, CapabilityGrant grant, CurrentUser actor) {
     AuditEvent.Builder event =
-        AuditEvent.builder()
-            .organizationId(grant.getOrganizationId())
-            .actor(actor.id())
-            .type(type)
-            .object(
-                AuditObjectType.SYSTEM_SETTING,
-                capabilityObjectId(grant.getCapability()),
-                "Anlegerecht: " + label(grant.getCapability()))
-            .outcome(AuditOutcome.SUCCESS);
+        AuditEvent.builder().organizationId(grant.getOrganizationId()).type(type);
+    if (actor == null) {
+      event.actorRef(SCOPE_REMOVAL_ACTOR);
+    } else {
+      event.actor(actor.id());
+    }
+    event
+        .object(
+            AuditObjectType.SYSTEM_SETTING,
+            capabilityObjectId(grant.getCapability()),
+            "Anlegerecht: " + label(grant.getCapability()))
+        .outcome(AuditOutcome.SUCCESS);
     Map<String, Object> payload = new LinkedHashMap<>();
     payload.put("capability", grant.getCapability().name());
     if (grant.getScope() != null) {
@@ -482,16 +490,25 @@ public class CapabilityService {
     } else {
       event.before(payload);
     }
+    if (actor == null) {
+      if (grant.getSubjectType() != CapabilitySubjectType.ALL_ACCOUNTS) {
+        event.subject(subjectKindOf(grant), grant.getSubjectId());
+      }
+      auditEventRecorder.recordSystemProcessAction(event.build());
+      return;
+    }
     if (grant.getSubjectType() == CapabilitySubjectType.ALL_ACCOUNTS) {
       auditEventRecorder.recordUserAction(event.build());
       return;
     }
-    AuditSubjectKind subjectKind =
-        grant.getSubjectType() == CapabilitySubjectType.USER
-            ? AuditSubjectKind.USER
-            : AuditSubjectKind.GROUP;
     auditEventRecorder.recordUserActionOnSubject(
-        event.subject(subjectKind, grant.getSubjectId()).build());
+        event.subject(subjectKindOf(grant), grant.getSubjectId()).build());
+  }
+
+  private static AuditSubjectKind subjectKindOf(CapabilityGrant grant) {
+    return grant.getSubjectType() == CapabilitySubjectType.USER
+        ? AuditSubjectKind.USER
+        : AuditSubjectKind.GROUP;
   }
 
   /**

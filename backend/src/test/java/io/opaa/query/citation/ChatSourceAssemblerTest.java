@@ -8,8 +8,11 @@ import static org.mockito.Mockito.when;
 import io.opaa.api.types.MetadataFilterMatch;
 import io.opaa.chat.ChatSource;
 import io.opaa.chat.ChatSourceLocation;
+import io.opaa.indexing.job.IndexingJobRepository;
 import io.opaa.indexing.source.SourceConnectorStubs;
+import io.opaa.indexing.source.SourceStateLookup;
 import io.opaa.knowledge.DocumentRepository;
+import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.metadata.CitationMetadataReader;
 import io.opaa.metadata.CoreMetadata;
@@ -19,10 +22,13 @@ import io.opaa.metadata.MetadataFilter;
 import io.opaa.query.citation.CitationValidator.ValidatedCitation;
 import io.opaa.test.SourceTypes;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.document.Document;
@@ -38,7 +44,9 @@ class ChatSourceAssemblerTest {
           documentMetadataService,
           mock(CitationMetadataReader.class),
           mock(KnowledgeLibraryRepository.class),
-          SourceConnectorStubs.registry());
+          SourceConnectorStubs.registry(),
+          libraries -> java.util.Map.of(),
+          mock(IndexingJobRepository.class));
 
   private static Document chunk(String fileName, String documentId, String text, double score) {
     return Document.builder()
@@ -252,6 +260,94 @@ class ChatSourceAssemblerTest {
               tuple("satzung.md", MetadataFilterMatch.MATCHED),
               tuple("ohne.md", MetadataFilterMatch.NO_VALUE));
     }
+  }
+
+  /**
+   * A source of a library that is not updated carries the reason, who is in charge and the
+   * library's newest successful run - not the document's own {@code indexedAt}. Only the libraries
+   * behind the retrieved documents are looked up.
+   */
+  @Test
+  void marksASourceOfAFrozenLibraryWithTheLibrarysLastRun() {
+    KnowledgeLibrary lockedLibrary =
+        KnowledgeLibrary.ownedByUser(UUID.randomUUID(), "Alt", null, UUID.randomUUID());
+    KnowledgeLibrary freeLibrary =
+        KnowledgeLibrary.ownedByUser(UUID.randomUUID(), "Neu", null, UUID.randomUUID());
+    UUID lockedDocumentId = UUID.randomUUID();
+    UUID freeDocumentId = UUID.randomUUID();
+    Instant documentChanged = Instant.parse("2025-01-10T08:00:00Z");
+    Instant lastRun = Instant.parse("2026-10-02T03:00:00Z");
+    io.opaa.knowledge.Document locked =
+        new io.opaa.knowledge.Document(
+            "alt.md", "/alt.md", "text/markdown", 1L, SourceTypes.FILESYSTEM);
+    locked.setLibraryId(lockedLibrary.getId());
+    locked.setIndexedAt(documentChanged);
+    io.opaa.knowledge.Document free =
+        new io.opaa.knowledge.Document(
+            "neu.md", "/neu.md", "text/markdown", 1L, SourceTypes.FILESYSTEM);
+    free.setLibraryId(freeLibrary.getId());
+    when(documentRepository.findById(lockedDocumentId)).thenReturn(Optional.of(locked));
+    when(documentRepository.findById(freeDocumentId)).thenReturn(Optional.of(free));
+    KnowledgeLibraryRepository libraries = mock(KnowledgeLibraryRepository.class);
+    when(libraries.findAllById(Set.of(lockedLibrary.getId(), freeLibrary.getId())))
+        .thenReturn(List.of(lockedLibrary, freeLibrary));
+    List<Set<UUID>> askedFor = new ArrayList<>();
+    SourceStateLookup states =
+        asked -> {
+          askedFor.add(asked.stream().map(KnowledgeLibrary::getId).collect(Collectors.toSet()));
+          return asked.stream()
+              .filter(library -> library.getId().equals(lockedLibrary.getId()))
+              .collect(
+                  Collectors.toMap(
+                      KnowledgeLibrary::getId,
+                      library ->
+                          new SourceStateLookup.SourceState(
+                              SourceStateLookup.Reason.LOCKED, "Systemverwaltung")));
+        };
+    IndexingJobRepository jobs = mock(IndexingJobRepository.class);
+    when(jobs.findLastCompletedByLibraryIdIn(Set.of(lockedLibrary.getId())))
+        .thenReturn(
+            List.of(
+                new IndexingJobRepository.LibraryLastCompleted() {
+                  @Override
+                  public UUID getLibraryId() {
+                    return lockedLibrary.getId();
+                  }
+
+                  @Override
+                  public Instant getLastCompletedAt() {
+                    return lastRun;
+                  }
+                }));
+    ChatSourceAssembler withStates =
+        new ChatSourceAssembler(
+            documentRepository,
+            documentMetadataService,
+            mock(CitationMetadataReader.class),
+            libraries,
+            SourceConnectorStubs.registry(),
+            states,
+            jobs);
+
+    List<ChatSource> sources =
+        withStates.assemble(
+            List.of(
+                chunk("alt.md", lockedDocumentId.toString(), "alt", 0.9),
+                chunk("neu.md", freeDocumentId.toString(), "neu", 0.8)),
+            List.of(),
+            MetadataFilter.NONE);
+
+    assertThat(askedFor).containsExactly(Set.of(lockedLibrary.getId(), freeLibrary.getId()));
+    assertThat(sources)
+        .extracting(
+            ChatSource::getFileName,
+            ChatSource::getFreezeReason,
+            ChatSource::getFreezeResponsible,
+            ChatSource::getFreezeAsOf)
+        .containsExactly(
+            tuple("alt.md", "LOCKED", "Systemverwaltung", lastRun),
+            tuple("neu.md", null, null, null));
+    assertThat(sources.getFirst().getIndexedAt()).isEqualTo(documentChanged);
   }
 
   /**

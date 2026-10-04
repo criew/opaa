@@ -160,6 +160,41 @@ describe('SourceEvidenceDrawer (#592, Mockup 1i)', () => {
     expect(names).toEqual(['lexikalisch.md', 'vektor.md'])
   })
 
+  // Spezifikation „Konnektor-Freigabe und Sperre“: eine Quelle, deren Bibliothek nicht mehr
+  // aktualisiert wird, trägt „Stand vom …“ mit dem letzten erfolgreichen Lauf (nicht indexedAt),
+  // dem Grund und der zuständigen Stelle, die das Backend nennt; andere nicht.
+  it('marks a source that is not updated with "Stand vom", the reason and who is in charge', async () => {
+    const user = userEvent.setup()
+    const frozen: ChatMessage = {
+      ...message(),
+      sources: [
+        source('erster.md', true, 1, true, {
+          indexedAt: '2025-01-10T08:00:00Z',
+          freeze: {
+            reason: 'NOT_CONNECTED',
+            responsible: 'Verwaltende der Bibliothek',
+            asOf: '2026-03-12T10:00:00Z',
+          },
+        }),
+        source('zweiter.md', true, 0.5),
+        source('dritter.md', true, 1 / 3),
+      ],
+    }
+    renderWithProviders(<MessageBubble message={frozen} />)
+    await user.click(screen.getByRole('button', { name: 'Belege anzeigen' }))
+    const drawer = await screen.findByRole('dialog', { name: 'Belege dieser Antwort' })
+
+    const notices = within(drawer).getAllByTestId('source-frozen')
+    expect(notices).toHaveLength(1)
+    expect(notices[0]).toHaveTextContent(
+      /Stand vom 12\.03\.2026 – die Verbindung zur Quelle ist getrennt, der Inhalt wird nicht aktualisiert \(zuständig: Verwaltende der Bibliothek\)/,
+    )
+    const row = within(drawer)
+      .getAllByTestId('evidence-doc')
+      .find((el) => el.getAttribute('data-file') === 'erster.md')
+    expect(row).toContainElement(notices[0])
+  })
+
   it('labels a source with its rank in the answer, not a percentage weight (#1102)', async () => {
     const { drawer } = await openDrawer()
 

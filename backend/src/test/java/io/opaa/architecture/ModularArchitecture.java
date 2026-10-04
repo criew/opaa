@@ -233,6 +233,16 @@ public final class ModularArchitecture {
    */
   static final String CAPABILITY_SERVICE = "permission.CapabilityService";
 
+  /**
+   * The core's port that hands out targets and secrets, relative to the root. Only the modules that
+   * run, manage or answer a source hold it; everything else asks the read-only {@code
+   * SourceStateLookup}.
+   */
+  static final String SECRET_PORT = "indexing.source.SourceConnectionResolver";
+
+  /** The modules that may hold {@link #SECRET_PORT}. */
+  static final Set<Module> SECRET_PORT_HOLDERS = EnumSet.of(KNOWLEDGE, LIBRARY, CONNECTIONS);
+
   /** Every direct subpackage of this one, relative to the root, is a connector. */
   static final String CONNECTOR_PARENT = "indexing.source";
 
@@ -816,8 +826,40 @@ public final class ModularArchitecture {
         .allowEmptyShould(true);
   }
 
+  /**
+   * Classes outside {@link #SECRET_PORT_HOLDERS} depend on {@link #SECRET_PORT}. Connectors are
+   * covered by {@link #connectorsTakeTheirSourceConfigurationFromTheCore}; the answer path asks
+   * whether a source is updated through a port that cannot hand out a secret.
+   */
+  ArchRule theSecretPortStaysWithTheCore() {
+    return noClasses()
+        .that(
+            DescribedPredicate.describe(
+                "are outside the modules " + SECRET_PORT_HOLDERS,
+                javaClass -> {
+                  Module module = moduleOf(javaClass);
+                  return module != null
+                      && module != CONNECTORS
+                      && !SECRET_PORT_HOLDERS.contains(module);
+                }))
+        .should()
+        .dependOnClassesThat(
+            DescribedPredicate.describe(
+                "are " + SECRET_PORT,
+                target -> {
+                  String relative = relative(target.getBaseComponentType().getPackageName());
+                  return (relative + "." + target.getBaseComponentType().getSimpleName())
+                      .equals(SECRET_PORT);
+                }))
+        .because(
+            "only the core, the library administration and connections reach targets and secrets"
+                + " (ADR-0041, Entscheidung 3)")
+        .allowEmptyShould(true);
+  }
+
   List<ArchRule> all() {
     return List.of(
+        theSecretPortStaysWithTheCore(),
         theConnectorReleaseIsDecidedInConnections(),
         everyPackageIsAssigned(),
         noPackageDependsOnAHigherLayer(),

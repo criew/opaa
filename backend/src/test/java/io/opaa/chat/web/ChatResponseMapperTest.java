@@ -6,6 +6,7 @@ import io.opaa.api.dto.ChatDetail;
 import io.opaa.api.dto.ChatMessageResponse;
 import io.opaa.api.dto.ChatSummary;
 import io.opaa.api.dto.ChatSummaryPage;
+import io.opaa.api.dto.SourceFreezeReason;
 import io.opaa.api.dto.SourceMetadataEntry;
 import io.opaa.api.dto.SourceReference;
 import io.opaa.api.types.ChatNoteItemKind;
@@ -74,6 +75,24 @@ class ChatResponseMapperTest {
     assertThat(response.getCreatedAt()).isEqualTo(createdAt);
     assertThat(response.getUpdatedAt()).isEqualTo(updatedAt);
     assertThat(response.getPinnedAt()).isEqualTo(pinnedAt);
+  }
+
+  /** The "Stand vom" of a source reaches the answer with reason, who acts and the last run. */
+  @Test
+  void carriesTheFreezeOfASourceAndLeavesItAbsentOtherwise() {
+    Instant lastRun = Instant.parse("2026-10-02T03:00:00Z");
+    SourceReference frozen =
+        ChatResponseMapper.toSourceReference(
+            new ChatSource("alt.md", 1.0, 1, true)
+                .freeze("NOT_CONNECTED", "Verwaltende der Bibliothek", lastRun));
+
+    assertThat(frozen.getFreeze().getReason()).isEqualTo(SourceFreezeReason.NOT_CONNECTED);
+    assertThat(frozen.getFreeze().getResponsible()).isEqualTo("Verwaltende der Bibliothek");
+    assertThat(frozen.getFreeze().getAsOf()).isEqualTo(lastRun);
+    assertThat(
+            ChatResponseMapper.toSourceReference(new ChatSource("neu.md", 1.0, 1, true))
+                .getFreeze())
+        .isNull();
   }
 
   @Test

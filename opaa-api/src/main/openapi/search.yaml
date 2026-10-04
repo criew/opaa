@@ -502,10 +502,43 @@ components:
           items:
             $ref: "#/components/schemas/ChatNoteItem"
 
+    SourceFreezeReason:
+      type: string
+      description: >
+        Why a source is not updated: LOCKED (connector type or connection profile locked),
+        NOT_CONNECTED (the connection holds no usable secret, e.g. after "Alle Verbindungen
+        trennen"), ACCESS_REMOVED (the library's connection profile was deleted).
+      enum: [LOCKED, NOT_CONNECTED, ACCESS_REMOVED]
+
+    SourceFreeze:
+      type: object
+      required: [reason, responsible]
+      properties:
+        reason:
+          $ref: "#/components/schemas/SourceFreezeReason"
+        responsible:
+          type: string
+          description: Who can change it, in German.
+          example: Systemverwaltung
+        asOf:
+          type: string
+          format: date-time
+          nullable: true
+          description: >
+            Completion of the library's newest successful indexing run - the "Stand". Absent when
+            no run ever completed.
+
     SourceReference:
       type: object
       required: [fileName, relevanceScore, matchCount, cited]
       properties:
+        freeze:
+          nullable: true
+          description: >
+            Present when the source's library was not being updated when the answer was given; a
+            client shows "Stand vom" with its asOf, the reason and who is in charge.
+          allOf:
+            - $ref: "#/components/schemas/SourceFreeze"
         fileName:
           type: string
           example: architecture-overview.md

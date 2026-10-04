@@ -249,4 +249,76 @@ describe('ConnectionProfileManagementPage', () => {
 
     expect(await screen.findByText('Es sind noch keine Zugänge angelegt.')).toBeVisible()
   })
+
+  // Spezifikation „Konnektor-Freigabe und Sperre“: die Sperre eines Zugangs mit Rückfrage, die
+  // nennt, was mit Läufen und Inhalt geschieht; danach steht der Zugang als „Gesperrt“ in der Liste.
+  it('locks a profile after naming what happens to its libraries, and unlocks it again', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<ConnectionProfileManagementPage />)
+
+    await user.click(await screen.findByRole('button', { name: `${PROFILE} sperren` }))
+    const question = await screen.findByRole('dialog', { name: /sperren\?/ })
+    expect(question).toHaveTextContent('bleibt durchsuchbar')
+    await answerConfirm(user, /sperren\?/, 'Sperren')
+
+    const row = await screen.findByRole('row', { name: new RegExp(PROFILE) })
+    expect(await within(row).findByText('Gesperrt')).toBeVisible()
+
+    await user.click(screen.getByRole('button', { name: `Sperre von ${PROFILE} aufheben` }))
+    await answerConfirm(user, /aufheben\?/, 'Entsperren')
+    expect(await screen.findByRole('button', { name: `${PROFILE} sperren` })).toBeVisible()
+  })
+
+  it('locks a connector type after a confirmation and sends nothing on abort', async () => {
+    const sent: Array<{ type: string; locked: boolean }> = []
+    server.use(
+      http.put('/api/v1/admin/connector-types/:sourceType/lock', async ({ params, request }) => {
+        const { locked } = (await request.json()) as { locked: boolean }
+        sent.push({ type: String(params.sourceType), locked })
+        return HttpResponse.json({
+          sourceType: String(params.sourceType),
+          displayName: 'Nextcloud',
+          locked,
+          lockedAt: null,
+        })
+      }),
+    )
+    const user = userEvent.setup()
+    renderWithProviders(<ConnectionProfileManagementPage />)
+
+    const types = await screen.findByRole('table', { name: 'Quellarten' })
+    await user.click(within(types).getByRole('button', { name: 'Quellart Nextcloud sperren' }))
+    await answerConfirm(user, /Quellart „Nextcloud“ sperren\?/, 'Abbrechen')
+    expect(sent).toEqual([])
+
+    await user.click(within(types).getByRole('button', { name: 'Quellart Nextcloud sperren' }))
+    await answerConfirm(user, /Quellart „Nextcloud“ sperren\?/, 'Sperren')
+    expect(await screen.findByText('Die Quellart „Nextcloud“ ist gesperrt.')).toBeVisible()
+    expect(sent).toEqual([{ type: 'NEXTCLOUD', locked: true }])
+  })
+
+  // Eine Sperre der Quellart hat Vorrang: Wer nur den Zugang entsperrt, bekommt keinen Weiterlauf
+  // versprochen, und die Zeile zeigt die Sperre der Quellart.
+  it('does not promise a restart when the profile is unlocked while its source type stays locked', async () => {
+    server.use(
+      http.get('/api/v1/admin/connection-profiles', () =>
+        HttpResponse.json(mockConnectionProfiles.map((profile) => ({ ...profile, locked: true }))),
+      ),
+      http.get('/api/v1/admin/connector-types', () =>
+        HttpResponse.json([
+          { sourceType: 'NEXTCLOUD', displayName: 'Nextcloud', locked: true, lockedAt: null },
+        ]),
+      ),
+    )
+    const user = userEvent.setup()
+    renderWithProviders(<ConnectionProfileManagementPage />)
+
+    const row = await screen.findByRole('row', { name: new RegExp(PROFILE) })
+    expect(await within(row).findByText('Quellart gesperrt')).toBeVisible()
+    await user.click(within(row).getByRole('button', { name: `Sperre von ${PROFILE} aufheben` }))
+    const question = await screen.findByRole('dialog', { name: /aufheben\?/ })
+    expect(question).toHaveTextContent('Die Quellart „Nextcloud“ bleibt gesperrt')
+    expect(question).not.toHaveTextContent('ohne Neueinrichtung weiter')
+    await answerConfirm(user, /aufheben\?/, 'Abbrechen')
+  })
 })

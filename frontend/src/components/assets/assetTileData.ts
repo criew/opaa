@@ -79,5 +79,9 @@ export function tileFromCatalogEntry(entry: CatalogEntryResponse): AssetTileData
     updatedAt: entry.knowledgeLibrary?.lastIndexedAt ?? entry.updatedAt ?? null,
     status: status === 'READY' ? null : status,
     successionOpen: Boolean(entry.succession),
+    // the short form of the notice; the library's source tab carries the whole of it
+    note: entry.knowledgeLibrary?.sourceLockNotice
+      ? 'Gesperrt – Inhalt wird nicht mehr aktualisiert (zuständig: Systemverwaltung)'
+      : null,
   }
 }

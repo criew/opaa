@@ -440,9 +440,11 @@ angelegter Zugang ist für niemanden außer der Systemverwaltung freigegeben.
 #### Sperre einer Quellart oder eines Zugangs
 
 Die Systemverwaltung kann eine **Quellart** (für alle ihre Bibliotheken, mit und ohne Zugang) oder
-einen **Zugang** sperren. Eine Bedienoberfläche dafür gibt es nicht; gesperrt und entsperrt wird über
-die Verwaltungs-API (`PUT /api/v1/admin/connector-types/{Quellart}/lock`,
-`PUT /api/v1/admin/connection-profiles/{Zugang}/lock`). Die Folgen:
+einen **Zugang** sperren, unter **Administration → Zugänge**: je Zugang mit „Sperren“ bzw.
+„Entsperren“ in der Liste, je Quellart im Abschnitt „Quellarten“ darunter. Beides fragt vorher nach
+und nennt die Folgen; ein gesperrter Zugang trägt in der Liste die Marke „Gesperrt“, einer, dessen
+Quellart gesperrt ist, die Marke „Quellart gesperrt“. Beim Entsperren sagt die Rückfrage, wenn eine
+andere Sperre bestehen bleibt. Die Folgen:
 
 - Neue Bibliotheken der Quellart oder auf dem Zugang sind nicht mehr möglich, auch nicht für die
   Systemverwaltung; im Wissens-Assistenten ist die Kachel der Quellart gesperrt.
@@ -457,7 +459,14 @@ die Verwaltungs-API (`PUT /api/v1/admin/connector-types/{Quellart}/lock`,
   einem anderen, für sie freigegebenen Zugang zuordnen.
 - Der Bestand bleibt durchsuchbar. Der Reiter „Quelle" der Bibliothek trägt für alle
   Leseberechtigten den Hinweis „Gesperrt – Inhalt wird nicht mehr aktualisiert" mit der gesperrten
-  Quellart oder dem Zugang und der Systemverwaltung als zuständiger Stelle.
+  Quellart oder dem Zugang und der Systemverwaltung als zuständiger Stelle; die Kachel im Katalog
+  trägt die Zeile „Gesperrt – Inhalt wird nicht mehr aktualisiert (zuständig: Systemverwaltung)".
+- Ein Beleg einer Antwort, der aus einer gesperrten Bibliothek stammt, trägt in den Belegen „Stand
+  vom …“ mit dem letzten erfolgreichen Lauf der Bibliothek und der Systemverwaltung als zuständiger
+  Stelle. Dasselbe gilt für eine Bibliothek, deren Verbindung getrennt oder deren Zugang entfernt
+  ist; zuständig sind dort die Verwaltenden der Bibliothek (bei einer Anmeldeart, die eine
+  Bibliothek noch nicht verbinden kann, die Systemverwaltung). Maßgeblich ist der Zustand zum
+  Zeitpunkt der Antwort.
 - Wird die Sperre aufgehoben, laufen die Bibliotheken ohne Neueinrichtung weiter.
 
 Sperren und Entsperren sind Governance-Ereignisse im Revisionsprotokoll. Der Entzug einer Freigabe

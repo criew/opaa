@@ -11,7 +11,7 @@ import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
 import Typography from '@mui/material/Typography'
 import VpnKeyOutlinedIcon from '@mui/icons-material/VpnKeyOutlined'
-import type { ConnectionProfileResponse } from '../types/api'
+import type { ConnectionProfileResponse, ConnectorTypeStateResponse } from '../types/api'
 import { useAuthStore } from '../stores/authStore'
 import { confirmAction } from '../stores/confirmStore'
 import { notify } from '../stores/notificationStore'
@@ -21,10 +21,14 @@ import {
   disconnectAllConnections,
   getConnectionProfileImpact,
   listConnectionProfiles,
+  listConnectorTypeStates,
+  lockConnectionProfile,
 } from '../services/connectionProfileApi'
 import PageHeading from '../components/a11y/PageHeading'
 import AreaPageHeader from '../components/AreaPageHeader'
 import ConnectionProfileFormDialog from '../components/admin/connections/ConnectionProfileFormDialog'
+import ConnectorTypeLockSection from '../components/admin/connections/ConnectorTypeLockSection'
+import { confirmLock } from '../components/admin/connections/connectorLock'
 import {
   AUTH_METHOD_LABELS,
   OWNERSHIP_LABELS,
@@ -50,8 +54,8 @@ function connectionCount(count: number) {
 
 /**
  * Die Zugänge der Installation (#2160): je Zugang Quellart, Server-Adresse, Anmeldeart und Zahl
- * der Verbindungen, dazu Bearbeiten, die Notabschaltung „Alle Verbindungen trennen“ und Löschen.
- * Beide letzteren fragen mit der Zahl der Betroffenen nach.
+ * der Verbindungen, dazu Bearbeiten, Sperren, die Notabschaltung „Alle Verbindungen trennen“ und
+ * Löschen. Darunter die Sperre je Quellart (#2161). Jede dieser Handlungen fragt nach.
  */
 export default function ConnectionProfileManagementPage() {
   const isSystemAdmin = useAuthStore((s) => s.user?.systemRole === 'SYSTEM_ADMIN')
@@ -65,6 +69,8 @@ export default function ConnectionProfileManagementPage() {
     profile: null,
   })
 
+  const [typeStates, setTypeStates] = useState<ConnectorTypeStateResponse[]>([])
+  const [typeError, setTypeError] = useState<string | null>(null)
   const [reloadKey, setReloadKey] = useState(0)
   const reload = () => setReloadKey((key) => key + 1)
 
@@ -84,6 +90,19 @@ export default function ConnectionProfileManagementPage() {
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
+      })
+    void listConnectorTypeStates()
+      .then((loaded) => {
+        if (cancelled) return
+        setTypeStates(loaded)
+        setTypeError(null)
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setTypeError(
+            err instanceof Error ? err.message : 'Quellarten konnten nicht geladen werden.',
+          )
+        }
       })
     return () => {
       cancelled = true
@@ -120,6 +139,30 @@ export default function ConnectionProfileManagementPage() {
       reload()
     } catch (err) {
       notify(err instanceof Error ? err.message : 'Trennen fehlgeschlagen.', 'error')
+    }
+  }
+
+  const typeLocked = (sourceType: string) =>
+    typeStates.some((state) => state.sourceType === sourceType && state.locked)
+
+  async function handleLock(profile: ConnectionProfileResponse) {
+    const lock = !profile.locked
+    const remaining =
+      !lock && typeLocked(profile.sourceType)
+        ? `Die Quellart „${displayNameOf(profile.sourceType)}“ bleibt gesperrt: Die Bibliotheken des Zugangs laufen erst weiter, wenn auch ihre Sperre aufgehoben ist.`
+        : undefined
+    if (!(await confirmLock(`den Zugang „${profile.name}“`, lock, remaining))) return
+    try {
+      await lockConnectionProfile(profile.id, lock)
+      notify(
+        lock
+          ? `„${profile.name}“ ist gesperrt.`
+          : `Die Sperre von „${profile.name}“ ist aufgehoben.`,
+        'success',
+      )
+      reload()
+    } catch (err) {
+      notify(err instanceof Error ? err.message : 'Die Sperre ließ sich nicht ändern.', 'error')
     }
   }
 
@@ -210,6 +253,15 @@ export default function ConnectionProfileManagementPage() {
                   <TableCell>
                     <Stack spacing={0.5} sx={{ alignItems: 'flex-start' }}>
                       <span>{profile.name}</span>
+                      {profile.locked && <Chip size="small" color="error" label="Gesperrt" />}
+                      {typeLocked(profile.sourceType) && (
+                        <Chip
+                          size="small"
+                          color="error"
+                          variant="outlined"
+                          label="Quellart gesperrt"
+                        />
+                      )}
                       {profile.clientSecretExpiresSoon && profile.clientSecretExpiresOn && (
                         <Chip
                           size="small"
@@ -247,6 +299,18 @@ export default function ConnectionProfileManagementPage() {
                       </Button>
                       <Button
                         size="small"
+                        color={profile.locked ? 'primary' : 'error'}
+                        onClick={() => void handleLock(profile)}
+                        aria-label={
+                          profile.locked
+                            ? `Sperre von ${profile.name} aufheben`
+                            : `${profile.name} sperren`
+                        }
+                      >
+                        {profile.locked ? 'Entsperren' : 'Sperren'}
+                      </Button>
+                      <Button
+                        size="small"
                         color="warning"
                         onClick={() => void handleDisconnect(profile)}
                         aria-label={`Alle Verbindungen von ${profile.name} trennen`}
@@ -268,6 +332,18 @@ export default function ConnectionProfileManagementPage() {
             </TableBody>
           </Table>
         )}
+
+        <Box sx={{ mt: 4 }}>
+          <ConnectorTypeLockSection
+            states={typeStates}
+            error={typeError}
+            lockedProfileCount={(sourceType) =>
+              profiles.filter((profile) => profile.sourceType === sourceType && profile.locked)
+                .length
+            }
+            onChanged={reload}
+          />
+        </Box>
 
         <ConnectionProfileFormDialog
           key={form.profile?.id ?? (form.open ? 'new-open' : 'new')}
