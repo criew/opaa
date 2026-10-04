@@ -33,7 +33,8 @@ public interface AssetGrantRepository extends JpaRepository<AssetGrant, UUID> {
    * UserRepository#TOKEN_ROLE_CHANGE_LOCK_NAMESPACE}), 204 ({@code
    * GroupRepository#IDENTITY_PROVIDER_GROUP_LOCK_NAMESPACE}), 205 ({@code
    * DirectorySyncRunLock#DIRECTORY_SYNC_RUN_LOCK_NAMESPACE}), 206 ({@code
-   * ConnectionProfileRequestRepository#PROFILE_REQUEST_SUBMISSION_LOCK_NAMESPACE}).
+   * ConnectionProfileRequestRepository#PROFILE_REQUEST_SUBMISSION_LOCK_NAMESPACE}), 207 ({@code
+   * ConnectionAuthorizationRepository#AUTHORIZATION_START_LOCK_NAMESPACE}).
    */
   int ASSET_GRANT_MUTATION_LOCK_NAMESPACE = 202;
 

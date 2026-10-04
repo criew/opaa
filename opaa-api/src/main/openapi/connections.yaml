@@ -91,6 +91,120 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /api/v1/connections/authorizations:
+    post:
+      operationId: startConnectionAuthorization
+      tags: [connected-account]
+      summary: Start an OAuth consent at the provider of a profile
+      description: >
+        Returns the address the browser is sent to in the same tab: the authorization request of
+        the profile's provider with a fresh state and a PKCE challenge (S256), returning to
+        {OPAA_PUBLIC_BASE_URL}/connections/callback. State and verifier stay with the server, bound
+        to the caller and the profile as it stands now, for 10 minutes and one completion. Only
+        the purpose ACCOUNT is served yet; it needs what connecting an account needs. A person
+        starts at most 10 consents in 10 minutes.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConnectionAuthorizationStartRequest"
+      responses:
+        "200":
+          description: The authorization request to send the browser to
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConnectionAuthorizationStartResponse"
+        "400":
+          description: >
+            The profile does not sign in by OAuth, does not admit the caller's ownership, or the
+            purpose is not served yet (code CONNECTION_AUTHORIZATION_PURPOSE_UNAVAILABLE).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: >
+            A first connection on a profile not released to the caller (code
+            CAPABILITY_REQUIRED), or the profile or its connector is locked (code
+            CONNECTOR_LOCKED).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: >
+            No public address is configured (OPAA_PUBLIC_BASE_URL), so the provider has nowhere to
+            return to (code PUBLIC_BASE_URL_MISSING).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+  /api/v1/connections/authorizations/complete:
+    post:
+      operationId: completeConnectionAuthorization
+      tags: [connected-account]
+      summary: Complete an OAuth consent with what the provider sent back
+      description: >
+        Called by the page /connections/callback with state and code, or state and error, as the
+        provider returned them. The state must be the caller's own, unused and not expired; it is
+        used up by this call whatever its outcome. The server exchanges the code with the profile's
+        client secret and the PKCE verifier and stores the tokens encrypted; where the caller goes
+        next it derives from the purpose. No answer carries a token.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConnectionAuthorizationCompleteRequest"
+      responses:
+        "200":
+          description: The connection as it stands now
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConnectionAuthorizationCompleteResponse"
+        "400":
+          description: >
+            The provider refused or cancelled the consent, or the exchange of the code failed (the
+            message says which).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: >
+            The profile or its connector was locked, or its release withdrawn, meanwhile (codes
+            CONNECTOR_LOCKED, CAPABILITY_REQUIRED).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: The state is unknown, another person's, used up or expired.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: >
+            The profile changed since the consent started (code
+            CONNECTION_AUTHORIZATION_PROFILE_CHANGED); start anew.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
   /api/v1/admin/connection-profiles:
     get:
       operationId: listConnectionProfiles
@@ -869,6 +983,24 @@ components:
           maxLength: 2000
           nullable: true
           example: Files.Read offline_access
+        authorizationEndpoint:
+          type: string
+          maxLength: 2000
+          nullable: true
+          description: >
+            Only where the connector's OAuth sign-in leaves its endpoints to the profile
+            (SourceTypeSignIn); then required, an absolute http or https address. A change is a
+            change of the registration.
+        tokenEndpoint:
+          type: string
+          maxLength: 2000
+          nullable: true
+          description: As authorizationEndpoint, for the token endpoint.
+        revocationEndpoint:
+          type: string
+          maxLength: 2000
+          nullable: true
+          description: As authorizationEndpoint, for the token revocation (RFC 7009).
         connectorSettings:
           type: object
           additionalProperties: true
@@ -954,6 +1086,24 @@ components:
           maxLength: 2000
           nullable: true
           example: Files.Read offline_access
+        authorizationEndpoint:
+          type: string
+          maxLength: 2000
+          nullable: true
+          description: >
+            Only where the connector's OAuth sign-in leaves its endpoints to the profile
+            (SourceTypeSignIn); then required, an absolute http or https address. A change is a
+            change of the registration.
+        tokenEndpoint:
+          type: string
+          maxLength: 2000
+          nullable: true
+          description: As authorizationEndpoint, for the token endpoint.
+        revocationEndpoint:
+          type: string
+          maxLength: 2000
+          nullable: true
+          description: As authorizationEndpoint, for the token revocation (RFC 7009).
         connectorSettings:
           type: object
           additionalProperties: true
@@ -982,7 +1132,8 @@ components:
         confirmDiscard:
           type: boolean
           description: >
-            Confirms that a change of serverUrl, clientId, tenant, scopes or authMethod discards
+            Confirms that a change of serverUrl, clientId, tenant, scopes, an endpoint or
+            authMethod discards
             the secrets of the existing connections, and that a changed default only the profile
             sets (ProfileDefaultKey.profileOnly) discards the run state of every library on it.
 
@@ -1043,6 +1194,15 @@ components:
           type: string
           nullable: true
         scopes:
+          type: string
+          nullable: true
+        authorizationEndpoint:
+          type: string
+          nullable: true
+        tokenEndpoint:
+          type: string
+          nullable: true
+        revocationEndpoint:
           type: string
           nullable: true
         connectorSettings:
@@ -1151,6 +1311,73 @@ components:
           format: int32
           nullable: true
           example: 5
+
+    ConnectionAuthorizationPurpose:
+      type: string
+      description: >
+        What an OAuth consent is for: ACCOUNT (the caller's own connected account); LIBRARY_NEW
+        and LIBRARY_RECONNECT (the source of a library) are not served yet.
+      enum: [LIBRARY_NEW, LIBRARY_RECONNECT, ACCOUNT]
+
+    ConnectionAuthorizationStartRequest:
+      type: object
+      required: [profileId, purpose]
+      properties:
+        profileId:
+          type: string
+          format: uuid
+        purpose:
+          $ref: "#/components/schemas/ConnectionAuthorizationPurpose"
+
+    ConnectionAuthorizationStartResponse:
+      type: object
+      required: [authorizationUrl, expiresAt]
+      properties:
+        authorizationUrl:
+          type: string
+          description: The provider's authorization request; the browser goes there in the same tab.
+        expiresAt:
+          type: string
+          format: date-time
+          description: Until when the consent can be completed.
+
+    ConnectionAuthorizationCompleteRequest:
+      type: object
+      required: [state]
+      description: What the provider sent back to /connections/callback, passed on unchanged.
+      properties:
+        state:
+          type: string
+          minLength: 1
+          maxLength: 512
+        code:
+          type: string
+          maxLength: 4096
+          nullable: true
+        error:
+          type: string
+          maxLength: 256
+          nullable: true
+          description: The provider's error code (RFC 6749, 4.1.2.1) where it refused or cancelled.
+
+    ConnectionAuthorizationCompleteResponse:
+      type: object
+      required: [purpose, profileId, returnTo]
+      properties:
+        purpose:
+          $ref: "#/components/schemas/ConnectionAuthorizationPurpose"
+        profileId:
+          type: string
+          format: uuid
+        returnTo:
+          type: string
+          description: The page of the application the caller goes on to, derived from purpose.
+          example: /settings/accounts
+        account:
+          description: For the purpose ACCOUNT, the connection as it stands now.
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/ConnectedAccount"
 
     ConnectedAccountState:
       type: string

@@ -26,6 +26,7 @@ import io.opaa.connection.profile.PersonConnections.StateCounts;
 import io.opaa.connection.profile.ProfileAdmission;
 import io.opaa.connection.profile.SourceDraft;
 import io.opaa.connection.token.ConnectionSecrets;
+import io.opaa.connection.token.GrantRejections;
 import io.opaa.connection.token.NewSecret;
 import io.opaa.connection.token.SecretOwner.PersonOwned;
 import io.opaa.indexing.source.SignIn;
@@ -66,7 +67,7 @@ import org.springframework.transaction.support.TransactionTemplate;
  * new account needs the profile's release, an existing one only an unlocked profile.
  */
 @Service
-public class ConnectedAccountService implements PersonConnections {
+public class ConnectedAccountService implements PersonConnections, GrantRejections {
 
   private static final Capability RELEASE = Capability.CREATE_CONNECTOR_LIBRARY;
   private static final String ADMINISTRATION = "Systemverwaltung";
@@ -232,6 +233,36 @@ public class ConnectedAccountService implements PersonConnections {
    */
   @Transactional
   public void rejected(KnowledgeLibrary library, PersonOwned owner) {
+    expire(
+        owner,
+        AuditObjectType.KNOWLEDGE_LIBRARY,
+        library.getId(),
+        "Der Anbieter hat die Anmeldung Ihres verbundenen Kontos abgelehnt. Verbinden Sie es auf"
+            + " der Seite „Verbundene Konten“ neu; bis dahin wird Ihre private Bibliothek nicht"
+            + " aktualisiert.");
+  }
+
+  /**
+   * The provider no longer takes the OAuth grant of {@code owner}: the connection expires as by
+   * {@link #rejected}, in the caller's transaction, which holds the grant's row.
+   */
+  @Override
+  @Transactional
+  public void grantRejected(PersonOwned owner) {
+    expire(
+        owner,
+        AuditObjectType.SYSTEM_SETTING,
+        owner.profileId(),
+        "Der Anbieter nimmt die Zustimmung Ihres verbundenen Kontos nicht mehr an. Verbinden Sie"
+            + " es auf der Seite „Verbundene Konten“ neu; bis dahin wird nichts aus diesem Zugang"
+            + " aktualisiert.");
+  }
+
+  /**
+   * Expires the connection of {@code owner} for {@code PROVIDER_REJECTED}: logged, its owner told
+   * {@code body}; ignored once it is not connected.
+   */
+  private void expire(PersonOwned owner, AuditObjectType objectType, UUID objectId, String body) {
     Optional<ConnectedAccount> found =
         accounts.findByUserIdAndProfileId(owner.userId(), owner.profileId());
     if (found.isEmpty() || found.get().getState() != ConnectedAccountState.CONNECTED) {
@@ -254,12 +285,10 @@ public class ConnectedAccountService implements PersonConnections {
         account.getOrganizationId(),
         account.getUserId(),
         NotificationType.CONNECTION_EXPIRED,
-        AuditObjectType.KNOWLEDGE_LIBRARY,
-        library.getId(),
+        objectType,
+        objectId,
         "Verbindung abgelaufen: Zugang „" + profile.getName() + "“",
-        "Der Anbieter hat die Anmeldung Ihres verbundenen Kontos abgelehnt. Verbinden Sie es auf"
-            + " der Seite „Verbundene Konten“ neu; bis dahin wird Ihre private Bibliothek nicht"
-            + " aktualisiert.");
+        body);
   }
 
   /** The caller's connections, what they may connect now, and who to ask for a missing one. */

@@ -240,15 +240,21 @@ public class EffectiveSourceSettings {
   }
 
   /**
-   * The secret to retry with after the source rejected the one {@code library} was reached with: a
-   * profile's own token is obtained anew, every other secret is read as {@link #currentSecret}.
+   * The secret to retry with after the source rejected {@code rejected}, the one {@code library}
+   * was reached with: a profile's own token is obtained anew, a person's OAuth token renewed, every
+   * other secret is read as {@link #currentSecret}.
    *
    * @throws SourceConnectionBlockedException when what ends a running run applies
    */
-  public Secret secretAfterRejection(KnowledgeLibrary library) {
+  public Secret secretAfterRejection(KnowledgeLibrary library, Secret rejected) {
     Optional<ConnectionProfile> profile = profileFor(library, Purpose.CHANGE);
-    if (profile.isPresent() && ownerOn(profile.get(), library) instanceof ProfileOwned owner) {
-      return secretOf(owner, profile.get(), library, true);
+    if (profile.isPresent()) {
+      SecretOwner owner = ownerOn(profile.get(), library);
+      if (owner instanceof ProfileOwned
+          || owner instanceof PersonOwned
+              && profile.get().getAuthMethod() == ConnectionAuthMethod.OAUTH) {
+        return secretOf(owner, profile.get(), library, true, rejected);
+      }
     }
     return secretFor(library, profile, Purpose.RUN);
   }
@@ -289,10 +295,10 @@ public class EffectiveSourceSettings {
     return switch (found.getAuthMethod()) {
       case NONE -> null;
       case PERSONAL_SECRET, CLIENT_CREDENTIALS, SERVICE_ACCOUNT_KEY ->
-          secretOf(owner, found, library, false);
+          secretOf(owner, found, library, false, null);
       case OAUTH -> {
         if (owner instanceof PersonOwned) {
-          yield secretOf(owner, found, library, false);
+          yield secretOf(owner, found, library, false, null);
         }
         throw new IllegalStateException(
             "Sign-in method " + found.getAuthMethod() + " passed the source blocks");
@@ -301,8 +307,8 @@ public class EffectiveSourceSettings {
   }
 
   /**
-   * The secret {@code owner} holds on {@code profile} now, {@code afterRejection} the one to retry
-   * with.
+   * The secret {@code owner} holds on {@code profile} now, or {@code afterRejection} the one to
+   * retry with after the source rejected {@code rejected} ({@code null} where unknown).
    *
    * @throws SourceConnectionBlockedException with the store's reason, worded by {@link
    *     SourceBlocks}
@@ -311,7 +317,8 @@ public class EffectiveSourceSettings {
       SecretOwner owner,
       ConnectionProfile profile,
       KnowledgeLibrary library,
-      boolean afterRejection) {
+      boolean afterRejection,
+      Secret rejected) {
     if (SourceBlocks.withoutPersons(profile, owner)) {
       throw new SourceConnectionBlockedException(
           SourceBlocks.secretBlock(Reason.NOT_CONNECTED, profile, owner));
@@ -319,7 +326,7 @@ public class EffectiveSourceSettings {
     String target = targetOf(library, profile).key();
     try {
       return afterRejection
-          ? secrets.afterRejection(owner, target)
+          ? secrets.afterRejection(owner, target, rejected)
           : secrets.current(owner, target);
     } catch (SecretRefusedException e) {
       throw new SourceConnectionBlockedException(
@@ -368,7 +375,7 @@ public class EffectiveSourceSettings {
    */
   private Secret storedSecretFor(ConnectionProfile profile, KnowledgeLibrary library) {
     try {
-      return secretOf(ownerOn(profile, library), profile, library, false);
+      return secretOf(ownerOn(profile, library), profile, library, false, null);
     } catch (SourceConnectionBlockedException e) {
       if (e.block().reason() == Reason.NOT_CONNECTED) {
         return null;

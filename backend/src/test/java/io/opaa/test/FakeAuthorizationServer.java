@@ -9,30 +9,57 @@ import java.net.InetSocketAddress;
 import java.net.URI;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.time.Duration;
+import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * A token endpoint on {@code 127.0.0.1} for the client credentials and the JWT bearer grant: it
- * records every request (target, {@code Authorization}, form) and answers with a new access token,
- * or with the OAuth error set by {@link #rejectWith}. It also answers a request sent to it as a
- * proxy, whose target then names another host. {@link #shared()} serves the Spring contexts.
+ * An authorization server on {@code 127.0.0.1} for the client credentials, the JWT bearer, the
+ * authorization code (with PKCE, S256 only) and the refresh token grant, with token revocation by
+ * RFC 7009 ({@code /revoke}) and by bearer ({@code /revoke-bearer}). It records every request
+ * (target, {@code Authorization}, form) and answers with new tokens, or with the OAuth error set by
+ * {@link #rejectWith}. {@link #approve} stands for the person consenting in the browser. It also
+ * answers a request sent to it as a proxy. {@link #shared()} serves the Spring contexts.
  */
 public final class FakeAuthorizationServer implements AutoCloseable {
 
   private static FakeAuthorizationServer shared;
 
   /** One request as it arrived. */
-  public record Request(URI target, String authorization, Map<String, String> form) {}
+  public record Request(URI target, String authorization, Map<String, String> form) {
+
+    /** The {@code grant_type} of a token request, {@code null} for any other. */
+    public String grantType() {
+      return form.get("grant_type");
+    }
+  }
+
+  /** What a consent bound its code to. */
+  private record Consent(String clientId, String redirectUri, String challenge) {}
 
   private final HttpServer server;
   private final List<Request> requests = new CopyOnWriteArrayList<>();
   private final AtomicInteger issued = new AtomicInteger();
+  private final AtomicInteger refreshIssued = new AtomicInteger();
+  private final Map<String, Consent> codes = new ConcurrentHashMap<>();
+  private final Set<String> liveRefreshTokens = ConcurrentHashMap.newKeySet();
   private volatile String error;
   private volatile int errorStatus;
+  private volatile boolean rotateRefreshTokens = true;
+  private volatile long accessLifetimeSeconds = 3600;
+  private volatile Long refreshLifetimeSeconds;
+  private volatile Duration delay = Duration.ZERO;
+  private volatile boolean unreachable;
 
   public FakeAuthorizationServer() {
     try {
@@ -40,7 +67,9 @@ public final class FakeAuthorizationServer implements AutoCloseable {
     } catch (IOException e) {
       throw new UncheckedIOException(e);
     }
-    server.createContext("/token", this::handle);
+    server.createContext("/token", this::handleToken);
+    server.createContext("/revoke", this::handleRevocation);
+    server.setExecutor(Executors.newCachedThreadPool());
     server.start();
   }
 
@@ -53,7 +82,24 @@ public final class FakeAuthorizationServer implements AutoCloseable {
   }
 
   public URI tokenEndpoint() {
-    return URI.create("http://127.0.0.1:" + server.getAddress().getPort() + "/token");
+    return endpoint("/token");
+  }
+
+  /** Where a person is sent to consent; nothing answers there, {@link #approve} stands for it. */
+  public URI authorizationEndpoint() {
+    return endpoint("/authorize");
+  }
+
+  public URI revocationEndpoint() {
+    return endpoint("/revoke");
+  }
+
+  public URI bearerRevocationEndpoint() {
+    return endpoint("/revoke-bearer");
+  }
+
+  private URI endpoint(String path) {
+    return URI.create("http://127.0.0.1:" + server.getAddress().getPort() + path);
   }
 
   /** {@code host:port} of this server, to be named as a proxy. */
@@ -61,7 +107,7 @@ public final class FakeAuthorizationServer implements AutoCloseable {
     return "127.0.0.1:" + server.getAddress().getPort();
   }
 
-  /** From now on every request is refused with the OAuth {@code error} and {@code status}. */
+  /** From now on every token request is refused with the OAuth {@code error} and {@code status}. */
   public void rejectWith(int status, String error) {
     this.errorStatus = status;
     this.error = error;
@@ -72,8 +118,69 @@ public final class FakeAuthorizationServer implements AutoCloseable {
     this.error = null;
   }
 
+  /** Whether a refresh hands out a new refresh token and invalidates the used one (default). */
+  public void rotateRefreshTokens(boolean rotate) {
+    this.rotateRefreshTokens = rotate;
+  }
+
+  /** The {@code expires_in} of every access token from now on. */
+  public void accessLifetime(Duration lifetime) {
+    this.accessLifetimeSeconds = lifetime.toSeconds();
+  }
+
+  /** The {@code refresh_expires_in} of every refresh token from now on, {@code null} for none. */
+  public void refreshLifetime(Duration lifetime) {
+    this.refreshLifetimeSeconds = lifetime == null ? null : lifetime.toSeconds();
+  }
+
+  /** How long every token answer waits before it is sent. */
+  public void delay(Duration delay) {
+    this.delay = delay;
+  }
+
+  /** From now on the token endpoint drops every connection without an answer. */
+  public void unreachable(boolean unreachable) {
+    this.unreachable = unreachable;
+  }
+
+  /**
+   * The person consents to the authorization request {@code authorizationUrl}: returns the code the
+   * provider would send back to its {@code redirect_uri}.
+   *
+   * @throws IllegalArgumentException for a request without PKCE (S256), client id or redirect
+   */
+  public String approve(URI authorizationUrl) {
+    Map<String, String> query = form(authorizationUrl.getRawQuery());
+    if (!"code".equals(query.get("response_type"))
+        || !"S256".equals(query.get("code_challenge_method"))
+        || query.get("code_challenge") == null
+        || query.get("client_id") == null
+        || query.get("redirect_uri") == null
+        || query.get("state") == null) {
+      throw new IllegalArgumentException("no authorization code request with PKCE: " + query);
+    }
+    String code = "fake-code-" + UUID.randomUUID();
+    codes.put(
+        code,
+        new Consent(
+            query.get("client_id"), query.get("redirect_uri"), query.get("code_challenge")));
+    return code;
+  }
+
   public List<Request> requests() {
     return List.copyOf(requests);
+  }
+
+  /** The requests that asked for {@code grantType}. */
+  public List<Request> requests(String grantType) {
+    return requests.stream().filter(request -> grantType.equals(request.grantType())).toList();
+  }
+
+  /** The requests that arrived at a revocation endpoint. */
+  public List<Request> revocations() {
+    return requests.stream()
+        .filter(request -> request.target().getPath().startsWith("/revoke"))
+        .toList();
   }
 
   /** The access token the last successful answer carried, {@code null} before any. */
@@ -82,26 +189,76 @@ public final class FakeAuthorizationServer implements AutoCloseable {
     return n == 0 ? null : issuedToken(n);
   }
 
+  /** The refresh token the last successful answer carried, {@code null} before any. */
+  public String lastRefreshToken() {
+    int n = refreshIssued.get();
+    return n == 0 ? null : refreshToken(n);
+  }
+
+  /** Whether {@code refreshToken} would still be taken. */
+  public boolean isLive(String refreshToken) {
+    return liveRefreshTokens.contains(refreshToken);
+  }
+
   private static String issuedToken(int n) {
     return "fake-access-token-" + n;
   }
 
-  /** Forgets the requests and accepts again; tokens keep counting. */
+  private static String refreshToken(int n) {
+    return "fake-refresh-token-" + n;
+  }
+
+  /** Forgets the requests and every setting; tokens keep counting. */
   public void reset() {
     requests.clear();
     error = null;
+    rotateRefreshTokens = true;
+    accessLifetimeSeconds = 3600;
+    refreshLifetimeSeconds = null;
+    delay = Duration.ZERO;
+    unreachable = false;
   }
 
-  private void handle(HttpExchange exchange) throws IOException {
+  private void handleToken(HttpExchange exchange) throws IOException {
     String body = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+    Map<String, String> form = form(body);
     requests.add(
         new Request(
             exchange.getRequestURI(),
             exchange.getRequestHeaders().getFirst("Authorization"),
-            form(body)));
+            form));
+    if (unreachable) {
+      exchange.close();
+      return;
+    }
+    pause();
     String rejection = error;
     if (rejection != null) {
       answer(exchange, errorStatus, "{\"error\": \"" + rejection + "\"}");
+      return;
+    }
+    String grantType = form.get("grant_type");
+    if ("authorization_code".equals(grantType)) {
+      Consent consent = codes.remove(form.getOrDefault("code", ""));
+      if (consent == null
+          || !consent.redirectUri().equals(form.get("redirect_uri"))
+          || !consent.challenge().equals(challengeOf(form.get("code_verifier")))) {
+        answer(exchange, 400, "{\"error\": \"invalid_grant\"}");
+        return;
+      }
+      answer(exchange, 200, tokens(true));
+      return;
+    }
+    if ("refresh_token".equals(grantType)) {
+      String used = form.getOrDefault("refresh_token", "");
+      if (!liveRefreshTokens.contains(used)) {
+        answer(exchange, 400, "{\"error\": \"invalid_grant\"}");
+        return;
+      }
+      if (rotateRefreshTokens) {
+        liveRefreshTokens.remove(used);
+      }
+      answer(exchange, 200, tokens(rotateRefreshTokens));
       return;
     }
     answer(
@@ -109,12 +266,68 @@ public final class FakeAuthorizationServer implements AutoCloseable {
         200,
         "{\"access_token\": \""
             + issuedToken(issued.incrementAndGet())
-            + "\", \"token_type\": \"Bearer\", \"expires_in\": 3600}");
+            + "\", \"token_type\": \"Bearer\", \"expires_in\": "
+            + accessLifetimeSeconds
+            + "}");
+  }
+
+  private String tokens(boolean withRefresh) {
+    StringBuilder json =
+        new StringBuilder("{\"access_token\": \"")
+            .append(issuedToken(issued.incrementAndGet()))
+            .append("\", \"token_type\": \"Bearer\", \"expires_in\": ")
+            .append(accessLifetimeSeconds);
+    if (withRefresh) {
+      String refresh = refreshToken(refreshIssued.incrementAndGet());
+      liveRefreshTokens.add(refresh);
+      json.append(", \"refresh_token\": \"").append(refresh).append('"');
+      if (refreshLifetimeSeconds != null) {
+        json.append(", \"refresh_expires_in\": ").append(refreshLifetimeSeconds);
+      }
+    }
+    return json.append('}').toString();
+  }
+
+  private void handleRevocation(HttpExchange exchange) throws IOException {
+    String body = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+    Map<String, String> form = form(body);
+    String authorization = exchange.getRequestHeaders().getFirst("Authorization");
+    requests.add(new Request(exchange.getRequestURI(), authorization, form));
+    String token = form.get("token");
+    if (token != null) {
+      liveRefreshTokens.remove(token);
+    }
+    answer(exchange, 200, "{}");
+  }
+
+  private void pause() {
+    Duration wait = delay;
+    if (wait.isZero()) {
+      return;
+    }
+    try {
+      Thread.sleep(wait.toMillis());
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+    }
+  }
+
+  private static String challengeOf(String verifier) {
+    if (verifier == null) {
+      return "";
+    }
+    try {
+      byte[] digest =
+          MessageDigest.getInstance("SHA-256").digest(verifier.getBytes(StandardCharsets.US_ASCII));
+      return Base64.getUrlEncoder().withoutPadding().encodeToString(digest);
+    } catch (NoSuchAlgorithmException e) {
+      throw new IllegalStateException(e);
+    }
   }
 
   private static Map<String, String> form(String body) {
     Map<String, String> form = new LinkedHashMap<>();
-    if (body.isEmpty()) {
+    if (body == null || body.isEmpty()) {
       return form;
     }
     for (String pair : body.split("&")) {

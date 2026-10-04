@@ -88,7 +88,9 @@ public class ProfileRegistrations {
         signIn,
         subject,
         profile.getSourceProxy(),
-        profile.isSignInRejected());
+        profile.isSignInRejected(),
+        profile.getEndpoints(),
+        profile.getVersion());
   }
 
   /** The provider rejected the registration of {@code profileId}: marked until lifted. */

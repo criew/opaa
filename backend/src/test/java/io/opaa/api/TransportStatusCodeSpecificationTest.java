@@ -89,7 +89,8 @@ class TransportStatusCodeSpecificationTest {
           "listSearchableLibraries",
           "fetchSearchHit",
           "localChangePassword",
-          "submitConnectionProfileRequest");
+          "submitConnectionProfileRequest",
+          "startConnectionAuthorization");
 
   private static final Set<String> HTTP_METHODS =
       Set.of("get", "put", "post", "delete", "patch", "head", "options", "trace");

@@ -194,6 +194,40 @@ class ModularArchitectureFixtureTest {
   }
 
   /**
+   * The client credentials grant posts to a token endpoint itself; the OAuth client and a module
+   * outside connections pass.
+   */
+  @Test
+  void anAuthorizationServerReachedPastTheOAuthClientIsReported() {
+    Scenario scenario = new Scenario("oauthclient");
+
+    assertThat(
+            scenario.violations(
+                ModularArchitecture::theAuthorizationServerIsReachedOnlyThroughTheOAuthClient))
+        .singleElement(STRING)
+        .contains("oauth.ClientCredentialsGrant.token", "SourceFormPost.post");
+  }
+
+  /**
+   * The account package and the web layer read a refresh token; the store and the OAuth package,
+   * and a read of the access token, pass.
+   */
+  @Test
+  void aRefreshTokenReadOutsideTheStoreIsReported() {
+    Scenario scenario = new Scenario("oauthclient");
+
+    assertThat(scenario.violations(ModularArchitecture::refreshTokensStayInTheTokenStore))
+        .hasSize(2)
+        .anySatisfy(
+            violation -> assertThat(violation).contains("account.Leak.remember", "refreshToken"))
+        .anySatisfy(
+            violation -> assertThat(violation).contains("web.GrantApi.show", "refreshToken"))
+        .noneSatisfy(violation -> assertThat(violation).contains("token.Store"))
+        .noneSatisfy(violation -> assertThat(violation).contains("oauth.Consent"))
+        .noneSatisfy(violation -> assertThat(violation).contains("accessToken"));
+  }
+
+  /**
    * The administration's controller and another module's web layer reach a connected account; the
    * numbers pass, and so does the controller of a person's own accounts.
    */

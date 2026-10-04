@@ -329,11 +329,35 @@ public final class ModularArchitecture {
 
   static final String SIGN_IN_PACKAGE = "connection.oauth";
 
+  /**
+   * The one way of module CONNECTIONS to an authorization server, relative to the root: only it
+   * calls {@link #FORM_POST}, so every token, code exchange and revocation passes its target check
+   * and keeps secrets out of its logs.
+   */
+  static final String OAUTH_CLIENT = "connection.oauth.OAuthClient";
+
+  static final String FORM_POST = "sourceaccess.SourceFormPost";
+
+  /**
+   * The values that carry a refresh token, relative to the root as {@code package.Outer$Inner}:
+   * their {@code refreshToken()} is read only in {@link #TOKEN_STORE_PACKAGES}, so a refresh token
+   * travels only between the provider and the store.
+   */
+  static final Set<String> REFRESH_TOKEN_CARRIERS =
+      Set.of(
+          "connection.token.NewSecret$OAuthGrant",
+          "connection.token.SecretIssuer$Issued",
+          "connection.token.SecretIssuer$StoredTokens",
+          "connection.oauth.OAuthClient$Grant");
+
+  static final Set<String> TOKEN_STORE_PACKAGES = Set.of("connection.token", "connection.oauth");
+
   /** The web classes that serve a person their own connected accounts, relative to the root. */
   static final Set<String> OWN_ACCOUNT_WEB =
       Set.of(
           "connection.web.ConnectedAccountController",
-          "connection.web.ConnectedAccountResponseMapper");
+          "connection.web.ConnectedAccountResponseMapper",
+          "connection.web.ConnectionAuthorizationController");
 
   /**
    * What a connector declares about profiles, relative to the root. In module connections only
@@ -1201,6 +1225,67 @@ public final class ModularArchitecture {
         .allowEmptyShould(true);
   }
 
+  /** Calls of {@link #FORM_POST} in module CONNECTIONS outside {@link #OAUTH_CLIENT}. */
+  ArchRule theAuthorizationServerIsReachedOnlyThroughTheOAuthClient() {
+    String method = "post";
+    return noClasses()
+        .that(
+            DescribedPredicate.describe(
+                "are in module CONNECTIONS and not " + OAUTH_CLIENT,
+                javaClass ->
+                    moduleOf(javaClass) == CONNECTIONS
+                        && !OAUTH_CLIENT.equals(relativeName(topLevel(javaClass)))))
+        .should()
+        .accessTargetWhere(
+            DescribedPredicate.describe(
+                "call " + FORM_POST + "#" + method,
+                access ->
+                    access.getName().equals(method)
+                        && FORM_POST.equals(relativeName(access.getTargetOwner()))))
+        .because(
+            "a request to a token or revocation endpoint carries a secret; the OAuth client checks"
+                + " its target, takes no redirect and logs none of it")
+        .allowEmptyShould(true);
+  }
+
+  /**
+   * Reads of {@code refreshToken()} on a {@link #REFRESH_TOKEN_CARRIERS} value outside {@link
+   * #TOKEN_STORE_PACKAGES}.
+   */
+  ArchRule refreshTokensStayInTheTokenStore() {
+    return noClasses()
+        .that(
+            DescribedPredicate.describe(
+                "are outside " + TOKEN_STORE_PACKAGES,
+                javaClass -> {
+                  String relative = relative(javaClass.getBaseComponentType().getPackageName());
+                  return relative != null && !TOKEN_STORE_PACKAGES.contains(relative);
+                }))
+        .should()
+        .accessTargetWhere(
+            DescribedPredicate.describe(
+                "read the refresh token of " + REFRESH_TOKEN_CARRIERS,
+                access ->
+                    access.getName().equals("refreshToken")
+                        && REFRESH_TOKEN_CARRIERS.contains(nestedName(access.getTargetOwner()))))
+        .because(
+            "a refresh token goes from the provider into the store and back, never to another"
+                + " class that could hand it out, log it or answer with it")
+        .allowEmptyShould(true);
+  }
+
+  /**
+   * {@code javaClass} relative to the root as {@code package.Outer$Inner}, {@code null} outside.
+   */
+  private String nestedName(JavaClass javaClass) {
+    String relative = relative(javaClass.getPackageName());
+    if (relative == null) {
+      return null;
+    }
+    String name = javaClass.getName();
+    return relative + "." + name.substring(name.lastIndexOf('.') + 1);
+  }
+
   /** Calls of {@link #ESTABLISHED} outside {@link #ESTABLISHING_PACKAGES}. */
   ArchRule aConnectionIsEstablishedOnlyAfterItsSignIn() {
     String owner = ESTABLISHED.substring(0, ESTABLISHED.indexOf('#'));
@@ -1296,6 +1381,8 @@ public final class ModularArchitecture {
         personNumbersLeaveOnlyMasked(),
         aConnectionIsEstablishedOnlyAfterItsSignIn(),
         theProfileRegistrationLeavesOnlyToTheSignIn(),
+        theAuthorizationServerIsReachedOnlyThroughTheOAuthClient(),
+        refreshTokensStayInTheTokenStore(),
         theForeignContextNeverUsesTheOwnFormula(),
         theProfileSupportIsReadInOnePlace(),
         onlyTheKnownClassesDeleteDocuments(),
