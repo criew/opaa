@@ -32,6 +32,7 @@ import com.hierynomus.smbj.transport.TransportLayerFactory;
 import com.hierynomus.smbj.transport.tcp.direct.DirectTcpTransportFactory;
 import io.opaa.indexing.job.RequestBudgetExhaustedException;
 import io.opaa.indexing.source.ConnectorChecks;
+import io.opaa.indexing.source.RenewableCredential;
 import io.opaa.indexing.source.RequestBudget;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.sourceaccess.SourceRequestMeter;
@@ -127,7 +128,7 @@ final class SmbShareClient implements AutoCloseable {
   private final SmbAddress address;
 
   /** Asked on every sign-in, so a session set up anew uses the credentials valid then. */
-  private final Supplier<SmbCredentials> credentials;
+  private final RenewableCredential<SmbCredentials> credentials;
 
   private final RequestBudget budget;
   private final BudgetedTransportFactory transport;
@@ -197,7 +198,7 @@ final class SmbShareClient implements AutoCloseable {
 
   private SmbShareClient(
       SmbAddress address,
-      Supplier<SmbCredentials> credentials,
+      RenewableCredential<SmbCredentials> credentials,
       RequestBudget budget,
       SmbConfig.Builder config) {
     this.address = address;
@@ -214,16 +215,43 @@ final class SmbShareClient implements AutoCloseable {
       TargetAddressValidator targetAddressValidator,
       RequestBudget budget,
       Duration timeout) {
-    return of(address, () -> credentials, targetAddressValidator, budget, timeout);
+    return of(
+        address, RenewableCredential.fixed(credentials), targetAddressValidator, budget, timeout);
+  }
+
+  /** As below, without a renewal after a rejected sign-in. */
+  static SmbShareClient of(
+      SmbAddress address,
+      Supplier<SmbCredentials> credentials,
+      TargetAddressValidator targetAddressValidator,
+      RequestBudget budget,
+      Duration timeout) {
+    return of(
+        address,
+        new RenewableCredential<SmbCredentials>() {
+          @Override
+          public SmbCredentials get() {
+            return credentials.get();
+          }
+
+          @Override
+          public boolean renewedAfterRejection(SmbCredentials sent) {
+            return false;
+          }
+        },
+        targetAddressValidator,
+        budget,
+        timeout);
   }
 
   /**
    * A client for the share that connects on its first request and signs in with what {@code
-   * credentials} answers at each sign-in; what it throws ends that request.
+   * credentials} answers at each sign-in; what it throws ends that request. A sign-in whose secret
+   * the server rejected is repeated once when {@code credentials} was renewed meanwhile.
    */
   static SmbShareClient of(
       SmbAddress address,
-      Supplier<SmbCredentials> credentials,
+      RenewableCredential<SmbCredentials> credentials,
       TargetAddressValidator targetAddressValidator,
       RequestBudget budget,
       Duration timeout) {
@@ -255,7 +283,17 @@ final class SmbShareClient implements AutoCloseable {
       throw failure;
     }
     try {
-      signIn();
+      try {
+        signIn();
+      } catch (SmbAccessException.Authentication e) {
+        if (!e.secretRejected() || !credentials.renewedAfterRejection(signedInWith)) {
+          throw e;
+        }
+        closeSessionAndConnection();
+        session = null;
+        connection = null;
+        signIn();
+      }
     } catch (SmbAccessException e) {
       failure = e;
       throw e;

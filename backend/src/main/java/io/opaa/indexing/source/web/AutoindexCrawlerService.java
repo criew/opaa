@@ -1,6 +1,8 @@
 package io.opaa.indexing.source.web;
 
 import io.opaa.format.SupportedDocumentFormats;
+import io.opaa.indexing.source.RenewableCredential;
+import io.opaa.indexing.source.SourceCredentialsRejectedException;
 import io.opaa.indexing.source.SourceFolderPath;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.sourceaccess.BoundedStreams;
@@ -22,7 +24,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.function.Predicate;
-import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -136,18 +137,27 @@ public class AutoindexCrawlerService {
       RateLimitListener rateLimitListener)
       throws IOException, InterruptedException {
     String authHeader = SourceHttpClientFactory.buildAuthHeader(username, password);
-    return crawl(baseUrl, proxyHost, proxyPort, () -> authHeader, insecureSsl, rateLimitListener);
+    return crawl(
+        baseUrl,
+        proxyHost,
+        proxyPort,
+        RenewableCredential.fixed(authHeader),
+        insecureSsl,
+        rateLimitListener);
   }
 
   /**
    * As {@link #crawl(String, String, int, String, String, boolean, RateLimitListener)}, asking
-   * {@code authHeader} before every directory page; what it throws ends the crawl.
+   * {@code authHeader} before every directory page; what it throws ends the crawl. A {@code 401} on
+   * the start page to the header sent is retried once when {@code authHeader} was renewed, and
+   * otherwise ends the crawl as {@link SourceCredentialsRejectedException}; without a header sent
+   * it stays the page's failure. A {@code 401} below the start page leaves that subtree out.
    */
   public CrawlResult crawl(
       String baseUrl,
       String proxyHost,
       int proxyPort,
-      Supplier<String> authHeader,
+      RenewableCredential<String> authHeader,
       boolean insecureSsl,
       RateLimitListener rateLimitListener)
       throws IOException, InterruptedException {
@@ -242,7 +252,7 @@ public class AutoindexCrawlerService {
    */
   private void crawlRecursive(
       HttpClient httpClient,
-      Supplier<String> authHeader,
+      RenewableCredential<String> authHeader,
       String startUrl,
       String url,
       int depth,
@@ -269,7 +279,10 @@ public class AutoindexCrawlerService {
     log.debug("Crawling directory: {}", url);
     DirectoryPage page;
     try {
-      page = fetchPage(httpClient, authHeader.get(), startUrl, url, rateLimitListener);
+      page =
+          depth == 0
+              ? fetchStartPage(httpClient, authHeader, startUrl, rateLimitListener)
+              : fetchPage(httpClient, authHeader.get(), startUrl, url, rateLimitListener);
     } catch (RedirectedOutsideSubtreeException e) {
       truncation.markRedirectedOutside(url, e.target());
       return;
@@ -447,6 +460,60 @@ public class AutoindexCrawlerService {
   }
 
   /**
+   * A directory page answered {@code 401}; {@link #authorizationSent} tells whether to a header.
+   */
+  static final class UnauthorizedPageException extends IOException {
+    private final boolean authorizationSent;
+
+    UnauthorizedPageException(String url, boolean authorizationSent) {
+      super("HTTP 401 Unauthorized — check credentials. URL: " + url);
+      this.authorizationSent = authorizationSent;
+    }
+
+    boolean authorizationSent() {
+      return authorizationSent;
+    }
+  }
+
+  /**
+   * The start page, whose {@code 401} to a header sent is the source rejecting the run's secret:
+   * retried once with a renewed header, else {@link SourceCredentialsRejectedException}.
+   */
+  private DirectoryPage fetchStartPage(
+      HttpClient httpClient,
+      RenewableCredential<String> authHeader,
+      String startUrl,
+      RateLimitListener rateLimitListener)
+      throws IOException, InterruptedException {
+    String sent = authHeader.get();
+    UnauthorizedPageException rejected;
+    try {
+      return fetchPage(httpClient, sent, startUrl, startUrl, rateLimitListener);
+    } catch (UnauthorizedPageException e) {
+      if (!e.authorizationSent()) {
+        throw e;
+      }
+      rejected = e;
+    }
+    if (authHeader.renewedAfterRejection(sent)) {
+      try {
+        return fetchPage(httpClient, authHeader.get(), startUrl, startUrl, rateLimitListener);
+      } catch (UnauthorizedPageException e) {
+        if (!e.authorizationSent()) {
+          throw e;
+        }
+        rejected = e;
+      }
+    }
+    log.warn("Directory {} rejected the credentials (HTTP 401)", startUrl);
+    throw new SourceCredentialsRejectedException(
+        "Der Webserver hat die Zugangsdaten für "
+            + startUrl
+            + " abgelehnt (HTTP 401). Bitte Benutzername und Passwort prüfen.",
+        rejected);
+  }
+
+  /**
    * Fetches one directory page with the shared {@code User-Agent}, waiting out a {@code 429} under
    * the shared {@link SourceRequestPolicy} and telling {@code rateLimitListener}. A redirect keeps
    * {@code authHeader} only while its target stays inside {@link #credentialScope} of {@code
@@ -479,7 +546,8 @@ public class AutoindexCrawlerService {
         throw new RedirectedOutsideSubtreeException(response.uri());
       }
       if (response.statusCode() == 401) {
-        throw new IOException("HTTP 401 Unauthorized — check credentials. URL: " + url);
+        throw new UnauthorizedPageException(
+            url, RedirectFollowingFetcher.authorizationSent(response));
       }
       if (response.statusCode() != 200) {
         throw new IOException("HTTP " + response.statusCode() + " for URL: " + url);

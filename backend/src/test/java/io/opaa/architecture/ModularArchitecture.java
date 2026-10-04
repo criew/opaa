@@ -290,6 +290,23 @@ public final class ModularArchitecture {
 
   static final String PROFILE_REQUIREMENTS = "connection.profile.ProfileRequirements";
 
+  /**
+   * The repository of the document rows, relative to the root. Only {@link #DOCUMENT_DELETERS} call
+   * one of its {@code delete…} methods, so every deletion outside a run passes the one place that
+   * notes the revisit for the folder memory of the file sync (ADR-0040).
+   */
+  static final String DOCUMENT_REPOSITORY = "knowledge.DocumentRepository";
+
+  /**
+   * The document service notes the revisit, the library service deletes a library together with its
+   * sync state, and the cleanup service removes inside a run.
+   */
+  static final Set<String> DOCUMENT_DELETERS =
+      Set.of(
+          "library.LibraryDocumentService",
+          "library.KnowledgeLibraryService",
+          "indexing.maintenance.StaleDocumentCleanupService");
+
   /** Every direct subpackage of this one, relative to the root, is a connector. */
   static final String CONNECTOR_PARENT = "indexing.source";
 
@@ -1047,6 +1064,37 @@ public final class ModularArchitecture {
         .allowEmptyShould(true);
   }
 
+  /**
+   * Calls of a {@code delete…} method of {@link #DOCUMENT_REPOSITORY}, also by method reference,
+   * outside {@link #DOCUMENT_DELETERS} and the classes nested in them.
+   */
+  ArchRule onlyTheKnownClassesDeleteDocuments() {
+    return noClasses()
+        .that(
+            DescribedPredicate.describe(
+                "are not one of " + DOCUMENT_DELETERS,
+                javaClass -> !DOCUMENT_DELETERS.contains(relativeName(topLevel(javaClass)))))
+        .should()
+        .accessTargetWhere(
+            DescribedPredicate.describe(
+                "call a delete method of " + DOCUMENT_REPOSITORY,
+                access ->
+                    access.getName().startsWith("delete")
+                        && DOCUMENT_REPOSITORY.equals(relativeName(access.getTargetOwner()))))
+        .because(
+            "a document deleted outside a run leaves a revisit, or the folder memory keeps the"
+                + " folder that would bring it back")
+        .allowEmptyShould(true);
+  }
+
+  private static JavaClass topLevel(JavaClass javaClass) {
+    JavaClass top = javaClass;
+    while (top.getEnclosingClass().isPresent()) {
+      top = top.getEnclosingClass().get();
+    }
+    return top;
+  }
+
   /** {@code javaClass} relative to the root, {@code null} outside it. */
   private String relativeName(JavaClass javaClass) {
     String relative = relative(javaClass.getPackageName());
@@ -1060,6 +1108,7 @@ public final class ModularArchitecture {
         theSecretStoreIsUsedOnlyInConnections(),
         theForeignContextNeverUsesTheOwnFormula(),
         theProfileSupportIsReadInOnePlace(),
+        onlyTheKnownClassesDeleteDocuments(),
         theSecretPortStaysWithTheCore(),
         theConnectorReleaseIsDecidedInConnections(),
         everyPackageIsAssigned(),

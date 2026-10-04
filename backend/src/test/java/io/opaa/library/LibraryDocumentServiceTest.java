@@ -41,6 +41,7 @@ import io.opaa.indexing.document.DocumentIngests;
 import io.opaa.indexing.source.FilesystemPathAllowlist;
 import io.opaa.indexing.source.LibrarySourceConnectionResolver;
 import io.opaa.indexing.source.RemoteContentProperties;
+import io.opaa.indexing.source.SourceSyncStateRepository;
 import io.opaa.indexing.source.TestSourceConnectors;
 import io.opaa.indexing.source.s3.S3Download;
 import io.opaa.indexing.source.s3.S3OriginalAccess;
@@ -298,7 +299,8 @@ class LibraryDocumentServiceTest {
             .registry(),
         assetRepository,
         NO_OP_TRANSACTION_MANAGER,
-        new LibrarySourceConnectionResolver());
+        new LibrarySourceConnectionResolver(),
+        mock(SourceSyncStateRepository.class));
   }
 
   @Test
@@ -1722,7 +1724,8 @@ class LibraryDocumentServiceTest {
                 .registry(),
             assetRepository,
             NO_OP_TRANSACTION_MANAGER,
-            new LibrarySourceConnectionResolver());
+            new LibrarySourceConnectionResolver(),
+            mock(SourceSyncStateRepository.class));
     grantViewerOnUploadLibrary();
     KnowledgeLibrary library = remoteLibrary(null);
     when(libraryRepository.findById(libraryId)).thenReturn(Optional.of(library));

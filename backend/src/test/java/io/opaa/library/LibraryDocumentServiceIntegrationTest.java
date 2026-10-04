@@ -31,6 +31,7 @@ import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.LibraryFolder;
 import io.opaa.knowledge.LibraryFolderRepository;
+import io.opaa.knowledge.SourceDocumentContext;
 import io.opaa.knowledge.SourceType;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
@@ -482,6 +483,55 @@ class LibraryDocumentServiceIntegrationTest {
     assertThat(Files.exists(crawledFile))
         .as("A FILESYSTEM document's source file must survive deleteDocument")
         .isTrue();
+  }
+
+  @Test
+  void deletingADocumentOfALibraryWithASyncStateNotesItsFolderForTheNextFullSync() {
+    UUID stateId = UUID.randomUUID();
+    jdbcTemplate.update(
+        "INSERT INTO source_sync_state (id, library_id, updated_at) VALUES (?, ?, now())",
+        stateId,
+        libraryId);
+    Document synced = new Document("x.txt", "mem://A/x.txt", "text/plain", 1L, SourceType.UPLOAD);
+    synced.setLibraryId(libraryId);
+    synced.setOrganizationId(organizationId);
+    synced.applySourceContext(new SourceDocumentContext("A", "akten / 2026"));
+    synced = documentRepository.save(synced);
+    Document unplaced = new Document("y.txt", "mem://y.txt", "text/plain", 1L, SourceType.UPLOAD);
+    unplaced.setLibraryId(libraryId);
+    unplaced.setOrganizationId(organizationId);
+    unplaced = documentRepository.save(unplaced);
+
+    documentService.deleteDocument(libraryId, synced.getId(), currentUserOf(editor, false));
+    documentService.deleteDocument(libraryId, unplaced.getId(), currentUserOf(editor, false));
+
+    assertThat(
+            jdbcTemplate.queryForList(
+                "SELECT container_key || ':' || hierarchy_path FROM source_sync_revisits"
+                    + " WHERE sync_state_id = ?",
+                String.class,
+                stateId))
+        .as("one revisit, none for a document outside every container")
+        .containsExactly("A:akten / 2026");
+  }
+
+  @Test
+  void deletingADocumentOfALibraryWithoutASyncStateNotesNothing() {
+    Document document = new Document("z.txt", "mem://A/z.txt", "text/plain", 1L, SourceType.UPLOAD);
+    document.setLibraryId(libraryId);
+    document.setOrganizationId(organizationId);
+    document.applySourceContext(new SourceDocumentContext("A", "akten"));
+    document = documentRepository.save(document);
+
+    documentService.deleteDocument(libraryId, document.getId(), currentUserOf(editor, false));
+
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM source_sync_revisits r JOIN source_sync_state s"
+                    + " ON s.id = r.sync_state_id WHERE s.library_id = ?",
+                Long.class,
+                libraryId))
+        .isZero();
   }
 
   @Test

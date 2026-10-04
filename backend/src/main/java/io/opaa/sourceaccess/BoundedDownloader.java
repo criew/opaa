@@ -174,7 +174,8 @@ public class BoundedDownloader {
 
     try (InputStream body = response.body()) {
       if (response.statusCode() != 200) {
-        throw new HttpStatusException(response.statusCode(), fileUrl);
+        throw new HttpStatusException(
+            response.statusCode(), fileUrl, RedirectFollowingFetcher.authorizationSent(response));
       }
       return body.readNBytes(maxBytes);
     }
@@ -267,7 +268,8 @@ public class BoundedDownloader {
 
     if (response.statusCode() != 200) {
       closeQuietly(response.body());
-      throw new HttpStatusException(response.statusCode(), fileUrl);
+      throw new HttpStatusException(
+          response.statusCode(), fileUrl, RedirectFollowingFetcher.authorizationSent(response));
     }
     if (declaredLengthExceeds(response, maxBytes)) {
       closeQuietly(response.body());
@@ -309,7 +311,8 @@ public class BoundedDownloader {
 
     try (InputStream body = response.body()) {
       if (response.statusCode() != 200) {
-        throw new HttpStatusException(response.statusCode(), fileUrl);
+        throw new HttpStatusException(
+            response.statusCode(), fileUrl, RedirectFollowingFetcher.authorizationSent(response));
       }
       if (declaredLengthExceeds(response, maxBytes)) {
         throw new AttachmentTooLargeException();
@@ -382,14 +385,25 @@ public class BoundedDownloader {
    */
   public static final class HttpStatusException extends IOException {
     private final int statusCode;
+    private final boolean authorizationSent;
 
     public HttpStatusException(int statusCode, String fileUrl) {
+      this(statusCode, fileUrl, false);
+    }
+
+    /** {@code authorizationSent}: the answering hop received an {@code Authorization} header. */
+    public HttpStatusException(int statusCode, String fileUrl, boolean authorizationSent) {
       super("HTTP " + statusCode + " downloading: " + fileUrl);
       this.statusCode = statusCode;
+      this.authorizationSent = authorizationSent;
     }
 
     public int statusCode() {
       return statusCode;
+    }
+
+    public boolean authorizationSent() {
+      return authorizationSent;
     }
   }
 

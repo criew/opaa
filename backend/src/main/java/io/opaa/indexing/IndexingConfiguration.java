@@ -235,14 +235,17 @@ public class IndexingConfiguration {
       StaleDocumentCleanupService staleDocumentCleanupService,
       DocumentRepository documentRepository,
       LibraryStorageQuotaService libraryStorageQuotaService,
-      SourceConnectionResolver sourceConnectionResolver) {
+      SourceConnectionResolver sourceConnectionResolver,
+      ServiceAccountTokens serviceAccountTokens) {
     return new IndexingRunTemplate(
         indexingJobService,
         indexingRunEventRepository,
         staleDocumentCleanupService,
         documentRepository,
         libraryStorageQuotaService,
-        sourceConnectionResolver);
+        sourceConnectionResolver,
+        Clock.systemUTC(),
+        serviceAccountTokens);
   }
 
   /** Signs service account assertions for the connectors that sign in with a key (ADR-0040). */

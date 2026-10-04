@@ -38,7 +38,9 @@ public interface SourceConnectionResolver {
 
   /**
    * The secret to retry with once the source rejected {@code rejected}; as {@link #currentSecret}
-   * unless the port can renew what it holds. Asked at most once per rejection.
+   * unless the port can renew what it holds. Asked at most once per rejected value in a run; a
+   * rejected access token is dropped from {@link ServiceAccountTokens} before, so a port that signs
+   * there hands out a new one.
    *
    * @throws SourceConnectionBlockedException when the library may not be reached now
    */

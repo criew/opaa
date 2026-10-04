@@ -1,5 +1,6 @@
 package io.opaa.indexing.source;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -241,25 +242,21 @@ public class SourceSyncState {
   }
 
   /**
-   * What the last complete full sync remembered of a store's folders (ADR-0040).
+   * What the last complete full sync remembered of a store's folders (ADR-0040). A memory written
+   * under an older basis may carry fields this one no longer has; they are ignored.
    *
    * @param basis what the markers were judged under (size bound, formats); another basis voids them
    * @param establishedAt when a full sync last listed every folder without them
    * @param containers per container key, the marker of every folder by hierarchy path
-   * @param documentCounts per container key, its stored rows once the sync completed - fewer later
-   *     means a document was removed outside a run
    */
+  @JsonIgnoreProperties(ignoreUnknown = true)
   public record SubtreeMemory(
-      String basis,
-      Instant establishedAt,
-      Map<String, Map<String, String>> containers,
-      Map<String, Long> documentCounts) {
+      String basis, Instant establishedAt, Map<String, Map<String, String>> containers) {
 
-    public static final SubtreeMemory NONE = new SubtreeMemory(null, null, Map.of(), Map.of());
+    public static final SubtreeMemory NONE = new SubtreeMemory(null, null, Map.of());
 
     public SubtreeMemory {
       containers = containers == null ? Map.of() : Map.copyOf(containers);
-      documentCounts = documentCounts == null ? Map.of() : Map.copyOf(documentCounts);
     }
   }
 

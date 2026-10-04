@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -33,8 +34,10 @@ import org.junit.jupiter.api.Test;
  * What every remote connector's run keeps with the core's secret (ADR-0041, Entscheidung 4): it
  * asks before its requests, so a secret discarded or a source blocked while the run lists ends the
  * run at its next access - with the block's notice, without reconciling by absence - and a secret
- * renewed meanwhile is what its next request sends. A subclass runs its real executor against its
- * connector's test double; frame and port are the core's, the run's clock is the test's.
+ * renewed meanwhile is what its next request sends. A secret the source rejects ends the run as
+ * rejected; where the connector asks the core again, a renewed one is sent once more instead. A
+ * subclass runs its real executor against its connector's test double; frame and port are the
+ * core's, the run's clock is the test's.
  */
 public abstract class RunSecretContract {
 
@@ -57,6 +60,7 @@ public abstract class RunSecretContract {
   private final AtomicBoolean refused = new AtomicBoolean();
   private final AtomicBoolean renewed = new AtomicBoolean();
   private final AtomicBoolean refusing = new AtomicBoolean();
+  private final AtomicBoolean renewOnRejection = new AtomicBoolean();
   private final AtomicInteger asksAfterRefusal = new AtomicInteger();
   private final AtomicInteger asksAfterRejection = new AtomicInteger();
   private final AtomicInteger rejectionsReported = new AtomicInteger();
@@ -120,6 +124,16 @@ public abstract class RunSecretContract {
 
   protected final int asksAfterRefusal() {
     return asksAfterRefusal.get();
+  }
+
+  /** How often the port heard that the source rejected the secret. */
+  protected final int rejectionsReported() {
+    return rejectionsReported.get();
+  }
+
+  /** How often the port was asked again after a rejection. */
+  protected final int asksAfterRejection() {
+    return asksAfterRejection.get();
   }
 
   @Test
@@ -203,6 +217,22 @@ public abstract class RunSecretContract {
         .hasValue(usesRejectionSeam() ? 1 : 0);
   }
 
+  @Test
+  void aSecretTheSourceRejectedIsSentOnceMoreWhenTheCoreRenewedIt() throws Exception {
+    Assumptions.assumeTrue(usesRejectionSeam(), "the connector does not ask again");
+    when(ingestService.ingest(any(), any())).thenReturn(DocumentIngestResult.PROCESSED);
+    refusing.set(true);
+    renewOnRejection.set(true);
+    UUID jobId = UUID.randomUUID();
+
+    run(template(), jobId, library());
+
+    verify(jobService, never()).failJob(eq(jobId), anyString());
+    verify(ingestService, atLeastOnce()).ingest(any(), any());
+    assertThat(asksAfterRejection).as("asked once more after the rejection").hasValue(1);
+    assertThat(rejectionsReported).as("no rejection reported").hasValue(0);
+  }
+
   protected final IndexingRunTemplate template() {
     return new IndexingRunTemplate(
         jobService,
@@ -235,8 +265,9 @@ public abstract class RunSecretContract {
   }
 
   /**
-   * The port: resolves the start as stored, hands out the renewed secret once {@link #renewed} and
-   * refuses once {@link #refused}.
+   * The port: resolves the start as stored, hands out the renewed secret once {@link #renewed},
+   * refuses once {@link #refused}, and hands out the stored secret again after a rejection once
+   * {@link #renewOnRejection}.
    */
   private final class RefusingResolver implements SourceConnectionResolver {
 
@@ -260,6 +291,9 @@ public abstract class RunSecretContract {
     @Override
     public Secret secretAfterRejection(KnowledgeLibrary library, Secret rejected) {
       asksAfterRejection.incrementAndGet();
+      if (renewOnRejection.get()) {
+        refusing.set(false);
+      }
       return currentSecret(library);
     }
 

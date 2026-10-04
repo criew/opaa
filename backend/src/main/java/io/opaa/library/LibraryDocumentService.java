@@ -26,6 +26,7 @@ import io.opaa.indexing.source.SourceConnectionBlockedException;
 import io.opaa.indexing.source.SourceConnectionResolver;
 import io.opaa.indexing.source.SourceConnectorRegistry;
 import io.opaa.indexing.source.SourceCredentialsException;
+import io.opaa.indexing.source.SourceSyncStateRepository;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentContent;
 import io.opaa.knowledge.DocumentRepository;
@@ -152,6 +153,7 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
   private final SourceConnectorRegistry connectors;
   private final AssetRepository assetRepository;
   private final SourceConnectionResolver connectionResolver;
+  private final SourceSyncStateRepository syncStateRepository;
 
   /** One transaction per document for {@link #deleteDocuments} - see its contract. */
   private final TransactionTemplate transactionTemplate;
@@ -175,7 +177,8 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
       SourceConnectorRegistry connectors,
       AssetRepository assetRepository,
       PlatformTransactionManager transactionManager,
-      SourceConnectionResolver connectionResolver) {
+      SourceConnectionResolver connectionResolver,
+      SourceSyncStateRepository syncStateRepository) {
     this.libraryRepository = libraryRepository;
     this.accessService = accessService;
     this.documentRepository = documentRepository;
@@ -195,6 +198,7 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
     this.assetRepository = assetRepository;
     this.transactionTemplate = new TransactionTemplate(transactionManager);
     this.connectionResolver = connectionResolver;
+    this.syncStateRepository = syncStateRepository;
   }
 
   /**
@@ -889,6 +893,7 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
     // (see DocumentIngestService#processUploadedFileAsync). The vector store delete below then only
     // has to handle the ordinary case: chunks a document already had before this call.
     documentRepository.delete(document);
+    noteRevisit(document);
     assetRepository.markContentChanged(document.getLibraryId(), Instant.now());
 
     // Both deferred to after commit (#420 code review, nit 7, extended to the chunk deletion by
@@ -935,6 +940,22 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
           }
           ownOriginal.ifPresent(uploadedOriginalStore::delete);
         });
+  }
+
+  /**
+   * Notes the deleted document's folder for the next full sync of a library with a sync state, in
+   * this transaction: otherwise the folder memory keeps the folder unlisted and the document never
+   * returns (ADR-0040). A document outside every container lies under no remembered folder.
+   */
+  private void noteRevisit(Document document) {
+    if (document.getSourceContainerKey() != null) {
+      syncStateRepository.recordRevisit(
+          UUID.randomUUID(),
+          document.getLibraryId(),
+          document.getSourceContainerKey(),
+          document.getSourceHierarchyPath(),
+          Instant.now());
+    }
   }
 
   /**

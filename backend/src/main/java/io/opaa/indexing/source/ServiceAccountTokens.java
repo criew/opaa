@@ -112,6 +112,19 @@ public class ServiceAccountTokens {
     return new Secret(SecretKind.ACCESS_TOKEN, token.value(), token.expiresAt());
   }
 
+  /**
+   * Drops the cached token a source rejected, so the next ask signs a new one; every other cached
+   * token stays. Anything but an access token is ignored.
+   */
+  public void discard(Secret rejected) {
+    if (rejected == null
+        || rejected.kind() != SecretKind.ACCESS_TOKEN
+        || rejected.value() == null) {
+      return;
+    }
+    tokens.values().removeIf(token -> token.value().equals(rejected.value()));
+  }
+
   private Token token(
       String storedKey, String subject, ServiceAccountKeyAuth auth, String sourceProxy) {
     Objects.requireNonNull(storedKey, "storedKey");
