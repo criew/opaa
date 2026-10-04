@@ -1,6 +1,7 @@
 package io.opaa.indexing.source;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 
 import io.opaa.api.types.SystemRole;
 import io.opaa.knowledge.Document;
@@ -180,6 +181,40 @@ class SourceSyncStateRepositoryIntegrationTest {
     assertThat(
             documentRepository.countByLibraryIdAndSourceContainerKey(library.getId(), "Projekte"))
         .isEqualTo(3);
+  }
+
+  @Test
+  void aRevisitIsNotedOnlyForALibraryWithAStateAndGoesWithTheState() {
+    Instant now = Instant.parse("2026-10-04T10:00:00Z");
+    assertThat(
+            repository.recordRevisit(UUID.randomUUID(), library.getId(), "Projekte", "akten", now))
+        .as("no state, no revisit")
+        .isZero();
+    SourceSyncState state = repository.save(new SourceSyncState(library.getId()));
+    UUID first = UUID.randomUUID();
+    String deep = "tief / ".repeat(400) + "ende";
+
+    assertThat(repository.recordRevisit(first, library.getId(), "Projekte", deep, now)).isOne();
+    assertThat(repository.recordRevisit(UUID.randomUUID(), library.getId(), "Projekte", null, now))
+        .isOne();
+
+    assertThat(repository.findRevisits(state.getId()))
+        .extracting(
+            SourceSyncStateRepository.Revisit::getContainerKey,
+            SourceSyncStateRepository.Revisit::getHierarchyPath)
+        .containsExactlyInAnyOrder(tuple("Projekte", deep), tuple("Projekte", null));
+    assertThat(repository.deleteRevisits(List.of(first))).isOne();
+    assertThat(repository.findRevisits(state.getId()))
+        .extracting(SourceSyncStateRepository.Revisit::getHierarchyPath)
+        .containsExactly((String) null);
+
+    jdbcTemplate.update("DELETE FROM source_sync_state WHERE id = ?", state.getId());
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM source_sync_revisits WHERE sync_state_id = ?",
+                Long.class,
+                state.getId()))
+        .isZero();
   }
 
   private void saveDocument(String filePath, String containerKey, String hierarchyPath) {

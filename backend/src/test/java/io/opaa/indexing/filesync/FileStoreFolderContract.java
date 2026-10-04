@@ -105,4 +105,21 @@ public abstract class FileStoreFolderContract extends FileStoreContract {
     assertThat(run.ingested()).containsExactly(fixture.filePath(0, "akten/x.txt"));
     assertThat(harness.storedPaths()).hasSize(2);
   }
+
+  @Test
+  void aDocumentRemovedDuringARunReturnsWithTheNextRun() throws Exception {
+    fixture.put(0, "akten/x.txt", "X.");
+    fixture.put(0, "akten/y.txt", "Y.");
+    fixture.put(1, "anderswo.txt", "A.");
+    fullSync();
+
+    String removed = fixture.filePath(0, "akten/x.txt");
+    harness.fullSync(
+        new BeforeListingStore(
+            fixture.open(PAGE_SIZE), fixture.containerKey(1), () -> harness.deleteStored(removed)));
+    FileSyncHarness.Run run = fullSync();
+
+    assertThat(run.ingested()).containsExactly(removed);
+    assertThat(harness.storedPaths()).hasSize(3);
+  }
 }

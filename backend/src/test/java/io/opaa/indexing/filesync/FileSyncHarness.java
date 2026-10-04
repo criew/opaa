@@ -75,6 +75,7 @@ public final class FileSyncHarness {
   }
 
   private final List<Document> stored = new ArrayList<>();
+  private final List<StoredRevisit> revisits = new ArrayList<>();
   private final List<IndexingRunEvent> events = new ArrayList<>();
   private final List<String> ingested = new ArrayList<>();
   private final Set<String> failingIngests = new HashSet<>();
@@ -220,6 +221,15 @@ public final class FileSyncHarness {
             })
         .when(jobService)
         .failJob(any(), anyString());
+    when(syncStateRepository.findRevisits(any())).thenAnswer(invocation -> List.copyOf(revisits));
+    when(syncStateRepository.deleteRevisits(any()))
+        .thenAnswer(
+            invocation -> {
+              java.util.Collection<UUID> ids = invocation.getArgument(0);
+              int before = revisits.size();
+              revisits.removeIf(revisit -> ids.contains(revisit.getId()));
+              return before - revisits.size();
+            });
     when(syncStateRepository.save(any()))
         .thenAnswer(
             invocation -> {
@@ -316,10 +326,45 @@ public final class FileSyncHarness {
     return this;
   }
 
-  /** Removes the stored {@code filePath} outside a run, as a manual deletion does. */
+  /**
+   * Removes the stored {@code filePath} outside a run, as a manual deletion does - with the revisit
+   * {@code LibraryDocumentService} notes for a document of a container.
+   */
   public FileSyncHarness deleteStored(String filePath) {
-    stored.remove(stored(filePath).orElseThrow());
+    Document document = stored(filePath).orElseThrow();
+    stored.remove(document);
+    if (document.getSourceContainerKey() != null) {
+      revisits.add(
+          new StoredRevisit(
+              UUID.randomUUID(),
+              document.getSourceContainerKey(),
+              document.getSourceHierarchyPath()));
+    }
     return this;
+  }
+
+  /** The revisits not yet consumed by a full sync. */
+  public List<SourceSyncStateRepository.Revisit> revisits() {
+    return List.copyOf(revisits);
+  }
+
+  private record StoredRevisit(UUID id, String containerKey, String hierarchyPath)
+      implements SourceSyncStateRepository.Revisit {
+
+    @Override
+    public UUID getId() {
+      return id;
+    }
+
+    @Override
+    public String getContainerKey() {
+      return containerKey;
+    }
+
+    @Override
+    public String getHierarchyPath() {
+      return hierarchyPath;
+    }
   }
 
   /** From now on the ingest of {@code filePath} throws, as a failing embedding call would. */
@@ -408,7 +453,7 @@ public final class FileSyncHarness {
         failure);
   }
 
-  private static final FileSyncWording WORDING =
+  static final FileSyncWording WORDING =
       new FileSyncWording() {
         @Override
         public String tooLarge(FileEntry entry, long maxBytes) {
