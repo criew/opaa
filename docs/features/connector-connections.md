@@ -183,11 +183,13 @@ sind, und verlangt eine Bestätigung. Danach verwirft es alle Token und Geheimni
 |---|---|
 | Server-Adresse | alle Verbindungen verworfen |
 | neue Client-ID, neuer Mandant, geänderte Scopes | neue Zustimmung aller Verbindungen |
-| imitiertes Konto (Dienstkonto-Schlüssel) | alle Verbindungen verworfen; die Bibliotheken ruhen, bis sie neu verbunden sind |
-| neues Client-Secret zur selben Client-ID | keine; Verbindungen bleiben |
+| imitiertes Konto (Dienstkonto-Schlüssel) | Abgleichsstand aller Bibliotheken verworfen, ihr nächster Lauf ist ein Vollabgleich; vorher Bestätigung mit der Zahl der Bibliotheken, danach Benachrichtigung ihrer Verwaltenden; der Schlüssel bleibt |
+| neuer Dienstkonto-Schlüssel eines anderen Kontos | wie eine neue Client-ID (die Client-ID ist die `client_email` des Schlüssels) |
+| neues Client-Secret zur selben Client-ID | keine; Verbindungen bleiben, eine Ablehnung des Anbieters ist aufgehoben |
 
 **Notabschaltung „Alle Verbindungen trennen“** je Profil: löscht sofort alle Token und Geheimnisse
-darauf, ohne das Profil zu löschen.
+darauf, ohne das Profil zu löschen. Meldet sich das Profil selbst an (Client-Credentials,
+Dienstkonto-Schlüssel), gehört dazu sein Client-Secret bzw. Schlüssel.
 
 **Löschen eines Profils** trennt alle Verbindungen. Bibliotheken bleiben mit Bestand und dem Hinweis
 „Zugang entfernt“ stehen, ohne Läufe, bis sie einem anderen Profil desselben Konnektors zugeordnet
@@ -213,7 +215,8 @@ Dienstkonto-Schlüssel an. Der Schlüssel enthält seine App-Registrierung selbs
 auch ohne Profil an der Bibliothek liegen. Die Server-Adresse ist fest (`https://www.googleapis.com`),
 der Token-Endpunkt steht in der Konnektor-Beschreibung. Mit domänenweiter Delegation liest der
 Schlüssel jedes Konto der Domäne. Das Handbuch empfiehlt dafür ein Profil, das das imitierte
-Funktionskonto festlegt; eine Pflicht ist es nicht.
+Funktionskonto festlegt; eine Pflicht ist es nicht. Unter einem Profil liegt der Schlüssel am
+Profil, und nur das Profil legt das imitierte Konto fest; eine Bibliothek darf keines setzen.
 
 Webverzeichnis und RSS tragen heute schon Zugangsdaten (Benutzername und Passwort). Ein Profil für sie
 trägt die Server-Adresse und optional die Anmeldeart „persönliches Geheimnis“ mit der Bibliothek als
@@ -250,6 +253,12 @@ Die bestehende Zielprüfung gegen private und lokale Adressbereiche bleibt daneb
 | **Dienstkonto-Schlüssel** | OPAA signiert mit dem Schlüssel eine JWT-Assertion (RFC 7523) und erhält ein kurzlebiges Zugriffstoken; kein Refresh-Token, kein Token-Speicher. Signiert wird im Kern, nie im Konnektor | Bibliothek | Google Drive ([ADR-0040](../decisions/0040-google-drive-konnektor.md)) |
 
 Ein Konnektor meldet, welche Anmeldearten er anbietet; das Profil wählt eine.
+
+**Anmeldung des Profils (Client-Credentials, Dienstkonto-Schlüssel):** OPAA holt das Zugriffstoken
+mit der Registrierung des Profils über dessen Proxy, nie mit abgeschalteter Zertifikatsprüfung, und
+hält es bis kurz vor Ablauf. Lehnt der Anbieter die Registrierung ab, markiert OPAA das Profil: Alle
+Bibliotheken darauf zeigen „Abgelaufen“ mit der Systemverwaltung als zuständig, und kein Lauf fragt
+den Anbieter erneut, bis ein neues Secret eingetragen oder die Anmeldung am Profil getestet ist.
 
 **Erneuerung (OAuth):** vor Ablauf; rotiert der Anbieter den Refresh-Token, ersetzt OPAA ihn in
 derselben Transaktion. Je Verbindung läuft höchstens eine Erneuerung zugleich.

@@ -8,6 +8,7 @@ import type {
   ConnectionProfileRequestResponse,
   ConnectionProfileRequestState,
   ConnectionProfileResponse,
+  ConnectionProfileSignInTestResponse,
   ConnectionProfileUpdateRequest,
   ConnectorProfileRequirementRequest,
   ConnectorProfileRequirementResponse,
@@ -114,6 +115,23 @@ export async function disconnectAllConnections(
   try {
     const { data } = await client.post<ConnectionProfileImpactResponse>(
       `${ADMIN}/${profileId}/disconnect-all`,
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/**
+ * Signs in once with the profile's own registration (client credentials, service account key);
+ * success lifts a rejection of the provider, a rejection sets it.
+ */
+export async function testConnectionProfileSignIn(
+  profileId: string,
+): Promise<ConnectionProfileSignInTestResponse> {
+  try {
+    const { data } = await client.post<ConnectionProfileSignInTestResponse>(
+      `${ADMIN}/${profileId}/test-sign-in`,
     )
     return data
   } catch (err) {

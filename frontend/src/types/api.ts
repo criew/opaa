@@ -183,6 +183,8 @@ export type ConnectionProfileCreateRequest = components['schemas']['ConnectionPr
 export type ConnectionProfileUpdateRequest = components['schemas']['ConnectionProfileUpdateRequest']
 export type ConnectionProfileImpactResponse =
   components['schemas']['ConnectionProfileImpactResponse']
+export type ConnectionProfileSignInTestResponse =
+  components['schemas']['ConnectionProfileSignInTestResponse']
 export type ConnectionProfileChangeRejection =
   components['schemas']['ConnectionProfileChangeRejection']
 export type SourceChangeRejectionCategory = components['schemas']['SourceChangeRejectionCategory']

@@ -791,7 +791,6 @@ components:
             type: string
         profileOnly:
           type: boolean
-          default: false
           description: >
             Whether only the profile sets this key: a library on a profile never carries it, also
             where the profile leaves it empty (then a value of the library is a 400). Google

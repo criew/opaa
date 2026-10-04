@@ -274,3 +274,15 @@ Modul connections.
   mitgelieferten Konnektoren Profile zulassen.
 - `GET /source-types` meldet `signIns`, `profileDefaults` und `serverAddress`; die Auswahl der
   Profile (`GET /connection-profiles`) meldet die Vorgaben eines Profils als `connectorDefaults`.
+
+## Nachtrag: Anmeldung des Zugangs (04.10.2026, #2220)
+
+- **Client-Credentials** nennen ihre Angaben als `ClientCredentialsAuth(token, defaultScope,
+  clientAuth)`: Der Token-Endpunkt ist ein `Endpoint` – fest (`Fixed`) oder eine Vorlage mit dem
+  Mandanten des Profils (`WithTenant`, der Mandant nur aus Buchstaben, Ziffern, Punkt und
+  Bindestrich). Endpunkte vom Profil folgen mit dem OAuth-Kern. Besitzerin ist nur die Bibliothek.
+- **Eine Vorgabe nur des Profils** (`DefaultKey#profileOnly`) ist unter einem Profil immer
+  gebunden, auch wenn das Profil sie leer lässt; `ProfileDefaults#boundKeys` nimmt sie auf. Erster
+  Nutzer ist `subject` von Google Drive.
+- **Registry beim Start:** Ein Konnektor mit Dienstkonto-Schlüssel darf Profile zulassen; der
+  Schlüssel liegt dann am Profil, signiert wird weiter im Kern (ADR-0040, Nachtrag #2220).

@@ -25,8 +25,8 @@ von foundation, format und knowledge ab.
   `IndexingRun#settings()` (ohne Geheimnis) und `#credentials()`, vor jeder Anfrage bzw. Anmeldung
   gefragt (`RunCredentials`; `FileSync` vor jedem Store-Zugriff; nach `401` einmal neu, `renewableAfterRejection`,
   sonst `SourceCredentialsRejectedException` - nur für das Geheimnis selbst, nie für `403` oder ein Einzelobjekt); sonst im Aufruf. Kein Konnektor hält oder erzeugt einen `SourceConnectionResolver` oder liest aus `KnowledgeLibrary` mehr als `getSourcePath`/`getWebhookSecret`.
-- **Dienstkonto-Schlüssel signiert der Kern** (ADR-0040): Der Konnektor bekommt nur das Token aus
-  `ServiceAccountTokens` und meldet imitiertes Konto und feste Adresse (`assertionSubject`).
+- **Dienstkonto-Schlüssel signiert der Kern** (ADR-0040), auch den des Zugangs: Der Konnektor bekommt
+  nur das Token aus `ServiceAccountTokens` und meldet imitiertes Konto (`assertionSubject`).
 - **Geheimnisse stehen nie in `source_settings`** (unverschlüsselt, in Antworten), nur verschlüsselt
   in `source_credentials`, `source_webhook_secret`, am Zugang, im Token-Speicher; Antworten Ja/Nein.
 - **Jedes Ziel von Zugangsdaten leitet sich aus `sourceUrl` ab**, bei einem Zugang aus dessen

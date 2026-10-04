@@ -69,6 +69,13 @@ export default function ProfileChangePreview({ impact, ownership }: ProfileChang
       ) : (
         <Alert severity="success">Der Konnektor nimmt die Änderung für alle Bibliotheken an.</Alert>
       )}
+      {(impact.fullSyncLibraries ?? 0) > 0 && (
+        <Alert severity="info" data-testid="profile-change-full-sync">
+          Eine Vorgabe, die nur der Zugang setzt, ändert sich: Der Abgleichstand von{' '}
+          {count(impact.fullSyncLibraries ?? 0, 'Bibliothek', 'Bibliotheken')} wird verworfen, ihr
+          nächster Lauf liest die Quelle vollständig neu. Ihre Verwaltenden werden benachrichtigt.
+        </Alert>
+      )}
       <Alert severity="warning">
         Zugangsdaten und Abgleichstand der verbundenen Bibliotheken können beim Speichern verworfen
         werden. Verwirft die Änderung Zugangsdaten, fragt OPAA vor dem Speichern noch einmal nach.
