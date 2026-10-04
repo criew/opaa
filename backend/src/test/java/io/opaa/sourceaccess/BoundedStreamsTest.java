@@ -8,7 +8,11 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.http.HttpTimeoutException;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -88,6 +92,49 @@ class BoundedStreamsTest {
   void readFullyReturnsTheWholeBodyUpToTheLimitAndThrowsBeyondIt() throws IOException {
     assertThat(BoundedStreams.readFully(new ByteArrayInputStream(bytes(10)), 10)).hasSize(10);
     assertThatThrownBy(() -> BoundedStreams.readFully(new ByteArrayInputStream(bytes(11)), 10))
+        .isInstanceOf(BoundedStreams.LimitExceededException.class);
+  }
+
+  @Test
+  void readFullyBeforeClosesABodyStillFlowingAtTheDeadline() {
+    CountDownLatch closed = new CountDownLatch(1);
+    InputStream endless =
+        new InputStream() {
+          @Override
+          public int read() throws IOException {
+            try {
+              if (closed.await(10, TimeUnit.SECONDS)) {
+                throw new IOException("closed");
+              }
+            } catch (InterruptedException e) {
+              Thread.currentThread().interrupt();
+            }
+            return 'x';
+          }
+
+          @Override
+          public void close() {
+            closed.countDown();
+          }
+        };
+    long start = System.nanoTime();
+
+    assertThatThrownBy(
+            () ->
+                BoundedStreams.readFullyBefore(
+                    endless, 1024, System.nanoTime() + Duration.ofMillis(200).toNanos()))
+        .isInstanceOf(HttpTimeoutException.class);
+    assertThat(Duration.ofNanos(System.nanoTime() - start)).isLessThan(Duration.ofSeconds(5));
+  }
+
+  @Test
+  void readFullyBeforeStillEnforcesTheLimit() {
+    assertThatThrownBy(
+            () ->
+                BoundedStreams.readFullyBefore(
+                    new ByteArrayInputStream(bytes(11)),
+                    10,
+                    System.nanoTime() + Duration.ofSeconds(5).toNanos()))
         .isInstanceOf(BoundedStreams.LimitExceededException.class);
   }
 }

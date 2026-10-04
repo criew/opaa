@@ -309,6 +309,66 @@ freizugeben, weist die Anwendung das mit einer Meldung ab, die die geltende Ober
 nennt und auf die Systemverwaltung verweist — kein technischer Fehler, sondern eine erklärte
 Grenze.
 
+### Private Bibliotheken
+
+Eine **private Bibliothek** speist sich aus dem verbundenen Konto ihrer Besitzerin auf einem Zugang
+für Personen (Kapitel [Indexierung](indexierung.md), „Zugänge“). Ihr Inhalt ist, was die Person
+beim Anbieter selbst sieht, und außer ihr liest ihn niemand. Anlegen lässt sie sich erst, wenn ein
+Konnektor die Besitzart „Person“ anbietet; die mitgelieferten Konnektoren tun das noch nicht, und
+die Oberfläche dafür folgt.
+
+**Anlegen.** Die Person wählt beim Anlegen ausdrücklich „privat“; bei einem Zugang, der Bibliotheken
+und Personen zulässt, entscheidet allein diese Wahl, und sie bleibt für immer. Vorausgesetzt sind:
+
+- ein verbundenes Konto der Person auf dem Zugang und das Anlegerecht für den Zugang (Abschnitt 9);
+- keine eigenen Zugangsdaten — die Bibliothek meldet sich mit dem verbundenen Konto an;
+- dasselbe Ziel wie das Konto: eine Adresse unter der Server-Adresse des Zugangs und keine eigene
+  Bindung, etwa eine andere Freigabe eines Dateiservers. Eine abweichende wird abgewiesen.
+
+Verbindungstest und Auflistung vor dem Anlegen laufen ebenso über das verbundene Konto.
+
+**Was nicht geht — auch nicht für die Systemverwaltung:** Rechte an Personen, Gruppen oder „Alle
+Konten“, Übertragung, Fremdzugangsfreigabe, eine Freigabe-Obergrenze, Nachfolge und „Sicht als“. Die
+Diagnosesperre ist bei einer privaten Bibliothek fest gesetzt und lässt sich nicht lösen. Vom Zugang
+lösen lässt sie sich nicht; einem anderen Zugang ordnet sie nur ihre Besitzerin zu, und nur einem
+Zugang für Personen, auf dem sie ein verbundenes Konto hat. Für alle anderen gibt es die Bibliothek
+nicht: Jede Anfrage, die sie nennt, beantwortet OPAA wie die nach einer unbekannten.
+
+**Wenn sie ruht**, trägt sie einen Hinweis, der die zuständige Stelle nennt; der Bestand bleibt
+durchsuchbar:
+
+| Hinweis | Ursache | Zuständig |
+|---|---|---|
+| „Verbindung getrennt“ | Die Besitzerin hat ihr Konto getrennt, oder es wurde getrennt (Notabschaltung, Adressänderung) | Besitzerin: Konto unter „Verbundene Konten“ neu verbinden |
+| „Abgelaufen“ | Der Anbieter hat die Anmeldung abgelehnt | Besitzerin: neu verbinden |
+| „Ruhend“ | Das Konto der Besitzerin wird derzeit nicht genutzt | Besitzerin bzw. Systemverwaltung |
+| „Konto deaktiviert“ | Das Konto der Besitzerin ist deaktiviert | Systemverwaltung |
+| „Ziel weicht ab“ | Die Bibliothek erreicht ein anderes Ziel als das, für das das Konto gilt | Besitzerin: neu verbinden, sonst neu anlegen |
+| „Zugang nicht mehr nutzbar“ | Der Zugang wurde gelöscht, lässt keine Personen mehr zu oder sein Konnektor lehnte eine Änderung für die Bibliothek ab | Besitzerin: anderem Zugang zuordnen; gibt es keinen, die Systemverwaltung |
+
+Ein Lauf, der daran scheitert, speichert den Grund als Kategorie ohne Inhaltsbezug.
+
+**Was die Verwaltung sieht:** nur Zusammenfassungen. Indexstatus und Pipeline-Stand zeigen private
+Bibliotheken als eine Zeile ohne Namen und Kennung; jede Zahl über sie richtet sich nach der Zahl
+ihrer Besitzerinnen und steht unterhalb der Mindestgruppengröße nur als „weniger als N“, ohne
+Summen. Eine Teilzahl, etwa die abgelehnten privaten Bibliotheken eines Zugangs, nennt OPAA nur
+exakt, wenn sowohl ihre Besitzerinnen als auch die Besitzerinnen aller übrigen privaten Bibliotheken
+mindestens N sind; sonst entfällt sie. Die Speicherbereiche der Bereinigung, die Prüfung
+chunk-armer Dokumente, die Zahlen am Zugang und die Zahl der diagnosegesperrten
+Bibliotheken zählen sie nicht mit. Der Neuaufbau nach einem Pipeline-Wechsel bezieht sie ein, nennt
+sie aber in keiner Zahl seiner Antwort: Jeder Aufruf merkt alle ihre veralteten Dokumente auf einmal
+für den nächsten Lauf der Bibliothek vor, der sie mit dem verbundenen Konto der Besitzerin neu
+einliest.
+Einträge im Revisionsprotokoll nennen weder Dateinamen noch Pfade noch Metadatenwerte. Lehnt der Konnektor eine Änderung des Zugangs für eine private
+Bibliothek ab, erfährt die Verwaltung nur die Anzahl, ohne Bibliothek und Grund, und die Änderung
+gilt trotzdem; die Besitzerin erhält eine Benachrichtigung. Ist ihr Konto gerade nicht nutzbar
+(ruhend, deaktiviert), wird der Konnektor für ihre Bibliothek nicht gefragt, und sie bleibt am
+Zugang. Verwirft eine Änderung den Abgleichstand des Zugangs, zählt OPAA private Bibliotheken
+dabei nicht mit und wartet nicht auf ihre laufenden Indexierungen; ihr Abgleichstand wird ebenso
+verworfen, nach dem Ende eines laufenden Laufs noch einmal, und die Besitzerin wird benachrichtigt. Die Space-Zuordnung einer privaten Bibliothek sehen andere Mitglieder nicht, auch
+nicht in Zählern und Hinweisen oder beim Löschen des Space. Im Revisionsprotokoll und in der
+Stichtagsauskunft heißt sie „Private Bibliothek“ und ist nur an ihrer Kennung zu erkennen.
+
 ### Ordner, Speicherkontingent, Löschen
 
 - **Ordner sind keine Rechtegrenze.** Sie gliedern eine Bibliothek für die Navigation;
@@ -914,6 +974,10 @@ lesen?" Fünf Schutzregeln gehören dazu:
   Raummitgliedschaften.
 - **Es gibt keinen Personen-Einstieg.** „Worauf hatte Person X am 3. März Zugriff" ist nicht
   gebaut und bleibt es, bis die Pseudonymisierung der Historie vorliegt (#391/#395).
+
+Eine private Bibliothek (Abschnitt 4, „Private Bibliotheken“) nennen Stichtagsauskunft und
+Nachweisprotokoll nie mit ihrem Namen, sondern „Private Bibliothek“ mit ihrer Kennung — auch in den
+Einträgen, die beim Anlegen, Ändern und Löschen entstehen.
 
 Wie lange Zeiträume liegen bleiben, wie eine Verkürzung wirkt und was das für die Löschbarkeit
 eines Kontos bedeutet, steht im Kapitel [Suche](suche.md), Abschnitt 8.4.

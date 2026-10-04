@@ -543,6 +543,65 @@ Begründung:
   nur die Systemverwaltung Zugänge anlegt und ihre Endpunkte setzt; alle Zugänge teilen aber eine
   Redirect-URI. Die Prüfung folgt in #2266.
 
+## Nachtrag vom 04.10.2026: Private Bibliotheken anlegen und betreiben (#2164)
+
+- **Anlegen nur über `library.PrivateLibraryCreation`:** ausdrückliche Wahl „privat“, auch auf einem
+  Zugang mit beiden Besitzarten, danach unveränderlich (Entscheidung 8 des Phase-2-Plans). Verlangt
+  sind ein verbundenes Konto der Person auf dem Zugang, die Freigabe des Zugangs und das Ziel des
+  Kontos: Ursprung und Bindung der Bibliothek müssen `SecretTarget#key` des Zugangs ergeben, sonst
+  `400`. Ein eigenes Geheimnis nimmt eine private Bibliothek nie an.
+- **Ein eigener Sperrgrund für ein abweichendes Ziel:** Passt das Ziel einer privaten Bibliothek
+  nicht zu dem, für das das Konto ausgestellt ist, verweigert der Speicher mit
+  `TARGET_OUTSIDE_PROFILE` statt `NOT_CONNECTED`; der Hinweis nennt die Besitzerin.
+- **Kein Veto, sondern ein Sperrgrund:** Lehnt der Konnektor eine Profiländerung für eine private
+  Bibliothek ab oder lässt das Profil danach keine Personen mehr zu, wird sie vom Profil gelöst und
+  ruht mit `ACCESS_REMOVED`, bis die Besitzerin sie einem anderen Profil zuordnet. Die Vorschau
+  zählt solche Ablehnungen, ohne Bibliothek und Grund. Eine Constraint-Trigger-Funktion auf
+  `connection_profiles` hält die Bedingung des Triggers auf `library_connections` auch nach einer
+  Änderung der Besitzart (geprüft zum Commit).
+- **Verwaltungssichten ohne private Bibliotheken:** Zahlen am Profil, Indexstatus und
+  Pipeline-Stand (je eine Summenzeile), chunk-arme Dokumente, Zahl der diagnosegesperrten
+  Bibliotheken, Speicherbereiche der Bereinigung. Der Bestandslauf der Pipeline bezieht private
+  Bibliotheken ein (als Systemprozess), weist sie aber in keiner Zahl seiner Antwort aus; `done`
+  folgt den geteilten. Ihre Dokumente liegen beim Anbieter; jeder Aufruf merkt alle veralteten
+  mit einer Anweisung samt Elternkette für den nächsten Lauf vor, der das Geheimnis der Besitzerin
+  braucht, unabhängig von `batchSize`. Die ungefilterten Finder ruft nur ein gelisteter Systemprozess
+  (`ModularArchitecture#privateLibrariesAreNotEnumeratedOutsideListedClasses`).
+- **Eine Zählbasis:** Jede Zahl über private Bibliotheken ruht auf ihren Besitzerinnen, nicht auf
+  den Bibliotheken: unter der Mindestgruppengröße N an Besitzerinnen, null eingeschlossen, nur
+  „weniger als N“ (`permission.PersonThreshold`, dieselbe Schwelle wie `PersonNumbers`). Das gilt
+  für die Summenzeilen und die abgelehnten privaten Bibliotheken der Änderungsvorschau
+  (`rejectedPrivateLibraries`, nie in `rejectedLibraries` oder `rejections`). Diese Teilzahl ist nur
+  exakt, wenn ihre Besitzerinnen und die verschiedenen Besitzerinnen aller übrigen privaten
+  Bibliotheken der Organisation je mindestens N sind (`PersonThreshold#disclosesPart`); ein leerer
+  Rest gilt als wenige, sonst ist sie ab N nicht genannt. So ruht weder sie noch ihre Differenz zur
+  Summenzeile auf weniger als N Personen. Private Ablagebereiche zählen nie in
+  `knownLibraryCount` und `scannedAreas`, denn sie wären eine weitere Teilzahl.
+- **Vollabgleich ohne private Bibliotheken:** Ändert sich eine Vorgabe nur des Zugangs, zählen
+  `fullSyncLibraries` und die Bestätigung nur geteilte Bibliotheken, und nur deren laufende
+  Indexierung lehnt die Änderung ab. Der Abgleichstand privater wird ebenso verworfen und ihre
+  Besitzerin benachrichtigt. Läuft eine gerade, verwirft ihr Konnektor ihn nach dem Ende des Laufs
+  noch einmal (`RunStateResets` über `SourceConnectionResolver#runEnded`), denn der Lauf schreibt
+  ihn bis dahin weiter. Der Vermerk entsteht schon in der Transaktion der Änderung (ein Rollback
+  nimmt ihn zurück) und liegt im Speicher (ADR-0021). **Restrisiko:** Startet der Prozess während
+  eines solchen Laufs neu, oder startet ein Lauf zwischen der Prüfung und dem Commit der Änderung,
+  bleibt der Abgleichstand der alten Vorgabe stehen; der nächste Lauf arbeitet inkrementell darauf
+  weiter, und der Index bleibt bis zum nächsten Vollabgleich auf dem alten Stand. Dasselbe Fenster
+  besteht für geteilte Bibliotheken. Heute in Produktion nicht erreichbar, weil nur Google Drive
+  eine Vorgabe allein des Zugangs deklariert und nur Bibliotheken zulässt; die neustartfeste Lösung
+  (Abgleichstand mit Fingerabdruck seiner Einstellungen) ist #2268, spätestens mit #2167 nötig.
+- **Protokolle neutral:** Eine private Bibliothek heißt dort „Private Bibliothek“
+  (`Asset#auditName`), ihre Nutzlasten behalten nur neutrale Schlüssel ohne Namen, Pfade und Werte
+  (`Asset#auditPayload`); `ModularArchitecture#privateAssetsAreAuditedNeutrally` hält das fest.
+- **Lösen benachrichtigt:** Wird eine private Bibliothek vom Zugang gelöst, erhält ihre
+  Besitzerin eine Benachrichtigung nach dem Muster von ADR-0019 (warum, was mit dem Inhalt
+  geschieht, was sie tun kann). Verweigert der Speicher ihr Geheimnis, etwa bei deaktiviertem
+  Konto, fragt die Änderung ihren Konnektor nicht; die Bibliothek wird nicht allein deshalb gelöst.
+- **Diagnosesperre:** Eine private Bibliothek trägt sie ab Anlage und behält sie; lösen lässt sie
+  sich nicht. „Sicht als“ erreicht sie unabhängig davon nie; die Sperre ist die zweite Schranke.
+- **Laufkategorie:** `indexing_jobs.failure_category` hält, warum ein Lauf scheiterte (Sperrgrund,
+  abgelehnte Anmeldung), ohne Inhaltsbezug.
+
 ## Referenzen
 
 - [connector-connections.md](../features/connector-connections.md)

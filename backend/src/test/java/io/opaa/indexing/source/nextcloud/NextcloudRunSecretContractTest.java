@@ -76,6 +76,7 @@ class NextcloudRunSecretContractTest extends RunSecretContract {
     run(template(), jobId, library());
 
     verify(jobService, never()).failJob(eq(jobId), anyString());
+    verify(jobService, never()).failJob(eq(jobId), anyString(), anyString());
     verify(ingestService, times(FILES)).ingest(any(), any());
     assertThat(server.requests()).contains("GET Akten/Gesperrt/akte.txt");
     assertThat(rejectionsReported()).isZero();

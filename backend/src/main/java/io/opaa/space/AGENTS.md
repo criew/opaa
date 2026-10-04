@@ -27,6 +27,8 @@ foundation, identity, rights und knowledge ab.
   (`DiagnosticImpersonationGrantService`); die Sperre ist standardmäßig gesetzt. Der fremde Kontext
   liest `readableLibraryIdsInForeignContext` (ohne private Bibliotheken), nie die eigene Formel
   (`ModularArchitecture#theForeignContextNeverUsesTheOwnFormula`).
+- **Eine fremde private Bibliothek gibt es im Raum nicht:** Liste, Zähler und die Flaggen „nicht
+  alles lesbar“ und „Wissen zugeordnet“ lassen sie aus; Zuordnen und Lösen antworten `404`.
 - **Web-Schicht:** `space.web` (Räume und `AssetSpaceController` für die Raumzuordnungen jedes
   Asset-Typs), `revision.web` (`PointInTimeAccessController`, `/api/v1/audit/access-as-of`),
   `diagnosticaccess.web` (Befugnisse, Protokoll, Diagnosesperre einer Bibliothek).

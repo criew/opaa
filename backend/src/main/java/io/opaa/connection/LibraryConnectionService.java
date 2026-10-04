@@ -11,6 +11,7 @@ import io.opaa.connection.profile.ProfileAdmission;
 import io.opaa.connection.profile.ProfileRequirementService;
 import io.opaa.connection.profile.ProfileRequirements;
 import io.opaa.connection.profile.ServerAddress;
+import io.opaa.connection.profile.SourceDraft.DraftOwner;
 import io.opaa.connection.profile.SourceTransitions;
 import io.opaa.connection.profile.SourceTransitions.Move;
 import io.opaa.connection.token.ConnectionSecrets;
@@ -87,6 +88,19 @@ public class LibraryConnectionService {
     return locks.locksOf(libraries);
   }
 
+  /**
+   * The block {@code library} shows its readers: its lock, for a private library every reason (see
+   * {@link ConnectorLockService#shownAmong}).
+   */
+  public Optional<SourceBlock> shownBlockOf(KnowledgeLibrary library) {
+    return Optional.ofNullable(locks.shownAmong(List.of(library)).get(library.getId()));
+  }
+
+  /** {@link #shownBlockOf} for a whole page of libraries; a free library is absent. */
+  public Map<UUID, SourceBlock> shownBlocksOf(Collection<KnowledgeLibrary> libraries) {
+    return locks.shownAmong(libraries);
+  }
+
   /** The connection of {@code libraryId}, empty for a library with its own address. */
   public Optional<LibraryConnectionView> connectionOf(UUID libraryId) {
     return connections
@@ -130,7 +144,7 @@ public class LibraryConnectionService {
    */
   @Transactional
   public void attachNew(KnowledgeLibrary library, UUID profileId) {
-    requireAdmitting(profileId, library.getSourceType());
+    requireAdmitting(profileId, library);
     connections.save(new LibraryConnection(library.getId(), profileId, clock.instant()));
   }
 
@@ -146,7 +160,7 @@ public class LibraryConnectionService {
    */
   @Transactional
   public Set<String> connect(KnowledgeLibrary library, UUID profileId, String requestedUrl) {
-    ConnectionProfile profile = requireAdmitting(profileId, library.getSourceType());
+    ConnectionProfile profile = requireAdmitting(profileId, library);
     LibraryConnection connection = connections.findById(library.getId()).orElse(null);
     ConnectionProfile previous =
         !LibraryConnection.throughProfile(connection)
@@ -202,6 +216,7 @@ public class LibraryConnectionService {
    */
   @Transactional
   public Set<String> disconnect(KnowledgeLibrary library) {
+    requireReleasable(library);
     if (requirements.profileRequired(library.getSourceType())) {
       throw requirementService.ownAddressRefused(library.getSourceType());
     }
@@ -221,9 +236,34 @@ public class LibraryConnectionService {
     return transitions.applied(move);
   }
 
+  /**
+   * Refuses (German 400) releasing a private library to an own address: it runs on its owner's
+   * connected account only.
+   */
+  public static void requireReleasable(KnowledgeLibrary library) {
+    if (library.isOwnerOnly()) {
+      throw new ValidationException(
+          "Eine private Bibliothek läuft nur über das verbundene Konto ihrer Besitzerin und lässt"
+              + " sich keinem Zugang entziehen. Ordnen Sie sie einem anderen Zugang zu oder"
+              + " löschen Sie sie.");
+    }
+  }
+
   private ConnectionProfile requireAdmitting(UUID profileId, SourceType sourceType) {
     return ProfileAdmission.require(
         profiles.findById(profileId), sourceType, connectors.descriptor(sourceType));
+  }
+
+  /**
+   * A private library goes onto a profile admitting persons, every other onto one for libraries.
+   */
+  private ConnectionProfile requireAdmitting(UUID profileId, KnowledgeLibrary library) {
+    SourceType sourceType = library.getSourceType();
+    return ProfileAdmission.require(
+        profiles.findById(profileId),
+        sourceType,
+        connectors.descriptor(sourceType),
+        library.isOwnerOnly() ? DraftOwner.PERSON : DraftOwner.LIBRARY);
   }
 
   private static String requireUnder(ConnectionProfile profile, String address) {

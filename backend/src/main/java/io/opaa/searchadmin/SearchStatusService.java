@@ -20,6 +20,7 @@ import io.opaa.metadata.LibraryMetadataSchemaChangeProgress;
 import io.opaa.metadata.LibraryMetadataSchemaChangeService;
 import io.opaa.metadata.ModelExtractionCounters;
 import io.opaa.metadata.ModelExtractionStats;
+import io.opaa.permission.PersonThreshold;
 import io.opaa.retrieval.QueryProperties;
 import io.opaa.retrieval.RetrievalPipelineProperties;
 import io.opaa.retrieval.RetrievalStageName;
@@ -30,6 +31,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -95,6 +97,7 @@ public class SearchStatusService {
   private final LibraryMetadataSchemaChangeService schemaChangeService;
   private final QueryProperties queryProperties;
   private final RetrievalPipelineProperties pipelineProperties;
+  private final PersonThreshold threshold;
   private final Clock clock;
 
   /**
@@ -142,7 +145,9 @@ public class SearchStatusService {
       LibraryMetadataSchemaChangeService schemaChangeService,
       QueryProperties queryProperties,
       RetrievalPipelineProperties pipelineProperties,
+      PersonThreshold threshold,
       Clock clock) {
+    this.threshold = threshold;
     this.llmModelService = llmModelService;
     this.connectionTester = connectionTester;
     this.embeddingInfoService = embeddingInfoService;
@@ -165,10 +170,48 @@ public class SearchStatusService {
     probeExecutor.shutdownNow();
   }
 
-  /** The whole status display for {@code organizationId}, libraries by name. */
+  /**
+   * The whole status display for {@code organizationId}: the shared libraries by name, the private
+   * ones summed up without names.
+   */
   public SearchStatus statusForOrganization(UUID organizationId) {
-    List<LibrarySearchStatus> libraries = libraryStatus(organizationId);
-    return new SearchStatus(modelRoles(), searchPaths(libraries), libraries);
+    Map<UUID, LibraryDocumentStats> statsByLibrary =
+        documentStatsReader.statsForOrganization(organizationId);
+    List<LibrarySearchStatus> libraries = libraryStatus(organizationId, statsByLibrary);
+    return new SearchStatus(
+        modelRoles(),
+        searchPaths(libraries),
+        libraries,
+        privateSummary(organizationId, libraries, statsByLibrary));
+  }
+
+  /**
+   * The private libraries as one line: every document row not of a listed shared library is one of
+   * a private library, and the libraries themselves are only counted.
+   */
+  private PrivateLibrarySummary privateSummary(
+      UUID organizationId,
+      List<LibrarySearchStatus> shared,
+      Map<UUID, LibraryDocumentStats> statsByLibrary) {
+    Set<UUID> sharedIds = new HashSet<>();
+    for (LibrarySearchStatus library : shared) {
+      sharedIds.add(library.libraryId());
+    }
+    long documents = 0;
+    long failed = 0;
+    long chunks = 0;
+    for (LibraryDocumentStats stats : statsByLibrary.values()) {
+      if (!sharedIds.contains(stats.libraryId())) {
+        documents += stats.documentCount();
+        failed += stats.failedDocumentCount();
+        chunks += stats.chunkCount();
+      }
+    }
+    return PrivateLibrarySummary.of(
+        libraryRepository.countByOrganizationIdAndOwnerOnlyTrue(organizationId),
+        libraryRepository.countPrivateLibraryOwners(organizationId),
+        new LibraryDocumentStats(null, documents, 0, 0, failed, 0, chunks, null),
+        threshold);
   }
 
   /**
@@ -396,10 +439,9 @@ public class SearchStatusService {
     return affectedLibraries > 0 ? ifAffected : SearchPathStatus.SearchPathCondition.ACTIVE;
   }
 
-  private List<LibrarySearchStatus> libraryStatus(UUID organizationId) {
-    Map<UUID, LibraryDocumentStats> statsByLibrary =
-        documentStatsReader.statsForOrganization(organizationId);
-    List<KnowledgeLibrary> libraries = libraryRepository.findByOrganizationId(organizationId);
+  private List<LibrarySearchStatus> libraryStatus(
+      UUID organizationId, Map<UUID, LibraryDocumentStats> statsByLibrary) {
+    List<KnowledgeLibrary> libraries = libraryRepository.findSharedByOrganizationId(organizationId);
     // Only this organization's libraries are counted; an unfiltered progress read would scan the
     // whole vector store across organizations for rows this page never shows, even with the
     // expression index added in #1119 (see FullTextIndexFillStateService#fillStateForLibraries).

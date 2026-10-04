@@ -29,19 +29,19 @@ seine Ports `SourceConnectionResolver` (`ProfileSourceConnectionResolver`) und `
   fest und beendet nur bei `DEACTIVATED`, je Person in eigener Transaktion (auch nach Commit). Eine
   getrennte Zeile bleibt, solange eine private Bibliothek daran hängt (Trigger).
 - **Die Verwaltung sieht verbundene Konten nur über `PersonNumbers`** („weniger als N“, auch bei 0,
-  für Teilzahlen und Schwellenwarnung; je Anbieter keine Zahl); Kontoname verschlüsselt, nur für die Person.
+  für Teilzahlen und Schwellenwarnung; je Anbieter keine Zahl), private Bibliotheken nach
+  Besitzerinnen (`PersonThreshold`); Kontoname verschlüsselt. Eine private vetiert, zählt, blockiert
+  keine Zugangsänderung; gelöst, Besitzerin benachrichtigt (`PrivateLibraryRelease`).
 - **Registrierung des Zugangs** (Secret/Schlüssel nur Ja/Nein) gibt nur `registrationOf` heraus, nur
   an `connection.oauth`; dort erreicht nur `OAuthClient` den Anbieter. Refresh-Tokens verlassen
   token/oauth nie; Erneuerung unter Zeilensperre, Widerruf erst nach Commit (alles ArchUnit/ADR-0041).
 - **Ursprungsbindung:** Bibliotheksadresse unter der Server-Adresse des Profils, sonst sperrt der Port.
   Neue Adresse/Registrierung verwirft vorher alle Geheimnisse, beendet die Konten; gelöscht: `NULL`.
-- **Übergänge** (Profiländerung, Zuordnen, Lösen) sind je Bibliothek ein `SourceTransitions.Move`
-  durch `SourceChangeGate`: erst Bestätigung, dann alle prüfen (`Answers`), dann schreiben.
+- **Übergänge** (Profiländerung, Zuordnen, Lösen) sind je Bibliothek ein `SourceTransitions.Move` durch `SourceChangeGate`: erst Bestätigung, dann alle prüfen (`Answers`), dann schreiben.
 - **Eine Zusammenführung:** `EffectiveSourceSettings` setzt Lauf, Änderung und Entwurf (`ofDraft`,
   auch `DraftOwner.PERSON`) zusammen; der Rahmen des Zugangs (`ProfileFrame`) überschreibt die
   Bibliothek, abweichend ist `400`; Lösen schreibt den Rahmen ein, eine entfallende Vorgabe geht in den eigenen Teil (`Move#keptDefaults`).
-- **Freigabe nur hier:** `ConnectorReleaseService` (Bibliothek) und `requireConnectable` (neues
-  Konto) aus `CREATE_CONNECTOR_LIBRARY` und Sperren; ein Entzug stoppt nichts.
+- **Freigabe nur hier:** `ConnectorReleaseService` (Bibliothek) und `requireConnectable` (neues Konto) aus `CREATE_CONNECTOR_LIBRARY` und Sperren; ein Entzug stoppt nichts.
 - **Sperrgründe nur in `SourceBlocks`** (Vorrang: Enum-Reihenfolge), Profilangabe nur über
   `ProfileRequirements`. Eine Sperre blockiert `resolve`, nicht `currentCredentials`.
 

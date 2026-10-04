@@ -338,7 +338,10 @@ class IndexingRunTemplateTest {
             });
 
     verify(jobService)
-        .failJob(jobId, "Zugang entfernt: Der Zugang dieser Bibliothek wurde gelöscht.");
+        .failJob(
+            jobId,
+            "Zugang entfernt: Der Zugang dieser Bibliothek wurde gelöscht.",
+            "ACCESS_REMOVED");
     verify(jobService, never()).completeJob(any(), anyInt(), anyInt(), anyInt(), anyInt());
   }
 
@@ -358,7 +361,7 @@ class IndexingRunTemplateTest {
               throw new SourceCredentialsRejectedException("Die Quelle hat abgelehnt.");
             });
 
-    verify(jobService).failJob(jobId, "Die Quelle hat abgelehnt.");
+    verify(jobService).failJob(jobId, "Die Quelle hat abgelehnt.", "CREDENTIALS_REJECTED");
     verify(resolver).credentialsRejected(library);
     verify(cleanupService, never()).reconcile(any(), any(), any(), any(), any(), any(), any());
   }

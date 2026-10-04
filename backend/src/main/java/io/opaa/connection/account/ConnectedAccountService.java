@@ -21,7 +21,6 @@ import io.opaa.connection.profile.ConnectorScope;
 import io.opaa.connection.profile.EffectiveSourceSettings;
 import io.opaa.connection.profile.LibraryConnectionRepository;
 import io.opaa.connection.profile.PersonConnections;
-import io.opaa.connection.profile.PersonConnections.PersonTotals;
 import io.opaa.connection.profile.PersonConnections.StateCounts;
 import io.opaa.connection.profile.ProfileAdmission;
 import io.opaa.connection.profile.SourceDraft;
@@ -344,13 +343,6 @@ public class ConnectedAccountService implements PersonConnections, GrantRejectio
     Map<UUID, StateCounts> counts = new HashMap<>();
     raw.forEach((profileId, pair) -> counts.put(profileId, new StateCounts(pair[0], pair[1])));
     return counts;
-  }
-
-  @Override
-  @Transactional(readOnly = true)
-  public PersonTotals totalsOf(Collection<UUID> userIds) {
-    return new PersonTotals(
-        accounts.countHeldBy(userIds), accounts.countPrivateLibrariesOf(userIds));
   }
 
   @Override

@@ -168,7 +168,22 @@ public class SourceBlocks {
                       + "\" sind keine Zugangsdaten hinterlegt. Die Verwaltenden der"
                       + " Bibliothek tragen sie neu ein."
                       + CONTENT_STAYS);
-      case TYPE_LOCKED, PROFILE_LOCKED, PROFILE_REQUIRED, ACCESS_REMOVED, TARGET_OUTSIDE_PROFILE ->
+      case TARGET_OUTSIDE_PROFILE ->
+          new SourceBlock(
+              reason,
+              person ? OWNER : LIBRARY_MANAGERS,
+              "Ziel weicht ab: Die Bibliothek erreicht ein anderes Ziel – Adresse oder Bindung wie"
+                  + " eine Freigabe – als das, für das die Anmeldung beim Zugang "
+                  + access
+                  + " gilt. "
+                  + (person
+                      ? "Die Besitzerin verbindet ihr Konto "
+                          + ACCOUNTS_PAGE
+                          + " neu; bleibt der Hinweis, legt sie die Bibliothek mit dem Ziel des"
+                          + " Zugangs neu an."
+                      : "Die Verwaltenden der Bibliothek tragen die Zugangsdaten neu ein.")
+                  + CONTENT_STAYS);
+      case TYPE_LOCKED, PROFILE_LOCKED, PROFILE_REQUIRED, ACCESS_REMOVED ->
           throw new IllegalArgumentException(reason + " is no answer of the secret store");
     };
   }
@@ -439,13 +454,7 @@ public class SourceBlocks {
                 : Optional.empty();
         case ACCESS_REMOVED ->
             connected && profile == null
-                ? Optional.of(
-                    new SourceBlock(
-                        Reason.ACCESS_REMOVED,
-                        LIBRARY_MANAGERS,
-                        "Zugang entfernt: Der Zugang dieser Bibliothek wurde gelöscht. Die"
-                            + " Verwaltenden der Bibliothek ordnen sie einem anderen Zugang zu."
-                            + CONTENT_STAYS))
+                ? Optional.of(accessRemoved(library.isOwnerOnly()))
                 : Optional.empty();
         case TARGET_OUTSIDE_PROFILE ->
             profile != null && !ServerAddress.covers(profile.getServerUrl(), library.getSourceUrl())
@@ -462,6 +471,29 @@ public class SourceBlocks {
         case OWNER_DEACTIVATED, DORMANT, EXPIRED -> fromTheStore(reason);
         case NOT_CONNECTED -> profile == null ? Optional.empty() : notConnected();
       };
+    }
+
+    /**
+     * A private library loses its profile also when the profile stops admitting persons or its
+     * connector refuses a change; its owner moves it, the administration where no profile is left.
+     */
+    private static SourceBlock accessRemoved(boolean privateLibrary) {
+      if (privateLibrary) {
+        return new SourceBlock(
+            Reason.ACCESS_REMOVED,
+            OWNER_OR_ADMINISTRATION,
+            "Zugang nicht mehr nutzbar: Der Zugang dieser privaten Bibliothek wurde entfernt oder"
+                + " trägt sie nicht mehr. Die Besitzerin ordnet sie einem anderen Zugang zu, auf"
+                + " dem sie ein verbundenes Konto hat; gibt es keinen, ist die Systemverwaltung"
+                + " zuständig."
+                + CONTENT_STAYS);
+      }
+      return new SourceBlock(
+          Reason.ACCESS_REMOVED,
+          LIBRARY_MANAGERS,
+          "Zugang entfernt: Der Zugang dieser Bibliothek wurde gelöscht. Die"
+              + " Verwaltenden der Bibliothek ordnen sie einem anderen Zugang zu."
+              + CONTENT_STAYS);
     }
 
     private Optional<SourceBlock> fromTheStore(Reason reason) {

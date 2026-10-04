@@ -210,8 +210,10 @@ public class AssetGrantService {
               .organizationId(asset.getOrganizationId())
               .actor(currentUserId)
               .type(AuditEventType.ASSET_GRANT_GRANTED)
-              .object(definition.auditObjectType(), asset.getId(), asset.getName())
-              .after(grantAuditPayload(request.subjectType(), request.role(), null))
+              .object(definition.auditObjectType(), asset.getId(), asset.auditName())
+              .after(
+                  asset.auditPayload(
+                      grantAuditPayload(request.subjectType(), request.role(), null)))
               .outcome(AuditOutcome.DENIED)
               .reason(denied.getMessage());
       // No audit subject for ALL_ACCOUNTS - it names neither person nor group, see

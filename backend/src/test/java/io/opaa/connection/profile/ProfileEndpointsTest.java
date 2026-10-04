@@ -75,6 +75,7 @@ class ProfileEndpointsTest {
           mock(CredentialsEncryptor.class),
           wiring.audit,
           mock(CapabilityService.class),
+          mock(PrivateLibraryRelease.class),
           mock(ProfileFullSync.class),
           Clock.fixed(NOW, ZoneOffset.UTC));
 

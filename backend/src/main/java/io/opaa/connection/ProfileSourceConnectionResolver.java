@@ -3,6 +3,7 @@ package io.opaa.connection;
 import io.opaa.connection.account.ConnectedAccountService;
 import io.opaa.connection.profile.EffectiveSourceSettings;
 import io.opaa.connection.profile.EffectiveSourceSettings.Purpose;
+import io.opaa.connection.profile.RunStateResets;
 import io.opaa.connection.profile.SourceBlocks;
 import io.opaa.connection.token.ConnectionSecrets;
 import io.opaa.connection.token.SecretOwner;
@@ -30,6 +31,7 @@ public class ProfileSourceConnectionResolver implements SourceConnectionResolver
   private final EffectiveSourceSettings effective;
   private final SourceBlocks blocks;
   private final ConnectionSecrets secrets;
+  private final RunStateResets resets;
 
   /** Looked up per call: the accounts reach the release, and the release the connectors. */
   private final ObjectProvider<ConnectedAccountService> accounts;
@@ -38,7 +40,9 @@ public class ProfileSourceConnectionResolver implements SourceConnectionResolver
       EffectiveSourceSettings effective,
       SourceBlocks blocks,
       ConnectionSecrets secrets,
+      RunStateResets resets,
       ObjectProvider<ConnectedAccountService> accounts) {
+    this.resets = resets;
     this.effective = effective;
     this.blocks = blocks;
     this.secrets = secrets;
@@ -78,6 +82,11 @@ public class ProfileSourceConnectionResolver implements SourceConnectionResolver
     } else {
       secrets.rejected(owner);
     }
+  }
+
+  @Override
+  public void runEnded(KnowledgeLibrary library) {
+    resets.runEnded(library);
   }
 
   @Override

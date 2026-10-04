@@ -1,0 +1,30 @@
+databaseChangeLog:
+  - changeSet:
+      id: connections-2026-10-04-profile-owner-only-guard
+      author: opaa
+      comment: "A profile that carries a private library admits persons, also after a change of its ownership: checked at commit, so a change releases its private libraries first."
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              -- Reads assets (rights) only; refuses rather than corrects.
+              CREATE FUNCTION connection_profiles_guard_owner_only() RETURNS trigger
+                  LANGUAGE plpgsql
+                  SET search_path TO 'pg_catalog', '${database.defaultSchemaName}', 'pg_temp'
+                  AS $$
+              BEGIN
+                IF NEW.ownership IN ('PERSON', 'BOTH') THEN
+                  RETURN NEW;
+                END IF;
+                IF EXISTS (SELECT 1 FROM library_connections c JOIN assets a ON a.id = c.library_id
+                    WHERE c.profile_id = NEW.id AND a.owner_only) THEN
+                  RAISE EXCEPTION 'profile % carries an owner-only library and must admit persons', NEW.id
+                    USING ERRCODE = 'check_violation';
+                END IF;
+                RETURN NEW;
+              END; $$;
+
+              CREATE CONSTRAINT TRIGGER trg_connection_profiles_guard_owner_only
+                  AFTER UPDATE OF ownership ON connection_profiles
+                  DEFERRABLE INITIALLY DEFERRED
+                  FOR EACH ROW EXECUTE FUNCTION connection_profiles_guard_owner_only();

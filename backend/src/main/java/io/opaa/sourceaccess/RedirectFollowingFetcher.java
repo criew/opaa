@@ -28,7 +28,8 @@ import org.slf4j.LoggerFactory;
  * <p>Only under {@link RedirectPolicy#REJECT_OFF_ORIGIN} is the response actually received also
  * checked against the original URL, closing the gap a caller-supplied auto-following {@link
  * HttpClient} would leave; {@link RedirectPolicy#DROP_AUTHORIZATION_OFF_ORIGIN} carries no such
- * check, which is safe only because no production client here auto-follows.
+ * check, and neither does {@link RedirectPolicy#DROP_AUTHORIZATION_HTTPS_ONLY_OFF_ORIGIN}, which is
+ * safe only because no production client here auto-follows.
  */
 public final class RedirectFollowingFetcher {
 
@@ -63,7 +64,14 @@ public final class RedirectFollowingFetcher {
      * - by default - file/attachment downloads, where the target is content a feed or directory
      * listing operator controls.
      */
-    REJECT_OFF_ORIGIN
+    REJECT_OFF_ORIGIN,
+
+    /**
+     * {@link #DROP_AUTHORIZATION_OFF_ORIGIN} for a download an API hands out from a pre-signed
+     * host: an off-origin hop is followed only to an {@code https} target, and every refused hop
+     * throws {@link RedirectRejectedException}, whatever the scheme of the original URL.
+     */
+    DROP_AUTHORIZATION_HTTPS_ONLY_OFF_ORIGIN
   }
 
   /**
@@ -94,7 +102,9 @@ public final class RedirectFollowingFetcher {
    *
    * @throws RedirectRejectedException (an {@link IOException}) under {@link
    *     RedirectPolicy#REJECT_OFF_ORIGIN}, when a redirect would leave the original URL's origin or
-   *     downgrade the protocol from {@code https} to {@code http}.
+   *     downgrade the protocol from {@code https} to {@code http}; under {@link
+   *     RedirectPolicy#DROP_AUTHORIZATION_HTTPS_ONLY_OFF_ORIGIN}, when it would downgrade the
+   *     protocol or leave the origin for a target without {@code https}.
    * @throws IOException under {@link RedirectPolicy#DROP_AUTHORIZATION_OFF_ORIGIN}, when a redirect
    *     would downgrade the protocol from {@code https} to {@code http} - refused unconditionally
    *     regardless of policy, only the exception shape differs; or whatever {@link
@@ -263,7 +273,7 @@ public final class RedirectFollowingFetcher {
       closeQuietly(response.body());
       URI redirectUri = currentUri.resolve(location.get());
       if (isSchemeDowngrade(currentUri, redirectUri)) {
-        if (policy == RedirectPolicy.REJECT_OFF_ORIGIN) {
+        if (policy != RedirectPolicy.DROP_AUTHORIZATION_OFF_ORIGIN) {
           throw new RedirectRejectedException(
               RedirectRejectionReason.PROTOCOL_DOWNGRADE, redirectUri);
         }
@@ -276,6 +286,10 @@ public final class RedirectFollowingFetcher {
       if (!isRedirectOriginTrusted(currentUri, redirectUri)) {
         if (policy == RedirectPolicy.REJECT_OFF_ORIGIN) {
           throw new RedirectRejectedException(RedirectRejectionReason.FOREIGN_HOST, redirectUri);
+        }
+        if (policy == RedirectPolicy.DROP_AUTHORIZATION_HTTPS_ONLY_OFF_ORIGIN
+            && !"https".equalsIgnoreCase(redirectUri.getScheme())) {
+          throw new RedirectRejectedException(RedirectRejectionReason.INSECURE_TARGET, redirectUri);
         }
         currentHeaders.remove("Authorization");
       } else if (!authorizationScope.test(redirectUri)) {
@@ -393,13 +407,15 @@ public final class RedirectFollowingFetcher {
   }
 
   /**
-   * Why a redirect was rejected outright under {@link RedirectPolicy#REJECT_OFF_ORIGIN} - shared so
-   * every caller builds the identically worded, sanitized run-log message {@link
-   * #redirectRejectionMessage} produces.
+   * Why a redirect was rejected outright under {@link RedirectPolicy#REJECT_OFF_ORIGIN} or {@link
+   * RedirectPolicy#DROP_AUTHORIZATION_HTTPS_ONLY_OFF_ORIGIN} - shared so every caller builds the
+   * identically worded, sanitized run-log message {@link #redirectRejectionMessage} produces.
    */
   public enum RedirectRejectionReason {
     FOREIGN_HOST,
-    PROTOCOL_DOWNGRADE
+    PROTOCOL_DOWNGRADE,
+    /** An off-origin target without {@code https}. */
+    INSECURE_TARGET
   }
 
   /**
@@ -412,6 +428,7 @@ public final class RedirectFollowingFetcher {
       case FOREIGN_HOST ->
           "Weiterleitung auf einen fremden Host abgelehnt (Ziel: " + sanitizedOrigin(target) + ")";
       case PROTOCOL_DOWNGRADE -> "Weiterleitung von https auf http abgelehnt (Protokoll-Downgrade)";
+      case INSECURE_TARGET -> "Weiterleitung auf eine fremde Adresse ohne https abgelehnt";
     };
   }
 
@@ -428,10 +445,12 @@ public final class RedirectFollowingFetcher {
 
   /**
    * Thrown by {@link #sendFollowingRedirects} under {@link RedirectPolicy#REJECT_OFF_ORIGIN} when a
-   * redirect would leave the original URL's origin or downgrade the protocol. {@link
-   * #userMessage()} is a German, cause-specific, sanitized run-log text ({@link
-   * #redirectRejectionMessage}), distinct from this exception's own {@link #getMessage()}, which
-   * stays the unsanitized, developer-facing detail for the log only.
+   * redirect would leave the original URL's origin or downgrade the protocol, and under {@link
+   * RedirectPolicy#DROP_AUTHORIZATION_HTTPS_ONLY_OFF_ORIGIN} when it would downgrade the protocol
+   * or leave the origin for a target without {@code https}. {@link #userMessage()} is a German,
+   * cause-specific, sanitized run-log text ({@link #redirectRejectionMessage}), distinct from this
+   * exception's own {@link #getMessage()}, which stays the unsanitized, developer-facing detail for
+   * the log only.
    */
   public static final class RedirectRejectedException extends IOException {
     private final RedirectRejectionReason reason;
@@ -448,6 +467,7 @@ public final class RedirectFollowingFetcher {
         case FOREIGN_HOST -> "redirected to a foreign host: " + target;
         case PROTOCOL_DOWNGRADE ->
             "refusing a protocol downgrade redirect (https to http): " + target;
+        case INSECURE_TARGET -> "refusing an off-origin redirect to a non-https target: " + target;
       };
     }
 

@@ -40,11 +40,6 @@ public final class TestPersonCounts {
     }
 
     @Override
-    public PersonTotals totalsOf(java.util.Collection<java.util.UUID> userIds) {
-      return new PersonTotals(0, 0);
-    }
-
-    @Override
     public void endAllUnder(
         java.util.UUID profileId,
         io.opaa.api.types.ConnectionEndCause cause,

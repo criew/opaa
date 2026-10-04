@@ -40,7 +40,8 @@ final class SourceConnectionTestResponseMapper {
         request.getSourceInsecureSsl(),
         request.getLibraryId(),
         LibraryResponseMapper.toSettings(request.getSourceSettings()),
-        request.getConnectionProfileId());
+        request.getConnectionProfileId(),
+        Boolean.TRUE.equals(request.getPrivateLibrary()));
   }
 
   static SourceConnectionTestResponse toResponse(SourceConnectionTestResult result) {
@@ -60,7 +61,8 @@ final class SourceConnectionTestResponseMapper {
         request.getSourceInsecureSsl(),
         LibraryResponseMapper.toSettings(request.getQuery()),
         request.getLibraryId(),
-        request.getConnectionProfileId());
+        request.getConnectionProfileId(),
+        Boolean.TRUE.equals(request.getPrivateLibrary()));
   }
 
   static SourceBrowseResponse toResponse(SourceListing listing) {

@@ -163,6 +163,10 @@ public final class ConnectionProfileResponseMapper {
         .lastForProfileRequirement(lastForProfileRequirement)
         .fullSyncLibraries(impact.fullSyncLibraries())
         .rejectedLibraries((long) impact.rejections().size())
+        .rejectedPrivateLibraries(
+            impact.rejectedPrivateLibraries() == null
+                ? null
+                : toCount(impact.rejectedPrivateLibraries()))
         .rejections(
             impact.rejections().stream()
                 .map(

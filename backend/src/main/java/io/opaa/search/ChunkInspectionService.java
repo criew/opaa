@@ -71,9 +71,23 @@ public class ChunkInspectionService {
    * but not read it.
    */
   public Optional<ChunkInspection> inspectChunk(CurrentUser caller, String chunkId) {
-    Optional<ChunkInspection> chunk = findChunk(caller.organizationId(), chunkId);
+    Optional<ChunkInspection> chunk =
+        findChunk(caller.organizationId(), chunkId)
+            .filter(found -> !hiddenPrivateLibrary(caller, found.libraryId()));
     chunk.ifPresent(found -> requireReadableLibrary(caller, found.libraryId()));
     return chunk;
+  }
+
+  /**
+   * Whether {@code libraryId} is another person's private library: it does not exist for caller.
+   */
+  private boolean hiddenPrivateLibrary(CurrentUser caller, UUID libraryId) {
+    return libraryId != null
+        && libraryRepository
+            .findById(libraryId)
+            .filter(library -> library.isOwnerOnly())
+            .filter(library -> !caller.id().equals(library.getOwnerUserId()))
+            .isPresent();
   }
 
   /**
@@ -97,6 +111,7 @@ public class ChunkInspectionService {
                 ? Optional.<KnowledgeLibrary>empty()
                 : libraryRepository.findById(libraryId))
             .filter(candidate -> caller.organizationId().equals(candidate.getOrganizationId()))
+            .filter(candidate -> !hiddenPrivateLibrary(caller, candidate.getId()))
             .orElseThrow(() -> new NotFoundException("Das Dokument wurde nicht gefunden."));
     libraryAccessService.requireContentRead(library, caller.id(), caller.isSystemAdmin());
   }

@@ -530,6 +530,8 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
         libraryRepository
             .findById(document.getLibraryId())
             .filter(lib -> lib.getOrganizationId().equals(caller.organizationId()))
+            // another person's private library does not exist for the caller, nor its documents
+            .filter(lib -> !lib.isOwnerOnly() || caller.id().equals(lib.getOwnerUserId()))
             .orElseThrow(() -> new NotFoundException("Dokument nicht gefunden"));
     accessService.requireContentRead(library, caller.id(), caller.isSystemAdmin());
 

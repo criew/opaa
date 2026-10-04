@@ -62,6 +62,13 @@ public enum NotificationType {
   CONNECTION_ENDED,
 
   /**
+   * A change of its profile released the person's private library from it (ADR-0041): the library
+   * rests, keeps its content and runs again once she connects it through another profile. Sent to
+   * its owner only; its object is the library.
+   */
+  PRIVATE_LIBRARY_RELEASED,
+
+  /**
    * The system administration changed a profile default only the profile sets, such as Google
    * Drive's imitated account: the run state of every library on the profile is discarded and its
    * next run is a full one. Sent to each library's managers.

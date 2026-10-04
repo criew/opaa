@@ -17,6 +17,7 @@ import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.UploadStoreUnavailableException;
+import io.opaa.permission.PersonThreshold;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -85,6 +86,43 @@ public class PipelineReindexService {
    * index backs - an accepted cost at today's data volumes.
    */
   public List<PipelineVersionProgress> progressForOrganization(UUID organizationId) {
+    Set<UUID> privateLibraries = libraryRepository.findPrivateIdsByOrganizationId(organizationId);
+    return countsByLibrary(organizationId).entrySet().stream()
+        .filter(entry -> !privateLibraries.contains(entry.getKey()))
+        .map(
+            entry ->
+                new PipelineVersionProgress(
+                    entry.getKey(), entry.getValue()[0], entry.getValue()[1], entry.getValue()[2]))
+        .sorted(Comparator.comparing(PipelineVersionProgress::libraryId))
+        .toList();
+  }
+
+  /**
+   * The private libraries of {@code organizationId} as one line, without ids: exact only where
+   * {@code threshold} discloses a number resting on their owners, else only "fewer than N".
+   */
+  public PrivatePipelineProgress privateProgressForOrganization(
+      UUID organizationId, PersonThreshold threshold) {
+    if (!threshold.discloses(libraryRepository.countPrivateLibraryOwners(organizationId))) {
+      return PrivatePipelineProgress.fewerThan(threshold.minimum());
+    }
+    Set<UUID> privateLibraries = libraryRepository.findPrivateIdsByOrganizationId(organizationId);
+    long[] sums = new long[3];
+    countsByLibrary(organizationId)
+        .forEach(
+            (libraryId, counters) -> {
+              if (privateLibraries.contains(libraryId)) {
+                for (int i = 0; i < sums.length; i++) {
+                  sums[i] += counters[i];
+                }
+              }
+            });
+    return new PrivatePipelineProgress(
+        (long) privateLibraries.size(), null, sums[0], sums[1], sums[2]);
+  }
+
+  /** Total, current and stale chunks of every library holding one, with one grouped query. */
+  private Map<UUID, long[]> countsByLibrary(UUID organizationId) {
     Map<String, Short> currentVersions = currentVersionsById();
     String sql =
         "SELECT (v.metadata->>'library_id')::uuid AS library_id, "
@@ -178,22 +216,17 @@ public class PipelineReindexService {
         ChunkFormatMetadata.LEGACY_PIPELINE_VERSION,
         FullTextChunkStore.CURRENT_TSV_VERSION,
         organizationId.toString());
-
-    return byLibrary.entrySet().stream()
-        .map(
-            entry ->
-                new PipelineVersionProgress(
-                    entry.getKey(), entry.getValue()[0], entry.getValue()[1], entry.getValue()[2]))
-        .sorted(Comparator.comparing(PipelineVersionProgress::libraryId))
-        .toList();
+    return byLibrary;
   }
 
   /**
    * Advances up to {@code batchSize} documents of {@code organizationId} that still hold chunks
    * from {@code pipelineId} below {@code belowVersion}; call repeatedly until the result is empty.
    * A source that passes {@link StoredDocumentSourceAccess#withLocalSourceFile} is rewritten under
-   * its own id, a remote one marked for its next run, anything else skipped. Deliberately not
-   * {@code @Transactional}: one transaction would pin a connection for every embedding call.
+   * its own id, a remote one marked for its next run, anything else skipped. Every remote document
+   * of a private library is marked in each call, whatever {@code batchSize}, and counted nowhere.
+   * Deliberately not {@code @Transactional}: one transaction would pin a connection for every
+   * embedding call.
    *
    * <p>An unavailable upload store ends the call early: that document is reported as skipped like
    * any other failure, the candidates behind it are left untouched, and what the call had already
@@ -213,8 +246,21 @@ public class PipelineReindexService {
             Advance.SKIPPED,
             Advance.STORE_UNAVAILABLE,
             (limit, offset) ->
-                selectStaleDocuments(organizationId, pipelineId, belowVersion, limit, offset),
+                selectStaleDocuments(
+                    organizationId, pipelineId, belowVersion, false, limit, offset),
             documentId -> advance(documentId, pipelineId));
+    // Private libraries advance too, but are not reported: no number of the result may rest on
+    // them, and done follows the shared libraries alone. Their remote documents are marked all at
+    // once; the loop is left with what this machine can re-read.
+    markPrivateRemoteChainsForNextRun(organizationId, pipelineId, belowVersion);
+    DocumentBatchLoop.run(
+        batchSize,
+        Advance.class,
+        Advance.SKIPPED,
+        Advance.STORE_UNAVAILABLE,
+        (limit, offset) ->
+            selectStaleDocuments(organizationId, pipelineId, belowVersion, true, limit, offset),
+        documentId -> advance(documentId, pipelineId));
     return new PipelineReindexResult(
         counts.get(Advance.REINDEXED),
         counts.get(Advance.MARKED_FOR_NEXT_RUN),
@@ -342,7 +388,7 @@ public class PipelineReindexService {
               attachmentAccessFor(document, library))
           == DocumentIngestResult.PROCESSED;
     } catch (Exception e) {
-      log.error("Failed to re-index document {}", document.getFileName(), e);
+      log.error("Failed to re-index document {}", document.getId(), e);
       return false;
     }
   }
@@ -396,9 +442,43 @@ public class PipelineReindexService {
         .collect(Collectors.joining(", "));
   }
 
+  /**
+   * Marks every stale remote document of the private libraries of {@code organizationId}, with its
+   * parent chain, for its library's next run, in one statement: their content lies with the
+   * provider, so nothing is read here, and neither the batch size nor the time taken depends on how
+   * many there are.
+   */
+  private void markPrivateRemoteChainsForNextRun(
+      UUID organizationId, String pipelineId, int belowVersion) {
+    StalePredicate stale = stalePredicate(organizationId, pipelineId, belowVersion, true);
+    jdbcTemplate.update(
+        "WITH RECURSIVE chain(id, parent_id) AS ("
+            + "  SELECT d.id, d.parent_document_id FROM "
+            + vectorStoreTable
+            + " v JOIN documents d ON d.id::text = v.metadata->>'document_id' "
+            + "  WHERE "
+            + stale.sql()
+            + "    AND d.source_type NOT IN ("
+            + localSourceTypeSqlList()
+            + ") "
+            + "  UNION "
+            + "  SELECT p.id, p.parent_document_id FROM documents p "
+            + "  JOIN chain c ON p.id = c.parent_id) "
+            // as DocumentRepository#markForReindexOnNextRun does it for one row
+            + "UPDATE documents SET checksum = NULL, last_modified_remote = NULL "
+            + "WHERE id IN (SELECT id FROM chain)",
+        stale.params().toArray());
+  }
+
   private List<UUID> selectStaleDocuments(
-      UUID organizationId, String pipelineId, int belowVersion, int batchSize, int offset) {
-    MisroutedPredicate misrouted = misroutedPredicateFor(pipelineId);
+      UUID organizationId,
+      String pipelineId,
+      int belowVersion,
+      boolean privateLibraries,
+      int batchSize,
+      int offset) {
+    StalePredicate stale =
+        stalePredicate(organizationId, pipelineId, belowVersion, privateLibraries);
     String sql =
         "SELECT DISTINCT v.metadata->>'document_id' AS document_id "
             + "FROM "
@@ -409,12 +489,48 @@ public class PipelineReindexService {
             // this query with "invalid input syntax for type uuid", it must simply not join to any
             // document row.
             + "LEFT JOIN documents d ON d.id::text = v.metadata->>'document_id' "
-            + "WHERE v.metadata->>'document_id' IS NOT NULL "
+            + "WHERE "
+            + stale.sql()
+            // Stable order so the offset below actually scans past the documents this call already
+            // found unadvanceable, instead of reshuffling them back into view.
+            + "ORDER BY 1 "
+            + "OFFSET ? LIMIT ?";
+    List<Object> params = new ArrayList<>(stale.params());
+    params.add(offset);
+    params.add(batchSize);
+
+    List<UUID> ids = new ArrayList<>();
+    jdbcTemplate.query(
+        sql,
+        rs -> {
+          ids.add(UUID.fromString(rs.getString("document_id")));
+        },
+        params.toArray());
+    return ids;
+  }
+
+  /**
+   * The condition on chunk {@code v} and its document {@code d}, plus its positional parameters.
+   */
+  private record StalePredicate(String sql, List<Object> params) {}
+
+  /**
+   * The chunks of {@code organizationId} - of private or of shared libraries - whose document this
+   * re-index still has to advance.
+   */
+  private StalePredicate stalePredicate(
+      UUID organizationId, String pipelineId, int belowVersion, boolean privateLibraries) {
+    MisroutedPredicate misrouted = misroutedPredicateFor(pipelineId);
+    String sql =
+        "v.metadata->>'document_id' IS NOT NULL "
             // Excludes the same malformed metadata the join above already tolerates, so this
             // column's values are always safe to parse as UUID in Java below.
             + "  AND v.metadata->>'document_id' ~* "
             + "'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' "
             + "  AND v.metadata->>'organization_id' = ? "
+            + (privateLibraries ? "  AND EXISTS" : "  AND NOT EXISTS")
+            + " (SELECT 1 FROM assets a WHERE a.owner_only"
+            + "       AND a.id::text = v.metadata->>'library_id') "
             + "  AND ("
             + "       (COALESCE(v.metadata->>'"
             + ChunkFormatMetadata.PIPELINE_ID_METADATA_KEY
@@ -447,11 +563,7 @@ public class PipelineReindexService {
             + "       OR d.source_type IN ("
             + localSourceTypeSqlList()
             + ") "
-            + "       OR d.checksum IS NOT NULL) "
-            // Stable order so the offset below actually scans past the documents this call already
-            // found unadvanceable, instead of reshuffling them back into view.
-            + "ORDER BY 1 "
-            + "OFFSET ? LIMIT ?";
+            + "       OR d.checksum IS NOT NULL) ";
     List<Object> params = new ArrayList<>();
     params.add(organizationId.toString());
     params.add(ChunkFormatMetadata.LEGACY_PIPELINE_ID);
@@ -460,17 +572,7 @@ public class PipelineReindexService {
     params.add(belowVersion);
     params.addAll(misrouted.params());
     params.add(FullTextChunkStore.CURRENT_TSV_VERSION);
-    params.add(offset);
-    params.add(batchSize);
-
-    List<UUID> ids = new ArrayList<>();
-    jdbcTemplate.query(
-        sql,
-        rs -> {
-          ids.add(UUID.fromString(rs.getString("document_id")));
-        },
-        params.toArray());
-    return ids;
+    return new StalePredicate(sql, params);
   }
 
   /** A SQL fragment over {@code d.file_name} plus the positional parameters it needs. */

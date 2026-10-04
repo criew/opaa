@@ -344,6 +344,8 @@ components:
             How many storage areas the organization has at all. What this exceeds libraryCount and
             knownLibraryCount by are orphaned areas holding no original - leftover directories the
             filesystem keeps and this run does not remove.
+            The areas of private libraries are left out of both, so the figures tell nothing about
+            a person and cannot be set off against the private libraries of the index status.
         knownLibraryCount:
           type: integer
           description: >
