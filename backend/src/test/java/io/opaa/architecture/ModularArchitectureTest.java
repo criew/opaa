@@ -125,6 +125,11 @@ class ModularArchitectureTest {
   }
 
   @Test
+  void onlyTheKnownClassesDeleteDocuments() {
+    ARCHITECTURE.onlyTheKnownClassesDeleteDocuments().check(mainClasses);
+  }
+
+  @Test
   void onlyTheChangeGateCallsTheConnectorChangeHooks() {
     ARCHITECTURE.onlyTheChangeGateCallsTheConnectorChangeHooks().check(mainClasses);
   }

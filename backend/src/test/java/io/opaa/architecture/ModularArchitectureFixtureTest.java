@@ -217,6 +217,19 @@ class ModularArchitectureFixtureTest {
         .anySatisfy(violation -> assertThat(violation).contains("ProbeConnector.onSourceChanged("));
   }
 
+  /** A sweep deletes documents, also by method reference; the document service may. */
+  @Test
+  void aDocumentDeletedOutsideTheKnownClassesIsReported() {
+    Scenario scenario = new Scenario("documentdelete");
+
+    assertThat(scenario.violations(ModularArchitecture::onlyTheKnownClassesDeleteDocuments))
+        .hasSize(2)
+        .allSatisfy(violation -> assertThat(violation).contains("library.FolderSweep"))
+        .anySatisfy(violation -> assertThat(violation).contains("DocumentRepository.delete("))
+        .anySatisfy(
+            violation -> assertThat(violation).contains("DocumentRepository.deleteByLibraryId("));
+  }
+
   /** connections reads the declared support beside the one place; library may. */
   @Test
   void theProfileSupportReadOutsideItsPlaceIsReported() {

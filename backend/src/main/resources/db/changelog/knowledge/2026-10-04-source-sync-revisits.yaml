@@ -1,0 +1,20 @@
+databaseChangeLog:
+  - changeSet:
+      id: knowledge-2026-10-04-source-sync-revisits
+      author: opaa
+      comment: "One row per document deleted by hand from a library with a sync state (ADR-0040): the folder memory hands over no marker above it until a full sync listed its folder. Goes with the state."
+      changes:
+        - sql:
+            sql: |
+              CREATE TABLE source_sync_revisits (
+                  id uuid NOT NULL,
+                  sync_state_id uuid NOT NULL,
+                  container_key character varying(255) NOT NULL,
+                  hierarchy_path text,
+                  created_at timestamp with time zone NOT NULL,
+                  CONSTRAINT source_sync_revisits_pkey PRIMARY KEY (id),
+                  CONSTRAINT fk_source_sync_revisits_state FOREIGN KEY (sync_state_id)
+                      REFERENCES source_sync_state(id) ON DELETE CASCADE
+              );
+
+              CREATE INDEX idx_source_sync_revisits_state ON source_sync_revisits (sync_state_id);
