@@ -12,8 +12,9 @@ import java.util.Set;
  * Optional abilities are further interfaces the same bean implements ({@link SourceBrowser}, {@link
  * OriginalAccess}, {@link PushIntakeHandler}).
  *
- * <p>Every method that refuses input throws {@link io.opaa.common.ValidationException} with a
- * German, user-facing message.
+ * <p>A parameter named {@code stored} is always the effective configuration of the stored library:
+ * its own merged with the defaults of its profile. Only {@link #applyChange} gets its own part.
+ * Every method that refuses input throws {@link io.opaa.common.ValidationException} (German).
  */
 public interface SourceConnector {
 
@@ -90,10 +91,10 @@ public interface SourceConnector {
   SourceSettings validate(SourceSettings requested);
 
   /**
-   * Validates a change of a library's configuration against {@code stored}, its current one as the
-   * core resolved it. The connection fields are only meaningful when {@code replacesConnection};
-   * absent connector settings, or an absent part of them, stay as stored. Returns what {@link
-   * #applyChange} applies, the connection fields normalised.
+   * Validates a change of a library's configuration against {@code stored}, its current effective
+   * one as the core resolved it. The connection fields are only meaningful when {@code
+   * replacesConnection}; absent connector settings, or an absent part of them, stay as stored.
+   * Returns what {@link #applyChange} applies, the connection fields normalised.
    */
   default SourceSettings validateChange(
       SourceSettings stored, SourceSettings requested, boolean replacesConnection) {
@@ -104,11 +105,10 @@ public interface SourceConnector {
   default void configureNew(KnowledgeLibrary library, SourceSettings validated) {}
 
   /**
-   * Writes the connector settings of {@link #validateChange}'s result; {@code stored} are the ones
-   * {@code library} carries until then.
+   * Writes the connector settings of {@link #validateChange}'s result; {@code own} are the ones
+   * {@code library} itself carries until then, without the defaults of its profile.
    */
-  default void applyChange(
-      KnowledgeLibrary library, ConnectorData stored, SourceSettings validated) {}
+  default void applyChange(KnowledgeLibrary library, ConnectorData own, SourceSettings validated) {}
 
   /**
    * The connector settings {@code stored} on {@code library} as a caller sees them, {@code null}
@@ -122,8 +122,10 @@ public interface SourceConnector {
   }
 
   /**
-   * The connector settings {@code stored} on {@code library} in comparable form, keyed by the field
-   * name the audit records when a value changes.
+   * The effective connector settings {@code stored} of {@code library} in comparable form, keyed by
+   * the field name the audit records when a value changes. The state follows from {@code stored}
+   * alone: before and after a change both are asked with the changed library, which only identifies
+   * it (id, log).
    */
   default Map<String, Object> settingsState(KnowledgeLibrary library, ConnectorData stored) {
     return Map.of();
@@ -140,8 +142,8 @@ public interface SourceConnector {
    * Probes {@code settings} the way a run would reach the source. A source problem is the result,
    * not an exception; only the caller's own mistake is refused.
    *
-   * @param stored the connector settings of the stored library the probe is for, {@code null}
-   *     before one exists
+   * @param stored the effective connector settings of the stored library the probe is for, {@code
+   *     null} before one exists
    */
   SourceConnectionTestResult testConnection(SourceSettings settings, ConnectorData stored);
 }

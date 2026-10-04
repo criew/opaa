@@ -61,6 +61,7 @@ public class SourceBlocks {
   private final LibraryConnectionRepository connections;
   private final ConnectionProfileRepository profiles;
   private final ProfileRequirements requirements;
+  private final ConnectionSecrets secrets;
 
   /**
    * Looked up per call: the core's port depends on this class, and the registry's connectors depend
@@ -73,12 +74,26 @@ public class SourceBlocks {
       LibraryConnectionRepository connections,
       ConnectionProfileRepository profiles,
       ProfileRequirements requirements,
+      ConnectionSecrets secrets,
       ObjectProvider<SourceConnectorRegistry> connectors) {
     this.policies = policies;
     this.connections = connections;
     this.profiles = profiles;
     this.requirements = requirements;
+    this.secrets = secrets;
     this.connectors = connectors;
+  }
+
+  /** The block of a library whose own secret for the profile {@code accessName} is missing. */
+  static SourceBlock secretMissing(String accessName) {
+    return new SourceBlock(
+        Reason.NOT_CONNECTED,
+        LIBRARY_MANAGERS,
+        "Verbindung getrennt: Für den Zugang \""
+            + accessName
+            + "\" sind keine Zugangsdaten hinterlegt. Die Verwaltenden der"
+            + " Bibliothek tragen sie neu ein."
+            + CONTENT_STAYS);
   }
 
   /** The first of the {@code considered} reasons that blocks {@code library}, empty if none. */
@@ -172,7 +187,10 @@ public class SourceBlocks {
                   ? profileRequiredLock(type)
                   : null,
               connection != null,
-              profile));
+              profile,
+              profile != null
+                  && profile.getAuthMethod() == ConnectionAuthMethod.PERSONAL_SECRET
+                  && secrets.stateOf(SecretOwner.of(profile.getId(), library)).isPresent()));
     }
     return facts;
   }
@@ -210,14 +228,15 @@ public class SourceBlocks {
 
   /**
    * What decides the block of one library: its type lock, the profile requirement of its type, its
-   * connection and its profile.
+   * connection, profile and secret.
    */
   private record Facts(
       KnowledgeLibrary library,
       SourceBlock typeLock,
       SourceBlock profileRequiredLock,
       boolean connected,
-      ConnectionProfile profile) {
+      ConnectionProfile profile,
+      boolean secretAbsent) {
 
     /** Tries the considered reasons in their order of declaration, which is the precedence. */
     private Optional<SourceBlock> firstBlock(Set<Reason> considered) {
@@ -280,17 +299,7 @@ public class SourceBlocks {
         return Optional.empty();
       }
       if (method == ConnectionAuthMethod.PERSONAL_SECRET) {
-        return library.getSourceCredentials() != null
-            ? Optional.empty()
-            : Optional.of(
-                new SourceBlock(
-                    Reason.NOT_CONNECTED,
-                    LIBRARY_MANAGERS,
-                    "Verbindung getrennt: Für den Zugang \""
-                        + profile.getName()
-                        + "\" sind keine Zugangsdaten hinterlegt. Die Verwaltenden der"
-                        + " Bibliothek tragen sie neu ein."
-                        + CONTENT_STAYS));
+        return secretAbsent ? Optional.of(secretMissing(profile.getName())) : Optional.empty();
       }
       // OAUTH, CLIENT_CREDENTIALS, SERVICE_ACCOUNT_KEY: no library can be connected with them yet
       return Optional.of(

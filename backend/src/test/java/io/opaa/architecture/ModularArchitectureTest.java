@@ -115,6 +115,21 @@ class ModularArchitectureTest {
   }
 
   @Test
+  void onlyTheChangeGateCallsTheConnectorChangeHooks() {
+    ARCHITECTURE.onlyTheChangeGateCallsTheConnectorChangeHooks().check(mainClasses);
+  }
+
+  @Test
+  void theLibrarySecretIsReadInOnePlace() {
+    ARCHITECTURE.theLibrarySecretIsReadInOnePlace().check(mainClasses);
+  }
+
+  @Test
+  void theSecretStoreIsUsedOnlyInConnections() {
+    ARCHITECTURE.theSecretStoreIsUsedOnlyInConnections().check(mainClasses);
+  }
+
+  @Test
   void theConnectorReleaseIsDecidedInConnections() {
     ARCHITECTURE.theConnectorReleaseIsDecidedInConnections().check(mainClasses);
   }

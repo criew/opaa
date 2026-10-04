@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -60,6 +61,7 @@ class SourceBlocksTest {
   private final List<LibraryConnection> connectionRows = new ArrayList<>();
   private final List<ConnectionProfile> profileRows = new ArrayList<>();
   private final ConnectorTypePolicyRepository policies = mock(ConnectorTypePolicyRepository.class);
+  private final Map<UUID, KnowledgeLibrary> rows = new HashMap<>();
   private SourceBlocks blocks;
 
   @BeforeEach
@@ -86,7 +88,12 @@ class SourceBlocksTest {
             TestSourceConnectors.connectors().with(new ProfileProbeSourceConnector()).registry());
     blocks =
         new SourceBlocks(
-            policies, connections, profiles, new ProfileRequirements(policies, registry), registry);
+            policies,
+            connections,
+            profiles,
+            new ProfileRequirements(policies, registry),
+            new ConnectionSecrets(connections, LibraryRows.over(rows)),
+            registry);
   }
 
   static Stream<Arguments> precedence() {
@@ -408,6 +415,7 @@ class SourceBlocksTest {
             null,
             facts.contains(Fact.NO_SECRET) ? null : "nutzer:geheim",
             false);
+    rows.put(library.getId(), library);
     if (facts.contains(Fact.TYPE_LOCK)) {
       policyOf(type).lockedSince(NOW, NOW);
     }

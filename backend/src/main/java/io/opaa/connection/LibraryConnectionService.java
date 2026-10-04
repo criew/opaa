@@ -4,13 +4,16 @@ import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
 import io.opaa.connection.profile.ConnectionProfile;
 import io.opaa.connection.profile.ConnectionProfileRepository;
+import io.opaa.connection.profile.ConnectionSecrets;
 import io.opaa.connection.profile.ConnectorLockService;
 import io.opaa.connection.profile.LibraryConnection;
 import io.opaa.connection.profile.LibraryConnectionRepository;
 import io.opaa.connection.profile.ProfileRequirementService;
 import io.opaa.connection.profile.ProfileRequirements;
+import io.opaa.connection.profile.SecretOwner;
 import io.opaa.connection.profile.ServerAddress;
 import io.opaa.indexing.source.SourceBlock;
+import io.opaa.indexing.source.SourceChangeGate;
 import io.opaa.indexing.source.SourceConnectorRegistry;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
@@ -19,7 +22,6 @@ import java.time.Clock;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -40,6 +42,8 @@ public class LibraryConnectionService {
   private final ConnectorLockService locks;
   private final ProfileRequirements requirements;
   private final ProfileRequirementService requirementService;
+  private final ConnectionSecrets secrets;
+  private final SourceChangeGate changeGate;
   private final Clock clock;
 
   public LibraryConnectionService(
@@ -50,6 +54,7 @@ public class LibraryConnectionService {
       ConnectorLockService locks,
       ProfileRequirements requirements,
       ProfileRequirementService requirementService,
+      ConnectionSecrets secrets,
       Clock clock) {
     this.connections = connections;
     this.profiles = profiles;
@@ -58,6 +63,8 @@ public class LibraryConnectionService {
     this.locks = locks;
     this.requirements = requirements;
     this.requirementService = requirementService;
+    this.secrets = secrets;
+    this.changeGate = new SourceChangeGate(connectors);
     this.clock = clock;
   }
 
@@ -131,17 +138,12 @@ public class LibraryConnectionService {
     requireUnder(profile, address);
     if (!address.equals(library.getSourceUrl())) {
       boolean sameOrigin = ServerAddress.sameOrigin(library.getSourceUrl(), address);
-      library.updateSourceConfiguration(
-          library.getSourcePath(),
-          address,
-          library.getSourceProxy(),
-          sameOrigin ? library.getSourceCredentials() : null,
-          library.isSourceInsecureSsl());
+      library.moveSourceUrl(address);
       libraries.save(library);
       if (!sameOrigin) {
-        libraries.eraseSourceCredentials(library.getId());
+        secrets.discard(SecretOwner.of(profile.getId(), library));
       }
-      connectors.connector(library.getSourceType()).onSourceChanged(library, true, Set.of());
+      changeGate.addressMoved(library);
     }
     if (connection == null) {
       connections.save(new LibraryConnection(library.getId(), profile.getId(), clock.instant()));

@@ -11,9 +11,11 @@ import io.opaa.auth.CurrentUser;
 import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
+import io.opaa.connection.profile.ConnectionSecrets.DiscardCause;
 import io.opaa.indexing.source.ConnectorData;
 import io.opaa.indexing.source.ProfileDeclaration;
 import io.opaa.indexing.source.SignIn;
+import io.opaa.indexing.source.SourceChangeGate;
 import io.opaa.indexing.source.SourceConnector;
 import io.opaa.indexing.source.SourceConnectorDescriptor;
 import io.opaa.indexing.source.SourceConnectorRegistry;
@@ -31,7 +33,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -61,6 +62,8 @@ public class ConnectionProfileService {
   private final LibraryConnectionRepository connections;
   private final KnowledgeLibraryRepository libraries;
   private final SourceConnectorRegistry connectors;
+  private final ConnectionSecrets secrets;
+  private final SourceChangeGate changeGate;
   private final CredentialsEncryptor encryptor;
   private final AuditEventRecorder audit;
   private final CapabilityService capabilities;
@@ -71,6 +74,7 @@ public class ConnectionProfileService {
       LibraryConnectionRepository connections,
       KnowledgeLibraryRepository libraries,
       SourceConnectorRegistry connectors,
+      ConnectionSecrets secrets,
       CredentialsEncryptor encryptor,
       AuditEventRecorder audit,
       CapabilityService capabilities,
@@ -79,6 +83,8 @@ public class ConnectionProfileService {
     this.connections = connections;
     this.libraries = libraries;
     this.connectors = connectors;
+    this.secrets = secrets;
+    this.changeGate = new SourceChangeGate(connectors);
     this.encryptor = encryptor;
     this.audit = audit;
     this.capabilities = capabilities;
@@ -187,7 +193,13 @@ public class ConnectionProfileService {
     String previousAddress = profile.getServerUrl();
     profile.replace(validated, ciphertext, clock.instant());
     profiles.save(profile);
-    discardSecrets(affected, addressChanged ? previousAddress : null, validated.serverUrl());
+    if (!affected.isEmpty()) {
+      if (addressChanged) {
+        moveAddresses(affected, previousAddress, validated.serverUrl());
+      }
+      secrets.discardAllUnder(
+          id, addressChanged ? DiscardCause.ADDRESS_CHANGED : DiscardCause.REGISTRATION_CHANGED);
+    }
     Map<String, Object> after = auditState(profile);
     if (!affected.isEmpty()) {
       after.put("connectionsDiscarded", affected.size());
@@ -202,15 +214,14 @@ public class ConnectionProfileService {
   @Transactional
   public ProfileImpact disconnectAll(CurrentUser caller, UUID id) {
     ConnectionProfile profile = get(id);
-    List<LibraryConnection> affected = connections.findByProfileId(id);
-    discardSecrets(affected, null, null);
+    int disconnected = secrets.discardAllUnder(id, DiscardCause.EMERGENCY);
     record(
         caller,
         AuditEventType.CONNECTION_PROFILE_DISCONNECTED,
         profile,
         null,
-        Map.of("connectionsDisconnected", affected.size()));
-    return new ProfileImpact(affected.size(), affected.size());
+        Map.of("connectionsDisconnected", disconnected));
+    return new ProfileImpact(disconnected, disconnected);
   }
 
   /**
@@ -222,7 +233,7 @@ public class ConnectionProfileService {
   public void delete(CurrentUser caller, UUID id) {
     ConnectionProfile profile = get(id);
     List<LibraryConnection> affected = connections.findByProfileId(id);
-    discardSecrets(affected, null, null);
+    secrets.discardAllUnder(id, DiscardCause.PROFILE_DELETED);
     Instant now = clock.instant();
     for (LibraryConnection connection : affected) {
       connection.moveTo(null, now);
@@ -237,28 +248,19 @@ public class ConnectionProfileService {
   }
 
   /**
-   * Erases the stored secret of every connected library; with {@code oldAddress} set, moves the
-   * library's address from under it to under {@code newAddress} and discards the run state the move
-   * invalidates.
+   * Moves the address of every connected library under {@code oldAddress} to under {@code
+   * newAddress}, without its secret, and discards the run state the move invalidates.
    */
-  private void discardSecrets(
+  private void moveAddresses(
       List<LibraryConnection> affected, String oldAddress, String newAddress) {
     for (LibraryConnection connection : affected) {
       KnowledgeLibrary library = libraries.findById(connection.getLibraryId()).orElse(null);
-      if (library == null) {
-        continue;
-      }
-      if (oldAddress != null && ServerAddress.covers(oldAddress, library.getSourceUrl())) {
-        library.updateSourceConfiguration(
-            library.getSourcePath(),
-            ServerAddress.rebase(library.getSourceUrl(), oldAddress, newAddress),
-            library.getSourceProxy(),
-            null,
-            library.isSourceInsecureSsl());
+      if (library != null && ServerAddress.covers(oldAddress, library.getSourceUrl())) {
+        library.moveSourceUrl(ServerAddress.rebase(library.getSourceUrl(), oldAddress, newAddress));
+        library.dropSourceCredentials();
         libraries.save(library);
-        connectors.connector(library.getSourceType()).onSourceChanged(library, true, Set.of());
+        changeGate.addressMoved(library);
       }
-      libraries.eraseSourceCredentials(library.getId());
     }
   }
 
