@@ -2,10 +2,12 @@ package io.opaa.connection.web;
 
 import io.opaa.api.dto.ConnectionLogEntryResponse;
 import io.opaa.api.dto.ConnectionLogPage;
+import io.opaa.api.dto.ConnectionLogRetentionResponse;
 import io.opaa.connection.log.ConnectionLogEntry;
+import io.opaa.connection.log.ConnectionLogRetentionSettings;
 import org.springframework.data.domain.Page;
 
-/** Maps connection log entries onto their response, field for field. */
+/** Maps connection log entries and the retention row onto their responses, field for field. */
 final class ConnectionLogResponseMapper {
 
   private ConnectionLogResponseMapper() {}
@@ -29,5 +31,12 @@ final class ConnectionLogResponseMapper {
             entry.getProfileId(),
             entry.getProfileName())
         .cause(entry.getCause());
+  }
+
+  static ConnectionLogRetentionResponse toRetentionResponse(
+      ConnectionLogRetentionSettings settings) {
+    return new ConnectionLogRetentionResponse(
+            settings.getRetentionMonths(), settings.getUpdatedAt())
+        .lastCutoff(settings.getLastCutoff());
   }
 }

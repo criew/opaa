@@ -8,6 +8,7 @@ import io.opaa.api.dto.ConnectionLogEntryResponse;
 import io.opaa.api.types.ConnectionEndCause;
 import io.opaa.api.types.ConnectionLogEventType;
 import io.opaa.connection.log.ConnectionLogEntry;
+import io.opaa.connection.log.ConnectionLogRetentionSettings;
 import java.time.Instant;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -42,5 +43,21 @@ class ConnectionLogResponseMapperTest {
     assertThat(response.getProfileId()).isEqualTo(profileId);
     assertThat(response.getProfileName()).isEqualTo("Nextcloud Rathaus");
     assertThat(response.getCause()).isEqualTo(ConnectionEndCause.EMERGENCY);
+  }
+
+  @Test
+  void mapsTheRetentionRow() {
+    ConnectionLogRetentionSettings settings = mock(ConnectionLogRetentionSettings.class);
+    Instant cutoff = Instant.parse("2025-10-01T00:00:00Z");
+    Instant updatedAt = Instant.parse("2026-10-04T08:00:00Z");
+    when(settings.getRetentionMonths()).thenReturn(12);
+    when(settings.getLastCutoff()).thenReturn(cutoff);
+    when(settings.getUpdatedAt()).thenReturn(updatedAt);
+
+    var response = ConnectionLogResponseMapper.toRetentionResponse(settings);
+
+    assertThat(response.getRetentionMonths()).isEqualTo(12);
+    assertThat(response.getLastCutoff()).isEqualTo(cutoff);
+    assertThat(response.getUpdatedAt()).isEqualTo(updatedAt);
   }
 }

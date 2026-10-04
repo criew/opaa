@@ -25,7 +25,11 @@ databaseChangeLog:
                        'EMERGENCY_DISCONNECTED', 'DELETED')),
                   CONSTRAINT chk_connection_log_cause CHECK (cause IS NULL OR cause IN
                       ('SELF', 'EMERGENCY', 'ADDRESS_CHANGED', 'REGISTRATION_CHANGED',
-                       'ACCOUNT_DEACTIVATED'))
+                       'ACCOUNT_DEACTIVATED', 'PROFILE_DELETED', 'PROVIDER_REJECTED',
+                       'SECRET_EXPIRED')),
+                  -- Every ending event names its cause, a start never does.
+                  CONSTRAINT chk_connection_log_cause_of_end CHECK
+                      ((event_type IN ('CONNECTED', 'RECONNECTED')) = (cause IS NULL))
               )
               PARTITION BY RANGE (recorded_at);
 
@@ -83,7 +87,8 @@ databaseChangeLog:
               );
 
               -- Ownership separation per ADR-0015: the objects move to opaa_audit_owner, the application
-              -- account keeps only the narrow grants below. The membership is taken briefly and given back.
+              -- account keeps only the narrow grants below. The membership is taken briefly and given back;
+              -- the ADMIN OPTION residual that cannot be revoked is documented as open in ADR-0015.
               DO $$
               BEGIN
                 EXECUTE format('GRANT opaa_audit_owner TO %I WITH SET TRUE', current_user);

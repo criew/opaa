@@ -920,30 +920,42 @@ eines Kontos bedeutet, steht im Kapitel [Suche](suche.md), Abschnitt 8.4.
 
 ### Verbindungsprotokoll
 
-**Das Verbindungsprotokoll ist ein eigener Bestand neben dem Nachweisprotokoll.** Es hält fest, was
-mit der Verbindung einer Person zu einem Zugang geschah: Verbinden, Neuverbinden, Trennen, Ablauf,
-Notabschaltung und Löschung. Die Notabschaltung schreibt einen Eintrag je betroffener Verbindung.
-Anlegen, Ändern, Sperren und Löschen eines Zugangs sind dagegen Verwaltungsereignisse und stehen im
-Nachweisprotokoll.
+**Das Verbindungsprotokoll ist ein eigener Bestand neben dem Nachweisprotokoll.** Es ist für die
+persönlichen Verbindungen einer Person zu einem Zugang gedacht: Verbinden, Neuverbinden, Trennen,
+Ablauf, Notabschaltung und Löschung, bei der Notabschaltung ein Eintrag je betroffener Verbindung.
+**Heute schreibt noch kein Vorgang hinein:** Persönliche Verbindungen gibt es noch nicht, die
+Einträge kommen mit den verbundenen Konten (#2163). Das Protokoll ist angelegt, lesbar und wird nach
+Frist gelöscht, bleibt aber bis dahin leer. Insbesondere schreibt die heutige Notabschaltung eines
+Zugangs („Alle Verbindungen trennen“, [Indexierung](indexierung.md), „Zugänge“) keinen Eintrag: Sie
+verwirft die Geheimnisse von Bibliotheken, nicht von Personen, und steht im Nachweisprotokoll —
+ebenso wie Anlegen, Ändern, Sperren und Löschen eines Zugangs.
 
 - **Inhalt:** wer gehandelt hat, wessen Verbindung es ist, welcher Zugang (mit dem Namen, den er zu
-  dem Zeitpunkt trug), welches Ereignis, wann und — bei einem Ende — warum: selbst getrennt,
-  Notabschaltung, geänderte Server-Adresse, geänderte App-Registrierung oder deaktiviertes Konto.
-  Personen erscheinen wie im Nachweisprotokoll nur als Pseudonym; ein Ereignis ohne handelnde Person
-  trägt die Kennung `SYSTEM`. **Kein Eintrag enthält ein Token, einen Kontonamen beim Anbieter oder
-  eine Bibliothek.**
+  dem Zeitpunkt trug), welches Ereignis, wann und — bei jedem Ende — warum: selbst getrennt,
+  Notabschaltung, geänderte Server-Adresse, geänderte App-Registrierung, deaktiviertes Konto,
+  gelöschter Zugang, vom Anbieter abgelehnt oder abgelaufen. Ein Ende ohne Anlass nimmt die
+  Datenbank nicht an. Personen erscheinen wie im Nachweisprotokoll nur als Pseudonym; ein Ereignis
+  ohne handelnde Person trägt die Kennung `SYSTEM`. **Kein Eintrag enthält ein Token, einen
+  Kontonamen beim Anbieter oder eine Bibliothek.**
 - **Lesen darf nur die Revision.** Die Systemverwaltung liest es nicht, auch nicht mit ihrer
   Systemrolle. Es gelten dieselben Schutzregeln wie für das Nachweisprotokoll: Anlass und Zeitfenster
   sind Pflicht, die Seiten sind begrenzt, und jeder Abruf — der abgewiesene eingeschlossen — steht
   als Ereignis `CONNECTION_LOG_ACCESSED` im Nachweisprotokoll. Eingrenzen lässt sich nach Ereignis
-  und Zugang, **nicht nach Person**.
+  und Zugang, **nicht nach Person**; jede Abfrage bleibt in der eigenen Organisation.
 - **Aufbewahrung:** Einträge werden nach Ablauf der Aufbewahrungsfrist des Verbindungsprotokolls
   gelöscht (Abschnitt 15), monatsweise und ohne Zutun; ein täglicher Lauf entfernt abgelaufene
-  Monate. Abschalten lässt sich die Löschung nicht, nur die Frist innerhalb ihrer Grenzen ändern.
-  Die Anwendung selbst kann keinen Eintrag ändern oder einzeln löschen.
+  Monate. Abschalten lässt sich die Löschung nicht, nur die Frist innerhalb ihrer Grenzen ändern —
+  das darf die Systemverwaltung, und jede Änderung steht als `CONNECTION_LOG_RETENTION_CHANGED` mit
+  altem und neuem Wert im Nachweisprotokoll.
+- **Schutz auf Datenbankebene:** Das Anwendungskonto darf Einträge nur anfügen und lesen; ändern,
+  einzeln löschen oder die Tabelle leeren kann es mit seinen Rechten nicht. Es gilt derselbe
+  Vorbehalt wie beim Nachweisprotokoll: Solange das Anwendungskonto die Eigentümerrolle der
+  Protokolle selbst anlegt, behält es über deren Verwaltungsrecht einen Weg, sich diese Rechte
+  zurückzuholen — sichtbar im Systemkatalog, aber nicht verschlossen. Vollständig gilt der Schutz
+  erst, wenn die Eigentümerrolle außerhalb des Anwendungskontos eingerichtet wird.
 
 Eine Ansicht in der Oberfläche gibt es noch nicht; gelesen wird über die Programmierschnittstelle
-(`GET /api/v1/audit/connection-log`).
+(`GET /api/v1/audit/connection-log`), die Frist über `GET`/`PUT /api/v1/admin/connection-log/retention`.
 
 ## 13. Lebenszyklus: Ausscheiden, Übertragung, „Nachfolge offen"
 
@@ -1132,8 +1144,8 @@ Kapitel [Suche](suche.md), Abschnitt 8.
 
 Vier der Größen sind Umgebungsvariablen und stehen mit ihrer vollständigen Beschreibung in der
 Variablenliste des Kapitels [Deployment](deployment.md); das Abgleichintervall ist eine Einstellung
-der Anbieterzeile, zwei sind Verwaltungseinstellungen, eine ist eine Einstellung der Installation
-ohne Bedienoberfläche, und die beiden letzten Werte sind fest eingebaut.
+der Anbieterzeile, drei sind Verwaltungseinstellungen, und die beiden letzten Werte sind fest
+eingebaut.
 
 | Größe | Vorgabe | Grenzen | Wirkung |
 |---|---|---|---|
@@ -1144,7 +1156,7 @@ ohne Bedienoberfläche, und die beiden letzten Werte sind fest eingebaut.
 | `OPAA_SUCCESSION_DETECTION_CRON` | **stündlich** (`0 5 * * * *`) | Spring-Cron, sechs Felder | Wann der Feststellungslauf hinsieht. Er schreibt nur Erstfeststellung und Ende eines Vorgangs; der Zustand selbst ist abgeleitet und gilt auch ohne ihn — ohne den Lauf fehlt den Einträgen nur das Alter |
 | Aufbewahrungshöchstdauer der Rechtehistorie | **36 Monate** | 12 bis 120 Monate | Wie lange ein beendeter Zeitraum nach seinem Ende liegen bleibt; eine Verwaltungseinstellung, keine Umgebungsvariable ([Suche](suche.md), Abschnitt 8.4). Jede Änderung ist ein Protokollereignis |
 | Aufbewahrungsfrist des Nachweisprotokolls | **36 Monate** | 12 bis 120 Monate | Verwaltungseinstellung; ihr folgen auch die abgeschlossenen Nachfolgevorgänge samt Sichtungsvermerken (Abschnitt 13.3). Eine Verkürzung wirkt mit dem nächsten Monatslauf, und zwar vollständig; eine Verlängerung wirkt sofort, holt aber Gelöschtes nicht zurück |
-| Aufbewahrungsfrist des Verbindungsprotokolls | **12 Monate** | 6 bis 24 Monate | Einstellung der Installation in der Datenbank; einen Endpunkt oder eine Maske zum Ändern gibt es noch nicht. Die Grenzen erzwingt die Datenbank selbst. Eine Verkürzung wirkt mit dem nächsten täglichen Lauf vollständig; eine Verlängerung wirkt sofort, holt aber Gelöschtes nicht zurück |
+| Aufbewahrungsfrist des Verbindungsprotokolls | **12 Monate** | 6 bis 24 Monate | Verwaltungseinstellung der Systemverwaltung (Programmierschnittstelle, eine Maske gibt es noch nicht); einen Wert außerhalb der Grenzen weist sie ab, und die Datenbank erzwingt sie zusätzlich. Jede Änderung ist ein Protokollereignis. Eine Verkürzung wirkt mit dem nächsten täglichen Lauf vollständig; eine Verlängerung wirkt sofort, holt aber Gelöschtes nicht zurück |
 | Obergrenze einer Übertragung | **500 Zeilen** | fest | Mehr bewegt eine Übertragung nicht; darüber wird sie abgelehnt und in mehreren Schritten gefahren (Abschnitt 13.2) |
 | Gültigkeit einer Übertragungsvorschau | **30 Minuten** | fest | Danach wird gegen einen frischen Stand neu gerechnet, statt eine alte Vorschau anzuwenden |
 

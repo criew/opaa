@@ -319,9 +319,15 @@ Begründung:
   Löschfunktion `opaa_connection_log_delete_expired_partitions()` ist `SECURITY DEFINER`. Sie ist
   eine eigene Funktion je Tabelle: Eine gemeinsame Funktion mit Tabellenparameter könnte das
   Anwendungskonto mit einem fremden Protokoll aufrufen. Der Lauf ist täglich.
+- Jedes Ereignis außer `CONNECTED` und `RECONNECTED` trägt einen Endanlass, die beiden nie
+  (`CHECK`). Die Anlässe sind vollständig: `SELF, EMERGENCY, ADDRESS_CHANGED, REGISTRATION_CHANGED,
+  ACCOUNT_DEACTIVATED, PROFILE_DELETED, PROVIDER_REJECTED, SECRET_EXPIRED`.
 - Lesen: `ConnectionLogQueryService` hinter `AuditAccessGate`, Rolle `AUDITOR`, jeder Abruf als
   `CONNECTION_LOG_ACCESSED` im Revisionsprotokoll. Die Frist (Vorgabe 12, Grenzen 6–24 Monate als
-  `CHECK`) ist eine Zeile der Datenbank; eine Verwaltungsschnittstelle dafür steht aus.
+  `CHECK`) ändert die Systemverwaltung wie die Fristen von Rechtehistorie und Suchdiagnose über
+  `/api/v1/admin/connection-log/retention`; jede Änderung ist `CONNECTION_LOG_RETENTION_CHANGED`.
+- `ConnectionLog#record` tritt der Transaktion des Aufrufers bei. Ein Aufrufer nach dem Commit
+  (`AFTER_COMMIT`-Listener des Lebenszyklus) braucht eine eigene Transaktion.
 
 ## Referenzen
 

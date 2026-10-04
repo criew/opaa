@@ -11,7 +11,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * The only writer of the connection log. Persons are written as their audit pseudonym, never by id.
- * Joins the caller's transaction: an event whose change rolls back leaves no entry.
+ * Joins the caller's transaction: an event whose change rolls back leaves no entry. A caller after
+ * commit (an {@code AFTER_COMMIT} listener) must open its own transaction, or the entry is lost.
  */
 @Service
 public class ConnectionLog {
@@ -26,7 +27,10 @@ public class ConnectionLog {
 
   /**
    * Appends one entry. {@code personUserId} is whose connection it is, {@code profileName} the
-   * profile's name now; {@code cause} is null for an event that does not end a connection.
+   * profile's name now; {@code cause} is null exactly for {@code CONNECTED} and {@code
+   * RECONNECTED}, every other event ends a connection and names why.
+   *
+   * @throws IllegalArgumentException if the cause does not fit the event
    */
   @Transactional
   public void record(
@@ -42,6 +46,13 @@ public class ConnectionLog {
     Objects.requireNonNull(personUserId, "personUserId");
     Objects.requireNonNull(profileId, "profileId");
     Objects.requireNonNull(profileName, "profileName");
+    boolean start =
+        eventType == ConnectionLogEventType.CONNECTED
+            || eventType == ConnectionLogEventType.RECONNECTED;
+    if (start != (cause == null)) {
+      throw new IllegalArgumentException(
+          eventType + " must " + (start ? "not " : "") + "carry an end cause, got " + cause);
+    }
     String actorRef =
         switch (Objects.requireNonNull(actor, "actor")) {
           case ConnectionLogActor.Person person -> pseudonymOf(person.userId(), organizationId);

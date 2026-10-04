@@ -106,10 +106,51 @@ class ConnectionLogPrivilegeModelTest extends AbstractBaselineTest {
 
   @Test
   void rejectsAnUnknownEventTypeOrCause() {
-    assertRejected(insertSql("'GRANTED'", "NULL", "now()"), "chk_connection_log_event_type");
+    assertRejected(insertSql("'GRANTED'", "'SELF'", "now()"), "chk_connection_log_event_type");
     assertRejected(insertSql("'DISCONNECTED'", "'BORED'", "now()"), "chk_connection_log_cause");
+    for (String cause :
+        List.of(
+            "SELF",
+            "EMERGENCY",
+            "ADDRESS_CHANGED",
+            "REGISTRATION_CHANGED",
+            "ACCOUNT_DEACTIVATED",
+            "PROFILE_DELETED",
+            "PROVIDER_REJECTED",
+            "SECRET_EXPIRED")) {
+      assertThatCode(() -> execute(insertSql("'DELETED'", "'" + cause + "'", "now()")))
+          .doesNotThrowAnyException();
+    }
+  }
+
+  /** A start never names a cause, every other event does: no end without a reason. */
+  @Test
+  void couplesTheCauseToTheEvent() {
+    assertRejected(insertSql("'DISCONNECTED'", "NULL", "now()"), "chk_connection_log_cause_of_end");
+    assertRejected(insertSql("'EXPIRED'", "NULL", "now()"), "chk_connection_log_cause_of_end");
+    assertRejected(insertSql("'CONNECTED'", "'SELF'", "now()"), "chk_connection_log_cause_of_end");
+    assertRejected(
+        insertSql("'RECONNECTED'", "'EMERGENCY'", "now()"), "chk_connection_log_cause_of_end");
     assertThatCode(() -> execute(insertSql("'CONNECTED'", "NULL", "now()")))
         .doesNotThrowAnyException();
+    assertThatCode(() -> execute(insertSql("'RECONNECTED'", "NULL", "now()")))
+        .doesNotThrowAnyException();
+    assertThatCode(() -> execute(insertSql("'EXPIRED'", "'SECRET_EXPIRED'", "now()")))
+        .doesNotThrowAnyException();
+  }
+
+  /**
+   * The changelog takes the owner role with SET only for its own statements and gives it back; the
+   * ADMIN OPTION residual of ADR-0015 is not a SET membership and stays out of this check.
+   */
+  @Test
+  void theMigrationAccountGivesTheSetMembershipBack() throws SQLException {
+    assertThat(
+            longOf(
+                "SELECT count(*) FROM pg_auth_members WHERE roleid = '"
+                    + OWNER_ROLE
+                    + "'::regrole AND member = current_user::regrole AND set_option"))
+        .isZero();
   }
 
   @Test

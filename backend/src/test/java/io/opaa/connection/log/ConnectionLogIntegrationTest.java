@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -12,10 +13,12 @@ import io.opaa.api.types.ConnectionEndCause;
 import io.opaa.api.types.ConnectionLogEventType;
 import io.opaa.api.types.SystemRole;
 import io.opaa.audit.AuditActorPseudonymService;
+import io.opaa.auth.CurrentUser;
 import io.opaa.auth.DevAuthFilter;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.common.AccessDeniedException;
+import io.opaa.common.ValidationException;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
 import io.opaa.test.OpaaIntegrationTest;
@@ -29,6 +32,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
+import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.RequestBuilder;
@@ -47,6 +51,7 @@ class ConnectionLogIntegrationTest {
   @Autowired private ConnectionLog connectionLog;
   @Autowired private ConnectionLogQueryService queryService;
   @Autowired private ConnectionLogRetention retention;
+  @Autowired private ConnectionLogRetentionService retentionService;
   @Autowired private AuditActorPseudonymService pseudonyms;
   @Autowired private OrganizationRepository organizationRepository;
   @Autowired private UserRepository userRepository;
@@ -198,6 +203,116 @@ class ConnectionLogIntegrationTest {
         .isInstanceOf(IllegalArgumentException.class);
 
     assertThat(accessEntries(auditorId, "DENIED")).isEqualTo(2);
+  }
+
+  /** An entry of another organization never reaches this organization's auditor. */
+  @Test
+  void theReadPathStaysInsideTheCallersOrganization() {
+    UUID otherOrganization =
+        organizationRepository.save(new Organization(UUID.randomUUID(), "Other Org")).getId();
+    record(ConnectionLogEventType.CONNECTED);
+    connectionLog.record(
+        otherOrganization,
+        ConnectionLogEventType.DISCONNECTED,
+        ConnectionLogActor.system(),
+        personId,
+        profileId,
+        "Nextcloud Nachbarhaus",
+        ConnectionEndCause.ACCOUNT_DEACTIVATED);
+
+    Page<ConnectionLogEntry> page =
+        queryService.find(organizationId, auditorId, REASON, query(null, profileId));
+
+    assertThat(page.getContent())
+        .extracting(ConnectionLogEntry::getOrganizationId)
+        .containsExactly(organizationId);
+  }
+
+  @Test
+  void anEndWithoutACauseOrAStartWithOneIsRefused() {
+    assertThatThrownBy(
+            () ->
+                connectionLog.record(
+                    organizationId,
+                    ConnectionLogEventType.DISCONNECTED,
+                    ConnectionLogActor.person(personId),
+                    personId,
+                    profileId,
+                    "Nextcloud Rathaus",
+                    null))
+        .isInstanceOf(IllegalArgumentException.class);
+    assertThatThrownBy(
+            () ->
+                connectionLog.record(
+                    organizationId,
+                    ConnectionLogEventType.CONNECTED,
+                    ConnectionLogActor.person(personId),
+                    personId,
+                    profileId,
+                    "Nextcloud Rathaus",
+                    ConnectionEndCause.SELF))
+        .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  /**
+   * The period belongs to the system administration, as for the rights history; a change is an
+   * audit event with both values, and the bounds are refused with a German message.
+   */
+  @Test
+  void theSystemAdministrationSetsThePeriodWithinItsBounds() {
+    CurrentUser admin = CurrentUser.of(adminId, organizationId, SystemRole.SYSTEM_ADMIN, "Admin");
+    CurrentUser auditor = CurrentUser.of(auditorId, organizationId, SystemRole.AUDITOR, "Revision");
+
+    assertThat(retentionService.read(admin).getRetentionMonths()).isEqualTo(12);
+    assertThatThrownBy(() -> retentionService.read(auditor))
+        .isInstanceOf(AccessDeniedException.class);
+    assertThatThrownBy(() -> retentionService.updateRetentionMonths(auditor, 18))
+        .isInstanceOf(AccessDeniedException.class);
+    for (int outside : new int[] {5, 25}) {
+      assertThatThrownBy(() -> retentionService.updateRetentionMonths(admin, outside))
+          .isInstanceOf(ValidationException.class)
+          .hasMessageContaining("zwischen 6 und 24 Monaten");
+    }
+
+    assertThat(retentionService.updateRetentionMonths(admin, 18).getRetentionMonths())
+        .isEqualTo(18);
+
+    Map<String, Object> event =
+        jdbc.queryForMap(
+            "SELECT before, after, object_type FROM audit_log WHERE organization_id = ? AND"
+                + " event_type = 'CONNECTION_LOG_RETENTION_CHANGED'",
+            organizationId);
+    assertThat(event.get("before")).isEqualTo("{\"retentionMonths\":12}");
+    assertThat(event.get("after")).isEqualTo("{\"retentionMonths\":18}");
+    assertThat(event.get("object_type")).isEqualTo("SYSTEM_SETTING");
+  }
+
+  @Test
+  void theRetentionEndpointAnswersTheSystemAdministrationOnly() throws Exception {
+    String path = "/api/v1/admin/connection-log/retention";
+
+    mockMvc
+        .perform(get(path).header(DevAuthFilter.DEV_USER_HEADER, "dev-user"))
+        .andExpect(status().isForbidden());
+    mockMvc
+        .perform(get(path).header(DevAuthFilter.DEV_USER_HEADER, "dev-admin"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.retentionMonths").value(12));
+    mockMvc
+        .perform(
+            put(path)
+                .header(DevAuthFilter.DEV_USER_HEADER, "dev-admin")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"retentionMonths\":25}"))
+        .andExpect(status().isBadRequest());
+    mockMvc
+        .perform(
+            put(path)
+                .header(DevAuthFilter.DEV_USER_HEADER, "dev-admin")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"retentionMonths\":24}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.retentionMonths").value(24));
   }
 
   /** The endpoint answers only the auditor, with exactly the log's columns per entry. */

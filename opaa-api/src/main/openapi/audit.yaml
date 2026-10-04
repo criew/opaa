@@ -237,6 +237,48 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
 
+  /api/v1/admin/connection-log/retention:
+    get:
+      operationId: getConnectionLogRetention
+      tags: [audit]
+      summary: >
+        Reads the retention period of the connection log (system admin only). Twelve months by
+        default, configurable between 6 and 24; there is no field to switch the deletion off.
+      responses:
+        "200":
+          description: Current retention configuration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConnectionLogRetentionResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    put:
+      operationId: updateConnectionLogRetention
+      tags: [audit]
+      summary: >
+        Changes the retention period of the connection log (system admin only). The change is a
+        governance event (CONNECTION_LOG_RETENTION_CHANGED) with the old and the new value. A
+        shortening takes effect with the next daily pass, in full; a lengthening takes effect at
+        once and takes nothing back.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConnectionLogRetentionRequest"
+      responses:
+        "200":
+          description: Retention configuration updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConnectionLogRetentionResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
   /api/v1/audit/incident-scopes:
     post:
       operationId: requestAuditIncidentScope
@@ -508,6 +550,7 @@ components:
           AUDIT_LOG_ACCESSED,
           PERMISSION_HISTORY_ACCESSED,
           CONNECTION_LOG_ACCESSED,
+          CONNECTION_LOG_RETENTION_CHANGED,
           LOCAL_SESSION_REVOKED,
           LOCAL_PASSWORD_CHANGED,
           LOCAL_ADMIN_SEEDED,
@@ -759,15 +802,28 @@ components:
 
     ConnectionEndCause:
       type: string
-      description: Mirrors io.opaa.api.types.ConnectionEndCause - why a connection ended.
-      enum: [SELF, EMERGENCY, ADDRESS_CHANGED, REGISTRATION_CHANGED, ACCOUNT_DEACTIVATED]
+      description: >
+        Mirrors io.opaa.api.types.ConnectionEndCause - why a connection ended. Set on every event
+        but CONNECTED and RECONNECTED, never on those two.
+      enum:
+        [
+          SELF,
+          EMERGENCY,
+          ADDRESS_CHANGED,
+          REGISTRATION_CHANGED,
+          ACCOUNT_DEACTIVATED,
+          PROFILE_DELETED,
+          PROVIDER_REJECTED,
+          SECRET_EXPIRED,
+        ]
       example: SELF
 
     ConnectionLogEntryResponse:
       type: object
       description: >
         One entry of the connection log. actorRef and personRef are pseudonyms in the same scheme
-        as the audit log's actorRef; a system process appears under a fixed label as actorRef.
+        as the audit log's actorRef. An event no person caused (expiry, deactivation) carries the
+        literal "SYSTEM" as actorRef, which is never a pseudonym.
         profileName is the name the profile carried at the time, so an entry outlives its profile.
       required:
         [eventId, recordedAt, organizationId, eventType, actorRef, personRef, profileId, profileName]
@@ -785,6 +841,7 @@ components:
           $ref: "#/components/schemas/ConnectionLogEventType"
         actorRef:
           type: string
+          description: A pseudonym, or the literal "SYSTEM" for an event no person caused.
         personRef:
           type: string
         profileId:
@@ -812,6 +869,30 @@ components:
           type: integer
         hasMore:
           type: boolean
+
+    ConnectionLogRetentionRequest:
+      type: object
+      required: [retentionMonths]
+      properties:
+        retentionMonths:
+          type: integer
+          minimum: 6
+          maximum: 24
+
+    ConnectionLogRetentionResponse:
+      type: object
+      required: [retentionMonths, updatedAt]
+      properties:
+        retentionMonths:
+          type: integer
+        lastCutoff:
+          type: string
+          format: date-time
+          nullable: true
+          description: How far the deletion has got; only ever moves forward.
+        updatedAt:
+          type: string
+          format: date-time
 
     PermissionHistoryRetentionRequest:
       type: object

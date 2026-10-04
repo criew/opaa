@@ -348,6 +348,8 @@ public enum AuditEventType {
    * object is the connection log itself; {@code after} carries the time range and filters.
    */
   CONNECTION_LOG_ACCESSED,
+  /** The retention period of the connection log changed; before/after carry both values. */
+  CONNECTION_LOG_RETENTION_CHANGED,
 
   // Lokale Konten (ADR-0033, Entscheidung 13)
   /**
