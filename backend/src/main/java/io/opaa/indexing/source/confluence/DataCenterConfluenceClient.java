@@ -34,7 +34,11 @@ final class DataCenterConfluenceClient extends AbstractConfluenceClient {
     // with HTTP 200 (seen against the real instance) - a space listing would simply be
     // empty. Only the current-user resource tells who the token actually is.
     String resource = "das angemeldete Benutzerkonto";
-    ConfluenceHttp.Response response = http.get(base() + REST + "/user/current", resource);
+    ConfluenceHttp.Response response =
+        http.get(
+            base() + REST + "/user/current",
+            resource,
+            answer -> answer.status() == 401 || isAnonymous(answer, resource));
     if (response.status() == 404) {
       // A 404 on a resource with a subject says "no current user" first - only the API root
       // decides whether there is a Data Center here at all (the same signature the detector uses).
@@ -50,14 +54,28 @@ final class DataCenterConfluenceClient extends AbstractConfluenceClient {
     if (response.status() != 200) {
       throw http.failure(response.status(), resource);
     }
-    JsonNode user = http.parse(response, resource);
-    if ("anonymous".equalsIgnoreCase(user.path("type").asString(""))
-        || "anonymous".equalsIgnoreCase(user.path("username").asString(""))) {
+    http.parse(response, resource);
+    if (isAnonymous(response, resource)) {
       throw new ConfluenceAccessException.Authentication(
           "Confluence Data Center hat das Personal Access Token nicht angenommen und behandelt die"
               + " Anfrage anonym (HTTP 200, anonymer Benutzer): Das Token ist ungültig, abgelaufen"
               + " oder widerrufen.");
     }
+  }
+
+  /** A {@code 200} on the current user that names the anonymous user: the token was not taken. */
+  private boolean isAnonymous(ConfluenceHttp.Response response, String resource) {
+    if (response.status() != 200) {
+      return false;
+    }
+    JsonNode user;
+    try {
+      user = http.parse(response, resource);
+    } catch (ConfluenceAccessException e) {
+      return false;
+    }
+    return "anonymous".equalsIgnoreCase(user.path("type").asString(""))
+        || "anonymous".equalsIgnoreCase(user.path("username").asString(""));
   }
 
   @Override

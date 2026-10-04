@@ -2,6 +2,7 @@ package io.opaa.indexing.source.s3;
 
 import io.opaa.indexing.job.RequestBudgetExhaustedException;
 import io.opaa.indexing.job.RunEndingFailures;
+import io.opaa.indexing.source.RenewableCredential;
 import io.opaa.s3.S3AccessException;
 import io.opaa.s3.S3ClientSettings;
 import io.opaa.s3.S3Connection;
@@ -19,8 +20,8 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.Callable;
 import java.util.function.Consumer;
-import java.util.function.Supplier;
 import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.http.SdkHttpRequest;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -50,6 +51,7 @@ final class AwsSdkS3ObjectStore implements S3ObjectStore {
   private final S3FailureTranslator translator;
   private final S3SdkClient client;
   private final S3Client s3;
+  private final RenewableCredential<S3Credentials> current;
 
   AwsSdkS3ObjectStore(
       S3Connection connection,
@@ -60,15 +62,19 @@ final class AwsSdkS3ObjectStore implements S3ObjectStore {
     this(connection, null, properties, targetAddressValidator, requestBudget, requestObserver);
   }
 
-  /** {@code current}, when not {@code null}, answers the credentials of every request. */
+  /**
+   * {@code current}, when not {@code null}, answers the credentials of every request; a request
+   * whose key the store rejected is sent once more when {@code current} was renewed meanwhile.
+   */
   AwsSdkS3ObjectStore(
       S3Connection connection,
-      Supplier<S3Credentials> current,
+      RenewableCredential<S3Credentials> current,
       S3Properties properties,
       TargetAddressValidator targetAddressValidator,
       int requestBudget,
       Consumer<SdkHttpRequest> requestObserver) {
     this.properties = properties;
+    this.current = current;
     this.guard =
         new S3RequestGuard(
             S3RequestGuard.TargetPolicy.hostOnly(targetAddressValidator),
@@ -104,10 +110,27 @@ final class AwsSdkS3ObjectStore implements S3ObjectStore {
     return meter;
   }
 
+  /**
+   * {@code action} under the failure translation; a rejected key is retried once when the run's
+   * credentials hold another one now.
+   */
+  private <T> T call(S3Operation op, String bucket, String key, Callable<T> action)
+      throws S3AccessException, InterruptedException {
+    S3Credentials sent = current == null ? null : current.get();
+    try {
+      return translator.call(op, bucket, key, action);
+    } catch (S3AccessException.Authentication e) {
+      if (sent == null || !current.renewedAfterRejection(sent)) {
+        throw e;
+      }
+    }
+    return translator.call(op, bucket, key, action);
+  }
+
   @Override
   public S3ListPage listObjects(S3Scope scope, String continuationToken)
       throws S3AccessException, InterruptedException {
-    return translator.call(
+    return call(
         S3Operation.LIST_OBJECTS,
         scope.bucket(),
         null,
@@ -144,7 +167,7 @@ final class AwsSdkS3ObjectStore implements S3ObjectStore {
   @Override
   public S3ObjectHead headObject(String bucket, String key)
       throws S3AccessException, InterruptedException {
-    return translator.call(
+    return call(
         S3Operation.HEAD_OBJECT,
         bucket,
         key,
@@ -172,7 +195,7 @@ final class AwsSdkS3ObjectStore implements S3ObjectStore {
   @Override
   public S3Download getObject(String bucket, String key, long maxBytes)
       throws S3AccessException, InterruptedException {
-    return translator.call(
+    return call(
         S3Operation.GET_OBJECT,
         bucket,
         key,
@@ -217,7 +240,7 @@ final class AwsSdkS3ObjectStore implements S3ObjectStore {
   public S3BucketListing listBuckets() throws S3AccessException, InterruptedException {
     try {
       List<String> names =
-          translator.call(
+          call(
               S3Operation.LIST_BUCKETS,
               "*",
               null,
@@ -231,7 +254,7 @@ final class AwsSdkS3ObjectStore implements S3ObjectStore {
   @Override
   public S3AccessCheck testAccess(S3Scope scope) throws S3AccessException, InterruptedException {
     try {
-      translator.call(
+      call(
           S3Operation.HEAD_BUCKET,
           scope.bucket(),
           null,

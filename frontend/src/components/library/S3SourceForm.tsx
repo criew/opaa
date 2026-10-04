@@ -6,6 +6,7 @@ import Alert from '@mui/material/Alert'
 import Autocomplete from '@mui/material/Autocomplete'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
+import BusyButton from '../a11y/BusyButton'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import IconButton from '@mui/material/IconButton'
 import List from '@mui/material/List'
@@ -554,14 +555,16 @@ export default function S3SourceForm({
           >
             Bereich
           </Button>
-          <Button
+          <BusyButton
             size="small"
             variant="outlined"
-            disabled={loadingBuckets || !endpointEntered || !keyComplete}
+            disabled={!endpointEntered || !keyComplete}
+            busy={loadingBuckets}
+            busyAnnouncement="Buckets werden geladen"
             onClick={() => void loadBuckets()}
           >
             {loadingBuckets ? 'Buckets werden geladen …' : 'Buckets laden'}
-          </Button>
+          </BusyButton>
         </Stack>
         <Typography role="status" sx={{ fontSize: 12.5, color: 'text.secondary', mt: 0.75 }}>
           {`${values.scopes.length} von höchstens ${MAX_S3_SCOPES} Bereichen.`}
@@ -656,13 +659,15 @@ export default function S3SourceForm({
 
       {/* Stage 6: the connection test, one finding per scope */}
       <Box>
-        <Button
+        <BusyButton
           onClick={() => void testConnection()}
-          disabled={testing || !endpointEntered || !keyComplete || !scopeEntered}
+          disabled={!endpointEntered || !keyComplete || !scopeEntered}
+          busy={testing}
+          busyAnnouncement="Verbindung wird getestet"
           variant="outlined"
         >
           {testing ? 'Verbindung wird getestet …' : 'Verbindung testen'}
-        </Button>
+        </BusyButton>
         {testMessage && (
           <Alert severity={testMessage.severity} sx={{ mt: 1 }}>
             {testMessage.text}

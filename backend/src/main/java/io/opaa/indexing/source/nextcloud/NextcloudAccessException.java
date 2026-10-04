@@ -17,6 +17,17 @@ sealed class NextcloudAccessException extends Exception {
     }
   }
 
+  /**
+   * The instance accepted no request of the technical user at the sign-in ({@code 403} on the
+   * principal): a locked or disabled account, or an app password without file access - not the
+   * secret itself, which a {@code 401} rejects.
+   */
+  static final class SignInRefused extends NextcloudAccessException {
+    SignInRefused(String message) {
+      super(message);
+    }
+  }
+
   /** The technical user may not read the resource ({@code 403}). */
   static final class Forbidden extends NextcloudAccessException {
     Forbidden(String message) {

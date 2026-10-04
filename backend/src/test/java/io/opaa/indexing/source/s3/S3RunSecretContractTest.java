@@ -75,6 +75,11 @@ class S3RunSecretContractTest extends RunSecretContract {
   }
 
   @Override
+  protected boolean usesRejectionSeam() {
+    return true;
+  }
+
+  @Override
   protected String refusedSecret() {
     return "UNBEKANNTERKEY:falscher-schluessel";
   }

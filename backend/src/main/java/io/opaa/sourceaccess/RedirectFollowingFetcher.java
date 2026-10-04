@@ -286,6 +286,15 @@ public final class RedirectFollowingFetcher {
   }
 
   /**
+   * Whether the request that drew {@code response} - the last hop of a followed chain - carried an
+   * {@code Authorization} header, which a hop off the origin or out of scope drops.
+   */
+  public static boolean authorizationSent(HttpResponse<?> response) {
+    HttpRequest request = response.request();
+    return request != null && request.headers().firstValue("Authorization").isPresent();
+  }
+
+  /**
    * Whether {@code statusCode} is one of the HTTP redirect statuses this class follows manually.
    */
   public static boolean isRedirectStatus(int statusCode) {

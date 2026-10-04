@@ -26,7 +26,9 @@ final class ConfluenceLibraryConnection {
         start.baseUrl(),
         edition,
         new ConfluenceCredentials.Current(
-            edition, credentials.derived(secret -> ConfluenceCredentials.parse(edition, secret))),
+            edition,
+            credentials.renewableAfterRejection(
+                secret -> ConfluenceCredentials.parse(edition, secret))),
         start.proxyHost(),
         start.proxyPort(),
         start.insecureSsl());
