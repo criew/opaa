@@ -421,8 +421,8 @@ erklärt nur, wozu es dient.
 ### Was die Seite zeigt
 
 **Ihre verbundenen Konten** — jede bestehende Verbindung der Person, auch zu einem Zugang, der für
-sie nicht mehr freigegeben ist. Je Verbindung: der Zugang, der eigene Kontoname beim Anbieter (wie
-eingegeben, nur für die Person selbst sichtbar), die Anmeldeart, seit wann verbunden, die eigenen
+sie nicht mehr freigegeben ist. Je Verbindung: der Zugang und seine Quellart, der eigene Kontoname
+beim Anbieter (wie eingegeben, nur für die Person selbst sichtbar), die Anmeldeart, seit wann verbunden, die eigenen
 Bibliotheken, die die Verbindung nutzen, und der Zustand:
 
 | Anzeige | Bedeutung | Was die Person tun kann |

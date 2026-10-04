@@ -95,6 +95,11 @@ describe('ConnectionLogPage', () => {
         queries.push(new URL(request.url).searchParams)
         return HttpResponse.json({ entries: [expired], page: 0, size: 50, hasMore: false })
       }),
+      http.get(`${LOG}/profiles`, () =>
+        HttpResponse.json([
+          { profileId: 'profile-partner', name: 'Zugang Nextcloud Partner', deleted: false },
+        ]),
+      ),
     )
     const user = userEvent.setup()
     renderWithProviders(<ConnectionLogPage />)
@@ -103,7 +108,6 @@ describe('ConnectionLogPage', () => {
 
     await user.click(screen.getByLabelText('Ereignis (optional)'))
     await user.click(screen.getByRole('option', { name: 'Abgelaufen' }))
-    // the profile seen in the first answer is now on offer
     await user.click(screen.getByLabelText('Zugang (optional)'))
     await user.click(screen.getByRole('option', { name: 'Zugang Nextcloud Partner' }))
     await user.click(screen.getByRole('button', { name: 'Protokoll anzeigen' }))
@@ -116,6 +120,30 @@ describe('ConnectionLogPage', () => {
     expect(last.get('from')).toBeTruthy()
     expect(last.get('to')).toBeTruthy()
     expect([...last.keys()].some((key) => /person|user/i.test(key))).toBe(false)
+  })
+
+  it('offers every logged profile before the first read, a deleted one marked as such', async () => {
+    signInAs('AUDITOR')
+    let read = false
+    server.use(
+      http.get(LOG, () => {
+        read = true
+        return HttpResponse.json({ entries: [], page: 0, size: 50, hasMore: false })
+      }),
+      http.get(`${LOG}/profiles`, () =>
+        HttpResponse.json([
+          { profileId: 'profile-partner', name: 'Zugang Nextcloud Partner', deleted: false },
+          { profileId: 'profile-alt', name: 'Zugang Altsystem', deleted: true },
+        ]),
+      ),
+    )
+    const user = userEvent.setup()
+    renderWithProviders(<ConnectionLogPage />)
+
+    await user.click(screen.getByLabelText('Zugang (optional)'))
+    expect(await screen.findByRole('option', { name: 'Zugang Altsystem (gelöscht)' })).toBeVisible()
+    expect(screen.getByRole('option', { name: 'Zugang Nextcloud Partner' })).toBeVisible()
+    expect(read).toBe(false)
   })
 
   it('pages forward while the backend says there is more', async () => {

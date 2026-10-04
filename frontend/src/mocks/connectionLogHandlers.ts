@@ -76,6 +76,22 @@ export const connectionLogHandlers = [
     })
   }),
 
+  http.get('/api/v1/audit/connection-log/profiles', () =>
+    HttpResponse.json([
+      {
+        profileId: 'connection-profile-nextcloud-person',
+        name: 'Zugang Nextcloud intern',
+        deleted: false,
+      },
+      {
+        profileId: 'connection-profile-nextcloud-partner',
+        name: 'Zugang Nextcloud Partner',
+        deleted: false,
+      },
+      { profileId: 'connection-profile-alt', name: 'Zugang Altsystem', deleted: true },
+    ]),
+  ),
+
   http.get('/api/v1/admin/connection-log/retention', () => HttpResponse.json(retention)),
 
   http.put('/api/v1/admin/connection-log/retention', async ({ request }) => {

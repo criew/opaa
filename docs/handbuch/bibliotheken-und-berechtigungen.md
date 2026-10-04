@@ -322,8 +322,10 @@ dafür im Schritt „Quelle“ unter den Zugängen die Gruppe **„Über mein ve
 Hinweis „Nur Sie sehen diese Bibliothek“. Sie erscheint nur für Zugänge, auf denen die Person
 bereits ein verbundenes Konto hat; ohne ein solches Konto gibt es weder die Gruppe noch einen
 Hinweis darauf. Ein Zugang, der Bibliotheken und Personen zulässt, steht dort zweimal: in den
-Zugängen als teilbare Bibliothek, in der Gruppe als private. Für die private gibt es kein Feld für
-Zugangsdaten, und der Schritt „Freigaben“ entfällt. Vorausgesetzt sind:
+Zugängen als teilbare Bibliothek, in der Gruppe als private. Ein Zugang nur für Personen steht nur in
+der Gruppe; über ihn ist auch die Quellart wählbar, wenn es sonst keinen Weg zu ihr gibt. Für die
+private gibt es kein Feld für Zugangsdaten, und der Schritt „Freigaben“ entfällt. Vorausgesetzt
+sind:
 
 - ein verbundenes Konto der Person auf dem Zugang und das Anlegerecht für den Zugang (Abschnitt 9);
 - keine eigenen Zugangsdaten — die Bibliothek meldet sich mit dem verbundenen Konto an;
@@ -336,8 +338,14 @@ Verbindungstest und Auflistung vor dem Anlegen laufen ebenso über das verbunden
 Kachel im Katalog und im Kopf ihrer Detailseite. Im Reiter „Freigaben“ stehen nur Eigentümerin,
 Diagnosesperre und ein Hinweis, warum es nicht mehr gibt; Berechtigungen, Externer Zugang,
 Obergrenze, Herleitung und „Eigentum übergeben“ fehlen. Im Reiter „Quelle“ fehlt „Zugang lösen“,
-und „Zugang wechseln“ bietet nur Zugänge an, auf denen die Besitzerin ein verbundenes Konto hat.
-Im Chat sind Quellen aus privaten Bibliotheken noch nicht gekennzeichnet (#2255).
+und „Zugang wechseln“ bietet nur Zugänge an, auf denen die Besitzerin ein verbundenes Konto hat,
+auch solche nur für Personen.
+
+**Im Chat** trägt ein Beleg aus einer privaten Bibliothek im Belegfenster den Zusatz **„Private
+Quelle“**, auch wenn die Antwort ihn nicht zitiert. Stand eine solche Quelle im Kontext der Antwort,
+steht darunter die Zeile **„Private Quellen im Kontext“**. Beides sieht nur die Besitzerin, denn nur
+sie liest ihre privaten Bibliotheken; die Kennzeichnung wird mit der Antwort gespeichert und bleibt
+auch, wenn die Bibliothek später gelöscht und ihr Beleg zu „Quelle entfernt“ wird.
 
 **Was nicht geht — auch nicht für die Systemverwaltung:** Rechte an Personen, Gruppen oder „Alle
 Konten“, Übertragung, Fremdzugangsfreigabe, eine Freigabe-Obergrenze, Nachfolge und „Sicht als“. Die
@@ -1052,8 +1060,10 @@ verbunden hat, bleibt das Protokoll leer.
 
 **Ansicht:** Die Revision liest das Protokoll unter **Revision → Verbindungsprotokoll**. Pflicht sind
 Zeitraum (von, bis) und Anlass; eingrenzen lässt es sich nach Ereignis und nach Zugang. Zur Wahl der
-Zugänge stehen die, die in den bisherigen Abfragen seit dem Öffnen der Seite vorkamen, denn eine Liste aller Zugänge
-liest die Revision nicht. Die Tabelle zeigt je Eintrag Zeit, Ereignis, Grund des Endes, Besitzart,
+Zugänge stehen alle, zu denen das Protokoll Einträge hat, mit ihrem zuletzt protokollierten Namen;
+ein inzwischen gelöschter trägt den Zusatz „(gelöscht)“. Die Liste stammt aus dem Protokoll selbst,
+die Revision liest dafür nichts aus der Verwaltung, und ihr Abruf nennt keine Person und wird nicht
+protokolliert. Die Tabelle zeigt je Eintrag Zeit, Ereignis, Grund des Endes, Besitzart,
 bei einer persönlichen Verbindung das Pseudonym der Person und bei einer Quellverbindung Bibliothek
 und Kontoadresse, den Zugang und wer ausgelöst hat — „System“ für ein Ereignis ohne handelnde Person.
 Geblättert wird seitenweise, solange es weitere Einträge gibt. Eine leere Antwort sagt, dass Einträge

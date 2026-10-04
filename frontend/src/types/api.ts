@@ -236,6 +236,7 @@ export type ConnectionLogOwnerKind = components['schemas']['ConnectionLogOwnerKi
 export type ConnectionEndCause = components['schemas']['ConnectionEndCause']
 export type ConnectionLogEntryResponse = components['schemas']['ConnectionLogEntryResponse']
 export type ConnectionLogPage = components['schemas']['ConnectionLogPage']
+export type ConnectionLogProfile = components['schemas']['ConnectionLogProfile']
 export type ConnectionLogRetentionRequest = components['schemas']['ConnectionLogRetentionRequest']
 export type ConnectionLogRetentionResponse = components['schemas']['ConnectionLogRetentionResponse']
 export type SourceBrowseRequest = components['schemas']['SourceBrowseRequest']

@@ -75,6 +75,7 @@ function signInLine(item: Pick<ConnectedAccount, 'secretForm' | 'authMethod'>): 
 
 function AccountItem({
   account,
+  sourceTypeName,
   onConnect,
   onAuthorize,
   onDisconnect,
@@ -82,6 +83,7 @@ function AccountItem({
   authorizing,
 }: {
   account: ConnectedAccount
+  sourceTypeName: string
   onConnect: (target: ConnectTarget) => void
   onAuthorize: (profileId: string, name: string, reconnect: boolean) => void
   onDisconnect: (account: ConnectedAccount) => void
@@ -122,6 +124,7 @@ function AccountItem({
         )}
       </Stack>
       <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
+        Quellart: {sourceTypeName} ·{' '}
         {account.accountLabel ? `Konto: ${account.accountLabel} · ` : ''}
         Anmeldung: {signInLine(account)}
         {disconnected
@@ -216,11 +219,13 @@ function AccountItem({
 
 function ConnectableItem({
   profile,
+  sourceTypeName,
   onConnect,
   onAuthorize,
   authorizing,
 }: {
   profile: ConnectableProfile
+  sourceTypeName: string
   onConnect: (target: ConnectTarget) => void
   onAuthorize: (profileId: string, name: string, reconnect: boolean) => void
   authorizing: boolean
@@ -243,7 +248,7 @@ function ConnectableItem({
       <Box sx={{ minWidth: 0 }}>
         <Typography sx={{ fontSize: 14, fontWeight: 500 }}>{profile.name}</Typography>
         <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
-          Anmeldung: {signInLine(profile)}
+          Quellart: {sourceTypeName} · Anmeldung: {signInLine(profile)}
         </Typography>
       </Box>
       {profile.secretForm ? (
@@ -302,6 +307,8 @@ export default function ConnectedAccountsSection() {
     !sourceTypes.sourceTypes.some((type) =>
       type.signIns.some((signIn) => signIn.ownerships.includes('PERSON')),
     )
+  const sourceTypeName = (key: string) =>
+    sourceTypes.sourceTypes.find((type) => type.type === key)?.displayName ?? key
 
   const load = useCallback(
     () =>
@@ -416,6 +423,7 @@ export default function ConnectedAccountsSection() {
               <AccountItem
                 key={account.profileId}
                 account={account}
+                sourceTypeName={sourceTypeName(account.sourceType)}
                 onConnect={setTarget}
                 onAuthorize={(id, name, reconnect) => void handleAuthorize(id, name, reconnect)}
                 onDisconnect={(item) => void handleDisconnect(item)}
@@ -445,6 +453,7 @@ export default function ConnectedAccountsSection() {
                   <ConnectableItem
                     key={profile.profileId}
                     profile={profile}
+                    sourceTypeName={sourceTypeName(profile.sourceType)}
                     onConnect={setTarget}
                     onAuthorize={(id, name, reconnect) => void handleAuthorize(id, name, reconnect)}
                     authorizing={authorizing === profile.profileId}
