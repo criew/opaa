@@ -106,6 +106,17 @@ public class ConnectionProfile {
     this.updatedAt = now;
   }
 
+  /** A copy of this profile carrying {@code values}, to see what a change would do; never saved. */
+  ConnectionProfile candidate(ConnectionProfileValues values) {
+    ConnectionProfile copy = new ConnectionProfile();
+    copy.id = id;
+    copy.sourceType = sourceType;
+    copy.lockedAt = lockedAt;
+    copy.createdAt = createdAt;
+    copy.replace(values, clientSecretCiphertext, updatedAt);
+    return copy;
+  }
+
   public UUID getId() {
     return id;
   }

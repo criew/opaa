@@ -12,10 +12,11 @@ import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
 import io.opaa.connection.profile.ConnectionSecrets.DiscardCause;
+import io.opaa.connection.profile.SourceTransitions.Move;
 import io.opaa.indexing.source.ConnectorData;
 import io.opaa.indexing.source.ProfileDeclaration;
 import io.opaa.indexing.source.SignIn;
-import io.opaa.indexing.source.SourceChangeGate;
+import io.opaa.indexing.source.SourceChangeGate.Answers;
 import io.opaa.indexing.source.SourceConnector;
 import io.opaa.indexing.source.SourceConnectorDescriptor;
 import io.opaa.indexing.source.SourceConnectorRegistry;
@@ -29,13 +30,17 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -64,7 +69,7 @@ public class ConnectionProfileService {
   private final KnowledgeLibraryRepository libraries;
   private final SourceConnectorRegistry connectors;
   private final ConnectionSecrets secrets;
-  private final SourceChangeGate changeGate;
+  private final SourceTransitions transitions;
   private final CredentialsEncryptor encryptor;
   private final AuditEventRecorder audit;
   private final CapabilityService capabilities;
@@ -76,6 +81,7 @@ public class ConnectionProfileService {
       KnowledgeLibraryRepository libraries,
       SourceConnectorRegistry connectors,
       ConnectionSecrets secrets,
+      SourceTransitions transitions,
       CredentialsEncryptor encryptor,
       AuditEventRecorder audit,
       CapabilityService capabilities,
@@ -85,7 +91,7 @@ public class ConnectionProfileService {
     this.libraries = libraries;
     this.connectors = connectors;
     this.secrets = secrets;
-    this.changeGate = new SourceChangeGate(connectors);
+    this.transitions = transitions;
     this.encryptor = encryptor;
     this.audit = audit;
     this.capabilities = capabilities;
@@ -149,11 +155,36 @@ public class ConnectionProfileService {
   }
 
   /**
-   * Replaces every editable field; {@code secret} {@code null} keeps the stored one, blank clears
-   * it, anything else replaces it. A new address, client id, tenant, scope list or sign-in method
-   * discards every secret held under the profile - refused with 409 {@value #CONFIRMATION_REQUIRED}
-   * while connections exist and {@code confirmed} is false.
+   * What a proposed change of profile {@code id} affects, with every connector refusal; nothing is
+   * written, and the connectors are asked outside any transaction.
    */
+  @Transactional(propagation = Propagation.NOT_SUPPORTED)
+  public ProfileImpact preview(UUID id, ConnectionProfileValues values) {
+    ProfileChange change = plan(get(id), values);
+    return new ProfileImpact(
+        change.connections(),
+        change.connections(),
+        transitions.check(change.moves(), new Answers()));
+  }
+
+  /**
+   * Asks the connector of every library a proposed change of profile {@code id} alters, outside any
+   * transaction, so their costly checks run before the write; {@link #update} takes the answers and
+   * asks only for what changed meanwhile. A change still needing {@code confirmed} is refused
+   * first, before any connector is asked.
+   */
+  @Transactional(propagation = Propagation.NOT_SUPPORTED)
+  public Answers check(UUID id, ConnectionProfileValues values, boolean confirmed) {
+    ProfileChange change = plan(get(id), values);
+    if (!confirmed) {
+      requireNothingDiscarded(change);
+    }
+    Answers answers = new Answers();
+    transitions.check(change.moves(), answers);
+    return answers;
+  }
+
+  /** {@link #update} asking every connector within the write. */
   @Transactional
   public ConnectionProfile update(
       CurrentUser caller,
@@ -161,9 +192,29 @@ public class ConnectionProfileService {
       ConnectionProfileValues values,
       String secret,
       boolean confirmed) {
+    return update(caller, id, values, secret, confirmed, new Answers());
+  }
+
+  /**
+   * Replaces every editable field; {@code secret} {@code null} keeps the stored one, blank clears
+   * it, anything else replaces it. A new address, client id, tenant, scope list or sign-in method
+   * discards every secret held under the profile, a new binding the secrets it concerns - refused
+   * with 409 {@value #CONFIRMATION_REQUIRED} while there are such and {@code confirmed} is false.
+   * Every library whose effective configuration changes passes its connector first ({@code answers}
+   * given by {@link #check}); one refusal leaves profile and libraries unchanged (400 {@value
+   * ChangeRejection#PROFILE_CHANGE_REJECTED}).
+   */
+  @Transactional
+  public ConnectionProfile update(
+      CurrentUser caller,
+      UUID id,
+      ConnectionProfileValues values,
+      String secret,
+      boolean confirmed,
+      Answers answers) {
     ConnectionProfile profile = get(id);
-    SourceConnector connector = connectorAdmittingProfiles(profile.getSourceType());
-    ConnectionProfileValues validated = validate(connector, values, id);
+    ProfileChange change = plan(profile, values);
+    ConnectionProfileValues validated = change.values();
     String newSecret = blankToNull(secret);
     requireSecretFits(validated.authMethod(), newSecret);
     String ciphertext;
@@ -174,39 +225,102 @@ public class ConnectionProfileService {
     } else {
       ciphertext = encryptor.encrypt(newSecret);
     }
+    if (!confirmed) {
+      requireNothingDiscarded(change);
+    }
+    Set<UUID> discarding = change.discarding();
+    long affected = change.affected();
+    List<ChangeRejection> rejections = transitions.check(change.moves(), answers);
+    if (!rejections.isEmpty()) {
+      throw ChangeRejection.refusingProfileChange(rejections);
+    }
+    Map<String, Object> before = auditState(profile);
+    profile.replace(validated, ciphertext, clock.instant());
+    profiles.save(profile);
+    for (Move move : change.moves()) {
+      KnowledgeLibrary library = move.library();
+      if (!Objects.equals(library.getSourceUrl(), move.after().sourceUrl())) {
+        library.moveSourceUrl(move.after().sourceUrl());
+      }
+      if (discarding.contains(library.getId())) {
+        library.dropSourceCredentials();
+        if (!change.discardsAll()) {
+          secrets.discard(SecretOwner.of(id, library));
+        }
+      }
+      libraries.save(library);
+    }
+    if (change.discardsAll() && affected > 0) {
+      secrets.discardAllUnder(
+          id,
+          change.addressChanged()
+              ? DiscardCause.ADDRESS_CHANGED
+              : DiscardCause.REGISTRATION_CHANGED);
+    }
+    for (Move move : change.moves()) {
+      transitions.record(caller, move.library(), transitions.applied(move));
+    }
+    Map<String, Object> after = auditState(profile);
+    if (affected > 0) {
+      after.put("connectionsDiscarded", affected);
+    }
+    record(caller, AuditEventType.CONNECTION_PROFILE_CHANGED, profile, before, after);
+    return profile;
+  }
+
+  /** Refuses {@code change} with 409 while it discards stored secrets. */
+  private static void requireNothingDiscarded(ProfileChange change) {
+    long affected = change.affected();
+    if (affected > 0) {
+      throw new ConflictException(
+          "Die Änderung verwirft die Zugangsdaten von "
+              + affected
+              + (affected == 1 ? " Verbindung" : " Verbindungen")
+              + " dieses Zugangs. Bitte bestätigen.",
+          CONFIRMATION_REQUIRED);
+    }
+  }
+
+  /**
+   * The change of {@code profile} to {@code values}: the values as validated and, per connected
+   * library, its move to the changed profile - an address under the old server address moves under
+   * the new one, every other stays. Libraries and their secret columns are read with one query
+   * each.
+   */
+  private ProfileChange plan(ConnectionProfile profile, ConnectionProfileValues values) {
+    SourceConnector connector = connectorAdmittingProfiles(profile.getSourceType());
+    ConnectionProfileValues validated = validate(connector, values, profile.getId());
     boolean addressChanged = !profile.getServerUrl().equals(validated.serverUrl());
     boolean registrationChanged =
         profile.getAuthMethod() != validated.authMethod()
             || !Objects.equals(profile.getClientId(), validated.clientId())
             || !Objects.equals(profile.getTenant(), validated.tenant())
             || !Objects.equals(profile.getScopes(), validated.scopes());
-    List<LibraryConnection> affected =
-        addressChanged || registrationChanged ? connections.findByProfileId(id) : List.of();
-    if (!affected.isEmpty() && !confirmed) {
-      throw new ConflictException(
-          "Die Änderung verwirft die Zugangsdaten von "
-              + affected.size()
-              + (affected.size() == 1 ? " Verbindung" : " Verbindungen")
-              + " dieses Zugangs. Bitte bestätigen.",
-          CONFIRMATION_REQUIRED);
-    }
-    Map<String, Object> before = auditState(profile);
-    String previousAddress = profile.getServerUrl();
-    profile.replace(validated, ciphertext, clock.instant());
-    profiles.save(profile);
-    if (!affected.isEmpty()) {
-      if (addressChanged) {
-        moveAddresses(affected, previousAddress, validated.serverUrl());
+    ConnectionProfile candidate = profile.candidate(validated);
+    List<LibraryConnection> connected = connections.findByProfileId(profile.getId());
+    List<KnowledgeLibrary> found =
+        connected.isEmpty()
+            ? List.of()
+            : libraries.findAllById(
+                connected.stream().map(LibraryConnection::getLibraryId).toList());
+    Set<UUID> holding = transitions.holdingSecrets(found, profile.getId());
+    List<Move> moves = new ArrayList<>();
+    for (KnowledgeLibrary library : found) {
+      String address = library.getSourceUrl();
+      if (addressChanged && ServerAddress.covers(profile.getServerUrl(), address)) {
+        address = ServerAddress.rebase(address, profile.getServerUrl(), validated.serverUrl());
       }
-      secrets.discardAllUnder(
-          id, addressChanged ? DiscardCause.ADDRESS_CHANGED : DiscardCause.REGISTRATION_CHANGED);
+      moves.add(
+          transitions.move(
+              library,
+              Optional.of(profile),
+              Optional.of(candidate),
+              address,
+              addressChanged || registrationChanged,
+              holding.contains(library.getId())));
     }
-    Map<String, Object> after = auditState(profile);
-    if (!affected.isEmpty()) {
-      after.put("connectionsDiscarded", affected.size());
-    }
-    record(caller, AuditEventType.CONNECTION_PROFILE_CHANGED, profile, before, after);
-    return profile;
+    return new ProfileChange(
+        validated, addressChanged, registrationChanged, connected.size(), moves);
   }
 
   /**
@@ -246,23 +360,6 @@ public class ConnectionProfileService {
         Capability.CREATE_CONNECTOR_LIBRARY, ConnectorScope.ofProfile(id), caller);
     profiles.delete(profile);
     record(caller, AuditEventType.CONNECTION_PROFILE_DELETED, profile, before, null);
-  }
-
-  /**
-   * Moves the address of every connected library under {@code oldAddress} to under {@code
-   * newAddress}, without its secret, and discards the run state the move invalidates.
-   */
-  private void moveAddresses(
-      List<LibraryConnection> affected, String oldAddress, String newAddress) {
-    for (LibraryConnection connection : affected) {
-      KnowledgeLibrary library = libraries.findById(connection.getLibraryId()).orElse(null);
-      if (library != null && ServerAddress.covers(oldAddress, library.getSourceUrl())) {
-        library.moveSourceUrl(ServerAddress.rebase(library.getSourceUrl(), oldAddress, newAddress));
-        library.dropSourceCredentials();
-        libraries.save(library);
-        changeGate.addressMoved(library);
-      }
-    }
   }
 
   private SourceConnector connectorAdmittingProfiles(SourceType sourceType) {
@@ -438,6 +535,39 @@ public class ConnectionProfileService {
     return new NotFoundException("Zugang nicht gefunden");
   }
 
-  /** Connections a change would cut off, and the libraries behind them. */
-  public record ProfileImpact(long connections, long libraries) {}
+  /**
+   * Connections a change would cut off, the libraries behind them, and the connectors' refusals of
+   * a proposed change - empty without one.
+   */
+  public record ProfileImpact(long connections, long libraries, List<ChangeRejection> rejections) {
+
+    public ProfileImpact(long connections, long libraries) {
+      this(connections, libraries, List.of());
+    }
+  }
+
+  private record ProfileChange(
+      ConnectionProfileValues values,
+      boolean addressChanged,
+      boolean registrationChanged,
+      long connections,
+      List<Move> moves) {
+
+    boolean discardsAll() {
+      return addressChanged || registrationChanged;
+    }
+
+    /** The libraries whose stored secret the change discards. */
+    Set<UUID> discarding() {
+      return moves.stream()
+          .filter(move -> discardsAll() || move.discardsSecret())
+          .map(move -> move.library().getId())
+          .collect(Collectors.toSet());
+    }
+
+    /** The connections the confirmation counts. */
+    long affected() {
+      return discardsAll() ? connections : moves.stream().filter(Move::discardsSecret).count();
+    }
+  }
 }

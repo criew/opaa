@@ -57,18 +57,20 @@ public interface SourceConnector {
   }
 
   /**
-   * Whether stored credentials, kept while {@code requestedSourceUrl} names the same origin as
-   * {@code storedSourceUrl}, also stand for it - a narrower binding than scheme, host and port,
-   * such as the share of a file server. By default the origin is all that counts.
+   * What stored credentials are bound to under {@code settings} besides the origin of their
+   * address, {@code null} for nothing more. The value is opaque to the core: credentials stay valid
+   * only while origin and binding stay the same, and the target a secret is issued for is both. By
+   * default the imitated account ({@link #assertionSubject}); a file server binds the share. No
+   * secret.
    */
-  default boolean keepsCredentials(String storedSourceUrl, String requestedSourceUrl) {
-    return true;
+  default String credentialBinding(SourceSettings settings) {
+    String subject = assertionSubject(settings.connectorSettings());
+    return subject == null || subject.isBlank() ? null : subject.trim();
   }
 
   /**
    * The account a service account key imitates under {@code settings}, {@code null} for none
-   * (ADR-0040, Entscheidung 4). The core signs the assertion with it and keeps stored credentials
-   * only while it stays the same. No secret.
+   * (ADR-0040, Entscheidung 4). The core signs the assertion with it. No secret.
    */
   default String assertionSubject(ConnectorData settings) {
     return null;

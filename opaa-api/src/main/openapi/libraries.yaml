@@ -343,10 +343,14 @@ paths:
       summary: Connect a library through a connection profile of its source type (#2160)
       description: >
         Needs AssetRole.MANAGER on the library. The profile must belong to the library's source
-        type and admit libraries as owners. An address under the previous profile moves under
-        the new one; otherwise it must already lie under the profile's server address (400). A
-        stored secret is kept only while the origin stays the same. Also the way back for a
-        library whose profile was deleted ("Zugang entfernt").
+        type and admit libraries as owners. sourceUrl, when given, is the new address; without
+        it an address under the previous profile moves under the new one, and otherwise it must
+        already lie under the profile's server address (400). A stored secret is kept only while
+        origin and the connector's binding (such as a file share) stay the same. The library's
+        connector checks the configuration the profile gives it and may refuse it (400); a
+        changed configuration leaves the same audit entry and discards the same run state as a
+        direct change. Also the way back for a library whose profile was deleted ("Zugang
+        entfernt") and for one locked because its type is usable only through a profile.
       requestBody:
         required: true
         content:
@@ -373,7 +377,9 @@ paths:
       summary: Release a library from its connection profile (#2160)
       description: >
         Needs AssetRole.MANAGER on the library. The library keeps its address and secret and
-        runs with them as its own. Refused with 400 for a source type that requires a profile.
+        runs with them as its own; what the profile set for it - its defaults, proxy and TLS
+        switch - becomes the library's own, so the configuration it runs with stays the same.
+        Refused with 400 for a source type that requires a profile.
       responses:
         "200":
           description: The library, without a profile
