@@ -34,7 +34,7 @@ Hauptklassen, ohne Spring-Kontext, als Teil von `./gradlew test`. Die Definition
 
 | Modul | Pakete (`io.opaa.*`) |
 |---|---|
-| foundation | common, observability, organization, security, ratelimit, sourceaccess, s3 |
+| foundation | common, observability, organization, security, ratelimit, sourceaccess, s3, msgraph |
 | format | format |
 | identity | audit, branding, mail, auth, account, notification |
 | rights | permission, asset, group, directory, succession |

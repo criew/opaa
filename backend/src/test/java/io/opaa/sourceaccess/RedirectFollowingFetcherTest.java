@@ -292,6 +292,151 @@ class RedirectFollowingFetcherTest {
   }
 
   @Test
+  void dropAuthorizationHttpsOnly_refusesAnOffOriginTargetWithoutHttpsBeforeContactingIt() {
+    AtomicInteger foreignHits = new AtomicInteger(0);
+    foreign.createContext(
+        "/target",
+        exchange -> {
+          foreignHits.incrementAndGet();
+          respond(exchange, 200, "content");
+        });
+    origin.createContext(
+        "/start", exchange -> redirectTo(exchange, foreignUrl + "/target?sig=presigned-secret"));
+
+    assertThatThrownBy(
+            () ->
+                RedirectFollowingFetcher.sendFollowingRedirects(
+                    productionClient(),
+                    originUrl + "/start",
+                    Duration.ofSeconds(5),
+                    Map.of("Authorization", "Bearer secret"),
+                    TargetAddressValidator.disabled(),
+                    RedirectFollowingFetcher.RedirectPolicy
+                        .DROP_AUTHORIZATION_HTTPS_ONLY_OFF_ORIGIN))
+        .isInstanceOfSatisfying(
+            RedirectFollowingFetcher.RedirectRejectedException.class,
+            e -> {
+              assertThat(e.reason())
+                  .isEqualTo(RedirectFollowingFetcher.RedirectRejectionReason.INSECURE_TARGET);
+              assertThat(e.userMessage()).doesNotContain("presigned-secret");
+            });
+    assertThat(foreignHits.get()).isZero();
+  }
+
+  @Test
+  void dropAuthorizationHttpsOnly_followsAnHttpsTargetWithoutAuthorization() throws Exception {
+    HttpResponse<InputStream> redirect = mock(HttpResponse.class);
+    when(redirect.statusCode()).thenReturn(302);
+    when(redirect.uri()).thenReturn(URI.create("https://api.example.com/content"));
+    when(redirect.headers())
+        .thenReturn(
+            HttpHeaders.of(
+                Map.of("Location", List.of("https://files.example.net/blob?sig=x")),
+                (a, b) -> true));
+    when(redirect.body()).thenReturn(InputStream.nullInputStream());
+    HttpResponse<InputStream> file = mock(HttpResponse.class);
+    when(file.statusCode()).thenReturn(200);
+    when(file.uri()).thenReturn(URI.create("https://files.example.net/blob?sig=x"));
+    when(file.body()).thenReturn(InputStream.nullInputStream());
+    List<HttpRequest> sent = new ArrayList<>();
+    HttpClient httpClient = mock(HttpClient.class);
+    when(httpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
+        .thenAnswer(
+            invocation -> {
+              sent.add(invocation.getArgument(0));
+              return sent.size() == 1 ? redirect : file;
+            });
+
+    HttpResponse<InputStream> response =
+        RedirectFollowingFetcher.sendFollowingRedirects(
+            httpClient,
+            "https://api.example.com/content",
+            Duration.ofSeconds(5),
+            Map.of("Authorization", "Bearer secret"),
+            TargetAddressValidator.disabled(),
+            RedirectFollowingFetcher.RedirectPolicy.DROP_AUTHORIZATION_HTTPS_ONLY_OFF_ORIGIN);
+
+    assertThat(response.statusCode()).isEqualTo(200);
+    assertThat(sent).hasSize(2);
+    assertThat(sent.get(0).headers().firstValue("Authorization")).contains("Bearer secret");
+    assertThat(sent.get(1).headers().firstValue("Authorization")).isEmpty();
+  }
+
+  @Test
+  void dropAuthorizationHttpsOnly_keepsAuthorizationDroppedWhenTheChainReturnsToTheOrigin()
+      throws Exception {
+    HttpResponse<InputStream> toFiles =
+        redirect("https://api.example.com/content", "https://files.example.net/blob?sig=x");
+    HttpResponse<InputStream> back =
+        redirect("https://files.example.net/blob?sig=x", "https://api.example.com/again");
+    HttpResponse<InputStream> file = mock(HttpResponse.class);
+    when(file.statusCode()).thenReturn(200);
+    when(file.uri()).thenReturn(URI.create("https://api.example.com/again"));
+    when(file.body()).thenReturn(InputStream.nullInputStream());
+    List<HttpResponse<InputStream>> answers = List.of(toFiles, back, file);
+    List<HttpRequest> sent = new ArrayList<>();
+    HttpClient httpClient = mock(HttpClient.class);
+    when(httpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
+        .thenAnswer(
+            invocation -> {
+              sent.add(invocation.getArgument(0));
+              return answers.get(sent.size() - 1);
+            });
+
+    HttpResponse<InputStream> response =
+        RedirectFollowingFetcher.sendFollowingRedirects(
+            httpClient,
+            "https://api.example.com/content",
+            Duration.ofSeconds(5),
+            Map.of("Authorization", "Bearer secret"),
+            TargetAddressValidator.disabled(),
+            RedirectFollowingFetcher.RedirectPolicy.DROP_AUTHORIZATION_HTTPS_ONLY_OFF_ORIGIN);
+
+    assertThat(response.statusCode()).isEqualTo(200);
+    assertThat(sent).hasSize(3);
+    assertThat(sent.get(2).uri()).isEqualTo(URI.create("https://api.example.com/again"));
+    assertThat(sent.get(1).headers().firstValue("Authorization")).isEmpty();
+    assertThat(sent.get(2).headers().firstValue("Authorization")).isEmpty();
+  }
+
+  @SuppressWarnings("unchecked")
+  private static HttpResponse<InputStream> redirect(String from, String location) {
+    HttpResponse<InputStream> response = mock(HttpResponse.class);
+    when(response.statusCode()).thenReturn(302);
+    when(response.uri()).thenReturn(URI.create(from));
+    when(response.headers())
+        .thenReturn(HttpHeaders.of(Map.of("Location", List.of(location)), (a, b) -> true));
+    when(response.body()).thenReturn(InputStream.nullInputStream());
+    return response;
+  }
+
+  @Test
+  void dropAuthorizationHttpsOnly_refusesAProtocolDowngradeAsRedirectRejectedException()
+      throws IOException, InterruptedException {
+    HttpResponse<InputStream> response = mockRedirectResponse("https://example.com/start", 302);
+    HttpClient httpClient = mock(HttpClient.class);
+    when(httpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
+        .thenReturn(response);
+
+    assertThatThrownBy(
+            () ->
+                RedirectFollowingFetcher.sendFollowingRedirects(
+                    httpClient,
+                    "https://example.com/start",
+                    Duration.ofSeconds(5),
+                    Map.of(),
+                    TargetAddressValidator.disabled(),
+                    RedirectFollowingFetcher.RedirectPolicy
+                        .DROP_AUTHORIZATION_HTTPS_ONLY_OFF_ORIGIN))
+        .isInstanceOfSatisfying(
+            RedirectFollowingFetcher.RedirectRejectedException.class,
+            e ->
+                assertThat(e.reason())
+                    .isEqualTo(
+                        RedirectFollowingFetcher.RedirectRejectionReason.PROTOCOL_DOWNGRADE));
+  }
+
+  @Test
   void hopLimitExceeded_returnsTheRawRedirectResponseInsteadOfLoopingForever()
       throws IOException, InterruptedException {
     // Every hop redirects to the next, forming a chain far longer than MAX_REDIRECTS (5) - both
