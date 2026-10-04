@@ -432,6 +432,7 @@ Bibliotheken, die die Verbindung nutzen, und der Zustand:
 | **Getrennt** | Die Zugangsdaten sind gelöscht. Die Zeile bleibt nur, solange eine private Bibliothek daran hängt; diese ruht. Statt „verbunden seit …“ steht hier nur „getrennt“ | Neu verbinden |
 | Zusatz **„Nicht mehr freigegeben“** | Die Systemverwaltung hat die Freigabe des Zugangs entzogen. Die Verbindung läuft weiter und lässt sich trennen und neu verbinden; ein neues Konto auf diesem Zugang ist nicht mehr möglich | wie oben |
 | Zusatz **„Zugang gesperrt“** | Die Systemverwaltung hat den Zugang oder seine Quellart gesperrt. Neu verbinden geht erst nach der Aufhebung | nur Trennen |
+| Zusatz **„Zustimmung endet am …“** | Bei einem Zugang mit Anmeldung beim Anbieter (OAuth) nennt der Anbieter ein Ende der Zustimmung, und es ist höchstens 14 Tage entfernt. Ist es weiter entfernt, steht „Zustimmung gültig bis …“ in der Zeile | Neu verbinden, bevor es erreicht ist |
 
 Wo es etwas zu sagen gibt, steht unter der Verbindung ein Hinweis, der die **zuständige Stelle**
 nennt und sagt, **was mit dem Inhalt geschieht**. Ein **ruhendes** Konto (lange keine Anmeldung oder
@@ -460,11 +461,31 @@ der zuletzt eingegebene Benutzername vorbelegt.
 | „Der Zugang ist gesperrt …“ | Zugang oder Quellart sind gesperrt; Trennen geht weiterhin |
 | „… keine Zugangsdaten speichern kann …“ | Der Installation fehlt der Schlüssel für Zugangsdaten ([Deployment](deployment.md#zugangsdaten-verschlüsselung)); zuständig ist die Systemverwaltung |
 
+**Anmeldung beim Anbieter (OAuth).** Bei einem Zugang dieser Anmeldeart gibt es kein Formular:
+„Verbinden“ bzw. „Neu verbinden“ fragt nach, sagt, dass es zum Anbieter weitergeht und was im
+Verbindungsprotokoll steht, und leitet den Tab nach der Bestätigung zum Anbieter. Dort meldet sich
+die Person an und stimmt zu; der Anbieter führt sie zur Seite „Konto verbinden“ zurück, die die
+Verbindung abschließt und auf diese Seite weiterleitet. Die Adresse der Rücksprungseite wird dabei
+sofort bereinigt, sodass weder Code noch Kennung im Browserverlauf bleiben; ein erneutes Laden
+schließt nichts zweimal ab.
+
+| Meldung | Ursache |
+|---|---|
+| „… fehlt die öffentliche Adresse von OPAA …“ | Die Installation kennt ihre öffentliche Adresse nicht; zuständig ist die Systemverwaltung. Nichts verlässt OPAA |
+| „Sie haben in den letzten Minuten bereits … begonnen“ | Zu viele begonnene Anmeldungen in kurzer Zeit; später erneut versuchen |
+| „Die Zustimmung beim Anbieter wurde abgelehnt oder abgebrochen …“ | Beim Anbieter abgelehnt oder abgebrochen; nichts wurde verbunden |
+| „Diese Anmeldung beim Anbieter ist unbekannt, abgelaufen oder schon abgeschlossen …“ | Die Rückkehr kam zu spät, gehört zu einer anderen Person oder wurde schon verarbeitet; erneut verbinden |
+| „Der Zugang … wurde geändert, während Sie beim Anbieter waren …“ | Die Systemverwaltung hat den Zugang inzwischen geändert; erneut verbinden |
+| „Ihre Sitzung ist abgelaufen …“ | Die Anmeldung bei OPAA lief während des Besuchs beim Anbieter ab; anmelden und erneut verbinden |
+| „Hier gibt es nichts abzuschließen …“ | Die Rückkehrseite wurde ohne Rückmeldung des Anbieters aufgerufen, etwa neu geladen |
+
 **Neu verbinden** einer bestehenden Verbindung zählt nicht als neues Konto und geht deshalb auch
 nach Entzug der Freigabe, nur nicht bei gesperrtem Zugang. Läuft eine Verbindung ab, erhält die
-Person die Benachrichtigung „Verbindung abgelaufen“. Beendet eine Handlung der Systemverwaltung die
+Person die Benachrichtigung „Verbindung abgelaufen“; nennt ein Anbieter ein Ende der Zustimmung,
+kommt 14 Tage vorher einmal „Verbindung läuft ab“ (nicht bei einem Anbieter, dessen Zustimmung ohnehin
+nur kürzer als diese Frist gilt und sich durch Nutzung verlängert). Beendet eine Handlung der Systemverwaltung die
 Verbindung (Notabschaltung, geänderte Server-Adresse, App-Registrierung oder Vorgabe, gelöschter
-Zugang), heißt sie „Verbindung getrennt“. Beide führen per Klick auf diese Seite.
+Zugang), heißt sie „Verbindung getrennt“. Alle drei führen per Klick auf diese Seite.
 
 ### Trennen
 

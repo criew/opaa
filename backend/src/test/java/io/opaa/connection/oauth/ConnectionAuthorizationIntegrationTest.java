@@ -371,6 +371,28 @@ class ConnectionAuthorizationIntegrationTest {
         .isZero();
   }
 
+  /** The form names the very address a start sends to the provider, or none without a base. */
+  @Test
+  void theAdministrationReadsTheRedirectUriTheProviderIsSentBackTo() throws Exception {
+    mockMvc
+        .perform(as("dev-admin", get("/api/v1/admin/connection-profiles/oauth-redirect")))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.redirectUri").doesNotExist());
+    mockMvc
+        .perform(as("dev-user", get("/api/v1/admin/connection-profiles/oauth-redirect")))
+        .andExpect(status().isForbidden());
+
+    ConnectionAuthorizationService withBase = serviceAt(Clock.systemUTC());
+    assertThat(withBase.redirectUri()).contains(BASE + "/connections/callback");
+    String started =
+        withBase
+            .start(caller, profile, ConnectionAuthorizationPurpose.ACCOUNT)
+            .authorizationUrl()
+            .toString();
+    assertThat(URLDecoder.decode(started, StandardCharsets.UTF_8))
+        .contains("redirect_uri=" + withBase.redirectUri().orElseThrow());
+  }
+
   @Test
   void aPersonStartsOnlySoManyConsentsAtOnce() {
     for (int i = 0; i < ConnectionAuthorizationService.MAX_STARTS; i++) {

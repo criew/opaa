@@ -12,6 +12,7 @@ import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.Objects;
 import java.util.UUID;
 
 /**
@@ -52,6 +53,9 @@ public class ConnectionProfile {
 
   @Column(name = "client_secret_expires_on")
   private LocalDate clientSecretExpiresOn;
+
+  @Column(name = "client_secret_expiry_warned_at")
+  private Instant clientSecretExpiryWarnedAt;
 
   @Column(name = "tenant")
   private String tenant;
@@ -108,6 +112,11 @@ public class ConnectionProfile {
     this.authMethod = values.authMethod();
     this.ownership = values.ownership();
     this.clientId = values.clientId();
+    if (!Objects.equals(clientSecretCiphertext, this.clientSecretCiphertext)
+        || !Objects.equals(values.clientSecretExpiresOn(), this.clientSecretExpiresOn)) {
+      // a new secret or a new date is warned of anew
+      this.clientSecretExpiryWarnedAt = null;
+    }
     this.clientSecretCiphertext = clientSecretCiphertext;
     this.clientSecretExpiresOn = values.clientSecretExpiresOn();
     this.tenant = values.tenant();
@@ -173,6 +182,11 @@ public class ConnectionProfile {
 
   public LocalDate getClientSecretExpiresOn() {
     return clientSecretExpiresOn;
+  }
+
+  /** When the system administration was warned of the secret's expiry date; {@code null} if not. */
+  public Instant getClientSecretExpiryWarnedAt() {
+    return clientSecretExpiryWarnedAt;
   }
 
   public String getTenant() {

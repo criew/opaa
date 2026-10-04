@@ -25,6 +25,8 @@ interface ProfileChangePreviewProps {
  */
 export default function ProfileChangePreview({ impact, ownership }: ProfileChangePreviewProps) {
   const unnamed = impact.rejectedLibraries - impact.rejections.length
+  // Private libraries may exist only where persons are admitted; their refusals are a masked count.
+  const persons = admitsPersons(ownership)
   return (
     <Stack spacing={1.5} data-testid="profile-change-preview">
       <Typography variant="subtitle2" component="h3">
@@ -32,7 +34,7 @@ export default function ProfileChangePreview({ impact, ownership }: ProfileChang
       </Typography>
       <Typography variant="body2">
         Betroffen: {count(impact.libraries, 'Bibliothek', 'Bibliotheken')}.
-        {admitsPersons(ownership) &&
+        {persons &&
           ` Verbundene Konten von Personen: ${personCountLabel(impact.connectedAccounts)}.`}
       </Typography>
       {impact.rejectedLibraries > 0 ? (
@@ -67,7 +69,19 @@ export default function ProfileChangePreview({ impact, ownership }: ProfileChang
           )}
         </Alert>
       ) : (
-        <Alert severity="success">Der Konnektor nimmt die Änderung für alle Bibliotheken an.</Alert>
+        <Alert severity="success">
+          {persons
+            ? 'Der Konnektor nimmt die Änderung für alle geteilten Bibliotheken an.'
+            : 'Der Konnektor nimmt die Änderung für alle Bibliotheken an.'}
+        </Alert>
+      )}
+      {persons && (
+        <Typography variant="body2" data-testid="profile-change-private-rejections">
+          Private Bibliotheken, für die der Konnektor ablehnt:{' '}
+          {personCountLabel(impact.rejectedPrivateLibraries)}. Sie verhindern die Änderung nicht;
+          eine abgelehnte private Bibliothek wird vom Zugang gelöst und ruht, bis ihre Besitzerin
+          sie einem anderen Zugang zuordnet.
+        </Typography>
       )}
       {(impact.fullSyncLibraries ?? 0) > 0 && (
         <Alert severity="info" data-testid="profile-change-full-sync">

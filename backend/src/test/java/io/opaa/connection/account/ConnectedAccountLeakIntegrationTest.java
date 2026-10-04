@@ -209,6 +209,7 @@ class ConnectedAccountLeakIntegrationTest {
             null,
             Instant.now(),
             null,
+            null,
             List.of());
 
     assertThat(account.toString()).doesNotContain(LABEL);

@@ -14,6 +14,7 @@ import type {
   SourceTypeDescriptor,
 } from '../../types/api'
 import { useConnectionProfileOptions } from '../../hooks/useConnectionProfileOptions'
+import { useOwnAccountProfileIds } from '../../hooks/useOwnAccountProfileIds'
 import { testLibrarySource } from '../../services/libraryApi'
 import { useLibraryStore } from '../../stores/libraryStore'
 import { notify } from '../../stores/notificationStore'
@@ -45,6 +46,8 @@ interface LibraryConnectionDialogProps {
   current: ConnectionProfileRef | null
   /** Opens „Quelle bearbeiten“, where a discarded secret is entered anew. */
   onEditSource: () => void
+  /** The library is private: only profiles with a connected account of its owner are offered. */
+  privateLibrary?: boolean
 }
 
 interface Probe {
@@ -73,9 +76,19 @@ export default function LibraryConnectionDialog({
   descriptor,
   current,
   onEditSource,
+  privateLibrary = false,
 }: LibraryConnectionDialogProps) {
   const connectLibraryToProfile = useLibraryStore((s) => s.connectLibraryToProfile)
-  const state = useConnectionProfileOptions(open ? descriptor.type : null, libraryId)
+  const listed = useConnectionProfileOptions(open ? descriptor.type : null, libraryId)
+  // A private library moves only to a profile its owner has a connected account on.
+  const ownAccountProfileIds = useOwnAccountProfileIds(open && privateLibrary)
+  const state = privateLibrary
+    ? {
+        ...listed,
+        loaded: listed.loaded && ownAccountProfileIds !== null,
+        options: listed.options.filter((option) => ownAccountProfileIds?.includes(option.id)),
+      }
+    : listed
   const [chosen, setChosen] = useState<string | null>(null)
   const [enteredAddress, setEnteredAddress] = useState<Record<string, string>>({})
   const [probe, setProbe] = useState<Probe | null>(null)
@@ -172,9 +185,11 @@ export default function LibraryConnectionDialog({
         <Stack spacing={2} sx={{ mt: 1 }}>
           <Typography variant="body2">
             Die Adresse der Bibliothek muss unter der Server-Adresse des gewählten Zugangs liegen;
-            eine Adresse unter dem bisherigen Zugang wandert mit. Wechselt dabei der Server, werden
-            die hinterlegten Zugangsdaten verworfen und müssen neu eingetragen werden. Vor dem
-            Speichern prüft OPAA die Verbindung über den gewählten Zugang.
+            eine Adresse unter dem bisherigen Zugang wandert mit.{' '}
+            {privateLibrary
+              ? 'Angeboten werden nur Zugänge, auf denen Sie ein verbundenes Konto haben; über dieses meldet sich die Bibliothek an.'
+              : 'Wechselt dabei der Server, werden die hinterlegten Zugangsdaten verworfen und müssen neu eingetragen werden.'}{' '}
+            Vor dem Speichern prüft OPAA die Verbindung über den gewählten Zugang.
           </Typography>
           {error && <Alert severity="error">{error}</Alert>}
           <ConnectionProfileSelect
@@ -187,6 +202,7 @@ export default function LibraryConnectionDialog({
             }}
             offerOwnAddress={false}
             excludeProfileId={current?.id}
+            onlyOwnAccounts={privateLibrary}
             idPrefix="library-connection"
           />
           {next && !repair && (

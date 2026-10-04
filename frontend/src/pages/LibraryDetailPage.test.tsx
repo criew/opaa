@@ -779,6 +779,59 @@ describe('LibraryDetailPage', () => {
     })
   })
 
+  describe('Private Bibliothek (#2164)', () => {
+    const privateLibrary: LibraryListResponse = {
+      ...personalLibrary,
+      id: 'library-private',
+      name: 'Meine Ablage',
+      sourceType: 'NEXTCLOUD',
+      privateLibrary: true,
+    }
+
+    it('marks a private library in the head with the word, not only a colour', async () => {
+      setLibraryState(
+        privateLibrary,
+        detailsOf(privateLibrary, { sourceUrl: 'https://cloud.intern.example' }),
+      )
+      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+
+      expect(await screen.findByText('Privat')).toBeVisible()
+      expect(screen.getByLabelText('Private Bibliothek – nur Sie sehen sie')).toBeInTheDocument()
+    })
+
+    it('carries no mark on a shared library', async () => {
+      setLibraryState(managerLibrary, detailsOf(managerLibrary))
+      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+
+      await screen.findByRole('tab', { name: 'Freigaben' })
+      expect(screen.queryByText('Privat')).not.toBeInTheDocument()
+    })
+
+    it('drops rights, external access and transfer from „Freigaben“ and says why', async () => {
+      setLibraryState(
+        privateLibrary,
+        detailsOf(privateLibrary, {
+          sourceUrl: 'https://cloud.intern.example',
+          diagnosticsLocked: true,
+          diagnosticsLockToggleable: false,
+          allAccountsGrantAllowed: true,
+        }),
+      )
+      const user = userEvent.setup()
+      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+
+      await user.click(await screen.findByRole('tab', { name: 'Freigaben' }))
+
+      expect(await screen.findByText(/Nur Sie sehen diese Bibliothek/)).toBeVisible()
+      expect(screen.getByRole('heading', { name: 'Eigentümer' })).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: 'Diagnosesperre' })).toBeInTheDocument()
+      expect(screen.queryByRole('heading', { name: 'Berechtigungen' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('heading', { name: 'Externer Zugang' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Eigentum übergeben' })).not.toBeInTheDocument()
+      expect(screen.queryByText(/Obergrenze \(Systemverwaltung\)/)).not.toBeInTheDocument()
+    })
+  })
+
   // #797: the share cap control - visible only to a system administrator on a connector
   // library, never to the library's own owner/manager, who only sees its consequence (the 409
   // below).

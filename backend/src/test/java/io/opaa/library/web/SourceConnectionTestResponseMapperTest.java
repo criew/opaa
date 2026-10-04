@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
 
 import io.opaa.api.dto.ProfileDefaultKey;
+import io.opaa.api.dto.SignInProfileEndpoints;
 import io.opaa.api.dto.SourceBrowseEntry;
 import io.opaa.api.dto.SourceBrowseRequest;
 import io.opaa.api.dto.SourceBrowseResponse;
@@ -19,10 +20,14 @@ import io.opaa.api.types.PersonalSecretForm;
 import io.opaa.api.types.ProfileDefaultKind;
 import io.opaa.common.ValidationException;
 import io.opaa.connection.ConnectorReleaseService.TypeCreation;
+import io.opaa.indexing.source.ClientAuthentication;
 import io.opaa.indexing.source.ConnectorData;
 import io.opaa.indexing.source.DefaultKey;
+import io.opaa.indexing.source.Endpoint;
+import io.opaa.indexing.source.OAuthAuth;
 import io.opaa.indexing.source.ProfileDeclaration;
 import io.opaa.indexing.source.PushIntake;
+import io.opaa.indexing.source.Revocation;
 import io.opaa.indexing.source.ServerAddressRule;
 import io.opaa.indexing.source.ServiceAccountKeyAuth;
 import io.opaa.indexing.source.SignIn;
@@ -237,6 +242,60 @@ class SourceConnectionTestResponseMapperTest {
     assertThat(withoutProfiles.getProfileDefaults()).isEmpty();
     assertThat(withoutProfiles.getServerAddress().getSchemes()).isEmpty();
     assertThat(withoutProfiles.getServerAddress().getFixed()).isEqualTo("https://api.example.org");
+  }
+
+  @Test
+  void anOAuthSignInNamesTheEndpointsItLeavesToTheProfileAndItsDefaultScopes() {
+    SourceTypeDescriptor descriptor =
+        SourceConnectionTestResponseMapper.toResponse(
+            SourceConnectorDescriptor.remoteRun(SourceTypes.HTTP_DIRECTORY, "Web")
+                .withProfiles(
+                    ProfileDeclaration.of(
+                        ConnectionProfileSupport.REQUIRED,
+                        SignIn.oauth(
+                            new OAuthAuth(
+                                new Endpoint.FromProfile(),
+                                new Endpoint.FromProfile(),
+                                new Revocation.Rfc7009(
+                                    new Endpoint.Fixed(URI.create("https://idp.example.org/r"))),
+                                "files.read offline_access",
+                                Map.of(),
+                                ClientAuthentication.CLIENT_SECRET_BASIC),
+                            ConnectionOwnership.PERSON))),
+            false,
+            new TypeCreation(true, true, false, false, null));
+
+    SourceTypeSignIn oauth = descriptor.getSignIns().getFirst();
+    assertThat(oauth.getDefaultScopes()).isEqualTo("files.read offline_access");
+    assertThat(oauth.getProfileEndpoints())
+        .isEqualTo(new SignInProfileEndpoints(true, true, false));
+  }
+
+  @Test
+  void aSignInWithFixedEndpointsNamesNoneForTheProfile() {
+    SourceTypeDescriptor descriptor =
+        SourceConnectionTestResponseMapper.toResponse(
+            SourceConnectorDescriptor.remoteRun(SourceTypes.HTTP_DIRECTORY, "Web")
+                .withProfiles(
+                    ProfileDeclaration.of(
+                        ConnectionProfileSupport.REQUIRED,
+                        SignIn.oauth(
+                            new OAuthAuth(
+                                new Endpoint.Fixed(URI.create("https://idp.example.org/a")),
+                                new Endpoint.Fixed(URI.create("https://idp.example.org/t")),
+                                new Revocation.None(),
+                                null,
+                                Map.of(),
+                                ClientAuthentication.CLIENT_SECRET_POST),
+                            ConnectionOwnership.PERSON),
+                        SignIn.personalSecret(
+                            PersonalSecretForm.TOKEN, ConnectionOwnership.LIBRARY))),
+            false,
+            new TypeCreation(true, true, false, false, null));
+
+    assertThat(descriptor.getSignIns())
+        .extracting(SourceTypeSignIn::getProfileEndpoints, SourceTypeSignIn::getDefaultScopes)
+        .containsExactly(tuple(null, null), tuple(null, null));
   }
 
   @Test

@@ -401,6 +401,12 @@ sichtbar. Das Formular richtet sich nach der Quellart:
 - **Vorgaben für jede Bibliothek** zeigt je Einstellung, die ein Zugang vorgeben darf, ein Feld:
   Text, Ja/Nein oder eine Auswahl, jeweils mit „Keine Vorgabe“. Meldet die Quellart keine solche
   Einstellung, fehlt der Abschnitt. Eine Vorgabe, die die Quellart nicht meldet, weist OPAA ab.
+- **Endpunkte** (Autorisierungs-, Token- und Widerrufs-Endpunkt) fragt das Formular nur bei OAuth
+  bzw. Client-Credentials ab und nur die, die die Quellart dem Zugang überlässt, etwa weil sie vom
+  Realm eines Keycloak abhängen; dann sind sie Pflicht, je eine Adresse mit `https://` oder
+  `http://`. Endpunkte, die die Quellart selbst festlegt, fragt es nicht ab, und ein Wert dafür wird
+  abgewiesen. OPAA schreibt sie beim Speichern fest und erkennt sie nie zur Laufzeit neu.
+- **Scopes** nennt unter dem Feld die Vorgabe der Quellart, die gilt, solange das Feld leer bleibt.
 - **Dienstkonto-Schlüssel** lädt das Formular als JSON-Schlüsseldatei hoch; eine Client-ID fragt
   es dafür nicht ab, OPAA übernimmt sie aus `client_email` des Schlüssels. Gespeichert werden nur
   `client_email`, `private_key_id` und `private_key`, verschlüsselt.
@@ -420,17 +426,59 @@ falsches Client-Secret oder ein widerrufener Schlüssel), zeigt die Liste am Zug
 abgelehnt“, alle Bibliotheken darauf melden „Abgelaufen“ mit der Systemverwaltung als zuständig,
 und kein Lauf fragt den Anbieter erneut. Ein neues Client-Secret bzw. ein neuer Schlüssel oder
 **„Anmeldung testen“** am Zugang hebt das auf; der Test meldet sich einmal an und nennt bei einem
-Fehler den Grund.
+Fehler den Grund. Jeder Test steht mit seinem Ausgang (gelungen oder abgelehnt) im
+Revisionsprotokoll, ohne die Meldung des Anbieters.
+
+**Anmeldung über OAuth (App-Registrierung, Rücksprungadresse).** Bei dieser Anmeldeart stimmt jede
+Person beim Anbieter selbst zu; OPAA erhält dafür ein Refresh-Token und ein Zugriffstoken und legt
+beide verschlüsselt ab. Dafür braucht der Zugang eine **App-Registrierung beim Anbieter**, die die
+Systemverwaltung dort einmal anlegt:
+
+1. Beim Anbieter eine App (einen vertraulichen Client) anlegen und als **Rücksprungadresse**
+   (Redirect-URI) genau `{öffentliche Adresse}/connections/callback` eintragen. Das Formular nennt
+   die Adresse, sobald OAuth gewählt ist, so wie OPAA sie dem Anbieter nennt; die öffentliche
+   Adresse ist die der Installation ([Deployment](deployment.md), `OPAA_PUBLIC_BASE_URL`). Fehlt
+   sie, nennt das Formular statt einer Adresse diesen Mangel, kein Konto lässt sich verbinden, und
+   die Kontoseite sagt das ebenfalls.
+2. Die Scopes so wählen, dass der Anbieter eine **dauerhafte Zustimmung** erteilt (etwa
+   `offline_access`); ohne Refresh-Token verbindet OPAA nicht und nennt den Grund.
+3. Client-ID und Client-Secret am Zugang eintragen, dazu die Endpunkte, falls das Formular sie
+   abfragt.
+
+Wer verbindet, bestätigt vorher, dass er zum Anbieter weitergeleitet wird; dort meldet er sich an
+und stimmt zu, dann führt der Anbieter ihn über die Rücksprungadresse zurück
+([Benutzerverwaltung](benutzerverwaltung.md), Abschnitt 12). Eine begonnene Zustimmung gilt zehn
+Minuten, für genau eine Person und einen Abschluss, und je Person lassen sich nur wenige in kurzer
+Zeit beginnen; darüber hinaus bittet die Kontoseite, es später erneut zu versuchen. Ändert die Systemverwaltung den Zugang währenddessen, scheitert der Abschluss mit der
+Bitte, erneut zu verbinden. OPAA erneuert das Zugriffstoken selbst kurz vor seinem Ablauf; nimmt der
+Anbieter die Zustimmung nicht mehr an, gilt die Verbindung als abgelaufen, und die Person erhält die
+Benachrichtigung „Verbindung abgelaufen“. Nennt der Anbieter ein Ende der Zustimmung, warnt OPAA die
+Person 14 Tage vorher einmal (Benachrichtigung „Verbindung läuft ab“). Eine neue Zustimmung oder
+ein Ende, das die Erneuerung wieder über diese Frist hinausschiebt, warnt erneut; ein Ende, das
+schon bei der Zustimmung oder bei jeder Erneuerung innerhalb der Frist liegt (ein kurzes gleitendes
+Ende, das sich durch Nutzung verschiebt), warnt nicht. Trennen widerruft das Token beim Anbieter, wo
+er das anbietet.
 
 Die Liste zeigt je Zugang Quellart, Server-Adresse, Anmeldeart, Besitzart und die Zahl der
-Verbindungen von Bibliotheken, dazu einen Hinweis, wenn das Client-Secret bald abläuft. Zwei weitere
+Verbindungen von Bibliotheken, dazu einen Hinweis, wenn das Client-Secret bald abläuft. 14 Tage vor
+dem Ablaufdatum des Secrets erhält zudem jede Systemverwaltung einmal die Benachrichtigung
+„Client-Secret läuft ab“; ein neues Secret oder ein neues Datum warnt erneut. Zwei weitere
 Spalten zählen die **verbundenen Konten** von Personen auf dem Zugang
 ([Benutzerverwaltung](benutzerverwaltung.md), Abschnitt 12):
 
 | Spalte | Zählt | Darstellung |
 |---|---|---|
 | **Verbundene Konten** | die Konten von Personen auf dem Zugang, verbundene und abgelaufene | genau ab der Mindestgruppengröße, darunter — auch bei null — nur „weniger als N“ |
-| **Davon abgelaufen** | die abgelaufenen unter ihnen | wie oben; „nicht ausgewiesen“, wo die Zahl zusammen mit der Gesamtzahl auf weniger Personen als die Mindestgruppengröße schließen ließe |
+| **Davon abgelaufen** | die abgelaufenen unter ihnen | wie oben; „nicht ausgewiesen“, wo die Zahl zusammen mit der Gesamtzahl auf weniger Personen als die Mindestgruppengröße schließen ließe. „Viele abgelaufen“ erscheint, sobald die ausgewiesenen Zahlen mindestens den Schwellenwert abgelaufener Konten belegen |
+
+Der Schwellenwert wird nur gegen das geprüft, was die Liste ohnehin zeigt: gegen die genaue Zahl
+oder, wo sie nicht ausgewiesen ist, gegen die kleinste Zahl, die Gesamtzahl und Rundungsregel noch
+zulassen. Die Warnung verrät so nichts, was die Zahlen nicht schon sagen, und erscheint nie bei
+„weniger als N“.
+
+| Schlüssel | Standard | Wirkung |
+|---|---|---|
+| `opaa.connection.expired-connections.warning-threshold` | 10 | ab so vielen abgelaufenen verbundenen Konten je Zugang zeigt die Liste „Viele abgelaufen“; mindestens 1 |
 
 Die Seite zeigt die Zahlen genau so, wie OPAA sie liefert, und rechnet nichts daraus: „weniger als N“
 unterscheidet null nicht von einer kleinen Zahl, und keine Anzeige, kein Hinweistext und keine
@@ -653,7 +701,7 @@ steht in ihren Kapiteln.
 | Handlung | Folge |
 |---|---|
 | Server-Adresse ändern | Nach Bestätigung werden alle Geheimnisse der Bibliotheken auf dem Zugang verworfen; ihre Adressen wandern unter die neue Server-Adresse. Vorher nennt OPAA die Zahl der betroffenen Verbindungen und Bibliotheken |
-| Client-ID, Mandant, Scopes oder Anmeldeart ändern | wie oben, ohne Adresswechsel: alle Verbindungen müssen neu verbunden werden |
+| Client-ID, Mandant, Scopes, einen Endpunkt oder die Anmeldeart ändern | wie oben, ohne Adresswechsel: alle Verbindungen müssen neu verbunden werden |
 | Vorgaben, Proxy oder Zertifikatsprüfung ändern | Die Bibliotheken behalten ihre Geheimnisse, es sei denn, eine Vorgabe ändert, woran der Konnektor sie bindet; dann gilt die Bestätigung wie oben für die Betroffenen. Entfällt eine Vorgabe, wird ihr bisheriger Wert zur eigenen Einstellung jeder Bibliothek auf dem Zugang; sie laufen unverändert weiter. Das gilt nicht für eine Vorgabe nur des Zugangs (bei Google Drive das imitierte Konto): Entfällt sie, imitiert keine Bibliothek mehr ein Konto |
 | Dienstkonto-Schlüssel eines anderen Dienstkontos hochladen | wie eine neue Client-ID |
 | Vorgabe nur des Zugangs ändern (bei Google Drive das imitierte Konto) | Nach Bestätigung, die die Zahl der Bibliotheken nennt, verwirft OPAA ihren Abgleichstand; der nächste Lauf jeder Bibliothek liest die Quelle vollständig neu, und ihre Verwaltenden erhalten eine Benachrichtigung. Dokumente des bisherigen Kontos bleiben bis zu diesem Vollabgleich durchsuchbar |
@@ -679,13 +727,15 @@ für eine private Bibliothek ab oder lässt der Zugang danach keine Personen meh
 vom Zugang; sie ruht mit dem Hinweis „Zugang nicht mehr nutzbar“, bis ihre Besitzerin sie einem
 anderen Zugang zuordnet, und erhält darüber eine Benachrichtigung. Die Vorschau nennt solche
 Ablehnungen nur als Zahl, ohne Bibliothek und Grund, und unterhalb der Mindestgruppengröße an
-Besitzerinnen nur als „weniger als N“.
+Besitzerinnen nur als „weniger als N“; wo OPAA die Zahl nicht nennt, steht „nicht ausgewiesen“.
+Bei einem Zugang, der Personen zulässt, steht die Zeile immer da, auch ohne Ablehnung.
 
 Das Client-Secret bzw. der Dienstkonto-Schlüssel liegt verschlüsselt mit demselben Schlüssel wie
 die Zugangsdaten der Bibliotheken. Keine Antwort, kein Protokoll und kein Revisionseintrag enthält
 es, ebenso wenig das Zugriffstoken; angezeigt wird
 nur, ob eines hinterlegt ist, und eine Warnung, wenn sein Ablaufdatum in weniger als 14 Tagen
-erreicht ist. Anlegen, Ändern, Löschen und die Notabschaltung stehen im Revisionsprotokoll.
+erreicht ist. Anlegen, Ändern, Löschen, die Notabschaltung und der Anmeldetest stehen im
+Revisionsprotokoll.
 
 **Wenn ein Lauf nicht starten darf**, endet er vor dem ersten Element mit einer eigenen Meldung,
 die die zuständige Stelle nennt; der Bestand bleibt durchsuchbar und wird nicht aktualisiert:

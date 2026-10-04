@@ -199,6 +199,20 @@ class ProfileSignInIntegrationTest {
     assertThat((Boolean) JsonPath.read(refused, "$.success")).isFalse();
     assertThat((Boolean) JsonPath.read(accepted, "$.success")).isTrue();
     assertThat(run(second, "COMPLETED").credentials()).isEqualTo(SERVER.lastToken());
+    // both tests stand in the audit with their outcome, without the provider's message
+    assertThat(
+            jdbc.queryForList(
+                "SELECT outcome FROM audit_log WHERE object_id = ? AND event_type ="
+                    + " 'CONNECTION_PROFILE_SIGN_IN_TESTED' ORDER BY recorded_at",
+                String.class,
+                profile.toString()))
+        .containsExactly("FAILURE", "SUCCESS");
+    assertThat(
+            jdbc.queryForObject(
+                "SELECT count(*) FROM audit_log WHERE object_id = ? AND event_type ="
+                    + " 'CONNECTION_PROFILE_SIGN_IN_TESTED' AND after::text LIKE '%invalid_grant%'",
+                Integer.class, profile.toString()))
+        .isZero();
   }
 
   @Test

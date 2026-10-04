@@ -46,6 +46,7 @@ final class ConnectedAccountResponseMapper {
         .responsible(account.responsible())
         .connectedAt(account.connectedAt())
         .reconnectedAt(account.reconnectedAt())
+        .expiresAt(account.expiresAt())
         .usedBy(
             account.usedBy().stream()
                 .map(library -> new ConnectedAccountLibrary().id(library.id()).name(library.name()))

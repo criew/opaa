@@ -48,12 +48,26 @@ export const libraryHandlers = [
       sourceInsecureSsl?: boolean | null
       sourceSettings?: Record<string, unknown> | null
       connectionProfileId?: string | null
+      privateLibrary?: boolean | null
     }
     const profile = body.connectionProfileId
       ? mockConnectionProfiles.find((p) => p.id === body.connectionProfileId)
       : undefined
     if (body.connectionProfileId && !profile) {
       return HttpResponse.json({ error: 'Zugang nicht gefunden' }, { status: 404 })
+    }
+    // Mirrors PrivateLibraryCreation: a profile admitting persons, no own secret, no group owner.
+    if (body.privateLibrary) {
+      const refusal = !profile
+        ? 'Eine private Bibliothek braucht einen Zugang.'
+        : profile.ownership === 'LIBRARY'
+          ? 'Dieser Zugang lässt keine verbundenen Konten von Personen zu.'
+          : body.sourceCredentials
+            ? 'Eine private Bibliothek meldet sich mit Ihrem verbundenen Konto an; eigene Zugangsdaten sind nicht zulässig.'
+            : body.ownerType === 'GROUP'
+              ? 'Eine private Bibliothek gehört immer einer Person.'
+              : null
+      if (refusal) return HttpResponse.json({ error: refusal, status: 400 }, { status: 400 })
     }
     const confluenceSettings = (body.sourceSettings ?? {}) as ConfluenceSettings
     const s3Settings = body.sourceSettings as S3Settings | null | undefined
@@ -204,6 +218,7 @@ export const libraryHandlers = [
       myRole: 'OWNER',
       sourceType: body.sourceType,
       documentCount: 0,
+      ...(body.privateLibrary ? { privateLibrary: true } : {}),
       createdAt: now,
       updatedAt: now,
     }

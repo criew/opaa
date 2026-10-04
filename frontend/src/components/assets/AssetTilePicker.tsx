@@ -291,7 +291,7 @@ export default function AssetTilePicker({
     isLoading = !current && (!loaded || loaded.error !== null)
     refreshing = !current && !isLoading
     error = current ? (loaded?.error ?? null) : null
-    sources = isLoading ? [] : (loaded?.entries ?? []).map(tileFromCatalogEntry)
+    sources = isLoading ? [] : (loaded?.entries ?? []).map((entry) => tileFromCatalogEntry(entry))
   }
   const page = loaded?.page ?? 0
   const currentPage = !showsChosenOnly && loaded?.key === filterKey

@@ -31,6 +31,8 @@ import AssetDetailHeader, { HeaderFigure } from '../components/assets/AssetDetai
 import AssetOwnerSection from '../components/assets/AssetOwnerSection'
 import AssetSpacesSection from '../components/assets/AssetSpacesSection'
 import { responsibleParty } from '../components/assets/assetTileData'
+import { PrivateMark } from '../components/assets/assetMarks'
+import { PRIVATE_LIBRARY_NOTE } from '../components/library/privateLibrary'
 import { useAssetCatalogEntry } from '../components/assets/useAssetCatalogEntry'
 import AssetGrantsSection from '../components/permissions/AssetGrantsSection'
 import LibraryExternalAccessSection from '../components/library/LibraryExternalAccessSection'
@@ -248,6 +250,8 @@ export default function LibraryDetailPage() {
   }, [libraryId, loadLibraryDetails])
 
   const library = details ?? listEntry
+  // Only its owner ever reads a private library: no rights, transfer, external access or cap.
+  const privateLibrary = Boolean(library?.privateLibrary)
   const roleGrantsEdit = canEditLibrary(library?.myRole)
   const roleGrantsDelete = canDeleteLibrary(library?.myRole)
   const canEdit = roleGrantsEdit || isSystemAdmin
@@ -451,6 +455,7 @@ export default function LibraryDetailPage() {
         isPublic={library.reach.allAccounts}
         badges={
           <>
+            {privateLibrary && <PrivateMark />}
             {details && <MetaBadge>{documentSourceTypeLabel(details.sourceType)}</MetaBadge>}
             <MetaBadge accent>{assetRoleLabel(library.myRole)}</MetaBadge>
           </>
@@ -799,11 +804,19 @@ export default function LibraryDetailPage() {
             ownerName={library.ownerName}
             // Übergeben darf nur, wer das Eigentum hält - myRole trägt für eine Systemverwaltung
             // ohnehin OWNER, und genau die darf es laut Endpunkt auch.
-            canTransfer={library.myRole === 'OWNER'}
+            canTransfer={library.myRole === 'OWNER' && !privateLibrary}
             onTransferred={() => reloadLibrary()}
           />
 
-          {canEdit && (
+          {privateLibrary && (
+            <Alert severity="info" sx={{ mb: 4 }} data-testid="library-private-note">
+              {PRIVATE_LIBRARY_NOTE} Sie läuft über Ihr verbundenes Konto und lässt sich weder
+              freigeben noch übertragen oder über einen Fremdzugang erreichen — auch nicht durch die
+              Systemverwaltung.
+            </Alert>
+          )}
+
+          {canEdit && !privateLibrary && (
             <>
               <AssetGrantsSection
                 assetType="KNOWLEDGE_LIBRARY"
@@ -849,7 +862,9 @@ export default function LibraryDetailPage() {
             </PageSection>
           )}
 
-          <AssetAccessDerivationSection assetType="KNOWLEDGE_LIBRARY" assetId={libraryId} />
+          {!privateLibrary && (
+            <AssetAccessDerivationSection assetType="KNOWLEDGE_LIBRARY" assetId={libraryId} />
+          )}
         </Stack>
       </Box>
 

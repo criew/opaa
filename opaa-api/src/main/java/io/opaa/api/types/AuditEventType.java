@@ -519,5 +519,10 @@ public enum AuditEventType {
    * declined; {@code after} names the state, type, address and the profile serving it - never the
    * reason or the answer text. A governance event.
    */
-  CONNECTION_PROFILE_REQUEST_RESOLVED
+  CONNECTION_PROFILE_REQUEST_RESOLVED,
+  /**
+   * The system administration tested a profile's own sign-in; the outcome says whether it held, and
+   * a success lifts a rejection. Never carries the message, the secret or the token.
+   */
+  CONNECTION_PROFILE_SIGN_IN_TESTED
 }

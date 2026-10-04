@@ -14,6 +14,10 @@ export const AUTH_CALLBACK_ROUTE = '/auth/callback'
 export const SETTINGS_ROUTE = '/settings'
 /** The person's own connected accounts, a tab of the settings. */
 export const CONNECTED_ACCOUNTS_ROUTE = '/settings/accounts'
+/** Where a provider returns after an OAuth consent; the server names it as the redirect URI. */
+export const CONNECTION_CALLBACK_ROUTE = '/connections/callback'
+/** The system administration's connection profiles. */
+export const CONNECTION_PROFILES_ROUTE = '/admin/connection-profiles'
 /** The audit's read view of the connection log, next to the rights history. */
 export const CONNECTION_LOG_ROUTE = '/revision/verbindungsprotokoll'
 export const RIGHTS_HISTORY_ROUTE = '/revision/rechtehistorie'

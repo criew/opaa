@@ -17,6 +17,8 @@ interface LibraryConnectionPanelProps {
   connectionProfile?: ConnectionProfileRef | null
   /** The library's profile was deleted ("Zugang entfernt") - not the same as an own address. */
   connectionProfileRemoved?: boolean
+  /** A private library is never released from its profile, only moved to one with its owner's account. */
+  privateLibrary?: boolean
   /** Opens „Quelle bearbeiten“ - after a switch that discarded the secret. */
   onEditSource: () => void
   /** Whether the dialog to connect or switch is open - also opened from the notices above. */
@@ -35,6 +37,7 @@ export default function LibraryConnectionPanel({
   library,
   connectionProfile,
   connectionProfileRemoved = false,
+  privateLibrary = false,
   onEditSource,
   dialogOpen,
   onDialogOpenChange,
@@ -89,7 +92,7 @@ export default function LibraryConnectionPanel({
           {current ? 'Zugang wechseln' : 'Zugang zuordnen'}
         </Button>
       )}
-      {admitsProfiles && current && !descriptor.profileRequired && (
+      {admitsProfiles && current && !descriptor.profileRequired && !privateLibrary && (
         <Button
           size="small"
           variant="text"
@@ -110,6 +113,7 @@ export default function LibraryConnectionPanel({
           descriptor={descriptor}
           current={current}
           onEditSource={onEditSource}
+          privateLibrary={privateLibrary}
         />
       )}
     </Stack>
