@@ -508,5 +508,11 @@ public enum AuditEventType {
    * The counterpart of {@link #CONNECTOR_PROFILE_REQUIRED}: an own address is possible again, and
    * libraries locked for having one run again.
    */
-  CONNECTOR_PROFILE_OPTIONAL
+  CONNECTOR_PROFILE_OPTIONAL,
+  /**
+   * The system administration marked a connection profile request ("Zugangswunsch") done or
+   * declined; {@code after} names the state, type, address and the profile serving it - never the
+   * reason or the answer text. A governance event.
+   */
+  CONNECTION_PROFILE_REQUEST_RESOLVED
 }

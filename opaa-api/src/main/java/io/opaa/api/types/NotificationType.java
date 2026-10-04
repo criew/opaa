@@ -35,5 +35,17 @@ public enum NotificationType {
    * #GROUP_MEMBER_ADDED}, and the more important half of it: a read right can otherwise end
    * "immediately" without the person learning that it did, or through whom.
    */
-  GROUP_MEMBER_REMOVED
+  GROUP_MEMBER_REMOVED,
+
+  /**
+   * A person asked for a connection profile ("Zugangswunsch"). Sent to every system administrator
+   * of the organization; names type and server address, never the person's reason.
+   */
+  CONNECTION_PROFILE_REQUESTED,
+
+  /**
+   * The system administration marked a connection profile request done or declined. Sent to the
+   * person who made it, with the administration's answer if it gave one.
+   */
+  CONNECTION_PROFILE_REQUEST_RESOLVED
 }
