@@ -263,7 +263,7 @@ export default function ConnectionProfileFormDialog({
                   helperText={addressHint(schemes)}
                 />
               ) : (
-                <Typography variant="body2" color="text.secondary">
+                <Typography variant="body2" sx={{ color: 'text.secondary' }}>
                   Die Quellart hat eine feste Adresse: {fixedAddress}
                 </Typography>
               )}
@@ -361,7 +361,7 @@ export default function ConnectionProfileFormDialog({
                   <Typography variant="subtitle2" component="h3">
                     Vorgaben für jede Bibliothek
                   </Typography>
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>
                     Optional. Eine Vorgabe gilt für jede Bibliothek auf diesem Zugang und ersetzt
                     deren eigene Einstellung.
                   </Typography>
