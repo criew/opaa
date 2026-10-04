@@ -11,7 +11,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *     copying
  * @param requestTimeout connect timeout and per-message timeout of a run
  * @param requestBudgetPerRun SMB messages one run may send before it ends as truncated; a download
- *     costs at least three (open, read, close), a folder at least four
+ *     costs at least four (open, check, read, close), a folder at least five
  * @param maxEntriesPerRun listed files per run before the run fails visibly
  * @param downloadConcurrency downloads one run keeps in flight; {@code 1} is serial
  * @param listPageSize entries per listing page, so a large folder is processed while it is read

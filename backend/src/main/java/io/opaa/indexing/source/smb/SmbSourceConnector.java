@@ -193,6 +193,7 @@ public class SmbSourceConnector implements SourceConnector, SourceBrowser, Origi
       long entries = 0;
       List<String> missing = new ArrayList<>();
       List<String> denied = new ArrayList<>();
+      List<String> links = new ArrayList<>();
       for (String folder : folders) {
         try (SmbShareClient.Listing listing = smb.list(SmbSourceSettings.sharePath(folder))) {
           while (listing.hasNext()) {
@@ -203,11 +204,13 @@ public class SmbSourceConnector implements SourceConnector, SourceBrowser, Origi
           missing.add(folder);
         } catch (SmbAccessException.AccessDenied e) {
           denied.add(folder);
+        } catch (SmbAccessException.Link e) {
+          links.add(folder);
         } catch (SmbShareClient.ListingFailure e) {
           denied.add(folder);
         }
       }
-      if (!missing.isEmpty() || !denied.isEmpty()) {
+      if (!missing.isEmpty() || !denied.isEmpty() || !links.isEmpty()) {
         List<String> findings = new ArrayList<>();
         if (!missing.isEmpty()) {
           findings.add("diese Ordner gibt es nicht: " + String.join(", ", missing));
@@ -215,6 +218,11 @@ public class SmbSourceConnector implements SourceConnector, SourceBrowser, Origi
         if (!denied.isEmpty()) {
           findings.add(
               "diese Ordner darf das Dienstkonto nicht lesen: " + String.join(", ", denied));
+        }
+        if (!links.isEmpty()) {
+          findings.add(
+              "diese Ordner sind Verknüpfungen, denen OPAA nicht folgt: "
+                  + String.join(", ", links));
         }
         return new SourceConnectionTestResult(
             false, "Angemeldet, aber " + String.join("; ", findings) + ".", null, true, null);
@@ -317,6 +325,7 @@ public class SmbSourceConnector implements SourceConnector, SourceBrowser, Origi
       }
     } catch (SmbAccessException.NotFound
         | SmbAccessException.AccessDenied
+        | SmbAccessException.Link
         | SmbAccessException.TooLarge e) {
       return Optional.empty();
     } catch (SmbAccessException e) {
@@ -336,6 +345,10 @@ public class SmbSourceConnector implements SourceConnector, SourceBrowser, Origi
 
   /** Whether {@code relative} lies in one of the configured folders and names no {@code ..}. */
   static boolean inFolders(String relative, SmbSourceSettings settings) {
+    if (relative.chars().anyMatch(c -> c < 0x20 || c == '\\' || c == ':')) {
+      // smbj reads a backslash as a separator: such a path could leave the folder it names
+      return false;
+    }
     for (String segment : relative.split("/")) {
       if (segment.isEmpty() || segment.equals(".") || segment.equals("..")) {
         return false;

@@ -33,6 +33,21 @@ class SmbShareClientItemTest {
     assertThat(item(0x20, 0).offline()).isFalse();
   }
 
+  @Test
+  void aNameThatWouldBeAPathIsUnusable() {
+    assertThat(named("..\\Personal\\x.txt").unusableName()).isTrue();
+    assertThat(named("a/b.txt").unusableName()).isTrue();
+    assertThat(named("Datei\u0000.txt").unusableName()).isTrue();
+    assertThat(named("Datei:stream").unusableName()).isTrue();
+    assertThat(named("..").unusableName()).isTrue();
+    assertThat(named("Übersicht 50 % + mehr.txt").unusableName()).isFalse();
+    assertThat(named("..versteckt.txt").unusableName()).isFalse();
+  }
+
+  private static SmbShareClient.Item named(String name) {
+    return new SmbShareClient.Item(name, false, 1, 1, 0x20, 0, 7);
+  }
+
   private static SmbShareClient.Item item(long attributes, long reparseTag) {
     return new SmbShareClient.Item(
         "x", (attributes & DIRECTORY) != 0, 1, 1, attributes, reparseTag, 7);

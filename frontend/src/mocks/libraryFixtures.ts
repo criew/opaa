@@ -350,8 +350,8 @@ export function resetMockLibraryFolders() {
 }
 
 /**
- * The connectors the mock backend has (GET /api/v1/source-types, ADR-0038) - the six delivered
- * ones with their production abilities, ordered by key like the backend answers.
+ * The connectors the mock backend has (GET /api/v1/source-types, ADR-0038) - every delivered one
+ * once, with its production abilities, ordered by key like the backend answers.
  */
 export const mockSourceTypes: SourceTypeDescriptor[] = [
   {
@@ -409,6 +409,19 @@ export const mockSourceTypes: SourceTypeDescriptor[] = [
     locked: false,
   },
   {
+    type: 'NEXTCLOUD',
+    displayName: 'Nextcloud',
+    indexingRun: true,
+    uploads: false,
+    pushIntake: false,
+    browsable: true,
+    profileSupport: 'FORBIDDEN',
+    authMethods: [],
+    creatable: true,
+    creatableWithOwnAddress: true,
+    locked: false,
+  },
+  {
     type: 'RSS_FEED',
     displayName: 'RSS-Feed',
     indexingRun: true,
@@ -435,8 +448,8 @@ export const mockSourceTypes: SourceTypeDescriptor[] = [
     locked: false,
   },
   {
-    type: 'NEXTCLOUD',
-    displayName: 'Nextcloud',
+    type: 'SMB',
+    displayName: 'Windows-Dateifreigabe (SMB)',
     indexingRun: true,
     uploads: false,
     pushIntake: false,

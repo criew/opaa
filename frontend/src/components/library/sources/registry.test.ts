@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { mockSourceTypes } from '../../../mocks/libraryFixtures'
 import { EMPTY_CONFLUENCE_VALUES } from '../../../utils/confluenceSource'
 import { EMPTY_S3_VALUES } from '../../../utils/s3Source'
 import { registeredSourceTypes, sourceRegistration } from './registry'
@@ -33,9 +34,20 @@ describe('the source registry (ADR-0038)', () => {
       'S3',
       'GOOGLE_DRIVE',
       'NEXTCLOUD',
+      'SMB',
     ])
     expect(sourceRegistration('UPLOAD')?.configuration).toBeNull()
     expect(sourceRegistration('PROBE')).toBeUndefined()
+  })
+
+  it('has the mock backend list every registered type exactly once, ordered by key', () => {
+    const keys = mockSourceTypes.map((descriptor) => descriptor.type)
+    expect(new Set(keys).size).toBe(keys.length)
+    expect(keys).toEqual([...keys].sort())
+    expect([...keys].sort()).toEqual([...registeredSourceTypes].sort())
+    expect(mockSourceTypes.find((descriptor) => descriptor.type === 'SMB')?.profileSupport).toBe(
+      'FORBIDDEN',
+    )
   })
 
   it('sends only the fields of the chosen type for the generic sources', () => {

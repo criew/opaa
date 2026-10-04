@@ -212,7 +212,8 @@ export const libraryHandlers = [
         body.sourceType === 'CONFLUENCE' ||
         body.sourceType === 'S3' ||
         body.sourceType === 'GOOGLE_DRIVE' ||
-        body.sourceType === 'NEXTCLOUD'
+        body.sourceType === 'NEXTCLOUD' ||
+        body.sourceType === 'SMB'
           ? (body.sourceUrl ?? null)
           : null,
       sourceProxy:
@@ -228,14 +229,16 @@ export const libraryHandlers = [
         body.sourceType === 'CONFLUENCE' ||
         body.sourceType === 'S3' ||
         body.sourceType === 'GOOGLE_DRIVE' ||
-        body.sourceType === 'NEXTCLOUD'
+        body.sourceType === 'NEXTCLOUD' ||
+        body.sourceType === 'SMB'
           ? (body.sourceSettings ?? null)
           : null,
       sourceCredentialsSet:
         body.sourceType === 'S3' ||
         body.sourceType === 'CONFLUENCE' ||
         body.sourceType === 'GOOGLE_DRIVE' ||
-        body.sourceType === 'NEXTCLOUD'
+        body.sourceType === 'NEXTCLOUD' ||
+        body.sourceType === 'SMB'
           ? Boolean(body.sourceCredentials)
           : undefined,
       // sourceCredentials ist Nur-Schreiben (ADR-0018) - bewusst nicht in der Detailantwort.
@@ -332,6 +335,24 @@ export const libraryHandlers = [
         message: null,
       } satisfies SourceBrowseResponse)
     }
+    if (sourceType === 'SMB') {
+      // the folders in the root of the mock share (ADR-0040, Nachtrag SMB)
+      if (!body.sourceCredentials && !body.libraryId) {
+        return HttpResponse.json(
+          { error: 'sourceCredentials sind für die Ordnerauswahl erforderlich' },
+          { status: 400 },
+        )
+      }
+      return HttpResponse.json({
+        complete: true,
+        entries: [
+          { key: '/Bauamt', name: 'Bauamt' },
+          { key: '/Hauptamt', name: 'Hauptamt' },
+          { key: '/Vorlagen', name: 'Vorlagen' },
+        ],
+        message: null,
+      } satisfies SourceBrowseResponse)
+    }
     return HttpResponse.json(
       { error: `Für sourceType ${sourceType} gibt es keine Auflistung` },
       { status: 400 },
@@ -424,6 +445,26 @@ export const libraryHandlers = [
         credentialsVerified: true,
         documentCount: 12 * folders.length,
         message: `Verbindung hergestellt; ${folders.length} Ordner lesbar.`,
+      })
+    }
+    if (body.sourceType === 'SMB') {
+      // Mirrors SmbSourceConnector#testConnection: sign-in, share, then every folder read.
+      if (!body.sourceUrl) {
+        return HttpResponse.json({ error: 'sourceUrl ist erforderlich' }, { status: 400 })
+      }
+      if (!body.sourceCredentials && !body.libraryId) {
+        return HttpResponse.json(
+          { error: 'sourceCredentials sind für den Verbindungstest erforderlich' },
+          { status: 400 },
+        )
+      }
+      const folders = (body.sourceSettings as { folders?: string[] } | null | undefined)
+        ?.folders ?? ['/']
+      return HttpResponse.json({
+        reachable: true,
+        credentialsVerified: true,
+        documentCount: 8 * folders.length,
+        message: `Verbindung hergestellt; Freigabe und ${folders.length} Ordner lesbar.`,
       })
     }
     if (body.sourceType === 'CONFLUENCE') {
