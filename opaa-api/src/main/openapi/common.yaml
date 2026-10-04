@@ -111,6 +111,15 @@ components:
             happens to the content. Always present on a library; the source of an answer carries
             reason and responsible only.
           example: Gesperrt – Inhalt wird nicht mehr aktualisiert.
+        contentDeletedOn:
+          type: string
+          pattern: "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+          description: >
+            ISO date (YYYY-MM-DD), only for OWNER_DEACTIVATED on a library: the day from which the
+            private library is erased if its owner's account stays deactivated - the recorded
+            start of the deactivation plus the deletion period. The daily erasure run takes it on its next run
+            from that day. Absent while no start is recorded yet and on the source of an answer.
+          example: "2026-11-03"
 
     PermissionSubjectType:
       type: string

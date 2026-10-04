@@ -469,6 +469,9 @@ opaa:
     # Without a sign-in for this many days a person's connections rest (ADR-0041); 30-365, a value
     # outside fails the start - see ConnectionLifecycleProperties.
     inactivity-threshold-days: ${OPAA_CONNECTION_INACTIVITY_THRESHOLD_DAYS:90}
+    # Days a deactivated person's private libraries are kept before they are erased; 1-90, a
+    # value outside fails the start - see PrivateLibraryDeletionPeriod.
+    private-library-deletion-days: ${OPAA_CONNECTION_PRIVATE_LIBRARY_DELETION_DAYS:30}
   external-access:
     # #1731: longest admissible Befristung of a library's release for Fremdzugaenge, and how many
     # days before it ends the responsible person is reminded by mail. 0 reminder days switches the

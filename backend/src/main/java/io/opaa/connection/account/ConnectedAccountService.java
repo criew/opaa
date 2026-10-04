@@ -371,6 +371,39 @@ public class ConnectedAccountService implements PersonConnections, GrantRejectio
   }
 
   /**
+   * After a private library of person {@code userId} was erased: each of her disconnected
+   * connections that no private library runs on any more goes, logged as deleted for {@code
+   * LIBRARY_DELETED}, in the caller's transaction.
+   *
+   * @return how many connections went
+   */
+  @Transactional
+  public int dropDisconnectedWithoutPrivateLibrary(UUID userId) {
+    int dropped = 0;
+    for (ConnectedAccount account :
+        accounts.findByUserIdAndState(userId, ConnectedAccountState.DISCONNECTED)) {
+      if (!libraryConnections.findPrivateLibrariesOn(account.getProfileId(), userId).isEmpty()) {
+        continue;
+      }
+      profiles
+          .findById(account.getProfileId())
+          .ifPresent(
+              profile ->
+                  log.record(
+                      account.getOrganizationId(),
+                      eventOf(ConnectionEndCause.LIBRARY_DELETED),
+                      ConnectionLogActor.system(),
+                      ConnectionLogOwner.person(userId),
+                      profile.getId(),
+                      profile.getName(),
+                      ConnectionEndCause.LIBRARY_DELETED));
+      accounts.delete(account);
+      dropped++;
+    }
+    return dropped;
+  }
+
+  /**
    * The one way a connection ends: its secret goes at once, the end is logged, an end the person
    * did not cause is told them, and the row stays as {@code DISCONNECTED} only while a private
    * library of the person runs on it. Returns how many stored secrets went.

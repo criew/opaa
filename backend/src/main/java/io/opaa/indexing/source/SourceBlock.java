@@ -1,5 +1,6 @@
 package io.opaa.indexing.source;
 
+import java.time.LocalDate;
 import java.util.Objects;
 
 /**
@@ -8,13 +9,19 @@ import java.util.Objects;
  *
  * @param responsible the German name of who is in charge ("Systemverwaltung", "Verwaltende der
  *     Bibliothek")
+ * @param contentDeletedOn the day from which the content is erased, {@code null} where none is set
  */
-public record SourceBlock(Reason reason, String responsible, String notice) {
+public record SourceBlock(
+    Reason reason, String responsible, String notice, LocalDate contentDeletedOn) {
 
   public SourceBlock {
     Objects.requireNonNull(reason, "reason");
     Objects.requireNonNull(responsible, "responsible");
     Objects.requireNonNull(notice, "notice");
+  }
+
+  public SourceBlock(Reason reason, String responsible, String notice) {
+    this(reason, responsible, notice, null);
   }
 
   /**

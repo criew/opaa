@@ -1,6 +1,8 @@
 package io.opaa.connection.account;
 
+import io.opaa.connection.profile.DeactivationStarts;
 import java.time.Instant;
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -15,7 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @Service
 @Transactional(readOnly = true)
-public class ConnectionLifecycle {
+public class ConnectionLifecycle implements DeactivationStarts {
 
   private final ConnectionPersonStateRepository states;
 
@@ -26,6 +28,17 @@ public class ConnectionLifecycle {
   /** Since when person {@code userId} is deactivated, empty while they are not. */
   public Optional<Instant> deactivatedSince(UUID userId) {
     return states.findById(userId).map(ConnectionPersonState::getDeactivatedSince);
+  }
+
+  @Override
+  public Map<UUID, Instant> deactivatedSince(Collection<UUID> userIds) {
+    Map<UUID, Instant> found = new LinkedHashMap<>();
+    for (ConnectionPersonState state : states.findAllById(userIds)) {
+      if (state.getDeactivatedSince() != null) {
+        found.put(state.getUserId(), state.getDeactivatedSince());
+      }
+    }
+    return found;
   }
 
   /** The persons deactivated since before {@code before}, with the start of their deactivation. */
