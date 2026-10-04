@@ -222,4 +222,121 @@ class FileSyncRoundTest {
     assertThat(next.ingested()).containsExactly(store.filePathOf("A", "akten/x.txt"));
     assertThat(harness.revisits()).isEmpty();
   }
+
+  @Test
+  void markersARoundJudgedUnderAnotherSizeBoundAreNotRemembered() {
+    InMemoryFileStore store =
+        new InMemoryFileStore()
+            .withCheckpoints()
+            .withFolderMarkers()
+            .withStableIds()
+            .pageSize(2)
+            .container("A");
+    for (int i = 1; i <= 4; i++) {
+      store.put("A", "o" + i + "/datei.txt", "Datei " + i);
+    }
+    run(store, 4);
+    assertThat(harness.state().isFullSyncInterrupted()).isTrue();
+
+    harness.maxFileSize(FileSyncHarness.MAX_FILE_SIZE * 2);
+    run(store, 0);
+
+    assertThat(harness.state().isFullSyncInterrupted()).isFalse();
+    assertThat(harness.state().subtreeMemory().containers().getOrDefault("A", java.util.Map.of()))
+        .as("the folders listed under the former bound are listed again")
+        .doesNotContainKeys("", "o1", "o2");
+  }
+
+  // regression guard for #2202: a resumed page that names no folder still checks the place of a
+  // file
+  @Test
+  void aFileMovedBeforeTheRoundIsPlacedAlsoOnAResumedPageThatNamesNoFolder() {
+    InMemoryFileStore store =
+        new InMemoryFileStore()
+            .withCheckpoints()
+            .withFolderMarkers()
+            .withStableIds()
+            .pageSize(2)
+            .container("A")
+            .put("A", "a/x/f10.txt", "Wandert.")
+            .put("A", "c/z/w/f1.txt", "Eins.")
+            .put("A", "c/z/w/f2.txt", "Zwei.")
+            .put("A", "c/z/w/f3.txt", "Drei.")
+            .put("A", "f0.txt", "Null.");
+    run(store, 0);
+    String moved = store.filePathOf("A", "a/x/f10.txt");
+    store.move("A", "a/x/f10.txt", "c/z/w/f4.txt");
+    // a revisit at the root hands over no marker, so the resumed page names no folder at all
+    harness.deleteStored(store.filePathOf("A", "f0.txt"));
+    run(store, 1);
+    run(store, 0);
+    assertThat(harness.stored(moved).orElseThrow().getSourceHierarchyPath())
+        .as("the row follows its file")
+        .isEqualTo("c / z / w");
+
+    store.put("A", "f9.txt", "Neu im Stamm.");
+    FileSyncHarness.Run next = run(store, 0);
+
+    assertThat(next.eventsOf(IndexingEventCategory.REMOVED)).isEmpty();
+    assertThat(harness.stored(moved)).isPresent();
+  }
+
+  // regression guard for #2202: a folder that changed during the round leaves no marker behind
+  @Test
+  void aFolderTakenAsUnchangedAndListedLaterInTheRoundIsNotRemembered() {
+    InMemoryFileStore store =
+        new InMemoryFileStore()
+            .withCheckpoints()
+            .withFolderMarkers()
+            .withStableIds()
+            .pageSize(1)
+            .container("A")
+            .put("A", "a/f1.txt", "Eins.")
+            .put("A", "a/f2.txt", "Zwei.")
+            .put("A", "c/f3.txt", "Drei.")
+            .put("A", "c/f4.txt", "Vier.");
+    run(store, 0);
+    String gone = store.filePathOf("A", "c/f4.txt");
+    store.put("A", "a/f1.txt", "Eins, zweite Fassung.");
+    run(store, 2);
+    assertThat(harness.state().isFullSyncInterrupted()).isTrue();
+
+    store.remove("A", "c/f4.txt");
+    run(store, 0);
+    assertThat(harness.state().isFullSyncInterrupted()).isFalse();
+    FileSyncHarness.Run next = run(store, 0);
+
+    assertThat(next.eventsOf(IndexingEventCategory.REMOVED))
+        .extracting(IndexingRunEvent::getReference)
+        .containsExactly(gone);
+  }
+
+  // regression guard for #2202: a file met on a page past the checkpoint is not taken as seen
+  @Test
+  void aFileMetOnlyOnAPagePastTheCheckpointDoesNotCountAsSeen() {
+    InMemoryFileStore store =
+        new InMemoryFileStore()
+            .withCheckpoints()
+            .withFolderMarkers()
+            .withStableIds()
+            .pageSize(1)
+            .container("A")
+            .put("A", "g/k.txt", "Bleibt.")
+            .put("A", "g/x.txt", "Wandert.");
+    run(store, 0);
+    String moved = store.filePathOf("A", "g/x.txt");
+    store.move("A", "g/x.txt", "h/x.txt");
+    // the page with the moved file is listed, its download refused by the budget
+    run(store, 2);
+    assertThat(harness.state().isFullSyncInterrupted()).isTrue();
+
+    store.remove("A", "h/x.txt");
+    run(store, 0);
+    assertThat(harness.state().isFullSyncInterrupted()).isFalse();
+    FileSyncHarness.Run next = run(store, 0);
+
+    assertThat(next.eventsOf(IndexingEventCategory.REMOVED))
+        .extracting(IndexingRunEvent::getReference)
+        .containsExactly(moved);
+  }
 }

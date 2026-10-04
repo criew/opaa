@@ -114,6 +114,7 @@ class ScanJournalIntegrationTest {
     return new SourceSyncState.ScanProgress(
         scan,
         Instant.parse("2026-10-04T10:00:00Z"),
+        "v2|1024|txt",
         null,
         Map.of("Projekte", new SourceSyncState.ContainerProgress(checkpoint, 0, 1, true, null)),
         null,

@@ -274,7 +274,10 @@ zu Ende geführt werden konnte.
 
 Ein Lauf kann `COMPLETED` und trotzdem **unvollständig** sein: Ein Confluence-Lauf, der sein
 Anfragebudget verbraucht hat, endet geordnet mit dem Kennzeichen „unvollständig, wird fortgesetzt";
-der nächste Lauf setzt dort an. Ein solcher Lauf entfernt nichts.
+der nächste Lauf setzt dort an. Ein solcher Lauf entfernt nichts. Bei den Dateiablagen Nextcloud und SMB setzt
+der nächste Lauf an der gemerkten Stelle innerhalb der Ordner fort; ein Vollabgleich darf sich so
+über mehrere Läufe erstrecken ([Nextcloud](konnektor-nextcloud.md), Abschnitt 3.1;
+[SMB](konnektor-smb.md), Abschnitt 3.1).
 
 ### 3.3 Wiederanlauf nach Störungen
 

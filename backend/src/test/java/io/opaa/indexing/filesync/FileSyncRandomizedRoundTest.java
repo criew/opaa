@@ -15,17 +15,18 @@ import org.junit.jupiter.api.Test;
 
 /**
  * Full syncs over several runs against the reference store while files are added, changed, moved
- * and deleted between the runs, under a budget that changes from run to run - with a fixed start
- * value per scenario, named in every failure. No document is removed whose file exists under the
- * same identity; for a store whose identity is the location, under the same identity since the
- * round began. Once the source stays still, the bestand matches it. {@code
- * -Dopaa.filesync.randomSeeds} and {@code -Dopaa.filesync.randomRuns} widen the search.
+ * and deleted between the runs, under a budget that changes from run to run and with one to three
+ * downloads in flight - with a fixed start value per scenario, named in every failure. No document
+ * is removed whose file exists under the same identity; for a store whose identity is the location,
+ * under the same identity since the round began. Once the source stays still, the bestand matches
+ * it. The environment variables {@code OPAA_FILESYNC_RANDOM_SEEDS}, {@code _RUNS} and {@code
+ * _FIRST_SEED} widen the search.
  */
 class FileSyncRandomizedRoundTest {
 
-  private static final int SEEDS = Integer.getInteger("opaa.filesync.randomSeeds", 12);
-  private static final int RUNS = Integer.getInteger("opaa.filesync.randomRuns", 40);
-  private static final long FIRST_SEED = Long.getLong("opaa.filesync.firstSeed", 20261004L);
+  private static final int SEEDS = setting("OPAA_FILESYNC_RANDOM_SEEDS", 12);
+  private static final int RUNS = setting("OPAA_FILESYNC_RANDOM_RUNS", 40);
+  private static final long FIRST_SEED = setting("OPAA_FILESYNC_RANDOM_FIRST_SEED", 20261004);
 
   private static final List<String> FOLDERS = List.of("", "a", "b", "c", "a/x", "b/y", "c/z/w");
   private static final List<String> CONTAINERS = List.of("A", "B");
@@ -80,7 +81,7 @@ class FileSyncRandomizedRoundTest {
       } else {
         store.withFolderMarkers().withStableIds();
       }
-      this.harness = new FileSyncHarness();
+      this.harness = new FileSyncHarness().downloadConcurrency(1 + random.nextInt(3));
       CONTAINERS.forEach(
           container -> {
             store.container(container);
@@ -221,5 +222,10 @@ class FileSyncRandomizedRoundTest {
               names.forEach(name -> identities.add(store.filePathOf(container, name))));
       return identities;
     }
+  }
+
+  private static int setting(String name, int fallback) {
+    String value = System.getenv(name);
+    return value == null || value.isBlank() ? fallback : Integer.parseInt(value.trim());
   }
 }

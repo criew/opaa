@@ -290,6 +290,7 @@ public class SourceSyncState {
    * The round of a file sync that may span several runs (ADR-0040).
    *
    * @param scanId names the round, also in the presence it writes
+   * @param basis what the round's folder markers were judged under (size bound, formats)
    * @param memoryEstablishedAt what the folder memory of the round counts its age from
    * @param containers per container key, how far the round got
    * @param markers per container key, the first marker the round saw for every folder it listed
@@ -300,6 +301,7 @@ public class SourceSyncState {
   public record ScanProgress(
       UUID scanId,
       Instant startedAt,
+      String basis,
       Instant memoryEstablishedAt,
       Map<String, ContainerProgress> containers,
       Map<String, Map<String, String>> markers,

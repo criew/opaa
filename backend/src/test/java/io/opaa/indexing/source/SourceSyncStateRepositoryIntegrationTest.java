@@ -137,6 +137,7 @@ class SourceSyncStateRepositoryIntegrationTest {
         new SourceSyncState.ScanProgress(
             UUID.randomUUID(),
             Instant.parse("2026-10-04T10:00:00Z"),
+            "v2|1024|pdf,txt",
             Instant.parse("2026-10-01T10:00:00Z"),
             Map.of(
                 "/Projekte",

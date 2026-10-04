@@ -18,7 +18,8 @@
 4. Bibliothek anlegen: Adresse `smb://server/freigabe`, Dienstkonto, Passwort, Ordner („Ordner
    laden“ hilft), „Verbindung testen“. Alles aus diesen Ordnern ist für **alle**
    Leseberechtigten der Bibliothek sichtbar.
-5. Zeitplan setzen. Jeder Lauf ist ein **Vollabgleich** über alle Ordner (Abschnitt 3).
+5. Zeitplan setzen. Jeder Lauf ist ein **Vollabgleich** über alle Ordner; reicht das Budget
+   nicht, setzt der nächste Lauf fort (Abschnitt 3).
 6. Im Laufprotokoll auf „Geltungsbereich … nicht auflistbar“, „unvollständig, wird fortgesetzt“
    und „Verknüpfungen … werden nicht verfolgt“ achten.
 
@@ -46,7 +47,7 @@ flowchart LR
     C -- ja --> S[übersprungen]
     C -- nein --> F[laden, durch die<br/>Dokumentstrecke]
     B --> L[Verknüpfungen:<br/>gezählt, nicht verfolgt]
-    B --> R[Löscherkennung, wenn alle<br/>Ordner vollständig gelistet]
+    B --> R[Löscherkennung, wenn alle Ordner<br/>vollständig gelistet, auch über mehrere Läufe]
 ```
 
 ## 2. Quellkonfiguration
@@ -105,8 +106,38 @@ hat:
 - Ein Ordner, den die Auflistung zeigte, der sich danach aber nicht öffnen lässt (seither
   gelöscht oder eine Verknüpfung, die der Server selbst auflöst), gilt als verschwunden.
 
-Ein großer Ordner wird stapelweise gelesen; Dateien werden schon geladen, während die Auflistung
-weiterläuft.
+Ein Ordner wird beim Betreten ganz gelesen und nach Namen sortiert, seine Einträge dann seitenweise
+verarbeitet; Dateien werden schon geladen, während die Auflistung weiterläuft.
+
+### 3.1 Abgleich über mehrere Läufe
+
+Die Ordner werden in Namensreihenfolge abgearbeitet, jeder Ordner vollständig, bevor der nächste
+an der Reihe ist. Reicht `request-budget-per-run` nicht für alles, endet der Lauf geordnet als
+„unvollständig, wird fortgesetzt“, und OPAA merkt sich die Stelle samt dem, was der Abgleich bis
+dahin gefunden hat: nicht lesbare und zu tiefe Ordner und die Ordner, denen er schon begegnet ist.
+Der nächste Lauf öffnet nur die Ordner auf dem Weg zu dieser Stelle noch einmal und setzt danach
+fort; fertige Bereiche liest er nicht erneut.
+
+Ist jeder Bereich bis zum Ende gelistet, ist der Abgleich vollständig, auch wenn er mehrere Läufe
+gebraucht hat. Dann werden die Dokumente entfernt, die keiner dieser Läufe gesehen hat. Weil der
+Pfad die Identität ist, ist eine Datei, die in keinem Lauf an ihrem Ort war, unter diesem Pfad
+wirklich weg.
+
+- Eine Datei, die gelöscht wird, nachdem ihr Ordner gelistet war, bleibt bis zum nächsten
+  Abgleich.
+- Eine Datei, die an einer schon gelisteten Stelle neu angelegt wird, kommt mit dem nächsten
+  Abgleich.
+- **Umbenannt oder verschoben während eines Abgleichs:** Liegt der neue Ort vor der gemerkten
+  Stelle, entfernt der Abgleich das Dokument unter dem alten Pfad, bevor der neue gelistet ist.
+  Dasselbe gilt für eine Datei, die gelöscht und am selben Ort neu angelegt wird, nachdem ihr
+  Ordner gelistet war. Die Lücke dauert bis zum nächsten Abgleich; dann ist die Datei unter ihrem
+  Pfad wieder da.
+- Was ein Lauf zwischendurch an Dateien bestätigt, auch einzeln, zählt für den Abgleich mit.
+- Die Obergrenze `max-entries-per-run` gilt für den ganzen Abgleich, nicht je Lauf.
+- Ein Lauf, der an einem Fehler scheitert (Anmeldung abgelehnt, Server nicht erreichbar), ändert
+  die gemerkte Stelle nicht und entfernt nichts; der nächste setzt an derselben Stelle fort.
+- Ein Bereich, der sich nicht vollständig listen lässt, beginnt beim nächsten Lauf von vorn;
+  entfernt wird erst nach einem vollständigen Durchgang.
 
 ## 4. Verknüpfungen, besondere Dateien und Namen
 
@@ -115,8 +146,9 @@ weiterläuft.
   („Verknüpfungen … werden nicht verfolgt“). Ein Verweis in einen DFS-Namensraum wird nicht
   aufgelöst; ist die Freigabe selbst ein DFS-Namensraum, die Zielfreigabe direkt angeben.
 - **Samba** löst Unix-Links meist selbst auf (`follow symlinks`) und zeigt sie als gewöhnliche
-  Datei oder als Ordner. OPAA öffnet sie trotzdem nicht. Ein Ordner, dem der Lauf schon unter
-  einem anderen Namen begegnet ist, gilt als Verknüpfung. Das beendet Schleifen.
+  Datei oder als Ordner. OPAA öffnet sie trotzdem nicht. Ein Ordner, dem der Abgleich schon unter
+  einem anderen Namen begegnet ist, auch in einem früheren Lauf desselben Abgleichs, gilt als
+  Verknüpfung; in Namensreihenfolge gewinnt der erste Name. Das beendet Schleifen.
 - **Deduplizierte Dateien** (Windows-Datendeduplizierung) werden normal gelesen.
 - **Ausgelagerte Dateien** (offline, nur bei Zugriff zurückgeholt, etwa durch ein Archivsystem
   oder einen Cloud-Speicher) werden nicht geladen: ein Abruf würde die Rückholung auslösen. Sie
@@ -157,7 +189,9 @@ ein Browser öffnen könnte, gibt es nicht: `smb://`-Adressen öffnet kein Brows
 | „Der Server „…“ hat nicht rechtzeitig geantwortet.“ | Netz oder Server überlastet; der Lauf endet. | Erreichbarkeit prüfen, `request-timeout` anheben. |
 | „Die Verbindung zum Server „…“ ist gescheitert (SMB 2 oder 3 mit Signatur erforderlich).“ | Der Server spricht nur SMB 1 oder signiert nicht. | SMB 2/3 mit Signatur auf dem Server einschalten. |
 | Zieladressprüfung lehnt den Host ab | Dateiserver im privaten Adressbereich. | Hostnamen in `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST`. |
-| „unvollständig, wird fortgesetzt“ | Anfragebudget des Laufs erschöpft. | Nichts; der nächste Lauf setzt fort. Dauerhaft: Budget anheben. |
+| „unvollständig, wird fortgesetzt“ | Anfragebudget des Laufs erschöpft; die Stelle ist gemerkt (Abschnitt 3.1). | Nichts; der nächste Lauf setzt fort. Dauerhaft: Budget anheben. |
+| „Der Lauf hat keine Datei neu aufgenommen …“ | Das Budget reicht nicht, um die Ordner auf dem Weg zur gemerkten Stelle zu öffnen und weiterzukommen. | `request-budget-per-run` anheben. |
+| „Geltungsbereich „/…“: Der Fortsetzungspunkt … Die Auflistung dieses Geltungsbereichs beginnt neu.“ | Die gemerkte Stelle stammt aus einer anderen Fassung von OPAA; der Bereich wird von vorn gelistet, entfernt wird nichts. | Nichts. |
 
 ## 8. Konfiguration
 
@@ -168,10 +202,10 @@ Kapitel [Deployment](deployment.md)):
 |---|---|---|
 | `max-file-size-bytes` | 50 MiB | Obergrenze einer Datei, vor und während des Downloads |
 | `request-timeout` | 30 s | Zeitlimit für den Verbindungsaufbau und je SMB-Nachricht |
-| `request-budget-per-run` | 100 000 | SMB-Nachrichten je Lauf, danach endet er geordnet als unvollständig; ein Download kostet mindestens vier (öffnen, prüfen, lesen, schließen), ein Ordner mindestens fünf |
-| `max-entries-per-run` | 1 000 000 | gelistete Dateien je Lauf, danach scheitert er sichtbar |
+| `request-budget-per-run` | 100 000 | SMB-Nachrichten je Lauf, danach endet er geordnet als unvollständig, und der nächste setzt fort; ein Download kostet mindestens vier (öffnen, prüfen, lesen, schließen), ein Ordner mindestens fünf |
+| `max-entries-per-run` | 1 000 000 | gelistete Dateien je Vollabgleich, auch über mehrere Läufe; danach scheitert der Lauf sichtbar |
 | `download-concurrency` | 2 | gleichzeitige Downloads je Lauf |
-| `list-page-size` | 1000 | Einträge, die ein Lauf auflistet, bevor er die Dateien davon verarbeitet |
+| `list-page-size` | 1000 | Einträge oder geöffnete Ordner, die ein Lauf auflistet, bevor er die Dateien davon verarbeitet und sich die Stelle merken kann |
 
 ## 9. Was nicht gebaut ist
 
@@ -179,6 +213,10 @@ Kapitel [Deployment](deployment.md)):
   einen erreichbaren KDC und eine Keytab je Installation.
 - **Inhaltsänderung ohne neue Änderungszeit.** Setzt ein Werkzeug die Änderungszeit einer Datei
   zurück und bleibt die Größe gleich, bemerkt der Lauf die Änderung nicht.
+- **Sehr viele Ordner in einem Bereich.** Die gemerkte Stelle enthält die Datei-IDs aller Ordner,
+  denen der Abgleich begegnet ist. Wird sie zu groß (bei mehreren hunderttausend Ordnern in einem
+  Bereich), merkt sich OPAA keine neue Stelle mehr, und ein Lauf, der danach am Budget endet,
+  kommt in diesem Bereich nicht weiter. Abhilfe: den Bereich in mehrere Ordner aufteilen.
 - **Geteilte Datei-ID.** Teilen sich zwei Ordner eine Datei-ID (etwa bei Samba mit mehreren
   Dateisystemen unter einer Freigabe), hält OPAA den zweiten für eine Verknüpfung; er fehlt dann
   ohne Befund, und sein Bestand wird entfernt.

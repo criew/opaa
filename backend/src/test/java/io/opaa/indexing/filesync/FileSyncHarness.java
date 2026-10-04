@@ -87,6 +87,7 @@ public final class FileSyncHarness {
   private final Set<String> rejectedIngests = new HashSet<>();
   private Duration subtreeMemoryMaxAge;
   private long maxEntriesPerRun = 1_000;
+  private long maxFileSize = MAX_FILE_SIZE;
   private int downloadConcurrency = 1;
   private Instant now = Instant.parse("2026-10-03T12:00:00Z");
   private final IndexingJobService jobService = mock(IndexingJobService.class);
@@ -446,6 +447,12 @@ public final class FileSyncHarness {
     return this;
   }
 
+  /** The size bound of the following runs. */
+  public FileSyncHarness maxFileSize(long bytes) {
+    maxFileSize = bytes;
+    return this;
+  }
+
   /** The entries a round may list before its run fails. */
   public FileSyncHarness maxEntriesPerRun(long maxEntries) {
     maxEntriesPerRun = maxEntries;
@@ -508,7 +515,7 @@ public final class FileSyncHarness {
                       frame,
                       store,
                       new FileSyncSettings(
-                          MAX_FILE_SIZE,
+                          maxFileSize,
                           maxEntriesPerRun,
                           downloadConcurrency,
                           "test-download-",

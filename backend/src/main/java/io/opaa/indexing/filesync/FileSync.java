@@ -32,6 +32,7 @@ import java.time.Instant;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -108,6 +109,9 @@ public final class FileSync implements AutoCloseable {
 
   /** The first page of the current container not yet visited completely. */
   private int visitingFrom = 1;
+
+  /** Per path a listing met, the page it was first met on. */
+  private final Map<String, Integer> firstMetOn = new HashMap<>();
 
   /** The containers whose store reports folders: their entries are checked against their place. */
   private final Set<String> reportingFolders = new HashSet<>();
@@ -204,7 +208,15 @@ public final class FileSync implements AutoCloseable {
         }
       }
     } catch (RequestBudgetExhaustedException e) {
-      if (round.budgetSpent(unsettledFrom())) {
+      int unsettledFrom = unsettledFrom();
+      Set<String> unsettledPaths = new HashSet<>();
+      firstMetOn.forEach(
+          (path, page) -> {
+            if (page >= unsettledFrom) {
+              unsettledPaths.add(path);
+            }
+          });
+      if (round.budgetSpent(unsettledFrom, unsettledPaths)) {
         // a later checkpoint or a completed container: the chain of runs moves on
         frame.budgetStallAdvice(null);
       }
@@ -285,7 +297,7 @@ public final class FileSync implements AutoCloseable {
             .recordRunNote(
                 IndexingEventCategory.REJECTED, dropped + wording.droppedReferencesNote());
       }
-      ScanRound.confirm(journal, state, frame);
+      ScanRound.confirm(journal, state, frame, store.absenceProof());
       recordSummaries();
     }
     return ListingOutcome.partial();
@@ -328,7 +340,7 @@ public final class FileSync implements AutoCloseable {
     } finally {
       forgetChangedContainers();
       state = journal.save(state);
-      ScanRound.confirm(journal, state, frame);
+      ScanRound.confirm(journal, state, frame, store.absenceProof());
       recordSummaries();
     }
     return ListingOutcome.partial();
@@ -650,7 +662,7 @@ public final class FileSync implements AutoCloseable {
         round.memory().listed(container.key(), page.listedSubtrees());
       }
       for (String subtree : page.unchangedSubtrees()) {
-        keepUnchangedSubtree(container, subtree);
+        keepUnchangedSubtree(container, subtree, pageNumber);
       }
       for (FileEntry entry : admitted) {
         visit(entry, pageNumber);
@@ -694,7 +706,7 @@ public final class FileSync implements AutoCloseable {
    * Every stored row of the container in or below {@code folder} stays present and keeps its
    * folder; the recalled markers there carry over to the next run.
    */
-  private void keepUnchangedSubtree(FileContainer container, String folder) {
+  private void keepUnchangedSubtree(FileContainer container, String folder, int page) {
     UUID libraryId = frame.library().getId();
     List<Document> documents =
         folder.isEmpty()
@@ -702,6 +714,7 @@ public final class FileSync implements AutoCloseable {
             : documentRepository.findInHierarchy(libraryId, container.key(), folder);
     for (Document document : documents) {
       frame.markPresent(document.getFilePath());
+      firstMetOn.putIfAbsent(document.getFilePath(), page);
       folderMirror.markSeen(document.getFolderId());
     }
     round.memory().carry(container.key(), folder);
@@ -729,6 +742,9 @@ public final class FileSync implements AutoCloseable {
   private void visit(FileEntry entry, int page) throws InterruptedException {
     String filePath = entry.filePath();
     frame.markPresent(filePath);
+    if (page > 0) {
+      firstMetOn.putIfAbsent(filePath, page);
+    }
     if (entry.exclusion() instanceof Exclusion.NotADocument notADocument) {
       // one note per run instead of one entry per marker: the protocol holds 500 entries
       notADocumentNotes.merge(notADocument.note(), 1L, Long::sum);
@@ -764,7 +780,9 @@ public final class FileSync implements AutoCloseable {
     String marker = entry.changeMarker();
     // For a store that reports folders the row must also stand at the listed place - a folder is
     // kept by the hierarchy path of its rows; a renamed or moved file is fetched once and moves.
-    boolean reportsFolders = reportingFolders.contains(entry.container().key());
+    boolean reportsFolders =
+        reportingFolders.contains(entry.container().key())
+            || (round != null && round.memory().reportsFolders(entry.container().key()));
     if (marker != null
         && existing
             .filter(document -> document.isUnchangedAt(marker))

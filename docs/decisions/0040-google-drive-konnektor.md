@@ -610,6 +610,104 @@ neue Modulkante.
 10. **Tests:** Ein echter Samba (`dockurr/samba`, rund 100 MB, Start in rund 1 s, wenige MiB
     Speicher) läuft im regulären `test`, wie der S3-Speicher. `FileStoreContract` läuft gegen ihn.
 
+## Nachtrag: Abgleichsrunde über mehrere Läufe (#2202, 04.10.2026)
+
+Bis hierhin galt die Fortsetzung eines Stores nur im Lauf, und das Ordnergedächtnis entstand erst
+nach einem vollständigen Abgleich. Eine Bibliothek, deren Auflistung mehr kostet als das
+Anfragebudget, listete deshalb jeden Lauf dieselben ersten Ordner, bei Nextcloud wie bei SMB. Ein
+Vollabgleich ist jetzt eine **Runde**, die sich über mehrere Läufe erstrecken darf.
+
+1. **SPI.** `FilePage.checkpoint` ist eine dauerhafte, für den Kern undurchsichtige Marke je Seite;
+   `FileStore#resume(container, checkpoint)` liefert die erste Seite danach. Vertrag: Ein späterer
+   Lauf erhält jede Datei, die bis einschließlich dieser Seite nicht geliefert wurde; eine
+   fortgesetzte Seite meldet als gelistet nur Ordner, von denen noch keine Datei geliefert wurde.
+   Die Marke trägt nie ein Geheimnis und keine Adresse; der Kern behält höchstens eine Million
+   Zeichen. `FileAccessException.CheckpointExpired` lässt den Container in derselben Runde neu
+   beginnen. `FileStore#absenceProof` sagt, was eine Runde über mehrere Läufe beweist
+   (`AbsenceProof`). Stores ohne Marke (Drive, S3) bleiben unverändert: Ihre fertigen Container
+   werden wie bisher erneut gelistet, und nur ein Lauf, der alles selbst gelistet hat, gleicht ab.
+   `SecretCheckedStore` fragt vor `resume` das Geheimnis.
+2. **Persistenz.** `source_sync_state.scan_progress` (`jsonb`, nullbar) hält die Runde:
+   Kennung, Gedächtnisgrundlage, je Container Marke, Verfälle in Folge, gelistete Einträge, ob er
+   Marken gibt, und die beim Start seiner Auflistung sichtbaren Löschvermerke; dazu die Merkmale,
+   übernommenen Merkmale und ungeklärten Ordner der Runde. Fertige Container stehen weiter in
+   `completed_scope_keys`. Die Tabelle `source_sync_presence(document_id, sync_state_id, scan_id)`
+   hält, welche Dokumente die Runde gesehen hat, und fällt mit Dokument und Zustand.
+   `ScanJournal` (in `indexing.source`, weil `indexing.filesync` Spring nicht kennt) schreibt
+   Zustand und Präsenz in einer Transaktion und liest die Löschvermerke; nur das Schreiben eines
+   Vermerks bleibt am Repository, in der Transaktion der manuellen Löschung.
+3. **Sicherungsregel.** Eine Marke wird erst festgeschrieben, wenn jeder Download der Seiten bis zu
+   ihr aufgenommen oder als Fehler verbucht ist; gesichert wird am Ende eines Containers und am
+   geordneten Ende des Budgets. Präsenz, die erst eine Seite hinter der gesicherten Marke gesehen
+   hat, wird dabei nicht geschrieben: Die Seite wird erneut gelistet, und eine inzwischen gelöschte
+   Datei gälte sonst als gesehen. Jedes andere Ende (Sperre, abgelehnte Anmeldung, Fehler) schreibt
+   nichts Neues und lässt den gespeicherten Stand stehen.
+4. **Abwesenheitsbeweis.** Ein Lauf, der jeden Container selbst von der ersten bis zur letzten
+   Seite gelistet hat, gleicht ab wie bisher. Sonst entscheidet der Store:
+   - `SINGLE_RUN` (Vorgabe, Nextcloud): Die Runde endet ohne Abgleich, speichert aber das
+     Gedächtnis. Entfernt wird erst in einem Lauf, der allein alles gelistet oder per Merkmal
+     bestätigt hat. Ordner über einem gespeicherten Dokument, das die Runde nicht gesehen hat,
+     kommen nicht ins Gedächtnis; sonst bestätigte der nächste Lauf ein gelöschtes Dokument über
+     das Merkmal seines Ordners dauerhaft. Dafür schreibt auch eine solche Runde Präsenz, sobald sie
+     über Läufe reicht.
+   - `LOCATION_IDENTITY` (SMB): Abgleich gegen die Präsenz der Runde. Ein Ort, an dem in keinem
+     Lauf eine Datei war, ist unter diesem Pfad wirklich weg. Präsenz schreibt jeder Weg, der eine
+     Datei bestätigt, solange eine Runde offen ist, auch der Ereignis- und der Änderungslauf.
+   - Das Änderungsprotokoll als Beweis (`CHANGE_FEED`, SharePoint, Dropbox) ist nicht gebaut. Der
+     Abschluss der Runde liegt in `FileSync#run` nach der Liste der Container und vor dem Haken des
+     Rahmens; ein dritter Zweig kommt dort hinzu, ohne SPI oder Persistenz zu ändern.
+5. **Gedächtnis.** Das erste Merkmal, das eine Runde für einen Ordner sieht, gilt: Alles darunter
+   wurde danach gelistet. Ändert sich die Grundlage mitten in der Runde, verwirft sie ihre Merkmale.
+   Einen Ordner, den die Runde erst als unverändert übernahm und später neu listete, merkt sie
+   sich nicht, samt seinen Elternordnern: Seine Zeilen galten vor der Änderung als gesehen. Ob ein
+   Store Ordner meldet, entscheidet das Gedächtnis der Runde mit, nicht nur die Seiten des Laufs;
+   sonst überspränge eine fortgesetzte Seite ohne Ordnerangabe eine verschobene Datei, ohne ihren
+   Ort zu prüfen. Alle drei Fälle fand der Zufallstest (`FileSyncRandomizedRoundTest`) über
+   längere Folgen; `FileSyncRoundTest` hält sie einzeln fest.
+   Löschvermerke zählen je Container über die beim Start seiner Auflistung gesehene ID-Menge, nicht
+   über `created_at`; ein Vermerk, der danach kam, nimmt seine Ordner aus dem Gedächtnis, auch wenn
+   der Container schon fertig ist, und bleibt für die nächste Runde.
+6. **Reihenfolge und Fortschritt.** Offene Container mit Marke zuerst, dann offene ohne, dann solche
+   mit verfallener Marke, zuletzt fertige ohne Marke. Verfällt eine Marke, rückt ihr Container
+   hinter die übrigen; nach zwei Verfällen in Folge gilt er für diesen Lauf als nicht listbar.
+   `maxEntriesPerRun` gilt je Runde. Die Stillstandsmeldung des Rahmens entfällt für einen Lauf,
+   der eine spätere Marke festschrieb oder einen Container abschloss.
+7. **Stores.** Nextcloud und SMB gehen in sortierter Tiefensuche. Nextcloud: Die Marke ist der Pfad
+   des zuletzt gelisteten Ordners; `resume` fragt die Ordner auf diesem Pfad erneut ab (Kosten: die
+   Ordnertiefe) und listet, was in Namensreihenfolge folgt. SMB: Die Marke ist die Stelle im Baum
+   (Namen und Datei-IDs der offenen Ordner, letzter erledigter Eintrag), dazu die Datei-IDs aller
+   schon betretenen Ordner und die Befunde (nicht lesbar, zu tief). Eine Seite endet nach
+   `list-page-size` Einträgen oder geöffneten Ordnern. Ein Ordner wird beim Betreten ganz gelesen und
+   sortiert; das ersetzt das stapelweise Lesen über Seiten (Nachtrag SMB, Punkt 9).
+8. **SMB-Verknüpfungen über Läufe.** Ein Ordner gilt als Verknüpfung, wenn seine Datei-ID in der
+   Runde schon betreten wurde. Die Menge steht in der Marke (vorzeichenlos sortiert, Abstände in
+   Basis 36), deshalb ist der Schutz über die Läufe derselbe wie in einem Lauf: Jede Schleife führt
+   zu einer schon betretenen ID. Neu ist nur, dass in Namensreihenfolge der zuerst betretene Name
+   gewinnt, nicht der zuerst gelistete. Ein Ordner auf dem Weg zur Marke, der jetzt eine andere ID
+   trägt, gilt als erledigt; der neue Ordner kommt mit der nächsten Runde.
+9. **Löschregel.** `onlyTheKnownClassesDeleteDocuments` erfasst auch `@Modifying`-Abfragen von
+   `DocumentRepository`, deren Abfrage mit `delete` beginnt, unabhängig vom Namen.
+   `onlyTheRunRemovesThroughTheCleanupService` erlaubt die löschenden Methoden von
+   `StaleDocumentCleanupService` (und `VanishedDocumentReconciler#reconcile`) nur dem Laufrahmen,
+   `FileSync` und dem Confluence-Lauf.
+
+Grenzen:
+
+- SMB: Wird eine Datei oder ein Ordner während einer Runde umbenannt oder verschoben und liegt der
+  neue Ort vor der Marke, entfernt die Runde das Dokument unter dem alten Pfad, bevor der neue
+  gelistet ist. Ebenso eine Datei, die gelöscht und am selben Ort neu angelegt wird, nachdem ihr
+  Ordner gelistet war. Die Lücke dauert bis zur nächsten Runde. Die Alternative `SINGLE_RUN` hieße,
+  dass große Freigaben nie etwas entfernen.
+- SMB: Die Menge der betretenen Ordner wächst mit dem Bereich. Ab einigen hunderttausend Ordnern je
+  Bereich überschreitet die Marke die Grenze des Kerns; dann wird keine neue Marke mehr gesichert.
+- Nextcloud: Passt der bestätigende Lauf nie in ein Budget, wird aufgenommen, aber nicht entfernt;
+  das Protokoll meldet jeden Abschluss ohne Abgleich.
+- Eine Runde über mehrere Läufe schreibt Präsenz je gesehenem Dokument und liest beim Abschluss
+  die ganze Präsenz der Runde. Ein Lauf in einer Runde allein schreibt bei `SINGLE_RUN` keine.
+
+Prozesslokaler Zustand entsteht nicht: Die Runde steht in der Datenbank, die Tiefensuche eines
+Stores lebt nur im Lauf (ADR-0021 unverändert).
+
 ## Referenzen
 
 - [ADR-0017](0017-quellentypmodell-indizierung.md), [ADR-0018](0018-quellkonfiguration-in-der-bibliothek.md)

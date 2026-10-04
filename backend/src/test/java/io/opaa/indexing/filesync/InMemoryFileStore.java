@@ -377,8 +377,8 @@ public final class InMemoryFileStore implements FileStore {
   public FilePage list(FileContainer container, String continuation) throws FileAccessException {
     call("list " + container.key() + (continuation == null ? "" : " @" + continuation));
     return continuation == null
-        ? page(container, 0, true)
-        : page(container, Integer.parseInt(continuation), false);
+        ? page(container, 0, true, null)
+        : page(container, Integer.parseInt(continuation), false, null);
   }
 
   @Override
@@ -397,7 +397,7 @@ public final class InMemoryFileStore implements FileStore {
     while (start < names.size() && names.get(start).compareTo(last) <= 0) {
       start++;
     }
-    return page(container, start, true);
+    return page(container, start, true, last);
   }
 
   @Override
@@ -431,9 +431,11 @@ public final class InMemoryFileStore implements FileStore {
 
   /**
    * The page from {@code start} on; the first one of a listing or a resumption also names the
-   * unchanged and the listed folders.
+   * unchanged and the listed folders - after {@code resumedAfter} only folders none of whose files
+   * came up to it.
    */
-  private FilePage page(FileContainer container, int start, boolean reportFolders)
+  private FilePage page(
+      FileContainer container, int start, boolean reportFolders, String resumedAfter)
       throws FileAccessException {
     if (unlistable.contains(container.key())) {
       throw new FileAccessException.ContainerUnlistable(
@@ -459,6 +461,17 @@ public final class InMemoryFileStore implements FileStore {
         files.keySet().stream()
             .filter(name -> skipped.stream().noneMatch(folder -> FileSync.covers(folder, of(name))))
             .toList();
+    if (resumedAfter != null) {
+      listed
+          .keySet()
+          .removeIf(
+              folder ->
+                  files.keySet().stream()
+                      .anyMatch(
+                          name ->
+                              FileSync.covers(folder, of(name))
+                                  && name.compareTo(resumedAfter) <= 0));
+    }
     int end = Math.min(start + pageSize, names.size());
     List<FileEntry> entries = new ArrayList<>();
     for (String name : names.subList(start, end)) {
@@ -575,7 +588,7 @@ public final class InMemoryFileStore implements FileStore {
   @Override
   public void close() {}
 
-  private void call(String call) throws FileAccessException.RunEnding {
+  private synchronized void call(String call) throws FileAccessException.RunEnding {
     if (budget > 0 && meter.requests() >= budget) {
       throw RequestBudgetExhaustedException.requests(budget);
     }

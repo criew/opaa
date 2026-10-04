@@ -45,9 +45,10 @@ public interface FileStore extends AutoCloseable {
 
   /**
    * The first page after {@code checkpoint}, which an earlier run's page of {@code container} gave
-   * ({@link FilePage#checkpoint()}); later pages follow through {@link #list} as usual. It holds
+   * ({@link FilePage#checkpoint()}); later pages follow through {@link #list} as usual. They hold
    * every file the pages up to the checkpoint did not deliver, unless it lies in a reported
-   * unchanged folder. {@link #recall} is called before, as for a first page. A store that gives no
+   * unchanged folder, and name as listed only folders none of whose files came up to the
+   * checkpoint. {@link #recall} is called before, as for a first page. A store that gives no
    * checkpoint never gets here.
    *
    * @throws FileAccessException.CheckpointExpired when the checkpoint no longer applies

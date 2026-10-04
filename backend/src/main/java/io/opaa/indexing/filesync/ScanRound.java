@@ -294,11 +294,12 @@ final class ScanRound {
 
   /**
    * The orderly end of the budget: the current container keeps the last checkpoint of a page below
-   * {@code unsettledFrom} - no page from there on is fully ingested - and the round is kept.
+   * {@code unsettledFrom} - no page from there on is fully ingested - and the round is kept,
+   * without the presence first seen on those pages ({@code unsettledPaths}): they are listed again.
    *
    * @return whether this run moved the round forward
    */
-  boolean budgetSpent(int unsettledFrom) {
+  boolean budgetSpent(int unsettledFrom, Set<String> unsettledPaths) {
     if (current != null) {
       PageMark mark = null;
       for (Map.Entry<Integer, PageMark> entry : pages.headMap(unsettledFrom).entrySet()) {
@@ -320,7 +321,7 @@ final class ScanRound {
       }
     }
     spansRuns = true;
-    save();
+    save(unsettledPaths);
     return progressed;
   }
 
@@ -384,25 +385,34 @@ final class ScanRound {
 
   /** Keeps the round as it stands, with the presence this run has seen so far. */
   void save() {
+    save(Set.of());
+  }
+
+  private void save(Set<String> withheld) {
     state.recordScanProgress(
         new ScanProgress(
             scanId,
             startedAt,
+            memory.basis(),
             memory.establishedAt(),
             containers,
             memory.listedMarkers(),
             memory.carriedMarkers(),
             memory.unsettledFolders()));
-    state = journal.save(state, scanId, frame.library().getId(), newPresence());
+    state = journal.save(state, scanId, frame.library().getId(), newPresence(withheld));
   }
 
   /**
    * Notes what an event or change run confirmed while a round is open, so the round's end neither
    * removes it nor forgets its folder.
    */
-  static void confirm(ScanJournal journal, SourceSyncState state, IndexingRun frame) {
+  static void confirm(
+      ScanJournal journal, SourceSyncState state, IndexingRun frame, AbsenceProof proof) {
     ScanProgress progress = state.scanProgress();
-    if (progress == null || frame.currentPaths().isEmpty()) {
+    if (progress == null
+        || frame.currentPaths().isEmpty()
+        || (proof != AbsenceProof.LOCATION_IDENTITY
+            && progress.containers().values().stream().noneMatch(ContainerProgress::resumable))) {
       return;
     }
     journal.recordPresence(
@@ -411,14 +421,16 @@ final class ScanRound {
 
   /**
    * The present paths not yet written. Under {@link AbsenceProof#LOCATION_IDENTITY} at every save,
-   * else once the round spans runs: until then the run's own listing decides alone.
+   * else once a round that resumes from checkpoints spans runs: until then, and for a store without
+   * checkpoints, the run's own listing decides alone.
    */
-  private Set<String> newPresence() {
-    if (proof != AbsenceProof.LOCATION_IDENTITY && !spansRuns) {
+  private Set<String> newPresence(Set<String> withheld) {
+    if (proof != AbsenceProof.LOCATION_IDENTITY && !(spansRuns && resumes())) {
       return Set.of();
     }
     Set<String> fresh = new HashSet<>(frame.currentPaths());
     fresh.removeAll(present);
+    fresh.removeAll(withheld);
     present.addAll(fresh);
     return fresh;
   }

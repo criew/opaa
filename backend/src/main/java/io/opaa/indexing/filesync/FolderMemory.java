@@ -55,7 +55,8 @@ final class FolderMemory {
   /**
    * Recalls {@code memory} when it was judged under this run's size bound and formats and is
    * younger than {@link FileSyncSettings#subtreeMemoryMaxAge()}; otherwise the run lists every
-   * folder. A resumed round carries on with what its earlier runs saw ({@code progress}).
+   * folder. A resumed round carries on with what its earlier runs saw ({@code progress}); markers
+   * they judged under another basis are dropped, so their folders are listed next round.
    */
   void recall(
       SourceSyncState.SubtreeMemory memory, SourceSyncState.ScanProgress progress, Instant now) {
@@ -70,8 +71,10 @@ final class FolderMemory {
       return;
     }
     establishedAt = progress.memoryEstablishedAt() == null ? now : progress.memoryEstablishedAt();
-    progress.markers().forEach((key, markers) -> listed.put(key, new HashMap<>(markers)));
-    progress.carried().forEach((key, markers) -> carried.put(key, new HashMap<>(markers)));
+    if (basis().equals(progress.basis())) {
+      progress.markers().forEach((key, markers) -> listed.put(key, new HashMap<>(markers)));
+      progress.carried().forEach((key, markers) -> carried.put(key, new HashMap<>(markers)));
+    }
     progress.unsettled().forEach((key, paths) -> unsettled.put(key, new HashSet<>(paths)));
   }
 
@@ -103,6 +106,16 @@ final class FolderMemory {
   /** The markers {@code containerKey} was recalled this run. */
   Map<String, String> recalled(String containerKey) {
     return recalled.getOrDefault(containerKey, Map.of());
+  }
+
+  /**
+   * Whether the store reports folders for {@code containerKey}: the round holds a marker of one, or
+   * the store was recalled one - also in a run whose pages name no folder.
+   */
+  boolean reportsFolders(String containerKey) {
+    return listed.containsKey(containerKey)
+        || carried.containsKey(containerKey)
+        || !recalled(containerKey).isEmpty();
   }
 
   /** The folders a page listed; a marker the round already holds is kept. */
@@ -159,6 +172,8 @@ final class FolderMemory {
       markers.putAll(listed.getOrDefault(key, Map.of()));
       Set<String> open = new HashSet<>(unsettled.getOrDefault(key, Set.of()));
       open.addAll(deletedOutside.getOrDefault(key, Set.of()));
+      // taken as unchanged, then listed: its rows counted as seen before the change
+      open.addAll(changedDuringTheRound(key));
       markers.keySet().removeIf(folder -> open.stream().anyMatch(path -> covers(folder, path)));
       if (!markers.isEmpty()) {
         containers.put(key, markers);
@@ -167,8 +182,15 @@ final class FolderMemory {
     return new SourceSyncState.SubtreeMemory(basis(), establishedAt, containers);
   }
 
+  /** The folders of {@code key} the round both carried over unchanged and listed. */
+  private Set<String> changedDuringTheRound(String key) {
+    Set<String> both = new HashSet<>(carried.getOrDefault(key, Map.of()).keySet());
+    both.retainAll(listed.getOrDefault(key, Map.of()).keySet());
+    return both;
+  }
+
   /** What a remembered marker presumes besides the folder: the size bound and the formats. */
-  private String basis() {
+  String basis() {
     return "v2|"
         + settings.maxFileSizeBytes()
         + "|"
