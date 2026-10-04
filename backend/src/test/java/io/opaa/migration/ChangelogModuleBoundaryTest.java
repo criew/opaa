@@ -122,7 +122,12 @@ class ChangelogModuleBoundaryTest extends AbstractMigrationTest {
           Map.entry(CONNECTORS, List.of("rss_feed_state")),
           Map.entry(
               CONNECTIONS,
-              List.of("connection_profiles", "library_connections", "connector_type_policies")),
+              List.of(
+                  "connection_profiles",
+                  "library_connections",
+                  "connector_type_policies",
+                  "connection_log",
+                  "connection_log_retention_settings")),
           Map.entry(
               WORKSPACE,
               List.of(

@@ -343,6 +343,13 @@ public enum AuditEventType {
    * queried library or space, not the log itself.
    */
   PERMISSION_HISTORY_ACCESSED,
+  /**
+   * One read of the connection log, rejected attempts included (ADR-0041, Entscheidung 7). The
+   * object is the connection log itself; {@code after} carries the time range and filters.
+   */
+  CONNECTION_LOG_ACCESSED,
+  /** The retention period of the connection log changed; before/after carry both values. */
+  CONNECTION_LOG_RETENTION_CHANGED,
 
   // Lokale Konten (ADR-0033, Entscheidung 13)
   /**

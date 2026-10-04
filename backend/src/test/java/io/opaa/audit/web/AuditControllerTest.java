@@ -86,6 +86,7 @@ class AuditControllerTest {
           "listAuditEventsByEventType",
           "listAuditEventsByCorrelation",
           "listAccessAsOf",
+          "listConnectionLog",
           "requestAuditIncidentScope",
           "approveAuditIncidentScope",
           "listAuditEventsByIncidentScope");

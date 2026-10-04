@@ -107,6 +107,9 @@ class SchemaPortabilityMigrationTest extends AbstractMigrationTest {
             "chat_note_items_set_organization search_path=pg_catalog, " + SCHEMA + ", pg_temp",
             "chat_personal_marks_set_organization search_path=pg_catalog, " + SCHEMA + ", pg_temp",
             "opaa_audit_delete_expired_partitions search_path=pg_catalog, " + SCHEMA + ", pg_temp",
+            "opaa_connection_log_delete_expired_partitions search_path=pg_catalog, "
+                + SCHEMA
+                + ", pg_temp",
             "opaa_diagnostic_context_delete_expired_partitions search_path=pg_catalog, "
                 + SCHEMA
                 + ", pg_temp",
@@ -118,6 +121,7 @@ class SchemaPortabilityMigrationTest extends AbstractMigrationTest {
   void retentionFunctionsRunAgainstTheTargetSchema() throws SQLException {
     strings("SELECT * FROM opaa_audit_delete_expired_partitions()");
     strings("SELECT * FROM opaa_diagnostic_context_delete_expired_partitions()");
+    strings("SELECT * FROM opaa_connection_log_delete_expired_partitions()");
 
     assertThat(strings("SELECT last_run_month::text FROM audit_retention_settings")).hasSize(1);
   }

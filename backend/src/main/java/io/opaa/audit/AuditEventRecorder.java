@@ -37,6 +37,9 @@ public class AuditEventRecorder {
    */
   private static final String AUDIT_LOG_SELF_OBJECT_ID = "audit_log";
 
+  /** {@code object_id} of every read of the connection log - a protocol like {@code audit_log}. */
+  private static final String CONNECTION_LOG_OBJECT_ID = "connection_log";
+
   private final AuditLogService auditLogService;
   private final AuditActorPseudonymService pseudonymService;
   private final JsonMapper jsonMapper = JsonMapper.builder().build();
@@ -259,6 +262,36 @@ public class AuditEventRecorder {
             AuditEventType.PERMISSION_HISTORY_ACCESSED,
             objectType,
             objectId == null ? "unknown" : objectId.toString(),
+            null,
+            null,
+            toJson(scope),
+            outcome,
+            reason,
+            null));
+  }
+
+  /**
+   * The entry for one read of the connection log (ADR-0041, Entscheidung 7), rejected attempts
+   * included; the counterpart of {@link #recordAuditLogAccess} for that protocol, with the same
+   * {@code Propagation.NOT_SUPPORTED}. The object is the connection log itself, {@code scope} lands
+   * in {@code after}.
+   */
+  @Transactional(propagation = Propagation.NOT_SUPPORTED)
+  public void recordConnectionLogAccess(
+      UUID organizationId,
+      UUID actorUserId,
+      Map<String, Object> scope,
+      AuditOutcome outcome,
+      String reason) {
+    String actorRef = pseudonymService.pseudonymFor(actorUserId, organizationId).toString();
+    auditLogService.record(
+        AuditLogEntry.withoutSubject(
+            organizationId,
+            ActorKind.USER,
+            actorRef,
+            AuditEventType.CONNECTION_LOG_ACCESSED,
+            AuditObjectType.AUDIT_LOG,
+            CONNECTION_LOG_OBJECT_ID,
             null,
             null,
             toJson(scope),
