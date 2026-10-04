@@ -2,6 +2,9 @@ import { http, HttpResponse } from 'msw'
 import type {
   ConnectionProfileCreateRequest,
   ConnectionProfileOption,
+  ConnectionProfileRequestCreateRequest,
+  ConnectionProfileRequestResolveRequest,
+  ConnectionProfileRequestResponse,
   ConnectionProfileResponse,
   ConnectionProfileSupport,
   ConnectionProfileUpdateRequest,
@@ -11,7 +14,12 @@ import type {
   ConnectorTypeStateResponse,
   OwnAddressStock,
 } from '../types/api'
-import { mockConnectionProfiles, resetMockConnectionProfiles } from './connectionProfileFixtures'
+import {
+  mockConnectionProfileRequests,
+  mockConnectionProfiles,
+  resetMockConnectionProfileRequests,
+  resetMockConnectionProfiles,
+} from './connectionProfileFixtures'
 
 let lockedTypes = new Set<string>()
 // The types switched to "Nur über Zugänge", with the choice for their own-address libraries.
@@ -19,6 +27,7 @@ let requiredTypes = new Map<string, OwnAddressStock>()
 
 export function resetConnectionProfileMockState() {
   resetMockConnectionProfiles()
+  resetMockConnectionProfileRequests()
   lockedTypes = new Set<string>()
   requiredTypes = new Map<string, OwnAddressStock>()
 }
@@ -146,6 +155,16 @@ export const connectionProfileHandlers = [
       locked: false,
       createdAt: now,
       updatedAt: now,
+    }
+    if (body.fulfillsRequestId) {
+      const wish = mockConnectionProfileRequests.find((r) => r.id === body.fulfillsRequestId)
+      if (!wish) return requestNotFound()
+      if (wish.state !== 'OPEN') return requestNotOpen()
+      Object.assign(wish, {
+        state: 'DONE',
+        resolvedAt: now,
+        profile: { id: created.id, name: created.name },
+      })
     }
     mockConnectionProfiles.push(created)
     return HttpResponse.json(created, { status: 201 })
@@ -343,4 +362,86 @@ export const connectionProfileHandlers = [
       })
     return HttpResponse.json(options)
   }),
+
+  // Connection profile requests ("Zugangswunsch"): the same open request answers 200, a new one 201.
+  http.post('/api/v1/connection-profile-requests', async ({ request }) => {
+    const body = (await request.json()) as ConnectionProfileRequestCreateRequest
+    const serverUrl = body.serverUrl.trim().replace(/\/+$/, '').toLowerCase()
+    if (!/^https?:\/\/[^/]+/.test(serverUrl)) {
+      return HttpResponse.json(
+        {
+          error:
+            'serverUrl muss eine absolute Adresse mit Host sein, beginnend mit https://, http://',
+          status: 400,
+        },
+        { status: 400 },
+      )
+    }
+    const open = mockConnectionProfileRequests.find(
+      (r) => r.state === 'OPEN' && r.sourceType === body.sourceType && r.serverUrl === serverUrl,
+    )
+    if (open) return HttpResponse.json(open)
+    const created: ConnectionProfileRequestResponse = {
+      id: `connection-profile-request-${crypto.randomUUID().slice(0, 8)}`,
+      sourceType: body.sourceType,
+      serverUrl,
+      reason: body.reason?.trim() || null,
+      state: 'OPEN',
+      requestedByName: 'Dev User',
+      createdAt: new Date().toISOString(),
+      resolvedAt: null,
+      profile: null,
+      answer: null,
+    }
+    mockConnectionProfileRequests.push(created)
+    return HttpResponse.json(created, { status: 201 })
+  }),
+
+  http.get('/api/v1/me/connection-profile-requests', () =>
+    HttpResponse.json([...mockConnectionProfileRequests].reverse()),
+  ),
+
+  http.get('/api/v1/admin/connection-profile-requests', ({ request }) => {
+    const params = new URL(request.url).searchParams
+    const state = params.get('state')
+    const page = Number(params.get('page') ?? 0)
+    const size = Number(params.get('size') ?? 25)
+    const matching = mockConnectionProfileRequests.filter((r) => !state || r.state === state)
+    return HttpResponse.json({
+      items: matching.slice(page * size, (page + 1) * size),
+      total: matching.length,
+      page,
+      size,
+    })
+  }),
+
+  http.put('/api/v1/admin/connection-profile-requests/:requestId', async ({ params, request }) => {
+    const wish = mockConnectionProfileRequests.find((r) => r.id === params.requestId)
+    if (!wish) return requestNotFound()
+    if (wish.state !== 'OPEN') return requestNotOpen()
+    const body = (await request.json()) as ConnectionProfileRequestResolveRequest
+    const profile = mockConnectionProfiles.find((p) => p.id === body.profileId)
+    Object.assign(wish, {
+      state: body.state,
+      resolvedAt: new Date().toISOString(),
+      answer: body.answer?.trim() || null,
+      profile: profile ? { id: profile.id, name: profile.name } : null,
+    })
+    return HttpResponse.json(wish)
+  }),
 ]
+
+function requestNotFound() {
+  return HttpResponse.json({ error: 'Zugangswunsch nicht gefunden', status: 404 }, { status: 404 })
+}
+
+function requestNotOpen() {
+  return HttpResponse.json(
+    {
+      error: 'Der Zugangswunsch ist bereits erledigt',
+      status: 409,
+      code: 'CONNECTION_PROFILE_REQUEST_NOT_OPEN',
+    },
+    { status: 409 },
+  )
+}

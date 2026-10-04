@@ -1,7 +1,7 @@
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { renderWithProviders } from '../../test/test-utils'
+import { renderWithProviders, waitForDialogClosed } from '../../test/test-utils'
 import { useLibraryStore } from '../../stores/libraryStore'
 import ConfluenceWebhookSection from './ConfluenceWebhookSection'
 
@@ -92,12 +92,7 @@ describe('ConfluenceWebhookSection (#1140)', () => {
     await screen.findByRole('dialog', { name: 'Geheimnis neu erzeugen?' })
     await user.click(screen.getByRole('button', { name: 'Abbrechen' }))
     expect(mockGenerate).not.toHaveBeenCalled()
-    // MUI hides the page behind an open dialog; wait for the closing transition to finish
-    await waitFor(() =>
-      expect(
-        screen.queryByRole('dialog', { name: 'Geheimnis neu erzeugen?' }),
-      ).not.toBeInTheDocument(),
-    )
+    await waitForDialogClosed()
 
     await user.click(screen.getByRole('button', { name: 'Geheimnis neu erzeugen' }))
     await user.click(await screen.findByRole('button', { name: 'Neu erzeugen' }))

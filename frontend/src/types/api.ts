@@ -189,6 +189,15 @@ export type SourceChangeRejectionCategory = components['schemas']['SourceChangeR
 export type ConnectionProfileOption = components['schemas']['ConnectionProfileOption']
 export type ConnectionProfileRef = components['schemas']['ConnectionProfileRef']
 export type PersonCount = components['schemas']['PersonCount']
+export type ConnectionProfileRequestState = components['schemas']['ConnectionProfileRequestState']
+export type ConnectionProfileRequestCreateRequest =
+  components['schemas']['ConnectionProfileRequestCreateRequest']
+export type ConnectionProfileRequestResolveRequest =
+  components['schemas']['ConnectionProfileRequestResolveRequest']
+export type ConnectionProfileRequestResponse =
+  components['schemas']['ConnectionProfileRequestResponse']
+export type ConnectionProfileRequestPageResponse =
+  components['schemas']['ConnectionProfileRequestPageResponse']
 export type ConnectorLockRequest = components['schemas']['ConnectorLockRequest']
 export type SourceFreeze = components['schemas']['SourceFreeze']
 export type SourceBlock = components['schemas']['SourceBlock']

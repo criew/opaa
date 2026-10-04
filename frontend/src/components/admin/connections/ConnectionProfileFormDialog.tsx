@@ -15,6 +15,7 @@ import type {
   ConnectionAuthMethod,
   ConnectionOwnership,
   ConnectionProfileImpactResponse,
+  ConnectionProfileRequestResponse,
   ConnectionProfileResponse,
   ConnectionProfileUpdateRequest,
   ProfileDefaultKey,
@@ -120,6 +121,8 @@ interface ConnectionProfileFormDialogProps {
   open: boolean
   /** The profile being edited; `null` creates a new one. */
   profile: ConnectionProfileResponse | null
+  /** A request the new profile serves: presets type and address, resolved on saving. */
+  fromRequest?: ConnectionProfileRequestResponse | null
   sourceTypes: SourceTypeDescriptor[]
   /** Whether the answer for `sourceTypes` is in, successful or not. */
   sourceTypesLoaded: boolean
@@ -132,20 +135,28 @@ interface ConnectionProfileFormDialogProps {
  * without profiles stay visible with their reason. Sign-ins, ownerships, the address field and one
  * field per declared default follow the type's description; a fixed address asks for nothing. An
  * edit sends every field back, so it waits for that description - without it the defaults would be
- * lost. An edit that reaches the libraries on the profile shows its preview first - how many, which
- * ones their connector refuses and what is discarded - and saves only on a second click; a change
- * that discards secrets asks once more, naming the connections and libraries affected.
+ * lost. Created for a request, type and address start from it and saving resolves the request; a
+ * new profile is created without a preview. An edit that may reach the libraries on the profile
+ * shows its preview first - how many, which ones their connector refuses - and saves only on a
+ * second click; a change that discards secrets asks once more, as the server decides.
  */
 export default function ConnectionProfileFormDialog({
   open,
   profile,
+  fromRequest = null,
   sourceTypes,
   sourceTypesLoaded,
   onClose,
   onSaved,
 }: ConnectionProfileFormDialogProps) {
-  const [sourceType, setSourceType] = useState<string | null>(profile?.sourceType ?? null)
-  const [draft, setDraft] = useState<Draft>(() => draftFrom(profile))
+  const [sourceType, setSourceType] = useState<string | null>(
+    profile?.sourceType ?? fromRequest?.sourceType ?? null,
+  )
+  const [draft, setDraft] = useState<Draft>(() =>
+    fromRequest && !profile
+      ? { ...draftFrom(null), serverUrl: fromRequest.serverUrl }
+      : draftFrom(profile),
+  )
   const [secret, setSecret] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -203,7 +214,11 @@ export default function ConnectionProfileFormDialog({
     if (profile) {
       return updateConnectionProfile(profile.id, { ...fields(), confirmDiscard })
     }
-    return createConnectionProfile({ ...fields(), sourceType: sourceType as string })
+    return createConnectionProfile({
+      ...fields(),
+      sourceType: sourceType as string,
+      ...(fromRequest ? { fulfillsRequestId: fromRequest.id } : {}),
+    })
   }
 
   const update: ConnectionProfileUpdateRequest | null = complete && profile ? fields() : null
@@ -283,6 +298,12 @@ export default function ConnectionProfileFormDialog({
             Speichern verloren. Bitte die Seite neu laden und erneut bearbeiten.
           </Alert>
         )}
+        {fromRequest && !isEdit && (
+          <Alert severity="info" sx={{ mb: 2 }} data-testid="connection-profile-from-request">
+            Für den Zugangswunsch von {fromRequest.requestedByName}. Beim Speichern wird der Wunsch
+            erledigt und {fromRequest.requestedByName} benachrichtigt.
+          </Alert>
+        )}
         <Stack spacing={2} sx={{ mt: 1 }}>
           {!isEdit && (
             <>
@@ -303,7 +324,9 @@ export default function ConnectionProfileFormDialog({
                   disabledReason:
                     type.profileSupport === 'FORBIDDEN'
                       ? 'Für diese Quellart sind in dieser Version keine Zugänge möglich.'
-                      : null,
+                      : fromRequest && fromRequest.sourceType !== type.type
+                        ? 'Der Zugangswunsch gilt für eine andere Quellart.'
+                        : null,
                 }))}
               />
             </>

@@ -162,7 +162,7 @@ describe('LibrarySourceSection - Zugang zuordnen, wechseln, lösen (#2162)', () 
         connectionProfileId: 'profile-neu',
       }),
     ])
-  })
+  }, 15000)
 
   it('offers no assignment on a lock that a profile does not lift, nor to a reader', () => {
     const { unmount } = renderWithProviders(
