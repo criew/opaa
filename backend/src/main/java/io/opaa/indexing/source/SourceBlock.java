@@ -9,10 +9,12 @@ import java.util.Objects;
  *
  * @param responsible the German name of who is in charge ("Systemverwaltung", "Verwaltende der
  *     Bibliothek")
+ * @param action what {@code responsible} does to lift it, {@code null} where only the system
+ *     administration can
  * @param contentDeletedOn the day from which the content is erased, {@code null} where none is set
  */
 public record SourceBlock(
-    Reason reason, String responsible, String notice, LocalDate contentDeletedOn) {
+    Reason reason, String responsible, String notice, Action action, LocalDate contentDeletedOn) {
 
   public SourceBlock {
     Objects.requireNonNull(reason, "reason");
@@ -20,8 +22,23 @@ public record SourceBlock(
     Objects.requireNonNull(notice, "notice");
   }
 
+  /** A block no action lifts but the system administration's. */
   public SourceBlock(Reason reason, String responsible, String notice) {
-    this(reason, responsible, notice, null);
+    this(reason, responsible, notice, null, null);
+  }
+
+  public SourceBlock(Reason reason, String responsible, String notice, Action action) {
+    this(reason, responsible, notice, action, null);
+  }
+
+  /** What lifts a block, offered where the block names it. */
+  public enum Action {
+    /** The owner of a private library connects her account anew ("Verbundene Konten"). */
+    CONNECT_OWN_ACCOUNT,
+    /** The library's managers enter its secret anew or correct its address. */
+    EDIT_SOURCE,
+    /** The library's managers - or the owner of a private library - assign it to a profile. */
+    ASSIGN_PROFILE
   }
 
   /**

@@ -1,6 +1,7 @@
 package io.opaa.library.web;
 
 import io.opaa.api.dto.SourceBlock;
+import io.opaa.api.dto.SourceBlockAction;
 import io.opaa.api.dto.SourceBlockReason;
 
 /** Maps the block of a library's source onto the generated {@code SourceBlock}, notice included. */
@@ -14,6 +15,7 @@ final class SourceBlockResponseMapper {
     }
     return new SourceBlock(SourceBlockReason.valueOf(block.reason().name()), block.responsible())
         .notice(block.notice())
+        .action(block.action() == null ? null : SourceBlockAction.valueOf(block.action().name()))
         .contentDeletedOn(
             block.contentDeletedOn() == null ? null : block.contentDeletedOn().toString());
   }
