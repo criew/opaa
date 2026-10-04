@@ -1,4 +1,9 @@
-import type { AssetType, CatalogEntryResponse, CatalogEntryStatus } from '../../types/api'
+import type {
+  AssetType,
+  CatalogEntryResponse,
+  CatalogEntryStatus,
+  SourceBlock,
+} from '../../types/api'
 import { assetTypeDefinition } from './assetTypeRegistry'
 
 /** A state that needs attention; READY carries none. */
@@ -60,6 +65,35 @@ export function responsibleParty(source: {
   return { label: source.ownerLabel ?? (group ? 'eine Gruppe' : 'eine Person'), group }
 }
 
+/** The short form of a source block for a tile; the library's source tab carries the whole notice. */
+export function sourceBlockNote(block: SourceBlock): string {
+  const short = (() => {
+    switch (block.reason) {
+      case 'TYPE_LOCKED':
+      case 'PROFILE_LOCKED':
+      case 'PROFILE_REQUIRED':
+        return 'Gesperrt – Inhalt wird nicht mehr aktualisiert'
+      case 'ACCESS_REMOVED':
+        return 'Zugang entfernt – Inhalt wird nicht mehr aktualisiert'
+      case 'TARGET_OUTSIDE_PROFILE':
+        return 'Adresse außerhalb des Zugangs – Inhalt wird nicht mehr aktualisiert'
+      case 'NOT_CONNECTED':
+        return 'Verbindung getrennt – Inhalt wird nicht mehr aktualisiert'
+      case 'EXPIRED':
+        return 'Anmeldung abgelaufen – Inhalt wird nicht mehr aktualisiert'
+      case 'DORMANT':
+        return 'Ruhend – Inhalt wird nicht aktualisiert'
+      case 'OWNER_DEACTIVATED':
+        return 'Konto deaktiviert – Inhalt wird nach Ablauf der Löschfrist gelöscht'
+      default: {
+        const unknown: never = block.reason
+        throw new Error(`Unknown source block reason ${String(unknown)}`)
+      }
+    }
+  })()
+  return `${short} (zuständig: ${block.responsible})`
+}
+
 /** The tile of a catalog entry - the fullest a tile gets. */
 export function tileFromCatalogEntry(entry: CatalogEntryResponse): AssetTileData {
   const status = ownStatus(entry)
@@ -79,9 +113,8 @@ export function tileFromCatalogEntry(entry: CatalogEntryResponse): AssetTileData
     updatedAt: entry.knowledgeLibrary?.lastIndexedAt ?? entry.updatedAt ?? null,
     status: status === 'READY' ? null : status,
     successionOpen: Boolean(entry.succession),
-    // the short form of the notice; the library's source tab carries the whole of it
     note: entry.knowledgeLibrary?.sourceBlock
-      ? `Gesperrt – Inhalt wird nicht mehr aktualisiert (zuständig: ${entry.knowledgeLibrary.sourceBlock.responsible})`
+      ? sourceBlockNote(entry.knowledgeLibrary.sourceBlock)
       : null,
   }
 }

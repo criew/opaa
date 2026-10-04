@@ -448,3 +448,116 @@ describe('LibrarySourceSection - Zugang zuordnen, wechseln, lösen (#2162)', () 
     ).toBeVisible()
   })
 })
+
+describe('LibrarySourceSection - verbundenes Konto der Besitzerin', () => {
+  const nextcloud = { name: 'Meine Ablage', sourceType: 'NEXTCLOUD' }
+  const expiredNotice =
+    'Abgelaufen: Die Anmeldung beim Zugang „Zugang Nextcloud intern“ ist abgelaufen oder wurde vom Anbieter abgelehnt. Die Besitzerin verbindet ihr Konto auf der Seite „Verbundene Konten“ neu.'
+
+  function overviewWith(usedByLibraryId: string) {
+    return {
+      accounts: [
+        {
+          profileId: 'profile-1',
+          profileName: 'Zugang Nextcloud intern',
+          authMethod: 'PERSONAL_SECRET',
+          secretForm: 'USERNAME_AND_PASSWORD',
+          state: 'EXPIRED',
+          accountLabel: 'avogt',
+          released: true,
+          reconnectable: true,
+          connectedAt: '2026-09-20T08:00:00Z',
+          usedBy: [{ id: usedByLibraryId, name: 'Meine Ablage' }],
+        },
+      ],
+      connectable: [],
+      missingAccess: { responsible: 'Systemverwaltung', text: '…' },
+    }
+  }
+
+  it('leads the owner of a private library to "Verbundene Konten" when her account expired', async () => {
+    server.use(
+      http.get('/api/v1/me/connected-accounts', () => HttpResponse.json(overviewWith('library-1'))),
+    )
+    renderWithProviders(
+      <LibrarySourceSection
+        libraryId="library-1"
+        library={{
+          ...nextcloud,
+          sourceBlock: {
+            reason: 'EXPIRED',
+            responsible: 'Besitzerin der Bibliothek',
+            notice: expiredNotice,
+          },
+        }}
+        canEditSource
+      />,
+      { withRouter: true },
+    )
+
+    const notice = screen.getByTestId('source-lock-notice')
+    expect(notice).toHaveTextContent(expiredNotice)
+    expect(
+      await within(notice).findByRole('link', { name: 'Konto neu verbinden' }),
+    ).toHaveAttribute('href', '/settings/accounts')
+  })
+
+  it('offers no account action for a library that does not run on the own account', async () => {
+    let asked = false
+    server.use(
+      http.get('/api/v1/me/connected-accounts', () => {
+        asked = true
+        return HttpResponse.json(overviewWith('another-library'))
+      }),
+    )
+    renderWithProviders(
+      <LibrarySourceSection
+        libraryId="library-1"
+        library={{
+          ...nextcloud,
+          sourceBlock: {
+            reason: 'NOT_CONNECTED',
+            responsible: 'Verwaltende der Bibliothek',
+            notice: 'Verbindung getrennt: Für den Zugang sind keine Zugangsdaten hinterlegt.',
+          },
+        }}
+        canEditSource
+      />,
+      { withRouter: true },
+    )
+
+    await waitFor(() => expect(asked).toBe(true))
+    expect(
+      within(screen.getByTestId('source-lock-notice')).queryByRole('link'),
+    ).not.toBeInTheDocument()
+  })
+
+  it.each(['OWNER_DEACTIVATED', 'DORMANT'] as const)(
+    'shows the notice of %s without an action and without asking for accounts',
+    (reason) => {
+      let asked = false
+      server.use(
+        http.get('/api/v1/me/connected-accounts', () => {
+          asked = true
+          return HttpResponse.json(overviewWith('library-1'))
+        }),
+      )
+      renderWithProviders(
+        <LibrarySourceSection
+          libraryId="library-1"
+          library={{
+            ...nextcloud,
+            sourceBlock: { reason, responsible: 'Systemverwaltung', notice: `Hinweis ${reason}` },
+          }}
+          canEditSource
+        />,
+        { withRouter: true },
+      )
+
+      const notice = screen.getByTestId('source-lock-notice')
+      expect(notice).toHaveTextContent(`Hinweis ${reason}`)
+      expect(within(notice).queryByRole('button')).not.toBeInTheDocument()
+      expect(asked).toBe(false)
+    },
+  )
+})
