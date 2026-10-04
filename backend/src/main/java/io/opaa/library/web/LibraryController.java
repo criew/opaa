@@ -34,6 +34,7 @@ import io.opaa.indexing.job.IndexingRunDetail;
 import io.opaa.indexing.job.IndexingStatusView;
 import io.opaa.indexing.job.JobStatus;
 import io.opaa.indexing.source.DocumentIndexingService;
+import io.opaa.indexing.source.RunFailureCategory;
 import io.opaa.indexing.source.SourceConnectorRegistry;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.LibraryFolderService;
@@ -397,9 +398,12 @@ public class LibraryController {
             + " übersprungen, "
             + job.getDocumentsFailed()
             + " fehlgeschlagen";
-    return job.isIncomplete()
-        ? base + " — unvollständig (Anfragebudget erschöpft), der nächste Lauf setzt fort"
-        : base;
+    if (!job.isIncomplete()) {
+      return base;
+    }
+    return RunFailureCategory.QUOTA_EXHAUSTED.name().equals(job.getFailureCategory())
+        ? base + " — unvollständig: Speicherkontingent Ihrer privaten Bibliotheken erschöpft"
+        : base + " — unvollständig (Anfragebudget erschöpft), der nächste Lauf setzt fort";
   }
 
   private static IndexingRunMetrics toIndexingRunMetrics(IndexingRunCost metrics) {

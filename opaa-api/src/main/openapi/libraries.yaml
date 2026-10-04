@@ -900,8 +900,203 @@ paths:
         "503":
           $ref: "#/components/responses/ServiceUnavailable"
 
+  /api/v1/me/private-storage:
+    get:
+      operationId: getMyPrivateStorage
+      tags: [library]
+      summary: >
+        The caller's own storage use across all her private libraries and the house-wide limit
+        it is held against (#2166). Only the person herself reads her use; no other operation
+        answers it for a person.
+      responses:
+        "200":
+          description: Own use and the limit in force
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PrivateStorageUsageResponse"
+
+  /api/v1/admin/private-libraries/quota:
+    get:
+      operationId: getPrivateStorageQuota
+      tags: [library]
+      summary: >
+        Reads the house-wide storage quota across all private libraries of a person (system
+        admin only, #2166): the value in force, the configured default and whether the
+        administration set its own.
+      responses:
+        "200":
+          description: Current quota
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PrivateStorageQuotaResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    put:
+      operationId: updatePrivateStorageQuota
+      tags: [library]
+      summary: >
+        Sets the house-wide storage quota across all private libraries of a person (system admin
+        only, #2166); quotaBytes null returns to the configured default, 0 means unlimited. Takes
+        effect with the next document a run takes in; nothing already stored is removed.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PrivateStorageQuotaRequest"
+      responses:
+        "200":
+          description: Quota updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PrivateStorageQuotaResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/admin/private-libraries/summary:
+    get:
+      operationId: getPrivateStorageSummary
+      tags: [library]
+      summary: >
+        The private libraries of the caller's organization in sums only (system admin only,
+        #2166): the storage they occupy in total and per connection profile admitting persons,
+        and how many of their runs ended in each run category within the last runWindowDays days.
+        Every number rests on persons and is masked by the minimum group size (MaskedNumber); no
+        answer names a person, a library or the use of one person.
+      responses:
+        "200":
+          description: Masked sums
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PrivateStorageSummaryResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
 components:
   schemas:
+    PrivateStorageUsageResponse:
+      type: object
+      required: [usedBytes, quotaBytes]
+      properties:
+        usedBytes:
+          type: integer
+          format: int64
+          description: The bytes the caller's private libraries occupy together.
+        quotaBytes:
+          type: integer
+          format: int64
+          description: The limit in force across all of them; 0 means unlimited.
+
+    PrivateStorageQuotaRequest:
+      type: object
+      properties:
+        quotaBytes:
+          type: integer
+          format: int64
+          minimum: 0
+          nullable: true
+          description: >
+            The house-wide limit in bytes; 0 means unlimited, null (or absent) returns to the
+            configured default.
+
+    PrivateStorageQuotaResponse:
+      type: object
+      required: [quotaBytes, defaultQuotaBytes, overridden]
+      properties:
+        quotaBytes:
+          type: integer
+          format: int64
+          description: The limit in force; 0 means unlimited.
+        defaultQuotaBytes:
+          type: integer
+          format: int64
+          description: >
+            The configured default (OPAA_LIBRARY_PRIVATE_STORAGE_QUOTA_BYTES) that applies while
+            the administration has set no value; 0 means unlimited.
+        overridden:
+          type: boolean
+          description: Whether the administration set its own value.
+
+    MaskedNumber:
+      type: object
+      description: >
+        A number resting on persons as the administration sees it (ADR-0036, minimum group size
+        N): value when it may be told exactly; else fewerThanPersons = N when it rests on fewer
+        than N persons, zero included; neither where it is a part that could be set off against
+        another number of the same answer.
+      properties:
+        value:
+          type: integer
+          format: int64
+          nullable: true
+        fewerThanPersons:
+          type: integer
+          format: int32
+          nullable: true
+          example: 5
+
+    PrivateStorageProfileSum:
+      type: object
+      required: [profileId, name, usedBytes]
+      properties:
+        profileId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        usedBytes:
+          $ref: "#/components/schemas/MaskedNumber"
+
+    PrivateStorageRunEnds:
+      type: object
+      required: [category, runs]
+      properties:
+        category:
+          type: string
+          description: A run category (failureCategory of an indexing run), such as QUOTA_EXHAUSTED.
+          example: QUOTA_EXHAUSTED
+        runs:
+          $ref: "#/components/schemas/MaskedNumber"
+
+    PrivateStorageSummaryResponse:
+      type: object
+      required: [quotaBytes, owners, usedBytes, profiles, runWindowDays, runEnds]
+      properties:
+        quotaBytes:
+          type: integer
+          format: int64
+          description: The limit in force; 0 means unlimited.
+        owners:
+          $ref: "#/components/schemas/MaskedNumber"
+        usedBytes:
+          $ref: "#/components/schemas/MaskedNumber"
+        profiles:
+          type: array
+          description: >
+            Every connection profile admitting persons with the storage its private libraries
+            occupy - a part of usedBytes, exact only where both its owners and the owners of all
+            other private libraries reach N, and only as long as what the exact parts leave over
+            rests on at least N persons (a rest of none counts as few).
+          items:
+            $ref: "#/components/schemas/PrivateStorageProfileSum"
+        runWindowDays:
+          type: integer
+          format: int32
+          example: 30
+        runEnds:
+          type: array
+          description: >
+            One entry per run category, also for none: how many runs of private libraries ended
+            with it - exact only where both the owners concerned and all other owners reach N.
+          items:
+            $ref: "#/components/schemas/PrivateStorageRunEnds"
+
     LibraryRequest:
       type: object
       required: [name, sourceType]

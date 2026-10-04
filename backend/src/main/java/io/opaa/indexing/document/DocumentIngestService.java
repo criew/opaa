@@ -14,10 +14,12 @@ import io.opaa.indexing.attachment.AttachmentLimits;
 import io.opaa.indexing.attachment.AttachmentSource;
 import io.opaa.indexing.chunk.SourceChunkMetadataKeys;
 import io.opaa.indexing.chunk.VectorChunkStore;
+import io.opaa.indexing.job.PersonalQuotaExhaustedException;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.LibraryStorageQuotaService;
+import io.opaa.knowledge.QuotaVerdict;
 import io.opaa.knowledge.SourceDocumentContext;
 import io.opaa.knowledge.SourceType;
 import io.opaa.metadata.ChunkContextPrefix;
@@ -147,12 +149,15 @@ public class DocumentIngestService {
    * is never re-inserted; not {@code @Transactional}, so that row stays visible to the attachment
    * path and to a concurrent delete while chunks are embedded. A non-{@code null} {@code
    * attachmentAccess} turns every discovered attachment into a child {@code Document} (ADR-0022).
+   * The quota check and the save of the row it admits run under the library's {@link
+   * LibraryStorageQuotaService#holdIntake}.
    *
    * @return {@code PROCESSED} once the row is {@code INDEXED} with its new chunks; {@code SKIPPED}
    *     for unchanged content and for a row that vanished meanwhile; otherwise the rejection or
    *     failure {@link DocumentIngestResult} names
    * @throws IOException when the content cannot be read; an exception out of parsing, embedding or
    *     the final update is rethrown after the row was marked {@code FAILED}
+   * @throws PersonalQuotaExhaustedException when the owner of a private library has no room left
    */
   public DocumentIngestResult ingest(DocumentIngest ingest, AttachmentAccess attachmentAccess)
       throws IOException {
@@ -180,48 +185,53 @@ public class DocumentIngestService {
     Selection selection;
     Document doc;
     boolean replacingExistingChunks;
-    if (ingest.existingRow()) {
-      if (existing.isEmpty()) {
-        log.warn("Document {} no longer exists, skipping", filePath);
-        metrics.recordSkipped();
-        return DocumentIngestResult.SKIPPED;
+    try (LibraryStorageQuotaService.IntakeHold hold = storageQuotaService.holdIntake(library)) {
+      if (ingest.existingRow()) {
+        if (existing.isEmpty()) {
+          log.warn("Document {} no longer exists, skipping", filePath);
+          metrics.recordSkipped();
+          return DocumentIngestResult.SKIPPED;
+        }
+        doc = existing.get();
+        replacingExistingChunks = true;
+        selection = select(ingest, doc);
+      } else if (existing.isPresent()) {
+        Document existingDoc = existing.get();
+        if (checksum.equals(existingDoc.getChecksum())
+            && existingDoc.getStatus() == DocumentStatus.INDEXED) {
+          refreshProvenance(existingDoc, ingest, checksum);
+          log.info("Skipping unchanged document (same checksum): {}", filePath);
+          metrics.recordSkipped();
+          return DocumentIngestResult.SKIPPED;
+        }
+        // The row is still present when the quota is checked, so the check measures the size
+        // delta: the full new size against a usedBytes that still includes the old size would
+        // double-count the document being replaced.
+        long previousSize = existingDoc.getFileSize() == null ? 0L : existingDoc.getFileSize();
+        DocumentIngestResult rejected = admit(library, byteSize - previousSize, filePath);
+        if (rejected != null) {
+          return rejected;
+        }
+        selection = select(ingest, existingDoc);
+        replacingExistingChunks = true;
+        existingDoc.setFileName(fileName);
+        existingDoc.setContentType(selection.contentType());
+        existingDoc.setFileSize(byteSize);
+        doc = documentRepository.save(withProvenance(existingDoc, ingest));
+      } else {
+        DocumentIngestResult rejected = admit(library, byteSize, filePath);
+        if (rejected != null) {
+          return rejected;
+        }
+        selection = select(ingest, null);
+        replacingExistingChunks = false;
+        Document created =
+            new Document(
+                fileName, filePath, selection.contentType(), byteSize, ingest.sourceType());
+        created.setLibraryId(library.getId());
+        created.setOrganizationId(library.getOrganizationId());
+        doc = documentRepository.save(withProvenance(created, ingest));
       }
-      doc = existing.get();
-      replacingExistingChunks = true;
-      selection = select(ingest, doc);
-    } else if (existing.isPresent()) {
-      Document existingDoc = existing.get();
-      if (checksum.equals(existingDoc.getChecksum())
-          && existingDoc.getStatus() == DocumentStatus.INDEXED) {
-        refreshProvenance(existingDoc, ingest, checksum);
-        log.info("Skipping unchanged document (same checksum): {}", filePath);
-        metrics.recordSkipped();
-        return DocumentIngestResult.SKIPPED;
-      }
-      // The row is still present when the quota is checked, so the check measures the size
-      // delta: the full new size against a usedBytes that still includes the old size would
-      // double-count the document being replaced.
-      long previousSize = existingDoc.getFileSize() == null ? 0L : existingDoc.getFileSize();
-      if (storageQuotaService.wouldExceedQuota(library.getId(), byteSize - previousSize)) {
-        return quotaExceeded(filePath, library);
-      }
-      selection = select(ingest, existingDoc);
-      replacingExistingChunks = true;
-      existingDoc.setFileName(fileName);
-      existingDoc.setContentType(selection.contentType());
-      existingDoc.setFileSize(byteSize);
-      doc = documentRepository.save(withProvenance(existingDoc, ingest));
-    } else {
-      if (storageQuotaService.wouldExceedQuota(library.getId(), byteSize)) {
-        return quotaExceeded(filePath, library);
-      }
-      selection = select(ingest, null);
-      replacingExistingChunks = false;
-      Document created =
-          new Document(fileName, filePath, selection.contentType(), byteSize, ingest.sourceType());
-      created.setLibraryId(library.getId());
-      created.setOrganizationId(library.getOrganizationId());
-      doc = documentRepository.save(withProvenance(created, ingest));
     }
 
     Document savedDoc = doc;
@@ -417,6 +427,25 @@ public class DocumentIngestService {
       doc.setFolderId(ingest.folder().id());
     }
     return doc;
+  }
+
+  /**
+   * {@code null} when {@code library} may take in {@code delta} more bytes; the rejection of the
+   * item when its library is full; an end of the run when its owner's private storage is.
+   */
+  private DocumentIngestResult admit(KnowledgeLibrary library, long delta, String filePath) {
+    QuotaVerdict verdict = storageQuotaService.verdictFor(library, delta);
+    if (verdict == QuotaVerdict.LIBRARY_EXHAUSTED) {
+      return quotaExceeded(filePath, library);
+    }
+    if (verdict == QuotaVerdict.PERSON_EXHAUSTED) {
+      log.warn(
+          "Ending intake into private library {}: its owner's storage quota would be exceeded",
+          library.getId());
+      throw new PersonalQuotaExhaustedException(
+          storageQuotaService.personalQuotaExceededMessage(library));
+    }
+    return null;
   }
 
   private DocumentIngestResult quotaExceeded(String filePath, KnowledgeLibrary library) {

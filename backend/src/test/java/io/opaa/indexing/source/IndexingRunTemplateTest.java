@@ -21,6 +21,7 @@ import io.opaa.indexing.job.IndexingJobService;
 import io.opaa.indexing.job.IndexingRunCost;
 import io.opaa.indexing.job.IndexingRunEvent;
 import io.opaa.indexing.job.IndexingRunEventRepository;
+import io.opaa.indexing.job.PersonalQuotaExhaustedException;
 import io.opaa.indexing.job.RequestBudgetExhaustedException;
 import io.opaa.indexing.maintenance.StaleDocumentCleanupService;
 import io.opaa.knowledge.Document;
@@ -689,6 +690,41 @@ class IndexingRunTemplateTest {
     verify(jobService).recordRunMetrics(jobId, new IndexingRunCost(0, 0, 0L, 0, 0, 0, true, 0L));
     verify(jobService).completeJob(jobId, 1, 0, 0, 1);
     verify(jobService, never()).failJob(any(), any());
+  }
+
+  /**
+   * The owner's quota across her private libraries ends the run like a spent budget: completed and
+   * incomplete, never failed, nothing reconciled, with the owner's message in the protocol and
+   * QUOTA_EXHAUSTED as the job's category - recorded before the job is completed.
+   */
+  @Test
+  void anExhaustedPersonalQuotaEndsTheRunIncompleteWithItsOwnCategory() {
+    template.run(
+        jobId,
+        library,
+        IndexingRunMode.FULL,
+        fullListingExecutor,
+        run -> {
+          run.progress().recordProcessed();
+          run.markPresent("/srv/dokumente/a.txt");
+          throw new PersonalQuotaExhaustedException(
+              "Speicherkontingent Ihrer privaten Bibliotheken erschöpft (10 GB von 10 GB belegt)");
+        });
+
+    verify(eventRepository)
+        .save(
+            argThat(
+                note(
+                    IndexingEventCategory.REJECTED,
+                    "Speicherkontingent Ihrer privaten Bibliotheken erschöpft")));
+    verify(cleanupService, never()).reconcile(any(), any(), any(), any(), any(), any(), any());
+    verify(jobService, never()).recordListingAssessment(any(), anyBoolean(), any());
+    verify(jobService).recordRunMetrics(jobId, new IndexingRunCost(0, 0, 0L, 0, 0, 0, true, 0L));
+    InOrder order = inOrder(jobService);
+    order.verify(jobService).recordEndCategory(jobId, "QUOTA_EXHAUSTED");
+    order.verify(jobService).completeJob(jobId, 1, 0, 0, 1);
+    verify(jobService, never()).failJob(any(), any());
+    verify(jobService, never()).failJob(any(), any(), any());
   }
 
   @Test

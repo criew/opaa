@@ -363,6 +363,39 @@ Besitzerin mit „Konto verbinden“ bzw. „Konto neu verbinden“ zu „Verbun
 nicht mehr nutzbar“ bietet er „Zugang zuordnen“ an. Ein Lauf, der daran scheitert, speichert den
 Grund als Kategorie ohne Inhaltsbezug.
 
+**Speicherkontingent der Person.** Alle privaten Bibliotheken einer Person teilen sich ein
+Kontingent; eine weitere private Bibliothek schafft keinen zusätzlichen Platz. Das Kontingent je
+Bibliothek gilt daneben unverändert. Gezählt wird, was tatsächlich gespeichert ist. Ist das
+Kontingent erschöpft, endet der laufende Lauf geordnet als unvollständig mit der Kategorie
+`QUOTA_EXHAUSTED`. Die Besitzerin sieht an der Bibliothek „unvollständig: Speicherkontingent Ihrer
+privaten Bibliotheken erschöpft“ und im Laufprotokoll ihren Verbrauch und die Grenze. Bereits
+Aufgenommenes bleibt durchsuchbar. Weil der Lauf vor dem Abgleich endet, übernimmt er auch
+Löschungen in der Quelle nicht mehr: Dateien beim Anbieter zu löschen oder die Quelle einzugrenzen
+schafft deshalb keinen Platz, solange noch ein nicht aufgenommenes Element vor dem Ende steht.
+Platz schafft das Löschen einer ganzen privaten Bibliothek; sonst hilft nur eine höhere Grenze der
+Systemverwaltung. Ihren Verbrauch und
+die Grenze fragt sie unter `GET /api/v1/me/private-storage` ab; im Einzelnen sieht ihn niemand
+sonst.
+
+Die Grenze ist ein **hausweiter Wert**, den nur die Systemverwaltung setzt
+(`PUT /api/v1/admin/private-libraries/quota`). Ohne eigenen Wert gilt die Vorgabe
+`OPAA_LIBRARY_PRIVATE_STORAGE_QUOTA_BYTES` (Variablentabelle im Kapitel
+[Deployment](deployment.md)); `0` bedeutet unbegrenzt, ein leerer Wert führt zur Vorgabe zurück.
+Eine Änderung wirkt ab dem nächsten aufgenommenen Dokument und löscht nichts. Jede Änderung steht
+im Revisionsprotokoll (`PRIVATE_STORAGE_QUOTA_CHANGED`).
+
+Die **Übersicht der Verwaltung** (`GET /api/v1/admin/private-libraries/summary`) zeigt für die
+eigene Organisation nur Summen: die Zahl der Besitzerinnen, den belegten Speicher insgesamt, den
+belegten Speicher je Zugang für Personen und je Laufkategorie, wie viele Läufe privater
+Bibliotheken im Zeitfenster damit endeten. Jede dieser Zahlen ruht auf Personen und folgt der
+Mindestgruppengröße: Die Gesamtzahlen erscheinen erst ab N Besitzerinnen, sonst als „weniger als
+N“. Eine Zahl je Zugang oder je Kategorie ist exakt nur, wenn ihre Besitzerinnen und die aller
+übrigen privaten Bibliotheken je mindestens N sind, und nur, solange das, was die exakten Zahlen je
+Zugang zusammen übrig lassen, auf mindestens N Personen ruht — ein leerer Rest gilt als wenige —; sonst entfällt sie.
+Einen Weg zum Verbrauch einer einzelnen Person gibt es für die Verwaltung nicht. Grenze,
+Übersicht und eigener Verbrauch sind bisher nur über die API erreichbar; die Oberfläche dafür
+folgt (#2276).
+
 **Was die Verwaltung sieht:** nur Zusammenfassungen. Indexstatus und Pipeline-Stand zeigen private
 Bibliotheken als eine Zeile ohne Namen und Kennung; jede Zahl über sie richtet sich nach der Zahl
 ihrer Besitzerinnen und steht unterhalb der Mindestgruppengröße nur als „weniger als N“, ohne
@@ -405,7 +438,9 @@ Regeln wie jede Teilzahl.
   Bibliothek, nicht das einzelne Dokument.
 - **Jede Bibliothek hat ein Speicherkontingent** (`OPAA_LIBRARY_QUOTA_BYTES`, Variablentabelle im
   Kapitel [Deployment](deployment.md)). Es wirkt am Upload und an den Konnektorpfaden gleich: Was
-  darüber liegt, wird abgelehnt beziehungsweise im Laufprotokoll als übersprungen vermerkt.
+  darüber liegt, wird abgelehnt beziehungsweise im Laufprotokoll als übersprungen vermerkt. Für
+  private Bibliotheken gilt zusätzlich das Kontingent der Person (Abschnitt „Private
+  Bibliotheken“).
 
 ## 5. Rollen in einem Raum
 

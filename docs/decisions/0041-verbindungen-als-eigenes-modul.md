@@ -652,6 +652,32 @@ Begründung:
   ihrer Quellen entfallen. Sicherungen enthalten eine vor der Löschung gesicherte Bibliothek weiter
   (offen nach Spezifikation).
 
+## Nachtrag vom 05.10.2026: Speicherkontingent je Person (#2166)
+
+- **Ort knowledge, an der einen Aufnahmestelle:** `LibraryStorageQuotaService#verdictFor` liefert
+  `QuotaVerdict` (`WITHIN`, `LIBRARY_EXHAUSTED`, `PERSON_EXHAUSTED`). Das Kontingent je
+  Bibliothek (#119) prüft zuerst und bleibt unverändert; für eine Nur-Besitzerin-Bibliothek zählt
+  danach die Summe über alle privaten Bibliotheken derselben Besitzerin
+  (`PersonalStorageQuota#usageOf`).
+- **Grenze:** ein hausweiter Wert in `private_storage_quota_settings` (eine Zeile, `0` =
+  unbegrenzt); ohne Zeile gilt die Start-Property `opaa.library.private-storage-quota-bytes`.
+  Setzen darf nur die Systemverwaltung; jede Änderung schreibt `PRIVATE_STORAGE_QUOTA_CHANGED`.
+- **Lauf:** `PERSON_EXHAUSTED` wirft in `DocumentIngestService` die `PersonalQuotaExhaustedException`
+  (`EndsRun`). `IndexingRunTemplate` beendet den Lauf wie bei einem erschöpften Anfragebudget
+  geordnet als unvollständig, ohne Abgleich, mit der Meldung der Besitzerin im Protokoll und der
+  Kategorie `QUOTA_EXHAUSTED` an einem abgeschlossenen Lauf.
+- **Wettlauf:** Prüfung und Speichern der Dokumentzeile laufen unter
+  `LibraryStorageQuotaService#holdIntake`, einer Sperre je Besitzerin in diesem Prozess
+  (ADR-0021). Gezählt wird, was gespeichert ist; gleichzeitige Läufe mehrerer privater
+  Bibliotheken einer Person überschreiten die Grenze deshalb nicht. Mit einer zweiten Instanz
+  entfiele diese Garantie (Restrisiko wie bei jeder Annahme aus ADR-0021).
+- **Kein Verwaltungspfad zum Verbrauch einer Person:** `PersonalStorageQuota#usageOf` rufen nur
+  `LibraryStorageQuotaService` und der Selbstauskunfts-Controller, die zugrunde liegende Summe nur
+  `PersonalStorageQuota` (`ModularArchitecture#personalUsageIsReadOnlyByItsOwner`). Die Übersicht
+  der Verwaltung rechnet je Zugang in SQL über Personen und maskiert nach
+  `PersonThreshold#disclosesPart`; mehrere exakte Teilsummen erscheinen nur, solange ihr
+  gemeinsamer Rest auf mindestens N Personen ruht; ein leerer Rest gilt als wenige.
+
 ## Referenzen
 
 - [connector-connections.md](../features/connector-connections.md)

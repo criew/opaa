@@ -147,6 +147,12 @@ public final class IndexingRunProgress implements AttachmentProgressSink {
     }
   }
 
+  /** Completes the run as one that ended early for {@code category}, which the job keeps. */
+  public void complete(RunFailureCategory category) {
+    indexingJobService.recordEndCategory(jobId, category.name());
+    complete();
+  }
+
   public void fail(String message) {
     indexingJobService.failJob(jobId, message);
   }

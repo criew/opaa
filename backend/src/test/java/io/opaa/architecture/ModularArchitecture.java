@@ -339,6 +339,22 @@ public final class ModularArchitecture {
           "library.PrivateLibraryDeletionRun");
 
   /**
+   * The reads of one person's use across her private libraries, relative to the root, each with the
+   * classes that may call it: the person's own view and the enforcement, the raw sum only the quota
+   * itself, and the enforcement's verdict and message - which tell the use - only the intake.
+   */
+  static final Map<String, Set<String>> PERSONAL_USAGE_READERS =
+      Map.of(
+          "knowledge.PersonalStorageQuota#usageOf",
+          Set.of("knowledge.LibraryStorageQuotaService", "library.web.MyPrivateStorageController"),
+          "knowledge.DocumentRepository#sumFileSizeOfPrivateLibrariesOwnedBy",
+          Set.of("knowledge.PersonalStorageQuota"),
+          "knowledge.LibraryStorageQuotaService#verdictFor",
+          Set.of("indexing.document.DocumentIngestService"),
+          "knowledge.LibraryStorageQuotaService#personalQuotaExceededMessage",
+          Set.of("indexing.document.DocumentIngestService"));
+
+  /**
    * Exact counts about persons that only go to the log, relative to the root, each with the one
    * class that may call it.
    */
@@ -1302,6 +1318,28 @@ public final class ModularArchitecture {
   }
 
   /**
+   * Calls of a {@link #PERSONAL_USAGE_READERS} method outside its listed callers: no path of the
+   * administration reads the use of one person.
+   */
+  ArchRule personalUsageIsReadOnlyByItsOwner() {
+    return noClasses()
+        .should()
+        .accessTargetWhere(
+            DescribedPredicate.describe(
+                "read a person's private storage use outside " + PERSONAL_USAGE_READERS,
+                access -> {
+                  Set<String> readers =
+                      PERSONAL_USAGE_READERS.get(
+                          relativeName(access.getTargetOwner()) + "#" + access.getName());
+                  return readers != null
+                      && !readers.contains(relativeName(topLevel(access.getOriginOwner())));
+                }))
+        .because(
+            "the use of private libraries reaches the administration only as masked sums (#2166)")
+        .allowEmptyShould(true);
+  }
+
+  /**
    * Calls of {@link #UNFILTERED_LIBRARY_FINDERS} outside {@link #LIBRARY_ENUMERATORS}: a private
    * library is its owner's alone and appears in no list of the administration, not even by name.
    */
@@ -1568,6 +1606,7 @@ public final class ModularArchitecture {
         refreshTokensStayInTheTokenStore(),
         theForeignContextNeverUsesTheOwnFormula(),
         privateLibrariesAreNotEnumeratedOutsideListedClasses(),
+        personalUsageIsReadOnlyByItsOwner(),
         privateAssetsAreAuditedNeutrally(),
         theProfileSupportIsReadInOnePlace(),
         onlyTheKnownClassesDeleteDocuments(),

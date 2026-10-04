@@ -120,6 +120,7 @@ class ChangelogModuleBoundaryTest extends AbstractMigrationTest {
                   "metadata_model_rejections",
                   "llm_models",
                   "llm_model_seed_marker",
+                  "private_storage_quota_settings",
                   "vector_store")),
           Map.entry(CONNECTORS, List.of("rss_feed_state")),
           Map.entry(

@@ -1,0 +1,16 @@
+databaseChangeLog:
+  - changeSet:
+      id: knowledge-2026-10-05-private-storage-quota
+      author: opaa
+      comment: "The house-wide storage quota across all private libraries of a person, as the system administration set it (#2166). No row means the configured default applies; 0 means unlimited."
+      changes:
+        - sql:
+            sql: |
+              CREATE TABLE private_storage_quota_settings (
+                  id integer NOT NULL,
+                  quota_bytes bigint NOT NULL,
+                  updated_at timestamp with time zone NOT NULL,
+                  CONSTRAINT private_storage_quota_settings_pkey PRIMARY KEY (id),
+                  CONSTRAINT chk_private_storage_quota_settings_singleton CHECK (id = 1),
+                  CONSTRAINT chk_private_storage_quota_settings_bytes CHECK (quota_bytes >= 0)
+              );

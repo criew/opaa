@@ -91,8 +91,8 @@ class DocumentIngestServiceEmbeddingConcurrencyTest {
     targetLibrary =
         KnowledgeLibrary.ownedByUser(UUID.randomUUID(), "Bibliothek", null, UUID.randomUUID());
     lenient()
-        .when(storageQuotaService.wouldExceedQuota(any(), org.mockito.ArgumentMatchers.anyLong()))
-        .thenReturn(false);
+        .when(storageQuotaService.verdictFor(any(), org.mockito.ArgumentMatchers.anyLong()))
+        .thenReturn(io.opaa.knowledge.QuotaVerdict.WITHIN);
     lenient()
         .when(documentRepository.markIndexedFromSource(any(), anyInt(), any(), any(), any()))
         .thenReturn(1);

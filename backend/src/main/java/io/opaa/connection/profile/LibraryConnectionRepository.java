@@ -60,6 +60,37 @@ public interface LibraryConnectionRepository
   List<KnowledgeLibrary> findPrivateLibrariesOn(
       @Param("profileId") UUID profileId, @Param("userId") UUID userId);
 
+  /**
+   * Per profile, the bytes the private libraries of one organization on it occupy and how many
+   * persons own them - sums over persons, for the masked view of the administration only.
+   */
+  @Query(
+      "select c.profileId as profileId, coalesce(sum(coalesce(d.fileSize, 0)), 0) as bytes,"
+          + " count(distinct l.ownerUserId) as owners from LibraryConnection c"
+          + " join KnowledgeLibrary l on l.id = c.libraryId"
+          + " left join Document d on d.libraryId = l.id"
+          + " where c.profileId is not null and l.ownerOnly = true"
+          + " and l.organizationId = :organizationId group by c.profileId")
+  List<PrivateStorageOnProfile> sumPrivateStorageByProfile(
+      @Param("organizationId") UUID organizationId);
+
+  /** The private libraries of one organization on a profile - ids to leave out, never to show. */
+  @Query(
+      "select c.libraryId from LibraryConnection c, KnowledgeLibrary l where l.id = c.libraryId"
+          + " and c.profileId = :profileId and l.ownerOnly = true"
+          + " and l.organizationId = :organizationId")
+  List<UUID> privateLibraryIdsOn(
+      @Param("profileId") UUID profileId, @Param("organizationId") UUID organizationId);
+
+  /** One row of {@link #sumPrivateStorageByProfile}. */
+  interface PrivateStorageOnProfile {
+    UUID getProfileId();
+
+    long getBytes();
+
+    long getOwners();
+  }
+
   /** One row of {@link #countSharedByProfileIdIn}. */
   interface ProfileConnectionCount {
     UUID getProfileId();

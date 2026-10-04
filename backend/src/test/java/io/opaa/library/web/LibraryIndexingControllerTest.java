@@ -48,6 +48,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
@@ -119,6 +120,32 @@ class LibraryIndexingControllerTest {
         .andExpect(jsonPath("$.documentCount").value(0))
         .andExpect(jsonPath("$.totalDocuments").value(0))
         .andExpect(jsonPath("$.documentsSkipped").value(0));
+  }
+
+  /** A run ended at its owner's quota says so instead of promising that the next one continues. */
+  @Test
+  void aRunEndedAtThePersonalQuotaNamesTheQuotaInItsMessageAndCategory() throws Exception {
+    UUID libraryId = UUID.randomUUID();
+    var job = new IndexingJob(JobStatus.RUNNING);
+    job.setDocumentsProcessed(7);
+    job.applyMetrics(new IndexingRunCost(0, 0, 0L, 0, 0, 0, true, 0L));
+    ReflectionTestUtils.setField(job, "failureCategory", "QUOTA_EXHAUSTED");
+    job.setStatus(JobStatus.COMPLETED);
+    when(indexingService.getRecentRuns(eq(libraryId), eq(caller)))
+        .thenReturn(List.of(new IndexingRunDetail(job, List.of())));
+
+    mockMvc
+        .perform(get("/api/v1/libraries/" + libraryId + "/indexing/runs").with(asTestUser()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.runs[0].status").value("COMPLETED"))
+        .andExpect(jsonPath("$.runs[0].incomplete").value(true))
+        .andExpect(jsonPath("$.runs[0].failureCategory").value("QUOTA_EXHAUSTED"))
+        .andExpect(
+            jsonPath("$.runs[0].message")
+                .value(
+                    "Indizierung abgeschlossen: 7 verarbeitet, 0 übersprungen, 0 fehlgeschlagen"
+                        + " — unvollständig: Speicherkontingent Ihrer privaten Bibliotheken"
+                        + " erschöpft"));
   }
 
   @Test

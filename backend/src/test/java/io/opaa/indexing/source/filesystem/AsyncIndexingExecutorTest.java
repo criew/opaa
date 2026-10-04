@@ -229,7 +229,8 @@ class AsyncIndexingExecutorTest {
     org.springframework.ai.vectorstore.VectorStore vectorStore =
         mock(org.springframework.ai.vectorstore.VectorStore.class);
     LibraryStorageQuotaService realFlowQuotaService = mock(LibraryStorageQuotaService.class);
-    when(realFlowQuotaService.wouldExceedQuota(any(), anyLong())).thenReturn(false);
+    when(realFlowQuotaService.verdictFor(any(), anyLong()))
+        .thenReturn(io.opaa.knowledge.QuotaVerdict.WITHIN);
 
     // Only #parseDocument is stubbed - real Tika parsing of a not-structurally-valid PDF would
     // throw, which is irrelevant to what this test exercises (see DocumentIngestServiceTest's own
