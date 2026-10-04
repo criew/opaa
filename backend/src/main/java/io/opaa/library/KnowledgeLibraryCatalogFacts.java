@@ -12,14 +12,28 @@ import java.time.Instant;
  * @param lastIndexedAt completion of the newest successful run; {@code null} while none completed.
  * @param status the library's own state, see {@link KnowledgeLibraryCatalogFactSource}.
  * @param sourceBlock the lock of the source, {@code null} while it is not locked
+ * @param privateLibrary whether only its owner reads it
  */
 public record KnowledgeLibraryCatalogFacts(
-    String sourceType, Instant lastIndexedAt, CatalogEntryStatus status, SourceBlock sourceBlock)
+    String sourceType,
+    Instant lastIndexedAt,
+    CatalogEntryStatus status,
+    SourceBlock sourceBlock,
+    boolean privateLibrary)
     implements AssetCatalogFacts {
 
-  /** The facts of a library that is not locked. */
+  /** The facts of a shared library that is not locked. */
   public KnowledgeLibraryCatalogFacts(
       String sourceType, Instant lastIndexedAt, CatalogEntryStatus status) {
-    this(sourceType, lastIndexedAt, status, null);
+    this(sourceType, lastIndexedAt, status, null, false);
+  }
+
+  /** The facts of a shared library. */
+  public KnowledgeLibraryCatalogFacts(
+      String sourceType,
+      Instant lastIndexedAt,
+      CatalogEntryStatus status,
+      SourceBlock sourceBlock) {
+    this(sourceType, lastIndexedAt, status, sourceBlock, false);
   }
 }
