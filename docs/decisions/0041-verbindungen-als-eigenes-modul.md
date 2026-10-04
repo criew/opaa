@@ -454,6 +454,75 @@ Begründung:
 - **Notabschaltung** löscht bei einem Zugang mit eigener Anmeldung auch das Client-Secret bzw. den
   Schlüssel: Es ist das einzige Geheimnis, mit dem seine Bibliotheken die Quelle erreichen.
 
+## Nachtrag vom 04.10.2026: OAuth-Kern (#2168, Schnitt O1)
+
+- **Zustimmung ohne Server-Sitzung,** wie im Nachtrag zu [ADR-0025](0025-mehrere-oidc-anbieter.md)
+  entschieden: `POST /api/v1/connections/authorizations` legt eine Zeile in
+  `connection_authorizations` an – nur der SHA-256-Hash des `state` (32 Byte Zufall), der
+  PKCE-Verifier verschlüsselt (S256), die Person, der Zugang mit seiner Zeilenversion, der Zweck, die
+  Rücksprungadresse `{OPAA_PUBLIC_BASE_URL}/connections/callback`, gültig 10 Minuten. Ohne
+  öffentliche Adresse gibt es `409 PUBLIC_BASE_URL_MISSING`, nie eine Adresse aus dem Host-Header.
+  Die SPA reicht `state` und `code` (oder `error`) mit ihrem Bearer-Token an
+  `POST …/authorizations/complete`. Das Backend verbraucht den `state` mit einem bedingten `UPDATE`
+  in eigener Transaktion, **bevor** es den Anbieter fragt; ein fremder, verbrauchter, abgelaufener
+  oder unbekannter `state` ist `404`, ein inzwischen geänderter Zugang `409
+  CONNECTION_AUTHORIZATION_PROFILE_CHANGED`. Das Rücksprungziel leitet der Server aus dem Zweck ab.
+  Eine Person beginnt höchstens 10 Zustimmungen in 10 Minuten (`429`, Advisory-Lock-Namensraum 207);
+  abgelaufene Zeilen räumt der nächste Start ab. Es gibt keinen freigegebenen Callback-Endpunkt in
+  der Security-Konfiguration; Issue #2168 nannte ihn, ADR-0025 gilt.
+- **Nur der Zweck `ACCOUNT` ist gebaut.** `LIBRARY_NEW` und `LIBRARY_RECONNECT` stehen im Schema und
+  in der API, werden aber mit `400 CONNECTION_AUTHORIZATION_PURPOSE_UNAVAILABLE` abgewiesen, bis
+  „Quelle verbinden“ (#2169) Bibliotheks-Token im Speicher ablegen kann. Damit entfällt die
+  Bestätigung der Dienstkonto-Art vorerst: Ohne Bibliothekszweck entsteht keine URL.
+- **Deklaration:** `OAuthAuth` (Autorisierungs-, Token- und Widerrufs-Endpunkt, Vorgabe-Scopes,
+  zusätzliche Parameter der Autorisierungsanfrage, Client-Authentisierung) ist Pflicht für
+  `SignIn` mit `OAUTH`. `Revocation` ist `None`, `Rfc7009` oder `BearerPost`. `Endpoint.FromProfile`
+  überlässt einen Endpunkt dem Zugang: drei Spalten `authorization_endpoint`, `token_endpoint`,
+  `revocation_endpoint`, Pflicht genau dort, wo die Deklaration sie offenlässt, beim Speichern
+  festgeschrieben, nie zur Laufzeit erkannt. Ein geänderter Endpunkt ist eine Registrierungsänderung.
+- **Ein Weg zum Anbieter:** `connection.oauth.OAuthClient` stellt Autorisierungsanfrage,
+  Code-Tausch, Erneuerung und Widerruf; auch die Client-Credentials laufen darüber. Nur er ruft in
+  connections `SourceFormPost` (Zielprüfung, keine Weiterleitung, Größengrenze), immer mit
+  Zertifikatsprüfung und dem Proxy des Zugangs (ArchUnit
+  `theAuthorizationServerIsReachedOnlyThroughTheOAuthClient` mit Fixture).
+- **Port `SecretIssuer` neu geschnitten:** `renew` liefert `Issued` (Zugriffstoken mit Ablauf,
+  rotierter Refresh-Token mit Ablauf oder `null`), `revocation` bekommt einen Schnappschuss beider
+  Token. Implementiert ihn `connection.oauth.ProviderTokens`; `ProfileSignIn` bleibt die eigene
+  Anmeldung des Zugangs und ist nur noch dessen Delegat.
+- **Erneuerung in `ConnectionSecrets.current`:** Ein Zugriffstoken geht ohne Sperre heraus, solange
+  es länger als die Marge gilt – fünf Minuten, höchstens die halbe Lebensdauer. Sonst folgt eine
+  eigene Transaktion mit `SELECT … FOR UPDATE` auf der Token-Zeile, erneute Prüfung, `renew` und das
+  Ersetzen des rotierten Refresh-Tokens in derselben Transaktion; zwei gleichzeitige Anfragen
+  erneuern also einmal. Die Zeilensperre genügt unter [ADR-0021](0021-single-instance-betrieb.md) und
+  bliebe bei mehreren Instanzen korrekt; sie hält eine Datenbankverbindung höchstens für das
+  Zeitlimit des Token-Aufrufs (15 s). `invalid_grant` beendet die Verbindung in derselben gesperrten
+  Transaktion über den neuen Port `connection.token.GrantRejections` (implementiert von
+  `ConnectedAccountService`): abgelaufen mit `PROVIDER_REJECTED`, Protokolleintrag `EXPIRED`,
+  Benachrichtigung `CONNECTION_EXPIRED`. Ein unerreichbarer Anbieter oder eine abgewiesene
+  App-Registrierung (`invalid_client`) ändert keinen Zustand: Das alte Zugriffstoken bleibt bis zu
+  seinem echten Ablauf nutzbar, danach scheitert der Lauf mit `SourceCredentialsException`. Nach
+  einem `401` der Quelle erzwingt `afterRejection` eine Erneuerung, wenn das gespeicherte Token das
+  abgelehnte ist.
+- **Widerruf nach dem Commit:** `discard`, `discardAllUnder` und das Ersetzen eines Grants beim
+  Neuverbinden nehmen vor dem Löschen einen Schnappschuss und widerrufen erst nach dem Commit, einmal,
+  im aufrufenden Thread; ein zurückgerollter Verwurf widerruft nichts, ein gescheiterter Widerruf
+  wird nur geloggt. Der Schnappschuss liest die Registrierung, wie sie gerade steht. Deshalb
+  verwirft `ConnectionProfileService` bei Adress- oder Registrierungswechsel und bei der
+  Notabschaltung **vor** der Änderung bzw. vor dem Löschen des Client-Secrets.
+- **Refresh-Tokens bleiben im Speicher:** Ihre Träger (`NewSecret.OAuthGrant`, `SecretIssuer.Issued`,
+  `SecretIssuer.StoredTokens`, `OAuthClient.Grant`) liest nur `connection.token` und
+  `connection.oauth` aus (ArchUnit `refreshTokensStayInTheTokenStore` mit Fixture). Kein Wert zeigt
+  ein Token in `toString`; Antworten, Logs, Revisions- und Verbindungsprotokoll enthalten weder
+  Token noch Code, Verifier, `state` oder Client-Secret (Leak-Test).
+- **Belegt** in `ConnectionAuthorizationIntegrationTest` (Fake-Autorisierungsserver, Testkonnektor
+  `OAUTH_PROBE` nur in `src/test`) und `KeycloakOAuthConsentTest` (Code mit PKCE, `offline_access`,
+  Rotation, Widerruf gegen ein echtes Keycloak, nur in `keycloakIntegrationTest`).
+- **Offen für O2 und Folgearbeit:** Callback-Seite und „Verbinden“ auf der Kontoseite, Anzeige der
+  Endpunkte im Zugangsformular samt Meldung in `SourceTypeSignIn`, Ablaufwarnung 14 Tage vorher,
+  Zahl abgelaufener Verbindungen mit Schwellenwert, Handbuch (`indexierung.md`, `deployment.md`).
+  Die Kontoadresse nach der Zustimmung (`SourceConnector#connectedAccount`) und die Prüfung von
+  `iss` nach RFC 9207 fehlen noch; die Zeile je Zugang bindet den Code an den Anbieter.
+
 ## Referenzen
 
 - [connector-connections.md](../features/connector-connections.md)
