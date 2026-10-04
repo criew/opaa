@@ -1,19 +1,28 @@
 package io.opaa.indexing.source.smb;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import io.opaa.indexing.filesync.ExpiringCheckpoints;
+import io.opaa.indexing.filesync.FilePathLimit;
 import io.opaa.indexing.filesync.FileStore;
 import io.opaa.indexing.filesync.FileStoreResumptionContract;
+import io.opaa.indexing.filesync.FileSyncHarness;
+import io.opaa.indexing.job.IndexingEventCategory;
+import io.opaa.indexing.job.IndexingRunEvent;
 import io.opaa.indexing.source.RequestBudget;
 import io.opaa.sourceaccess.SourceRequestMeter;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.junit.jupiter.api.Test;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
  * The file store contract with resumption against a real Samba ({@link SambaFixture}): each
  * container is a folder of the share, a denied listing is a folder the service account may not
  * enter, a denied read files it may not open, refused credentials a wrong password, and every SMB
- * message counts against a run's budget.
+ * message counts against a run's budget. A file path is bounded in UTF-8 bytes as well as in
+ * characters ({@link FilePathLimit}).
  */
 @Testcontainers(disabledWithoutDocker = true)
 class SmbFileStoreContractTest extends FileStoreResumptionContract {
@@ -109,5 +118,65 @@ class SmbFileStoreContractTest extends FileStoreResumptionContract {
         return folders.get(container).substring(1) + "/" + name;
       }
     };
+  }
+
+  @Test
+  void aPathAtTheByteLimitInTwoByteCharactersIsReadAndOneCharacterMoreIsNot() throws Exception {
+    assertTheLimitHoldsIn('Ж');
+  }
+
+  @Test
+  void aPathAtTheByteLimitInThreeByteCharactersIsReadAndOneCharacterMoreIsNot() throws Exception {
+    assertTheLimitHoldsIn('語');
+  }
+
+  private void assertTheLimitHoldsIn(char wide) throws Exception {
+    String atLimit = nameOfBytes(FilePathLimit.MAX_BYTES, wide, "a");
+    String beyond = nameOfBytes(FilePathLimit.MAX_BYTES + utf8(wide), wide, "b");
+    String beyondPath = fixture.filePath(0, beyond);
+    assertThat(utf8(fixture.filePath(0, atLimit))).isEqualTo(FilePathLimit.MAX_BYTES);
+    assertThat(beyondPath.length()).isLessThan(FilePathLimit.MAX_CHARACTERS);
+    fixture.put(0, atLimit, "Am Rand der Grenze.");
+    fixture.put(0, beyond, "Jenseits der Grenze.");
+
+    for (int run = 1; run <= 2; run++) {
+      FileSyncHarness.Run result = fullSync();
+
+      assertThat(result.failed()).as("failed entries of run %s", run).isZero();
+      assertThat(result.ingested())
+          .as("ingested in run %s", run)
+          .containsExactlyElementsOf(
+              run == 1 ? List.of(fixture.filePath(0, atLimit)) : List.<String>of());
+      assertThat(result.eventsOf(IndexingEventCategory.REJECTED))
+          .extracting(IndexingRunEvent::getReference)
+          .containsExactly(FilePathLimit.cut(beyondPath));
+    }
+  }
+
+  /**
+   * A name below container 0 whose file path has exactly {@code bytes} UTF-8 bytes: folders of 40
+   * {@code wide} (Samba refuses a name of 80 three-byte characters), then a file name of {@code
+   * wide} padded with {@code pad}.
+   */
+  private String nameOfBytes(int bytes, char wide, String pad) {
+    int width = utf8(wide);
+    int remaining = bytes - utf8(fixture.filePath(0, "")) - ".txt".length();
+    StringBuilder name = new StringBuilder();
+    while (remaining > 41 * width) {
+      name.append(String.valueOf(wide).repeat(40)).append('/');
+      remaining -= 40 * width + 1;
+    }
+    int wideInStem = (remaining - 1) / width;
+    name.append(String.valueOf(wide).repeat(wideInStem));
+    name.append(pad.repeat(remaining - wideInStem * width));
+    return name.append(".txt").toString();
+  }
+
+  private static int utf8(String text) {
+    return text.getBytes(StandardCharsets.UTF_8).length;
+  }
+
+  private static int utf8(char character) {
+    return utf8(String.valueOf(character));
   }
 }

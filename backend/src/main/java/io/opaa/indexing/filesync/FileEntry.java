@@ -9,7 +9,8 @@ import java.util.Objects;
  *
  * @param id the file's identity within {@code container}, what {@link FileStore#head} and {@link
  *     FileStore#fetch} address it by
- * @param filePath the document's identity in the library ({@code documents.file_path})
+ * @param filePath the document's identity in the library ({@code documents.file_path}); a file
+ *     whose path does not fit {@link FilePathLimit} is reported {@link Exclusion.Unavailable}
  * @param fileName the name the format is judged by; empty only together with an {@code exclusion}
  * @param folder the mirrored folder chain, already capped by the store
  * @param context container key and hierarchy path the document carries

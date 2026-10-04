@@ -548,6 +548,14 @@ Drei-Byte-Zeichen bei 892 Zeichen. Ein längerer Pfad scheitert beim Speichern m
 … exceeds btree version 4 maximum 2704“. Das betrifft Stores mit Pfad-Identität (SMB) und ist hier
 nicht gelöst (`DocumentFilePathIndexLimitTest`).
 
+Nachtrag (#2241): Die Grenze gilt jetzt im Store. `filesync.FilePathLimit` fasst sie als 2000
+Zeichen und 2676 Byte UTF-8; ein Store mit Pfad-Identität meldet einen längeren Pfad als
+`Exclusion.Unavailable`, also abgewiesen ohne Download und ohne Fehler, in jedem Lauf.
+`DocumentFilePathIndexLimitTest` misst die Konstante gegen das Liquibase-Schema. Der Index
+bleibt unverändert; ein eindeutiger Index über einen Hash des Pfads wurde verworfen, weil er
+eine Migration und eine geänderte Suche nach `file_path` gebraucht hätte, für Pfade, die unter
+Windows ohnehin kaum vorkommen.
+
 ## Nachtrag: SMB (#2155, 03.10.2026)
 
 Windows-Dateifreigaben sind der Vollscan-Fall des Ports: kein Änderungsprotokoll, kein
