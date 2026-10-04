@@ -371,6 +371,8 @@ export type ContextPrefixRerunRequest = components['schemas']['ContextPrefixReru
 export type ContextPrefixRerunResponse = components['schemas']['ContextPrefixRerunResponse']
 export type MetadataBackfillResponse = components['schemas']['MetadataBackfillResponse']
 export type SearchStatusResponse = components['schemas']['SearchStatusResponse']
+export type PrivateLibrarySearchSummaryResponse =
+  components['schemas']['PrivateLibrarySearchSummaryResponse']
 export type SearchPermissionProfileResponse =
   components['schemas']['SearchPermissionProfileResponse']
 export type SearchDiagnosisContextType = components['schemas']['SearchDiagnosisContextType']

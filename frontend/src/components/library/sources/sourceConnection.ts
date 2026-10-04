@@ -81,6 +81,8 @@ export function asksLibrarySecret(method: ConnectionAuthMethod): boolean {
 export interface ProbeScope {
   libraryId?: string
   connectionProfileId?: string
+  /** A new private library, probed through the caller's connected account. */
+  privateLibrary?: boolean
 }
 
 /** The fields of a create, update, test or listing request that a profile may set. */
@@ -115,13 +117,19 @@ export interface ConnectionFields {
 
 export function connectionFields(context: SourceFormContext): ConnectionFields {
   const connection = context.connection ?? null
+  // A private library never takes a secret of its own, also once its profile is gone.
+  const privateLibrary = Boolean(context.privateLibrary)
   const probe: ProbeScope =
     context.mode === 'edit'
       ? { libraryId: context.libraryId }
       : connection
-        ? { connectionProfileId: connection.profileId }
+        ? {
+            connectionProfileId: connection.profileId,
+            ...(privateLibrary ? { privateLibrary: true } : {}),
+          }
         : {}
-  const asksSecret = connection === null || asksLibrarySecret(connection.authMethod)
+  const asksSecret =
+    !privateLibrary && (connection === null || asksLibrarySecret(connection.authMethod))
   return {
     connection,
     probe,
@@ -250,7 +258,7 @@ export function framedBy<R extends FramedRequest>(
   connection: SourceConnection | null | undefined,
   asksSecret: boolean,
 ): R {
-  if (!connection) return request
+  if (!connection) return asksSecret ? request : { ...request, sourceCredentials: undefined }
   const framed: Record<string, unknown> = {
     ...(request as Record<string, unknown>),
     sourceProxy: undefined,

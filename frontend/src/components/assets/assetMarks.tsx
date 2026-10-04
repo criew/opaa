@@ -5,6 +5,7 @@ import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import { alpha, type SxProps, type Theme } from '@mui/material/styles'
 import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
+import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
 import PersonOutlinedIcon from '@mui/icons-material/PersonOutlined'
 import PublicIcon from '@mui/icons-material/Public'
 import StarIcon from '@mui/icons-material/Star'
@@ -47,6 +48,34 @@ export function PublicMark() {
         sx={{ fontSize: 16, color: 'text.secondary' }}
       />
     </Tooltip>
+  )
+}
+
+/** A private library: lock and the word, so the mark never rests on colour alone. */
+export function PrivateMark() {
+  return (
+    <Typography
+      component="span"
+      role="img"
+      aria-label="Private Bibliothek – nur Sie sehen sie"
+      sx={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 0.5,
+        alignSelf: 'flex-start',
+        fontSize: 10.5,
+        color: 'text.secondary',
+        border: 1,
+        borderColor: 'divider',
+        borderRadius: '4px',
+        px: 0.75,
+        py: 0.25,
+        whiteSpace: 'nowrap',
+      }}
+    >
+      <LockOutlinedIcon aria-hidden sx={{ fontSize: 13 }} />
+      Privat
+    </Typography>
   )
 }
 

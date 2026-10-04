@@ -679,7 +679,8 @@ für eine private Bibliothek ab oder lässt der Zugang danach keine Personen meh
 vom Zugang; sie ruht mit dem Hinweis „Zugang nicht mehr nutzbar“, bis ihre Besitzerin sie einem
 anderen Zugang zuordnet, und erhält darüber eine Benachrichtigung. Die Vorschau nennt solche
 Ablehnungen nur als Zahl, ohne Bibliothek und Grund, und unterhalb der Mindestgruppengröße an
-Besitzerinnen nur als „weniger als N“.
+Besitzerinnen nur als „weniger als N“; wo OPAA die Zahl nicht nennt, steht „nicht ausgewiesen“.
+Bei einem Zugang, der Personen zulässt, steht die Zeile immer da, auch ohne Ablehnung.
 
 Das Client-Secret bzw. der Dienstkonto-Schlüssel liegt verschlüsselt mit demselben Schlüssel wie
 die Zugangsdaten der Bibliotheken. Keine Antwort, kein Protokoll und kein Revisionseintrag enthält

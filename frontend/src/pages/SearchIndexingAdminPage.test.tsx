@@ -890,4 +890,48 @@ describe('SearchIndexingAdminPage', () => {
     )
     expect(await screen.findByText(/2 gespeicherte Chunks, laut Dokument 3/)).toBeInTheDocument()
   })
+
+  describe('private Bibliotheken im Indexstatus (#2164)', () => {
+    function serveStatus(privateLibraries: Record<string, number | null>) {
+      server.use(
+        http.get('/api/v1/admin/search/status', () =>
+          HttpResponse.json({ ...mockSearchStatus, privateLibraries }),
+        ),
+      )
+    }
+
+    it('shows the private libraries as one line of sums, without names', async () => {
+      signInAs('SYSTEM_ADMIN')
+      serveStatus({
+        libraryCount: 7,
+        libraryCountFewerThan: null,
+        documentCount: 120,
+        failedDocumentCount: 3,
+        chunkCount: 900,
+      })
+      renderIndex()
+
+      const line = await screen.findByTestId('private-libraries-summary')
+      expect(line).toHaveTextContent('Private Bibliotheken')
+      expect(line).toHaveTextContent('7 Bibliotheken')
+      expect(line).toHaveTextContent('120 Dokumente, davon 3 fehlgeschlagen')
+      expect(line).toHaveTextContent('900 Abschnitte')
+    })
+
+    it('names only "weniger als N" below the minimum group size, without any sum', async () => {
+      signInAs('SYSTEM_ADMIN')
+      serveStatus({
+        libraryCount: null,
+        libraryCountFewerThan: 5,
+        documentCount: null,
+        failedDocumentCount: null,
+        chunkCount: null,
+      })
+      renderIndex()
+
+      const line = await screen.findByTestId('private-libraries-summary')
+      expect(line).toHaveTextContent('weniger als 5 Bibliotheken')
+      expect(line).not.toHaveTextContent(/Dokumente|Abschnitte|\b0\b/)
+    })
+  })
 })

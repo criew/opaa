@@ -75,6 +75,31 @@ describe('connectionFields', () => {
       connectionFields(context({ connection: { ...S3_PROFILE, authMethod } })).asksSecret,
     ).toBe(asks)
   })
+
+  it('asks no secret of a private library and probes through the own account (#2164)', () => {
+    const fields = connectionFields(context({ connection: S3_PROFILE, privateLibrary: true }))
+
+    expect(fields.asksSecret).toBe(false)
+    expect(fields.probe).toEqual({ connectionProfileId: 'profile-s3', privateLibrary: true })
+    expect(
+      fields.probeRequest({ sourceCredentials: 'u:p', sourceSettings: {} }).sourceCredentials,
+    ).toBeUndefined()
+    // a stored library says itself whether it is private
+    expect(
+      connectionFields(
+        context({ mode: 'edit', libraryId: 'lib-1', connection: S3_PROFILE, privateLibrary: true }),
+      ),
+    ).toEqual(expect.objectContaining({ asksSecret: false, probe: { libraryId: 'lib-1' } }))
+  })
+
+  it('asks no secret of a private library whose profile is gone', () => {
+    const fields = connectionFields(
+      context({ mode: 'edit', libraryId: 'lib-1', privateLibrary: true }),
+    )
+
+    expect(fields.asksSecret).toBe(false)
+    expect(fields.probeRequest({ sourceCredentials: 'u:p' }).sourceCredentials).toBeUndefined()
+  })
 })
 
 describe('withConnection', () => {

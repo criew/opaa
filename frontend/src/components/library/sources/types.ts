@@ -34,6 +34,8 @@ export interface SourceFormContext {
    * reads it only through `connectionFields`.
    */
   connection?: SourceConnection
+  /** The library runs on the caller's own connected account on `connection`: no secret of its own. */
+  privateLibrary?: boolean
 }
 
 export interface SourceFormProps<V> {

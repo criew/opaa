@@ -468,6 +468,64 @@ describe('CatalogPage (ADR-0039)', () => {
       expect(updated.parentElement).toBe(prompts)
     })
 
+    it('marks a private library with the word „Privat“ beside its type badge (#2164)', async () => {
+      const knowledge = {
+        sourceType: 'NEXTCLOUD' as const,
+        indexingStatus: 'READY' as const,
+        lastIndexedAt: '2026-08-18T06:00:00Z',
+      }
+      serve([
+        entry('Meine Ablage', {
+          assetType: 'KNOWLEDGE_LIBRARY',
+          assetId: 'library-private',
+          knowledgeLibrary: knowledge,
+        }),
+        entry('Bauordnung', {
+          assetType: 'KNOWLEDGE_LIBRARY',
+          assetId: 'library-shared',
+          knowledgeLibrary: knowledge,
+        }),
+      ])
+      server.use(
+        http.get('/api/v1/libraries', () =>
+          HttpResponse.json([
+            {
+              id: 'library-private',
+              name: 'Meine Ablage',
+              ownerType: 'USER',
+              reach: { allAccounts: false, groupCount: 0, userCount: 1 },
+              myRole: 'OWNER',
+              sourceType: 'NEXTCLOUD',
+              documentCount: 3,
+              privateLibrary: true,
+              createdAt: '2026-03-01T10:00:00Z',
+              updatedAt: '2026-03-01T10:00:00Z',
+            },
+            {
+              id: 'library-shared',
+              name: 'Bauordnung',
+              ownerType: 'USER',
+              reach: { allAccounts: false, groupCount: 0, userCount: 1 },
+              myRole: 'OWNER',
+              sourceType: 'NEXTCLOUD',
+              documentCount: 3,
+              privateLibrary: false,
+              createdAt: '2026-03-01T10:00:00Z',
+              updatedAt: '2026-03-01T10:00:00Z',
+            },
+          ]),
+        ),
+      )
+      renderCatalog()
+
+      const own = cardOf(await screen.findByRole('link', { name: /Meine Ablage/ }))
+      const mark = await within(own).findByText('Privat')
+      const badge = within(own).getByText('Wissen')
+      expect(badge.compareDocumentPosition(mark) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+      const shared = cardOf(screen.getByRole('link', { name: /Bauordnung/ }))
+      expect(within(shared).queryByText('Privat')).not.toBeInTheDocument()
+    })
+
     // An upload library has no runs and so no lastIndexedAt; its date is its last change.
     it('gives a ready upload library its last change as date', async () => {
       serve([
