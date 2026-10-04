@@ -53,6 +53,10 @@ class ConnectedAccount {
   @Column(name = "expired_at")
   private Instant expiredAt;
 
+  /** Read in queries only; written by {@code ConnectedAccountRepository#markUsed} alone. */
+  @Column(name = "last_used_at", insertable = false, updatable = false)
+  private Instant lastUsedAt;
+
   @Version
   @Column(name = "version", nullable = false)
   private Long version;

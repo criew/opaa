@@ -53,5 +53,11 @@ public enum NotificationType {
    * The system administration marked a connection profile request done or declined. Sent to the
    * person who made it, with the administration's answer if it gave one.
    */
-  CONNECTION_PROFILE_REQUEST_RESOLVED
+  CONNECTION_PROFILE_REQUEST_RESOLVED,
+
+  /**
+   * The system administration ended the person's connected account - a changed, shut down or
+   * deleted profile (ADR-0041). Sent to that person only; its object is the profile.
+   */
+  CONNECTION_ENDED
 }
