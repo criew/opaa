@@ -166,7 +166,9 @@ public class S3IndexingExecutor implements SourceIndexingExecutor {
     try {
       store =
           clientFactory.createForRun(
-              connection, settings.scopes(), run.credentials().derived(S3Credentials::parse));
+              connection,
+              settings.scopes(),
+              run.credentials().renewableAfterRejection(S3Credentials::parse));
     } catch (S3AccessException e) {
       throw accessFailure(run, e);
     }

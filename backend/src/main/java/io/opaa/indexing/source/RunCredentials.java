@@ -3,7 +3,9 @@ package io.opaa.indexing.source;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.HashSet;
 import java.util.Objects;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
@@ -35,6 +37,7 @@ public final class RunCredentials {
   private Instant reuseUntil;
   private Secret secret;
   private SourceConnectionBlockedException refusal;
+  private final Set<String> askedAfterRejecting = new HashSet<>();
 
   /** Asks {@code core} at most once per {@code validity}, measured on {@code clock}. */
   public RunCredentials(Supplier<Secret> core, Duration validity, Clock clock) {
@@ -67,9 +70,10 @@ public final class RunCredentials {
   }
 
   /**
-   * After the source rejected {@code used} (a {@code 401}): asks the core once for the secret to
-   * retry with, past any reuse, and holds it - unless the run already holds another secret, which a
-   * concurrent request renewed, and which is returned without asking again.
+   * After the source rejected {@code used} (a {@code 401}): asks the core for the secret to retry
+   * with, past any reuse, and holds it - at most once per rejected value in a run, and not when the
+   * run already holds another secret, which a concurrent request renewed; then the held one is
+   * returned without asking.
    *
    * @throws SourceConnectionBlockedException when the run may not reach its source any more
    */
@@ -77,9 +81,12 @@ public final class RunCredentials {
     if (refusal != null) {
       throw refusal;
     }
-    if (!Objects.equals(Secret.valueOf(secret), Secret.valueOf(used))) {
+    String rejected = Secret.valueOf(used);
+    if (!Objects.equals(Secret.valueOf(secret), rejected)
+        || askedAfterRejecting.contains(rejected)) {
       return secret;
     }
+    askedAfterRejecting.add(rejected);
     hold(clock.instant(), ask(() -> afterRejection.apply(used)));
     return secret;
   }
@@ -141,22 +148,54 @@ public final class RunCredentials {
    * {@code get} throws what {@link #secret()} throws.
    */
   public <T> Supplier<T> derived(Function<String, T> derive) {
-    Objects.requireNonNull(derive, "derive");
-    return new Supplier<>() {
-      private boolean computed;
-      private String from;
-      private T result;
+    return new Derived<>(derive);
+  }
 
-      @Override
-      public synchronized T get() {
-        String current = value();
-        if (!computed || !Objects.equals(current, from)) {
-          result = derive.apply(current);
-          from = current;
-          computed = true;
-        }
-        return result;
+  /**
+   * {@link #derived}, which after the source rejected a value it handed out asks the core once
+   * ({@link #renewedAfterRejection}) for the secret that value was derived from; a value derived
+   * from an older secret counts as renewed when the one derived now differs.
+   */
+  public <T> RenewableCredential<T> renewableAfterRejection(Function<String, T> derive) {
+    return new Derived<>(derive);
+  }
+
+  private final class Derived<T> implements RenewableCredential<T> {
+    private final Function<String, T> derive;
+    private boolean computed;
+    private String from;
+    private T result;
+
+    private Derived(Function<String, T> derive) {
+      this.derive = Objects.requireNonNull(derive, "derive");
+    }
+
+    @Override
+    public synchronized T get() {
+      String current = value();
+      if (!computed || !Objects.equals(current, from)) {
+        result = derive.apply(current);
+        from = current;
+        computed = true;
       }
-    };
+      return result;
+    }
+
+    @Override
+    public boolean renewedAfterRejection(T sent) {
+      String source;
+      synchronized (this) {
+        if (!computed || !Objects.equals(sent, result)) {
+          source = null;
+        } else if (from == null) {
+          return false;
+        } else {
+          source = from;
+        }
+      }
+      return source == null
+          ? !Objects.equals(get(), sent)
+          : RunCredentials.this.renewedAfterRejection(source);
+    }
   }
 }

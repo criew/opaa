@@ -1,5 +1,6 @@
 package io.opaa.indexing.source.nextcloud;
 
+import io.opaa.indexing.source.RenewableCredential;
 import io.opaa.indexing.source.RequestBudget;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.sourceaccess.BoundedDownloader;
@@ -20,7 +21,6 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Supplier;
 import javax.net.ssl.SSLException;
 
 /**
@@ -28,7 +28,8 @@ import javax.net.ssl.SSLException;
  * the technical user, under the shared target validation, {@code User-Agent} and {@code 429}
  * handling of {@code io.opaa.sourceaccess}, every request charged to the {@link RequestBudget}. A
  * redirect is never followed off the instance's origin, and no answer names a target. Every request
- * carries the {@code Authorization} its supplier answers then.
+ * carries the {@code Authorization} its supplier answers then; a {@code 401} is retried once when
+ * the supplier holds a renewed one.
  */
 final class NextcloudDav implements AutoCloseable {
 
@@ -36,7 +37,7 @@ final class NextcloudDav implements AutoCloseable {
   static final String ALLOWLIST_HINT = TargetAddressValidator.ALLOWLIST_HINT;
 
   private final NextcloudConnection connection;
-  private final Supplier<String> authorization;
+  private final RenewableCredential<String> authorization;
   private final HttpClient httpClient;
   private final TargetAddressValidator targetAddressValidator;
   private final SourceRequestPolicy requestPolicy;
@@ -55,7 +56,7 @@ final class NextcloudDav implements AutoCloseable {
       long maxResponseBytes) {
     this(
         connection,
-        connection::authorizationHeader,
+        RenewableCredential.fixed(connection.authorizationHeader()),
         targetAddressValidator,
         requestPolicy,
         budget,
@@ -65,7 +66,7 @@ final class NextcloudDav implements AutoCloseable {
 
   NextcloudDav(
       NextcloudConnection connection,
-      Supplier<String> authorization,
+      RenewableCredential<String> authorization,
       TargetAddressValidator targetAddressValidator,
       SourceRequestPolicy requestPolicy,
       RequestBudget budget,
@@ -106,6 +107,8 @@ final class NextcloudDav implements AutoCloseable {
     try (InputStream body =
         propfindBody(connection.davRoot(), 0, DavMultistatus.PRINCIPAL_BODY, resource)) {
       principal = DavMultistatus.principalHref(body);
+    } catch (NextcloudAccessException.Forbidden e) {
+      throw new NextcloudAccessException.SignInRefused(e.getMessage());
     } catch (DavMultistatus.DavFormatException e) {
       throw notNextcloud(resource);
     } catch (IOException e) {
@@ -155,15 +158,16 @@ final class NextcloudDav implements AutoCloseable {
       throws NextcloudAccessException, InterruptedException {
     String resource = "die Datei „" + fileName + "“";
     try {
-      BoundedDownloader.DownloadedFile file =
-          downloader.downloadBounded(
-              httpClient,
-              connection.url(encodedPath),
-              fileName,
-              maxBytes,
-              authorization.get(),
-              RedirectFollowingFetcher.RedirectPolicy.REJECT_OFF_ORIGIN,
-              budget);
+      String sent = authorization.get();
+      BoundedDownloader.DownloadedFile file;
+      try {
+        file = download(encodedPath, fileName, maxBytes, sent);
+      } catch (BoundedDownloader.HttpStatusException e) {
+        if (e.statusCode() != 401 || !e.authorizationSent() || !renewedAfterRejection(sent)) {
+          throw e;
+        }
+        file = download(encodedPath, fileName, maxBytes, authorization.get());
+      }
       budget.meter().recordBytes(file.path().toFile().length());
       return file;
     } catch (BoundedDownloader.AttachmentTooLargeException e) {
@@ -180,26 +184,54 @@ final class NextcloudDav implements AutoCloseable {
     }
   }
 
+  private BoundedDownloader.DownloadedFile download(
+      String encodedPath, String fileName, long maxBytes, String sent)
+      throws IOException, InterruptedException {
+    return downloader.downloadBounded(
+        httpClient,
+        connection.url(encodedPath),
+        fileName,
+        maxBytes,
+        sent,
+        RedirectFollowingFetcher.RedirectPolicy.REJECT_OFF_ORIGIN,
+        budget);
+  }
+
+  /** Whether a {@code 401} to {@code sent} is worth one retry with the header held now. */
+  private boolean renewedAfterRejection(String sent) {
+    return sent != null && authorization.renewedAfterRejection(sent);
+  }
+
   private InputStream propfindBody(String encodedPath, int depth, String request, String resource)
       throws IOException, InterruptedException, NextcloudAccessException {
-    Map<String, String> headers = requestPolicy.headers(authorization.get());
-    headers.put("Depth", Integer.toString(depth));
-    HttpResponse<InputStream> response =
-        RedirectFollowingFetcher.sendWithBody(
-            httpClient,
-            "PROPFIND",
-            connection.url(encodedPath),
-            HttpRequest.BodyPublishers.ofString(request, StandardCharsets.UTF_8),
-            "application/xml; charset=utf-8",
-            timeout,
-            headers,
-            targetAddressValidator,
-            requestPolicy.rateLimitHandling(budget));
+    String sent = authorization.get();
+    HttpResponse<InputStream> response = propfind(encodedPath, depth, request, sent);
+    if (response.statusCode() == 401 && renewedAfterRejection(sent)) {
+      response.body().close();
+      response = propfind(encodedPath, depth, request, authorization.get());
+    }
     if (response.statusCode() != 207) {
       response.body().close();
       throw status(response.statusCode(), resource);
     }
     return BoundedStreams.input(response.body(), maxResponseBytes);
+  }
+
+  private HttpResponse<InputStream> propfind(
+      String encodedPath, int depth, String request, String sent)
+      throws IOException, InterruptedException {
+    Map<String, String> headers = requestPolicy.headers(sent);
+    headers.put("Depth", Integer.toString(depth));
+    return RedirectFollowingFetcher.sendWithBody(
+        httpClient,
+        "PROPFIND",
+        connection.url(encodedPath),
+        HttpRequest.BodyPublishers.ofString(request, StandardCharsets.UTF_8),
+        "application/xml; charset=utf-8",
+        timeout,
+        headers,
+        targetAddressValidator,
+        requestPolicy.rateLimitHandling(budget));
   }
 
   private static NextcloudAccessException status(int status, String resource) {

@@ -126,7 +126,7 @@ public class SmbIndexingExecutor implements SourceIndexingExecutor, FileSyncWord
     SmbShareClient smb =
         SmbShareClient.of(
             address,
-            run.credentials().derived(SmbCredentials::parse),
+            run.credentials().renewableAfterRejection(SmbCredentials::parse),
             targetAddressValidator,
             budget,
             properties.requestTimeout());

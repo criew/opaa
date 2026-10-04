@@ -1,5 +1,6 @@
 package io.opaa.indexing.source.s3;
 
+import io.opaa.indexing.source.RenewableCredential;
 import io.opaa.s3.S3AccessException;
 import io.opaa.s3.S3Connection;
 import io.opaa.s3.S3Credentials;
@@ -92,6 +93,31 @@ public class S3ClientFactory {
   public S3ObjectStore createForRun(
       S3Connection connection, Collection<S3Scope> scopes, Supplier<S3Credentials> current)
       throws S3AccessException {
+    return createForRun(
+        connection,
+        scopes,
+        new RenewableCredential<>() {
+          @Override
+          public S3Credentials get() {
+            return current.get();
+          }
+
+          @Override
+          public boolean renewedAfterRejection(S3Credentials sent) {
+            return false;
+          }
+        });
+  }
+
+  /**
+   * As above; a request whose key the store rejected is signed once more when {@code current} was
+   * renewed meanwhile.
+   */
+  public S3ObjectStore createForRun(
+      S3Connection connection,
+      Collection<S3Scope> scopes,
+      RenewableCredential<S3Credentials> current)
+      throws S3AccessException {
     return create(connection, current, scopes, properties.requestBudgetPerRun());
   }
 
@@ -102,7 +128,7 @@ public class S3ClientFactory {
 
   private S3ObjectStore create(
       S3Connection connection,
-      Supplier<S3Credentials> current,
+      RenewableCredential<S3Credentials> current,
       Collection<S3Scope> scopes,
       int budget)
       throws S3AccessException {

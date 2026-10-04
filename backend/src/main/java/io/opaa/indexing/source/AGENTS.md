@@ -23,8 +23,8 @@ von foundation, format und knowledge ab.
   JSON-Objekt in `source_settings`; der Kern reicht es als `ConnectorData` durch.
 - **Ziel, Geheimnis und Einstellungen kommen nur vom Kern** (ADR-0041, 3a): im Lauf über
   `IndexingRun#settings()` (ohne Geheimnis) und `#credentials()`, vor jeder Anfrage bzw. Anmeldung
-  gefragt (`RunCredentials`; `FileSync` vor jedem Store-Zugriff; nach `401` einmal `renewedAfterRejection`,
-  sonst `SourceCredentialsRejectedException`); sonst im Aufruf. Kein Konnektor hält oder erzeugt einen `SourceConnectionResolver` oder liest aus `KnowledgeLibrary` mehr als `getSourcePath`/`getWebhookSecret`.
+  gefragt (`RunCredentials`; `FileSync` vor jedem Store-Zugriff; nach `401` einmal neu, `renewableAfterRejection`,
+  sonst `SourceCredentialsRejectedException` - nur für das Geheimnis selbst, nie für `403` oder ein Einzelobjekt); sonst im Aufruf. Kein Konnektor hält oder erzeugt einen `SourceConnectionResolver` oder liest aus `KnowledgeLibrary` mehr als `getSourcePath`/`getWebhookSecret`.
 - **Dienstkonto-Schlüssel signiert der Kern** (ADR-0040): Der Konnektor bekommt nur das Token aus
   `ServiceAccountTokens` und meldet imitiertes Konto und feste Adresse (`assertionSubject`).
 - **Geheimnisse stehen nie in `source_settings`** (unverschlüsselt, in Antworten), nur verschlüsselt

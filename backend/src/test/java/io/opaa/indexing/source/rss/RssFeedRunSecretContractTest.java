@@ -2,7 +2,10 @@ package io.opaa.indexing.source.rss;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -36,7 +39,7 @@ import org.junit.jupiter.api.Test;
 
 /**
  * The RSS feed's run against a local feed with Basic auth, one detail page per entry and two
- * attachments on the first.
+ * attachments on the first; {@link #refusedSecret()} is refused with {@code 401}.
  */
 class RssFeedRunSecretContractTest extends RunSecretContract {
 
@@ -48,6 +51,8 @@ class RssFeedRunSecretContractTest extends RunSecretContract {
   private final List<String> requested = new CopyOnWriteArrayList<>();
   private final List<String> authorizations = new CopyOnWriteArrayList<>();
   private volatile boolean discardOnFirstAttachment;
+  private volatile String secret = "leser:geheim";
+  private volatile String deniedPath;
 
   @BeforeEach
   void serve() throws IOException {
@@ -106,8 +111,18 @@ class RssFeedRunSecretContractTest extends RunSecretContract {
         path,
         exchange -> {
           requested.add(path);
-          authorizations.add(
-              String.valueOf(exchange.getRequestHeaders().getFirst("Authorization")));
+          String authorization = exchange.getRequestHeaders().getFirst("Authorization");
+          authorizations.add(String.valueOf(authorization));
+          if (authorization == null
+              || path.equals(deniedPath)
+              || ("Basic "
+                      + Base64.getEncoder()
+                          .encodeToString(refusedSecret().getBytes(StandardCharsets.UTF_8)))
+                  .equals(authorization)) {
+            exchange.sendResponseHeaders(401, -1);
+            exchange.close();
+            return;
+          }
           if (path.equals("/anlage-1.pdf") && discardOnFirstAttachment) {
             discardNow();
           }
@@ -132,13 +147,41 @@ class RssFeedRunSecretContractTest extends RunSecretContract {
     assertThat(asksAfterRefusal()).isPositive();
   }
 
+  /** Without a secret the feed asks for one; that stays the run's failure as before. */
+  @Test
+  void a401WithoutASecretSentFailsTheRunAsBeforeWithoutReportingARejection() throws Exception {
+    secret = null;
+    UUID jobId = UUID.randomUUID();
+
+    run(template(), jobId, library());
+
+    verify(jobService).failJob(jobId, "Der RSS-Feed konnte nicht abgerufen werden: HTTP 401");
+    assertThat(rejectionsReported()).isZero();
+    assertThat(asksAfterRejection()).isZero();
+  }
+
+  /** A detail page of its own realm refuses this account, not the feed's secret. */
+  @Test
+  void a401OnADetailPageSkipsThatEntryWithoutReportingARejection() throws Exception {
+    when(ingestService.ingest(any(), any())).thenReturn(DocumentIngestResult.PROCESSED);
+    deniedPath = "/meldung-2.html";
+    UUID jobId = UUID.randomUUID();
+
+    run(template(), jobId, library());
+
+    verify(jobService, never()).failJob(eq(jobId), anyString());
+    assertThat(requested).contains("/meldung-2.html", "/meldung-3.html");
+    assertThat(rejectionsReported()).isZero();
+    assertThat(asksAfterRejection()).isZero();
+  }
+
   @Override
   protected SourceSettings settings() {
     return new SourceSettings(
         null,
         "http://127.0.0.1:" + server.getAddress().getPort() + "/feed.xml",
         null,
-        "leser:geheim",
+        secret,
         false,
         null);
   }
@@ -153,6 +196,16 @@ class RssFeedRunSecretContractTest extends RunSecretContract {
     return authorizations.contains(
         "Basic "
             + Base64.getEncoder().encodeToString(renewedSecret().getBytes(StandardCharsets.UTF_8)));
+  }
+
+  @Override
+  protected boolean usesRejectionSeam() {
+    return true;
+  }
+
+  @Override
+  protected String refusedSecret() {
+    return "leser:falsch";
   }
 
   @Override

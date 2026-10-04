@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
+import BusyButton from '../a11y/BusyButton'
 import Checkbox from '@mui/material/Checkbox'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import IconButton from '@mui/material/IconButton'
@@ -292,13 +293,15 @@ export default function GoogleDriveSourceForm({
           Bibliothek sichtbar, unabhängig von den Freigaben in Google Drive.
         </ScopeConsequence>
         <Stack direction="row" spacing={1} sx={{ mt: 1.5 }}>
-          <Button
+          <BusyButton
             variant="outlined"
             onClick={() => void loadScopes()}
-            disabled={listing || !keyServes}
+            disabled={!keyServes}
+            busy={listing}
+            busyAnnouncement="Bereiche werden geladen"
           >
             {listing ? 'Lädt …' : 'Bereiche laden'}
-          </Button>
+          </BusyButton>
         </Stack>
         {listingMessage && (
           <Alert severity={listingMessage.severity} sx={{ mt: 1 }}>
@@ -381,13 +384,15 @@ export default function GoogleDriveSourceForm({
       </Box>
 
       <Box>
-        <Button
+        <BusyButton
           variant="contained"
           onClick={() => void runTest()}
-          disabled={testing || !keyServes || values.scopes.length === 0}
+          disabled={!keyServes || values.scopes.length === 0}
+          busy={testing}
+          busyAnnouncement="Verbindung wird geprüft"
         >
           {testing ? 'Prüft …' : 'Verbindung testen'}
-        </Button>
+        </BusyButton>
         {/* always in the DOM, so a screen reader announces the text that appears in it */}
         <Box role="status" aria-live="polite" data-testid="google-drive-test-status">
           {testMessage && (

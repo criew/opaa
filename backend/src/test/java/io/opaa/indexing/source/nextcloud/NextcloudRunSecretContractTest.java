@@ -1,9 +1,17 @@
 package io.opaa.indexing.source.nextcloud;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import io.opaa.indexing.document.DocumentIngestResult;
 import io.opaa.indexing.source.IndexingRunTemplate;
 import io.opaa.indexing.source.RunSecretContract;
 import io.opaa.indexing.source.SourceSettings;
@@ -20,6 +28,7 @@ import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 /** The Nextcloud run against {@link FakeNextcloudServer} with the technical user's app password. */
 class NextcloudRunSecretContractTest extends RunSecretContract {
@@ -42,6 +51,36 @@ class NextcloudRunSecretContractTest extends RunSecretContract {
     server.close();
   }
 
+  /** A locked account or an app password without file access is no rejection of the secret. */
+  @Test
+  void a403AtTheSignInEndsTheRunWithoutReportingARejection() throws Exception {
+    server.denySignIn();
+    UUID jobId = UUID.randomUUID();
+
+    run(template(), jobId, library());
+
+    verify(jobService).failJob(jobId, "Keine Leseberechtigung für die Anmeldung (HTTP 403).");
+    verify(ingestService, never()).ingest(any(), any());
+    verifyNoInteractions(cleanupService);
+    assertThat(rejectionsReported()).isZero();
+    assertThat(asksAfterRejection()).isZero();
+  }
+
+  @Test
+  void a403OnAFileSkipsTheFileWithoutReportingARejection() throws Exception {
+    when(ingestService.ingest(any(), any())).thenReturn(DocumentIngestResult.PROCESSED);
+    server.put("Akten/Gesperrt/akte.txt", "Gesperrt.").denyReading("Akten/Gesperrt");
+    UUID jobId = UUID.randomUUID();
+
+    run(template(), jobId, library());
+
+    verify(jobService, never()).failJob(eq(jobId), anyString());
+    verify(ingestService, times(FILES)).ingest(any(), any());
+    assertThat(server.requests()).contains("GET Akten/Gesperrt/akte.txt");
+    assertThat(rejectionsReported()).isZero();
+    assertThat(asksAfterRejection()).isZero();
+  }
+
   @Override
   protected SourceSettings settings() {
     return NextcloudTestStores.settings(server.baseUrl(), server.credentials(), List.of("/Akten"));
@@ -55,6 +94,11 @@ class NextcloudRunSecretContractTest extends RunSecretContract {
   @Override
   protected boolean sawRenewedSecret() {
     return server.passwords().contains(RENEWED_PASSWORD);
+  }
+
+  @Override
+  protected boolean usesRejectionSeam() {
+    return true;
   }
 
   @Override

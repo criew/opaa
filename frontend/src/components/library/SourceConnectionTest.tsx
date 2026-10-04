@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
+import BusyButton from '../a11y/BusyButton'
 import type { SourceTypeKey, SourceConnectionTestResponse } from '../../types/api'
 import { testLibrarySource } from '../../services/libraryApi'
 import type { ProbeScope } from './sources/sourceConnection'
@@ -81,9 +81,15 @@ export default function SourceConnectionTest({
 
   return (
     <Box>
-      <Button onClick={() => void handleTest()} disabled={testing} variant="outlined" size={size}>
+      <BusyButton
+        onClick={() => void handleTest()}
+        busy={testing}
+        busyAnnouncement="Verbindung wird getestet"
+        variant="outlined"
+        size={size}
+      >
         {testing ? 'Verbindung wird getestet …' : 'Verbindung testen'}
-      </Button>
+      </BusyButton>
       {visible?.error && (
         <Alert severity="error" sx={{ mt: 1 }}>
           {visible.error}
