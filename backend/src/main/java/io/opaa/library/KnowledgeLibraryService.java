@@ -27,6 +27,8 @@ import io.opaa.indexing.job.IndexingJobService;
 import io.opaa.indexing.job.JobStatus;
 import io.opaa.indexing.job.LibraryScheduleCodec;
 import io.opaa.indexing.source.ConnectorData;
+import io.opaa.indexing.source.Secret;
+import io.opaa.indexing.source.SecretKind;
 import io.opaa.indexing.source.ServiceAccountKey;
 import io.opaa.indexing.source.ServiceAccountTokens;
 import io.opaa.indexing.source.SourceChangeGate;
@@ -1170,7 +1172,9 @@ public class KnowledgeLibraryService {
               + " ist");
     }
     String key = ServiceAccountKey.parse(requested.sourceCredentials()).storedForm();
-    return validation.apply(requested.withoutCredentials()).withSourceCredentials(key);
+    return validation
+        .apply(requested.withoutCredentials())
+        .withCredentials(new Secret(SecretKind.SERVICE_ACCOUNT_KEY, key));
   }
 
   /**

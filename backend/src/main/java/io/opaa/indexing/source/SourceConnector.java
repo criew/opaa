@@ -114,7 +114,9 @@ public interface SourceConnector {
 
   /**
    * The effective connector settings {@code stored} of {@code library} in comparable form, keyed by
-   * the field name the audit records when a value changes.
+   * the field name the audit records when a value changes. The state follows from {@code stored}
+   * alone: before and after a change both are asked with the changed library, which only identifies
+   * it (id, log).
    */
   default Map<String, Object> settingsState(KnowledgeLibrary library, ConnectorData stored) {
     return Map.of();

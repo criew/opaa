@@ -63,14 +63,16 @@ public class LibrarySourceConnectionResolver implements SourceConnectionResolver
             connector -> connector.descriptor().profileDeclaration().serviceAccountKey() != null);
   }
 
-  private static SourceSettings stored(KnowledgeLibrary library) {
+  /** The library's own fields; a stored secret of a signing connector is its key. */
+  private SourceSettings stored(KnowledgeLibrary library) {
     return new SourceSettings(
         library.getSourcePath(),
         library.getSourceUrl(),
         library.getSourceProxy(),
         library.getSourceCredentials(),
         library.isSourceInsecureSsl(),
-        ConnectorData.storedIn(library));
+        ConnectorData.storedIn(library),
+        signing(library).isPresent() ? SecretKind.SERVICE_ACCOUNT_KEY : null);
   }
 
   @Override

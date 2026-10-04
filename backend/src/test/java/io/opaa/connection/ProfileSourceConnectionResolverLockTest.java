@@ -13,7 +13,9 @@ import io.opaa.indexing.source.SourceBlock;
 import io.opaa.indexing.source.SourceConnectionBlockedException;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.test.SourceTypes;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
@@ -27,9 +29,13 @@ class ProfileSourceConnectionResolverLockTest {
   private final LibraryConnectionRepository connections = mock(LibraryConnectionRepository.class);
   private final ConnectionProfileRepository profiles = mock(ConnectionProfileRepository.class);
   private final ConnectorTypePolicyRepository policies = mock(ConnectorTypePolicyRepository.class);
+  private final Map<UUID, KnowledgeLibrary> rows = new HashMap<>();
   private final ProfileSourceConnectionResolver resolver =
       TestProfileResolvers.resolver(
-          connections, profiles, TestProfileResolvers.blocks(policies, connections, profiles));
+          connections,
+          profiles,
+          TestProfileResolvers.blocks(policies, connections, profiles, rows),
+          rows);
 
   private final KnowledgeLibrary library =
       KnowledgeLibrary.ownedByUser(

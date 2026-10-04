@@ -129,7 +129,7 @@ public class LibraryConnectionService {
       library.moveSourceUrl(address);
       libraries.save(library);
       if (!sameOrigin) {
-        secrets.discard(SecretOwner.of(library));
+        secrets.discard(SecretOwner.of(profile.getId(), library));
       }
       changeGate.addressMoved(library);
     }

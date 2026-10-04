@@ -1,6 +1,7 @@
 package io.opaa.connection;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -14,10 +15,13 @@ import io.opaa.connection.profile.LibraryConnectionRepository;
 import io.opaa.indexing.source.ConnectorData;
 import io.opaa.indexing.source.LibrarySourceConnectionResolver;
 import io.opaa.indexing.source.SecretKind;
+import io.opaa.indexing.source.SourceBlock;
+import io.opaa.indexing.source.SourceConnectionBlockedException;
 import io.opaa.indexing.source.SourceSettings;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.test.SourceTypes;
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -29,29 +33,20 @@ class ProfileSourceConnectionResolverCompositionTest {
 
   private final LibraryConnectionRepository connections = mock(LibraryConnectionRepository.class);
   private final ConnectionProfileRepository profiles = mock(ConnectionProfileRepository.class);
+  private final Map<UUID, KnowledgeLibrary> rows = new HashMap<>();
   private final ProfileSourceConnectionResolver resolver =
       TestProfileResolvers.resolver(
           connections,
           profiles,
           TestProfileResolvers.blocks(
-              mock(ConnectorTypePolicyRepository.class), connections, profiles));
+              mock(ConnectorTypePolicyRepository.class), connections, profiles, rows),
+          rows);
 
   @Test
   void runChangeAndSettingsShareTheMergedConfigurationOfTheProfile() {
     KnowledgeLibrary library = library("nutzer:geheim");
     library.updateSourceSettings("{\"region\":\"us\",\"bucket\":\"akten\"}");
-    ConnectionProfile profile = mock(ConnectionProfile.class);
-    UUID profileId = UUID.randomUUID();
-    when(profile.getId()).thenReturn(profileId);
-    when(profile.getName()).thenReturn("Ablage");
-    when(profile.getServerUrl()).thenReturn("https://ablage.example.org");
-    when(profile.getAuthMethod()).thenReturn(ConnectionAuthMethod.PERSONAL_SECRET);
-    when(profile.getConnectorSettings()).thenReturn("{\"region\":\"eu\",\"pathStyle\":true}");
-    LibraryConnection connection = new LibraryConnection(library.getId(), profileId, Instant.EPOCH);
-    when(connections.findById(library.getId())).thenReturn(Optional.of(connection));
-    when(connections.findAllById(any())).thenReturn(List.of(connection));
-    when(profiles.findById(profileId)).thenReturn(Optional.of(profile));
-    when(profiles.findAllById(any())).thenReturn(List.of(profile));
+    connectThroughProfile(library.getId(), "{\"region\":\"eu\",\"pathStyle\":true}");
 
     SourceSettings run = resolver.resolve(library);
     SourceSettings change = resolver.resolveForChange(library);
@@ -67,6 +62,32 @@ class ProfileSourceConnectionResolverCompositionTest {
     assertThat(resolver.currentCredentials(library)).isEqualTo("nutzer:geheim");
     assertThat(resolver.storedCredentials(library)).isEqualTo("nutzer:geheim");
     assertThat(resolver.holdsCredentials(library)).isTrue();
+  }
+
+  /**
+   * The run holds the library as loaded at its start; a secret discarded meanwhile (emergency
+   * shutdown, new address) is no longer handed out, and the block names the profile.
+   */
+  @Test
+  void aSecretDiscardedDuringTheRunIsNotHandedOutAgain() {
+    KnowledgeLibrary row = library("nutzer:geheim");
+    KnowledgeLibrary atRunStart = mock(KnowledgeLibrary.class);
+    when(atRunStart.getId()).thenReturn(row.getId());
+    when(atRunStart.getSourceType()).thenReturn(SourceTypes.RSS_FEED);
+    when(atRunStart.getSourceUrl()).thenReturn(row.getSourceUrl());
+    when(atRunStart.getSourceCredentials()).thenReturn("nutzer:geheim");
+    connectThroughProfile(row.getId(), null);
+
+    assertThat(resolver.currentCredentials(atRunStart)).isEqualTo("nutzer:geheim");
+    row.dropSourceCredentials();
+
+    assertThatThrownBy(() -> resolver.currentCredentials(atRunStart))
+        .isInstanceOf(SourceConnectionBlockedException.class)
+        .hasMessageStartingWith("Verbindung getrennt: Für den Zugang \"Ablage\"")
+        .satisfies(
+            e ->
+                assertThat(((SourceConnectionBlockedException) e).block().reason())
+                    .isEqualTo(SourceBlock.Reason.NOT_CONNECTED));
   }
 
   @Test
@@ -90,17 +111,35 @@ class ProfileSourceConnectionResolverCompositionTest {
     assertThat(resolver.holdsCredentials(library)).isFalse();
   }
 
-  private static KnowledgeLibrary library(String secret) {
-    return KnowledgeLibrary.ownedByUser(
-        UUID.randomUUID(),
-        "Akten",
-        null,
-        UUID.randomUUID(),
-        SourceTypes.RSS_FEED,
-        null,
-        "https://ablage.example.org/akten",
-        null,
-        secret,
-        false);
+  private void connectThroughProfile(UUID libraryId, String defaults) {
+    ConnectionProfile profile = mock(ConnectionProfile.class);
+    UUID profileId = UUID.randomUUID();
+    when(profile.getId()).thenReturn(profileId);
+    when(profile.getName()).thenReturn("Ablage");
+    when(profile.getServerUrl()).thenReturn("https://ablage.example.org");
+    when(profile.getAuthMethod()).thenReturn(ConnectionAuthMethod.PERSONAL_SECRET);
+    when(profile.getConnectorSettings()).thenReturn(defaults);
+    LibraryConnection connection = new LibraryConnection(libraryId, profileId, Instant.EPOCH);
+    when(connections.findById(libraryId)).thenReturn(Optional.of(connection));
+    when(connections.findAllById(any())).thenReturn(List.of(connection));
+    when(profiles.findById(profileId)).thenReturn(Optional.of(profile));
+    when(profiles.findAllById(any())).thenReturn(List.of(profile));
+  }
+
+  private KnowledgeLibrary library(String secret) {
+    KnowledgeLibrary library =
+        KnowledgeLibrary.ownedByUser(
+            UUID.randomUUID(),
+            "Akten",
+            null,
+            UUID.randomUUID(),
+            SourceTypes.RSS_FEED,
+            null,
+            "https://ablage.example.org/akten",
+            null,
+            secret,
+            false);
+    rows.put(library.getId(), library);
+    return library;
   }
 }

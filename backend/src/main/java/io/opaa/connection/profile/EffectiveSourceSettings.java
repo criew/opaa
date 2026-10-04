@@ -84,6 +84,13 @@ public class EffectiveSourceSettings {
     return secretFor(library, profileFor(library, Purpose.CHANGE), Purpose.RUN);
   }
 
+  /** The owner of the secret {@code library} is reached with, as its connection names it. */
+  public SecretOwner secretOwnerOf(KnowledgeLibrary library) {
+    return SecretOwner.of(
+        connections.findById(library.getId()).map(LibraryConnection::getProfileId).orElse(null),
+        library);
+  }
+
   private Optional<ConnectionProfile> profileFor(KnowledgeLibrary library, Purpose purpose) {
     if (purpose == Purpose.SETTINGS_ONLY) {
       return connections
@@ -106,7 +113,11 @@ public class EffectiveSourceSettings {
     }
     return switch (profile.get().getAuthMethod()) {
       case NONE -> null;
-      case PERSONAL_SECRET -> secrets.current(SecretOwner.of(library), library.getSourceUrl());
+      case PERSONAL_SECRET ->
+          secrets.current(
+              SecretOwner.of(profile.get().getId(), library),
+              library.getSourceUrl(),
+              profile.get().getName());
       case OAUTH, CLIENT_CREDENTIALS, SERVICE_ACCOUNT_KEY ->
           throw new IllegalStateException(
               "Sign-in method " + profile.get().getAuthMethod() + " passed the source blocks");

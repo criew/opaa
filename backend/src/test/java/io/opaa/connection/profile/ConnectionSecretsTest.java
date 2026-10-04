@@ -14,7 +14,9 @@ import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.test.SourceTypes;
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
@@ -22,25 +24,31 @@ import org.junit.jupiter.api.Test;
 class ConnectionSecretsTest {
 
   private final LibraryConnectionRepository connections = mock(LibraryConnectionRepository.class);
-  private final KnowledgeLibraryRepository libraries = mock(KnowledgeLibraryRepository.class);
+  private final Map<UUID, KnowledgeLibrary> rows = new HashMap<>();
+  private final KnowledgeLibraryRepository libraries = LibraryRows.over(rows);
   private final ConnectionSecrets secrets = new ConnectionSecrets(connections, libraries);
 
   @Test
   void aHeldSecretIsHandedOutAsAPersonalSecret() {
-    SecretOwner owner = SecretOwner.of(library("nutzer:geheim"));
+    SecretOwner owner = SecretOwner.of(null, library("nutzer:geheim"));
 
-    assertThat(secrets.current(owner, "https://quelle.example.org"))
+    assertThat(secrets.current(owner, "https://quelle.example.org", "Quelle"))
         .isEqualTo(new Secret(SecretKind.PERSONAL_SECRET, "nutzer:geheim"));
     assertThat(secrets.stateOf(owner)).isEmpty();
+    assertThat(secrets.stored(owner)).isEqualTo("nutzer:geheim");
+    assertThat(secrets.holds(owner)).isTrue();
   }
 
   @Test
   void aMissingSecretIsNotConnected() {
-    SecretOwner owner = SecretOwner.of(library(null));
+    SecretOwner owner = SecretOwner.of(null, library(null));
 
     assertThat(secrets.stateOf(owner)).contains(SourceBlock.Reason.NOT_CONNECTED);
-    assertThatThrownBy(() -> secrets.current(owner, "https://quelle.example.org"))
+    assertThat(secrets.stored(owner)).isNull();
+    assertThat(secrets.holds(owner)).isFalse();
+    assertThatThrownBy(() -> secrets.current(owner, "https://quelle.example.org", "Quelle"))
         .isInstanceOf(SourceConnectionBlockedException.class)
+        .hasMessageStartingWith("Verbindung getrennt: Für den Zugang \"Quelle\"")
         .satisfies(
             e ->
                 assertThat(((SourceConnectionBlockedException) e).block().reason())
@@ -51,7 +59,7 @@ class ConnectionSecretsTest {
   void discardClearsTheAttributeAndErasesTheColumn() {
     KnowledgeLibrary library = library("nutzer:geheim");
 
-    secrets.discard(SecretOwner.of(library));
+    secrets.discard(SecretOwner.of(null, library));
 
     assertThat(library.getSourceCredentials()).isNull();
     verify(libraries).eraseSourceCredentials(library.getId());
@@ -74,17 +82,20 @@ class ConnectionSecretsTest {
     verify(libraries).eraseSourceCredentials(second);
   }
 
-  private static KnowledgeLibrary library(String secret) {
-    return KnowledgeLibrary.ownedByUser(
-        UUID.randomUUID(),
-        "Akten",
-        null,
-        UUID.randomUUID(),
-        SourceTypes.RSS_FEED,
-        null,
-        "https://quelle.example.org/feed",
-        null,
-        secret,
-        false);
+  private KnowledgeLibrary library(String secret) {
+    KnowledgeLibrary library =
+        KnowledgeLibrary.ownedByUser(
+            UUID.randomUUID(),
+            "Akten",
+            null,
+            UUID.randomUUID(),
+            SourceTypes.RSS_FEED,
+            null,
+            "https://quelle.example.org/feed",
+            null,
+            secret,
+            false);
+    rows.put(library.getId(), library);
+    return library;
   }
 }

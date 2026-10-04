@@ -80,16 +80,15 @@ public class SourceBlocks {
     this.connectors = connectors;
   }
 
-  /**
-   * The block of a secret found missing when it is read, after this class let the library pass -
-   * the store does not know the profile to name.
-   */
-  static SourceBlock secretMissing() {
+  /** The block of a library whose own secret for the profile {@code accessName} is missing. */
+  static SourceBlock secretMissing(String accessName) {
     return new SourceBlock(
         Reason.NOT_CONNECTED,
         LIBRARY_MANAGERS,
-        "Verbindung getrennt: Für diese Bibliothek sind keine Zugangsdaten hinterlegt. Die"
-            + " Verwaltenden der Bibliothek tragen sie neu ein."
+        "Verbindung getrennt: Für den Zugang \""
+            + accessName
+            + "\" sind keine Zugangsdaten hinterlegt. Die Verwaltenden der"
+            + " Bibliothek tragen sie neu ein."
             + CONTENT_STAYS);
   }
 
@@ -176,7 +175,7 @@ public class SourceBlocks {
               profile,
               profile != null
                   && profile.getAuthMethod() == ConnectionAuthMethod.PERSONAL_SECRET
-                  && secrets.stateOf(SecretOwner.of(library)).isPresent()));
+                  && secrets.stateOf(SecretOwner.of(profile.getId(), library)).isPresent()));
     }
     return facts;
   }
@@ -204,7 +203,7 @@ public class SourceBlocks {
       SourceBlock typeLock,
       boolean connected,
       ConnectionProfile profile,
-      boolean secretMissing) {
+      boolean secretAbsent) {
 
     /** Tries the considered reasons in their order of declaration, which is the precedence. */
     private Optional<SourceBlock> firstBlock(Set<Reason> considered) {
@@ -266,17 +265,7 @@ public class SourceBlocks {
         return Optional.empty();
       }
       if (method == ConnectionAuthMethod.PERSONAL_SECRET) {
-        return !secretMissing
-            ? Optional.empty()
-            : Optional.of(
-                new SourceBlock(
-                    Reason.NOT_CONNECTED,
-                    LIBRARY_MANAGERS,
-                    "Verbindung getrennt: Für den Zugang \""
-                        + profile.getName()
-                        + "\" sind keine Zugangsdaten hinterlegt. Die Verwaltenden der"
-                        + " Bibliothek tragen sie neu ein."
-                        + CONTENT_STAYS));
+        return secretAbsent ? Optional.of(secretMissing(profile.getName())) : Optional.empty();
       }
       // OAUTH, CLIENT_CREDENTIALS, SERVICE_ACCOUNT_KEY: no library can be connected with them yet
       return Optional.of(

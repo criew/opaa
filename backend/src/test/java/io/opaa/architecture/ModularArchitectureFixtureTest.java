@@ -225,6 +225,18 @@ class ModularArchitectureFixtureTest {
                     .contains("library.LibraryAdministration", "getSourceCredentials"));
   }
 
+  /** library asks the store directly instead of the port; connections may. */
+  @Test
+  void theSecretStoreUsedOutsideConnectionsIsReported() {
+    Scenario scenario = new Scenario("librarysecret");
+
+    assertThat(scenario.violations(ModularArchitecture::theSecretStoreIsUsedOnlyInConnections))
+        .isNotEmpty()
+        .allSatisfy(
+            violation ->
+                assertThat(violation).contains("library.SecretShortcut", "ConnectionSecrets"));
+  }
+
   /** The answer path holds the secret port; the core and the library administration may. */
   @Test
   void theSecretPortHeldOutsideTheCoreIsReported() {

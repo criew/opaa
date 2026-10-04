@@ -15,8 +15,9 @@ import org.springframework.stereotype.Component;
 
 /**
  * The one place in connections that reads, checks and discards the secret a library's source is
- * reached with, addressed by its {@link SecretOwner}. Discarding erases the stored column, not only
- * the attribute: without its key the entity reads {@code null} anyway.
+ * reached with, addressed by its {@link SecretOwner}. Every read goes to the stored row, so a
+ * secret discarded meanwhile is not handed out from an entity loaded earlier. Discarding erases the
+ * column, not only the attribute: without its key the entity reads {@code null} anyway.
  */
 @Component
 public class ConnectionSecrets {
@@ -41,16 +42,17 @@ public class ConnectionSecrets {
   }
 
   /**
-   * The secret {@code owner} holds now, to be sent to {@code target}.
+   * The secret {@code owner} holds now, to be sent to {@code target} through the profile named
+   * {@code accessName}.
    *
-   * @throws SourceConnectionBlockedException when it holds none
+   * @throws SourceConnectionBlockedException naming {@code accessName} when it holds none
    */
-  public Secret current(SecretOwner owner, String target) {
+  public Secret current(SecretOwner owner, String target, String accessName) {
     return switch (owner) {
-      case LibraryOwned(KnowledgeLibrary library) -> {
-        Secret secret = Secret.personal(library.getSourceCredentials());
+      case LibraryOwned(UUID libraryId) -> {
+        Secret secret = Secret.personal(columnOf(libraryId));
         if (secret == null) {
-          throw new SourceConnectionBlockedException(SourceBlocks.secretMissing());
+          throw new SourceConnectionBlockedException(SourceBlocks.secretMissing(accessName));
         }
         yield secret;
       }
@@ -60,19 +62,34 @@ public class ConnectionSecrets {
   /** Why {@code owner} cannot hand out a secret now, empty while it can; renews nothing. */
   public Optional<SourceBlock.Reason> stateOf(SecretOwner owner) {
     return switch (owner) {
-      case LibraryOwned(KnowledgeLibrary library) ->
-          library.getSourceCredentials() == null
+      case LibraryOwned(UUID libraryId) ->
+          columnOf(libraryId) == null
               ? Optional.of(SourceBlock.Reason.NOT_CONNECTED)
               : Optional.empty();
     };
   }
 
-  /** Discards the secret of {@code owner}. */
+  /**
+   * The secret {@code owner} stores for the library itself, as a change keeps it on the same
+   * origin; {@code null} for none or an unreadable one. Never renewed, never a person's secret.
+   */
+  public String stored(SecretOwner owner) {
+    return switch (owner) {
+      case LibraryOwned(UUID libraryId) -> columnOf(libraryId);
+    };
+  }
+
+  /** Whether {@link #stored} holds a secret, regardless of whether it may be used now. */
+  public boolean holds(SecretOwner owner) {
+    return stored(owner) != null;
+  }
+
+  /** Discards the secret of {@code owner}, in the attribute of a loaded library and the column. */
   public void discard(SecretOwner owner) {
     switch (owner) {
-      case LibraryOwned(KnowledgeLibrary library) -> {
-        library.dropSourceCredentials();
-        libraries.eraseSourceCredentials(library.getId());
+      case LibraryOwned(UUID libraryId) -> {
+        libraries.findById(libraryId).ifPresent(KnowledgeLibrary::dropSourceCredentials);
+        libraries.eraseSourceCredentials(libraryId);
       }
     }
   }
@@ -89,5 +106,10 @@ public class ConnectionSecrets {
         profileId,
         cause);
     return under.size();
+  }
+
+  /** The library's secret as stored now; inside a transaction its managed entity. */
+  private String columnOf(UUID libraryId) {
+    return libraries.findById(libraryId).map(KnowledgeLibrary::getSourceCredentials).orElse(null);
   }
 }

@@ -125,6 +125,11 @@ class ModularArchitectureTest {
   }
 
   @Test
+  void theSecretStoreIsUsedOnlyInConnections() {
+    ARCHITECTURE.theSecretStoreIsUsedOnlyInConnections().check(mainClasses);
+  }
+
+  @Test
   void theConnectorReleaseIsDecidedInConnections() {
     ARCHITECTURE.theConnectorReleaseIsDecidedInConnections().check(mainClasses);
   }

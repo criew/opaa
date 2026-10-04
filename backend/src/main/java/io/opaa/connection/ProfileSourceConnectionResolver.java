@@ -3,7 +3,6 @@ package io.opaa.connection;
 import io.opaa.connection.profile.ConnectionSecrets;
 import io.opaa.connection.profile.EffectiveSourceSettings;
 import io.opaa.connection.profile.EffectiveSourceSettings.Purpose;
-import io.opaa.connection.profile.SecretOwner;
 import io.opaa.connection.profile.SourceBlocks;
 import io.opaa.indexing.source.ConnectorData;
 import io.opaa.indexing.source.Secret;
@@ -56,15 +55,12 @@ public class ProfileSourceConnectionResolver implements SourceConnectionResolver
 
   @Override
   public String storedCredentials(KnowledgeLibrary library) {
-    SecretOwner owner = SecretOwner.of(library);
-    return secrets.stateOf(owner).isPresent()
-        ? null
-        : secrets.current(owner, library.getSourceUrl()).value();
+    return secrets.stored(effective.secretOwnerOf(library));
   }
 
   @Override
   public boolean holdsCredentials(KnowledgeLibrary library) {
-    return secrets.stateOf(SecretOwner.of(library)).isEmpty();
+    return secrets.holds(effective.secretOwnerOf(library));
   }
 
   @Override

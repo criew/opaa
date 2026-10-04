@@ -18,7 +18,9 @@ import io.opaa.indexing.source.SourceConnectionBlockedException;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.test.SourceTypes;
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
@@ -30,8 +32,10 @@ class ConnectionSourceStateLookupTest {
 
   private final LibraryConnectionRepository connections = mock(LibraryConnectionRepository.class);
   private final ConnectionProfileRepository profiles = mock(ConnectionProfileRepository.class);
+  private final Map<UUID, KnowledgeLibrary> rows = new HashMap<>();
   private final SourceBlocks blocks =
-      TestProfileResolvers.blocks(mock(ConnectorTypePolicyRepository.class), connections, profiles);
+      TestProfileResolvers.blocks(
+          mock(ConnectorTypePolicyRepository.class), connections, profiles, rows);
 
   @Test
   void aRunNamesTheAddressAndAnAnswerTheMissingSecret() {
@@ -50,7 +54,7 @@ class ConnectionSourceStateLookupTest {
                 new LibraryConnection(inside.getId(), profileId, Instant.EPOCH)));
     when(profiles.findAllById(any())).thenReturn(List.of(profile));
     ProfileSourceConnectionResolver resolver =
-        TestProfileResolvers.resolver(connections, profiles, blocks);
+        TestProfileResolvers.resolver(connections, profiles, blocks, rows);
 
     assertThatThrownBy(() -> resolver.resolve(outside))
         .isInstanceOf(SourceConnectionBlockedException.class)
@@ -68,17 +72,20 @@ class ConnectionSourceStateLookupTest {
             });
   }
 
-  private static KnowledgeLibrary libraryAt(String url, String secret) {
-    return KnowledgeLibrary.ownedByUser(
-        UUID.randomUUID(),
-        "Feed",
-        null,
-        UUID.randomUUID(),
-        SourceTypes.RSS_FEED,
-        null,
-        url,
-        null,
-        secret,
-        false);
+  private KnowledgeLibrary libraryAt(String url, String secret) {
+    KnowledgeLibrary library =
+        KnowledgeLibrary.ownedByUser(
+            UUID.randomUUID(),
+            "Feed",
+            null,
+            UUID.randomUUID(),
+            SourceTypes.RSS_FEED,
+            null,
+            url,
+            null,
+            secret,
+            false);
+    rows.put(library.getId(), library);
+    return library;
   }
 }

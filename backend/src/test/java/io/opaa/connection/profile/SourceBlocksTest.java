@@ -16,13 +16,13 @@ import io.opaa.indexing.source.SourceConnectionBlockedException;
 import io.opaa.indexing.source.SourceConnectorRegistry;
 import io.opaa.indexing.source.TestSourceConnectors;
 import io.opaa.knowledge.KnowledgeLibrary;
-import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.test.SourceTypes;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -57,6 +57,7 @@ class SourceBlocksTest {
   private final List<LibraryConnection> connectionRows = new ArrayList<>();
   private final List<ConnectionProfile> profileRows = new ArrayList<>();
   private final ConnectorTypePolicyRepository policies = mock(ConnectorTypePolicyRepository.class);
+  private final Map<UUID, KnowledgeLibrary> rows = new HashMap<>();
   private SourceBlocks blocks;
 
   @BeforeEach
@@ -84,7 +85,7 @@ class SourceBlocksTest {
             policies,
             connections,
             profiles,
-            new ConnectionSecrets(connections, mock(KnowledgeLibraryRepository.class)),
+            new ConnectionSecrets(connections, LibraryRows.over(rows)),
             registry);
   }
 
@@ -345,6 +346,7 @@ class SourceBlocksTest {
             null,
             facts.contains(Fact.NO_SECRET) ? null : "nutzer:geheim",
             false);
+    rows.put(library.getId(), library);
     if (facts.contains(Fact.TYPE_LOCK) && policyRows.isEmpty()) {
       ConnectorTypePolicy policy = new ConnectorTypePolicy(type, NOW);
       policy.lockedSince(NOW, NOW);

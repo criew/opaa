@@ -4,7 +4,7 @@ import io.opaa.architecture.fixture.librarysecret.knowledge.KnowledgeLibrary;
 
 /** The store may read the secret. */
 public class ConnectionSecrets {
-  String current(KnowledgeLibrary library) {
+  public String current(KnowledgeLibrary library) {
     return library.getSourceCredentials();
   }
 }

@@ -926,6 +926,28 @@ public final class ModularArchitecture {
         .allowEmptyShould(true);
   }
 
+  /**
+   * Dependencies on {@link #SECRET_STORE} outside module CONNECTIONS: the library administration
+   * reaches the secret only through the port.
+   */
+  ArchRule theSecretStoreIsUsedOnlyInConnections() {
+    return noClasses()
+        .that(
+            DescribedPredicate.describe(
+                "are outside module CONNECTIONS",
+                javaClass -> {
+                  Module module = moduleOf(javaClass);
+                  return module != null && module != CONNECTIONS;
+                }))
+        .should()
+        .dependOnClassesThat(
+            DescribedPredicate.describe(
+                "are " + SECRET_STORE,
+                target -> SECRET_STORE.equals(relativeName(target.getBaseComponentType()))))
+        .because("only connections reads the secret store; everyone else asks the port")
+        .allowEmptyShould(true);
+  }
+
   /** {@code javaClass} relative to the root, {@code null} outside it. */
   private String relativeName(JavaClass javaClass) {
     String relative = relative(javaClass.getPackageName());
@@ -936,6 +958,7 @@ public final class ModularArchitecture {
     return List.of(
         onlyTheChangeGateCallsTheConnectorChangeHooks(),
         theLibrarySecretIsReadInOnePlace(),
+        theSecretStoreIsUsedOnlyInConnections(),
         theSecretPortStaysWithTheCore(),
         theConnectorReleaseIsDecidedInConnections(),
         everyPackageIsAssigned(),
