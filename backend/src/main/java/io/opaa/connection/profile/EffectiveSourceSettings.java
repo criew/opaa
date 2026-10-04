@@ -21,6 +21,8 @@ import io.opaa.indexing.source.SourceCredentialsException;
 import io.opaa.indexing.source.SourceSettings;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -389,11 +391,49 @@ public class EffectiveSourceSettings {
       Optional<ConnectionProfile> profile,
       String address,
       Secret secret) {
+    return framed(library, profile, address, secret, null);
+  }
+
+  /** {@link #framed}, with {@code kept} joining the library's own connector settings first. */
+  SourceSettings framed(
+      KnowledgeLibrary library,
+      Optional<ConnectionProfile> profile,
+      String address,
+      Secret secret,
+      ConnectorData kept) {
     Own own = Own.of(library);
     return compose(
-        new Own(own.path(), address, own.transport(), own.settings()),
+        new Own(own.path(), address, own.transport(), joined(own.settings(), kept)),
         profile.map(this::frame),
         secret);
+  }
+
+  /**
+   * The defaults {@code from} sets that {@code to} - a profile possibly not saved yet - no longer
+   * sets: a library moving between them keeps their values as its own, so its effective
+   * configuration does not lose them. {@code null} for none.
+   */
+  ConnectorData keptDefaults(Optional<ConnectionProfile> from, Optional<ConnectionProfile> to) {
+    return from.map(this::frame).map(frame -> frame.droppedBy(to.map(this::frame))).orElse(null);
+  }
+
+  /** Writes {@code kept} into {@code library}'s own connector settings; none is a no-op. */
+  void keepDefaults(KnowledgeLibrary library, ConnectorData kept) {
+    if (kept != null) {
+      library.updateSourceSettings(joined(ConnectorData.storedIn(library), kept).toJson());
+    }
+  }
+
+  private static ConnectorData joined(ConnectorData own, ConnectorData kept) {
+    if (kept == null) {
+      return own;
+    }
+    Map<String, Object> values = new LinkedHashMap<>();
+    if (own != null) {
+      values.putAll(own.asMap());
+    }
+    values.putAll(kept.asMap());
+    return ConnectorData.of(values);
   }
 
   /**

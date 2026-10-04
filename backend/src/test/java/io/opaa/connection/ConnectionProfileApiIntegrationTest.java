@@ -125,7 +125,7 @@ class ConnectionProfileApiIntegrationTest {
             as("dev-admin", post(ADMIN))
                 .content(
                     """
-                    {"name": "Zugang Testquelle", "sourceType": "PROBE", "serverUrl":
+                    {"name": "Zugang Dateisystem", "sourceType": "FILESYSTEM", "serverUrl":
                      "https://probe.example.org", "authMethod": "NONE", "ownership": "LIBRARY"}
                     """))
         .andExpect(status().isBadRequest())

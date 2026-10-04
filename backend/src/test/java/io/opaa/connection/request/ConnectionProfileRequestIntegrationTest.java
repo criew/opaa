@@ -170,7 +170,7 @@ class ConnectionProfileRequestIntegrationTest {
     mockMvc
         .perform(
             as("dev-user", post(SUBMIT))
-                .content(body("RSS_FEED", "https://feeds.example.org", null)))
+                .content(body("FILESYSTEM", "https://files.example.org", null)))
         .andExpect(status().isBadRequest());
     mockMvc
         .perform(

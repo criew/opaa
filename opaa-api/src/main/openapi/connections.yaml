@@ -834,7 +834,8 @@ components:
           nullable: true
           description: >
             Proxy server in host:port format every library on the profile is reached through;
-            absent for none. A library on the profile cannot set its own.
+            absent for none. A library on the profile cannot set its own. Only for an http or
+            https server address; with any other (smb) it is a 400.
           example: proxy.example.org:8080
         sourceInsecureSsl:
           type: boolean
@@ -842,7 +843,8 @@ components:
           default: false
           description: >
             Skip the certificate check for every library on the profile. A library on the profile
-            cannot set its own.
+            cannot set its own. Only for an http or https server address; with any other (smb)
+            true is a 400.
         fulfillsRequestId:
           type: string
           format: uuid
@@ -912,7 +914,8 @@ components:
           nullable: true
           description: >
             Proxy server in host:port format every library on the profile is reached through;
-            absent for none. A library on the profile cannot set its own.
+            absent for none. A library on the profile cannot set its own. Only for an http or
+            https server address; with any other (smb) it is a 400.
           example: proxy.example.org:8080
         sourceInsecureSsl:
           type: boolean
@@ -920,7 +923,8 @@ components:
           default: false
           description: >
             Skip the certificate check for every library on the profile. A library on the profile
-            cannot set its own.
+            cannot set its own. Only for an http or https server address; with any other (smb)
+            true is a 400.
         confirmDiscard:
           type: boolean
           description: >

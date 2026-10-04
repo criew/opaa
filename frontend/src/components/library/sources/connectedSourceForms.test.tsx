@@ -198,6 +198,43 @@ describe('source forms under a connection profile', () => {
     )
   })
 
+  it.each([
+    [
+      'NEXTCLOUD' as SourceTypeKey,
+      'https://cloud.example',
+      /^Adresse der Nextcloud/,
+      [/^Technischer Nutzer/, /^App-Passwort/],
+    ],
+    [
+      'SMB' as SourceTypeKey,
+      'smb://dateiserver.example',
+      /^Adresse der Freigabe/,
+      [/^Dienstkonto/, /^Passwort/],
+    ],
+  ])(
+    'prefills the %s address from the profile and asks for the library’s own secret',
+    (sourceType, serverUrl, addressLabel, secretLabels) => {
+      renderWithProviders(
+        <Connected
+          sourceType={sourceType}
+          connection={{
+            profileId: 'profile-files',
+            name: 'Ablage',
+            serverUrl,
+            authMethod: 'PERSONAL_SECRET',
+            defaults: {},
+          }}
+        />,
+      )
+
+      expect(screen.getByLabelText(addressLabel)).toHaveValue(serverUrl)
+      expect(screen.getByText(/Server-Adresse des Zugangs „Ablage“/)).toBeInTheDocument()
+      for (const label of secretLabels) {
+        expect(screen.getByLabelText(label)).toBeInTheDocument()
+      }
+    },
+  )
+
   it('shows proxy and certificate check of the profile read-only and tests without them', async () => {
     const user = userEvent.setup()
     renderWithProviders(

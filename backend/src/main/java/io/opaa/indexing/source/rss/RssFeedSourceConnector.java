@@ -7,12 +7,18 @@ import static io.opaa.indexing.source.ConnectorChecks.requireHttpUrl;
 import static io.opaa.indexing.source.ConnectorChecks.translateConnectionError;
 import static io.opaa.indexing.source.ConnectorChecks.unreachable;
 
+import io.opaa.api.types.ConnectionAuthMethod;
+import io.opaa.api.types.ConnectionOwnership;
+import io.opaa.api.types.ConnectionProfileSupport;
+import io.opaa.api.types.PersonalSecretForm;
 import io.opaa.format.DocumentProperties;
 import io.opaa.indexing.source.ConnectorChecks;
 import io.opaa.indexing.source.ConnectorData;
 import io.opaa.indexing.source.OriginalAccess;
+import io.opaa.indexing.source.ProfileDeclaration;
 import io.opaa.indexing.source.RemoteOriginalAccess;
 import io.opaa.indexing.source.RowDeclaredProperties;
+import io.opaa.indexing.source.SignIn;
 import io.opaa.indexing.source.SourceConnectionTestResult;
 import io.opaa.indexing.source.SourceConnector;
 import io.opaa.indexing.source.SourceConnectorDescriptor;
@@ -55,8 +61,21 @@ public class RssFeedSourceConnector
 
   private static final Logger log = LoggerFactory.getLogger(RssFeedSourceConnector.class);
 
+  /** What a required profile leaves open: the detail pages an entry links to. */
+  static final String REQUIREMENT_GAP =
+      "Die Pflicht legt nur die Feed-Adresse fest. Die Detailseiten eines Feeds stammen aus seinen"
+          + " Einträgen und können auf fremden Servern liegen; sie werden weiter abgerufen, aber"
+          + " ohne Zugangsdaten.";
+
   private static final SourceConnectorDescriptor DESCRIPTOR =
-      SourceConnectorDescriptor.remoteRun(TYPE, "RSS-Feed");
+      SourceConnectorDescriptor.remoteRun(TYPE, "RSS-Feed")
+          .withProfiles(
+              ProfileDeclaration.of(
+                      ConnectionProfileSupport.OPTIONAL,
+                      SignIn.of(ConnectionAuthMethod.NONE, ConnectionOwnership.LIBRARY),
+                      SignIn.personalSecret(
+                          PersonalSecretForm.USERNAME_AND_PASSWORD, ConnectionOwnership.LIBRARY))
+                  .withRequirementGap(REQUIREMENT_GAP));
 
   private final RssFeedParser feedParser;
   private final RssFeedStateRepository feedStateRepository;

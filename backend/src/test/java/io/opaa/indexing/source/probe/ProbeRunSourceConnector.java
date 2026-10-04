@@ -1,6 +1,11 @@
 package io.opaa.indexing.source.probe;
 
+import io.opaa.api.types.ConnectionAuthMethod;
+import io.opaa.api.types.ConnectionOwnership;
+import io.opaa.api.types.ConnectionProfileSupport;
 import io.opaa.indexing.source.ConnectorData;
+import io.opaa.indexing.source.ProfileDeclaration;
+import io.opaa.indexing.source.SignIn;
 import io.opaa.indexing.source.SourceBrowser;
 import io.opaa.indexing.source.SourceConnectionTestResult;
 import io.opaa.indexing.source.SourceConnector;
@@ -22,7 +27,11 @@ public class ProbeRunSourceConnector implements SourceConnector, SourceBrowser {
 
   @Override
   public SourceConnectorDescriptor descriptor() {
-    return SourceConnectorDescriptor.remoteRun(TYPE, "Testquelle mit Lauf");
+    return SourceConnectorDescriptor.remoteRun(TYPE, "Testquelle mit Lauf")
+        .withProfiles(
+            ProfileDeclaration.of(
+                ConnectionProfileSupport.OPTIONAL,
+                SignIn.of(ConnectionAuthMethod.NONE, ConnectionOwnership.LIBRARY)));
   }
 
   @Override
