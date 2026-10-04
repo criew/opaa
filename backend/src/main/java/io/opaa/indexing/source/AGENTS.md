@@ -27,13 +27,13 @@ von foundation, format und knowledge ab.
   sonst `SourceCredentialsRejectedException`); sonst im Aufruf. Kein Konnektor hält oder erzeugt einen `SourceConnectionResolver` oder liest aus `KnowledgeLibrary` mehr als `getSourcePath`/`getWebhookSecret`.
 - **Dienstkonto-Schlüssel signiert der Kern** (ADR-0040): Der Konnektor bekommt nur das Token aus
   `ServiceAccountTokens` und meldet imitiertes Konto und feste Adresse (`assertionSubject`).
-- **Geheimnisse stehen nie in `source_settings`** — die Spalte ist unverschlüsselt und erscheint in
-  Antworten. Plätze für Geheimnisse: `source_credentials`, `source_webhook_secret`, Client-Secret
-  am Zugang, Token-Speicher - alle verschlüsselt; Antworten nur Ja/Nein, Audit nur Feldnamen.
+- **Geheimnisse stehen nie in `source_settings`** (unverschlüsselt, in Antworten), nur verschlüsselt
+  in `source_credentials`, `source_webhook_secret`, am Zugang, im Token-Speicher; Antworten Ja/Nein.
 - **Jedes Ziel von Zugangsdaten leitet sich aus `sourceUrl` ab**, bei einem Zugang aus dessen
-  Server-Adresse; ein Ursprungswechsel verwirft sie (`ServerAddress#sameOrigin`). Ein Ziel nur in
-  `source_settings` verlangt bei Änderung neue Zugangsdaten. Profilangabe: `ProfileDeclaration`.
-- **Änderungen nur über `SourceChangeGate`;** `stored` = effektiv, `applyChange` = eigener Teil.
+  Server-Adresse; was sie enger bindet (Freigabe, imitiertes Konto), meldet nur `credentialBinding`.
+  Ändert sich Ursprung oder Bindung, verwirft der Kern sie. Profilangabe: `ProfileDeclaration`.
+- **Änderungen nur über `SourceChangeGate`**, auch Profiländerung, Zuordnen und Lösen; `stored` =
+  effektiv, `applyChange` = eigener Teil. `validateChange` hängt nur von seinen Argumenten ab.
 - **Der Laufrahmen ist `IndexingRunTemplate`:** Der Körper zählt nur die Quelle auf und meldet
   einen `ListingOutcome`; Fortschritt, Protokoll und Abgleich durch Abwesenheit besitzt der Rahmen.
 - **Dateiablagen** implementieren `FileStore` (mit Änderungsprotokoll auch `ChangeFeed`) aus

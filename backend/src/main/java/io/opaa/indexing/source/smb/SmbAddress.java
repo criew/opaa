@@ -104,19 +104,19 @@ record SmbAddress(String host, int port, String share) {
   }
 
   /**
-   * Whether credentials stored for {@code stored} also stand for {@code requested}: the same
-   * server, port and share - on a file server the share is a boundary of rights. Unreadable
-   * addresses never match.
+   * What credentials stored for {@code url} are bound to: server, port and share - on a file server
+   * the share is a boundary of rights. An unreadable address yields a value no readable one
+   * matches; {@code null} for none.
    */
-  static boolean sameShare(String stored, String requested) {
+  static String shareBinding(String url) {
+    if (url == null) {
+      return null;
+    }
     try {
-      SmbAddress before = parse(stored);
-      SmbAddress after = parse(requested);
-      return before.host.equals(after.host)
-          && before.port == after.port
-          && before.share.equalsIgnoreCase(after.share);
+      SmbAddress address = parse(url);
+      return address.host + ":" + address.port + "/" + address.share.toLowerCase(Locale.ROOT);
     } catch (InvalidSmbConfigurationException e) {
-      return false;
+      return "unreadable " + url;
     }
   }
 

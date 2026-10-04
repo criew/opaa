@@ -137,6 +137,34 @@ public final class ServerAddress {
   }
 
   /**
+   * The origin {@link #sameOrigin} compares, as text: scheme and host in lower case and the port,
+   * an omitted one as the default only for {@code http} and {@code https}; {@code null} where
+   * {@link #sameOrigin} never matches.
+   */
+  public static String originOf(String address) {
+    if (address == null) {
+      return null;
+    }
+    URI uri;
+    try {
+      uri = URI.create(address);
+    } catch (IllegalArgumentException e) {
+      return null;
+    }
+    if (uri.getScheme() == null || uri.getHost() == null) {
+      return null;
+    }
+    String scheme = uri.getScheme().toLowerCase(Locale.ROOT);
+    int port = uri.getPort();
+    if (port < 0 && scheme.equals("https")) {
+      port = 443;
+    } else if (port < 0 && scheme.equals("http")) {
+      port = 80;
+    }
+    return scheme + "://" + uri.getHost().toLowerCase(Locale.ROOT) + (port < 0 ? "" : ":" + port);
+  }
+
+  /**
    * The path with dot segments resolved and without a trailing slash; {@code null} when it climbs
    * above the root or encodes a dot segment, which a server might resolve after this check.
    */

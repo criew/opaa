@@ -13,8 +13,9 @@ import io.opaa.connection.profile.ProfileRequirementService;
 import io.opaa.connection.profile.ProfileRequirements;
 import io.opaa.connection.profile.SecretOwner;
 import io.opaa.connection.profile.ServerAddress;
+import io.opaa.connection.profile.SourceTransitions;
+import io.opaa.connection.profile.SourceTransitions.Move;
 import io.opaa.indexing.source.SourceBlock;
-import io.opaa.indexing.source.SourceChangeGate;
 import io.opaa.indexing.source.SourceConnectorRegistry;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
@@ -23,6 +24,7 @@ import java.time.Clock;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,7 +32,8 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Which profile a library is connected through, for the library administration. The rights of the
  * caller are checked there; here only what the profile admits: the same connector, libraries as
- * owners, and an address under its server address.
+ * owners, and an address under its server address. Connecting and releasing a saved library pass
+ * its connector ({@link SourceTransitions}).
  */
 @Service
 @Transactional(readOnly = true)
@@ -45,7 +48,7 @@ public class LibraryConnectionService {
   private final ProfileRequirementService requirementService;
   private final ConnectionSecrets secrets;
   private final EffectiveSourceSettings effective;
-  private final SourceChangeGate changeGate;
+  private final SourceTransitions transitions;
   private final Clock clock;
 
   public LibraryConnectionService(
@@ -58,6 +61,7 @@ public class LibraryConnectionService {
       ProfileRequirementService requirementService,
       ConnectionSecrets secrets,
       EffectiveSourceSettings effective,
+      SourceTransitions transitions,
       Clock clock) {
     this.connections = connections;
     this.profiles = profiles;
@@ -68,7 +72,7 @@ public class LibraryConnectionService {
     this.requirementService = requirementService;
     this.secrets = secrets;
     this.effective = effective;
-    this.changeGate = new SourceChangeGate(connectors);
+    this.transitions = transitions;
     this.clock = clock;
   }
 
@@ -120,20 +124,38 @@ public class LibraryConnectionService {
   }
 
   /**
-   * Connects a saved library through {@code profileId}, adopting its frame (proxy, TLS switch,
-   * bound defaults - own values give way, no 400). An address under the previous profile moves
-   * under the new one; a secret is kept only while the origin and the connector's binding stay.
+   * Records that a library just created through {@code profileId} - validated and stored with the
+   * profile's frame already - is connected through it.
    */
   @Transactional
-  public ConnectionProfile connect(KnowledgeLibrary library, UUID profileId) {
+  public void attachNew(KnowledgeLibrary library, UUID profileId) {
+    requireAdmitting(profileId, library.getSourceType());
+    connections.save(new LibraryConnection(library.getId(), profileId, clock.instant()));
+  }
+
+  /**
+   * Connects a saved library through {@code profileId} at {@code requestedUrl}, which must lie
+   * under the profile; without one an address under the previous profile moves under the new one.
+   * The connector checks the configuration the profile gives the library (German 400 when it
+   * refuses); then the library adopts the frame (proxy, TLS switch, bound defaults - own values
+   * give way), and its secret stays only while its {@link io.opaa.connection.profile.SecretTarget}
+   * does.
+   *
+   * @return the fields the move changed, as the audit of a direct change names them
+   */
+  @Transactional
+  public Set<String> connect(KnowledgeLibrary library, UUID profileId, String requestedUrl) {
     ConnectionProfile profile = requireAdmitting(profileId, library.getSourceType());
     LibraryConnection connection = connections.findById(library.getId()).orElse(null);
-    String address = library.getSourceUrl();
     ConnectionProfile previous =
         !LibraryConnection.throughProfile(connection)
             ? null
             : profiles.findById(connection.getProfileId()).orElse(null);
-    if (previous != null
+    String address = library.getSourceUrl();
+    if (requestedUrl != null) {
+      address =
+          connectors.connector(library.getSourceType()).normalizeSourceUrl(requestedUrl.trim());
+    } else if (previous != null
         && !previous.getId().equals(profile.getId())
         && ServerAddress.covers(previous.getServerUrl(), address)) {
       address = ServerAddress.rebase(address, previous.getServerUrl(), profile.getServerUrl());
@@ -141,18 +163,15 @@ public class LibraryConnectionService {
       address = profile.getServerUrl();
     }
     requireUnder(profile, address);
+    Move move =
+        transitions.move(
+            library, Optional.ofNullable(previous), Optional.of(profile), address, false);
+    transitions.require(move);
     if (!address.equals(library.getSourceUrl())) {
-      boolean keepsSecret =
-          ServerAddress.sameOrigin(library.getSourceUrl(), address)
-              && connectors
-                  .connector(library.getSourceType())
-                  .keepsCredentials(library.getSourceUrl(), address);
       library.moveSourceUrl(address);
-      libraries.save(library);
-      if (!keepsSecret) {
-        secrets.discard(SecretOwner.of(profile.getId(), library));
-      }
-      changeGate.addressMoved(library);
+    }
+    if (move.discardsSecret()) {
+      secrets.discard(SecretOwner.of(profile.getId(), library));
     }
     effective.adoptFrame(library, profile);
     libraries.save(library);
@@ -162,19 +181,35 @@ public class LibraryConnectionService {
       connection.moveTo(profile.getId(), clock.instant());
       connections.save(connection);
     }
-    return profile;
+    return transitions.applied(move);
   }
 
   /**
-   * Releases the library from its profile; it keeps address and secret. Refused while its type is
-   * usable only through a profile.
+   * Releases the library from its profile; it keeps address and secret, and what the profile set
+   * for it - defaults, proxy, TLS switch - becomes its own, so it runs on unchanged. Refused while
+   * its type is usable only through a profile.
+   *
+   * @return the fields the release changed for the connector, none when it runs on unchanged
    */
   @Transactional
-  public void disconnect(KnowledgeLibrary library) {
+  public Set<String> disconnect(KnowledgeLibrary library) {
     if (requirements.profileRequired(library.getSourceType())) {
       throw requirementService.ownAddressRefused(library.getSourceType());
     }
-    connections.findById(library.getId()).ifPresent(connections::delete);
+    LibraryConnection connection = connections.findById(library.getId()).orElse(null);
+    if (connection == null) {
+      return Set.of();
+    }
+    Optional<ConnectionProfile> profile =
+        LibraryConnection.throughProfile(connection)
+            ? profiles.findById(connection.getProfileId())
+            : Optional.empty();
+    Move move = transitions.release(library, profile);
+    transitions.require(move);
+    profile.ifPresent(found -> effective.releaseFrame(library, found));
+    libraries.save(library);
+    connections.delete(connection);
+    return transitions.applied(move);
   }
 
   private ConnectionProfile requireAdmitting(UUID profileId, SourceType sourceType) {

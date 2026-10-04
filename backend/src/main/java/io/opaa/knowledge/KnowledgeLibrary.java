@@ -407,8 +407,13 @@ public class KnowledgeLibrary extends Asset {
 
   /** Drops its own proxy and skipped certificate check: a connection profile decides them. */
   public void dropTransport() {
-    this.sourceProxy = null;
-    this.sourceInsecureSsl = false;
+    replaceTransport(null, false);
+  }
+
+  /** Takes {@code sourceProxy} and the certificate switch as its own, as a released profile had. */
+  public void replaceTransport(String sourceProxy, boolean sourceInsecureSsl) {
+    this.sourceProxy = sourceProxy;
+    this.sourceInsecureSsl = sourceInsecureSsl;
     touch();
   }
 

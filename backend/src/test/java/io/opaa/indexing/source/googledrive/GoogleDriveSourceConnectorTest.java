@@ -120,6 +120,29 @@ class GoogleDriveSourceConnectorTest {
     assertThat(connector.assertionSubject(accepted)).isEqualTo("fach@example.org");
   }
 
+  /** A stored key is bound to the imitated account: another subject is another target. */
+  @Test
+  void storedCredentialsAreBoundToTheImitatedAccount() {
+    assertThat(connector.credentialBinding(withSubject(" fach@example.org ")))
+        .isEqualTo("fach@example.org");
+    assertThat(connector.credentialBinding(withSubject("andere@example.org")))
+        .isNotEqualTo(connector.credentialBinding(withSubject("fach@example.org")));
+    assertThat(
+            connector.credentialBinding(
+                new SourceSettings(null, null, null, null, false, null)))
+        .isNull();
+  }
+
+  private static SourceSettings withSubject(String subject) {
+    return new SourceSettings(
+        null,
+        null,
+        null,
+        null,
+        false,
+        ConnectorData.of(Map.of("scopes", List.of(Map.of("drive", "d1")), "subject", subject)));
+  }
+
   @Test
   void theConnectionTestReportsEachScope() {
     SourceSettings settings =
