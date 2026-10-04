@@ -40,6 +40,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Supplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Async;
@@ -127,12 +128,20 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
     String feedUrl = settings.sourceUrl();
     ProxyAndCredentials config;
     try {
-      config = ProxyAndCredentials.parse(settings.sourceProxy(), run.currentCredentials());
+      config = ProxyAndCredentials.parse(settings.sourceProxy(), run.credentials().value());
     } catch (ProxyAndCredentials.InvalidProxyConfigurationException e) {
       throw new IndexingRunFailedException(e.getMessage());
     }
-    String authHeader =
-        SourceHttpClientFactory.buildAuthHeader(config.username(), config.password());
+    // the secret valid now on every request; the proxy stays as resolved at the start
+    Supplier<String> authHeader =
+        run.credentials()
+            .derived(
+                secret -> {
+                  ProxyAndCredentials parsed =
+                      ProxyAndCredentials.parse(settings.sourceProxy(), secret);
+                  return SourceHttpClientFactory.buildAuthHeader(
+                      parsed.username(), parsed.password());
+                });
 
     // secureClient always validates certificates normally; insecureClient relaxes validation
     // only when the library asks for it and is used exclusively for same-origin requests - see
@@ -151,7 +160,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
         () -> "der Lauf endet unvollständig, der nächste Lauf nimmt die übrigen Einträge auf");
     Optional<FeedFetcher.LoadedFeed> loaded =
         feedFetcher.fetchAndParse(
-            insecureClient, targetLibrary.getId(), feedUrl, authHeader, budget);
+            insecureClient, targetLibrary.getId(), feedUrl, authHeader.get(), budget);
     if (loaded.isEmpty()) {
       run.progress().setTotal(0);
       return ListingOutcome.partial();

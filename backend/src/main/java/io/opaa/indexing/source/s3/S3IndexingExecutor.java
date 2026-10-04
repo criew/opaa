@@ -20,6 +20,7 @@ import io.opaa.knowledge.LibraryFolderService;
 import io.opaa.knowledge.SourceType;
 import io.opaa.s3.S3AccessException;
 import io.opaa.s3.S3Connection;
+import io.opaa.s3.S3Credentials;
 import java.time.Clock;
 import java.util.Map;
 import java.util.Set;
@@ -157,13 +158,15 @@ public class S3IndexingExecutor implements SourceIndexingExecutor {
     S3SourceSettings settings = S3SourceSettingsJson.of(run.settings().connectorSettings());
     S3Connection connection;
     try {
-      connection = S3LibraryConnection.of(run.settings(), run.currentCredentials(), settings);
+      connection = S3LibraryConnection.of(run.settings(), run.credentials().value(), settings);
     } catch (S3LibraryConnection.InvalidS3ConfigurationException e) {
       throw new IndexingRunFailedException(e.getMessage());
     }
     S3ObjectStore store;
     try {
-      store = clientFactory.createForRun(connection, settings.scopes());
+      store =
+          clientFactory.createForRun(
+              connection, settings.scopes(), run.credentials().derived(S3Credentials::parse));
     } catch (S3AccessException e) {
       throw accessFailure(run, e);
     }

@@ -20,13 +20,15 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 import javax.net.ssl.SSLException;
 
 /**
  * The WebDAV access of one run or one probe: {@code PROPFIND} and downloads against the files of
  * the technical user, under the shared target validation, {@code User-Agent} and {@code 429}
  * handling of {@code io.opaa.sourceaccess}, every request charged to the {@link RequestBudget}. A
- * redirect is never followed off the instance's origin, and no answer names a target.
+ * redirect is never followed off the instance's origin, and no answer names a target. Every request
+ * carries the {@code Authorization} its supplier answers then.
  */
 final class NextcloudDav implements AutoCloseable {
 
@@ -34,6 +36,7 @@ final class NextcloudDav implements AutoCloseable {
   static final String ALLOWLIST_HINT = TargetAddressValidator.ALLOWLIST_HINT;
 
   private final NextcloudConnection connection;
+  private final Supplier<String> authorization;
   private final HttpClient httpClient;
   private final TargetAddressValidator targetAddressValidator;
   private final SourceRequestPolicy requestPolicy;
@@ -50,7 +53,26 @@ final class NextcloudDav implements AutoCloseable {
       RequestBudget budget,
       Duration timeout,
       long maxResponseBytes) {
+    this(
+        connection,
+        connection::authorizationHeader,
+        targetAddressValidator,
+        requestPolicy,
+        budget,
+        timeout,
+        maxResponseBytes);
+  }
+
+  NextcloudDav(
+      NextcloudConnection connection,
+      Supplier<String> authorization,
+      TargetAddressValidator targetAddressValidator,
+      SourceRequestPolicy requestPolicy,
+      RequestBudget budget,
+      Duration timeout,
+      long maxResponseBytes) {
     this.connection = connection;
+    this.authorization = authorization;
     this.httpClient =
         SourceHttpClientFactory.buildHttpClient(
             connection.proxyHost(), connection.proxyPort(), connection.insecureSsl());
@@ -139,7 +161,7 @@ final class NextcloudDav implements AutoCloseable {
               connection.url(encodedPath),
               fileName,
               maxBytes,
-              connection.authorizationHeader(),
+              authorization.get(),
               RedirectFollowingFetcher.RedirectPolicy.REJECT_OFF_ORIGIN,
               budget);
       budget.meter().recordBytes(file.path().toFile().length());
@@ -160,7 +182,7 @@ final class NextcloudDav implements AutoCloseable {
 
   private InputStream propfindBody(String encodedPath, int depth, String request, String resource)
       throws IOException, InterruptedException, NextcloudAccessException {
-    Map<String, String> headers = requestPolicy.headers(connection.authorizationHeader());
+    Map<String, String> headers = requestPolicy.headers(authorization.get());
     headers.put("Depth", Integer.toString(depth));
     HttpResponse<InputStream> response =
         RedirectFollowingFetcher.sendWithBody(

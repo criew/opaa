@@ -104,11 +104,11 @@ public class SmbIndexingExecutor implements SourceIndexingExecutor, FileSyncWord
   ListingOutcome fullSync(IndexingRun run) throws InterruptedException {
     SmbSourceSettings settings;
     SmbAddress address;
-    SmbCredentials credentials;
     try {
       settings = SmbSourceSettings.read(run.settings().connectorSettings());
       address = SmbAddress.parse(run.settings().sourceUrl());
-      credentials = SmbCredentials.parse(run.currentCredentials());
+      // the secret valid at the start must parse; every sign-in then asks again
+      SmbCredentials.parse(run.credentials().value());
     } catch (ValidationException | SmbAddress.InvalidSmbConfigurationException e) {
       throw new IndexingRunFailedException(e.getMessage());
     }
@@ -125,7 +125,11 @@ public class SmbIndexingExecutor implements SourceIndexingExecutor, FileSyncWord
             .orElseGet(() -> new SourceSyncState(libraryId));
     SmbShareClient smb =
         SmbShareClient.of(
-            address, credentials, targetAddressValidator, budget, properties.requestTimeout());
+            address,
+            run.credentials().derived(SmbCredentials::parse),
+            targetAddressValidator,
+            budget,
+            properties.requestTimeout());
     try (SmbFileStore store = new SmbFileStore(smb, address, settings, properties.listPageSize());
         FileSync sync =
             new FileSync(

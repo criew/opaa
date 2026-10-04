@@ -10,6 +10,7 @@ import io.opaa.sourceaccess.RedirectFollowingFetcher;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Supplier;
 
 /**
  * Everything a single RSS indexing run shares across every entry and attachment it processes, in
@@ -18,16 +19,17 @@ import java.util.concurrent.atomic.AtomicBoolean;
  *
  * <p>{@link #httpClientFor}/{@link #authHeaderFor} withhold {@code sourceInsecureSsl} and {@code
  * Authorization} for any target outside the feed's own origin - an entry's {@code <link>} is
- * content the feed operator controls. {@link #requestBudget} counts and bounds every request of the
- * run - feed, detail pages, attachments. {@link #anyEntryDeferred} is the only mutable field: set
- * by the executor or {@code AttachmentIndexer} on any deferral, never reset, and read once before
- * deciding whether the conditional-GET state may be saved.
+ * content the feed operator controls; {@link #authHeader} answers the header valid now, {@code
+ * null} for none, and is asked before every request. {@link #requestBudget} counts and bounds every
+ * request of the run - feed, detail pages, attachments. {@link #anyEntryDeferred} is the only
+ * mutable field: set by the executor or {@code AttachmentIndexer} on any deferral, never reset, and
+ * read once before deciding whether the conditional-GET state may be saved.
  */
 public record RssFeedRunContext(
     HttpClient secureClient,
     HttpClient insecureClient,
     KnowledgeLibrary targetLibrary,
-    String authHeader,
+    Supplier<String> authHeader,
     String feedUrl,
     IndexingRunProgress progress,
     IndexingRunEventRecorder events,
@@ -63,10 +65,11 @@ public record RssFeedRunContext(
    * treated as foreign.
    */
   public String authHeaderFor(String targetUrl) {
-    if (authHeader == null) {
+    String header = authHeader == null ? null : authHeader.get();
+    if (header == null) {
       return null;
     }
-    return isSameOriginAsFeed(targetUrl) ? authHeader : null;
+    return isSameOriginAsFeed(targetUrl) ? header : null;
   }
 
   private boolean isSameOriginAsFeed(String targetUrl) {

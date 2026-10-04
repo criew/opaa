@@ -11,6 +11,7 @@ import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.LibraryStorageQuotaService;
 import io.opaa.sourceaccess.SourceRequestMeter;
+import java.time.Duration;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -31,7 +32,7 @@ import org.springframework.dao.DataIntegrityViolationException;
  * job should carry. A {@link RequestBudgetExhaustedException} ends the run as truncated - noted
  * with the body's {@link IndexingRun#budgetContinuation continuation}, never failed. An {@link
  * InterruptedException} fails the run as interrupted, a {@link SourceConnectionBlockedException}
- * from {@link IndexingRun#currentCredentials} with the block's notice, a {@link
+ * from {@link IndexingRun#credentials} with the block's notice, a {@link
  * DataIntegrityViolationException} as "library deleted during the run" (the only way a foreign key
  * to the library can break mid-run), any other exception with its own message.
  */
@@ -57,6 +58,7 @@ public class IndexingRunTemplate {
   private final DocumentRepository documentRepository;
   private final LibraryStorageQuotaService storageQuotaService;
   private final SourceConnectionResolver connectionResolver;
+  private final Duration secretValidity;
 
   public IndexingRunTemplate(
       IndexingJobService indexingJobService,
@@ -65,6 +67,26 @@ public class IndexingRunTemplate {
       DocumentRepository documentRepository,
       LibraryStorageQuotaService storageQuotaService,
       SourceConnectionResolver connectionResolver) {
+    this(
+        indexingJobService,
+        eventRepository,
+        staleDocumentCleanupService,
+        documentRepository,
+        storageQuotaService,
+        connectionResolver,
+        RunCredentials.VALIDITY);
+  }
+
+  /** {@code secretValidity} replaces {@link RunCredentials#VALIDITY} - for tests. */
+  public IndexingRunTemplate(
+      IndexingJobService indexingJobService,
+      IndexingRunEventRepository eventRepository,
+      VanishedDocumentReconciler staleDocumentCleanupService,
+      DocumentRepository documentRepository,
+      LibraryStorageQuotaService storageQuotaService,
+      SourceConnectionResolver connectionResolver,
+      Duration secretValidity) {
+    this.secretValidity = secretValidity;
     this.indexingJobService = indexingJobService;
     this.eventRepository = eventRepository;
     this.staleDocumentCleanupService = staleDocumentCleanupService;
@@ -115,7 +137,8 @@ public class IndexingRunTemplate {
             progress,
             events,
             documentRepository,
-            storageQuotaService);
+            storageQuotaService,
+            secretValidity);
     boolean failed = false;
     String failure = null;
     boolean incomplete = false;

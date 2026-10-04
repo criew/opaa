@@ -168,7 +168,7 @@ class S3FolderMappingIntegrationTest {
 
   private S3IndexingExecutor executor() throws S3AccessException {
     S3ClientFactory clientFactory = mock(S3ClientFactory.class);
-    when(clientFactory.createForRun(any(), any())).thenReturn(store);
+    when(clientFactory.createForRun(any(), any(), any())).thenReturn(store);
     return new S3IndexingExecutor(
         clientFactory,
         S3Properties.defaults(),

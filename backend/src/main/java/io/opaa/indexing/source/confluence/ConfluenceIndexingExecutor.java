@@ -189,7 +189,7 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
   private ListingOutcome withClient(IndexingRun frame, Sync sync) throws InterruptedException {
     ConfluenceConnection connection;
     try {
-      connection = ConfluenceLibraryConnection.of(frame.settings(), frame.currentCredentials());
+      connection = ConfluenceLibraryConnection.of(frame.settings(), frame.credentials());
     } catch (ConfluenceLibraryConnection.InvalidConfluenceConfigurationException e) {
       throw new IndexingRunFailedException(e.getMessage());
     }

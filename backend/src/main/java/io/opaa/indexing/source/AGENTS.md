@@ -22,9 +22,9 @@ von foundation, format und knowledge ab.
 - **Einstellungen:** Alles Konnektoreigene ist ein Record im Konnektorpaket und steht als ein
   JSON-Objekt in `source_settings`; der Kern reicht es als `ConnectorData` durch.
 - **Ziel, Geheimnis und Einstellungen kommen nur vom Kern** (ADR-0041, 3a): im Lauf über
-  `IndexingRun#settings()` (ohne Geheimnis) und `#currentCredentials()`, das bei jedem Aufruf das
-  jetzt gültige Geheimnis vom Port holt; sonst im Aufruf. Kein Konnektor hält oder erzeugt einen
-  `SourceConnectionResolver` oder liest aus `KnowledgeLibrary` mehr als `getSourcePath`/`getWebhookSecret`.
+  `IndexingRun#settings()` (ohne Geheimnis) und `#credentials()`, vor jeder Anfrage bzw. Anmeldung
+  gefragt (`RunCredentials`; `FileSync` fragt vor jedem Store-Zugriff); sonst im Aufruf. Kein Konnektor
+  hält oder erzeugt einen `SourceConnectionResolver` oder liest aus `KnowledgeLibrary` mehr als `getSourcePath`/`getWebhookSecret`.
 - **Dienstkonto-Schlüssel signiert der Kern** (ADR-0040): Der Konnektor bekommt nur das Token aus
   `ServiceAccountTokens` und meldet imitiertes Konto und feste Adresse (`assertionSubject`).
 - **Geheimnisse stehen nie in `source_settings`** — die Spalte ist unverschlüsselt und erscheint in

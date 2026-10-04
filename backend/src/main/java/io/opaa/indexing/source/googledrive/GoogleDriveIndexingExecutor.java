@@ -124,7 +124,7 @@ public class GoogleDriveIndexingExecutor implements SourceIndexingExecutor {
         new RequestBudget(new SourceRequestMeter(), properties.requestBudgetPerRun(), null);
     DriveApi api;
     try {
-      api = apis.open(run.settings(), run::currentCredentials, budget);
+      api = apis.open(run.settings(), run.credentials()::value, budget);
     } catch (ProxyAndCredentials.InvalidProxyConfigurationException e) {
       throw new IndexingRunFailedException(e.getMessage());
     }

@@ -2,6 +2,7 @@ package io.opaa.indexing.source.confluence;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
+import java.util.function.Supplier;
 
 /**
  * Credentials of a Confluence library, typed by edition (ADR-0023, Entscheidung 3). Stored as one
@@ -91,6 +92,24 @@ public sealed interface ConfluenceCredentials {
     @Override
     public String toString() {
       return "DataCenterPersonalAccessToken[token=***]";
+    }
+  }
+
+  /**
+   * The credentials of a run: every header is built from those {@code current} answers now, so a
+   * renewed secret is sent and a refused one ends the run at its next request.
+   */
+  record Current(ConfluenceEdition edition, Supplier<ConfluenceCredentials> current)
+      implements ConfluenceCredentials {
+
+    @Override
+    public String authorizationHeader() {
+      return current.get().authorizationHeader();
+    }
+
+    @Override
+    public String toString() {
+      return "Current[edition=" + edition + "]";
     }
   }
 

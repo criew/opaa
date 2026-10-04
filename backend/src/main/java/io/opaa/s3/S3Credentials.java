@@ -8,7 +8,7 @@ package io.opaa.s3;
  * SignatureDoesNotMatch}; the stored form therefore never carries more than two separators (a
  * session token is base64 or a JWT and contains none).
  *
- * <p>{@link #toString()} never reveals any part; {@link S3ClientSettings#of} is the only place that
+ * <p>{@link #toString()} never reveals any part; {@link S3ClientSettings} is the only class that
  * hands the values to the SDK, so a credential can appear in no log line, exception message or API
  * response by accident.
  */

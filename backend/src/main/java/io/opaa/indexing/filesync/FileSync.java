@@ -13,6 +13,7 @@ import io.opaa.indexing.source.IndexingRun;
 import io.opaa.indexing.source.IndexingRunFailedException;
 import io.opaa.indexing.source.ListingOutcome;
 import io.opaa.indexing.source.ReconcilingAttachmentAccess;
+import io.opaa.indexing.source.SourceConnectionBlockedException;
 import io.opaa.indexing.source.SourceFolderMirror;
 import io.opaa.indexing.source.SourceFolderPath;
 import io.opaa.indexing.source.SourceSyncState;
@@ -60,7 +61,8 @@ import org.slf4j.LoggerFactory;
  * containers first and keeps the start cursors its first begin held ({@link SourceSyncState}). A
  * store may skip folders whose marker it was recalled unchanged; a complete full sync remembers the
  * markers of every folder without an unsettled entry. Downloads run concurrently but are ingested
- * in listing order; {@link #close()} ends every download thread and deletes every temp file.
+ * in listing order; {@link #close()} ends every download thread and deletes every temp file. Every
+ * access to the store first asks the run's credentials, so a refused source ends the run there.
  */
 public final class FileSync implements AutoCloseable {
 
@@ -158,7 +160,7 @@ public final class FileSync implements AutoCloseable {
       Clock clock,
       SupportedDocumentFormats supportedFormats) {
     this.frame = frame;
-    this.store = store;
+    this.store = new SecretCheckedStore(store, frame.credentials());
     this.settings = settings;
     this.wording = wording;
     this.documentIngestService = documentIngestService;
@@ -897,8 +899,8 @@ public final class FileSync implements AutoCloseable {
   }
 
   /**
-   * Ingests the oldest download in flight, waiting for it if needed. A budget spent on the download
-   * thread ends the run like one spent on the listing thread.
+   * Ingests the oldest download in flight, waiting for it if needed. A budget spent or a source
+   * refused on the download thread ends the run like on the listing thread.
    */
   private void drainOne() throws InterruptedException {
     PendingDownload item = pending.poll();
@@ -911,6 +913,9 @@ public final class FileSync implements AutoCloseable {
     } catch (ExecutionException e) {
       if (e.getCause() instanceof RequestBudgetExhaustedException exhausted) {
         throw exhausted;
+      }
+      if (e.getCause() instanceof SourceConnectionBlockedException blocked) {
+        throw blocked;
       }
       unsettle(item.entry());
       if (e.getCause() instanceof FileAccessException failure) {

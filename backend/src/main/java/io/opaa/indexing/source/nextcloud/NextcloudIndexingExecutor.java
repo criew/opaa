@@ -105,7 +105,7 @@ public class NextcloudIndexingExecutor implements SourceIndexingExecutor, FileSy
     NextcloudConnection connection;
     try {
       settings = NextcloudSourceSettings.read(run.settings().connectorSettings());
-      connection = NextcloudConnection.of(run.settings(), run.currentCredentials());
+      connection = NextcloudConnection.of(run.settings(), run.credentials().value());
     } catch (io.opaa.common.ValidationException
         | NextcloudConnection.InvalidNextcloudConfigurationException e) {
       throw new IndexingRunFailedException(e.getMessage());
@@ -124,6 +124,9 @@ public class NextcloudIndexingExecutor implements SourceIndexingExecutor, FileSy
     NextcloudDav dav =
         new NextcloudDav(
             connection,
+            run.credentials()
+                .derived(
+                    secret -> NextcloudConnection.of(run.settings(), secret).authorizationHeader()),
             targetAddressValidator,
             requestPolicy,
             budget,
