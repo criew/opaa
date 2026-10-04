@@ -54,13 +54,39 @@ class PrivateStorageMaskTest {
     assertThat(disclosed).containsExactly("B");
   }
 
+  /**
+   * Regression guard: whether nobody or one person keeps a private library outside the two parts
+   * must not change the answer - a rest of none counts as few, like a rest of one.
+   */
   @Test
-  void partsLeavingNoneOrEnoughPersonsOverAreAllTold() {
+  void aRestOfNoneAnswersLikeARestOfOne() {
+    Map<String, Set<String>> withoutOutsider =
+        Map.of(
+            "A", Set.of("a1", "a2", "a3", "a4", "a5"),
+            "B", Set.of("b1", "b2", "b3", "b4", "b5"));
+    Map<String, Set<String>> withOutsider =
+        Map.of(
+            "A", Set.of("a1", "a2", "a3", "a4", "a5"),
+            "B", Set.of("b1", "b2", "b3", "b4", "b5"),
+            "outside", Set.of("x"));
+    Map<String, Long> parts = Map.of("A", 5L, "B", 5L);
+
+    Set<String> restOfNone =
+        mask.disclosedParts(parts, given -> personsOutside(withoutOutsider, given));
+    Set<String> restOfOne =
+        mask.disclosedParts(parts, given -> personsOutside(withOutsider, given));
+
+    assertThat(restOfNone).isEqualTo(restOfOne).containsExactly("B");
+  }
+
+  @Test
+  void partsLeavingEnoughPersonsOverAreAllTold() {
     Map<String, Set<String>> owners =
         Map.of(
             "A", Set.of("a1", "a2", "a3", "a4", "a5"),
             "B", Set.of("b1", "b2", "b3", "b4", "b5"),
-            "C", Set.of("c1", "c2", "c3", "c4", "c5"));
+            "C", Set.of("c1", "c2", "c3", "c4", "c5"),
+            "outside", Set.of("o1", "o2", "o3", "o4", "o5"));
 
     assertThat(
             mask.disclosedParts(
@@ -68,7 +94,10 @@ class PrivateStorageMaskTest {
         .containsExactlyInAnyOrder("A", "B", "C");
   }
 
-  /** A person on two profiles counts in both: the rest of each part still rests on five. */
+  /**
+   * A person on two profiles counts in both: the rest of each part alone still rests on five, but
+   * both together leave nobody over, so only one is told.
+   */
   @Test
   void aPersonOnSeveralPartsCountsInEach() {
     Map<String, Set<String>> owners =
@@ -78,7 +107,7 @@ class PrivateStorageMaskTest {
 
     assertThat(
             mask.disclosedParts(Map.of("A", 5L, "B", 5L), parts -> personsOutside(owners, parts)))
-        .containsExactlyInAnyOrder("A", "B");
+        .containsExactly("B");
   }
 
   @Test

@@ -369,8 +369,11 @@ Bibliothek gilt daneben unverändert. Gezählt wird, was tatsächlich gespeicher
 Kontingent erschöpft, endet der laufende Lauf geordnet als unvollständig mit der Kategorie
 `QUOTA_EXHAUSTED`. Die Besitzerin sieht an der Bibliothek „unvollständig: Speicherkontingent Ihrer
 privaten Bibliotheken erschöpft“ und im Laufprotokoll ihren Verbrauch und die Grenze. Bereits
-Aufgenommenes bleibt durchsuchbar. Weiter geht es, sobald sie Platz schafft, etwa indem sie eine
-Bibliothek löscht oder ihre Quelle eingrenzt, oder sobald die Grenze steigt. Ihren Verbrauch und
+Aufgenommenes bleibt durchsuchbar. Weil der Lauf vor dem Abgleich endet, übernimmt er auch
+Löschungen in der Quelle nicht mehr: Dateien beim Anbieter zu löschen oder die Quelle einzugrenzen
+schafft deshalb keinen Platz, solange noch ein nicht aufgenommenes Element vor dem Ende steht.
+Platz schafft das Löschen einer ganzen privaten Bibliothek; sonst hilft nur eine höhere Grenze der
+Systemverwaltung. Ihren Verbrauch und
 die Grenze fragt sie unter `GET /api/v1/me/private-storage` ab; im Einzelnen sieht ihn niemand
 sonst.
 
@@ -388,7 +391,7 @@ Bibliotheken im Zeitfenster damit endeten. Jede dieser Zahlen ruht auf Personen 
 Mindestgruppengröße: Die Gesamtzahlen erscheinen erst ab N Besitzerinnen, sonst als „weniger als
 N“. Eine Zahl je Zugang oder je Kategorie ist exakt nur, wenn ihre Besitzerinnen und die aller
 übrigen privaten Bibliotheken je mindestens N sind, und nur, solange das, was die exakten Zahlen je
-Zugang zusammen übrig lassen, auf keiner oder mindestens N Personen ruht; sonst entfällt sie.
+Zugang zusammen übrig lassen, auf mindestens N Personen ruht — ein leerer Rest gilt als wenige —; sonst entfällt sie.
 Einen Weg zum Verbrauch einer einzelnen Person gibt es für die Verwaltung nicht. Grenze,
 Übersicht und eigener Verbrauch sind bisher nur über die API erreichbar; die Oberfläche dafür
 folgt (#2276).

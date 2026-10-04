@@ -1067,7 +1067,7 @@ components:
             Every connection profile admitting persons with the storage its private libraries
             occupy - a part of usedBytes, exact only where both its owners and the owners of all
             other private libraries reach N, and only as long as what the exact parts leave over
-            rests on none or at least N persons.
+            rests on at least N persons (a rest of none counts as few).
           items:
             $ref: "#/components/schemas/PrivateStorageProfileSum"
         runWindowDays:

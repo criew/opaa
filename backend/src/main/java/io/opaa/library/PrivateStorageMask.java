@@ -12,7 +12,8 @@ import java.util.function.ToLongFunction;
  * How numbers about private libraries are masked for the administration ({@link PersonThreshold}):
  * a total exactly only from N persons on; a part exactly only where its persons and those of the
  * rest each reach N; and several parts of one total only as long as what they leave over together
- * rests on none or at least N persons, so no difference of two numbers points at fewer than N.
+ * rests on at least N persons - a rest of none counts as few - so no difference of two numbers
+ * points at fewer than N, nor tells whether anyone is outside.
  */
 final class PrivateStorageMask {
 
@@ -44,8 +45,8 @@ final class PrivateStorageMask {
   /**
    * Which of several parts of one total may be told exactly. {@code personsOn} holds the persons of
    * each part; {@code personsOutside} counts the persons of everything outside the given parts. A
-   * part qualifies on its own as {@link #part}; while the qualifying parts leave over between one
-   * and N-1 persons, the one resting on the fewest drops out.
+   * part qualifies on its own as {@link #part}; while the qualifying parts leave over fewer than N
+   * persons, none included, the one resting on the fewest drops out.
    */
   <K extends Comparable<K>> Set<K> disclosedParts(
       Map<K, Long> personsOn, ToLongFunction<Set<K>> personsOutside) {
@@ -58,7 +59,7 @@ final class PrivateStorageMask {
     }
     while (!disclosed.isEmpty()) {
       long leftOver = personsOutside.applyAsLong(disclosed);
-      if (leftOver == 0 || threshold.discloses(leftOver)) {
+      if (threshold.discloses(leftOver)) {
         break;
       }
       disclosed.remove(

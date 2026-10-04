@@ -626,7 +626,7 @@ Begründung:
   `PersonalStorageQuota` (`ModularArchitecture#personalUsageIsReadOnlyByItsOwner`). Die Übersicht
   der Verwaltung rechnet je Zugang in SQL über Personen und maskiert nach
   `PersonThreshold#disclosesPart`; mehrere exakte Teilsummen erscheinen nur, solange ihr
-  gemeinsamer Rest auf keiner oder mindestens N Personen ruht.
+  gemeinsamer Rest auf mindestens N Personen ruht; ein leerer Rest gilt als wenige.
 
 ## Referenzen
 
