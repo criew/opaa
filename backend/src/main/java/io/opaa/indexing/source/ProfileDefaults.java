@@ -46,13 +46,13 @@ public record ProfileDefaults(List<DefaultKey> keys) {
 
   /**
    * The declared keys a library under a profile with {@code profileDefaults} never sets itself: it
-   * may repeat the profile's value, and stores none of them. Today exactly the keys the profile
-   * sets.
+   * may repeat the profile's value, and stores none of them: the keys the profile sets, and every
+   * {@link DefaultKey#profileOnly} key.
    */
   public Set<String> boundKeys(ConnectorData profileDefaults) {
     Set<String> bound = new LinkedHashSet<>();
     for (DefaultKey key : keys) {
-      if (profileDefaults != null && profileDefaults.has(key.key())) {
+      if (key.profileOnly() || profileDefaults != null && profileDefaults.has(key.key())) {
         bound.add(key.key());
       }
     }

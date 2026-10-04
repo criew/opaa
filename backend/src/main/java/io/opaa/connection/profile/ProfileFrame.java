@@ -74,6 +74,14 @@ final class ProfileFrame {
     }
     for (String key : bound) {
       if (own.has(key) && !Objects.equals(own.get(key), defaults.get(key))) {
+        if (!defaults.containsKey(key)) {
+          throw new ValidationException(
+              "sourceSettings."
+                  + key
+                  + " legt nur der Zugang „"
+                  + profile.getName()
+                  + "“ fest; die Bibliothek setzt es nicht");
+        }
         throw new ValidationException(
             "sourceSettings."
                 + key

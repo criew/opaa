@@ -10,21 +10,23 @@ import java.util.UUID;
  * chooses; a further owner is a further permitted type, a further branch there and a compiler error
  * at every {@code switch} in {@link ConnectionSecrets}.
  */
-public sealed interface SecretOwner permits SecretOwner.LibraryOwned, SecretOwner.PersonOwned {
+public sealed interface SecretOwner
+    permits SecretOwner.LibraryOwned, SecretOwner.PersonOwned, SecretOwner.ProfileOwned {
 
   /**
    * The owner of the secret {@code library} is reached with through the profile {@code profileId}
-   * ({@code null} for its own address) signing in by {@code method}: the owner's connected account
-   * for an owner-only (private) library on a profile, else the library itself. The method picks the
-   * branch: a profile's own sign-in (client credentials, service account key) will be owned by the
-   * profile; until then every method ends alike, and {@code NONE} names whose secret is absent.
+   * ({@code null} for its own address) signing in by {@code method}: the profile itself for its own
+   * sign-in (client credentials, service account key), the owner's connected account for an
+   * owner-only (private) library, else the library itself; {@code NONE} names whose secret is
+   * absent.
    */
   static SecretOwner of(UUID profileId, ConnectionAuthMethod method, KnowledgeLibrary library) {
     if (profileId == null || method == null) {
       return new LibraryOwned(library.getId());
     }
     return switch (method) {
-      case NONE, PERSONAL_SECRET, OAUTH, CLIENT_CREDENTIALS, SERVICE_ACCOUNT_KEY ->
+      case CLIENT_CREDENTIALS, SERVICE_ACCOUNT_KEY -> new ProfileOwned(profileId);
+      case NONE, PERSONAL_SECRET, OAUTH ->
           library.isOwnerOnly()
               ? new PersonOwned(profileId, library.getOwnerUserId())
               : new LibraryOwned(library.getId());
@@ -45,6 +47,17 @@ public sealed interface SecretOwner permits SecretOwner.LibraryOwned, SecretOwne
     public PersonOwned {
       Objects.requireNonNull(profileId, "profileId");
       Objects.requireNonNull(userId, "userId");
+    }
+  }
+
+  /**
+   * The profile signs in itself with its registration; no row of the store holds anything, the
+   * access token is obtained through {@link SecretIssuer#mint}.
+   */
+  record ProfileOwned(UUID profileId) implements SecretOwner {
+
+    public ProfileOwned {
+      Objects.requireNonNull(profileId, "profileId");
     }
   }
 }

@@ -3,6 +3,7 @@ package io.opaa.connection.token;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -122,6 +123,39 @@ class ConnectionSecretsTest {
 
     assertThat(NewSecret.personal("geheim").toString()).doesNotContain("geheim");
     assertThat(token.toString()).doesNotContain("geheim");
+  }
+
+  /**
+   * Client credentials and a service account key are the profile's: its token comes from the
+   * issuer, the library holds and stores nothing, and discarding under the profile drops the token
+   * held in the process.
+   */
+  @Test
+  void aProfilesOwnSignInIsTheProfilesAndItsTokenComesFromTheIssuer() {
+    UUID profileId = UUID.randomUUID();
+    KnowledgeLibrary library = library(null);
+    SecretIssuer issuer = mock(SecretIssuer.class);
+    Secret token = new Secret(SecretKind.ACCESS_TOKEN, "token-des-zugangs");
+    when(issuer.mint(profileId)).thenReturn(token);
+    ConnectionSecrets withIssuer = TestSecrets.overLibraries(onProfile, libraries, issuer);
+    SecretOwner owner =
+        SecretOwner.of(profileId, ConnectionAuthMethod.SERVICE_ACCOUNT_KEY, library);
+
+    assertThat(owner).isEqualTo(new SecretOwner.ProfileOwned(profileId));
+    assertThat(SecretOwner.of(profileId, ConnectionAuthMethod.CLIENT_CREDENTIALS, library))
+        .isEqualTo(owner);
+    assertThat(withIssuer.current(owner, null)).isEqualTo(token);
+    assertThat(withIssuer.afterRejection(owner, null)).isEqualTo(token);
+    assertThat(withIssuer.stateOf(owner)).isEmpty();
+    assertThat(withIssuer.stored(owner)).isNull();
+    assertThat(withIssuer.holds(owner)).isFalse();
+    assertThatThrownBy(() -> withIssuer.store(owner, NewSecret.personal("x"), null))
+        .isInstanceOf(IllegalStateException.class);
+
+    withIssuer.discardAllUnder(profileId, ConnectionEndCause.EMERGENCY);
+    withIssuer.rejected(owner);
+
+    verify(issuer, times(3)).forgetMinted(profileId);
   }
 
   private KnowledgeLibrary library(String secret) {

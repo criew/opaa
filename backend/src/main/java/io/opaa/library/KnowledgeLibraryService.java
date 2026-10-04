@@ -585,6 +585,7 @@ public class KnowledgeLibraryService {
         replacesSourceConfiguration
             ? withServiceAccountKey(
                 connector,
+                !onProfile(library),
                 requestedSettings,
                 withoutKey ->
                     ownPart(
@@ -1228,12 +1229,21 @@ public class KnowledgeLibraryService {
     SourceSettings validated =
         withServiceAccountKey(
             connector,
+            profileId == null,
             requested,
             own -> {
               SourceDraft draft = SourceDraft.ofLibrary(sourceType, profileId, null, own);
-              return drafts.ownPart(draft, connector.validate(drafts.ofDraft(draft)));
+              return drafts.ownPart(draft, connector.validate(drafts.ofDraftToValidate(draft)));
             });
     return new SourceConfiguration(sourceType, validated);
+  }
+
+  /** Whether {@code library} is connected through a profile that still exists. */
+  private boolean onProfile(KnowledgeLibrary library) {
+    return libraryConnections
+        .connectionOf(library.getId())
+        .map(LibraryConnectionService.LibraryConnectionView::profile)
+        .isPresent();
   }
 
   /** A change of {@code library} as its own fields, under whatever profile it is on. */
@@ -1246,15 +1256,17 @@ public class KnowledgeLibraryService {
   }
 
   /**
-   * Validates {@code requested} with {@code validation}. For a connector that signs in with a
-   * service account key (ADR-0040, Entscheidung 2) the core reads the key itself and stores only
-   * the fields it signs with; the connector validates the rest and never sees the key.
+   * Validates {@code requested} with {@code validation}. For a library with {@code ownKey} - no
+   * profile - of a connector that signs in with a service account key (ADR-0040, Entscheidung 2)
+   * the core reads the key itself and stores only the fields it signs with; the connector validates
+   * the rest and never sees the key. Under a profile the key is the profile's, never the library's.
    */
   private static SourceSettings withServiceAccountKey(
       SourceConnector connector,
+      boolean ownKey,
       SourceSettings requested,
       UnaryOperator<SourceSettings> validation) {
-    if (connector.descriptor().profileDeclaration().serviceAccountKey() == null) {
+    if (!ownKey || connector.descriptor().profileDeclaration().serviceAccountKey() == null) {
       return validation.apply(requested);
     }
     if (requested.sourceCredentials() == null) {

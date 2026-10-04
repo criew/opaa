@@ -97,7 +97,8 @@ public class ServiceAccountTokens {
   /**
    * An access token valid now for {@code storedKey}, imitating {@code subject} when given.
    *
-   * @param sourceProxy the library's proxy, {@code host:port} or {@code null}
+   * @param sourceProxy the proxy of the library or of its profile, {@code host:port} or {@code
+   *     null}
    * @throws SourceCredentialsException with a German cause when the key cannot be used
    */
   public String accessToken(
@@ -188,7 +189,10 @@ public class ServiceAccountTokens {
     }
     JsonNode body = readBody(response);
     if (!response.isSuccess()) {
-      throw new SourceCredentialsException(refusal(response.statusCode(), body, key, subject));
+      String finding = refusal(response.statusCode(), body, key, subject);
+      throw keyRefused(body, subject)
+          ? new SignInRejectedException(finding)
+          : new SourceCredentialsException(finding);
     }
     JsonNode accessToken = body == null ? null : body.get("access_token");
     if (accessToken == null || !accessToken.isString() || accessToken.asString().isBlank()) {
@@ -273,6 +277,14 @@ public class ServiceAccountTokens {
           + " nicht mehr.";
     }
     return "Der Token-Endpunkt hat den Dienstkonto-Schlüssel abgewiesen (HTTP " + status + ").";
+  }
+
+  /** Whether the answer refuses the key itself, not the scope or the imitated account. */
+  static boolean keyRefused(JsonNode body, String subject) {
+    String error = field(body, "error");
+    String description = field(body, "error_description").toLowerCase(java.util.Locale.ROOT);
+    return "invalid_client".equals(error)
+        || "invalid_grant".equals(error) && !(subject != null && description.contains("email"));
   }
 
   private static String field(JsonNode body, String name) {

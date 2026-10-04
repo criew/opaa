@@ -132,8 +132,9 @@ class SourceConnectorRegistryTest {
         .hasMessageContaining("RSS_FEED must name a push intake exactly when it handles one");
   }
 
+  /** The key then lies with the profile, and the core signs with it there. */
   @Test
-  void aServiceAccountKeyConnectorAdmittingProfilesFailsStartup() {
+  void aServiceAccountKeyConnectorMayAdmitProfiles() {
     List<SourceConnector> connectors =
         replacingRss(
             remoteRss(
@@ -143,9 +144,12 @@ class SourceConnectorRegistryTest {
                         new ServiceAccountKeyAuth(
                             URI.create("https://oauth.example.org/token"), "scope")))));
 
-    assertThatThrownBy(() -> new SourceConnectorRegistry(connectors))
-        .isInstanceOf(IllegalStateException.class)
-        .hasMessageContaining("RSS_FEED signs in with a service account key");
+    assertThat(
+            new SourceConnectorRegistry(connectors)
+                .descriptor(SourceTypes.RSS_FEED)
+                .profileDeclaration()
+                .admitsProfiles())
+        .isTrue();
   }
 
   @Test
@@ -218,9 +222,12 @@ class SourceConnectorRegistryTest {
                         remoteRss(
                             ProfileDeclaration.of(
                                 ConnectionProfileSupport.REQUIRED,
-                                SignIn.of(
-                                    ConnectionAuthMethod.CLIENT_CREDENTIALS,
-                                    ConnectionOwnership.LIBRARY)))))
+                                SignIn.clientCredentials(
+                                    new ClientCredentialsAuth(
+                                        new Endpoint.Fixed(
+                                            URI.create("https://login.example.org/token")),
+                                        null,
+                                        ClientAuthentication.CLIENT_SECRET_POST))))))
                 .descriptor(SourceTypes.RSS_FEED)
                 .profileDeclaration()
                 .support())

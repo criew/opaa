@@ -1,0 +1,11 @@
+databaseChangeLog:
+  - changeSet:
+      id: connections-2026-10-04-profile-sign-in
+      author: opaa
+      comment: "A profile's own sign-in: the client secret column holds a service account key file too, so it is as wide as source_credentials; sign_in_rejected_at marks a registration the provider rejected until a new secret or a sign-in test lifts it."
+      changes:
+        - sql:
+            sql: |
+              ALTER TABLE connection_profiles ALTER COLUMN client_secret_ciphertext TYPE text;
+              ALTER TABLE connection_profiles
+                  ADD COLUMN sign_in_rejected_at timestamp with time zone;

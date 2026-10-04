@@ -6,6 +6,7 @@ import io.opaa.connection.token.ConnectionSecrets;
 import io.opaa.connection.token.SecretOwner;
 import io.opaa.connection.token.SecretOwner.LibraryOwned;
 import io.opaa.connection.token.SecretOwner.PersonOwned;
+import io.opaa.connection.token.SecretOwner.ProfileOwned;
 import io.opaa.connection.token.SecretRefusedException;
 import io.opaa.indexing.source.ConnectorData;
 import io.opaa.indexing.source.LibrarySourceConnectionResolver;
@@ -30,8 +31,9 @@ import org.springframework.stereotype.Component;
 /**
  * The one composition of a source configuration, for a stored library and for a draft alike: its
  * own fields, under a profile the profile's proxy, TLS switch and defaults over them, and the
- * secret its {@link SecretOwner} holds as the profile's sign-in method allows. Without a profile
- * the own fields and secret stand; a service account key is exchanged by the core (ADR-0040).
+ * secret its {@link SecretOwner} holds as the profile's sign-in method allows - for the profile's
+ * own sign-in its access token. Without a profile the own fields and secret stand; a service
+ * account key is exchanged by the core (ADR-0040), never handed to a connector.
  */
 @Component
 public class EffectiveSourceSettings {
@@ -97,14 +99,28 @@ public class EffectiveSourceSettings {
    * The configuration a probe or a new library reaches the source with, before anything is saved.
    * The stored secret of the draft's library stands in for an omitted one only while its {@link
    * SecretTarget} stays the same; without a profile the library's own proxy and TLS switch then
-   * travel with it. An uploaded service account key reaches the connector as its access token. A
-   * stored library's blocks do not refuse a draft.
+   * travel with it. An uploaded service account key, and under a profile with its own sign-in the
+   * profile's registration, reaches the connector as its access token. A stored library's blocks do
+   * not refuse a draft.
    *
    * @throws ValidationException (German 400) for a value the draft's profile sets otherwise or an
    *     address outside it
-   * @throws SourceCredentialsException when a service account key is refused
+   * @throws SourceCredentialsException when a service account key or the profile's sign-in is
+   *     refused
    */
   public SourceSettings ofDraft(SourceDraft draft) {
+    return ofDraft(draft, true);
+  }
+
+  /**
+   * {@link #ofDraft} for the validation of a library before it is saved: the profile's own sign-in
+   * is not performed, so saving reaches no provider.
+   */
+  public SourceSettings ofDraftToValidate(SourceDraft draft) {
+    return ofDraft(draft, false);
+  }
+
+  private SourceSettings ofDraft(SourceDraft draft, boolean signIn) {
     KnowledgeLibrary library = libraryOf(draft);
     Optional<ProfileFrame> frame = frameOf(draft);
     SourceSettings requested =
@@ -129,7 +145,7 @@ public class EffectiveSourceSettings {
     }
     Secret secret;
     if (frame.isPresent()) {
-      secret = draftSecretUnder(frame.get(), requested, keepsStored ? library : null);
+      secret = draftSecretUnder(frame.get(), requested, keepsStored ? library : null, signIn);
     } else if (keepsStored) {
       secret = ownFields.currentSecret(library);
     } else {
@@ -221,6 +237,20 @@ public class EffectiveSourceSettings {
     return secretFor(library, profileFor(library, Purpose.CHANGE), Purpose.RUN);
   }
 
+  /**
+   * The secret to retry with after the source rejected the one {@code library} was reached with: a
+   * profile's own token is obtained anew, every other secret is read as {@link #currentSecret}.
+   *
+   * @throws SourceConnectionBlockedException when what ends a running run applies
+   */
+  public Secret secretAfterRejection(KnowledgeLibrary library) {
+    Optional<ConnectionProfile> profile = profileFor(library, Purpose.CHANGE);
+    if (profile.isPresent() && ownerOn(profile.get(), library) instanceof ProfileOwned owner) {
+      return secretOf(owner, profile.get(), library, true);
+    }
+    return secretFor(library, profile, Purpose.RUN);
+  }
+
   /** The owner of the secret {@code library} is reached with, as its connection names it. */
   public SecretOwner secretOwnerOf(KnowledgeLibrary library) {
     return connections
@@ -256,10 +286,11 @@ public class EffectiveSourceSettings {
     SecretOwner owner = ownerOn(found, library);
     return switch (found.getAuthMethod()) {
       case NONE -> null;
-      case PERSONAL_SECRET -> secretOf(owner, found, library);
-      case OAUTH, CLIENT_CREDENTIALS, SERVICE_ACCOUNT_KEY -> {
+      case PERSONAL_SECRET, CLIENT_CREDENTIALS, SERVICE_ACCOUNT_KEY ->
+          secretOf(owner, found, library, false);
+      case OAUTH -> {
         if (owner instanceof PersonOwned) {
-          yield secretOf(owner, found, library);
+          yield secretOf(owner, found, library, false);
         }
         throw new IllegalStateException(
             "Sign-in method " + found.getAuthMethod() + " passed the source blocks");
@@ -268,18 +299,26 @@ public class EffectiveSourceSettings {
   }
 
   /**
-   * The secret {@code owner} holds on {@code profile} now.
+   * The secret {@code owner} holds on {@code profile} now, {@code afterRejection} the one to retry
+   * with.
    *
    * @throws SourceConnectionBlockedException with the store's reason, worded by {@link
    *     SourceBlocks}
    */
-  private Secret secretOf(SecretOwner owner, ConnectionProfile profile, KnowledgeLibrary library) {
+  private Secret secretOf(
+      SecretOwner owner,
+      ConnectionProfile profile,
+      KnowledgeLibrary library,
+      boolean afterRejection) {
     if (SourceBlocks.withoutPersons(profile, owner)) {
       throw new SourceConnectionBlockedException(
           SourceBlocks.secretBlock(Reason.NOT_CONNECTED, profile, owner));
     }
+    String target = targetOf(library, profile).key();
     try {
-      return secrets.current(owner, targetOf(library, profile).key());
+      return afterRejection
+          ? secrets.afterRejection(owner, target)
+          : secrets.current(owner, target);
     } catch (SecretRefusedException e) {
       throw new SourceConnectionBlockedException(
           SourceBlocks.secretBlock(e.reason(), profile, owner));
@@ -288,22 +327,37 @@ public class EffectiveSourceSettings {
 
   /**
    * A draft's secret under a profile, with its kind: for a personal secret the sent one, else the
-   * stored one of {@code keeping}; none for any other sign-in, which takes no secret of the
-   * library.
+   * stored one of {@code keeping}; for the profile's own sign-in its access token where {@code
+   * signIn}; none for OAuth, which takes no secret of the library yet.
    */
   private Secret draftSecretUnder(
-      ProfileFrame frame, SourceSettings requested, KnowledgeLibrary keeping) {
+      ProfileFrame frame, SourceSettings requested, KnowledgeLibrary keeping, boolean signIn) {
     ConnectionProfile profile = frame.profile();
     return switch (profile.getAuthMethod()) {
-      case NONE -> null;
+      case NONE, OAUTH -> null;
       case PERSONAL_SECRET -> {
         if (requested.sourceCredentials() != null) {
           yield requested.credentials();
         }
         yield keeping == null ? null : storedSecretFor(profile, keeping);
       }
-      case OAUTH, CLIENT_CREDENTIALS, SERVICE_ACCOUNT_KEY -> null;
+      case CLIENT_CREDENTIALS, SERVICE_ACCOUNT_KEY -> signIn ? profileToken(profile) : null;
     };
+  }
+
+  /**
+   * The access token of {@code profile}'s own sign-in for a probe.
+   *
+   * @throws SourceCredentialsException with the notice why none is handed out
+   */
+  private Secret profileToken(ConnectionProfile profile) {
+    ProfileOwned owner = new ProfileOwned(profile.getId());
+    try {
+      return secrets.current(owner, null);
+    } catch (SecretRefusedException e) {
+      throw new SourceCredentialsException(
+          SourceBlocks.secretBlock(e.reason(), profile, owner).notice());
+    }
   }
 
   /**
@@ -312,7 +366,7 @@ public class EffectiveSourceSettings {
    */
   private Secret storedSecretFor(ConnectionProfile profile, KnowledgeLibrary library) {
     try {
-      return secretOf(ownerOn(profile, library), profile, library);
+      return secretOf(ownerOn(profile, library), profile, library, false);
     } catch (SourceConnectionBlockedException e) {
       if (e.block().reason() == Reason.NOT_CONNECTED) {
         return null;

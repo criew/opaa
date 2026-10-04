@@ -68,7 +68,7 @@ class ConnectionProfileResponseMapperTest {
         ConnectionProfileResponseMapper.toResponse(profile, false, 2, TestPersonCounts.of(3, 0));
     ConnectionProfileImpactResponse impact =
         ConnectionProfileResponseMapper.toResponse(
-            new ProfileImpact(2, 2, TestPersonCounts.of(0, 0).total(), List.of()), false);
+            new ProfileImpact(2, 2, TestPersonCounts.of(0, 0).total(), List.of(), 0), false);
 
     assertThat(response.getConnectionCount()).isEqualTo(2);
     assertThat(response.getConnectedAccountCount().getCount()).isEqualTo(6);
