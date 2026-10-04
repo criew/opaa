@@ -211,8 +211,7 @@ class ProfileSignInIntegrationTest {
             jdbc.queryForObject(
                 "SELECT count(*) FROM audit_log WHERE object_id = ? AND event_type ="
                     + " 'CONNECTION_PROFILE_SIGN_IN_TESTED' AND after::text LIKE '%invalid_grant%'",
-                Integer.class,
-                profile.toString()))
+                Integer.class, profile.toString()))
         .isZero();
   }
 
