@@ -148,12 +148,16 @@ export const connectionProfileHandlers = [
       signInRejected: false,
       tenant: body.tenant ?? null,
       scopes: body.scopes ?? null,
+      authorizationEndpoint: body.authorizationEndpoint ?? null,
+      tokenEndpoint: body.tokenEndpoint ?? null,
+      revocationEndpoint: body.revocationEndpoint ?? null,
       connectorSettings: body.connectorSettings ?? null,
       sourceProxy: body.sourceProxy ?? null,
       sourceInsecureSsl: body.sourceInsecureSsl ?? false,
       connectionCount: 0,
       connectedAccountCount: { count: null, fewerThan: 5 },
       expiredConnectionCount: { count: null, fewerThan: 5 },
+      expiredConnectionWarning: false,
       locked: false,
       createdAt: now,
       updatedAt: now,
@@ -180,7 +184,10 @@ export const connectionProfileHandlers = [
     const discards =
       current.serverUrl !== body.serverUrl.replace(/\/+$/, '') ||
       current.authMethod !== body.authMethod ||
-      (current.clientId ?? null) !== (body.clientId ?? null)
+      (current.clientId ?? null) !== (body.clientId ?? null) ||
+      (current.authorizationEndpoint ?? null) !== (body.authorizationEndpoint ?? null) ||
+      (current.tokenEndpoint ?? null) !== (body.tokenEndpoint ?? null) ||
+      (current.revocationEndpoint ?? null) !== (body.revocationEndpoint ?? null)
     const refusals = refusalsOf(current, body)
     if (refusals.length > 0) {
       return HttpResponse.json(
@@ -214,6 +221,9 @@ export const connectionProfileHandlers = [
       clientSecretExpiresOn: body.clientSecretExpiresOn ?? null,
       tenant: body.tenant ?? null,
       scopes: body.scopes ?? null,
+      authorizationEndpoint: body.authorizationEndpoint ?? null,
+      tokenEndpoint: body.tokenEndpoint ?? null,
+      revocationEndpoint: body.revocationEndpoint ?? null,
       connectorSettings: body.connectorSettings ?? null,
       sourceProxy: body.sourceProxy ?? null,
       sourceInsecureSsl: body.sourceInsecureSsl ?? false,

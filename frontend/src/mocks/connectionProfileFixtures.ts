@@ -22,6 +22,7 @@ function initialProfiles(): ConnectionProfileResponse[] {
       connectionCount: 2,
       connectedAccountCount: { count: null, fewerThan: 5 },
       expiredConnectionCount: { count: null, fewerThan: 5 },
+      expiredConnectionWarning: false,
       locked: false,
       createdAt: '2026-10-01T09:00:00Z',
       updatedAt: '2026-10-01T09:00:00Z',

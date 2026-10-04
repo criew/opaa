@@ -338,7 +338,14 @@ export default function ConnectionProfileManagementPage() {
                   </TableCell>
                   <TableCell>{profile.connectionCount}</TableCell>
                   <TableCell>{personCountLabel(profile.connectedAccountCount)}</TableCell>
-                  <TableCell>{personCountLabel(profile.expiredConnectionCount)}</TableCell>
+                  <TableCell>
+                    <Stack spacing={0.5} sx={{ alignItems: 'flex-start' }}>
+                      <span>{personCountLabel(profile.expiredConnectionCount)}</span>
+                      {profile.expiredConnectionWarning && (
+                        <Chip size="small" color="warning" label="Viele abgelaufen" />
+                      )}
+                    </Stack>
+                  </TableCell>
                   <TableCell align="right">
                     <Stack
                       direction="row"
@@ -401,7 +408,8 @@ export default function ConnectionProfileManagementPage() {
             Verbundene Konten zählen die Konten von Personen auf einem Zugang, verbundene und
             abgelaufene. Kleine Zahlen erscheinen nur als „weniger als …“, damit keine Zahl auf
             einzelne Personen schließen lässt; „nicht ausgewiesen“ steht dort, wo schon die Zahl der
-            abgelaufenen Konten das täte.
+            abgelaufenen Konten das täte. „Viele abgelaufen“ erscheint, sobald die ausgewiesenen
+            Zahlen den eingestellten Schwellenwert erreichen.
           </Typography>
         )}
 
