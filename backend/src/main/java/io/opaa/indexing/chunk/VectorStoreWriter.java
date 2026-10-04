@@ -2,6 +2,7 @@ package io.opaa.indexing.chunk;
 
 import com.pgvector.PGvector;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -150,6 +151,53 @@ public class VectorStoreWriter {
             + "' = ?";
     return jdbcTemplate.update(
         sql, toJson(List.copyOf(keysToClear)), toJson(values), documentId.toString());
+  }
+
+  /**
+   * Deletes, in the caller's transaction, every chunk in both stores that carries {@code libraryId}
+   * or one of {@code documentIds}.
+   *
+   * @return how many vector rows went
+   */
+  public int deleteAllOf(UUID libraryId, Collection<UUID> documentIds) {
+    String[] documents = documentIds.stream().map(UUID::toString).toArray(String[]::new);
+    int removed =
+        jdbcTemplate.update(
+            "DELETE FROM " + schemaName + "." + tableName + chunksOf(),
+            libraryId.toString(),
+            documents);
+    jdbcTemplate.update(
+        "DELETE FROM chunk_full_text WHERE library_id = ? OR document_id = ANY (?::uuid[])",
+        libraryId,
+        documents);
+    return removed;
+  }
+
+  /** How many chunks in both stores still carry {@code libraryId} or one of {@code documentIds}. */
+  public long countAllOf(UUID libraryId, Collection<UUID> documentIds) {
+    String[] documents = documentIds.stream().map(UUID::toString).toArray(String[]::new);
+    Long vectors =
+        jdbcTemplate.queryForObject(
+            "SELECT count(*) FROM " + schemaName + "." + tableName + chunksOf(),
+            Long.class,
+            libraryId.toString(),
+            documents);
+    Long fullText =
+        jdbcTemplate.queryForObject(
+            "SELECT count(*) FROM chunk_full_text WHERE library_id = ?"
+                + " OR document_id = ANY (?::uuid[])",
+            Long.class,
+            libraryId,
+            documents);
+    return (vectors == null ? 0 : vectors) + (fullText == null ? 0 : fullText);
+  }
+
+  private static String chunksOf() {
+    return " WHERE metadata->>'"
+        + VectorChunkStore.LIBRARY_ID_METADATA_KEY
+        + "' = ? OR metadata->>'"
+        + VectorChunkStore.DOCUMENT_ID_METADATA_KEY
+        + "' = ANY (?)";
   }
 
   private record ChunkWithEmbedding(Document chunk, float[] embedding) {}

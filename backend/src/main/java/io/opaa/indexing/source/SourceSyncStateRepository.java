@@ -30,6 +30,8 @@ public interface SourceSyncStateRepository extends JpaRepository<SourceSyncState
    */
   long deleteByLibraryId(UUID libraryId);
 
+  long countByLibraryId(UUID libraryId);
+
   /**
    * Notes that a document of {@code containerKey} at {@code hierarchyPath} was deleted outside a
    * run, in the caller's transaction - only for a library with a state, else nothing is written.

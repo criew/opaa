@@ -273,7 +273,22 @@ paths:
         documents and vector store chunks - deleting individual connector documents would be
         undone by the next indexing run (ADR-0018, Entscheidung 5). The delete is also rejected
         with 409 while an indexing run for the library is RUNNING.
+      description: >
+        A private library (privateLibrary) is erased instead ("Sofort löschen", #2165): only by
+        its owner - for everyone else, the system administration included, it answers 404 as for
+        a library that does not exist. The erasure removes its documents, chunks, full-text
+        entries, originals, folders, metadata values, runs with their protocol, sync state and
+        space associations, and replaces file name and link of every chat source citing it with
+        "Quelle entfernt"; the revision log records PRIVATE_LIBRARY_ERASED with time, cause and
+        counts, without names or paths. A running indexing run does not refuse it: the library
+        is marked at once (erasureRequestedAt), the run ends at its next access to the source,
+        and the erasure completes afterwards (202). Until then the library runs no more and takes
+        in nothing.
       responses:
+        "202":
+          description: >
+            Private library marked for erasure; a running indexing run ends first, then the
+            erasure completes on its own.
         "204":
           description: Library deleted
         "400":
@@ -1682,6 +1697,13 @@ components:
           description: >
             Whether this is a private library (LibraryRequest.privateLibrary): only its owner
             reads it, and it runs on her connected account.
+        erasureRequestedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: >
+            Only for a private library being erased (DELETE answered 202): since when. It runs no
+            more and takes in nothing; the erasure completes once a running run has ended.
         id:
           type: string
           format: uuid

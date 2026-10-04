@@ -49,6 +49,11 @@ public enum AuditEventType {
   LIBRARY_CREATED,
   LIBRARY_CHANGED,
   LIBRARY_DELETED,
+  /**
+   * A private library was erased with its whole content (#2165): the proof, with the time it was
+   * requested, its cause and what was removed as counts, never a name, path or content.
+   */
+  PRIVATE_LIBRARY_ERASED,
   /** A prompt library was created, renamed or re-described, or deleted with its prompts. */
   PROMPT_LIBRARY_CREATED,
   PROMPT_LIBRARY_CHANGED,

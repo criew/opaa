@@ -40,11 +40,13 @@ import io.opaa.knowledge.LibraryFolderService;
 import io.opaa.library.KnowledgeLibraryService;
 import io.opaa.library.LibraryDocumentService;
 import io.opaa.library.PrivateLibraryCreation;
+import io.opaa.library.PrivateLibraryErasure;
 import io.opaa.library.SourceConnectionTestService;
 import io.opaa.permission.PermissionTransferService;
 import jakarta.validation.Valid;
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -77,10 +79,12 @@ public class LibraryController {
   private final PermissionTransferService transferService;
   private final SourceConnectorRegistry connectors;
   private final PrivateLibraryCreation privateCreation;
+  private final PrivateLibraryErasure privateErasure;
 
   public LibraryController(
       KnowledgeLibraryService libraryService,
       PrivateLibraryCreation privateCreation,
+      PrivateLibraryErasure privateErasure,
       LibraryDocumentService documentService,
       LibraryFolderService folderService,
       DocumentIndexingService indexingService,
@@ -89,6 +93,7 @@ public class LibraryController {
       SourceConnectorRegistry connectors) {
     this.libraryService = libraryService;
     this.privateCreation = privateCreation;
+    this.privateErasure = privateErasure;
     this.documentService = documentService;
     this.folderService = folderService;
     this.indexingService = indexingService;
@@ -204,10 +209,16 @@ public class LibraryController {
     return ResponseEntity.noContent().build();
   }
 
+  /** A private library is erased instead, by its owner only: 202 while a run still ends. */
   @DeleteMapping("/{libraryId}")
   public ResponseEntity<Void> deleteLibrary(
       @PathVariable UUID libraryId, @Caller CurrentUser caller) {
-    libraryService.deleteLibrary(libraryId, caller);
+    Optional<PrivateLibraryErasure.Outcome> erased = privateErasure.eraseOwn(libraryId, caller);
+    if (erased.isEmpty()) {
+      libraryService.deleteLibrary(libraryId, caller);
+    } else if (erased.get() == PrivateLibraryErasure.Outcome.PENDING) {
+      return ResponseEntity.accepted().build();
+    }
     return ResponseEntity.noContent().build();
   }
 

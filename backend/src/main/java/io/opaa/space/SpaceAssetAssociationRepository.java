@@ -8,6 +8,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -21,6 +22,12 @@ public interface SpaceAssetAssociationRepository
   Optional<SpaceAssetAssociation> findBySpaceIdAndAssetId(UUID spaceId, UUID assetId);
 
   boolean existsBySpaceIdAndAssetId(UUID spaceId, UUID assetId);
+
+  long countByAssetId(UUID assetId);
+
+  @Modifying(flushAutomatically = true)
+  @Query("delete from SpaceAssetAssociation a where a.assetId = :assetId")
+  int deleteAllByAssetId(@Param("assetId") UUID assetId);
 
   /** Every asset id of {@code assetType} associated with {@code spaceId}. */
   @Query(
