@@ -1,7 +1,5 @@
-package io.opaa.indexing.filesync;
+package io.opaa.indexing.source;
 
-import io.opaa.indexing.source.SourceSyncState;
-import io.opaa.indexing.source.SourceSyncStateRepository;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
@@ -21,7 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class ScanJournal {
 
   /** At most this many values per statement, well below the bind-parameter limit of the driver. */
-  static final int BATCH = 1000;
+  public static final int BATCH = 1000;
 
   private final SourceSyncStateRepository repository;
 

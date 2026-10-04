@@ -1,6 +1,7 @@
 package io.opaa.indexing.filesync;
 
 import io.opaa.indexing.source.IndexingRun;
+import io.opaa.indexing.source.ScanJournal;
 import io.opaa.indexing.source.SourceSyncState;
 import io.opaa.indexing.source.SourceSyncState.ContainerProgress;
 import io.opaa.indexing.source.SourceSyncState.ScanProgress;

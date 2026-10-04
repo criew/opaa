@@ -16,6 +16,7 @@ import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -24,9 +25,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * The change cursors and folder markers of {@link SourceSyncState} against the Liquibase schema:
- * they survive a round trip through their {@code jsonb} columns, which stay {@code NULL} for a
- * connector without them; and the hierarchy query the file sync keeps unchanged folders with.
+ * The change cursors, folder markers and round progress of {@link SourceSyncState} against the
+ * Liquibase schema: they survive a round trip through their {@code jsonb} columns, which stay
+ * {@code NULL} for a connector without them; the hierarchy query the file sync keeps unchanged
+ * folders with; and a round's presence, which goes with its document and with the state.
  */
 @OpaaIntegrationTest
 class SourceSyncStateRepositoryIntegrationTest {
@@ -119,6 +121,90 @@ class SourceSyncStateRepositoryIntegrationTest {
                 String.class,
                 library.getId()))
         .isNull();
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT scan_progress::text FROM source_sync_state WHERE library_id = ?",
+                String.class,
+                library.getId()))
+        .isNull();
+  }
+
+  @Test
+  void theProgressOfARoundSurvivesTheRoundTripAndGoesWithTheCompletedSync() {
+    SourceSyncState state = new SourceSyncState(library.getId());
+    state.beginFullSync(UUID.randomUUID());
+    SourceSyncState.ScanProgress progress =
+        new SourceSyncState.ScanProgress(
+            UUID.randomUUID(),
+            Instant.parse("2026-10-04T10:00:00Z"),
+            Instant.parse("2026-10-01T10:00:00Z"),
+            Map.of(
+                "/Projekte",
+                new SourceSyncState.ContainerProgress(
+                    "nc1:[\"Akten\"]", 1, 42, true, Set.of(UUID.randomUUID()))),
+            Map.of("/Projekte", Map.of("", "\"6ac1\"")),
+            Map.of("/Projekte", Map.of("Akten / 2025", "\"6ac2\"")),
+            Map.of("/Projekte", Set.of("Akten")));
+    state.recordScanProgress(progress);
+    repository.save(state);
+
+    SourceSyncState loaded = repository.findByLibraryId(library.getId()).orElseThrow();
+    assertThat(loaded.scanProgress()).isEqualTo(progress);
+    assertThat(loaded.scanProgress().entriesListed()).isEqualTo(42);
+
+    loaded.completeFullSync(Instant.parse("2026-10-04T12:00:00Z"));
+    repository.save(loaded);
+    assertThat(repository.findByLibraryId(library.getId()).orElseThrow().scanProgress()).isNull();
+  }
+
+  @Test
+  void thePresenceOfARoundGoesWithItsDocumentAndWithTheState() {
+    saveDocument("1", "Projekte", "alt");
+    saveDocument("2", "Projekte", "neu");
+    saveDocument("3", "Projekte", null);
+    SourceSyncState state = repository.save(new SourceSyncState(library.getId()));
+    UUID scan = UUID.randomUUID();
+
+    assertThat(
+            repository.recordPresence(state.getId(), scan, library.getId(), List.of("1", "2", "9")))
+        .as("a path without a document is skipped")
+        .isEqualTo(2);
+    assertThat(repository.recordPresence(state.getId(), scan, library.getId(), List.of("1")))
+        .as("seen again in the same round")
+        .isOne();
+    assertThat(repository.findPresentPaths(state.getId(), scan))
+        .containsExactlyInAnyOrder("1", "2");
+    assertThat(repository.findPresentPaths(state.getId(), UUID.randomUUID()))
+        .as("another round has seen nothing")
+        .isEmpty();
+    assertThat(repository.findUnseen(library.getId(), state.getId(), scan))
+        .extracting(
+            SourceSyncStateRepository.Place::getContainerKey,
+            SourceSyncStateRepository.Place::getHierarchyPath)
+        .containsExactly(tuple("Projekte", null));
+
+    jdbcTemplate.update(
+        "DELETE FROM documents WHERE library_id = ? AND file_path = '1'", library.getId());
+    assertThat(repository.findPresentPaths(state.getId(), scan)).containsExactly("2");
+
+    jdbcTemplate.update("DELETE FROM source_sync_state WHERE id = ?", state.getId());
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM source_sync_presence WHERE sync_state_id = ?",
+                Long.class,
+                state.getId()))
+        .isZero();
+  }
+
+  @Test
+  void clearingThePresenceDropsEveryRoundOfTheState() {
+    saveDocument("1", "Projekte", "alt");
+    SourceSyncState state = repository.save(new SourceSyncState(library.getId()));
+    UUID scan = UUID.randomUUID();
+    repository.recordPresence(state.getId(), scan, library.getId(), List.of("1"));
+
+    assertThat(repository.clearPresence(state.getId())).isOne();
+    assertThat(repository.findPresentPaths(state.getId(), scan)).isEmpty();
   }
 
   @Test

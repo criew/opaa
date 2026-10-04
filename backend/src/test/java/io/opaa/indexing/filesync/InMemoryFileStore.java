@@ -191,7 +191,7 @@ public final class InMemoryFileStore implements FileStore {
       if (name.equals(from) || name.startsWith(from + "/")) {
         String target = to + name.substring(from.length());
         moved.put(target, files.remove(name));
-        Long id = ids.get(container + "\n" + name);
+        Long id = ids.remove(container + "\n" + name);
         if (id != null) {
           ids.put(container + "\n" + target, id);
         }

@@ -217,17 +217,38 @@ class ModularArchitectureFixtureTest {
         .anySatisfy(violation -> assertThat(violation).contains("ProbeConnector.onSourceChanged("));
   }
 
-  /** A sweep deletes documents, also by method reference; the document service may. */
+  /**
+   * A sweep deletes documents, also by method reference and through a modifying query that deletes
+   * under another name; the document service may, and a modifying update is no deletion.
+   */
   @Test
   void aDocumentDeletedOutsideTheKnownClassesIsReported() {
     Scenario scenario = new Scenario("documentdelete");
 
     assertThat(scenario.violations(ModularArchitecture::onlyTheKnownClassesDeleteDocuments))
-        .hasSize(2)
+        .hasSize(3)
         .allSatisfy(violation -> assertThat(violation).contains("library.FolderSweep"))
         .anySatisfy(violation -> assertThat(violation).contains("DocumentRepository.delete("))
         .anySatisfy(
-            violation -> assertThat(violation).contains("DocumentRepository.deleteByLibraryId("));
+            violation -> assertThat(violation).contains("DocumentRepository.deleteByLibraryId("))
+        .anySatisfy(violation -> assertThat(violation).contains("DocumentRepository.purgeStale("));
+  }
+
+  /** An administrative sweep removes through the cleanup service; the file sync may. */
+  @Test
+  void aRemovalThroughTheCleanupServiceOutsideTheRunIsReported() {
+    Scenario scenario = new Scenario("documentdelete");
+
+    assertThat(scenario.violations(ModularArchitecture::onlyTheRunRemovesThroughTheCleanupService))
+        .hasSize(2)
+        .allSatisfy(violation -> assertThat(violation).contains("library.AdminSweep"))
+        .anySatisfy(
+            violation ->
+                assertThat(violation).contains("StaleDocumentCleanupService.cleanupVanished("))
+        .anySatisfy(
+            violation ->
+                assertThat(violation)
+                    .contains("StaleDocumentCleanupService.removeWithAttachments"));
   }
 
   /** connections reads the declared support beside the one place; library may. */

@@ -2,9 +2,9 @@ package io.opaa.indexing.source.smb;
 
 import io.opaa.format.SupportedDocumentFormats;
 import io.opaa.indexing.document.DocumentIngestService;
-import io.opaa.indexing.filesync.ScanJournal;
 import io.opaa.indexing.maintenance.StaleDocumentCleanupService;
 import io.opaa.indexing.source.IndexingRunTemplate;
+import io.opaa.indexing.source.ScanJournal;
 import io.opaa.indexing.source.SourceSyncStateRepository;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.LibraryFolderService;

@@ -1,5 +1,6 @@
 package io.opaa.indexing.filesync;
 
+import io.opaa.indexing.source.ScanJournal;
 import io.opaa.indexing.source.SourceSyncStateRepository.Revisit;
 import java.util.ArrayList;
 import java.util.Collection;

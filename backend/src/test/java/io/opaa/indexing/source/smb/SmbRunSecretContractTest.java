@@ -6,11 +6,11 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import io.opaa.indexing.filesync.ScanJournal;
 import io.opaa.indexing.source.IndexingRunTemplate;
 import io.opaa.indexing.source.RequestBudget;
 import io.opaa.indexing.source.RunCredentials;
 import io.opaa.indexing.source.RunSecretContract;
+import io.opaa.indexing.source.ScanJournal;
 import io.opaa.indexing.source.Secret;
 import io.opaa.indexing.source.SourceSettings;
 import io.opaa.indexing.source.SourceSyncStateRepository;
