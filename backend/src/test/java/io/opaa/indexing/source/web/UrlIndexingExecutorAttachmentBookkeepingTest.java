@@ -43,6 +43,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Supplier;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -95,7 +96,8 @@ class UrlIndexingExecutorAttachmentBookkeepingTest {
 
     var entry =
         new AutoindexCrawlerService.CrawledFileEntry("mail.eml", MAIL_URL, null, "1", "FILE", 0);
-    when(crawlerService.crawl(anyString(), any(), anyInt(), any(), any(), anyBoolean(), any()))
+    when(crawlerService.crawl(
+            anyString(), any(), anyInt(), any(Supplier.class), anyBoolean(), any()))
         .thenReturn(
             new AutoindexCrawlerService.CrawlResult(
                 List.of(entry), false, false, false, List.of(), List.of()));

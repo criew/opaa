@@ -1,13 +1,14 @@
 package io.opaa.indexing.source;
 
+import io.opaa.indexing.job.EndsRun;
 import java.util.Objects;
 
 /**
  * The port's refusal to hand out target and secret of a library (ADR-0041, Entscheidung 3): its
- * {@link SourceBlock}, whose notice is the message. A run ends with the message before its body
- * starts.
+ * {@link SourceBlock}, whose notice is the message. A run ends with the message - before its body
+ * starts, or at the next access of a running body, past every item catch ({@link EndsRun}).
  */
-public class SourceConnectionBlockedException extends RuntimeException {
+public class SourceConnectionBlockedException extends RuntimeException implements EndsRun {
 
   private final SourceBlock block;
 

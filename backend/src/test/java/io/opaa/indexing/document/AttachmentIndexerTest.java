@@ -132,7 +132,7 @@ class AttachmentIndexerTest {
                     "https://example.org/attachment.txt",
                     "attachment.txt",
                     HttpClient.newHttpClient(),
-                    null,
+                    () -> null,
                     0)),
             parentDocumentId,
             "https://example.org/entry.html",
@@ -282,7 +282,11 @@ class AttachmentIndexerTest {
         .thenReturn(new BoundedDownloader.DownloadedFile(outerFeedFile, "text/plain"));
     AttachmentSource.Download nestedFeedSource =
         new AttachmentSource.Download(
-            "https://example.org/innen.txt", "innen.txt", HttpClient.newHttpClient(), null, 0);
+            "https://example.org/innen.txt",
+            "innen.txt",
+            HttpClient.newHttpClient(),
+            () -> null,
+            0);
     // doAnswer again - restubbing processUrlFile via when(...) here would evaluate the call
     // eagerly and re-trigger the mail answer above as a side effect (the mock is still stubbed
     // with it at this point).
@@ -308,7 +312,7 @@ class AttachmentIndexerTest {
                     "https://example.org/aussen.txt",
                     "aussen.txt",
                     HttpClient.newHttpClient(),
-                    null,
+                    () -> null,
                     0)),
             parentDocumentId,
             "https://example.org/entry.html",

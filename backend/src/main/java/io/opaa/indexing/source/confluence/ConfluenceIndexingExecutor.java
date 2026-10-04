@@ -14,6 +14,7 @@ import io.opaa.indexing.source.IndexingRun;
 import io.opaa.indexing.source.IndexingRunFailedException;
 import io.opaa.indexing.source.IndexingRunTemplate;
 import io.opaa.indexing.source.ListingOutcome;
+import io.opaa.indexing.source.SourceCredentialsRejectedException;
 import io.opaa.indexing.source.SourceIndexingExecutor;
 import io.opaa.indexing.source.SourceSyncState;
 import io.opaa.indexing.source.SourceSyncStateRepository;
@@ -189,7 +190,7 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
   private ListingOutcome withClient(IndexingRun frame, Sync sync) throws InterruptedException {
     ConfluenceConnection connection;
     try {
-      connection = ConfluenceLibraryConnection.of(frame.settings(), frame.currentCredentials());
+      connection = ConfluenceLibraryConnection.of(frame.settings(), frame.credentials());
     } catch (ConfluenceLibraryConnection.InvalidConfluenceConfigurationException e) {
       throw new IndexingRunFailedException(e.getMessage());
     }
@@ -212,7 +213,9 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
   private static IndexingRunFailedException accessFailure(
       IndexingRun frame, ConfluenceAccessException e) {
     log.warn("Confluence run for library {} failed: {}", frame.library().getId(), e.getMessage());
-    return new IndexingRunFailedException(e.getMessage(), e);
+    return e instanceof ConfluenceAccessException.Authentication
+        ? new SourceCredentialsRejectedException(e.getMessage(), e)
+        : new IndexingRunFailedException(e.getMessage(), e);
   }
 
   /** Where the next run continues once this one's budget is spent, for the frame's note. */

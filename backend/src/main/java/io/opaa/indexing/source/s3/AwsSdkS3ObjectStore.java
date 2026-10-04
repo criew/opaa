@@ -1,9 +1,11 @@
 package io.opaa.indexing.source.s3;
 
 import io.opaa.indexing.job.RequestBudgetExhaustedException;
+import io.opaa.indexing.job.RunEndingFailures;
 import io.opaa.s3.S3AccessException;
 import io.opaa.s3.S3ClientSettings;
 import io.opaa.s3.S3Connection;
+import io.opaa.s3.S3Credentials;
 import io.opaa.s3.S3FailureTranslator;
 import io.opaa.s3.S3Operation;
 import io.opaa.s3.S3RequestGuard;
@@ -18,6 +20,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.http.SdkHttpRequest;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -36,7 +39,8 @@ import software.amazon.awssdk.services.s3.model.S3Object;
  * 9), on the client build, request guard and failure translation the upload storage shares
  * (ADR-0030, Entscheidung 8). What is the connector's own: the byte ceiling while a download
  * streams, the {@link SourceRequestMeter} every wire attempt and throttled answer is counted on,
- * and the request budget that ends a run in an orderly way.
+ * and the request budget that ends a run in an orderly way. A run's store signs every request with
+ * the credentials valid then.
  */
 final class AwsSdkS3ObjectStore implements S3ObjectStore {
 
@@ -53,6 +57,17 @@ final class AwsSdkS3ObjectStore implements S3ObjectStore {
       TargetAddressValidator targetAddressValidator,
       int requestBudget,
       Consumer<SdkHttpRequest> requestObserver) {
+    this(connection, null, properties, targetAddressValidator, requestBudget, requestObserver);
+  }
+
+  /** {@code current}, when not {@code null}, answers the credentials of every request. */
+  AwsSdkS3ObjectStore(
+      S3Connection connection,
+      Supplier<S3Credentials> current,
+      S3Properties properties,
+      TargetAddressValidator targetAddressValidator,
+      int requestBudget,
+      Consumer<SdkHttpRequest> requestObserver) {
     this.properties = properties;
     this.guard =
         new S3RequestGuard(
@@ -65,15 +80,18 @@ final class AwsSdkS3ObjectStore implements S3ObjectStore {
             properties.requestTimeout(),
             properties.maxRetries(),
             TargetAddressValidator.ALLOWLIST_HINT,
-            RequestBudgetExhaustedException::requests);
+            RequestBudgetExhaustedException::requests,
+            RunEndingFailures::endingCause);
+    S3ClientSettings settings =
+        S3ClientSettings.of(
+            connection,
+            properties.requestTimeout(),
+            properties.maxRetries(),
+            properties.retryBackoff());
     this.client =
-        S3SdkClient.open(
-            S3ClientSettings.of(
-                connection,
-                properties.requestTimeout(),
-                properties.maxRetries(),
-                properties.retryBackoff()),
-            guard);
+        current == null
+            ? S3SdkClient.open(settings, guard)
+            : S3SdkClient.open(settings, S3ClientSettings.current(current), guard);
     this.s3 = client.s3();
   }
 

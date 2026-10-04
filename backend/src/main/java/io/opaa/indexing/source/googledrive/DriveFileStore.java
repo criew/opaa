@@ -105,7 +105,8 @@ final class DriveFileStore implements FileStore, ChangeFeed {
       return listing.nextPage();
     } catch (DriveApiException e) {
       throw switch (e.kind()) {
-        case UNAUTHORIZED, SCOPE_MISSING, DAILY_LIMIT, BLOCKED ->
+        case UNAUTHORIZED -> new FileAccessException.CredentialsRejected(e.getMessage());
+        case SCOPE_MISSING, DAILY_LIMIT, BLOCKED ->
             new FileAccessException.RunEnding(e.getMessage());
         default -> new FileAccessException.ContainerUnlistable(e.getMessage());
       };
@@ -313,7 +314,9 @@ final class DriveFileStore implements FileStore, ChangeFeed {
       }
       return cursor;
     } catch (DriveApiException e) {
-      throw new FileAccessException.RunEnding(e.getMessage());
+      throw e.kind() == DriveApiException.Kind.UNAUTHORIZED
+          ? new FileAccessException.CredentialsRejected(e.getMessage())
+          : new FileAccessException.RunEnding(e.getMessage());
     }
   }
 
@@ -336,7 +339,8 @@ final class DriveFileStore implements FileStore, ChangeFeed {
             "Google Drive nimmt den gespeicherten Stand des Änderungsprotokolls nicht mehr an.");
       }
       throw switch (e.kind()) {
-        case UNAUTHORIZED, SCOPE_MISSING, DAILY_LIMIT, BLOCKED ->
+        case UNAUTHORIZED -> new FileAccessException.CredentialsRejected(e.getMessage());
+        case SCOPE_MISSING, DAILY_LIMIT, BLOCKED ->
             new FileAccessException.RunEnding(e.getMessage());
         default -> new FileAccessException.Transient(e.getMessage());
       };
@@ -381,7 +385,8 @@ final class DriveFileStore implements FileStore, ChangeFeed {
       }
     } catch (DriveApiException e) {
       throw switch (e.kind()) {
-        case UNAUTHORIZED, SCOPE_MISSING, DAILY_LIMIT, BLOCKED ->
+        case UNAUTHORIZED -> new FileAccessException.CredentialsRejected(e.getMessage());
+        case SCOPE_MISSING, DAILY_LIMIT, BLOCKED ->
             new FileAccessException.RunEnding(e.getMessage());
         default -> new FileAccessException.Transient(e.getMessage());
       };
@@ -462,7 +467,8 @@ final class DriveFileStore implements FileStore, ChangeFeed {
       containerNames.put(container.key(), name == null ? container.key() : name);
     } catch (DriveApiException e) {
       throw switch (e.kind()) {
-        case UNAUTHORIZED, SCOPE_MISSING, DAILY_LIMIT, BLOCKED ->
+        case UNAUTHORIZED -> new FileAccessException.CredentialsRejected(e.getMessage());
+        case SCOPE_MISSING, DAILY_LIMIT, BLOCKED ->
             new FileAccessException.RunEnding(e.getMessage());
         case NOT_FOUND, FORBIDDEN ->
             new FileAccessException.ContainerUnlistable(
@@ -626,8 +632,8 @@ final class DriveFileStore implements FileStore, ChangeFeed {
 
   private static FileAccessException fileFailure(DriveApiException e) {
     return switch (e.kind()) {
-      case UNAUTHORIZED, SCOPE_MISSING, DAILY_LIMIT, BLOCKED ->
-          new FileAccessException.RunEnding(e.getMessage());
+      case UNAUTHORIZED -> new FileAccessException.CredentialsRejected(e.getMessage());
+      case SCOPE_MISSING, DAILY_LIMIT, BLOCKED -> new FileAccessException.RunEnding(e.getMessage());
       case TOO_LARGE -> new FileAccessException.TooLarge(e.getMessage());
       case NOT_FOUND, FORBIDDEN, EXPORT_LIMIT -> new FileAccessException.Unreadable(e.getMessage());
       case TRANSIENT -> new FileAccessException.Transient(e.getMessage());

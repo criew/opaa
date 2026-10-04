@@ -1,5 +1,6 @@
 package io.opaa.indexing.source.confluence;
 
+import io.opaa.indexing.source.RunCredentials;
 import io.opaa.indexing.source.SourceSettings;
 import io.opaa.sourceaccess.ProxyAndCredentials;
 import java.net.URI;
@@ -13,6 +14,23 @@ import java.net.URI;
 final class ConfluenceLibraryConnection {
 
   private ConfluenceLibraryConnection() {}
+
+  /**
+   * The connection of a run: the secret valid at the start is checked as {@link #of(SourceSettings,
+   * String)} does, every request then sends the one {@code credentials} answers.
+   */
+  static ConfluenceConnection of(SourceSettings settings, RunCredentials credentials) {
+    ConfluenceConnection start = of(settings, credentials.value());
+    ConfluenceEdition edition = start.edition();
+    return new ConfluenceConnection(
+        start.baseUrl(),
+        edition,
+        new ConfluenceCredentials.Current(
+            edition, credentials.derived(secret -> ConfluenceCredentials.parse(edition, secret))),
+        start.proxyHost(),
+        start.proxyPort(),
+        start.insecureSsl());
+  }
 
   static ConfluenceConnection of(SourceSettings settings, String credentials) {
     ConfluenceEdition edition =

@@ -47,8 +47,18 @@ public abstract sealed class FileAccessException extends Exception {
   }
 
   /** No later request of this run will do better (credentials, clock, TLS, blocked target). */
-  public static final class RunEnding extends FileAccessException {
+  public static sealed class RunEnding extends FileAccessException permits CredentialsRejected {
     public RunEnding(String message) {
+      super(message);
+    }
+  }
+
+  /**
+   * The source rejected the run's secret ("Anmeldung abgelehnt"), also after a renewed ask where
+   * the store asks again; {@code FileSync} ends the run under its own category.
+   */
+  public static final class CredentialsRejected extends RunEnding {
+    public CredentialsRejected(String message) {
       super(message);
     }
   }

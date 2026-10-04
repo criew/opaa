@@ -107,7 +107,12 @@ class SmbLogLeakTest {
       texts.add(String.valueOf(e.getCause()));
     }
 
-    for (ILoggingEvent event : appender.list) {
+    // smbj's reader threads still log while their connections close; appending holds the lock
+    List<ILoggingEvent> logged;
+    synchronized (appender) {
+      logged = new ArrayList<>(appender.list);
+    }
+    for (ILoggingEvent event : logged) {
       texts.add(event.getFormattedMessage());
       if (event.getThrowableProxy() != null) {
         texts.add(ThrowableProxyUtil.asString(event.getThrowableProxy()));

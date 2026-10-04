@@ -55,6 +55,7 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Supplier;
 import javax.net.SocketFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -115,7 +116,10 @@ final class SmbShareClient implements AutoCloseable {
   static final ThreadLocal<int[]> OPENING = new ThreadLocal<>();
 
   private final SmbAddress address;
-  private final SmbCredentials credentials;
+
+  /** Asked on every sign-in, so a session set up anew uses the credentials valid then. */
+  private final Supplier<SmbCredentials> credentials;
+
   private final RequestBudget budget;
   private final BudgetedTransportFactory transport;
   private final SMBClient client;
@@ -128,6 +132,7 @@ final class SmbShareClient implements AutoCloseable {
 
   private Connection connection;
   private Session session;
+  private SmbCredentials signedInWith;
   private volatile DiskShare share;
   private SmbAccessException failure;
 
@@ -183,7 +188,7 @@ final class SmbShareClient implements AutoCloseable {
 
   private SmbShareClient(
       SmbAddress address,
-      SmbCredentials credentials,
+      Supplier<SmbCredentials> credentials,
       RequestBudget budget,
       SmbConfig.Builder config) {
     this.address = address;
@@ -197,6 +202,19 @@ final class SmbShareClient implements AutoCloseable {
   static SmbShareClient of(
       SmbAddress address,
       SmbCredentials credentials,
+      TargetAddressValidator targetAddressValidator,
+      RequestBudget budget,
+      Duration timeout) {
+    return of(address, () -> credentials, targetAddressValidator, budget, timeout);
+  }
+
+  /**
+   * A client for the share that connects on its first request and signs in with what {@code
+   * credentials} answers at each sign-in; what it throws ends that request.
+   */
+  static SmbShareClient of(
+      SmbAddress address,
+      Supplier<SmbCredentials> credentials,
       TargetAddressValidator targetAddressValidator,
       RequestBudget budget,
       Duration timeout) {
@@ -241,6 +259,8 @@ final class SmbShareClient implements AutoCloseable {
   }
 
   private void signIn() throws SmbAccessException, InterruptedException {
+    SmbCredentials credentials = this.credentials.get();
+    signedInWith = credentials;
     try {
       connection = client.connect(address.socketHost(), address.port());
     } catch (TargetAddressValidator.UnknownTargetHostException e) {
@@ -282,6 +302,7 @@ final class SmbShareClient implements AutoCloseable {
    * unless the server could not be reached at all.
    */
   SmbAccessException signInFailure(RuntimeException e) throws InterruptedException {
+    SmbCredentials credentials = signedInWith != null ? signedInWith : this.credentials.get();
     if (transport.refused != null) {
       throw transport.refused;
     }
@@ -509,7 +530,7 @@ final class SmbShareClient implements AutoCloseable {
    * Drops the connection; the next request signs in again. A request of another thread that fails
    * on the dropped connection is repeated once ({@link #download}) or ends only its own folder.
    */
-  private synchronized void reset() {
+  synchronized void reset() {
     connections.incrementAndGet();
     DiskShare current = share;
     share = null;

@@ -14,11 +14,13 @@ import io.opaa.knowledge.LibraryStorageQuotaService;
 import io.opaa.knowledge.SourceDocumentContext;
 import io.opaa.knowledge.SourceType;
 import io.opaa.sourceaccess.SourceRequestMeter;
+import java.time.Clock;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -53,7 +55,7 @@ public final class IndexingRun {
   private final UUID jobId;
   private final KnowledgeLibrary library;
   private final SourceSettings settings;
-  private final Supplier<Secret> credentials;
+  private final RunCredentials credentials;
   private final IndexingRunMode runMode;
   private final SourceType sourceType;
   private final IndexingRunProgress progress;
@@ -78,10 +80,39 @@ public final class IndexingRun {
       IndexingRunEventRecorder events,
       DocumentRepository documentRepository,
       LibraryStorageQuotaService storageQuotaService) {
+    this(
+        jobId,
+        library,
+        settings,
+        credentials,
+        runMode,
+        sourceType,
+        progress,
+        events,
+        documentRepository,
+        storageQuotaService,
+        rejected -> credentials.get(),
+        Clock.systemUTC());
+  }
+
+  IndexingRun(
+      UUID jobId,
+      KnowledgeLibrary library,
+      SourceSettings settings,
+      Supplier<Secret> credentials,
+      IndexingRunMode runMode,
+      SourceType sourceType,
+      IndexingRunProgress progress,
+      IndexingRunEventRecorder events,
+      DocumentRepository documentRepository,
+      LibraryStorageQuotaService storageQuotaService,
+      UnaryOperator<Secret> afterRejection,
+      Clock clock) {
     this.jobId = jobId;
     this.library = library;
     this.settings = settings.withoutCredentials();
-    this.credentials = credentials;
+    this.credentials =
+        new RunCredentials(credentials, afterRejection, RunCredentials.VALIDITY, clock);
     this.runMode = runMode;
     this.sourceType = sourceType;
     this.progress = progress;
@@ -96,7 +127,7 @@ public final class IndexingRun {
 
   /**
    * The library the run writes into - its identity and its inventory. Its source configuration
-   * comes from {@link #settings()} and {@link #currentCredentials()}.
+   * comes from {@link #settings()} and {@link #credentials()}.
    */
   public KnowledgeLibrary library() {
     return library;
@@ -104,23 +135,18 @@ public final class IndexingRun {
 
   /**
    * Target, proxy, TLS switch and connector settings as the core resolved them at the start of the
-   * run; never the secret, which {@link #currentCredentials()} answers.
+   * run; never the secret, which {@link #credentials()} answers.
    */
   public SourceSettings settings() {
     return settings;
   }
 
   /**
-   * The secret valid now, {@code null} for none - asked again whenever a body needs it, so one that
-   * expires during a long run is renewed by the core.
+   * The secret as a connector asks for it before every request or sign-in: renewed by the core and
+   * refused once the source is blocked, at most {@link RunCredentials#VALIDITY} old.
    */
-  public String currentCredentials() {
-    return Secret.valueOf(currentSecret());
-  }
-
-  /** {@link #currentCredentials()} with its kind, {@code null} for none. */
-  public Secret currentSecret() {
-    return credentials.get();
+  public RunCredentials credentials() {
+    return credentials;
   }
 
   public IndexingRunMode runMode() {

@@ -38,6 +38,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Async;
@@ -107,7 +108,7 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
   }
 
   private ListingOutcome crawlDirectory(IndexingRun run) throws IOException, InterruptedException {
-    UrlIndexingRequest request = toUrlIndexingRequest(run.settings(), run.currentCredentials());
+    UrlIndexingRequest request = toUrlIndexingRequest(run.settings(), run.credentials().value());
     ProxyAndCredentials config;
     try {
       config = ProxyAndCredentials.parse(request.proxy(), request.credentials());
@@ -129,15 +130,11 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
     // crawls again and skips what is stored unchanged
     run.budgetContinuation(
         () -> "der Lauf endet unvollständig, der nächste Lauf durchsucht das Verzeichnis erneut");
+    // the secret valid now on every request; the proxy stays as resolved at the start
+    Supplier<String> authHeader =
+        run.credentials().derived(secret -> basicAuthHeader(request.proxy(), secret));
     AutoindexCrawlerService.CrawlResult crawlResult =
-        crawlerService.crawl(
-            url,
-            proxyHost,
-            proxyPort,
-            config.username(),
-            config.password(),
-            request.insecureSsl(),
-            budget);
+        crawlerService.crawl(url, proxyHost, proxyPort, authHeader, request.insecureSsl(), budget);
     List<AutoindexCrawlerService.CrawledFileEntry> allFiles = crawlResult.entries();
     log.info("Discovered {} files for URL indexing", allFiles.size());
 
@@ -187,8 +184,6 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
 
     HttpClient httpClient =
         SourceHttpClientFactory.buildHttpClient(proxyHost, proxyPort, request.insecureSsl());
-    String authHeader =
-        SourceHttpClientFactory.buildAuthHeader(config.username(), config.password());
     ReconcilingAttachmentAccess attachmentAccess = run.attachmentAccess();
     var folderMirror = new SourceFolderMirror(folderService, run.library());
     String normalizedUrl = url;
@@ -199,7 +194,7 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
           run,
           entry,
           httpClient,
-          authHeader,
+          authHeader.get(),
           attachmentAccess,
           folderMirror,
           normalizedUrl,
@@ -468,6 +463,12 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
       SupportedDocumentFormats.CompleteContent completeContent)
       throws IOException, InterruptedException {
     return supportedFormats.decideForPrefix(entryName, prefix, completeContent);
+  }
+
+  /** The Basic {@code Authorization} value of {@code credentials}, {@code null} for none. */
+  private static String basicAuthHeader(String proxy, String credentials) {
+    ProxyAndCredentials parsed = ProxyAndCredentials.parse(proxy, credentials);
+    return SourceHttpClientFactory.buildAuthHeader(parsed.username(), parsed.password());
   }
 
   /**

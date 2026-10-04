@@ -7,6 +7,7 @@ import java.net.UnknownHostException;
 import java.time.Duration;
 import java.util.Set;
 import java.util.concurrent.Callable;
+import java.util.function.Function;
 import java.util.function.IntFunction;
 import javax.net.ssl.SSLException;
 import org.slf4j.Logger;
@@ -59,6 +60,7 @@ public final class S3FailureTranslator {
   private final int maxRetries;
   private final String allowlistHint;
   private final IntFunction<? extends RuntimeException> budgetExhausted;
+  private final Function<Throwable, RuntimeException> passedThrough;
 
   /** For a client whose {@link S3RequestGuard} carries no request budget. */
   public S3FailureTranslator(Duration requestTimeout, int maxRetries, String allowlistHint) {
@@ -78,10 +80,24 @@ public final class S3FailureTranslator {
       int maxRetries,
       String allowlistHint,
       IntFunction<? extends RuntimeException> budgetExhausted) {
+    this(requestTimeout, maxRetries, allowlistHint, budgetExhausted, failure -> null);
+  }
+
+  /**
+   * @param passedThrough what of a failure {@link #call} rethrows untranslated, {@code null} for
+   *     nothing - the owner's own failure that a credentials provider raised inside the SDK
+   */
+  public S3FailureTranslator(
+      Duration requestTimeout,
+      int maxRetries,
+      String allowlistHint,
+      IntFunction<? extends RuntimeException> budgetExhausted,
+      Function<Throwable, RuntimeException> passedThrough) {
     this.requestTimeout = requestTimeout;
     this.maxRetries = maxRetries;
     this.allowlistHint = allowlistHint;
     this.budgetExhausted = budgetExhausted;
+    this.passedThrough = passedThrough;
   }
 
   /**
@@ -103,6 +119,10 @@ public final class S3FailureTranslator {
       S3RequestGuard.BudgetSignal budget = findCause(e, S3RequestGuard.BudgetSignal.class);
       if (budget != null) {
         throw budgetExhausted.apply(budget.budget());
+      }
+      RuntimeException own = passedThrough.apply(e);
+      if (own != null) {
+        throw own;
       }
       S3AccessException translated = translate(op, bucket, key, e);
       // the translated message is credential-free by contract; the SDK's own text is not logged

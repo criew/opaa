@@ -103,6 +103,18 @@ class ServiceAccountTokensTest {
     assertThat(endpoint.forms()).hasSize(1);
   }
 
+  /** A run must not reuse the token past its expiry, so the token says when that is. */
+  @Test
+  void theAccessTokenCarriesTheInstantItExpires() {
+    endpoint.answer(FakeTokenEndpoint.token("erstes", 3600));
+
+    Secret secret = tokens.accessSecret(storedKey(), null, auth, null);
+
+    assertThat(secret.kind()).isEqualTo(SecretKind.ACCESS_TOKEN);
+    assertThat(secret.value()).isEqualTo("erstes");
+    assertThat(secret.expiresAt()).isEqualTo(NOW.plusSeconds(3600));
+  }
+
   @Test
   void aTokenIsReusedUntilShortlyBeforeItExpiresThenRenewed() {
     endpoint.answer(
