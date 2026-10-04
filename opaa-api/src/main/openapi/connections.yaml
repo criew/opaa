@@ -1118,8 +1118,9 @@ components:
           type: integer
           format: int64
           description: >
-            How many libraries the proposed change makes read their source anew, because a default
-            only the profile sets changes; 0 without a proposal.
+            How many shared libraries the proposed change makes read their source anew, because a
+            default only the profile sets changes; 0 without a proposal. Private libraries are
+            reset alike but not counted.
         rejectedLibraries:
           type: integer
           format: int64

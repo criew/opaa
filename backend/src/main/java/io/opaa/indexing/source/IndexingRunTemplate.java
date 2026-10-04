@@ -252,6 +252,7 @@ public class IndexingRunTemplate {
         failed,
         category,
         failure);
+    tellRunEnded(library);
     // The interrupt flag is restored only after the job row is written: a pending interrupt makes
     // the connection acquisition for that write fail and would leave the job RUNNING forever.
     try {
@@ -276,6 +277,15 @@ public class IndexingRunTemplate {
       connectionResolver.credentialsRejected(library);
     } catch (RuntimeException e) {
       log.warn("Failed to report the rejected credentials of library {}", library.getId(), e);
+    }
+  }
+
+  /** A failure to tell the port is logged; it never keeps the run from ending. */
+  private void tellRunEnded(KnowledgeLibrary library) {
+    try {
+      connectionResolver.runEnded(library);
+    } catch (RuntimeException e) {
+      log.warn("Failed to report the end of a run of library {}", library.getId(), e);
     }
   }
 

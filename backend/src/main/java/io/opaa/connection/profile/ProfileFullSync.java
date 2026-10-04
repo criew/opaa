@@ -21,10 +21,12 @@ import java.util.UUID;
 import org.springframework.stereotype.Component;
 
 /**
- * A change of a profile that makes the next run of every library on it a full one: refused while
- * one of them runs, whose listing would otherwise end with the state of two accounts; afterwards
- * the managers of each library - the owner and every holder of {@code MANAGER} or more, groups
- * resolved to their members - are told (ADR-0019), in the transaction of the change.
+ * A change of a profile that makes the next run of every library on it a full one: refused while a
+ * shared one runs, whose listing would otherwise end with the state of two accounts. A private one
+ * never holds it up - its going run has its state discarded again when it ends ({@link
+ * RunStateResets}). Afterwards the managers of each library - the owner and every holder of {@code
+ * MANAGER} or more, groups resolved to their members - are told (ADR-0019), in the transaction of
+ * the change.
  */
 @Component
 class ProfileFullSync {
@@ -36,6 +38,7 @@ class ProfileFullSync {
   private final AssetGrantRepository grants;
   private final GroupMembershipResolver groups;
   private final NotificationService notifications;
+  private final RunStateResets resets;
   private final Clock clock;
 
   ProfileFullSync(
@@ -43,7 +46,9 @@ class ProfileFullSync {
       AssetGrantRepository grants,
       GroupMembershipResolver groups,
       NotificationService notifications,
+      RunStateResets resets,
       Clock clock) {
+    this.resets = resets;
     this.jobs = jobs;
     this.grants = grants;
     this.groups = groups;
@@ -72,6 +77,17 @@ class ProfileFullSync {
               + " laufenden Abgleich: den Zugang sperren, das Ende der Läufe abwarten, ändern und"
               + " wieder entsperren.",
           RUN_IN_PROGRESS);
+    }
+  }
+
+  /**
+   * Discards the run state of {@code library} for {@code changed} once more when its going run
+   * ends; nothing without one.
+   */
+  void repeatAfterGoingRun(KnowledgeLibrary library, boolean addressChanged, Set<String> changed) {
+    if (jobs.existsByStatusAndLibraryIdAndOrganizationId(
+        JobStatus.RUNNING, library.getId(), library.getOrganizationId())) {
+      resets.repeatAfterRun(library, addressChanged, changed);
     }
   }
 

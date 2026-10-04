@@ -55,9 +55,10 @@ import org.springframework.transaction.annotation.Transactional;
  * - of libraries and of persons, whose connections end through {@link PersonConnections} - after a
  * confirmation once connections exist; a new client secret alone discards nothing. A changed
  * default only the profile sets (Google Drive's imitated account) discards the run state of every
- * library on it, after a confirmation naming their number, and notifies their managers. The client
- * secret - a service account key is checked here and names the client id - is encrypted here and
- * never returned; the audit names fields and library counts.
+ * library on it, after a confirmation naming the number of shared ones, and notifies their
+ * managers; private libraries are neither counted nor waited for. The client secret - a service
+ * account key is checked here and names the client id - is encrypted here and never returned; the
+ * audit names fields and library counts.
  */
 @Service
 @Transactional(readOnly = true)
@@ -316,15 +317,25 @@ public class ConnectionProfileService {
       persons.endAllUnder(id, ConnectionEndCause.PROFILE_CHANGED, caller.id());
     }
     for (Move move : change.moves()) {
-      if (!released.contains(move.library().getId())) {
-        transitions.record(caller, move.library(), transitions.applied(move));
+      KnowledgeLibrary library = move.library();
+      if (released.contains(library.getId())) {
+        continue;
+      }
+      Set<String> changed = transitions.applied(move);
+      transitions.record(caller, library, changed);
+      if (change.resetsRunState() && change.privateLibraries().contains(library.getId())) {
+        fullSync.repeatAfterGoingRun(
+            library, !Objects.equals(move.before().sourceUrl(), move.after().sourceUrl()), changed);
       }
     }
-    if (change.fullSyncs() > 0) {
+    if (change.resetsRunState()) {
       fullSync.notifyManagers(
           profile,
           String.join(", ", change.fullSyncLabels()),
-          change.moves().stream().map(Move::library).toList());
+          change.moves().stream()
+              .map(Move::library)
+              .filter(library -> !released.contains(library.getId()))
+              .toList());
     }
     Map<String, Object> after = auditState(profile);
     if (affected > 0) {
@@ -381,10 +392,13 @@ public class ConnectionProfileService {
     throw new ConflictException(text.append("Bitte bestätigen.").toString(), CONFIRMATION_REQUIRED);
   }
 
-  /** Refuses {@code change} with 409 while it resets a library whose run is going. */
+  /**
+   * Refuses {@code change} with 409 while it resets a shared library whose run is going; a private
+   * one never holds it up, so the refusal tells nothing of it.
+   */
   private void requireNoneRunning(ProfileChange change) {
     if (change.fullSyncs() > 0) {
-      fullSync.requireNoneRunning(change.moves().stream().map(Move::library).toList());
+      fullSync.requireNoneRunning(change.sharedLibraries());
     }
   }
 
@@ -777,9 +791,24 @@ public class ConnectionProfileService {
       Set<UUID> privateLibraries,
       List<String> fullSyncLabels) {
 
-    /** The libraries whose run state a changed default only the profile sets discards. */
+    /** Whether a changed default only the profile sets discards the run state on the profile. */
+    boolean resetsRunState() {
+      return !fullSyncLabels.isEmpty();
+    }
+
+    /**
+     * The shared libraries whose run state the change discards - the number the administration is
+     * told; the private ones are reset alike, uncounted.
+     */
     long fullSyncs() {
-      return fullSyncLabels.isEmpty() ? 0 : moves.size();
+      return resetsRunState() ? sharedLibraries().size() : 0;
+    }
+
+    List<KnowledgeLibrary> sharedLibraries() {
+      return moves.stream()
+          .map(Move::library)
+          .filter(library -> !privateLibraries.contains(library.getId()))
+          .toList();
     }
 
     /** Whether persons' connections end - told without saying whether there are any. */
