@@ -26,6 +26,7 @@ import java.util.Map;
 import java.util.UUID;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -53,8 +54,14 @@ class ProfileDraftIntegrationTest {
   private final List<UUID> profiles = new ArrayList<>();
   private final List<UUID> libraries = new ArrayList<>();
 
+  @BeforeEach
+  void clearThePolicy() {
+    jdbc.update("DELETE FROM connector_type_policies WHERE source_type = 'PROFILE_PROBE'");
+  }
+
   @AfterEach
   void tearDown() {
+    jdbc.update("DELETE FROM connector_type_policies WHERE source_type = 'PROFILE_PROBE'");
     libraryFixtures.removeLibraries(libraries.toArray(UUID[]::new));
     for (UUID profile : profiles) {
       ConnectorReleases.withdraw(jdbc, "PROFILE:" + profile);
@@ -215,6 +222,52 @@ class ProfileDraftIntegrationTest {
                 .content(
                     onItsProfile.formatted(
                         library, ", \"connectionProfileId\": \"" + replacement + "\"")))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.reachable").value(true));
+  }
+
+  /** A library the profile requirement locks is repaired by testing it on a profile first. */
+  @Test
+  void aLibraryTheProfileRequirementLocksIsTestedAgainstAProfile() throws Exception {
+    UUID profile = createProfile("NONE", null, null, false);
+    String body =
+        mockMvc
+            .perform(
+                as("dev-admin", post("/api/v1/libraries"))
+                    .content(
+                        "{\"name\": \"Eigen "
+                            + UUID.randomUUID()
+                            + "\", \"sourceType\": \"PROFILE_PROBE\", \"sourceUrl\":"
+                            + " \"https://probe.example.org/eigen\"}"))
+            .andExpect(status().isCreated())
+            .andReturn()
+            .getResponse()
+            .getContentAsString(StandardCharsets.UTF_8);
+    UUID library = UUID.fromString(JsonPath.read(body, "$.id"));
+    libraries.add(library);
+    mockMvc
+        .perform(
+            as("dev-admin", put("/api/v1/admin/connector-types/PROFILE_PROBE/profile-requirement"))
+                .content("{\"required\": true, \"ownAddressStock\": \"LOCKED\"}"))
+        .andExpect(status().isOk());
+
+    String test = "{\"sourceType\": \"PROFILE_PROBE\", \"libraryId\": \"%s\"%s}";
+    mockMvc
+        .perform(
+            as("dev-admin", post("/api/v1/libraries/source-test"))
+                .content(test.formatted(library, "")))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("SOURCE_LOCKED"));
+    mockMvc
+        .perform(
+            as("dev-admin", post("/api/v1/libraries/source-test"))
+                .content(
+                    test.formatted(
+                        library,
+                        ", \"connectionProfileId\": \""
+                            + profile
+                            + "\", \"sourceUrl\":"
+                            + " \"https://probe.example.org/eigen\"")))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.reachable").value(true));
   }

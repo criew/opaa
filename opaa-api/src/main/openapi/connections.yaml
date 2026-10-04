@@ -278,6 +278,74 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
 
+  /api/v1/admin/connector-types/{sourceType}/profile-requirement:
+    parameters:
+      - name: sourceType
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/SourceTypeKey"
+
+    get:
+      operationId: getConnectorProfileRequirement
+      tags: [connection-profile]
+      summary: The profile requirement of a connector type and what switching it on affects (system admin only)
+      description: >
+        Whether the type may be made usable only through connection profiles ("Nur über
+        Zugänge") and why not, the libraries of the type with their own address, and what the
+        requirement does not cover for this type.
+      responses:
+        "200":
+          description: The profile requirement of the type
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConnectorProfileRequirementResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+    put:
+      operationId: setConnectorProfileRequirement
+      tags: [connection-profile]
+      summary: Switch the profile requirement of a connector type on or off (system admin only)
+      description: >
+        Switched on, no library of the type is created, tested or listed with its own address,
+        none is released from its profile, and a library with its own address keeps that
+        address. ownAddressStock decides for every such library whether it runs on (RUNS) or is
+        locked until it is connected through a profile (LOCKED); sending it again while the
+        requirement holds changes that choice. Switched off, every such lock is lifted. Only a
+        type that declares profiles as optional may be switched (otherwise 400), and only on
+        while at least one unlocked profile of the type admits libraries (otherwise 409 with
+        code PROFILE_REQUIREMENT_NEEDS_PROFILE). A governance event either way
+        (CONNECTOR_PROFILE_REQUIRED, CONNECTOR_PROFILE_OPTIONAL).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConnectorProfileRequirementRequest"
+      responses:
+        "200":
+          description: The connector type with its new profile requirement
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConnectorTypeStateResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          description: >
+            No unlocked profile of the type admits libraries (code
+            PROFILE_REQUIREMENT_NEEDS_PROFILE).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /api/v1/connection-profiles:
     get:
       operationId: listConnectionProfileOptions
@@ -625,7 +693,7 @@ components:
 
     ConnectionProfileImpactResponse:
       type: object
-      required: [connections, libraries]
+      required: [connections, libraries, lastForProfileRequirement]
       properties:
         connections:
           type: integer
@@ -633,6 +701,12 @@ components:
         libraries:
           type: integer
           format: int64
+        lastForProfileRequirement:
+          type: boolean
+          description: >
+            Whether the profile is the last unlocked one admitting libraries of a connector type
+            that is usable only through profiles: without it, no new library of the type can be
+            created until another profile exists. Deleting or locking it stays possible.
 
     ConnectionProfileOption:
       type: object
@@ -683,7 +757,7 @@ components:
 
     ConnectorTypeStateResponse:
       type: object
-      required: [sourceType, displayName, locked]
+      required: [sourceType, displayName, locked, profileSupport, profileRequired]
       properties:
         sourceType:
           $ref: "#/components/schemas/SourceTypeKey"
@@ -697,6 +771,98 @@ components:
           type: string
           format: date-time
           nullable: true
+        profileSupport:
+          description: >
+            How the connector itself stands to connection profiles; only OPTIONAL can be switched
+            (see setConnectorProfileRequirement).
+          allOf:
+            - $ref: "#/components/schemas/ConnectionProfileSupport"
+        profileRequired:
+          type: boolean
+          description: >
+            Whether the type is usable only through connection profiles now - declared so by the
+            connector, or switched on by the system administration.
+        profileRequiredAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: Since when the system administration switched the requirement on.
+        ownAddressStock:
+          nullable: true
+          description: >
+            What happens to the libraries with their own address while the requirement is
+            switched on; absent otherwise.
+          allOf:
+            - $ref: "#/components/schemas/OwnAddressStock"
+
+    OwnAddressStock:
+      type: string
+      description: >
+        What happens to the libraries of a type with their own address once it is usable only
+        through connection profiles: RUNS (they run on; their address can be changed only by
+        connecting them through a profile), LOCKED (they keep their content but run no more until
+        they are connected through a profile).
+      enum: [RUNS, LOCKED]
+
+    ConnectorProfileRequirementRequest:
+      type: object
+      required: [required]
+      properties:
+        required:
+          type: boolean
+        ownAddressStock:
+          nullable: true
+          description: Required when switching on; must be absent when switching off.
+          allOf:
+            - $ref: "#/components/schemas/OwnAddressStock"
+
+    ConnectorProfileRequirementResponse:
+      type: object
+      required: [state, switchable, ownAddressLibraries]
+      properties:
+        state:
+          $ref: "#/components/schemas/ConnectorTypeStateResponse"
+        switchable:
+          type: boolean
+          description: >
+            Whether the requirement can be switched on now (or is on and can be switched off).
+        notSwitchableReason:
+          type: string
+          nullable: true
+          description: Why it cannot, in German; absent when switchable.
+        ownAddressLibraries:
+          type: array
+          description: >
+            Every library of the type in the caller's organization with its own address - not
+            connected through a profile, also after its profile was deleted - by name; the ones
+            the choice of ownAddressStock affects.
+          items:
+            $ref: "#/components/schemas/OwnAddressLibrary"
+        coverageNotice:
+          type: string
+          nullable: true
+          description: >
+            What the requirement does not cover for this type, in German - for an RSS feed, that
+            it fixes only the feed address while detail pages on other origins are fetched
+            without credentials. Absent when the requirement covers every target.
+
+    OwnAddressLibrary:
+      type: object
+      required: [id, name, ownerType]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        ownerType:
+          $ref: "#/components/schemas/AssetOwnerType"
+        ownerName:
+          type: string
+          nullable: true
+          description: >
+            Display name of the owning group or person, as in the library list; null where the
+            owner cannot be named.
 
     ConnectionProfileRef:
       type: object

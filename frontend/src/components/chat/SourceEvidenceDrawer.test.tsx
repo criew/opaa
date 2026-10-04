@@ -171,8 +171,7 @@ describe('SourceEvidenceDrawer (#592, Mockup 1i)', () => {
         source('erster.md', true, 1, true, {
           indexedAt: '2025-01-10T08:00:00Z',
           freeze: {
-            reason: 'NOT_CONNECTED',
-            responsible: 'Verwaltende der Bibliothek',
+            block: { reason: 'NOT_CONNECTED', responsible: 'Verwaltende der Bibliothek' },
             asOf: '2026-03-12T10:00:00Z',
           },
         }),

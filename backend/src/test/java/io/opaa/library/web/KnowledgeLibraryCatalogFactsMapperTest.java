@@ -3,7 +3,9 @@ package io.opaa.library.web;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.api.dto.CatalogEntryResponse;
+import io.opaa.api.dto.SourceBlockReason;
 import io.opaa.api.types.CatalogEntryStatus;
+import io.opaa.indexing.source.SourceBlock;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryCatalogFacts;
 import java.time.Instant;
@@ -39,15 +41,25 @@ class KnowledgeLibraryCatalogFactsMapperTest {
   }
 
   @Test
-  void aLockedLibraryCarriesItsNotice() {
+  void aLockedLibraryCarriesItsBlock() {
     CatalogEntryResponse response = new CatalogEntryResponse();
 
     mapper.apply(
         new KnowledgeLibraryCatalogFacts(
-            "CONFLUENCE", null, CatalogEntryStatus.READY, "Gesperrt – Inhalt wird nicht mehr …"),
+            "CONFLUENCE",
+            null,
+            CatalogEntryStatus.READY,
+            new SourceBlock(
+                SourceBlock.Reason.PROFILE_REQUIRED,
+                "Verwaltende der Bibliothek",
+                "Gesperrt – Inhalt wird nicht mehr …")),
         response);
 
-    assertThat(response.getKnowledgeLibrary().getSourceLockNotice())
+    assertThat(response.getKnowledgeLibrary().getSourceBlock().getReason())
+        .isEqualTo(SourceBlockReason.PROFILE_REQUIRED);
+    assertThat(response.getKnowledgeLibrary().getSourceBlock().getResponsible())
+        .isEqualTo("Verwaltende der Bibliothek");
+    assertThat(response.getKnowledgeLibrary().getSourceBlock().getNotice())
         .isEqualTo("Gesperrt – Inhalt wird nicht mehr …");
   }
 }

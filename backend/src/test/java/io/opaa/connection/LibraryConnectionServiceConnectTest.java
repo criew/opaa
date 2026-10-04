@@ -15,6 +15,8 @@ import io.opaa.connection.profile.ConnectionSecrets;
 import io.opaa.connection.profile.ConnectorLockService;
 import io.opaa.connection.profile.LibraryConnection;
 import io.opaa.connection.profile.LibraryConnectionRepository;
+import io.opaa.connection.profile.ProfileRequirementService;
+import io.opaa.connection.profile.ProfileRequirements;
 import io.opaa.connection.profile.SecretOwner;
 import io.opaa.indexing.source.SourceConnectorRegistry;
 import io.opaa.indexing.source.profileprobe.ProfileProbeSourceConnector;
@@ -103,6 +105,8 @@ class LibraryConnectionServiceConnectTest {
         new SourceConnectorRegistry(
             List.of(connector, new UploadSourceConnector(mock(UploadedOriginalStore.class)))),
         mock(ConnectorLockService.class),
+        mock(ProfileRequirements.class),
+        mock(ProfileRequirementService.class),
         secrets,
         Clock.fixed(NOW, ZoneOffset.UTC));
   }

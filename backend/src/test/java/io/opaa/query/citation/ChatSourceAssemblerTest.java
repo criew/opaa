@@ -5,7 +5,7 @@ import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import io.opaa.api.dto.SourceFreezeReason;
+import io.opaa.api.dto.SourceBlockReason;
 import io.opaa.api.types.MetadataFilterMatch;
 import io.opaa.chat.ChatSource;
 import io.opaa.chat.ChatSourceLocation;
@@ -349,7 +349,7 @@ class ChatSourceAssemblerTest {
             ChatSource::getFreezeResponsible,
             ChatSource::getFreezeAsOf)
         .containsExactly(
-            tuple("alt.md", "LOCKED", "Systemverwaltung", lastRun),
+            tuple("alt.md", "TYPE_LOCKED", "Systemverwaltung", lastRun),
             tuple("neu.md", null, null, null));
     assertThat(sources.getFirst().getIndexedAt()).isEqualTo(documentChanged);
   }
@@ -555,12 +555,12 @@ class ChatSourceAssemblerTest {
     return sourceReference;
   }
 
+  /** A source stores the name of its reason, which the API reads back as its own reason. */
   @Test
-  void everyReasonShownInAnAnswerIsAFreezeReasonOfTheApi() {
+  void everyReasonShownInAnAnswerIsAReasonOfTheApi() {
     for (SourceBlock.Reason reason : SourceBlock.Reason.values()) {
       if (reason.shownInAnswer()) {
-        assertThat(SourceFreezeReason.fromValue(ChatSourceAssembler.freezeReason(reason)))
-            .isNotNull();
+        assertThat(SourceBlockReason.fromValue(reason.name())).isNotNull();
       }
     }
   }

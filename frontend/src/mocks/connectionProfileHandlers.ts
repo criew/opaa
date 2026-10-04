@@ -26,7 +26,13 @@ const CONNECTOR_TYPES: Array<{ sourceType: string; displayName: string }> = [
 
 function typeState(type: { sourceType: string; displayName: string }): ConnectorTypeStateResponse {
   const locked = lockedTypes.has(type.sourceType)
-  return { ...type, locked, lockedAt: locked ? new Date().toISOString() : null }
+  return {
+    ...type,
+    locked,
+    lockedAt: locked ? new Date().toISOString() : null,
+    profileSupport: 'FORBIDDEN',
+    profileRequired: false,
+  }
 }
 
 const ADMIN = '/api/v1/admin/connection-profiles'
@@ -121,6 +127,7 @@ export const connectionProfileHandlers = [
     return HttpResponse.json({
       connections: profile.connectionCount,
       libraries: Math.ceil(profile.connectionCount / 2),
+      lastForProfileRequirement: false,
     })
   }),
 
@@ -130,6 +137,7 @@ export const connectionProfileHandlers = [
     return HttpResponse.json({
       connections: profile.connectionCount,
       libraries: profile.connectionCount,
+      lastForProfileRequirement: false,
     })
   }),
 

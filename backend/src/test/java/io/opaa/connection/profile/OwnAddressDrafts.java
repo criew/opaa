@@ -36,12 +36,18 @@ public final class OwnAddressDrafts {
     LibraryConnectionRepository connections = mock(LibraryConnectionRepository.class);
     ConnectionProfileRepository profiles = mock(ConnectionProfileRepository.class);
     ConnectionSecrets secrets = new ConnectionSecrets(connections, libraries);
+    ConnectorTypePolicyRepository policies = mock(ConnectorTypePolicyRepository.class);
     return new EffectiveSourceSettings(
         connections,
         profiles,
         libraries,
         new SourceBlocks(
-            mock(ConnectorTypePolicyRepository.class), connections, profiles, secrets, provider),
+            policies,
+            connections,
+            profiles,
+            new ProfileRequirements(policies, provider),
+            secrets,
+            provider),
         secrets,
         provider,
         tokens);

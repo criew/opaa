@@ -81,7 +81,13 @@ class EffectiveSourceSettingsDraftTest {
             connections,
             profiles,
             LibraryRows.over(rows),
-            new SourceBlocks(policies, connections, profiles, secrets, registry),
+            new SourceBlocks(
+                policies,
+                connections,
+                profiles,
+                new ProfileRequirements(policies, registry),
+                secrets,
+                registry),
             secrets,
             registry,
             new ServiceAccountTokens(TargetAddressValidator.disabled(), Clock.systemUTC()));

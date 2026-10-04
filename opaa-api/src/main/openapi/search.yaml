@@ -502,24 +502,16 @@ components:
           items:
             $ref: "#/components/schemas/ChatNoteItem"
 
-    SourceFreezeReason:
-      type: string
-      description: >
-        Why a source is not updated: LOCKED (connector type or connection profile locked),
-        NOT_CONNECTED (the connection holds no usable secret, e.g. after "Alle Verbindungen
-        trennen"), ACCESS_REMOVED (the library's connection profile was deleted).
-      enum: [LOCKED, NOT_CONNECTED, ACCESS_REMOVED]
-
     SourceFreeze:
       type: object
-      required: [reason, responsible]
+      required: [block]
       properties:
-        reason:
-          $ref: "#/components/schemas/SourceFreezeReason"
-        responsible:
-          type: string
-          description: Who can change it, in German.
-          example: Systemverwaltung
+        block:
+          description: >
+            Why the library was not updated and who is in charge - never TARGET_OUTSIDE_PROFILE,
+            and without a notice.
+          allOf:
+            - $ref: "#/components/schemas/SourceBlock"
         asOf:
           type: string
           format: date-time

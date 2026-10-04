@@ -35,6 +35,9 @@ public class ProfileProbeSourceConnector implements SourceConnector {
 
   public static final SourceType TYPE = SourceType.of("PROFILE_PROBE");
 
+  /** What a profile of this type leaves open, as a feed leaves its detail pages. */
+  public static final String GAP = "Die Pflicht legt nur die Adresse der Testquelle fest.";
+
   private static final Set<String> KEYS = Set.of("edition", "topic");
 
   private final AtomicReference<SourceSettings> lastValidated = new AtomicReference<>();
@@ -63,7 +66,8 @@ public class ProfileProbeSourceConnector implements SourceConnector {
                     SignIn.personalSecret(
                         PersonalSecretForm.USERNAME_AND_PASSWORD, ConnectionOwnership.LIBRARY))
                 .withAddress(ServerAddressRule.schemes("https", "http", "smb"))
-                .withDefaults(DefaultKey.choice("edition", "Edition", "CLOUD", "DC")));
+                .withDefaults(DefaultKey.choice("edition", "Edition", "CLOUD", "DC"))
+                .withRequirementGap(GAP));
   }
 
   @Override
