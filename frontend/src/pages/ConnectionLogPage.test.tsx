@@ -74,7 +74,9 @@ describe('ConnectionLogPage', () => {
     await fillAndSubmit(user)
 
     const table = await screen.findByRole('table', { name: 'Einträge des Verbindungsprotokolls' })
-    const [, first, second] = within(table).getAllByRole('row')
+    const [header, first, second] = within(table).getAllByRole('row')
+    expect(header).toHaveTextContent('Grund des Endes')
+    expect(header).not.toHaveTextContent('Anlass')
     expect(first).toHaveTextContent('Abgelaufen')
     expect(first).toHaveTextContent('Vom Anbieter abgelehnt')
     expect(first).toHaveTextContent('Person')

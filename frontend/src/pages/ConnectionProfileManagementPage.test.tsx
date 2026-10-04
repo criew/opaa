@@ -614,6 +614,22 @@ describe('ConnectionProfileManagementPage', () => {
     expect(await screen.findByText('2 Verbindungen getrennt.')).toBeVisible()
   })
 
+  it('tells before the emergency shutdown that persons are notified and reconnect themselves', async () => {
+    mockConnectionProfiles[0] = { ...mockConnectionProfiles[0], ownership: 'BOTH' }
+    const user = userEvent.setup()
+    renderWithProviders(<ConnectionProfileManagementPage />)
+
+    await user.click(
+      await screen.findByRole('button', { name: `Alle Verbindungen von ${PROFILE} trennen` }),
+    )
+    const question = await screen.findByRole('dialog', { name: /Alle Verbindungen von/ })
+    expect(question).toHaveTextContent('verbundene Konten von Personen: weniger als 5')
+    expect(question).toHaveTextContent(
+      'Personen mit verbundenem Konto werden benachrichtigt und müssen ihr Konto selbst neu verbinden.',
+    )
+    await answerConfirm(user, /Alle Verbindungen von/, 'Abbrechen')
+  })
+
   it('deletes a profile after naming what happens to its libraries', async () => {
     const user = userEvent.setup()
     renderWithProviders(<ConnectionProfileManagementPage />)

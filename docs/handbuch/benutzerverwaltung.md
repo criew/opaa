@@ -429,7 +429,7 @@ Bibliotheken, die die Verbindung nutzen, und der Zustand:
 |---|---|---|
 | **Verbunden** | Die Zugangsdaten sind hinterlegt und gültig | Neu verbinden (etwa nach einem Passwortwechsel beim Anbieter), Trennen |
 | **Abgelaufen** | Der Anbieter hat die Zugangsdaten abgelehnt, oder sie sind abgelaufen. Der Inhalt der Bibliotheken bleibt durchsuchbar, wird aber nicht aktualisiert | Neu verbinden, Trennen |
-| **Getrennt** | Die Zugangsdaten sind gelöscht. Die Zeile bleibt nur, solange eine private Bibliothek daran hängt; diese ruht | Verbinden |
+| **Getrennt** | Die Zugangsdaten sind gelöscht. Die Zeile bleibt nur, solange eine private Bibliothek daran hängt; diese ruht. Statt „verbunden seit …“ steht hier nur „getrennt“ | Neu verbinden |
 | Zusatz **„Nicht mehr freigegeben“** | Die Systemverwaltung hat die Freigabe des Zugangs entzogen. Die Verbindung läuft weiter und lässt sich trennen und neu verbinden; ein neues Konto auf diesem Zugang ist nicht mehr möglich | wie oben |
 | Zusatz **„Zugang gesperrt“** | Die Systemverwaltung hat den Zugang oder seine Quellart gesperrt. Neu verbinden geht erst nach der Aufhebung | nur Trennen |
 
@@ -439,7 +439,8 @@ abgeschalteter Anmeldeweg) zeigt sich nicht hier, sondern an den Bibliotheken: M
 Anmeldung geht es ohne Neuverbinden weiter.
 
 **Weitere Zugänge** — die Zugänge, auf denen die Person jetzt ein Konto verbinden kann: Besitzart
-„Person“, für sie freigegeben und nicht gesperrt.
+„Person“, für sie freigegeben und nicht gesperrt. Bietet in der Installation noch keine Quellart
+verbundene Konten an, sagt der Abschnitt genau das, statt auf eine fehlende Freigabe zu verweisen.
 
 **Warum fehlt mein Zugang?** — sagt, wer Zugänge anlegt und freigibt, und nennt die zuständige
 Stelle. Das ist der Weg, wenn ein Zugang fehlt; einen toten Knopf gibt es nicht.
@@ -475,11 +476,14 @@ Zugang nicht mehr freigegeben, sagt die Rückfrage, dass danach kein neues Verbi
 
 ### Was die Verwaltung sieht
 
-Die Systemverwaltung sieht **keine Liste der Personen**, nur je Zugang die Zahl der verbundenen und
-der abgelaufenen Konten, und kleine Zahlen nur gerundet ([Indexierung](indexierung.md), „Zugänge“).
-Wann wer verbunden, getrennt oder neu verbunden hat, steht im Verbindungsprotokoll, das nur die
-Revision liest, und zwar mit Pseudonym statt Namen
-([Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), Abschnitt 12).
+Den eigenen Kontonamen beim Anbieter und die Inhalte der privaten Bibliotheken sieht nur die Person
+selbst. Die Systemverwaltung sieht **keine Liste der Personen**, nur je Zugang die Zahl der
+verbundenen und der abgelaufenen Konten, und kleine Zahlen nur gerundet
+([Indexierung](indexierung.md), „Zugänge“). **Dass** eine Person verbunden, neu verbunden oder
+getrennt hat und wann, steht dagegen im Verbindungsprotokoll, das die Revision liest — unter einem
+Pseudonym statt des Namens, das sich wie im Nachweisprotokoll in einer Vorfallsklärung einer Person
+zuordnen lässt ([Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), Abschnitt 12).
+Der Dialog zum Verbinden sagt das vor dem Absenden.
 
 ### Lange Abwesenheit oder Versetzung
 

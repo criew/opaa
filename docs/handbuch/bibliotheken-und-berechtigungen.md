@@ -967,7 +967,7 @@ verbunden hat, bleibt das Protokoll leer.
 **Ansicht:** Die Revision liest das Protokoll unter **Revision → Verbindungsprotokoll**. Pflicht sind
 Zeitraum (von, bis) und Anlass; eingrenzen lässt es sich nach Ereignis und nach Zugang. Zur Wahl der
 Zugänge stehen die, die in den bisherigen Abfragen seit dem Öffnen der Seite vorkamen, denn eine Liste aller Zugänge
-liest die Revision nicht. Die Tabelle zeigt je Eintrag Zeit, Ereignis, Anlass des Endes, Besitzart,
+liest die Revision nicht. Die Tabelle zeigt je Eintrag Zeit, Ereignis, Grund des Endes, Besitzart,
 bei einer persönlichen Verbindung das Pseudonym der Person und bei einer Quellverbindung Bibliothek
 und Kontoadresse, den Zugang und wer ausgelöst hat — „System“ für ein Ereignis ohne handelnde Person.
 Geblättert wird seitenweise, solange es weitere Einträge gibt. Eine leere Antwort sagt, dass Einträge

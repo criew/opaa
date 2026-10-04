@@ -610,7 +610,7 @@ die App-Registrierung nur am Zugang steht. Die mitgelieferten Konnektoren melden
 | Client-ID, Mandant, Scopes oder Anmeldeart ändern | wie oben, ohne Adresswechsel: alle Verbindungen müssen neu verbunden werden |
 | Vorgaben, Proxy oder Zertifikatsprüfung ändern | Die Bibliotheken behalten ihre Geheimnisse, es sei denn, eine Vorgabe ändert, woran der Konnektor sie bindet; dann gilt die Bestätigung wie oben für die Betroffenen |
 | nur ein neues Client-Secret zur selben Client-ID | keine; die Verbindungen bleiben |
-| „Alle Verbindungen trennen“ (Notabschaltung) | alle Geheimnisse sofort verworfen, der Zugang bleibt |
+| „Alle Verbindungen trennen“ (Notabschaltung) | alle Geheimnisse sofort verworfen, der Zugang bleibt. Personen mit verbundenem Konto werden benachrichtigt und müssen ihr Konto selbst neu verbinden; die Rückfrage sagt das bei einem Zugang, der Personen zulässt |
 | Zugang löschen | alle Geheimnisse verworfen; die Bibliotheken bleiben mit Bestand und dem Hinweis „Zugang entfernt“ stehen |
 
 Jede Änderung, die die Konfiguration einer Bibliothek auf dem Zugang verändert (Server-Adresse,

@@ -105,9 +105,11 @@ describe('ConnectedAccountsSection', () => {
 
     const disconnected = screen.getByTestId('connected-account-disconnected')
     expect(within(disconnected).getByText('Getrennt')).toBeInTheDocument()
+    expect(disconnected).toHaveTextContent('· getrennt')
+    expect(disconnected).not.toHaveTextContent('verbunden seit')
     expect(
-      within(disconnected).getByRole('button', { name: 'Konto verbinden: Zugang getrennt' }),
-    ).toBeInTheDocument()
+      within(disconnected).getByRole('button', { name: 'Konto neu verbinden: Zugang getrennt' }),
+    ).toHaveTextContent('Neu verbinden')
     expect(within(disconnected).queryByRole('button', { name: /trennen/ })).not.toBeInTheDocument()
 
     const unreleased = screen.getByTestId('connected-account-unreleased')
@@ -130,12 +132,51 @@ describe('ConnectedAccountsSection', () => {
 
     expect(await screen.findByText(/Sie haben kein Konto verbunden/)).toBeInTheDocument()
     expect(screen.getByText(/alles andere in OPAA funktioniert ohne/)).toBeInTheDocument()
-    expect(
-      screen.getByText('Für Sie ist derzeit kein weiterer Zugang zum Verbinden freigegeben.'),
-    ).toBeInTheDocument()
+    // no source type of the mock offers personal accounts, as no shipped connector does today
+    expect(await screen.findByText(/noch keine Quellart verbundene Konten an/)).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Warum fehlt mein Zugang?' })).toBeInTheDocument()
     expect(screen.getByText(MISSING.text)).toBeInTheDocument()
     expect(screen.getByText('Zuständig: Systemverwaltung')).toBeInTheDocument()
+  })
+
+  it('does not claim a missing connector once a source type offers personal accounts', async () => {
+    serve({ accounts: [], connectable: [], missingAccess: MISSING })
+    server.use(
+      http.get('/api/v1/source-types', () =>
+        HttpResponse.json([
+          {
+            type: 'NEXTCLOUD',
+            displayName: 'Nextcloud',
+            indexingRun: true,
+            uploads: false,
+            pushIntake: false,
+            browsable: false,
+            profileSupport: 'OPTIONAL',
+            profileRequired: false,
+            signIns: [
+              {
+                method: 'PERSONAL_SECRET',
+                ownerships: ['LIBRARY', 'PERSON'],
+                secretForm: 'USERNAME_AND_PASSWORD',
+              },
+            ],
+            profileDefaults: [],
+            serverAddress: { schemes: ['https'] },
+            creatable: true,
+            creatableWithOwnAddress: true,
+            locked: false,
+          },
+        ]),
+      ),
+    )
+    renderSection()
+
+    expect(
+      await screen.findByText(
+        'Derzeit gibt es keinen weiteren Zugang, auf dem Sie ein Konto verbinden können.',
+      ),
+    ).toBeInTheDocument()
+    expect(screen.queryByText(/noch keine Quellart/)).not.toBeInTheDocument()
   })
 
   it('connects a new account with the generic token form and clears the secret', async () => {
@@ -167,6 +208,12 @@ describe('ConnectedAccountsSection', () => {
       await screen.findByRole('button', { name: 'Konto verbinden: Zugang openDesk' }),
     )
     const dialog = screen.getByRole('dialog', { name: /Konto verbinden: Zugang openDesk/ })
+    // says honestly who sees what - the audit sees the connection under a pseudonym
+    expect(dialog).toHaveTextContent('Die Systemverwaltung sieht nur gerundete Anzahlen')
+    expect(within(dialog).getByText(/im Verbindungsprotokoll der Revision/)).toHaveTextContent(
+      'unter einem Pseudonym',
+    )
+    expect(dialog).not.toHaveTextContent('Nur Sie sehen, dass')
     expect(within(dialog).queryByLabelText(/Benutzername/)).not.toBeInTheDocument()
     const secret = within(dialog).getByLabelText(/App-Passwort oder Token/)
     expect(secret).toHaveAttribute('type', 'password')
@@ -313,6 +360,34 @@ describe('ConnectedAccountsSection', () => {
     await answerConfirm(user, 'Verbindung zu „Zugang Nextcloud intern“ trennen?', 'Trennen')
 
     await waitFor(() => expect(deleted).toBe(true))
+  })
+
+  it('sends one disconnection only, and takes a 404 of the second tab as done', async () => {
+    let calls = 0
+    serve({ accounts: [account({})], connectable: [], missingAccess: MISSING })
+    server.use(
+      http.delete(`${ME}/profile-1`, async () => {
+        calls += 1
+        await new Promise((resolve) => setTimeout(resolve, 50))
+        return errorBody(404, 'Keine Verbindung zu diesem Zugang')
+      }),
+    )
+    const user = userEvent.setup()
+    renderSection()
+
+    const button = await screen.findByRole('button', {
+      name: 'Verbindung trennen: Zugang Nextcloud intern',
+    })
+    await user.click(button)
+    await answerConfirm(user, /trennen\?/, 'Trennen')
+    await waitFor(() => expect(button).toHaveAttribute('aria-busy', 'true'))
+    await user.click(button)
+
+    expect(
+      await screen.findByText('Die Verbindung zu „Zugang Nextcloud intern“ ist getrennt.'),
+    ).toBeInTheDocument()
+    expect(screen.queryByText('Keine Verbindung zu diesem Zugang')).not.toBeInTheDocument()
+    expect(calls).toBe(1)
   })
 
   it('tells before disconnecting an unreleased connection that no new one is possible', async () => {

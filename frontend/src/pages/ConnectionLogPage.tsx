@@ -203,7 +203,7 @@ export default function ConnectionLogPage() {
                     <TableRow>
                       <TableCell>Zeit</TableCell>
                       <TableCell>Ereignis</TableCell>
-                      <TableCell>Anlass</TableCell>
+                      <TableCell>Grund des Endes</TableCell>
                       <TableCell>Besitzart</TableCell>
                       <TableCell>Person bzw. Bibliothek</TableCell>
                       <TableCell>Zugang</TableCell>

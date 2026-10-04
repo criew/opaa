@@ -99,8 +99,13 @@ export default function ConnectAccountDialog({
             <Typography sx={{ fontSize: 13.5, color: 'text.secondary' }}>
               Geben Sie Ihre eigenen Zugangsdaten für diesen Zugang ein (
               {secretFormLabel(target.secretForm)}). OPAA prüft die Anmeldung beim Anbieter, bevor
-              es sie verschlüsselt speichert. Nur Sie sehen, dass dieses Konto verbunden ist; die
-              Systemverwaltung sieht nur Anzahlen.
+              es sie verschlüsselt speichert.
+            </Typography>
+            <Typography sx={{ fontSize: 13.5, color: 'text.secondary' }}>
+              Wer was sieht: Ihren Kontonamen beim Anbieter und die Inhalte Ihrer privaten
+              Bibliotheken sehen nur Sie. Die Systemverwaltung sieht nur gerundete Anzahlen
+              verbundener Konten. Wann ein Konto verbunden, neu verbunden oder getrennt wurde, steht
+              unter einem Pseudonym statt Ihres Namens im Verbindungsprotokoll der Revision.
             </Typography>
             {error && (
               <Alert severity="error" role="alert" tabIndex={-1} ref={errorRef}>

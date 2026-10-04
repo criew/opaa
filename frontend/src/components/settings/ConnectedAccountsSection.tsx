@@ -14,6 +14,9 @@ import type {
   ConnectedAccountsOverview,
 } from '../../types/api'
 import { disconnectMyAccount, listMyConnectedAccounts } from '../../services/connectedAccountApi'
+import { apiErrorStatus } from '../../services/apiErrorDetails'
+import { useSourceTypes } from '../../hooks/useSourceTypes'
+import BusyButton from '../a11y/BusyButton'
 import { confirmAction } from '../../stores/confirmStore'
 import { notify } from '../../stores/notificationStore'
 import PageSection from '../PageSection'
@@ -58,10 +61,12 @@ function AccountItem({
   account,
   onConnect,
   onDisconnect,
+  disconnecting,
 }: {
   account: ConnectedAccount
   onConnect: (target: ConnectTarget) => void
   onDisconnect: (account: ConnectedAccount) => void
+  disconnecting: boolean
 }) {
   const state = accountStateLabel(account.state)
   const disconnected = account.state === 'DISCONNECTED'
@@ -90,10 +95,14 @@ function AccountItem({
       </Stack>
       <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
         {account.accountLabel ? `Konto: ${account.accountLabel} · ` : ''}
-        Anmeldung: {signInLine(account)} · verbunden seit {formatDate(account.connectedAt)}
-        {account.reconnectedAt
-          ? ` · zuletzt neu verbunden am ${formatDate(account.reconnectedAt)}`
-          : ''}
+        Anmeldung: {signInLine(account)}
+        {disconnected
+          ? ' · getrennt'
+          : ` · verbunden seit ${formatDate(account.connectedAt)}${
+              account.reconnectedAt
+                ? ` · zuletzt neu verbunden am ${formatDate(account.reconnectedAt)}`
+                : ''
+            }`}
       </Typography>
       <Typography component="div" sx={{ fontSize: 13, mt: 0.5 }}>
         {account.usedBy.length === 0 ? (
@@ -125,7 +134,7 @@ function AccountItem({
           <Button
             size="small"
             variant="outlined"
-            aria-label={`${disconnected ? 'Konto verbinden' : 'Konto neu verbinden'}: ${account.profileName}`}
+            aria-label={`Konto neu verbinden: ${account.profileName}`}
             onClick={() =>
               account.secretForm &&
               onConnect({
@@ -137,18 +146,20 @@ function AccountItem({
               })
             }
           >
-            {disconnected ? 'Verbinden' : 'Neu verbinden'}
+            Neu verbinden
           </Button>
         )}
         {!disconnected && (
-          <Button
+          <BusyButton
             size="small"
             color="error"
             aria-label={`Verbindung trennen: ${account.profileName}`}
+            busy={disconnecting}
+            busyAnnouncement="Verbindung wird getrennt"
             onClick={() => onDisconnect(account)}
           >
             Trennen
-          </Button>
+          </BusyButton>
         )}
       </Stack>
       {!account.secretForm && (
@@ -223,6 +234,15 @@ export default function ConnectedAccountsSection() {
   const [overview, setOverview] = useState<ConnectedAccountsOverview | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [target, setTarget] = useState<ConnectTarget | null>(null)
+  const [disconnecting, setDisconnecting] = useState<string | null>(null)
+  const sourceTypes = useSourceTypes()
+  // Known only once the source types are in; until then nothing is claimed either way.
+  const noPersonalConnector =
+    sourceTypes.loaded &&
+    sourceTypes.error === null &&
+    !sourceTypes.sourceTypes.some((type) =>
+      type.signIns.some((signIn) => signIn.ownerships.includes('PERSON')),
+    )
 
   const load = useCallback(
     () =>
@@ -246,6 +266,7 @@ export default function ConnectedAccountsSection() {
   }, [load])
 
   async function handleDisconnect(account: ConnectedAccount) {
+    if (disconnecting !== null) return
     const confirmed = await confirmAction({
       question: `Verbindung zu „${account.profileName}“ trennen?`,
       consequence: disconnectConsequence(account),
@@ -253,16 +274,23 @@ export default function ConnectedAccountsSection() {
       tone: 'danger',
     })
     if (!confirmed) return
+    setDisconnecting(account.profileId)
     try {
       await disconnectMyAccount(account.profileId)
       notify(`Die Verbindung zu „${account.profileName}“ ist getrennt.`, 'success')
     } catch (err: unknown) {
-      notify(
-        err instanceof Error ? err.message : 'Die Verbindung konnte nicht getrennt werden.',
-        'error',
-      )
+      // 404: already disconnected, e.g. from another tab - the wish is fulfilled
+      if (apiErrorStatus(err) === 404) {
+        notify(`Die Verbindung zu „${account.profileName}“ ist getrennt.`, 'success')
+      } else {
+        notify(
+          err instanceof Error ? err.message : 'Die Verbindung konnte nicht getrennt werden.',
+          'error',
+        )
+      }
     }
     await load()
+    setDisconnecting(null)
   }
 
   return (
@@ -307,6 +335,7 @@ export default function ConnectedAccountsSection() {
                 account={account}
                 onConnect={setTarget}
                 onDisconnect={(item) => void handleDisconnect(item)}
+                disconnecting={disconnecting === account.profileId}
               />
             ))}
           </Box>
@@ -321,7 +350,9 @@ export default function ConnectedAccountsSection() {
           >
             {overview.connectable.length === 0 ? (
               <Typography sx={{ fontSize: 13.5, color: 'text.secondary' }}>
-                Für Sie ist derzeit kein weiterer Zugang zum Verbinden freigegeben.
+                {noPersonalConnector
+                  ? 'In dieser Installation bietet noch keine Quellart verbundene Konten an. Deshalb gibt es hier noch nichts zu verbinden.'
+                  : 'Derzeit gibt es keinen weiteren Zugang, auf dem Sie ein Konto verbinden können.'}
               </Typography>
             ) : (
               <Box component="ul" sx={{ m: 0, p: 0 }} aria-label="Zugänge zum Verbinden">

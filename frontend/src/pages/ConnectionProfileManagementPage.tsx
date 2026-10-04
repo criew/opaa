@@ -60,6 +60,13 @@ function connectionCount(count: number) {
   return count === 1 ? '1 Verbindung' : `${count} Verbindungen`
 }
 
+/** What the persons with a connected account learn and have to do after a shutdown. */
+function personsNotice(profile: ConnectionProfileResponse): string {
+  return admitsPersons(profile.ownership)
+    ? ' Personen mit verbundenem Konto werden benachrichtigt und müssen ihr Konto selbst neu verbinden.'
+    : ''
+}
+
 /** The persons' accounts a shutdown or deletion cuts off, as rounded as the API gives them. */
 function accountsClause(
   profile: ConnectionProfileResponse,
@@ -152,7 +159,7 @@ export default function ConnectionProfileManagementPage() {
       const impact = await getConnectionProfileImpact(profile.id)
       const confirmed = await confirmAction({
         question: `Alle Verbindungen von „${profile.name}“ trennen?`,
-        consequence: `Betroffen: ${connectionCount(impact.connections)}${accountsClause(profile, impact)}. Alle Zugangsdaten werden sofort verworfen. Der Zugang bleibt bestehen; die Bibliotheken laufen erst wieder, wenn ihre Zugangsdaten neu eingetragen sind.`,
+        consequence: `Betroffen: ${connectionCount(impact.connections)}${accountsClause(profile, impact)}. Alle Zugangsdaten werden sofort verworfen. Der Zugang bleibt bestehen; die Bibliotheken laufen erst wieder, wenn ihre Zugangsdaten neu eingetragen sind.${personsNotice(profile)}`,
         confirmLabel: 'Alle trennen',
         tone: 'danger',
       })
