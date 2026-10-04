@@ -8,6 +8,7 @@ import io.opaa.indexing.filesync.FileAccessException;
 import io.opaa.indexing.filesync.FileContainer;
 import io.opaa.indexing.filesync.FileEntry;
 import io.opaa.indexing.filesync.FilePage;
+import io.opaa.indexing.filesync.FilePathLimit;
 import io.opaa.indexing.filesync.FileStore;
 import io.opaa.indexing.source.SourceFolderPath;
 import io.opaa.knowledge.SourceDocumentContext;
@@ -53,7 +54,6 @@ final class SmbFileStore implements FileStore {
   static final String UNUSABLE_NAME_NOTE =
       "Einträge mit Pfadtrennzeichen oder Steuerzeichen im Namen werden nicht gelesen";
 
-  private static final int MAX_FILE_PATH_LENGTH = 2000;
   private static final int NAMED_UNREADABLE_FOLDERS = 5;
   private static final String UNLISTABLE_PAGE = "unlistable";
   private static final String CHECKPOINT_PREFIX = "smb1:";
@@ -557,15 +557,17 @@ final class SmbFileStore implements FileStore {
       exclusion =
           new Exclusion.Unavailable(
               "„" + item.name() + "“ ist ausgelagert (offline); OPAA holt die Datei nicht zurück.");
-    } else if (filePath.length() > MAX_FILE_PATH_LENGTH) {
+    } else if (!FilePathLimit.fits(filePath)) {
       exclusion =
           new Exclusion.Unavailable(
               "Der Pfad von „"
                   + item.name()
                   + "“ ist länger als "
-                  + MAX_FILE_PATH_LENGTH
-                  + " Zeichen; die Datei wird nicht gelesen.");
-      filePath = filePath.substring(0, MAX_FILE_PATH_LENGTH);
+                  + FilePathLimit.MAX_CHARACTERS
+                  + " Zeichen oder "
+                  + FilePathLimit.MAX_BYTES
+                  + " Byte (UTF-8); die Datei wird nicht gelesen.");
+      filePath = FilePathLimit.cut(filePath);
     }
     return new FileEntry(
         container,
@@ -587,9 +589,7 @@ final class SmbFileStore implements FileStore {
     return new FileEntry(
         container,
         "",
-        filePath.length() > MAX_FILE_PATH_LENGTH
-            ? filePath.substring(0, MAX_FILE_PATH_LENGTH)
-            : filePath,
+        FilePathLimit.cut(filePath),
         item.name(),
         folderChain(root, folder),
         context(container, folder),
