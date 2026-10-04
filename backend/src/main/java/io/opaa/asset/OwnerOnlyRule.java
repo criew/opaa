@@ -39,12 +39,20 @@ public class OwnerOnlyRule {
     }
   }
 
+  /**
+   * Whether the asset does not exist for {@code userId}: an owner-only asset of somebody else. A
+   * path that names such an asset by id answers exactly as for an unknown one.
+   */
+  public boolean hiddenFrom(OwnedAsset asset, UUID userId) {
+    return asset.isOwnerOnly() && !userId.equals(asset.getOwnerUserId());
+  }
+
   /** {@code readableIds} without the owner-only assets of {@code assetType} - a new set. */
   public Set<UUID> withoutOwnerOnly(
       AssetType assetType, UUID organizationId, Set<UUID> readableIds) {
     Set<UUID> shared = new HashSet<>(readableIds);
     if (!shared.isEmpty()) {
-      shared.removeAll(assetRepository.findOwnerOnlyIds(assetType, organizationId));
+      shared.removeAll(assetRepository.findOwnerOnlyIdsAmong(assetType, organizationId, shared));
     }
     return shared;
   }

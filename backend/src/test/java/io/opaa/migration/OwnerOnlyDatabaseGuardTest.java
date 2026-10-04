@@ -1,6 +1,7 @@
 package io.opaa.migration;
 
 import static io.opaa.migration.AssetOwnerOnlyMigrationTest.grant;
+import static io.opaa.migration.AssetOwnerOnlyMigrationTest.release;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
@@ -21,12 +22,14 @@ class OwnerOnlyDatabaseGuardTest extends AbstractBaselineTest {
 
   @Override
   protected List<String> baseFixtureChangelogs() {
-    return MasterChangelog.filesExcept(AssetOwnerOnlyMigrationTest.FILE);
+    return MasterChangelog.filesExcept(
+        AssetOwnerOnlyMigrationTest.FILE, AssetOwnerOnlyMigrationTest.RELEASE_FILE);
   }
 
   @BeforeEach
   void anOwnerOnlyAssetWithItsCreationRows() throws Exception {
     applyChangelog(connection, AssetOwnerOnlyMigrationTest.FILE);
+    applyChangelog(connection, AssetOwnerOnlyMigrationTest.RELEASE_FILE);
     owner = insertUser();
     asset = UUID.randomUUID();
     execute(
@@ -63,6 +66,48 @@ class OwnerOnlyDatabaseGuardTest extends AbstractBaselineTest {
             + "', 'CREATED', '"
             + owner
             + "', now())");
+    execute(
+        "INSERT INTO knowledge_libraries (id, organization_id, source_type) VALUES ('"
+            + asset
+            + "', '"
+            + SEEDED_ORGANIZATION_ID
+            + "', 'UPLOAD')");
+  }
+
+  @Test
+  void aPrivateLibraryIsNeverReleasedForExternalAccess() throws Exception {
+    assertRejected(release(asset), "never released for external access");
+
+    UUID shared = insertLibrary();
+    execute(release(shared));
+    assertThat(
+            countWhere(
+                "knowledge_libraries",
+                "id = '" + shared + "' AND external_access_state" + " = 'ACTIVE'"))
+        .isEqualTo(1);
+  }
+
+  @Test
+  void aPrivateLibraryCannotBeCreatedReleased() throws Exception {
+    UUID other = UUID.randomUUID();
+    execute(
+        "INSERT INTO assets (id, asset_type, organization_id, name, owner_type, owner_user_id,"
+            + " owner_only) VALUES ('"
+            + other
+            + "', 'KNOWLEDGE_LIBRARY', '"
+            + SEEDED_ORGANIZATION_ID
+            + "', 'Privat 2', 'USER', '"
+            + owner
+            + "', true)");
+
+    assertRejected(
+        "INSERT INTO knowledge_libraries (id, organization_id, source_type, external_access_state,"
+            + " external_access_expires_at, external_access_set_at) VALUES ('"
+            + other
+            + "', '"
+            + SEEDED_ORGANIZATION_ID
+            + "', 'UPLOAD', 'ACTIVE', now() + interval '30 days', now())",
+        "never released for external access");
   }
 
   @Test

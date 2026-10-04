@@ -156,6 +156,83 @@ class OwnerOnlyLibraryIntegrationTest {
     assertThat(ownerOf(library)).isEqualTo(ownerId);
   }
 
+  /** The library's own sub-resources answer the administration like an unknown library, too. */
+  @Test
+  void theIndexingAndDocumentViewsOfAnotherPersonsPrivateLibraryAreUnknownToo() throws Exception {
+    UUID library = privateLibraryOf(ownerId);
+
+    unknown(
+        mockMvc.perform(get("/api/v1/libraries/" + library + "/indexing/runs").with(devAdmin())));
+    unknown(
+        mockMvc.perform(get("/api/v1/libraries/" + library + "/indexing/status").with(devAdmin())));
+    unknown(mockMvc.perform(get("/api/v1/libraries/" + library + "/documents").with(devAdmin())));
+    unknown(
+        mockMvc.perform(
+            post("/api/v1/admin/indexing/metadata-backfill")
+                .with(devAdmin())
+                .content("{\"libraryId\":\"" + library + "\"}")));
+    unknown(
+        mockMvc.perform(
+            post("/api/v1/admin/indexing/context-prefix-rerun")
+                .with(devAdmin())
+                .content("{\"libraryId\":\"" + library + "\"}")));
+  }
+
+  /**
+   * Regression guard: tracking a document of another person's private library in the
+   * administration's own diagnosis answers exactly like an unknown document - no file name, no
+   * library, the same status and the same body.
+   */
+  @Test
+  void aTrackedDocumentOfAnotherPersonsPrivateLibraryIsAnUnknownDocument() throws Exception {
+    UUID library = privateLibraryOf(ownerId);
+    UUID document = insertDocument(library, "gehaltsabrechnung-vogt.pdf");
+
+    String unknownAnswer = trackAsAdmin(UUID.randomUUID());
+    String privateAnswer = trackAsAdmin(document);
+
+    assertThat(withoutTimestamp(privateAnswer)).isEqualTo(withoutTimestamp(unknownAnswer));
+    assertThat(privateAnswer)
+        .doesNotContain("gehaltsabrechnung")
+        .doesNotContain(library.toString());
+  }
+
+  private String trackAsAdmin(UUID documentId) throws Exception {
+    return mockMvc
+        .perform(
+            post("/api/v1/admin/search/diagnosis")
+                .with(devAdmin())
+                .content(
+                    "{\"question\":\"Wo steht die Abrechnung?\",\"contextType\":\"SELF\","
+                        + "\"trackedDocumentId\":\""
+                        + documentId
+                        + "\"}"))
+        .andExpect(status().isNotFound())
+        .andReturn()
+        .getResponse()
+        .getContentAsString(StandardCharsets.UTF_8);
+  }
+
+  private static String withoutTimestamp(String body) {
+    return body.replaceAll("\"timestamp\":\"[^\"]*\"", "");
+  }
+
+  private UUID insertDocument(UUID libraryId, String fileName) {
+    UUID documentId = UUID.randomUUID();
+    jdbcTemplate.update(
+        "INSERT INTO documents (id, file_name, file_path, content_type, file_size, chunk_count,"
+            + " indexed_at, checksum, status, source_type, library_id, organization_id, created_at)"
+            + " VALUES (?, ?, ?, 'application/pdf', 1024, 1, now(), ?, 'INDEXED', 'UPLOAD', ?, ?,"
+            + " now())",
+        documentId,
+        fileName,
+        "owner-only-it/" + documentId,
+        "checksum-" + documentId,
+        libraryId,
+        Organization.DEFAULT_ID);
+    return documentId;
+  }
+
   /** The administration cannot loosen the rule even on a library it owns itself. */
   @Test
   void anAdministratorOwningAPrivateLibraryIsBoundByTheRuleToo() throws Exception {

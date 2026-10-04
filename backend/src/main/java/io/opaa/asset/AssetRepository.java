@@ -40,12 +40,14 @@ public interface AssetRepository extends JpaRepository<Asset, UUID> {
   /** The count of {@link #findByOwnerUserIdAndOrganizationIdAndOwnerOnlyFalse}. */
   long countByOwnerUserIdAndOrganizationIdAndOwnerOnlyFalse(UUID ownerUserId, UUID organizationId);
 
-  /** The owner-only assets of one type in an organization. */
+  /** Those of {@code ids} that are owner-only assets of one type in an organization. */
   @Query(
       "select a.id from Asset a where a.assetType = :assetType"
-          + " and a.organizationId = :organizationId and a.ownerOnly = true")
-  Set<UUID> findOwnerOnlyIds(
-      @Param("assetType") AssetType assetType, @Param("organizationId") UUID organizationId);
+          + " and a.organizationId = :organizationId and a.ownerOnly = true and a.id in :ids")
+  Set<UUID> findOwnerOnlyIdsAmong(
+      @Param("assetType") AssetType assetType,
+      @Param("organizationId") UUID organizationId,
+      @Param("ids") Collection<UUID> ids);
 
   /**
    * How many assets each of the groups owns, in one grouped query - the overview "wo wirkt diese

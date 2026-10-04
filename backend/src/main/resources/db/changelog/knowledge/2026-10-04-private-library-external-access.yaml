@@ -1,0 +1,25 @@
+databaseChangeLog:
+  - changeSet:
+      id: knowledge-2026-10-04-private-library-external-access
+      author: opaa
+      comment: "A library whose asset shell is owner-only is never released for Fremdzugaenge (ADR-0036, Nachtrag 3): its external_access_state stays NEVER_SET, whatever path writes the row."
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              CREATE FUNCTION knowledge_libraries_guard_owner_only_release() RETURNS trigger
+                  LANGUAGE plpgsql
+                  SET search_path TO 'pg_catalog', '${database.defaultSchemaName}', 'pg_temp'
+                  AS $$
+              BEGIN
+                IF (NEW.external_access_state)::text <> 'NEVER_SET'::text
+                    AND EXISTS (SELECT 1 FROM assets a WHERE a.id = NEW.id AND a.owner_only) THEN
+                  RAISE EXCEPTION 'owner-only library % is never released for external access', NEW.id
+                    USING ERRCODE = 'check_violation';
+                END IF;
+                RETURN NEW;
+              END; $$;
+
+              CREATE TRIGGER trg_knowledge_libraries_guard_owner_only_release
+                  BEFORE INSERT OR UPDATE OF external_access_state ON knowledge_libraries
+                  FOR EACH ROW EXECUTE FUNCTION knowledge_libraries_guard_owner_only_release();

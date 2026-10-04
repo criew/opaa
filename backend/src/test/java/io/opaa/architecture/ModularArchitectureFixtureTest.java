@@ -265,20 +265,30 @@ class ModularArchitectureFixtureTest {
   }
 
   /**
-   * The foreign context calls the own formula once and passes it on as a method reference once; its
-   * own narrower method and the own formula in the search pass.
+   * In {@code diagnosticaccess}: the library formula as call and method reference, and the asset
+   * shell's formula in three shapes. In {@code searchadmin}: a method and a lambda that hold the
+   * foreign context. The narrower method, the own context of the diagnosis and the own search pass.
    */
   @Test
   void theOwnFormulaInTheForeignContextIsReported() {
     Scenario scenario = new Scenario("foreigncontext");
 
-    assertThat(scenario.violations(ModularArchitecture::theForeignContextNeverUsesTheOwnFormula))
-        .hasSize(2)
-        .allSatisfy(
-            violation ->
-                assertThat(violation)
-                    .contains("diagnosticaccess.web.ForeignView", "readableLibraryIds(")
-                    .doesNotContain("readableLibraryIdsInForeignContext"));
+    List<String> violations =
+        scenario.violations(ModularArchitecture::theForeignContextNeverUsesTheOwnFormula);
+
+    assertThat(violations)
+        .hasSize(7)
+        .noneSatisfy(violation -> assertThat(violation).contains("InForeignContext"))
+        .noneSatisfy(violation -> assertThat(violation).contains("Diagnosis.own("))
+        .noneSatisfy(violation -> assertThat(violation).contains("OwnSearch"));
+    assertThat(violations.stream().filter(v -> v.contains("diagnosticaccess.web.ForeignView")))
+        .hasSize(2);
+    assertThat(violations)
+        .anySatisfy(v -> assertThat(v).contains("AssetFormula", "readableAssetIds("))
+        .anySatisfy(v -> assertThat(v).contains("AssetFormula", "readableAssets("))
+        .anySatisfy(v -> assertThat(v).contains("AssetFormula", "effectiveRoles("))
+        .anySatisfy(v -> assertThat(v).contains("Diagnosis.foreign("))
+        .anySatisfy(v -> assertThat(v).contains("Diagnosis.foreignLambda("));
   }
 
   @Test

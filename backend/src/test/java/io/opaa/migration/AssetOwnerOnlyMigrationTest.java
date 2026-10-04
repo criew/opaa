@@ -14,10 +14,12 @@ import org.junit.jupiter.api.Test;
 class AssetOwnerOnlyMigrationTest extends AbstractBaselineTest {
 
   static final String FILE = "db/changelog/rights/2026-10-04-asset-owner-only.yaml";
+  static final String RELEASE_FILE =
+      "db/changelog/knowledge/2026-10-04-private-library-external-access.yaml";
 
   @Override
   protected List<String> baseFixtureChangelogs() {
-    return MasterChangelog.filesExcept(FILE);
+    return MasterChangelog.filesExcept(FILE, RELEASE_FILE);
   }
 
   @Test
@@ -26,8 +28,10 @@ class AssetOwnerOnlyMigrationTest extends AbstractBaselineTest {
     UUID asset = insertAsset("KNOWLEDGE_LIBRARY", owner);
     UUID group = insertInternalGroup();
     execute(grant(asset, "GROUP", null, group, "VIEWER"));
+    UUID released = insertLibrary();
+    execute(release(released));
 
-    applyChangelog(connection, FILE);
+    applyBoth();
 
     assertThat(booleanOf("SELECT owner_only FROM assets WHERE id = '" + asset + "'")).isFalse();
     assertThat(countWhere("asset_grants", "asset_id = '" + asset + "'")).isEqualTo(1);
@@ -36,11 +40,21 @@ class AssetOwnerOnlyMigrationTest extends AbstractBaselineTest {
     execute(grant(asset, "ALL_ACCOUNTS", null, null, "VIEWER"));
     execute("UPDATE assets SET owner_user_id = '" + other + "' WHERE id = '" + asset + "'");
     assertThat(countWhere("asset_grants", "asset_id = '" + asset + "'")).isEqualTo(3);
+    assertThat(
+            countWhere(
+                "knowledge_libraries",
+                "external_access_state = 'ACTIVE' AND id = '" + released + "'"))
+        .isEqualTo(1);
+    execute(
+        "UPDATE knowledge_libraries SET external_access_expires_at = now() + interval '60 days'"
+            + " WHERE id = '"
+            + released
+            + "'");
   }
 
   @Test
   void aGroupOwnedAssetCannotBeOwnerOnly() throws Exception {
-    applyChangelog(connection, FILE);
+    applyBoth();
     UUID group = insertInternalGroup();
 
     assertRejected(
@@ -51,6 +65,21 @@ class AssetOwnerOnlyMigrationTest extends AbstractBaselineTest {
             + group
             + "', true)",
         "chk_assets_owner_only");
+  }
+
+  /** Both files of the mark, in the order an existing installation receives them. */
+  void applyBoth() throws Exception {
+    applyChangelog(connection, FILE);
+    applyChangelog(connection, RELEASE_FILE);
+  }
+
+  /** Releases a library for Fremdzugänge for thirty days. */
+  static String release(UUID library) {
+    return "UPDATE knowledge_libraries SET external_access_state = 'ACTIVE',"
+        + " external_access_expires_at = now() + interval '30 days',"
+        + " external_access_set_at = now() WHERE id = '"
+        + library
+        + "'";
   }
 
   static String grant(UUID asset, String subjectType, UUID user, UUID group, String role) {

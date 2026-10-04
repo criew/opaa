@@ -25,16 +25,15 @@ hängt nur von foundation und identity ab.
 - **Die Formel ist hier vollständig:** direkter Grant, Gruppengrant und Grant an „Alle Konten“.
   Einziger Boden außerhalb: In der Asset-Verwaltung zählt die Systemverwaltung als Eigentümer — nie
   für die Suche und nie bei einem Nur-Besitzerin-Asset.
-- **Nur-Besitzerin-Merkmal** (`assets.owner_only`, private Bibliothek): beim Anlegen gesetzt, danach
-  samt Eigentümer unveränderlich; zulässig ist nur der Grant der Besitzerin (Trigger). Meldung
-  `403 OWNER_ONLY_ASSET` aus `asset.OwnerOnlyRule`; Sammelübertragung und Nachfolge lassen es aus,
-  ein fremder Rechtekontext liest `readableLibraryIdsInForeignContext` (ArchUnit).
+- **Nur-Besitzerin-Merkmal** (`assets.owner_only`): beim Anlegen gesetzt, samt Eigentümer
+  unveränderlich, nur der Grant der Besitzerin (Trigger); Regeln in `asset.OwnerOnlyRule`.
 - **Jede Mechanik der Asset-Schale gibt es genau einmal.** Ein neuer Asset-Typ bringt eine Tabelle,
   eine Entity, die `Asset` erweitert, und eine `AssetTypeDefinition` mit — keine eigene
   Grant-Logik, keine eigene Historie, keine eigene Fundquelle.
 - **Historientabellen tragen keinen Fremdschlüssel auf das Asset:** Die Historie überlebt es. Die
   Schale schließt offene Intervalle vor dem Löschen (`AssetShellService#registerDeleted`).
-- **Der Nachfolgezustand wird nie gespeichert;** `succession_cases` hält nur Beginn und Ende.
+- **Der Nachfolgezustand wird nie gespeichert.** `succession_cases` hält nur Beginn und Ende; alles
+  andere wird bei jedem Lesen bei den Quellen erfragt.
 - **Rohes SQL gegen die Grant-Tabellen** nennt das Objekt über `asset_type` und `asset_id`.
 - **`directory` liegt über `group`,** denn die Synchronisation schreibt Gruppen; `group` fragt das
   Verzeichnis über den Port `DirectorySyncRuns`. Die Anbieter-Registratur liegt in `io.opaa.auth`.
@@ -57,4 +56,5 @@ hängt nur von foundation und identity ab.
   --tests 'io.opaa.directory.*' --tests 'io.opaa.succession.*' --tests 'io.opaa.architecture.*'
 ```
 
-Bei `directory.sync` zusätzlich `./gradlew keycloakIntegrationTest`. Schema: `db/changelog/rights/`.
+Bei Änderungen an `directory.sync` zusätzlich `./gradlew keycloakIntegrationTest` (braucht Docker).
+Schemaänderungen: neue Datei unter `db/changelog/rights/`; Regeln in `backend/AGENTS.md`, „Liquibase“.

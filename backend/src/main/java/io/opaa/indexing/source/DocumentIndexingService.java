@@ -3,7 +3,6 @@ package io.opaa.indexing.source;
 import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.auth.CurrentUser;
-import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ServiceUnavailableException;
@@ -164,9 +163,8 @@ public class DocumentIndexingService {
    */
   public List<IndexingRunDetail> getRecentRuns(UUID libraryId, CurrentUser caller) {
     KnowledgeLibrary library = loadLibraryInOrganization(libraryId, caller);
-    if (!libraryAccessService.canManage(library, caller.id(), caller.isSystemAdmin())) {
-      throw new AccessDeniedException("Kein Zugriff auf diese Bibliothek");
-    }
+    libraryAccessService.requireRole(
+        library, caller.id(), caller.isSystemAdmin(), AssetRole.MANAGER);
     return indexingJobService.getRecentJobs(libraryId, library.getOrganizationId()).stream()
         .map(
             job ->
