@@ -3,12 +3,15 @@ package io.opaa.indexing.source.smb;
 import com.hierynomus.msdtyp.AccessMask;
 import com.hierynomus.mserref.NtStatus;
 import com.hierynomus.msfscc.FileAttributes;
+import com.hierynomus.msfscc.fileinformation.FileBasicInformation;
 import com.hierynomus.msfscc.fileinformation.FileIdBothDirectoryInformation;
 import com.hierynomus.msfscc.fileinformation.FileInternalInformation;
 import com.hierynomus.mssmb2.SMB2CreateDisposition;
 import com.hierynomus.mssmb2.SMB2CreateOptions;
+import com.hierynomus.mssmb2.SMB2Packet;
 import com.hierynomus.mssmb2.SMB2ShareAccess;
 import com.hierynomus.mssmb2.SMBApiException;
+import com.hierynomus.mssmb2.messages.SMB2CreateRequest;
 import com.hierynomus.protocol.transport.PacketHandlers;
 import com.hierynomus.protocol.transport.TransportException;
 import com.hierynomus.protocol.transport.TransportLayer;
@@ -21,6 +24,7 @@ import com.hierynomus.smbj.auth.NtlmAuthenticator;
 import com.hierynomus.smbj.connection.Connection;
 import com.hierynomus.smbj.session.Session;
 import com.hierynomus.smbj.share.Directory;
+import com.hierynomus.smbj.share.DiskEntry;
 import com.hierynomus.smbj.share.DiskShare;
 import com.hierynomus.smbj.share.File;
 import com.hierynomus.smbj.share.Share;
@@ -38,6 +42,8 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
@@ -48,6 +54,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicInteger;
 import javax.net.SocketFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -94,13 +101,31 @@ final class SmbShareClient implements AutoCloseable {
           NtStatus.STATUS_NOT_A_DIRECTORY.getValue(),
           NtStatus.STATUS_FILE_IS_A_DIRECTORY.getValue());
 
+  /** NTLM is switched off on the server or the domain. */
+  static final long STATUS_NTLM_BLOCKED = 0xC0000418L;
+
   private static final Set<SMB2ShareAccess> SHARE_ALL = EnumSet.allOf(SMB2ShareAccess.class);
+
+  /** Links smbj may follow within one open before it counts as a loop. */
+  static final int MAX_LINK_HOPS = 16;
+
+  private static final int FSCTL_GET_REPARSE_POINT = 0x000900A8;
+
+  /** The CREATE requests the current thread sent for the open in progress, {@code null} outside. */
+  static final ThreadLocal<int[]> OPENING = new ThreadLocal<>();
 
   private final SmbAddress address;
   private final SmbCredentials credentials;
   private final RequestBudget budget;
   private final BudgetedTransportFactory transport;
   private final SMBClient client;
+
+  /** Counts the connections dropped by {@link #reset}. */
+  private final AtomicInteger connections = new AtomicInteger();
+
+  /** Downloads repeated because their connection was dropped - observable for tests. */
+  final AtomicInteger retriedAfterReset = new AtomicInteger();
+
   private Connection connection;
   private Session session;
   private volatile DiskShare share;
@@ -119,7 +144,17 @@ final class SmbShareClient implements AutoCloseable {
     /** A symbolic link, junction, mount point or DFS link - never followed. */
     boolean link() {
       return (attributes & FileAttributes.FILE_ATTRIBUTE_REPARSE_POINT.getValue()) != 0
-          && ((reparseTag & REPARSE_TAG_NAME_SURROGATE) != 0 || reparseTag == REPARSE_TAG_DFS);
+          && isLinkTag(reparseTag);
+    }
+
+    /**
+     * A name no Windows server gives: a path separator, a control character or {@code ..} would
+     * make the name a path of its own.
+     */
+    boolean unusableName() {
+      return name.isEmpty()
+          || name.equals("..")
+          || name.chars().anyMatch(c -> c < 0x20 || c == '/' || c == '\\' || c == ':');
     }
 
     /** Moved to other storage; reading it would recall it first. */
@@ -223,17 +258,7 @@ final class SmbShareClient implements AutoCloseable {
                   credentials.password().toCharArray(),
                   credentials.domain()));
     } catch (RuntimeException e) {
-      if (transport.refused != null) {
-        throw transport.refused;
-      }
-      if (isGuestRefusal(e)) {
-        throw guestOnly(credentials);
-      }
-      SmbAccessException translated = translate(e, "die Anmeldung");
-      if (translated instanceof SmbAccessException.Authentication) {
-        throw refusedSignIn(credentials);
-      }
-      throw translated;
+      throw signInFailure(e);
     }
     if (session.isGuest() || session.isAnonymous()) {
       throw guestOnly(credentials);
@@ -250,6 +275,41 @@ final class SmbShareClient implements AutoCloseable {
           "„" + address.share() + "“ ist keine Dateifreigabe (etwa ein Drucker).");
     }
     share = disk;
+  }
+
+  /**
+   * The finding of a refused session setup: always a sign-in finding, never "signed in, but",
+   * unless the server could not be reached at all.
+   */
+  SmbAccessException signInFailure(RuntimeException e) throws InterruptedException {
+    if (transport.refused != null) {
+      throw transport.refused;
+    }
+    if (isGuestRefusal(e)) {
+      return guestOnly(credentials);
+    }
+    SMBApiException api = find(e, SMBApiException.class);
+    if (api != null && api.getStatusCode() == STATUS_NTLM_BLOCKED) {
+      return new SmbAccessException.Authentication(
+          "Der Server „"
+              + address.host()
+              + "“ lässt keine Anmeldung mit NTLM zu. OPAA unterstützt Kerberos noch nicht; der"
+              + " Server bzw. die Domäne muss NTLM für das Dienstkonto erlauben.");
+    }
+    SmbAccessException translated = translate(e, "die Anmeldung");
+    if (translated instanceof SmbAccessException.Unreachable) {
+      return translated;
+    }
+    if (translated instanceof SmbAccessException.AccessDenied) {
+      return new SmbAccessException.Authentication(
+          "Der Server „"
+              + address.host()
+              + "“ hat die Anmeldung von „"
+              + credentials.account()
+              + "“ verweigert (Zugriff verweigert). Dem Konto fehlt das Recht, sich über das"
+              + " Netzwerk am Server anzumelden.");
+    }
+    return refusedSignIn(credentials);
   }
 
   SourceRequestMeter meter() {
@@ -291,20 +351,7 @@ final class SmbShareClient implements AutoCloseable {
   private Listing list(String path, String pattern)
       throws SmbAccessException, InterruptedException {
     String what = path.isEmpty() ? "den Stammordner der Freigabe" : "den Ordner „" + path + "“";
-    DiskShare disk = share();
-    Directory directory;
-    try {
-      directory =
-          disk.openDirectory(
-              path,
-              EnumSet.of(AccessMask.FILE_LIST_DIRECTORY, AccessMask.FILE_READ_ATTRIBUTES),
-              null,
-              SHARE_ALL,
-              SMB2CreateDisposition.FILE_OPEN,
-              EnumSet.of(SMB2CreateOptions.FILE_DIRECTORY_FILE));
-    } catch (RuntimeException e) {
-      throw translate(e, what);
-    }
+    Directory directory = (Directory) openUnlinked(path, true, what);
     try {
       return new Listing(
           directory, directory.iterator(FileIdBothDirectoryInformation.class, pattern), what);
@@ -320,21 +367,23 @@ final class SmbShareClient implements AutoCloseable {
    */
   Path download(String path, String fileName, long maxBytes)
       throws SmbAccessException, InterruptedException {
-    String what = "die Datei „" + path + "“";
-    DiskShare disk = share();
-    File file;
+    int generation = connections.get();
     try {
-      file =
-          disk.openFile(
-              path,
-              EnumSet.of(AccessMask.GENERIC_READ),
-              null,
-              SHARE_ALL,
-              SMB2CreateDisposition.FILE_OPEN,
-              EnumSet.of(SMB2CreateOptions.FILE_NON_DIRECTORY_FILE));
-    } catch (RuntimeException e) {
-      throw translate(e, what);
+      return downloadOnce(path, fileName, maxBytes);
+    } catch (SmbAccessException e) {
+      if (connections.get() == generation || e instanceof SmbAccessException.Link) {
+        throw e;
+      }
+      // the connection was dropped under this download (a link loop elsewhere): once more anew
+      retriedAfterReset.incrementAndGet();
+      return downloadOnce(path, fileName, maxBytes);
     }
+  }
+
+  private Path downloadOnce(String path, String fileName, long maxBytes)
+      throws SmbAccessException, InterruptedException {
+    String what = "die Datei „" + path + "“";
+    File file = (File) openUnlinked(path, false, what);
     Path target = null;
     try (file) {
       target = Files.createTempFile("opaa-smb-", suffixOf(fileName));
@@ -365,9 +414,119 @@ final class SmbShareClient implements AutoCloseable {
     }
   }
 
+  /**
+   * Opens {@code path} without following a link at its end: the last component is opened as the
+   * link itself and refused when it is a symbolic link, junction or DFS link; any other reparse
+   * point (a deduplicated file) is opened again as usual. A link earlier in the path is followed by
+   * smbj at most {@link #MAX_LINK_HOPS} times, then refused as a loop.
+   */
+  private DiskEntry openUnlinked(String path, boolean directory, String what)
+      throws SmbAccessException, InterruptedException {
+    DiskEntry entry = open(path, directory, true, what);
+    long tag;
+    try {
+      long attributes = entry.getFileInformation(FileBasicInformation.class).getFileAttributes();
+      if ((attributes & FileAttributes.FILE_ATTRIBUTE_REPARSE_POINT.getValue()) == 0) {
+        return entry;
+      }
+      tag = reparseTag(entry);
+    } catch (RuntimeException e) {
+      closeQuietly(entry);
+      throw translate(e, what);
+    }
+    closeQuietly(entry);
+    if (isLinkTag(tag)) {
+      throw new SmbAccessException.Link(
+          capitalize(what) + " ist eine Verknüpfung; OPAA folgt Verknüpfungen nicht.");
+    }
+    return open(path, directory, false, what);
+  }
+
+  private DiskEntry open(String path, boolean directory, boolean reparsePoint, String what)
+      throws SmbAccessException, InterruptedException {
+    DiskShare disk = share();
+    EnumSet<SMB2CreateOptions> options =
+        EnumSet.of(
+            directory
+                ? SMB2CreateOptions.FILE_DIRECTORY_FILE
+                : SMB2CreateOptions.FILE_NON_DIRECTORY_FILE);
+    if (reparsePoint) {
+      options.add(SMB2CreateOptions.FILE_OPEN_REPARSE_POINT);
+    }
+    int[] hops = new int[1];
+    OPENING.set(hops);
+    try {
+      return directory
+          ? disk.openDirectory(
+              path,
+              EnumSet.of(AccessMask.FILE_LIST_DIRECTORY, AccessMask.FILE_READ_ATTRIBUTES),
+              null,
+              SHARE_ALL,
+              SMB2CreateDisposition.FILE_OPEN,
+              options)
+          : disk.openFile(
+              path,
+              EnumSet.of(AccessMask.GENERIC_READ),
+              null,
+              SHARE_ALL,
+              SMB2CreateDisposition.FILE_OPEN,
+              options);
+    } catch (RuntimeException e) {
+      if (hops[0] > MAX_LINK_HOPS + 1) {
+        // the refused request left a gap in the message sequence: start over on a new connection
+        reset();
+        throw new SmbAccessException.Link(
+            capitalize(what)
+                + " führt über mehr als "
+                + MAX_LINK_HOPS
+                + " Verknüpfungen (Schleife) und wird nicht gelesen.");
+      }
+      throw translate(e, what);
+    } finally {
+      OPENING.remove();
+    }
+  }
+
+  /**
+   * The reparse tag of an entry opened as a reparse point, {@code 0} when the server tells none.
+   */
+  private static long reparseTag(DiskEntry entry) {
+    try {
+      byte[] data = entry.ioctl(FSCTL_GET_REPARSE_POINT, true, new byte[0], 0, 0);
+      return data.length < 4
+          ? 0
+          : ByteBuffer.wrap(data).order(ByteOrder.LITTLE_ENDIAN).getInt() & 0xFFFFFFFFL;
+    } catch (SMBApiException e) {
+      return 0;
+    }
+  }
+
+  static boolean isLinkTag(long tag) {
+    return (tag & REPARSE_TAG_NAME_SURROGATE) != 0 || tag == REPARSE_TAG_DFS;
+  }
+
+  /**
+   * Drops the connection; the next request signs in again. A request of another thread that fails
+   * on the dropped connection is repeated once ({@link #download}) or ends only its own folder.
+   */
+  private synchronized void reset() {
+    connections.incrementAndGet();
+    DiskShare current = share;
+    share = null;
+    closeQuietly(current);
+    closeSessionAndConnection();
+    session = null;
+    connection = null;
+  }
+
   @Override
   public void close() {
     closeQuietly(share);
+    closeSessionAndConnection();
+    client.close();
+  }
+
+  private void closeSessionAndConnection() {
     if (session != null) {
       try {
         session.close();
@@ -382,7 +541,6 @@ final class SmbShareClient implements AutoCloseable {
         log.debug("Closing the SMB connection to {} failed: {}", address.host(), e.toString());
       }
     }
-    client.close();
   }
 
   /** A folder's entries, fetched as they are iterated. */
@@ -391,6 +549,7 @@ final class SmbShareClient implements AutoCloseable {
     private final Directory directory;
     private final String what;
     private final Iterator<FileIdBothDirectoryInformation> iterator;
+    private final int generation = connections.get();
     private Item next;
 
     private Listing(
@@ -413,6 +572,12 @@ final class SmbShareClient implements AutoCloseable {
           }
           info = iterator.next();
         } catch (RuntimeException e) {
+          if (connections.get() != generation) {
+            // the connection was dropped under this listing: this folder only, not the run
+            throw new ListingFailure(
+                new SmbAccessException.Transient(
+                    capitalize(what) + " wurde während einer Neuverbindung nicht fertig gelesen."));
+          }
           throw new ListingFailure(translateUnchecked(e, what));
         }
         String name = info.getFileName();
@@ -517,11 +682,10 @@ final class SmbShareClient implements AutoCloseable {
       }
       if (status == NtStatus.STATUS_PATH_NOT_COVERED.getValue()
           || status == NtStatus.STATUS_DFS_UNAVAILABLE.getValue()) {
-        return new SmbAccessException.Unreachable(
-            "„"
-                + address.share()
-                + "“ ist ein DFS-Namensraum. OPAA folgt DFS-Verweisen nicht; bitte die Zielfreigabe"
-                + " direkt angeben.");
+        return new SmbAccessException.Link(
+            capitalize(what)
+                + " liegt hinter einem DFS-Verweis. OPAA folgt DFS-Verweisen nicht; ist die Freigabe"
+                + " ein DFS-Namensraum, bitte die Zielfreigabe direkt angeben.");
       }
       if (status == NtStatus.STATUS_SHARING_VIOLATION.getValue()
           || status == NtStatus.STATUS_FILE_LOCK_CONFLICT.getValue()) {
@@ -635,16 +799,21 @@ final class SmbShareClient implements AutoCloseable {
    * Charges every outgoing SMB message to the budget; a refused one is never written, and the
    * refusal is kept so the caller rethrows it instead of a transport failure.
    */
-  private static final class BudgetedTransportFactory
+  static final class BudgetedTransportFactory
       implements TransportLayerFactory<SMBPacketData<?>, SMBPacket<?, ?>> {
 
     private final RequestBudget budget;
-    private final TransportLayerFactory<SMBPacketData<?>, SMBPacket<?, ?>> delegate =
-        new DirectTcpTransportFactory<>();
+    private final TransportLayerFactory<SMBPacketData<?>, SMBPacket<?, ?>> delegate;
     private volatile RequestBudgetExhaustedException refused;
 
     private BudgetedTransportFactory(RequestBudget budget) {
+      this(budget, new DirectTcpTransportFactory<>());
+    }
+
+    BudgetedTransportFactory(
+        RequestBudget budget, TransportLayerFactory<SMBPacketData<?>, SMBPacket<?, ?>> delegate) {
       this.budget = budget;
+      this.delegate = delegate;
     }
 
     @Override
@@ -656,6 +825,13 @@ final class SmbShareClient implements AutoCloseable {
         public void write(SMBPacket<?, ?> packet) throws TransportException {
           if (refused != null) {
             throw new TransportException("request budget spent");
+          }
+          int[] hops = OPENING.get();
+          if (hops != null
+              && packet instanceof SMB2Packet smb2
+              && smb2.getPacket() instanceof SMB2CreateRequest
+              && ++hops[0] > MAX_LINK_HOPS + 1) {
+            throw new TransportException("too many links followed");
           }
           try {
             budget.charge();

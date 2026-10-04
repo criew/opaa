@@ -319,6 +319,7 @@ public class SourceConnectionTestService {
     boolean fallback =
         blankToNull(request.sourceCredentials()) == null
             && SourceOriginMatcher.sameOrigin(library.getSourceUrl(), request.sourceUrl())
+            && connector.keepsCredentials(library.getSourceUrl(), request.sourceUrl())
             && Objects.equals(
                 ServiceAccountTokens.subjectOf(connector, stored),
                 ServiceAccountTokens.subjectOf(connector, requested));

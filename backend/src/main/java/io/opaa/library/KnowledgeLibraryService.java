@@ -567,7 +567,8 @@ public class KnowledgeLibraryService {
       // it alone".
       if (validatedSettings.sourceCredentials() == null
           && previousSourceUrl != null
-          && !SourceOriginMatcher.sameOrigin(previousSourceUrl, validatedSettings.sourceUrl())) {
+          && !(SourceOriginMatcher.sameOrigin(previousSourceUrl, validatedSettings.sourceUrl())
+              && connector.keepsCredentials(previousSourceUrl, validatedSettings.sourceUrl()))) {
         libraryRepository.eraseSourceCredentials(library.getId());
       }
     }
@@ -1233,7 +1234,8 @@ public class KnowledgeLibraryService {
         connector.normalizeSourceUrl(
             blankToNull(request.sourceUrl() == null ? null : request.sourceUrl().toString()));
     if (sourceCredentials == null
-        && SourceOriginMatcher.sameOrigin(library.getSourceUrl(), sourceUrl)) {
+        && SourceOriginMatcher.sameOrigin(library.getSourceUrl(), sourceUrl)
+        && connector.keepsCredentials(library.getSourceUrl(), sourceUrl)) {
       sourceCredentials = library.getSourceCredentials();
     }
     return new SourceSettings(

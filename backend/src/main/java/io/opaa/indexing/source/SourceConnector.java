@@ -39,6 +39,15 @@ public interface SourceConnector {
   }
 
   /**
+   * Whether stored credentials, kept while {@code requestedSourceUrl} names the same origin as
+   * {@code storedSourceUrl}, also stand for it - a narrower binding than scheme, host and port,
+   * such as the share of a file server. By default the origin is all that counts.
+   */
+  default boolean keepsCredentials(String storedSourceUrl, String requestedSourceUrl) {
+    return true;
+  }
+
+  /**
    * The account a service account key imitates under {@code settings}, {@code null} for none
    * (ADR-0040, Entscheidung 4). The core signs the assertion with it and keeps stored credentials
    * only while it stays the same. No secret.

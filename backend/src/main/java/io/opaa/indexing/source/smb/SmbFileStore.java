@@ -44,6 +44,9 @@ final class SmbFileStore implements FileStore {
   static final String LINK_NOTE =
       "Verknüpfungen (symbolische Links, Junctions, DFS-Verweise) werden nicht verfolgt";
 
+  static final String UNUSABLE_NAME_NOTE =
+      "Einträge mit Pfadtrennzeichen oder Steuerzeichen im Namen werden nicht gelesen";
+
   private static final int MAX_FILE_PATH_LENGTH = 2000;
   private static final int NAMED_UNREADABLE_FOLDERS = 5;
   private static final String UNLISTABLE_PAGE = "unlistable";
@@ -124,7 +127,10 @@ final class SmbFileStore implements FileStore {
         if (next == null) {
           break;
         }
-        open(walk, next, root);
+        FileEntry vanished = open(container, walk, next, root);
+        if (vanished != null) {
+          entries.add(vanished);
+        }
         continue;
       }
       SmbShareClient.Item item;
@@ -141,9 +147,11 @@ final class SmbFileStore implements FileStore {
         continue;
       }
       Folder folder = walk.current;
-      if (item.link() || (item.directory() && !walk.firstVisit(item.fileId()))) {
+      if (item.unusableName()) {
+        entries.add(skipped(container, root, folder, item, UNUSABLE_NAME_NOTE));
+      } else if (item.link() || (item.directory() && !walk.firstVisit(item.fileId()))) {
         // a folder met again under another name is a link the server resolved itself
-        entries.add(link(container, root, folder, item));
+        entries.add(skipped(container, root, folder, item, LINK_NOTE));
       } else if (item.directory()) {
         List<String> segments = new ArrayList<>(folder.segments());
         segments.add(item.name());
@@ -204,7 +212,12 @@ final class SmbFileStore implements FileStore {
             String.join(SourceDocumentContext.HIERARCHY_SEPARATOR, segments),
             List.copyOf(segments));
     SmbShareClient.Item item = found.get();
-    return item.link() ? link(container, root, folder, item) : entry(container, root, folder, item);
+    if (item.unusableName()) {
+      return skipped(container, root, folder, item, UNUSABLE_NAME_NOTE);
+    }
+    return item.link()
+        ? skipped(container, root, folder, item, LINK_NOTE)
+        : entry(container, root, folder, item);
   }
 
   @Override
@@ -241,7 +254,12 @@ final class SmbFileStore implements FileStore {
     return "m:" + item.lastWriteTicks() + "|" + item.size();
   }
 
-  private void open(Walk walk, Folder next, String root)
+  /**
+   * Opens {@code next} for listing. A folder below the container that its parent listed but that
+   * cannot be opened as a folder - gone since, or a link the server resolved in the listing - is
+   * skipped like a link: its files count as absent. Returns that skipped entry, else {@code null}.
+   */
+  private FileEntry open(FileContainer container, Walk walk, Folder next, String root)
       throws FileAccessException, InterruptedException {
     try {
       walk.listing = smb.list(next.sharePath());
@@ -249,9 +267,28 @@ final class SmbFileStore implements FileStore {
       if (next.hierarchyPath().isEmpty()) {
         walk.firstVisit(walk.listing.folderId());
       }
+      return null;
     } catch (SmbAccessException e) {
       walk.closeListing();
+      if (!next.hierarchyPath().isEmpty()
+          && (e instanceof SmbAccessException.NotFound || e instanceof SmbAccessException.Link)) {
+        List<String> parentSegments = next.segments().subList(0, next.segments().size() - 1);
+        String name = next.segments().getLast();
+        int slash = next.sharePath().lastIndexOf('/');
+        Folder parent =
+            new Folder(
+                slash < 0 ? "" : next.sharePath().substring(0, slash),
+                String.join(SourceDocumentContext.HIERARCHY_SEPARATOR, parentSegments),
+                parentSegments);
+        return skipped(
+            container,
+            root,
+            parent,
+            new SmbShareClient.Item(name, true, -1, 0, 0, 0, 0),
+            LINK_NOTE);
+      }
       unreadable(walk, next, root, e);
+      return null;
     }
   }
 
@@ -330,8 +367,9 @@ final class SmbFileStore implements FileStore {
         exclusion);
   }
 
-  private FileEntry link(
-      FileContainer container, String root, Folder folder, SmbShareClient.Item item) {
+  /** An entry counted as no document, never fetched: a link or a name that is no plain name. */
+  private FileEntry skipped(
+      FileContainer container, String root, Folder folder, SmbShareClient.Item item, String note) {
     String filePath = address.filePath(child(folder.sharePath(), item.name()));
     return new FileEntry(
         container,
@@ -345,7 +383,7 @@ final class SmbFileStore implements FileStore {
         -1,
         null,
         null,
-        new Exclusion.NotADocument(LINK_NOTE));
+        new Exclusion.NotADocument(note));
   }
 
   private SourceFolderPath folderChain(String root, Folder folder) {
@@ -392,6 +430,7 @@ final class SmbFileStore implements FileStore {
     String message = e.getMessage();
     return switch (e) {
       case SmbAccessException.NotFound notFound -> new FileAccessException.Gone(message);
+      case SmbAccessException.Link link -> new FileAccessException.Unavailable(message);
       case SmbAccessException.AccessDenied denied -> new FileAccessException.Unreadable(message);
       case SmbAccessException.TooLarge tooLarge -> new FileAccessException.TooLarge(message);
       case SmbAccessException.Authentication authentication ->

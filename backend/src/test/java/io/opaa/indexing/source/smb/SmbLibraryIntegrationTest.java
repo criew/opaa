@@ -64,7 +64,20 @@ class SmbLibraryIntegrationTest {
                 .header(DevAuthFilter.DEV_USER_HEADER, "dev-user")
                 .contentType(MediaType.APPLICATION_JSON))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$[?(@.type == 'SMB')].creatable").value(false));
+        .andExpect(jsonPath("$[?(@.type == 'SMB')].creatable").value(false))
+        // positive control: the same account may create a shipped source type
+        .andExpect(jsonPath("$[?(@.type == 'RSS_FEED')].creatable").value(true));
+    mockMvc
+        .perform(
+            post("/api/v1/libraries")
+                .header(DevAuthFilter.DEV_USER_HEADER, "dev-user")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    "{\"name\": \"Freigabe\", \"sourceType\": \"SMB\","
+                        + " \"sourceUrl\": \"smb://fileserver.example/daten\","
+                        + " \"sourceCredentials\": \"OPAA\\\\opaa:geheim\"}"))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.code").value("CAPABILITY_REQUIRED"));
   }
 
   @Test
@@ -120,6 +133,52 @@ class SmbLibraryIntegrationTest {
                             "smb://localhost:" + samba.port() + "/" + SambaFixture.SHARE)
                         + "}"))
         .andExpect(status().isBadRequest());
+
+    // another share on the same server is another boundary of rights: the password is asked again
+    String otherShare = samba.url(SambaFixture.LINK_SHARE);
+    mockMvc
+        .perform(
+            as(put("/api/v1/libraries/" + libraryId))
+                .content(
+                    "{\"name\": \"Freigabe\", \"sourceUrl\": "
+                        + JSON.writeValueAsString(otherShare)
+                        + "}"))
+        .andExpect(status().isBadRequest());
+    mockMvc
+        .perform(
+            as(post("/api/v1/libraries/source-test"))
+                .content(
+                    "{\"sourceType\": \"SMB\", \"libraryId\": \""
+                        + libraryId
+                        + "\", \"sourceUrl\": "
+                        + JSON.writeValueAsString(otherShare)
+                        + "}"))
+        .andExpect(status().isBadRequest());
+    // the same share, written differently, keeps them
+    mockMvc
+        .perform(
+            as(post("/api/v1/libraries/source-test"))
+                .content(
+                    "{\"sourceType\": \"SMB\", \"libraryId\": \""
+                        + libraryId
+                        + "\", \"sourceUrl\": "
+                        + JSON.writeValueAsString(url.toUpperCase().replace("SMB://", "smb://"))
+                        + ", \"sourceSettings\": {\"folders\": ["
+                        + JSON.writeValueAsString("/" + folder)
+                        + "]}}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.reachable").value(true));
+    mockMvc
+        .perform(
+            as(put("/api/v1/libraries/" + libraryId))
+                .content(
+                    "{\"name\": \"Freigabe\", \"sourceUrl\": "
+                        + JSON.writeValueAsString(otherShare)
+                        + ", \"sourceCredentials\": "
+                        + JSON.writeValueAsString(samba.credentials())
+                        + "}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.sourceCredentialsSet").value(true));
   }
 
   private static MockHttpServletRequestBuilder as(MockHttpServletRequestBuilder request) {

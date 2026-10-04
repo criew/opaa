@@ -65,6 +65,25 @@ class SmbFileStoreTest {
   }
 
   @Test
+  void aLinkToAFileOrFolderElsewhereInTheShareIsNeitherReadNorFollowed() throws Exception {
+    String elsewhere = "Ziel von " + folder;
+    samba.put(elsewhere + "/geheim.txt", "Nicht im Bereich.");
+    samba.put(folder + "/a.txt", "A.");
+    // Samba lists these as an ordinary file and folder; opening them is what must not follow them
+    samba.symlink("../" + elsewhere + "/geheim.txt", folder + "/verweis.txt");
+    samba.symlink("../" + elsewhere, folder + "/ordner-verweis");
+
+    FileSyncHarness.Run run = new FileSyncHarness().fullSync(store(10));
+
+    assertThat(run.failure()).isNull();
+    assertThat(run.ingested()).containsExactly(path("a.txt"));
+    assertThat(run.listingComplete()).isTrue();
+    assertThat(run.eventsOf(IndexingEventCategory.UNSUPPORTED_FORMAT))
+        .extracting(IndexingRunEvent::getMessage)
+        .anySatisfy(message -> assertThat(message).contains(SmbFileStore.LINK_NOTE));
+  }
+
+  @Test
   void anUnreadableFolderIsNamedTheRestIsListedAndNothingInTheContainerIsRemoved()
       throws Exception {
     samba.put(folder + "/a.txt", "A.");
