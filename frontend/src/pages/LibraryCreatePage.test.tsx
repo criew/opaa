@@ -1531,7 +1531,8 @@ describe('LibraryCreatePage (#596, #1942)', () => {
 
       expect(screen.getByText(/lässt sich nach dem Anlegen nicht mehr ändern/)).toBeInTheDocument()
       const shared = screen.getByRole('radio', { name: /^Nextcloud intern(?! · privat)/ })
-      expect(shared).toHaveAccessibleDescription(/Teilbar/)
+      // a tile's description is part of its name (ChoiceTileGroup)
+      expect(shared).toHaveAccessibleName(/Teilbar/)
       await user.click(shared)
       await user.type(screen.getByLabelText(/Technischer Nutzer/), 'svc-opaa')
       await user.type(screen.getByLabelText(/App-Passwort/), 'geheim')

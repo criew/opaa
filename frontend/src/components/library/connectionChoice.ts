@@ -8,15 +8,42 @@ import { ownAddressAllowed } from './sources/sourceConnection'
 /** The choice of a library with its own address instead of a profile. */
 export const OWN_ADDRESS = 'own-address'
 
-/** The keys that may be chosen: the own address where offered and admitted, every usable profile. */
+const PRIVATE_PREFIX = 'private:'
+
+/** The choice of a private library on the caller's own connected account on `profileId`. */
+export function privateConnection(profileId: string): string {
+  return `${PRIVATE_PREFIX}${profileId}`
+}
+
+/** The profile of a private choice, `null` for every other choice. */
+export function privateProfileOf(choice: string | null): string | null {
+  return choice?.startsWith(PRIVATE_PREFIX) ? choice.slice(PRIVATE_PREFIX.length) : null
+}
+
+/** The profile a choice runs through, private or not; `null` for the own address and none. */
+export function profileOfChoice(choice: string | null): string | null {
+  if (choice === null || choice === OWN_ADDRESS) return null
+  return privateProfileOf(choice) ?? choice
+}
+
+/**
+ * The keys that may be chosen: the own address where offered and admitted, every usable profile,
+ * and - last, so never the default - a private library on every usable profile the caller has a
+ * connected account on (`ownAccountProfileIds`).
+ */
 export function selectableConnections(
   descriptor: SourceTypeDescriptor,
   options: ConnectionProfileOption[],
   offerOwnAddress: boolean,
+  ownAccountProfileIds: readonly string[] = [],
 ): string[] {
+  const usable = options.filter((option) => option.creatable)
   return [
     ...(offerOwnAddress && ownAddressAllowed(descriptor) ? [OWN_ADDRESS] : []),
-    ...options.filter((option) => option.creatable).map((option) => option.id),
+    ...usable.map((option) => option.id),
+    ...usable
+      .filter((option) => ownAccountProfileIds.includes(option.id))
+      .map((option) => privateConnection(option.id)),
   ]
 }
 

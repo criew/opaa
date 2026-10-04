@@ -2,6 +2,7 @@ import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import EditLocationAltOutlinedIcon from '@mui/icons-material/EditLocationAltOutlined'
+import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
 import VpnKeyOutlinedIcon from '@mui/icons-material/VpnKeyOutlined'
 import type {
   ConnectionProfileOption,
@@ -14,7 +15,8 @@ import {
 } from '../../hooks/useConnectionProfileOptions'
 import ChoiceTileGroup, { type ChoiceTile } from '../choice/ChoiceTileGroup'
 import { AUTH_METHOD_LABELS } from '../admin/connections/connectionProfileLabels'
-import { OWN_ADDRESS, selectableConnections } from './connectionChoice'
+import { OWN_ADDRESS, privateConnection, selectableConnections } from './connectionChoice'
+import { PRIVATE_LIBRARY_NOTE } from './privateLibrary'
 import { ownAddressAllowed } from './sources/sourceConnection'
 import ConnectionProfileRequestAction from './ConnectionProfileRequestAction'
 
@@ -67,6 +69,11 @@ interface ConnectionProfileSelectProps {
   excludeProfileId?: string
   /** Whether „Zugang vorschlagen“ takes the place of the hint who sets up profiles. */
   offerRequest?: boolean
+  /**
+   * The profiles the caller has a connected account on: each is offered a second time, as a
+   * private library, in a group of its own. Without one that group does not exist.
+   */
+  ownAccountProfileIds?: readonly string[]
   idPrefix: string
 }
 
@@ -84,12 +91,16 @@ export default function ConnectionProfileSelect({
   offerOwnAddress,
   excludeProfileId,
   offerRequest = false,
+  ownAccountProfileIds = [],
   idPrefix,
 }: ConnectionProfileSelectProps) {
   const options = state.options.filter((option) => option.id !== excludeProfileId)
   const ownOffered = offerOwnAddress && ownAddressAllowed(descriptor)
   const selectable = selectableConnections(descriptor, options, offerOwnAddress)
   const headingId = `${idPrefix}-connection-heading`
+  const privateHeadingId = `${idPrefix}-private-heading`
+  const onOwnAccount = (option: ConnectionProfileOption) => ownAccountProfileIds.includes(option.id)
+  const privateOptions = options.filter(onOwnAccount)
 
   const tiles: ChoiceTile<string>[] = [
     ...(ownOffered
@@ -105,11 +116,27 @@ export default function ConnectionProfileSelect({
     ...options.map((option) => ({
       value: option.id,
       label: option.name,
-      description: profileDescription(option, descriptor),
+      description: (
+        <>
+          {profileDescription(option, descriptor)}
+          {onOwnAccount(option) && (
+            <Box component="span" sx={{ display: 'block' }}>
+              Teilbar – meldet sich nicht über Ihr verbundenes Konto an.
+            </Box>
+          )}
+        </>
+      ),
       icon: <VpnKeyOutlinedIcon sx={{ fontSize: 22 }} />,
       disabledReason: option.creatable ? null : (option.creationNotice ?? NOT_RELEASED),
     })),
   ]
+  const privateTiles: ChoiceTile<string>[] = privateOptions.map((option) => ({
+    value: privateConnection(option.id),
+    label: `${option.name} · privat`,
+    description: profileDescription(option, descriptor),
+    icon: <LockOutlinedIcon sx={{ fontSize: 22 }} />,
+    disabledReason: option.creatable ? null : (option.creationNotice ?? NOT_RELEASED),
+  }))
 
   return (
     <Box data-testid={`${idPrefix}-connection`}>
@@ -144,6 +171,28 @@ export default function ConnectionProfileSelect({
           onChange={onChange}
           tiles={tiles}
         />
+      )}
+      {privateTiles.length > 0 && (
+        <Box sx={{ mt: 2.5 }} data-testid={`${idPrefix}-private`}>
+          <Typography
+            id={privateHeadingId}
+            component="h4"
+            sx={{ fontSize: 14.5, fontWeight: 600, mb: 0.5 }}
+          >
+            Über mein verbundenes Konto
+          </Typography>
+          <Typography sx={{ fontSize: 13.5, color: 'text.secondary', mb: 1.5 }}>
+            {PRIVATE_LIBRARY_NOTE} Sie meldet sich mit Ihrem verbundenen Konto an; Zugangsdaten
+            tragen Sie hier nicht ein. Ob eine Bibliothek privat ist, lässt sich nach dem Anlegen
+            nicht mehr ändern.
+          </Typography>
+          <ChoiceTileGroup<string>
+            aria-labelledby={privateHeadingId}
+            value={value}
+            onChange={onChange}
+            tiles={privateTiles}
+          />
+        </Box>
       )}
       {state.error ? null : state.loaded && selectable.length === 0 ? (
         <Alert severity="info" sx={{ mt: 1.5 }} data-testid={`${idPrefix}-connection-none`}>

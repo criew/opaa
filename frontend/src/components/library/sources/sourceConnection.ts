@@ -81,6 +81,8 @@ export function asksLibrarySecret(method: ConnectionAuthMethod): boolean {
 export interface ProbeScope {
   libraryId?: string
   connectionProfileId?: string
+  /** A new private library, probed through the caller's connected account. */
+  privateLibrary?: boolean
 }
 
 /** The fields of a create, update, test or listing request that a profile may set. */
@@ -115,13 +117,18 @@ export interface ConnectionFields {
 
 export function connectionFields(context: SourceFormContext): ConnectionFields {
   const connection = context.connection ?? null
+  const privateLibrary = connection !== null && Boolean(context.privateLibrary)
   const probe: ProbeScope =
     context.mode === 'edit'
       ? { libraryId: context.libraryId }
       : connection
-        ? { connectionProfileId: connection.profileId }
+        ? {
+            connectionProfileId: connection.profileId,
+            ...(privateLibrary ? { privateLibrary: true } : {}),
+          }
         : {}
-  const asksSecret = connection === null || asksLibrarySecret(connection.authMethod)
+  const asksSecret =
+    connection === null || (!privateLibrary && asksLibrarySecret(connection.authMethod))
   return {
     connection,
     probe,

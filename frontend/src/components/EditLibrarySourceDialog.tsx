@@ -39,6 +39,8 @@ export interface EditableLibrarySource {
   sourceSettings?: Record<string, unknown> | null
   /** The profile the library is connected through, with what it sets; absent for its own address. */
   connectionProfile?: ConnectionProfileRef | null
+  /** Signs in with its owner's connected account, never with a secret of its own. */
+  privateLibrary?: boolean
 }
 
 interface EditLibrarySourceDialogProps {
@@ -73,6 +75,7 @@ export default function EditLibrarySourceDialog({
     credentialsStored: Boolean(library.sourceCredentialsSet),
     originalSourceUrl: library.sourceUrl,
     connection,
+    privateLibrary: library.privateLibrary,
   }
 
   // Prefilled once from the library's current, non-secret configuration: the caller remounts this
