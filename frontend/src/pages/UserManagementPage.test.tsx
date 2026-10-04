@@ -680,7 +680,7 @@ describe('UserManagementPage', () => {
     expect(within(bootstrapDialog).queryByText(/erscheint im Hinweis zur/)).not.toBeInTheDocument()
     await user.click(within(bootstrapDialog).getByRole('button', { name: 'Abbrechen' }))
     // erst wenn der Dialog fort ist, ist die Tabelle wieder erreichbar
-    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    await waitForDialogClosed()
 
     // „M. Weber (Partner)" trägt ebenfalls kein Ablaufdatum, ist aber ein reguläres Konto
     // der Zeilenname geht als RegExp in die Suche - die Klammern des Anzeigenamens nicht mit
