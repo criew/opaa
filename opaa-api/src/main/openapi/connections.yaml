@@ -790,8 +790,9 @@ components:
         ownAddressLibraries:
           type: array
           description: >
-            Every library of the type with its own address - not connected through any profile -
-            by name; the ones the choice of ownAddressStock affects.
+            Every library of the type in the caller's organization with its own address - not
+            connected through a profile, also after its profile was deleted - by name; the ones
+            the choice of ownAddressStock affects.
           items:
             $ref: "#/components/schemas/OwnAddressLibrary"
         coverageNotice:

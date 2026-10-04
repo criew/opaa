@@ -21,12 +21,12 @@ public interface LibraryConnectionRepository extends JpaRepository<LibraryConnec
           + " where c.profileId in :profileIds group by c.profileId")
   List<ProfileConnectionCount> countByProfileIdIn(@Param("profileIds") Collection<UUID> profileIds);
 
-  /** Every library of {@code type} that is connected through no profile, by name. */
+  /** Every library of {@code type} in {@code organizationId}, by name. */
   @Query(
-      "select l from KnowledgeLibrary l where l.sourceType = :type and not exists"
-          + " (select c from LibraryConnection c where c.libraryId = l.id)"
-          + " order by l.name, l.id")
-  List<KnowledgeLibrary> findLibrariesWithOwnAddress(@Param("type") SourceType type);
+      "select l from KnowledgeLibrary l where l.sourceType = :type"
+          + " and l.organizationId = :organizationId order by l.name, l.id")
+  List<KnowledgeLibrary> findLibrariesOfType(
+      @Param("type") SourceType type, @Param("organizationId") UUID organizationId);
 
   /** One row of {@link #countByProfileIdIn}. */
   interface ProfileConnectionCount {

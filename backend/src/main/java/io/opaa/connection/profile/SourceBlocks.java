@@ -175,7 +175,7 @@ public class SourceBlocks {
     for (KnowledgeLibrary library : libraries) {
       LibraryConnection connection = connectionOf.get(library.getId());
       ConnectionProfile profile =
-          connection == null || connection.getProfileId() == null
+          !LibraryConnection.throughProfile(connection)
               ? null
               : profileOf.get(connection.getProfileId());
       SourceType type = library.getSourceType();
@@ -183,7 +183,8 @@ public class SourceBlocks {
           new Facts(
               library,
               lockedTypes.contains(type.key()) ? typeLock(type) : null,
-              connection == null && profilesOnlyTypes.contains(type.key())
+              !LibraryConnection.throughProfile(connection)
+                      && profilesOnlyTypes.contains(type.key())
                   ? profileRequiredLock(type)
                   : null,
               connection != null,

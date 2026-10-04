@@ -111,8 +111,12 @@ class SourceBlocksTest {
             Reason.PROFILE_LOCKED),
         Arguments.of(
             EnumSet.of(Fact.PROFILES_ONLY_LOCKED, Fact.NO_SECRET), Reason.PROFILE_REQUIRED),
+        // regression guard: a library whose profile was deleted has its own address again
         Arguments.of(
             EnumSet.of(Fact.PROFILES_ONLY_LOCKED, Fact.CONNECTED, Fact.PROFILE_REMOVED),
+            Reason.PROFILE_REQUIRED),
+        Arguments.of(
+            EnumSet.of(Fact.PROFILES_ONLY_RUNS, Fact.CONNECTED, Fact.PROFILE_REMOVED),
             Reason.ACCESS_REMOVED),
         Arguments.of(
             EnumSet.of(Fact.PROFILES_ONLY_LOCKED, Fact.CONNECTED, Fact.NO_SECRET),

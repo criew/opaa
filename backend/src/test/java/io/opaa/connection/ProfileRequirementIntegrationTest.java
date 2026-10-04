@@ -13,6 +13,7 @@ import com.jayway.jsonpath.JsonPath;
 import io.opaa.auth.DevAuthFilter;
 import io.opaa.chat.ChatSource;
 import io.opaa.indexing.source.DocumentIndexingService;
+import io.opaa.indexing.source.profileprobe.ProfileProbeSourceConnector;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.SourceType;
@@ -89,7 +90,7 @@ class ProfileRequirementIntegrationTest {
         .andExpect(jsonPath("$.notSwitchableReason").value(Matchers.containsString("Zugang")))
         .andExpect(jsonPath("$.state.profileSupport").value("OPTIONAL"))
         .andExpect(jsonPath("$.state.profileRequired").value(false))
-        .andExpect(jsonPath("$.coverageNotice").doesNotExist());
+        .andExpect(jsonPath("$.coverageNotice").value(ProfileProbeSourceConnector.GAP));
     mockMvc
         .perform(require("LOCKED"))
         .andExpect(status().isConflict())
@@ -131,7 +132,13 @@ class ProfileRequirementIntegrationTest {
     mockMvc
         .perform(as("dev-admin", get("/api/v1/admin/connector-types/RSS_FEED/profile-requirement")))
         .andExpect(jsonPath("$.switchable").value(false))
-        .andExpect(jsonPath("$.coverageNotice").value(Matchers.containsString("Feed-Adresse")));
+        .andExpect(jsonPath("$.coverageNotice").doesNotExist());
+    mockMvc
+        .perform(
+            as("dev-admin", put("/api/v1/admin/connector-types/UPLOAD/profile-requirement"))
+                .content("{\"required\": false}"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.error").value(Matchers.containsString("keine Profilpflicht")));
     mockMvc
         .perform(
             as(
@@ -320,6 +327,93 @@ class ProfileRequirementIntegrationTest {
     mockMvc
         .perform(as("dev-admin", get("/api/v1/admin/connector-types")))
         .andExpect(jsonPath("$[?(@.sourceType == '" + TYPE + "')].profileRequired").value(true));
+  }
+
+  /**
+   * Regression guard: a library whose profile was deleted ("Zugang entfernt") keeps its connection
+   * row without a profile and counts as one with its own address - its address stays frozen, a test
+   * with a new address is refused, it is listed, and a locked stock locks it.
+   */
+  @Test
+  void aLibraryWhoseProfileWasDeletedCountsAsOneWithItsOwnAddress() throws Exception {
+    UUID doomed = createProfile("Zugang weg", "LIBRARY");
+    createProfile("Zugang bleibt", "LIBRARY");
+    UUID library = createLibrary(doomed);
+    mockMvc.perform(require("RUNS")).andExpect(status().isOk());
+    mockMvc
+        .perform(as("dev-admin", delete(PROFILES + "/" + doomed)))
+        .andExpect(status().isNoContent());
+    profiles.remove(doomed);
+
+    expectProfileRequired(update(library, SERVER + "/anders", null));
+    expectProfileRequired(sourceTest(library, SERVER + "/anders"));
+    mockMvc
+        .perform(as("dev-admin", get(REQUIREMENT)))
+        .andExpect(
+            jsonPath("$.ownAddressLibraries[*].id").value(Matchers.hasItem(library.toString())));
+
+    mockMvc.perform(require("LOCKED")).andExpect(status().isOk());
+    mockMvc
+        .perform(as("dev-admin", get("/api/v1/libraries/" + library)))
+        .andExpect(jsonPath("$.sourceBlock.reason").value("PROFILE_REQUIRED"));
+  }
+
+  /**
+   * A second switch-on with another stock choice is its own governance event, keeps the start of
+   * the requirement and locks the stock at once; a test through the library with a new address is
+   * refused while it runs on.
+   */
+  @Test
+  void anotherStockChoiceIsItsOwnEventAndKeepsTheStart() throws Exception {
+    createProfile("Zugang Wahl", "LIBRARY");
+    UUID own = createOwnLibrary(SERVER + "/wahl");
+    long before = requiredEvents();
+    String first =
+        mockMvc
+            .perform(require("RUNS"))
+            .andExpect(status().isOk())
+            .andReturn()
+            .getResponse()
+            .getContentAsString(StandardCharsets.UTF_8);
+    String requiredAt = JsonPath.read(first, "$.profileRequiredAt");
+    expectProfileRequired(sourceTest(own, SERVER + "/neu"));
+    mockMvc
+        .perform(sourceTest(own, SERVER + "/wahl"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.reachable").value(true));
+
+    mockMvc
+        .perform(require("LOCKED"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.ownAddressStock").value("LOCKED"))
+        .andExpect(jsonPath("$.profileRequiredAt").value(requiredAt));
+    mockMvc.perform(require("LOCKED")).andExpect(status().isOk());
+
+    assertThat(requiredEvents() - before).isEqualTo(2);
+    mockMvc
+        .perform(as("dev-admin", get("/api/v1/libraries/" + own)))
+        .andExpect(jsonPath("$.sourceBlock.reason").value("PROFILE_REQUIRED"));
+  }
+
+  private long requiredEvents() {
+    return jdbc.queryForObject(
+        "SELECT count(*) FROM audit_log WHERE object_id = ? AND event_type = ?",
+        Long.class,
+        UUID.nameUUIDFromBytes(("io.opaa.connection.type:" + TYPE).getBytes(StandardCharsets.UTF_8))
+            .toString(),
+        "CONNECTOR_PROFILE_REQUIRED");
+  }
+
+  private MockHttpServletRequestBuilder sourceTest(UUID library, String url) {
+    return as("dev-admin", post("/api/v1/libraries/source-test"))
+        .content(
+            "{\"sourceType\": \""
+                + TYPE
+                + "\", \"libraryId\": \""
+                + library
+                + "\", \"sourceUrl\": \""
+                + url
+                + "\"}");
   }
 
   private void expectProfileRequired(MockHttpServletRequestBuilder request) throws Exception {

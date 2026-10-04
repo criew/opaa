@@ -30,7 +30,7 @@ const NEXTCLOUD: SourceTypeDescriptor = {
   pushIntake: false,
   browsable: false,
   profileSupport: 'REQUIRED',
-  profileRequired: false,
+  profileRequired: true,
   signIns: [
     { method: 'NONE', ownerships: ['LIBRARY', 'PERSON'] },
     { method: 'PERSONAL_SECRET', ownerships: ['LIBRARY'], secretForm: 'USERNAME_AND_PASSWORD' },

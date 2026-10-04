@@ -100,18 +100,18 @@ public class LibraryConnectionService {
   }
 
   /**
-   * Refuses {@code requestedUrl} for {@code library} when the library is connected and the address
-   * leaves its profile; a library without a connection keeps its address while its type is usable
+   * Refuses {@code requestedUrl} for {@code library} when the address leaves its profile; a library
+   * with its own address - also one whose profile was deleted - keeps it while its type is usable
    * only through a profile, and is free otherwise.
    */
   public void requireAddressAllowed(KnowledgeLibrary library, String requestedUrl) {
-    Optional<LibraryConnection> connection = connections.findById(library.getId());
-    if (connection.isEmpty()) {
+    LibraryConnection connection = connections.findById(library.getId()).orElse(null);
+    if (!LibraryConnection.throughProfile(connection)) {
       requirementService.requireOwnAddressKept(library, requestedUrl);
       return;
     }
-    Optional.ofNullable(connection.get().getProfileId())
-        .flatMap(profiles::findById)
+    profiles
+        .findById(connection.getProfileId())
         .ifPresent(profile -> requireUnder(profile, requestedUrl));
   }
 
@@ -125,7 +125,7 @@ public class LibraryConnectionService {
     LibraryConnection connection = connections.findById(library.getId()).orElse(null);
     String address = library.getSourceUrl();
     ConnectionProfile previous =
-        connection == null || connection.getProfileId() == null
+        !LibraryConnection.throughProfile(connection)
             ? null
             : profiles.findById(connection.getProfileId()).orElse(null);
     if (previous != null

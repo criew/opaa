@@ -18,6 +18,8 @@ import io.opaa.knowledge.SourceType;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -81,11 +83,21 @@ public class ProfileRequirementService {
   }
 
   /**
-   * The requirement of {@code type}, whether it can be switched, and whom switching it on affects.
+   * The requirement of {@code type}, whether it can be switched, and whom switching it on affects
+   * in {@code organizationId}: its libraries with their own address.
    */
-  public Overview overview(SourceType type) {
+  public Overview overview(SourceType type, UUID organizationId) {
+    requireType(type);
     TypeState state = locks.typeState(type);
-    List<KnowledgeLibrary> ownAddress = connections.findLibrariesWithOwnAddress(type);
+    List<KnowledgeLibrary> ofType = connections.findLibrariesOfType(type, organizationId);
+    Map<UUID, LibraryConnection> connectionOf = new HashMap<>();
+    connections
+        .findAllById(ofType.stream().map(KnowledgeLibrary::getId).toList())
+        .forEach(connection -> connectionOf.put(connection.getLibraryId(), connection));
+    List<KnowledgeLibrary> ownAddress =
+        ofType.stream()
+            .filter(library -> !LibraryConnection.throughProfile(connectionOf.get(library.getId())))
+            .toList();
     Map<UUID, String> names = ownerNames.of(ownAddress);
     return new Overview(
         state,
@@ -99,7 +111,7 @@ public class ProfileRequirementService {
                         library.getOwnerType(),
                         names.get(library.getOwnerId())))
             .toList(),
-        connectors.getObject().connector(type).profileRequirementGap());
+        connectors.getObject().connector(type).descriptor().profileDeclaration().requirementGap());
   }
 
   /**
@@ -110,7 +122,7 @@ public class ProfileRequirementService {
   @Transactional
   public TypeState require(
       CurrentUser caller, SourceType type, boolean required, OwnAddressStock stock) {
-    SourceConnectorDescriptor descriptor = locks.requireLockable(type);
+    SourceConnectorDescriptor descriptor = requireType(type);
     requireSwitchable(descriptor);
     if (required && stock == null) {
       throw new ValidationException("ownAddressStock ist beim Einschalten erforderlich");
@@ -118,7 +130,8 @@ public class ProfileRequirementService {
     if (!required && stock != null) {
       throw new ValidationException("ownAddressStock gehört nur zum Einschalten");
     }
-    Instant now = clock.instant();
+    // the column keeps microseconds; the answer must name the instant a later read returns
+    Instant now = clock.instant().truncatedTo(ChronoUnit.MICROS);
     ConnectorTypePolicy policy =
         policies.findById(type.key()).orElseGet(() -> new ConnectorTypePolicy(type, now));
     OwnAddressStock before = policy.getOwnAddressStock();
@@ -176,6 +189,19 @@ public class ProfileRequirementService {
         && profiles.findBySourceTypeOrderByNameAsc(type).stream()
             .filter(this::takesOver)
             .allMatch(other -> other.getId().equals(profile.getId()));
+  }
+
+  /** The descriptor of a type that reaches a source; refuses the upload and an unknown type. */
+  private SourceConnectorDescriptor requireType(SourceType type) {
+    return connectors
+        .getObject()
+        .find(type)
+        .map(connector -> connector.descriptor())
+        .filter(descriptor -> !descriptor.uploads())
+        .orElseThrow(
+            () ->
+                new ValidationException(
+                    "Die Quellart " + type + " erreicht keine Quelle und hat keine Profilpflicht"));
   }
 
   private boolean hasTakeover(SourceType type) {

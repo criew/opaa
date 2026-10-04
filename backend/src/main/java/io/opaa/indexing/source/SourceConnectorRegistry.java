@@ -74,6 +74,11 @@ public class SourceConnectorRegistry {
             subject + " declares profile default " + key.key() + ", which is no settings key");
       }
     }
+    if (declaration.requirementGap() != null
+        && declaration.support() != ConnectionProfileSupport.OPTIONAL) {
+      throw new IllegalStateException(
+          subject + " names what a profile requirement leaves open but cannot be switched to one");
+    }
     if (declaration.serviceAccountKey() != null && declaration.admitsProfiles()) {
       throw new IllegalStateException(
           subject + " signs in with a service account key and may not admit profiles yet");

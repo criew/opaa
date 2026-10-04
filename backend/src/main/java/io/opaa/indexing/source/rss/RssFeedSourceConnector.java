@@ -98,14 +98,6 @@ public class RssFeedSourceConnector
     return DESCRIPTOR;
   }
 
-  /** The detail pages of a feed come from its entries and may lie on other origins. */
-  @Override
-  public String profileRequirementGap() {
-    return "Die Pflicht legt nur die Feed-Adresse fest. Die Detailseiten eines Feeds stammen aus"
-        + " seinen Einträgen und können auf fremden Servern liegen; sie werden weiter abgerufen,"
-        + " aber ohne Zugangsdaten.";
-  }
-
   @Override
   public SourceSettings validate(SourceSettings requested) {
     ConnectorChecks.validateUrlBasedConfiguration(

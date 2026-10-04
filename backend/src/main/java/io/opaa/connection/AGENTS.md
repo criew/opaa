@@ -27,7 +27,7 @@ knowledge kennt connections: Der Kern erreicht es über seine Ports `SourceConne
 - **Lesen und Verwerfen des Geheimnisses** in connections nur über `ConnectionSecrets`, library
   über den Port; der Schreibweg der Bibliothek bleibt `updateSourceConfiguration`.
 - **Ein gelöschtes Profil** lässt die Zuordnung mit `profile_id NULL` stehen („Zugang entfernt“);
-  der Port sperrt dann mit eigenem Grund und deutscher Meldung.
+  sie zählt als eigene Adresse, entschieden nur in `LibraryConnection#throughProfile`.
 - **Sperrgründe nur in `SourceBlocks`:** Ob und warum eine Bibliothek gesperrt ist und welcher Text
   gilt, entscheidet nur er. Vorrang ist die Deklarationsreihenfolge von `SourceBlock.Reason`, die
   Mengen der Aufrufer leiten sich aus dessen Eigenschaften ab: Ein neuer Grund steht an einer Stelle.
@@ -39,7 +39,7 @@ knowledge kennt connections: Der Kern erreicht es über seine Ports `SourceConne
   `ConnectorScopeCatalog` nennt rights die Geltungsbereiche. Kein anderes Modul außer rights nennt
   die Fähigkeit (`theConnectorReleaseIsDecidedInConnections`). Ein Entzug stoppt keinen Lauf.
 - **Profilangabe nur über `ProfileRequirements`:** deklariert `OPTIONAL` plus Schalter ergibt
-  `REQUIRED`; kein anderer Code liest die Deklaration oder vergleicht sie mit `REQUIRED`.
+  `REQUIRED`; nur dort liest connections `support` (`theProfileSupportIsReadInOnePlace`).
 - **Sperre:** blockiert `resolve` (Laufstart, Original), nicht `currentCredentials`. Die Registry
   wird je Aufruf geholt, weil der Port im Kern hängt und die Konnektoren am Kern.
 - **Web-Schicht:** `connection.web` (Verwaltung unter `/api/v1/admin/connection-profiles`, Auswahl

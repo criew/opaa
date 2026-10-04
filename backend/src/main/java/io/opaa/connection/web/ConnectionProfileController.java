@@ -159,9 +159,10 @@ public class ConnectionProfileController {
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
   @GetMapping("/api/v1/admin/connector-types/{sourceType}/profile-requirement")
   public ConnectorProfileRequirementResponse getConnectorProfileRequirement(
-      @PathVariable String sourceType) {
+      @PathVariable String sourceType, @Caller CurrentUser caller) {
     return ConnectionProfileResponseMapper.toResponse(
-        requirements.overview(ConnectionProfileResponseMapper.toSourceType(sourceType)));
+        requirements.overview(
+            ConnectionProfileResponseMapper.toSourceType(sourceType), caller.organizationId()));
   }
 
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")

@@ -22,6 +22,8 @@ import io.opaa.chat.ChatTurn;
 import io.opaa.chat.UsedPrompt;
 import io.opaa.metadata.web.MetadataFilterMapper;
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 
 /**
@@ -30,6 +32,8 @@ import org.springframework.data.domain.Page;
  * hand-written).
  */
 public final class ChatResponseMapper {
+
+  private static final Logger LOG = LoggerFactory.getLogger(ChatResponseMapper.class);
 
   private ChatResponseMapper() {}
 
@@ -139,22 +143,32 @@ public final class ChatResponseMapper {
 
   /** The "Stand vom" of a source, {@code null} while it was updated when the answer was given. */
   static SourceFreeze toFreeze(ChatSource source) {
-    if (source.getFreezeReason() == null) {
+    SourceBlockReason reason = freezeReason(source.getFreezeReason());
+    if (reason == null) {
       return null;
     }
-    return new SourceFreeze(
-            new SourceBlock(freezeReason(source.getFreezeReason()), source.getFreezeResponsible()))
+    return new SourceFreeze(new SourceBlock(reason, source.getFreezeResponsible()))
         .asOf(source.getFreezeAsOf());
   }
 
   /**
    * A stored reason is the name of a {@code SourceBlock.Reason}; an answer stored before the two
-   * locks were told apart carries {@code LOCKED} for either and reads as a type lock.
+   * locks were told apart carries {@code LOCKED} for either and reads as a type lock. A reason this
+   * version does not know reads as none, so the answer stays readable without its "Stand vom".
    */
   static SourceBlockReason freezeReason(String stored) {
-    return "LOCKED".equals(stored)
-        ? SourceBlockReason.TYPE_LOCKED
-        : SourceBlockReason.fromValue(stored);
+    if (stored == null) {
+      return null;
+    }
+    if ("LOCKED".equals(stored)) {
+      return SourceBlockReason.TYPE_LOCKED;
+    }
+    try {
+      return SourceBlockReason.fromValue(stored);
+    } catch (IllegalArgumentException e) {
+      LOG.warn("A stored source carries an unknown freeze reason; it is shown without one");
+      return null;
+    }
   }
 
   /**

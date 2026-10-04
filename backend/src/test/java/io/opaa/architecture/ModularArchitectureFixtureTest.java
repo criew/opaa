@@ -212,6 +212,18 @@ class ModularArchitectureFixtureTest {
         .anySatisfy(violation -> assertThat(violation).contains("ProbeConnector.onSourceChanged("));
   }
 
+  /** connections reads the declared support beside the one place; library may. */
+  @Test
+  void theProfileSupportReadOutsideItsPlaceIsReported() {
+    Scenario scenario = new Scenario("profilesupport");
+
+    assertThat(scenario.violations(ModularArchitecture::theProfileSupportIsReadInOnePlace))
+        .hasSize(1)
+        .allSatisfy(
+            violation ->
+                assertThat(violation).contains("connection.ConnectorRelease", "support()"));
+  }
+
   /** library reads the secret, also by method reference; knowledge and the store may. */
   @Test
   void theLibrarySecretReadOutsideTheStoreIsReported() {

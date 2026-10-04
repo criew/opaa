@@ -12,7 +12,7 @@ import org.springframework.stereotype.Component;
 /**
  * The effective profile support of a connector type: what its connector declares, except that an
  * {@code OPTIONAL} type the system administration switched to profiles only is {@code REQUIRED}.
- * The declaration is read here and nowhere else in connections.
+ * Only here does connections read the declared support ({@code theProfileSupportIsReadInOnePlace}).
  */
 @Component
 public class ProfileRequirements {

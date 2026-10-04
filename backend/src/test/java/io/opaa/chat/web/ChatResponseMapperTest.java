@@ -34,6 +34,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.test.util.ReflectionTestUtils;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.json.JsonMapper;
 
 /**
  * Pure JUnit tests (no Spring context) against directly constructed entities/domain objects - #860
@@ -106,6 +108,24 @@ class ChatResponseMapperTest {
     assertThat(ChatResponseMapper.freezeReason("PROFILE_LOCKED"))
         .isEqualTo(SourceBlockReason.PROFILE_LOCKED);
     assertThat(ChatResponseMapper.freezeReason("LOCKED")).isEqualTo(SourceBlockReason.TYPE_LOCKED);
+  }
+
+  /** A stored source with a reason this version does not know keeps the chat readable. */
+  @Test
+  void aStoredSourceWithAnUnknownReasonIsShownWithoutItsFreeze() {
+    List<ChatSource> stored =
+        JsonMapper.builder()
+            .build()
+            .readValue(
+                "[{\"fileName\": \"alt.md\", \"relevanceScore\": 1.0, \"matchCount\": 1,"
+                    + " \"cited\": true, \"freezeReason\": \"DORMANT\","
+                    + " \"freezeResponsible\": \"Besitzerin\"}]",
+                new TypeReference<List<ChatSource>>() {});
+
+    SourceReference reference = ChatResponseMapper.toSourceReference(stored.getFirst());
+
+    assertThat(reference.getFileName()).isEqualTo("alt.md");
+    assertThat(reference.getFreeze()).isNull();
   }
 
   @Test

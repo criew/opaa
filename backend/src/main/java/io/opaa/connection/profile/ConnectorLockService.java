@@ -176,7 +176,7 @@ public class ConnectorLockService {
   }
 
   /** The descriptor of a type that reaches a source; refuses the upload and an unknown type. */
-  SourceConnectorDescriptor requireLockable(SourceType type) {
+  private SourceConnectorDescriptor requireLockable(SourceType type) {
     return connectors
         .getObject()
         .find(type)

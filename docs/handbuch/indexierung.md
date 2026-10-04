@@ -519,10 +519,16 @@ Mit eingeschalteter Pflicht gilt für die Quellart:
 - Schaltet die Systemverwaltung die Pflicht aus, laufen alle gesperrten Bibliotheken ohne
   Neueinrichtung weiter, und eine eigene Adresse ist wieder möglich.
 
-**Einschränkung RSS:** Die Pflicht legt nur die Feed-Adresse fest. Die Detailseiten eines Feeds
-stammen aus seinen Einträgen und können auf fremden Servern liegen; sie werden weiter abgerufen,
-aber ohne Zugangsdaten. Die Zielprüfung gegen private und lokale Adressbereiche gilt daneben
-unverändert.
+Was die Pflicht für eine Quellart nicht festlegt, meldet ihr Konnektor mit seiner Profilangabe;
+die Abfrage vor dem Einschalten zeigt es. **Einschränkung RSS**, sobald RSS Zugänge kennt: Die
+Pflicht legt nur die Feed-Adresse fest. Die Detailseiten eines Feeds stammen aus seinen Einträgen
+und können auf fremden Servern liegen; sie werden weiter abgerufen, aber ohne Zugangsdaten. Die
+Zielprüfung gegen private und lokale Adressbereiche gilt daneben unverändert.
+
+Eine Bibliothek, deren Zugang gelöscht wurde („Zugang entfernt“), zählt für die Pflicht als
+Bibliothek mit eigener Adresse: Ihre Adresse ist eingefroren, und bei der Wahl „sperren“ ist sie
+gesperrt, bis sie einem Zugang zugeordnet ist. Die Liste der Bibliotheken mit eigener Adresse
+zeigt nur die der eigenen Organisation.
 
 Ein- und Ausschalten sowie eine geänderte Wahl für den Bestand sind Governance-Ereignisse im
 Revisionsprotokoll.
