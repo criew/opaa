@@ -110,6 +110,31 @@ class ChatResponseMapperTest {
     assertThat(ChatResponseMapper.freezeReason("LOCKED")).isEqualTo(SourceBlockReason.TYPE_LOCKED);
   }
 
+  /** Answers stored with the reasons of a connected account read back and show them. */
+  @Test
+  void aStoredSourceWithAReasonOfAConnectedAccountIsShownWithItsFreeze() {
+    for (String reason : List.of("OWNER_DEACTIVATED", "DORMANT", "EXPIRED")) {
+      List<ChatSource> stored =
+          JsonMapper.builder()
+              .build()
+              .readValue(
+                  "[{\"fileName\": \"privat.md\", \"relevanceScore\": 1.0, \"matchCount\": 1,"
+                      + " \"cited\": true, \"freezeReason\": \""
+                      + reason
+                      + "\", \"freezeResponsible\": \"Besitzerin der Bibliothek\","
+                      + " \"freezeAsOf\": \"2026-10-02T03:00:00Z\"}]",
+                  new TypeReference<List<ChatSource>>() {});
+
+      SourceReference reference = ChatResponseMapper.toSourceReference(stored.getFirst());
+
+      assertThat(reference.getFreeze().getBlock().getReason())
+          .isEqualTo(SourceBlockReason.fromValue(reason));
+      assertThat(reference.getFreeze().getBlock().getResponsible())
+          .isEqualTo("Besitzerin der Bibliothek");
+      assertThat(reference.getFreeze().getAsOf()).isEqualTo(Instant.parse("2026-10-02T03:00:00Z"));
+    }
+  }
+
   /** A stored source with a reason this version does not know keeps the chat readable. */
   @Test
   void aStoredSourceWithAnUnknownReasonIsShownWithoutItsFreeze() {
@@ -118,7 +143,7 @@ class ChatResponseMapperTest {
             .build()
             .readValue(
                 "[{\"fileName\": \"alt.md\", \"relevanceScore\": 1.0, \"matchCount\": 1,"
-                    + " \"cited\": true, \"freezeReason\": \"DORMANT\","
+                    + " \"cited\": true, \"freezeReason\": \"NO_SUCH_REASON\","
                     + " \"freezeResponsible\": \"Besitzerin\"}]",
                 new TypeReference<List<ChatSource>>() {});
 

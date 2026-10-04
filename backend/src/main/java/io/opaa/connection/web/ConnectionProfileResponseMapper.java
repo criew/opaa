@@ -9,6 +9,7 @@ import io.opaa.api.dto.ConnectionProfileUpdateRequest;
 import io.opaa.api.dto.ConnectorProfileRequirementResponse;
 import io.opaa.api.dto.ConnectorTypeStateResponse;
 import io.opaa.api.dto.OwnAddressLibrary;
+import io.opaa.api.dto.PersonCount;
 import io.opaa.api.dto.SourceChangeRejectionCategory;
 import io.opaa.common.ValidationException;
 import io.opaa.connection.ConnectorReleaseService.ProfileOption;
@@ -17,6 +18,7 @@ import io.opaa.connection.profile.ConnectionProfileService.ProfileImpact;
 import io.opaa.connection.profile.ConnectionProfileValues;
 import io.opaa.connection.profile.ConnectorLockService.TypeState;
 import io.opaa.connection.profile.OwnAddressStock;
+import io.opaa.connection.profile.PersonNumbers.ProfileCounts;
 import io.opaa.connection.profile.ProfileRequirementService.Overview;
 import io.opaa.indexing.source.ConnectorData;
 import io.opaa.knowledge.SourceType;
@@ -68,7 +70,10 @@ public final class ConnectionProfileResponseMapper {
   }
 
   static ConnectionProfileResponse toResponse(
-      ConnectionProfile profile, boolean secretExpiresSoon, long connectionCount) {
+      ConnectionProfile profile,
+      boolean secretExpiresSoon,
+      long connectionCount,
+      ProfileCounts accounts) {
     ConnectorData settings = ConnectorData.fromJson(profile.getConnectorSettings());
     return new ConnectionProfileResponse()
         .id(profile.getId())
@@ -90,6 +95,8 @@ public final class ConnectionProfileResponseMapper {
         .sourceProxy(profile.getSourceProxy())
         .sourceInsecureSsl(profile.isSourceInsecureSsl())
         .connectionCount(connectionCount)
+        .connectedAccountCount(toCount(accounts.total()))
+        .expiredConnectionCount(accounts.expired() == null ? null : toCount(accounts.expired()))
         .locked(profile.isLocked())
         .lockedAt(profile.getLockedAt())
         .createdAt(profile.getCreatedAt())
@@ -132,6 +139,7 @@ public final class ConnectionProfileResponseMapper {
     return new ConnectionProfileImpactResponse()
         .connections(impact.connections())
         .libraries(impact.libraries())
+        .connectedAccounts(toCount(impact.connectedAccounts()))
         .lastForProfileRequirement(lastForProfileRequirement)
         .rejectedLibraries((long) impact.rejections().size())
         .rejections(
@@ -144,6 +152,11 @@ public final class ConnectionProfileResponseMapper {
                                 SourceChangeRejectionCategory.valueOf(rejection.category().name()))
                             .message(rejection.message()))
                 .toList());
+  }
+
+  /** A number of persons' connections, as masked for the administration. */
+  static PersonCount toCount(io.opaa.connection.profile.PersonCount count) {
+    return new PersonCount().count(count.count()).fewerThan(count.fewerThan());
   }
 
   static ConnectorProfileRequirementResponse toResponse(Overview overview) {

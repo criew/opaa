@@ -17,15 +17,22 @@ import java.util.UUID;
 public record SourceDraft(
     SourceType type, UUID profileId, UUID libraryId, SourceSettings requested, DraftOwner owner) {
 
-  /** Whose secret a draft will hold; a person's connected account is a further owner. */
+  /** Whose secret a draft will hold: a library's, or a person's connected account. */
   public enum DraftOwner {
-    LIBRARY
+    LIBRARY,
+    PERSON
   }
 
   public SourceDraft {
     Objects.requireNonNull(type, "type");
     Objects.requireNonNull(requested, "requested");
     Objects.requireNonNull(owner, "owner");
+  }
+
+  /** A person's connected account on {@code profileId}, before it is stored. */
+  public static SourceDraft ofPerson(SourceType type, UUID profileId, SourceSettings requested) {
+    return new SourceDraft(
+        type, Objects.requireNonNull(profileId, "profileId"), null, requested, DraftOwner.PERSON);
   }
 
   /** A draft whose secret the library holds. */
