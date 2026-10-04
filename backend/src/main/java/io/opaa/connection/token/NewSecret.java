@@ -5,7 +5,7 @@ import java.util.Objects;
 
 /**
  * A secret on its way into {@link ConnectionSecrets#store}; its form decides the stored kind. A
- * further form (an OAuth grant) is a further permitted type. {@link #toString} never shows a value.
+ * further form (an OAuth grant) is a further permitted type. No form shows its value in a string.
  */
 public sealed interface NewSecret permits NewSecret.Personal {
 

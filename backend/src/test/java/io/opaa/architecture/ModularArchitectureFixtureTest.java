@@ -178,7 +178,27 @@ class ModularArchitectureFixtureTest {
         .anySatisfy(
             violation -> assertThat(violation).contains("web.LibraryController.ownerAccount"))
         .noneSatisfy(violation -> assertThat(violation).contains("ConnectedAccountController"))
-        .noneSatisfy(violation -> assertThat(violation).contains("PersonCount"));
+        .noneSatisfy(violation -> assertThat(violation).contains("PersonNumbers"));
+  }
+
+  /** An intermediate step asks the exact counts; the one masking class may. */
+  @Test
+  void anExactPersonCountOutsideTheMaskIsReported() {
+    Scenario scenario = new Scenario("connectedperson");
+
+    assertThat(scenario.violations(ModularArchitecture::personNumbersLeaveOnlyMasked))
+        .singleElement(STRING)
+        .contains("profile.Impact.connectedAccounts", "countsAmong");
+  }
+
+  /** library stores a connection past the sign-in; the account package and OAuth may. */
+  @Test
+  void aConnectionEstablishedOutsideItsPackagesIsReported() {
+    Scenario scenario = new Scenario("connectedperson");
+
+    assertThat(scenario.violations(ModularArchitecture::aConnectionIsEstablishedOnlyAfterItsSignIn))
+        .singleElement(STRING)
+        .contains("library.AccountShortcut.store", "established");
   }
 
   /**

@@ -1,6 +1,7 @@
 package io.opaa.connection.account;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -11,13 +12,20 @@ import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.classic.spi.ThrowableProxyUtil;
 import com.jayway.jsonpath.JsonPath;
+import io.opaa.asset.AssetShellService;
 import io.opaa.auth.DevAuthFilter;
 import io.opaa.connection.token.NewSecret;
+import io.opaa.indexing.source.profileprobe.PersonProbeIndexingExecutor;
 import io.opaa.indexing.source.profileprobe.PersonProbeSourceConnector;
+import io.opaa.knowledge.KnowledgeLibrary;
+import io.opaa.knowledge.KnowledgeLibraryRepository;
+import io.opaa.organization.Organization;
 import io.opaa.test.ConnectorReleases;
 import io.opaa.test.OpaaIntegrationTest;
+import io.opaa.test.OwnLibraryFixtures;
 import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -34,6 +42,7 @@ import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * Acceptance criterion of #2163: a person's secret and account name appear in no log line, no
@@ -62,6 +71,13 @@ class ConnectedAccountLeakIntegrationTest {
 
   @Autowired private MockMvc mockMvc;
   @Autowired private JdbcTemplate jdbc;
+  @Autowired private KnowledgeLibraryRepository libraryRepository;
+  @Autowired private AssetShellService shellService;
+  @Autowired private TransactionTemplate transactions;
+  @Autowired private OwnLibraryFixtures libraryFixtures;
+  @Autowired private PersonProbeIndexingExecutor probe;
+
+  private final List<UUID> libraries = new ArrayList<>();
 
   private final ch.qos.logback.core.read.ListAppender<ILoggingEvent> appender =
       new ch.qos.logback.core.read.ListAppender<>();
@@ -95,6 +111,11 @@ class ConnectedAccountLeakIntegrationTest {
           logger.setLevel(level);
         });
     if (profile != null) {
+      for (UUID library : libraries) {
+        jdbc.update("DELETE FROM audit_log WHERE object_id = ?", library.toString());
+        jdbc.update("DELETE FROM asset_grant_history WHERE asset_id = ?", library);
+      }
+      libraryFixtures.removeLibraries(libraries.toArray(UUID[]::new));
       jdbc.update("DELETE FROM connected_accounts WHERE profile_id = ?", profile);
       jdbc.update("DELETE FROM connection_log WHERE profile_id = ?", profile);
       ConnectorReleases.withdraw(jdbc, "PROFILE:" + profile);
@@ -121,6 +142,9 @@ class ConnectedAccountLeakIntegrationTest {
 
     call("dev-user", put(ME + "/" + profile), credentials.formatted(WRONG), ownAnswers);
     call("dev-user", put(ME + "/" + profile), credentials.formatted(SECRET), ownAnswers);
+    UUID library = privateLibraryOnTheProfile();
+    runToTheEnd(library);
+    assertThat(probe.secretSeenBy(library)).contains(LABEL + ":" + SECRET);
     String page = call("dev-user", get(ME), null, ownAnswers);
     call("dev-admin", get(ADMIN), null, adminAnswers);
     call("dev-admin", get(ADMIN + "/" + profile), null, adminAnswers);
@@ -190,6 +214,54 @@ class ConnectedAccountLeakIntegrationTest {
     assertThat(account.toString()).doesNotContain(LABEL);
     assertThat(view.toString()).doesNotContain(LABEL);
     assertThat(NewSecret.personal(SECRET).toString()).doesNotContain(SECRET);
+  }
+
+  /** A private library of dev-user on the profile, as its creation will connect it. */
+  private UUID privateLibraryOnTheProfile() {
+    UUID person =
+        jdbc.queryForObject("SELECT id FROM users WHERE email = 'dev-user@opaa.local'", UUID.class);
+    UUID id =
+        transactions.execute(
+            status -> {
+              KnowledgeLibrary saved =
+                  libraryRepository.save(
+                      KnowledgeLibrary.ownerOnly(
+                          Organization.DEFAULT_ID,
+                          "Leck " + UUID.randomUUID(),
+                          null,
+                          person,
+                          PersonProbeSourceConnector.TYPE,
+                          null,
+                          "https://person.example.org/ablage",
+                          null,
+                          null,
+                          false));
+              shellService.registerCreated(
+                  saved, person, Map.of("name", saved.getName(), "sourceType", "PERSON_PROBE"));
+              return saved.getId();
+            });
+    libraries.add(id);
+    jdbc.update(
+        "INSERT INTO library_connections (library_id, profile_id, created_at, updated_at,"
+            + " version) VALUES (?, ?, now(), now(), 0)",
+        id,
+        profile);
+    return id;
+  }
+
+  /** Runs {@code library} as its owner until the run completed; the run uses the secret. */
+  private void runToTheEnd(UUID library) throws Exception {
+    call("dev-user", post("/api/v1/libraries/" + library + "/indexing"), null, ownAnswers);
+    await()
+        .atMost(Duration.ofSeconds(20))
+        .until(
+            () ->
+                call(
+                        "dev-user",
+                        get("/api/v1/libraries/" + library + "/indexing/status"),
+                        null,
+                        new ArrayList<>())
+                    .contains("COMPLETED"));
   }
 
   private String call(

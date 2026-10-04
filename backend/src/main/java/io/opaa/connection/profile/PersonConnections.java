@@ -1,22 +1,26 @@
 package io.opaa.connection.profile;
 
 import io.opaa.api.types.ConnectionEndCause;
+import java.util.Collection;
+import java.util.Map;
 import java.util.UUID;
 
 /**
  * The port through which the profile administration reaches persons' connected accounts on a
- * profile, by number and as a whole only; the account package answers it.
+ * profile, as a whole only; the account package answers it. Its numbers are exact and leave this
+ * package only masked, through {@link PersonNumbers}.
  */
 public interface PersonConnections {
 
-  /** The persons' connections on {@code profileId} that are not disconnected. */
-  long countUnder(UUID profileId);
+  /** The connected and the expired accounts of each of {@code profileIds} that has any. */
+  Map<UUID, StateCounts> countsAmong(Collection<UUID> profileIds);
 
   /**
    * Ends every person's connection on {@code profileId} for {@code cause}, caused by {@code
    * actorUserId}, with one connection-log entry each, in the caller's transaction.
-   *
-   * @return how many connections ended
    */
-  int endAllUnder(UUID profileId, ConnectionEndCause cause, UUID actorUserId);
+  void endAllUnder(UUID profileId, ConnectionEndCause cause, UUID actorUserId);
+
+  /** The exact numbers of one profile, for {@link PersonNumbers} only. */
+  record StateCounts(long connected, long expired) {}
 }

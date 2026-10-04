@@ -281,7 +281,11 @@ public class SourceBlocks {
               connection != null,
               profileOfLibrary.get(library.getId()),
               owner,
-              owner == null ? null : secretStates.get(owner)));
+              owner == null
+                  ? null
+                  : withoutPersons(profileOfLibrary.get(library.getId()), owner)
+                      ? Reason.NOT_CONNECTED
+                      : secretStates.get(owner)));
     }
     return facts;
   }
@@ -290,6 +294,11 @@ public class SourceBlocks {
    * Whether the store holds the secret of {@code owner} on {@code profile}: a personal secret of a
    * library, and any secret of a person; a library's other sign-ins are not supported yet.
    */
+  /** A person's secret on a profile that admits no persons (any more) is never handed out. */
+  static boolean withoutPersons(ConnectionProfile profile, SecretOwner owner) {
+    return owner instanceof PersonOwned && !profile.getOwnership().admitsPersons();
+  }
+
   private static boolean asksTheStore(ConnectionProfile profile, SecretOwner owner) {
     ConnectionAuthMethod method = profile.getAuthMethod();
     return method != ConnectionAuthMethod.NONE

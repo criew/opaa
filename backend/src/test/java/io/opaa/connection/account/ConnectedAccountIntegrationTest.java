@@ -75,6 +75,7 @@ class ConnectedAccountIntegrationTest {
 
   private final List<UUID> libraries = new ArrayList<>();
   private UUID profile;
+  private String profileName;
   private UUID person;
   private UUID admin;
 
@@ -84,16 +85,17 @@ class ConnectedAccountIntegrationTest {
     mockMvc.perform(as("dev-admin", get("/api/v1/spaces"))).andExpect(status().isOk());
     person = userIdOf("dev-user@opaa.local");
     admin = userIdOf("admin@opaa.local");
+    profileName = "Zugang Personen " + UUID.randomUUID();
     String body =
         mockMvc
             .perform(
                 as("dev-admin", post(ADMIN))
                     .content(
                         """
-                        {"name": "Zugang Personen %s", "sourceType": "PERSON_PROBE",
+                        {"name": "%s", "sourceType": "PERSON_PROBE",
                          "serverUrl": "%s", "authMethod": "PERSONAL_SECRET", "ownership": "PERSON"}
                         """
-                            .formatted(UUID.randomUUID(), SERVER)))
+                            .formatted(profileName, SERVER)))
             .andExpect(status().isCreated())
             .andReturn()
             .getResponse()
@@ -302,6 +304,8 @@ class ConnectedAccountIntegrationTest {
     assertThat(stateOf(person)).isEqualTo("EXPIRED");
     assertThat(secrets.stateOf(new PersonOwned(profile, person))).contains(Reason.EXPIRED);
     assertThat(blockOf(library).reason()).isEqualTo(Reason.EXPIRED);
+    // a second rejection of the same run's secret tells the owner nothing new
+    resolver.credentialsRejected(loaded);
     assertThat(
             jdbc.queryForObject(
                 "SELECT count(*) FROM notifications WHERE type = 'CONNECTION_EXPIRED'"
@@ -322,8 +326,8 @@ class ConnectedAccountIntegrationTest {
   }
 
   /**
-   * Acceptance criterion of #2163 (review of #2235): the connection of a private library is logged
-   * as the person's by every writer, never as the library's.
+   * Acceptance criterion of #2163: the connection of a private library is logged as the person's by
+   * every writer, never as the library's.
    */
   @Test
   void aPrivateLibrarysConnectionIsLoggedAsThePersonsByEveryWriter() throws Exception {
@@ -363,6 +367,43 @@ class ConnectedAccountIntegrationTest {
             });
   }
 
+  /** A profile whose ownership no longer admits persons ends their connections. */
+  @Test
+  void aProfileThatNoLongerAdmitsPersonsEndsTheirConnectionsAndHandsOutNothing() throws Exception {
+    connect("dev-user", PASSWORD).andExpect(status().isOk());
+    UUID library = privateLibraryOnTheProfile();
+    String change =
+        """
+        {"name": "%s", "serverUrl": "%s", "authMethod": "PERSONAL_SECRET",
+         "ownership": "LIBRARY"%s}
+        """;
+
+    mockMvc
+        .perform(
+            as("dev-admin", put(ADMIN + "/" + profile))
+                .content(change.formatted(profileName, SERVER, "")))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("CONNECTION_PROFILE_CONFIRMATION_REQUIRED"));
+    mockMvc
+        .perform(
+            as("dev-admin", put(ADMIN + "/" + profile))
+                .content(change.formatted(profileName, SERVER, ", \"confirmDiscard\": true")))
+        .andExpect(status().isOk());
+
+    assertThat(tokenRows()).isZero();
+    assertThat(stateOf(person)).isEqualTo("DISCONNECTED");
+    assertThat(logEntries())
+        .extracting(entry -> entry.get("event_type"), entry -> entry.get("cause"))
+        .contains(tuple("DISCONNECTED", "PROFILE_CHANGED"));
+    // even a secret that reached the store is not handed out on a profile without persons
+    secrets.store(
+        new PersonOwned(profile, person),
+        io.opaa.connection.token.NewSecret.personal("avogt:" + PASSWORD),
+        SERVER);
+    assertThat(blockOf(library).reason()).isEqualTo(Reason.NOT_CONNECTED);
+    connect("dev-user", PASSWORD).andExpect(status().isBadRequest());
+  }
+
   @Test
   void anAccountWithAConnectionIsNotDeleted() throws Exception {
     connect("dev-user", PASSWORD).andExpect(status().isOk());
@@ -379,7 +420,8 @@ class ConnectedAccountIntegrationTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.connectedAccountCount.fewerThan").value(5))
         .andExpect(jsonPath("$.connectedAccountCount.count").doesNotExist())
-        .andExpect(jsonPath("$.expiredConnectionCount.count").value(0));
+        // one connected person: the expired part would tell how many are connected
+        .andExpect(jsonPath("$.expiredConnectionCount.fewerThan").value(5));
     mockMvc
         .perform(as("dev-admin", get(ADMIN + "/" + profile + "/impact")))
         .andExpect(status().isOk())

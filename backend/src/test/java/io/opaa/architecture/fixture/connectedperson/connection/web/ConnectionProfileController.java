@@ -1,15 +1,14 @@
 package io.opaa.architecture.fixture.connectedperson.connection.web;
 
 import io.opaa.architecture.fixture.connectedperson.connection.account.ConnectedAccount;
-import io.opaa.architecture.fixture.connectedperson.connection.account.ConnectedAccountCounts;
-import io.opaa.architecture.fixture.connectedperson.connection.account.PersonCount;
+import io.opaa.architecture.fixture.connectedperson.connection.profile.PersonNumbers;
 
-/** The administration: numbers pass, a connected account does not. */
+/** The administration: masked numbers pass, a connected account does not. */
 public abstract class ConnectionProfileController {
-  ConnectedAccountCounts counts;
+  PersonNumbers numbers;
 
-  PersonCount count() {
-    return counts.masked(3);
+  String count() {
+    return numbers.totalOf("p");
   }
 
   abstract ConnectedAccount account();

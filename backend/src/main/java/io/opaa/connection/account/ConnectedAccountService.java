@@ -21,6 +21,7 @@ import io.opaa.connection.profile.ConnectorScope;
 import io.opaa.connection.profile.EffectiveSourceSettings;
 import io.opaa.connection.profile.LibraryConnectionRepository;
 import io.opaa.connection.profile.PersonConnections;
+import io.opaa.connection.profile.PersonConnections.StateCounts;
 import io.opaa.connection.profile.ProfileAdmission;
 import io.opaa.connection.profile.SourceDraft;
 import io.opaa.connection.token.ConnectionSecrets;
@@ -42,8 +43,11 @@ import io.opaa.security.CredentialsEncryptor;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -144,7 +148,9 @@ public class ConnectedAccountService implements PersonConnections {
   /**
    * Stores {@code secret} as the caller's connected account on {@code profile}, after {@link
    * #requireConnectable}: a new account is connected, an existing one reconnected. {@code label} is
-   * the caller's account name at the provider, {@code null} for none; only the caller sees it.
+   * the caller's account name at the provider, {@code null} for none; only the caller sees it. It
+   * trusts that the secret signed in already, so only this package and the OAuth flow call it
+   * ({@code aConnectionIsEstablishedOnlyAfterItsSignIn}).
    */
   @Transactional
   public AccountOverview.Account established(
@@ -293,19 +299,28 @@ public class ConnectedAccountService implements PersonConnections {
 
   @Override
   @Transactional(readOnly = true)
-  public long countUnder(UUID profileId) {
-    return accounts.countByProfileIdAndStateNot(profileId, ConnectedAccountState.DISCONNECTED);
+  public Map<UUID, StateCounts> countsAmong(Collection<UUID> profileIds) {
+    Map<UUID, long[]> raw = new HashMap<>();
+    for (ConnectedAccountRepository.StateCount row : accounts.countByProfileAndState(profileIds)) {
+      long[] counts = raw.computeIfAbsent(row.getProfileId(), id -> new long[2]);
+      switch (row.getState()) {
+        case CONNECTED -> counts[0] += row.getConnections();
+        case EXPIRED -> counts[1] += row.getConnections();
+        case DISCONNECTED -> {}
+      }
+    }
+    Map<UUID, StateCounts> counts = new HashMap<>();
+    raw.forEach((profileId, pair) -> counts.put(profileId, new StateCounts(pair[0], pair[1])));
+    return counts;
   }
 
   @Override
   @Transactional
-  public int endAllUnder(UUID profileId, ConnectionEndCause cause, UUID actorUserId) {
-    List<ConnectedAccount> under =
-        accounts.findByProfileIdAndStateNot(profileId, ConnectedAccountState.DISCONNECTED);
-    for (ConnectedAccount account : under) {
+  public void endAllUnder(UUID profileId, ConnectionEndCause cause, UUID actorUserId) {
+    for (ConnectedAccount account :
+        accounts.findByProfileIdAndStateNot(profileId, ConnectedAccountState.DISCONNECTED)) {
       end(account, cause, ConnectionLogActor.person(actorUserId));
     }
-    return under.size();
   }
 
   /**

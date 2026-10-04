@@ -68,6 +68,7 @@ public class ConnectionProfileService {
   private final SourceConnectorRegistry connectors;
   private final ConnectionSecrets secrets;
   private final PersonConnections persons;
+  private final PersonNumbers personNumbers;
   private final SourceChangeGate changeGate;
   private final CredentialsEncryptor encryptor;
   private final AuditEventRecorder audit;
@@ -81,6 +82,7 @@ public class ConnectionProfileService {
       SourceConnectorRegistry connectors,
       ConnectionSecrets secrets,
       PersonConnections persons,
+      PersonNumbers personNumbers,
       CredentialsEncryptor encryptor,
       AuditEventRecorder audit,
       CapabilityService capabilities,
@@ -91,6 +93,7 @@ public class ConnectionProfileService {
     this.connectors = connectors;
     this.secrets = secrets;
     this.persons = persons;
+    this.personNumbers = personNumbers;
     this.changeGate = new SourceChangeGate(connectors);
     this.encryptor = encryptor;
     this.audit = audit;
@@ -117,7 +120,7 @@ public class ConnectionProfileService {
   public ProfileImpact impact(UUID id) {
     get(id);
     long libraryConnections = connections.countByProfileId(id);
-    return new ProfileImpact(libraryConnections, libraryConnections, persons.countUnder(id));
+    return new ProfileImpact(libraryConnections, libraryConnections, personNumbers.totalOf(id));
   }
 
   /** The connections of each of {@code profiles}, with one query for all of them. */
@@ -157,8 +160,9 @@ public class ConnectionProfileService {
   /**
    * Replaces every editable field; {@code secret} {@code null} keeps the stored one, blank clears
    * it, anything else replaces it. A new address, client id, tenant, scope list or sign-in method
-   * discards every secret held under the profile - refused with 409 {@value #CONFIRMATION_REQUIRED}
-   * while connections exist and {@code confirmed} is false.
+   * discards every secret held under the profile; an ownership that no longer admits persons ends
+   * their connections - refused with 409 {@value #CONFIRMATION_REQUIRED} while connections exist
+   * and {@code confirmed} is false.
    */
   @Transactional
   public ConnectionProfile update(
@@ -187,10 +191,11 @@ public class ConnectionProfileService {
             || !Objects.equals(profile.getTenant(), validated.tenant())
             || !Objects.equals(profile.getScopes(), validated.scopes());
     boolean discards = addressChanged || registrationChanged;
+    boolean dropsPersons =
+        profile.getOwnership().admitsPersons() && !validated.ownership().admitsPersons();
     List<LibraryConnection> affected = discards ? connections.findByProfileId(id) : List.of();
-    long personConnections = discards ? persons.countUnder(id) : 0;
-    long concerned = affected.size() + personConnections;
-    if (concerned > 0 && !confirmed) {
+    boolean personsConcerned = (discards || dropsPersons) && personNumbers.anyOn(id);
+    if ((!affected.isEmpty() || personsConcerned) && !confirmed) {
       // persons are not counted here: the administration sees their number only masked
       throw new ConflictException(
           "Die Änderung verwirft die Zugangsdaten "
@@ -199,8 +204,8 @@ public class ConnectionProfileService {
                   : "von "
                       + affected.size()
                       + (affected.size() == 1 ? " Bibliothek" : " Bibliotheken")
-                      + (personConnections > 0 ? " und " : ""))
-              + (personConnections > 0 ? "der verbundenen Konten" : "")
+                      + (personsConcerned ? " und " : ""))
+              + (personsConcerned ? "der verbundenen Konten" : "")
               + " dieses Zugangs. Bitte bestätigen.",
           CONFIRMATION_REQUIRED);
     }
@@ -208,7 +213,7 @@ public class ConnectionProfileService {
     String previousAddress = profile.getServerUrl();
     profile.replace(validated, ciphertext, clock.instant());
     profiles.save(profile);
-    if (concerned > 0) {
+    if (discards) {
       if (addressChanged) {
         moveAddresses(affected, previousAddress, validated.serverUrl());
       }
@@ -218,9 +223,11 @@ public class ConnectionProfileService {
               : ConnectionEndCause.REGISTRATION_CHANGED;
       secrets.discardAllUnder(id, cause);
       persons.endAllUnder(id, cause, caller.id());
+    } else if (dropsPersons) {
+      persons.endAllUnder(id, ConnectionEndCause.PROFILE_CHANGED, caller.id());
     }
     Map<String, Object> after = auditState(profile);
-    if (concerned > 0) {
+    if (!affected.isEmpty()) {
       after.put("connectionsDiscarded", affected.size());
     }
     record(caller, AuditEventType.CONNECTION_PROFILE_CHANGED, profile, before, after);
@@ -233,8 +240,9 @@ public class ConnectionProfileService {
   @Transactional
   public ProfileImpact disconnectAll(CurrentUser caller, UUID id) {
     ConnectionProfile profile = get(id);
+    PersonCount ended = personNumbers.totalOf(id);
     Discarded discarded = secrets.discardAllUnder(id, ConnectionEndCause.EMERGENCY);
-    int ended = persons.endAllUnder(id, ConnectionEndCause.EMERGENCY, caller.id());
+    persons.endAllUnder(id, ConnectionEndCause.EMERGENCY, caller.id());
     record(
         caller,
         AuditEventType.CONNECTION_PROFILE_DISCONNECTED,
@@ -460,7 +468,7 @@ public class ConnectionProfileService {
 
   /**
    * Connections of libraries a change would cut off, the libraries behind them, and the persons'
-   * connected accounts - an exact number the administration sees only masked.
+   * connected accounts, masked.
    */
-  public record ProfileImpact(long connections, long libraries, long connectedAccounts) {}
+  public record ProfileImpact(long connections, long libraries, PersonCount connectedAccounts) {}
 }

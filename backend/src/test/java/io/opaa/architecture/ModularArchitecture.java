@@ -285,14 +285,20 @@ public final class ModularArchitecture {
   static final String CONNECTED_ACCOUNTS = "connection.account";
 
   /**
-   * What of {@link #CONNECTED_ACCOUNTS} the administration may use: numbers, each masked below the
-   * minimum group size, never a person or an account.
+   * The exact counts of persons' connections, relative to the root, as a method of the port and its
+   * implementations: only {@link #PERSON_NUMBERS} asks it, and hands out masked numbers.
    */
-  static final Set<String> ACCOUNT_NUMBERS =
-      Set.of(
-          "connection.account.ConnectedAccountCounts",
-          "connection.account.ConnectedAccountCounts$ProfileCounts",
-          "connection.account.PersonCount");
+  static final String RAW_PERSON_COUNTS = "connection.profile.PersonConnections#countsAmong";
+
+  static final String PERSON_NUMBERS = "connection.profile.PersonNumbers";
+
+  /**
+   * The step that stores a person's connection, relative to the root: it trusts that the secret
+   * signed in already, so only {@link #ESTABLISHING_PACKAGES} call it.
+   */
+  static final String ESTABLISHED = "connection.account.ConnectedAccountService#established";
+
+  static final Set<String> ESTABLISHING_PACKAGES = Set.of("connection.account", "connection.oauth");
 
   /** The web classes that serve a person their own connected accounts, relative to the root. */
   static final Set<String> OWN_ACCOUNT_WEB =
@@ -1061,8 +1067,8 @@ public final class ModularArchitecture {
 
   /**
    * Dependencies of a web class - a controller, a response mapper or a web helper of any module -
-   * on {@link #CONNECTED_ACCOUNTS} beyond {@link #ACCOUNT_NUMBERS}; only {@link #OWN_ACCOUNT_WEB},
-   * which serves a person their own accounts, may reach further.
+   * on {@link #CONNECTED_ACCOUNTS}; only {@link #OWN_ACCOUNT_WEB}, which serves a person their own
+   * accounts, may. The administration gets numbers through {@link #PERSON_NUMBERS} only.
    */
   ArchRule theAdministrationNeverSeesAConnectedPerson() {
     return noClasses()
@@ -1080,19 +1086,66 @@ public final class ModularArchitecture {
         .should()
         .dependOnClassesThat(
             DescribedPredicate.describe(
-                "are in " + CONNECTED_ACCOUNTS + " and not ModularArchitecture.ACCOUNT_NUMBERS",
-                target -> {
-                  JavaClass base = target.getBaseComponentType();
-                  String relative = relative(base.getPackageName());
-                  if (relative == null || !relative.equals(CONNECTED_ACCOUNTS)) {
-                    return false;
-                  }
-                  String name = base.getName().substring(root.length() + 1);
-                  return !ACCOUNT_NUMBERS.contains(name);
-                }))
+                "are in " + CONNECTED_ACCOUNTS,
+                target ->
+                    CONNECTED_ACCOUNTS.equals(
+                        relative(target.getBaseComponentType().getPackageName()))))
         .because(
             "the administration sees connected accounts only as masked numbers, never a person"
                 + " or an account (ADR-0041, Beschluss 8)")
+        .allowEmptyShould(true);
+  }
+
+  /**
+   * Calls of {@link #RAW_PERSON_COUNTS}, on the port or an implementation, outside {@link
+   * #PERSON_NUMBERS}: an exact count passed through any other class could reach an answer unmasked.
+   */
+  ArchRule personNumbersLeaveOnlyMasked() {
+    String port = RAW_PERSON_COUNTS.substring(0, RAW_PERSON_COUNTS.indexOf('#'));
+    String method = RAW_PERSON_COUNTS.substring(RAW_PERSON_COUNTS.indexOf('#') + 1);
+    return noClasses()
+        .that(
+            DescribedPredicate.describe(
+                "are not " + PERSON_NUMBERS,
+                javaClass ->
+                    !PERSON_NUMBERS.equals(relativeName(javaClass.getBaseComponentType()))))
+        .should()
+        .accessTargetWhere(
+            DescribedPredicate.describe(
+                "call " + RAW_PERSON_COUNTS,
+                access ->
+                    access.getName().equals(method)
+                        && (port.equals(relativeName(access.getTargetOwner()))
+                            || access.getTargetOwner().getAllRawInterfaces().stream()
+                                .anyMatch(type -> port.equals(relativeName(type))))))
+        .because(
+            "a number about persons reaches the administration only masked below the minimum group"
+                + " size (ADR-0036)")
+        .allowEmptyShould(true);
+  }
+
+  /** Calls of {@link #ESTABLISHED} outside {@link #ESTABLISHING_PACKAGES}. */
+  ArchRule aConnectionIsEstablishedOnlyAfterItsSignIn() {
+    String owner = ESTABLISHED.substring(0, ESTABLISHED.indexOf('#'));
+    String method = ESTABLISHED.substring(ESTABLISHED.indexOf('#') + 1);
+    return noClasses()
+        .that(
+            DescribedPredicate.describe(
+                "are outside " + ESTABLISHING_PACKAGES,
+                javaClass -> {
+                  String relative = relative(javaClass.getBaseComponentType().getPackageName());
+                  return relative != null && !ESTABLISHING_PACKAGES.contains(relative);
+                }))
+        .should()
+        .accessTargetWhere(
+            DescribedPredicate.describe(
+                "call " + ESTABLISHED,
+                access ->
+                    access.getName().equals(method)
+                        && owner.equals(relativeName(access.getTargetOwner()))))
+        .because(
+            "it stores a person's secret without signing in; every other path connects through the"
+                + " sign-in first")
         .allowEmptyShould(true);
   }
 
@@ -1163,6 +1216,8 @@ public final class ModularArchitecture {
         theLibrarySecretIsReadInOnePlace(),
         theSecretStoreIsUsedOnlyInConnections(),
         theAdministrationNeverSeesAConnectedPerson(),
+        personNumbersLeaveOnlyMasked(),
+        aConnectionIsEstablishedOnlyAfterItsSignIn(),
         theForeignContextNeverUsesTheOwnFormula(),
         theProfileSupportIsReadInOnePlace(),
         onlyTheKnownClassesDeleteDocuments(),

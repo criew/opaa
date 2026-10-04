@@ -351,6 +351,10 @@ Begründung:
   (90 Tage), bis der Lebenszyklus sie einstellbar macht.
 - **Zielbindung:** `issued_for` ist ein undurchsichtiger Wert, den nur `ConnectionProfile#secretTarget`
   liefert (heute die Server-Adresse); der Speicher vergleicht ihn, er zerlegt ihn nie.
+- **Zahlen über Personen nur maskiert:** Jede Zahl über verbundene Konten erreicht die Verwaltung
+  über `connection.profile.PersonNumbers` (Gesamtzahl unter der Mindestgruppengröße nur „weniger
+  als N“, eine Teilzahl nur, wenn weder sie noch ihr Komplement darunter liegt); die exakten Zahlen
+  des Ports fragt keine andere Klasse ab (ArchUnit `personNumbersLeaveOnlyMasked`).
 - **Ein Konto mit Verbindung wird nicht gelöscht:** `connected_accounts.user_id` ist `RESTRICT`
   und steht in `UserRepository#countDeletionBlockers`; das Geheimnis hängt mit `CASCADE` am Konto.
 

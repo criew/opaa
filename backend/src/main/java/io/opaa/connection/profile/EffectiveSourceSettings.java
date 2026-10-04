@@ -265,6 +265,10 @@ public class EffectiveSourceSettings {
    *     SourceBlocks}
    */
   private Secret secretOf(SecretOwner owner, ConnectionProfile profile) {
+    if (SourceBlocks.withoutPersons(profile, owner)) {
+      throw new SourceConnectionBlockedException(
+          SourceBlocks.secretBlock(Reason.NOT_CONNECTED, profile, owner));
+    }
     try {
       return secrets.current(owner, profile.secretTarget());
     } catch (SecretRefusedException e) {

@@ -27,8 +27,8 @@ seine Ports `SourceConnectionResolver` (`ProfileSourceConnectionResolver`) und `
   `CONNECTED`, `EXPIRED`, `DISCONNECTED`. Ein verbundenes Konto endet nur über
   `ConnectedAccountService#end`; die Zeile bleibt `DISCONNECTED`, solange eine private Bibliothek
   daran hängt (Trigger: private Bibliothek nur auf Personen-Zugang mit verbundenem Konto).
-- **Die Verwaltung sieht verbundene Konten nur als Zahlen** (`ConnectedAccountCounts`, „weniger
-  als N“ unter der Mindestgruppengröße); Kontoname verschlüsselt, nur für die Person.
+- **Die Verwaltung sieht verbundene Konten nur als Zahlen, und nur über `PersonNumbers`** („weniger
+  als N“, auch für Teilzahlen und ihr Komplement); Kontoname verschlüsselt, nur für die Person.
 - **Das Client-Secret ist schreibgeschützt;** Antworten tragen nur `clientSecretSet`.
 - **Ursprungsbindung:** Die Adresse einer zugeordneten Bibliothek liegt unter der Server-Adresse
   ihres Profils (`ServerAddress#covers`), sonst sperrt der Port. Ein Geheimnis folgt nur bei

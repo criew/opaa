@@ -715,7 +715,6 @@ components:
           sourceInsecureSsl,
           connectionCount,
           connectedAccountCount,
-          expiredConnectionCount,
           locked,
           createdAt,
           updatedAt,
@@ -767,9 +766,16 @@ components:
           format: int64
           description: The connections of libraries on this profile.
         connectedAccountCount:
-          $ref: "#/components/schemas/PersonCount"
+          description: The persons' connections on this profile, connected or expired.
+          allOf:
+            - $ref: "#/components/schemas/PersonCount"
         expiredConnectionCount:
-          $ref: "#/components/schemas/PersonCount"
+          description: >
+            The expired among them; absent where telling it would, together with the total, point
+            at fewer persons than the minimum group size.
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/PersonCount"
         locked:
           type: boolean
           description: Whether the profile is locked (see lockConnectionProfile).
@@ -807,8 +813,10 @@ components:
       type: object
       description: >
         A number of persons' connections as the administration sees it: exact from the minimum
-        group size on and at zero, below it only "fewer than" (fewerThan), so a count never points
-        at a person. Exactly one of the two is set.
+        group size on and at zero, below it only "fewer than" (fewerThan); a part is exact only
+        where neither it nor its complement lies below that size. Every answer of the
+        administration counts the same way, so no difference of two answers points at a person.
+        Exactly one of the two is set.
       properties:
         count:
           type: integer

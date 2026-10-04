@@ -11,12 +11,12 @@ import io.opaa.api.dto.OwnAddressLibrary;
 import io.opaa.api.dto.PersonCount;
 import io.opaa.common.ValidationException;
 import io.opaa.connection.ConnectorReleaseService.ProfileOption;
-import io.opaa.connection.account.ConnectedAccountCounts.ProfileCounts;
 import io.opaa.connection.profile.ConnectionProfile;
 import io.opaa.connection.profile.ConnectionProfileService.ProfileImpact;
 import io.opaa.connection.profile.ConnectionProfileValues;
 import io.opaa.connection.profile.ConnectorLockService.TypeState;
 import io.opaa.connection.profile.OwnAddressStock;
+import io.opaa.connection.profile.PersonNumbers.ProfileCounts;
 import io.opaa.connection.profile.ProfileRequirementService.Overview;
 import io.opaa.indexing.source.ConnectorData;
 import io.opaa.knowledge.SourceType;
@@ -93,8 +93,8 @@ final class ConnectionProfileResponseMapper {
         .sourceProxy(profile.getSourceProxy())
         .sourceInsecureSsl(profile.isSourceInsecureSsl())
         .connectionCount(connectionCount)
-        .connectedAccountCount(toCount(accounts.connected()))
-        .expiredConnectionCount(toCount(accounts.expired()))
+        .connectedAccountCount(toCount(accounts.total()))
+        .expiredConnectionCount(accounts.expired() == null ? null : toCount(accounts.expired()))
         .locked(profile.isLocked())
         .lockedAt(profile.getLockedAt())
         .createdAt(profile.getCreatedAt())
@@ -133,18 +133,16 @@ final class ConnectionProfileResponseMapper {
   }
 
   static ConnectionProfileImpactResponse toResponse(
-      ProfileImpact impact,
-      io.opaa.connection.account.PersonCount connectedAccounts,
-      boolean lastForProfileRequirement) {
+      ProfileImpact impact, boolean lastForProfileRequirement) {
     return new ConnectionProfileImpactResponse()
         .connections(impact.connections())
         .libraries(impact.libraries())
-        .connectedAccounts(toCount(connectedAccounts))
+        .connectedAccounts(toCount(impact.connectedAccounts()))
         .lastForProfileRequirement(lastForProfileRequirement);
   }
 
   /** A number of persons' connections, as masked for the administration. */
-  static PersonCount toCount(io.opaa.connection.account.PersonCount count) {
+  static PersonCount toCount(io.opaa.connection.profile.PersonCount count) {
     return new PersonCount().count(count.count()).fewerThan(count.fewerThan());
   }
 

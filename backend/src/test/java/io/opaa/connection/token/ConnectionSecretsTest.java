@@ -6,6 +6,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.opaa.api.types.ConnectionAuthMethod;
 import io.opaa.api.types.ConnectionEndCause;
 import io.opaa.connection.profile.LibraryRows;
 import io.opaa.indexing.source.Secret;
@@ -69,9 +70,9 @@ class ConnectionSecretsTest {
             null,
             false);
 
-    assertThat(SecretOwner.of(profileId, null, shared))
+    assertThat(SecretOwner.of(profileId, ConnectionAuthMethod.PERSONAL_SECRET, shared))
         .isEqualTo(new SecretOwner.LibraryOwned(shared.getId()));
-    assertThat(SecretOwner.of(profileId, null, own))
+    assertThat(SecretOwner.of(profileId, ConnectionAuthMethod.PERSONAL_SECRET, own))
         .isEqualTo(new SecretOwner.PersonOwned(profileId, own.getOwnerUserId()));
     assertThat(SecretOwner.of(null, null, own))
         .isEqualTo(new SecretOwner.LibraryOwned(own.getId()));
