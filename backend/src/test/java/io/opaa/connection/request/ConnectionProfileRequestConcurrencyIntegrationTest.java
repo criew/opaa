@@ -1,6 +1,7 @@
 package io.opaa.connection.request;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
@@ -24,6 +25,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * The per-person limits and the resolution of a request under concurrent calls on real connections:
@@ -37,6 +40,7 @@ class ConnectionProfileRequestConcurrencyIntegrationTest {
 
   @Autowired private JdbcTemplate jdbc;
   @Autowired private ConnectionProfileRequestService requests;
+  @Autowired private PlatformTransactionManager transactionManager;
 
   private UUID person;
   private CurrentUser caller;
@@ -111,8 +115,14 @@ class ConnectionProfileRequestConcurrencyIntegrationTest {
     assertThat(administratorNotifications()).isEqualTo(2 * administrators());
   }
 
+  /**
+   * The first resolution holds its transaction open until the second has either finished or is
+   * waiting for a lock; only then does the first commit. Without a lock on the request the second
+   * reads it as open and wins, and the first fails on the version - with it the second waits and is
+   * refused as no longer open.
+   */
   @Test
-  void ofTwoParallelResolutionsTheSecondIsRefusedAsNoLongerOpen() throws Exception {
+  void ofTwoOverlappingResolutionsTheSecondIsRefusedAsNoLongerOpen() throws Exception {
     UUID request =
         requests
             .submit(caller, ProfileProbeSourceConnector.TYPE, "https://race.example.org", null)
@@ -128,25 +138,49 @@ class ConnectionProfileRequestConcurrencyIntegrationTest {
         "race-admin-" + admin,
         admin + "@example.com",
         Organization.DEFAULT_ID);
+    CurrentUser administrator =
+        CurrentUser.of(admin, Organization.DEFAULT_ID, SystemRole.SYSTEM_ADMIN, "Verwaltung");
+    TransactionTemplate transaction = new TransactionTemplate(transactionManager);
+    CountDownLatch firstResolved = new CountDownLatch(1);
+    CountDownLatch commitFirst = new CountDownLatch(1);
+    ExecutorService executor = Executors.newFixedThreadPool(2);
     try {
-      CurrentUser administrator =
-          CurrentUser.of(admin, Organization.DEFAULT_ID, SystemRole.SYSTEM_ADMIN, "Verwaltung");
-
-      List<Throwable> refusals =
-          inParallel(
-              2,
-              i ->
+      Future<?> first =
+          executor.submit(
+              () ->
+                  transaction.executeWithoutResult(
+                      status -> {
+                        requests.resolve(
+                            administrator, request, ProfileRequestState.DECLINED, null, "Erste");
+                        firstResolved.countDown();
+                        await(commitFirst);
+                      }));
+      assertThat(firstResolved.await(30, TimeUnit.SECONDS)).isTrue();
+      Future<?> second =
+          executor.submit(
+              () ->
                   requests.resolve(
-                      administrator, request, ProfileRequestState.DECLINED, null, "Nein " + i));
+                      administrator, request, ProfileRequestState.DONE, null, "Zweite"));
+      waitUntilFinishedOrBlocked(second);
+      commitFirst.countDown();
 
-      assertThat(refusals)
-          .singleElement()
+      first.get(30, TimeUnit.SECONDS);
+      assertThatThrownBy(() -> second.get(30, TimeUnit.SECONDS))
+          .cause()
           .isInstanceOfSatisfying(
               ConflictException.class,
               refusal ->
                   assertThat(refusal.getCode())
                       .isEqualTo(ConnectionProfileRequestService.NOT_OPEN));
+      assertThat(
+              jdbc.queryForObject(
+                  "SELECT answer FROM connection_profile_requests WHERE id = ?",
+                  String.class,
+                  request))
+          .isEqualTo("Erste");
     } finally {
+      commitFirst.countDown();
+      executor.shutdownNow();
       jdbc.update(
           "UPDATE connection_profile_requests SET resolved_by = NULL WHERE resolved_by = ?", admin);
       jdbc.update("DELETE FROM notifications WHERE recipient_user_id = ?", admin);
@@ -154,12 +188,33 @@ class ConnectionProfileRequestConcurrencyIntegrationTest {
     }
   }
 
-  private List<Throwable> inParallel(IntConsumer call) throws Exception {
-    return inParallel(THREADS, call);
+  /** Waits until {@code call} is done or some session of the database waits for a lock. */
+  private void waitUntilFinishedOrBlocked(Future<?> call) throws InterruptedException {
+    long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(30);
+    while (!call.isDone() && System.nanoTime() < deadline) {
+      Long waiting =
+          jdbc.queryForObject("SELECT count(*) FROM pg_locks WHERE NOT granted", Long.class);
+      if (waiting != null && waiting > 0) {
+        return;
+      }
+      Thread.sleep(20);
+    }
   }
 
-  /** Runs {@code call} on {@code threads} threads released together; returns what they threw. */
-  private static List<Throwable> inParallel(int threads, IntConsumer call) throws Exception {
+  private static void await(CountDownLatch latch) {
+    try {
+      if (!latch.await(30, TimeUnit.SECONDS)) {
+        throw new IllegalStateException("the test never released the first resolution");
+      }
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new IllegalStateException(e);
+    }
+  }
+
+  /** Runs {@code call} on {@link #THREADS} threads released together; returns what they threw. */
+  private static List<Throwable> inParallel(IntConsumer call) throws Exception {
+    int threads = THREADS;
     ExecutorService executor = Executors.newFixedThreadPool(threads);
     CountDownLatch start = new CountDownLatch(1);
     List<Throwable> thrown = Collections.synchronizedList(new ArrayList<>());

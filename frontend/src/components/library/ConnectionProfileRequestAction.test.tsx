@@ -30,6 +30,12 @@ function lastNotification() {
   return useNotificationStore.getState().queue.at(-1)
 }
 
+/** Enters `text` into `field` in one paste rather than keystroke by keystroke. */
+async function enter(user: ReturnType<typeof userEvent.setup>, field: HTMLElement, text: string) {
+  await user.click(field)
+  await user.paste(text)
+}
+
 async function openDialog(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole('button', { name: 'Zugang für Nextcloud vorschlagen' }))
   return screen.findByRole('dialog', { name: 'Zugang vorschlagen' })
@@ -46,8 +52,8 @@ describe('ConnectionProfileRequestAction', () => {
 
     const dialog = await openDialog(user)
     expect(dialog).toHaveTextContent('Quellart: Nextcloud')
-    await user.type(within(dialog).getByLabelText(/Server-Adresse/), 'https://cloud.neu.example/')
-    await user.type(within(dialog).getByLabelText(/Begründung/), 'Für das Projekt')
+    await enter(user, within(dialog).getByLabelText(/Server-Adresse/), 'https://cloud.neu.example/')
+    await enter(user, within(dialog).getByLabelText(/Begründung/), 'Für das Projekt')
     await user.click(within(dialog).getByRole('button', { name: 'Vorschlagen' }))
 
     await waitFor(() => expect(lastNotification()?.severity).toBe('success'))
@@ -60,14 +66,15 @@ describe('ConnectionProfileRequestAction', () => {
     })
     const mine = await screen.findByRole('list', { name: 'Ihre Zugangswünsche' })
     expect(within(mine).getByText('https://cloud.neu.example')).toBeVisible()
-  }, 15000)
+  })
 
   it('says so when the same request is already open', async () => {
     const user = userEvent.setup()
     renderWithProviders(<ConnectionProfileRequestAction descriptor={NEXTCLOUD} idPrefix="test" />)
 
     const dialog = await openDialog(user)
-    await user.type(
+    await enter(
+      user,
       within(dialog).getByLabelText(/Server-Adresse/),
       'https://cloud.partner.example',
     )
@@ -75,7 +82,7 @@ describe('ConnectionProfileRequestAction', () => {
 
     await waitFor(() => expect(lastNotification()?.message).toMatch(/bereits gestellt/))
     expect(mockConnectionProfileRequests).toHaveLength(1)
-  }, 15000)
+  })
 
   it('keeps the dialog open with the reason of a 429', async () => {
     server.use(
@@ -94,7 +101,7 @@ describe('ConnectionProfileRequestAction', () => {
     renderWithProviders(<ConnectionProfileRequestAction descriptor={NEXTCLOUD} idPrefix="test" />)
 
     const dialog = await openDialog(user)
-    await user.type(within(dialog).getByLabelText(/Server-Adresse/), 'https://cloud.viel.example')
+    await enter(user, within(dialog).getByLabelText(/Server-Adresse/), 'https://cloud.viel.example')
     await user.click(within(dialog).getByRole('button', { name: 'Vorschlagen' }))
 
     expect(await screen.findByTestId('test-request-error')).toHaveTextContent(
@@ -102,7 +109,7 @@ describe('ConnectionProfileRequestAction', () => {
     )
     expect(screen.getByRole('dialog', { name: 'Zugang vorschlagen' })).toBeVisible()
     expect(lastNotification()).toBeUndefined()
-  }, 15000)
+  })
 
   it('shows the own requests of the type with their state and answer, as plain text', async () => {
     mockConnectionProfileRequests.push({
