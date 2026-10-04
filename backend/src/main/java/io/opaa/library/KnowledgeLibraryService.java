@@ -158,8 +158,8 @@ public class KnowledgeLibraryService {
   private final SourceConnectionResolver connectionResolver;
   private final LibraryConnectionService libraryConnections;
   private final ConnectorReleaseService connectorRelease;
-  private final OwnerOnlyRule ownerOnlyRule;
   private final EffectiveSourceSettings drafts;
+  private final OwnerOnlyRule ownerOnlyRule;
   private final SourceChangeGate changeGate;
 
   public KnowledgeLibraryService(
@@ -184,8 +184,8 @@ public class KnowledgeLibraryService {
       SourceConnectionResolver connectionResolver,
       LibraryConnectionService libraryConnections,
       ConnectorReleaseService connectorRelease,
-      OwnerOnlyRule ownerOnlyRule,
-      EffectiveSourceSettings drafts) {
+      EffectiveSourceSettings drafts,
+      OwnerOnlyRule ownerOnlyRule) {
     this.ownerOnlyRule = ownerOnlyRule;
     this.successionSource = successionSource;
     this.connectorRelease = connectorRelease;

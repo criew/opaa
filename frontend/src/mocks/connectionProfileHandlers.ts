@@ -279,6 +279,8 @@ export const connectionProfileHandlers = [
           sourceType: p.sourceType,
           serverUrl: p.serverUrl,
           authMethod: p.authMethod,
+          sourceProxy: p.sourceProxy ?? null,
+          sourceInsecureSsl: p.sourceInsecureSsl,
           creatable,
           creationNotice: creatable
             ? null

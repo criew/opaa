@@ -16,6 +16,7 @@ import io.opaa.connection.token.TestSecrets;
 import io.opaa.indexing.source.ServiceAccountTokens;
 import io.opaa.indexing.source.SourceConnectorRegistry;
 import io.opaa.indexing.source.TestSourceConnectors;
+import io.opaa.indexing.source.profileprobe.ProfileProbeSourceConnector;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.security.TargetAddressValidator;
 import java.time.Clock;
@@ -73,7 +74,9 @@ final class TestProfileResolvers {
   @SuppressWarnings("unchecked")
   private static ObjectProvider<SourceConnectorRegistry> registry() {
     ObjectProvider<SourceConnectorRegistry> provider = mock(ObjectProvider.class);
-    when(provider.getObject()).thenReturn(TestSourceConnectors.connectors().registry());
+    when(provider.getObject())
+        .thenReturn(
+            TestSourceConnectors.connectors().with(new ProfileProbeSourceConnector()).registry());
     return provider;
   }
 }
