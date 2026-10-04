@@ -93,6 +93,19 @@ describe('ConnectionCallbackPage', () => {
     expect(sent).toHaveLength(1)
   })
 
+  it.each(['/\\evil.example', '/%5Cevil.example', '//evil.example', 'https://evil.example'])(
+    'goes to the connected accounts instead of a return target off this application: %s',
+    async (returnTo) => {
+      serveComplete(() =>
+        HttpResponse.json({ purpose: 'ACCOUNT', profileId: 'dropbox', returnTo, account: null }),
+      )
+      renderAt(`/connections/callback?code=c&state=s-${encodeURIComponent(returnTo)}`)
+
+      expect(await screen.findByText('Verbundene Konten', { selector: 'div' })).toBeInTheDocument()
+      expect(screen.getByTestId('address')).toHaveTextContent(/^\/settings\/accounts$/)
+    },
+  )
+
   it('passes a refusal at the provider on, so the state is used up, and says nothing was connected', async () => {
     const sent = serveComplete(() =>
       errorBody(

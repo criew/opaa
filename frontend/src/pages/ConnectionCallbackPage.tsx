@@ -16,6 +16,7 @@ import {
 import { useAuthStore } from '../stores/authStore'
 import { notify } from '../stores/notificationStore'
 import PageHeading from '../components/a11y/PageHeading'
+import { safeRedirectPath } from '../utils/safeRedirectPath'
 import { CONNECTED_ACCOUNTS_ROUTE, CONNECTION_CALLBACK_ROUTE, LOGIN_ROUTE } from '../routes'
 
 /**
@@ -40,13 +41,6 @@ function readCallback(search: string): ConnectionAuthorizationCompleteRequest | 
   const state = params.get('state')
   if (!state) return null
   return { state, code: params.get('code'), error: params.get('error') }
-}
-
-/** Only a path of this application; anything else goes to the connected accounts. */
-function safeReturn(returnTo: string): string {
-  return returnTo.startsWith('/') && !returnTo.startsWith('//')
-    ? returnTo
-    : CONNECTED_ACCOUNTS_ROUTE
 }
 
 function failureMessage(err: unknown): string {
@@ -123,7 +117,7 @@ export default function ConnectionCallbackPage() {
             : 'Die Verbindung ist hergestellt.',
           'success',
         )
-        navigate(safeReturn(completed.returnTo), { replace: true })
+        navigate(safeRedirectPath(completed.returnTo, CONNECTED_ACCOUNTS_ROUTE), { replace: true })
       })
       .catch((err: unknown) => {
         if (active) setResult({ kind: 'failed', message: failureMessage(err) })
