@@ -1,5 +1,6 @@
 package io.opaa.connection.profile;
 
+import io.opaa.indexing.source.SourceChangeGate;
 import io.opaa.indexing.source.SourceConnectorRegistry;
 import io.opaa.knowledge.KnowledgeLibrary;
 import java.util.LinkedHashSet;
@@ -62,10 +63,8 @@ public class RunStateResets {
     if (reset != null) {
       transactions.executeWithoutResult(
           status ->
-              connectors
-                  .getObject()
-                  .connector(library.getSourceType())
-                  .onSourceChanged(library, reset.addressChanged(), reset.changed()));
+              new SourceChangeGate(connectors.getObject())
+                  .discardAgain(library, reset.addressChanged(), reset.changed()));
     }
   }
 
