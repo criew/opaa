@@ -18,15 +18,16 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Component;
 
 /**
- * The only place that decides whether and why a library's source is blocked, and which reason wins:
- * a locked type, a locked profile, a removed profile, an address outside the profile, a missing
- * secret - in this order. A library without a connection is blocked only by a type lock. Callers
- * name the reasons they consider; the first of those that applies is the block.
+ * The only place that decides whether and why a library's source is blocked. The reasons are tried
+ * in their order of declaration in {@link Reason}, and the first that applies is the block; a
+ * library without a connection is blocked only by a type lock. Callers name the reasons they
+ * consider, as one of the sets derived here from the properties of {@link Reason}.
  *
  * <p>Holds no transaction of its own, so a refusal does not mark a caller's transaction for
  * rollback.
@@ -34,16 +35,17 @@ import org.springframework.stereotype.Component;
 @Component
 public class SourceBlocks {
 
-  /** Every reason. */
-  public static final Set<Reason> ALL = Collections.unmodifiableSet(EnumSet.allOf(Reason.class));
+  /** Every reason: what refuses the start of a run and the fetch of an original. */
+  public static final Set<Reason> ALL = where(reason -> true);
 
-  /** The locks of the system administration. */
-  public static final Set<Reason> LOCKS =
-      Collections.unmodifiableSet(EnumSet.of(Reason.TYPE_LOCKED, Reason.PROFILE_LOCKED));
+  /** The locks of the system administration ({@link Reason#lock}). */
+  public static final Set<Reason> LOCKS = where(Reason::lock);
 
-  /** What keeps the connection itself from being used, a lock aside. */
-  public static final Set<Reason> CONNECTION =
-      Collections.unmodifiableSet(EnumSet.complementOf(EnumSet.copyOf(LOCKS)));
+  /** What refuses a running run and a change ({@link Reason#endsRunningRun}). */
+  public static final Set<Reason> ENDING_A_RUNNING_RUN = where(Reason::endsRunningRun);
+
+  /** What an answer marks as not updated ({@link Reason#shownInAnswer}). */
+  public static final Set<Reason> SHOWN_IN_ANSWER = where(Reason::shownInAnswer);
 
   static final String ADMINISTRATION = "Systemverwaltung";
   static final String LIBRARY_MANAGERS = "Verwaltende der Bibliothek";
@@ -84,7 +86,7 @@ public class SourceBlocks {
   public Map<UUID, SourceBlock> blocksAmong(
       Collection<KnowledgeLibrary> libraries, Set<Reason> considered) {
     Map<UUID, SourceBlock> blocks = new HashMap<>();
-    for (Facts facts : factsOf(libraries)) {
+    for (Facts facts : factsOf(libraries, considered)) {
       facts.firstBlock(considered).ifPresent(block -> blocks.put(facts.library().getId(), block));
     }
     return blocks;
@@ -98,7 +100,7 @@ public class SourceBlocks {
    */
   public Optional<ConnectionProfile> requireUnblocked(
       KnowledgeLibrary library, Set<Reason> considered) {
-    Facts facts = factsOf(List.of(library)).getFirst();
+    Facts facts = factsOf(List.of(library), considered).getFirst();
     facts
         .firstBlock(considered)
         .ifPresent(
@@ -108,15 +110,27 @@ public class SourceBlocks {
     return Optional.ofNullable(facts.profile());
   }
 
-  private List<Facts> factsOf(Collection<KnowledgeLibrary> libraries) {
+  private static Set<Reason> where(Predicate<Reason> property) {
+    EnumSet<Reason> reasons = EnumSet.noneOf(Reason.class);
+    for (Reason reason : Reason.values()) {
+      if (property.test(reason)) {
+        reasons.add(reason);
+      }
+    }
+    return Collections.unmodifiableSet(reasons);
+  }
+
+  private List<Facts> factsOf(Collection<KnowledgeLibrary> libraries, Set<Reason> considered) {
     if (libraries.isEmpty()) {
       return List.of();
     }
     Set<String> lockedTypes =
-        policies.findAll().stream()
-            .filter(ConnectorTypePolicy::isLocked)
-            .map(policy -> policy.getSourceType().key())
-            .collect(Collectors.toSet());
+        considered.contains(Reason.TYPE_LOCKED)
+            ? policies.findAll().stream()
+                .filter(ConnectorTypePolicy::isLocked)
+                .map(policy -> policy.getSourceType().key())
+                .collect(Collectors.toSet())
+            : Set.of();
     Map<UUID, LibraryConnection> connectionOf =
         connections.findAllById(libraries.stream().map(KnowledgeLibrary::getId).toList()).stream()
             .collect(Collectors.toMap(LibraryConnection::getLibraryId, Function.identity()));
@@ -172,52 +186,58 @@ public class SourceBlocks {
       boolean connected,
       ConnectionProfile profile) {
 
+    /** Tries the considered reasons in their order of declaration, which is the precedence. */
     private Optional<SourceBlock> firstBlock(Set<Reason> considered) {
-      return applicable().stream().filter(block -> considered.contains(block.reason())).findFirst();
+      for (Reason reason : Reason.values()) {
+        if (considered.contains(reason)) {
+          Optional<SourceBlock> block = blockFor(reason);
+          if (block.isPresent()) {
+            return block;
+          }
+        }
+      }
+      return Optional.empty();
     }
 
-    /** Every block that applies, in order of precedence. */
-    private List<SourceBlock> applicable() {
-      List<SourceBlock> blocks = new ArrayList<>();
-      if (typeLock != null) {
-        blocks.add(typeLock);
-      }
-      if (!connected) {
-        return blocks;
-      }
-      if (profile == null) {
-        blocks.add(
-            new SourceBlock(
-                Reason.ACCESS_REMOVED,
-                LIBRARY_MANAGERS,
-                "Zugang entfernt: Der Zugang dieser Bibliothek wurde gelöscht. Die"
-                    + " Verwaltenden der Bibliothek ordnen sie einem anderen Zugang zu."
-                    + CONTENT_STAYS));
-        return blocks;
-      }
-      if (profile.isLocked()) {
-        blocks.add(
-            new SourceBlock(
-                Reason.PROFILE_LOCKED,
-                ADMINISTRATION,
-                LOCKED
-                    + " Die Systemverwaltung hat den Zugang „"
-                    + profile.getName()
-                    + "“ gesperrt"
-                    + LOCK_CONTENT_STAYS));
-      }
-      if (!ServerAddress.covers(profile.getServerUrl(), library.getSourceUrl())) {
-        blocks.add(
-            new SourceBlock(
-                Reason.TARGET_OUTSIDE_PROFILE,
-                LIBRARY_MANAGERS,
-                "Die Adresse der Bibliothek liegt nicht unter der Server-Adresse des Zugangs \""
-                    + profile.getName()
-                    + "\". Die Verwaltenden der Bibliothek passen die Adresse an."
-                    + CONTENT_STAYS));
-      }
-      notConnected().ifPresent(blocks::add);
-      return blocks;
+    private Optional<SourceBlock> blockFor(Reason reason) {
+      return switch (reason) {
+        case TYPE_LOCKED -> Optional.ofNullable(typeLock);
+        case PROFILE_LOCKED ->
+            profile != null && profile.isLocked()
+                ? Optional.of(
+                    new SourceBlock(
+                        Reason.PROFILE_LOCKED,
+                        ADMINISTRATION,
+                        LOCKED
+                            + " Die Systemverwaltung hat den Zugang „"
+                            + profile.getName()
+                            + "“ gesperrt"
+                            + LOCK_CONTENT_STAYS))
+                : Optional.empty();
+        case ACCESS_REMOVED ->
+            connected && profile == null
+                ? Optional.of(
+                    new SourceBlock(
+                        Reason.ACCESS_REMOVED,
+                        LIBRARY_MANAGERS,
+                        "Zugang entfernt: Der Zugang dieser Bibliothek wurde gelöscht. Die"
+                            + " Verwaltenden der Bibliothek ordnen sie einem anderen Zugang zu."
+                            + CONTENT_STAYS))
+                : Optional.empty();
+        case TARGET_OUTSIDE_PROFILE ->
+            profile != null && !ServerAddress.covers(profile.getServerUrl(), library.getSourceUrl())
+                ? Optional.of(
+                    new SourceBlock(
+                        Reason.TARGET_OUTSIDE_PROFILE,
+                        LIBRARY_MANAGERS,
+                        "Die Adresse der Bibliothek liegt nicht unter der Server-Adresse des"
+                            + " Zugangs \""
+                            + profile.getName()
+                            + "\". Die Verwaltenden der Bibliothek passen die Adresse an."
+                            + CONTENT_STAYS))
+                : Optional.empty();
+        case NOT_CONNECTED -> profile == null ? Optional.empty() : notConnected();
+      };
     }
 
     private Optional<SourceBlock> notConnected() {

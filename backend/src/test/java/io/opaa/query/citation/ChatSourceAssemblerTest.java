@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import io.opaa.api.dto.SourceFreezeReason;
 import io.opaa.api.types.MetadataFilterMatch;
 import io.opaa.chat.ChatSource;
 import io.opaa.chat.ChatSourceLocation;
@@ -552,5 +553,15 @@ class ChatSourceAssemblerTest {
     sourceReference.setIndexedAt(indexedAt);
     sourceReference.setSourceEntryUrl(sourceEntryUrl);
     return sourceReference;
+  }
+
+  @Test
+  void everyReasonShownInAnAnswerIsAFreezeReasonOfTheApi() {
+    for (SourceBlock.Reason reason : SourceBlock.Reason.values()) {
+      if (reason.shownInAnswer()) {
+        assertThat(SourceFreezeReason.fromValue(ChatSourceAssembler.freezeReason(reason)))
+            .isNotNull();
+      }
+    }
   }
 }

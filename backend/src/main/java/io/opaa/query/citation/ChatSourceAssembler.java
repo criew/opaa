@@ -142,14 +142,20 @@ public class ChatSourceAssembler {
       UUID library = libraryByDocument.get(source.getDocumentId());
       SourceBlock block = library == null ? null : frozen.get(library);
       if (block != null) {
-        source.freeze(freezeReason(block), block.responsible(), lastRun.get(library));
+        source.freeze(freezeReason(block.reason()), block.responsible(), lastRun.get(library));
       }
     }
   }
 
-  /** The answer's freeze reason: both locks are one {@code LOCKED}, the others keep their name. */
-  private static String freezeReason(SourceBlock block) {
-    return block.locked() ? "LOCKED" : block.reason().name();
+  /** The answer's freeze reason ({@code SourceFreezeReason}): both locks are one {@code LOCKED}. */
+  static String freezeReason(SourceBlock.Reason reason) {
+    return switch (reason) {
+      case TYPE_LOCKED, PROFILE_LOCKED -> "LOCKED";
+      case ACCESS_REMOVED -> "ACCESS_REMOVED";
+      case NOT_CONNECTED -> "NOT_CONNECTED";
+      case TARGET_OUTSIDE_PROFILE ->
+          throw new IllegalStateException("Reason " + reason + " is not shown in an answer");
+    };
   }
 
   /**

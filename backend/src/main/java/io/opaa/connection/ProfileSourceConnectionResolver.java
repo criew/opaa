@@ -67,7 +67,8 @@ public class ProfileSourceConnectionResolver implements SourceConnectionResolver
 
   @Override
   public SourceSettings resolveForChange(KnowledgeLibrary library) {
-    Optional<ConnectionProfile> profile = blocks.requireUnblocked(library, SourceBlocks.CONNECTION);
+    Optional<ConnectionProfile> profile =
+        blocks.requireUnblocked(library, SourceBlocks.ENDING_A_RUNNING_RUN);
     return profile.isEmpty()
         ? ownFields.resolveForChange(library)
         : fromProfile(library, profile.get());
@@ -75,7 +76,8 @@ public class ProfileSourceConnectionResolver implements SourceConnectionResolver
 
   @Override
   public String currentCredentials(KnowledgeLibrary library) {
-    Optional<ConnectionProfile> profile = blocks.requireUnblocked(library, SourceBlocks.CONNECTION);
+    Optional<ConnectionProfile> profile =
+        blocks.requireUnblocked(library, SourceBlocks.ENDING_A_RUNNING_RUN);
     return profile.isEmpty()
         ? ownFields.currentCredentials(library)
         : secretOf(library, profile.get());

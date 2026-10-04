@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.ConnectionAuthMethod;
@@ -17,6 +19,8 @@ import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.test.SourceTypes;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.List;
@@ -51,12 +55,12 @@ class SourceBlocksTest {
   private final List<ConnectorTypePolicy> policyRows = new ArrayList<>();
   private final List<LibraryConnection> connectionRows = new ArrayList<>();
   private final List<ConnectionProfile> profileRows = new ArrayList<>();
+  private final ConnectorTypePolicyRepository policies = mock(ConnectorTypePolicyRepository.class);
   private SourceBlocks blocks;
 
   @BeforeEach
   @SuppressWarnings("unchecked")
   void setUp() {
-    ConnectorTypePolicyRepository policies = mock(ConnectorTypePolicyRepository.class);
     LibraryConnectionRepository connections = mock(LibraryConnectionRepository.class);
     ConnectionProfileRepository profiles = mock(ConnectionProfileRepository.class);
     when(policies.findAll()).thenAnswer(call -> List.copyOf(policyRows));
@@ -107,6 +111,77 @@ class SourceBlocksTest {
 
     assertThat(blocks.blockOf(library, SourceBlocks.ALL).map(SourceBlock::reason))
         .isEqualTo(Optional.ofNullable(expected));
+  }
+
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("precedence")
+  void theDeclarationOrderOfTheReasonsIsThePrecedence(Set<Fact> facts, Reason expected) {
+    KnowledgeLibrary library = arrange(facts, ConnectionAuthMethod.PERSONAL_SECRET);
+
+    Optional<Reason> firstDeclared =
+        Arrays.stream(Reason.values())
+            .filter(reason -> blocks.blockOf(library, EnumSet.of(reason)).isPresent())
+            .min(Comparator.naturalOrder());
+
+    assertThat(blocks.blockOf(library, SourceBlocks.ALL).map(SourceBlock::reason))
+        .isEqualTo(firstDeclared);
+  }
+
+  @Test
+  void theReasonsAreDeclaredInTheirPrecedence() {
+    assertThat(Reason.values())
+        .containsExactly(
+            Reason.TYPE_LOCKED,
+            Reason.PROFILE_LOCKED,
+            Reason.ACCESS_REMOVED,
+            Reason.TARGET_OUTSIDE_PROFILE,
+            Reason.NOT_CONNECTED);
+  }
+
+  @Test
+  void theSetsFollowFromThePropertiesOfTheReasons() {
+    assertThat(SourceBlocks.ALL).containsExactlyInAnyOrder(Reason.values());
+    assertThat(SourceBlocks.LOCKS)
+        .containsExactlyInAnyOrder(Reason.TYPE_LOCKED, Reason.PROFILE_LOCKED);
+    assertThat(SourceBlocks.ENDING_A_RUNNING_RUN)
+        .containsExactlyInAnyOrder(
+            Reason.ACCESS_REMOVED, Reason.TARGET_OUTSIDE_PROFILE, Reason.NOT_CONNECTED);
+    assertThat(SourceBlocks.SHOWN_IN_ANSWER)
+        .containsExactlyInAnyOrder(
+            Reason.TYPE_LOCKED, Reason.PROFILE_LOCKED, Reason.ACCESS_REMOVED, Reason.NOT_CONNECTED);
+    for (Reason reason : Reason.values()) {
+      assertThat(new SourceBlock(reason, "x", "y").locked())
+          .isEqualTo(SourceBlocks.LOCKS.contains(reason));
+    }
+  }
+
+  @Test
+  void anAddressOutsideIsNotShownInAnAnswerButTheMissingSecretBehindItIs() {
+    KnowledgeLibrary outside =
+        arrange(EnumSet.of(Fact.CONNECTED, Fact.OUTSIDE), ConnectionAuthMethod.PERSONAL_SECRET);
+    KnowledgeLibrary outsideWithoutSecret =
+        arrange(
+            EnumSet.of(Fact.CONNECTED, Fact.OUTSIDE, Fact.NO_SECRET),
+            ConnectionAuthMethod.PERSONAL_SECRET);
+
+    assertThat(blocks.blockOf(outside, SourceBlocks.SHOWN_IN_ANSWER)).isEmpty();
+    assertThat(blocks.blockOf(outsideWithoutSecret, SourceBlocks.ALL).map(SourceBlock::reason))
+        .contains(Reason.TARGET_OUTSIDE_PROFILE);
+    assertThat(
+            blocks
+                .blockOf(outsideWithoutSecret, SourceBlocks.SHOWN_IN_ANSWER)
+                .map(SourceBlock::reason))
+        .contains(Reason.NOT_CONNECTED);
+  }
+
+  @Test
+  void theTypeLocksAreReadOnlyWhenATypeLockIsConsidered() {
+    KnowledgeLibrary library =
+        arrange(EnumSet.of(Fact.CONNECTED), ConnectionAuthMethod.PERSONAL_SECRET);
+
+    blocks.requireUnblocked(library, SourceBlocks.ENDING_A_RUNNING_RUN);
+
+    verify(policies, never()).findAll();
   }
 
   static Stream<Arguments> notices() {
@@ -193,7 +268,7 @@ class SourceBlocksTest {
 
     assertThat(blocks.blockOf(library, SourceBlocks.LOCKS).map(SourceBlock::reason))
         .contains(Reason.PROFILE_LOCKED);
-    assertThat(blocks.blockOf(library, SourceBlocks.CONNECTION).map(SourceBlock::reason))
+    assertThat(blocks.blockOf(library, SourceBlocks.ENDING_A_RUNNING_RUN).map(SourceBlock::reason))
         .contains(Reason.TARGET_OUTSIDE_PROFILE);
     assertThat(
             blocks
