@@ -902,9 +902,9 @@ describe('LibraryCreatePage (#596, #1942)', () => {
 
       // the remounted step reloads the listing for the still-verified credentials
       await waitFor(() => expect(mockListConfluenceSpaces).toHaveBeenCalledTimes(2))
-      expect(await screen.findByText(/lesbaren Spaces ausgewählt/)).toHaveTextContent(
-        '1 von 3 lesbaren Spaces ausgewählt.',
-      )
+      const summary = await screen.findByText(/lesbaren Spaces ausgewählt/)
+      expect(summary).toHaveAttribute('role', 'status')
+      expect(summary).toHaveTextContent('1 von 3 lesbaren Spaces ausgewählt.')
       await user.click(screen.getByLabelText(/Spaces suchen und auswählen/))
       expect(await screen.findByRole('option', { name: /Personal \(HR\)/ })).toBeInTheDocument()
     }, 25000)
@@ -974,9 +974,9 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       expect(await screen.findByText('Confluence antwortete mit HTTP 502')).toBeInTheDocument()
       expect(screen.getByLabelText(/Spaces suchen und auswählen/)).toBeInTheDocument()
       await user.click(screen.getByRole('button', { name: 'Erneut laden' }))
-      expect(await screen.findByText(/lesbaren Spaces ausgewählt/)).toHaveTextContent(
-        '0 von 3 lesbaren Spaces ausgewählt.',
-      )
+      const summary = await screen.findByText(/lesbaren Spaces ausgewählt/)
+      expect(summary).toHaveAttribute('role', 'status')
+      expect(summary).toHaveTextContent('0 von 3 lesbaren Spaces ausgewählt.')
       expect(screen.queryByText('Confluence antwortete mit HTTP 502')).not.toBeInTheDocument()
     }, 20000)
   })

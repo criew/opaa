@@ -552,9 +552,9 @@ describe('EditLibrarySourceDialog', () => {
       expect(screen.getByLabelText('Bucket 1')).toHaveValue('protokolle')
       expect(screen.getByLabelText(/^Präfix 1/)).toHaveValue('2025/')
       expect(screen.getByLabelText('Neuer Secret Key')).toHaveValue('')
-      expect(screen.getByText(/Ein entfernter Bereich verschwindet/)).toHaveTextContent(
-        /Ein entfernter Bereich verschwindet/,
-      )
+      const notice = screen.getByText(/Ein entfernter Bereich verschwindet/)
+      expect(notice).toHaveAttribute('role', 'status')
+      expect(notice).toHaveTextContent(/Ein entfernter Bereich verschwindet/)
 
       await user.click(screen.getByRole('button', { name: 'Bereich' }))
       await user.type(screen.getByLabelText('Bucket 2'), 'satzungen')
