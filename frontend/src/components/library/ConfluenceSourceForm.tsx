@@ -3,6 +3,7 @@ import Alert from '@mui/material/Alert'
 import Autocomplete from '@mui/material/Autocomplete'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
+import BusyButton from '../a11y/BusyButton'
 import Checkbox from '@mui/material/Checkbox'
 import Chip from '@mui/material/Chip'
 import FormControlLabel from '@mui/material/FormControlLabel'
@@ -331,13 +332,15 @@ export default function ConfluenceSourceForm({
         </Box>
         {!editionFixed && (
           <Box sx={{ mt: 1.5 }}>
-            <Button
+            <BusyButton
               onClick={() => void detectEdition()}
-              disabled={detecting || values.sourceUrl.trim() === ''}
+              disabled={values.sourceUrl.trim() === ''}
+              busy={detecting}
+              busyAnnouncement="Edition wird erkannt"
               variant="outlined"
             >
               {detecting ? 'Edition wird erkannt …' : 'Edition erkennen'}
-            </Button>
+            </BusyButton>
             {detectMessage && (
               <Alert severity={detectMessage.severity} sx={{ mt: 1 }}>
                 {detectMessage.text}
@@ -428,13 +431,15 @@ export default function ConfluenceSourceForm({
             </Box>
           )}
           <Box sx={{ mt: 1.5 }}>
-            <Button
+            <BusyButton
               onClick={() => void testConnection()}
-              disabled={testing || !credentialsComplete}
+              disabled={!credentialsComplete}
+              busy={testing}
+              busyAnnouncement="Verbindung wird getestet"
               variant="outlined"
             >
               {testing ? 'Verbindung wird getestet …' : 'Verbindung testen'}
-            </Button>
+            </BusyButton>
             {testMessage && (
               <Alert severity={testMessage.severity} sx={{ mt: 1 }}>
                 {testMessage.text}
