@@ -12,11 +12,9 @@ import io.opaa.connection.token.ConnectionSecrets;
 import io.opaa.connection.token.ConnectionSecrets.EndingGrant;
 import io.opaa.notification.NotificationService;
 import java.time.Clock;
-import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
-import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Locale;
@@ -32,13 +30,11 @@ import org.springframework.transaction.support.TransactionTemplate;
  * Warns once of every end ahead (ADR-0041): the end a provider named for a person's OAuth consent
  * goes to that person, the expiry date of a profile's client secret to every system administrator,
  * {@value ConnectionProfileService#SECRET_EXPIRY_WARNING_DAYS} days before. The marker and the
- * notifications commit together, so a failed run warns on the next one and no end twice.
+ * notifications commit together, so a failed run warns on the next one and no end twice. Both kinds
+ * of date are read and written in the server's zone.
  */
 @Component
 public class ConnectionExpiryWatch {
-
-  static final Duration WARNING_PERIOD =
-      Duration.ofDays(ConnectionProfileService.SECRET_EXPIRY_WARNING_DAYS);
 
   private static final Logger log = LoggerFactory.getLogger(ConnectionExpiryWatch.class);
   private static final DateTimeFormatter DATE =
@@ -90,7 +86,7 @@ public class ConnectionExpiryWatch {
 
   private int warnOfGrants() {
     int warned = 0;
-    for (EndingGrant grant : secrets.claimEndingGrants(WARNING_PERIOD)) {
+    for (EndingGrant grant : secrets.claimEndingGrants()) {
       ConnectedAccount account = accounts.findById(grant.connectedAccountId()).orElse(null);
       ConnectionProfile profile = profiles.findById(grant.profileId()).orElse(null);
       if (account == null || profile == null) {
@@ -114,7 +110,7 @@ public class ConnectionExpiryWatch {
 
   private int warnOfSecrets() {
     Instant now = clock.instant();
-    LocalDate today = LocalDate.ofInstant(now, ZoneOffset.UTC);
+    LocalDate today = LocalDate.ofInstant(now, zone);
     List<UUID> due =
         profiles.lockSecretsExpiringUnwarned(
             today.plusDays(ConnectionProfileService.SECRET_EXPIRY_WARNING_DAYS));

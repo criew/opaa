@@ -55,6 +55,9 @@ import org.springframework.transaction.support.TransactionTemplate;
 @Component
 public class ConnectionSecrets {
 
+  /** How long before the end a provider names for a consent its owner is warned. */
+  public static final Duration EXPIRY_WARNING = ConnectionToken.EXPIRY_WARNING;
+
   /** How finely the last use of a connected account is kept. */
   static final Duration USE_RESOLUTION = Duration.ofDays(1);
 
@@ -287,14 +290,14 @@ public class ConnectionSecrets {
   }
 
   /**
-   * Claims the persons' OAuth grants whose named end lies within {@code ahead} and was not warned
-   * of: each is marked in the caller's transaction, so an end is claimed once and a new end (a
-   * rotation, a reconnection) is claimed anew. Needs a transaction.
+   * Claims the persons' OAuth grants whose named end lies within {@link #EXPIRY_WARNING} and was
+   * not warned of: each is marked in the caller's transaction, so an end is claimed once. When an
+   * end is warned of anew the row decides ({@code ConnectionToken}). Needs a transaction.
    */
-  public List<EndingGrant> claimEndingGrants(Duration ahead) {
+  public List<EndingGrant> claimEndingGrants() {
     Instant now = clock.instant();
     List<EndingGrant> ending = new ArrayList<>();
-    for (ConnectionToken token : tokens.findGrantsEndingUnwarned(now, now.plus(ahead))) {
+    for (ConnectionToken token : tokens.findGrantsEndingUnwarned(now, now.plus(EXPIRY_WARNING))) {
       token.expiryWarned(now);
       ending.add(
           new EndingGrant(

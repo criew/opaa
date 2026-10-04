@@ -7,6 +7,7 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Objects;
 import java.util.UUID;
@@ -19,6 +20,9 @@ import java.util.UUID;
 @Entity
 @Table(name = "connection_tokens")
 class ConnectionToken {
+
+  /** How long before the end the provider names its owner is warned. */
+  static final Duration EXPIRY_WARNING = Duration.ofDays(14);
 
   /** What the row holds: a personal secret, or an OAuth refresh token with its access token. */
   enum Kind {
@@ -107,7 +111,7 @@ class ConnectionToken {
     this.secretCiphertext = grant.refresh();
     this.accessTokenCiphertext = grant.access();
     this.accessTokenExpiresAt = grant.accessExpiresAt();
-    endsAt(grant.expiresAt());
+    consentEndsAt(grant.expiresAt(), now);
     this.issuedFor = issuedFor;
     this.updatedAt = now;
   }
@@ -126,7 +130,7 @@ class ConnectionToken {
     this.accessTokenExpiresAt = accessExpiresAt;
     if (rotatedRefreshCiphertext != null) {
       this.secretCiphertext = rotatedRefreshCiphertext;
-      endsAt(rotatedExpiresAt);
+      rotatedEndsAt(rotatedExpiresAt, now);
     }
     this.updatedAt = now;
   }
@@ -137,7 +141,8 @@ class ConnectionToken {
     this.secretCiphertext = secretCiphertext;
     this.accessTokenCiphertext = null;
     this.accessTokenExpiresAt = null;
-    endsAt(expiresAt);
+    this.expiresAt = expiresAt;
+    this.expiryWarnedAt = null;
     this.issuedFor = issuedFor;
     this.updatedAt = now;
   }
@@ -148,12 +153,29 @@ class ConnectionToken {
     this.updatedAt = now;
   }
 
-  /** A new end is warned of anew; the same end only once. */
-  private void endsAt(Instant end) {
-    if (!Objects.equals(end, this.expiresAt)) {
+  /**
+   * A new consent's end is warned of once; an end the provider names already within {@link
+   * #EXPIRY_WARNING} is a lifetime shorter than the warning and is never warned of.
+   */
+  private void consentEndsAt(Instant end, Instant now) {
+    this.expiryWarnedAt = withinWarning(end, now) ? now : null;
+    this.expiresAt = end;
+  }
+
+  /**
+   * A rotation that moves the end out of {@link #EXPIRY_WARNING} is warned of anew; one that keeps
+   * it within, as a sliding idle end does on every renewal, keeps the marker, so no end warns
+   * daily.
+   */
+  private void rotatedEndsAt(Instant end, Instant now) {
+    if (!Objects.equals(end, this.expiresAt) && !withinWarning(end, now)) {
       this.expiryWarnedAt = null;
     }
     this.expiresAt = end;
+  }
+
+  private static boolean withinWarning(Instant end, Instant now) {
+    return end != null && end.isBefore(now.plus(EXPIRY_WARNING));
   }
 
   /** The owner was warned of the end the provider named. */

@@ -16,6 +16,7 @@ import io.opaa.indexing.source.profileprobe.PersonProbeSourceConnector;
 import io.opaa.test.ConnectorReleases;
 import io.opaa.test.OpaaIntegrationTest;
 import java.nio.charset.StandardCharsets;
+import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -34,8 +35,9 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * The expiry watch against the Liquibase schema: a named end of a person's OAuth consent is warned
- * of once to that person, 14 days ahead; a new end anew. A client secret's expiry date is warned of
- * once to the system administration, without a new version of the profile.
+ * of once to that person, 14 days ahead; a new consent anew, a lifetime shorter than that never. A
+ * client secret's expiry date is warned of once to the system administration, without a new version
+ * of the profile.
  */
 @OpaaIntegrationTest
 class ConnectionExpiryWatchIntegrationTest {
@@ -98,7 +100,8 @@ class ConnectionExpiryWatchIntegrationTest {
 
   @Test
   void aConsentEndingWithinFourteenDaysIsWarnedOfOnceToItsPerson() throws Exception {
-    Instant end = grantEndingIn(Duration.ofDays(10));
+    grantEndingIn(Duration.ofDays(20));
+    Instant end = timePassesUntilTheEndIsIn(Duration.ofDays(10));
 
     watch.warn();
     watch.warn();
@@ -131,12 +134,23 @@ class ConnectionExpiryWatchIntegrationTest {
     watch.warn();
     assertThat(notifications("CONNECTION_EXPIRING")).isEmpty();
 
-    grantEndingIn(Duration.ofDays(5));
+    timePassesUntilTheEndIsIn(Duration.ofDays(5));
     watch.warn();
-    grantEndingIn(Duration.ofDays(3));
+    // a reconnection is a new consent with a new end
+    grantEndingIn(Duration.ofDays(30));
+    timePassesUntilTheEndIsIn(Duration.ofDays(3));
     watch.warn();
 
     assertThat(notifications("CONNECTION_EXPIRING")).containsExactly(person, person);
+  }
+
+  @Test
+  void aConsentWhoseLifetimeIsShorterThanTheWarningIsNeverWarnedOf() {
+    grantEndingIn(Duration.ofMinutes(30));
+
+    watch.warn();
+
+    assertThat(notifications("CONNECTION_EXPIRING")).isEmpty();
   }
 
   @Test
@@ -170,6 +184,17 @@ class ConnectionExpiryWatchIntegrationTest {
                         now.plus(Duration.ofHours(1)),
                         end),
                     TARGET));
+    return end;
+  }
+
+  /** Moves the stored end as the clock would, without a renewal; returns the new end. */
+  private Instant timePassesUntilTheEndIsIn(Duration ahead) {
+    Instant end = Instant.now().truncatedTo(ChronoUnit.SECONDS).plus(ahead);
+    jdbc.update(
+        "UPDATE connection_tokens SET expires_at = ? WHERE connected_account_id IN"
+            + " (SELECT id FROM connected_accounts WHERE profile_id = ?)",
+        Timestamp.from(end),
+        profile);
     return end;
   }
 
