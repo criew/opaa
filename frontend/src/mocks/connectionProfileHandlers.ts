@@ -254,6 +254,10 @@ export const connectionProfileHandlers = [
       connectedAccounts: profile.connectedAccountCount,
       rejectedLibraries: refusals.length,
       rejections: refusals,
+      // private libraries only as the masked count of their owners, on a profile admitting persons
+      ...(profile.ownership === 'LIBRARY'
+        ? {}
+        : { rejectedPrivateLibraries: { count: null, fewerThan: 5 } }),
       lastForProfileRequirement: false,
     })
   }),

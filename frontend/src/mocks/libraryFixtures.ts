@@ -89,9 +89,52 @@ export const mockLibraries: LibraryListResponse[] = [
     createdAt: '2026-09-06T10:00:00Z',
     updatedAt: '2026-09-06T10:00:00Z',
   },
+  // A private library on the caller's connected account (#2164) - the one the connected-account
+  // mocks name under usedBy.
+  {
+    id: 'library-private-ablage',
+    name: 'Meine Ablage',
+    description: 'Eigene Dateien aus der Nextcloud',
+    ownerType: 'USER',
+    reach: { allAccounts: false, groupCount: 0, userCount: 1 },
+    myRole: 'OWNER',
+    sourceType: 'NEXTCLOUD',
+    documentCount: 0,
+    privateLibrary: true,
+    createdAt: '2026-09-20T08:00:00Z',
+    updatedAt: '2026-09-20T08:00:00Z',
+  },
 ]
 
 export const mockLibraryDetails: Record<string, LibraryResponse> = {
+  'library-private-ablage': {
+    id: 'library-private-ablage',
+    name: 'Meine Ablage',
+    description: 'Eigene Dateien aus der Nextcloud',
+    ownerType: 'USER',
+    ownerId: 'mock-user-id',
+    reach: { allAccounts: false, groupCount: 0, userCount: 1 },
+    myRole: 'OWNER',
+    documentCount: 0,
+    sourceType: 'NEXTCLOUD',
+    sourceUrl: 'https://cloud.personen.example/remote.php/dav/files/avogt',
+    sourceSettings: { folders: [] },
+    connectionProfile: {
+      id: 'connection-profile-nextcloud-person',
+      name: 'Zugang Nextcloud Personen',
+      serverUrl: 'https://cloud.personen.example',
+      authMethod: 'PERSONAL_SECRET',
+      connectorDefaults: null,
+      sourceProxy: null,
+      sourceInsecureSsl: false,
+    },
+    privateLibrary: true,
+    // a private library stays locked for diagnosis and cannot be unlocked
+    diagnosticsLocked: true,
+    diagnosticsLockToggleable: false,
+    createdAt: '2026-09-20T08:00:00Z',
+    updatedAt: '2026-09-20T08:00:00Z',
+  },
   'library-mine': {
     id: 'library-mine',
     name: 'Meine Dokumente',
