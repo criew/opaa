@@ -135,11 +135,12 @@ record SmbAddress(String host, int port, String share) {
           "sourceUrl nennt keine gültige Freigabe: „" + share + "“");
     }
     if (share.endsWith("$")) {
-      // administrative shares (C$, ADMIN$, IPC$) open a whole volume or no files at all
+      // hidden shares are never bound; this includes C$, ADMIN$ and IPC$ (a whole volume or no
+      // files)
       throw new InvalidSmbConfigurationException(
-          "sourceUrl nennt eine administrative Freigabe („"
+          "sourceUrl nennt eine versteckte Freigabe („"
               + share
-              + "“); bitte eine gewöhnliche Freigabe für die Ablage angeben");
+              + "“); versteckte Freigaben (Name endet auf $) werden nicht angebunden, bitte eine sichtbare Freigabe angeben");
     }
     for (int i = 0; i < share.length(); i++) {
       char c = share.charAt(i);
