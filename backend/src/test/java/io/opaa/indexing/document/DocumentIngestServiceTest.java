@@ -40,11 +40,14 @@ import io.opaa.indexing.chunk.FullTextChunkStore;
 import io.opaa.indexing.chunk.SourceChunkMetadataKeys;
 import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.indexing.chunk.VectorStoreWriter;
+import io.opaa.indexing.job.PersonalQuotaExhaustedException;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.LibraryProperties;
 import io.opaa.knowledge.LibraryStorageQuotaService;
+import io.opaa.knowledge.PersonalStorageQuota;
+import io.opaa.knowledge.QuotaVerdict;
 import io.opaa.knowledge.SourceDocumentContext;
 import io.opaa.knowledge.SourceType;
 import io.opaa.metadata.EmbeddingRateEstimator;
@@ -127,7 +130,9 @@ class DocumentIngestServiceTest {
     targetLibrary = library();
     // Default: plenty of headroom, so tests never trip the quota check unless they explicitly
     // stub it otherwise. lenient() because most tests never reach it.
-    lenient().when(storageQuotaService.wouldExceedQuota(any(), anyLong())).thenReturn(false);
+    lenient()
+        .when(storageQuotaService.verdictFor(any(), anyLong()))
+        .thenReturn(QuotaVerdict.WITHIN);
     // Default happy-path stubs for the conditional status-transition UPDATEs - tests that
     // exercise a deletion race override these explicitly to return 0.
     lenient()
@@ -1083,6 +1088,51 @@ class DocumentIngestServiceTest {
   @Nested
   class Quota {
 
+    /**
+     * The owner's quota across her private libraries ends the run instead of skipping the item:
+     * nothing of the document is stored, and the message names her quota.
+     */
+    @Test
+    void aDocumentPastTheOwnersPersonalQuotaEndsTheIntakeWithoutPersistingAnything()
+        throws IOException {
+      Path file = fileNamed("over-personal-quota.txt", "some content");
+      when(checksumService.computeSha256(file)).thenReturn("abc123");
+      when(documentRepository.findByLibraryIdAndFilePath(
+              targetLibrary.getId(), file.toAbsolutePath().toString()))
+          .thenReturn(Optional.empty());
+      when(storageQuotaService.verdictFor(eq(targetLibrary), anyLong()))
+          .thenReturn(QuotaVerdict.PERSON_EXHAUSTED);
+      when(storageQuotaService.personalQuotaExceededMessage(targetLibrary))
+          .thenReturn(
+              "Speicherkontingent Ihrer privaten Bibliotheken erschöpft (1 KB von 1 KB belegt)");
+
+      assertThatThrownBy(() -> service.ingest(localFile(file), null))
+          .isInstanceOf(PersonalQuotaExhaustedException.class)
+          .hasMessage(
+              "Speicherkontingent Ihrer privaten Bibliotheken erschöpft (1 KB von 1 KB belegt)");
+      verify(documentRepository, never()).save(any(Document.class));
+      verify(documentService, never()).parseDocument(any());
+    }
+
+    /** The check and the save of the row it admits happen under one hold, released after it. */
+    @Test
+    void theQuotaCheckAndTheSaveOfTheAdmittedRowShareOneHold() throws IOException {
+      Path file = fileNamed("held.txt", "some content");
+      stubNewRow(file, "held-checksum");
+      LibraryStorageQuotaService.IntakeHold hold =
+          Mockito.mock(LibraryStorageQuotaService.IntakeHold.class);
+      when(storageQuotaService.holdIntake(targetLibrary)).thenReturn(hold);
+      stubParsedInto(file, chunks("chunk1"));
+
+      service.ingest(localFile(file), null);
+
+      InOrder order = inOrder(storageQuotaService, documentRepository, hold);
+      order.verify(storageQuotaService).holdIntake(targetLibrary);
+      order.verify(storageQuotaService).verdictFor(eq(targetLibrary), anyLong());
+      order.verify(documentRepository).save(any(Document.class));
+      order.verify(hold).close();
+    }
+
     @Test
     void aNewDocumentOverTheQuotaIsRejectedWithoutPersistingAnything() throws IOException {
       Path file = fileNamed("over-quota.txt", "some content");
@@ -1090,8 +1140,8 @@ class DocumentIngestServiceTest {
       when(documentRepository.findByLibraryIdAndFilePath(
               targetLibrary.getId(), file.toAbsolutePath().toString()))
           .thenReturn(Optional.empty());
-      when(storageQuotaService.wouldExceedQuota(eq(targetLibrary.getId()), anyLong()))
-          .thenReturn(true);
+      when(storageQuotaService.verdictFor(eq(targetLibrary), anyLong()))
+          .thenReturn(QuotaVerdict.LIBRARY_EXHAUSTED);
 
       DocumentIngestResult result = service.ingest(localFile(file), null);
 
@@ -1111,7 +1161,10 @@ class DocumentIngestServiceTest {
       DocumentIngestService serviceWithRealQuota =
           serviceWith(
               TestPipelineRegistries.fallbackOnly(documentService, chunkingService),
-              new LibraryStorageQuotaService(documentRepository, new LibraryProperties(1000)));
+              new LibraryStorageQuotaService(
+                  documentRepository,
+                  new LibraryProperties(1000),
+                  Mockito.mock(PersonalStorageQuota.class)));
       Path file = fileNamed("replace-under-quota.txt", "x".repeat(950));
       when(checksumService.computeSha256(file)).thenReturn("new-checksum");
       Document existing = existingIndexed(file, "old-checksum", 900L);
@@ -1147,9 +1200,9 @@ class DocumentIngestServiceTest {
 
       long expectedDelta =
           newContent.getBytes(java.nio.charset.StandardCharsets.UTF_8).length - 1_000L;
-      verify(storageQuotaService).wouldExceedQuota(targetLibrary.getId(), expectedDelta);
+      verify(storageQuotaService).verdictFor(targetLibrary, expectedDelta);
       verify(storageQuotaService, never())
-          .wouldExceedQuota(eq(targetLibrary.getId()), longThat(value -> value != expectedDelta));
+          .verdictFor(eq(targetLibrary), longThat(value -> value != expectedDelta));
     }
 
     @Test
@@ -1164,8 +1217,8 @@ class DocumentIngestServiceTest {
       when(checksumService.computeSha256(any(byte[].class))).thenReturn("new-sha256");
       when(documentRepository.findByLibraryIdAndFilePath(targetLibrary.getId(), ENTRY_URL))
           .thenReturn(Optional.of(existing));
-      when(storageQuotaService.wouldExceedQuota(eq(targetLibrary.getId()), anyLong()))
-          .thenReturn(true);
+      when(storageQuotaService.verdictFor(eq(targetLibrary), anyLong()))
+          .thenReturn(QuotaVerdict.LIBRARY_EXHAUSTED);
 
       DocumentIngestResult result =
           service.ingest(
@@ -1638,7 +1691,7 @@ class DocumentIngestServiceTest {
       DocumentIngestResult result = service.ingest(upload(doc, file), null);
 
       assertThat(result).isEqualTo(DocumentIngestResult.PROCESSED);
-      verify(storageQuotaService, never()).wouldExceedQuota(any(), anyLong());
+      verify(storageQuotaService, never()).verdictFor(any(), anyLong());
       verify(documentRepository, never()).save(any(Document.class));
       assertThat(doc.getContentType()).isEqualTo("application/pdf");
       verify(vectorStoreWriter).writeEmbeddedChunks(any(), any());

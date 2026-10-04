@@ -180,6 +180,37 @@ public interface IndexingJobRepository extends JpaRepository<IndexingJob, UUID> 
       @Param("completedAt") Instant completedAt);
 
   /**
+   * Per run category, how many runs of the private libraries of one organization started since
+   * {@code since} ended with it and how many persons own the libraries concerned - for the masked
+   * view of the administration only.
+   */
+  @Query(
+      "select j.failureCategory as category, count(j) as runs, count(distinct l.ownerUserId) as"
+          + " owners from IndexingJob j, KnowledgeLibrary l where j.libraryId = l.id"
+          + " and l.ownerOnly = true and l.organizationId = :organizationId"
+          + " and j.failureCategory is not null and j.startedAt >= :since"
+          + " group by j.failureCategory")
+  List<PrivateRunEnds> countPrivateRunEndsSince(
+      @Param("organizationId") UUID organizationId, @Param("since") Instant since);
+
+  /** One row of {@link #countPrivateRunEndsSince}. */
+  interface PrivateRunEnds {
+    String getCategory();
+
+    long getRuns();
+
+    long getOwners();
+  }
+
+  /** Sets why {@code id} ends early, only while it is still {@link JobStatus#RUNNING}. */
+  @Modifying
+  @Transactional
+  @Query(
+      "update IndexingJob j set j.failureCategory = :category where j.id = :id and j.status ="
+          + " io.opaa.indexing.job.JobStatus.RUNNING")
+  int recordEndCategoryIfRunning(@Param("id") UUID id, @Param("category") String category);
+
+  /**
    * Fails {@code id} only if it is still {@link JobStatus#RUNNING} - the same reasoning and shape
    * as {@link #completeIfRunning}, for the failure path.
    *

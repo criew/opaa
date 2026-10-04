@@ -465,6 +465,10 @@ opaa:
     # FILESYSTEM/HTTP_DIRECTORY/RSS_FEED connectors), not only the upload endpoint. Default 10 GiB.
     # 0 or negative disables the quota entirely - see LibraryProperties#quotaBytes.
     quota-bytes: ${OPAA_LIBRARY_QUOTA_BYTES:10737418240}
+    # Default of the storage quota across all private libraries of one person, until the system
+    # administration sets its own value. Default 10 GiB; 0 or negative means unlimited - see
+    # PersonalStorageQuota.
+    private-storage-quota-bytes: ${OPAA_LIBRARY_PRIVATE_STORAGE_QUOTA_BYTES:10737418240}
   connection:
     # Without a sign-in for this many days a person's connections rest (ADR-0041); 30-365, a value
     # outside fails the start - see ConnectionLifecycleProperties.

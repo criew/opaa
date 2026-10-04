@@ -353,6 +353,25 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
   long sumFileSizeByLibraryId(@Param("libraryId") UUID libraryId);
 
   /**
+   * The bytes all private libraries of {@code ownerUserId} occupy together, counted like {@link
+   * #sumFileSizeByLibraryId}. Called only by {@code PersonalStorageQuota#usageOf}.
+   */
+  @Query(
+      "select coalesce(sum(coalesce(d.fileSize, 0)), 0) from Document d, KnowledgeLibrary l"
+          + " where d.libraryId = l.id and l.ownerOnly = true and l.ownerUserId = :ownerUserId")
+  long sumFileSizeOfPrivateLibrariesOwnedBy(@Param("ownerUserId") UUID ownerUserId);
+
+  /**
+   * The bytes the private libraries of one organization occupy together - a sum over persons, for
+   * the masked view of the administration only.
+   */
+  @Query(
+      "select coalesce(sum(coalesce(d.fileSize, 0)), 0) from Document d, KnowledgeLibrary l"
+          + " where d.libraryId = l.id and l.ownerOnly = true"
+          + " and l.organizationId = :organizationId")
+  long sumFileSizeOfPrivateLibraries(@Param("organizationId") UUID organizationId);
+
+  /**
    * Conditionally transitions an asynchronously-processed upload to {@code FAILED}. Parsing and
    * embedding can run for seconds, long enough for a concurrent delete to remove the row. A plain
    * save would re-insert it as a zombie, since {@link Document} assigns its own id and carries no
