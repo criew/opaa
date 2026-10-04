@@ -5,6 +5,12 @@ import java.io.FilterOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.http.HttpTimeoutException;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * The one byte ceiling every bounded read or write goes through: enforced while the bytes flow,
@@ -13,6 +19,15 @@ import java.io.OutputStream;
  * LimitExceededException}; a stream exactly at the limit passes.
  */
 public final class BoundedStreams {
+
+  /** Closes a body still being read when its deadline passes. */
+  private static final ScheduledExecutorService DEADLINES =
+      Executors.newSingleThreadScheduledExecutor(
+          runnable -> {
+            Thread thread = new Thread(runnable, "bounded-read-deadline");
+            thread.setDaemon(true);
+            return thread;
+          });
 
   private BoundedStreams() {}
 
@@ -99,6 +114,47 @@ public final class BoundedStreams {
       throw new LimitExceededException(maxBytes);
     }
     return probe;
+  }
+
+  /**
+   * {@link #readFully} that also ends at {@code deadlineNanos} (on the {@link System#nanoTime()}
+   * scale): a body still being read then is closed and {@link HttpTimeoutException} thrown, so a
+   * remote end trickling bytes cannot hold the reader past it. Crossing the limit still throws
+   * {@link LimitExceededException}.
+   */
+  public static byte[] readFullyBefore(InputStream in, long maxBytes, long deadlineNanos)
+      throws IOException {
+    AtomicBoolean expired = new AtomicBoolean();
+    ScheduledFuture<?> stop =
+        DEADLINES.schedule(
+            () -> {
+              expired.set(true);
+              closeQuietly(in);
+            },
+            Math.max(0, deadlineNanos - System.nanoTime()),
+            TimeUnit.NANOSECONDS);
+    try {
+      byte[] read = readFully(in, maxBytes);
+      if (expired.get()) {
+        throw new HttpTimeoutException("the body was not read completely before its deadline");
+      }
+      return read;
+    } catch (IOException e) {
+      if (expired.get() && !(e instanceof LimitExceededException)) {
+        throw new HttpTimeoutException("the body was not read completely before its deadline");
+      }
+      throw e;
+    } finally {
+      stop.cancel(false);
+    }
+  }
+
+  private static void closeQuietly(InputStream in) {
+    try {
+      in.close();
+    } catch (IOException e) {
+      // the reading thread sees the closed stream
+    }
   }
 
   private static void checkLimit(long soFar, long maxBytes) throws IOException {
