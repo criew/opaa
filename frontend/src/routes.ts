@@ -12,6 +12,11 @@ export const HANDOVER_ROUTE = '/handover'
 /** Where every provider sign-in returns - the one route a running handover may pass through. */
 export const AUTH_CALLBACK_ROUTE = '/auth/callback'
 export const SETTINGS_ROUTE = '/settings'
+/** The person's own connected accounts, a tab of the settings. */
+export const CONNECTED_ACCOUNTS_ROUTE = '/settings/accounts'
+/** The audit's read view of the connection log, next to the rights history. */
+export const CONNECTION_LOG_ROUTE = '/revision/verbindungsprotokoll'
+export const RIGHTS_HISTORY_ROUTE = '/revision/rechtehistorie'
 /** The one entry for every asset type (ADR-0039, Entscheidung 1). */
 export const CATALOG_ROUTE = '/catalog'
 /** "Neu" in the catalog: the type choice before the type's own wizard. */

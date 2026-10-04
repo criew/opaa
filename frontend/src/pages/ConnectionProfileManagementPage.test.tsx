@@ -189,6 +189,40 @@ describe('ConnectionProfileManagementPage', () => {
     expect(row).toHaveTextContent('Persönliches Geheimnis')
   })
 
+  it('shows the counts of connected and expired accounts exactly as the API rounds them', async () => {
+    mockConnectionProfiles[0] = {
+      ...mockConnectionProfiles[0],
+      connectedAccountCount: { count: null, fewerThan: 5 },
+      expiredConnectionCount: { count: null, fewerThan: 5 },
+    }
+    mockConnectionProfiles.push({
+      ...mockConnectionProfiles[0],
+      id: 'profile-exact',
+      name: 'Zugang openDesk',
+      connectedAccountCount: { count: 23, fewerThan: null },
+      expiredConnectionCount: { count: 7, fewerThan: null },
+    })
+    mockConnectionProfiles.push({
+      ...mockConnectionProfiles[0],
+      id: 'profile-withheld',
+      name: 'Zugang Partner',
+      connectedAccountCount: { count: 9, fewerThan: null },
+      expiredConnectionCount: null,
+    })
+    renderWithProviders(<ConnectionProfileManagementPage />)
+
+    const header = (await screen.findAllByRole('row'))[0]
+    expect(header).toHaveTextContent('Verbundene Konten')
+    expect(header).toHaveTextContent('Davon abgelaufen')
+    const cells = (name: string) =>
+      within(screen.getByRole('row', { name: new RegExp(name) }))
+        .getAllByRole('cell')
+        .map((cell) => cell.textContent)
+    expect(cells(PROFILE).slice(5, 7)).toEqual(['weniger als 5', 'weniger als 5'])
+    expect(cells('Zugang openDesk').slice(5, 7)).toEqual(['23', '7'])
+    expect(cells('Zugang Partner').slice(5, 7)).toEqual(['9', 'nicht ausgewiesen'])
+  })
+
   it('shows the expiry of the secret as a German date and tells expired from expiring', async () => {
     mockConnectionProfiles[0] = {
       ...mockConnectionProfiles[0],
@@ -578,6 +612,22 @@ describe('ConnectionProfileManagementPage', () => {
     await answerConfirm(user, /Alle Verbindungen von/, 'Alle trennen')
 
     expect(await screen.findByText('2 Verbindungen getrennt.')).toBeVisible()
+  })
+
+  it('tells before the emergency shutdown that persons are notified and reconnect themselves', async () => {
+    mockConnectionProfiles[0] = { ...mockConnectionProfiles[0], ownership: 'BOTH' }
+    const user = userEvent.setup()
+    renderWithProviders(<ConnectionProfileManagementPage />)
+
+    await user.click(
+      await screen.findByRole('button', { name: `Alle Verbindungen von ${PROFILE} trennen` }),
+    )
+    const question = await screen.findByRole('dialog', { name: /Alle Verbindungen von/ })
+    expect(question).toHaveTextContent('verbundene Konten von Personen: weniger als 5')
+    expect(question).toHaveTextContent(
+      'Personen mit verbundenem Konto werden benachrichtigt und müssen ihr Konto selbst neu verbinden.',
+    )
+    await answerConfirm(user, /Alle Verbindungen von/, 'Abbrechen')
   })
 
   it('deletes a profile after naming what happens to its libraries', async () => {
