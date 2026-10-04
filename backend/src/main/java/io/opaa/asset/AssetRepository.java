@@ -31,11 +31,21 @@ public interface AssetRepository extends JpaRepository<Asset, UUID> {
 
   List<Asset> findByOwnerGroupIdAndOrganizationId(UUID ownerGroupId, UUID organizationId);
 
-  List<Asset> findByOwnerUserIdAndOrganizationId(UUID ownerUserId, UUID organizationId);
+  /** A person's transferable assets - an owner-only one never changes hands. */
+  List<Asset> findByOwnerUserIdAndOrganizationIdAndOwnerOnlyFalse(
+      UUID ownerUserId, UUID organizationId);
 
   long countByOwnerGroupIdAndOrganizationId(UUID ownerGroupId, UUID organizationId);
 
-  long countByOwnerUserIdAndOrganizationId(UUID ownerUserId, UUID organizationId);
+  /** The count of {@link #findByOwnerUserIdAndOrganizationIdAndOwnerOnlyFalse}. */
+  long countByOwnerUserIdAndOrganizationIdAndOwnerOnlyFalse(UUID ownerUserId, UUID organizationId);
+
+  /** The owner-only assets of one type in an organization. */
+  @Query(
+      "select a.id from Asset a where a.assetType = :assetType"
+          + " and a.organizationId = :organizationId and a.ownerOnly = true")
+  Set<UUID> findOwnerOnlyIds(
+      @Param("assetType") AssetType assetType, @Param("organizationId") UUID organizationId);
 
   /**
    * How many assets each of the groups owns, in one grouped query - the overview "wo wirkt diese
@@ -117,7 +127,7 @@ public interface AssetRepository extends JpaRepository<Asset, UUID> {
       "select a.id as id, a.assetType as assetType, a.name as name,"
           + " a.description as description, a.ownerType as ownerType,"
           + " a.ownerUserId as ownerUserId, a.ownerGroupId as ownerGroupId,"
-          + " a.origin as origin, a.updatedAt as updatedAt";
+          + " a.ownerOnly as ownerOnly, a.origin as origin, a.updatedAt as updatedAt";
 
   String CATALOG_CONDITION =
       " from Asset a left join AssetFavorite f on f.assetId = a.id and f.userId = :userId"

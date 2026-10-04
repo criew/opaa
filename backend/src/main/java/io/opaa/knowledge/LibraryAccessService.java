@@ -2,6 +2,7 @@ package io.opaa.knowledge;
 
 import io.opaa.api.types.AssetRole;
 import io.opaa.asset.AssetAuthorization;
+import io.opaa.asset.OwnerOnlyRule;
 import io.opaa.permission.AssetAccessService;
 import io.opaa.permission.AssetReach;
 import java.util.Collection;
@@ -29,11 +30,15 @@ public class LibraryAccessService {
 
   private final AssetAccessService assetAccessService;
   private final AssetAuthorization authorization;
+  private final OwnerOnlyRule ownerOnlyRule;
 
   public LibraryAccessService(
-      AssetAccessService assetAccessService, AssetAuthorization authorization) {
+      AssetAccessService assetAccessService,
+      AssetAuthorization authorization,
+      OwnerOnlyRule ownerOnlyRule) {
     this.assetAccessService = assetAccessService;
     this.authorization = authorization;
+    this.ownerOnlyRule = ownerOnlyRule;
   }
 
   /** Whether the user may see a library's configuration - requires {@link AssetRole#VIEWER}. */
@@ -71,6 +76,18 @@ public class LibraryAccessService {
    */
   public Set<UUID> readableLibraryIds(UUID userId, UUID organizationId) {
     return assetAccessService.readableAssetIds(KnowledgeLibrary.ASSET_TYPE, userId, organizationId);
+  }
+
+  /**
+   * What {@code targetUserId} reads when somebody else acts in their rights context ("Sicht als"):
+   * {@link #readableLibraryIds} without the owner-only libraries, which never enter a foreign
+   * context.
+   */
+  public Set<UUID> readableLibraryIdsInForeignContext(UUID targetUserId, UUID organizationId) {
+    return ownerOnlyRule.withoutOwnerOnly(
+        KnowledgeLibrary.ASSET_TYPE,
+        organizationId,
+        readableLibraryIds(targetUserId, organizationId));
   }
 
   /**

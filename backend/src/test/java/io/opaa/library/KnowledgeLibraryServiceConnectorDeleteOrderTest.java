@@ -175,7 +175,8 @@ class KnowledgeLibraryServiceConnectorDeleteOrderTest {
                 .registry(),
             new LibrarySourceConnectionResolver(),
             mock(LibraryConnectionService.class),
-            mock(ConnectorReleaseService.class));
+            mock(ConnectorReleaseService.class),
+            mock(io.opaa.asset.OwnerOnlyRule.class));
 
     ownerId = UUID.randomUUID();
     UUID organizationId = UUID.randomUUID();

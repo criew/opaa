@@ -12,6 +12,7 @@ import io.opaa.asset.AssetGrantService;
 import io.opaa.asset.AssetOwnerNames;
 import io.opaa.asset.AssetShellService;
 import io.opaa.asset.AssetSuccessionSource;
+import io.opaa.asset.OwnerOnlyRule;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.CurrentUser;
@@ -151,6 +152,7 @@ public class KnowledgeLibraryService {
   private final SourceConnectionResolver connectionResolver;
   private final LibraryConnectionService libraryConnections;
   private final ConnectorReleaseService connectorRelease;
+  private final OwnerOnlyRule ownerOnlyRule;
 
   public KnowledgeLibraryService(
       AssetSuccessionSource successionSource,
@@ -173,7 +175,9 @@ public class KnowledgeLibraryService {
       SourceConnectorRegistry connectors,
       SourceConnectionResolver connectionResolver,
       LibraryConnectionService libraryConnections,
-      ConnectorReleaseService connectorRelease) {
+      ConnectorReleaseService connectorRelease,
+      OwnerOnlyRule ownerOnlyRule) {
+    this.ownerOnlyRule = ownerOnlyRule;
     this.successionSource = successionSource;
     this.connectorRelease = connectorRelease;
     this.connectionResolver = connectionResolver;
@@ -669,6 +673,10 @@ public class KnowledgeLibraryService {
           "Nur die Systemverwaltung darf die Freigabe-Obergrenze einer Bibliothek setzen");
     }
     KnowledgeLibrary library = loadLibrary(libraryId, caller);
+    // An owner-only library has no administrative floor: unknown to the administration (404),
+    // refused by the rule for its owner.
+    accessService.requireRole(library, caller.id(), caller.isSystemAdmin(), AssetRole.VIEWER);
+    ownerOnlyRule.requireShareable(library);
     if (acceptsUploads(library)) {
       throw new ValidationException(
           "Upload-Bibliotheken tragen keine Freigabe-Obergrenze - jedes Dokument wird ohnehin"

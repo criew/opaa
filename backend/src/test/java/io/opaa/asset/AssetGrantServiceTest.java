@@ -90,7 +90,8 @@ class AssetGrantServiceTest {
             new AssetTypes(List.of(libraryType)),
             auditEventRecorder,
             eventPublisher,
-            successionGuard);
+            successionGuard,
+            new OwnerOnlyRule(mock(AssetRepository.class), new AssetTypes(List.of(libraryType))));
 
     // KnowledgeLibrary.ownedByUser always assigns its own random id (like every other factory
     // method on that entity) - libraryId is read back from the constructed instance rather than

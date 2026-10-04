@@ -96,6 +96,7 @@ public class AssetGrantService {
   private final AuditEventRecorder auditEventRecorder;
   private final ApplicationEventPublisher eventPublisher;
   private final SuccessionReachGuard successionGuard;
+  private final OwnerOnlyRule ownerOnlyRule;
 
   AssetGrantService(
       AssetGrantRepository grantRepository,
@@ -108,7 +109,9 @@ public class AssetGrantService {
       AssetTypes assetTypes,
       AuditEventRecorder auditEventRecorder,
       ApplicationEventPublisher eventPublisher,
-      SuccessionReachGuard successionGuard) {
+      SuccessionReachGuard successionGuard,
+      OwnerOnlyRule ownerOnlyRule) {
+    this.ownerOnlyRule = ownerOnlyRule;
     this.grantRepository = grantRepository;
     this.userRepository = userRepository;
     this.groupDirectory = groupDirectory;
@@ -157,6 +160,7 @@ public class AssetGrantService {
       AssetType assetType, UUID assetId, AssetGrantUpsert request, CurrentUser caller) {
     UUID currentUserId = caller.id();
     Asset asset = requireManageable(assetType, assetId, caller);
+    ownerOnlyRule.requireShareable(asset);
     AssetTypeDefinition definition = assetTypes.require(assetType);
 
     if (request.subjectType() == null) {

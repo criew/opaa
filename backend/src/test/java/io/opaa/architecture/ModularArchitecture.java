@@ -240,6 +240,15 @@ public final class ModularArchitecture {
    */
   static final String SECRET_PORT = "indexing.source.SourceConnectionResolver";
 
+  /** Where "Sicht als" runs, relative to the root: the one foreign rights context. */
+  static final String FOREIGN_CONTEXT = "diagnosticaccess";
+
+  /**
+   * A person's own rights formula, relative to the root. It includes their owner-only libraries, so
+   * {@link #FOREIGN_CONTEXT} asks {@code readableLibraryIdsInForeignContext} instead.
+   */
+  static final String OWN_FORMULA = "knowledge.LibraryAccessService#readableLibraryIds";
+
   /** The modules that may hold {@link #SECRET_PORT}. */
   static final Set<Module> SECRET_PORT_HOLDERS = EnumSet.of(KNOWLEDGE, LIBRARY, CONNECTIONS);
 
@@ -857,8 +866,37 @@ public final class ModularArchitecture {
         .allowEmptyShould(true);
   }
 
+  /** Classes in {@link #FOREIGN_CONTEXT} or below it that reach {@link #OWN_FORMULA}. */
+  ArchRule theForeignContextNeverUsesTheOwnFormula() {
+    return noClasses()
+        .that(
+            DescribedPredicate.describe(
+                "are in " + FOREIGN_CONTEXT,
+                javaClass -> {
+                  String relative = relative(javaClass.getBaseComponentType().getPackageName());
+                  return relative != null
+                      && (relative.equals(FOREIGN_CONTEXT)
+                          || relative.startsWith(FOREIGN_CONTEXT + "."));
+                }))
+        .should()
+        .accessTargetWhere(
+            DescribedPredicate.describe(
+                "are " + OWN_FORMULA,
+                access ->
+                    (relative(access.getTargetOwner().getPackageName())
+                            + "."
+                            + access.getTargetOwner().getSimpleName()
+                            + "#"
+                            + access.getName())
+                        .equals(OWN_FORMULA)))
+        .because(
+            "an owner-only library never enters a foreign rights context (ADR-0036, Nachtrag 4)")
+        .allowEmptyShould(true);
+  }
+
   List<ArchRule> all() {
     return List.of(
+        theForeignContextNeverUsesTheOwnFormula(),
         theSecretPortStaysWithTheCore(),
         theConnectorReleaseIsDecidedInConnections(),
         everyPackageIsAssigned(),

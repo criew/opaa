@@ -18,7 +18,8 @@ import org.springframework.stereotype.Component;
  * AssetAccessService} plus the one floor administration adds - a system administrator counts as
  * {@link AssetRole#OWNER} (docs/features/spaces-and-assets.md#rechte-an-einem-asset-erhalten). The
  * floor never reaches the search: {@link AssetAccessService#readableAssetIds} knows no such branch,
- * so administering an asset is never reading it.
+ * so administering an asset is never reading it. An {@link Asset#isOwnerOnly() owner-only} asset
+ * has no such floor: the administration reaches it only as its owner.
  */
 @Component
 public class AssetAuthorization {
@@ -50,7 +51,7 @@ public class AssetAuthorization {
 
   /** The highest role {@code userId} holds on the asset for administration, or {@code null}. */
   public AssetRole effectiveRole(Asset asset, UUID userId, boolean systemAdmin) {
-    if (systemAdmin) {
+    if (administers(asset, systemAdmin)) {
       return AssetRole.OWNER;
     }
     return accessService.effectiveRole(asset.getAssetType(), asset.getId(), userId);
@@ -126,9 +127,14 @@ public class AssetAuthorization {
   public List<AccessPath> accessPaths(Asset asset, UUID userId, boolean systemAdmin) {
     List<AccessPath> paths =
         new ArrayList<>(accessService.accessPaths(asset.getAssetType(), asset.getId(), userId));
-    if (systemAdmin) {
+    if (administers(asset, systemAdmin)) {
       paths.add(AccessPath.ofAsset(AccessBasis.SYSTEM_ADMINISTRATION, AssetRole.OWNER, null, null));
     }
     return List.copyOf(paths);
+  }
+
+  /** The administrative floor: the system administration, except on an owner-only asset. */
+  private static boolean administers(Asset asset, boolean systemAdmin) {
+    return systemAdmin && !asset.isOwnerOnly();
   }
 }

@@ -373,6 +373,51 @@ class SearchDiagnosisPersonContextHttpIntegrationTest {
     return answer.toString();
   }
 
+  /**
+   * A private library of the target person - readable by them, not diagnosegesperrt - never enters
+   * the foreign context: neither searched, nor counted as locked, nor named in the snapshot.
+   */
+  @Test
+  void theTargetsPrivateLibraryNeverEntersTheForeignContext() throws Exception {
+    grantBefugnis();
+    UUID privateLibraryId = UUID.randomUUID();
+    jdbcTemplate.update(
+        "WITH shell AS (INSERT INTO assets (id, asset_type, organization_id, name, owner_type,"
+            + " owner_user_id, owner_only) VALUES (?, 'KNOWLEDGE_LIBRARY', ?, 'Mein Postfach',"
+            + " 'USER', ?, true) RETURNING id, organization_id) INSERT INTO knowledge_libraries"
+            + " (id, organization_id, source_type, diagnostics_locked) SELECT id, organization_id,"
+            + " 'UPLOAD', false FROM shell",
+        privateLibraryId,
+        organizationId,
+        targetUserId);
+    try {
+      jdbcTemplate.update(
+          "INSERT INTO asset_grants (id, asset_type, asset_id, organization_id, subject_type,"
+              + " subject_user_id, role) VALUES (?, 'KNOWLEDGE_LIBRARY', ?, ?, 'USER', ?, 'OWNER')",
+          UUID.randomUUID(),
+          privateLibraryId,
+          organizationId,
+          targetUserId);
+
+      mockMvc
+          .perform(personContextRequest(JUSTIFICATION))
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.searchScope.length()").value(1))
+          .andExpect(jsonPath("$.searchScope[0].id").value(openLibraryId.toString()))
+          .andExpect(jsonPath("$.lockedLibraryCount").value(2))
+          .andExpect(content().string(org.hamcrest.Matchers.not(containsString("Mein Postfach"))));
+
+      assertThat(protocolEntries())
+          .singleElement()
+          .satisfies(
+              entry ->
+                  assertThat(entry.getPermissionSnapshot())
+                      .doesNotContain(privateLibraryId.toString()));
+    } finally {
+      jdbcTemplate.update("DELETE FROM assets WHERE id = ?", privateLibraryId);
+    }
+  }
+
   @Test
   void aPersonContextWithoutAJustificationIsNotExecuted() throws Exception {
     grantBefugnis();

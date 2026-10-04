@@ -54,6 +54,7 @@ class LibraryExternalAccessServiceIntegrationTest {
 
   @Autowired private LibraryExternalAccessService externalAccessService;
   @Autowired private SuccessionReachGuard successionGuard;
+  @Autowired private io.opaa.asset.OwnerOnlyRule ownerOnlyRule;
   @Autowired private KnowledgeLibraryService libraryService;
   @Autowired private KnowledgeLibraryRepository libraryRepository;
   @Autowired private AssetGrantService grantService;
@@ -353,6 +354,7 @@ class LibraryExternalAccessServiceIntegrationTest {
         externalAccessProperties,
         tokenCounter,
         successionGuard,
+        ownerOnlyRule,
         () -> now);
   }
 

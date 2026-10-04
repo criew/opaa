@@ -250,7 +250,8 @@ components:
         One kind of effect a transfer moves (ADR-0036, Entscheidung 10). ASSET_GRANTS,
         SPACE_MEMBERSHIPS and CAPABILITIES are group-to-group only; STEWARDSHIP is
         person-to-person only, since a group is never responsible for a group. OWNERSHIP works
-        between groups, from a group to a person and between two people.
+        between groups, from a group to a person and between two people; it never moves or counts
+        an owner-only asset (a private library), which stays with its owner.
       enum: [ASSET_GRANTS, SPACE_MEMBERSHIPS, CAPABILITIES, OWNERSHIP, STEWARDSHIP]
       example: ASSET_GRANTS
 

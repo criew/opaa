@@ -62,11 +62,17 @@ public class AssetShellService {
    * the creator's {@code OWNER} grant, and - through {@link AssetChanged} - the first reach
    * interval with the type's creation audit entry.
    *
+   * <p>The same call creates an {@link Asset#isOwnerOnly() owner-only} asset: its owner must be the
+   * creator, whose {@code OWNER} grant is then the only grant the asset ever carries.
+   *
    * @param createdAuditPayload the "after" payload of the creation audit entry, the type's own.
    */
   public void registerCreated(
       Asset asset, UUID creatorUserId, Map<String, Object> createdAuditPayload) {
     assetTypes.require(asset.getAssetType());
+    if (asset.isOwnerOnly() && !asset.isOwnedByUser(creatorUserId)) {
+      throw new IllegalArgumentException("an owner-only asset is created by its owner");
+    }
     asset.recordCreatedBy(creatorUserId);
     if (asset.getOwnerType() == AssetOwnerType.GROUP) {
       grantService.grantAtCreation(

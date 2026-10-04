@@ -1,0 +1,53 @@
+databaseChangeLog:
+  - changeSet:
+      id: rights-2026-10-04-asset-owner-only
+      author: opaa
+      comment: "The asset shell gets the mark 'nur Besitzerin' (ADR-0036, Nachtrag 3; ADR-0041, Entscheidung 6): set at creation, only for a person owner, immutable afterwards together with the owner, and such an asset carries no grant but its owner's own."
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE assets ADD COLUMN owner_only boolean DEFAULT false NOT NULL;
+              ALTER TABLE assets ADD CONSTRAINT chk_assets_owner_only
+                  CHECK ((NOT owner_only) OR ((owner_type)::text = 'USER'::text));
+
+              CREATE FUNCTION assets_guard_owner_only() RETURNS trigger
+                  LANGUAGE plpgsql
+                  SET search_path TO 'pg_catalog', '${database.defaultSchemaName}', 'pg_temp'
+                  AS $$
+              BEGIN
+                IF NEW.owner_only IS DISTINCT FROM OLD.owner_only THEN
+                  RAISE EXCEPTION 'owner_only of asset % is fixed at creation', OLD.id
+                    USING ERRCODE = 'check_violation';
+                END IF;
+                IF OLD.owner_only AND (NEW.owner_type IS DISTINCT FROM OLD.owner_type
+                    OR NEW.owner_user_id IS DISTINCT FROM OLD.owner_user_id
+                    OR NEW.owner_group_id IS DISTINCT FROM OLD.owner_group_id) THEN
+                  RAISE EXCEPTION 'the owner of owner-only asset % cannot change', OLD.id
+                    USING ERRCODE = 'check_violation';
+                END IF;
+                RETURN NEW;
+              END; $$;
+
+              CREATE TRIGGER trg_assets_guard_owner_only BEFORE UPDATE ON assets
+                  FOR EACH ROW EXECUTE FUNCTION assets_guard_owner_only();
+
+              CREATE FUNCTION asset_grants_guard_owner_only() RETURNS trigger
+                  LANGUAGE plpgsql
+                  SET search_path TO 'pg_catalog', '${database.defaultSchemaName}', 'pg_temp'
+                  AS $$
+              DECLARE
+                owning_user uuid;
+              BEGIN
+                SELECT a.owner_user_id INTO owning_user FROM assets a
+                  WHERE a.id = NEW.asset_id AND a.owner_only;
+                IF FOUND AND NOT ((NEW.subject_type)::text = 'USER'::text
+                    AND NEW.subject_user_id = owning_user) THEN
+                  RAISE EXCEPTION 'owner-only asset % admits no grant but its owner''s', NEW.asset_id
+                    USING ERRCODE = 'check_violation';
+                END IF;
+                RETURN NEW;
+              END; $$;
+
+              CREATE TRIGGER trg_asset_grants_guard_owner_only BEFORE INSERT OR UPDATE ON asset_grants
+                  FOR EACH ROW EXECUTE FUNCTION asset_grants_guard_owner_only();

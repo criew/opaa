@@ -303,7 +303,9 @@ paths:
         carries takes it back immediately, in the same request - never a state left "verletzt, aber
         geduldet": forbidding ALL_ACCOUNTS revokes an existing such grant through the ordinary
         grant path (ASSET_GRANT_REVOKED, one grant-history interval), and the cap change itself is
-        recorded separately (CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED).
+        recorded separately (CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED). A private library has no share
+        cap the administration could set: 404 like an unknown library, or 403 with the code
+        OWNER_ONLY_ASSET where the administrator is its owner.
       requestBody:
         required: true
         content:

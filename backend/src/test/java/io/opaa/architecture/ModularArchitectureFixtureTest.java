@@ -209,6 +209,23 @@ class ModularArchitectureFixtureTest {
         .contains("query.SourceAnswers", "SourceConnectionResolver");
   }
 
+  /**
+   * The foreign context calls the own formula once and passes it on as a method reference once; its
+   * own narrower method and the own formula in the search pass.
+   */
+  @Test
+  void theOwnFormulaInTheForeignContextIsReported() {
+    Scenario scenario = new Scenario("foreigncontext");
+
+    assertThat(scenario.violations(ModularArchitecture::theForeignContextNeverUsesTheOwnFormula))
+        .hasSize(2)
+        .allSatisfy(
+            violation ->
+                assertThat(violation)
+                    .contains("diagnosticaccess.web.ForeignView", "readableLibraryIds(")
+                    .doesNotContain("readableLibraryIdsInForeignContext"));
+  }
+
   @Test
   void anUnassignedTopLevelPackageIsNamedWithWhereToAssignIt() {
     Scenario scenario = new Scenario("unassigned");
