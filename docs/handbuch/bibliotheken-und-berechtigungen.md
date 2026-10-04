@@ -934,14 +934,16 @@ Nachweisprotokoll — ebenso wie Anlegen, Ändern, Sperren und Löschen eines Zu
 - **Inhalt:** wer gehandelt hat, wessen Verbindung es ist, welcher Zugang (mit dem Namen, den er zu
   dem Zeitpunkt trug), welches Ereignis, wann und — bei jedem Ende — warum: selbst getrennt,
   Notabschaltung, geänderte Server-Adresse, geänderte App-Registrierung, deaktiviertes Konto,
-  gelöschter Zugang, vom Anbieter abgelehnt oder abgelaufen. Ein Ende ohne Anlass nimmt die
+  gelöschter Zugang, vom Anbieter abgelehnt oder abgelaufen, bei einer Quellverbindung außerdem
+  gelöschte Bibliothek oder Bibliothek auf einen anderen Zugang umgehängt. Ein Ende ohne Anlass nimmt die
   Datenbank nicht an. Personen erscheinen wie im Nachweisprotokoll nur als Pseudonym; ein Ereignis
   ohne handelnde Person trägt die Kennung `SYSTEM`. **Kein Eintrag enthält ein Token.**
 - **Wessen Verbindung:** Bei einer **persönlichen** Verbindung steht die Person als Pseudonym im
   Eintrag, **nie eine Bibliothek oder ein Kontoname beim Anbieter** — das erzwingt die Datenbank.
   Bei einer **Quellverbindung** stehen die Bibliothek und die Kontoadresse des Dienstkontos im
-  Eintrag, aber keine Person; die Adresse steht ohnehin in den Bibliotheksdetails. Eine Verbindung
-  des **Zugangs** nennt weder Person noch Bibliothek noch Konto. Der Eintrag überlebt die Bibliothek.
+  Eintrag, aber keine Person. Eine Verbindung des **Zugangs** nennt weder Person noch Bibliothek
+  noch Konto. Der Eintrag überlebt die Bibliothek. Die Verbindung einer privaten Bibliothek gilt
+  immer als persönliche Verbindung ihrer Besitzerin, nie als Quellverbindung.
 - **Lesen darf nur die Revision.** Die Systemverwaltung liest es nicht, auch nicht mit ihrer
   Systemrolle. Es gelten dieselben Schutzregeln wie für das Nachweisprotokoll: Anlass und Zeitfenster
   sind Pflicht, die Seiten sind begrenzt, und jeder Abruf — der abgewiesene eingeschlossen — steht

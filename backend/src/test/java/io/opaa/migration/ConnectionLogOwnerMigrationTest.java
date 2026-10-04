@@ -16,7 +16,11 @@ import org.junit.jupiter.api.Test;
 class ConnectionLogOwnerMigrationTest extends AbstractBaselineTest {
 
   private static final String FILE = "db/changelog/connections/2026-10-04-log-owner.yaml";
-  private static final String CHECK = "chk_connection_log_owner";
+
+  /** Quoted as Postgres names it, so no other constraint's name can match. */
+  private static final String CHECK = "\"chk_connection_log_owner\"";
+
+  private static final String CAUSE_CHECK = "\"chk_connection_log_cause\"";
 
   private final UUID existing = UUID.randomUUID();
 
@@ -88,6 +92,38 @@ class ConnectionLogOwnerMigrationTest extends AbstractBaselineTest {
     assertRejected(insert("'PROFILE'", "NULL", "NULL", "'svc'"), CHECK);
   }
 
+  /** A library's connection also ends with its library or with a move to another profile. */
+  @Test
+  void acceptsTheEndCausesOfALibrarysConnection() {
+    for (String cause : List.of("LIBRARY_DELETED", "PROFILE_CHANGED", "SELF", "SECRET_EXPIRED")) {
+      assertThatCode(
+              () ->
+                  execute(
+                      insertEnd(
+                          "'DELETED'",
+                          "'" + cause + "'",
+                          "'LIBRARY'",
+                          "NULL",
+                          "gen_random_uuid()")))
+          .as(cause)
+          .doesNotThrowAnyException();
+    }
+    assertRejected(
+        insertEnd("'DELETED'", "'BORED'", "'LIBRARY'", "NULL", "gen_random_uuid()"), CAUSE_CHECK);
+    assertRejected(
+        insertEnd("'DELETED'", "NULL", "'LIBRARY'", "NULL", "gen_random_uuid()"),
+        "\"chk_connection_log_cause_of_end\"");
+  }
+
+  @Test
+  void theOwnerKindHasNoSecondCheckOfItsOwn() throws Exception {
+    assertThat(
+            longOf(
+                "SELECT count(*) FROM pg_constraint WHERE conname ="
+                    + " 'chk_connection_log_owner_kind'"))
+        .isZero();
+  }
+
   @Test
   void rejectsAnUnknownOwnerKind() {
     assertRejected(insert("'GROUP'", "NULL", "NULL", "NULL"), CHECK);
@@ -101,6 +137,25 @@ class ConnectionLogOwnerMigrationTest extends AbstractBaselineTest {
                 "SELECT count(*) FROM pg_auth_members WHERE roleid = 'opaa_audit_owner'::regrole"
                     + " AND member = current_user::regrole AND set_option"))
         .isZero();
+  }
+
+  private static String insertEnd(
+      String eventType, String cause, String ownerKind, String personRef, String libraryId) {
+    return "INSERT INTO connection_log (event_id, organization_id, recorded_at, event_type,"
+        + " actor_ref, owner_kind, person_ref, library_id, profile_id, profile_name, cause)"
+        + " VALUES (gen_random_uuid(), '"
+        + SEEDED_ORGANIZATION_ID
+        + "', now(), "
+        + eventType
+        + ", 'actor', "
+        + ownerKind
+        + ", "
+        + personRef
+        + ", "
+        + libraryId
+        + ", gen_random_uuid(), 'Nextcloud', "
+        + cause
+        + ")";
   }
 
   private static String insert(

@@ -245,6 +245,39 @@ class ConnectionLogIntegrationTest {
     assertThat(pseudonyms.findExistingPseudonym(personId)).isEmpty();
   }
 
+  /** An over-long service account address is refused, never cut to a different account. */
+  @Test
+  void anAccountLabelLongerThanItsColumnIsRefused() {
+    UUID libraryId = UUID.randomUUID();
+
+    assertThatThrownBy(
+            () ->
+                connectionLog.record(
+                    organizationId,
+                    ConnectionLogEventType.CONNECTED,
+                    ConnectionLogActor.person(adminId),
+                    ConnectionLogOwner.library(libraryId, "a".repeat(501)),
+                    profileId,
+                    "Nextcloud Rathaus",
+                    null))
+        .isInstanceOf(IllegalArgumentException.class);
+    connectionLog.record(
+        organizationId,
+        ConnectionLogEventType.CONNECTED,
+        ConnectionLogActor.person(adminId),
+        ConnectionLogOwner.library(libraryId, "a".repeat(500)),
+        profileId,
+        "Nextcloud Rathaus",
+        null);
+
+    assertThat(
+            jdbc.queryForList(
+                "SELECT length(account_label) FROM connection_log WHERE library_id = ?",
+                Integer.class,
+                libraryId))
+        .containsExactly(500);
+  }
+
   /** An entry of another organization never reaches this organization's auditor. */
   @Test
   void theReadPathStaysInsideTheCallersOrganization() {

@@ -7,7 +7,9 @@ import java.util.UUID;
 /**
  * Whose connection an entry is about, mirroring {@code chk_connection_log_owner}: a person (written
  * as pseudonym, never with a library or account name), a library with the optional address of its
- * service account, or the profile itself.
+ * service account, or the profile itself. The connection of an owner-only (private) library is
+ * always a {@link Person}'s, never a {@link Library}'s: otherwise the entry would carry the
+ * person's library and account name.
  */
 public sealed interface ConnectionLogOwner {
 
@@ -36,8 +38,15 @@ public sealed interface ConnectionLogOwner {
     }
   }
 
-  /** {@code accountLabel} may be null when the service account has no address to show. */
+  /**
+   * A shared library's source connection. {@code accountLabel} may be null; one longer than {@link
+   * #MAX_ACCOUNT_LABEL_LENGTH} is refused by {@code ConnectionLog#record}, never cut.
+   */
   record Library(UUID libraryId, String accountLabel) implements ConnectionLogOwner {
+
+    /** Matches {@code connection_log.account_label varchar(500)}. */
+    public static final int MAX_ACCOUNT_LABEL_LENGTH = 500;
+
     public Library {
       Objects.requireNonNull(libraryId, "libraryId");
     }

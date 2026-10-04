@@ -30,7 +30,8 @@ public class ConnectionLog {
    * name now; {@code cause} is null exactly for {@code CONNECTED} and {@code RECONNECTED}, every
    * other event ends a connection and names why.
    *
-   * @throws IllegalArgumentException if the cause does not fit the event
+   * @throws IllegalArgumentException if the cause does not fit the event or a library's account
+   *     label exceeds the column
    */
   @Transactional
   public void record(
@@ -64,6 +65,7 @@ public class ConnectionLog {
             : null;
     ConnectionLogOwner.Library library =
         owner instanceof ConnectionLogOwner.Library ofLibrary ? ofLibrary : null;
+    requireAccountLabelFits(library);
     repository.save(
         new ConnectionLogEntry(
             organizationId,
@@ -77,6 +79,17 @@ public class ConnectionLog {
             profileId,
             profileName,
             cause));
+  }
+
+  /** Refuses rather than cuts: a shortened account address would name a different account. */
+  private static void requireAccountLabelFits(ConnectionLogOwner.Library library) {
+    String label = library == null ? null : library.accountLabel();
+    if (label != null && label.length() > ConnectionLogOwner.Library.MAX_ACCOUNT_LABEL_LENGTH) {
+      throw new IllegalArgumentException(
+          "accountLabel exceeds "
+              + ConnectionLogOwner.Library.MAX_ACCOUNT_LABEL_LENGTH
+              + " characters");
+    }
   }
 
   private String pseudonymOf(UUID userId, UUID organizationId) {

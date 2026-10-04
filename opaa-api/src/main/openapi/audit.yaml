@@ -817,6 +817,8 @@ components:
           PROFILE_DELETED,
           PROVIDER_REJECTED,
           SECRET_EXPIRED,
+          LIBRARY_DELETED,
+          PROFILE_CHANGED,
         ]
       example: SELF
 
@@ -868,8 +870,8 @@ components:
           type: string
           nullable: true
           description: >
-            The service account's address at the provider, only for ownerKind LIBRARY - for a
-            source connection it is shown in the library details anyway.
+            The service account's address at the provider, only for ownerKind LIBRARY; at most
+            500 characters.
         profileId:
           type: string
           format: uuid

@@ -2,7 +2,7 @@ databaseChangeLog:
   - changeSet:
       id: connections-2026-10-04-log-owner
       author: opaa
-      comment: "Whose connection a connection-log entry is about (#2163): a person, a library (source connection with its service account) or a profile. Existing entries are a person's. A person's entry still names neither a library nor an account - the CHECK keeps that promise in the database."
+      comment: "Whose connection a connection-log entry is about (#2163): a person, a library (source connection with its service account) or a profile. Existing entries are a person's. A person's entry still names neither a library nor an account - the CHECK keeps that promise in the database. Two end causes for a library's connection join the cause list."
       changes:
         - sql:
             splitStatements: false
@@ -23,9 +23,14 @@ databaseChangeLog:
               ALTER TABLE connection_log ADD COLUMN library_id uuid;
               ALTER TABLE connection_log ADD COLUMN account_label character varying(500);
 
+              -- A library's connection also ends with its library or with a move to another profile.
+              ALTER TABLE connection_log DROP CONSTRAINT chk_connection_log_cause;
               ALTER TABLE connection_log
-                  ADD CONSTRAINT chk_connection_log_owner_kind
-                  CHECK (owner_kind IN ('PERSON', 'LIBRARY', 'PROFILE'));
+                  ADD CONSTRAINT chk_connection_log_cause CHECK (cause IS NULL OR cause IN
+                      ('SELF', 'EMERGENCY', 'ADDRESS_CHANGED', 'REGISTRATION_CHANGED',
+                       'ACCOUNT_DEACTIVATED', 'PROFILE_DELETED', 'PROVIDER_REJECTED',
+                       'SECRET_EXPIRED', 'LIBRARY_DELETED', 'PROFILE_CHANGED'));
+              -- Also rejects an unknown owner_kind: no branch matches it.
               ALTER TABLE connection_log
                   ADD CONSTRAINT chk_connection_log_owner CHECK (
                       (owner_kind = 'PERSON' AND person_ref IS NOT NULL
