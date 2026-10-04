@@ -9,20 +9,15 @@ import io.opaa.connection.profile.ConnectionProfileRepository;
 import io.opaa.connection.profile.ConnectorTypePolicy;
 import io.opaa.connection.profile.ConnectorTypePolicyRepository;
 import io.opaa.connection.profile.LibraryConnectionRepository;
-import io.opaa.connection.profile.SourceBlocks;
-import io.opaa.indexing.source.ServiceAccountTokens;
 import io.opaa.indexing.source.SourceBlock;
 import io.opaa.indexing.source.SourceConnectionBlockedException;
-import io.opaa.indexing.source.SourceConnectorRegistry;
-import io.opaa.indexing.source.TestSourceConnectors;
 import io.opaa.knowledge.KnowledgeLibrary;
-import io.opaa.security.TargetAddressValidator;
 import io.opaa.test.SourceTypes;
-import java.time.Clock;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.ObjectProvider;
 
 /**
  * A lock stops the start of a run and the fetch of an original ({@code resolve}), but not the
@@ -34,20 +29,13 @@ class ProfileSourceConnectionResolverLockTest {
   private final LibraryConnectionRepository connections = mock(LibraryConnectionRepository.class);
   private final ConnectionProfileRepository profiles = mock(ConnectionProfileRepository.class);
   private final ConnectorTypePolicyRepository policies = mock(ConnectorTypePolicyRepository.class);
+  private final Map<UUID, KnowledgeLibrary> rows = new HashMap<>();
   private final ProfileSourceConnectionResolver resolver =
-      new ProfileSourceConnectionResolver(
+      TestProfileResolvers.resolver(
           connections,
           profiles,
-          registry(),
-          new ServiceAccountTokens(TargetAddressValidator.disabled(), Clock.systemUTC()),
-          new SourceBlocks(policies, connections, profiles, registry()));
-
-  @SuppressWarnings("unchecked")
-  private static ObjectProvider<SourceConnectorRegistry> registry() {
-    ObjectProvider<SourceConnectorRegistry> provider = mock(ObjectProvider.class);
-    when(provider.getObject()).thenReturn(TestSourceConnectors.connectors().registry());
-    return provider;
-  }
+          TestProfileResolvers.blocks(policies, connections, profiles, rows),
+          rows);
 
   private final KnowledgeLibrary library =
       KnowledgeLibrary.ownedByUser(

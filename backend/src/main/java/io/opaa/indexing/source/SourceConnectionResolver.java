@@ -28,12 +28,34 @@ public interface SourceConnectionResolver {
   }
 
   /**
-   * The secret {@code library} is reached with now, {@code null} for none.
+   * The secret {@code library} is reached with now, with its kind, {@code null} for none.
+   *
+   * @throws SourceConnectionBlockedException when the library may not be reached now
+   */
+  default Secret currentSecret(KnowledgeLibrary library) {
+    return resolve(library).credentials();
+  }
+
+  /**
+   * The value of {@link #currentSecret}.
    *
    * @throws SourceConnectionBlockedException when the library may not be reached now
    */
   default String currentCredentials(KnowledgeLibrary library) {
-    return resolve(library).sourceCredentials();
+    return Secret.valueOf(currentSecret(library));
+  }
+
+  /**
+   * The secret {@code library} stores itself, as a change keeps it while the origin stays: never
+   * exchanged, renewed or refused for a block; {@code null} for none or an unreadable one.
+   */
+  default String storedCredentials(KnowledgeLibrary library) {
+    return library.getSourceCredentials();
+  }
+
+  /** Whether {@link #storedCredentials} holds a secret. */
+  default boolean holdsCredentials(KnowledgeLibrary library) {
+    return storedCredentials(library) != null;
   }
 
   /**

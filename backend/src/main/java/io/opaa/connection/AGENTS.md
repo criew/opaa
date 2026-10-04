@@ -13,10 +13,9 @@ seine Ports `SourceConnectionResolver` (`ProfileSourceConnectionResolver`) und `
 
 ## Invarianten und Stolpersteine
 
-- **Unterpakete, unten zuerst:** `connection.log` (Verbindungsprotokoll), `connection.profile`
-  (Profile, Zuordnung, `ServerAddress`, Sperren, `ConnectorScope`). Das Wurzelpaket verdrahtet und
-  implementiert den Port, `connection.web` liegt darüber. Kein Unterpaket nennt das Wurzelpaket
-  (`ModularArchitecture.CONNECTION_PACKAGES`).
+- **Unterpakete, unten zuerst:** `connection.log`, `connection.profile` (Profile, Zuordnung,
+  Sperren). Das Wurzelpaket verdrahtet und implementiert den Port, `connection.web` liegt darüber.
+  Kein Unterpaket nennt das Wurzelpaket (`ModularArchitecture.CONNECTION_PACKAGES`).
 - **Verbindungsprotokoll** wie `audit_log`: schreibt nur `ConnectionLog`, liest nur
   `ConnectionLogQueryService` (`AUDITOR`), löscht nur die Datenbankfunktion; Personen als Pseudonym.
 - **Das Client-Secret ist schreibgeschützt.** `ConnectionProfileService` verschlüsselt es mit
@@ -25,15 +24,15 @@ seine Ports `SourceConnectionResolver` (`ProfileSourceConnectionResolver`) und `
 - **Ursprungsbindung:** Die Adresse einer zugeordneten Bibliothek liegt unter der Server-Adresse
   ihres Profils (`ServerAddress#covers`), sonst sperrt der Port. Eine neue Server-Adresse verschiebt
   die Adressen der Bibliotheken und verwirft alle Geheimnisse des Profils.
-- **Geheimnis verwerfen** heißt `KnowledgeLibraryRepository#eraseSourceCredentials` auf der Spalte,
-  nicht nur `null` an der Entität: Ohne Schlüssel liest die Entität ohnehin `null`.
+- **Lesen und Verwerfen des Geheimnisses** in connections nur über `ConnectionSecrets`, library
+  über den Port; der Schreibweg der Bibliothek bleibt `updateSourceConfiguration`.
 - **Ein gelöschtes Profil** lässt die Zuordnung mit `profile_id NULL` stehen („Zugang entfernt“).
 - **Sperrgründe nur in `SourceBlocks`:** Ob und warum eine Bibliothek gesperrt ist und welcher Text
   gilt, entscheidet nur er. Vorrang ist die Deklarationsreihenfolge von `SourceBlock.Reason`, die
   Mengen der Aufrufer leiten sich aus dessen Eigenschaften ab: Ein neuer Grund steht an einer Stelle.
-- **Konnektor-Vorgaben** (nur deklarierte, `ProfileDefaults#read`) überschreiben die Einstellungen
-  der Bibliothek je Schlüssel. Verwaltungspfade arbeiten mit den gespeicherten, Lauf und Push-Eingang
-  mit den zusammengeführten (`SourceConnectionResolver#effectiveSettings`).
+- **Eine Zusammenführung:** `EffectiveSourceSettings` setzt Lauf, Änderung und Einstellungen
+  zusammen; Konnektor-Vorgaben (nur deklarierte, `ProfileDefaults#read`) überschreiben die der
+  Bibliothek je Schlüssel. Nur `applyChange` bekommt den eigenen Teil (`SourceChangeGate`).
 - **Freigabe nur hier:** `ConnectorReleaseService` entscheidet eine Neuanlage aus
   `CREATE_CONNECTOR_LIBRARY` im Geltungsbereich `TYPE:`/`PROFILE:` und den Sperren;
   `ConnectorScopeCatalog` nennt rights die Geltungsbereiche. Kein anderes Modul außer rights nennt

@@ -124,7 +124,8 @@ class IndexingRunTemplateTest {
     SourceConnectionResolver resolver = mock(SourceConnectionResolver.class);
     when(resolver.resolve(library))
         .thenReturn(new SourceSettings(null, "https://quelle.example", null, "alt", false, null));
-    when(resolver.currentCredentials(library)).thenReturn("erstes", "erneuert");
+    when(resolver.currentSecret(library))
+        .thenReturn(Secret.personal("erstes"), Secret.personal("erneuert"));
     AtomicReference<SourceSettings> settings = new AtomicReference<>();
     List<String> secrets = new ArrayList<>();
 
@@ -298,6 +299,36 @@ class IndexingRunTemplateTest {
         });
 
     verify(jobService).failJob(jobId, "Die Bibliothek wurde während des Laufs gelöscht.");
+  }
+
+  /** A secret refused mid-run ends the run with the block's notice, as a block at its start. */
+  @Test
+  void aBlockDuringTheRunFailsTheJobWithItsNotice() {
+    SourceConnectionResolver resolver = mock(SourceConnectionResolver.class);
+    when(resolver.resolve(library))
+        .thenReturn(new SourceSettings("/srv/dokumente", null, null, null, false, null));
+    when(resolver.currentSecret(library))
+        .thenThrow(
+            new SourceConnectionBlockedException(
+                new SourceBlock(
+                    SourceBlock.Reason.ACCESS_REMOVED,
+                    "Verwaltende der Bibliothek",
+                    "Zugang entfernt: Der Zugang dieser Bibliothek wurde gelöscht.")));
+
+    templateWith(resolver)
+        .run(
+            jobId,
+            library,
+            IndexingRunMode.FULL,
+            fullListingExecutor,
+            run -> {
+              run.currentCredentials();
+              return ListingOutcome.complete();
+            });
+
+    verify(jobService)
+        .failJob(jobId, "Zugang entfernt: Der Zugang dieser Bibliothek wurde gelöscht.");
+    verify(jobService, never()).completeJob(any(), anyInt(), anyInt(), anyInt(), anyInt());
   }
 
   @Test
