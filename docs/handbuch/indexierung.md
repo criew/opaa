@@ -436,9 +436,10 @@ Systemverwaltung dort einmal anlegt:
 
 1. Beim Anbieter eine App (einen vertraulichen Client) anlegen und als **Rücksprungadresse**
    (Redirect-URI) genau `{öffentliche Adresse}/connections/callback` eintragen. Das Formular nennt
-   die Adresse, sobald OAuth gewählt ist; die öffentliche Adresse ist die der Installation
-   ([Deployment](deployment.md), `OPAA_PUBLIC_BASE_URL`). Fehlt sie, lässt sich kein Konto
-   verbinden, und die Kontoseite sagt das.
+   die Adresse, sobald OAuth gewählt ist, so wie OPAA sie dem Anbieter nennt; die öffentliche
+   Adresse ist die der Installation ([Deployment](deployment.md), `OPAA_PUBLIC_BASE_URL`). Fehlt
+   sie, nennt das Formular statt einer Adresse diesen Mangel, kein Konto lässt sich verbinden, und
+   die Kontoseite sagt das ebenfalls.
 2. Die Scopes so wählen, dass der Anbieter eine **dauerhafte Zustimmung** erteilt (etwa
    `offline_access`); ohne Refresh-Token verbindet OPAA nicht und nennt den Grund.
 3. Client-ID und Client-Secret am Zugang eintragen, dazu die Endpunkte, falls das Formular sie
@@ -452,8 +453,11 @@ Zeit beginnen; darüber hinaus bittet die Kontoseite, es später erneut zu versu
 Bitte, erneut zu verbinden. OPAA erneuert das Zugriffstoken selbst kurz vor seinem Ablauf; nimmt der
 Anbieter die Zustimmung nicht mehr an, gilt die Verbindung als abgelaufen, und die Person erhält die
 Benachrichtigung „Verbindung abgelaufen“. Nennt der Anbieter ein Ende der Zustimmung, warnt OPAA die
-Person 14 Tage vorher einmal (Benachrichtigung „Verbindung läuft ab“). Trennen widerruft das Token
-beim Anbieter, wo er das anbietet.
+Person 14 Tage vorher einmal (Benachrichtigung „Verbindung läuft ab“). Eine neue Zustimmung oder
+ein Ende, das die Erneuerung wieder über diese Frist hinausschiebt, warnt erneut; ein Ende, das
+schon bei der Zustimmung oder bei jeder Erneuerung innerhalb der Frist liegt (ein kurzes gleitendes
+Ende, das sich durch Nutzung verschiebt), warnt nicht. Trennen widerruft das Token beim Anbieter, wo
+er das anbietet.
 
 Die Liste zeigt je Zugang Quellart, Server-Adresse, Anmeldeart, Besitzart und die Zahl der
 Verbindungen von Bibliotheken, dazu einen Hinweis, wenn das Client-Secret bald abläuft. 14 Tage vor

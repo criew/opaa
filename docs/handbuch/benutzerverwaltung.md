@@ -482,7 +482,8 @@ schließt nichts zweimal ab.
 **Neu verbinden** einer bestehenden Verbindung zählt nicht als neues Konto und geht deshalb auch
 nach Entzug der Freigabe, nur nicht bei gesperrtem Zugang. Läuft eine Verbindung ab, erhält die
 Person die Benachrichtigung „Verbindung abgelaufen“; nennt ein Anbieter ein Ende der Zustimmung,
-kommt 14 Tage vorher einmal „Verbindung läuft ab“. Beendet eine Handlung der Systemverwaltung die
+kommt 14 Tage vorher einmal „Verbindung läuft ab“ (nicht bei einem Anbieter, dessen Zustimmung ohnehin
+nur kürzer als diese Frist gilt und sich durch Nutzung verlängert). Beendet eine Handlung der Systemverwaltung die
 Verbindung (Notabschaltung, geänderte Server-Adresse, App-Registrierung oder Vorgabe, gelöschter
 Zugang), heißt sie „Verbindung getrennt“. Alle drei führen per Klick auf diese Seite.
 
