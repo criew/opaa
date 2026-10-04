@@ -152,6 +152,9 @@ Der ganze Ordnerbaum einer Bibliothek wird wieder gelistet,
 
 - nach einer Änderung der Größengrenze, der unterstützten Formate, der Adresse oder der Ordner,
 - einmal nach einem Update, das die Grundlage des Gedächtnisses ändert,
+- in jedem Lauf, solange ein Ordner dauerhaft nicht gelistet werden kann (Abschnitt 3.1): Ohne
+  vollständigen Abgleich entsteht kein Gedächtnis, ein solcher Ordner kostet also jeden Lauf die
+  volle Auflistung aller Bereiche,
 - spätestens nach `full-descent-interval` (Abschnitt 8). Das fängt Änderungen ab, die Nextcloud
   nicht weiterträgt, etwa auf externem Speicher ohne Änderungserkennung.
 

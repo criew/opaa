@@ -212,6 +212,7 @@ public final class FileSync implements AutoCloseable {
         }
       }
     } catch (RequestBudgetExhaustedException e) {
+      drainUntilRefused();
       if (round.budgetSpent(unsettledFrom(), firstMetOn)) {
         // a later checkpoint or a completed container: the chain of runs moves on
         frame.budgetStallAdvice(null);
@@ -679,6 +680,7 @@ public final class FileSync implements AutoCloseable {
         visit(entry, pageNumber);
       }
       visitingFrom = pageNumber + 1;
+      drainFinished();
       continuation = page.next();
     } while (continuation != null);
     return Listing.COMPLETE;
@@ -899,6 +901,25 @@ public final class FileSync implements AutoCloseable {
     }
     pending.poll();
     ingest(item.entry(), item.folderId(), fetched);
+  }
+
+  /** Ingests the downloads already finished, oldest first, so their pages settle early. */
+  private void drainFinished() throws InterruptedException {
+    while (!pending.isEmpty() && pending.peek().download().isDone()) {
+      drainOne();
+    }
+  }
+
+  /**
+   * At the budget's end: ingests the downloads in flight up to the first one the budget refused, so
+   * what was already fetched counts for the checkpoint.
+   */
+  private void drainUntilRefused() throws InterruptedException {
+    try {
+      drainAll();
+    } catch (RequestBudgetExhaustedException refused) {
+      // the refused download stays pending: its page is not settled
+    }
   }
 
   private void drainAll() throws InterruptedException {

@@ -367,6 +367,29 @@ class FileSyncRoundTest {
         .containsExactly(stale);
   }
 
+  // regression guard for #2202: downloads finished before the budget's end are taken up
+  @Test
+  void aFixedBudgetEndingWithDownloadsInFlightStillMovesTheRoundOn() {
+    harness.downloadConcurrency(3);
+    InMemoryFileStore store = new InMemoryFileStore().withCheckpoints().pageSize(1).container("A");
+    for (int i = 1; i <= 9; i++) {
+      store.put("A", "f" + i + ".txt", "Text " + i);
+    }
+    run(store, 0);
+    store.put("A", "a1.txt", "Neu eins.").put("A", "a2.txt", "Neu zwei.");
+    String first = store.filePathOf("A", "a1.txt");
+    String second = store.filePathOf("A", "a2.txt");
+
+    // two downloads stay in flight below the concurrency when the budget ends on the last page
+    boolean taken = false;
+    for (int runs = 0; runs < 5 && !taken; runs++) {
+      run(store, 11);
+      taken = harness.stored(first).isPresent() && harness.stored(second).isPresent();
+    }
+
+    assertThat(taken).as("the new files are taken up under a fixed budget").isTrue();
+  }
+
   @Test
   void aCheckpointTooLongToKeepIsNamedAndNotKept() {
     InMemoryFileStore store = new InMemoryFileStore().withCheckpoints().pageSize(1).container("A");

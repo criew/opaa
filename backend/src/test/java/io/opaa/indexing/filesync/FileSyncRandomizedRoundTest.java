@@ -36,6 +36,9 @@ class FileSyncRandomizedRoundTest {
       List.of("", "a", "b", "c", "a/x", "b/y", "c/z/w", "r1", "r2/s");
   private static final List<String> CONTAINERS = List.of("A", "B");
 
+  /** The budgeted runs a quiet phase may take before its invariants must hold. */
+  private static final int QUIET_BUDGETED_RUNS = 60;
+
   private int multiRunRounds;
   private int removals;
   private int lockedOut;
@@ -144,14 +147,21 @@ class FileSyncRandomizedRoundTest {
       quiet();
     }
 
-    /** The source stays still, every passing failure ends; only a locked-out container stays. */
+    /**
+     * The source stays still, every passing failure ends; only a locked-out container stays. Half
+     * the seeds keep a small budget, so the round spans runs beside the locked-out container.
+     */
     private void quiet() {
       store.acceptCredentials();
       harness.healIngests();
       unreadable.forEach(store::allowReading);
       deniedForAWhile.forEach(store::allowListing);
-      for (int i = 0; i < 4; i++, run++) {
-        runOnce(0, false);
+      int budget = random.nextBoolean() ? 0 : 8 + random.nextInt(20);
+      int runs = budget == 0 ? 4 : QUIET_BUDGETED_RUNS;
+      // a removal by a store without location proof needs one run over everything
+      boolean removalsDue = lockedOutContainer == null && (budget == 0 || byLocation);
+      for (int i = 0; i < runs && !(i >= 4 && settled(removalsDue)); i++, run++) {
+        runOnce(budget, false);
       }
       Set<String> stored = new HashSet<>(harness.storedPaths());
       for (String container : CONTAINERS) {
@@ -162,11 +172,23 @@ class FileSyncRandomizedRoundTest {
             .as("seed %s: every file of the listable container %s is taken up", seed, container)
             .containsAll(identitiesOf(container));
       }
-      if (lockedOutContainer == null) {
+      if (removalsDue) {
         assertThat(harness.storedPaths())
             .as("seed %s: once the source stays still, the bestand matches it", seed)
             .containsExactlyInAnyOrderElementsOf(identities());
       }
+    }
+
+    /** Whether the bestand already holds what the quiet phase asserts. */
+    private boolean settled(boolean removalsDue) {
+      Set<String> stored = new HashSet<>(harness.storedPaths());
+      for (String container : CONTAINERS) {
+        if (!(container.equals(lockedOutContainer) && run > lockedOutFrom)
+            && !stored.containsAll(identitiesOf(container))) {
+          return false;
+        }
+      }
+      return !removalsDue || stored.equals(new HashSet<>(identities()));
     }
 
     private void runOnce(int budget, boolean deletionDuringTheRun) {

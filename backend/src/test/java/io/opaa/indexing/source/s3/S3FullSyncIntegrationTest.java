@@ -18,7 +18,6 @@ import io.opaa.indexing.job.JobTriggerSource;
 import io.opaa.indexing.maintenance.StaleDocumentCleanupService;
 import io.opaa.indexing.source.IndexingRunTemplate;
 import io.opaa.indexing.source.ScanJournal;
-import io.opaa.indexing.source.SourceSyncStateRepository;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
@@ -75,7 +74,7 @@ class S3FullSyncIntegrationTest {
   @Autowired private LibraryFolderService folderService;
   @Autowired private VectorChunkStore vectorChunkStore;
   @Autowired private StaleDocumentCleanupService cleanupService;
-  @Autowired private SourceSyncStateRepository syncStateRepository;
+  @Autowired private ScanJournal scanJournal;
   @Autowired private JdbcTemplate jdbcTemplate;
 
   private static S3TestFixture store;
@@ -193,7 +192,7 @@ class S3FullSyncIntegrationTest {
         documentRepository,
         folderService,
         cleanupService,
-        new ScanJournal(syncStateRepository),
+        scanJournal,
         Clock.systemUTC(),
         indexingRunTemplate,
         ProductionDocumentFormats.supportedFormats());

@@ -78,6 +78,30 @@ public abstract class FileStoreResumptionContract extends FileStoreContract {
     assertThat(removed).isEmpty();
   }
 
+  // regression guard for #2202: a small budget and an unreadable folder still take up new files
+  @Test
+  void underASmallBudgetAFolderThatStaysUnreadableKeepsNoNewFileOut() throws Exception {
+    fillFolders("Inhalt");
+    int budget = budget(unboundedCost());
+    unbounded();
+    fixture.denyListingOf(1, "ordner-3");
+    put(1, "ordner-3/geaendert.txt", "Geändert.");
+    List<String> added = List.of("ordner-0/neu.txt", "ordner-6/neu.txt");
+    for (String name : added) {
+      put(0, name, "Neu in einem lesbaren Bereich: " + name);
+    }
+
+    boolean taken = false;
+    for (int runs = 0; runs < MAX_RUNS && !taken; runs++) {
+      budgeted(budget);
+      taken =
+          added.stream().allMatch(name -> harness.stored(fixture.filePath(0, name)).isPresent());
+    }
+
+    assertThat(taken).as("new files in a listable container are taken up").isTrue();
+    assertThat(removed).isEmpty();
+  }
+
   @Test
   void anUnchangedRunAfterTheRoundCostsOneRequestPerContainer() throws Exception {
     assumeTrue(fixture.reportsFolders(), "only a store that reports folders skips unchanged ones");
