@@ -12,6 +12,7 @@ import {
 import PathSourceForm from '../PathSourceForm'
 import SourceConnectionTest from '../SourceConnectionTest'
 import UrlSourceForm from '../UrlSourceForm'
+import { connectionFields } from './sourceConnection'
 import type { SourceFormProps, StoredLibrarySource } from './types'
 
 export function PathForm({ values, onChange, context }: SourceFormProps<FilesystemSourceValues>) {
@@ -27,7 +28,7 @@ export function PathForm({ values, onChange, context }: SourceFormProps<Filesyst
         sourceType={context.sourceType}
         kind="path"
         values={values}
-        libraryId={context.libraryId}
+        probe={connectionFields(context).probe}
         size={context.mode === 'edit' ? 'small' : 'medium'}
       />
     </>
@@ -35,6 +36,7 @@ export function PathForm({ values, onChange, context }: SourceFormProps<Filesyst
 }
 
 export function UrlForm({ values, onChange, context }: SourceFormProps<GenericSourceValues>) {
+  const fields = connectionFields(context)
   return (
     <>
       <UrlSourceForm
@@ -45,12 +47,13 @@ export function UrlForm({ values, onChange, context }: SourceFormProps<GenericSo
         onChange={onChange}
         credentialsStored={context.credentialsStored}
         originalSourceUrl={context.originalSourceUrl}
+        connection={fields}
       />
       <SourceConnectionTest
         sourceType={context.sourceType}
         kind="url"
         values={values}
-        libraryId={context.libraryId}
+        probe={fields.probe}
         size={context.mode === 'edit' ? 'small' : 'medium'}
       />
     </>
@@ -92,7 +95,7 @@ export function StoredConnection({
           sourceType={library.sourceType}
           kind={kind}
           values={storedGenericSourceValues(library)}
-          libraryId={libraryId}
+          probe={{ libraryId }}
           size="small"
         />
       </Box>

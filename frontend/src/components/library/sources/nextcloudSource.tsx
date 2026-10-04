@@ -10,6 +10,7 @@ import {
 } from '../../../utils/nextcloudSource'
 import NextcloudSourceForm from '../NextcloudSourceForm'
 import { NextcloudScope, NextcloudStoredView } from './NextcloudSourceViews'
+import { connectionFields } from './sourceConnection'
 import type { SourceRegistration } from './types'
 
 export const nextcloudSource: SourceRegistration = {
@@ -37,8 +38,9 @@ export const nextcloudSource: SourceRegistration = {
     validate: (values: NextcloudSourceValues, context) =>
       validateNextcloudValues(
         values,
-        context.credentialsStored &&
-          sameLibrarySourceOrigin(context.originalSourceUrl, values.sourceUrl),
+        !connectionFields(context).asksSecret ||
+          (context.credentialsStored &&
+            sameLibrarySourceOrigin(context.originalSourceUrl, values.sourceUrl)),
       ),
     toPayload: (values: NextcloudSourceValues) => ({
       sourceUrl: values.sourceUrl.trim(),
@@ -60,6 +62,7 @@ export const nextcloudSource: SourceRegistration = {
         libraryId={context.libraryId}
         credentialsStored={context.credentialsStored}
         originalSourceUrl={context.originalSourceUrl}
+        connection={connectionFields(context)}
         values={values}
         onChange={onChange}
       />

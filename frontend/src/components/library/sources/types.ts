@@ -1,6 +1,7 @@
 import type { ComponentType } from 'react'
 import type { LibrarySchedule, SourceTypeKey } from '../../../types/api'
 import type { LibrarySourceConfigPayload } from '../../../utils/librarySourceConfig'
+import type { SourceConnection } from './sourceConnection'
 
 /** The stored library as the source registrations read it - never a credential, only whether one is set. */
 export interface StoredLibrarySource {
@@ -28,6 +29,11 @@ export interface SourceFormContext {
   credentialsStored: boolean
   /** Edit mode: the address the stored credentials belong to - they do not survive a host change. */
   originalSourceUrl?: string | null
+  /**
+   * The connection profile the library is created or kept on; absent for its own address. A form
+   * reads it only through `connectionFields`.
+   */
+  connection?: SourceConnection
 }
 
 export interface SourceFormProps<V> {

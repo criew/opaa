@@ -7,8 +7,10 @@ import type {
   LibraryUpdateRequest,
 } from '../types/api'
 import {
+  connectLibraryProfile,
   createLibrary,
   deleteLibrary,
+  disconnectLibraryProfile,
   getLibrary,
   getLibraries,
   updateLibrary,
@@ -30,6 +32,8 @@ interface LibraryState {
   deleteExistingLibrary: (libraryId: string) => Promise<void>
   setLibraryDiagnosticsLock: (libraryId: string, locked: boolean) => Promise<void>
   setLibraryShareCap: (libraryId: string, request: LibraryShareCapRequest) => Promise<void>
+  connectLibraryToProfile: (libraryId: string, profileId: string) => Promise<void>
+  releaseLibraryFromProfile: (libraryId: string) => Promise<void>
 }
 
 function sortLibraries(list: LibraryListResponse[]): LibraryListResponse[] {
@@ -128,5 +132,22 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
   setLibraryShareCap: async (libraryId, request) => {
     const library = await updateLibraryShareCap(libraryId, request)
     set({ libraryDetails: { ...get().libraryDetails, [libraryId]: library } })
+  },
+
+  // Both answer the whole library; the list is reloaded because a lock it shows may have ended.
+  connectLibraryToProfile: async (libraryId, profileId) => {
+    const sessionEpoch = currentSessionEpoch()
+    const library = await connectLibraryProfile(libraryId, profileId)
+    if (isStaleSessionEpoch(sessionEpoch)) return
+    set({ libraryDetails: { ...get().libraryDetails, [libraryId]: library } })
+    await get().loadLibraries()
+  },
+
+  releaseLibraryFromProfile: async (libraryId) => {
+    const sessionEpoch = currentSessionEpoch()
+    const library = await disconnectLibraryProfile(libraryId)
+    if (isStaleSessionEpoch(sessionEpoch)) return
+    set({ libraryDetails: { ...get().libraryDetails, [libraryId]: library } })
+    await get().loadLibraries()
   },
 }))

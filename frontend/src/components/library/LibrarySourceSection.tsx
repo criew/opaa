@@ -26,6 +26,8 @@ import {
 import EditLibrarySourceDialog from '../EditLibrarySourceDialog'
 import EditLibraryScheduleDialog from '../EditLibraryScheduleDialog'
 import PageSection from '../PageSection'
+import LibraryConnectionPanel from './LibraryConnectionPanel'
+import { liftedByConnecting } from './connectionChoice'
 import { sourceRegistration } from './sources/registry'
 
 export interface LibrarySourceSectionProps {
@@ -64,6 +66,12 @@ export default function LibrarySourceSection({
 }: LibrarySourceSectionProps) {
   const [editSourceOpen, setEditSourceOpen] = useState(false)
   const [editScheduleOpen, setEditScheduleOpen] = useState(false)
+  const [connectOpen, setConnectOpen] = useState(false)
+  const connectAction = (
+    <Button color="inherit" size="small" onClick={() => setConnectOpen(true)}>
+      Zugang zuordnen
+    </Button>
+  )
   const configuration = sourceRegistration(library.sourceType)?.configuration ?? null
   const Scope = configuration?.Scope
   const StoredView = configuration?.StoredView
@@ -74,12 +82,26 @@ export default function LibrarySourceSection({
   return (
     <Stack>
       {library.sourceBlock?.notice && (
-        <Alert severity="warning" sx={{ mb: 2 }} data-testid="source-lock-notice">
+        <Alert
+          severity="warning"
+          sx={{ mb: 2 }}
+          data-testid="source-lock-notice"
+          action={
+            canEditSource && liftedByConnecting(library.sourceBlock.reason)
+              ? connectAction
+              : undefined
+          }
+        >
           {library.sourceBlock.notice}
         </Alert>
       )}
       {library.connectionProfileRemoved && (
-        <Alert severity="warning" sx={{ mb: 2 }} data-testid="connection-profile-removed">
+        <Alert
+          severity="warning"
+          sx={{ mb: 2 }}
+          data-testid="connection-profile-removed"
+          action={canEditSource ? connectAction : undefined}
+        >
           Zugang entfernt: Der Zugang dieser Bibliothek wurde von der Systemverwaltung gelöscht. Der
           Inhalt bleibt durchsuchbar, wird aber nicht mehr aktualisiert. Die Verwaltenden der
           Bibliothek ordnen sie einem anderen Zugang zu oder löschen sie.
@@ -127,11 +149,13 @@ export default function LibrarySourceSection({
                 proxy hosts - the backend only serves them to a caller with at least MANAGER, and
                 this whole area only renders behind the same bar. */}
             <Stack spacing={0.75}>
-              {library.connectionProfile && (
-                <Typography variant="body2" data-testid="connection-profile">
-                  Zugang: {library.connectionProfile.name}
-                </Typography>
-              )}
+              <LibraryConnectionPanel
+                libraryId={libraryId}
+                sourceType={library.sourceType}
+                connectionProfile={library.connectionProfile}
+                dialogOpen={connectOpen}
+                onDialogOpenChange={setConnectOpen}
+              />
               {StoredView ? (
                 <StoredView library={library} libraryId={libraryId} />
               ) : (

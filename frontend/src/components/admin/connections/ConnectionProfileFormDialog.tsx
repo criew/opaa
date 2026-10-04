@@ -108,6 +108,8 @@ interface ConnectionProfileFormDialogProps {
   /** The profile being edited; `null` creates a new one. */
   profile: ConnectionProfileResponse | null
   sourceTypes: SourceTypeDescriptor[]
+  /** Whether the answer for `sourceTypes` is in, successful or not. */
+  sourceTypesLoaded: boolean
   onClose: () => void
   onSaved: (profile: ConnectionProfileResponse) => void
 }
@@ -123,6 +125,7 @@ export default function ConnectionProfileFormDialog({
   open,
   profile,
   sourceTypes,
+  sourceTypesLoaded,
   onClose,
   onSaved,
 }: ConnectionProfileFormDialogProps) {
@@ -220,7 +223,12 @@ export default function ConnectionProfileFormDialog({
             {error}
           </Alert>
         )}
-        {descriptorMissing && (
+        {descriptorMissing && !sourceTypesLoaded && (
+          <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2 }}>
+            Die Angaben der Quellart werden geladen …
+          </Typography>
+        )}
+        {descriptorMissing && sourceTypesLoaded && (
           <Alert severity="warning" sx={{ mb: 2 }}>
             Die Angaben der Quellart liegen nicht vor. Ohne sie gingen die Vorgaben des Zugangs beim
             Speichern verloren. Bitte die Seite neu laden und erneut bearbeiten.

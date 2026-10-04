@@ -1,37 +1,94 @@
 import { http, HttpResponse } from 'msw'
 import type {
-  ConnectorLockRequest,
-  ConnectorTypeStateResponse,
   ConnectionProfileCreateRequest,
+  ConnectionProfileOption,
   ConnectionProfileResponse,
+  ConnectionProfileSupport,
   ConnectionProfileUpdateRequest,
+  ConnectorLockRequest,
+  ConnectorProfileRequirementRequest,
+  ConnectorProfileRequirementResponse,
+  ConnectorTypeStateResponse,
+  OwnAddressStock,
 } from '../types/api'
 import { mockConnectionProfiles, resetMockConnectionProfiles } from './connectionProfileFixtures'
 
 let lockedTypes = new Set<string>()
+// The types switched to "Nur über Zugänge", with the choice for their own-address libraries.
+let requiredTypes = new Map<string, OwnAddressStock>()
 
 export function resetConnectionProfileMockState() {
   resetMockConnectionProfiles()
   lockedTypes = new Set<string>()
+  requiredTypes = new Map<string, OwnAddressStock>()
 }
 
-const CONNECTOR_TYPES: Array<{ sourceType: string; displayName: string }> = [
-  { sourceType: 'CONFLUENCE', displayName: 'Confluence' },
-  { sourceType: 'FILESYSTEM', displayName: 'Dateisystem' },
-  { sourceType: 'HTTP_DIRECTORY', displayName: 'Webverzeichnis' },
-  { sourceType: 'NEXTCLOUD', displayName: 'Nextcloud' },
-  { sourceType: 'RSS_FEED', displayName: 'RSS-Feed' },
-  { sourceType: 'S3', displayName: 'S3-Objektspeicher' },
+interface MockConnectorType {
+  sourceType: string
+  displayName: string
+  profileSupport: ConnectionProfileSupport
+}
+
+// No delivered connector admits profiles yet; Nextcloud stands in with "optional" so the profile
+// choice and "Nur über Zugänge" can be tried against the mocks.
+const CONNECTOR_TYPES: MockConnectorType[] = [
+  { sourceType: 'CONFLUENCE', displayName: 'Confluence', profileSupport: 'FORBIDDEN' },
+  { sourceType: 'FILESYSTEM', displayName: 'Dateisystem', profileSupport: 'FORBIDDEN' },
+  { sourceType: 'HTTP_DIRECTORY', displayName: 'Webverzeichnis', profileSupport: 'FORBIDDEN' },
+  { sourceType: 'NEXTCLOUD', displayName: 'Nextcloud', profileSupport: 'OPTIONAL' },
+  { sourceType: 'RSS_FEED', displayName: 'RSS-Feed', profileSupport: 'FORBIDDEN' },
+  { sourceType: 'S3', displayName: 'S3-Objektspeicher', profileSupport: 'FORBIDDEN' },
 ]
 
-function typeState(type: { sourceType: string; displayName: string }): ConnectorTypeStateResponse {
+function typeState(type: MockConnectorType): ConnectorTypeStateResponse {
   const locked = lockedTypes.has(type.sourceType)
+  const stock = requiredTypes.get(type.sourceType) ?? null
   return {
-    ...type,
+    sourceType: type.sourceType,
+    displayName: type.displayName,
     locked,
     lockedAt: locked ? new Date().toISOString() : null,
-    profileSupport: 'FORBIDDEN',
-    profileRequired: false,
+    profileSupport: type.profileSupport,
+    profileRequired: type.profileSupport === 'REQUIRED' || stock !== null,
+    profileRequiredAt: stock !== null ? '2026-10-04T09:00:00Z' : null,
+    ownAddressStock: stock,
+  }
+}
+
+/** Whether a profile of the type may carry new libraries: unlocked and admitting libraries. */
+function usableProfileExists(sourceType: string) {
+  return mockConnectionProfiles.some(
+    (p) => p.sourceType === sourceType && !p.locked && p.ownership !== 'PERSON',
+  )
+}
+
+function requirementOf(type: MockConnectorType): ConnectorProfileRequirementResponse {
+  const state = typeState(type)
+  const notSwitchableReason =
+    type.profileSupport !== 'OPTIONAL'
+      ? `Die Quellart „${type.displayName}“ legt selbst fest, ob sie Zugänge verlangt.`
+      : !state.profileRequired && !usableProfileExists(type.sourceType)
+        ? `Für die Quellart „${type.displayName}“ gibt es keinen nicht gesperrten Zugang, der Bibliotheken zulässt. Legen Sie zuerst einen an.`
+        : null
+  return {
+    state,
+    switchable: notSwitchableReason === null,
+    notSwitchableReason,
+    ownAddressLibraries:
+      type.sourceType === 'NEXTCLOUD'
+        ? [
+            {
+              id: 'library-nextcloud-eigen',
+              name: 'Projektablage',
+              ownerType: 'GROUP',
+              ownerName: 'Referat 50',
+            },
+          ]
+        : [],
+    coverageNotice:
+      type.sourceType === 'RSS_FEED'
+        ? 'Die Pflicht legt nur die Feed-Adresse fest. Detailseiten auf anderen Servern werden weiter abgerufen, aber ohne Zugangsdaten.'
+        : null,
   }
 }
 
@@ -163,5 +220,68 @@ export const connectionProfileHandlers = [
     if (locked) lockedTypes.add(type.sourceType)
     else lockedTypes.delete(type.sourceType)
     return HttpResponse.json(typeState(type))
+  }),
+
+  http.get('/api/v1/admin/connector-types/:sourceType/profile-requirement', ({ params }) => {
+    const type = CONNECTOR_TYPES.find((t) => t.sourceType === params.sourceType)
+    if (!type) {
+      return HttpResponse.json({ error: 'Quellart unbekannt', status: 400 }, { status: 400 })
+    }
+    return HttpResponse.json(requirementOf(type))
+  }),
+
+  // Like the backend: only an "optional" type switches, and only on while a usable profile exists.
+  http.put(
+    '/api/v1/admin/connector-types/:sourceType/profile-requirement',
+    async ({ params, request }) => {
+      const type = CONNECTOR_TYPES.find((t) => t.sourceType === params.sourceType)
+      if (!type || type.profileSupport !== 'OPTIONAL') {
+        return HttpResponse.json(
+          { error: 'Diese Quellart lässt sich nicht umschalten', status: 400 },
+          { status: 400 },
+        )
+      }
+      const body = (await request.json()) as ConnectorProfileRequirementRequest
+      if (!body.required) {
+        requiredTypes.delete(type.sourceType)
+        return HttpResponse.json(typeState(type))
+      }
+      if (!requiredTypes.has(type.sourceType) && !usableProfileExists(type.sourceType)) {
+        return HttpResponse.json(
+          {
+            error: `Für die Quellart „${type.displayName}“ gibt es keinen passenden Zugang.`,
+            status: 409,
+            code: 'PROFILE_REQUIREMENT_NEEDS_PROFILE',
+          },
+          { status: 409 },
+        )
+      }
+      requiredTypes.set(type.sourceType, body.ownAddressStock ?? 'RUNS')
+      return HttpResponse.json(typeState(type))
+    },
+  ),
+
+  // The profiles a library may be connected through - every one admitting libraries, the ones the
+  // caller may not use with the notice naming who releases them.
+  http.get('/api/v1/connection-profiles', ({ request }) => {
+    const sourceType = new URL(request.url).searchParams.get('sourceType')
+    const options: ConnectionProfileOption[] = mockConnectionProfiles
+      .filter((p) => p.sourceType === sourceType && p.ownership !== 'PERSON')
+      .map((p) => {
+        const creatable = !p.locked && !lockedTypes.has(p.sourceType)
+        return {
+          id: p.id,
+          name: p.name,
+          sourceType: p.sourceType,
+          serverUrl: p.serverUrl,
+          authMethod: p.authMethod,
+          creatable,
+          creationNotice: creatable
+            ? null
+            : `Der Zugang „${p.name}“ ist gesperrt. Zuständig ist die Systemverwaltung.`,
+          connectorDefaults: p.connectorSettings ?? null,
+        }
+      })
+    return HttpResponse.json(options)
   }),
 ]

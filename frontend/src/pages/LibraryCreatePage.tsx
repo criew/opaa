@@ -13,6 +13,21 @@ import LibraryScheduleForm from '../components/library/LibraryScheduleForm'
 import SourceTypeIcon from '../components/library/sourceTypeIcon'
 import { registeredSourceTypes, sourceRegistration } from '../components/library/sources/registry'
 import type { SourceFormContext } from '../components/library/sources/types'
+import ConnectionProfileSelect from '../components/library/ConnectionProfileSelect'
+import {
+  OWN_ADDRESS,
+  effectiveConnection,
+  selectableConnections,
+} from '../components/library/connectionChoice'
+import {
+  connectionFields,
+  ownAddressAllowed,
+  payloadUnder,
+  sourceConnectionOf,
+  withConnection,
+  withoutFixed,
+} from '../components/library/sources/sourceConnection'
+import { useConnectionProfileOptions } from '../hooks/useConnectionProfileOptions'
 import {
   scheduleUpdateFrom,
   scheduleValuesFrom,
@@ -100,6 +115,8 @@ export default function LibraryCreatePage() {
   // The entered values of every source form, by type key - a form keeps its values when another
   // tile is chosen and chosen back.
   const [sourceValues, setSourceValues] = useState<Record<SourceTypeKey, unknown>>({})
+  // The chosen profile (or OWN_ADDRESS) by type key; what stands in effect derives from it.
+  const [chosenConnections, setChosenConnections] = useState<Record<SourceTypeKey, string>>({})
   const [schedule, setSchedule] = useState<LibraryScheduleValues>(() => scheduleValuesFrom(null))
   // Opt-out, not opt-in: whoever just configured a source expects content - the first run starts
   // right after creation unless switched off. Since #1942 for every connector type, not only
@@ -135,18 +152,19 @@ export default function LibraryCreatePage() {
   }
 
   /**
-   * Die Konnektor-Freigabe gilt je Quellart (ADR-0036, Nachtrag vom 03.10.2026): eine Art, die die
-   * Person nicht anlegen darf oder die gesperrt ist, bleibt mit dem Hinweis des Backends sichtbar.
-   * Dieser Assistent legt mit eigener Adresse an, ohne Zugang.
+   * Die Konnektor-Freigabe gilt je Quellart und je Zugang (ADR-0036, Nachtrag vom 03.10.2026): eine
+   * Art, die die Person weder mit eigener Adresse noch über einen Zugang anlegen darf oder die
+   * gesperrt ist, bleibt mit dem Hinweis des Backends sichtbar. Welcher Weg offen ist, wählt der
+   * Schritt „Quelle“.
    */
   function releaseMissingFor(type: SourceTypeKey): string | null {
     const descriptor = sourceTypes.find((d) => d.type === type)
-    if (descriptor === undefined || descriptor.uploads || descriptor.creatableWithOwnAddress) {
-      return null
-    }
+    if (descriptor === undefined || descriptor.uploads) return null
+    if (descriptor.creatableWithOwnAddress) return null
+    if (descriptor.creatable && descriptor.profileSupport !== 'FORBIDDEN') return null
     return (
       descriptor.creationNotice ??
-      `Die Quellart „${descriptor.displayName}“ ist für Sie nur über einen Zugang freigegeben; das Anlegen über einen Zugang bietet dieser Assistent noch nicht.`
+      `Die Quellart „${descriptor.displayName}“ ist für Sie nicht freigegeben. Freigaben erteilt die Systemverwaltung.`
     )
   }
 
@@ -172,12 +190,52 @@ export default function LibraryCreatePage() {
     ? null
     : (sourceRegistration(sourceType)?.configuration ?? null)
   const valuesKey = configuration?.valuesKey ?? sourceType
-  const values: unknown = sourceValues[valuesKey] ?? configuration?.empty
+
+  // Der Zugang ist eine Wahl des Assistenten, nicht der Quellformulare: Sie steht über dem
+  // Formular und gibt ihm Adresse, Anmeldeart und Vorgaben mit.
+  const descriptor = sourceTypes.find((d) => d.type === sourceType)
+  const admitsProfiles =
+    configuration !== null && descriptor !== undefined && descriptor.profileSupport !== 'FORBIDDEN'
+  const profileOptions = useConnectionProfileOptions(admitsProfiles ? sourceType : null)
+  const connectionChoice =
+    admitsProfiles && descriptor
+      ? effectiveConnection(
+          chosenConnections[sourceType] ?? null,
+          selectableConnections(descriptor, profileOptions.options, true),
+        )
+      : OWN_ADDRESS
+  const chosenProfile = profileOptions.options.find((option) => option.id === connectionChoice)
+  const connection = chosenProfile ? sourceConnectionOf(chosenProfile) : undefined
+  const showConnectionSelect =
+    admitsProfiles &&
+    descriptor !== undefined &&
+    !(
+      profileOptions.loaded &&
+      profileOptions.error === null &&
+      profileOptions.options.length === 0 &&
+      ownAddressAllowed(descriptor)
+    )
+
+  const values: unknown = withConnection(
+    sourceValues[valuesKey] ?? configuration?.empty,
+    connection,
+  )
   const formContext: SourceFormContext = {
     mode: 'create',
     sourceType,
     idPrefix: 'library-create',
     credentialsStored: false,
+    connection,
+  }
+
+  /** A new choice of profile; an address still at the former profile's server address follows it. */
+  function chooseConnection(next: string) {
+    setChosenConnections((prev) => ({ ...prev, [sourceType]: next }))
+    const shown = values as { sourceUrl?: unknown } | undefined
+    if (connection && shown?.sourceUrl === connection.serverUrl) {
+      setSourceValues((prev) => ({ ...prev, [valuesKey]: { ...shown, sourceUrl: '' } }))
+    }
+    setError(null)
   }
   const confluenceRhythm = configuration?.fullSyncRhythm ? NEW_CONFLUENCE_RHYTHM : undefined
   // Without the list of source types nothing may be chosen - not even the upload library a stale
@@ -234,6 +292,14 @@ export default function LibraryCreatePage() {
       return
     }
     if (currentStep === STEP_SOURCE && configuration) {
+      if (connectionChoice === null) {
+        setError(
+          profileOptions.loaded
+            ? 'Für diese Quellart steht Ihnen kein Zugang zur Verfügung.'
+            : 'Die Zugänge werden noch geladen',
+        )
+        return
+      }
       const validationError = configuration.validate(values, formContext)
       if (validationError) {
         setError(validationError)
@@ -274,7 +340,9 @@ export default function LibraryCreatePage() {
     setSubmitting(true)
     setError(null)
     try {
-      const source = configuration ? configuration.toPayload(values) : { sourceInsecureSsl: false }
+      const source = configuration
+        ? payloadUnder(configuration.toPayload(values), connectionFields(formContext))
+        : { sourceInsecureSsl: false }
       // #1942: Anlage und Zeitplan werden atomar gesetzt; eine Upload-Bibliothek bekommt gar
       // keinen (das Backend wiese alles außer DISABLED mit 400 ab).
       const scheduled = !uploadLibrary
@@ -290,6 +358,7 @@ export default function LibraryCreatePage() {
         ownerType,
         ownerId: ownerType === 'GROUP' ? (selectedGroup?.id ?? undefined) : undefined,
         sourceType,
+        ...(connection ? { connectionProfileId: connection.profileId } : {}),
         ...source,
         sourceSettings,
         ...(scheduled ? { schedule: scheduled.schedule } : {}),
@@ -377,14 +446,26 @@ export default function LibraryCreatePage() {
 
         {currentStep === STEP_SOURCE && (
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, maxWidth: 640 }}>
-            {SourceForm && (
+            {showConnectionSelect && descriptor && (
+              <ConnectionProfileSelect
+                descriptor={descriptor}
+                state={profileOptions}
+                value={connectionChoice}
+                onChange={chooseConnection}
+                offerOwnAddress
+                idPrefix="library-create"
+              />
+            )}
+            {SourceForm && connectionChoice !== null && (
               <SourceForm
+                // a new profile starts the form afresh, so no probe result outlives its profile
+                key={connectionChoice}
                 values={values}
                 context={formContext}
                 onChange={(patch: object) => {
                   setSourceValues((prev) => ({
                     ...prev,
-                    [valuesKey]: { ...(values as object), ...patch },
+                    [valuesKey]: { ...(values as object), ...withoutFixed(patch, connection) },
                   }))
                   setError(null)
                 }}

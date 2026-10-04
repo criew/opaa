@@ -23,6 +23,7 @@ import type { SourceConnectionTestResponse } from '../../types/api'
 import { browseSource, testLibrarySource } from '../../services/libraryApi'
 import { sameLibrarySourceOrigin } from '../../utils/librarySourceConfig'
 import FieldLabel from '../wizard/FieldLabel'
+import { connectionFields, type ConnectionFields } from './sources/sourceConnection'
 
 import {
   AWS_REGIONS,
@@ -63,6 +64,8 @@ interface S3SourceFormProps {
   /** Edit mode: the endpoint the stored key belongs to - it does not survive a host change. */
   originalSourceUrl?: string | null
   idPrefix: string
+  /** What the connection profile decides for the fields; nothing without one. */
+  connection?: ConnectionFields
 }
 
 function scopeCheckSummary(check: S3ScopeCheck): string {
@@ -96,6 +99,7 @@ export default function S3SourceForm({
   credentialsStored = false,
   originalSourceUrl,
   idPrefix,
+  connection = connectionFields({ mode, sourceType: 'S3', idPrefix, libraryId, credentialsStored }),
 }: S3SourceFormProps) {
   const [testing, setTesting] = useState(false)
   const [testMessage, setTestMessage] = useState<Message | null>(null)
@@ -125,7 +129,9 @@ export default function S3SourceForm({
   const usesStoredCredentials =
     mode === 'edit' && credentialsStored && !originChanged && !keyEntered && libraryId !== undefined
   const keyComplete =
-    (values.accessKey.trim() !== '' && values.secretKey.trim() !== '') || usesStoredCredentials
+    !connection.asksSecret ||
+    (values.accessKey.trim() !== '' && values.secretKey.trim() !== '') ||
+    usesStoredCredentials
   const endpointEntered = values.sourceUrl.trim() !== ''
   const scopeEntered = values.scopes.some((scope) => scope.bucket.trim() !== '')
   const regionSuggestions =
@@ -194,10 +200,10 @@ export default function S3SourceForm({
       sourceProxy: values.sourceProxy.trim() || undefined,
       sourceInsecureSsl: values.sourceInsecureSsl,
       sourceCredentials: s3CredentialsOf(values),
-      // #1856 review: sent whenever this instance edits an existing library, not only while the
-      // stored-credentials fallback applies - without libraryId, the test/listing needs
+      // #1856 review: the library is named whenever this instance edits one, not only while the
+      // stored-credentials fallback applies - without it, the test/listing needs
       // CREATE_CONNECTOR_LIBRARY (ADR-0036, Entscheidung 5), a right a MANAGER need not hold.
-      libraryId: mode === 'edit' ? libraryId : undefined,
+      ...connection.probe,
     }
   }
 
@@ -283,26 +289,32 @@ export default function S3SourceForm({
         <Typography component="h3" sx={{ fontSize: 16, fontWeight: 600, mb: 1.75 }}>
           Verbindung zum Objektspeicher
         </Typography>
-        <FieldLabel id={`${idPrefix}-provider-label`}>Anbieter</FieldLabel>
-        <RadioGroup
-          aria-labelledby={`${idPrefix}-provider-label`}
-          row
-          value={values.provider}
-          onChange={(e) => changeProvider(e.target.value as S3Provider)}
-          sx={{ mb: 1 }}
-        >
-          {S3_PROVIDERS.map((provider) => (
-            <FormControlLabel
-              key={provider}
-              value={provider}
-              control={<Radio size="small" />}
-              label={S3_PROVIDER_LABELS[provider]}
-            />
-          ))}
-        </RadioGroup>
-        <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mb: 1.5 }}>
-          Die Vorlage belegt Endpoint, Region und Adressstil vor; jede Vorbelegung bleibt änderbar.
-        </Typography>
+        {/* Under a profile the endpoint comes from the profile, so no template applies. */}
+        {connection.connection === null && (
+          <>
+            <FieldLabel id={`${idPrefix}-provider-label`}>Anbieter</FieldLabel>
+            <RadioGroup
+              aria-labelledby={`${idPrefix}-provider-label`}
+              row
+              value={values.provider}
+              onChange={(e) => changeProvider(e.target.value as S3Provider)}
+              sx={{ mb: 1 }}
+            >
+              {S3_PROVIDERS.map((provider) => (
+                <FormControlLabel
+                  key={provider}
+                  value={provider}
+                  control={<Radio size="small" />}
+                  label={S3_PROVIDER_LABELS[provider]}
+                />
+              ))}
+            </RadioGroup>
+            <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mb: 1.5 }}>
+              Die Vorlage belegt Endpoint, Region und Adressstil vor; jede Vorbelegung bleibt
+              änderbar.
+            </Typography>
+          </>
+        )}
         {values.provider === 'HETZNER' && (
           <Alert severity="info" sx={{ mb: 1.5 }}>
             Hetzner Object Storage bietet keine Ereignisbenachrichtigungen (eine Aktualisierung per
@@ -319,6 +331,7 @@ export default function S3SourceForm({
             <Autocomplete<string, false, false, true>
               id={`${idPrefix}-region`}
               freeSolo
+              readOnly={connection.isFixed('region')}
               options={regionSuggestions}
               value={values.region}
               inputValue={values.region}
@@ -329,9 +342,11 @@ export default function S3SourceForm({
                   size="small"
                   placeholder={values.provider === 'AWS' ? 'eu-central-1' : 'us-east-1'}
                   helperText={
-                    values.provider === 'AWS' || values.provider === 'HETZNER'
-                      ? 'Der Endpoint wird aus der Region abgeleitet.'
-                      : 'Wird zum Signieren verwendet; MinIO und Ceph akzeptieren us-east-1.'
+                    connection.isFixed('region')
+                      ? connection.fixedHint
+                      : values.provider === 'AWS' || values.provider === 'HETZNER'
+                        ? 'Der Endpoint wird aus der Region abgeleitet.'
+                        : 'Wird zum Signieren verwendet; MinIO und Ceph akzeptieren us-east-1.'
                   }
                 />
               )}
@@ -345,87 +360,101 @@ export default function S3SourceForm({
               value={values.sourceUrl}
               onChange={(e) => changeConnection({ sourceUrl: e.target.value })}
               placeholder="https://minio.intern.example:9000"
-              helperText="http(s)://host[:port], ohne Pfad - Bucket und Präfix gehören in die Geltungsbereiche."
+              helperText={
+                connection.addressHint ??
+                'http(s)://host[:port], ohne Pfad - Bucket und Präfix gehören in die Geltungsbereiche.'
+              }
               fullWidth
               slotProps={{ htmlInput: { maxLength: 2000, sx: { fontFamily: 'monospace' } } }}
             />
           </Box>
-          <FormControlLabel
-            sx={{ gridColumn: '1 / -1' }}
-            control={
-              <Switch
-                checked={values.pathStyle}
-                onChange={(e) => changeConnection({ pathStyle: e.target.checked })}
-              />
-            }
-            label="Path-Style-Adressierung (endpoint/bucket/key - MinIO, Ceph)"
-          />
+          <Box sx={{ gridColumn: '1 / -1' }}>
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={values.pathStyle}
+                  disabled={connection.isFixed('pathStyle')}
+                  onChange={(e) => changeConnection({ pathStyle: e.target.checked })}
+                />
+              }
+              label="Path-Style-Adressierung (endpoint/bucket/key - MinIO, Ceph)"
+            />
+            {connection.isFixed('pathStyle') && (
+              <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+                {connection.fixedHint}
+              </Typography>
+            )}
+          </Box>
         </Box>
       </Box>
 
       {/* Stage 2: the static key */}
-      <Box>
-        <Typography component="h3" sx={{ fontSize: 16, fontWeight: 600, mb: 1.75 }}>
-          Zugangsdaten
-        </Typography>
-        <Box
-          sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: '14px' }}
-        >
-          <Box>
-            <FieldLabel htmlFor={`${idPrefix}-access-key`}>
-              {mode === 'edit' && credentialsStored ? 'Neuer Access Key' : 'Access Key'}
-            </FieldLabel>
-            <TextField
-              id={`${idPrefix}-access-key`}
-              size="small"
-              value={values.accessKey}
-              onChange={(e) => changeKey({ accessKey: e.target.value })}
-              placeholder="AKIA…"
-              autoComplete="off"
-              error={originChanged && values.accessKey.trim() === ''}
-              helperText="Ohne Doppelpunkt."
-              fullWidth
-              slotProps={{
-                htmlInput: {
-                  maxLength: MAX_S3_ACCESS_KEY_LENGTH,
-                  sx: { fontFamily: 'monospace' },
-                },
-              }}
-            />
-          </Box>
-          <Box>
-            <FieldLabel htmlFor={`${idPrefix}-secret-key`}>
-              {mode === 'edit' && credentialsStored ? 'Neuer Secret Key' : 'Secret Key'}
-            </FieldLabel>
-            <TextField
-              id={`${idPrefix}-secret-key`}
-              size="small"
-              type="password"
-              value={values.secretKey}
-              onChange={(e) => changeKey({ secretKey: e.target.value })}
-              autoComplete="new-password"
-              error={originChanged && values.secretKey.trim() === ''}
-              helperText={secretHelperText}
-              fullWidth
-              slotProps={{ htmlInput: { maxLength: MAX_S3_SECRET_KEY_LENGTH } }}
-            />
-          </Box>
-          <Box sx={{ gridColumn: '1 / -1' }}>
-            <FieldLabel htmlFor={`${idPrefix}-session-token`}>Session-Token (optional)</FieldLabel>
-            <TextField
-              id={`${idPrefix}-session-token`}
-              size="small"
-              type="password"
-              value={values.sessionToken}
-              onChange={(e) => changeKey({ sessionToken: e.target.value })}
-              autoComplete="off"
-              helperText="Nur für zeitlich begrenzte Schlüssel (STS); läuft mit dem Token ab. Access Key, Secret Key und Token dürfen zusammen höchstens 500 Zeichen umfassen."
-              fullWidth
-              slotProps={{ htmlInput: { maxLength: MAX_S3_SESSION_TOKEN_LENGTH } }}
-            />
+      {connection.asksSecret && (
+        <Box>
+          <Typography component="h3" sx={{ fontSize: 16, fontWeight: 600, mb: 1.75 }}>
+            Zugangsdaten
+          </Typography>
+          <Box
+            sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: '14px' }}
+          >
+            <Box>
+              <FieldLabel htmlFor={`${idPrefix}-access-key`}>
+                {mode === 'edit' && credentialsStored ? 'Neuer Access Key' : 'Access Key'}
+              </FieldLabel>
+              <TextField
+                id={`${idPrefix}-access-key`}
+                size="small"
+                value={values.accessKey}
+                onChange={(e) => changeKey({ accessKey: e.target.value })}
+                placeholder="AKIA…"
+                autoComplete="off"
+                error={originChanged && values.accessKey.trim() === ''}
+                helperText="Ohne Doppelpunkt."
+                fullWidth
+                slotProps={{
+                  htmlInput: {
+                    maxLength: MAX_S3_ACCESS_KEY_LENGTH,
+                    sx: { fontFamily: 'monospace' },
+                  },
+                }}
+              />
+            </Box>
+            <Box>
+              <FieldLabel htmlFor={`${idPrefix}-secret-key`}>
+                {mode === 'edit' && credentialsStored ? 'Neuer Secret Key' : 'Secret Key'}
+              </FieldLabel>
+              <TextField
+                id={`${idPrefix}-secret-key`}
+                size="small"
+                type="password"
+                value={values.secretKey}
+                onChange={(e) => changeKey({ secretKey: e.target.value })}
+                autoComplete="new-password"
+                error={originChanged && values.secretKey.trim() === ''}
+                helperText={secretHelperText}
+                fullWidth
+                slotProps={{ htmlInput: { maxLength: MAX_S3_SECRET_KEY_LENGTH } }}
+              />
+            </Box>
+            <Box sx={{ gridColumn: '1 / -1' }}>
+              <FieldLabel htmlFor={`${idPrefix}-session-token`}>
+                Session-Token (optional)
+              </FieldLabel>
+              <TextField
+                id={`${idPrefix}-session-token`}
+                size="small"
+                type="password"
+                value={values.sessionToken}
+                onChange={(e) => changeKey({ sessionToken: e.target.value })}
+                autoComplete="off"
+                helperText="Nur für zeitlich begrenzte Schlüssel (STS); läuft mit dem Token ab. Access Key, Secret Key und Token dürfen zusammen höchstens 500 Zeichen umfassen."
+                fullWidth
+                slotProps={{ htmlInput: { maxLength: MAX_S3_SESSION_TOKEN_LENGTH } }}
+              />
+            </Box>
           </Box>
         </Box>
-      </Box>
+      )}
 
       {/* Stage 3: the consequence, stated before the scopes - not after them */}
       <Alert severity="warning" data-testid={`${idPrefix}-sharing-consequence`}>

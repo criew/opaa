@@ -197,8 +197,8 @@ später an derselben Stelle wieder:
 
 | Schritt | Inhalt |
 |---|---|
-| **1. Art des Wissens** | je Quellentyp eine Kachel mit Symbol und einem Satz dazu. Fehlt das Anlegerecht für diese Art — „Bibliotheken für Uploads anlegen" und „Konnektorbibliotheken anlegen" sind zwei getrennte Rechte —, ist die Kachel gesperrt und nennt den Grund auf sich selbst. Zwischen den Kacheln führen die Pfeiltasten |
-| **2. Quelle** | Anbindung und Verbindungstest wie im gleichnamigen Reiter, dazu der **Zeitplan** und der Schalter „Erste Indizierung sofort nach dem Anlegen starten". Beide gelten für **jeden** Konnektortyp. Bei einer Upload-Bibliothek entfällt der Schritt, der Assistent hat dann drei |
+| **1. Art des Wissens** | je Quellentyp eine Kachel mit Symbol und einem Satz dazu. Fehlt das Anlegerecht für diese Art — „Bibliotheken für Uploads anlegen" und „Konnektorbibliotheken anlegen" sind zwei getrennte Rechte —, ist die Kachel gesperrt und nennt den Grund auf sich selbst. Eine Quellart, die für die Person nur über einen Zugang freigegeben ist, bleibt wählbar. Zwischen den Kacheln führen die Pfeiltasten |
+| **2. Quelle** | bei einer Quellart mit Zugängen zuerst die Wahl des **Zugangs** (siehe [Zugänge](#zugänge)), darunter Anbindung und Verbindungstest wie im gleichnamigen Reiter, dazu der **Zeitplan** und der Schalter „Erste Indizierung sofort nach dem Anlegen starten". Beide gelten für **jeden** Konnektortyp. Bei einer Upload-Bibliothek entfällt der Schritt, der Assistent hat dann drei |
 | **3. Name & Beschreibung** | der Name ist vorbelegt, wo die Quelle ihn hergibt — der einzelne Confluence-Space, der erste Bucket, der letzte Pfadabschnitt, der Hostname — und bleibt überschreibbar |
 | **4. Freigaben** | Eigentümer („Mein Konto" oder eine Gruppe, in der die anlegende Person Mitglied ist) und vorgemerkte Freigaben an Personen und Gruppen. Eine Freigabe an „Alle Konten" gibt es hier nicht: Sie wird an der fertigen Bibliothek erteilt, wo auch die Obergrenze dafür gilt |
 
@@ -397,8 +397,49 @@ sichtbar. Das Formular richtet sich nach der Quellart:
 Die Liste zeigt je Zugang Quellart, Server-Adresse, Anmeldeart, Besitzart und die Zahl der
 Verbindungen, dazu einen Hinweis, wenn das Client-Secret bald abläuft. „Alle Verbindungen trennen“
 und „Löschen“ nennen vor der Bestätigung die Zahl der Betroffenen, ebenso eine Änderung, die
-Geheimnisse verwirft. In der Detailansicht einer Bibliothek steht unter „Anbindung“ ihr Zugang;
-der Hinweis „Zugang entfernt“ steht im Reiter „Quelle“ für alle Leseberechtigten.
+Geheimnisse verwirft. Solange die Angaben der Quellart beim Bearbeiten eines Zugangs noch geladen
+werden, sagt das Formular das und lässt noch nicht speichern.
+
+#### Einen Zugang wählen, zuordnen, wechseln, lösen
+
+Die Auswahl, die Aktionen an der Bibliothek und der Schalter „Nur über Zugänge“ erscheinen nur bei
+einer Quellart, die Zugänge meldet; bis die mitgelieferten Konnektoren das tun
+([#2219](https://github.com/criew/opaa/issues/2219)), gilt das für keine von ihnen.
+
+**Im Wissens-Assistenten** steht bei einer solchen Quellart im Schritt „Quelle“ über dem
+Formular die Wahl **„Zugang“**, sobald es für die Quellart einen Zugang gibt oder eine eigene
+Adresse nicht zulässig ist:
+
+- **„Eigene Adresse“** steht zur Wahl, solange die Quellart keine Profilpflicht hat und die Person
+  sie mit eigener Adresse anlegen darf. Sonst sagt ein Satz, warum es sie nicht gibt.
+- **Jeder Zugang** steht mit Server-Adresse, Anmeldeart und Vorgaben da. Ein Zugang, den die Person
+  nicht nutzen darf oder der gesperrt ist, bleibt sichtbar, ist aber nicht wählbar und nennt, wer
+  ihn freischaltet.
+- Gibt es weder einen nutzbaren Zugang noch die eigene Adresse, steht statt des Formulars der
+  Hinweis, dass die Systemverwaltung Zugänge anlegt und freigibt; „Weiter“ geht dann nicht.
+
+Nach der Wahl eines Zugangs richtet sich das Formular nach ihm: Die Adresse ist mit der
+Server-Adresse des Zugangs vorbelegt (eine Adresse darunter ist möglich), das Feld für die
+Zugangsdaten entfällt bei einem Zugang ohne Anmeldung, und Einstellungen, die der Zugang vorgibt
+(etwa die Confluence-Edition oder bei S3 Region und Adressstil), stehen nur lesbar mit seinem Wert
+da. Verbindungstest und Auflistung prüfen über den gewählten Zugang. Einen Zugangswunsch gibt es im
+Assistenten nicht; er nennt nur, wer Zugänge anlegt.
+
+**An einer fertigen Bibliothek** steht im Reiter „Quelle“ unter „Anbindung“ ihr Zugang, für die
+Verwaltenden mit diesen Aktionen:
+
+| Aktion | Wann | Wirkung |
+|---|---|---|
+| „Zugang zuordnen“ | Bibliothek mit eigener Adresse, auch nach „Zugang entfernt“ | verbindet sie über einen gewählten Zugang; die Adresse muss unter dessen Server-Adresse liegen |
+| „Zugang wechseln“ | Bibliothek auf einem Zugang | verbindet sie über einen anderen Zugang derselben Quellart; der bisherige steht nicht zur Wahl |
+| „Zugang lösen“ | Bibliothek auf einem Zugang, ohne Profilpflicht der Quellart | fragt nach; die Bibliothek behält Adresse und Zugangsdaten als eigene |
+
+Zur Wahl stehen beim Zuordnen und Wechseln nur Zugänge, die die Person nutzen darf; die übrigen
+bleiben mit ihrem Hinweis sichtbar. Die Hinweise „Zugang entfernt“ und die Sperre wegen der
+Profilpflicht stehen im Reiter „Quelle“ für alle Leseberechtigten; den Verwaltenden bieten sie
+„Zugang zuordnen“ direkt an. Beim Bearbeiten der Quelle einer Bibliothek auf einem Zugang gelten
+dieselben Regeln wie im Assistenten; solange die Angaben des Zugangs fehlen, lässt sich nichts
+speichern, und der Hinweis sagt das.
 
 **Welcher Konnektor Zugänge kennt**, meldet er selbst: Zugänge verboten, möglich oder Pflicht,
 dazu die Anmeldearten, die er anbietet (ohne Anmeldung, persönliches Geheimnis, OAuth,
@@ -493,9 +534,19 @@ Für eine Quellart, deren Konnektor Zugänge als möglich meldet, kann die Syste
 **Profilpflicht** einschalten: Danach ist die Quellart nur noch über einen Zugang nutzbar. Eine
 Quellart, die Zugänge verbietet oder ohnehin verlangt, lässt sich nicht umschalten. Da die
 mitgelieferten Konnektoren keine Zugänge melden, ist die Pflicht heute für keine mitgelieferte
-Quellart einschaltbar. Die Verwaltungsoberfläche bietet den Schalter noch nicht; er liegt an der
-Verwaltungsschnittstelle unter `/api/v1/admin/connector-types/{Quellart}/profile-requirement`, die
-vorher auch sagt, ob er sich umlegen lässt, und die Bibliotheken mit eigener Adresse auflistet.
+Quellart einschaltbar.
+
+Der Schalter steht unter **Administration → Zugänge** im Abschnitt „Quellarten“, Spalte
+„Zugänge“: Eine Quellart, die Zugänge verbietet, trägt dort „Keine Zugänge möglich“, eine, die sie
+verlangt, „Immer über Zugänge“; nur bei „möglich“ gibt es den Schalter **„Nur über Zugänge“**.
+
+- **Einschalten** öffnet einen Dialog. Lässt sich die Pflicht nicht einschalten, nennt er den Grund
+  und bietet nichts zu bestätigen an. Sonst listet er die Bibliotheken mit eigener Adresse mit ihren
+  Eigentümern, nennt, was die Pflicht für die Quellart nicht festlegt, und fragt nach der Wahl für
+  den Bestand: **„Weiterlaufen lassen“** oder **„Sperren“** (Folgen in der Tabelle unten).
+- **„Bestandswahl ändern“** öffnet denselben Dialog bei eingeschalteter Pflicht; unter dem Schalter
+  steht, welche Wahl gilt.
+- **Ausschalten** fragt vorher nach.
 
 Einschalten geht erst, **wenn es einen passenden Zugang gibt**: mindestens einen nicht gesperrten
 Zugang der Quellart, der Bibliotheken zulässt. Ein späteres Löschen oder Sperren dieses Zugangs

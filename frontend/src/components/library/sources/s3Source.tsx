@@ -11,6 +11,7 @@ import {
 } from '../../../utils/s3Source'
 import S3SourceForm from '../S3SourceForm'
 import { S3Scope, S3StoredView } from './S3SourceViews'
+import { connectionFields } from './sourceConnection'
 import type { SourceRegistration } from './types'
 
 export const s3Source: SourceRegistration = {
@@ -36,12 +37,14 @@ export const s3Source: SourceRegistration = {
       values.secretKey !== '' ||
       values.sessionToken !== '' ||
       values.scopes.some((scope) => scope.bucket !== '' || scope.prefix !== ''),
-    // the stored key survives only on the same origin (#516/#542)
+    // the stored key survives only on the same origin (#516/#542); a sign-in without a key of
+    // the library's own needs none
     validate: (values: S3SourceValues, context) =>
       validateS3Values(
         values,
-        context.credentialsStored &&
-          sameLibrarySourceOrigin(context.originalSourceUrl, values.sourceUrl),
+        !connectionFields(context).asksSecret ||
+          (context.credentialsStored &&
+            sameLibrarySourceOrigin(context.originalSourceUrl, values.sourceUrl)),
       ),
     toPayload: (values: S3SourceValues) => ({
       sourceUrl: values.sourceUrl.trim(),
@@ -61,6 +64,7 @@ export const s3Source: SourceRegistration = {
         libraryId={context.libraryId}
         credentialsStored={context.credentialsStored}
         originalSourceUrl={context.originalSourceUrl}
+        connection={connectionFields(context)}
         values={values}
         onChange={onChange}
       />
