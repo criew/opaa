@@ -189,6 +189,40 @@ describe('ConnectionProfileManagementPage', () => {
     expect(row).toHaveTextContent('Persönliches Geheimnis')
   })
 
+  it('shows the counts of connected and expired accounts exactly as the API rounds them', async () => {
+    mockConnectionProfiles[0] = {
+      ...mockConnectionProfiles[0],
+      connectedAccountCount: { count: null, fewerThan: 5 },
+      expiredConnectionCount: { count: null, fewerThan: 5 },
+    }
+    mockConnectionProfiles.push({
+      ...mockConnectionProfiles[0],
+      id: 'profile-exact',
+      name: 'Zugang openDesk',
+      connectedAccountCount: { count: 23, fewerThan: null },
+      expiredConnectionCount: { count: 7, fewerThan: null },
+    })
+    mockConnectionProfiles.push({
+      ...mockConnectionProfiles[0],
+      id: 'profile-withheld',
+      name: 'Zugang Partner',
+      connectedAccountCount: { count: 9, fewerThan: null },
+      expiredConnectionCount: null,
+    })
+    renderWithProviders(<ConnectionProfileManagementPage />)
+
+    const header = (await screen.findAllByRole('row'))[0]
+    expect(header).toHaveTextContent('Verbundene Konten')
+    expect(header).toHaveTextContent('Davon abgelaufen')
+    const cells = (name: string) =>
+      within(screen.getByRole('row', { name: new RegExp(name) }))
+        .getAllByRole('cell')
+        .map((cell) => cell.textContent)
+    expect(cells(PROFILE).slice(5, 7)).toEqual(['weniger als 5', 'weniger als 5'])
+    expect(cells('Zugang openDesk').slice(5, 7)).toEqual(['23', '7'])
+    expect(cells('Zugang Partner').slice(5, 7)).toEqual(['9', 'nicht ausgewiesen'])
+  })
+
   it('shows the expiry of the secret as a German date and tells expired from expiring', async () => {
     mockConnectionProfiles[0] = {
       ...mockConnectionProfiles[0],

@@ -25,17 +25,19 @@ import { contentWidth } from '../theme/tokens'
 import AreaTabs from '../components/AreaTabs'
 import OwnExternalAccessTokensSection from '../components/externalaccess/OwnExternalAccessTokensSection'
 import MyGroupsSection from '../components/groups/MyGroupsSection'
+import ConnectedAccountsSection from '../components/settings/ConnectedAccountsSection'
 
-export type SettingsTab = 'general' | 'groups' | 'tokens'
+export type SettingsTab = 'general' | 'groups' | 'tokens' | 'accounts'
 
 const tabs: Array<{ value: SettingsTab; label: string }> = [
   { value: 'general', label: 'Allgemein' },
   { value: 'groups', label: 'Meine Gruppen' },
   { value: 'tokens', label: 'Zugangstokens' },
+  { value: 'accounts', label: 'Verbundene Konten' },
 ]
 
 function isSettingsTab(value: string | undefined): value is SettingsTab {
-  return value === 'general' || value === 'groups' || value === 'tokens'
+  return value === 'general' || value === 'groups' || value === 'tokens' || value === 'accounts'
 }
 
 /** Mockup 2c: how the account signed in, next to the address - never a technical mode name. */
@@ -104,6 +106,8 @@ export default function SettingsPage() {
           {(value) =>
             value === 'tokens' ? (
               <OwnExternalAccessTokensSection />
+            ) : value === 'accounts' ? (
+              <ConnectedAccountsSection />
             ) : value === 'groups' ? (
               <MyGroupsSection />
             ) : (

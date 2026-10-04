@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { Route, Routes } from 'react-router'
 import { http, HttpResponse } from 'msw'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -10,7 +11,7 @@ import NotificationBell from './NotificationBell'
 describe('NotificationBell (#203)', () => {
   it('renders nothing when the user is not authenticated', () => {
     useAuthStore.setState({ isAuthenticated: false })
-    renderWithProviders(<NotificationBell />)
+    renderWithProviders(<NotificationBell />, { withRouter: true })
 
     expect(screen.queryByRole('button')).not.toBeInTheDocument()
   })
@@ -32,7 +33,7 @@ describe('NotificationBell (#203)', () => {
       ),
     )
     const user = userEvent.setup()
-    renderWithProviders(<NotificationBell />)
+    renderWithProviders(<NotificationBell />, { withRouter: true })
 
     await waitFor(() => {
       expect(screen.getByLabelText('Benachrichtigungen, 1 ungelesen')).toBeInTheDocument()
@@ -66,7 +67,7 @@ describe('NotificationBell (#203)', () => {
       }),
     )
     const user = userEvent.setup()
-    renderWithProviders(<NotificationBell />)
+    renderWithProviders(<NotificationBell />, { withRouter: true })
 
     await waitFor(() => {
       expect(screen.getByLabelText('Benachrichtigungen, 1 ungelesen')).toBeInTheDocument()
@@ -77,5 +78,39 @@ describe('NotificationBell (#203)', () => {
     await waitFor(() => {
       expect(markedRead).toBe(true)
     })
+  })
+
+  it('leads from an expired connection to the page "Verbundene Konten"', async () => {
+    setMockAuthState()
+    server.use(
+      http.get('/api/v1/notifications', () =>
+        HttpResponse.json([
+          {
+            id: 'n-expired',
+            type: 'CONNECTION_EXPIRED',
+            title: 'Verbindung abgelaufen: Zugang „Nextcloud intern“',
+            readAt: null,
+            createdAt: '2026-10-01T10:00:00Z',
+          },
+        ]),
+      ),
+      http.post(
+        '/api/v1/notifications/n-expired/read',
+        () => new HttpResponse(null, { status: 204 }),
+      ),
+    )
+    const user = userEvent.setup()
+    renderWithProviders(
+      <Routes>
+        <Route path="/" element={<NotificationBell />} />
+        <Route path="/settings/accounts" element={<p>Seite Verbundene Konten</p>} />
+      </Routes>,
+      { withRouter: true },
+    )
+
+    await user.click(await screen.findByLabelText('Benachrichtigungen, 1 ungelesen'))
+    await user.click(screen.getByText('Verbindung abgelaufen: Zugang „Nextcloud intern“'))
+
+    expect(await screen.findByText('Seite Verbundene Konten')).toBeInTheDocument()
   })
 })

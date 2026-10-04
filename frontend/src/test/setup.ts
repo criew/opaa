@@ -10,6 +10,8 @@ import { resetGrantMockState } from '../mocks/assetHandlers'
 import { resetChatMockState } from '../mocks/chatHandlers'
 import { resetLlmModelMockState } from '../mocks/modelHandlers'
 import { resetConnectionProfileMockState } from '../mocks/connectionProfileHandlers'
+import { resetConnectedAccountMockState } from '../mocks/connectedAccountHandlers'
+import { resetConnectionLogMockState } from '../mocks/connectionLogHandlers'
 // Deliberately only the fixture module, never a store or `src/services/api` (#583): importing
 // anything that pulls in the axios instance *from this file* makes a dozen unrelated dialog tests
 // fail - their requests stop being intercepted, so every "expected onCreated to be called" assertion
@@ -47,6 +49,8 @@ afterEach(() => {
   resetChatMockState()
   resetLlmModelMockState()
   resetConnectionProfileMockState()
+  resetConnectedAccountMockState()
+  resetConnectionLogMockState()
   // The branding fixture is mutable so a PUT is visible on the next GET (#583) - without this,
   // a test that configures a brand colour would silently set the stage for the next one.
   resetMockBranding()
