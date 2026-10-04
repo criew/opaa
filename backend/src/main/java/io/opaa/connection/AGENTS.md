@@ -17,33 +17,33 @@ seine Ports `SourceConnectionResolver` (`ProfileSourceConnectionResolver`) und `
   und implementiert den Port, `connection.web` darüber. Kein Unterpaket nennt das Wurzelpaket.
 - **Verbindungsprotokoll** wie `audit_log`: schreibt nur `ConnectionLog` (in der Transaktion des
   Aufrufers), liest nur `ConnectionLogQueryService` (`AUDITOR`), löscht nur die Datenbankfunktion.
-- **Das Client-Secret ist schreibgeschützt.** `ConnectionProfileService` verschlüsselt es mit
-  `CredentialsEncryptor`; Antworten tragen nur `clientSecretSet`, das Audit nur Feldnamen und
-  Ja/Nein. Kein Code gibt es heraus, bis ein Konsument es braucht (OAuth, #2168).
+- **Das Client-Secret ist schreibgeschützt:** `ConnectionProfileService` verschlüsselt es;
+  Antworten und Audit sagen nur Ja/Nein. Kein Code gibt es heraus, bis OAuth es braucht (#2168).
 - **Ursprungsbindung:** Die Adresse einer zugeordneten Bibliothek liegt unter der Server-Adresse
-  ihres Profils (`ServerAddress#covers`), sonst sperrt der Port. Ein Geheimnis folgt nur bei
-  `ServerAddress#sameOrigin` (die eine Regel) und `keepsCredentials`. Eine neue Server-Adresse
-  verschiebt die Adressen der Bibliotheken und verwirft alle Geheimnisse des Profils.
-- **Lesen und Verwerfen des Geheimnisses** in connections nur über `ConnectionSecrets`, library
-  über den Port; der Schreibweg der Bibliothek bleibt `updateSourceConfiguration`.
+  ihres Profils (`ServerAddress#covers`), sonst sperrt der Port. Ein Geheimnis folgt nur zum selben
+  `SecretTarget` (`sameOrigin` plus `credentialBinding` des Konnektors), dessen `key()` das Ziel
+  für `ConnectionSecrets#current` ist. Eine neue Server-Adresse verwirft alle Geheimnisse.
+- **Übergänge** (Profiländerung, Zuordnen, Lösen) sind je Bibliothek ein `SourceTransitions.Move`
+  durch `SourceChangeGate`: erst alle prüfen (`Answers`, je Konfiguration einmal, bei der
+  Profiländerung vor der Schreibtransaktion), dann schreiben. Ablehnung: `ChangeRejection`.
+- **Geheimnis** lesen und verwerfen nur über `ConnectionSecrets`, library über den Port.
 - **Ein gelöschtes Profil** lässt die Zuordnung mit `profile_id NULL` stehen („Zugang entfernt“);
   sie zählt als eigene Adresse, entschieden nur in `LibraryConnection#throughProfile`.
-- **Sperrgründe nur in `SourceBlocks`:** Ob und warum eine Bibliothek gesperrt ist und welcher Text
-  gilt, entscheidet nur er. Vorrang ist die Deklarationsreihenfolge von `SourceBlock.Reason`, die
-  Mengen der Aufrufer leiten sich aus dessen Eigenschaften ab: Ein neuer Grund steht an einer Stelle.
+- **Sperrgründe nur in `SourceBlocks`** (ob, warum, welcher Text). Vorrang ist die Reihenfolge von
+  `SourceBlock.Reason`, die Mengen der Aufrufer folgen aus dessen Eigenschaften.
 - **Eine Zusammenführung:** `EffectiveSourceSettings` setzt Lauf, Änderung und Entwurf
   (`ofDraft`: Anlegen, Test, Auflistung) in einem `compose` zusammen. Der Rahmen des Zugangs
   (`ProfileFrame`: `TransportRules` der Server-Adresse, `boundKeys`) überschreibt die Bibliothek;
-  abweichend ist `400`, gespeichert nur der eigene Teil (`ownPart`, auch beim Zuordnen).
+  abweichend ist `400`, gespeichert nur der eigene Teil; Lösen schreibt den Rahmen ein.
 - **Freigabe nur hier:** `ConnectorReleaseService` entscheidet eine Neuanlage aus
-  `CREATE_CONNECTOR_LIBRARY` im Geltungsbereich `TYPE:`/`PROFILE:` und den Sperren;
-  `ConnectorScopeCatalog` nennt rights die Geltungsbereiche. Kein anderes Modul außer rights nennt
-  die Fähigkeit (`theConnectorReleaseIsDecidedInConnections`). Ein Entzug stoppt keinen Lauf.
+  `CREATE_CONNECTOR_LIBRARY` (`TYPE:`/`PROFILE:`, `ConnectorScopeCatalog`) und den Sperren; nur
+  rights nennt die Fähigkeit sonst (`theConnectorReleaseIsDecidedInConnections`). Ein Entzug
+  stoppt keinen Lauf.
 - **Profilangabe nur über `ProfileRequirements`:** deklariert `OPTIONAL` plus Schalter ergibt
   `REQUIRED`; nur dort liest connections `support` (`theProfileSupportIsReadInOnePlace`).
-- **Sperre:** blockiert `resolve` (Laufstart, Original), nicht `currentCredentials`; ein Entwurf auf
-  einem anderen Zugang prüft nur dessen Sperren. Registry je Aufruf (Bean-Zyklus).
-- **Web-Schicht:** `connection.web` (Profile, Protokoll, Frist); Bibliothekszuordnung in `library.web`.
+- **Sperre:** blockiert `resolve`, nicht `currentCredentials`; ein Entwurf auf einem anderen Zugang
+  prüft nur dessen Sperren. Registry je Aufruf (Bean-Zyklus).
+- **Web-Schicht:** `connection.web`; Zuordnung und Optionen mit `libraryId` in `library.web`.
 
 ## Verweise
 
