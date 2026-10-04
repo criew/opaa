@@ -94,7 +94,7 @@ public class IndexingRunTemplate {
           "Indexing run {} found the connection of library {} blocked: {}",
           jobId,
           library.getId(),
-          e.category());
+          e.block().reason());
       progress.fail(e.getMessage());
       return;
     } catch (RuntimeException e) {

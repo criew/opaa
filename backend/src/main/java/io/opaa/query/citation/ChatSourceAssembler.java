@@ -9,6 +9,7 @@ import io.opaa.chat.ChatSourceMetadataEntry;
 import io.opaa.chat.SearchedLibraryRef;
 import io.opaa.format.chunk.ChunkMetadataKeys;
 import io.opaa.indexing.job.IndexingJobRepository;
+import io.opaa.indexing.source.SourceBlock;
 import io.opaa.indexing.source.SourceConnectorRegistry;
 import io.opaa.indexing.source.SourceStateLookup;
 import io.opaa.knowledge.DocumentRepository;
@@ -128,7 +129,7 @@ public class ChatSourceAssembler {
       return;
     }
     Set<UUID> libraryIds = Set.copyOf(libraryByDocument.values());
-    Map<UUID, SourceStateLookup.SourceState> frozen =
+    Map<UUID, SourceBlock> frozen =
         sourceStates.frozenAmong(knowledgeLibraryRepository.findAllById(libraryIds));
     if (frozen.isEmpty()) {
       return;
@@ -139,11 +140,22 @@ public class ChatSourceAssembler {
         .forEach(row -> lastRun.put(row.getLibraryId(), row.getLastCompletedAt()));
     for (ChatSource source : sources) {
       UUID library = libraryByDocument.get(source.getDocumentId());
-      SourceStateLookup.SourceState state = library == null ? null : frozen.get(library);
-      if (state != null) {
-        source.freeze(state.reason().name(), state.responsible(), lastRun.get(library));
+      SourceBlock block = library == null ? null : frozen.get(library);
+      if (block != null) {
+        source.freeze(freezeReason(block.reason()), block.responsible(), lastRun.get(library));
       }
     }
+  }
+
+  /** The answer's freeze reason ({@code SourceFreezeReason}): both locks are one {@code LOCKED}. */
+  static String freezeReason(SourceBlock.Reason reason) {
+    return switch (reason) {
+      case TYPE_LOCKED, PROFILE_LOCKED -> "LOCKED";
+      case ACCESS_REMOVED -> "ACCESS_REMOVED";
+      case NOT_CONNECTED -> "NOT_CONNECTED";
+      case TARGET_OUTSIDE_PROFILE ->
+          throw new IllegalStateException("Reason " + reason + " is not shown in an answer");
+    };
   }
 
   /**
