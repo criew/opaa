@@ -6,11 +6,12 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * Since when persons are deactivated, as the lifecycle last recorded it - the start of the deletion
- * period of their private libraries. Implemented in {@code connection.account}.
+ * Since when the deletion period of persons' private libraries runs: from their current
+ * deactivation by an act that ends the account, never from an absence. Implemented in {@code
+ * connection.account}.
  */
 public interface DeactivationStarts {
 
-  /** The recorded start for each of {@code userIds} that has one; others are absent. */
+  /** The start for each of {@code userIds} whose period runs now; others are absent. */
   Map<UUID, Instant> deactivatedSince(Collection<UUID> userIds);
 }

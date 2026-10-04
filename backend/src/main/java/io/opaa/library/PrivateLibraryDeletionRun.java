@@ -1,10 +1,6 @@
 package io.opaa.library;
 
-import io.opaa.auth.AccountUsability;
-import io.opaa.auth.User;
-import io.opaa.auth.UserRepository;
 import io.opaa.connection.account.ConnectionLifecycle;
-import io.opaa.connection.token.ConnectionLifecycleProperties;
 import io.opaa.connection.token.PrivateLibraryDeletionPeriod;
 import io.opaa.knowledge.ErasureCause;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
@@ -13,9 +9,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.slf4j.Logger;
@@ -25,9 +19,10 @@ import org.springframework.stereotype.Service;
 
 /**
  * Erases private libraries without anyone acting (ADR-0041, Entscheidung 4; #2165): daily those of
- * persons deactivated for longer than the deletion period whose account is still deactivated now,
- * and every few minutes the erasures a running run held up. A resting account never counts, and a
- * person reactivated within the period keeps her libraries. Each library is erased on its own; a
+ * persons whose deletion period ran out - counted from their current deactivation by an act that
+ * ends the account ({@link ConnectionLifecycle#deletionPeriodStartedBefore}) - and every few
+ * minutes the erasures a running run held up. A resting account, a local inactivity lock and a
+ * person reactivated within the period keep their libraries. Each library is erased on its own; a
  * failure leaves its marker for the next run. The log names counts only.
  */
 @Service
@@ -42,9 +37,6 @@ public class PrivateLibraryDeletionRun {
   private final PrivateLibraryErasure erasure;
   private final ConnectionLifecycle lifecycle;
   private final PrivateLibraryDeletionPeriod period;
-  private final ConnectionLifecycleProperties lifecycleProperties;
-  private final AccountUsability usability;
-  private final UserRepository users;
   private final Clock clock;
 
   public PrivateLibraryDeletionRun(
@@ -52,17 +44,11 @@ public class PrivateLibraryDeletionRun {
       PrivateLibraryErasure erasure,
       ConnectionLifecycle lifecycle,
       PrivateLibraryDeletionPeriod period,
-      ConnectionLifecycleProperties lifecycleProperties,
-      AccountUsability usability,
-      UserRepository users,
       Clock clock) {
     this.libraries = libraries;
     this.erasure = erasure;
     this.lifecycle = lifecycle;
     this.period = period;
-    this.lifecycleProperties = lifecycleProperties;
-    this.usability = usability;
-    this.users = users;
     this.clock = clock;
   }
 
@@ -87,7 +73,7 @@ public class PrivateLibraryDeletionRun {
   public Result runOnce() {
     Result pending = erase(libraries.findIdsByErasureRequested(), null);
     Instant cutoff = clock.instant().minus(period.period());
-    Set<UUID> deactivated = stillDeactivated(lifecycle.deactivatedBefore(cutoff).keySet());
+    Set<UUID> deactivated = lifecycle.deletionPeriodStartedBefore(cutoff).keySet();
     Result due =
         deactivated.isEmpty()
             ? Result.NONE
@@ -103,34 +89,13 @@ public class PrivateLibraryDeletionRun {
    * figure.
    */
   public ScheduledErasures scheduledIn(UUID organizationId) {
-    Set<UUID> deactivated = lifecycle.deactivatedBefore(clock.instant()).keySet();
+    Set<UUID> deactivated = lifecycle.deletionPeriodStartedBefore(clock.instant()).keySet();
     Collection<UUID> owners = deactivated.isEmpty() ? Set.of(NOBODY) : deactivated;
     PrivateLibraryFigures due = libraries.countScheduledForErasure(organizationId, owners);
     return new ScheduledErasures(
         due.getLibraries(),
         due.getOwners(),
         libraries.countOwnersNotScheduledForErasure(organizationId, owners));
-  }
-
-  /** The persons among {@code candidates} whose account is deactivated now, not only recorded. */
-  private Set<UUID> stillDeactivated(Set<UUID> candidates) {
-    if (candidates.isEmpty()) {
-      return Set.of();
-    }
-    List<User> found = users.findAllById(candidates);
-    Map<UUID, AccountUsability.State> states =
-        usability
-            .snapshot()
-            .withInactivityThreshold(lifecycleProperties.inactivityThreshold())
-            .statesOf(found);
-    Set<UUID> deactivated = new HashSet<>();
-    states.forEach(
-        (userId, state) -> {
-          if (state.isDeactivated()) {
-            deactivated.add(userId);
-          }
-        });
-    return deactivated;
   }
 
   /** Erases each of {@code ids} on its own; {@code cause} {@code null} keeps the marked one. */

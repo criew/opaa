@@ -89,6 +89,7 @@ class PrivateLibraryDeletionRunIntegrationTest {
       jdbc.update("DELETE FROM asset_ownership_history WHERE owner_user_id = ?", person);
       jdbc.update("DELETE FROM audit_log WHERE object_id = ?", person.toString());
       jdbc.update("DELETE FROM notifications WHERE recipient_user_id = ?", person);
+      jdbc.update("DELETE FROM local_credentials WHERE user_id = ?", person);
       jdbc.update("DELETE FROM users WHERE id = ?", person);
     }
     persons.clear();
@@ -205,7 +206,71 @@ class PrivateLibraryDeletionRunIntegrationTest {
         .isZero();
   }
 
+  /**
+   * A local account locked for inactivity is an absence, not a deactivation, until #2260 decides
+   * otherwise: it starts no deletion period, names no day and erases nothing.
+   */
+  @Test
+  void anInactivityLockOfALocalAccountStartsNoDeletionPeriod() {
+    UUID person = aLocalPersonWithAPrivateLibrary();
+    UUID library = libraries.getLast();
+    jdbc.update(
+        "UPDATE local_credentials SET locked_at = now() - interval '40 days',"
+            + " locked_reason = 'INACTIVITY' WHERE user_id = ?",
+        person);
+    reconciler.reconcile(List.of(person));
+    jdbc.update(
+        "UPDATE connection_person_states SET deactivated_since = now() - interval '40 days'"
+            + " WHERE user_id = ?",
+        person);
+
+    assertThat(deletionRun.runOnce().erased()).isZero();
+
+    assertThat(exists(library)).isTrue();
+    assertThat(
+            blocks
+                .blockOf(libraryRepository.findById(library).orElseThrow(), SourceBlocks.ALL)
+                .map(SourceBlock::contentDeletedOn))
+        .isEmpty();
+  }
+
+  /**
+   * The period runs from the current deactivation: locked again hours ago after a reactivation the
+   * daily reconciliation did not see, the recorded start of the earlier one does not count.
+   */
+  @Test
+  void aRelockAfterAShortReactivationStartsThePeriodAnew() {
+    UUID person = aPersonWithAPrivateLibrary();
+    deactivate(person);
+    reconciler.reconcile(List.of(person));
+    backdateDeactivation(person, 31);
+    jdbc.update(
+        "UPDATE users SET directory_locked_at = now() - interval '2 hours' WHERE id = ?", person);
+
+    assertThat(deletionRun.runOnce().erased()).isZero();
+
+    assertThat(exists(libraries.getLast())).isTrue();
+  }
+
   // -------------------------------------------------------------------------------------------
+
+  private UUID aLocalPersonWithAPrivateLibrary() {
+    UUID person = UUID.randomUUID();
+    jdbc.update(
+        "INSERT INTO users (id, subject, issuer, email, display_name, organization_id,"
+            + " last_login_at) VALUES (?, ?, 'urn:opaa:local', ?, 'Lokale Besitzerin', ?, now())",
+        person,
+        "lokal-" + person,
+        "lokal-" + person + "@example.com",
+        Organization.DEFAULT_ID);
+    jdbc.update(
+        "INSERT INTO local_credentials (user_id, password_hash, created_reason)"
+            + " VALUES (?, 'x', 'Test')",
+        person);
+    persons.add(person);
+    connectAndCreate(person, "Lokale Besitzerin");
+    return person;
+  }
 
   private UUID aPersonWithAPrivateLibrary() {
     UUID person = UUID.randomUUID();
@@ -217,8 +282,12 @@ class PrivateLibraryDeletionRunIntegrationTest {
         "loeschlauf-" + person + "@example.com",
         Organization.DEFAULT_ID);
     persons.add(person);
-    CurrentUser caller =
-        CurrentUser.of(person, Organization.DEFAULT_ID, SystemRole.USER, "Besitzerin");
+    connectAndCreate(person, "Besitzerin");
+    return person;
+  }
+
+  private void connectAndCreate(UUID person, String name) {
+    CurrentUser caller = CurrentUser.of(person, Organization.DEFAULT_ID, SystemRole.USER, name);
     accounts.connect(caller, profile, "besitzerin", PersonProbeSourceConnector.ACCEPTED_PASSWORD);
     libraries.add(
         privateCreation.create(
@@ -237,7 +306,6 @@ class PrivateLibraryDeletionRunIntegrationTest {
                 null,
                 profile),
             caller));
-    return person;
   }
 
   private void deactivate(UUID person) {
@@ -248,6 +316,10 @@ class PrivateLibraryDeletionRunIntegrationTest {
     Instant since = Instant.now().minus(days, ChronoUnit.DAYS).truncatedTo(ChronoUnit.SECONDS);
     jdbc.update(
         "UPDATE connection_person_states SET deactivated_since = ? WHERE user_id = ?",
+        Timestamp.from(since),
+        person);
+    jdbc.update(
+        "UPDATE users SET directory_locked_at = ? WHERE id = ? AND directory_locked_at IS NOT NULL",
         Timestamp.from(since),
         person);
     return since;
