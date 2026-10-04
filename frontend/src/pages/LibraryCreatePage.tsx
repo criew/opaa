@@ -269,6 +269,7 @@ export default function LibraryCreatePage() {
           configuration.empty,
           connection,
           nextOption ? sourceConnectionOf(nextOption) : null,
+          configuration.addressDerived,
         ),
       }))
     }

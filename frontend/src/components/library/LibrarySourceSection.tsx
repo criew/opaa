@@ -10,6 +10,7 @@ import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import type {
+  ConnectionProfileRef,
   SourceTypeKey,
   IndexingRunResponse,
   LibrarySchedule,
@@ -46,7 +47,7 @@ export interface LibrarySourceSectionProps {
     fullSyncIntervalDefaultDays?: number | null
     schedule?: LibrarySchedule | null
     lastScheduledRunsFailed?: boolean | null
-    connectionProfile?: { id: string; name: string } | null
+    connectionProfile?: ConnectionProfileRef | null
     connectionProfileRemoved?: boolean
     sourceBlock?: SourceBlock | null
   }
@@ -152,9 +153,9 @@ export default function LibrarySourceSection({
               <LibraryConnectionPanel
                 libraryId={libraryId}
                 sourceType={library.sourceType}
+                library={library}
                 connectionProfile={library.connectionProfile}
                 connectionProfileRemoved={library.connectionProfileRemoved}
-                credentialsStored={Boolean(library.sourceCredentialsSet)}
                 onEditSource={() => setEditSourceOpen(true)}
                 dialogOpen={connectOpen}
                 onDialogOpenChange={setConnectOpen}

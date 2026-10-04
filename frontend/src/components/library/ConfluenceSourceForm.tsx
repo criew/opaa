@@ -110,7 +110,6 @@ export default function ConfluenceSourceForm({
     values.token.trim() !== '' &&
     values.email.trim() === ''
 
-  const { libraryId: probeLibraryId, connectionProfileId } = connection.probe
   const connectionPayload = useCallback(
     () => ({
       sourceUrl: values.sourceUrl.trim(),
@@ -126,16 +125,17 @@ export default function ConfluenceSourceForm({
     setLoadingSpaces(true)
     setSpacesError(null)
     try {
-      const result = await browseSource('CONFLUENCE', {
-        ...connectionPayload(),
-        query: { edition: values.edition },
-        sourceCredentials: confluenceCredentialsOf(values),
-        // #1856 review: the library is named whenever this instance edits one, not only while
-        // the stored-credentials fallback applies - without it, the listing needs
-        // CREATE_CONNECTOR_LIBRARY (ADR-0036, Entscheidung 5), a right a MANAGER need not hold.
-        libraryId: probeLibraryId,
-        connectionProfileId,
-      })
+      // The probe names the library whenever this instance edits one, not only while the
+      // stored-credentials fallback applies - without it, the listing needs
+      // CREATE_CONNECTOR_LIBRARY, a right a MANAGER need not hold.
+      const result = await browseSource(
+        'CONFLUENCE',
+        connection.probeRequest({
+          ...connectionPayload(),
+          query: { edition: values.edition },
+          sourceCredentials: confluenceCredentialsOf(values),
+        }),
+      )
       if (generation.current !== mine) return
       setAvailableSpaces(result.entries.map((entry) => ({ key: entry.key, name: entry.name })))
     } catch (err) {
@@ -145,7 +145,7 @@ export default function ConfluenceSourceForm({
     } finally {
       if (generation.current === mine) setLoadingSpaces(false)
     }
-  }, [connectionPayload, probeLibraryId, connectionProfileId, values])
+  }, [connectionPayload, connection, values])
 
   // Verified credentials without a listing yet - the stored ones in edit mode, or the wizard
   // remounting this step after "Zurück" - load the spaces right away, once.
@@ -190,11 +190,9 @@ export default function ConfluenceSourceForm({
     setDetecting(true)
     setDetectMessage(null)
     try {
-      const result = await testLibrarySource({
-        sourceType: 'CONFLUENCE',
-        ...connectionPayload(),
-        ...connection.probe,
-      })
+      const result = await testLibrarySource(
+        connection.probeRequest({ sourceType: 'CONFLUENCE', ...connectionPayload() }),
+      )
       if (generation.current !== mine) return
       const detected = detectedConfluenceEdition(result.details)
       if (detected) {
@@ -221,15 +219,14 @@ export default function ConfluenceSourceForm({
     setTesting(true)
     setTestMessage(null)
     try {
-      const result = await testLibrarySource({
-        sourceType: 'CONFLUENCE',
-        ...connectionPayload(),
-        sourceSettings: { edition: values.edition },
-        sourceCredentials: confluenceCredentialsOf(values),
-        // #1856 review: same reasoning as loadSpaces above.
-        libraryId: probeLibraryId,
-        connectionProfileId,
-      })
+      const result = await testLibrarySource(
+        connection.probeRequest({
+          sourceType: 'CONFLUENCE',
+          ...connectionPayload(),
+          sourceSettings: { edition: values.edition },
+          sourceCredentials: confluenceCredentialsOf(values),
+        }),
+      )
       if (generation.current !== mine) return
       if (result.credentialsVerified) {
         onChange({ credentialsVerified: true })
@@ -313,10 +310,13 @@ export default function ConfluenceSourceForm({
               size="small"
               value={values.sourceProxy}
               onChange={(e) => changeAddress({ sourceProxy: e.target.value })}
-              placeholder="proxy.example.com:8080"
+              placeholder={connection.isFixed('sourceProxy') ? undefined : 'proxy.example.com:8080'}
+              helperText={connection.isFixed('sourceProxy') ? connection.transportHint : undefined}
               autoComplete="off"
               fullWidth
-              slotProps={{ htmlInput: { maxLength: 255 } }}
+              slotProps={{
+                htmlInput: { maxLength: 255, readOnly: connection.isFixed('sourceProxy') },
+              }}
             />
           </Box>
           <FormControlLabel
@@ -324,6 +324,7 @@ export default function ConfluenceSourceForm({
             control={
               <Switch
                 checked={values.sourceInsecureSsl}
+                disabled={connection.isFixed('sourceInsecureSsl')}
                 onChange={(e) => changeAddress({ sourceInsecureSsl: e.target.checked })}
               />
             }
