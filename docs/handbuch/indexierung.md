@@ -390,7 +390,11 @@ sichtbar. Das Formular richtet sich nach der Quellart:
   Feld nennt sie. Hat die Quellart eine feste Adresse, entfällt das Feld, und das Formular nennt die
   Adresse.
 - **Proxy** (`host:port`, ohne Zugangsdaten, optional) und **Zertifikatsprüfung aussetzen**
-  gelten für jede Bibliothek auf dem Zugang, und zwar nur für Anfragen an dessen Server-Adresse.
+  gelten für jede Bibliothek auf dem Zugang und ersetzen deren eigene Angaben. Wohin der Konnektor
+  sie anwendet, bestimmt er wie bei einer Bibliothek mit eigener Adresse: Beim RSS-Feed etwa gilt
+  der Proxy für jeden Abruf des Laufs, auch für Detailseiten fremder Server, die ausgesetzte
+  Zertifikatsprüfung dagegen nur für den Ursprung des Feeds. Beides gibt es nur bei einer Server-Adresse mit `http://` oder `https://`; einen Zugang mit
+  `smb://`-Adresse und Proxy oder ausgesetzter Zertifikatsprüfung weist OPAA beim Speichern ab.
 - **Vorgaben für jede Bibliothek** zeigt je Einstellung, die ein Zugang vorgeben darf, ein Feld:
   Text, Ja/Nein oder eine Auswahl, jeweils mit „Keine Vorgabe“. Meldet die Quellart keine solche
   Einstellung, fehlt der Abschnitt. Eine Vorgabe, die die Quellart nicht meldet, weist OPAA ab.
@@ -440,8 +444,8 @@ Vorschau nennt die Gründe. Ein reines Umbenennen speichert ohne Vorschau.
 #### Einen Zugang wählen, zuordnen, wechseln, lösen
 
 Die Auswahl, die Aktionen an der Bibliothek und der Schalter „Nur über Zugänge“ erscheinen nur bei
-einer Quellart, die Zugänge meldet; bis die mitgelieferten Konnektoren das tun (#2219), gilt das
-für keine von ihnen.
+einer Quellart, die Zugänge meldet; welche das sind, zeigt die Tabelle unter „Welcher Konnektor
+Zugänge kennt“.
 
 **Im Wissens-Assistenten** steht bei einer solchen Quellart im Schritt „Quelle“ über dem
 Formular die Wahl **„Zugang“**, sobald es für die Quellart einen Zugang gibt oder eine eigene
@@ -565,7 +569,26 @@ dazu die Anmeldearten, die er anbietet (ohne Anmeldung, persönliches Geheimnis,
 Client-Credentials, Dienstkonto-Schlüssel), je mit den zulässigen Besitzarten, die zulässige
 Server-Adresse und die Einstellungen, die ein Zugang vorgeben darf. Ein Zugang wählt eine
 Anmeldeart. Pflicht sind Zugänge genau bei einer Quellart mit OAuth oder Client-Credentials, weil
-die App-Registrierung nur am Zugang steht. Die mitgelieferten Konnektoren melden keine Zugänge.
+die App-Registrierung nur am Zugang steht. Verboten sind sie bei einer Quellart, die nichts
+Entferntes liest oder Uploads annimmt, und bei einer, die sich mit dem Dienstkonto-Schlüssel der
+Bibliothek anmeldet (heute Google Drive); jede andere entfernte Quellart lässt sie zu. Die
+mitgelieferten Konnektoren melden:
+
+| Quellart | Zugänge | Anmeldearten (Besitz: Bibliothek) | Vorgaben des Zugangs | Server-Adresse |
+|---|---|---|---|---|
+| Webverzeichnis | möglich | ohne Anmeldung; persönliches Geheimnis (Benutzername und Passwort) | keine | `https://`, `http://` |
+| RSS-Feed | möglich | ohne Anmeldung; persönliches Geheimnis (Benutzername und Passwort) | keine | `https://`, `http://` |
+| Confluence | möglich | persönliches Geheimnis (Token) | Edition | `https://`, `http://` |
+| Nextcloud | möglich | persönliches Geheimnis (Benutzername und App-Passwort) | keine | `https://`, `http://` |
+| S3-Objektspeicher | möglich | persönliches Geheimnis (Access Key und Secret Key) | Region, Path-Style-Adressierung | `https://`, `http://` |
+| Windows-Dateifreigabe (SMB) | möglich | persönliches Geheimnis (Benutzername und Passwort) | keine | `smb://`, ohne Proxy und Zertifikatsprüfung |
+| Google Drive | noch nicht | – (die Bibliothek bringt ihren Dienstkonto-Schlüssel selbst mit) | – | – |
+| Upload, Dateisystem | verboten | – | – | – |
+
+Das persönliche Geheimnis gehört der Bibliothek: Ihre Verwaltenden tragen es ein, der Zugang legt
+nur Server, Anmeldeart, Proxy, Zertifikatsprüfung und Vorgaben fest. Bei „ohne Anmeldung“ erreicht
+ein Lauf die Quelle ohne Zugangsdaten. Was die einzelnen Quellarten auf einem Zugang beachten,
+steht in ihren Kapiteln.
 
 **Was für eine Bibliothek auf einem Zugang gilt:**
 
@@ -583,7 +606,8 @@ die App-Registrierung nur am Zugang steht. Die mitgelieferten Konnektoren melden
   lösen sie vom Zugang. **Zuordnen übernimmt die Vorgaben des Zugangs:** Eigener Proxy, ausgesetzte
   Zertifikatsprüfung und eigene Werte für vorgegebene Einstellungen entfallen ohne Rückfrage, bei
   einer Anmeldeart ohne persönliches Geheimnis auch die Zugangsdaten. Eine Adresse unter dem
-  bisherigen Zugang wandert dabei unter den neuen. **Lösen schreibt die Vorgaben in die
+  bisherigen Zugang wandert dabei unter den neuen; was der bisherige Zugang vorgab und der neue
+  nicht vorgibt, behält sie als eigene Einstellung. **Lösen schreibt die Vorgaben in die
   Bibliothek:** Vorgegebene Einstellungen, Proxy und Zertifikatsprüfung des Zugangs werden ihre
   eigenen, sie läuft also unverändert weiter.
 - **Der Konnektor prüft jeden Übergang.** Ändert Zuordnen, Wechseln oder Lösen, womit die Bibliothek
@@ -608,7 +632,7 @@ die App-Registrierung nur am Zugang steht. Die mitgelieferten Konnektoren melden
 |---|---|
 | Server-Adresse ändern | Nach Bestätigung werden alle Geheimnisse der Bibliotheken auf dem Zugang verworfen; ihre Adressen wandern unter die neue Server-Adresse. Vorher nennt OPAA die Zahl der betroffenen Verbindungen und Bibliotheken |
 | Client-ID, Mandant, Scopes oder Anmeldeart ändern | wie oben, ohne Adresswechsel: alle Verbindungen müssen neu verbunden werden |
-| Vorgaben, Proxy oder Zertifikatsprüfung ändern | Die Bibliotheken behalten ihre Geheimnisse, es sei denn, eine Vorgabe ändert, woran der Konnektor sie bindet; dann gilt die Bestätigung wie oben für die Betroffenen |
+| Vorgaben, Proxy oder Zertifikatsprüfung ändern | Die Bibliotheken behalten ihre Geheimnisse, es sei denn, eine Vorgabe ändert, woran der Konnektor sie bindet; dann gilt die Bestätigung wie oben für die Betroffenen. Entfällt eine Vorgabe, wird ihr bisheriger Wert zur eigenen Einstellung jeder Bibliothek auf dem Zugang; sie laufen unverändert weiter |
 | nur ein neues Client-Secret zur selben Client-ID | keine; die Verbindungen bleiben |
 | „Alle Verbindungen trennen“ (Notabschaltung) | alle Geheimnisse sofort verworfen, der Zugang bleibt. Personen mit verbundenem Konto werden benachrichtigt und müssen ihr Konto selbst neu verbinden; die Rückfrage sagt das bei einem Zugang, der Personen zulässt |
 | Zugang löschen | alle Geheimnisse verworfen; die Bibliotheken bleiben mit Bestand und dem Hinweis „Zugang entfernt“ stehen |
@@ -694,9 +718,9 @@ stoppt dagegen keinen Lauf.
 
 Für eine Quellart, deren Konnektor Zugänge als möglich meldet, kann die Systemverwaltung die
 **Profilpflicht** einschalten: Danach ist die Quellart nur noch über einen Zugang nutzbar. Eine
-Quellart, die Zugänge verbietet oder ohnehin verlangt, lässt sich nicht umschalten. Da die
-mitgelieferten Konnektoren keine Zugänge melden, ist die Pflicht heute für keine mitgelieferte
-Quellart einschaltbar.
+Quellart, die Zugänge verbietet oder ohnehin verlangt, lässt sich nicht umschalten. Einschaltbar
+ist die Pflicht damit für Webverzeichnis, RSS-Feed, Confluence, Nextcloud, S3-Objektspeicher und
+Windows-Dateifreigabe (SMB).
 
 Der Schalter steht unter **Administration → Zugänge** im Abschnitt „Quellarten“, Spalte
 „Zugänge“: Eine Quellart, die Zugänge verbietet, trägt dort „Keine Zugänge möglich“, eine, die sie
@@ -733,8 +757,8 @@ Mit eingeschalteter Pflicht gilt für die Quellart:
   Neueinrichtung weiter, und eine eigene Adresse ist wieder möglich.
 
 Was die Pflicht für eine Quellart nicht festlegt, meldet ihr Konnektor mit seiner Profilangabe;
-die Abfrage vor dem Einschalten zeigt es. **Einschränkung RSS**, sobald RSS Zugänge kennt: Die
-Pflicht legt nur die Feed-Adresse fest. Die Detailseiten eines Feeds stammen aus seinen Einträgen
+die Abfrage vor dem Einschalten zeigt es. **Einschränkung RSS:** Die Pflicht legt nur die
+Feed-Adresse fest. Die Detailseiten eines Feeds stammen aus seinen Einträgen
 und können auf fremden Servern liegen; sie werden weiter abgerufen, aber ohne Zugangsdaten. Die
 Zielprüfung gegen private und lokale Adressbereiche gilt daneben unverändert.
 

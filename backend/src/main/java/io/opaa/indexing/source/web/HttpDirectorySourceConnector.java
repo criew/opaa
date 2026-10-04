@@ -7,11 +7,17 @@ import static io.opaa.indexing.source.ConnectorChecks.requireHttpUrl;
 import static io.opaa.indexing.source.ConnectorChecks.translateConnectionError;
 import static io.opaa.indexing.source.ConnectorChecks.unreachable;
 
+import io.opaa.api.types.ConnectionAuthMethod;
+import io.opaa.api.types.ConnectionOwnership;
+import io.opaa.api.types.ConnectionProfileSupport;
+import io.opaa.api.types.PersonalSecretForm;
 import io.opaa.format.SupportedDocumentFormats;
 import io.opaa.indexing.source.ConnectorChecks;
 import io.opaa.indexing.source.ConnectorData;
 import io.opaa.indexing.source.OriginalAccess;
+import io.opaa.indexing.source.ProfileDeclaration;
 import io.opaa.indexing.source.RemoteOriginalAccess;
+import io.opaa.indexing.source.SignIn;
 import io.opaa.indexing.source.SourceConnectionTestResult;
 import io.opaa.indexing.source.SourceConnector;
 import io.opaa.indexing.source.SourceConnectorDescriptor;
@@ -55,7 +61,13 @@ public class HttpDirectorySourceConnector implements SourceConnector, OriginalAc
   private static final Logger log = LoggerFactory.getLogger(HttpDirectorySourceConnector.class);
 
   private static final SourceConnectorDescriptor DESCRIPTOR =
-      SourceConnectorDescriptor.remoteRun(TYPE, "Webverzeichnis");
+      SourceConnectorDescriptor.remoteRun(TYPE, "Webverzeichnis")
+          .withProfiles(
+              ProfileDeclaration.of(
+                  ConnectionProfileSupport.OPTIONAL,
+                  SignIn.of(ConnectionAuthMethod.NONE, ConnectionOwnership.LIBRARY),
+                  SignIn.personalSecret(
+                      PersonalSecretForm.USERNAME_AND_PASSWORD, ConnectionOwnership.LIBRARY)));
 
   private final AutoindexCrawlerService crawlerService;
   private final TargetAddressValidator targetAddressValidator;

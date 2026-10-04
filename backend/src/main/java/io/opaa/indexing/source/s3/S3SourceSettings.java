@@ -47,7 +47,8 @@ public record S3SourceSettings(
     return region == null ? S3Connection.DEFAULT_REGION : region;
   }
 
-  private static String normalizeRegion(String raw) {
+  /** {@code raw} as a region is stored, {@code null} for none. */
+  static String normalizeRegion(String raw) {
     if (raw == null || raw.isBlank()) {
       return null;
     }

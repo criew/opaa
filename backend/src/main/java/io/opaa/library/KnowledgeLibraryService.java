@@ -1527,7 +1527,7 @@ public class KnowledgeLibraryService {
         // #1941: who is responsible for a library is not a secret from its readers - the same
         // resolution the overview uses, and the same silence about a name it may not disclose.
         assetOwnerNames.of(List.of(library)).get(library.getOwnerId()),
-        connector.settingsView(library, ConnectorData.storedIn(library), false),
+        connector.settingsView(library, connectionResolver.effectiveSettings(library), false),
         null,
         libraryConnections
             .connectionOf(library.getId())
@@ -1573,7 +1573,7 @@ public class KnowledgeLibraryService {
         // one is actually stored.
         connectionResolver.holdsCredentials(library),
         pushSecretSet,
-        connector.settingsView(library, ConnectorData.storedIn(library), true),
+        connector.settingsView(library, connectionResolver.effectiveSettings(library), true),
         // #1200: the instance-wide rhythm in whole days, so the schedule dialog can name the
         // default instead of hard-coding it; a sub-day interval still reads as one day.
         descriptor.fullSyncInterval() == null

@@ -124,13 +124,14 @@ class ProfileRequirementIntegrationTest {
   void aTypeWithoutOptionalProfilesIsNotSwitchedAndTheRequestMustFit() throws Exception {
     mockMvc
         .perform(
-            as("dev-admin", put("/api/v1/admin/connector-types/RSS_FEED/profile-requirement"))
+            as("dev-admin", put("/api/v1/admin/connector-types/FILESYSTEM/profile-requirement"))
                 .content("{\"required\": true, \"ownAddressStock\": \"RUNS\"}"))
         .andExpect(status().isBadRequest())
         .andExpect(
             jsonPath("$.error").value(Matchers.containsString("nicht über Zugänge verbunden")));
     mockMvc
-        .perform(as("dev-admin", get("/api/v1/admin/connector-types/RSS_FEED/profile-requirement")))
+        .perform(
+            as("dev-admin", get("/api/v1/admin/connector-types/FILESYSTEM/profile-requirement")))
         .andExpect(jsonPath("$.switchable").value(false))
         .andExpect(jsonPath("$.coverageNotice").doesNotExist());
     mockMvc

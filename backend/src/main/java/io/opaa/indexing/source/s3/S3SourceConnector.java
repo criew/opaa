@@ -3,13 +3,19 @@ package io.opaa.indexing.source.s3;
 import static io.opaa.indexing.source.ConnectorChecks.blankToNull;
 import static io.opaa.indexing.source.ConnectorChecks.unreachable;
 
+import io.opaa.api.types.ConnectionOwnership;
+import io.opaa.api.types.ConnectionProfileSupport;
+import io.opaa.api.types.PersonalSecretForm;
 import io.opaa.common.ValidationException;
 import io.opaa.indexing.source.ConnectorData;
+import io.opaa.indexing.source.DefaultKey;
 import io.opaa.indexing.source.OriginalAccess;
 import io.opaa.indexing.source.OriginalUnavailableException;
+import io.opaa.indexing.source.ProfileDeclaration;
 import io.opaa.indexing.source.PushIntake;
 import io.opaa.indexing.source.PushIntakeHandler;
 import io.opaa.indexing.source.ServedOriginals;
+import io.opaa.indexing.source.SignIn;
 import io.opaa.indexing.source.SourceBrowser;
 import io.opaa.indexing.source.SourceConnectionTestResult;
 import io.opaa.indexing.source.SourceConnector;
@@ -17,6 +23,7 @@ import io.opaa.indexing.source.SourceConnectorDescriptor;
 import io.opaa.indexing.source.SourceListing;
 import io.opaa.indexing.source.SourceSettings;
 import io.opaa.indexing.source.SourceSyncStateRepository;
+import io.opaa.indexing.source.SourceTargetRefusedException;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentContent;
 import io.opaa.knowledge.KnowledgeLibrary;
@@ -32,6 +39,7 @@ import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -60,6 +68,9 @@ public class S3SourceConnector
 
   private static final String SETTINGS_STATE = "s3Settings";
 
+  private static final String REGION = "region";
+  private static final String PATH_STYLE = "pathStyle";
+
   /** The 503 of a store that cannot be reached; the store's own sentence stays in the log. */
   static final String OBJECT_STORE_UNAVAILABLE =
       "Der Objektspeicher dieser Bibliothek ist derzeit nicht erreichbar. Bitte später erneut"
@@ -68,7 +79,15 @@ public class S3SourceConnector
   private static final SourceConnectorDescriptor DESCRIPTOR =
       SourceConnectorDescriptor.remoteRun(TYPE, "S3-Objektspeicher")
           .withoutDeepLink()
-          .withPushIntake(new PushIntake("s3EventsToken"));
+          .withPushIntake(new PushIntake("s3EventsToken"))
+          .withProfiles(
+              ProfileDeclaration.of(
+                      ConnectionProfileSupport.OPTIONAL,
+                      SignIn.personalSecret(
+                          PersonalSecretForm.USERNAME_AND_PASSWORD, ConnectionOwnership.LIBRARY))
+                  .withDefaults(
+                      DefaultKey.text(REGION, "Region"),
+                      DefaultKey.bool(PATH_STYLE, "Path-Style-Adressierung")));
 
   private final S3ConnectionService connectionService;
   private final S3ClientFactory clientFactory;
@@ -168,11 +187,38 @@ public class S3SourceConnector
     return S3SourceSettingsJson.KEYS;
   }
 
-  /** Buckets, prefixes, overlap and patterns are checked here, before anything else is asked. */
+  /**
+   * Buckets, prefixes, overlap and patterns are checked here, before anything else is asked. Region
+   * and addressing style stay in the result only where they differ from the default, so a request
+   * leaving them at it never contradicts a profile that sets them; read back, both mean the same.
+   */
   @Override
   public ConnectorData readSettings(ConnectorData requested) {
     requested.requireOnly(S3SourceSettingsJson.KEYS);
-    return S3SourceSettingsJson.toData(settingsOf(requested));
+    S3SourceSettings settings = settingsOf(requested);
+    Map<String, Object> read = new LinkedHashMap<>(S3SourceSettingsJson.toData(settings).asMap());
+    if (settings.region() == null) {
+      read.remove(REGION);
+    }
+    if (!settings.pathStyle()) {
+      read.remove(PATH_STYLE);
+    }
+    return ConnectorData.of(read);
+  }
+
+  /** A profile's region passes the same check as a library's own. */
+  @Override
+  public ConnectorData readProfileDefaults(ConnectorData read) {
+    if (!(read.get(REGION) instanceof String region)) {
+      return read;
+    }
+    Map<String, Object> checked = new LinkedHashMap<>(read.asMap());
+    try {
+      checked.put(REGION, S3SourceSettings.normalizeRegion(region));
+    } catch (S3SourceSettings.InvalidS3SourceSettingsException e) {
+      throw new ValidationException("connectorSettings.region: " + e.getMessage());
+    }
+    return ConnectorData.of(checked);
   }
 
   private static S3SourceSettings settingsOf(ConnectorData data) {
@@ -207,11 +253,7 @@ public class S3SourceConnector
     }
     S3SourceSettings settings = settingsOf(requested.connectorSettings());
     requireReachableTargets(
-        normalizedUrl,
-        requested.sourceProxy(),
-        requested.sourceInsecureSsl(),
-        requested.sourceCredentials(),
-        settings);
+        normalizedUrl, requested.sourceProxy(), requested.sourceCredentials(), settings);
     return requested
         .withSourceUrl(normalizedUrl)
         .withConnectorSettings(S3SourceSettingsJson.toData(settings));
@@ -238,11 +280,7 @@ public class S3SourceConnector
     if (requested.connectorSettings() != null) {
       S3SourceSettings settings = settingsOf(requested.connectorSettings());
       requireReachableTargets(
-          stored.sourceUrl(),
-          stored.sourceProxy(),
-          stored.sourceInsecureSsl(),
-          stored.sourceCredentials(),
-          settings);
+          stored.sourceUrl(), stored.sourceProxy(), stored.sourceCredentials(), settings);
       return requested.withConnectorSettings(S3SourceSettingsJson.toData(settings));
     }
     return requested;
@@ -250,19 +288,21 @@ public class S3SourceConnector
 
   /**
    * The hosts a library will contact pass the target validation when its configuration is saved; a
-   * refusal or an unresolvable host is a 400 with the validator's own German message.
+   * refusal or an unresolvable host is a 400 with the validator's own German message, reported as a
+   * refused target, not as a setting. The check needs no credentials and runs without them (as
+   * after a profile's new server address); given ones must still parse.
    */
   private void requireReachableTargets(
       String normalizedUrl,
       String sourceProxy,
-      boolean sourceInsecureSsl,
       String sourceCredentials,
       S3SourceSettings s3Settings) {
-    S3Credentials credentials;
-    try {
-      credentials = S3Credentials.parse(sourceCredentials);
-    } catch (S3Credentials.InvalidCredentialsFormatException e) {
-      throw new ValidationException(e.getMessage());
+    if (sourceCredentials != null) {
+      try {
+        S3Credentials.parse(sourceCredentials);
+      } catch (S3Credentials.InvalidCredentialsFormatException e) {
+        throw new ValidationException(e.getMessage());
+      }
     }
     ProxyAndCredentials proxy;
     try {
@@ -270,19 +310,14 @@ public class S3SourceConnector
     } catch (ProxyAndCredentials.InvalidProxyConfigurationException e) {
       throw new ValidationException(e.getMessage());
     }
-    S3Connection connection =
-        new S3Connection(
-            URI.create(normalizedUrl),
-            s3Settings.effectiveRegion(),
-            s3Settings.pathStyle(),
-            credentials,
-            proxy.proxyHost(),
-            proxy.proxyPort(),
-            sourceInsecureSsl);
     try {
-      clientFactory.validateTargets(connection, s3Settings.scopes());
+      clientFactory.validateTargets(
+          URI.create(normalizedUrl),
+          proxy.proxyHost(),
+          s3Settings.pathStyle(),
+          s3Settings.scopes());
     } catch (S3AccessException e) {
-      throw new ValidationException(e.getMessage());
+      throw new SourceTargetRefusedException(e.getMessage());
     }
   }
 
@@ -300,15 +335,20 @@ public class S3SourceConnector
   }
 
   /**
-   * The scopes are the scope every reader sees, and the record carries no credential. A stored
-   * document the record no longer accepts is left out rather than failing the whole read.
+   * A manager sees the whole record, every reader only the scopes - region, addressing style and
+   * patterns are administration detail; the record carries no credential. A stored document the
+   * record no longer accepts is left out rather than failing the whole read.
    */
   @Override
   public ConnectorData settingsView(
       KnowledgeLibrary library, ConnectorData stored, boolean manager) {
     try {
       S3SourceSettings settings = S3SourceSettingsJson.of(stored);
-      return settings == null ? null : S3SourceSettingsJson.toData(settings);
+      if (settings == null) {
+        return null;
+      }
+      ConnectorData whole = S3SourceSettingsJson.toData(settings);
+      return manager ? whole : ConnectorData.of(Map.of("scopes", whole.get("scopes")));
     } catch (S3Scope.InvalidS3ScopeException
         | S3SourceSettings.InvalidS3SourceSettingsException e) {
       log.warn(

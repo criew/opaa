@@ -6,6 +6,7 @@ import io.opaa.s3.S3Connection;
 import io.opaa.s3.S3Credentials;
 import io.opaa.security.TargetAddressValidator;
 import java.io.IOException;
+import java.net.URI;
 import java.time.Duration;
 import java.util.Collection;
 import java.util.LinkedHashSet;
@@ -145,16 +146,25 @@ public class S3ClientFactory {
    */
   public void validateTargets(S3Connection connection, Collection<S3Scope> scopes)
       throws S3AccessException {
+    validateTargets(connection.endpoint(), connection.proxyHost(), connection.pathStyle(), scopes);
+  }
+
+  /**
+   * {@link #validateTargets(S3Connection, Collection)} without credentials, which it never uses.
+   */
+  public void validateTargets(
+      URI endpoint, String proxyHost, boolean pathStyle, Collection<S3Scope> scopes)
+      throws S3AccessException {
     try {
-      targetAddressValidator.validate(connection.endpoint());
-      targetAddressValidator.validateHost(connection.proxyHost());
-      if (!connection.pathStyle()) {
+      targetAddressValidator.validate(endpoint);
+      targetAddressValidator.validateHost(proxyHost);
+      if (!pathStyle) {
         Set<String> buckets = new LinkedHashSet<>();
         for (S3Scope scope : scopes) {
           buckets.add(scope.bucket());
         }
         for (String bucket : buckets) {
-          targetAddressValidator.validateHost(bucket + "." + connection.endpoint().getHost());
+          targetAddressValidator.validateHost(bucket + "." + endpoint.getHost());
         }
       }
     } catch (TargetAddressValidator.UnknownTargetHostException e) {
