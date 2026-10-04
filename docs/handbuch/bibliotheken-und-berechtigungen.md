@@ -371,7 +371,7 @@ Stichtagsauskunft heißt sie „Private Bibliothek“ und ist nur an ihrer Kennu
 
 **Löschen.** Löscht die Besitzerin ihre private Bibliothek, wird sie mit allem gelöscht, was von ihr
 irgendwo liegt, und das Revisionsprotokoll hält es ohne Namen fest; dasselbe tut der tägliche
-Löschlauf, wenn ihr Konto länger als die Löschfrist deaktiviert ist ([Benutzerverwaltung](benutzerverwaltung.md),
+Löschlauf, wenn ihr Konto länger als die Löschfrist ausdrücklich deaktiviert ist ([Benutzerverwaltung](benutzerverwaltung.md),
 „Private Bibliotheken löschen“). Eine laufende Indexierung hält das Löschen nicht auf. Die
 Indexübersicht nennt die Zahl der zur Löschung anstehenden privaten Bibliotheken nach denselben
 Regeln wie jede Teilzahl.

@@ -619,21 +619,29 @@ Begründung:
   jeder entfernte Konnektor vor jeder Anfrage fragt (`RunSecretContract`). Solange ein Lauf
   `RUNNING` ist, antwortet die Löschung `PENDING` (`202`); was der Lauf bis zu seinem Ende noch
   schreibt, löscht die Fortsetzung mit. Danach folgt in **einer** Transaktion unter Zeilensperre:
-  Abschnitte in beiden Speichern, Verweise außerhalb des Bestands über den Port
+  Abschnitte in beiden Speichern (der Schreibweg der Abschnitte sperrt die Bibliothekszeile mit
+  `FOR KEY SHARE` und verweigert eine vorgemerkte oder fehlende Bibliothek, sodass auch ein
+  Nachzügler-Thread nach der Löschung nichts zurückschreibt), Verweise außerhalb des Bestands über den Port
   `knowledge.ErasedLibraryReferences` (Chat-Quellen werden zu „Quelle entfernt“, Raumzuordnungen
   entfallen), Dokumente, Läufe samt Ereignissen, Benachrichtigungen, die Schale über
   `registerDeleted`, der Nachweis, die Zeile; Ordner, Metadaten, Abgleichstand, Präsenz und
   Geheimnisse folgen über `ON DELETE CASCADE`. Die gespeicherten Originale werden vorher und
-  außerhalb der Transaktion entfernt. Am Ende zählt sie jede Ablage nach. Bleibt etwas übrig, rollt
+  außerhalb der Transaktion entfernt; scheitert die Transaktion, bleibt die Bibliothek vorgemerkt,
+  ihre Dokumente lassen sich nicht mehr öffnen, und die Fortsetzung vollendet die Löschung. Am Ende zählt sie jede Ablage nach. Bleibt etwas übrig, rollt
   sie zurück; der Marker bleibt, und die nächste Fortsetzung beginnt von vorn.
 - **Nachweis** `PRIVATE_LIBRARY_ERASED` im Revisionsprotokoll mit Zeitpunkt der Vormerkung, Anlass
   (`OWNER_REQUEST`, `DELETION_PERIOD_EXPIRED`) und Zählern, nur über `Asset#auditPayload`. Die
   Historientabellen der Rechte, das Verbindungs- und das Diagnoseprotokoll behalten die Kennung der
   Bibliothek, nie einen Namen; sie haben ihre eigenen Fristen.
 - **Löschlauf** `library.PrivateLibraryDeletionRun`: täglich um 04:45 nach dem Abgleich der
-  Verbindungen. Er löscht die privaten Bibliotheken der Personen, deren festgehaltene Deaktivierung
-  älter als die Frist ist und deren Konto **jetzt** noch deaktiviert ist (`AccountUsability` frisch
-  gefragt). Ruhend löscht nie. Alle fünf Minuten setzt er die vorgemerkten Löschungen fort.
+  Verbindungen. Die Frist hängt an der **aktuellen ausdrücklichen** Deaktivierung
+  (`ConnectionLifecycle#deletionPeriodStartedBefore` über `AccountUsability.Snapshot#deactivationsOf`):
+  Verzeichnissperre, Ablauf, lokale Sperre außer wegen Inaktivität oder gelöschter Anbieter. Sie
+  beginnt beim späteren Zeitpunkt aus festgehaltenem Beginn und aktueller Sperre; ein erneutes
+  Sperren nach einer vom Abgleich nicht gesehenen Reaktivierung startet sie neu. Die Sperre eines
+  lokalen Kontos wegen Inaktivität (`LockReason.INACTIVITY`) startet keine Frist, bis #2260
+  entscheidet, ob sie ruht oder deaktiviert; dasselbe gilt für Löschtag und `scheduledErasureCount`.
+  Ruhend löscht nie. Alle fünf Minuten setzt er die vorgemerkten Löschungen fort.
 - **Verbundenes Konto:** Eine getrennte Verbindung, an der danach keine private Bibliothek mehr
   hängt, wird mit der Löschung entfernt, protokolliert als `DELETED` mit `LIBRARY_DELETED`.
 - **Sperrgrund mit Datum:** `OWNER_DEACTIVATED` trägt `contentDeletedOn`, den Beginn der
