@@ -219,7 +219,13 @@ public final class ModularArchitecture {
    * The subpackages of {@link #CONNECTION}, lowest first (ADR-0041, Entscheidung 8). One depends
    * only on itself and on the ones before it; the root package and its web package sit above all.
    */
-  static final List<String> CONNECTION_PACKAGES = List.of("connection.log", "connection.profile");
+  static final List<String> CONNECTION_PACKAGES =
+      List.of(
+          "connection.log",
+          "connection.token",
+          "connection.profile",
+          "connection.request",
+          "connection.account");
 
   /**
    * The capability granted per connector type or profile, relative to the root (ADR-0036, Nachtrag
@@ -278,7 +284,44 @@ public final class ModularArchitecture {
    */
   static final String LIBRARY_SECRET = "knowledge.KnowledgeLibrary#getSourceCredentials";
 
-  static final String SECRET_STORE = "connection.profile.ConnectionSecrets";
+  static final String SECRET_STORE = "connection.token.ConnectionSecrets";
+
+  /** The package of persons' connected accounts, relative to the root. */
+  static final String CONNECTED_ACCOUNTS = "connection.account";
+
+  /**
+   * The port of the exact counts of persons' connections, relative to the root, and its methods
+   * that answer them: only {@link #PERSON_NUMBERS} asks them, on the port or an implementation, and
+   * hands out masked numbers.
+   */
+  static final String RAW_PERSON_COUNTS_PORT = "connection.profile.PersonConnections";
+
+  static final Set<String> RAW_PERSON_COUNTS = Set.of("countsAmong", "totalsOf");
+
+  static final String PERSON_NUMBERS = "connection.profile.PersonNumbers";
+
+  /**
+   * Exact counts about persons that only go to the log, relative to the root, each with the one
+   * class that may call it.
+   */
+  static final Map<String, String> LOG_ONLY_PERSON_COUNTS =
+      Map.of(
+          "connection.token.ConnectionSecrets#countExpiredPersonSecrets",
+          "connection.account.ConnectionLifecycleReconciler");
+
+  /**
+   * The step that stores a person's connection, relative to the root: it trusts that the secret
+   * signed in already, so only {@link #ESTABLISHING_PACKAGES} call it.
+   */
+  static final String ESTABLISHED = "connection.account.ConnectedAccountService#established";
+
+  static final Set<String> ESTABLISHING_PACKAGES = Set.of("connection.account", "connection.oauth");
+
+  /** The web classes that serve a person their own connected accounts, relative to the root. */
+  static final Set<String> OWN_ACCOUNT_WEB =
+      Set.of(
+          "connection.web.ConnectedAccountController",
+          "connection.web.ConnectedAccountResponseMapper");
 
   /**
    * What a connector declares about profiles, relative to the root. In module connections only
@@ -1058,6 +1101,100 @@ public final class ModularArchitecture {
   }
 
   /**
+   * Dependencies of a web class - a controller, a response mapper or a web helper of any module -
+   * on {@link #CONNECTED_ACCOUNTS}; only {@link #OWN_ACCOUNT_WEB}, which serves a person their own
+   * accounts, may. The administration gets numbers through {@link #PERSON_NUMBERS} only.
+   */
+  ArchRule theAdministrationNeverSeesAConnectedPerson() {
+    return noClasses()
+        .that(
+            DescribedPredicate.describe(
+                "are web classes outside ModularArchitecture.OWN_ACCOUNT_WEB",
+                javaClass -> {
+                  String relative = relative(javaClass.getBaseComponentType().getPackageName());
+                  if (relative == null || !isWebPackage(relative)) {
+                    return false;
+                  }
+                  return !OWN_ACCOUNT_WEB.contains(
+                      relative + "." + outermostSimpleName(javaClass.getBaseComponentType()));
+                }))
+        .should()
+        .dependOnClassesThat(
+            DescribedPredicate.describe(
+                "are in " + CONNECTED_ACCOUNTS,
+                target ->
+                    CONNECTED_ACCOUNTS.equals(
+                        relative(target.getBaseComponentType().getPackageName()))))
+        .because(
+            "the administration sees connected accounts only as masked numbers, never a person"
+                + " or an account (ADR-0041, Beschluss 8)")
+        .allowEmptyShould(true);
+  }
+
+  /**
+   * Calls of {@link #RAW_PERSON_COUNTS}, on the port or an implementation, outside {@link
+   * #PERSON_NUMBERS}, and of a {@link #LOG_ONLY_PERSON_COUNTS} method outside its one logging
+   * caller: an exact count passed through any other class could reach an answer unmasked.
+   */
+  ArchRule personNumbersLeaveOnlyMasked() {
+    String port = RAW_PERSON_COUNTS_PORT;
+    return noClasses()
+        .should()
+        .accessTargetWhere(
+            DescribedPredicate.describe(
+                "call "
+                    + port
+                    + RAW_PERSON_COUNTS
+                    + " outside "
+                    + PERSON_NUMBERS
+                    + " or one of "
+                    + LOG_ONLY_PERSON_COUNTS.keySet()
+                    + " outside its logging caller",
+                access -> {
+                  String origin = relativeName(access.getOriginOwner().getBaseComponentType());
+                  boolean raw =
+                      RAW_PERSON_COUNTS.contains(access.getName())
+                          && (port.equals(relativeName(access.getTargetOwner()))
+                              || access.getTargetOwner().getAllRawInterfaces().stream()
+                                  .anyMatch(type -> port.equals(relativeName(type))));
+                  String logOnlyCaller =
+                      LOG_ONLY_PERSON_COUNTS.get(
+                          relativeName(access.getTargetOwner()) + "#" + access.getName());
+                  return raw && !PERSON_NUMBERS.equals(origin)
+                      || logOnlyCaller != null && !logOnlyCaller.equals(origin);
+                }))
+        .because(
+            "a number about persons reaches the administration only masked below the minimum group"
+                + " size (ADR-0036)")
+        .allowEmptyShould(true);
+  }
+
+  /** Calls of {@link #ESTABLISHED} outside {@link #ESTABLISHING_PACKAGES}. */
+  ArchRule aConnectionIsEstablishedOnlyAfterItsSignIn() {
+    String owner = ESTABLISHED.substring(0, ESTABLISHED.indexOf('#'));
+    String method = ESTABLISHED.substring(ESTABLISHED.indexOf('#') + 1);
+    return noClasses()
+        .that(
+            DescribedPredicate.describe(
+                "are outside " + ESTABLISHING_PACKAGES,
+                javaClass -> {
+                  String relative = relative(javaClass.getBaseComponentType().getPackageName());
+                  return relative != null && !ESTABLISHING_PACKAGES.contains(relative);
+                }))
+        .should()
+        .accessTargetWhere(
+            DescribedPredicate.describe(
+                "call " + ESTABLISHED,
+                access ->
+                    access.getName().equals(method)
+                        && owner.equals(relativeName(access.getTargetOwner()))))
+        .because(
+            "it stores a person's secret without signing in; every other path connects through the"
+                + " sign-in first")
+        .allowEmptyShould(true);
+  }
+
+  /**
    * Reads of {@link #PROFILE_SUPPORT} in module CONNECTIONS outside {@link #PROFILE_REQUIREMENTS}.
    */
   ArchRule theProfileSupportIsReadInOnePlace() {
@@ -1166,6 +1303,9 @@ public final class ModularArchitecture {
         onlyTheChangeGateCallsTheConnectorChangeHooks(),
         theLibrarySecretIsReadInOnePlace(),
         theSecretStoreIsUsedOnlyInConnections(),
+        theAdministrationNeverSeesAConnectedPerson(),
+        personNumbersLeaveOnlyMasked(),
+        aConnectionIsEstablishedOnlyAfterItsSignIn(),
         theForeignContextNeverUsesTheOwnFormula(),
         theProfileSupportIsReadInOnePlace(),
         onlyTheKnownClassesDeleteDocuments(),

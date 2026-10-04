@@ -129,7 +129,11 @@ class ChangelogModuleBoundaryTest extends AbstractMigrationTest {
                   "library_connections",
                   "connector_type_policies",
                   "connection_log",
-                  "connection_log_retention_settings")),
+                  "connection_log_retention_settings",
+                  "connection_profile_requests",
+                  "connected_accounts",
+                  "connection_tokens",
+                  "connection_person_states")),
           Map.entry(
               WORKSPACE,
               List.of(

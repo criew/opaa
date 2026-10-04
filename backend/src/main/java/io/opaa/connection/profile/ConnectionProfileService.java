@@ -5,14 +5,17 @@ import io.opaa.api.types.AuditObjectType;
 import io.opaa.api.types.AuditOutcome;
 import io.opaa.api.types.Capability;
 import io.opaa.api.types.ConnectionAuthMethod;
+import io.opaa.api.types.ConnectionEndCause;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
-import io.opaa.connection.profile.ConnectionSecrets.DiscardCause;
 import io.opaa.connection.profile.SourceTransitions.Move;
+import io.opaa.connection.token.ConnectionSecrets;
+import io.opaa.connection.token.ConnectionSecrets.Discarded;
+import io.opaa.connection.token.SecretOwner.LibraryOwned;
 import io.opaa.indexing.source.ConnectorData;
 import io.opaa.indexing.source.ProfileDeclaration;
 import io.opaa.indexing.source.SignIn;
@@ -45,9 +48,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Creates, changes and deletes connection profiles - system administration only, enforced by the
- * caller. A changed server address or app registration discards every secret held under the
- * profile, after a confirmation once connections exist; a new client secret alone discards nothing.
- * The client secret is encrypted here and never returned; the audit names fields only.
+ * caller. A changed server address or app registration discards every secret held under the profile
+ * - of libraries and of persons, whose connections end through {@link PersonConnections} - after a
+ * confirmation once connections exist; a new client secret alone discards nothing. The client
+ * secret is encrypted here and never returned; the audit names fields and library counts.
  */
 @Service
 @Transactional(readOnly = true)
@@ -69,6 +73,8 @@ public class ConnectionProfileService {
   private final KnowledgeLibraryRepository libraries;
   private final SourceConnectorRegistry connectors;
   private final ConnectionSecrets secrets;
+  private final PersonConnections persons;
+  private final PersonNumbers personNumbers;
   private final SourceTransitions transitions;
   private final CredentialsEncryptor encryptor;
   private final AuditEventRecorder audit;
@@ -81,6 +87,8 @@ public class ConnectionProfileService {
       KnowledgeLibraryRepository libraries,
       SourceConnectorRegistry connectors,
       ConnectionSecrets secrets,
+      PersonConnections persons,
+      PersonNumbers personNumbers,
       SourceTransitions transitions,
       CredentialsEncryptor encryptor,
       AuditEventRecorder audit,
@@ -91,6 +99,8 @@ public class ConnectionProfileService {
     this.libraries = libraries;
     this.connectors = connectors;
     this.secrets = secrets;
+    this.persons = persons;
+    this.personNumbers = personNumbers;
     this.transitions = transitions;
     this.encryptor = encryptor;
     this.audit = audit;
@@ -117,7 +127,8 @@ public class ConnectionProfileService {
   public ProfileImpact impact(UUID id) {
     get(id);
     long libraryConnections = connections.countByProfileId(id);
-    return new ProfileImpact(libraryConnections, libraryConnections);
+    return new ProfileImpact(
+        libraryConnections, libraryConnections, personNumbers.totalOf(id), List.of());
   }
 
   /** The connections of each of {@code profiles}, with one query for all of them. */
@@ -164,6 +175,7 @@ public class ConnectionProfileService {
     return new ProfileImpact(
         change.connections(),
         change.connections(),
+        personNumbers.totalOf(id),
         transitions.check(change.moves(), new Answers()));
   }
 
@@ -198,11 +210,11 @@ public class ConnectionProfileService {
   /**
    * Replaces every editable field; {@code secret} {@code null} keeps the stored one, blank clears
    * it, anything else replaces it. A new address, client id, tenant, scope list or sign-in method
-   * discards every secret held under the profile, a new binding the secrets it concerns - refused
-   * with 409 {@value #CONFIRMATION_REQUIRED} while there are such and {@code confirmed} is false.
-   * Every library whose effective configuration changes passes its connector first ({@code answers}
-   * given by {@link #check}); one refusal leaves profile and libraries unchanged (400 {@value
-   * ChangeRejection#PROFILE_CHANGE_REJECTED}).
+   * discards every secret held under the profile, a new binding the secrets it concerns and ends
+   * the persons' connections - refused with 409 {@value #CONFIRMATION_REQUIRED} while there are
+   * such and {@code confirmed} is false. Every library whose effective configuration changes passes
+   * its connector first ({@code answers} given by {@link #check}); one refusal leaves profile and
+   * libraries unchanged (400 {@value ChangeRejection#PROFILE_CHANGE_REJECTED}).
    */
   @Transactional
   public ConnectionProfile update(
@@ -245,17 +257,21 @@ public class ConnectionProfileService {
       if (discarding.contains(library.getId())) {
         library.dropSourceCredentials();
         if (!change.discardsAll()) {
-          secrets.discard(SecretOwner.of(id, library));
+          // only the library's own secret: a person's is shared by every library on the account
+          secrets.discard(new LibraryOwned(library.getId()));
         }
       }
       libraries.save(library);
     }
-    if (change.discardsAll() && affected > 0) {
-      secrets.discardAllUnder(
-          id,
+    if (change.discardsAll()) {
+      ConnectionEndCause cause =
           change.addressChanged()
-              ? DiscardCause.ADDRESS_CHANGED
-              : DiscardCause.REGISTRATION_CHANGED);
+              ? ConnectionEndCause.ADDRESS_CHANGED
+              : ConnectionEndCause.REGISTRATION_CHANGED;
+      secrets.discardAllUnder(id, cause);
+      persons.endAllUnder(id, cause, caller.id());
+    } else if (change.dropsPersons() || change.rebindsPersons()) {
+      persons.endAllUnder(id, ConnectionEndCause.PROFILE_CHANGED, caller.id());
     }
     for (Move move : change.moves()) {
       transitions.record(caller, move.library(), transitions.applied(move));
@@ -271,11 +287,18 @@ public class ConnectionProfileService {
   /** Refuses {@code change} with 409 while it discards stored secrets. */
   private static void requireNothingDiscarded(ProfileChange change) {
     long affected = change.affected();
-    if (affected > 0) {
+    // asked on every profile for persons, whether or not one is connected: the text tells nothing
+    boolean persons = change.personsConcerned();
+    if (affected > 0 || persons) {
       throw new ConflictException(
-          "Die Änderung verwirft die Zugangsdaten von "
-              + affected
-              + (affected == 1 ? " Verbindung" : " Verbindungen")
+          "Die Änderung verwirft die Zugangsdaten "
+              + (affected == 0
+                  ? ""
+                  : "von "
+                      + affected
+                      + (affected == 1 ? " Verbindung" : " Verbindungen")
+                      + (persons ? " sowie " : ""))
+              + (persons ? "etwaiger verbundener Konten von Personen" : "")
               + " dieses Zugangs. Bitte bestätigen.",
           CONFIRMATION_REQUIRED);
     }
@@ -319,8 +342,21 @@ public class ConnectionProfileService {
               addressChanged || registrationChanged,
               holding.contains(library.getId())));
     }
+    boolean dropsPersons =
+        profile.getOwnership().admitsPersons() && !validated.ownership().admitsPersons();
+    boolean rebindsPersons =
+        profile.getOwnership().admitsPersons()
+            && !dropsPersons
+            && transitions.rebindsPersons(profile, candidate);
     return new ProfileChange(
-        validated, addressChanged, registrationChanged, connected.size(), moves);
+        validated,
+        addressChanged,
+        registrationChanged,
+        dropsPersons,
+        rebindsPersons,
+        profile.getOwnership().admitsPersons(),
+        connected.size(),
+        moves);
   }
 
   /**
@@ -329,14 +365,16 @@ public class ConnectionProfileService {
   @Transactional
   public ProfileImpact disconnectAll(CurrentUser caller, UUID id) {
     ConnectionProfile profile = get(id);
-    int disconnected = secrets.discardAllUnder(id, DiscardCause.EMERGENCY);
+    PersonCount ended = personNumbers.totalOf(id);
+    Discarded discarded = secrets.discardAllUnder(id, ConnectionEndCause.EMERGENCY);
+    persons.endAllUnder(id, ConnectionEndCause.EMERGENCY, caller.id());
     record(
         caller,
         AuditEventType.CONNECTION_PROFILE_DISCONNECTED,
         profile,
         null,
-        Map.of("connectionsDisconnected", disconnected));
-    return new ProfileImpact(disconnected, disconnected);
+        Map.of("connectionsDisconnected", discarded.libraries()));
+    return new ProfileImpact(discarded.libraries(), discarded.libraries(), ended, List.of());
   }
 
   /**
@@ -348,7 +386,8 @@ public class ConnectionProfileService {
   public void delete(CurrentUser caller, UUID id) {
     ConnectionProfile profile = get(id);
     List<LibraryConnection> affected = connections.findByProfileId(id);
-    secrets.discardAllUnder(id, DiscardCause.PROFILE_DELETED);
+    secrets.discardAllUnder(id, ConnectionEndCause.PROFILE_DELETED);
+    persons.endAllUnder(id, ConnectionEndCause.PROFILE_DELETED, caller.id());
     Instant now = clock.instant();
     for (LibraryConnection connection : affected) {
       connection.moveTo(null, now);
@@ -536,22 +575,35 @@ public class ConnectionProfileService {
   }
 
   /**
-   * Connections a change would cut off, the libraries behind them, and the connectors' refusals of
-   * a proposed change - empty without one.
+   * Connections of libraries a change would cut off, the libraries behind them, the persons'
+   * connected accounts (masked), and the connectors' refusals of a proposed change - empty without
+   * one.
    */
-  public record ProfileImpact(long connections, long libraries, List<ChangeRejection> rejections) {
+  public record ProfileImpact(
+      long connections,
+      long libraries,
+      PersonCount connectedAccounts,
+      List<ChangeRejection> rejections) {}
 
-    public ProfileImpact(long connections, long libraries) {
-      this(connections, libraries, List.of());
-    }
-  }
-
+  /**
+   * @param dropsPersons whether the new ownership no longer admits persons
+   * @param rebindsPersons whether persons' secrets stand for another target afterwards
+   * @param forPersons whether the profile admitted persons before the change
+   */
   private record ProfileChange(
       ConnectionProfileValues values,
       boolean addressChanged,
       boolean registrationChanged,
+      boolean dropsPersons,
+      boolean rebindsPersons,
+      boolean forPersons,
       long connections,
       List<Move> moves) {
+
+    /** Whether persons' connections end - told without saying whether there are any. */
+    boolean personsConcerned() {
+      return forPersons && (discardsAll() || dropsPersons || rebindsPersons);
+    }
 
     boolean discardsAll() {
       return addressChanged || registrationChanged;

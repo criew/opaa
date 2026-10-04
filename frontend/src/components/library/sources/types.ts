@@ -62,6 +62,11 @@ export interface SourceConfiguration<V> {
    * address survives a change between them. Defaults to the type key.
    */
   valuesKey?: string
+  /**
+   * The fields the form reads from the server behind the address; they belong to that server and
+   * fall back to `empty` whenever the wizard clears the address.
+   */
+  addressDerived?: readonly string[]
   /** The values of a stored library; credentials stay blank, they are never returned. */
   fromLibrary: (library: StoredLibrarySource) => V
   /** Whether a wizard holding these values has something to lose. */

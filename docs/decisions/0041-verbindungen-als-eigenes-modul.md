@@ -329,6 +329,77 @@ Begründung:
 - `ConnectionLog#record` tritt der Transaktion des Aufrufers bei. Ein Aufrufer nach dem Commit
   (`AFTER_COMMIT`-Listener des Lebenszyklus) braucht eine eigene Transaktion.
 
+## Nachtrag vom 04.10.2026: Token-Speicher und verbundene Konten (#2163)
+
+- **Paketreihenfolge, unten zuerst:** `connection.log`, `connection.token`, `connection.profile`,
+  `connection.account`, später `connection.oauth`. Der Speicher liegt unter den Profilen, damit
+  Adress- und Registrierungswechsel, Notabschaltung und Löschung des Profils verwerfen können; die
+  verbundenen Konten liegen darüber, weil sie Profil, Sperre und Freigabe brauchen. `oauth` liegt
+  zuoberst, weil der Abschluss einer Zustimmung ein Konto anlegt.
+- **Ports statt Kanten nach oben:** `connection.token` deklariert `SecretIssuer` (Erneuerung und
+  Widerruf eines OAuth-Tokens, implementiert von `connection.oauth`), `LibrariesOnProfile` und
+  `PersonAccounts`; `connection.profile` deklariert `PersonConnections`, über den die
+  Profilverwaltung die Konten eines Zugangs zählt und beendet. Ohne `SecretIssuer` kann kein
+  OAuth-Token herausgegeben werden.
+- **Der Speicher meldet Gründe, keine Texte:** `ConnectionSecrets#current` wirft
+  `SecretRefusedException` mit dem Sperrgrund; den Hinweis formuliert weiter nur `SourceBlocks`,
+  das über dem Speicher liegt.
+- **Neue Sperrgründe** in `SourceBlock.Reason`: `OWNER_DEACTIVATED` und `DORMANT` nach
+  `ACCESS_REMOVED`, `EXPIRED` nach `NOT_CONNECTED`; alle drei beenden einen laufenden Lauf und
+  erscheinen in der Antwort, keiner ist eine Sperre der Verwaltung. „Ruhend“ und „deaktiviert“ werden
+  bei jeder Herausgabe aus `AccountUsability` abgeleitet, mit der Inaktivitätsschwelle als Konstante
+  (90 Tage), bis der Lebenszyklus sie einstellbar macht.
+- **Zielbindung:** `issued_for` ist ein undurchsichtiger Wert, den nur `ConnectionProfile#secretTarget`
+  liefert (heute die Server-Adresse); der Speicher vergleicht ihn, er zerlegt ihn nie.
+- **Zahlen über Personen nur maskiert:** Jede Zahl über verbundene Konten erreicht die Verwaltung
+  über `connection.profile.PersonNumbers` (Gesamtzahl unter der Mindestgruppengröße nur „weniger
+  als N“, auch bei null, wie `GroupService`; eine Teilzahl nur, wenn weder sie noch ihr Komplement
+  darunter liegt); die exakten Zahlen des Ports fragt keine andere Klasse ab (ArchUnit
+  `personNumbersLeaveOnlyMasked`). Eine verwerfende Änderung eines Zugangs für Personen verlangt
+  immer eine Bestätigung mit neutralem Text. Grenzen: Die Beobachtung über die Zeit zeigt, wann die
+  Zahl N überschreitet, und eine Verwaltungsperson mit eigener Freigabe kann durch eigenes
+  Verbinden darauf schließen, dass höchstens N−1 weitere verbunden sind.
+- **Ein Konto mit Verbindung wird nicht gelöscht:** `connected_accounts.user_id` ist `RESTRICT`
+  und steht in `UserRepository#countDeletionBlockers`; das Geheimnis hängt mit `CASCADE` am Konto.
+
+## Nachtrag vom 04.10.2026: Lebenszyklus der verbundenen Konten (#2163)
+
+- **Fristen als Start-Einstellungen** (offene Entscheidung 1 des Phase-2-Plans, nach Empfehlung):
+  Die Inaktivitätsschwelle ist die Property `opaa.connection.inactivity-threshold-days`
+  (`OPAA_CONNECTION_INACTIVITY_THRESHOLD_DAYS`, Vorgabe 90). Die Grenzen 30–365 stehen als Konstanten
+  in `ConnectionLifecycleProperties`; ein Wert außerhalb bricht den Start ab. Damit ist die
+  Obergrenze weder per Konfiguration noch per SQL dehnbar. Die Tabelle in Entscheidung 7 („Grenzen
+  als `CHECK`“) gilt für die Inaktivitätsschwelle und die Löschfrist privater Bibliotheken nicht
+  mehr; die Löschfrist folgt mit dem Löschlauf nach demselben Muster. Die Aufbewahrung des
+  Verbindungsprotokolls bleibt eine Tabellenzeile mit `CHECK`.
+- **Abgleich:** `connection.account.ConnectionLifecycleReconciler`, täglich, nach dem Commit von
+  `LocalAccountAccessEndedEvent` (ein Konto) und `OidcProvidersChangedEvent` (alle) und beim Start.
+  Er sieht nur die Personen, die der Lebenszyklus betrifft: mit verbundenem Konto, mit privater
+  Bibliothek oder mit festgehaltenem Zustand. Je Person läuft er in einer eigenen Transaktion
+  (`REQUIRES_NEW`), weil ein Aufruf nach dem Commit sonst in die abgeschlossene Transaktion schriebe
+  und Löschung und Protokolleintrag verlöre. Scheitert der Abgleich nach einem Commit, wird das nur
+  als Zahl geloggt; die gespeicherte Änderung bleibt erfolgreich, der Tageslauf holt nach.
+- **Festgehalten wird nur der Beginn,** in `connection_person_states` (`deactivated_since`,
+  `dormant_since`, je Person höchstens einer). Der Zustand selbst bleibt abgeleitet. library liest
+  den Beginn über `ConnectionLifecycle#deactivatedSince` und `#deactivatedBefore`.
+- **Ein Endweg für die Deaktivierung:** `ConnectedAccountService#endAllOf` beendet über denselben
+  privaten Endweg wie Trennen und Notabschaltung, mit `ACCOUNT_DEACTIVATED` und dem Systemprozess als
+  Handelndem.
+- **Bindungswechsel:** Ändert die Verwaltung an einem Zugang für Personen eine Vorgabe, die die
+  Bindung der Zugangsdaten bestimmt, enden die verbundenen Konten mit `PROFILE_CHANGED`. Die
+  `409`-Bestätigung nennt das wie jede verwerfende Änderung ohne Zahl.
+- **Benachrichtigung:** Jede Beendigung, die die Verwaltung auslöst (Adresse, Registrierung,
+  Bindung, Besitzart, Notabschaltung, Löschung), meldet der Person `CONNECTION_ENDED` (ADR-0019).
+  Eine Deaktivierung meldet nichts, weil die Person sich nicht mehr anmeldet.
+- **Letzte Nutzung:** `connected_accounts.last_used_at` schreibt die Herausgabe eines Geheimnisses
+  fort, höchstens einmal je Tag und Konto, in eigener Transaktion mit `FOR UPDATE SKIP LOCKED`. So
+  belastet die Herausgabe keinen Aufruf mit einem Schreibzugriff, auch nicht aus einer lesenden
+  Transaktion, und wartet nie auf eine gesperrte Zeile.
+- **Zahlen vor dem Abschalten eines Anbieters:** identity deklariert den Port
+  `auth.ProviderConnectionsImpact`, connections beantwortet ihn über `PersonNumbers`
+  (Verbindungen und private Bibliotheken der nicht deaktivierten Konten des Anbieters, je maskiert).
+  Die Anzeige in der Anbieterverwaltung (Spezifikation, API, Oberfläche) folgt.
+
 ## Referenzen
 
 - [connector-connections.md](../features/connector-connections.md)

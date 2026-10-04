@@ -33,10 +33,16 @@ public record SourceBlock(Reason reason, String responsible, String notice) {
     PROFILE_REQUIRED(true, false, true),
     /** The library's profile was deleted ("Zugang entfernt"). */
     ACCESS_REMOVED(false, true, true),
+    /** The account of the person whose secret the library is reached with is deactivated. */
+    OWNER_DEACTIVATED(false, true, true),
+    /** That account rests: no sign-in for long, or its way of signing in is switched off. */
+    DORMANT(false, true, true),
     /** The library's address does not lie under the server address of its profile. */
     TARGET_OUTSIDE_PROFILE(false, true, false),
     /** The profile asks for a secret the connection does not hold (yet or any more). */
-    NOT_CONNECTED(false, true, true);
+    NOT_CONNECTED(false, true, true),
+    /** The provider rejected the held secret, or it ran out; only connecting anew lifts it. */
+    EXPIRED(false, true, true);
 
     private final boolean lock;
     private final boolean endsRunningRun;

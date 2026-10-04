@@ -9,4 +9,8 @@ public enum ConnectionOwnership {
   public boolean admitsLibraries() {
     return this != PERSON;
   }
+
+  public boolean admitsPersons() {
+    return this != LIBRARY;
+  }
 }

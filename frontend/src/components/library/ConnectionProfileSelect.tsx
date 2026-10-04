@@ -16,6 +16,7 @@ import ChoiceTileGroup, { type ChoiceTile } from '../choice/ChoiceTileGroup'
 import { AUTH_METHOD_LABELS } from '../admin/connections/connectionProfileLabels'
 import { OWN_ADDRESS, selectableConnections } from './connectionChoice'
 import { ownAddressAllowed } from './sources/sourceConnection'
+import ConnectionProfileRequestAction from './ConnectionProfileRequestAction'
 
 const NOT_RELEASED =
   'Dieser Zugang ist für Sie nicht freigegeben. Freigaben erteilt die Systemverwaltung.'
@@ -64,13 +65,16 @@ interface ConnectionProfileSelectProps {
   offerOwnAddress: boolean
   /** A profile not to offer, such as the one a library is already connected through. */
   excludeProfileId?: string
+  /** Whether „Zugang vorschlagen“ takes the place of the hint who sets up profiles. */
+  offerRequest?: boolean
   idPrefix: string
 }
 
 /**
  * The choice of a connection profile ("Zugang") for a library. A profile the person may not use
  * stays visible with the notice naming who releases it; „Eigene Adresse“ appears only where the
- * type admits it. Without any usable way the field says who sets up profiles instead.
+ * type admits it. Without any usable way the field says who sets up profiles instead; with
+ * `offerRequest` the person can suggest one to the system administration right there.
  */
 export default function ConnectionProfileSelect({
   descriptor,
@@ -79,6 +83,7 @@ export default function ConnectionProfileSelect({
   onChange,
   offerOwnAddress,
   excludeProfileId,
+  offerRequest = false,
   idPrefix,
 }: ConnectionProfileSelectProps) {
   const options = state.options.filter((option) => option.id !== excludeProfileId)
@@ -142,13 +147,17 @@ export default function ConnectionProfileSelect({
       )}
       {state.error ? null : state.loaded && selectable.length === 0 ? (
         <Alert severity="info" sx={{ mt: 1.5 }} data-testid={`${idPrefix}-connection-none`}>
-          Für die Quellart „{descriptor.displayName}“ steht Ihnen kein Zugang zur Verfügung. Zugänge
-          legt die Systemverwaltung an und gibt sie frei; bitte wenden Sie sich an sie.
+          {offerRequest
+            ? `Für die Quellart „${descriptor.displayName}“ steht Ihnen kein Zugang zur Verfügung. Schlagen Sie der Systemverwaltung einen vor.`
+            : `Für die Quellart „${descriptor.displayName}“ steht Ihnen kein Zugang zur Verfügung. Zugänge legt die Systemverwaltung an und gibt sie frei; bitte wenden Sie sich an sie.`}
         </Alert>
-      ) : (
+      ) : offerRequest ? null : (
         <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 1 }}>
           Zugänge legt die Systemverwaltung an und gibt sie frei.
         </Typography>
+      )}
+      {offerRequest && !state.error && state.loaded && (
+        <ConnectionProfileRequestAction descriptor={descriptor} idPrefix={idPrefix} />
       )}
     </Box>
   )

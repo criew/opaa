@@ -14,6 +14,7 @@ import SourceTypeIcon from '../components/library/sourceTypeIcon'
 import { registeredSourceTypes, sourceRegistration } from '../components/library/sources/registry'
 import type { SourceFormContext } from '../components/library/sources/types'
 import ConnectionProfileSelect from '../components/library/ConnectionProfileSelect'
+import ConnectionProfileRequestAction from '../components/library/ConnectionProfileRequestAction'
 import {
   OWN_ADDRESS,
   effectiveConnection,
@@ -55,7 +56,13 @@ import {
   documentSourceTypeLabel,
   documentSourceTypeDescription,
 } from '../components/library/sources/sourceLabels'
-import type { Capability, SourceTypeKey, GroupListResponse, AssetOwnerType } from '../types/api'
+import type {
+  Capability,
+  SourceTypeKey,
+  GroupListResponse,
+  AssetOwnerType,
+  SourceTypeDescriptor,
+} from '../types/api'
 
 /**
  * Die Schritte des Assistenten (#1942): jeder trägt den Namen des Reiters bzw. des Kopfes, den er
@@ -172,6 +179,26 @@ export default function LibraryCreatePage() {
   const selectableTypes = offeredTypes.filter((type) => missingFor(type) === null)
 
   /**
+   * Die Arten, die nur deshalb gesperrt sind, weil der Person kein nutzbarer Zugang zur Verfügung
+   * steht: Für sie bietet schon dieser Schritt „Zugang vorschlagen“ an, sonst wäre der Wunsch
+   * gerade dort unerreichbar, wo er gebraucht wird. Voraussetzung ist das Konnektor-Anlegerecht in
+   * irgendeinem Geltungsbereich, wie für das Backend.
+   */
+  const suggestableTypes = isMissing('CREATE_CONNECTOR_LIBRARY')
+    ? []
+    : offeredTypes
+        .map((type) => sourceTypes.find((d) => d.type === type))
+        .filter(
+          (d): d is SourceTypeDescriptor =>
+            d !== undefined &&
+            !d.uploads &&
+            !d.locked &&
+            !d.creatable &&
+            d.profileSupport !== 'FORBIDDEN' &&
+            Boolean(sourceRegistration(d.type)?.configuration),
+        )
+
+  /**
    * Die tatsächlich gewählte Art. Die Anlegerechte kommen erst nach dem ersten Rendern an; was
    * dann gesperrt ist, darf nicht ausgewählt stehen bleiben, sonst führte „Weiter" in einen Pfad,
    * der nie anlegen kann. Die Wahl rückt auf die erste erlaubte Kachel - abgeleitet, nicht in
@@ -242,6 +269,7 @@ export default function LibraryCreatePage() {
           configuration.empty,
           connection,
           nextOption ? sourceConnectionOf(nextOption) : null,
+          configuration.addressDerived,
         ),
       }))
     }
@@ -454,6 +482,18 @@ export default function LibraryCreatePage() {
           />
         )}
 
+        {currentStep === STEP_ART &&
+          sourceTypesLoaded &&
+          !sourceTypesError &&
+          suggestableTypes.map((suggestable) => (
+            <ConnectionProfileRequestAction
+              key={suggestable.type}
+              descriptor={suggestable}
+              idPrefix={`library-create-${suggestable.type}`}
+              prompt={`Für „${suggestable.displayName}“ steht Ihnen noch kein nutzbarer Zugang zur Verfügung.`}
+            />
+          ))}
+
         {currentStep === STEP_SOURCE && (
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, maxWidth: 640 }}>
             {showConnectionSelect && descriptor && (
@@ -463,9 +503,17 @@ export default function LibraryCreatePage() {
                 value={connectionChoice}
                 onChange={chooseConnection}
                 offerOwnAddress
+                offerRequest
                 idPrefix="library-create"
               />
             )}
+            {admitsProfiles &&
+              descriptor &&
+              !showConnectionSelect &&
+              profileOptions.loaded &&
+              !isMissing('CREATE_CONNECTOR_LIBRARY') && (
+                <ConnectionProfileRequestAction descriptor={descriptor} idPrefix="library-create" />
+              )}
             {SourceForm && connectionChoice !== null && (
               <SourceForm
                 // a new profile starts the form afresh, so no probe result outlives its profile

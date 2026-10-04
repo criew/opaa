@@ -128,19 +128,25 @@ class ModularArchitectureFixtureTest {
 
   /**
    * {@code connection.profile -> connection} names the root package, {@code connection.log ->
-   * connection.profile} points upward, {@code connection.misc} is not ordered; the web package may
-   * use all of them.
+   * connection.profile} and {@code connection.token -> connection.profile} point upward, {@code
+   * connection.misc} is not ordered; {@code connection.account} may use profile and token, the web
+   * package all of them.
    */
   @Test
   void aConnectionSubpackageThatNamesItsRootOrIsUnorderedIsReported() {
     Scenario scenario = new Scenario("connectionorder");
 
     assertThat(scenario.violations(ModularArchitecture::theConnectionPackagesDependOnlyDownward))
-        .hasSize(3)
+        .hasSize(4)
         .anySatisfy(
             violation ->
                 assertThat(violation)
                     .contains("connection.log -> connection.profile points upward", "log.Entry"))
+        .anySatisfy(
+            violation ->
+                assertThat(violation)
+                    .contains(
+                        "connection.token -> connection.profile points upward", "token.Store"))
         .anySatisfy(
             violation ->
                 assertThat(violation)
@@ -152,7 +158,57 @@ class ModularArchitectureFixtureTest {
                 assertThat(violation)
                     .contains(
                         "connectionorder.connection.misc is not ordered", "CONNECTION_PACKAGES"))
-        .noneSatisfy(violation -> assertThat(violation).contains("ProfileApi"));
+        .noneSatisfy(violation -> assertThat(violation).contains("ProfileApi"))
+        .noneSatisfy(violation -> assertThat(violation).contains("account.Account"));
+  }
+
+  /**
+   * The administration's controller and another module's web layer reach a connected account; the
+   * numbers pass, and so does the controller of a person's own accounts.
+   */
+  @Test
+  void aConnectedPersonSeenByTheAdministrationIsReported() {
+    Scenario scenario = new Scenario("connectedperson");
+
+    assertThat(scenario.violations(ModularArchitecture::theAdministrationNeverSeesAConnectedPerson))
+        .hasSize(2)
+        .allSatisfy(violation -> assertThat(violation).contains("account.ConnectedAccount"))
+        .anySatisfy(
+            violation -> assertThat(violation).contains("web.ConnectionProfileController.account"))
+        .anySatisfy(
+            violation -> assertThat(violation).contains("web.LibraryController.ownerAccount"))
+        .noneSatisfy(violation -> assertThat(violation).contains("ConnectedAccountController"))
+        .noneSatisfy(violation -> assertThat(violation).contains("PersonNumbers"));
+  }
+
+  /**
+   * An intermediate step asks the exact counts, another the log-only count; the one masking class
+   * and the one logging caller may.
+   */
+  @Test
+  void anExactPersonCountOutsideTheMaskIsReported() {
+    Scenario scenario = new Scenario("connectedperson");
+
+    assertThat(scenario.violations(ModularArchitecture::personNumbersLeaveOnlyMasked))
+        .hasSize(2)
+        .anySatisfy(
+            violation ->
+                assertThat(violation).contains("profile.Impact.connectedAccounts", "countsAmong"))
+        .anySatisfy(
+            violation ->
+                assertThat(violation)
+                    .contains("profile.ExpiredShare.expired", "countExpiredPersonSecrets"))
+        .noneSatisfy(violation -> assertThat(violation).contains("ConnectionLifecycleReconciler"));
+  }
+
+  /** library stores a connection past the sign-in; the account package and OAuth may. */
+  @Test
+  void aConnectionEstablishedOutsideItsPackagesIsReported() {
+    Scenario scenario = new Scenario("connectedperson");
+
+    assertThat(scenario.violations(ModularArchitecture::aConnectionIsEstablishedOnlyAfterItsSignIn))
+        .singleElement(STRING)
+        .contains("library.AccountShortcut.store", "established");
   }
 
   /**

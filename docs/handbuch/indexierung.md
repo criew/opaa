@@ -406,6 +406,26 @@ und „Löschen“ nennen vor der Bestätigung die Zahl der Betroffenen, ebenso 
 Geheimnisse verwirft. Solange die Angaben der Quellart beim Bearbeiten eines Zugangs noch geladen
 werden, sagt das Formular das und lässt noch nicht speichern.
 
+**Vorschau beim Bearbeiten.** Ändert eine Bearbeitung, was für die Bibliotheken auf dem Zugang gilt
+(Server-Adresse, Anmeldeart, Registrierung, Proxy, Zertifikatsprüfung oder Vorgaben), und hat der
+Zugang Verbindungen, heißt der Knopf zuerst „Weiter“. Er zeigt, ohne etwas zu speichern, die
+Auswirkungen:
+
+- die Zahl der betroffenen Bibliotheken, bei einem Zugang, der Personen zulässt, auch die
+  verbundenen Konten von Personen (in derselben gerundeten Form wie sonst, etwa „weniger als 5“),
+- jede Bibliothek, deren Konnektor die Änderung ablehnt, mit der Art der Ablehnung (Verbindung oder
+  Einstellungen), dem Grund und einem Verweis auf die Bibliothek,
+- den Hinweis, dass Zugangsdaten und Abgleichstand der verbundenen Bibliotheken verworfen werden
+  können. Ob und für wen, entscheidet OPAA erst beim Speichern; verwirft die Änderung Zugangsdaten,
+  fragt es vorher mit der Zahl der Betroffenen nach.
+
+Lehnt der Konnektor die Änderung für eine Bibliothek ab, lässt sie sich so nicht speichern. Sonst
+speichert ein zweiter Klick auf „Speichern“; eine Änderung, die Geheimnisse verwirft, fragt dann wie
+bisher noch einmal nach. Ändert sich ein Feld, gilt die Vorschau nicht mehr, und der Knopf heißt
+wieder „Weiter“. Lehnt der Konnektor die Änderung erst beim Speichern ab (etwa weil sich eine
+Bibliothek inzwischen geändert hat), sagt die Meldung, dass nichts gespeichert wurde, und die
+Vorschau nennt die Gründe. Ein reines Umbenennen speichert ohne Vorschau.
+
 #### Einen Zugang wählen, zuordnen, wechseln, lösen
 
 Die Auswahl, die Aktionen an der Bibliothek und der Schalter „Nur über Zugänge“ erscheinen nur bei
@@ -421,40 +441,113 @@ Adresse nicht zulässig ist:
 - **Jeder Zugang** steht mit Server-Adresse, Anmeldeart und Vorgaben da. Ein Zugang, den die Person
   nicht nutzen darf oder der gesperrt ist, bleibt sichtbar, ist aber nicht wählbar und nennt, wer
   ihn freischaltet.
-- Gibt es weder einen nutzbaren Zugang noch die eigene Adresse, steht statt des Formulars der
-  Hinweis, dass die Systemverwaltung Zugänge anlegt und freigibt; „Weiter“ geht dann nicht.
+- Unter der Wahl steht „Zugang vorschlagen“ (siehe [Zugangswunsch](#zugangswunsch)) für den
+  Fall, dass kein Zugang passt.
+- Gibt es weder einen nutzbaren Zugang noch die eigene Adresse, ist die Quellart schon im Schritt
+  „Art des Wissens“ nicht wählbar; der Schritt bietet dort „Zugang vorschlagen“ an.
 
 Nach der Wahl eines Zugangs richtet sich das Formular nach ihm: Die Adresse ist mit der
 Server-Adresse des Zugangs vorbelegt (eine Adresse darunter ist möglich), das Feld für die
 Zugangsdaten entfällt bei einem Zugang ohne Anmeldung, und Einstellungen, die der Zugang vorgibt
-(etwa die Confluence-Edition oder bei S3 Region und Adressstil), stehen nur lesbar mit seinem Wert
-da. Verbindungstest und Auflistung prüfen über den gewählten Zugang. Einen Zugangswunsch gibt es im
-Assistenten nicht; er nennt nur, wer Zugänge anlegt.
+(etwa die Confluence-Edition oder bei S3 Region und Adressstil), stehen ebenso wie Proxy und
+Zertifikatsprüfung des Zugangs nur lesbar mit seinem Wert da. Die Oberfläche schickt für sie keinen
+Wert mit; ändert die Systemverwaltung den Wert einer Vorgabe, während das Formular offen ist, gilt
+beim Speichern der neue. Gibt der Zugang inzwischen eine Einstellung neu vor, die das offene
+Formular noch als eigene kennt, kann das Speichern mit dem Hinweis auf die Vorgabe abgewiesen
+werden; nach erneutem Öffnen klappt es, die übrigen Eingaben bleiben bis dahin stehen.
+Verbindungstest und Auflistung prüfen über den gewählten Zugang. Wechselt die Wahl, entfallen eine
+Adresse, die nicht unter dem neuen Weg liegt, und was die Quelle aus ihr gelesen hat (bei
+Confluence die erkannte Edition).
+
+#### Zugangswunsch
+
+Wer im Wissens-Assistenten keinen passenden Zugang findet, schlägt der Systemverwaltung mit
+**„Zugang vorschlagen“** einen vor. Die Aktion gibt es für jede Quellart, die Zugänge kennt, an drei
+Stellen:
+
+- im Schritt **„Art des Wissens“** unter den Kacheln, für jede Quellart, die nur deshalb nicht
+  wählbar ist, weil der Person kein nutzbarer Zugang zur Verfügung steht (etwa bei Profilpflicht
+  ohne freigegebenen Zugang);
+- im Schritt **„Quelle“** unter der Wahl „Zugang“;
+- im Schritt **„Quelle“** über dem Formular, wenn es für die Quellart noch keinen Zugang gibt und
+  die eigene Adresse zulässig ist (die Wahl „Zugang“ entfällt dann).
+
+Der Dialog nennt die Quellart, fragt die **Server-Adresse** (nach denselben Regeln wie im Formular
+eines Zugangs, in der Länge begrenzt; OPAA ruft sie nicht auf) und eine optionale kurze
+**Begründung**. Die Erfolgsmeldung sagt, dass der Wunsch bei der
+Systemverwaltung eingegangen ist und die Person über das Ergebnis benachrichtigt wird. Stellen darf
+den Wunsch, wer Zugänge im Assistenten sehen darf, also wer das Anlegerecht für
+Konnektorbibliotheken in irgendeinem Geltungsbereich hat.
+
+- Derselbe offene Wunsch (Quellart und Adresse) entsteht kein zweites Mal; die Meldung sagt, dass
+  er bereits vorliegt.
+- Je Person gibt es eine Obergrenze neuer Wünsche je Stunde und eine Obergrenze gleichzeitig
+  offener Wünsche (Konfiguration unten), auch bei gleichzeitig abgeschickten Wünschen. Darüber
+  hinaus nennt der Dialog den Grund und nimmt den Wunsch nicht an.
+- Unter der Aktion stehen die eigenen Wünsche zur Quellart mit ihrem Stand („Offen“, „Erledigt“
+  mit dem angelegten Zugang, „Abgelehnt“) und der Antwort der Systemverwaltung.
+
+Die Systemverwaltung erhält zu jedem neuen Wunsch eine Benachrichtigung (Glocke) mit Quellart,
+Adresse und Namen der Person, ohne die Begründung. Unter **Administration → Zugänge** listet der
+Abschnitt **„Zugangswünsche“** die offenen Wünsche der eigenen Organisation, die ältesten zuerst,
+mit Begründung:
+
+- **„Zugang anlegen“** öffnet das Formular eines neuen Zugangs mit Quellart und Adresse des
+  Wunschs; beim Speichern ist der Wunsch erledigt und mit dem neuen Zugang verknüpft. Schlägt das
+  Speichern fehl, bleibt der Wunsch offen. Freigegeben ist der neue Zugang damit noch für niemanden;
+  die Freigabe erteilt die Systemverwaltung wie bei jedem Zugang unter „Anlegerechte“.
+- **„Ablehnen“** fragt nach einer optionalen Antwort, etwa welcher vorhandene Zugang passt.
+- Hat jemand anderes den Wunsch inzwischen erledigt oder abgelehnt, weist OPAA die zweite
+  Bearbeitung mit einem Hinweis ab.
+
+Die Person erhält in beiden Fällen eine Benachrichtigung mit dem Ergebnis und gegebenenfalls der
+Antwort. Erledigen und Ablehnen sind Governance-Ereignisse im Revisionsprotokoll (Zustand, Quellart,
+Adresse und Zugang; ohne Begründung und Antwort). Wird das Konto der Person gelöscht, verschwinden
+ihre Wünsche mit ihm; wird der verknüpfte Zugang gelöscht, bleibt der Wunsch erledigt, ohne Verweis.
+
+| Schlüssel | Standard | Wirkung |
+|---|---|---|
+| `opaa.connection.profile-requests.max-per-hour` | 5 | neue Zugangswünsche je Person innerhalb einer Stunde; darüber antwortet OPAA mit „Zu viele Anfragen“ und nennt die Wartezeit |
+| `opaa.connection.profile-requests.max-open` | 10 | gleichzeitig offene Zugangswünsche je Person |
+
+Beide Grenzen gelten unabhängig vom Schalter `opaa.rate-limit.enabled`.
 
 **An einer fertigen Bibliothek** steht im Reiter „Quelle“ unter „Anbindung“ ihr Zugang, für die
 Verwaltenden mit diesen Aktionen:
 
 | Aktion | Wann | Wirkung |
 |---|---|---|
-| „Zugang zuordnen“ | Bibliothek mit eigener Adresse, auch nach „Zugang entfernt“ | verbindet sie über einen gewählten Zugang; die Adresse muss unter dessen Server-Adresse liegen. Die Schnittstelle nimmt dabei auch eine neue Adresse unter dem Zugang an; so lässt sich eine wegen der Profilpflicht gesperrte Bibliothek reparieren, deren Adresse unter keinem Zugang liegt |
-| „Zugang wechseln“ | Bibliothek auf einem Zugang | verbindet sie über einen anderen Zugang derselben Quellart; der bisherige steht nicht zur Wahl. Eine Adresse unter dem bisherigen Zugang wandert unter den neuen. Ändert sich dabei der Server, werden die hinterlegten Zugangsdaten verworfen; die Meldung danach sagt das und führt zu „Quelle bearbeiten“, wo sie neu eingetragen werden |
+| „Zugang zuordnen“ | Bibliothek mit eigener Adresse, auch nach „Zugang entfernt“ | verbindet sie über einen gewählten Zugang; die Adresse muss unter dessen Server-Adresse liegen. Liegt sie nicht darunter, fragt der Dialog eine neue Adresse unter dem Zugang ab; so lässt sich eine wegen der Profilpflicht gesperrte Bibliothek reparieren, deren eingefrorene Adresse unter keinem Zugang liegt |
+| „Zugang wechseln“ | Bibliothek auf einem Zugang | verbindet sie über einen anderen Zugang derselben Quellart; der bisherige steht nicht zur Wahl. Eine Adresse unter dem bisherigen Zugang wandert unter den neuen; der Dialog zeigt die neue Adresse. Ändert sich dabei der Server, werden die hinterlegten Zugangsdaten verworfen; die Meldung danach sagt das und führt zu „Quelle bearbeiten“, wo sie neu eingetragen werden |
 | „Zugang lösen“ | Bibliothek auf einem Zugang, ohne Profilpflicht der Quellart | fragt nach; die Bibliothek behält Adresse und Zugangsdaten als eigene, und was der Zugang vorgab (Vorgaben, Proxy, Zertifikatsprüfung), wird zu ihrer eigenen Einstellung. Sie läuft unverändert weiter |
 
-Zur Wahl stehen beim Zuordnen und Wechseln nur Zugänge, die die Person nutzen darf; die übrigen
-bleiben mit ihrem Hinweis sichtbar. Die Hinweise „Zugang entfernt“ und die Sperre wegen der
-Profilpflicht stehen im Reiter „Quelle“ für alle Leseberechtigten; den Verwaltenden bieten sie
-„Zugang zuordnen“ direkt an. Beim Bearbeiten der Quelle einer Bibliothek auf einem Zugang gelten
-dieselben Regeln wie im Assistenten; solange die Angaben des Zugangs fehlen, lässt sich nichts
-speichern, und der Hinweis sagt das.
+**Test vor dem Zuordnen und Wechseln.** Der Dialog prüft den gewählten Zugang mit der Adresse und
+den Einstellungen der Bibliothek, bevor er etwas speichert: „Verbindung prüfen“ prüft nur,
+„Prüfen und zuordnen“ prüft und speichert bei Erfolg. Das Ergebnis steht im Dialog, nach dem
+Speichern auch in der Meldung. Gespeicherte Zugangsdaten gehen in den Test nur ein, solange ihr Ziel
+gleich bleibt; bei einem Serverwechsel prüft er also ohne sie. Scheitert der Test, speichert der
+Dialog nichts und bietet stattdessen **„Trotzdem zuordnen“** an. Die Bibliothek läuft dann erst,
+wenn die Verbindung steht, etwa nachdem unter „Quelle bearbeiten“ neue Zugangsdaten eingetragen
+sind. Ändern sich Wahl oder Adresse, gilt ein Testergebnis nicht mehr.
 
-Die Oberfläche ruft die Zugänge nur für Personen mit dem Anlegerecht „Konnektorbibliotheken
-anlegen“ in irgendeinem Geltungsbereich ab. Verwaltenden einer Bibliothek ohne dieses Recht bleiben
-deshalb „Zugang zuordnen“, „Zugang wechseln“ und das Bearbeiten der Quelle einer Bibliothek auf
-einem Zugang verschlossen, bis die Systemverwaltung ihnen das Recht erteilt; der Hinweis an diesen
-Stellen sagt das. Die Schnittstelle liefert Verwaltenden einer Bibliothek schon ohne dieses Recht die
-Zugänge ihrer Quellart (nicht freigegebene mit dem Hinweis, wer sie freischaltet) und die Angaben
-ihres Zugangs: Server-Adresse, Anmeldeart, Vorgaben, Proxy und Zertifikatsprüfung, nie ein
-Geheimnis.
+**Reparatur einer gesperrten Bibliothek.** Ist eine Bibliothek wegen der Profilpflicht gesperrt und
+liegt ihre eingefrorene Adresse unter keinem Zugang, nennt der Dialog nach der Wahl eines Zugangs
+die bisherige Adresse und fragt eine neue ab, vorbelegt mit der Server-Adresse des Zugangs. Erst
+wenn sie darunter liegt, lässt sich prüfen und zuordnen. Test und Zuordnen bewerten den gewählten
+Zugang, nicht die Sperre der Bibliothek; nach dem Zuordnen läuft sie wieder.
+
+Zur Wahl stehen beim Zuordnen und Wechseln nur Zugänge, die die Person nutzen darf; die übrigen
+bleiben mit ihrem Hinweis sichtbar. Das gilt auch für Verwaltende einer Bibliothek ohne das
+Anlegerecht „Konnektorbibliotheken anlegen“: Sie sehen die Zugänge der Quellart, die nicht für sie
+freigegebenen mit dem Hinweis, wer sie freischaltet. Die Hinweise „Zugang entfernt“ und die Sperre
+wegen der Profilpflicht stehen im Reiter „Quelle“ für alle Leseberechtigten; den Verwaltenden bieten
+sie „Zugang zuordnen“ direkt an.
+
+Beim Bearbeiten der Quelle einer Bibliothek auf einem Zugang gelten dieselben Regeln wie im
+Assistenten. Die Angaben des Zugangs (Server-Adresse, Anmeldeart, Vorgaben, Proxy und
+Zertifikatsprüfung, nie ein Geheimnis) kommen mit der Bibliothek selbst; ein Anlegerecht braucht es
+dafür nicht. Fehlen sie, lässt sich nichts speichern, die eingetragenen Werte bleiben stehen, und
+der Hinweis sagt das.
 
 **Welcher Konnektor Zugänge kennt**, meldet er selbst: Zugänge verboten, möglich oder Pflicht,
 dazu die Anmeldearten, die er anbietet (ohne Anmeldung, persönliches Geheimnis, OAuth,

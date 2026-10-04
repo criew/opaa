@@ -1,0 +1,32 @@
+databaseChangeLog:
+  - changeSet:
+      id: connections-2026-10-04-usage-and-person-states
+      author: opaa
+      comment: "When a connected account last handed out its secret, kept coarsely - at most once a day (#2163, ADR-0041)."
+      changes:
+        - sql:
+            sql: |
+              ALTER TABLE connected_accounts ADD COLUMN last_used_at timestamp with time zone;
+  - changeSet:
+      id: connections-2026-10-04-usage-and-person-states--person-states
+      author: opaa
+      comment: "The lifecycle of a person's connections as the reconciliation found it (#2163, ADR-0041, Entscheidung 4): since when the account is deactivated - the only start of the deletion period of private libraries - and since when its connections rest. Goes with the account."
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              CREATE TABLE connection_person_states (
+                  user_id uuid NOT NULL,
+                  deactivated_since timestamp with time zone,
+                  dormant_since timestamp with time zone,
+                  checked_at timestamp with time zone NOT NULL,
+                  CONSTRAINT connection_person_states_pkey PRIMARY KEY (user_id),
+                  CONSTRAINT fk_connection_person_states_user FOREIGN KEY (user_id)
+                      REFERENCES users(id) ON DELETE CASCADE,
+                  -- a person is deactivated or resting, never both
+                  CONSTRAINT chk_connection_person_states_one_state CHECK
+                      (deactivated_since IS NULL OR dormant_since IS NULL)
+              );
+              CREATE INDEX ix_connection_person_states_deactivated
+                  ON connection_person_states (deactivated_since)
+                  WHERE deactivated_since IS NOT NULL;

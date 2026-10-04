@@ -28,7 +28,7 @@ export function PathForm({ values, onChange, context }: SourceFormProps<Filesyst
         sourceType={context.sourceType}
         kind="path"
         values={values}
-        probe={connectionFields(context).probe}
+        fields={connectionFields(context)}
         size={context.mode === 'edit' ? 'small' : 'medium'}
       />
     </>
@@ -53,7 +53,7 @@ export function UrlForm({ values, onChange, context }: SourceFormProps<GenericSo
         sourceType={context.sourceType}
         kind="url"
         values={values}
-        probe={fields.probe}
+        fields={fields}
         size={context.mode === 'edit' ? 'small' : 'medium'}
       />
     </>
@@ -95,7 +95,7 @@ export function StoredConnection({
           sourceType={library.sourceType}
           kind={kind}
           values={storedGenericSourceValues(library)}
-          probe={{ libraryId }}
+          fields={{ probe: { libraryId }, probeRequest: (request) => ({ ...request, libraryId }) }}
           size="small"
         />
       </Box>
