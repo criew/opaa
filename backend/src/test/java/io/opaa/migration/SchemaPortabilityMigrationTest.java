@@ -99,6 +99,8 @@ class SchemaPortabilityMigrationTest extends AbstractMigrationTest {
                 + "' AND p.proconfig IS NOT NULL");
     assertThat(configs)
         .containsExactlyInAnyOrder(
+            "asset_grants_guard_owner_only search_path=pg_catalog, " + SCHEMA + ", pg_temp",
+            "assets_guard_owner_only search_path=pg_catalog, " + SCHEMA + ", pg_temp",
             "chat_library_references_set_organization search_path=pg_catalog, "
                 + SCHEMA
                 + ", pg_temp",
