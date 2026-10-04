@@ -265,12 +265,24 @@ class SourceBlocksTest {
    */
   @Test
   void theProfileRequirementHoldsOnlyForATypeWithOptionalProfiles() {
-    KnowledgeLibrary feed = arrange(EnumSet.noneOf(Fact.class), ConnectionAuthMethod.NONE);
-    ConnectorTypePolicy stale = new ConnectorTypePolicy(SourceTypes.RSS_FEED, NOW);
+    KnowledgeLibrary files =
+        KnowledgeLibrary.ownedByUser(
+            UUID.randomUUID(),
+            "Dateien",
+            null,
+            UUID.randomUUID(),
+            SourceTypes.FILESYSTEM,
+            "/srv/akten",
+            null,
+            null,
+            null,
+            false);
+    rows.put(files.getId(), files);
+    ConnectorTypePolicy stale = new ConnectorTypePolicy(SourceTypes.FILESYSTEM, NOW);
     stale.requireProfiles(OwnAddressStock.LOCKED, NOW);
     policyRows.add(stale);
 
-    assertThat(blocks.blockOf(feed, SourceBlocks.ALL)).isEmpty();
+    assertThat(blocks.blockOf(files, SourceBlocks.ALL)).isEmpty();
 
     KnowledgeLibrary probe =
         arrange(EnumSet.of(Fact.PROFILES_ONLY_LOCKED), ConnectionAuthMethod.NONE);
@@ -519,6 +531,65 @@ class SourceBlocksTest {
     assertThat(block.reason()).isEqualTo(reason);
     assertThat(block.responsible()).isEqualTo(responsible);
     assertThat(block.notice()).contains("„Personen“", noticePart);
+  }
+
+  /**
+   * A private library on a profile that signs in itself and admits no persons is not connected, and
+   * the profile's token is never asked for it; a shared library on it follows the profile row - no
+   * secret, or a rejected sign-in, with the system administration in charge.
+   */
+  @Test
+  void aProfilesOwnSignInServesSharedLibrariesOnlyAndItsStateIsTheProfiles() {
+    ConnectionSecrets store = mock(ConnectionSecrets.class);
+    when(store.statesAmong(any())).thenReturn(Map.of());
+    SourceBlocks keyBlocks = blocksOver(store);
+    KnowledgeLibrary own = arrangePrivate(EnumSet.noneOf(Fact.class));
+    ConnectionProfile keyProfile = new ConnectionProfile(SourceTypes.RSS_FEED, NOW);
+    keyProfile.replace(
+        new ConnectionProfileValues(
+            "Schlüssel",
+            SERVER,
+            ConnectionAuthMethod.SERVICE_ACCOUNT_KEY,
+            ConnectionOwnership.LIBRARY,
+            "konto@example.org",
+            null,
+            null,
+            null,
+            null,
+            null,
+            false),
+        "enc:v1:schluessel",
+        NOW);
+    profileRows.add(keyProfile);
+    connectionRows.removeIf(row -> row.getLibraryId().equals(own.getId()));
+    connectionRows.add(new LibraryConnection(own.getId(), keyProfile.getId(), NOW));
+    KnowledgeLibrary shared =
+        KnowledgeLibrary.ownedByUser(
+            UUID.randomUUID(),
+            "Geteilt",
+            null,
+            UUID.randomUUID(),
+            SourceTypes.RSS_FEED,
+            null,
+            SERVER + "/b.xml",
+            null,
+            null,
+            false);
+    rows.put(shared.getId(), shared);
+    connectionRows.add(new LibraryConnection(shared.getId(), keyProfile.getId(), NOW));
+
+    assertThat(keyBlocks.blockOf(own, SourceBlocks.ALL).map(SourceBlock::reason))
+        .contains(Reason.NOT_CONNECTED);
+    assertThat(keyBlocks.blockOf(shared, SourceBlocks.ALL)).isEmpty();
+    keyProfile.signInRejectedSince(NOW);
+    SourceBlock rejected = keyBlocks.blockOf(shared, SourceBlocks.ALL).orElseThrow();
+    assertThat(rejected.reason()).isEqualTo(Reason.EXPIRED);
+    assertThat(rejected.responsible()).isEqualTo("Systemverwaltung");
+    keyProfile.dropClientSecret(NOW);
+    assertThat(keyBlocks.blockOf(shared, SourceBlocks.ALL).map(SourceBlock::responsible))
+        .contains("Systemverwaltung");
+    org.mockito.Mockito.verify(store, org.mockito.Mockito.never())
+        .current(any(SecretOwner.ProfileOwned.class), any());
   }
 
   @SuppressWarnings("unchecked")

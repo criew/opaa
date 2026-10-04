@@ -229,7 +229,9 @@ Nachtrag zur Invariante gibt es nicht. Kein Ziel kommt aus der Schlüsseldatei, 
   Bibliothek ist ein `400`, und fehlt er am Profil, wird niemand imitiert. Eine Änderung verwirft den
   Abgleichsstand aller Bibliotheken auf dem Profil, ihr nächster Lauf ist ein Vollabgleich. Vor dem
   Speichern nennt die Bestätigung die Zahl der Bibliotheken, danach erhalten ihre Verwaltenden eine
-  Benachrichtigung. Der Schlüssel bleibt, denn er liegt am Profil und wird nicht je Bibliothek
+  Benachrichtigung. Solange eine der Bibliotheken läuft, wird die Änderung abgelehnt: Ein laufender
+  Abgleich bekäme ab dann Token des neuen Kontos und endete mit dem Stand zweier Konten. Der
+  Schlüssel bleibt, denn er liegt am Profil und wird nicht je Bibliothek
   bestätigt (Nachtrag #2220, Entscheidung des Maintainers vom 04.10.2026; ursprünglich sollten die
   Bibliotheken ruhen, bis sie neu verbunden sind).
 - Persönliche Ablagen echter Personen sind nicht Teil dieses ADR. Ihr Weg wäre ein verbundenes Konto

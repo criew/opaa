@@ -94,6 +94,22 @@ class LibraryConnectionServiceConnectTest {
         .satisfies(change -> assertThat(change.changedSettings()).containsExactly("edition"));
   }
 
+  /** A default the new profile does not set stays with the library as its own value. */
+  @Test
+  void aSwitchToAProfileWithoutThePreviousDefaultKeepsItsValueAsTheLibrarysOwn() {
+    KnowledgeLibrary library = connectedLibrary("{\"topic\": \"t\"}");
+    ConnectionProfile current = profiles.findById(currentProfileOf(library)).orElseThrow();
+    ReflectionTestUtils.setField(current, "connectorSettings", "{\"edition\": \"DC\"}");
+    ProfileProbeSourceConnector probe = new ProfileProbeSourceConnector();
+
+    service(probe).connect(library, profile("https://probe.example.org/a", null).getId(), null);
+
+    assertThat(ConnectorData.storedIn(library).asMap())
+        .isEqualTo(Map.of("topic", "t", "edition", "DC"));
+    assertThat(probe.changeChecks()).as("the effective configuration stays").isEmpty();
+    verify(connections).save(any());
+  }
+
   @Test
   void aDefaultTheConnectorRefusesLeavesTheLibraryAndItsConnectionAsTheyWere() {
     KnowledgeLibrary library =

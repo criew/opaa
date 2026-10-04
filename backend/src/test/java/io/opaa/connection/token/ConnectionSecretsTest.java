@@ -158,6 +158,33 @@ class ConnectionSecretsTest {
     verify(issuer, times(3)).forgetMinted(profileId);
   }
 
+  /**
+   * A private library is its owner's, whatever the profile signs in with: never a profile token.
+   */
+  @Test
+  void aPrivateLibraryNeverGetsTheProfilesOwnSignIn() {
+    UUID profileId = UUID.randomUUID();
+    KnowledgeLibrary own =
+        KnowledgeLibrary.ownerOnly(
+            UUID.randomUUID(),
+            "Meine Ablage",
+            null,
+            UUID.randomUUID(),
+            SourceTypes.RSS_FEED,
+            null,
+            "https://quelle.example.org/feed",
+            null,
+            null,
+            false);
+
+    for (ConnectionAuthMethod method :
+        List.of(
+            ConnectionAuthMethod.SERVICE_ACCOUNT_KEY, ConnectionAuthMethod.CLIENT_CREDENTIALS)) {
+      assertThat(SecretOwner.of(profileId, method, own))
+          .isEqualTo(new SecretOwner.PersonOwned(profileId, own.getOwnerUserId()));
+    }
+  }
+
   private KnowledgeLibrary library(String secret) {
     KnowledgeLibrary library =
         KnowledgeLibrary.ownedByUser(

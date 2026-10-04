@@ -51,6 +51,7 @@ public final class TestSourceConnectors {
   private S3OriginalAccess s3OriginalAccess = mock(S3OriginalAccess.class);
   private ConfluenceWebhookService confluenceWebhookService = mock(ConfluenceWebhookService.class);
   private S3EventService s3EventService = mock(S3EventService.class);
+  private S3ClientFactory s3ClientFactory;
   private List<SourceConnector> extra = List.of();
 
   private TestSourceConnectors() {}
@@ -126,6 +127,12 @@ public final class TestSourceConnectors {
     return this;
   }
 
+  /** The client factory S3 checks its targets with; by default a real one without validation. */
+  public TestSourceConnectors s3ClientFactory(S3ClientFactory factory) {
+    this.s3ClientFactory = factory;
+    return this;
+  }
+
   /** Serves {@code connectors} besides the production ones, e.g. a test connector with profiles. */
   public TestSourceConnectors with(SourceConnector... connectors) {
     this.extra = List.of(connectors);
@@ -165,7 +172,9 @@ public final class TestSourceConnectors {
                 confluenceWebhookService),
             new S3SourceConnector(
                 s3ConnectionService,
-                new S3ClientFactory(S3Properties.defaults(), validator),
+                s3ClientFactory != null
+                    ? s3ClientFactory
+                    : new S3ClientFactory(S3Properties.defaults(), validator),
                 sourceSyncStateRepository,
                 s3OriginalAccess,
                 s3EventService));

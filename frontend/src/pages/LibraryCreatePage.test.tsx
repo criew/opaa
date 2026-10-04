@@ -1396,7 +1396,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
     it('asks for no profile for a type that admits none', async () => {
       const user = userEvent.setup()
       await renderPage()
-      await chooseType(user, /Webverzeichnis/)
+      await chooseType(user, /Dateisystem/)
 
       expect(screen.queryByTestId('library-create-connection')).not.toBeInTheDocument()
       expect(mockListConnectionProfileOptions).not.toHaveBeenCalled()

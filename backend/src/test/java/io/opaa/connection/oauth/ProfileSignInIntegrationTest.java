@@ -279,6 +279,75 @@ class ProfileSignInIntegrationTest {
                 JsonPath.read(
                     call("dev-admin", get(ADMIN + "/" + profile), null), "$.clientSecretSet"))
         .isFalse();
+    assertThat(
+            jdbc.queryForObject(
+                "SELECT count(*) FROM audit_log WHERE object_id = ? AND event_type ="
+                    + " 'CONNECTION_PROFILE_DISCONNECTED' AND replace(after::text, ' ', '') LIKE"
+                    + " '%\"clientSecretDeleted\":true%'",
+                Integer.class, profile.toString()))
+        .isEqualTo(1);
+  }
+
+  /**
+   * An imitated account removed from the profile does not pass to the libraries as their own: none
+   * carries one, and the next run imitates no one.
+   */
+  @Test
+  void anImitatedAccountRemovedFromTheProfileIsNotKeptByTheLibraries() throws Exception {
+    UUID library = library();
+    String change =
+        """
+        {"name": "Zugang Schlüssel %s", "serverUrl": "", "authMethod": "SERVICE_ACCOUNT_KEY",
+         "ownership": "LIBRARY", "confirmDiscard": true}
+        """;
+
+    call("dev-admin", put(ADMIN + "/" + profile), change.formatted(profile));
+
+    String own =
+        jdbc.queryForObject(
+            "SELECT coalesce(source_settings::text, '') FROM knowledge_libraries WHERE id = ?",
+            String.class,
+            library);
+    assertThat(own).doesNotContain("subject");
+    Seen seen = run(library, "COMPLETED");
+    assertThat(
+            seen.settings().connectorSettings() == null
+                ? null
+                : seen.settings().connectorSettings().get("subject"))
+        .isNull();
+    assertThat(
+            SignedJWT.parse(SERVER.requests().getLast().form().get("assertion"))
+                .getJWTClaimsSet()
+                .getSubject())
+        .isNull();
+  }
+
+  /**
+   * A changed imitated account would end a running listing with the state of two accounts: it is
+   * refused while a library on the profile runs.
+   */
+  @Test
+  void aChangedImitatedAccountIsRefusedWhileALibraryRuns() throws Exception {
+    UUID library = library();
+    jdbc.update(
+        "INSERT INTO indexing_jobs (id, status, run_mode, triggered_by, last_progress_at,"
+            + " library_id, organization_id) SELECT gen_random_uuid(), 'RUNNING', 'FULL',"
+            + " 'MANUAL', now(), id, organization_id FROM knowledge_libraries WHERE id = ?",
+        library);
+    String change =
+        """
+        {"name": "Zugang Schlüssel %s", "serverUrl": "", "authMethod": "SERVICE_ACCOUNT_KEY",
+         "ownership": "LIBRARY", "connectorSettings": {"subject": "neu@example.org"},
+         "confirmDiscard": true}
+        """;
+
+    mockMvc
+        .perform(as("dev-admin", put(ADMIN + "/" + profile)).content(change.formatted(profile)))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("CONNECTION_PROFILE_RUN_IN_PROGRESS"));
+
+    assertThat(connector.changedSettingsOf(library)).doesNotContain("subject");
+    jdbc.update("DELETE FROM indexing_jobs WHERE library_id = ?", library);
   }
 
   private UUID library() throws Exception {

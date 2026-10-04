@@ -46,15 +46,16 @@ public class SourceConnectorRegistry {
   }
 
   /**
-   * Profiles are forbidden for a connector filling its library by uploads or reading nothing
-   * remote; they are required exactly when the connector offers a sign-in whose app registration
-   * only a profile holds; a profile default names a settings key of the connector.
+   * Profiles are forbidden exactly for a connector filling its library by uploads or reading
+   * nothing remote; they are required exactly when the connector offers a sign-in whose app
+   * registration only a profile holds; a profile default names a settings key of the connector.
    */
   private static void requireProfileDeclarationFits(SourceConnector connector) {
     SourceConnectorDescriptor descriptor = connector.descriptor();
     ProfileDeclaration declaration = descriptor.profileDeclaration();
     String subject = "SourceConnector for " + descriptor.type();
-    if ((descriptor.uploads() || !descriptor.remote()) && declaration.admitsProfiles()) {
+    boolean reachesRemote = !descriptor.uploads() && descriptor.remote();
+    if (!reachesRemote && declaration.admitsProfiles()) {
       throw new IllegalStateException(
           subject
               + " fills its library by uploads or reads nothing remote and may not admit"
@@ -76,6 +77,9 @@ public class SourceConnectorRegistry {
         && declaration.support() != ConnectionProfileSupport.OPTIONAL) {
       throw new IllegalStateException(
           subject + " names what a profile requirement leaves open but cannot be switched to one");
+    }
+    if (reachesRemote && !declaration.admitsProfiles()) {
+      throw new IllegalStateException(subject + " reads a remote source and must admit profiles");
     }
   }
 

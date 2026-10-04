@@ -30,6 +30,7 @@ import io.opaa.indexing.source.ServiceAccountTokens;
 import io.opaa.indexing.source.SourceBlock.Reason;
 import io.opaa.indexing.source.SourceConnector;
 import io.opaa.indexing.source.SourceConnectorRegistry;
+import io.opaa.indexing.source.SourceCredentialsException;
 import io.opaa.indexing.source.TestSourceConnectors;
 import io.opaa.indexing.source.probe.ProbeKeySourceConnector;
 import io.opaa.indexing.source.profileprobe.ClientCredentialsProbeSourceConnector;
@@ -269,6 +270,27 @@ class ProfileSignInTest {
       https.stop(0);
       Files.deleteIfExists(keystore);
     }
+  }
+
+  /**
+   * A missing delegation is no rejected key: the profile is not marked, and the finding names the
+   * system administration, which keeps registration and imitated account.
+   */
+  @Test
+  void aMissingDelegationNamesTheAdministrationAndMarksNothing() {
+    ServiceAccountKeyFixture key = new ServiceAccountKeyFixture();
+    wire(new ProbeKeySourceConnector(server.tokenEndpoint()));
+    profile = profile(ProbeKeySourceConnector.TYPE, ConnectionAuthMethod.SERVICE_ACCOUNT_KEY);
+    secret(profile, ServiceAccountKey.parse(key.json()).storedForm());
+    ReflectionTestUtils.setField(
+        profile, "connectorSettings", "{\"subject\": \"fach@example.org\"}");
+    server.rejectWith(401, "unauthorized_client");
+
+    assertThatThrownBy(() -> signIn.mint(profile.getId()))
+        .isInstanceOf(SourceCredentialsException.class)
+        .hasMessageContaining("Delegation fehlt")
+        .hasMessageContaining("Zuständig ist die Systemverwaltung");
+    assertThat(profile.isSignInRejected()).isFalse();
   }
 
   /** The key of the profile signs in the core, imitating the profile's account. */

@@ -3,6 +3,9 @@ package io.opaa.connection.profile;
 import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.AuditObjectType;
 import io.opaa.api.types.NotificationType;
+import io.opaa.common.ConflictException;
+import io.opaa.indexing.job.IndexingJobRepository;
+import io.opaa.indexing.job.JobStatus;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.notification.NotificationService;
 import io.opaa.permission.AssetGrant;
@@ -18,31 +21,60 @@ import java.util.UUID;
 import org.springframework.stereotype.Component;
 
 /**
- * Tells the managers of each library on a profile - the owner and every holder of {@code MANAGER}
- * or more, groups resolved to their members - that a change of the profile made its next run a full
- * one (ADR-0019), in the transaction of the change.
+ * A change of a profile that makes the next run of every library on it a full one: refused while
+ * one of them runs, whose listing would otherwise end with the state of two accounts; afterwards
+ * the managers of each library - the owner and every holder of {@code MANAGER} or more, groups
+ * resolved to their members - are told (ADR-0019), in the transaction of the change.
  */
 @Component
-class ProfileChangeNotices {
+class ProfileFullSync {
 
+  /** Refusal of a change that discards the run state of a library while it runs. */
+  static final String RUN_IN_PROGRESS = "CONNECTION_PROFILE_RUN_IN_PROGRESS";
+
+  private final IndexingJobRepository jobs;
   private final AssetGrantRepository grants;
   private final GroupMembershipResolver groups;
   private final NotificationService notifications;
   private final Clock clock;
 
-  ProfileChangeNotices(
+  ProfileFullSync(
+      IndexingJobRepository jobs,
       AssetGrantRepository grants,
       GroupMembershipResolver groups,
       NotificationService notifications,
       Clock clock) {
+    this.jobs = jobs;
     this.grants = grants;
     this.groups = groups;
     this.notifications = notifications;
     this.clock = clock;
   }
 
+  /**
+   * Refuses with 409 {@value #RUN_IN_PROGRESS} while a run of one of {@code libraries} is going.
+   */
+  void requireNoneRunning(Collection<KnowledgeLibrary> libraries) {
+    long running =
+        libraries.stream()
+            .filter(
+                library ->
+                    jobs.existsByStatusAndLibraryIdAndOrganizationId(
+                        JobStatus.RUNNING, library.getId(), library.getOrganizationId()))
+            .count();
+    if (running > 0) {
+      throw new ConflictException(
+          "Für "
+              + running
+              + (running == 1 ? " Bibliothek" : " Bibliotheken")
+              + " auf diesem Zugang läuft gerade eine Indexierung. Die Änderung verwirft ihren"
+              + " Abgleichstand; bitte nach dem Ende des Laufs erneut speichern.",
+          RUN_IN_PROGRESS);
+    }
+  }
+
   /** Notifies the managers of {@code libraries} that {@code label} of {@code profile} changed. */
-  void fullSyncForced(
+  void notifyManagers(
       ConnectionProfile profile, String label, Collection<KnowledgeLibrary> libraries) {
     for (KnowledgeLibrary library : libraries) {
       for (UUID manager : managersOf(library)) {
@@ -57,8 +89,9 @@ class ProfileChangeNotices {
                 + profile.getName()
                 + "“ die Vorgabe „"
                 + label
-                + "“ geändert. Der Abgleichsstand der Bibliothek wurde verworfen; der nächste"
-                + " Lauf liest die Quelle vollständig neu.");
+                + "“ geändert. Der Abgleichstand der Bibliothek wurde verworfen; der nächste"
+                + " Lauf liest die Quelle vollständig neu. Bis dahin bleiben die bisher"
+                + " indexierten Dokumente durchsuchbar.");
       }
     }
   }

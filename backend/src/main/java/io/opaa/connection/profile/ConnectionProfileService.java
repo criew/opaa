@@ -86,7 +86,7 @@ public class ConnectionProfileService {
   private final CredentialsEncryptor encryptor;
   private final AuditEventRecorder audit;
   private final CapabilityService capabilities;
-  private final ProfileChangeNotices notices;
+  private final ProfileFullSync fullSync;
   private final Clock clock;
 
   public ConnectionProfileService(
@@ -101,7 +101,7 @@ public class ConnectionProfileService {
       CredentialsEncryptor encryptor,
       AuditEventRecorder audit,
       CapabilityService capabilities,
-      ProfileChangeNotices notices,
+      ProfileFullSync fullSync,
       Clock clock) {
     this.profiles = profiles;
     this.connections = connections;
@@ -114,7 +114,7 @@ public class ConnectionProfileService {
     this.encryptor = encryptor;
     this.audit = audit;
     this.capabilities = capabilities;
-    this.notices = notices;
+    this.fullSync = fullSync;
     this.clock = clock;
   }
 
@@ -206,6 +206,7 @@ public class ConnectionProfileService {
     if (!confirmed) {
       requireConfirmed(change);
     }
+    requireNoneRunning(change);
     Answers answers = new Answers();
     transitions.check(change.moves(), answers);
     return answers;
@@ -262,6 +263,7 @@ public class ConnectionProfileService {
     if (!confirmed) {
       requireConfirmed(change);
     }
+    requireNoneRunning(change);
     Set<UUID> discarding = change.discarding();
     long affected = change.affected();
     List<ChangeRejection> rejections = transitions.check(change.moves(), answers);
@@ -286,6 +288,7 @@ public class ConnectionProfileService {
           secrets.discard(new LibraryOwned(library.getId()));
         }
       }
+      transitions.keepDefaults(move);
       libraries.save(library);
     }
     if (change.discardsAll()) {
@@ -302,7 +305,7 @@ public class ConnectionProfileService {
       transitions.record(caller, move.library(), transitions.applied(move));
     }
     if (change.fullSyncs() > 0) {
-      notices.fullSyncForced(
+      fullSync.notifyManagers(
           profile,
           String.join(", ", change.fullSyncLabels()),
           change.moves().stream().map(Move::library).toList());
@@ -348,6 +351,13 @@ public class ConnectionProfileService {
           .append(" wird verworfen, der nächste Lauf liest die Quelle vollständig neu. ");
     }
     throw new ConflictException(text.append("Bitte bestätigen.").toString(), CONFIRMATION_REQUIRED);
+  }
+
+  /** Refuses {@code change} with 409 while it resets a library whose run is going. */
+  private void requireNoneRunning(ProfileChange change) {
+    if (change.fullSyncs() > 0) {
+      fullSync.requireNoneRunning(change.moves().stream().map(Move::library).toList());
+    }
   }
 
   /**
@@ -459,7 +469,8 @@ public class ConnectionProfileService {
   public ProfileImpact disconnectAll(CurrentUser caller, UUID id) {
     ConnectionProfile profile = get(id);
     PersonCount ended = personNumbers.totalOf(id);
-    if (signsInItself(profile.getAuthMethod())) {
+    boolean dropsOwnSecret = signsInItself(profile.getAuthMethod()) && profile.isClientSecretSet();
+    if (dropsOwnSecret) {
       profile.dropClientSecret(clock.instant());
       profiles.save(profile);
     }
@@ -470,7 +481,11 @@ public class ConnectionProfileService {
         AuditEventType.CONNECTION_PROFILE_DISCONNECTED,
         profile,
         null,
-        Map.of("connectionsDisconnected", discarded.libraries()));
+        Map.of(
+            "connectionsDisconnected",
+            discarded.libraries(),
+            "clientSecretDeleted",
+            dropsOwnSecret));
     return new ProfileImpact(discarded.libraries(), discarded.libraries(), ended, List.of(), 0);
   }
 
@@ -581,6 +596,12 @@ public class ConnectionProfileService {
               + " Punkt und Bindestrich");
     }
     ConnectorData settings = declaration.defaults().read(values.connectorSettings());
+    String proxy = proxyOf(values.sourceProxy());
+    if ((proxy != null || values.sourceInsecureSsl()) && !reachedOverHttp(serverUrl)) {
+      throw new ValidationException(
+          "Proxy und Zertifikatsprüfung gelten nur für eine Server-Adresse mit http:// oder"
+              + " https://");
+    }
     return new ConnectionProfileValues(
         name,
         serverUrl,
@@ -591,8 +612,13 @@ public class ConnectionProfileService {
         tenant,
         scopes,
         settings,
-        proxyOf(values.sourceProxy()),
+        proxy,
         values.sourceInsecureSsl());
+  }
+
+  /** Whether the normalised {@code serverUrl} is reached over HTTP, where proxy and TLS apply. */
+  private static boolean reachedOverHttp(String serverUrl) {
+    return serverUrl.startsWith("https://") || serverUrl.startsWith("http://");
   }
 
   /** A proxy in {@code host:port} form, {@code null} for none. */

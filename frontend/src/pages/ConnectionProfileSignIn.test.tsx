@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { http, HttpResponse } from 'msw'
 import { server } from '../mocks/server'
 import { mockConnectionProfiles } from '../mocks/connectionProfileFixtures'
-import { renderWithProviders } from '../test/test-utils'
+import { answerConfirm, renderWithProviders } from '../test/test-utils'
 import { useAuthStore } from '../stores/authStore'
 import type { SourceTypeDescriptor } from '../types/api'
 import ConnectionProfileManagementPage from './ConnectionProfileManagementPage'
@@ -119,5 +119,31 @@ describe('ConnectionProfileManagementPage, sign-in of the profile', () => {
         ),
       ).not.toBeInTheDocument(),
     )
+  })
+  it('says before the emergency shutdown that the key of the profile is deleted for good', async () => {
+    const user = userEvent.setup()
+    mockConnectionProfiles[0] = {
+      ...mockConnectionProfiles[0],
+      sourceType: 'GOOGLE_DRIVE',
+      authMethod: 'SERVICE_ACCOUNT_KEY',
+      clientSecretSet: true,
+    }
+    renderWithProviders(<ConnectionProfileManagementPage />)
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'Alle Verbindungen von Zugang Nextcloud intern trennen',
+      }),
+    )
+    const question = await screen.findByRole('dialog', { name: /Alle Verbindungen von/ })
+    expect(question).toHaveTextContent(
+      'Der Dienstkonto-Schlüssel des Zugangs wird unwiderruflich gelöscht',
+    )
+    expect(question).toHaveTextContent(
+      'wenn die Systemverwaltung einen Schlüssel am Zugang neu hinterlegt',
+    )
+    expect(question).toHaveTextContent('Beim Anbieter widerruft OPAA nichts')
+    expect(question).not.toHaveTextContent('wenn ihre Zugangsdaten neu eingetragen sind')
+    await answerConfirm(user, /Alle Verbindungen von/, 'Abbrechen')
   })
 })

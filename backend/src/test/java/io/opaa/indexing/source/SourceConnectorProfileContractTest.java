@@ -1,8 +1,11 @@
 package io.opaa.indexing.source;
 
+import static io.opaa.api.types.ConnectionProfileSupport.FORBIDDEN;
+import static io.opaa.api.types.ConnectionProfileSupport.OPTIONAL;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.opaa.api.types.ConnectionAuthMethod;
 import io.opaa.api.types.ConnectionOwnership;
 import io.opaa.api.types.ConnectionProfileSupport;
 import io.opaa.common.ValidationException;
@@ -15,9 +18,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 /**
  * The profile declaration of every registered connector against ADR-0038, read from the beans the
- * application actually wires: profiles forbidden for uploads and local sources, required exactly
- * with an app registration on the profile, defaults only on settings keys, and a default reading
- * that takes every declared key of its kind and refuses any other.
+ * application actually wires: profiles forbidden exactly for uploads and local sources, required
+ * exactly with an app registration on the profile, defaults only on settings keys, and a default
+ * reading that takes every declared key of its kind and refuses any other.
  */
 @OpaaIntegrationTest
 class SourceConnectorProfileContractTest {
@@ -37,6 +40,8 @@ class SourceConnectorProfileContractTest {
             .assertThat(declaration.support())
             .as(type)
             .isEqualTo(ConnectionProfileSupport.FORBIDDEN);
+      } else {
+        softly.assertThat(declaration.admitsProfiles()).as(type).isTrue();
       }
       boolean registrationOnProfile =
           declaration.signIns().stream().anyMatch(signIn -> signIn.method().requiresProfile());
@@ -55,9 +60,77 @@ class SourceConnectorProfileContractTest {
             .doesNotContain(ConnectionOwnership.BOTH)
             .isNotEmpty();
       }
-      if (declaration.serviceAccountKey() != null) {
-        softly.assertThat(declaration.admitsProfiles()).as(type).isFalse();
-      }
+    }
+    softly.assertAll();
+  }
+
+  /**
+   * The shipped remote connectors admit profiles as optional, owned by the library: web and feed
+   * with or without sign-in, the others with the library's own secret; Confluence leaves the
+   * edition to a profile, S3 region and addressing style, SMB takes an {@code smb://} server, and
+   * the feed names what a requirement leaves open. Google Drive signs in with the profile's service
+   * account key, the imitated account set by the profile alone. Upload and file system admit none.
+   */
+  @Test
+  void theShippedRemoteConnectorsDeclareTheirProfiles() {
+    Map<String, ProfileDeclaration> declared = new java.util.HashMap<>();
+    connectors.forEach(
+        connector ->
+            declared.put(
+                connector.descriptor().type().key(), connector.descriptor().profileDeclaration()));
+    Map<String, List<String>> defaults =
+        Map.of(
+            "HTTP_DIRECTORY", List.of(),
+            "RSS_FEED", List.of(),
+            "CONFLUENCE", List.of("edition"),
+            "NEXTCLOUD", List.of(),
+            "S3", List.of("region", "pathStyle"),
+            "SMB", List.of());
+    SoftAssertions softly = new SoftAssertions();
+    defaults.forEach(
+        (type, keys) -> {
+          ProfileDeclaration declaration = declared.get(type);
+          softly.assertThat(declaration.support()).as(type).isEqualTo(OPTIONAL);
+          softly
+              .assertThat(declaration.signIns())
+              .as(type)
+              .allSatisfy(
+                  signIn ->
+                      assertThat(signIn.owners()).containsExactly(ConnectionOwnership.LIBRARY));
+          softly
+              .assertThat(declaration.signIns().stream().map(SignIn::method).toList())
+              .as(type)
+              .isEqualTo(
+                  type.equals("HTTP_DIRECTORY") || type.equals("RSS_FEED")
+                      ? List.of(ConnectionAuthMethod.NONE, ConnectionAuthMethod.PERSONAL_SECRET)
+                      : List.of(ConnectionAuthMethod.PERSONAL_SECRET));
+          softly
+              .assertThat(declaration.defaults().keys().stream().map(DefaultKey::key).toList())
+              .as(type)
+              .isEqualTo(keys);
+          softly
+              .assertThat(declaration.address().schemes())
+              .as(type)
+              .isEqualTo(type.equals("SMB") ? List.of("smb") : List.of("https", "http"));
+          softly
+              .assertThat(declaration.requirementGap() != null)
+              .as(type)
+              .isEqualTo(type.equals("RSS_FEED"));
+        });
+    ProfileDeclaration drive = declared.get("GOOGLE_DRIVE");
+    softly.assertThat(drive.support()).as("GOOGLE_DRIVE").isEqualTo(OPTIONAL);
+    softly
+        .assertThat(drive.signIns().stream().map(SignIn::method).toList())
+        .as("GOOGLE_DRIVE")
+        .isEqualTo(List.of(ConnectionAuthMethod.SERVICE_ACCOUNT_KEY));
+    softly
+        .assertThat(drive.defaults().keys())
+        .as("GOOGLE_DRIVE")
+        .singleElement()
+        .satisfies(key -> assertThat(key.key() + key.profileOnly()).isEqualTo("subjecttrue"));
+    softly.assertThat(drive.address().fixed()).as("GOOGLE_DRIVE").isNotNull();
+    for (String type : List.of("UPLOAD", "FILESYSTEM")) {
+      softly.assertThat(declared.get(type).support()).as(type).isEqualTo(FORBIDDEN);
     }
     softly.assertAll();
   }

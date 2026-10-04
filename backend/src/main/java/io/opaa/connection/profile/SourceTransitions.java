@@ -12,6 +12,7 @@ import io.opaa.connection.profile.ChangeRejection.Category;
 import io.opaa.connection.token.ConnectionSecrets;
 import io.opaa.connection.token.SecretOwner;
 import io.opaa.connection.token.SecretOwner.LibraryOwned;
+import io.opaa.indexing.source.ConnectorData;
 import io.opaa.indexing.source.Secret;
 import io.opaa.indexing.source.SourceChangeGate;
 import io.opaa.indexing.source.SourceChangeGate.Answers;
@@ -106,7 +107,8 @@ public class SourceTransitions {
       boolean holdsSecret) {
     SourceConnector connector = connectors.connector(library.getSourceType());
     SourceSettings before = effective.framed(library, from, library.getSourceUrl(), null);
-    SourceSettings after = effective.framed(library, to, address, null);
+    ConnectorData kept = effective.keptDefaults(from, to);
+    SourceSettings after = effective.framed(library, to, address, null, kept);
     boolean takesSecret = to.map(SourceTransitions::takesSecret).orElse(true);
     boolean sameTarget =
         SecretTarget.of(connector, before).admits(SecretTarget.of(connector, after));
@@ -118,7 +120,15 @@ public class SourceTransitions {
     }
     // a frame without the library's own secret leaves an unused one to adoptFrame, not to the move
     boolean discards = holdsSecret && (discardSecret || takesSecret && !sameTarget);
-    return new Move(library, before, after, discards, takesSecret);
+    return new Move(library, before, after, discards, takesSecret, kept);
+  }
+
+  /**
+   * Writes what {@code move} keeps of the defaults its old frame set and its new one does not into
+   * the library's own settings - part of writing the move, before {@link #applied}.
+   */
+  public void keepDefaults(Move move) {
+    effective.keepDefaults(move.library(), move.keptDefaults());
   }
 
   /**
@@ -128,7 +138,7 @@ public class SourceTransitions {
    */
   public Move release(KnowledgeLibrary library, Optional<ConnectionProfile> from) {
     SourceSettings before = effective.framed(library, from, library.getSourceUrl(), null);
-    return new Move(library, before, before, false, true);
+    return new Move(library, before, before, false, true, null);
   }
 
   /**
@@ -222,13 +232,16 @@ public class SourceTransitions {
    *
    * @param discardsSecret whether the secret its column holds is to be discarded
    * @param takesSecret whether the frame after signs in with the library's own secret
+   * @param keptDefaults the defaults of the frame before that the frame after no longer sets, which
+   *     the library keeps as its own; {@code null} for none
    */
   public record Move(
       KnowledgeLibrary library,
       SourceSettings before,
       SourceSettings after,
       boolean discardsSecret,
-      boolean takesSecret) {
+      boolean takesSecret,
+      ConnectorData keptDefaults) {
 
     /** Whether address, transport or connector settings change; the secret does not count. */
     public boolean changesConfiguration() {

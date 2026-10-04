@@ -77,7 +77,7 @@ class ProfileChangeTransitionTest {
           mock(CredentialsEncryptor.class),
           wiring.audit,
           mock(CapabilityService.class),
-          mock(ProfileChangeNotices.class),
+          mock(ProfileFullSync.class),
           Clock.fixed(NOW, ZoneOffset.UTC));
 
   private ConnectionProfile profile;
@@ -243,6 +243,39 @@ class ProfileChangeTransitionTest {
         .singleElement()
         .satisfies(change -> assertThat(change.addressChanged()).isFalse());
     assertThat(sourceUpdates().get(library.getId())).containsExactly("sourceProxy");
+  }
+
+  /**
+   * Regression guard: a default the profile drops was never stored by its libraries; each keeps the
+   * value as its own, so the effective configuration - and the connector's view - stays the same.
+   */
+  @Test
+  void aDroppedDefaultBecomesTheOwnValueOfEveryLibrary() {
+    KnowledgeLibrary first = library("/a", "Wetter");
+    KnowledgeLibrary second = library("/b", "Verkehr");
+    ConnectionProfileValues withoutDefaults =
+        new ConnectionProfileValues(
+            "Zugang Probe",
+            SERVER,
+            ConnectionAuthMethod.PERSONAL_SECRET,
+            ConnectionOwnership.LIBRARY,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            false);
+
+    service.update(ADMIN, profile.getId(), withoutDefaults, null, false);
+
+    for (KnowledgeLibrary library : List.of(first, second)) {
+      assertThat(ConnectorData.storedIn(library).asMap())
+          .containsEntry("edition", "CLOUD")
+          .containsKey("topic");
+    }
+    assertThat(probe.changeChecks()).as("the effective configuration stays").isEmpty();
+    assertThat(probe.sourceChanges()).isEmpty();
   }
 
   @Test

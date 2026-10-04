@@ -183,13 +183,15 @@ sind, und verlangt eine Bestätigung. Danach verwirft es alle Token und Geheimni
 |---|---|
 | Server-Adresse | alle Verbindungen verworfen |
 | neue Client-ID, neuer Mandant, geänderte Scopes | neue Zustimmung aller Verbindungen |
-| imitiertes Konto (Dienstkonto-Schlüssel) | Abgleichsstand aller Bibliotheken verworfen, ihr nächster Lauf ist ein Vollabgleich; vorher Bestätigung mit der Zahl der Bibliotheken, danach Benachrichtigung ihrer Verwaltenden; der Schlüssel bleibt |
+| imitiertes Konto (Dienstkonto-Schlüssel) | Abgleichsstand aller Bibliotheken verworfen, ihr nächster Lauf ist ein Vollabgleich; vorher Bestätigung mit der Zahl der Bibliotheken, danach Benachrichtigung ihrer Verwaltenden; der Schlüssel bleibt. Abgelehnt, solange eine der Bibliotheken läuft |
 | neuer Dienstkonto-Schlüssel eines anderen Kontos | wie eine neue Client-ID (die Client-ID ist die `client_email` des Schlüssels) |
 | neues Client-Secret zur selben Client-ID | keine; Verbindungen bleiben, eine Ablehnung des Anbieters ist aufgehoben |
 
 **Notabschaltung „Alle Verbindungen trennen“** je Profil: löscht sofort alle Token und Geheimnisse
 darauf, ohne das Profil zu löschen. Meldet sich das Profil selbst an (Client-Credentials,
-Dienstkonto-Schlüssel), gehört dazu sein Client-Secret bzw. Schlüssel.
+Dienstkonto-Schlüssel), gehört dazu sein Client-Secret bzw. Schlüssel; die Rückfrage sagt, dass er
+unwiderruflich gelöscht wird und nur die Systemverwaltung ihn neu hinterlegt, und das
+Revisionsprotokoll vermerkt die Löschung. Beim Anbieter widerruft OPAA ihn nicht.
 
 **Löschen eines Profils** trennt alle Verbindungen. Bibliotheken bleiben mit Bestand und dem Hinweis
 „Zugang entfernt“ stehen, ohne Läufe, bis sie einem anderen Profil desselben Konnektors zugeordnet
@@ -209,6 +211,15 @@ Jeder Konnektor meldet, wie er zu Profilen steht:
 | **verboten** | kein entferntes Ziel | Upload (keine Quelle), Dateisystem (lokale Serverpfade, begrenzt durch die Pfad-Allowlist des Betriebs) |
 | **optional** | Profil oder freie Adresse | Webverzeichnis, RSS, Confluence, S3, Nextcloud, SMB (Server-Adresse `smb://…`), Google Drive |
 | **Pflicht** | nur mit Profil | Konnektoren mit OAuth oder Client-Credentials, etwa Dropbox, Exchange |
+
+Stand der Umsetzung (#2219): Webverzeichnis, RSS, Confluence, S3, Nextcloud und SMB melden
+„optional“, jeweils mit dem persönlichen Geheimnis der Bibliothek, Webverzeichnis und RSS zusätzlich
+ohne Anmeldung. Vorgaben am Profil: Confluence `edition`, S3 `region` und `pathStyle`. Ein
+SMB-Profil hat eine `smb://`-Adresse und weder Proxy noch ausgesetzte Zertifikatsprüfung; beides
+gibt es nur bei einer `http(s)`-Adresse. Google Drive meldet „optional“ mit dem Dienstkonto-Schlüssel
+am Profil und dem imitierten Konto als Vorgabe nur des Profils; die Besitzart Person folgt mit
+#2167. Die Registry prüft die Regel in beiden Richtungen: „verboten“ genau ohne entferntes Ziel oder
+bei Uploads.
 
 **Google Drive** ([ADR-0040](../decisions/0040-google-drive-konnektor.md)) meldet sich mit einem
 Dienstkonto-Schlüssel an. Der Schlüssel enthält seine App-Registrierung selbst und kann deshalb

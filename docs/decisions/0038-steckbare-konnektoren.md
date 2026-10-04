@@ -269,9 +269,9 @@ Modul connections.
   Bibliothekseinstellungen (`readSettings`) gilt für Vorgaben nicht mehr.
 - **Registry beim Start:** Profile verboten bei `uploads` oder ohne `remote`; Pflicht genau dann,
   wenn OAuth oder Client-Credentials angeboten werden; jeder Vorgaben-Schlüssel steht in
-  `SourceConnector#settingsKeys`; ein Konnektor mit Dienstkonto-Schlüssel lässt noch kein Profil
-  zu. Die Umkehrung „entferntes Ziel heißt nicht verboten“ prüft die Registry erst, wenn die
-  mitgelieferten Konnektoren Profile zulassen.
+  `SourceConnector#settingsKeys`. Seit die mitgelieferten entfernten Konnektoren Profile zulassen
+  (#2219), prüft die Registry auch die Umkehrung: Ein Konnektor mit entferntem Ziel und ohne
+  Uploads muss Profile zulassen, ohne Ausnahme (Google Drive seit #2220, Nachtrag unten).
 - `GET /source-types` meldet `signIns`, `profileDefaults` und `serverAddress`; die Auswahl der
   Profile (`GET /connection-profiles`) meldet die Vorgaben eines Profils als `connectorDefaults`.
 

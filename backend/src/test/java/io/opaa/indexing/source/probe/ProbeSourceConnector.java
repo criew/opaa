@@ -1,7 +1,12 @@
 package io.opaa.indexing.source.probe;
 
+import io.opaa.api.types.ConnectionAuthMethod;
+import io.opaa.api.types.ConnectionOwnership;
+import io.opaa.api.types.ConnectionProfileSupport;
 import io.opaa.common.ValidationException;
 import io.opaa.indexing.source.ConnectorData;
+import io.opaa.indexing.source.ProfileDeclaration;
+import io.opaa.indexing.source.SignIn;
 import io.opaa.indexing.source.SourceConnectionTestResult;
 import io.opaa.indexing.source.SourceConnector;
 import io.opaa.indexing.source.SourceConnectorDescriptor;
@@ -25,7 +30,11 @@ public class ProbeSourceConnector implements SourceConnector {
 
   @Override
   public SourceConnectorDescriptor descriptor() {
-    return new SourceConnectorDescriptor(TYPE, "Testquelle", false, true, false, false, null, null);
+    return new SourceConnectorDescriptor(TYPE, "Testquelle", false, true, false, false, null, null)
+        .withProfiles(
+            ProfileDeclaration.of(
+                ConnectionProfileSupport.OPTIONAL,
+                SignIn.of(ConnectionAuthMethod.NONE, ConnectionOwnership.LIBRARY)));
   }
 
   @Override

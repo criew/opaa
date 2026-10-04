@@ -221,8 +221,10 @@ paths:
           $ref: "#/components/responses/NotFound"
         "409":
           description: >
-            The name is taken, or the change would discard secrets of existing connections and
-            confirmDiscard is not set (code CONNECTION_PROFILE_CONFIRMATION_REQUIRED).
+            The name is taken, or the change would discard secrets of existing connections or
+            the run state of their libraries and confirmDiscard is not set (code
+            CONNECTION_PROFILE_CONFIRMATION_REQUIRED), or it would discard the run state of a
+            library while it runs (code CONNECTION_PROFILE_RUN_IN_PROGRESS).
           content:
             application/json:
               schema:
@@ -315,7 +317,9 @@ paths:
       summary: Emergency shutdown "Alle Verbindungen trennen" (system admin only)
       description: >
         Discards every secret held under the profile at once and keeps the profile. Its libraries
-        stop running until their secret is entered again.
+        stop running until their secret is entered again. For CLIENT_CREDENTIALS and
+        SERVICE_ACCOUNT_KEY that is the profile's own client secret or key, deleted for good and
+        noted in the audit entry; it is not revoked at the provider.
       parameters:
         - name: profileId
           in: path
@@ -879,7 +883,8 @@ components:
           nullable: true
           description: >
             Proxy server in host:port format every library on the profile is reached through;
-            absent for none. A library on the profile cannot set its own.
+            absent for none. A library on the profile cannot set its own. Only for an http or
+            https server address; with any other (smb) it is a 400.
           example: proxy.example.org:8080
         sourceInsecureSsl:
           type: boolean
@@ -887,7 +892,8 @@ components:
           default: false
           description: >
             Skip the certificate check for every library on the profile. A library on the profile
-            cannot set its own.
+            cannot set its own. Only for an http or https server address; with any other (smb)
+            true is a 400.
         fulfillsRequestId:
           type: string
           format: uuid
@@ -962,7 +968,8 @@ components:
           nullable: true
           description: >
             Proxy server in host:port format every library on the profile is reached through;
-            absent for none. A library on the profile cannot set its own.
+            absent for none. A library on the profile cannot set its own. Only for an http or
+            https server address; with any other (smb) it is a 400.
           example: proxy.example.org:8080
         sourceInsecureSsl:
           type: boolean
@@ -970,7 +977,8 @@ components:
           default: false
           description: >
             Skip the certificate check for every library on the profile. A library on the profile
-            cannot set its own.
+            cannot set its own. Only for an http or https server address; with any other (smb)
+            true is a 400.
         confirmDiscard:
           type: boolean
           description: >

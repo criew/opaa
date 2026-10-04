@@ -118,11 +118,23 @@ Schlüssel noch imitiertes Konto, nur ihre Bereiche.
 - **Imitiertes Konto ändern:** Vor dem Speichern nennt OPAA die Zahl der Bibliotheken auf dem
   Zugang und verlangt eine Bestätigung. Danach verwirft es ihren Abgleichsstand, der nächste Lauf
   jeder Bibliothek ist ein Vollabgleich, und ihre Verwaltenden erhalten eine Benachrichtigung.
+  Dokumente des bisherigen Kontos bleiben bis zu diesem Vollabgleich durchsuchbar. Läuft gerade
+  eine Bibliothek des Zugangs, lehnt OPAA die Änderung ab; nach dem Ende des Laufs erneut speichern.
+- **Imitiertes Konto entfernen:** Danach imitiert keine Bibliothek des Zugangs mehr ein Konto; keine
+  übernimmt das bisherige als eigenes.
 - **Neuer Schlüssel desselben Dienstkontos:** Die Bibliotheken laufen weiter. Ein Schlüssel eines
   anderen Dienstkontos ändert die Registrierung; auch das bestätigt die Systemverwaltung vorher.
 - **Abgelehnter Schlüssel:** Weist Google den Schlüssel ab, zeigen alle Bibliotheken des Zugangs
   „Abgelaufen" mit der Systemverwaltung als zuständig, und kein Lauf fragt Google erneut. Ein neuer
-  Schlüssel oder „Anmeldung testen" am Zugang hebt das auf.
+  Schlüssel oder „Anmeldung testen" am Zugang hebt das auf. Eine falsch gehende Uhr des Servers
+  meldet Google wie einen ungültigen Schlüssel; nennt Google die Zeitangaben als Grund, sperrt OPAA
+  den Zugang nicht und verweist auf die Uhrzeit, sonst nennt die Meldung beide Ursachen.
+- **Fehlende Delegation oder unbekanntes imitiertes Konto** unter einem Zugang behebt die
+  Systemverwaltung (am Zugang bzw. in der Google-Admin-Konsole), nicht die Verwaltenden der
+  Bibliothek; die Meldung des Laufs sagt das.
+- **„Alle Verbindungen trennen"** löscht den Schlüssel am Zugang unwiderruflich; nur die
+  Systemverwaltung kann ihn neu hinterlegen. Bei Google bleibt er gültig: Widerrufen wird er in der
+  Cloud Console beim Dienstkonto („Schlüssel" → löschen).
 - **Profilpflicht:** Die Systemverwaltung kann für Google Drive einschalten, dass Bibliotheken nur
   noch über Zugänge entstehen ([Indexierung](indexierung.md), Abschnitt „Zugänge").
 

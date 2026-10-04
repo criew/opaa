@@ -192,6 +192,29 @@ class SourceConnectorRegistryTest {
         .hasMessageContaining("UPLOAD fills its library by uploads or reads nothing remote");
   }
 
+  /**
+   * ADR-0038 in the other direction: a connector reading a remote source admits profiles, also one
+   * signing in with a service account key.
+   */
+  @Test
+  void aRemoteConnectorWithoutProfilesFailsStartup() {
+    List<SourceConnector> withoutProfiles =
+        replacingRss(plain(SourceConnectorDescriptor.remoteRun(SourceTypes.RSS_FEED, "RSS-Feed")));
+    List<SourceConnector> signingWithAKey =
+        replacingRss(
+            remoteRss(
+                ProfileDeclaration.forbiddenWithServiceAccountKey(
+                    new ServiceAccountKeyAuth(
+                        URI.create("https://oauth.example.org/token"), "scope"))));
+
+    assertThatThrownBy(() -> new SourceConnectorRegistry(withoutProfiles))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("RSS_FEED reads a remote source and must admit profiles");
+    assertThatThrownBy(() -> new SourceConnectorRegistry(signingWithAKey))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("RSS_FEED reads a remote source and must admit profiles");
+  }
+
   @Test
   void anAppRegistrationOnTheProfileRequiresProfiles() {
     List<SourceConnector> optionalOAuth =
@@ -348,17 +371,24 @@ class SourceConnectorRegistryTest {
     connectors.add(
         plain(SourceConnectorDescriptor.localRun(SourceTypes.FILESYSTEM, "Dateisystem")));
     connectors.add(
-        plain(SourceConnectorDescriptor.remoteRun(SourceTypes.HTTP_DIRECTORY, "Webverzeichnis")));
-    connectors.add(plain(SourceConnectorDescriptor.remoteRun(SourceTypes.RSS_FEED, "RSS-Feed")));
+        plain(
+            SourceConnectorDescriptor.remoteRun(SourceTypes.HTTP_DIRECTORY, "Webverzeichnis")
+                .withProfiles(optionalWithoutSignInDetails())));
+    connectors.add(
+        plain(
+            SourceConnectorDescriptor.remoteRun(SourceTypes.RSS_FEED, "RSS-Feed")
+                .withProfiles(optionalWithoutSignInDetails())));
     connectors.add(
         new PushBrowsingStub(
             SourceConnectorDescriptor.remoteRun(SourceTypes.CONFLUENCE, "Confluence")
-                .withPushIntake(INTAKE)));
+                .withPushIntake(INTAKE)
+                .withProfiles(optionalWithoutSignInDetails())));
     connectors.add(
         new PushBrowsingStub(
             SourceConnectorDescriptor.remoteRun(SourceTypes.S3, "S3")
                 .withoutDeepLink()
-                .withPushIntake(INTAKE)));
+                .withPushIntake(INTAKE)
+                .withProfiles(optionalWithoutSignInDetails())));
     return connectors;
   }
 

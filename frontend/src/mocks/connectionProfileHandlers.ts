@@ -38,15 +38,16 @@ interface MockConnectorType {
   profileSupport: ConnectionProfileSupport
 }
 
-// No delivered connector admits profiles yet; Nextcloud stands in with "optional" so the profile
-// choice and "Nur über Zugänge" can be tried against the mocks.
+// As the delivered connectors declare it: every remote one admits profiles but Google Drive.
 const CONNECTOR_TYPES: MockConnectorType[] = [
-  { sourceType: 'CONFLUENCE', displayName: 'Confluence', profileSupport: 'FORBIDDEN' },
+  { sourceType: 'CONFLUENCE', displayName: 'Confluence', profileSupport: 'OPTIONAL' },
   { sourceType: 'FILESYSTEM', displayName: 'Dateisystem', profileSupport: 'FORBIDDEN' },
-  { sourceType: 'HTTP_DIRECTORY', displayName: 'Webverzeichnis', profileSupport: 'FORBIDDEN' },
+  { sourceType: 'GOOGLE_DRIVE', displayName: 'Google Drive', profileSupport: 'OPTIONAL' },
+  { sourceType: 'HTTP_DIRECTORY', displayName: 'Webverzeichnis', profileSupport: 'OPTIONAL' },
   { sourceType: 'NEXTCLOUD', displayName: 'Nextcloud', profileSupport: 'OPTIONAL' },
-  { sourceType: 'RSS_FEED', displayName: 'RSS-Feed', profileSupport: 'FORBIDDEN' },
-  { sourceType: 'S3', displayName: 'S3-Objektspeicher', profileSupport: 'FORBIDDEN' },
+  { sourceType: 'RSS_FEED', displayName: 'RSS-Feed', profileSupport: 'OPTIONAL' },
+  { sourceType: 'S3', displayName: 'S3-Objektspeicher', profileSupport: 'OPTIONAL' },
+  { sourceType: 'SMB', displayName: 'Windows-Dateifreigabe (SMB)', profileSupport: 'OPTIONAL' },
 ]
 
 function typeState(type: MockConnectorType): ConnectorTypeStateResponse {
@@ -96,7 +97,7 @@ function requirementOf(type: MockConnectorType): ConnectorProfileRequirementResp
         : [],
     coverageNotice:
       type.sourceType === 'RSS_FEED'
-        ? 'Die Pflicht legt nur die Feed-Adresse fest. Detailseiten auf anderen Servern werden weiter abgerufen, aber ohne Zugangsdaten.'
+        ? 'Die Pflicht legt nur die Feed-Adresse fest. Die Detailseiten eines Feeds stammen aus seinen Einträgen und können auf fremden Servern liegen; sie werden weiter abgerufen, aber ohne Zugangsdaten.'
         : null,
   }
 }
@@ -151,8 +152,8 @@ export const connectionProfileHandlers = [
       sourceProxy: body.sourceProxy ?? null,
       sourceInsecureSsl: body.sourceInsecureSsl ?? false,
       connectionCount: 0,
-      connectedAccountCount: { count: 0, fewerThan: null },
-      expiredConnectionCount: { count: 0, fewerThan: null },
+      connectedAccountCount: { count: null, fewerThan: 5 },
+      expiredConnectionCount: { count: null, fewerThan: 5 },
       locked: false,
       createdAt: now,
       updatedAt: now,

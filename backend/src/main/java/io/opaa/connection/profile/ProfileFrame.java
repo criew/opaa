@@ -8,6 +8,7 @@ import io.opaa.indexing.source.SourceSettings;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 
 /**
@@ -37,7 +38,10 @@ final class ProfileFrame {
     return profile;
   }
 
-  /** Proxy and certificate check for the profile's server address, and for no other target. */
+  /**
+   * Proxy and certificate check the profile sets in place of its libraries' own; where they apply
+   * beyond the server address, the connector decides as for an own address.
+   */
   TransportRules serverTransport() {
     return new TransportRules(profile.getSourceProxy(), profile.isSourceInsecureSsl());
   }
@@ -140,6 +144,20 @@ final class ProfileFrame {
         false,
         ownSettings(validated.connectorSettings()),
         takesSecret() ? validated.credentialsKind() : null);
+  }
+
+  /**
+   * The values this frame binds that {@code next} - empty for none - no longer binds, so a library
+   * moving from this frame to {@code next} keeps them as its own; {@code null} for none.
+   */
+  ConnectorData droppedBy(Optional<ProfileFrame> next) {
+    Map<String, Object> dropped = new LinkedHashMap<>();
+    for (String key : bound) {
+      if (defaults.containsKey(key) && next.map(frame -> !frame.bound.contains(key)).orElse(true)) {
+        dropped.put(key, defaults.get(key));
+      }
+    }
+    return dropped.isEmpty() ? null : ConnectorData.of(dropped);
   }
 
   /** {@code settings} without the bound keys; {@code null} when nothing is left. */

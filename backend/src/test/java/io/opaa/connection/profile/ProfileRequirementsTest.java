@@ -44,15 +44,18 @@ class ProfileRequirementsTest {
   void onlyADeclaredOptionalTypeBecomesRequiredOnceSwitched() {
     switchOn(ProfileProbeSourceConnector.TYPE);
     switchOn(SourceTypes.RSS_FEED);
+    switchOn(SourceTypes.FILESYSTEM);
 
     assertThat(requirements.effectiveProfileSupport(ProfileProbeSourceConnector.TYPE))
         .isEqualTo(ConnectionProfileSupport.REQUIRED);
     assertThat(requirements.effectiveProfileSupport(SourceTypes.RSS_FEED))
+        .isEqualTo(ConnectionProfileSupport.REQUIRED);
+    assertThat(requirements.effectiveProfileSupport(SourceTypes.FILESYSTEM))
         .isEqualTo(ConnectionProfileSupport.FORBIDDEN);
     assertThat(requirements.effectiveProfileSupport(REQUIRING))
         .isEqualTo(ConnectionProfileSupport.REQUIRED);
     assertThat(requirements.effectiveProfileSupport(SourceTypes.S3))
-        .isEqualTo(ConnectionProfileSupport.FORBIDDEN);
+        .isEqualTo(ConnectionProfileSupport.OPTIONAL);
     assertThat(requirements.profileRequired(REQUIRING)).isTrue();
   }
 
@@ -97,7 +100,7 @@ class ProfileRequirementsTest {
     assertThatThrownBy(() -> service.require(caller, REQUIRING, true, OwnAddressStock.RUNS))
         .isInstanceOf(ValidationException.class)
         .hasMessageContaining("ohnehin nur über Zugänge");
-    assertThatThrownBy(() -> service.require(caller, SourceTypes.RSS_FEED, false, null))
+    assertThatThrownBy(() -> service.require(caller, SourceTypes.FILESYSTEM, false, null))
         .isInstanceOf(ValidationException.class)
         .hasMessageContaining("nicht über Zugänge verbunden");
     verify(policies, never()).save(any());

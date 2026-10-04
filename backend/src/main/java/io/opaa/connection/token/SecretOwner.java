@@ -15,21 +15,21 @@ public sealed interface SecretOwner
 
   /**
    * The owner of the secret {@code library} is reached with through the profile {@code profileId}
-   * ({@code null} for its own address) signing in by {@code method}: the profile itself for its own
-   * sign-in (client credentials, service account key), the owner's connected account for an
-   * owner-only (private) library, else the library itself; {@code NONE} names whose secret is
-   * absent.
+   * ({@code null} for its own address) signing in by {@code method}: the owner's connected account
+   * for an owner-only (private) library whatever the method - it never gets a profile's token -,
+   * else the profile itself for its own sign-in (client credentials, service account key), else the
+   * library itself; {@code NONE} names whose secret is absent.
    */
   static SecretOwner of(UUID profileId, ConnectionAuthMethod method, KnowledgeLibrary library) {
     if (profileId == null || method == null) {
       return new LibraryOwned(library.getId());
     }
+    if (library.isOwnerOnly()) {
+      return new PersonOwned(profileId, library.getOwnerUserId());
+    }
     return switch (method) {
       case CLIENT_CREDENTIALS, SERVICE_ACCOUNT_KEY -> new ProfileOwned(profileId);
-      case NONE, PERSONAL_SECRET, OAUTH ->
-          library.isOwnerOnly()
-              ? new PersonOwned(profileId, library.getOwnerUserId())
-              : new LibraryOwned(library.getId());
+      case NONE, PERSONAL_SECRET, OAUTH -> new LibraryOwned(library.getId());
     };
   }
 

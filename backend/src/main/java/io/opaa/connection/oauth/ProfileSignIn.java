@@ -36,6 +36,10 @@ public class ProfileSignIn implements SecretIssuer {
 
   static final Duration RENEWAL_MARGIN = Duration.ofMinutes(5);
 
+  static final String ADMINISTRATION_ACTS =
+      " Zuständig ist die Systemverwaltung: am Zugang bzw. beim Anbieter (etwa in der"
+          + " Google-Admin-Konsole).";
+
   private final ProfileRegistrations registrations;
   private final ServiceAccountTokens serviceAccountTokens;
   private final ClientCredentialsGrant grant;
@@ -71,6 +75,9 @@ public class ProfileSignIn implements SecretIssuer {
       held.remove(profileId);
       registrations.rejected(profileId);
       throw new SecretRefusedException(Reason.EXPIRED);
+    } catch (SourceCredentialsException e) {
+      // the registration, its imitated account and its route are the system administration's
+      throw new SourceCredentialsException(e.getMessage() + ADMINISTRATION_ACTS);
     }
   }
 

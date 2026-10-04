@@ -3,10 +3,16 @@ package io.opaa.indexing.source.confluence;
 import static io.opaa.indexing.source.ConnectorChecks.blankToNull;
 import static io.opaa.indexing.source.ConnectorChecks.unreachable;
 
+import io.opaa.api.types.ConnectionOwnership;
+import io.opaa.api.types.ConnectionProfileSupport;
+import io.opaa.api.types.PersonalSecretForm;
 import io.opaa.common.ValidationException;
 import io.opaa.indexing.source.ConnectorData;
+import io.opaa.indexing.source.DefaultKey;
+import io.opaa.indexing.source.ProfileDeclaration;
 import io.opaa.indexing.source.PushIntake;
 import io.opaa.indexing.source.PushIntakeHandler;
+import io.opaa.indexing.source.SignIn;
 import io.opaa.indexing.source.SourceBrowser;
 import io.opaa.indexing.source.SourceConnectionTestResult;
 import io.opaa.indexing.source.SourceConnector;
@@ -66,7 +72,18 @@ public class ConfluenceSourceConnector
     this.descriptor =
         SourceConnectorDescriptor.remoteRun(TYPE, "Confluence")
             .withPushIntake(new PushIntake("confluenceWebhookSecret"))
-            .withFullSyncInterval(properties.fullSyncInterval());
+            .withFullSyncInterval(properties.fullSyncInterval())
+            .withProfiles(
+                ProfileDeclaration.of(
+                        ConnectionProfileSupport.OPTIONAL,
+                        SignIn.personalSecret(
+                            PersonalSecretForm.TOKEN, ConnectionOwnership.LIBRARY))
+                    .withDefaults(
+                        DefaultKey.choice(
+                            ConfluenceSourceSettings.EDITION,
+                            "Edition",
+                            ConfluenceEdition.CLOUD.name(),
+                            ConfluenceEdition.DATA_CENTER.name())));
   }
 
   @Override
@@ -107,6 +124,11 @@ public class ConfluenceSourceConnector
     return requested;
   }
 
+  /**
+   * The edition must be the instance's (Entscheidung 2): after the static checks one
+   * credential-free probe through the effective proxy and TLS switch, so the invariant never
+   * depends on what the client sent.
+   */
   @Override
   public SourceSettings validate(SourceSettings requested) {
     ConfluenceSourceSettings own = ConfluenceSourceSettings.read(requested.connectorSettings());
@@ -116,6 +138,8 @@ public class ConfluenceSourceConnector
     if (spaces.isEmpty()) {
       throw new ValidationException(SPACES_REQUIRED);
     }
+    connectionService.requireEdition(
+        normalizedUrl, requested.sourceProxy(), requested.sourceInsecureSsl(), own.edition());
     return requested
         .withSourceUrl(normalizedUrl)
         .withConnectorSettings(
@@ -137,7 +161,11 @@ public class ConfluenceSourceConnector
         ConfluenceSourceSettings.stored(stored.connectorSettings()).edition();
     if (own.edition() != null && own.edition() != storedEdition) {
       throw new ValidationException(
-          "sourceSettings.edition kann nach dem Anlegen der Bibliothek nicht mehr geändert werden");
+          "sourceSettings.edition kann nach dem Anlegen der Bibliothek nicht mehr geändert werden"
+              + (storedEdition == null
+                  ? ""
+                  : "; sie bleibt bei Confluence "
+                      + ConfluenceConnectionService.label(storedEdition)));
     }
     List<ConfluenceSpaceSelection> spaces =
         own.spaces() == null ? null : validateSpaces(own.spaces());
@@ -235,19 +263,9 @@ public class ConfluenceSourceConnector
     return days;
   }
 
-  /**
-   * The stored edition must be the instance's (Entscheidung 2): one credential-free probe at
-   * creation, so the invariant never depends on what the client sent.
-   */
   @Override
   public void configureNew(KnowledgeLibrary library, SourceSettings validated) {
-    ConfluenceSourceSettings own = ConfluenceSourceSettings.read(validated.connectorSettings());
-    connectionService.requireEdition(
-        validated.sourceUrl(),
-        validated.sourceProxy(),
-        validated.sourceInsecureSsl(),
-        own.edition());
-    store(library, own);
+    store(library, ConfluenceSourceSettings.read(validated.connectorSettings()));
   }
 
   @Override

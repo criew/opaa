@@ -176,6 +176,11 @@ export default function ConnectionProfileFormDialog({
   const defaultKeys = descriptor?.profileDefaults ?? []
   const fixedAddress = descriptor?.serverAddress.fixed ?? null
   const schemes = descriptor?.serverAddress.schemes ?? ['https', 'http']
+  // proxy and certificate check reach only an http(s) server; another scheme (smb) takes neither
+  const takesTransport =
+    fixedAddress !== null
+      ? /^https?:/i.test(fixedAddress)
+      : schemes.some((scheme) => scheme === 'http' || scheme === 'https')
   const usesRegistration = method !== null && WITH_REGISTRATION.includes(method)
   const usesScopes = method !== null && WITH_SCOPES.includes(method)
   // a service account key names its client id itself
@@ -213,8 +218,8 @@ export default function ConnectionProfileFormDialog({
       scopes: usesScopes ? blankToNull(draft.scopes) : null,
       clientSecret: usesRegistration && secret.trim() !== '' ? secret.trim() : undefined,
       connectorSettings: connectorDefaults(defaultKeys, draft.defaults),
-      sourceProxy: blankToNull(draft.sourceProxy),
-      sourceInsecureSsl: draft.sourceInsecureSsl,
+      sourceProxy: takesTransport ? blankToNull(draft.sourceProxy) : null,
+      sourceInsecureSsl: takesTransport && draft.sourceInsecureSsl,
     }
   }
 
@@ -471,25 +476,31 @@ export default function ConnectionProfileFormDialog({
                   helperText="Durch Leerzeichen getrennt, z. B. „Files.Read offline_access“."
                 />
               )}
-              <TextField
-                label="Proxy (optional)"
-                size="small"
-                value={draft.sourceProxy}
-                onChange={(e) => setDraft({ ...draft, sourceProxy: e.target.value })}
-                placeholder="proxy.example.com:8080"
-                autoComplete="off"
-                helperText="Gilt für jede Bibliothek auf diesem Zugang; die Bibliothek setzt keinen eigenen."
-                slotProps={{ htmlInput: { maxLength: 255 } }}
-              />
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={draft.sourceInsecureSsl}
-                    onChange={(e) => setDraft({ ...draft, sourceInsecureSsl: e.target.checked })}
+              {takesTransport && (
+                <>
+                  <TextField
+                    label="Proxy (optional)"
+                    size="small"
+                    value={draft.sourceProxy}
+                    onChange={(e) => setDraft({ ...draft, sourceProxy: e.target.value })}
+                    placeholder="proxy.example.com:8080"
+                    autoComplete="off"
+                    helperText="Gilt für jede Bibliothek auf diesem Zugang; die Bibliothek setzt keinen eigenen."
+                    slotProps={{ htmlInput: { maxLength: 255 } }}
                   />
-                }
-                label="Zertifikatsprüfung aussetzen"
-              />
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={draft.sourceInsecureSsl}
+                        onChange={(e) =>
+                          setDraft({ ...draft, sourceInsecureSsl: e.target.checked })
+                        }
+                      />
+                    }
+                    label="Zertifikatsprüfung aussetzen"
+                  />
+                </>
+              )}
               {defaultKeys.length > 0 && (
                 <>
                   <Typography variant="subtitle2" component="h3">

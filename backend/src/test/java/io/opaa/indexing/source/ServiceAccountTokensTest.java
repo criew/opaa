@@ -173,6 +173,32 @@ class ServiceAccountTokensTest {
         .hasMessageContaining("ungültig, widerrufen");
   }
 
+  /**
+   * Google words a server clock off by too much as an invalid grant; its description tells, and
+   * then the key is not refused but the clock named. Without a description both causes are named.
+   */
+  @Test
+  void aClockOffIsNamedAndRejectsNoKey() {
+    endpoint.answer(
+        FakeTokenEndpoint.error(
+            400,
+            "invalid_grant",
+            "Invalid JWT: Token must be a short-lived token (60 minutes) and in a reasonable"
+                + " timeframe. Check your iat and exp values in the JWT claim."));
+
+    assertThatThrownBy(() -> tokens.accessToken(storedKey(), null, auth, null))
+        .isInstanceOf(SourceCredentialsException.class)
+        .isNotInstanceOf(SignInRejectedException.class)
+        .hasMessageContaining("Uhrzeit des Servers");
+
+    endpoint.answer(FakeTokenEndpoint.error(400, "invalid_grant", ""));
+
+    assertThatThrownBy(() -> tokens.accessToken(storedKey(), null, auth, null))
+        .isInstanceOf(SignInRejectedException.class)
+        .hasMessageContaining("ungültig, widerrufen")
+        .hasMessageContaining("Uhrzeit des Servers abweicht");
+  }
+
   /** Only a refusal of the key itself rejects the registration; a scope or account does not. */
   @Test
   void anUnknownClientRejectsTheKeyAndARefusedScopeDoesNot() {

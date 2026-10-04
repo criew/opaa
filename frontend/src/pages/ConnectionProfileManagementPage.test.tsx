@@ -2,6 +2,7 @@ import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { http, HttpResponse } from 'msw'
+import { mockSourceTypes } from '../mocks/libraryFixtures'
 import { server } from '../mocks/server'
 
 import {
@@ -53,12 +54,12 @@ const NEXTCLOUD: SourceTypeDescriptor = {
 /** Source types without profiles - set by the tests themselves, not taken from the global mock. */
 const WITHOUT_PROFILES: SourceTypeDescriptor[] = [
   {
-    type: 'CONFLUENCE',
-    displayName: 'Confluence',
+    type: 'FILESYSTEM',
+    displayName: 'Dateisystem',
     indexingRun: true,
     uploads: false,
-    pushIntake: true,
-    browsable: true,
+    pushIntake: false,
+    browsable: false,
     profileSupport: 'FORBIDDEN',
     profileRequired: false,
     signIns: [],
@@ -69,11 +70,11 @@ const WITHOUT_PROFILES: SourceTypeDescriptor[] = [
     locked: false,
   },
   {
-    type: 'S3',
-    displayName: 'S3-Objektspeicher',
+    type: 'GOOGLE_DRIVE',
+    displayName: 'Google Drive',
     indexingRun: true,
     uploads: false,
-    pushIntake: true,
+    pushIntake: false,
     browsable: true,
     profileSupport: 'FORBIDDEN',
     profileRequired: false,
@@ -189,6 +190,40 @@ describe('ConnectionProfileManagementPage', () => {
     expect(row).toHaveTextContent('Persönliches Geheimnis')
   })
 
+  it('shows the counts of connected and expired accounts exactly as the API rounds them', async () => {
+    mockConnectionProfiles[0] = {
+      ...mockConnectionProfiles[0],
+      connectedAccountCount: { count: null, fewerThan: 5 },
+      expiredConnectionCount: { count: null, fewerThan: 5 },
+    }
+    mockConnectionProfiles.push({
+      ...mockConnectionProfiles[0],
+      id: 'profile-exact',
+      name: 'Zugang openDesk',
+      connectedAccountCount: { count: 23, fewerThan: null },
+      expiredConnectionCount: { count: 7, fewerThan: null },
+    })
+    mockConnectionProfiles.push({
+      ...mockConnectionProfiles[0],
+      id: 'profile-withheld',
+      name: 'Zugang Partner',
+      connectedAccountCount: { count: 9, fewerThan: null },
+      expiredConnectionCount: null,
+    })
+    renderWithProviders(<ConnectionProfileManagementPage />)
+
+    const header = (await screen.findAllByRole('row'))[0]
+    expect(header).toHaveTextContent('Verbundene Konten')
+    expect(header).toHaveTextContent('Davon abgelaufen')
+    const cells = (name: string) =>
+      within(screen.getByRole('row', { name: new RegExp(name) }))
+        .getAllByRole('cell')
+        .map((cell) => cell.textContent)
+    expect(cells(PROFILE).slice(5, 7)).toEqual(['weniger als 5', 'weniger als 5'])
+    expect(cells('Zugang openDesk').slice(5, 7)).toEqual(['23', '7'])
+    expect(cells('Zugang Partner').slice(5, 7)).toEqual(['9', 'nicht ausgewiesen'])
+  })
+
   it('shows the expiry of the secret as a German date and tells expired from expiring', async () => {
     mockConnectionProfiles[0] = {
       ...mockConnectionProfiles[0],
@@ -215,7 +250,7 @@ describe('ConnectionProfileManagementPage', () => {
     const dialog = await screen.findByRole('dialog', { name: 'Zugang anlegen' })
     const create = within(dialog).getByRole('button', { name: 'Anlegen' })
     expect(create).toBeDisabled()
-    expect(within(dialog).getByRole('radio', { name: /Confluence/ })).toBeDisabled()
+    expect(within(dialog).getByRole('radio', { name: /Dateisystem/ })).toBeDisabled()
     await user.click(within(dialog).getByRole('radio', { name: /Nextcloud/ }))
     await user.type(within(dialog).getByLabelText(/^Name/), 'Zugang Nextcloud Partner')
     await user.type(within(dialog).getByLabelText(/^Server-Adresse/), 'https://partner.example.org')
@@ -279,6 +314,28 @@ describe('ConnectionProfileManagementPage', () => {
       sourceProxy: 'proxy.example.org:3128',
       sourceInsecureSsl: true,
     })
+  }, 20000)
+
+  it('offers neither proxy nor certificate switch for a file server and sends neither', async () => {
+    const smb = mockSourceTypes.find((type) => type.type === 'SMB')!
+    server.use(http.get('/api/v1/source-types', () => HttpResponse.json([NEXTCLOUD, smb])))
+    const user = userEvent.setup()
+    const sent = capturePosts()
+    renderWithProviders(<ConnectionProfileManagementPage />)
+
+    await user.click(await screen.findByRole('button', { name: 'Neuer Zugang' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Zugang anlegen' })
+    await user.click(within(dialog).getByRole('radio', { name: /Windows-Dateifreigabe/ }))
+    expect(within(dialog).queryByLabelText(/^Proxy/)).not.toBeInTheDocument()
+    expect(within(dialog).queryByLabelText('Zertifikatsprüfung aussetzen')).not.toBeInTheDocument()
+    await user.type(within(dialog).getByLabelText(/^Name/), 'Zugang Dateiserver')
+    await user.type(within(dialog).getByLabelText(/^Server-Adresse/), 'smb://dateiserver.example')
+    await user.click(within(dialog).getByLabelText(/^Anmeldeart/))
+    await user.click(await screen.findByRole('option', { name: 'Persönliches Geheimnis' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Anlegen' }))
+
+    await screen.findByRole('row', { name: /Zugang Dateiserver/ })
+    expect(sent[0]).toMatchObject({ sourceProxy: null, sourceInsecureSsl: false })
   }, 20000)
 
   it('offers only the ownerships the chosen sign-in admits', async () => {
@@ -580,6 +637,22 @@ describe('ConnectionProfileManagementPage', () => {
     expect(await screen.findByText('2 Verbindungen getrennt.')).toBeVisible()
   })
 
+  it('tells before the emergency shutdown that persons are notified and reconnect themselves', async () => {
+    mockConnectionProfiles[0] = { ...mockConnectionProfiles[0], ownership: 'BOTH' }
+    const user = userEvent.setup()
+    renderWithProviders(<ConnectionProfileManagementPage />)
+
+    await user.click(
+      await screen.findByRole('button', { name: `Alle Verbindungen von ${PROFILE} trennen` }),
+    )
+    const question = await screen.findByRole('dialog', { name: /Alle Verbindungen von/ })
+    expect(question).toHaveTextContent('verbundene Konten von Personen: weniger als 5')
+    expect(question).toHaveTextContent(
+      'Personen mit verbundenem Konto werden benachrichtigt und müssen ihr Konto selbst neu verbinden.',
+    )
+    await answerConfirm(user, /Alle Verbindungen von/, 'Abbrechen')
+  })
+
   it('deletes a profile after naming what happens to its libraries', async () => {
     const user = userEvent.setup()
     renderWithProviders(<ConnectionProfileManagementPage />)
@@ -725,7 +798,7 @@ describe('ConnectionProfileManagementPage - „Nur über Zugänge“ (#2162)', (
     expect(
       within(types).getByRole('switch', { name: 'Nur über Zugänge für Nextcloud' }),
     ).not.toBeChecked()
-    expect(within(types).queryByRole('switch', { name: /für Confluence/ })).not.toBeInTheDocument()
+    expect(within(types).queryByRole('switch', { name: /für Dateisystem/ })).not.toBeInTheDocument()
     expect(within(types).getAllByText('Keine Zugänge möglich').length).toBeGreaterThan(0)
   })
 
