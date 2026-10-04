@@ -15,8 +15,12 @@ import {
   openEvidenceRow,
   profileRow,
   referenceLibrary,
-  resetRssConnectorAndProfiles,
+  deleteProfileViaApi,
+  profileIdsByPrefix,
+  resetRssProfileRequirement,
+  runCleanupSteps,
   runIndexingViaApi,
+  unlockRssConnector,
   triggerIndexingInUi,
 } from '../fixtures/connectionProfiles'
 import { deleteLibraryCompletely, libraryIdFromCurrentUrl } from '../fixtures/libraries'
@@ -100,11 +104,27 @@ test.describe.serial('Zugänge, Freigabe und Profilpflicht (#2175)', () => {
   })
 
   test.afterAll(async ({ request }) => {
-    await resetRssConnectorAndProfiles(PREFIX)
-    for (const libraryId of createdLibraryIds) {
-      await deleteLibraryCompletely(request, libraryId)
-    }
-    if (groupId) await deleteGroupViaApi(groupId)
+    // Die Profilpflicht zuerst: Sie ist globaler Zustand und bräche die RSS-Szenarien späterer
+    // Dateien.
+    await runCleanupSteps([
+      ['Profilpflicht RSS-Feed', resetRssProfileRequirement],
+      ['Sperre RSS-Feed', unlockRssConnector],
+      ...createdLibraryIds.map((libraryId): [string, () => Promise<void>] => [
+        `Bibliothek ${libraryId}`,
+        () => deleteLibraryCompletely(request, libraryId),
+      ]),
+      [
+        'Zugänge',
+        async () =>
+          runCleanupSteps(
+            (await profileIdsByPrefix(PREFIX)).map((profileId) => [
+              `Zugang ${profileId}`,
+              () => deleteProfileViaApi(profileId),
+            ]),
+          ),
+      ],
+      ['Gruppe', async () => (groupId ? deleteGroupViaApi(groupId) : undefined)],
+    ])
   })
 
   test('1a. Systemverwaltung legt einen RSS-Zugang an und gibt ihn einer Gruppe frei', async ({
@@ -151,13 +171,16 @@ test.describe.serial('Zugänge, Freigabe und Profilpflicht (#2175)', () => {
     await openRssSourceStep(page)
     const choice = connectionChoice(page)
     await expect(choice.getByRole('radio', { name: /^Eigene Adresse/ })).toBeChecked()
+    // Gegenprobe zum Wegfall unten: mit eigener Adresse fragt das Formular Zugangsdaten ab.
+    const credentials = page.getByLabel('Anmeldedaten (optional)')
+    await expect(credentials).toBeVisible()
     await choice.getByRole('radio', { name: new RegExp(`^${PROFILE_NAME}`) }).click()
 
     // Die Adresse kommt aus dem Zugang; ein Pfad darunter ist erlaubt.
     const address = page.getByLabel('Adresse (URL)')
     await expect(address).toHaveValue(SERVER_URL)
     // „ohne Anmeldung“: kein Feld für Zugangsdaten.
-    await expect(page.getByLabel('Anmeldedaten (optional)')).toHaveCount(0)
+    await expect(credentials).toHaveCount(0)
     await address.fill(FEED_URL)
     await page.getByRole('button', { name: 'Verbindung testen' }).click()
     await expect(page.getByRole('alert').filter({ hasText: /erreichbar/ })).toBeVisible({

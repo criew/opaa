@@ -122,30 +122,53 @@ export async function profileIdsByPrefix(prefix: string): Promise<string[]> {
 }
 
 /**
- * Setzt die Quellart RSS-Feed in den Ausgangszustand der Suite zurück (keine Profilpflicht, nicht
- * gesperrt) und löscht die Zugänge mit `prefix` - entsperrt, damit das Löschen nicht an einer
- * Sperre scheitert. Läuft auch nach einem fehlgeschlagenen Szenario, damit keine spätere
- * RSS-Bibliothek der Suite an einer liegengebliebenen Pflicht scheitert.
+ * Führt jeden Aufräumschritt aus, auch wenn ein früherer scheitert, und meldet die Fehlschläge
+ * danach gesammelt - ein liegengebliebener globaler Zustand (etwa die Profilpflicht) bräche sonst
+ * spätere Szenarien.
  */
-export async function resetRssConnectorAndProfiles(prefix: string): Promise<void> {
-  const ids = await profileIdsByPrefix(prefix)
+export async function runCleanupSteps(steps: Array<[string, () => Promise<void>]>): Promise<void> {
+  const failures: string[] = []
+  for (const [label, step] of steps) {
+    try {
+      await step()
+    } catch (error) {
+      failures.push(`${label}: ${error instanceof Error ? error.message : String(error)}`)
+    }
+  }
+  if (failures.length > 0) {
+    throw new Error(`Aufräumen unvollständig:\n${failures.join('\n')}`)
+  }
+}
+
+/** Schaltet „Nur über Zugänge“ für RSS-Feed aus - der Ausgangszustand der Suite. */
+export async function resetRssProfileRequirement(): Promise<void> {
   await withApi('dev-admin', async (api) => {
-    const requirement = await api.put(
+    const response = await api.put(
       `/api/v1/admin/connector-types/${RSS_FEED}/profile-requirement`,
       { data: { required: false } },
     )
-    expect(requirement.status(), await requirement.text()).toBe(200)
-    const lock = await api.put(`/api/v1/admin/connector-types/${RSS_FEED}/lock`, {
+    expect(response.status(), await response.text()).toBe(200)
+  })
+}
+
+/** Hebt eine Sperre der Quellart RSS-Feed auf. */
+export async function unlockRssConnector(): Promise<void> {
+  await withApi('dev-admin', async (api) => {
+    const response = await api.put(`/api/v1/admin/connector-types/${RSS_FEED}/lock`, {
       data: { locked: false },
     })
-    expect(lock.status(), await lock.text()).toBe(200)
-    for (const id of ids) {
-      await api.put(`/api/v1/admin/connection-profiles/${id}/lock`, {
-        data: { locked: false },
-      })
-      const deleted = await api.delete(`/api/v1/admin/connection-profiles/${id}`)
-      expect(deleted.status(), await deleted.text()).toBeLessThan(300)
-    }
+    expect(response.status(), await response.text()).toBe(200)
+  })
+}
+
+/** Entsperrt und löscht einen Zugang; entsperrt, damit das Löschen nicht an der Sperre scheitert. */
+export async function deleteProfileViaApi(profileId: string): Promise<void> {
+  await withApi('dev-admin', async (api) => {
+    await api.put(`/api/v1/admin/connection-profiles/${profileId}/lock`, {
+      data: { locked: false },
+    })
+    const deleted = await api.delete(`/api/v1/admin/connection-profiles/${profileId}`)
+    expect(deleted.status(), await deleted.text()).toBeLessThan(300)
   })
 }
 
