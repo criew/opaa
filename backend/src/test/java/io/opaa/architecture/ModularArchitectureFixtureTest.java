@@ -262,6 +262,28 @@ class ModularArchitectureFixtureTest {
   }
 
   /**
+   * A view of the administration reads one person's use, a report sums it from the repository; the
+   * person's own view, the enforcement and the quota itself may.
+   */
+  @Test
+  void aReadOfOnePersonsPrivateStorageOutsideItsReadersIsReported() {
+    Scenario scenario = new Scenario("personalusage");
+
+    assertThat(scenario.violations(ModularArchitecture::personalUsageIsReadOnlyByItsOwner))
+        .hasSize(2)
+        .anySatisfy(
+            violation ->
+                assertThat(violation).contains("library.StorageOverview.usageOfOwner", "usageOf"))
+        .anySatisfy(
+            violation ->
+                assertThat(violation)
+                    .contains(
+                        "searchadmin.StorageReport.sumOf", "sumFileSizeOfPrivateLibrariesOwnedBy"))
+        .noneSatisfy(violation -> assertThat(violation).contains("MyPrivateStorageController"))
+        .noneSatisfy(violation -> assertThat(violation).contains("LibraryStorageQuotaService"));
+  }
+
+  /**
    * One protocol entry names the asset by its name, another writes its payload raw; the neutral
    * entry and a reader of the name without an entry pass.
    */
