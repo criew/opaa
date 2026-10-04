@@ -5,19 +5,20 @@ Pakete (`io.opaa.*`): connection. Ergänzt `backend/AGENTS.md`.
 ## Zweck und Grenze
 
 Verbindungsprofile („Zugänge“), die Zuordnung einer Bibliothek zu einem Profil, die
-Konnektor-Freigabe und die Sperre von Quellart und Zugang (ADR-0041, Spezifikation
-`docs/features/connector-connections.md`). Später kommen Token-Speicher, verbundene
-Konten, OAuth und das Verbindungsprotokoll dazu. connections hängt nur von foundation, identity,
-rights und knowledge ab; nur library hängt von connections ab. Kein Konnektor und nichts in
-knowledge kennt connections: Der Kern erreicht es über seine Ports `SourceConnectionResolver`
-(`ProfileSourceConnectionResolver`) und `SourceStateLookup` (`ConnectionSourceStateLookup`).
+Konnektor-Freigabe, die Sperre von Quellart und Zugang und das Verbindungsprotokoll (ADR-0041,
+`docs/features/connector-connections.md`); Token-Speicher, verbundene Konten und OAuth folgen.
+connections hängt nur von foundation, identity, rights und knowledge ab; nur library hängt von
+connections ab. Kein Konnektor und nichts in knowledge kennt connections: Der Kern erreicht es über
+seine Ports `SourceConnectionResolver` (`ProfileSourceConnectionResolver`) und `SourceStateLookup`.
 
 ## Invarianten und Stolpersteine
 
-- **Unterpakete, unten zuerst:** `connection.profile` (Profile, Zuordnung, `ServerAddress`,
-  Sperren, `ConnectorScope`).
-  Das Wurzelpaket verdrahtet und implementiert den Port, `connection.web` liegt darüber. Kein
-  Unterpaket nennt das Wurzelpaket (`ModularArchitecture.CONNECTION_PACKAGES`).
+- **Unterpakete, unten zuerst:** `connection.log` (Verbindungsprotokoll), `connection.profile`
+  (Profile, Zuordnung, `ServerAddress`, Sperren, `ConnectorScope`). Das Wurzelpaket verdrahtet und
+  implementiert den Port, `connection.web` liegt darüber. Kein Unterpaket nennt das Wurzelpaket
+  (`ModularArchitecture.CONNECTION_PACKAGES`).
+- **Verbindungsprotokoll** wie `audit_log`: schreibt nur `ConnectionLog`, liest nur
+  `ConnectionLogQueryService` (`AUDITOR`), löscht nur die Datenbankfunktion; Personen als Pseudonym.
 - **Das Client-Secret ist schreibgeschützt.** `ConnectionProfileService` verschlüsselt es mit
   `CredentialsEncryptor`; Antworten tragen nur `clientSecretSet`, das Audit nur Feldnamen und
   Ja/Nein. Kein Code gibt es heraus, bis ein Konsument es braucht (OAuth, #2168).
@@ -26,8 +27,7 @@ knowledge kennt connections: Der Kern erreicht es über seine Ports `SourceConne
   die Adressen der Bibliotheken und verwirft alle Geheimnisse des Profils.
 - **Geheimnis verwerfen** heißt `KnowledgeLibraryRepository#eraseSourceCredentials` auf der Spalte,
   nicht nur `null` an der Entität: Ohne Schlüssel liest die Entität ohnehin `null`.
-- **Ein gelöschtes Profil** lässt die Zuordnung mit `profile_id NULL` stehen („Zugang entfernt“);
-  der Port sperrt dann mit eigenem Grund und deutscher Meldung.
+- **Ein gelöschtes Profil** lässt die Zuordnung mit `profile_id NULL` stehen („Zugang entfernt“).
 - **Sperrgründe nur in `SourceBlocks`:** Ob und warum eine Bibliothek gesperrt ist und welcher Text
   gilt, entscheidet nur er. Vorrang ist die Deklarationsreihenfolge von `SourceBlock.Reason`, die
   Mengen der Aufrufer leiten sich aus dessen Eigenschaften ab: Ein neuer Grund steht an einer Stelle.
@@ -47,8 +47,8 @@ knowledge kennt connections: Der Kern erreicht es über seine Ports `SourceConne
 ## Verweise
 
 - ADRs (`docs/decisions/`): 0025, 0036, 0038, 0041
-- Handbuch: `docs/handbuch/indexierung.md`, Abschnitt „Zugänge“
-- Strukturtests: `ModularArchitectureTest` (`theConnectionPackagesDependOnlyDownward`)
+- Handbuch: `docs/handbuch/indexierung.md`, „Zugänge“; `bibliotheken-und-berechtigungen.md`, 12
+- Strukturtests: `ModularArchitectureTest`, `ConnectionLogStructureTest`
 
 ## Tests bei Änderungen
 

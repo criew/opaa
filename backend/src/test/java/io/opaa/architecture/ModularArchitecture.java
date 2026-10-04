@@ -218,7 +218,7 @@ public final class ModularArchitecture {
    * The subpackages of {@link #CONNECTION}, lowest first (ADR-0041, Entscheidung 8). One depends
    * only on itself and on the ones before it; the root package and its web package sit above all.
    */
-  static final List<String> CONNECTION_PACKAGES = List.of("connection.profile");
+  static final List<String> CONNECTION_PACKAGES = List.of("connection.log", "connection.profile");
 
   /**
    * The capability granted per connector type or profile, relative to the root (ADR-0036, Nachtrag

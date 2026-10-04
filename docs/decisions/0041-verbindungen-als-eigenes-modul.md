@@ -306,6 +306,23 @@ Begründung:
 - **Neutral:** Der Abgleich läuft nach dem Commit des Auslösers. Eine Sperre scheitert nie an ihm,
   und bis zum Abgleich hält die Herausgabesperre im Port.
 
+## Nachtrag vom 04.10.2026: Verbindungsprotokoll angelegt (#2163)
+
+- `connection.log` ist das unterste Unterpaket: `CONNECTION_PACKAGES` beginnt mit
+  `connection.log`, dann `connection.profile`. Es nennt kein anderes Unterpaket, damit Profil,
+  Token-Speicher und verbundene Konten hineinschreiben können, ohne einen Zyklus zu bilden.
+- Die Wertebereiche liegen noch tiefer, in `io.opaa.api.types`: `ConnectionLogEventType` und
+  `ConnectionEndCause`. Der Endanlass ist derselbe Wert, den das verbundene Konto später als Grund
+  seines Endes speichert.
+- Tabelle `connection_log` und Löschung folgen dem Muster von `audit_log` (ADR-0015): monatliche
+  Partitionen im Besitz von `opaa_audit_owner`, die Anwendung hat nur `INSERT` und `SELECT`, die
+  Löschfunktion `opaa_connection_log_delete_expired_partitions()` ist `SECURITY DEFINER`. Sie ist
+  eine eigene Funktion je Tabelle: Eine gemeinsame Funktion mit Tabellenparameter könnte das
+  Anwendungskonto mit einem fremden Protokoll aufrufen. Der Lauf ist täglich.
+- Lesen: `ConnectionLogQueryService` hinter `AuditAccessGate`, Rolle `AUDITOR`, jeder Abruf als
+  `CONNECTION_LOG_ACCESSED` im Revisionsprotokoll. Die Frist (Vorgabe 12, Grenzen 6–24 Monate als
+  `CHECK`) ist eine Zeile der Datenbank; eine Verwaltungsschnittstelle dafür steht aus.
+
 ## Referenzen
 
 - [connector-connections.md](../features/connector-connections.md)
