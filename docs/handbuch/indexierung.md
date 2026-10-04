@@ -443,6 +443,7 @@ die die zuständige Stelle nennt; der Bestand bleibt durchsuchbar und wird nicht
 | „Nicht verbunden“ | Die Anmeldeart des Zugangs (OAuth, Client-Credentials, Dienstkonto-Schlüssel) kann eine Bibliothek nicht verbinden | Systemverwaltung |
 | „Die Adresse der Bibliothek liegt nicht unter …“ | Die Adresse verließ den Zugang | Verwaltende der Bibliothek |
 | „Gesperrt – Inhalt wird nicht mehr aktualisiert“ | Die Quellart oder der Zugang ist gesperrt; gilt auch für Bibliotheken ohne Zugang | Systemverwaltung |
+| „… ist nur noch über Zugänge nutzbar, und diese Bibliothek hat eine eigene Adresse“ | Die Profilpflicht der Quellart ist eingeschaltet, der Bestand gesperrt (siehe [Profilpflicht](#profilpflicht-nur-über-zugänge)) | Verwaltende der Bibliothek: einem Zugang zuordnen |
 
 Umbenennen und das Korrigieren von Adresse oder Geheimnis bleiben in all diesen Fällen möglich.
 
@@ -485,6 +486,52 @@ andere Sperre bestehen bleibt. Die Folgen:
 
 Sperren und Entsperren sind Governance-Ereignisse im Revisionsprotokoll. Der Entzug einer Freigabe
 stoppt dagegen keinen Lauf.
+
+#### Profilpflicht („Nur über Zugänge“)
+
+Für eine Quellart, deren Konnektor Zugänge als möglich meldet, kann die Systemverwaltung die
+**Profilpflicht** einschalten: Danach ist die Quellart nur noch über einen Zugang nutzbar. Eine
+Quellart, die Zugänge verbietet oder ohnehin verlangt, lässt sich nicht umschalten. Da die
+mitgelieferten Konnektoren keine Zugänge melden, ist die Pflicht heute für keine mitgelieferte
+Quellart einschaltbar. Die Verwaltungsoberfläche bietet den Schalter noch nicht; er liegt an der
+Verwaltungsschnittstelle unter `/api/v1/admin/connector-types/{Quellart}/profile-requirement`, die
+vorher auch sagt, ob er sich umlegen lässt, und die Bibliotheken mit eigener Adresse auflistet.
+
+Einschalten geht erst, **wenn es einen passenden Zugang gibt**: mindestens einen nicht gesperrten
+Zugang der Quellart, der Bibliotheken zulässt. Ein späteres Löschen oder Sperren dieses Zugangs
+bleibt möglich; die Abfrage der Betroffenen eines Zugangs warnt dann, dass er der letzte passende
+ist.
+
+Mit eingeschalteter Pflicht gilt für die Quellart:
+
+- Neue Bibliotheken mit eigener Adresse, Verbindungstest und Auflistung ohne Zugang sowie das Lösen
+  einer Bibliothek von ihrem Zugang werden mit dem Hinweis abgewiesen, dass die Quellart nur über
+  einen Zugang nutzbar ist.
+- Für die **Bibliotheken mit eigener Adresse**, die es beim Einschalten gibt, wählt die
+  Systemverwaltung für den ganzen Bestand:
+
+  | Wahl | Folge |
+  |---|---|
+  | weiterlaufen | Die Bibliotheken laufen weiter. Ihre Adresse ist eingefroren: Eine neue Adresse erhalten sie nur, indem ihre Verwaltenden sie einem Zugang zuordnen. Zugangsdaten, Umfang und Zeitplan bleiben änderbar |
+  | sperren | Die Bibliotheken laufen nicht mehr, wie bei einer gesperrten Quellart: Ein Lauf endet vor dem ersten Element mit dem Sperrhinweis, der Zeitplan überspringt sie. Der Bestand bleibt durchsuchbar; Reiter „Quelle“, Kachel und Belege („Stand vom …“) tragen den Hinweis mit den Verwaltenden der Bibliothek als zuständiger Stelle |
+
+- Eine gesperrte Bibliothek läuft wieder, sobald ihre Verwaltenden sie einem Zugang zuordnen.
+- Schaltet die Systemverwaltung die Pflicht aus, laufen alle gesperrten Bibliotheken ohne
+  Neueinrichtung weiter, und eine eigene Adresse ist wieder möglich.
+
+Was die Pflicht für eine Quellart nicht festlegt, meldet ihr Konnektor mit seiner Profilangabe;
+die Abfrage vor dem Einschalten zeigt es. **Einschränkung RSS**, sobald RSS Zugänge kennt: Die
+Pflicht legt nur die Feed-Adresse fest. Die Detailseiten eines Feeds stammen aus seinen Einträgen
+und können auf fremden Servern liegen; sie werden weiter abgerufen, aber ohne Zugangsdaten. Die
+Zielprüfung gegen private und lokale Adressbereiche gilt daneben unverändert.
+
+Eine Bibliothek, deren Zugang gelöscht wurde („Zugang entfernt“), zählt für die Pflicht als
+Bibliothek mit eigener Adresse: Ihre Adresse ist eingefroren, und bei der Wahl „sperren“ ist sie
+gesperrt, bis sie einem Zugang zugeordnet ist. Die Liste der Bibliotheken mit eigener Adresse
+zeigt nur die der eigenen Organisation.
+
+Ein- und Ausschalten sowie eine geänderte Wahl für den Bestand sind Governance-Ereignisse im
+Revisionsprotokoll.
 
 ## 5. Die Dokumentstrecke: was mit jedem Element passiert
 

@@ -497,5 +497,16 @@ public enum AuditEventType {
    */
   CONNECTOR_LOCKED,
   /** The counterpart of {@link #CONNECTOR_LOCKED}: the libraries run again. */
-  CONNECTOR_UNLOCKED
+  CONNECTOR_UNLOCKED,
+  /**
+   * The system administration made a connector type usable only through a connection profile ("Nur
+   * über Zugänge"), or changed what happens to its libraries with their own address; {@code after}
+   * names the type and that choice. A governance event.
+   */
+  CONNECTOR_PROFILE_REQUIRED,
+  /**
+   * The counterpart of {@link #CONNECTOR_PROFILE_REQUIRED}: an own address is possible again, and
+   * libraries locked for having one run again.
+   */
+  CONNECTOR_PROFILE_OPTIONAL
 }

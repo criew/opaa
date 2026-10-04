@@ -3,6 +3,7 @@ package io.opaa.connection.profile;
 import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.AuditObjectType;
 import io.opaa.api.types.AuditOutcome;
+import io.opaa.api.types.ConnectionProfileSupport;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.CurrentUser;
@@ -18,7 +19,6 @@ import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -32,7 +32,7 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * The lock of a connector type and of a connection profile (spec "Konnektor-Freigabe und Sperre").
  * A locked type or profile admits no new library, and the port starts no run; the content stays
- * searchable and carries {@link #lockNotice}. Lifting the lock lets the libraries run again as they
+ * searchable and carries {@link #lockOf}. Lifting the lock lets the libraries run again as they
  * were. Locking and unlocking are governance events.
  */
 @Service
@@ -48,6 +48,7 @@ public class ConnectorLockService {
   private final ConnectorTypePolicyRepository policies;
   private final ConnectionProfileRepository profiles;
   private final SourceBlocks blocks;
+  private final ProfileRequirements requirements;
 
   /**
    * Looked up per call: the core's port depends on this service, and the registry's connectors
@@ -62,12 +63,14 @@ public class ConnectorLockService {
       ConnectorTypePolicyRepository policies,
       ConnectionProfileRepository profiles,
       SourceBlocks blocks,
+      ProfileRequirements requirements,
       ObjectProvider<SourceConnectorRegistry> connectors,
       AuditEventRecorder audit,
       Clock clock) {
     this.policies = policies;
     this.profiles = profiles;
     this.blocks = blocks;
+    this.requirements = requirements;
     this.connectors = connectors;
     this.audit = audit;
     this.clock = clock;
@@ -75,16 +78,18 @@ public class ConnectorLockService {
 
   /** Every connector type that reaches a source, by type key, with its lock. */
   public List<TypeState> typeStates() {
-    Map<String, Instant> locked = lockedTypes();
+    Map<String, ConnectorTypePolicy> rows =
+        policies.findAll().stream()
+            .collect(Collectors.toMap(policy -> policy.getSourceType().key(), policy -> policy));
     return connectors.getObject().descriptors().stream()
         .filter(descriptor -> !descriptor.uploads())
-        .map(
-            descriptor ->
-                new TypeState(
-                    descriptor.type(),
-                    descriptor.displayName(),
-                    locked.get(descriptor.type().key())))
+        .map(descriptor -> typeState(descriptor, rows.get(descriptor.type().key())))
         .toList();
+  }
+
+  /** {@code type} with its lock and its profile requirement. */
+  public TypeState typeState(SourceType type) {
+    return typeState(requireLockable(type), policies.findById(type.key()).orElse(null));
   }
 
   public boolean isTypeLocked(SourceType type) {
@@ -93,15 +98,7 @@ public class ConnectorLockService {
 
   @Transactional
   public TypeState lockType(CurrentUser caller, SourceType type, boolean locked) {
-    SourceConnectorDescriptor descriptor =
-        connectors
-            .getObject()
-            .find(type)
-            .map(connector -> connector.descriptor())
-            .filter(found -> !found.uploads())
-            .orElseThrow(
-                () ->
-                    new ValidationException("Die Quellart " + type + " lässt sich nicht sperren"));
+    SourceConnectorDescriptor descriptor = requireLockable(type);
     Instant now = clock.instant();
     ConnectorTypePolicy policy =
         policies.findById(type.key()).orElseGet(() -> new ConnectorTypePolicy(type, now));
@@ -116,7 +113,7 @@ public class ConnectorLockService {
           "Quellart " + descriptor.displayName(),
           Map.of("sourceType", type.key()));
     }
-    return new TypeState(type, descriptor.displayName(), policy.getLockedAt());
+    return typeState(descriptor, policy);
   }
 
   @Transactional
@@ -168,26 +165,38 @@ public class ConnectorLockService {
     return Optional.empty();
   }
 
-  /** The note a locked library carries, empty while neither its type nor its profile is locked. */
-  public Optional<String> lockNotice(KnowledgeLibrary library) {
-    return blocks.blockOf(library, SourceBlocks.LOCKS).map(SourceBlock::notice);
+  /** The lock a library carries, empty while none of the system administration's locks holds it. */
+  public Optional<SourceBlock> lockOf(KnowledgeLibrary library) {
+    return blocks.blockOf(library, SourceBlocks.LOCKS);
   }
 
-  /** {@link #lockNotice} for many libraries with three queries; a free library is absent. */
-  public Map<UUID, String> lockNotices(Collection<KnowledgeLibrary> libraries) {
-    Map<UUID, String> notices = new HashMap<>();
-    blocks
-        .blocksAmong(libraries, SourceBlocks.LOCKS)
-        .forEach((library, block) -> notices.put(library, block.notice()));
-    return notices;
+  /** {@link #lockOf} for many libraries with three queries; a free library is absent. */
+  public Map<UUID, SourceBlock> locksOf(Collection<KnowledgeLibrary> libraries) {
+    return blocks.blocksAmong(libraries, SourceBlocks.LOCKS);
   }
 
-  private Map<String, Instant> lockedTypes() {
-    return policies.findAll().stream()
-        .filter(ConnectorTypePolicy::isLocked)
-        .collect(
-            Collectors.toMap(
-                policy -> policy.getSourceType().key(), ConnectorTypePolicy::getLockedAt));
+  /** The descriptor of a type that reaches a source; refuses the upload and an unknown type. */
+  private SourceConnectorDescriptor requireLockable(SourceType type) {
+    return connectors
+        .getObject()
+        .find(type)
+        .map(connector -> connector.descriptor())
+        .filter(found -> !found.uploads())
+        .orElseThrow(
+            () -> new ValidationException("Die Quellart " + type + " lässt sich nicht sperren"));
+  }
+
+  TypeState typeState(SourceConnectorDescriptor descriptor, ConnectorTypePolicy policy) {
+    SourceType type = descriptor.type();
+    boolean switchedOn = requirements.switchedOn(type, policy);
+    return new TypeState(
+        type,
+        descriptor.displayName(),
+        policy == null ? null : policy.getLockedAt(),
+        requirements.declaredProfileSupport(type),
+        requirements.effective(type, policy) == ConnectionProfileSupport.REQUIRED,
+        switchedOn ? policy.getProfileRequiredAt() : null,
+        switchedOn ? policy.getOwnAddressStock() : null);
   }
 
   private String displayName(SourceType type) {
@@ -215,8 +224,19 @@ public class ConnectorLockService {
             .build());
   }
 
-  /** One connector type and since when it is locked, {@code null} while it is not. */
-  public record TypeState(SourceType type, String displayName, Instant lockedAt) {
+  /**
+   * One connector type: since when it is locked, how its connector stands to profiles, whether it
+   * is usable only through one now, and - while the system administration switched that on - since
+   * when and what happens to its libraries with their own address.
+   */
+  public record TypeState(
+      SourceType type,
+      String displayName,
+      Instant lockedAt,
+      ConnectionProfileSupport profileSupport,
+      boolean profileRequired,
+      Instant profileRequiredAt,
+      OwnAddressStock ownAddressStock) {
 
     public boolean locked() {
       return lockedAt != null;

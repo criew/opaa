@@ -1,7 +1,6 @@
 package io.opaa.connection;
 
 import io.opaa.api.types.Capability;
-import io.opaa.api.types.ConnectionProfileSupport;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.common.NotFoundException;
@@ -10,6 +9,8 @@ import io.opaa.connection.profile.ConnectionProfileRepository;
 import io.opaa.connection.profile.ConnectionProfileService;
 import io.opaa.connection.profile.ConnectorLockService;
 import io.opaa.connection.profile.ConnectorScope;
+import io.opaa.connection.profile.ProfileRequirementService;
+import io.opaa.connection.profile.ProfileRequirements;
 import io.opaa.indexing.source.SourceConnectorDescriptor;
 import io.opaa.indexing.source.SourceConnectorRegistry;
 import io.opaa.knowledge.SourceType;
@@ -40,24 +41,30 @@ public class ConnectorReleaseService {
   private final ConnectionProfileService profileService;
   private final SourceConnectorRegistry connectors;
   private final ConnectorLockService locks;
+  private final ProfileRequirements requirements;
+  private final ProfileRequirementService requirementService;
 
   public ConnectorReleaseService(
       CapabilityService capabilities,
       ConnectionProfileRepository profiles,
       ConnectionProfileService profileService,
       SourceConnectorRegistry connectors,
-      ConnectorLockService locks) {
+      ConnectorLockService locks,
+      ProfileRequirements requirements,
+      ProfileRequirementService requirementService) {
     this.capabilities = capabilities;
     this.profiles = profiles;
     this.profileService = profileService;
     this.connectors = connectors;
     this.locks = locks;
+    this.requirements = requirements;
+    this.requirementService = requirementService;
   }
 
   /**
    * Refuses a new library of {@code type} through {@code profileId} - {@code null} for its own
-   * address - with {@code 403}: {@code CONNECTOR_LOCKED} for a lock, {@code CAPABILITY_REQUIRED}
-   * without the release.
+   * address: {@code 403 CONNECTOR_LOCKED} for a lock, {@code 400 PROFILE_REQUIRED} for an own
+   * address where only a profile is admitted, {@code 403 CAPABILITY_REQUIRED} without the release.
    */
   public void requireCreatable(CurrentUser caller, SourceType type, UUID profileId) {
     ConnectionProfile profile =
@@ -67,6 +74,9 @@ public class ConnectorReleaseService {
                 .findById(profileId)
                 .orElseThrow(() -> new NotFoundException("Zugang nicht gefunden"));
     locks.requireUnlocked(type, profile);
+    if (profile == null && requirements.profileRequired(type)) {
+      throw requirementService.ownAddressRefused(type);
+    }
     if (profile == null) {
       capabilities.requireCapability(caller, RELEASE, ConnectorScope.ofType(type), typeLabel(type));
     } else {
@@ -108,14 +118,13 @@ public class ConnectorReleaseService {
         continue;
       }
       SourceType type = descriptor.type();
+      boolean profileRequired = requirements.profileRequired(type);
       Optional<String> lock = locks.creationLock(type, null);
       if (lock.isPresent()) {
-        creations.put(type, new TypeCreation(false, false, true, lock.get()));
+        creations.put(type, new TypeCreation(false, false, true, profileRequired, lock.get()));
         continue;
       }
-      boolean ownAddress =
-          descriptor.profileDeclaration().support() != ConnectionProfileSupport.REQUIRED
-              && held.covers(ConnectorScope.ofType(type));
+      boolean ownAddress = !profileRequired && held.covers(ConnectorScope.ofType(type));
       boolean viaProfile =
           descriptor.admitsProfiles()
               && profileService.selectableFor(type).stream()
@@ -127,7 +136,11 @@ public class ConnectorReleaseService {
       creations.put(
           type,
           new TypeCreation(
-              creatable, ownAddress, false, creatable ? null : creationNotice(descriptor, held)));
+              creatable,
+              ownAddress,
+              false,
+              profileRequired,
+              creatable ? null : creationNotice(descriptor, profileRequired, held)));
     }
     return creations;
   }
@@ -156,8 +169,9 @@ public class ConnectorReleaseService {
   }
 
   /** Why nothing of {@code descriptor} can be created, naming who can change that. */
-  private String creationNotice(SourceConnectorDescriptor descriptor, HeldScopes held) {
-    if (descriptor.profileDeclaration().support() != ConnectionProfileSupport.REQUIRED) {
+  private String creationNotice(
+      SourceConnectorDescriptor descriptor, boolean profileRequired, HeldScopes held) {
+    if (!profileRequired) {
       return CapabilityService.missingInScope(RELEASE, typeLabel(descriptor.type()));
     }
     boolean anyProfile =
@@ -188,10 +202,15 @@ public class ConnectorReleaseService {
 
   /**
    * Whether the caller may create a library of one type now, with its own address or through a
-   * profile; {@code notice} says why not, naming who can change it.
+   * profile, and whether only a profile is admitted; {@code notice} says why not, naming who can
+   * change it.
    */
   public record TypeCreation(
-      boolean creatable, boolean withOwnAddress, boolean locked, String notice) {}
+      boolean creatable,
+      boolean withOwnAddress,
+      boolean locked,
+      boolean profileRequired,
+      String notice) {}
 
   /** One selectable profile and whether the caller may create a library through it now. */
   public record ProfileOption(ConnectionProfile profile, boolean creatable, String notice) {}

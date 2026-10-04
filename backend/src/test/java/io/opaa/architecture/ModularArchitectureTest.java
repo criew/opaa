@@ -115,6 +115,11 @@ class ModularArchitectureTest {
   }
 
   @Test
+  void theProfileSupportIsReadInOnePlace() {
+    ARCHITECTURE.theProfileSupportIsReadInOnePlace().check(mainClasses);
+  }
+
+  @Test
   void onlyTheChangeGateCallsTheConnectorChangeHooks() {
     ARCHITECTURE.onlyTheChangeGateCallsTheConnectorChangeHooks().check(mainClasses);
   }

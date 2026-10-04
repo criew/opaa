@@ -1,0 +1,17 @@
+databaseChangeLog:
+  - changeSet:
+      id: connections-2026-10-04-profile-requirement
+      author: opaa
+      comment: "The profile requirement of a connector type ('Nur über Zugänge', #2162, ADR-0041): profile_required_at set means the type is usable only through a connection profile; own_address_stock says whether its libraries with their own address run on (RUNS) or are locked (LOCKED). Both set or both empty."
+      changes:
+        - sql:
+            sql: |
+              ALTER TABLE connector_type_policies
+                  ADD COLUMN profile_required_at timestamp with time zone,
+                  ADD COLUMN own_address_stock character varying(16);
+
+              ALTER TABLE connector_type_policies
+                  ADD CONSTRAINT chk_connector_type_policies_own_address_stock
+                      CHECK (own_address_stock IN ('RUNS', 'LOCKED')),
+                  ADD CONSTRAINT chk_connector_type_policies_profile_requirement
+                      CHECK ((profile_required_at IS NULL) = (own_address_stock IS NULL));

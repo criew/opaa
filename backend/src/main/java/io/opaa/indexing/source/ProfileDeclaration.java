@@ -13,19 +13,24 @@ import java.util.Set;
  * the sign-ins a profile chooses from, what its server address may be and which settings it may
  * set. A connector admitting profiles offers at least one sign-in; one without profiles has no
  * defaults and names a sign-in only where the core signs in for a library's own key.
+ *
+ * @param requirementGap what a profile does not bind once the type is usable only through one, in
+ *     German - a target reached besides its server address; {@code null} when it binds every target
  */
 public record ProfileDeclaration(
     ConnectionProfileSupport support,
     List<SignIn> signIns,
     ServerAddressRule address,
-    ProfileDefaults defaults) {
+    ProfileDefaults defaults,
+    String requirementGap) {
 
   private static final ProfileDeclaration FORBIDDEN =
       new ProfileDeclaration(
           ConnectionProfileSupport.FORBIDDEN,
           List.of(),
           ServerAddressRule.web(),
-          ProfileDefaults.none());
+          ProfileDefaults.none(),
+          null);
 
   public ProfileDeclaration {
     Objects.requireNonNull(support, "support");
@@ -59,7 +64,7 @@ public record ProfileDeclaration(
   /** Profiles as {@code support} says, signing in by one of {@code signIns}, at a web address. */
   public static ProfileDeclaration of(ConnectionProfileSupport support, SignIn... signIns) {
     return new ProfileDeclaration(
-        support, List.of(signIns), ServerAddressRule.web(), ProfileDefaults.none());
+        support, List.of(signIns), ServerAddressRule.web(), ProfileDefaults.none(), null);
   }
 
   /** No profiles; the core signs in for a library's own key as {@code auth} says. */
@@ -68,15 +73,22 @@ public record ProfileDeclaration(
         ConnectionProfileSupport.FORBIDDEN,
         List.of(SignIn.serviceAccountKey(auth)),
         ServerAddressRule.web(),
-        ProfileDefaults.none());
+        ProfileDefaults.none(),
+        null);
   }
 
   public ProfileDeclaration withAddress(ServerAddressRule rule) {
-    return new ProfileDeclaration(support, signIns, rule, defaults);
+    return new ProfileDeclaration(support, signIns, rule, defaults, requirementGap);
   }
 
   public ProfileDeclaration withDefaults(DefaultKey... keys) {
-    return new ProfileDeclaration(support, signIns, address, ProfileDefaults.of(keys));
+    return new ProfileDeclaration(
+        support, signIns, address, ProfileDefaults.of(keys), requirementGap);
+  }
+
+  /** The same declaration with {@code gap} as what a required profile does not bind. */
+  public ProfileDeclaration withRequirementGap(String gap) {
+    return new ProfileDeclaration(support, signIns, address, defaults, gap);
   }
 
   public boolean admitsProfiles() {
