@@ -472,6 +472,34 @@ der Exchange-Admin beschränkt die App auf bestimmte Postfächer. Sie bekommen e
 der Rechtsklärung, und das Handbuch weist darauf hin, dass ihre Anbindung mitbestimmungspflichtig sein
 kann.
 
+### Bedingungen für den ersten Postfach-Konnektor
+
+Ergebnis einer Stakeholder-Runde zum Postfach-Konnektor (Personalrat, Betrieb, Referatsleitung,
+Sachbearbeitung, KI-Champion, Skeptiker). Die Bedingungen gelten zusätzlich zu den Regeln für private
+Bibliotheken und sind Gegenstand der Rechtsklärung; was davon gebaut wird, steht nicht unter einem
+Schalter.
+
+| Bedingung | Gilt für | Grund |
+|---|---|---|
+| **Keine Auswertung nach Bearbeitenden.** Kopfdaten von Beschäftigten (Von, An, Datum) sind weder Filter noch Facette, und es gibt keine Zählung oder Sortierung nach Person. Das ist eine nicht gebaute Funktion, kein abschaltbarer Schalter | Funktionspostfächer | Ein Gruppenindex beantwortet sonst „wer hat wie oft und wie schnell geantwortet“, also Eignung zur Leistungs- und Verhaltenskontrolle |
+| **Modell im eigenen Haus erzwungen.** Eine private Postfach-Bibliothek fließt nur in Antworten eines Modells ein, das die Installation als im eigenen Haus betrieben kennzeichnet; sonst bleibt sie für diese Anfrage außen vor | private Postfächer | Ein Cloud-Modell trüge Mails samt Daten Dritter aus dem Haus; ein Hinweis allein reicht nicht |
+| **Schutz gegen Prompt-Injection.** Mailtext gilt im Kontext als zitierte Fremdeingabe, nie als Anweisung. Vor der Auslieferung belegt ein Prüfkorpus mit eingebetteten Anweisungen, dass Antworten ihnen nicht folgen | alle Postfächer | Mails sind Text, den jede Person von außen in den Index schreiben kann, ohne Mitwirkung im Haus |
+| **Belege als Korrespondenz gekennzeichnet.** Ein Treffer aus einem Postfach trägt im Chat die Kennzeichnung „Korrespondenz, ungeprüft“ mit Ordner und Abrufdatum | alle Postfächer | Eine Mail ist weder Vorschrift noch Entscheidung; eine darauf gestützte Antwort darf nicht geprüft wirken |
+| **Löschung erreicht auch Chat-Belege.** Wird eine Mail beim Abgleich entfernt oder die Bibliothek gelöscht, verschwinden Zitat und Ausschnitt aus bestehenden Chats; der Beleg zeigt dann „Quelle entfernt“ | alle Postfächer | Die Löschung nach [Lebenszyklus](#lebenszyklus-und-löschung) umfasst Index und Caches, gespeicherte Chat-Belege aber bisher nicht ausdrücklich |
+| **Sichtbarer Indexstand.** Fortschritt des Erstlaufs, Zahl nicht lesbarer Mails (etwa S/MIME) und ein abgebrochener Abgleich sind an der Bibliothek sichtbar | alle Postfächer | Ein still veralteter oder lückenhafter Index lässt glauben, zu einem Vorgang gebe es nichts |
+| **Höchstalter deckt den Jahreszyklus.** Die Vorgabe des Höchstalters liegt über zwölf Monaten | alle Postfächer | Jährlich wiederkehrende Anfragen fielen sonst genau beim nächsten Mal aus dem Index |
+
+**Protokolle.** Exchange wird über OAuth angebunden. Häuser ohne Exchange (Open-Xchange, Dovecot, die
+Postfächer von openDesk) erreicht ein IMAP-Konnektor mit App-Passwort nach dem Muster von Nextcloud.
+Gebaut wird dennoch nur das Protokoll, für das ein Einführungsvorhaben einen Bedarf trägt
+([public-sector.md](./public-sector.md#elektronische-akte-und-dokumentenmanagement): kein Konnektor
+auf Vorrat). Ein Anmeldeweg, der auf das Domänenpasswort hinausläuft, wird nicht angeboten.
+
+**Pilot ohne Konnektor.** Vor dem Bau wird der heutige Weg gemessen: Einzelnachrichten (`.msg`,
+`.eml`) eines Funktionspostfachs in eine Upload-Bibliothek, mit einer Messgröße wie dem Anteil
+korrekt belegter Antworten auf echte Anfragen. Wird dieser Weg nicht genutzt, wird es der Konnektor
+auch nicht.
+
 ---
 
 ## MCP-Grundlage
@@ -502,7 +530,8 @@ Werkzeugaufrufe, Freigabe schreibender Aufrufe und Ausgangstor gehören zu #1747
    Nutzer ist Nextcloud mit App-Passwort (lokal testbar, Dateiablage von openDesk).
 3. **OAuth-Baustein** mit Client-Credentials, „Quelle verbinden“ und der MCP-Grundlage.
 4. **Dropbox** (Quelle verbinden) und **Exchange** (verbundenes Konto, Funktionspostfächer); Exchange
-   erst nach der Rechtsklärung und dem Kontingent.
+   erst nach der Rechtsklärung, dem Kontingent, dem Pilot ohne Konnektor und mit den
+   [Bedingungen für Postfächer](#bedingungen-für-den-ersten-postfach-konnektor).
 
 Unabhängig davon: Spike zum Token-Austausch gegen openDesk. Der MCP-Client folgt als eigenes Epic.
 
@@ -541,6 +570,9 @@ legt [ADR-0041](../decisions/0041-verbindungen-als-eigenes-modul.md) fest.
   entfernt oder deren Wiedereinspielung verhindert wird, klärt der Datenschutz.
 - **Werte der Fristen:** Die Abstimmung mit Personalrat und Datenschutz steht noch aus. Sie kann die
   Vorgaben innerhalb der Grenzen aus ADR-0041 (Entscheidung 7) ändern.
+- **Prompt-Injection über Postfächer hinaus:** Der Schutz aus den Bedingungen für Postfächer gilt der
+  Sache nach für jede Quelle mit Fremdtext (Webverzeichnis, RSS). Ob er dort ebenfalls Pflicht wird,
+  ist offen.
 - **Live-Abfrage** verbundener Konten im Chat ohne Indexierung: mit #1747.
 - **Token-Austausch** als weitere Anmeldeart, abhängig vom Spike.
 - **Weitere Kanäle** für Ablaufwarnungen und Abbrüche (E-Mail, Zusammenfassung): Heute gibt es die
