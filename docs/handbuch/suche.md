@@ -798,7 +798,10 @@ aber nichts ein. Die einzigen Eingriffe dort sind die beiden Chargenläufe der M
 - **Suchpfade** Vektor und Volltext mit Zustand.
 - **Indexstatus je Bibliothek**: Dokumente, Chunks, letzter Lauf, Rückstand der Indexierung,
   Fassungs-Rückstand des Volltextindex. Ein Volltext-Rückstand nach einem Update ist hier sichtbar
-  und nicht erst an schlechten Antworten spürbar.
+  und nicht erst an schlechten Antworten spürbar. Private Bibliotheken stehen nicht einzeln da,
+  sondern als eine Zeile ohne Namen; unterhalb der Mindestgruppengröße nennt sie nur „weniger als N“
+  Bibliotheken und keine Summen (Kapitel
+  [Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), „Private Bibliotheken“).
 - **Stand der Kernfelder und des Kontextpräfix** je Bibliothek, mit Start, Anhalten und
   Wiederaufnahme der Chargenläufe (Kapitel [Metadaten](metadaten.md)).
 
@@ -864,7 +867,10 @@ Jede Bibliothek ist im Grundzustand **diagnosegesperrt**. Die Sperre wirkt nur a
 und hält Bestände, die eine Person nicht zugeordnet sehen soll (etwa Personalvertretung), aus einer
 „Sicht als"-Diagnose heraus. Lösen kann sie nur die zuständige Stelle der Bibliothek über die
 Bibliotheksdetailseite; ein Systemadministrator, der sich die Eigentümerrolle selbst gegeben hat,
-kann das nicht. Jede Diagnose im Personenkontext hinterlässt einen Protokolleintrag mit Begründung
+kann das nicht. Eine private Bibliothek bleibt fest gesperrt: „Sicht als“ erreicht sie ohnehin nie,
+und die Zahl der gesperrten Bibliotheken, die eine Diagnose nennt, zählt sie nicht mit. Ihre
+Dokumente und Chunks beantworten „Dokument verfolgen“ und „Chunk anzeigen“ wie unbekannte. Jede
+Diagnose im Personenkontext hinterlässt einen Protokolleintrag mit Begründung
 und Rechte-Abbild; die betroffene Person sieht die Einträge zu sich selbst, die Rolle AUDITOR das
 Gesamtprotokoll. Die Aufbewahrungsfrist ist einstellbar; abschalten lässt sich die Löschung nicht.
 Eine Verkürzung wirkt mit dem nächsten Monatslauf, und zwar vollständig; eine Verlängerung wirkt

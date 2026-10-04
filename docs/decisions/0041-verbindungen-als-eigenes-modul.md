@@ -362,6 +362,32 @@ Begründung:
 - **Ein Konto mit Verbindung wird nicht gelöscht:** `connected_accounts.user_id` ist `RESTRICT`
   und steht in `UserRepository#countDeletionBlockers`; das Geheimnis hängt mit `CASCADE` am Konto.
 
+## Nachtrag vom 04.10.2026: Private Bibliotheken anlegen und betreiben (#2164)
+
+- **Anlegen nur über `library.PrivateLibraryCreation`:** ausdrückliche Wahl „privat“, auch auf einem
+  Zugang mit beiden Besitzarten, danach unveränderlich (Entscheidung 8 des Phase-2-Plans). Verlangt
+  sind ein verbundenes Konto der Person auf dem Zugang, die Freigabe des Zugangs und das Ziel des
+  Kontos: Ursprung und Bindung der Bibliothek müssen `SecretTarget#key` des Zugangs ergeben, sonst
+  `400`. Ein eigenes Geheimnis nimmt eine private Bibliothek nie an.
+- **Ein eigener Sperrgrund für ein abweichendes Ziel:** Passt das Ziel einer privaten Bibliothek
+  nicht zu dem, für das das Konto ausgestellt ist, verweigert der Speicher mit
+  `TARGET_OUTSIDE_PROFILE` statt `NOT_CONNECTED`; der Hinweis nennt die Besitzerin.
+- **Kein Veto, sondern ein Sperrgrund:** Lehnt der Konnektor eine Profiländerung für eine private
+  Bibliothek ab oder lässt das Profil danach keine Personen mehr zu, wird sie vom Profil gelöst und
+  ruht mit `ACCESS_REMOVED`, bis die Besitzerin sie einem anderen Profil zuordnet. Die Vorschau
+  zählt solche Ablehnungen, ohne Bibliothek und Grund. Eine Constraint-Trigger-Funktion auf
+  `connection_profiles` hält die Bedingung des Triggers auf `library_connections` auch nach einer
+  Änderung der Besitzart (geprüft zum Commit).
+- **Verwaltungssichten ohne private Bibliotheken:** Zahlen am Profil, Indexstatus (eine
+  Summenzeile, unter der Mindestgruppengröße nur „weniger als N“), chunk-arme Dokumente, Zahl der
+  diagnosegesperrten Bibliotheken. Die ungefilterten Finder ruft nur ein gelisteter Systemprozess
+  (`ModularArchitecture#privateLibrariesAreNotEnumeratedOutsideListedClasses`). Protokolle nennen
+  eine private Bibliothek „Private Bibliothek“ (`Asset#auditName`).
+- **Diagnosesperre:** Eine private Bibliothek trägt sie ab Anlage und behält sie; lösen lässt sie
+  sich nicht. „Sicht als“ erreicht sie unabhängig davon nie; die Sperre ist die zweite Schranke.
+- **Laufkategorie:** `indexing_jobs.failure_category` hält, warum ein Lauf scheiterte (Sperrgrund,
+  abgelehnte Anmeldung), ohne Inhaltsbezug.
+
 ## Referenzen
 
 - [connector-connections.md](../features/connector-connections.md)

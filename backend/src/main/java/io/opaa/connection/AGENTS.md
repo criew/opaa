@@ -27,10 +27,10 @@ seine Ports `SourceConnectionResolver` (`ProfileSourceConnectionResolver`) und `
   einer Person; das endet nur mit dem Konto (`ConnectedAccountService#end`).
 - **„Ruhend“ und „deaktiviert“ werden abgeleitet, nie gespeichert** (gespeichert: `CONNECTED`,
   `EXPIRED`, `DISCONNECTED`). Eine getrennte Zeile bleibt, solange eine private Bibliothek daran
-  hängt (Trigger: private Bibliothek nur auf Personen-Zugang mit verbundenem Konto).
-- **Die Verwaltung sieht verbundene Konten nur über `PersonNumbers`** („weniger als N“, auch bei 0
-  und für Teilzahlen); Kontoname verschlüsselt, nur für die Person.
-- **Das Client-Secret ist schreibgeschützt;** Antworten und Audit sagen nur Ja/Nein.
+  hängt (Trigger: private Bibliothek nur auf Personen-Zugang mit Konto, auch nach Besitzartwechsel).
+- **Die Verwaltung sieht Konten nur über `PersonNumbers`** („weniger als N“), Bibliothekszahlen ohne
+  private, Kontoname und Client-Secret nie. Eine private vetiert keine Profiländerung, sie wird
+  gelöst (`PrivateLibraryRelease`); Konto, Ziel, Entwurf prüft `PrivateLibraryConnections`.
 - **Ursprungsbindung:** Die Adresse einer zugeordneten Bibliothek liegt unter der Server-Adresse
   ihres Profils, sonst sperrt der Port. Eine neue Server-Adresse oder Registrierung verwirft alle
   Geheimnisse und beendet die verbundenen Konten; ein gelöschtes Profil lässt `profile_id NULL`.
@@ -42,8 +42,8 @@ seine Ports `SourceConnectionResolver` (`ProfileSourceConnectionResolver`) und `
   Bibliothek, abweichend ist `400`; Lösen schreibt den Rahmen ein.
 - **Freigabe nur hier:** `ConnectorReleaseService` (Bibliothek) und `requireConnectable` (neues
   Konto) aus `CREATE_CONNECTOR_LIBRARY` und Sperren; ein Entzug stoppt nichts.
-- **Profilangabe nur über `ProfileRequirements`.** Eine Sperre blockiert `resolve`, nicht
-  `currentCredentials`. Registry je Aufruf (Bean-Zyklus). Web-Schicht: `connection.web`.
+- **Profilangabe nur über `ProfileRequirements`;** Sperre blockiert `resolve`, nicht
+  `currentCredentials`; Registry je Aufruf (Bean-Zyklus); Web-Schicht `connection.web`.
 
 ## Verweise
 

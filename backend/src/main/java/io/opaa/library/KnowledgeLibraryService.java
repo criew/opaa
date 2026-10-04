@@ -586,7 +586,9 @@ public class KnowledgeLibraryService {
     // absent from that unrelated request. Connector-owned fields are replaced when present and
     // left alone when absent.
     boolean replacesSourceConfiguration = hasSourceConfigurationFields(request);
-    if (library.isOwnerOnly() && request.sourceCredentials() != null) {
+    if (library.isOwnerOnly()
+        && request.sourceCredentials() != null
+        && !request.sourceCredentials().isBlank()) {
       throw new ValidationException(PRIVATE_LIBRARY_TAKES_NO_CREDENTIALS);
     }
     SourceSettings requestedSettings =

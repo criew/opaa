@@ -1743,7 +1743,7 @@ components:
 
     SearchStatusResponse:
       type: object
-      required: [modelRoles, searchPaths, libraries, privateLibraries]
+      required: [modelRoles, searchPaths, libraries]
       properties:
         modelRoles:
           type: array

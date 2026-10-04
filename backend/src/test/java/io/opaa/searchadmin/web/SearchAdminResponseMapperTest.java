@@ -99,6 +99,26 @@ class SearchAdminResponseMapperTest {
   }
 
   @Test
+  void thePrivateLibrariesLineCarriesEitherTheCountWithSumsOrOnlyFewerThan() {
+    var exact =
+        SearchAdminResponseMapper.toPrivateSummaryResponse(
+            new io.opaa.searchadmin.PrivateLibrarySummary(7L, null, 120L, 3L, 900L));
+    var masked =
+        SearchAdminResponseMapper.toPrivateSummaryResponse(
+            new io.opaa.searchadmin.PrivateLibrarySummary(null, 5, null, null, null));
+
+    assertThat(exact.getLibraryCount()).isEqualTo(7L);
+    assertThat(exact.getLibraryCountFewerThan()).isNull();
+    assertThat(exact.getDocumentCount()).isEqualTo(120L);
+    assertThat(exact.getFailedDocumentCount()).isEqualTo(3L);
+    assertThat(exact.getChunkCount()).isEqualTo(900L);
+    assertThat(masked.getLibraryCount()).isNull();
+    assertThat(masked.getLibraryCountFewerThan()).isEqualTo(5);
+    assertThat(masked.getDocumentCount()).isNull();
+    assertThat(masked.getChunkCount()).isNull();
+  }
+
+  @Test
   void aRoleThatIsSwitchedOnButUnbelegtIsMarkedAsAFault() {
     SearchStatusResponse response =
         SearchAdminResponseMapper.toStatusResponse(

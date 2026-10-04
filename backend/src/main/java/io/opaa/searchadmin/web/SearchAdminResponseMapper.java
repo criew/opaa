@@ -63,10 +63,14 @@ final class SearchAdminResponseMapper {
 
   static SearchStatusResponse toStatusResponse(SearchStatus status) {
     return new SearchStatusResponse(
-        status.modelRoles().stream().map(SearchAdminResponseMapper::toModelRoleResponse).toList(),
-        status.searchPaths().stream().map(SearchAdminResponseMapper::toSearchPathResponse).toList(),
-        status.libraries().stream().map(SearchAdminResponseMapper::toLibraryResponse).toList(),
-        toPrivateSummaryResponse(status.privateLibraries()));
+            status.modelRoles().stream()
+                .map(SearchAdminResponseMapper::toModelRoleResponse)
+                .toList(),
+            status.searchPaths().stream()
+                .map(SearchAdminResponseMapper::toSearchPathResponse)
+                .toList(),
+            status.libraries().stream().map(SearchAdminResponseMapper::toLibraryResponse).toList())
+        .privateLibraries(toPrivateSummaryResponse(status.privateLibraries()));
   }
 
   static PrivateLibrarySearchSummaryResponse toPrivateSummaryResponse(

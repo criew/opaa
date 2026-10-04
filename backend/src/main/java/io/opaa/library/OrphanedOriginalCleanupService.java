@@ -3,6 +3,7 @@ package io.opaa.library;
 import io.opaa.api.types.OrphanedOriginalSkipReason;
 import io.opaa.common.NotFoundException;
 import io.opaa.knowledge.DocumentRepository;
+import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.UploadProperties;
 import io.opaa.knowledge.UploadStoreUnavailableException;
@@ -222,6 +223,14 @@ public class OrphanedOriginalCleanupService {
   public OrphanedOriginalDeletion deleteInOrphanedLibrary(
       UUID organizationId, UUID libraryId, List<String> locators) {
     if (libraryRepository.existsById(libraryId)) {
+      if (libraryRepository.findById(libraryId).filter(KnowledgeLibrary::isOwnerOnly).isPresent()) {
+        // a private library is unknown to the administration: answered as an empty area, untouched
+        return new OrphanedOriginalDeletion(
+            List.of(),
+            requested(locators).stream()
+                .map(locator -> skip(locator, OrphanedOriginalSkipReason.NOT_IN_STORE))
+                .toList());
+      }
       throw new IllegalArgumentException(
           "Diese Bibliothek lässt sich über diesen Weg nicht aufräumen - für eine vorhandene"
               + " Bibliothek ist der bibliotheksbezogene Aufräumlauf zuständig");
@@ -390,6 +399,7 @@ public class OrphanedOriginalCleanupService {
     libraryRepository
         .findById(libraryId)
         .filter(candidate -> organizationId.equals(candidate.getOrganizationId()))
+        .filter(candidate -> !candidate.isOwnerOnly())
         .orElseThrow(() -> new NotFoundException("Bibliothek nicht gefunden"));
   }
 }

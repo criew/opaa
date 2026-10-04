@@ -516,6 +516,14 @@ für jede betroffene Bibliothek im Revisionsprotokoll wie eine direkte Änderung
 der Konnektor verwirft den Abgleichstand, den sie ungültig macht; der nächste Lauf gleicht dann
 neu ab. Ein reines Umbenennen fragt keinen Konnektor.
 
+**Private Bibliotheken auf dem Zugang** (Kapitel
+[Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), „Private Bibliotheken“)
+zählen in keiner Zahl dieses Abschnitts mit und haben kein Veto. Lehnt der Konnektor eine Änderung
+für eine private Bibliothek ab oder lässt der Zugang danach keine Personen mehr zu, löst OPAA sie
+vom Zugang; sie ruht mit dem Hinweis „Zugang nicht mehr nutzbar“, bis ihre Besitzerin sie einem
+anderen Zugang zuordnet. Die Vorschau zählt eine solche Ablehnung nur mit, ohne Bibliothek und
+Grund.
+
 Das Client-Secret liegt verschlüsselt mit demselben Schlüssel wie die Zugangsdaten der
 Bibliotheken. Keine Antwort, kein Protokoll und kein Revisionseintrag enthält es; angezeigt wird
 nur, ob eines hinterlegt ist, und eine Warnung, wenn sein Ablaufdatum in weniger als 14 Tagen

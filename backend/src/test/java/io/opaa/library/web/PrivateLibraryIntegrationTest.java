@@ -11,12 +11,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.jayway.jsonpath.JsonPath;
 import io.opaa.auth.DevAuthFilter;
+import io.opaa.diagnosticaccess.LibraryDiagnosticsLockService;
 import io.opaa.indexing.source.SourceBlock;
 import io.opaa.indexing.source.SourceBlock.Reason;
 import io.opaa.indexing.source.SourceConnectionBlockedException;
 import io.opaa.indexing.source.SourceConnectionResolver;
 import io.opaa.indexing.source.profileprobe.PersonProbeSourceConnector;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
+import io.opaa.organization.Organization;
 import io.opaa.test.ConnectorReleases;
 import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.OwnLibraryFixtures;
@@ -58,6 +60,7 @@ class PrivateLibraryIntegrationTest {
   @Autowired private OwnLibraryFixtures libraryFixtures;
   @Autowired private KnowledgeLibraryRepository libraryRepository;
   @Autowired private SourceConnectionResolver resolver;
+  @Autowired private LibraryDiagnosticsLockService diagnosticsLocks;
 
   private final List<UUID> libraries = new ArrayList<>();
   private final List<UUID> profiles = new ArrayList<>();
@@ -341,6 +344,33 @@ class PrivateLibraryIntegrationTest {
                 .content("{\"sourceUrl\": \"" + SERVER + "\", \"libraryId\": \"" + library + "\"}"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.entries[0].key").value(PersonProbeSourceConnector.LISTED_FOLDER));
+  }
+
+  /**
+   * The decision on the Diagnosesperre: a private library carries it from its creation and keeps it
+   * - "Sicht als" never reaches it anyway - and the number a diagnosis names does not count it.
+   */
+  @Test
+  void aPrivateLibraryStaysDiagnosticsLockedAndIsNotCounted() throws Exception {
+    long locked = diagnosticsLocks.countLocked(Organization.DEFAULT_ID);
+    UUID library = createdPrivateLibrary();
+
+    mockMvc
+        .perform(as("dev-user", get(LIBRARIES + "/" + library)))
+        .andExpect(jsonPath("$.diagnosticsLocked").value(true))
+        .andExpect(jsonPath("$.diagnosticsLockToggleable").value(false));
+    mockMvc
+        .perform(
+            as("dev-user", put(LIBRARIES + "/" + library + "/diagnostics-lock"))
+                .content("{\"locked\": false}"))
+        .andExpect(status().isBadRequest());
+    unknown(
+        mockMvc.perform(
+            as("dev-admin", put(LIBRARIES + "/" + library + "/diagnostics-lock"))
+                .content("{\"locked\": false}")));
+
+    assertThat(diagnosticsLocks.countLocked(Organization.DEFAULT_ID)).isEqualTo(locked);
+    assertThat(diagnosticsLocks.isLocked(library)).isTrue();
   }
 
   /**

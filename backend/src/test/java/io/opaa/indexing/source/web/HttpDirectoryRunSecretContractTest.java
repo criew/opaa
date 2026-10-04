@@ -94,6 +94,7 @@ class HttpDirectoryRunSecretContractTest extends RunSecretContract {
     run(template(), jobId, library());
 
     verify(jobService, never()).failJob(eq(jobId), anyString());
+    verify(jobService, never()).failJob(eq(jobId), anyString(), anyString());
     verify(ingestService, times(FILES)).ingest(any(), any());
     verifyNoInteractions(cleanupService);
     assertThat(rejectionsReported()).isZero();
