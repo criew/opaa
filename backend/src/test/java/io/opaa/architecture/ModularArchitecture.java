@@ -271,6 +271,15 @@ public final class ModularArchitecture {
 
   static final String SECRET_STORE = "connection.profile.ConnectionSecrets";
 
+  /**
+   * What a connector declares about profiles, relative to the root. In module connections only
+   * {@link #PROFILE_REQUIREMENTS} reads it, so the switch of the system administration applies
+   * everywhere.
+   */
+  static final String PROFILE_SUPPORT = "indexing.source.ProfileDeclaration#support";
+
+  static final String PROFILE_REQUIREMENTS = "connection.profile.ProfileRequirements";
+
   /** Every direct subpackage of this one, relative to the root, is a connector. */
   static final String CONNECTOR_PARENT = "indexing.source";
 
@@ -985,6 +994,30 @@ public final class ModularArchitecture {
         .allowEmptyShould(true);
   }
 
+  /**
+   * Reads of {@link #PROFILE_SUPPORT} in module CONNECTIONS outside {@link #PROFILE_REQUIREMENTS}.
+   */
+  ArchRule theProfileSupportIsReadInOnePlace() {
+    return noClasses()
+        .that(
+            DescribedPredicate.describe(
+                "are in module CONNECTIONS and not " + PROFILE_REQUIREMENTS,
+                javaClass ->
+                    moduleOf(javaClass) == CONNECTIONS
+                        && !PROFILE_REQUIREMENTS.equals(relativeName(javaClass))))
+        .should()
+        .accessTargetWhere(
+            DescribedPredicate.describe(
+                "read " + PROFILE_SUPPORT,
+                access ->
+                    PROFILE_SUPPORT.equals(
+                        relativeName(access.getTargetOwner()) + "#" + access.getName())))
+        .because(
+            "the declared support is made REQUIRED by the system administration's switch in one"
+                + " place; connections asks it for the effective support")
+        .allowEmptyShould(true);
+  }
+
   /** {@code javaClass} relative to the root, {@code null} outside it. */
   private String relativeName(JavaClass javaClass) {
     String relative = relative(javaClass.getPackageName());
@@ -997,6 +1030,7 @@ public final class ModularArchitecture {
         theLibrarySecretIsReadInOnePlace(),
         theSecretStoreIsUsedOnlyInConnections(),
         theForeignContextNeverUsesTheOwnFormula(),
+        theProfileSupportIsReadInOnePlace(),
         theSecretPortStaysWithTheCore(),
         theConnectorReleaseIsDecidedInConnections(),
         everyPackageIsAssigned(),

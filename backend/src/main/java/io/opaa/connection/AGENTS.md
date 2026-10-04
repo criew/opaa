@@ -15,9 +15,9 @@ knowledge kennt connections: Der Kern erreicht es über seine Ports `SourceConne
 ## Invarianten und Stolpersteine
 
 - **Unterpakete, unten zuerst:** `connection.profile` (Profile, Zuordnung, `ServerAddress`,
-  Sperren, `ConnectorScope`).
-  Das Wurzelpaket verdrahtet und implementiert den Port, `connection.web` liegt darüber. Kein
-  Unterpaket nennt das Wurzelpaket (`ModularArchitecture.CONNECTION_PACKAGES`).
+  Sperren, Profilpflicht, `ConnectorScope`). Das Wurzelpaket verdrahtet und implementiert den Port,
+  `connection.web` liegt darüber. Kein Unterpaket nennt das Wurzelpaket
+  (`ModularArchitecture.CONNECTION_PACKAGES`).
 - **Das Client-Secret ist schreibgeschützt.** `ConnectionProfileService` verschlüsselt es mit
   `CredentialsEncryptor`; Antworten tragen nur `clientSecretSet`, das Audit nur Feldnamen und
   Ja/Nein. Kein Code gibt es heraus, bis ein Konsument es braucht (OAuth, #2168).
@@ -27,7 +27,7 @@ knowledge kennt connections: Der Kern erreicht es über seine Ports `SourceConne
 - **Lesen und Verwerfen des Geheimnisses** in connections nur über `ConnectionSecrets`, library
   über den Port; der Schreibweg der Bibliothek bleibt `updateSourceConfiguration`.
 - **Ein gelöschtes Profil** lässt die Zuordnung mit `profile_id NULL` stehen („Zugang entfernt“);
-  der Port sperrt dann mit eigenem Grund und deutscher Meldung.
+  sie zählt als eigene Adresse, entschieden nur in `LibraryConnection#throughProfile`.
 - **Sperrgründe nur in `SourceBlocks`:** Ob und warum eine Bibliothek gesperrt ist und welcher Text
   gilt, entscheidet nur er. Vorrang ist die Deklarationsreihenfolge von `SourceBlock.Reason`, die
   Mengen der Aufrufer leiten sich aus dessen Eigenschaften ab: Ein neuer Grund steht an einer Stelle.
@@ -38,9 +38,10 @@ knowledge kennt connections: Der Kern erreicht es über seine Ports `SourceConne
   `CREATE_CONNECTOR_LIBRARY` im Geltungsbereich `TYPE:`/`PROFILE:` und den Sperren;
   `ConnectorScopeCatalog` nennt rights die Geltungsbereiche. Kein anderes Modul außer rights nennt
   die Fähigkeit (`theConnectorReleaseIsDecidedInConnections`). Ein Entzug stoppt keinen Lauf.
-- **Sperre:** Der Port blockiert `resolve` (Laufstart, Original), nicht `currentCredentials`; ein
-  laufender Lauf endet regulär. `ConnectorLockService` holt die Registry je Aufruf, weil der Port
-  im Kern hängt und die Konnektoren am Kern.
+- **Profilangabe nur über `ProfileRequirements`:** deklariert `OPTIONAL` plus Schalter ergibt
+  `REQUIRED`; nur dort liest connections `support` (`theProfileSupportIsReadInOnePlace`).
+- **Sperre:** blockiert `resolve` (Laufstart, Original), nicht `currentCredentials`. Die Registry
+  wird je Aufruf geholt, weil der Port im Kern hängt und die Konnektoren am Kern.
 - **Web-Schicht:** `connection.web` (Verwaltung unter `/api/v1/admin/connection-profiles`, Auswahl
   unter `/api/v1/connection-profiles`). Die Zuordnung einer Bibliothek liegt in `library.web`.
 
@@ -56,5 +57,4 @@ knowledge kennt connections: Der Kern erreicht es über seine Ports `SourceConne
 ./gradlew test --tests 'io.opaa.connection.*' --tests 'io.opaa.architecture.*'
 ```
 
-Bei Schemaänderungen: neue Datei unter `db/changelog/connections/`. Regeln und Tests in
-`backend/AGENTS.md`, „Liquibase: Changelog je Modul“.
+Schemaänderungen: neue Datei unter `db/changelog/connections/`, Regeln in `backend/AGENTS.md`.

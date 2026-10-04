@@ -43,7 +43,10 @@ describe('LibrarySourceSection - Zugang (#2160)', () => {
     renderWithProviders(
       <LibrarySourceSection
         libraryId="library-1"
-        library={{ ...library, sourceLockNotice: notice }}
+        library={{
+          ...library,
+          sourceBlock: { reason: 'PROFILE_LOCKED', responsible: 'Systemverwaltung', notice },
+        }}
         canEditSource={false}
       />,
     )

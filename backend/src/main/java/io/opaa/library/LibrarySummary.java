@@ -2,6 +2,7 @@ package io.opaa.library;
 
 import io.opaa.api.types.AssetRole;
 import io.opaa.indexing.job.JobStatus;
+import io.opaa.indexing.source.SourceBlock;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.permission.AssetReach;
 import io.opaa.permission.SuccessionFinding;
@@ -25,7 +26,7 @@ import java.time.Instant;
  *     does, reduced to state and addressee by the mapper.
  * @param reach how far the library reaches right now, derived from its grants (#1931) - the
  *     overview shows it as a badge instead of the former release level.
- * @param sourceLockNotice as {@link LibraryDetail#sourceLockNotice()}
+ * @param sourceBlock as {@link LibraryDetail#sourceBlock()}
  */
 public record LibrarySummary(
     KnowledgeLibrary library,
@@ -36,7 +37,7 @@ public record LibrarySummary(
     JobStatus lastRunStatus,
     SuccessionFinding succession,
     AssetReach reach,
-    String sourceLockNotice) {
+    SourceBlock sourceBlock) {
 
   /** A summary of a library that is not locked. */
   public LibrarySummary(

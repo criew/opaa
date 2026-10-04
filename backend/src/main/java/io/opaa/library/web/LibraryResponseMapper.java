@@ -124,7 +124,7 @@ final class LibraryResponseMapper {
             .diagnosticsLockToggleable(detail.diagnosticsLockToggleable())
             .lastTransfer(PermissionTransferResponseMapper.toResponse(lastTransfer))
             .succession(SuccessionStateResponseMapper.toStateResponse(detail.succession()))
-            .sourceLockNotice(detail.sourceLockNotice());
+            .sourceBlock(SourceBlockResponseMapper.toResponse(detail.sourceBlock()));
     LibraryProfileState profile = detail.connectionProfile();
     if (profile != null) {
       response
@@ -189,7 +189,7 @@ final class LibraryResponseMapper {
         .lastIndexedAt(summary.lastIndexedAt())
         .lastRunStatus(toIndexingStatus(summary.lastRunStatus()))
         .succession(SuccessionStateResponseMapper.toStateResponse(summary.succession()))
-        .sourceLockNotice(summary.sourceLockNotice());
+        .sourceBlock(SourceBlockResponseMapper.toResponse(summary.sourceBlock()));
   }
 
   /**

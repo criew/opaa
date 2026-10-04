@@ -80,8 +80,8 @@ export function tileFromCatalogEntry(entry: CatalogEntryResponse): AssetTileData
     status: status === 'READY' ? null : status,
     successionOpen: Boolean(entry.succession),
     // the short form of the notice; the library's source tab carries the whole of it
-    note: entry.knowledgeLibrary?.sourceLockNotice
-      ? 'Gesperrt – Inhalt wird nicht mehr aktualisiert (zuständig: Systemverwaltung)'
+    note: entry.knowledgeLibrary?.sourceBlock
+      ? `Gesperrt – Inhalt wird nicht mehr aktualisiert (zuständig: ${entry.knowledgeLibrary.sourceBlock.responsible})`
       : null,
   }
 }

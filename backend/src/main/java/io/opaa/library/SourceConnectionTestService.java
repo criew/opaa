@@ -244,10 +244,10 @@ public class SourceConnectionTestService {
   /** An existing library's locked source is not reached, like its original (409). */
   private void requireUnlocked(KnowledgeLibrary library) {
     libraryConnections
-        .lockNotice(library)
+        .lockOf(library)
         .ifPresent(
-            notice -> {
-              throw new ConflictException(notice, ConnectorLockService.SOURCE_LOCKED);
+            block -> {
+              throw new ConflictException(block.notice(), ConnectorLockService.SOURCE_LOCKED);
             });
   }
 
