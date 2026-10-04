@@ -1065,10 +1065,10 @@ components:
           $ref: "#/components/schemas/SourceTypeKey"
         serverUrl:
           type: string
-          maxLength: 2000
+          maxLength: 300
           description: >
             The server the profile should carry, by the address rule of the source type; stored
-            in the form of a profile's serverUrl. Never called.
+            in the form of a profile's serverUrl, at most 300 characters. Never called.
           example: https://cloud.example.org
         reason:
           type: string

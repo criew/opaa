@@ -28,7 +28,7 @@ public class ConnectionProfileRequest {
   @Column(name = "source_type", nullable = false, length = SourceType.MAX_LENGTH)
   private SourceType sourceType;
 
-  @Column(name = "server_url", nullable = false, length = 2000)
+  @Column(name = "server_url", nullable = false, length = 300)
   private String serverUrl;
 
   @Column(name = "reason", length = 500)

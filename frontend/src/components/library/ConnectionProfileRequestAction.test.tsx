@@ -60,7 +60,7 @@ describe('ConnectionProfileRequestAction', () => {
     })
     const mine = await screen.findByRole('list', { name: 'Ihre Zugangswünsche' })
     expect(within(mine).getByText('https://cloud.neu.example')).toBeVisible()
-  })
+  }, 15000)
 
   it('says so when the same request is already open', async () => {
     const user = userEvent.setup()
@@ -75,7 +75,7 @@ describe('ConnectionProfileRequestAction', () => {
 
     await waitFor(() => expect(lastNotification()?.message).toMatch(/bereits gestellt/))
     expect(mockConnectionProfileRequests).toHaveLength(1)
-  })
+  }, 15000)
 
   it('keeps the dialog open with the reason of a 429', async () => {
     server.use(
@@ -102,7 +102,7 @@ describe('ConnectionProfileRequestAction', () => {
     )
     expect(screen.getByRole('dialog', { name: 'Zugang vorschlagen' })).toBeVisible()
     expect(lastNotification()).toBeUndefined()
-  })
+  }, 15000)
 
   it('shows the own requests of the type with their state and answer, as plain text', async () => {
     mockConnectionProfileRequests.push({

@@ -10,7 +10,7 @@ databaseChangeLog:
                   id uuid NOT NULL,
                   organization_id uuid NOT NULL,
                   source_type character varying(20) NOT NULL,
-                  server_url character varying(2000) NOT NULL,
+                  server_url character varying(300) NOT NULL,
                   reason character varying(500),
                   requested_by uuid NOT NULL,
                   created_at timestamp with time zone NOT NULL,

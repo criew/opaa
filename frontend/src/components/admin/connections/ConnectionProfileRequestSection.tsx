@@ -114,9 +114,10 @@ export default function ConnectionProfileRequestSection({
         Zugangswünsche
       </Typography>
       <Typography sx={{ fontSize: 13, color: 'text.secondary', mb: 1.5 }}>
-        Wer im Wissens-Assistenten keinen passenden Zugang findet, kann hier einen vorschlagen.
-        „Zugang anlegen“ übernimmt Quellart und Adresse und erledigt den Wunsch beim Speichern; die
-        Freigabe des neuen Zugangs erteilen Sie wie bei jedem Zugang unter „Anlegerechte“.
+        Wer im Wissens-Assistenten keinen passenden Zugang findet, kann einen vorschlagen; die
+        Wünsche erscheinen hier. „Zugang anlegen“ übernimmt Quellart und Adresse und erledigt den
+        Wunsch beim Speichern; die Freigabe des neuen Zugangs erteilen Sie wie bei jedem Zugang
+        unter „Anlegerechte“.
       </Typography>
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>

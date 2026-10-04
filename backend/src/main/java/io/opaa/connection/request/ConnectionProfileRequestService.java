@@ -61,7 +61,12 @@ public class ConnectionProfileRequestService {
   static final Duration WINDOW = Duration.ofHours(1);
 
   private static final int MAX_TEXT_LENGTH = 500;
-  private static final int MAX_URL_LENGTH = 2000;
+
+  /** A server address needs no more; it also keeps audit label and notification bodies short. */
+  static final int MAX_URL_LENGTH = 300;
+
+  private static final int MAX_AUDIT_LABEL_LENGTH = 500;
+  private static final int MAX_NOTIFICATION_BODY_LENGTH = 2000;
   private static final int MAX_PAGE_SIZE = 100;
 
   private final ConnectionProfileRequestRepository requests;
@@ -105,9 +110,11 @@ public class ConnectionProfileRequestService {
     SourceConnectorDescriptor descriptor = descriptorAdmittingProfiles(type);
     String address = ServerAddress.normalize(serverUrl, descriptor.profileDeclaration().address());
     if (address.length() > MAX_URL_LENGTH) {
-      throw new ValidationException("serverUrl ist zu lang");
+      throw new ValidationException(
+          "serverUrl darf höchstens " + MAX_URL_LENGTH + " Zeichen umfassen");
     }
     String text = text(reason, "reason");
+    requests.lockSubmissionsOf(caller.id());
     Optional<ConnectionProfileRequest> open =
         requests.findByRequestedByAndSourceTypeAndServerUrlAndState(
             caller.id(), type, address, ProfileRequestState.OPEN);
@@ -206,7 +213,7 @@ public class ConnectionProfileRequestService {
   private ConnectionProfileRequest openRequest(CurrentUser caller, UUID requestId) {
     ConnectionProfileRequest request =
         requests
-            .findByIdAndOrganizationId(requestId, caller.organizationId())
+            .findLockedByIdAndOrganizationId(requestId, caller.organizationId())
             .orElseThrow(() -> new NotFoundException("Zugangswunsch nicht gefunden"));
     if (request.getState() != ProfileRequestState.OPEN) {
       throw new ConflictException("Der Zugangswunsch ist bereits erledigt", NOT_OPEN);
@@ -287,7 +294,7 @@ public class ConnectionProfileRequestService {
           AuditObjectType.SYSTEM_SETTING,
           request.getId(),
           "Neuer Zugangswunsch",
-          body);
+          shortened(body, MAX_NOTIFICATION_BODY_LENGTH));
     }
   }
 
@@ -320,7 +327,7 @@ public class ConnectionProfileRequestService {
         AuditObjectType.SYSTEM_SETTING,
         request.getId(),
         done ? "Ihr Zugangswunsch ist erledigt" : "Ihr Zugangswunsch wurde abgelehnt",
-        body.toString());
+        shortened(body.toString(), MAX_NOTIFICATION_BODY_LENGTH));
   }
 
   /** State, type, address and profile only - never the reason or the answer text. */
@@ -339,7 +346,7 @@ public class ConnectionProfileRequestService {
             .object(
                 AuditObjectType.SYSTEM_SETTING,
                 request.getId(),
-                "Zugangswunsch " + request.getServerUrl())
+                shortened("Zugangswunsch " + request.getServerUrl(), MAX_AUDIT_LABEL_LENGTH))
             .before(Map.of("state", ProfileRequestState.OPEN.name()))
             .after(after)
             .outcome(AuditOutcome.SUCCESS)
@@ -390,6 +397,13 @@ public class ConnectionProfileRequestService {
   private static <T> Map<UUID, String> byId(
       Collection<T> rows, Function<T, UUID> id, Function<T, String> name) {
     return rows.stream().collect(Collectors.toMap(id, name, (first, second) -> first));
+  }
+
+  /**
+   * {@code value} cut to {@code max} characters, visibly with an ellipsis, for a bounded column.
+   */
+  private static String shortened(String value, int max) {
+    return value.length() <= max ? value : value.substring(0, max - 1) + "…";
   }
 
   private static String nameOf(String displayName) {

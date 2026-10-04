@@ -33,6 +33,8 @@ function requestOutcome(request: ConnectionProfileRequestResponse): string | nul
 interface ConnectionProfileRequestActionProps {
   descriptor: SourceTypeDescriptor
   idPrefix: string
+  /** The sentence before the action; by default it asks whether no profile fits. */
+  prompt?: string
 }
 
 /**
@@ -43,6 +45,7 @@ interface ConnectionProfileRequestActionProps {
 export default function ConnectionProfileRequestAction({
   descriptor,
   idPrefix,
+  prompt = 'Kein passender Zugang dabei? Zugänge legt die Systemverwaltung an.',
 }: ConnectionProfileRequestActionProps) {
   const [open, setOpen] = useState(false)
   const [serverUrl, setServerUrl] = useState('')
@@ -110,9 +113,7 @@ export default function ConnectionProfileRequestAction({
   return (
     <Box sx={{ mt: 1.5 }} data-testid={`${idPrefix}-connection-request`}>
       <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
-        <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
-          Kein passender Zugang dabei? Zugänge legt die Systemverwaltung an.
-        </Typography>
+        <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>{prompt}</Typography>
         <Button
           size="small"
           onClick={() => setOpen(true)}

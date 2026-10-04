@@ -328,6 +328,51 @@ class ConnectionProfileRequestIntegrationTest {
         .contains("abgelehnt", "Dafür gibt es den Zugang A.");
   }
 
+  /**
+   * An address at the longest admitted length is submitted, declined with the longest answer and
+   * served by a new profile; every write it reaches (audit label, notification bodies) holds it.
+   */
+  @Test
+  void anAddressAtTheLongestAdmittedLengthCanBeSubmittedDeclinedAndServed() throws Exception {
+    String declined = addressOfLength(300, 'a');
+    String served = addressOfLength(300, 'b');
+    mockMvc
+        .perform(
+            as("dev-user", post(SUBMIT))
+                .content(body("PROFILE_PROBE", addressOfLength(301, 'c'), null)))
+        .andExpect(status().isBadRequest());
+    UUID declinedRequest = submit("dev-user", "PROFILE_PROBE", declined, "x".repeat(500));
+    UUID servedRequest = submit("dev-user", "PROFILE_PROBE", served, null);
+
+    mockMvc
+        .perform(
+            as("dev-admin", put(ADMIN + "/" + declinedRequest))
+                .content("{\"state\": \"DECLINED\", \"answer\": \"" + "y".repeat(500) + "\"}"))
+        .andExpect(status().isOk());
+    String created =
+        mockMvc
+            .perform(
+                as("dev-admin", post(PROFILES))
+                    .content(
+                        """
+                        {"name": "%s", "sourceType": "PROFILE_PROBE", "serverUrl": "%s",
+                         "authMethod": "NONE", "ownership": "LIBRARY", "fulfillsRequestId": "%s"}
+                        """
+                            .formatted("Z".repeat(255), served, servedRequest)))
+            .andExpect(status().isCreated())
+            .andReturn()
+            .getResponse()
+            .getContentAsString(StandardCharsets.UTF_8);
+    profiles.add(UUID.fromString(JsonPath.read(created, "$.id")));
+
+    assertThat(stateOf(declinedRequest)).isEqualTo("DECLINED");
+    assertThat(stateOf(servedRequest)).isEqualTo("DONE");
+    assertThat(notificationBodies(devUser, declinedRequest, "CONNECTION_PROFILE_REQUEST_RESOLVED"))
+        .singleElement()
+        .asString()
+        .contains(declined, "y".repeat(500));
+  }
+
   /** Runs on the Liquibase schema: the foreign key takes the request along with the account. */
   @Test
   void deletingTheRequestingAccountRemovesItsRequests() {
@@ -365,6 +410,12 @@ class ConnectionProfileRequestIntegrationTest {
             .getResponse()
             .getContentAsString(StandardCharsets.UTF_8);
     return UUID.fromString(JsonPath.read(response, "$.id"));
+  }
+
+  /** A valid https address of exactly {@code length} characters, padded with {@code fill}. */
+  private static String addressOfLength(int length, char fill) {
+    String base = "https://long.example.org/";
+    return base + String.valueOf(fill).repeat(length - base.length());
   }
 
   private static String body(String type, String url, String reason) {
