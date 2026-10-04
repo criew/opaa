@@ -130,14 +130,22 @@ wirklich weg.
 - **Umbenannt oder verschoben während eines Abgleichs:** Liegt der neue Ort vor der gemerkten
   Stelle, entfernt der Abgleich das Dokument unter dem alten Pfad, bevor der neue gelistet ist.
   Dasselbe gilt für eine Datei, die gelöscht und am selben Ort neu angelegt wird, nachdem ihr
-  Ordner gelistet war. Die Lücke dauert bis zum nächsten Abgleich; dann ist die Datei unter ihrem
-  Pfad wieder da.
+  Ordner gelistet war. Der nächste Abgleich legt das Dokument neu an. Verloren geht dabei, was am
+  alten Dokument hing: seine Dokument-ID, von Hand gepflegte Metadaten und Schlagwörter, und
+  Verweise aus Chats auf das alte Dokument führen ins Leere.
+- Ein Ordner auf dem Weg zur gemerkten Stelle, der unter seinem Namen durch einen anderen ersetzt
+  wurde (gelöscht und neu angelegt, aus einer Sicherung zurückgespielt), wird weiter gelistet;
+  seine Dokumente bleiben.
 - Was ein Lauf zwischendurch an Dateien bestätigt, auch einzeln, zählt für den Abgleich mit.
 - Die Obergrenze `max-entries-per-run` gilt für den ganzen Abgleich, nicht je Lauf.
 - Ein Lauf, der an einem Fehler scheitert (Anmeldung abgelehnt, Server nicht erreichbar), ändert
   die gemerkte Stelle nicht und entfernt nichts; der nächste setzt an derselben Stelle fort.
-- Ein Bereich, der sich nicht vollständig listen lässt, beginnt beim nächsten Lauf von vorn;
-  entfernt wird erst nach einem vollständigen Durchgang.
+- **Ein Ordner, der dauerhaft nicht lesbar ist** (kein Leserecht des Dienstkontos), macht seinen
+  Bereich unvollständig. Ein Lauf, der deshalb unvollständig endet, schließt den Abgleich ab, ohne
+  etwas zu entfernen; der nächste Lauf beginnt einen neuen und liest die übrigen Bereiche wieder.
+  Neue und geänderte Dateien kommen so weiter in die Bibliothek. Entfernt wird in der ganzen
+  Bibliothek nichts, bis der Ordner lesbar ist oder aus dem Bereich genommen wird; das Protokoll
+  nennt ihn in jedem Lauf.
 
 ## 4. Verknüpfungen, besondere Dateien und Namen
 
@@ -148,7 +156,11 @@ wirklich weg.
 - **Samba** löst Unix-Links meist selbst auf (`follow symlinks`) und zeigt sie als gewöhnliche
   Datei oder als Ordner. OPAA öffnet sie trotzdem nicht. Ein Ordner, dem der Abgleich schon unter
   einem anderen Namen begegnet ist, auch in einem früheren Lauf desselben Abgleichs, gilt als
-  Verknüpfung; in Namensreihenfolge gewinnt der erste Name. Das beendet Schleifen.
+  Verknüpfung; in Namensreihenfolge gewinnt der erste Name. Das beendet Schleifen. Bis zu dieser
+  Fassung gewann der Name, der in der Ordnerebene weiter oben lag. In einer bestehenden Bibliothek
+  kann deshalb einmalig der Pfad wechseln, unter dem ein solcher Ordner indexiert ist: Die
+  Dokumente darunter werden unter dem alten Pfad entfernt und unter dem neuen neu angelegt und
+  verlieren dabei Dokument-ID, Metadaten, Schlagwörter und Verweise aus Chats.
 - **Deduplizierte Dateien** (Windows-Datendeduplizierung) werden normal gelesen.
 - **Ausgelagerte Dateien** (offline, nur bei Zugriff zurückgeholt, etwa durch ein Archivsystem
   oder einen Cloud-Speicher) werden nicht geladen: ein Abruf würde die Rückholung auslösen. Sie
@@ -215,8 +227,10 @@ Kapitel [Deployment](deployment.md)):
   zurück und bleibt die Größe gleich, bemerkt der Lauf die Änderung nicht.
 - **Sehr viele Ordner in einem Bereich.** Die gemerkte Stelle enthält die Datei-IDs aller Ordner,
   denen der Abgleich begegnet ist. Wird sie zu groß (bei mehreren hunderttausend Ordnern in einem
-  Bereich), merkt sich OPAA keine neue Stelle mehr, und ein Lauf, der danach am Budget endet,
-  kommt in diesem Bereich nicht weiter. Abhilfe: den Bereich in mehrere Ordner aufteilen.
+  Bereich), merkt sich OPAA keine neue Stelle mehr; das Protokoll sagt es einmal je Lauf
+  („Der Fortsetzungspunkt ist mit … Zeichen zu groß zum Speichern …“). Ein Lauf, der danach am
+  Budget endet, kommt in diesem Bereich nicht weiter. Abhilfe: den Bereich in mehrere Ordner
+  aufteilen.
 - **Geteilte Datei-ID.** Teilen sich zwei Ordner eine Datei-ID (etwa bei Samba mit mehreren
   Dateisystemen unter einer Freigabe), hält OPAA den zweiten für eine Verknüpfung; er fehlt dann
   ohne Befund, und sein Bestand wird entfernt.

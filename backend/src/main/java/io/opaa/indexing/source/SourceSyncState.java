@@ -4,7 +4,10 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
+import jakarta.persistence.PostLoad;
+import jakarta.persistence.PostPersist;
 import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Arrays;
@@ -85,6 +88,9 @@ public class SourceSyncState {
   @Column(name = "updated_at", nullable = false)
   private Instant updatedAt;
 
+  /** Whether this instance was read from or written to the database. */
+  @Transient private boolean stored;
+
   protected SourceSyncState() {}
 
   public SourceSyncState(UUID libraryId) {
@@ -95,6 +101,20 @@ public class SourceSyncState {
 
   public UUID getId() {
     return id;
+  }
+
+  /**
+   * Whether this instance came from the database: a save must then find its row, or the state was
+   * deleted - a changed source - while the run held it.
+   */
+  public boolean isStored() {
+    return stored;
+  }
+
+  @PostLoad
+  @PostPersist
+  void markStored() {
+    stored = true;
   }
 
   public UUID getLibraryId() {

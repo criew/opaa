@@ -121,4 +121,18 @@ class ScanJournalIntegrationTest {
         null,
         null);
   }
+
+  // regression guard for #2202: a run never writes back a state deleted while it held it
+  @Test
+  void aStateDeletedWhileARunHeldItIsNotWrittenAgain() {
+    SourceSyncState saved = journal.save(new SourceSyncState(library.getId()));
+    SourceSyncState held = repository.findByLibraryId(library.getId()).orElseThrow();
+    jdbcTemplate.update("DELETE FROM source_sync_state WHERE id = ?", saved.getId());
+    held.recordScanProgress(progress(UUID.randomUUID(), "alt"));
+
+    assertThatThrownBy(() -> journal.save(held))
+        .isInstanceOf(IndexingRunFailedException.class)
+        .hasMessage(ScanJournal.DISCARDED_MESSAGE);
+    assertThat(repository.findByLibraryId(library.getId())).isEmpty();
+  }
 }

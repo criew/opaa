@@ -683,8 +683,11 @@ Vollabgleich ist jetzt eine **Runde**, die sich über mehrere Läufe erstrecken 
    Runde schon betreten wurde. Die Menge steht in der Marke (vorzeichenlos sortiert, Abstände in
    Basis 36), deshalb ist der Schutz über die Läufe derselbe wie in einem Lauf: Jede Schleife führt
    zu einer schon betretenen ID. Neu ist nur, dass in Namensreihenfolge der zuerst betretene Name
-   gewinnt, nicht der zuerst gelistete. Ein Ordner auf dem Weg zur Marke, der jetzt eine andere ID
-   trägt, gilt als erledigt; der neue Ordner kommt mit der nächsten Runde.
+   gewinnt, nicht der zuerst gelistete; in Bestandsbibliotheken kann so einmalig der indexierte
+   Pfad eines doppelt erreichbaren Ordners wechseln (gewollte Verhaltensänderung, Handbuch SMB 4).
+   Den bisherigen Namen zu bevorzugen machte die Wahl vom Bestand abhängig; sie bliebe über Läufe
+   nicht bestimmt. Ein Ordner auf dem Weg zur Marke, der jetzt eine andere, noch nicht betretene ID
+   trägt, wird betreten; trägt er eine schon betretene, ist er eine Verknüpfung.
 9. **Löschregel.** `onlyTheKnownClassesDeleteDocuments` erfasst auch `@Modifying`-Abfragen von
    `DocumentRepository`, deren Abfrage mit `delete` beginnt, unabhängig vom Namen.
    `onlyTheRunRemovesThroughTheCleanupService` erlaubt die löschenden Methoden von
@@ -704,6 +707,25 @@ Grenzen:
   das Protokoll meldet jeden Abschluss ohne Abgleich.
 - Eine Runde über mehrere Läufe schreibt Präsenz je gesehenem Dokument und liest beim Abschluss
   die ganze Präsenz der Runde. Ein Lauf in einer Runde allein schreibt bei `SINGLE_RUN` keine.
+
+Nachbesserung aus dem Review:
+
+- **Unlistbarer Container:** Endet ein Lauf ohne Budget-Ende unvollständig, sind alle übrigen
+  Container fertig. Eine Runde mit Marken wird dann verworfen (ohne Abgleich, ohne Gedächtnis),
+  und der nächste Lauf beginnt eine neue, die die übrigen Container wieder listet. Sonst würde ein
+  dauerhaft nicht listbarer Ordner alle anderen einfrieren.
+- **Seitenbuchhaltung:** Gehalten werden nur die letzte festschreibbare Marke und die Seiten mit
+  offenen Downloads. Präsenz, die erst nach der gesicherten Marke gesehen wurde, wird am
+  Budget-Ende zurückgehalten. Eine Marke über der Grenze nennt das Protokoll einmal je Lauf und
+  Container.
+- **Verworfener Abgleichszustand:** Ein Zustand, der aus der Datenbank kam, wird nur geschrieben,
+  solange seine Zeile besteht (gesperrt in derselben Transaktion). Ändert sich die Quelle während
+  eines Laufs und löscht dabei den Zustand, endet der Lauf, statt Runde und Präsenz wieder
+  anzulegen.
+- **Zurückgebliebene Zeile:** Trifft die Auflistung eine Datei an einem anderen Ort als ihre Zeile
+  und scheitert die Aufnahme dort, steht die Zeile weiter am alten Ort. Dieser Ordner wird deshalb
+  nicht gemerkt; sonst trüge ein Ordner, der später denselben Namen bekommt, die Zeile als
+  unverändert weiter, und sie würde nie entfernt.
 
 Prozesslokaler Zustand entsteht nicht: Die Runde steht in der Datenbank, die Tiefensuche eines
 Stores lebt nur im Lauf (ADR-0021 unverändert).

@@ -51,11 +51,30 @@ final class ScanRound {
 
   private String current;
   private long entriesBase;
-  private final TreeMap<Integer, PageMark> pages = new TreeMap<>();
   private int pageCounter;
 
-  /** One listed page: its checkpoint, if any, and the container's entries through it. */
-  private record PageMark(String checkpoint, long entries) {}
+  /** The first page of the current container in this run. */
+  private int firstPage;
+
+  /** The current container's entries listed in this run. */
+  private long listedEntries;
+
+  /** Whether the current container gave a checkpoint in this run. */
+  private boolean checkpointed;
+
+  /** Whether the current container gave a checkpoint too long to keep in this run. */
+  private boolean oversized;
+
+  /** The last fully ingested page of the current container that gave a checkpoint. */
+  private PageMark settled;
+
+  /** The pages of the current container not yet fully ingested, by number. */
+  private final TreeMap<Integer, PageMark> unsettled = new TreeMap<>();
+
+  /**
+   * One listed page: its number, its checkpoint, if any, and the container's entries through it.
+   */
+  private record PageMark(int page, String checkpoint, long entries) {}
 
   private ScanRound(
       ScanJournal journal,
@@ -181,7 +200,8 @@ final class ScanRound {
    */
   String start(FileContainer container) {
     current = container.key();
-    pages.clear();
+    clearPages();
+    firstPage = pageCounter + 1;
     ContainerProgress progress = containers.get(current);
     if (progress != null && progress.checkpoint() != null) {
       entriesBase = progress.entries();
@@ -221,7 +241,7 @@ final class ScanRound {
     int restarts = progress.restarts() + 1;
     containers.put(
         container.key(), new ContainerProgress(null, restarts, 0, true, progress.revisitsSeen()));
-    pages.clear();
+    clearPages();
     current = null;
     save();
     if (restarts >= MAX_RESTARTS) {
@@ -236,14 +256,40 @@ final class ScanRound {
     return ++pageCounter;
   }
 
-  /** A page of the current container was listed with {@code entries} entries. */
-  void listed(int page, String checkpoint, int entries) {
-    long through = (pages.isEmpty() ? 0 : pages.lastEntry().getValue().entries()) + entries;
-    String kept =
-        checkpoint != null && checkpoint.length() <= FilePage.MAX_CHECKPOINT_LENGTH
-            ? checkpoint
-            : null;
-    pages.put(page, new PageMark(kept, through));
+  /**
+   * A page of the current container was listed with {@code entries} entries; pages below {@code
+   * unsettledFrom} are fully ingested.
+   *
+   * @return whether its checkpoint is too long to keep and the first such in this run
+   */
+  boolean listed(int page, String checkpoint, int entries, int unsettledFrom) {
+    listedEntries += entries;
+    boolean tooLong = checkpoint != null && checkpoint.length() > FilePage.MAX_CHECKPOINT_LENGTH;
+    String kept = checkpoint == null || tooLong ? null : checkpoint;
+    checkpointed |= checkpoint != null;
+    unsettled.put(page, new PageMark(page, kept, listedEntries));
+    settle(unsettledFrom);
+    boolean first = tooLong && !oversized;
+    oversized |= tooLong;
+    return first;
+  }
+
+  /** Keeps of the pages below {@code unsettledFrom} only the last one with a checkpoint. */
+  private void settle(int unsettledFrom) {
+    while (!unsettled.isEmpty() && unsettled.firstKey() < unsettledFrom) {
+      PageMark mark = unsettled.pollFirstEntry().getValue();
+      if (mark.checkpoint() != null) {
+        settled = mark;
+      }
+    }
+  }
+
+  private void clearPages() {
+    unsettled.clear();
+    settled = null;
+    listedEntries = 0;
+    checkpointed = false;
+    oversized = false;
   }
 
   /** The entries the round listed so far, this run's pages included. */
@@ -254,14 +300,13 @@ final class ScanRound {
         total += entry.getValue().entries();
       }
     }
-    return total + entriesBase + (pages.isEmpty() ? 0 : pages.lastEntry().getValue().entries());
+    return total + entriesBase + listedEntries;
   }
 
   /** The current container was listed to its last page; kept at once. */
   void completed() {
     ContainerProgress progress = containers.get(current);
-    boolean checkpointed = pages.values().stream().anyMatch(mark -> mark.checkpoint() != null);
-    long entries = entriesBase + (pages.isEmpty() ? 0 : pages.lastEntry().getValue().entries());
+    long entries = entriesBase + listedEntries;
     containers.put(
         current,
         new ContainerProgress(
@@ -276,7 +321,7 @@ final class ScanRound {
     }
     progressed = true;
     current = null;
-    pages.clear();
+    clearPages();
     save();
   }
 
@@ -288,40 +333,46 @@ final class ScanRound {
         new ContainerProgress(
             null, progress.restarts(), 0, progress.resumable(), progress.revisitsSeen()));
     current = null;
-    pages.clear();
+    clearPages();
     save();
   }
 
   /**
    * The orderly end of the budget: the current container keeps the last checkpoint of a page below
-   * {@code unsettledFrom} - no page from there on is fully ingested - and the round is kept,
-   * without the presence first seen on those pages ({@code unsettledPaths}): they are listed again.
+   * {@code unsettledFrom} - no page from there on is fully ingested - and the round is kept. What
+   * the listing first met after that checkpoint ({@code firstMetOn}: path to page) is listed again
+   * and is not kept as present.
    *
    * @return whether this run moved the round forward
    */
-  boolean budgetSpent(int unsettledFrom, Set<String> unsettledPaths) {
+  boolean budgetSpent(int unsettledFrom, Map<String, Integer> firstMetOn) {
+    int relistedFrom = Integer.MAX_VALUE;
     if (current != null) {
-      PageMark mark = null;
-      for (Map.Entry<Integer, PageMark> entry : pages.headMap(unsettledFrom).entrySet()) {
-        if (entry.getValue().checkpoint() != null) {
-          mark = entry.getValue();
-        }
-      }
+      settle(unsettledFrom);
       ContainerProgress progress = containers.get(current);
-      if (mark != null && !mark.checkpoint().equals(progress.checkpoint())) {
+      relistedFrom = settled == null ? firstPage : settled.page() + 1;
+      if (settled != null && !settled.checkpoint().equals(progress.checkpoint())) {
         containers.put(
             current,
             new ContainerProgress(
-                mark.checkpoint(),
+                settled.checkpoint(),
                 progress.restarts(),
-                entriesBase + mark.entries(),
+                entriesBase + settled.entries(),
                 true,
                 progress.revisitsSeen()));
         progressed = true;
       }
     }
+    Set<String> relisted = new HashSet<>();
+    int from = relistedFrom;
+    firstMetOn.forEach(
+        (path, page) -> {
+          if (page >= from) {
+            relisted.add(path);
+          }
+        });
     spansRuns = true;
-    save(unsettledPaths);
+    save(relisted);
     return progressed;
   }
 
@@ -340,12 +391,21 @@ final class ScanRound {
   }
 
   /**
-   * The round goes on in a later run - the budget is spent or a container could not be listed: the
-   * presence this run has seen so far is kept with it.
+   * The round goes on in a later run - a container could not be listed: the presence this run has
+   * seen so far is kept with it.
    */
   void continuesLater() {
     spansRuns = true;
     save();
+  }
+
+  /**
+   * A container could not be listed although every other one is done: the round ends without a
+   * reconciliation or a memory, and the next run starts a new one that lists the others again.
+   */
+  void abandon() {
+    state.discardScan();
+    state = journal.saveEnded(state);
   }
 
   /**

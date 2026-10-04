@@ -56,6 +56,28 @@ public abstract class FileStoreResumptionContract extends FileStoreContract {
     assertThat(removed).isEmpty();
   }
 
+  // regression guard for #2202: a folder that stays unreadable keeps the other containers listed
+  @Test
+  void aFolderThatStaysUnreadableKeepsNoOtherContainerFromBeingListed() throws Exception {
+    fillFolders("Inhalt");
+    unbounded();
+    fixture.denyListingOf(1, "ordner-3");
+    // a change below makes a store with folder markers list the folder again
+    put(1, "ordner-3/geaendert.txt", "Geändert.");
+    unbounded();
+    String added = "ordner-0/neu.txt";
+    put(0, added, "Neu in einem lesbaren Bereich.");
+
+    boolean taken = false;
+    for (int runs = 0; runs < 3 && !taken; runs++) {
+      unbounded();
+      taken = harness.stored(fixture.filePath(0, added)).isPresent();
+    }
+
+    assertThat(taken).as("a new file in a listable container is taken up").isTrue();
+    assertThat(removed).isEmpty();
+  }
+
   @Test
   void anUnchangedRunAfterTheRoundCostsOneRequestPerContainer() throws Exception {
     assumeTrue(fixture.reportsFolders(), "only a store that reports folders skips unchanged ones");

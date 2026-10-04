@@ -107,6 +107,19 @@ class SmbFileStoreWalkTest {
   }
 
   @Test
+  void aFolderReplacedUnderItsNameOnTheWayToTheCheckpointIsWalkedOn() throws Exception {
+    folder("", dir("m", 3), file("z.txt"));
+    folder("m", file("a.txt"), file("b.txt"), file("c.txt"));
+    String checkpoint = checkpointAfter(store(1), "m/a.txt");
+    // the same name, a folder with another file id the walk has not met
+    folder("", dir("m", 9), file("z.txt"));
+
+    List<FileEntry> rest = rest(store(1), checkpoint);
+
+    assertThat(rest).extracting(FileEntry::id).containsExactly("m/b.txt", "m/c.txt", "z.txt");
+  }
+
+  @Test
   void aCheckpointFromAnotherVersionHasExpired() {
     folder("", file("a.txt"));
 

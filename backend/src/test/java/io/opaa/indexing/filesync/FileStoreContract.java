@@ -33,6 +33,14 @@ public abstract class FileStoreContract {
     /** From now on {@code container} cannot be listed with the store's credentials. */
     void denyListing(int container) throws Exception;
 
+    /**
+     * From now on the folder {@code folder} below {@code container} cannot be listed; a store
+     * without folders denies the whole container.
+     */
+    default void denyListingOf(int container, String folder) throws Exception {
+      denyListing(container);
+    }
+
     /** From now on no file of {@code container} can be read; listing still works. */
     void denyReading(int container) throws Exception;
 

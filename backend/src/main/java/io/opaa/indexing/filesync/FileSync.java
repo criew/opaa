@@ -78,6 +78,10 @@ public final class FileSync implements AutoCloseable {
           + " ein Lauf, der alle Geltungsbereiche allein auflistet";
   public static final String RESTART_SUFFIX =
       " Die Auflistung dieses Geltungsbereichs beginnt neu.";
+  public static final String OVERSIZED_CHECKPOINT_MESSAGE =
+      "Der Fortsetzungspunkt ist mit %d Zeichen zu groß zum Speichern; endet ein Lauf am"
+          + " Anfragebudget, setzt der nächste diesen Bereich nicht fort. Den Bereich in mehrere"
+          + " Ordner aufteilen.";
 
   private final IndexingRun frame;
   private final FileStore store;
@@ -208,15 +212,7 @@ public final class FileSync implements AutoCloseable {
         }
       }
     } catch (RequestBudgetExhaustedException e) {
-      int unsettledFrom = unsettledFrom();
-      Set<String> unsettledPaths = new HashSet<>();
-      firstMetOn.forEach(
-          (path, page) -> {
-            if (page >= unsettledFrom) {
-              unsettledPaths.add(path);
-            }
-          });
-      if (round.budgetSpent(unsettledFrom, unsettledPaths)) {
+      if (round.budgetSpent(unsettledFrom(), firstMetOn)) {
         // a later checkpoint or a completed container: the chain of runs moves on
         frame.budgetStallAdvice(null);
       }
@@ -231,7 +227,12 @@ public final class FileSync implements AutoCloseable {
               + " reconciliation",
           frame.library().getId(),
           unlistedContainerKeys);
-      round.continuesLater();
+      if (round.resumes()) {
+        // every other container is done: a round kept open would never list them again
+        round.abandon();
+      } else {
+        round.continuesLater();
+      }
       return ListingOutcome.incomplete(List.copyOf(unlistedContainerKeys));
     }
     if (!round.provenByThisRun()) {
@@ -619,7 +620,17 @@ public final class FileSync implements AutoCloseable {
         round.resumed();
       }
       first = false;
-      round.listed(pageNumber, page.checkpoint(), page.entries().size());
+      if (round.listed(pageNumber, page.checkpoint(), page.entries().size(), unsettledFrom())) {
+        frame
+            .events()
+            .record(
+                IndexingEventCategory.REJECTED,
+                "Geltungsbereich „"
+                    + container.key()
+                    + "“: "
+                    + String.format(OVERSIZED_CHECKPOINT_MESSAGE, page.checkpoint().length()),
+                container.key());
+      }
       listed += page.entries().size();
       if (round.entriesListed() > settings.maxEntriesPerRun()) {
         throw new IndexingRunFailedException(wording.tooManyEntries(settings.maxEntriesPerRun()));
@@ -762,6 +773,7 @@ public final class FileSync implements AutoCloseable {
     Optional<Document> existing =
         documentRepository.findByLibraryIdAndFilePath(frame.library().getId(), filePath);
     UUID folderId = existing.isPresent() ? folderFor(entry) : null;
+    existing.ifPresent(document -> unsettleOldPlace(document, entry));
     existing.ifPresent(document -> placeSeen(document, entry, folderId));
     if (entry.exclusion() instanceof Exclusion.Unavailable unavailable) {
       // it may become readable without its folder changing: not settled
@@ -921,6 +933,15 @@ public final class FileSync implements AutoCloseable {
       log.warn(
           "Failed to mirror the source folder of {} - leaving it at the root", entry.filePath(), e);
       return null;
+    }
+  }
+
+  /** A row met at another place keeps its old folder out of the round's memory. */
+  private void unsettleOldPlace(Document document, FileEntry entry) {
+    if (round != null
+        && document.getSourceContainerKey() != null
+        && !document.holdsSourceContext(entry.context())) {
+      round.memory().unsettle(document.getSourceContainerKey(), document.getSourceHierarchyPath());
     }
   }
 

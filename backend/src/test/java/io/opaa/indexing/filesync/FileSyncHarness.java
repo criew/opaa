@@ -263,6 +263,8 @@ public final class FileSyncHarness {
                     .filter(d -> invocation.getArgument(1).equals(presence.get(d)))
                     .map(Document::getFilePath)
                     .toList());
+    when(syncStateRepository.lockById(any()))
+        .thenAnswer(invocation -> Optional.of((UUID) invocation.getArgument(0)));
     when(syncStateRepository.findUnseen(any(), any(), any()))
         .thenAnswer(
             invocation ->

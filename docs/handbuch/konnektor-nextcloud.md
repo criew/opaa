@@ -116,6 +116,12 @@ Ordnern als Anfragebudget nach einigen Läufen vollständig.
 - Die Obergrenze `max-entries-per-run` gilt für den ganzen Abgleich, nicht je Lauf.
 - Ein Lauf, der an einem Fehler scheitert (Anmeldung abgelehnt, Verbindung gesperrt), ändert die
   gemerkte Stelle nicht; der nächste setzt an derselben Stelle fort.
+- **Ein Ordner, der dauerhaft nicht gelistet werden kann** (gelöscht, Freigabe entzogen, kein
+  Leserecht), macht seinen Geltungsbereich unvollständig. Ein Lauf, der deshalb unvollständig
+  endet, schließt den Abgleich ab, ohne etwas zu entfernen oder Prüfsummen zu merken; der nächste
+  beginnt einen neuen und listet die übrigen Geltungsbereiche wieder. Neue und geänderte Dateien
+  kommen so weiter in die Bibliothek; entfernt wird nichts, bis der Ordner wieder listbar ist oder
+  aus der Bibliothek genommen wird.
 
 ## 4. Unveränderte Ordner
 

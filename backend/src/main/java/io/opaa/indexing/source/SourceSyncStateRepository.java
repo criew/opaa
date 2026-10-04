@@ -1,11 +1,13 @@
 package io.opaa.indexing.source;
 
+import jakarta.persistence.LockModeType;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -14,6 +16,11 @@ import org.springframework.transaction.annotation.Transactional;
 public interface SourceSyncStateRepository extends JpaRepository<SourceSyncState, UUID> {
 
   Optional<SourceSyncState> findByLibraryId(UUID libraryId);
+
+  /** Locks the row of the state {@code id} for the caller's transaction; empty when it is gone. */
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query("select s.id from SourceSyncState s where s.id = :id")
+  Optional<UUID> lockById(@Param("id") UUID id);
 
   /**
    * Called by {@code KnowledgeLibraryService} when a library's address or selection changes:

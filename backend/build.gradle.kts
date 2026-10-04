@@ -384,6 +384,9 @@ tasks.named<Test>("test") {
     System.getProperty("opaa.retrievalNoteTemplates.regenerate")?.let {
         systemProperty("opaa.retrievalNoteTemplates.regenerate", it)
     }
+    // the long search of FileSyncRandomizedRoundTest, run by hand
+    listOf("opaa.filesync.randomSeeds", "opaa.filesync.randomRuns", "opaa.filesync.firstSeed")
+        .forEach { key -> System.getProperty(key)?.let { systemProperty(key, it) } }
 }
 
 // ADR-0023/#1171: the Confluence Data Center container suite (io.opaa.integration.confluence.*)

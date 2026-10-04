@@ -167,9 +167,9 @@ final class SmbFileStore implements FileStore {
 
   /**
    * Opens the folders on the checkpoint's path again and goes on after its last entry, in name
-   * order. A folder on the path that is gone, or another folder under its name, counts as done; the
-   * folders met and the findings carry over, so a link and an unreadable folder stay what they
-   * were.
+   * order. A folder on the path that is gone counts as done; one replaced under its name by a
+   * folder not met before is walked on. The folders met and the findings carry over, so a link and
+   * an unreadable folder stay what they were.
    */
   @Override
   public FilePage resume(FileContainer container, String checkpoint)
@@ -198,11 +198,13 @@ final class SmbFileStore implements FileStore {
           || !item.directory()
           || item.link()
           || item.unusableName()
-          || item.fileId() != step.id()) {
+          || (item.fileId() != step.id() && !walk.firstVisit(item.fileId()))) {
+        // gone, or replaced by a folder met before under another name: a link
         top.done = atMost(top.children, step.name());
         reached = false;
         break;
       }
+      // the same folder, or one that replaced it under its name: walked on
       top.done = at;
       walk.firstVisit(item.fileId());
       Frame child = enter(container, walk, top, item, root, entries);

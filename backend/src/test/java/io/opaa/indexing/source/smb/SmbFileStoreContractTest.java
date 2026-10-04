@@ -52,6 +52,11 @@ class SmbFileStoreContractTest extends FileStoreResumptionContract {
       }
 
       @Override
+      public void denyListingOf(int container, String folder) {
+        samba.denyListing(path(container, folder));
+      }
+
+      @Override
       public void denyReading(int container) {
         samba.denyReading(folders.get(container).substring(1));
       }

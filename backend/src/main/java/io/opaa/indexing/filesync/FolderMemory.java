@@ -144,6 +144,16 @@ final class FolderMemory {
         .add(path == null ? "" : path);
   }
 
+  /**
+   * A stored row met at another place stands at {@code hierarchyPath} until it is taken up there:
+   * that folder is listed again, so a folder later taking its name does not carry the row.
+   */
+  void unsettle(String containerKey, String hierarchyPath) {
+    unsettled
+        .computeIfAbsent(containerKey, key -> new HashSet<>())
+        .add(hierarchyPath == null ? "" : hierarchyPath);
+  }
+
   Map<String, Map<String, String>> listedMarkers() {
     return copy(listed);
   }

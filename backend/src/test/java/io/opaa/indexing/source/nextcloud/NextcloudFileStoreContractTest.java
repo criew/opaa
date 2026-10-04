@@ -74,6 +74,11 @@ class NextcloudFileStoreContractTest extends FileStoreFolderContract {
       }
 
       @Override
+      public void denyListingOf(int container, String folder) {
+        server.denyListing(path(container, folder));
+      }
+
+      @Override
       public void denyReading(int container) {
         server.denyReading(FOLDERS.get(container).substring(1));
       }

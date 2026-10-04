@@ -339,4 +339,88 @@ class FileSyncRoundTest {
         .extracting(IndexingRunEvent::getReference)
         .containsExactly(moved);
   }
+
+  // regression guard for #2202: a row left at its old place keeps no folder there remembered
+  @Test
+  void aRowLeftAtItsOldPlaceKeepsThatFolderOutOfTheMemory() {
+    InMemoryFileStore store =
+        new InMemoryFileStore()
+            .withFolderMarkers()
+            .withStableIds()
+            .container("A")
+            .put("A", "c/z/w/f4.txt", "Vier.");
+    run(store, 0);
+    String stale = store.filePathOf("A", "c/z/w/f4.txt");
+    // the folder moves away and another takes its name; the moved file fails to be taken up
+    store.move("A", "c", "n").put("A", "c/z/w/g.txt", "Neu.");
+    harness.failIngestOf(stale);
+    run(store, 0);
+    run(store, 0);
+    assertThat(harness.stored(stale)).isPresent();
+
+    harness.healIngests();
+    store.remove("A", "n/z/w/f4.txt");
+    FileSyncHarness.Run next = run(store, 0);
+
+    assertThat(next.eventsOf(IndexingEventCategory.REMOVED))
+        .extracting(IndexingRunEvent::getReference)
+        .containsExactly(stale);
+  }
+
+  @Test
+  void aCheckpointTooLongToKeepIsNamedAndNotKept() {
+    InMemoryFileStore store = new InMemoryFileStore().withCheckpoints().pageSize(1).container("A");
+    for (int i = 1; i <= 4; i++) {
+      store.put("A", "d" + i + ".txt", "Text " + i);
+    }
+
+    FileSyncHarness.Run run = harness.fullSync(new LongCheckpoints(store.reset().budget(4)));
+
+    assertThat(run.eventsOf(IndexingEventCategory.REJECTED))
+        .extracting(IndexingRunEvent::getMessage)
+        .singleElement()
+        .satisfies(message -> assertThat(message).contains("zu groß zum Speichern"));
+    assertThat(checkpointOf(harness.state(), "A")).isNull();
+  }
+
+  /** Pads every checkpoint beyond what the core keeps. */
+  private record LongCheckpoints(FileStore store) implements FileStore {
+
+    @Override
+    public java.util.List<FileContainer> containers() {
+      return store.containers();
+    }
+
+    @Override
+    public FilePage list(FileContainer container, String continuation)
+        throws FileAccessException, InterruptedException {
+      FilePage page = store.list(container, continuation);
+      return new FilePage(
+          page.entries(),
+          page.next(),
+          page.checkpoint() + "x".repeat(FilePage.MAX_CHECKPOINT_LENGTH),
+          page.unchangedSubtrees(),
+          page.listedSubtrees());
+    }
+
+    @Override
+    public FileEntry head(FileContainer container, String id)
+        throws FileAccessException, InterruptedException {
+      return store.head(container, id);
+    }
+
+    @Override
+    public FetchedFile fetch(FileEntry entry, long maxBytes)
+        throws FileAccessException, InterruptedException {
+      return store.fetch(entry, maxBytes);
+    }
+
+    @Override
+    public io.opaa.sourceaccess.SourceRequestMeter meter() {
+      return store.meter();
+    }
+
+    @Override
+    public void close() {}
+  }
 }

@@ -77,7 +77,30 @@ public final class InMemoryFileStore implements FileStore {
 
   public InMemoryFileStore remove(String container, String name) {
     containers.get(container).remove(name);
+    departed(container, name);
     return this;
+  }
+
+  /**
+   * Per container and folder, how often something left it: a folder's marker never returns to an
+   * earlier value, as a Nextcloud ETag does not, even when the files below are the same again.
+   */
+  private final Map<String, Map<String, Integer>> departures = new HashMap<>();
+
+  private void departed(String container, String name) {
+    Map<String, Integer> counts = departures.computeIfAbsent(container, key -> new HashMap<>());
+    String folder = of(name);
+    counts.merge("", 1, Integer::sum);
+    if (!folder.isEmpty()) {
+      String[] segments = folder.split(SourceDocumentContext.HIERARCHY_SEPARATOR);
+      for (int i = 1; i <= segments.length; i++) {
+        counts.merge(
+            String.join(
+                SourceDocumentContext.HIERARCHY_SEPARATOR, Arrays.asList(segments).subList(0, i)),
+            1,
+            Integer::sum);
+      }
+    }
   }
 
   public InMemoryFileStore denyListing(String container) {
@@ -93,6 +116,11 @@ public final class InMemoryFileStore implements FileStore {
   /** From now on no file of {@code container} can be read; listing still works. */
   public InMemoryFileStore denyReading(String container) {
     unreadable.add(container);
+    return this;
+  }
+
+  public InMemoryFileStore allowReading(String container) {
+    unreadable.remove(container);
     return this;
   }
 
@@ -187,9 +215,19 @@ public final class InMemoryFileStore implements FileStore {
   public InMemoryFileStore move(String container, String from, String to) {
     TreeMap<String, StoredFile> files = containers.get(container);
     Map<String, StoredFile> moved = new LinkedHashMap<>();
+    // a renamed folder keeps what it counted, as it keeps its own marker
+    Map<String, Integer> counts = departures.computeIfAbsent(container, key -> new HashMap<>());
+    String fromFolder = from.replace("/", SourceDocumentContext.HIERARCHY_SEPARATOR);
+    String toFolder = to.replace("/", SourceDocumentContext.HIERARCHY_SEPARATOR);
+    for (String folder : List.copyOf(counts.keySet())) {
+      if (FileSync.covers(fromFolder, folder) && !fromFolder.isEmpty()) {
+        counts.put(toFolder + folder.substring(fromFolder.length()), counts.remove(folder));
+      }
+    }
     for (String name : List.copyOf(files.keySet())) {
       if (name.equals(from) || name.startsWith(from + "/")) {
         String target = to + name.substring(from.length());
+        departed(container, name);
         moved.put(target, files.remove(name));
         Long id = ids.remove(container + "\n" + name);
         if (id != null) {
@@ -288,6 +326,7 @@ public final class InMemoryFileStore implements FileStore {
    */
   public InMemoryFileStore moveAcross(String from, String name, String to) {
     StoredFile file = containers.get(from).remove(name);
+    departed(from, name);
     container(to).containers.get(to).put(name, file);
     ids.put(to + "\n" + name, ids.get(from + "\n" + name));
     changed(to, name);
@@ -416,7 +455,7 @@ public final class InMemoryFileStore implements FileStore {
 
   private List<String> unchangedFolders(
       FileContainer container, TreeMap<String, StoredFile> files) {
-    Map<String, String> markers = folderMarkers ? folderMarkers(files) : Map.of();
+    Map<String, String> markers = folderMarkers ? folderMarkers(container.key(), files) : Map.of();
     Map<String, String> previous = recalled.getOrDefault(container.key(), Map.of());
     List<String> skipped = new ArrayList<>();
     markers.forEach(
@@ -442,7 +481,7 @@ public final class InMemoryFileStore implements FileStore {
           "Der Bereich „" + container.key() + "“ darf nicht aufgelistet werden.");
     }
     TreeMap<String, StoredFile> files = containers.get(container.key());
-    Map<String, String> markers = folderMarkers ? folderMarkers(files) : Map.of();
+    Map<String, String> markers = folderMarkers ? folderMarkers(container.key(), files) : Map.of();
     Map<String, String> previous = recalled.getOrDefault(container.key(), Map.of());
     List<String> skipped = new ArrayList<>();
     Map<String, String> listed = new TreeMap<>();
@@ -502,7 +541,7 @@ public final class InMemoryFileStore implements FileStore {
   }
 
   /** Every folder, root first and parents before children, with a hash over all files below it. */
-  private Map<String, String> folderMarkers(TreeMap<String, StoredFile> files) {
+  private Map<String, String> folderMarkers(String container, TreeMap<String, StoredFile> files) {
     Map<String, Integer> hashes = new TreeMap<>();
     hashes.put("", 1);
     files.forEach(
@@ -530,7 +569,9 @@ public final class InMemoryFileStore implements FileStore {
           }
         });
     Map<String, String> markers = new LinkedHashMap<>();
-    hashes.forEach((folder, hash) -> markers.put(folder, "m:" + hash));
+    Map<String, Integer> counts = departures.getOrDefault(container, Map.of());
+    hashes.forEach(
+        (folder, hash) -> markers.put(folder, "m:" + hash + "|" + counts.getOrDefault(folder, 0)));
     return markers;
   }
 

@@ -14,12 +14,17 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Where a file sync keeps what outlasts its run: the sync state with the round's progress, the
  * presence the round has seen and the revisits of documents deleted by hand. A state and the
- * presence written with it are committed together or not at all.
+ * presence written with it are committed together or not at all, and a state deleted while a run
+ * held it is never written again.
  */
 public class ScanJournal {
 
   /** At most this many values per statement, well below the bind-parameter limit of the driver. */
   public static final int BATCH = 1000;
+
+  static final String DISCARDED_MESSAGE =
+      "Die Quelle der Bibliothek wurde während des Laufs geändert; der Lauf endet ohne Änderung"
+          + " am Bestand, der nächste beginnt von vorn.";
 
   private final SourceSyncStateRepository repository;
 
@@ -40,6 +45,7 @@ public class ScanJournal {
   /** Saves {@code state}; continue with the returned instance. */
   @Transactional
   public SourceSyncState save(SourceSyncState state) {
+    requireRow(state);
     return repository.save(state);
   }
 
@@ -50,17 +56,28 @@ public class ScanJournal {
   @Transactional
   public SourceSyncState save(
       SourceSyncState state, UUID scanId, UUID libraryId, Collection<String> presentPaths) {
+    requireRow(state);
     SourceSyncState saved = repository.save(state);
     if (!presentPaths.isEmpty()) {
       repository.flush();
-      recordPresence(saved.getId(), scanId, libraryId, presentPaths);
+      insertPresence(saved.getId(), scanId, libraryId, presentPaths);
     }
     return saved;
   }
 
-  /** Notes the documents at {@code presentPaths} as seen in the round {@code scanId}. */
+  /**
+   * Notes the documents at {@code presentPaths} as seen in the round {@code scanId}; nothing when
+   * the state is gone, and with it the round.
+   */
   @Transactional
   public void recordPresence(
+      UUID stateId, UUID scanId, UUID libraryId, Collection<String> presentPaths) {
+    if (repository.lockById(stateId).isPresent()) {
+      insertPresence(stateId, scanId, libraryId, presentPaths);
+    }
+  }
+
+  private void insertPresence(
       UUID stateId, UUID scanId, UUID libraryId, Collection<String> presentPaths) {
     for (List<String> batch : batches(presentPaths)) {
       repository.recordPresence(stateId, scanId, libraryId, batch);
@@ -70,6 +87,7 @@ public class ScanJournal {
   /** Saves {@code state} after its round ended and drops the presence of every round. */
   @Transactional
   public SourceSyncState saveEnded(SourceSyncState state) {
+    requireRow(state);
     SourceSyncState saved = repository.save(state);
     repository.flush();
     repository.clearPresence(saved.getId());
@@ -105,6 +123,16 @@ public class ScanJournal {
   public void consumeRevisits(Collection<UUID> ids) {
     for (List<UUID> batch : batches(ids)) {
       repository.deleteRevisits(batch);
+    }
+  }
+
+  /**
+   * A state read from the database still has its row, locked until the caller's transaction ends; a
+   * deleted one is not brought back.
+   */
+  private void requireRow(SourceSyncState state) {
+    if (state.isStored() && repository.lockById(state.getId()).isEmpty()) {
+      throw new IndexingRunFailedException(DISCARDED_MESSAGE);
     }
   }
 
