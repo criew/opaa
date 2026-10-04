@@ -79,6 +79,11 @@ public class SmbSourceConnector implements SourceConnector, SourceBrowser, Origi
   }
 
   @Override
+  public Set<String> settingsKeys() {
+    return SmbSourceSettings.KEYS;
+  }
+
+  @Override
   public ConnectorData readSettings(ConnectorData requested) {
     return SmbSourceSettings.read(requested).toData();
   }

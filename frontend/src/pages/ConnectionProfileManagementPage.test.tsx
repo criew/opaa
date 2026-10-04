@@ -1,4 +1,4 @@
-import { screen, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { http, HttpResponse } from 'msw'
@@ -29,8 +29,18 @@ const NEXTCLOUD: SourceTypeDescriptor = {
   uploads: false,
   pushIntake: false,
   browsable: false,
-  profileSupport: 'OPTIONAL',
-  authMethods: ['NONE', 'PERSONAL_SECRET', 'OAUTH'],
+  profileSupport: 'REQUIRED',
+  signIns: [
+    { method: 'NONE', ownerships: ['LIBRARY', 'PERSON'] },
+    { method: 'PERSONAL_SECRET', ownerships: ['LIBRARY'], secretForm: 'USERNAME_AND_PASSWORD' },
+    { method: 'OAUTH', ownerships: ['LIBRARY', 'PERSON'] },
+  ],
+  profileDefaults: [
+    { key: 'edition', label: 'Edition', kind: 'CHOICE', choices: ['INTERN', 'EXTERN'] },
+    { key: 'region', label: 'Region', kind: 'TEXT', choices: [] },
+    { key: 'pathStyle', label: 'Pfad-Adressierung', kind: 'BOOLEAN', choices: [] },
+  ],
+  serverAddress: { schemes: ['https', 'http'] },
   creatable: true,
   creatableWithOwnAddress: true,
   locked: false,
@@ -46,7 +56,9 @@ const WITHOUT_PROFILES: SourceTypeDescriptor[] = [
     pushIntake: true,
     browsable: true,
     profileSupport: 'FORBIDDEN',
-    authMethods: [],
+    signIns: [],
+    profileDefaults: [],
+    serverAddress: { schemes: ['https', 'http'] },
     creatable: true,
     creatableWithOwnAddress: true,
     locked: false,
@@ -59,7 +71,9 @@ const WITHOUT_PROFILES: SourceTypeDescriptor[] = [
     pushIntake: true,
     browsable: true,
     profileSupport: 'FORBIDDEN',
-    authMethods: [],
+    signIns: [],
+    profileDefaults: [],
+    serverAddress: { schemes: ['https', 'http'] },
     creatable: true,
     creatableWithOwnAddress: true,
     locked: false,
@@ -72,14 +86,44 @@ const WITHOUT_PROFILES: SourceTypeDescriptor[] = [
     pushIntake: false,
     browsable: false,
     profileSupport: 'FORBIDDEN',
-    authMethods: [],
+    signIns: [],
+    profileDefaults: [],
+    serverAddress: { schemes: ['https', 'http'] },
     creatable: true,
     creatableWithOwnAddress: true,
     locked: false,
   },
 ]
 
+/** A type with a fixed address and no defaults - its form asks for neither. */
+const FIXED: SourceTypeDescriptor = {
+  type: 'DRIVE_PROBE',
+  displayName: 'Ablage mit fester Adresse',
+  indexingRun: true,
+  uploads: false,
+  pushIntake: false,
+  browsable: false,
+  profileSupport: 'OPTIONAL',
+  signIns: [{ method: 'NONE', ownerships: ['LIBRARY'] }],
+  profileDefaults: [],
+  serverAddress: { schemes: [], fixed: 'https://api.ablage.example' },
+  creatable: true,
+  creatableWithOwnAddress: true,
+  locked: false,
+}
+
 const PROFILE = 'Zugang Nextcloud intern'
+
+/** Captures the body of every POST to the profile administration. */
+function capturePosts(): Array<Record<string, unknown>> {
+  const sent: Array<Record<string, unknown>> = []
+  server.events.on('request:start', async ({ request }) => {
+    if (request.method === 'POST' && request.url.endsWith('/admin/connection-profiles')) {
+      sent.push((await request.clone().json()) as Record<string, unknown>)
+    }
+  })
+  return sent
+}
 
 /** Captures the body of every PUT the page sends. */
 function capturePuts(): ConnectionProfileUpdateRequest[] {
@@ -178,6 +222,115 @@ describe('ConnectionProfileManagementPage', () => {
     const row = await screen.findByRole('row', { name: /Zugang Nextcloud Partner/ })
     expect(row).toHaveTextContent('OAuth')
     expect(row).not.toHaveTextContent('geheim')
+  }, 20000)
+
+  it('shows a field per declared default and sends only the ones set, typed by kind', async () => {
+    const user = userEvent.setup()
+    const sent = capturePosts()
+    renderWithProviders(<ConnectionProfileManagementPage />)
+
+    await user.click(await screen.findByRole('button', { name: 'Neuer Zugang' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Zugang anlegen' })
+    await user.click(within(dialog).getByRole('radio', { name: /Nextcloud/ }))
+    expect(within(dialog).queryByLabelText(/Konnektor-Vorgaben/)).not.toBeInTheDocument()
+    expect(within(dialog).getByText('Vorgaben für jede Bibliothek')).toBeVisible()
+    await user.type(within(dialog).getByLabelText(/^Name/), 'Zugang mit Vorgaben')
+    await user.type(within(dialog).getByLabelText(/^Server-Adresse/), 'https://cloud.example.org')
+    await user.click(within(dialog).getByLabelText(/^Anmeldeart/))
+    await user.click(await screen.findByRole('option', { name: 'Ohne Anmeldung' }))
+    await user.click(within(dialog).getByLabelText(/^Edition/))
+    await user.click(await screen.findByRole('option', { name: 'EXTERN' }))
+    await user.click(within(dialog).getByLabelText(/^Pfad-Adressierung/))
+    await user.click(await screen.findByRole('option', { name: 'Nein' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Anlegen' }))
+
+    await screen.findByRole('row', { name: /Zugang mit Vorgaben/ })
+    expect(sent).toHaveLength(1)
+    // the empty region sets nothing; the yes/no travels as a boolean
+    expect(sent[0].connectorSettings).toEqual({ edition: 'EXTERN', pathStyle: false })
+  }, 20000)
+
+  it('offers only the ownerships the chosen sign-in admits', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<ConnectionProfileManagementPage />)
+
+    await user.click(await screen.findByRole('button', { name: 'Neuer Zugang' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Zugang anlegen' })
+    await user.click(within(dialog).getByRole('radio', { name: /Nextcloud/ }))
+    await user.click(within(dialog).getByLabelText(/^Anmeldeart/))
+    await user.click(await screen.findByRole('option', { name: 'Persönliches Geheimnis' }))
+    await user.click(within(dialog).getByLabelText(/^Besitzart/))
+    const listbox = await screen.findByRole('listbox')
+    expect(
+      within(listbox)
+        .getAllByRole('option')
+        .map((option) => option.textContent),
+    ).toEqual(['Bibliothek'])
+  }, 20000)
+
+  it('asks for no address and shows no defaults for a type with a fixed address', async () => {
+    server.use(
+      http.get('/api/v1/source-types', () =>
+        HttpResponse.json([...WITHOUT_PROFILES, NEXTCLOUD, FIXED]),
+      ),
+    )
+    const user = userEvent.setup()
+    const sent = capturePosts()
+    renderWithProviders(<ConnectionProfileManagementPage />)
+
+    await user.click(await screen.findByRole('button', { name: 'Neuer Zugang' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Zugang anlegen' })
+    await user.click(within(dialog).getByRole('radio', { name: /Ablage mit fester Adresse/ }))
+    expect(within(dialog).queryByLabelText(/^Server-Adresse/)).not.toBeInTheDocument()
+    expect(within(dialog).getByText(/feste Adresse: https:\/\/api\.ablage\.example/)).toBeVisible()
+    expect(within(dialog).queryByText('Vorgaben für jede Bibliothek')).not.toBeInTheDocument()
+    await user.type(within(dialog).getByLabelText(/^Name/), 'Zugang Ablage')
+    await user.click(within(dialog).getByLabelText(/^Anmeldeart/))
+    await user.click(await screen.findByRole('option', { name: 'Ohne Anmeldung' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Anlegen' }))
+
+    await screen.findByRole('row', { name: /Zugang Ablage/ })
+    expect(sent[0]).toMatchObject({
+      serverUrl: 'https://api.ablage.example',
+      connectorSettings: null,
+    })
+  }, 20000)
+
+  // regression guard: without the source type's description the form knows no defaults, so saving
+  // would send none and erase the stored ones for every library on the profile
+  it('refuses to save an edit while the description of the source type is missing', async () => {
+    server.use(
+      http.get('/api/v1/source-types', () =>
+        HttpResponse.json({ error: 'nicht erreichbar' }, { status: 500 }),
+      ),
+    )
+    const user = userEvent.setup()
+    const sent = capturePuts()
+    renderWithProviders(<ConnectionProfileManagementPage />)
+
+    const dialog = await openEdit(user)
+    const name = within(dialog).getByLabelText(/^Name/)
+    await user.clear(name)
+    await user.type(name, 'Zugang Nextcloud Rathaus')
+
+    const save = within(dialog).getByRole('button', { name: 'Speichern' })
+    expect(save).toBeDisabled()
+    expect(within(dialog).getByText(/Angaben der Quellart liegen nicht vor/)).toBeVisible()
+    expect(sent).toHaveLength(0)
+    expect(mockConnectionProfiles[0].connectorSettings).toEqual({ edition: 'INTERN' })
+  }, 20000)
+
+  it('sends a text default as typed, trimmed, beside the stored choice', async () => {
+    const user = userEvent.setup()
+    const sent = capturePuts()
+    renderWithProviders(<ConnectionProfileManagementPage />)
+
+    const dialog = await openEdit(user)
+    await user.type(within(dialog).getByLabelText(/^Region/), ' eu-central-1 ')
+    await user.click(within(dialog).getByRole('button', { name: 'Speichern' }))
+
+    await waitFor(() => expect(sent).toHaveLength(1))
+    expect(sent[0].connectorSettings).toEqual({ edition: 'INTERN', region: 'eu-central-1' })
   }, 20000)
 
   it('keeps the connector defaults and the secret on a mere rename', async () => {

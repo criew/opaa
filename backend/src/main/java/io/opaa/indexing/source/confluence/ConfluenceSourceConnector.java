@@ -94,6 +94,11 @@ public class ConfluenceSourceConnector
         null);
   }
 
+  @Override
+  public Set<String> settingsKeys() {
+    return ConfluenceSourceSettings.KEYS;
+  }
+
   /** Refuses a field the settings do not know and a part of the wrong kind; the rest waits. */
   @Override
   public ConnectorData readSettings(ConnectorData requested) {

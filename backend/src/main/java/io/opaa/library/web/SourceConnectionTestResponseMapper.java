@@ -1,12 +1,17 @@
 package io.opaa.library.web;
 
+import io.opaa.api.dto.ProfileDefaultKey;
 import io.opaa.api.dto.SourceBrowseEntry;
 import io.opaa.api.dto.SourceBrowseRequest;
 import io.opaa.api.dto.SourceBrowseResponse;
 import io.opaa.api.dto.SourceConnectionTestRequest;
 import io.opaa.api.dto.SourceConnectionTestResponse;
 import io.opaa.api.dto.SourceTypeDescriptor;
+import io.opaa.api.dto.SourceTypeSignIn;
 import io.opaa.connection.ConnectorReleaseService.TypeCreation;
+import io.opaa.indexing.source.DefaultKey;
+import io.opaa.indexing.source.ProfileDeclaration;
+import io.opaa.indexing.source.SignIn;
 import io.opaa.indexing.source.SourceConnectionTestResult;
 import io.opaa.indexing.source.SourceConnectorDescriptor;
 import io.opaa.indexing.source.SourceListing;
@@ -65,6 +70,7 @@ final class SourceConnectionTestResponseMapper {
 
   static SourceTypeDescriptor toResponse(
       SourceConnectorDescriptor descriptor, boolean browsable, TypeCreation creation) {
+    ProfileDeclaration declaration = descriptor.profileDeclaration();
     return new SourceTypeDescriptor()
         .creatable(creation.creatable())
         .creatableWithOwnAddress(creation.withOwnAddress())
@@ -76,11 +82,30 @@ final class SourceConnectionTestResponseMapper {
         .uploads(descriptor.uploads())
         .pushIntake(descriptor.pushIntake() != null)
         .browsable(browsable)
-        .profileSupport(descriptor.profileSupport())
-        .authMethods(descriptor.authMethods().stream().sorted().toList())
+        .profileSupport(declaration.support())
+        .signIns(
+            declaration.signIns().stream()
+                .map(SourceConnectionTestResponseMapper::toResponse)
+                .toList())
+        .profileDefaults(
+            declaration.defaults().keys().stream()
+                .map(SourceConnectionTestResponseMapper::toResponse)
+                .toList())
+        .serverAddress(
+            new io.opaa.api.dto.ServerAddressRule(declaration.address().schemes())
+                .fixed(declaration.address().fixed()))
         .fullSyncIntervalDefaultDays(
             descriptor.fullSyncInterval() == null
                 ? null
                 : (int) Math.max(1, descriptor.fullSyncInterval().toDays()));
+  }
+
+  private static SourceTypeSignIn toResponse(SignIn signIn) {
+    return new SourceTypeSignIn(signIn.method(), signIn.owners().stream().sorted().toList())
+        .secretForm(signIn.secretForm());
+  }
+
+  private static ProfileDefaultKey toResponse(DefaultKey key) {
+    return new ProfileDefaultKey(key.key(), key.label(), key.kind(), key.choices());
   }
 }

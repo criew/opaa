@@ -114,7 +114,7 @@ public class ConnectorReleaseService {
         continue;
       }
       boolean ownAddress =
-          descriptor.profileSupport() != ConnectionProfileSupport.REQUIRED
+          descriptor.profileDeclaration().support() != ConnectionProfileSupport.REQUIRED
               && held.covers(ConnectorScope.ofType(type));
       boolean viaProfile =
           descriptor.admitsProfiles()
@@ -157,7 +157,7 @@ public class ConnectorReleaseService {
 
   /** Why nothing of {@code descriptor} can be created, naming who can change that. */
   private String creationNotice(SourceConnectorDescriptor descriptor, HeldScopes held) {
-    if (descriptor.profileSupport() != ConnectionProfileSupport.REQUIRED) {
+    if (descriptor.profileDeclaration().support() != ConnectionProfileSupport.REQUIRED) {
       return CapabilityService.missingInScope(RELEASE, typeLabel(descriptor.type()));
     }
     boolean anyProfile =

@@ -21,6 +21,14 @@ public enum ConnectionAuthMethod {
     return this == OAUTH || this == CLIENT_CREDENTIALS || this == SERVICE_ACCOUNT_KEY;
   }
 
+  /**
+   * Whether the method needs an app registration only a profile holds, so a connector offering it
+   * requires profiles (ADR-0038). A service account key carries its registration in the key.
+   */
+  public boolean requiresProfile() {
+    return this == OAUTH || this == CLIENT_CREDENTIALS;
+  }
+
   /** Whether the method asks for scopes. */
   public boolean usesScopes() {
     return this == OAUTH || this == CLIENT_CREDENTIALS;

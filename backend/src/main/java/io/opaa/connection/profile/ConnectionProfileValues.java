@@ -18,4 +18,18 @@ public record ConnectionProfileValues(
     LocalDate clientSecretExpiresOn,
     String tenant,
     String scopes,
-    ConnectorData connectorSettings) {}
+    ConnectorData connectorSettings) {
+
+  public ConnectionProfileValues withConnectorSettings(ConnectorData settings) {
+    return new ConnectionProfileValues(
+        name,
+        serverUrl,
+        authMethod,
+        ownership,
+        clientId,
+        clientSecretExpiresOn,
+        tenant,
+        scopes,
+        settings);
+  }
+}

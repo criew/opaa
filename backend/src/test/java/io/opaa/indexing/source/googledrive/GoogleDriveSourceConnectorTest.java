@@ -60,9 +60,13 @@ class GoogleDriveSourceConnectorTest {
 
     assertThat(descriptor.type().key()).isEqualTo("GOOGLE_DRIVE");
     assertThat(descriptor.deepLink()).isTrue();
-    assertThat(descriptor.serviceAccountKey().tokenEndpoint())
+    assertThat(descriptor.profileDeclaration().serviceAccountKey().tokenEndpoint())
         .isEqualTo(URI.create("https://oauth2.example.org/token"));
-    assertThat(descriptor.serviceAccountKey().scope()).isEqualTo(GoogleDriveSourceConnector.SCOPE);
+    assertThat(descriptor.profileDeclaration().serviceAccountKey().scope())
+        .isEqualTo(GoogleDriveSourceConnector.SCOPE);
+    assertThat(descriptor.profileDeclaration().admitsProfiles()).isFalse();
+    assertThat(descriptor.profileDeclaration().address().fixed())
+        .isEqualTo(server.base().toString());
     assertThat(descriptor.fullSyncInterval()).isEqualTo(java.time.Duration.ofDays(7));
   }
 

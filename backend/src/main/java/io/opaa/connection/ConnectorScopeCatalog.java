@@ -37,7 +37,9 @@ public class ConnectorScopeCatalog implements CapabilityScopeCatalog {
     List<CapabilityScope> scopes = new ArrayList<>();
     connectors.descriptors().stream()
         .filter(descriptor -> !descriptor.uploads())
-        .filter(descriptor -> descriptor.profileSupport() != ConnectionProfileSupport.REQUIRED)
+        .filter(
+            descriptor ->
+                descriptor.profileDeclaration().support() != ConnectionProfileSupport.REQUIRED)
         .forEach(
             descriptor ->
                 scopes.add(
