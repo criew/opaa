@@ -194,9 +194,9 @@ public class ConnectionProfileService {
     boolean dropsPersons =
         profile.getOwnership().admitsPersons() && !validated.ownership().admitsPersons();
     List<LibraryConnection> affected = discards ? connections.findByProfileId(id) : List.of();
-    boolean personsConcerned = (discards || dropsPersons) && personNumbers.anyOn(id);
+    // asked on every profile for persons, whether or not one is connected: the answer tells nothing
+    boolean personsConcerned = (discards || dropsPersons) && profile.getOwnership().admitsPersons();
     if ((!affected.isEmpty() || personsConcerned) && !confirmed) {
-      // persons are not counted here: the administration sees their number only masked
       throw new ConflictException(
           "Die Änderung verwirft die Zugangsdaten "
               + (affected.isEmpty()
@@ -204,8 +204,8 @@ public class ConnectionProfileService {
                   : "von "
                       + affected.size()
                       + (affected.size() == 1 ? " Bibliothek" : " Bibliotheken")
-                      + (personsConcerned ? " und " : ""))
-              + (personsConcerned ? "der verbundenen Konten" : "")
+                      + (personsConcerned ? " sowie " : ""))
+              + (personsConcerned ? "etwaiger verbundener Konten von Personen" : "")
               + " dieses Zugangs. Bitte bestätigen.",
           CONFIRMATION_REQUIRED);
     }

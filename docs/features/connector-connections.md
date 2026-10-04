@@ -441,7 +441,12 @@ einzeln löschen kann sie nicht. Der [Vorfallszugriff](#vorfallszugriff) ist kei
 Systemverwaltung.
 
 **Was die Verwaltung sieht:** je Profil die Anzahl verbundener Konten und privater Bibliotheken,
-unterhalb der Mindestgruppengröße nur als „weniger als N“, Laufdaten und Kontingentnutzung nur zusammengefasst, Fehler nur als Kategorie ohne Inhaltsbezug (keine
+unterhalb der Mindestgruppengröße N nur als „weniger als N“ – auch bei null, sodass keine Antwort
+verrät, ob überhaupt jemand verbunden ist. Eine Teilzahl (abgelaufene Konten) erscheint nur, wenn
+weder sie noch ihr Rest unter N liegt; eine Änderung, die Geheimnisse verwirft, verlangt auf einem
+Zugang für Personen immer eine Bestätigung mit neutralem Text. Grenzen der Regel: Wer die Zahl über
+die Zeit beobachtet, sieht, wann sie N erreicht; und wer selbst eine Freigabe hat und sich verbindet,
+weiß, dass höchstens N−1 weitere Personen verbunden sind. Laufdaten und Kontingentnutzung nur zusammengefasst, Fehler nur als Kategorie ohne Inhaltsbezug (keine
 Dateinamen, Betreffzeilen oder Pfade). Keine Liste, wer welches Konto verbunden hat.
 
 **Space-Zuordnung.** Die Besitzerin darf ihre private Bibliothek einem Space zuordnen. Das öffnet

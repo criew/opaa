@@ -10,15 +10,16 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 /**
  * Under the minimum group size 5 no answer, and no difference of two answers, points at fewer than
- * five persons: the total is masked below 5, and the expired part is exact only where neither it,
- * the connected rest nor the total lies between 1 and 4.
+ * five persons: the total is masked below 5, zero included, and the expired part is exact only
+ * where the total is and neither it nor the connected rest lies between 1 and 4.
  */
 class PersonNumbersTest {
 
   static Stream<Arguments> counts() {
     return Stream.of(
         // connected, expired, total shown, expired shown ("-" for not told)
-        Arguments.of(0, 0, "0", "0"),
+        Arguments.of(0, 0, "<5", "<5"),
+        Arguments.of(1, 0, "<5", "<5"),
         Arguments.of(4, 0, "<5", "<5"),
         Arguments.of(5, 0, "5", "0"),
         Arguments.of(5, 1, "6", "<5"),

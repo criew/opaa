@@ -76,8 +76,8 @@ class ConnectionProfileResponseMapperTest {
     assertThat(small.getConnectedAccountCount().getCount()).isNull();
     assertThat(small.getConnectedAccountCount().getFewerThan()).isEqualTo(5);
     assertThat(small.getExpiredConnectionCount().getFewerThan()).isEqualTo(5);
-    assertThat(impact.getConnectedAccounts().getCount()).isZero();
-    assertThat(impact.getConnectedAccounts().getFewerThan()).isNull();
+    assertThat(impact.getConnectedAccounts().getCount()).isNull();
+    assertThat(impact.getConnectedAccounts().getFewerThan()).isEqualTo(5);
     assertThat(impact.getConnections()).isEqualTo(2);
   }
 

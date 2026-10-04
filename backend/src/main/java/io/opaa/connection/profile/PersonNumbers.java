@@ -11,10 +11,10 @@ import org.springframework.stereotype.Component;
 
 /**
  * The one way a number about persons' connections reaches the administration (ADR-0036,
- * Mindestgruppengröße N): the total of a profile is exact at zero and from N on, else "fewer than
- * N"; a part (the expired) is exact only where neither it, its complement nor the total lies
- * between 1 and N-1 - else "fewer than N" if it is below N, else not told - so no subtraction of
- * two answers points at a person.
+ * Mindestgruppengröße N): the total of a profile is exact from N on, else "fewer than N" - zero
+ * included, so no answer tells whether anyone is connected; a part (the expired) is exact only
+ * where the total is and neither it nor its complement lies between 1 and N-1 - else "fewer than N"
+ * if it is below N, else not told - so no subtraction of two answers points at a person.
  */
 @Component
 public class PersonNumbers {
@@ -42,18 +42,12 @@ public class PersonNumbers {
     return countsOf(List.of(profileId)).get(profileId).total();
   }
 
-  /** Whether any person is connected on {@code profileId}; tells no number. */
-  public boolean anyOn(UUID profileId) {
-    StateCounts counts = persons.countsAmong(List.of(profileId)).get(profileId);
-    return counts != null && counts.connected() + counts.expired() > 0;
-  }
-
   ProfileCounts mask(StateCounts counts) {
     long total = counts.connected() + counts.expired();
-    PersonCount masked =
-        revealing(total) ? PersonCount.fewerThan(minimum) : PersonCount.exact(total);
+    boolean totalMasked = total < minimum;
+    PersonCount masked = totalMasked ? PersonCount.fewerThan(minimum) : PersonCount.exact(total);
     boolean partReveals =
-        revealing(total) || revealing(counts.connected()) || revealing(counts.expired());
+        totalMasked || revealing(counts.connected()) || revealing(counts.expired());
     PersonCount expired;
     if (!partReveals) {
       expired = PersonCount.exact(counts.expired());

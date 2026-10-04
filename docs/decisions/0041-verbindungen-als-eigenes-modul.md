@@ -353,8 +353,12 @@ Begründung:
   liefert (heute die Server-Adresse); der Speicher vergleicht ihn, er zerlegt ihn nie.
 - **Zahlen über Personen nur maskiert:** Jede Zahl über verbundene Konten erreicht die Verwaltung
   über `connection.profile.PersonNumbers` (Gesamtzahl unter der Mindestgruppengröße nur „weniger
-  als N“, eine Teilzahl nur, wenn weder sie noch ihr Komplement darunter liegt); die exakten Zahlen
-  des Ports fragt keine andere Klasse ab (ArchUnit `personNumbersLeaveOnlyMasked`).
+  als N“, auch bei null, wie `GroupService`; eine Teilzahl nur, wenn weder sie noch ihr Komplement
+  darunter liegt); die exakten Zahlen des Ports fragt keine andere Klasse ab (ArchUnit
+  `personNumbersLeaveOnlyMasked`). Eine verwerfende Änderung eines Zugangs für Personen verlangt
+  immer eine Bestätigung mit neutralem Text. Grenzen: Die Beobachtung über die Zeit zeigt, wann die
+  Zahl N überschreitet, und eine Verwaltungsperson mit eigener Freigabe kann durch eigenes
+  Verbinden darauf schließen, dass höchstens N−1 weitere verbunden sind.
 - **Ein Konto mit Verbindung wird nicht gelöscht:** `connected_accounts.user_id` ist `RESTRICT`
   und steht in `UserRepository#countDeletionBlockers`; das Geheimnis hängt mit `CASCADE` am Konto.
 

@@ -404,6 +404,53 @@ class ConnectedAccountIntegrationTest {
     connect("dev-user", PASSWORD).andExpect(status().isBadRequest());
   }
 
+  /** Decision 4: for the administration a profile with none and one with one person look alike. */
+  @Test
+  void theAdministrationCannotTellNoConnectedPersonFromOne() throws Exception {
+    Map<String, Object> none = administrationView();
+    connect("dev-user", PASSWORD).andExpect(status().isOk());
+    Map<String, Object> one = administrationView();
+
+    assertThat(one).isEqualTo(none);
+    assertThat(none.get("list")).asString().contains("\"fewerThan\":5");
+  }
+
+  /**
+   * What the administration reads about the profile: its list entry, its detail, its impact, the
+   * refusal of an unconfirmed address change and the answer of the emergency shutdown.
+   */
+  private Map<String, Object> administrationView() throws Exception {
+    Map<String, Object> view = new java.util.LinkedHashMap<>();
+    String list = body(get(ADMIN));
+    view.put("list", JsonPath.read(list, "$[?(@.id == '" + profile + "')]").toString());
+    String detail = body(get(ADMIN + "/" + profile));
+    view.put("detail", JsonPath.read(detail, "$.connectedAccountCount").toString());
+    view.put(
+        "detailExpired",
+        String.valueOf((Object) JsonPath.read(detail, "$.expiredConnectionCount")));
+    view.put("impact", body(get(ADMIN + "/" + profile + "/impact")));
+    String refusal =
+        body(
+            put(ADMIN + "/" + profile)
+                .content(
+                    """
+                    {"name": "%s", "serverUrl": "https://anders.example.org",
+                     "authMethod": "PERSONAL_SECRET", "ownership": "PERSON"}
+                    """
+                        .formatted(profileName)));
+    view.put("refusal", JsonPath.read(refusal, "$.error") + "|" + JsonPath.read(refusal, "$.code"));
+    view.put("shutdown", body(post(ADMIN + "/" + profile + "/disconnect-all")));
+    return view;
+  }
+
+  private String body(MockHttpServletRequestBuilder request) throws Exception {
+    return mockMvc
+        .perform(as("dev-admin", request))
+        .andReturn()
+        .getResponse()
+        .getContentAsString(StandardCharsets.UTF_8);
+  }
+
   @Test
   void anAccountWithAConnectionIsNotDeleted() throws Exception {
     connect("dev-user", PASSWORD).andExpect(status().isOk());
