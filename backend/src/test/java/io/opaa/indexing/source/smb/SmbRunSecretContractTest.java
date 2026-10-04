@@ -98,6 +98,11 @@ class SmbRunSecretContractTest extends RunSecretContract {
   }
 
   @Override
+  protected String refusedSecret() {
+    return WRONG;
+  }
+
+  @Override
   protected SourceType type() {
     return SmbSourceConnector.TYPE;
   }

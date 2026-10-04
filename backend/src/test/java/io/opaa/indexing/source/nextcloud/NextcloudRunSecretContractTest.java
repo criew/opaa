@@ -58,6 +58,11 @@ class NextcloudRunSecretContractTest extends RunSecretContract {
   }
 
   @Override
+  protected String refusedSecret() {
+    return FakeNextcloudServer.LOGIN + ":falsches-app-passwort";
+  }
+
+  @Override
   protected SourceType type() {
     return NextcloudSourceConnector.TYPE;
   }

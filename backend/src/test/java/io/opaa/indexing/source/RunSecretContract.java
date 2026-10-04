@@ -56,6 +56,7 @@ public abstract class RunSecretContract {
   private final MutableClock clock = new MutableClock(Instant.parse("2026-10-04T12:00:00Z"));
   private final AtomicBoolean refused = new AtomicBoolean();
   private final AtomicBoolean renewed = new AtomicBoolean();
+  private final AtomicBoolean refusing = new AtomicBoolean();
   private final AtomicInteger asksAfterRefusal = new AtomicInteger();
   private final AtomicInteger asksAfterRejection = new AtomicInteger();
   private final AtomicInteger rejectionsReported = new AtomicInteger();
@@ -84,9 +85,13 @@ public abstract class RunSecretContract {
     return false;
   }
 
-  /** From now on the test double rejects every secret - for {@link #usesRejectionSeam()}. */
-  protected void rejectEverySecret() {
-    throw new UnsupportedOperationException("the connector does not use the rejection seam");
+  /**
+   * A secret the test double refuses as credentials, so the connector reports a rejection; {@code
+   * null} for a connector without one. {@code RunSecretContractCoverageTest} holds a connector that
+   * reports rejections to name one here.
+   */
+  protected String refusedSecret() {
+    return null;
   }
 
   /** The run mode that lists the whole source. */
@@ -181,18 +186,21 @@ public abstract class RunSecretContract {
   }
 
   @Test
-  void aSecretRejectedTwiceIsAskedForOnceMoreAndEndsTheRunAsRejected() throws Exception {
-    Assumptions.assumeTrue(usesRejectionSeam(), "the connector does not use the rejection seam");
-    rejectEverySecret();
+  void aSecretTheSourceRejectsEndsTheRunAsRejectedAndTellsThePortOnce() throws Exception {
+    Assumptions.assumeTrue(refusedSecret() != null, "the connector reports no rejection");
+    refusing.set(true);
     UUID jobId = UUID.randomUUID();
 
     run(template(), jobId, library());
 
     verify(jobService).failJob(eq(jobId), anyString());
+    verify(jobService, never()).completeJob(eq(jobId), anyInt(), anyInt(), anyInt(), anyInt());
     verify(ingestService, never()).ingest(any(), any());
     verifyNoInteractions(cleanupService);
-    assertThat(asksAfterRejection).as("asked once more after the rejection").hasValue(1);
-    assertThat(rejectionsReported).as("the port heard of the rejection").hasValue(1);
+    assertThat(rejectionsReported).as("the port heard of the rejection once").hasValue(1);
+    assertThat(asksAfterRejection)
+        .as("asked once more after the rejection where the connector asks again")
+        .hasValue(usesRejectionSeam() ? 1 : 0);
   }
 
   protected final IndexingRunTemplate template() {
@@ -242,6 +250,9 @@ public abstract class RunSecretContract {
       if (refused.get()) {
         asksAfterRefusal.incrementAndGet();
         throw new SourceConnectionBlockedException(BLOCK);
+      }
+      if (refusing.get()) {
+        return Secret.personal(refusedSecret());
       }
       return Secret.personal(renewed.get() ? renewedSecret() : settings().sourceCredentials());
     }

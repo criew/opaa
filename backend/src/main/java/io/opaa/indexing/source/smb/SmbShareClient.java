@@ -91,6 +91,15 @@ final class SmbShareClient implements AutoCloseable {
           0xC0000224L, // STATUS_PASSWORD_MUST_CHANGE
           0xC0000234L); // STATUS_ACCOUNT_LOCKED_OUT
 
+  /** The statuses that refuse the secret itself; the rest of a refused sign-in is a policy. */
+  private static final Set<Long> SECRET_REJECTED_STATUSES =
+      Set.of(
+          NtStatus.STATUS_LOGON_FAILURE.getValue(),
+          NtStatus.STATUS_PASSWORD_EXPIRED.getValue(),
+          0xC0000064L, // STATUS_NO_SUCH_USER
+          0xC000006AL, // STATUS_WRONG_PASSWORD
+          0xC0000224L); // STATUS_PASSWORD_MUST_CHANGE
+
   private static final Set<Long> NOT_FOUND_STATUSES =
       Set.of(
           NtStatus.STATUS_OBJECT_NAME_NOT_FOUND.getValue(),
@@ -321,6 +330,7 @@ final class SmbShareClient implements AutoCloseable {
     if (translated instanceof SmbAccessException.Unreachable) {
       return translated;
     }
+    boolean secretRejected = api != null && SECRET_REJECTED_STATUSES.contains(api.getStatusCode());
     if (translated instanceof SmbAccessException.AccessDenied) {
       return new SmbAccessException.Authentication(
           "Der Server „"
@@ -330,7 +340,7 @@ final class SmbShareClient implements AutoCloseable {
               + "“ verweigert (Zugriff verweigert). Dem Konto fehlt das Recht, sich über das"
               + " Netzwerk am Server anzumelden.");
     }
-    return refusedSignIn(credentials);
+    return refusedSignIn(credentials, secretRejected);
   }
 
   SourceRequestMeter meter() {
@@ -684,7 +694,8 @@ final class SmbShareClient implements AutoCloseable {
       long status = api.getStatusCode();
       if (AUTHENTICATION_STATUSES.contains(status)) {
         return new SmbAccessException.Authentication(
-            "Der Server „" + address.host() + "“ hat die Anmeldung abgelehnt.");
+            "Der Server „" + address.host() + "“ hat die Anmeldung abgelehnt.",
+            SECRET_REJECTED_STATUSES.contains(status));
       }
       if (status == NtStatus.STATUS_BAD_NETWORK_NAME.getValue()) {
         return new SmbAccessException.ShareNotFound(
@@ -762,17 +773,20 @@ final class SmbShareClient implements AutoCloseable {
             + address.host()
             + "“ hat „"
             + credentials.account()
-            + "“ nur als Gast angemeldet; Benutzername oder Passwort stimmen nicht.");
+            + "“ nur als Gast angemeldet; Benutzername oder Passwort stimmen nicht.",
+        true);
   }
 
-  private SmbAccessException.Authentication refusedSignIn(SmbCredentials credentials) {
+  private SmbAccessException.Authentication refusedSignIn(
+      SmbCredentials credentials, boolean secretRejected) {
     return new SmbAccessException.Authentication(
         "Der Server „"
             + address.host()
             + "“ hat die Anmeldung von „"
             + credentials.account()
             + "“ abgelehnt. Benutzername, Domäne und Passwort prüfen; das Konto darf nicht gesperrt"
-            + " oder abgelaufen sein.");
+            + " oder abgelaufen sein.",
+        secretRejected);
   }
 
   private static <T extends Throwable> T find(Throwable e, Class<T> type) {

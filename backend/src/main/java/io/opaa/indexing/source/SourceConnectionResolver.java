@@ -46,7 +46,10 @@ public interface SourceConnectionResolver {
     return currentSecret(library);
   }
 
-  /** The source rejected {@code library}'s secret again after a renewed ask; the run has ended. */
+  /**
+   * The source rejected the sign-in of {@code library}'s run - where the connector asks again after
+   * a rejection, also the retry with the renewed secret; the run has ended.
+   */
   default void credentialsRejected(KnowledgeLibrary library) {}
 
   /**

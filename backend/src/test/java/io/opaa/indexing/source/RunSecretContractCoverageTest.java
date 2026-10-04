@@ -2,7 +2,6 @@ package io.opaa.indexing.source;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.domain.JavaMethod;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
@@ -52,16 +51,28 @@ class RunSecretContractCoverageTest {
     assertThat(types).containsAll(registered);
   }
 
-  /** A connector whose code asks again after a rejection runs the contract's rejection case. */
+  /**
+   * A connector that reports a rejected secret runs the rejection case, and one that asks again
+   * after a rejection runs it with the renewed ask.
+   */
   @Test
-  void everyConnectorThatAsksAgainAfterARejectionRunsTheRejectionCase() throws Exception {
+  void everyConnectorThatReportsOrRetriesARejectionRunsTheRejectionCase() throws Exception {
     JavaClasses classes =
         new ClassFileImporter()
             .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
-            .importPackages("io.opaa.indexing.source");
-    JavaClass runCredentials = classes.get(RunCredentials.class);
+            .importPackages("io.opaa.indexing.source", "io.opaa.indexing.filesync");
+    Set<String> reporting = new HashSet<>();
+    for (Class<?> rejection :
+        List.of(
+            SourceCredentialsRejectedException.class,
+            io.opaa.indexing.filesync.FileAccessException.CredentialsRejected.class)) {
+      classes
+          .get(rejection)
+          .getConstructorCallsToSelf()
+          .forEach(call -> reporting.add(call.getOriginOwner().getPackageName()));
+    }
     Set<String> asking = new HashSet<>();
-    for (JavaMethod method : runCredentials.getMethods()) {
+    for (JavaMethod method : classes.get(RunCredentials.class).getMethods()) {
       if (method.getName().contains("fterRejection")) {
         method.getCallsOfSelf().forEach(call -> asking.add(call.getOriginOwner().getPackageName()));
         method
@@ -69,16 +80,25 @@ class RunSecretContractCoverageTest {
             .forEach(reference -> asking.add(reference.getOriginOwner().getPackageName()));
       }
     }
-    asking.remove(RunCredentials.class.getPackageName());
-    Set<String> declaring = new HashSet<>();
+    for (Set<String> found : List.of(reporting, asking)) {
+      found.remove(RunCredentials.class.getPackageName());
+      found.remove("io.opaa.indexing.filesync");
+    }
+    Set<String> refusing = new HashSet<>();
+    Set<String> retrying = new HashSet<>();
     for (RunSecretContract contract : contracts()) {
+      if (contract.refusedSecret() != null) {
+        refusing.add(contract.getClass().getPackageName());
+      }
       if (contract.usesRejectionSeam()) {
-        declaring.add(contract.getClass().getPackageName());
+        retrying.add(contract.getClass().getPackageName());
       }
     }
 
+    assertThat(reporting).isNotEmpty();
     assertThat(asking).isNotEmpty();
-    assertThat(declaring).containsAll(asking);
+    assertThat(refusing).as("connectors reporting a rejection").containsAll(reporting);
+    assertThat(retrying).as("connectors asking again after a rejection").containsAll(asking);
   }
 
   private static List<RunSecretContract> contracts() throws Exception {

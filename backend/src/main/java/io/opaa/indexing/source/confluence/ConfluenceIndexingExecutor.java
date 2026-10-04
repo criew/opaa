@@ -213,7 +213,8 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
   private static IndexingRunFailedException accessFailure(
       IndexingRun frame, ConfluenceAccessException e) {
     log.warn("Confluence run for library {} failed: {}", frame.library().getId(), e.getMessage());
-    return e instanceof ConfluenceAccessException.Authentication
+    return e instanceof ConfluenceAccessException.Authentication authentication
+            && authentication.secretRejected()
         ? new SourceCredentialsRejectedException(e.getMessage(), e)
         : new IndexingRunFailedException(e.getMessage(), e);
   }

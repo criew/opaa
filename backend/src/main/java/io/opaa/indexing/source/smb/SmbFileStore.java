@@ -298,8 +298,10 @@ final class SmbFileStore implements FileStore {
    */
   private void unreadable(Walk walk, Folder folder, String root, SmbAccessException failure)
       throws FileAccessException {
-    if (failure instanceof SmbAccessException.Authentication) {
-      throw new FileAccessException.CredentialsRejected(failure.getMessage());
+    if (failure instanceof SmbAccessException.Authentication authentication) {
+      throw authentication.secretRejected()
+          ? new FileAccessException.CredentialsRejected(failure.getMessage())
+          : new FileAccessException.RunEnding(failure.getMessage());
     }
     if (failure instanceof SmbAccessException.Unreachable
         || failure instanceof SmbAccessException.ShareNotFound) {
@@ -436,7 +438,9 @@ final class SmbFileStore implements FileStore {
       case SmbAccessException.AccessDenied denied -> new FileAccessException.Unreadable(message);
       case SmbAccessException.TooLarge tooLarge -> new FileAccessException.TooLarge(message);
       case SmbAccessException.Authentication authentication ->
-          new FileAccessException.CredentialsRejected(message);
+          authentication.secretRejected()
+              ? new FileAccessException.CredentialsRejected(message)
+              : new FileAccessException.RunEnding(message);
       case SmbAccessException.ShareNotFound shareNotFound ->
           new FileAccessException.RunEnding(message);
       case SmbAccessException.Unreachable unreachable -> new FileAccessException.RunEnding(message);
