@@ -1,7 +1,12 @@
 package io.opaa.indexing.source.nextcloud;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.opaa.indexing.filesync.FileAccessException;
+import io.opaa.indexing.filesync.FileContainer;
+import io.opaa.indexing.filesync.FileEntry;
+import io.opaa.indexing.filesync.FileStore;
 import io.opaa.indexing.filesync.FileSyncHarness;
 import io.opaa.indexing.job.IndexingEventCategory;
 import io.opaa.indexing.job.IndexingRunEvent;
@@ -206,6 +211,39 @@ class NextcloudFileStoreTest {
       assertThat(harness.storedPaths()).as(foreign).contains(filePath);
       server.close();
     }
+  }
+
+  /** A 403 at the sign-in ends the run wherever it surfaces, and is no rejection of the secret. */
+  @Test
+  void a403AtTheSignInEndsTheRunAlsoWhereOnlyOneFileIsLookedUp() throws Exception {
+    server.denySignIn();
+
+    try (FileStore store = open()) {
+      assertThatThrownBy(() -> store.head(new FileContainer("/Projekte"), fileId("Projekte/a.txt")))
+          .isInstanceOf(FileAccessException.RunEnding.class)
+          .isNotInstanceOf(FileAccessException.CredentialsRejected.class)
+          .hasMessage("Keine Leseberechtigung für die Anmeldung (HTTP 403).");
+    }
+  }
+
+  @Test
+  void a403OnAFileIsThatFilesFindingAlone() throws Exception {
+    try (FileStore store = open()) {
+      FileEntry entry = store.head(new FileContainer("/Projekte"), fileId("Projekte/a.txt"));
+      server.denyReading("Projekte");
+
+      assertThatThrownBy(() -> store.fetch(entry, 1024))
+          .isInstanceOf(FileAccessException.Unreadable.class);
+    }
+  }
+
+  private FileStore open() {
+    return NextcloudTestStores.open(
+        NextcloudTestStores.settings(server.baseUrl(), server.credentials(), FOLDERS));
+  }
+
+  private static String fileId(String path) {
+    return "/remote.php/dav/files/" + FakeNextcloudServer.USER_ID + "/" + path;
   }
 
   private void setUpFresh() {

@@ -26,6 +26,7 @@ import io.opaa.indexing.job.IndexingRunEventRepository;
 import io.opaa.indexing.maintenance.StaleDocumentCleanupService;
 import io.opaa.indexing.source.IndexingRunTemplate;
 import io.opaa.indexing.source.LibrarySourceConnectionResolver;
+import io.opaa.indexing.source.RenewableCredential;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
@@ -43,7 +44,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import java.util.function.Supplier;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -97,7 +97,7 @@ class UrlIndexingExecutorAttachmentBookkeepingTest {
     var entry =
         new AutoindexCrawlerService.CrawledFileEntry("mail.eml", MAIL_URL, null, "1", "FILE", 0);
     when(crawlerService.crawl(
-            anyString(), any(), anyInt(), any(Supplier.class), anyBoolean(), any()))
+            anyString(), any(), anyInt(), any(RenewableCredential.class), anyBoolean(), any()))
         .thenReturn(
             new AutoindexCrawlerService.CrawlResult(
                 List.of(entry), false, false, false, List.of(), List.of()));

@@ -137,6 +137,33 @@ class ServiceAccountTokensTest {
   }
 
   @Test
+  void aDiscardedTokenIsSignedAnewWhileEveryOtherTokenStays() {
+    endpoint.answer(
+        FakeTokenEndpoint.token("a", 3600),
+        FakeTokenEndpoint.token("b", 3600),
+        FakeTokenEndpoint.token("a-neu", 3600));
+    Secret rejected = tokens.accessSecret(storedKey(), "a@example.org", auth, null);
+    tokens.accessSecret(storedKey(), "b@example.org", auth, null);
+
+    tokens.discard(rejected);
+
+    assertThat(tokens.accessToken(storedKey(), "a@example.org", auth, null)).isEqualTo("a-neu");
+    assertThat(tokens.accessToken(storedKey(), "b@example.org", auth, null)).isEqualTo("b");
+    assertThat(endpoint.forms()).hasSize(3);
+  }
+
+  @Test
+  void aDiscardedSecretOtherThanAnAccessTokenLeavesTheCacheAlone() {
+    endpoint.answer(FakeTokenEndpoint.token("a", 3600));
+    tokens.accessToken(storedKey(), null, auth, null);
+
+    tokens.discard(Secret.personal("a"));
+
+    assertThat(tokens.accessToken(storedKey(), null, auth, null)).isEqualTo("a");
+    assertThat(endpoint.forms()).hasSize(1);
+  }
+
+  @Test
   void aRefusedKeyNamesTheAccountAndNotTheKey() {
     endpoint.answer(FakeTokenEndpoint.error(400, "invalid_grant", "Invalid JWT Signature."));
 

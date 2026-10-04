@@ -17,6 +17,7 @@ import io.opaa.indexing.source.IndexingRunFailedException;
 import io.opaa.indexing.source.IndexingRunProgress;
 import io.opaa.indexing.source.IndexingRunTemplate;
 import io.opaa.indexing.source.ListingOutcome;
+import io.opaa.indexing.source.RenewableCredential;
 import io.opaa.indexing.source.RequestBudget;
 import io.opaa.indexing.source.SourceIndexingExecutor;
 import io.opaa.indexing.source.SourceSettings;
@@ -40,7 +41,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.Supplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Async;
@@ -133,9 +133,9 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
       throw new IndexingRunFailedException(e.getMessage());
     }
     // the secret valid now on every request; the proxy stays as resolved at the start
-    Supplier<String> authHeader =
+    RenewableCredential<String> authHeader =
         run.credentials()
-            .derived(
+            .renewableAfterRejection(
                 secret -> {
                   ProxyAndCredentials parsed =
                       ProxyAndCredentials.parse(settings.sourceProxy(), secret);
@@ -160,7 +160,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
         () -> "der Lauf endet unvollständig, der nächste Lauf nimmt die übrigen Einträge auf");
     Optional<FeedFetcher.LoadedFeed> loaded =
         feedFetcher.fetchAndParse(
-            insecureClient, targetLibrary.getId(), feedUrl, authHeader.get(), budget);
+            insecureClient, targetLibrary.getId(), feedUrl, authHeader, budget);
     if (loaded.isEmpty()) {
       run.progress().setTotal(0);
       return ListingOutcome.partial();

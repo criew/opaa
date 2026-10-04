@@ -19,6 +19,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Predicate;
 import javax.net.ssl.SSLException;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.JsonNode;
@@ -161,7 +162,31 @@ final class ConfluenceHttp {
    * ConfluenceAccessException.RateLimited}.
    */
   Response get(String url, String resource) throws ConfluenceAccessException, InterruptedException {
-    Map<String, String> headers = requestPolicy.headers(authorizationHeader());
+    return get(url, resource, response -> response.status() == 401);
+  }
+
+  /**
+   * {@link #get(String, String)}; an answer {@code rejected} takes for a rejection of the header
+   * sent is requested once more when the run's credentials hold another header now.
+   */
+  Response get(String url, String resource, Predicate<Response> rejected)
+      throws ConfluenceAccessException, InterruptedException {
+    String sent = authorizationHeader();
+    Response response = send(url, resource, sent);
+    if (rejected.test(response) && renewedAfterRejection(sent)) {
+      response = send(url, resource, authorizationHeader());
+    }
+    return response;
+  }
+
+  /** Whether a rejection of {@code sent} is worth one retry with the header held now. */
+  private boolean renewedAfterRejection(String sent) {
+    return sent != null && connection.credentials().renewedAfterRejection(sent);
+  }
+
+  private Response send(String url, String resource, String authorization)
+      throws ConfluenceAccessException, InterruptedException {
+    Map<String, String> headers = requestPolicy.headers(authorization);
     headers.put("Accept", "application/json");
     // the budget counts every call, retries after a 429 included (the fetcher charges it before
     // each attempt) - the meter is per client, a client is per run, so this is the run's bound.
@@ -204,14 +229,15 @@ final class ConfluenceHttp {
     String resource = "der Anhang " + fileName;
     // a download is a call to the instance like any other - it counts against the budget
     try {
-      return downloader.downloadBounded(
-          httpClient,
-          url,
-          fileName,
-          maxBytes,
-          authorizationHeader(),
-          RedirectFollowingFetcher.RedirectPolicy.DROP_AUTHORIZATION_OFF_ORIGIN,
-          budget);
+      String sent = authorizationHeader();
+      try {
+        return download(url, fileName, maxBytes, sent);
+      } catch (BoundedDownloader.HttpStatusException e) {
+        if (e.statusCode() != 401 || !e.authorizationSent() || !renewedAfterRejection(sent)) {
+          throw e;
+        }
+      }
+      return download(url, fileName, maxBytes, authorizationHeader());
     } catch (BoundedDownloader.AttachmentTooLargeException e) {
       throw e;
     } catch (ConfluenceAccessException e) {
@@ -224,6 +250,19 @@ final class ConfluenceHttp {
     } catch (IOException e) {
       throw connectionFailure(e, resource);
     }
+  }
+
+  private BoundedDownloader.DownloadedFile download(
+      String url, String fileName, long maxBytes, String authorization)
+      throws IOException, InterruptedException {
+    return downloader.downloadBounded(
+        httpClient,
+        url,
+        fileName,
+        maxBytes,
+        authorization,
+        RedirectFollowingFetcher.RedirectPolicy.DROP_AUTHORIZATION_OFF_ORIGIN,
+        budget);
   }
 
   ConfluenceConnection connection() {

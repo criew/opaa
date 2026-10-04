@@ -60,6 +60,7 @@ public class IndexingRunTemplate {
   private final LibraryStorageQuotaService storageQuotaService;
   private final SourceConnectionResolver connectionResolver;
   private final Clock clock;
+  private final ServiceAccountTokens tokens;
 
   public IndexingRunTemplate(
       IndexingJobService indexingJobService,
@@ -87,6 +88,31 @@ public class IndexingRunTemplate {
       LibraryStorageQuotaService storageQuotaService,
       SourceConnectionResolver connectionResolver,
       Clock clock) {
+    this(
+        indexingJobService,
+        eventRepository,
+        staleDocumentCleanupService,
+        documentRepository,
+        storageQuotaService,
+        connectionResolver,
+        clock,
+        null);
+  }
+
+  /**
+   * {@code tokens}, when given, drops an access token a source rejected before the port is asked
+   * again, so a port that signs through it hands out a new one instead of the cached one.
+   */
+  public IndexingRunTemplate(
+      IndexingJobService indexingJobService,
+      IndexingRunEventRepository eventRepository,
+      VanishedDocumentReconciler staleDocumentCleanupService,
+      DocumentRepository documentRepository,
+      LibraryStorageQuotaService storageQuotaService,
+      SourceConnectionResolver connectionResolver,
+      Clock clock,
+      ServiceAccountTokens tokens) {
+    this.tokens = tokens;
     this.clock = clock;
     this.indexingJobService = indexingJobService;
     this.eventRepository = eventRepository;
@@ -139,7 +165,12 @@ public class IndexingRunTemplate {
             events,
             documentRepository,
             storageQuotaService,
-            rejected -> connectionResolver.secretAfterRejection(library, rejected),
+            rejected -> {
+              if (tokens != null) {
+                tokens.discard(rejected);
+              }
+              return connectionResolver.secretAfterRejection(library, rejected);
+            },
             clock);
     boolean failed = false;
     String failure = null;

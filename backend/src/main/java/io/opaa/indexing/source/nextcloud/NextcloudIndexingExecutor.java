@@ -125,7 +125,7 @@ public class NextcloudIndexingExecutor implements SourceIndexingExecutor, FileSy
         new NextcloudDav(
             connection,
             run.credentials()
-                .derived(
+                .renewableAfterRejection(
                     secret -> NextcloudConnection.of(run.settings(), secret).authorizationHeader()),
             targetAddressValidator,
             requestPolicy,
