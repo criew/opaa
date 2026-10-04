@@ -5,8 +5,29 @@
   <link href="https://criew.github.io/opaa/report/feed.xml" rel="self"/>
   <link href="https://criew.github.io/opaa/report/"/>
   <id>https://criew.github.io/opaa/report/</id>
-  <updated>2026-10-03T05:34:43Z</updated>
+  <updated>2026-10-04T06:10:22Z</updated>
   <author><name>criew/opaa</name></author>
+  <entry>
+    <title>Tagesreport Samstag, 3. Oktober 2026</title>
+    <link href="https://criew.github.io/opaa/report/reports/2026-10-03.html"/>
+    <id>https://criew.github.io/opaa/report/reports/2026-10-03.html</id>
+    <updated>2026-10-04T06:10:22Z</updated>
+    <summary type="text">feat: OAuth-Verbindungen und mehrstufige Konnektoren — Quellen-Freigabe, persönliche Konten, Konnektor-Steuerung:
+— Konnektoren erhalten Ziel und Geheimnis vom Kern
+— Verbindungsprofile anlegen und verwalten
+— OAuth-Baustein mit PKCE und Client-Credentials
+— Verbundene Konten mit persönlichem Geheimnis
+feat: Datei-Konnektoren für Cloud- und Netzablagen (Google Drive, Nextcloud, SharePoint/OneDrive, SMB, Dropbox):
+— Nextcloud-Konnektor über WebDAV
+— Google-Drive-Konnektor
+— Gemeinsamen Datei-Abgleich in Kernpaket herauslösen
+— Datei-Abgleich merkt unveränderte Ordner
+Sonstiges:
+— Detailseiten von Wissen und Prompts angleichen
+— Space-Einstellungen für alle Mitglieder lesbar
+— Mitglieder-Rückmeldungen vereinheitlichen
+— Verzeichnis-Konnektor schließt versteckte Ordner aus</summary>
+  </entry>
   <entry>
     <title>Tagesreport Freitag, 2. Oktober 2026</title>
     <link href="https://criew.github.io/opaa/report/reports/2026-10-02.html"/>
@@ -854,28 +875,5 @@ Sonstiges:
 — Retrieval-Regressions-Workflow repariert, evaluateRetrieval läuft zuverlässig
 — Backlog-Sichtung abgeschlossen, sieben Vorgänge neu formuliert
 — Bibliothekszuordnung in Chunk-Metadaten und Rechteprüfung vereinheitlicht</summary>
-  </entry>
-  <entry>
-    <title>Tagesreport Freitag, 14. August 2026</title>
-    <link href="https://criew.github.io/opaa/report/reports/2026-08-14.html"/>
-    <id>https://criew.github.io/opaa/report/reports/2026-08-14.html</id>
-    <updated>2026-08-15T01:56:22Z</updated>
-    <summary type="text">Epic: Konzepte und Abstraktionen gegen die neue Produktausrichtung prüfen:
-— Dateisystem- und Netzindizierung verwenden einheitliche Endungslisten
-— Chunk-Überlappung konfigurierbar gemacht
-— Revisionssicheres Audit-Logging, Zitierzwang, Organisationsgrenze, Modellanbieter und Storage-Abstraktion entschieden
-Epic: Produktvision auf die öffentliche Verwaltung ausrichten:
-— Produktvision, ADR und Use-Cases auf öffentliche Verwaltung ausgerichtet
-— README und Einstiegsdokumente neu gefasst
-— Landing-Page, Pitch und One-Pager auf Verwaltungston umgestellt
-Epic: Space and asset model — replace the workspace model:
-— Space-Arten durch Attribute ersetzt
-— Rechtemodell verschlankt: Asset-Rolle USER und Gruppenrollen gestrichen
-feat: Introduce Workspaces &amp; Access Control:
-— Workspace-Lifecycle, Audit-Logging, Connector-Integration und Chunk-Metadaten umgesetzt
-Sonstiges:
-— Audit-Logging, Organisationsgrenze und Zitierzwang implementiert
-— Landing-Page als Startseite, Tagesreport mit Blättern zwischen Tagen
-— Auth-Modi auf oidc und dev reduziert, ADR-Bestand aktualisiert</summary>
   </entry>
 </feed>

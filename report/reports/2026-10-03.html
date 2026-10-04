@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tagesreport 2026-10-03</title>
+<link rel="alternate" type="application/atom+xml" title="OPAA Tagesreport" href="../feed.xml">
+<style>:root {
+  color-scheme: light dark;
+  --bg: #ffffff;
+  --fg: #1a1a1a;
+  --muted: #5c6370;
+  --line: #e2e5e9;
+  --accent: #2f6feb;
+  --card: #f7f8fa;
+  --green: #1a7f37;
+  --red: #cf222e;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14161a;
+    --fg: #e6e8eb;
+    --muted: #9aa1ab;
+    --line: #2a2e35;
+    --accent: #6ea0ff;
+    --card: #1b1e24;
+    --green: #3fb950;
+    --red: #f85149;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 2rem 1.25rem 4rem;
+  background: var(--bg);
+  color: var(--fg);
+  font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+main { max-width: 46rem; margin: 0 auto; }
+a { color: var(--accent); }
+header { border-bottom: 1px solid var(--line); padding-bottom: 1.25rem; margin-bottom: 2rem; }
+h1 { font-size: 1.6rem; margin: 0 0 .35rem; letter-spacing: -.01em; }
+h2 { font-size: 1.1rem; margin: 2.25rem 0 .85rem; letter-spacing: -.01em; }
+.sub { color: var(--muted); font-size: .9rem; margin: 0; }
+.num { font-variant-numeric: tabular-nums; color: var(--muted); margin-right: .4rem; }
+.empty { color: var(--muted); font-style: italic; }
+
+.blaettern { color: var(--muted); font-size: .9rem; }
+.blaettern a { text-decoration: none; }
+.blaettern a:hover { text-decoration: underline; }
+
+.linkbar { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .85rem; }
+.linkbar a {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  font-size: .85rem;
+  padding: .3rem .7rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--card);
+  text-decoration: none;
+}
+.linkbar a:hover { border-color: var(--accent); }
+.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.dot.green { background: var(--green); }
+.dot.red { background: var(--red); }
+
+.kpi-row { display: flex; gap: .75rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+.kpi {
+  flex: 1;
+  min-width: 7rem;
+  padding: .75rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+  text-align: center;
+}
+.kpi-value {
+  font-size: 1.8rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+.kpi-value.green { color: var(--green); }
+.kpi-label {
+  font-size: .78rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.epic-section {
+  margin-bottom: 1.25rem;
+  padding: .85rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+}
+.epic-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  margin-bottom: .5rem;
+}
+.epic-title { font-weight: 600; font-size: .95rem; }
+.epic-progress {
+  font-size: .8rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.progress-bar {
+  height: 4px;
+  background: var(--line);
+  border-radius: 2px;
+  margin-bottom: .6rem;
+  overflow: hidden;
+}
+.progress-fill { height: 100%; background: var(--accent); border-radius: 2px; }
+.epic-section ul { margin: 0; padding-left: 1.25rem; font-size: .9rem; }
+.epic-section li { margin-bottom: .25rem; }
+
+.merged-summary {
+  margin-top: .5rem;
+  padding-top: .5rem;
+  border-top: 1px dashed var(--line);
+  font-size: .85rem;
+  color: var(--muted);
+}
+.merged-summary ul { margin: .25rem 0 0; padding-left: 1.25rem; }
+.merged-summary li { margin-bottom: .2rem; }
+
+ul.items { list-style: none; margin: 0; padding: 0; }
+ul.items li {
+  padding: .7rem .9rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  margin-bottom: .5rem;
+  background: var(--card);
+}
+.meta { display: block; color: var(--muted); font-size: .82rem; margin-top: .25rem; }
+
+footer { margin-top: 3rem; padding-top: 1.25rem; border-top: 1px solid var(--line); color: var(--muted); font-size: .85rem; }
+.status.bad { color: var(--red); font-weight: 600; }
+</style>
+</head>
+<body>
+<main>
+<header>
+<h1>Tagesreport Samstag, 3. Oktober 2026</h1>
+<nav class="blaettern"><a href="2026-10-02.html" rel="prev" title="Freitag, 2. Oktober 2026">← Vorheriger Tag</a> · <a href="../index.html">Alle Reports</a></nav>
+<div class="linkbar"><a href="https://opaa.ewerlin.com/chat">Testumgebung</a><a href="https://github.com/criew/opaa">Repository</a><a href="https://github.com/criew/opaa/issues">Issues</a><a href="https://github.com/criew/opaa/pulls">Pull Requests</a><a href="https://github.com/criew/opaa/actions/runs/37160405289" title="Letzter CI-Lauf auf dem Hauptbranch: erfolgreich">CI <span class="dot green"></span></a></div>
+</header>
+
+<div class="kpi-row"><div class="kpi"><div class="kpi-value">69</div><div class="kpi-label">Issues offen</div></div><div class="kpi"><div class="kpi-value green">+46</div><div class="kpi-label">Neu angelegt</div></div><div class="kpi"><div class="kpi-value">22</div><div class="kpi-label">Abgeschlossen</div></div><div class="kpi"><div class="kpi-value">36</div><div class="kpi-label">PRs gemergt</div></div></div>
+
+<div class="epic-section">
+<div class="epic-header">
+<span class="epic-title"><a href="https://github.com/criew/opaa/issues/2147">#2147</a> feat: OAuth-Verbindungen und mehrstufige Konnektoren — Quellen-Freigabe, persönliche Konten, Konnektor-Steuerung</span>
+<span class="epic-progress">3 / 18 erledigt</span>
+</div>
+<div class="progress-bar"><div class="progress-fill" style="width: 17%"></div></div>
+<ul><li><span class="num"><a href="https://github.com/criew/opaa/issues/2178">#2178</a></span>Konnektoren erhalten Ziel und Geheimnis vom Kern</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/2160">#2160</a></span>Verbindungsprofile anlegen und verwalten</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/2168">#2168</a></span>OAuth-Baustein mit PKCE und Client-Credentials</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/2163">#2163</a></span>Verbundene Konten mit persönlichem Geheimnis</li></ul>
+<div class="merged-summary">Gemergte Pull Requests:<ul><li><span class="num"><a href="https://github.com/criew/opaa/pull/2198">#2198</a></span>feat(frontend): Verwaltungsoberfläche für Zugänge (+1166/−0, 14 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2183">#2183</a></span>refactor(connectors): Lauf-SPI – Konnektoren erhalten Ziel und Geheimnis nur vom Kern (+876/−322, 88 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2176">#2176</a></span>docs(adr): Nachträge zu 0025, 0036, 0038 und ADR-0041 für Verbindungsprofile und verbundene Konten (+480/−10, 5 Dateien)</li></ul></div>
+</div>
+<div class="epic-section">
+<div class="epic-header">
+<span class="epic-title"><a href="https://github.com/criew/opaa/issues/2146">#2146</a> feat: Datei-Konnektoren für Cloud- und Netzablagen (Google Drive, Nextcloud, SharePoint/OneDrive, SMB, Dropbox)</span>
+<span class="epic-progress">4 / 10 erledigt</span>
+</div>
+<div class="progress-bar"><div class="progress-fill" style="width: 40%"></div></div>
+<ul><li><span class="num"><a href="https://github.com/criew/opaa/issues/2152">#2152</a></span>Nextcloud-Konnektor über WebDAV</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/2151">#2151</a></span>Google-Drive-Konnektor</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/2149">#2149</a></span>Gemeinsamen Datei-Abgleich in Kernpaket herauslösen</li><li>Datei-Abgleich merkt unveränderte Ordner</li></ul>
+<div class="merged-summary">Gemergte Pull Requests:<ul><li><span class="num"><a href="https://github.com/criew/opaa/pull/2203">#2203</a></span>feat(frontend): Google-Drive-Formular und Handbuchkapitel (#2151, Teil 5) (+1468/−12, 22 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2200">#2200</a></span>feat(frontend): Nextcloud-Quelle im Assistenten und Handbuchkapitel (+1041/−18, 17 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2182">#2182</a></span>refactor(indexing): Gemeinsamen Datei-Abgleich als Kernpaket filesync herauslösen (+3095/−802, 37 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2177">#2177</a></span>docs(adr): Google-Drive-Konnektor und gemeinsamen Datei-Abgleich festlegen (+467/−13, 4 Dateien)</li></ul></div>
+</div>
+<div class="epic-section">
+<div class="epic-header"><span class="epic-title">Sonstiges</span></div>
+<ul><li><span class="num"><a href="https://github.com/criew/opaa/issues/2208">#2208</a></span>Detailseiten von Wissen und Prompts angleichen</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/2207">#2207</a></span>Space-Einstellungen für alle Mitglieder lesbar</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/2205">#2205</a></span>Mitglieder-Rückmeldungen vereinheitlichen</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/2190">#2190</a></span>Verzeichnis-Konnektor schließt versteckte Ordner aus</li></ul>
+<div class="merged-summary">Gemergte Pull Requests:<ul><li><span class="num"><a href="https://github.com/criew/opaa/pull/2210">#2210</a></span>feat(spaces): Einstellungen für alle Mitglieder lesbar, doppelte Überschriften weg, Sortierung unter „Nur zugeordnete“ (+395/−112, 28 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2209">#2209</a></span>feat(frontend): Detailseiten von Wissen und Prompts angleichen — Kopf mit Stern, Reiter „Zuordnungen“ (+1762/−783, 26 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2206">#2206</a></span>fix(frontend): Mitglieder-Rückmeldungen als Popup, Herleitung „Warum hat … Zugriff?“ in einem Satz (+964/−193, 13 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2199">#2199</a></span>feat(connectors): Google-Drive-Konnektor (#2151, Teil 4) (+3959/−4, 27 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2197">#2197</a></span>feat(indexing): Nextcloud-Konnektor über WebDAV (+4080/−20, 34 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2196">#2196</a></span>feat(connections): Verbindungsprofile (Zugänge) als eigenes Modul (+3717/−73, 80 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2195">#2195</a></span>feat(indexing): Änderungslauf über das Änderungsprotokoll im Datei-Abgleich (#2151, Teil 3) (+1113/−7, 17 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2191">#2191</a></span>feat(connectors): Dienstkonto-Schlüssel im Kern signieren, POST-Weg und subject-Regel (#2151, Teil 2) (+1979/−57, 32 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2190">#2190</a></span>feat(indexing): Verzeichnis-Konnektor schließt versteckte Ordner aus und kennt Ausschlussmuster je Bibliothek (+1362/−46, 24 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2189">#2189</a></span>feat(indexing): Datei-Abgleich merkt sich unveränderte Ordner (+1089/−61, 17 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2188">#2188</a></span>fix(indexing): Löscherkennung bei unlesbaren Einträgen nur im Teilbaum aussetzen (+497/−23, 18 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2187">#2187</a></span>feat(auth): Zentrale Abfrage AccountUsability für die Kontonutzbarkeit (+642/−102, 15 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2186">#2186</a></span>feat(indexing): Verbindungstest FILESYSTEM prüft nur noch, ob sich das Verzeichnis öffnen lässt (+61/−94, 8 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2185">#2185</a></span>feat(knowledge): Zugangsdaten-Spalte auf text, Spec-Grenze 4096 (#2151, Teil 1) (+126/−16, 7 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2181">#2181</a></span>fix(frontend): Filterzeile bricht als Einheit um, Kachel blinkt nicht mehr bei Stern und Menü (+210/−49, 5 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2179">#2179</a></span>refactor(spaces): Space-Sichtbarkeit auch im Backend entfernen (+289/−476, 54 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2158">#2158</a></span>docs(features): Spezifikation für Konnektor-Freigabe, Verbindungsprofile und verbundene Konten (+533/−0, 1 Datei)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2157">#2157</a></span>fix(frontend): Gefahrfarbe als Text erfüllt WCAG-AA-Kontrast in beiden Schemata (+158/−13, 5 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2145">#2145</a></span>feat(frontend): einheitliche Asset-Kachel für Katalog und alle Auswahllisten (+1153/−452, 24 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2144">#2144</a></span>chore(deps): ollama/ollama docker tag to v0.35.1 (+2/−2, 1 Datei)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2142">#2142</a></span>chore(deps): axllent/mailpit docker tag to v1.31.4 (+1/−1, 1 Datei)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2138">#2138</a></span>feat(spaces): Mitgliederliste aufräumen, Wachstumssignal für Gruppen entfällt (+1400/−921, 66 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2137">#2137</a></span>feat(space): Space-Anlage und Mitglieder vereinfachen, ein Suchfeld für Personen und Gruppen (+1395/−785, 55 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2136">#2136</a></span>fix(chat): Eingabefeld bleibt während einer laufenden Antwort bedienbar (+356/−38, 11 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2133">#2133</a></span>feat(frontend): Space-Einstellungen mit Reiter „Inhalte“ — Zuordnung per Häkchen, sofort wirksam (+1347/−543, 30 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2132">#2132</a></span>feat(catalog): kompaktere Kacheln, eine Filterzeile und feste Reihenfolge (+1007/−1196, 57 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2110">#2110</a></span>chore(deps): npm (non-major) aktualisieren (+39/−39, 2 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2109">#2109</a></span>chore(deps): aws-java-sdk-v2 monorepo aktualisieren (+1/−1, 1 Datei)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2108">#2108</a></span>chore(deps): amazon/aws-cli docker tag to v2.37.8 (+2/−2, 1 Datei)</li></ul></div>
+</div>
+
+<footer>
+Erzeugt am 2026-10-04 um 08:10 Uhr ·
+<a href="../feed.xml">Feed abonnieren</a>
+<br><span class="empty">Berichtszeitraum: 2026-10-03T00:00:00 bis 2026-10-03T23:59:59 (Europe/Berlin)</span>
+</footer>
+</main>
+</body>
+</html>
