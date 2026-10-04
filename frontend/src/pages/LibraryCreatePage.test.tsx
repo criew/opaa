@@ -28,10 +28,8 @@ const {
   mockUpsertAssetGrant,
   mockSearchSelectableGroups,
   mockListConnectionProfileOptions,
-  mockListMyConnectedAccounts,
 } = vi.hoisted(() => ({
   mockListConnectionProfileOptions: vi.fn(),
-  mockListMyConnectedAccounts: vi.fn(),
   mockGetMyGroups: vi.fn().mockResolvedValue([]),
   mockGetMyCapabilities: vi.fn(),
   mockTestLibrarySource: vi.fn(),
@@ -86,13 +84,6 @@ vi.mock('../services/connectionProfileApi', async () => {
     '../services/connectionProfileApi',
   )
   return { ...actual, listConnectionProfileOptions: mockListConnectionProfileOptions }
-})
-
-vi.mock('../services/connectedAccountApi', async () => {
-  const actual = await vi.importActual<typeof import('../services/connectedAccountApi')>(
-    '../services/connectedAccountApi',
-  )
-  return { ...actual, listMyConnectedAccounts: mockListMyConnectedAccounts }
 })
 
 vi.mock('../services/libraryApi', async () => {
@@ -151,12 +142,6 @@ describe('LibraryCreatePage (#596, #1942)', () => {
     mockListSourceTypes.mockResolvedValue(mockSourceTypes)
     mockListConnectionProfileOptions.mockReset()
     mockListConnectionProfileOptions.mockResolvedValue([])
-    mockListMyConnectedAccounts.mockReset()
-    mockListMyConnectedAccounts.mockResolvedValue({
-      accounts: [],
-      connectable: [],
-      missingAccess: { responsible: 'Systemverwaltung', text: '…' },
-    })
     mockUpsertAssetGrant.mockClear()
     // the per-connector listings of the forms, answered in the shape of the one browse endpoint
     mockBrowseSource.mockImplementation(async (sourceType: string, request: unknown) => {
@@ -1426,37 +1411,37 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       sourceType: 'NEXTCLOUD',
       serverUrl: 'https://cloud.intern.example',
       authMethod: 'PERSONAL_SECRET' as const,
+      ownership: 'BOTH' as const,
+      ownAccount: false,
       sourceInsecureSsl: false,
       creatable: true,
       connectorDefaults: null,
     }
+    const ownProfile = { ...profile, ownAccount: true }
 
-    function accountsOn(...profileIds: string[]) {
-      return {
-        accounts: profileIds.map((profileId) => ({
-          profileId,
-          profileName: 'Nextcloud intern',
-          authMethod: 'PERSONAL_SECRET',
-          secretForm: 'USERNAME_AND_PASSWORD',
-          state: 'CONNECTED',
-          released: true,
-          reconnectable: true,
-          connectedAt: '2026-09-20T08:00:00Z',
-          usedBy: [],
-        })),
-        connectable: [],
-        missingAccess: { responsible: 'Systemverwaltung', text: '…' },
-      }
-    }
+    it('offers only the private way on a profile for persons only', async () => {
+      mockListConnectionProfileOptions.mockResolvedValue([
+        { ...ownProfile, id: 'profile-personen', name: 'Nextcloud Personen', ownership: 'PERSON' },
+      ])
+      const user = userEvent.setup()
+      await renderPage()
+      await chooseType(user, /Nextcloud/)
+
+      const group = await screen.findByRole('radiogroup', { name: 'Über mein verbundenes Konto' })
+      expect(
+        within(group).getByRole('radio', { name: /Nextcloud Personen · privat/ }),
+      ).toBeVisible()
+      expect(
+        screen.queryByRole('radio', { name: /^Nextcloud Personen(?! · privat)/ }),
+      ).not.toBeInTheDocument()
+    }, 20000)
 
     it('offers no private way, and no hint to connect an account, without a connected account', async () => {
       mockListConnectionProfileOptions.mockResolvedValue([profile])
-      mockListMyConnectedAccounts.mockResolvedValue(accountsOn('another-profile'))
       const user = userEvent.setup()
       await renderPage()
       await chooseType(user, /Nextcloud/)
       await screen.findByRole('radio', { name: /Nextcloud intern/ })
-      await waitFor(() => expect(mockListMyConnectedAccounts).toHaveBeenCalled())
 
       expect(screen.queryByText('Über mein verbundenes Konto')).not.toBeInTheDocument()
       expect(screen.queryByText(/verbundene/i)).not.toBeInTheDocument()
@@ -1464,8 +1449,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
     }, 20000)
 
     it('creates a private library over the own account, without a secret and without „Freigaben“', async () => {
-      mockListConnectionProfileOptions.mockResolvedValue([profile])
-      mockListMyConnectedAccounts.mockResolvedValue(accountsOn('profile-intern'))
+      mockListConnectionProfileOptions.mockResolvedValue([ownProfile])
       const user = userEvent.setup()
       await renderPage()
       await chooseType(user, /Nextcloud/)
@@ -1503,8 +1487,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
     }, 30000)
 
     it('tests the connection of a private library through the own account', async () => {
-      mockListConnectionProfileOptions.mockResolvedValue([profile])
-      mockListMyConnectedAccounts.mockResolvedValue(accountsOn('profile-intern'))
+      mockListConnectionProfileOptions.mockResolvedValue([ownProfile])
       mockTestLibrarySource.mockResolvedValue({ reachable: true, message: 'Verbunden.' })
       const user = userEvent.setup()
       await renderPage()
@@ -1522,8 +1505,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
     }, 20000)
 
     it('keeps the shareable way on a profile admitting both as an explicit choice of its own', async () => {
-      mockListConnectionProfileOptions.mockResolvedValue([profile])
-      mockListMyConnectedAccounts.mockResolvedValue(accountsOn('profile-intern'))
+      mockListConnectionProfileOptions.mockResolvedValue([ownProfile])
       const user = userEvent.setup()
       await renderPage()
       await chooseType(user, /Nextcloud/)

@@ -23,7 +23,6 @@ import {
   selectableConnections,
 } from '../components/library/connectionChoice'
 import { PRIVATE_LIBRARY_NOTE } from '../components/library/privateLibrary'
-import { useOwnAccountProfileIds } from '../hooks/useOwnAccountProfileIds'
 import {
   connectionFields,
   ownAddressAllowed,
@@ -230,13 +229,12 @@ export default function LibraryCreatePage() {
     configuration !== null && descriptor !== undefined && descriptor.profileSupport !== 'FORBIDDEN'
   const profileOptions = useConnectionProfileOptions(admitsProfiles ? sourceType : null)
   // Freiwilligkeit: the private way exists only on a profile the person already connected an
-  // account on; without one nothing hints at it.
-  const ownAccountProfileIds = useOwnAccountProfileIds(admitsProfiles) ?? []
+  // account on (ConnectionProfileOption.ownAccount); without one nothing hints at it.
   const connectionChoice =
     admitsProfiles && descriptor
       ? effectiveConnection(
           chosenConnections[sourceType] ?? null,
-          selectableConnections(descriptor, profileOptions.options, true, ownAccountProfileIds),
+          selectableConnections(descriptor, profileOptions.options, true),
         )
       : OWN_ADDRESS
   const privateLibrary = privateProfileOf(connectionChoice) !== null
@@ -523,7 +521,7 @@ export default function LibraryCreatePage() {
                 onChange={chooseConnection}
                 offerOwnAddress
                 offerRequest
-                ownAccountProfileIds={ownAccountProfileIds}
+                offerPrivate
                 idPrefix="library-create"
               />
             )}
