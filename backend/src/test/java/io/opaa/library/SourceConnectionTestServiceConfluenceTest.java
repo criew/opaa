@@ -19,8 +19,6 @@ import io.opaa.auth.CurrentUser;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ValidationException;
 import io.opaa.connection.ConnectorReleaseService;
-import io.opaa.connection.LibraryConnectionService;
-import io.opaa.indexing.source.LibrarySourceConnectionResolver;
 import io.opaa.indexing.source.ServiceAccountTokens;
 import io.opaa.indexing.source.SourceConnectionTestResult;
 import io.opaa.indexing.source.SourceListing;
@@ -71,15 +69,13 @@ class SourceConnectionTestServiceConfluenceTest {
     organizationId = UUID.randomUUID();
     caller = CurrentUser.of(currentUserId, organizationId, SystemRole.USER, "Caller");
     service =
-        new SourceConnectionTestService(
+        SourceConnectionTestServices.over(
             libraryRepository,
             libraryAccessService,
             TestSourceConnectors.connectors()
                 .confluenceConnectionService(confluenceConnectionService)
                 .registry(),
             connectorRelease,
-            new LibrarySourceConnectionResolver(),
-            mock(LibraryConnectionService.class),
             new ServiceAccountTokens(TargetAddressValidator.disabled(), Clock.systemUTC()));
   }
 

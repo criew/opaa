@@ -374,9 +374,10 @@ genannten Dinge mit.
 
 Ein **Zugang** ist ein Rahmen, den die Systemverwaltung für einen Konnektor vorgibt: Name,
 Server-Adresse, Anmeldeart, bei Anmeldearten mit App-Registrierung Client-ID, Client-Secret,
-Mandant, Ablaufdatum des Secrets und Scopes, dazu die Besitzart (Bibliothek, Person oder beides)
-und Vorgaben für die Einstellungen des Konnektors. Wer eine Bibliothek auf einem Zugang anlegt,
-wählt ihn aus und trägt Server und Registrierung nicht selbst ein.
+Mandant, Ablaufdatum des Secrets und Scopes, dazu die Besitzart (Bibliothek, Person oder beides),
+Proxy, die Zertifikatsprüfung und Vorgaben für die Einstellungen des Konnektors. Wer eine Bibliothek
+auf einem Zugang anlegt, wählt ihn aus und trägt Server, Registrierung, Proxy und Vorgaben nicht
+selbst ein.
 
 Die Systemverwaltung pflegt Zugänge unter **Administration → Zugänge**. Solange keine Quellart
 Zugänge anbietet, steht dort ein Hinweis, und „Neuer Zugang“ ist gesperrt. Sonst fragt „Neuer
@@ -388,6 +389,8 @@ sichtbar. Das Formular richtet sich nach der Quellart:
 - **Server-Adresse** verlangt eines der Schemata, die die Quellart meldet; der Hinweis unter dem
   Feld nennt sie. Hat die Quellart eine feste Adresse, entfällt das Feld, und das Formular nennt die
   Adresse.
+- **Proxy** (`host:port`, ohne Zugangsdaten, optional) und **Zertifikatsprüfung aussetzen**
+  gelten für jede Bibliothek auf dem Zugang, und zwar nur für Anfragen an dessen Server-Adresse.
 - **Vorgaben für jede Bibliothek** zeigt je Einstellung, die ein Zugang vorgeben darf, ein Feld:
   Text, Ja/Nein oder eine Auswahl, jeweils mit „Keine Vorgabe“. Meldet die Quellart keine solche
   Einstellung, fehlt der Abschnitt. Eine Vorgabe, die die Quellart nicht meldet, weist OPAA ab.
@@ -411,12 +414,26 @@ die App-Registrierung nur am Zugang steht. Die mitgelieferten Konnektoren melden
 
 - Ihre Adresse liegt unter der Server-Adresse des Zugangs. Beim Anlegen ohne Adresse übernimmt sie
   die Server-Adresse; eine Adresse außerhalb wird abgewiesen.
-- Die Vorgaben des Zugangs überschreiben die gleichnamigen Einstellungen der Bibliothek.
+- Proxy, Zertifikatsprüfung und Vorgaben bestimmt der Zugang. Beim Anlegen, im Verbindungstest, in
+  der Auflistung und beim Ändern gelten sie schon, bevor etwas gespeichert ist; sie müssen nicht
+  mitgeschickt werden. Ein abweichender Wert wird abgewiesen, ein gleicher angenommen. Die
+  Bibliothek speichert nur, was der Zugang ihr überlässt.
 - Ihr persönliches Geheimnis (etwa Benutzername und Passwort) tragen die Verwaltenden der
-  Bibliothek ein wie bisher. Bei einem Zugang ohne Anmeldung geht keines an die Quelle.
+  Bibliothek ein wie bisher. Meldet sich der Zugang anders an (ohne Anmeldung, OAuth,
+  Client-Credentials, Dienstkonto-Schlüssel), weist OPAA mitgeschickte Zugangsdaten ab, und die
+  Bibliothek speichert keine.
 - Die Verwaltenden der Bibliothek ordnen sie einem anderen Zugang desselben Konnektors zu oder
-  lösen sie vom Zugang. Eine Adresse unter dem bisherigen Zugang wandert dabei unter den neuen;
-  wechselt der Ursprung, wird das Geheimnis verworfen.
+  lösen sie vom Zugang. **Zuordnen übernimmt die Vorgaben des Zugangs:** Eigener Proxy, ausgesetzte
+  Zertifikatsprüfung und eigene Werte für vorgegebene Einstellungen entfallen ohne Rückfrage, bei
+  einer Anmeldeart ohne persönliches Geheimnis auch die Zugangsdaten. Eine Adresse unter dem
+  bisherigen Zugang wandert dabei unter den neuen. Das
+  Geheimnis bleibt nur, solange Schema, Host und Port gleich bleiben (ohne Portangabe zählt nur bei
+  `http` und `https` der Standardport) und der Konnektor es weiter gelten lässt, etwa dieselbe
+  Freigabe eines Dateiservers; sonst wird es verworfen.
+- Einen anderen Zugang können die Verwaltenden vor dem Speichern testen. Der Test nutzt dann dessen
+  Rahmen und braucht dessen Anlegerecht. Eine Sperre oder ein entfernter Zugang der Bibliothek
+  steht ihm nicht im Weg, so lässt sich eine solche Bibliothek reparieren; ist der gewählte Zugang
+  oder die Quellart gesperrt, wird auch der Test abgewiesen.
 
 **Was die Systemverwaltung am Zugang auslöst:**
 
@@ -468,7 +485,7 @@ andere Sperre bestehen bleibt. Die Folgen:
   überspringt die Bibliothek, und Push-Ereignisse der Quelle werden verworfen, beides ohne
   fehlgeschlagenen Lauf.
 - Verbindungstest, Auflistung und Abruf eines Originals erreichen die Quelle nicht; sie antworten
-  mit dem Sperrhinweis.
+  mit dem Sperrhinweis. Ein Test auf einem anderen, nicht gesperrten Zugang bleibt möglich.
 - Von einem gesperrten Zugang lässt sich eine Bibliothek nicht lösen, auch nicht durch die
   Systemverwaltung. Sie läuft wieder, wenn die Sperre aufgehoben ist oder wenn ihre Verwaltenden sie
   einem anderen, für sie freigegebenen Zugang zuordnen.

@@ -31,7 +31,7 @@ von foundation, format und knowledge ab.
   Antworten. Plätze für Geheimnisse: `source_credentials`, `source_webhook_secret`, Client-Secret
   am Zugang, Token-Speicher - alle verschlüsselt; Antworten nur Ja/Nein, Audit nur Feldnamen.
 - **Jedes Ziel von Zugangsdaten leitet sich aus `sourceUrl` ab**, bei einem Zugang aus dessen
-  Server-Adresse; ein Ursprungswechsel verwirft sie (`SourceOriginMatcher`). Ein Ziel nur in
+  Server-Adresse; ein Ursprungswechsel verwirft sie (`ServerAddress#sameOrigin`). Ein Ziel nur in
   `source_settings` verlangt bei Änderung neue Zugangsdaten. Profilangabe: `ProfileDeclaration`.
 - **Änderungen nur über `SourceChangeGate`;** `stored` = effektiv, `applyChange` = eigener Teil.
 - **Der Laufrahmen ist `IndexingRunTemplate`:** Der Körper zählt nur die Quelle auf und meldet

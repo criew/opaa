@@ -12,8 +12,8 @@ import java.util.UUID;
  *
  * @param query the listing's own parameters as the type's connector reads them, {@code null} for
  *     none
- * @param connectionProfileId without {@code libraryId}: the profile the library is to be created
- *     through, {@code null} for its own address
+ * @param connectionProfileId the profile the probe runs through; {@code null} for the library's
+ *     current one, or without {@code libraryId} for its own address
  */
 public record SourceBrowseRequest(
     SourceType sourceType,

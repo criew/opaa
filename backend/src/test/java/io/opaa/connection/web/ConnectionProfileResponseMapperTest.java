@@ -3,7 +3,9 @@ package io.opaa.connection.web;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.api.dto.ConnectionProfileOption;
+import io.opaa.api.dto.ConnectionProfileResponse;
 import io.opaa.api.types.ConnectionAuthMethod;
+import io.opaa.api.types.ConnectionOwnership;
 import io.opaa.connection.ConnectorReleaseService.ProfileOption;
 import io.opaa.connection.profile.ConnectionProfile;
 import io.opaa.knowledge.SourceType;
@@ -18,6 +20,8 @@ class ConnectionProfileResponseMapperTest {
   @Test
   void anOptionCarriesTheProfileAndItsConnectorDefaults() {
     ConnectionProfile profile = profile("{\"edition\": \"DC\", \"pathStyle\": true}");
+    ReflectionTestUtils.setField(profile, "sourceProxy", "proxy.example.org:8080");
+    ReflectionTestUtils.setField(profile, "sourceInsecureSsl", true);
 
     ConnectionProfileOption option =
         ConnectionProfileResponseMapper.toOption(
@@ -31,6 +35,21 @@ class ConnectionProfileResponseMapperTest {
     assertThat(option.getCreatable()).isFalse();
     assertThat(option.getCreationNotice()).isEqualTo("Der Zugang ist gesperrt.");
     assertThat(option.getConnectorDefaults()).isEqualTo(Map.of("edition", "DC", "pathStyle", true));
+    assertThat(option.getSourceProxy()).isEqualTo("proxy.example.org:8080");
+    assertThat(option.getSourceInsecureSsl()).isTrue();
+  }
+
+  @Test
+  void aResponseCarriesProxyAndTlsSwitch() {
+    ConnectionProfile profile = profile(null);
+    ReflectionTestUtils.setField(profile, "ownership", ConnectionOwnership.LIBRARY);
+    ReflectionTestUtils.setField(profile, "sourceProxy", "proxy.example.org:8080");
+
+    ConnectionProfileResponse response =
+        ConnectionProfileResponseMapper.toResponse(profile, false, 0);
+
+    assertThat(response.getSourceProxy()).isEqualTo("proxy.example.org:8080");
+    assertThat(response.getSourceInsecureSsl()).isFalse();
   }
 
   @Test

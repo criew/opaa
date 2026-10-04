@@ -7,16 +7,12 @@ import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
 import io.opaa.connection.ConnectorReleaseService;
 import io.opaa.connection.LibraryConnectionService;
+import io.opaa.connection.profile.ConnectionProfile;
 import io.opaa.connection.profile.ConnectorLockService;
+import io.opaa.connection.profile.EffectiveSourceSettings;
+import io.opaa.connection.profile.SourceDraft;
 import io.opaa.indexing.source.ConnectorChecks;
-import io.opaa.indexing.source.ConnectorData;
-import io.opaa.indexing.source.Secret;
-import io.opaa.indexing.source.SecretKind;
-import io.opaa.indexing.source.ServiceAccountKey;
-import io.opaa.indexing.source.ServiceAccountTokens;
 import io.opaa.indexing.source.SourceBrowser;
-import io.opaa.indexing.source.SourceConnectionBlockedException;
-import io.opaa.indexing.source.SourceConnectionResolver;
 import io.opaa.indexing.source.SourceConnectionTestResult;
 import io.opaa.indexing.source.SourceConnector;
 import io.opaa.indexing.source.SourceConnectorRegistry;
@@ -28,46 +24,22 @@ import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.LibraryAccessService;
 import io.opaa.knowledge.SourceType;
 import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
+import java.util.function.Supplier;
 import org.springframework.stereotype.Service;
 
 /**
- * Tests a source configuration <em>before</em> a library is created (#514) or saved, and lists what
- * a source offers for selection - the permission bar and the stored-credentials fallback here, the
- * probe itself in the library type's {@link SourceConnector} ({@link
- * SourceConnector#testConnection}, {@link SourceBrowser}), reached through the {@link
- * SourceConnectorRegistry}.
+ * Tests a source configuration <em>before</em> a library is created or saved, and lists what a
+ * source offers for selection. The configuration probed is the draft as {@link
+ * EffectiveSourceSettings#ofDraft} composes it - with the defaults, proxy, TLS switch and sign-in
+ * of the chosen profile, and the stored secret only where it may follow the address; the probe
+ * itself is the connector's ({@link SourceConnector#testConnection}, {@link SourceBrowser}).
  *
- * <p><b>Security (#514 acceptance criteria, PR #537 review finding 3; capability bar #1856).</b>
- * Without a {@code libraryId}, a probe or a listing needs the connector release of its type or of
- * the named profile ({@link ConnectorReleaseService#requireCreatable}), the same right {@code
- * KnowledgeLibraryService#createLibrary} requires for the connector library the probe is a step
- * towards - otherwise any authenticated caller could probe arbitrary server-local paths and
- * arbitrary URLs regardless of whether that caller could ever create the library the probe served.
- * Through a profile, the address must lie under the profile's server address. Every connector
- * bounds its probe in time and applies the target validation and path allowlist exactly as a run
- * would; {@code RateLimitConfiguration} additionally caps this endpoint per IP and globally. No
- * response reveals more about a source's contents than a count.
- *
- * <p><b>Testing an existing library's stored quellkonfiguration (#544).</b> {@link
- * SourceConnectionTest#libraryId()} lets {@code EditLibrarySourceDialog} test a password-protected
- * source without forcing the caller to re-type a credential the library already has stored -
- * reachable only with at least {@link AssetRole#MANAGER} on that library (see {@link
- * #requireManagedLibrary}), via {@link LibraryAccessService#requireRole} (#436), the same
- * not-found/forbidden split every other library-scoped endpoint now uses. The library's own {@code
- * sourceType} must match this request's (otherwise 400 - #544 acceptance criterion), and a missing
- * {@code sourceCredentials} falls back to the library's stored one only when {@code sourceUrl}
- * still names the same origin as the library's own stored {@code sourceUrl} - the identical {@link
- * SourceOriginMatcher} rule {@code KnowledgeLibraryService} already applies when saving, so a
- * caller pointed at a different host cannot silently reuse a credential it never entered.
- *
- * <p><b>The origin check above bounds the target, not the path (#617).</b> Whenever the credentials
- * fallback fires, {@code sourceProxy}/{@code sourceInsecureSsl} are forced to the library's own
- * stored values too - {@link #withStoredCredentialsIfOmitted}'s own Javadoc has the full reasoning.
- * Without this, a caller who does not know the stored credential could still route it through a
- * proxy of their own choosing (or disable certificate validation) on an otherwise same-origin
- * request and read it back over a connection they control.
+ * <p>Without a {@code libraryId} a probe needs the connector release of its type or profile, as
+ * creating the library would. With one it needs {@link AssetRole#MANAGER} on that library; another
+ * profile than the library's needs its release too and is probed as a draft, so neither the
+ * library's lock nor its missing profile stands in the way of repairing it. {@code
+ * RateLimitConfiguration} caps both endpoints; no response reveals more than a count.
  */
 @Service
 public class SourceConnectionTestService {
@@ -76,35 +48,27 @@ public class SourceConnectionTestService {
   private final LibraryAccessService libraryAccessService;
   private final SourceConnectorRegistry connectors;
   private final ConnectorReleaseService connectorRelease;
-  private final ServiceAccountTokens serviceAccountTokens;
-  private final SourceConnectionResolver connectionResolver;
   private final LibraryConnectionService libraryConnections;
+  private final EffectiveSourceSettings drafts;
 
   public SourceConnectionTestService(
       KnowledgeLibraryRepository libraryRepository,
       LibraryAccessService libraryAccessService,
       SourceConnectorRegistry connectors,
       ConnectorReleaseService connectorRelease,
-      SourceConnectionResolver connectionResolver,
       LibraryConnectionService libraryConnections,
-      ServiceAccountTokens serviceAccountTokens) {
+      EffectiveSourceSettings drafts) {
     this.libraryRepository = libraryRepository;
     this.libraryAccessService = libraryAccessService;
     this.connectors = connectors;
     this.connectorRelease = connectorRelease;
-    this.serviceAccountTokens = serviceAccountTokens;
-    this.connectionResolver = connectionResolver;
     this.libraryConnections = libraryConnections;
+    this.drafts = drafts;
   }
 
   /**
-   * Without a {@code libraryId}, this is a step towards creating a connector library and needs the
-   * same release {@code KnowledgeLibraryService#createLibrary} requires for the library the probe
-   * serves (#1856); an upload type, which its connector refuses, needs a release in any scope. With
-   * {@code libraryId} set (#544), the caller instead needs {@link AssetRole#MANAGER} on that
-   * library, checked by {@link #requireManagedLibrary} below - creating a connector library already
-   * required the capability, so re-demanding it here would only block a caller who already holds
-   * {@code MANAGER} without adding a boundary.
+   * Probes the request's configuration. An upload type, which its connector refuses, needs a
+   * release in any scope.
    */
   public SourceConnectionTestResult test(SourceConnectionTest request, CurrentUser caller) {
     SourceType sourceType = request.sourceType();
@@ -112,88 +76,51 @@ public class SourceConnectionTestService {
       throw new ValidationException("sourceType ist erforderlich");
     }
     SourceConnector connector = connectors.connector(sourceType);
-    String sourceUrl = request.sourceUrl() == null ? null : request.sourceUrl().toString();
-    if (request.libraryId() == null) {
-      if (connector.descriptor().uploads()) {
-        connectorRelease.requireAnyRelease(caller);
-      } else {
-        sourceUrl = requireCreatable(caller, sourceType, request.connectionProfileId(), sourceUrl);
-      }
+    String url = request.sourceUrl() == null ? null : request.sourceUrl().toString();
+    Target target =
+        request.libraryId() == null && connector.descriptor().uploads()
+            ? anyRelease(caller, url)
+            : target(
+                caller,
+                sourceType,
+                request.libraryId(),
+                request.connectionProfileId(),
+                url,
+                () -> "sourceType passt nicht zum gespeicherten Quellentyp dieser Bibliothek");
+    SourceDraft draft =
+        SourceDraft.ofLibrary(
+            sourceType,
+            target.profileId(),
+            request.libraryId(),
+            new SourceSettings(
+                request.sourcePath(),
+                connector.normalizeSourceUrl(target.url()),
+                request.sourceProxy(),
+                request.sourceCredentials(),
+                Boolean.TRUE.equals(request.sourceInsecureSsl()),
+                request.connectorSettings() == null
+                    ? null
+                    : connector.readSettings(request.connectorSettings())));
+    SourceSettings settings;
+    try {
+      settings = drafts.ofDraft(draft);
+    } catch (SourceCredentialsException e) {
+      return ConnectorChecks.unreachable(e.getMessage());
     }
-    SourceSettings settings =
-        new SourceSettings(
-            request.sourcePath(),
-            connector.normalizeSourceUrl(sourceUrl),
-            request.sourceProxy(),
-            request.sourceCredentials(),
-            Boolean.TRUE.equals(request.sourceInsecureSsl()),
-            request.connectorSettings() == null
-                ? null
-                : connector.readSettings(request.connectorSettings()));
-    // a stored key reaches the connector through the port already exchanged; only an uploaded one
-    // is exchanged here
-    boolean uploaded = blankToNull(settings.sourceCredentials()) != null;
-    ConnectorData stored = null;
-    if (request.libraryId() != null) {
-      KnowledgeLibrary library = requireManagedLibrary(request.libraryId(), caller);
-      requireUnlocked(library);
-      if (!sourceType.equals(library.getSourceType())) {
-        throw new ValidationException(
-            "sourceType passt nicht zum gespeicherten Quellentyp dieser Bibliothek");
-      }
-      stored = connectionResolver.effectiveSettings(library);
-      try {
-        settings = withStoredCredentialsIfOmitted(connector, settings, library, stored);
-      } catch (SourceCredentialsException e) {
-        return ConnectorChecks.unreachable(e.getMessage());
-      }
-    }
-    if (uploaded) {
-      try {
-        settings = signedIn(connector, settings, stored);
-      } catch (SourceCredentialsException e) {
-        return ConnectorChecks.unreachable(e.getMessage());
-      }
-    }
-    return connector.testConnection(settings, stored);
-  }
-
-  /**
-   * The settings a connector that signs in with a service account key may see: the uploaded or
-   * stored key exchanged for an access token by the core (ADR-0040, Entscheidung 2); others as they
-   * are.
-   */
-  private SourceSettings signedIn(
-      SourceConnector connector, SourceSettings settings, ConnectorData stored) {
-    if (connector.descriptor().profileDeclaration().serviceAccountKey() == null
-        || blankToNull(settings.sourceCredentials()) == null) {
-      return settings;
-    }
-    String key = ServiceAccountKey.parse(settings.sourceCredentials()).storedForm();
-    ConnectorData effective =
-        settings.connectorSettings() != null ? settings.connectorSettings() : stored;
-    String token =
-        serviceAccountTokens.forConnector(
-            connector,
-            settings.withCredentials(new Secret(SecretKind.SERVICE_ACCOUNT_KEY, key)),
-            effective);
-    return settings.withCredentials(
-        token == null ? null : new Secret(SecretKind.ACCESS_TOKEN, token));
+    return connector.testConnection(settings, drafts.storedOf(draft));
   }
 
   /**
    * What a source of the request's type offers for selection before it is saved - the buckets of an
-   * S3 key (ADR-0027, #1376), the spaces of a Confluence token (ADR-0023) - behind the very same
-   * permission bar and {@link #withStoredCredentialsIfOmitted} as {@link #test}, so the paths
-   * cannot drift apart. Without {@code libraryId}, the release bar applies (#1856).
+   * S3 key, the spaces of a Confluence token - behind the very same bar and draft as {@link #test}.
    */
   public SourceListing browse(SourceBrowseRequest request, CurrentUser caller) {
-    String requestedUrl = request.sourceUrl() == null ? null : request.sourceUrl().toString();
-    if (request.libraryId() == null) {
-      requestedUrl =
-          requireCreatable(
-              caller, request.sourceType(), request.connectionProfileId(), requestedUrl);
-    }
+    String url = request.sourceUrl() == null ? null : request.sourceUrl().toString();
+    // towards a new library the release is checked before anything about the type is said
+    Target target =
+        request.libraryId() == null
+            ? target(caller, request.sourceType(), null, request.connectionProfileId(), url, null)
+            : null;
     SourceBrowser browser =
         connectors
             .browser(request.sourceType())
@@ -202,43 +129,93 @@ public class SourceConnectionTestService {
                     new ValidationException(
                         "Für sourceType " + request.sourceType() + " gibt es keine Auflistung"));
     SourceConnector connector = connectors.connector(request.sourceType());
-    String sourceUrl = connector.normalizeSourceUrl(requestedUrl);
+    if (target == null) {
+      target =
+          target(
+              caller,
+              request.sourceType(),
+              request.libraryId(),
+              request.connectionProfileId(),
+              url,
+              browser::otherTypeMessage);
+    }
+    String sourceUrl = connector.normalizeSourceUrl(target.url());
     if (sourceUrl == null) {
       throw new ValidationException("sourceUrl ist erforderlich");
     }
-    SourceSettings settings =
-        new SourceSettings(
-            null,
-            sourceUrl,
-            request.sourceProxy(),
-            request.sourceCredentials(),
-            Boolean.TRUE.equals(request.sourceInsecureSsl()),
-            request.query());
-    // a stored key reaches the connector through the port already exchanged; only an uploaded one
-    // is exchanged here
-    boolean uploaded = blankToNull(settings.sourceCredentials()) != null;
-    ConnectorData stored = null;
-    if (request.libraryId() != null) {
-      KnowledgeLibrary library = requireManagedLibrary(request.libraryId(), caller);
+    SourceDraft draft =
+        SourceDraft.ofLibrary(
+            request.sourceType(),
+            target.profileId(),
+            request.libraryId(),
+            new SourceSettings(
+                null,
+                sourceUrl,
+                request.sourceProxy(),
+                request.sourceCredentials(),
+                Boolean.TRUE.equals(request.sourceInsecureSsl()),
+                request.query()));
+    SourceSettings settings;
+    try {
+      settings = drafts.ofDraft(draft);
+    } catch (SourceCredentialsException e) {
+      return new SourceListing(false, List.of(), e.getMessage());
+    }
+    return browser.browse(new SourceBrowser.Query(settings, drafts.storedOf(draft)));
+  }
+
+  /** The profile a probe runs through ({@code null}: the library's or none) and its address. */
+  private record Target(UUID profileId, String url) {}
+
+  private Target anyRelease(CurrentUser caller, String url) {
+    connectorRelease.requireAnyRelease(caller);
+    return new Target(null, url);
+  }
+
+  /**
+   * The bar of a probe and where it goes: towards a new library the release of its type or profile;
+   * on a stored library {@code MANAGER} and, for another profile, that one's release - the
+   * library's own lock counts only while it stays on its profile.
+   */
+  private Target target(
+      CurrentUser caller,
+      SourceType sourceType,
+      UUID libraryId,
+      UUID profileId,
+      String url,
+      Supplier<String> otherType) {
+    if (libraryId == null) {
+      connectorRelease.requireCreatable(caller, sourceType, profileId);
+      return new Target(
+          profileId,
+          profileId == null
+              ? url
+              : libraryConnections.addressForNewLibrary(profileId, sourceType, url));
+    }
+    KnowledgeLibrary library = requireManagedLibrary(libraryId, caller);
+    UUID current =
+        libraryConnections
+            .connectionOf(libraryId)
+            .map(LibraryConnectionService.LibraryConnectionView::profile)
+            .map(ConnectionProfile::getId)
+            .orElse(null);
+    boolean staysOnItsProfile = profileId == null || profileId.equals(current);
+    if (staysOnItsProfile) {
       requireUnlocked(library);
-      if (!request.sourceType().equals(library.getSourceType())) {
-        throw new ValidationException(browser.otherTypeMessage());
-      }
-      stored = connectionResolver.effectiveSettings(library);
-      try {
-        settings = withStoredCredentialsIfOmitted(connector, settings, library, stored);
-      } catch (SourceCredentialsException e) {
-        return new SourceListing(false, List.of(), e.getMessage());
-      }
     }
-    if (uploaded) {
-      try {
-        settings = signedIn(connector, settings, stored);
-      } catch (SourceCredentialsException e) {
-        return new SourceListing(false, List.of(), e.getMessage());
-      }
+    if (!sourceType.equals(library.getSourceType())) {
+      throw new ValidationException(otherType.get());
     }
-    return browser.browse(new SourceBrowser.Query(settings, stored));
+    if (staysOnItsProfile) {
+      String normalized = connectors.connector(sourceType).normalizeSourceUrl(url);
+      if (normalized != null) {
+        libraryConnections.requireAddressAllowed(library, normalized);
+      }
+      return new Target(null, url);
+    }
+    connectorRelease.requireCreatable(caller, sourceType, profileId);
+    return new Target(
+        profileId, libraryConnections.addressForNewLibrary(profileId, sourceType, url));
   }
 
   /** An existing library's locked source is not reached, like its original (409). */
@@ -252,32 +229,9 @@ public class SourceConnectionTestService {
   }
 
   /**
-   * The release bar of a step towards a new library, and its address: through a profile, {@code
-   * sourceUrl} must lie under it and defaults to its server address.
-   */
-  private String requireCreatable(
-      CurrentUser caller, SourceType sourceType, UUID profileId, String sourceUrl) {
-    connectorRelease.requireCreatable(caller, sourceType, profileId);
-    return profileId == null
-        ? sourceUrl
-        : libraryConnections.addressForNewLibrary(profileId, sourceType, sourceUrl);
-  }
-
-  /**
-   * Resolves {@code libraryId} and enforces both the organization boundary and the {@link
-   * AssetRole#MANAGER} bar (#544) via {@link LibraryAccessService#requireRole} (#436) - 404 if the
-   * library does not exist, belongs to another organization, or the caller holds no role on it at
-   * all (indistinguishable from "does not exist" - the org boundary/lack of any grant must not leak
-   * even that much), 403 if the caller's role is below MANAGER, the same distinction every other
-   * library-scoped endpoint now makes (e.g. {@code KnowledgeLibraryService#updateLibrary}, {@code
-   * DocumentIndexingService#requireEditableLibrary}).
-   *
-   * <p>{@code systemAdmin} is passed through to {@code requireRole} exactly like {@code
-   * KnowledgeLibraryService#updateLibrary} passes it (#615 review, finding 3) - the save this test
-   * precedes already lets a {@code SYSTEM_ADMIN} through without a grant, so hard-coding {@code
-   * false} here (as {@code DocumentIndexingService#requireEditableLibrary} deliberately does for
-   * indexing runs, ADR-0018 Entscheidung 2) would make a system admin's own "Verbindung testen"
-   * click fail with 404 right before a save that would have succeeded.
+   * Resolves {@code libraryId} within the caller's organization and requires {@link
+   * AssetRole#MANAGER} on it - 404 when it does not exist there or the caller holds no role on it,
+   * 403 below {@code MANAGER}. A system administrator passes as on the save the probe precedes.
    */
   private KnowledgeLibrary requireManagedLibrary(UUID libraryId, CurrentUser caller) {
     KnowledgeLibrary library =
@@ -288,66 +242,5 @@ public class SourceConnectionTestService {
     libraryAccessService.requireRole(
         library, caller.id(), caller.isSystemAdmin(), AssetRole.MANAGER);
     return library;
-  }
-
-  /**
-   * Fills in the library's own stored {@code sourceCredentials} when the request carries none and
-   * {@code sourceUrl} still names the same origin as the library's stored one (#544, same rule as
-   * {@code KnowledgeLibraryService} applies when saving) - a no-op for a library without an
-   * address.
-   *
-   * <p><b>{@code sourceProxy}/{@code sourceInsecureSsl} are forced to the library's own stored
-   * values whenever this fallback fires (#617).</b> The origin check above only bounds the
-   * <em>target</em> the stored credential may be tested against - it says nothing about the
-   * <em>path</em> the request travels to get there. Before this fix, a caller with {@code
-   * AssetRole#MANAGER} on the library (enough to trigger this fallback, not enough to already know
-   * the stored credential) could still set their own {@code sourceProxy}/{@code sourceInsecureSsl}
-   * on the very same request - same origin, attacker-controlled proxy, certificate validation
-   * disabled - and have the stored Basic-Auth credential replayed straight through a connection
-   * they control. Forcing both fields to the library's own stored configuration (rather than
-   * rejecting the combination with 400) is the less disruptive of the two options #617 named: a
-   * caller who genuinely wants to test through a proxy of their own choosing already has to supply
-   * the credential themselves - that combination was never a legitimate use of this fallback to
-   * begin with, so nothing a real caller relied on changes.
-   *
-   * <p>The library's stored connector settings are no secret; whether they stand in for the
-   * request's, regardless of the origin, the connector decides (it receives them beside). A stored
-   * key never serves another imitated account than its own (ADR-0040, Entscheidung 4).
-   */
-  private SourceSettings withStoredCredentialsIfOmitted(
-      SourceConnector connector,
-      SourceSettings request,
-      KnowledgeLibrary library,
-      ConnectorData stored) {
-    libraryConnections.requireAddressAllowed(library, request.sourceUrl());
-    ConnectorData requested =
-        request.connectorSettings() != null ? request.connectorSettings() : stored;
-    boolean fallback =
-        blankToNull(request.sourceCredentials()) == null
-            && SourceOriginMatcher.sameOrigin(library.getSourceUrl(), request.sourceUrl())
-            && connector.keepsCredentials(library.getSourceUrl(), request.sourceUrl())
-            && Objects.equals(
-                ServiceAccountTokens.subjectOf(connector, stored),
-                ServiceAccountTokens.subjectOf(connector, requested));
-    return new SourceSettings(
-        request.sourcePath(),
-        request.sourceUrl(),
-        fallback ? library.getSourceProxy() : request.sourceProxy(),
-        fallback ? storedSecret(library) : request.sourceCredentials(),
-        fallback ? library.isSourceInsecureSsl() : request.sourceInsecureSsl(),
-        request.connectorSettings());
-  }
-
-  /** The stored secret through the port, as a run would get it; a blocked connection is a 400. */
-  private String storedSecret(KnowledgeLibrary library) {
-    try {
-      return connectionResolver.currentCredentials(library);
-    } catch (SourceConnectionBlockedException e) {
-      throw new ValidationException(e.getMessage());
-    }
-  }
-
-  private static String blankToNull(String value) {
-    return value == null || value.isBlank() ? null : value.trim();
   }
 }

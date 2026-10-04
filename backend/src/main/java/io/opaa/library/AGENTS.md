@@ -23,9 +23,11 @@ Zugang, Prüfung ihrer Adresse) und besitzt keine eigene Tabelle.
   `403` — die Rolle steht nicht in Frage. Eine Upload-Bibliothek trägt nie eine engere Grenze
   (`KnowledgeLibraryAssetType`).
 - **Gespeicherte Zugangsdaten gelten nur für denselben Ursprung** (Schema, Host, Port) der
-  `sourceUrl` (`SourceOriginMatcher`) und, wo der Konnektor enger bindet, dasselbe Ziel darin
+  `sourceUrl` (`ServerAddress#sameOrigin`) und, wo der Konnektor enger bindet, dasselbe Ziel darin
   (`SourceConnector#keepsCredentials`, etwa die SMB-Freigabe). Eine fehlende oder unlesbare URL
   zählt als anderer Ursprung, die Zugangsdaten werden dann neu verlangt.
+- **Anlegen, Test und Auflistung sind Entwürfe** (`EffectiveSourceSettings#ofDraft`), Ändern geht
+  über `ofChange`/`ownPart`: library setzt keine Einstellungen selbst zusammen.
 - **Eine neue Konnektorbibliothek** (Anlegen, Zugang zuordnen, Test und Auflistung vor dem
   Anlegen) fragt `ConnectorReleaseService`, nie `CapabilityService` mit `CREATE_CONNECTOR_LIBRARY`.
 - **library kennt keinen Konnektor.** Beschreibung, Validierung, Verbindungstest und Fähigkeiten
