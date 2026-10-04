@@ -30,6 +30,18 @@ interface ConnectionTokenRepository extends JpaRepository<ConnectionToken, UUID>
 
   List<ConnectionToken> findByConnectedAccountIdIn(Collection<UUID> connectedAccountIds);
 
+  /**
+   * The persons' OAuth grants whose named end lies after {@code now} and not after {@code horizon}
+   * and was not warned of yet, locked so that a parallel run waits and then skips them.
+   */
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query(
+      "select t from ConnectionToken t where t.connectedAccountId is not null"
+          + " and t.kind = io.opaa.connection.token.ConnectionToken.Kind.OAUTH"
+          + " and t.expiresAt > :now and t.expiresAt <= :horizon and t.expiryWarnedAt is null")
+  List<ConnectionToken> findGrantsEndingUnwarned(
+      @Param("now") Instant now, @Param("horizon") Instant horizon);
+
   /** Deletes the secret of one connected account; returns how many rows went. */
   @Modifying(flushAutomatically = true)
   @Query("delete from ConnectionToken t where t.connectedAccountId = :accountId")

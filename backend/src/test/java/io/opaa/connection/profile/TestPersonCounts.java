@@ -12,7 +12,8 @@ public final class TestPersonCounts {
   public static final PersonConnections NO_PERSONS = new FixedCounts();
 
   private static final PersonNumbers NUMBERS =
-      new PersonNumbers(NO_PERSONS, new GroupSizeProperties(5));
+      new PersonNumbers(
+          NO_PERSONS, new GroupSizeProperties(5), ExpiredConnectionWarningProperties.defaults());
 
   private TestPersonCounts() {}
 
@@ -23,7 +24,8 @@ public final class TestPersonCounts {
 
   /** The masking over {@code persons}. */
   public static PersonNumbers numbersOver(PersonConnections persons) {
-    return new PersonNumbers(persons, new GroupSizeProperties(5));
+    return new PersonNumbers(
+        persons, new GroupSizeProperties(5), ExpiredConnectionWarningProperties.defaults());
   }
 
   public static ProfileCounts of(long connected, long expired) {

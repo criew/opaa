@@ -66,5 +66,17 @@ public enum NotificationType {
    * Drive's imitated account: the run state of every library on the profile is discarded and its
    * next run is a full one. Sent to each library's managers.
    */
-  SOURCE_FULL_SYNC_FORCED
+  SOURCE_FULL_SYNC_FORCED,
+
+  /**
+   * The provider named an end of the person's OAuth consent, and it is 14 days away or less. Sent
+   * once per end to that person only; its object is the profile.
+   */
+  CONNECTION_EXPIRING,
+
+  /**
+   * The client secret of a connection profile reaches its expiry date within 14 days. Sent once per
+   * date to every system administrator; its object is the profile.
+   */
+  CONNECTION_PROFILE_SECRET_EXPIRING
 }

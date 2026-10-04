@@ -80,6 +80,12 @@ class ConnectionProfileResponseMapperTest {
     assertThat(impact.getConnectedAccounts().getCount()).isNull();
     assertThat(impact.getConnectedAccounts().getFewerThan()).isEqualTo(5);
     assertThat(impact.getConnections()).isEqualTo(2);
+    assertThat(response.getExpiredConnectionWarning()).isFalse();
+    assertThat(
+            ConnectionProfileResponseMapper.toResponse(
+                    profile, false, 2, TestPersonCounts.of(6, 12))
+                .getExpiredConnectionWarning())
+        .isTrue();
   }
 
   @Test

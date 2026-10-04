@@ -274,6 +274,35 @@ public class ConnectionSecrets {
     };
   }
 
+  /**
+   * When the OAuth grant of {@code owner} ends as its provider named it, empty for a grant without
+   * a named end, one already past and any other secret; read without decrypting.
+   */
+  public Optional<Instant> grantEnd(PersonOwned owner) {
+    Instant now = clock.instant();
+    return tokenOf(owner)
+        .filter(token -> token.getKind() == ConnectionToken.Kind.OAUTH)
+        .map(ConnectionToken::getExpiresAt)
+        .filter(end -> end.isAfter(now));
+  }
+
+  /**
+   * Claims the persons' OAuth grants whose named end lies within {@code ahead} and was not warned
+   * of: each is marked in the caller's transaction, so an end is claimed once and a new end (a
+   * rotation, a reconnection) is claimed anew. Needs a transaction.
+   */
+  public List<EndingGrant> claimEndingGrants(Duration ahead) {
+    Instant now = clock.instant();
+    List<EndingGrant> ending = new ArrayList<>();
+    for (ConnectionToken token : tokens.findGrantsEndingUnwarned(now, now.plus(ahead))) {
+      token.expiryWarned(now);
+      ending.add(
+          new EndingGrant(
+              token.getConnectedAccountId(), token.getProfileId(), token.getExpiresAt()));
+    }
+    return ending;
+  }
+
   /** How many stored secrets of persons are past their end now, counted without decrypting. */
   public long countExpiredPersonSecrets() {
     return tokens.countPersonsEndedBy(clock.instant());
@@ -688,4 +717,7 @@ public class ConnectionSecrets {
 
   /** How many libraries and persons lost their secret under a profile. */
   public record Discarded(int libraries, int persons) {}
+
+  /** A person's OAuth grant on a connected account, ending at {@code endsAt}. */
+  public record EndingGrant(UUID connectedAccountId, UUID profileId, Instant endsAt) {}
 }

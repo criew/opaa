@@ -1,6 +1,7 @@
 package io.opaa.library.web;
 
 import io.opaa.api.dto.ProfileDefaultKey;
+import io.opaa.api.dto.SignInProfileEndpoints;
 import io.opaa.api.dto.SourceBrowseEntry;
 import io.opaa.api.dto.SourceBrowseRequest;
 import io.opaa.api.dto.SourceBrowseResponse;
@@ -9,7 +10,10 @@ import io.opaa.api.dto.SourceConnectionTestResponse;
 import io.opaa.api.dto.SourceTypeDescriptor;
 import io.opaa.api.dto.SourceTypeSignIn;
 import io.opaa.connection.ConnectorReleaseService.TypeCreation;
+import io.opaa.indexing.source.ClientCredentialsAuth;
 import io.opaa.indexing.source.DefaultKey;
+import io.opaa.indexing.source.Endpoint;
+import io.opaa.indexing.source.OAuthAuth;
 import io.opaa.indexing.source.ProfileDeclaration;
 import io.opaa.indexing.source.SignIn;
 import io.opaa.indexing.source.SourceConnectionTestResult;
@@ -102,8 +106,29 @@ final class SourceConnectionTestResponseMapper {
   }
 
   private static SourceTypeSignIn toResponse(SignIn signIn) {
-    return new SourceTypeSignIn(signIn.method(), signIn.owners().stream().sorted().toList())
-        .secretForm(signIn.secretForm());
+    SourceTypeSignIn response =
+        new SourceTypeSignIn(signIn.method(), signIn.owners().stream().sorted().toList())
+            .secretForm(signIn.secretForm());
+    if (signIn.details() instanceof OAuthAuth auth) {
+      response.defaultScopes(auth.defaultScopes());
+      if (auth.endpointsFromProfile()) {
+        response.profileEndpoints(
+            new SignInProfileEndpoints(
+                fromProfile(auth.authorization()),
+                fromProfile(auth.token()),
+                fromProfile(auth.revocation().endpoint())));
+      }
+    } else if (signIn.details() instanceof ClientCredentialsAuth auth) {
+      response.defaultScopes(auth.defaultScope());
+      if (fromProfile(auth.token())) {
+        response.profileEndpoints(new SignInProfileEndpoints(false, true, false));
+      }
+    }
+    return response;
+  }
+
+  private static boolean fromProfile(Endpoint endpoint) {
+    return endpoint instanceof Endpoint.FromProfile;
   }
 
   private static ProfileDefaultKey toResponse(DefaultKey key) {

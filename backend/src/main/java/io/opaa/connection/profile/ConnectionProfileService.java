@@ -737,12 +737,37 @@ public class ConnectionProfileService {
     return state;
   }
 
+  /**
+   * Records that {@code caller} tested the profile's own sign-in, with whether it held; the
+   * provider's message stays out of the audit.
+   */
+  @Transactional
+  public void signInTested(CurrentUser caller, UUID profileId, boolean success) {
+    record(
+        caller,
+        AuditEventType.CONNECTION_PROFILE_SIGN_IN_TESTED,
+        get(profileId),
+        null,
+        Map.of("success", success),
+        success ? AuditOutcome.SUCCESS : AuditOutcome.FAILURE);
+  }
+
   private void record(
       CurrentUser caller,
       AuditEventType type,
       ConnectionProfile profile,
       Map<String, Object> before,
       Map<String, Object> after) {
+    record(caller, type, profile, before, after, AuditOutcome.SUCCESS);
+  }
+
+  private void record(
+      CurrentUser caller,
+      AuditEventType type,
+      ConnectionProfile profile,
+      Map<String, Object> before,
+      Map<String, Object> after,
+      AuditOutcome outcome) {
     audit.recordUserAction(
         AuditEvent.builder()
             .organizationId(caller.organizationId())
@@ -751,7 +776,7 @@ public class ConnectionProfileService {
             .object(AuditObjectType.SYSTEM_SETTING, profile.getId(), "Zugang " + profile.getName())
             .before(before)
             .after(after)
-            .outcome(AuditOutcome.SUCCESS)
+            .outcome(outcome)
             .build());
   }
 

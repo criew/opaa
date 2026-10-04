@@ -461,7 +461,8 @@ paths:
       description: >
         For CLIENT_CREDENTIALS and SERVICE_ACCOUNT_KEY: obtains an access token at the token
         endpoint the connector declares, past any token held. Success lifts signInRejected; a
-        rejection of the registration sets it. The message never carries secret, key or token.
+        rejection of the registration sets it. Either outcome is an audit entry
+        (CONNECTION_PROFILE_SIGN_IN_TESTED). The message never carries secret, key or token.
       parameters:
         - name: profileId
           in: path
@@ -872,6 +873,31 @@ components:
           nullable: true
           allOf:
             - $ref: "#/components/schemas/PersonalSecretForm"
+        profileEndpoints:
+          description: >
+            For OAUTH and CLIENT_CREDENTIALS, which endpoints of the authorization server the
+            connector leaves to the profile (then required there); absent where it fixes them all.
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/SignInProfileEndpoints"
+        defaultScopes:
+          type: string
+          nullable: true
+          description: >
+            For OAUTH and CLIENT_CREDENTIALS, the scopes asked for where the profile names none.
+          example: Files.Read offline_access
+
+    SignInProfileEndpoints:
+      type: object
+      required: [authorization, token, revocation]
+      description: Which endpoints a profile names itself (authorizationEndpoint and so on).
+      properties:
+        authorization:
+          type: boolean
+        token:
+          type: boolean
+        revocation:
+          type: boolean
 
     PersonalSecretForm:
       type: string
@@ -1153,6 +1179,7 @@ components:
           sourceInsecureSsl,
           connectionCount,
           connectedAccountCount,
+          expiredConnectionWarning,
           locked,
           createdAt,
           updatedAt,
@@ -1229,6 +1256,12 @@ components:
           nullable: true
           allOf:
             - $ref: "#/components/schemas/PersonCount"
+        expiredConnectionWarning:
+          type: boolean
+          description: >
+            Whether the expired connections reach the installation's warning threshold. Derived
+            only from expiredConnectionCount and connectedAccountCount as returned, so it tells
+            nothing they do not.
         locked:
           type: boolean
           description: Whether the profile is locked (see lockConnectionProfile).
@@ -1449,6 +1482,13 @@ components:
           type: string
           format: date-time
           nullable: true
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: >
+            When the provider ends the consent of a connected OAuth account, where it names an end;
+            absent otherwise. The person is notified 14 days before.
         usedBy:
           type: array
           items:
@@ -1468,8 +1508,8 @@ components:
           $ref: "#/components/schemas/ConnectionAuthMethod"
         secretForm:
           description: >
-            The form of the personal secret to enter; absent for a sign-in without one (OAuth),
-            which this version cannot connect yet.
+            The form of the personal secret to enter; absent for OAuth, which connects through the
+            provider's consent (startConnectionAuthorization).
           nullable: true
           allOf:
             - $ref: "#/components/schemas/PersonalSecretForm"

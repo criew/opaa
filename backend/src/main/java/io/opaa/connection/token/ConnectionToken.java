@@ -8,6 +8,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import java.time.Instant;
+import java.util.Objects;
 import java.util.UUID;
 
 /**
@@ -51,6 +52,9 @@ class ConnectionToken {
 
   @Column(name = "expires_at")
   private Instant expiresAt;
+
+  @Column(name = "expiry_warned_at")
+  private Instant expiryWarnedAt;
 
   @Column(name = "issued_for", nullable = false, length = 2000)
   private String issuedFor;
@@ -103,7 +107,7 @@ class ConnectionToken {
     this.secretCiphertext = grant.refresh();
     this.accessTokenCiphertext = grant.access();
     this.accessTokenExpiresAt = grant.accessExpiresAt();
-    this.expiresAt = grant.expiresAt();
+    endsAt(grant.expiresAt());
     this.issuedFor = issuedFor;
     this.updatedAt = now;
   }
@@ -122,7 +126,7 @@ class ConnectionToken {
     this.accessTokenExpiresAt = accessExpiresAt;
     if (rotatedRefreshCiphertext != null) {
       this.secretCiphertext = rotatedRefreshCiphertext;
-      this.expiresAt = rotatedExpiresAt;
+      endsAt(rotatedExpiresAt);
     }
     this.updatedAt = now;
   }
@@ -133,7 +137,7 @@ class ConnectionToken {
     this.secretCiphertext = secretCiphertext;
     this.accessTokenCiphertext = null;
     this.accessTokenExpiresAt = null;
-    this.expiresAt = expiresAt;
+    endsAt(expiresAt);
     this.issuedFor = issuedFor;
     this.updatedAt = now;
   }
@@ -142,6 +146,27 @@ class ConnectionToken {
   void endedAt(Instant now) {
     this.expiresAt = now;
     this.updatedAt = now;
+  }
+
+  /** A new end is warned of anew; the same end only once. */
+  private void endsAt(Instant end) {
+    if (!Objects.equals(end, this.expiresAt)) {
+      this.expiryWarnedAt = null;
+    }
+    this.expiresAt = end;
+  }
+
+  /** The owner was warned of the end the provider named. */
+  void expiryWarned(Instant now) {
+    this.expiryWarnedAt = now;
+  }
+
+  Instant getExpiresAt() {
+    return expiresAt;
+  }
+
+  Instant getExpiryWarnedAt() {
+    return expiryWarnedAt;
   }
 
   UUID getProfileId() {

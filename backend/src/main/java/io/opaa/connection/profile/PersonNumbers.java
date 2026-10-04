@@ -15,17 +15,24 @@ import org.springframework.stereotype.Component;
  * Mindestgruppengröße N): the total of a profile is exact from N on, else "fewer than N" - zero
  * included, so no answer tells whether anyone is connected; a part (the expired) is exact only
  * where the total is and neither it nor its complement lies between 1 and N-1 - else "fewer than N"
- * if it is below N, else not told - so no subtraction of two answers points at a person.
+ * if it is below N, else not told - so no subtraction of two answers points at a person. The
+ * warning on the expired follows only from what is told: the least number of expired the masked
+ * answer admits reaches the threshold.
  */
 @Component
 public class PersonNumbers {
 
   private final PersonConnections persons;
   private final int minimum;
+  private final int warningThreshold;
 
-  PersonNumbers(PersonConnections persons, GroupSizeProperties groupSize) {
+  PersonNumbers(
+      PersonConnections persons,
+      GroupSizeProperties groupSize,
+      ExpiredConnectionWarningProperties warning) {
     this.persons = persons;
     this.minimum = groupSize.minimumGroupSize();
+    this.warningThreshold = warning.warningThreshold();
   }
 
   /** The masked numbers of each of {@code profileIds}, with one query for all. */
@@ -63,14 +70,20 @@ public class PersonNumbers {
     boolean partReveals =
         totalMasked || revealing(counts.connected()) || revealing(counts.expired());
     PersonCount expired;
+    long leastExpired;
     if (!partReveals) {
       expired = PersonCount.exact(counts.expired());
+      leastExpired = counts.expired();
     } else if (counts.expired() < minimum) {
       expired = PersonCount.fewerThan(minimum);
+      leastExpired = 0;
     } else {
+      // untold: the total is exact and the connected lie between 1 and N-1, so the expired are at
+      // least N and at least total - (N-1) - both known from the answer and the rule
       expired = null;
+      leastExpired = Math.max(minimum, total - (minimum - 1));
     }
-    return new ProfileCounts(masked, expired);
+    return new ProfileCounts(masked, expired, leastExpired >= warningThreshold);
   }
 
   private boolean revealing(long count) {
@@ -79,9 +92,10 @@ public class PersonNumbers {
 
   /**
    * The persons' connections on one profile and the expired among them; {@code expired} is {@code
-   * null} where it may not be told at all.
+   * null} where it may not be told at all. {@code expiredWarning}: the told numbers show at least
+   * the warning threshold of expired.
    */
-  public record ProfileCounts(PersonCount total, PersonCount expired) {}
+  public record ProfileCounts(PersonCount total, PersonCount expired, boolean expiredWarning) {}
 
   /** The connections and the private libraries of a set of persons, both masked. */
   public record PersonsCounts(PersonCount connections, PersonCount privateLibraries) {}
