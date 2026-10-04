@@ -124,7 +124,8 @@ final class LibraryResponseMapper {
             .diagnosticsLockToggleable(detail.diagnosticsLockToggleable())
             .lastTransfer(PermissionTransferResponseMapper.toResponse(lastTransfer))
             .succession(SuccessionStateResponseMapper.toStateResponse(detail.succession()))
-            .sourceBlock(SourceBlockResponseMapper.toResponse(detail.sourceBlock()));
+            .sourceBlock(SourceBlockResponseMapper.toResponse(detail.sourceBlock()))
+            .privateLibrary(library.isOwnerOnly());
     LibraryProfileState profile = detail.connectionProfile();
     if (profile != null) {
       response
@@ -197,6 +198,7 @@ final class LibraryResponseMapper {
             library.getCreatedAt(),
             library.getUpdatedAt())
         .description(library.getDescription())
+        .privateLibrary(library.isOwnerOnly())
         .ownerName(summary.ownerName())
         .lastIndexedAt(summary.lastIndexedAt())
         .lastRunStatus(toIndexingStatus(summary.lastRunStatus()))

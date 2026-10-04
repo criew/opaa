@@ -18,7 +18,9 @@ import io.opaa.knowledge.SourceType;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -173,6 +175,21 @@ public class ConnectorLockService {
   /** {@link #lockOf} for many libraries with three queries; a free library is absent. */
   public Map<UUID, SourceBlock> locksOf(Collection<KnowledgeLibrary> libraries) {
     return blocks.blocksAmong(libraries, SourceBlocks.LOCKS);
+  }
+
+  /**
+   * What each of {@code libraries} shows: its lock, and for a private library every reason its
+   * source is not reached - only its owner reads it, and she acts on each. A free one is absent.
+   */
+  public Map<UUID, SourceBlock> shownAmong(Collection<KnowledgeLibrary> libraries) {
+    List<KnowledgeLibrary> shared = new ArrayList<>();
+    List<KnowledgeLibrary> owned = new ArrayList<>();
+    for (KnowledgeLibrary library : libraries) {
+      (library.isOwnerOnly() ? owned : shared).add(library);
+    }
+    Map<UUID, SourceBlock> shown = new HashMap<>(locksOf(shared));
+    shown.putAll(blocks.blocksAmong(owned, SourceBlocks.ALL));
+    return shown;
   }
 
   /** The descriptor of a type that reaches a source; refuses the upload and an unknown type. */

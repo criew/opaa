@@ -14,7 +14,6 @@ import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
 import io.opaa.connection.profile.SourceTransitions.Move;
 import io.opaa.connection.token.ConnectionSecrets;
-import io.opaa.connection.token.ConnectionSecrets.Discarded;
 import io.opaa.connection.token.SecretOwner.LibraryOwned;
 import io.opaa.indexing.source.ClientCredentialsAuth;
 import io.opaa.indexing.source.ConnectorData;
@@ -60,9 +59,10 @@ import org.springframework.transaction.annotation.Transactional;
  * - of libraries and of persons, whose connections end through {@link PersonConnections} - after a
  * confirmation once connections exist; a new client secret alone discards nothing. A changed
  * default only the profile sets (Google Drive's imitated account) discards the run state of every
- * library on it, after a confirmation naming their number, and notifies their managers. The client
- * secret - a service account key is checked here and names the client id - is encrypted here and
- * never returned; the audit names fields and library counts.
+ * library on it, after a confirmation naming the number of shared ones, and notifies their
+ * managers; private libraries are neither counted nor waited for. The client secret - a service
+ * account key is checked here and names the client id - is encrypted here and never returned; the
+ * audit names fields and library counts.
  */
 @Service
 @Transactional(readOnly = true)
@@ -90,6 +90,7 @@ public class ConnectionProfileService {
   private final CredentialsEncryptor encryptor;
   private final AuditEventRecorder audit;
   private final CapabilityService capabilities;
+  private final PrivateLibraryRelease privateRelease;
   private final ProfileFullSync fullSync;
   private final Clock clock;
 
@@ -105,8 +106,10 @@ public class ConnectionProfileService {
       CredentialsEncryptor encryptor,
       AuditEventRecorder audit,
       CapabilityService capabilities,
+      PrivateLibraryRelease privateRelease,
       ProfileFullSync fullSync,
       Clock clock) {
+    this.privateRelease = privateRelease;
     this.profiles = profiles;
     this.connections = connections;
     this.libraries = libraries;
@@ -140,9 +143,9 @@ public class ConnectionProfileService {
   /** What a change of address or registration, a shutdown or a deletion would cut off. */
   public ProfileImpact impact(UUID id) {
     get(id);
-    long libraryConnections = connections.countByProfileId(id);
+    long libraryConnections = connections.countSharedByProfileId(id);
     return new ProfileImpact(
-        libraryConnections, libraryConnections, personNumbers.totalOf(id), List.of(), 0);
+        libraryConnections, libraryConnections, personNumbers.totalOf(id), List.of(), null, 0);
   }
 
   /** The connections of each of {@code profiles}, with one query for all of them. */
@@ -152,7 +155,8 @@ public class ConnectionProfileService {
       return counts;
     }
     for (LibraryConnectionRepository.ProfileConnectionCount row :
-        connections.countByProfileIdIn(profiles.stream().map(ConnectionProfile::getId).toList())) {
+        connections.countSharedByProfileIdIn(
+            profiles.stream().map(ConnectionProfile::getId).toList())) {
       counts.put(row.getProfileId(), row.getConnections());
     }
     return counts;
@@ -189,11 +193,15 @@ public class ConnectionProfileService {
   public ProfileImpact preview(UUID id, ConnectionProfileValues values, String secret) {
     ConnectionProfile profile = get(id);
     ProfileChange change = plan(profile, keyed(values, secret, profile).values());
+    PrivateLibraryRelease.Verdict verdict =
+        PrivateLibraryRelease.judge(
+            transitions.check(change.moves(), new Answers()), change.privateLibraries());
     return new ProfileImpact(
         change.connections(),
         change.connections(),
         personNumbers.totalOf(id),
-        transitions.check(change.moves(), new Answers()),
+        verdict.vetoes(),
+        change.forPersons() ? privateRejections(change, verdict.released()) : null,
         change.fullSyncs());
   }
 
@@ -272,10 +280,14 @@ public class ConnectionProfileService {
     requireNoneRunning(change);
     Set<UUID> discarding = change.discarding();
     long affected = change.affected();
-    List<ChangeRejection> rejections = transitions.check(change.moves(), answers);
-    if (!rejections.isEmpty()) {
-      throw ChangeRejection.refusingProfileChange(rejections);
+    PrivateLibraryRelease.Verdict verdict =
+        PrivateLibraryRelease.judge(
+            transitions.check(change.moves(), answers), change.privateLibraries());
+    if (!verdict.vetoes().isEmpty()) {
+      throw ChangeRejection.refusingProfileChange(verdict.vetoes());
     }
+    Set<UUID> released = change.dropsPersons() ? change.privateLibraries() : verdict.released();
+    privateRelease.release(caller, profile, released);
     Map<String, Object> before = auditState(profile);
     ConnectionEndCause cause =
         change.addressChanged()
@@ -292,6 +304,9 @@ public class ConnectionProfileService {
     profiles.save(profile);
     for (Move move : change.moves()) {
       KnowledgeLibrary library = move.library();
+      if (released.contains(library.getId())) {
+        continue;
+      }
       if (!Objects.equals(library.getSourceUrl(), move.after().sourceUrl())) {
         library.moveSourceUrl(move.after().sourceUrl());
       }
@@ -311,13 +326,25 @@ public class ConnectionProfileService {
       persons.endAllUnder(id, ConnectionEndCause.PROFILE_CHANGED, caller.id());
     }
     for (Move move : change.moves()) {
-      transitions.record(caller, move.library(), transitions.applied(move));
+      KnowledgeLibrary library = move.library();
+      if (released.contains(library.getId())) {
+        continue;
+      }
+      Set<String> changed = transitions.applied(move);
+      transitions.record(caller, library, changed);
+      if (change.resetsRunState() && change.privateLibraries().contains(library.getId())) {
+        fullSync.repeatAfterGoingRun(
+            library, !Objects.equals(move.before().sourceUrl(), move.after().sourceUrl()), changed);
+      }
     }
-    if (change.fullSyncs() > 0) {
+    if (change.resetsRunState()) {
       fullSync.notifyManagers(
           profile,
           String.join(", ", change.fullSyncLabels()),
-          change.moves().stream().map(Move::library).toList());
+          change.moves().stream()
+              .map(Move::library)
+              .filter(library -> !released.contains(library.getId()))
+              .toList());
     }
     Map<String, Object> after = auditState(profile);
     if (affected > 0) {
@@ -325,6 +352,25 @@ public class ConnectionProfileService {
     }
     record(caller, AuditEventType.CONNECTION_PROFILE_CHANGED, profile, before, after);
     return profile;
+  }
+
+  /**
+   * How many private libraries the connector refuses, masked by their owners as a part of the
+   * private libraries of their organization.
+   */
+  private PersonCount privateRejections(ProfileChange change, Set<UUID> released) {
+    List<KnowledgeLibrary> refused =
+        change.moves().stream()
+            .map(Move::library)
+            .filter(library -> released.contains(library.getId()))
+            .toList();
+    long owners = refused.stream().map(KnowledgeLibrary::getOwnerUserId).distinct().count();
+    long otherOwners =
+        refused.isEmpty()
+            ? 0
+            : libraries.countPrivateLibraryOwnersOutside(
+                refused.getFirst().getOrganizationId(), released);
+    return personNumbers.privateLibraries(released.size(), owners, otherOwners);
   }
 
   /**
@@ -362,10 +408,13 @@ public class ConnectionProfileService {
     throw new ConflictException(text.append("Bitte bestätigen.").toString(), CONFIRMATION_REQUIRED);
   }
 
-  /** Refuses {@code change} with 409 while it resets a library whose run is going. */
+  /**
+   * Refuses {@code change} with 409 while it resets a shared library whose run is going; a private
+   * one never holds it up, so the refusal tells nothing of it.
+   */
   private void requireNoneRunning(ProfileChange change) {
     if (change.fullSyncs() > 0) {
-      fullSync.requireNoneRunning(change.moves().stream().map(Move::library).toList());
+      fullSync.requireNoneRunning(change.sharedLibraries());
     }
   }
 
@@ -432,6 +481,11 @@ public class ConnectionProfileService {
             ? List.of()
             : libraries.findAllById(
                 connected.stream().map(LibraryConnection::getLibraryId).toList());
+    Set<UUID> privateLibraries =
+        found.stream()
+            .filter(KnowledgeLibrary::isOwnerOnly)
+            .map(KnowledgeLibrary::getId)
+            .collect(Collectors.toSet());
     Set<UUID> holding = transitions.holdingSecrets(found, profile.getId());
     List<Move> moves = new ArrayList<>();
     for (KnowledgeLibrary library : found) {
@@ -461,8 +515,9 @@ public class ConnectionProfileService {
         dropsPersons,
         rebindsPersons,
         profile.getOwnership().admitsPersons(),
-        connected.size(),
+        connected.size() - privateLibraries.size(),
         moves,
+        privateLibraries,
         fullSyncLabels);
   }
 
@@ -482,7 +537,8 @@ public class ConnectionProfileService {
     PersonCount ended = personNumbers.totalOf(id);
     boolean dropsOwnSecret = signsInItself(profile.getAuthMethod()) && profile.isClientSecretSet();
     // before the secret goes: a token is revoked with the registration it was issued to
-    Discarded discarded = secrets.discardAllUnder(id, ConnectionEndCause.EMERGENCY);
+    long shared = connections.countSharedByProfileId(id);
+    secrets.discardAllUnder(id, ConnectionEndCause.EMERGENCY);
     if (dropsOwnSecret) {
       profile.dropClientSecret(clock.instant());
       profiles.save(profile);
@@ -493,12 +549,8 @@ public class ConnectionProfileService {
         AuditEventType.CONNECTION_PROFILE_DISCONNECTED,
         profile,
         null,
-        Map.of(
-            "connectionsDisconnected",
-            discarded.libraries(),
-            "clientSecretDeleted",
-            dropsOwnSecret));
-    return new ProfileImpact(discarded.libraries(), discarded.libraries(), ended, List.of(), 0);
+        Map.of("connectionsDisconnected", shared, "clientSecretDeleted", dropsOwnSecret));
+    return new ProfileImpact(shared, shared, ended, List.of(), null, 0);
   }
 
   private static boolean signsInItself(ConnectionAuthMethod method) {
@@ -516,6 +568,7 @@ public class ConnectionProfileService {
     profiles.lockForChange(id);
     ConnectionProfile profile = get(id);
     List<LibraryConnection> affected = connections.findByProfileId(id);
+    long shared = connections.countSharedByProfileId(id);
     secrets.discardAllUnder(id, ConnectionEndCause.PROFILE_DELETED);
     persons.endAllUnder(id, ConnectionEndCause.PROFILE_DELETED, caller.id());
     Instant now = clock.instant();
@@ -524,7 +577,7 @@ public class ConnectionProfileService {
     }
     connections.saveAll(affected);
     Map<String, Object> before = auditState(profile);
-    before.put("connectionsRemoved", affected.size());
+    before.put("connectionsRemoved", shared);
     capabilities.revokeScope(
         Capability.CREATE_CONNECTOR_LIBRARY, ConnectorScope.ofProfile(id), caller);
     profiles.delete(profile);
@@ -788,20 +841,24 @@ public class ConnectionProfileService {
 
   /**
    * Connections of libraries a change would cut off, the libraries behind them, the persons'
-   * connected accounts (masked), the connectors' refusals of a proposed change - empty without one
-   * - and the libraries whose run state it discards.
+   * connected accounts (masked), the connectors' refusals of shared libraries in a proposed change
+   * - empty without one - the refused private libraries (masked, {@code null} on a profile without
+   * persons) and the libraries whose run state it discards.
    */
   public record ProfileImpact(
       long connections,
       long libraries,
       PersonCount connectedAccounts,
       List<ChangeRejection> rejections,
+      PersonCount rejectedPrivateLibraries,
       long fullSyncLibraries) {}
 
   /**
    * @param dropsPersons whether the new ownership no longer admits persons
    * @param rebindsPersons whether persons' secrets stand for another target afterwards
    * @param forPersons whether the profile admitted persons before the change
+   * @param connections the connections of shared libraries
+   * @param privateLibraries the private libraries on the profile
    */
   private record ProfileChange(
       ConnectionProfileValues values,
@@ -812,11 +869,27 @@ public class ConnectionProfileService {
       boolean forPersons,
       long connections,
       List<Move> moves,
+      Set<UUID> privateLibraries,
       List<String> fullSyncLabels) {
 
-    /** The libraries whose run state a changed default only the profile sets discards. */
+    /** Whether a changed default only the profile sets discards the run state on the profile. */
+    boolean resetsRunState() {
+      return !fullSyncLabels.isEmpty();
+    }
+
+    /**
+     * The shared libraries whose run state the change discards - the number the administration is
+     * told; the private ones are reset alike, uncounted.
+     */
     long fullSyncs() {
-      return fullSyncLabels.isEmpty() ? 0 : moves.size();
+      return resetsRunState() ? sharedLibraries().size() : 0;
+    }
+
+    List<KnowledgeLibrary> sharedLibraries() {
+      return moves.stream()
+          .map(Move::library)
+          .filter(library -> !privateLibraries.contains(library.getId()))
+          .toList();
     }
 
     /** Whether persons' connections end - told without saying whether there are any. */

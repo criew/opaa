@@ -1,8 +1,8 @@
 package io.opaa.connection.profile;
 
-import io.opaa.connection.profile.PersonConnections.PersonTotals;
 import io.opaa.connection.profile.PersonConnections.StateCounts;
 import io.opaa.permission.GroupSizeProperties;
+import io.opaa.permission.PersonThreshold;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -21,11 +21,13 @@ import org.springframework.stereotype.Component;
 public class PersonNumbers {
 
   private final PersonConnections persons;
+  private final PersonThreshold threshold;
   private final int minimum;
 
   PersonNumbers(PersonConnections persons, GroupSizeProperties groupSize) {
     this.persons = persons;
-    this.minimum = groupSize.minimumGroupSize();
+    this.threshold = new PersonThreshold(groupSize);
+    this.minimum = threshold.minimum();
   }
 
   /** The masked numbers of each of {@code profileIds}, with one query for all. */
@@ -43,17 +45,22 @@ public class PersonNumbers {
     return countsOf(List.of(profileId)).get(profileId).total();
   }
 
-  /**
-   * The connections and private libraries of {@code userIds} as a whole, each masked like a total;
-   * neither tells whether one of them has any.
-   */
-  public PersonsCounts ofPersons(Collection<UUID> userIds) {
-    PersonTotals raw = userIds.isEmpty() ? new PersonTotals(0, 0) : persons.totalsOf(userIds);
-    return new PersonsCounts(total(raw.connections()), total(raw.privateLibraries()));
+  private PersonCount total(long count) {
+    return threshold.discloses(count) ? PersonCount.exact(count) : PersonCount.fewerThan(minimum);
   }
 
-  private PersonCount total(long count) {
-    return count < minimum ? PersonCount.fewerThan(minimum) : PersonCount.exact(count);
+  /**
+   * A number of private libraries as the administration may see it, a part of the organization's:
+   * it rests on their {@code owners}, the rest of the organization's on {@code otherOwners}, the
+   * owners of every other private library. Exact only where {@link PersonThreshold#disclosesPart}
+   * allows; else "fewer than N" below N owners - zero included - and not told ({@code null}) from N
+   * on.
+   */
+  public PersonCount privateLibraries(long libraries, long owners, long otherOwners) {
+    if (threshold.disclosesPart(owners, otherOwners)) {
+      return PersonCount.exact(libraries);
+    }
+    return owners < minimum ? PersonCount.fewerThan(minimum) : null;
   }
 
   ProfileCounts mask(StateCounts counts) {
@@ -82,7 +89,4 @@ public class PersonNumbers {
    * null} where it may not be told at all.
    */
   public record ProfileCounts(PersonCount total, PersonCount expired) {}
-
-  /** The connections and the private libraries of a set of persons, both masked. */
-  public record PersonsCounts(PersonCount connections, PersonCount privateLibraries) {}
 }

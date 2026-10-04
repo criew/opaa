@@ -68,6 +68,7 @@ class IndexingAdminControllerTest {
 
   @Autowired private MockMvc mockMvc;
   @MockitoBean private LowChunkDocumentAuditService lowChunkDocumentAuditService;
+  @MockitoBean private io.opaa.permission.PersonThreshold personThreshold;
   @MockitoBean private PipelineReindexService pipelineReindexService;
   @MockitoBean private MetadataBackfillService metadataBackfillService;
   @MockitoBean private ContextPrefixRerunService contextPrefixRerunService;

@@ -91,7 +91,7 @@ class SearchStatusProbeCacheTest {
                 "openai", "text-embedding-3-small", 1536, "https://embedding.example.invalid/v1"));
     when(embeddingModel.embed(anyString())).thenReturn(new float[] {0.1f});
     when(rerankRoleStatusProvider.currentStatus()).thenReturn(RerankRoleStatus.disabled());
-    when(libraryRepository.findByOrganizationId(ORGANIZATION_ID)).thenReturn(List.of());
+    when(libraryRepository.findSharedByOrganizationId(ORGANIZATION_ID)).thenReturn(List.of());
     when(documentStatsReader.statsForOrganization(ORGANIZATION_ID)).thenReturn(Map.of());
     when(fullTextIndexFillStateService.fillStateForLibraries(any())).thenReturn(List.of());
     when(metadataBackfillService.progressForLibraries(any())).thenReturn(Map.of());
@@ -115,6 +115,8 @@ class SearchStatusProbeCacheTest {
             schemaChangeService,
             new QueryProperties(8, 25, 1.0, 0.0, true, 3, 2, true, 50, 20, 2),
             new RetrievalPipelineProperties(Set.of()),
+            new io.opaa.permission.PersonThreshold(
+                new io.opaa.permission.GroupSizeProperties(null)),
             clock);
   }
 

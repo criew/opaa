@@ -39,6 +39,7 @@ import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.LibraryFolderService;
 import io.opaa.library.KnowledgeLibraryService;
 import io.opaa.library.LibraryDocumentService;
+import io.opaa.library.PrivateLibraryCreation;
 import io.opaa.library.SourceConnectionTestService;
 import io.opaa.permission.PermissionTransferService;
 import jakarta.validation.Valid;
@@ -75,9 +76,11 @@ public class LibraryController {
   private final SourceConnectionTestService sourceConnectionTestService;
   private final PermissionTransferService transferService;
   private final SourceConnectorRegistry connectors;
+  private final PrivateLibraryCreation privateCreation;
 
   public LibraryController(
       KnowledgeLibraryService libraryService,
+      PrivateLibraryCreation privateCreation,
       LibraryDocumentService documentService,
       LibraryFolderService folderService,
       DocumentIndexingService indexingService,
@@ -85,6 +88,7 @@ public class LibraryController {
       PermissionTransferService transferService,
       SourceConnectorRegistry connectors) {
     this.libraryService = libraryService;
+    this.privateCreation = privateCreation;
     this.documentService = documentService;
     this.folderService = folderService;
     this.indexingService = indexingService;
@@ -96,9 +100,15 @@ public class LibraryController {
   @PostMapping
   public ResponseEntity<LibraryResponse> createLibrary(
       @Valid @RequestBody LibraryRequest request, @Caller CurrentUser caller) {
-    LibraryResponse response =
-        LibraryResponseMapper.toResponse(
-            libraryService.createLibrary(LibraryResponseMapper.toCreation(request), caller));
+    LibraryResponse response;
+    if (Boolean.TRUE.equals(request.getPrivateLibrary())) {
+      UUID created = privateCreation.create(LibraryResponseMapper.toCreation(request), caller);
+      response = LibraryResponseMapper.toResponse(libraryService.getLibrary(created, caller));
+    } else {
+      response =
+          LibraryResponseMapper.toResponse(
+              libraryService.createLibrary(LibraryResponseMapper.toCreation(request), caller));
+    }
     return ResponseEntity.status(HttpStatus.CREATED).body(response);
   }
 
@@ -357,6 +367,7 @@ public class LibraryController {
             detail.events().stream().map(this::toIndexingRunEventResponse).toList(),
             job.getEventsTruncatedCount())
         .message(message)
+        .failureCategory(job.getFailureCategory())
         .completedAt(job.getCompletedAt())
         .incomplete(job.isIncomplete())
         .unlistedScopeKeys(

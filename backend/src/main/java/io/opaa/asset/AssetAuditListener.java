@@ -42,9 +42,9 @@ class AssetAuditListener {
             .object(
                 assetTypes.require(asset.getAssetType()).auditObjectType(),
                 asset.getId(),
-                asset.getName())
-            .before(event.auditBefore())
-            .after(event.auditAfter())
+                asset.auditName())
+            .before(asset.auditPayload(event.auditBefore()))
+            .after(asset.auditPayload(event.auditAfter()))
             .outcome(AuditOutcome.SUCCESS);
     if (grant.getSubjectType() == AssetGrantSubjectType.ALL_ACCOUNTS) {
       auditEventRecorder.recordUserAction(builder.build());
@@ -69,9 +69,9 @@ class AssetAuditListener {
             .organizationId(asset.getOrganizationId())
             .actor(event.actorUserId())
             .type(definition.createdAuditEventType())
-            .object(definition.auditObjectType(), asset.getId(), asset.getName())
-            .before(event.auditBefore())
-            .after(event.auditAfter())
+            .object(definition.auditObjectType(), asset.getId(), asset.auditName())
+            .before(asset.auditPayload(event.auditBefore()))
+            .after(asset.auditPayload(event.auditAfter()))
             .outcome(AuditOutcome.SUCCESS)
             .build());
   }

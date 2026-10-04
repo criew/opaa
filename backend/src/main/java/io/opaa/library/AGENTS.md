@@ -17,8 +17,9 @@ Zugang, Prüfung ihrer Adresse) und besitzt keine eigene Tabelle.
   `OWNER`.
 - **Eine private Bibliothek** (`KnowledgeLibrary#isOwnerOnly`, Merkmal der Asset-Schale) hat nur
   ihre Besitzerin. Fremdzugang und Freigabe-Obergrenze fragen `OwnerOnlyRule#requireShareable`;
-  die Systemverwaltung erreicht sie nicht (`404`). Ein zweites Merkmal an `knowledge_libraries`
-  gibt es nicht.
+  für alle anderen ist sie unbekannt (`404`, gleiche Antwort wie ohne sie). Angelegt wird sie nur in
+  `PrivateLibraryCreation`, an Zugang, Konto und Ziel gebunden über `PrivateLibraryConnections`;
+  Protokolle nennen sie `auditName()`. Ein zweites Merkmal an `knowledge_libraries` gibt es nicht.
 - **Die Freigabegrenze einer Konnektorbibliothek:** Eine Anfrage über der Grenze ist `409`, nicht
   `403` — die Rolle steht nicht in Frage. Eine Upload-Bibliothek trägt nie eine engere Grenze
   (`KnowledgeLibraryAssetType`).
@@ -43,7 +44,9 @@ Zugang, Prüfung ihrer Adresse) und besitzt keine eigene Tabelle.
 - ADRs (`docs/decisions/`): 0018, 0030, 0036, 0037, 0038
 - Handbuch: `docs/handbuch/bibliotheken-und-berechtigungen.md`, Abschnitt 4;
   `docs/handbuch/indexierung.md`, Abschnitt 2; `docs/handbuch/fremdzugaenge.md`, Abschnitt 4
-- Strukturtests: `PermissionPackageBoundaryTest`, `ModularArchitectureTest`
+- Strukturtests: `PermissionPackageBoundaryTest`, `ModularArchitectureTest`; jede neue Operation
+  mit Bibliotheks-, Asset-, Dokument- oder Chunk-Kennung braucht einen Eintrag in
+  `PrivateLibraryInvisibilityIntegrationTest`
 
 ## Tests bei Änderungen
 

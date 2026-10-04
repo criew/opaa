@@ -1751,13 +1751,48 @@ components:
             $ref: "#/components/schemas/SearchModelRoleStatusResponse"
         searchPaths:
           type: array
+          description: Counted over the libraries listed below, private libraries not included.
           items:
             $ref: "#/components/schemas/SearchPathStatusResponse"
         libraries:
           type: array
-          description: Every library of the caller's own organization, by name.
+          description: >
+            Every library of the caller's own organization, by name - except the private
+            libraries, which appear only summed up in privateLibraries.
           items:
             $ref: "#/components/schemas/LibrarySearchStatusResponse"
+        privateLibraries:
+          $ref: "#/components/schemas/PrivateLibrarySearchSummaryResponse"
+
+    PrivateLibrarySearchSummaryResponse:
+      type: object
+      description: >
+        The private libraries of the organization as one line, without names or ids. Masked by
+        their owners like every number about persons: below the minimum group size of owners -
+        zero included - the number of libraries is only "fewer than" (libraryCountFewerThan) and
+        the sums are absent, so no answer tells whether anyone keeps a private library.
+      properties:
+        libraryCount:
+          type: integer
+          format: int64
+          nullable: true
+        libraryCountFewerThan:
+          type: integer
+          format: int32
+          nullable: true
+          example: 5
+        documentCount:
+          type: integer
+          format: int64
+          nullable: true
+        failedDocumentCount:
+          type: integer
+          format: int64
+          nullable: true
+        chunkCount:
+          type: integer
+          format: int64
+          nullable: true
 
     SearchPermissionProfileResponse:
       type: object
@@ -2130,7 +2165,8 @@ components:
             intersection would make "may this person read a locked library?" readable off the
             answer, which the diagnosis explicitly does not state. Their existence is named,
             nothing from inside them is: no name, no hit, no count of documents. Always 0 outside
-            the person context, where the lock does not apply.
+            the person context, where the lock does not apply. Private libraries are not
+            counted: they never enter a foreign context, locked or not.
         trackedDocument:
           allOf:
             - $ref: "#/components/schemas/TrackedDocumentResponse"

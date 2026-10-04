@@ -37,6 +37,7 @@ import io.opaa.indexing.maintenance.StaleDocumentCleanupService;
 import io.opaa.indexing.source.ConnectorData;
 import io.opaa.indexing.source.IndexingRunTemplate;
 import io.opaa.indexing.source.LibrarySourceConnectionResolver;
+import io.opaa.indexing.source.RunFailureCategory;
 import io.opaa.indexing.source.SourceSyncState;
 import io.opaa.indexing.source.SourceSyncStateRepository;
 import io.opaa.knowledge.Document;
@@ -552,7 +553,8 @@ class ConfluenceIndexingExecutorTest {
     executor.execute(jobId, library, IndexingRunMode.FULL);
 
     ArgumentCaptor<String> message = ArgumentCaptor.forClass(String.class);
-    verify(indexingJobService).failJob(eq(jobId), message.capture());
+    verify(indexingJobService)
+        .failJob(eq(jobId), message.capture(), eq(RunFailureCategory.CREDENTIALS_REJECTED.name()));
     assertThat(message.getValue()).doesNotContain("falsch").doesNotContain(TOKEN);
     assertThat(server.requests())
         .as("no listing with a token the instance did not accept")
@@ -729,7 +731,8 @@ class ConfluenceIndexingExecutorTest {
 
     executor.execute(jobId, library, IndexingRunMode.FULL);
 
-    verify(indexingJobService).failJob(eq(jobId), any());
+    verify(indexingJobService)
+        .failJob(eq(jobId), any(), eq(RunFailureCategory.CREDENTIALS_REJECTED.name()));
     verify(eventRepository)
         .save(argThat(event(IndexingEventCategory.RATE_LIMITED, "1-mal gedrosselt", null)));
   }
@@ -1181,7 +1184,8 @@ class ConfluenceIndexingExecutorTest {
 
     executor.refreshPages(jobId, library, Set.of("101"));
 
-    verify(indexingJobService).failJob(eq(jobId), any());
+    verify(indexingJobService)
+        .failJob(eq(jobId), any(), eq(RunFailureCategory.CREDENTIALS_REJECTED.name()));
     verify(documentIngestService, never()).ingest(DocumentIngests.anyText(), any());
   }
 

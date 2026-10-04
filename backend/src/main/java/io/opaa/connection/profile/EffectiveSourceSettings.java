@@ -499,8 +499,10 @@ public class EffectiveSourceSettings {
 
   /**
    * The secret {@code library} holds under {@code profile} - empty for its own address - as a
-   * change sees it, {@code null} for none or a missing one; no block refuses it and no key is
-   * signed.
+   * change sees it, {@code null} for none or a missing one; no key is signed.
+   *
+   * @throws SourceConnectionBlockedException when the store refuses a held secret, such as a
+   *     person's whose account is not usable
    */
   Secret heldSecret(KnowledgeLibrary library, Optional<ConnectionProfile> profile) {
     if (profile.isEmpty()) {

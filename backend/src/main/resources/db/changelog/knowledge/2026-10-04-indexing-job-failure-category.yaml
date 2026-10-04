@@ -1,0 +1,11 @@
+databaseChangeLog:
+  - changeSet:
+      id: knowledge-2026-10-04-indexing-job-failure-category
+      author: opaa
+      comment: "Why a failed run ended, where the run tells it apart from its message (a block reason, a rejected sign-in), without any reference to content. NULL for every other run and for every run before."
+      changes:
+        - sql:
+            sql: |
+              ALTER TABLE indexing_jobs ADD COLUMN failure_category character varying(40);
+              ALTER TABLE indexing_jobs ADD CONSTRAINT chk_indexing_jobs_failure_category
+                  CHECK (failure_category IS NULL OR failure_category ~ '^[A-Z][A-Z_]*$');

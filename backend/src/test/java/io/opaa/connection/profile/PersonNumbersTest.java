@@ -40,4 +40,32 @@ class PersonNumbersTest {
     assertThat(counts.expired() == null ? "-" : counts.expired().toString())
         .isEqualTo(expiredShown);
   }
+
+  static Stream<Arguments> privateLibraries() {
+    return Stream.of(
+        // libraries, owners, owners of every other private library, shown ("-" for not told)
+        Arguments.of(0, 0, 0, "<5"),
+        Arguments.of(1, 1, 0, "<5"),
+        Arguments.of(9, 4, 0, "<5"),
+        Arguments.of(3, 3, 9, "<5"),
+        Arguments.of(5, 5, 0, "-"),
+        Arguments.of(5, 5, 1, "-"),
+        Arguments.of(8, 6, 4, "-"),
+        Arguments.of(5, 5, 5, "5"),
+        Arguments.of(12, 5, 7, "12"));
+  }
+
+  /**
+   * A number of private libraries rests on their owners, not on the libraries themselves; a part of
+   * the organization's is exact only where its owners and the owners of the rest are each at least
+   * five - a rest of none answers like a rest of one.
+   */
+  @ParameterizedTest(name = "{0} libraries of {1} owners, {2} other owners -> {3}")
+  @MethodSource("privateLibraries")
+  void aNumberOfPrivateLibrariesIsMaskedByItsOwners(
+      long libraries, long owners, long otherOwners, String shown) {
+    PersonCount count = TestPersonCounts.numbers().privateLibraries(libraries, owners, otherOwners);
+
+    assertThat(count == null ? "-" : count.toString()).isEqualTo(shown);
+  }
 }

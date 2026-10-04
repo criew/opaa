@@ -142,7 +142,7 @@ class RssFeedRunSecretContractTest extends RunSecretContract {
 
     run(template(), jobId, library());
 
-    verify(jobService).failJob(jobId, NOTICE);
+    verify(jobService).failJob(jobId, NOTICE, "NOT_CONNECTED");
     assertThat(requested).contains("/anlage-1.pdf").doesNotContain("/anlage-2.pdf");
     assertThat(asksAfterRefusal()).isPositive();
   }
@@ -170,6 +170,7 @@ class RssFeedRunSecretContractTest extends RunSecretContract {
     run(template(), jobId, library());
 
     verify(jobService, never()).failJob(eq(jobId), anyString());
+    verify(jobService, never()).failJob(eq(jobId), anyString(), anyString());
     assertThat(requested).contains("/meldung-2.html", "/meldung-3.html");
     assertThat(rejectionsReported()).isZero();
     assertThat(asksAfterRejection()).isZero();
