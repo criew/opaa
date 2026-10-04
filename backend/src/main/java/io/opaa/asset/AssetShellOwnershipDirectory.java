@@ -31,6 +31,7 @@ import org.springframework.stereotype.Component;
  * transfer is the one way an asset changes its owner, so the owner change lives here: the owner
  * columns, the grant that goes with ownership, the ownership interval and the audit entry. It
  * depends on nothing that asks the succession guard - the succession sources reach this directory.
+ * An owner-only asset is never handed on, so the transfer neither lists nor counts it.
  */
 @Component
 class AssetShellOwnershipDirectory implements AssetOwnershipDirectory {
@@ -90,7 +91,8 @@ class AssetShellOwnershipDirectory implements AssetOwnershipDirectory {
   public long countAssetsOwnedBy(PermissionSubject owner) {
     return owner.type() == PermissionSubjectType.GROUP
         ? assetRepository.countByOwnerGroupIdAndOrganizationId(owner.id(), owner.organizationId())
-        : assetRepository.countByOwnerUserIdAndOrganizationId(owner.id(), owner.organizationId());
+        : assetRepository.countByOwnerUserIdAndOrganizationIdAndOwnerOnlyFalse(
+            owner.id(), owner.organizationId());
   }
 
   @Override
@@ -111,7 +113,7 @@ class AssetShellOwnershipDirectory implements AssetOwnershipDirectory {
         owner.type() == PermissionSubjectType.GROUP
             ? assetRepository.findByOwnerGroupIdAndOrganizationId(
                 owner.id(), owner.organizationId())
-            : assetRepository.findByOwnerUserIdAndOrganizationId(
+            : assetRepository.findByOwnerUserIdAndOrganizationIdAndOwnerOnlyFalse(
                 owner.id(), owner.organizationId());
     Map<AssetType, List<UUID>> byType = new LinkedHashMap<>();
     for (Asset asset : owned) {

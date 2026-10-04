@@ -235,14 +235,16 @@ public class KnowledgeLibrary extends Asset {
       String sourceUrl,
       String sourceProxy,
       String sourceCredentials,
-      boolean sourceInsecureSsl) {
+      boolean sourceInsecureSsl,
+      boolean ownerOnly) {
     super(
         ASSET_TYPE,
         organizationId,
         name,
         description,
         ownerType,
-        ownerType == AssetOwnerType.USER ? ownerUserId : ownerGroupId);
+        ownerType == AssetOwnerType.USER ? ownerUserId : ownerGroupId,
+        ownerOnly);
     this.libraryOrganizationId = organizationId;
     this.sourceType = sourceType;
     this.sourcePath = sourcePath;
@@ -294,7 +296,39 @@ public class KnowledgeLibrary extends Asset {
         sourceUrl,
         sourceProxy,
         sourceCredentials,
-        sourceInsecureSsl);
+        sourceInsecureSsl,
+        false);
+  }
+
+  /**
+   * A private library: owner-only on the asset shell, read by {@code ownerUserId} alone. Register
+   * it through {@code AssetShellService#registerCreated} with the owner as creator.
+   */
+  public static KnowledgeLibrary ownerOnly(
+      UUID organizationId,
+      String name,
+      String description,
+      UUID ownerUserId,
+      SourceType sourceType,
+      String sourcePath,
+      String sourceUrl,
+      String sourceProxy,
+      String sourceCredentials,
+      boolean sourceInsecureSsl) {
+    return new KnowledgeLibrary(
+        organizationId,
+        name,
+        description,
+        AssetOwnerType.USER,
+        ownerUserId,
+        null,
+        sourceType,
+        sourcePath,
+        sourceUrl,
+        sourceProxy,
+        sourceCredentials,
+        sourceInsecureSsl,
+        true);
   }
 
   /**
@@ -340,7 +374,8 @@ public class KnowledgeLibrary extends Asset {
         sourceUrl,
         sourceProxy,
         sourceCredentials,
-        sourceInsecureSsl);
+        sourceInsecureSsl,
+        false);
   }
 
   /**

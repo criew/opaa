@@ -87,6 +87,8 @@ public class ContextPrefixRerunService implements ContextPrefixBacklog {
         libraryRepository
             .findById(libraryId)
             .filter(candidate -> organizationId.equals(candidate.getOrganizationId()))
+            // Only the administration triggers this run, and it does not know a private library.
+            .filter(candidate -> !candidate.isOwnerOnly())
             .orElseThrow(() -> new NotFoundException("Bibliothek nicht gefunden"));
     if (batchSize <= 0) {
       return ContextPrefixRerunResult.NOTHING_TO_DO;

@@ -2,6 +2,7 @@ package io.opaa.library;
 
 import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.ExternalAccessState;
+import io.opaa.asset.OwnerOnlyRule;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
@@ -52,6 +53,7 @@ public class LibraryExternalAccessService {
   private final LibraryExternalAccessTokenCounter tokenCounter;
   private final InstantSource clock;
   private final SuccessionReachGuard successionGuard;
+  private final OwnerOnlyRule ownerOnlyRule;
 
   @Autowired
   public LibraryExternalAccessService(
@@ -61,7 +63,8 @@ public class LibraryExternalAccessService {
       ApplicationEventPublisher eventPublisher,
       ExternalAccessProperties properties,
       LibraryExternalAccessTokenCounter tokenCounter,
-      SuccessionReachGuard successionGuard) {
+      SuccessionReachGuard successionGuard,
+      OwnerOnlyRule ownerOnlyRule) {
     this(
         libraryRepository,
         accessService,
@@ -70,6 +73,7 @@ public class LibraryExternalAccessService {
         properties,
         tokenCounter,
         successionGuard,
+        ownerOnlyRule,
         InstantSource.system());
   }
 
@@ -81,7 +85,9 @@ public class LibraryExternalAccessService {
       ExternalAccessProperties properties,
       LibraryExternalAccessTokenCounter tokenCounter,
       SuccessionReachGuard successionGuard,
+      OwnerOnlyRule ownerOnlyRule,
       InstantSource clock) {
+    this.ownerOnlyRule = ownerOnlyRule;
     this.successionGuard = successionGuard;
     this.libraryRepository = libraryRepository;
     this.accessService = accessService;
@@ -106,6 +112,7 @@ public class LibraryExternalAccessService {
             .filter(candidate -> actor.organizationId().equals(candidate.getOrganizationId()))
             .orElseThrow(() -> new NotFoundException("Bibliothek nicht gefunden"));
     accessService.requireRole(library, actor.id(), actor.isSystemAdmin(), AssetRole.MANAGER);
+    ownerOnlyRule.requireShareable(library);
 
     ExternalAccessState previousState = library.getExternalAccessState();
     Instant previousExpiresAt = library.getExternalAccessExpiresAt();
@@ -192,6 +199,7 @@ public class LibraryExternalAccessService {
         .findByOrganizationIdAndExternalAccessState(
             actor.organizationId(), ExternalAccessState.ACTIVE)
         .stream()
+        .filter(library -> !library.isOwnerOnly())
         .filter(library -> library.isExternalAccessActive(now))
         .sorted(
             Comparator.comparing(KnowledgeLibrary::getExternalAccessExpiresAt)

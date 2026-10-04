@@ -24,4 +24,7 @@ public interface OwnedAsset {
 
   /** The owning user or group id, whichever {@link #getOwnerType} points at. */
   UUID getOwnerId();
+
+  /** Whether only the owning person may ever read the asset (see {@link Asset}). */
+  boolean isOwnerOnly();
 }

@@ -33,6 +33,10 @@ import org.hibernate.annotations.DynamicUpdate;
  * carries a real foreign key, which a single polymorphic column could not. Whoever changes the
  * owner goes through the shell's transfer, which writes the audit entry and the history interval -
  * the setter is package-private for that reason.
+ *
+ * <p>An {@link #isOwnerOnly() owner-only} asset has exactly one reader, its owning person: the mark
+ * is set at construction, and the database keeps it and the owner fixed and admits no grant but the
+ * owner's own ({@code trg_assets_guard_owner_only}, {@code trg_asset_grants_guard_owner_only}).
  */
 @Entity
 @DynamicUpdate
@@ -73,6 +77,9 @@ public class Asset implements OwnedAsset {
   @Column(name = "created_by_user_id")
   private UUID createdByUserId;
 
+  @Column(name = "owner_only", nullable = false, updatable = false)
+  private boolean ownerOnly;
+
   @Column(name = "created_at", nullable = false, updatable = false)
   private Instant createdAt;
 
@@ -92,6 +99,22 @@ public class Asset implements OwnedAsset {
       String description,
       AssetOwnerType ownerType,
       UUID ownerId) {
+    this(assetType, organizationId, name, description, ownerType, ownerId, false);
+  }
+
+  /** A new asset as above, {@code ownerOnly} or not; an owner-only asset is owned by a person. */
+  protected Asset(
+      AssetType assetType,
+      UUID organizationId,
+      String name,
+      String description,
+      AssetOwnerType ownerType,
+      UUID ownerId,
+      boolean ownerOnly) {
+    if (ownerOnly && ownerType != AssetOwnerType.USER) {
+      throw new IllegalArgumentException("an owner-only asset is owned by a person");
+    }
+    this.ownerOnly = ownerOnly;
     this.id = UUID.randomUUID();
     this.assetType = Objects.requireNonNull(assetType, "assetType");
     this.organizationId = Objects.requireNonNull(organizationId, "organizationId");
@@ -197,6 +220,11 @@ public class Asset implements OwnedAsset {
 
   public AssetOrigin getOrigin() {
     return origin;
+  }
+
+  @Override
+  public boolean isOwnerOnly() {
+    return ownerOnly;
   }
 
   public UUID getCreatedByUserId() {

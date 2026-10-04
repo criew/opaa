@@ -1878,7 +1878,8 @@ components:
             document a search stage found; with it, the response additionally states plainly
             whether that document was outside the search scope, never retrieved, displaced at a
             named stage, or in the final selection - the distinction between an indexing problem
-            and a ranking problem.
+            and a ranking problem. A document of another person's private library is answered
+            exactly like an unknown one (404), in every context type.
         metadataFilter:
           nullable: true
           allOf:

@@ -146,7 +146,8 @@ class KnowledgeLibraryServiceFilesystemAllowlistTest {
                 .registry(),
             new LibrarySourceConnectionResolver(),
             mock(LibraryConnectionService.class),
-            mock(ConnectorReleaseService.class));
+            mock(ConnectorReleaseService.class),
+            mock(io.opaa.asset.OwnerOnlyRule.class));
 
     ownerId = UUID.randomUUID();
     User owner = new User("subject", "issuer", "owner@example.com", "Owner");

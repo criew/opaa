@@ -49,6 +49,11 @@ paths:
         grant, a higher role and a postponed expiry are refused with 409 and the code
         SUCCESSION_OPEN, whose message names who is responsible. Taking reach away stays possible -
         a downgrade, an earlier expiry and a revocation are never refused for it.
+        .
+        An owner-only asset (a private library, ADR-0036 Nachtrag 3) carries no grant but its
+        owner's own: every grant is refused with 403 and the code OWNER_ONLY_ASSET, for every
+        recipient and every caller. The system administration has no administrative role on such
+        an asset and gets the 404 of an unknown one.
       requestBody:
         required: true
         content:
@@ -262,7 +267,8 @@ paths:
         in a group's name - the caller is a member and the group may still receive its MANAGER
         grant (400 for a dissolved group or one of a disabled provider). A group never holds OWNER,
         it holds MANAGER; ownership itself is recorded on the asset. Handing the asset to its
-        current owner changes nothing and answers 204.
+        current owner changes nothing and answers 204. An owner-only asset is never handed on: 403
+        with the code OWNER_ONLY_ASSET for its owner, 404 for anybody else.
       requestBody:
         required: true
         content:

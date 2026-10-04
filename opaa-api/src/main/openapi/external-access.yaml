@@ -77,6 +77,8 @@ paths:
         While the library's succession is open (ADR-0036, Entscheidung 6) a new release and an
         extended one are refused with 409 and the code SUCCESSION_OPEN; taking a release back and
         shortening a running one stay possible.
+        A private library is never released: 403 with the code OWNER_ONLY_ASSET for its owner, 404
+        for anybody else, the system administration included.
       requestBody:
         required: true
         content:

@@ -54,7 +54,8 @@ class LibraryAccessServiceTest {
                 mock(AssetRepository.class),
                 assetAccessService,
                 new AssetTypes(
-                    List.of(new KnowledgeLibraryAssetType(SourceConnectorStubs.registry())))));
+                    List.of(new KnowledgeLibraryAssetType(SourceConnectorStubs.registry())))),
+            mock(io.opaa.asset.OwnerOnlyRule.class));
     when(membershipResolver.groupIdsForUser(userId)).thenReturn(Set.of());
   }
 

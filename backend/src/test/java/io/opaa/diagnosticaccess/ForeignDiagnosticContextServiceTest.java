@@ -83,11 +83,11 @@ class ForeignDiagnosticContextServiceTest {
     when(pseudonymService.pseudonymFor(any(), any())).thenReturn(UUID.randomUUID());
     when(userRepository.findByIdAndOrganizationId(any(), any()))
         .thenReturn(Optional.of(new User("s", "i", null, "Zielperson")));
-    when(libraryAccessService.readableLibraryIds(targetId, ORGANIZATION_ID))
+    when(libraryAccessService.readableLibraryIdsInForeignContext(targetId, ORGANIZATION_ID))
         .thenReturn(Set.of(openLibrary, lockedLibrary));
     when(lockService.lockedAmong(any())).thenReturn(Set.of(lockedLibrary));
     when(logWriter.record(any())).thenAnswer(invocation -> invocation.getArgument(0));
-    when(libraryAccessService.readableLibraryIds(actorId, ORGANIZATION_ID))
+    when(libraryAccessService.readableLibraryIdsInForeignContext(actorId, ORGANIZATION_ID))
         .thenReturn(Set.of(openLibrary, lockedLibrary));
     when(groupRepository.findById(profileGroup.getId())).thenReturn(Optional.of(profileGroup));
     when(libraryAccessService.readableLibraryIdsForGroup(profileGroup.getId(), ORGANIZATION_ID))
@@ -245,7 +245,8 @@ class ForeignDiagnosticContextServiceTest {
             context -> new ForeignDiagnosticFindings<>(List.of("chunk-1"), "Anzeige"));
 
     assertThat(outcome.context().searchableLibraryIds()).contains(foreignLibrary);
-    verify(libraryAccessService, never()).readableLibraryIds(actorId, ORGANIZATION_ID);
+    verify(libraryAccessService, never())
+        .readableLibraryIdsInForeignContext(actorId, ORGANIZATION_ID);
   }
 
   /**
