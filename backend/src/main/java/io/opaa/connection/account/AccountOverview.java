@@ -21,6 +21,7 @@ public record AccountOverview(
    * @param accountLabel the person's own account name at the provider, {@code null} for none
    * @param notice German note on state or release, {@code null} when there is nothing to say
    * @param responsible who can change what the notice says, {@code null} with it
+   * @param expiresAt when the provider ends the OAuth consent, {@code null} where it names no end
    */
   public record Account(
       UUID profileId,
@@ -35,6 +36,7 @@ public record AccountOverview(
       String responsible,
       Instant connectedAt,
       Instant reconnectedAt,
+      Instant expiresAt,
       List<Library> usedBy) {
 
     @Override

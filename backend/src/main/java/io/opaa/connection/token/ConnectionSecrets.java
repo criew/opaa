@@ -55,6 +55,9 @@ import org.springframework.transaction.support.TransactionTemplate;
 @Component
 public class ConnectionSecrets {
 
+  /** How long before the end a provider names for a consent its owner is warned. */
+  public static final Duration EXPIRY_WARNING = ConnectionToken.EXPIRY_WARNING;
+
   /** How finely the last use of a connected account is kept. */
   static final Duration USE_RESOLUTION = Duration.ofDays(1);
 
@@ -272,6 +275,35 @@ public class ConnectionSecrets {
         yield 0;
       }
     };
+  }
+
+  /**
+   * When the OAuth grant of {@code owner} ends as its provider named it, empty for a grant without
+   * a named end, one already past and any other secret; read without decrypting.
+   */
+  public Optional<Instant> grantEnd(PersonOwned owner) {
+    Instant now = clock.instant();
+    return tokenOf(owner)
+        .filter(token -> token.getKind() == ConnectionToken.Kind.OAUTH)
+        .map(ConnectionToken::getExpiresAt)
+        .filter(end -> end.isAfter(now));
+  }
+
+  /**
+   * Claims the persons' OAuth grants whose named end lies within {@link #EXPIRY_WARNING} and was
+   * not warned of: each is marked in the caller's transaction, so an end is claimed once. When an
+   * end is warned of anew the row decides ({@code ConnectionToken}). Needs a transaction.
+   */
+  public List<EndingGrant> claimEndingGrants() {
+    Instant now = clock.instant();
+    List<EndingGrant> ending = new ArrayList<>();
+    for (ConnectionToken token : tokens.findGrantsEndingUnwarned(now, now.plus(EXPIRY_WARNING))) {
+      token.expiryWarned(now);
+      ending.add(
+          new EndingGrant(
+              token.getConnectedAccountId(), token.getProfileId(), token.getExpiresAt()));
+    }
+    return ending;
   }
 
   /** How many stored secrets of persons are past their end now, counted without decrypting. */
@@ -688,4 +720,7 @@ public class ConnectionSecrets {
 
   /** How many libraries and persons lost their secret under a profile. */
   public record Discarded(int libraries, int persons) {}
+
+  /** A person's OAuth grant on a connected account, ending at {@code endsAt}. */
+  public record EndingGrant(UUID connectedAccountId, UUID profileId, Instant endsAt) {}
 }

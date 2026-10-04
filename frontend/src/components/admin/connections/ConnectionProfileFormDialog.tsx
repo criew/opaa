@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Button from '@mui/material/Button'
 import Dialog from '@mui/material/Dialog'
@@ -30,6 +30,7 @@ import {
   changeRejected,
   createConnectionProfile,
   getConnectionProfileImpact,
+  getConnectionRedirectUri,
   needsConfirmation,
   previewConnectionProfileChange,
   updateConnectionProfile,
@@ -55,6 +56,9 @@ interface Draft {
   clientId: string
   tenant: string
   scopes: string
+  authorizationEndpoint: string
+  tokenEndpoint: string
+  revocationEndpoint: string
   clientSecretExpiresOn: string
   sourceProxy: string
   sourceInsecureSsl: boolean
@@ -71,6 +75,9 @@ function draftFrom(profile: ConnectionProfileResponse | null): Draft {
     clientId: profile?.clientId ?? '',
     tenant: profile?.tenant ?? '',
     scopes: profile?.scopes ?? '',
+    authorizationEndpoint: profile?.authorizationEndpoint ?? '',
+    tokenEndpoint: profile?.tokenEndpoint ?? '',
+    revocationEndpoint: profile?.revocationEndpoint ?? '',
     clientSecretExpiresOn: profile?.clientSecretExpiresOn ?? '',
     sourceProxy: profile?.sourceProxy ?? '',
     sourceInsecureSsl: profile?.sourceInsecureSsl ?? false,
@@ -113,6 +120,28 @@ function ownershipsFor(signIn: SourceTypeSignIn | undefined): ConnectionOwnershi
 function addressHint(schemes: string[]): string {
   return `Beginnt mit ${schemes.map((scheme) => `${scheme}://`).join(' oder ')}. Das einzige Ziel der Zugangsdaten. Eine Änderung verwirft alle Geheimnisse des Zugangs.`
 }
+
+/** The endpoint fields a sign-in leaves to the profile, in the order of the form. */
+const ENDPOINT_FIELDS = [
+  {
+    key: 'authorizationEndpoint',
+    flag: 'authorization',
+    label: 'Autorisierungs-Endpunkt',
+    hint: 'Wohin OPAA die Person zur Zustimmung schickt.',
+  },
+  {
+    key: 'tokenEndpoint',
+    flag: 'token',
+    label: 'Token-Endpunkt',
+    hint: 'Wo OPAA Code und Refresh-Token gegen ein Zugriffstoken tauscht.',
+  },
+  {
+    key: 'revocationEndpoint',
+    flag: 'revocation',
+    label: 'Widerrufs-Endpunkt',
+    hint: 'Wo OPAA ein Token beim Trennen widerruft (RFC 7009).',
+  },
+] as const
 
 function count(n: number, one: string, many: string) {
   return `${n} ${n === 1 ? one : many}`
@@ -166,13 +195,19 @@ export default function ConnectionProfileFormDialog({
     impact: ConnectionProfileImpactResponse
   } | null>(null)
 
+  // undefined while asked, null where the server has no public address
+  const [redirect, setRedirect] = useState<{ uri: string | null } | 'failed' | undefined>()
+
   const isEdit = profile !== null
   const descriptor = sourceTypes.find((type) => type.type === sourceType) ?? null
   // While editing, the profile's own method stays offered even if the list has not loaded yet.
   const methods: ConnectionAuthMethod[] =
     descriptor?.signIns.map((signIn) => signIn.method) ?? (profile ? [profile.authMethod] : [])
   const method = draft.authMethod === '' ? null : draft.authMethod
-  const ownerships = ownershipsFor(descriptor?.signIns.find((signIn) => signIn.method === method))
+  const signIn = descriptor?.signIns.find((offered) => offered.method === method)
+  const ownerships = ownershipsFor(signIn)
+  // the endpoints the connector leaves to the profile, each required then
+  const endpointFields = ENDPOINT_FIELDS.filter((field) => signIn?.profileEndpoints?.[field.flag])
   const defaultKeys = descriptor?.profileDefaults ?? []
   const fixedAddress = descriptor?.serverAddress.fixed ?? null
   const schemes = descriptor?.serverAddress.schemes ?? ['https', 'http']
@@ -195,7 +230,24 @@ export default function ConnectionProfileFormDialog({
     (fixedAddress !== null || draft.serverUrl.trim() !== '') &&
     method !== null &&
     ownerships.includes(draft.ownership) &&
-    (!usesRegistration || usesKey || draft.clientId.trim() !== '')
+    (!usesRegistration || usesKey || draft.clientId.trim() !== '') &&
+    endpointFields.every((field) => draft[field.key].trim() !== '')
+
+  const asksRedirect = method === 'OAUTH' && redirect === undefined
+  useEffect(() => {
+    if (!asksRedirect) return
+    let active = true
+    getConnectionRedirectUri()
+      .then((uri) => {
+        if (active) setRedirect({ uri })
+      })
+      .catch(() => {
+        if (active) setRedirect('failed')
+      })
+    return () => {
+      active = false
+    }
+  }, [asksRedirect])
 
   function close() {
     if (!submitting) onClose()
@@ -216,6 +268,12 @@ export default function ConnectionProfileFormDialog({
       tenant: usesRegistration && !usesKey ? blankToNull(draft.tenant) : null,
       clientSecretExpiresOn: usesRegistration ? blankToNull(draft.clientSecretExpiresOn) : null,
       scopes: usesScopes ? blankToNull(draft.scopes) : null,
+      ...Object.fromEntries(
+        ENDPOINT_FIELDS.map((field) => [
+          field.key,
+          endpointFields.includes(field) ? blankToNull(draft[field.key]) : null,
+        ]),
+      ),
       clientSecret: usesRegistration && secret.trim() !== '' ? secret.trim() : undefined,
       connectorSettings: connectorDefaults(defaultKeys, draft.defaults),
       sourceProxy: takesTransport ? blankToNull(draft.sourceProxy) : null,
@@ -473,8 +531,52 @@ export default function ConnectionProfileFormDialog({
                   size="small"
                   value={draft.scopes}
                   onChange={(e) => setDraft({ ...draft, scopes: e.target.value })}
-                  helperText="Durch Leerzeichen getrennt, z. B. „Files.Read offline_access“."
+                  helperText={
+                    signIn?.defaultScopes
+                      ? `Durch Leerzeichen getrennt. Leer lassen für die Vorgabe der Quellart: „${signIn.defaultScopes}“.`
+                      : 'Durch Leerzeichen getrennt, z. B. „Files.Read offline_access“.'
+                  }
                 />
+              )}
+              {endpointFields.map((field) => (
+                <TextField
+                  key={field.key}
+                  label={field.label}
+                  required
+                  size="small"
+                  value={draft[field.key]}
+                  onChange={(e) => setDraft({ ...draft, [field.key]: e.target.value })}
+                  placeholder="https://"
+                  autoComplete="off"
+                  helperText={`${field.hint} Beginnt mit https:// oder http://; eine Änderung verlangt neue Zustimmungen.`}
+                  slotProps={{ htmlInput: { maxLength: 2000 } }}
+                />
+              ))}
+              {method === 'OAUTH' && redirect === 'failed' && (
+                <Alert severity="warning" data-testid="connection-profile-redirect-uri">
+                  Die Rücksprungadresse ließ sich nicht laden. Sie lautet
+                  {' {OPAA_PUBLIC_BASE_URL}/connections/callback'}.
+                </Alert>
+              )}
+              {method === 'OAUTH' && redirect !== undefined && redirect !== 'failed' && (
+                <>
+                  {redirect.uri ? (
+                    <Typography
+                      variant="body2"
+                      sx={{ color: 'text.secondary', wordBreak: 'break-all' }}
+                      data-testid="connection-profile-redirect-uri"
+                    >
+                      Rücksprungadresse für die App-Registrierung beim Anbieter: {redirect.uri}
+                    </Typography>
+                  ) : (
+                    <Alert severity="warning" data-testid="connection-profile-redirect-uri">
+                      Die öffentliche Adresse von OPAA (OPAA_PUBLIC_BASE_URL) ist nicht gesetzt.
+                      Ohne sie gibt es keine Rücksprungadresse, und über diesen Zugang lässt sich
+                      kein Konto beim Anbieter verbinden. Zuständig ist der Betrieb der
+                      Installation.
+                    </Alert>
+                  )}
+                </>
               )}
               {takesTransport && (
                 <>

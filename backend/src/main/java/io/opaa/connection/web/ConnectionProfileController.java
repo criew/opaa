@@ -177,7 +177,7 @@ public class ConnectionProfileController {
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
   @PostMapping(ADMIN + "/{profileId}/test-sign-in")
   public ConnectionProfileSignInTestResponse testConnectionProfileSignIn(
-      @PathVariable UUID profileId) {
+      @PathVariable UUID profileId, @Caller CurrentUser caller) {
     ConnectionAuthMethod method = profiles.get(profileId).getAuthMethod();
     if (method != ConnectionAuthMethod.CLIENT_CREDENTIALS
         && method != ConnectionAuthMethod.SERVICE_ACCOUNT_KEY) {
@@ -185,7 +185,9 @@ public class ConnectionProfileController {
           "Der Zugang meldet sich nicht selbst an; nur Client-Credentials und"
               + " Dienstkonto-Schlüssel lassen sich am Zugang testen");
     }
-    return ConnectionProfileResponseMapper.toResponse(signIn.test(profileId));
+    ProfileSignIn.SignInTest test = signIn.test(profileId);
+    profiles.signInTested(caller, profileId, test.success());
+    return ConnectionProfileResponseMapper.toResponse(test);
   }
 
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")

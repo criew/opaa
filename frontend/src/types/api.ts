@@ -220,6 +220,17 @@ export type ConnectableProfile = components['schemas']['ConnectableProfile']
 export type MissingAccess = components['schemas']['MissingAccess']
 export type ConnectedAccountsOverview = components['schemas']['ConnectedAccountsOverview']
 export type ConnectedAccountConnectRequest = components['schemas']['ConnectedAccountConnectRequest']
+export type ConnectionAuthorizationPurpose = components['schemas']['ConnectionAuthorizationPurpose']
+export type ConnectionAuthorizationStartRequest =
+  components['schemas']['ConnectionAuthorizationStartRequest']
+export type ConnectionAuthorizationStartResponse =
+  components['schemas']['ConnectionAuthorizationStartResponse']
+export type ConnectionAuthorizationCompleteRequest =
+  components['schemas']['ConnectionAuthorizationCompleteRequest']
+export type ConnectionAuthorizationCompleteResponse =
+  components['schemas']['ConnectionAuthorizationCompleteResponse']
+export type SignInProfileEndpoints = components['schemas']['SignInProfileEndpoints']
+export type ConnectionRedirectResponse = components['schemas']['ConnectionRedirectResponse']
 export type ConnectionLogEventType = components['schemas']['ConnectionLogEventType']
 export type ConnectionLogOwnerKind = components['schemas']['ConnectionLogOwnerKind']
 export type ConnectionEndCause = components['schemas']['ConnectionEndCause']

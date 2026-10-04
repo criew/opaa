@@ -31,6 +31,7 @@ import java.time.Instant;
 import java.util.Base64;
 import java.util.HexFormat;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.regex.Pattern;
 import org.springframework.stereotype.Service;
@@ -96,6 +97,14 @@ public class ConnectionAuthorizationService {
   }
 
   /**
+   * The address every provider returns to after a consent, {@code {public
+   * base}/connections/callback}; empty while no public address is configured.
+   */
+  public Optional<String> redirectUri() {
+    return publicBaseUrl.link(CALLBACK_PATH);
+  }
+
+  /**
    * Starts a consent of the caller on profile {@code profileId} for {@code purpose}: {@code 400}
    * for a profile without OAuth and for a purpose not served yet, what connecting an account
    * refuses, {@code 409} without a public address and {@code 429} beyond {@link #MAX_STARTS}.
@@ -116,8 +125,7 @@ public class ConnectionAuthorizationService {
     }
     accounts.requireConnectable(caller, profile);
     URI redirect =
-        publicBaseUrl
-            .link(CALLBACK_PATH)
+        redirectUri()
             .map(URI::create)
             .orElseThrow(
                 () ->

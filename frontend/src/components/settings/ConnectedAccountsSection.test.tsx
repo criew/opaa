@@ -1,8 +1,9 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { server } from '../../mocks/server'
+import { leaveFor } from '../../services/leaveApp'
 import { answerConfirm, renderWithProviders, waitForDialogClosed } from '../../test/test-utils'
 import type {
   ConnectedAccount,
@@ -11,7 +12,21 @@ import type {
 } from '../../types/api'
 import ConnectedAccountsSection from './ConnectedAccountsSection'
 
+vi.mock('../../services/leaveApp', () => ({ leaveFor: vi.fn() }))
+
 const ME = '/api/v1/me/connected-accounts'
+const AUTHORIZATIONS = '/api/v1/connections/authorizations'
+
+const OAUTH_PROFILE = {
+  profileId: 'dropbox',
+  name: 'Zugang Dropbox',
+  authMethod: 'OAUTH' as const,
+  secretForm: null,
+}
+
+afterEach(() => {
+  vi.mocked(leaveFor).mockReset()
+})
 
 function account(overrides: Partial<ConnectedAccount>): ConnectedAccount {
   return {
@@ -406,6 +421,120 @@ describe('ConnectedAccountsSection', () => {
       'können Sie danach hier kein Konto mehr verbinden',
     )
     await answerConfirm(user, /trennen\?/, 'Abbrechen')
+  })
+
+  it('connects an OAuth account at the provider after saying where it goes and what is logged', async () => {
+    let started: unknown = null
+    serve({ accounts: [], connectable: [OAUTH_PROFILE], missingAccess: MISSING })
+    server.use(
+      http.post(AUTHORIZATIONS, async ({ request }) => {
+        started = await request.json()
+        return HttpResponse.json({
+          authorizationUrl: 'https://provider.example/authorize?state=s',
+          expiresAt: '2026-10-04T12:10:00Z',
+        })
+      }),
+    )
+    const user = userEvent.setup()
+    renderSection()
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Konto beim Anbieter verbinden: Zugang Dropbox' }),
+    )
+    const dialog = await screen.findByRole('dialog', {
+      name: /Konto bei „Zugang Dropbox“ verbinden/,
+    })
+    expect(dialog).toHaveTextContent('zur Anmeldung beim Anbieter weitergeleitet')
+    expect(dialog).toHaveTextContent('unter einem Pseudonym')
+    await answerConfirm(user, /Konto bei „Zugang Dropbox“ verbinden/, 'Weiter zum Anbieter')
+
+    await waitFor(() =>
+      expect(leaveFor).toHaveBeenCalledWith('https://provider.example/authorize?state=s'),
+    )
+    expect(started).toEqual({ profileId: 'dropbox', purpose: 'ACCOUNT' })
+  })
+
+  it.each([
+    [
+      409,
+      'Für die Anmeldung beim Anbieter fehlt die öffentliche Adresse von OPAA (OPAA_PUBLIC_BASE_URL). Zuständig ist die Systemverwaltung.',
+      'PUBLIC_BASE_URL_MISSING',
+    ],
+    [
+      429,
+      'Sie haben in den letzten Minuten bereits 10 Anmeldungen beim Anbieter begonnen. Bitte versuchen Sie es später erneut.',
+      undefined,
+    ],
+  ])('stays when the consent cannot start (%i) and says why', async (status, message, code) => {
+    serve({ accounts: [], connectable: [OAUTH_PROFILE], missingAccess: MISSING })
+    server.use(http.post(AUTHORIZATIONS, () => errorBody(status, message, code)))
+    const user = userEvent.setup()
+    renderSection()
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Konto beim Anbieter verbinden: Zugang Dropbox' }),
+    )
+    await answerConfirm(user, /verbinden\?/, 'Weiter zum Anbieter')
+
+    expect(await screen.findByText(message)).toBeInTheDocument()
+    expect(leaveFor).not.toHaveBeenCalled()
+    expect(
+      screen.getByRole('button', { name: 'Konto beim Anbieter verbinden: Zugang Dropbox' }),
+    ).toBeEnabled()
+  })
+
+  it('reconnects an OAuth account at the provider and flags a consent that ends soon', async () => {
+    const soon = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString()
+    const later = new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString()
+    serve({
+      accounts: [
+        account({
+          profileId: 'dropbox',
+          profileName: 'Zugang Dropbox',
+          authMethod: 'OAUTH',
+          secretForm: null,
+          accountLabel: null,
+          expiresAt: soon,
+        }),
+        account({
+          profileId: 'box',
+          profileName: 'Zugang Box',
+          authMethod: 'OAUTH',
+          secretForm: null,
+          accountLabel: null,
+          expiresAt: later,
+        }),
+      ],
+      connectable: [],
+      missingAccess: MISSING,
+    })
+    server.use(
+      http.post(AUTHORIZATIONS, () =>
+        HttpResponse.json({
+          authorizationUrl: 'https://provider.example/authorize?state=r',
+          expiresAt: '2026-10-04T12:10:00Z',
+        }),
+      ),
+    )
+    const user = userEvent.setup()
+    renderSection()
+
+    const dropbox = await screen.findByTestId('connected-account-dropbox')
+    expect(within(dropbox).getByText(/^Zustimmung endet am/)).toBeInTheDocument()
+    expect(dropbox).not.toHaveTextContent('lässt sich hier noch nicht neu verbinden')
+    const box = screen.getByTestId('connected-account-box')
+    expect(box).toHaveTextContent('Zustimmung gültig bis')
+    expect(within(box).queryByText(/^Zustimmung endet am/)).not.toBeInTheDocument()
+
+    await user.click(
+      within(dropbox).getByRole('button', {
+        name: 'Konto beim Anbieter neu verbinden: Zugang Dropbox',
+      }),
+    )
+    await answerConfirm(user, /neu verbinden\?/, 'Weiter zum Anbieter')
+    await waitFor(() =>
+      expect(leaveFor).toHaveBeenCalledWith('https://provider.example/authorize?state=r'),
+    )
   })
 
   it('tells a failed load apart from an empty list', async () => {

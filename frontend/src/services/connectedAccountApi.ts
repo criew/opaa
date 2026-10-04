@@ -3,10 +3,14 @@ import type {
   ConnectedAccount,
   ConnectedAccountConnectRequest,
   ConnectedAccountsOverview,
+  ConnectionAuthorizationCompleteRequest,
+  ConnectionAuthorizationCompleteResponse,
+  ConnectionAuthorizationStartResponse,
 } from '../types/api'
 import { apiClient as client, normalizeError } from './api'
 
 const ME = '/v1/me/connected-accounts'
+const AUTHORIZATIONS = '/v1/connections/authorizations'
 
 /**
  * A refused connection attempt. Deliberately carries no `cause`: the original request - and with
@@ -33,6 +37,19 @@ export async function listMyConnectedAccounts(): Promise<ConnectedAccountsOvervi
   }
 }
 
+/** The refusal as a {@link ConnectAccountError}, without the request that carried a secret. */
+function refusal(err: unknown): ConnectAccountError {
+  if (err instanceof AxiosError) {
+    const body = err.response?.data as { error?: unknown; code?: unknown } | undefined
+    return new ConnectAccountError(
+      typeof body?.error === 'string' ? body.error : '',
+      err.response?.status ?? null,
+      typeof body?.code === 'string' ? body.code : null,
+    )
+  }
+  return new ConnectAccountError('', null, null)
+}
+
 /** Connects or reconnects the caller's account; the secret is sent once and never returned. */
 export async function connectMyAccount(
   profileId: string,
@@ -42,15 +59,40 @@ export async function connectMyAccount(
     const { data } = await client.put<ConnectedAccount>(`${ME}/${profileId}`, request)
     return data
   } catch (err) {
-    if (err instanceof AxiosError) {
-      const body = err.response?.data as { error?: unknown; code?: unknown } | undefined
-      throw new ConnectAccountError(
-        typeof body?.error === 'string' ? body.error : '',
-        err.response?.status ?? null,
-        typeof body?.code === 'string' ? body.code : null,
-      )
-    }
-    throw new ConnectAccountError('', null, null)
+    throw refusal(err)
+  }
+}
+
+/** Starts the provider's consent for the caller's own account on an OAuth profile. */
+export async function startAccountAuthorization(
+  profileId: string,
+): Promise<ConnectionAuthorizationStartResponse> {
+  try {
+    const { data } = await client.post<ConnectionAuthorizationStartResponse>(AUTHORIZATIONS, {
+      profileId,
+      purpose: 'ACCOUNT',
+    })
+    return data
+  } catch (err) {
+    throw refusal(err)
+  }
+}
+
+/**
+ * Completes a consent with what the provider sent back. The code and state are single-use; the
+ * error carries neither.
+ */
+export async function completeConnectionAuthorization(
+  request: ConnectionAuthorizationCompleteRequest,
+): Promise<ConnectionAuthorizationCompleteResponse> {
+  try {
+    const { data } = await client.post<ConnectionAuthorizationCompleteResponse>(
+      `${AUTHORIZATIONS}/complete`,
+      request,
+    )
+    return data
+  } catch (err) {
+    throw refusal(err)
   }
 }
 

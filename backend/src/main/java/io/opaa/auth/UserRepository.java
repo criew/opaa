@@ -96,6 +96,9 @@ public interface UserRepository extends JpaRepository<User, UUID> {
    */
   List<User> findByOrganizationIdAndSystemRole(UUID organizationId, SystemRole systemRole);
 
+  /** Every account of {@code systemRole} in the installation, for what concerns no organization. */
+  List<User> findBySystemRole(SystemRole systemRole);
+
   /**
    * The regular accounts of {@code issuer} - what switching the local account management off ends
    * the sessions of (ADR-0033, Entscheidung 4); system administrators keep theirs.

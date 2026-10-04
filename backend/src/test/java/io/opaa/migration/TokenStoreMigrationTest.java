@@ -16,9 +16,12 @@ class TokenStoreMigrationTest extends AbstractBaselineTest {
 
   private static final String FILE = "db/changelog/connections/2026-10-04-token-store.yaml";
 
-  /** Alters a table of {@link #FILE}, so an installation without that file lacks it too. */
-  private static final String DEPENDENT =
+  /** Alter tables of {@link #FILE}, so an installation without that file lacks them too. */
+  private static final String USAGE =
       "db/changelog/connections/2026-10-04-usage-and-person-states.yaml";
+
+  private static final String WARNED_EXPIRY =
+      "db/changelog/connections/2026-10-04-warned-expiry.yaml";
 
   private UUID owner;
   private UUID forPersons;
@@ -28,7 +31,7 @@ class TokenStoreMigrationTest extends AbstractBaselineTest {
 
   @Override
   protected List<String> baseFixtureChangelogs() {
-    return MasterChangelog.filesExcept(FILE, DEPENDENT);
+    return MasterChangelog.filesExcept(FILE, USAGE, WARNED_EXPIRY);
   }
 
   @BeforeEach

@@ -13,8 +13,13 @@ import type {
   ConnectedAccount,
   ConnectedAccountsOverview,
 } from '../../types/api'
-import { disconnectMyAccount, listMyConnectedAccounts } from '../../services/connectedAccountApi'
+import {
+  disconnectMyAccount,
+  listMyConnectedAccounts,
+  startAccountAuthorization,
+} from '../../services/connectedAccountApi'
 import { apiErrorStatus } from '../../services/apiErrorDetails'
+import { leaveFor } from '../../services/leaveApp'
 import { useSourceTypes } from '../../hooks/useSourceTypes'
 import BusyButton from '../a11y/BusyButton'
 import { confirmAction } from '../../stores/confirmStore'
@@ -27,6 +32,17 @@ import { accountStateLabel, secretFormLabel } from './connectedAccountLabels'
 function formatDate(value: string): string {
   return new Date(value).toLocaleDateString('de-DE', { dateStyle: 'medium' })
 }
+
+/** How far ahead of its end a consent is flagged, as the notification warns. */
+const EXPIRY_WARNING_MS = 14 * 24 * 60 * 60 * 1000
+
+function endsSoon(expiresAt: string | null | undefined): boolean {
+  return expiresAt != null && new Date(expiresAt).getTime() - Date.now() <= EXPIRY_WARNING_MS
+}
+
+/** What connecting at the provider means, as the confirmation says it before leaving OPAA. */
+const AUTHORIZE_CONSEQUENCE =
+  'Sie werden zur Anmeldung beim Anbieter weitergeleitet und stimmen dort zu, dass OPAA Inhalte Ihres Kontos für Ihre privaten Bibliotheken lesen darf. Danach kommen Sie auf diese Seite zurück. Ihre Inhalte und Ihren Kontonamen sehen nur Sie; wann ein Konto verbunden, neu verbunden oder getrennt wurde, steht unter einem Pseudonym statt Ihres Namens im Verbindungsprotokoll der Revision.'
 
 function quotedNames(names: string[]): string {
   return names.map((name) => `„${name}“`).join(', ')
@@ -60,16 +76,21 @@ function signInLine(item: Pick<ConnectedAccount, 'secretForm' | 'authMethod'>): 
 function AccountItem({
   account,
   onConnect,
+  onAuthorize,
   onDisconnect,
   disconnecting,
+  authorizing,
 }: {
   account: ConnectedAccount
   onConnect: (target: ConnectTarget) => void
+  onAuthorize: (profileId: string, name: string, reconnect: boolean) => void
   onDisconnect: (account: ConnectedAccount) => void
   disconnecting: boolean
+  authorizing: boolean
 }) {
   const state = accountStateLabel(account.state)
   const disconnected = account.state === 'DISCONNECTED'
+  const oauth = account.authMethod === 'OAUTH'
   return (
     <Box
       component="li"
@@ -92,6 +113,13 @@ function AccountItem({
         {!account.reconnectable && (
           <Chip size="small" color="error" variant="outlined" label="Zugang gesperrt" />
         )}
+        {account.expiresAt && endsSoon(account.expiresAt) && (
+          <Chip
+            size="small"
+            color="warning"
+            label={`Zustimmung endet am ${formatDate(account.expiresAt)}`}
+          />
+        )}
       </Stack>
       <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
         {account.accountLabel ? `Konto: ${account.accountLabel} · ` : ''}
@@ -103,6 +131,9 @@ function AccountItem({
                 ? ` · zuletzt neu verbunden am ${formatDate(account.reconnectedAt)}`
                 : ''
             }`}
+        {account.expiresAt && !endsSoon(account.expiresAt)
+          ? ` · Zustimmung gültig bis ${formatDate(account.expiresAt)}`
+          : ''}
       </Typography>
       <Typography component="div" sx={{ fontSize: 13, mt: 0.5 }}>
         {account.usedBy.length === 0 ? (
@@ -149,6 +180,18 @@ function AccountItem({
             Neu verbinden
           </Button>
         )}
+        {oauth && account.reconnectable && (
+          <BusyButton
+            size="small"
+            variant="outlined"
+            aria-label={`Konto beim Anbieter neu verbinden: ${account.profileName}`}
+            busy={authorizing}
+            busyAnnouncement="Weiterleitung zum Anbieter"
+            onClick={() => onAuthorize(account.profileId, account.profileName, true)}
+          >
+            Neu verbinden
+          </BusyButton>
+        )}
         {!disconnected && (
           <BusyButton
             size="small"
@@ -162,7 +205,7 @@ function AccountItem({
           </BusyButton>
         )}
       </Stack>
-      {!account.secretForm && (
+      {!account.secretForm && !oauth && (
         <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 1 }}>
           Diese Anmeldeart lässt sich hier noch nicht neu verbinden.
         </Typography>
@@ -174,9 +217,13 @@ function AccountItem({
 function ConnectableItem({
   profile,
   onConnect,
+  onAuthorize,
+  authorizing,
 }: {
   profile: ConnectableProfile
   onConnect: (target: ConnectTarget) => void
+  onAuthorize: (profileId: string, name: string, reconnect: boolean) => void
+  authorizing: boolean
 }) {
   return (
     <Box
@@ -216,6 +263,17 @@ function ConnectableItem({
         >
           Verbinden
         </Button>
+      ) : profile.authMethod === 'OAUTH' ? (
+        <BusyButton
+          size="small"
+          variant="outlined"
+          aria-label={`Konto beim Anbieter verbinden: ${profile.name}`}
+          busy={authorizing}
+          busyAnnouncement="Weiterleitung zum Anbieter"
+          onClick={() => onAuthorize(profile.profileId, profile.name, false)}
+        >
+          Verbinden
+        </BusyButton>
       ) : (
         <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
           In dieser Version noch nicht verbindbar.
@@ -235,6 +293,7 @@ export default function ConnectedAccountsSection() {
   const [error, setError] = useState<string | null>(null)
   const [target, setTarget] = useState<ConnectTarget | null>(null)
   const [disconnecting, setDisconnecting] = useState<string | null>(null)
+  const [authorizing, setAuthorizing] = useState<string | null>(null)
   const sourceTypes = useSourceTypes()
   // Known only once the source types are in; until then nothing is claimed either way.
   const noPersonalConnector =
@@ -264,6 +323,30 @@ export default function ConnectedAccountsSection() {
   useEffect(() => {
     void load()
   }, [load])
+
+  /** Leaves for the provider's consent in this tab; the provider returns to the callback page. */
+  async function handleAuthorize(profileId: string, name: string, reconnect: boolean) {
+    if (authorizing !== null) return
+    const confirmed = await confirmAction({
+      question: reconnect ? `Konto bei „${name}“ neu verbinden?` : `Konto bei „${name}“ verbinden?`,
+      consequence: AUTHORIZE_CONSEQUENCE,
+      confirmLabel: 'Weiter zum Anbieter',
+    })
+    if (!confirmed) return
+    setAuthorizing(profileId)
+    try {
+      const started = await startAccountAuthorization(profileId)
+      leaveFor(started.authorizationUrl)
+    } catch (err: unknown) {
+      notify(
+        err instanceof Error && err.message
+          ? err.message
+          : 'Die Anmeldung beim Anbieter ließ sich nicht starten.',
+        'error',
+      )
+      setAuthorizing(null)
+    }
+  }
 
   async function handleDisconnect(account: ConnectedAccount) {
     if (disconnecting !== null) return
@@ -334,8 +417,10 @@ export default function ConnectedAccountsSection() {
                 key={account.profileId}
                 account={account}
                 onConnect={setTarget}
+                onAuthorize={(id, name, reconnect) => void handleAuthorize(id, name, reconnect)}
                 onDisconnect={(item) => void handleDisconnect(item)}
                 disconnecting={disconnecting === account.profileId}
+                authorizing={authorizing === account.profileId}
               />
             ))}
           </Box>
@@ -361,6 +446,8 @@ export default function ConnectedAccountsSection() {
                     key={profile.profileId}
                     profile={profile}
                     onConnect={setTarget}
+                    onAuthorize={(id, name, reconnect) => void handleAuthorize(id, name, reconnect)}
+                    authorizing={authorizing === profile.profileId}
                   />
                 ))}
               </Box>

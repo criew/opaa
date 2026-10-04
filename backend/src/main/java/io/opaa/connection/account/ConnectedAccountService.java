@@ -496,6 +496,9 @@ public class ConnectedAccountService implements PersonConnections, GrantRejectio
         responsible,
         account.getConnectedAt(),
         account.getReconnectedAt(),
+        account.getState() == ConnectedAccountState.CONNECTED
+            ? secrets.grantEnd(new PersonOwned(profile.getId(), account.getUserId())).orElse(null)
+            : null,
         libraryConnections.findPrivateLibrariesOn(profile.getId(), account.getUserId()).stream()
             .map(library -> new AccountOverview.Library(library.getId(), library.getName()))
             .toList());
