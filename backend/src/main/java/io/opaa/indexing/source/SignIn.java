@@ -9,9 +9,9 @@ import java.util.Set;
 
 /**
  * One sign-in method a connector offers, with the owners ({@code LIBRARY}, {@code PERSON}) a
- * connection signing in this way may have. A personal secret names its form; a service account key
- * and client credentials carry their token endpoint and are owned by a library only (ADR-0038,
- * Nachtrag Verbindungsprofile).
+ * connection signing in this way may have. A personal secret names its form, OAuth its endpoints; a
+ * service account key and client credentials carry their token endpoint and are owned by a library
+ * only (ADR-0038, Nachtrag Verbindungsprofile).
  */
 public record SignIn(
     ConnectionAuthMethod method, Set<ConnectionOwnership> owners, SignInDetails details) {
@@ -38,6 +38,9 @@ public record SignIn(
     }
     if (clientMethod && !owners.equals(Set.of(ConnectionOwnership.LIBRARY))) {
       throw new IllegalArgumentException("only a library owns a client credentials sign-in");
+    }
+    if ((method == ConnectionAuthMethod.OAUTH) != details instanceof OAuthAuth) {
+      throw new IllegalArgumentException("an OAuth sign-in, and only that, names its endpoints");
     }
     if ((method == ConnectionAuthMethod.PERSONAL_SECRET) != details instanceof PersonalSecretAuth) {
       throw new IllegalArgumentException(
@@ -71,6 +74,11 @@ public record SignIn(
   public static SignIn clientCredentials(ClientCredentialsAuth auth) {
     return new SignIn(
         ConnectionAuthMethod.CLIENT_CREDENTIALS, Set.of(ConnectionOwnership.LIBRARY), auth);
+  }
+
+  /** The sign-in by OAuth with {@code auth}, for connections owned by {@code owners}. */
+  public static SignIn oauth(OAuthAuth auth, ConnectionOwnership... owners) {
+    return new SignIn(ConnectionAuthMethod.OAUTH, Set.of(owners), auth);
   }
 
   /** Whether a profile of {@code ownership} may choose this sign-in. */

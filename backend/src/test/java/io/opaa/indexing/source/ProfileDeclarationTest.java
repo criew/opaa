@@ -76,6 +76,41 @@ class ProfileDeclarationTest {
   }
 
   @Test
+  void oauthNamesItsEndpointsAndLeavesTheFlowParametersToTheSignIn() {
+    OAuthAuth auth =
+        new OAuthAuth(
+            new Endpoint.FromProfile(),
+            new Endpoint.FromProfile(),
+            new Revocation.None(),
+            " ",
+            Map.of("token_access_type", "offline"),
+            ClientAuthentication.CLIENT_SECRET_POST);
+
+    assertThat(SignIn.oauth(auth, PERSON).owners()).containsExactly(PERSON);
+    assertThat(auth.defaultScopes()).isNull();
+    assertThat(auth.endpointsFromProfile()).isTrue();
+    assertThatThrownBy(() -> SignIn.of(ConnectionAuthMethod.OAUTH, PERSON))
+        .isInstanceOf(IllegalArgumentException.class);
+    assertThatThrownBy(() -> new SignIn(PERSONAL_SECRET, Set.of(PERSON), auth))
+        .isInstanceOf(IllegalArgumentException.class);
+    for (String reserved : OAuthAuth.RESERVED_PARAMS) {
+      assertThatThrownBy(
+              () ->
+                  new OAuthAuth(
+                      new Endpoint.FromProfile(),
+                      new Endpoint.FromProfile(),
+                      new Revocation.None(),
+                      null,
+                      Map.of(reserved, "x"),
+                      ClientAuthentication.CLIENT_SECRET_POST))
+          .as(reserved)
+          .isInstanceOf(IllegalArgumentException.class);
+    }
+    assertThatThrownBy(() -> new Endpoint.FromProfile().resolve(null))
+        .isInstanceOf(IllegalStateException.class);
+  }
+
+  @Test
   void anEndpointTemplateTakesOnlyAPlainTenant() {
     Endpoint template =
         new Endpoint.WithTenant("https://login.example.org/{tenant}/oauth2/v2.0/token");
