@@ -43,13 +43,23 @@ public final class NextcloudTestStores {
 
   /** {@link #open(SourceSettings)} with its own bound on one {@code PROPFIND} answer. */
   public static FileStore open(SourceSettings settings, long maxResponseBytes) {
+    return open(settings, maxResponseBytes, RequestBudget.unbounded());
+  }
+
+  /** {@link #open(SourceSettings)} whose requests count against {@code budget}. */
+  public static FileStore open(SourceSettings settings, RequestBudget budget) {
+    return open(settings, NextcloudProperties.DEFAULT_MAX_RESPONSE_BYTES, budget);
+  }
+
+  private static FileStore open(
+      SourceSettings settings, long maxResponseBytes, RequestBudget budget) {
     NextcloudConnection connection = NextcloudConnection.of(settings, settings.sourceCredentials());
     NextcloudDav dav =
         new NextcloudDav(
             connection,
             TargetAddressValidator.disabled(),
             SourceRequestPolicy.defaults(),
-            RequestBudget.unbounded(),
+            budget,
             Duration.ofSeconds(30),
             maxResponseBytes);
     return new NextcloudFileStore(dav, NextcloudSourceSettings.read(settings.connectorSettings()));

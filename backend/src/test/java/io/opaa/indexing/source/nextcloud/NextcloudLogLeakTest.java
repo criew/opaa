@@ -91,6 +91,31 @@ class NextcloudLogLeakTest {
         .doesNotContain(basic);
   }
 
+  @Test
+  void theCheckpointOfARoundCarriesNeitherTheAppPasswordNorAnAddress() throws Exception {
+    for (int i = 0; i < 6; i++) {
+      server.put("Akten/ordner-" + i + "/datei.txt", "Datei " + i);
+    }
+    FileSyncHarness harness = new FileSyncHarness();
+
+    harness.fullSync(
+        NextcloudTestStores.open(
+            settings(),
+            new io.opaa.indexing.source.RequestBudget(
+                new io.opaa.sourceaccess.SourceRequestMeter(), 5, null)));
+
+    String basic =
+        Base64.getEncoder().encodeToString(server.credentials().getBytes(StandardCharsets.UTF_8));
+    String checkpoint = harness.state().scanProgress().containers().get("/Akten").checkpoint();
+    assertThat(checkpoint)
+        .isNotBlank()
+        .doesNotContain(FakeNextcloudServer.APP_PASSWORD)
+        .doesNotContain(basic)
+        .doesNotContain(java.net.URI.create(server.baseUrl()).getHost())
+        .doesNotContain("://")
+        .doesNotContain("remote.php");
+  }
+
   private io.opaa.indexing.source.SourceSettings settings() {
     return NextcloudTestStores.settings(server.baseUrl(), server.credentials(), List.of("/Akten"));
   }

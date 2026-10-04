@@ -73,6 +73,16 @@ public abstract sealed class FileAccessException extends Exception {
     }
   }
 
+  /**
+   * The store no longer accepts a container's checkpoint: the container's listing starts over in
+   * the same round.
+   */
+  public static final class CheckpointExpired extends FileAccessException {
+    public CheckpointExpired(String message) {
+      super(message);
+    }
+  }
+
   /** This one request failed (a throttle that outlasted its retries, an odd answer). */
   public static final class Transient extends FileAccessException {
     public Transient(String message) {

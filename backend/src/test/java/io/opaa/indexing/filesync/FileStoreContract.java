@@ -33,6 +33,14 @@ public abstract class FileStoreContract {
     /** From now on {@code container} cannot be listed with the store's credentials. */
     void denyListing(int container) throws Exception;
 
+    /**
+     * From now on the folder {@code folder} below {@code container} cannot be listed; a store
+     * without folders denies the whole container.
+     */
+    default void denyListingOf(int container, String folder) throws Exception {
+      denyListing(container);
+    }
+
     /** From now on no file of {@code container} can be read; listing still works. */
     void denyReading(int container) throws Exception;
 
@@ -74,6 +82,29 @@ public abstract class FileStoreContract {
 
     /** A fresh store for one run listing {@code pageSize} entries per page, closed by the run. */
     FileStore open(int pageSize) throws Exception;
+
+    /**
+     * {@link #open(int)} for a run that refuses requests beyond {@code budget}; only a store under
+     * {@link FileStoreResumptionContract} needs it.
+     */
+    default FileStore open(int pageSize, int budget) throws Exception {
+      throw new UnsupportedOperationException("this fixture has no request budget");
+    }
+
+    /** From now on the store accepts no checkpoint it gave so far. */
+    default void expireCheckpoints() throws Exception {
+      throw new UnsupportedOperationException("this fixture has no checkpoints");
+    }
+
+    /** The fewest requests a run needs to resume and move a round forward. */
+    default int minimumBudget() {
+      return 4;
+    }
+
+    /** Whether the store reports folders, so an unchanged round costs a request per container. */
+    default boolean reportsFolders() {
+      return false;
+    }
   }
 
   /** A fresh fixture with both containers empty. */

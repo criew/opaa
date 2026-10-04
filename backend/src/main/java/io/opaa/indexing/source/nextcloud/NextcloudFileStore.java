@@ -13,6 +13,7 @@ import io.opaa.sourceaccess.BoundedDownloader;
 import io.opaa.sourceaccess.SourceRequestMeter;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
@@ -21,17 +22,25 @@ import java.util.Map;
 import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tools.jackson.core.JacksonException;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.json.JsonMapper;
 
 /**
  * The files of a Nextcloud user as the {@link FileStore} of a full sync: a container is a
- * configured folder, a page one {@code PROPFIND} with depth 1 on one folder, and a folder whose
- * ETag equals the recalled one is reported unchanged instead of listed - its whole tree then costs
- * no request (ADR-0040, Nachtrag). A file's identity is its {@code oc:fileid} behind the address
- * that opens it in the web interface, so renaming and moving keep the document.
+ * configured folder, a page one {@code PROPFIND} with depth 1 on one folder, walked depth first in
+ * name order, and a folder whose ETag equals the recalled one is reported unchanged instead of
+ * listed - its whole tree then costs no request (ADR-0040, Nachtrag). A page's checkpoint is the
+ * path of its folder; resuming lists the folders on that path once more to find what follows. A
+ * file's identity is its {@code oc:fileid} behind the address that opens it in the web interface,
+ * so renaming and moving keep the document.
  */
 final class NextcloudFileStore implements FileStore {
 
   private static final Logger log = LoggerFactory.getLogger(NextcloudFileStore.class);
+
+  private static final String CHECKPOINT_PREFIX = "nc1:";
+  private static final JsonMapper CHECKPOINT_JSON = JsonMapper.builder().build();
 
   private final NextcloudDav dav;
   private final Set<String> folders = new LinkedHashSet<>();
@@ -42,6 +51,9 @@ final class NextcloudFileStore implements FileStore {
 
   /** One folder still to list, with its hierarchy path below the container. */
   private record Folder(String encodedPath, String hierarchyPath, List<String> segments) {}
+
+  /** One folder's own resource and those of its direct entries. */
+  private record Listed(DavResource self, List<DavResource> children) {}
 
   NextcloudFileStore(NextcloudDav dav, NextcloudSourceSettings settings) {
     this.dav = dav;
@@ -63,20 +75,134 @@ final class NextcloudFileStore implements FileStore {
   public FilePage list(FileContainer container, String continuation)
       throws FileAccessException, InterruptedException {
     String root = folder(container);
-    Deque<Folder> queue = pending.computeIfAbsent(container.key(), key -> new ArrayDeque<>());
+    Deque<Folder> stack = pending.computeIfAbsent(container.key(), key -> new ArrayDeque<>());
     if (continuation == null) {
-      queue.clear();
-      queue.add(new Folder(encodedFolder(root), "", List.of()));
+      stack.clear();
+      stack.push(new Folder(encodedFolder(root), "", List.of()));
     }
-    Folder folder = queue.poll();
+    Folder folder = stack.poll();
     if (folder == null) {
       return new FilePage(List.of(), null);
     }
+    return page(container, root, folder, stack, true);
+  }
+
+  /**
+   * Lists the folders on the checkpoint's path again, from the container down: what follows its
+   * folder in name order, and that folder's own subfolders, is listed next. A folder on the path
+   * that is gone since ends the descent there; what follows it is still listed.
+   */
+  @Override
+  public FilePage resume(FileContainer container, String checkpoint)
+      throws FileAccessException, InterruptedException {
+    String root = folder(container);
+    List<String> position = position(checkpoint);
+    Deque<Folder> stack = pending.computeIfAbsent(container.key(), key -> new ArrayDeque<>());
+    stack.clear();
+    Map<String, String> recalledHere = recalled.getOrDefault(container.key(), Map.of());
+    List<String> unchanged = new ArrayList<>();
+    Folder current = new Folder(encodedFolder(root), "", List.of());
+    for (int depth = 0; ; depth++) {
+      Listed listed = listFolder(container, root, current, depth > 0);
+      if (listed == null) {
+        // a folder on the path vanished: its rest is no longer there, what follows still is
+        break;
+      }
+      String target = depth < position.size() ? position.get(depth) : null;
+      Folder descend = null;
+      List<Folder> later = new ArrayList<>();
+      for (DavResource resource : listed.children()) {
+        if (!resource.collection()) {
+          continue;
+        }
+        Folder child = child(current, resource);
+        if (target == null || resource.name().compareTo(target) > 0) {
+          if (resource.etag() != null
+              && resource.etag().equals(recalledHere.get(child.hierarchyPath()))) {
+            unchanged.add(child.hierarchyPath());
+          } else {
+            later.add(child);
+          }
+        } else if (resource.name().equals(target)) {
+          descend = child;
+        }
+      }
+      pushInOrder(stack, later);
+      if (target == null || descend == null) {
+        break;
+      }
+      current = descend;
+    }
+    Folder next = stack.poll();
+    if (next == null) {
+      return new FilePage(List.of(), null, checkpoint, unchanged, Map.of());
+    }
+    FilePage page = page(container, root, next, stack, false);
+    List<String> allUnchanged = new ArrayList<>(unchanged);
+    allUnchanged.addAll(page.unchangedSubtrees());
+    return new FilePage(
+        page.entries(), page.next(), page.checkpoint(), allUnchanged, page.listedSubtrees());
+  }
+
+  /**
+   * One folder as a page: its files, its subfolders onto the stack in name order - or reported
+   * unchanged - and its path as the checkpoint. The container's own folder may be reported
+   * unchanged as a whole only on a first page.
+   */
+  private FilePage page(
+      FileContainer container, String root, Folder folder, Deque<Folder> stack, boolean first)
+      throws FileAccessException, InterruptedException {
+    Listed listed = listFolder(container, root, folder, false);
+    DavResource self = listed.self();
+    Map<String, String> recalledHere = recalled.getOrDefault(container.key(), Map.of());
+    if (first && folder.hierarchyPath().isEmpty() && self.etag().equals(recalledHere.get(""))) {
+      stack.clear();
+      return new FilePage(List.of(), null, checkpoint(folder), List.of(""), Map.of());
+    }
+    List<FileEntry> entries = new ArrayList<>();
+    List<String> unchanged = new ArrayList<>();
+    List<Folder> subfolders = new ArrayList<>();
+    for (DavResource resource : listed.children()) {
+      if (!resource.collection()) {
+        entries.add(
+            dav.connection().isOwnFilePath(resource.href(), filesRoot())
+                ? entry(container, root, folder, resource)
+                : foreign(container, root, folder, resource));
+        continue;
+      }
+      Folder child = child(folder, resource);
+      if (resource.etag() != null
+          && resource.etag().equals(recalledHere.get(child.hierarchyPath()))) {
+        unchanged.add(child.hierarchyPath());
+      } else {
+        subfolders.add(child);
+      }
+    }
+    pushInOrder(stack, subfolders);
+    return new FilePage(
+        entries,
+        next(stack),
+        checkpoint(folder),
+        unchanged,
+        Map.of(folder.hierarchyPath(), self.etag()));
+  }
+
+  /**
+   * One {@code PROPFIND} with depth 1 on {@code folder}; a folder without an ETag or behind a
+   * foreign address cannot be listed, nor one gone since - unless {@code vanishedIsNull}, then it
+   * is {@code null}.
+   */
+  private Listed listFolder(
+      FileContainer container, String root, Folder folder, boolean vanishedIsNull)
+      throws FileAccessException, InterruptedException {
     List<DavResource> resources;
     try {
       resources =
           dav.propfind(folder.encodedPath(), 1, "den Ordner „" + display(root, folder) + "“");
     } catch (NextcloudAccessException.NotFound e) {
+      if (vanishedIsNull) {
+        return null;
+      }
       // a folder gone since its parent's listing may only have been renamed: no deletion finding
       throw new FileAccessException.ContainerUnlistable(e.getMessage());
     } catch (NextcloudAccessException.Authentication e) {
@@ -98,47 +224,62 @@ final class NextcloudFileStore implements FileStore {
               + display(root, folder)
               + "“ keine Prüfsumme (ETag); er wird nicht abgeglichen.");
     }
-    Map<String, String> recalledHere = recalled.getOrDefault(container.key(), Map.of());
-    if (folder.hierarchyPath().isEmpty() && self.etag().equals(recalledHere.get(""))) {
-      queue.clear();
-      return new FilePage(List.of(), null, List.of(""), Map.of());
-    }
-    List<FileEntry> entries = new ArrayList<>();
-    List<String> unchanged = new ArrayList<>();
     String filesRoot = filesRoot();
+    List<DavResource> children = new ArrayList<>();
     for (DavResource resource : resources) {
       if (resource == self) {
         continue;
       }
-      String name = resource.name();
-      if (!dav.connection().isOwnFilePath(resource.href(), filesRoot)) {
+      if (resource.collection() && !dav.connection().isOwnFilePath(resource.href(), filesRoot)) {
         // credentials only ever go to this instance; a folder behind such an address keeps its
         // bestand, a file is skipped like an unavailable one
         log.warn("Nextcloud answered a foreign address for an entry of {}", container.key());
-        if (resource.collection()) {
-          throw new FileAccessException.ContainerUnlistable(
-              "Nextcloud nannte für einen Ordner in „"
-                  + display(root, folder)
-                  + "“ eine Adresse außerhalb der Instanz; er wird nicht abgeglichen.");
-        }
-        entries.add(foreign(container, root, folder, resource));
-        continue;
+        throw new FileAccessException.ContainerUnlistable(
+            "Nextcloud nannte für einen Ordner in „"
+                + display(root, folder)
+                + "“ eine Adresse außerhalb der Instanz; er wird nicht abgeglichen.");
       }
-      if (resource.collection()) {
-        String hierarchy = child(folder.hierarchyPath(), name);
-        if (resource.etag() != null && resource.etag().equals(recalledHere.get(hierarchy))) {
-          unchanged.add(hierarchy);
-        } else {
-          List<String> segments = new ArrayList<>(folder.segments());
-          segments.add(name);
-          queue.add(new Folder(resource.href(), hierarchy, List.copyOf(segments)));
-        }
-      } else {
-        entries.add(entry(container, root, folder, resource));
-      }
+      children.add(resource);
     }
-    return new FilePage(
-        entries, next(queue), unchanged, Map.of(folder.hierarchyPath(), self.etag()));
+    return new Listed(self, children);
+  }
+
+  private static Folder child(Folder parent, DavResource resource) {
+    List<String> segments = new ArrayList<>(parent.segments());
+    segments.add(resource.name());
+    return new Folder(
+        resource.href(), child(parent.hierarchyPath(), resource.name()), List.copyOf(segments));
+  }
+
+  /** Pushes {@code folders} so that the first in name order is listed next. */
+  private static void pushInOrder(Deque<Folder> stack, List<Folder> folders) {
+    List<Folder> sorted = new ArrayList<>(folders);
+    sorted.sort(Comparator.comparing((Folder folder) -> folder.segments().getLast()).reversed());
+    sorted.forEach(stack::push);
+  }
+
+  /** The checkpoint after {@code folder}: its path below the container, never an address. */
+  private static String checkpoint(Folder folder) {
+    return CHECKPOINT_PREFIX + CHECKPOINT_JSON.writeValueAsString(folder.segments());
+  }
+
+  private static List<String> position(String checkpoint) throws FileAccessException {
+    if (checkpoint == null || !checkpoint.startsWith(CHECKPOINT_PREFIX)) {
+      throw new FileAccessException.CheckpointExpired(
+          "Der Fortsetzungspunkt stammt aus einer anderen Fassung.");
+    }
+    try {
+      List<String> segments =
+          CHECKPOINT_JSON.readValue(
+              checkpoint.substring(CHECKPOINT_PREFIX.length()),
+              new TypeReference<List<String>>() {});
+      if (segments == null || segments.stream().anyMatch(s -> s == null || s.isEmpty())) {
+        throw new FileAccessException.CheckpointExpired("Der Fortsetzungspunkt ist unlesbar.");
+      }
+      return segments;
+    } catch (JacksonException e) {
+      throw new FileAccessException.CheckpointExpired("Der Fortsetzungspunkt ist unlesbar.");
+    }
   }
 
   @Override
@@ -278,8 +419,8 @@ final class NextcloudFileStore implements FileStore {
     return container.key();
   }
 
-  private String next(Deque<Folder> queue) {
-    return queue.isEmpty() ? null : Integer.toString(++pages);
+  private String next(Deque<Folder> stack) {
+    return stack.isEmpty() ? null : Integer.toString(++pages);
   }
 
   private static String child(String hierarchy, String name) {

@@ -4,7 +4,10 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
+import jakarta.persistence.PostLoad;
+import jakarta.persistence.PostPersist;
 import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Arrays;
@@ -74,8 +77,19 @@ public class SourceSyncState {
   @Column(name = "subtree_markers", columnDefinition = "jsonb")
   private String subtreeMarkers;
 
+  /**
+   * The file sync round in progress over several runs, as {@link ScanProgress} JSON; {@code null}
+   * outside a round and for every other connector.
+   */
+  @JdbcTypeCode(SqlTypes.JSON)
+  @Column(name = "scan_progress", columnDefinition = "jsonb")
+  private String scanProgress;
+
   @Column(name = "updated_at", nullable = false)
   private Instant updatedAt;
+
+  /** Whether this instance was read from or written to the database. */
+  @Transient private boolean stored;
 
   protected SourceSyncState() {}
 
@@ -87,6 +101,20 @@ public class SourceSyncState {
 
   public UUID getId() {
     return id;
+  }
+
+  /**
+   * Whether this instance came from the database: a save must then find its row, or the state was
+   * deleted - a changed source - while the run held it.
+   */
+  public boolean isStored() {
+    return stored;
+  }
+
+  @PostLoad
+  @PostPersist
+  void markStored() {
+    stored = true;
   }
 
   public UUID getLibraryId() {
@@ -129,6 +157,7 @@ public class SourceSyncState {
   public void beginFullSync(UUID jobId) {
     if (!isFullSyncInterrupted()) {
       completedScopeKeys = null;
+      scanProgress = null;
       ChangeCursors cursors = readChangeCursors();
       writeChangeCursors(new ChangeCursors(cursors.current(), Map.of()));
     }
@@ -152,6 +181,7 @@ public class SourceSyncState {
   public void completeFullSync(Instant completedAt) {
     fullSyncCompletedAt = completedAt;
     completedScopeKeys = null;
+    scanProgress = null;
     fullSyncJobId = null;
     ChangeCursors cursors = readChangeCursors();
     if (!cursors.pending().isEmpty()) {
@@ -273,6 +303,80 @@ public class SourceSyncState {
         memory == null || memory.containers().isEmpty()
             ? null
             : CURSOR_JSON.writeValueAsString(memory);
+    touch();
+  }
+
+  /**
+   * The round of a file sync that may span several runs (ADR-0040).
+   *
+   * @param scanId names the round, also in the presence it writes
+   * @param basis what the round's folder markers were judged under (size bound, formats)
+   * @param memoryEstablishedAt what the folder memory of the round counts its age from
+   * @param containers per container key, how far the round got
+   * @param markers per container key, the first marker the round saw for every folder it listed
+   * @param carried per container key, the recalled markers of folders reported unchanged
+   * @param unsettled per container key, folders whose stored state the round could not settle
+   */
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  public record ScanProgress(
+      UUID scanId,
+      Instant startedAt,
+      String basis,
+      Instant memoryEstablishedAt,
+      Map<String, ContainerProgress> containers,
+      Map<String, Map<String, String>> markers,
+      Map<String, Map<String, String>> carried,
+      Map<String, Set<String>> unsettled) {
+
+    public ScanProgress {
+      containers = containers == null ? Map.of() : Map.copyOf(containers);
+      markers = markers == null ? Map.of() : Map.copyOf(markers);
+      carried = carried == null ? Map.of() : Map.copyOf(carried);
+      unsettled = unsettled == null ? Map.of() : Map.copyOf(unsettled);
+    }
+
+    /** The entries the round listed so far, against the per-round bound. */
+    public long entriesListed() {
+      return containers.values().stream().mapToLong(ContainerProgress::entries).sum();
+    }
+  }
+
+  /**
+   * How far one container got in the round.
+   *
+   * @param checkpoint where its listing resumes, {@code null} to start it from scratch
+   * @param restarts how often in a row its checkpoint expired
+   * @param entries the entries listed up to the checkpoint, or in total once completed
+   * @param resumable whether its store gave a checkpoint - only then is a completed one skipped
+   * @param revisitsSeen the revisits visible when its listing started from scratch
+   */
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  public record ContainerProgress(
+      String checkpoint, int restarts, long entries, boolean resumable, Set<UUID> revisitsSeen) {
+
+    public ContainerProgress {
+      revisitsSeen = revisitsSeen == null ? Set.of() : Set.copyOf(revisitsSeen);
+    }
+  }
+
+  /** The round in progress, {@code null} when there is none. */
+  public ScanProgress scanProgress() {
+    return scanProgress == null ? null : CURSOR_JSON.readValue(scanProgress, ScanProgress.class);
+  }
+
+  /** Records how far the round in progress got. */
+  public void recordScanProgress(ScanProgress progress) {
+    scanProgress = progress == null ? null : CURSOR_JSON.writeValueAsString(progress);
+    touch();
+  }
+
+  /**
+   * Drops the round in progress and the containers it completed; the next full sync lists every
+   * container anew.
+   */
+  public void discardScan() {
+    scanProgress = null;
+    completedScopeKeys = null;
     touch();
   }
 
