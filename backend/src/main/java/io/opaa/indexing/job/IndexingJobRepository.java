@@ -51,6 +51,12 @@ public interface IndexingJobRepository extends JpaRepository<IndexingJob, UUID> 
    */
   List<IndexingJob> findByLibraryIdOrderByStartedAtDesc(UUID libraryId);
 
+  /** The ids of every run of a library, whatever its state. */
+  @Query("select j.id from IndexingJob j where j.libraryId = :libraryId")
+  List<UUID> findIdsByLibraryId(@Param("libraryId") UUID libraryId);
+
+  long countByIdIn(Collection<UUID> ids);
+
   /**
    * Latest successful completion per library in one grouped query - backs the library overview's
    * "Stand" column the same way {@code DocumentRepository#countByLibraryIdIn} backs its

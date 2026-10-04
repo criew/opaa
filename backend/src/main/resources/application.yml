@@ -469,6 +469,9 @@ opaa:
     # Without a sign-in for this many days a person's connections rest (ADR-0041); 30-365, a value
     # outside fails the start - see ConnectionLifecycleProperties.
     inactivity-threshold-days: ${OPAA_CONNECTION_INACTIVITY_THRESHOLD_DAYS:90}
+    # Days a deactivated person's private libraries are kept before they are erased; 1-90, a
+    # value outside fails the start - see PrivateLibraryDeletionPeriod.
+    private-library-deletion-days: ${OPAA_CONNECTION_PRIVATE_LIBRARY_DELETION_DAYS:30}
     expired-connections:
       # From how many expired connected accounts on a profile the administration's overview warns;
       # at least 1, shown only where the masked numbers reach it - see PersonNumbers.

@@ -20,6 +20,8 @@ Zugang, Prüfung ihrer Adresse) und besitzt keine eigene Tabelle.
   für alle anderen ist sie unbekannt (`404`, gleiche Antwort wie ohne sie). Angelegt wird sie nur in
   `PrivateLibraryCreation`, an Zugang, Konto und Ziel gebunden über `PrivateLibraryConnections`;
   Protokolle nennen sie `auditName()`. Ein zweites Merkmal an `knowledge_libraries` gibt es nicht.
+  Gelöscht wird sie nur über `PrivateLibraryErasure` (Marker, eine Transaktion, Nachzählen; Verweise
+  außerhalb über `ErasedLibraryReferences`), auch vom `PrivateLibraryDeletionRun`.
 - **Die Freigabegrenze einer Konnektorbibliothek:** Eine Anfrage über der Grenze ist `409`, nicht
   `403` — die Rolle steht nicht in Frage. Eine Upload-Bibliothek trägt nie eine engere Grenze
   (`KnowledgeLibraryAssetType`).

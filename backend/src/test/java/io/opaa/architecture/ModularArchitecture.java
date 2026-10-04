@@ -316,6 +316,8 @@ public final class ModularArchitecture {
           "knowledge.KnowledgeLibraryRepository#findByScheduleEnabledTrue",
           "knowledge.KnowledgeLibraryRepository#findByOrganizationIdAndExternalAccessState",
           "knowledge.KnowledgeLibraryRepository#findPrivateIdsByOrganizationId",
+          "knowledge.KnowledgeLibraryRepository#findPrivateIdsByOwnerUserIdIn",
+          "knowledge.KnowledgeLibraryRepository#findIdsByErasureRequested",
           "knowledge.KnowledgeLibraryRepository"
               + "#findByExternalAccessStateAndExternalAccessExpiresAtLessThanEqual",
           "knowledge.KnowledgeLibraryRepository"
@@ -333,7 +335,8 @@ public final class ModularArchitecture {
           "library.OrphanedOriginalCleanupService",
           "library.LibraryExternalAccessService",
           "library.LibraryExternalAccessExpiryService",
-          "library.LibraryExternalAccessReminderService");
+          "library.LibraryExternalAccessReminderService",
+          "library.PrivateLibraryDeletionRun");
 
   /**
    * Exact counts about persons that only go to the log, relative to the root, each with the one
@@ -411,13 +414,15 @@ public final class ModularArchitecture {
   static final String DOCUMENT_REPOSITORY = "knowledge.DocumentRepository";
 
   /**
-   * The document service notes the revisit, the library service deletes a library together with its
-   * sync state, and the cleanup service removes inside a run.
+   * The document service notes the revisit, the library service and the erasure of a private
+   * library delete a library together with its sync state, and the cleanup service removes inside a
+   * run.
    */
   static final Set<String> DOCUMENT_DELETERS =
       Set.of(
           "library.LibraryDocumentService",
           "library.KnowledgeLibraryService",
+          "library.PrivateLibraryErasure",
           "indexing.maintenance.StaleDocumentCleanupService");
 
   /** The cleanup service, relative to the root, whose public methods remove documents in a run. */

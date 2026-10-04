@@ -37,6 +37,8 @@ public interface LibraryFolderRepository extends JpaRepository<LibraryFolder, UU
    */
   List<LibraryFolder> findByLibraryId(UUID libraryId);
 
+  long countByLibraryId(UUID libraryId);
+
   /**
    * Backs the root-level half of the create/rename conflict check (#820 acceptance criteria:
    * "Doppelte Namen im selben Parent liefern 409") - exact, case-sensitive match, mirroring the

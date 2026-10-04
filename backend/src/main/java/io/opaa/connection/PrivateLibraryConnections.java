@@ -1,6 +1,7 @@
 package io.opaa.connection;
 
 import io.opaa.common.ValidationException;
+import io.opaa.connection.account.ConnectedAccountService;
 import io.opaa.connection.profile.ConnectionProfile;
 import io.opaa.connection.profile.ConnectionProfileRepository;
 import io.opaa.connection.profile.EffectiveSourceSettings;
@@ -26,6 +27,7 @@ import io.opaa.knowledge.SourceType;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -45,13 +47,18 @@ public class PrivateLibraryConnections {
   private final EffectiveSourceSettings effective;
   private final SourceConnectorRegistry connectors;
 
+  /** Looked up per call: the accounts reach the release, and the release the connectors. */
+  private final ObjectProvider<ConnectedAccountService> connectedAccounts;
+
   public PrivateLibraryConnections(
       ConnectionProfileRepository profiles,
       LibraryConnectionRepository connections,
       PersonAccounts accounts,
       ConnectionSecrets secrets,
       EffectiveSourceSettings effective,
-      SourceConnectorRegistry connectors) {
+      SourceConnectorRegistry connectors,
+      ObjectProvider<ConnectedAccountService> connectedAccounts) {
+    this.connectedAccounts = connectedAccounts;
     this.profiles = profiles;
     this.connections = connections;
     this.accounts = accounts;
@@ -155,6 +162,17 @@ public class PrivateLibraryConnections {
         .flatMap(profiles::findById)
         .ifPresent(
             profile -> requireOwnTarget(profile, effective.of(library, Purpose.SETTINGS_ONLY)));
+  }
+
+  /**
+   * After a private library of {@code ownerUserId} was erased, in the caller's transaction: her
+   * disconnected connections that no private library runs on any more go with it.
+   *
+   * @return how many connections went
+   */
+  @Transactional
+  public int afterErasure(UUID ownerUserId) {
+    return connectedAccounts.getObject().dropDisconnectedWithoutPrivateLibrary(ownerUserId);
   }
 
   /**

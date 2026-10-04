@@ -2,8 +2,10 @@ package io.opaa.indexing.chunk;
 
 import com.pgvector.PGvector;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.ai.document.Document;
@@ -62,6 +64,7 @@ public class VectorStoreWriter {
     if (chunks.isEmpty()) {
       return;
     }
+    requireWritableLibraries(chunks);
     // Zipped up front, not looked up per row via chunks.indexOf(chunk) inside the callback below:
     // JdbcTemplate's ParameterizedPreparedStatementSetter only ever hands back the row item itself,
     // never its index, and indexOf would additionally be wrong for two structurally equal Document
@@ -150,6 +153,82 @@ public class VectorStoreWriter {
             + "' = ?";
     return jdbcTemplate.update(
         sql, toJson(List.copyOf(keysToClear)), toJson(values), documentId.toString());
+  }
+
+  /**
+   * Locks the libraries the chunks name against deletion until this transaction ends and refuses
+   * the write when one is gone or being erased: once an erasure removed a library, no late writer
+   * puts anything of it back. Chunks without a library are not checked.
+   *
+   * @throws ChunkTargetGoneException naming no content, before anything is written
+   */
+  private void requireWritableLibraries(List<Document> chunks) {
+    String[] libraries =
+        chunks.stream()
+            .map(chunk -> chunk.getMetadata().get(VectorChunkStore.LIBRARY_ID_METADATA_KEY))
+            .filter(Objects::nonNull)
+            .map(Object::toString)
+            .distinct()
+            .toArray(String[]::new);
+    if (libraries.length == 0) {
+      return;
+    }
+    List<String> writable =
+        jdbcTemplate.queryForList(
+            "SELECT id::text FROM knowledge_libraries WHERE id = ANY (?::uuid[])"
+                + " AND erasure_requested_at IS NULL FOR KEY SHARE",
+            String.class,
+            (Object) libraries);
+    if (writable.size() < libraries.length) {
+      throw new ChunkTargetGoneException();
+    }
+  }
+
+  /**
+   * Deletes, in the caller's transaction, every chunk in both stores that carries {@code libraryId}
+   * or one of {@code documentIds}.
+   *
+   * @return how many vector rows went
+   */
+  public int deleteAllOf(UUID libraryId, Collection<UUID> documentIds) {
+    String[] documents = documentIds.stream().map(UUID::toString).toArray(String[]::new);
+    int removed =
+        jdbcTemplate.update(
+            "DELETE FROM " + schemaName + "." + tableName + chunksOf(),
+            libraryId.toString(),
+            documents);
+    jdbcTemplate.update(
+        "DELETE FROM chunk_full_text WHERE library_id = ? OR document_id = ANY (?::uuid[])",
+        libraryId,
+        documents);
+    return removed;
+  }
+
+  /** How many chunks in both stores still carry {@code libraryId} or one of {@code documentIds}. */
+  public long countAllOf(UUID libraryId, Collection<UUID> documentIds) {
+    String[] documents = documentIds.stream().map(UUID::toString).toArray(String[]::new);
+    Long vectors =
+        jdbcTemplate.queryForObject(
+            "SELECT count(*) FROM " + schemaName + "." + tableName + chunksOf(),
+            Long.class,
+            libraryId.toString(),
+            documents);
+    Long fullText =
+        jdbcTemplate.queryForObject(
+            "SELECT count(*) FROM chunk_full_text WHERE library_id = ?"
+                + " OR document_id = ANY (?::uuid[])",
+            Long.class,
+            libraryId,
+            documents);
+    return (vectors == null ? 0 : vectors) + (fullText == null ? 0 : fullText);
+  }
+
+  private static String chunksOf() {
+    return " WHERE metadata->>'"
+        + VectorChunkStore.LIBRARY_ID_METADATA_KEY
+        + "' = ? OR metadata->>'"
+        + VectorChunkStore.DOCUMENT_ID_METADATA_KEY
+        + "' = ANY (?)";
   }
 
   private record ChunkWithEmbedding(Document chunk, float[] embedding) {}

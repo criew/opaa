@@ -54,7 +54,10 @@ public class Asset implements OwnedAsset {
   static final Set<String> NEUTRAL_AUDIT_KEYS =
       Set.of(
           "allAccountsGrantAllowed",
+          "cause",
           "changedFields",
+          "chatSourcesRedacted",
+          "chunksRemoved",
           "confidence",
           "datePrecision",
           "diagnosticsLocked",
@@ -64,12 +67,17 @@ public class Asset implements OwnedAsset {
           "externalAccess",
           "extractionVersion",
           "fieldKey",
+          "foldersRemoved",
           "modelId",
           "origin",
+          "originalsRemoved",
           "ownerId",
+          "requestedAt",
           "requestedCount",
           "role",
+          "runsRemoved",
           "sourceType",
+          "spaceAssociationsRemoved",
           "spaceId",
           "state",
           "subjectType");
