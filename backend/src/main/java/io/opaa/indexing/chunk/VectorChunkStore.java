@@ -2,6 +2,7 @@ package io.opaa.indexing.chunk;
 
 import io.opaa.metadata.ChunkMetadataStore;
 import io.opaa.metadata.EmbeddingRateEstimator;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -110,6 +111,23 @@ public class VectorChunkStore implements ChunkMetadataStore {
   public void deleteByLibraryId(UUID libraryId) {
     vectorStore.delete(equalsFilter(LIBRARY_ID_METADATA_KEY, libraryId));
     fullTextChunkStore.deleteByLibraryId(libraryId);
+  }
+
+  /**
+   * Deletes, in the caller's transaction and without swallowing a failure, every chunk of {@code
+   * libraryId} or of one of {@code documentIds} from both stores - for an erasure that verifies.
+   *
+   * @return how many vector chunks went
+   */
+  public int eraseAllOf(UUID libraryId, Collection<UUID> documentIds) {
+    return vectorStoreWriter.deleteAllOf(libraryId, documentIds);
+  }
+
+  /**
+   * How many chunks of {@code libraryId} or of one of {@code documentIds} are left in both stores.
+   */
+  public long remainingOf(UUID libraryId, Collection<UUID> documentIds) {
+    return vectorStoreWriter.countAllOf(libraryId, documentIds);
   }
 
   private Filter.Expression equalsFilter(String metadataKey, UUID value) {

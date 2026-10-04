@@ -53,6 +53,21 @@ public class NotificationService {
     return notificationRepository.deleteByTypeAndCreatedAtBefore(type, cutoff);
   }
 
+  /**
+   * Deletes every notification about {@code objectId}, read or not, in the caller's transaction -
+   * for an object erased with everything that names it.
+   */
+  @Transactional
+  public int deleteAbout(UUID objectId) {
+    return notificationRepository.deleteByObjectId(objectId);
+  }
+
+  /** How many notifications about {@code objectId} remain. */
+  @Transactional(readOnly = true)
+  public long countAbout(UUID objectId) {
+    return notificationRepository.countByObjectId(objectId);
+  }
+
   @Transactional
   public void markRead(UUID notificationId, UUID currentUserId) {
     Notification notification =

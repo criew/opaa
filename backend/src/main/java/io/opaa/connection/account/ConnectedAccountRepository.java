@@ -22,6 +22,8 @@ interface ConnectedAccountRepository extends JpaRepository<ConnectedAccount, UUI
 
   List<ConnectedAccount> findByUserIdAndStateNot(UUID userId, ConnectedAccountState state);
 
+  List<ConnectedAccount> findByUserIdAndState(UUID userId, ConnectedAccountState state);
+
   @Override
   @Query(
       "select a.id as id, a.userId as userId, a.profileId as profileId,"

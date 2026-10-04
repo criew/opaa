@@ -513,13 +513,59 @@ Der Dialog zum Verbinden sagt das vor dem Absenden.
   einer Person; es wird nichts gelöscht, und mit der nächsten Anmeldung geht es ohne Neuverbinden
   weiter.
 - **Deaktivierung** dagegen beendet alle Verbindungen des Kontos und löscht ihre Zugangsdaten:
-  gesperrt, abgelaufen, im Verzeichnis gesperrt oder der Anbieter gelöscht.
+  gesperrt, abgelaufen, im Verzeichnis gesperrt oder der Anbieter gelöscht. Die privaten
+  Bibliotheken der Person ruhen sofort. Eine **Löschfrist**
+  (`OPAA_CONNECTION_PRIVATE_LIBRARY_DELETION_DAYS`, [Deployment](deployment.md)) beginnt nur mit
+  einer ausdrücklichen Deaktivierung: Sperre durch die Verwaltung oder das Verzeichnis, Ablauf
+  eines befristeten Kontos, gelöschter Anbieter. Die Sperre eines lokalen Kontos wegen
+  Inaktivität zählt als Abwesenheit und startet keine Frist. Die Frist läuft ab der aktuellen
+  Sperre; wird ein Konto entsperrt und erneut gesperrt, beginnt sie neu. Der Hinweis an der
+  Bibliothek nennt den Tag, ab dem gelöscht wird. Ist das Konto dann noch deaktiviert, löscht der
+  tägliche Löschlauf sie vollständig (siehe „Private Bibliotheken löschen“). Wird es vorher wieder
+  nutzbar, wird nichts gelöscht; die Person verbindet ihr Konto neu.
 - **Versetzung oder Gruppenwechsel** ändern an bestehenden Verbindungen nichts. Entzieht die
   Systemverwaltung dabei die Freigabe eines Zugangs, läuft die Verbindung weiter und trägt den
   Hinweis „Nicht mehr freigegeben“. Wer die Inhalte in der neuen Funktion nicht mehr braucht, trennt
   die Verbindung selbst.
 - **Abgelaufene Zugangsdaten** nach der Rückkehr, etwa weil das App-Passwort beim Anbieter
   zurückgezogen wurde: „Neu verbinden“ mit neuen Zugangsdaten.
+
+### Private Bibliotheken löschen
+
+Eine private Bibliothek wird auf zwei Wegen gelöscht, beide gleich vollständig:
+
+- **Sofort löschen** durch die Besitzerin selbst, jederzeit. Niemand sonst kann es, auch nicht die
+  Systemverwaltung; für alle anderen gibt es die Bibliothek nicht.
+- **Nach Ablauf der Löschfrist** durch den täglichen Löschlauf, wenn das Konto der Besitzerin so
+  lange ausdrücklich deaktiviert war und es noch ist. Ein ruhendes Konto, eine Abwesenheit – auch
+  die Sperre eines lokalen Kontos wegen Inaktivität –, eine Versetzung oder ein Gruppenwechsel lösen
+  keine Löschung aus.
+
+Gelöscht werden die Dokumente, ihre Abschnitte im Vektor- und im Volltextindex, abgelegte
+Originale, Ordner, Metadatenwerte und -felder, die Läufe samt Laufprotokoll, der Abgleichstand, die
+Zuordnungen zu Räumen und die Benachrichtigungen zur Bibliothek. In Chats, die aus ihr zitiert
+haben, heißt die Quelle danach „Quelle entfernt“: Dateiname und Link sind weg, der Text der Antwort
+bleibt im Chat der Besitzerin. Eine getrennte Verbindung, die nur noch wegen dieser Bibliothek
+bestand, verschwindet mit.
+
+Läuft gerade eine Indexierung, wird die Bibliothek sofort zur Löschung vorgemerkt: Sie wird nicht
+mehr aktualisiert, ein neuer Lauf startet nicht, und der laufende endet beim nächsten Zugriff auf die
+Quelle. Die Löschung schließt von selbst ab, sobald der Lauf beendet ist; verarbeitet er gerade
+eine große Datei, kann das dauern. Nach dem Ende eines Laufs schreibt nichts mehr in die
+Bibliothek, auch kein liegengebliebener Verarbeitungsschritt.
+
+Scheitert die Löschung unterwegs, bleibt die Vormerkung stehen, und der nächste Löschlauf setzt
+fort. Die Datenbank-Einträge werden in einem Schritt gelöscht und am Ende nachgezählt; bleibt etwas
+übrig, wird dieser Schritt ganz zurückgenommen. Abgelegte Originale sind dann womöglich schon
+entfernt: Bis zum Abschluss lässt sich kein Dokument der vorgemerkten Bibliothek mehr öffnen
+(„Die Bibliothek wird gelöscht“).
+
+**Nachweis:** Jede Löschung steht im Revisionsprotokoll als „Private Bibliothek gelöscht“
+(`PRIVATE_LIBRARY_ERASED`) mit Zeitpunkt, Anlass (Besitzerin oder Löschfrist) und der Zahl der
+entfernten Dokumente, Abschnitte, Läufe und weiteren Einträge — ohne Namen, Pfade oder Inhalte.
+Die Verwaltung sieht in der Indexübersicht nur, wie viele private Bibliotheken zur Löschung
+anstehen, und kleine Zahlen nur als „weniger als N“. Sicherungen der Datenbank erfasst die Löschung
+nicht; eine vorher gezogene Sicherung enthält die Bibliothek weiterhin.
 
 ### Wenn ein Anmeldeanbieter deaktiviert oder gelöscht wird
 

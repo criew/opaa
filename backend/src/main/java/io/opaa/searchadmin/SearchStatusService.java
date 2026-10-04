@@ -8,6 +8,7 @@ import io.opaa.indexing.maintenance.MetadataBackfillProgress;
 import io.opaa.indexing.maintenance.MetadataBackfillService;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
+import io.opaa.library.PrivateLibraryDeletionRun;
 import io.opaa.llm.EmbeddingInfo;
 import io.opaa.llm.EmbeddingInfoService;
 import io.opaa.llm.LlmModel;
@@ -47,6 +48,7 @@ import java.util.concurrent.TimeoutException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.embedding.EmbeddingModel;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 /**
@@ -98,6 +100,7 @@ public class SearchStatusService {
   private final QueryProperties queryProperties;
   private final RetrievalPipelineProperties pipelineProperties;
   private final PersonThreshold threshold;
+  private final PrivateLibraryDeletionRun deletionRun;
   private final Clock clock;
 
   /**
@@ -147,6 +150,47 @@ public class SearchStatusService {
       RetrievalPipelineProperties pipelineProperties,
       PersonThreshold threshold,
       Clock clock) {
+    this(
+        llmModelService,
+        connectionTester,
+        embeddingInfoService,
+        embeddingModel,
+        rerankRoleStatusProvider,
+        libraryRepository,
+        documentStatsReader,
+        fullTextIndexFillStateService,
+        metadataBackfillService,
+        modelExtractionCounters,
+        contextPrefixRerunService,
+        schemaChangeService,
+        queryProperties,
+        pipelineProperties,
+        threshold,
+        clock,
+        null);
+  }
+
+  /** {@code deletionRun}, when given, tells how many private libraries are due to be erased. */
+  @Autowired
+  public SearchStatusService(
+      LlmModelService llmModelService,
+      LlmModelConnectionTester connectionTester,
+      EmbeddingInfoService embeddingInfoService,
+      EmbeddingModel embeddingModel,
+      RerankRoleStatusProvider rerankRoleStatusProvider,
+      KnowledgeLibraryRepository libraryRepository,
+      LibraryDocumentStatsReader documentStatsReader,
+      FullTextIndexFillStateService fullTextIndexFillStateService,
+      MetadataBackfillService metadataBackfillService,
+      ModelExtractionCounters modelExtractionCounters,
+      ContextPrefixRerunService contextPrefixRerunService,
+      LibraryMetadataSchemaChangeService schemaChangeService,
+      QueryProperties queryProperties,
+      RetrievalPipelineProperties pipelineProperties,
+      PersonThreshold threshold,
+      Clock clock,
+      PrivateLibraryDeletionRun deletionRun) {
+    this.deletionRun = deletionRun;
     this.threshold = threshold;
     this.llmModelService = llmModelService;
     this.connectionTester = connectionTester;
@@ -207,11 +251,18 @@ public class SearchStatusService {
         chunks += stats.chunkCount();
       }
     }
+    PrivateLibrarySummary.ScheduledPart scheduled = null;
+    if (deletionRun != null) {
+      PrivateLibraryDeletionRun.ScheduledErasures due = deletionRun.scheduledIn(organizationId);
+      scheduled =
+          new PrivateLibrarySummary.ScheduledPart(due.libraries(), due.owners(), due.otherOwners());
+    }
     return PrivateLibrarySummary.of(
         libraryRepository.countByOrganizationIdAndOwnerOnlyTrue(organizationId),
         libraryRepository.countPrivateLibraryOwners(organizationId),
         new LibraryDocumentStats(null, documents, 0, 0, failed, 0, chunks, null),
-        threshold);
+        threshold,
+        scheduled);
   }
 
   /**

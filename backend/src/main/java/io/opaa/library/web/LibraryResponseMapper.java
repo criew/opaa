@@ -125,7 +125,8 @@ final class LibraryResponseMapper {
             .lastTransfer(PermissionTransferResponseMapper.toResponse(lastTransfer))
             .succession(SuccessionStateResponseMapper.toStateResponse(detail.succession()))
             .sourceBlock(SourceBlockResponseMapper.toResponse(detail.sourceBlock()))
-            .privateLibrary(library.isOwnerOnly());
+            .privateLibrary(library.isOwnerOnly())
+            .erasureRequestedAt(library.getErasureRequestedAt());
     LibraryProfileState profile = detail.connectionProfile();
     if (profile != null) {
       response

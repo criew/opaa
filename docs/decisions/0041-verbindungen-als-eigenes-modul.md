@@ -602,6 +602,56 @@ Begründung:
 - **Laufkategorie:** `indexing_jobs.failure_category` hält, warum ein Lauf scheiterte (Sperrgrund,
   abgelehnte Anmeldung), ohne Inhaltsbezug.
 
+## Nachtrag vom 05.10.2026: Löschung privater Bibliotheken (#2165)
+
+- **Löschfrist als Start-Einstellung:** `opaa.connection.private-library-deletion-days`
+  (`OPAA_CONNECTION_PRIVATE_LIBRARY_DELETION_DAYS`, Vorgabe 30) in
+  `connection.token.PrivateLibraryDeletionPeriod`; Grenzen 1–90 als Konstanten, `MAX_DAYS = 90`.
+  Ein Wert außerhalb bricht den Start ab. Die Zeile „Grenzen als `CHECK`“ der Tabelle in
+  Entscheidung 7 gilt damit für keine der beiden Fristen der Personen mehr.
+- **Eine Löschung für beide Wege:** `library.PrivateLibraryErasure#erase` dient der Sofortlöschung
+  durch die Besitzerin (`DELETE /api/v1/libraries/{id}`, für alle anderen `404`) und dem Löschlauf.
+  Zuerst wird der Marker `knowledge_libraries.erasure_requested_at` mit Anlass in eigener
+  Transaktion festgeschrieben. Danach startet kein Lauf mehr (manuell `409`, nach Zeitplan und per
+  Ereignis verworfen). Ein laufender Lauf endet an seiner nächsten Frage nach dem Geheimnis
+  (`LibraryErasureRequestedException`, ein `EndsRun`, über `IndexingRunTemplate` und
+  `RunCredentials`); einen eigenen Abbruchmechanismus in den Konnektoren braucht es nicht, weil
+  jeder entfernte Konnektor vor jeder Anfrage fragt (`RunSecretContract`). Solange ein Lauf
+  `RUNNING` ist, antwortet die Löschung `PENDING` (`202`); was der Lauf bis zu seinem Ende noch
+  schreibt, löscht die Fortsetzung mit. Danach folgt in **einer** Transaktion unter Zeilensperre:
+  Abschnitte in beiden Speichern (der Schreibweg der Abschnitte sperrt die Bibliothekszeile mit
+  `FOR KEY SHARE` und verweigert eine vorgemerkte oder fehlende Bibliothek, sodass auch ein
+  Nachzügler-Thread nach der Löschung nichts zurückschreibt), Verweise außerhalb des Bestands über den Port
+  `knowledge.ErasedLibraryReferences` (Chat-Quellen werden zu „Quelle entfernt“, Raumzuordnungen
+  entfallen), Dokumente, Läufe samt Ereignissen, Benachrichtigungen, die Schale über
+  `registerDeleted`, der Nachweis, die Zeile; Ordner, Metadaten, Abgleichstand, Präsenz und
+  Geheimnisse folgen über `ON DELETE CASCADE`. Die gespeicherten Originale werden vorher und
+  außerhalb der Transaktion entfernt; scheitert die Transaktion, bleibt die Bibliothek vorgemerkt,
+  ihre Dokumente lassen sich nicht mehr öffnen, und die Fortsetzung vollendet die Löschung. Am Ende zählt sie jede Ablage nach. Bleibt etwas übrig, rollt
+  sie zurück; der Marker bleibt, und die nächste Fortsetzung beginnt von vorn.
+- **Nachweis** `PRIVATE_LIBRARY_ERASED` im Revisionsprotokoll mit Zeitpunkt der Vormerkung, Anlass
+  (`OWNER_REQUEST`, `DELETION_PERIOD_EXPIRED`) und Zählern, nur über `Asset#auditPayload`. Die
+  Historientabellen der Rechte, das Verbindungs- und das Diagnoseprotokoll behalten die Kennung der
+  Bibliothek, nie einen Namen; sie haben ihre eigenen Fristen.
+- **Löschlauf** `library.PrivateLibraryDeletionRun`: täglich um 04:45 nach dem Abgleich der
+  Verbindungen. Die Frist hängt an der **aktuellen ausdrücklichen** Deaktivierung
+  (`ConnectionLifecycle#deletionPeriodStartedBefore` über `AccountUsability.Snapshot#deactivationsOf`):
+  Verzeichnissperre, Ablauf, lokale Sperre außer wegen Inaktivität oder gelöschter Anbieter. Sie
+  beginnt beim späteren Zeitpunkt aus festgehaltenem Beginn und aktueller Sperre; ein erneutes
+  Sperren nach einer vom Abgleich nicht gesehenen Reaktivierung startet sie neu. Die Sperre eines
+  lokalen Kontos wegen Inaktivität (`LockReason.INACTIVITY`) startet keine Frist, bis #2260
+  entscheidet, ob sie ruht oder deaktiviert; dasselbe gilt für Löschtag und `scheduledErasureCount`.
+  Ruhend löscht nie. Alle fünf Minuten setzt er die vorgemerkten Löschungen fort.
+- **Verbundenes Konto:** Eine getrennte Verbindung, an der danach keine private Bibliothek mehr
+  hängt, wird mit der Löschung entfernt, protokolliert als `DELETED` mit `LIBRARY_DELETED`.
+- **Sperrgrund mit Datum:** `OWNER_DEACTIVATED` trägt `contentDeletedOn`, den Beginn der
+  festgehaltenen Deaktivierung plus Frist (Port `connection.profile.DeactivationStarts`).
+- **Verwaltungssicht:** Die Indexübersicht nennt `scheduledErasureCount` als Teilzahl der privaten
+  Bibliotheken, maskiert nach `PersonThreshold#disclosesPart`.
+- **Restrisiko:** Die Antworttexte in Chats der Besitzerin bleiben stehen; nur Dateiname und Link
+  ihrer Quellen entfallen. Sicherungen enthalten eine vor der Löschung gesicherte Bibliothek weiter
+  (offen nach Spezifikation).
+
 ## Referenzen
 
 - [connector-connections.md](../features/connector-connections.md)

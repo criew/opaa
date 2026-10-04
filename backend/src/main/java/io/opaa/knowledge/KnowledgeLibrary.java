@@ -221,6 +221,17 @@ public class KnowledgeLibrary extends Asset {
   @Column(name = "core_context_prefix_document_date", nullable = false)
   private boolean coreContextPrefixDocumentDate;
 
+  /**
+   * Since when this library is being erased, {@code null} for none. Written only by {@link
+   * KnowledgeLibraryRepository#requestErasure}, never by a save of this entity.
+   */
+  @Column(name = "erasure_requested_at", insertable = false, updatable = false)
+  private Instant erasureRequestedAt;
+
+  @Enumerated(EnumType.STRING)
+  @Column(name = "erasure_cause", insertable = false, updatable = false, length = 40)
+  private ErasureCause erasureCause;
+
   protected KnowledgeLibrary() {}
 
   private KnowledgeLibrary(
@@ -623,6 +634,19 @@ public class KnowledgeLibrary extends Asset {
     this.coreContextPrefixDocumentDate = documentDate;
     touch();
     return true;
+  }
+
+  /** Whether this library is being erased: it runs no more and takes in nothing. */
+  public boolean isErasureRequested() {
+    return erasureRequestedAt != null;
+  }
+
+  public Instant getErasureRequestedAt() {
+    return erasureRequestedAt;
+  }
+
+  public ErasureCause getErasureCause() {
+    return erasureCause;
   }
 
   public boolean isDiagnosticsLocked() {

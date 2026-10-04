@@ -2,6 +2,7 @@ package io.opaa.connection.profile;
 
 import io.opaa.api.types.ConnectionAuthMethod;
 import io.opaa.connection.token.ConnectionSecrets;
+import io.opaa.connection.token.PrivateLibraryDeletionPeriod;
 import io.opaa.connection.token.SecretOwner;
 import io.opaa.connection.token.SecretOwner.PersonOwned;
 import io.opaa.connection.token.SecretOwner.ProfileOwned;
@@ -11,12 +12,18 @@ import io.opaa.indexing.source.SourceConnectionBlockedException;
 import io.opaa.indexing.source.SourceConnectorRegistry;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.SourceType;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -25,6 +32,7 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 /**
@@ -63,6 +71,9 @@ public class SourceBlocks {
 
   private static final String ACCOUNTS_PAGE = "auf der Seite „Verbundene Konten“";
 
+  private static final DateTimeFormatter DELETION_DAY =
+      DateTimeFormatter.ofPattern("dd.MM.yyyy", Locale.GERMANY);
+
   private static final String LOCKED = "Gesperrt – Inhalt wird nicht mehr aktualisiert.";
   private static final String LOCK_CONTENT_STAYS =
       "; der vorhandene Inhalt bleibt durchsuchbar. Zuständig ist die Systemverwaltung.";
@@ -81,6 +92,12 @@ public class SourceBlocks {
    */
   private final ObjectProvider<SourceConnectorRegistry> connectors;
 
+  /** Looked up per call: the accounts above this package answer it. */
+  private final ObjectProvider<DeactivationStarts> deactivations;
+
+  private final PrivateLibraryDeletionPeriod deletionPeriod;
+
+  /** Without the deletion date: a deactivated owner's block names no day. */
   public SourceBlocks(
       ConnectorTypePolicyRepository policies,
       LibraryConnectionRepository connections,
@@ -88,6 +105,25 @@ public class SourceBlocks {
       ProfileRequirements requirements,
       ConnectionSecrets secrets,
       ObjectProvider<SourceConnectorRegistry> connectors) {
+    this(policies, connections, profiles, requirements, secrets, connectors, null, null);
+  }
+
+  /**
+   * {@code deactivations} and {@code deletionPeriod} date the block of a deactivated owner: its
+   * content is erased from the recorded start of the deactivation plus the period.
+   */
+  @Autowired
+  public SourceBlocks(
+      ConnectorTypePolicyRepository policies,
+      LibraryConnectionRepository connections,
+      ConnectionProfileRepository profiles,
+      ProfileRequirements requirements,
+      ConnectionSecrets secrets,
+      ObjectProvider<SourceConnectorRegistry> connectors,
+      ObjectProvider<DeactivationStarts> deactivations,
+      PrivateLibraryDeletionPeriod deletionPeriod) {
+    this.deactivations = deactivations;
+    this.deletionPeriod = deletionPeriod;
     this.policies = policies;
     this.connections = connections;
     this.profiles = profiles;
@@ -103,6 +139,12 @@ public class SourceBlocks {
    */
   public static SourceBlock secretBlock(
       Reason reason, ConnectionProfile profile, SecretOwner owner) {
+    return secretBlock(reason, profile, owner, null);
+  }
+
+  /** {@link #secretBlock}; a deactivated owner's block names {@code deletedOn} where given. */
+  static SourceBlock secretBlock(
+      Reason reason, ConnectionProfile profile, SecretOwner owner, LocalDate deletedOn) {
     boolean person = owner instanceof PersonOwned;
     String access = "„" + profile.getName() + "“";
     if (owner instanceof ProfileOwned) {
@@ -116,8 +158,13 @@ public class SourceBlocks {
               "Konto deaktiviert: Das Konto der Besitzerin ist deaktiviert, die Verbindung zum"
                   + " Zugang "
                   + access
-                  + " ruht. Der Inhalt wird nicht mehr aktualisiert und nach Ablauf der"
-                  + " Löschfrist gelöscht. Zuständig ist die Systemverwaltung.");
+                  + " ruht. Der Inhalt wird nicht mehr aktualisiert und "
+                  + (deletedOn == null
+                      ? "nach Ablauf der Löschfrist"
+                      : "ab dem " + DELETION_DAY.format(deletedOn))
+                  + " gelöscht, wenn das Konto bis dahin deaktiviert bleibt. Zuständig ist die"
+                  + " Systemverwaltung.",
+              deletedOn);
       case DORMANT ->
           new SourceBlock(
               reason,
@@ -232,10 +279,44 @@ public class SourceBlocks {
   public Map<UUID, SourceBlock> blocksAmong(
       Collection<KnowledgeLibrary> libraries, Set<Reason> considered) {
     Map<UUID, SourceBlock> blocks = new HashMap<>();
-    for (Facts facts : factsOf(libraries, considered)) {
-      facts.firstBlock(considered).ifPresent(block -> blocks.put(facts.library().getId(), block));
+    List<Facts> all = factsOf(libraries, considered);
+    Map<UUID, Instant> starts = deactivationStartsOf(all, considered);
+    for (Facts facts : all) {
+      facts
+          .firstBlock(considered)
+          .map(block -> dated(block, facts, starts))
+          .ifPresent(block -> blocks.put(facts.library().getId(), block));
     }
     return blocks;
+  }
+
+  /** The recorded deactivation starts of the owners whose secret the store refuses for that. */
+  private Map<UUID, Instant> deactivationStartsOf(List<Facts> all, Set<Reason> considered) {
+    if (deactivations == null || !considered.contains(Reason.OWNER_DEACTIVATED)) {
+      return Map.of();
+    }
+    Set<UUID> owners = new HashSet<>();
+    for (Facts facts : all) {
+      if (facts.secretState() == Reason.OWNER_DEACTIVATED
+          && facts.secretOwner() instanceof PersonOwned person) {
+        owners.add(person.userId());
+      }
+    }
+    DeactivationStarts starts = deactivations.getIfAvailable();
+    return owners.isEmpty() || starts == null ? Map.of() : starts.deactivatedSince(owners);
+  }
+
+  /** A deactivated owner's block with the day its content is erased from, where it is known. */
+  private SourceBlock dated(SourceBlock block, Facts facts, Map<UUID, Instant> starts) {
+    if (block.reason() != Reason.OWNER_DEACTIVATED
+        || !(facts.secretOwner() instanceof PersonOwned person)
+        || !starts.containsKey(person.userId())) {
+      return block;
+    }
+    LocalDate deletedOn =
+        LocalDate.ofInstant(
+            starts.get(person.userId()).plus(deletionPeriod.period()), ZoneId.systemDefault());
+    return secretBlock(block.reason(), facts.profile(), person, deletedOn);
   }
 
   /**

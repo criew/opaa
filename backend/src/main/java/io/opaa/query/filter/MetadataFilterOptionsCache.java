@@ -6,6 +6,7 @@ import io.opaa.api.types.AssetGrantSubjectType;
 import io.opaa.asset.AssetChanged;
 import io.opaa.asset.AssetGrantChanged;
 import io.opaa.library.LibraryChanged;
+import io.opaa.library.PrivateLibraryErased;
 import io.opaa.metadata.LibraryMetadataSchemaChanged;
 import io.opaa.permission.GroupMembershipChangeListener;
 import java.util.Collection;
@@ -99,6 +100,12 @@ public class MetadataFilterOptionsCache implements GroupMembershipChangeListener
   /** A library's release for Fremdzugaenge changed. */
   @TransactionalEventListener(phase = TransactionPhase.AFTER_COMPLETION, fallbackExecution = true)
   public void onLibraryChanged(LibraryChanged event) {
+    invalidateAll();
+  }
+
+  /** A private library was erased: its field values must not be offered any more. */
+  @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+  public void onPrivateLibraryErased(PrivateLibraryErased event) {
     invalidateAll();
   }
 

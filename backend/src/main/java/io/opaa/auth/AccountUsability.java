@@ -1,5 +1,6 @@
 package io.opaa.auth;
 
+import io.opaa.api.types.LockReason;
 import io.opaa.api.types.ProviderType;
 import java.time.Clock;
 import java.time.Duration;
@@ -156,6 +157,52 @@ public class AccountUsability {
       return states;
     }
 
+    /**
+     * For each of {@code users} deactivated by an act that ends the account - a directory lock, an
+     * expiry, a local lock other than for inactivity, a provider gone - since when; absent for one
+     * not deactivated or only by the local inactivity lock, which is an absence (#2260).
+     */
+    public Map<UUID, Deactivation> deactivationsOf(Collection<User> users) {
+      Map<UUID, LocalCredentials> rows = localRowsOf(users);
+      Map<UUID, Deactivation> found = new LinkedHashMap<>();
+      for (User user : users) {
+        Deactivation deactivation = deactivationOf(user, rows.get(user.getId()));
+        if (deactivation != null) {
+          found.put(user.getId(), deactivation);
+        }
+      }
+      return found;
+    }
+
+    private Deactivation deactivationOf(User user, LocalCredentials row) {
+      if (withoutInactivity(user, row) != State.DEACTIVATED) {
+        return null;
+      }
+      if (user.isDirectoryLocked()) {
+        return new Deactivation(user.getDirectoryLockedAt());
+      }
+      if (!isLocal(user)) {
+        return new Deactivation(null);
+      }
+      if (row == null) {
+        return null;
+      }
+      Instant expiresAt = row.getExpiresAt();
+      if (expiresAt != null && !expiresAt.isAfter(now)) {
+        return new Deactivation(expiresAt);
+      }
+      return row.getLockedReason() == LockReason.INACTIVITY
+          ? null
+          : new Deactivation(row.getLockedAt());
+    }
+
+    private Map<UUID, LocalCredentials> localRowsOf(Collection<User> users) {
+      return credentials
+          .findAllById(users.stream().filter(AccountUsability::isLocal).map(User::getId).toList())
+          .stream()
+          .collect(Collectors.toMap(LocalCredentials::getUserId, Function.identity()));
+    }
+
     private State stateOf(User user, LocalCredentials row) {
       State state = withoutInactivity(user, row);
       if (state == State.USABLE && inactivityThreshold != null && isInactive(user)) {
@@ -196,6 +243,12 @@ public class AccountUsability {
       return lastActivity == null || lastActivity.isBefore(now.minus(inactivityThreshold));
     }
   }
+
+  /**
+   * A deactivation by an act that ends the account; {@code since} is when that act took effect,
+   * {@code null} where the account does not tell (a provider gone).
+   */
+  public record Deactivation(Instant since) {}
 
   private static boolean isLocal(User user) {
     return LocalIssuer.URN.equals(user.getIssuer());

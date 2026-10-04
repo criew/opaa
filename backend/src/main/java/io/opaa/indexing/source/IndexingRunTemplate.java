@@ -9,6 +9,7 @@ import io.opaa.indexing.job.RequestBudgetExhaustedException;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
+import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.LibraryStorageQuotaService;
 import io.opaa.sourceaccess.SourceRequestMeter;
 import java.time.Clock;
@@ -34,6 +35,7 @@ import org.springframework.dao.DataIntegrityViolationException;
  * InterruptedException} fails the run as interrupted, a {@link SourceConnectionBlockedException}
  * from {@link IndexingRun#credentials} with the block's notice, a {@link
  * SourceCredentialsRejectedException} with its message after telling the port, a {@link
+ * LibraryErasureRequestedException} once the library is being erased, a {@link
  * DataIntegrityViolationException} as "library deleted during the run" (the only way a foreign key
  * to the library can break mid-run), any other exception with its own message.
  */
@@ -61,6 +63,7 @@ public class IndexingRunTemplate {
   private final SourceConnectionResolver connectionResolver;
   private final Clock clock;
   private final ServiceAccountTokens tokens;
+  private final KnowledgeLibraryRepository libraries;
 
   public IndexingRunTemplate(
       IndexingJobService indexingJobService,
@@ -112,6 +115,33 @@ public class IndexingRunTemplate {
       SourceConnectionResolver connectionResolver,
       Clock clock,
       ServiceAccountTokens tokens) {
+    this(
+        indexingJobService,
+        eventRepository,
+        staleDocumentCleanupService,
+        documentRepository,
+        storageQuotaService,
+        connectionResolver,
+        clock,
+        tokens,
+        null);
+  }
+
+  /**
+   * {@code libraries}, when given, is asked with every ask for the secret whether the library is
+   * being erased; then the run ends there ({@link LibraryErasureRequestedException}).
+   */
+  public IndexingRunTemplate(
+      IndexingJobService indexingJobService,
+      IndexingRunEventRepository eventRepository,
+      VanishedDocumentReconciler staleDocumentCleanupService,
+      DocumentRepository documentRepository,
+      LibraryStorageQuotaService storageQuotaService,
+      SourceConnectionResolver connectionResolver,
+      Clock clock,
+      ServiceAccountTokens tokens,
+      KnowledgeLibraryRepository libraries) {
+    this.libraries = libraries;
     this.tokens = tokens;
     this.clock = clock;
     this.indexingJobService = indexingJobService;
@@ -138,7 +168,11 @@ public class IndexingRunTemplate {
     }
     SourceSettings settings;
     try {
+      requireNotErased(library);
       settings = connectionResolver.resolve(library);
+    } catch (LibraryErasureRequestedException e) {
+      progress.fail(e.getMessage());
+      return;
     } catch (SourceConnectionBlockedException e) {
       log.warn(
           "Indexing run {} found the connection of library {} blocked: {}",
@@ -158,7 +192,10 @@ public class IndexingRunTemplate {
             jobId,
             library,
             settings,
-            () -> connectionResolver.currentSecret(library),
+            () -> {
+              requireNotErased(library);
+              return connectionResolver.currentSecret(library);
+            },
             runMode,
             executor.sourceType(),
             progress,
@@ -169,6 +206,7 @@ public class IndexingRunTemplate {
               if (tokens != null) {
                 tokens.discard(rejected);
               }
+              requireNotErased(library);
               return connectionResolver.secretAfterRejection(library, rejected);
             },
             clock);
@@ -214,6 +252,10 @@ public class IndexingRunTemplate {
       failed = true;
       failure = INTERRUPTED_MESSAGE;
       interrupted = true;
+    } catch (LibraryErasureRequestedException e) {
+      log.info("Indexing run {} for library {} ended: erasure requested", jobId, library.getId());
+      failed = true;
+      failure = e.getMessage();
     } catch (SourceConnectionBlockedException e) {
       log.warn(
           "Indexing run {} for library {} was blocked during the run: {}",
@@ -268,6 +310,12 @@ public class IndexingRunTemplate {
       if (interrupted) {
         Thread.currentThread().interrupt();
       }
+    }
+  }
+
+  private void requireNotErased(KnowledgeLibrary library) {
+    if (libraries != null && libraries.isErasureRequested(library.getId())) {
+      throw new LibraryErasureRequestedException();
     }
   }
 

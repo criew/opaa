@@ -312,6 +312,10 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
   @Query("delete from Document d where d.libraryId = :libraryId")
   long deleteByLibraryId(@Param("libraryId") UUID libraryId);
 
+  /** The ids of every document of a library, attachments included. */
+  @Query("select d.id from Document d where d.libraryId = :libraryId")
+  List<UUID> findIdsByLibraryId(@Param("libraryId") UUID libraryId);
+
   /**
    * Backs the upload endpoint's per-library deduplication: the same checksum is rejected within one
    * library and deliberately allowed in another. Scoped to parentless rows, matching {@code
