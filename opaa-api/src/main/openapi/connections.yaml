@@ -1293,8 +1293,8 @@ components:
             How many private libraries the connector refuses the proposed change for, masked by
             their owners like every number about persons: below the minimum group size of owners
             - zero included - only "fewer than". As a part of the organization's private libraries
-            it is exact only where the owners of the organization's other private libraries are
-            none or at least that size; otherwise, from that size on, it is absent. A refusal of a
+            it is exact only where the owners of the organization's other private libraries reach
+            that size as well, none counting as few; otherwise, from that size on, it is absent. A refusal of a
             private library is no veto - the change goes through, and the library rests with the
             reason ACCESS_REMOVED until its owner moves it to another profile. Absent as well
             without a proposal and on a profile not admitting persons.

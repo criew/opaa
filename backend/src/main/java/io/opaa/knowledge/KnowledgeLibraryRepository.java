@@ -88,6 +88,17 @@ public interface KnowledgeLibraryRepository extends JpaRepository<KnowledgeLibra
           + " where l.organizationId = :organizationId and l.ownerOnly = true")
   long countPrivateLibraryOwners(@Param("organizationId") UUID organizationId);
 
+  /**
+   * How many persons own the private libraries of one organization other than {@code excluded} -
+   * the rest a part of their number is masked against.
+   */
+  @Query(
+      "select count(distinct l.ownerUserId) from KnowledgeLibrary l"
+          + " where l.organizationId = :organizationId and l.ownerOnly = true"
+          + " and l.id not in :excluded")
+  long countPrivateLibraryOwnersOutside(
+      @Param("organizationId") UUID organizationId, @Param("excluded") Collection<UUID> excluded);
+
   /** The ids of one organization's private libraries - for leaving them out, never to show. */
   @Query(
       "select l.id from KnowledgeLibrary l"

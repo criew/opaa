@@ -365,11 +365,12 @@ public class ConnectionProfileService {
             .filter(library -> released.contains(library.getId()))
             .toList();
     long owners = refused.stream().map(KnowledgeLibrary::getOwnerUserId).distinct().count();
-    long organizationOwners =
+    long otherOwners =
         refused.isEmpty()
             ? 0
-            : libraries.countPrivateLibraryOwners(refused.getFirst().getOrganizationId());
-    return personNumbers.privateLibraries(released.size(), owners, organizationOwners);
+            : libraries.countPrivateLibraryOwnersOutside(
+                refused.getFirst().getOrganizationId(), released);
+    return personNumbers.privateLibraries(released.size(), owners, otherOwners);
   }
 
   /**

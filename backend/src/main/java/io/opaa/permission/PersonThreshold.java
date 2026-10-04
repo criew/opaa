@@ -28,12 +28,12 @@ public class PersonThreshold {
   }
 
   /**
-   * Whether a part of a number may be told exactly: it rests on {@code part} of the {@code whole}
-   * persons, and both the part and the persons outside it are none or at least N, so its difference
-   * to the whole points at no person either.
+   * Whether a part of a number may be told exactly: the part rests on {@code part} persons and the
+   * rest of the number on {@code rest} persons - counted on their own, a person in both counts in
+   * both - and each reaches N, so neither the part nor its difference to the whole rests on fewer.
+   * A rest of none counts as few.
    */
-  public boolean disclosesPart(long part, long whole) {
-    long rest = whole - part;
-    return discloses(part) && (rest == 0 || discloses(rest));
+  public boolean disclosesPart(long part, long rest) {
+    return discloses(part) && discloses(rest);
   }
 }

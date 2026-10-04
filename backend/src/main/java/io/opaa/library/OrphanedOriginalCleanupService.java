@@ -9,7 +9,6 @@ import io.opaa.knowledge.UploadProperties;
 import io.opaa.knowledge.UploadStoreUnavailableException;
 import io.opaa.knowledge.UploadedOriginalRef;
 import io.opaa.knowledge.UploadedOriginalStore;
-import io.opaa.permission.PersonThreshold;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -64,16 +63,13 @@ public class OrphanedOriginalCleanupService {
   private final UploadedOriginalStore store;
   private final UploadProperties uploadProperties;
   private final Clock clock;
-  private final PersonThreshold personThreshold;
 
   public OrphanedOriginalCleanupService(
       KnowledgeLibraryRepository libraryRepository,
       DocumentRepository documentRepository,
       UploadedOriginalStore store,
       UploadProperties uploadProperties,
-      Clock clock,
-      PersonThreshold personThreshold) {
-    this.personThreshold = personThreshold;
+      Clock clock) {
     this.libraryRepository = libraryRepository;
     this.documentRepository = documentRepository;
     this.store = store;
@@ -138,11 +134,9 @@ public class OrphanedOriginalCleanupService {
     Instant threshold = threshold(appliedMinutes);
     Set<UUID> ownLibraries =
         new HashSet<>(libraryRepository.findIdsByOrganizationId(organizationId));
-    // a private library's area is counted only where a number resting on their owners may be told
-    Set<UUID> uncounted =
-        personThreshold.discloses(libraryRepository.countPrivateLibraryOwners(organizationId))
-            ? Set.of()
-            : libraryRepository.findPrivateIdsByOrganizationId(organizationId);
+    // a private library's area is never counted: as a part of the private libraries it could be
+    // set off against their number in the index status
+    Set<UUID> uncounted = libraryRepository.findPrivateIdsByOrganizationId(organizationId);
     List<OrphanedLibrary> listed = new ArrayList<>();
     int[] counts = new int[4]; // scanned areas, known areas, orphaned areas, orphans listed
     store.forEachStoredLibrary(
