@@ -5,6 +5,7 @@ import io.opaa.api.dto.DiagnosisSelectionEntryResponse;
 import io.opaa.api.dto.DocumentChunksResponse;
 import io.opaa.api.dto.LibraryIndexState;
 import io.opaa.api.dto.LibrarySearchStatusResponse;
+import io.opaa.api.dto.PrivateLibrarySearchSummaryResponse;
 import io.opaa.api.dto.RetrievalCandidateOutcome;
 import io.opaa.api.dto.RetrievalStage;
 import io.opaa.api.dto.RetrievalStageResponse;
@@ -43,6 +44,7 @@ import io.opaa.searchadmin.LibrarySearchStatus;
 import io.opaa.searchadmin.ModelRole;
 import io.opaa.searchadmin.ModelRoleCondition;
 import io.opaa.searchadmin.ModelRoleStatus;
+import io.opaa.searchadmin.PrivateLibrarySummary;
 import io.opaa.searchadmin.SearchDiagnosis;
 import io.opaa.searchadmin.SearchDiagnosisService;
 import io.opaa.searchadmin.SearchPathStatus;
@@ -63,7 +65,18 @@ final class SearchAdminResponseMapper {
     return new SearchStatusResponse(
         status.modelRoles().stream().map(SearchAdminResponseMapper::toModelRoleResponse).toList(),
         status.searchPaths().stream().map(SearchAdminResponseMapper::toSearchPathResponse).toList(),
-        status.libraries().stream().map(SearchAdminResponseMapper::toLibraryResponse).toList());
+        status.libraries().stream().map(SearchAdminResponseMapper::toLibraryResponse).toList(),
+        toPrivateSummaryResponse(status.privateLibraries()));
+  }
+
+  static PrivateLibrarySearchSummaryResponse toPrivateSummaryResponse(
+      PrivateLibrarySummary summary) {
+    return new PrivateLibrarySearchSummaryResponse()
+        .libraryCount(summary.libraryCount())
+        .libraryCountFewerThan(summary.libraryCountFewerThan())
+        .documentCount(summary.documentCount())
+        .failedDocumentCount(summary.failedDocumentCount())
+        .chunkCount(summary.chunkCount());
   }
 
   static SearchDiagnosisContextResponse toDiagnosisContextResponse(

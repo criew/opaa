@@ -64,6 +64,8 @@ class ProfileChangeUnreadableSecretTest {
           mock(CredentialsEncryptor.class),
           wiring.audit,
           mock(CapabilityService.class),
+          new PrivateLibraryRelease(
+              connections, libraries, wiring.transitions, Clock.fixed(NOW, ZoneOffset.UTC)),
           Clock.fixed(NOW, ZoneOffset.UTC));
 
   @Test

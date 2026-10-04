@@ -143,6 +143,12 @@ public class SpaceAssetAssociationService {
     }
     Map<UUID, AssetHeader> headers = headersOf(associations);
     Set<UUID> readable = readableAmong(headers.values(), caller.id(), space.getOrganizationId());
+    headers
+        .keySet()
+        .removeAll(foreignOwnerOnly(headers.values(), readable, space.getOrganizationId()));
+    if (headers.isEmpty()) {
+      return new SpaceAssetLinks(false, false, false, false, List.of());
+    }
     List<SpaceAssetAssociation> visible =
         associations.stream()
             .filter(association -> headers.containsKey(association.getAssetId()))
@@ -256,7 +262,7 @@ public class SpaceAssetAssociationService {
             .organizationId(space.getOrganizationId())
             .actor(caller.id())
             .type(AuditEventType.ASSET_SHARED_TO_SPACE)
-            .object(definitionOf(asset).auditObjectType(), asset.getId(), asset.getName())
+            .object(definitionOf(asset).auditObjectType(), asset.getId(), asset.auditName())
             .after(Map.of("spaceId", space.getId().toString()))
             .outcome(AuditOutcome.SUCCESS)
             .build());
@@ -301,7 +307,7 @@ public class SpaceAssetAssociationService {
                       .organizationId(space.getOrganizationId())
                       .actor(caller.id())
                       .type(AuditEventType.ASSET_DETACHED_FROM_SPACE)
-                      .object(definition.auditObjectType(), asset.getId(), asset.getName())
+                      .object(definition.auditObjectType(), asset.getId(), asset.auditName())
                       .before(Map.of("spaceId", space.getId().toString()))
                       .outcome(AuditOutcome.SUCCESS)
                       .build());
@@ -499,6 +505,27 @@ public class SpaceAssetAssociationService {
       readable.addAll(assetAccessService.readableAssetIds(assetType, userId, organizationId));
     }
     return readable;
+  }
+
+  /**
+   * The owner-only assets among {@code assets} the caller does not read: another person's private
+   * library. Their association does not exist for the caller - not even as "not readable".
+   */
+  private Set<UUID> foreignOwnerOnly(
+      Collection<AssetHeader> assets, Set<UUID> readable, UUID organizationId) {
+    Map<AssetType, Set<UUID>> unreadable = new HashMap<>();
+    for (AssetHeader asset : assets) {
+      if (!readable.contains(asset.id())) {
+        unreadable
+            .computeIfAbsent(asset.assetType(), type -> new LinkedHashSet<>())
+            .add(asset.id());
+      }
+    }
+    Set<UUID> foreign = new LinkedHashSet<>();
+    unreadable.forEach(
+        (assetType, ids) ->
+            foreign.addAll(assetRepository.findOwnerOnlyIdsAmong(assetType, organizationId, ids)));
+    return foreign;
   }
 
   private Map<UUID, AssetHeader> headersOf(List<SpaceAssetAssociation> associations) {

@@ -115,6 +115,7 @@ class GoogleDriveServiceAccountRejectionTest {
         .execute(jobId, library(), IndexingRunMode.FULL);
 
     verify(jobService, never()).failJob(eq(jobId), anyString());
+    verify(jobService, never()).failJob(eq(jobId), anyString(), anyString());
     verify(jobService).completeJob(eq(jobId), anyInt(), anyInt(), anyInt(), anyInt());
     assertThat(endpoint.forms()).as("a new token was signed after the rejection").hasSize(2);
     assertThat(Collections.frequency(drive.tokens(), REJECTED))

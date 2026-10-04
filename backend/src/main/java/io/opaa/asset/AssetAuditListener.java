@@ -42,7 +42,7 @@ class AssetAuditListener {
             .object(
                 assetTypes.require(asset.getAssetType()).auditObjectType(),
                 asset.getId(),
-                asset.getName())
+                asset.auditName())
             .before(event.auditBefore())
             .after(event.auditAfter())
             .outcome(AuditOutcome.SUCCESS);
@@ -69,7 +69,7 @@ class AssetAuditListener {
             .organizationId(asset.getOrganizationId())
             .actor(event.actorUserId())
             .type(definition.createdAuditEventType())
-            .object(definition.auditObjectType(), asset.getId(), asset.getName())
+            .object(definition.auditObjectType(), asset.getId(), asset.auditName())
             .before(event.auditBefore())
             .after(event.auditAfter())
             .outcome(AuditOutcome.SUCCESS)

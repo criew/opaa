@@ -190,10 +190,11 @@ public interface IndexingJobRepository extends JpaRepository<IndexingJob, UUID> 
   @Transactional
   @Query(
       "update IndexingJob j set j.status = io.opaa.indexing.job.JobStatus.FAILED, j.errorMessage ="
-          + " :errorMessage, j.completedAt = :completedAt where j.id = :id and j.status ="
-          + " io.opaa.indexing.job.JobStatus.RUNNING")
+          + " :errorMessage, j.failureCategory = :failureCategory, j.completedAt = :completedAt"
+          + " where j.id = :id and j.status = io.opaa.indexing.job.JobStatus.RUNNING")
   int failIfRunning(
       @Param("id") UUID id,
       @Param("errorMessage") String errorMessage,
+      @Param("failureCategory") String failureCategory,
       @Param("completedAt") Instant completedAt);
 }

@@ -79,7 +79,8 @@ class SearchAdminResponseMapperTest {
                 new ModelRoleStatus(
                     ModelRole.RERANK, ModelRoleCondition.DISABLED, null, null, "Abgeschaltet.")),
             List.of(),
-            List.of());
+            List.of(),
+            new io.opaa.searchadmin.PrivateLibrarySummary(null, 5, null, null, null));
 
     SearchStatusResponse response = SearchAdminResponseMapper.toStatusResponse(status);
 
@@ -106,7 +107,8 @@ class SearchAdminResponseMapperTest {
                     new ModelRoleStatus(
                         ModelRole.RERANK, ModelRoleCondition.UNCONFIGURED, null, null, "Störung.")),
                 List.of(),
-                List.of()));
+                List.of(),
+                new io.opaa.searchadmin.PrivateLibrarySummary(null, 5, null, null, null)));
 
     assertThat(response.getModelRoles().get(0).getState())
         .isEqualTo(SearchModelRoleState.UNCONFIGURED);
@@ -125,7 +127,8 @@ class SearchAdminResponseMapperTest {
                         SearchPathStatus.SearchPathCondition.OUTDATED,
                         2,
                         5)),
-                List.of()));
+                List.of(),
+                new io.opaa.searchadmin.PrivateLibrarySummary(null, 5, null, null, null)));
 
     var path = response.getSearchPaths().get(0);
     assertThat(path.getPath()).isEqualTo(SearchPath.FULL_TEXT);
@@ -170,7 +173,11 @@ class SearchAdminResponseMapperTest {
 
     var response =
         SearchAdminResponseMapper.toStatusResponse(
-                new SearchStatus(List.of(), List.of(), List.of(library)))
+                new SearchStatus(
+                    List.of(),
+                    List.of(),
+                    List.of(library),
+                    new io.opaa.searchadmin.PrivateLibrarySummary(null, 5, null, null, null)))
             .getLibraries()
             .get(0);
 
@@ -248,7 +255,8 @@ class SearchAdminResponseMapperTest {
                             MetadataBackfillProgress.empty(LIBRARY_ID),
                             ModelExtractionStats.empty(LIBRARY_ID),
                             ContextPrefixRerunProgress.empty(LIBRARY_ID),
-                            LibraryMetadataSchemaChangeProgress.empty(LIBRARY_ID)))))
+                            LibraryMetadataSchemaChangeProgress.empty(LIBRARY_ID))),
+                    new io.opaa.searchadmin.PrivateLibrarySummary(null, 5, null, null, null)))
             .getLibraries()
             .get(0);
 

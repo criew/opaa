@@ -181,6 +181,21 @@ class ModularArchitectureFixtureTest {
         .noneSatisfy(violation -> assertThat(violation).contains("PersonNumbers"));
   }
 
+  /**
+   * A view of the administration enumerates every library with the private ones; the shared finder
+   * and a listed system process pass.
+   */
+  @Test
+  void anEnumerationOfPrivateLibrariesOutsideTheListedClassesIsReported() {
+    Scenario scenario = new Scenario("privateenumeration");
+
+    assertThat(
+            scenario.violations(
+                ModularArchitecture::privateLibrariesAreNotEnumeratedOutsideListedClasses))
+        .singleElement(STRING)
+        .contains("searchadmin.IndexStatus.everyLibrary", "findByOrganizationId");
+  }
+
   /** An intermediate step asks the exact counts; the one masking class may. */
   @Test
   void anExactPersonCountOutsideTheMaskIsReported() {

@@ -145,7 +145,7 @@ public class IndexingRunTemplate {
           jobId,
           library.getId(),
           e.block().reason());
-      progress.fail(e.getMessage());
+      progress.fail(e.getMessage(), RunFailureCategory.of(e.block().reason()));
       return;
     } catch (RuntimeException e) {
       log.error(
@@ -174,6 +174,7 @@ public class IndexingRunTemplate {
             clock);
     boolean failed = false;
     String failure = null;
+    RunFailureCategory category = null;
     boolean incomplete = false;
     boolean interrupted = false;
     try {
@@ -200,6 +201,7 @@ public class IndexingRunTemplate {
       tellCredentialsRejected(library);
       failed = true;
       failure = e.getMessage();
+      category = e.category();
     } catch (IndexingRunFailedException e) {
       log.warn("Indexing run {} for library {} failed: {}", jobId, library.getId(), e.getMessage());
       failed = true;
@@ -220,6 +222,7 @@ public class IndexingRunTemplate {
           e.block().reason());
       failed = true;
       failure = e.getMessage();
+      category = RunFailureCategory.of(e.block().reason());
     } catch (DataIntegrityViolationException e) {
       log.error(
           "Indexing run {} failed - target library {} no longer exists", jobId, library.getId(), e);
@@ -234,7 +237,8 @@ public class IndexingRunTemplate {
     recordCost(run, !failed && incomplete);
     log.info(
         "Indexing run {} ({}) for library {}: {} processed, {} failed, {} skipped, attachments"
-            + " {}/{}/{} (processed/skipped/failed), incomplete={}, failed={}, failure={}",
+            + " {}/{}/{} (processed/skipped/failed), incomplete={}, failed={}, category={},"
+            + " failure={}",
         jobId,
         run.sourceType(),
         library.getId(),
@@ -246,12 +250,15 @@ public class IndexingRunTemplate {
         progress.attachmentsFailed(),
         incomplete,
         failed,
+        category,
         failure);
     // The interrupt flag is restored only after the job row is written: a pending interrupt makes
     // the connection acquisition for that write fail and would leave the job RUNNING forever.
     try {
       events.finalizeRun();
-      if (failed) {
+      if (failed && category != null) {
+        progress.fail(failure, category);
+      } else if (failed) {
         progress.fail(failure);
       } else {
         progress.complete();

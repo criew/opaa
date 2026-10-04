@@ -9,6 +9,7 @@ import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.common.NotFoundException;
+import io.opaa.common.ValidationException;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.LibraryAccessService;
@@ -66,6 +67,13 @@ public class LibraryDiagnosticsLockService {
             .findById(libraryId)
             .filter(candidate -> actor.organizationId().equals(candidate.getOrganizationId()))
             .orElseThrow(() -> new NotFoundException("Bibliothek nicht gefunden"));
+    if (library.isOwnerOnly()) {
+      if (!actor.id().equals(library.getOwnerUserId())) {
+        throw new NotFoundException("Bibliothek nicht gefunden");
+      }
+      throw new ValidationException(
+          "Eine private Bibliothek bleibt immer diagnosegesperrt: „Sicht als“ erreicht sie nie.");
+    }
 
     // Deliberately not effectiveRole/requireRole: those fail open for a system admin, and an
     // OWNER grant is self-issuable through that floor - see the class Javadoc.
@@ -83,7 +91,7 @@ public class LibraryDiagnosticsLockService {
               .organizationId(saved.getOrganizationId())
               .actor(actor.id())
               .type(AuditEventType.LIBRARY_DIAGNOSTICS_LOCK_CHANGED)
-              .object(AuditObjectType.KNOWLEDGE_LIBRARY, saved.getId(), saved.getName())
+              .object(AuditObjectType.KNOWLEDGE_LIBRARY, saved.getId(), saved.auditName())
               .before(Map.of("diagnosticsLocked", previous))
               .after(Map.of("diagnosticsLocked", locked))
               .outcome(AuditOutcome.SUCCESS)
@@ -113,7 +121,8 @@ public class LibraryDiagnosticsLockService {
    */
   @Transactional(readOnly = true)
   public long countLocked(UUID organizationId) {
-    return libraryRepository.countByOrganizationIdAndDiagnosticsLockedTrue(organizationId);
+    return libraryRepository.countByOrganizationIdAndDiagnosticsLockedTrueAndOwnerOnlyFalse(
+        organizationId);
   }
 
   /**

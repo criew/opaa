@@ -412,14 +412,15 @@ public class PointInTimeAccessService {
 
   /**
    * The object's name today, or null once it is gone - scoped to the caller's own organization, so
-   * an id from another organization answers like a deleted object rather than confirming a name.
+   * an id from another organization answers like a deleted object rather than confirming a name. A
+   * private library is named neutrally ({@link KnowledgeLibrary#auditName}).
    */
   private String objectName(UUID organizationId, AccessAsOfObjectType objectType, UUID objectId) {
     return objectType == AccessAsOfObjectType.KNOWLEDGE_LIBRARY
         ? libraryRepository
             .findById(objectId)
             .filter(library -> organizationId.equals(library.getOrganizationId()))
-            .map(KnowledgeLibrary::getName)
+            .map(KnowledgeLibrary::auditName)
             .orElse(null)
         : spaceRepository
             .findById(objectId)

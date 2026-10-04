@@ -141,7 +141,7 @@ public final class ConnectionProfileResponseMapper {
         .libraries(impact.libraries())
         .connectedAccounts(toCount(impact.connectedAccounts()))
         .lastForProfileRequirement(lastForProfileRequirement)
-        .rejectedLibraries((long) impact.rejections().size())
+        .rejectedLibraries(impact.rejections().size() + impact.unnamedRejections())
         .rejections(
             impact.rejections().stream()
                 .map(

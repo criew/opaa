@@ -238,7 +238,7 @@ public class ConnectionSecrets {
     ConnectionToken token =
         tokenOf(person).orElseThrow(() -> new SecretRefusedException(Reason.NOT_CONNECTED));
     if (!token.getIssuedFor().equals(target)) {
-      throw new SecretRefusedException(Reason.NOT_CONNECTED);
+      throw new SecretRefusedException(Reason.TARGET_OUTSIDE_PROFILE);
     }
     if (token.expiredAt(clock.instant())) {
       throw new SecretRefusedException(Reason.EXPIRED);

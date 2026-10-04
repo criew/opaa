@@ -115,6 +115,11 @@ class ModularArchitectureTest {
   }
 
   @Test
+  void privateLibrariesAreNotEnumeratedOutsideListedClasses() {
+    ARCHITECTURE.privateLibrariesAreNotEnumeratedOutsideListedClasses().check(mainClasses);
+  }
+
+  @Test
   void theSecretPortStaysWithTheCore() {
     ARCHITECTURE.theSecretPortStaysWithTheCore().check(mainClasses);
   }

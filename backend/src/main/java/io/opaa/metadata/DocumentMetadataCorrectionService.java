@@ -238,7 +238,7 @@ public class DocumentMetadataCorrectionService {
             .organizationId(library.getOrganizationId())
             .actor(caller.id())
             .type(AuditEventType.DOCUMENT_METADATA_CHANGED)
-            .object(AuditObjectType.KNOWLEDGE_LIBRARY, library.getId(), library.getName())
+            .object(AuditObjectType.KNOWLEDGE_LIBRARY, library.getId(), library.auditName())
             .before(payload(document, field, change.before(), vocabulary))
             .after(payload(document, field, change.after(), vocabulary))
             .outcome(AuditOutcome.SUCCESS)

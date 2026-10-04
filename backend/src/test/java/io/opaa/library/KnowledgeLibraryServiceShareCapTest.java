@@ -152,7 +152,8 @@ class KnowledgeLibraryServiceShareCapTest {
             mock(LibraryConnectionService.class),
             mock(ConnectorReleaseService.class),
             OwnAddressDrafts.over(TestSourceConnectors.connectors().registry(), libraryRepository),
-            mock(io.opaa.asset.OwnerOnlyRule.class));
+            mock(io.opaa.asset.OwnerOnlyRule.class),
+            mock(io.opaa.connection.PrivateLibraryConnections.class));
 
     organizationId = UUID.randomUUID();
     ownerId = UUID.randomUUID();

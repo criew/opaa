@@ -44,6 +44,9 @@ import org.hibernate.annotations.DynamicUpdate;
 @Inheritance(strategy = InheritanceType.JOINED)
 public class Asset implements OwnedAsset {
 
+  /** The neutral name of an owner-only asset in every protocol (ADR-0041, Entscheidung 6). */
+  public static final String PRIVATE_AUDIT_NAME = "Private Bibliothek";
+
   @Id private UUID id;
 
   @Convert(converter = AssetTypeConverter.class)
@@ -200,6 +203,14 @@ public class Asset implements OwnedAsset {
 
   public String getName() {
     return name;
+  }
+
+  /**
+   * The name a protocol entry carries: for an {@link #isOwnerOnly() owner-only} asset the neutral
+   * {@link #PRIVATE_AUDIT_NAME}, identified by its id alone - its own name is its owner's.
+   */
+  public String auditName() {
+    return ownerOnly ? PRIVATE_AUDIT_NAME : name;
   }
 
   public String getDescription() {

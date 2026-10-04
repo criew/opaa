@@ -17,6 +17,8 @@ import java.util.UUID;
  *     - with {@code libraryId} the connector decides whether the stored ones stand in
  * @param connectionProfileId the profile the probe runs through; {@code null} for the library's
  *     current one, or without {@code libraryId} for its own address
+ * @param privateLibrary without {@code libraryId}: probe the private library the caller would
+ *     create through her connected account on {@code connectionProfileId}
  */
 public record SourceConnectionTest(
     SourceType sourceType,
@@ -27,7 +29,32 @@ public record SourceConnectionTest(
     Boolean sourceInsecureSsl,
     UUID libraryId,
     ConnectorData connectorSettings,
-    UUID connectionProfileId) {
+    UUID connectionProfileId,
+    boolean privateLibrary) {
+
+  /** A test of a shared library. */
+  public SourceConnectionTest(
+      SourceType sourceType,
+      String sourcePath,
+      URI sourceUrl,
+      String sourceProxy,
+      String sourceCredentials,
+      Boolean sourceInsecureSsl,
+      UUID libraryId,
+      ConnectorData connectorSettings,
+      UUID connectionProfileId) {
+    this(
+        sourceType,
+        sourcePath,
+        sourceUrl,
+        sourceProxy,
+        sourceCredentials,
+        sourceInsecureSsl,
+        libraryId,
+        connectorSettings,
+        connectionProfileId,
+        false);
+  }
 
   /** A test with its own address. */
   public SourceConnectionTest(

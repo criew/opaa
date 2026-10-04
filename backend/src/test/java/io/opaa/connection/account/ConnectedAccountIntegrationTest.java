@@ -257,7 +257,8 @@ class ConnectedAccountIntegrationTest {
     PersonOwned owner = new PersonOwned(profile, person);
 
     assertThat(secrets.current(owner, TARGET).value()).isEqualTo("avogt:" + PASSWORD);
-    assertRefused(() -> secrets.current(owner, "https://andere.example.org"), Reason.NOT_CONNECTED);
+    assertRefused(
+        () -> secrets.current(owner, "https://andere.example.org"), Reason.TARGET_OUTSIDE_PROFILE);
 
     jdbc.update("UPDATE users SET directory_locked_at = now() WHERE id = ?", person);
     assertRefused(() -> secrets.current(owner, TARGET), Reason.OWNER_DEACTIVATED);
@@ -396,16 +397,21 @@ class ConnectedAccountIntegrationTest {
         .andExpect(status().isOk());
 
     assertThat(tokenRows()).isZero();
-    assertThat(stateOf(person)).isEqualTo("DISCONNECTED");
+    assertThat(accountRows(person)).isZero();
     assertThat(logEntries())
         .extracting(entry -> entry.get("event_type"), entry -> entry.get("cause"))
         .contains(tuple("DISCONNECTED", "PROFILE_CHANGED"));
-    // even a secret that reached the store is not handed out on a profile without persons
-    secrets.store(
-        new PersonOwned(profile, person),
-        io.opaa.connection.token.NewSecret.personal("avogt:" + PASSWORD),
-        TARGET);
-    assertThat(blockOf(library).reason()).isEqualTo(Reason.NOT_CONNECTED);
+    // the private library left the profile: its owner moves it, nothing leads to the account page
+    assertThat(blockOf(library).reason()).isEqualTo(Reason.ACCESS_REMOVED);
+    assertThat(blockOf(library).notice())
+        .contains("einem anderen Zugang zu")
+        .doesNotContain("„Verbundene Konten“");
+    assertThat(
+            jdbc.queryForObject(
+                "SELECT profile_id FROM library_connections WHERE library_id = ?",
+                UUID.class,
+                library))
+        .isNull();
     connect("dev-user", PASSWORD).andExpect(status().isBadRequest());
   }
 
@@ -471,7 +477,9 @@ class ConnectedAccountIntegrationTest {
 
     assertThat(resolver.currentSecret(libraryRepository.findById(same).orElseThrow()).value())
         .isEqualTo("avogt:" + PASSWORD);
-    assertThat(blockOf(bound).reason()).isEqualTo(Reason.NOT_CONNECTED);
+    assertThat(blockOf(bound).reason()).isEqualTo(Reason.TARGET_OUTSIDE_PROFILE);
+    assertThat(blockOf(bound).responsible()).isEqualTo("Besitzerin der Bibliothek");
+    assertThat(blockOf(bound).notice()).doesNotContain("kein verbundenes Konto");
   }
 
   /**

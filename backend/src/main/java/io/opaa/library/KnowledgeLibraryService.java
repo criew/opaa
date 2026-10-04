@@ -7,7 +7,6 @@ import io.opaa.api.types.AuditObjectType;
 import io.opaa.api.types.AuditOutcome;
 import io.opaa.api.types.Capability;
 import io.opaa.api.types.DocumentStatus;
-import io.opaa.api.types.ScheduleFrequency;
 import io.opaa.asset.AssetGrantService;
 import io.opaa.asset.AssetOwnerNames;
 import io.opaa.asset.AssetShellService;
@@ -22,6 +21,7 @@ import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
 import io.opaa.connection.ConnectorReleaseService;
 import io.opaa.connection.LibraryConnectionService;
+import io.opaa.connection.PrivateLibraryConnections;
 import io.opaa.connection.profile.EffectiveSourceSettings;
 import io.opaa.connection.profile.SecretTarget;
 import io.opaa.connection.profile.ServerAddress;
@@ -131,8 +131,9 @@ public class KnowledgeLibraryService {
 
   private static final Logger log = LoggerFactory.getLogger(KnowledgeLibraryService.class);
 
-  private static final int MAX_NAME_LENGTH = 255;
-  private static final int MAX_DESCRIPTION_LENGTH = 2000;
+  static final String PRIVATE_LIBRARY_TAKES_NO_CREDENTIALS =
+      "Eine private Bibliothek meldet sich mit dem verbundenen Konto ihrer Besitzerin an und nimmt"
+          + " keine eigenen Zugangsdaten";
 
   /** Stored credentials never follow a new binding, such as an imitated account (ADR-0040). */
   static final String TARGET_CHANGE_NEEDS_CREDENTIALS =
@@ -162,6 +163,7 @@ public class KnowledgeLibraryService {
   private final ConnectorReleaseService connectorRelease;
   private final EffectiveSourceSettings drafts;
   private final OwnerOnlyRule ownerOnlyRule;
+  private final PrivateLibraryConnections privateConnections;
   private final SourceChangeGate changeGate;
 
   public KnowledgeLibraryService(
@@ -187,8 +189,10 @@ public class KnowledgeLibraryService {
       LibraryConnectionService libraryConnections,
       ConnectorReleaseService connectorRelease,
       EffectiveSourceSettings drafts,
-      OwnerOnlyRule ownerOnlyRule) {
+      OwnerOnlyRule ownerOnlyRule,
+      PrivateLibraryConnections privateConnections) {
     this.ownerOnlyRule = ownerOnlyRule;
+    this.privateConnections = privateConnections;
     this.successionSource = successionSource;
     this.connectorRelease = connectorRelease;
     this.drafts = drafts;
@@ -266,6 +270,10 @@ public class KnowledgeLibraryService {
     if (!sameProfile) {
       connectorRelease.requireCreatable(caller, library.getSourceType(), profileId);
     }
+    if (library.isOwnerOnly()) {
+      privateConnections.requireOwnProfile(
+          library.getOwnerUserId(), profileId, library.getSourceType());
+    }
     String previousUrl = library.getSourceUrl();
     String previousProxy = library.getSourceProxy();
     boolean previousInsecureSsl = library.isSourceInsecureSsl();
@@ -273,6 +281,9 @@ public class KnowledgeLibraryService {
     boolean hadCredentials = connectionResolver.holdsCredentials(library);
     Set<String> effectiveChanges = libraryConnections.connect(library, profileId, sourceUrl);
     KnowledgeLibrary updated = libraryRepository.findById(libraryId).orElseThrow();
+    if (updated.isOwnerOnly()) {
+      privateConnections.requireOwnTargetOf(updated);
+    }
     Set<String> changed = new LinkedHashSet<>(List.of("connectionProfile"));
     if (!Objects.equals(previousUrl, updated.getSourceUrl())) {
       changed.add("sourceUrl");
@@ -302,6 +313,7 @@ public class KnowledgeLibraryService {
   public LibraryDetail disconnectProfile(UUID libraryId, CurrentUser caller) {
     KnowledgeLibrary library = loadLibrary(libraryId, caller);
     accessService.requireRole(library, caller.id(), caller.isSystemAdmin(), AssetRole.MANAGER);
+    LibraryConnectionService.requireReleasable(library);
     Optional<LibraryConnectionService.LibraryConnectionView> connection =
         libraryConnections.connectionOf(libraryId);
     if (connection.isPresent()) {
@@ -337,7 +349,7 @@ public class KnowledgeLibraryService {
             .organizationId(library.getOrganizationId())
             .actor(actor)
             .type(AuditEventType.LIBRARY_SOURCE_UPDATED)
-            .object(AuditObjectType.KNOWLEDGE_LIBRARY, library.getId(), library.getName())
+            .object(AuditObjectType.KNOWLEDGE_LIBRARY, library.getId(), library.auditName())
             .before(Map.of("changedFields", fields))
             .after(Map.of("changedFields", fields))
             .outcome(AuditOutcome.SUCCESS)
@@ -371,8 +383,8 @@ public class KnowledgeLibraryService {
       request = request.withSourceUrl(URI.create(address));
     }
     UUID currentUserId = caller.id();
-    String normalizedName = validateName(request.name());
-    validateDescription(request.description());
+    String normalizedName = LibraryFields.name(request.name());
+    LibraryFields.description(request.description());
 
     AssetOwnerType ownerType =
         request.ownerType() != null ? request.ownerType() : AssetOwnerType.USER;
@@ -420,8 +432,10 @@ public class KnowledgeLibraryService {
     // validation as on an update, so an UPLOAD library is refused here too instead of by the
     // database's own chk_knowledge_libraries_schedule.
     if (request.schedule() != null) {
-      ValidatedSchedule schedule =
-          validateSchedule(request.schedule(), sourceConfiguration.sourceType());
+      LibraryFields.Schedule schedule =
+          LibraryFields.schedule(
+              request.schedule(),
+              connectors.descriptor(sourceConfiguration.sourceType()).indexingRun());
       library.updateSchedule(schedule.enabled(), schedule.cron());
     }
 
@@ -437,7 +451,7 @@ public class KnowledgeLibraryService {
 
   private Map<String, Object> libraryAuditPayload(KnowledgeLibrary library) {
     Map<String, Object> payload = new LinkedHashMap<>();
-    payload.put("name", library.getName());
+    payload.put("name", library.auditName());
     // sourceType only, deliberately never sourcePath/sourceUrl/sourceCredentials - the audit log
     // is append-only and never purged the way the library row itself can be (ADR-0018,
     // Entscheidung 4: credentials must appear in no log, and path/url are not "rechtlich
@@ -522,7 +536,7 @@ public class KnowledgeLibraryService {
     Map<UUID, SuccessionFinding> succession = successionSource.findingsAmong(libraries, false);
     // #1931: the reach badge, one grouped query for the whole page like the counts above.
     Map<UUID, AssetReach> reach = accessService.reachOf(libraries);
-    Map<UUID, SourceBlock> locks = libraryConnections.locksOf(libraries);
+    Map<UUID, SourceBlock> locks = libraryConnections.shownBlocksOf(libraries);
 
     return libraries.stream()
         .map(
@@ -572,6 +586,9 @@ public class KnowledgeLibraryService {
     // absent from that unrelated request. Connector-owned fields are replaced when present and
     // left alone when absent.
     boolean replacesSourceConfiguration = hasSourceConfigurationFields(request);
+    if (library.isOwnerOnly() && request.sourceCredentials() != null) {
+      throw new ValidationException(PRIVATE_LIBRARY_TAKES_NO_CREDENTIALS);
+    }
     SourceSettings requestedSettings =
         requestedSettingsChange(library, request, replacesSourceConfiguration);
     SourceConnector connector = connectors.connector(library.getSourceType());
@@ -607,11 +624,14 @@ public class KnowledgeLibraryService {
     // only present when the caller actually intends to change it (LibraryUpdate.schedule), so a
     // request that only renames the library leaves an already-configured schedule untouched.
     boolean replacesSchedule = request.schedule() != null;
-    ValidatedSchedule validatedSchedule =
-        replacesSchedule ? validateSchedule(request.schedule(), library.getSourceType()) : null;
+    LibraryFields.Schedule validatedSchedule =
+        replacesSchedule
+            ? LibraryFields.schedule(
+                request.schedule(), connectors.descriptor(library.getSourceType()).indexingRun())
+            : null;
 
-    String normalizedName = validateName(request.name());
-    validateDescription(request.description());
+    String normalizedName = LibraryFields.name(request.name());
+    LibraryFields.description(request.description());
     String previousName = library.getName();
     String previousDescription = library.getDescription();
     String previousSourcePath = library.getSourcePath();
@@ -648,6 +668,9 @@ public class KnowledgeLibraryService {
       }
     }
     changeGate.apply(library, validatedSettings.withoutCredentials());
+    if (library.isOwnerOnly() && (replacesSourceConfiguration || replacesOwnSettings)) {
+      privateConnections.requireOwnTargetOf(library);
+    }
     KnowledgeLibrary updated = libraryRepository.save(library);
     boolean nameChanged = !Objects.equals(previousName, updated.getName());
     boolean descriptionChanged = !Objects.equals(previousDescription, updated.getDescription());
@@ -668,7 +691,7 @@ public class KnowledgeLibraryService {
               .organizationId(updated.getOrganizationId())
               .actor(currentUserId)
               .type(AuditEventType.LIBRARY_CHANGED)
-              .object(AuditObjectType.KNOWLEDGE_LIBRARY, updated.getId(), updated.getName())
+              .object(AuditObjectType.KNOWLEDGE_LIBRARY, updated.getId(), updated.auditName())
               .before(Map.of("changedFields", changedFields))
               .after(Map.of("changedFields", changedFields))
               .outcome(AuditOutcome.SUCCESS)
@@ -717,7 +740,7 @@ public class KnowledgeLibraryService {
                 .organizationId(updated.getOrganizationId())
                 .actor(currentUserId)
                 .type(AuditEventType.LIBRARY_SOURCE_UPDATED)
-                .object(AuditObjectType.KNOWLEDGE_LIBRARY, updated.getId(), updated.getName())
+                .object(AuditObjectType.KNOWLEDGE_LIBRARY, updated.getId(), updated.auditName())
                 .before(Map.of("changedFields", changedSourceFields))
                 .after(Map.of("changedFields", changedSourceFields))
                 .outcome(AuditOutcome.SUCCESS)
@@ -760,7 +783,7 @@ public class KnowledgeLibraryService {
             .organizationId(saved.getOrganizationId())
             .actor(caller.id())
             .type(AuditEventType.CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED)
-            .object(AuditObjectType.KNOWLEDGE_LIBRARY, saved.getId(), saved.getName())
+            .object(AuditObjectType.KNOWLEDGE_LIBRARY, saved.getId(), saved.auditName())
             .before(Map.of("allAccountsGrantAllowed", previousCap))
             .after(Map.of("allAccountsGrantAllowed", allAccountsGrantAllowed))
             .outcome(AuditOutcome.SUCCESS)
@@ -880,7 +903,7 @@ public class KnowledgeLibraryService {
             .organizationId(library.getOrganizationId())
             .actor(currentUserId)
             .type(AuditEventType.LIBRARY_DELETED)
-            .object(AuditObjectType.KNOWLEDGE_LIBRARY, library.getId(), library.getName())
+            .object(AuditObjectType.KNOWLEDGE_LIBRARY, library.getId(), library.auditName())
             .before(deletionPayload)
             .outcome(AuditOutcome.SUCCESS)
             .build());
@@ -1186,24 +1209,6 @@ public class KnowledgeLibraryService {
     }
   }
 
-  private String validateName(String name) {
-    if (name == null || name.isBlank()) {
-      throw new ValidationException("name ist erforderlich");
-    }
-    String trimmed = name.trim();
-    if (trimmed.length() > MAX_NAME_LENGTH) {
-      throw new ValidationException("name darf höchstens " + MAX_NAME_LENGTH + " Zeichen umfassen");
-    }
-    return trimmed;
-  }
-
-  private void validateDescription(String description) {
-    if (description != null && description.length() > MAX_DESCRIPTION_LENGTH) {
-      throw new ValidationException(
-          "description darf höchstens " + MAX_DESCRIPTION_LENGTH + " Zeichen umfassen");
-    }
-  }
-
   /**
    * A library's quellentyp is required at creation (ADR-0018); its connector alone validates the
    * configuration - the database checks nothing per type (ADR-0038). A connector setting addressed
@@ -1387,59 +1392,6 @@ public class KnowledgeLibraryService {
     return value == null || value.isBlank() ? null : value.trim();
   }
 
-  /**
-   * Validates {@code request} against the four intervalstufen {@link ScheduleFrequency} allows
-   * (#485) and returns the {@code (enabled, cron)} pair {@link KnowledgeLibrary#updateSchedule}
-   * takes - {@code cron} built by {@link LibraryScheduleCodec#toCron}. Rejects a schedule on a
-   * {@code UPLOAD} library outright (#485, Zuschnitt 21.08.2026: "nur Konnektorbibliotheken"),
-   * mirroring the database's own {@code chk_knowledge_libraries_schedule} as a 400-before-insert.
-   */
-  private ValidatedSchedule validateSchedule(LibraryScheduleUpdate request, SourceType sourceType) {
-    ScheduleFrequency frequency = request.frequency();
-    if (frequency == null) {
-      throw new ValidationException("frequency ist erforderlich");
-    }
-    if (frequency != ScheduleFrequency.DISABLED
-        && !connectors.descriptor(sourceType).indexingRun()) {
-      throw new ValidationException(
-          "Ein Zeitplan ist nur für Konnektorbibliotheken verfügbar, nicht für UPLOAD");
-    }
-    Integer hour = request.hour();
-    Integer minute = request.minute();
-    var weekday = request.weekday();
-    switch (frequency) {
-      case DISABLED, HOURLY -> {
-        if (hour != null || minute != null || weekday != null) {
-          throw new ValidationException(
-              "hour, minute und weekday sind für frequency " + frequency + " nicht zulässig");
-        }
-      }
-      case DAILY -> {
-        if (hour == null || minute == null) {
-          throw new ValidationException(
-              "hour und minute sind erforderlich, wenn frequency DAILY ist");
-        }
-        if (weekday != null) {
-          throw new ValidationException("weekday ist für frequency DAILY nicht zulässig");
-        }
-      }
-      case WEEKLY -> {
-        if (hour == null || minute == null || weekday == null) {
-          throw new ValidationException(
-              "hour, minute und weekday sind erforderlich, wenn frequency WEEKLY ist");
-        }
-      }
-    }
-    if (frequency == ScheduleFrequency.DISABLED) {
-      return new ValidatedSchedule(false, null);
-    }
-    return new ValidatedSchedule(
-        true, LibraryScheduleCodec.toCron(frequency, hour, minute, weekday));
-  }
-
-  /** The validated {@code (enabled, cron)} pair {@link KnowledgeLibrary#updateSchedule} takes. */
-  private record ValidatedSchedule(boolean enabled, String cron) {}
-
   /** A validated {@link LibraryCreation}'s source type and settings, for the entity factories. */
   private record SourceConfiguration(SourceType sourceType, SourceSettings settings) {
 
@@ -1519,7 +1471,7 @@ public class KnowledgeLibraryService {
             .organizationId(library.getOrganizationId())
             .actor(caller.id())
             .type(AuditEventType.LIBRARY_SOURCE_UPDATED)
-            .object(AuditObjectType.KNOWLEDGE_LIBRARY, library.getId(), library.getName())
+            .object(AuditObjectType.KNOWLEDGE_LIBRARY, library.getId(), library.auditName())
             .before(Map.of("changedFields", changedFields))
             .after(Map.of("changedFields", changedFields))
             .outcome(AuditOutcome.SUCCESS)
@@ -1561,7 +1513,8 @@ public class KnowledgeLibraryService {
             : LibraryManagementDetail.EMPTY;
     // #1278 review: myRole alone cannot tell a client whether PUT .../diagnostics-lock will
     // succeed - it bypasses to OWNER for a system admin, holdsIndependentOwnerRole never does.
-    boolean diagnosticsLockToggleable = accessService.holdsIndependentOwnerRole(library, userId);
+    boolean diagnosticsLockToggleable =
+        !library.isOwnerOnly() && accessService.holdsIndependentOwnerRole(library, userId);
     return new LibraryDetail(
         library,
         myRole,
@@ -1583,7 +1536,7 @@ public class KnowledgeLibraryService {
                         : LibraryProfileState.of(
                             connection.profile(), myRole.atLeast(AssetRole.MANAGER)))
             .orElse(null),
-        libraryConnections.lockOf(library).orElse(null));
+        libraryConnections.shownBlockOf(library).orElse(null));
   }
 
   private LibraryManagementDetail toManagementDetail(

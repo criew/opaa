@@ -188,7 +188,10 @@ paths:
         nothing is changed - neither the profile nor any library - and the answer is 400 with
         code CONNECTION_PROFILE_CHANGE_REJECTED, whose message names only how many libraries
         and of which category; the reasons come only from previewConnectionProfileChange. A
-        change still needing confirmDiscard is refused with 409 before any connector is asked.
+        private library vetoes nothing: the connector's refusal of one, like a new ownership
+        without persons, releases it from the profile, and it rests with ACCESS_REMOVED until
+        its owner moves it. A change still needing confirmDiscard is refused with 409 before any
+        connector is asked.
         An accepted change leaves the same audit entries and discards the
         same run state as a direct change of each library.
       requestBody:
@@ -824,7 +827,9 @@ components:
         connectionCount:
           type: integer
           format: int64
-          description: The connections of libraries on this profile.
+          description: >
+            The connections of libraries on this profile; private libraries are not counted -
+            they would tell that a person is connected.
         connectedAccountCount:
           description: The persons' connections on this profile, connected or expired.
           allOf:
@@ -858,9 +863,11 @@ components:
         connections:
           type: integer
           format: int64
+          description: The connections of libraries on the profile, private libraries not counted.
         libraries:
           type: integer
           format: int64
+          description: The libraries behind them, private libraries not counted.
         connectedAccounts:
           $ref: "#/components/schemas/PersonCount"
         rejectedLibraries:
@@ -868,12 +875,15 @@ components:
           format: int64
           description: >
             How many libraries the connector refuses the proposed change for; 0 without a
-            proposal (getConnectionProfileImpact).
+            proposal (getConnectionProfileImpact). Private libraries count here and nowhere
+            else: a refusal of one is no veto - the change goes through, and the library rests
+            with the reason ACCESS_REMOVED until its owner moves it to another profile.
         rejections:
           type: array
           description: >
-            Why, one entry per refused library; empty without a proposal. May hold fewer entries
-            than rejectedLibraries where a library may not be named.
+            Why, one entry per refused library; empty without a proposal. Holds fewer entries
+            than rejectedLibraries where a library may not be named: a private library appears
+            with neither its id nor the connector's reason.
           items:
             $ref: "#/components/schemas/ConnectionProfileChangeRejection"
         lastForProfileRequirement:

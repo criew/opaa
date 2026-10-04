@@ -17,7 +17,9 @@ paths:
         detection existed, and the operational metric that stays permanently queryable rather than a
         one-off cleanup that goes stale the moment the next such file is indexed. Scoped to the
         caller's own organization the same way every other admin listing in this API is - never a
-        cross-organization view. Consumed by the "Suche & Indexierung" administration page (#1053).
+        cross-organization view. The documents of private libraries are never listed: their file
+        names are their owner's alone. Consumed by the "Suche & Indexierung" administration page
+        (#1053).
       parameters:
         - name: chunkCountThreshold
           in: query
@@ -675,6 +677,14 @@ components:
           type: string
           nullable: true
           example: Indexing completed successfully
+        failureCategory:
+          type: string
+          nullable: true
+          description: >
+            Why a failed run ended, where the run tells it apart from its message - without any
+            reference to content: the SourceBlockReason of a blocked source, or
+            CREDENTIALS_REJECTED when the source refused the secret; absent for any other end.
+          example: NOT_CONNECTED
         startedAt:
           type: string
           format: date-time

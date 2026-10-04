@@ -112,10 +112,18 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
   /**
    * Backs {@code LowChunkDocumentAuditService#findLowChunkDocuments}: one organization's {@link
    * DocumentStatus#INDEXED} documents at or below {@code chunkCountThreshold} chunks, paged. Backed
-   * by the partial index {@code idx_documents_indexed_chunk_count}.
+   * by the partial index {@code idx_documents_indexed_chunk_count}. The documents of private
+   * libraries are left out: their file names are their owner's alone.
    */
+  @Query(
+      "select d from Document d where d.organizationId = :organizationId and d.status = :status"
+          + " and d.chunkCount <= :chunkCountThreshold and d.libraryId not in"
+          + " (select l.id from KnowledgeLibrary l where l.ownerOnly = true)")
   Page<Document> findByOrganizationIdAndStatusAndChunkCountLessThanEqual(
-      UUID organizationId, DocumentStatus status, int chunkCountThreshold, Pageable pageable);
+      @Param("organizationId") UUID organizationId,
+      @Param("status") DocumentStatus status,
+      @Param("chunkCountThreshold") int chunkCountThreshold,
+      Pageable pageable);
 
   /**
    * Backs {@code StaleDocumentCleanupService#cleanupVanished}: every document of a single {@code

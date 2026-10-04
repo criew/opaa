@@ -183,7 +183,8 @@ class SearchAdminControllerTest {
                                 new MetadataFieldFill(5, 0, 1))),
                         ModelExtractionStats.empty(UUID.randomUUID()),
                         new ContextPrefixRerunProgress(UUID.randomUUID(), 5, 4, 1, 0),
-                        LibraryMetadataSchemaChangeProgress.empty(UUID.randomUUID())))));
+                        LibraryMetadataSchemaChangeProgress.empty(UUID.randomUUID()))),
+                new io.opaa.searchadmin.PrivateLibrarySummary(null, 5, null, null, null)));
 
     mockMvc
         .perform(get("/api/v1/admin/search/status").with(asAdmin()))

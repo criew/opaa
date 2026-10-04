@@ -293,6 +293,36 @@ public final class ModularArchitecture {
   static final String PERSON_NUMBERS = "connection.profile.PersonNumbers";
 
   /**
+   * The finders that enumerate the libraries of an organization or of the installation with the
+   * private ones, relative to the root; the views of the administration take {@code
+   * findSharedByOrganizationId} instead.
+   */
+  static final Set<String> UNFILTERED_LIBRARY_FINDERS =
+      Set.of(
+          "knowledge.KnowledgeLibraryRepository#findAll",
+          "knowledge.KnowledgeLibraryRepository#findByOrganizationId",
+          "knowledge.KnowledgeLibraryRepository#findIdsByOrganizationId",
+          "knowledge.KnowledgeLibraryRepository#findByScheduleEnabledTrue",
+          "knowledge.KnowledgeLibraryRepository#findByOrganizationIdAndExternalAccessState",
+          "knowledge.KnowledgeLibraryRepository"
+              + "#findByExternalAccessStateAndExternalAccessExpiresAtLessThanEqual",
+          "knowledge.KnowledgeLibraryRepository"
+              + "#findByExternalAccessStateAndExternalAccessReminderSentAtIsNullAnd"
+              + "ExternalAccessExpiresAtBetween");
+
+  /**
+   * The system processes that may enumerate private libraries, relative to the root: each one shows
+   * no library's name to anyone or leaves the private ones out itself.
+   */
+  static final Set<String> LIBRARY_ENUMERATORS =
+      Set.of(
+          "indexing.source.LibraryIndexingScheduler",
+          "library.OrphanedOriginalCleanupService",
+          "library.LibraryExternalAccessService",
+          "library.LibraryExternalAccessExpiryService",
+          "library.LibraryExternalAccessReminderService");
+
+  /**
    * The step that stores a person's connection, relative to the root: it trusts that the secret
    * signed in already, so only {@link #ESTABLISHING_PACKAGES} call it.
    */
@@ -1124,6 +1154,32 @@ public final class ModularArchitecture {
         .allowEmptyShould(true);
   }
 
+  /**
+   * Calls of {@link #UNFILTERED_LIBRARY_FINDERS} outside {@link #LIBRARY_ENUMERATORS}: a private
+   * library is its owner's alone and appears in no list of the administration, not even by name.
+   */
+  ArchRule privateLibrariesAreNotEnumeratedOutsideListedClasses() {
+    return noClasses()
+        .that(
+            DescribedPredicate.describe(
+                "are not among " + LIBRARY_ENUMERATORS,
+                javaClass -> {
+                  String name = relativeName(topLevel(javaClass));
+                  return name != null && !LIBRARY_ENUMERATORS.contains(name);
+                }))
+        .should()
+        .accessTargetWhere(
+            DescribedPredicate.describe(
+                "call one of " + UNFILTERED_LIBRARY_FINDERS,
+                access ->
+                    UNFILTERED_LIBRARY_FINDERS.contains(
+                        relativeName(access.getTargetOwner()) + "#" + access.getName())))
+        .because(
+            "the administration sees private libraries only summed up (ADR-0041, Entscheidung 6);"
+                + " its views take findSharedByOrganizationId")
+        .allowEmptyShould(true);
+  }
+
   /** Calls of {@link #ESTABLISHED} outside {@link #ESTABLISHING_PACKAGES}. */
   ArchRule aConnectionIsEstablishedOnlyAfterItsSignIn() {
     String owner = ESTABLISHED.substring(0, ESTABLISHED.indexOf('#'));
@@ -1219,6 +1275,7 @@ public final class ModularArchitecture {
         personNumbersLeaveOnlyMasked(),
         aConnectionIsEstablishedOnlyAfterItsSignIn(),
         theForeignContextNeverUsesTheOwnFormula(),
+        privateLibrariesAreNotEnumeratedOutsideListedClasses(),
         theProfileSupportIsReadInOnePlace(),
         onlyTheKnownClassesDeleteDocuments(),
         theSecretPortStaysWithTheCore(),
