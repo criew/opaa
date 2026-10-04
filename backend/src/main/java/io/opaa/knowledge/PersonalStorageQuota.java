@@ -27,7 +27,10 @@ public class PersonalStorageQuota {
     this.configuredDefault = configuredDefault;
   }
 
-  /** The bytes all private libraries of {@code userId} occupy together. */
+  /**
+   * The bytes all private libraries of {@code userId} occupy together - one marked for erasure
+   * included until its erasure has removed its documents.
+   */
   public long usageOf(UUID userId) {
     return documentRepository.sumFileSizeOfPrivateLibrariesOwnedBy(userId);
   }

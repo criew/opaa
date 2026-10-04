@@ -287,7 +287,10 @@ class ModularArchitectureFixtureTest {
                         "searchadmin.StorageReport.sumOf", "sumFileSizeOfPrivateLibrariesOwnedBy"))
         .noneSatisfy(violation -> assertThat(violation).contains("MyPrivateStorageController"))
         .noneSatisfy(violation -> assertThat(violation).contains("DocumentIngestService"))
-        .noneSatisfy(violation -> assertThat(violation).contains("LibraryStorageQuotaService."));
+        .noneSatisfy(
+            violation ->
+                assertThat(violation)
+                    .contains("Method <" + FIXTURES + ".personalusage.knowledge."));
   }
 
   /**

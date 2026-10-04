@@ -108,6 +108,27 @@ class PrivateStorageQuotaIntegrationTest {
   }
 
   /**
+   * A private library marked for erasure counts with what it still stores until the erasure has
+   * removed it: the quota counts what is stored, not what is about to go.
+   */
+  @Test
+  void aLibraryMarkedForErasureCountsUntilItIsErased() throws Exception {
+    KnowledgeLibrary erased = privateLibraryOf(ownerId);
+    KnowledgeLibrary other = privateLibraryOf(ownerId);
+    assertThat(ingest(erased, "vorgemerkt", 600)).isEqualTo(DocumentIngestResult.PROCESSED);
+    jdbcTemplate.update(
+        "UPDATE knowledge_libraries SET erasure_requested_at = now(),"
+            + " erasure_cause = 'OWNER_REQUEST' WHERE id = ?",
+        erased.getId());
+
+    assertThatThrownBy(() -> ingest(other, "zu-gross", 600))
+        .isInstanceOf(PersonalQuotaExhaustedException.class);
+    mockMvc
+        .perform(get("/api/v1/me/private-storage").with(devUser()))
+        .andExpect(jsonPath("$.usedBytes").value(600));
+  }
+
+  /**
    * Four runs into four private libraries of one person at once, each trying more than the whole
    * quota: what is stored together ends exactly at the limit, never past it.
    */
