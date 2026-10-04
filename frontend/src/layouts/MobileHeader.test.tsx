@@ -3,11 +3,16 @@ import { render, screen } from '@testing-library/react'
 import { hexToRgb, ThemeProvider } from '@mui/material/styles'
 import type { PaletteMode } from '@mui/material'
 import { describe, expect, it } from 'vitest'
+import { MemoryRouter } from 'react-router'
 import { createAppTheme } from '../theme/theme'
 import MobileHeader from './MobileHeader'
 
 function renderInMode(mode: PaletteMode, ui: ReactElement) {
-  return render(<ThemeProvider theme={createAppTheme(mode)}>{ui}</ThemeProvider>)
+  return render(
+    <MemoryRouter>
+      <ThemeProvider theme={createAppTheme(mode)}>{ui}</ThemeProvider>
+    </MemoryRouter>,
+  )
 }
 
 /** The theme's `text.primary` as jsdom's `getComputedStyle` would report it, not a hardcoded value - so

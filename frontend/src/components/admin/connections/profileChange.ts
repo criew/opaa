@@ -46,10 +46,14 @@ export function admitsPersons(ownership: ConnectionOwnership): boolean {
   }
 }
 
-/** A number of persons exactly as the API rounds it: the count, or "weniger als N". */
-export function personCountLabel(persons: PersonCount): string {
-  if (persons.fewerThan != null) return `weniger als ${persons.fewerThan}`
-  return String(persons.count ?? 0)
+/**
+ * A number of persons exactly as the API rounds it: the count, or "weniger als N". Nothing is
+ * derived from it; a count the API withholds reads "nicht ausgewiesen".
+ */
+export function personCountLabel(persons: PersonCount | null | undefined): string {
+  if (persons?.fewerThan != null) return `weniger als ${persons.fewerThan}`
+  if (persons?.count != null) return String(persons.count)
+  return 'nicht ausgewiesen'
 }
 
 /** The German name of the kind of a connector's refusal. */

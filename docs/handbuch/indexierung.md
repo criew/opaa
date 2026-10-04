@@ -400,9 +400,23 @@ sichtbar. Das Formular richtet sich nach der Quellart:
   sich ein Zugang nicht speichern; das Formular sagt das, statt die Vorgaben zu verwerfen.
 
 Die Liste zeigt je Zugang Quellart, Server-Adresse, Anmeldeart, Besitzart und die Zahl der
-Verbindungen, dazu einen Hinweis, wenn das Client-Secret bald abläuft. „Alle Verbindungen trennen“
-und „Löschen“ nennen vor der Bestätigung die Zahl der Betroffenen, ebenso eine Änderung, die
-Geheimnisse verwirft. Solange die Angaben der Quellart beim Bearbeiten eines Zugangs noch geladen
+Verbindungen von Bibliotheken, dazu einen Hinweis, wenn das Client-Secret bald abläuft. Zwei weitere
+Spalten zählen die **verbundenen Konten** von Personen auf dem Zugang
+([Benutzerverwaltung](benutzerverwaltung.md), Abschnitt 12):
+
+| Spalte | Zählt | Darstellung |
+|---|---|---|
+| **Verbundene Konten** | die Konten von Personen auf dem Zugang, verbundene und abgelaufene | genau ab der Mindestgruppengröße, darunter — auch bei null — nur „weniger als N“ |
+| **Davon abgelaufen** | die abgelaufenen unter ihnen | wie oben; „nicht ausgewiesen“, wo die Zahl zusammen mit der Gesamtzahl auf weniger Personen als die Mindestgruppengröße schließen ließe |
+
+Die Seite zeigt die Zahlen genau so, wie OPAA sie liefert, und rechnet nichts daraus: „weniger als N“
+unterscheidet null nicht von einer kleinen Zahl, und keine Anzeige, kein Hinweistext und keine
+Rückfrage nennt eine genauere Zahl oder die Personen. „Alle Verbindungen trennen“ und „Löschen“
+nennen vor der Bestätigung die Zahl der betroffenen Verbindungen und, in derselben Rundung, der
+verbundenen Konten; eine Änderung, die Geheimnisse verwirft, nennt vorher die Zahl der Betroffenen.
+Unter der Liste stellt die
+Systemverwaltung im Abschnitt **„Verbindungsprotokoll“** dessen Aufbewahrungsfrist ein
+([Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), Abschnitt 12). Solange die Angaben der Quellart beim Bearbeiten eines Zugangs noch geladen
 werden, sagt das Formular das und lässt noch nicht speichern.
 
 **Vorschau beim Bearbeiten.** Ändert eine Bearbeitung, was für die Bibliotheken auf dem Zugang gilt
@@ -618,7 +632,7 @@ steht in ihren Kapiteln.
 | Client-ID, Mandant, Scopes oder Anmeldeart ändern | wie oben, ohne Adresswechsel: alle Verbindungen müssen neu verbunden werden |
 | Vorgaben, Proxy oder Zertifikatsprüfung ändern | Die Bibliotheken behalten ihre Geheimnisse, es sei denn, eine Vorgabe ändert, woran der Konnektor sie bindet; dann gilt die Bestätigung wie oben für die Betroffenen. Entfällt eine Vorgabe, wird ihr bisheriger Wert zur eigenen Einstellung jeder Bibliothek auf dem Zugang; sie laufen unverändert weiter |
 | nur ein neues Client-Secret zur selben Client-ID | keine; die Verbindungen bleiben |
-| „Alle Verbindungen trennen“ (Notabschaltung) | alle Geheimnisse sofort verworfen, der Zugang bleibt |
+| „Alle Verbindungen trennen“ (Notabschaltung) | alle Geheimnisse sofort verworfen, der Zugang bleibt. Personen mit verbundenem Konto werden benachrichtigt und müssen ihr Konto selbst neu verbinden; die Rückfrage sagt das bei einem Zugang, der Personen zulässt |
 | Zugang löschen | alle Geheimnisse verworfen; die Bibliotheken bleiben mit Bestand und dem Hinweis „Zugang entfernt“ stehen |
 
 Jede Änderung, die die Konfiguration einer Bibliothek auf dem Zugang verändert (Server-Adresse,

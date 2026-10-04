@@ -197,4 +197,17 @@ describe('SettingsPage', () => {
     expect(screen.queryByRole('link', { name: 'Passwort ändern' })).not.toBeInTheDocument()
     expect(screen.queryByText(/Ihr Passwort verwaltet/)).not.toBeInTheDocument()
   })
+
+  it('has the connected accounts as a tab of their own', async () => {
+    renderWithProviders(
+      <Routes>
+        <Route path="/settings/:tab" element={<SettingsPage />} />
+      </Routes>,
+      { withRouter: true, initialRoute: '/settings/accounts' },
+    )
+
+    expect(screen.getByRole('tab', { name: 'Verbundene Konten', selected: true })).toBeVisible()
+    expect(await screen.findByRole('heading', { name: 'Verbundene Konten' })).toBeInTheDocument()
+    expect(await screen.findByText('Zugang Nextcloud intern')).toBeInTheDocument()
+  })
 })
