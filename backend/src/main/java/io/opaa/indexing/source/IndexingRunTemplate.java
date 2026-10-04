@@ -11,6 +11,7 @@ import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.LibraryStorageQuotaService;
 import io.opaa.sourceaccess.SourceRequestMeter;
+import java.time.Clock;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -31,7 +32,8 @@ import org.springframework.dao.DataIntegrityViolationException;
  * job should carry. A {@link RequestBudgetExhaustedException} ends the run as truncated - noted
  * with the body's {@link IndexingRun#budgetContinuation continuation}, never failed. An {@link
  * InterruptedException} fails the run as interrupted, a {@link SourceConnectionBlockedException}
- * from {@link IndexingRun#currentCredentials} with the block's notice, a {@link
+ * from {@link IndexingRun#credentials} with the block's notice, a {@link
+ * SourceCredentialsRejectedException} with its message after telling the port, a {@link
  * DataIntegrityViolationException} as "library deleted during the run" (the only way a foreign key
  * to the library can break mid-run), any other exception with its own message.
  */
@@ -57,6 +59,7 @@ public class IndexingRunTemplate {
   private final DocumentRepository documentRepository;
   private final LibraryStorageQuotaService storageQuotaService;
   private final SourceConnectionResolver connectionResolver;
+  private final Clock clock;
 
   public IndexingRunTemplate(
       IndexingJobService indexingJobService,
@@ -65,6 +68,26 @@ public class IndexingRunTemplate {
       DocumentRepository documentRepository,
       LibraryStorageQuotaService storageQuotaService,
       SourceConnectionResolver connectionResolver) {
+    this(
+        indexingJobService,
+        eventRepository,
+        staleDocumentCleanupService,
+        documentRepository,
+        storageQuotaService,
+        connectionResolver,
+        Clock.systemUTC());
+  }
+
+  /** {@code clock} measures how long a run reuses its secret - for tests. */
+  public IndexingRunTemplate(
+      IndexingJobService indexingJobService,
+      IndexingRunEventRepository eventRepository,
+      VanishedDocumentReconciler staleDocumentCleanupService,
+      DocumentRepository documentRepository,
+      LibraryStorageQuotaService storageQuotaService,
+      SourceConnectionResolver connectionResolver,
+      Clock clock) {
+    this.clock = clock;
     this.indexingJobService = indexingJobService;
     this.eventRepository = eventRepository;
     this.staleDocumentCleanupService = staleDocumentCleanupService;
@@ -115,7 +138,9 @@ public class IndexingRunTemplate {
             progress,
             events,
             documentRepository,
-            storageQuotaService);
+            storageQuotaService,
+            rejected -> connectionResolver.secretAfterRejection(library, rejected),
+            clock);
     boolean failed = false;
     String failure = null;
     boolean incomplete = false;
@@ -134,6 +159,16 @@ public class IndexingRunTemplate {
           e.getMessage());
       recordBudgetExhausted(run, e);
       incomplete = true;
+    } catch (SourceCredentialsRejectedException e) {
+      log.warn(
+          "Indexing run {} for library {} ended with category {}: {}",
+          jobId,
+          library.getId(),
+          e.category(),
+          e.getMessage());
+      tellCredentialsRejected(library);
+      failed = true;
+      failure = e.getMessage();
     } catch (IndexingRunFailedException e) {
       log.warn("Indexing run {} for library {} failed: {}", jobId, library.getId(), e.getMessage());
       failed = true;
@@ -194,6 +229,15 @@ public class IndexingRunTemplate {
       if (interrupted) {
         Thread.currentThread().interrupt();
       }
+    }
+  }
+
+  /** A failure to tell the port is logged; it never keeps the run from ending. */
+  private void tellCredentialsRejected(KnowledgeLibrary library) {
+    try {
+      connectionResolver.credentialsRejected(library);
+    } catch (RuntimeException e) {
+      log.warn("Failed to report the rejected credentials of library {}", library.getId(), e);
     }
   }
 

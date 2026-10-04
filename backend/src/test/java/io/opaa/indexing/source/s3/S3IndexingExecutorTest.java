@@ -133,7 +133,7 @@ class S3IndexingExecutorTest {
 
   private S3IndexingExecutor executorOver(FakeS3ObjectStore objectStore) throws S3AccessException {
     S3ClientFactory clientFactory = mock(S3ClientFactory.class);
-    when(clientFactory.createForRun(any(), any())).thenReturn(objectStore);
+    when(clientFactory.createForRun(any(), any(), any())).thenReturn(objectStore);
     return new S3IndexingExecutor(
         clientFactory,
         properties,

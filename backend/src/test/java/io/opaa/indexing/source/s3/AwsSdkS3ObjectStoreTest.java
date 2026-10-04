@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.indexing.job.RequestBudgetExhaustedException;
+import io.opaa.indexing.source.SourceBlock;
+import io.opaa.indexing.source.SourceConnectionBlockedException;
 import io.opaa.s3.S3AccessException;
 import io.opaa.s3.S3Connection;
 import io.opaa.s3.S3Credentials;
@@ -189,6 +191,56 @@ class AwsSdkS3ObjectStoreTest {
     assertThat(server.seen().get(0).headers()).containsEntry("x-amz-security-token", SESSION_TOKEN);
     assertThat(server.seen().get(0).headers().get("authorization"))
         .contains("Credential=" + ACCESS_KEY);
+  }
+
+  @Test
+  void aRunStoreSignsEveryRequestWithTheCredentialsValidThen() throws Exception {
+    AtomicReference<S3Credentials> current =
+        new AtomicReference<>(new S3Credentials(ACCESS_KEY, SECRET_KEY, null));
+    S3ObjectStore store = runStore(current::get);
+
+    store.headObject("docs", "2025/a.pdf");
+    current.set(new S3Credentials("AKIARENEWEDKEY", "erneuert", null));
+    store.headObject("docs", "2025/a.pdf");
+
+    assertThat(server.seen().get(0).headers().get("authorization"))
+        .contains("Credential=" + ACCESS_KEY);
+    assertThat(server.seen().get(1).headers().get("authorization"))
+        .contains("Credential=AKIARENEWEDKEY");
+  }
+
+  /** The SDK wraps what a credentials provider throws; a refusal still arrives as itself. */
+  @Test
+  void aRefusalRaisedWhileSigningArrivesAsTheRefusalNotAsAnAccessFailure() throws Exception {
+    SourceConnectionBlockedException blocked =
+        new SourceConnectionBlockedException(
+            new SourceBlock(SourceBlock.Reason.NOT_CONNECTED, "Verwaltende", "getrennt"));
+    S3ObjectStore store =
+        runStore(
+            () -> {
+              throw blocked;
+            });
+
+    assertThatThrownBy(() -> store.listObjects(S3Scope.of("docs", ""), null)).isSameAs(blocked);
+    assertThat(server.seen()).as("nothing was sent").isEmpty();
+  }
+
+  private S3ObjectStore runStore(java.util.function.Supplier<S3Credentials> current)
+      throws Exception {
+    S3Connection connection =
+        new S3Connection(
+            URI.create(server.endpoint()),
+            "us-east-1",
+            true,
+            new S3Credentials(ACCESS_KEY, SECRET_KEY, null),
+            null,
+            -1,
+            false);
+    S3ObjectStore store =
+        new S3ClientFactory(properties(1000, 1, 0), TargetAddressValidator.disabled())
+            .createForRun(connection, List.of(), current);
+    opened.add(store);
+    return store;
   }
 
   @Test

@@ -22,9 +22,9 @@ von foundation, format und knowledge ab.
 - **Einstellungen:** Alles Konnektoreigene ist ein Record im Konnektorpaket und steht als ein
   JSON-Objekt in `source_settings`; der Kern reicht es als `ConnectorData` durch.
 - **Ziel, Geheimnis und Einstellungen kommen nur vom Kern** (ADR-0041, 3a): im Lauf über
-  `IndexingRun#settings()` (ohne Geheimnis) und `#currentCredentials()`, das bei jedem Aufruf das
-  jetzt gültige Geheimnis vom Port holt; sonst im Aufruf. Kein Konnektor hält oder erzeugt einen
-  `SourceConnectionResolver` oder liest aus `KnowledgeLibrary` mehr als `getSourcePath`/`getWebhookSecret`.
+  `IndexingRun#settings()` (ohne Geheimnis) und `#credentials()`, vor jeder Anfrage bzw. Anmeldung
+  gefragt (`RunCredentials`; `FileSync` vor jedem Store-Zugriff; nach `401` einmal `renewedAfterRejection`,
+  sonst `SourceCredentialsRejectedException`); sonst im Aufruf. Kein Konnektor hält oder erzeugt einen `SourceConnectionResolver` oder liest aus `KnowledgeLibrary` mehr als `getSourcePath`/`getWebhookSecret`.
 - **Dienstkonto-Schlüssel signiert der Kern** (ADR-0040): Der Konnektor bekommt nur das Token aus
   `ServiceAccountTokens` und meldet imitiertes Konto und feste Adresse (`assertionSubject`).
 - **Geheimnisse stehen nie in `source_settings`** — die Spalte ist unverschlüsselt und erscheint in
@@ -38,7 +38,7 @@ von foundation, format und knowledge ab.
   einen `ListingOutcome`; Fortschritt, Protokoll und Abgleich durch Abwesenheit besitzt der Rahmen.
 - **Dateiablagen** implementieren `FileStore` (mit Änderungsprotokoll auch `ChangeFeed`) aus
   `indexing.filesync`; Abgleich und Änderungslauf besitzt `FileSync`. Tests: `FileStoreContract`.
-- **Push-Adapter** (`confluence.webhook`, `s3.events`) über ihrem Konnektor, je eigener Port.
+- **Push-Adapter** (`confluence.webhook`, `s3.events`) über ihrem Konnektor, eigener Port.
 - **Netzzugriff:** HTTP (auch WebDAV) über `io.opaa.sourceaccess`, S3 über `io.opaa.s3`, SMB nur
   über `smb.SmbShareClient`. Testdoppel: `S3TestFixture`, `FakeNextcloudServer`, `SambaFixture`.
 

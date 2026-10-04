@@ -2,8 +2,10 @@ package io.opaa.s3;
 
 import java.net.URI;
 import java.time.Duration;
+import java.util.function.Supplier;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.AwsCredentials;
+import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.AwsSessionCredentials;
 
 /**
@@ -68,22 +70,31 @@ public record S3ClientSettings(
   /** The settings of {@code connection} under the given request bounds. */
   public static S3ClientSettings of(
       S3Connection connection, Duration requestTimeout, int maxRetries, Duration retryBackoff) {
-    S3Credentials c = connection.credentials();
-    AwsCredentials credentials =
-        c.hasSessionToken()
-            ? AwsSessionCredentials.create(c.accessKey(), c.secretKey(), c.sessionToken())
-            : AwsBasicCredentials.create(c.accessKey(), c.secretKey());
     return new S3ClientSettings(
         connection.endpoint(),
         connection.region(),
         connection.pathStyle(),
-        credentials,
+        aws(connection.credentials()),
         connection.proxyHost(),
         connection.proxyPort(),
         connection.insecureSsl(),
         requestTimeout,
         maxRetries,
         retryBackoff);
+  }
+
+  /**
+   * A provider the SDK asks before signing every request, answering what {@code current} answers
+   * then; what {@code current} throws reaches the SDK.
+   */
+  public static AwsCredentialsProvider current(Supplier<S3Credentials> current) {
+    return () -> aws(current.get());
+  }
+
+  private static AwsCredentials aws(S3Credentials c) {
+    return c.hasSessionToken()
+        ? AwsSessionCredentials.create(c.accessKey(), c.secretKey(), c.sessionToken())
+        : AwsBasicCredentials.create(c.accessKey(), c.secretKey());
   }
 
   public boolean hasProxy() {

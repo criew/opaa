@@ -197,6 +197,18 @@ class IndexingRunTest {
     assertThat(Thread.currentThread().isInterrupted()).isFalse();
   }
 
+  /** A source refused mid-item - an attachment's download, say - ends the run, not the item. */
+  @Test
+  void rethrowRunEndingLetsARefusedSourcePassEvenAsACause() {
+    SourceConnectionBlockedException blocked =
+        new SourceConnectionBlockedException(
+            new SourceBlock(SourceBlock.Reason.NOT_CONNECTED, "Verwaltende", "getrennt"));
+
+    assertThatThrownBy(() -> IndexingRun.rethrowRunEnding(blocked)).isSameAs(blocked);
+    assertThatThrownBy(() -> IndexingRun.rethrowRunEnding(new IllegalStateException(blocked)))
+        .isSameAs(blocked);
+  }
+
   private Document indexedDocument(String filePath, String lastModifiedRemote) {
     Document document =
         new Document("file.txt", filePath, "text/plain", 1L, SourceTypes.FILESYSTEM);

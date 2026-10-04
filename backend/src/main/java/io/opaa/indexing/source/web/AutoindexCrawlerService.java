@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -134,10 +135,25 @@ public class AutoindexCrawlerService {
       boolean insecureSsl,
       RateLimitListener rateLimitListener)
       throws IOException, InterruptedException {
+    String authHeader = SourceHttpClientFactory.buildAuthHeader(username, password);
+    return crawl(baseUrl, proxyHost, proxyPort, () -> authHeader, insecureSsl, rateLimitListener);
+  }
+
+  /**
+   * As {@link #crawl(String, String, int, String, String, boolean, RateLimitListener)}, asking
+   * {@code authHeader} before every directory page; what it throws ends the crawl.
+   */
+  public CrawlResult crawl(
+      String baseUrl,
+      String proxyHost,
+      int proxyPort,
+      Supplier<String> authHeader,
+      boolean insecureSsl,
+      RateLimitListener rateLimitListener)
+      throws IOException, InterruptedException {
 
     HttpClient httpClient =
         SourceHttpClientFactory.buildHttpClient(proxyHost, proxyPort, insecureSsl);
-    String authHeader = SourceHttpClientFactory.buildAuthHeader(username, password);
 
     List<CrawledFileEntry> results = new ArrayList<>();
     List<String> rejectedLinks = new ArrayList<>();
@@ -226,7 +242,7 @@ public class AutoindexCrawlerService {
    */
   private void crawlRecursive(
       HttpClient httpClient,
-      String authHeader,
+      Supplier<String> authHeader,
       String startUrl,
       String url,
       int depth,
@@ -253,7 +269,7 @@ public class AutoindexCrawlerService {
     log.debug("Crawling directory: {}", url);
     DirectoryPage page;
     try {
-      page = fetchPage(httpClient, authHeader, startUrl, url, rateLimitListener);
+      page = fetchPage(httpClient, authHeader.get(), startUrl, url, rateLimitListener);
     } catch (RedirectedOutsideSubtreeException e) {
       truncation.markRedirectedOutside(url, e.target());
       return;

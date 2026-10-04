@@ -200,7 +200,7 @@ public class AttachmentIndexer {
               download.url(),
               download.suggestedFileName(),
               limits.maxSizeBytes(),
-              download.authHeader(),
+              download.authHeader().get(),
               RedirectFollowingFetcher.RedirectPolicy.REJECT_OFF_ORIGIN,
               access.rateLimitListener());
 

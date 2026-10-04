@@ -53,7 +53,7 @@ public class ServiceAccountTokens {
   private final Clock clock;
   private final Map<String, Token> tokens = new ConcurrentHashMap<>();
 
-  private record Token(String value, Instant renewAt) {}
+  private record Token(String value, Instant renewAt, Instant expiresAt) {}
 
   public ServiceAccountTokens(TargetAddressValidator targetAddressValidator, Clock clock) {
     this.targetAddressValidator = targetAddressValidator;
@@ -67,11 +67,21 @@ public class ServiceAccountTokens {
    */
   public String forConnector(
       SourceConnector connector, SourceSettings settings, ConnectorData effective) {
+    return Secret.valueOf(secretFor(connector, settings, effective));
+  }
+
+  /**
+   * {@link #forConnector} with its kind; an access token carries the instant it expires.
+   *
+   * @throws SourceCredentialsException with a German cause when the key cannot be used
+   */
+  public Secret secretFor(
+      SourceConnector connector, SourceSettings settings, ConnectorData effective) {
     ServiceAccountKeyAuth auth = connector.descriptor().profileDeclaration().serviceAccountKey();
     if (auth == null || settings.sourceCredentials() == null) {
-      return settings.sourceCredentials();
+      return settings.credentials();
     }
-    return accessToken(
+    return accessSecret(
         settings.sourceCredentials(),
         subjectOf(connector, effective),
         auth,
@@ -92,12 +102,24 @@ public class ServiceAccountTokens {
    */
   public String accessToken(
       String storedKey, String subject, ServiceAccountKeyAuth auth, String sourceProxy) {
+    return accessSecret(storedKey, subject, auth, sourceProxy).value();
+  }
+
+  /** {@link #accessToken} as an {@link SecretKind#ACCESS_TOKEN} carrying when it expires. */
+  public Secret accessSecret(
+      String storedKey, String subject, ServiceAccountKeyAuth auth, String sourceProxy) {
+    Token token = token(storedKey, subject, auth, sourceProxy);
+    return new Secret(SecretKind.ACCESS_TOKEN, token.value(), token.expiresAt());
+  }
+
+  private Token token(
+      String storedKey, String subject, ServiceAccountKeyAuth auth, String sourceProxy) {
     Objects.requireNonNull(storedKey, "storedKey");
     String cacheKey = cacheKey(storedKey, subject, auth, sourceProxy);
     Instant now = clock.instant();
     Token cached = tokens.get(cacheKey);
     if (cached != null && now.isBefore(cached.renewAt())) {
-      return cached.value();
+      return cached;
     }
     ServiceAccountKey key;
     try {
@@ -112,7 +134,7 @@ public class ServiceAccountTokens {
       tokens.clear();
     }
     tokens.put(cacheKey, token);
-    return token.value();
+    return token;
   }
 
   private Token exchange(
@@ -164,8 +186,8 @@ public class ServiceAccountTokens {
         expiresIn != null && expiresIn.canConvertToLong()
             ? expiresIn.asLong()
             : ASSERTION_LIFETIME.toSeconds();
-    Instant renewAt = now.plusSeconds(seconds).minus(RENEWAL_MARGIN);
-    return new Token(accessToken.asString(), renewAt);
+    Instant expiresAt = now.plusSeconds(seconds);
+    return new Token(accessToken.asString(), expiresAt.minus(RENEWAL_MARGIN), expiresAt);
   }
 
   private static String sign(

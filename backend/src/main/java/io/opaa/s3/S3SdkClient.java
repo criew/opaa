@@ -2,6 +2,7 @@ package io.opaa.s3;
 
 import java.net.URI;
 import java.time.Duration;
+import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.awscore.retry.AwsRetryStrategy;
 import software.amazon.awssdk.core.checksums.RequestChecksumCalculation;
@@ -19,7 +20,7 @@ import software.amazon.awssdk.utils.AttributeMap;
 
 /**
  * The one way an SDK client is built in this application (ADR-0027, Entscheidung 8 and 9; ADR-0030,
- * Entscheidung 8): static credentials and an explicit region, so the SDK's own resolution chains
+ * Entscheidung 8): explicit credentials and an explicit region, so the SDK's own resolution chains
  * never run; the endpoint and addressing style as configured; request and response checksums only
  * where the protocol requires them, because S3-compatible stores do not all understand the SDK's
  * newer checksums; the Apache 5 client with one timeout for connection, socket and attempt; a proxy
@@ -43,6 +44,15 @@ public final class S3SdkClient implements AutoCloseable {
    * every answer that comes back.
    */
   public static S3SdkClient open(S3ClientSettings settings, ExecutionInterceptor guard) {
+    return open(settings, StaticCredentialsProvider.create(settings.credentials()), guard);
+  }
+
+  /**
+   * As {@link #open(S3ClientSettings, ExecutionInterceptor)}, signing every request with what
+   * {@code credentials} answers then instead of the credentials in {@code settings}.
+   */
+  public static S3SdkClient open(
+      S3ClientSettings settings, AwsCredentialsProvider credentials, ExecutionInterceptor guard) {
     SdkHttpClient httpClient = buildHttpClient(settings);
     try {
       S3Client s3 =
@@ -50,7 +60,7 @@ public final class S3SdkClient implements AutoCloseable {
               .endpointOverride(settings.endpoint())
               .region(Region.of(settings.region()))
               .forcePathStyle(settings.pathStyle())
-              .credentialsProvider(StaticCredentialsProvider.create(settings.credentials()))
+              .credentialsProvider(credentials)
               .httpClient(httpClient)
               .requestChecksumCalculation(RequestChecksumCalculation.WHEN_REQUIRED)
               .responseChecksumValidation(ResponseChecksumValidation.WHEN_REQUIRED)

@@ -11,8 +11,9 @@ public final class RunEndingFailures {
 
   /**
    * Lets what must end the run pass an item catch: an {@link InterruptedException} (itself or as a
-   * cause, with the interrupt flag restored) and a {@link RequestBudgetExhaustedException}. Every
-   * other failure returns to the caller, which records it as the item's own.
+   * cause, with the interrupt flag restored), a {@link RequestBudgetExhaustedException} and an
+   * unchecked {@link EndsRun}. Every other failure returns to the caller, which records it as the
+   * item's own.
    */
   public static void rethrow(Throwable failure) throws InterruptedException {
     for (Throwable t = failure; t != null; t = t.getCause()) {
@@ -24,5 +25,22 @@ public final class RunEndingFailures {
         throw exhausted;
       }
     }
+    RuntimeException ending = endingCause(failure);
+    if (ending != null) {
+      throw ending;
+    }
+  }
+
+  /**
+   * The unchecked {@link EndsRun} {@code failure} is or carries as a cause, {@code null} for none -
+   * for a wrapper (an SDK, a future) that must let it through unchanged.
+   */
+  public static RuntimeException endingCause(Throwable failure) {
+    for (Throwable t = failure; t != null; t = t.getCause()) {
+      if (t instanceof EndsRun && t instanceof RuntimeException ending) {
+        return ending;
+      }
+    }
+    return null;
   }
 }
