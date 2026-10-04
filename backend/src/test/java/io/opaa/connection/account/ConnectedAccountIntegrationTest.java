@@ -4,6 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.awaitility.Awaitility.await;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.matchesPattern;
+import static org.hamcrest.Matchers.not;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -117,6 +120,8 @@ class ConnectedAccountIntegrationTest {
     jdbc.update(
         "DELETE FROM notifications WHERE type = 'CONNECTION_EXPIRED' AND recipient_user_id = ?",
         person);
+    jdbc.update(
+        "DELETE FROM notifications WHERE type = 'CONNECTION_ENDED' AND object_id = ?", profile);
     for (UUID library : libraries) {
       jdbc.update("DELETE FROM audit_log WHERE object_id = ?", library.toString());
       jdbc.update("DELETE FROM asset_grant_history WHERE asset_id = ?", library);
@@ -407,6 +412,63 @@ class ConnectedAccountIntegrationTest {
         TARGET);
     assertThat(blockOf(library).reason()).isEqualTo(Reason.NOT_CONNECTED);
     connect("dev-user", PASSWORD).andExpect(status().isBadRequest());
+  }
+
+  /**
+   * A changed default that binds the credentials leaves no person's secret on its old target: the
+   * connections end as {@code PROFILE_CHANGED}, logged and told to their owners, after a
+   * confirmation that names persons without a number.
+   */
+  @Test
+  void aChangedBindingEndsThePersonsConnectionsAndTellsTheirOwners() throws Exception {
+    String change =
+        """
+        {"name": "%s", "serverUrl": "%s", "authMethod": "PERSONAL_SECRET", "ownership": "PERSON",
+         "connectorSettings": {"share": "%s"}%s}
+        """;
+    mockMvc
+        .perform(
+            as("dev-admin", put(ADMIN + "/" + profile))
+                .content(change.formatted(profileName, SERVER, "a", ", \"confirmDiscard\": true")))
+        .andExpect(status().isOk());
+    connect("dev-user", PASSWORD).andExpect(status().isOk());
+    PersonOwned owner = new PersonOwned(profile, person);
+    String boundToA = new SecretTarget(SERVER, "a").key();
+    assertThat(secrets.current(owner, boundToA).value()).isEqualTo("avogt:" + PASSWORD);
+
+    mockMvc
+        .perform(
+            as("dev-admin", put(ADMIN + "/" + profile))
+                .content(change.formatted(profileName, SERVER, "b", "")))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("CONNECTION_PROFILE_CONFIRMATION_REQUIRED"))
+        .andExpect(jsonPath("$.error").value(containsString("Personen")))
+        .andExpect(jsonPath("$.error").value(not(matchesPattern(".*\\d.*"))));
+    assertThat(stateOf(person)).isEqualTo("CONNECTED");
+
+    mockMvc
+        .perform(
+            as("dev-admin", put(ADMIN + "/" + profile))
+                .content(change.formatted(profileName, SERVER, "b", ", \"confirmDiscard\": true")))
+        .andExpect(status().isOk());
+
+    assertThat(accountRows(person)).isZero();
+    assertThat(tokenRows()).isZero();
+    assertThat(logEntries())
+        .extracting(entry -> entry.get("event_type"), entry -> entry.get("cause"))
+        .contains(tuple("DISCONNECTED", "PROFILE_CHANGED"));
+    assertThat(
+            jdbc.queryForObject(
+                "SELECT count(*) FROM notifications WHERE type = 'CONNECTION_ENDED'"
+                    + " AND recipient_user_id = ? AND object_id = ?",
+                Integer.class,
+                person,
+                profile))
+        .isEqualTo(1);
+
+    connect("dev-user", PASSWORD).andExpect(status().isOk());
+    assertThat(secrets.current(owner, new SecretTarget(SERVER, "b").key()).value())
+        .isEqualTo("avogt:" + PASSWORD);
   }
 
   /** Decision 4: for the administration a profile with none and one with one person look alike. */

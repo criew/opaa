@@ -41,5 +41,11 @@ public enum NotificationType {
    * The provider rejected the secret of the person's connected account (ADR-0041): their private
    * library is not updated until they connect the account anew. Sent to that person only.
    */
-  CONNECTION_EXPIRED
+  CONNECTION_EXPIRED,
+
+  /**
+   * The system administration ended the person's connected account - a changed, shut down or
+   * deleted profile (ADR-0041). Sent to that person only; its object is the profile.
+   */
+  CONNECTION_ENDED
 }

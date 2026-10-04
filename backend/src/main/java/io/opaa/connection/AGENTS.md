@@ -25,9 +25,9 @@ seine Ports `SourceConnectionResolver` (`ProfileSourceConnectionResolver`) und `
   ist: `SecretTarget#key` (`sameOrigin` plus `credentialBinding`) ist die eine Zielfunktion.
   Verwerfen je Bibliothek trifft nur deren eigenes Geheimnis (`LibraryOwned`), nie das geteilte
   einer Person; das endet nur mit dem Konto (`ConnectedAccountService#end`).
-- **„Ruhend“ und „deaktiviert“ werden abgeleitet, nie gespeichert** (gespeichert: `CONNECTED`,
-  `EXPIRED`, `DISCONNECTED`). Eine getrennte Zeile bleibt, solange eine private Bibliothek daran
-  hängt (Trigger: private Bibliothek nur auf Personen-Zugang mit verbundenem Konto).
+- **„Ruhend“/„deaktiviert“ werden abgeleitet;** `ConnectionLifecycleReconciler` hält nur den Beginn
+  fest und beendet nur bei `DEACTIVATED`, je Person in eigener Transaktion (auch nach Commit). Eine
+  getrennte Zeile bleibt, solange eine private Bibliothek daran hängt (Trigger).
 - **Die Verwaltung sieht verbundene Konten nur über `PersonNumbers`** („weniger als N“, auch bei 0
   und für Teilzahlen); Kontoname verschlüsselt, nur für die Person.
 - **Das Client-Secret ist schreibgeschützt;** Antworten und Audit sagen nur Ja/Nein.

@@ -63,6 +63,7 @@ components:
           GROUP_MEMBER_ADDED,
           GROUP_MEMBER_REMOVED,
           CONNECTION_EXPIRED,
+          CONNECTION_ENDED,
         ]
       example: ASSET_ASSOCIATED_TO_MIXED_SPACE
 

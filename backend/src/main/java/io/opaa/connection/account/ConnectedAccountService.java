@@ -21,6 +21,7 @@ import io.opaa.connection.profile.ConnectorScope;
 import io.opaa.connection.profile.EffectiveSourceSettings;
 import io.opaa.connection.profile.LibraryConnectionRepository;
 import io.opaa.connection.profile.PersonConnections;
+import io.opaa.connection.profile.PersonConnections.PersonTotals;
 import io.opaa.connection.profile.PersonConnections.StateCounts;
 import io.opaa.connection.profile.ProfileAdmission;
 import io.opaa.connection.profile.SourceDraft;
@@ -59,9 +60,10 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * A person's connected accounts (ADR-0041): connecting in two public steps - {@link
- * #requireConnectable} and {@link #established} - and one way to end a connection for every cause.
- * Each step writes the connection log, always as the person's connection, in the caller's
- * transaction. A new account needs the profile's release, an existing one only an unlocked profile.
+ * #requireConnectable} and {@link #established} - and one way to end a connection for every cause,
+ * reached per profile ({@link #endAllUnder}), per person ({@link #endAllOf}) or by the person. Each
+ * step writes the connection log, always as the person's connection, in the caller's transaction. A
+ * new account needs the profile's release, an existing one only an unlocked profile.
  */
 @Service
 public class ConnectedAccountService implements PersonConnections {
@@ -316,6 +318,13 @@ public class ConnectedAccountService implements PersonConnections {
   }
 
   @Override
+  @Transactional(readOnly = true)
+  public PersonTotals totalsOf(Collection<UUID> userIds) {
+    return new PersonTotals(
+        accounts.countHeldBy(userIds), accounts.countPrivateLibrariesOf(userIds));
+  }
+
+  @Override
   @Transactional
   public void endAllUnder(UUID profileId, ConnectionEndCause cause, UUID actorUserId) {
     for (ConnectedAccount account :
@@ -325,13 +334,31 @@ public class ConnectedAccountService implements PersonConnections {
   }
 
   /**
-   * The one way a connection ends: its secret goes at once, the end is logged, and the row stays as
-   * {@code DISCONNECTED} only while a private library of the person runs on it.
+   * Ends every connection of person {@code userId} that is not disconnected for {@code cause},
+   * caused by {@code actor}, with one connection-log entry each, in the caller's transaction.
    */
-  private void end(ConnectedAccount account, ConnectionEndCause cause, ConnectionLogActor actor) {
+  @Transactional
+  public Ended endAllOf(UUID userId, ConnectionEndCause cause, ConnectionLogActor actor) {
+    int connections = 0;
+    int secretsDiscarded = 0;
+    for (ConnectedAccount account :
+        accounts.findByUserIdAndStateNot(userId, ConnectedAccountState.DISCONNECTED)) {
+      secretsDiscarded += end(account, cause, actor);
+      connections++;
+    }
+    return new Ended(connections, secretsDiscarded);
+  }
+
+  /**
+   * The one way a connection ends: its secret goes at once, the end is logged, an end the person
+   * did not cause is told them, and the row stays as {@code DISCONNECTED} only while a private
+   * library of the person runs on it. Returns how many stored secrets went.
+   */
+  private int end(ConnectedAccount account, ConnectionEndCause cause, ConnectionLogActor actor) {
+    int discarded = 0;
     if (account.getState() != ConnectedAccountState.DISCONNECTED) {
       ConnectionProfile profile = profiles.findById(account.getProfileId()).orElseThrow();
-      secrets.discard(new PersonOwned(account.getProfileId(), account.getUserId()));
+      discarded = secrets.discard(new PersonOwned(account.getProfileId(), account.getUserId()));
       log.record(
           account.getOrganizationId(),
           eventOf(cause),
@@ -340,6 +367,17 @@ public class ConnectedAccountService implements PersonConnections {
           profile.getId(),
           profile.getName(),
           cause);
+      endNotice(cause, profile)
+          .ifPresent(
+              body ->
+                  notifications.notify(
+                      account.getOrganizationId(),
+                      account.getUserId(),
+                      NotificationType.CONNECTION_ENDED,
+                      AuditObjectType.SYSTEM_SETTING,
+                      profile.getId(),
+                      "Verbindung getrennt: Zugang „" + profile.getName() + "“",
+                      body));
     }
     if (libraryConnections
         .findPrivateLibrariesOn(account.getProfileId(), account.getUserId())
@@ -349,6 +387,35 @@ public class ConnectedAccountService implements PersonConnections {
       account.disconnected(cause);
       accounts.save(account);
     }
+    return discarded;
+  }
+
+  /**
+   * What the person learns of an end the administration caused; empty for one they caused, for an
+   * expiry, which tells them itself, and for a deactivated account, which reads nothing.
+   */
+  private static Optional<String> endNotice(ConnectionEndCause cause, ConnectionProfile profile) {
+    String reconnect =
+        " Verbinden Sie Ihr Konto auf der Seite „Verbundene Konten“ neu; bis dahin wird Ihre"
+            + " private Bibliothek nicht aktualisiert.";
+    String gone = " Ihre private Bibliothek wird nicht mehr aktualisiert.";
+    return switch (cause) {
+      case ADDRESS_CHANGED, REGISTRATION_CHANGED, PROFILE_CHANGED ->
+          Optional.of(
+              profile.getOwnership().admitsPersons()
+                  ? "Die Systemverwaltung hat den Zugang geändert; Ihre Zugangsdaten gelten"
+                      + " dafür nicht mehr."
+                      + reconnect
+                  : "Die Systemverwaltung hat den Zugang für verbundene Konten von Personen"
+                      + " geschlossen."
+                      + gone);
+      case EMERGENCY ->
+          Optional.of(
+              "Die Systemverwaltung hat alle Verbindungen dieses Zugangs getrennt." + reconnect);
+      case PROFILE_DELETED -> Optional.of("Die Systemverwaltung hat den Zugang entfernt." + gone);
+      case SELF, ACCOUNT_DEACTIVATED, LIBRARY_DELETED, PROVIDER_REJECTED, SECRET_EXPIRED ->
+          Optional.empty();
+    };
   }
 
   private static ConnectionLogEventType eventOf(ConnectionEndCause cause) {
@@ -491,4 +558,7 @@ public class ConnectedAccountService implements PersonConnections {
   private static String blankToNull(String value) {
     return value == null || value.isBlank() ? null : value.strip();
   }
+
+  /** How many connections ended and how many stored secrets went with them. */
+  public record Ended(int connections, int secrets) {}
 }
