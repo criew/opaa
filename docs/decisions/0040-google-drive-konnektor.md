@@ -500,7 +500,7 @@ neue Modulkante.
    diese Form gebracht. Gespeichert wird sie normalisiert (Server klein, Port 445 weggelassen,
    Freigabe prozentkodiert), damit die Ursprungsbindung des Kerns greift. Jeder Socket entsteht in
    einer eigenen `SocketFactory`, die zuerst `TargetAddressValidator#validateHost` prüft. DFS-Verweise
-   folgt der Client nicht (`withDfsEnabled(false)`); Zugangsdaten verlassen den Server also nie. Gespeicherte Zugangsdaten gelten nur für dieselbe Freigabe (`SourceConnector#keepsCredentials`, durchgesetzt im Kern beim Speichern, Testen und Auflisten); administrative Freigaben (`*$`) werden abgewiesen.
+   folgt der Client nicht (`withDfsEnabled(false)`); Zugangsdaten verlassen den Server also nie. Gespeicherte Zugangsdaten gelten nur für dieselbe Freigabe (`SourceConnector#keepsCredentials`, durchgesetzt im Kern beim Speichern, Testen und Auflisten); versteckte Freigaben (`*$`, auch `C$`, `ADMIN$`, `IPC$`) werden abgewiesen.
 3. **Anmeldung:** NTLM mit Dienstkonto aus `source_credentials` (`DOMÄNE\Benutzer:Passwort`).
    Signatur ist Pflicht, Verschlüsselung wird genutzt, wo der Server SMB 3 anbietet. Eine Sitzung
    als Gast oder anonym gilt als abgelehnte Anmeldung. **Kerberos fehlt:** smbj bräuchte dafür ein

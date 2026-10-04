@@ -113,7 +113,7 @@ export function validateSmbValues(
     return 'Die Adresse nennt nur Server und Freigabe; Ordner darin werden unten eingetragen'
   }
   if (segments[0].endsWith('$')) {
-    return 'Administrative Freigaben wie C$ werden nicht gelesen; bitte eine gewöhnliche Freigabe angeben'
+    return 'Versteckte Freigaben (Name endet auf $) werden nicht angebunden; bitte eine sichtbare Freigabe angeben'
   }
   const account = values.account.trim()
   if (account.includes(':')) return 'Das Dienstkonto darf keinen Doppelpunkt enthalten'

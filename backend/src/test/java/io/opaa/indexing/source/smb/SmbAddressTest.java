@@ -55,6 +55,14 @@ class SmbAddressTest {
   }
 
   @Test
+  void aHiddenUsageShareIsRefusedWithTheHiddenShareMessage() {
+    assertThatThrownBy(() -> SmbAddress.parse("smb://fileserver/Daten$"))
+        .isInstanceOf(SmbAddress.InvalidSmbConfigurationException.class)
+        .hasMessageContaining("versteckte Freigabe („Daten$“)")
+        .hasMessageNotContaining("administrativ");
+  }
+
+  @Test
   void aFilePathKeepsItsCharactersAndIsReadBack() {
     SmbAddress address = SmbAddress.parse("smb://fileserver:1445/Gemeinsame Daten");
 

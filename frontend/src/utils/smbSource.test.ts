@@ -31,9 +31,9 @@ describe('smbSource', () => {
     expect(sameSmbShare('smb://dateiserver/Daten', 'smb://dateiserver:1445/Daten')).toBe(false)
   })
 
-  it('refuses administrative shares', () => {
+  it('refuses hidden shares', () => {
     expect(validateSmbValues(values({ sourceUrl: 'smb://dateiserver/C$' }), false)).toMatch(
-      /Administrative Freigaben/,
+      /Versteckte Freigaben/,
     )
   })
 
