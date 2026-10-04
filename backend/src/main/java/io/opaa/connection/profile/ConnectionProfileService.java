@@ -19,6 +19,7 @@ import io.opaa.indexing.source.ClientCredentialsAuth;
 import io.opaa.indexing.source.ConnectorData;
 import io.opaa.indexing.source.DefaultKey;
 import io.opaa.indexing.source.Endpoint;
+import io.opaa.indexing.source.OAuthAuth;
 import io.opaa.indexing.source.ProfileDeclaration;
 import io.opaa.indexing.source.ServiceAccountKey;
 import io.opaa.indexing.source.SignIn;
@@ -32,6 +33,8 @@ import io.opaa.knowledge.SourceType;
 import io.opaa.permission.CapabilityService;
 import io.opaa.security.CredentialsEncryptor;
 import io.opaa.sourceaccess.ProxyAndCredentials;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -39,6 +42,7 @@ import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -234,13 +238,14 @@ public class ConnectionProfileService {
   /**
    * Replaces every editable field; {@code secret} {@code null} keeps the stored one, blank clears
    * it, anything else replaces it and lifts a rejection of the profile's own sign-in. A new
-   * address, client id (for a service account key: another account in the key), tenant, scope list
-   * or sign-in method discards every secret held under the profile and ends the persons'
-   * connections, a new binding the secrets it concerns, a changed default only the profile sets the
-   * run state of every library on it - each refused with 409 {@value #CONFIRMATION_REQUIRED} while
-   * there are such and {@code confirmed} is false. Every library whose effective configuration
-   * changes passes its connector first ({@code answers} given by {@link #check}); one refusal
-   * leaves profile and libraries unchanged (400 {@value ChangeRejection#PROFILE_CHANGE_REJECTED}).
+   * address, client id (for a service account key: another account in the key), tenant, scope list,
+   * endpoint or sign-in method discards every secret held under the profile - revoked with the
+   * registration before the change - and ends the persons' connections, a new binding the secrets
+   * it concerns, a changed default only the profile sets the run state of every library on it -
+   * each refused with 409 {@value #CONFIRMATION_REQUIRED} while there are such and {@code
+   * confirmed} is false. Every library whose effective configuration changes passes its connector
+   * first ({@code answers} given by {@link #check}); one refusal leaves profile and libraries
+   * unchanged (400 {@value ChangeRejection#PROFILE_CHANGE_REJECTED}).
    */
   @Transactional
   public ConnectionProfile update(
@@ -250,6 +255,7 @@ public class ConnectionProfileService {
       String secret,
       boolean confirmed,
       Answers answers) {
+    profiles.lockForChange(id);
     ConnectionProfile profile = get(id);
     Keyed keyed = keyed(values, secret, profile);
     ProfileChange change = plan(profile, keyed.values());
@@ -283,6 +289,14 @@ public class ConnectionProfileService {
     Set<UUID> released = change.dropsPersons() ? change.privateLibraries() : verdict.released();
     privateRelease.release(caller, profile, released);
     Map<String, Object> before = auditState(profile);
+    ConnectionEndCause cause =
+        change.addressChanged()
+            ? ConnectionEndCause.ADDRESS_CHANGED
+            : ConnectionEndCause.REGISTRATION_CHANGED;
+    if (change.discardsAll()) {
+      // before the change: a token is revoked with the registration it was issued to
+      secrets.discardAllUnder(id, cause);
+    }
     profile.replace(validated, ciphertext, clock.instant());
     if (secret != null || change.discardsAll()) {
       profile.signInRejectedSince(null);
@@ -307,11 +321,6 @@ public class ConnectionProfileService {
       libraries.save(library);
     }
     if (change.discardsAll()) {
-      ConnectionEndCause cause =
-          change.addressChanged()
-              ? ConnectionEndCause.ADDRESS_CHANGED
-              : ConnectionEndCause.REGISTRATION_CHANGED;
-      secrets.discardAllUnder(id, cause);
       persons.endAllUnder(id, cause, caller.id());
     } else if (change.dropsPersons() || change.rebindsPersons()) {
       persons.endAllUnder(id, ConnectionEndCause.PROFILE_CHANGED, caller.id());
@@ -462,7 +471,8 @@ public class ConnectionProfileService {
         profile.getAuthMethod() != validated.authMethod()
             || !Objects.equals(profile.getClientId(), validated.clientId())
             || !Objects.equals(profile.getTenant(), validated.tenant())
-            || !Objects.equals(profile.getScopes(), validated.scopes());
+            || !Objects.equals(profile.getScopes(), validated.scopes())
+            || !profile.getEndpoints().equals(validated.endpoints());
     ConnectionProfile candidate = profile.candidate(validated);
     List<LibraryConnection> connected = connections.findByProfileId(profile.getId());
     List<KnowledgeLibrary> found =
@@ -521,15 +531,17 @@ public class ConnectionProfileService {
    */
   @Transactional
   public ProfileImpact disconnectAll(CurrentUser caller, UUID id) {
+    profiles.lockForChange(id);
     ConnectionProfile profile = get(id);
     PersonCount ended = personNumbers.totalOf(id);
     boolean dropsOwnSecret = signsInItself(profile.getAuthMethod()) && profile.isClientSecretSet();
+    // before the secret goes: a token is revoked with the registration it was issued to
+    long shared = connections.countSharedByProfileId(id);
+    secrets.discardAllUnder(id, ConnectionEndCause.EMERGENCY);
     if (dropsOwnSecret) {
       profile.dropClientSecret(clock.instant());
       profiles.save(profile);
     }
-    long shared = connections.countSharedByProfileId(id);
-    secrets.discardAllUnder(id, ConnectionEndCause.EMERGENCY);
     persons.endAllUnder(id, ConnectionEndCause.EMERGENCY, caller.id());
     record(
         caller,
@@ -552,6 +564,7 @@ public class ConnectionProfileService {
    */
   @Transactional
   public void delete(CurrentUser caller, UUID id) {
+    profiles.lockForChange(id);
     ConnectionProfile profile = get(id);
     List<LibraryConnection> affected = connections.findByProfileId(id);
     long shared = connections.countSharedByProfileId(id);
@@ -647,6 +660,7 @@ public class ConnectionProfileService {
           "tenant ist für diese Anmeldeart erforderlich und besteht nur aus Buchstaben, Ziffern,"
               + " Punkt und Bindestrich");
     }
+    ProfileEndpoints endpoints = endpointsOf(signIn, values.endpoints());
     ConnectorData settings = declaration.defaults().read(values.connectorSettings());
     String proxy = proxyOf(values.sourceProxy());
     if ((proxy != null || values.sourceInsecureSsl()) && !reachedOverHttp(serverUrl)) {
@@ -665,7 +679,61 @@ public class ConnectionProfileService {
         scopes,
         settings,
         proxy,
-        values.sourceInsecureSsl());
+        values.sourceInsecureSsl(),
+        endpoints);
+  }
+
+  /**
+   * The endpoints {@code given} for {@code signIn}: each one its sign-in leaves to the profile is
+   * required, an absolute {@code http(s)} address without user info or fragment; any other is a
+   * 400.
+   */
+  private static ProfileEndpoints endpointsOf(SignIn signIn, ProfileEndpoints given) {
+    boolean authorization = false;
+    boolean token = false;
+    boolean revocation = false;
+    if (signIn.details() instanceof OAuthAuth auth) {
+      authorization = auth.authorization() instanceof Endpoint.FromProfile;
+      token = auth.token() instanceof Endpoint.FromProfile;
+      revocation = auth.revocation().endpoint() instanceof Endpoint.FromProfile;
+    } else if (signIn.details() instanceof ClientCredentialsAuth auth) {
+      token = auth.token() instanceof Endpoint.FromProfile;
+    }
+    return new ProfileEndpoints(
+        endpoint(given.authorization(), authorization, "authorizationEndpoint"),
+        endpoint(given.token(), token, "tokenEndpoint"),
+        endpoint(given.revocation(), revocation, "revocationEndpoint"));
+  }
+
+  private static String endpoint(String value, boolean fromProfile, String field) {
+    String trimmed = optional(value, field, MAX_URL_LENGTH);
+    if (!fromProfile) {
+      if (trimmed != null) {
+        throw new ValidationException(
+            field + " gehört nicht zu dieser Anmeldeart der Quellart; ihr Endpunkt ist fest");
+      }
+      return null;
+    }
+    if (trimmed == null) {
+      throw new ValidationException(field + " ist für diese Anmeldeart erforderlich");
+    }
+    URI uri;
+    try {
+      uri = new URI(trimmed);
+    } catch (URISyntaxException e) {
+      throw new ValidationException(field + " ist keine gültige Adresse");
+    }
+    String scheme = uri.getScheme() == null ? "" : uri.getScheme().toLowerCase(Locale.ROOT);
+    if (!(scheme.equals("https") || scheme.equals("http"))
+        || uri.getHost() == null
+        || uri.getRawUserInfo() != null
+        || uri.getRawFragment() != null) {
+      throw new ValidationException(
+          field
+              + " muss eine vollständige Adresse mit https:// oder http:// sein, ohne"
+              + " Benutzerangabe und Fragment");
+    }
+    return trimmed;
   }
 
   /** Whether the normalised {@code serverUrl} is reached over HTTP, where proxy and TLS apply. */
@@ -712,6 +780,12 @@ public class ConnectionProfileService {
     state.put("connectorSettingsSet", profile.getConnectorSettings() != null);
     state.put("sourceProxy", profile.getSourceProxy() == null ? "" : profile.getSourceProxy());
     state.put("sourceInsecureSsl", profile.isSourceInsecureSsl());
+    ProfileEndpoints endpoints = profile.getEndpoints();
+    if (!endpoints.equals(ProfileEndpoints.NONE)) {
+      state.put("authorizationEndpoint", Objects.toString(endpoints.authorization(), ""));
+      state.put("tokenEndpoint", Objects.toString(endpoints.token(), ""));
+      state.put("revocationEndpoint", Objects.toString(endpoints.revocation(), ""));
+    }
     return state;
   }
 

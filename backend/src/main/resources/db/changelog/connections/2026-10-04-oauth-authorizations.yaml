@@ -1,0 +1,49 @@
+databaseChangeLog:
+  - changeSet:
+      id: connections-2026-10-04-oauth-authorizations
+      author: opaa
+      comment: "The OAuth core (#2168, ADR-0025 Nachtrag 03.10.2026): an authorization a person started keeps the hash of its state and its PKCE verifier, encrypted, bound to the person and to the profile as it stood, for one completion."
+      changes:
+        - sql:
+            sql: |
+              CREATE TABLE connection_authorizations (
+                  id uuid NOT NULL,
+                  state_hash character(64) NOT NULL,
+                  user_id uuid NOT NULL,
+                  profile_id uuid NOT NULL,
+                  profile_version bigint NOT NULL,
+                  purpose character varying(20) NOT NULL,
+                  library_id uuid,
+                  code_verifier_ciphertext text NOT NULL,
+                  redirect_uri character varying(2000) NOT NULL,
+                  created_at timestamp with time zone NOT NULL,
+                  expires_at timestamp with time zone NOT NULL,
+                  consumed_at timestamp with time zone,
+                  CONSTRAINT connection_authorizations_pkey PRIMARY KEY (id),
+                  CONSTRAINT ux_connection_authorizations_state UNIQUE (state_hash),
+                  CONSTRAINT fk_connection_authorizations_user FOREIGN KEY (user_id)
+                      REFERENCES users(id) ON DELETE CASCADE,
+                  CONSTRAINT fk_connection_authorizations_profile FOREIGN KEY (profile_id)
+                      REFERENCES connection_profiles(id) ON DELETE CASCADE,
+                  CONSTRAINT fk_connection_authorizations_library FOREIGN KEY (library_id)
+                      REFERENCES knowledge_libraries(id) ON DELETE CASCADE,
+                  CONSTRAINT chk_connection_authorizations_purpose CHECK (purpose IN
+                      ('LIBRARY_NEW', 'LIBRARY_RECONNECT', 'ACCOUNT')),
+                  -- only reconnecting names the library; a new one does not exist yet
+                  CONSTRAINT chk_connection_authorizations_library CHECK
+                      ((purpose = 'LIBRARY_RECONNECT') = (library_id IS NOT NULL))
+              );
+              CREATE INDEX ix_connection_authorizations_user ON connection_authorizations (user_id, created_at);
+              CREATE INDEX ix_connection_authorizations_profile ON connection_authorizations (profile_id);
+              CREATE INDEX ix_connection_authorizations_library ON connection_authorizations (library_id);
+              CREATE INDEX ix_connection_authorizations_expiry ON connection_authorizations (expires_at);
+  - changeSet:
+      id: connections-2026-10-04-oauth-authorizations--profile-endpoints
+      author: opaa
+      comment: "The endpoints of the authorization server a profile names where its connector leaves them to it (Endpoint.FromProfile), fixed when the profile is saved."
+      changes:
+        - sql:
+            sql: |
+              ALTER TABLE connection_profiles ADD COLUMN authorization_endpoint character varying(2000);
+              ALTER TABLE connection_profiles ADD COLUMN token_endpoint character varying(2000);
+              ALTER TABLE connection_profiles ADD COLUMN revocation_endpoint character varying(2000);

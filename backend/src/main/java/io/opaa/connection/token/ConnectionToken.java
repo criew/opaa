@@ -88,6 +88,45 @@ class ConnectionToken {
     return token;
   }
 
+  /** A person's OAuth grant on the account {@code connectedAccountId}. */
+  static ConnectionToken ofAccountGrant(
+      UUID profileId, UUID connectedAccountId, Ciphered grant, String issuedFor, Instant now) {
+    ConnectionToken token =
+        ofAccount(profileId, connectedAccountId, grant.refresh(), null, issuedFor, now);
+    token.replaceGrant(grant, issuedFor, now);
+    return token;
+  }
+
+  /** Replaces the secret with an OAuth grant and its binding, as a reconnection does. */
+  void replaceGrant(Ciphered grant, String issuedFor, Instant now) {
+    this.kind = Kind.OAUTH;
+    this.secretCiphertext = grant.refresh();
+    this.accessTokenCiphertext = grant.access();
+    this.accessTokenExpiresAt = grant.accessExpiresAt();
+    this.expiresAt = grant.expiresAt();
+    this.issuedFor = issuedFor;
+    this.updatedAt = now;
+  }
+
+  /**
+   * A renewal obtained a new access token; a rotated refresh token replaces the stored one with its
+   * end, else both stay.
+   */
+  void renewed(
+      String accessCiphertext,
+      Instant accessExpiresAt,
+      String rotatedRefreshCiphertext,
+      Instant rotatedExpiresAt,
+      Instant now) {
+    this.accessTokenCiphertext = accessCiphertext;
+    this.accessTokenExpiresAt = accessExpiresAt;
+    if (rotatedRefreshCiphertext != null) {
+      this.secretCiphertext = rotatedRefreshCiphertext;
+      this.expiresAt = rotatedExpiresAt;
+    }
+    this.updatedAt = now;
+  }
+
   /** Replaces the secret and its binding, as a reconnection does. */
   void replace(String secretCiphertext, Instant expiresAt, String issuedFor, Instant now) {
     this.kind = Kind.PERSONAL_SECRET;
@@ -125,9 +164,35 @@ class ConnectionToken {
     return issuedFor;
   }
 
+  UUID getId() {
+    return id;
+  }
+
+  String getAccessTokenCiphertext() {
+    return accessTokenCiphertext;
+  }
+
+  Instant getAccessTokenExpiresAt() {
+    return accessTokenExpiresAt;
+  }
+
+  /** When the access token was obtained: the row changes only with it or with the whole secret. */
+  Instant getUpdatedAt() {
+    return updatedAt;
+  }
+
   /** Whether the secret is past the end the provider named or the rejection set. */
   boolean expiredAt(Instant now) {
     return expiresAt != null && !expiresAt.isAfter(now);
+  }
+
+  /** The ciphertexts of an OAuth grant with its ends; the refresh token is the stored secret. */
+  record Ciphered(String refresh, String access, Instant accessExpiresAt, Instant expiresAt) {
+
+    @Override
+    public String toString() {
+      return "Ciphered[***]";
+    }
   }
 
   @Override

@@ -36,6 +36,7 @@ public final class TestSecrets {
     return overLibraries(onProfile, libraries, issuers);
   }
 
+  @SuppressWarnings("unchecked")
   private static ConnectionSecrets overLibraries(
       LibrariesOnProfile onProfile,
       KnowledgeLibraryRepository libraries,
@@ -49,6 +50,7 @@ public final class TestSecrets {
         mock(AccountUsability.class),
         mock(CredentialsEncryptor.class),
         issuers,
+        mock(ObjectProvider.class),
         ConnectionLifecycleProperties.defaults(),
         mock(PlatformTransactionManager.class),
         Clock.systemUTC());

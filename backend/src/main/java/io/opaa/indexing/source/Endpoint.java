@@ -6,15 +6,16 @@ import java.util.regex.Pattern;
 
 /**
  * Where a sign-in sends what the profile's registration proves: an address the connector's
- * description fixes, or a template it completes with the profile's tenant. Never an address from a
- * key file, a library or an answer.
+ * description fixes, a template it completes with the profile's tenant, or the address the profile
+ * itself names, fixed when it is saved. Never an address from a key file, a library or an answer.
  */
-public sealed interface Endpoint permits Endpoint.Fixed, Endpoint.WithTenant {
+public sealed interface Endpoint permits Endpoint.Fixed, Endpoint.WithTenant, Endpoint.FromProfile {
 
   /**
    * The address for a profile with {@code tenant}.
    *
    * @throws IllegalArgumentException for a tenant the endpoint needs but is not given or not valid
+   * @throws IllegalStateException for {@link FromProfile}, which only the profile resolves
    */
   URI resolve(String tenant);
 
@@ -66,6 +67,23 @@ public sealed interface Endpoint permits Endpoint.Fixed, Endpoint.WithTenant {
     @Override
     public boolean needsTenant() {
       return true;
+    }
+  }
+
+  /**
+   * The address the profile names for this endpoint (such as a Keycloak realm's), set by the
+   * administration when it saves the profile and never discovered at run time.
+   */
+  record FromProfile() implements Endpoint {
+
+    @Override
+    public URI resolve(String tenant) {
+      throw new IllegalStateException("an endpoint from the profile is resolved by the profile");
+    }
+
+    @Override
+    public boolean needsTenant() {
+      return false;
     }
   }
 }

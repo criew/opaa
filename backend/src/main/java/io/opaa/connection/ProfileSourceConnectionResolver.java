@@ -71,7 +71,7 @@ public class ProfileSourceConnectionResolver implements SourceConnectionResolver
 
   @Override
   public Secret secretAfterRejection(KnowledgeLibrary library, Secret rejected) {
-    return effective.secretAfterRejection(library);
+    return effective.secretAfterRejection(library, rejected);
   }
 
   @Override

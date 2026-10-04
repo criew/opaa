@@ -20,7 +20,40 @@ public record ConnectionProfileValues(
     String scopes,
     ConnectorData connectorSettings,
     String sourceProxy,
-    boolean sourceInsecureSsl) {
+    boolean sourceInsecureSsl,
+    ProfileEndpoints endpoints) {
+
+  public ConnectionProfileValues {
+    endpoints = endpoints == null ? ProfileEndpoints.NONE : endpoints;
+  }
+
+  /** The values of a profile that names no endpoint of its own. */
+  public ConnectionProfileValues(
+      String name,
+      String serverUrl,
+      ConnectionAuthMethod authMethod,
+      ConnectionOwnership ownership,
+      String clientId,
+      LocalDate clientSecretExpiresOn,
+      String tenant,
+      String scopes,
+      ConnectorData connectorSettings,
+      String sourceProxy,
+      boolean sourceInsecureSsl) {
+    this(
+        name,
+        serverUrl,
+        authMethod,
+        ownership,
+        clientId,
+        clientSecretExpiresOn,
+        tenant,
+        scopes,
+        connectorSettings,
+        sourceProxy,
+        sourceInsecureSsl,
+        ProfileEndpoints.NONE);
+  }
 
   public ConnectionProfileValues withClientId(String id) {
     return new ConnectionProfileValues(
@@ -34,7 +67,8 @@ public record ConnectionProfileValues(
         scopes,
         connectorSettings,
         sourceProxy,
-        sourceInsecureSsl);
+        sourceInsecureSsl,
+        endpoints);
   }
 
   public ConnectionProfileValues withConnectorSettings(ConnectorData settings) {
@@ -49,6 +83,7 @@ public record ConnectionProfileValues(
         scopes,
         settings,
         sourceProxy,
-        sourceInsecureSsl);
+        sourceInsecureSsl,
+        endpoints);
   }
 }

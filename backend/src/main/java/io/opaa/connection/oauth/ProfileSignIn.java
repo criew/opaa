@@ -32,7 +32,7 @@ import org.springframework.stereotype.Component;
  * profile; from then on no ask reaches the provider until a new secret or {@link #test} lifts it.
  */
 @Component
-public class ProfileSignIn implements SecretIssuer {
+public class ProfileSignIn {
 
   static final Duration RENEWAL_MARGIN = Duration.ofMinutes(5);
 
@@ -56,11 +56,11 @@ public class ProfileSignIn implements SecretIssuer {
       Clock clock) {
     this.registrations = registrations;
     this.serviceAccountTokens = serviceAccountTokens;
-    this.grant = new ClientCredentialsGrant(targetAddressValidator);
+    this.grant = new ClientCredentialsGrant(new OAuthClient(targetAddressValidator));
     this.clock = clock;
   }
 
-  @Override
+  /** See {@link SecretIssuer#mint}. */
   public Secret mint(UUID profileId) {
     ClientRegistration registration = registrations.registrationOf(profileId);
     if (registration.signInRejected()) {
@@ -81,7 +81,7 @@ public class ProfileSignIn implements SecretIssuer {
     }
   }
 
-  @Override
+  /** See {@link SecretIssuer#forgetMinted}. */
   public void forgetMinted(UUID profileId) {
     Held dropped = held.remove(profileId);
     if (dropped != null) {
@@ -111,16 +111,6 @@ public class ProfileSignIn implements SecretIssuer {
     }
     registrations.accepted(profileId);
     return new SignInTest(true, "Anmeldung erfolgreich.");
-  }
-
-  @Override
-  public Secret renew(UUID profileId, String refreshToken, String issuedFor) {
-    throw new IllegalStateException("No OAuth renewal is available");
-  }
-
-  @Override
-  public Runnable revocation(UUID profileId, String refreshToken) {
-    return null;
   }
 
   private Secret signIn(ClientRegistration registration) {

@@ -21,6 +21,7 @@ import io.opaa.connection.profile.ConnectionProfileValues;
 import io.opaa.connection.profile.ConnectorLockService.TypeState;
 import io.opaa.connection.profile.OwnAddressStock;
 import io.opaa.connection.profile.PersonNumbers.ProfileCounts;
+import io.opaa.connection.profile.ProfileEndpoints;
 import io.opaa.connection.profile.ProfileRequirementService.Overview;
 import io.opaa.indexing.source.ConnectorData;
 import io.opaa.knowledge.SourceType;
@@ -45,7 +46,11 @@ public final class ConnectionProfileResponseMapper {
         request.getScopes(),
         toSettings(request.getConnectorSettings()),
         request.getSourceProxy(),
-        Boolean.TRUE.equals(request.getSourceInsecureSsl()));
+        Boolean.TRUE.equals(request.getSourceInsecureSsl()),
+        new ProfileEndpoints(
+            request.getAuthorizationEndpoint(),
+            request.getTokenEndpoint(),
+            request.getRevocationEndpoint()));
   }
 
   static ConnectionProfileValues toValues(ConnectionProfileUpdateRequest request) {
@@ -60,7 +65,11 @@ public final class ConnectionProfileResponseMapper {
         request.getScopes(),
         toSettings(request.getConnectorSettings()),
         request.getSourceProxy(),
-        Boolean.TRUE.equals(request.getSourceInsecureSsl()));
+        Boolean.TRUE.equals(request.getSourceInsecureSsl()),
+        new ProfileEndpoints(
+            request.getAuthorizationEndpoint(),
+            request.getTokenEndpoint(),
+            request.getRevocationEndpoint()));
   }
 
   static SourceType toSourceType(String key) {
@@ -94,6 +103,9 @@ public final class ConnectionProfileResponseMapper {
         .signInRejected(profile.isSignInRejected())
         .tenant(profile.getTenant())
         .scopes(profile.getScopes())
+        .authorizationEndpoint(profile.getEndpoints().authorization())
+        .tokenEndpoint(profile.getEndpoints().token())
+        .revocationEndpoint(profile.getEndpoints().revocation())
         .connectorSettings(settings == null ? null : settings.asMap())
         .sourceProxy(profile.getSourceProxy())
         .sourceInsecureSsl(profile.isSourceInsecureSsl())

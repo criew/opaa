@@ -62,6 +62,15 @@ public class ConnectionProfile {
   @Column(name = "connector_settings")
   private String connectorSettings;
 
+  @Column(name = "authorization_endpoint", length = 2000)
+  private String authorizationEndpoint;
+
+  @Column(name = "token_endpoint", length = 2000)
+  private String tokenEndpoint;
+
+  @Column(name = "revocation_endpoint", length = 2000)
+  private String revocationEndpoint;
+
   @Column(name = "source_proxy")
   private String sourceProxy;
 
@@ -107,6 +116,9 @@ public class ConnectionProfile {
         values.connectorSettings() == null ? null : values.connectorSettings().toJson();
     this.sourceProxy = values.sourceProxy();
     this.sourceInsecureSsl = values.sourceInsecureSsl();
+    this.authorizationEndpoint = values.endpoints().authorization();
+    this.tokenEndpoint = values.endpoints().token();
+    this.revocationEndpoint = values.endpoints().revocation();
     this.updatedAt = now;
   }
 
@@ -171,6 +183,11 @@ public class ConnectionProfile {
     return scopes;
   }
 
+  /** The endpoints the profile names itself; each {@code null} where it names none. */
+  public ProfileEndpoints getEndpoints() {
+    return new ProfileEndpoints(authorizationEndpoint, tokenEndpoint, revocationEndpoint);
+  }
+
   /** The connector defaults as stored JSON, {@code null} for none. */
   public String getConnectorSettings() {
     return connectorSettings;
@@ -221,6 +238,11 @@ public class ConnectionProfile {
     this.clientSecretCiphertext = null;
     this.signInRejectedAt = null;
     this.updatedAt = now;
+  }
+
+  /** Grows with every change of the row; a flow started on one version ends on the same. */
+  public long getVersion() {
+    return version == null ? 0 : version;
   }
 
   public Instant getCreatedAt() {

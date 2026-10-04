@@ -10,9 +10,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import io.opaa.auth.DevAuthFilter;
+import io.opaa.indexing.filesync.FilePathLimit;
 import io.opaa.test.OpaaIntegrationTest;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.Random;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -179,6 +181,74 @@ class SmbLibraryIntegrationTest {
                         + "}"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.sourceCredentialsSet").value(true));
+  }
+
+  @Test
+  void aPathBeyondTheIndexEntryIsRejectedInEveryRunWithoutAFailure() throws Exception {
+    // regression guard for #2241: under 2000 characters, but beyond the bytes the unique index
+    // on (library_id, file_path) holds - random, so that compression cannot make it fit
+    SambaFixture samba = SambaFixture.get();
+    String folder = "Grenze " + UUID.randomUUID();
+    Random random = new Random(2241);
+    StringBuilder deep = new StringBuilder(folder);
+    for (int segment = 0; segment < 14; segment++) {
+      deep.append('/');
+      for (int i = 0; i < 100; i++) {
+        deep.append((char) ('А' + random.nextInt(64)));
+      }
+    }
+    String longPath = deep + "/Bericht.txt";
+    samba.put(folder + "/Kurz.txt", "Ein kurzer Pfad.");
+    samba.put(longPath, "Ein Bericht hinter einem langen Pfad.");
+    String url = samba.url(SambaFixture.SHARE);
+    String filePath = url + "/" + longPath;
+    assertThat(filePath.length()).isLessThan(2000);
+    assertThat(filePath.getBytes(StandardCharsets.UTF_8).length).isGreaterThan(2800);
+
+    String created =
+        mockMvc
+            .perform(
+                as(post("/api/v1/libraries"))
+                    .content(
+                        """
+                        {"name": "Grenze", "sourceType": "SMB", "sourceUrl": %s,
+                         "sourceCredentials": %s,
+                         "sourceSettings": {"folders": [%s]}}
+                        """
+                            .formatted(
+                                JSON.writeValueAsString(url),
+                                JSON.writeValueAsString(samba.credentials()),
+                                JSON.writeValueAsString("/" + folder))))
+            .andExpect(status().isCreated())
+            .andReturn()
+            .getResponse()
+            .getContentAsString(StandardCharsets.UTF_8);
+    libraryId = created.replaceAll("(?s).*\"id\":\"([0-9a-f-]{36})\".*", "$1");
+
+    for (int run = 1; run <= 2; run++) {
+      int runs = run;
+      mockMvc
+          .perform(as(post("/api/v1/libraries/" + libraryId + "/indexing")))
+          .andExpect(status().isAccepted());
+      await()
+          .atMost(Duration.ofSeconds(60))
+          .untilAsserted(
+              () ->
+                  mockMvc
+                      .perform(as(get("/api/v1/libraries/" + libraryId + "/indexing/runs")))
+                      .andExpect(status().isOk())
+                      .andExpect(jsonPath("$.runs.length()").value(runs))
+                      .andExpect(jsonPath("$.runs[0].status").value("COMPLETED")));
+      mockMvc
+          .perform(as(get("/api/v1/libraries/" + libraryId + "/indexing/runs")))
+          .andExpect(jsonPath("$.runs[0].documentsFailed").value(0))
+          .andExpect(jsonPath("$.runs[0].documentsIndexedTotal").value(run == 1 ? 1 : 0))
+          .andExpect(
+              jsonPath(
+                      "$.runs[0].events[?(@.category == 'REJECTED' && @.reference == '%s')]",
+                      FilePathLimit.cut(filePath))
+                  .exists());
+    }
   }
 
   private static MockHttpServletRequestBuilder as(MockHttpServletRequestBuilder request) {

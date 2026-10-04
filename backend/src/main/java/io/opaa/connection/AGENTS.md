@@ -32,11 +32,11 @@ seine Ports `SourceConnectionResolver` (`ProfileSourceConnectionResolver`) und `
   für Teilzahlen; je Anbieter keine Zahl), private Bibliotheken nach Besitzerinnen (`PersonThreshold`);
   Kontoname verschlüsselt. Eine private vetiert, zählt und blockiert keine Änderung des Zugangs;
   sie wird gelöst, ihre Besitzerin benachrichtigt (`PrivateLibraryRelease`).
-- **Client-Secret bzw. Schlüssel des Zugangs** (Antworten, Audit nur Ja/Nein) gibt nur
-  `ProfileRegistrations#registrationOf` heraus, nur an `connection.oauth` (`ProfileOwned`, ArchUnit).
-- **Ursprungsbindung:** Die Adresse einer zugeordneten Bibliothek liegt unter der Server-Adresse
-  ihres Profils, sonst sperrt der Port. Eine neue Server-Adresse oder Registrierung verwirft alle
-  Geheimnisse und beendet die verbundenen Konten; ein gelöschtes Profil lässt `profile_id NULL`.
+- **Registrierung des Zugangs** (Secret/Schlüssel nur Ja/Nein) gibt nur `registrationOf` heraus, nur
+  an `connection.oauth`; dort erreicht nur `OAuthClient` den Anbieter. Refresh-Tokens verlassen
+  token/oauth nie; Erneuerung unter Zeilensperre, Widerruf erst nach Commit (alles ArchUnit/ADR-0041).
+- **Ursprungsbindung:** Bibliotheksadresse unter der Server-Adresse des Profils, sonst sperrt der Port.
+  Neue Adresse/Registrierung verwirft vorher alle Geheimnisse, beendet die Konten; gelöscht: `NULL`.
 - **Übergänge** (Profiländerung, Zuordnen, Lösen) sind je Bibliothek ein `SourceTransitions.Move` durch `SourceChangeGate`: erst Bestätigung, dann alle prüfen (`Answers`), dann schreiben.
 - **Eine Zusammenführung:** `EffectiveSourceSettings` setzt Lauf, Änderung und Entwurf (`ofDraft`,
   auch `DraftOwner.PERSON`) zusammen; der Rahmen des Zugangs (`ProfileFrame`) überschreibt die
