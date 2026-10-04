@@ -463,6 +463,7 @@ export default function LibraryCreatePage() {
                 value={connectionChoice}
                 onChange={chooseConnection}
                 offerOwnAddress
+                offerRequest
                 idPrefix="library-create"
               />
             )}

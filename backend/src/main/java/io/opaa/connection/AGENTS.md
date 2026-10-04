@@ -4,17 +4,17 @@ Pakete (`io.opaa.*`): connection. Ergänzt `backend/AGENTS.md`.
 
 ## Zweck und Grenze
 
-Verbindungsprofile („Zugänge“), die Zuordnung einer Bibliothek zu einem Profil, die
-Konnektor-Freigabe, die Sperre von Quellart und Zugang und das Verbindungsprotokoll (ADR-0041,
-`docs/features/connector-connections.md`); Token-Speicher, verbundene Konten und OAuth folgen.
+Verbindungsprofile („Zugänge“), Zuordnung einer Bibliothek, Konnektor-Freigabe, Sperren,
+Zugangswünsche und das Verbindungsprotokoll (ADR-0041, `docs/features/connector-connections.md`).
 connections hängt nur von foundation, identity, rights und knowledge ab; nur library hängt von
 connections ab. Kein Konnektor und nichts in knowledge kennt connections: Der Kern erreicht es über
 seine Ports `SourceConnectionResolver` (`ProfileSourceConnectionResolver`) und `SourceStateLookup`.
 
 ## Invarianten und Stolpersteine
 
-- **Unterpakete, unten zuerst:** `connection.log`, `connection.profile`; das Wurzelpaket verdrahtet
-  und implementiert den Port, `connection.web` darüber. Kein Unterpaket nennt das Wurzelpaket.
+- **Unterpakete, unten zuerst:** `connection.log`, `connection.profile`, `connection.request`; das
+  Wurzelpaket verdrahtet den Port, `connection.web` darüber. Kein Unterpaket nennt das Wurzelpaket.
+- **Zugangswunsch:** Grenzen je Person aus der Tabelle; die Begründung nie in Log oder Audit.
 - **Verbindungsprotokoll** wie `audit_log`: schreibt nur `ConnectionLog` (in der Transaktion des
   Aufrufers), liest nur `ConnectionLogQueryService` (`AUDITOR`), löscht nur die Datenbankfunktion.
 - **Das Client-Secret ist schreibgeschützt.** `ConnectionProfileService` verschlüsselt es mit
@@ -43,7 +43,7 @@ seine Ports `SourceConnectionResolver` (`ProfileSourceConnectionResolver`) und `
   `REQUIRED`; nur dort liest connections `support` (`theProfileSupportIsReadInOnePlace`).
 - **Sperre:** blockiert `resolve` (Laufstart, Original), nicht `currentCredentials`; ein Entwurf auf
   einem anderen Zugang prüft nur dessen Sperren. Registry je Aufruf (Bean-Zyklus).
-- **Web-Schicht:** `connection.web` (Profile, Protokoll, Frist); Bibliothekszuordnung in `library.web`.
+- **Web-Schicht:** `connection.web` (Profile, Wünsche, Protokoll, Frist); Zuordnung in `library.web`.
 
 ## Verweise
 

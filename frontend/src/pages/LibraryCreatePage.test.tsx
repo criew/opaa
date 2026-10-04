@@ -1236,7 +1236,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       expect(screen.queryByRole('radio', { name: /Eigene Adresse/ })).not.toBeInTheDocument()
     }, 15000)
 
-    it('names who sets up profiles and does not go on when no way is left', async () => {
+    it('offers to suggest a profile and does not go on when no way is left', async () => {
       mockListSourceTypes.mockResolvedValue(
         withNextcloud({ profileRequired: true, creatable: true, creatableWithOwnAddress: false }),
       )
@@ -1246,8 +1246,9 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       await chooseType(user, /Nextcloud/)
 
       expect(await screen.findByTestId('library-create-connection-none')).toHaveTextContent(
-        /Zugänge legt die Systemverwaltung an/,
+        /Schlagen Sie der Systemverwaltung einen vor/,
       )
+      expect(screen.getByRole('button', { name: 'Zugang für Nextcloud vorschlagen' })).toBeVisible()
       expect(screen.queryByLabelText(/Adresse der Nextcloud/)).not.toBeInTheDocument()
       await next(user)
       expect(
