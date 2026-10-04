@@ -133,6 +133,21 @@ class ProfileRequirementIntegrationTest {
         .andExpect(jsonPath("$.switchable").value(false))
         .andExpect(jsonPath("$.coverageNotice").value(Matchers.containsString("Feed-Adresse")));
     mockMvc
+        .perform(
+            as(
+                    "dev-admin",
+                    put("/api/v1/admin/connector-types/PROFILE_OAUTH_PROBE/profile-requirement"))
+                .content("{\"required\": true, \"ownAddressStock\": \"RUNS\"}"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.error").value(Matchers.containsString("ohnehin nur über Zugänge")));
+    mockMvc
+        .perform(as("dev-admin", get("/api/v1/admin/connector-types")))
+        .andExpect(
+            jsonPath("$[?(@.sourceType == 'PROFILE_OAUTH_PROBE')].profileRequired").value(true))
+        .andExpect(
+            jsonPath("$[?(@.sourceType == 'PROFILE_OAUTH_PROBE')].profileSupport")
+                .value("REQUIRED"));
+    mockMvc
         .perform(as("dev-admin", put(REQUIREMENT)).content("{\"required\": true}"))
         .andExpect(status().isBadRequest());
     mockMvc
@@ -279,8 +294,8 @@ class ProfileRequirementIntegrationTest {
   }
 
   /**
-   * Acceptance criterion: deleting the last profile that could take over stays possible; its
-   * impact warns about it beforehand.
+   * Acceptance criterion: deleting the last profile that could take over stays possible; its impact
+   * warns about it beforehand.
    */
   @Test
   void theImpactOfTheLastProfileWarnsAndDeletingItStaysPossible() throws Exception {
@@ -354,7 +369,8 @@ class ProfileRequirementIntegrationTest {
 
   private void lockProfile(UUID profile) throws Exception {
     mockMvc
-        .perform(as("dev-admin", put(PROFILES + "/" + profile + "/lock")).content("{\"locked\": true}"))
+        .perform(
+            as("dev-admin", put(PROFILES + "/" + profile + "/lock")).content("{\"locked\": true}"))
         .andExpect(status().isOk());
   }
 

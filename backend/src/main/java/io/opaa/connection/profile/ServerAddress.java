@@ -1,10 +1,12 @@
 package io.opaa.connection.profile;
 
 import io.opaa.common.ValidationException;
+import io.opaa.indexing.source.ServerAddressRule;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayDeque;
 import java.util.Deque;
+import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 
@@ -17,22 +19,36 @@ public final class ServerAddress {
   private ServerAddress() {}
 
   /**
-   * The address in its stored form: {@code http} or {@code https}, host, port and path without a
-   * trailing slash; no user info, query or fragment.
+   * The address in its stored form: a scheme {@code rule} admits, host, port and path without a
+   * trailing slash; no user info, query or fragment. Under a fixed rule a blank address stands for
+   * the fixed one, and any other is refused.
    *
    * @throws ValidationException (German 400) for anything else
    */
-  public static String normalize(String address) {
+  public static String normalize(String address, ServerAddressRule rule) {
+    if (rule.isFixed()) {
+      List<String> scheme = List.of(schemeOf(rule.fixed()));
+      String fixed = normalize(rule.fixed(), scheme);
+      if (address == null || address.isBlank() || fixed.equals(normalizeOrNull(address, scheme))) {
+        return fixed;
+      }
+      throw new ValidationException("serverUrl ist für diese Quellart fest vorgegeben: " + fixed);
+    }
+    return normalize(address, rule.schemes());
+  }
+
+  private static String normalize(String address, List<String> schemes) {
     if (address == null || address.isBlank()) {
       throw new ValidationException("serverUrl ist erforderlich");
     }
     URI uri = parse(address.trim());
     if (uri == null
         || uri.getHost() == null
-        || !("http".equalsIgnoreCase(uri.getScheme())
-            || "https".equalsIgnoreCase(uri.getScheme()))) {
+        || !schemes.contains(uri.getScheme().toLowerCase(Locale.ROOT))) {
       throw new ValidationException(
-          "serverUrl muss eine absolute http- oder https-Adresse mit Host sein");
+          "serverUrl muss eine absolute Adresse mit Host sein, beginnend mit "
+              + String.join("://, ", schemes)
+              + "://");
     }
     if (uri.getRawUserInfo() != null || uri.getRawQuery() != null || uri.getRawFragment() != null) {
       throw new ValidationException(
@@ -47,6 +63,22 @@ public final class ServerAddress {
         + uri.getHost().toLowerCase(Locale.ROOT)
         + (uri.getPort() < 0 ? "" : ":" + uri.getPort())
         + path;
+  }
+
+  private static String normalizeOrNull(String address, List<String> schemes) {
+    try {
+      return normalize(address, schemes);
+    } catch (ValidationException e) {
+      return null;
+    }
+  }
+
+  private static String schemeOf(String address) {
+    URI uri = parse(address.trim());
+    if (uri == null) {
+      throw new IllegalArgumentException("a fixed address carries a scheme");
+    }
+    return uri.getScheme().toLowerCase(Locale.ROOT);
   }
 
   /** Whether {@code target} lies under {@code address}; an unreadable target never does. */
@@ -130,7 +162,11 @@ public final class ServerAddress {
     if (uri.getPort() >= 0) {
       return uri.getPort();
     }
-    return "https".equalsIgnoreCase(uri.getScheme()) ? 443 : 80;
+    return switch (uri.getScheme().toLowerCase(Locale.ROOT)) {
+      case "https" -> 443;
+      case "smb" -> 445;
+      default -> 80;
+    };
   }
 
   private static URI parse(String value) {

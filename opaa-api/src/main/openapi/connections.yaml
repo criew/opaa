@@ -28,8 +28,8 @@ paths:
       tags: [connection-profile]
       summary: Create a connection profile (system admin only)
       description: >
-        The connector of sourceType must admit profiles and offer authMethod (see
-        SourceTypeDescriptor). clientId, tenant and clientSecretExpiresOn belong only to a
+        The connector of sourceType must admit profiles and offer authMethod with the requested
+        ownership (see SourceTypeDescriptor.signIns). clientId, tenant and clientSecretExpiresOn belong only to a
         sign-in method with an app registration, scopes only to OAUTH and CLIENT_CREDENTIALS.
         A clientSecret given here is stored encrypted and needs the credentials encryption key
         (OPAA_CREDENTIALS_ENCRYPTION_KEY); without it the answer is 503.
@@ -395,6 +395,78 @@ components:
       description: Which connections a profile admits ("Besitzart").
       enum: [LIBRARY, PERSON, BOTH]
 
+    SourceTypeSignIn:
+      type: object
+      required: [method, ownerships]
+      description: >
+        One sign-in method a connector offers. A profile choosing it may take the ownership
+        LIBRARY or PERSON when listed here, BOTH when both are.
+      properties:
+        method:
+          $ref: "#/components/schemas/ConnectionAuthMethod"
+        ownerships:
+          type: array
+          description: LIBRARY, PERSON or both; never BOTH itself.
+          items:
+            $ref: "#/components/schemas/ConnectionOwnership"
+        secretForm:
+          description: Set exactly for the method PERSONAL_SECRET.
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/PersonalSecretForm"
+
+    PersonalSecretForm:
+      type: string
+      description: >
+        The form in which a connector takes a personal secret: TOKEN (one token or app
+        password) or USERNAME_AND_PASSWORD.
+      enum: [TOKEN, USERNAME_AND_PASSWORD]
+
+    ProfileDefaultKind:
+      type: string
+      description: >
+        The kind of value a profile default takes: TEXT (a line of text), BOOLEAN (true or
+        false), CHOICE (one of choices).
+      enum: [TEXT, BOOLEAN, CHOICE]
+
+    ProfileDefaultKey:
+      type: object
+      required: [key, label, kind, choices]
+      description: One connector settings key a connection profile may set.
+      properties:
+        key:
+          type: string
+          description: The key in connectorSettings, a key of the connector's own settings.
+          example: edition
+        label:
+          type: string
+          description: German label of the field.
+          example: Edition
+        kind:
+          $ref: "#/components/schemas/ProfileDefaultKind"
+        choices:
+          type: array
+          description: The values a CHOICE takes, in display order; empty for any other kind.
+          items:
+            type: string
+
+    ServerAddressRule:
+      type: object
+      required: [schemes]
+      description: >
+        What a profile's serverUrl may be: an address with one of schemes, or exactly fixed.
+        With fixed set, schemes is empty and the form asks for no address.
+      properties:
+        schemes:
+          type: array
+          items:
+            type: string
+          example: [https, http]
+        fixed:
+          type: string
+          nullable: true
+          description: The one address every profile of the type carries.
+
     ConnectionProfileCreateRequest:
       type: object
       required: [sourceType, name, serverUrl, authMethod, ownership]
@@ -410,8 +482,9 @@ components:
           type: string
           maxLength: 2000
           description: >
-            The only target of the profile's secrets - http or https, without user info, query or
-            fragment. Stored without a trailing slash.
+            The only target of the profile's secrets - with a scheme the connector admits
+            (SourceTypeDescriptor.serverAddress), without user info, query or fragment. Stored
+            without a trailing slash. For a type with a fixed address, empty or that address.
           example: https://cloud.example.org
         authMethod:
           $ref: "#/components/schemas/ConnectionAuthMethod"
@@ -446,8 +519,9 @@ components:
           additionalProperties: true
           nullable: true
           description: >
-            Connector defaults in the shape of the connector's own settings; they override a
-            library's settings key by key. Never a secret.
+            Connector defaults: only keys the connector names in
+            SourceTypeDescriptor.profileDefaults, each of its kind; another key is a 400. They
+            override a library's settings key by key. Never a secret.
 
     ConnectionProfileUpdateRequest:
       type: object
@@ -463,8 +537,9 @@ components:
           type: string
           maxLength: 2000
           description: >
-            The only target of the profile's secrets - http or https, without user info, query or
-            fragment. Stored without a trailing slash.
+            The only target of the profile's secrets - with a scheme the connector admits
+            (SourceTypeDescriptor.serverAddress), without user info, query or fragment. Stored
+            without a trailing slash. For a type with a fixed address, empty or that address.
           example: https://cloud.example.org
         authMethod:
           $ref: "#/components/schemas/ConnectionAuthMethod"
@@ -499,8 +574,9 @@ components:
           additionalProperties: true
           nullable: true
           description: >
-            Connector defaults in the shape of the connector's own settings; they override a
-            library's settings key by key. Never a secret.
+            Connector defaults: only keys the connector names in
+            SourceTypeDescriptor.profileDefaults, each of its kind; another key is a 400. They
+            override a library's settings key by key. Never a secret.
         confirmDiscard:
           type: boolean
           description: >
@@ -621,6 +697,13 @@ components:
           type: string
         authMethod:
           $ref: "#/components/schemas/ConnectionAuthMethod"
+        connectorDefaults:
+          type: object
+          additionalProperties: true
+          nullable: true
+          description: >
+            The connector settings the profile sets for every library on it (see
+            SourceTypeDescriptor.profileDefaults); absent for none. Never a secret.
 
     ConnectorLockRequest:
       type: object

@@ -36,7 +36,7 @@ public class ProfileRequirements {
     return connectors
         .getObject()
         .find(type)
-        .map(connector -> connector.descriptor().profileSupport())
+        .map(connector -> connector.descriptor().profileDeclaration().support())
         .orElse(ConnectionProfileSupport.FORBIDDEN);
   }
 

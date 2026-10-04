@@ -9,7 +9,7 @@ import java.util.Objects;
  * only target outside {@code sourceUrl} key material may reach - and hands the connector the access
  * token alone.
  */
-public record ServiceAccountKeyAuth(URI tokenEndpoint, String scope) {
+public record ServiceAccountKeyAuth(URI tokenEndpoint, String scope) implements SignInDetails {
 
   public ServiceAccountKeyAuth {
     Objects.requireNonNull(tokenEndpoint, "tokenEndpoint");

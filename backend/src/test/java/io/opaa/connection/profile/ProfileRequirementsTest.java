@@ -8,18 +8,14 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import io.opaa.api.types.ConnectionAuthMethod;
 import io.opaa.api.types.ConnectionProfileSupport;
 import io.opaa.asset.AssetOwnerNames;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.ValidationException;
-import io.opaa.indexing.source.SourceConnectionTestResult;
-import io.opaa.indexing.source.SourceConnector;
-import io.opaa.indexing.source.SourceConnectorDescriptor;
 import io.opaa.indexing.source.SourceConnectorRegistry;
-import io.opaa.indexing.source.SourceSettings;
 import io.opaa.indexing.source.TestSourceConnectors;
+import io.opaa.indexing.source.profileprobe.ProfileOAuthProbeSourceConnector;
 import io.opaa.indexing.source.profileprobe.ProfileProbeSourceConnector;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.SourceType;
@@ -27,7 +23,6 @@ import io.opaa.test.SourceTypes;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.ObjectProvider;
@@ -39,7 +34,7 @@ import org.springframework.beans.factory.ObjectProvider;
 class ProfileRequirementsTest {
 
   private static final Instant NOW = Instant.parse("2026-10-04T08:00:00Z");
-  private static final SourceType REQUIRING = SourceType.of("PROFILE_ONLY");
+  private static final SourceType REQUIRING = ProfileOAuthProbeSourceConnector.TYPE;
 
   private final ConnectorTypePolicyRepository policies = mock(ConnectorTypePolicyRepository.class);
   private final ObjectProvider<SourceConnectorRegistry> registry = registry();
@@ -99,12 +94,10 @@ class ProfileRequirementsTest {
             Clock.systemUTC());
     CurrentUser caller = mock(CurrentUser.class);
 
-    assertThatThrownBy(
-            () -> service.require(caller, REQUIRING, true, OwnAddressStock.RUNS))
+    assertThatThrownBy(() -> service.require(caller, REQUIRING, true, OwnAddressStock.RUNS))
         .isInstanceOf(ValidationException.class)
         .hasMessageContaining("ohnehin nur über Zugänge");
-    assertThatThrownBy(
-            () -> service.require(caller, SourceTypes.RSS_FEED, false, null))
+    assertThatThrownBy(() -> service.require(caller, SourceTypes.RSS_FEED, false, null))
         .isInstanceOf(ValidationException.class)
         .hasMessageContaining("nicht über Zugänge verbunden");
     verify(policies, never()).save(any());
@@ -140,8 +133,7 @@ class ProfileRequirementsTest {
             false);
 
     service.requireOwnAddressKept(library, "https://probe.example.org/a");
-    assertThatThrownBy(
-            () -> service.requireOwnAddressKept(library, "https://probe.example.org/b"))
+    assertThatThrownBy(() -> service.requireOwnAddressKept(library, "https://probe.example.org/b"))
         .isInstanceOf(ValidationException.class)
         .satisfies(
             e -> assertThat(((ValidationException) e).getCode()).isEqualTo("PROFILE_REQUIRED"));
@@ -159,29 +151,8 @@ class ProfileRequirementsTest {
     when(provider.getObject())
         .thenReturn(
             TestSourceConnectors.connectors()
-                .with(new ProfileProbeSourceConnector(), new RequiringConnector())
+                .with(new ProfileProbeSourceConnector(), new ProfileOAuthProbeSourceConnector())
                 .registry());
     return provider;
-  }
-
-  /** A connector that declares profiles as required. */
-  private static final class RequiringConnector implements SourceConnector {
-
-    @Override
-    public SourceConnectorDescriptor descriptor() {
-      return SourceConnectorDescriptor.remoteRun(REQUIRING, "Nur mit Zugang")
-          .withProfiles(ConnectionProfileSupport.REQUIRED, Set.of(ConnectionAuthMethod.OAUTH));
-    }
-
-    @Override
-    public SourceSettings validate(SourceSettings requested) {
-      return requested;
-    }
-
-    @Override
-    public SourceConnectionTestResult testConnection(
-        SourceSettings settings, io.opaa.indexing.source.ConnectorData stored) {
-      return new SourceConnectionTestResult(true, "", 0L);
-    }
   }
 }

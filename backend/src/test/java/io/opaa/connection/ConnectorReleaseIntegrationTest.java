@@ -202,8 +202,7 @@ class ConnectorReleaseIntegrationTest {
     mockMvc
         .perform(as("dev-user", get("/api/v1/libraries/" + library)))
         .andExpect(
-            jsonPath("$.sourceBlock.notice")
-                .value(Matchers.containsString("Zugang „Zugang Lauf")))
+            jsonPath("$.sourceBlock.notice").value(Matchers.containsString("Zugang „Zugang Lauf")))
         .andExpect(jsonPath("$.sourceBlock.reason").value("PROFILE_LOCKED"))
         .andExpect(jsonPath("$.sourceBlock.responsible").value("Systemverwaltung"));
     mockMvc

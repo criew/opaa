@@ -96,8 +96,8 @@ class ConnectionProfileSecretLeakIntegrationTest {
         call(
             post(ADMIN),
             """
-            {"name": "%s", "sourceType": "PROFILE_PROBE", "serverUrl": "https://probe.example.org",
-             "authMethod": "OAUTH", "ownership": "LIBRARY", "clientId": "opaa",
+            {"name": "%s", "sourceType": "PROFILE_OAUTH_PROBE", "serverUrl":
+             "https://probe.example.org", "authMethod": "OAUTH", "ownership": "LIBRARY", "clientId": "opaa",
              "clientSecret": "%s"}
             """
                 .formatted(name, SECRET));

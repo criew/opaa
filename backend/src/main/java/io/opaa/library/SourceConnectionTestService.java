@@ -163,7 +163,7 @@ public class SourceConnectionTestService {
    */
   private SourceSettings signedIn(
       SourceConnector connector, SourceSettings settings, ConnectorData stored) {
-    if (connector.descriptor().serviceAccountKey() == null
+    if (connector.descriptor().profileDeclaration().serviceAccountKey() == null
         || blankToNull(settings.sourceCredentials()) == null) {
       return settings;
     }

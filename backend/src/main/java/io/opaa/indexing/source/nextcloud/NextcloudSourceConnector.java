@@ -83,6 +83,11 @@ public class NextcloudSourceConnector implements SourceConnector, SourceBrowser,
   }
 
   @Override
+  public Set<String> settingsKeys() {
+    return NextcloudSourceSettings.KEYS;
+  }
+
+  @Override
   public ConnectorData readSettings(ConnectorData requested) {
     return NextcloudSourceSettings.read(requested).toData();
   }
