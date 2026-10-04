@@ -13,7 +13,7 @@ interface BusyButtonProps extends Omit<ButtonProps, 'aria-busy'> {
 /**
  * A button that stays focusable while its request runs: it is marked `aria-disabled` instead of
  * `disabled` (which would drop the keyboard focus), a click or key press while busy is swallowed,
- * and the busy state is announced through an always-present polite live region.
+ * and the busy state is announced through an always-present polite status region.
  */
 export default function BusyButton({
   busy,
@@ -39,13 +39,24 @@ export default function BusyButton({
         aria-busy={busy || undefined}
         onClick={handleClick}
         sx={[
-          busy && { color: 'action.disabled', borderColor: 'action.disabledBackground' },
+          busy && {
+            color: 'action.disabled',
+            borderColor: 'action.disabledBackground',
+            cursor: 'default',
+            '&.MuiButton-contained, &.MuiButton-contained:hover': {
+              backgroundColor: 'action.disabledBackground',
+              boxShadow: 'none',
+            },
+            '&.MuiButton-outlined:hover, &.MuiButton-text:hover': {
+              backgroundColor: 'transparent',
+            },
+          },
           ...(Array.isArray(sx) ? sx : [sx]),
         ]}
       >
         {children}
       </Button>
-      <Box component="span" aria-live="polite" sx={visuallyHidden}>
+      <Box component="span" role="status" aria-live="polite" sx={visuallyHidden}>
         {busy ? busyAnnouncement : ''}
       </Box>
     </>

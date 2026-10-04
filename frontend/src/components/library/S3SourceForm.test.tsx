@@ -113,7 +113,9 @@ describe('S3SourceForm (#1377, ADR-0027)', () => {
     expect(screen.getByRole('button', { name: 'Verbindung testen' })).toBeDisabled()
     await user.click(screen.getByRole('button', { name: 'Bereich' }))
     expect(screen.getByLabelText('Bucket 2')).toBeInTheDocument()
-    expect(screen.getByRole('status')).toHaveTextContent('2 von höchstens 50 Bereichen.')
+    expect(screen.getByText(/2 von höchstens 50 Bereichen./)).toHaveTextContent(
+      '2 von höchstens 50 Bereichen.',
+    )
     await user.click(screen.getByRole('button', { name: 'Bereich' }))
     await user.click(screen.getByRole('button', { name: 'Bereich 3 entfernen' }))
     expect(screen.getByRole('button', { name: 'Bereich 2 entfernen' })).toHaveFocus()

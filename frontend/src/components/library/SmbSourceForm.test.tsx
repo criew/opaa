@@ -242,7 +242,7 @@ describe('SmbSourceForm', () => {
     expect(loading).toHaveFocus()
     expect(loading).toHaveAttribute('aria-disabled', 'true')
     expect(loading).toBeEnabled()
-    expect(screen.getByText('Ordner werden geladen', { selector: '[aria-live]' })).toBeVisible()
+    expect(screen.getByText('Ordner werden geladen', { selector: '[role="status"]' })).toBeVisible()
     await userEvent.keyboard('{Enter}')
     expect(mockBrowseSource).toHaveBeenCalledTimes(1)
 

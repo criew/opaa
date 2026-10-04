@@ -175,7 +175,9 @@ describe('GoogleDriveSourceForm (ADR-0040)', () => {
 
     await user.click(screen.getByRole('button', { name: 'Verbindung testen' }))
 
-    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('1 von 2 Bereichen'))
+    await waitFor(() =>
+      expect(screen.getByTestId('google-drive-test-status')).toHaveTextContent('1 von 2 Bereichen'),
+    )
     expect(
       screen.getByText(/Freigabe · Ordner · Der Ordner ist nicht sichtbar/),
     ).toBeInTheDocument()
@@ -234,6 +236,6 @@ describe('GoogleDriveSourceForm (ADR-0040)', () => {
   it('keeps the status region in the DOM before any test', () => {
     renderWithProviders(<Harness />)
 
-    expect(screen.getByRole('status')).toBeEmptyDOMElement()
+    expect(screen.getByTestId('google-drive-test-status')).toBeEmptyDOMElement()
   })
 })
