@@ -670,7 +670,8 @@ neu ab. Ein reines Umbenennen fragt keinen Konnektor.
 
 **Private Bibliotheken auf dem Zugang** (Kapitel
 [Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), „Private Bibliotheken“)
-zählen in keiner Zahl dieses Abschnitts mit und haben kein Veto. Lehnt der Konnektor eine Änderung
+zählen in keiner Zahl dieses Abschnitts mit, haben kein Veto und halten keine Änderung auf, auch
+nicht mit einer laufenden Indexierung. Lehnt der Konnektor eine Änderung
 für eine private Bibliothek ab oder lässt der Zugang danach keine Personen mehr zu, löst OPAA sie
 vom Zugang; sie ruht mit dem Hinweis „Zugang nicht mehr nutzbar“, bis ihre Besitzerin sie einem
 anderen Zugang zuordnet, und erhält darüber eine Benachrichtigung. Die Vorschau nennt solche

@@ -474,21 +474,31 @@ Begründung:
   Pipeline-Stand (je eine Summenzeile), chunk-arme Dokumente, Zahl der diagnosegesperrten
   Bibliotheken, Speicherbereiche der Bereinigung. Der Bestandslauf der Pipeline bezieht private
   Bibliotheken ein (als Systemprozess), weist sie aber in keiner Zahl seiner Antwort aus; `done`
-  folgt den geteilten. Ihre Dokumente liegen beim Anbieter und werden für den nächsten Lauf
-  vorgemerkt, der das Geheimnis der Besitzerin braucht. Die ungefilterten Finder ruft nur ein gelisteter Systemprozess
+  folgt den geteilten. Ihre Dokumente liegen beim Anbieter; jeder Aufruf merkt alle veralteten
+  mit einer Anweisung samt Elternkette für den nächsten Lauf vor, der das Geheimnis der Besitzerin
+  braucht, unabhängig von `batchSize`. Die ungefilterten Finder ruft nur ein gelisteter Systemprozess
   (`ModularArchitecture#privateLibrariesAreNotEnumeratedOutsideListedClasses`).
 - **Eine Zählbasis:** Jede Zahl über private Bibliotheken ruht auf ihren Besitzerinnen, nicht auf
   den Bibliotheken: unter der Mindestgruppengröße N an Besitzerinnen, null eingeschlossen, nur
   „weniger als N“ (`permission.PersonThreshold`, dieselbe Schwelle wie `PersonNumbers`). Das gilt
   für Summenzeilen, `knownLibraryCount` und die abgelehnten privaten Bibliotheken der
   Änderungsvorschau (`rejectedPrivateLibraries`, nie in `rejectedLibraries` oder `rejections`).
+  Eine solche Teilzahl ist nur exakt, wenn auch die übrigen Besitzerinnen der Organisation keine
+  oder mindestens N sind (`PersonThreshold#disclosesPart`), sonst ab N nicht genannt.
+- **Vollabgleich ohne private Bibliotheken:** Ändert sich eine Vorgabe nur des Zugangs, zählen
+  `fullSyncLibraries` und die Bestätigung nur geteilte Bibliotheken, und nur deren laufende
+  Indexierung lehnt die Änderung ab. Der Abgleichstand privater wird ebenso verworfen und ihre
+  Besitzerin benachrichtigt. Läuft eine gerade, verwirft ihr Konnektor ihn nach dem Ende des Laufs
+  noch einmal (`RunStateResets` über `SourceConnectionResolver#runEnded`), denn der Lauf schreibt
+  ihn bis dahin weiter. Der Vermerk liegt im Speicher (ADR-0021); geht er verloren, weil der Lauf
+  vor dem Vermerk endete, kostet das höchstens einen weiteren Vollabgleich.
 - **Protokolle neutral:** Eine private Bibliothek heißt dort „Private Bibliothek“
   (`Asset#auditName`), ihre Nutzlasten behalten nur neutrale Schlüssel ohne Namen, Pfade und Werte
   (`Asset#auditPayload`); `ModularArchitecture#privateAssetsAreAuditedNeutrally` hält das fest.
 - **Lösen benachrichtigt:** Wird eine private Bibliothek vom Zugang gelöst, erhält ihre
   Besitzerin eine Benachrichtigung nach dem Muster von ADR-0019 (warum, was mit dem Inhalt
   geschieht, was sie tun kann). Verweigert der Speicher ihr Geheimnis, etwa bei deaktiviertem
-  Konto, gilt es für die Änderung als nicht vorhanden.
+  Konto, fragt die Änderung ihren Konnektor nicht; die Bibliothek wird nicht allein deshalb gelöst.
 - **Diagnosesperre:** Eine private Bibliothek trägt sie ab Anlage und behält sie; lösen lässt sie
   sich nicht. „Sicht als“ erreicht sie unabhängig davon nie; die Sperre ist die zweite Schranke.
 - **Laufkategorie:** `indexing_jobs.failure_category` hält, warum ein Lauf scheiterte (Sperrgrund,

@@ -351,13 +351,20 @@ Ein Lauf, der daran scheitert, speichert den Grund als Kategorie ohne Inhaltsbez
 **Was die Verwaltung sieht:** nur Zusammenfassungen. Indexstatus und Pipeline-Stand zeigen private
 Bibliotheken als eine Zeile ohne Namen und Kennung; jede Zahl über sie richtet sich nach der Zahl
 ihrer Besitzerinnen und steht unterhalb der Mindestgruppengröße nur als „weniger als N“, ohne
-Summen. Die Prüfung chunk-armer Dokumente, die Zahlen am Zugang und die Zahl der diagnosegesperrten
+Summen. Eine Teilzahl, etwa die abgelehnten privaten Bibliotheken eines Zugangs, nennt OPAA nur
+exakt, wenn auch die übrigen Besitzerinnen der Organisation keine oder mindestens N sind; sonst
+entfällt sie. Die Prüfung chunk-armer Dokumente, die Zahlen am Zugang und die Zahl der diagnosegesperrten
 Bibliotheken zählen sie nicht mit. Der Neuaufbau nach einem Pipeline-Wechsel bezieht sie ein, nennt
-sie aber in keiner Zahl seiner Antwort: Ihre Dokumente werden für den nächsten Lauf der Bibliothek
-vorgemerkt, der sie mit dem verbundenen Konto der Besitzerin neu einliest.
+sie aber in keiner Zahl seiner Antwort: Jeder Aufruf merkt alle ihre veralteten Dokumente auf einmal
+für den nächsten Lauf der Bibliothek vor, der sie mit dem verbundenen Konto der Besitzerin neu
+einliest.
 Einträge im Revisionsprotokoll nennen weder Dateinamen noch Pfade noch Metadatenwerte. Lehnt der Konnektor eine Änderung des Zugangs für eine private
 Bibliothek ab, erfährt die Verwaltung nur die Anzahl, ohne Bibliothek und Grund, und die Änderung
-gilt trotzdem; die Besitzerin erhält eine Benachrichtigung. Die Space-Zuordnung einer privaten Bibliothek sehen andere Mitglieder nicht, auch
+gilt trotzdem; die Besitzerin erhält eine Benachrichtigung. Ist ihr Konto gerade nicht nutzbar
+(ruhend, deaktiviert), wird der Konnektor für ihre Bibliothek nicht gefragt, und sie bleibt am
+Zugang. Verwirft eine Änderung den Abgleichstand des Zugangs, zählt OPAA private Bibliotheken
+dabei nicht mit und wartet nicht auf ihre laufenden Indexierungen; ihr Abgleichstand wird ebenso
+verworfen, nach dem Ende eines laufenden Laufs noch einmal, und die Besitzerin wird benachrichtigt. Die Space-Zuordnung einer privaten Bibliothek sehen andere Mitglieder nicht, auch
 nicht in Zählern und Hinweisen oder beim Löschen des Space. Im Revisionsprotokoll und in der
 Stichtagsauskunft heißt sie „Private Bibliothek“ und ist nur an ihrer Kennung zu erkennen.
 
