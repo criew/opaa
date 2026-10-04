@@ -130,6 +130,7 @@ describe('sourceConnectionOf', () => {
         sourceType: 'S3',
         serverUrl: 'https://s3.example',
         authMethod: 'NONE',
+        sourceInsecureSsl: false,
         creatable: true,
       }),
     ).toEqual({

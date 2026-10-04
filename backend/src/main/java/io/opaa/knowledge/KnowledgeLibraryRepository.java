@@ -4,6 +4,7 @@ import io.opaa.api.types.ExternalAccessState;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -141,6 +142,13 @@ public interface KnowledgeLibraryRepository extends JpaRepository<KnowledgeLibra
               + " and source_credentials is not null",
       nativeQuery = true)
   boolean hasStoredSourceCredentials(@Param("id") UUID id);
+
+  /**
+   * Which of {@code ids} hold credentials in the column, readable or not - one query, no decrypt.
+   */
+  @Query(
+      "select l.id from KnowledgeLibrary l where l.id in :ids and l.sourceCredentials is not null")
+  Set<UUID> findIdsHoldingSourceCredentials(@Param("ids") Collection<UUID> ids);
 
   /** The push secret's counterpart of {@link #eraseSourceCredentials} - same reasoning (#1806). */
   @Modifying(flushAutomatically = true)

@@ -255,6 +255,29 @@ describe('ConnectionProfileManagementPage', () => {
     expect(sent[0].connectorSettings).toEqual({ edition: 'EXTERN', pathStyle: false })
   }, 20000)
 
+  it('sends proxy and certificate switch of the profile', async () => {
+    const user = userEvent.setup()
+    const sent = capturePosts()
+    renderWithProviders(<ConnectionProfileManagementPage />)
+
+    await user.click(await screen.findByRole('button', { name: 'Neuer Zugang' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Zugang anlegen' })
+    await user.click(within(dialog).getByRole('radio', { name: /Nextcloud/ }))
+    await user.type(within(dialog).getByLabelText(/^Name/), 'Zugang mit Proxy')
+    await user.type(within(dialog).getByLabelText(/^Server-Adresse/), 'https://cloud.example.org')
+    await user.click(within(dialog).getByLabelText(/^Anmeldeart/))
+    await user.click(await screen.findByRole('option', { name: 'Ohne Anmeldung' }))
+    await user.type(within(dialog).getByLabelText(/^Proxy/), ' proxy.example.org:3128 ')
+    await user.click(within(dialog).getByLabelText('Zertifikatsprüfung aussetzen'))
+    await user.click(within(dialog).getByRole('button', { name: 'Anlegen' }))
+
+    await screen.findByRole('row', { name: /Zugang mit Proxy/ })
+    expect(sent[0]).toMatchObject({
+      sourceProxy: 'proxy.example.org:3128',
+      sourceInsecureSsl: true,
+    })
+  }, 20000)
+
   it('offers only the ownerships the chosen sign-in admits', async () => {
     const user = userEvent.setup()
     renderWithProviders(<ConnectionProfileManagementPage />)
