@@ -91,6 +91,15 @@ describe('connectionFields', () => {
       ),
     ).toEqual(expect.objectContaining({ asksSecret: false, probe: { libraryId: 'lib-1' } }))
   })
+
+  it('asks no secret of a private library whose profile is gone', () => {
+    const fields = connectionFields(
+      context({ mode: 'edit', libraryId: 'lib-1', privateLibrary: true }),
+    )
+
+    expect(fields.asksSecret).toBe(false)
+    expect(fields.probeRequest({ sourceCredentials: 'u:p' }).sourceCredentials).toBeUndefined()
+  })
 })
 
 describe('withConnection', () => {
