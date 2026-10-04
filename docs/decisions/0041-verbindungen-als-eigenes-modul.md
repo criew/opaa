@@ -495,7 +495,9 @@ Begründung:
   Ersetzen des rotierten Refresh-Tokens in derselben Transaktion; zwei gleichzeitige Anfragen
   erneuern also einmal. Die Zeilensperre genügt unter [ADR-0021](0021-single-instance-betrieb.md) und
   bliebe bei mehreren Instanzen korrekt; sie hält eine Datenbankverbindung höchstens für das
-  Zeitlimit des Token-Aufrufs (15 s). `invalid_grant` beendet die Verbindung in derselben gesperrten
+  Zeitlimit des Token-Aufrufs (15 s). Das Zeitlimit von `SourceFormPost` umfasst den ganzen
+  Austausch einschließlich des Lesens der Antwort (höchstens 64 KiB); ein Endpunkt, der seine
+  Antwort tröpfeln lässt, wird abgebrochen. `invalid_grant` beendet die Verbindung in derselben gesperrten
   Transaktion über den neuen Port `connection.token.GrantRejections` (implementiert von
   `ConnectedAccountService`): abgelaufen mit `PROVIDER_REJECTED`, Protokolleintrag `EXPIRED`,
   Benachrichtigung `CONNECTION_EXPIRED`. Ein unerreichbarer Anbieter oder eine abgewiesene
@@ -508,7 +510,19 @@ Begründung:
   im aufrufenden Thread; ein zurückgerollter Verwurf widerruft nichts, ein gescheiterter Widerruf
   wird nur geloggt. Der Schnappschuss liest die Registrierung, wie sie gerade steht. Deshalb
   verwirft `ConnectionProfileService` bei Adress- oder Registrierungswechsel und bei der
-  Notabschaltung **vor** der Änderung bzw. vor dem Löschen des Client-Secrets.
+  Notabschaltung **vor** der Änderung bzw. vor dem Löschen des Client-Secrets, nachdem es die
+  Profilzeile gesperrt hat (`lockForChange`).
+- **Bekannte Grenze des Widerrufs:** Die Widerrufe eines Commits laufen nacheinander im
+  Request-Thread, je bis zu 15 s, und halten dabei die Datenbankverbindung. Eine Notabschaltung mit
+  100 Konten bei unerreichbarem Anbieter dauert so rund 25 Minuten. Begrenzter Executor oder
+  Gesamtbudget je Commit sind Maintainer-Entscheidung in #2265. Ein `BearerPost`-Widerruf sendet das
+  gespeicherte, oft schon abgelaufene Zugriffstoken; vor dem Widerruf zu erneuern löst D1 (#2154).
+- **Versionsbindung bis zum Ablegen:** Der Abschluss vergleicht die Zugangsversion der
+  Autorisierung mit der Version, mit der die Registrierung gelesen wurde, und legt den Grant in
+  einer Transaktion ab, die die Profilzeile mit `FOR SHARE` hält und die Version erneut vergleicht.
+  Eine Änderung des Zugangs sperrt die Zeile mit `FOR UPDATE`, bevor sie verwirft: Entweder sie
+  kommt zuerst, dann antwortet der Abschluss `409` und widerruft den frischen Grant mit der
+  Registrierung, die ihn getauscht hat; oder sie kommt danach und verwirft ihn mit der alten.
 - **Refresh-Tokens bleiben im Speicher:** Ihre Träger (`NewSecret.OAuthGrant`, `SecretIssuer.Issued`,
   `SecretIssuer.StoredTokens`, `OAuthClient.Grant`) liest nur `connection.token` und
   `connection.oauth` aus (ArchUnit `refreshTokensStayInTheTokenStore` mit Fixture). Kein Wert zeigt
@@ -520,8 +534,14 @@ Begründung:
 - **Offen für O2 und Folgearbeit:** Callback-Seite und „Verbinden“ auf der Kontoseite, Anzeige der
   Endpunkte im Zugangsformular samt Meldung in `SourceTypeSignIn`, Ablaufwarnung 14 Tage vorher,
   Zahl abgelaufener Verbindungen mit Schwellenwert, Handbuch (`indexierung.md`, `deployment.md`).
-  Die Kontoadresse nach der Zustimmung (`SourceConnector#connectedAccount`) und die Prüfung von
-  `iss` nach RFC 9207 fehlen noch; die Zeile je Zugang bindet den Code an den Anbieter.
+  Die Kontoadresse nach der Zustimmung (`SourceConnector#connectedAccount`) gehört zu „Quelle
+  verbinden“ (#2169).
+- **Restrisiko Mix-up (RFC 9207):** Der Rücksprung prüft `iss` nicht. Ein bösartiger
+  Autorisierungsserver an Zugang A kann die Person zum ehrlichen Server B schicken; der Code von B
+  kommt mit dem `state` von A zurück und wird samt Verifier bei A eingelöst. Bei einem Zugang ohne
+  Client-Secret (öffentlicher Client) genügt das A, um den Code bei B einzulösen. Vertretbar, weil
+  nur die Systemverwaltung Zugänge anlegt und ihre Endpunkte setzt; alle Zugänge teilen aber eine
+  Redirect-URI. Die Prüfung folgt in #2266.
 
 ## Referenzen
 

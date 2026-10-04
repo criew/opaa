@@ -298,6 +298,51 @@ class ConnectionAuthorizationIntegrationTest {
     assertThat(accountRows()).isZero();
   }
 
+  /**
+   * Regression guard: a registration changed while the code is exchanged refuses the grant, and the
+   * grant is revoked with the registration that obtained it, not stored for the new one.
+   */
+  @Test
+  void aRegistrationChangedDuringTheExchangeRefusesAndRevokesTheFreshGrant() throws Exception {
+    ConnectionAuthorizationService.Started started =
+        service.start(caller, profile, ConnectionAuthorizationPurpose.ACCOUNT);
+    PROVIDER.beforeCodeAnswer(
+        () -> {
+          try {
+            call(
+                "dev-admin",
+                put(ADMIN + "/" + profile),
+                """
+                {"name": "Zugang OAuth neu %s", "serverUrl": "%s", "authMethod": "OAUTH",
+                 "ownership": "PERSON", "clientId": "andere-app",
+                 "clientSecret": "anderes-geheimnis", "confirmDiscard": true}
+                """
+                    .formatted(UUID.randomUUID(), SERVER));
+          } catch (Exception e) {
+            throw new IllegalStateException(e);
+          }
+        });
+
+    complete("dev-user", started)
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value(ConnectionAuthorizationService.PROFILE_CHANGED));
+
+    assertThat(accountRows()).isZero();
+    assertThat(
+            jdbc.queryForObject(
+                "SELECT count(*) FROM connection_tokens WHERE profile_id = ?",
+                Integer.class,
+                profile))
+        .isZero();
+    assertThat(PROVIDER.revocations())
+        .singleElement()
+        .satisfies(
+            request -> {
+              assertThat(request.form()).containsEntry("token", PROVIDER.lastRefreshToken());
+              assertThat(request.authorization()).isEqualTo(basic(CLIENT_ID, CLIENT_SECRET));
+            });
+  }
+
   @Test
   void withoutAPublicAddressNoConsentStartsAndLibrariesAreNotServedYet() throws Exception {
     mockMvc

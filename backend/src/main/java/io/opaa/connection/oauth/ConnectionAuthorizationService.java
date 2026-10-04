@@ -162,7 +162,9 @@ public class ConnectionAuthorizationService {
    * Completes the caller's consent named by {@code state} with the provider's {@code code}, or ends
    * it with the provider's {@code error}. The state is used up first, whatever follows: {@code 404}
    * for one unknown, another person's, used up or expired; {@code 409} when the profile changed
-   * since the start; {@code 400} when the provider refused or the exchange failed.
+   * since the start, also while the code was exchanged; {@code 400} when the provider refused or
+   * the exchange failed. A grant that cannot be stored is revoked with the registration it came
+   * from.
    */
   public Completed complete(CurrentUser caller, String state, String code, String error) {
     ConnectionAuthorization authorization = useUp(caller, state);
@@ -176,21 +178,18 @@ public class ConnectionAuthorizationService {
         profiles
             .findById(authorization.getProfileId())
             .orElseThrow(() -> new NotFoundException("Zugang nicht gefunden"));
-    if (profile.getVersion() != authorization.getProfileVersion()) {
-      throw new ConflictException(
-          "Der Zugang „"
-              + profile.getName()
-              + "“ wurde geändert, während Sie beim Anbieter waren. Bitte verbinden Sie erneut.",
-          PROFILE_CHANGED);
+    ClientRegistration registration = registrations.registrationOf(profile.getId());
+    if (registration.version() != authorization.getProfileVersion()) {
+      throw profileChanged(profile);
     }
     accounts.requireConnectable(caller, profile);
-    ClientRegistration registration = registrations.registrationOf(profile.getId());
+    OAuthAuth auth = ProviderTokens.oauthOf(registration);
     OAuthClient.Grant grant;
     try {
       grant =
           client.exchange(
               registration,
-              ProviderTokens.oauthOf(registration),
+              auth,
               code,
               verifierOf(authorization),
               URI.create(authorization.getRedirectUri()),
@@ -204,17 +203,47 @@ public class ConnectionAuthorizationService {
               + " braucht dafür den passenden Scope, etwa offline_access. Zuständig ist die"
               + " Systemverwaltung.");
     }
-    AccountOverview.Account account =
-        accounts.established(
-            caller,
-            profile,
-            new NewSecret.OAuthGrant(
-                grant.refreshToken(),
-                grant.accessToken(),
-                grant.accessTokenExpiresAt(),
-                grant.refreshTokenExpiresAt()),
-            null);
+    AccountOverview.Account account;
+    try {
+      account = transactions.execute(status -> store(caller, profile, registration, grant));
+    } catch (RuntimeException e) {
+      client.revoke(registration, auth, grant.refreshToken(), grant.accessToken());
+      throw e;
+    }
     return new Completed(authorization.getPurpose(), profile.getId(), ACCOUNTS_PAGE, account);
+  }
+
+  /**
+   * Stores {@code grant} while the profile row is held against a change, only if the profile still
+   * stands at the version of {@code registration}, which the grant was obtained with: a change
+   * either went first and refuses it, or comes after and discards it.
+   */
+  private AccountOverview.Account store(
+      CurrentUser caller,
+      ConnectionProfile profile,
+      ClientRegistration registration,
+      OAuthClient.Grant grant) {
+    Long version = profiles.lockedVersion(profile.getId());
+    if (version == null || version != registration.version()) {
+      throw profileChanged(profile);
+    }
+    return accounts.established(
+        caller,
+        profile,
+        new NewSecret.OAuthGrant(
+            grant.refreshToken(),
+            grant.accessToken(),
+            grant.accessTokenExpiresAt(),
+            grant.refreshTokenExpiresAt()),
+        null);
+  }
+
+  private static ConflictException profileChanged(ConnectionProfile profile) {
+    return new ConflictException(
+        "Der Zugang „"
+            + profile.getName()
+            + "“ wurde geändert, während Sie beim Anbieter waren. Bitte verbinden Sie erneut.",
+        PROFILE_CHANGED);
   }
 
   /**

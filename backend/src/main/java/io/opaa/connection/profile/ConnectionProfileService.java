@@ -247,6 +247,7 @@ public class ConnectionProfileService {
       String secret,
       boolean confirmed,
       Answers answers) {
+    profiles.lockForChange(id);
     ConnectionProfile profile = get(id);
     Keyed keyed = keyed(values, secret, profile);
     ProfileChange change = plan(profile, keyed.values());
@@ -476,6 +477,7 @@ public class ConnectionProfileService {
    */
   @Transactional
   public ProfileImpact disconnectAll(CurrentUser caller, UUID id) {
+    profiles.lockForChange(id);
     ConnectionProfile profile = get(id);
     PersonCount ended = personNumbers.totalOf(id);
     boolean dropsOwnSecret = signsInItself(profile.getAuthMethod()) && profile.isClientSecretSet();
@@ -511,6 +513,7 @@ public class ConnectionProfileService {
    */
   @Transactional
   public void delete(CurrentUser caller, UUID id) {
+    profiles.lockForChange(id);
     ConnectionProfile profile = get(id);
     List<LibraryConnection> affected = connections.findByProfileId(id);
     secrets.discardAllUnder(id, ConnectionEndCause.PROFILE_DELETED);

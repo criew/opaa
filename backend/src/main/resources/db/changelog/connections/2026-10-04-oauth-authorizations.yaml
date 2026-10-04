@@ -2,7 +2,7 @@ databaseChangeLog:
   - changeSet:
       id: connections-2026-10-04-oauth-authorizations
       author: opaa
-      comment: "The OAuth core (#2168, ADR-0025 Nachtrag 03.10.2026): an authorization a person started keeps the hash of its state and its PKCE verifier, encrypted, bound to the person and to the profile as it stood, for one completion; and the endpoints of the authorization server a profile names where its connector leaves them to it."
+      comment: "The OAuth core (#2168, ADR-0025 Nachtrag 03.10.2026): an authorization a person started keeps the hash of its state and its PKCE verifier, encrypted, bound to the person and to the profile as it stood, for one completion."
       changes:
         - sql:
             sql: |
@@ -37,7 +37,13 @@ databaseChangeLog:
               CREATE INDEX ix_connection_authorizations_profile ON connection_authorizations (profile_id);
               CREATE INDEX ix_connection_authorizations_library ON connection_authorizations (library_id);
               CREATE INDEX ix_connection_authorizations_expiry ON connection_authorizations (expires_at);
-
+  - changeSet:
+      id: connections-2026-10-04-oauth-authorizations--profile-endpoints
+      author: opaa
+      comment: "The endpoints of the authorization server a profile names where its connector leaves them to it (Endpoint.FromProfile), fixed when the profile is saved."
+      changes:
+        - sql:
+            sql: |
               ALTER TABLE connection_profiles ADD COLUMN authorization_endpoint character varying(2000);
               ALTER TABLE connection_profiles ADD COLUMN token_endpoint character varying(2000);
               ALTER TABLE connection_profiles ADD COLUMN revocation_endpoint character varying(2000);

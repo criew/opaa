@@ -60,6 +60,7 @@ public final class FakeAuthorizationServer implements AutoCloseable {
   private volatile Long refreshLifetimeSeconds;
   private volatile Duration delay = Duration.ZERO;
   private volatile boolean unreachable;
+  private volatile Runnable beforeCodeAnswer;
 
   public FakeAuthorizationServer() {
     try {
@@ -143,6 +144,11 @@ public final class FakeAuthorizationServer implements AutoCloseable {
     this.unreachable = unreachable;
   }
 
+  /** Runs {@code hook} once the next code exchange arrived, before it is answered. */
+  public void beforeCodeAnswer(Runnable hook) {
+    this.beforeCodeAnswer = hook;
+  }
+
   /**
    * The person consents to the authorization request {@code authorizationUrl}: returns the code the
    * provider would send back to its {@code redirect_uri}.
@@ -217,6 +223,7 @@ public final class FakeAuthorizationServer implements AutoCloseable {
     refreshLifetimeSeconds = null;
     delay = Duration.ZERO;
     unreachable = false;
+    beforeCodeAnswer = null;
   }
 
   private void handleToken(HttpExchange exchange) throws IOException {
@@ -239,6 +246,11 @@ public final class FakeAuthorizationServer implements AutoCloseable {
     }
     String grantType = form.get("grant_type");
     if ("authorization_code".equals(grantType)) {
+      Runnable hook = beforeCodeAnswer;
+      beforeCodeAnswer = null;
+      if (hook != null) {
+        hook.run();
+      }
       Consent consent = codes.remove(form.getOrDefault("code", ""));
       if (consent == null
           || !consent.redirectUri().equals(form.get("redirect_uri"))

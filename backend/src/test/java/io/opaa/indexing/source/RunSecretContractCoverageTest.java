@@ -27,7 +27,10 @@ class RunSecretContractCoverageTest {
 
   /** Connectors that exist only in the test sources, to exercise the core. */
   private static final Set<String> TEST_ONLY_PACKAGES =
-      Set.of("io.opaa.indexing.source.probe", "io.opaa.indexing.source.profileprobe");
+      Set.of(
+          "io.opaa.indexing.source.probe",
+          "io.opaa.indexing.source.profileprobe",
+          "io.opaa.indexing.source.oauthprobe");
 
   @Autowired private List<SourceConnector> connectors;
 

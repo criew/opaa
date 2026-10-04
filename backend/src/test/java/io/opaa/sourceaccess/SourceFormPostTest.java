@@ -8,6 +8,7 @@ import io.opaa.security.TargetAddressValidator;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.net.URI;
+import java.net.http.HttpTimeoutException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
@@ -61,6 +62,21 @@ class SourceFormPostTest {
             out.write(body);
           }
         });
+    server.createContext(
+        "/trickle",
+        exchange -> {
+          exchange.sendResponseHeaders(200, 1000);
+          try (OutputStream out = exchange.getResponseBody()) {
+            for (int i = 0; i < 1000; i++) {
+              out.write('x');
+              out.flush();
+              Thread.sleep(100);
+            }
+          } catch (InterruptedException | java.io.IOException e) {
+            // the client gave up
+          }
+        });
+    server.setExecutor(java.util.concurrent.Executors.newCachedThreadPool());
     server.start();
   }
 
@@ -88,6 +104,24 @@ class SourceFormPostTest {
   void anAnswerOverTheBoundIsRefused() {
     assertThatThrownBy(() -> post("/large", Map.of(), 1024))
         .isInstanceOf(BoundedStreams.LimitExceededException.class);
+  }
+
+  /** The timeout bounds the reading of the body too, not only the arrival of the headers. */
+  @Test
+  void anAnswerTricklingInPastTheTimeoutIsCutOff() {
+    long start = System.nanoTime();
+
+    assertThatThrownBy(
+            () ->
+                SourceFormPost.post(
+                    SourceHttpClientFactory.buildHttpClient(null, -1, false),
+                    URI.create(base() + "/trickle"),
+                    Map.of(),
+                    Duration.ofSeconds(1),
+                    64 * 1024,
+                    TargetAddressValidator.disabled()))
+        .isInstanceOf(HttpTimeoutException.class);
+    assertThat(Duration.ofNanos(System.nanoTime() - start)).isLessThan(Duration.ofSeconds(5));
   }
 
   private SourceFormPost.Response post(String path, Map<String, String> form, long maxBytes)
