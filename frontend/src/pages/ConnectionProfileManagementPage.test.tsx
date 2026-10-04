@@ -4,7 +4,10 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { http, HttpResponse } from 'msw'
 import { server } from '../mocks/server'
 
-import { mockConnectionProfiles } from '../mocks/connectionProfileFixtures'
+import {
+  mockConnectionProfileRequests,
+  mockConnectionProfiles,
+} from '../mocks/connectionProfileFixtures'
 import { answerConfirm, renderWithProviders } from '../test/test-utils'
 import { useAuthStore } from '../stores/authStore'
 import type { ConnectionProfileUpdateRequest, SourceTypeDescriptor } from '../types/api'
@@ -705,5 +708,85 @@ describe('ConnectionProfileManagementPage - „Nur über Zugänge“ (#2162)', (
     expect(question).toHaveTextContent('ohne Neueinrichtung weiter')
     await answerConfirm(user, /ausschalten\?/, 'Ausschalten')
     await waitFor(() => expect(sent).toEqual([{ required: false }]))
+  })
+})
+
+describe('ConnectionProfileManagementPage - Zugangswünsche', () => {
+  beforeEach(() => {
+    signInAs('SYSTEM_ADMIN')
+    server.use(
+      http.get('/api/v1/source-types', () => HttpResponse.json([...WITHOUT_PROFILES, NEXTCLOUD])),
+    )
+  })
+
+  afterEach(() => {
+    server.events.removeAllListeners()
+  })
+
+  it('lists the open requests with type, address, reason and who asked, as plain text', async () => {
+    mockConnectionProfileRequests[0] = {
+      ...mockConnectionProfileRequests[0],
+      reason: '<img src=x onerror=alert(1)> bitte',
+    }
+    renderWithProviders(<ConnectionProfileManagementPage />)
+
+    const requests = await screen.findByRole('table', { name: 'Zugangswünsche' })
+    const row = await within(requests).findByRole('row', { name: /cloud\.partner\.example/ })
+    expect(row).toHaveTextContent('Nextcloud')
+    expect(row).toHaveTextContent('Dev User')
+    expect(row).toHaveTextContent('<img src=x onerror=alert(1)> bitte')
+    expect(row.querySelector('img')).toBeNull()
+  })
+
+  it('opens the profile form preset with type and address and resolves the request on saving', async () => {
+    const user = userEvent.setup()
+    const sent = capturePosts()
+    renderWithProviders(<ConnectionProfileManagementPage />)
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'Zugang für https://cloud.partner.example anlegen',
+      }),
+    )
+    const dialog = await screen.findByRole('dialog', { name: 'Zugang anlegen' })
+    expect(within(dialog).getByTestId('connection-profile-from-request')).toHaveTextContent(
+      'Für den Zugangswunsch von Dev User',
+    )
+    expect(within(dialog).getByRole('radio', { name: /Nextcloud/ })).toBeChecked()
+    expect(within(dialog).getByLabelText(/^Server-Adresse/)).toHaveValue(
+      'https://cloud.partner.example',
+    )
+    await user.type(within(dialog).getByLabelText(/^Name/), 'Zugang Partner')
+    await user.click(within(dialog).getByLabelText(/^Anmeldeart/))
+    await user.click(await screen.findByRole('option', { name: 'Ohne Anmeldung' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Anlegen' }))
+
+    await waitFor(() => expect(sent).toHaveLength(1))
+    expect(sent[0]).toMatchObject({
+      sourceType: 'NEXTCLOUD',
+      serverUrl: 'https://cloud.partner.example',
+      fulfillsRequestId: 'connection-profile-request-partner',
+    })
+    expect(await screen.findByText('Es liegen keine offenen Zugangswünsche vor.')).toBeVisible()
+    expect(mockConnectionProfileRequests[0].state).toBe('DONE')
+  }, 20000)
+
+  it('declines a request with an optional answer after asking', async () => {
+    const user = userEvent.setup()
+    const sent = capturePuts()
+    renderWithProviders(<ConnectionProfileManagementPage />)
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'Zugangswunsch für https://cloud.partner.example ablehnen',
+      }),
+    )
+    const dialog = await screen.findByRole('dialog', { name: 'Zugangswunsch ablehnen?' })
+    await user.type(within(dialog).getByLabelText(/^Antwort/), 'Nutzen Sie den Zugang intern.')
+    await user.click(within(dialog).getByRole('button', { name: 'Ablehnen' }))
+
+    await waitFor(() => expect(sent).toHaveLength(1))
+    expect(sent[0]).toEqual({ state: 'DECLINED', answer: 'Nutzen Sie den Zugang intern.' })
+    expect(await screen.findByText('Es liegen keine offenen Zugangswünsche vor.')).toBeVisible()
   })
 })

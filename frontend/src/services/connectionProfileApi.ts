@@ -2,6 +2,11 @@ import type {
   ConnectionProfileCreateRequest,
   ConnectionProfileImpactResponse,
   ConnectionProfileOption,
+  ConnectionProfileRequestCreateRequest,
+  ConnectionProfileRequestPageResponse,
+  ConnectionProfileRequestResolveRequest,
+  ConnectionProfileRequestResponse,
+  ConnectionProfileRequestState,
   ConnectionProfileResponse,
   ConnectionProfileUpdateRequest,
   ConnectorProfileRequirementRequest,
@@ -172,6 +177,74 @@ export async function setConnectorProfileRequirement(
   try {
     const { data } = await client.put<ConnectorTypeStateResponse>(
       `/v1/admin/connector-types/${sourceType}/profile-requirement`,
+      request,
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/** A submitted request; `created` is false when the same request was already open. */
+export interface ConnectionProfileRequestSubmission {
+  request: ConnectionProfileRequestResponse
+  created: boolean
+}
+
+/** Asks the system administration for a profile ("Zugangswunsch"). */
+export async function submitConnectionProfileRequest(
+  request: ConnectionProfileRequestCreateRequest,
+): Promise<ConnectionProfileRequestSubmission> {
+  try {
+    const response = await client.post<ConnectionProfileRequestResponse>(
+      '/v1/connection-profile-requests',
+      request,
+    )
+    return { request: response.data, created: response.status === 201 }
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/** The caller's own requests, newest first. */
+export async function listMyConnectionProfileRequests(): Promise<
+  ConnectionProfileRequestResponse[]
+> {
+  try {
+    const { data } = await client.get<ConnectionProfileRequestResponse[]>(
+      '/v1/me/connection-profile-requests',
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/** One page of the organization's requests, oldest first - SYSTEM_ADMIN only. */
+export async function listConnectionProfileRequests(
+  state: ConnectionProfileRequestState | null,
+  page = 0,
+  size = 25,
+): Promise<ConnectionProfileRequestPageResponse> {
+  try {
+    const { data } = await client.get<ConnectionProfileRequestPageResponse>(
+      '/v1/admin/connection-profile-requests',
+      { params: { ...(state ? { state } : {}), page, size } },
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/** Marks an open request done or declined - SYSTEM_ADMIN only. */
+export async function resolveConnectionProfileRequest(
+  requestId: string,
+  request: ConnectionProfileRequestResolveRequest,
+): Promise<ConnectionProfileRequestResponse> {
+  try {
+    const { data } = await client.put<ConnectionProfileRequestResponse>(
+      `/v1/admin/connection-profile-requests/${requestId}`,
       request,
     )
     return data

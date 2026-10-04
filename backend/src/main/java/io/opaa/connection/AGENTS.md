@@ -5,7 +5,7 @@ Pakete (`io.opaa.*`): connection. Ergänzt `backend/AGENTS.md`.
 ## Zweck und Grenze
 
 Verbindungsprofile („Zugänge“), Zuordnung einer Bibliothek, Konnektor-Freigabe, Sperren,
-Verbindungsprotokoll, Token-Speicher und verbundene Konten (ADR-0041,
+Verbindungsprotokoll, Token-Speicher, verbundene Konten und Zugangswünsche (ADR-0041,
 `docs/features/connector-connections.md`); OAuth folgt. connections hängt nur von foundation,
 identity, rights und knowledge ab; nur library hängt von connections ab. Der Kern erreicht es über
 seine Ports `SourceConnectionResolver` (`ProfileSourceConnectionResolver`) und `SourceStateLookup`.
@@ -13,9 +13,9 @@ seine Ports `SourceConnectionResolver` (`ProfileSourceConnectionResolver`) und `
 ## Invarianten und Stolpersteine
 
 - **Unterpakete, unten zuerst:** `connection.log`, `connection.token`, `connection.profile`,
-  `connection.account`; das Wurzelpaket verdrahtet und implementiert den Port, `connection.web`
-  darüber. Kein Unterpaket nennt das Wurzelpaket. Nach oben nur über Ports: `LibrariesOnProfile`,
-  `PersonAccounts`, `SecretIssuer` (token), `PersonConnections` (profile).
+  `connection.request` (Zugangswünsche, Lock je Person), `connection.account`; das Wurzelpaket
+  verdrahtet den Port, `connection.web` darüber; keines nennt es. Nach oben nur über Ports:
+  `LibrariesOnProfile`, `PersonAccounts`, `SecretIssuer` (token), `PersonConnections` (profile).
 - **Verbindungsprotokoll** wie `audit_log`: schreibt nur `ConnectionLog` (in der Transaktion des
   Aufrufers), liest nur `ConnectionLogQueryService` (`AUDITOR`), löscht nur die Datenbankfunktion.
   Die Verbindung einer privaten Bibliothek ist immer die der Person (`ConnectionLogOwner.Person`).

@@ -44,6 +44,18 @@ public enum NotificationType {
   CONNECTION_EXPIRED,
 
   /**
+   * A person asked for a connection profile ("Zugangswunsch"). Sent to every system administrator
+   * of the organization; names type and server address, never the person's reason.
+   */
+  CONNECTION_PROFILE_REQUESTED,
+
+  /**
+   * The system administration marked a connection profile request done or declined. Sent to the
+   * person who made it, with the administration's answer if it gave one.
+   */
+  CONNECTION_PROFILE_REQUEST_RESOLVED,
+
+  /**
    * The system administration ended the person's connected account - a changed, shut down or
    * deleted profile (ADR-0041). Sent to that person only; its object is the profile.
    */
