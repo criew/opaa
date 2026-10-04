@@ -196,7 +196,7 @@ class FileSyncTest {
         .state()
         .rememberSubtrees(
             new SourceSyncState.SubtreeMemory(
-                "v1|1|txt", memory.establishedAt(), memory.containers(), memory.documentCounts()));
+                "v2|1|txt", memory.establishedAt(), memory.containers()));
 
     harness.fullSync(store.reset());
 
@@ -258,8 +258,7 @@ class FileSyncTest {
   }
 
   @Test
-  void aNewFileThatIsNotAvailableAndAPathTooLongForTheRowKeepTheirFoldersOutOfTheMemory()
-      throws Exception {
+  void aFolderUnderAPathBeyond2000CharactersIsRememberedLikeAnyOther() throws Exception {
     String longFolder = "x".repeat(2100);
     InMemoryFileStore store =
         new InMemoryFileStore()
@@ -269,10 +268,81 @@ class FileSyncTest {
             .put("A", longFolder + "/b.txt", "B.");
 
     harness.fullSync(store);
+    FileSyncHarness.Run next = harness.fullSync(store.reset());
 
     assertThat(harness.state().subtreeMemory().containers().get("A"))
-        .as("the cut path keeps its folder and the root out")
-        .containsOnlyKeys("gut");
+        .containsOnlyKeys("", "gut", longFolder);
+    assertThat(next.skipped() + next.processed()).isZero();
+  }
+
+  @Test
+  void aDocumentDeletedAfterItsFolderWasVisitedReturnsWithTheNextRun() throws Exception {
+    // regression guard for #2201: a deletion during the run keeps the folders above it out of
+    // the memory, though the run's own figures already miss the document
+    InMemoryFileStore store =
+        new InMemoryFileStore()
+            .withFolderMarkers()
+            .container("A")
+            .container("B")
+            .put("A", "akten/x.txt", "X.")
+            .put("A", "akten/y.txt", "Y.")
+            .put("B", "b.txt", "B.");
+    String deleted = InMemoryFileStore.filePath("A", "akten/x.txt");
+    harness.fullSync(store);
+
+    harness.fullSync(
+        new BeforeListingStore(store.reset(), "B", () -> harness.deleteStored(deleted)));
+    FileSyncHarness.Run next = harness.fullSync(store.reset());
+
+    assertThat(next.ingested()).containsExactly(deleted);
+    assertThat(harness.storedPaths()).hasSize(3);
+    assertThat(harness.revisits()).as("consumed once its folder was listed").isEmpty();
+  }
+
+  @Test
+  void aDocumentDeletedBeforeAnEventRunAddsAnotherReturnsWithTheNextFullSync() throws Exception {
+    // regression guard for #2201: a document an event run adds to the container does not make
+    // up for one deleted by hand
+    InMemoryFileStore store =
+        new InMemoryFileStore()
+            .withFolderMarkers()
+            .container("A")
+            .put("A", "akten/x.txt", "X.")
+            .put("A", "akten/y.txt", "Y.");
+    String deleted = InMemoryFileStore.filePath("A", "akten/x.txt");
+    harness.fullSync(store);
+
+    harness.deleteStored(deleted);
+    store.put("A", "neu/z.txt", "Z.");
+    harness.refresh(
+        store.reset(),
+        List.of(
+            new FileReference(
+                new FileContainer("A"),
+                "neu/z.txt",
+                InMemoryFileStore.filePath("A", "neu/z.txt"))));
+    FileSyncHarness.Run next = harness.fullSync(store.reset());
+
+    assertThat(next.ingested()).containsExactly(deleted);
+    assertThat(harness.storedPaths()).hasSize(3);
+  }
+
+  @Test
+  void aRevisitOfAContainerNotListedToTheEndStays() throws Exception {
+    InMemoryFileStore store =
+        new InMemoryFileStore()
+            .withFolderMarkers()
+            .container("A")
+            .container("B")
+            .put("A", "akten/x.txt", "X.")
+            .put("B", "b.txt", "B.");
+    harness.fullSync(store);
+    harness.deleteStored(InMemoryFileStore.filePath("A", "akten/x.txt"));
+
+    harness.fullSync(store.reset().denyListing("B"));
+
+    assertThat(harness.revisits()).as("no complete listing, nothing consumed").hasSize(1);
+    assertThat(harness.storedPaths()).hasSize(2);
   }
 
   @Test
