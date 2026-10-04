@@ -352,8 +352,9 @@ Ein Lauf, der daran scheitert, speichert den Grund als Kategorie ohne Inhaltsbez
 Bibliotheken als eine Zeile ohne Namen und Kennung; jede Zahl über sie richtet sich nach der Zahl
 ihrer Besitzerinnen und steht unterhalb der Mindestgruppengröße nur als „weniger als N“, ohne
 Summen. Eine Teilzahl, etwa die abgelehnten privaten Bibliotheken eines Zugangs, nennt OPAA nur
-exakt, wenn auch die übrigen Besitzerinnen der Organisation keine oder mindestens N sind; sonst
-entfällt sie. Die Prüfung chunk-armer Dokumente, die Zahlen am Zugang und die Zahl der diagnosegesperrten
+exakt, wenn sowohl ihre Besitzerinnen als auch die Besitzerinnen aller übrigen privaten Bibliotheken
+mindestens N sind; sonst entfällt sie. Die Speicherbereiche der Bereinigung, die Prüfung
+chunk-armer Dokumente, die Zahlen am Zugang und die Zahl der diagnosegesperrten
 Bibliotheken zählen sie nicht mit. Der Neuaufbau nach einem Pipeline-Wechsel bezieht sie ein, nennt
 sie aber in keiner Zahl seiner Antwort: Jeder Aufruf merkt alle ihre veralteten Dokumente auf einmal
 für den nächsten Lauf der Bibliothek vor, der sie mit dem verbundenen Konto der Besitzerin neu

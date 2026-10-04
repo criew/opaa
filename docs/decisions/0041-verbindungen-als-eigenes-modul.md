@@ -570,17 +570,26 @@ Begründung:
 - **Eine Zählbasis:** Jede Zahl über private Bibliotheken ruht auf ihren Besitzerinnen, nicht auf
   den Bibliotheken: unter der Mindestgruppengröße N an Besitzerinnen, null eingeschlossen, nur
   „weniger als N“ (`permission.PersonThreshold`, dieselbe Schwelle wie `PersonNumbers`). Das gilt
-  für Summenzeilen, `knownLibraryCount` und die abgelehnten privaten Bibliotheken der
-  Änderungsvorschau (`rejectedPrivateLibraries`, nie in `rejectedLibraries` oder `rejections`).
-  Eine solche Teilzahl ist nur exakt, wenn auch die übrigen Besitzerinnen der Organisation keine
-  oder mindestens N sind (`PersonThreshold#disclosesPart`), sonst ab N nicht genannt.
+  für die Summenzeilen und die abgelehnten privaten Bibliotheken der Änderungsvorschau
+  (`rejectedPrivateLibraries`, nie in `rejectedLibraries` oder `rejections`). Diese Teilzahl ist nur
+  exakt, wenn ihre Besitzerinnen und die verschiedenen Besitzerinnen aller übrigen privaten
+  Bibliotheken der Organisation je mindestens N sind (`PersonThreshold#disclosesPart`); ein leerer
+  Rest gilt als wenige, sonst ist sie ab N nicht genannt. So ruht weder sie noch ihre Differenz zur
+  Summenzeile auf weniger als N Personen. Private Ablagebereiche zählen nie in
+  `knownLibraryCount` und `scannedAreas`, denn sie wären eine weitere Teilzahl.
 - **Vollabgleich ohne private Bibliotheken:** Ändert sich eine Vorgabe nur des Zugangs, zählen
   `fullSyncLibraries` und die Bestätigung nur geteilte Bibliotheken, und nur deren laufende
   Indexierung lehnt die Änderung ab. Der Abgleichstand privater wird ebenso verworfen und ihre
   Besitzerin benachrichtigt. Läuft eine gerade, verwirft ihr Konnektor ihn nach dem Ende des Laufs
   noch einmal (`RunStateResets` über `SourceConnectionResolver#runEnded`), denn der Lauf schreibt
-  ihn bis dahin weiter. Der Vermerk liegt im Speicher (ADR-0021); geht er verloren, weil der Lauf
-  vor dem Vermerk endete, kostet das höchstens einen weiteren Vollabgleich.
+  ihn bis dahin weiter. Der Vermerk entsteht schon in der Transaktion der Änderung (ein Rollback
+  nimmt ihn zurück) und liegt im Speicher (ADR-0021). **Restrisiko:** Startet der Prozess während
+  eines solchen Laufs neu, oder startet ein Lauf zwischen der Prüfung und dem Commit der Änderung,
+  bleibt der Abgleichstand der alten Vorgabe stehen; der nächste Lauf arbeitet inkrementell darauf
+  weiter, und der Index bleibt bis zum nächsten Vollabgleich auf dem alten Stand. Dasselbe Fenster
+  besteht für geteilte Bibliotheken. Heute in Produktion nicht erreichbar, weil nur Google Drive
+  eine Vorgabe allein des Zugangs deklariert und nur Bibliotheken zulässt; die neustartfeste Lösung
+  (Abgleichstand mit Fingerabdruck seiner Einstellungen) ist #2268, spätestens mit #2167 nötig.
 - **Protokolle neutral:** Eine private Bibliothek heißt dort „Private Bibliothek“
   (`Asset#auditName`), ihre Nutzlasten behalten nur neutrale Schlüssel ohne Namen, Pfade und Werte
   (`Asset#auditPayload`); `ModularArchitecture#privateAssetsAreAuditedNeutrally` hält das fest.
