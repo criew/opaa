@@ -500,6 +500,31 @@ Der Dialog zum Verbinden sagt das vor dem Absenden.
 - **Abgelaufene Zugangsdaten** nach der Rückkehr, etwa weil das App-Passwort beim Anbieter
   zurückgezogen wurde: „Neu verbinden“ mit neuen Zugangsdaten.
 
+### Wenn ein Anmeldeanbieter deaktiviert oder gelöscht wird
+
+Was mit den verbundenen Konten der Personen eines Anmeldeanbieters geschieht, hängt davon ab, ob
+die Systemverwaltung ihn **deaktiviert** oder **löscht** (Administration → Identitätsanbieter,
+Zeilenmenü des Anbieters):
+
+| Handlung | Verbundene Konten | Private Bibliotheken | Umkehrbar |
+|---|---|---|---|
+| **Deaktivieren** | **ruhen**: Die Zugangsdaten bleiben gespeichert, OPAA gibt sie nur nicht heraus | werden nicht aktualisiert, bleiben aber bestehen | ja: Nach dem Aktivieren geht es ohne Neuverbinden weiter |
+| **Löschen** | **enden**: Die Konten gelten als deaktiviert, ihre Zugangsdaten werden sofort gelöscht | die Löschfrist beginnt | nein: Ein neuer Anbieter mit derselben Issuer-URI macht die Konten wieder nutzbar, verbinden müssen die Personen aber neu |
+
+Vor beidem zeigt ein Dialog diese Wirkung und verlangt eine Bestätigung, **sobald irgendein Zugang
+verbundene Konten von Personen zulässt** — auch wenn über diesen Anbieter niemand verbunden ist.
+Sonst verriete schon das Ausbleiben der Frage, dass niemand verbunden ist. Eine Zahl je Anbieter
+nennt der Dialog nicht: Zahlen je Anbieter und je Zugang ließen sich gegeneinander verrechnen und
+zeigten dann, ob in einem Zugang mit „weniger als N“ überhaupt jemand verbunden ist. Lässt sich
+nicht ermitteln, ob Zugänge Personen zulassen, nennt der Dialog die Wirkung vorsorglich.
+
+Wer einen Anbieter nur vorübergehend außer Betrieb nimmt, etwa für eine Umstellung,
+**deaktiviert** ihn und löscht ihn nicht. Auch das Abschalten der lokalen Kontenverwaltung
+(Abschnitt 1) lässt die Verbindungen regulärer lokaler Konten nur ruhen; der Schalter unter
+Administration → Benutzer → Einstellungen fragt deshalb nicht nach. Solange kein mitgelieferter
+Konnektor die Besitzart „Person“ zulässt (#2167), hat keine dieser Handlungen Folgen für verbundene
+Konten, und der Dialog fragt nicht danach.
+
 ## 13. Regeln und Fristen
 
 Die Karte „Lokale Anmeldung" unter Administration → Benutzer → Einstellungen führt die Regeln, die für alle lokalen

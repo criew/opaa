@@ -51,20 +51,6 @@ interface ConnectedAccountRepository extends JpaRepository<ConnectedAccount, UUI
           + " group by a.profileId, a.state")
   List<StateCount> countByProfileAndState(@Param("profileIds") Collection<UUID> profileIds);
 
-  /** The connections of {@code userIds} that are not disconnected. */
-  @Query(
-      "select count(a) from ConnectedAccount a where a.userId in :userIds"
-          + " and a.state <> io.opaa.api.types.ConnectedAccountState.DISCONNECTED")
-  long countHeldBy(@Param("userIds") Collection<UUID> userIds);
-
-  /** The private libraries owned by any of {@code userIds}. */
-  @Query(
-      value =
-          "SELECT count(*) FROM assets a WHERE a.owner_only AND a.asset_type ="
-              + " 'KNOWLEDGE_LIBRARY' AND a.owner_user_id IN (:userIds)",
-      nativeQuery = true)
-  long countPrivateLibrariesOf(@Param("userIds") Collection<UUID> userIds);
-
   /** One row of {@link #countByProfileAndState}. */
   interface StateCount {
     UUID getProfileId();

@@ -26,11 +26,11 @@ seine Ports `SourceConnectionResolver` (`ProfileSourceConnectionResolver`) und `
   Verwerfen je Bibliothek trifft nur deren eigenes Geheimnis (`LibraryOwned`), nie das geteilte
   einer Person; das endet nur mit dem Konto (`ConnectedAccountService#end`).
 - **„Ruhend“/„deaktiviert“ werden abgeleitet;** `ConnectionLifecycleReconciler` hält nur den Beginn
-  fest und beendet nur bei `DEACTIVATED`, je Person in eigener Transaktion (auch nach Commit). Eine
-  getrennte Zeile bleibt für eine private Bibliothek daran (Trigger, auch nach Besitzartwechsel).
-- **Die Verwaltung sieht Konten nur über `PersonNumbers`** („weniger als N“), Bibliothekszahlen ohne
-  private, Kontoname und Client-Secret nie. Eine private vetiert keine Profiländerung, sie wird
-  gelöst (`PrivateLibraryRelease`); Konto, Ziel, Entwurf prüft `PrivateLibraryConnections`.
+  fest, beendet nur bei `DEACTIVATED` je Person; getrennt bleibt die Zeile einer privaten Bibliothek.
+- **Die Verwaltung sieht Konten nur über `PersonNumbers`** („weniger als N“, auch bei 0; je
+  Anbieter keine Zahl), Zahlen privater Bibliotheken nach Besitzerinnen (`PersonThreshold`),
+  Kontoname und Client-Secret (nur Ja/Nein) nie. Eine private vetiert nichts, sie wird gelöst und
+  ihre Besitzerin benachrichtigt (`PrivateLibraryRelease`); Konto/Ziel: `PrivateLibraryConnections`.
 - **Ursprungsbindung:** Die Adresse einer zugeordneten Bibliothek liegt unter der Server-Adresse
   ihres Profils, sonst sperrt der Port. Eine neue Server-Adresse oder Registrierung verwirft alle
   Geheimnisse und beendet die verbundenen Konten; ein gelöschtes Profil lässt `profile_id NULL`.

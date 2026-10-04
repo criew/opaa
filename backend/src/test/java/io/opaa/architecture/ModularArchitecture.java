@@ -296,7 +296,7 @@ public final class ModularArchitecture {
    */
   static final String RAW_PERSON_COUNTS_PORT = "connection.profile.PersonConnections";
 
-  static final Set<String> RAW_PERSON_COUNTS = Set.of("countsAmong", "totalsOf");
+  static final Set<String> RAW_PERSON_COUNTS = Set.of("countsAmong");
 
   static final String PERSON_NUMBERS = "connection.profile.PersonNumbers";
 

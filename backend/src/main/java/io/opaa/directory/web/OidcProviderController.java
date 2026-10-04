@@ -5,6 +5,7 @@ import io.opaa.api.dto.DirectoryConnectorResponse;
 import io.opaa.api.dto.DirectoryConnectorTestRequest;
 import io.opaa.api.dto.OidcProviderDirectorySyncRequest;
 import io.opaa.api.dto.OidcProviderExternalRequest;
+import io.opaa.api.dto.OidcProviderImpactResponse;
 import io.opaa.api.dto.OidcProviderOrderRequest;
 import io.opaa.api.dto.OidcProviderRequest;
 import io.opaa.api.dto.OidcProviderResponse;
@@ -42,7 +43,8 @@ import org.springframework.web.bind.annotation.RestController;
  * client: no response carries a secret because none exists. Every response carries the registry's
  * view of the provider ({@link OidcProviderRegistry#healthOf}), so the Anbieterverwaltung can show
  * a provider whose decoder could not be built. Disabling or deleting the last enabled OIDC provider
- * needs {@code acknowledgeLastProvider=true} (ADR-0033, Entscheidung 4); the LOCAL row's
+ * needs {@code acknowledgeLastProvider=true} (ADR-0033, Entscheidung 4), and wherever persons may
+ * have connections {@code confirmConnections=true} (ADR-0041, Entscheidung 4); the LOCAL row's
  * enable/disable is the switch of the local account management.
  */
 @RestController
@@ -123,10 +125,22 @@ public class OidcProviderController {
   public ResponseEntity<Void> deleteProvider(
       @PathVariable UUID providerId,
       @RequestParam(defaultValue = "false") boolean acknowledgeLastProvider,
+      @RequestParam(defaultValue = "false") boolean confirmConnections,
       @Caller CurrentUser caller) {
     providerService.deleteProvider(
-        caller.organizationId(), caller.id(), providerId, acknowledgeLastProvider);
+        caller.organizationId(),
+        caller.id(),
+        providerId,
+        acknowledgeLastProvider,
+        confirmConnections);
     return ResponseEntity.noContent().build();
+  }
+
+  @PreAuthorize("hasRole('SYSTEM_ADMIN')")
+  @GetMapping("/{providerId}/impact")
+  public OidcProviderImpactResponse getProviderImpact(@PathVariable UUID providerId) {
+    return OidcProviderResponseMapper.toImpactResponse(
+        providerService.connectionsConfirmationRequired(providerId));
   }
 
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
@@ -142,10 +156,16 @@ public class OidcProviderController {
   public OidcProviderResponse disableProvider(
       @PathVariable UUID providerId,
       @RequestParam(defaultValue = "false") boolean acknowledgeLastProvider,
+      @RequestParam(defaultValue = "false") boolean confirmConnections,
       @Caller CurrentUser caller) {
     return toResponse(
         providerService.setEnabled(
-            caller.organizationId(), caller.id(), providerId, false, acknowledgeLastProvider));
+            caller.organizationId(),
+            caller.id(),
+            providerId,
+            false,
+            acknowledgeLastProvider,
+            confirmConnections));
   }
 
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")

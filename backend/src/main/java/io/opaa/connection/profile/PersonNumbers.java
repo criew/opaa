@@ -1,6 +1,5 @@
 package io.opaa.connection.profile;
 
-import io.opaa.connection.profile.PersonConnections.PersonTotals;
 import io.opaa.connection.profile.PersonConnections.StateCounts;
 import io.opaa.permission.GroupSizeProperties;
 import io.opaa.permission.PersonThreshold;
@@ -46,15 +45,6 @@ public class PersonNumbers {
     return countsOf(List.of(profileId)).get(profileId).total();
   }
 
-  /**
-   * The connections and private libraries of {@code userIds} as a whole, each masked like a total;
-   * neither tells whether one of them has any.
-   */
-  public PersonsCounts ofPersons(Collection<UUID> userIds) {
-    PersonTotals raw = userIds.isEmpty() ? new PersonTotals(0, 0) : persons.totalsOf(userIds);
-    return new PersonsCounts(total(raw.connections()), total(raw.privateLibraries()));
-  }
-
   private PersonCount total(long count) {
     return threshold.discloses(count) ? PersonCount.exact(count) : PersonCount.fewerThan(minimum);
   }
@@ -95,7 +85,4 @@ public class PersonNumbers {
    * null} where it may not be told at all.
    */
   public record ProfileCounts(PersonCount total, PersonCount expired) {}
-
-  /** The connections and the private libraries of a set of persons, both masked. */
-  public record PersonsCounts(PersonCount connections, PersonCount privateLibraries) {}
 }

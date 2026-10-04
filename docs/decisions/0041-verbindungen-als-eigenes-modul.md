@@ -400,6 +400,29 @@ Begründung:
   (Verbindungen und private Bibliotheken der nicht deaktivierten Konten des Anbieters, je maskiert).
   Die Anzeige in der Anbieterverwaltung (Spezifikation, API, Oberfläche) folgt.
 
+## Nachtrag vom 04.10.2026: Folgen in der Anbieterverwaltung (#2251)
+
+- **Wirkung statt Zahlen:** `GET /api/v1/admin/oidc-providers/{id}/impact` nennt vor dem
+  Deaktivieren oder Löschen nur, **ob** eine Bestätigung nötig ist, und **was** die Handlung
+  bewirkt (`CONNECTIONS_REST` bzw. `CONNECTIONS_END`). Eine Zahl je Anbieter nennt sie nicht.
+  Zahlen je Anbieter und je Zugang zählen dieselben Verbindungen und lassen sich deshalb
+  gegeneinander verrechnen. Selbst ein bloßes „mindestens N“ je Anbieter hebt die 0-Rundung der
+  Zugänge auf: Ein Anbieter mit „mindestens 5“ und zwei Zugänge mit je „weniger als 5“ zeigen, dass
+  jeder Zugang mindestens eine Verbindung hat. Damit weicht der Nachtrag von Entscheidung 4 („nennt
+  die Zahl der ruhenden Verbindungen“) bewusst ab. Der Port `auth.ProviderConnectionsImpact` sagt nur
+  noch, ob ein Zugang Personen zulässt.
+- **Bestätigung:** Deaktivieren und Löschen verlangen `confirmConnections=true`, sobald irgendein
+  Zugang Personen zulässt, unabhängig davon, ob jemand verbunden ist. Sonst antworten sie mit
+  `409 PROVIDER_CONNECTIONS_CONFIRMATION_REQUIRED` und einer neutralen deutschen Meldung über
+  „etwaige verbundene Konten“. Deaktivieren lässt ruhen und löscht nichts. Löschen löscht die
+  Geheimnisse sofort und unumkehrbar und startet die Löschfrist. Das gilt auch für den Schalter der
+  Zeile `LOCAL` über die Anbieter-API.
+- **Belegt** in `ProviderShutdownIntegrationTest` mit zwei Anbietern und zwei Zugängen:
+  Zugangsliste, Folgenabschätzung beider Zugänge und beider Anbieter lauten vor jeder Verbindung,
+  nach einer und nach zwei gleich.
+- **Offen:** Der Schalter der lokalen Kontenverwaltung unter Administration → Benutzer
+  (`updateLocalAuthSettings`) fragt nicht nach; dort ruhen die Verbindungen nur.
+
 ## Nachtrag vom 04.10.2026: Private Bibliotheken anlegen und betreiben (#2164)
 
 - **Anlegen nur über `library.PrivateLibraryCreation`:** ausdrückliche Wahl „privat“, auch auf einem
@@ -416,11 +439,23 @@ Begründung:
   zählt solche Ablehnungen, ohne Bibliothek und Grund. Eine Constraint-Trigger-Funktion auf
   `connection_profiles` hält die Bedingung des Triggers auf `library_connections` auch nach einer
   Änderung der Besitzart (geprüft zum Commit).
-- **Verwaltungssichten ohne private Bibliotheken:** Zahlen am Profil, Indexstatus (eine
-  Summenzeile, unter der Mindestgruppengröße nur „weniger als N“), chunk-arme Dokumente, Zahl der
-  diagnosegesperrten Bibliotheken. Die ungefilterten Finder ruft nur ein gelisteter Systemprozess
-  (`ModularArchitecture#privateLibrariesAreNotEnumeratedOutsideListedClasses`). Protokolle nennen
-  eine private Bibliothek „Private Bibliothek“ (`Asset#auditName`).
+- **Verwaltungssichten ohne private Bibliotheken:** Zahlen am Profil, Indexstatus und
+  Pipeline-Stand (je eine Summenzeile), chunk-arme Dokumente, Zahl der diagnosegesperrten
+  Bibliotheken, Speicherbereiche der Bereinigung. Der Bestandslauf der Pipeline lässt private
+  Bibliotheken aus. Die ungefilterten Finder ruft nur ein gelisteter Systemprozess
+  (`ModularArchitecture#privateLibrariesAreNotEnumeratedOutsideListedClasses`).
+- **Eine Zählbasis:** Jede Zahl über private Bibliotheken ruht auf ihren Besitzerinnen, nicht auf
+  den Bibliotheken: unter der Mindestgruppengröße N an Besitzerinnen, null eingeschlossen, nur
+  „weniger als N“ (`permission.PersonThreshold`, dieselbe Schwelle wie `PersonNumbers`). Das gilt
+  für Summenzeilen, `knownLibraryCount` und die abgelehnten privaten Bibliotheken der
+  Änderungsvorschau (`rejectedPrivateLibraries`, nie in `rejectedLibraries` oder `rejections`).
+- **Protokolle neutral:** Eine private Bibliothek heißt dort „Private Bibliothek“
+  (`Asset#auditName`), ihre Nutzlasten behalten nur neutrale Schlüssel ohne Namen, Pfade und Werte
+  (`Asset#auditPayload`); `ModularArchitecture#privateAssetsAreAuditedNeutrally` hält das fest.
+- **Lösen benachrichtigt:** Wird eine private Bibliothek vom Zugang gelöst, erhält ihre
+  Besitzerin eine Benachrichtigung nach dem Muster von ADR-0019 (warum, was mit dem Inhalt
+  geschieht, was sie tun kann). Verweigert der Speicher ihr Geheimnis, etwa bei deaktiviertem
+  Konto, gilt es für die Änderung als nicht vorhanden.
 - **Diagnosesperre:** Eine private Bibliothek trägt sie ab Anlage und behält sie; lösen lässt sie
   sich nicht. „Sicht als“ erreicht sie unabhängig davon nie; die Sperre ist die zweite Schranke.
 - **Laufkategorie:** `indexing_jobs.failure_category` hält, warum ein Lauf scheiterte (Sperrgrund,
