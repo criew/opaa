@@ -17,6 +17,7 @@ import io.opaa.indexing.source.Secret;
 import io.opaa.indexing.source.SourceChangeGate;
 import io.opaa.indexing.source.SourceChangeGate.Answers;
 import io.opaa.indexing.source.SourceChangeGate.Transition;
+import io.opaa.indexing.source.SourceConnectionBlockedException;
 import io.opaa.indexing.source.SourceConnector;
 import io.opaa.indexing.source.SourceConnectorRegistry;
 import io.opaa.indexing.source.SourceSettings;
@@ -113,14 +114,22 @@ public class SourceTransitions {
     boolean sameTarget =
         SecretTarget.of(connector, before).admits(SecretTarget.of(connector, after));
     boolean keepsSecret = !discardSecret && takesSecret && sameTarget;
+    boolean unchecked = false;
     if (!before.equals(after)) {
-      Secret held = effective.heldSecret(library, from);
+      Secret held;
+      try {
+        held = effective.heldSecret(library, from);
+      } catch (SourceConnectionBlockedException e) {
+        held = null;
+        // without its owner's secret the connector of a private library cannot judge the move
+        unchecked = library.isOwnerOnly();
+      }
       before = before.withCredentials(held);
       after = keepsSecret ? after.withCredentials(held) : after;
     }
     // a frame without the library's own secret leaves an unused one to adoptFrame, not to the move
     boolean discards = holdsSecret && (discardSecret || takesSecret && !sameTarget);
-    return new Move(library, before, after, discards, takesSecret, kept);
+    return new Move(library, before, after, discards, takesSecret, kept, unchecked);
   }
 
   /**
@@ -138,17 +147,17 @@ public class SourceTransitions {
    */
   public Move release(KnowledgeLibrary library, Optional<ConnectionProfile> from) {
     SourceSettings before = effective.framed(library, from, library.getSourceUrl(), null);
-    return new Move(library, before, before, false, true, null);
+    return new Move(library, before, before, false, true, null, false);
   }
 
   /**
    * The connectors' refusals of {@code moves}, empty when all pass; nothing is written. A move that
-   * leaves the effective configuration as it is asks no connector.
+   * leaves the effective configuration as it is, or is {@link Move#unchecked}, asks no connector.
    */
   public List<ChangeRejection> check(List<Move> moves, Answers answers) {
     List<ChangeRejection> rejections = new ArrayList<>();
     for (Move move : moves) {
-      if (!move.changesConfiguration()) {
+      if (!move.changesConfiguration() || move.unchecked()) {
         continue;
       }
       try {
@@ -234,6 +243,8 @@ public class SourceTransitions {
    * @param takesSecret whether the frame after signs in with the library's own secret
    * @param keptDefaults the defaults of the frame before that the frame after no longer sets, which
    *     the library keeps as its own; {@code null} for none
+   * @param unchecked whether no connector is asked: a private library whose owner's secret the
+   *     store refuses
    */
   public record Move(
       KnowledgeLibrary library,
@@ -241,7 +252,8 @@ public class SourceTransitions {
       SourceSettings after,
       boolean discardsSecret,
       boolean takesSecret,
-      ConnectorData keptDefaults) {
+      ConnectorData keptDefaults,
+      boolean unchecked) {
 
     /** Whether address, transport or connector settings change; the secret does not count. */
     public boolean changesConfiguration() {

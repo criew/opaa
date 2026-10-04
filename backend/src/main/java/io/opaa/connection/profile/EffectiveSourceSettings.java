@@ -492,21 +492,18 @@ public class EffectiveSourceSettings {
 
   /**
    * The secret {@code library} holds under {@code profile} - empty for its own address - as a
-   * change sees it, {@code null} for none or a missing one; no block refuses it and no key is
-   * signed.
+   * change sees it, {@code null} for none or a missing one; no key is signed.
+   *
+   * @throws SourceConnectionBlockedException when the store refuses a held secret, such as a
+   *     person's whose account is not usable
    */
   Secret heldSecret(KnowledgeLibrary library, Optional<ConnectionProfile> profile) {
     if (profile.isEmpty()) {
       return ownFields.resolveForChange(library).credentials();
     }
-    if (profile.get().getAuthMethod() != ConnectionAuthMethod.PERSONAL_SECRET) {
-      return null;
-    }
-    try {
-      return secretOf(ownerOn(profile.get(), library), profile.get(), library, false);
-    } catch (SourceConnectionBlockedException e) {
-      return null;
-    }
+    return profile.get().getAuthMethod() == ConnectionAuthMethod.PERSONAL_SECRET
+        ? storedSecretFor(profile.get(), library)
+        : null;
   }
 
   /** The access token an uploaded service account key is exchanged for, {@code null} for none. */
