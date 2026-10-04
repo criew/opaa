@@ -303,8 +303,8 @@ public final class ModularArchitecture {
 
   /**
    * The finders that enumerate the libraries of an organization or of the installation with the
-   * private ones, relative to the root; the views of the administration take {@code
-   * findSharedByOrganizationId} instead.
+   * private ones, or the private ones alone, relative to the root; the views of the administration
+   * take {@code findSharedByOrganizationId} instead. Native SQL is not seen.
    */
   static final Set<String> UNFILTERED_LIBRARY_FINDERS =
       Set.of(
@@ -313,6 +313,7 @@ public final class ModularArchitecture {
           "knowledge.KnowledgeLibraryRepository#findIdsByOrganizationId",
           "knowledge.KnowledgeLibraryRepository#findByScheduleEnabledTrue",
           "knowledge.KnowledgeLibraryRepository#findByOrganizationIdAndExternalAccessState",
+          "knowledge.KnowledgeLibraryRepository#findPrivateIdsByOrganizationId",
           "knowledge.KnowledgeLibraryRepository"
               + "#findByExternalAccessStateAndExternalAccessExpiresAtLessThanEqual",
           "knowledge.KnowledgeLibraryRepository"
@@ -325,6 +326,7 @@ public final class ModularArchitecture {
    */
   static final Set<String> LIBRARY_ENUMERATORS =
       Set.of(
+          "indexing.maintenance.PipelineReindexService",
           "indexing.source.LibraryIndexingScheduler",
           "library.OrphanedOriginalCleanupService",
           "library.LibraryExternalAccessService",

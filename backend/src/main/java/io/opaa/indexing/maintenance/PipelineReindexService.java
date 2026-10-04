@@ -223,8 +223,10 @@ public class PipelineReindexService {
    * Advances up to {@code batchSize} documents of {@code organizationId} that still hold chunks
    * from {@code pipelineId} below {@code belowVersion}; call repeatedly until the result is empty.
    * A source that passes {@link StoredDocumentSourceAccess#withLocalSourceFile} is rewritten under
-   * its own id, a remote one marked for its next run, anything else skipped. Deliberately not
-   * {@code @Transactional}: one transaction would pin a connection for every embedding call.
+   * its own id, a remote one marked for its next run, anything else skipped. Every remote document
+   * of a private library is marked in each call, whatever {@code batchSize}, and counted nowhere.
+   * Deliberately not {@code @Transactional}: one transaction would pin a connection for every
+   * embedding call.
    *
    * <p>An unavailable upload store ends the call early: that document is reported as skipped like
    * any other failure, the candidates behind it are left untouched, and what the call had already
@@ -247,8 +249,10 @@ public class PipelineReindexService {
                 selectStaleDocuments(
                     organizationId, pipelineId, belowVersion, false, limit, offset),
             documentId -> advance(documentId, pipelineId));
-    // Private libraries advance the same way, but are not reported: no number of the result may
-    // rest on them, and done follows the shared libraries alone.
+    // Private libraries advance too, but are not reported: no number of the result may rest on
+    // them, and done follows the shared libraries alone. Their remote documents are marked all at
+    // once; the loop is left with what this machine can re-read.
+    markPrivateRemoteChainsForNextRun(organizationId, pipelineId, belowVersion);
     DocumentBatchLoop.run(
         batchSize,
         Advance.class,
@@ -438,6 +442,34 @@ public class PipelineReindexService {
         .collect(Collectors.joining(", "));
   }
 
+  /**
+   * Marks every stale remote document of the private libraries of {@code organizationId}, with its
+   * parent chain, for its library's next run, in one statement: their content lies with the
+   * provider, so nothing is read here, and neither the batch size nor the time taken depends on how
+   * many there are.
+   */
+  private void markPrivateRemoteChainsForNextRun(
+      UUID organizationId, String pipelineId, int belowVersion) {
+    StalePredicate stale = stalePredicate(organizationId, pipelineId, belowVersion, true);
+    jdbcTemplate.update(
+        "WITH RECURSIVE chain(id, parent_id) AS ("
+            + "  SELECT d.id, d.parent_document_id FROM "
+            + vectorStoreTable
+            + " v JOIN documents d ON d.id::text = v.metadata->>'document_id' "
+            + "  WHERE "
+            + stale.sql()
+            + "    AND d.source_type NOT IN ("
+            + localSourceTypeSqlList()
+            + ") "
+            + "  UNION "
+            + "  SELECT p.id, p.parent_document_id FROM documents p "
+            + "  JOIN chain c ON p.id = c.parent_id) "
+            // as DocumentRepository#markForReindexOnNextRun does it for one row
+            + "UPDATE documents SET checksum = NULL, last_modified_remote = NULL "
+            + "WHERE id IN (SELECT id FROM chain)",
+        stale.params().toArray());
+  }
+
   private List<UUID> selectStaleDocuments(
       UUID organizationId,
       String pipelineId,
@@ -445,7 +477,8 @@ public class PipelineReindexService {
       boolean privateLibraries,
       int batchSize,
       int offset) {
-    MisroutedPredicate misrouted = misroutedPredicateFor(pipelineId);
+    StalePredicate stale =
+        stalePredicate(organizationId, pipelineId, belowVersion, privateLibraries);
     String sql =
         "SELECT DISTINCT v.metadata->>'document_id' AS document_id "
             + "FROM "
@@ -456,7 +489,40 @@ public class PipelineReindexService {
             // this query with "invalid input syntax for type uuid", it must simply not join to any
             // document row.
             + "LEFT JOIN documents d ON d.id::text = v.metadata->>'document_id' "
-            + "WHERE v.metadata->>'document_id' IS NOT NULL "
+            + "WHERE "
+            + stale.sql()
+            // Stable order so the offset below actually scans past the documents this call already
+            // found unadvanceable, instead of reshuffling them back into view.
+            + "ORDER BY 1 "
+            + "OFFSET ? LIMIT ?";
+    List<Object> params = new ArrayList<>(stale.params());
+    params.add(offset);
+    params.add(batchSize);
+
+    List<UUID> ids = new ArrayList<>();
+    jdbcTemplate.query(
+        sql,
+        rs -> {
+          ids.add(UUID.fromString(rs.getString("document_id")));
+        },
+        params.toArray());
+    return ids;
+  }
+
+  /**
+   * The condition on chunk {@code v} and its document {@code d}, plus its positional parameters.
+   */
+  private record StalePredicate(String sql, List<Object> params) {}
+
+  /**
+   * The chunks of {@code organizationId} - of private or of shared libraries - whose document this
+   * re-index still has to advance.
+   */
+  private StalePredicate stalePredicate(
+      UUID organizationId, String pipelineId, int belowVersion, boolean privateLibraries) {
+    MisroutedPredicate misrouted = misroutedPredicateFor(pipelineId);
+    String sql =
+        "v.metadata->>'document_id' IS NOT NULL "
             // Excludes the same malformed metadata the join above already tolerates, so this
             // column's values are always safe to parse as UUID in Java below.
             + "  AND v.metadata->>'document_id' ~* "
@@ -497,11 +563,7 @@ public class PipelineReindexService {
             + "       OR d.source_type IN ("
             + localSourceTypeSqlList()
             + ") "
-            + "       OR d.checksum IS NOT NULL) "
-            // Stable order so the offset below actually scans past the documents this call already
-            // found unadvanceable, instead of reshuffling them back into view.
-            + "ORDER BY 1 "
-            + "OFFSET ? LIMIT ?";
+            + "       OR d.checksum IS NOT NULL) ";
     List<Object> params = new ArrayList<>();
     params.add(organizationId.toString());
     params.add(ChunkFormatMetadata.LEGACY_PIPELINE_ID);
@@ -510,17 +572,7 @@ public class PipelineReindexService {
     params.add(belowVersion);
     params.addAll(misrouted.params());
     params.add(FullTextChunkStore.CURRENT_TSV_VERSION);
-    params.add(offset);
-    params.add(batchSize);
-
-    List<UUID> ids = new ArrayList<>();
-    jdbcTemplate.query(
-        sql,
-        rs -> {
-          ids.add(UUID.fromString(rs.getString("document_id")));
-        },
-        params.toArray());
-    return ids;
+    return new StalePredicate(sql, params);
   }
 
   /** A SQL fragment over {@code d.file_name} plus the positional parameters it needs. */
