@@ -15,11 +15,13 @@ import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.DevAuthFilter;
 import io.opaa.format.ChunkFormatMetadata;
+import io.opaa.indexing.chunk.ChunkTargetGoneException;
 import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.indexing.source.profileprobe.PersonProbeIndexingExecutor;
 import io.opaa.indexing.source.profileprobe.PersonProbeSourceConnector;
 import io.opaa.knowledge.ErasureCause;
 import io.opaa.knowledge.KnowledgeLibrary;
+import io.opaa.knowledge.UploadedOriginalStore;
 import io.opaa.library.LibraryCreation;
 import io.opaa.library.PrivateLibraryCreation;
 import io.opaa.library.PrivateLibraryErasure;
@@ -80,6 +82,12 @@ class PrivateLibraryErasureIntegrationTest {
           "asset_visibility_history",
           "databasechangelog");
 
+  /**
+   * The text of the owner's chat answers stays with her chat (ADR-0041, Nachtrag #2165; open
+   * maintainer decision M1): an answer may quote the erased content, only its sources are redacted.
+   */
+  private static final String CHAT_ANSWER_TEXT = "chat_messages.content";
+
   @Autowired private MockMvc mockMvc;
   @Autowired private JdbcTemplate jdbc;
   @Autowired private OwnLibraryFixtures libraryFixtures;
@@ -88,6 +96,7 @@ class PrivateLibraryErasureIntegrationTest {
   @Autowired private VectorChunkStore chunks;
   @Autowired private SpaceAssetAssociationService associations;
   @Autowired private PersonProbeIndexingExecutor executor;
+  @Autowired private UploadedOriginalStore originalStore;
 
   private final List<UUID> libraries = new ArrayList<>();
   private final List<UUID> spaces = new ArrayList<>();
@@ -254,6 +263,15 @@ class PrivateLibraryErasureIntegrationTest {
   @Test
   void anErasureFailingHalfwayKeepsItsMarkerAndTheNextCallCompletesIt() throws Exception {
     Fixture fixture = aFullPrivateLibrary();
+    UploadedOriginalStore.AcceptedUpload upload =
+        originalStore.accept(
+            Organization.DEFAULT_ID,
+            fixture.library(),
+            ".txt",
+            new java.io.ByteArrayInputStream("Original".getBytes(StandardCharsets.UTF_8)));
+    upload.store();
+    upload.release();
+    assertThat(storedOriginals(fixture.library())).isEqualTo(1);
     String suffix = fixture.library().toString().replace("-", "");
     jdbc.execute(
         "CREATE FUNCTION fail_erasure_"
@@ -284,6 +302,13 @@ class PrivateLibraryErasureIntegrationTest {
         .as("the deletion was rolled back as a whole")
         .isEqualTo(1);
     assertThat(proofsOf(fixture.library())).isZero();
+    assertThat(storedOriginals(fixture.library()))
+        .as("the originals went before the transaction")
+        .isZero();
+    mockMvc
+        .perform(as("dev-user", get("/api/v1/documents/" + fixture.ids().getFirst() + "/content")))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.error").value("Die Bibliothek wird gelöscht"));
     mockMvc
         .perform(as("dev-user", post(LIBRARIES + "/" + fixture.library() + "/indexing")))
         .andExpect(status().isConflict());
@@ -296,7 +321,56 @@ class PrivateLibraryErasureIntegrationTest {
     theProofNamesNothing(fixture, "OWNER_REQUEST");
   }
 
+  /**
+   * A writer that outlived its run - one the stale-run sweep failed while its thread went on - puts
+   * nothing of a library back once it is marked or erased.
+   */
+  @Test
+  void aLateWriterPutsNothingOfAMarkedOrErasedLibraryBack() {
+    UUID marked = aPrivateLibrary();
+    UUID erased = aPrivateLibrary();
+    jdbc.update(
+        "UPDATE knowledge_libraries SET erasure_requested_at = now(),"
+            + " erasure_cause = 'OWNER_REQUEST' WHERE id = ?",
+        marked);
+    assertThat(erasure.erase(erased, ErasureCause.OWNER_REQUEST, owner))
+        .isEqualTo(PrivateLibraryErasure.Outcome.ERASED);
+
+    for (UUID library : List.of(marked, erased)) {
+      assertThatThrownBy(() -> chunks.addChunks(List.of(aChunkOf(library))))
+          .isInstanceOf(ChunkTargetGoneException.class);
+      assertThat(
+              jdbc.queryForObject(
+                  "SELECT count(*) FROM vector_store WHERE metadata->>'library_id' = ?",
+                  Integer.class,
+                  library.toString()))
+          .isZero();
+      assertThat(
+              jdbc.queryForObject(
+                  "SELECT count(*) FROM chunk_full_text WHERE library_id = ?",
+                  Integer.class,
+                  library))
+          .isZero();
+    }
+  }
+
   // -------------------------------------------------------------------------------------------
+
+  private static org.springframework.ai.document.Document aChunkOf(UUID library) {
+    Map<String, Object> metadata = new LinkedHashMap<>();
+    metadata.put(VectorChunkStore.DOCUMENT_ID_METADATA_KEY, UUID.randomUUID().toString());
+    metadata.put(VectorChunkStore.LIBRARY_ID_METADATA_KEY, library.toString());
+    metadata.put("organization_id", Organization.DEFAULT_ID.toString());
+    return new org.springframework.ai.document.Document("Nachzügler", metadata);
+  }
+
+  private int storedOriginals(UUID library) {
+    java.util.concurrent.atomic.AtomicInteger stored =
+        new java.util.concurrent.atomic.AtomicInteger();
+    originalStore.forEachStoredOriginal(
+        Organization.DEFAULT_ID, library, original -> stored.incrementAndGet());
+    return stored.get();
+  }
 
   /** Every catalog column of the schema that still names something of {@code fixture}. */
   private Map<String, Integer> leftOf(Fixture fixture) {
@@ -321,6 +395,9 @@ class PrivateLibraryErasureIntegrationTest {
         continue;
       }
       String name = (String) column.get("column_name");
+      if (CHAT_ANSWER_TEXT.equals(table + "." + name)) {
+        continue;
+      }
       Integer rows =
           jdbc.queryForObject(
               "SELECT count(*) FROM \"" + table + "\" WHERE \"" + name + "\"::text LIKE ANY (?)",
@@ -519,9 +596,10 @@ class PrivateLibraryErasureIntegrationTest {
         chat);
     jdbc.update(
         "INSERT INTO chat_messages (id, chat_id, sequence, role, content, sources)"
-            + " VALUES (?, ?, 2, 'ASSISTANT', 'Laut Abrechnung, siehe [1].', ?::json)",
+            + " VALUES (?, ?, 2, 'ASSISTANT', ?, ?::json)",
         UUID.randomUUID(),
         chat,
+        "Laut Abrechnung: " + content + " [1].",
         ("[{\"fileName\": \"%s\", \"documentId\": \"%s\", \"relevanceScore\": 1.0,"
                 + " \"matchCount\": 1, \"cited\": true, \"sourceType\": \"PERSON_PROBE\","
                 + " \"sourceUrl\": \"%s/%s\"}]")
@@ -532,7 +610,7 @@ class PrivateLibraryErasureIntegrationTest {
         chat,
         space,
         fileName,
-        new String[] {fileName, path, folderName, fieldLabel, value, "lohn-" + suffix});
+        new String[] {fileName, path, folderName, fieldLabel, value, "lohn-" + suffix, content});
   }
 
   private UUID aPrivateLibrary() {

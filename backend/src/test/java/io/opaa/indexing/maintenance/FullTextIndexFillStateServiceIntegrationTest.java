@@ -4,11 +4,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.indexing.chunk.FullTextChunkStore;
 import io.opaa.indexing.chunk.VectorChunkStore;
+import io.opaa.test.BareLibraries;
 import io.opaa.test.OpaaIntegrationTest;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.document.Document;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,9 +32,15 @@ class FullTextIndexFillStateServiceIntegrationTest {
   private final UUID libraryId = UUID.randomUUID();
   private final UUID documentId = UUID.randomUUID();
 
+  @BeforeEach
+  void theLibraryExists() {
+    BareLibraries.create(jdbcTemplate, libraryId);
+  }
+
   @AfterEach
   void tearDown() {
     vectorChunkStore.deleteByLibraryId(libraryId);
+    BareLibraries.remove(jdbcTemplate, libraryId);
   }
 
   @Test

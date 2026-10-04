@@ -211,11 +211,14 @@ public interface KnowledgeLibraryRepository extends JpaRepository<KnowledgeLibra
   @Query("select l from KnowledgeLibrary l where l.id = :id")
   Optional<KnowledgeLibrary> findForErasure(@Param("id") UUID id);
 
-  /** Whether {@code id} is being erased, read from the row rather than a managed entity. */
+  /**
+   * Whether {@code id} is being erased or gone, read from the row rather than a managed entity: a
+   * library without a row counts as erased.
+   */
   @Query(
       value =
-          "select count(*) > 0 from knowledge_libraries where id = :id"
-              + " and erasure_requested_at is not null",
+          "select not exists (select 1 from knowledge_libraries where id = :id"
+              + " and erasure_requested_at is null)",
       nativeQuery = true)
   boolean isErasureRequested(@Param("id") UUID id);
 
