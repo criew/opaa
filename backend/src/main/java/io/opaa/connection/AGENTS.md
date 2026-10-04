@@ -29,7 +29,7 @@ seine Ports `SourceConnectionResolver` (`ProfileSourceConnectionResolver`) und `
   fest und beendet nur bei `DEACTIVATED`, je Person in eigener Transaktion (auch nach Commit). Eine
   getrennte Zeile bleibt, solange eine private Bibliothek daran hängt (Trigger).
 - **Die Verwaltung sieht verbundene Konten nur über `PersonNumbers`** („weniger als N“, auch bei 0,
-  für Teilzahlen; je Anbieter keine Zahl); Kontoname verschlüsselt, nur für die Person.
+  für Teilzahlen und Schwellenwarnung; je Anbieter keine Zahl); Kontoname verschlüsselt, nur für die Person.
 - **Registrierung des Zugangs** (Secret/Schlüssel nur Ja/Nein) gibt nur `registrationOf` heraus, nur
   an `connection.oauth`; dort erreicht nur `OAuthClient` den Anbieter. Refresh-Tokens verlassen
   token/oauth nie; Erneuerung unter Zeilensperre, Widerruf erst nach Commit (alles ArchUnit/ADR-0041).
