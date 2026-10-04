@@ -30,9 +30,10 @@ import org.springframework.dao.DataIntegrityViolationException;
  * <p>A body ends its run early by throwing {@link IndexingRunFailedException} with the message the
  * job should carry. A {@link RequestBudgetExhaustedException} ends the run as truncated - noted
  * with the body's {@link IndexingRun#budgetContinuation continuation}, never failed. An {@link
- * InterruptedException} fails the run as interrupted, a {@link DataIntegrityViolationException} as
- * "library deleted during the run" (the only way a foreign key to the library can break mid-run),
- * any other exception with its own message.
+ * InterruptedException} fails the run as interrupted, a {@link SourceConnectionBlockedException}
+ * from {@link IndexingRun#currentCredentials} with the block's notice, a {@link
+ * DataIntegrityViolationException} as "library deleted during the run" (the only way a foreign key
+ * to the library can break mid-run), any other exception with its own message.
  */
 public class IndexingRunTemplate {
 
@@ -108,7 +109,7 @@ public class IndexingRunTemplate {
             jobId,
             library,
             settings,
-            () -> connectionResolver.currentCredentials(library),
+            () -> connectionResolver.currentSecret(library),
             runMode,
             executor.sourceType(),
             progress,
@@ -145,6 +146,14 @@ public class IndexingRunTemplate {
       failed = true;
       failure = INTERRUPTED_MESSAGE;
       interrupted = true;
+    } catch (SourceConnectionBlockedException e) {
+      log.warn(
+          "Indexing run {} for library {} was blocked during the run: {}",
+          jobId,
+          library.getId(),
+          e.block().reason());
+      failed = true;
+      failure = e.getMessage();
     } catch (DataIntegrityViolationException e) {
       log.error(
           "Indexing run {} failed - target library {} no longer exists", jobId, library.getId(), e);

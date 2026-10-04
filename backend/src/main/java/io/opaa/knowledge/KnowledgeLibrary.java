@@ -399,6 +399,18 @@ public class KnowledgeLibrary extends Asset {
     touch();
   }
 
+  /** Moves the source to {@code sourceUrl}; every other field, the secret included, stays. */
+  public void moveSourceUrl(String sourceUrl) {
+    this.sourceUrl = sourceUrl;
+    touch();
+  }
+
+  /** Drops the secret from the attribute; erasing the column is the caller's part. */
+  public void dropSourceCredentials() {
+    this.sourceCredentials = null;
+    touch();
+  }
+
   /**
    * Replaces the schedule in place (#485) - {@code scheduleCron} must already be {@code null} when
    * {@code enabled} is {@code false} and non-null otherwise, matching {@code

@@ -28,8 +28,11 @@ import io.opaa.indexing.job.IndexingJobService;
 import io.opaa.indexing.job.JobStatus;
 import io.opaa.indexing.job.LibraryScheduleCodec;
 import io.opaa.indexing.source.ConnectorData;
+import io.opaa.indexing.source.Secret;
+import io.opaa.indexing.source.SecretKind;
 import io.opaa.indexing.source.ServiceAccountKey;
 import io.opaa.indexing.source.ServiceAccountTokens;
+import io.opaa.indexing.source.SourceChangeGate;
 import io.opaa.indexing.source.SourceConnectionBlockedException;
 import io.opaa.indexing.source.SourceConnectionResolver;
 import io.opaa.indexing.source.SourceConnector;
@@ -61,7 +64,6 @@ import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -153,6 +155,7 @@ public class KnowledgeLibraryService {
   private final LibraryConnectionService libraryConnections;
   private final ConnectorReleaseService connectorRelease;
   private final OwnerOnlyRule ownerOnlyRule;
+  private final SourceChangeGate changeGate;
 
   public KnowledgeLibraryService(
       AssetSuccessionSource successionSource,
@@ -199,6 +202,7 @@ public class KnowledgeLibraryService {
     this.folderRepository = folderRepository;
     this.eventPublisher = eventPublisher;
     this.connectors = connectors;
+    this.changeGate = new SourceChangeGate(connectors);
   }
 
   /**
@@ -213,7 +217,7 @@ public class KnowledgeLibraryService {
           library.getSourcePath(),
           library.getSourceUrl(),
           library.getSourceProxy(),
-          library.getSourceCredentials(),
+          connectionResolver.storedCredentials(library),
           library.isSourceInsecureSsl(),
           connectionResolver.effectiveSettings(library));
     }
@@ -238,14 +242,14 @@ public class KnowledgeLibraryService {
       connectorRelease.requireCreatable(caller, library.getSourceType(), profileId);
     }
     String previousUrl = library.getSourceUrl();
-    boolean hadCredentials = library.getSourceCredentials() != null;
+    boolean hadCredentials = connectionResolver.holdsCredentials(library);
     libraryConnections.connect(library, profileId);
     KnowledgeLibrary updated = libraryRepository.findById(libraryId).orElseThrow();
     List<String> changed = new ArrayList<>(List.of("connectionProfile"));
     if (!Objects.equals(previousUrl, updated.getSourceUrl())) {
       changed.add("sourceUrl");
     }
-    if (hadCredentials && updated.getSourceCredentials() == null) {
+    if (hadCredentials && !connectionResolver.holdsCredentials(updated)) {
       changed.add("sourceCredentials");
     }
     recordSourceUpdate(updated, caller.id(), changed);
@@ -522,14 +526,16 @@ public class KnowledgeLibraryService {
     SourceConnector connector = connectors.connector(library.getSourceType());
     boolean replacesOwnSettings = requestedSettings.connectorSettings() != null;
     // A rename resolves nothing: a blocked connection must not stop it.
+    SourceSettings before =
+        replacesSourceConfiguration || replacesOwnSettings ? currentForChange(library) : null;
     SourceSettings validatedSettings =
         replacesSourceConfiguration
             ? withServiceAccountKey(
                 connector,
                 requestedSettings,
-                withoutKey -> connector.validateChange(currentForChange(library), withoutKey, true))
+                withoutKey -> changeGate.validate(library, before, withoutKey, true))
             : replacesOwnSettings
-                ? connector.validateChange(currentForChange(library), requestedSettings, false)
+                ? changeGate.validate(library, before, requestedSettings, false)
                 : requestedSettings;
     if (replacesSourceConfiguration) {
       libraryConnections.requireAddressAllowed(library, validatedSettings.sourceUrl());
@@ -548,10 +554,8 @@ public class KnowledgeLibraryService {
     String previousSourcePath = library.getSourcePath();
     String previousSourceUrl = library.getSourceUrl();
     String previousSourceProxy = library.getSourceProxy();
-    String previousSourceCredentials = library.getSourceCredentials();
+    String previousSourceCredentials = connectionResolver.storedCredentials(library);
     boolean previousSourceInsecureSsl = library.isSourceInsecureSsl();
-    Map<String, Object> previousSettingsState =
-        connector.settingsState(library, ConnectorData.storedIn(library));
     library.rename(normalizedName, request.description());
     if (replacesSchedule) {
       library.updateSchedule(validatedSchedule.enabled(), validatedSchedule.cron());
@@ -576,8 +580,7 @@ public class KnowledgeLibraryService {
         libraryRepository.eraseSourceCredentials(library.getId());
       }
     }
-    connector.applyChange(
-        library, ConnectorData.storedIn(library), validatedSettings.withoutCredentials());
+    changeGate.apply(library, validatedSettings.withoutCredentials());
     KnowledgeLibrary updated = libraryRepository.save(library);
     boolean nameChanged = !Objects.equals(previousName, updated.getName());
     boolean descriptionChanged = !Objects.equals(previousDescription, updated.getDescription());
@@ -623,7 +626,8 @@ public class KnowledgeLibraryService {
       if (!Objects.equals(previousSourceProxy, updated.getSourceProxy())) {
         changedSourceFields.add("sourceProxy");
       }
-      if (!Objects.equals(previousSourceCredentials, updated.getSourceCredentials())) {
+      if (!Objects.equals(
+          previousSourceCredentials, connectionResolver.storedCredentials(updated))) {
         changedSourceFields.add("sourceCredentials");
       }
       if (previousSourceInsecureSsl != updated.isSourceInsecureSsl()) {
@@ -631,16 +635,15 @@ public class KnowledgeLibraryService {
       }
       // Connector-owned settings leave the same trail as the connection fields; the connector
       // discards whatever run state the change invalidates.
-      Map<String, Object> currentSettingsState =
-          connector.settingsState(updated, ConnectorData.storedIn(updated));
-      Set<String> changedSettings = new LinkedHashSet<>();
-      for (Map.Entry<String, Object> previous : previousSettingsState.entrySet()) {
-        if (!Objects.equals(previous.getValue(), currentSettingsState.get(previous.getKey()))) {
-          changedSettings.add(previous.getKey());
-        }
-      }
-      changedSourceFields.addAll(changedSettings);
-      connector.onSourceChanged(updated, sourceUrlChanged, changedSettings);
+      SourceSettings after =
+          new SourceSettings(
+              updated.getSourcePath(),
+              updated.getSourceUrl(),
+              updated.getSourceProxy(),
+              null,
+              updated.isSourceInsecureSsl(),
+              connectionResolver.effectiveSettings(updated));
+      changedSourceFields.addAll(changeGate.applied(updated, before, after));
       if (!changedSourceFields.isEmpty()) {
         auditEventRecorder.recordUserAction(
             AuditEvent.builder()
@@ -1177,7 +1180,9 @@ public class KnowledgeLibraryService {
               + " ist");
     }
     String key = ServiceAccountKey.parse(requested.sourceCredentials()).storedForm();
-    return validation.apply(requested.withoutCredentials()).withSourceCredentials(key);
+    return validation
+        .apply(requested.withoutCredentials())
+        .withCredentials(new Secret(SecretKind.SERVICE_ACCOUNT_KEY, key));
   }
 
   /**
@@ -1244,7 +1249,7 @@ public class KnowledgeLibraryService {
     if (sourceCredentials == null
         && SourceOriginMatcher.sameOrigin(library.getSourceUrl(), sourceUrl)
         && connector.keepsCredentials(library.getSourceUrl(), sourceUrl)) {
-      sourceCredentials = library.getSourceCredentials();
+      sourceCredentials = connectionResolver.storedCredentials(library);
     }
     return new SourceSettings(
         blankToNull(request.sourcePath()),
@@ -1500,7 +1505,7 @@ public class KnowledgeLibraryService {
         // PR #542 review, nit 3: a non-secret yes/no, not the credential itself (ADR-0018) - lets
         // a client phrase an accurate "leave blank to keep the current credential" hint only when
         // one is actually stored.
-        library.getSourceCredentials() != null,
+        connectionResolver.holdsCredentials(library),
         pushSecretSet,
         connector.settingsView(library, ConnectorData.storedIn(library), true),
         // #1200: the instance-wide rhythm in whole days, so the schedule dialog can name the

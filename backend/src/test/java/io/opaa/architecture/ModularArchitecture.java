@@ -252,6 +252,25 @@ public final class ModularArchitecture {
   /** The modules that may hold {@link #SECRET_PORT}. */
   static final Set<Module> SECRET_PORT_HOLDERS = EnumSet.of(KNOWLEDGE, LIBRARY, CONNECTIONS);
 
+  /**
+   * The connector's change hooks, relative to the root: only {@link #CHANGE_GATE} calls them, so a
+   * change validates against and compares the effective configuration everywhere.
+   */
+  static final String SOURCE_CONNECTOR = "indexing.source.SourceConnector";
+
+  static final Set<String> CHANGE_HOOKS =
+      Set.of("validateChange", "applyChange", "onSourceChanged");
+
+  static final String CHANGE_GATE = "indexing.source.SourceChangeGate";
+
+  /**
+   * The library's own secret, relative to the root. Besides the core (module knowledge) only {@link
+   * #SECRET_STORE} reads it; everyone else asks the port.
+   */
+  static final String LIBRARY_SECRET = "knowledge.KnowledgeLibrary#getSourceCredentials";
+
+  static final String SECRET_STORE = "connection.profile.ConnectionSecrets";
+
   /** Every direct subpackage of this one, relative to the root, is a connector. */
   static final String CONNECTOR_PARENT = "indexing.source";
 
@@ -894,8 +913,89 @@ public final class ModularArchitecture {
         .allowEmptyShould(true);
   }
 
+  /**
+   * Calls of {@link #CHANGE_HOOKS} on {@link #SOURCE_CONNECTOR} or an implementation, outside
+   * {@link #CHANGE_GATE}.
+   */
+  ArchRule onlyTheChangeGateCallsTheConnectorChangeHooks() {
+    return noClasses()
+        .that(
+            DescribedPredicate.describe(
+                "are not " + CHANGE_GATE,
+                javaClass -> !CHANGE_GATE.equals(relativeName(javaClass))))
+        .should()
+        .accessTargetWhere(
+            DescribedPredicate.describe(
+                "call a change hook of " + SOURCE_CONNECTOR,
+                access ->
+                    CHANGE_HOOKS.contains(access.getName())
+                        && (SOURCE_CONNECTOR.equals(relativeName(access.getTargetOwner()))
+                            || access.getTargetOwner().getAllRawInterfaces().stream()
+                                .anyMatch(type -> SOURCE_CONNECTOR.equals(relativeName(type))))))
+        .because(
+            "a change reaches the connector only through the gate, which hands it the effective"
+                + " configuration before and after")
+        .allowEmptyShould(true);
+  }
+
+  /** Reads of {@link #LIBRARY_SECRET} outside module knowledge and {@link #SECRET_STORE}. */
+  ArchRule theLibrarySecretIsReadInOnePlace() {
+    return noClasses()
+        .that(
+            DescribedPredicate.describe(
+                "are outside module KNOWLEDGE and not " + SECRET_STORE,
+                javaClass -> {
+                  Module module = moduleOf(javaClass);
+                  return module != null
+                      && module != KNOWLEDGE
+                      && !SECRET_STORE.equals(relativeName(javaClass));
+                }))
+        .should()
+        .accessTargetWhere(
+            DescribedPredicate.describe(
+                "read " + LIBRARY_SECRET,
+                access ->
+                    LIBRARY_SECRET.equals(
+                        relativeName(access.getTargetOwner()) + "#" + access.getName())))
+        .because(
+            "the secret has one store; the library administration asks the port, connections the"
+                + " store")
+        .allowEmptyShould(true);
+  }
+
+  /**
+   * Dependencies on {@link #SECRET_STORE} outside module CONNECTIONS: the library administration
+   * reaches the secret only through the port.
+   */
+  ArchRule theSecretStoreIsUsedOnlyInConnections() {
+    return noClasses()
+        .that(
+            DescribedPredicate.describe(
+                "are outside module CONNECTIONS",
+                javaClass -> {
+                  Module module = moduleOf(javaClass);
+                  return module != null && module != CONNECTIONS;
+                }))
+        .should()
+        .dependOnClassesThat(
+            DescribedPredicate.describe(
+                "are " + SECRET_STORE,
+                target -> SECRET_STORE.equals(relativeName(target.getBaseComponentType()))))
+        .because("only connections reads the secret store; everyone else asks the port")
+        .allowEmptyShould(true);
+  }
+
+  /** {@code javaClass} relative to the root, {@code null} outside it. */
+  private String relativeName(JavaClass javaClass) {
+    String relative = relative(javaClass.getPackageName());
+    return relative == null ? null : relative + "." + javaClass.getSimpleName();
+  }
+
   List<ArchRule> all() {
     return List.of(
+        onlyTheChangeGateCallsTheConnectorChangeHooks(),
+        theLibrarySecretIsReadInOnePlace(),
+        theSecretStoreIsUsedOnlyInConnections(),
         theForeignContextNeverUsesTheOwnFormula(),
         theSecretPortStaysWithTheCore(),
         theConnectorReleaseIsDecidedInConnections(),

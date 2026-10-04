@@ -10,6 +10,8 @@ import io.opaa.connection.LibraryConnectionService;
 import io.opaa.connection.profile.ConnectorLockService;
 import io.opaa.indexing.source.ConnectorChecks;
 import io.opaa.indexing.source.ConnectorData;
+import io.opaa.indexing.source.Secret;
+import io.opaa.indexing.source.SecretKind;
 import io.opaa.indexing.source.ServiceAccountKey;
 import io.opaa.indexing.source.ServiceAccountTokens;
 import io.opaa.indexing.source.SourceBrowser;
@@ -170,9 +172,13 @@ public class SourceConnectionTestService {
     String key = ServiceAccountKey.parse(settings.sourceCredentials()).storedForm();
     ConnectorData effective =
         settings.connectorSettings() != null ? settings.connectorSettings() : stored;
-    return settings.withSourceCredentials(
+    String token =
         serviceAccountTokens.forConnector(
-            connector, settings.withSourceCredentials(key), effective));
+            connector,
+            settings.withCredentials(new Secret(SecretKind.SERVICE_ACCOUNT_KEY, key)),
+            effective);
+    return settings.withCredentials(
+        token == null ? null : new Secret(SecretKind.ACCESS_TOKEN, token));
   }
 
   /**
