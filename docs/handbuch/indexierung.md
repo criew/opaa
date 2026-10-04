@@ -408,11 +408,13 @@ werden, sagt das Formular das und lässt noch nicht speichern.
 Zugang Verbindungen, heißt der Knopf zuerst „Weiter“. Er zeigt, ohne etwas zu speichern, die
 Auswirkungen:
 
-- die Zahl der betroffenen Bibliotheken und Verbindungen,
+- die Zahl der betroffenen Bibliotheken, bei einem Zugang, der Personen zulässt, auch die
+  verbundenen Konten von Personen (in derselben gerundeten Form wie sonst, etwa „weniger als 5“),
 - jede Bibliothek, deren Konnektor die Änderung ablehnt, mit der Art der Ablehnung (Verbindung oder
   Einstellungen), dem Grund und einem Verweis auf die Bibliothek,
-- was beim Speichern verworfen wird: die Zugangsdaten aller Verbindungen bei neuer Server-Adresse,
-  Registrierung oder Anmeldeart, der Abgleichstand der Bibliotheken bei geänderter Konfiguration.
+- den Hinweis, dass Zugangsdaten und Abgleichstand der verbundenen Bibliotheken verworfen werden
+  können. Ob und für wen, entscheidet OPAA erst beim Speichern; verwirft die Änderung Zugangsdaten,
+  fragt es vorher mit der Zahl der Betroffenen nach.
 
 Lehnt der Konnektor die Änderung für eine Bibliothek ab, lässt sie sich so nicht speichern. Sonst
 speichert ein zweiter Klick auf „Speichern“; eine Änderung, die Geheimnisse verwirft, fragt dann wie
@@ -444,8 +446,10 @@ Server-Adresse des Zugangs vorbelegt (eine Adresse darunter ist möglich), das F
 Zugangsdaten entfällt bei einem Zugang ohne Anmeldung, und Einstellungen, die der Zugang vorgibt
 (etwa die Confluence-Edition oder bei S3 Region und Adressstil), stehen ebenso wie Proxy und
 Zertifikatsprüfung des Zugangs nur lesbar mit seinem Wert da. Die Oberfläche schickt für sie keinen
-Wert mit; es gilt, was der Zugang beim Speichern vorgibt, auch wenn die Systemverwaltung es
-inzwischen geändert hat. Verbindungstest und Auflistung prüfen über den gewählten Zugang. Wechselt
+Wert mit; ändert die Systemverwaltung den Wert einer Vorgabe, während das Formular offen ist, gilt
+beim Speichern der neue. Gibt der Zugang inzwischen eine Einstellung neu vor, die das offene
+Formular noch als eigene kennt, kann das Speichern mit dem Hinweis auf die Vorgabe abgewiesen
+werden; nach erneutem Öffnen klappt es, die übrigen Eingaben bleiben bis dahin stehen. Verbindungstest und Auflistung prüfen über den gewählten Zugang. Wechselt
 die Wahl, entfallen eine Adresse, die nicht unter dem neuen Weg liegt, und was die Quelle aus ihr
 gelesen hat (bei Confluence die erkannte Edition). Einen Zugangswunsch gibt es im
 Assistenten nicht; er nennt nur, wer Zugänge anlegt.

@@ -36,7 +36,7 @@ import {
 import { confirmAction } from '../../../stores/confirmStore'
 import { AUTH_METHOD_LABELS, OWNERSHIP_LABELS } from './connectionProfileLabels'
 import ProfileChangePreview from './ProfileChangePreview'
-import { changeOf, type ProfileChange } from './profileChange'
+import { reachesLibraries as changeReachesLibraries } from './profileChange'
 
 const WITH_REGISTRATION: ConnectionAuthMethod[] = [
   'OAUTH',
@@ -207,9 +207,11 @@ export default function ConnectionProfileFormDialog({
   }
 
   const update: ConnectionProfileUpdateRequest | null = complete && profile ? fields() : null
-  const change: ProfileChange | null = profile && update ? changeOf(profile, update) : null
   const reachesLibraries =
-    profile !== null && profile.connectionCount > 0 && change !== null && change.reachesLibraries
+    profile !== null &&
+    update !== null &&
+    profile.connectionCount > 0 &&
+    changeReachesLibraries(profile, update)
   const token = JSON.stringify(update)
   const shownPreview = preview?.token === token ? preview.impact : null
   const refused = shownPreview !== null && shownPreview.rejectedLibraries > 0
@@ -461,7 +463,9 @@ export default function ConnectionProfileFormDialog({
               )}
             </>
           )}
-          {shownPreview && change && <ProfileChangePreview impact={shownPreview} change={change} />}
+          {shownPreview && profile && (
+            <ProfileChangePreview impact={shownPreview} ownership={profile.ownership} />
+          )}
         </Stack>
       </DialogContent>
       <DialogActions>

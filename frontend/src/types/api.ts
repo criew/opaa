@@ -188,6 +188,7 @@ export type ConnectionProfileChangeRejection =
 export type SourceChangeRejectionCategory = components['schemas']['SourceChangeRejectionCategory']
 export type ConnectionProfileOption = components['schemas']['ConnectionProfileOption']
 export type ConnectionProfileRef = components['schemas']['ConnectionProfileRef']
+export type PersonCount = components['schemas']['PersonCount']
 export type ConnectorLockRequest = components['schemas']['ConnectorLockRequest']
 export type SourceFreeze = components['schemas']['SourceFreeze']
 export type SourceBlock = components['schemas']['SourceBlock']

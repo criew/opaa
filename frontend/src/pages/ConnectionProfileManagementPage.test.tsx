@@ -427,10 +427,14 @@ describe('ConnectionProfileManagementPage', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Weiter' }))
 
     const preview = await within(dialog).findByTestId('profile-change-preview')
-    expect(preview).toHaveTextContent('Betroffen: 1 Bibliothek mit 2 Verbindungen.')
+    expect(preview).toHaveTextContent('Betroffen: 1 Bibliothek.')
+    // a profile for libraries only names no accounts of persons
+    expect(preview).not.toHaveTextContent(/Konten von Personen/)
     expect(preview).toHaveTextContent(/nimmt die Änderung für alle Bibliotheken an/)
-    expect(preview).toHaveTextContent(/Zugangsdaten aller Verbindungen verworfen/)
-    expect(preview).toHaveTextContent(/verwirft der Konnektor den Abgleichstand/)
+    // what is discarded is a possibility here; the server confirms it with its own question
+    expect(preview).toHaveTextContent(
+      /Zugangsdaten und Abgleichstand der verbundenen Bibliotheken können beim Speichern verworfen werden/,
+    )
     expect(previews).toHaveLength(1)
     expect(previews[0]).toMatchObject({ serverUrl: 'https://cloud-neu.rheinfurt.example' })
     expect(sent).toHaveLength(0)
@@ -439,6 +443,33 @@ describe('ConnectionProfileManagementPage', () => {
     await user.type(within(dialog).getByLabelText(/^Region/), 'eu')
     expect(within(dialog).queryByTestId('profile-change-preview')).not.toBeInTheDocument()
     expect(within(dialog).getByRole('button', { name: 'Weiter' })).toBeEnabled()
+  }, 20000)
+
+  it('names the connected accounts of persons as the API rounds them', async () => {
+    mockConnectionProfiles[0] = { ...mockConnectionProfiles[0], ownership: 'BOTH' }
+    server.use(
+      http.post('/api/v1/admin/connection-profiles/:profileId/impact', () =>
+        HttpResponse.json({
+          connections: 2,
+          libraries: 2,
+          connectedAccounts: { count: null, fewerThan: 5 },
+          rejectedLibraries: 0,
+          rejections: [],
+          lastForProfileRequirement: false,
+        }),
+      ),
+    )
+    const user = userEvent.setup()
+    renderWithProviders(<ConnectionProfileManagementPage />)
+
+    const dialog = await openEdit(user)
+    await user.type(within(dialog).getByLabelText(/^Region/), 'eu')
+    await user.click(within(dialog).getByRole('button', { name: 'Weiter' }))
+
+    const preview = await within(dialog).findByTestId('profile-change-preview')
+    expect(preview).toHaveTextContent(
+      'Betroffen: 2 Bibliotheken. Verbundene Konten von Personen: weniger als 5.',
+    )
   }, 20000)
 
   it('names every library whose connector refuses the change and saves nothing', async () => {

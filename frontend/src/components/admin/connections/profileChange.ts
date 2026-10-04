@@ -1,45 +1,55 @@
 import type {
+  ConnectionOwnership,
   ConnectionProfileResponse,
   ConnectionProfileUpdateRequest,
+  PersonCount,
   SourceChangeRejectionCategory,
 } from '../../../types/api'
-
-/** What an edit changes for the libraries on a profile, read from the stored and the new values. */
-export interface ProfileChange {
-  /** Server address, registration or sign-in: every secret on the profile is discarded. */
-  discardsSecrets: boolean
-  /** Address, proxy, TLS switch or defaults: the effective configuration of the libraries. */
-  changesConfiguration: boolean
-  /** Whether the connectors of the libraries are asked at all - not for a mere rename. */
-  reachesLibraries: boolean
-}
 
 function blank(value: string | null | undefined): string {
   return value ?? ''
 }
 
-export function changeOf(
+/**
+ * Whether an edit may reach the libraries on the profile - anything but a rename or a new client
+ * secret - and is therefore previewed first. What it discards decides the server alone.
+ */
+export function reachesLibraries(
   profile: ConnectionProfileResponse,
   update: ConnectionProfileUpdateRequest,
-): ProfileChange {
-  const newAddress = profile.serverUrl !== update.serverUrl.replace(/\/+$/, '')
-  const discardsSecrets =
-    newAddress ||
+): boolean {
+  return (
+    blank(profile.serverUrl) !== blank(update.serverUrl).replace(/\/+$/, '') ||
     profile.authMethod !== update.authMethod ||
     blank(profile.clientId) !== blank(update.clientId) ||
     blank(profile.tenant) !== blank(update.tenant) ||
-    blank(profile.scopes) !== blank(update.scopes)
-  const changesConfiguration =
-    newAddress ||
+    blank(profile.scopes) !== blank(update.scopes) ||
     blank(profile.sourceProxy) !== blank(update.sourceProxy) ||
     profile.sourceInsecureSsl !== Boolean(update.sourceInsecureSsl) ||
     JSON.stringify(profile.connectorSettings ?? null) !==
       JSON.stringify(update.connectorSettings ?? null)
-  return {
-    discardsSecrets,
-    changesConfiguration,
-    reachesLibraries: discardsSecrets || changesConfiguration,
+  )
+}
+
+/** Whether connections of persons may exist on a profile of this ownership. */
+export function admitsPersons(ownership: ConnectionOwnership): boolean {
+  switch (ownership) {
+    case 'PERSON':
+    case 'BOTH':
+      return true
+    case 'LIBRARY':
+      return false
+    default: {
+      const unknown: never = ownership
+      throw new Error(`Unknown connection ownership ${String(unknown)}`)
+    }
   }
+}
+
+/** A number of persons exactly as the API rounds it: the count, or "weniger als N". */
+export function personCountLabel(persons: PersonCount): string {
+  if (persons.fewerThan != null) return `weniger als ${persons.fewerThan}`
+  return String(persons.count ?? 0)
 }
 
 /** The German name of the kind of a connector's refusal. */

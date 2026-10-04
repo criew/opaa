@@ -5,8 +5,8 @@ import ListItem from '@mui/material/ListItem'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import { Link as RouterLink } from 'react-router'
-import type { ConnectionProfileImpactResponse } from '../../../types/api'
-import { rejectionCategoryLabel, type ProfileChange } from './profileChange'
+import type { ConnectionOwnership, ConnectionProfileImpactResponse } from '../../../types/api'
+import { admitsPersons, personCountLabel, rejectionCategoryLabel } from './profileChange'
 
 function count(n: number, one: string, many: string) {
   return `${n} ${n === 1 ? one : many}`
@@ -14,14 +14,16 @@ function count(n: number, one: string, many: string) {
 
 interface ProfileChangePreviewProps {
   impact: ConnectionProfileImpactResponse
-  change: ProfileChange
+  /** The ownership of the profile - connected accounts of persons are named only where admitted. */
+  ownership: ConnectionOwnership
 }
 
 /**
  * The preview of an edit of a profile before it is saved: how many libraries it reaches, every one
- * whose connector refuses it with kind and reason, and what saving discards.
+ * whose connector refuses it with kind and reason, and that saving may discard secrets and sync
+ * state - whether it does, the server decides and confirms with its own question.
  */
-export default function ProfileChangePreview({ impact, change }: ProfileChangePreviewProps) {
+export default function ProfileChangePreview({ impact, ownership }: ProfileChangePreviewProps) {
   const unnamed = impact.rejectedLibraries - impact.rejections.length
   return (
     <Stack spacing={1.5} data-testid="profile-change-preview">
@@ -29,8 +31,9 @@ export default function ProfileChangePreview({ impact, change }: ProfileChangePr
         Auswirkungen auf die Bibliotheken
       </Typography>
       <Typography variant="body2">
-        Betroffen: {count(impact.libraries, 'Bibliothek', 'Bibliotheken')} mit{' '}
-        {count(impact.connections, 'Verbindung', 'Verbindungen')}.
+        Betroffen: {count(impact.libraries, 'Bibliothek', 'Bibliotheken')}.
+        {admitsPersons(ownership) &&
+          ` Verbundene Konten von Personen: ${personCountLabel(impact.connectedAccounts)}.`}
       </Typography>
       {impact.rejectedLibraries > 0 ? (
         <Alert severity="error" data-testid="profile-change-rejections">
@@ -66,14 +69,10 @@ export default function ProfileChangePreview({ impact, change }: ProfileChangePr
       ) : (
         <Alert severity="success">Der Konnektor nimmt die Änderung für alle Bibliotheken an.</Alert>
       )}
-      {(change.discardsSecrets || change.changesConfiguration) && (
-        <Alert severity="warning">
-          {change.discardsSecrets &&
-            'Beim Speichern werden die hinterlegten Zugangsdaten aller Verbindungen verworfen und müssen neu eingetragen werden. '}
-          {change.changesConfiguration &&
-            'Bei jeder Bibliothek, deren Konfiguration sich ändert, verwirft der Konnektor den Abgleichstand, den die Änderung ungültig macht; der nächste Lauf gleicht dann neu ab.'}
-        </Alert>
-      )}
+      <Alert severity="warning">
+        Zugangsdaten und Abgleichstand der verbundenen Bibliotheken können beim Speichern verworfen
+        werden. Verwirft die Änderung Zugangsdaten, fragt OPAA vor dem Speichern noch einmal nach.
+      </Alert>
     </Stack>
   )
 }
