@@ -503,18 +503,18 @@ die App-Registrierung nur am Zugang steht. Die mitgelieferten Konnektoren melden
 | Client-ID, Mandant, Scopes oder Anmeldeart ändern | wie oben, ohne Adresswechsel: alle Verbindungen müssen neu verbunden werden |
 | Vorgaben, Proxy oder Zertifikatsprüfung ändern | Die Bibliotheken behalten ihre Geheimnisse, es sei denn, eine Vorgabe ändert, woran der Konnektor sie bindet; dann gilt die Bestätigung wie oben für die Betroffenen |
 | nur ein neues Client-Secret zur selben Client-ID | keine; die Verbindungen bleiben |
+| „Alle Verbindungen trennen“ (Notabschaltung) | alle Geheimnisse sofort verworfen, der Zugang bleibt |
+| Zugang löschen | alle Geheimnisse verworfen; die Bibliotheken bleiben mit Bestand und dem Hinweis „Zugang entfernt“ stehen |
 
 Jede Änderung, die die Konfiguration einer Bibliothek auf dem Zugang verändert (Server-Adresse,
 Proxy, Zertifikatsprüfung, Vorgaben), prüft zuerst der Konnektor jeder betroffenen Bibliothek, und
 zwar bevor etwas gespeichert wird; Bibliotheken mit gleicher Konfiguration prüft er nur einmal.
 Lehnt er die Änderung für eine Bibliothek ab, wird nichts geändert, weder am Zugang noch an einer
-Bibliothek, und die Meldung nennt die Zahl der Bibliotheken und die Gründe. Die Vorschau der
-Auswirkungen nennt sie auf Anfrage schon vor dem Speichern. Wird die Änderung gespeichert, steht sie
+Bibliothek, und die Meldung nennt die Zahl der Bibliotheken je Kategorie (Verbindung, Einstellungen).
+Die Gründe nennt die Vorschau der Auswirkungen, auch schon vor dem Speichern. Wird die Änderung gespeichert, steht sie
 für jede betroffene Bibliothek im Revisionsprotokoll wie eine direkte Änderung ihrer Quelle, und
 der Konnektor verwirft den Abgleichstand, den sie ungültig macht; der nächste Lauf gleicht dann
 neu ab. Ein reines Umbenennen fragt keinen Konnektor.
-| „Alle Verbindungen trennen“ (Notabschaltung) | alle Geheimnisse sofort verworfen, der Zugang bleibt |
-| Zugang löschen | alle Geheimnisse verworfen; die Bibliotheken bleiben mit Bestand und dem Hinweis „Zugang entfernt“ stehen |
 
 Das Client-Secret liegt verschlüsselt mit demselben Schlüssel wie die Zugangsdaten der
 Bibliotheken. Keine Antwort, kein Protokoll und kein Revisionseintrag enthält es; angezeigt wird

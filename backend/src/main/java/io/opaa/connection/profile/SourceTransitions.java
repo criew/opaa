@@ -16,14 +16,19 @@ import io.opaa.indexing.source.SourceChangeGate.Transition;
 import io.opaa.indexing.source.SourceConnector;
 import io.opaa.indexing.source.SourceConnectorRegistry;
 import io.opaa.indexing.source.SourceSettings;
+import io.opaa.indexing.source.SourceTargetRefusedException;
 import io.opaa.knowledge.KnowledgeLibrary;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import org.springframework.stereotype.Component;
 
 /**
@@ -36,56 +41,81 @@ import org.springframework.stereotype.Component;
 public class SourceTransitions {
 
   private final EffectiveSourceSettings effective;
+  private final ConnectionSecrets secrets;
   private final SourceConnectorRegistry connectors;
   private final SourceChangeGate gate;
   private final AuditEventRecorder audit;
 
   public SourceTransitions(
       EffectiveSourceSettings effective,
+      ConnectionSecrets secrets,
       SourceConnectorRegistry connectors,
       AuditEventRecorder audit) {
     this.effective = effective;
+    this.secrets = secrets;
     this.connectors = connectors;
     this.gate = new SourceChangeGate(connectors);
     this.audit = audit;
   }
 
   /**
+   * The libraries among {@code libraries} that hold a stored secret under {@code profileId}, by the
+   * column and with one query - never by whether it can be decrypted now.
+   */
+  public Set<UUID> holdingSecrets(Collection<KnowledgeLibrary> libraries, UUID profileId) {
+    Map<SecretOwner, UUID> owners = new HashMap<>();
+    for (KnowledgeLibrary library : libraries) {
+      owners.put(SecretOwner.of(profileId, library), library.getId());
+    }
+    Set<SecretOwner> notHolding = secrets.statesAmong(owners.keySet()).keySet();
+    Set<UUID> holding = new HashSet<>();
+    owners.forEach(
+        (owner, id) -> {
+          if (!notHolding.contains(owner)) {
+            holding.add(id);
+          }
+        });
+    return holding;
+  }
+
+  /**
    * {@code library} moving from {@code from} to {@code to} - empty for its own address, a profile
    * possibly not saved yet - at {@code address}. Its secret goes along only while {@code to} takes
-   * one and its {@link SecretTarget} stays, and never when {@code discardSecret}.
+   * one and its {@link SecretTarget} stays, and never when {@code discardSecret}; {@code
+   * holdsSecret} says whether its column holds one. A secret is read only for a changed
+   * configuration.
    */
   public Move move(
       KnowledgeLibrary library,
       Optional<ConnectionProfile> from,
       Optional<ConnectionProfile> to,
       String address,
-      boolean discardSecret) {
+      boolean discardSecret,
+      boolean holdsSecret) {
     SourceConnector connector = connectors.connector(library.getSourceType());
-    Secret held = effective.heldSecret(library, from);
-    SourceSettings before = effective.framed(library, from, library.getSourceUrl(), held);
+    SourceSettings before = effective.framed(library, from, library.getSourceUrl(), null);
     SourceSettings after = effective.framed(library, to, address, null);
     boolean takesSecret = to.map(SourceTransitions::takesSecret).orElse(true);
-    boolean keepsSecret =
-        !discardSecret
-            && takesSecret
-            && SecretTarget.of(connector, before).admits(SecretTarget.of(connector, after));
-    return new Move(
-        library,
-        before,
-        keepsSecret ? after.withCredentials(held) : after,
-        !keepsSecret,
-        takesSecret);
+    boolean sameTarget =
+        SecretTarget.of(connector, before).admits(SecretTarget.of(connector, after));
+    boolean keepsSecret = !discardSecret && takesSecret && sameTarget;
+    if (!before.equals(after)) {
+      Secret held = effective.heldSecret(library, from);
+      before = before.withCredentials(held);
+      after = keepsSecret ? after.withCredentials(held) : after;
+    }
+    // a frame without the library's own secret leaves an unused one to adoptFrame, not to the move
+    boolean discards = holdsSecret && (discardSecret || takesSecret && !sameTarget);
+    return new Move(library, before, after, discards, takesSecret);
   }
 
   /**
    * {@code library} released from {@code from} to its own address: what the profile set becomes its
-   * own ({@link EffectiveSourceSettings#releaseFrame}), so the effective configuration stays.
+   * own ({@link EffectiveSourceSettings#releaseFrame}), so the effective configuration stays and no
+   * connector is asked.
    */
   public Move release(KnowledgeLibrary library, Optional<ConnectionProfile> from) {
-    SourceSettings before =
-        effective.framed(
-            library, from, library.getSourceUrl(), effective.heldSecret(library, from));
+    SourceSettings before = effective.framed(library, from, library.getSourceUrl(), null);
     return new Move(library, before, before, false, true);
   }
 
@@ -107,7 +137,7 @@ public class SourceTransitions {
         rejections.add(
             new ChangeRejection(
                 move.library().getId(),
-                move.replacesConnection() ? Category.CONNECTION : Category.SETTINGS,
+                e instanceof SourceTargetRefusedException ? Category.CONNECTION : Category.SETTINGS,
                 e.getMessage()));
       }
     }
@@ -143,7 +173,7 @@ public class SourceTransitions {
     if (before.sourceInsecureSsl() != after.sourceInsecureSsl()) {
       changed.add("sourceInsecureSsl");
     }
-    if (before.sourceCredentials() != null && after.sourceCredentials() == null) {
+    if (move.discardsSecret()) {
       changed.add("sourceCredentials");
     }
     if (move.changesConfiguration()) {
@@ -178,7 +208,7 @@ public class SourceTransitions {
    * One library's planned move: the effective configuration before and after, the secret in {@code
    * after} only where it goes along.
    *
-   * @param discardsSecret whether the library's stored secret is to be discarded
+   * @param discardsSecret whether the secret its column holds is to be discarded
    * @param takesSecret whether the frame after signs in with the library's own secret
    */
   public record Move(

@@ -15,8 +15,8 @@ import io.opaa.api.types.ConnectionOwnership;
 import io.opaa.api.types.SystemRole;
 import io.opaa.audit.AuditEvent;
 import io.opaa.auth.CurrentUser;
+import io.opaa.common.ConflictException;
 import io.opaa.common.ValidationException;
-import io.opaa.connection.profile.ConnectionProfileService.ProfileChangeCheck;
 import io.opaa.indexing.source.ConnectorData;
 import io.opaa.indexing.source.SourceChangeGate.Answers;
 import io.opaa.indexing.source.SourceConnectorRegistry;
@@ -133,7 +133,10 @@ class ProfileChangeTransitionTest {
             ValidationException.class,
             refused -> {
               assertThat(refused.getCode()).isEqualTo(ChangeRejection.PROFILE_CHANGE_REJECTED);
-              assertThat(refused.getMessage()).contains("1 Bibliothek").contains("Edition CLOUD");
+              assertThat(refused.getMessage())
+                  .contains("1 Bibliothek")
+                  .contains("Einstellungen: 1")
+                  .doesNotContain("Edition CLOUD");
             });
 
     assertThat(profile.getConnectorSettings()).contains("CLOUD");
@@ -173,13 +176,53 @@ class ProfileChangeTransitionTest {
     library("/same", "Wetter");
     library("/other", "Wetter");
 
-    ProfileChangeCheck check = service.check(profile.getId(), values("DC", null));
+    Answers answers = service.check(profile.getId(), values("DC", null), false);
     assertThat(probe.changeChecks()).hasSize(2);
-    Answers answers = check.answers();
     service.update(ADMIN, profile.getId(), values("DC", null), null, false, answers);
 
     assertThat(probe.changeChecks()).as("the write reuses the answers").isEmpty();
     assertThat(probe.sourceChanges()).hasSize(3);
+  }
+
+  /** The connector names the category: an unreachable target is CONNECTION, not SETTINGS. */
+  @Test
+  void aTargetTheConnectorCannotReachIsRefusedAsAConnection() {
+    library("/a", "Wetter");
+
+    ConnectionProfileService.ProfileImpact impact =
+        service.preview(
+            profile.getId(),
+            values("CLOUD", ProfileProbeSourceConnector.UNREACHABLE_PROXY + ":3128"));
+
+    assertThat(impact.rejections())
+        .singleElement()
+        .satisfies(
+            rejection ->
+                assertThat(rejection.category()).isEqualTo(ChangeRejection.Category.CONNECTION));
+  }
+
+  /** The confirmation is asked before any connector, so a 409 costs no check. */
+  @Test
+  void aChangeStillNeedingTheConfirmationAsksNoConnector() {
+    library("/a", "Wetter");
+    ConnectionProfileValues moved =
+        new ConnectionProfileValues(
+            "Zugang Probe",
+            "https://neu.example.org",
+            ConnectionAuthMethod.PERSONAL_SECRET,
+            ConnectionOwnership.LIBRARY,
+            null,
+            null,
+            null,
+            null,
+            ConnectorData.of(Map.of("edition", "CLOUD")),
+            null,
+            false);
+
+    assertThatThrownBy(() -> service.check(profile.getId(), moved, false))
+        .isInstanceOf(ConflictException.class);
+
+    assertThat(probe.changeChecks()).isEmpty();
   }
 
   @Test
@@ -217,6 +260,7 @@ class ProfileChangeTransitionTest {
             false);
     service.update(ADMIN, profile.getId(), renamed, null, false);
 
+    verify(libraries, never()).findById(any());
     assertThat(probe.changeChecks()).isEmpty();
     assertThat(probe.sourceChanges()).isEmpty();
     assertThat(sourceUpdates()).isEmpty();

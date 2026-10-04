@@ -36,7 +36,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -158,21 +160,28 @@ public class ConnectionProfileService {
    */
   @Transactional(propagation = Propagation.NOT_SUPPORTED)
   public ProfileImpact preview(UUID id, ConnectionProfileValues values) {
-    return check(id, values).impact();
+    ProfileChange change = plan(get(id), values);
+    return new ProfileImpact(
+        change.connections(),
+        change.connections(),
+        transitions.check(change.moves(), new Answers()));
   }
 
   /**
    * Asks the connector of every library a proposed change of profile {@code id} alters, outside any
    * transaction, so their costly checks run before the write; {@link #update} takes the answers and
-   * asks only for what changed meanwhile.
+   * asks only for what changed meanwhile. A change still needing {@code confirmed} is refused
+   * first, before any connector is asked.
    */
   @Transactional(propagation = Propagation.NOT_SUPPORTED)
-  public ProfileChangeCheck check(UUID id, ConnectionProfileValues values) {
+  public Answers check(UUID id, ConnectionProfileValues values, boolean confirmed) {
     ProfileChange change = plan(get(id), values);
+    if (!confirmed) {
+      requireNothingDiscarded(change);
+    }
     Answers answers = new Answers();
-    List<ChangeRejection> rejections = transitions.check(change.moves(), answers);
-    return new ProfileChangeCheck(
-        answers, new ProfileImpact(change.connections(), change.connections(), rejections));
+    transitions.check(change.moves(), answers);
+    return answers;
   }
 
   /** {@link #update} asking every connector within the write. */
@@ -216,22 +225,11 @@ public class ConnectionProfileService {
     } else {
       ciphertext = encryptor.encrypt(newSecret);
     }
-    List<Move> discarding =
-        change.moves().stream()
-            .filter(
-                move ->
-                    change.discardsAll()
-                        || move.discardsSecret() && move.before().sourceCredentials() != null)
-            .toList();
-    long affected = change.discardsAll() ? change.connections() : discarding.size();
-    if (affected > 0 && !confirmed) {
-      throw new ConflictException(
-          "Die Änderung verwirft die Zugangsdaten von "
-              + affected
-              + (affected == 1 ? " Verbindung" : " Verbindungen")
-              + " dieses Zugangs. Bitte bestätigen.",
-          CONFIRMATION_REQUIRED);
+    if (!confirmed) {
+      requireNothingDiscarded(change);
     }
+    Set<UUID> discarding = change.discarding();
+    long affected = change.affected();
     List<ChangeRejection> rejections = transitions.check(change.moves(), answers);
     if (!rejections.isEmpty()) {
       throw ChangeRejection.refusingProfileChange(rejections);
@@ -244,7 +242,7 @@ public class ConnectionProfileService {
       if (!Objects.equals(library.getSourceUrl(), move.after().sourceUrl())) {
         library.moveSourceUrl(move.after().sourceUrl());
       }
-      if (discarding.contains(move)) {
+      if (discarding.contains(library.getId())) {
         library.dropSourceCredentials();
         if (!change.discardsAll()) {
           secrets.discard(SecretOwner.of(id, library));
@@ -270,10 +268,24 @@ public class ConnectionProfileService {
     return profile;
   }
 
+  /** Refuses {@code change} with 409 while it discards stored secrets. */
+  private static void requireNothingDiscarded(ProfileChange change) {
+    long affected = change.affected();
+    if (affected > 0) {
+      throw new ConflictException(
+          "Die Änderung verwirft die Zugangsdaten von "
+              + affected
+              + (affected == 1 ? " Verbindung" : " Verbindungen")
+              + " dieses Zugangs. Bitte bestätigen.",
+          CONFIRMATION_REQUIRED);
+    }
+  }
+
   /**
    * The change of {@code profile} to {@code values}: the values as validated and, per connected
    * library, its move to the changed profile - an address under the old server address moves under
-   * the new one, every other stays.
+   * the new one, every other stays. Libraries and their secret columns are read with one query
+   * each.
    */
   private ProfileChange plan(ConnectionProfile profile, ConnectionProfileValues values) {
     SourceConnector connector = connectorAdmittingProfiles(profile.getSourceType());
@@ -286,12 +298,14 @@ public class ConnectionProfileService {
             || !Objects.equals(profile.getScopes(), validated.scopes());
     ConnectionProfile candidate = profile.candidate(validated);
     List<LibraryConnection> connected = connections.findByProfileId(profile.getId());
+    List<KnowledgeLibrary> found =
+        connected.isEmpty()
+            ? List.of()
+            : libraries.findAllById(
+                connected.stream().map(LibraryConnection::getLibraryId).toList());
+    Set<UUID> holding = transitions.holdingSecrets(found, profile.getId());
     List<Move> moves = new ArrayList<>();
-    for (LibraryConnection connection : connected) {
-      KnowledgeLibrary library = libraries.findById(connection.getLibraryId()).orElse(null);
-      if (library == null) {
-        continue;
-      }
+    for (KnowledgeLibrary library : found) {
       String address = library.getSourceUrl();
       if (addressChanged && ServerAddress.covers(profile.getServerUrl(), address)) {
         address = ServerAddress.rebase(address, profile.getServerUrl(), validated.serverUrl());
@@ -302,7 +316,8 @@ public class ConnectionProfileService {
               Optional.of(profile),
               Optional.of(candidate),
               address,
-              addressChanged || registrationChanged));
+              addressChanged || registrationChanged,
+              holding.contains(library.getId())));
     }
     return new ProfileChange(
         validated, addressChanged, registrationChanged, connected.size(), moves);
@@ -531,9 +546,6 @@ public class ConnectionProfileService {
     }
   }
 
-  /** The connectors' answers to a proposed change, and what it affects. */
-  public record ProfileChangeCheck(Answers answers, ProfileImpact impact) {}
-
   private record ProfileChange(
       ConnectionProfileValues values,
       boolean addressChanged,
@@ -543,6 +555,19 @@ public class ConnectionProfileService {
 
     boolean discardsAll() {
       return addressChanged || registrationChanged;
+    }
+
+    /** The libraries whose stored secret the change discards. */
+    Set<UUID> discarding() {
+      return moves.stream()
+          .filter(move -> discardsAll() || move.discardsSecret())
+          .map(move -> move.library().getId())
+          .collect(Collectors.toSet());
+    }
+
+    /** The connections the confirmation counts. */
+    long affected() {
+      return discardsAll() ? connections : moves.stream().filter(Move::discardsSecret).count();
     }
   }
 }

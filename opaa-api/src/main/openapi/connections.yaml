@@ -99,8 +99,10 @@ paths:
         Every library whose effective configuration the change alters (address, proxy, TLS
         switch, defaults) passes its connector's check first; when the connector refuses one,
         nothing is changed - neither the profile nor any library - and the answer is 400 with
-        code CONNECTION_PROFILE_CHANGE_REJECTED. previewConnectionProfileChange names the
-        refusals beforehand. An accepted change leaves the same audit entries and discards the
+        code CONNECTION_PROFILE_CHANGE_REJECTED, whose message names only how many libraries
+        and of which category; the reasons come only from previewConnectionProfileChange. A
+        change still needing confirmDiscard is refused with 409 before any connector is asked.
+        An accepted change leaves the same audit entries and discards the
         same run state as a direct change of each library.
       requestBody:
         required: true
@@ -796,9 +798,9 @@ components:
     SourceChangeRejectionCategory:
       type: string
       description: >
-        What of a library's effective configuration the connector refuses: CONNECTION (a new
-        address, proxy or TLS switch, checked with the library's credentials) or SETTINGS (its
-        connector settings, such as a profile default).
+        Why the connector refuses a library's effective configuration, as it reports it:
+        CONNECTION (the target is out of reach or refuses the sign-in) or SETTINGS (a setting is
+        inadmissible, such as a profile default; every other refusal).
       enum: [CONNECTION, SETTINGS]
 
     ConnectionProfileOption:

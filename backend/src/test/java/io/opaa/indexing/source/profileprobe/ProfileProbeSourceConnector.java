@@ -14,6 +14,7 @@ import io.opaa.indexing.source.SourceConnectionTestResult;
 import io.opaa.indexing.source.SourceConnector;
 import io.opaa.indexing.source.SourceConnectorDescriptor;
 import io.opaa.indexing.source.SourceSettings;
+import io.opaa.indexing.source.SourceTargetRefusedException;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.SourceType;
 import java.util.HashMap;
@@ -41,6 +42,9 @@ public class ProfileProbeSourceConnector implements SourceConnector {
 
   /** What a profile of this type leaves open, as a feed leaves its detail pages. */
   public static final String GAP = "Die Pflicht legt nur die Adresse der Testquelle fest.";
+
+  /** A proxy host through which the connector cannot reach its target. */
+  public static final String UNREACHABLE_PROXY = "unerreichbar.example.org";
 
   /** A topic the connector refuses in edition {@code DC}. */
   public static final String CLOUD_ONLY_TOPIC = "nur-cloud";
@@ -117,6 +121,10 @@ public class ProfileProbeSourceConnector implements SourceConnector {
       throw new ValidationException("sourceUrl ist erforderlich");
     }
     requireTopicFits(requested.connectorSettings());
+    if (requested.sourceProxy() != null && requested.sourceProxy().startsWith(UNREACHABLE_PROXY)) {
+      throw new SourceTargetRefusedException(
+          "Die Testquelle ist über diesen Proxy nicht erreichbar");
+    }
     return requested;
   }
 

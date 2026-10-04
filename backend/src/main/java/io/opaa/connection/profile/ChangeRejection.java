@@ -16,13 +16,11 @@ public record ChangeRejection(UUID libraryId, Category category, String message)
   /** Stable code of the refusal of a profile change. */
   public static final String PROFILE_CHANGE_REJECTED = "CONNECTION_PROFILE_CHANGE_REJECTED";
 
-  private static final int REASONS_NAMED = 3;
-
-  /** What of the effective configuration the connector refused. */
+  /** Why the connector refused, as it reports it. */
   public enum Category {
-    /** A new address, proxy or TLS switch, checked with the library's credentials. */
+    /** The target is out of reach or refuses the sign-in ({@code SourceTargetRefusedException}). */
     CONNECTION,
-    /** The connector settings, such as a profile default. */
+    /** A setting is inadmissible - every other refusal. */
     SETTINGS
   }
 
@@ -32,16 +30,25 @@ public record ChangeRejection(UUID libraryId, Category category, String message)
     Objects.requireNonNull(message, "message");
   }
 
-  /** The 400 refusing a whole profile change for {@code rejections}, never empty. */
+  /**
+   * The 400 refusing a whole profile change for {@code rejections}, never empty: number and
+   * categories only. The connectors' reasons leave only through the preview's mapper.
+   */
   static ValidationException refusingProfileChange(List<ChangeRejection> rejections) {
-    List<String> reasons =
-        rejections.stream().map(ChangeRejection::message).distinct().limit(REASONS_NAMED).toList();
+    long connection =
+        rejections.stream()
+            .filter(rejection -> rejection.category() == Category.CONNECTION)
+            .count();
+    long settings = rejections.size() - connection;
     return new ValidationException(
         "Der Konnektor lehnt die Änderung des Zugangs für "
             + rejections.size()
             + (rejections.size() == 1 ? " Bibliothek" : " Bibliotheken")
-            + " ab; nichts wurde geändert. "
-            + String.join(" ", reasons),
+            + " ab (Verbindung: "
+            + connection
+            + ", Einstellungen: "
+            + settings
+            + "); nichts wurde geändert. Die Gründe nennt die Vorschau der Auswirkungen.",
         PROFILE_CHANGE_REJECTED);
   }
 }

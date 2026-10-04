@@ -22,6 +22,7 @@ import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.SourceType;
 import java.time.Clock;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -163,9 +164,15 @@ public class LibraryConnectionService {
       address = profile.getServerUrl();
     }
     requireUnder(profile, address);
+    UUID previousId = previous == null ? null : previous.getId();
     Move move =
         transitions.move(
-            library, Optional.ofNullable(previous), Optional.of(profile), address, false);
+            library,
+            Optional.ofNullable(previous),
+            Optional.of(profile),
+            address,
+            false,
+            transitions.holdingSecrets(List.of(library), previousId).contains(library.getId()));
     transitions.require(move);
     if (!address.equals(library.getSourceUrl())) {
       library.moveSourceUrl(address);

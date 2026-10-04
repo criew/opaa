@@ -101,16 +101,11 @@ public class ConnectionProfileController {
       @Valid @RequestBody ConnectionProfileUpdateRequest request,
       @Caller CurrentUser caller) {
     ConnectionProfileValues values = ConnectionProfileResponseMapper.toValues(request);
+    boolean confirmed = Boolean.TRUE.equals(request.getConfirmDiscard());
     // the connectors are asked before the write transaction, which then reuses their answers
-    Answers answers = profiles.check(profileId, values).answers();
+    Answers answers = profiles.check(profileId, values, confirmed);
     return toResponse(
-        profiles.update(
-            caller,
-            profileId,
-            values,
-            request.getClientSecret(),
-            Boolean.TRUE.equals(request.getConfirmDiscard()),
-            answers));
+        profiles.update(caller, profileId, values, request.getClientSecret(), confirmed, answers));
   }
 
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")

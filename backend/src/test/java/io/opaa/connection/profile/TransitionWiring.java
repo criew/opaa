@@ -48,6 +48,6 @@ public final class TransitionWiring {
             secrets,
             provider,
             new ServiceAccountTokens(TargetAddressValidator.disabled(), Clock.systemUTC()));
-    this.transitions = new SourceTransitions(effective, registry, audit);
+    this.transitions = new SourceTransitions(effective, secrets, registry, audit);
   }
 }
