@@ -13,6 +13,8 @@ import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
 import io.opaa.connection.profile.ConnectionSecrets.DiscardCause;
 import io.opaa.indexing.source.ConnectorData;
+import io.opaa.indexing.source.ProfileDeclaration;
+import io.opaa.indexing.source.SignIn;
 import io.opaa.indexing.source.SourceChangeGate;
 import io.opaa.indexing.source.SourceConnector;
 import io.opaa.indexing.source.SourceConnectorDescriptor;
@@ -30,6 +32,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -273,24 +276,48 @@ public class ConnectionProfileService {
     return connector;
   }
 
+  /** The declaration's checks, then the connector's own check of the defaults' values. */
   private ConnectionProfileValues validate(
       SourceConnector connector, ConnectionProfileValues values, UUID existingId) {
     SourceConnectorDescriptor descriptor = connector.descriptor();
+    ConnectionProfileValues validated =
+        validate(descriptor.profileDeclaration(), descriptor.displayName(), values, existingId);
+    return validated.connectorSettings() == null
+        ? validated
+        : validated.withConnectorSettings(
+            connector.readProfileDefaults(validated.connectorSettings()));
+  }
+
+  /**
+   * Checks {@code values} against {@code declaration} alone - name, address, sign-in, ownership,
+   * app registration and defaults - so a profile is checkable without a connector.
+   */
+  ConnectionProfileValues validate(
+      ProfileDeclaration declaration,
+      String typeLabel,
+      ConnectionProfileValues values,
+      UUID existingId) {
     String name = required(values.name(), "name", MAX_NAME_LENGTH);
     if (profiles.existsByNameIgnoringCase(name, existingId)) {
       throw new ConflictException("Es gibt bereits einen Zugang mit dem Namen " + name);
     }
-    String serverUrl = ServerAddress.normalize(values.serverUrl());
+    String serverUrl = ServerAddress.normalize(values.serverUrl(), declaration.address());
     if (serverUrl.length() > MAX_URL_LENGTH) {
       throw new ValidationException("serverUrl ist zu lang");
     }
     ConnectionAuthMethod method = values.authMethod();
-    if (method == null || !descriptor.authMethods().contains(method)) {
-      throw new ValidationException(
-          "Die Anmeldeart wird von der Quellart " + descriptor.displayName() + " nicht angeboten");
-    }
+    SignIn signIn =
+        (method == null ? Optional.<SignIn>empty() : declaration.signIn(method))
+            .orElseThrow(
+                () ->
+                    new ValidationException(
+                        "Die Anmeldeart wird von der Quellart " + typeLabel + " nicht angeboten"));
     if (values.ownership() == null) {
       throw new ValidationException("ownership ist erforderlich");
+    }
+    if (!signIn.admits(values.ownership())) {
+      throw new ValidationException(
+          "Die Besitzart ist für diese Anmeldeart der Quellart " + typeLabel + " nicht vorgesehen");
     }
     String clientId = optional(values.clientId(), "clientId", MAX_FIELD_LENGTH);
     String tenant = optional(values.tenant(), "tenant", MAX_FIELD_LENGTH);
@@ -307,10 +334,7 @@ public class ConnectionProfileService {
     if (scopes != null && !method.usesScopes()) {
       throw new ValidationException("Scopes gehören nur zu OAuth und Client-Credentials");
     }
-    ConnectorData settings =
-        values.connectorSettings() == null || values.connectorSettings().isEmpty()
-            ? null
-            : connector.readSettings(values.connectorSettings());
+    ConnectorData settings = declaration.defaults().read(values.connectorSettings());
     return new ConnectionProfileValues(
         name,
         serverUrl,

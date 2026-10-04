@@ -1160,7 +1160,7 @@ public class KnowledgeLibraryService {
       SourceConnector connector,
       SourceSettings requested,
       UnaryOperator<SourceSettings> validation) {
-    if (connector.descriptor().serviceAccountKey() == null) {
+    if (connector.descriptor().profileDeclaration().serviceAccountKey() == null) {
       return validation.apply(requested);
     }
     if (requested.sourceCredentials() == null) {

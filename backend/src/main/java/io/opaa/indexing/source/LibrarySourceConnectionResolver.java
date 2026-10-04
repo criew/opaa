@@ -59,7 +59,8 @@ public class LibrarySourceConnectionResolver implements SourceConnectionResolver
   private Optional<SourceConnector> signing(KnowledgeLibrary library) {
     return connectors
         .apply(library.getSourceType())
-        .filter(connector -> connector.descriptor().serviceAccountKey() != null);
+        .filter(
+            connector -> connector.descriptor().profileDeclaration().serviceAccountKey() != null);
   }
 
   private static SourceSettings stored(KnowledgeLibrary library) {

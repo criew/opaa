@@ -1211,7 +1211,9 @@ components:
           pushIntake,
           browsable,
           profileSupport,
-          authMethods,
+          signIns,
+          profileDefaults,
+          serverAddress,
           creatable,
           creatableWithOwnAddress,
           locked,
@@ -1247,13 +1249,23 @@ components:
           description: Whether browseSource answers for this type.
         profileSupport:
           $ref: "#/components/schemas/ConnectionProfileSupport"
-        authMethods:
+        signIns:
           type: array
           description: >
-            The sign-in methods a connection profile of this type may choose; empty when the
-            type admits no profile.
+            The sign-in methods of this type, each with the ownerships a profile choosing it may
+            take. A type admitting profiles names at least one; a type without profiles names
+            only a sign-in the core performs for a library's own key (SERVICE_ACCOUNT_KEY).
           items:
-            $ref: "#/components/schemas/ConnectionAuthMethod"
+            $ref: "#/components/schemas/SourceTypeSignIn"
+        profileDefaults:
+          type: array
+          description: >
+            The connector settings a connection profile of this type may set for every library
+            on it (connectorSettings of the profile), in display order; empty for none.
+          items:
+            $ref: "#/components/schemas/ProfileDefaultKey"
+        serverAddress:
+          $ref: "#/components/schemas/ServerAddressRule"
         fullSyncIntervalDefaultDays:
           type: integer
           nullable: true

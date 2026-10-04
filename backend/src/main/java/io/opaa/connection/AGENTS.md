@@ -24,16 +24,16 @@ knowledge kennt connections: Der Kern erreicht es über seine Ports `SourceConne
 - **Ursprungsbindung:** Die Adresse einer zugeordneten Bibliothek liegt unter der Server-Adresse
   ihres Profils (`ServerAddress#covers`), sonst sperrt der Port. Eine neue Server-Adresse verschiebt
   die Adressen der Bibliotheken und verwirft alle Geheimnisse des Profils.
-- **Geheimnis nur über `ConnectionSecrets`** (je `SecretOwner`; verworfen wird auf der Spalte);
-  library fragt den Port (`theLibrarySecretIsReadInOnePlace`).
+- **Lesen und Verwerfen des Geheimnisses** in connections nur über `ConnectionSecrets`, library
+  über den Port; der Schreibweg der Bibliothek bleibt `updateSourceConfiguration`.
 - **Ein gelöschtes Profil** lässt die Zuordnung mit `profile_id NULL` stehen („Zugang entfernt“);
   der Port sperrt dann mit eigenem Grund und deutscher Meldung.
 - **Sperrgründe nur in `SourceBlocks`:** Ob und warum eine Bibliothek gesperrt ist und welcher Text
   gilt, entscheidet nur er. Vorrang ist die Deklarationsreihenfolge von `SourceBlock.Reason`, die
   Mengen der Aufrufer leiten sich aus dessen Eigenschaften ab: Ein neuer Grund steht an einer Stelle.
 - **Eine Zusammenführung:** `EffectiveSourceSettings` setzt Lauf, Änderung und Einstellungen
-  zusammen; Vorgaben des Profils überschreiben die der Bibliothek je Schlüssel. Nur
-  `applyChange` bekommt den eigenen Teil; Änderungen laufen durch `SourceChangeGate`.
+  zusammen; Konnektor-Vorgaben (nur deklarierte, `ProfileDefaults#read`) überschreiben die der
+  Bibliothek je Schlüssel. Nur `applyChange` bekommt den eigenen Teil (`SourceChangeGate`).
 - **Freigabe nur hier:** `ConnectorReleaseService` entscheidet eine Neuanlage aus
   `CREATE_CONNECTOR_LIBRARY` im Geltungsbereich `TYPE:`/`PROFILE:` und den Sperren;
   `ConnectorScopeCatalog` nennt rights die Geltungsbereiche. Kein anderes Modul außer rights nennt

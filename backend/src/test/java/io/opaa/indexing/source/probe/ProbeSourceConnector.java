@@ -29,6 +29,11 @@ public class ProbeSourceConnector implements SourceConnector {
   }
 
   @Override
+  public Set<String> settingsKeys() {
+    return Set.of(TOPIC);
+  }
+
+  @Override
   public ConnectorData readSettings(ConnectorData requested) {
     requested.requireOnly(Set.of(TOPIC));
     if (!(requested.get(TOPIC) instanceof String topic) || topic.isBlank()) {

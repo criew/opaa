@@ -1,12 +1,8 @@
 package io.opaa.indexing.source;
 
-import io.opaa.api.types.ConnectionAuthMethod;
-import io.opaa.api.types.ConnectionProfileSupport;
 import io.opaa.knowledge.SourceType;
 import java.time.Duration;
-import java.util.EnumSet;
 import java.util.Objects;
-import java.util.Set;
 
 /**
  * What a {@link SourceConnector} is, as the administration asks it instead of branching on the
@@ -25,11 +21,8 @@ import java.util.Set;
  * @param pushIntake the push intake the connector offers, {@code null} for none
  * @param fullSyncInterval the instance-wide rhythm of the connector's full reconciliation, which a
  *     library may lengthen; {@code null} for a connector whose every run is a full one
- * @param profileSupport how the connector stands to connection profiles ("Profilangabe")
- * @param authMethods the sign-in methods a profile of this connector may choose; empty exactly when
- *     profiles are forbidden
- * @param serviceAccountKey the sign-in by service account key the core performs for a library
- *     without profile, {@code null} when {@code sourceCredentials} reach the connector as stored
+ * @param profileDeclaration how the connector stands to connection profiles ("Profilangabe"),
+ *     including the service account key the core signs with for a library's own key
  */
 public record SourceConnectorDescriptor(
     SourceType type,
@@ -40,32 +33,19 @@ public record SourceConnectorDescriptor(
     boolean uploads,
     PushIntake pushIntake,
     Duration fullSyncInterval,
-    ConnectionProfileSupport profileSupport,
-    Set<ConnectionAuthMethod> authMethods,
-    ServiceAccountKeyAuth serviceAccountKey) {
+    ProfileDeclaration profileDeclaration) {
 
   public SourceConnectorDescriptor {
     Objects.requireNonNull(type, "type");
     Objects.requireNonNull(displayName, "displayName");
-    Objects.requireNonNull(profileSupport, "profileSupport");
-    authMethods =
-        authMethods == null || authMethods.isEmpty()
-            ? Set.of()
-            : Set.copyOf(EnumSet.copyOf(authMethods));
-    if ((profileSupport == ConnectionProfileSupport.FORBIDDEN) != authMethods.isEmpty()) {
-      throw new IllegalArgumentException(
-          "a connector names sign-in methods exactly when it admits profiles");
-    }
-    if (uploads && profileSupport != ConnectionProfileSupport.FORBIDDEN) {
-      throw new IllegalArgumentException("a library filled by uploads has no profile");
-    }
+    Objects.requireNonNull(profileDeclaration, "profileDeclaration");
     if (deepLink && !remote) {
       throw new IllegalArgumentException("only a remote document can carry a deep link");
     }
     if (uploads && (indexingRun || remote)) {
       throw new IllegalArgumentException("a library filled by uploads has no run and no remote");
     }
-    if (serviceAccountKey != null && !remote) {
+    if (profileDeclaration.serviceAccountKey() != null && !remote) {
       throw new IllegalArgumentException(
           "only a remote source signs in with a service account key");
     }
@@ -90,9 +70,7 @@ public record SourceConnectorDescriptor(
         uploads,
         pushIntake,
         fullSyncInterval,
-        ConnectionProfileSupport.FORBIDDEN,
-        Set.of(),
-        null);
+        ProfileDeclaration.forbidden());
   }
 
   /**
@@ -123,9 +101,7 @@ public record SourceConnectorDescriptor(
         uploads,
         pushIntake,
         fullSyncInterval,
-        profileSupport,
-        authMethods,
-        serviceAccountKey);
+        profileDeclaration);
   }
 
   public SourceConnectorDescriptor withPushIntake(PushIntake intake) {
@@ -138,9 +114,7 @@ public record SourceConnectorDescriptor(
         uploads,
         intake,
         fullSyncInterval,
-        profileSupport,
-        authMethods,
-        serviceAccountKey);
+        profileDeclaration);
   }
 
   public SourceConnectorDescriptor withFullSyncInterval(Duration interval) {
@@ -153,14 +127,11 @@ public record SourceConnectorDescriptor(
         uploads,
         pushIntake,
         interval,
-        profileSupport,
-        authMethods,
-        serviceAccountKey);
+        profileDeclaration);
   }
 
-  /** The connector admits profiles as {@code support} says, signing in with {@code methods}. */
-  public SourceConnectorDescriptor withProfiles(
-      ConnectionProfileSupport support, Set<ConnectionAuthMethod> methods) {
+  /** The connector stands to connection profiles as {@code declaration} says. */
+  public SourceConnectorDescriptor withProfiles(ProfileDeclaration declaration) {
     return new SourceConnectorDescriptor(
         type,
         displayName,
@@ -170,29 +141,11 @@ public record SourceConnectorDescriptor(
         uploads,
         pushIntake,
         fullSyncInterval,
-        support,
-        methods,
-        serviceAccountKey);
-  }
-
-  /** The connector signs in with a service account key the core exchanges for an access token. */
-  public SourceConnectorDescriptor withServiceAccountKey(ServiceAccountKeyAuth auth) {
-    return new SourceConnectorDescriptor(
-        type,
-        displayName,
-        indexingRun,
-        remote,
-        deepLink,
-        uploads,
-        pushIntake,
-        fullSyncInterval,
-        profileSupport,
-        authMethods,
-        auth);
+        declaration);
   }
 
   /** Whether a library of this connector may be connected through a profile. */
   public boolean admitsProfiles() {
-    return profileSupport != ConnectionProfileSupport.FORBIDDEN;
+    return profileDeclaration.admitsProfiles();
   }
 }

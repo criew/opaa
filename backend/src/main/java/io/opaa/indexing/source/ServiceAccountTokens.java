@@ -67,7 +67,7 @@ public class ServiceAccountTokens {
    */
   public String forConnector(
       SourceConnector connector, SourceSettings settings, ConnectorData effective) {
-    ServiceAccountKeyAuth auth = connector.descriptor().serviceAccountKey();
+    ServiceAccountKeyAuth auth = connector.descriptor().profileDeclaration().serviceAccountKey();
     if (auth == null || settings.sourceCredentials() == null) {
       return settings.sourceCredentials();
     }

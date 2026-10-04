@@ -4,16 +4,28 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
 
+import io.opaa.api.dto.ProfileDefaultKey;
 import io.opaa.api.dto.SourceBrowseEntry;
 import io.opaa.api.dto.SourceBrowseRequest;
 import io.opaa.api.dto.SourceBrowseResponse;
 import io.opaa.api.dto.SourceConnectionTestRequest;
 import io.opaa.api.dto.SourceConnectionTestResponse;
 import io.opaa.api.dto.SourceTypeDescriptor;
+import io.opaa.api.dto.SourceTypeSignIn;
+import io.opaa.api.types.ConnectionAuthMethod;
+import io.opaa.api.types.ConnectionOwnership;
+import io.opaa.api.types.ConnectionProfileSupport;
+import io.opaa.api.types.PersonalSecretForm;
+import io.opaa.api.types.ProfileDefaultKind;
 import io.opaa.common.ValidationException;
 import io.opaa.connection.ConnectorReleaseService.TypeCreation;
 import io.opaa.indexing.source.ConnectorData;
+import io.opaa.indexing.source.DefaultKey;
+import io.opaa.indexing.source.ProfileDeclaration;
 import io.opaa.indexing.source.PushIntake;
+import io.opaa.indexing.source.ServerAddressRule;
+import io.opaa.indexing.source.ServiceAccountKeyAuth;
+import io.opaa.indexing.source.SignIn;
 import io.opaa.indexing.source.SourceConnectionTestResult;
 import io.opaa.indexing.source.SourceConnectorDescriptor;
 import io.opaa.indexing.source.SourceListing;
@@ -156,6 +168,73 @@ class SourceConnectionTestResponseMapperTest {
     assertThat(descriptor.getPushIntake()).isTrue();
     assertThat(descriptor.getBrowsable()).isTrue();
     assertThat(descriptor.getFullSyncIntervalDefaultDays()).isEqualTo(1);
+  }
+
+  @Test
+  void aDescriptorCarriesTheProfileDeclaration() {
+    SourceTypeDescriptor descriptor =
+        SourceConnectionTestResponseMapper.toResponse(
+            SourceConnectorDescriptor.remoteRun(SourceTypes.S3, "S3")
+                .withProfiles(
+                    ProfileDeclaration.of(
+                            ConnectionProfileSupport.OPTIONAL,
+                            SignIn.of(
+                                ConnectionAuthMethod.NONE,
+                                ConnectionOwnership.PERSON,
+                                ConnectionOwnership.LIBRARY),
+                            SignIn.personalSecret(
+                                PersonalSecretForm.TOKEN, ConnectionOwnership.LIBRARY))
+                        .withAddress(ServerAddressRule.schemes("https", "smb"))
+                        .withDefaults(
+                            DefaultKey.text("region", "Region"),
+                            DefaultKey.choice("edition", "Edition", "CLOUD", "DC"))),
+            false,
+            new TypeCreation(true, true, false, null));
+
+    assertThat(descriptor.getProfileSupport()).isEqualTo(ConnectionProfileSupport.OPTIONAL);
+    assertThat(descriptor.getSignIns())
+        .extracting(
+            SourceTypeSignIn::getMethod,
+            SourceTypeSignIn::getOwnerships,
+            SourceTypeSignIn::getSecretForm)
+        .containsExactly(
+            tuple(
+                ConnectionAuthMethod.NONE,
+                List.of(ConnectionOwnership.LIBRARY, ConnectionOwnership.PERSON),
+                null),
+            tuple(
+                ConnectionAuthMethod.PERSONAL_SECRET,
+                List.of(ConnectionOwnership.LIBRARY),
+                PersonalSecretForm.TOKEN));
+    assertThat(descriptor.getProfileDefaults())
+        .extracting(
+            ProfileDefaultKey::getKey,
+            ProfileDefaultKey::getLabel,
+            ProfileDefaultKey::getKind,
+            ProfileDefaultKey::getChoices)
+        .containsExactly(
+            tuple("region", "Region", ProfileDefaultKind.TEXT, List.of()),
+            tuple("edition", "Edition", ProfileDefaultKind.CHOICE, List.of("CLOUD", "DC")));
+    assertThat(descriptor.getServerAddress().getSchemes()).containsExactly("https", "smb");
+    assertThat(descriptor.getServerAddress().getFixed()).isNull();
+
+    SourceTypeDescriptor withoutProfiles =
+        SourceConnectionTestResponseMapper.toResponse(
+            SourceConnectorDescriptor.remoteRun(SourceTypes.HTTP_DIRECTORY, "Web")
+                .withProfiles(
+                    ProfileDeclaration.forbiddenWithServiceAccountKey(
+                            new ServiceAccountKeyAuth(
+                                URI.create("https://oauth.example.org/token"), "scope"))
+                        .withAddress(ServerAddressRule.fixed("https://api.example.org"))),
+            false,
+            new TypeCreation(true, true, false, null));
+    assertThat(withoutProfiles.getProfileSupport()).isEqualTo(ConnectionProfileSupport.FORBIDDEN);
+    assertThat(withoutProfiles.getSignIns())
+        .extracting(SourceTypeSignIn::getMethod)
+        .containsExactly(ConnectionAuthMethod.SERVICE_ACCOUNT_KEY);
+    assertThat(withoutProfiles.getProfileDefaults()).isEmpty();
+    assertThat(withoutProfiles.getServerAddress().getSchemes()).isEmpty();
+    assertThat(withoutProfiles.getServerAddress().getFixed()).isEqualTo("https://api.example.org");
   }
 
   @Test

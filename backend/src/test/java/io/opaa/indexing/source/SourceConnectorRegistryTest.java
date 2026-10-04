@@ -1,18 +1,24 @@
 package io.opaa.indexing.source;
 
+import static io.opaa.api.types.ConnectionAuthMethod.NONE;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.opaa.api.types.ConnectionAuthMethod;
+import io.opaa.api.types.ConnectionOwnership;
+import io.opaa.api.types.ConnectionProfileSupport;
 import io.opaa.common.ValidationException;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentContent;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.SourceType;
 import io.opaa.test.SourceTypes;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.UnaryOperator;
 import org.junit.jupiter.api.Test;
@@ -128,21 +134,114 @@ class SourceConnectorRegistryTest {
 
   @Test
   void aServiceAccountKeyConnectorAdmittingProfilesFailsStartup() {
-    List<SourceConnector> connectors = complete();
-    connectors.removeIf(c -> c.descriptor().type().equals(SourceTypes.RSS_FEED));
-    connectors.add(
-        plain(
-            SourceConnectorDescriptor.remoteRun(SourceTypes.RSS_FEED, "RSS")
-                .withProfiles(
-                    io.opaa.api.types.ConnectionProfileSupport.OPTIONAL,
-                    java.util.Set.of(io.opaa.api.types.ConnectionAuthMethod.SERVICE_ACCOUNT_KEY))
-                .withServiceAccountKey(
-                    new ServiceAccountKeyAuth(
-                        java.net.URI.create("https://oauth.example.org/token"), "scope"))));
+    List<SourceConnector> connectors =
+        replacingRss(
+            remoteRss(
+                ProfileDeclaration.of(
+                    ConnectionProfileSupport.OPTIONAL,
+                    SignIn.serviceAccountKey(
+                        new ServiceAccountKeyAuth(
+                            URI.create("https://oauth.example.org/token"), "scope")))));
 
     assertThatThrownBy(() -> new SourceConnectorRegistry(connectors))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("RSS_FEED signs in with a service account key");
+  }
+
+  @Test
+  void aRemoteConnectorAdmittingProfilesWithItsDefaultsStartsUp() {
+    SourceConnectorRegistry registry =
+        new SourceConnectorRegistry(
+            replacingRss(
+                new KeyedStub(
+                    SourceConnectorDescriptor.remoteRun(SourceTypes.RSS_FEED, "RSS")
+                        .withProfiles(
+                            ProfileDeclaration.of(
+                                    ConnectionProfileSupport.OPTIONAL,
+                                    SignIn.of(NONE, ConnectionOwnership.LIBRARY))
+                                .withDefaults(DefaultKey.text("region", "Region"))),
+                    Set.of("region", "folders"))));
+
+    assertThat(registry.descriptor(SourceTypes.RSS_FEED).admitsProfiles()).isTrue();
+  }
+
+  @Test
+  void aConnectorReadingNothingRemoteOrFillingByUploadsAdmitsNoProfile() {
+    List<SourceConnector> local = complete();
+    local.removeIf(c -> c.descriptor().type().equals(SourceTypes.FILESYSTEM));
+    local.add(
+        plain(
+            SourceConnectorDescriptor.localRun(SourceTypes.FILESYSTEM, "Dateisystem")
+                .withProfiles(optionalWithoutSignInDetails())));
+    List<SourceConnector> uploads = complete();
+    uploads.removeIf(c -> c.descriptor().type().equals(SourceType.UPLOAD));
+    uploads.add(
+        plain(
+            SourceConnectorDescriptor.acceptingUploads(SourceType.UPLOAD, "Upload")
+                .withProfiles(optionalWithoutSignInDetails())));
+
+    assertThatThrownBy(() -> new SourceConnectorRegistry(local))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("FILESYSTEM fills its library by uploads or reads nothing remote");
+    assertThatThrownBy(() -> new SourceConnectorRegistry(uploads))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("UPLOAD fills its library by uploads or reads nothing remote");
+  }
+
+  @Test
+  void anAppRegistrationOnTheProfileRequiresProfiles() {
+    List<SourceConnector> optionalOAuth =
+        replacingRss(
+            remoteRss(
+                ProfileDeclaration.of(
+                    ConnectionProfileSupport.OPTIONAL,
+                    SignIn.of(NONE, ConnectionOwnership.LIBRARY),
+                    SignIn.of(ConnectionAuthMethod.OAUTH, ConnectionOwnership.LIBRARY))));
+    List<SourceConnector> requiredWithoutRegistration =
+        replacingRss(
+            remoteRss(
+                ProfileDeclaration.of(
+                    ConnectionProfileSupport.REQUIRED,
+                    SignIn.of(NONE, ConnectionOwnership.LIBRARY))));
+
+    assertThatThrownBy(() -> new SourceConnectorRegistry(optionalOAuth))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining(
+            "RSS_FEED must require profiles exactly when it offers OAuth or client credentials");
+    assertThatThrownBy(() -> new SourceConnectorRegistry(requiredWithoutRegistration))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining(
+            "RSS_FEED must require profiles exactly when it offers OAuth or client credentials");
+    assertThat(
+            new SourceConnectorRegistry(
+                    replacingRss(
+                        remoteRss(
+                            ProfileDeclaration.of(
+                                ConnectionProfileSupport.REQUIRED,
+                                SignIn.of(
+                                    ConnectionAuthMethod.CLIENT_CREDENTIALS,
+                                    ConnectionOwnership.LIBRARY)))))
+                .descriptor(SourceTypes.RSS_FEED)
+                .profileDeclaration()
+                .support())
+        .isEqualTo(ConnectionProfileSupport.REQUIRED);
+  }
+
+  @Test
+  void aProfileDefaultNamesASettingsKeyOfTheConnector() {
+    List<SourceConnector> connectors =
+        replacingRss(
+            new KeyedStub(
+                SourceConnectorDescriptor.remoteRun(SourceTypes.RSS_FEED, "RSS")
+                    .withProfiles(
+                        optionalWithoutSignInDetails()
+                            .withDefaults(DefaultKey.text("edition", "Edition"))),
+                Set.of("region")));
+
+    assertThatThrownBy(() -> new SourceConnectorRegistry(connectors))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining(
+            "RSS_FEED declares profile default edition, which is no settings key");
   }
 
   @Test
@@ -202,6 +301,23 @@ class SourceConnectorRegistryTest {
         .containsEntry("root", "/intern/pfad");
   }
 
+  private static ProfileDeclaration optionalWithoutSignInDetails() {
+    return ProfileDeclaration.of(
+        ConnectionProfileSupport.OPTIONAL, SignIn.of(NONE, ConnectionOwnership.LIBRARY));
+  }
+
+  private static SourceConnector remoteRss(ProfileDeclaration declaration) {
+    return plain(
+        SourceConnectorDescriptor.remoteRun(SourceTypes.RSS_FEED, "RSS").withProfiles(declaration));
+  }
+
+  private List<SourceConnector> replacingRss(SourceConnector rss) {
+    List<SourceConnector> connectors = complete();
+    connectors.removeIf(c -> c.descriptor().type().equals(SourceTypes.RSS_FEED));
+    connectors.add(rss);
+    return connectors;
+  }
+
   /** One connector per built-in source type, with the abilities the production ones offer. */
   private List<SourceConnector> complete() {
     List<SourceConnector> connectors = new ArrayList<>();
@@ -249,6 +365,21 @@ class SourceConnectorRegistryTest {
     public SourceConnectionTestResult testConnection(
         SourceSettings settings, ConnectorData stored) {
       throw new UnsupportedOperationException();
+    }
+  }
+
+  private static class KeyedStub extends Stub {
+
+    private final Set<String> keys;
+
+    KeyedStub(SourceConnectorDescriptor descriptor, Set<String> keys) {
+      super(descriptor);
+      this.keys = keys;
+    }
+
+    @Override
+    public Set<String> settingsKeys() {
+      return keys;
     }
   }
 
