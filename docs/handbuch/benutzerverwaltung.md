@@ -461,7 +461,9 @@ der zuletzt eingegebene Benutzername vorbelegt.
 
 **Neu verbinden** einer bestehenden Verbindung zählt nicht als neues Konto und geht deshalb auch
 nach Entzug der Freigabe, nur nicht bei gesperrtem Zugang. Läuft eine Verbindung ab, erhält die
-Person die Benachrichtigung „Verbindung abgelaufen“; ein Klick darauf führt auf diese Seite.
+Person die Benachrichtigung „Verbindung abgelaufen“. Beendet eine Handlung der Systemverwaltung die
+Verbindung (Notabschaltung, geänderte Server-Adresse, App-Registrierung oder Vorgabe, gelöschter
+Zugang), heißt sie „Verbindung getrennt“. Beide führen per Klick auf diese Seite.
 
 ### Trennen
 
@@ -481,8 +483,12 @@ Revision liest, und zwar mit Pseudonym statt Namen
 
 ### Lange Abwesenheit oder Versetzung
 
-- **Abwesenheit** beendet nichts. Nach längerer Zeit ohne Anmeldung ruhen die Verbindungen einer
-  Person; es wird nichts gelöscht, und mit der nächsten Anmeldung geht es ohne Neuverbinden weiter.
+- **Abwesenheit** beendet nichts. Nach der Inaktivitätsschwelle ohne Anmeldung
+  (`OPAA_CONNECTION_INACTIVITY_THRESHOLD_DAYS`, [Deployment](deployment.md)) ruhen die Verbindungen
+  einer Person; es wird nichts gelöscht, und mit der nächsten Anmeldung geht es ohne Neuverbinden
+  weiter.
+- **Deaktivierung** dagegen beendet alle Verbindungen des Kontos und löscht ihre Zugangsdaten:
+  gesperrt, abgelaufen, im Verzeichnis gesperrt oder der Anbieter gelöscht.
 - **Versetzung oder Gruppenwechsel** ändern an bestehenden Verbindungen nichts. Entzieht die
   Systemverwaltung dabei die Freigabe eines Zugangs, läuft die Verbindung weiter und trägt den
   Hinweis „Nicht mehr freigegeben“. Wer die Inhalte in der neuen Funktion nicht mehr braucht, trennt

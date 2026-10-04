@@ -12,6 +12,7 @@ import TableRow from '@mui/material/TableRow'
 import Typography from '@mui/material/Typography'
 import VpnKeyOutlinedIcon from '@mui/icons-material/VpnKeyOutlined'
 import type {
+  ConnectionProfileImpactResponse,
   ConnectionProfileRequestResponse,
   ConnectionProfileResponse,
   ConnectorTypeStateResponse,
@@ -38,8 +39,8 @@ import { confirmLock } from '../components/admin/connections/connectorLock'
 import {
   AUTH_METHOD_LABELS,
   OWNERSHIP_LABELS,
-  personCountLabel,
 } from '../components/admin/connections/connectionProfileLabels'
+import { admitsPersons, personCountLabel } from '../components/admin/connections/profileChange'
 import { contentWidth } from '../theme/tokens'
 
 /** "31.03.2027" for an ISO date, read as a calendar day without a time zone shift. */
@@ -57,6 +58,16 @@ function isPast(isoDate: string) {
 
 function connectionCount(count: number) {
   return count === 1 ? '1 Verbindung' : `${count} Verbindungen`
+}
+
+/** The persons' accounts a shutdown or deletion cuts off, as rounded as the API gives them. */
+function accountsClause(
+  profile: ConnectionProfileResponse,
+  impact: ConnectionProfileImpactResponse,
+): string {
+  return admitsPersons(profile.ownership)
+    ? `, verbundene Konten von Personen: ${personCountLabel(impact.connectedAccounts)}`
+    : ''
 }
 
 /**
@@ -141,7 +152,7 @@ export default function ConnectionProfileManagementPage() {
       const impact = await getConnectionProfileImpact(profile.id)
       const confirmed = await confirmAction({
         question: `Alle Verbindungen von „${profile.name}“ trennen?`,
-        consequence: `Betroffen: ${connectionCount(impact.connections)}, verbundene Konten von Personen: ${personCountLabel(impact.connectedAccounts)}. Alle Zugangsdaten werden sofort verworfen. Der Zugang bleibt bestehen; die Bibliotheken laufen erst wieder, wenn ihre Zugangsdaten neu eingetragen sind.`,
+        consequence: `Betroffen: ${connectionCount(impact.connections)}${accountsClause(profile, impact)}. Alle Zugangsdaten werden sofort verworfen. Der Zugang bleibt bestehen; die Bibliotheken laufen erst wieder, wenn ihre Zugangsdaten neu eingetragen sind.`,
         confirmLabel: 'Alle trennen',
         tone: 'danger',
       })
@@ -183,7 +194,7 @@ export default function ConnectionProfileManagementPage() {
       const impact = await getConnectionProfileImpact(profile.id)
       const confirmed = await confirmAction({
         question: `Zugang „${profile.name}“ löschen?`,
-        consequence: `Betroffen: ${connectionCount(impact.connections)}, verbundene Konten von Personen: ${personCountLabel(impact.connectedAccounts)}; sie werden getrennt. Die Bibliotheken bleiben mit ihrem Inhalt und dem Hinweis „Zugang entfernt“ stehen und laufen nicht mehr, bis sie einem anderen Zugang zugeordnet sind.`,
+        consequence: `Betroffen: ${connectionCount(impact.connections)}${accountsClause(profile, impact)}; sie werden getrennt. Die Bibliotheken bleiben mit ihrem Inhalt und dem Hinweis „Zugang entfernt“ stehen und laufen nicht mehr, bis sie einem anderen Zugang zugeordnet sind.`,
         confirmLabel: 'Löschen',
         tone: 'danger',
       })

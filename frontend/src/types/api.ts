@@ -211,7 +211,6 @@ export type ConnectorProfileRequirementResponse =
   components['schemas']['ConnectorProfileRequirementResponse']
 export type LibraryConnectionProfileRequest =
   components['schemas']['LibraryConnectionProfileRequest']
-export type PersonCount = components['schemas']['PersonCount']
 export type ConnectedAccountState = components['schemas']['ConnectedAccountState']
 export type ConnectedAccount = components['schemas']['ConnectedAccount']
 export type ConnectedAccountLibrary = components['schemas']['ConnectedAccountLibrary']

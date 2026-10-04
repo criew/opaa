@@ -5,6 +5,7 @@ import { CONNECTED_ACCOUNTS_ROUTE } from '../../routes'
 export function notificationTarget(type: NotificationType): string | null {
   switch (type) {
     case 'CONNECTION_EXPIRED':
+    case 'CONNECTION_ENDED':
       return CONNECTED_ACCOUNTS_ROUTE
     case 'ASSET_ASSOCIATED_TO_MIXED_SPACE':
     case 'EXTERNAL_ACCESS_MASS_RETRIEVAL':

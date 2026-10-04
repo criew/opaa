@@ -80,15 +80,18 @@ describe('NotificationBell (#203)', () => {
     })
   })
 
-  it('leads from an expired connection to the page "Verbundene Konten"', async () => {
+  it.each([
+    ['CONNECTION_EXPIRED', 'Verbindung abgelaufen: Zugang „Nextcloud intern“'],
+    ['CONNECTION_ENDED', 'Verbindung getrennt: Zugang „Nextcloud intern“'],
+  ])('leads from %s to the page "Verbundene Konten"', async (type, title) => {
     setMockAuthState()
     server.use(
       http.get('/api/v1/notifications', () =>
         HttpResponse.json([
           {
             id: 'n-expired',
-            type: 'CONNECTION_EXPIRED',
-            title: 'Verbindung abgelaufen: Zugang „Nextcloud intern“',
+            type,
+            title,
             readAt: null,
             createdAt: '2026-10-01T10:00:00Z',
           },
@@ -109,7 +112,7 @@ describe('NotificationBell (#203)', () => {
     )
 
     await user.click(await screen.findByLabelText('Benachrichtigungen, 1 ungelesen'))
-    await user.click(screen.getByText('Verbindung abgelaufen: Zugang „Nextcloud intern“'))
+    await user.click(screen.getByText(title))
 
     expect(await screen.findByText('Seite Verbundene Konten')).toBeInTheDocument()
   })

@@ -2,7 +2,6 @@ import type {
   ConnectionAuthMethod,
   ConnectionOwnership,
   ConnectionProfileRequestState,
-  PersonCount,
 } from '../../../types/api'
 
 export const AUTH_METHOD_LABELS: Record<ConnectionAuthMethod, string> = {
@@ -36,16 +35,4 @@ export function requestStateLabel(state: ConnectionProfileRequestState): {
       throw new Error(`Unknown connection profile request state ${String(unknown)}`)
     }
   }
-}
-
-/**
- * A count of persons' connections exactly as the API rounds it: the number, or "weniger als N".
- * Nothing is derived from it - zero below the minimum group size reads like any other small number.
- */
-export function personCountLabel(count: PersonCount | null | undefined): string {
-  if (count?.count !== null && count?.count !== undefined) return String(count.count)
-  if (count?.fewerThan !== null && count?.fewerThan !== undefined) {
-    return `weniger als ${count.fewerThan}`
-  }
-  return 'nicht ausgewiesen'
 }
