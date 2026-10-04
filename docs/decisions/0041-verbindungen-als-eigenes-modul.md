@@ -414,11 +414,23 @@ Begründung:
 - **Regel gegen das Verrechnen** (`PersonNumbers#ofGroups`): Die Anbieter teilen dieselben
   Verbindungen, die die Zugänge zählen. Genaue oder „weniger als N“-Zahlen je Anbieter ließen sich
   gegen die genaue Zahl eines Zugangs verrechnen (Zugang 8, Anbieter A und B je „weniger als 5“ ⇒
-  beide genau 4). Deshalb nennt ein Anbieter nur „mindestens N“, und nur solange nach Abzug von N
-  für jeden Anbieter mit mindestens N (die übrigen Personen, etwa lokale Systemverwalter, als eine
-  weitere Gruppe) noch mindestens N für alle anderen bleiben; sonst nennt kein Anbieter eine Zahl.
-  `PersonNumbersTest` belegt über alle Verteilungen auf zwei Anbieter und einen Zugang, dass keine
-  Beobachtung einen Wert unter N heraushebt, auch nicht die Null.
+  beide genau 4). Deshalb nennt ein Anbieter nur „mindestens N“, und nur, wenn **jede** Gruppe mit
+  Personen mindestens N hat: jeder Anbieter mit Konten und die übrigen Personen (lokale
+  Systemverwalter, deaktivierte Konten) als eigene, nie genannte Gruppe. Sonst nennt kein Anbieter
+  eine Zahl. Eine Regel, die nur „genug für den Rest“ verlangt, ist undicht: Bei drei Anbietern ohne
+  Angabe und Summe 10 war „genau 1“ ausgeschlossen, bei sechs Anbietern und Summe 25 die Null
+  ableitbar. Mit der strengeren Regel kann ein Anbieter ohne Zahl jede Zahl unter N haben, weil er
+  selbst die Bedingung brechen kann, was die Summen auch zeigen.
+- **Belegt** über alle Verteilungen in `PersonNumbersTest`, je Beobachtung und Anbieter: Unter N
+  ist entweder kein Wert oder jeder möglich. Die Fälle sind zwei Anbieter und ein Zugang mit
+  unbekannter Restgruppe sowie drei Anbieter und zwei Zugänge und sechs Anbieter und ein Zugang,
+  jeweils mit leerer und bekannter Restgruppe.
+- **Annahmen und Restlücken:** Die Verwaltung kennt höchstens die Zahlen der Zugänge und der
+  Anbieter und weiß, welche Gruppen Konten haben. Beobachtet sie über die Zeit, kann ein neues
+  Konto die Anzeige aller Anbieter kippen und damit einen früheren Stand verraten, etwa „vorher
+  hatte jeder Anbieter mindestens N“. Wie bei den Zugängen bleibt das eine dokumentierte Restlücke.
+  Praktisch nennt der Dialog selten eine Zahl, solange die Systemverwaltung selbst weniger als N
+  Verbindungen hält.
 - **Offen:** Der Schalter der lokalen Kontenverwaltung unter Administration → Benutzer
   (`updateLocalAuthSettings`) fragt nicht nach; dort ruhen die Verbindungen nur.
 

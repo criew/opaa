@@ -74,9 +74,9 @@ class ProviderImpactOnConnectionsTest {
     UUID usable = account(ISSUER, State.USABLE, 30);
     UUID resting = account(ISSUER + "/", State.DORMANT_PROVIDER_DISABLED, 0);
     UUID deactivated = account(ISSUER, State.DEACTIVATED, 0);
-    UUID partnerAccount = account(PARTNER_ISSUER, State.USABLE, 0);
-    UUID regularLocal = account(LocalIssuer.URN, State.USABLE, 0);
-    UUID localAdmin = account(LocalIssuer.URN, State.USABLE, 0);
+    UUID partnerAccount = account(PARTNER_ISSUER, State.USABLE, 5);
+    UUID regularLocal = account(LocalIssuer.URN, State.USABLE, 6);
+    UUID localAdmin = account(LocalIssuer.URN, State.USABLE, 7);
     accounts.getLast().setSystemRole(SystemRole.SYSTEM_ADMIN);
 
     Impact result = impact.of(house.getId());

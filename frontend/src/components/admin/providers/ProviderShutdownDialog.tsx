@@ -46,6 +46,12 @@ export const CONNECTIONS_END =
   'Die gespeicherten Zugangsdaten der verbundenen Konten dieser Personen werden sofort gelöscht – ' +
   'das lässt sich nicht rückgängig machen. Für ihre privaten Bibliotheken beginnt die Löschfrist.'
 
+export const DISABLE_WITHOUT_IMPACT =
+  'Deaktivieren bleibt möglich, denn dabei wird nichts gelöscht; etwaige verbundene Konten ruhen.'
+
+export const DELETE_NEEDS_IMPACT =
+  'Löschen ist erst möglich, wenn die Folgen geladen sind, denn es löscht Zugangsdaten unumkehrbar.'
+
 export const NUMBERS_HINT =
   '„Keine Angabe“ heißt nicht „keine“: Zahlen je Anbieter nennt OPAA nur, wo sie keinen ' +
   'Rückschluss auf einzelne Personen zulassen.'
@@ -107,12 +113,16 @@ export default function ProviderShutdownDialog({
   const deleting = action === 'delete'
   const verb = deleting ? 'Löschen' : 'Deaktivieren'
   const consequence = deleting ? DELETE_CONSEQUENCE : DISABLE_CONSEQUENCE
+  // Disabling deletes nothing, so it must not hang on the numbers: a provider that has to go off
+  // goes off even when they cannot be loaded. Deleting is irreversible and waits for them.
+  const impactUnknown = loadError !== null
+  const ready = impact !== null || (impactUnknown && !deleting)
 
-  async function confirm() {
-    if (impact === null) return
+  async function submit() {
+    if (!ready) return
     const confirmations = {
       acknowledgeLastProvider: isLastEnabled,
-      confirmConnections: impact.confirmationRequired,
+      confirmConnections: impact === null || impact.confirmationRequired,
     }
     setBusy(true)
     try {
@@ -163,9 +173,15 @@ export default function ProviderShutdownDialog({
           </Typography>
         )}
         {loadError && (
-          <Alert severity="error" sx={{ fontSize: 13 }}>
-            Die Folgen für verbundene Konten ließen sich nicht ermitteln: {loadError}
+          <Alert severity="error" sx={{ fontSize: 13, mb: 1.5 }}>
+            Die Folgen für verbundene Konten ließen sich nicht ermitteln: {loadError}{' '}
+            {deleting ? DELETE_NEEDS_IMPACT : DISABLE_WITHOUT_IMPACT}
           </Alert>
+        )}
+        {impactUnknown && !deleting && (
+          <Typography sx={{ fontSize: 13.5, color: 'text.secondary' }}>
+            {CONNECTIONS_REST}
+          </Typography>
         )}
         {!loadError && impact === null && (
           <Box aria-busy="true">
@@ -206,8 +222,8 @@ export default function ProviderShutdownDialog({
           color={deleting ? 'error' : 'primary'}
           busy={busy}
           busyAnnouncement={deleting ? 'Anbieter wird gelöscht …' : 'Anbieter wird deaktiviert …'}
-          disabled={impact === null}
-          onClick={() => void confirm()}
+          disabled={!ready}
+          onClick={() => void submit()}
         >
           {verb}
         </BusyButton>

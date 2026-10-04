@@ -49,50 +49,41 @@ public class PersonNumbers {
    * The connections and private libraries of each group of {@code personsByGroup} - disjoint, such
    * as the accounts of each sign-in provider - with {@code others} holding every remaining person.
    * The groups split the same totals the profiles tell, so a group number is never exact and never
-   * "fewer than N": a group is told "at least N" only if it has N, and only while, with N set aside
-   * for every group (and {@code others}) that has N, at least N remain for all the rest together;
-   * else no group is told anything ({@code null}). Thus no sum of answers isolates a number below
-   * N, zero included.
+   * "fewer than N": every group with persons is told "at least N" only if each of them, {@code
+   * others} included, has at least N; else none is told anything ({@code null}). Whatever is known
+   * of the totals, a group that is not told may then hold any number below N, zero included.
    */
   public <K> Map<K, PersonsCounts> ofGroups(
       Map<K, ? extends Collection<UUID>> personsByGroup, Collection<UUID> others) {
     Map<K, PersonTotals> raw = new HashMap<>();
-    personsByGroup.forEach((group, userIds) -> raw.put(group, totalsOf(userIds)));
-    PersonTotals rest = totalsOf(others);
-    Map<K, PersonCount> connections =
-        amongGroups(raw, PersonTotals::connections, rest.connections());
-    Map<K, PersonCount> libraries =
-        amongGroups(raw, PersonTotals::privateLibraries, rest.privateLibraries());
+    personsByGroup.forEach(
+        (group, userIds) -> {
+          if (!userIds.isEmpty()) {
+            raw.put(group, persons.totalsOf(userIds));
+          }
+        });
+    PersonTotals rest = others.isEmpty() ? null : persons.totalsOf(others);
+    boolean connectionsTold = allReach(raw, rest, PersonTotals::connections);
+    boolean librariesTold = allReach(raw, rest, PersonTotals::privateLibraries);
     Map<K, PersonsCounts> masked = new HashMap<>();
     for (K group : personsByGroup.keySet()) {
-      masked.put(group, new PersonsCounts(connections.get(group), libraries.get(group)));
+      boolean withPersons = raw.containsKey(group);
+      masked.put(
+          group,
+          new PersonsCounts(
+              withPersons && connectionsTold ? PersonCount.atLeast(minimum) : null,
+              withPersons && librariesTold ? PersonCount.atLeast(minimum) : null));
     }
     return masked;
   }
 
-  private PersonTotals totalsOf(Collection<UUID> userIds) {
-    return userIds.isEmpty() ? new PersonTotals(0, 0) : persons.totalsOf(userIds);
-  }
-
-  private <K> Map<K, PersonCount> amongGroups(
-      Map<K, PersonTotals> raw, ToLongFunction<PersonTotals> number, long others) {
-    long all = others;
-    int reaching = others >= minimum ? 1 : 0;
-    for (PersonTotals totals : raw.values()) {
-      long count = number.applyAsLong(totals);
-      all += count;
-      reaching += count >= minimum ? 1 : 0;
+  private <K> boolean allReach(
+      Map<K, PersonTotals> groups, PersonTotals others, ToLongFunction<PersonTotals> number) {
+    if (others != null && number.applyAsLong(others) < minimum) {
+      return false;
     }
-    boolean told = all - (long) minimum * reaching >= minimum;
-    Map<K, PersonCount> masked = new HashMap<>();
-    raw.forEach(
-        (group, totals) ->
-            masked.put(
-                group,
-                told && number.applyAsLong(totals) >= minimum
-                    ? PersonCount.atLeast(minimum)
-                    : null));
-    return masked;
+    return !groups.isEmpty()
+        && groups.values().stream().allMatch(totals -> number.applyAsLong(totals) >= minimum);
   }
 
   ProfileCounts mask(StateCounts counts) {

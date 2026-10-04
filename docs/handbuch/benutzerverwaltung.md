@@ -515,10 +515,13 @@ Vor beidem zeigt ein Dialog diese Wirkung und verlangt eine Bestätigung, **soba
 verbundene Konten von Personen zulässt** — auch wenn über diesen Anbieter niemand verbunden ist.
 Sonst verriete schon das Ausbleiben der Frage, dass niemand verbunden ist. Die Zahl der verbundenen
 Konten und privaten Bibliotheken eines Anbieters nennt der Dialog höchstens als „mindestens N“ (N ist
-die Mindestgruppengröße `OPAA_MINIMUM_GROUP_SIZE`, [Deployment](deployment.md)), sonst „keine
-Angabe“. Genaue Zahlen je Anbieter ließen sich gegen die Zahlen der Zugänge verrechnen und zeigten
-dann, wie viele Personen eines kleinen Anbieters verbunden sind; „keine Angabe“ heißt deshalb
-ausdrücklich nicht „niemand“.
+die Mindestgruppengröße `OPAA_MINIMUM_GROUP_SIZE`, [Deployment](deployment.md)). Das geschieht nur,
+wenn jeder Anbieter mit Konten und auch die Personen ohne Anbieter, etwa lokale Systemverwalter,
+je mindestens N haben; sonst steht bei jedem Anbieter „keine Angabe“. Genaue oder kleine Zahlen je
+Anbieter ließen sich gegen die Zahlen der Zugänge verrechnen und zeigten dann, wie viele Personen
+eines kleinen Anbieters verbunden sind. „Keine Angabe“ heißt deshalb ausdrücklich nicht „niemand“.
+Kann der Dialog die Folgen nicht laden, lässt sich ein Anbieter trotzdem deaktivieren, weil dabei
+nichts gelöscht wird. Gelöscht werden kann er dann nicht.
 
 Wer einen Anbieter nur vorübergehend außer Betrieb nimmt, etwa für eine Umstellung,
 **deaktiviert** ihn und löscht ihn nicht. Auch das Abschalten der lokalen Kontenverwaltung

@@ -648,4 +648,37 @@ describe('OidcProviderManagementPage', () => {
     expect(frage).not.toContain('Verbundene Konten')
     expect(sent.map((params) => params.get('confirmConnections'))).toEqual([null])
   })
+
+  /** A provider that has to go off goes off, even when the numbers cannot be loaded. */
+  it('still disables when the impact cannot be loaded, but does not delete', async () => {
+    server.use(
+      http.get('/api/v1/admin/oidc-providers/:providerId/impact', () =>
+        HttpResponse.json({ error: 'Dienst nicht erreichbar' }, { status: 500 }),
+      ),
+    )
+    const sent = recordParams('/disable', 'POST')
+    signInAs('SYSTEM_ADMIN')
+    const user = userEvent.setup()
+    renderWithProviders(<OidcProviderManagementPage />, { withRouter: true })
+
+    await clickRowAction(user, 'Partnerportal', 'Löschen')
+    const loeschfrage = await screen.findByRole('dialog', { name: /löschen\?/ })
+    expect(await within(loeschfrage).findByRole('alert')).toHaveTextContent(
+      /Löschen ist erst möglich, wenn die Folgen geladen sind/,
+    )
+    expect(within(loeschfrage).getByRole('button', { name: 'Löschen' })).toBeDisabled()
+    await user.click(within(loeschfrage).getByRole('button', { name: 'Abbrechen' }))
+    await waitForDialogClosed()
+
+    await clickRowAction(user, 'Partnerportal', 'Deaktivieren')
+    const frage = await screen.findByRole('dialog', { name: /deaktivieren\?/ })
+    expect(await within(frage).findByRole('alert')).toHaveTextContent(/Deaktivieren bleibt möglich/)
+    const text = await confirmShutdown(user, /deaktivieren\?/, 'Deaktivieren')
+
+    expect(text).toMatch(/ruhen: Es wird nichts gelöscht/)
+    expect(sent.map((params) => params.get('confirmConnections'))).toEqual(['true'])
+    await waitFor(() => {
+      expect(within(rowOf('Partnerportal')).getByText('Deaktiviert')).toBeInTheDocument()
+    })
+  })
 })

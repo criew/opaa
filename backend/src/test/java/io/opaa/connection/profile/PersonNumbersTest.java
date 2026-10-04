@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import io.opaa.api.types.ConnectionEndCause;
 import io.opaa.connection.profile.PersonNumbers.PersonsCounts;
 import io.opaa.connection.profile.PersonNumbers.ProfileCounts;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -23,15 +24,12 @@ import org.junit.jupiter.params.provider.MethodSource;
  * Under the minimum group size 5 no answer, and no difference of two answers, points at fewer than
  * five persons: the total is masked below 5, zero included, and the expired part is exact only
  * where the total is and neither it nor the connected rest lies between 1 and 4. Numbers per group
- * of persons (per sign-in provider) split the same totals and are therefore only ever "at least 5".
+ * of persons (per sign-in provider) split the same totals and are therefore only ever "at least 5",
+ * and only where every group has five.
  */
 class PersonNumbersTest {
 
   private static final int N = 5;
-  private static final UUID PROFILE = UUID.randomUUID();
-  private static final UUID A = UUID.randomUUID();
-  private static final UUID B = UUID.randomUUID();
-  private static final UUID OTHER = UUID.randomUUID();
 
   static Stream<Arguments> counts() {
     return Stream.of(
@@ -64,71 +62,106 @@ class PersonNumbersTest {
         // persons' connections of provider A, of provider B, of everyone else -> A shown, B shown
         Arguments.of(6, 2, 0, "-", "-"),
         Arguments.of(4, 4, 0, "-", "-"),
-        Arguments.of(20, 2, 0, ">=5", "-"),
-        Arguments.of(5, 5, 0, "-", "-"),
-        Arguments.of(5, 5, 5, "-", "-"),
-        Arguments.of(5, 5, 10, ">=5", ">=5"),
-        Arguments.of(9, 0, 0, "-", "-"),
-        Arguments.of(10, 0, 0, ">=5", "-"),
+        Arguments.of(20, 2, 0, "-", "-"),
+        Arguments.of(20, 20, 4, "-", "-"),
+        Arguments.of(5, 5, 5, ">=5", ">=5"),
+        Arguments.of(10, 0, 0, "-", "-"),
         Arguments.of(0, 0, 0, "-", "-"));
   }
 
   @ParameterizedTest(name = "{0} + {1} + {2} others -> {3} / {4}")
   @MethodSource("groups")
-  void aGroupIsAtMostAtLeastFiveAndOnlyWhileFiveRemainForTheRest(
+  void groupsAreToldAtLeastFiveOnlyWhileEachOfThemHasFive(
       long a, long b, long others, String aShown, String bShown) {
-    World world = new World();
-    world.set(a, b, others);
+    World world = new World(2, 1, true);
+    world.cells[0] = a;
+    world.cells[1] = b;
+    world.cells[2] = others;
 
-    Map<UUID, PersonsCounts> shown = world.groups();
+    List<String> shown = world.providersShown();
 
-    assertThat(shown(shown.get(A))).isEqualTo(aShown);
-    assertThat(shown(shown.get(B))).isEqualTo(bShown);
+    assertThat(shown).containsExactly(aShown, bShown);
   }
 
   /**
-   * Acceptance criterion of #2251 with two providers and one profile, all persons' connections on
-   * it: over every distribution of the connections, the answers of the profile and of both
-   * providers together never single out a number between 0 and 4 for either provider - whichever
-   * such value is possible for one observation, all of them are.
+   * Acceptance criterion of #2251: two providers and one profile, the persons outside any provider
+   * unknown to the administration.
    */
   @Test
-  void noCombinationOfProfileAndProviderAnswersIsolatesANumberBelowFive() {
-    World world = new World();
-    Map<String, Set<Long>> possibleA = new HashMap<>();
-    Map<String, Set<Long>> possibleB = new HashMap<>();
-    int bound = 3 * N;
-    for (long a = 0; a <= 2 * bound; a++) {
-      for (long b = 0; b <= 2 * bound; b++) {
-        for (long others = 0; others <= 2 * bound; others++) {
-          if (a + b + others > bound) {
-            // every alternative of an observation with this total lies within the enumeration
-            continue;
-          }
-          world.set(a, b, others);
-          ProfileCounts profile = world.profile();
-          Map<UUID, PersonsCounts> providers = world.groups();
-          String observation =
-              profile.total()
-                  + "|"
-                  + profile.expired()
-                  + "|"
-                  + shown(providers.get(A))
-                  + "|"
-                  + shown(providers.get(B));
-          possibleA.computeIfAbsent(observation, key -> new TreeSet<>()).add(a);
-          possibleB.computeIfAbsent(observation, key -> new TreeSet<>()).add(b);
-        }
-      }
-    }
+  void twoProvidersAndAProfileIsolateNoNumberBelowFive() {
+    assertNothingBelowFiveIsIsolated(new World(2, 1, true), 3 * N + N - 1);
+  }
 
-    assertThat(possibleA).hasSizeGreaterThan(10);
-    possibleA.forEach(
-        (observation, values) ->
-            assertThat(belowN(values)).as("A after %s", observation).isIn(Set.of(), allBelowN()));
-    possibleB.forEach(
-        (observation, values) ->
-            assertThat(belowN(values)).as("B after %s", observation).isIn(Set.of(), allBelowN()));
+  /** Three providers and two profiles, with every person known to belong to a provider. */
+  @Test
+  void threeProvidersAndTwoProfilesIsolateNoNumberBelowFive() {
+    assertNothingBelowFiveIsIsolated(new World(3, 2, false), 3 * N + 2 * (N - 1));
+  }
+
+  /**
+   * Six providers and one profile, every person known to belong to a provider: neither the total 25
+   * nor any other singles out a zero.
+   */
+  @Test
+  void sixProvidersAndAProfileIsolateNoNumberBelowFive() {
+    assertNothingBelowFiveIsIsolated(new World(6, 1, false), 6 * N + 1);
+  }
+
+  /**
+   * Enumerates every distribution of at most {@code bound} connections over the cells of {@code
+   * world} and groups them by what the administration sees: each profile's answer and each
+   * provider's. For every observation whose alternatives all lie within the bound, and every
+   * provider, the possible numbers below N are none or all of them - no answer, and no combination
+   * of answers, tells 0 from 1 or any other number below N.
+   */
+  private static void assertNothingBelowFiveIsIsolated(World world, int bound) {
+    Map<String, List<Set<Long>>> possible = new HashMap<>();
+    Map<String, Long> budget = new HashMap<>();
+    enumerate(world, 0, bound, possible, budget);
+
+    assertThat(possible).hasSizeGreaterThan(10);
+    possible.forEach(
+        (observation, perProvider) -> {
+          if (budget.get(observation) > bound) {
+            return;
+          }
+          for (int provider = 0; provider < perProvider.size(); provider++) {
+            assertThat(belowN(perProvider.get(provider)))
+                .as("provider %d after %s", provider, observation)
+                .isIn(Set.of(), allBelowN());
+          }
+        });
+  }
+
+  private static void enumerate(
+      World world,
+      int cell,
+      long left,
+      Map<String, List<Set<Long>>> possible,
+      Map<String, Long> budget) {
+    if (cell == world.cells.length) {
+      String observation = world.observation();
+      List<Set<Long>> perProvider =
+          possible.computeIfAbsent(
+              observation,
+              key -> {
+                List<Set<Long>> sets = new ArrayList<>();
+                for (int provider = 0; provider < world.providers; provider++) {
+                  sets.add(new TreeSet<>());
+                }
+                return sets;
+              });
+      for (int provider = 0; provider < world.providers; provider++) {
+        perProvider.get(provider).add(world.providerTotal(provider));
+      }
+      budget.putIfAbsent(observation, world.largestTotal());
+      return;
+    }
+    for (long value = 0; value <= left; value++) {
+      world.cells[cell] = value;
+      enumerate(world, cell + 1, left - value, possible, budget);
+    }
+    world.cells[cell] = 0;
   }
 
   private static Set<Long> belowN(Set<Long> values) {
@@ -145,39 +178,102 @@ class PersonNumbersTest {
     return all;
   }
 
-  private static String shown(PersonsCounts counts) {
-    return Objects.toString(counts.connections(), "-");
-  }
-
-  /** One distribution of persons' connections: one stand-in person per group, all on PROFILE. */
+  /**
+   * One distribution of persons' connections: per profile one cell for each provider's stand-in
+   * person and, with {@code rest}, one for a person outside any provider.
+   */
   private static final class World implements PersonConnections {
-    private final Map<UUID, Long> connections = new HashMap<>();
+    private final int providers;
+    private final int groups;
+    private final boolean rest;
+    private final List<UUID> profiles = new ArrayList<>();
+    private final List<UUID> persons = new ArrayList<>();
+    private final long[] cells;
     private final PersonNumbers numbers = TestPersonCounts.numbersOver(this);
 
-    void set(long a, long b, long others) {
-      connections.put(A, a);
-      connections.put(B, b);
-      connections.put(OTHER, others);
+    World(int providers, int profileCount, boolean rest) {
+      this.providers = providers;
+      this.rest = rest;
+      this.groups = providers + (rest ? 1 : 0);
+      for (int profile = 0; profile < profileCount; profile++) {
+        profiles.add(UUID.randomUUID());
+      }
+      for (int group = 0; group < groups; group++) {
+        persons.add(UUID.randomUUID());
+      }
+      this.cells = new long[groups * profileCount];
     }
 
-    ProfileCounts profile() {
-      return numbers.countsOf(List.of(PROFILE)).get(PROFILE);
+    long providerTotal(int provider) {
+      return groupTotal(provider);
     }
 
-    Map<UUID, PersonsCounts> groups() {
-      return numbers.ofGroups(Map.of(A, List.of(A), B, List.of(B)), List.of(OTHER));
+    private long groupTotal(int group) {
+      long total = 0;
+      for (int profile = 0; profile < profiles.size(); profile++) {
+        total += cells[profile * groups + group];
+      }
+      return total;
+    }
+
+    private long profileTotal(int profile) {
+      long total = 0;
+      for (int group = 0; group < groups; group++) {
+        total += cells[profile * groups + group];
+      }
+      return total;
+    }
+
+    /** The most connections any distribution with the same profile answers may hold. */
+    long largestTotal() {
+      long largest = 0;
+      for (int profile = 0; profile < profiles.size(); profile++) {
+        long total = profileTotal(profile);
+        largest += total < N ? N - 1 : total;
+      }
+      return largest;
+    }
+
+    List<String> providersShown() {
+      Map<Integer, List<UUID>> byProvider = new HashMap<>();
+      for (int provider = 0; provider < providers; provider++) {
+        byProvider.put(provider, List.of(persons.get(provider)));
+      }
+      List<UUID> others = rest ? List.of(persons.get(providers)) : List.of();
+      Map<Integer, PersonsCounts> told = numbers.ofGroups(byProvider, others);
+      List<String> shown = new ArrayList<>();
+      for (int provider = 0; provider < providers; provider++) {
+        shown.add(Objects.toString(told.get(provider).connections(), "-"));
+      }
+      return shown;
+    }
+
+    String observation() {
+      StringBuilder observation = new StringBuilder();
+      Map<UUID, ProfileCounts> answers = numbers.countsOf(profiles);
+      for (UUID profile : profiles) {
+        ProfileCounts counts = answers.get(profile);
+        observation.append(counts.total()).append('/').append(counts.expired()).append('|');
+      }
+      return observation.append(providersShown()).toString();
     }
 
     @Override
     public Map<UUID, StateCounts> countsAmong(Collection<UUID> profileIds) {
-      long total = connections.values().stream().mapToLong(Long::longValue).sum();
-      return Map.of(PROFILE, new StateCounts(total, 0));
+      Map<UUID, StateCounts> counts = new HashMap<>();
+      for (int profile = 0; profile < profiles.size(); profile++) {
+        counts.put(profiles.get(profile), new StateCounts(profileTotal(profile), 0));
+      }
+      return counts;
     }
 
     @Override
     public PersonTotals totalsOf(Collection<UUID> userIds) {
-      return new PersonTotals(
-          userIds.stream().mapToLong(id -> connections.getOrDefault(id, 0L)).sum(), 0);
+      long total = 0;
+      for (UUID userId : userIds) {
+        total += groupTotal(persons.indexOf(userId));
+      }
+      return new PersonTotals(total, 0);
     }
 
     @Override

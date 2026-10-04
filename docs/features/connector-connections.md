@@ -456,8 +456,11 @@ Zugang für Personen immer eine Bestätigung mit neutralem Text. Grenzen der Reg
 die Zeit beobachtet, sieht, wann sie N erreicht; und wer selbst eine Freigabe hat und sich verbindet,
 weiß, dass höchstens N−1 weitere Personen verbunden sind. Vor dem Deaktivieren oder Löschen eines
 Anmeldeanbieters nennt die Anbieterverwaltung die Verbindungen und privaten Bibliotheken seiner
-Personen nur als „mindestens N“ oder gar nicht, weil sich Zahlen je Anbieter sonst gegen die Zahlen
-der Zugänge verrechnen ließen; bestätigt wird immer, sobald ein Zugang Personen zulässt. Laufdaten und Kontingentnutzung nur zusammengefasst, Fehler nur als Kategorie ohne Inhaltsbezug (keine
+Personen nur als „mindestens N“, und das nur, wenn jeder Anbieter mit Konten und die übrigen Personen
+je mindestens N haben; sonst nennt sie für keinen Anbieter eine Zahl. Zahlen je Anbieter ließen sich
+sonst gegen die Zahlen der Zugänge verrechnen. Bestätigt wird immer, sobald ein Zugang Personen
+zulässt. Wer über die Zeit beobachtet, kann am Kippen dieser Anzeige einen früheren Stand ablesen
+(Restlücke wie bei den Zugängen). Laufdaten und Kontingentnutzung nur zusammengefasst, Fehler nur als Kategorie ohne Inhaltsbezug (keine
 Dateinamen, Betreffzeilen oder Pfade). Keine Liste, wer welches Konto verbunden hat.
 
 **Space-Zuordnung.** Die Besitzerin darf ihre private Bibliothek einem Space zuordnen. Das öffnet

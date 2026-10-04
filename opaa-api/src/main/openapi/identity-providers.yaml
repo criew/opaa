@@ -644,14 +644,17 @@ components:
       required: [confirmationRequired]
       description: >
         Numbers per provider split the totals the connection profiles tell, so they are never
-        exact: atLeast where told, absent where telling it would, together with any other answer,
-        point at fewer persons than the minimum group size - zero included.
+        exact: atLeast only while every provider with accounts and the persons outside any
+        provider each reach the minimum group size, else absent for every provider. Whatever the
+        profiles tell, a provider without a number may then hold any number below that size, zero
+        included. Left open: watching the answers over time - a new account can tip every
+        provider's answer and so tell an earlier state.
       properties:
         confirmationRequired:
           type: boolean
           description: >
             Whether disabling and deleting need confirmConnections: true wherever a connection
-            profile admits persons, so it tells nothing about a single person.
+            profile admits persons or a number is told, so it tells nothing about a single person.
         connections:
           description: The connected accounts of its persons.
           nullable: true
