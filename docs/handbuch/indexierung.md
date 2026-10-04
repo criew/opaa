@@ -698,6 +698,7 @@ die die zuständige Stelle nennt; der Bestand bleibt durchsuchbar und wird nicht
 | „Nicht verbunden“ | Die Anmeldeart des Zugangs (OAuth) kann eine Bibliothek noch nicht verbinden | Systemverwaltung |
 | „Die Adresse der Bibliothek liegt nicht unter …“ | Die Adresse verließ den Zugang | Verwaltende der Bibliothek |
 | „Gesperrt – Inhalt wird nicht mehr aktualisiert“ | Die Quellart oder der Zugang ist gesperrt; gilt auch für Bibliotheken ohne Zugang | Systemverwaltung |
+| „Die Bibliothek wird gelöscht.“ | Eine private Bibliothek ist zur Löschung vorgemerkt; ein laufender Lauf endet damit beim nächsten Zugriff auf die Quelle ([Benutzerverwaltung](benutzerverwaltung.md), „Private Bibliotheken löschen“) | niemand: Die Löschung schließt von selbst ab |
 | „… ist nur noch über Zugänge nutzbar, und diese Bibliothek hat eine eigene Adresse“ | Die Profilpflicht der Quellart ist eingeschaltet, der Bestand gesperrt (siehe [Profilpflicht](#profilpflicht-nur-über-zugänge)) | Verwaltende der Bibliothek: einem Zugang zuordnen |
 
 Umbenennen und das Korrigieren von Adresse oder Geheimnis bleiben in all diesen Fällen möglich.

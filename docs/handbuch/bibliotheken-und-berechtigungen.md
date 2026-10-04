@@ -342,7 +342,7 @@ durchsuchbar:
 | „Verbindung getrennt“ | Die Besitzerin hat ihr Konto getrennt, oder es wurde getrennt (Notabschaltung, Adressänderung) | Besitzerin: Konto unter „Verbundene Konten“ neu verbinden |
 | „Abgelaufen“ | Der Anbieter hat die Anmeldung abgelehnt | Besitzerin: neu verbinden |
 | „Ruhend“ | Das Konto der Besitzerin wird derzeit nicht genutzt | Besitzerin bzw. Systemverwaltung |
-| „Konto deaktiviert“ | Das Konto der Besitzerin ist deaktiviert | Systemverwaltung |
+| „Konto deaktiviert“ | Das Konto der Besitzerin ist deaktiviert; der Hinweis nennt den Tag, ab dem die Bibliothek gelöscht wird, wenn es deaktiviert bleibt | Systemverwaltung |
 | „Ziel weicht ab“ | Die Bibliothek erreicht ein anderes Ziel als das, für das das Konto gilt | Besitzerin: neu verbinden, sonst neu anlegen |
 | „Zugang nicht mehr nutzbar“ | Der Zugang wurde gelöscht, lässt keine Personen mehr zu oder sein Konnektor lehnte eine Änderung für die Bibliothek ab | Besitzerin: anderem Zugang zuordnen; gibt es keinen, die Systemverwaltung |
 
@@ -368,6 +368,13 @@ dabei nicht mit und wartet nicht auf ihre laufenden Indexierungen; ihr Abgleichs
 verworfen, nach dem Ende eines laufenden Laufs noch einmal, und die Besitzerin wird benachrichtigt. Die Space-Zuordnung einer privaten Bibliothek sehen andere Mitglieder nicht, auch
 nicht in Zählern und Hinweisen oder beim Löschen des Space. Im Revisionsprotokoll und in der
 Stichtagsauskunft heißt sie „Private Bibliothek“ und ist nur an ihrer Kennung zu erkennen.
+
+**Löschen.** Löscht die Besitzerin ihre private Bibliothek, wird sie mit allem gelöscht, was von ihr
+irgendwo liegt, und das Revisionsprotokoll hält es ohne Namen fest; dasselbe tut der tägliche
+Löschlauf, wenn ihr Konto länger als die Löschfrist deaktiviert ist ([Benutzerverwaltung](benutzerverwaltung.md),
+„Private Bibliotheken löschen“). Eine laufende Indexierung hält das Löschen nicht auf. Die
+Indexübersicht nennt die Zahl der zur Löschung anstehenden privaten Bibliotheken nach denselben
+Regeln wie jede Teilzahl.
 
 ### Ordner, Speicherkontingent, Löschen
 
