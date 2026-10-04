@@ -157,8 +157,7 @@ class ProfileTransitionIntegrationTest {
   }
 
   @Test
-  void aLibraryTheProfileRequirementLocksIsRepairedByConnectingItWithAnAddress()
-      throws Exception {
+  void aLibraryTheProfileRequirementLocksIsRepairedByConnectingItWithAnAddress() throws Exception {
     UUID profile = createProfile(null, null);
     UUID library = createOwnLibrary("https://eigen.example.org/x", "");
     mockMvc
@@ -234,8 +233,7 @@ class ProfileTransitionIntegrationTest {
     return jdbc.queryForObject(
         "SELECT count(*) FROM audit_log WHERE object_id = ? AND event_type ="
             + " 'LIBRARY_SOURCE_UPDATED' AND after::text LIKE '%edition%'",
-        Long.class,
-        library.toString());
+        Long.class, library.toString());
   }
 
   private String change(UUID profile) throws Exception {

@@ -127,9 +127,7 @@ class GoogleDriveSourceConnectorTest {
         .isEqualTo("fach@example.org");
     assertThat(connector.credentialBinding(withSubject("andere@example.org")))
         .isNotEqualTo(connector.credentialBinding(withSubject("fach@example.org")));
-    assertThat(
-            connector.credentialBinding(
-                new SourceSettings(null, null, null, null, false, null)))
+    assertThat(connector.credentialBinding(new SourceSettings(null, null, null, null, false, null)))
         .isNull();
   }
 
