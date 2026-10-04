@@ -16,6 +16,10 @@ class TokenStoreMigrationTest extends AbstractBaselineTest {
 
   private static final String FILE = "db/changelog/connections/2026-10-04-token-store.yaml";
 
+  /** Alters a table of {@link #FILE}, so an installation without that file lacks it too. */
+  private static final String DEPENDENT =
+      "db/changelog/connections/2026-10-04-usage-and-person-states.yaml";
+
   private UUID owner;
   private UUID forPersons;
   private UUID forLibraries;
@@ -24,7 +28,7 @@ class TokenStoreMigrationTest extends AbstractBaselineTest {
 
   @Override
   protected List<String> baseFixtureChangelogs() {
-    return MasterChangelog.filesExcept(FILE);
+    return MasterChangelog.filesExcept(FILE, DEPENDENT);
   }
 
   @BeforeEach
