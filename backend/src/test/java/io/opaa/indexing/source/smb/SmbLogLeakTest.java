@@ -124,6 +124,32 @@ class SmbLogLeakTest {
         .doesNotContain(WRONG_PASSWORD);
   }
 
+  @Test
+  void theCheckpointOfARoundCarriesNeitherThePasswordNorAnAddress() throws Exception {
+    for (int i = 0; i < 6; i++) {
+      samba.put(folder + "/ordner-" + i + "/datei.txt", "Datei " + i);
+    }
+    samba.denyListing(folder + "/ordner-0");
+    FileSyncHarness harness = new FileSyncHarness();
+
+    harness.fullSync(
+        SmbTestStores.open(
+            settings(samba.credentials()),
+            2,
+            new io.opaa.indexing.source.RequestBudget(
+                new io.opaa.sourceaccess.SourceRequestMeter(), 40, null)));
+
+    String checkpoint = harness.state().scanProgress().containers().get("/" + folder).checkpoint();
+    assertThat(checkpoint)
+        .as("the unreadable folder is named in it")
+        .contains("ordner-0")
+        .doesNotContain(SambaFixture.PASSWORD)
+        .doesNotContain(SambaFixture.USER)
+        .doesNotContain(samba.host())
+        .doesNotContain("smb://")
+        .doesNotContain(SambaFixture.SHARE);
+  }
+
   private SourceSettings settings(String credentials) {
     return samba.settings(credentials, List.of("/" + folder));
   }

@@ -201,6 +201,17 @@ final class SambaFixture {
     share().rm(path);
   }
 
+  /**
+   * Renames or moves {@code from} to {@code to} below the share {@code daten}, creating folders.
+   */
+  void move(String from, String to) {
+    int slash = to.lastIndexOf('/');
+    if (slash > 0) {
+      mkdirs(to.substring(0, slash));
+    }
+    exec("mv", ROOT + SHARE + "/" + from, ROOT + SHARE + "/" + to);
+  }
+
   /** From now on the service account may neither list nor enter {@code folder}. */
   void denyListing(String folder) {
     exec("chmod", "0000", ROOT + SHARE + "/" + folder);

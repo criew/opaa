@@ -1,0 +1,9 @@
+databaseChangeLog:
+  - changeSet:
+      id: knowledge-2026-10-04-source-sync-scan-progress
+      author: opaa
+      comment: "The round of a file sync that spans several runs (ADR-0040): checkpoint per container, markers and unsettled folders so far. NULL outside a round and for every other connector."
+      changes:
+        - sql:
+            sql: |
+              ALTER TABLE source_sync_state ADD COLUMN scan_progress jsonb;

@@ -25,11 +25,13 @@ import io.opaa.indexing.source.IndexingSourceExecutorRegistry;
 import io.opaa.indexing.source.LibraryIndexingScheduler;
 import io.opaa.indexing.source.RemoteContentProperties;
 import io.opaa.indexing.source.RemoteOriginalAccess;
+import io.opaa.indexing.source.ScanJournal;
 import io.opaa.indexing.source.ServiceAccountTokens;
 import io.opaa.indexing.source.SourceConnectionResolver;
 import io.opaa.indexing.source.SourceConnector;
 import io.opaa.indexing.source.SourceConnectorRegistry;
 import io.opaa.indexing.source.SourceIndexingExecutor;
+import io.opaa.indexing.source.SourceSyncStateRepository;
 import io.opaa.indexing.source.StoredDocumentSourceAccess;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
@@ -222,6 +224,12 @@ public class IndexingConfiguration {
       VectorChunkStore vectorChunkStore,
       AssetRepository assetRepository) {
     return new StaleDocumentCleanupService(documentRepository, vectorChunkStore, assetRepository);
+  }
+
+  /** What the file sync of every file connector keeps between its runs (ADR-0040). */
+  @Bean
+  ScanJournal scanJournal(SourceSyncStateRepository sourceSyncStateRepository) {
+    return new ScanJournal(sourceSyncStateRepository);
   }
 
   /**

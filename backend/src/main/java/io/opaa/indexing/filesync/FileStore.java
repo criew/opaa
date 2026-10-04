@@ -44,6 +44,27 @@ public interface FileStore extends AutoCloseable {
       throws FileAccessException, InterruptedException;
 
   /**
+   * The first page after {@code checkpoint}, which an earlier run's page of {@code container} gave
+   * ({@link FilePage#checkpoint()}); later pages follow through {@link #list} as usual. They hold
+   * every file the pages up to the checkpoint did not deliver, unless it lies in a reported
+   * unchanged folder, and name as listed only folders none of whose files came up to the
+   * checkpoint. {@link #recall} is called before, as for a first page. A store that gives no
+   * checkpoint never gets here.
+   *
+   * @throws FileAccessException.CheckpointExpired when the checkpoint no longer applies
+   */
+  default FilePage resume(FileContainer container, String checkpoint)
+      throws FileAccessException, InterruptedException {
+    throw new FileAccessException.CheckpointExpired(
+        "Der Fortsetzungspunkt wird nicht mehr angenommen.");
+  }
+
+  /** What proves a file gone after a full sync over several runs ({@link AbsenceProof}). */
+  default AbsenceProof absenceProof() {
+    return AbsenceProof.SINGLE_RUN;
+  }
+
+  /**
    * The current state of one file - for a reported change, or for an entry whose name says nothing
    * about its format, when the {@link FileEntry#mediaType()} decides. An entry with {@link
    * Exclusion.Deselected} is skipped without a download and without counting as present.

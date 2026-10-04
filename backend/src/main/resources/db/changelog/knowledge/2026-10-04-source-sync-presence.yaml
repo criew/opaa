@@ -1,0 +1,20 @@
+databaseChangeLog:
+  - changeSet:
+      id: knowledge-2026-10-04-source-sync-presence
+      author: opaa
+      comment: "The documents a file sync round over several runs has seen at their place (ADR-0040), only for a store whose identity is the location. Goes with the document and with the state."
+      changes:
+        - sql:
+            sql: |
+              CREATE TABLE source_sync_presence (
+                  document_id uuid NOT NULL,
+                  sync_state_id uuid NOT NULL,
+                  scan_id uuid NOT NULL,
+                  CONSTRAINT source_sync_presence_pkey PRIMARY KEY (document_id),
+                  CONSTRAINT fk_source_sync_presence_document FOREIGN KEY (document_id)
+                      REFERENCES documents(id) ON DELETE CASCADE,
+                  CONSTRAINT fk_source_sync_presence_state FOREIGN KEY (sync_state_id)
+                      REFERENCES source_sync_state(id) ON DELETE CASCADE
+              );
+
+              CREATE INDEX idx_source_sync_presence_state ON source_sync_presence (sync_state_id, scan_id);

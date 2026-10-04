@@ -7,8 +7,8 @@ import java.util.Optional;
 
 /**
  * Delegates to {@code store} and runs {@code action} once, right before the first page of the
- * container {@code containerKey} is listed - something that happens to the bestand while a run is
- * under way.
+ * container {@code containerKey} is listed or resumed - something that happens to the bestand while
+ * a run is under way.
  */
 final class BeforeListingStore implements FileStore {
 
@@ -41,6 +41,22 @@ final class BeforeListingStore implements FileStore {
       once.run();
     }
     return store.list(container, continuation);
+  }
+
+  @Override
+  public FilePage resume(FileContainer container, String checkpoint)
+      throws FileAccessException, InterruptedException {
+    if (action != null && container.key().equals(containerKey)) {
+      Runnable once = action;
+      action = null;
+      once.run();
+    }
+    return store.resume(container, checkpoint);
+  }
+
+  @Override
+  public AbsenceProof absenceProof() {
+    return store.absenceProof();
   }
 
   @Override

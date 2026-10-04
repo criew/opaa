@@ -20,6 +20,7 @@ import io.opaa.indexing.source.ConnectorData;
 import io.opaa.indexing.source.FakeTokenEndpoint;
 import io.opaa.indexing.source.IndexingRunTemplate;
 import io.opaa.indexing.source.LibrarySourceConnectionResolver;
+import io.opaa.indexing.source.ScanJournal;
 import io.opaa.indexing.source.ServiceAccountKey;
 import io.opaa.indexing.source.ServiceAccountKeyFixture;
 import io.opaa.indexing.source.ServiceAccountTokens;
@@ -108,7 +109,7 @@ class GoogleDriveServiceAccountRejectionTest {
             documentRepository,
             mock(LibraryFolderService.class),
             mock(StaleDocumentCleanupService.class),
-            syncState,
+            new ScanJournal(syncState),
             Clock.systemUTC(),
             template,
             ProductionDocumentFormats.supportedFormats())
