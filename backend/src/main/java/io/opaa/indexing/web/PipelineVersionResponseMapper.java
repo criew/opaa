@@ -4,9 +4,11 @@ import io.opaa.api.dto.DocumentPipelineResponse;
 import io.opaa.api.dto.LibraryPipelineVersionResponse;
 import io.opaa.api.dto.PipelineReindexResponse;
 import io.opaa.api.dto.PipelineVersionStatusResponse;
+import io.opaa.api.dto.PrivatePipelineVersionSummaryResponse;
 import io.opaa.format.DocumentFormat;
 import io.opaa.indexing.maintenance.PipelineReindexResult;
 import io.opaa.indexing.maintenance.PipelineVersionProgress;
+import io.opaa.indexing.maintenance.PrivatePipelineProgress;
 import java.util.Collection;
 import java.util.List;
 
@@ -19,12 +21,24 @@ final class PipelineVersionResponseMapper {
   private PipelineVersionResponseMapper() {}
 
   static PipelineVersionStatusResponse toStatusResponse(
-      Collection<DocumentFormat> pipelines, List<PipelineVersionProgress> progress) {
+      Collection<DocumentFormat> pipelines,
+      List<PipelineVersionProgress> progress,
+      PrivatePipelineProgress privateProgress) {
     PipelineVersionStatusResponse response = new PipelineVersionStatusResponse();
     response.setPipelines(
         pipelines.stream().map(PipelineVersionResponseMapper::toPipelineResponse).toList());
     response.setLibraries(
         progress.stream().map(PipelineVersionResponseMapper::toLibraryResponse).toList());
+    if (privateProgress == null) {
+      return response;
+    }
+    response.setPrivateLibraries(
+        new PrivatePipelineVersionSummaryResponse()
+            .libraryCount(privateProgress.libraryCount())
+            .libraryCountFewerThan(privateProgress.libraryCountFewerThan())
+            .totalChunks(privateProgress.totalChunks())
+            .currentVersionChunks(privateProgress.currentVersionChunks())
+            .staleChunks(privateProgress.staleChunks()));
     return response;
   }
 

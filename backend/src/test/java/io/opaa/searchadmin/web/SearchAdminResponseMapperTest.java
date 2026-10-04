@@ -79,7 +79,8 @@ class SearchAdminResponseMapperTest {
                 new ModelRoleStatus(
                     ModelRole.RERANK, ModelRoleCondition.DISABLED, null, null, "Abgeschaltet.")),
             List.of(),
-            List.of());
+            List.of(),
+            new io.opaa.searchadmin.PrivateLibrarySummary(null, 5, null, null, null));
 
     SearchStatusResponse response = SearchAdminResponseMapper.toStatusResponse(status);
 
@@ -98,6 +99,26 @@ class SearchAdminResponseMapperTest {
   }
 
   @Test
+  void thePrivateLibrariesLineCarriesEitherTheCountWithSumsOrOnlyFewerThan() {
+    var exact =
+        SearchAdminResponseMapper.toPrivateSummaryResponse(
+            new io.opaa.searchadmin.PrivateLibrarySummary(7L, null, 120L, 3L, 900L));
+    var masked =
+        SearchAdminResponseMapper.toPrivateSummaryResponse(
+            new io.opaa.searchadmin.PrivateLibrarySummary(null, 5, null, null, null));
+
+    assertThat(exact.getLibraryCount()).isEqualTo(7L);
+    assertThat(exact.getLibraryCountFewerThan()).isNull();
+    assertThat(exact.getDocumentCount()).isEqualTo(120L);
+    assertThat(exact.getFailedDocumentCount()).isEqualTo(3L);
+    assertThat(exact.getChunkCount()).isEqualTo(900L);
+    assertThat(masked.getLibraryCount()).isNull();
+    assertThat(masked.getLibraryCountFewerThan()).isEqualTo(5);
+    assertThat(masked.getDocumentCount()).isNull();
+    assertThat(masked.getChunkCount()).isNull();
+  }
+
+  @Test
   void aRoleThatIsSwitchedOnButUnbelegtIsMarkedAsAFault() {
     SearchStatusResponse response =
         SearchAdminResponseMapper.toStatusResponse(
@@ -106,7 +127,8 @@ class SearchAdminResponseMapperTest {
                     new ModelRoleStatus(
                         ModelRole.RERANK, ModelRoleCondition.UNCONFIGURED, null, null, "Störung.")),
                 List.of(),
-                List.of()));
+                List.of(),
+                new io.opaa.searchadmin.PrivateLibrarySummary(null, 5, null, null, null)));
 
     assertThat(response.getModelRoles().get(0).getState())
         .isEqualTo(SearchModelRoleState.UNCONFIGURED);
@@ -125,7 +147,8 @@ class SearchAdminResponseMapperTest {
                         SearchPathStatus.SearchPathCondition.OUTDATED,
                         2,
                         5)),
-                List.of()));
+                List.of(),
+                new io.opaa.searchadmin.PrivateLibrarySummary(null, 5, null, null, null)));
 
     var path = response.getSearchPaths().get(0);
     assertThat(path.getPath()).isEqualTo(SearchPath.FULL_TEXT);
@@ -170,7 +193,11 @@ class SearchAdminResponseMapperTest {
 
     var response =
         SearchAdminResponseMapper.toStatusResponse(
-                new SearchStatus(List.of(), List.of(), List.of(library)))
+                new SearchStatus(
+                    List.of(),
+                    List.of(),
+                    List.of(library),
+                    new io.opaa.searchadmin.PrivateLibrarySummary(null, 5, null, null, null)))
             .getLibraries()
             .get(0);
 
@@ -248,7 +275,8 @@ class SearchAdminResponseMapperTest {
                             MetadataBackfillProgress.empty(LIBRARY_ID),
                             ModelExtractionStats.empty(LIBRARY_ID),
                             ContextPrefixRerunProgress.empty(LIBRARY_ID),
-                            LibraryMetadataSchemaChangeProgress.empty(LIBRARY_ID)))))
+                            LibraryMetadataSchemaChangeProgress.empty(LIBRARY_ID))),
+                    new io.opaa.searchadmin.PrivateLibrarySummary(null, 5, null, null, null)))
             .getLibraries()
             .get(0);
 

@@ -7,12 +7,15 @@ import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
 import io.opaa.connection.ConnectorReleaseService;
 import io.opaa.connection.LibraryConnectionService;
+import io.opaa.connection.PrivateLibraryConnections;
 import io.opaa.connection.profile.ConnectionProfile;
 import io.opaa.connection.profile.ConnectorLockService;
 import io.opaa.connection.profile.EffectiveSourceSettings;
 import io.opaa.connection.profile.SourceDraft;
+import io.opaa.connection.profile.SourceDraft.DraftOwner;
 import io.opaa.indexing.source.ConnectorChecks;
 import io.opaa.indexing.source.SourceBrowser;
+import io.opaa.indexing.source.SourceConnectionBlockedException;
 import io.opaa.indexing.source.SourceConnectionTestResult;
 import io.opaa.indexing.source.SourceConnector;
 import io.opaa.indexing.source.SourceConnectorRegistry;
@@ -50,6 +53,7 @@ public class SourceConnectionTestService {
   private final ConnectorReleaseService connectorRelease;
   private final LibraryConnectionService libraryConnections;
   private final EffectiveSourceSettings drafts;
+  private final PrivateLibraryConnections privateConnections;
 
   public SourceConnectionTestService(
       KnowledgeLibraryRepository libraryRepository,
@@ -57,7 +61,9 @@ public class SourceConnectionTestService {
       SourceConnectorRegistry connectors,
       ConnectorReleaseService connectorRelease,
       LibraryConnectionService libraryConnections,
-      EffectiveSourceSettings drafts) {
+      EffectiveSourceSettings drafts,
+      PrivateLibraryConnections privateConnections) {
+    this.privateConnections = privateConnections;
     this.libraryRepository = libraryRepository;
     this.libraryAccessService = libraryAccessService;
     this.connectors = connectors;
@@ -78,36 +84,56 @@ public class SourceConnectionTestService {
     SourceConnector connector = connectors.connector(sourceType);
     String url = request.sourceUrl() == null ? null : request.sourceUrl().toString();
     Target target =
-        request.libraryId() == null && connector.descriptor().uploads()
+        request.libraryId() == null && connector.descriptor().uploads() && !request.privateLibrary()
             ? anyRelease(caller, url)
             : target(
                 caller,
                 sourceType,
                 request.libraryId(),
                 request.connectionProfileId(),
+                request.privateLibrary(),
+                request.sourceCredentials(),
                 url,
                 () -> "sourceType passt nicht zum gespeicherten Quellentyp dieser Bibliothek");
-    SourceDraft draft =
-        SourceDraft.ofLibrary(
-            sourceType,
-            target.profileId(),
-            request.libraryId(),
-            new SourceSettings(
-                request.sourcePath(),
-                connector.normalizeSourceUrl(target.url()),
-                request.sourceProxy(),
-                request.sourceCredentials(),
-                Boolean.TRUE.equals(request.sourceInsecureSsl()),
-                request.connectorSettings() == null
-                    ? null
-                    : connector.readSettings(request.connectorSettings())));
+    SourceSettings requested =
+        new SourceSettings(
+            request.sourcePath(),
+            connector.normalizeSourceUrl(target.url()),
+            request.sourceProxy(),
+            request.sourceCredentials(),
+            Boolean.TRUE.equals(request.sourceInsecureSsl()),
+            request.connectorSettings() == null
+                ? null
+                : connector.readSettings(request.connectorSettings()));
+    SourceDraft draft = target.draftOf(sourceType, request.libraryId(), requested);
     SourceSettings settings;
     try {
-      settings = drafts.ofDraft(draft);
-    } catch (SourceCredentialsException e) {
+      settings = settingsOf(target, draft);
+    } catch (SourceCredentialsException | SourceConnectionBlockedException e) {
       return ConnectorChecks.unreachable(e.getMessage());
     }
     return connector.testConnection(settings, drafts.storedOf(draft));
+  }
+
+  /**
+   * The draft's configuration: a private library's through its owner's connected account, refused
+   * with the block's notice while her secret is not handed out.
+   */
+  private SourceSettings settingsOf(Target target, SourceDraft draft) {
+    if (target.privateOwner() == null) {
+      return drafts.ofDraft(draft);
+    }
+    PrivateLibraryConnections.Draft composed =
+        privateConnections.ofDraft(
+            draft.type(),
+            draft.profileId(),
+            draft.libraryId(),
+            draft.requested(),
+            target.privateOwner());
+    if (composed.refused() != null) {
+      throw new SourceConnectionBlockedException(composed.refused());
+    }
+    return composed.settings();
   }
 
   /**
@@ -119,7 +145,15 @@ public class SourceConnectionTestService {
     // towards a new library the release is checked before anything about the type is said
     Target target =
         request.libraryId() == null
-            ? target(caller, request.sourceType(), null, request.connectionProfileId(), url, null)
+            ? target(
+                caller,
+                request.sourceType(),
+                null,
+                request.connectionProfileId(),
+                request.privateLibrary(),
+                request.sourceCredentials(),
+                url,
+                null)
             : null;
     SourceBrowser browser =
         connectors
@@ -136,6 +170,8 @@ public class SourceConnectionTestService {
               request.sourceType(),
               request.libraryId(),
               request.connectionProfileId(),
+              request.privateLibrary(),
+              request.sourceCredentials(),
               url,
               browser::otherTypeMessage);
     }
@@ -144,9 +180,8 @@ public class SourceConnectionTestService {
       throw new ValidationException("sourceUrl ist erforderlich");
     }
     SourceDraft draft =
-        SourceDraft.ofLibrary(
+        target.draftOf(
             request.sourceType(),
-            target.profileId(),
             request.libraryId(),
             new SourceSettings(
                 null,
@@ -157,15 +192,33 @@ public class SourceConnectionTestService {
                 request.query()));
     SourceSettings settings;
     try {
-      settings = drafts.ofDraft(draft);
-    } catch (SourceCredentialsException e) {
+      settings = settingsOf(target, draft);
+    } catch (SourceCredentialsException | SourceConnectionBlockedException e) {
       return new SourceListing(false, List.of(), e.getMessage());
     }
     return browser.browse(new SourceBrowser.Query(settings, drafts.storedOf(draft)));
   }
 
-  /** The profile a probe runs through ({@code null}: the library's or none) and its address. */
-  private record Target(UUID profileId, String url) {}
+  /**
+   * The profile a probe runs through ({@code null}: the library's or none) and its address; {@code
+   * privateOwner} names whose connected account a private library's probe signs in with, {@code
+   * null} where the draft's own composition stands.
+   */
+  private record Target(UUID profileId, String url, UUID privateOwner) {
+
+    Target(UUID profileId, String url) {
+      this(profileId, url, null);
+    }
+
+    SourceDraft draftOf(SourceType type, UUID libraryId, SourceSettings requested) {
+      return new SourceDraft(
+          type,
+          profileId,
+          libraryId,
+          requested,
+          privateOwner == null ? DraftOwner.LIBRARY : DraftOwner.PERSON);
+    }
+  }
 
   private Target anyRelease(CurrentUser caller, String url) {
     connectorRelease.requireAnyRelease(caller);
@@ -182,10 +235,20 @@ public class SourceConnectionTestService {
       SourceType sourceType,
       UUID libraryId,
       UUID profileId,
+      boolean privateLibrary,
+      String credentials,
       String url,
       Supplier<String> otherType) {
     if (libraryId == null) {
+      if (privateLibrary && profileId == null) {
+        privateConnections.requireOwnProfile(caller.id(), null, sourceType);
+      }
       connectorRelease.requireCreatable(caller, sourceType, profileId);
+      if (privateLibrary) {
+        ConnectionProfile profile =
+            privateConnections.requireOwnProfile(caller.id(), profileId, sourceType);
+        return new Target(profileId, privateConnections.addressOn(profile, url), caller.id());
+      }
       return new Target(
           profileId,
           profileId == null
@@ -193,6 +256,11 @@ public class SourceConnectionTestService {
               : libraryConnections.addressForNewLibrary(profileId, sourceType, url));
     }
     KnowledgeLibrary library = requireManagedLibrary(libraryId, caller);
+    if (library.isOwnerOnly() && credentials != null && !credentials.isBlank()) {
+      throw new ValidationException(
+          "Eine private Bibliothek meldet sich mit dem verbundenen Konto an und nimmt keine"
+              + " eigenen Zugangsdaten (sourceCredentials)");
+    }
     UUID current =
         libraryConnections
             .connectionOf(libraryId)
@@ -214,6 +282,12 @@ public class SourceConnectionTestService {
       return new Target(null, url);
     }
     connectorRelease.requireCreatable(caller, sourceType, profileId);
+    if (library.isOwnerOnly()) {
+      ConnectionProfile profile =
+          privateConnections.requireOwnProfile(library.getOwnerUserId(), profileId, sourceType);
+      return new Target(
+          profileId, privateConnections.addressOn(profile, url), library.getOwnerUserId());
+    }
     return new Target(
         profileId, libraryConnections.addressForNewLibrary(profileId, sourceType, url));
   }

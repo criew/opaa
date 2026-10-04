@@ -162,7 +162,14 @@ public class IndexingJobService {
    */
   @Transactional(propagation = Propagation.REQUIRES_NEW)
   public void failJob(UUID jobId, String errorMessage) {
-    int updated = indexingJobRepository.failIfRunning(jobId, errorMessage, Instant.now());
+    failJob(jobId, errorMessage, null);
+  }
+
+  /** {@link #failJob(UUID, String)} recording why, as {@code failureCategory} names it. */
+  @Transactional(propagation = Propagation.REQUIRES_NEW)
+  public void failJob(UUID jobId, String errorMessage, String failureCategory) {
+    int updated =
+        indexingJobRepository.failIfRunning(jobId, errorMessage, failureCategory, Instant.now());
     requireJobExistedIfNoRowsUpdated(jobId, updated);
   }
 

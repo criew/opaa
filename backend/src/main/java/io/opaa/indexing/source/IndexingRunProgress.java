@@ -150,4 +150,9 @@ public final class IndexingRunProgress implements AttachmentProgressSink {
   public void fail(String message) {
     indexingJobService.failJob(jobId, message);
   }
+
+  /** Fails the run with {@code message}, recording {@code category} as why. */
+  public void fail(String message, RunFailureCategory category) {
+    indexingJobService.failJob(jobId, message, category.name());
+  }
 }

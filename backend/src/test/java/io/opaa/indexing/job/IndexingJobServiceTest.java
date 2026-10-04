@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -205,13 +206,13 @@ class IndexingJobServiceTest {
   void failJobUpdatesTheRowConditionallyOnStillBeingRunning() {
     UUID jobId = UUID.randomUUID();
     when(indexingJobRepository.failIfRunning(
-            eq(jobId), eq("Something went wrong"), any(Instant.class)))
+            eq(jobId), eq("Something went wrong"), isNull(), any(Instant.class)))
         .thenReturn(1);
 
     service.failJob(jobId, "Something went wrong");
 
     verify(indexingJobRepository)
-        .failIfRunning(eq(jobId), eq("Something went wrong"), any(Instant.class));
+        .failIfRunning(eq(jobId), eq("Something went wrong"), isNull(), any(Instant.class));
     verify(indexingJobRepository, never()).existsById(any());
   }
 
@@ -230,7 +231,7 @@ class IndexingJobServiceTest {
   @Test
   void failJobThrowsForUnknownJob() {
     UUID jobId = UUID.randomUUID();
-    when(indexingJobRepository.failIfRunning(eq(jobId), anyString(), any(Instant.class)))
+    when(indexingJobRepository.failIfRunning(eq(jobId), anyString(), any(), any(Instant.class)))
         .thenReturn(0);
     when(indexingJobRepository.existsById(jobId)).thenReturn(false);
 
@@ -260,7 +261,7 @@ class IndexingJobServiceTest {
   @Test
   void failJobDoesNothingWhenTheJobIsNoLongerRunning() {
     UUID jobId = UUID.randomUUID();
-    when(indexingJobRepository.failIfRunning(eq(jobId), anyString(), any(Instant.class)))
+    when(indexingJobRepository.failIfRunning(eq(jobId), anyString(), any(), any(Instant.class)))
         .thenReturn(0);
     when(indexingJobRepository.existsById(jobId)).thenReturn(true);
 

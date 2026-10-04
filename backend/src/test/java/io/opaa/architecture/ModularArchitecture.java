@@ -297,9 +297,41 @@ public final class ModularArchitecture {
    */
   static final String RAW_PERSON_COUNTS_PORT = "connection.profile.PersonConnections";
 
-  static final Set<String> RAW_PERSON_COUNTS = Set.of("countsAmong", "totalsOf");
+  static final Set<String> RAW_PERSON_COUNTS = Set.of("countsAmong");
 
   static final String PERSON_NUMBERS = "connection.profile.PersonNumbers";
+
+  /**
+   * The finders that enumerate the libraries of an organization or of the installation with the
+   * private ones, or the private ones alone, relative to the root; the views of the administration
+   * take {@code findSharedByOrganizationId} instead. Native SQL is not seen.
+   */
+  static final Set<String> UNFILTERED_LIBRARY_FINDERS =
+      Set.of(
+          "knowledge.KnowledgeLibraryRepository#findAll",
+          "knowledge.KnowledgeLibraryRepository#findByOrganizationId",
+          "knowledge.KnowledgeLibraryRepository#findIdsByOrganizationId",
+          "knowledge.KnowledgeLibraryRepository#findByScheduleEnabledTrue",
+          "knowledge.KnowledgeLibraryRepository#findByOrganizationIdAndExternalAccessState",
+          "knowledge.KnowledgeLibraryRepository#findPrivateIdsByOrganizationId",
+          "knowledge.KnowledgeLibraryRepository"
+              + "#findByExternalAccessStateAndExternalAccessExpiresAtLessThanEqual",
+          "knowledge.KnowledgeLibraryRepository"
+              + "#findByExternalAccessStateAndExternalAccessReminderSentAtIsNullAnd"
+              + "ExternalAccessExpiresAtBetween");
+
+  /**
+   * The system processes that may enumerate private libraries, relative to the root: each one shows
+   * no library's name to anyone or leaves the private ones out itself.
+   */
+  static final Set<String> LIBRARY_ENUMERATORS =
+      Set.of(
+          "indexing.maintenance.PipelineReindexService",
+          "indexing.source.LibraryIndexingScheduler",
+          "library.OrphanedOriginalCleanupService",
+          "library.LibraryExternalAccessService",
+          "library.LibraryExternalAccessExpiryService",
+          "library.LibraryExternalAccessReminderService");
 
   /**
    * Exact counts about persons that only go to the log, relative to the root, each with the one
@@ -1206,6 +1238,89 @@ public final class ModularArchitecture {
   }
 
   /**
+   * Protocol entries about an asset name it only neutrally: a code unit that builds an audit entry
+   * ({@code audit.AuditEvent.Builder#object}) and reads {@code Asset#getName} names the asset by
+   * {@code Asset#auditName}, and one that names an asset by {@code Asset#auditName} and writes a
+   * payload ({@code before}/{@code after}) passes it through {@code Asset#auditPayload}, so an
+   * owner-only asset carries no name, path or value.
+   */
+  ArchRule privateAssetsAreAuditedNeutrally() {
+    String builder = root + ".audit.AuditEvent$Builder";
+    String asset = root + ".asset.Asset";
+    return classes()
+        .should(
+            new ArchCondition<JavaClass>("name an asset in a protocol entry only neutrally") {
+              @Override
+              public void check(JavaClass javaClass, ConditionEvents events) {
+                for (JavaCodeUnit codeUnit : javaClass.getCodeUnits()) {
+                  boolean buildsEntry = false;
+                  boolean writesPayload = false;
+                  boolean namesNeutrally = false;
+                  boolean neutralizesPayload = false;
+                  List<com.tngtech.archunit.core.domain.JavaAccess<?>> names = new ArrayList<>();
+                  for (var access : codeUnit.getAccessesFromSelf()) {
+                    JavaClass owner = access.getTargetOwner();
+                    String name = access.getName();
+                    if (owner.getName().equals(builder)) {
+                      buildsEntry |= name.equals("object");
+                      writesPayload |= name.equals("before") || name.equals("after");
+                    } else if (owner.isAssignableTo(asset)) {
+                      if (name.equals("getName")) {
+                        names.add(access);
+                      }
+                      namesNeutrally |= name.equals("auditName");
+                      neutralizesPayload |= name.equals("auditPayload");
+                    }
+                  }
+                  if (buildsEntry && !namesNeutrally) {
+                    names.forEach(
+                        access ->
+                            events.add(
+                                SimpleConditionEvent.violated(access, access.getDescription())));
+                  }
+                  if (namesNeutrally && writesPayload && !neutralizesPayload) {
+                    events.add(
+                        SimpleConditionEvent.violated(
+                            codeUnit,
+                            codeUnit.getFullName()
+                                + " writes a payload about an asset without auditPayload"));
+                  }
+                }
+              }
+            })
+        .because(
+            "a protocol entry about a private library names neither it nor its content"
+                + " (ADR-0041, Entscheidung 6)")
+        .allowEmptyShould(true);
+  }
+
+  /**
+   * Calls of {@link #UNFILTERED_LIBRARY_FINDERS} outside {@link #LIBRARY_ENUMERATORS}: a private
+   * library is its owner's alone and appears in no list of the administration, not even by name.
+   */
+  ArchRule privateLibrariesAreNotEnumeratedOutsideListedClasses() {
+    return noClasses()
+        .that(
+            DescribedPredicate.describe(
+                "are not among " + LIBRARY_ENUMERATORS,
+                javaClass -> {
+                  String name = relativeName(topLevel(javaClass));
+                  return name != null && !LIBRARY_ENUMERATORS.contains(name);
+                }))
+        .should()
+        .accessTargetWhere(
+            DescribedPredicate.describe(
+                "call one of " + UNFILTERED_LIBRARY_FINDERS,
+                access ->
+                    UNFILTERED_LIBRARY_FINDERS.contains(
+                        relativeName(access.getTargetOwner()) + "#" + access.getName())))
+        .because(
+            "the administration sees private libraries only summed up (ADR-0041, Entscheidung 6);"
+                + " its views take findSharedByOrganizationId")
+        .allowEmptyShould(true);
+  }
+
+  /**
    * Calls of {@link #PROFILE_REGISTRATION} and uses of {@link #CLIENT_REGISTRATION} outside {@link
    * #SIGN_IN_PACKAGE}, other than by the two classes that build the value.
    */
@@ -1445,6 +1560,8 @@ public final class ModularArchitecture {
         theAuthorizationServerIsReachedOnlyThroughTheOAuthClient(),
         refreshTokensStayInTheTokenStore(),
         theForeignContextNeverUsesTheOwnFormula(),
+        privateLibrariesAreNotEnumeratedOutsideListedClasses(),
+        privateAssetsAreAuditedNeutrally(),
         theProfileSupportIsReadInOnePlace(),
         onlyTheKnownClassesDeleteDocuments(),
         onlyTheRunRemovesThroughTheCleanupService(),

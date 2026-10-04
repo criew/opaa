@@ -102,6 +102,7 @@ class SchemaPortabilityMigrationTest extends AbstractMigrationTest {
             "asset_grants_guard_owner_only search_path=pg_catalog, " + SCHEMA + ", pg_temp",
             "assets_guard_owner_only search_path=pg_catalog, " + SCHEMA + ", pg_temp",
             "library_connections_guard_owner_only search_path=pg_catalog, " + SCHEMA + ", pg_temp",
+            "connection_profiles_guard_owner_only search_path=pg_catalog, " + SCHEMA + ", pg_temp",
             "knowledge_libraries_guard_owner_only_release search_path=pg_catalog, "
                 + SCHEMA
                 + ", pg_temp",

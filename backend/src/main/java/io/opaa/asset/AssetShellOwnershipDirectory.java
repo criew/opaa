@@ -163,9 +163,12 @@ class AssetShellOwnershipDirectory implements AssetOwnershipDirectory {
             .organizationId(asset.getOrganizationId())
             .actor(actorUserId)
             .type(AuditEventType.ASSET_OWNER_CHANGED)
-            .object(definition.auditObjectType(), asset.getId(), asset.getName())
-            .before(Map.of("ownerId", previousOwnerId.toString()))
-            .after(Map.of("ownerId", newOwner.id().toString(), "transferId", transferId.toString()))
+            .object(definition.auditObjectType(), asset.getId(), asset.auditName())
+            .before(asset.auditPayload(Map.of("ownerId", previousOwnerId.toString())))
+            .after(
+                asset.auditPayload(
+                    Map.of(
+                        "ownerId", newOwner.id().toString(), "transferId", transferId.toString())))
             .outcome(AuditOutcome.SUCCESS)
             .build());
   }
@@ -201,9 +204,9 @@ class AssetShellOwnershipDirectory implements AssetOwnershipDirectory {
             .organizationId(asset.getOrganizationId())
             .actor(actorUserId)
             .type(AuditEventType.ASSET_OWNER_CHANGED)
-            .object(definition.auditObjectType(), asset.getId(), asset.getName())
-            .before(Map.of("ownerId", previousOwnerId.toString()))
-            .after(Map.of("ownerId", newOwner.id().toString()))
+            .object(definition.auditObjectType(), asset.getId(), asset.auditName())
+            .before(asset.auditPayload(Map.of("ownerId", previousOwnerId.toString())))
+            .after(asset.auditPayload(Map.of("ownerId", newOwner.id().toString())))
             .outcome(AuditOutcome.SUCCESS)
             .build());
     assetRepository.save(asset);

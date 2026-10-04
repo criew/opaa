@@ -351,6 +351,9 @@ paths:
         changed configuration leaves the same audit entry and discards the same run state as a
         direct change. Also the way back for a library whose profile was deleted ("Zugang
         entfernt") and for one locked because its type is usable only through a profile.
+        A private library moves only onto a profile admitting persons on which its owner has a
+        connected account (400 otherwise), and only its owner moves it - for everyone else it
+        does not exist (404).
       requestBody:
         required: true
         content:
@@ -379,7 +382,8 @@ paths:
         Needs AssetRole.MANAGER on the library. The library keeps its address and secret and
         runs with them as its own; what the profile set for it - its defaults, proxy and TLS
         switch - becomes the library's own, so the configuration it runs with stays the same.
-        Refused with 400 for a source type that requires a profile.
+        Refused with 400 for a source type that requires a profile and for a private library,
+        which runs on its owner's connected account only.
       responses:
         "200":
           description: The library, without a profile
@@ -933,6 +937,19 @@ components:
             sourceCredentials on a profile whose sign-in is not a personal secret. The library stores only
             its own part. Connecting an existing library adopts the profile's values the same
             way, without a 400.
+        privateLibrary:
+          type: boolean
+          nullable: true
+          description: >
+            Creates a private library ("Private Bibliothek"): it runs on the caller's own
+            connected account on connectionProfileId, which is then required and must admit
+            persons, and only the caller ever reads it - no grant, no transfer, no external
+            access, no succession, never in "Sicht als". The choice is fixed at creation; on a
+            profile admitting both libraries and persons this flag alone decides it. 400 without
+            a connected account of the caller on the profile, for an owner group, for
+            sourceCredentials (the connected account signs in) and for a target - origin and
+            binding such as a share - other than the one the connected account is issued for. The
+            profile's release and locks count as for every new library (403).
         sourcePath:
           type: string
           maxLength: 2000
@@ -1035,6 +1052,13 @@ components:
             the library's current profile; another one tests a switch before it is saved - its
             release counts, and the library's stored lock does not, so a locked library can be
             repaired. The stored credentials stand in only while sourceUrl keeps their origin.
+        privateLibrary:
+          type: boolean
+          nullable: true
+          description: >
+            Without libraryId: probes the private library LibraryRequest.privateLibrary would
+            create - through the caller's connected account on connectionProfileId, without
+            sourceCredentials. With libraryId the library itself says whether it is private.
         sourcePath:
           type: string
           maxLength: 2000
@@ -1179,6 +1203,10 @@ components:
           description: >
             The connection profile the listing runs through, exactly as
             SourceConnectionTestRequest.connectionProfileId - with libraryId too.
+        privateLibrary:
+          type: boolean
+          nullable: true
+          description: As SourceConnectionTestRequest.privateLibrary.
         query:
           description: >
             The listing's own parameters, read by the type's connector: CONFLUENCE takes edition,
@@ -1530,6 +1558,9 @@ components:
           description: As LibraryResponse.sourceBlock.
           allOf:
             - $ref: "#/components/schemas/SourceBlock"
+        privateLibrary:
+          type: boolean
+          description: As LibraryResponse.privateLibrary.
         id:
           type: string
           format: uuid
@@ -1641,9 +1672,16 @@ components:
             and the library still has its own address (PROFILE_REQUIRED, lifted by connecting it
             through a profile). The notice starts "Gesperrt – Inhalt wird nicht mehr
             aktualisiert" and names who is in charge. The library keeps its content and runs no
-            more until the lock is lifted.
+            more until the lock is lifted. A private library carries every reason its source is
+            not reached - also a missing, expired or resting connected account of its owner -
+            with a notice that names what she does next.
           allOf:
             - $ref: "#/components/schemas/SourceBlock"
+        privateLibrary:
+          type: boolean
+          description: >
+            Whether this is a private library (LibraryRequest.privateLibrary): only its owner
+            reads it, and it runs on her connected account.
         id:
           type: string
           format: uuid

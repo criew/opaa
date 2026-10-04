@@ -60,6 +60,10 @@ public class IndexingJob {
   @Column(name = "error_message", columnDefinition = "text")
   private String errorMessage;
 
+  /** Why a failed run ended, as a key without content reference; {@code null} for none. */
+  @Column(name = "failure_category", length = 40)
+  private String failureCategory;
+
   /**
    * The knowledge library this run writes into - set once at {@link
    * io.opaa.indexing.job.IndexingJobService#startJob}, so a completed or failed run stays traceable
@@ -253,6 +257,10 @@ public class IndexingJob {
 
   public void setErrorMessage(String errorMessage) {
     this.errorMessage = errorMessage;
+  }
+
+  public String getFailureCategory() {
+    return failureCategory;
   }
 
   public UUID getLibraryId() {

@@ -3,6 +3,7 @@ package io.opaa.library;
 import io.opaa.api.types.OrphanedOriginalSkipReason;
 import io.opaa.common.NotFoundException;
 import io.opaa.knowledge.DocumentRepository;
+import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.UploadProperties;
 import io.opaa.knowledge.UploadStoreUnavailableException;
@@ -133,11 +134,17 @@ public class OrphanedOriginalCleanupService {
     Instant threshold = threshold(appliedMinutes);
     Set<UUID> ownLibraries =
         new HashSet<>(libraryRepository.findIdsByOrganizationId(organizationId));
+    // a private library's area is never counted: as a part of the private libraries it could be
+    // set off against their number in the index status
+    Set<UUID> uncounted = libraryRepository.findPrivateIdsByOrganizationId(organizationId);
     List<OrphanedLibrary> listed = new ArrayList<>();
     int[] counts = new int[4]; // scanned areas, known areas, orphaned areas, orphans listed
     store.forEachStoredLibrary(
         organizationId,
         libraryId -> {
+          if (uncounted.contains(libraryId)) {
+            return;
+          }
           counts[0]++;
           // Any row anywhere protects the area, not only one of this organization: an area whose
           // library belongs elsewhere is misfiled, and deleting it would cross the boundary this
@@ -222,6 +229,14 @@ public class OrphanedOriginalCleanupService {
   public OrphanedOriginalDeletion deleteInOrphanedLibrary(
       UUID organizationId, UUID libraryId, List<String> locators) {
     if (libraryRepository.existsById(libraryId)) {
+      if (libraryRepository.findById(libraryId).filter(KnowledgeLibrary::isOwnerOnly).isPresent()) {
+        // a private library is unknown to the administration: answered as an empty area, untouched
+        return new OrphanedOriginalDeletion(
+            List.of(),
+            requested(locators).stream()
+                .map(locator -> skip(locator, OrphanedOriginalSkipReason.NOT_IN_STORE))
+                .toList());
+      }
       throw new IllegalArgumentException(
           "Diese Bibliothek lässt sich über diesen Weg nicht aufräumen - für eine vorhandene"
               + " Bibliothek ist der bibliotheksbezogene Aufräumlauf zuständig");
@@ -390,6 +405,7 @@ public class OrphanedOriginalCleanupService {
     libraryRepository
         .findById(libraryId)
         .filter(candidate -> organizationId.equals(candidate.getOrganizationId()))
+        .filter(candidate -> !candidate.isOwnerOnly())
         .orElseThrow(() -> new NotFoundException("Bibliothek nicht gefunden"));
   }
 }

@@ -21,15 +21,6 @@ public interface PersonConnections {
    */
   void endAllUnder(UUID profileId, ConnectionEndCause cause, UUID actorUserId);
 
-  /**
-   * The connections held, not disconnected, by any of {@code userIds} on any profile, and the
-   * private libraries they own.
-   */
-  PersonTotals totalsOf(Collection<UUID> userIds);
-
   /** The exact numbers of one profile, for {@link PersonNumbers} only. */
   record StateCounts(long connected, long expired) {}
-
-  /** The exact numbers of a set of persons, for {@link PersonNumbers} only. */
-  record PersonTotals(long connections, long privateLibraries) {}
 }

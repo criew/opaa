@@ -26,14 +26,14 @@ hängt nur von foundation und identity ab.
   Einziger Boden außerhalb: In der Asset-Verwaltung zählt die Systemverwaltung als Eigentümer — nie
   für die Suche und nie bei einem Nur-Besitzerin-Asset.
 - **Nur-Besitzerin-Merkmal** (`assets.owner_only`): beim Anlegen gesetzt, samt Eigentümer
-  unveränderlich, nur der Grant der Besitzerin (Trigger); Regeln in `asset.OwnerOnlyRule`.
+  unveränderlich, nur der Grant der Besitzerin (Trigger); Regeln in `asset.OwnerOnlyRule`, ins
+  Protokoll nur über `Asset#auditName`/`auditPayload`, Zahlen nach Personen über `PersonThreshold`.
 - **Jede Mechanik der Asset-Schale gibt es genau einmal.** Ein neuer Asset-Typ bringt eine Tabelle,
   eine Entity, die `Asset` erweitert, und eine `AssetTypeDefinition` mit — keine eigene
   Grant-Logik, keine eigene Historie, keine eigene Fundquelle.
 - **Historientabellen tragen keinen Fremdschlüssel auf das Asset:** Die Historie überlebt es. Die
   Schale schließt offene Intervalle vor dem Löschen (`AssetShellService#registerDeleted`).
-- **Der Nachfolgezustand wird nie gespeichert.** `succession_cases` hält nur Beginn und Ende; alles
-  andere wird bei jedem Lesen bei den Quellen erfragt.
+- **Der Nachfolgezustand wird nie gespeichert,** nur Beginn und Ende (`succession_cases`).
 - **Rohes SQL gegen die Grant-Tabellen** nennt das Objekt über `asset_type` und `asset_id`.
 - **`directory` liegt über `group`,** denn die Synchronisation schreibt Gruppen; `group` fragt das
   Verzeichnis über den Port `DirectorySyncRuns`. Die Anbieter-Registratur liegt in `io.opaa.auth`.

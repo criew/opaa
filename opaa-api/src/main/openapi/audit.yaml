@@ -734,7 +734,8 @@ components:
           nullable: true
           description: >
             The object's name today, null once it is deleted. The answer is still given for a
-            deleted object: the history outlives it (ADR-0016).
+            deleted object: the history outlives it (ADR-0016). A private library is named
+            "Private Bibliothek" and identified by objectId alone, as in every protocol entry.
         from:
           type: string
           format: date-time

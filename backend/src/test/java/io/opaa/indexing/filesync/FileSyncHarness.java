@@ -227,6 +227,13 @@ public final class FileSyncHarness {
             })
         .when(jobService)
         .failJob(any(), anyString());
+    doAnswer(
+            invocation -> {
+              failure = invocation.getArgument(1);
+              return null;
+            })
+        .when(jobService)
+        .failJob(any(), anyString(), anyString());
     when(syncStateRepository.findRevisits(any())).thenAnswer(invocation -> List.copyOf(revisits));
     when(syncStateRepository.deleteRevisits(any()))
         .thenAnswer(

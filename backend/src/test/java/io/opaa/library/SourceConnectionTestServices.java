@@ -27,6 +27,7 @@ final class SourceConnectionTestServices {
         registry,
         release,
         mock(LibraryConnectionService.class),
-        OwnAddressDrafts.over(registry, libraries, tokens));
+        OwnAddressDrafts.over(registry, libraries, tokens),
+        mock(io.opaa.connection.PrivateLibraryConnections.class));
   }
 }

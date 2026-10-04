@@ -61,11 +61,49 @@ public interface KnowledgeLibraryRepository extends JpaRepository<KnowledgeLibra
   List<KnowledgeLibrary> findByOrganizationIdAndOwnerUserId(UUID organizationId, UUID ownerUserId);
 
   /**
-   * Every library of one organization, regardless of reach or grants - for the administrative
-   * index-status view (#1053), which reports on the bestand as such rather than on what any one
-   * person may read.
+   * Every shared library of one organization, regardless of reach or grants - for the views of the
+   * administration, which report on the bestand as such rather than on what any one person may
+   * read. A private library is its owner's alone and never enumerated there.
+   */
+  @Query(
+      "select l from KnowledgeLibrary l where l.organizationId = :organizationId"
+          + " and l.ownerOnly = false")
+  List<KnowledgeLibrary> findSharedByOrganizationId(@Param("organizationId") UUID organizationId);
+
+  /**
+   * Every library of one organization, private ones included - for a listed system process only
+   * ({@code ModularArchitecture#privateLibrariesAreNotEnumeratedOutsideListedClasses}).
    */
   List<KnowledgeLibrary> findByOrganizationId(UUID organizationId);
+
+  /** How many private libraries one organization holds - a number, never a list. */
+  long countByOrganizationIdAndOwnerOnlyTrue(UUID organizationId);
+
+  /**
+   * How many persons own the private libraries of one organization - the basis every number about
+   * them is masked by ({@code PersonThreshold}).
+   */
+  @Query(
+      "select count(distinct l.ownerUserId) from KnowledgeLibrary l"
+          + " where l.organizationId = :organizationId and l.ownerOnly = true")
+  long countPrivateLibraryOwners(@Param("organizationId") UUID organizationId);
+
+  /**
+   * How many persons own the private libraries of one organization other than {@code excluded} -
+   * the rest a part of their number is masked against.
+   */
+  @Query(
+      "select count(distinct l.ownerUserId) from KnowledgeLibrary l"
+          + " where l.organizationId = :organizationId and l.ownerOnly = true"
+          + " and l.id not in :excluded")
+  long countPrivateLibraryOwnersOutside(
+      @Param("organizationId") UUID organizationId, @Param("excluded") Collection<UUID> excluded);
+
+  /** The ids of one organization's private libraries - for leaving them out, never to show. */
+  @Query(
+      "select l.id from KnowledgeLibrary l"
+          + " where l.organizationId = :organizationId and l.ownerOnly = true")
+  Set<UUID> findPrivateIdsByOrganizationId(@Param("organizationId") UUID organizationId);
 
   /**
    * The ids of every library of one organization - the set the orphan cleanup holds the storage
@@ -84,10 +122,11 @@ public interface KnowledgeLibraryRepository extends JpaRepository<KnowledgeLibra
   List<KnowledgeLibrary> findByScheduleEnabledTrue();
 
   /**
-   * How many libraries of one organization are diagnosegesperrt - counted over the whole bestand,
-   * never intersected with anyone's read rights.
+   * How many shared libraries of one organization are diagnosegesperrt - counted over the whole
+   * bestand, never intersected with anyone's read rights. A private library never enters a foreign
+   * context, so it is not counted.
    */
-  long countByOrganizationIdAndDiagnosticsLockedTrue(UUID organizationId);
+  long countByOrganizationIdAndDiagnosticsLockedTrueAndOwnerOnlyFalse(UUID organizationId);
 
   /**
    * Every library of one organization in one release state (#1731) - the administration's

@@ -17,7 +17,9 @@ paths:
         detection existed, and the operational metric that stays permanently queryable rather than a
         one-off cleanup that goes stale the moment the next such file is indexed. Scoped to the
         caller's own organization the same way every other admin listing in this API is - never a
-        cross-organization view. Consumed by the "Suche & Indexierung" administration page (#1053).
+        cross-organization view. The documents of private libraries are never listed: their file
+        names are their owner's alone. Consumed by the "Suche & Indexierung" administration page
+        (#1053).
       parameters:
         - name: chunkCountThreshold
           in: query
@@ -96,6 +98,11 @@ paths:
         chunk metadata on every call, so an interrupted run continues where it stood instead of
         starting over. Repeat until done is true. Whether and when a bestand is nachgezogen at all is
         an explicit operator decision - nothing triggers this automatically.
+
+
+        Private libraries are advanced as well, up to batchSize more documents per call, but the
+        answer reports only shared libraries: no count includes a private document, and done
+        follows the shared libraries alone.
 
 
         A document that cannot be advanced costs only that candidate and is counted as skipped,
@@ -675,6 +682,14 @@ components:
           type: string
           nullable: true
           example: Indexing completed successfully
+        failureCategory:
+          type: string
+          nullable: true
+          description: >
+            Why a failed run ended, where the run tells it apart from its message - without any
+            reference to content: the SourceBlockReason of a blocked source, or
+            CREDENTIALS_REJECTED when the source refused the secret; absent for any other end.
+          example: NOT_CONNECTED
         startedAt:
           type: string
           format: date-time
@@ -954,9 +969,41 @@ components:
         libraries:
           type: array
           description: >
-            Every library of the caller's own organization holding at least one chunk, sorted by id.
+            Every shared library of the caller's own organization holding at least one chunk,
+            sorted by id. Private libraries appear only in privateLibraries.
           items:
             $ref: "#/components/schemas/LibraryPipelineVersionResponse"
+        privateLibraries:
+          $ref: "#/components/schemas/PrivatePipelineVersionSummaryResponse"
+
+    PrivatePipelineVersionSummaryResponse:
+      type: object
+      description: >
+        The private libraries as one line, without ids. Below the minimum group size of their
+        owners - zero included - only libraryCountFewerThan is set and the sums are absent. The
+        re-index of the administration leaves private libraries out.
+      properties:
+        libraryCount:
+          type: integer
+          format: int64
+          nullable: true
+        libraryCountFewerThan:
+          type: integer
+          format: int32
+          nullable: true
+          example: 5
+        totalChunks:
+          type: integer
+          format: int64
+          nullable: true
+        currentVersionChunks:
+          type: integer
+          format: int64
+          nullable: true
+        staleChunks:
+          type: integer
+          format: int64
+          nullable: true
 
     PipelineReindexRequest:
       type: object

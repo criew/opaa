@@ -149,7 +149,7 @@ public abstract class RunSecretContract {
 
     run(template(), jobId, library());
 
-    verify(jobService).failJob(jobId, NOTICE);
+    verify(jobService).failJob(jobId, NOTICE, "NOT_CONNECTED");
     verify(jobService, never()).completeJob(eq(jobId), anyInt(), anyInt(), anyInt(), anyInt());
     verifyNoInteractions(cleanupService);
     assertThat(asksAfterRefusal).as("the run asked the core after the discard").hasPositiveValue();
@@ -166,7 +166,7 @@ public abstract class RunSecretContract {
 
     run(template(), jobId, library());
 
-    verify(jobService).failJob(jobId, NOTICE);
+    verify(jobService).failJob(jobId, NOTICE, "NOT_CONNECTED");
     verifyNoInteractions(cleanupService);
     verify(ingestService, never()).ingest(any(), any());
   }
@@ -197,6 +197,7 @@ public abstract class RunSecretContract {
         .as("a request after the renewal sent the renewed secret")
         .isTrue();
     verify(jobService, never()).failJob(eq(jobId), anyString());
+    verify(jobService, never()).failJob(eq(jobId), anyString(), anyString());
   }
 
   @Test
@@ -207,7 +208,7 @@ public abstract class RunSecretContract {
 
     run(template(), jobId, library());
 
-    verify(jobService).failJob(eq(jobId), anyString());
+    verify(jobService).failJob(eq(jobId), anyString(), eq("CREDENTIALS_REJECTED"));
     verify(jobService, never()).completeJob(eq(jobId), anyInt(), anyInt(), anyInt(), anyInt());
     verify(ingestService, never()).ingest(any(), any());
     verifyNoInteractions(cleanupService);
@@ -228,6 +229,7 @@ public abstract class RunSecretContract {
     run(template(), jobId, library());
 
     verify(jobService, never()).failJob(eq(jobId), anyString());
+    verify(jobService, never()).failJob(eq(jobId), anyString(), anyString());
     verify(ingestService, atLeastOnce()).ingest(any(), any());
     assertThat(asksAfterRejection).as("asked once more after the rejection").hasValue(1);
     assertThat(rejectionsReported).as("no rejection reported").hasValue(0);

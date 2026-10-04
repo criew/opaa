@@ -75,6 +75,7 @@ class LibraryIndexingControllerTest {
   @MockitoBean private DocumentIndexingService indexingService;
   @MockitoBean private UserService userService;
   @MockitoBean private SourceConnectionTestService sourceConnectionTestService;
+  @MockitoBean private io.opaa.library.PrivateLibraryCreation privateCreation;
   @MockitoBean private SourceConnectorRegistry sourceConnectorRegistry;
   @MockitoBean private SpaceAssetAssociationService associationService;
   @MockitoBean private PermissionTransferService transferService;
