@@ -102,7 +102,6 @@ export default function NextcloudSourceForm({
       sourceProxy: values.sourceProxy.trim() || undefined,
       sourceInsecureSsl: values.sourceInsecureSsl,
       sourceCredentials: nextcloudCredentialsOf(values),
-      ...connection.probe,
     }
   }
 
@@ -110,11 +109,13 @@ export default function NextcloudSourceForm({
     const token = testToken
     setTesting(true)
     try {
-      const result = await testLibrarySource({
-        sourceType: 'NEXTCLOUD',
-        ...connectionPayload(),
-        sourceSettings: { folders: nextcloudFoldersOf(values) },
-      })
+      const result = await testLibrarySource(
+        connection.probeRequest({
+          sourceType: 'NEXTCLOUD',
+          ...connectionPayload(),
+          sourceSettings: { folders: nextcloudFoldersOf(values) },
+        }),
+      )
       setTest({
         token,
         message: { severity: result.reachable ? 'success' : 'warning', text: result.message },
@@ -136,7 +137,7 @@ export default function NextcloudSourceForm({
     const token = connectionToken
     setLoading(true)
     try {
-      const result = await browseSource('NEXTCLOUD', connectionPayload())
+      const result = await browseSource('NEXTCLOUD', connection.probeRequest(connectionPayload()))
       setListing({
         token,
         options: result.entries,
@@ -233,15 +234,19 @@ export default function NextcloudSourceForm({
             fullWidth
             value={values.sourceProxy}
             onChange={(e) => onChange({ sourceProxy: e.target.value })}
-            placeholder="proxy.example.com:8080"
+            placeholder={connection.isFixed('sourceProxy') ? undefined : 'proxy.example.com:8080'}
+            helperText={connection.isFixed('sourceProxy') ? connection.transportHint : undefined}
             autoComplete="off"
-            slotProps={{ htmlInput: { maxLength: 255 } }}
+            slotProps={{
+              htmlInput: { maxLength: 255, readOnly: connection.isFixed('sourceProxy') },
+            }}
           />
         </Box>
         <FormControlLabel
           control={
             <Switch
               checked={values.sourceInsecureSsl}
+              disabled={connection.isFixed('sourceInsecureSsl')}
               onChange={(e) => onChange({ sourceInsecureSsl: e.target.checked })}
             />
           }

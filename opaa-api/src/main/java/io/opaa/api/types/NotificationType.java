@@ -44,6 +44,18 @@ public enum NotificationType {
   CONNECTION_EXPIRED,
 
   /**
+   * A person asked for a connection profile ("Zugangswunsch"). Sent to every system administrator
+   * of the organization; names type and server address, never the person's reason.
+   */
+  CONNECTION_PROFILE_REQUESTED,
+
+  /**
+   * The system administration marked a connection profile request done or declined. Sent to the
+   * person who made it, with the administration's answer if it gave one.
+   */
+  CONNECTION_PROFILE_REQUEST_RESOLVED,
+
+  /**
    * The system administration changed a profile default only the profile sets, such as Google
    * Drive's imitated account: the run state of every library on the profile is discarded and its
    * next run is a full one. Sent to each library's managers.

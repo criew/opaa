@@ -1,5 +1,6 @@
+import { expect } from 'vitest'
 import type { ReactElement } from 'react'
-import { render, screen, within, type RenderOptions } from '@testing-library/react'
+import { render, screen, waitFor, within, type RenderOptions } from '@testing-library/react'
 import type { UserEvent } from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import { ThemeProvider } from '@mui/material/styles'
@@ -112,4 +113,18 @@ export async function answerConfirm(
 ) {
   const dialog = await screen.findByRole('dialog', { name: question })
   await user.click(within(dialog).getByRole('button', { name: verb }))
+}
+
+/**
+ * Waits until a closed dialog is gone and the page behind it is accessible again.
+ *
+ * A dialog leaves the accessibility tree before MUI's modal manager has removed `aria-hidden`
+ * from the app root; a synchronous `getByRole` in that gap finds no accessible element at all.
+ * `waitFor(() => expect(queryByRole('dialog')).not…)` alone ends inside that gap.
+ */
+export async function waitForDialogClosed() {
+  await waitFor(() => {
+    expect(screen.queryByRole('dialog', { hidden: true })).not.toBeInTheDocument()
+    expect(document.querySelector('body > [aria-hidden="true"]')).toBeNull()
+  })
 }

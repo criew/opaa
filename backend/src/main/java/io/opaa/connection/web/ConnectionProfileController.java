@@ -24,7 +24,9 @@ import io.opaa.connection.profile.ConnectorLockService;
 import io.opaa.connection.profile.PersonNumbers;
 import io.opaa.connection.profile.PersonNumbers.ProfileCounts;
 import io.opaa.connection.profile.ProfileRequirementService;
+import io.opaa.connection.request.ConnectionProfileRequestService;
 import io.opaa.indexing.source.SourceChangeGate.Answers;
+import io.opaa.knowledge.SourceType;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.Map;
@@ -56,6 +58,7 @@ public class ConnectionProfileController {
   private final ConnectorLockService locks;
   private final ProfileRequirementService requirements;
   private final PersonNumbers personNumbers;
+  private final ConnectionProfileRequestService profileRequests;
   private final ProfileSignIn signIn;
 
   public ConnectionProfileController(
@@ -64,12 +67,14 @@ public class ConnectionProfileController {
       ConnectorLockService locks,
       ProfileRequirementService requirements,
       PersonNumbers personNumbers,
+      ConnectionProfileRequestService profileRequests,
       ProfileSignIn signIn) {
     this.profiles = profiles;
     this.release = release;
     this.locks = locks;
     this.requirements = requirements;
     this.personNumbers = personNumbers;
+    this.profileRequests = profileRequests;
     this.signIn = signIn;
   }
 
@@ -96,12 +101,21 @@ public class ConnectionProfileController {
   @ResponseStatus(HttpStatus.CREATED)
   public ConnectionProfileResponse createConnectionProfile(
       @Valid @RequestBody ConnectionProfileCreateRequest request, @Caller CurrentUser caller) {
-    return toResponse(
-        profiles.create(
-            caller,
-            ConnectionProfileResponseMapper.toSourceType(request.getSourceType()),
-            ConnectionProfileResponseMapper.toValues(request),
-            request.getClientSecret()));
+    SourceType sourceType = ConnectionProfileResponseMapper.toSourceType(request.getSourceType());
+    ConnectionProfile created =
+        request.getFulfillsRequestId() == null
+            ? profiles.create(
+                caller,
+                sourceType,
+                ConnectionProfileResponseMapper.toValues(request),
+                request.getClientSecret())
+            : profileRequests.createProfileFor(
+                caller,
+                request.getFulfillsRequestId(),
+                sourceType,
+                ConnectionProfileResponseMapper.toValues(request),
+                request.getClientSecret());
+    return toResponse(created);
   }
 
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")

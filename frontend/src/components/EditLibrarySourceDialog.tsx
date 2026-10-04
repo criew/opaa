@@ -6,18 +6,13 @@ import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
 import Stack from '@mui/material/Stack'
-import Typography from '@mui/material/Typography'
-import type { SourceTypeKey } from '../types/api'
-import {
-  PROFILES_FORBIDDEN_NOTICE,
-  useConnectionProfileOptions,
-} from '../hooks/useConnectionProfileOptions'
+import type { ConnectionProfileRef, SourceTypeKey } from '../types/api'
 import { useLibraryStore } from '../stores/libraryStore'
 import { sourceRegistration } from './library/sources/registry'
 import {
   connectionFields,
   payloadUnder,
-  sourceConnectionOf,
+  sourceConnectionOfRef,
   withConnection,
   withoutFixed,
 } from './library/sources/sourceConnection'
@@ -42,8 +37,8 @@ export interface EditableLibrarySource {
   // treated as "nothing stored" (false) rather than crashing or silently claiming otherwise.
   sourceCredentialsSet?: boolean | null
   sourceSettings?: Record<string, unknown> | null
-  /** The profile the library is connected through; absent for its own address. */
-  connectionProfile?: { id: string; name: string } | null
+  /** The profile the library is connected through, with what it sets; absent for its own address. */
+  connectionProfile?: ConnectionProfileRef | null
 }
 
 interface EditLibrarySourceDialogProps {
@@ -56,8 +51,8 @@ interface EditLibrarySourceDialogProps {
 /**
  * The Bearbeiten-Weg of the Reiter „Quelle": the form the library's source type registered, filled
  * from the stored configuration. Callers open it only for a type with a registered form. A library
- * on a profile is edited under that profile; until its details are in, nothing can be saved - the
- * form would otherwise offer fields the profile fixes.
+ * on a profile is edited under what the library names of that profile; without it nothing can be
+ * saved - the form would otherwise offer fields the profile sets.
  */
 export default function EditLibrarySourceDialog({
   open,
@@ -67,11 +62,9 @@ export default function EditLibrarySourceDialog({
 }: EditLibrarySourceDialogProps) {
   const configuration = sourceRegistration(library.sourceType)?.configuration ?? null
   const updateExistingLibrary = useLibraryStore((s) => s.updateExistingLibrary)
-  const profileId = library.connectionProfile?.id ?? null
-  const profileOptions = useConnectionProfileOptions(open && profileId ? library.sourceType : null)
-  const profile = profileOptions.options.find((option) => option.id === profileId)
-  const connection = profile ? sourceConnectionOf(profile) : undefined
-  const connectionMissing = profileId !== null && connection === undefined
+  const profile = library.connectionProfile ?? null
+  const connection = (profile && sourceConnectionOfRef(profile)) ?? undefined
+  const connectionMissing = profile !== null && connection === undefined
   const context: SourceFormContext = {
     mode: 'edit',
     sourceType: library.sourceType,
@@ -136,18 +129,11 @@ export default function EditLibrarySourceDialog({
             Diese Änderung wirkt erst mit dem nächsten Indizierungslauf dieser Bibliothek.
           </Alert>
           {error && <Alert severity="error">{error}</Alert>}
-          {connectionMissing && !profileOptions.loaded && (
-            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-              Die Angaben des Zugangs „{library.connectionProfile?.name}“ werden geladen …
-            </Typography>
-          )}
-          {connectionMissing && profileOptions.loaded && (
+          {connectionMissing && (
             <Alert severity="warning" data-testid="edit-source-connection-missing">
-              Die Angaben des Zugangs „{library.connectionProfile?.name}“ liegen nicht vor. Ohne sie
-              lässt sich die Quelle nicht speichern, weil der Zugang Felder vorgeben kann.{' '}
-              {profileOptions.forbidden
-                ? PROFILES_FORBIDDEN_NOTICE
-                : `${profileOptions.error ? `(${profileOptions.error}) ` : ''}Bitte später erneut versuchen; besteht das Problem weiter, hilft die Systemverwaltung.`}
+              Die Angaben des Zugangs „{profile?.name}“ liegen nicht vor. Ohne sie lässt sich die
+              Quelle nicht speichern, weil der Zugang Felder vorgibt. Bitte die Seite neu laden;
+              besteht das Problem weiter, hilft die Systemverwaltung.
             </Alert>
           )}
           {Form && !connectionMissing && (

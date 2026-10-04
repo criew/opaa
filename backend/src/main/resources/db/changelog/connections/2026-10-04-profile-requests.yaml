@@ -1,0 +1,50 @@
+databaseChangeLog:
+  - changeSet:
+      id: connections-2026-10-04-profile-requests
+      author: opaa
+      comment: "Connection profile requests (Zugangswunsch, #2221): a person asks the system administration for a profile with a server address. A request goes with the account of the person who made it; the profile that served it stays optional and is cleared when the profile is deleted. At most one open request per person, type and address."
+      changes:
+        - sql:
+            sql: |
+              CREATE TABLE connection_profile_requests (
+                  id uuid NOT NULL,
+                  organization_id uuid NOT NULL,
+                  source_type character varying(20) NOT NULL,
+                  server_url character varying(300) NOT NULL,
+                  reason character varying(500),
+                  requested_by uuid NOT NULL,
+                  created_at timestamp with time zone NOT NULL,
+                  state character varying(16) NOT NULL,
+                  resolved_by uuid,
+                  resolved_at timestamp with time zone,
+                  profile_id uuid,
+                  answer character varying(500),
+                  version bigint NOT NULL,
+                  CONSTRAINT connection_profile_requests_pkey PRIMARY KEY (id),
+                  CONSTRAINT fk_connection_profile_requests_organization FOREIGN KEY (organization_id)
+                      REFERENCES organizations(id) ON DELETE RESTRICT,
+                  CONSTRAINT fk_connection_profile_requests_requested_by
+                      FOREIGN KEY (requested_by, organization_id)
+                      REFERENCES users(id, organization_id) ON DELETE CASCADE,
+                  CONSTRAINT fk_connection_profile_requests_resolved_by
+                      FOREIGN KEY (resolved_by, organization_id)
+                      REFERENCES users(id, organization_id) ON DELETE SET NULL (resolved_by),
+                  CONSTRAINT fk_connection_profile_requests_profile FOREIGN KEY (profile_id)
+                      REFERENCES connection_profiles(id) ON DELETE SET NULL,
+                  CONSTRAINT chk_connection_profile_requests_state CHECK (state IN
+                      ('OPEN', 'DONE', 'DECLINED')),
+                  -- An open request carries nothing of its resolution; a resolved one its time.
+                  CONSTRAINT chk_connection_profile_requests_resolution CHECK
+                      ((state = 'OPEN') = (resolved_at IS NULL)),
+                  CONSTRAINT chk_connection_profile_requests_profile_only_done CHECK
+                      (profile_id IS NULL OR state = 'DONE')
+              );
+              CREATE UNIQUE INDEX ux_connection_profile_requests_open
+                  ON connection_profile_requests (requested_by, source_type, server_url)
+                  WHERE state = 'OPEN';
+              CREATE INDEX ix_connection_profile_requests_organization_state
+                  ON connection_profile_requests (organization_id, state, created_at);
+              CREATE INDEX ix_connection_profile_requests_requested_by
+                  ON connection_profile_requests (requested_by, created_at);
+              CREATE INDEX ix_connection_profile_requests_profile
+                  ON connection_profile_requests (profile_id);

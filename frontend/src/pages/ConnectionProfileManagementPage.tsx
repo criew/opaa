@@ -11,7 +11,11 @@ import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
 import Typography from '@mui/material/Typography'
 import VpnKeyOutlinedIcon from '@mui/icons-material/VpnKeyOutlined'
-import type { ConnectionProfileResponse, ConnectorTypeStateResponse } from '../types/api'
+import type {
+  ConnectionProfileRequestResponse,
+  ConnectionProfileResponse,
+  ConnectorTypeStateResponse,
+} from '../types/api'
 import { useAuthStore } from '../stores/authStore'
 import { confirmAction } from '../stores/confirmStore'
 import { notify } from '../stores/notificationStore'
@@ -28,6 +32,7 @@ import PageHeading from '../components/a11y/PageHeading'
 import AreaPageHeader from '../components/AreaPageHeader'
 import ConnectionProfileFormDialog from '../components/admin/connections/ConnectionProfileFormDialog'
 import ConnectorTypeLockSection from '../components/admin/connections/ConnectorTypeLockSection'
+import ConnectionProfileRequestSection from '../components/admin/connections/ConnectionProfileRequestSection'
 import { confirmLock } from '../components/admin/connections/connectorLock'
 import {
   AUTH_METHOD_LABELS,
@@ -55,7 +60,8 @@ function connectionCount(count: number) {
 /**
  * Die Zugänge der Installation (#2160): je Zugang Quellart, Server-Adresse, Anmeldeart und Zahl
  * der Verbindungen, dazu Bearbeiten, Sperren, die Notabschaltung „Alle Verbindungen trennen“ und
- * Löschen. Darunter die Sperre je Quellart (#2161). Jede dieser Handlungen fragt nach.
+ * Löschen. Darunter die offenen Zugangswünsche und die Sperre je Quellart (#2161). Jede dieser
+ * Handlungen fragt nach.
  */
 export default function ConnectionProfileManagementPage() {
   const isSystemAdmin = useAuthStore((s) => s.user?.systemRole === 'SYSTEM_ADMIN')
@@ -64,7 +70,11 @@ export default function ConnectionProfileManagementPage() {
   const [profiles, setProfiles] = useState<ConnectionProfileResponse[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [form, setForm] = useState<{ open: boolean; profile: ConnectionProfileResponse | null }>({
+  const [form, setForm] = useState<{
+    open: boolean
+    profile: ConnectionProfileResponse | null
+    request?: ConnectionProfileRequestResponse
+  }>({
     open: false,
     profile: null,
   })
@@ -334,6 +344,14 @@ export default function ConnectionProfileManagementPage() {
         )}
 
         <Box sx={{ mt: 4 }}>
+          <ConnectionProfileRequestSection
+            reloadKey={reloadKey}
+            displayNameOf={displayNameOf}
+            onCreateProfile={(request) => setForm({ open: true, profile: null, request })}
+          />
+        </Box>
+
+        <Box sx={{ mt: 4 }}>
           <ConnectorTypeLockSection
             states={typeStates}
             error={typeError}
@@ -346,9 +364,10 @@ export default function ConnectionProfileManagementPage() {
         </Box>
 
         <ConnectionProfileFormDialog
-          key={form.profile?.id ?? (form.open ? 'new-open' : 'new')}
+          key={form.profile?.id ?? form.request?.id ?? (form.open ? 'new-open' : 'new')}
           open={form.open}
           profile={form.profile}
+          fromRequest={form.request ?? null}
           sourceTypes={sourceTypes}
           sourceTypesLoaded={sourceTypesLoaded}
           onClose={() => setForm({ open: false, profile: null })}

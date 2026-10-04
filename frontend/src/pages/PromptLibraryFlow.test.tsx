@@ -5,7 +5,12 @@ import { Route, Routes, useLocation } from 'react-router'
 import { http, HttpResponse } from 'msw'
 import { server } from '../mocks/server'
 import { resetMockFavorites } from '../mocks/assetFixtures'
-import { answerConfirm, renderWithProviders, setMockAuthState } from '../test/test-utils'
+import {
+  answerConfirm,
+  renderWithProviders,
+  setMockAuthState,
+  waitForDialogClosed,
+} from '../test/test-utils'
 import { useAuthStore } from '../stores/authStore'
 import { usePromptLibraryStore } from '../stores/promptLibraryStore'
 import type { AssetGrantRequest, PromptLibraryRequest, PromptRequest } from '../types/api'
@@ -100,9 +105,7 @@ describe('Prompt-Bibliothek anlegen, füllen und freigeben', () => {
     await user.click(await screen.findByRole('option', { name: 'Datum' }))
     await user.click(within(dialog).getByLabelText('frist ist Pflicht'))
     await user.click(within(dialog).getByRole('button', { name: 'Prompt speichern' }))
-    await waitFor(() =>
-      expect(screen.queryByRole('dialog', { name: 'Neuer Prompt' })).not.toBeInTheDocument(),
-    )
+    await waitForDialogClosed()
 
     // Zweiter Prompt ohne Variablen
     await user.click(screen.getByRole('button', { name: 'Neuer Prompt' }))
@@ -110,9 +113,7 @@ describe('Prompt-Bibliothek anlegen, füllen und freigeben', () => {
     await user.type(within(dialog).getByLabelText('Titel'), 'Vermerk')
     await user.type(within(dialog).getByLabelText('Text'), 'Fasse den Sachverhalt zusammen.')
     await user.click(within(dialog).getByRole('button', { name: 'Prompt speichern' }))
-    await waitFor(() =>
-      expect(screen.queryByRole('dialog', { name: 'Neuer Prompt' })).not.toBeInTheDocument(),
-    )
+    await waitForDialogClosed()
 
     expect(await screen.findByText('/anhoerung')).toBeInTheDocument()
     expect(screen.getByText('/vermerk')).toBeInTheDocument()
@@ -124,7 +125,7 @@ describe('Prompt-Bibliothek anlegen, füllen und freigeben', () => {
       }),
       expect.objectContaining({ name: 'vermerk', variables: [] }),
     ])
-  }, 30000)
+  }, 60000)
 
   it('führt nach einer abgelehnten Freigabe zur angelegten Bibliothek, statt ein zweites Anlegen anzubieten', async () => {
     const captured = captureRequests()

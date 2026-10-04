@@ -4,7 +4,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, onTestFinished, 
 import { http, HttpResponse } from 'msw'
 import { Navigate, Route, Routes } from 'react-router'
 import { server } from '../mocks/server'
-import { answerConfirm, renderWithProviders } from '../test/test-utils'
+import { answerConfirm, renderWithProviders, waitForDialogClosed } from '../test/test-utils'
 import { useAuthStore } from '../stores/authStore'
 import { useLlmModelStore } from '../stores/llmModelStore'
 import LlmModelManagementPage from './LlmModelManagementPage'
@@ -373,7 +373,7 @@ describe('LlmModelManagementPage', () => {
 
     // Das Feld zeigt den gespeicherten Schlüssel auch nach dem Rundlauf durch Speichern und
     // erneutes Öffnen nicht.
-    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    await waitForDialogClosed()
     const wieder = await openEditDialog(user, 'Ollama umbenannt')
     expect(within(wieder).getByLabelText('API-Schlüssel (optional)')).toHaveValue('')
   })
