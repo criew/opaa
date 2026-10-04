@@ -13,6 +13,8 @@ import com.jayway.jsonpath.JsonPath;
 import io.opaa.auth.DevAuthFilter;
 import io.opaa.indexing.source.profileprobe.ProfileProbeIndexingExecutor;
 import io.opaa.indexing.source.profileprobe.ProfileProbeIndexingExecutor.Seen;
+import io.opaa.knowledge.KnowledgeLibrary;
+import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.test.ConnectorReleases;
 import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.OwnLibraryFixtures;
@@ -29,6 +31,7 @@ import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * Connection profiles through the API (#2160) with the test-only {@code PROFILE_PROBE} connector:
@@ -44,6 +47,8 @@ class ConnectionProfileApiIntegrationTest {
   @Autowired private JdbcTemplate jdbc;
   @Autowired private OwnLibraryFixtures libraryFixtures;
   @Autowired private ProfileProbeIndexingExecutor probe;
+  @Autowired private KnowledgeLibraryRepository libraryRepository;
+  @Autowired private TransactionTemplate transactions;
 
   private final List<UUID> profiles = new ArrayList<>();
   private final List<UUID> libraries = new ArrayList<>();
@@ -207,8 +212,8 @@ class ConnectionProfileApiIntegrationTest {
         createLibrary(
             profile,
             "https://probe.example.org/ablage",
-            "\"sourceCredentials\": \"nutzer:geheim\", \"sourceSettings\": {\"edition\":"
-                + " \"CLOUD\", \"topic\": \"Wetter\"},");
+            "\"sourceCredentials\": \"nutzer:geheim\", \"sourceSettings\": {\"topic\":"
+                + " \"Wetter\"},");
 
     mockMvc
         .perform(as("dev-user", get("/api/v1/libraries/" + library)))
@@ -317,8 +322,15 @@ class ConnectionProfileApiIntegrationTest {
          "clientId": "%s", "clientSecret": "%s"}
         """;
     UUID profile = createProfile(json.formatted(name, "opaa", "alt"));
-    UUID library =
-        createLibrary("PROFILE_OAUTH_PROBE", profile, null, "\"sourceCredentials\": \"bleibt\",");
+    UUID library = createLibrary("PROFILE_OAUTH_PROBE", profile, null, "");
+    // no request may set a secret under OAuth; the stored one stands for any held under the profile
+    transactions.executeWithoutResult(
+        status -> {
+          KnowledgeLibrary row = libraryRepository.findById(library).orElseThrow();
+          row.updateSourceConfiguration(
+              row.getSourcePath(), row.getSourceUrl(), null, "bleibt", false);
+          libraryRepository.save(row);
+        });
 
     String update =
         """

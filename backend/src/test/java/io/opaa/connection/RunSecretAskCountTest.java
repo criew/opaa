@@ -84,6 +84,7 @@ class RunSecretAskCountTest {
     UUID profileId = UUID.randomUUID();
     when(profile.getId()).thenReturn(profileId);
     when(profile.getName()).thenReturn("Ablage");
+    when(profile.getSourceType()).thenReturn(SourceTypes.RSS_FEED);
     when(profile.getServerUrl()).thenReturn("https://ablage.example.org");
     when(profile.getAuthMethod()).thenReturn(ConnectionAuthMethod.PERSONAL_SECRET);
     LibraryConnection connection = new LibraryConnection(library.getId(), profileId, Instant.EPOCH);

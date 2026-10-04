@@ -3,8 +3,10 @@ package io.opaa.connection.profile;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -17,6 +19,7 @@ import io.opaa.indexing.source.SourceConnectorRegistry;
 import io.opaa.indexing.source.TestSourceConnectors;
 import io.opaa.indexing.source.profileprobe.ProfileProbeSourceConnector;
 import io.opaa.knowledge.KnowledgeLibrary;
+import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.SourceType;
 import io.opaa.test.SourceTypes;
 import java.time.Instant;
@@ -62,6 +65,7 @@ class SourceBlocksTest {
   private final List<ConnectionProfile> profileRows = new ArrayList<>();
   private final ConnectorTypePolicyRepository policies = mock(ConnectorTypePolicyRepository.class);
   private final Map<UUID, KnowledgeLibrary> rows = new HashMap<>();
+  private final KnowledgeLibraryRepository libraryRepository = LibraryRows.over(rows);
   private SourceBlocks blocks;
 
   @BeforeEach
@@ -92,7 +96,7 @@ class SourceBlocksTest {
             connections,
             profiles,
             new ProfileRequirements(policies, registry),
-            new ConnectionSecrets(connections, LibraryRows.over(rows)),
+            new ConnectionSecrets(connections, libraryRepository),
             registry);
   }
 
@@ -158,6 +162,24 @@ class SourceBlocksTest {
 
     assertThat(blocks.blockOf(library, SourceBlocks.ALL).map(SourceBlock::reason))
         .isEqualTo(firstDeclared);
+  }
+
+  @Test
+  void theSecretsOfManyLibrariesAreReadWithOneQueryWithoutDecrypting() {
+    KnowledgeLibrary first =
+        arrange(EnumSet.of(Fact.CONNECTED), ConnectionAuthMethod.PERSONAL_SECRET);
+    KnowledgeLibrary second =
+        arrange(EnumSet.of(Fact.CONNECTED, Fact.NO_SECRET), ConnectionAuthMethod.PERSONAL_SECRET);
+    KnowledgeLibrary third =
+        arrange(EnumSet.of(Fact.CONNECTED), ConnectionAuthMethod.PERSONAL_SECRET);
+    clearInvocations(libraryRepository);
+
+    Map<UUID, SourceBlock> found =
+        blocks.blocksAmong(List.of(first, second, third), SourceBlocks.ALL);
+
+    assertThat(found.keySet()).containsExactly(second.getId());
+    verify(libraryRepository, times(1)).findIdsHoldingSourceCredentials(any());
+    verify(libraryRepository, never()).findById(any());
   }
 
   @Test
@@ -435,7 +457,17 @@ class SourceBlocksTest {
       ConnectionProfile profile = new ConnectionProfile(type, NOW);
       profile.replace(
           new ConnectionProfileValues(
-              "Feeds", SERVER, method, ConnectionOwnership.LIBRARY, null, null, null, null, null),
+              "Feeds",
+              SERVER,
+              method,
+              ConnectionOwnership.LIBRARY,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              false),
           null,
           NOW);
       if (facts.contains(Fact.PROFILE_LOCK)) {

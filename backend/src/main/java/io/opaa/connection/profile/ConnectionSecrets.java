@@ -6,8 +6,13 @@ import io.opaa.indexing.source.SourceBlock;
 import io.opaa.indexing.source.SourceConnectionBlockedException;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -59,14 +64,38 @@ public class ConnectionSecrets {
     };
   }
 
-  /** Why {@code owner} cannot hand out a secret now, empty while it can; renews nothing. */
+  /**
+   * Why {@code owner} cannot hand out a secret now, empty while it can; see {@link #statesAmong}.
+   */
   public Optional<SourceBlock.Reason> stateOf(SecretOwner owner) {
-    return switch (owner) {
-      case LibraryOwned(UUID libraryId) ->
-          columnOf(libraryId) == null
-              ? Optional.of(SourceBlock.Reason.NOT_CONNECTED)
-              : Optional.empty();
-    };
+    return Optional.ofNullable(statesAmong(List.of(owner)).get(owner));
+  }
+
+  /**
+   * {@link #stateOf} for many owners with one query, absent for an owner that can hand one out. It
+   * decrypts and renews nothing, so a stored but unreadable secret counts as held here and is
+   * refused by {@link #current} only.
+   */
+  public Map<SecretOwner, SourceBlock.Reason> statesAmong(Collection<SecretOwner> owners) {
+    List<UUID> libraryIds = new ArrayList<>();
+    for (SecretOwner owner : owners) {
+      switch (owner) {
+        case LibraryOwned(UUID libraryId) -> libraryIds.add(libraryId);
+      }
+    }
+    Set<UUID> holding =
+        libraryIds.isEmpty() ? Set.of() : libraries.findIdsHoldingSourceCredentials(libraryIds);
+    Map<SecretOwner, SourceBlock.Reason> states = new HashMap<>();
+    for (SecretOwner owner : owners) {
+      switch (owner) {
+        case LibraryOwned(UUID libraryId) -> {
+          if (!holding.contains(libraryId)) {
+            states.put(owner, SourceBlock.Reason.NOT_CONNECTED);
+          }
+        }
+      }
+    }
+    return states;
   }
 
   /**

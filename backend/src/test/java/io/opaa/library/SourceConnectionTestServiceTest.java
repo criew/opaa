@@ -18,9 +18,7 @@ import io.opaa.common.AccessDeniedException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
 import io.opaa.connection.ConnectorReleaseService;
-import io.opaa.connection.LibraryConnectionService;
 import io.opaa.indexing.source.FilesystemPathAllowlist;
-import io.opaa.indexing.source.LibrarySourceConnectionResolver;
 import io.opaa.indexing.source.ServiceAccountTokens;
 import io.opaa.indexing.source.SourceConnectionTestResult;
 import io.opaa.indexing.source.TestSourceConnectors;
@@ -93,13 +91,11 @@ class SourceConnectionTestServiceTest {
     systemAdminCaller =
         CurrentUser.of(currentUserId, organizationId, SystemRole.SYSTEM_ADMIN, "Caller");
     service =
-        new SourceConnectionTestService(
+        SourceConnectionTestServices.over(
             libraryRepository,
             libraryAccessService,
             TestSourceConnectors.connectors().filesystemAllowlist(filesystemAllowlist).registry(),
             connectorRelease,
-            new LibrarySourceConnectionResolver(),
-            mock(LibraryConnectionService.class),
             new ServiceAccountTokens(TargetAddressValidator.disabled(), Clock.systemUTC()));
   }
 
@@ -573,7 +569,7 @@ class SourceConnectionTestServiceTest {
     // endless/huge response crash the whole backend - bounded exactly like
     // RssFeedIndexingExecutor#readBounded/BoundedDownloader#readBounded.
     SourceConnectionTestService tightService =
-        new SourceConnectionTestService(
+        SourceConnectionTestServices.over(
             libraryRepository,
             libraryAccessService,
             TestSourceConnectors.connectors()
@@ -581,8 +577,6 @@ class SourceConnectionTestServiceTest {
                 .rssProperties(new RssFeedProperties(200, 10, 10, 0, null, null, 0, 0))
                 .registry(),
             connectorRelease,
-            new LibrarySourceConnectionResolver(),
-            mock(LibraryConnectionService.class),
             new ServiceAccountTokens(TargetAddressValidator.disabled(), Clock.systemUTC()));
     String html = "<table>" + "x".repeat(100) + "</table>";
     server.createContext(
@@ -711,7 +705,7 @@ class SourceConnectionTestServiceTest {
     // RssFeedIndexingExecutor#execute's own truncation - a feed carrying more entries than a
     // run ever processes must not be reported with a count the run itself never reaches.
     SourceConnectionTestService cappedService =
-        new SourceConnectionTestService(
+        SourceConnectionTestServices.over(
             libraryRepository,
             libraryAccessService,
             TestSourceConnectors.connectors()
@@ -719,8 +713,6 @@ class SourceConnectionTestServiceTest {
                 .rssProperties(new RssFeedProperties(1, 0, 0, 0, null, null, 0, 0))
                 .registry(),
             connectorRelease,
-            new LibrarySourceConnectionResolver(),
-            mock(LibraryConnectionService.class),
             new ServiceAccountTokens(TargetAddressValidator.disabled(), Clock.systemUTC()));
     String rss =
         """
@@ -760,7 +752,7 @@ class SourceConnectionTestServiceTest {
   @Test
   void rssFeedRejectsAnOversizedResponseWithAGermanMessage() throws IOException {
     SourceConnectionTestService tightService =
-        new SourceConnectionTestService(
+        SourceConnectionTestServices.over(
             libraryRepository,
             libraryAccessService,
             TestSourceConnectors.connectors()
@@ -768,8 +760,6 @@ class SourceConnectionTestServiceTest {
                 .rssProperties(new RssFeedProperties(200, 10, 10, 0, null, null, 0, 0))
                 .registry(),
             connectorRelease,
-            new LibrarySourceConnectionResolver(),
-            mock(LibraryConnectionService.class),
             new ServiceAccountTokens(TargetAddressValidator.disabled(), Clock.systemUTC()));
     String rss =
         "<?xml version=\"1.0\"?><rss version=\"2.0\"><channel>"

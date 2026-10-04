@@ -2,6 +2,7 @@ package io.opaa.connection.profile;
 
 import io.opaa.common.ValidationException;
 import io.opaa.indexing.source.ServerAddressRule;
+import io.opaa.sourceaccess.RedirectFollowingFetcher;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayDeque;
@@ -119,17 +120,20 @@ public final class ServerAddress {
         + (candidate.getRawFragment() == null ? "" : "#" + candidate.getRawFragment());
   }
 
-  /** Whether both addresses name the same scheme, host and port; an unreadable one never does. */
+  /**
+   * The one rule whether a stored secret may follow a library to {@code second}: same scheme, host
+   * and port, an omitted port counting as the default only for {@code http} and {@code https}. An
+   * absent, unreadable or padded address, or one without a host, never matches.
+   */
   public static boolean sameOrigin(String first, String second) {
-    URI a = first == null ? null : parse(first.trim());
-    URI b = second == null ? null : parse(second.trim());
-    return a != null
-        && b != null
-        && a.getHost() != null
-        && b.getHost() != null
-        && a.getScheme().equalsIgnoreCase(b.getScheme())
-        && a.getHost().equalsIgnoreCase(b.getHost())
-        && port(a) == port(b);
+    if (first == null || second == null) {
+      return false;
+    }
+    try {
+      return RedirectFollowingFetcher.sameOrigin(URI.create(first), URI.create(second));
+    } catch (IllegalArgumentException e) {
+      return false;
+    }
   }
 
   /**
