@@ -1204,6 +1204,82 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       expect(address()).toHaveValue('')
     }, 25000)
 
+    it('drops the edition detected for an own address once a profile clears that address', async () => {
+      mockListSourceTypes.mockResolvedValue(
+        mockSourceTypes.map((descriptor) =>
+          descriptor.type === 'CONFLUENCE'
+            ? { ...descriptor, profileSupport: 'OPTIONAL' as const }
+            : descriptor,
+        ),
+      )
+      mockListConnectionProfileOptions.mockResolvedValue([
+        {
+          ...profile,
+          id: 'profile-wiki',
+          name: 'Wiki intern',
+          sourceType: 'CONFLUENCE',
+          serverUrl: 'https://wiki.intern.example',
+        },
+      ])
+      mockTestLibrarySource.mockResolvedValueOnce({
+        reachable: true,
+        details: { edition: 'CLOUD' },
+        credentialsVerified: false,
+        message: 'Confluence Cloud erkannt.',
+      })
+      const user = userEvent.setup()
+      await renderPage()
+      await chooseType(user, /Confluence/)
+      await screen.findByRole('radio', { name: /Wiki intern/ })
+
+      await user.type(
+        screen.getByLabelText(/Adresse der Confluence-Instanz/),
+        'https://site.atlassian.net/wiki',
+      )
+      await user.click(screen.getByRole('button', { name: 'Edition erkennen' }))
+      expect(await screen.findByTestId('library-create-confluence-edition')).toHaveTextContent(
+        'Confluence Cloud',
+      )
+
+      await user.click(screen.getByRole('radio', { name: /Wiki intern/ }))
+      expect(screen.getByLabelText(/Adresse der Confluence-Instanz/)).toHaveValue(
+        'https://wiki.intern.example',
+      )
+      expect(screen.queryByTestId('library-create-confluence-edition')).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Edition erkennen' })).toBeEnabled()
+    }, 25000)
+
+    it('shows proxy and certificate check of the chosen profile read-only and sends neither', async () => {
+      mockListConnectionProfileOptions.mockResolvedValue([
+        {
+          ...profile,
+          sourceProxy: 'proxy.intern.example:3128',
+          sourceInsecureSsl: true,
+        },
+      ])
+      const user = userEvent.setup()
+      await renderPage()
+      await chooseType(user, /Nextcloud/)
+      await user.click(await screen.findByRole('radio', { name: /Nextcloud intern/ }))
+
+      const proxy = screen.getByLabelText(/^Proxy/)
+      expect(proxy).toHaveValue('proxy.intern.example:3128')
+      expect(proxy).toHaveAttribute('readonly')
+      expect(screen.getByRole('switch', { name: /Zertifikatsprüfung/ })).toBeChecked()
+      expect(screen.getByRole('switch', { name: /Zertifikatsprüfung/ })).toBeDisabled()
+      await user.type(screen.getByLabelText(/Technischer Nutzer/), 'svc-opaa')
+      await user.type(screen.getByLabelText(/App-Passwort/), 'geheim')
+      await next(user)
+      await nameItAndContinue(user, 'Projektablage')
+      await user.click(screen.getByRole('button', { name: 'Bibliothek anlegen' }))
+
+      await waitFor(() => expect(mockCreateNewLibrary).toHaveBeenCalled())
+      const request = mockCreateNewLibrary.mock.calls[0][0]
+      expect(request.connectionProfileId).toBe('profile-intern')
+      expect(request.sourceProxy).toBeUndefined()
+      expect(request.sourceInsecureSsl).toBe(false)
+    }, 30000)
+
     it('sends no profile for the own address', async () => {
       mockListConnectionProfileOptions.mockResolvedValue([profile])
       const user = userEvent.setup()

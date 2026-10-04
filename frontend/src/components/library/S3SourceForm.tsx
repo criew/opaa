@@ -203,10 +203,6 @@ export default function S3SourceForm({
       sourceProxy: values.sourceProxy.trim() || undefined,
       sourceInsecureSsl: values.sourceInsecureSsl,
       sourceCredentials: s3CredentialsOf(values),
-      // #1856 review: the library is named whenever this instance edits one, not only while the
-      // stored-credentials fallback applies - without it, the test/listing needs
-      // CREATE_CONNECTOR_LIBRARY (ADR-0036, Entscheidung 5), a right a MANAGER need not hold.
-      ...connection.probe,
     }
   }
 
@@ -215,10 +211,16 @@ export default function S3SourceForm({
     setLoadingBuckets(true)
     setBucketsMessage(null)
     try {
-      const result = await browseSource('S3', {
-        ...connectionPayload(),
-        query: { region: values.region.trim() || undefined, pathStyle: values.pathStyle },
-      })
+      // The probe names the library whenever this instance edits one, not only while the
+      // stored-credentials fallback applies - without it, the listing needs
+      // CREATE_CONNECTOR_LIBRARY, a right a MANAGER need not hold.
+      const result = await browseSource(
+        'S3',
+        connection.probeRequest({
+          ...connectionPayload(),
+          query: { region: values.region.trim() || undefined, pathStyle: values.pathStyle },
+        }),
+      )
       if (listingGeneration.current !== mine) return
       if (result.complete) {
         const buckets = result.entries.map((entry) => entry.key)
@@ -257,11 +259,13 @@ export default function S3SourceForm({
     setTestMessage(null)
     setScopeChecks(null)
     try {
-      const result: SourceConnectionTestResponse = await testLibrarySource({
-        sourceType: 'S3',
-        ...connectionPayload(),
-        sourceSettings: s3SettingsOf(values),
-      })
+      const result: SourceConnectionTestResponse = await testLibrarySource(
+        connection.probeRequest({
+          sourceType: 'S3',
+          ...connectionPayload(),
+          sourceSettings: s3SettingsOf(values),
+        }),
+      )
       if (generation.current !== mine) return
       setTestMessage({
         severity: result.reachable ? 'success' : 'warning',
@@ -630,10 +634,17 @@ export default function S3SourceForm({
                 size="small"
                 value={values.sourceProxy}
                 onChange={(e) => changeConnection({ sourceProxy: e.target.value })}
-                placeholder="proxy.example.com:8080"
+                placeholder={
+                  connection.isFixed('sourceProxy') ? undefined : 'proxy.example.com:8080'
+                }
+                helperText={
+                  connection.isFixed('sourceProxy') ? connection.transportHint : undefined
+                }
                 autoComplete="off"
                 fullWidth
-                slotProps={{ htmlInput: { maxLength: 255 } }}
+                slotProps={{
+                  htmlInput: { maxLength: 255, readOnly: connection.isFixed('sourceProxy') },
+                }}
               />
             </Box>
             <FormControlLabel
@@ -641,6 +652,7 @@ export default function S3SourceForm({
               control={
                 <Switch
                   checked={values.sourceInsecureSsl}
+                  disabled={connection.isFixed('sourceInsecureSsl')}
                   onChange={(e) => changeConnection({ sourceInsecureSsl: e.target.checked })}
                 />
               }

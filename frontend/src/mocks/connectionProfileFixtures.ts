@@ -1,4 +1,4 @@
-import type { ConnectionProfileResponse } from '../types/api'
+import type { ConnectionProfileRef, ConnectionProfileResponse } from '../types/api'
 
 function initialProfiles(): ConnectionProfileResponse[] {
   return [
@@ -27,4 +27,17 @@ export let mockConnectionProfiles: ConnectionProfileResponse[] = initialProfiles
 
 export function resetMockConnectionProfiles() {
   mockConnectionProfiles = initialProfiles()
+}
+
+/** The profile as a library names it to its managers - never a secret. */
+export function mockProfileRef(profile: ConnectionProfileResponse): ConnectionProfileRef {
+  return {
+    id: profile.id,
+    name: profile.name,
+    serverUrl: profile.serverUrl,
+    authMethod: profile.authMethod,
+    connectorDefaults: profile.connectorSettings ?? null,
+    sourceProxy: profile.sourceProxy ?? null,
+    sourceInsecureSsl: profile.sourceInsecureSsl,
+  }
 }

@@ -355,6 +355,8 @@ describe('ConnectionProfileManagementPage', () => {
 
     const dialog = await openEdit(user)
     await user.type(within(dialog).getByLabelText(/^Region/), ' eu-central-1 ')
+    await user.click(within(dialog).getByRole('button', { name: 'Weiter' }))
+    await within(dialog).findByTestId('profile-change-preview')
     await user.click(within(dialog).getByRole('button', { name: 'Speichern' }))
 
     await waitFor(() => expect(sent).toHaveLength(1))
@@ -395,6 +397,8 @@ describe('ConnectionProfileManagementPage', () => {
     const address = within(dialog).getByLabelText(/^Server-Adresse/)
     await user.clear(address)
     await user.type(address, 'https://cloud-neu.rheinfurt.example')
+    await user.click(within(dialog).getByRole('button', { name: 'Weiter' }))
+    await within(dialog).findByTestId('profile-change-preview')
     await user.click(within(dialog).getByRole('button', { name: 'Speichern' }))
 
     const question = await screen.findByRole('dialog', { name: /Zugangsdaten von/ })
@@ -403,6 +407,125 @@ describe('ConnectionProfileManagementPage', () => {
 
     expect(await screen.findByText('https://cloud-neu.rheinfurt.example')).toBeVisible()
     expect(sent.at(-1)).toMatchObject({ confirmDiscard: true })
+  }, 20000)
+
+  it('previews a change before saving: the libraries reached and what is discarded', async () => {
+    const user = userEvent.setup()
+    const previews: ConnectionProfileUpdateRequest[] = []
+    server.events.on('request:start', async ({ request }) => {
+      if (request.method === 'POST' && request.url.endsWith('/impact')) {
+        previews.push((await request.clone().json()) as ConnectionProfileUpdateRequest)
+      }
+    })
+    const sent = capturePuts()
+    renderWithProviders(<ConnectionProfileManagementPage />)
+
+    const dialog = await openEdit(user)
+    const address = within(dialog).getByLabelText(/^Server-Adresse/)
+    await user.clear(address)
+    await user.type(address, 'https://cloud-neu.rheinfurt.example')
+    await user.click(within(dialog).getByRole('button', { name: 'Weiter' }))
+
+    const preview = await within(dialog).findByTestId('profile-change-preview')
+    expect(preview).toHaveTextContent('Betroffen: 1 Bibliothek mit 2 Verbindungen.')
+    expect(preview).toHaveTextContent(/nimmt die Änderung für alle Bibliotheken an/)
+    expect(preview).toHaveTextContent(/Zugangsdaten aller Verbindungen verworfen/)
+    expect(preview).toHaveTextContent(/verwirft der Konnektor den Abgleichstand/)
+    expect(previews).toHaveLength(1)
+    expect(previews[0]).toMatchObject({ serverUrl: 'https://cloud-neu.rheinfurt.example' })
+    expect(sent).toHaveLength(0)
+
+    // a change after the preview withdraws it
+    await user.type(within(dialog).getByLabelText(/^Region/), 'eu')
+    expect(within(dialog).queryByTestId('profile-change-preview')).not.toBeInTheDocument()
+    expect(within(dialog).getByRole('button', { name: 'Weiter' })).toBeEnabled()
+  }, 20000)
+
+  it('names every library whose connector refuses the change and saves nothing', async () => {
+    const user = userEvent.setup()
+    const sent = capturePuts()
+    renderWithProviders(<ConnectionProfileManagementPage />, { withRouter: true })
+
+    const dialog = await openEdit(user)
+    await user.type(within(dialog).getByLabelText(/^Proxy/), 'proxy.invalid:8080')
+    await user.click(within(dialog).getByRole('button', { name: 'Weiter' }))
+
+    const refusals = await within(dialog).findByTestId('profile-change-rejections')
+    expect(refusals).toHaveTextContent(/lehnt die Änderung für 1 Bibliothek ab/)
+    expect(refusals).toHaveTextContent(
+      'Verbindung: Der Proxy proxy.invalid:8080 ist nicht erreichbar.',
+    )
+    expect(
+      within(refusals).getByRole('link', { name: 'Abgelehnte Bibliothek 1 öffnen' }),
+    ).toHaveAttribute('href', '/libraries/library-on-connection-profile-nextcloud-1')
+    expect(within(dialog).getByRole('button', { name: 'Speichern' })).toBeDisabled()
+    expect(sent).toHaveLength(0)
+  }, 20000)
+
+  it('explains a refusal that only arrives on saving and shows its reasons', async () => {
+    let asked = 0
+    server.use(
+      http.post('/api/v1/admin/connection-profiles/:profileId/impact', () => {
+        asked += 1
+        return HttpResponse.json({
+          connections: 2,
+          libraries: 1,
+          rejectedLibraries: asked === 1 ? 0 : 1,
+          rejections:
+            asked === 1
+              ? []
+              : [
+                  {
+                    libraryId: 'lib-wiki',
+                    category: 'SETTINGS',
+                    message: 'Die Edition einer Bibliothek ist nach der Anlage nicht änderbar.',
+                  },
+                ],
+          lastForProfileRequirement: false,
+        })
+      }),
+      http.put('/api/v1/admin/connection-profiles/:profileId', () =>
+        HttpResponse.json(
+          {
+            error: 'Der Konnektor lehnt die Änderung für 1 Bibliothek ab (Einstellungen).',
+            status: 400,
+            code: 'CONNECTION_PROFILE_CHANGE_REJECTED',
+          },
+          { status: 400 },
+        ),
+      ),
+    )
+    const user = userEvent.setup()
+    renderWithProviders(<ConnectionProfileManagementPage />, { withRouter: true })
+
+    const dialog = await openEdit(user)
+    await user.type(within(dialog).getByLabelText(/^Region/), 'eu')
+    await user.click(within(dialog).getByRole('button', { name: 'Weiter' }))
+    await within(dialog).findByTestId('profile-change-preview')
+    await user.click(within(dialog).getByRole('button', { name: 'Speichern' }))
+
+    expect(
+      await within(dialog).findByText(/^Nichts wurde gespeichert: Der Konnektor lehnt/),
+    ).toBeVisible()
+    expect(await within(dialog).findByTestId('profile-change-rejections')).toHaveTextContent(
+      'Einstellungen: Die Edition einer Bibliothek ist nach der Anlage nicht änderbar.',
+    )
+    expect(within(dialog).getByRole('button', { name: 'Speichern' })).toBeDisabled()
+  }, 20000)
+
+  it('saves a mere rename without a preview', async () => {
+    const user = userEvent.setup()
+    const sent = capturePuts()
+    renderWithProviders(<ConnectionProfileManagementPage />)
+
+    const dialog = await openEdit(user)
+    const name = within(dialog).getByLabelText(/^Name/)
+    await user.clear(name)
+    await user.type(name, 'Zugang Nextcloud Rathaus')
+    expect(within(dialog).queryByRole('button', { name: 'Weiter' })).not.toBeInTheDocument()
+    await user.click(within(dialog).getByRole('button', { name: 'Speichern' }))
+
+    await waitFor(() => expect(sent).toHaveLength(1))
   }, 20000)
 
   it('asks with the number of connections before disconnecting all of them', async () => {

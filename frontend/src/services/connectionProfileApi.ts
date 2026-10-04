@@ -21,6 +21,14 @@ export function needsConfirmation(err: unknown): boolean {
   return apiErrorCode(err) === CONFIRMATION_REQUIRED
 }
 
+/** The code of a change the connector refuses for at least one library on the profile. */
+export const CHANGE_REJECTED = 'CONNECTION_PROFILE_CHANGE_REJECTED'
+
+/** Whether `err` is the refusal of a change by the connector of a library on the profile. */
+export function changeRejected(err: unknown): boolean {
+  return apiErrorCode(err) === CHANGE_REJECTED
+}
+
 // Connection profiles ("Zugänge", #2160) - SYSTEM_ADMIN only. The client secret is write-only:
 // a response carries clientSecretSet, never the value.
 export async function listConnectionProfiles(): Promise<ConnectionProfileResponse[]> {
@@ -69,6 +77,25 @@ export async function getConnectionProfileImpact(
   try {
     const { data } = await client.get<ConnectionProfileImpactResponse>(
       `${ADMIN}/${profileId}/impact`,
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/**
+ * What `request` - the body of an update - would do to the libraries on the profile, changing
+ * nothing: the counts and every library whose connector refuses the change.
+ */
+export async function previewConnectionProfileChange(
+  profileId: string,
+  request: ConnectionProfileUpdateRequest,
+): Promise<ConnectionProfileImpactResponse> {
+  try {
+    const { data } = await client.post<ConnectionProfileImpactResponse>(
+      `${ADMIN}/${profileId}/impact`,
+      request,
     )
     return data
   } catch (err) {
@@ -132,14 +159,16 @@ export async function lockConnectorType(
 
 /**
  * The profiles a library of `sourceType` may be connected through - also the ones the caller may
- * not use, each with `creatable` and, where not, a notice naming who can change that.
+ * not use, each with `creatable` and, where not, a notice naming who can change that. With
+ * `libraryId` the managers of that library may ask without the right to create a library.
  */
 export async function listConnectionProfileOptions(
   sourceType: string,
+  libraryId?: string,
 ): Promise<ConnectionProfileOption[]> {
   try {
     const { data } = await client.get<ConnectionProfileOption[]>('/v1/connection-profiles', {
-      params: { sourceType },
+      params: libraryId ? { sourceType, libraryId } : { sourceType },
     })
     return data
   } catch (err) {
