@@ -212,14 +212,24 @@ class ModularArchitectureFixtureTest {
         .noneSatisfy(violation -> assertThat(violation).contains("PersonNumbers"));
   }
 
-  /** An intermediate step asks the exact counts; the one masking class may. */
+  /**
+   * An intermediate step asks the exact counts, another the log-only count; the one masking class
+   * and the one logging caller may.
+   */
   @Test
   void anExactPersonCountOutsideTheMaskIsReported() {
     Scenario scenario = new Scenario("connectedperson");
 
     assertThat(scenario.violations(ModularArchitecture::personNumbersLeaveOnlyMasked))
-        .singleElement(STRING)
-        .contains("profile.Impact.connectedAccounts", "countsAmong");
+        .hasSize(2)
+        .anySatisfy(
+            violation ->
+                assertThat(violation).contains("profile.Impact.connectedAccounts", "countsAmong"))
+        .anySatisfy(
+            violation ->
+                assertThat(violation)
+                    .contains("profile.ExpiredShare.expired", "countExpiredPersonSecrets"))
+        .noneSatisfy(violation -> assertThat(violation).contains("ConnectionLifecycleReconciler"));
   }
 
   /** library stores a connection past the sign-in; the account package and OAuth may. */

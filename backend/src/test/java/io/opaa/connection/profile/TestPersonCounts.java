@@ -21,6 +21,11 @@ public final class TestPersonCounts {
     return NUMBERS;
   }
 
+  /** The masking over {@code persons}. */
+  public static PersonNumbers numbersOver(PersonConnections persons) {
+    return new PersonNumbers(persons, new GroupSizeProperties(5));
+  }
+
   public static ProfileCounts of(long connected, long expired) {
     return NUMBERS.mask(new StateCounts(connected, expired));
   }
@@ -30,6 +35,11 @@ public final class TestPersonCounts {
     public Map<java.util.UUID, StateCounts> countsAmong(
         java.util.Collection<java.util.UUID> profileIds) {
       return Map.of();
+    }
+
+    @Override
+    public PersonTotals totalsOf(java.util.Collection<java.util.UUID> userIds) {
+      return new PersonTotals(0, 0);
     }
 
     @Override

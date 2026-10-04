@@ -83,6 +83,14 @@ public class SourceTransitions {
   }
 
   /**
+   * Whether a person's secret issued under {@code from} stands for another target under {@code to}
+   * - a changed default that binds the credentials, such as a share.
+   */
+  public boolean rebindsPersons(ConnectionProfile from, ConnectionProfile to) {
+    return !Objects.equals(effective.personTarget(from), effective.personTarget(to));
+  }
+
+  /**
    * {@code library} moving from {@code from} to {@code to} - empty for its own address, a profile
    * possibly not saved yet - at {@code address}. Its secret goes along only while {@code to} takes
    * one and its {@link SecretTarget} stays, and never when {@code discardSecret}; {@code

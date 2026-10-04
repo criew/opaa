@@ -226,12 +226,12 @@ public class ConnectionProfileService {
    * Replaces every editable field; {@code secret} {@code null} keeps the stored one, blank clears
    * it, anything else replaces it and lifts a rejection of the profile's own sign-in. A new
    * address, client id (for a service account key: another account in the key), tenant, scope list
-   * or sign-in method discards every secret held under the profile, a new binding the secrets it
-   * concerns, a changed default only the profile sets the run state of every library on it - each
-   * refused with 409 {@value #CONFIRMATION_REQUIRED} while there are such and {@code confirmed} is
-   * false. Every library whose effective configuration changes passes its connector first ({@code
-   * answers} given by {@link #check}); one refusal leaves profile and libraries unchanged (400
-   * {@value ChangeRejection#PROFILE_CHANGE_REJECTED}).
+   * or sign-in method discards every secret held under the profile and ends the persons'
+   * connections, a new binding the secrets it concerns, a changed default only the profile sets the
+   * run state of every library on it - each refused with 409 {@value #CONFIRMATION_REQUIRED} while
+   * there are such and {@code confirmed} is false. Every library whose effective configuration
+   * changes passes its connector first ({@code answers} given by {@link #check}); one refusal
+   * leaves profile and libraries unchanged (400 {@value ChangeRejection#PROFILE_CHANGE_REJECTED}).
    */
   @Transactional
   public ConnectionProfile update(
@@ -295,7 +295,7 @@ public class ConnectionProfileService {
               : ConnectionEndCause.REGISTRATION_CHANGED;
       secrets.discardAllUnder(id, cause);
       persons.endAllUnder(id, cause, caller.id());
-    } else if (change.dropsPersons()) {
+    } else if (change.dropsPersons() || change.rebindsPersons()) {
       persons.endAllUnder(id, ConnectionEndCause.PROFILE_CHANGED, caller.id());
     }
     for (Move move : change.moves()) {
@@ -430,11 +430,16 @@ public class ConnectionProfileService {
     }
     boolean dropsPersons =
         profile.getOwnership().admitsPersons() && !validated.ownership().admitsPersons();
+    boolean rebindsPersons =
+        profile.getOwnership().admitsPersons()
+            && !dropsPersons
+            && transitions.rebindsPersons(profile, candidate);
     return new ProfileChange(
         validated,
         addressChanged,
         registrationChanged,
         dropsPersons,
+        rebindsPersons,
         profile.getOwnership().admitsPersons(),
         connected.size(),
         moves,
@@ -695,6 +700,7 @@ public class ConnectionProfileService {
 
   /**
    * @param dropsPersons whether the new ownership no longer admits persons
+   * @param rebindsPersons whether persons' secrets stand for another target afterwards
    * @param forPersons whether the profile admitted persons before the change
    */
   private record ProfileChange(
@@ -702,6 +708,7 @@ public class ConnectionProfileService {
       boolean addressChanged,
       boolean registrationChanged,
       boolean dropsPersons,
+      boolean rebindsPersons,
       boolean forPersons,
       long connections,
       List<Move> moves,
@@ -714,7 +721,7 @@ public class ConnectionProfileService {
 
     /** Whether persons' connections end - told without saying whether there are any. */
     boolean personsConcerned() {
-      return forPersons && (discardsAll() || dropsPersons);
+      return forPersons && (discardsAll() || dropsPersons || rebindsPersons);
     }
 
     boolean discardsAll() {
