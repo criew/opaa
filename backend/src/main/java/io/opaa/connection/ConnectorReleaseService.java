@@ -152,9 +152,9 @@ public class ConnectorReleaseService {
   }
 
   /**
-   * The profiles a library of {@code type} may be connected through, each with the caller's say
-   * and whether she has a connected account on it. A profile for persons only is listed where she
-   * has one and {@code withPersonProfiles} holds - for her private library; never anything about
+   * The profiles a library of {@code type} may be connected through, each with the caller's say and
+   * whether she has a connected account on it. A profile for persons only is listed where she has
+   * one and {@code withPersonProfiles} holds - for her private library; never anything about
    * another person's account.
    */
   public List<ProfileOption> profileOptions(
@@ -178,7 +178,9 @@ public class ConnectorReleaseService {
               return new ProfileOption(
                   profile,
                   released,
-                  released ? null : CapabilityService.missingInScope(RELEASE, profileLabel(profile)),
+                  released
+                      ? null
+                      : CapabilityService.missingInScope(RELEASE, profileLabel(profile)),
                   ownAccount);
             })
         .toList();
@@ -254,8 +256,8 @@ public class ConnectorReleaseService {
       String notice) {}
 
   /**
-   * One selectable profile, whether the caller may create a library through it now, and whether
-   * she has a connected account of her own on it.
+   * One selectable profile, whether the caller may create a library through it now, and whether she
+   * has a connected account of her own on it.
    */
   public record ProfileOption(
       ConnectionProfile profile, boolean creatable, String notice, boolean ownAccount) {}

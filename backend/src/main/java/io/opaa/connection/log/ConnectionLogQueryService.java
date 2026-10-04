@@ -4,7 +4,9 @@ import io.opaa.api.types.ConnectionLogEventType;
 import io.opaa.audit.AuditAccessGate;
 import io.opaa.audit.AuditEventRecorder;
 import java.time.Instant;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
@@ -13,8 +15,9 @@ import org.springframework.stereotype.Service;
 
 /**
  * The only read path into the connection log, behind {@link AuditAccessGate}: role {@code AUDITOR},
- * mandatory reason, bounded time range and paging. Every call writes {@code
+ * mandatory reason, bounded time range and paging. Every call of {@link #find} writes {@code
  * CONNECTION_LOG_ACCESSED} into the audit log, the rejected attempt included. No filter by person.
+ * {@link #loggedProfiles} names profiles only; its caller checks the role.
  */
 @Service
 public class ConnectionLogQueryService {
@@ -67,6 +70,17 @@ public class ConnectionLogQueryService {
               gate.pageable(query.page(), query.size(), RECORDED_AT_ASC));
         });
   }
+
+  /** The profiles the organization's log names, by their last logged name, sorted by it. */
+  public List<LoggedProfile> loggedProfiles(UUID organizationId) {
+    return repository.findLoggedProfiles(organizationId).stream()
+        .map(row -> new LoggedProfile(row.getProfileId(), row.getName()))
+        .sorted(Comparator.comparing(LoggedProfile::name, String.CASE_INSENSITIVE_ORDER))
+        .toList();
+  }
+
+  /** One profile the log names, by the name of its newest entry. */
+  public record LoggedProfile(UUID profileId, String name) {}
 
   private static String str(Object value) {
     return value == null ? null : value.toString();
