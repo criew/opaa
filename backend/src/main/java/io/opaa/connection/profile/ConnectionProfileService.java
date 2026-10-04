@@ -261,6 +261,7 @@ public class ConnectionProfileService {
           secrets.discard(new LibraryOwned(library.getId()));
         }
       }
+      transitions.keepDefaults(move);
       libraries.save(library);
     }
     if (change.discardsAll()) {
@@ -472,6 +473,12 @@ public class ConnectionProfileService {
       throw new ValidationException("Scopes gehören nur zu OAuth und Client-Credentials");
     }
     ConnectorData settings = declaration.defaults().read(values.connectorSettings());
+    String proxy = proxyOf(values.sourceProxy());
+    if ((proxy != null || values.sourceInsecureSsl()) && !reachedOverHttp(serverUrl)) {
+      throw new ValidationException(
+          "Proxy und Zertifikatsprüfung gelten nur für eine Server-Adresse mit http:// oder"
+              + " https://");
+    }
     return new ConnectionProfileValues(
         name,
         serverUrl,
@@ -482,8 +489,13 @@ public class ConnectionProfileService {
         tenant,
         scopes,
         settings,
-        proxyOf(values.sourceProxy()),
+        proxy,
         values.sourceInsecureSsl());
+  }
+
+  /** Whether the normalised {@code serverUrl} is reached over HTTP, where proxy and TLS apply. */
+  private static boolean reachedOverHttp(String serverUrl) {
+    return serverUrl.startsWith("https://") || serverUrl.startsWith("http://");
   }
 
   /** A proxy in {@code host:port} form, {@code null} for none. */

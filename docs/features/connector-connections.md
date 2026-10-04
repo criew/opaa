@@ -208,6 +208,14 @@ Jeder Konnektor meldet, wie er zu Profilen steht:
 | **optional** | Profil oder freie Adresse | Webverzeichnis, RSS, Confluence, S3, Nextcloud, SMB (Server-Adresse `smb://…`), Google Drive |
 | **Pflicht** | nur mit Profil | Konnektoren mit OAuth oder Client-Credentials, etwa Dropbox, Exchange |
 
+Stand der Umsetzung (#2219): Webverzeichnis, RSS, Confluence, S3, Nextcloud und SMB melden
+„optional“, jeweils mit dem persönlichen Geheimnis der Bibliothek, Webverzeichnis und RSS zusätzlich
+ohne Anmeldung. Vorgaben am Profil: Confluence `edition`, S3 `region` und `pathStyle`. Ein
+SMB-Profil hat eine `smb://`-Adresse und weder Proxy noch ausgesetzte Zertifikatsprüfung; beides
+gibt es nur bei einer `http(s)`-Adresse. Google Drive meldet noch „verboten“ (#2220), die Besitzart
+Person folgt mit #2167. Die Registry prüft die Regel in beiden Richtungen: „verboten“ genau ohne
+entferntes Ziel oder bei Uploads, mit Google Drive als einziger Ausnahme bis #2220.
+
 **Google Drive** ([ADR-0040](../decisions/0040-google-drive-konnektor.md)) meldet sich mit einem
 Dienstkonto-Schlüssel an. Der Schlüssel enthält seine App-Registrierung selbst und kann deshalb
 auch ohne Profil an der Bibliothek liegen. Die Server-Adresse ist fest (`https://www.googleapis.com`),
@@ -446,7 +454,12 @@ verrät, ob überhaupt jemand verbunden ist. Eine Teilzahl (abgelaufene Konten) 
 weder sie noch ihr Rest unter N liegt; eine Änderung, die Geheimnisse verwirft, verlangt auf einem
 Zugang für Personen immer eine Bestätigung mit neutralem Text. Grenzen der Regel: Wer die Zahl über
 die Zeit beobachtet, sieht, wann sie N erreicht; und wer selbst eine Freigabe hat und sich verbindet,
-weiß, dass höchstens N−1 weitere Personen verbunden sind. Laufdaten und Kontingentnutzung nur zusammengefasst, Fehler nur als Kategorie ohne Inhaltsbezug (keine
+weiß, dass höchstens N−1 weitere Personen verbunden sind. Vor dem Deaktivieren oder Löschen eines
+Anmeldeanbieters sieht sie die **Wirkung** auf etwaige verbundene Konten (ruhen bzw. enden mit
+Beginn der Löschfrist), aber keine Zahl je Anbieter. Zahlen je Anbieter und je Zugang zählen dieselben
+Verbindungen und ließen sich gegeneinander verrechnen; selbst „mindestens N“ je Anbieter verriete,
+dass ein Zugang mit „weniger als N“ nicht leer ist. Bestätigt wird immer, sobald ein Zugang Personen
+zulässt. Laufdaten und Kontingentnutzung nur zusammengefasst, Fehler nur als Kategorie ohne Inhaltsbezug (keine
 Dateinamen, Betreffzeilen oder Pfade). Keine Liste, wer welches Konto verbunden hat.
 
 **Space-Zuordnung.** Die Besitzerin darf ihre private Bibliothek einem Space zuordnen. Das öffnet

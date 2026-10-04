@@ -31,9 +31,9 @@ von foundation, format und knowledge ab.
   in `source_credentials`, `source_webhook_secret`, am Zugang, im Token-Speicher; Antworten Ja/Nein.
 - **Jedes Ziel von Zugangsdaten leitet sich aus `sourceUrl` ab**, bei einem Zugang aus dessen
   Server-Adresse; was sie enger bindet (Freigabe, imitiertes Konto), meldet nur `credentialBinding`.
-  Ändert sich Ursprung oder Bindung, verwirft der Kern sie. Profilangabe: `ProfileDeclaration`.
+  Ändert sich Ursprung oder Bindung, verwirft der Kern sie. Profilangabe: `ProfileDeclaration`, „verboten“ genau ohne entferntes Ziel oder bei Uploads (Ausnahme: Dienstkonto-Schlüssel).
 - **Änderungen nur über `SourceChangeGate`**, auch Profiländerung, Zuordnen und Lösen; `stored` =
-  effektiv, `applyChange` = eigener Teil. `validateChange` hängt nur von seinen Argumenten ab.
+  effektiv, `applyChange` = eigener Teil. `validateChange` hängt nur von seinen Argumenten ab; Ziel nicht erreichbar oder Anmeldung abgelehnt lehnt er mit `SourceTargetRefusedException` ab.
 - **Der Laufrahmen ist `IndexingRunTemplate`:** Der Körper zählt nur die Quelle auf und meldet
   einen `ListingOutcome`; Fortschritt, Protokoll und Abgleich durch Abwesenheit besitzt der Rahmen.
 - **Dateiablagen** implementieren `FileStore` (mit Änderungsprotokoll auch `ChangeFeed`) aus

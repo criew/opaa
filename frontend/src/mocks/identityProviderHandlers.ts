@@ -1,5 +1,5 @@
 import { http, HttpResponse } from 'msw'
-import { mockOidcProviders } from './identityProviderFixtures'
+import { mockOidcProviderImpacts, mockOidcProviders } from './identityProviderFixtures'
 import type {
   OidcProviderOrderRequest,
   OidcProviderRequest,
@@ -17,6 +17,19 @@ function otherOidcProviders(providerId: string) {
 /** `acknowledgeLastProvider=true` aus der Anfrage (ADR-0033, Entscheidung 4). */
 function acknowledgesLastProvider(request: Request): boolean {
   return new URL(request.url).searchParams.get('acknowledgeLastProvider') === 'true'
+}
+
+/** Die 409 ohne `confirmConnections`, wo verbundene Konten möglich sind (ADR-0041, E. 4). */
+function unconfirmedConnections(providerId: string, request: Request) {
+  const confirmed = new URL(request.url).searchParams.get('confirmConnections') === 'true'
+  if (confirmed || !mockOidcProviderImpacts[providerId]?.confirmationRequired) return null
+  return HttpResponse.json(
+    {
+      error: 'Bestätigen Sie, was mit den verbundenen Konten geschieht (confirmConnections).',
+      code: 'PROVIDER_CONNECTIONS_CONFIRMATION_REQUIRED',
+    },
+    { status: 409 },
+  )
 }
 
 export const identityProviderHandlers = [
@@ -154,8 +167,24 @@ export const identityProviderHandlers = [
         { status: 409 },
       )
     }
+    const unconfirmed = unconfirmedConnections(provider.id, request)
+    if (unconfirmed) return unconfirmed
     mockOidcProviders.splice(mockOidcProviders.indexOf(provider), 1)
     return new HttpResponse(null, { status: 204 })
+  }),
+
+  http.get('/api/v1/admin/oidc-providers/:providerId/impact', ({ params }) => {
+    const providerId = String(params.providerId)
+    if (!mockOidcProviders.some((p) => p.id === providerId)) {
+      return HttpResponse.json({ error: 'Anbieter nicht gefunden' }, { status: 404 })
+    }
+    return HttpResponse.json(
+      mockOidcProviderImpacts[providerId] ?? {
+        confirmationRequired: false,
+        disableEffect: 'CONNECTIONS_REST',
+        deleteEffect: 'CONNECTIONS_END',
+      },
+    )
   }),
 
   http.post('/api/v1/admin/oidc-providers/:providerId/enable', ({ params }) => {
@@ -191,6 +220,8 @@ export const identityProviderHandlers = [
         { status: 409 },
       )
     }
+    const unconfirmed = unconfirmedConnections(provider.id, request)
+    if (unconfirmed) return unconfirmed
     provider.enabled = false
     disabledRegistryStates.set(provider.id, provider.registryState)
     provider.registryState = 'DISABLED'

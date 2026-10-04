@@ -1,9 +1,11 @@
 package io.opaa.directory.web;
 
 import io.opaa.api.dto.OidcClaimMappingDto;
+import io.opaa.api.dto.OidcProviderImpactResponse;
 import io.opaa.api.dto.OidcProviderRegistryState;
 import io.opaa.api.dto.OidcProviderRequest;
 import io.opaa.api.dto.OidcProviderResponse;
+import io.opaa.api.dto.ProviderConnectionsEffect;
 import io.opaa.auth.OidcClaimMapping;
 import io.opaa.auth.OidcProvider;
 import io.opaa.auth.OidcProviderRegistry;
@@ -79,5 +81,13 @@ final class OidcProviderResponseMapper {
         request.getClientId(),
         request.getJwkSetUri(),
         domainMapping);
+  }
+
+  /** The effects are fixed; only whether a confirmation is needed varies, never per account. */
+  static OidcProviderImpactResponse toImpactResponse(boolean confirmationRequired) {
+    return new OidcProviderImpactResponse()
+        .confirmationRequired(confirmationRequired)
+        .disableEffect(ProviderConnectionsEffect.CONNECTIONS_REST)
+        .deleteEffect(ProviderConnectionsEffect.CONNECTIONS_END);
   }
 }

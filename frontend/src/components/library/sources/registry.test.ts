@@ -45,9 +45,12 @@ describe('the source registry (ADR-0038)', () => {
     expect(new Set(keys).size).toBe(keys.length)
     expect(keys).toEqual([...keys].sort())
     expect([...keys].sort()).toEqual([...registeredSourceTypes].sort())
-    expect(mockSourceTypes.find((descriptor) => descriptor.type === 'SMB')?.profileSupport).toBe(
-      'FORBIDDEN',
-    )
+    const smb = mockSourceTypes.find((descriptor) => descriptor.type === 'SMB')
+    expect(smb?.profileSupport).toBe('OPTIONAL')
+    expect(smb?.serverAddress.schemes).toEqual(['smb'])
+    expect(
+      mockSourceTypes.find((descriptor) => descriptor.type === 'GOOGLE_DRIVE')?.profileSupport,
+    ).toBe('FORBIDDEN')
   })
 
   it('sends only the fields of the chosen type for the generic sources', () => {

@@ -28,8 +28,8 @@ seine Ports `SourceConnectionResolver` (`ProfileSourceConnectionResolver`) und `
 - **„Ruhend“/„deaktiviert“ werden abgeleitet;** `ConnectionLifecycleReconciler` hält nur den Beginn
   fest und beendet nur bei `DEACTIVATED`, je Person in eigener Transaktion (auch nach Commit). Eine
   getrennte Zeile bleibt, solange eine private Bibliothek daran hängt (Trigger).
-- **Die Verwaltung sieht verbundene Konten nur über `PersonNumbers`** („weniger als N“, auch bei 0
-  und für Teilzahlen); Kontoname verschlüsselt, nur für die Person.
+- **Die Verwaltung sieht verbundene Konten nur über `PersonNumbers`** („weniger als N“, auch bei 0,
+  für Teilzahlen; je Anbieter keine Zahl); Kontoname verschlüsselt, nur für die Person.
 - **Das Client-Secret ist schreibgeschützt;** Antworten und Audit sagen nur Ja/Nein.
 - **Ursprungsbindung:** Die Adresse einer zugeordneten Bibliothek liegt unter der Server-Adresse
   ihres Profils, sonst sperrt der Port. Eine neue Server-Adresse oder Registrierung verwirft alle
@@ -39,7 +39,7 @@ seine Ports `SourceConnectionResolver` (`ProfileSourceConnectionResolver`) und `
 - **Sperrgründe nur in `SourceBlocks`** (ob, warum, Text); Vorrang ist die Enum-Reihenfolge.
 - **Eine Zusammenführung:** `EffectiveSourceSettings` setzt Lauf, Änderung und Entwurf (`ofDraft`,
   auch `DraftOwner.PERSON`) zusammen; der Rahmen des Zugangs (`ProfileFrame`) überschreibt die
-  Bibliothek, abweichend ist `400`; Lösen schreibt den Rahmen ein.
+  Bibliothek, abweichend ist `400`; Lösen schreibt den Rahmen ein, eine entfallende Vorgabe geht in den eigenen Teil (`Move#keptDefaults`).
 - **Freigabe nur hier:** `ConnectorReleaseService` (Bibliothek) und `requireConnectable` (neues
   Konto) aus `CREATE_CONNECTOR_LIBRARY` und Sperren; ein Entzug stoppt nichts.
 - **Profilangabe nur über `ProfileRequirements`.** Eine Sperre blockiert `resolve`, nicht

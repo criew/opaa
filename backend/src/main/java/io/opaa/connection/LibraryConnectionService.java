@@ -181,6 +181,7 @@ public class LibraryConnectionService {
       // only the library's own secret: a person's is shared by every library on the account
       secrets.discard(new LibraryOwned(library.getId()));
     }
+    transitions.keepDefaults(move);
     effective.adoptFrame(library, profile);
     libraries.save(library);
     if (connection == null) {

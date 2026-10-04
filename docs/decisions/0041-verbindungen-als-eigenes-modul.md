@@ -400,6 +400,29 @@ Begründung:
   (Verbindungen und private Bibliotheken der nicht deaktivierten Konten des Anbieters, je maskiert).
   Die Anzeige in der Anbieterverwaltung (Spezifikation, API, Oberfläche) folgt.
 
+## Nachtrag vom 04.10.2026: Folgen in der Anbieterverwaltung (#2251)
+
+- **Wirkung statt Zahlen:** `GET /api/v1/admin/oidc-providers/{id}/impact` nennt vor dem
+  Deaktivieren oder Löschen nur, **ob** eine Bestätigung nötig ist, und **was** die Handlung
+  bewirkt (`CONNECTIONS_REST` bzw. `CONNECTIONS_END`). Eine Zahl je Anbieter nennt sie nicht.
+  Zahlen je Anbieter und je Zugang zählen dieselben Verbindungen und lassen sich deshalb
+  gegeneinander verrechnen. Selbst ein bloßes „mindestens N“ je Anbieter hebt die 0-Rundung der
+  Zugänge auf: Ein Anbieter mit „mindestens 5“ und zwei Zugänge mit je „weniger als 5“ zeigen, dass
+  jeder Zugang mindestens eine Verbindung hat. Damit weicht der Nachtrag von Entscheidung 4 („nennt
+  die Zahl der ruhenden Verbindungen“) bewusst ab. Der Port `auth.ProviderConnectionsImpact` sagt nur
+  noch, ob ein Zugang Personen zulässt.
+- **Bestätigung:** Deaktivieren und Löschen verlangen `confirmConnections=true`, sobald irgendein
+  Zugang Personen zulässt, unabhängig davon, ob jemand verbunden ist. Sonst antworten sie mit
+  `409 PROVIDER_CONNECTIONS_CONFIRMATION_REQUIRED` und einer neutralen deutschen Meldung über
+  „etwaige verbundene Konten“. Deaktivieren lässt ruhen und löscht nichts. Löschen löscht die
+  Geheimnisse sofort und unumkehrbar und startet die Löschfrist. Das gilt auch für den Schalter der
+  Zeile `LOCAL` über die Anbieter-API.
+- **Belegt** in `ProviderShutdownIntegrationTest` mit zwei Anbietern und zwei Zugängen:
+  Zugangsliste, Folgenabschätzung beider Zugänge und beider Anbieter lauten vor jeder Verbindung,
+  nach einer und nach zwei gleich.
+- **Offen:** Der Schalter der lokalen Kontenverwaltung unter Administration → Benutzer
+  (`updateLocalAuthSettings`) fragt nicht nach; dort ruhen die Verbindungen nur.
+
 ## Referenzen
 
 - [connector-connections.md](../features/connector-connections.md)
