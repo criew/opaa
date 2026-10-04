@@ -15,9 +15,11 @@ import io.opaa.indexing.source.SourceConnector;
 import io.opaa.indexing.source.SourceConnectorDescriptor;
 import io.opaa.indexing.source.SourceListing;
 import io.opaa.indexing.source.SourceSettings;
+import io.opaa.indexing.source.SourceSyncStateRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.SourceType;
 import java.util.List;
+import java.util.Map;
 import org.springframework.stereotype.Component;
 
 /**
@@ -25,8 +27,9 @@ import org.springframework.stereotype.Component;
  * personal secret is a user name and a password, owned by a library or a person. Its sign-in takes
  * only the password {@link #ACCEPTED_PASSWORD}; any other is rejected as a provider would. A {@code
  * share} setting, of the library or as the profile's default, binds its secret, as a file server
- * does. Its listing names one folder for the accepted password, and it refuses a change onto {@link
- * #REFUSED_HOST} with a reason naming a folder.
+ * does; the {@link #REALM} only the profile sets binds nothing, and a change of it discards the run
+ * state. Its listing names one folder for the accepted password, and it refuses a change onto
+ * {@link #REFUSED_HOST} with a reason naming a folder.
  */
 @Component
 public class PersonProbeSourceConnector implements SourceConnector, SourceBrowser {
@@ -45,6 +48,15 @@ public class PersonProbeSourceConnector implements SourceConnector, SourceBrowse
   /** The one folder its listing names. */
   public static final String LISTED_FOLDER = "ablage";
 
+  /** The default only the profile sets; it binds no secret. */
+  public static final String REALM = "realm";
+
+  private final SourceSyncStateRepository states;
+
+  public PersonProbeSourceConnector(SourceSyncStateRepository states) {
+    this.states = states;
+  }
+
   @Override
   public SourceConnectorDescriptor descriptor() {
     return SourceConnectorDescriptor.remoteRun(TYPE, "Testquelle für Personen")
@@ -56,12 +68,14 @@ public class PersonProbeSourceConnector implements SourceConnector, SourceBrowse
                         ConnectionOwnership.LIBRARY,
                         ConnectionOwnership.PERSON))
                 .withAddress(ServerAddressRule.schemes("https"))
-                .withDefaults(DefaultKey.text("share", "Freigabe")));
+                .withDefaults(
+                    DefaultKey.text("share", "Freigabe"),
+                    DefaultKey.text(REALM, "Bereich").onlyOnProfile()));
   }
 
   @Override
   public java.util.Set<String> settingsKeys() {
-    return java.util.Set.of("share");
+    return java.util.Set.of("share", REALM);
   }
 
   @Override
@@ -76,6 +90,21 @@ public class PersonProbeSourceConnector implements SourceConnector, SourceBrowse
     Object share =
         settings.connectorSettings() == null ? null : settings.connectorSettings().get("share");
     return share == null ? null : share.toString();
+  }
+
+  @Override
+  public Map<String, Object> settingsState(KnowledgeLibrary library, ConnectorData stored) {
+    Object realm = stored == null ? null : stored.get(REALM);
+    return realm == null ? Map.of() : Map.of(REALM, realm);
+  }
+
+  /** A changed realm makes the next run a full one, as a changed imitated account does. */
+  @Override
+  public void onSourceChanged(
+      KnowledgeLibrary library, boolean addressChanged, java.util.Set<String> changedSettings) {
+    if (addressChanged || changedSettings.contains(REALM)) {
+      states.deleteByLibraryId(library.getId());
+    }
   }
 
   @Override

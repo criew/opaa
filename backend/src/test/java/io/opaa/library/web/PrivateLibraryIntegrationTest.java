@@ -16,6 +16,7 @@ import io.opaa.indexing.source.SourceBlock;
 import io.opaa.indexing.source.SourceBlock.Reason;
 import io.opaa.indexing.source.SourceConnectionBlockedException;
 import io.opaa.indexing.source.SourceConnectionResolver;
+import io.opaa.indexing.source.profileprobe.PersonProbeIndexingExecutor;
 import io.opaa.indexing.source.profileprobe.PersonProbeSourceConnector;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.organization.Organization;
@@ -61,6 +62,7 @@ class PrivateLibraryIntegrationTest {
   @Autowired private KnowledgeLibraryRepository libraryRepository;
   @Autowired private SourceConnectionResolver resolver;
   @Autowired private LibraryDiagnosticsLockService diagnosticsLocks;
+  @Autowired private PersonProbeIndexingExecutor executor;
 
   private final List<UUID> libraries = new ArrayList<>();
   private final List<UUID> profiles = new ArrayList<>();
@@ -474,7 +476,106 @@ class PrivateLibraryIntegrationTest {
                 .value("Besitzerin der Bibliothek bzw. Systemverwaltung"));
   }
 
+  /**
+   * A changed default only the profile sets counts and waits for the shared libraries alone: a
+   * private one is told to the administration in no number and no refusal, even while it runs. Its
+   * run state is discarded like theirs and stays discarded once its run ends; its owner is told.
+   */
+  @Test
+  void aRunningPrivateLibraryNeitherCountsInNorHoldsUpAFullSyncOfItsProfile() throws Exception {
+    UUID both = profile("BOTH", SERVER, "eins");
+    connect("dev-user", both).andExpect(status().isOk());
+    UUID library = idOf(body(create(both, "").andExpect(status().isCreated())));
+    UUID shared = sharedLibraryOn(both);
+    PersonProbeIndexingExecutor.Hold hold = executor.holdNextRun(library);
+    // the test context runs a triggered run on the caller's thread
+    java.util.concurrent.CompletableFuture<Void> running =
+        java.util.concurrent.CompletableFuture.runAsync(
+            () -> {
+              try {
+                mockMvc
+                    .perform(as("dev-user", post(LIBRARIES + "/" + library + "/indexing")))
+                    .andExpect(status().isAccepted());
+              } catch (Exception e) {
+                throw new IllegalStateException(e);
+              }
+            });
+    hold.awaitEntered();
+    assertThat(syncStates(library)).isEqualTo(1);
+    String change =
+        "{\"name\": \"%s\", \"serverUrl\": \"%s\", \"authMethod\": \"PERSONAL_SECRET\","
+                .formatted(profileName(both), SERVER)
+            + " \"ownership\": \"BOTH\", \"connectorSettings\": {\"realm\": \"zwei\"}%s}";
+
+    try {
+      mockMvc
+          .perform(
+              as("dev-admin", post(PROFILES + "/" + both + "/impact"))
+                  .content(change.formatted("")))
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.fullSyncLibraries").value(1));
+      mockMvc
+          .perform(as("dev-admin", put(PROFILES + "/" + both)).content(change.formatted("")))
+          .andExpect(status().isConflict())
+          .andExpect(jsonPath("$.code").value("CONNECTION_PROFILE_CONFIRMATION_REQUIRED"))
+          .andExpect(
+              jsonPath("$.error")
+                  .value(org.hamcrest.Matchers.containsString("von 1 Bibliothek wird")));
+      mockMvc
+          .perform(
+              as("dev-admin", put(PROFILES + "/" + both))
+                  .content(change.formatted(", \"confirmDiscard\": true")))
+          .andExpect(status().isOk());
+    } finally {
+      hold.release();
+    }
+
+    running.get(30, java.util.concurrent.TimeUnit.SECONDS);
+    await()
+        .atMost(Duration.ofSeconds(20))
+        .untilAsserted(
+            () ->
+                mockMvc
+                    .perform(as("dev-user", get(LIBRARIES + "/" + library + "/indexing/status")))
+                    .andExpect(jsonPath("$.status").value("COMPLETED")));
+    assertThat(syncStates(library)).as("the run state the change discarded").isZero();
+    assertThat(profileOf(library)).isEqualTo(both);
+    assertThat(fullSyncNotices(owner, library)).isEqualTo(1);
+    assertThat(fullSyncNotices(admin, shared)).isEqualTo(1);
+  }
+
   // -------------------------------------------------------------------------------------------
+
+  /** A shared library of the administration on {@code profile}, with its own secret. */
+  private UUID sharedLibraryOn(UUID profile) throws Exception {
+    ResultActions result =
+        mockMvc.perform(
+            as("dev-admin", post(LIBRARIES))
+                .content(
+                    """
+                    {"name": "Geteilte Ablage", "sourceType": "PERSON_PROBE",
+                     "connectionProfileId": "%s", "sourceUrl": "%s/geteilt",
+                     "sourceCredentials": "geteilt:%s"}
+                    """
+                        .formatted(profile, SERVER, PASSWORD)));
+    UUID id = idOf(body(result.andExpect(status().isCreated())));
+    libraries.add(id);
+    return id;
+  }
+
+  private int syncStates(UUID library) {
+    return jdbc.queryForObject(
+        "SELECT count(*) FROM source_sync_state WHERE library_id = ?", Integer.class, library);
+  }
+
+  private int fullSyncNotices(UUID recipient, UUID library) {
+    return jdbc.queryForObject(
+        "SELECT count(*) FROM notifications WHERE type = 'SOURCE_FULL_SYNC_FORCED'"
+            + " AND recipient_user_id = ? AND object_id = ?",
+        Integer.class,
+        recipient,
+        library);
+  }
 
   private UUID createdPrivateLibrary() throws Exception {
     return idOf(
@@ -554,7 +655,14 @@ class PrivateLibraryIntegrationTest {
   }
 
   private UUID profile(String ownership, String serverUrl) throws Exception {
+    return profile(ownership, serverUrl, null);
+  }
+
+  /** A profile of the probe, with {@code realm} as its default only it sets or none. */
+  private UUID profile(String ownership, String serverUrl, String realm) throws Exception {
     String name = "Zugang " + ownership + " " + UUID.randomUUID();
+    String defaults =
+        realm == null ? "" : ", \"connectorSettings\": {\"realm\": \"" + realm + "\"}";
     String body =
         body(
             mockMvc
@@ -563,9 +671,9 @@ class PrivateLibraryIntegrationTest {
                         .content(
                             """
                             {"name": "%s", "sourceType": "PERSON_PROBE", "serverUrl": "%s",
-                             "authMethod": "PERSONAL_SECRET", "ownership": "%s"}
+                             "authMethod": "PERSONAL_SECRET", "ownership": "%s"%s}
                             """
-                                .formatted(name, serverUrl, ownership)))
+                                .formatted(name, serverUrl, ownership, defaults)))
                 .andExpect(status().isCreated()));
     UUID id = idOf(body);
     profiles.add(id);
