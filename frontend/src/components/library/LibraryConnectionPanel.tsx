@@ -2,21 +2,21 @@ import { useState } from 'react'
 import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
-import type { SourceTypeKey } from '../../types/api'
+import type { ConnectionProfileRef, SourceTypeKey } from '../../types/api'
 import { useSourceTypes } from '../../hooks/useSourceTypes'
 import { confirmAction } from '../../stores/confirmStore'
 import { useLibraryStore } from '../../stores/libraryStore'
 import { notify } from '../../stores/notificationStore'
-import LibraryConnectionDialog from './LibraryConnectionDialog'
+import LibraryConnectionDialog, { type ConnectableLibrary } from './LibraryConnectionDialog'
 
 interface LibraryConnectionPanelProps {
   libraryId: string
   sourceType: SourceTypeKey
-  connectionProfile?: { id: string; name: string } | null
+  /** Address, settings and whether a secret is held - what a switch is tested with. */
+  library: ConnectableLibrary
+  connectionProfile?: ConnectionProfileRef | null
   /** The library's profile was deleted ("Zugang entfernt") - not the same as an own address. */
   connectionProfileRemoved?: boolean
-  /** Whether the library holds a secret now. */
-  credentialsStored?: boolean
   /** Opens „Quelle bearbeiten“ - after a switch that discarded the secret. */
   onEditSource: () => void
   /** Whether the dialog to connect or switch is open - also opened from the notices above. */
@@ -32,9 +32,9 @@ interface LibraryConnectionPanelProps {
 export default function LibraryConnectionPanel({
   libraryId,
   sourceType,
+  library,
   connectionProfile,
   connectionProfileRemoved = false,
-  credentialsStored = false,
   onEditSource,
   dialogOpen,
   onDialogOpenChange,
@@ -106,9 +106,9 @@ export default function LibraryConnectionPanel({
           open={dialogOpen}
           onClose={() => onDialogOpenChange(false)}
           libraryId={libraryId}
+          library={library}
           descriptor={descriptor}
           current={current}
-          credentialsStored={credentialsStored}
           onEditSource={onEditSource}
         />
       )}

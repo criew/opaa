@@ -465,6 +465,10 @@ opaa:
     # FILESYSTEM/HTTP_DIRECTORY/RSS_FEED connectors), not only the upload endpoint. Default 10 GiB.
     # 0 or negative disables the quota entirely - see LibraryProperties#quotaBytes.
     quota-bytes: ${OPAA_LIBRARY_QUOTA_BYTES:10737418240}
+  connection:
+    # Without a sign-in for this many days a person's connections rest (ADR-0041); 30-365, a value
+    # outside fails the start - see ConnectionLifecycleProperties.
+    inactivity-threshold-days: ${OPAA_CONNECTION_INACTIVITY_THRESHOLD_DAYS:90}
   external-access:
     # #1731: longest admissible Befristung of a library's release for Fremdzugaenge, and how many
     # days before it ends the responsible person is reminded by mail. 0 reminder days switches the

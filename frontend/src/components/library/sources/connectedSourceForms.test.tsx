@@ -4,6 +4,8 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderWithProviders } from '../../../test/test-utils'
 import type {
+  SourceBrowseRequest,
+  SourceBrowseResponse,
   SourceConnectionTestRequest,
   SourceConnectionTestResponse,
   SourceTypeKey,
@@ -12,16 +14,20 @@ import { sourceRegistration } from './registry'
 import { withConnection, withoutFixed, type SourceConnection } from './sourceConnection'
 import type { SourceFormContext } from './types'
 
-const { mockTestLibrarySource } = vi.hoisted(() => ({
+const { mockTestLibrarySource, mockBrowseSource } = vi.hoisted(() => ({
   mockTestLibrarySource:
     vi.fn<(request: SourceConnectionTestRequest) => Promise<SourceConnectionTestResponse>>(),
+  mockBrowseSource:
+    vi.fn<
+      (sourceType: SourceTypeKey, request: SourceBrowseRequest) => Promise<SourceBrowseResponse>
+    >(),
 }))
 
 vi.mock('../../../services/libraryApi', async () => {
   const actual = await vi.importActual<typeof import('../../../services/libraryApi')>(
     '../../../services/libraryApi',
   )
-  return { ...actual, testLibrarySource: mockTestLibrarySource }
+  return { ...actual, testLibrarySource: mockTestLibrarySource, browseSource: mockBrowseSource }
 })
 
 /** Renders a registered form the way the wizard does: under a profile, fixed fields kept. */
@@ -63,6 +69,7 @@ describe('source forms under a connection profile', () => {
   beforeEach(() => {
     mockTestLibrarySource.mockReset()
     mockTestLibrarySource.mockResolvedValue({ reachable: true, message: 'erreichbar' })
+    mockBrowseSource.mockReset()
   })
 
   it('prefills the address, drops the secret field for a profile without sign-in and tests through the profile', async () => {
@@ -189,6 +196,75 @@ describe('source forms under a connection profile', () => {
         expect.objectContaining({ connectionProfileId: 'profile-wiki' }),
       ),
     )
+  })
+
+  it('shows proxy and certificate check of the profile read-only and tests without them', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(
+      <Connected
+        sourceType="HTTP_DIRECTORY"
+        connection={{
+          profileId: 'profile-intranet',
+          name: 'Intranet',
+          serverUrl: 'https://intranet.example',
+          authMethod: 'NONE',
+          defaults: {},
+          proxy: 'proxy.intranet.example:3128',
+          insecureSsl: true,
+        }}
+      />,
+    )
+
+    const proxy = screen.getByLabelText(/Proxy/)
+    expect(proxy).toHaveValue('proxy.intranet.example:3128')
+    expect(proxy).toHaveAttribute('readonly')
+    expect(
+      screen.getByText('Proxy und Zertifikatsprüfung gibt der Zugang „Intranet“ vor.'),
+    ).toBeVisible()
+    expect(screen.getByRole('switch', { name: 'Zertifikatsprüfung aussetzen' })).toBeDisabled()
+    await user.click(screen.getByRole('button', { name: 'Verbindung testen' }))
+
+    await waitFor(() => expect(mockTestLibrarySource).toHaveBeenCalledTimes(1))
+    const [request] = mockTestLibrarySource.mock.calls[0]
+    expect(request.sourceProxy).toBeUndefined()
+    expect(request.sourceInsecureSsl).toBe(false)
+    expect(request.connectionProfileId).toBe('profile-intranet')
+  })
+
+  it('tests and lists Confluence without the edition the profile sets', async () => {
+    mockTestLibrarySource.mockResolvedValue({
+      reachable: true,
+      credentialsVerified: true,
+      message: 'Anmeldung erfolgreich.',
+    })
+    mockBrowseSource.mockResolvedValue({ complete: true, entries: [] })
+    const user = userEvent.setup()
+    renderWithProviders(
+      <Connected
+        sourceType="CONFLUENCE"
+        connection={{
+          profileId: 'profile-wiki',
+          name: 'Wiki intern',
+          serverUrl: 'https://wiki.example',
+          authMethod: 'PERSONAL_SECRET',
+          defaults: { edition: 'DATA_CENTER' },
+          proxy: 'proxy.wiki.example:3128',
+        }}
+      />,
+    )
+
+    await user.type(screen.getByLabelText(/^Personal Access Token/), 'pat')
+    await user.click(screen.getByRole('button', { name: 'Verbindung testen' }))
+
+    await waitFor(() => expect(mockBrowseSource).toHaveBeenCalledTimes(1))
+    const [test] = mockTestLibrarySource.mock.calls[0]
+    expect(test.sourceSettings).toEqual({})
+    expect(test.sourceProxy).toBeUndefined()
+    expect(test.sourceInsecureSsl).toBe(false)
+    const [, listing] = mockBrowseSource.mock.calls[0]
+    expect(listing.query).toEqual({})
+    expect(listing.sourceProxy).toBeUndefined()
+    expect(listing.connectionProfileId).toBe('profile-wiki')
   })
 
   it('derives no endpoint from the region under a profile, even with a provider template behind it', async () => {
