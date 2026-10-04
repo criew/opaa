@@ -12,6 +12,7 @@ import TableRow from '@mui/material/TableRow'
 import Typography from '@mui/material/Typography'
 import VpnKeyOutlinedIcon from '@mui/icons-material/VpnKeyOutlined'
 import type {
+  ConnectionProfileImpactResponse,
   ConnectionProfileRequestResponse,
   ConnectionProfileResponse,
   ConnectorTypeStateResponse,
@@ -33,11 +34,13 @@ import AreaPageHeader from '../components/AreaPageHeader'
 import ConnectionProfileFormDialog from '../components/admin/connections/ConnectionProfileFormDialog'
 import ConnectorTypeLockSection from '../components/admin/connections/ConnectorTypeLockSection'
 import ConnectionProfileRequestSection from '../components/admin/connections/ConnectionProfileRequestSection'
+import ConnectionLogRetentionSection from '../components/admin/connections/ConnectionLogRetentionSection'
 import { confirmLock } from '../components/admin/connections/connectorLock'
 import {
   AUTH_METHOD_LABELS,
   OWNERSHIP_LABELS,
 } from '../components/admin/connections/connectionProfileLabels'
+import { admitsPersons, personCountLabel } from '../components/admin/connections/profileChange'
 import { contentWidth } from '../theme/tokens'
 
 /** "31.03.2027" for an ISO date, read as a calendar day without a time zone shift. */
@@ -55,6 +58,23 @@ function isPast(isoDate: string) {
 
 function connectionCount(count: number) {
   return count === 1 ? '1 Verbindung' : `${count} Verbindungen`
+}
+
+/** What the persons with a connected account learn and have to do after a shutdown. */
+function personsNotice(profile: ConnectionProfileResponse): string {
+  return admitsPersons(profile.ownership)
+    ? ' Personen mit verbundenem Konto werden benachrichtigt und müssen ihr Konto selbst neu verbinden.'
+    : ''
+}
+
+/** The persons' accounts a shutdown or deletion cuts off, as rounded as the API gives them. */
+function accountsClause(
+  profile: ConnectionProfileResponse,
+  impact: ConnectionProfileImpactResponse,
+): string {
+  return admitsPersons(profile.ownership)
+    ? `, verbundene Konten von Personen: ${personCountLabel(impact.connectedAccounts)}`
+    : ''
 }
 
 /**
@@ -139,7 +159,7 @@ export default function ConnectionProfileManagementPage() {
       const impact = await getConnectionProfileImpact(profile.id)
       const confirmed = await confirmAction({
         question: `Alle Verbindungen von „${profile.name}“ trennen?`,
-        consequence: `Betroffen: ${connectionCount(impact.connections)}. Alle Zugangsdaten werden sofort verworfen. Der Zugang bleibt bestehen; die Bibliotheken laufen erst wieder, wenn ihre Zugangsdaten neu eingetragen sind.`,
+        consequence: `Betroffen: ${connectionCount(impact.connections)}${accountsClause(profile, impact)}. Alle Zugangsdaten werden sofort verworfen. Der Zugang bleibt bestehen; die Bibliotheken laufen erst wieder, wenn ihre Zugangsdaten neu eingetragen sind.${personsNotice(profile)}`,
         confirmLabel: 'Alle trennen',
         tone: 'danger',
       })
@@ -181,7 +201,7 @@ export default function ConnectionProfileManagementPage() {
       const impact = await getConnectionProfileImpact(profile.id)
       const confirmed = await confirmAction({
         question: `Zugang „${profile.name}“ löschen?`,
-        consequence: `Betroffen: ${connectionCount(impact.connections)}; sie werden getrennt. Die Bibliotheken bleiben mit ihrem Inhalt und dem Hinweis „Zugang entfernt“ stehen und laufen nicht mehr, bis sie einem anderen Zugang zugeordnet sind.`,
+        consequence: `Betroffen: ${connectionCount(impact.connections)}${accountsClause(profile, impact)}; sie werden getrennt. Die Bibliotheken bleiben mit ihrem Inhalt und dem Hinweis „Zugang entfernt“ stehen und laufen nicht mehr, bis sie einem anderen Zugang zugeordnet sind.`,
         confirmLabel: 'Löschen',
         tone: 'danger',
       })
@@ -254,6 +274,8 @@ export default function ConnectionProfileManagementPage() {
                 <TableCell>Server-Adresse</TableCell>
                 <TableCell>Anmeldung</TableCell>
                 <TableCell>Verbindungen</TableCell>
+                <TableCell>Verbundene Konten</TableCell>
+                <TableCell>Davon abgelaufen</TableCell>
                 <TableCell align="right">Aktionen</TableCell>
               </TableRow>
             </TableHead>
@@ -294,6 +316,8 @@ export default function ConnectionProfileManagementPage() {
                     </Typography>
                   </TableCell>
                   <TableCell>{profile.connectionCount}</TableCell>
+                  <TableCell>{personCountLabel(profile.connectedAccountCount)}</TableCell>
+                  <TableCell>{personCountLabel(profile.expiredConnectionCount)}</TableCell>
                   <TableCell align="right">
                     <Stack
                       direction="row"
@@ -342,6 +366,14 @@ export default function ConnectionProfileManagementPage() {
             </TableBody>
           </Table>
         )}
+        {!loading && profiles.length > 0 && (
+          <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 1 }}>
+            Verbundene Konten zählen die Konten von Personen auf einem Zugang, verbundene und
+            abgelaufene. Kleine Zahlen erscheinen nur als „weniger als …“, damit keine Zahl auf
+            einzelne Personen schließen lässt; „nicht ausgewiesen“ steht dort, wo schon die Zahl der
+            abgelaufenen Konten das täte.
+          </Typography>
+        )}
 
         <Box sx={{ mt: 4 }}>
           <ConnectionProfileRequestSection
@@ -361,6 +393,10 @@ export default function ConnectionProfileManagementPage() {
             }
             onChanged={reload}
           />
+        </Box>
+
+        <Box sx={{ mt: 4 }}>
+          <ConnectionLogRetentionSection />
         </Box>
 
         <ConnectionProfileFormDialog

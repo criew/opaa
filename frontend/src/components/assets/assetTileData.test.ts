@@ -43,4 +43,18 @@ describe('tileFromCatalogEntry', () => {
     ).toBe('Gesperrt – Inhalt wird nicht mehr aktualisiert (zuständig: Verwaltende der Bibliothek)')
     expect(tileFromCatalogEntry(libraryEntry(null)).note).toBeNull()
   })
+
+  it('names the new reasons of a connected account in the short form of the tile', () => {
+    const note = (reason: SourceBlock['reason'], responsible: string) =>
+      tileFromCatalogEntry(libraryEntry({ reason, responsible, notice: '…' })).note
+    expect(note('EXPIRED', 'Besitzerin der Bibliothek')).toBe(
+      'Anmeldung abgelaufen – Inhalt wird nicht mehr aktualisiert (zuständig: Besitzerin der Bibliothek)',
+    )
+    expect(note('DORMANT', 'Besitzerin der Bibliothek bzw. Systemverwaltung')).toBe(
+      'Ruhend – Inhalt wird nicht aktualisiert (zuständig: Besitzerin der Bibliothek bzw. Systemverwaltung)',
+    )
+    expect(note('OWNER_DEACTIVATED', 'Systemverwaltung')).toBe(
+      'Konto deaktiviert – Inhalt wird nach Ablauf der Löschfrist gelöscht (zuständig: Systemverwaltung)',
+    )
+  })
 })

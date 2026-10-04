@@ -10,6 +10,8 @@ import { userHandlers } from './userHandlers'
 import { groupHandlers } from './groupHandlers'
 import { modelHandlers } from './modelHandlers'
 import { connectionProfileHandlers } from './connectionProfileHandlers'
+import { connectedAccountHandlers } from './connectedAccountHandlers'
+import { connectionLogHandlers } from './connectionLogHandlers'
 import { identityProviderHandlers } from './identityProviderHandlers'
 import { searchAdminHandlers } from './searchAdminHandlers'
 import { diagnosticAccessHandlers } from './diagnosticAccessHandlers'
@@ -52,6 +54,8 @@ export const handlers = [
   ...groupHandlers,
   ...modelHandlers,
   ...connectionProfileHandlers,
+  ...connectedAccountHandlers,
+  ...connectionLogHandlers,
   ...identityProviderHandlers,
   ...searchAdminHandlers,
   ...diagnosticAccessHandlers,
