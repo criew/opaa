@@ -63,9 +63,13 @@ class PrivateLibraryIntegrationTest {
   @Autowired private SourceConnectionResolver resolver;
   @Autowired private LibraryDiagnosticsLockService diagnosticsLocks;
   @Autowired private PersonProbeIndexingExecutor executor;
+  @Autowired private io.opaa.connection.account.ConnectedAccountService accounts;
+  @Autowired private io.opaa.library.PrivateLibraryCreation privateCreation;
+  @Autowired private io.opaa.permission.GroupSizeProperties groupSize;
 
   private final List<UUID> libraries = new ArrayList<>();
   private final List<UUID> profiles = new ArrayList<>();
+  private final List<UUID> extraUsers = new ArrayList<>();
   private UUID owner;
   private UUID admin;
   private UUID forPersons;
@@ -99,6 +103,12 @@ class PrivateLibraryIntegrationTest {
       jdbc.update("DELETE FROM connection_profiles WHERE id = ?", profile);
     }
     profiles.clear();
+    for (UUID extra : extraUsers) {
+      jdbc.update("DELETE FROM asset_ownership_history WHERE owner_user_id = ?", extra);
+      jdbc.update("DELETE FROM audit_log WHERE object_id = ?", extra.toString());
+      jdbc.update("DELETE FROM users WHERE id = ?", extra);
+    }
+    extraUsers.clear();
   }
 
   @Test
@@ -474,6 +484,66 @@ class PrivateLibraryIntegrationTest {
 
     assertThat(profileOf(library)).isEqualTo(forPersons);
     assertThat(releaseNotices(library)).isZero();
+  }
+
+  /**
+   * The refused private libraries of a profile are a part of the organization's: told exactly only
+   * where both their owners and the owners of every other private library reach the minimum group
+   * size. Five owners on the profile, one of them with a second library elsewhere: the number would
+   * be set off against the index status and point at that one person, so it is not told.
+   */
+  @Test
+  void refusedPrivateLibrariesAreNotToldWhereTheRestRestsOnFewOwners() throws Exception {
+    UUID elsewhere = profile("PERSON", SERVER);
+    List<io.opaa.auth.CurrentUser> persons = new ArrayList<>();
+    for (int index = 0; index < groupSize.minimumGroupSize(); index++) {
+      UUID person = UUID.randomUUID();
+      jdbc.update(
+          "INSERT INTO users (id, subject, issuer, email, display_name, organization_id,"
+              + " last_login_at) VALUES (?, ?, 'opaa-dev', ?, 'Besitzerin', ?, now())",
+          person,
+          "besitzerin-" + person,
+          "besitzerin-" + person + "@example.com",
+          Organization.DEFAULT_ID);
+      extraUsers.add(person);
+      io.opaa.auth.CurrentUser caller =
+          io.opaa.auth.CurrentUser.of(
+              person, Organization.DEFAULT_ID, io.opaa.api.types.SystemRole.USER, "Besitzerin");
+      accounts.connect(caller, forPersons, "person" + index, PASSWORD);
+      libraries.add(privateCreation.create(privateOn(forPersons), caller));
+      persons.add(caller);
+    }
+    accounts.connect(persons.getFirst(), elsewhere, "person0", PASSWORD);
+    libraries.add(privateCreation.create(privateOn(elsewhere), persons.getFirst()));
+    String change =
+        "{\"name\": \"%s\", \"serverUrl\": \"https://%s\", \"authMethod\": \"PERSONAL_SECRET\","
+            + " \"ownership\": \"PERSON\"}";
+
+    mockMvc
+        .perform(
+            as("dev-admin", post(PROFILES + "/" + forPersons + "/impact"))
+                .content(
+                    change.formatted(
+                        profileName(forPersons), PersonProbeSourceConnector.REFUSED_HOST)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.rejectedPrivateLibraries").doesNotExist());
+  }
+
+  private io.opaa.library.LibraryCreation privateOn(UUID profile) {
+    return new io.opaa.library.LibraryCreation(
+        "Ablage " + UUID.randomUUID(),
+        null,
+        null,
+        null,
+        PersonProbeSourceConnector.TYPE,
+        null,
+        java.net.URI.create(SERVER + "/ablage"),
+        null,
+        null,
+        null,
+        null,
+        null,
+        profile);
   }
 
   @Test
