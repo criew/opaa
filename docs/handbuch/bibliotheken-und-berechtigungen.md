@@ -892,7 +892,7 @@ Gruppen, die Vollmachten und die Nachfolgevorgänge — die drei Letzten tragen 
 was mit einer Systemrolle geschah, steht allein im Nachweisprotokoll.
 
 **Die Stichtagsauskunft ist eine Funktion der Revision** und steht ihr unter **Revision →
-Rechtehistorie** offen. Sie beantwortet eine Frage: „Wer durfte dieses Objekt an diesen Tagen
+Stichtagsauskunft** offen. Sie beantwortet eine Frage: „Wer durfte dieses Objekt an diesen Tagen
 lesen?" Fünf Schutzregeln gehören dazu:
 
 - **Genau ein benanntes Objekt je Abfrage** — eine Bibliothek oder ein Raum, über Objektart und
@@ -925,11 +925,14 @@ Verbindungen zu einem Zugang gedacht, und zwar für drei Besitzarten: die persö
 Person (verbundenes Konto), die Quellverbindung einer Bibliothek (Dienstkonto, „Quelle verbinden“)
 und eine Verbindung, die der Zugang selbst hält. Festgehalten werden Verbinden, Neuverbinden,
 Trennen, Ablauf, Notabschaltung und Löschung, bei der Notabschaltung ein Eintrag je betroffener
-Verbindung. **Heute schreibt noch kein Vorgang hinein:** Die Einträge kommen mit den verbundenen
-Konten und dem Verbinden von Quellen (#2163). Das Protokoll ist angelegt, lesbar und wird nach Frist
-gelöscht, bleibt aber bis dahin leer. Insbesondere schreibt die heutige Notabschaltung eines Zugangs
-(„Alle Verbindungen trennen“, [Indexierung](indexierung.md), „Zugänge“) keinen Eintrag; sie steht im
-Nachweisprotokoll — ebenso wie Anlegen, Ändern, Sperren und Löschen eines Zugangs.
+Verbindung. **Heute schreiben nur die verbundenen Konten hinein**
+([Benutzerverwaltung](benutzerverwaltung.md), Abschnitt 12): Verbinden, Neuverbinden und Trennen durch
+die Person, der Ablauf, wenn der Anbieter die Zugangsdaten ablehnt, und das Ende durch eine Handlung
+der Systemverwaltung am Zugang — Notabschaltung, geänderte Server-Adresse oder App-Registrierung,
+geänderte Vorgabe, Löschen des Zugangs —, je ein Eintrag für jede betroffene Verbindung. Für die
+Quellverbindungen von Bibliotheken entstehen noch keine Einträge; ihre Notabschaltung steht wie
+Anlegen, Ändern, Sperren und Löschen eines Zugangs im Nachweisprotokoll. Solange niemand ein Konto
+verbunden hat, bleibt das Protokoll leer.
 
 - **Inhalt:** wer gehandelt hat, wessen Verbindung es ist, welcher Zugang (mit dem Namen, den er zu
   dem Zeitpunkt trug), welches Ereignis, wann und — bei jedem Ende — warum: selbst getrennt,
@@ -961,8 +964,20 @@ Nachweisprotokoll — ebenso wie Anlegen, Ändern, Sperren und Löschen eines Zu
   zurückzuholen — sichtbar im Systemkatalog, aber nicht verschlossen. Vollständig gilt der Schutz
   erst, wenn die Eigentümerrolle außerhalb des Anwendungskontos eingerichtet wird.
 
-Eine Ansicht in der Oberfläche gibt es noch nicht; gelesen wird über die Programmierschnittstelle
-(`GET /api/v1/audit/connection-log`), die Frist über `GET`/`PUT /api/v1/admin/connection-log/retention`.
+**Ansicht:** Die Revision liest das Protokoll unter **Revision → Verbindungsprotokoll**. Pflicht sind
+Zeitraum (von, bis) und Anlass; eingrenzen lässt es sich nach Ereignis und nach Zugang. Zur Wahl der
+Zugänge stehen die, die in den bisherigen Abfragen seit dem Öffnen der Seite vorkamen, denn eine Liste aller Zugänge
+liest die Revision nicht. Die Tabelle zeigt je Eintrag Zeit, Ereignis, Anlass des Endes, Besitzart,
+bei einer persönlichen Verbindung das Pseudonym der Person und bei einer Quellverbindung Bibliothek
+und Kontoadresse, den Zugang und wer ausgelöst hat — „System“ für ein Ereignis ohne handelnde Person.
+Geblättert wird seitenweise, solange es weitere Einträge gibt. Eine leere Antwort sagt, dass Einträge
+erst mit verbundenen Konten entstehen.
+
+**Frist:** Die Systemverwaltung stellt die Aufbewahrungsfrist unter **Administration → Zugänge** im
+Abschnitt „Verbindungsprotokoll“ ein, innerhalb der Grenzen aus Abschnitt 15. Die Rückfrage vor dem
+Speichern sagt, ob mit dem nächsten täglichen Lauf gelöscht wird (Verkürzung) oder die längere Frist
+sofort gilt (Verlängerung); eine Frist außerhalb der Grenzen nimmt die Maske nicht an. Lesen kann die
+Systemverwaltung das Protokoll dort nicht.
 
 ## 13. Lebenszyklus: Ausscheiden, Übertragung, „Nachfolge offen"
 
@@ -1163,7 +1178,7 @@ eingebaut.
 | `OPAA_SUCCESSION_DETECTION_CRON` | **stündlich** (`0 5 * * * *`) | Spring-Cron, sechs Felder | Wann der Feststellungslauf hinsieht. Er schreibt nur Erstfeststellung und Ende eines Vorgangs; der Zustand selbst ist abgeleitet und gilt auch ohne ihn — ohne den Lauf fehlt den Einträgen nur das Alter |
 | Aufbewahrungshöchstdauer der Rechtehistorie | **36 Monate** | 12 bis 120 Monate | Wie lange ein beendeter Zeitraum nach seinem Ende liegen bleibt; eine Verwaltungseinstellung, keine Umgebungsvariable ([Suche](suche.md), Abschnitt 8.4). Jede Änderung ist ein Protokollereignis |
 | Aufbewahrungsfrist des Nachweisprotokolls | **36 Monate** | 12 bis 120 Monate | Verwaltungseinstellung; ihr folgen auch die abgeschlossenen Nachfolgevorgänge samt Sichtungsvermerken (Abschnitt 13.3). Eine Verkürzung wirkt mit dem nächsten Monatslauf, und zwar vollständig; eine Verlängerung wirkt sofort, holt aber Gelöschtes nicht zurück |
-| Aufbewahrungsfrist des Verbindungsprotokolls | **12 Monate** | 6 bis 24 Monate | Verwaltungseinstellung der Systemverwaltung (Programmierschnittstelle, eine Maske gibt es noch nicht); einen Wert außerhalb der Grenzen weist sie ab, und die Datenbank erzwingt sie zusätzlich. Jede Änderung ist ein Protokollereignis. Eine Verkürzung wirkt mit dem nächsten täglichen Lauf vollständig; eine Verlängerung wirkt sofort, holt aber Gelöschtes nicht zurück |
+| Aufbewahrungsfrist des Verbindungsprotokolls | **12 Monate** | 6 bis 24 Monate | Verwaltungseinstellung der Systemverwaltung unter Administration → Zugänge, Abschnitt „Verbindungsprotokoll“; einen Wert außerhalb der Grenzen weist sie ab, und die Datenbank erzwingt sie zusätzlich. Jede Änderung ist ein Protokollereignis. Eine Verkürzung wirkt mit dem nächsten täglichen Lauf vollständig; eine Verlängerung wirkt sofort, holt aber Gelöschtes nicht zurück |
 | Obergrenze einer Übertragung | **500 Zeilen** | fest | Mehr bewegt eine Übertragung nicht; darüber wird sie abgelehnt und in mehreren Schritten gefahren (Abschnitt 13.2) |
 | Gültigkeit einer Übertragungsvorschau | **30 Minuten** | fest | Danach wird gegen einen frischen Stand neu gerechnet, statt eine alte Vorschau anzuwenden |
 

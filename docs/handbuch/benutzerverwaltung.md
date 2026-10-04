@@ -6,6 +6,8 @@
 > Zustand und Ablauf — was sich an ihnen ändern lässt, sagen die Abschnitte 6 und 7.
 > Einrichtung des Anmeldewegs, Erststart, Umgebungsvariablen und E-Mail-Versand stehen im Kapitel
 > [Deployment](deployment.md); hier geht es um die täglichen Abläufe.
+> Abschnitt 12, „Verbundene Konten“, gilt für jedes Konto, auch für Konten eines
+> Identitätsanbieters.
 
 ## 1. Wann diese Verwaltung gebraucht wird
 
@@ -401,7 +403,94 @@ Ohne Anmeldung, wenn der Fluss eingeschaltet ist:
 
 Ein Konto eines Identitätsanbieters sieht keinen dieser Punkte; sein Passwort verwaltet der Anbieter.
 
-## 12. Regeln und Fristen
+## 12. Verbundene Konten
+
+Unter **Einstellungen → Verbundene Konten** hinterlegt eine Person ihre **eigenen Zugangsdaten** für
+einen Zugang, etwa ein App-Passwort für eine Nextcloud. Das gilt für jedes Konto, ob lokal oder von
+einem Identitätsanbieter. OPAA nutzt ein verbundenes Konto nur für die privaten Bibliotheken der
+Person; deren Inhalt ist, was sie beim Anbieter selbst sehen darf. Einen Zugang, auf dem Personen
+Konten verbinden können, legt die Systemverwaltung mit der Besitzart „Person“ oder „Bibliothek und
+Person“ an und gibt ihn frei ([Indexierung](indexierung.md), „Zugänge“). **Heute lässt noch kein
+mitgelieferter Konnektor die Besitzart „Person“ zu; die Seite bietet in einer Installation deshalb
+noch keinen Zugang zum Verbinden an (#2167).**
+
+**Das Verbinden ist freiwillig.** Niemand muss ein Konto verbinden, und ein Verzicht hat keine
+Nachteile: Nichts in OPAA setzt ein verbundenes Konto voraus oder fordert dazu auf. Auch diese Seite
+erklärt nur, wozu es dient.
+
+### Was die Seite zeigt
+
+**Ihre verbundenen Konten** — jede bestehende Verbindung der Person, auch zu einem Zugang, der für
+sie nicht mehr freigegeben ist. Je Verbindung: der Zugang, der eigene Kontoname beim Anbieter (wie
+eingegeben, nur für die Person selbst sichtbar), die Anmeldeart, seit wann verbunden, die eigenen
+Bibliotheken, die die Verbindung nutzen, und der Zustand:
+
+| Anzeige | Bedeutung | Was die Person tun kann |
+|---|---|---|
+| **Verbunden** | Die Zugangsdaten sind hinterlegt und gültig | Neu verbinden (etwa nach einem Passwortwechsel beim Anbieter), Trennen |
+| **Abgelaufen** | Der Anbieter hat die Zugangsdaten abgelehnt, oder sie sind abgelaufen. Der Inhalt der Bibliotheken bleibt durchsuchbar, wird aber nicht aktualisiert | Neu verbinden, Trennen |
+| **Getrennt** | Die Zugangsdaten sind gelöscht. Die Zeile bleibt nur, solange eine private Bibliothek daran hängt; diese ruht | Verbinden |
+| Zusatz **„Nicht mehr freigegeben“** | Die Systemverwaltung hat die Freigabe des Zugangs entzogen. Die Verbindung läuft weiter und lässt sich trennen und neu verbinden; ein neues Konto auf diesem Zugang ist nicht mehr möglich | wie oben |
+| Zusatz **„Zugang gesperrt“** | Die Systemverwaltung hat den Zugang oder seine Quellart gesperrt. Neu verbinden geht erst nach der Aufhebung | nur Trennen |
+
+Wo es etwas zu sagen gibt, steht unter der Verbindung ein Hinweis, der die **zuständige Stelle**
+nennt und sagt, **was mit dem Inhalt geschieht**. Ein **ruhendes** Konto (lange keine Anmeldung oder
+abgeschalteter Anmeldeweg) zeigt sich nicht hier, sondern an den Bibliotheken: Mit der nächsten
+Anmeldung geht es ohne Neuverbinden weiter.
+
+**Weitere Zugänge** — die Zugänge, auf denen die Person jetzt ein Konto verbinden kann: Besitzart
+„Person“, für sie freigegeben und nicht gesperrt.
+
+**Warum fehlt mein Zugang?** — sagt, wer Zugänge anlegt und freigibt, und nennt die zuständige
+Stelle. Das ist der Weg, wenn ein Zugang fehlt; einen toten Knopf gibt es nicht.
+
+### Verbinden und neu verbinden
+
+Das Formular richtet sich allein nach der Anmeldeart des Zugangs: entweder ein Feld **„App-Passwort
+oder Token“** oder **Benutzername** und **„Passwort oder App-Passwort“**. OPAA meldet sich damit
+zuerst beim Anbieter an und speichert die Zugangsdaten nur, wenn die Anmeldung gelingt, verschlüsselt
+und nie wieder angezeigt. Das Passwortfeld wird nach jedem Absenden geleert; beim Neuverbinden ist
+der zuletzt eingegebene Benutzername vorbelegt.
+
+| Meldung | Ursache |
+|---|---|
+| „Die Anmeldung wurde nicht angenommen: …“ | Der Anbieter hat die Zugangsdaten abgelehnt oder war nicht erreichbar; der Text nennt, was der Anbieter meldet. Nichts wurde gespeichert |
+| „Dieser Zugang ist für Sie nicht freigegeben …“ | Ein neues Konto auf einem Zugang ohne Freigabe |
+| „Der Zugang ist gesperrt …“ | Zugang oder Quellart sind gesperrt; Trennen geht weiterhin |
+| „… keine Zugangsdaten speichern kann …“ | Der Installation fehlt der Schlüssel für Zugangsdaten ([Deployment](deployment.md#zugangsdaten-verschlüsselung)); zuständig ist die Systemverwaltung |
+
+**Neu verbinden** einer bestehenden Verbindung zählt nicht als neues Konto und geht deshalb auch
+nach Entzug der Freigabe, nur nicht bei gesperrtem Zugang. Läuft eine Verbindung ab, erhält die
+Person die Benachrichtigung „Verbindung abgelaufen“; ein Klick darauf führt auf diese Seite.
+
+### Trennen
+
+**Trennen geht immer**, auch ohne Freigabe und bei gesperrtem Zugang, und **löscht die
+Zugangsdaten sofort**. Die Rückfrage nennt die eigenen Bibliotheken auf der Verbindung: Sie ruhen
+danach, ihr Inhalt bleibt durchsuchbar und wird nicht mehr aktualisiert, bis die Person das Konto
+wieder verbindet. Nutzt keine Bibliothek die Verbindung, verschwindet sie aus der Liste; war der
+Zugang nicht mehr freigegeben, sagt die Rückfrage, dass danach kein neues Verbinden möglich ist.
+
+### Was die Verwaltung sieht
+
+Die Systemverwaltung sieht **keine Liste der Personen**, nur je Zugang die Zahl der verbundenen und
+der abgelaufenen Konten, und kleine Zahlen nur gerundet ([Indexierung](indexierung.md), „Zugänge“).
+Wann wer verbunden, getrennt oder neu verbunden hat, steht im Verbindungsprotokoll, das nur die
+Revision liest, und zwar mit Pseudonym statt Namen
+([Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), Abschnitt 12).
+
+### Lange Abwesenheit oder Versetzung
+
+- **Abwesenheit** beendet nichts. Nach längerer Zeit ohne Anmeldung ruhen die Verbindungen einer
+  Person; es wird nichts gelöscht, und mit der nächsten Anmeldung geht es ohne Neuverbinden weiter.
+- **Versetzung oder Gruppenwechsel** ändern an bestehenden Verbindungen nichts. Entzieht die
+  Systemverwaltung dabei die Freigabe eines Zugangs, läuft die Verbindung weiter und trägt den
+  Hinweis „Nicht mehr freigegeben“. Wer die Inhalte in der neuen Funktion nicht mehr braucht, trennt
+  die Verbindung selbst.
+- **Abgelaufene Zugangsdaten** nach der Rückkehr, etwa weil das App-Passwort beim Anbieter
+  zurückgezogen wurde: „Neu verbinden“ mit neuen Zugangsdaten.
+
+## 13. Regeln und Fristen
 
 Die Karte „Lokale Anmeldung" unter Administration → Benutzer → Einstellungen führt die Regeln, die für alle lokalen
 Konten gelten. Sie wirken ab der nächsten Anwendung, nicht rückwirkend auf bestehende Passwörter.
@@ -424,7 +513,7 @@ nicht. Die Eingabemasken zeigen die Regel an und bieten „Sicheres Passwort erz
 > Sonderzeichen zählen mehrfach; eine sehr lange Passphrase aus Sonderzeichen kann deshalb vor der
 > Zeichengrenze abgewiesen werden. Die Eingabemaske sagt das im Feldfehler.
 
-## 13. Was es hier nicht gibt
+## 14. Was es hier nicht gibt
 
 - **Keinen zweiten Faktor.** Lokale Konten melden sich mit Adresse und Passwort an. Für lokale
   Systemverwalterkonten lässt sich stattdessen der Zugang auf bestimmte Netze begrenzen; das Kapitel

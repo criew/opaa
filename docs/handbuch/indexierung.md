@@ -398,9 +398,23 @@ sichtbar. Das Formular richtet sich nach der Quellart:
   sich ein Zugang nicht speichern; das Formular sagt das, statt die Vorgaben zu verwerfen.
 
 Die Liste zeigt je Zugang Quellart, Server-Adresse, Anmeldeart, Besitzart und die Zahl der
-Verbindungen, dazu einen Hinweis, wenn das Client-Secret bald abläuft. „Alle Verbindungen trennen“
-und „Löschen“ nennen vor der Bestätigung die Zahl der Betroffenen, ebenso eine Änderung, die
-Geheimnisse verwirft. Solange die Angaben der Quellart beim Bearbeiten eines Zugangs noch geladen
+Verbindungen von Bibliotheken, dazu einen Hinweis, wenn das Client-Secret bald abläuft. Zwei weitere
+Spalten zählen die **verbundenen Konten** von Personen auf dem Zugang
+([Benutzerverwaltung](benutzerverwaltung.md), Abschnitt 12):
+
+| Spalte | Zählt | Darstellung |
+|---|---|---|
+| **Verbundene Konten** | die Konten von Personen auf dem Zugang, verbundene und abgelaufene | genau ab der Mindestgruppengröße, darunter — auch bei null — nur „weniger als N“ |
+| **Davon abgelaufen** | die abgelaufenen unter ihnen | wie oben; „nicht ausgewiesen“, wo die Zahl zusammen mit der Gesamtzahl auf weniger Personen als die Mindestgruppengröße schließen ließe |
+
+Die Seite zeigt die Zahlen genau so, wie OPAA sie liefert, und rechnet nichts daraus: „weniger als N“
+unterscheidet null nicht von einer kleinen Zahl, und keine Anzeige, kein Hinweistext und keine
+Rückfrage nennt eine genauere Zahl oder die Personen. „Alle Verbindungen trennen“ und „Löschen“
+nennen vor der Bestätigung die Zahl der betroffenen Verbindungen und, in derselben Rundung, der
+verbundenen Konten; eine Änderung, die Geheimnisse verwirft, nennt vorher die Zahl der Betroffenen.
+Unter der Liste stellt die
+Systemverwaltung im Abschnitt **„Verbindungsprotokoll“** dessen Aufbewahrungsfrist ein
+([Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), Abschnitt 12). Solange die Angaben der Quellart beim Bearbeiten eines Zugangs noch geladen
 werden, sagt das Formular das und lässt noch nicht speichern.
 
 #### Einen Zugang wählen, zuordnen, wechseln, lösen
