@@ -33,12 +33,12 @@ von foundation, format und knowledge ab.
 - **Jedes Ziel von Zugangsdaten leitet sich aus `sourceUrl` ab**, bei einem Zugang aus dessen
   Server-Adresse; ein Ursprungswechsel verwirft sie (`SourceOriginMatcher`). Ein Ziel nur in
   `source_settings` verlangt bei Änderung neue Zugangsdaten. Profilangabe: `ProfileDeclaration`.
+- **Änderungen nur über `SourceChangeGate`;** `stored` = effektiv, `applyChange` = eigener Teil.
 - **Der Laufrahmen ist `IndexingRunTemplate`:** Der Körper zählt nur die Quelle auf und meldet
   einen `ListingOutcome`; Fortschritt, Protokoll und Abgleich durch Abwesenheit besitzt der Rahmen.
 - **Dateiablagen** implementieren `FileStore` (mit Änderungsprotokoll auch `ChangeFeed`) aus
   `indexing.filesync`; Abgleich und Änderungslauf besitzt `FileSync`. Tests: `FileStoreContract`.
-- **Push-Adapter** (`confluence.webhook`, `s3.events`) liegen über ihrem Konnektor, erreicht über
-  einen eigenen Port (`ConfluencePushReceiver`, `S3PushReceiver`).
+- **Push-Adapter** (`confluence.webhook`, `s3.events`) über ihrem Konnektor, je eigener Port.
 - **Netzzugriff:** HTTP (auch WebDAV) über `io.opaa.sourceaccess`, S3 über `io.opaa.s3`, SMB nur
   über `smb.SmbShareClient`. Testdoppel: `S3TestFixture`, `FakeNextcloudServer`, `SambaFixture`.
 

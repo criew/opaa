@@ -18,8 +18,8 @@ public interface SourceBrowser {
    * @param settings the effective connection - the request's, or the stored library's where the
    *     same-origin rule lets it stand in - with the listing's own parameters as its connector
    *     settings
-   * @param stored the connector settings of the stored library the listing is for, {@code null}
-   *     before one exists
+   * @param stored the effective connector settings of the stored library the listing is for, {@code
+   *     null} before one exists
    */
   record Query(SourceSettings settings, ConnectorData stored) {}
 }

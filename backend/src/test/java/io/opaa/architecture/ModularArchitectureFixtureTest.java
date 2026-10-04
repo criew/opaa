@@ -199,6 +199,44 @@ class ModularArchitectureFixtureTest {
         .anySatisfy(violation -> assertThat(violation).contains("CapabilityService.scopesOf("));
   }
 
+  /** library calls two hooks itself, also through an implementation; the gate may. */
+  @Test
+  void aConnectorChangeHookCalledOutsideTheGateIsReported() {
+    Scenario scenario = new Scenario("changegate");
+
+    assertThat(
+            scenario.violations(ModularArchitecture::onlyTheChangeGateCallsTheConnectorChangeHooks))
+        .hasSize(2)
+        .allSatisfy(violation -> assertThat(violation).contains("library.LibraryUpdate"))
+        .anySatisfy(violation -> assertThat(violation).contains("SourceConnector.validateChange("))
+        .anySatisfy(violation -> assertThat(violation).contains("ProbeConnector.onSourceChanged("));
+  }
+
+  /** library reads the secret, also by method reference; knowledge and the store may. */
+  @Test
+  void theLibrarySecretReadOutsideTheStoreIsReported() {
+    Scenario scenario = new Scenario("librarysecret");
+
+    assertThat(scenario.violations(ModularArchitecture::theLibrarySecretIsReadInOnePlace))
+        .hasSize(2)
+        .allSatisfy(
+            violation ->
+                assertThat(violation)
+                    .contains("library.LibraryAdministration", "getSourceCredentials"));
+  }
+
+  /** library asks the store directly instead of the port; connections may. */
+  @Test
+  void theSecretStoreUsedOutsideConnectionsIsReported() {
+    Scenario scenario = new Scenario("librarysecret");
+
+    assertThat(scenario.violations(ModularArchitecture::theSecretStoreIsUsedOnlyInConnections))
+        .isNotEmpty()
+        .allSatisfy(
+            violation ->
+                assertThat(violation).contains("library.SecretShortcut", "ConnectionSecrets"));
+  }
+
   /** The answer path holds the secret port; the core and the library administration may. */
   @Test
   void theSecretPortHeldOutsideTheCoreIsReported() {

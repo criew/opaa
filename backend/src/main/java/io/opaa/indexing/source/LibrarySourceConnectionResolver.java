@@ -31,10 +31,7 @@ public class LibrarySourceConnectionResolver implements SourceConnectionResolver
   public SourceSettings resolve(KnowledgeLibrary library) {
     SourceSettings stored = stored(library);
     return signing(library)
-        .map(
-            connector ->
-                stored.withSourceCredentials(
-                    tokens.forConnector(connector, stored, stored.connectorSettings())))
+        .map(connector -> stored.withCredentials(signed(connector, stored)))
         .orElse(stored);
   }
 
@@ -45,13 +42,18 @@ public class LibrarySourceConnectionResolver implements SourceConnectionResolver
   }
 
   @Override
-  public String currentCredentials(KnowledgeLibrary library) {
+  public Secret currentSecret(KnowledgeLibrary library) {
     Optional<SourceConnector> signing = signing(library);
     if (signing.isEmpty()) {
-      return library.getSourceCredentials();
+      return Secret.personal(library.getSourceCredentials());
     }
-    SourceSettings stored = stored(library);
-    return tokens.forConnector(signing.get(), stored, stored.connectorSettings());
+    return signed(signing.get(), stored(library));
+  }
+
+  /** The access token the core signs with the stored key, {@code null} without a key. */
+  private Secret signed(SourceConnector connector, SourceSettings stored) {
+    String token = tokens.forConnector(connector, stored, stored.connectorSettings());
+    return token == null ? null : new Secret(SecretKind.ACCESS_TOKEN, token);
   }
 
   private Optional<SourceConnector> signing(KnowledgeLibrary library) {
@@ -61,14 +63,16 @@ public class LibrarySourceConnectionResolver implements SourceConnectionResolver
             connector -> connector.descriptor().profileDeclaration().serviceAccountKey() != null);
   }
 
-  private static SourceSettings stored(KnowledgeLibrary library) {
+  /** The library's own fields; a stored secret of a signing connector is its key. */
+  private SourceSettings stored(KnowledgeLibrary library) {
     return new SourceSettings(
         library.getSourcePath(),
         library.getSourceUrl(),
         library.getSourceProxy(),
         library.getSourceCredentials(),
         library.isSourceInsecureSsl(),
-        ConnectorData.storedIn(library));
+        ConnectorData.storedIn(library),
+        signing(library).isPresent() ? SecretKind.SERVICE_ACCOUNT_KEY : null);
   }
 
   @Override
