@@ -19,6 +19,7 @@ describe('formatMetadataLine', () => {
     cited: true,
     indexedAt: null,
     citationValid: true,
+    privateSource: false,
   }
 
   test('is undefined without a list or with an empty one', () => {
@@ -70,6 +71,7 @@ function source(
     cited,
     indexedAt: null,
     citationValid: true,
+    privateSource: false,
     documentId,
   }
 }
@@ -296,6 +298,7 @@ describe('describeEvidenceSummary', () => {
     cited,
     indexedAt: null,
     citationValid: true,
+    privateSource: false,
   })
 
   test('counts cited passages and the further checked sources', () => {

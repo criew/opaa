@@ -9,6 +9,7 @@ import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import { alpha } from '@mui/material/styles'
 import CloseIcon from '@mui/icons-material/Close'
+import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
 import ReportProblemOutlinedIcon from '@mui/icons-material/ReportProblemOutlined'
 import SearchIcon from '@mui/icons-material/Search'
 import type { CitationIndex } from './citations'
@@ -66,6 +67,8 @@ interface EvidenceDoc {
   indexedAt?: string | null
   /** Present when the source's library was not updated when the answer was given. */
   freeze?: SourceFreeze | null
+  /** The source came from one of the caller's private libraries. */
+  privateSource: boolean
   sourceEntryUrl?: string | null
   /** #739/#747: the original's document id - openable via GET /documents/{id}/content for every
    *  sourceType (that endpoint proxies HTTP_DIRECTORY/RSS_FEED server-side since #747). Undefined
@@ -189,6 +192,7 @@ export default function SourceEvidenceDrawer({
       sourceIndex: doc.sourceIndex,
       indexedAt: doc.source?.indexedAt,
       freeze: doc.source?.freeze ?? null,
+      privateSource: doc.source?.privateSource === true,
       sourceEntryUrl: doc.source?.sourceEntryUrl,
       documentId: doc.source?.documentId,
       sourceType: doc.source?.sourceType,
@@ -208,6 +212,7 @@ export default function SourceEvidenceDrawer({
       sourceIndex: citations.sourceIndexByReference.get(source) ?? Number.MAX_SAFE_INTEGER,
       indexedAt: source.indexedAt,
       freeze: source.freeze ?? null,
+      privateSource: source.privateSource === true,
       sourceEntryUrl: source.sourceEntryUrl,
       documentId: source.documentId,
       sourceType: source.sourceType,
@@ -389,6 +394,22 @@ export default function SourceEvidenceDrawer({
                     <Typography component="span" sx={{ fontSize: 10.5, color: 'text.secondary' }}>
                       geprüft, nicht zitiert
                     </Typography>
+                  )}
+                  {doc.privateSource && (
+                    <Box
+                      component="span"
+                      data-testid="source-private"
+                      title="Aus Ihrer privaten Bibliothek – nur Sie sehen diese Quelle"
+                      sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5, flex: 'none' }}
+                    >
+                      <LockOutlinedIcon
+                        aria-hidden
+                        sx={{ fontSize: 12, color: 'text.secondary' }}
+                      />
+                      <Typography component="span" sx={{ fontSize: 10.5, color: 'text.secondary' }}>
+                        Private Quelle
+                      </Typography>
+                    </Box>
                   )}
                   {!doc.citationValid && (
                     // #697 review, Befund 2: reiner Text in warning.main unterschreitet auf heller
