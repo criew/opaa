@@ -4,6 +4,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import io.opaa.audit.AuditEventRecorder;
+import io.opaa.connection.token.ConnectionSecrets;
+import io.opaa.connection.token.TestSecrets;
 import io.opaa.indexing.source.ServiceAccountTokens;
 import io.opaa.indexing.source.SourceConnectorRegistry;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
@@ -32,7 +34,7 @@ public final class TransitionWiring {
     ObjectProvider<SourceConnectorRegistry> provider = mock(ObjectProvider.class);
     when(provider.getObject()).thenReturn(registry);
     ConnectorTypePolicyRepository policies = mock(ConnectorTypePolicyRepository.class);
-    this.secrets = new ConnectionSecrets(connections, libraries);
+    this.secrets = TestSecrets.overLibraries(connections, libraries);
     this.effective =
         new EffectiveSourceSettings(
             connections,

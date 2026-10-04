@@ -1,0 +1,108 @@
+databaseChangeLog:
+  - changeSet:
+      id: connections-2026-10-04-token-store
+      author: opaa
+      comment: "Connected accounts and the token store (#2163, ADR-0041): a person's connection to a profile, and the encrypted secrets of persons and libraries, each row bound to its profile and to the target it was issued for. A private library goes only onto a profile for persons on which its owner has a connected account."
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              CREATE TABLE connected_accounts (
+                  id uuid NOT NULL,
+                  organization_id uuid NOT NULL,
+                  user_id uuid NOT NULL,
+                  profile_id uuid NOT NULL,
+                  state character varying(16) NOT NULL,
+                  ended_cause character varying(30),
+                  account_label_ciphertext text,
+                  connected_at timestamp with time zone NOT NULL,
+                  reconnected_at timestamp with time zone,
+                  expired_at timestamp with time zone,
+                  version bigint NOT NULL,
+                  CONSTRAINT connected_accounts_pkey PRIMARY KEY (id),
+                  CONSTRAINT ux_connected_accounts_user_profile UNIQUE (user_id, profile_id),
+                  -- the target of the token store's binding of a row to the same profile
+                  CONSTRAINT ux_connected_accounts_id_profile UNIQUE (id, profile_id),
+                  -- RESTRICT: an account with a connection is locked, not deleted (ADR-0033)
+                  CONSTRAINT fk_connected_accounts_user_organization FOREIGN KEY (user_id, organization_id)
+                      REFERENCES users(id, organization_id) ON DELETE RESTRICT,
+                  CONSTRAINT fk_connected_accounts_profile FOREIGN KEY (profile_id)
+                      REFERENCES connection_profiles(id) ON DELETE CASCADE,
+                  CONSTRAINT chk_connected_accounts_state CHECK (state IN
+                      ('CONNECTED', 'EXPIRED', 'DISCONNECTED')),
+                  CONSTRAINT chk_connected_accounts_cause CHECK (ended_cause IS NULL OR ended_cause IN
+                      ('SELF', 'EMERGENCY', 'ADDRESS_CHANGED', 'REGISTRATION_CHANGED',
+                       'ACCOUNT_DEACTIVATED', 'PROFILE_DELETED', 'PROVIDER_REJECTED',
+                       'SECRET_EXPIRED', 'LIBRARY_DELETED', 'PROFILE_CHANGED')),
+                  -- a connection that is not connected names why it ended, a connected one never
+                  CONSTRAINT chk_connected_accounts_cause_of_end CHECK
+                      ((state = 'CONNECTED') = (ended_cause IS NULL))
+              );
+              CREATE INDEX ix_connected_accounts_profile ON connected_accounts (profile_id);
+
+              CREATE TABLE connection_tokens (
+                  id uuid NOT NULL,
+                  profile_id uuid NOT NULL,
+                  connected_account_id uuid,
+                  library_id uuid,
+                  kind character varying(16) NOT NULL,
+                  secret_ciphertext text NOT NULL,
+                  access_token_ciphertext text,
+                  access_token_expires_at timestamp with time zone,
+                  expires_at timestamp with time zone,
+                  issued_for character varying(2000) NOT NULL,
+                  created_at timestamp with time zone NOT NULL,
+                  updated_at timestamp with time zone NOT NULL,
+                  version bigint NOT NULL,
+                  CONSTRAINT connection_tokens_pkey PRIMARY KEY (id),
+                  CONSTRAINT fk_connection_tokens_profile FOREIGN KEY (profile_id)
+                      REFERENCES connection_profiles(id) ON DELETE CASCADE,
+                  -- a person's row follows its account and lies on the account's profile
+                  CONSTRAINT fk_connection_tokens_account FOREIGN KEY (connected_account_id, profile_id)
+                      REFERENCES connected_accounts(id, profile_id) ON DELETE CASCADE,
+                  CONSTRAINT fk_connection_tokens_library FOREIGN KEY (library_id)
+                      REFERENCES knowledge_libraries(id) ON DELETE CASCADE,
+                  -- exactly one owner; a further owner widens this one named constraint
+                  CONSTRAINT chk_connection_tokens_owner CHECK
+                      (num_nonnulls(connected_account_id, library_id) = 1),
+                  CONSTRAINT chk_connection_tokens_kind CHECK (kind IN ('PERSONAL_SECRET', 'OAUTH')),
+                  CONSTRAINT ux_connection_tokens_account UNIQUE (connected_account_id),
+                  CONSTRAINT ux_connection_tokens_library UNIQUE (library_id)
+              );
+              CREATE INDEX ix_connection_tokens_profile ON connection_tokens (profile_id);
+
+              -- Reads assets (rights) only; refuses rather than corrects.
+              CREATE FUNCTION library_connections_guard_owner_only() RETURNS trigger
+                  LANGUAGE plpgsql
+                  SET search_path TO 'pg_catalog', '${database.defaultSchemaName}', 'pg_temp'
+                  AS $$
+              DECLARE
+                owning_user uuid;
+                profile_ownership character varying;
+              BEGIN
+                IF NEW.profile_id IS NULL THEN
+                  RETURN NEW;
+                END IF;
+                SELECT a.owner_user_id INTO owning_user FROM assets a
+                  WHERE a.id = NEW.library_id AND a.owner_only;
+                IF NOT FOUND THEN
+                  RETURN NEW;
+                END IF;
+                SELECT p.ownership INTO profile_ownership FROM connection_profiles p
+                  WHERE p.id = NEW.profile_id;
+                IF profile_ownership IS DISTINCT FROM 'PERSON'
+                    AND profile_ownership IS DISTINCT FROM 'BOTH' THEN
+                  RAISE EXCEPTION 'owner-only library % goes only onto a profile for persons', NEW.library_id
+                    USING ERRCODE = 'check_violation';
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM connected_accounts c
+                    WHERE c.user_id = owning_user AND c.profile_id = NEW.profile_id) THEN
+                  RAISE EXCEPTION 'owner-only library % goes only onto a profile its owner has connected', NEW.library_id
+                    USING ERRCODE = 'check_violation';
+                END IF;
+                RETURN NEW;
+              END; $$;
+
+              CREATE TRIGGER trg_library_connections_guard_owner_only
+                  BEFORE INSERT OR UPDATE OF profile_id ON library_connections
+                  FOR EACH ROW EXECUTE FUNCTION library_connections_guard_owner_only();

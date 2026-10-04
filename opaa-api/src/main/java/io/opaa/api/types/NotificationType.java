@@ -38,6 +38,12 @@ public enum NotificationType {
   GROUP_MEMBER_REMOVED,
 
   /**
+   * The provider rejected the secret of the person's connected account (ADR-0041): their private
+   * library is not updated until they connect the account anew. Sent to that person only.
+   */
+  CONNECTION_EXPIRED,
+
+  /**
    * A person asked for a connection profile ("Zugangswunsch"). Sent to every system administrator
    * of the organization; names type and server address, never the person's reason.
    */

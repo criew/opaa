@@ -132,6 +132,8 @@ export const connectionProfileHandlers = [
       sourceProxy: body.sourceProxy ?? null,
       sourceInsecureSsl: body.sourceInsecureSsl ?? false,
       connectionCount: 0,
+      connectedAccountCount: { count: 0, fewerThan: null },
+      expiredConnectionCount: { count: 0, fewerThan: null },
       locked: false,
       createdAt: now,
       updatedAt: now,
@@ -203,6 +205,7 @@ export const connectionProfileHandlers = [
     return HttpResponse.json({
       connections: profile.connectionCount,
       libraries: Math.ceil(profile.connectionCount / 2),
+      connectedAccounts: profile.connectedAccountCount,
       lastForProfileRequirement: false,
     })
   }),
@@ -213,6 +216,7 @@ export const connectionProfileHandlers = [
     return HttpResponse.json({
       connections: profile.connectionCount,
       libraries: profile.connectionCount,
+      connectedAccounts: profile.connectedAccountCount,
       lastForProfileRequirement: false,
     })
   }),
