@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeEach, vi } from 'vitest'
-import { act, screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { answerConfirm, renderWithProviders } from '../test/test-utils'
 import LibraryCreatePage from './LibraryCreatePage'
@@ -7,6 +7,7 @@ import { useLibraryStore } from '../stores/libraryStore'
 import { useIndexingStore } from '../stores/indexingStore'
 import { capabilityMissingMessage } from '../utils/labels'
 import { mockSourceTypes } from '../mocks/libraryFixtures'
+import { mockConnectionProfileRequests } from '../mocks/connectionProfileFixtures'
 
 const mockNavigate = vi.fn()
 
@@ -1239,7 +1240,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       expect(screen.queryByRole('radio', { name: /Eigene Adresse/ })).not.toBeInTheDocument()
     }, 15000)
 
-    it('names who sets up profiles and does not go on when no way is left', async () => {
+    it('offers to suggest a profile and does not go on when no way is left', async () => {
       mockListSourceTypes.mockResolvedValue(
         withNextcloud({ profileRequired: true, creatable: true, creatableWithOwnAddress: false }),
       )
@@ -1249,13 +1250,71 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       await chooseType(user, /Nextcloud/)
 
       expect(await screen.findByTestId('library-create-connection-none')).toHaveTextContent(
-        /Zugänge legt die Systemverwaltung an/,
+        /Schlagen Sie der Systemverwaltung einen vor/,
       )
+      expect(screen.getByRole('button', { name: 'Zugang für Nextcloud vorschlagen' })).toBeVisible()
       expect(screen.queryByLabelText(/Adresse der Nextcloud/)).not.toBeInTheDocument()
       await next(user)
       expect(
         screen.getByText('Für diese Quellart steht Ihnen kein Zugang zur Verfügung.'),
       ).toBeInTheDocument()
+    }, 15000)
+
+    it('offers to suggest a profile already where the type is locked for want of one', async () => {
+      mockListSourceTypes.mockResolvedValue(
+        withNextcloud({
+          profileRequired: true,
+          creatable: false,
+          creatableWithOwnAddress: false,
+          creationNotice:
+            'Die Quellart „Nextcloud“ ist nur über einen Zugang nutzbar, und es gibt noch keinen. Zugänge legt die Systemverwaltung an.',
+        }),
+      )
+      const user = userEvent.setup()
+      await renderPage()
+
+      expect(screen.getByRole('radio', { name: /Nextcloud/ })).toBeDisabled()
+      const action = await screen.findByTestId('library-create-NEXTCLOUD-connection-request')
+      expect(action).toHaveTextContent(
+        'Für „Nextcloud“ steht Ihnen noch kein nutzbarer Zugang zur Verfügung.',
+      )
+      await user.click(screen.getByRole('button', { name: 'Zugang für Nextcloud vorschlagen' }))
+      const dialog = await screen.findByRole('dialog', { name: 'Zugang vorschlagen' })
+      expect(dialog).toHaveTextContent('Quellart: Nextcloud')
+      await user.type(within(dialog).getByLabelText(/Server-Adresse/), 'https://cloud.neu.example')
+      await user.click(within(dialog).getByRole('button', { name: 'Vorschlagen' }))
+
+      await waitFor(() =>
+        expect(mockConnectionProfileRequests.at(-1)).toMatchObject({
+          sourceType: 'NEXTCLOUD',
+          serverUrl: 'https://cloud.neu.example',
+        }),
+      )
+    }, 15000)
+
+    it('offers no suggestion in the first step without any connector right', async () => {
+      mockGetMyCapabilities.mockResolvedValue(['CREATE_LIBRARY'])
+      mockListSourceTypes.mockResolvedValue(
+        withNextcloud({ profileRequired: true, creatable: false, creatableWithOwnAddress: false }),
+      )
+      await renderPage()
+
+      expect(screen.getByRole('radio', { name: /Nextcloud/ })).toBeDisabled()
+      expect(
+        screen.queryByRole('button', { name: 'Zugang für Nextcloud vorschlagen' }),
+      ).not.toBeInTheDocument()
+    }, 15000)
+
+    it('offers the suggestion beside the own address while no profile exists yet', async () => {
+      const user = userEvent.setup()
+      await renderPage()
+      await chooseType(user, /Nextcloud/)
+
+      await screen.findByLabelText(/Adresse der Nextcloud/)
+      expect(screen.queryByTestId('library-create-connection')).not.toBeInTheDocument()
+      expect(
+        await screen.findByRole('button', { name: 'Zugang für Nextcloud vorschlagen' }),
+      ).toBeVisible()
     }, 15000)
 
     it('asks for no profile for a type that admits none', async () => {

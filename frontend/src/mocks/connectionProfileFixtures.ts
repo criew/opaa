@@ -1,4 +1,4 @@
-import type { ConnectionProfileResponse } from '../types/api'
+import type { ConnectionProfileRequestResponse, ConnectionProfileResponse } from '../types/api'
 
 function initialProfiles(): ConnectionProfileResponse[] {
   return [
@@ -29,4 +29,28 @@ export let mockConnectionProfiles: ConnectionProfileResponse[] = initialProfiles
 
 export function resetMockConnectionProfiles() {
   mockConnectionProfiles = initialProfiles()
+}
+
+function initialRequests(): ConnectionProfileRequestResponse[] {
+  return [
+    {
+      id: 'connection-profile-request-partner',
+      sourceType: 'NEXTCLOUD',
+      serverUrl: 'https://cloud.partner.example',
+      reason: 'Gemeinsame Ablage mit dem Partnerlandkreis',
+      state: 'OPEN',
+      requestedByName: 'Dev User',
+      createdAt: '2026-10-03T08:30:00Z',
+      resolvedAt: null,
+      profile: null,
+      answer: null,
+    },
+  ]
+}
+
+/** The connection profile requests ("Zugangswünsche"); mutable like the profiles. */
+export let mockConnectionProfileRequests: ConnectionProfileRequestResponse[] = initialRequests()
+
+export function resetMockConnectionProfileRequests() {
+  mockConnectionProfileRequests = initialRequests()
 }

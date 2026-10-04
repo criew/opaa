@@ -418,15 +418,69 @@ Adresse nicht zulässig ist:
 - **Jeder Zugang** steht mit Server-Adresse, Anmeldeart und Vorgaben da. Ein Zugang, den die Person
   nicht nutzen darf oder der gesperrt ist, bleibt sichtbar, ist aber nicht wählbar und nennt, wer
   ihn freischaltet.
-- Gibt es weder einen nutzbaren Zugang noch die eigene Adresse, steht statt des Formulars der
-  Hinweis, dass die Systemverwaltung Zugänge anlegt und freigibt; „Weiter“ geht dann nicht.
+- Unter der Wahl steht „Zugang vorschlagen“ (siehe [Zugangswunsch](#zugangswunsch)) für den
+  Fall, dass kein Zugang passt.
+- Gibt es weder einen nutzbaren Zugang noch die eigene Adresse, ist die Quellart schon im Schritt
+  „Art des Wissens“ nicht wählbar; der Schritt bietet dort „Zugang vorschlagen“ an.
 
 Nach der Wahl eines Zugangs richtet sich das Formular nach ihm: Die Adresse ist mit der
 Server-Adresse des Zugangs vorbelegt (eine Adresse darunter ist möglich), das Feld für die
 Zugangsdaten entfällt bei einem Zugang ohne Anmeldung, und Einstellungen, die der Zugang vorgibt
 (etwa die Confluence-Edition oder bei S3 Region und Adressstil), stehen nur lesbar mit seinem Wert
-da. Verbindungstest und Auflistung prüfen über den gewählten Zugang. Einen Zugangswunsch gibt es im
-Assistenten nicht; er nennt nur, wer Zugänge anlegt.
+da. Verbindungstest und Auflistung prüfen über den gewählten Zugang.
+
+#### Zugangswunsch
+
+Wer im Wissens-Assistenten keinen passenden Zugang findet, schlägt der Systemverwaltung mit
+**„Zugang vorschlagen“** einen vor. Die Aktion gibt es für jede Quellart, die Zugänge kennt, an drei
+Stellen:
+
+- im Schritt **„Art des Wissens“** unter den Kacheln, für jede Quellart, die nur deshalb nicht
+  wählbar ist, weil der Person kein nutzbarer Zugang zur Verfügung steht (etwa bei Profilpflicht
+  ohne freigegebenen Zugang);
+- im Schritt **„Quelle“** unter der Wahl „Zugang“;
+- im Schritt **„Quelle“** über dem Formular, wenn es für die Quellart noch keinen Zugang gibt und
+  die eigene Adresse zulässig ist (die Wahl „Zugang“ entfällt dann).
+
+Der Dialog nennt die Quellart, fragt die **Server-Adresse** (nach denselben Regeln wie im Formular
+eines Zugangs, in der Länge begrenzt; OPAA ruft sie nicht auf) und eine optionale kurze
+**Begründung**. Die Erfolgsmeldung sagt, dass der Wunsch bei der
+Systemverwaltung eingegangen ist und die Person über das Ergebnis benachrichtigt wird. Stellen darf
+den Wunsch, wer Zugänge im Assistenten sehen darf, also wer das Anlegerecht für
+Konnektorbibliotheken in irgendeinem Geltungsbereich hat.
+
+- Derselbe offene Wunsch (Quellart und Adresse) entsteht kein zweites Mal; die Meldung sagt, dass
+  er bereits vorliegt.
+- Je Person gibt es eine Obergrenze neuer Wünsche je Stunde und eine Obergrenze gleichzeitig
+  offener Wünsche (Konfiguration unten), auch bei gleichzeitig abgeschickten Wünschen. Darüber
+  hinaus nennt der Dialog den Grund und nimmt den Wunsch nicht an.
+- Unter der Aktion stehen die eigenen Wünsche zur Quellart mit ihrem Stand („Offen“, „Erledigt“
+  mit dem angelegten Zugang, „Abgelehnt“) und der Antwort der Systemverwaltung.
+
+Die Systemverwaltung erhält zu jedem neuen Wunsch eine Benachrichtigung (Glocke) mit Quellart,
+Adresse und Namen der Person, ohne die Begründung. Unter **Administration → Zugänge** listet der
+Abschnitt **„Zugangswünsche“** die offenen Wünsche der eigenen Organisation, die ältesten zuerst,
+mit Begründung:
+
+- **„Zugang anlegen“** öffnet das Formular eines neuen Zugangs mit Quellart und Adresse des
+  Wunschs; beim Speichern ist der Wunsch erledigt und mit dem neuen Zugang verknüpft. Schlägt das
+  Speichern fehl, bleibt der Wunsch offen. Freigegeben ist der neue Zugang damit noch für niemanden;
+  die Freigabe erteilt die Systemverwaltung wie bei jedem Zugang unter „Anlegerechte“.
+- **„Ablehnen“** fragt nach einer optionalen Antwort, etwa welcher vorhandene Zugang passt.
+- Hat jemand anderes den Wunsch inzwischen erledigt oder abgelehnt, weist OPAA die zweite
+  Bearbeitung mit einem Hinweis ab.
+
+Die Person erhält in beiden Fällen eine Benachrichtigung mit dem Ergebnis und gegebenenfalls der
+Antwort. Erledigen und Ablehnen sind Governance-Ereignisse im Revisionsprotokoll (Zustand, Quellart,
+Adresse und Zugang; ohne Begründung und Antwort). Wird das Konto der Person gelöscht, verschwinden
+ihre Wünsche mit ihm; wird der verknüpfte Zugang gelöscht, bleibt der Wunsch erledigt, ohne Verweis.
+
+| Schlüssel | Standard | Wirkung |
+|---|---|---|
+| `opaa.connection.profile-requests.max-per-hour` | 5 | neue Zugangswünsche je Person innerhalb einer Stunde; darüber antwortet OPAA mit „Zu viele Anfragen“ und nennt die Wartezeit |
+| `opaa.connection.profile-requests.max-open` | 10 | gleichzeitig offene Zugangswünsche je Person |
+
+Beide Grenzen gelten unabhängig vom Schalter `opaa.rate-limit.enabled`.
 
 **An einer fertigen Bibliothek** steht im Reiter „Quelle“ unter „Anbindung“ ihr Zugang, für die
 Verwaltenden mit diesen Aktionen:

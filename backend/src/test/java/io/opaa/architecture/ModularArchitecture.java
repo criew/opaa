@@ -220,7 +220,12 @@ public final class ModularArchitecture {
    * only on itself and on the ones before it; the root package and its web package sit above all.
    */
   static final List<String> CONNECTION_PACKAGES =
-      List.of("connection.log", "connection.token", "connection.profile", "connection.account");
+      List.of(
+          "connection.log",
+          "connection.token",
+          "connection.profile",
+          "connection.request",
+          "connection.account");
 
   /**
    * The capability granted per connector type or profile, relative to the root (ADR-0036, Nachtrag

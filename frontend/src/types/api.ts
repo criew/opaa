@@ -184,6 +184,15 @@ export type ConnectionProfileUpdateRequest = components['schemas']['ConnectionPr
 export type ConnectionProfileImpactResponse =
   components['schemas']['ConnectionProfileImpactResponse']
 export type ConnectionProfileOption = components['schemas']['ConnectionProfileOption']
+export type ConnectionProfileRequestState = components['schemas']['ConnectionProfileRequestState']
+export type ConnectionProfileRequestCreateRequest =
+  components['schemas']['ConnectionProfileRequestCreateRequest']
+export type ConnectionProfileRequestResolveRequest =
+  components['schemas']['ConnectionProfileRequestResolveRequest']
+export type ConnectionProfileRequestResponse =
+  components['schemas']['ConnectionProfileRequestResponse']
+export type ConnectionProfileRequestPageResponse =
+  components['schemas']['ConnectionProfileRequestPageResponse']
 export type ConnectorLockRequest = components['schemas']['ConnectorLockRequest']
 export type SourceFreeze = components['schemas']['SourceFreeze']
 export type SourceBlock = components['schemas']['SourceBlock']
