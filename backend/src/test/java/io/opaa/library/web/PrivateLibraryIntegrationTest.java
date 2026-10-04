@@ -242,6 +242,73 @@ class PrivateLibraryIntegrationTest {
         .isEqualTo("avogt:" + PASSWORD);
   }
 
+  /**
+   * The profile options offer a profile for persons only to a person with an account of her own on
+   * it, name its ownership and her account, and never offer one for a shared library.
+   */
+  @Test
+  void aProfileForPersonsIsOfferedOnlyWhereTheCallerHasAnAccountOfHerOwn() throws Exception {
+    UUID withoutAccount = profile("PERSON", SERVER);
+    UUID forLibraries = profile("LIBRARY", SERVER);
+    String options = "/api/v1/connection-profiles?sourceType=PERSON_PROBE";
+
+    String mine = optionsOf("dev-user", options);
+    assertThat(field(mine, forPersons, "ownership")).containsExactly("PERSON");
+    assertThat(field(mine, forPersons, "ownAccount")).containsExactly(true);
+    assertThat(field(mine, forPersons, "creatable")).containsExactly(true);
+    assertThat(field(mine, withoutAccount, "id")).isEmpty();
+    assertThat(field(mine, forLibraries, "ownership")).containsExactly("LIBRARY");
+    assertThat(field(mine, forLibraries, "ownAccount")).containsExactly(false);
+    assertThat(field(optionsOf("dev-admin", options), forPersons, "id")).isEmpty();
+
+    UUID library = createdPrivateLibrary();
+    assertThat(field(optionsOf("dev-user", options + "&libraryId=" + library), forPersons, "id"))
+        .containsExactly(forPersons.toString());
+    connect("dev-admin", forPersons).andExpect(status().isOk());
+    UUID shared = sharedLibraryOn(forLibraries);
+    assertThat(field(optionsOf("dev-admin", options + "&libraryId=" + shared), forPersons, "id"))
+        .isEmpty();
+    assertThat(field(optionsOf("dev-admin", options), forPersons, "ownAccount"))
+        .containsExactly(true);
+  }
+
+  /**
+   * A type reached only through a profile for persons can be chosen by a person with an account of
+   * her own on it - for her private library - and by nobody else for that reason.
+   */
+  @Test
+  void aProfileForPersonsWithAnOwnAccountMakesItsTypeCreatable() throws Exception {
+    String withAccount = body(mockMvc.perform(as("dev-user", get("/api/v1/source-types"))));
+    jdbc.update(
+        "DELETE FROM connected_accounts WHERE profile_id = ? AND user_id = ?", forPersons, owner);
+    String without = body(mockMvc.perform(as("dev-user", get("/api/v1/source-types"))));
+
+    assertThat(
+            JsonPath.<List<Object>>read(
+                withAccount, "$[?(@.type == 'PERSON_PROBE')].creatableWithOwnAddress"))
+        .containsExactly(false);
+    assertThat(JsonPath.<List<Object>>read(withAccount, "$[?(@.type == 'PERSON_PROBE')].creatable"))
+        .containsExactly(true);
+    assertThat(JsonPath.<List<Object>>read(without, "$[?(@.type == 'PERSON_PROBE')].creatable"))
+        .containsExactly(false);
+  }
+
+  /** The page "Verbundene Konten" names the source type of every account and profile. */
+  @Test
+  void connectedAccountsAndConnectableProfilesNameTheirSourceType() throws Exception {
+    UUID withoutAccount = profile("PERSON", SERVER);
+
+    mockMvc
+        .perform(as("dev-user", get(ME)))
+        .andExpect(status().isOk())
+        .andExpect(
+            jsonPath("$.accounts[?(@.profileId == '" + forPersons + "')].sourceType")
+                .value("PERSON_PROBE"))
+        .andExpect(
+            jsonPath("$.connectable[?(@.profileId == '" + withoutAccount + "')].sourceType")
+                .value("PERSON_PROBE"));
+  }
+
   /** Without a usable connection the library rests with a reason its owner can act on. */
   @Test
   void aPrivateLibraryRestsWithTheReasonOfItsOwnersConnection() throws Exception {
@@ -251,6 +318,7 @@ class PrivateLibraryIntegrationTest {
         .perform(as("dev-user", delete(ME + "/" + forPersons)))
         .andExpect(status().isNoContent());
     blockOf(library, "NOT_CONNECTED", "Besitzerin der Bibliothek", "„Verbundene Konten“");
+    actionOf(library, "CONNECT_OWN_ACCOUNT");
     run(library, "FAILED");
     mockMvc
         .perform(as("dev-user", get(LIBRARIES + "/" + library + "/indexing/runs")))
@@ -266,6 +334,7 @@ class PrivateLibraryIntegrationTest {
     connect("dev-user", forPersons).andExpect(status().isOk());
     resolver.credentialsRejected(libraryRepository.findById(library).orElseThrow());
     blockOf(library, "EXPIRED", "Besitzerin der Bibliothek", "neu");
+    actionOf(library, "CONNECT_OWN_ACCOUNT");
 
     // a resting or deactivated owner signs in no more, so the port answers in her place
     connect("dev-user", forPersons).andExpect(status().isOk());
@@ -724,6 +793,20 @@ class PrivateLibraryIntegrationTest {
         .andExpect(
             jsonPath("$.sourceBlock.notice")
                 .value(org.hamcrest.Matchers.containsString(noticePart)));
+  }
+
+  private void actionOf(UUID library, String action) throws Exception {
+    mockMvc
+        .perform(as("dev-user", get(LIBRARIES + "/" + library)))
+        .andExpect(jsonPath("$.sourceBlock.action").value(action));
+  }
+
+  private String optionsOf(String user, String uri) throws Exception {
+    return body(mockMvc.perform(as(user, get(uri))).andExpect(status().isOk()));
+  }
+
+  private static List<Object> field(String options, UUID profile, String name) {
+    return JsonPath.read(options, "$[?(@.id == '" + profile + "')]." + name);
   }
 
   private SourceBlock refusalOf(UUID library) {

@@ -295,7 +295,8 @@ class PrivateLibraryInvisibilityIntegrationTest {
             "getMailTemplate",
             "listUsersForSelection",
             "listConnectionProfileRequests",
-            "listMyConnectionProfileRequests")) {
+            "listMyConnectionProfileRequests",
+            "listConnectionLogProfiles")) {
       probes.put(read, same());
     }
     probes.put("getHealth", volatileAnswer());
@@ -583,6 +584,11 @@ class PrivateLibraryInvisibilityIntegrationTest {
           findings.add(label + " names " + marker + ": " + abbreviated(after.raw()));
         }
       }
+      for (String mark : PRIVATE_SOURCE_MARKS) {
+        if (after.raw().replace(" ", "").contains(mark)) {
+          findings.add(label + " carries " + mark + ": " + abbreviated(after.raw()));
+        }
+      }
       if (probe.kind() == Kind.VOLATILE || protocolReader) {
         if (after.status() >= 500) {
           findings.add(label + " fails with " + after.status());
@@ -615,6 +621,20 @@ class PrivateLibraryInvisibilityIntegrationTest {
       theDiagnosticProtocolNamesNothingOfHers(own);
     }
   }
+
+  /** The marks of an answer from a private library; only the owner's own answers carry them. */
+  private static final List<String> PRIVATE_SOURCE_MARKS =
+      List.of("\"privateSource\":true", "\"privateSourcesInContext\":true");
+
+  /**
+   * The marks the owner finds on her own ways, by operation: her library in the catalog, her
+   * private source in her chat, her own account on the profile.
+   */
+  private static final Map<String, List<String>> OWNER_MARKS =
+      Map.of(
+          "listCatalog", List.of("\"privateLibrary\":true"),
+          "getChat", PRIVATE_SOURCE_MARKS,
+          "listConnectionProfileOptions", List.of("\"ownAccount\":true"));
 
   /**
    * The ways the owner herself takes to her private library, with the probes' own requests, and
@@ -669,6 +689,16 @@ class PrivateLibraryInvisibilityIntegrationTest {
                 + marker
                 + ": "
                 + abbreviated(answer.raw()));
+      }
+    }
+    for (Map.Entry<String, List<String>> marks : OWNER_MARKS.entrySet()) {
+      Operation operation = operations.get(marks.getKey());
+      Answer answer =
+          call(operation, PROBES.get(marks.getKey()), own, Observer.SPACE_MEMBER, spare);
+      for (String mark : marks.getValue()) {
+        if (answer.status() >= 300 || !answer.raw().replace(" ", "").contains(mark)) {
+          misses.add(marks.getKey() + " answers " + answer.status() + " without " + mark);
+        }
       }
     }
     assertThat(misses).as("ways on which the owner misses her private library").isEmpty();
@@ -1181,7 +1211,8 @@ class PrivateLibraryInvisibilityIntegrationTest {
         "Laut Abrechnung: " + content,
         "[{\"fileName\": \"%s\", \"documentId\": \"%s\", \"relevanceScore\": 0.9,"
                 .formatted(fileName, document)
-            + " \"matchCount\": 1, \"cited\": true, \"sourceType\": \"PERSON_PROBE\"}]");
+            + " \"matchCount\": 1, \"cited\": true, \"sourceType\": \"PERSON_PROBE\","
+            + " \"privateSource\": true}]");
     return new Ids(
         library,
         detached,
