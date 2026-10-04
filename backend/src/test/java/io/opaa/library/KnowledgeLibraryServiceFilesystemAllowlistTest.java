@@ -21,6 +21,7 @@ import io.opaa.auth.UserRepository;
 import io.opaa.common.ValidationException;
 import io.opaa.connection.ConnectorReleaseService;
 import io.opaa.connection.LibraryConnectionService;
+import io.opaa.connection.profile.OwnAddressDrafts;
 import io.opaa.indexing.chunk.FullTextChunkStore;
 import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.indexing.chunk.VectorStoreWriter;
@@ -146,7 +147,8 @@ class KnowledgeLibraryServiceFilesystemAllowlistTest {
                 .registry(),
             new LibrarySourceConnectionResolver(),
             mock(LibraryConnectionService.class),
-            mock(ConnectorReleaseService.class));
+            mock(ConnectorReleaseService.class),
+            OwnAddressDrafts.over(TestSourceConnectors.connectors().registry(), libraryRepository));
 
     ownerId = UUID.randomUUID();
     User owner = new User("subject", "issuer", "owner@example.com", "Owner");

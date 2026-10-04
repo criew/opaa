@@ -24,6 +24,7 @@ import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.SourceType;
 import io.opaa.permission.CapabilityService;
 import io.opaa.security.CredentialsEncryptor;
+import io.opaa.sourceaccess.ProxyAndCredentials;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -344,7 +345,26 @@ public class ConnectionProfileService {
         values.clientSecretExpiresOn(),
         tenant,
         scopes,
-        settings);
+        settings,
+        proxyOf(values.sourceProxy()),
+        values.sourceInsecureSsl());
+  }
+
+  /** A proxy in {@code host:port} form, {@code null} for none. */
+  private static String proxyOf(String value) {
+    String proxy = optional(value, "sourceProxy", MAX_FIELD_LENGTH);
+    if (proxy == null) {
+      return null;
+    }
+    try {
+      ProxyAndCredentials parsed = ProxyAndCredentials.parse(proxy, null);
+      if (parsed.proxyHost() == null) {
+        throw new ValidationException(ProxyAndCredentials.INVALID_PROXY_MESSAGE);
+      }
+    } catch (ProxyAndCredentials.InvalidProxyConfigurationException e) {
+      throw new ValidationException(e.getMessage());
+    }
+    return proxy;
   }
 
   private static void requireSecretFits(ConnectionAuthMethod method, String secret) {
@@ -367,6 +387,8 @@ public class ConnectionProfileService {
     state.put("tenantSet", profile.getTenant() != null);
     state.put("scopesSet", profile.getScopes() != null);
     state.put("connectorSettingsSet", profile.getConnectorSettings() != null);
+    state.put("sourceProxySet", profile.getSourceProxy() != null);
+    state.put("sourceInsecureSsl", profile.isSourceInsecureSsl());
     return state;
   }
 

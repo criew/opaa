@@ -97,7 +97,10 @@ public class SourceBlocks {
     return Optional.ofNullable(blocksAmong(List.of(library), considered).get(library.getId()));
   }
 
-  /** {@link #blockOf} for many libraries with three queries; a library not blocked is absent. */
+  /**
+   * {@link #blockOf} for many libraries with at most four queries, however many there are; a
+   * library not blocked is absent.
+   */
   public Map<UUID, SourceBlock> blocksAmong(
       Collection<KnowledgeLibrary> libraries, Set<Reason> considered) {
     Map<UUID, SourceBlock> blocks = new HashMap<>();
@@ -159,23 +162,35 @@ public class SourceBlocks {
             ? Map.of()
             : profiles.findAllById(profileIds).stream()
                 .collect(Collectors.toMap(ConnectionProfile::getId, Function.identity()));
-    List<Facts> facts = new ArrayList<>();
+    Map<UUID, ConnectionProfile> profileOfLibrary = new HashMap<>();
+    Map<UUID, SecretOwner> ownerOfLibrary = new HashMap<>();
     for (KnowledgeLibrary library : libraries) {
       LibraryConnection connection = connectionOf.get(library.getId());
       ConnectionProfile profile =
           connection == null || connection.getProfileId() == null
               ? null
               : profileOf.get(connection.getProfileId());
+      if (profile != null) {
+        profileOfLibrary.put(library.getId(), profile);
+        if (profile.getAuthMethod() == ConnectionAuthMethod.PERSONAL_SECRET
+            && considered.contains(Reason.NOT_CONNECTED)) {
+          ownerOfLibrary.put(library.getId(), SecretOwner.of(profile.getId(), library));
+        }
+      }
+    }
+    Map<SecretOwner, Reason> secretStates =
+        ownerOfLibrary.isEmpty() ? Map.of() : secrets.statesAmong(ownerOfLibrary.values());
+    List<Facts> facts = new ArrayList<>();
+    for (KnowledgeLibrary library : libraries) {
       SourceType type = library.getSourceType();
+      SecretOwner owner = ownerOfLibrary.get(library.getId());
       facts.add(
           new Facts(
               library,
               lockedTypes.contains(type.key()) ? typeLock(type) : null,
-              connection != null,
-              profile,
-              profile != null
-                  && profile.getAuthMethod() == ConnectionAuthMethod.PERSONAL_SECRET
-                  && secrets.stateOf(SecretOwner.of(profile.getId(), library)).isPresent()));
+              connectionOf.containsKey(library.getId()),
+              profileOfLibrary.get(library.getId()),
+              owner != null && secretStates.containsKey(owner)));
     }
     return facts;
   }

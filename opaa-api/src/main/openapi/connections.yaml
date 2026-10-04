@@ -454,6 +454,21 @@ components:
             Connector defaults: only keys the connector names in
             SourceTypeDescriptor.profileDefaults, each of its kind; another key is a 400. They
             override a library's settings key by key. Never a secret.
+        sourceProxy:
+          type: string
+          maxLength: 255
+          nullable: true
+          description: >
+            Proxy server in host:port format every library on the profile is reached through;
+            absent for none. A library on the profile cannot set its own.
+          example: proxy.example.org:8080
+        sourceInsecureSsl:
+          type: boolean
+          nullable: true
+          default: false
+          description: >
+            Skip the certificate check for every library on the profile. A library on the profile
+            cannot set its own.
 
     ConnectionProfileUpdateRequest:
       type: object
@@ -509,6 +524,21 @@ components:
             Connector defaults: only keys the connector names in
             SourceTypeDescriptor.profileDefaults, each of its kind; another key is a 400. They
             override a library's settings key by key. Never a secret.
+        sourceProxy:
+          type: string
+          maxLength: 255
+          nullable: true
+          description: >
+            Proxy server in host:port format every library on the profile is reached through;
+            absent for none. A library on the profile cannot set its own.
+          example: proxy.example.org:8080
+        sourceInsecureSsl:
+          type: boolean
+          nullable: true
+          default: false
+          description: >
+            Skip the certificate check for every library on the profile. A library on the profile
+            cannot set its own.
         confirmDiscard:
           type: boolean
           description: >
@@ -527,6 +557,7 @@ components:
           ownership,
           clientSecretSet,
           clientSecretExpiresSoon,
+          sourceInsecureSsl,
           connectionCount,
           locked,
           createdAt,
@@ -569,6 +600,11 @@ components:
           type: object
           additionalProperties: true
           nullable: true
+        sourceProxy:
+          type: string
+          nullable: true
+        sourceInsecureSsl:
+          type: boolean
         connectionCount:
           type: integer
           format: int64
@@ -600,7 +636,7 @@ components:
 
     ConnectionProfileOption:
       type: object
-      required: [id, name, sourceType, serverUrl, authMethod, creatable]
+      required: [id, name, sourceType, serverUrl, authMethod, sourceInsecureSsl, creatable]
       properties:
         creatable:
           type: boolean
@@ -630,6 +666,13 @@ components:
           description: >
             The connector settings the profile sets for every library on it (see
             SourceTypeDescriptor.profileDefaults); absent for none. Never a secret.
+        sourceProxy:
+          type: string
+          nullable: true
+          description: The proxy every library on the profile is reached through; absent for none.
+        sourceInsecureSsl:
+          type: boolean
+          description: Whether the certificate check is skipped for every library on the profile.
 
     ConnectorLockRequest:
       type: object

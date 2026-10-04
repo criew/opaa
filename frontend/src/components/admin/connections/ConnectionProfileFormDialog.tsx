@@ -5,8 +5,10 @@ import Dialog from '@mui/material/Dialog'
 import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
+import FormControlLabel from '@mui/material/FormControlLabel'
 import MenuItem from '@mui/material/MenuItem'
 import Stack from '@mui/material/Stack'
+import Switch from '@mui/material/Switch'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import type {
@@ -45,6 +47,8 @@ interface Draft {
   tenant: string
   scopes: string
   clientSecretExpiresOn: string
+  sourceProxy: string
+  sourceInsecureSsl: boolean
   /** One entry per declared profile default; an empty string sets nothing. */
   defaults: Record<string, string>
 }
@@ -59,6 +63,8 @@ function draftFrom(profile: ConnectionProfileResponse | null): Draft {
     tenant: profile?.tenant ?? '',
     scopes: profile?.scopes ?? '',
     clientSecretExpiresOn: profile?.clientSecretExpiresOn ?? '',
+    sourceProxy: profile?.sourceProxy ?? '',
+    sourceInsecureSsl: profile?.sourceInsecureSsl ?? false,
     defaults: Object.fromEntries(
       Object.entries(profile?.connectorSettings ?? {}).map(([key, value]) => [
         key,
@@ -172,6 +178,8 @@ export default function ConnectionProfileFormDialog({
       scopes: usesScopes ? blankToNull(draft.scopes) : null,
       clientSecret: usesRegistration && secret.trim() !== '' ? secret.trim() : undefined,
       connectorSettings: connectorDefaults(defaultKeys, draft.defaults),
+      sourceProxy: blankToNull(draft.sourceProxy),
+      sourceInsecureSsl: draft.sourceInsecureSsl,
     }
   }
 
@@ -364,6 +372,25 @@ export default function ConnectionProfileFormDialog({
                   helperText="Durch Leerzeichen getrennt, z. B. „Files.Read offline_access“."
                 />
               )}
+              <TextField
+                label="Proxy (optional)"
+                size="small"
+                value={draft.sourceProxy}
+                onChange={(e) => setDraft({ ...draft, sourceProxy: e.target.value })}
+                placeholder="proxy.example.com:8080"
+                autoComplete="off"
+                helperText="Gilt für jede Bibliothek auf diesem Zugang; die Bibliothek setzt keinen eigenen."
+                slotProps={{ htmlInput: { maxLength: 255 } }}
+              />
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={draft.sourceInsecureSsl}
+                    onChange={(e) => setDraft({ ...draft, sourceInsecureSsl: e.target.checked })}
+                  />
+                }
+                label="Zertifikatsprüfung aussetzen"
+              />
               {defaultKeys.length > 0 && (
                 <>
                   <Typography variant="subtitle2" component="h3">

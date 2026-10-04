@@ -1,7 +1,6 @@
 package io.opaa.connection;
 
 import io.opaa.api.types.ConnectionProfileSupport;
-import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
 import io.opaa.connection.profile.ConnectionProfile;
 import io.opaa.connection.profile.ConnectionProfileRepository;
@@ -9,6 +8,7 @@ import io.opaa.connection.profile.ConnectionSecrets;
 import io.opaa.connection.profile.ConnectorLockService;
 import io.opaa.connection.profile.LibraryConnection;
 import io.opaa.connection.profile.LibraryConnectionRepository;
+import io.opaa.connection.profile.ProfileAdmission;
 import io.opaa.connection.profile.SecretOwner;
 import io.opaa.connection.profile.ServerAddress;
 import io.opaa.indexing.source.SourceChangeGate;
@@ -105,7 +105,7 @@ public class LibraryConnectionService {
 
   /**
    * Connects a saved library through {@code profileId}. An address under the previous profile moves
-   * under the new one; a secret is kept only while the origin stays the same.
+   * under the new one; a secret is kept only while the origin and the connector's binding stay.
    */
   @Transactional
   public ConnectionProfile connect(KnowledgeLibrary library, UUID profileId) {
@@ -125,10 +125,14 @@ public class LibraryConnectionService {
     }
     requireUnder(profile, address);
     if (!address.equals(library.getSourceUrl())) {
-      boolean sameOrigin = ServerAddress.sameOrigin(library.getSourceUrl(), address);
+      boolean keepsSecret =
+          ServerAddress.sameOrigin(library.getSourceUrl(), address)
+              && connectors
+                  .connector(library.getSourceType())
+                  .keepsCredentials(library.getSourceUrl(), address);
       library.moveSourceUrl(address);
       libraries.save(library);
-      if (!sameOrigin) {
+      if (!keepsSecret) {
         secrets.discard(SecretOwner.of(profile.getId(), library));
       }
       changeGate.addressMoved(library);
@@ -156,20 +160,8 @@ public class LibraryConnectionService {
   }
 
   private ConnectionProfile requireAdmitting(UUID profileId, SourceType sourceType) {
-    ConnectionProfile profile =
-        profiles
-            .findById(profileId)
-            .orElseThrow(() -> new NotFoundException("Zugang nicht gefunden"));
-    if (!profile.getSourceType().equals(sourceType)) {
-      throw new ValidationException("Der Zugang gehört zu einer anderen Quellart");
-    }
-    if (!connectors.descriptor(sourceType).admitsProfiles()) {
-      throw new ValidationException("Diese Quellart wird nicht über Zugänge verbunden");
-    }
-    if (!profile.getOwnership().admitsLibraries()) {
-      throw new ValidationException("Der Zugang ist nur für verbundene Konten von Personen");
-    }
-    return profile;
+    return ProfileAdmission.require(
+        profiles.findById(profileId), sourceType, connectors.descriptor(sourceType));
   }
 
   private static String requireUnder(ConnectionProfile profile, String address) {

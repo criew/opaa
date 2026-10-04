@@ -47,6 +47,7 @@ final class TestProfileResolvers {
         new EffectiveSourceSettings(
             connections,
             profiles,
+            LibraryRows.over(rows),
             blocks,
             secrets,
             registry(),

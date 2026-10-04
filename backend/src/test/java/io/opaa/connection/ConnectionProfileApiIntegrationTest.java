@@ -207,8 +207,8 @@ class ConnectionProfileApiIntegrationTest {
         createLibrary(
             profile,
             "https://probe.example.org/ablage",
-            "\"sourceCredentials\": \"nutzer:geheim\", \"sourceSettings\": {\"edition\":"
-                + " \"CLOUD\", \"topic\": \"Wetter\"},");
+            "\"sourceCredentials\": \"nutzer:geheim\", \"sourceSettings\": {\"topic\":"
+                + " \"Wetter\"},");
 
     mockMvc
         .perform(as("dev-user", get("/api/v1/libraries/" + library)))

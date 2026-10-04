@@ -33,7 +33,9 @@ final class ConnectionProfileResponseMapper {
         toDate(request.getClientSecretExpiresOn()),
         request.getTenant(),
         request.getScopes(),
-        toSettings(request.getConnectorSettings()));
+        toSettings(request.getConnectorSettings()),
+        request.getSourceProxy(),
+        Boolean.TRUE.equals(request.getSourceInsecureSsl()));
   }
 
   static ConnectionProfileValues toValues(ConnectionProfileUpdateRequest request) {
@@ -46,7 +48,9 @@ final class ConnectionProfileResponseMapper {
         toDate(request.getClientSecretExpiresOn()),
         request.getTenant(),
         request.getScopes(),
-        toSettings(request.getConnectorSettings()));
+        toSettings(request.getConnectorSettings()),
+        request.getSourceProxy(),
+        Boolean.TRUE.equals(request.getSourceInsecureSsl()));
   }
 
   static SourceType toSourceType(String key) {
@@ -77,6 +81,8 @@ final class ConnectionProfileResponseMapper {
         .tenant(profile.getTenant())
         .scopes(profile.getScopes())
         .connectorSettings(settings == null ? null : settings.asMap())
+        .sourceProxy(profile.getSourceProxy())
+        .sourceInsecureSsl(profile.isSourceInsecureSsl())
         .connectionCount(connectionCount)
         .locked(profile.isLocked())
         .lockedAt(profile.getLockedAt())
@@ -95,7 +101,9 @@ final class ConnectionProfileResponseMapper {
         .name(profile.getName())
         .sourceType(profile.getSourceType().key())
         .serverUrl(profile.getServerUrl())
-        .authMethod(profile.getAuthMethod());
+        .authMethod(profile.getAuthMethod())
+        .sourceProxy(profile.getSourceProxy())
+        .sourceInsecureSsl(profile.isSourceInsecureSsl());
   }
 
   static ConnectorTypeStateResponse toResponse(TypeState state) {

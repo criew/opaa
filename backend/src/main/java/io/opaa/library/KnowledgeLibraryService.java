@@ -21,6 +21,9 @@ import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
 import io.opaa.connection.ConnectorReleaseService;
 import io.opaa.connection.LibraryConnectionService;
+import io.opaa.connection.profile.EffectiveSourceSettings;
+import io.opaa.connection.profile.ServerAddress;
+import io.opaa.connection.profile.SourceDraft;
 import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.indexing.job.IndexingJobRepository;
 import io.opaa.indexing.job.IndexingJobService;
@@ -153,6 +156,7 @@ public class KnowledgeLibraryService {
   private final SourceConnectionResolver connectionResolver;
   private final LibraryConnectionService libraryConnections;
   private final ConnectorReleaseService connectorRelease;
+  private final EffectiveSourceSettings drafts;
   private final SourceChangeGate changeGate;
 
   public KnowledgeLibraryService(
@@ -176,9 +180,11 @@ public class KnowledgeLibraryService {
       SourceConnectorRegistry connectors,
       SourceConnectionResolver connectionResolver,
       LibraryConnectionService libraryConnections,
-      ConnectorReleaseService connectorRelease) {
+      ConnectorReleaseService connectorRelease,
+      EffectiveSourceSettings drafts) {
     this.successionSource = successionSource;
     this.connectorRelease = connectorRelease;
+    this.drafts = drafts;
     this.connectionResolver = connectionResolver;
     this.libraryConnections = libraryConnections;
     this.libraryRepository = libraryRepository;
@@ -524,14 +530,26 @@ public class KnowledgeLibraryService {
     // A rename resolves nothing: a blocked connection must not stop it.
     SourceSettings before =
         replacesSourceConfiguration || replacesOwnSettings ? currentForChange(library) : null;
+    // Under a profile the connector validates the change with the profile's frame, and the
+    // library keeps only its own part.
     SourceSettings validatedSettings =
         replacesSourceConfiguration
             ? withServiceAccountKey(
                 connector,
                 requestedSettings,
-                withoutKey -> changeGate.validate(library, before, withoutKey, true))
+                withoutKey ->
+                    ownPart(
+                        library,
+                        changeGate.validate(
+                            library, before, drafts.ofChange(draftOf(library, withoutKey)), true)))
             : replacesOwnSettings
-                ? changeGate.validate(library, before, requestedSettings, false)
+                ? ownPart(
+                    library,
+                    changeGate.validate(
+                        library,
+                        before,
+                        drafts.ofChange(draftOf(library, requestedSettings)),
+                        false))
                 : requestedSettings;
     if (replacesSourceConfiguration) {
       libraryConnections.requireAddressAllowed(library, validatedSettings.sourceUrl());
@@ -571,7 +589,7 @@ public class KnowledgeLibraryService {
       // it alone".
       if (validatedSettings.sourceCredentials() == null
           && previousSourceUrl != null
-          && !(SourceOriginMatcher.sameOrigin(previousSourceUrl, validatedSettings.sourceUrl())
+          && !(ServerAddress.sameOrigin(previousSourceUrl, validatedSettings.sourceUrl())
               && connector.keepsCredentials(previousSourceUrl, validatedSettings.sourceUrl()))) {
         libraryRepository.eraseSourceCredentials(library.getId());
       }
@@ -1149,8 +1167,25 @@ public class KnowledgeLibraryService {
             Boolean.TRUE.equals(request.sourceInsecureSsl()),
             readSettings(sourceType, request.sourceSettings()));
     SourceConnector connector = connectors.connector(sourceType);
-    SourceSettings validated = withServiceAccountKey(connector, requested, connector::validate);
+    UUID profileId = request.connectionProfileId();
+    SourceSettings validated =
+        withServiceAccountKey(
+            connector,
+            requested,
+            own -> {
+              SourceDraft draft = SourceDraft.ofLibrary(sourceType, profileId, null, own);
+              return drafts.ownPart(draft, connector.validate(drafts.ofDraft(draft)));
+            });
     return new SourceConfiguration(sourceType, validated);
+  }
+
+  /** A change of {@code library} as its own fields, under whatever profile it is on. */
+  private static SourceDraft draftOf(KnowledgeLibrary library, SourceSettings requested) {
+    return SourceDraft.ofLibrary(library.getSourceType(), null, library.getId(), requested);
+  }
+
+  private SourceSettings ownPart(KnowledgeLibrary library, SourceSettings validated) {
+    return drafts.ownPart(draftOf(library, validated), validated);
   }
 
   /**
@@ -1239,7 +1274,7 @@ public class KnowledgeLibraryService {
         connector.normalizeSourceUrl(
             blankToNull(request.sourceUrl() == null ? null : request.sourceUrl().toString()));
     if (sourceCredentials == null
-        && SourceOriginMatcher.sameOrigin(library.getSourceUrl(), sourceUrl)
+        && ServerAddress.sameOrigin(library.getSourceUrl(), sourceUrl)
         && connector.keepsCredentials(library.getSourceUrl(), sourceUrl)) {
       sourceCredentials = connectionResolver.storedCredentials(library);
     }

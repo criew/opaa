@@ -120,8 +120,9 @@ paths:
           $ref: "#/components/responses/NotFound"
         "409":
           description: >
-            With libraryId: the library's connector type or connection profile is locked (code SOURCE_LOCKED); the
-            source is not reached until the system administration lifts the lock.
+            With libraryId and without another connectionProfileId: the library's connector type
+            or connection profile is locked (code SOURCE_LOCKED); the source is not reached until
+            the system administration lifts the lock.
           content:
             application/json:
               schema:
@@ -193,8 +194,9 @@ paths:
           $ref: "#/components/responses/NotFound"
         "409":
           description: >
-            With libraryId: the library's connector type or connection profile is locked (code SOURCE_LOCKED); the
-            source is not reached until the system administration lifts the lock.
+            With libraryId and without another connectionProfileId: the library's connector type
+            or connection profile is locked (code SOURCE_LOCKED); the source is not reached until
+            the system administration lifts the lock.
           content:
             application/json:
               schema:
@@ -917,7 +919,11 @@ components:
           description: >
             Creates the library connected through this connection profile (#2160) - one of
             listConnectionProfileOptions for sourceType. sourceUrl may then be omitted (the
-            profile's server address) and must otherwise lie under it.
+            profile's server address) and must otherwise lie under it. The connector validates
+            the settings with the profile's defaults, proxy and TLS switch, so none of them needs
+            to be sent; a value that differs from what the profile sets is a 400, as are
+            sourceCredentials on a profile that signs in without them. The library stores only
+            its own part.
         sourcePath:
           type: string
           maxLength: 2000
@@ -1013,9 +1019,13 @@ components:
           format: uuid
           nullable: true
           description: >
-            Without libraryId: the connection profile the library is to be created through, as
-            LibraryRequest.connectionProfileId. The capability is then checked in its scope, and
-            sourceUrl must lie under its server address.
+            The connection profile the probe runs through, with its defaults, proxy, TLS switch
+            and sign-in method as LibraryRequest.connectionProfileId applies them; a value that
+            differs from what the profile sets is a 400. Without libraryId: the profile the
+            library is to be created through, its release checked. With libraryId: absent means
+            the library's current profile; another one tests a switch before it is saved - its
+            release counts, and the library's stored lock does not, so a locked library can be
+            repaired. The stored credentials stand in only while sourceUrl keeps their origin.
         sourcePath:
           type: string
           maxLength: 2000
@@ -1158,9 +1168,8 @@ components:
           format: uuid
           nullable: true
           description: >
-            Without libraryId: the connection profile the library is to be created through. The
-            capability is then checked in its scope, and sourceUrl must lie under its server
-            address.
+            The connection profile the listing runs through, exactly as
+            SourceConnectionTestRequest.connectionProfileId - with libraryId too.
         query:
           description: >
             The listing's own parameters, read by the type's connector: CONFLUENCE takes edition,

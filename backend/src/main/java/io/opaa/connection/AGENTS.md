@@ -15,15 +15,15 @@ knowledge kennt connections: Der Kern erreicht es über seine Ports `SourceConne
 ## Invarianten und Stolpersteine
 
 - **Unterpakete, unten zuerst:** `connection.profile` (Profile, Zuordnung, `ServerAddress`,
-  Sperren, `ConnectorScope`).
-  Das Wurzelpaket verdrahtet und implementiert den Port, `connection.web` liegt darüber. Kein
-  Unterpaket nennt das Wurzelpaket (`ModularArchitecture.CONNECTION_PACKAGES`).
+  Sperren, `ConnectorScope`). Das Wurzelpaket verdrahtet und implementiert den Port,
+  `connection.web` liegt darüber. Kein Unterpaket nennt das Wurzelpaket (`CONNECTION_PACKAGES`).
 - **Das Client-Secret ist schreibgeschützt.** `ConnectionProfileService` verschlüsselt es mit
   `CredentialsEncryptor`; Antworten tragen nur `clientSecretSet`, das Audit nur Feldnamen und
   Ja/Nein. Kein Code gibt es heraus, bis ein Konsument es braucht (OAuth, #2168).
 - **Ursprungsbindung:** Die Adresse einer zugeordneten Bibliothek liegt unter der Server-Adresse
-  ihres Profils (`ServerAddress#covers`), sonst sperrt der Port. Eine neue Server-Adresse verschiebt
-  die Adressen der Bibliotheken und verwirft alle Geheimnisse des Profils.
+  ihres Profils (`ServerAddress#covers`), sonst sperrt der Port. Ein Geheimnis folgt nur bei
+  `ServerAddress#sameOrigin` (die eine Regel) und `keepsCredentials`. Eine neue Server-Adresse
+  verschiebt die Adressen der Bibliotheken und verwirft alle Geheimnisse des Profils.
 - **Lesen und Verwerfen des Geheimnisses** in connections nur über `ConnectionSecrets`, library
   über den Port; der Schreibweg der Bibliothek bleibt `updateSourceConfiguration`.
 - **Ein gelöschtes Profil** lässt die Zuordnung mit `profile_id NULL` stehen („Zugang entfernt“);
@@ -31,16 +31,16 @@ knowledge kennt connections: Der Kern erreicht es über seine Ports `SourceConne
 - **Sperrgründe nur in `SourceBlocks`:** Ob und warum eine Bibliothek gesperrt ist und welcher Text
   gilt, entscheidet nur er. Vorrang ist die Deklarationsreihenfolge von `SourceBlock.Reason`, die
   Mengen der Aufrufer leiten sich aus dessen Eigenschaften ab: Ein neuer Grund steht an einer Stelle.
-- **Eine Zusammenführung:** `EffectiveSourceSettings` setzt Lauf, Änderung und Einstellungen
-  zusammen; Konnektor-Vorgaben (nur deklarierte, `ProfileDefaults#read`) überschreiben die der
-  Bibliothek je Schlüssel. Nur `applyChange` bekommt den eigenen Teil (`SourceChangeGate`).
+- **Eine Zusammenführung:** `EffectiveSourceSettings` setzt Lauf, Änderung und Entwurf
+  (`ofDraft`: Anlegen, Test, Auflistung) in einem `compose` zusammen. Der Rahmen des Zugangs
+  (`ProfileFrame`: Proxy, TLS-Schalter, Vorgaben) überschreibt die Bibliothek; ein abweichender
+  Wert ist `400`, gespeichert wird nur der eigene Teil (`ownPart`).
 - **Freigabe nur hier:** `ConnectorReleaseService` entscheidet eine Neuanlage aus
   `CREATE_CONNECTOR_LIBRARY` im Geltungsbereich `TYPE:`/`PROFILE:` und den Sperren;
   `ConnectorScopeCatalog` nennt rights die Geltungsbereiche. Kein anderes Modul außer rights nennt
   die Fähigkeit (`theConnectorReleaseIsDecidedInConnections`). Ein Entzug stoppt keinen Lauf.
 - **Sperre:** Der Port blockiert `resolve` (Laufstart, Original), nicht `currentCredentials`; ein
-  laufender Lauf endet regulär. `ConnectorLockService` holt die Registry je Aufruf, weil der Port
-  im Kern hängt und die Konnektoren am Kern.
+  Entwurf auf einem anderen Zugang ist nie gesperrt. Registry je Aufruf (Bean-Zyklus).
 - **Web-Schicht:** `connection.web` (Verwaltung unter `/api/v1/admin/connection-profiles`, Auswahl
   unter `/api/v1/connection-profiles`). Die Zuordnung einer Bibliothek liegt in `library.web`.
 
