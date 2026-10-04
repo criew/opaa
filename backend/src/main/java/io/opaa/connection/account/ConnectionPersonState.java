@@ -66,4 +66,8 @@ class ConnectionPersonState {
   Instant getDeactivatedSince() {
     return deactivatedSince;
   }
+
+  Instant getDormantSince() {
+    return dormantSince;
+  }
 }

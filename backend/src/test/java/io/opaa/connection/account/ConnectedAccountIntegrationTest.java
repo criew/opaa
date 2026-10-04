@@ -367,6 +367,10 @@ class ConnectedAccountIntegrationTest {
             "EMERGENCY_DISCONNECTED",
             "RECONNECTED",
             "DELETED");
+    // a private library runs on this connection, so the notices of the administration name it
+    assertThat(endNotices(person))
+        .hasSize(2)
+        .allSatisfy(body -> assertThat(body).contains("private Bibliothek"));
     assertThat(entries)
         .allSatisfy(
             entry -> {
@@ -457,14 +461,8 @@ class ConnectedAccountIntegrationTest {
     assertThat(logEntries())
         .extracting(entry -> entry.get("event_type"), entry -> entry.get("cause"))
         .contains(tuple("DISCONNECTED", "PROFILE_CHANGED"));
-    assertThat(
-            jdbc.queryForObject(
-                "SELECT count(*) FROM notifications WHERE type = 'CONNECTION_ENDED'"
-                    + " AND recipient_user_id = ? AND object_id = ?",
-                Integer.class,
-                person,
-                profile))
-        .isEqualTo(1);
+    // no private library runs on this connection, so the notice names none
+    assertThat(endNotices(person)).singleElement().asString().doesNotContain("private Bibliothek");
 
     connect("dev-user", PASSWORD).andExpect(status().isOk());
     assertThat(secrets.current(owner, new SecretTarget(SERVER, "b").key()).value())
@@ -670,6 +668,15 @@ class ConnectedAccountIntegrationTest {
         "SELECT count(*) FROM connected_accounts WHERE user_id = ? AND profile_id = ?",
         Integer.class,
         user,
+        profile);
+  }
+
+  private List<String> endNotices(UUID recipient) {
+    return jdbc.queryForList(
+        "SELECT body FROM notifications WHERE type = 'CONNECTION_ENDED'"
+            + " AND recipient_user_id = ? AND object_id = ?",
+        String.class,
+        recipient,
         profile);
   }
 

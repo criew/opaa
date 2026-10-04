@@ -17,6 +17,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Supplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
@@ -74,47 +75,70 @@ public class ConnectionLifecycleReconciler {
   }
 
   /** Reconciles the persons among {@code userIds} the lifecycle concerns. */
-  public Outcome reconcile(Collection<UUID> userIds) {
-    if (userIds.isEmpty()) {
-      return Outcome.NONE;
-    }
-    return apply(states.findPersonsConcernedAmong(userIds));
+  public void reconcile(Collection<UUID> userIds) {
+    reconciled(userIds);
   }
 
   /**
    * Reconciles every person the lifecycle concerns: with a connected account, a private library or
    * a recorded state.
    */
-  public Outcome reconcileAll() {
-    return apply(states.findPersonsConcerned());
+  public void reconcileAll() {
+    reconciledAll();
   }
 
+  /**
+   * After the commit of the act that ended the access; a failure is logged and left to the daily
+   * run, never handed back to the act, which is saved already.
+   */
   @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
   public void onAccessEnded(LocalAccountAccessEndedEvent event) {
-    reconcile(List.of(event.user().getId()));
+    guarded("after an ended access", () -> reconciled(List.of(event.user().getId())));
   }
 
-  /** Carries no provider, so every person is reconciled. */
+  /** Carries no provider, so every person is reconciled; failures as in {@link #onAccessEnded}. */
   @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
   public void onProvidersChanged(OidcProvidersChangedEvent event) {
-    logged("after a change of the sign-in providers", reconcileAll());
+    guarded("after a change of the sign-in providers", this::reconciledAll);
   }
 
   @Scheduled(cron = "0 15 4 * * *")
   public void daily() {
-    logged("daily", reconcileAll());
+    logged("daily", reconciledAll());
   }
 
   /** After a restored backup: secrets of deactivated accounts go, expired ones are counted. */
   @EventListener(ApplicationReadyEvent.class)
   public void afterStart() {
-    Outcome outcome = reconcileAll();
+    Outcome outcome = reconciledAll();
     log.info(
         "Connection lifecycle after start: {} secret(s) of deactivated accounts deleted, {}"
             + " expired secret(s) of persons counted, {} person(s) failed",
         outcome.secretsDeleted(),
         secrets.countExpiredPersonSecrets(),
         outcome.failed());
+  }
+
+  Outcome reconciled(Collection<UUID> userIds) {
+    if (userIds.isEmpty()) {
+      return Outcome.NONE;
+    }
+    return apply(states.findPersonsConcernedAmong(userIds));
+  }
+
+  Outcome reconciledAll() {
+    return apply(states.findPersonsConcerned());
+  }
+
+  private static void guarded(String occasion, Supplier<Outcome> run) {
+    try {
+      logged(occasion, run.get());
+    } catch (RuntimeException e) {
+      log.warn(
+          "Connection lifecycle {} failed ({}); the daily run catches up",
+          occasion,
+          e.getClass().getSimpleName());
+    }
   }
 
   private Outcome apply(List<UUID> userIds) {
@@ -151,9 +175,12 @@ public class ConnectionLifecycleReconciler {
             } else if (state.isDormant()) {
               row.dormant(now);
               result = new Outcome(0, 1, 0, 0, 0);
-            } else {
+            } else if (state.isUsable()) {
               row.usable(now);
               result = Outcome.NONE;
+            } else {
+              // a failed-login lockout or an open invitation passes: the row stays as it is
+              return Outcome.NONE;
             }
             states.save(row);
             return result;
@@ -178,8 +205,8 @@ public class ConnectionLifecycleReconciler {
         outcome.failed());
   }
 
-  /** What one reconciliation found and did, as numbers only. */
-  public record Outcome(
+  /** What one reconciliation found and did, as numbers only; for the log only. */
+  record Outcome(
       int deactivated, int dormant, int connectionsEnded, int secretsDeleted, int failed) {
 
     static final Outcome NONE = new Outcome(0, 0, 0, 0, 0);

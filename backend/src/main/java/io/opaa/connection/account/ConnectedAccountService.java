@@ -338,7 +338,7 @@ public class ConnectedAccountService implements PersonConnections {
    * caused by {@code actor}, with one connection-log entry each, in the caller's transaction.
    */
   @Transactional
-  public Ended endAllOf(UUID userId, ConnectionEndCause cause, ConnectionLogActor actor) {
+  Ended endAllOf(UUID userId, ConnectionEndCause cause, ConnectionLogActor actor) {
     int connections = 0;
     int secretsDiscarded = 0;
     for (ConnectedAccount account :
@@ -356,6 +356,10 @@ public class ConnectedAccountService implements PersonConnections {
    */
   private int end(ConnectedAccount account, ConnectionEndCause cause, ConnectionLogActor actor) {
     int discarded = 0;
+    boolean feedsPrivateLibrary =
+        !libraryConnections
+            .findPrivateLibrariesOn(account.getProfileId(), account.getUserId())
+            .isEmpty();
     if (account.getState() != ConnectedAccountState.DISCONNECTED) {
       ConnectionProfile profile = profiles.findById(account.getProfileId()).orElseThrow();
       discarded = secrets.discard(new PersonOwned(account.getProfileId(), account.getUserId()));
@@ -367,7 +371,7 @@ public class ConnectedAccountService implements PersonConnections {
           profile.getId(),
           profile.getName(),
           cause);
-      endNotice(cause, profile)
+      endNotice(cause, profile, feedsPrivateLibrary)
           .ifPresent(
               body ->
                   notifications.notify(
@@ -379,9 +383,7 @@ public class ConnectedAccountService implements PersonConnections {
                       "Verbindung getrennt: Zugang „" + profile.getName() + "“",
                       body));
     }
-    if (libraryConnections
-        .findPrivateLibrariesOn(account.getProfileId(), account.getUserId())
-        .isEmpty()) {
+    if (!feedsPrivateLibrary) {
       accounts.delete(account);
     } else {
       account.disconnected(cause);
@@ -392,13 +394,18 @@ public class ConnectedAccountService implements PersonConnections {
 
   /**
    * What the person learns of an end the administration caused; empty for one they caused, for an
-   * expiry, which tells them itself, and for a deactivated account, which reads nothing.
+   * expiry, which tells them itself, and for a deactivated account, which reads nothing. A private
+   * library is mentioned only where one runs on the connection.
    */
-  private static Optional<String> endNotice(ConnectionEndCause cause, ConnectionProfile profile) {
+  private static Optional<String> endNotice(
+      ConnectionEndCause cause, ConnectionProfile profile, boolean feedsPrivateLibrary) {
     String reconnect =
-        " Verbinden Sie Ihr Konto auf der Seite „Verbundene Konten“ neu; bis dahin wird Ihre"
-            + " private Bibliothek nicht aktualisiert.";
-    String gone = " Ihre private Bibliothek wird nicht mehr aktualisiert.";
+        feedsPrivateLibrary
+            ? " Verbinden Sie Ihr Konto auf der Seite „Verbundene Konten“ neu; bis dahin wird Ihre"
+                + " private Bibliothek nicht aktualisiert."
+            : " Sie können Ihr Konto auf der Seite „Verbundene Konten“ neu verbinden.";
+    String gone =
+        feedsPrivateLibrary ? " Ihre private Bibliothek wird nicht mehr aktualisiert." : "";
     return switch (cause) {
       case ADDRESS_CHANGED, REGISTRATION_CHANGED, PROFILE_CHANGED ->
           Optional.of(
@@ -559,6 +566,6 @@ public class ConnectedAccountService implements PersonConnections {
     return value == null || value.isBlank() ? null : value.strip();
   }
 
-  /** How many connections ended and how many stored secrets went with them. */
-  public record Ended(int connections, int secrets) {}
+  /** How many connections ended and how many stored secrets went with them; for the log only. */
+  record Ended(int connections, int secrets) {}
 }

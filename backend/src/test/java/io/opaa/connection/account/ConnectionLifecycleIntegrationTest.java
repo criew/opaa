@@ -150,7 +150,7 @@ class ConnectionLifecycleIntegrationTest {
     jdbc.update(
         "UPDATE users SET last_login_at = now() - interval '200 days' WHERE id = ?", person);
 
-    Outcome outcome = reconciler.reconcile(List.of(person));
+    Outcome outcome = reconciler.reconciled(List.of(person));
 
     assertThat(outcome.dormant()).isEqualTo(1);
     assertThat(outcome.connectionsEnded()).isZero();
@@ -161,7 +161,7 @@ class ConnectionLifecycleIntegrationTest {
     assertThat(lifecycle.deactivatedSince(person)).isEmpty();
 
     jdbc.update("UPDATE users SET last_login_at = now() WHERE id = ?", person);
-    reconciler.reconcile(List.of(person));
+    reconciler.reconciled(List.of(person));
 
     assertThat(dormantSince()).isNull();
     assertThat(secrets.current(new PersonOwned(profile, person), TARGET).value()).isEqualTo(SECRET);
@@ -189,7 +189,7 @@ class ConnectionLifecycleIntegrationTest {
             status ->
                 events.publishEvent(
                     LocalAccountAccessEndedEvent.by(users.findById(person).orElseThrow(), person)));
-    reconciler.reconcileAll();
+    reconciler.reconciledAll();
 
     assertThat(tokenRows()).isEqualTo(1);
     assertThat(stateOfAccount()).isEqualTo("CONNECTED");
@@ -222,7 +222,7 @@ class ConnectionLifecycleIntegrationTest {
 
     // a second run finds nothing left to end and keeps the start of the deactivation
     Instant since = lifecycle.deactivatedSince(person).orElseThrow();
-    Outcome again = reconciler.reconcile(List.of(person));
+    Outcome again = reconciler.reconciled(List.of(person));
     assertThat(again.secretsDeleted()).isZero();
     assertThat(lifecycle.deactivatedSince(person)).contains(since);
   }

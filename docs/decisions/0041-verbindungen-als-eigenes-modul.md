@@ -377,7 +377,8 @@ Begründung:
   Er sieht nur die Personen, die der Lebenszyklus betrifft: mit verbundenem Konto, mit privater
   Bibliothek oder mit festgehaltenem Zustand. Je Person läuft er in einer eigenen Transaktion
   (`REQUIRES_NEW`), weil ein Aufruf nach dem Commit sonst in die abgeschlossene Transaktion schriebe
-  und Löschung und Protokolleintrag verlöre.
+  und Löschung und Protokolleintrag verlöre. Scheitert der Abgleich nach einem Commit, wird das nur
+  als Zahl geloggt; die gespeicherte Änderung bleibt erfolgreich, der Tageslauf holt nach.
 - **Festgehalten wird nur der Beginn,** in `connection_person_states` (`deactivated_since`,
   `dormant_since`, je Person höchstens einer). Der Zustand selbst bleibt abgeleitet. library liest
   den Beginn über `ConnectionLifecycle#deactivatedSince` und `#deactivatedBefore`.
