@@ -18,8 +18,8 @@ import org.springframework.transaction.support.TransactionTemplate;
 /**
  * Run state a profile change discarded while a run of its library was going: that run writes its
  * state again as it goes, so its connector discards it once more when the run ends. Held in memory
- * - one instance runs (ADR-0021); a reset noted after its run already ended costs the next run one
- * more full sync, never a mixed state.
+ * - one instance runs (ADR-0021): a restart during such a run, or a run started between the check
+ * and the commit of the change, leaves the run state of the old settings standing (#2268).
  */
 @Component
 public class RunStateResets {
@@ -39,21 +39,27 @@ public class RunStateResets {
 
   /**
    * Repeats, once the going run of {@code library} ends, the discard of its run state for {@code
-   * changed} - noted after the caller's transaction commits, nothing when it rolls back.
+   * changed} - noted at once, so a run ending before the caller's transaction commits is caught too
+   * (a discard too early is harmless); a rollback restores what was noted before.
    */
   void repeatAfterRun(KnowledgeLibrary library, boolean addressChanged, Set<String> changed) {
-    Runnable note =
-        () -> pending.merge(library.getId(), new Reset(addressChanged, changed), Reset::and);
+    UUID id = library.getId();
+    Reset previous = pending.get(id);
+    pending.merge(id, new Reset(addressChanged, changed), Reset::and);
     if (TransactionSynchronizationManager.isSynchronizationActive()) {
       TransactionSynchronizationManager.registerSynchronization(
           new TransactionSynchronization() {
             @Override
-            public void afterCommit() {
-              note.run();
+            public void afterCompletion(int status) {
+              if (status == STATUS_ROLLED_BACK) {
+                if (previous == null) {
+                  pending.remove(id);
+                } else {
+                  pending.put(id, previous);
+                }
+              }
             }
           });
-    } else {
-      note.run();
     }
   }
 
