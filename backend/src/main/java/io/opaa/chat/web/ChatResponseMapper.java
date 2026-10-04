@@ -11,6 +11,7 @@ import io.opaa.api.dto.SourceBlockReason;
 import io.opaa.api.dto.SourceFreeze;
 import io.opaa.api.dto.SourceMetadataEntry;
 import io.opaa.api.dto.SourceReference;
+import io.opaa.api.types.ChatRole;
 import io.opaa.chat.Chat;
 import io.opaa.chat.ChatConversation;
 import io.opaa.chat.ChatListEntry;
@@ -109,6 +110,9 @@ public final class ChatResponseMapper {
                 turn.getContent(),
                 turn.getCreatedAt())
             .sources(toSourceReferences(turn.getSources()));
+    if (turn.getRole() == ChatRole.ASSISTANT) {
+      response.privateSourcesInContext(ChatSource.anyPrivate(turn.getSources()));
+    }
     UsedPrompt usedPrompt = turn.getUsedPrompt();
     if (usedPrompt != null) {
       response.usedPromptId(usedPrompt.id()).usedPromptTitle(usedPrompt.title());
@@ -128,7 +132,8 @@ public final class ChatResponseMapper {
             source.getFileName(),
             source.getRelevanceScore(),
             source.getMatchCount(),
-            source.getCited())
+            source.getCited(),
+            source.getPrivateSource())
         .indexedAt(source.getIndexedAt())
         .documentId(source.getDocumentId())
         .sourceType(source.getSourceType())

@@ -135,6 +135,23 @@ class ChatResponseMapperTest {
     }
   }
 
+  /** An answer stored before the mark existed reads as without private sources. */
+  @Test
+  void aStoredSourceWithoutTheMarkIsNoPrivateSource() {
+    List<ChatSource> stored =
+        JsonMapper.builder()
+            .build()
+            .readValue(
+                "[{\"fileName\": \"alt.md\", \"relevanceScore\": 1.0, \"matchCount\": 1,"
+                    + " \"cited\": true}, {\"fileName\": \"privat.md\", \"relevanceScore\":"
+                    + " 0.5, \"matchCount\": 1, \"cited\": false, \"privateSource\": true}]",
+                new TypeReference<List<ChatSource>>() {});
+
+    assertThat(ChatResponseMapper.toSourceReference(stored.getFirst()).getPrivateSource())
+        .isFalse();
+    assertThat(ChatResponseMapper.toSourceReference(stored.get(1)).getPrivateSource()).isTrue();
+  }
+
   /** A stored source with a reason this version does not know keeps the chat readable. */
   @Test
   void aStoredSourceWithAnUnknownReasonIsShownWithoutItsFreeze() {
@@ -231,6 +248,7 @@ class ChatResponseMapperTest {
     UUID userTurnId = UUID.randomUUID();
     UUID assistantTurnId = UUID.randomUUID();
     ChatSource source = new ChatSource("bericht.pdf", 0.9, 1, true);
+    ChatSource privateSource = new ChatSource("privat.pdf", 0.5, 1, false).privateSource(true);
     ChatTurn userTurn =
         new ChatTurn(
             userTurnId,
@@ -245,7 +263,7 @@ class ChatResponseMapperTest {
             chat.getId(),
             ChatRole.ASSISTANT,
             "Antwort.",
-            List.of(source),
+            List.of(source, privateSource),
             createdAt.plus(2, ChronoUnit.MINUTES));
     ChatConversation conversation =
         new ChatConversation(chat, List.of(userTurn, assistantTurn), List.of());
@@ -274,8 +292,13 @@ class ChatResponseMapperTest {
     ChatMessageResponse mappedAssistantTurn = response.getMessages().get(1);
     assertThat(mappedAssistantTurn.getId()).isEqualTo(assistantTurnId);
     assertThat(mappedAssistantTurn.getChatId()).isEqualTo(chat.getId());
-    assertThat(mappedAssistantTurn.getSources()).hasSize(1);
+    assertThat(mappedAssistantTurn.getSources()).hasSize(2);
     assertThat(mappedAssistantTurn.getSources().getFirst().getFileName()).isEqualTo("bericht.pdf");
+    assertThat(mappedAssistantTurn.getSources().getFirst().getPrivateSource()).isFalse();
+    assertThat(mappedAssistantTurn.getSources().get(1).getPrivateSource()).isTrue();
+    // the mark follows from every source, an uncited one included; a question carries none
+    assertThat(mappedAssistantTurn.getPrivateSourcesInContext()).isTrue();
+    assertThat(mappedUserTurn.getPrivateSourcesInContext()).isNull();
     assertThat(mappedUserTurn.getUsedPromptId()).isNull();
     assertThat(mappedUserTurn.getUsedPromptTitle()).isNull();
   }

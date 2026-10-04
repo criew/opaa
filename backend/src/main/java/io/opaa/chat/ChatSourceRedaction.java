@@ -85,6 +85,9 @@ class ChatSourceRedaction implements ErasedLibraryReferences {
         neutral.set("relevanceScore", source.path("relevanceScore"));
         neutral.set("matchCount", source.path("matchCount"));
         neutral.set("cited", source.path("cited"));
+        if (source.has("privateSource")) {
+          neutral.set("privateSource", source.get("privateSource"));
+        }
         array.set(index, neutral);
       }
     }

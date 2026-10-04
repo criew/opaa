@@ -529,12 +529,6 @@ components:
       type: object
       required: [fileName, relevanceScore, matchCount, cited, privateSource]
       properties:
-        privateSource:
-          type: boolean
-          description: >
-            Whether the document came from a private library of the asker when the answer was
-            given - stored with the answer. A private library is read by its owner only, so it
-            appears only in her own answers.
         freeze:
           nullable: true
           description: >
@@ -609,6 +603,12 @@ components:
         cited:
           type: boolean
           example: true
+        privateSource:
+          type: boolean
+          description: >
+            Whether the document came from a private library of the asker when the answer was
+            given - stored with the answer. A private library is read by its owner only, so it
+            appears only in her own answers.
         citationValid:
           type: boolean
           nullable: true

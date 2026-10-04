@@ -355,6 +355,66 @@ class ChatSourceAssemblerTest {
   }
 
   /**
+   * A source from a private library is marked, cited or not: the answer's mark "private Quellen im
+   * Kontext" follows from every source the answer was given with.
+   */
+  @Test
+  void marksTheSourcesOfAPrivateLibraryCitedOrNot() {
+    KnowledgeLibrary own =
+        KnowledgeLibrary.ownerOnly(
+            UUID.randomUUID(),
+            "Meine Ablage",
+            null,
+            UUID.randomUUID(),
+            SourceTypes.FILESYSTEM,
+            "/privat",
+            null,
+            null,
+            null,
+            false);
+    KnowledgeLibrary shared =
+        KnowledgeLibrary.ownedByUser(UUID.randomUUID(), "Geteilt", null, UUID.randomUUID());
+    UUID ownDocumentId = UUID.randomUUID();
+    UUID sharedDocumentId = UUID.randomUUID();
+    io.opaa.knowledge.Document ownDocument =
+        new io.opaa.knowledge.Document(
+            "privat.md", "/privat.md", "text/markdown", 1L, SourceTypes.FILESYSTEM);
+    ownDocument.setLibraryId(own.getId());
+    io.opaa.knowledge.Document sharedDocument =
+        new io.opaa.knowledge.Document(
+            "geteilt.md", "/geteilt.md", "text/markdown", 1L, SourceTypes.FILESYSTEM);
+    sharedDocument.setLibraryId(shared.getId());
+    when(documentRepository.findById(ownDocumentId)).thenReturn(Optional.of(ownDocument));
+    when(documentRepository.findById(sharedDocumentId)).thenReturn(Optional.of(sharedDocument));
+    KnowledgeLibraryRepository libraries = mock(KnowledgeLibraryRepository.class);
+    when(libraries.findAllById(Set.of(own.getId(), shared.getId())))
+        .thenReturn(List.of(own, shared));
+    ChatSourceAssembler withLibraries =
+        new ChatSourceAssembler(
+            documentRepository,
+            documentMetadataService,
+            mock(CitationMetadataReader.class),
+            libraries,
+            SourceConnectorStubs.registry(),
+            asked -> Map.of(),
+            mock(IndexingJobRepository.class));
+
+    List<ChatSource> sources =
+        withLibraries.assemble(
+            List.of(
+                chunk("geteilt.md", sharedDocumentId.toString(), "geteilt", 0.9),
+                chunk("privat.md", ownDocumentId.toString(), "privat", 0.8)),
+            List.of(citation(sharedDocumentId.toString(), "geteilt.md", true)),
+            MetadataFilter.NONE);
+
+    assertThat(sources)
+        .extracting(ChatSource::getFileName, ChatSource::getCited, ChatSource::getPrivateSource)
+        .containsExactly(tuple("geteilt.md", true, false), tuple("privat.md", false, true));
+    assertThat(ChatSource.anyPrivate(sources)).isTrue();
+    assertThat(ChatSource.anyPrivate(sources.subList(0, 1))).isFalse();
+  }
+
+  /**
    * A malformed (non-UUID) {@code document_id} in chunk metadata points at a data problem - corrupt
    * indexing, a botched migration or a version mismatch between indexer and query service - not a
    * transient failure, so both the document lookup and the id parsing log it at WARN, where it

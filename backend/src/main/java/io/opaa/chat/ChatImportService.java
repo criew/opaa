@@ -8,6 +8,8 @@ import io.opaa.common.ValidationException;
 import io.opaa.indexing.source.SourceConnectorRegistry;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
+import io.opaa.knowledge.KnowledgeLibrary;
+import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.LibraryAccessService;
 import io.opaa.metadata.CitationFieldValue;
 import io.opaa.metadata.CitationMetadataReader;
@@ -20,11 +22,13 @@ import java.text.Normalizer;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
@@ -61,6 +65,7 @@ public class ChatImportService {
   private final SpaceAccessPolicy spaceAccessPolicy;
   private final LibraryAccessService libraryAccessService;
   private final DocumentRepository documentRepository;
+  private final KnowledgeLibraryRepository libraryRepository;
   private final SourceConnectorRegistry connectors;
   private final DocumentMetadataService documentMetadataService;
   private final CitationMetadataReader citationMetadataReader;
@@ -75,6 +80,7 @@ public class ChatImportService {
       SpaceAccessPolicy spaceAccessPolicy,
       LibraryAccessService libraryAccessService,
       DocumentRepository documentRepository,
+      KnowledgeLibraryRepository libraryRepository,
       SourceConnectorRegistry connectors,
       DocumentMetadataService documentMetadataService,
       CitationMetadataReader citationMetadataReader,
@@ -87,6 +93,7 @@ public class ChatImportService {
     this.spaceAccessPolicy = spaceAccessPolicy;
     this.libraryAccessService = libraryAccessService;
     this.documentRepository = documentRepository;
+    this.libraryRepository = libraryRepository;
     this.connectors = connectors;
     this.documentMetadataService = documentMetadataService;
     this.citationMetadataReader = citationMetadataReader;
@@ -121,6 +128,7 @@ public class ChatImportService {
         documentMetadataService.coreMetadataFor(documents.keySet());
     Map<UUID, List<CitationFieldValue>> citationFields =
         citationMetadataReader.forDocuments(documents.values());
+    Set<UUID> privateLibraries = privateLibrariesOf(documents.values());
 
     Chat chat =
         new Chat(spaceId, authorId, space.getOrganizationId(), transcript.title(), true, Set.of());
@@ -138,7 +146,7 @@ public class ChatImportService {
               sequence++,
               ChatRole.ASSISTANT,
               turn.answer(),
-              serialize(sourcesOf(turn, documents, coreMetadata, citationFields)),
+              serialize(sourcesOf(turn, documents, coreMetadata, citationFields, privateLibraries)),
               turn.answeredAt()));
     }
     return chatId;
@@ -279,7 +287,8 @@ public class ChatImportService {
       ChatImport.Turn turn,
       Map<UUID, Document> documents,
       Map<UUID, CoreMetadata> coreMetadata,
-      Map<UUID, List<CitationFieldValue>> citationFields) {
+      Map<UUID, List<CitationFieldValue>> citationFields,
+      Set<UUID> privateLibraries) {
     List<ChatSource> sources = new ArrayList<>();
     for (ChatImport.Source source : turn.sources()) {
       Document document = documents.get(source.documentId());
@@ -295,9 +304,26 @@ public class ChatImportService {
               .sourceUrl(connectors.deepLink(document))
               .sourceEntryUrl(document.getSourceEntryUrl())
               .citationValid(true)
-              .metadata(metadata.isEmpty() ? null : metadata));
+              .metadata(metadata.isEmpty() ? null : metadata)
+              .privateSource(privateLibraries.contains(document.getLibraryId())));
     }
     return sources;
+  }
+
+  /** The private libraries among those of {@code documents}. */
+  private Set<UUID> privateLibrariesOf(Collection<Document> documents) {
+    Set<UUID> libraryIds =
+        documents.stream()
+            .map(Document::getLibraryId)
+            .filter(Objects::nonNull)
+            .collect(Collectors.toSet());
+    if (libraryIds.isEmpty()) {
+      return Set.of();
+    }
+    return libraryRepository.findAllById(libraryIds).stream()
+        .filter(KnowledgeLibrary::isOwnerOnly)
+        .map(KnowledgeLibrary::getId)
+        .collect(Collectors.toSet());
   }
 
   private String serialize(List<ChatSource> sources) {
