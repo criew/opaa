@@ -964,9 +964,41 @@ components:
         libraries:
           type: array
           description: >
-            Every library of the caller's own organization holding at least one chunk, sorted by id.
+            Every shared library of the caller's own organization holding at least one chunk,
+            sorted by id. Private libraries appear only in privateLibraries.
           items:
             $ref: "#/components/schemas/LibraryPipelineVersionResponse"
+        privateLibraries:
+          $ref: "#/components/schemas/PrivatePipelineVersionSummaryResponse"
+
+    PrivatePipelineVersionSummaryResponse:
+      type: object
+      description: >
+        The private libraries as one line, without ids. Below the minimum group size of their
+        owners - zero included - only libraryCountFewerThan is set and the sums are absent. The
+        re-index of the administration leaves private libraries out.
+      properties:
+        libraryCount:
+          type: integer
+          format: int64
+          nullable: true
+        libraryCountFewerThan:
+          type: integer
+          format: int32
+          nullable: true
+          example: 5
+        totalChunks:
+          type: integer
+          format: int64
+          nullable: true
+        currentVersionChunks:
+          type: integer
+          format: int64
+          nullable: true
+        staleChunks:
+          type: integer
+          format: int64
+          nullable: true
 
     PipelineReindexRequest:
       type: object

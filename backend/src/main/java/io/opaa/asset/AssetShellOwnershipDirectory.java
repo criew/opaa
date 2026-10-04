@@ -164,8 +164,11 @@ class AssetShellOwnershipDirectory implements AssetOwnershipDirectory {
             .actor(actorUserId)
             .type(AuditEventType.ASSET_OWNER_CHANGED)
             .object(definition.auditObjectType(), asset.getId(), asset.auditName())
-            .before(Map.of("ownerId", previousOwnerId.toString()))
-            .after(Map.of("ownerId", newOwner.id().toString(), "transferId", transferId.toString()))
+            .before(asset.auditPayload(Map.of("ownerId", previousOwnerId.toString())))
+            .after(
+                asset.auditPayload(
+                    Map.of(
+                        "ownerId", newOwner.id().toString(), "transferId", transferId.toString())))
             .outcome(AuditOutcome.SUCCESS)
             .build());
   }
@@ -202,8 +205,8 @@ class AssetShellOwnershipDirectory implements AssetOwnershipDirectory {
             .actor(actorUserId)
             .type(AuditEventType.ASSET_OWNER_CHANGED)
             .object(definition.auditObjectType(), asset.getId(), asset.auditName())
-            .before(Map.of("ownerId", previousOwnerId.toString()))
-            .after(Map.of("ownerId", newOwner.id().toString()))
+            .before(asset.auditPayload(Map.of("ownerId", previousOwnerId.toString())))
+            .after(asset.auditPayload(Map.of("ownerId", newOwner.id().toString())))
             .outcome(AuditOutcome.SUCCESS)
             .build());
     assetRepository.save(asset);

@@ -183,7 +183,7 @@ public class ConnectionProfileService {
         change.connections(),
         personNumbers.totalOf(id),
         verdict.vetoes(),
-        verdict.released().size());
+        change.forPersons() ? privateRejections(change, verdict.released()) : null);
   }
 
   /**
@@ -256,7 +256,7 @@ public class ConnectionProfileService {
       throw ChangeRejection.refusingProfileChange(verdict.vetoes());
     }
     Set<UUID> released = change.dropsPersons() ? change.privateLibraries() : verdict.released();
-    privateRelease.release(caller, released);
+    privateRelease.release(caller, profile, released);
     Map<String, Object> before = auditState(profile);
     profile.replace(validated, ciphertext, clock.instant());
     profiles.save(profile);
@@ -299,6 +299,18 @@ public class ConnectionProfileService {
     }
     record(caller, AuditEventType.CONNECTION_PROFILE_CHANGED, profile, before, after);
     return profile;
+  }
+
+  /** How many private libraries the connector refuses, masked by their owners. */
+  private PersonCount privateRejections(ProfileChange change, Set<UUID> released) {
+    long owners =
+        change.moves().stream()
+            .map(Move::library)
+            .filter(library -> released.contains(library.getId()))
+            .map(KnowledgeLibrary::getOwnerUserId)
+            .distinct()
+            .count();
+    return personNumbers.privateLibraries(released.size(), owners);
   }
 
   /** Refuses {@code change} with 409 while it discards stored secrets. */
@@ -620,15 +632,15 @@ public class ConnectionProfileService {
       long libraries,
       PersonCount connectedAccounts,
       List<ChangeRejection> rejections,
-      long unnamedRejections) {
+      PersonCount rejectedPrivateLibraries) {
 
-    /** Without refusals that may not be named. */
+    /** Without refusals of private libraries to tell. */
     public ProfileImpact(
         long connections,
         long libraries,
         PersonCount connectedAccounts,
         List<ChangeRejection> rejections) {
-      this(connections, libraries, connectedAccounts, rejections, 0);
+      this(connections, libraries, connectedAccounts, rejections, null);
     }
   }
 

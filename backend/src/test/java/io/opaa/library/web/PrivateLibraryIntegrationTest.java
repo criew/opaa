@@ -392,7 +392,9 @@ class PrivateLibraryIntegrationTest {
                 as("dev-admin", post(PROFILES + "/" + forPersons + "/impact"))
                     .content(change.formatted(name, refusedAddress)))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.rejectedLibraries").value(1))
+            .andExpect(jsonPath("$.rejectedLibraries").value(0))
+            .andExpect(jsonPath("$.rejectedPrivateLibraries.fewerThan").value(5))
+            .andExpect(jsonPath("$.rejectedPrivateLibraries.count").doesNotExist())
             .andExpect(jsonPath("$.rejections").isEmpty())
             .andExpect(jsonPath("$.connections").value(0))
             .andExpect(jsonPath("$.libraries").value(0))
@@ -411,6 +413,7 @@ class PrivateLibraryIntegrationTest {
         .andExpect(jsonPath("$.connectionCount").value(0));
 
     assertThat(profileOf(library)).isNull();
+    assertThat(releaseNotices(library)).isEqualTo(1);
     mockMvc
         .perform(as("dev-user", get(LIBRARIES + "/" + library)))
         .andExpect(jsonPath("$.sourceBlock.reason").value("ACCESS_REMOVED"))
@@ -418,6 +421,33 @@ class PrivateLibraryIntegrationTest {
             jsonPath("$.sourceBlock.notice")
                 .value(org.hamcrest.Matchers.containsString("einem anderen Zugang zu")));
     assertThat(auditNamesOf(library)).containsOnly("Private Bibliothek");
+  }
+
+  /**
+   * A secret the store refuses - here for a deactivated owner - is no secret to the change: the
+   * preview and the change answer as for a library without one instead of failing.
+   */
+  @Test
+  void aProfileChangeOverAPrivateLibraryOfADeactivatedOwnerIsAnswered() throws Exception {
+    UUID library = createdPrivateLibrary();
+    jdbc.update("UPDATE users SET directory_locked_at = now() WHERE id = ?", owner);
+    String change =
+        "{\"name\": \"%s\", \"serverUrl\": \"https://anders.example.org\","
+            + " \"authMethod\": \"PERSONAL_SECRET\", \"ownership\": \"PERSON\","
+            + " \"confirmDiscard\": true}";
+    String name = profileName(forPersons);
+
+    mockMvc
+        .perform(
+            as("dev-admin", post(PROFILES + "/" + forPersons + "/impact"))
+                .content(change.formatted(name)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.rejectedLibraries").value(0))
+        .andExpect(jsonPath("$.rejectedPrivateLibraries.fewerThan").value(5));
+    mockMvc
+        .perform(as("dev-admin", put(PROFILES + "/" + forPersons)).content(change.formatted(name)))
+        .andExpect(status().isOk());
+    assertThat(libraryRepository.findById(library)).isPresent();
   }
 
   @Test
@@ -552,6 +582,15 @@ class PrivateLibraryIntegrationTest {
     return mockMvc.perform(
         as(user, put(ME + "/" + profile))
             .content("{\"username\": \"avogt\", \"secret\": \"" + PASSWORD + "\"}"));
+  }
+
+  private int releaseNotices(UUID library) {
+    return jdbc.queryForObject(
+        "SELECT count(*) FROM notifications WHERE type = 'PRIVATE_LIBRARY_RELEASED'"
+            + " AND recipient_user_id = ? AND object_id = ?",
+        Integer.class,
+        owner,
+        library);
   }
 
   private UUID profileOf(UUID library) {

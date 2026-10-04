@@ -445,9 +445,14 @@ public class EffectiveSourceSettings {
     if (profile.isEmpty()) {
       return ownFields.resolveForChange(library).credentials();
     }
-    return profile.get().getAuthMethod() == ConnectionAuthMethod.PERSONAL_SECRET
-        ? storedSecretFor(profile.get(), library)
-        : null;
+    if (profile.get().getAuthMethod() != ConnectionAuthMethod.PERSONAL_SECRET) {
+      return null;
+    }
+    try {
+      return secretOf(ownerOn(profile.get(), library), profile.get(), library);
+    } catch (SourceConnectionBlockedException e) {
+      return null;
+    }
   }
 
   /** The access token an uploaded service account key is exchanged for, {@code null} for none. */

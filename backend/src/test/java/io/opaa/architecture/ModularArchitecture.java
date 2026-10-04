@@ -1182,6 +1182,63 @@ public final class ModularArchitecture {
   }
 
   /**
+   * Protocol entries about an asset name it only neutrally: a code unit that builds an audit entry
+   * ({@code audit.AuditEvent.Builder#object}) and reads {@code Asset#getName} names the asset by
+   * {@code Asset#auditName}, and one that names an asset by {@code Asset#auditName} and writes a
+   * payload ({@code before}/{@code after}) passes it through {@code Asset#auditPayload}, so an
+   * owner-only asset carries no name, path or value.
+   */
+  ArchRule privateAssetsAreAuditedNeutrally() {
+    String builder = root + ".audit.AuditEvent$Builder";
+    String asset = root + ".asset.Asset";
+    return classes()
+        .should(
+            new ArchCondition<JavaClass>("name an asset in a protocol entry only neutrally") {
+              @Override
+              public void check(JavaClass javaClass, ConditionEvents events) {
+                for (JavaCodeUnit codeUnit : javaClass.getCodeUnits()) {
+                  boolean buildsEntry = false;
+                  boolean writesPayload = false;
+                  boolean namesNeutrally = false;
+                  boolean neutralizesPayload = false;
+                  List<com.tngtech.archunit.core.domain.JavaAccess<?>> names = new ArrayList<>();
+                  for (var access : codeUnit.getAccessesFromSelf()) {
+                    JavaClass owner = access.getTargetOwner();
+                    String name = access.getName();
+                    if (owner.getName().equals(builder)) {
+                      buildsEntry |= name.equals("object");
+                      writesPayload |= name.equals("before") || name.equals("after");
+                    } else if (owner.isAssignableTo(asset)) {
+                      if (name.equals("getName")) {
+                        names.add(access);
+                      }
+                      namesNeutrally |= name.equals("auditName");
+                      neutralizesPayload |= name.equals("auditPayload");
+                    }
+                  }
+                  if (buildsEntry && !namesNeutrally) {
+                    names.forEach(
+                        access ->
+                            events.add(
+                                SimpleConditionEvent.violated(access, access.getDescription())));
+                  }
+                  if (namesNeutrally && writesPayload && !neutralizesPayload) {
+                    events.add(
+                        SimpleConditionEvent.violated(
+                            codeUnit,
+                            codeUnit.getFullName()
+                                + " writes a payload about an asset without auditPayload"));
+                  }
+                }
+              }
+            })
+        .because(
+            "a protocol entry about a private library names neither it nor its content"
+                + " (ADR-0041, Entscheidung 6)")
+        .allowEmptyShould(true);
+  }
+
+  /**
    * Calls of {@link #UNFILTERED_LIBRARY_FINDERS} outside {@link #LIBRARY_ENUMERATORS}: a private
    * library is its owner's alone and appears in no list of the administration, not even by name.
    */
@@ -1303,6 +1360,7 @@ public final class ModularArchitecture {
         aConnectionIsEstablishedOnlyAfterItsSignIn(),
         theForeignContextNeverUsesTheOwnFormula(),
         privateLibrariesAreNotEnumeratedOutsideListedClasses(),
+        privateAssetsAreAuditedNeutrally(),
         theProfileSupportIsReadInOnePlace(),
         onlyTheKnownClassesDeleteDocuments(),
         theSecretPortStaysWithTheCore(),

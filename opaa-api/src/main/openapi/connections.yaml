@@ -1045,16 +1045,25 @@ components:
           type: integer
           format: int64
           description: >
-            How many libraries the connector refuses the proposed change for; 0 without a
-            proposal (getConnectionProfileImpact). Private libraries count here and nowhere
-            else: a refusal of one is no veto - the change goes through, and the library rests
-            with the reason ACCESS_REMOVED until its owner moves it to another profile.
+            How many shared libraries the connector refuses the proposed change for; 0 without a
+            proposal (getConnectionProfileImpact). Private libraries are counted in
+            rejectedPrivateLibraries only.
+        rejectedPrivateLibraries:
+          description: >
+            How many private libraries the connector refuses the proposed change for, masked by
+            their owners like every number about persons: below the minimum group size of owners
+            - zero included - only "fewer than". A refusal of a private library is no veto - the
+            change goes through, and the library rests with the reason ACCESS_REMOVED until its
+            owner moves it to another profile. Present with a proposal on a profile admitting
+            persons, absent otherwise.
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/PersonCount"
         rejections:
           type: array
           description: >
-            Why, one entry per refused library; empty without a proposal. Holds fewer entries
-            than rejectedLibraries where a library may not be named: a private library appears
-            with neither its id nor the connector's reason.
+            Why, one entry per refused shared library; empty without a proposal. A private
+            library appears with neither its id nor the connector's reason.
           items:
             $ref: "#/components/schemas/ConnectionProfileChangeRejection"
         lastForProfileRequirement:

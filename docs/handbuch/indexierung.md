@@ -652,8 +652,9 @@ neu ab. Ein reines Umbenennen fragt keinen Konnektor.
 zählen in keiner Zahl dieses Abschnitts mit und haben kein Veto. Lehnt der Konnektor eine Änderung
 für eine private Bibliothek ab oder lässt der Zugang danach keine Personen mehr zu, löst OPAA sie
 vom Zugang; sie ruht mit dem Hinweis „Zugang nicht mehr nutzbar“, bis ihre Besitzerin sie einem
-anderen Zugang zuordnet. Die Vorschau zählt eine solche Ablehnung nur mit, ohne Bibliothek und
-Grund.
+anderen Zugang zuordnet, und erhält darüber eine Benachrichtigung. Die Vorschau nennt solche
+Ablehnungen nur als Zahl, ohne Bibliothek und Grund, und unterhalb der Mindestgruppengröße an
+Besitzerinnen nur als „weniger als N“.
 
 Das Client-Secret liegt verschlüsselt mit demselben Schlüssel wie die Zugangsdaten der
 Bibliotheken. Keine Antwort, kein Protokoll und kein Revisionseintrag enthält es; angezeigt wird

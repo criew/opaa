@@ -20,7 +20,7 @@ import io.opaa.metadata.LibraryMetadataSchemaChangeProgress;
 import io.opaa.metadata.LibraryMetadataSchemaChangeService;
 import io.opaa.metadata.ModelExtractionCounters;
 import io.opaa.metadata.ModelExtractionStats;
-import io.opaa.permission.GroupSizeProperties;
+import io.opaa.permission.PersonThreshold;
 import io.opaa.retrieval.QueryProperties;
 import io.opaa.retrieval.RetrievalPipelineProperties;
 import io.opaa.retrieval.RetrievalStageName;
@@ -97,7 +97,7 @@ public class SearchStatusService {
   private final LibraryMetadataSchemaChangeService schemaChangeService;
   private final QueryProperties queryProperties;
   private final RetrievalPipelineProperties pipelineProperties;
-  private final GroupSizeProperties groupSize;
+  private final PersonThreshold threshold;
   private final Clock clock;
 
   /**
@@ -145,9 +145,9 @@ public class SearchStatusService {
       LibraryMetadataSchemaChangeService schemaChangeService,
       QueryProperties queryProperties,
       RetrievalPipelineProperties pipelineProperties,
-      GroupSizeProperties groupSize,
+      PersonThreshold threshold,
       Clock clock) {
-    this.groupSize = groupSize;
+    this.threshold = threshold;
     this.llmModelService = llmModelService;
     this.connectionTester = connectionTester;
     this.embeddingInfoService = embeddingInfoService;
@@ -209,8 +209,9 @@ public class SearchStatusService {
     }
     return PrivateLibrarySummary.of(
         libraryRepository.countByOrganizationIdAndOwnerOnlyTrue(organizationId),
+        libraryRepository.countPrivateLibraryOwners(organizationId),
         new LibraryDocumentStats(null, documents, 0, 0, failed, 0, chunks, null),
-        groupSize.minimumGroupSize());
+        threshold);
   }
 
   /**

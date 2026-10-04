@@ -7,21 +7,36 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.jayway.jsonpath.JsonPath;
+import io.opaa.api.types.GroupKind;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.DevAuthFilter;
+import io.opaa.auth.OidcProviderRepository;
 import io.opaa.connection.account.ConnectedAccountService;
+import io.opaa.diagnosticaccess.DiagnosticImpersonationGrant;
+import io.opaa.diagnosticaccess.DiagnosticImpersonationGrantRepository;
+import io.opaa.externalaccess.ExternalAccessSettings;
+import io.opaa.externalaccess.ExternalAccessSettingsService;
+import io.opaa.externalaccess.token.ExternalAccessTokenService;
+import io.opaa.format.ChunkFormatMetadata;
+import io.opaa.group.Group;
+import io.opaa.group.GroupRepository;
+import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.indexing.source.profileprobe.PersonProbeSourceConnector;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryService;
 import io.opaa.library.LibraryCreation;
+import io.opaa.library.LibraryExternalAccessService;
 import io.opaa.library.LibraryUpdate;
 import io.opaa.library.PrivateLibraryCreation;
 import io.opaa.organization.Organization;
+import io.opaa.permission.GroupMembershipResolver;
+import io.opaa.permission.GroupSizeProperties;
 import io.opaa.space.SpaceAssetAssociationService;
 import io.opaa.test.ConnectorReleases;
 import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.OwnLibraryFixtures;
+import io.opaa.test.ProviderFixtures;
 import java.io.InputStream;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
@@ -42,6 +57,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -75,13 +91,30 @@ class PrivateLibraryInvisibilityIntegrationTest {
   private static final String SERVER = "https://person.example.org";
   private static final String PASSWORD = PersonProbeSourceConnector.ACCEPTED_PASSWORD;
   private static final UUID UNKNOWN = UUID.fromString("7f1d3c58-0d8b-4c39-9a52-5d2a4a8f2e11");
+  private static final Pattern PREVIEW_ID = Pattern.compile("\"previewId\"\\s*:\\s*\"[^\"]*\"");
+  private static final tools.jackson.databind.ObjectMapper JSON =
+      new tools.jackson.databind.ObjectMapper();
+  private static final String PERSON_CONTEXT_QUESTION = "Wo steht meine Abrechnung?";
+
+  /** "Sicht als" the owner. */
+  private static final String PERSON_CONTEXT_DIAGNOSIS =
+      "{\"question\": \""
+          + PERSON_CONTEXT_QUESTION
+          + "\", \"contextType\": \"USER\", \"targetUserId\": \"{owner}\","
+          + " \"justification\": \"Prüfung der Unsichtbarkeit privater Bibliotheken\"}";
 
   /** Who looks for the private library. */
   enum Observer {
     SYSTEM_ADMIN("dev-admin", "USER", "MEMBER"),
+    /** The administration with a befugnis for "Sicht als" over a group the owner belongs to. */
+    PERSON_CONTEXT("dev-admin", "USER", "MEMBER"),
     AUDITOR("dev-user", "AUDITOR", "MEMBER"),
     SPACE_MEMBER("dev-user", "USER", "MEMBER"),
-    CURATOR("dev-user", "USER", "CURATOR");
+    CURATOR("dev-user", "USER", "CURATOR"),
+    /** A person with a private library of her own on the same profile. */
+    OTHER_OWNER("dev-user", "USER", "MEMBER"),
+    /** An external-access token of a person, for a shared library of hers. */
+    TOKEN("dev-user", "USER", "MEMBER");
 
     private final String devUser;
     private final String devUserRole;
@@ -110,7 +143,8 @@ class PrivateLibraryInvisibilityIntegrationTest {
   /**
    * One operation's request and expectation; {@code body} and {@code query} hold the placeholders
    * {@code {library}}, {@code {detached}}, {@code {document}}, {@code {chunk}}, {@code {folder}},
-   * {@code {space}}, {@code {profile}}, {@code {unknown}} and {@code {expires}}.
+   * {@code {space}}, {@code {spare}}, {@code {profile}}, {@code {owner}}, {@code {admin}}, {@code
+   * {unknown}} and {@code {expires}}. A value in {@code query} also overrides a path parameter.
    */
   record Probe(Kind kind, String body, Map<String, String> query, boolean multipart) {
 
@@ -136,6 +170,20 @@ class PrivateLibraryInvisibilityIntegrationTest {
   private static Probe volatileAnswer() {
     return new Probe(Kind.VOLATILE, null, Map.of(), false);
   }
+
+  /**
+   * Operations that name no library but answer a number that private libraries could change; they
+   * are relevant besides every GET and every operation naming an id.
+   */
+  static final Set<String> COUNTING =
+      Set.of(
+          "reportOrphanedLibraries",
+          "reindexPipelineBatch",
+          "previewConnectionProfileChange",
+          "updateConnectionProfile",
+          "disconnectAllConnectionProfileConnections",
+          "previewPermissionTransfer",
+          "deleteSpace");
 
   /** Every relevant operation of the specification, by operation id. */
   static final Map<String, Probe> PROBES = probes();
@@ -361,6 +409,29 @@ class PrivateLibraryInvisibilityIntegrationTest {
     probes.put("deletePrompt", same());
     probes.put("updatePromptLibrary", same("{\"name\": \"Vorlagen\"}"));
     probes.put("deletePromptLibrary", same());
+    // the counting operations; disconnecting and deleting run in both phases alike
+    probes.put("reportOrphanedLibraries", same("{}"));
+    probes.put(
+        "reindexPipelineBatch",
+        same("{\"pipelineId\": \"tika-fallback\", \"belowVersion\": 1, \"batchSize\": 10}"));
+    probes.put(
+        "previewConnectionProfileChange",
+        same(
+            "{\"name\": \"Zugang Personen {profile}\", \"serverUrl\": \"https://anders.example.org\","
+                + " \"authMethod\": \"PERSONAL_SECRET\", \"ownership\": \"PERSON\"}"));
+    probes.put(
+        "updateConnectionProfile",
+        same(
+            "{\"name\": \"Zugang Personen {profile}\", \"serverUrl\": \""
+                + SERVER
+                + "\", \"authMethod\": \"PERSONAL_SECRET\", \"ownership\": \"PERSON\"}"));
+    probes.put("disconnectAllConnectionProfileConnections", same());
+    probes.put(
+        "previewPermissionTransfer",
+        same(
+            "{\"sourceType\": \"USER\", \"sourceId\": \"{owner}\", \"targetType\": \"USER\","
+                + " \"targetId\": \"{admin}\", \"scope\": [\"OWNERSHIP\"]}"));
+    probes.put("deleteSpace", same().withQuery("spaceId", "{spare}"));
     return probes;
   }
 
@@ -371,33 +442,58 @@ class PrivateLibraryInvisibilityIntegrationTest {
   @Autowired private KnowledgeLibraryService libraryService;
   @Autowired private ConnectedAccountService accounts;
   @Autowired private SpaceAssetAssociationService associations;
+  @Autowired private VectorChunkStore chunks;
+  @Autowired private OidcProviderRepository providers;
+  @Autowired private GroupRepository groups;
+  @Autowired private DiagnosticImpersonationGrantRepository befugnisse;
+  @Autowired private GroupMembershipResolver memberships;
+  @Autowired private GroupSizeProperties groupSize;
+  @Autowired private ExternalAccessSettingsService externalSettings;
+  @Autowired private LibraryExternalAccessService externalRelease;
+  @Autowired private ExternalAccessTokenService tokens;
 
   private final List<UUID> libraries = new ArrayList<>();
+  private final List<UUID> spaces = new ArrayList<>();
+  private final List<UUID> extraUsers = new ArrayList<>();
   private UUID owner;
   private UUID devUser;
   private UUID admin;
   private UUID profile;
   private UUID space;
+  private UUID chat;
+  private UUID provider;
+  private UUID group;
+  private String token;
+  private Instant startedAt;
   private CurrentUser ownerCaller;
+  private CurrentUser devCaller;
+  private CurrentUser adminCaller;
 
   @BeforeEach
   void provisionTheDevUsers() throws Exception {
+    startedAt = Instant.now();
     mockMvc.perform(as("dev-user", get("/api/v1/spaces"))).andExpect(status().isOk());
     mockMvc.perform(as("dev-admin", get("/api/v1/spaces"))).andExpect(status().isOk());
     devUser = userIdOf("dev-user@opaa.local");
     admin = userIdOf("admin@opaa.local");
+    devCaller = CurrentUser.of(devUser, Organization.DEFAULT_ID, SystemRole.USER, "Dev User");
+    adminCaller =
+        CurrentUser.of(admin, Organization.DEFAULT_ID, SystemRole.SYSTEM_ADMIN, "Dev Admin");
   }
 
   @AfterEach
   void removeOwnRows() throws Exception {
     jdbc.update("UPDATE users SET system_role = 'USER' WHERE id = ?", devUser);
-    if (space != null) {
-      jdbc.update("DELETE FROM chats WHERE space_id = ?", space);
-      mockMvc.perform(as("dev-admin", delete("/api/v1/spaces/" + space)));
-      jdbc.update("DELETE FROM space_membership_history WHERE space_id = ?", space);
-      jdbc.update("DELETE FROM asset_ownership_history WHERE asset_id = ?", space);
-      jdbc.update("DELETE FROM audit_log WHERE object_id = ?", space.toString());
+    jdbc.update("DELETE FROM external_access_tokens WHERE user_id = ?", devUser);
+    jdbc.update("DELETE FROM diagnostic_impersonation_grants WHERE holder_user_id = ?", admin);
+    for (UUID removed : spaces) {
+      jdbc.update("DELETE FROM chats WHERE space_id = ?", removed);
+      mockMvc.perform(as("dev-admin", delete("/api/v1/spaces/" + removed)));
+      jdbc.update("DELETE FROM space_membership_history WHERE space_id = ?", removed);
+      jdbc.update("DELETE FROM asset_ownership_history WHERE asset_id = ?", removed);
+      jdbc.update("DELETE FROM audit_log WHERE object_id = ?", removed.toString());
     }
+    spaces.clear();
     for (UUID library : libraries) {
       jdbc.update("DELETE FROM audit_log WHERE object_id = ?", library.toString());
       jdbc.update("DELETE FROM asset_grant_history WHERE asset_id = ?", library);
@@ -411,7 +507,17 @@ class PrivateLibraryInvisibilityIntegrationTest {
       jdbc.update("DELETE FROM audit_log WHERE object_id = ?", profile.toString());
       jdbc.update("DELETE FROM connection_profiles WHERE id = ?", profile);
     }
+    if (group != null) {
+      jdbc.update("DELETE FROM group_memberships WHERE group_id = ?", group);
+      jdbc.update("DELETE FROM groups WHERE id = ?", group);
+      jdbc.update("DELETE FROM oidc_providers WHERE id = ?", provider);
+    }
+    for (UUID extra : extraUsers) {
+      jdbc.update("DELETE FROM users WHERE id = ?", extra);
+    }
+    extraUsers.clear();
     if (owner != null) {
+      jdbc.update("DELETE FROM audit_log WHERE object_id = ?", owner.toString());
       jdbc.update("DELETE FROM asset_ownership_history WHERE owner_user_id = ?", owner);
       jdbc.update("DELETE FROM notifications WHERE recipient_user_id = ?", owner);
       jdbc.update("DELETE FROM users WHERE id = ?", owner);
@@ -432,25 +538,32 @@ class PrivateLibraryInvisibilityIntegrationTest {
         .as("operations naming a library, asset, document or chunk or answering a list, unprobed")
         .isEmpty();
     assertThat(stale).as("probes of operations that no longer qualify").isEmpty();
+    assertThat(relevant).containsAll(COUNTING);
   }
 
   @ParameterizedTest
   @EnumSource(Observer.class)
   void noObserverCanTellAnotherPersonsPrivateLibraryFromNone(Observer observer) throws Exception {
     aSpaceWithTheObserverAndAPersonWithAConnectedAccount(observer);
+    theObserversOwnStanding(observer);
     Ids unknown = Ids.random();
+    Spare spareBefore = aSpareSpace(observer, null);
     Map<String, Answer> before = new LinkedHashMap<>();
     for (Operation operation : relevantOperations()) {
-      before.put(operation.id(), call(operation, PROBES.get(operation.id()), unknown, observer));
+      before.put(
+          operation.id(),
+          call(operation, PROBES.get(operation.id()), unknown, observer, spareBefore));
     }
+    theConnectionsAreBackAndTheSpareIsGone(observer, spareBefore);
 
     Ids own = herPrivateLibraries();
+    Spare spareAfter = aSpareSpace(observer, own.library());
 
     List<String> findings = new ArrayList<>();
     Map<String, Answer> answers = new LinkedHashMap<>();
     for (Operation operation : relevantOperations()) {
       Probe probe = PROBES.get(operation.id());
-      Answer after = call(operation, probe, own, observer);
+      Answer after = call(operation, probe, own, observer, spareAfter);
       answers.put(operation.id(), after);
       Answer was = before.get(operation.id());
       String label = operation.id() + " (" + operation.method() + " " + operation.path() + ")";
@@ -466,25 +579,29 @@ class PrivateLibraryInvisibilityIntegrationTest {
         }
         continue;
       }
-      if (after.status() != was.status()
-          || !after.normalized(own).equals(was.normalized(unknown))) {
+      String afterNormalized = unordered(spareAfter.normalize(after.normalized(own)));
+      String wasNormalized = unordered(spareBefore.normalize(was.normalized(unknown)));
+      if (after.status() != was.status() || !afterNormalized.equals(wasNormalized)) {
         findings.add(
             label
                 + " answers "
                 + after.status()
                 + " "
-                + abbreviated(after.normalized(own))
+                + around(afterNormalized, wasNormalized)
                 + " instead of "
                 + was.status()
                 + " "
-                + abbreviated(was.normalized(unknown)));
+                + around(wasNormalized, afterNormalized));
       }
     }
     assertThat(findings).as("what %s learns of the private library", observer).isEmpty();
     theProbesReachedWhatTheyAsk(observer, answers, own);
     herLibrariesAreUntouched(own);
     if (observer == Observer.SYSTEM_ADMIN) {
-      theSpaceIsDeletedWithoutNamingTheAssociation(own);
+      theSpareSpacesAreDeletedAlike(spareBefore, spareAfter, own);
+    }
+    if (observer == Observer.PERSON_CONTEXT) {
+      theDiagnosticProtocolNamesNothingOfHers(own);
     }
   }
 
@@ -507,29 +624,71 @@ class PrivateLibraryInvisibilityIntegrationTest {
       case SYSTEM_ADMIN -> {
         assertThat(answers.get("getSearchStatus").status()).isEqualTo(200);
         assertThat(answers.get("getSearchStatus").raw()).contains("privateLibraries");
-        assertThat(answers.get("listConnectionProfiles").status()).isEqualTo(200);
+        assertThat(answers.get("getPipelineVersionStatus").raw()).contains("privateLibraries");
+        for (String counting :
+            List.of(
+                "reportOrphanedLibraries",
+                "reindexPipelineBatch",
+                "previewConnectionProfileChange",
+                "updateConnectionProfile",
+                "disconnectAllConnectionProfileConnections",
+                "previewPermissionTransfer",
+                "listConnectionProfiles")) {
+          assertThat(answers.get(counting).status()).as(counting).isEqualTo(200);
+        }
+        assertThat(answers.get("deleteSpace").status()).isEqualTo(204);
       }
-      case SPACE_MEMBER, CURATOR -> {
+      case PERSON_CONTEXT ->
+          assertThat(answers.get("runSearchDiagnosis").status())
+              .as(answers.get("runSearchDiagnosis").raw())
+              .isEqualTo(200);
+      case SPACE_MEMBER, CURATOR, OTHER_OWNER -> {
         assertThat(answers.get("listSpaceAssetAssociations").status()).isEqualTo(200);
         assertThat(answers.get("getSpace").status()).isEqualTo(200);
+      }
+      case TOKEN -> {
+        assertThat(answers.get("listSearchableLibraries").status()).isEqualTo(200);
+        assertThat(answers.get("searchKnowledge").status()).isEqualTo(200);
       }
     }
   }
 
-  /** The space's deletion neither names nor counts the private library associated with it. */
-  private void theSpaceIsDeletedWithoutNamingTheAssociation(Ids own) throws Exception {
-    MvcResult deletion =
-        mockMvc.perform(as("dev-admin", delete("/api/v1/spaces/" + space))).andReturn();
-    assertThat(deletion.getResponse().getStatus()).isEqualTo(204);
+  /**
+   * Deleting a space with her private library associated leaves the same protocol entry as deleting
+   * one without: neither names nor counts the association.
+   */
+  private void theSpareSpacesAreDeletedAlike(Spare before, Spare after, Ids own) {
+    String without = before.normalize(deletionEntry(before.id()));
+    String with = after.normalize(deletionEntry(after.id()));
+    assertThat(with).isEqualTo(without);
+    for (String marker : own.markers(true)) {
+      assertThat(with).doesNotContain(marker);
+    }
+  }
+
+  private String deletionEntry(UUID spaceId) {
     List<String> entries =
         jdbc.queryForList(
             "SELECT coalesce(object_label, '') || coalesce(before, '') || coalesce(after, '')"
                 + " FROM audit_log WHERE object_id = ? AND event_type = 'SPACE_DELETED'",
             String.class,
-            space.toString());
+            spaceId.toString());
     assertThat(entries).hasSize(1);
+    return INSTANT.matcher(entries.getFirst()).replaceAll("<instant>");
+  }
+
+  /** "Sicht als" the owner wrote its protocol entry without anything of her private library. */
+  private void theDiagnosticProtocolNamesNothingOfHers(Ids own) {
+    List<String> entries =
+        jdbc.queryForList(
+            "SELECT permission_snapshot || hit_refs FROM diagnostic_context_log"
+                + " WHERE recorded_at >= ? AND test_question = ?",
+            String.class,
+            java.sql.Timestamp.from(startedAt),
+            PERSON_CONTEXT_QUESTION);
+    assertThat(entries).hasSize(2);
     for (String marker : own.markers(true)) {
-      assertThat(entries.getFirst()).doesNotContain(marker);
+      assertThat(entries).noneMatch(entry -> entry.contains(marker));
     }
   }
 
@@ -538,8 +697,8 @@ class PrivateLibraryInvisibilityIntegrationTest {
   // -------------------------------------------------------------------------------------------
 
   /**
-   * Another person with a connected account on a profile for persons, and a space she owns with the
-   * observer and the administration among its members.
+   * Another person with a connected account on a profile for persons, a space she owns with the
+   * observer and the administration among its members, and her chat in it.
    */
   private void aSpaceWithTheObserverAndAPersonWithAConnectedAccount(Observer observer)
       throws Exception {
@@ -547,7 +706,7 @@ class PrivateLibraryInvisibilityIntegrationTest {
     owner = UUID.randomUUID();
     jdbc.update(
         "INSERT INTO users (id, subject, issuer, email, display_name, organization_id,"
-            + " last_login_at) VALUES (?, ?, 'invisibility-it', ?, 'Ilse Eigen', ?, now())",
+            + " last_login_at) VALUES (?, ?, 'opaa-dev', ?, 'Ilse Eigen', ?, now())",
         owner,
         "eigen-" + owner,
         "eigen-" + owner + "@example.com",
@@ -563,30 +722,175 @@ class PrivateLibraryInvisibilityIntegrationTest {
                     """
                         .formatted(UUID.randomUUID(), SERVER)));
     profile = UUID.fromString(JsonPath.read(profileBody, "$.id"));
+    jdbc.update(
+        "UPDATE connection_profiles SET name = ? WHERE id = ?",
+        "Zugang Personen " + profile,
+        profile);
     ConnectorReleases.releaseToAllAccounts(jdbc, "PROFILE:" + profile);
     accounts.connect(ownerCaller, profile, "ieigen", PASSWORD);
+    space = aSpace("Raum " + UUID.randomUUID(), observer);
+    chat = UUID.randomUUID();
+    jdbc.update(
+        "INSERT INTO chats (id, space_id, author_id, organization_id, use_knowledge, status,"
+            + " created_at, updated_at) VALUES (?, ?, ?, ?, true, 'PRIVATE', now(), now())",
+        chat,
+        space,
+        owner,
+        Organization.DEFAULT_ID);
+    turn(1, "Was gilt für Urlaub?", "Dazu steht nichts in den Quellen.", null);
+  }
+
+  private UUID aSpace(String name, Observer observer) throws Exception {
     String spaceBody =
         body(
             as("dev-admin", post("/api/v1/spaces"))
                 .content(
                     """
-                    {"name": "Raum %s", "ownerId": "%s", "initialMembers": [
+                    {"name": "%s", "ownerId": "%s", "initialMembers": [
                       {"subjectType": "USER", "subjectId": "%s", "role": "%s"},
                       {"subjectType": "USER", "subjectId": "%s", "role": "MEMBER"}]}
                     """
-                        .formatted(
-                            UUID.randomUUID(), owner, devUser, observer.devUserSpaceRole, admin)));
-    space = UUID.fromString(JsonPath.read(spaceBody, "$.id"));
+                        .formatted(name, owner, devUser, observer.devUserSpaceRole, admin)));
+    UUID created = UUID.fromString(JsonPath.read(spaceBody, "$.id"));
+    spaces.add(created);
+    return created;
+  }
+
+  /** A space like hers that the probe of {@code deleteSpace} deletes, with her library or none. */
+  private Spare aSpareSpace(Observer observer, UUID library) throws Exception {
+    String name = "Ersatzraum " + UUID.randomUUID();
+    UUID spare = aSpace(name, observer);
+    if (library != null) {
+      associations.associate(spare, KnowledgeLibrary.ASSET_TYPE, library, ownerCaller);
+    }
+    return new Spare(spare, name);
   }
 
   /**
-   * Her two private libraries - one on her account, one released from its profile - with a
-   * document, a chunk, a folder and a failed run, the first renamed and associated with the space.
+   * Between the phases: the accounts the emergency shutdown cut are connected again, and the spare
+   * space of the first phase no longer stands beside the second's.
+   */
+  private void theConnectionsAreBackAndTheSpareIsGone(Observer observer, Spare spare)
+      throws Exception {
+    if (observer == Observer.SYSTEM_ADMIN || observer == Observer.PERSON_CONTEXT) {
+      accounts.connect(ownerCaller, profile, "ieigen", PASSWORD);
+    } else {
+      mockMvc
+          .perform(as("dev-admin", delete("/api/v1/spaces/" + spare.id())))
+          .andExpect(status().isNoContent());
+    }
+  }
+
+  /** What the observer holds of her own: a befugnis, a private library or a token. */
+  private void theObserversOwnStanding(Observer observer) {
+    switch (observer) {
+      case PERSON_CONTEXT -> aBefugnisOverAGroupWithTheOwner();
+      case OTHER_OWNER -> {
+        accounts.connect(devCaller, profile, "devuser", PASSWORD);
+        createPrivate("Eigene Ablage " + UUID.randomUUID(), devCaller);
+      }
+      case TOKEN -> aTokenForASharedLibrary();
+      default -> {}
+    }
+  }
+
+  private void aBefugnisOverAGroupWithTheOwner() {
+    provider = ProviderFixtures.tokenProvider(providers).getId();
+    group =
+        groups
+            .save(
+                new Group(
+                    Organization.DEFAULT_ID,
+                    GroupKind.ORG_UNIT,
+                    "Personalstelle " + UUID.randomUUID(),
+                    null,
+                    provider,
+                    null,
+                    null,
+                    null))
+            .getId();
+    List<UUID> members = new ArrayList<>(List.of(owner));
+    for (int index = 1; index < groupSize.minimumGroupSize(); index++) {
+      UUID extra = UUID.randomUUID();
+      jdbc.update(
+          "INSERT INTO users (id, subject, issuer, email, display_name, organization_id)"
+              + " VALUES (?, ?, 'opaa-dev', ?, 'Kollegin', ?)",
+          extra,
+          "kollegin-" + extra,
+          "kollegin-" + extra + "@example.com",
+          Organization.DEFAULT_ID);
+      extraUsers.add(extra);
+      members.add(extra);
+    }
+    for (UUID member : members) {
+      jdbc.update(
+          "INSERT INTO group_memberships (id, user_id, group_id, organization_id, created_at)"
+              + " VALUES (?, ?, ?, ?, now())",
+          UUID.randomUUID(),
+          member,
+          group,
+          Organization.DEFAULT_ID);
+    }
+    memberships.invalidateUsers(members);
+    Instant now = Instant.now();
+    befugnisse.save(
+        new DiagnosticImpersonationGrant(
+            Organization.DEFAULT_ID,
+            admin,
+            group,
+            now.minus(1, ChronoUnit.HOURS),
+            now.plus(30, ChronoUnit.DAYS),
+            admin,
+            now));
+  }
+
+  private void aTokenForASharedLibrary() {
+    ExternalAccessSettings.Values values = externalSettings.current().values();
+    externalSettings.update(
+        adminCaller,
+        new ExternalAccessSettingsService.Update(
+            true,
+            values.tokenMaxLifetimeDays(),
+            1000,
+            values.allowedCidrs(),
+            values.massRetrievalAlertThreshold(),
+            values.serverInstructions()));
+    UUID shared = UUID.randomUUID();
+    jdbc.update(
+        "WITH shell AS (INSERT INTO assets (id, asset_type, organization_id, name, owner_type,"
+            + " owner_user_id) VALUES (?, 'KNOWLEDGE_LIBRARY', ?, 'Freigegebene Ablage', 'USER', ?)"
+            + " RETURNING id, organization_id) INSERT INTO knowledge_libraries (id,"
+            + " organization_id, source_type) SELECT id, organization_id, 'UPLOAD' FROM shell",
+        shared,
+        Organization.DEFAULT_ID,
+        devUser);
+    libraries.add(shared);
+    jdbc.update(
+        "INSERT INTO asset_grants (id, asset_type, asset_id, organization_id, subject_type,"
+            + " subject_user_id, role, created_at, updated_at) VALUES (?, 'KNOWLEDGE_LIBRARY', ?,"
+            + " ?, 'USER', ?, 'OWNER', now(), now())",
+        UUID.randomUUID(),
+        shared,
+        Organization.DEFAULT_ID,
+        devUser);
+    Instant expires = Instant.now().plus(30, ChronoUnit.DAYS);
+    externalRelease.setExternalAccess(devCaller, shared, true, expires);
+    token =
+        tokens
+            .issue(devUser, Organization.DEFAULT_ID, "Prüftoken", List.of(shared), expires)
+            .rawValue();
+  }
+
+  /**
+   * Her two private libraries as after a real run - one on her account, one released from its
+   * profile: a document with an indexed chunk in both stores, a metadata field with a value, a
+   * folder, a failed run with its events, her chat citing the document; the first renamed and
+   * associated with the space.
    */
   private Ids herPrivateLibraries() {
     String suffix = UUID.randomUUID().toString().substring(0, 8);
-    UUID library = createPrivate("Geheimablage " + suffix);
-    UUID detached = createPrivate("Zweitablage " + suffix);
+    UUID library = createPrivate("Geheimablage " + suffix, ownerCaller);
+    UUID detached = createPrivate("Zweitablage " + suffix, ownerCaller);
     jdbc.update("UPDATE library_connections SET profile_id = NULL WHERE library_id = ?", detached);
     String name = "Personalakte " + suffix;
     libraryService.updateLibrary(
@@ -595,25 +899,59 @@ class PrivateLibraryInvisibilityIntegrationTest {
         ownerCaller);
     UUID document = UUID.randomUUID();
     String fileName = "gehaltsabrechnung-" + suffix + ".pdf";
+    String path = "lohn/" + suffix + "/" + fileName;
     jdbc.update(
         "INSERT INTO documents (id, file_name, file_path, content_type, file_size, chunk_count,"
             + " indexed_at, checksum, status, source_type, library_id, organization_id, created_at)"
-            + " VALUES (?, ?, ?, 'application/pdf', 1024, 0, now(), ?, 'INDEXED', 'PERSON_PROBE',"
+            + " VALUES (?, ?, ?, 'application/pdf', 1024, 1, now(), ?, 'INDEXED', 'PERSON_PROBE',"
             + " ?, ?, now())",
         document,
         fileName,
-        "invisibility-it/" + document,
+        path,
         "checksum-" + document,
         library,
         Organization.DEFAULT_ID);
-    UUID chunk = UUID.randomUUID();
     String content = "Bruttogehalt " + suffix;
+    Map<String, Object> metadata = new LinkedHashMap<>();
+    metadata.put(VectorChunkStore.DOCUMENT_ID_METADATA_KEY, document.toString());
+    metadata.put(VectorChunkStore.LIBRARY_ID_METADATA_KEY, library.toString());
+    metadata.put("organization_id", Organization.DEFAULT_ID.toString());
+    metadata.put("file_name", fileName);
+    metadata.put("chunk_index", 0);
+    metadata.put(
+        ChunkFormatMetadata.PIPELINE_ID_METADATA_KEY, ChunkFormatMetadata.LEGACY_PIPELINE_ID);
+    metadata.put(ChunkFormatMetadata.PIPELINE_VERSION_METADATA_KEY, 0);
+    metadata.put(
+        ChunkFormatMetadata.ROUTING_EXTENSION_METADATA_KEY,
+        ChunkFormatMetadata.NO_ROUTING_EXTENSION);
+    chunks.addChunks(List.of(new org.springframework.ai.document.Document(content, metadata)));
+    UUID chunk =
+        jdbc.queryForObject(
+            "SELECT id FROM vector_store WHERE metadata->>'document_id' = ?",
+            UUID.class,
+            document.toString());
+    assertThat(
+            jdbc.queryForObject(
+                "SELECT count(*) FROM chunk_full_text WHERE chunk_id = ?", Integer.class, chunk))
+        .isEqualTo(1);
+    UUID field = UUID.randomUUID();
+    String fieldLabel = "Aktenzeichen " + suffix;
+    String value = "AZ-" + suffix;
     jdbc.update(
-        "INSERT INTO vector_store (id, content, metadata) VALUES (?, ?, ?::jsonb)",
-        chunk,
-        content,
-        "{\"document_id\":\"%s\",\"library_id\":\"%s\",\"file_name\":\"%s\"}"
-            .formatted(document, library, fileName));
+        "INSERT INTO library_metadata_fields (id, library_id, field_key, label, field_type,"
+            + " value_pattern, filter_enabled, sort_order, created_at, updated_at)"
+            + " VALUES (?, ?, 'aktenzeichen', ?, 'PATTERN', '.*', true, 10, now(), now())",
+        field,
+        library,
+        fieldLabel);
+    jdbc.update(
+        "INSERT INTO document_metadata_values (id, document_id, field_key, text_value, origin,"
+            + " library_field_id, created_at, updated_at)"
+            + " VALUES (?, ?, 'lib:aktenzeichen', ?, 'MANUAL', ?, now(), now())",
+        UUID.randomUUID(),
+        document,
+        value,
+        field);
     UUID folder = UUID.randomUUID();
     String folderName = "Ordner " + suffix;
     jdbc.update(
@@ -622,14 +960,30 @@ class PrivateLibraryInvisibilityIntegrationTest {
         library,
         folderName,
         Organization.DEFAULT_ID);
+    UUID job = UUID.randomUUID();
     jdbc.update(
-        "INSERT INTO indexing_jobs (status, last_progress_at, organization_id, library_id,"
-            + " error_message, failure_category, completed_at) VALUES ('FAILED', now(), ?, ?, ?,"
-            + " 'NOT_CONNECTED', now())",
+        "INSERT INTO indexing_jobs (id, status, last_progress_at, organization_id, library_id,"
+            + " error_message, failure_category, documents_total, documents_failed, completed_at)"
+            + " VALUES (?, 'FAILED', now(), ?, ?, ?, 'NOT_CONNECTED', 2, 1, now())",
+        job,
         Organization.DEFAULT_ID,
         library,
         "Verbindung getrennt " + fileName);
+    jdbc.update(
+        "INSERT INTO indexing_run_events (id, job_id, category, message, reference)"
+            + " VALUES (?, ?, 'ERROR', ?, ?)",
+        UUID.randomUUID(),
+        job,
+        "Nicht lesbar: " + fileName,
+        path);
     associations.associate(space, KnowledgeLibrary.ASSET_TYPE, library, ownerCaller);
+    turn(
+        3,
+        "Wie hoch ist mein Gehalt?",
+        "Laut Abrechnung: " + content,
+        "[{\"fileName\": \"%s\", \"documentId\": \"%s\", \"relevanceScore\": 0.9,"
+                .formatted(fileName, document)
+            + " \"matchCount\": 1, \"cited\": true, \"sourceType\": \"PERSON_PROBE\"}]");
     return new Ids(
         library,
         detached,
@@ -642,11 +996,33 @@ class PrivateLibraryInvisibilityIntegrationTest {
             "Zweitablage " + suffix,
             "Notiz " + suffix,
             fileName,
+            "lohn/" + suffix,
             content,
-            folderName));
+            folderName,
+            fieldLabel,
+            value));
   }
 
-  private UUID createPrivate(String name) {
+  /** One question and answer of her chat, the answer citing {@code sources} or nothing. */
+  private void turn(int sequence, String question, String answer, String sources) {
+    jdbc.update(
+        "INSERT INTO chat_messages (id, chat_id, sequence, role, content) VALUES (?, ?, ?, 'USER',"
+            + " ?)",
+        UUID.randomUUID(),
+        chat,
+        sequence,
+        question);
+    jdbc.update(
+        "INSERT INTO chat_messages (id, chat_id, sequence, role, content, sources)"
+            + " VALUES (?, ?, ?, 'ASSISTANT', ?, ?::json)",
+        UUID.randomUUID(),
+        chat,
+        sequence + 1,
+        answer,
+        sources);
+  }
+
+  private UUID createPrivate(String name, CurrentUser creator) {
     UUID id =
         privateCreation.create(
             new LibraryCreation(
@@ -663,7 +1039,7 @@ class PrivateLibraryInvisibilityIntegrationTest {
                 null,
                 null,
                 profile),
-            ownerCaller);
+            creator);
     libraries.add(id);
     return id;
   }
@@ -723,28 +1099,40 @@ class PrivateLibraryInvisibilityIntegrationTest {
       return markers;
     }
 
-    String fill(String template, UUID space, UUID profile) {
-      return template
-          .replace("{library}", library.toString())
-          .replace("{detached}", detached.toString())
-          .replace("{document}", document.toString())
-          .replace("{chunk}", chunk.toString())
-          .replace("{folder}", folder.toString())
-          .replace("{space}", space.toString())
-          .replace("{profile}", profile.toString())
-          .replace("{unknown}", UNKNOWN.toString())
-          .replace("{expires}", Instant.now().plus(30, ChronoUnit.DAYS).toString());
+    String fill(String template, Map<String, UUID> fixture) {
+      String filled =
+          template
+              .replace("{library}", library.toString())
+              .replace("{detached}", detached.toString())
+              .replace("{document}", document.toString())
+              .replace("{chunk}", chunk.toString())
+              .replace("{folder}", folder.toString())
+              .replace("{unknown}", UNKNOWN.toString())
+              .replace("{expires}", Instant.now().plus(30, ChronoUnit.DAYS).toString());
+      for (Map.Entry<String, UUID> entry : fixture.entrySet()) {
+        filled = filled.replace("{" + entry.getKey() + "}", entry.getValue().toString());
+      }
+      return filled;
     }
 
     String normalize(String body) {
-      return INSTANT
-          .matcher(
-              body.replace(library.toString(), "<library>")
-                  .replace(detached.toString(), "<detached>")
-                  .replace(document.toString(), "<document>")
-                  .replace(chunk.toString(), "<chunk>")
-                  .replace(folder.toString(), "<folder>"))
-          .replaceAll("<instant>");
+      String normalized =
+          INSTANT
+              .matcher(
+                  body.replace(library.toString(), "<library>")
+                      .replace(detached.toString(), "<detached>")
+                      .replace(document.toString(), "<document>")
+                      .replace(chunk.toString(), "<chunk>")
+                      .replace(folder.toString(), "<folder>"))
+              .replaceAll("<instant>");
+      return PREVIEW_ID.matcher(normalized).replaceAll("\"previewId\":\"<preview>\"");
+    }
+  }
+
+  /** The space the probe of {@code deleteSpace} deletes in one phase. */
+  record Spare(UUID id, String name) {
+    String normalize(String body) {
+      return body.replace(id.toString(), "<spare>").replace(name, "<spare-name>");
     }
   }
 
@@ -755,12 +1143,22 @@ class PrivateLibraryInvisibilityIntegrationTest {
     }
   }
 
-  private Answer call(Operation operation, Probe probe, Ids ids, Observer observer)
+  private Answer call(Operation operation, Probe probe, Ids ids, Observer observer, Spare spare)
       throws Exception {
+    Map<String, UUID> fixture = new LinkedHashMap<>();
+    fixture.put("space", space);
+    fixture.put("spare", spare.id());
+    fixture.put("profile", profile);
+    fixture.put("owner", owner);
+    fixture.put("admin", admin);
     String path = operation.path();
     for (Parameter parameter : operation.parameters()) {
       if (parameter.in().equals("path")) {
-        path = path.replace("{" + parameter.name() + "}", valueOf(parameter, ids));
+        String value = probe.query().get(parameter.name());
+        path =
+            path.replace(
+                "{" + parameter.name() + "}",
+                value != null ? ids.fill(value, fixture) : valueOf(parameter, ids));
       }
     }
     AbstractMockHttpServletRequestBuilder<?> request;
@@ -784,15 +1182,23 @@ class PrivateLibraryInvisibilityIntegrationTest {
         value = valueOf(parameter, ids);
       }
       if (value != null) {
-        request.queryParam(parameter.name(), ids.fill(value, space, profile));
+        request.queryParam(parameter.name(), ids.fill(value, fixture));
       }
     }
-    if (probe.body() != null) {
-      request.content(ids.fill(probe.body(), space, profile));
+    String body = probe.body();
+    if (observer == Observer.PERSON_CONTEXT && operation.id().equals("runSearchDiagnosis")) {
+      body = PERSON_CONTEXT_DIAGNOSIS;
+    }
+    if (body != null) {
+      request.content(ids.fill(body, fixture));
     } else if (operation.body() && !probe.multipart()) {
       request.content("{}");
     }
-    request.header(DevAuthFilter.DEV_USER_HEADER, observer.devUser);
+    if (observer == Observer.TOKEN) {
+      request.header(HttpHeaders.AUTHORIZATION, "Bearer " + token);
+    } else {
+      request.header(DevAuthFilter.DEV_USER_HEADER, observer.devUser);
+    }
     MvcResult result = mockMvc.perform(request).andReturn();
     return new Answer(
         result.getResponse().getStatus(),
@@ -873,7 +1279,7 @@ class PrivateLibraryInvisibilityIntegrationTest {
         for (Object content : map(requestBody.get("content")).values()) {
           names |= namesAnId(map(map(content).get("schema")), schemas, 0);
         }
-        if (method.equals("get") || names) {
+        if (method.equals("get") || names || COUNTING.contains(operation.get("operationId"))) {
           relevant.add(
               new Operation(
                   (String) operation.get("operationId"),
@@ -945,6 +1351,38 @@ class PrivateLibraryInvisibilityIntegrationTest {
   private static String lastSegment(Object reference) {
     String text = String.valueOf(reference);
     return text.substring(text.lastIndexOf('/') + 1);
+  }
+
+  /**
+   * A top-level JSON array with its elements sorted: lists without a declared order come in the
+   * order the database returns, which any write to a row may change.
+   */
+  private static String unordered(String body) {
+    if (!body.startsWith("[")) {
+      return body;
+    }
+    try {
+      List<String> elements = new ArrayList<>();
+      for (tools.jackson.databind.JsonNode element : JSON.readTree(body)) {
+        elements.add(element.toString());
+      }
+      java.util.Collections.sort(elements);
+      return elements.toString();
+    } catch (RuntimeException e) {
+      return body;
+    }
+  }
+
+  /** {@code text} around where it first differs from {@code other}. */
+  private static String around(String text, String other) {
+    int at = 0;
+    while (at < text.length() && at < other.length() && text.charAt(at) == other.charAt(at)) {
+      at++;
+    }
+    int from = Math.max(0, at - 150);
+    return (from > 0 ? "…" : "")
+        + text.substring(from, Math.min(text.length(), at + 150))
+        + (at + 150 < text.length() ? "…" : "");
   }
 
   private static String abbreviated(String text) {

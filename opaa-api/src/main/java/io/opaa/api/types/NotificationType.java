@@ -59,5 +59,12 @@ public enum NotificationType {
    * The system administration ended the person's connected account - a changed, shut down or
    * deleted profile (ADR-0041). Sent to that person only; its object is the profile.
    */
-  CONNECTION_ENDED
+  CONNECTION_ENDED,
+
+  /**
+   * A change of its profile released the person's private library from it (ADR-0041): the library
+   * rests, keeps its content and runs again once she connects it through another profile. Sent to
+   * its owner only; its object is the library.
+   */
+  PRIVATE_LIBRARY_RELEASED
 }

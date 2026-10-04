@@ -78,7 +78,11 @@ class ProfileChangeTransitionTest {
           wiring.audit,
           mock(CapabilityService.class),
           new PrivateLibraryRelease(
-              connections, libraries, wiring.transitions, Clock.fixed(NOW, ZoneOffset.UTC)),
+              connections,
+              libraries,
+              wiring.transitions,
+              mock(io.opaa.notification.NotificationService.class),
+              Clock.fixed(NOW, ZoneOffset.UTC)),
           Clock.fixed(NOW, ZoneOffset.UTC));
 
   private ConnectionProfile profile;

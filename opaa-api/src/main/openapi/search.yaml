@@ -1767,10 +1767,10 @@ components:
     PrivateLibrarySearchSummaryResponse:
       type: object
       description: >
-        The private libraries of the organization as one line, without names or ids. Below the
-        minimum group size - zero included - the number of libraries is only "fewer than"
-        (libraryCountFewerThan) and the sums are absent, so no answer tells whether anyone keeps
-        a private library.
+        The private libraries of the organization as one line, without names or ids. Masked by
+        their owners like every number about persons: below the minimum group size of owners -
+        zero included - the number of libraries is only "fewer than" (libraryCountFewerThan) and
+        the sums are absent, so no answer tells whether anyone keeps a private library.
       properties:
         libraryCount:
           type: integer

@@ -76,7 +76,9 @@ class OrphanedLibraryCleanupServiceTest {
             documentRepository,
             store,
             uploadProperties,
-            Clock.fixed(now, ZoneOffset.UTC));
+            Clock.fixed(now, ZoneOffset.UTC),
+            new io.opaa.permission.PersonThreshold(
+                new io.opaa.permission.GroupSizeProperties(null)));
   }
 
   @Test

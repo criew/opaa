@@ -940,7 +940,6 @@ components:
         privateLibrary:
           type: boolean
           nullable: true
-          default: false
           description: >
             Creates a private library ("Private Bibliothek"): it runs on the caller's own
             connected account on connectionProfileId, which is then required and must admit
@@ -1056,7 +1055,6 @@ components:
         privateLibrary:
           type: boolean
           nullable: true
-          default: false
           description: >
             Without libraryId: probes the private library LibraryRequest.privateLibrary would
             create - through the caller's connected account on connectionProfileId, without
@@ -1208,7 +1206,6 @@ components:
         privateLibrary:
           type: boolean
           nullable: true
-          default: false
           description: As SourceConnectionTestRequest.privateLibrary.
         query:
           description: >

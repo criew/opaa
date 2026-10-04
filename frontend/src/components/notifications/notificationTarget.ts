@@ -13,6 +13,7 @@ export function notificationTarget(type: NotificationType): string | null {
     case 'GROUP_MEMBER_REMOVED':
     case 'CONNECTION_PROFILE_REQUESTED':
     case 'CONNECTION_PROFILE_REQUEST_RESOLVED':
+    case 'PRIVATE_LIBRARY_RELEASED':
       return null
     default: {
       const unknown: never = type

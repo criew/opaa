@@ -180,9 +180,9 @@ public class PromptLibraryService {
               .organizationId(library.getOrganizationId())
               .actor(caller.id())
               .type(AuditEventType.PROMPT_LIBRARY_CHANGED)
-              .object(AuditObjectType.PROMPT_LIBRARY, library.getId(), name)
-              .before(Map.of("changedFields", changedFields))
-              .after(Map.of("changedFields", changedFields))
+              .object(AuditObjectType.PROMPT_LIBRARY, library.getId(), library.auditName())
+              .before(library.auditPayload(Map.of("changedFields", changedFields)))
+              .after(library.auditPayload(Map.of("changedFields", changedFields)))
               .outcome(AuditOutcome.SUCCESS)
               .build());
     }
@@ -206,8 +206,8 @@ public class PromptLibraryService {
             .organizationId(library.getOrganizationId())
             .actor(caller.id())
             .type(AuditEventType.PROMPT_LIBRARY_DELETED)
-            .object(AuditObjectType.PROMPT_LIBRARY, library.getId(), library.getName())
-            .before(payload)
+            .object(AuditObjectType.PROMPT_LIBRARY, library.getId(), library.auditName())
+            .before(library.auditPayload(payload))
             .outcome(AuditOutcome.SUCCESS)
             .build());
     libraryRepository.delete(library);

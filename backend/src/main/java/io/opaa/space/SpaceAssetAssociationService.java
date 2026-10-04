@@ -263,7 +263,7 @@ public class SpaceAssetAssociationService {
             .actor(caller.id())
             .type(AuditEventType.ASSET_SHARED_TO_SPACE)
             .object(definitionOf(asset).auditObjectType(), asset.getId(), asset.auditName())
-            .after(Map.of("spaceId", space.getId().toString()))
+            .after(asset.auditPayload(Map.of("spaceId", space.getId().toString())))
             .outcome(AuditOutcome.SUCCESS)
             .build());
     return new Association(saved, asset, true);
@@ -308,7 +308,7 @@ public class SpaceAssetAssociationService {
                       .actor(caller.id())
                       .type(AuditEventType.ASSET_DETACHED_FROM_SPACE)
                       .object(definition.auditObjectType(), asset.getId(), asset.auditName())
-                      .before(Map.of("spaceId", space.getId().toString()))
+                      .before(asset.auditPayload(Map.of("spaceId", space.getId().toString())))
                       .outcome(AuditOutcome.SUCCESS)
                       .build());
             });

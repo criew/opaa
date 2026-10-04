@@ -92,8 +92,8 @@ public class LibraryDiagnosticsLockService {
               .actor(actor.id())
               .type(AuditEventType.LIBRARY_DIAGNOSTICS_LOCK_CHANGED)
               .object(AuditObjectType.KNOWLEDGE_LIBRARY, saved.getId(), saved.auditName())
-              .before(Map.of("diagnosticsLocked", previous))
-              .after(Map.of("diagnosticsLocked", locked))
+              .before(saved.auditPayload(Map.of("diagnosticsLocked", previous)))
+              .after(saved.auditPayload(Map.of("diagnosticsLocked", locked)))
               .outcome(AuditOutcome.SUCCESS)
               .build());
     }

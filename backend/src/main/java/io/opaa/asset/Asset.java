@@ -16,7 +16,10 @@ import jakarta.persistence.InheritanceType;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import java.time.Instant;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import org.hibernate.annotations.DynamicUpdate;
 
@@ -46,6 +49,30 @@ public class Asset implements OwnedAsset {
 
   /** The neutral name of an owner-only asset in every protocol (ADR-0041, Entscheidung 6). */
   public static final String PRIVATE_AUDIT_NAME = "Private Bibliothek";
+
+  /** The payload keys that name no content: ids, kinds, states, flags and counts. */
+  static final Set<String> NEUTRAL_AUDIT_KEYS =
+      Set.of(
+          "allAccountsGrantAllowed",
+          "changedFields",
+          "confidence",
+          "datePrecision",
+          "diagnosticsLocked",
+          "documentId",
+          "documentsRemoved",
+          "expiresAt",
+          "externalAccess",
+          "extractionVersion",
+          "fieldKey",
+          "modelId",
+          "origin",
+          "ownerId",
+          "requestedCount",
+          "role",
+          "sourceType",
+          "spaceId",
+          "state",
+          "subjectType");
 
   @Id private UUID id;
 
@@ -211,6 +238,24 @@ public class Asset implements OwnedAsset {
    */
   public String auditName() {
     return ownerOnly ? PRIVATE_AUDIT_NAME : name;
+  }
+
+  /**
+   * The payload a protocol entry about this asset carries: for an owner-only asset only the keys of
+   * {@link #NEUTRAL_AUDIT_KEYS} - ids, kinds, states and counts, never a name, path or value.
+   */
+  public Map<String, Object> auditPayload(Map<String, Object> payload) {
+    if (!ownerOnly || payload == null) {
+      return payload;
+    }
+    Map<String, Object> neutral = new LinkedHashMap<>();
+    payload.forEach(
+        (key, value) -> {
+          if (NEUTRAL_AUDIT_KEYS.contains(key)) {
+            neutral.put(key, value);
+          }
+        });
+    return neutral;
   }
 
   public String getDescription() {

@@ -313,8 +313,9 @@ Grenze.
 
 Eine **private Bibliothek** speist sich aus dem verbundenen Konto ihrer Besitzerin auf einem Zugang
 für Personen (Kapitel [Indexierung](indexierung.md), „Zugänge“). Ihr Inhalt ist, was die Person
-beim Anbieter selbst sieht, und außer ihr liest ihn niemand. Die Oberfläche zum Anlegen folgt; die
-Schnittstelle legt sie heute schon an.
+beim Anbieter selbst sieht, und außer ihr liest ihn niemand. Anlegen lässt sie sich erst, wenn ein
+Konnektor die Besitzart „Person“ anbietet; die mitgelieferten Konnektoren tun das noch nicht, und
+die Oberfläche dafür folgt.
 
 **Anlegen.** Die Person wählt beim Anlegen ausdrücklich „privat“; bei einem Zugang, der Bibliotheken
 und Personen zulässt, entscheidet allein diese Wahl, und sie bleibt für immer. Vorausgesetzt sind:
@@ -347,12 +348,14 @@ durchsuchbar:
 
 Ein Lauf, der daran scheitert, speichert den Grund als Kategorie ohne Inhaltsbezug.
 
-**Was die Verwaltung sieht:** nur Zusammenfassungen. Der Indexstatus zeigt private Bibliotheken
-als eine Zeile ohne Namen, unterhalb der Mindestgruppengröße nur als „weniger als N“ und ohne
+**Was die Verwaltung sieht:** nur Zusammenfassungen. Indexstatus und Pipeline-Stand zeigen private
+Bibliotheken als eine Zeile ohne Namen und Kennung; jede Zahl über sie richtet sich nach der Zahl
+ihrer Besitzerinnen und steht unterhalb der Mindestgruppengröße nur als „weniger als N“, ohne
 Summen. Die Prüfung chunk-armer Dokumente, die Zahlen am Zugang und die Zahl der diagnosegesperrten
-Bibliotheken zählen sie nicht mit. Lehnt der Konnektor eine Änderung des Zugangs für eine private
+Bibliotheken zählen sie nicht mit; der Neuaufbau nach einem Pipeline-Wechsel lässt sie aus.
+Einträge im Revisionsprotokoll nennen weder Dateinamen noch Pfade noch Metadatenwerte. Lehnt der Konnektor eine Änderung des Zugangs für eine private
 Bibliothek ab, erfährt die Verwaltung nur die Anzahl, ohne Bibliothek und Grund, und die Änderung
-gilt trotzdem. Die Space-Zuordnung einer privaten Bibliothek sehen andere Mitglieder nicht, auch
+gilt trotzdem; die Besitzerin erhält eine Benachrichtigung. Die Space-Zuordnung einer privaten Bibliothek sehen andere Mitglieder nicht, auch
 nicht in Zählern und Hinweisen oder beim Löschen des Space. Im Revisionsprotokoll und in der
 Stichtagsauskunft heißt sie „Private Bibliothek“ und ist nur an ihrer Kennung zu erkennen.
 

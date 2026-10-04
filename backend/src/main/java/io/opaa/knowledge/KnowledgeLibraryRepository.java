@@ -80,6 +80,21 @@ public interface KnowledgeLibraryRepository extends JpaRepository<KnowledgeLibra
   long countByOrganizationIdAndOwnerOnlyTrue(UUID organizationId);
 
   /**
+   * How many persons own the private libraries of one organization - the basis every number about
+   * them is masked by ({@code PersonThreshold}).
+   */
+  @Query(
+      "select count(distinct l.ownerUserId) from KnowledgeLibrary l"
+          + " where l.organizationId = :organizationId and l.ownerOnly = true")
+  long countPrivateLibraryOwners(@Param("organizationId") UUID organizationId);
+
+  /** The ids of one organization's private libraries - for leaving them out, never to show. */
+  @Query(
+      "select l.id from KnowledgeLibrary l"
+          + " where l.organizationId = :organizationId and l.ownerOnly = true")
+  Set<UUID> findPrivateIdsByOrganizationId(@Param("organizationId") UUID organizationId);
+
+  /**
    * The ids of every library of one organization - the set the orphan cleanup holds the storage
    * areas found under that organization against. Ids only, because loading the entities would drag
    * their eager Confluence space selection along, one query per library.

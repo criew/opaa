@@ -3,6 +3,7 @@ package io.opaa.connection.profile;
 import io.opaa.connection.profile.PersonConnections.PersonTotals;
 import io.opaa.connection.profile.PersonConnections.StateCounts;
 import io.opaa.permission.GroupSizeProperties;
+import io.opaa.permission.PersonThreshold;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -21,11 +22,13 @@ import org.springframework.stereotype.Component;
 public class PersonNumbers {
 
   private final PersonConnections persons;
+  private final PersonThreshold threshold;
   private final int minimum;
 
   PersonNumbers(PersonConnections persons, GroupSizeProperties groupSize) {
     this.persons = persons;
-    this.minimum = groupSize.minimumGroupSize();
+    this.threshold = new PersonThreshold(groupSize);
+    this.minimum = threshold.minimum();
   }
 
   /** The masked numbers of each of {@code profileIds}, with one query for all. */
@@ -53,7 +56,17 @@ public class PersonNumbers {
   }
 
   private PersonCount total(long count) {
-    return count < minimum ? PersonCount.fewerThan(minimum) : PersonCount.exact(count);
+    return threshold.discloses(count) ? PersonCount.exact(count) : PersonCount.fewerThan(minimum);
+  }
+
+  /**
+   * A number of private libraries as the administration may see it: it rests on their {@code
+   * owners}, so it is exact only from N owners on, else "fewer than N" - zero included.
+   */
+  public PersonCount privateLibraries(long libraries, long owners) {
+    return threshold.discloses(owners)
+        ? PersonCount.exact(libraries)
+        : PersonCount.fewerThan(minimum);
   }
 
   ProfileCounts mask(StateCounts counts) {

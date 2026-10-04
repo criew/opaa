@@ -17,6 +17,7 @@ import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.UploadStoreUnavailableException;
+import io.opaa.permission.PersonThreshold;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -85,6 +86,43 @@ public class PipelineReindexService {
    * index backs - an accepted cost at today's data volumes.
    */
   public List<PipelineVersionProgress> progressForOrganization(UUID organizationId) {
+    Set<UUID> privateLibraries = libraryRepository.findPrivateIdsByOrganizationId(organizationId);
+    return countsByLibrary(organizationId).entrySet().stream()
+        .filter(entry -> !privateLibraries.contains(entry.getKey()))
+        .map(
+            entry ->
+                new PipelineVersionProgress(
+                    entry.getKey(), entry.getValue()[0], entry.getValue()[1], entry.getValue()[2]))
+        .sorted(Comparator.comparing(PipelineVersionProgress::libraryId))
+        .toList();
+  }
+
+  /**
+   * The private libraries of {@code organizationId} as one line, without ids: exact only where
+   * {@code threshold} discloses a number resting on their owners, else only "fewer than N".
+   */
+  public PrivatePipelineProgress privateProgressForOrganization(
+      UUID organizationId, PersonThreshold threshold) {
+    if (!threshold.discloses(libraryRepository.countPrivateLibraryOwners(organizationId))) {
+      return PrivatePipelineProgress.fewerThan(threshold.minimum());
+    }
+    Set<UUID> privateLibraries = libraryRepository.findPrivateIdsByOrganizationId(organizationId);
+    long[] sums = new long[3];
+    countsByLibrary(organizationId)
+        .forEach(
+            (libraryId, counters) -> {
+              if (privateLibraries.contains(libraryId)) {
+                for (int i = 0; i < sums.length; i++) {
+                  sums[i] += counters[i];
+                }
+              }
+            });
+    return new PrivatePipelineProgress(
+        (long) privateLibraries.size(), null, sums[0], sums[1], sums[2]);
+  }
+
+  /** Total, current and stale chunks of every library holding one, with one grouped query. */
+  private Map<UUID, long[]> countsByLibrary(UUID organizationId) {
     Map<String, Short> currentVersions = currentVersionsById();
     String sql =
         "SELECT (v.metadata->>'library_id')::uuid AS library_id, "
@@ -178,14 +216,7 @@ public class PipelineReindexService {
         ChunkFormatMetadata.LEGACY_PIPELINE_VERSION,
         FullTextChunkStore.CURRENT_TSV_VERSION,
         organizationId.toString());
-
-    return byLibrary.entrySet().stream()
-        .map(
-            entry ->
-                new PipelineVersionProgress(
-                    entry.getKey(), entry.getValue()[0], entry.getValue()[1], entry.getValue()[2]))
-        .sorted(Comparator.comparing(PipelineVersionProgress::libraryId))
-        .toList();
+    return byLibrary;
   }
 
   /**
@@ -342,7 +373,7 @@ public class PipelineReindexService {
               attachmentAccessFor(document, library))
           == DocumentIngestResult.PROCESSED;
     } catch (Exception e) {
-      log.error("Failed to re-index document {}", document.getFileName(), e);
+      log.error("Failed to re-index document {}", document.getId(), e);
       return false;
     }
   }
@@ -415,6 +446,9 @@ public class PipelineReindexService {
             + "  AND v.metadata->>'document_id' ~* "
             + "'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' "
             + "  AND v.metadata->>'organization_id' = ? "
+            // A private library is its owner's: the administration's re-index leaves it out.
+            + "  AND NOT EXISTS (SELECT 1 FROM assets a WHERE a.owner_only"
+            + "       AND a.id::text = v.metadata->>'library_id') "
             + "  AND ("
             + "       (COALESCE(v.metadata->>'"
             + ChunkFormatMetadata.PIPELINE_ID_METADATA_KEY

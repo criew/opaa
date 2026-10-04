@@ -216,8 +216,8 @@ public class SourceTransitions {
             .actor(caller.id())
             .type(AuditEventType.LIBRARY_SOURCE_UPDATED)
             .object(AuditObjectType.KNOWLEDGE_LIBRARY, library.getId(), library.auditName())
-            .before(Map.of("changedFields", fields))
-            .after(Map.of("changedFields", fields))
+            .before(library.auditPayload(Map.of("changedFields", fields)))
+            .after(library.auditPayload(Map.of("changedFields", fields)))
             .outcome(AuditOutcome.SUCCESS)
             .build());
   }

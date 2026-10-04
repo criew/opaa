@@ -31,8 +31,8 @@ class AuditListener {
                 AuditObjectType.KNOWLEDGE_LIBRARY,
                 event.library().getId(),
                 event.library().auditName())
-            .before(event.auditBefore())
-            .after(event.auditAfter())
+            .before(event.library().auditPayload(event.auditBefore()))
+            .after(event.library().auditPayload(event.auditAfter()))
             .outcome(AuditOutcome.SUCCESS)
             .build());
   }

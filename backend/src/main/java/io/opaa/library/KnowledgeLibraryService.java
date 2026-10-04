@@ -350,8 +350,8 @@ public class KnowledgeLibraryService {
             .actor(actor)
             .type(AuditEventType.LIBRARY_SOURCE_UPDATED)
             .object(AuditObjectType.KNOWLEDGE_LIBRARY, library.getId(), library.auditName())
-            .before(Map.of("changedFields", fields))
-            .after(Map.of("changedFields", fields))
+            .before(library.auditPayload(Map.of("changedFields", fields)))
+            .after(library.auditPayload(Map.of("changedFields", fields)))
             .outcome(AuditOutcome.SUCCESS)
             .build());
   }
@@ -694,8 +694,8 @@ public class KnowledgeLibraryService {
               .actor(currentUserId)
               .type(AuditEventType.LIBRARY_CHANGED)
               .object(AuditObjectType.KNOWLEDGE_LIBRARY, updated.getId(), updated.auditName())
-              .before(Map.of("changedFields", changedFields))
-              .after(Map.of("changedFields", changedFields))
+              .before(updated.auditPayload(Map.of("changedFields", changedFields)))
+              .after(updated.auditPayload(Map.of("changedFields", changedFields)))
               .outcome(AuditOutcome.SUCCESS)
               .build());
     }
@@ -743,8 +743,8 @@ public class KnowledgeLibraryService {
                 .actor(currentUserId)
                 .type(AuditEventType.LIBRARY_SOURCE_UPDATED)
                 .object(AuditObjectType.KNOWLEDGE_LIBRARY, updated.getId(), updated.auditName())
-                .before(Map.of("changedFields", changedSourceFields))
-                .after(Map.of("changedFields", changedSourceFields))
+                .before(updated.auditPayload(Map.of("changedFields", changedSourceFields)))
+                .after(updated.auditPayload(Map.of("changedFields", changedSourceFields)))
                 .outcome(AuditOutcome.SUCCESS)
                 .build());
       }
@@ -786,8 +786,8 @@ public class KnowledgeLibraryService {
             .actor(caller.id())
             .type(AuditEventType.CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED)
             .object(AuditObjectType.KNOWLEDGE_LIBRARY, saved.getId(), saved.auditName())
-            .before(Map.of("allAccountsGrantAllowed", previousCap))
-            .after(Map.of("allAccountsGrantAllowed", allAccountsGrantAllowed))
+            .before(saved.auditPayload(Map.of("allAccountsGrantAllowed", previousCap)))
+            .after(saved.auditPayload(Map.of("allAccountsGrantAllowed", allAccountsGrantAllowed)))
             .outcome(AuditOutcome.SUCCESS)
             .build());
     if (!allAccountsGrantAllowed) {
@@ -906,7 +906,7 @@ public class KnowledgeLibraryService {
             .actor(currentUserId)
             .type(AuditEventType.LIBRARY_DELETED)
             .object(AuditObjectType.KNOWLEDGE_LIBRARY, library.getId(), library.auditName())
-            .before(deletionPayload)
+            .before(library.auditPayload(deletionPayload))
             .outcome(AuditOutcome.SUCCESS)
             .build());
     libraryRepository.delete(library);
@@ -1474,8 +1474,8 @@ public class KnowledgeLibraryService {
             .actor(caller.id())
             .type(AuditEventType.LIBRARY_SOURCE_UPDATED)
             .object(AuditObjectType.KNOWLEDGE_LIBRARY, library.getId(), library.auditName())
-            .before(Map.of("changedFields", changedFields))
-            .after(Map.of("changedFields", changedFields))
+            .before(library.auditPayload(Map.of("changedFields", changedFields)))
+            .after(library.auditPayload(Map.of("changedFields", changedFields)))
             .outcome(AuditOutcome.SUCCESS)
             .build());
   }

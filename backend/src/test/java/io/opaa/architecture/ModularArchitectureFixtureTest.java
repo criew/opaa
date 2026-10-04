@@ -197,6 +197,25 @@ class ModularArchitectureFixtureTest {
   }
 
   /**
+   * One protocol entry names the asset by its name, another writes its payload raw; the neutral
+   * entry and a reader of the name without an entry pass.
+   */
+  @Test
+  void aProtocolEntryNamingAnAssetOtherThanNeutrallyIsReported() {
+    Scenario scenario = new Scenario("privateaudit");
+
+    assertThat(scenario.violations(ModularArchitecture::privateAssetsAreAuditedNeutrally))
+        .hasSize(2)
+        .anySatisfy(
+            violation -> assertThat(violation).contains("LibraryAudit.renamedByName", "getName"))
+        .anySatisfy(
+            violation ->
+                assertThat(violation).contains("LibraryAudit.correctedRaw", "without auditPayload"))
+        .noneSatisfy(violation -> assertThat(violation).contains("renamedNeutrally"))
+        .noneSatisfy(violation -> assertThat(violation).contains("LibraryAudit.title"));
+  }
+
+  /**
    * An intermediate step asks the exact counts, another the log-only count; the one masking class
    * and the one logging caller may.
    */

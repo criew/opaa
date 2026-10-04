@@ -79,7 +79,8 @@ class OrphanedOriginalCleanupServiceTest {
         documentRepository,
         withStore,
         new UploadProperties(storageDir.toString(), null, 1024L, null, 0, GRACE_MINUTES),
-        Clock.fixed(now, ZoneOffset.UTC));
+        Clock.fixed(now, ZoneOffset.UTC),
+        new io.opaa.permission.PersonThreshold(new io.opaa.permission.GroupSizeProperties(null)));
   }
 
   @Test

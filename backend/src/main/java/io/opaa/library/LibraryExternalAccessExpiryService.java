@@ -97,7 +97,8 @@ public class LibraryExternalAccessExpiryService {
               .actorRef(EXTERNAL_ACCESS_ACTOR)
               .type(AuditEventType.ASSET_EXTERNAL_ACCESS_EXPIRED)
               .object(AuditObjectType.KNOWLEDGE_LIBRARY, saved.getId(), saved.auditName())
-              .before(Map.of("externalAccess", ExternalAccessState.ACTIVE.name()))
+              .before(
+                  saved.auditPayload(Map.of("externalAccess", ExternalAccessState.ACTIVE.name())))
               .after(
                   Map.of(
                       "externalAccess",

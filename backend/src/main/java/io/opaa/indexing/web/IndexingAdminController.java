@@ -25,6 +25,7 @@ import io.opaa.indexing.maintenance.PipelineReindexResult;
 import io.opaa.indexing.maintenance.PipelineReindexService;
 import io.opaa.llm.web.LlmModelController;
 import io.opaa.metadata.CoreMetadataExtractor;
+import io.opaa.permission.PersonThreshold;
 import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -62,6 +63,7 @@ public class IndexingAdminController {
   private final ContextPrefixRerunService contextPrefixRerunService;
   private final DocumentFormatRegistry pipelineRegistry;
   private final AuditedAdminCall auditedAdminCall;
+  private final PersonThreshold personThreshold;
 
   public IndexingAdminController(
       LowChunkDocumentAuditService lowChunkDocumentAuditService,
@@ -69,7 +71,9 @@ public class IndexingAdminController {
       MetadataBackfillService metadataBackfillService,
       ContextPrefixRerunService contextPrefixRerunService,
       DocumentFormatRegistry pipelineRegistry,
-      AuditEventRecorder auditEventRecorder) {
+      AuditEventRecorder auditEventRecorder,
+      PersonThreshold personThreshold) {
+    this.personThreshold = personThreshold;
     this.lowChunkDocumentAuditService = lowChunkDocumentAuditService;
     this.pipelineReindexService = pipelineReindexService;
     this.metadataBackfillService = metadataBackfillService;
@@ -108,7 +112,9 @@ public class IndexingAdminController {
   public PipelineVersionStatusResponse getPipelineVersionStatus(@Caller CurrentUser caller) {
     return PipelineVersionResponseMapper.toStatusResponse(
         pipelineRegistry.pipelines(),
-        pipelineReindexService.progressForOrganization(caller.organizationId()));
+        pipelineReindexService.progressForOrganization(caller.organizationId()),
+        pipelineReindexService.privateProgressForOrganization(
+            caller.organizationId(), personThreshold));
   }
 
   /**

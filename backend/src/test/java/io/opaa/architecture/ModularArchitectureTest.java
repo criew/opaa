@@ -115,6 +115,11 @@ class ModularArchitectureTest {
   }
 
   @Test
+  void privateAssetsAreAuditedNeutrally() {
+    ARCHITECTURE.privateAssetsAreAuditedNeutrally().check(mainClasses);
+  }
+
+  @Test
   void privateLibrariesAreNotEnumeratedOutsideListedClasses() {
     ARCHITECTURE.privateLibrariesAreNotEnumeratedOutsideListedClasses().check(mainClasses);
   }

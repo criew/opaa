@@ -100,7 +100,9 @@ class OrphanedOriginalCleanupS3Test {
             documentRepository,
             store,
             uploadProperties,
-            Clock.offset(Clock.systemUTC(), Duration.ofHours(2)));
+            Clock.offset(Clock.systemUTC(), Duration.ofHours(2)),
+            new io.opaa.permission.PersonThreshold(
+                new io.opaa.permission.GroupSizeProperties(null)));
   }
 
   @Test
