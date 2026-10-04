@@ -244,8 +244,19 @@ public class PipelineReindexService {
             Advance.SKIPPED,
             Advance.STORE_UNAVAILABLE,
             (limit, offset) ->
-                selectStaleDocuments(organizationId, pipelineId, belowVersion, limit, offset),
+                selectStaleDocuments(
+                    organizationId, pipelineId, belowVersion, false, limit, offset),
             documentId -> advance(documentId, pipelineId));
+    // Private libraries advance the same way, but are not reported: no number of the result may
+    // rest on them, and done follows the shared libraries alone.
+    DocumentBatchLoop.run(
+        batchSize,
+        Advance.class,
+        Advance.SKIPPED,
+        Advance.STORE_UNAVAILABLE,
+        (limit, offset) ->
+            selectStaleDocuments(organizationId, pipelineId, belowVersion, true, limit, offset),
+        documentId -> advance(documentId, pipelineId));
     return new PipelineReindexResult(
         counts.get(Advance.REINDEXED),
         counts.get(Advance.MARKED_FOR_NEXT_RUN),
@@ -428,7 +439,12 @@ public class PipelineReindexService {
   }
 
   private List<UUID> selectStaleDocuments(
-      UUID organizationId, String pipelineId, int belowVersion, int batchSize, int offset) {
+      UUID organizationId,
+      String pipelineId,
+      int belowVersion,
+      boolean privateLibraries,
+      int batchSize,
+      int offset) {
     MisroutedPredicate misrouted = misroutedPredicateFor(pipelineId);
     String sql =
         "SELECT DISTINCT v.metadata->>'document_id' AS document_id "
@@ -446,8 +462,8 @@ public class PipelineReindexService {
             + "  AND v.metadata->>'document_id' ~* "
             + "'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' "
             + "  AND v.metadata->>'organization_id' = ? "
-            // A private library is its owner's: the administration's re-index leaves it out.
-            + "  AND NOT EXISTS (SELECT 1 FROM assets a WHERE a.owner_only"
+            + (privateLibraries ? "  AND EXISTS" : "  AND NOT EXISTS")
+            + " (SELECT 1 FROM assets a WHERE a.owner_only"
             + "       AND a.id::text = v.metadata->>'library_id') "
             + "  AND ("
             + "       (COALESCE(v.metadata->>'"

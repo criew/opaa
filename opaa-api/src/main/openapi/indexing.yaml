@@ -100,6 +100,11 @@ paths:
         an explicit operator decision - nothing triggers this automatically.
 
 
+        Private libraries are advanced as well, up to batchSize more documents per call, but the
+        answer reports only shared libraries: no count includes a private document, and done
+        follows the shared libraries alone.
+
+
         A document that cannot be advanced costs only that candidate and is counted as skipped,
         fetching its source file included. One condition ends the call early instead: with
         opaa.upload.store=s3, an upload store that does not answer would make every remaining

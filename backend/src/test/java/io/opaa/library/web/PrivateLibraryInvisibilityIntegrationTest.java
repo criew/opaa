@@ -600,6 +600,7 @@ class PrivateLibraryInvisibilityIntegrationTest {
     herLibrariesAreUntouched(own);
     if (observer == Observer.SYSTEM_ADMIN) {
       theSpareSpacesAreDeletedAlike(spareBefore, spareAfter, own);
+      theReindexAdvancedHerStaleDocument(own);
     }
     if (observer == Observer.PERSON_CONTEXT) {
       theDiagnosticProtocolNamesNothingOfHers(own);
@@ -665,6 +666,21 @@ class PrivateLibraryInvisibilityIntegrationTest {
     for (String marker : own.markers(true)) {
       assertThat(with).doesNotContain(marker);
     }
+  }
+
+  /**
+   * The re-index the administration started reached her document too, without reporting it: its
+   * content lies with the provider, so it is marked for her library's next run (both change markers
+   * cleared), which reads it again with her account.
+   */
+  private void theReindexAdvancedHerStaleDocument(Ids own) {
+    assertThat(
+            jdbc.queryForObject(
+                "SELECT checksum IS NULL AND last_modified_remote IS NULL FROM documents"
+                    + " WHERE id = ?",
+                Boolean.class,
+                own.document()))
+        .isTrue();
   }
 
   private String deletionEntry(UUID spaceId) {

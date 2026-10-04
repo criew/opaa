@@ -441,8 +441,10 @@ Begründung:
   Änderung der Besitzart (geprüft zum Commit).
 - **Verwaltungssichten ohne private Bibliotheken:** Zahlen am Profil, Indexstatus und
   Pipeline-Stand (je eine Summenzeile), chunk-arme Dokumente, Zahl der diagnosegesperrten
-  Bibliotheken, Speicherbereiche der Bereinigung. Der Bestandslauf der Pipeline lässt private
-  Bibliotheken aus. Die ungefilterten Finder ruft nur ein gelisteter Systemprozess
+  Bibliotheken, Speicherbereiche der Bereinigung. Der Bestandslauf der Pipeline bezieht private
+  Bibliotheken ein (als Systemprozess), weist sie aber in keiner Zahl seiner Antwort aus; `done`
+  folgt den geteilten. Ihre Dokumente liegen beim Anbieter und werden für den nächsten Lauf
+  vorgemerkt, der das Geheimnis der Besitzerin braucht. Die ungefilterten Finder ruft nur ein gelisteter Systemprozess
   (`ModularArchitecture#privateLibrariesAreNotEnumeratedOutsideListedClasses`).
 - **Eine Zählbasis:** Jede Zahl über private Bibliotheken ruht auf ihren Besitzerinnen, nicht auf
   den Bibliotheken: unter der Mindestgruppengröße N an Besitzerinnen, null eingeschlossen, nur
