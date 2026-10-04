@@ -12,6 +12,7 @@ import io.opaa.indexing.source.Secret;
 import io.opaa.indexing.source.SourceConnectionResolver;
 import io.opaa.indexing.source.SourceSettings;
 import io.opaa.knowledge.KnowledgeLibrary;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Component;
 
 /**
@@ -29,13 +30,15 @@ public class ProfileSourceConnectionResolver implements SourceConnectionResolver
   private final EffectiveSourceSettings effective;
   private final SourceBlocks blocks;
   private final ConnectionSecrets secrets;
-  private final ConnectedAccountService accounts;
+
+  /** Looked up per call: the accounts reach the release, and the release the connectors. */
+  private final ObjectProvider<ConnectedAccountService> accounts;
 
   public ProfileSourceConnectionResolver(
       EffectiveSourceSettings effective,
       SourceBlocks blocks,
       ConnectionSecrets secrets,
-      ConnectedAccountService accounts) {
+      ObjectProvider<ConnectedAccountService> accounts) {
     this.effective = effective;
     this.blocks = blocks;
     this.secrets = secrets;
@@ -66,7 +69,7 @@ public class ProfileSourceConnectionResolver implements SourceConnectionResolver
   public void credentialsRejected(KnowledgeLibrary library) {
     SecretOwner owner = effective.secretOwnerOf(library);
     if (owner instanceof PersonOwned person) {
-      accounts.rejected(library, person);
+      accounts.getObject().rejected(library, person);
     } else {
       secrets.rejected(owner);
     }

@@ -63,12 +63,19 @@ final class TestProfileResolvers {
             new ServiceAccountTokens(TargetAddressValidator.disabled(), Clock.systemUTC())),
         blocks,
         secrets,
-        mock(ConnectedAccountService.class));
+        accounts());
   }
 
   private static ConnectionSecrets secrets(
       LibraryConnectionRepository connections, Map<UUID, KnowledgeLibrary> rows) {
     return TestSecrets.overLibraries(connections, LibraryRows.over(rows));
+  }
+
+  @SuppressWarnings("unchecked")
+  private static ObjectProvider<ConnectedAccountService> accounts() {
+    ObjectProvider<ConnectedAccountService> provider = mock(ObjectProvider.class);
+    when(provider.getObject()).thenReturn(mock(ConnectedAccountService.class));
+    return provider;
   }
 
   @SuppressWarnings("unchecked")

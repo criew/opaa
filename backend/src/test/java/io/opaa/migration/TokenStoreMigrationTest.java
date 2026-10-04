@@ -128,10 +128,11 @@ class TokenStoreMigrationTest extends AbstractBaselineTest {
 
   @Test
   void aPersonWithAConnectionIsNotDeleted() throws Exception {
-    insertAccount(owner, forPersons, "DISCONNECTED", "SELF");
+    UUID person = insertUser();
+    insertAccount(person, forPersons, "DISCONNECTED", "SELF");
 
     assertRejected(
-        "DELETE FROM users WHERE id = '" + owner + "'", "fk_connected_accounts_user_organization");
+        "DELETE FROM users WHERE id = '" + person + "'", "fk_connected_accounts_user_organization");
   }
 
   @Test

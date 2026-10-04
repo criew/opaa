@@ -329,6 +329,31 @@ Begründung:
 - `ConnectionLog#record` tritt der Transaktion des Aufrufers bei. Ein Aufrufer nach dem Commit
   (`AFTER_COMMIT`-Listener des Lebenszyklus) braucht eine eigene Transaktion.
 
+## Nachtrag vom 04.10.2026: Token-Speicher und verbundene Konten (#2163)
+
+- **Paketreihenfolge, unten zuerst:** `connection.log`, `connection.token`, `connection.profile`,
+  `connection.account`, später `connection.oauth`. Der Speicher liegt unter den Profilen, damit
+  Adress- und Registrierungswechsel, Notabschaltung und Löschung des Profils verwerfen können; die
+  verbundenen Konten liegen darüber, weil sie Profil, Sperre und Freigabe brauchen. `oauth` liegt
+  zuoberst, weil der Abschluss einer Zustimmung ein Konto anlegt.
+- **Ports statt Kanten nach oben:** `connection.token` deklariert `SecretIssuer` (Erneuerung und
+  Widerruf eines OAuth-Tokens, implementiert von `connection.oauth`), `LibrariesOnProfile` und
+  `PersonAccounts`; `connection.profile` deklariert `PersonConnections`, über den die
+  Profilverwaltung die Konten eines Zugangs zählt und beendet. Ohne `SecretIssuer` kann kein
+  OAuth-Token herausgegeben werden.
+- **Der Speicher meldet Gründe, keine Texte:** `ConnectionSecrets#current` wirft
+  `SecretRefusedException` mit dem Sperrgrund; den Hinweis formuliert weiter nur `SourceBlocks`,
+  das über dem Speicher liegt.
+- **Neue Sperrgründe** in `SourceBlock.Reason`: `OWNER_DEACTIVATED` und `DORMANT` nach
+  `ACCESS_REMOVED`, `EXPIRED` nach `NOT_CONNECTED`; alle drei beenden einen laufenden Lauf und
+  erscheinen in der Antwort, keiner ist eine Sperre der Verwaltung. „Ruhend“ und „deaktiviert“ werden
+  bei jeder Herausgabe aus `AccountUsability` abgeleitet, mit der Inaktivitätsschwelle als Konstante
+  (90 Tage), bis der Lebenszyklus sie einstellbar macht.
+- **Zielbindung:** `issued_for` ist ein undurchsichtiger Wert, den nur `ConnectionProfile#secretTarget`
+  liefert (heute die Server-Adresse); der Speicher vergleicht ihn, er zerlegt ihn nie.
+- **Ein Konto mit Verbindung wird nicht gelöscht:** `connected_accounts.user_id` ist `RESTRICT`
+  und steht in `UserRepository#countDeletionBlockers`; das Geheimnis hängt mit `CASCADE` am Konto.
+
 ## Referenzen
 
 - [connector-connections.md](../features/connector-connections.md)

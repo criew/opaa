@@ -15,6 +15,8 @@ function initialProfiles(): ConnectionProfileResponse[] {
       sourceProxy: null,
       sourceInsecureSsl: false,
       connectionCount: 2,
+      connectedAccountCount: { count: 0, fewerThan: null },
+      expiredConnectionCount: { count: 0, fewerThan: null },
       locked: false,
       createdAt: '2026-10-01T09:00:00Z',
       updatedAt: '2026-10-01T09:00:00Z',
