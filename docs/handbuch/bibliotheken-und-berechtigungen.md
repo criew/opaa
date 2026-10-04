@@ -921,22 +921,29 @@ eines Kontos bedeutet, steht im Kapitel [Suche](suche.md), Abschnitt 8.4.
 ### Verbindungsprotokoll
 
 **Das Verbindungsprotokoll ist ein eigener Bestand neben dem Nachweisprotokoll.** Es ist für die
-persönlichen Verbindungen einer Person zu einem Zugang gedacht: Verbinden, Neuverbinden, Trennen,
-Ablauf, Notabschaltung und Löschung, bei der Notabschaltung ein Eintrag je betroffener Verbindung.
-**Heute schreibt noch kein Vorgang hinein:** Persönliche Verbindungen gibt es noch nicht, die
-Einträge kommen mit den verbundenen Konten (#2163). Das Protokoll ist angelegt, lesbar und wird nach
-Frist gelöscht, bleibt aber bis dahin leer. Insbesondere schreibt die heutige Notabschaltung eines
-Zugangs („Alle Verbindungen trennen“, [Indexierung](indexierung.md), „Zugänge“) keinen Eintrag: Sie
-verwirft die Geheimnisse von Bibliotheken, nicht von Personen, und steht im Nachweisprotokoll —
-ebenso wie Anlegen, Ändern, Sperren und Löschen eines Zugangs.
+Verbindungen zu einem Zugang gedacht, und zwar für drei Besitzarten: die persönliche Verbindung einer
+Person (verbundenes Konto), die Quellverbindung einer Bibliothek (Dienstkonto, „Quelle verbinden“)
+und eine Verbindung, die der Zugang selbst hält. Festgehalten werden Verbinden, Neuverbinden,
+Trennen, Ablauf, Notabschaltung und Löschung, bei der Notabschaltung ein Eintrag je betroffener
+Verbindung. **Heute schreibt noch kein Vorgang hinein:** Die Einträge kommen mit den verbundenen
+Konten und dem Verbinden von Quellen (#2163). Das Protokoll ist angelegt, lesbar und wird nach Frist
+gelöscht, bleibt aber bis dahin leer. Insbesondere schreibt die heutige Notabschaltung eines Zugangs
+(„Alle Verbindungen trennen“, [Indexierung](indexierung.md), „Zugänge“) keinen Eintrag; sie steht im
+Nachweisprotokoll — ebenso wie Anlegen, Ändern, Sperren und Löschen eines Zugangs.
 
 - **Inhalt:** wer gehandelt hat, wessen Verbindung es ist, welcher Zugang (mit dem Namen, den er zu
   dem Zeitpunkt trug), welches Ereignis, wann und — bei jedem Ende — warum: selbst getrennt,
   Notabschaltung, geänderte Server-Adresse, geänderte App-Registrierung, deaktiviertes Konto,
-  gelöschter Zugang, vom Anbieter abgelehnt oder abgelaufen. Ein Ende ohne Anlass nimmt die
+  gelöschter Zugang, vom Anbieter abgelehnt oder abgelaufen, bei einer Quellverbindung außerdem
+  gelöschte Bibliothek oder Bibliothek auf einen anderen Zugang umgehängt. Ein Ende ohne Anlass nimmt die
   Datenbank nicht an. Personen erscheinen wie im Nachweisprotokoll nur als Pseudonym; ein Ereignis
-  ohne handelnde Person trägt die Kennung `SYSTEM`. **Kein Eintrag enthält ein Token, einen
-  Kontonamen beim Anbieter oder eine Bibliothek.**
+  ohne handelnde Person trägt die Kennung `SYSTEM`. **Kein Eintrag enthält ein Token.**
+- **Wessen Verbindung:** Bei einer **persönlichen** Verbindung steht die Person als Pseudonym im
+  Eintrag, **nie eine Bibliothek oder ein Kontoname beim Anbieter** — das erzwingt die Datenbank.
+  Bei einer **Quellverbindung** stehen die Bibliothek und die Kontoadresse des Dienstkontos im
+  Eintrag, aber keine Person. Eine Verbindung des **Zugangs** nennt weder Person noch Bibliothek
+  noch Konto. Der Eintrag überlebt die Bibliothek. Die Verbindung einer privaten Bibliothek gilt
+  immer als persönliche Verbindung ihrer Besitzerin, nie als Quellverbindung.
 - **Lesen darf nur die Revision.** Die Systemverwaltung liest es nicht, auch nicht mit ihrer
   Systemrolle. Es gelten dieselben Schutzregeln wie für das Nachweisprotokoll: Anlass und Zeitfenster
   sind Pflicht, die Seiten sind begrenzt, und jeder Abruf — der abgewiesene eingeschlossen — steht

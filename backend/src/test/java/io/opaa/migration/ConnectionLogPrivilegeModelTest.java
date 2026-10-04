@@ -26,6 +26,7 @@ import org.junit.jupiter.api.Test;
 class ConnectionLogPrivilegeModelTest extends AbstractBaselineTest {
 
   private static final String FILE = "db/changelog/connections/2026-10-04-connection-log.yaml";
+  private static final String OWNER_FILE = "db/changelog/connections/2026-10-04-log-owner.yaml";
   private static final String OWNER_ROLE = "opaa_audit_owner";
   private static final String APP_ROLE = "connection_log_test_role";
   private static final String APP_ROLE_PASSWORD = "connection_log_test_password";
@@ -35,12 +36,13 @@ class ConnectionLogPrivilegeModelTest extends AbstractBaselineTest {
 
   @Override
   protected List<String> baseFixtureChangelogs() {
-    return MasterChangelog.filesExcept(FILE);
+    return MasterChangelog.filesExcept(FILE, OWNER_FILE);
   }
 
   @BeforeEach
   void applyTheChangelogAndProvisionTheApplicationRole() throws Exception {
     applyChangelog(connection, FILE);
+    applyChangelog(connection, OWNER_FILE);
     connection.setAutoCommit(true);
     dropRolesIfExist(connection, APP_ROLE);
     execute("CREATE ROLE " + APP_ROLE + " LOGIN PASSWORD '" + APP_ROLE_PASSWORD + "'");
@@ -64,7 +66,10 @@ class ConnectionLogPrivilegeModelTest extends AbstractBaselineTest {
     }
   }
 
-  /** Who, which profile, which event, when and why - no token, no account name, no library. */
+  /**
+   * Who, whose connection, which profile, which event, when and why - no token; a library and an
+   * account only for a library's connection ({@code ConnectionLogOwnerMigrationTest}).
+   */
   @Test
   void theLogCarriesExactlyItsSpecifiedColumnsAndIsPartitionedAhead() throws SQLException {
     List<String> columns = new ArrayList<>();
@@ -89,7 +94,10 @@ class ConnectionLogPrivilegeModelTest extends AbstractBaselineTest {
             "person_ref",
             "profile_id",
             "profile_name",
-            "cause");
+            "cause",
+            "owner_kind",
+            "library_id",
+            "account_label");
     assertThat(stringOf("SELECT relkind FROM pg_class WHERE relname = 'connection_log'"))
         .isEqualTo("p");
     assertThat(
@@ -266,7 +274,7 @@ class ConnectionLogPrivilegeModelTest extends AbstractBaselineTest {
 
   private String insertSql(String eventType, String cause, String recordedAt) {
     return "INSERT INTO connection_log (event_id, organization_id, recorded_at, event_type,"
-        + " actor_ref, person_ref, profile_id, profile_name, cause) VALUES ('"
+        + " actor_ref, owner_kind, person_ref, profile_id, profile_name, cause) VALUES ('"
         + UUID.randomUUID()
         + "', '"
         + SEEDED_ORGANIZATION_ID
@@ -274,7 +282,7 @@ class ConnectionLogPrivilegeModelTest extends AbstractBaselineTest {
         + recordedAt
         + ", "
         + eventType
-        + ", 'actor-pseudonym', 'person-pseudonym', '"
+        + ", 'actor-pseudonym', 'PERSON', 'person-pseudonym', '"
         + UUID.randomUUID()
         + "', 'Nextcloud Rathaus', "
         + cause
