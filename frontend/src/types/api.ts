@@ -325,6 +325,7 @@ export type OidcProviderRegistryState = components['schemas']['OidcProviderRegis
 export type OidcProviderOrderRequest = components['schemas']['OidcProviderOrderRequest']
 export type OidcProviderTestRequest = components['schemas']['OidcProviderTestRequest']
 export type OidcProviderTestResponse = components['schemas']['OidcProviderTestResponse']
+export type OidcProviderImpactResponse = components['schemas']['OidcProviderImpactResponse']
 export type EmbeddingInfoResponse = components['schemas']['EmbeddingInfoResponse']
 
 export type MailEncryption = components['schemas']['MailEncryption']

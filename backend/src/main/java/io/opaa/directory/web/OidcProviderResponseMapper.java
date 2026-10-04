@@ -1,12 +1,16 @@
 package io.opaa.directory.web;
 
 import io.opaa.api.dto.OidcClaimMappingDto;
+import io.opaa.api.dto.OidcProviderImpactResponse;
 import io.opaa.api.dto.OidcProviderRegistryState;
 import io.opaa.api.dto.OidcProviderRequest;
 import io.opaa.api.dto.OidcProviderResponse;
+import io.opaa.api.dto.PersonCount;
 import io.opaa.auth.OidcClaimMapping;
 import io.opaa.auth.OidcProvider;
 import io.opaa.auth.OidcProviderRegistry;
+import io.opaa.auth.ProviderConnectionsImpact.Impact;
+import io.opaa.auth.ProviderConnectionsImpact.MaskedCount;
 import io.opaa.directory.OidcProviderDraft;
 import io.opaa.directory.sync.connector.DirectoryConnectorView;
 
@@ -79,5 +83,21 @@ final class OidcProviderResponseMapper {
         request.getClientId(),
         request.getJwkSetUri(),
         domainMapping);
+  }
+
+  static OidcProviderImpactResponse toImpactResponse(Impact impact) {
+    return new OidcProviderImpactResponse()
+        .confirmationRequired(impact.confirmationRequired())
+        .connections(toPersonCount(impact.connections()))
+        .privateLibraries(toPersonCount(impact.privateLibraries()));
+  }
+
+  private static PersonCount toPersonCount(MaskedCount count) {
+    return count == null
+        ? null
+        : new PersonCount()
+            .count(count.exact())
+            .fewerThan(count.fewerThan())
+            .atLeast(count.atLeast());
   }
 }

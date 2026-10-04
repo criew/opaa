@@ -30,6 +30,9 @@ import io.opaa.auth.OidcProvider;
 import io.opaa.auth.OidcProviderRegistry;
 import io.opaa.auth.OidcProviderRepository;
 import io.opaa.auth.OidcProvidersChangedEvent;
+import io.opaa.auth.ProviderConnectionsImpact;
+import io.opaa.auth.ProviderConnectionsImpact.Impact;
+import io.opaa.auth.ProviderConnectionsImpact.MaskedCount;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.common.ConflictException;
@@ -71,6 +74,7 @@ class OidcProviderServiceTest {
   private final ApplicationEventPublisher eventPublisher = mock(ApplicationEventPublisher.class);
 
   private final ProviderGroupDirectory providerGroups = mock(ProviderGroupDirectory.class);
+  private final ProviderConnectionsImpact connectionsImpact = mock(ProviderConnectionsImpact.class);
 
   private OidcProviderService service;
 
@@ -88,6 +92,7 @@ class OidcProviderServiceTest {
             refreshTokens,
             auditEventRecorder,
             eventPublisher,
+            connectionsImpact,
             Clock.fixed(NOW, ZoneOffset.UTC));
     when(repository.save(any(OidcProvider.class))).thenAnswer(inv -> inv.getArgument(0));
     when(repository.saveAndFlush(any(OidcProvider.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -98,6 +103,7 @@ class OidcProviderServiceTest {
     when(repository.countByProviderType(ProviderType.OIDC)).thenReturn(0L);
     when(auditEventRecorder.pseudonymFor(any(), any())).thenReturn(UUID.randomUUID());
     when(providerGroups.effectsOf(any())).thenReturn(ProviderGroupEffects.NONE);
+    when(connectionsImpact.of(any())).thenReturn(Impact.none());
   }
 
   /** Another enabled OIDC provider besides {@code self} exists - the common, unguarded case. */
@@ -431,6 +437,62 @@ class OidcProviderServiceTest {
     assertThat(first.isEnabled()).isTrue();
     verify(repository, never()).delete(any());
     verify(eventPublisher, never()).publishEvent(any());
+  }
+
+  /**
+   * ADR-0041, Entscheidung 4: wherever persons may have connections, switching a provider off (they
+   * rest) and deleting it (they end, the deletion period begins) needs the confirmation - with the
+   * masked numbers as told, and neutrally where none may be told.
+   */
+  @Test
+  void disablingOrDeletingNeedsTheConfirmationOfWhatHappensToPersonsConnections() {
+    OidcProvider partner = provider("Partner", "https://idp.example/realms/p", true, false);
+    when(repository.findById(partner.getId())).thenReturn(Optional.of(partner));
+    anotherEnabledProviderRemainsBesides(partner);
+    when(connectionsImpact.of(partner.getId()))
+        .thenReturn(new Impact(true, new MaskedCount(null, null, 5), null));
+
+    assertThatThrownBy(() -> service.setEnabled(ORGANIZATION_ID, ACTOR_ID, partner.getId(), false))
+        .isInstanceOfSatisfying(
+            ConflictException.class,
+            e -> {
+              assertThat(e.getCode())
+                  .isEqualTo(OidcProviderService.PROVIDER_CONNECTIONS_CONFIRMATION_REQUIRED);
+              assertThat(e.getMessage())
+                  .contains("ruhen", "nichts gelöscht")
+                  .contains("mindestens 5 verbundene Konten", "etwaige private Bibliotheken");
+            });
+    assertThatThrownBy(() -> service.deleteProvider(ORGANIZATION_ID, ACTOR_ID, partner.getId()))
+        .isInstanceOfSatisfying(
+            ConflictException.class,
+            e ->
+                assertThat(e.getMessage())
+                    .contains("sofort und unumkehrbar gelöscht", "Löschfrist"));
+    assertThat(partner.isEnabled()).isTrue();
+    verify(repository, never()).delete(any());
+    verify(eventPublisher, never()).publishEvent(any());
+
+    service.setEnabled(ORGANIZATION_ID, ACTOR_ID, partner.getId(), false, false, true);
+    assertThat(partner.isEnabled()).isFalse();
+    service.deleteProvider(ORGANIZATION_ID, ACTOR_ID, partner.getId(), false, true);
+    verify(repository).delete(partner);
+  }
+
+  /** The LOCAL row's switch reaches the regular local accounts: it asks the same way. */
+  @Test
+  void switchingTheLocalRowOffNeedsTheSameConfirmation() {
+    OidcProvider local = OidcProvider.localProvider("Lokale Konten");
+    local.enable();
+    when(repository.findById(local.getId())).thenReturn(Optional.of(local));
+    when(connectionsImpact.of(local.getId())).thenReturn(new Impact(true, null, null));
+
+    assertThatThrownBy(() -> service.setEnabled(ORGANIZATION_ID, ACTOR_ID, local.getId(), false))
+        .isInstanceOfSatisfying(
+            ConflictException.class,
+            e ->
+                assertThat(e.getCode())
+                    .isEqualTo(OidcProviderService.PROVIDER_CONNECTIONS_CONFIRMATION_REQUIRED));
+    assertThat(local.isEnabled()).isTrue();
   }
 
   /** A provider that is already switched off leaves no sign-in path to lose: no guard, no ack. */

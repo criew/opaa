@@ -400,6 +400,28 @@ Begründung:
   (Verbindungen und private Bibliotheken der nicht deaktivierten Konten des Anbieters, je maskiert).
   Die Anzeige in der Anbieterverwaltung (Spezifikation, API, Oberfläche) folgt.
 
+## Nachtrag vom 04.10.2026: Folgen in der Anbieterverwaltung (#2251)
+
+- **API:** `GET /api/v1/admin/oidc-providers/{id}/impact` nennt die Zahlen, wie die Folgenabschätzung
+  eines Zugangs (`getConnectionProfileImpact`). Deaktivieren und Löschen verlangen
+  `confirmConnections=true`, sonst `409 PROVIDER_CONNECTIONS_CONFIRMATION_REQUIRED` mit deutscher
+  Meldung: Deaktivieren lässt ruhen und löscht nichts; Löschen löscht die Geheimnisse sofort und
+  unumkehrbar und startet die Löschfrist. Das gilt auch für den Schalter der Zeile `LOCAL` über die
+  Anbieter-API.
+- **Bestätigung ohne Zahl:** Verlangt wird sie, sobald irgendein Zugang Personen zulässt, nicht erst
+  bei vorhandenen Verbindungen; sonst verriete schon ihr Ausbleiben, dass niemand verbunden ist
+  (0-Rundung).
+- **Regel gegen das Verrechnen** (`PersonNumbers#ofGroups`): Die Anbieter teilen dieselben
+  Verbindungen, die die Zugänge zählen. Genaue oder „weniger als N“-Zahlen je Anbieter ließen sich
+  gegen die genaue Zahl eines Zugangs verrechnen (Zugang 8, Anbieter A und B je „weniger als 5“ ⇒
+  beide genau 4). Deshalb nennt ein Anbieter nur „mindestens N“, und nur solange nach Abzug von N
+  für jeden Anbieter mit mindestens N (die übrigen Personen, etwa lokale Systemverwalter, als eine
+  weitere Gruppe) noch mindestens N für alle anderen bleiben; sonst nennt kein Anbieter eine Zahl.
+  `PersonNumbersTest` belegt über alle Verteilungen auf zwei Anbieter und einen Zugang, dass keine
+  Beobachtung einen Wert unter N heraushebt, auch nicht die Null.
+- **Offen:** Der Schalter der lokalen Kontenverwaltung unter Administration → Benutzer
+  (`updateLocalAuthSettings`) fragt nicht nach; dort ruhen die Verbindungen nur.
+
 ## Referenzen
 
 - [connector-connections.md](../features/connector-connections.md)

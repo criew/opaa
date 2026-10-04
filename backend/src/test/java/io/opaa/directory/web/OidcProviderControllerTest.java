@@ -18,6 +18,8 @@ import io.opaa.auth.OidcClaimMapping;
 import io.opaa.auth.OidcProvider;
 import io.opaa.auth.OidcProviderConnectionTester;
 import io.opaa.auth.OidcProviderRegistry;
+import io.opaa.auth.ProviderConnectionsImpact.Impact;
+import io.opaa.auth.ProviderConnectionsImpact.MaskedCount;
 import io.opaa.auth.User;
 import io.opaa.auth.UserService;
 import io.opaa.common.ConflictException;
@@ -138,6 +140,15 @@ class OidcProviderControllerTest {
         .andExpect(status().isForbidden());
     mockMvc
         .perform(post("/api/v1/admin/oidc-providers/" + id + "/enable").with(asRegularUser()))
+        .andExpect(status().isForbidden());
+    mockMvc
+        .perform(get("/api/v1/admin/oidc-providers/" + id + "/impact").with(asRegularUser()))
+        .andExpect(status().isForbidden());
+    mockMvc
+        .perform(
+            post("/api/v1/admin/oidc-providers/" + id + "/disable")
+                .param("confirmConnections", "true")
+                .with(asRegularUser()))
         .andExpect(status().isForbidden());
     mockMvc
         .perform(post("/api/v1/admin/oidc-providers/" + id + "/default").with(asRegularUser()))
@@ -262,7 +273,8 @@ class OidcProviderControllerTest {
   @Test
   void theServicesConflictsPassThroughAs409() throws Exception {
     UUID id = UUID.randomUUID();
-    when(providerService.setEnabled(actingAdminOrganizationId, actingAdminId, id, false, false))
+    when(providerService.setEnabled(
+            actingAdminOrganizationId, actingAdminId, id, false, false, false))
         .thenThrow(new ConflictException("Der Standardanbieter kann nicht deaktiviert werden."));
 
     mockMvc
@@ -282,7 +294,8 @@ class OidcProviderControllerTest {
     UUID id = UUID.randomUUID();
     OidcProvider disabled = provider("Einziger", "https://idp.example");
     disabled.disable();
-    when(providerService.setEnabled(actingAdminOrganizationId, actingAdminId, id, false, true))
+    when(providerService.setEnabled(
+            actingAdminOrganizationId, actingAdminId, id, false, true, false))
         .thenReturn(disabled);
 
     mockMvc
@@ -292,9 +305,11 @@ class OidcProviderControllerTest {
                 .with(asAdmin()))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.enabled").value(false));
-    verify(providerService).setEnabled(actingAdminOrganizationId, actingAdminId, id, false, true);
+    verify(providerService)
+        .setEnabled(actingAdminOrganizationId, actingAdminId, id, false, true, false);
 
-    when(providerService.setEnabled(actingAdminOrganizationId, actingAdminId, id, false, false))
+    when(providerService.setEnabled(
+            actingAdminOrganizationId, actingAdminId, id, false, false, false))
         .thenThrow(
             new ConflictException(
                 "Zuerst ein lokales Systemverwalterkonto mit Passwort einrichten.",
@@ -310,11 +325,55 @@ class OidcProviderControllerTest {
                 .param("acknowledgeLastProvider", "true")
                 .with(asAdmin()))
         .andExpect(status().isNoContent());
-    verify(providerService).deleteProvider(actingAdminOrganizationId, actingAdminId, id, true);
+    verify(providerService)
+        .deleteProvider(actingAdminOrganizationId, actingAdminId, id, true, false);
     mockMvc
         .perform(delete("/api/v1/admin/oidc-providers/" + id).with(asAdmin()))
         .andExpect(status().isNoContent());
-    verify(providerService).deleteProvider(actingAdminOrganizationId, actingAdminId, id, false);
+    verify(providerService)
+        .deleteProvider(actingAdminOrganizationId, actingAdminId, id, false, false);
+  }
+
+  /**
+   * ADR-0041, Entscheidung 4: the impact names only masked numbers, and the confirmation of what
+   * disabling or deleting does to persons' connections is handed through as a query parameter.
+   */
+  @Test
+  void theImpactIsMaskedAndTheConfirmationOfTheConnectionsIsHandedThrough() throws Exception {
+    UUID id = UUID.randomUUID();
+    when(providerService.connectionsImpact(id))
+        .thenReturn(new Impact(true, new MaskedCount(null, null, 5), null));
+
+    mockMvc
+        .perform(get("/api/v1/admin/oidc-providers/" + id + "/impact").with(asAdmin()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.confirmationRequired").value(true))
+        .andExpect(jsonPath("$.connections.atLeast").value(5))
+        .andExpect(jsonPath("$.connections.count").doesNotExist())
+        .andExpect(jsonPath("$.privateLibraries").doesNotExist());
+
+    OidcProvider disabled = provider("Partner", "https://idp.example");
+    disabled.disable();
+    when(providerService.setEnabled(
+            actingAdminOrganizationId, actingAdminId, id, false, false, true))
+        .thenReturn(disabled);
+    mockMvc
+        .perform(
+            post("/api/v1/admin/oidc-providers/" + id + "/disable")
+                .param("confirmConnections", "true")
+                .with(asAdmin()))
+        .andExpect(status().isOk());
+    verify(providerService)
+        .setEnabled(actingAdminOrganizationId, actingAdminId, id, false, false, true);
+
+    mockMvc
+        .perform(
+            delete("/api/v1/admin/oidc-providers/" + id)
+                .param("confirmConnections", "true")
+                .with(asAdmin()))
+        .andExpect(status().isNoContent());
+    verify(providerService)
+        .deleteProvider(actingAdminOrganizationId, actingAdminId, id, false, true);
   }
 
   @Test

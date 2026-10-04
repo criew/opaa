@@ -439,3 +439,48 @@ nicht. Die Eingabemasken zeigen die Regel an und bieten „Sicheres Passwort erz
   Anbieteridentität zu binden, ist die Übergabe aus Abschnitt 9 — und nur, solange unter dieser
   Identität noch kein Konto besteht. Einen Rückweg von einer Anbieteridentität zu einem lokalen
   Konto gibt es nicht.
+
+## 14. Anmeldeanbieter abschalten oder löschen: Folgen für verbundene Konten
+
+Personen können ein eigenes Konto bei einer externen Quelle mit OPAA verbinden; ihre privaten
+Bibliotheken laufen über diese Verbindung. Was mit solchen verbundenen Konten geschieht, hängt
+davon ab, ob ihr Anmeldeanbieter **deaktiviert** oder **gelöscht** wird
+(Administration → Identitätsanbieter, Zeilenmenü des Anbieters).
+
+| Handlung | Anmeldung | Verbundene Konten | Private Bibliotheken | Umkehrbar |
+|---|---|---|---|---|
+| **Deaktivieren** | endet sofort, Sitzungen mit der nächsten Anfrage | **ruhen**: Die Zugangsdaten bleiben gespeichert, OPAA gibt sie nur nicht heraus | werden nicht aktualisiert, bleiben aber bestehen | ja: Nach dem Aktivieren geht es ohne neues Verbinden weiter |
+| **Löschen** | endet; die Konten selbst bleiben bestehen | **enden**: Die gespeicherten Zugangsdaten werden sofort gelöscht | die Löschfrist beginnt | nein: Ein neu angelegter Anbieter mit derselben Issuer-URI macht die Konten wieder nutzbar, die Personen müssen sich aber neu verbinden |
+
+Bevor OPAA deaktiviert oder löscht, zeigt der Dialog die Wirkung und fragt nach einer Bestätigung.
+Die Bestätigung wird verlangt, **sobald irgendein Zugang verbundene Konten von Personen zulässt** —
+auch dann, wenn über diesen Anbieter niemand verbunden ist. Sonst verriete schon das Ausbleiben der
+Frage, dass niemand verbunden ist.
+
+**Zahlen sieht die Verwaltung nur grob.** Der Dialog nennt verbundene Konten und private
+Bibliotheken eines Anbieters höchstens als „mindestens N“ (N ist die Mindestgruppengröße
+`OPAA_MINIMUM_GROUP_SIZE`, siehe [Deployment](deployment.md)), sonst „keine Angabe“. Der Grund: Die
+Zugänge nennen ihre Zahlen ab N genau. Genaue Zahlen je Anbieter ließen sich dagegen verrechnen
+und zeigten dann, wie viele Personen eines kleinen Anbieters verbunden sind. Eine genaue Zahl je
+Anbieter gibt es deshalb nicht, und „keine Angabe“ heißt ausdrücklich nicht „niemand“.
+
+Die lokale Kontenverwaltung lässt sich ebenfalls abschalten (Abschnitt 1). Die verbundenen Konten
+regulärer lokaler Konten ruhen dann wie bei einem deaktivierten Anbieter. Der Schalter unter
+Administration → Benutzer → Einstellungen fragt dabei nicht nach, denn gelöscht wird nichts.
+
+**Abwesenheit und Versetzung beenden nichts.** Ruhen ist keine Deaktivierung:
+
+- Wer sich länger nicht anmeldet (Schwelle `OPAA_CONNECTION_INACTIVITY_THRESHOLD_DAYS`, siehe
+  [Deployment](deployment.md)), dessen Verbindungen ruhen. Mit der nächsten Anmeldung geht es ohne
+  neues Verbinden weiter.
+- Ein Wechsel der Gruppe oder die Übergabe eines lokalen Kontos an einen Anbieter (Abschnitt 9)
+  lässt die Verbindungen unberührt.
+- Erst ein **deaktiviertes** Konto beendet sie: gesperrt, abgelaufen, im Verzeichnis gesperrt oder
+  ohne Anbieter, weil dieser gelöscht wurde.
+
+Wer einen Anbieter nur vorübergehend außer Betrieb nimmt, etwa für eine Umstellung, **deaktiviert**
+ihn deshalb und löscht ihn nicht.
+
+> **Stand:** Heute lässt noch kein mitgelieferter Konnektor verbundene Konten von Personen zu; das
+> folgt mit #2167. Bis dahin hat das Deaktivieren oder Löschen eines Anbieters für verbundene Konten
+> keine Folgen, und der Dialog fragt nicht danach.

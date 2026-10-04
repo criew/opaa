@@ -8,6 +8,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.ToLongFunction;
 import org.springframework.stereotype.Component;
 
 /**
@@ -15,7 +16,8 @@ import org.springframework.stereotype.Component;
  * Mindestgruppengröße N): the total of a profile is exact from N on, else "fewer than N" - zero
  * included, so no answer tells whether anyone is connected; a part (the expired) is exact only
  * where the total is and neither it nor its complement lies between 1 and N-1 - else "fewer than N"
- * if it is below N, else not told - so no subtraction of two answers points at a person.
+ * if it is below N, else not told - so no subtraction of two answers points at a person. Numbers
+ * per group of persons follow {@link #ofGroups}.
  */
 @Component
 public class PersonNumbers {
@@ -44,16 +46,53 @@ public class PersonNumbers {
   }
 
   /**
-   * The connections and private libraries of {@code userIds} as a whole, each masked like a total;
-   * neither tells whether one of them has any.
+   * The connections and private libraries of each group of {@code personsByGroup} - disjoint, such
+   * as the accounts of each sign-in provider - with {@code others} holding every remaining person.
+   * The groups split the same totals the profiles tell, so a group number is never exact and never
+   * "fewer than N": a group is told "at least N" only if it has N, and only while, with N set aside
+   * for every group (and {@code others}) that has N, at least N remain for all the rest together;
+   * else no group is told anything ({@code null}). Thus no sum of answers isolates a number below
+   * N, zero included.
    */
-  public PersonsCounts ofPersons(Collection<UUID> userIds) {
-    PersonTotals raw = userIds.isEmpty() ? new PersonTotals(0, 0) : persons.totalsOf(userIds);
-    return new PersonsCounts(total(raw.connections()), total(raw.privateLibraries()));
+  public <K> Map<K, PersonsCounts> ofGroups(
+      Map<K, ? extends Collection<UUID>> personsByGroup, Collection<UUID> others) {
+    Map<K, PersonTotals> raw = new HashMap<>();
+    personsByGroup.forEach((group, userIds) -> raw.put(group, totalsOf(userIds)));
+    PersonTotals rest = totalsOf(others);
+    Map<K, PersonCount> connections =
+        amongGroups(raw, PersonTotals::connections, rest.connections());
+    Map<K, PersonCount> libraries =
+        amongGroups(raw, PersonTotals::privateLibraries, rest.privateLibraries());
+    Map<K, PersonsCounts> masked = new HashMap<>();
+    for (K group : personsByGroup.keySet()) {
+      masked.put(group, new PersonsCounts(connections.get(group), libraries.get(group)));
+    }
+    return masked;
   }
 
-  private PersonCount total(long count) {
-    return count < minimum ? PersonCount.fewerThan(minimum) : PersonCount.exact(count);
+  private PersonTotals totalsOf(Collection<UUID> userIds) {
+    return userIds.isEmpty() ? new PersonTotals(0, 0) : persons.totalsOf(userIds);
+  }
+
+  private <K> Map<K, PersonCount> amongGroups(
+      Map<K, PersonTotals> raw, ToLongFunction<PersonTotals> number, long others) {
+    long all = others;
+    int reaching = others >= minimum ? 1 : 0;
+    for (PersonTotals totals : raw.values()) {
+      long count = number.applyAsLong(totals);
+      all += count;
+      reaching += count >= minimum ? 1 : 0;
+    }
+    boolean told = all - (long) minimum * reaching >= minimum;
+    Map<K, PersonCount> masked = new HashMap<>();
+    raw.forEach(
+        (group, totals) ->
+            masked.put(
+                group,
+                told && number.applyAsLong(totals) >= minimum
+                    ? PersonCount.atLeast(minimum)
+                    : null));
+    return masked;
   }
 
   ProfileCounts mask(StateCounts counts) {
@@ -83,6 +122,9 @@ public class PersonNumbers {
    */
   public record ProfileCounts(PersonCount total, PersonCount expired) {}
 
-  /** The connections and the private libraries of a set of persons, both masked. */
+  /**
+   * The connections and the private libraries of a group of persons, each "at least N" or {@code
+   * null} where it may not be told.
+   */
   public record PersonsCounts(PersonCount connections, PersonCount privateLibraries) {}
 }
