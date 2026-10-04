@@ -1211,6 +1211,7 @@ components:
           pushIntake,
           browsable,
           profileSupport,
+          profileRequired,
           signIns,
           profileDefaults,
           serverAddress,
@@ -1249,6 +1250,12 @@ components:
           description: Whether browseSource answers for this type.
         profileSupport:
           $ref: "#/components/schemas/ConnectionProfileSupport"
+        profileRequired:
+          type: boolean
+          description: >
+            Whether a library of this type can be created only through a connection profile now -
+            declared so by the connector, or switched on by the system administration ("Nur über
+            Zugänge"). A client then offers only the profile selection.
         signIns:
           type: array
           description: >
@@ -1500,10 +1507,11 @@ components:
           updatedAt,
         ]
       properties:
-        sourceLockNotice:
-          type: string
+        sourceBlock:
           nullable: true
-          description: As LibraryResponse.sourceLockNotice.
+          description: As LibraryResponse.sourceBlock.
+          allOf:
+            - $ref: "#/components/schemas/SourceBlock"
         id:
           type: string
           format: uuid
@@ -1607,13 +1615,17 @@ components:
           description: >
             The library's profile was deleted ("Zugang entfernt"): it keeps its content, runs no
             more, and its managers connect it through another profile or delete it.
-        sourceLockNotice:
-          type: string
+        sourceBlock:
           nullable: true
           description: >
-            Present while the library's connector type or connection profile is locked: the note
-            "Gesperrt - Inhalt wird nicht mehr aktualisiert" with who is in charge. The library
-            keeps its content and runs no more until the lock is lifted.
+            Present while a lock of the system administration holds the library - its connector
+            type or connection profile is locked, or its type is usable only through a profile
+            and the library still has its own address (PROFILE_REQUIRED, lifted by connecting it
+            through a profile). The notice starts "Gesperrt – Inhalt wird nicht mehr
+            aktualisiert" and names who is in charge. The library keeps its content and runs no
+            more until the lock is lifted.
+          allOf:
+            - $ref: "#/components/schemas/SourceBlock"
         id:
           type: string
           format: uuid

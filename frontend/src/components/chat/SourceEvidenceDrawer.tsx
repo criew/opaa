@@ -20,7 +20,7 @@ import {
   formatMetadataLine,
   metadataFilterMatchLabel,
 } from './citations'
-import type { SourceFreeze, SourceFreezeReason, SourceTypeKey } from '../../types/api'
+import type { SourceBlockReason, SourceFreeze, SourceTypeKey } from '../../types/api'
 import type { OpenableDocument } from '../../hooks/useDocumentPreview'
 import { fontFamily } from '../../theme/tokens'
 
@@ -91,10 +91,15 @@ function formatAnsweredAt(answeredAt: Date): string {
 }
 
 /** What happens to a source that is not updated, by the reason the backend reports. */
-const FREEZE_REASONS: Record<SourceFreezeReason, string> = {
-  LOCKED: 'die Quelle ist gesperrt und wird nicht mehr aktualisiert',
+const FREEZE_REASONS: Record<SourceBlockReason, string> = {
+  TYPE_LOCKED: 'die Quelle ist gesperrt und wird nicht mehr aktualisiert',
+  PROFILE_LOCKED: 'die Quelle ist gesperrt und wird nicht mehr aktualisiert',
+  PROFILE_REQUIRED:
+    'die Quelle ist gesperrt, bis sie einem Zugang zugeordnet ist, und wird nicht mehr aktualisiert',
   NOT_CONNECTED: 'die Verbindung zur Quelle ist getrennt, der Inhalt wird nicht aktualisiert',
   ACCESS_REMOVED: 'der Zugang der Quelle wurde entfernt, der Inhalt wird nicht aktualisiert',
+  TARGET_OUTSIDE_PROFILE:
+    'die Adresse der Quelle liegt außerhalb ihres Zugangs, der Inhalt wird nicht aktualisiert',
 }
 
 /**
@@ -106,7 +111,7 @@ function freezeNotice(freeze: SourceFreeze): string {
   const date = freeze.asOf
     ? new Date(freeze.asOf).toLocaleDateString('de-DE', { dateStyle: 'medium' })
     : 'unbekannt'
-  return `Stand vom ${date} – ${FREEZE_REASONS[freeze.reason]} (zuständig: ${freeze.responsible})`
+  return `Stand vom ${date} – ${FREEZE_REASONS[freeze.block.reason]} (zuständig: ${freeze.block.responsible})`
 }
 
 /**

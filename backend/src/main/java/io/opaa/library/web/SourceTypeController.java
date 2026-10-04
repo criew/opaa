@@ -56,6 +56,7 @@ public class SourceTypeController {
             uploads,
             uploads,
             false,
+            false,
             uploads ? null : CapabilityService.missing(Capability.CREATE_LIBRARY));
     return connectors.descriptors().stream()
         .map(

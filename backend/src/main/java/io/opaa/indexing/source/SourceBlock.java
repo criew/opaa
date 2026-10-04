@@ -26,6 +26,11 @@ public record SourceBlock(Reason reason, String responsible, String notice) {
     TYPE_LOCKED(true, false, true),
     /** The system administration locked the library's connection profile. */
     PROFILE_LOCKED(true, false, true),
+    /**
+     * The library's type is usable only through a profile, and the library still has its own
+     * address; lifted by connecting it through a profile.
+     */
+    PROFILE_REQUIRED(true, false, true),
     /** The library's profile was deleted ("Zugang entfernt"). */
     ACCESS_REMOVED(false, true, true),
     /** The library's address does not lie under the server address of its profile. */

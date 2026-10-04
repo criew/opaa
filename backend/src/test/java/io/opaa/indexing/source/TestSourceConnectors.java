@@ -26,6 +26,7 @@ import io.opaa.sourceaccess.BoundedDownloader;
 import io.opaa.sourceaccess.SourceRequestPolicy;
 import io.opaa.test.ProductionDocumentFormats;
 import java.util.List;
+import java.util.stream.Stream;
 
 /**
  * The production connectors, wired for a unit test without a Spring context: every collaborator has
@@ -50,6 +51,7 @@ public final class TestSourceConnectors {
   private S3OriginalAccess s3OriginalAccess = mock(S3OriginalAccess.class);
   private ConfluenceWebhookService confluenceWebhookService = mock(ConfluenceWebhookService.class);
   private S3EventService s3EventService = mock(S3EventService.class);
+  private List<SourceConnector> extra = List.of();
 
   private TestSourceConnectors() {}
 
@@ -124,6 +126,12 @@ public final class TestSourceConnectors {
     return this;
   }
 
+  /** Serves {@code connectors} besides the production ones, e.g. a test connector with profiles. */
+  public TestSourceConnectors with(SourceConnector... connectors) {
+    this.extra = List.of(connectors);
+    return this;
+  }
+
   public SourceConnectorRegistry registry() {
     TargetAddressValidator validator = TargetAddressValidator.disabled();
     SourceRequestPolicy policy = SourceRequestPolicy.defaults();
@@ -132,7 +140,7 @@ public final class TestSourceConnectors {
             new BoundedDownloader(targetAddressValidator),
             targetAddressValidator,
             remoteContentProperties);
-    return new SourceConnectorRegistry(
+    List<SourceConnector> production =
         List.of(
             new UploadSourceConnector(uploadedOriginalStore),
             new FilesystemSourceConnector(filesystemAllowlist),
@@ -160,6 +168,7 @@ public final class TestSourceConnectors {
                 new S3ClientFactory(S3Properties.defaults(), validator),
                 sourceSyncStateRepository,
                 s3OriginalAccess,
-                s3EventService)));
+                s3EventService));
+    return new SourceConnectorRegistry(Stream.concat(production.stream(), extra.stream()).toList());
   }
 }

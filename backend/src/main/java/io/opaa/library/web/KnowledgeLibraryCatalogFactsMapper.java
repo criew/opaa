@@ -28,6 +28,6 @@ class KnowledgeLibraryCatalogFactsMapper implements CatalogFactsResponseMapper {
             .sourceType(knowledge.sourceType())
             .indexingStatus(knowledge.status())
             .lastIndexedAt(knowledge.lastIndexedAt())
-            .sourceLockNotice(knowledge.sourceLockNotice()));
+            .sourceBlock(SourceBlockResponseMapper.toResponse(knowledge.sourceBlock())));
   }
 }

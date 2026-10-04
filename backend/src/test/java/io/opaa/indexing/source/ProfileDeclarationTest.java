@@ -81,7 +81,8 @@ class ProfileDeclarationTest {
                     ConnectionProfileSupport.FORBIDDEN,
                     List.of(SignIn.of(NONE, LIBRARY)),
                     ServerAddressRule.web(),
-                    ProfileDefaults.none()))
+                    ProfileDefaults.none(),
+                    null))
         .isInstanceOf(IllegalArgumentException.class);
     assertThatThrownBy(
             () ->

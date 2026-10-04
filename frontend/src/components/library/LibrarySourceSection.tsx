@@ -9,7 +9,12 @@ import Chip from '@mui/material/Chip'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
-import type { SourceTypeKey, IndexingRunResponse, LibrarySchedule } from '../../types/api'
+import type {
+  SourceTypeKey,
+  IndexingRunResponse,
+  LibrarySchedule,
+  SourceBlock,
+} from '../../types/api'
 import { useIndexingStore } from '../../stores/indexingStore'
 import {
   formatFileSize,
@@ -41,7 +46,7 @@ export interface LibrarySourceSectionProps {
     lastScheduledRunsFailed?: boolean | null
     connectionProfile?: { id: string; name: string } | null
     connectionProfileRemoved?: boolean
-    sourceLockNotice?: string | null
+    sourceBlock?: SourceBlock | null
   }
   canEditSource: boolean
 }
@@ -68,9 +73,9 @@ export default function LibrarySourceSection({
 
   return (
     <Stack>
-      {library.sourceLockNotice && (
+      {library.sourceBlock?.notice && (
         <Alert severity="warning" sx={{ mb: 2 }} data-testid="source-lock-notice">
-          {library.sourceLockNotice}
+          {library.sourceBlock.notice}
         </Alert>
       )}
       {library.connectionProfileRemoved && (

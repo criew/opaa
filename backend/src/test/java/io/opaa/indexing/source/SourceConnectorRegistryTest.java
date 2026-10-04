@@ -244,6 +244,22 @@ class SourceConnectorRegistryTest {
             "RSS_FEED declares profile default edition, which is no settings key");
   }
 
+  /** What a profile requirement leaves open is declared only where the requirement can be set. */
+  @Test
+  void aRequirementGapNeedsOptionalProfiles() {
+    String gap = "Detailseiten werden ohne Zugangsdaten abgerufen.";
+    new SourceConnectorRegistry(
+        replacingRss(remoteRss(optionalWithoutSignInDetails().withRequirementGap(gap))));
+
+    assertThatThrownBy(
+            () ->
+                new SourceConnectorRegistry(
+                    replacingRss(
+                        remoteRss(ProfileDeclaration.forbidden().withRequirementGap(gap)))))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("RSS_FEED names what a profile requirement leaves open");
+  }
+
   @Test
   void aDeepLinkNeedsARemoteSource() {
     assertThatThrownBy(

@@ -155,11 +155,12 @@ class SourceConnectionTestResponseMapperTest {
                 .withPushIntake(new PushIntake("confluenceWebhookSecret"))
                 .withFullSyncInterval(Duration.ofHours(36)),
             true,
-            new TypeCreation(false, false, true, "Die Quellart ist gesperrt."));
+            new TypeCreation(false, false, true, true, "Die Quellart ist gesperrt."));
 
     assertThat(descriptor.getCreatable()).isFalse();
     assertThat(descriptor.getCreatableWithOwnAddress()).isFalse();
     assertThat(descriptor.getLocked()).isTrue();
+    assertThat(descriptor.getProfileRequired()).isTrue();
     assertThat(descriptor.getCreationNotice()).isEqualTo("Die Quellart ist gesperrt.");
     assertThat(descriptor.getType()).isEqualTo("CONFLUENCE");
     assertThat(descriptor.getDisplayName()).isEqualTo("Confluence");
@@ -189,7 +190,7 @@ class SourceConnectionTestResponseMapperTest {
                             DefaultKey.text("region", "Region"),
                             DefaultKey.choice("edition", "Edition", "CLOUD", "DC"))),
             false,
-            new TypeCreation(true, true, false, null));
+            new TypeCreation(true, true, false, false, null));
 
     assertThat(descriptor.getProfileSupport()).isEqualTo(ConnectionProfileSupport.OPTIONAL);
     assertThat(descriptor.getSignIns())
@@ -227,7 +228,7 @@ class SourceConnectionTestResponseMapperTest {
                                 URI.create("https://oauth.example.org/token"), "scope"))
                         .withAddress(ServerAddressRule.fixed("https://api.example.org"))),
             false,
-            new TypeCreation(true, true, false, null));
+            new TypeCreation(true, true, false, false, null));
     assertThat(withoutProfiles.getProfileSupport()).isEqualTo(ConnectionProfileSupport.FORBIDDEN);
     assertThat(withoutProfiles.getSignIns())
         .extracting(SourceTypeSignIn::getMethod)
