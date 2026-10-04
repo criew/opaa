@@ -9,6 +9,7 @@ import io.opaa.api.types.MetadataFilterMatch;
 import io.opaa.chat.ChatSource;
 import io.opaa.chat.ChatSourceLocation;
 import io.opaa.indexing.job.IndexingJobRepository;
+import io.opaa.indexing.source.SourceBlock;
 import io.opaa.indexing.source.SourceConnectorStubs;
 import io.opaa.indexing.source.SourceStateLookup;
 import io.opaa.knowledge.DocumentRepository;
@@ -301,8 +302,10 @@ class ChatSourceAssemblerTest {
                   Collectors.toMap(
                       KnowledgeLibrary::getId,
                       library ->
-                          new SourceStateLookup.SourceState(
-                              SourceStateLookup.Reason.LOCKED, "Systemverwaltung")));
+                          new SourceBlock(
+                              SourceBlock.Reason.TYPE_LOCKED,
+                              "Systemverwaltung",
+                              "Gesperrt – Inhalt wird nicht mehr aktualisiert.")));
         };
     IndexingJobRepository jobs = mock(IndexingJobRepository.class);
     when(jobs.findLastCompletedByLibraryIdIn(Set.of(lockedLibrary.getId())))

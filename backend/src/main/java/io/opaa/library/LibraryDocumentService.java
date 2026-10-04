@@ -583,7 +583,7 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
           e.getCause() == null ? e.getMessage() : e.getCause().getMessage());
       throw new ServiceUnavailableException(e.userMessage());
     } catch (SourceConnectionBlockedException e) {
-      if (e.category() == SourceConnectionBlockedException.Category.LOCKED) {
+      if (e.block().locked()) {
         // a lock lasts until the administration lifts it - not a temporary unavailability
         throw new ConflictException(e.getMessage(), ConnectorLockService.SOURCE_LOCKED);
       }

@@ -27,7 +27,10 @@ knowledge kennt connections: Der Kern erreicht es über seine Ports `SourceConne
 - **Geheimnis verwerfen** heißt `KnowledgeLibraryRepository#eraseSourceCredentials` auf der Spalte,
   nicht nur `null` an der Entität: Ohne Schlüssel liest die Entität ohnehin `null`.
 - **Ein gelöschtes Profil** lässt die Zuordnung mit `profile_id NULL` stehen („Zugang entfernt“);
-  der Port sperrt dann mit eigener Kategorie und deutscher Meldung.
+  der Port sperrt dann mit eigenem Grund und deutscher Meldung.
+- **Sperrgründe nur in `SourceBlocks`:** Ob und warum eine Bibliothek gesperrt ist, welcher Grund
+  vorgeht und welcher Text gilt (`SourceBlock`), entscheidet nur er; Port, Zustandsabfrage und
+  Sperrhinweis wählen nur, welche Gründe sie betrachten.
 - **Konnektor-Vorgaben** des Profils überschreiben die Einstellungen der Bibliothek je Schlüssel.
   Verwaltungspfade arbeiten mit den gespeicherten, Lauf und Push-Eingang mit den zusammengeführten
   (`SourceConnectionResolver#effectiveSettings`).
