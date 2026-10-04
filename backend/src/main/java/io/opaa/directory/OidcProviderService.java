@@ -24,6 +24,7 @@ import io.opaa.auth.OidcProviderDeletedEvent;
 import io.opaa.auth.OidcProviderRegistry;
 import io.opaa.auth.OidcProviderRepository;
 import io.opaa.auth.OidcProvidersChangedEvent;
+import io.opaa.auth.ProviderConnectionsImpact;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.common.ConflictException;
@@ -87,6 +88,13 @@ public class OidcProviderService implements LocalAccountsSwitch {
   public static final String DIRECTORY_SYNC_MECHANISM_CONFLICT =
       "DIRECTORY_SYNC_MECHANISM_CONFLICT";
 
+  /**
+   * The 409 code when a provider is switched off or deleted without confirming what that does to
+   * persons' connections (ADR-0041, Entscheidung 4).
+   */
+  public static final String PROVIDER_CONNECTIONS_CONFIRMATION_REQUIRED =
+      "PROVIDER_CONNECTIONS_CONFIRMATION_REQUIRED";
+
   /** The shipped interval of a directory run, six hours (ADR-0036). */
   public static final int DEFAULT_SYNC_INTERVAL_MINUTES = 360;
 
@@ -109,6 +117,7 @@ public class OidcProviderService implements LocalAccountsSwitch {
   private final LocalRefreshTokenRepository refreshTokens;
   private final AuditEventRecorder auditEventRecorder;
   private final ApplicationEventPublisher eventPublisher;
+  private final ProviderConnectionsImpact connectionsImpact;
   private final Clock clock;
 
   public OidcProviderService(
@@ -122,6 +131,7 @@ public class OidcProviderService implements LocalAccountsSwitch {
       LocalRefreshTokenRepository refreshTokens,
       AuditEventRecorder auditEventRecorder,
       ApplicationEventPublisher eventPublisher,
+      ProviderConnectionsImpact connectionsImpact,
       Clock clock) {
     this.repository = repository;
     this.userRepository = userRepository;
@@ -133,6 +143,7 @@ public class OidcProviderService implements LocalAccountsSwitch {
     this.refreshTokens = refreshTokens;
     this.auditEventRecorder = auditEventRecorder;
     this.eventPublisher = eventPublisher;
+    this.connectionsImpact = connectionsImpact;
     this.clock = clock;
   }
 
@@ -144,6 +155,16 @@ public class OidcProviderService implements LocalAccountsSwitch {
   @Transactional(readOnly = true)
   public OidcProvider getProvider(UUID id) {
     return repository.findById(id).orElseThrow(() -> notFound(id));
+  }
+
+  /**
+   * Whether switching the provider off or deleting it needs {@code confirmConnections}: wherever a
+   * profile admits persons, the same for every provider and every number of connected accounts.
+   */
+  @Transactional(readOnly = true)
+  public boolean connectionsConfirmationRequired(UUID id) {
+    repository.findById(id).orElseThrow(() -> notFound(id));
+    return connectionsImpact.personsAdmitted();
   }
 
   @Transactional
@@ -257,10 +278,17 @@ public class OidcProviderService implements LocalAccountsSwitch {
     return local;
   }
 
-  /** {@link #deleteProvider(UUID, UUID, UUID, boolean)} without the acknowledgement. */
+  /** {@link #deleteProvider(UUID, UUID, UUID, boolean, boolean)} without any confirmation. */
   @Transactional
   public void deleteProvider(UUID organizationId, UUID actorUserId, UUID id) {
-    deleteProvider(organizationId, actorUserId, id, false);
+    deleteProvider(organizationId, actorUserId, id, false, false);
+  }
+
+  /** {@link #deleteProvider(UUID, UUID, UUID, boolean, boolean)} without confirmed connections. */
+  @Transactional
+  public void deleteProvider(
+      UUID organizationId, UUID actorUserId, UUID id, boolean acknowledgeLastProvider) {
+    deleteProvider(organizationId, actorUserId, id, acknowledgeLastProvider, false);
   }
 
   /**
@@ -272,10 +300,18 @@ public class OidcProviderService implements LocalAccountsSwitch {
    * <p>Its groups go with it - but only while none of them still carries a right (ADR-0036,
    * Entscheidung 2). Until the transfer operation exists (#1834) the only way past this 409 is to
    * remove those rights; disabling the provider stays possible at any time.
+   *
+   * <p>Its accounts count as deactivated afterwards: their connections end at once and the deletion
+   * period of their private libraries begins - so the deletion needs {@code confirmConnections}
+   * wherever persons may have connections.
    */
   @Transactional
   public void deleteProvider(
-      UUID organizationId, UUID actorUserId, UUID id, boolean acknowledgeLastProvider) {
+      UUID organizationId,
+      UUID actorUserId,
+      UUID id,
+      boolean acknowledgeLastProvider,
+      boolean confirmConnections) {
     OidcProvider provider = repository.findById(id).orElseThrow(() -> notFound(id));
     if (provider.isLocal()) {
       throw new ConflictException(
@@ -306,6 +342,7 @@ public class OidcProviderService implements LocalAccountsSwitch {
               + " Gruppen werden mit dem Anbieter gelöscht. Deaktivieren ist jederzeit möglich.",
           PROVIDER_GROUPS_IN_EFFECT);
     }
+    requireConnectionsConfirmed(provider, confirmConnections, true);
     Map<String, Object> before = auditState(provider);
     providerGroups.deleteGroupsOfProvider(provider.getId(), actorUserId);
     repository.delete(provider);
@@ -425,17 +462,14 @@ public class OidcProviderService implements LocalAccountsSwitch {
     return current != null ? current : DEFAULT_SYNC_INTERVAL_MINUTES;
   }
 
-  /** {@link #setEnabled(UUID, UUID, UUID, boolean, boolean)} without the acknowledgement. */
+  /** {@link #setEnabled(UUID, UUID, UUID, boolean, boolean, boolean)} without confirmation. */
   @Transactional
   public OidcProvider setEnabled(UUID organizationId, UUID actorUserId, UUID id, boolean enabled) {
-    return setEnabled(organizationId, actorUserId, id, enabled, false);
+    return setEnabled(organizationId, actorUserId, id, enabled, false, false);
   }
 
   /**
-   * A disabled provider's tokens are refused with the registry's next rebuild - after commit. For
-   * the LOCAL row this is the switch of the local account management; for the last enabled OIDC
-   * provider the switch-off needs {@code acknowledgeLastProvider} and a login-capable local
-   * administrator.
+   * {@link #setEnabled(UUID, UUID, UUID, boolean, boolean, boolean)} without confirmed connections.
    */
   @Transactional
   public OidcProvider setEnabled(
@@ -444,11 +478,32 @@ public class OidcProviderService implements LocalAccountsSwitch {
       UUID id,
       boolean enabled,
       boolean acknowledgeLastProvider) {
+    return setEnabled(organizationId, actorUserId, id, enabled, acknowledgeLastProvider, false);
+  }
+
+  /**
+   * A disabled provider's tokens are refused with the registry's next rebuild - after commit. For
+   * the LOCAL row this is the switch of the local account management; for the last enabled OIDC
+   * provider the switch-off needs {@code acknowledgeLastProvider} and a login-capable local
+   * administrator. Switched off, the connections of its persons rest; that needs {@code
+   * confirmConnections} wherever persons may have connections.
+   */
+  @Transactional
+  public OidcProvider setEnabled(
+      UUID organizationId,
+      UUID actorUserId,
+      UUID id,
+      boolean enabled,
+      boolean acknowledgeLastProvider,
+      boolean confirmConnections) {
     OidcProvider provider = repository.findById(id).orElseThrow(() -> notFound(id));
     if (provider.isEnabled() == enabled) {
       return provider;
     }
     if (provider.isLocal()) {
+      if (!enabled) {
+        requireConnectionsConfirmed(provider, confirmConnections, false);
+      }
       return switchLocalAccounts(organizationId, actorUserId, provider, enabled).provider();
     }
     if (!enabled) {
@@ -463,6 +518,7 @@ public class OidcProviderService implements LocalAccountsSwitch {
         requireLastProviderAcknowledged(acknowledgeLastProvider, "deaktiviert");
       }
       adminGuard.requireLoginCapableAdminWithoutProvider(organizationId, provider.getId());
+      requireConnectionsConfirmed(provider, confirmConnections, false);
     }
     if (enabled) {
       provider.enable();
@@ -582,6 +638,24 @@ public class OidcProviderService implements LocalAccountsSwitch {
               + " Passwort ist eingerichtet.",
           LAST_PROVIDER_ACKNOWLEDGEMENT_REQUIRED);
     }
+  }
+
+  private void requireConnectionsConfirmed(
+      OidcProvider provider, boolean confirmed, boolean deletion) {
+    if (confirmed || !connectionsImpact.personsAdmitted()) {
+      return;
+    }
+    String effect =
+        deletion
+            ? "Wird der Anbieter gelöscht, werden die Zugangsdaten etwaiger verbundener Konten"
+                + " seiner Personen sofort und unumkehrbar gelöscht, und für ihre privaten"
+                + " Bibliotheken beginnt die Löschfrist."
+            : "Wird der Anbieter deaktiviert, ruhen etwaige verbundene Konten seiner Personen: Es"
+                + " wird nichts gelöscht, und nach dem Aktivieren geht es ohne neues Verbinden"
+                + " weiter.";
+    throw new ConflictException(
+        effect + " Bestätigen Sie das ausdrücklich (confirmConnections).",
+        PROVIDER_CONNECTIONS_CONFIRMATION_REQUIRED);
   }
 
   /**

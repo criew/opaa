@@ -1,6 +1,8 @@
 package io.opaa.connection.profile;
 
+import io.opaa.api.types.ConnectionOwnership;
 import io.opaa.knowledge.SourceType;
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -12,6 +14,8 @@ public interface ConnectionProfileRepository extends JpaRepository<ConnectionPro
   List<ConnectionProfile> findAllByOrderByNameAsc();
 
   List<ConnectionProfile> findBySourceTypeOrderByNameAsc(SourceType sourceType);
+
+  boolean existsByOwnershipIn(Collection<ConnectionOwnership> ownerships);
 
   @Query(
       "select count(p) > 0 from ConnectionProfile p"

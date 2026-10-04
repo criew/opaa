@@ -454,7 +454,12 @@ verrät, ob überhaupt jemand verbunden ist. Eine Teilzahl (abgelaufene Konten) 
 weder sie noch ihr Rest unter N liegt; eine Änderung, die Geheimnisse verwirft, verlangt auf einem
 Zugang für Personen immer eine Bestätigung mit neutralem Text. Grenzen der Regel: Wer die Zahl über
 die Zeit beobachtet, sieht, wann sie N erreicht; und wer selbst eine Freigabe hat und sich verbindet,
-weiß, dass höchstens N−1 weitere Personen verbunden sind. Laufdaten und Kontingentnutzung nur zusammengefasst, Fehler nur als Kategorie ohne Inhaltsbezug (keine
+weiß, dass höchstens N−1 weitere Personen verbunden sind. Vor dem Deaktivieren oder Löschen eines
+Anmeldeanbieters sieht sie die **Wirkung** auf etwaige verbundene Konten (ruhen bzw. enden mit
+Beginn der Löschfrist), aber keine Zahl je Anbieter. Zahlen je Anbieter und je Zugang zählen dieselben
+Verbindungen und ließen sich gegeneinander verrechnen; selbst „mindestens N“ je Anbieter verriete,
+dass ein Zugang mit „weniger als N“ nicht leer ist. Bestätigt wird immer, sobald ein Zugang Personen
+zulässt. Laufdaten und Kontingentnutzung nur zusammengefasst, Fehler nur als Kategorie ohne Inhaltsbezug (keine
 Dateinamen, Betreffzeilen oder Pfade). Keine Liste, wer welches Konto verbunden hat.
 
 **Space-Zuordnung.** Die Besitzerin darf ihre private Bibliothek einem Space zuordnen. Das öffnet

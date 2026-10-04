@@ -191,6 +191,10 @@ paths:
         PROVIDER_GROUPS_IN_EFFECT and a message quoting the counts (ADR-0036, Entscheidung 2).
         Until the transfer operation exists there is no way past that other than removing those
         rights; disabling the provider stays possible at any time.
+        Its accounts count as deactivated afterwards: the secrets of their connected accounts are
+        deleted at once and irreversibly, and the deletion period of their private libraries
+        begins (ADR-0041, Entscheidung 4). Wherever a connection profile admits persons this
+        needs confirmConnections, whether or not anyone is connected.
       parameters:
         - name: acknowledgeLastProvider
           in: query
@@ -202,6 +206,16 @@ paths:
             The caller has seen that this is the last enabled OIDC provider and that afterwards
             only local accounts can sign in. Required (true) exactly in that case; ignored
             otherwise.
+        - name: confirmConnections
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+          description: >
+            The caller has seen what this does to persons' connections (getOidcProviderImpact).
+            Required (true) wherever a connection profile admits persons (409 with code
+            PROVIDER_CONNECTIONS_CONFIRMATION_REQUIRED otherwise); ignored otherwise.
       responses:
         "204":
           description: Identity provider deleted
@@ -211,6 +225,35 @@ paths:
           $ref: "#/components/responses/NotFound"
         "409":
           $ref: "#/components/responses/Conflict"
+
+  /api/v1/admin/oidc-providers/{providerId}/impact:
+    get:
+      operationId: getOidcProviderImpact
+      tags: [identity-provider]
+      summary: What disabling or deleting the provider does to persons' connections (system admin only)
+      description: >
+        Names the effect, never a number per provider: numbers per provider and per connection
+        profile could be offset against each other. Disabled, any connections of its persons rest;
+        deleted, their secrets are deleted at once and irreversibly and the deletion period of
+        their private libraries begins.
+      parameters:
+        - name: providerId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Whether a confirmation is needed and what each action does
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OidcProviderImpactResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
 
   /api/v1/admin/oidc-providers/{providerId}/enable:
     post:
@@ -256,6 +299,9 @@ paths:
         switching off ends the sessions of every regular local account (audited as
         LOCAL_ACCOUNTS_DISABLED plus one LOCAL_SESSION_REVOKED per account); local SYSTEM_ADMIN
         accounts keep signing in.
+        The connections of the persons it reaches rest: nothing is deleted, and once it is
+        enabled again they go on without connecting anew (ADR-0041, Entscheidung 4). Wherever a
+        connection profile admits persons this needs confirmConnections.
       parameters:
         - name: providerId
           in: path
@@ -273,6 +319,16 @@ paths:
             The caller has seen that this is the last enabled OIDC provider and that afterwards
             only local accounts can sign in. Required (true) exactly in that case; ignored
             otherwise.
+        - name: confirmConnections
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+          description: >
+            The caller has seen what this does to persons' connections (getOidcProviderImpact).
+            Required (true) wherever a connection profile admits persons (409 with code
+            PROVIDER_CONNECTIONS_CONFIRMATION_REQUIRED otherwise); ignored otherwise.
       responses:
         "200":
           description: Identity provider disabled
@@ -583,3 +639,29 @@ components:
           type: string
           description: German, user-facing outcome.
           example: "Anbieter erreichbar: Discovery-Dokument gefunden, JWK-Set mit 2 Schlüsseln."
+
+    OidcProviderImpactResponse:
+      type: object
+      required: [confirmationRequired, disableEffect, deleteEffect]
+      description: >
+        The same for every provider and for any number of connected accounts, so it tells nothing
+        about a single person.
+      properties:
+        confirmationRequired:
+          type: boolean
+          description: >
+            Whether disabling and deleting need confirmConnections: true wherever a connection
+            profile admits persons, whether or not anyone is connected.
+        disableEffect:
+          $ref: "#/components/schemas/ProviderConnectionsEffect"
+        deleteEffect:
+          $ref: "#/components/schemas/ProviderConnectionsEffect"
+
+    ProviderConnectionsEffect:
+      type: string
+      description: >
+        What an action does to any connected accounts of the provider's persons: CONNECTIONS_REST
+        (nothing is deleted; once enabled again they go on without connecting anew),
+        CONNECTIONS_END (their secrets are deleted at once and irreversibly, the deletion period
+        of their private libraries begins).
+      enum: [CONNECTIONS_REST, CONNECTIONS_END]
