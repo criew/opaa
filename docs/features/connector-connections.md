@@ -36,8 +36,10 @@ jede Bibliothek trägt ihre Zieladresse frei, und OPAA speichert keine OAuth-Tok
 4. **Profilpflicht** je Konnektor: nur über ein Profil nutzbar, ohne frei eingetragene Adresse.
 5. **Vier Anmeldearten:** persönliches Geheimnis (App-Passwort, Token), OAuth (Autorisierungscode
    mit PKCE), Client-Credentials und Dienstkonto-Schlüssel (JWT-Assertion). Token-Austausch über den
-   Identitätsanbieter trägt nach dem Spike nur den Live-Zugriff; ob er eine fünfte Anmeldeart wird,
-   ist offen (siehe [Anmeldearten](#anmeldearten)).
+   Identitätsanbieter ist nur ein Spike.
+   *Stand nach Spike [#2174](https://github.com/criew/opaa/issues/2174):* Der Austausch trägt nur
+   den Live-Zugriff. Ob er eine fünfte Anmeldeart wird, ist offen (siehe
+   [Token-Austausch](#token-austausch-ergebnis-des-spikes-entscheidung-offen)).
 6. **Verbundene Konten** einer Person speisen eine **private Bibliothek**: genau eine Besitzerin,
    nicht teilbar, keine Nachfolge, für die Verwaltung nur zusammengefasst sichtbar.
 7. **Verbindliche Schutzregeln:** „Sicht als“ ist ausgeschlossen, ein Vorfallszugriff braucht vier
@@ -275,10 +277,13 @@ Token Exchange (RFC 8693) gegen ein Nextcloud-Token tauschen kann.
   - ein **vertraulicher Client** für OPAA mit eingeschaltetem „Standard token exchange“; ein
     öffentlicher Client darf nicht tauschen;
   - ein Audience-Mapper am SPA-Client, der den OPAA-Client in `aud` einträgt; fehlt er, lehnt
-    Keycloak mit 403 ab;
+    Keycloak mit 403 ab. Den Mapper muss der Betreiber am Anmelde-Client seiner bestehenden
+    Installation ergänzen;
   - ein Audience-Mapper am OPAA-Client je Zieldienst.
 - **Die Audience ist eingeschränkt.** OPAA erhält nur Zieldienste, für die sein Client einen
   Audience-Mapper hat. Jede andere Audience lehnt Keycloak ab („Requested audience not available“).
+  Ohne den Parameter `audience` erhält OPAA alle diese Zieldienste in einem Token. Die Einschränkung
+  auf einen Dienst wirkt also nur, wenn OPAA die Audience bei jedem Austausch angibt.
   Nextcloud nimmt mit den Vorgaben von `user_oidc` nur Token mit `aud=nextcloud` an. Das unveränderte
   Anmeldetoken weist es ab (401).
 - Mit dem getauschten Token gelingt der Zugriff auf OCS und WebDAV: Lesen, Auflisten und Schreiben
@@ -288,8 +293,9 @@ Token Exchange (RFC 8693) gegen ein Nextcloud-Token tauschen kann.
 **Was nicht geht:**
 
 - **Erneuerung ohne Sitzung.** Ein Refresh-Token aus dem Austausch gibt es nur mit der
-  Client-Einstellung „gleiche Sitzung“. Es endet mit der Anmeldesitzung der Person; nach der
-  Abmeldung meldet Keycloak „Session not active“. `offline_access` ist im Austausch verboten. Als
+  Client-Einstellung „gleiche Sitzung“. Es ist an die Anmeldesitzung der Person gebunden. Gemessen
+  ist das Ende durch Abmeldung: Danach meldet Keycloak „Session not active“. Das Ende durch
+  Leerlauf oder Höchstdauer der Sitzung ist nicht gemessen. `offline_access` ist im Austausch verboten. Als
   Tauschgrundlage dient nur ein Zugriffstoken, nach Abmeldung oder Ablauf nimmt Keycloak es nicht
   mehr an.
 - **Widerruf am Zieldienst.** Ein bereits getauschtes Token nimmt Nextcloud nach der Abmeldung bis
@@ -300,13 +306,19 @@ Token Exchange (RFC 8693) gegen ein Nextcloud-Token tauschen kann.
 | Nutzung | Token-Austausch | Begründung |
 |---|---|---|
 | Live-Zugriff (Chat, MCP; #1747) | **geeignet** | Kein Token-Speicher, keine eigene Zustimmung je Dienst; Tausch je Anfrage mit dem eingehenden Anmeldetoken. Nur für Personen, die über denselben Keycloak angemeldet sind; nicht für lokale Konten und nicht für Fremdzugangs-Token |
-| Hintergrundläufe (Indexierung) | **nicht geeignet** | Erneuerung endet mit der Sitzung; Offline-Token sind im Austausch gesperrt |
+| Hintergrundläufe (Indexierung) | **nicht geeignet** | Erneuerung endet spätestens mit der Abmeldung (gemessen); Offline-Token sind im Austausch gesperrt |
 
-Für Hintergrundläufe in openDesk braucht es keine neue Anmeldeart: Die bestehende Anmeldeart
-**OAuth** mit Keycloak als Anbieter und `offline_access` lieferte im Kontrollversuch ein Token mit
-`aud=nextcloud`. Es ließ sich nach der Abmeldung im Browser weiter erneuern. Ob eine
-openDesk-Installation Offline-Sitzungen erlaubt, entscheidet ihr Betreiber. Sonst bleibt das
-App-Passwort.
+Für Hintergrundläufe in openDesk ist nach dem Kontrollversuch voraussichtlich keine neue
+Anmeldeart nötig. Die bestehende Anmeldeart **OAuth** mit Keycloak als Anbieter und `offline_access`
+lieferte ein Token mit `aud=nextcloud`. Das Offline-Token ließ sich nach der Abmeldung im Browser
+weiter erneuern. Dass die Online-Sitzung dabei tatsächlich beendet war, ist nicht eigens belegt.
+Setzt die Verwaltung die Person in Keycloak auf „abgemeldet“ (`notBefore`), widerruft das auch das
+Offline-Token („Stale token“). Ob eine openDesk-Installation Offline-Sitzungen erlaubt, entscheidet
+ihr Betreiber. Sonst bleibt das App-Passwort.
+
+**Kein Ausweg:** Technisch ließe sich auch das Offline-Token des öffentlichen SPA-Clients
+speichern, ohne Secret erneuern und dann tauschen; im Spike gelang das. OPAA hielte dann aber ein
+langlebiges Token, das jeder ohne Client-Authentisierung erneuern kann. Dieser Weg ist ausgeschlossen.
 
 **Offen:**
 
@@ -314,9 +326,15 @@ App-Passwort.
   - **ADR-0041:** Die Anmeldeart bindet das Profil an einen OIDC-Anbieter mit demselben Issuer.
     Das Client-Secret des vertraulichen Clients liegt am Profil, nicht in `oidc_providers`.
   - **ADR-0025:** Das Backend darf das eingehende Anmeldetoken als Tauschgrundlage weiterreichen.
-    Das Anmeldetoken muss den OPAA-Client in `aud` tragen.
+    Das Anmeldetoken muss den OPAA-Client in `aud` tragen. Das ist eine Voraussetzung am Betreiber:
+    Er ergänzt den Audience-Mapper am Anmelde-Client.
 
   Anmeldefluss, öffentlicher SPA-Client und zustandsloser Resource-Server bleiben unverändert.
+- **Ablauf der Sitzung:** Leerlauf und Höchstdauer der Sitzung sind nicht gemessen. Laut Antwort
+  folgt die Gültigkeit des getauschten Refresh-Tokens dem SSO-Leerlauf (`refresh_expires_in`).
+- **Hintergrundläufe über OAuth:** Dass das Offline-Token unabhängig von einer beendeten
+  Online-Sitzung erneuerbar bleibt, ist für den vertraulichen Client nicht eigens belegt (siehe
+  oben).
 - **Einstellungen einer echten openDesk-Installation**, nicht gemessen:
   - die Keycloak-Version und ob der Token-Austausch dort eingeschaltet ist;
   - Offline-Sitzungen;
@@ -610,7 +628,12 @@ Der Spike zum Token-Austausch gegen openDesk ist abgeschlossen
 | [ADR-0036](../decisions/0036-berechtigungsmodell-gruppen-und-faehigkeiten.md) | `CREATE_CONNECTOR_LIBRARY` wird je Profil bzw. je Konnektortyp erteilt; neue Konnektoren und Profile ab Werk aus; Entzug wirkt nur auf die Neuanlage (Neuverbinden ist keine), Sperre auf Läufe; **Nur-Besitzerin-Regel** für private Bibliotheken als eigene Sperre am Grant- und Fremdzugangspfad, von der Systemverwaltung nicht lockerbar; „Sicht als“ für private Bibliotheken ausgeschlossen; **Vorfallszugriff auf Inhalte** als neue Befugnis neben den Rollen (Antrag `AUDITOR`, Bestätigung durch eine zweite benannte Rolle, `SYSTEM_ADMIN` nicht eingeschlossen); Leserolle des Verbindungsprotokolls |
 | [ADR-0038](../decisions/0038-steckbare-konnektoren.md) | Profilangabe (verboten, optional, Pflicht) und Anmeldearten gehören in die Konnektor-Beschreibung; das Ziel der Zugangsdaten leitet sich bei Profilen aus der Server-Adresse des Profils ab; Entscheidung 3 („genau zwei Plätze für Geheimnisse“) wird um das Client-Secret am Profil und den Token-Speicher erweitert, beide auf demselben Verschlüsselungsweg |
 
-Die Nachträge sind geschrieben (#2159). Modulschnitt, Token-Speicher, Lebenszyklus und Fristen
+Bedingt, nur falls der Token-Austausch zur fünften Anmeldeart wird: je ein Nachtrag zu
+[ADR-0025](../decisions/0025-mehrere-oidc-anbieter.md) und
+[ADR-0041](../decisions/0041-verbindungen-als-eigenes-modul.md), siehe
+[Token-Austausch](#token-austausch-ergebnis-des-spikes-entscheidung-offen).
+
+Die Nachträge in der Tabelle sind geschrieben (#2159). Modulschnitt, Token-Speicher, Lebenszyklus und Fristen
 legt [ADR-0041](../decisions/0041-verbindungen-als-eigenes-modul.md) fest.
 
 ---
