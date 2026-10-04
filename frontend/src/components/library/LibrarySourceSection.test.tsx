@@ -421,6 +421,67 @@ describe('LibrarySourceSection - Zugang zuordnen, wechseln, lösen (#2162)', () 
     expect(await screen.findByTestId('connection-profile')).toHaveTextContent('Zugang: entfernt')
   })
 
+  describe('private library (#2164)', () => {
+    const accounts = {
+      accounts: [
+        {
+          profileId: 'profile-neu',
+          profileName: 'Nextcloud neu',
+          authMethod: 'PERSONAL_SECRET',
+          state: 'CONNECTED',
+          released: true,
+          reconnectable: true,
+          connectedAt: '2026-09-20T08:00:00Z',
+          usedBy: [],
+        },
+      ],
+      connectable: [],
+      missingAccess: { responsible: 'Systemverwaltung', text: '…' },
+    }
+    const third: ConnectionProfileOption = {
+      ...intern,
+      id: 'profile-dritt',
+      name: 'Nextcloud dritt',
+      serverUrl: 'https://cloud.dritt.example',
+    }
+
+    beforeEach(() => {
+      server.use(
+        http.get('/api/v1/connection-profiles', () => HttpResponse.json([intern, neu, third])),
+        http.get('/api/v1/me/connected-accounts', () => HttpResponse.json(accounts)),
+      )
+    })
+
+    it('offers no release from the profile', async () => {
+      renderWithProviders(
+        <LibrarySourceSection
+          libraryId="library-1"
+          library={{ ...nextcloud, connectionProfile: internRef, privateLibrary: true }}
+          canEditSource
+        />,
+      )
+
+      expect(await screen.findByRole('button', { name: 'Zugang wechseln' })).toBeVisible()
+      expect(screen.queryByRole('button', { name: 'Zugang lösen' })).not.toBeInTheDocument()
+    })
+
+    it('offers only the profiles the owner has a connected account on', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(
+        <LibrarySourceSection
+          libraryId="library-1"
+          library={{ ...nextcloud, connectionProfile: internRef, privateLibrary: true }}
+          canEditSource
+        />,
+      )
+
+      await user.click(await screen.findByRole('button', { name: 'Zugang wechseln' }))
+      const dialog = await screen.findByRole('dialog', { name: 'Zugang wechseln' })
+      expect(await within(dialog).findByRole('radio', { name: /Nextcloud neu/ })).toBeVisible()
+      expect(within(dialog).queryByRole('radio', { name: /Nextcloud dritt/ })).toBeNull()
+    })
+  })
+
   it('says when a switch to another server discarded the secret and offers to edit the source', async () => {
     connect.mockResolvedValue({ sourceCredentialsSet: false })
     const user = userEvent.setup()
@@ -500,6 +561,40 @@ describe('LibrarySourceSection - verbundenes Konto der Besitzerin', () => {
     expect(
       await within(notice).findByRole('link', { name: 'Konto neu verbinden' }),
     ).toHaveAttribute('href', '/settings/accounts')
+  })
+
+  it('leads the owner of a private library to "Verbundene Konten" from her library alone (#2164)', async () => {
+    server.use(
+      http.get('/api/v1/me/connected-accounts', () =>
+        HttpResponse.json({
+          accounts: [],
+          connectable: [],
+          missingAccess: { responsible: 'Systemverwaltung', text: '…' },
+        }),
+      ),
+    )
+    renderWithProviders(
+      <LibrarySourceSection
+        libraryId="library-1"
+        library={{
+          ...nextcloud,
+          privateLibrary: true,
+          sourceBlock: {
+            reason: 'NOT_CONNECTED',
+            responsible: 'Besitzerin der Bibliothek',
+            notice: 'Verbindung getrennt: Ihr Konto ist nicht verbunden.',
+          },
+        }}
+        canEditSource
+      />,
+      { withRouter: true },
+    )
+
+    const notice = screen.getByTestId('source-lock-notice')
+    expect(within(notice).getByRole('link', { name: 'Konto verbinden' })).toHaveAttribute(
+      'href',
+      '/settings/accounts',
+    )
   })
 
   it('offers no account action for a library that does not run on the own account', async () => {
