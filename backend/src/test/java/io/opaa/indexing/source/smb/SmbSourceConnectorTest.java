@@ -305,6 +305,47 @@ class SmbSourceConnectorTest {
       assertThat(finding.getMessage()).contains("NTLM").contains("Kerberos");
     }
 
+    /** Only a refused secret is a rejection of the credentials; a policy is a run failure. */
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.CsvSource({
+      "0xC000006D, true", // STATUS_LOGON_FAILURE
+      "0xC000006A, true", // STATUS_WRONG_PASSWORD
+      "0xC0000064, true", // STATUS_NO_SUCH_USER
+      "0xC0000071, true", // STATUS_PASSWORD_EXPIRED
+      "0xC0000224, true", // STATUS_PASSWORD_MUST_CHANGE
+      "0xC000006E, false", // STATUS_ACCOUNT_RESTRICTION
+      "0xC000006F, false", // STATUS_INVALID_LOGON_HOURS
+      "0xC0000070, false", // STATUS_INVALID_WORKSTATION
+      "0xC000015B, false", // STATUS_LOGON_TYPE_NOT_GRANTED
+      "0xC0000072, false", // STATUS_ACCOUNT_DISABLED
+      "0xC0000193, false", // STATUS_ACCOUNT_EXPIRED
+      "0xC0000234, false", // STATUS_ACCOUNT_LOCKED_OUT
+      "0xC0000418, false", // STATUS_NTLM_BLOCKED
+      "0xC0000022, false", // STATUS_ACCESS_DENIED: no right to sign in over the network
+      "0xC00000BB, false" // unknown
+    })
+    void onlyARefusedSecretRejectsTheCredentials(String status, boolean secretRejected)
+        throws Exception {
+      SmbAccessException finding =
+          client.signInFailure(
+              new SMBApiException(
+                  Long.decode(status), SMB2MessageCommandCode.SMB2_SESSION_SETUP, null));
+
+      assertThat(finding).isInstanceOf(SmbAccessException.Authentication.class);
+      assertThat(((SmbAccessException.Authentication) finding).secretRejected())
+          .as(status)
+          .isEqualTo(secretRejected);
+    }
+
+    @Test
+    void theStoreEndsTheRunAsRejectedOnlyForARefusedSecret() {
+      assertThat(SmbFileStore.translate(new SmbAccessException.Authentication("abgelehnt", true)))
+          .isInstanceOf(io.opaa.indexing.filesync.FileAccessException.CredentialsRejected.class);
+      assertThat(SmbFileStore.translate(new SmbAccessException.Authentication("Richtlinie", false)))
+          .isInstanceOf(io.opaa.indexing.filesync.FileAccessException.RunEnding.class)
+          .isNotInstanceOf(io.opaa.indexing.filesync.FileAccessException.CredentialsRejected.class);
+    }
+
     @Test
     void anUnknownStatusOfTheSessionSetupIsStillASignInFinding() throws Exception {
       SmbAccessException finding =

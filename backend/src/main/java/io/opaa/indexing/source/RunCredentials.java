@@ -68,13 +68,17 @@ public final class RunCredentials {
 
   /**
    * After the source rejected {@code used} (a {@code 401}): asks the core once for the secret to
-   * retry with, past any reuse, and holds it. A connector calls this once per rejection.
+   * retry with, past any reuse, and holds it - unless the run already holds another secret, which a
+   * concurrent request renewed, and which is returned without asking again.
    *
    * @throws SourceConnectionBlockedException when the run may not reach its source any more
    */
   public synchronized Secret afterRejection(Secret used) {
     if (refusal != null) {
       throw refusal;
+    }
+    if (!Objects.equals(Secret.valueOf(secret), Secret.valueOf(used))) {
+      return secret;
     }
     hold(clock.instant(), ask(() -> afterRejection.apply(used)));
     return secret;
@@ -87,11 +91,10 @@ public final class RunCredentials {
    * @throws SourceConnectionBlockedException when the run may not reach its source any more
    */
   public boolean renewedAfterRejection(String used) {
-    Secret held;
+    Secret rejected;
     synchronized (this) {
-      held = secret;
+      rejected = secret != null && secret.value().equals(used) ? secret : Secret.personal(used);
     }
-    Secret rejected = held != null && held.value().equals(used) ? held : Secret.personal(used);
     return !Objects.equals(Secret.valueOf(afterRejection(rejected)), used);
   }
 

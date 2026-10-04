@@ -111,6 +111,47 @@ class RunCredentialsTest {
     assertThat(asks).as("the renewed answer is reused like any other").hasValue(1);
   }
 
+  /** Two requests rejected at once: the core is asked once, both retry with the renewed secret. */
+  @Test
+  void concurrentRejectionsOfTheSameSecretAskTheCoreOnce() throws Exception {
+    AtomicInteger renewals = new AtomicInteger();
+    java.util.concurrent.CountDownLatch inCore = new java.util.concurrent.CountDownLatch(1);
+    java.util.concurrent.CountDownLatch release = new java.util.concurrent.CountDownLatch(1);
+    RunCredentials credentials =
+        new RunCredentials(
+            core,
+            rejected -> {
+              renewals.incrementAndGet();
+              inCore.countDown();
+              try {
+                release.await();
+              } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+              }
+              return Secret.personal("erneuert");
+            },
+            RunCredentials.VALIDITY,
+            clock);
+    credentials.check();
+    java.util.concurrent.ExecutorService threads =
+        java.util.concurrent.Executors.newFixedThreadPool(2);
+    try {
+      java.util.concurrent.Future<Boolean> first =
+          threads.submit(() -> credentials.renewedAfterRejection("erstes"));
+      inCore.await();
+      java.util.concurrent.Future<Boolean> second =
+          threads.submit(() -> credentials.renewedAfterRejection("erstes"));
+      release.countDown();
+
+      assertThat(first.get()).isTrue();
+      assertThat(second.get()).isTrue();
+    } finally {
+      threads.shutdownNow();
+    }
+    assertThat(renewals).hasValue(1);
+    assertThat(credentials.value()).isEqualTo("erneuert");
+  }
+
   @Test
   void aRejectionAnsweredWithTheSameSecretIsNotWorthARetry() {
     RunCredentials credentials = credentials(RunCredentials.VALIDITY);

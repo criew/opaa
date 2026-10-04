@@ -58,6 +58,55 @@ class ConfluenceRunSecretContractTest extends RunSecretContract {
     server.close();
   }
 
+  /** Cloud answers 404 for refused credentials and for a wrong address alike: no rejection. */
+  @org.junit.jupiter.api.Test
+  void aCloud404OnTheSignInCheckIsNoRejectionOfTheSecret() throws Exception {
+    com.sun.net.httpserver.HttpServer nothing =
+        com.sun.net.httpserver.HttpServer.create(new java.net.InetSocketAddress("127.0.0.1", 0), 0);
+    nothing.createContext(
+        "/",
+        exchange -> {
+          exchange.sendResponseHeaders(404, -1);
+          exchange.close();
+        });
+    nothing.start();
+    try {
+      ConfluenceConnection connection =
+          new ConfluenceConnection(
+              java.net.URI.create("http://127.0.0.1:" + nothing.getAddress().getPort()),
+              ConfluenceEdition.CLOUD,
+              new ConfluenceCredentials.CloudApiToken("dienst@behoerde.example", "token"),
+              null,
+              -1,
+              false);
+      ConfluenceClient client =
+          new ConfluenceClientFactory(properties(), TargetAddressValidator.disabled(), wait -> {})
+              .create(connection);
+
+      org.assertj.core.api.Assertions.assertThatThrownBy(client::verifyCredentials)
+          .isInstanceOfSatisfying(
+              ConfluenceAccessException.Authentication.class,
+              e -> org.assertj.core.api.Assertions.assertThat(e.secretRejected()).isFalse());
+    } finally {
+      nothing.stop(0);
+    }
+  }
+
+  private static ConfluenceProperties properties() {
+    return new ConfluenceProperties(
+        2,
+        null,
+        null,
+        3,
+        Duration.ofSeconds(2),
+        0,
+        0,
+        0,
+        Duration.ofDays(7),
+        Duration.ofMinutes(10),
+        0);
+  }
+
   @Override
   protected SourceSettings settings() {
     ConfluenceSourceSettings confluence =
@@ -77,6 +126,11 @@ class ConfluenceRunSecretContractTest extends RunSecretContract {
   @Override
   protected boolean sawRenewedSecret() {
     return server.authorizations().contains("Bearer " + RENEWED);
+  }
+
+  @Override
+  protected String refusedSecret() {
+    return "widerrufenes-token";
   }
 
   @Override

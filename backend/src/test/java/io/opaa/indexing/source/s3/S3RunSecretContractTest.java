@@ -75,6 +75,11 @@ class S3RunSecretContractTest extends RunSecretContract {
   }
 
   @Override
+  protected String refusedSecret() {
+    return "UNBEKANNTERKEY:falscher-schluessel";
+  }
+
+  @Override
   protected SourceType type() {
     return S3SourceConnector.TYPE;
   }

@@ -30,6 +30,7 @@ import {
 } from '../../utils/googleDriveSource'
 import FieldLabel from '../wizard/FieldLabel'
 import ScopeConsequence from './sources/ScopeConsequence'
+import { connectionFields, type ConnectionFields } from './sources/sourceConnection'
 
 interface Message {
   severity: 'success' | 'warning' | 'error' | 'info'
@@ -45,6 +46,8 @@ interface GoogleDriveSourceFormProps {
   /** Edit mode: whether a key is stored for this library. */
   credentialsStored?: boolean
   idPrefix: string
+  /** What the connection profile decides for the fields; nothing without one. */
+  connection?: ConnectionFields
 }
 
 /**
@@ -60,6 +63,13 @@ export default function GoogleDriveSourceForm({
   libraryId,
   credentialsStored = false,
   idPrefix,
+  connection = connectionFields({
+    mode,
+    sourceType: 'GOOGLE_DRIVE',
+    idPrefix,
+    libraryId,
+    credentialsStored,
+  }),
 }: GoogleDriveSourceFormProps) {
   const [keyError, setKeyError] = useState<string | null>(null)
   const [options, setOptions] = useState<GoogleDriveScope[]>([])
@@ -74,7 +84,8 @@ export default function GoogleDriveSourceForm({
   const listingGeneration = useRef(0)
   const fileInput = useRef<HTMLInputElement | null>(null)
 
-  const keyServes = values.keyFile !== '' || storedKeyServes(values, credentialsStored)
+  const keyServes =
+    !connection.asksSecret || values.keyFile !== '' || storedKeyServes(values, credentialsStored)
   const subjectChangedWithoutKey =
     mode === 'edit' && credentialsStored && values.keyFile === '' && !keyServes
 
@@ -93,12 +104,12 @@ export default function GoogleDriveSourceForm({
     onChange(patch)
   }
 
-  const connection = () => ({
+  const connectionRequest = () => ({
     sourceUrl: GOOGLE_DRIVE_API,
     sourceProxy: values.sourceProxy.trim() || undefined,
     sourceCredentials: values.keyFile || undefined,
     sourceInsecureSsl: false,
-    libraryId: mode === 'edit' ? libraryId : undefined,
+    ...connection.probe,
   })
 
   const onKeyFile = async (file: File | undefined) => {
@@ -132,7 +143,7 @@ export default function GoogleDriveSourceForm({
     setListingMessage(null)
     try {
       const result = await browseSource('GOOGLE_DRIVE', {
-        ...connection(),
+        ...connectionRequest(),
         query: { subject: values.subject.trim() || undefined },
       })
       if (listingGeneration.current !== mine) return
@@ -185,7 +196,7 @@ export default function GoogleDriveSourceForm({
     try {
       const result = await testLibrarySource({
         sourceType: 'GOOGLE_DRIVE',
-        ...connection(),
+        ...connectionRequest(),
         sourceSettings: googleDriveSettingsOf(values),
       })
       if (testGeneration.current !== mine) return
@@ -211,40 +222,42 @@ export default function GoogleDriveSourceForm({
 
   return (
     <Stack spacing={2.5}>
-      <Box>
-        <FieldLabel htmlFor={`${idPrefix}-key`}>Dienstkonto-Schlüssel (JSON)</FieldLabel>
-        <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
-          <Button
-            variant="outlined"
-            component="label"
-            startIcon={<UploadFileIcon />}
-            data-testid="google-drive-key-button"
-          >
-            Schlüsseldatei wählen
-            <input
-              id={`${idPrefix}-key`}
-              ref={fileInput}
-              type="file"
-              accept="application/json,.json"
-              hidden
-              aria-label="Schlüsseldatei des Dienstkontos"
-              onChange={(e) => void onKeyFile(e.target.files?.[0])}
-            />
-          </Button>
-          <Typography variant="body2" data-testid="google-drive-key-status">
-            {keyStatus}
+      {connection.asksSecret && (
+        <Box>
+          <FieldLabel htmlFor={`${idPrefix}-key`}>Dienstkonto-Schlüssel (JSON)</FieldLabel>
+          <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
+            <Button
+              variant="outlined"
+              component="label"
+              startIcon={<UploadFileIcon />}
+              data-testid="google-drive-key-button"
+            >
+              Schlüsseldatei wählen
+              <input
+                id={`${idPrefix}-key`}
+                ref={fileInput}
+                type="file"
+                accept="application/json,.json"
+                hidden
+                aria-label="Schlüsseldatei des Dienstkontos"
+                onChange={(e) => void onKeyFile(e.target.files?.[0])}
+              />
+            </Button>
+            <Typography variant="body2" data-testid="google-drive-key-status">
+              {keyStatus}
+            </Typography>
+          </Stack>
+          {keyError && (
+            <Alert severity="error" sx={{ mt: 1 }}>
+              {keyError}
+            </Alert>
+          )}
+          <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.5 }}>
+            Die Datei verlässt den Browser nur mit dem Speichern oder dem Verbindungstest und ist
+            danach in keiner Antwort mehr enthalten.
           </Typography>
-        </Stack>
-        {keyError && (
-          <Alert severity="error" sx={{ mt: 1 }}>
-            {keyError}
-          </Alert>
-        )}
-        <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.5 }}>
-          Die Datei verlässt den Browser nur mit dem Speichern oder dem Verbindungstest und ist
-          danach in keiner Antwort mehr enthalten.
-        </Typography>
-      </Box>
+        </Box>
+      )}
 
       <Box>
         <FieldLabel htmlFor={`${idPrefix}-subject`}>Imitiertes Konto (optional)</FieldLabel>
@@ -256,7 +269,12 @@ export default function GoogleDriveSourceForm({
           onChange={(e) => change({ subject: e.target.value })}
           placeholder="funktionskonto@example.org"
           autoComplete="off"
-          helperText="Nur mit domänenweiter Delegation. Bitte ein Funktionskonto, kein persönliches."
+          helperText={
+            connection.isFixed('subject')
+              ? connection.fixedHint
+              : 'Nur mit domänenweiter Delegation. Bitte ein Funktionskonto, kein persönliches.'
+          }
+          slotProps={{ htmlInput: { readOnly: connection.isFixed('subject') } }}
         />
         {subjectChangedWithoutKey && (
           <Alert severity="info" sx={{ mt: 1 }} data-testid="google-drive-subject-needs-key">

@@ -19,10 +19,24 @@ public class ConfluenceAccessException extends IOException {
     super(message, cause);
   }
 
-  /** {@code 401}: the instance rejected the credentials. */
+  /**
+   * {@code 401}: the instance rejected the credentials. {@link #secretRejected()} is {@code false}
+   * where the answer may as well mean a wrong address (Cloud's {@code 404}).
+   */
   public static final class Authentication extends ConfluenceAccessException {
+    private final boolean secretRejected;
+
     public Authentication(String message) {
+      this(message, true);
+    }
+
+    public Authentication(String message, boolean secretRejected) {
       super(message);
+      this.secretRejected = secretRejected;
+    }
+
+    public boolean secretRejected() {
+      return secretRejected;
     }
   }
 

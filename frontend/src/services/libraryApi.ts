@@ -123,6 +123,37 @@ export async function updateLibraryShareCap(
   }
 }
 
+/**
+ * Connects the library through a connection profile ("Zugang") of its source type - also the way
+ * back after "Zugang entfernt" and out of a lock for its own address. Answers the whole library.
+ */
+export async function connectLibraryProfile(
+  libraryId: string,
+  profileId: string,
+): Promise<LibraryResponse> {
+  try {
+    const { data } = await client.put<LibraryResponse>(
+      `/v1/libraries/${libraryId}/connection-profile`,
+      { profileId },
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/** Releases the library from its profile; it keeps address and secret as its own. */
+export async function disconnectLibraryProfile(libraryId: string): Promise<LibraryResponse> {
+  try {
+    const { data } = await client.delete<LibraryResponse>(
+      `/v1/libraries/${libraryId}/connection-profile`,
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
 export async function deleteLibrary(libraryId: string): Promise<void> {
   try {
     await client.delete(`/v1/libraries/${libraryId}`)

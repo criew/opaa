@@ -26,7 +26,9 @@ const {
   mockGetUserSummaries,
   mockUpsertAssetGrant,
   mockSearchSelectableGroups,
+  mockListConnectionProfileOptions,
 } = vi.hoisted(() => ({
+  mockListConnectionProfileOptions: vi.fn(),
   mockGetMyGroups: vi.fn().mockResolvedValue([]),
   mockGetMyCapabilities: vi.fn(),
   mockTestLibrarySource: vi.fn(),
@@ -74,6 +76,13 @@ vi.mock('../services/assetApi', async () => {
     ...actual,
     upsertAssetGrant: mockUpsertAssetGrant,
   }
+})
+
+vi.mock('../services/connectionProfileApi', async () => {
+  const actual = await vi.importActual<typeof import('../services/connectionProfileApi')>(
+    '../services/connectionProfileApi',
+  )
+  return { ...actual, listConnectionProfileOptions: mockListConnectionProfileOptions }
 })
 
 vi.mock('../services/libraryApi', async () => {
@@ -130,6 +139,8 @@ describe('LibraryCreatePage (#596, #1942)', () => {
     ])
     useLibraryStore.setState({ createNewLibrary: mockCreateNewLibrary })
     mockListSourceTypes.mockResolvedValue(mockSourceTypes)
+    mockListConnectionProfileOptions.mockReset()
+    mockListConnectionProfileOptions.mockResolvedValue([])
     // the per-connector listings of the forms, answered in the shape of the one browse endpoint
     mockBrowseSource.mockImplementation(async (sourceType: string, request: unknown) => {
       if (sourceType === 'CONFLUENCE') {
@@ -1097,6 +1108,162 @@ describe('LibraryCreatePage (#596, #1942)', () => {
 
     expect(await screen.findByText(/keiner gruppe mitglied/i)).toBeInTheDocument()
   }, 15000)
+
+  describe('Zugang (#2162)', () => {
+    const profile = {
+      id: 'profile-intern',
+      name: 'Nextcloud intern',
+      sourceType: 'NEXTCLOUD',
+      serverUrl: 'https://cloud.intern.example',
+      authMethod: 'PERSONAL_SECRET' as const,
+      creatable: true,
+      connectorDefaults: null,
+    }
+    const locked = {
+      ...profile,
+      id: 'profile-partner',
+      name: 'Nextcloud Partner',
+      serverUrl: 'https://cloud.partner.example',
+      creatable: false,
+      creationNotice:
+        'Der Zugang „Nextcloud Partner“ ist gesperrt. Zuständig ist die Systemverwaltung.',
+    }
+
+    function withNextcloud(overrides: Record<string, unknown>) {
+      return mockSourceTypes.map((descriptor) =>
+        descriptor.type === 'NEXTCLOUD' ? { ...descriptor, ...overrides } : descriptor,
+      )
+    }
+
+    it('creates a library through the chosen profile, its address prefilled', async () => {
+      mockListConnectionProfileOptions.mockResolvedValue([profile, locked])
+      const user = userEvent.setup()
+      await renderPage()
+      await chooseType(user, /Nextcloud/)
+
+      expect(mockListConnectionProfileOptions).toHaveBeenCalledWith('NEXTCLOUD')
+      const connection = await screen.findByTestId('library-create-connection')
+      // the choice stands above the source form
+      expect(
+        connection.compareDocumentPosition(screen.getByLabelText(/Adresse der Nextcloud/)) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy()
+      expect(screen.getByRole('radio', { name: /Eigene Adresse/ })).toBeChecked()
+      expect(screen.getByRole('radio', { name: /Nextcloud Partner/ })).toBeDisabled()
+
+      await user.click(screen.getByRole('radio', { name: /Nextcloud intern/ }))
+      expect(screen.getByLabelText(/Adresse der Nextcloud/)).toHaveValue(
+        'https://cloud.intern.example',
+      )
+      await user.type(screen.getByLabelText(/Technischer Nutzer/), 'svc-opaa')
+      await user.type(screen.getByLabelText(/App-Passwort/), 'geheim')
+      await next(user)
+      await nameItAndContinue(user, 'Projektablage')
+      await user.click(screen.getByRole('button', { name: 'Bibliothek anlegen' }))
+
+      await waitFor(() =>
+        expect(mockCreateNewLibrary).toHaveBeenCalledWith(
+          expect.objectContaining({
+            sourceType: 'NEXTCLOUD',
+            connectionProfileId: 'profile-intern',
+            sourceUrl: 'https://cloud.intern.example',
+            sourceCredentials: 'svc-opaa:geheim',
+          }),
+        ),
+      )
+    }, 30000)
+
+    it('does not carry address or fixed values of the previous way over to the next', async () => {
+      const other = {
+        ...profile,
+        id: 'profile-neu',
+        name: 'Nextcloud neu',
+        serverUrl: 'https://cloud.neu.example',
+      }
+      mockListConnectionProfileOptions.mockResolvedValue([profile, other])
+      const user = userEvent.setup()
+      await renderPage()
+      await chooseType(user, /Nextcloud/)
+      const address = () => screen.getByLabelText(/Adresse der Nextcloud/)
+
+      // an own address outside the profile chosen next does not stay
+      await user.type(address(), 'https://nc.extern.example')
+      await user.click(await screen.findByRole('radio', { name: /Nextcloud intern/ }))
+      expect(address()).toHaveValue('https://cloud.intern.example')
+
+      // an address under the previous profile does not follow to the next one
+      await user.type(address(), '/remote.php/dav')
+      await user.click(screen.getByRole('radio', { name: /Nextcloud neu/ }))
+      expect(address()).toHaveValue('https://cloud.neu.example')
+
+      // nor to the own address
+      await user.click(screen.getByRole('radio', { name: /Eigene Adresse/ }))
+      expect(address()).toHaveValue('')
+    }, 25000)
+
+    it('sends no profile for the own address', async () => {
+      mockListConnectionProfileOptions.mockResolvedValue([profile])
+      const user = userEvent.setup()
+      await renderPage()
+      await chooseType(user, /Nextcloud/)
+      await screen.findByRole('radio', { name: /Nextcloud intern/ })
+
+      await user.type(screen.getByLabelText(/Adresse der Nextcloud/), 'https://cloud.example')
+      await user.type(screen.getByLabelText(/Technischer Nutzer/), 'svc')
+      await user.type(screen.getByLabelText(/App-Passwort/), 'pw')
+      await next(user)
+      await nameItAndContinue(user, 'Eigene Cloud')
+      await user.click(screen.getByRole('button', { name: 'Bibliothek anlegen' }))
+
+      await waitFor(() => expect(mockCreateNewLibrary).toHaveBeenCalled())
+      expect(mockCreateNewLibrary.mock.calls[0][0]).not.toHaveProperty('connectionProfileId')
+    }, 25000)
+
+    it('lets a type released only through a profile be chosen, without the own address', async () => {
+      mockListSourceTypes.mockResolvedValue(
+        withNextcloud({ creatable: true, creatableWithOwnAddress: false }),
+      )
+      mockListConnectionProfileOptions.mockResolvedValue([profile])
+      const user = userEvent.setup()
+      await renderPage()
+
+      const tile = screen.getByRole('radio', { name: /Nextcloud/ })
+      expect(tile).toBeEnabled()
+      expect(tile).not.toHaveTextContent(/bietet dieser Assistent noch nicht/)
+      await chooseType(user, /Nextcloud/)
+
+      expect(await screen.findByRole('radio', { name: /Nextcloud intern/ })).toBeChecked()
+      expect(screen.queryByRole('radio', { name: /Eigene Adresse/ })).not.toBeInTheDocument()
+    }, 15000)
+
+    it('names who sets up profiles and does not go on when no way is left', async () => {
+      mockListSourceTypes.mockResolvedValue(
+        withNextcloud({ profileRequired: true, creatable: true, creatableWithOwnAddress: false }),
+      )
+      mockListConnectionProfileOptions.mockResolvedValue([locked])
+      const user = userEvent.setup()
+      await renderPage()
+      await chooseType(user, /Nextcloud/)
+
+      expect(await screen.findByTestId('library-create-connection-none')).toHaveTextContent(
+        /Zugänge legt die Systemverwaltung an/,
+      )
+      expect(screen.queryByLabelText(/Adresse der Nextcloud/)).not.toBeInTheDocument()
+      await next(user)
+      expect(
+        screen.getByText('Für diese Quellart steht Ihnen kein Zugang zur Verfügung.'),
+      ).toBeInTheDocument()
+    }, 15000)
+
+    it('asks for no profile for a type that admits none', async () => {
+      const user = userEvent.setup()
+      await renderPage()
+      await chooseType(user, /Webverzeichnis/)
+
+      expect(screen.queryByTestId('library-create-connection')).not.toBeInTheDocument()
+      expect(mockListConnectionProfileOptions).not.toHaveBeenCalled()
+    }, 15000)
+  })
 
   it('asks before discarding entered values on cancel', async () => {
     const user = userEvent.setup()

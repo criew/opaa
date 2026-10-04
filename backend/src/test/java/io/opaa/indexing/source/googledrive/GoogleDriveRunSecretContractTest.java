@@ -75,8 +75,8 @@ class GoogleDriveRunSecretContractTest extends RunSecretContract {
   }
 
   @Override
-  protected void rejectEverySecret() {
-    server.rejectToken();
+  protected String refusedSecret() {
+    return "ya29.widerrufen";
   }
 
   @Override

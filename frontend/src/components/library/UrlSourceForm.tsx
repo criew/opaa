@@ -8,6 +8,7 @@ import type { SourceTypeKey } from '../../types/api'
 import { documentSourceTypeLabel } from './sources/sourceLabels'
 import { sameLibrarySourceOrigin, type GenericSourceValues } from '../../utils/librarySourceConfig'
 import FieldLabel from '../wizard/FieldLabel'
+import { connectionFields, type ConnectionFields } from './sources/sourceConnection'
 
 interface UrlSourceFormProps {
   /** `create` adds the step's own heading and the two-column layout of the wizard. */
@@ -20,6 +21,8 @@ interface UrlSourceFormProps {
   credentialsStored?: boolean
   /** Edit mode: the address the stored credentials belong to - they do not survive a host change. */
   originalSourceUrl?: string | null
+  /** What the connection profile decides for the fields; nothing without one. */
+  connection?: ConnectionFields
 }
 
 /**
@@ -37,6 +40,7 @@ export default function UrlSourceForm({
   onChange,
   credentialsStored = false,
   originalSourceUrl,
+  connection = connectionFields({ mode, sourceType, idPrefix, credentialsStored }),
 }: UrlSourceFormProps) {
   const isCreate = mode === 'create'
   // Mirrors KnowledgeLibraryService's own carry-forward rule purely to phrase an accurate hint;
@@ -83,7 +87,7 @@ export default function UrlSourceForm({
             value={values.sourceUrl}
             onChange={(e) => onChange({ sourceUrl: e.target.value })}
             placeholder="https://files.example.com/dokumente/"
-            helperText="http oder https."
+            helperText={connection.addressHint ?? 'http oder https.'}
             slotProps={{ htmlInput: { maxLength: 2000, sx: { fontFamily: 'monospace' } } }}
           />
         </Box>
@@ -100,23 +104,25 @@ export default function UrlSourceForm({
             slotProps={{ htmlInput: { maxLength: 255 } }}
           />
         </Box>
-        <Box>
-          <FieldLabel htmlFor={`${idPrefix}-credentials`}>
-            {isCreate ? 'Anmeldedaten (optional)' : 'Neue Zugangsdaten'}
-          </FieldLabel>
-          <TextField
-            id={`${idPrefix}-credentials`}
-            size="small"
-            type="password"
-            fullWidth
-            value={values.sourceCredentials}
-            onChange={(e) => onChange({ sourceCredentials: e.target.value })}
-            placeholder="benutzer:passwort"
-            helperText={credentialsHelperText}
-            autoComplete="new-password"
-            slotProps={{ htmlInput: { maxLength: 500 } }}
-          />
-        </Box>
+        {connection.asksSecret && (
+          <Box>
+            <FieldLabel htmlFor={`${idPrefix}-credentials`}>
+              {isCreate ? 'Anmeldedaten (optional)' : 'Neue Zugangsdaten'}
+            </FieldLabel>
+            <TextField
+              id={`${idPrefix}-credentials`}
+              size="small"
+              type="password"
+              fullWidth
+              value={values.sourceCredentials}
+              onChange={(e) => onChange({ sourceCredentials: e.target.value })}
+              placeholder="benutzer:passwort"
+              helperText={credentialsHelperText}
+              autoComplete="new-password"
+              slotProps={{ htmlInput: { maxLength: 500 } }}
+            />
+          </Box>
+        )}
         <FormControlLabel
           sx={{ gridColumn: '1 / -1' }}
           control={

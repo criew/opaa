@@ -10,10 +10,25 @@ sealed class SmbAccessException extends Exception {
     super(message);
   }
 
-  /** The server refused the service account, or accepted it only as a guest. */
+  /**
+   * The server refused the service account, or accepted it only as a guest. {@link
+   * #secretRejected()} only when the secret itself was refused (wrong or expired password, unknown
+   * account), not for a policy (logon hours, workstation, logon type, NTLM, disabled account).
+   */
   static final class Authentication extends SmbAccessException {
+    private final boolean secretRejected;
+
     Authentication(String message) {
+      this(message, false);
+    }
+
+    Authentication(String message, boolean secretRejected) {
       super(message);
+      this.secretRejected = secretRejected;
+    }
+
+    boolean secretRejected() {
+      return secretRejected;
     }
   }
 
