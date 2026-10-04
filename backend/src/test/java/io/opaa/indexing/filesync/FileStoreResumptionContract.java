@@ -86,6 +86,10 @@ public abstract class FileStoreResumptionContract extends FileStoreContract {
     unbounded();
     fixture.denyListingOf(1, "ordner-3");
     put(1, "ordner-3/geaendert.txt", "Geändert.");
+    // the round has met the unreadable folder before the new files appear
+    for (int runs = 0; runs < 6; runs++) {
+      budgeted(budget);
+    }
     List<String> added = List.of("ordner-0/neu.txt", "ordner-6/neu.txt");
     for (String name : added) {
       put(0, name, "Neu in einem lesbaren Bereich: " + name);
