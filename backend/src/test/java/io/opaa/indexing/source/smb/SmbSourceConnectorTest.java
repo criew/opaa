@@ -107,6 +107,21 @@ class SmbSourceConnectorTest {
               });
     }
 
+    /** Same origin is not enough on a file server: credentials are bound to the share. */
+    @Test
+    void storedCredentialsAreBoundToTheShareBesidesTheOrigin() {
+      String stored = binding("smb://fileserver/Daten");
+
+      assertThat(binding(CONNECTOR.normalizeSourceUrl("\\\\FileServer\\daten"))).isEqualTo(stored);
+      assertThat(binding("smb://fileserver/Personal")).isNotEqualTo(stored);
+      assertThat(binding("smb://anderer/Daten")).isNotEqualTo(stored);
+      assertThat(binding(null)).isNull();
+    }
+
+    private String binding(String url) {
+      return CONNECTOR.credentialBinding(settings(url, null));
+    }
+
     @Test
     void theDescriptorHasNoDeepLink() {
       assertThat(CONNECTOR.descriptor().deepLink()).isFalse();

@@ -74,33 +74,34 @@ class SmbLinkLoopTest {
         .anySatisfy(message -> assertThat(message).contains("Verknüpfungen (Schleife)"));
   }
 
+  /** Larger than one read reply the proxy holds back (256 KiB), small enough to be quick. */
+  private static final int BIG_FILE_MEGABYTES = 2;
+
   @Test
   void aDownloadInFlightWhileALoopDropsTheConnectionIsRepeatedNotLost() throws Exception {
-    samba.bigFileInLinkShare("echt/gross.bin", 200);
-    try (SmbShareClient smb = client()) {
+    samba.bigFileInLinkShare("echt/gross.bin", BIG_FILE_MEGABYTES);
+    try (SmbHoldingProxy proxy = new SmbHoldingProxy(samba.port());
+        // a closed connection does not wake the swallowed read: it ends at this timeout
+        SmbShareClient smb = client(proxy.port(), Duration.ofSeconds(5))) {
       smb.connect();
-      int baseline = smb.meter().requests();
       CompletableFuture<Path> download =
           CompletableFuture.supplyAsync(
               () -> {
                 try {
-                  return smb.download("echt/gross.bin", "gross.bin", 300L * 1024 * 1024);
+                  return smb.download("echt/gross.bin", "gross.bin", 4L * 1024 * 1024);
                 } catch (Exception e) {
                   throw new IllegalStateException(e.getMessage(), e);
                 }
               });
-      // the download has opened its file and is reading when the loop drops the connection
-      long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(30);
-      while (smb.meter().requests() < baseline + 6 && System.nanoTime() < deadline) {
-        Thread.onSpinWait();
-      }
-      assertThat(download).as("still reading when the loop hits").isNotDone();
+      // the download waits for its first data; the link walk's small replies still get through
+      assertThat(proxy.awaitHolding(30)).as("download is reading").isTrue();
+      assertThat(download).isNotDone();
       assertThatThrownBy(() -> smb.download("a/x.txt", "x.txt", 1000))
           .isInstanceOf(SmbAccessException.Link.class);
 
-      Path file = download.get(2, TimeUnit.MINUTES);
+      Path file = download.get(60, TimeUnit.SECONDS);
       try {
-        assertThat(Files.size(file)).isEqualTo(200L * 1024 * 1024);
+        assertThat(Files.size(file)).isEqualTo(BIG_FILE_MEGABYTES * 1024L * 1024);
         assertThat(smb.retriedAfterReset.get()).isEqualTo(1);
       } finally {
         Files.deleteIfExists(file);
@@ -109,11 +110,15 @@ class SmbLinkLoopTest {
   }
 
   private SmbShareClient client() {
+    return client(samba.port(), Duration.ofSeconds(30));
+  }
+
+  private SmbShareClient client(int port, Duration timeout) {
     return SmbShareClient.of(
-        SmbAddress.parse(samba.url(SambaFixture.LINK_SHARE)),
+        SmbAddress.parse("smb://" + samba.host() + ":" + port + "/" + SambaFixture.LINK_SHARE),
         SmbCredentials.parse(samba.credentials()),
         TargetAddressValidator.disabled(),
         RequestBudget.unbounded(),
-        Duration.ofSeconds(30));
+        timeout);
   }
 }

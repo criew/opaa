@@ -23,6 +23,7 @@ import io.opaa.common.ValidationException;
 import io.opaa.connection.ConnectorReleaseService;
 import io.opaa.connection.LibraryConnectionService;
 import io.opaa.connection.profile.EffectiveSourceSettings;
+import io.opaa.connection.profile.SecretTarget;
 import io.opaa.connection.profile.ServerAddress;
 import io.opaa.connection.profile.SourceDraft;
 import io.opaa.indexing.chunk.VectorChunkStore;
@@ -34,7 +35,6 @@ import io.opaa.indexing.source.ConnectorData;
 import io.opaa.indexing.source.Secret;
 import io.opaa.indexing.source.SecretKind;
 import io.opaa.indexing.source.ServiceAccountKey;
-import io.opaa.indexing.source.ServiceAccountTokens;
 import io.opaa.indexing.source.SourceBlock;
 import io.opaa.indexing.source.SourceChangeGate;
 import io.opaa.indexing.source.SourceConnectionBlockedException;
@@ -68,6 +68,7 @@ import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -133,9 +134,10 @@ public class KnowledgeLibraryService {
   private static final int MAX_NAME_LENGTH = 255;
   private static final int MAX_DESCRIPTION_LENGTH = 2000;
 
-  /** ADR-0040, Entscheidung 4: a stored key never follows a changed imitated account. */
-  static final String SUBJECT_CHANGE_NEEDS_CREDENTIALS =
-      "Das imitierte Konto ändert sich: Die Zugangsdaten müssen dafür neu eingegeben werden";
+  /** Stored credentials never follow a new binding, such as an imitated account (ADR-0040). */
+  static final String TARGET_CHANGE_NEEDS_CREDENTIALS =
+      "Das Ziel der Zugangsdaten ändert sich, etwa die Freigabe oder das imitierte Konto: Die"
+          + " Zugangsdaten müssen dafür neu eingegeben werden";
 
   private final KnowledgeLibraryRepository libraryRepository;
   private final AssetOwnerNames assetOwnerNames;
@@ -231,11 +233,27 @@ public class KnowledgeLibraryService {
   }
 
   /**
-   * Connects the library through {@code profileId} - {@code MANAGER} on the library. The audit
-   * names the changed fields only.
+   * The profiles a library's managers may connect it through - {@code MANAGER} on the library, not
+   * the release: the ones not released to the caller come with the notice who can change that.
+   */
+  public List<ConnectorReleaseService.ProfileOption> profileOptions(
+      UUID libraryId, SourceType sourceType, CurrentUser caller) {
+    KnowledgeLibrary library = loadLibrary(libraryId, caller);
+    accessService.requireRole(library, caller.id(), caller.isSystemAdmin(), AssetRole.MANAGER);
+    if (!library.getSourceType().equals(sourceType)) {
+      throw new ValidationException(
+          "sourceType muss die Quellart der Bibliothek sein: " + library.getSourceType().key());
+    }
+    return connectorRelease.profileOptions(caller, sourceType);
+  }
+
+  /**
+   * Connects the library through {@code profileId}, at {@code sourceUrl} when given - {@code
+   * MANAGER} on the library. The audit names the changed fields only.
    */
   @Transactional
-  public LibraryDetail connectProfile(UUID libraryId, UUID profileId, CurrentUser caller) {
+  public LibraryDetail connectProfile(
+      UUID libraryId, UUID profileId, String sourceUrl, CurrentUser caller) {
     KnowledgeLibrary library = loadLibrary(libraryId, caller);
     accessService.requireRole(library, caller.id(), caller.isSystemAdmin(), AssetRole.MANAGER);
     // A new profile is a new target: its release counts, not the one the library was created under.
@@ -253,9 +271,9 @@ public class KnowledgeLibraryService {
     boolean previousInsecureSsl = library.isSourceInsecureSsl();
     String previousSettings = library.getSourceSettings();
     boolean hadCredentials = connectionResolver.holdsCredentials(library);
-    libraryConnections.connect(library, profileId);
+    Set<String> effectiveChanges = libraryConnections.connect(library, profileId, sourceUrl);
     KnowledgeLibrary updated = libraryRepository.findById(libraryId).orElseThrow();
-    List<String> changed = new ArrayList<>(List.of("connectionProfile"));
+    Set<String> changed = new LinkedHashSet<>(List.of("connectionProfile"));
     if (!Objects.equals(previousUrl, updated.getSourceUrl())) {
       changed.add("sourceUrl");
     }
@@ -271,7 +289,8 @@ public class KnowledgeLibraryService {
     if (hadCredentials && !connectionResolver.holdsCredentials(updated)) {
       changed.add("sourceCredentials");
     }
-    recordSourceUpdate(updated, caller.id(), changed);
+    changed.addAll(effectiveChanges);
+    recordSourceUpdate(updated, caller.id(), List.copyOf(changed));
     return toLibraryDetail(
         updated,
         accessService.effectiveRole(updated, caller.id(), caller.isSystemAdmin()),
@@ -290,8 +309,21 @@ public class KnowledgeLibraryService {
       // locked.
       connectorRelease.requireDetachable(
           caller, library.getSourceType(), connection.get().profile());
-      libraryConnections.disconnect(library);
-      recordSourceUpdate(library, caller.id(), List.of("connectionProfile"));
+      String previousProxy = library.getSourceProxy();
+      boolean previousInsecureSsl = library.isSourceInsecureSsl();
+      String previousSettings = library.getSourceSettings();
+      Set<String> changed = new LinkedHashSet<>(List.of("connectionProfile"));
+      changed.addAll(libraryConnections.disconnect(library));
+      if (!Objects.equals(previousProxy, library.getSourceProxy())) {
+        changed.add("sourceProxy");
+      }
+      if (previousInsecureSsl != library.isSourceInsecureSsl()) {
+        changed.add("sourceInsecureSsl");
+      }
+      if (!Objects.equals(previousSettings, library.getSourceSettings())) {
+        changed.add("sourceSettings");
+      }
+      recordSourceUpdate(library, caller.id(), List.copyOf(changed));
     }
     return toLibraryDetail(
         library,
@@ -395,7 +427,7 @@ public class KnowledgeLibraryService {
 
     KnowledgeLibrary saved = libraryRepository.save(library);
     if (request.connectionProfileId() != null) {
-      libraryConnections.connect(saved, request.connectionProfileId());
+      libraryConnections.attachNew(saved, request.connectionProfileId());
     }
     // The creator holds OWNER, an owning group MANAGER - never OWNER, see AssetShellService. The
     // shell also opens the ownership and reach intervals and writes LIBRARY_CREATED.
@@ -606,8 +638,12 @@ public class KnowledgeLibraryService {
       // it alone".
       if (validatedSettings.sourceCredentials() == null
           && previousSourceUrl != null
-          && !(ServerAddress.sameOrigin(previousSourceUrl, validatedSettings.sourceUrl())
-              && connector.keepsCredentials(previousSourceUrl, validatedSettings.sourceUrl()))) {
+          && !keepsTarget(
+              connector,
+              previousSourceUrl,
+              ConnectorData.storedIn(library),
+              validatedSettings.sourceUrl(),
+              validatedSettings.connectorSettings())) {
         libraryRepository.eraseSourceCredentials(library.getId());
       }
     }
@@ -1275,28 +1311,31 @@ public class KnowledgeLibraryService {
     SourceConnector connector = connectors.connector(library.getSourceType());
     ConnectorData connectorSettings =
         readSettings(library.getSourceType(), request.sourceSettings());
-    ConnectorData storedSettings = ConnectorData.storedIn(library);
-    boolean sameSubject =
-        Objects.equals(
-            ServiceAccountTokens.subjectOf(connector, storedSettings),
-            ServiceAccountTokens.subjectOf(
-                connector, connectorSettings != null ? connectorSettings : storedSettings));
     String sourceCredentials = blankToNull(request.sourceCredentials());
-    // fail-closed: the column counts, not whether its ciphertext can be read right now
-    if (!sameSubject
+    String sourceUrl =
+        replacesConnection
+            ? connector.normalizeSourceUrl(
+                blankToNull(request.sourceUrl() == null ? null : request.sourceUrl().toString()))
+            : library.getSourceUrl();
+    boolean keepsTarget =
+        keepsTarget(
+            connector,
+            library.getSourceUrl(),
+            ConnectorData.storedIn(library),
+            sourceUrl,
+            connectorSettings);
+    // A new binding on the same origin is refused rather than dropped; fail-closed: the column
+    // counts, not whether its ciphertext can be read right now.
+    if (!keepsTarget
+        && ServerAddress.sameOrigin(library.getSourceUrl(), sourceUrl)
         && sourceCredentials == null
         && libraryRepository.hasStoredSourceCredentials(library.getId())) {
-      throw new ValidationException(SUBJECT_CHANGE_NEEDS_CREDENTIALS);
+      throw new ValidationException(TARGET_CHANGE_NEEDS_CREDENTIALS);
     }
     if (!replacesConnection) {
       return new SourceSettings(null, null, null, null, false, connectorSettings);
     }
-    String sourceUrl =
-        connector.normalizeSourceUrl(
-            blankToNull(request.sourceUrl() == null ? null : request.sourceUrl().toString()));
-    if (sourceCredentials == null
-        && ServerAddress.sameOrigin(library.getSourceUrl(), sourceUrl)
-        && connector.keepsCredentials(library.getSourceUrl(), sourceUrl)) {
+    if (sourceCredentials == null && keepsTarget) {
       sourceCredentials = connectionResolver.storedCredentials(library);
     }
     return new SourceSettings(
@@ -1306,6 +1345,30 @@ public class KnowledgeLibraryService {
         sourceCredentials,
         Boolean.TRUE.equals(request.sourceInsecureSsl()),
         connectorSettings);
+  }
+
+  /**
+   * Whether credentials stored for {@code beforeUrl} with {@code beforeSettings} stand for {@code
+   * afterUrl} with {@code afterSettings} ({@code null}: unchanged): the {@link SecretTarget} stays.
+   */
+  private static boolean keepsTarget(
+      SourceConnector connector,
+      String beforeUrl,
+      ConnectorData beforeSettings,
+      String afterUrl,
+      ConnectorData afterSettings) {
+    return SecretTarget.of(
+            connector, new SourceSettings(null, beforeUrl, null, null, false, beforeSettings))
+        .admits(
+            SecretTarget.of(
+                connector,
+                new SourceSettings(
+                    null,
+                    afterUrl,
+                    null,
+                    null,
+                    false,
+                    afterSettings != null ? afterSettings : beforeSettings)));
   }
 
   /**
@@ -1516,9 +1579,9 @@ public class KnowledgeLibraryService {
             .map(
                 connection ->
                     connection.removed()
-                        ? new LibraryProfileState(null, null, true)
-                        : new LibraryProfileState(
-                            connection.profile().getId(), connection.profile().getName(), false))
+                        ? LibraryProfileState.REMOVED
+                        : LibraryProfileState.of(
+                            connection.profile(), myRole.atLeast(AssetRole.MANAGER)))
             .orElse(null),
         libraryConnections.lockOf(library).orElse(null));
   }

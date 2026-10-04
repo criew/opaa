@@ -99,8 +99,8 @@ public class SmbSourceConnector implements SourceConnector, SourceBrowser, Origi
 
   /** Stored credentials stand only for the same share on the same server. */
   @Override
-  public boolean keepsCredentials(String storedSourceUrl, String requestedSourceUrl) {
-    return SmbAddress.sameShare(storedSourceUrl, requestedSourceUrl);
+  public String credentialBinding(SourceSettings settings) {
+    return SmbAddress.shareBinding(settings.sourceUrl());
   }
 
   @Override

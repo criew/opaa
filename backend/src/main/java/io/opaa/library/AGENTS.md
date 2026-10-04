@@ -22,10 +22,11 @@ Zugang, Prüfung ihrer Adresse) und besitzt keine eigene Tabelle.
 - **Die Freigabegrenze einer Konnektorbibliothek:** Eine Anfrage über der Grenze ist `409`, nicht
   `403` — die Rolle steht nicht in Frage. Eine Upload-Bibliothek trägt nie eine engere Grenze
   (`KnowledgeLibraryAssetType`).
-- **Gespeicherte Zugangsdaten gelten nur für denselben Ursprung** (Schema, Host, Port) der
-  `sourceUrl` (`ServerAddress#sameOrigin`) und, wo der Konnektor enger bindet, dasselbe Ziel darin
-  (`SourceConnector#keepsCredentials`, etwa die SMB-Freigabe). Eine fehlende oder unlesbare URL
-  zählt als anderer Ursprung, die Zugangsdaten werden dann neu verlangt.
+- **Gespeicherte Zugangsdaten gelten nur für dasselbe Ziel** (`SecretTarget`): Ursprung (Schema,
+  Host, Port) der `sourceUrl` und die Bindung des Konnektors (`credentialBinding`, etwa SMB-Freigabe
+  oder imitiertes Konto). Eine neue Bindung bei gleichem Ursprung verlangt neue Zugangsdaten (`400`).
+- **Zuordnen und Lösen** gehen durch `LibraryConnectionService` (Konnektor, Audit-Felder); ein
+  Anlegen über einen Zugang hängt nur die Zuordnung an (`attachNew`).
 - **Anlegen, Test und Auflistung sind Entwürfe** (`EffectiveSourceSettings#ofDraft`), Ändern geht
   über `ofChange`/`ownPart`: library setzt keine Einstellungen selbst zusammen.
 - **Eine neue Konnektorbibliothek** (Anlegen, Zugang zuordnen, Test und Auflistung vor dem
