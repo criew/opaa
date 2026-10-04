@@ -36,7 +36,8 @@ jede Bibliothek trägt ihre Zieladresse frei, und OPAA speichert keine OAuth-Tok
 4. **Profilpflicht** je Konnektor: nur über ein Profil nutzbar, ohne frei eingetragene Adresse.
 5. **Vier Anmeldearten:** persönliches Geheimnis (App-Passwort, Token), OAuth (Autorisierungscode
    mit PKCE), Client-Credentials und Dienstkonto-Schlüssel (JWT-Assertion). Token-Austausch über den
-   Identitätsanbieter ist nur ein Spike.
+   Identitätsanbieter trägt nach dem Spike nur den Live-Zugriff; ob er eine fünfte Anmeldeart wird,
+   ist offen (siehe [Anmeldearten](#anmeldearten)).
 6. **Verbundene Konten** einer Person speisen eine **private Bibliothek**: genau eine Besitzerin,
    nicht teilbar, keine Nachfolge, für die Verwaltung nur zusammengefasst sichtbar.
 7. **Verbindliche Schutzregeln:** „Sicht als“ ist ausgeschlossen, ein Vorfallszugriff braucht vier
@@ -70,8 +71,9 @@ Quellfreigabe dort „Quelle verbinden“, und die Konnektor-Freigabe wird als F
 - **Fremdzugang** ([external-access.md](./external-access.md)) ist die Gegenrichtung: OPAA als
   MCP-*Server* für fremde KI-Werkzeuge.
 - **Anmeldung an OPAA** ([ADR-0025](../decisions/0025-mehrere-oidc-anbieter.md)): Die Token der
-  OIDC-Anbieter dienen nur der Identität und werden hier nicht verwendet, außer im Spike zum
-  Token-Austausch.
+  OIDC-Anbieter dienen nur der Identität und werden hier nicht verwendet. Einzige mögliche
+  Ausnahme ist der Token-Austausch (offen, siehe [Anmeldearten](#anmeldearten)): Er reicht das
+  Anmeldetoken als Tauschgrundlage an den Anbieter weiter und speichert es nicht.
 
 ---
 
@@ -258,10 +260,72 @@ derselben Transaktion. Je Verbindung läuft höchstens eine Erneuerung zugleich.
 - Die Verwaltungsübersicht zeigt die Anzahl abgelaufener Verbindungen je Profil mit Warnung ab einem
   einstellbaren Schwellenwert.
 
-**Token-Austausch (nur Spike).** In openDesk melden sich alle Dienste über dasselbe Keycloak an. Ein
-Spike prüft, ob OPAA das Anmeldetoken einer Person gegen ein Token für Nextcloud bzw. Open-Xchange
-tauschen kann. Bekannte Grenzen: OPAA bräuchte einen vertraulichen Client, und getauschte Token gelten
-nur in der laufenden Sitzung. Erst danach wird über eine weitere Anmeldeart entschieden.
+### Token-Austausch (Ergebnis des Spikes, Entscheidung offen)
+
+In openDesk melden sich alle Dienste über dasselbe Keycloak an. Der Spike
+([#2174](https://github.com/criew/opaa/issues/2174), Belege am Epic
+[#2147](https://github.com/criew/opaa/issues/2147)) hat mit Keycloak 26.7 und Nextcloud 31
+(`user_oidc` 8.11, Bearer-Prüfung) gemessen, ob OPAA das Anmeldetoken einer Person per Standard
+Token Exchange (RFC 8693) gegen ein Nextcloud-Token tauschen kann.
+
+**Was geht:**
+
+- Der Austausch gelingt. In Keycloak 26.7 ist der Standard Token Exchange ab Werk eingeschaltet.
+  Nötig sind:
+  - ein **vertraulicher Client** für OPAA mit eingeschaltetem „Standard token exchange“; ein
+    öffentlicher Client darf nicht tauschen;
+  - ein Audience-Mapper am SPA-Client, der den OPAA-Client in `aud` einträgt; fehlt er, lehnt
+    Keycloak mit 403 ab;
+  - ein Audience-Mapper am OPAA-Client je Zieldienst.
+- **Die Audience ist eingeschränkt.** OPAA erhält nur Zieldienste, für die sein Client einen
+  Audience-Mapper hat. Jede andere Audience lehnt Keycloak ab („Requested audience not available“).
+  Nextcloud nimmt mit den Vorgaben von `user_oidc` nur Token mit `aud=nextcloud` an. Das unveränderte
+  Anmeldetoken weist es ab (401).
+- Mit dem getauschten Token gelingt der Zugriff auf OCS und WebDAV: Lesen, Auflisten und Schreiben
+  im Namen der Person. Das Token trägt keinen `act`-Claim. Dass OPAA zugreift, zeigt nur `azp`.
+- **Zugriffsdauer:** Ein getauschtes Token gilt so lange wie ein normales Zugriffstoken des Realms.
+
+**Was nicht geht:**
+
+- **Erneuerung ohne Sitzung.** Ein Refresh-Token aus dem Austausch gibt es nur mit der
+  Client-Einstellung „gleiche Sitzung“. Es endet mit der Anmeldesitzung der Person; nach der
+  Abmeldung meldet Keycloak „Session not active“. `offline_access` ist im Austausch verboten. Als
+  Tauschgrundlage dient nur ein Zugriffstoken, nach Abmeldung oder Ablauf nimmt Keycloak es nicht
+  mehr an.
+- **Widerruf am Zieldienst.** Ein bereits getauschtes Token nimmt Nextcloud nach der Abmeldung bis
+  zu seinem Ablauf weiter an. `user_oidc` prüft nur Signatur und Ablauf, nicht die Sitzung.
+
+**Bewertung:**
+
+| Nutzung | Token-Austausch | Begründung |
+|---|---|---|
+| Live-Zugriff (Chat, MCP; #1747) | **geeignet** | Kein Token-Speicher, keine eigene Zustimmung je Dienst; Tausch je Anfrage mit dem eingehenden Anmeldetoken. Nur für Personen, die über denselben Keycloak angemeldet sind; nicht für lokale Konten und nicht für Fremdzugangs-Token |
+| Hintergrundläufe (Indexierung) | **nicht geeignet** | Erneuerung endet mit der Sitzung; Offline-Token sind im Austausch gesperrt |
+
+Für Hintergrundläufe in openDesk braucht es keine neue Anmeldeart: Die bestehende Anmeldeart
+**OAuth** mit Keycloak als Anbieter und `offline_access` lieferte im Kontrollversuch ein Token mit
+`aud=nextcloud`. Es ließ sich nach der Abmeldung im Browser weiter erneuern. Ob eine
+openDesk-Installation Offline-Sitzungen erlaubt, entscheidet ihr Betreiber. Sonst bleibt das
+App-Passwort.
+
+**Offen:**
+
+- **Fünfte Anmeldeart für den Live-Zugriff:** Entscheidung mit #1747. Sie braucht Nachträge:
+  - **ADR-0041:** Die Anmeldeart bindet das Profil an einen OIDC-Anbieter mit demselben Issuer.
+    Das Client-Secret des vertraulichen Clients liegt am Profil, nicht in `oidc_providers`.
+  - **ADR-0025:** Das Backend darf das eingehende Anmeldetoken als Tauschgrundlage weiterreichen.
+    Das Anmeldetoken muss den OPAA-Client in `aud` tragen.
+
+  Anmeldefluss, öffentlicher SPA-Client und zustandsloser Resource-Server bleiben unverändert.
+- **Einstellungen einer echten openDesk-Installation**, nicht gemessen:
+  - die Keycloak-Version und ob der Token-Austausch dort eingeschaltet ist;
+  - Offline-Sitzungen;
+  - die `user_oidc`-Einstellungen. Mit `userinfo_bearer_validation` oder ausgeschalteter
+    Audience-Prüfung nimmt Nextcloud jedes Token des Realms an, auch das unveränderte Anmeldetoken.
+    Die Audience-Einschränkung wirkt dann nicht.
+- **Open-Xchange:** nicht gemessen. OX App Suite 8 läuft in openDesk als Helm-Deployment mit
+  mehreren Komponenten. Ein Aufbau in Docker war im Spike nicht vertretbar. Ob und mit welcher
+  Audience-Prüfung die HTTP-API ein Keycloak-Token annimmt, ist nicht belegt.
 
 ---
 
@@ -533,7 +597,8 @@ Werkzeugaufrufe, Freigabe schreibender Aufrufe und Ausgangstor gehören zu #1747
    erst nach der Rechtsklärung, dem Kontingent, dem Pilot ohne Konnektor und mit den
    [Bedingungen für Postfächer](#bedingungen-für-den-ersten-postfach-konnektor).
 
-Unabhängig davon: Spike zum Token-Austausch gegen openDesk. Der MCP-Client folgt als eigenes Epic.
+Der Spike zum Token-Austausch gegen openDesk ist abgeschlossen
+([#2174](https://github.com/criew/opaa/issues/2174)). Der MCP-Client folgt als eigenes Epic.
 
 ---
 
@@ -574,7 +639,11 @@ legt [ADR-0041](../decisions/0041-verbindungen-als-eigenes-modul.md) fest.
   Sache nach für jede Quelle mit Fremdtext (Webverzeichnis, RSS). Ob er dort ebenfalls Pflicht wird,
   ist offen.
 - **Live-Abfrage** verbundener Konten im Chat ohne Indexierung: mit #1747.
-- **Token-Austausch** als weitere Anmeldeart, abhängig vom Spike.
+- **Token-Austausch** als fünfte Anmeldeart, nur für den Live-Zugriff: Der Spike
+  ([#2174](https://github.com/criew/opaa/issues/2174)) belegt die Machbarkeit. Die Entscheidung
+  fällt mit der Live-Abfrage (#1747) und braucht Nachträge zu ADR-0025 und ADR-0041. Offen sind
+  außerdem die Einstellungen einer echten openDesk-Installation und Open-Xchange (siehe
+  [Anmeldearten](#anmeldearten)).
 - **Weitere Kanäle** für Ablaufwarnungen und Abbrüche (E-Mail, Zusammenfassung): Heute gibt es die
   minimale In-App-Benachrichtigung (ADR-0019); der Ausbau gehört zu
   [#1297](https://github.com/criew/opaa/issues/1297).
