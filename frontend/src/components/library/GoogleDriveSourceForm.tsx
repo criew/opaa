@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -84,6 +84,15 @@ export default function GoogleDriveSourceForm({
   const testGeneration = useRef(0)
   const listingGeneration = useRef(0)
   const fileInput = useRef<HTMLInputElement | null>(null)
+
+  // under a profile only the profile names the imitated account (ADR-0040)
+  const profile = connection.connection
+  const subjectOfProfile = profile ? profile.defaults.subject : undefined
+  const strayOwnSubject =
+    profile !== null && subjectOfProfile === undefined && values.subject !== ''
+  useEffect(() => {
+    if (strayOwnSubject) onChange({ subject: '' })
+  }, [strayOwnSubject, onChange])
 
   const keyServes =
     !connection.asksSecret || values.keyFile !== '' || storedKeyServes(values, credentialsStored)
@@ -264,29 +273,37 @@ export default function GoogleDriveSourceForm({
         </Box>
       )}
 
-      <Box>
-        <FieldLabel htmlFor={`${idPrefix}-subject`}>Imitiertes Konto (optional)</FieldLabel>
-        <TextField
-          id={`${idPrefix}-subject`}
-          size="small"
-          fullWidth
-          value={values.subject}
-          onChange={(e) => change({ subject: e.target.value })}
-          placeholder="funktionskonto@example.org"
-          autoComplete="off"
-          helperText={
-            connection.isFixed('subject')
-              ? connection.fixedHint
-              : 'Nur mit domänenweiter Delegation. Bitte ein Funktionskonto, kein persönliches.'
-          }
-          slotProps={{ htmlInput: { readOnly: connection.isFixed('subject') } }}
-        />
-        {subjectChangedWithoutKey && (
-          <Alert severity="info" sx={{ mt: 1 }} data-testid="google-drive-subject-needs-key">
-            Für ein anderes imitiertes Konto muss die Schlüsseldatei neu hochgeladen werden.
-          </Alert>
-        )}
-      </Box>
+      {profile ? (
+        <Typography variant="body2" data-testid="google-drive-profile-subject">
+          {typeof subjectOfProfile === 'string' && subjectOfProfile !== ''
+            ? `Imitiertes Konto: ${subjectOfProfile} – vom Zugang „${profile.name}“ vorgegeben.`
+            : `Der Zugang „${profile.name}“ imitiert kein Konto; der Schlüssel liegt am Zugang.`}
+        </Typography>
+      ) : (
+        <Box>
+          <FieldLabel htmlFor={`${idPrefix}-subject`}>Imitiertes Konto (optional)</FieldLabel>
+          <TextField
+            id={`${idPrefix}-subject`}
+            size="small"
+            fullWidth
+            value={values.subject}
+            onChange={(e) => change({ subject: e.target.value })}
+            placeholder="funktionskonto@example.org"
+            autoComplete="off"
+            helperText={
+              connection.isFixed('subject')
+                ? connection.fixedHint
+                : 'Nur mit domänenweiter Delegation. Bitte ein Funktionskonto, kein persönliches.'
+            }
+            slotProps={{ htmlInput: { readOnly: connection.isFixed('subject') } }}
+          />
+          {subjectChangedWithoutKey && (
+            <Alert severity="info" sx={{ mt: 1 }} data-testid="google-drive-subject-needs-key">
+              Für ein anderes imitiertes Konto muss die Schlüsseldatei neu hochgeladen werden.
+            </Alert>
+          )}
+        </Box>
+      )}
 
       <Box>
         <Typography variant="subtitle2" component="h3" sx={{ mb: 1 }}>

@@ -22,6 +22,21 @@ public record ConnectionProfileValues(
     String sourceProxy,
     boolean sourceInsecureSsl) {
 
+  public ConnectionProfileValues withClientId(String id) {
+    return new ConnectionProfileValues(
+        name,
+        serverUrl,
+        authMethod,
+        ownership,
+        id,
+        clientSecretExpiresOn,
+        tenant,
+        scopes,
+        connectorSettings,
+        sourceProxy,
+        sourceInsecureSsl);
+  }
+
   public ConnectionProfileValues withConnectorSettings(ConnectorData settings) {
     return new ConnectionProfileValues(
         name,

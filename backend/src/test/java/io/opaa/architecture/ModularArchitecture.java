@@ -225,7 +225,8 @@ public final class ModularArchitecture {
           "connection.token",
           "connection.profile",
           "connection.request",
-          "connection.account");
+          "connection.account",
+          "connection.oauth");
 
   /**
    * The capability granted per connector type or profile, relative to the root (ADR-0036, Nachtrag
@@ -316,6 +317,17 @@ public final class ModularArchitecture {
   static final String ESTABLISHED = "connection.account.ConnectedAccountService#established";
 
   static final Set<String> ESTABLISHING_PACKAGES = Set.of("connection.account", "connection.oauth");
+
+  /**
+   * A profile's registration with its decrypted secret, relative to the root: only {@link
+   * #SIGN_IN_PACKAGE} reads it or holds the value, so the secret and the key reach no other class.
+   */
+  static final String PROFILE_REGISTRATION =
+      "connection.profile.ProfileRegistrations#registrationOf";
+
+  static final String CLIENT_REGISTRATION = "connection.profile.ClientRegistration";
+
+  static final String SIGN_IN_PACKAGE = "connection.oauth";
 
   /** The web classes that serve a person their own connected accounts, relative to the root. */
   static final Set<String> OWN_ACCOUNT_WEB =
@@ -1169,6 +1181,44 @@ public final class ModularArchitecture {
         .allowEmptyShould(true);
   }
 
+  /**
+   * Calls of {@link #PROFILE_REGISTRATION} and uses of {@link #CLIENT_REGISTRATION} outside {@link
+   * #SIGN_IN_PACKAGE}, other than by the two classes that build the value.
+   */
+  ArchRule theProfileRegistrationLeavesOnlyToTheSignIn() {
+    String owner = PROFILE_REGISTRATION.substring(0, PROFILE_REGISTRATION.indexOf('#'));
+    String method = PROFILE_REGISTRATION.substring(PROFILE_REGISTRATION.indexOf('#') + 1);
+    return noClasses()
+        .that(
+            DescribedPredicate.describe(
+                "are outside " + SIGN_IN_PACKAGE + " and do not build the registration",
+                javaClass -> {
+                  JavaClass top = topLevel(javaClass.getBaseComponentType());
+                  String relative = relative(top.getPackageName());
+                  String name = relativeName(top);
+                  return relative != null
+                      && !SIGN_IN_PACKAGE.equals(relative)
+                      && !owner.equals(name)
+                      && !CLIENT_REGISTRATION.equals(name);
+                }))
+        .should()
+        .accessTargetWhere(
+            DescribedPredicate.describe(
+                "call " + PROFILE_REGISTRATION,
+                access ->
+                    access.getName().equals(method)
+                        && owner.equals(relativeName(access.getTargetOwner()))))
+        .orShould()
+        .dependOnClassesThat(
+            DescribedPredicate.describe(
+                "are " + CLIENT_REGISTRATION,
+                javaClass -> CLIENT_REGISTRATION.equals(relativeName(javaClass))))
+        .because(
+            "it carries the profile's client secret or key; only the sign-in uses it, and hands out"
+                + " the access token alone")
+        .allowEmptyShould(true);
+  }
+
   /** Calls of {@link #ESTABLISHED} outside {@link #ESTABLISHING_PACKAGES}. */
   ArchRule aConnectionIsEstablishedOnlyAfterItsSignIn() {
     String owner = ESTABLISHED.substring(0, ESTABLISHED.indexOf('#'));
@@ -1306,6 +1356,7 @@ public final class ModularArchitecture {
         theAdministrationNeverSeesAConnectedPerson(),
         personNumbersLeaveOnlyMasked(),
         aConnectionIsEstablishedOnlyAfterItsSignIn(),
+        theProfileRegistrationLeavesOnlyToTheSignIn(),
         theForeignContextNeverUsesTheOwnFormula(),
         theProfileSupportIsReadInOnePlace(),
         onlyTheKnownClassesDeleteDocuments(),

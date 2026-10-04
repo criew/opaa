@@ -4,7 +4,10 @@ import io.opaa.api.types.ConnectionAuthMethod;
 import io.opaa.api.types.ConnectionOwnership;
 import io.opaa.api.types.ConnectionProfileSupport;
 import io.opaa.common.ValidationException;
+import io.opaa.indexing.source.ClientAuthentication;
+import io.opaa.indexing.source.ClientCredentialsAuth;
 import io.opaa.indexing.source.ConnectorData;
+import io.opaa.indexing.source.Endpoint;
 import io.opaa.indexing.source.ProfileDeclaration;
 import io.opaa.indexing.source.SignIn;
 import io.opaa.indexing.source.SourceConnectionTestResult;
@@ -12,16 +15,20 @@ import io.opaa.indexing.source.SourceConnector;
 import io.opaa.indexing.source.SourceConnectorDescriptor;
 import io.opaa.indexing.source.SourceSettings;
 import io.opaa.knowledge.SourceType;
+import java.net.URI;
 import org.springframework.stereotype.Component;
 
 /**
  * A test-only connector offering sign-ins whose app registration only a profile holds - OAuth and
- * client credentials - and therefore requiring profiles (ADR-0038). It has no run and no settings.
+ * client credentials against {@link #TOKEN_ENDPOINT} - and therefore requiring profiles (ADR-0038).
+ * It has no run and no settings.
  */
 @Component
 public class ProfileOAuthProbeSourceConnector implements SourceConnector {
 
   public static final SourceType TYPE = SourceType.of("PROFILE_OAUTH_PROBE");
+
+  public static final URI TOKEN_ENDPOINT = URI.create("https://login.example.org/token");
 
   @Override
   public SourceConnectorDescriptor descriptor() {
@@ -34,7 +41,11 @@ public class ProfileOAuthProbeSourceConnector implements SourceConnector {
                     ConnectionAuthMethod.OAUTH,
                     ConnectionOwnership.LIBRARY,
                     ConnectionOwnership.PERSON),
-                SignIn.of(ConnectionAuthMethod.CLIENT_CREDENTIALS, ConnectionOwnership.LIBRARY)));
+                SignIn.clientCredentials(
+                    new ClientCredentialsAuth(
+                        new Endpoint.Fixed(TOKEN_ENDPOINT),
+                        "probe.read",
+                        ClientAuthentication.CLIENT_SECRET_BASIC))));
   }
 
   @Override

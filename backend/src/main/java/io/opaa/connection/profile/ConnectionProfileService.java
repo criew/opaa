@@ -16,8 +16,12 @@ import io.opaa.connection.profile.SourceTransitions.Move;
 import io.opaa.connection.token.ConnectionSecrets;
 import io.opaa.connection.token.ConnectionSecrets.Discarded;
 import io.opaa.connection.token.SecretOwner.LibraryOwned;
+import io.opaa.indexing.source.ClientCredentialsAuth;
 import io.opaa.indexing.source.ConnectorData;
+import io.opaa.indexing.source.DefaultKey;
+import io.opaa.indexing.source.Endpoint;
 import io.opaa.indexing.source.ProfileDeclaration;
+import io.opaa.indexing.source.ServiceAccountKey;
 import io.opaa.indexing.source.SignIn;
 import io.opaa.indexing.source.SourceChangeGate.Answers;
 import io.opaa.indexing.source.SourceConnector;
@@ -50,8 +54,11 @@ import org.springframework.transaction.annotation.Transactional;
  * Creates, changes and deletes connection profiles - system administration only, enforced by the
  * caller. A changed server address or app registration discards every secret held under the profile
  * - of libraries and of persons, whose connections end through {@link PersonConnections} - after a
- * confirmation once connections exist; a new client secret alone discards nothing. The client
- * secret is encrypted here and never returned; the audit names fields and library counts.
+ * confirmation once connections exist; a new client secret alone discards nothing. A changed
+ * default only the profile sets (Google Drive's imitated account) discards the run state of every
+ * library on it, after a confirmation naming their number, and notifies their managers. The client
+ * secret - a service account key is checked here and names the client id - is encrypted here and
+ * never returned; the audit names fields and library counts.
  */
 @Service
 @Transactional(readOnly = true)
@@ -79,6 +86,7 @@ public class ConnectionProfileService {
   private final CredentialsEncryptor encryptor;
   private final AuditEventRecorder audit;
   private final CapabilityService capabilities;
+  private final ProfileFullSync fullSync;
   private final Clock clock;
 
   public ConnectionProfileService(
@@ -93,6 +101,7 @@ public class ConnectionProfileService {
       CredentialsEncryptor encryptor,
       AuditEventRecorder audit,
       CapabilityService capabilities,
+      ProfileFullSync fullSync,
       Clock clock) {
     this.profiles = profiles;
     this.connections = connections;
@@ -105,6 +114,7 @@ public class ConnectionProfileService {
     this.encryptor = encryptor;
     this.audit = audit;
     this.capabilities = capabilities;
+    this.fullSync = fullSync;
     this.clock = clock;
   }
 
@@ -128,7 +138,7 @@ public class ConnectionProfileService {
     get(id);
     long libraryConnections = connections.countByProfileId(id);
     return new ProfileImpact(
-        libraryConnections, libraryConnections, personNumbers.totalOf(id), List.of());
+        libraryConnections, libraryConnections, personNumbers.totalOf(id), List.of(), 0);
   }
 
   /** The connections of each of {@code profiles}, with one query for all of them. */
@@ -155,11 +165,12 @@ public class ConnectionProfileService {
   public ConnectionProfile create(
       CurrentUser caller, SourceType sourceType, ConnectionProfileValues values, String secret) {
     SourceConnector connector = connectorAdmittingProfiles(sourceType);
-    ConnectionProfileValues validated = validate(connector, values, null);
-    requireSecretFits(validated.authMethod(), secret);
+    Keyed keyed = keyed(values, secret, null);
+    ConnectionProfileValues validated = validate(connector, keyed.values(), null);
+    requireSecretFits(validated.authMethod(), keyed.secret());
     Instant now = clock.instant();
     ConnectionProfile profile = new ConnectionProfile(sourceType, now);
-    profile.replace(validated, encryptor.encrypt(blankToNull(secret)), now);
+    profile.replace(validated, encryptor.encrypt(blankToNull(keyed.secret())), now);
     profiles.save(profile);
     record(caller, AuditEventType.CONNECTION_PROFILE_CREATED, profile, null, auditState(profile));
     return profile;
@@ -167,16 +178,19 @@ public class ConnectionProfileService {
 
   /**
    * What a proposed change of profile {@code id} affects, with every connector refusal; nothing is
-   * written, and the connectors are asked outside any transaction.
+   * written, and the connectors are asked outside any transaction. {@code secret} counts only as
+   * far as a new service account key names another client id.
    */
   @Transactional(propagation = Propagation.NOT_SUPPORTED)
-  public ProfileImpact preview(UUID id, ConnectionProfileValues values) {
-    ProfileChange change = plan(get(id), values);
+  public ProfileImpact preview(UUID id, ConnectionProfileValues values, String secret) {
+    ConnectionProfile profile = get(id);
+    ProfileChange change = plan(profile, keyed(values, secret, profile).values());
     return new ProfileImpact(
         change.connections(),
         change.connections(),
         personNumbers.totalOf(id),
-        transitions.check(change.moves(), new Answers()));
+        transitions.check(change.moves(), new Answers()),
+        change.fullSyncs());
   }
 
   /**
@@ -186,11 +200,13 @@ public class ConnectionProfileService {
    * first, before any connector is asked.
    */
   @Transactional(propagation = Propagation.NOT_SUPPORTED)
-  public Answers check(UUID id, ConnectionProfileValues values, boolean confirmed) {
-    ProfileChange change = plan(get(id), values);
+  public Answers check(UUID id, ConnectionProfileValues values, String secret, boolean confirmed) {
+    ConnectionProfile profile = get(id);
+    ProfileChange change = plan(profile, keyed(values, secret, profile).values());
     if (!confirmed) {
-      requireNothingDiscarded(change);
+      requireConfirmed(change);
     }
+    requireNoneRunning(change);
     Answers answers = new Answers();
     transitions.check(change.moves(), answers);
     return answers;
@@ -209,12 +225,14 @@ public class ConnectionProfileService {
 
   /**
    * Replaces every editable field; {@code secret} {@code null} keeps the stored one, blank clears
-   * it, anything else replaces it. A new address, client id, tenant, scope list or sign-in method
-   * discards every secret held under the profile, a new binding the secrets it concerns and ends
-   * the persons' connections - refused with 409 {@value #CONFIRMATION_REQUIRED} while there are
-   * such and {@code confirmed} is false. Every library whose effective configuration changes passes
-   * its connector first ({@code answers} given by {@link #check}); one refusal leaves profile and
-   * libraries unchanged (400 {@value ChangeRejection#PROFILE_CHANGE_REJECTED}).
+   * it, anything else replaces it and lifts a rejection of the profile's own sign-in. A new
+   * address, client id (for a service account key: another account in the key), tenant, scope list
+   * or sign-in method discards every secret held under the profile and ends the persons'
+   * connections, a new binding the secrets it concerns, a changed default only the profile sets the
+   * run state of every library on it - each refused with 409 {@value #CONFIRMATION_REQUIRED} while
+   * there are such and {@code confirmed} is false. Every library whose effective configuration
+   * changes passes its connector first ({@code answers} given by {@link #check}); one refusal
+   * leaves profile and libraries unchanged (400 {@value ChangeRejection#PROFILE_CHANGE_REJECTED}).
    */
   @Transactional
   public ConnectionProfile update(
@@ -225,21 +243,27 @@ public class ConnectionProfileService {
       boolean confirmed,
       Answers answers) {
     ConnectionProfile profile = get(id);
-    ProfileChange change = plan(profile, values);
+    Keyed keyed = keyed(values, secret, profile);
+    ProfileChange change = plan(profile, keyed.values());
     ConnectionProfileValues validated = change.values();
-    String newSecret = blankToNull(secret);
+    String newSecret = blankToNull(keyed.secret());
     requireSecretFits(validated.authMethod(), newSecret);
     String ciphertext;
+    boolean keyChangesMeaning =
+        (validated.authMethod() == ConnectionAuthMethod.SERVICE_ACCOUNT_KEY)
+            != (profile.getAuthMethod() == ConnectionAuthMethod.SERVICE_ACCOUNT_KEY);
     if (!validated.authMethod().usesAppRegistration()) {
       ciphertext = null;
     } else if (secret == null) {
-      ciphertext = profile.getClientSecretCiphertext();
+      // a client secret is no key file, and a key file no client secret
+      ciphertext = keyChangesMeaning ? null : profile.getClientSecretCiphertext();
     } else {
       ciphertext = encryptor.encrypt(newSecret);
     }
     if (!confirmed) {
-      requireNothingDiscarded(change);
+      requireConfirmed(change);
     }
+    requireNoneRunning(change);
     Set<UUID> discarding = change.discarding();
     long affected = change.affected();
     List<ChangeRejection> rejections = transitions.check(change.moves(), answers);
@@ -248,6 +272,9 @@ public class ConnectionProfileService {
     }
     Map<String, Object> before = auditState(profile);
     profile.replace(validated, ciphertext, clock.instant());
+    if (secret != null || change.discardsAll()) {
+      profile.signInRejectedSince(null);
+    }
     profiles.save(profile);
     for (Move move : change.moves()) {
       KnowledgeLibrary library = move.library();
@@ -277,6 +304,12 @@ public class ConnectionProfileService {
     for (Move move : change.moves()) {
       transitions.record(caller, move.library(), transitions.applied(move));
     }
+    if (change.fullSyncs() > 0) {
+      fullSync.notifyManagers(
+          profile,
+          String.join(", ", change.fullSyncLabels()),
+          change.moves().stream().map(Move::library).toList());
+    }
     Map<String, Object> after = auditState(profile);
     if (affected > 0) {
       after.put("connectionsDiscarded", affected);
@@ -285,24 +318,76 @@ public class ConnectionProfileService {
     return profile;
   }
 
-  /** Refuses {@code change} with 409 while it discards stored secrets. */
-  private static void requireNothingDiscarded(ProfileChange change) {
+  /**
+   * Refuses {@code change} with 409 while it discards stored secrets or the run state of libraries.
+   */
+  private static void requireConfirmed(ProfileChange change) {
     long affected = change.affected();
     // asked on every profile for persons, whether or not one is connected: the text tells nothing
     boolean persons = change.personsConcerned();
+    long fullSyncs = change.fullSyncs();
+    if (affected == 0 && !persons && fullSyncs == 0) {
+      return;
+    }
+    StringBuilder text = new StringBuilder();
     if (affected > 0 || persons) {
-      throw new ConflictException(
-          "Die Änderung verwirft die Zugangsdaten "
-              + (affected == 0
+      text.append("Die Änderung verwirft die Zugangsdaten ")
+          .append(
+              affected == 0
                   ? ""
                   : "von "
                       + affected
                       + (affected == 1 ? " Verbindung" : " Verbindungen")
                       + (persons ? " sowie " : ""))
-              + (persons ? "etwaiger verbundener Konten von Personen" : "")
-              + " dieses Zugangs. Bitte bestätigen.",
-          CONFIRMATION_REQUIRED);
+          .append(persons ? "etwaiger verbundener Konten von Personen" : "")
+          .append(" dieses Zugangs. ");
     }
+    if (fullSyncs > 0) {
+      text.append("Die Vorgabe „")
+          .append(String.join("“, „", change.fullSyncLabels()))
+          .append("“ ändert sich: Der Abgleichsstand von ")
+          .append(fullSyncs)
+          .append(fullSyncs == 1 ? " Bibliothek" : " Bibliotheken")
+          .append(" wird verworfen, der nächste Lauf liest die Quelle vollständig neu. ");
+    }
+    throw new ConflictException(text.append("Bitte bestätigen.").toString(), CONFIRMATION_REQUIRED);
+  }
+
+  /** Refuses {@code change} with 409 while it resets a library whose run is going. */
+  private void requireNoneRunning(ProfileChange change) {
+    if (change.fullSyncs() > 0) {
+      fullSync.requireNoneRunning(change.moves().stream().map(Move::library).toList());
+    }
+  }
+
+  /**
+   * {@code values} and {@code secret} as stored: for a service account key the key in its stored
+   * form and the client id it names - a kept key keeps the stored id, a cleared one leaves none.
+   *
+   * @throws ValidationException (German 400) for a key file that cannot be read
+   */
+  private static Keyed keyed(
+      ConnectionProfileValues values, String secret, ConnectionProfile existing) {
+    if (values.authMethod() != ConnectionAuthMethod.SERVICE_ACCOUNT_KEY) {
+      return new Keyed(values, secret);
+    }
+    String sent = blankToNull(secret);
+    if (sent != null) {
+      ServiceAccountKey key;
+      try {
+        key = ServiceAccountKey.parse(sent);
+      } catch (ValidationException e) {
+        throw new ValidationException(
+            "clientSecret: Der Dienstkonto-Schlüssel ist keine gültige JSON-Schlüsseldatei eines"
+                + " Dienstkontos");
+      }
+      return new Keyed(values.withClientId(key.clientEmail()), key.storedForm());
+    }
+    boolean keeps =
+        secret == null
+            && existing != null
+            && existing.getAuthMethod() == ConnectionAuthMethod.SERVICE_ACCOUNT_KEY;
+    return new Keyed(values.withClientId(keeps ? existing.getClientId() : null), secret);
   }
 
   /**
@@ -314,6 +399,16 @@ public class ConnectionProfileService {
   private ProfileChange plan(ConnectionProfile profile, ConnectionProfileValues values) {
     SourceConnector connector = connectorAdmittingProfiles(profile.getSourceType());
     ConnectionProfileValues validated = validate(connector, values, profile.getId());
+    ConnectorData defaultsBefore = ConnectorData.fromJson(profile.getConnectorSettings());
+    List<String> fullSyncLabels =
+        connector.descriptor().profileDeclaration().defaults().keys().stream()
+            .filter(DefaultKey::profileOnly)
+            .filter(
+                key ->
+                    !Objects.equals(
+                        valueOf(defaultsBefore, key), valueOf(validated.connectorSettings(), key)))
+            .map(DefaultKey::label)
+            .toList();
     boolean addressChanged = !profile.getServerUrl().equals(validated.serverUrl());
     boolean registrationChanged =
         profile.getAuthMethod() != validated.authMethod()
@@ -357,16 +452,28 @@ public class ConnectionProfileService {
         rebindsPersons,
         profile.getOwnership().admitsPersons(),
         connected.size(),
-        moves);
+        moves,
+        fullSyncLabels);
+  }
+
+  private static Object valueOf(ConnectorData defaults, DefaultKey key) {
+    return defaults == null ? null : defaults.get(key.key());
   }
 
   /**
    * The emergency shutdown "Alle Verbindungen trennen": discards every secret, keeps the profile.
+   * For the profile's own sign-in that is its client secret or key, the one secret its libraries
+   * are reached with.
    */
   @Transactional
   public ProfileImpact disconnectAll(CurrentUser caller, UUID id) {
     ConnectionProfile profile = get(id);
     PersonCount ended = personNumbers.totalOf(id);
+    boolean dropsOwnSecret = signsInItself(profile.getAuthMethod()) && profile.isClientSecretSet();
+    if (dropsOwnSecret) {
+      profile.dropClientSecret(clock.instant());
+      profiles.save(profile);
+    }
     Discarded discarded = secrets.discardAllUnder(id, ConnectionEndCause.EMERGENCY);
     persons.endAllUnder(id, ConnectionEndCause.EMERGENCY, caller.id());
     record(
@@ -374,8 +481,17 @@ public class ConnectionProfileService {
         AuditEventType.CONNECTION_PROFILE_DISCONNECTED,
         profile,
         null,
-        Map.of("connectionsDisconnected", discarded.libraries()));
-    return new ProfileImpact(discarded.libraries(), discarded.libraries(), ended, List.of());
+        Map.of(
+            "connectionsDisconnected",
+            discarded.libraries(),
+            "clientSecretDeleted",
+            dropsOwnSecret));
+    return new ProfileImpact(discarded.libraries(), discarded.libraries(), ended, List.of(), 0);
+  }
+
+  private static boolean signsInItself(ConnectionAuthMethod method) {
+    return method == ConnectionAuthMethod.CLIENT_CREDENTIALS
+        || method == ConnectionAuthMethod.SERVICE_ACCOUNT_KEY;
   }
 
   /**
@@ -461,7 +577,7 @@ public class ConnectionProfileService {
     String tenant = optional(values.tenant(), "tenant", MAX_FIELD_LENGTH);
     String scopes = optional(values.scopes(), "scopes", MAX_SCOPES_LENGTH);
     if (method.usesAppRegistration()) {
-      if (clientId == null) {
+      if (clientId == null && method != ConnectionAuthMethod.SERVICE_ACCOUNT_KEY) {
         throw new ValidationException("clientId ist für diese Anmeldeart erforderlich");
       }
     } else if (clientId != null || tenant != null || values.clientSecretExpiresOn() != null) {
@@ -471,6 +587,13 @@ public class ConnectionProfileService {
     }
     if (scopes != null && !method.usesScopes()) {
       throw new ValidationException("Scopes gehören nur zu OAuth und Client-Credentials");
+    }
+    if (signIn.details() instanceof ClientCredentialsAuth auth
+        && auth.token().needsTenant()
+        && (tenant == null || !Endpoint.WithTenant.TENANT.matcher(tenant).matches())) {
+      throw new ValidationException(
+          "tenant ist für diese Anmeldeart erforderlich und besteht nur aus Buchstaben, Ziffern,"
+              + " Punkt und Bindestrich");
     }
     ConnectorData settings = declaration.defaults().read(values.connectorSettings());
     String proxy = proxyOf(values.sourceProxy());
@@ -586,16 +709,20 @@ public class ConnectionProfileService {
     return new NotFoundException("Zugang nicht gefunden");
   }
 
+  /** The values and the secret of a request, a service account key read. */
+  private record Keyed(ConnectionProfileValues values, String secret) {}
+
   /**
    * Connections of libraries a change would cut off, the libraries behind them, the persons'
-   * connected accounts (masked), and the connectors' refusals of a proposed change - empty without
-   * one.
+   * connected accounts (masked), the connectors' refusals of a proposed change - empty without one
+   * - and the libraries whose run state it discards.
    */
   public record ProfileImpact(
       long connections,
       long libraries,
       PersonCount connectedAccounts,
-      List<ChangeRejection> rejections) {}
+      List<ChangeRejection> rejections,
+      long fullSyncLibraries) {}
 
   /**
    * @param dropsPersons whether the new ownership no longer admits persons
@@ -610,7 +737,13 @@ public class ConnectionProfileService {
       boolean rebindsPersons,
       boolean forPersons,
       long connections,
-      List<Move> moves) {
+      List<Move> moves,
+      List<String> fullSyncLabels) {
+
+    /** The libraries whose run state a changed default only the profile sets discards. */
+    long fullSyncs() {
+      return fullSyncLabels.isEmpty() ? 0 : moves.size();
+    }
 
     /** Whether persons' connections end - told without saying whether there are any. */
     boolean personsConcerned() {

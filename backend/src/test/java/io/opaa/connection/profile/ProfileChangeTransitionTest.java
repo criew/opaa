@@ -77,6 +77,7 @@ class ProfileChangeTransitionTest {
           mock(CredentialsEncryptor.class),
           wiring.audit,
           mock(CapabilityService.class),
+          mock(ProfileFullSync.class),
           Clock.fixed(NOW, ZoneOffset.UTC));
 
   private ConnectionProfile profile;
@@ -156,7 +157,7 @@ class ProfileChangeTransitionTest {
     KnowledgeLibrary refused = library("/b", ProfileProbeSourceConnector.CLOUD_ONLY_TOPIC);
 
     ConnectionProfileService.ProfileImpact impact =
-        service.preview(profile.getId(), values("DC", null));
+        service.preview(profile.getId(), values("DC", null), null);
 
     assertThat(impact.connections()).isEqualTo(2);
     assertThat(impact.rejections())
@@ -178,7 +179,7 @@ class ProfileChangeTransitionTest {
     library("/same", "Wetter");
     library("/other", "Wetter");
 
-    Answers answers = service.check(profile.getId(), values("DC", null), false);
+    Answers answers = service.check(profile.getId(), values("DC", null), null, false);
     assertThat(probe.changeChecks()).hasSize(2);
     service.update(ADMIN, profile.getId(), values("DC", null), null, false, answers);
 
@@ -194,7 +195,8 @@ class ProfileChangeTransitionTest {
     ConnectionProfileService.ProfileImpact impact =
         service.preview(
             profile.getId(),
-            values("CLOUD", ProfileProbeSourceConnector.UNREACHABLE_PROXY + ":3128"));
+            values("CLOUD", ProfileProbeSourceConnector.UNREACHABLE_PROXY + ":3128"),
+            null);
 
     assertThat(impact.rejections())
         .singleElement()
@@ -221,7 +223,7 @@ class ProfileChangeTransitionTest {
             null,
             false);
 
-    assertThatThrownBy(() -> service.check(profile.getId(), moved, false))
+    assertThatThrownBy(() -> service.check(profile.getId(), moved, null, false))
         .isInstanceOf(ConflictException.class);
 
     assertThat(probe.changeChecks()).isEmpty();

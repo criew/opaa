@@ -132,8 +132,9 @@ class SourceConnectorRegistryTest {
         .hasMessageContaining("RSS_FEED must name a push intake exactly when it handles one");
   }
 
+  /** The key then lies with the profile, and the core signs with it there. */
   @Test
-  void aServiceAccountKeyConnectorAdmittingProfilesFailsStartup() {
+  void aServiceAccountKeyConnectorMayAdmitProfiles() {
     List<SourceConnector> connectors =
         replacingRss(
             remoteRss(
@@ -143,9 +144,12 @@ class SourceConnectorRegistryTest {
                         new ServiceAccountKeyAuth(
                             URI.create("https://oauth.example.org/token"), "scope")))));
 
-    assertThatThrownBy(() -> new SourceConnectorRegistry(connectors))
-        .isInstanceOf(IllegalStateException.class)
-        .hasMessageContaining("RSS_FEED signs in with a service account key");
+    assertThat(
+            new SourceConnectorRegistry(connectors)
+                .descriptor(SourceTypes.RSS_FEED)
+                .profileDeclaration()
+                .admitsProfiles())
+        .isTrue();
   }
 
   @Test
@@ -189,11 +193,11 @@ class SourceConnectorRegistryTest {
   }
 
   /**
-   * ADR-0038 in the other direction: a connector reading a remote source admits profiles; only one
-   * signing in with a service account key may not yet.
+   * ADR-0038 in the other direction: a connector reading a remote source admits profiles, also one
+   * signing in with a service account key.
    */
   @Test
-  void aRemoteConnectorWithoutProfilesFailsStartupUnlessItSignsWithAServiceAccountKey() {
+  void aRemoteConnectorWithoutProfilesFailsStartup() {
     List<SourceConnector> withoutProfiles =
         replacingRss(plain(SourceConnectorDescriptor.remoteRun(SourceTypes.RSS_FEED, "RSS-Feed")));
     List<SourceConnector> signingWithAKey =
@@ -206,11 +210,9 @@ class SourceConnectorRegistryTest {
     assertThatThrownBy(() -> new SourceConnectorRegistry(withoutProfiles))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("RSS_FEED reads a remote source and must admit profiles");
-    assertThat(
-            new SourceConnectorRegistry(signingWithAKey)
-                .descriptor(SourceTypes.RSS_FEED)
-                .admitsProfiles())
-        .isFalse();
+    assertThatThrownBy(() -> new SourceConnectorRegistry(signingWithAKey))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("RSS_FEED reads a remote source and must admit profiles");
   }
 
   @Test
@@ -243,9 +245,12 @@ class SourceConnectorRegistryTest {
                         remoteRss(
                             ProfileDeclaration.of(
                                 ConnectionProfileSupport.REQUIRED,
-                                SignIn.of(
-                                    ConnectionAuthMethod.CLIENT_CREDENTIALS,
-                                    ConnectionOwnership.LIBRARY)))))
+                                SignIn.clientCredentials(
+                                    new ClientCredentialsAuth(
+                                        new Endpoint.Fixed(
+                                            URI.create("https://login.example.org/token")),
+                                        null,
+                                        ClientAuthentication.CLIENT_SECRET_POST))))))
                 .descriptor(SourceTypes.RSS_FEED)
                 .profileDeclaration()
                 .support())

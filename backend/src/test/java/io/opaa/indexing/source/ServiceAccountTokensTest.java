@@ -168,9 +168,51 @@ class ServiceAccountTokensTest {
     endpoint.answer(FakeTokenEndpoint.error(400, "invalid_grant", "Invalid JWT Signature."));
 
     assertThatThrownBy(() -> tokens.accessToken(storedKey(), null, auth, null))
-        .isInstanceOf(SourceCredentialsException.class)
+        .isInstanceOf(SignInRejectedException.class)
         .hasMessageContaining(ServiceAccountKeyFixture.CLIENT_EMAIL)
         .hasMessageContaining("ungültig, widerrufen");
+  }
+
+  /**
+   * Google words a server clock off by too much as an invalid grant; its description tells, and
+   * then the key is not refused but the clock named. Without a description both causes are named.
+   */
+  @Test
+  void aClockOffIsNamedAndRejectsNoKey() {
+    endpoint.answer(
+        FakeTokenEndpoint.error(
+            400,
+            "invalid_grant",
+            "Invalid JWT: Token must be a short-lived token (60 minutes) and in a reasonable"
+                + " timeframe. Check your iat and exp values in the JWT claim."));
+
+    assertThatThrownBy(() -> tokens.accessToken(storedKey(), null, auth, null))
+        .isInstanceOf(SourceCredentialsException.class)
+        .isNotInstanceOf(SignInRejectedException.class)
+        .hasMessageContaining("Uhrzeit des Servers");
+
+    endpoint.answer(FakeTokenEndpoint.error(400, "invalid_grant", ""));
+
+    assertThatThrownBy(() -> tokens.accessToken(storedKey(), null, auth, null))
+        .isInstanceOf(SignInRejectedException.class)
+        .hasMessageContaining("ungültig, widerrufen")
+        .hasMessageContaining("Uhrzeit des Servers abweicht");
+  }
+
+  /** Only a refusal of the key itself rejects the registration; a scope or account does not. */
+  @Test
+  void anUnknownClientRejectsTheKeyAndARefusedScopeDoesNot() {
+    endpoint.answer(
+        FakeTokenEndpoint.error(401, "invalid_client", "The OAuth client was deleted."));
+
+    assertThatThrownBy(() -> tokens.accessToken(storedKey(), null, auth, null))
+        .isInstanceOf(SignInRejectedException.class);
+
+    endpoint.answer(FakeTokenEndpoint.error(400, "invalid_scope", "Invalid scope."));
+
+    assertThatThrownBy(() -> tokens.accessToken(storedKey(), null, auth, null))
+        .isInstanceOf(SourceCredentialsException.class)
+        .isNotInstanceOf(SignInRejectedException.class);
   }
 
   @Test
@@ -184,6 +226,7 @@ class ServiceAccountTokensTest {
 
     assertThatThrownBy(() -> tokens.accessToken(storedKey(), "fach@example.org", auth, null))
         .isInstanceOf(SourceCredentialsException.class)
+        .isNotInstanceOf(SignInRejectedException.class)
         .hasMessageContaining("domänenweite Delegation fehlt")
         .hasMessageContaining("fach@example.org");
   }
@@ -194,6 +237,7 @@ class ServiceAccountTokensTest {
 
     assertThatThrownBy(() -> tokens.accessToken(storedKey(), "weg@example.org", auth, null))
         .isInstanceOf(SourceCredentialsException.class)
+        .isNotInstanceOf(SignInRejectedException.class)
         .hasMessageContaining("weg@example.org ist in der Domäne nicht bekannt");
   }
 

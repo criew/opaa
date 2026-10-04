@@ -28,6 +28,7 @@ import {
   listConnectionProfiles,
   listConnectorTypeStates,
   lockConnectionProfile,
+  testConnectionProfileSignIn,
 } from '../services/connectionProfileApi'
 import PageHeading from '../components/a11y/PageHeading'
 import AreaPageHeader from '../components/AreaPageHeader'
@@ -54,6 +55,11 @@ function isPast(isoDate: string) {
   const today = new Date()
   const iso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
   return isoDate < iso
+}
+
+/** Whether the profile signs in itself, so its sign-in can be tested and rejected. */
+function signsInItself(profile: ConnectionProfileResponse) {
+  return profile.authMethod === 'CLIENT_CREDENTIALS' || profile.authMethod === 'SERVICE_ACCOUNT_KEY'
 }
 
 function connectionCount(count: number) {
@@ -159,7 +165,9 @@ export default function ConnectionProfileManagementPage() {
       const impact = await getConnectionProfileImpact(profile.id)
       const confirmed = await confirmAction({
         question: `Alle Verbindungen von „${profile.name}“ trennen?`,
-        consequence: `Betroffen: ${connectionCount(impact.connections)}${accountsClause(profile, impact)}. Alle Zugangsdaten werden sofort verworfen. Der Zugang bleibt bestehen; die Bibliotheken laufen erst wieder, wenn ihre Zugangsdaten neu eingetragen sind.${personsNotice(profile)}`,
+        consequence: signsInItself(profile)
+          ? `Betroffen: ${connectionCount(impact.connections)}${accountsClause(profile, impact)}. ${profile.authMethod === 'SERVICE_ACCOUNT_KEY' ? 'Der Dienstkonto-Schlüssel' : 'Das Client-Secret'} des Zugangs wird unwiderruflich gelöscht. Die Bibliotheken laufen erst wieder, wenn die Systemverwaltung ${profile.authMethod === 'SERVICE_ACCOUNT_KEY' ? 'einen Schlüssel' : 'ein Secret'} am Zugang neu hinterlegt. Beim Anbieter widerruft OPAA nichts; das geschieht dort.${personsNotice(profile)}`
+          : `Betroffen: ${connectionCount(impact.connections)}${accountsClause(profile, impact)}. Alle Zugangsdaten werden sofort verworfen. Der Zugang bleibt bestehen; die Bibliotheken laufen erst wieder, wenn ihre Zugangsdaten neu eingetragen sind.${personsNotice(profile)}`,
         confirmLabel: 'Alle trennen',
         tone: 'danger',
       })
@@ -193,6 +201,16 @@ export default function ConnectionProfileManagementPage() {
       reload()
     } catch (err) {
       notify(err instanceof Error ? err.message : 'Die Sperre ließ sich nicht ändern.', 'error')
+    }
+  }
+
+  async function handleTestSignIn(profile: ConnectionProfileResponse) {
+    try {
+      const result = await testConnectionProfileSignIn(profile.id)
+      notify(result.message, result.success ? 'success' : 'error')
+      reload()
+    } catch (err) {
+      notify(err instanceof Error ? err.message : 'Der Anmeldetest ist fehlgeschlagen.', 'error')
     }
   }
 
@@ -294,6 +312,9 @@ export default function ConnectionProfileManagementPage() {
                           label="Quellart gesperrt"
                         />
                       )}
+                      {profile.signInRejected && (
+                        <Chip size="small" color="error" label="Anmeldung abgelehnt" />
+                      )}
                       {profile.clientSecretExpiresSoon && profile.clientSecretExpiresOn && (
                         <Chip
                           size="small"
@@ -343,6 +364,15 @@ export default function ConnectionProfileManagementPage() {
                       >
                         {profile.locked ? 'Entsperren' : 'Sperren'}
                       </Button>
+                      {signsInItself(profile) && (
+                        <Button
+                          size="small"
+                          onClick={() => void handleTestSignIn(profile)}
+                          aria-label={`Anmeldung von ${profile.name} testen`}
+                        >
+                          Anmeldung testen
+                        </Button>
+                      )}
                       <Button
                         size="small"
                         color="warning"

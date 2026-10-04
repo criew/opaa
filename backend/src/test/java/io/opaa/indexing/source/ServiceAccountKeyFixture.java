@@ -17,8 +17,15 @@ public final class ServiceAccountKeyFixture {
 
   private final KeyPair keyPair;
   private final String privateKeyBase64;
+  private final String clientEmail;
 
   public ServiceAccountKeyFixture() {
+    this(CLIENT_EMAIL);
+  }
+
+  /** A key of the service account {@code clientEmail}. */
+  public ServiceAccountKeyFixture(String clientEmail) {
+    this.clientEmail = clientEmail;
     try {
       KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA");
       generator.initialize(2048);
@@ -51,7 +58,7 @@ public final class ServiceAccountKeyFixture {
           "universe_domain": "googleapis.com"
         }
         """
-        .formatted(PRIVATE_KEY_ID, pem, CLIENT_EMAIL);
+        .formatted(PRIVATE_KEY_ID, pem, clientEmail);
   }
 
   public RSAPublicKey publicKey() {

@@ -57,15 +57,18 @@ function setByProfile(key: string, connection: SourceConnection): boolean {
   return key in connection.defaults || (TRANSPORT_FIELDS as readonly string[]).includes(key)
 }
 
-/** Whether a library signing in this way enters a secret of its own in the source form. */
+/**
+ * Whether a library signing in this way enters a secret of its own in the source form; client
+ * credentials and a service account key lie with the profile.
+ */
 export function asksLibrarySecret(method: ConnectionAuthMethod): boolean {
   switch (method) {
     case 'PERSONAL_SECRET':
-    case 'SERVICE_ACCOUNT_KEY':
       return true
     case 'NONE':
     case 'OAUTH':
     case 'CLIENT_CREDENTIALS':
+    case 'SERVICE_ACCOUNT_KEY':
       return false
     default: {
       const unknown: never = method

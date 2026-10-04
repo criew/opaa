@@ -107,6 +107,7 @@ final class SourceConnectionTestResponseMapper {
   }
 
   private static ProfileDefaultKey toResponse(DefaultKey key) {
-    return new ProfileDefaultKey(key.key(), key.label(), key.kind(), key.choices());
+    return new ProfileDefaultKey(key.key(), key.label(), key.kind(), key.choices())
+        .profileOnly(key.profileOnly());
   }
 }

@@ -10,8 +10,8 @@ import java.util.Set;
 /**
  * One sign-in method a connector offers, with the owners ({@code LIBRARY}, {@code PERSON}) a
  * connection signing in this way may have. A personal secret names its form; a service account key
- * carries its token endpoint and is owned by a library only (ADR-0038, Nachtrag
- * Verbindungsprofile).
+ * and client credentials carry their token endpoint and are owned by a library only (ADR-0038,
+ * Nachtrag Verbindungsprofile).
  */
 public record SignIn(
     ConnectionAuthMethod method, Set<ConnectionOwnership> owners, SignInDetails details) {
@@ -30,6 +30,14 @@ public record SignIn(
     }
     if (keyMethod && !owners.equals(Set.of(ConnectionOwnership.LIBRARY))) {
       throw new IllegalArgumentException("only a library owns a service account key");
+    }
+    boolean clientMethod = method == ConnectionAuthMethod.CLIENT_CREDENTIALS;
+    if (clientMethod != details instanceof ClientCredentialsAuth) {
+      throw new IllegalArgumentException(
+          "a client credentials sign-in, and only that, names its token endpoint");
+    }
+    if (clientMethod && !owners.equals(Set.of(ConnectionOwnership.LIBRARY))) {
+      throw new IllegalArgumentException("only a library owns a client credentials sign-in");
     }
     if ((method == ConnectionAuthMethod.PERSONAL_SECRET) != details instanceof PersonalSecretAuth) {
       throw new IllegalArgumentException(
@@ -57,6 +65,12 @@ public record SignIn(
   public static SignIn serviceAccountKey(ServiceAccountKeyAuth auth) {
     return new SignIn(
         ConnectionAuthMethod.SERVICE_ACCOUNT_KEY, Set.of(ConnectionOwnership.LIBRARY), auth);
+  }
+
+  /** The sign-in by the profile's client credentials, for a library. */
+  public static SignIn clientCredentials(ClientCredentialsAuth auth) {
+    return new SignIn(
+        ConnectionAuthMethod.CLIENT_CREDENTIALS, Set.of(ConnectionOwnership.LIBRARY), auth);
   }
 
   /** Whether a profile of {@code ownership} may choose this sign-in. */

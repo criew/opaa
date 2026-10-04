@@ -1080,7 +1080,9 @@ class PermissionHistoryServiceIntegrationTest {
    * {@code AssetOwnerNames} only reads the display names of owning groups; {@code
    * KnowledgeLibraryService} reaches groups only through it and through {@code AssetGrantService},
    * and its write paths are covered above. {@code AssetFavoriteService} (#2095) reads the formula
-   * only to refuse a favorite on an asset the caller cannot read; it writes favorites only.
+   * only to refuse a favorite on an asset the caller cannot read; it writes favorites only. {@code
+   * ProfileFullSync} (#2220) only reads the grants of a library to tell its managers that a changed
+   * profile forces a full sync; it writes notifications only.
    */
   private static final Set<String> BEANS_REACHING_THE_RIGHTS_TABLES =
       Set.of(
@@ -1115,6 +1117,7 @@ class PermissionHistoryServiceIntegrationTest {
           "LocalAccountGroupDirectoryAdapter",
           "PermissionTransferService",
           "PointInTimeAccessService",
+          "ProfileFullSync",
           "PromptLibraryService",
           "ProviderGroupDirectoryAdapter",
           "TokenGroupSynchronizer");

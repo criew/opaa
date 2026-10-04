@@ -225,10 +225,17 @@ Nachtrag zur Invariante gibt es nicht. Kein Ziel kommt aus der Schlüsseldatei, 
   des Ursprungs. Andernfalls könnte jede Person mit Verwaltungsrecht an der Bibliothek einen
   vorhandenen Delegationsschlüssel auf ein beliebiges Konto der Domäne umlenken. Die Regel gilt für
   jede künftige Anmeldeart mit Subjekt.
-- **`subject` am Profil:** Eine Änderung verwirft, wie eine geänderte Server-Adresse, alle
-  Verbindungen auf dem Profil. Die Bibliotheken ruhen mit Hinweis, bis sie neu verbunden sind; dabei
-  wird der Schlüssel bestätigt. Ein Dienstkonto kennt keine Zustimmung je Verbindung, deshalb nicht „neue Zustimmung“.
-  Die Spezifikation führt das als eigene Zeile.
+- **`subject` am Profil:** Unter einem Profil setzt nur das Profil `subject`; ein Wert der
+  Bibliothek ist ein `400`, und fehlt er am Profil, wird niemand imitiert. Eine Änderung verwirft den
+  Abgleichsstand aller Bibliotheken auf dem Profil, ihr nächster Lauf ist ein Vollabgleich. Vor dem
+  Speichern nennt die Bestätigung die Zahl der Bibliotheken, danach erhalten ihre Verwaltenden eine
+  Benachrichtigung. Solange eine der Bibliotheken läuft, wird die Änderung abgelehnt: Ein laufender
+  Abgleich bekäme ab dann Token des neuen Kontos und endete mit dem Stand zweier Konten. Bekannte
+  Grenze: Startet ein Lauf zwischen dieser Prüfung und dem Speichern, kann sein Abgleichstand
+  gemischt bleiben, bis der nächste Vollabgleich ihn ersetzt. Der
+  Schlüssel bleibt, denn er liegt am Profil und wird nicht je Bibliothek
+  bestätigt (Nachtrag #2220, Entscheidung des Maintainers vom 04.10.2026; ursprünglich sollten die
+  Bibliotheken ruhen, bis sie neu verbunden sind).
 - Persönliche Ablagen echter Personen sind nicht Teil dieses ADR. Ihr Weg wäre ein verbundenes Konto
   über eine *interne* OAuth-App des Betreibers, die keine Verifizierung braucht (Epic #2147).
 
@@ -729,6 +736,24 @@ Nachbesserung aus dem Review:
 
 Prozesslokaler Zustand entsteht nicht: Die Runde steht in der Datenbank, die Tiefensuche eines
 Stores lebt nur im Lauf (ADR-0021 unverändert).
+
+## Nachtrag: Google Drive über Zugang (#2220, 04.10.2026)
+
+- **Profilangabe „optional“** mit der Anmeldeart Dienstkonto-Schlüssel, fester Adresse und der
+  Vorgabe `subject`, die nur das Profil setzt (`DefaultKey#profileOnly`). Die Sperre der Registry
+  für Konnektoren mit Dienstkonto-Schlüssel entfällt.
+- **Ablage:** Der Schlüssel liegt am Profil in `client_secret_ciphertext`, jetzt `text` wie
+  `source_credentials`; die Spec-Grenze von `clientSecret` steigt auf 4096. Die Client-ID ist die
+  `client_email` des Schlüssels und wird nicht abgefragt; ein Schlüssel eines anderen Kontos ist eine
+  Änderung der Registrierung.
+- **Signaturpfad:** `EffectiveSourceSettings` → `ConnectionSecrets#current(ProfileOwned)` →
+  `SecretIssuer#mint` → `ProfileSignIn` → `ServiceAccountTokens`. Signiert wird weiter nur im Kern,
+  der Proxy ist der des Profils. Den Schlüssel sehen `ConnectionProfileService` (prüfen,
+  verschlüsseln), `ProfileRegistrations`, `ProfileSignIn` und `ServiceAccountTokens`; library und
+  der Konnektor nie. library liest `ServiceAccountKey` nur noch für Bibliotheken ohne Profil.
+- **Speichern fragt Google nicht:** Die Prüfung einer Bibliothek vor dem Speichern meldet sich am
+  Profil nicht an (`EffectiveSourceSettings#ofDraftToValidate`); Verbindungstest und Auflistung tun
+  es.
 
 ## Referenzen
 

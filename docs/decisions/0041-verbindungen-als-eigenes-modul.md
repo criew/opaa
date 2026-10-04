@@ -423,6 +423,37 @@ Begründung:
 - **Offen:** Der Schalter der lokalen Kontenverwaltung unter Administration → Benutzer
   (`updateLocalAuthSettings`) fragt nicht nach; dort ruhen die Verbindungen nur.
 
+## Nachtrag vom 04.10.2026: Anmeldung des Zugangs (#2220, Teil von #2168)
+
+- **Paketreihenfolge, unten zuerst:** `connection.log`, `connection.token`, `connection.profile`,
+  `connection.request`, `connection.account`, `connection.oauth`. `oauth` liegt zuoberst; ein Fall
+  der Fixture `connectionorder` belegt, dass ein Verweis von `connection.profile` auf `oauth` nach
+  oben zeigt.
+- **Dritte Besitzart `ProfileOwned`:** Client-Credentials und Dienstkonto-Schlüssel gehören dem
+  Zugang. Es gibt keine Zeile im Token-Speicher; `SecretOwner.of` wählt die Besitzart nach der
+  Anmeldeart, `ConnectionSecrets#current` fragt den Port `SecretIssuer#mint`. Jede Weiche über
+  `SecretOwner` entscheidet ausdrücklich: Der Zugang hält für die Bibliothek nichts (`stored`
+  `null`, `holds` falsch), `store` ist ein Programmfehler, Verwerfen und eine Ablehnung an der
+  Quelle vergessen das Token im Prozess.
+- **Die Registrierung verlässt `connection.profile` nur einmal:** `ProfileRegistrations#registrationOf`
+  liefert `ClientRegistration` (Client-ID, entschlüsseltes Secret bzw. Schlüssel, Mandant, Scopes,
+  deklarierte Anmeldung, imitiertes Konto, Proxy). Aufrufen und den Wert halten darf nur
+  `connection.oauth` (ArchUnit `theProfileRegistrationLeavesOnlyToTheSignIn` mit Fixture). Den
+  TLS-Schalter trägt der Wert nicht: Er gilt für die Server-Adresse, nie für den Token-Endpunkt.
+- **`ProfileSignIn`** implementiert den Port. Client-Credentials holt es über `SourceFormPost`
+  (Zielprüfung, keine Weiterleitung, Größengrenze, `client_secret_basic` oder `_post` nach
+  Deklaration), den Dienstkonto-Schlüssel signiert weiter nur `ServiceAccountTokens` im Kern. Das
+  Token bleibt im Prozess, bis kurz vor seinem Ablauf (ADR-0021).
+- **Ablehnung:** Weist der Token-Endpunkt die Registrierung ab (`invalid_client`, beim Schlüssel
+  auch `invalid_grant` ohne Kontobezug), setzt `ProfileRegistrations` `sign_in_rejected_at` in
+  eigener Transaktion: Die Ablehnung ist eine Tatsache des Anbieters und gilt auch, wenn die Arbeit
+  des Aufrufers zurückgerollt wird; eine nur lesende Transaktion des Aufrufers könnte sie nicht
+  schreiben. Alle Bibliotheken des Zugangs tragen dann `EXPIRED` mit der Systemverwaltung als
+  zuständig, ohne dass ein Lauf den Anbieter erneut fragt. Ein neues Secret, eine neue Registrierung
+  oder ein erfolgreicher Anmeldetest (`POST …/{id}/test-sign-in`) hebt die Markierung auf.
+- **Notabschaltung** löscht bei einem Zugang mit eigener Anmeldung auch das Client-Secret bzw. den
+  Schlüssel: Es ist das einzige Geheimnis, mit dem seine Bibliotheken die Quelle erreichen.
+
 ## Referenzen
 
 - [connector-connections.md](../features/connector-connections.md)

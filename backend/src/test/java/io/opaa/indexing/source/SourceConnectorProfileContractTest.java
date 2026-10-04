@@ -18,10 +18,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 /**
  * The profile declaration of every registered connector against ADR-0038, read from the beans the
- * application actually wires: profiles forbidden exactly for uploads and local sources (a remote
- * one signing with a service account key aside), required exactly with an app registration on the
- * profile, defaults only on settings keys, and a default reading that takes every declared key of
- * its kind and refuses any other.
+ * application actually wires: profiles forbidden exactly for uploads and local sources, required
+ * exactly with an app registration on the profile, defaults only on settings keys, and a default
+ * reading that takes every declared key of its kind and refuses any other.
  */
 @OpaaIntegrationTest
 class SourceConnectorProfileContractTest {
@@ -41,7 +40,7 @@ class SourceConnectorProfileContractTest {
             .assertThat(declaration.support())
             .as(type)
             .isEqualTo(ConnectionProfileSupport.FORBIDDEN);
-      } else if (declaration.serviceAccountKey() == null) {
+      } else {
         softly.assertThat(declaration.admitsProfiles()).as(type).isTrue();
       }
       boolean registrationOnProfile =
@@ -61,9 +60,6 @@ class SourceConnectorProfileContractTest {
             .doesNotContain(ConnectionOwnership.BOTH)
             .isNotEmpty();
       }
-      if (declaration.serviceAccountKey() != null) {
-        softly.assertThat(declaration.admitsProfiles()).as(type).isFalse();
-      }
     }
     softly.assertAll();
   }
@@ -72,7 +68,8 @@ class SourceConnectorProfileContractTest {
    * The shipped remote connectors admit profiles as optional, owned by the library: web and feed
    * with or without sign-in, the others with the library's own secret; Confluence leaves the
    * edition to a profile, S3 region and addressing style, SMB takes an {@code smb://} server, and
-   * the feed names what a requirement leaves open. Upload, file system and Google Drive do not.
+   * the feed names what a requirement leaves open. Google Drive signs in with the profile's service
+   * account key, the imitated account set by the profile alone. Upload and file system admit none.
    */
   @Test
   void theShippedRemoteConnectorsDeclareTheirProfiles() {
@@ -120,7 +117,19 @@ class SourceConnectorProfileContractTest {
               .as(type)
               .isEqualTo(type.equals("RSS_FEED"));
         });
-    for (String type : List.of("UPLOAD", "FILESYSTEM", "GOOGLE_DRIVE")) {
+    ProfileDeclaration drive = declared.get("GOOGLE_DRIVE");
+    softly.assertThat(drive.support()).as("GOOGLE_DRIVE").isEqualTo(OPTIONAL);
+    softly
+        .assertThat(drive.signIns().stream().map(SignIn::method).toList())
+        .as("GOOGLE_DRIVE")
+        .isEqualTo(List.of(ConnectionAuthMethod.SERVICE_ACCOUNT_KEY));
+    softly
+        .assertThat(drive.defaults().keys())
+        .as("GOOGLE_DRIVE")
+        .singleElement()
+        .satisfies(key -> assertThat(key.key() + key.profileOnly()).isEqualTo("subjecttrue"));
+    softly.assertThat(drive.address().fixed()).as("GOOGLE_DRIVE").isNotNull();
+    for (String type : List.of("UPLOAD", "FILESYSTEM")) {
       softly.assertThat(declared.get(type).support()).as(type).isEqualTo(FORBIDDEN);
     }
     softly.assertAll();

@@ -401,8 +401,26 @@ sichtbar. Das Formular richtet sich nach der Quellart:
 - **Vorgaben für jede Bibliothek** zeigt je Einstellung, die ein Zugang vorgeben darf, ein Feld:
   Text, Ja/Nein oder eine Auswahl, jeweils mit „Keine Vorgabe“. Meldet die Quellart keine solche
   Einstellung, fehlt der Abschnitt. Eine Vorgabe, die die Quellart nicht meldet, weist OPAA ab.
+- **Dienstkonto-Schlüssel** lädt das Formular als JSON-Schlüsseldatei hoch; eine Client-ID fragt
+  es dafür nicht ab, OPAA übernimmt sie aus `client_email` des Schlüssels. Gespeichert werden nur
+  `client_email`, `private_key_id` und `private_key`, verschlüsselt.
+- Eine **Vorgabe nur des Zugangs** (bei Google Drive das imitierte Konto) setzt keine Bibliothek
+  auf dem Zugang selbst, auch wenn der Zugang sie leer lässt; ein Wert der Bibliothek wird
+  abgewiesen.
 - Liegen die Angaben der Quellart nicht vor (etwa weil sie nicht geladen werden konnten), lässt
   sich ein Zugang nicht speichern; das Formular sagt das, statt die Vorgaben zu verwerfen.
+
+**Anmeldung des Zugangs (Client-Credentials, Dienstkonto-Schlüssel).** Bei diesen Anmeldearten
+meldet sich der Zugang selbst an: OPAA holt mit Client-ID und Client-Secret bzw. mit dem
+signierten Schlüssel ein Zugriffstoken beim Token-Endpunkt, den der Konnektor nennt, und gibt der
+Bibliothek nur dieses Token. Der Abruf geht über den Proxy des Zugangs und immer mit
+Zertifikatsprüfung; der Schalter „Zertifikatsprüfung aussetzen“ gilt nur für die Server-Adresse.
+Das Token hält OPAA bis kurz vor seinem Ablauf. Lehnt der Anbieter die Registrierung ab (etwa ein
+falsches Client-Secret oder ein widerrufener Schlüssel), zeigt die Liste am Zugang „Anmeldung
+abgelehnt“, alle Bibliotheken darauf melden „Abgelaufen“ mit der Systemverwaltung als zuständig,
+und kein Lauf fragt den Anbieter erneut. Ein neues Client-Secret bzw. ein neuer Schlüssel oder
+**„Anmeldung testen“** am Zugang hebt das auf; der Test meldet sich einmal an und nennt bei einem
+Fehler den Grund.
 
 Die Liste zeigt je Zugang Quellart, Server-Adresse, Anmeldeart, Besitzart und die Zahl der
 Verbindungen von Bibliotheken, dazu einen Hinweis, wenn das Client-Secret bald abläuft. Zwei weitere
@@ -573,9 +591,8 @@ Client-Credentials, Dienstkonto-Schlüssel), je mit den zulässigen Besitzarten,
 Server-Adresse und die Einstellungen, die ein Zugang vorgeben darf. Ein Zugang wählt eine
 Anmeldeart. Pflicht sind Zugänge genau bei einer Quellart mit OAuth oder Client-Credentials, weil
 die App-Registrierung nur am Zugang steht. Verboten sind sie bei einer Quellart, die nichts
-Entferntes liest oder Uploads annimmt, und bei einer, die sich mit dem Dienstkonto-Schlüssel der
-Bibliothek anmeldet (heute Google Drive); jede andere entfernte Quellart lässt sie zu. Die
-mitgelieferten Konnektoren melden:
+Entferntes liest oder Uploads annimmt; jede entfernte Quellart lässt sie zu. Die mitgelieferten
+Konnektoren melden:
 
 | Quellart | Zugänge | Anmeldearten (Besitz: Bibliothek) | Vorgaben des Zugangs | Server-Adresse |
 |---|---|---|---|---|
@@ -585,11 +602,13 @@ mitgelieferten Konnektoren melden:
 | Nextcloud | möglich | persönliches Geheimnis (Benutzername und App-Passwort) | keine | `https://`, `http://` |
 | S3-Objektspeicher | möglich | persönliches Geheimnis (Access Key und Secret Key) | Region, Path-Style-Adressierung | `https://`, `http://` |
 | Windows-Dateifreigabe (SMB) | möglich | persönliches Geheimnis (Benutzername und Passwort) | keine | `smb://`, ohne Proxy und Zertifikatsprüfung |
-| Google Drive | noch nicht | – (die Bibliothek bringt ihren Dienstkonto-Schlüssel selbst mit) | – | – |
+| Google Drive | möglich | Dienstkonto-Schlüssel (am Zugang) | imitiertes Konto (nur am Zugang) | fest `https://www.googleapis.com` |
 | Upload, Dateisystem | verboten | – | – | – |
 
 Das persönliche Geheimnis gehört der Bibliothek: Ihre Verwaltenden tragen es ein, der Zugang legt
-nur Server, Anmeldeart, Proxy, Zertifikatsprüfung und Vorgaben fest. Bei „ohne Anmeldung“ erreicht
+nur Server, Anmeldeart, Proxy, Zertifikatsprüfung und Vorgaben fest. Den Dienstkonto-Schlüssel von
+Google Drive trägt dagegen der Zugang (Kapitel [Google Drive](konnektor-google-drive.md),
+Abschnitt 2.5). Bei „ohne Anmeldung“ erreicht
 ein Lauf die Quelle ohne Zugangsdaten. Was die einzelnen Quellarten auf einem Zugang beachten,
 steht in ihren Kapiteln.
 
@@ -635,9 +654,11 @@ steht in ihren Kapiteln.
 |---|---|
 | Server-Adresse ändern | Nach Bestätigung werden alle Geheimnisse der Bibliotheken auf dem Zugang verworfen; ihre Adressen wandern unter die neue Server-Adresse. Vorher nennt OPAA die Zahl der betroffenen Verbindungen und Bibliotheken |
 | Client-ID, Mandant, Scopes oder Anmeldeart ändern | wie oben, ohne Adresswechsel: alle Verbindungen müssen neu verbunden werden |
-| Vorgaben, Proxy oder Zertifikatsprüfung ändern | Die Bibliotheken behalten ihre Geheimnisse, es sei denn, eine Vorgabe ändert, woran der Konnektor sie bindet; dann gilt die Bestätigung wie oben für die Betroffenen. Entfällt eine Vorgabe, wird ihr bisheriger Wert zur eigenen Einstellung jeder Bibliothek auf dem Zugang; sie laufen unverändert weiter |
-| nur ein neues Client-Secret zur selben Client-ID | keine; die Verbindungen bleiben |
-| „Alle Verbindungen trennen“ (Notabschaltung) | alle Geheimnisse sofort verworfen, der Zugang bleibt. Personen mit verbundenem Konto werden benachrichtigt und müssen ihr Konto selbst neu verbinden; die Rückfrage sagt das bei einem Zugang, der Personen zulässt |
+| Vorgaben, Proxy oder Zertifikatsprüfung ändern | Die Bibliotheken behalten ihre Geheimnisse, es sei denn, eine Vorgabe ändert, woran der Konnektor sie bindet; dann gilt die Bestätigung wie oben für die Betroffenen. Entfällt eine Vorgabe, wird ihr bisheriger Wert zur eigenen Einstellung jeder Bibliothek auf dem Zugang; sie laufen unverändert weiter. Das gilt nicht für eine Vorgabe nur des Zugangs (bei Google Drive das imitierte Konto): Entfällt sie, imitiert keine Bibliothek mehr ein Konto |
+| Dienstkonto-Schlüssel eines anderen Dienstkontos hochladen | wie eine neue Client-ID |
+| Vorgabe nur des Zugangs ändern (bei Google Drive das imitierte Konto) | Nach Bestätigung, die die Zahl der Bibliotheken nennt, verwirft OPAA ihren Abgleichstand; der nächste Lauf jeder Bibliothek liest die Quelle vollständig neu, und ihre Verwaltenden erhalten eine Benachrichtigung. Dokumente des bisherigen Kontos bleiben bis zu diesem Vollabgleich durchsuchbar |
+| nur ein neues Client-Secret zur selben Client-ID bzw. ein neuer Schlüssel desselben Dienstkontos | keine; die Verbindungen bleiben, eine abgelehnte Anmeldung ist aufgehoben |
+| „Alle Verbindungen trennen“ (Notabschaltung) | alle Geheimnisse sofort verworfen, der Zugang bleibt. Personen mit verbundenem Konto werden benachrichtigt und müssen ihr Konto selbst neu verbinden; die Rückfrage sagt das bei einem Zugang, der Personen zulässt. Meldet sich der Zugang selbst an (Client-Credentials, Dienstkonto-Schlüssel), löscht OPAA auch sein Client-Secret bzw. seinen Schlüssel unwiderruflich; nur die Systemverwaltung kann ihn am Zugang neu hinterlegen. Beim Anbieter bleibt er gültig: Den Schlüssel bei Google bzw. das Secret bei Microsoft Entra widerruft die Verwaltung dort selbst |
 | Zugang löschen | alle Geheimnisse verworfen; die Bibliotheken bleiben mit Bestand und dem Hinweis „Zugang entfernt“ stehen |
 
 Jede Änderung, die die Konfiguration einer Bibliothek auf dem Zugang verändert (Server-Adresse,
@@ -650,8 +671,9 @@ für jede betroffene Bibliothek im Revisionsprotokoll wie eine direkte Änderung
 der Konnektor verwirft den Abgleichstand, den sie ungültig macht; der nächste Lauf gleicht dann
 neu ab. Ein reines Umbenennen fragt keinen Konnektor.
 
-Das Client-Secret liegt verschlüsselt mit demselben Schlüssel wie die Zugangsdaten der
-Bibliotheken. Keine Antwort, kein Protokoll und kein Revisionseintrag enthält es; angezeigt wird
+Das Client-Secret bzw. der Dienstkonto-Schlüssel liegt verschlüsselt mit demselben Schlüssel wie
+die Zugangsdaten der Bibliotheken. Keine Antwort, kein Protokoll und kein Revisionseintrag enthält
+es, ebenso wenig das Zugriffstoken; angezeigt wird
 nur, ob eines hinterlegt ist, und eine Warnung, wenn sein Ablaufdatum in weniger als 14 Tagen
 erreicht ist. Anlegen, Ändern, Löschen und die Notabschaltung stehen im Revisionsprotokoll.
 
@@ -661,8 +683,9 @@ die die zuständige Stelle nennt; der Bestand bleibt durchsuchbar und wird nicht
 | Meldung enthält | Ursache | Zuständig |
 |---|---|---|
 | „Zugang entfernt“ | Der Zugang der Bibliothek wurde gelöscht | Verwaltende der Bibliothek: anderen Zugang zuordnen oder löschen |
-| „Verbindung getrennt“ | Das Geheimnis fehlt, etwa nach Adressänderung oder Notabschaltung | Verwaltende der Bibliothek: Geheimnis neu eintragen |
-| „Nicht verbunden“ | Die Anmeldeart des Zugangs (OAuth, Client-Credentials, Dienstkonto-Schlüssel) kann eine Bibliothek nicht verbinden | Systemverwaltung |
+| „Verbindung getrennt“ | Das Geheimnis fehlt, etwa nach Adressänderung oder Notabschaltung | Verwaltende der Bibliothek: Geheimnis neu eintragen; bei einem Zugang, der sich selbst anmeldet, die Systemverwaltung: Client-Secret bzw. Schlüssel eintragen |
+| „Abgelaufen: Der Anbieter hat die Anmeldung des Zugangs … abgelehnt“ | Der Anbieter hat Client-Secret bzw. Schlüssel des Zugangs abgewiesen | Systemverwaltung: neu eintragen oder „Anmeldung testen“ |
+| „Nicht verbunden“ | Die Anmeldeart des Zugangs (OAuth) kann eine Bibliothek noch nicht verbinden | Systemverwaltung |
 | „Die Adresse der Bibliothek liegt nicht unter …“ | Die Adresse verließ den Zugang | Verwaltende der Bibliothek |
 | „Gesperrt – Inhalt wird nicht mehr aktualisiert“ | Die Quellart oder der Zugang ist gesperrt; gilt auch für Bibliotheken ohne Zugang | Systemverwaltung |
 | „… ist nur noch über Zugänge nutzbar, und diese Bibliothek hat eine eigene Adresse“ | Die Profilpflicht der Quellart ist eingeschaltet, der Bestand gesperrt (siehe [Profilpflicht](#profilpflicht-nur-über-zugänge)) | Verwaltende der Bibliothek: einem Zugang zuordnen |
@@ -714,8 +737,8 @@ stoppt dagegen keinen Lauf.
 Für eine Quellart, deren Konnektor Zugänge als möglich meldet, kann die Systemverwaltung die
 **Profilpflicht** einschalten: Danach ist die Quellart nur noch über einen Zugang nutzbar. Eine
 Quellart, die Zugänge verbietet oder ohnehin verlangt, lässt sich nicht umschalten. Einschaltbar
-ist die Pflicht damit für Webverzeichnis, RSS-Feed, Confluence, Nextcloud, S3-Objektspeicher und
-Windows-Dateifreigabe (SMB).
+ist die Pflicht damit für Webverzeichnis, RSS-Feed, Confluence, Nextcloud, S3-Objektspeicher,
+Windows-Dateifreigabe (SMB) und Google Drive.
 
 Der Schalter steht unter **Administration → Zugänge** im Abschnitt „Quellarten“, Spalte
 „Zugänge“: Eine Quellart, die Zugänge verbietet, trägt dort „Keine Zugänge möglich“, eine, die sie
