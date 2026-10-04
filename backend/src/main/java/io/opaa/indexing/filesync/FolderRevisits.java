@@ -18,6 +18,9 @@ import java.util.UUID;
  */
 final class FolderRevisits {
 
+  /** At most this many ids per delete, well below the bind-parameter limit of the driver. */
+  static final int DELETE_BATCH = 1000;
+
   private final SourceSyncStateRepository repository;
   private final UUID stateId;
   private final List<Revisit> atStart;
@@ -71,8 +74,9 @@ final class FolderRevisits {
         consumed.add(revisit.getId());
       }
     }
-    if (!consumed.isEmpty()) {
-      repository.deleteRevisits(consumed);
+    for (int from = 0; from < consumed.size(); from += DELETE_BATCH) {
+      repository.deleteRevisits(
+          consumed.subList(from, Math.min(from + DELETE_BATCH, consumed.size())));
     }
   }
 

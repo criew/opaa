@@ -502,14 +502,19 @@ Zwei Annahmen des Nachtrags „Unveränderte Ordner“ hielten nicht:
 Entscheidung:
 
 1. **`source_hierarchy_path` ist `text`.** Die Kürzung und ihr Sonderfall im Abgleich entfallen.
-   Eine früher gekürzte Zeile stellt der nächste Lauf einmal richtig (Abruf, gleiche Prüfsumme,
-   Nachführen ohne neuen Schnitt). Ein Backfill ist dafür nicht nötig. Identität bleibt
+   Bei einem Store, der Ordner meldet (Nextcloud), stellt der nächste Lauf eine früher gekürzte
+   Zeile einmal richtig (Abruf, gleiche Prüfsumme, Nachführen ohne neuen Schnitt). Bei Drive, S3
+   und SMB überspringt der Lauf eine Datei mit unverändertem Merkmal, ohne den Ort zu prüfen; dort
+   bleibt die Zeile gekürzt, bis sich die Datei ändert. Ein Backfill ist für keinen der beiden Fälle
+   vorgesehen. Identität bleibt
    `file_path` in seiner bisherigen Breite.
 2. **Löschvermerk statt Zähler.** Die neue Tabelle `source_sync_revisits` hängt am
    Abgleichszustand und fällt mit ihm (`ON DELETE CASCADE`). `LibraryDocumentService.deleteDocument`
    schreibt in derselben Transaktion eine Zeile mit Container und Hierarchiepfad, wenn die
    Bibliothek einen Abgleichszustand hat und das Dokument einen Container trägt. Das ist der
-   einzige Löschweg außerhalb eines Laufs; Ordner werden über ihn geleert. Eine ArchUnit-Regel
+   einzige Löschweg außerhalb eines Laufs, der eine Bibliothek mit Datei-Abgleich trifft; Ordner
+   werden über ihn geleert. Die beiden Löschstellen beim Ersatz einer fehlgeschlagenen Upload-Zeile
+   schreiben bewusst keinen Vermerk: Sie betreffen nur Upload-Bibliotheken. Eine ArchUnit-Regel
    (`onlyTheKnownClassesDeleteDocuments`) hält die Aufrufer von `DocumentRepository#delete…` fest:
    `LibraryDocumentService`, `KnowledgeLibraryService` (Bibliothek samt Zustand) und
    `StaleDocumentCleanupService` (im Lauf).
@@ -522,8 +527,12 @@ Entscheidung:
    Gedächtnis gilt nicht; jede Bibliothek mit Ordnergedächtnis listet nach dem Update einmal alle
    Ordner.
 
-Nebenwirkung: Auch eine Bibliothek, deren Store keine Ordner meldet, bekommt je manueller Löschung
-einen Vermerk. Ihr nächster vollständiger Vollabgleich verbraucht ihn.
+Nebenwirkungen:
+
+- Auch eine Bibliothek, deren Store keine Ordner meldet (Drive, S3, SMB), bekommt je manueller
+  Löschung einen Vermerk. Ihr nächster vollständiger Vollabgleich verbraucht ihn.
+- Eine Bibliothek mit Abgleichszustand, aber ohne Datei-Abgleich (etwa Confluence), bekommt
+  ebenfalls Vermerke. Kein Lauf verbraucht sie; sie fallen mit dem Abgleichszustand.
 
 Grenze, gemessen an PostgreSQL 18: Der eindeutige Index `(library_id, file_path)` nimmt höchstens
 2676 Byte eines nicht komprimierbaren Pfads auf. Ein `file_path` mit 2000 Zeichen passt deshalb
