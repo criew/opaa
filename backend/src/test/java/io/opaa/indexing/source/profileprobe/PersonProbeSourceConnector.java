@@ -28,8 +28,9 @@ import org.springframework.stereotype.Component;
  * only the password {@link #ACCEPTED_PASSWORD}; any other is rejected as a provider would. A {@code
  * share} setting, of the library or as the profile's default, binds its secret, as a file server
  * does; the {@link #REALM} only the profile sets binds nothing, and a change of it discards the run
- * state. Its listing names one folder for the accepted password, and it refuses a change onto
- * {@link #REFUSED_HOST} with a reason naming a folder.
+ * state. Its listing names one folder for the accepted password; it refuses a change onto {@link
+ * #REFUSED_HOST} with a reason naming a folder, and a new address without a secret to check it
+ * with, as a file server does.
  */
 @Component
 public class PersonProbeSourceConnector implements SourceConnector, SourceBrowser {
@@ -118,6 +119,10 @@ public class PersonProbeSourceConnector implements SourceConnector, SourceBrowse
     if (requested.sourceUrl() != null && requested.sourceUrl().contains(REFUSED_HOST)) {
       throw new ValidationException(
           "Der Ordner „" + REFUSED_FOLDER + "“ ist auf diesem Server nicht erreichbar.");
+    }
+    if (stored.sourceCredentials() == null
+        && !java.util.Objects.equals(stored.sourceUrl(), requested.sourceUrl())) {
+      throw new ValidationException("Ohne Anmeldung lässt sich die neue Adresse nicht prüfen.");
     }
     return requested;
   }

@@ -452,6 +452,30 @@ class PrivateLibraryIntegrationTest {
     assertThat(libraryRepository.findById(library)).isPresent();
   }
 
+  /**
+   * A secret the store refuses is no refusal of the connector: the private library of a deactivated
+   * owner is not asked, so it stays on its profile instead of being released for a check it could
+   * not pass without her secret.
+   */
+  @Test
+  void aRefusedSecretLeavesThePrivateLibraryOnItsProfile() throws Exception {
+    UUID library = createdPrivateLibrary();
+    jdbc.update("UPDATE users SET directory_locked_at = now() WHERE id = ?", owner);
+    String change =
+        "{\"name\": \"%s\", \"serverUrl\": \"https://anders.example.org\","
+            + " \"authMethod\": \"PERSONAL_SECRET\", \"ownership\": \"PERSON\","
+            + " \"confirmDiscard\": true}";
+
+    mockMvc
+        .perform(
+            as("dev-admin", put(PROFILES + "/" + forPersons))
+                .content(change.formatted(profileName(forPersons))))
+        .andExpect(status().isOk());
+
+    assertThat(profileOf(library)).isEqualTo(forPersons);
+    assertThat(releaseNotices(library)).isZero();
+  }
+
   @Test
   void aProfileThatStopsAdmittingPersonsReleasesItsPrivateLibraries() throws Exception {
     UUID both = profile("BOTH", SERVER);
