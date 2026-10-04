@@ -107,12 +107,13 @@ Wieder gelistet wird ein Ordner,
 - in dem ein Dokument für den nächsten Lauf vorgemerkt ist (Nachzug) oder nicht indexiert wurde,
 - in dem beim letzten Lauf eine Datei nicht geladen, nicht gelesen oder nicht aufgenommen werden
   konnte,
-- dessen Pfad länger ist, als ein Dokument speichern kann.
+- in oder unter dem ein Dokument in OPAA gelöscht wurde, auch während eines Laufs. Es kommt mit
+  dem nächsten Lauf zurück, der den Ordner listet; die Ordner darüber werden mitgelistet.
 
 Der ganze Ordnerbaum einer Bibliothek wird wieder gelistet,
 
-- wenn ein Dokument außerhalb eines Laufs gelöscht wurde. Es kommt mit diesem Lauf zurück.
 - nach einer Änderung der Größengrenze, der unterstützten Formate, der Adresse oder der Ordner,
+- einmal nach einem Update, das die Grundlage des Gedächtnisses ändert,
 - spätestens nach `full-descent-interval` (Abschnitt 8). Das fängt Änderungen ab, die Nextcloud
   nicht weiterträgt, etwa auf externem Speicher ohne Änderungserkennung.
 

@@ -171,14 +171,12 @@ class FileSyncChangeRunTest {
             new io.opaa.indexing.source.SourceSyncState.SubtreeMemory(
                 "basis",
                 FileSyncHarness.NOW,
-                Map.of("A", Map.of("q", "m1"), "B", Map.of("r", "m2")),
-                Map.of("A", 2L, "B", 1L)));
+                Map.of("A", Map.of("q", "m1"), "B", Map.of("r", "m2"))));
     store.put("A", "neu.txt", "Neu.").changed("A", "neu.txt");
 
     harness.changeRun(store.reset());
 
     assertThat(harness.state().subtreeMemory().containers()).containsOnlyKeys("B");
-    assertThat(harness.state().subtreeMemory().documentCounts()).containsOnlyKeys("B");
   }
 
   @Test

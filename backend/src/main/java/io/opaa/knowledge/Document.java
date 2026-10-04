@@ -99,7 +99,7 @@ public class Document {
   @Column(name = "source_container_key", length = 255)
   private String sourceContainerKey;
 
-  @Column(name = "source_hierarchy_path", length = 2000)
+  @Column(name = "source_hierarchy_path", columnDefinition = "text")
   private String sourceHierarchyPath;
 
   /**
@@ -352,22 +352,13 @@ public class Document {
       return;
     }
     this.sourceContainerKey = context.containerKey();
-    this.sourceHierarchyPath = truncate(context.hierarchyPath(), MAX_HIERARCHY_PATH);
+    this.sourceHierarchyPath = context.hierarchyPath();
   }
 
-  /** The width of {@code source_hierarchy_path}; a longer path is stored cut. */
-  public static final int MAX_HIERARCHY_PATH = 2000;
-
-  /** Whether the stored source context is exactly {@code context}, a cut hierarchy path not. */
+  /** Whether the stored source context is exactly {@code context}. */
   public boolean holdsSourceContext(SourceDocumentContext context) {
-    String path = context.hierarchyPath();
-    return (path == null || path.length() <= MAX_HIERARCHY_PATH)
-        && Objects.equals(sourceContainerKey, context.containerKey())
-        && Objects.equals(sourceHierarchyPath, path);
-  }
-
-  private static String truncate(String value, int max) {
-    return value != null && value.length() > max ? value.substring(0, max) : value;
+    return Objects.equals(sourceContainerKey, context.containerKey())
+        && Objects.equals(sourceHierarchyPath, context.hierarchyPath());
   }
 
   public void setSourceEntryUrl(String sourceEntryUrl) {

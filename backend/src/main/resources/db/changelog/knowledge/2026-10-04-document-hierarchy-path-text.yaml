@@ -1,0 +1,9 @@
+databaseChangeLog:
+  - changeSet:
+      id: knowledge-2026-10-04-document-hierarchy-path-text
+      author: opaa
+      comment: "source_hierarchy_path holds a source's folder chain uncut (ADR-0040): text instead of varchar(2000), stored values unchanged. file_path stays the identity at its former width."
+      changes:
+        - sql:
+            sql: |
+              ALTER TABLE documents ALTER COLUMN source_hierarchy_path TYPE text;

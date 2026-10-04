@@ -7,6 +7,7 @@ import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.springframework.test.util.ReflectionTestUtils;
 
 /**
  * {@link SourceSyncState}: resumes the scopes of an interrupted full sync, starts clean after a
@@ -134,5 +135,20 @@ class SourceSyncStateTest {
     state.completeFullSync(Instant.now(), Instant.now());
     state.beginFullSync(UUID.randomUUID());
     assertThat(state.completedScopeKeys()).as("clean after a completed sync").isEmpty();
+  }
+
+  @Test
+  void aMemoryWrittenUnderTheEarlierBasisStillReadsAndNamesThatBasis() {
+    SourceSyncState state = new SourceSyncState(UUID.randomUUID());
+    ReflectionTestUtils.setField(
+        state,
+        "subtreeMarkers",
+        "{\"basis\":\"v1|1024|txt\",\"establishedAt\":\"2026-10-03T10:00:00Z\","
+            + "\"containers\":{\"A\":{\"\":\"m:1\"}},\"documentCounts\":{\"A\":2}}");
+
+    SourceSyncState.SubtreeMemory memory = state.subtreeMemory();
+
+    assertThat(memory.basis()).isEqualTo("v1|1024|txt");
+    assertThat(memory.containers()).containsOnlyKeys("A");
   }
 }
