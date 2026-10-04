@@ -54,6 +54,11 @@ public class ProbeKeySourceConnector implements SourceConnector, SourceBrowser {
   }
 
   @Override
+  public Set<String> settingsKeys() {
+    return Set.of(SUBJECT);
+  }
+
+  @Override
   public ConnectorData readSettings(ConnectorData requested) {
     requested.requireOnly(Set.of(SUBJECT));
     return requested;

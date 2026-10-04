@@ -1,4 +1,4 @@
-import { screen, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { http, HttpResponse } from 'msw'
@@ -294,6 +294,43 @@ describe('ConnectionProfileManagementPage', () => {
       serverUrl: 'https://api.ablage.example',
       connectorSettings: null,
     })
+  }, 20000)
+
+  // regression guard: without the source type's description the form knows no defaults, so saving
+  // would send none and erase the stored ones for every library on the profile
+  it('refuses to save an edit while the description of the source type is missing', async () => {
+    server.use(
+      http.get('/api/v1/source-types', () =>
+        HttpResponse.json({ error: 'nicht erreichbar' }, { status: 500 }),
+      ),
+    )
+    const user = userEvent.setup()
+    const sent = capturePuts()
+    renderWithProviders(<ConnectionProfileManagementPage />)
+
+    const dialog = await openEdit(user)
+    const name = within(dialog).getByLabelText(/^Name/)
+    await user.clear(name)
+    await user.type(name, 'Zugang Nextcloud Rathaus')
+
+    const save = within(dialog).getByRole('button', { name: 'Speichern' })
+    expect(save).toBeDisabled()
+    expect(within(dialog).getByText(/Angaben der Quellart liegen nicht vor/)).toBeVisible()
+    expect(sent).toHaveLength(0)
+    expect(mockConnectionProfiles[0].connectorSettings).toEqual({ edition: 'INTERN' })
+  }, 20000)
+
+  it('sends a text default as typed, trimmed, beside the stored choice', async () => {
+    const user = userEvent.setup()
+    const sent = capturePuts()
+    renderWithProviders(<ConnectionProfileManagementPage />)
+
+    const dialog = await openEdit(user)
+    await user.type(within(dialog).getByLabelText(/^Region/), ' eu-central-1 ')
+    await user.click(within(dialog).getByRole('button', { name: 'Speichern' }))
+
+    await waitFor(() => expect(sent).toHaveLength(1))
+    expect(sent[0].connectorSettings).toEqual({ edition: 'INTERN', region: 'eu-central-1' })
   }, 20000)
 
   it('keeps the connector defaults and the secret on a mere rename', async () => {

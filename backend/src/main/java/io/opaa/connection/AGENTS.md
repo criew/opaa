@@ -31,10 +31,9 @@ knowledge kennt connections: Der Kern erreicht es über seine Ports `SourceConne
 - **Sperrgründe nur in `SourceBlocks`:** Ob und warum eine Bibliothek gesperrt ist und welcher Text
   gilt, entscheidet nur er. Vorrang ist die Deklarationsreihenfolge von `SourceBlock.Reason`, die
   Mengen der Aufrufer leiten sich aus dessen Eigenschaften ab: Ein neuer Grund steht an einer Stelle.
-- **Konnektor-Vorgaben** des Profils (nur deklarierte Schlüssel, `ProfileDefaults#read`) überschreiben
-  die Einstellungen der Bibliothek je Schlüssel.
-  Verwaltungspfade arbeiten mit den gespeicherten, Lauf und Push-Eingang mit den zusammengeführten
-  (`SourceConnectionResolver#effectiveSettings`).
+- **Konnektor-Vorgaben** (nur deklarierte, `ProfileDefaults#read`) überschreiben die Einstellungen
+  der Bibliothek je Schlüssel. Verwaltungspfade arbeiten mit den gespeicherten, Lauf und Push-Eingang
+  mit den zusammengeführten (`SourceConnectionResolver#effectiveSettings`).
 - **Freigabe nur hier:** `ConnectorReleaseService` entscheidet eine Neuanlage aus
   `CREATE_CONNECTOR_LIBRARY` im Geltungsbereich `TYPE:`/`PROFILE:` und den Sperren;
   `ConnectorScopeCatalog` nennt rights die Geltungsbereiche. Kein anderes Modul außer rights nennt

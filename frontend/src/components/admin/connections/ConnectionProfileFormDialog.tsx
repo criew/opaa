@@ -14,6 +14,7 @@ import type {
   ConnectionOwnership,
   ConnectionProfileResponse,
   ProfileDefaultKey,
+  ProfileDefaultKind,
   SourceTypeDescriptor,
   SourceTypeSignIn,
 } from '../../../types/api'
@@ -112,12 +113,11 @@ interface ConnectionProfileFormDialogProps {
 }
 
 /**
- * Anlegen und Bearbeiten eines Zugangs (#2160). Beim Anlegen wählt die Systemverwaltung zuerst
- * die Quellart als Kachel; Quellarten ohne Zugänge bleiben mit Grund sichtbar. Anmeldearten,
- * Besitzarten, Adressfeld und Vorgaben-Felder folgen der Beschreibung der Quellart; bei fester
- * Adresse entfällt das Adressfeld. Bearbeiten sendet alle Felder samt Vorgaben zurück; eine
- * Änderung, die Geheimnisse verwirft, fragt vorher mit der Zahl der betroffenen Verbindungen und
- * Bibliotheken nach.
+ * Creates and edits a connection profile. Creating first asks for the source type as a tile; types
+ * without profiles stay visible with their reason. Sign-ins, ownerships, the address field and one
+ * field per declared default follow the type's description; a fixed address asks for nothing. An
+ * edit sends every field back, so it waits for that description - without it the defaults would be
+ * lost. A change that discards secrets asks first, naming the connections and libraries affected.
  */
 export default function ConnectionProfileFormDialog({
   open,
@@ -146,8 +146,10 @@ export default function ConnectionProfileFormDialog({
   const usesScopes = method !== null && WITH_SCOPES.includes(method)
   const connectorTypes = sourceTypes.filter((type) => !type.uploads)
   const showFields = isEdit || (descriptor !== null && descriptor.profileSupport !== 'FORBIDDEN')
+  const descriptorMissing = isEdit && descriptor === null
   const complete =
     showFields &&
+    !descriptorMissing &&
     draft.name.trim() !== '' &&
     (fixedAddress !== null || draft.serverUrl.trim() !== '') &&
     method !== null &&
@@ -216,6 +218,12 @@ export default function ConnectionProfileFormDialog({
         {error && (
           <Alert severity="error" sx={{ mb: 2 }}>
             {error}
+          </Alert>
+        )}
+        {descriptorMissing && (
+          <Alert severity="warning" sx={{ mb: 2 }}>
+            Die Angaben der Quellart liegen nicht vor. Ohne sie gingen die Vorgaben des Zugangs beim
+            Speichern verloren. Bitte die Seite neu laden und erneut bearbeiten.
           </Alert>
         )}
         <Stack spacing={2} sx={{ mt: 1 }}>
@@ -404,9 +412,30 @@ interface DefaultFieldProps {
   onChange: (value: string) => void
 }
 
-/** Ein Feld je deklarierter Vorgabe: Text, Ja/Nein oder Auswahl, jeweils mit „Keine Vorgabe“. */
+/** The options of a default chosen from a list: yes/no or the declared choices. */
+function optionsOf(defaultKey: ProfileDefaultKey): Array<{ value: string; label: string }> | null {
+  const kind: ProfileDefaultKind = defaultKey.kind
+  switch (kind) {
+    case 'TEXT':
+      return null
+    case 'BOOLEAN':
+      return [
+        { value: 'true', label: 'Ja' },
+        { value: 'false', label: 'Nein' },
+      ]
+    case 'CHOICE':
+      return defaultKey.choices.map((choice) => ({ value: choice, label: choice }))
+    default: {
+      const unknown: never = kind
+      throw new Error(`Unknown profile default kind ${String(unknown)}`)
+    }
+  }
+}
+
+/** One field per declared default: text, yes/no or a choice, each with "Keine Vorgabe". */
 function DefaultField({ defaultKey, value, onChange }: DefaultFieldProps) {
-  if (defaultKey.kind === 'TEXT') {
+  const options = optionsOf(defaultKey)
+  if (options === null) {
     return (
       <TextField
         label={defaultKey.label}
@@ -417,13 +446,6 @@ function DefaultField({ defaultKey, value, onChange }: DefaultFieldProps) {
       />
     )
   }
-  const options: Array<{ value: string; label: string }> =
-    defaultKey.kind === 'BOOLEAN'
-      ? [
-          { value: 'true', label: 'Ja' },
-          { value: 'false', label: 'Nein' },
-        ]
-      : defaultKey.choices.map((choice) => ({ value: choice, label: choice }))
   return (
     <TextField
       select

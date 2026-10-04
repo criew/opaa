@@ -342,14 +342,16 @@ components:
           items:
             $ref: "#/components/schemas/ConnectionOwnership"
         secretForm:
-          $ref: "#/components/schemas/PersonalSecretForm"
+          description: Set exactly for the method PERSONAL_SECRET.
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/PersonalSecretForm"
 
     PersonalSecretForm:
       type: string
-      nullable: true
       description: >
         The form in which a connector takes a personal secret: TOKEN (one token or app
-        password) or USERNAME_AND_PASSWORD. Set exactly for the method PERSONAL_SECRET.
+        password) or USERNAME_AND_PASSWORD.
       enum: [TOKEN, USERNAME_AND_PASSWORD]
 
     ProfileDefaultKind:

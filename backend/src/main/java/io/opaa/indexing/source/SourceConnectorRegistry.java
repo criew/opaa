@@ -1,6 +1,5 @@
 package io.opaa.indexing.source;
 
-import io.opaa.api.types.ConnectionAuthMethod;
 import io.opaa.api.types.ConnectionProfileSupport;
 import io.opaa.common.ValidationException;
 import io.opaa.knowledge.Document;
@@ -64,8 +63,7 @@ public class SourceConnectorRegistry {
               + " profiles");
     }
     boolean registrationOnProfile =
-        declaration.offers(ConnectionAuthMethod.OAUTH)
-            || declaration.offers(ConnectionAuthMethod.CLIENT_CREDENTIALS);
+        declaration.signIns().stream().anyMatch(signIn -> signIn.method().requiresProfile());
     if (registrationOnProfile != (declaration.support() == ConnectionProfileSupport.REQUIRED)) {
       throw new IllegalStateException(
           subject + " must require profiles exactly when it offers OAuth or client credentials");

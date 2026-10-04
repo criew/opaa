@@ -38,12 +38,12 @@ public interface SourceConnector {
   }
 
   /**
-   * Reads the connector defaults of a connection profile into their normalised form: only keys the
-   * {@link ProfileDeclaration#defaults()} name, each of its kind, a blank text or {@code null}
-   * dropped. Returns {@code null} when nothing is left.
+   * Checks the values of a profile's connector defaults beyond their kind; {@code read} has passed
+   * {@link ProfileDefaults#read} already and is never {@code null}. Returns what the profile keeps;
+   * by default {@code read} unchanged.
    */
-  default ConnectorData readProfileDefaults(ConnectorData requested) {
-    return ProfileDefaultsReader.read(descriptor().profileDeclaration().defaults(), requested);
+  default ConnectorData readProfileDefaults(ConnectorData read) {
+    return read;
   }
 
   /**

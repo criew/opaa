@@ -385,12 +385,14 @@ sichtbar. Das Formular richtet sich nach der Quellart:
 
 - **Anmeldeart** bietet nur die Arten an, die die Quellart meldet; **Besitzart** nur die Besitzarten,
   die sie für die gewählte Anmeldeart zulässt.
-- **Server-Adresse** verlangt eines der Schemata der Quellart, meist `https://` oder `http://`, bei
-  einer Windows-Dateifreigabe `smb://`. Hat die Quellart eine feste Adresse, entfällt das Feld, und
-  das Formular nennt die Adresse.
+- **Server-Adresse** verlangt eines der Schemata, die die Quellart meldet; der Hinweis unter dem
+  Feld nennt sie. Hat die Quellart eine feste Adresse, entfällt das Feld, und das Formular nennt die
+  Adresse.
 - **Vorgaben für jede Bibliothek** zeigt je Einstellung, die ein Zugang vorgeben darf, ein Feld:
   Text, Ja/Nein oder eine Auswahl, jeweils mit „Keine Vorgabe“. Meldet die Quellart keine solche
   Einstellung, fehlt der Abschnitt. Eine Vorgabe, die die Quellart nicht meldet, weist OPAA ab.
+- Liegen die Angaben der Quellart nicht vor (etwa weil sie nicht geladen werden konnten), lässt
+  sich ein Zugang nicht speichern; das Formular sagt das, statt die Vorgaben zu verwerfen.
 
 Die Liste zeigt je Zugang Quellart, Server-Adresse, Anmeldeart, Besitzart und die Zahl der
 Verbindungen, dazu einen Hinweis, wenn das Client-Secret bald abläuft. „Alle Verbindungen trennen“

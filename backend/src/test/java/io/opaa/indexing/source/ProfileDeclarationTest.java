@@ -12,7 +12,6 @@ import io.opaa.api.types.ConnectionAuthMethod;
 import io.opaa.api.types.ConnectionProfileSupport;
 import io.opaa.api.types.PersonalSecretForm;
 import io.opaa.common.ValidationException;
-import io.opaa.test.SourceTypes;
 import java.net.URI;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -128,69 +127,46 @@ class ProfileDeclarationTest {
   }
 
   @Test
-  void theDefaultReadingKeepsDeclaredKeysOfTheirKindAndDropsEmptyOnes() {
-    SourceConnector connector = connectorWithDefaults();
+  void readingKeepsDeclaredKeysOfTheirKindAndDropsEmptyOnes() {
+    ProfileDefaults defaults = defaults();
     Map<String, Object> requested = new LinkedHashMap<>();
     requested.put("region", " eu-central-1 ");
     requested.put("pathStyle", true);
     requested.put("edition", "DC");
     requested.put("prefix", " ");
 
-    assertThat(connector.readProfileDefaults(ConnectorData.of(requested)).asMap())
+    assertThat(defaults.read(ConnectorData.of(requested)).asMap())
         .containsExactly(
             Map.entry("region", "eu-central-1"),
             Map.entry("pathStyle", true),
             Map.entry("edition", "DC"));
-    assertThat(connector.readProfileDefaults(ConnectorData.of(Map.of("prefix", "")))).isNull();
-    assertThat(connector.readProfileDefaults(null)).isNull();
+    assertThat(defaults.read(ConnectorData.of(Map.of("prefix", "")))).isNull();
+    assertThat(defaults.read(null)).isNull();
   }
 
   @Test
-  void theDefaultReadingRefusesAnUndeclaredKeyAndAWrongKind() {
-    SourceConnector connector = connectorWithDefaults();
+  void readingRefusesAnUndeclaredKeyAndAWrongKind() {
+    ProfileDefaults defaults = defaults();
 
-    assertThatThrownBy(() -> connector.readProfileDefaults(ConnectorData.of(Map.of("spaces", 1))))
+    assertThatThrownBy(() -> defaults.read(ConnectorData.of(Map.of("spaces", 1))))
         .isInstanceOf(ValidationException.class)
         .hasMessage("connectorSettings: das Feld spaces kann ein Zugang nicht vorgeben");
-    assertThatThrownBy(() -> connector.readProfileDefaults(ConnectorData.of(Map.of("region", 1))))
+    assertThatThrownBy(() -> defaults.read(ConnectorData.of(Map.of("region", 1))))
         .isInstanceOf(ValidationException.class)
         .hasMessage("connectorSettings.region muss ein Text sein");
-    assertThatThrownBy(
-            () -> connector.readProfileDefaults(ConnectorData.of(Map.of("pathStyle", "ja"))))
+    assertThatThrownBy(() -> defaults.read(ConnectorData.of(Map.of("pathStyle", "ja"))))
         .isInstanceOf(ValidationException.class)
         .hasMessage("connectorSettings.pathStyle muss ja oder nein sein");
-    assertThatThrownBy(
-            () -> connector.readProfileDefaults(ConnectorData.of(Map.of("edition", "SERVER"))))
+    assertThatThrownBy(() -> defaults.read(ConnectorData.of(Map.of("edition", "SERVER"))))
         .isInstanceOf(ValidationException.class)
         .hasMessage("connectorSettings.edition muss einer der Werte CLOUD, DC sein");
   }
 
-  private static SourceConnector connectorWithDefaults() {
-    SourceConnectorDescriptor descriptor =
-        SourceConnectorDescriptor.remoteRun(SourceTypes.S3, "S3")
-            .withProfiles(
-                ProfileDeclaration.of(ConnectionProfileSupport.OPTIONAL, SignIn.of(NONE, LIBRARY))
-                    .withDefaults(
-                        DefaultKey.text("region", "Region"),
-                        DefaultKey.bool("pathStyle", "Pfad-Adressierung"),
-                        DefaultKey.choice("edition", "Edition", "CLOUD", "DC"),
-                        DefaultKey.text("prefix", "Präfix")));
-    return new SourceConnector() {
-      @Override
-      public SourceConnectorDescriptor descriptor() {
-        return descriptor;
-      }
-
-      @Override
-      public SourceSettings validate(SourceSettings requested) {
-        return requested;
-      }
-
-      @Override
-      public SourceConnectionTestResult testConnection(
-          SourceSettings settings, ConnectorData stored) {
-        throw new UnsupportedOperationException();
-      }
-    };
+  private static ProfileDefaults defaults() {
+    return ProfileDefaults.of(
+        DefaultKey.text("region", "Region"),
+        DefaultKey.bool("pathStyle", "Pfad-Adressierung"),
+        DefaultKey.choice("edition", "Edition", "CLOUD", "DC"),
+        DefaultKey.text("prefix", "Präfix"));
   }
 }

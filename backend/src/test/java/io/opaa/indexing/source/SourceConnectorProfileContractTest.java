@@ -3,7 +3,6 @@ package io.opaa.indexing.source;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import io.opaa.api.types.ConnectionAuthMethod;
 import io.opaa.api.types.ConnectionOwnership;
 import io.opaa.api.types.ConnectionProfileSupport;
 import io.opaa.common.ValidationException;
@@ -40,8 +39,7 @@ class SourceConnectorProfileContractTest {
             .isEqualTo(ConnectionProfileSupport.FORBIDDEN);
       }
       boolean registrationOnProfile =
-          declaration.offers(ConnectionAuthMethod.OAUTH)
-              || declaration.offers(ConnectionAuthMethod.CLIENT_CREDENTIALS);
+          declaration.signIns().stream().anyMatch(signIn -> signIn.method().requiresProfile());
       softly
           .assertThat(declaration.support() == ConnectionProfileSupport.REQUIRED)
           .as(type)
@@ -64,6 +62,41 @@ class SourceConnectorProfileContractTest {
     softly.assertAll();
   }
 
+  /**
+   * {@code settingsKeys} and {@code readSettings} are independent in the SPI; every key the former
+   * names must pass the latter's field check, and a key outside it must not.
+   */
+  @Test
+  void everySettingsKeyIsAFieldTheConnectorReadsAndNoOtherIs() {
+    SoftAssertions softly = new SoftAssertions();
+    for (SourceConnector connector : connectors) {
+      String type = connector.descriptor().type().key();
+      for (String key : connector.settingsKeys()) {
+        softly
+            .assertThat(fieldRefusal(connector, key))
+            .as(type + "." + key + " is a settings key, so readSettings must know it")
+            .isNull();
+      }
+      softly
+          .assertThat(fieldRefusal(connector, "keinEinstellungsFeld"))
+          .as(type + " must refuse a key outside settingsKeys")
+          .isNotNull();
+    }
+    softly.assertAll();
+  }
+
+  /** The refusal of {@code key} as an unknown field, {@code null} when readSettings knows it. */
+  private static String fieldRefusal(SourceConnector connector, String key) {
+    try {
+      connector.readSettings(ConnectorData.of(Map.of(key, "Wert")));
+      return null;
+    } catch (ValidationException e) {
+      return e.getMessage().endsWith("das Feld " + key + " ist nicht vorgesehen")
+          ? e.getMessage()
+          : null;
+    }
+  }
+
   @Test
   void everyRegisteredConnectorReadsItsDeclaredDefaultsAndRefusesAnyOther() {
     for (SourceConnector connector : connectors) {
@@ -75,12 +108,19 @@ class SourceConnectorProfileContractTest {
               case BOOLEAN -> true;
               case CHOICE -> key.choices().getFirst();
             };
-        assertThat(connector.readProfileDefaults(ConnectorData.of(Map.of(key.key(), sample))))
+        ProfileDefaults defaults = connector.descriptor().profileDeclaration().defaults();
+        ConnectorData read = defaults.read(ConnectorData.of(Map.of(key.key(), sample)));
+        assertThat(connector.readProfileDefaults(read))
             .as(type + "." + key.key())
             .isEqualTo(ConnectorData.of(Map.of(key.key(), sample)));
       }
       assertThatThrownBy(
-              () -> connector.readProfileDefaults(ConnectorData.of(Map.of("keinVorgabeFeld", "x"))))
+              () ->
+                  connector
+                      .descriptor()
+                      .profileDeclaration()
+                      .defaults()
+                      .read(ConnectorData.of(Map.of("keinVorgabeFeld", "x"))))
           .as(type)
           .isInstanceOf(ValidationException.class);
     }
