@@ -391,6 +391,8 @@ sichtbar. Das Formular richtet sich nach der Quellart:
   Adresse.
 - **Proxy** (`host:port`, ohne Zugangsdaten, optional) und **Zertifikatsprüfung aussetzen**
   gelten für jede Bibliothek auf dem Zugang, und zwar nur für Anfragen an dessen Server-Adresse.
+  Beides gibt es nur bei einer Server-Adresse mit `http://` oder `https://`; einen Zugang mit
+  `smb://`-Adresse und Proxy oder ausgesetzter Zertifikatsprüfung weist OPAA beim Speichern ab.
 - **Vorgaben für jede Bibliothek** zeigt je Einstellung, die ein Zugang vorgeben darf, ein Feld:
   Text, Ja/Nein oder eine Auswahl, jeweils mit „Keine Vorgabe“. Meldet die Quellart keine solche
   Einstellung, fehlt der Abschnitt. Eine Vorgabe, die die Quellart nicht meldet, weist OPAA ab.
@@ -406,8 +408,8 @@ werden, sagt das Formular das und lässt noch nicht speichern.
 #### Einen Zugang wählen, zuordnen, wechseln, lösen
 
 Die Auswahl, die Aktionen an der Bibliothek und der Schalter „Nur über Zugänge“ erscheinen nur bei
-einer Quellart, die Zugänge meldet; bis die mitgelieferten Konnektoren das tun (#2219), gilt das
-für keine von ihnen.
+einer Quellart, die Zugänge meldet; welche das sind, zeigt die Tabelle unter „Welcher Konnektor
+Zugänge kennt“.
 
 **Im Wissens-Assistenten** steht bei einer solchen Quellart im Schritt „Quelle“ über dem
 Formular die Wahl **„Zugang“**, sobald es für die Quellart einen Zugang gibt oder eine eigene
@@ -512,7 +514,24 @@ dazu die Anmeldearten, die er anbietet (ohne Anmeldung, persönliches Geheimnis,
 Client-Credentials, Dienstkonto-Schlüssel), je mit den zulässigen Besitzarten, die zulässige
 Server-Adresse und die Einstellungen, die ein Zugang vorgeben darf. Ein Zugang wählt eine
 Anmeldeart. Pflicht sind Zugänge genau bei einer Quellart mit OAuth oder Client-Credentials, weil
-die App-Registrierung nur am Zugang steht. Die mitgelieferten Konnektoren melden keine Zugänge.
+die App-Registrierung nur am Zugang steht. Verboten sind sie genau bei einer Quellart, die nichts
+Entferntes liest oder Uploads annimmt. Die mitgelieferten Konnektoren melden:
+
+| Quellart | Zugänge | Anmeldearten (Besitz: Bibliothek) | Vorgaben des Zugangs | Server-Adresse |
+|---|---|---|---|---|
+| Webverzeichnis | möglich | ohne Anmeldung; persönliches Geheimnis (Benutzername und Passwort) | keine | `https://`, `http://` |
+| RSS-Feed | möglich | ohne Anmeldung; persönliches Geheimnis (Benutzername und Passwort) | keine | `https://`, `http://` |
+| Confluence | möglich | persönliches Geheimnis (Token) | Edition | `https://`, `http://` |
+| Nextcloud | möglich | persönliches Geheimnis (Benutzername und App-Passwort) | keine | `https://`, `http://` |
+| S3-Objektspeicher | möglich | persönliches Geheimnis (Access Key und Secret Key) | Region, Path-Style-Adressierung | `https://`, `http://` |
+| Windows-Dateifreigabe (SMB) | möglich | persönliches Geheimnis (Benutzername und Passwort) | keine | `smb://`, ohne Proxy und Zertifikatsprüfung |
+| Google Drive | noch nicht | – (die Bibliothek bringt ihren Dienstkonto-Schlüssel selbst mit) | – | – |
+| Upload, Dateisystem | verboten | – | – | – |
+
+Das persönliche Geheimnis gehört der Bibliothek: Ihre Verwaltenden tragen es ein, der Zugang legt
+nur Server, Anmeldeart, Proxy, Zertifikatsprüfung und Vorgaben fest. Bei „ohne Anmeldung“ erreicht
+ein Lauf die Quelle ohne Zugangsdaten. Was die einzelnen Quellarten auf einem Zugang beachten,
+steht in ihren Kapiteln.
 
 **Was für eine Bibliothek auf einem Zugang gilt:**
 
@@ -633,9 +652,9 @@ stoppt dagegen keinen Lauf.
 
 Für eine Quellart, deren Konnektor Zugänge als möglich meldet, kann die Systemverwaltung die
 **Profilpflicht** einschalten: Danach ist die Quellart nur noch über einen Zugang nutzbar. Eine
-Quellart, die Zugänge verbietet oder ohnehin verlangt, lässt sich nicht umschalten. Da die
-mitgelieferten Konnektoren keine Zugänge melden, ist die Pflicht heute für keine mitgelieferte
-Quellart einschaltbar.
+Quellart, die Zugänge verbietet oder ohnehin verlangt, lässt sich nicht umschalten. Einschaltbar
+ist die Pflicht damit für Webverzeichnis, RSS-Feed, Confluence, Nextcloud, S3-Objektspeicher und
+Windows-Dateifreigabe (SMB).
 
 Der Schalter steht unter **Administration → Zugänge** im Abschnitt „Quellarten“, Spalte
 „Zugänge“: Eine Quellart, die Zugänge verbietet, trägt dort „Keine Zugänge möglich“, eine, die sie
@@ -672,8 +691,8 @@ Mit eingeschalteter Pflicht gilt für die Quellart:
   Neueinrichtung weiter, und eine eigene Adresse ist wieder möglich.
 
 Was die Pflicht für eine Quellart nicht festlegt, meldet ihr Konnektor mit seiner Profilangabe;
-die Abfrage vor dem Einschalten zeigt es. **Einschränkung RSS**, sobald RSS Zugänge kennt: Die
-Pflicht legt nur die Feed-Adresse fest. Die Detailseiten eines Feeds stammen aus seinen Einträgen
+die Abfrage vor dem Einschalten zeigt es. **Einschränkung RSS:** Die Pflicht legt nur die
+Feed-Adresse fest. Die Detailseiten eines Feeds stammen aus seinen Einträgen
 und können auf fremden Servern liegen; sie werden weiter abgerufen, aber ohne Zugangsdaten. Die
 Zielprüfung gegen private und lokale Adressbereiche gilt daneben unverändert.
 

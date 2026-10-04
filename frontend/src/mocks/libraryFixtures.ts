@@ -2,7 +2,9 @@ import type {
   LibraryListResponse,
   LibraryDocumentResponse,
   LibraryResponse,
+  PersonalSecretForm,
   SourceTypeDescriptor,
+  SourceTypeSignIn,
 } from '../types/api'
 import type { ConfluenceSpaceRef } from '../utils/confluenceSource'
 
@@ -349,10 +351,17 @@ export function resetMockLibraryFolders() {
   mockLibraryFolders = structuredClone(INITIAL_LIBRARY_FOLDERS)
 }
 
+/** The sign-in by a personal secret of `form` the library owns, as the remote connectors offer it. */
+function librarySecret(form: PersonalSecretForm): SourceTypeSignIn {
+  return { method: 'PERSONAL_SECRET', ownerships: ['LIBRARY'], secretForm: form }
+}
+
+const ANONYMOUS: SourceTypeSignIn = { method: 'NONE', ownerships: ['LIBRARY'] }
+
 /**
  * The connectors the mock backend has (GET /api/v1/source-types, ADR-0038) - every delivered one
- * once, with its production abilities (Nextcloud's profile support aside), ordered by key like the
- * backend answers.
+ * once, with its production abilities and profile declaration, ordered by key like the backend
+ * answers.
  */
 export const mockSourceTypes: SourceTypeDescriptor[] = [
   {
@@ -362,10 +371,12 @@ export const mockSourceTypes: SourceTypeDescriptor[] = [
     uploads: false,
     pushIntake: true,
     browsable: true,
-    profileSupport: 'FORBIDDEN',
+    profileSupport: 'OPTIONAL',
     profileRequired: false,
-    signIns: [],
-    profileDefaults: [],
+    signIns: [librarySecret('TOKEN')],
+    profileDefaults: [
+      { key: 'edition', label: 'Edition', kind: 'CHOICE', choices: ['CLOUD', 'DATA_CENTER'] },
+    ],
     serverAddress: { schemes: ['https', 'http'] },
     creatable: true,
     creatableWithOwnAddress: true,
@@ -412,9 +423,9 @@ export const mockSourceTypes: SourceTypeDescriptor[] = [
     uploads: false,
     pushIntake: false,
     browsable: false,
-    profileSupport: 'FORBIDDEN',
+    profileSupport: 'OPTIONAL',
     profileRequired: false,
-    signIns: [],
+    signIns: [ANONYMOUS, librarySecret('USERNAME_AND_PASSWORD')],
     profileDefaults: [],
     serverAddress: { schemes: ['https', 'http'] },
     creatable: true,
@@ -428,11 +439,9 @@ export const mockSourceTypes: SourceTypeDescriptor[] = [
     uploads: false,
     pushIntake: false,
     browsable: true,
-    // No delivered connector admits profiles yet; Nextcloud stands in with "optional" so the
-    // profile choice can be tried against the mocks (see connectionProfileHandlers).
     profileSupport: 'OPTIONAL',
     profileRequired: false,
-    signIns: [{ method: 'PERSONAL_SECRET', ownerships: ['LIBRARY'], secretForm: 'TOKEN' }],
+    signIns: [librarySecret('USERNAME_AND_PASSWORD')],
     profileDefaults: [],
     serverAddress: { schemes: ['https', 'http'] },
     creatable: true,
@@ -446,9 +455,9 @@ export const mockSourceTypes: SourceTypeDescriptor[] = [
     uploads: false,
     pushIntake: false,
     browsable: false,
-    profileSupport: 'FORBIDDEN',
+    profileSupport: 'OPTIONAL',
     profileRequired: false,
-    signIns: [],
+    signIns: [ANONYMOUS, librarySecret('USERNAME_AND_PASSWORD')],
     profileDefaults: [],
     serverAddress: { schemes: ['https', 'http'] },
     creatable: true,
@@ -462,10 +471,13 @@ export const mockSourceTypes: SourceTypeDescriptor[] = [
     uploads: false,
     pushIntake: true,
     browsable: true,
-    profileSupport: 'FORBIDDEN',
+    profileSupport: 'OPTIONAL',
     profileRequired: false,
-    signIns: [],
-    profileDefaults: [],
+    signIns: [librarySecret('USERNAME_AND_PASSWORD')],
+    profileDefaults: [
+      { key: 'region', label: 'Region', kind: 'TEXT', choices: [] },
+      { key: 'pathStyle', label: 'Path-Style-Adressierung', kind: 'BOOLEAN', choices: [] },
+    ],
     serverAddress: { schemes: ['https', 'http'] },
     creatable: true,
     creatableWithOwnAddress: true,
@@ -478,11 +490,11 @@ export const mockSourceTypes: SourceTypeDescriptor[] = [
     uploads: false,
     pushIntake: false,
     browsable: true,
-    profileSupport: 'FORBIDDEN',
+    profileSupport: 'OPTIONAL',
     profileRequired: false,
-    signIns: [],
+    signIns: [librarySecret('USERNAME_AND_PASSWORD')],
     profileDefaults: [],
-    serverAddress: { schemes: ['https', 'http'] },
+    serverAddress: { schemes: ['smb'] },
     creatable: true,
     creatableWithOwnAddress: true,
     locked: false,

@@ -99,10 +99,24 @@ erreichbar (`HeadBucket`), Auflisten erlaubt (`ListObjectsV2` mit Präfix), Lese
 falschen Adressstil, abgelehnte Zugangsdaten oder ein gesperrtes Ziel. Weil der Endpoint vor dem
 Speichern geprüft wird, ist die Anlage netzabhängig wie bei Confluence.
 
-**Über einen Zugang** (sobald S3 Zugänge meldet, siehe
-[Indexierung, Zugänge](indexierung.md#zugänge)): Der Endpoint ist mit der Server-Adresse des
-Zugangs vorbelegt, und die Anbieter-Vorlage entfällt. Gibt der Zugang Region oder Adressstil vor,
-stehen sie nur lesbar mit seinem Wert da.
+**Über einen Zugang** (siehe [Indexierung, Zugänge](indexierung.md#zugänge)): Ein Zugang für S3
+meldet sich mit einem persönlichen Geheimnis an, das der Bibliothek gehört; ihre Verwaltenden
+tragen Access Key und Secret Key wie oben ein. Der Endpoint ist mit der Server-Adresse des Zugangs
+vorbelegt, und die Anbieter-Vorlage entfällt. Der Zugang darf **Region** und
+**Path-Style-Adressierung** vorgeben: Dann stehen sie nur lesbar mit seinem Wert da, die
+Bibliothek muss sie nicht mitschicken, und ein abweichender Wert wird abgewiesen. Eine Region am
+Zugang folgt denselben Regeln wie an der Bibliothek.
+
+Ändert die Systemverwaltung Region oder Adressstil des Zugangs, prüft OPAA vor dem Speichern für
+jede Bibliothek auf dem Zugang die Ziele, die sie damit erreichen würde (bei gleicher
+Konfiguration nur einmal). Erreicht eine Bibliothek ein Ziel nicht, etwa weil der virtuelle
+Adressstil einen gesperrten Bucket-Host ergäbe, wird nichts geändert; die Vorschau nennt den Grund
+in der Kategorie „Verbindung“. Nach einer gespeicherten Änderung listet der nächste Lauf jeder
+Bibliothek alle Geltungsbereiche von vorn. Ändert sich die Server-Adresse des Zugangs, verwirft OPAA die
+Zugangsdaten der Bibliotheken; ein Lauf endet bis dahin mit „Verbindung getrennt“, ohne den neuen
+Endpoint anzusprechen, und die neue Adresse wird vollständig geprüft, sobald die Verwaltenden die
+Zugangsdaten neu eintragen. Wer eine Bibliothek vom Zugang löst, behält Region und Adressstil als
+ihre eigenen.
 
 **Sichtbarkeit.** Jede Leseberechtigung sieht die Geltungsbereiche — im Kopf der Bibliothek, mit
 dem Hinweis, dass dieser Umfang für alle Leseberechtigten gilt. Endpoint, Region, Adressstil,

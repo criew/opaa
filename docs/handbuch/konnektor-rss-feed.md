@@ -52,6 +52,14 @@ Kapitel [Webverzeichnis](konnektor-http-directory.md#2-quellkonfiguration) besch
 Die Oberfläche weist beim Anlegen darauf hin, dass OPAA neben dem Feed auch die verlinkten
 Detailseiten abruft und dass der Betreiber des Feeds bestimmt, welche Adressen das sind.
 
+**Über einen Zugang** (siehe [Indexierung, Zugänge](indexierung.md#zugänge)): wie beim
+[Webverzeichnis](konnektor-http-directory.md#2-quellkonfiguration) **ohne Anmeldung** oder mit
+einem **persönlichen Geheimnis** der Bibliothek; die Feed-Adresse liegt unter der Server-Adresse
+des Zugangs. Zugangsdaten und Proxy des Zugangs gelten nur für dessen Server-Adresse: Eine
+Detailseite oder Anlage auf einem anderen Server ruft OPAA weiter ab, aber ohne Zugangsdaten
+(Abschnitt 3). Deshalb nennt die Profilpflicht für Feeds diese Einschränkung, bevor sie
+eingeschaltet wird.
+
 ## 3. Zugriff
 
 | Eigenschaft | Verhalten |

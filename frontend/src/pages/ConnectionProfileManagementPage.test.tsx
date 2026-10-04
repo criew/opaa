@@ -567,7 +567,7 @@ describe('ConnectionProfileManagementPage - „Nur über Zugänge“ (#2162)', (
     expect(
       within(types).getByRole('switch', { name: 'Nur über Zugänge für Nextcloud' }),
     ).not.toBeChecked()
-    expect(within(types).queryByRole('switch', { name: /für Confluence/ })).not.toBeInTheDocument()
+    expect(within(types).queryByRole('switch', { name: /für Dateisystem/ })).not.toBeInTheDocument()
     expect(within(types).getAllByText('Keine Zugänge möglich').length).toBeGreaterThan(0)
   })
 

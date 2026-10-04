@@ -1,6 +1,7 @@
 package io.opaa.indexing.source.confluence;
 
 import io.opaa.common.ValidationException;
+import io.opaa.indexing.source.SourceTargetRefusedException;
 import io.opaa.sourceaccess.ProxyAndCredentials;
 import java.net.URI;
 import java.util.List;
@@ -176,8 +177,8 @@ public class ConfluenceConnectionService {
    * the full detection only to name the actual edition when the confirmation fails - so the
    * invariant never depends on what a client sent, at the cost of one short request per creation.
    *
-   * @throws ValidationException naming the detected edition on a mismatch, or the instance problem
-   *     when nothing could be detected
+   * @throws ValidationException naming the detected edition on a mismatch; {@link
+   *     SourceTargetRefusedException} naming the instance problem when nothing could be detected
    */
   public void requireEdition(
       String normalizedUrl, String proxy, boolean insecureSsl, ConfluenceEdition expected) {
@@ -202,7 +203,7 @@ public class ConfluenceConnectionService {
               + label(expected)
               + "; die Edition wird erkannt, nicht gewählt.");
     } catch (ConfluenceAccessException e) {
-      throw new ValidationException(
+      throw new SourceTargetRefusedException(
           "Die Confluence-Edition konnte nicht bestätigt werden: " + e.getMessage());
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
