@@ -26,6 +26,7 @@ import java.time.Instant;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -56,6 +57,8 @@ public abstract class RunSecretContract {
   private final AtomicBoolean refused = new AtomicBoolean();
   private final AtomicBoolean renewed = new AtomicBoolean();
   private final AtomicInteger asksAfterRefusal = new AtomicInteger();
+  private final AtomicInteger asksAfterRejection = new AtomicInteger();
+  private final AtomicInteger rejectionsReported = new AtomicInteger();
   private final AtomicInteger ingested = new AtomicInteger();
 
   /** Target, connector settings and the secret of the connector's test double. */
@@ -71,6 +74,20 @@ public abstract class RunSecretContract {
 
   /** How many documents the test double offers; a complete run would ingest them all. */
   protected abstract int documents();
+
+  /**
+   * Whether the connector asks the core once more after its source rejected the secret ({@link
+   * RunCredentials#renewedAfterRejection}); {@code RunSecretContractCoverageTest} holds a connector
+   * that does to say so here.
+   */
+  protected boolean usesRejectionSeam() {
+    return false;
+  }
+
+  /** From now on the test double rejects every secret - for {@link #usesRejectionSeam()}. */
+  protected void rejectEverySecret() {
+    throw new UnsupportedOperationException("the connector does not use the rejection seam");
+  }
 
   /** The run mode that lists the whole source. */
   protected IndexingRunMode runMode() {
@@ -163,6 +180,21 @@ public abstract class RunSecretContract {
     verify(jobService, never()).failJob(eq(jobId), anyString());
   }
 
+  @Test
+  void aSecretRejectedTwiceIsAskedForOnceMoreAndEndsTheRunAsRejected() throws Exception {
+    Assumptions.assumeTrue(usesRejectionSeam(), "the connector does not use the rejection seam");
+    rejectEverySecret();
+    UUID jobId = UUID.randomUUID();
+
+    run(template(), jobId, library());
+
+    verify(jobService).failJob(eq(jobId), anyString());
+    verify(ingestService, never()).ingest(any(), any());
+    verifyNoInteractions(cleanupService);
+    assertThat(asksAfterRejection).as("asked once more after the rejection").hasValue(1);
+    assertThat(rejectionsReported).as("the port heard of the rejection").hasValue(1);
+  }
+
   protected final IndexingRunTemplate template() {
     return new IndexingRunTemplate(
         jobService,
@@ -212,6 +244,17 @@ public abstract class RunSecretContract {
         throw new SourceConnectionBlockedException(BLOCK);
       }
       return Secret.personal(renewed.get() ? renewedSecret() : settings().sourceCredentials());
+    }
+
+    @Override
+    public Secret secretAfterRejection(KnowledgeLibrary library, Secret rejected) {
+      asksAfterRejection.incrementAndGet();
+      return currentSecret(library);
+    }
+
+    @Override
+    public void credentialsRejected(KnowledgeLibrary library) {
+      rejectionsReported.incrementAndGet();
     }
 
     @Override

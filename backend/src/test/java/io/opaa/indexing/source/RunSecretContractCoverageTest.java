@@ -2,8 +2,14 @@ package io.opaa.indexing.source;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.tngtech.archunit.core.domain.JavaClass;
+import com.tngtech.archunit.core.domain.JavaClasses;
+import com.tngtech.archunit.core.domain.JavaMethod;
+import com.tngtech.archunit.core.importer.ClassFileImporter;
+import com.tngtech.archunit.core.importer.ImportOption;
 import io.opaa.test.OpaaIntegrationTest;
 import java.lang.reflect.Constructor;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -39,20 +45,53 @@ class RunSecretContractCoverageTest {
     }
 
     assertThat(registered).hasSizeGreaterThanOrEqualTo(7);
-    assertThat(contractTypes()).containsAll(registered);
+    Set<String> types = new HashSet<>();
+    for (RunSecretContract contract : contracts()) {
+      types.add(contract.type().key());
+    }
+    assertThat(types).containsAll(registered);
   }
 
-  private static Set<String> contractTypes() throws Exception {
+  /** A connector whose code asks again after a rejection runs the contract's rejection case. */
+  @Test
+  void everyConnectorThatAsksAgainAfterARejectionRunsTheRejectionCase() throws Exception {
+    JavaClasses classes =
+        new ClassFileImporter()
+            .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
+            .importPackages("io.opaa.indexing.source");
+    JavaClass runCredentials = classes.get(RunCredentials.class);
+    Set<String> asking = new HashSet<>();
+    for (JavaMethod method : runCredentials.getMethods()) {
+      if (method.getName().contains("fterRejection")) {
+        method.getCallsOfSelf().forEach(call -> asking.add(call.getOriginOwner().getPackageName()));
+        method
+            .getReferencesToSelf()
+            .forEach(reference -> asking.add(reference.getOriginOwner().getPackageName()));
+      }
+    }
+    asking.remove(RunCredentials.class.getPackageName());
+    Set<String> declaring = new HashSet<>();
+    for (RunSecretContract contract : contracts()) {
+      if (contract.usesRejectionSeam()) {
+        declaring.add(contract.getClass().getPackageName());
+      }
+    }
+
+    assertThat(asking).isNotEmpty();
+    assertThat(declaring).containsAll(asking);
+  }
+
+  private static List<RunSecretContract> contracts() throws Exception {
     ClassPathScanningCandidateComponentProvider scanner =
         new ClassPathScanningCandidateComponentProvider(false);
     scanner.addIncludeFilter(new AssignableTypeFilter(RunSecretContract.class));
-    Set<String> types = new HashSet<>();
+    List<RunSecretContract> contracts = new ArrayList<>();
     for (BeanDefinition candidate : scanner.findCandidateComponents("io.opaa.indexing.source")) {
       Constructor<?> constructor =
           Class.forName(candidate.getBeanClassName()).getDeclaredConstructor();
       constructor.setAccessible(true);
-      types.add(((RunSecretContract) constructor.newInstance()).type().key());
+      contracts.add((RunSecretContract) constructor.newInstance());
     }
-    return types;
+    return contracts;
   }
 }

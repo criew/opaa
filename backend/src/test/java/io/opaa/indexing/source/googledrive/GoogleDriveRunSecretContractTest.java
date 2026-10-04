@@ -70,6 +70,16 @@ class GoogleDriveRunSecretContractTest extends RunSecretContract {
   }
 
   @Override
+  protected boolean usesRejectionSeam() {
+    return true;
+  }
+
+  @Override
+  protected void rejectEverySecret() {
+    server.rejectToken();
+  }
+
+  @Override
   protected SourceType type() {
     return GoogleDriveSourceConnector.TYPE;
   }

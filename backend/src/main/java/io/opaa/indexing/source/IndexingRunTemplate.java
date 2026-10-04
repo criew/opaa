@@ -33,6 +33,7 @@ import org.springframework.dao.DataIntegrityViolationException;
  * with the body's {@link IndexingRun#budgetContinuation continuation}, never failed. An {@link
  * InterruptedException} fails the run as interrupted, a {@link SourceConnectionBlockedException}
  * from {@link IndexingRun#credentials} with the block's notice, a {@link
+ * SourceCredentialsRejectedException} with its message after telling the port, a {@link
  * DataIntegrityViolationException} as "library deleted during the run" (the only way a foreign key
  * to the library can break mid-run), any other exception with its own message.
  */
@@ -138,6 +139,7 @@ public class IndexingRunTemplate {
             events,
             documentRepository,
             storageQuotaService,
+            rejected -> connectionResolver.secretAfterRejection(library, rejected),
             clock);
     boolean failed = false;
     String failure = null;
@@ -157,6 +159,16 @@ public class IndexingRunTemplate {
           e.getMessage());
       recordBudgetExhausted(run, e);
       incomplete = true;
+    } catch (SourceCredentialsRejectedException e) {
+      log.warn(
+          "Indexing run {} for library {} ended with category {}: {}",
+          jobId,
+          library.getId(),
+          e.category(),
+          e.getMessage());
+      tellCredentialsRejected(library);
+      failed = true;
+      failure = e.getMessage();
     } catch (IndexingRunFailedException e) {
       log.warn("Indexing run {} for library {} failed: {}", jobId, library.getId(), e.getMessage());
       failed = true;
@@ -217,6 +229,15 @@ public class IndexingRunTemplate {
       if (interrupted) {
         Thread.currentThread().interrupt();
       }
+    }
+  }
+
+  /** A failure to tell the port is logged; it never keeps the run from ending. */
+  private void tellCredentialsRejected(KnowledgeLibrary library) {
+    try {
+      connectionResolver.credentialsRejected(library);
+    } catch (RuntimeException e) {
+      log.warn("Failed to report the rejected credentials of library {}", library.getId(), e);
     }
   }
 

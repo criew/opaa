@@ -20,6 +20,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Map;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,7 +33,8 @@ import tools.jackson.databind.json.JsonMapper;
  * {@link RedirectFollowingFetcher} with {@code REJECT_OFF_ORIGIN}, the access token asked anew per
  * request, every attempt charged to the run's {@link RequestBudget}. A throttle ({@code 429},
  * {@code 403 rateLimitExceeded}/{@code userRateLimitExceeded}) is waited out with exponential
- * backoff and retried (Entscheidung 10); every other failure becomes a {@link DriveApiException}.
+ * backoff and retried (Entscheidung 10). A rejected token ({@code 401}) is retried once when the
+ * run's credentials hold a renewed one; every other failure becomes a {@link DriveApiException}.
  */
 final class DriveApi {
 
@@ -43,6 +45,7 @@ final class DriveApi {
 
   private final URI apiBase;
   private final Supplier<String> token;
+  private final Predicate<String> renewedAfterRejection;
   private final HttpClient httpClient;
   private final TargetAddressValidator targetAddressValidator;
   private final Duration timeout;
@@ -54,6 +57,7 @@ final class DriveApi {
   DriveApi(
       URI apiBase,
       Supplier<String> token,
+      Predicate<String> renewedAfterRejection,
       HttpClient httpClient,
       TargetAddressValidator targetAddressValidator,
       Duration timeout,
@@ -63,6 +67,7 @@ final class DriveApi {
       Sleeper sleeper) {
     this.apiBase = apiBase;
     this.token = token;
+    this.renewedAfterRejection = renewedAfterRejection;
     this.httpClient = httpClient;
     this.targetAddressValidator = targetAddressValidator;
     this.timeout = timeout;
@@ -131,15 +136,17 @@ final class DriveApi {
   private Answer send(String path, Map<String, String> query)
       throws DriveApiException, InterruptedException {
     String url = apiBase.resolve("/drive/v3/" + path) + queryString(query);
+    boolean renewed = false;
     for (int attempt = 0; ; attempt++) {
       HttpResponse<InputStream> response;
+      String sent = token.get();
       try {
         response =
             RedirectFollowingFetcher.sendFollowingRedirects(
                 httpClient,
                 url,
                 timeout,
-                Map.of("Authorization", "Bearer " + token.get(), "Accept", "application/json"),
+                Map.of("Authorization", "Bearer " + sent, "Accept", "application/json"),
                 targetAddressValidator,
                 RedirectPolicy.REJECT_OFF_ORIGIN,
                 new RateLimitHandling(RateLimitPolicy.NONE, sleeper, budget));
@@ -160,6 +167,13 @@ final class DriveApi {
       int status = response.statusCode();
       if (status >= 200 && status < 300) {
         return new Answer(response);
+      }
+      if (status == 401 && !renewed && renewedAfterRejection != null) {
+        renewed = true;
+        if (renewedAfterRejection.test(sent)) {
+          new Answer(response).close();
+          continue;
+        }
       }
       String reason = reason(response);
       boolean throttled =

@@ -180,7 +180,7 @@ final class S3FileStore implements FileStore {
       case S3AccessException.Archived archived -> new FileAccessException.Unavailable(message);
       case S3AccessException.ObjectTooLarge tooLarge -> new FileAccessException.TooLarge(message);
       case S3AccessException.Authentication authentication ->
-          new FileAccessException.RunEnding(message);
+          new FileAccessException.CredentialsRejected(message);
       case S3AccessException.ClockSkew clockSkew -> new FileAccessException.RunEnding(message);
       case S3AccessException.Tls tls -> new FileAccessException.RunEnding(message);
       case S3AccessException.TargetBlocked blocked -> new FileAccessException.RunEnding(message);

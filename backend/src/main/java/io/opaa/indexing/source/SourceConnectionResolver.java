@@ -37,6 +37,19 @@ public interface SourceConnectionResolver {
   }
 
   /**
+   * The secret to retry with once the source rejected {@code rejected}; as {@link #currentSecret}
+   * unless the port can renew what it holds. Asked at most once per rejection.
+   *
+   * @throws SourceConnectionBlockedException when the library may not be reached now
+   */
+  default Secret secretAfterRejection(KnowledgeLibrary library, Secret rejected) {
+    return currentSecret(library);
+  }
+
+  /** The source rejected {@code library}'s secret again after a renewed ask; the run has ended. */
+  default void credentialsRejected(KnowledgeLibrary library) {}
+
+  /**
    * The value of {@link #currentSecret}.
    *
    * @throws SourceConnectionBlockedException when the library may not be reached now

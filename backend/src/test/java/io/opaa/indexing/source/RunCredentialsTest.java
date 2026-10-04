@@ -14,7 +14,7 @@ import org.junit.jupiter.api.Test;
 
 /**
  * One answer of the core is reused for the validity and no longer - nor past the expiry it carries,
- * nor after an invalidation - a refusal ends every later ask of the run, and a derived value is
+ * nor after a rejection - a refusal ends every later ask of the run, and a derived value is
  * recomputed only for a changed secret.
  */
 class RunCredentialsTest {
@@ -91,20 +91,38 @@ class RunCredentialsTest {
   }
 
   @Test
-  void anInvalidatedAnswerIsAskedForAgainAtOnce() {
-    answers.add(Secret.personal("erneuert"));
-    RunCredentials credentials = credentials(RunCredentials.VALIDITY);
+  void afterARejectionTheCoreIsAskedOnceMoreAndItsAnswerHeld() {
+    List<Secret> rejectedOnes = new ArrayList<>();
+    RunCredentials credentials =
+        new RunCredentials(
+            core,
+            rejected -> {
+              rejectedOnes.add(rejected);
+              return Secret.personal("erneuert");
+            },
+            RunCredentials.VALIDITY,
+            clock);
 
     assertThat(credentials.value()).isEqualTo("erstes");
-    credentials.invalidate();
+    assertThat(credentials.renewedAfterRejection("erstes")).isTrue();
 
+    assertThat(rejectedOnes).containsExactly(Secret.personal("erstes"));
     assertThat(credentials.value()).isEqualTo("erneuert");
-    assertThat(credentials.value()).isEqualTo("erneuert");
-    assertThat(asks).hasValue(2);
+    assertThat(asks).as("the renewed answer is reused like any other").hasValue(1);
   }
 
   @Test
-  void aRefusalEndsEveryLaterAskWithoutAskingTheCoreAgainEvenAfterAnInvalidation() {
+  void aRejectionAnsweredWithTheSameSecretIsNotWorthARetry() {
+    RunCredentials credentials = credentials(RunCredentials.VALIDITY);
+
+    assertThat(credentials.value()).isEqualTo("erstes");
+
+    assertThat(credentials.renewedAfterRejection("erstes")).isFalse();
+    assertThat(asks).as("the default asks the core as for any secret").hasValue(2);
+  }
+
+  @Test
+  void aRefusalEndsEveryLaterAskWithoutAskingTheCoreAgainNotEvenAfterARejection() {
     AtomicInteger refusals = new AtomicInteger();
     RunCredentials credentials =
         new RunCredentials(
@@ -118,7 +136,8 @@ class RunCredentialsTest {
     assertThatThrownBy(credentials::check)
         .isInstanceOf(SourceConnectionBlockedException.class)
         .hasMessage("Verbindung getrennt");
-    credentials.invalidate();
+    assertThatThrownBy(() -> credentials.renewedAfterRejection("alt"))
+        .isInstanceOf(SourceConnectionBlockedException.class);
     assertThatThrownBy(credentials::value).isInstanceOf(SourceConnectionBlockedException.class);
     assertThat(refusals).hasValue(1);
   }

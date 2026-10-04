@@ -6,13 +6,15 @@ import java.time.Instant;
 import java.util.Objects;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
 
 /**
  * The secret of one run as a connector asks for it before every request or sign-in: the core's
  * answer is reused for at most the validity - never past {@link #EXPIRY_MARGIN} before the expiry
  * it carries - so a secret discarded or a source blocked meanwhile ends the run at its next access
  * without decrypting per document. A refusal sticks: every later ask of the run throws the same
- * {@link SourceConnectionBlockedException}. Safe for concurrent downloads of one run.
+ * {@link SourceConnectionBlockedException}. After the source rejected a secret, the core is asked
+ * once more ({@link #renewedAfterRejection}). Safe for concurrent downloads of one run.
  */
 public final class RunCredentials {
 
@@ -27,6 +29,7 @@ public final class RunCredentials {
   public static final Duration EXPIRY_MARGIN = Duration.ofSeconds(30);
 
   private final Supplier<Secret> core;
+  private final UnaryOperator<Secret> afterRejection;
   private final Duration validity;
   private final Clock clock;
   private Instant reuseUntil;
@@ -35,7 +38,14 @@ public final class RunCredentials {
 
   /** Asks {@code core} at most once per {@code validity}, measured on {@code clock}. */
   public RunCredentials(Supplier<Secret> core, Duration validity, Clock clock) {
+    this(core, rejected -> core.get(), validity, clock);
+  }
+
+  /** As above; after a rejection {@code afterRejection} answers the secret to retry with. */
+  public RunCredentials(
+      Supplier<Secret> core, UnaryOperator<Secret> afterRejection, Duration validity, Clock clock) {
     this.core = Objects.requireNonNull(core, "core");
+    this.afterRejection = Objects.requireNonNull(afterRejection, "afterRejection");
     this.validity = Objects.requireNonNull(validity, "validity");
     this.clock = Objects.requireNonNull(clock, "clock");
   }
@@ -51,15 +61,52 @@ public final class RunCredentials {
     }
     Instant now = clock.instant();
     if (reuseUntil == null || !now.isBefore(reuseUntil)) {
-      try {
-        secret = core.get();
-      } catch (SourceConnectionBlockedException e) {
-        refusal = e;
-        throw e;
-      }
-      reuseUntil = reusableUntil(now, secret);
+      hold(now, ask(core));
     }
     return secret;
+  }
+
+  /**
+   * After the source rejected {@code used} (a {@code 401}): asks the core once for the secret to
+   * retry with, past any reuse, and holds it. A connector calls this once per rejection.
+   *
+   * @throws SourceConnectionBlockedException when the run may not reach its source any more
+   */
+  public synchronized Secret afterRejection(Secret used) {
+    if (refusal != null) {
+      throw refusal;
+    }
+    hold(clock.instant(), ask(() -> afterRejection.apply(used)));
+    return secret;
+  }
+
+  /**
+   * {@link #afterRejection} for the value {@code used}: whether the run now holds a different
+   * secret, worth one retry; otherwise the connector reports the rejection.
+   *
+   * @throws SourceConnectionBlockedException when the run may not reach its source any more
+   */
+  public boolean renewedAfterRejection(String used) {
+    Secret held;
+    synchronized (this) {
+      held = secret;
+    }
+    Secret rejected = held != null && held.value().equals(used) ? held : Secret.personal(used);
+    return !Objects.equals(Secret.valueOf(afterRejection(rejected)), used);
+  }
+
+  private Secret ask(Supplier<Secret> source) {
+    try {
+      return source.get();
+    } catch (SourceConnectionBlockedException e) {
+      refusal = e;
+      throw e;
+    }
+  }
+
+  private void hold(Instant now, Secret answer) {
+    secret = answer;
+    reuseUntil = reusableUntil(now, answer);
   }
 
   private Instant reusableUntil(Instant now, Secret answer) {
@@ -83,14 +130,6 @@ public final class RunCredentials {
    */
   public void check() {
     secret();
-  }
-
-  /**
-   * Drops the answer held, so the next ask goes to the core - for a connector whose source refused
-   * the secret ({@code 401}); a refusal of the core stays.
-   */
-  public synchronized void invalidate() {
-    reuseUntil = null;
   }
 
   /**

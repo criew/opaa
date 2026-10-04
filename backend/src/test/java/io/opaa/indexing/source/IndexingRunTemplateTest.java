@@ -343,6 +343,27 @@ class IndexingRunTemplateTest {
   }
 
   @Test
+  void rejectedCredentialsFailTheJobWithTheSourcesMessageAndTellThePort() {
+    SourceConnectionResolver resolver = mock(SourceConnectionResolver.class);
+    when(resolver.resolve(library))
+        .thenReturn(new SourceSettings("/srv/dokumente", null, null, null, false, null));
+
+    templateWith(resolver)
+        .run(
+            jobId,
+            library,
+            IndexingRunMode.FULL,
+            fullListingExecutor,
+            run -> {
+              throw new SourceCredentialsRejectedException("Die Quelle hat abgelehnt.");
+            });
+
+    verify(jobService).failJob(jobId, "Die Quelle hat abgelehnt.");
+    verify(resolver).credentialsRejected(library);
+    verify(cleanupService, never()).reconcile(any(), any(), any(), any(), any(), any(), any());
+  }
+
+  @Test
   void anyOtherExceptionFailsTheJobWithItsOwnMessage() {
     template.run(
         jobId,

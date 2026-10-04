@@ -14,6 +14,7 @@ import io.opaa.indexing.source.IndexingRun;
 import io.opaa.indexing.source.IndexingRunFailedException;
 import io.opaa.indexing.source.ListingOutcome;
 import io.opaa.indexing.source.ReconcilingAttachmentAccess;
+import io.opaa.indexing.source.SourceCredentialsRejectedException;
 import io.opaa.indexing.source.SourceFolderMirror;
 import io.opaa.indexing.source.SourceFolderPath;
 import io.opaa.indexing.source.SourceSyncState;
@@ -329,7 +330,7 @@ public final class FileSync implements AutoCloseable {
                     + UNLISTABLE_CONTAINER_SUFFIX,
                 container.key());
       } catch (FileAccessException e) {
-        throw new IndexingRunFailedException(e.getMessage(), e);
+        throw runFailure(e);
       }
     }
     Set<String> own = new LinkedHashSet<>();
@@ -364,7 +365,7 @@ public final class FileSync implements AutoCloseable {
               IndexingEventCategory.REJECTED, e.getMessage() + " " + wording.fullSyncFollows());
       return;
     } catch (FileAccessException.RunEnding e) {
-      throw new IndexingRunFailedException(e.getMessage(), e);
+      throw runFailure(e);
     } catch (FileAccessException e) {
       // the stream stays where it was; the next run reads it again
       frame.events().record(IndexingEventCategory.UNREACHABLE, e.getMessage(), feedKey);
@@ -615,7 +616,7 @@ public final class FileSync implements AutoCloseable {
         }
       }
     } catch (FileAccessException e) {
-      throw new IndexingRunFailedException(e.getMessage(), e);
+      throw runFailure(e);
     }
     state.holdPendingChangeCursors(cursors);
   }
@@ -677,7 +678,7 @@ public final class FileSync implements AutoCloseable {
         unlistedContainerKeys.add(container.key());
         return false;
       } catch (FileAccessException e) {
-        throw new IndexingRunFailedException(e.getMessage(), e);
+        throw runFailure(e);
       }
       listed += page.entries().size();
       if (listed > settings.maxEntriesPerRun()) {
@@ -1132,8 +1133,7 @@ public final class FileSync implements AutoCloseable {
           skip(IndexingEventCategory.REJECTED, unavailable.getMessage(), filePath);
       case FileAccessException.TooLarge tooLarge ->
           skip(IndexingEventCategory.REJECTED, tooLarge.getMessage(), filePath);
-      case FileAccessException.RunEnding runEnding ->
-          throw new IndexingRunFailedException(runEnding.getMessage(), runEnding);
+      case FileAccessException.RunEnding runEnding -> throw runFailure(runEnding);
       default -> {
         transientFailures++;
         frame.events().record(IndexingEventCategory.UNREACHABLE, e.getMessage(), filePath);
@@ -1141,6 +1141,13 @@ public final class FileSync implements AutoCloseable {
       }
     }
     return false;
+  }
+
+  /** The run's end for a store failure; a rejected secret ends it under its own category. */
+  private static IndexingRunFailedException runFailure(FileAccessException e) {
+    return e instanceof FileAccessException.CredentialsRejected
+        ? new SourceCredentialsRejectedException(e.getMessage(), e)
+        : new IndexingRunFailedException(e.getMessage(), e);
   }
 
   private void skip(IndexingEventCategory category, String message, String filePath) {

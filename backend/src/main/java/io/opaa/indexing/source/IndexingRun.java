@@ -20,6 +20,7 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -90,6 +91,7 @@ public final class IndexingRun {
         events,
         documentRepository,
         storageQuotaService,
+        rejected -> credentials.get(),
         Clock.systemUTC());
   }
 
@@ -104,11 +106,13 @@ public final class IndexingRun {
       IndexingRunEventRecorder events,
       DocumentRepository documentRepository,
       LibraryStorageQuotaService storageQuotaService,
+      UnaryOperator<Secret> afterRejection,
       Clock clock) {
     this.jobId = jobId;
     this.library = library;
     this.settings = settings.withoutCredentials();
-    this.credentials = new RunCredentials(credentials, RunCredentials.VALIDITY, clock);
+    this.credentials =
+        new RunCredentials(credentials, afterRejection, RunCredentials.VALIDITY, clock);
     this.runMode = runMode;
     this.sourceType = sourceType;
     this.progress = progress;
