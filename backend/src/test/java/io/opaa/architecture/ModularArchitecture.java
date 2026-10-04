@@ -337,15 +337,19 @@ public final class ModularArchitecture {
 
   /**
    * The reads of one person's use across her private libraries, relative to the root, each with the
-   * classes that may call it: the person's own view and the enforcement, and the raw sum only the
-   * quota itself.
+   * classes that may call it: the person's own view and the enforcement, the raw sum only the quota
+   * itself, and the enforcement's verdict and message - which tell the use - only the intake.
    */
   static final Map<String, Set<String>> PERSONAL_USAGE_READERS =
       Map.of(
           "knowledge.PersonalStorageQuota#usageOf",
           Set.of("knowledge.LibraryStorageQuotaService", "library.web.MyPrivateStorageController"),
           "knowledge.DocumentRepository#sumFileSizeOfPrivateLibrariesOwnedBy",
-          Set.of("knowledge.PersonalStorageQuota"));
+          Set.of("knowledge.PersonalStorageQuota"),
+          "knowledge.LibraryStorageQuotaService#verdictFor",
+          Set.of("indexing.document.DocumentIngestService"),
+          "knowledge.LibraryStorageQuotaService#personalQuotaExceededMessage",
+          Set.of("indexing.document.DocumentIngestService"));
 
   /**
    * Exact counts about persons that only go to the log, relative to the root, each with the one

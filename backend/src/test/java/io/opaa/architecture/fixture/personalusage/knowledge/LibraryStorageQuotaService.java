@@ -4,7 +4,11 @@ package io.opaa.architecture.fixture.personalusage.knowledge;
 public class LibraryStorageQuotaService {
   PersonalStorageQuota quota;
 
-  public boolean exhausted(String ownerUserId, long limit) {
+  public boolean verdictFor(String ownerUserId, long limit) {
     return quota.usageOf(ownerUserId) > limit;
+  }
+
+  public String personalQuotaExceededMessage(String ownerUserId) {
+    return quota.usageOf(ownerUserId) + " belegt";
   }
 }

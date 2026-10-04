@@ -262,15 +262,16 @@ class ModularArchitectureFixtureTest {
   }
 
   /**
-   * A view of the administration reads one person's use, a report sums it from the repository; the
-   * person's own view, the enforcement and the quota itself may.
+   * A view of the administration reads one person's use, directly and through the enforcement's
+   * message, a report sums it from the repository; the person's own view, the enforcement, the
+   * intake and the quota itself may.
    */
   @Test
   void aReadOfOnePersonsPrivateStorageOutsideItsReadersIsReported() {
     Scenario scenario = new Scenario("personalusage");
 
     assertThat(scenario.violations(ModularArchitecture::personalUsageIsReadOnlyByItsOwner))
-        .hasSize(2)
+        .hasSize(3)
         .anySatisfy(
             violation ->
                 assertThat(violation).contains("library.StorageOverview.usageOfOwner", "usageOf"))
@@ -278,9 +279,15 @@ class ModularArchitectureFixtureTest {
             violation ->
                 assertThat(violation)
                     .contains(
+                        "library.StorageOverview.messageOfOwner", "personalQuotaExceededMessage"))
+        .anySatisfy(
+            violation ->
+                assertThat(violation)
+                    .contains(
                         "searchadmin.StorageReport.sumOf", "sumFileSizeOfPrivateLibrariesOwnedBy"))
         .noneSatisfy(violation -> assertThat(violation).contains("MyPrivateStorageController"))
-        .noneSatisfy(violation -> assertThat(violation).contains("LibraryStorageQuotaService"));
+        .noneSatisfy(violation -> assertThat(violation).contains("DocumentIngestService"))
+        .noneSatisfy(violation -> assertThat(violation).contains("LibraryStorageQuotaService."));
   }
 
   /**

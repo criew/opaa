@@ -909,7 +909,7 @@ Eine private Bibliothek unterliegt zusätzlich dem **Kontingent ihrer Besitzerin
 privaten Bibliotheken zusammen (Kapitel [Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md),
 „Private Bibliotheken"). Überschreitet das Element dieses Kontingent, endet der Lauf an dieser
 Stelle geordnet als unvollständig: Bereits Aufgenommenes bleibt, nichts wird als entfernt
-abgeglichen, und das Laufprotokoll nennt den Grund. Prüfung und Speichern der Dokumentzeile laufen
+abgeglichen, auch keine Löschung in der Quelle, und das Laufprotokoll nennt den Grund. Prüfung und Speichern der Dokumentzeile laufen
 für alle privaten Bibliotheken einer Person nacheinander, sodass auch gleichzeitige Läufe das
 Kontingent nicht überschreiten.
 
