@@ -68,7 +68,9 @@ class ProfileFullSync {
               + running
               + (running == 1 ? " Bibliothek" : " Bibliotheken")
               + " auf diesem Zugang läuft gerade eine Indexierung. Die Änderung verwirft ihren"
-              + " Abgleichstand; bitte nach dem Ende des Laufs erneut speichern.",
+              + " Abgleichstand; bitte nach dem Ende des Laufs erneut speichern. Bei einem lange"
+              + " laufenden Abgleich: den Zugang sperren, das Ende der Läufe abwarten, ändern und"
+              + " wieder entsperren.",
           RUN_IN_PROGRESS);
     }
   }

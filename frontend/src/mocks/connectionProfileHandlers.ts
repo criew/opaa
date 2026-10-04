@@ -38,7 +38,7 @@ interface MockConnectorType {
   profileSupport: ConnectionProfileSupport
 }
 
-// As the delivered connectors declare it: every remote one admits profiles but Google Drive.
+// As the delivered connectors declare it: every remote one admits profiles.
 const CONNECTOR_TYPES: MockConnectorType[] = [
   { sourceType: 'CONFLUENCE', displayName: 'Confluence', profileSupport: 'OPTIONAL' },
   { sourceType: 'FILESYSTEM', displayName: 'Dateisystem', profileSupport: 'FORBIDDEN' },

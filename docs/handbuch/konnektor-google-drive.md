@@ -120,6 +120,8 @@ Schlüssel noch imitiertes Konto, nur ihre Bereiche.
   jeder Bibliothek ist ein Vollabgleich, und ihre Verwaltenden erhalten eine Benachrichtigung.
   Dokumente des bisherigen Kontos bleiben bis zu diesem Vollabgleich durchsuchbar. Läuft gerade
   eine Bibliothek des Zugangs, lehnt OPAA die Änderung ab; nach dem Ende des Laufs erneut speichern.
+  Bei einem lange laufenden Abgleich den Zugang sperren, das Ende der Läufe abwarten, ändern und
+  den Zugang wieder entsperren.
 - **Imitiertes Konto entfernen:** Danach imitiert keine Bibliothek des Zugangs mehr ein Konto; keine
   übernimmt das bisherige als eigenes.
 - **Neuer Schlüssel desselben Dienstkontos:** Die Bibliotheken laufen weiter. Ein Schlüssel eines

@@ -230,7 +230,9 @@ Nachtrag zur Invariante gibt es nicht. Kein Ziel kommt aus der Schlüsseldatei, 
   Abgleichsstand aller Bibliotheken auf dem Profil, ihr nächster Lauf ist ein Vollabgleich. Vor dem
   Speichern nennt die Bestätigung die Zahl der Bibliotheken, danach erhalten ihre Verwaltenden eine
   Benachrichtigung. Solange eine der Bibliotheken läuft, wird die Änderung abgelehnt: Ein laufender
-  Abgleich bekäme ab dann Token des neuen Kontos und endete mit dem Stand zweier Konten. Der
+  Abgleich bekäme ab dann Token des neuen Kontos und endete mit dem Stand zweier Konten. Bekannte
+  Grenze: Startet ein Lauf zwischen dieser Prüfung und dem Speichern, kann sein Abgleichstand
+  gemischt bleiben, bis der nächste Vollabgleich ihn ersetzt. Der
   Schlüssel bleibt, denn er liegt am Profil und wird nicht je Bibliothek
   bestätigt (Nachtrag #2220, Entscheidung des Maintainers vom 04.10.2026; ursprünglich sollten die
   Bibliotheken ruhen, bis sie neu verbunden sind).
