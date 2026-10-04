@@ -63,7 +63,8 @@ final class CloudConfluenceClient extends AbstractConfluenceClient {
       throw new ConfluenceAccessException.Authentication(
           "Confluence Cloud hat die Anfrage nicht angenommen (HTTP 404 auf /wiki/api/v2): entweder"
               + " sind die Zugangsdaten (E-Mail und API-Token) nicht mehr gültig, oder unter dieser"
-              + " Adresse antwortet kein Confluence Cloud.");
+              + " Adresse antwortet kein Confluence Cloud.",
+          false);
     }
     if (response.status() != 200) {
       throw http.failure(response.status(), "die Space-Liste");

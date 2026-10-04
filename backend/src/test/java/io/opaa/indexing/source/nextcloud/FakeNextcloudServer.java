@@ -45,6 +45,8 @@ final class FakeNextcloudServer implements AutoCloseable {
   private final Set<String> vanishing = new HashSet<>();
   private volatile String foreignFileHref;
   private volatile boolean credentialsRejected;
+  private volatile String acceptedPassword = APP_PASSWORD;
+  private final List<String> passwords = new CopyOnWriteArrayList<>();
 
   FakeNextcloudServer(String contextPath) throws IOException {
     this.contextPath = contextPath;
@@ -60,6 +62,17 @@ final class FakeNextcloudServer implements AutoCloseable {
 
   String credentials() {
     return LOGIN + ":" + APP_PASSWORD;
+  }
+
+  /** From now on the technical user signs in with {@code password} as well. */
+  FakeNextcloudServer alsoAccept(String password) {
+    acceptedPassword = password;
+    return this;
+  }
+
+  /** The app password of every accepted request so far. */
+  List<String> passwords() {
+    return List.copyOf(passwords);
   }
 
   synchronized FakeNextcloudServer put(String path, String text) {
@@ -185,15 +198,23 @@ final class FakeNextcloudServer implements AutoCloseable {
   private void handle(HttpExchange exchange) throws IOException {
     try (exchange) {
       exchange.getRequestBody().readAllBytes();
-      String expected =
-          "Basic "
-              + Base64.getEncoder().encodeToString(credentials().getBytes(StandardCharsets.UTF_8));
-      if (credentialsRejected
-          || !expected.equals(exchange.getRequestHeaders().getFirst("Authorization"))) {
+      String sent = exchange.getRequestHeaders().getFirst("Authorization");
+      String password = null;
+      for (String candidate : List.of(APP_PASSWORD, acceptedPassword)) {
+        String expected =
+            "Basic "
+                + Base64.getEncoder()
+                    .encodeToString((LOGIN + ":" + candidate).getBytes(StandardCharsets.UTF_8));
+        if (expected.equals(sent)) {
+          password = candidate;
+        }
+      }
+      if (credentialsRejected || password == null) {
         requests.add(exchange.getRequestMethod() + " (abgelehnt)");
         respond(exchange, 401, "");
         return;
       }
+      passwords.add(password);
       String rawPath = exchange.getRequestURI().getRawPath();
       String davRoot = contextPath + "/remote.php/dav/";
       String filesRoot = davRoot + "files/" + USER_ID;

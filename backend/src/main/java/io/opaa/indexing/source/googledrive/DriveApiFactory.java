@@ -1,12 +1,14 @@
 package io.opaa.indexing.source.googledrive;
 
 import io.opaa.indexing.source.RequestBudget;
+import io.opaa.indexing.source.RunCredentials;
 import io.opaa.indexing.source.SourceSettings;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.sourceaccess.ProxyAndCredentials;
 import io.opaa.sourceaccess.Sleeper;
 import io.opaa.sourceaccess.SourceHttpClientFactory;
 import java.net.URI;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 /**
@@ -36,10 +38,29 @@ final class DriveApiFactory {
    * @throws ProxyAndCredentials.InvalidProxyConfigurationException for an unreadable proxy
    */
   DriveApi open(SourceSettings settings, Supplier<String> token, RequestBudget budget) {
+    return open(settings, token, null, budget);
+  }
+
+  /**
+   * A run's API: the token asked from {@code credentials} per request, and once more after Drive
+   * rejected it.
+   *
+   * @throws ProxyAndCredentials.InvalidProxyConfigurationException for an unreadable proxy
+   */
+  DriveApi open(SourceSettings settings, RunCredentials credentials, RequestBudget budget) {
+    return open(settings, credentials::value, credentials::renewedAfterRejection, budget);
+  }
+
+  private DriveApi open(
+      SourceSettings settings,
+      Supplier<String> token,
+      Predicate<String> renewedAfterRejection,
+      RequestBudget budget) {
     ProxyAndCredentials proxy = ProxyAndCredentials.parse(settings.sourceProxy(), null);
     return new DriveApi(
         URI.create(settings.sourceUrl()),
         token,
+        renewedAfterRejection,
         SourceHttpClientFactory.buildHttpClient(proxy.proxyHost(), proxy.proxyPort(), false),
         targetAddressValidator,
         properties.requestTimeout(),

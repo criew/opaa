@@ -2,6 +2,7 @@ package io.opaa.indexing.source.s3;
 
 import io.opaa.s3.S3AccessException;
 import io.opaa.s3.S3Connection;
+import io.opaa.s3.S3Credentials;
 import io.opaa.security.TargetAddressValidator;
 import java.io.IOException;
 import java.time.Duration;
@@ -9,6 +10,7 @@ import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 import software.amazon.awssdk.http.SdkHttpRequest;
 
 /**
@@ -80,14 +82,33 @@ public class S3ClientFactory {
    */
   public S3ObjectStore createForRun(S3Connection connection, Collection<S3Scope> scopes)
       throws S3AccessException {
-    return create(connection, scopes, properties.requestBudgetPerRun());
+    return create(connection, null, scopes, properties.requestBudgetPerRun());
+  }
+
+  /**
+   * {@link #createForRun(S3Connection, Collection)}, signing every request with the credentials
+   * {@code current} answers then rather than those of {@code connection}.
+   */
+  public S3ObjectStore createForRun(
+      S3Connection connection, Collection<S3Scope> scopes, Supplier<S3Credentials> current)
+      throws S3AccessException {
+    return create(connection, current, scopes, properties.requestBudgetPerRun());
   }
 
   private S3ObjectStore create(S3Connection connection, Collection<S3Scope> scopes, int budget)
       throws S3AccessException {
+    return create(connection, null, scopes, budget);
+  }
+
+  private S3ObjectStore create(
+      S3Connection connection,
+      Supplier<S3Credentials> current,
+      Collection<S3Scope> scopes,
+      int budget)
+      throws S3AccessException {
     validateTargets(connection, scopes);
     return new AwsSdkS3ObjectStore(
-        connection, properties, targetAddressValidator, budget, requestObserver);
+        connection, current, properties, targetAddressValidator, budget, requestObserver);
   }
 
   /**

@@ -55,6 +55,7 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Supplier;
 import javax.net.SocketFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -90,6 +91,15 @@ final class SmbShareClient implements AutoCloseable {
           0xC0000224L, // STATUS_PASSWORD_MUST_CHANGE
           0xC0000234L); // STATUS_ACCOUNT_LOCKED_OUT
 
+  /** The statuses that refuse the secret itself; the rest of a refused sign-in is a policy. */
+  private static final Set<Long> SECRET_REJECTED_STATUSES =
+      Set.of(
+          NtStatus.STATUS_LOGON_FAILURE.getValue(),
+          NtStatus.STATUS_PASSWORD_EXPIRED.getValue(),
+          0xC0000064L, // STATUS_NO_SUCH_USER
+          0xC000006AL, // STATUS_WRONG_PASSWORD
+          0xC0000224L); // STATUS_PASSWORD_MUST_CHANGE
+
   private static final Set<Long> NOT_FOUND_STATUSES =
       Set.of(
           NtStatus.STATUS_OBJECT_NAME_NOT_FOUND.getValue(),
@@ -115,7 +125,10 @@ final class SmbShareClient implements AutoCloseable {
   static final ThreadLocal<int[]> OPENING = new ThreadLocal<>();
 
   private final SmbAddress address;
-  private final SmbCredentials credentials;
+
+  /** Asked on every sign-in, so a session set up anew uses the credentials valid then. */
+  private final Supplier<SmbCredentials> credentials;
+
   private final RequestBudget budget;
   private final BudgetedTransportFactory transport;
   private final SMBClient client;
@@ -128,6 +141,7 @@ final class SmbShareClient implements AutoCloseable {
 
   private Connection connection;
   private Session session;
+  private SmbCredentials signedInWith;
   private volatile DiskShare share;
   private SmbAccessException failure;
 
@@ -183,7 +197,7 @@ final class SmbShareClient implements AutoCloseable {
 
   private SmbShareClient(
       SmbAddress address,
-      SmbCredentials credentials,
+      Supplier<SmbCredentials> credentials,
       RequestBudget budget,
       SmbConfig.Builder config) {
     this.address = address;
@@ -197,6 +211,19 @@ final class SmbShareClient implements AutoCloseable {
   static SmbShareClient of(
       SmbAddress address,
       SmbCredentials credentials,
+      TargetAddressValidator targetAddressValidator,
+      RequestBudget budget,
+      Duration timeout) {
+    return of(address, () -> credentials, targetAddressValidator, budget, timeout);
+  }
+
+  /**
+   * A client for the share that connects on its first request and signs in with what {@code
+   * credentials} answers at each sign-in; what it throws ends that request.
+   */
+  static SmbShareClient of(
+      SmbAddress address,
+      Supplier<SmbCredentials> credentials,
       TargetAddressValidator targetAddressValidator,
       RequestBudget budget,
       Duration timeout) {
@@ -241,6 +268,8 @@ final class SmbShareClient implements AutoCloseable {
   }
 
   private void signIn() throws SmbAccessException, InterruptedException {
+    SmbCredentials credentials = this.credentials.get();
+    signedInWith = credentials;
     try {
       connection = client.connect(address.socketHost(), address.port());
     } catch (TargetAddressValidator.UnknownTargetHostException e) {
@@ -282,6 +311,7 @@ final class SmbShareClient implements AutoCloseable {
    * unless the server could not be reached at all.
    */
   SmbAccessException signInFailure(RuntimeException e) throws InterruptedException {
+    SmbCredentials credentials = signedInWith != null ? signedInWith : this.credentials.get();
     if (transport.refused != null) {
       throw transport.refused;
     }
@@ -300,6 +330,7 @@ final class SmbShareClient implements AutoCloseable {
     if (translated instanceof SmbAccessException.Unreachable) {
       return translated;
     }
+    boolean secretRejected = api != null && SECRET_REJECTED_STATUSES.contains(api.getStatusCode());
     if (translated instanceof SmbAccessException.AccessDenied) {
       return new SmbAccessException.Authentication(
           "Der Server „"
@@ -309,7 +340,7 @@ final class SmbShareClient implements AutoCloseable {
               + "“ verweigert (Zugriff verweigert). Dem Konto fehlt das Recht, sich über das"
               + " Netzwerk am Server anzumelden.");
     }
-    return refusedSignIn(credentials);
+    return refusedSignIn(credentials, secretRejected);
   }
 
   SourceRequestMeter meter() {
@@ -509,7 +540,7 @@ final class SmbShareClient implements AutoCloseable {
    * Drops the connection; the next request signs in again. A request of another thread that fails
    * on the dropped connection is repeated once ({@link #download}) or ends only its own folder.
    */
-  private synchronized void reset() {
+  synchronized void reset() {
     connections.incrementAndGet();
     DiskShare current = share;
     share = null;
@@ -663,7 +694,8 @@ final class SmbShareClient implements AutoCloseable {
       long status = api.getStatusCode();
       if (AUTHENTICATION_STATUSES.contains(status)) {
         return new SmbAccessException.Authentication(
-            "Der Server „" + address.host() + "“ hat die Anmeldung abgelehnt.");
+            "Der Server „" + address.host() + "“ hat die Anmeldung abgelehnt.",
+            SECRET_REJECTED_STATUSES.contains(status));
       }
       if (status == NtStatus.STATUS_BAD_NETWORK_NAME.getValue()) {
         return new SmbAccessException.ShareNotFound(
@@ -741,17 +773,20 @@ final class SmbShareClient implements AutoCloseable {
             + address.host()
             + "“ hat „"
             + credentials.account()
-            + "“ nur als Gast angemeldet; Benutzername oder Passwort stimmen nicht.");
+            + "“ nur als Gast angemeldet; Benutzername oder Passwort stimmen nicht.",
+        true);
   }
 
-  private SmbAccessException.Authentication refusedSignIn(SmbCredentials credentials) {
+  private SmbAccessException.Authentication refusedSignIn(
+      SmbCredentials credentials, boolean secretRejected) {
     return new SmbAccessException.Authentication(
         "Der Server „"
             + address.host()
             + "“ hat die Anmeldung von „"
             + credentials.account()
             + "“ abgelehnt. Benutzername, Domäne und Passwort prüfen; das Konto darf nicht gesperrt"
-            + " oder abgelaufen sein.");
+            + " oder abgelaufen sein.",
+        secretRejected);
   }
 
   private static <T extends Throwable> T find(Throwable e, Class<T> type) {

@@ -79,7 +79,9 @@ final class NextcloudFileStore implements FileStore {
     } catch (NextcloudAccessException.NotFound e) {
       // a folder gone since its parent's listing may only have been renamed: no deletion finding
       throw new FileAccessException.ContainerUnlistable(e.getMessage());
-    } catch (NextcloudAccessException.Authentication | NextcloudAccessException.Unreachable e) {
+    } catch (NextcloudAccessException.Authentication e) {
+      throw new FileAccessException.CredentialsRejected(e.getMessage());
+    } catch (NextcloudAccessException.Unreachable e) {
       throw new FileAccessException.RunEnding(e.getMessage());
     } catch (NextcloudAccessException e) {
       throw new FileAccessException.ContainerUnlistable(e.getMessage());
@@ -311,7 +313,7 @@ final class NextcloudFileStore implements FileStore {
           new FileAccessException.Unreadable(message);
       case NextcloudAccessException.TooLarge tooLarge -> new FileAccessException.TooLarge(message);
       case NextcloudAccessException.Authentication authentication ->
-          new FileAccessException.RunEnding(message);
+          new FileAccessException.CredentialsRejected(message);
       case NextcloudAccessException.Unreachable unreachable ->
           new FileAccessException.RunEnding(message);
       default -> new FileAccessException.Transient(message);

@@ -49,7 +49,7 @@ public class ProfileProbeIndexingExecutor implements SourceIndexingExecutor {
         runMode,
         this,
         run -> {
-          seen.put(targetLibrary.getId(), new Seen(run.settings(), run.currentCredentials()));
+          seen.put(targetLibrary.getId(), new Seen(run.settings(), run.credentials().value()));
           return ListingOutcome.complete();
         });
   }

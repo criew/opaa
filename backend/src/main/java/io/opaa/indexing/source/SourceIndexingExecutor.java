@@ -15,8 +15,8 @@ import java.util.UUID;
  * never by editing the indexing core, an existing implementation or the registry itself.
  *
  * <p>An executor takes target, secret and settings from the {@link IndexingRun} its frame hands
- * over ({@link IndexingRun#settings()}, {@link IndexingRun#currentCredentials()}), never from the
- * library (ADR-0041, Entscheidung 3a).
+ * over ({@link IndexingRun#settings()}, {@link IndexingRun#credentials()}), never from the library
+ * (ADR-0041, Entscheidung 3a), and asks for the secret before every request or sign-in.
  */
 public interface SourceIndexingExecutor {
 
