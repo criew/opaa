@@ -13,7 +13,7 @@ export interface ConnectionProfileOptionsState {
 }
 
 interface Answer extends ConnectionProfileOptionsState {
-  sourceType: SourceTypeKey
+  asked: string
 }
 
 const NOT_ASKED: ConnectionProfileOptionsState = {
@@ -25,26 +25,34 @@ const NOT_ASKED: ConnectionProfileOptionsState = {
 
 /**
  * The profiles a library of `sourceType` may be connected through, loaded whenever the type
- * changes; `null` asks for nothing. An answer for a type asked before counts as not loaded.
+ * changes; `null` asks for nothing. With `libraryId` they are the ones that library's managers may
+ * move it to - also without the right to create a library. An answer asked before counts as not
+ * loaded.
  */
 export function useConnectionProfileOptions(
   sourceType: SourceTypeKey | null,
+  libraryId?: string,
 ): ConnectionProfileOptionsState {
   const [answer, setAnswer] = useState<Answer | null>(null)
+  const asked = `${sourceType}/${libraryId ?? ''}`
 
   useEffect(() => {
     if (sourceType === null) return
     let cancelled = false
-    void listConnectionProfileOptions(sourceType)
+    void (
+      libraryId
+        ? listConnectionProfileOptions(sourceType, libraryId)
+        : listConnectionProfileOptions(sourceType)
+    )
       .then((options) => {
         if (!cancelled) {
-          setAnswer({ sourceType, options, error: null, forbidden: false, loaded: true })
+          setAnswer({ asked, options, error: null, forbidden: false, loaded: true })
         }
       })
       .catch((err) => {
         if (cancelled) return
         setAnswer({
-          sourceType,
+          asked,
           options: [],
           error: err instanceof Error ? err.message : 'Die Zugänge konnten nicht geladen werden.',
           forbidden: apiErrorStatus(err) === 403,
@@ -54,9 +62,9 @@ export function useConnectionProfileOptions(
     return () => {
       cancelled = true
     }
-  }, [sourceType])
+  }, [sourceType, libraryId, asked])
 
-  if (sourceType === null || answer === null || answer.sourceType !== sourceType) return NOT_ASKED
+  if (sourceType === null || answer === null || answer.asked !== asked) return NOT_ASKED
   return answer
 }
 

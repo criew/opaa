@@ -33,7 +33,11 @@ interface LibraryState {
   setLibraryDiagnosticsLock: (libraryId: string, locked: boolean) => Promise<void>
   setLibraryShareCap: (libraryId: string, request: LibraryShareCapRequest) => Promise<void>
   /** Answers the connected library, `null` after a logout in between. */
-  connectLibraryToProfile: (libraryId: string, profileId: string) => Promise<LibraryResponse | null>
+  connectLibraryToProfile: (
+    libraryId: string,
+    profileId: string,
+    sourceUrl?: string,
+  ) => Promise<LibraryResponse | null>
   releaseLibraryFromProfile: (libraryId: string) => Promise<void>
 }
 
@@ -136,9 +140,9 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
   },
 
   // Both answer the whole library; the list is reloaded because a lock it shows may have ended.
-  connectLibraryToProfile: async (libraryId, profileId) => {
+  connectLibraryToProfile: async (libraryId, profileId, sourceUrl) => {
     const sessionEpoch = currentSessionEpoch()
-    const library = await connectLibraryProfile(libraryId, profileId)
+    const library = await connectLibraryProfile(libraryId, profileId, sourceUrl)
     if (isStaleSessionEpoch(sessionEpoch)) return null
     set({ libraryDetails: { ...get().libraryDetails, [libraryId]: library } })
     await get().loadLibraries()
