@@ -146,7 +146,17 @@ class GraphClientTest {
 
   @Test
   void acceptsTheFunctionFormOfADeltaLink() throws Exception {
-    server.deltaLinkForm(FakeGraphServer.DeltaLinkForm.FUNCTION);
+    readsTheDeltaThroughLinksOfTheForm(FakeGraphServer.DeltaLinkForm.FUNCTION);
+  }
+
+  @Test
+  void acceptsTheUnquotedFunctionFormOfADeltaLink() throws Exception {
+    readsTheDeltaThroughLinksOfTheForm(FakeGraphServer.DeltaLinkForm.FUNCTION_UNQUOTED);
+  }
+
+  private void readsTheDeltaThroughLinksOfTheForm(FakeGraphServer.DeltaLinkForm form)
+      throws Exception {
+    server.deltaLinkForm(form);
     server.file(DRIVE, "a", "a.txt", FakeGraphServer.rootId(DRIVE), bytes("a"));
     GraphClient client = client();
     String path = "drives/" + DRIVE + "/root/delta";
@@ -156,6 +166,8 @@ class GraphClientTest {
 
     assertThat(first.nextToken()).startsWith("p");
     assertThat(rest.value()).hasSize(1);
+    assertThat(rest.deltaToken()).startsWith("d");
+    assertThat(server.requests().get(1)).endsWith("/root/delta?$top=1&token=" + first.nextToken());
   }
 
   @Test
@@ -178,8 +190,41 @@ class GraphClientTest {
   }
 
   @Test
-  void aPageLinkToAnotherPathIsNotFollowed() throws Exception {
-    pageLinkRewrittenTo(link -> link.replace("/children?", "/other?"));
+  void aPageLinkOnAnotherPathYieldsOnlyItsTokenForTheRequestedPath() throws Exception {
+    String root = FakeGraphServer.rootId(DRIVE);
+    server.file(DRIVE, "a", "a.txt", root, bytes("a"));
+    server.file(DRIVE, "b", "b.txt", root, bytes("b"));
+    server.rewriteLinks(link -> link.replace("/root/children?", "/Items/Other?"));
+    GraphClient client = client();
+    String path = "drives/" + DRIVE + "/root/children";
+
+    GraphPage first = client.page(path, Map.of("$top", "1"), null);
+    GraphPage second = client.page(path, Map.of("$top", "1"), first.nextToken());
+
+    assertThat(second.value()).hasSize(1);
+    assertThat(server.requests().get(1)).endsWith("/root/children?$top=1&$skiptoken=s1");
+  }
+
+  @Test
+  void aPageLinkOutsideTheApiVersionIsNotFollowed() throws Exception {
+    pageLinkRewrittenTo(link -> link.replace("/v1.0/", "/beta/"));
+  }
+
+  @Test
+  void aTokenTakenFromAPageLinkIsEncodedWhenSentBack() throws Exception {
+    String root = FakeGraphServer.rootId(DRIVE);
+    server.file(DRIVE, "a", "a.txt", root, bytes("a"));
+    server.file(DRIVE, "b", "b.txt", root, bytes("b"));
+    server.rewriteLinks(link -> link.replace("$skiptoken=s1", "$skiptoken=s1%26%24top%3D99"));
+    GraphClient client = client();
+    String path = "drives/" + DRIVE + "/root/children";
+    String token = client.page(path, Map.of("$top", "1"), null).nextToken();
+
+    org.assertj.core.api.Assertions.catchThrowable(
+        () -> client.page(path, Map.of("$top", "1"), token));
+
+    assertThat(token).isEqualTo("s1&$top=99");
+    assertThat(server.requests().get(1)).endsWith("?$top=1&$skiptoken=s1%26%24top%3D99");
   }
 
   @Test
@@ -259,14 +304,24 @@ class GraphClientTest {
   }
 
   @Test
-  void aDownloadOverTheBoundIsTooLarge() throws Exception {
+  void aDownloadOverTheBoundIsTooLargeAndLeavesNoTempFile() throws Exception {
     server.file(DRIVE, "a", "a.txt", FakeGraphServer.rootId(DRIVE), bytes("x".repeat(100)));
+    List<Path> before = tempFiles();
 
     assertFailure(
         () -> client().download("drives/" + DRIVE + "/items/a/content", 10),
         GraphException.Kind.TOO_LARGE,
         200,
         null);
+    assertThat(tempFiles()).containsExactlyInAnyOrderElementsOf(before);
+  }
+
+  private static List<Path> tempFiles() throws java.io.IOException {
+    try (var files =
+        Files.list(Path.of(System.getProperty("java.io.tmpdir")))
+            .filter(file -> file.getFileName().toString().startsWith("opaa-msgraph-"))) {
+      return files.toList();
+    }
   }
 
   @Test

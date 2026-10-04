@@ -22,9 +22,10 @@ anderen Modul ab.
   Zieladressprüfung, Timeouts, Proxy, gelockertes TLS und Wiederholungen sind dort bewusst
   nachgebaut, mit einem Test je Stück. Fehler werden zu deutschen `S3AccessException`s ohne
   Zugangsdaten. Seine Nutzer (S3-Konnektor, Originalablage) kennt das Paket nicht.
-- **`io.opaa.msgraph` folgt keiner Adresse von Graph:** Folgeseiten nur als Token auf Ursprung und
-  Pfad der Anfrage, Downloads auf den vorab signierten Host nur über https und ohne `Authorization`;
-  diese Adresse trägt ein Kurzzeit-Token und erscheint in keinem Log und keiner Meldung.
+- **`io.opaa.msgraph` folgt keiner Adresse von Graph:** Folgeseiten nur als Token von Graphs eigenem
+  Ursprung, die Adresse baut der Client selbst; Downloads auf den vorab signierten Host nur über
+  https und ohne `Authorization`. Diese Adresse trägt ein Kurzzeit-Token und erscheint in keinem
+  Log und keiner Meldung.
 - **Zwei getrennte Schlüssel für Geheimnisse:** `CredentialsEncryptor` für Quell-Zugangsdaten
   (`OPAA_CREDENTIALS_ENCRYPTION_KEY`), `SettingsEncryptor` für Geheimnisse verwalteter Einstellungen
   (`OPAA_SETTINGS_ENCRYPTION_KEY`). Beide prüfen den Schlüssel erst beim ersten Gebrauch.

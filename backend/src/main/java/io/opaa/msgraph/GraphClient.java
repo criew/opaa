@@ -43,8 +43,8 @@ import tools.jackson.databind.json.JsonMapper;
  * without {@code Authorization}, the target validated on every hop and named in no log or message.
  * The token is asked anew per attempt, a {@code 401} retried once when the caller holds a renewed
  * one. {@code 429} and {@code 503} are waited out under the {@link RateLimitPolicy}; the listener
- * is told of every attempt and every wait. A page link is honoured only as a token on the same
- * origin and path - the address is always built here.
+ * is told of every attempt and every wait. A page link is honoured only as a token on Graph's own
+ * origin - the address is always built here.
  */
 public final class GraphClient {
 
@@ -56,7 +56,7 @@ public final class GraphClient {
   private static final String VERSION_PATH = "/v1.0/";
   private static final long MAX_ERROR_BYTES = 64L * 1024;
   private static final Pattern ERROR_CODE = Pattern.compile("[A-Za-z0-9_.-]{1,64}");
-  private static final Pattern DELTA_FUNCTION = Pattern.compile("\\(token='([^']+)'\\)");
+  private static final Pattern DELTA_FUNCTION = Pattern.compile("\\(token='?([^')]+)'?\\)$");
   private static final JsonMapper JSON = JsonMapper.builder().build();
 
   private final URI origin;
@@ -341,8 +341,10 @@ public final class GraphClient {
   }
 
   /**
-   * The token of the page link in {@code field}, after checking that the link points at {@code
-   * path} on this client's origin; {@code null} when the answer carries no such link.
+   * The token of the page link in {@code field}, after checking that the link stays on this
+   * client's origin under {@code /v1.0/}; {@code null} when the answer carries no such link. The
+   * link's path is not compared with {@code path}: only the token is used, and the next address is
+   * built from {@code path} again, its token encoded.
    */
   private String linkToken(JsonNode root, String field, String path) throws GraphException {
     JsonNode link = root.get(field);
@@ -364,14 +366,14 @@ public final class GraphClient {
         || uri.getPath() == null) {
       throw foreignLink();
     }
-    String expected = VERSION_PATH + relative(path);
+    if (!uri.getPath().regionMatches(true, 0, VERSION_PATH, 0, VERSION_PATH.length())) {
+      throw foreignLink();
+    }
     String parameter = tokenParameter(path);
-    String token = null;
-    if (uri.getPath().equals(expected)) {
-      token = queryParameter(uri.getRawQuery(), parameter);
-    } else if ("token".equals(parameter) && uri.getPath().startsWith(expected)) {
-      Matcher function = DELTA_FUNCTION.matcher(uri.getPath().substring(expected.length()));
-      token = function.matches() ? function.group(1) : null;
+    String token = queryParameter(uri.getRawQuery(), parameter);
+    if (token == null && "token".equals(parameter)) {
+      Matcher function = DELTA_FUNCTION.matcher(uri.getPath());
+      token = function.find() ? function.group(1) : null;
     }
     if (token == null || token.isEmpty()) {
       throw foreignLink();
@@ -446,7 +448,8 @@ public final class GraphClient {
         GraphException.Kind.BLOCKED,
         200,
         null,
-        "Microsoft Graph hat auf eine Folgeseite außerhalb der angefragten Sammlung verwiesen.");
+        "Microsoft Graph hat auf eine Folgeseite an fremder Adresse oder ohne Seitenmarke"
+            + " verwiesen.");
   }
 
   private static GraphException tooLarge(long maxBytes) {

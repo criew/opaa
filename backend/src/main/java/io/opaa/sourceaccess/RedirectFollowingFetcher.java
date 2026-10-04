@@ -407,9 +407,9 @@ public final class RedirectFollowingFetcher {
   }
 
   /**
-   * Why a redirect was rejected outright under {@link RedirectPolicy#REJECT_OFF_ORIGIN} - shared so
-   * every caller builds the identically worded, sanitized run-log message {@link
-   * #redirectRejectionMessage} produces.
+   * Why a redirect was rejected outright under {@link RedirectPolicy#REJECT_OFF_ORIGIN} or {@link
+   * RedirectPolicy#DROP_AUTHORIZATION_HTTPS_ONLY_OFF_ORIGIN} - shared so every caller builds the
+   * identically worded, sanitized run-log message {@link #redirectRejectionMessage} produces.
    */
   public enum RedirectRejectionReason {
     FOREIGN_HOST,
@@ -445,10 +445,12 @@ public final class RedirectFollowingFetcher {
 
   /**
    * Thrown by {@link #sendFollowingRedirects} under {@link RedirectPolicy#REJECT_OFF_ORIGIN} when a
-   * redirect would leave the original URL's origin or downgrade the protocol. {@link
-   * #userMessage()} is a German, cause-specific, sanitized run-log text ({@link
-   * #redirectRejectionMessage}), distinct from this exception's own {@link #getMessage()}, which
-   * stays the unsanitized, developer-facing detail for the log only.
+   * redirect would leave the original URL's origin or downgrade the protocol, and under {@link
+   * RedirectPolicy#DROP_AUTHORIZATION_HTTPS_ONLY_OFF_ORIGIN} when it would downgrade the protocol
+   * or leave the origin for a target without {@code https}. {@link #userMessage()} is a German,
+   * cause-specific, sanitized run-log text ({@link #redirectRejectionMessage}), distinct from this
+   * exception's own {@link #getMessage()}, which stays the unsanitized, developer-facing detail for
+   * the log only.
    */
   public static final class RedirectRejectedException extends IOException {
     private final RedirectRejectionReason reason;

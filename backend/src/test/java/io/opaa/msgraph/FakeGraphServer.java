@@ -68,7 +68,9 @@ public final class FakeGraphServer implements AutoCloseable {
     /** {@code …/delta?token=…} */
     QUERY,
     /** {@code …/delta(token='…')} */
-    FUNCTION
+    FUNCTION,
+    /** {@code …/delta(token=…)} */
+    FUNCTION_UNQUOTED
   }
 
   /** A file or folder of a document library. */
@@ -417,9 +419,11 @@ public final class FakeGraphServer implements AutoCloseable {
 
   private String deltaLink(String path, String token) {
     String link =
-        deltaLinkForm == DeltaLinkForm.QUERY
-            ? origin() + VERSION + path + "?token=" + token
-            : origin() + VERSION + path + "(token='" + token + "')";
+        switch (deltaLinkForm) {
+          case QUERY -> origin() + VERSION + path + "?token=" + token;
+          case FUNCTION -> origin() + VERSION + path + "(token='" + token + "')";
+          case FUNCTION_UNQUOTED -> origin() + VERSION + path + "(token=" + token + ")";
+        };
     return linkRewrite.apply(link);
   }
 
@@ -466,34 +470,48 @@ public final class FakeGraphServer implements AutoCloseable {
   private String downloadAddress(String itemId) {
     String suffix = "/blob/" + itemId + "?tempauth=" + presignedSecret;
     return switch (downloadHost) {
-      case HTTPS -> "https://127.0.0.1:" + download.getAddress().getPort() + suffix;
       case HTTPS_BY_NAME -> "https://localhost:" + download.getAddress().getPort() + suffix;
       case PLAIN_HTTP -> "http://127.0.0.1:" + plainDownload.getAddress().getPort() + suffix;
+      case HTTPS -> "https://127.0.0.1:" + download.getAddress().getPort() + suffix;
     };
   }
 
   private void handleDownload(HttpExchange exchange) throws IOException {
     try {
-      String authorization = exchange.getRequestHeaders().getFirst("Authorization");
-      downloadAuthorizations.add(authorization == null ? "(none)" : authorization);
       URI uri = exchange.getRequestURI();
       if (fail(exchange, uri.getPath())) {
         return;
       }
       Matcher matcher = Pattern.compile("/blob/([^/]+)").matcher(uri.getPath());
-      Item item = matcher.matches() ? items.get(matcher.group(1)) : null;
-      if (item == null || !("tempauth=" + presignedSecret).equals(uri.getRawQuery())) {
+      if (!matcher.matches() || !("tempauth=" + presignedSecret).equals(uri.getRawQuery())) {
+        recordAuthorization(exchange);
         respond(exchange, 403, "text/plain", "denied".getBytes(StandardCharsets.UTF_8));
         return;
       }
-      exchange.getResponseHeaders().set("Content-Type", "application/octet-stream");
-      exchange.sendResponseHeaders(200, 0);
-      try (OutputStream out = exchange.getResponseBody()) {
-        out.write(item.content);
-      }
+      serveBlob(exchange, matcher.group(1));
     } finally {
       exchange.close();
     }
+  }
+
+  /** Serves the content of {@code itemId}, noting the {@code Authorization} the request carried. */
+  private void serveBlob(HttpExchange exchange, String itemId) throws IOException {
+    recordAuthorization(exchange);
+    Item item = items.get(itemId);
+    if (item == null) {
+      respond(exchange, 404, "text/plain", "missing".getBytes(StandardCharsets.UTF_8));
+      return;
+    }
+    exchange.getResponseHeaders().set("Content-Type", "application/octet-stream");
+    exchange.sendResponseHeaders(200, 0);
+    try (OutputStream out = exchange.getResponseBody()) {
+      out.write(item.content);
+    }
+  }
+
+  private void recordAuthorization(HttpExchange exchange) {
+    String authorization = exchange.getRequestHeaders().getFirst("Authorization");
+    downloadAuthorizations.add(authorization == null ? "(none)" : authorization);
   }
 
   // --- forms -----------------------------------------------------------------------------------
