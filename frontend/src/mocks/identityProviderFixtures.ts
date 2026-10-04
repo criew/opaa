@@ -1,6 +1,12 @@
-import type { OidcProviderResponse } from '../types/api'
+import type { OidcProviderImpactResponse, OidcProviderResponse } from '../types/api'
 
 export let mockOidcProviders: OidcProviderResponse[] = []
+
+/**
+ * What disabling or deleting a provider does to persons' connections, by provider id; a provider
+ * missing here has none to confirm - the state while no connector admits persons.
+ */
+export let mockOidcProviderImpacts: Record<string, OidcProviderImpactResponse> = {}
 
 function initialOidcProviders(): OidcProviderResponse[] {
   return [
@@ -114,5 +120,6 @@ function initialOidcProviders(): OidcProviderResponse[] {
 
 export function resetMockOidcProviders() {
   mockOidcProviders = initialOidcProviders()
+  mockOidcProviderImpacts = {}
 }
 resetMockOidcProviders()

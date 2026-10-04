@@ -366,6 +366,31 @@ lassen.
   `PageSection` rendert seit #1608 ein `section` mit `aria-labelledby` auf seine Überschrift, was
   genau die Eingrenzung ersetzt, die vor #1941 der Rechte-Dialog leistete.
 
+- `tests/connection-profiles.spec.ts` (#2175, Szenarien 1 und 2, Teil von Epic #2147) — Zugänge,
+  Freigabe und Profilpflicht über den vollen Stack, mit der Quellart RSS-Feed gegen den
+  suite-eigenen `rss-feed`-Dienst; die Szenarien prüfen zugleich `docs/handbuch/indexierung.md`,
+  Abschnitt „Zugänge“. Die Systemverwaltung legt unter „Administration → Zugänge“ einen Zugang
+  „ohne Anmeldung“ an und erteilt einer Gruppe unter „Anlegerechte“ das Recht „Konnektorbibliotheken
+  anlegen“ für ihn. Ein Mitglied (`dev-user`) wählt ihn im Assistenten, bekommt die Adresse aus dem
+  Zugang, testet die Verbindung, indiziert und findet den Eintrag per `@`-Referenz im Chat;
+  `dev-outsider` sieht den Zugang nicht wählbar, mit dem Hinweis auf die Systemverwaltung. Danach
+  schaltet die Verwaltung „Nur über Zugänge“ mit der Bestandswahl „Sperren“ ein (Dialog mit dem
+  RSS-Hinweis zu Detailseiten und der Liste der Bibliotheken mit eigener Adresse): Die
+  Bestandsbibliothek zeigt den Sperrhinweis, ihr Lauf endet ohne Element, der Beleg im Chat trägt
+  „Stand vom …“, und der Assistent bietet keine eigene Adresse mehr an. Die Verwaltende repariert
+  sie über „Zugang zuordnen“ (Prüfen vor dem Zuordnen), sie läuft wieder. Die Sperre des Zugangs
+  stoppt die Läufe mit Hinweis und „Stand vom …“, das Entsperren stellt sie wieder her. Zuletzt der
+  Zugangswunsch: `dev-outsider` schlägt im Schritt „Art des Wissens“ einen Zugang vor, die
+  Verwaltung legt ihn aus dem Wunsch an, der Wunsch steht danach als „Erledigt“ mit dem Zugang da,
+  und die Pflicht wird über die Oberfläche wieder ausgeschaltet.
+
+  `test.describe.serial`, weil die Profilpflicht einen passenden Zugang voraussetzt. Das Aufräumen
+  (`fixtures/connectionProfiles.ts`) setzt die Quellart RSS-Feed zurück (keine Pflicht, nicht
+  gesperrt) und entfernt Bibliotheken, Zugänge und Gruppe auch nach einem Fehlschlag - sonst
+  scheiterten die RSS-Bibliotheken späterer Dateien an einer liegengebliebenen Pflicht.
+  `docker-compose.e2e.yml` hebt die Grenze neuer Zugangswünsche je Person und Stunde an; mit der
+  Vorgabe 5 scheitert schon ein Retry nach einigen lokalen Läufen gegen denselben Stack.
+
 - `tests/llm-model-management.spec.ts` (#760, Teil von Epic #755) — die Modellverwaltung über den
   vollen Stack: ein Systemadministrator legt ein Chat-Modell ohne API-Schlüssel an, testet die
   Verbindung gegen `ai-stub` erfolgreich und aktiviert es; die Liste zeigt danach genau diesen

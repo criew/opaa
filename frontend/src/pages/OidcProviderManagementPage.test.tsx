@@ -3,8 +3,8 @@ import userEvent, { type UserEvent } from '@testing-library/user-event'
 import { afterAll, beforeAll, beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest'
 import { http, HttpResponse } from 'msw'
 import { server } from '../mocks/server'
-import { mockOidcProviders } from '../mocks/identityProviderFixtures'
-import { answerConfirm, renderWithProviders } from '../test/test-utils'
+import { mockOidcProviderImpacts, mockOidcProviders } from '../mocks/identityProviderFixtures'
+import { answerConfirm, renderWithProviders, waitForDialogClosed } from '../test/test-utils'
 import { useAuthStore } from '../stores/authStore'
 import { useOidcProviderStore } from '../stores/oidcProviderStore'
 import { DEFAULT_PROVIDER_HINT } from '../components/admin/providers/ProviderRowMenu'
@@ -38,6 +38,13 @@ function desktopMatchMedia(query: string): MediaQueryList {
   } as unknown as MediaQueryList
 }
 
+/** Ein Zugang lässt Personen zu: Die Rückfrage nennt die Wirkung, nie eine Zahl. */
+const PERSONS_ADMITTED = {
+  confirmationRequired: true,
+  disableEffect: 'CONNECTIONS_REST',
+  deleteEffect: 'CONNECTIONS_END',
+} as const
+
 const findProviderTable = () => screen.findByRole('table', { name: 'Identitätsanbieter' })
 
 /** Die Anbieterzeilen in ihrer Reihenfolge - der Tabellenkörper, ohne die Kopfzeile. */
@@ -62,6 +69,35 @@ async function openRowMenu(user: UserEvent, name: string) {
 async function clickRowAction(user: UserEvent, name: string, action: string) {
   const menu = await openRowMenu(user, name)
   await user.click(within(menu).getByRole('menuitem', { name: action }))
+}
+
+/**
+ * Bestätigt die Rückfrage vor dem Deaktivieren oder Löschen, sobald die Folgen für verbundene Konten
+ * geladen sind - erst dann ist die Schaltfläche frei -, wartet, bis der Dialog geschlossen ist, und
+ * gibt den Text zurück, den die Rückfrage beim Bestätigen zeigte.
+ */
+async function confirmShutdown(user: UserEvent, question: RegExp, verb: string) {
+  const dialog = await screen.findByRole('dialog', { name: question })
+  const button = within(dialog).getByRole('button', { name: verb })
+  await waitFor(() => expect(button).toBeEnabled())
+  const shown = dialog.textContent ?? ''
+  await user.click(button)
+  await waitForDialogClosed()
+  return shown
+}
+
+/** Die Abfrageparameter jeder Anfrage an `pathSuffix`, solange der Test läuft. */
+function recordParams(pathSuffix: string, method: string) {
+  const recorded: URLSearchParams[] = []
+  const record = ({ request }: { request: Request }) => {
+    const url = new URL(request.url)
+    if (request.method === method && url.pathname.endsWith(pathSuffix)) {
+      recorded.push(url.searchParams)
+    }
+  }
+  server.events.on('request:start', record)
+  onTestFinished(() => server.events.removeListener('request:start', record))
+  return recorded
 }
 
 /**
@@ -343,9 +379,8 @@ describe('OidcProviderManagementPage', () => {
     renderWithProviders(<OidcProviderManagementPage />, { withRouter: true })
 
     await clickRowAction(user, 'Partnerportal', 'Deaktivieren')
-    const abschaltfrage = await screen.findByRole('dialog', { name: /deaktivieren\?/ })
-    expect(abschaltfrage).toHaveTextContent(/nicht mehr anmelden/)
-    await user.click(within(abschaltfrage).getByRole('button', { name: 'Deaktivieren' }))
+    const abschaltfrage = await confirmShutdown(user, /deaktivieren\?/, 'Deaktivieren')
+    expect(abschaltfrage).toMatch(/nicht mehr anmelden/)
     await waitFor(() => {
       expect(within(rowOf('Partnerportal')).getByText('Deaktiviert')).toBeInTheDocument()
     })
@@ -360,9 +395,8 @@ describe('OidcProviderManagementPage', () => {
     const menu = await openRowMenu(user, 'Partnerportal')
     expect(within(menu).getByRole('menuitem', { name: 'Deaktivieren' })).toBeInTheDocument()
     await user.click(within(menu).getByRole('menuitem', { name: 'Löschen' }))
-    const loeschfrage = await screen.findByRole('dialog', { name: /löschen\?/ })
-    expect(loeschfrage).toHaveTextContent(/Konten bleiben erhalten/)
-    await user.click(within(loeschfrage).getByRole('button', { name: 'Löschen' }))
+    const loeschfrage = await confirmShutdown(user, /löschen\?/, 'Löschen')
+    expect(loeschfrage).toMatch(/Konten bleiben erhalten/)
     await waitFor(() => {
       expect(screen.queryByText('Partnerportal')).not.toBeInTheDocument()
     })
@@ -524,9 +558,8 @@ describe('OidcProviderManagementPage', () => {
 
     // Die Bestätigung *ist* das Acknowledgement, das das Backend verlangt (ADR-0025):
     // Der Zusatzsatz zum letzten Anbieter muss deshalb vor dem Absenden gestanden haben.
-    const letzterAnbieter = await screen.findByRole('dialog', { name: /deaktivieren\?/ })
-    expect(letzterAnbieter).toHaveTextContent('Danach können sich nur noch lokale Konten anmelden')
-    await user.click(within(letzterAnbieter).getByRole('button', { name: 'Deaktivieren' }))
+    const letzterAnbieter = await confirmShutdown(user, /deaktivieren\?/, 'Deaktivieren')
+    expect(letzterAnbieter).toContain('Danach können sich nur noch lokale Konten anmelden')
 
     await waitFor(() => expect(acknowledged).toEqual(['true']))
     await waitFor(() =>
@@ -550,11 +583,89 @@ describe('OidcProviderManagementPage', () => {
     renderWithProviders(<OidcProviderManagementPage />, { withRouter: true })
 
     await clickRowAction(user, 'Partnerportal', 'Deaktivieren')
-    await answerConfirm(user, /deaktivieren\?/, 'Deaktivieren')
+    await confirmShutdown(user, /deaktivieren\?/, 'Deaktivieren')
 
     // Die Erklärung erscheint als Benachrichtigung, nicht mehr als Meldung im Anbietereintrag.
     expect(await screen.findByRole('alert')).toHaveTextContent(
       /lokales Systemverwalterkonto mit Passwort/,
     )
+  })
+
+  /** ADR-0041, Entscheidung 4: Deaktivieren lässt ruhen - umkehrbar, und ohne Zahl je Anbieter. */
+  it('names what disabling does to connected accounts and sends the confirmation', async () => {
+    mockOidcProviderImpacts['oidc-provider-partner'] = PERSONS_ADMITTED
+    const sent = recordParams('/disable', 'POST')
+    signInAs('SYSTEM_ADMIN')
+    const user = userEvent.setup()
+    renderWithProviders(<OidcProviderManagementPage />, { withRouter: true })
+
+    await clickRowAction(user, 'Partnerportal', 'Deaktivieren')
+    const frage = await screen.findByRole('dialog', { name: /deaktivieren\?/ })
+    const konten = await within(frage).findByRole('region', { name: 'Verbundene Konten' })
+    expect(konten).toHaveTextContent(/Etwaige verbundene Konten/)
+    expect(konten).toHaveTextContent(/ruhen: Es wird nichts gelöscht/)
+    expect(konten).toHaveTextContent(/ohne neues Verbinden weiter/)
+    expect(konten.textContent).not.toMatch(/\d/)
+    await confirmShutdown(user, /deaktivieren\?/, 'Deaktivieren')
+
+    expect(sent.map((params) => params.get('confirmConnections'))).toEqual(['true'])
+    await waitFor(() => {
+      expect(within(rowOf('Partnerportal')).getByText('Deaktiviert')).toBeInTheDocument()
+    })
+  })
+
+  it('names that deleting deletes the access data irreversibly and starts the deletion period', async () => {
+    mockOidcProviderImpacts['oidc-provider-partner'] = PERSONS_ADMITTED
+    const sent = recordParams('/oidc-provider-partner', 'DELETE')
+    signInAs('SYSTEM_ADMIN')
+    const user = userEvent.setup()
+    renderWithProviders(<OidcProviderManagementPage />, { withRouter: true })
+
+    await clickRowAction(user, 'Partnerportal', 'Löschen')
+    const frage = await screen.findByRole('dialog', { name: /löschen\?/ })
+    const konten = await within(frage).findByRole('region', { name: 'Verbundene Konten' })
+    expect(konten).toHaveTextContent(/etwaiger verbundener Konten/)
+    expect(konten).toHaveTextContent(/sofort\s+gelöscht – das lässt sich nicht rückgängig machen/)
+    expect(konten).toHaveTextContent(/Löschfrist/)
+    expect(konten.textContent).not.toMatch(/\d/)
+    await confirmShutdown(user, /löschen\?/, 'Löschen')
+
+    expect(sent.map((params) => params.get('confirmConnections'))).toEqual(['true'])
+    await waitFor(() => expect(screen.queryByText('Partnerportal')).not.toBeInTheDocument())
+  })
+
+  it('asks nothing about connected accounts where no access admits persons', async () => {
+    const sent = recordParams('/disable', 'POST')
+    signInAs('SYSTEM_ADMIN')
+    const user = userEvent.setup()
+    renderWithProviders(<OidcProviderManagementPage />, { withRouter: true })
+
+    await clickRowAction(user, 'Partnerportal', 'Deaktivieren')
+    const frage = await confirmShutdown(user, /deaktivieren\?/, 'Deaktivieren')
+
+    expect(frage).not.toContain('Verbundene Konten')
+    expect(sent.map((params) => params.get('confirmConnections'))).toEqual([null])
+  })
+
+  /** Neither action hangs on the impact: unknown, it names the effect as a precaution. */
+  it('names the effect and confirms it when the impact cannot be loaded', async () => {
+    server.use(
+      http.get('/api/v1/admin/oidc-providers/:providerId/impact', () =>
+        HttpResponse.json({ error: 'Dienst nicht erreichbar' }, { status: 500 }),
+      ),
+    )
+    const sent = recordParams('/disable', 'POST')
+    signInAs('SYSTEM_ADMIN')
+    const user = userEvent.setup()
+    renderWithProviders(<OidcProviderManagementPage />, { withRouter: true })
+
+    await clickRowAction(user, 'Partnerportal', 'Deaktivieren')
+    const text = await confirmShutdown(user, /deaktivieren\?/, 'Deaktivieren')
+
+    expect(text).toMatch(/ruhen: Es wird nichts gelöscht/)
+    expect(sent.map((params) => params.get('confirmConnections'))).toEqual(['true'])
+    await waitFor(() => {
+      expect(within(rowOf('Partnerportal')).getByText('Deaktiviert')).toBeInTheDocument()
+    })
   })
 })

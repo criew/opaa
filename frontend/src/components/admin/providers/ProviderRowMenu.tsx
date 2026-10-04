@@ -14,25 +14,12 @@ import PowerSettingsNewOutlinedIcon from '@mui/icons-material/PowerSettingsNewOu
 import StarOutlineRoundedIcon from '@mui/icons-material/StarOutlineRounded'
 import ChecklistOutlinedIcon from '@mui/icons-material/ChecklistOutlined'
 import type { OidcProviderResponse } from '../../../types/api'
-import { apiErrorCode, apiErrorMessage } from '../../../services/apiErrorDetails'
+import { apiErrorMessage } from '../../../services/apiErrorDetails'
 import { confirmAction } from '../../../stores/confirmStore'
 import { notify } from '../../../stores/notificationStore'
 import { useOidcProviderStore } from '../../../stores/oidcProviderStore'
 import { PROVIDER_CONFLICT_MESSAGES } from '../oidcProviderConflicts'
-
-export const DISABLE_CONSEQUENCE =
-  'Nutzer dieses Anbieters können sich ab sofort nicht mehr anmelden; laufende Sitzungen enden ' +
-  'mit der nächsten Anfrage. Die Konten und ihre Rechte bleiben erhalten.'
-
-export const DELETE_CONSEQUENCE =
-  'Nutzer dieses Anbieters können sich nicht mehr anmelden. Die Konten bleiben erhalten und ' +
-  'werden wieder nutzbar, sobald ein Anbieter mit derselben Issuer-URI existiert.'
-
-export const LAST_PROVIDER_CONSEQUENCE =
-  'Dies ist der letzte aktivierte Identitätsanbieter. Danach können sich nur noch lokale Konten ' +
-  'anmelden – über die Anmeldeseite und, für die Systemverwaltung, über /login/system. Ein ' +
-  'vertippter Anbieter lässt sich aus der lokalen Anmeldung heraus korrigieren, ohne ' +
-  'Datenbankzugriff und ohne Umgebungsvariable.'
+import ProviderShutdownDialog, { type ProviderShutdownAction } from './ProviderShutdownDialog'
 
 export const DEFAULT_CONSEQUENCE =
   'Der Standardanbieter ist der einzige, der weder deaktiviert noch gelöscht werden kann; die ' +
@@ -62,7 +49,8 @@ interface ProviderRowMenuProps {
  *
  * Zweitens: Beim letzten aktivierten Anbieter **ist die Rückfrage das Acknowledgement**, das das
  * Backend verlangt (ADR-0025). Der Zusatzabsatz und das Flag gehören deshalb zusammen — das Flag
- * geht erst hinaus, nachdem der Absatz gelesen wurde.
+ * geht erst hinaus, nachdem der Absatz gelesen wurde. Dasselbe gilt für die Folgen für verbundene
+ * Konten ({@link ProviderShutdownDialog}).
  */
 export default function ProviderRowMenu({
   provider,
@@ -73,10 +61,10 @@ export default function ProviderRowMenu({
 }: ProviderRowMenuProps) {
   const setProviderEnabled = useOidcProviderStore((s) => s.setProviderEnabled)
   const makeProviderDefault = useOidcProviderStore((s) => s.makeProviderDefault)
-  const deleteExistingProvider = useOidcProviderStore((s) => s.deleteExistingProvider)
   const navigate = useNavigate()
   const [anchor, setAnchor] = useState<HTMLElement | null>(null)
   const [busy, setBusy] = useState(false)
+  const [shutdown, setShutdown] = useState<ProviderShutdownAction | null>(null)
   const reasonId = useId()
 
   const close = () => setAnchor(null)
@@ -97,26 +85,13 @@ export default function ProviderRowMenu({
   async function toggleEnabled() {
     close()
     if (provider.enabled) {
-      const consequence = isLastEnabled
-        ? `${DISABLE_CONSEQUENCE}\n\n${LAST_PROVIDER_CONSEQUENCE}`
-        : DISABLE_CONSEQUENCE
-      if (
-        !(await confirmAction({
-          question: `„${provider.displayName}“ deaktivieren?`,
-          consequence,
-          confirmLabel: 'Deaktivieren',
-          tone: 'caution',
-        }))
-      ) {
-        return
-      }
+      setShutdown('disable')
+      return
     }
     // Das Einschalten fragt nicht - es nimmt niemandem die Anmeldung.
     await run(
-      () => setProviderEnabled(provider.id, !provider.enabled, isLastEnabled),
-      provider.enabled
-        ? `„${provider.displayName}“ wurde deaktiviert.`
-        : `„${provider.displayName}“ wurde aktiviert.`,
+      () => setProviderEnabled(provider.id, true),
+      `„${provider.displayName}“ wurde aktiviert.`,
       'Änderung fehlgeschlagen',
     )
   }
@@ -140,35 +115,9 @@ export default function ProviderRowMenu({
     )
   }
 
-  async function remove() {
+  function remove() {
     close()
-    const consequence = isLastEnabled
-      ? `${DELETE_CONSEQUENCE}\n\n${LAST_PROVIDER_CONSEQUENCE}`
-      : DELETE_CONSEQUENCE
-    if (
-      !(await confirmAction({
-        question: `„${provider.displayName}“ löschen?`,
-        consequence,
-        confirmLabel: 'Löschen',
-        tone: 'danger',
-      }))
-    ) {
-      return
-    }
-    setBusy(true)
-    try {
-      await deleteExistingProvider(provider.id, isLastEnabled)
-      notify(`„${provider.displayName}“ wurde gelöscht.`, 'success')
-    } catch (err) {
-      notify(apiErrorMessage(err, PROVIDER_CONFLICT_MESSAGES, 'Löschen fehlgeschlagen'), 'error')
-      // Die Ablehnung wegen wirkender Gruppen ist kein Endpunkt, sondern ein Verweis: die
-      // Arbeitsliste des Anbieters führt jede Gruppe mit ihren Wirkungen (ADR-0036/2).
-      if (apiErrorCode(err) === 'PROVIDER_GROUPS_IN_EFFECT') {
-        void navigate(`/admin/identity-providers/${provider.id}/groups`)
-      }
-    } finally {
-      setBusy(false)
-    }
+    setShutdown('delete')
   }
 
   return (
@@ -230,7 +179,7 @@ export default function ProviderRowMenu({
         </MenuItem>
         <Divider />
         <MenuItem
-          onClick={() => void remove()}
+          onClick={remove}
           disabled={!canDelete}
           aria-describedby={!canDelete ? reasonId : undefined}
         >
@@ -257,6 +206,14 @@ export default function ProviderRowMenu({
           </Box>
         )}
       </Menu>
+      {shutdown && (
+        <ProviderShutdownDialog
+          provider={provider}
+          action={shutdown}
+          isLastEnabled={isLastEnabled}
+          onClose={() => setShutdown(null)}
+        />
+      )}
     </>
   )
 }

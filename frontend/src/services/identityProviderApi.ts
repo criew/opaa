@@ -1,4 +1,5 @@
 import type {
+  OidcProviderImpactResponse,
   OidcProviderOrderRequest,
   OidcProviderRequest,
   OidcProviderResponse,
@@ -44,37 +45,67 @@ export async function updateOidcProvider(
   }
 }
 
+/** The confirmations a switch-off or a deletion may need; only the set ones travel. */
+export interface ProviderShutdownConfirmations {
+  /** The last *enabled* OIDC provider: afterwards only local accounts can sign in (ADR-0033). */
+  acknowledgeLastProvider?: boolean
+  /** What happens to persons' connected accounts, as {@link getOidcProviderImpact} names it. */
+  confirmConnections?: boolean
+}
+
+function confirmationParams({
+  acknowledgeLastProvider,
+  confirmConnections,
+}: ProviderShutdownConfirmations) {
+  const params = {
+    ...(acknowledgeLastProvider ? { acknowledgeLastProvider: true } : {}),
+    ...(confirmConnections ? { confirmConnections: true } : {}),
+  }
+  return Object.keys(params).length > 0 ? params : undefined
+}
+
+/** What disabling or deleting the provider does to persons' connected accounts (ADR-0041). */
+export async function getOidcProviderImpact(
+  providerId: string,
+): Promise<OidcProviderImpactResponse> {
+  try {
+    const { data } = await client.get<OidcProviderImpactResponse>(
+      `/v1/admin/oidc-providers/${providerId}/impact`,
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
 /**
- * `acknowledgeLastProvider` is the confirmation the backend demands for the last *enabled* OIDC
- * provider (409 `LAST_PROVIDER_ACKNOWLEDGEMENT_REQUIRED` without it): afterwards only local
- * accounts can sign in (ADR-0033, Entscheidung 4).
+ * Without the confirmations it needs the backend answers 409 (`LAST_PROVIDER_ACKNOWLEDGEMENT_REQUIRED`,
+ * `PROVIDER_CONNECTIONS_CONFIRMATION_REQUIRED`).
  */
 export async function deleteOidcProvider(
   providerId: string,
-  acknowledgeLastProvider = false,
+  confirmations: ProviderShutdownConfirmations = {},
 ): Promise<void> {
   try {
     await client.delete(`/v1/admin/oidc-providers/${providerId}`, {
-      params: acknowledgeLastProvider ? { acknowledgeLastProvider: true } : undefined,
+      params: confirmationParams(confirmations),
     })
   } catch (err) {
     normalizeError(err)
   }
 }
 
-/** Disabling the last enabled OIDC provider needs the same acknowledgement as deleting it. */
+/** Disabling needs the same confirmations as deleting; enabling none. */
 export async function setOidcProviderEnabled(
   providerId: string,
   enabled: boolean,
-  acknowledgeLastProvider = false,
+  confirmations: ProviderShutdownConfirmations = {},
 ): Promise<OidcProviderResponse> {
   try {
     const { data } = await client.post<OidcProviderResponse>(
       `/v1/admin/oidc-providers/${providerId}/${enabled ? 'enable' : 'disable'}`,
       null,
-      {
-        params: !enabled && acknowledgeLastProvider ? { acknowledgeLastProvider: true } : undefined,
-      },
+      { params: enabled ? undefined : confirmationParams(confirmations) },
     )
     return data
   } catch (err) {

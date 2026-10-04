@@ -28,8 +28,8 @@ seine Ports `SourceConnectionResolver` (`ProfileSourceConnectionResolver`) und `
 - **„Ruhend“/„deaktiviert“ werden abgeleitet;** `ConnectionLifecycleReconciler` hält nur den Beginn
   fest und beendet nur bei `DEACTIVATED`, je Person in eigener Transaktion (auch nach Commit). Eine
   getrennte Zeile bleibt, solange eine private Bibliothek daran hängt (Trigger).
-- **Die Verwaltung sieht verbundene Konten nur über `PersonNumbers`** („weniger als N“, auch bei 0
-  und für Teilzahlen); Kontoname verschlüsselt, nur für die Person.
+- **Die Verwaltung sieht verbundene Konten nur über `PersonNumbers`** („weniger als N“, auch bei 0,
+  für Teilzahlen; je Anbieter keine Zahl); Kontoname verschlüsselt, nur für die Person.
 - **Client-Secret bzw. Schlüssel des Zugangs** (Antworten, Audit nur Ja/Nein) gibt nur
   `ProfileRegistrations#registrationOf` heraus, nur an `connection.oauth` (`ProfileOwned`, ArchUnit).
 - **Ursprungsbindung:** Die Adresse einer zugeordneten Bibliothek liegt unter der Server-Adresse

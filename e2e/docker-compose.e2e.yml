@@ -58,6 +58,11 @@ services:
       # gets no budget of its own. Raised, not disabled: the limiter stays in the request path, and
       # the global counter (100/60s) is untouched, so a runaway loop still hits a wall.
       OPAA_RATE_LIMIT_QUERY_MAX_REQUESTS: "40"
+      # test(e2e) #2175: connection-profiles.spec.ts files one access request per run as
+      # dev-outsider. The default of 5 new requests per person and hour
+      # (opaa.connection.profile-requests.max-per-hour) is reached by a retry plus a few local
+      # reruns against the same stack; raised, not disabled - the limit stays in the request path.
+      OPAA_CONNECTION_PROFILEREQUESTS_MAXPERHOUR: "20"
       # #267: the SSRF target-address check defaults to active (opaa.indexing.target-validation),
       # which would otherwise reject every HTTP_DIRECTORY/RSS_FEED fetch this suite makes - both
       # "rss-feed" and "ai-stub" resolve to a container-internal address on the Compose network's

@@ -8,6 +8,7 @@ import {
   reorderOidcProviders,
   setOidcProviderEnabled,
   updateOidcProvider,
+  type ProviderShutdownConfirmations,
 } from '../services/identityProviderApi'
 import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
 
@@ -22,15 +23,15 @@ interface OidcProviderState {
     providerId: string,
     request: OidcProviderRequest,
   ) => Promise<OidcProviderResponse>
-  /**
-   * `acknowledgeLastProvider` travels to the backend only for the last enabled OIDC provider -
-   * see {@link deleteOidcProvider} (ADR-0033, Entscheidung 4).
-   */
-  deleteExistingProvider: (providerId: string, acknowledgeLastProvider?: boolean) => Promise<void>
+  /** The confirmations travel only where set - see {@link deleteOidcProvider}. */
+  deleteExistingProvider: (
+    providerId: string,
+    confirmations?: ProviderShutdownConfirmations,
+  ) => Promise<void>
   setProviderEnabled: (
     providerId: string,
     enabled: boolean,
-    acknowledgeLastProvider?: boolean,
+    confirmations?: ProviderShutdownConfirmations,
   ) => Promise<OidcProviderResponse>
   makeProviderDefault: (providerId: string) => Promise<OidcProviderResponse>
   /** Moves the provider one position up or down in the sign-in page order. */
@@ -84,13 +85,13 @@ export const useOidcProviderStore = create<OidcProviderState>((set, get) => ({
     return updated
   },
 
-  deleteExistingProvider: async (providerId, acknowledgeLastProvider = false) => {
-    await deleteOidcProvider(providerId, acknowledgeLastProvider)
+  deleteExistingProvider: async (providerId, confirmations = {}) => {
+    await deleteOidcProvider(providerId, confirmations)
     set({ providers: get().providers.filter((p) => p.id !== providerId) })
   },
 
-  setProviderEnabled: async (providerId, enabled, acknowledgeLastProvider = false) => {
-    const updated = await setOidcProviderEnabled(providerId, enabled, acknowledgeLastProvider)
+  setProviderEnabled: async (providerId, enabled, confirmations = {}) => {
+    const updated = await setOidcProviderEnabled(providerId, enabled, confirmations)
     set({ providers: get().providers.map((p) => (p.id === providerId ? updated : p)) })
     return updated
   },
