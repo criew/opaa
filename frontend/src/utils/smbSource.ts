@@ -67,10 +67,30 @@ export function smbServerOf(url: string | null | undefined): string | null {
   return server.endsWith(':445') ? server.slice(0, -4) : server
 }
 
-/** Whether stored credentials for `previousUrl` still stand for `nextUrl`: the same server. */
-export function sameSmbServer(previousUrl: string | null | undefined, nextUrl: string): boolean {
+/** The share a share address names, decoded and in lower case, null when it names none. */
+export function smbShareOf(url: string | null | undefined): string | null {
+  const match = /^(?:smb:\/\/|\\\\)[^/\\]+[/\\]+([^/\\]+)/i.exec((url ?? '').trim())
+  if (!match) return null
+  try {
+    return decodeURIComponent(match[1]).toLowerCase()
+  } catch {
+    return match[1].toLowerCase()
+  }
+}
+
+/**
+ * Whether stored credentials for `previousUrl` still stand for `nextUrl`: the same server and the
+ * same share, as the backend binds them - a share is a boundary of rights.
+ */
+export function sameSmbShare(previousUrl: string | null | undefined, nextUrl: string): boolean {
   const previous = smbServerOf(previousUrl)
-  return previous !== null && previous === smbServerOf(nextUrl)
+  const share = smbShareOf(previousUrl)
+  return (
+    previous !== null &&
+    share !== null &&
+    previous === smbServerOf(nextUrl) &&
+    share === smbShareOf(nextUrl)
+  )
 }
 
 /**
@@ -91,6 +111,9 @@ export function validateSmbValues(
   if (segments.length === 0) return 'Die Adresse nennt keine Freigabe (smb://server/freigabe)'
   if (segments.length > 1) {
     return 'Die Adresse nennt nur Server und Freigabe; Ordner darin werden unten eingetragen'
+  }
+  if (segments[0].endsWith('$')) {
+    return 'Administrative Freigaben wie C$ werden nicht gelesen; bitte eine gewöhnliche Freigabe angeben'
   }
   const account = values.account.trim()
   if (account.includes(':')) return 'Das Dienstkonto darf keinen Doppelpunkt enthalten'

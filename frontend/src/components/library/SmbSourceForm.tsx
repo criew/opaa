@@ -9,7 +9,7 @@ import Typography from '@mui/material/Typography'
 import type { SourceBrowseEntry } from '../../types/api'
 import { browseSource, testLibrarySource } from '../../services/libraryApi'
 import {
-  sameSmbServer,
+  sameSmbShare,
   smbCredentialsOf,
   smbFoldersOf,
   type SmbSourceValues,
@@ -71,14 +71,14 @@ export default function SmbSourceForm({
   const folderMessage = visibleListing?.message ?? null
 
   const addressEntered = values.sourceUrl.trim() !== ''
-  const credentialsKept = credentialsStored && sameSmbServer(originalSourceUrl, values.sourceUrl)
+  const credentialsKept = credentialsStored && sameSmbShare(originalSourceUrl, values.sourceUrl)
   const credentialsHint = isCreate
     ? 'Das Passwort des Dienstkontos. Wird nie ausgegeben.'
     : !credentialsStored
       ? 'Für diese Bibliothek sind keine Zugangsdaten gespeichert.'
       : credentialsKept || !addressEntered
         ? 'Leer lassen, um die gespeicherten Zugangsdaten beizubehalten.'
-        : 'Die Adresse zeigt auf einen anderen Server - bitte die Zugangsdaten neu eingeben.'
+        : 'Die Adresse zeigt auf eine andere Freigabe oder einen anderen Server - bitte die Zugangsdaten neu eingeben.'
 
   function connectionPayload() {
     return {

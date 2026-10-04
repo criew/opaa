@@ -43,6 +43,7 @@ final class SambaFixture {
 
   static final String SHARE = "daten";
   static final String LOCKED_SHARE = "gesperrt";
+  static final String LINK_SHARE = "verweise";
   static final String DOMAIN = "OPAA";
   static final String USER = "opaa";
   static final String PASSWORD = "Opaa-Smb-Test-2026!";
@@ -76,6 +77,11 @@ final class SambaFixture {
          path = /shared/gesperrt
          read only = no
          valid users = writer
+
+      [verweise]
+         path = /shared/verweise
+         read only = yes
+         follow symlinks = no
       """;
 
   private static final String USERS_CONF =
@@ -115,7 +121,12 @@ final class SambaFixture {
             .waitingFor(Wait.forListeningPort())
             .withStartupTimeout(Duration.ofMinutes(2));
     container.start();
-    exec("mkdir", "-p", ROOT + SHARE, ROOT + LOCKED_SHARE);
+    exec("mkdir", "-p", ROOT + SHARE, ROOT + LOCKED_SHARE, ROOT + LINK_SHARE + "/echt");
+    exec("sh", "-c", "echo Echt > " + ROOT + LINK_SHARE + "/echt/datei.txt");
+    exec("chmod", "-R", "a+rX", ROOT + LINK_SHARE);
+    // a link loop the server reports as links instead of resolving them itself
+    exec("ln", "-s", "b", ROOT + LINK_SHARE + "/a");
+    exec("ln", "-s", "a", ROOT + LINK_SHARE + "/b");
     exec("chmod", "0755", ROOT, ROOT + SHARE, ROOT + LOCKED_SHARE);
     log.info("Samba answered after {} ms", (System.nanoTime() - started) / 1_000_000);
   }
@@ -203,6 +214,17 @@ final class SambaFixture {
   /** A symbolic link at {@code path} (below {@code daten}) pointing to {@code target}. */
   void symlink(String target, String path) {
     exec("ln", "-s", target, ROOT + SHARE + "/" + path);
+  }
+
+  /** A file of {@code megabytes} zero bytes at {@code path} below the share {@code verweise}. */
+  void bigFileInLinkShare(String path, int megabytes) {
+    exec(
+        "dd",
+        "if=/dev/zero",
+        "of=" + ROOT + LINK_SHARE + "/" + path,
+        "bs=1M",
+        "count=" + megabytes);
+    exec("chmod", "a+r", ROOT + LINK_SHARE + "/" + path);
   }
 
   /** A DFS link at {@code path} (below {@code daten}) to a share on another server. */

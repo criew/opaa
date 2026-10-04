@@ -103,6 +103,23 @@ record SmbAddress(String host, int port, String share) {
     return Optional.of(filePath.substring(prefix.length()));
   }
 
+  /**
+   * Whether credentials stored for {@code stored} also stand for {@code requested}: the same
+   * server, port and share - on a file server the share is a boundary of rights. Unreadable
+   * addresses never match.
+   */
+  static boolean sameShare(String stored, String requested) {
+    try {
+      SmbAddress before = parse(stored);
+      SmbAddress after = parse(requested);
+      return before.host.equals(after.host)
+          && before.port == after.port
+          && before.share.equalsIgnoreCase(after.share);
+    } catch (InvalidSmbConfigurationException e) {
+      return false;
+    }
+  }
+
   /** The host as a socket takes it - an IPv6 literal without its brackets. */
   String socketHost() {
     return host.startsWith("[") && host.endsWith("]") ? host.substring(1, host.length() - 1) : host;
@@ -113,9 +130,16 @@ record SmbAddress(String host, int port, String share) {
   }
 
   private static void requireShareName(String share) {
-    if (share.length() > MAX_SHARE_LENGTH || share.equalsIgnoreCase("IPC$")) {
+    if (share.length() > MAX_SHARE_LENGTH) {
       throw new InvalidSmbConfigurationException(
           "sourceUrl nennt keine gültige Freigabe: „" + share + "“");
+    }
+    if (share.endsWith("$")) {
+      // administrative shares (C$, ADMIN$, IPC$) open a whole volume or no files at all
+      throw new InvalidSmbConfigurationException(
+          "sourceUrl nennt eine administrative Freigabe („"
+              + share
+              + "“); bitte eine gewöhnliche Freigabe für die Ablage angeben");
     }
     for (int i = 0; i < share.length(); i++) {
       char c = share.charAt(i);

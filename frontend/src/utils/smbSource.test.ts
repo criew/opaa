@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { sourceRegistration } from '../components/library/sources/registry'
 import {
   EMPTY_SMB_VALUES,
-  sameSmbServer,
+  sameSmbShare,
   smbCredentialsOf,
   smbServerOf,
   validateSmbValues,
@@ -22,9 +22,19 @@ describe('smbSource', () => {
     expect(smbServerOf('SMB://Dateiserver:445/Daten')).toBe('dateiserver')
     expect(smbServerOf('\\\\Dateiserver\\Daten')).toBe('dateiserver')
     expect(smbServerOf('https://dateiserver/Daten')).toBeNull()
-    expect(sameSmbServer('smb://dateiserver/Daten', '\\\\DATEISERVER\\Andere')).toBe(true)
-    expect(sameSmbServer('smb://dateiserver/Daten', 'smb://anderer/Daten')).toBe(false)
-    expect(sameSmbServer('smb://dateiserver/Daten', 'smb://dateiserver:1445/Daten')).toBe(false)
+    expect(sameSmbShare('smb://dateiserver/Daten', '\\\\DATEISERVER\\daten')).toBe(true)
+    expect(
+      sameSmbShare('smb://dateiserver/Gemeinsame%20Daten', 'smb://dateiserver/Gemeinsame Daten'),
+    ).toBe(true)
+    expect(sameSmbShare('smb://dateiserver/Daten', 'smb://dateiserver/Personal')).toBe(false)
+    expect(sameSmbShare('smb://dateiserver/Daten', 'smb://anderer/Daten')).toBe(false)
+    expect(sameSmbShare('smb://dateiserver/Daten', 'smb://dateiserver:1445/Daten')).toBe(false)
+  })
+
+  it('refuses administrative shares', () => {
+    expect(validateSmbValues(values({ sourceUrl: 'smb://dateiserver/C$' }), false)).toMatch(
+      /Administrative Freigaben/,
+    )
   })
 
   it('accepts a share address and refuses anything else', () => {

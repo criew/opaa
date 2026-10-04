@@ -1,7 +1,7 @@
 import FolderSharedIcon from '@mui/icons-material/FolderShared'
 import {
   EMPTY_SMB_VALUES,
-  sameSmbServer,
+  sameSmbShare,
   smbCredentialsOf,
   smbFoldersOf,
   smbSettingsOf,
@@ -34,7 +34,7 @@ export const smbSource: SourceRegistration = {
     validate: (values: SmbSourceValues, context) =>
       validateSmbValues(
         values,
-        context.credentialsStored && sameSmbServer(context.originalSourceUrl, values.sourceUrl),
+        context.credentialsStored && sameSmbShare(context.originalSourceUrl, values.sourceUrl),
       ),
     toPayload: (values: SmbSourceValues) => {
       const folders = smbFoldersOf(values)

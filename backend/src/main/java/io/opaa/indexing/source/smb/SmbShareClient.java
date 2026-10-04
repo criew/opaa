@@ -54,6 +54,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicInteger;
 import javax.net.SocketFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -118,6 +119,13 @@ final class SmbShareClient implements AutoCloseable {
   private final RequestBudget budget;
   private final BudgetedTransportFactory transport;
   private final SMBClient client;
+
+  /** Counts the connections dropped by {@link #reset}. */
+  private final AtomicInteger connections = new AtomicInteger();
+
+  /** Downloads repeated because their connection was dropped - observable for tests. */
+  final AtomicInteger retriedAfterReset = new AtomicInteger();
+
   private Connection connection;
   private Session session;
   private volatile DiskShare share;
@@ -359,6 +367,21 @@ final class SmbShareClient implements AutoCloseable {
    */
   Path download(String path, String fileName, long maxBytes)
       throws SmbAccessException, InterruptedException {
+    int generation = connections.get();
+    try {
+      return downloadOnce(path, fileName, maxBytes);
+    } catch (SmbAccessException e) {
+      if (connections.get() == generation || e instanceof SmbAccessException.Link) {
+        throw e;
+      }
+      // the connection was dropped under this download (a link loop elsewhere): once more anew
+      retriedAfterReset.incrementAndGet();
+      return downloadOnce(path, fileName, maxBytes);
+    }
+  }
+
+  private Path downloadOnce(String path, String fileName, long maxBytes)
+      throws SmbAccessException, InterruptedException {
     String what = "die Datei „" + path + "“";
     File file = (File) openUnlinked(path, false, what);
     Path target = null;
@@ -482,8 +505,12 @@ final class SmbShareClient implements AutoCloseable {
     return (tag & REPARSE_TAG_NAME_SURROGATE) != 0 || tag == REPARSE_TAG_DFS;
   }
 
-  /** Drops the connection; the next request signs in again. */
+  /**
+   * Drops the connection; the next request signs in again. A request of another thread that fails
+   * on the dropped connection is repeated once ({@link #download}) or ends only its own folder.
+   */
   private synchronized void reset() {
+    connections.incrementAndGet();
     DiskShare current = share;
     share = null;
     closeQuietly(current);
@@ -522,6 +549,7 @@ final class SmbShareClient implements AutoCloseable {
     private final Directory directory;
     private final String what;
     private final Iterator<FileIdBothDirectoryInformation> iterator;
+    private final int generation = connections.get();
     private Item next;
 
     private Listing(
@@ -544,6 +572,12 @@ final class SmbShareClient implements AutoCloseable {
           }
           info = iterator.next();
         } catch (RuntimeException e) {
+          if (connections.get() != generation) {
+            // the connection was dropped under this listing: this folder only, not the run
+            throw new ListingFailure(
+                new SmbAccessException.Transient(
+                    capitalize(what) + " wurde während einer Neuverbindung nicht fertig gelesen."));
+          }
           throw new ListingFailure(translateUnchecked(e, what));
         }
         String name = info.getFileName();
