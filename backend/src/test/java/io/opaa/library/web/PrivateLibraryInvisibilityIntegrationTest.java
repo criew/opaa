@@ -219,6 +219,7 @@ class PrivateLibraryInvisibilityIntegrationTest {
             "getEmbeddingInfo",
             "listOidcProviders",
             "getOidcProvider",
+            "getOidcProviderImpact",
             "getDirectorySyncPendingPlan",
             "getPermissionHistoryRetention",
             "getSearchChunk",
