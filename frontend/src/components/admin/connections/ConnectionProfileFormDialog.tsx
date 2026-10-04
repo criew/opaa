@@ -37,6 +37,7 @@ import {
 import { confirmAction } from '../../../stores/confirmStore'
 import { AUTH_METHOD_LABELS, OWNERSHIP_LABELS } from './connectionProfileLabels'
 import ProfileChangePreview from './ProfileChangePreview'
+import ServiceAccountKeyField from './ServiceAccountKeyField'
 import { reachesLibraries as changeReachesLibraries } from './profileChange'
 
 const WITH_REGISTRATION: ConnectionAuthMethod[] = [
@@ -182,6 +183,8 @@ export default function ConnectionProfileFormDialog({
       : schemes.some((scheme) => scheme === 'http' || scheme === 'https')
   const usesRegistration = method !== null && WITH_REGISTRATION.includes(method)
   const usesScopes = method !== null && WITH_SCOPES.includes(method)
+  // a service account key names its client id itself
+  const usesKey = method === 'SERVICE_ACCOUNT_KEY'
   const connectorTypes = sourceTypes.filter((type) => !type.uploads)
   const showFields = isEdit || (descriptor !== null && descriptor.profileSupport !== 'FORBIDDEN')
   const descriptorMissing = isEdit && descriptor === null
@@ -192,7 +195,7 @@ export default function ConnectionProfileFormDialog({
     (fixedAddress !== null || draft.serverUrl.trim() !== '') &&
     method !== null &&
     ownerships.includes(draft.ownership) &&
-    (!usesRegistration || draft.clientId.trim() !== '')
+    (!usesRegistration || usesKey || draft.clientId.trim() !== '')
 
   function close() {
     if (!submitting) onClose()
@@ -204,8 +207,13 @@ export default function ConnectionProfileFormDialog({
       serverUrl: fixedAddress ?? draft.serverUrl.trim(),
       authMethod: method as ConnectionAuthMethod,
       ownership: draft.ownership,
-      clientId: usesRegistration ? blankToNull(draft.clientId) : null,
-      tenant: usesRegistration ? blankToNull(draft.tenant) : null,
+      // the server takes a key's client id from the key; the stored one keeps the preview honest
+      clientId: usesKey
+        ? (profile?.clientId ?? null)
+        : usesRegistration
+          ? blankToNull(draft.clientId)
+          : null,
+      tenant: usesRegistration && !usesKey ? blankToNull(draft.tenant) : null,
       clientSecretExpiresOn: usesRegistration ? blankToNull(draft.clientSecretExpiresOn) : null,
       scopes: usesScopes ? blankToNull(draft.scopes) : null,
       clientSecret: usesRegistration && secret.trim() !== '' ? secret.trim() : undefined,
@@ -258,12 +266,23 @@ export default function ConnectionProfileFormDialog({
       } catch (err) {
         if (!profile || !needsConfirmation(err)) throw err
         const impact = await getConnectionProfileImpact(profile.id)
-        const confirmed = await confirmAction({
-          question: `Zugangsdaten von „${profile.name}“ verwerfen?`,
-          consequence: `Die Änderung betrifft ${count(impact.connections, 'Verbindung', 'Verbindungen')} und ${count(impact.libraries, 'Bibliothek', 'Bibliotheken')}. Alle hinterlegten Geheimnisse werden verworfen und müssen neu eingetragen werden.`,
-          confirmLabel: 'Verwerfen und speichern',
-          tone: 'danger',
-        })
+        // a default only the profile sets: the server's question names what is discarded
+        const fullSync = (shownPreview?.fullSyncLibraries ?? 0) > 0
+        const confirmed = await confirmAction(
+          fullSync && err instanceof Error
+            ? {
+                question: `Änderung an „${profile.name}“ bestätigen?`,
+                consequence: err.message,
+                confirmLabel: 'Bestätigen und speichern',
+                tone: 'danger',
+              }
+            : {
+                question: `Zugangsdaten von „${profile.name}“ verwerfen?`,
+                consequence: `Die Änderung betrifft ${count(impact.connections, 'Verbindung', 'Verbindungen')} und ${count(impact.libraries, 'Bibliothek', 'Bibliotheken')}. Alle hinterlegten Geheimnisse werden verworfen und müssen neu eingetragen werden.`,
+                confirmLabel: 'Verwerfen und speichern',
+                tone: 'danger',
+              },
+        )
         if (!confirmed) return
         saved = await save(true)
       }
@@ -401,7 +420,15 @@ export default function ConnectionProfileFormDialog({
                   </MenuItem>
                 ))}
               </TextField>
-              {usesRegistration && (
+              {usesKey && (
+                <ServiceAccountKeyField
+                  idPrefix="connection-profile"
+                  storedAccount={profile?.clientId ?? null}
+                  keySet={profile?.clientSecretSet ?? false}
+                  onChange={setSecret}
+                />
+              )}
+              {usesRegistration && !usesKey && (
                 <>
                   <TextField
                     label="Client-ID"

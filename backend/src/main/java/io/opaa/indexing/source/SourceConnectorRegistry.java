@@ -48,9 +48,7 @@ public class SourceConnectorRegistry {
   /**
    * Profiles are forbidden exactly for a connector filling its library by uploads or reading
    * nothing remote; they are required exactly when the connector offers a sign-in whose app
-   * registration only a profile holds; a profile default names a settings key of the connector. A
-   * connector signing in with a service account key admits no profile yet: the core signs only for
-   * a library's own key (ADR-0040) - the one remote connector without profiles.
+   * registration only a profile holds; a profile default names a settings key of the connector.
    */
   private static void requireProfileDeclarationFits(SourceConnector connector) {
     SourceConnectorDescriptor descriptor = connector.descriptor();
@@ -80,11 +78,7 @@ public class SourceConnectorRegistry {
       throw new IllegalStateException(
           subject + " names what a profile requirement leaves open but cannot be switched to one");
     }
-    if (declaration.serviceAccountKey() != null && declaration.admitsProfiles()) {
-      throw new IllegalStateException(
-          subject + " signs in with a service account key and may not admit profiles yet");
-    }
-    if (reachesRemote && !declaration.admitsProfiles() && declaration.serviceAccountKey() == null) {
+    if (reachesRemote && !declaration.admitsProfiles()) {
       throw new IllegalStateException(subject + " reads a remote source and must admit profiles");
     }
   }

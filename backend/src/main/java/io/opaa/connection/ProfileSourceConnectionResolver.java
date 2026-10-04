@@ -22,7 +22,7 @@ import org.springframework.stereotype.Component;
  * <p>A lock of the type or the profile blocks {@link #resolve}, which starts a run or fetches an
  * original; {@link #currentCredentials} and {@link #resolveForChange} do not, so a run already
  * going ends regularly and a locked library can still be repaired. A rejected person's secret
- * expires their connected account.
+ * expires their connected account; a rejected token of a profile's own sign-in is obtained anew.
  */
 @Component
 public class ProfileSourceConnectionResolver implements SourceConnectionResolver {
@@ -63,6 +63,11 @@ public class ProfileSourceConnectionResolver implements SourceConnectionResolver
   @Override
   public Secret currentSecret(KnowledgeLibrary library) {
     return effective.currentSecret(library);
+  }
+
+  @Override
+  public Secret secretAfterRejection(KnowledgeLibrary library, Secret rejected) {
+    return effective.secretAfterRejection(library);
   }
 
   @Override

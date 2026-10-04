@@ -1,6 +1,7 @@
 package io.opaa.connection.token;
 
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import io.opaa.auth.AccountUsability;
 import io.opaa.auth.UserRepository;
@@ -23,6 +24,22 @@ public final class TestSecrets {
   @SuppressWarnings("unchecked")
   public static ConnectionSecrets overLibraries(
       LibrariesOnProfile onProfile, KnowledgeLibraryRepository libraries) {
+    return overLibraries(onProfile, libraries, mock(ObjectProvider.class));
+  }
+
+  /** {@link #overLibraries} with {@code issuer} for the profiles' own sign-in. */
+  @SuppressWarnings("unchecked")
+  public static ConnectionSecrets overLibraries(
+      LibrariesOnProfile onProfile, KnowledgeLibraryRepository libraries, SecretIssuer issuer) {
+    ObjectProvider<SecretIssuer> issuers = mock(ObjectProvider.class);
+    when(issuers.getIfAvailable()).thenReturn(issuer);
+    return overLibraries(onProfile, libraries, issuers);
+  }
+
+  private static ConnectionSecrets overLibraries(
+      LibrariesOnProfile onProfile,
+      KnowledgeLibraryRepository libraries,
+      ObjectProvider<SecretIssuer> issuers) {
     return new ConnectionSecrets(
         onProfile,
         libraries,
@@ -31,7 +48,7 @@ public final class TestSecrets {
         mock(UserRepository.class),
         mock(AccountUsability.class),
         mock(CredentialsEncryptor.class),
-        mock(ObjectProvider.class),
+        issuers,
         ConnectionLifecycleProperties.defaults(),
         mock(PlatformTransactionManager.class),
         Clock.systemUTC());

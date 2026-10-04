@@ -4,14 +4,18 @@ import io.opaa.api.dto.ConnectionProfileCreateRequest;
 import io.opaa.api.dto.ConnectionProfileImpactResponse;
 import io.opaa.api.dto.ConnectionProfileOption;
 import io.opaa.api.dto.ConnectionProfileResponse;
+import io.opaa.api.dto.ConnectionProfileSignInTestResponse;
 import io.opaa.api.dto.ConnectionProfileUpdateRequest;
 import io.opaa.api.dto.ConnectorLockRequest;
 import io.opaa.api.dto.ConnectorProfileRequirementRequest;
 import io.opaa.api.dto.ConnectorProfileRequirementResponse;
 import io.opaa.api.dto.ConnectorTypeStateResponse;
+import io.opaa.api.types.ConnectionAuthMethod;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
+import io.opaa.common.ValidationException;
 import io.opaa.connection.ConnectorReleaseService;
+import io.opaa.connection.oauth.ProfileSignIn;
 import io.opaa.connection.profile.ConnectionProfile;
 import io.opaa.connection.profile.ConnectionProfileService;
 import io.opaa.connection.profile.ConnectionProfileService.ProfileImpact;
@@ -42,7 +46,7 @@ import org.springframework.web.bind.annotation.RestController;
 /**
  * The administration of connection profiles, connector locks and the profile requirement ({@code
  * SYSTEM_ADMIN} only) and the selection a library is connected from. No answer carries the client
- * secret.
+ * secret or a token.
  */
 @RestController
 public class ConnectionProfileController {
@@ -55,6 +59,7 @@ public class ConnectionProfileController {
   private final ProfileRequirementService requirements;
   private final PersonNumbers personNumbers;
   private final ConnectionProfileRequestService profileRequests;
+  private final ProfileSignIn signIn;
 
   public ConnectionProfileController(
       ConnectionProfileService profiles,
@@ -62,13 +67,15 @@ public class ConnectionProfileController {
       ConnectorLockService locks,
       ProfileRequirementService requirements,
       PersonNumbers personNumbers,
-      ConnectionProfileRequestService profileRequests) {
+      ConnectionProfileRequestService profileRequests,
+      ProfileSignIn signIn) {
     this.profiles = profiles;
     this.release = release;
     this.locks = locks;
     this.requirements = requirements;
     this.personNumbers = personNumbers;
     this.profileRequests = profileRequests;
+    this.signIn = signIn;
   }
 
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
@@ -126,7 +133,7 @@ public class ConnectionProfileController {
     ConnectionProfileValues values = ConnectionProfileResponseMapper.toValues(request);
     boolean confirmed = Boolean.TRUE.equals(request.getConfirmDiscard());
     // the connectors are asked before the write transaction, which then reuses their answers
-    Answers answers = profiles.check(profileId, values, confirmed);
+    Answers answers = profiles.check(profileId, values, request.getClientSecret(), confirmed);
     return toResponse(
         profiles.update(caller, profileId, values, request.getClientSecret(), confirmed, answers));
   }
@@ -136,7 +143,10 @@ public class ConnectionProfileController {
   public ConnectionProfileImpactResponse previewConnectionProfileChange(
       @PathVariable UUID profileId, @Valid @RequestBody ConnectionProfileUpdateRequest request) {
     return ConnectionProfileResponseMapper.toResponse(
-        profiles.preview(profileId, ConnectionProfileResponseMapper.toValues(request)),
+        profiles.preview(
+            profileId,
+            ConnectionProfileResponseMapper.toValues(request),
+            request.getClientSecret()),
         requirements.lastForRequirement(profiles.get(profileId)));
   }
 
@@ -162,6 +172,20 @@ public class ConnectionProfileController {
     ProfileImpact impact = profiles.disconnectAll(caller, profileId);
     return ConnectionProfileResponseMapper.toResponse(
         impact, requirements.lastForRequirement(profiles.get(profileId)));
+  }
+
+  @PreAuthorize("hasRole('SYSTEM_ADMIN')")
+  @PostMapping(ADMIN + "/{profileId}/test-sign-in")
+  public ConnectionProfileSignInTestResponse testConnectionProfileSignIn(
+      @PathVariable UUID profileId) {
+    ConnectionAuthMethod method = profiles.get(profileId).getAuthMethod();
+    if (method != ConnectionAuthMethod.CLIENT_CREDENTIALS
+        && method != ConnectionAuthMethod.SERVICE_ACCOUNT_KEY) {
+      throw new ValidationException(
+          "Der Zugang meldet sich nicht selbst an; nur Client-Credentials und"
+              + " Dienstkonto-Schlüssel lassen sich am Zugang testen");
+    }
+    return ConnectionProfileResponseMapper.toResponse(signIn.test(profileId));
   }
 
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")

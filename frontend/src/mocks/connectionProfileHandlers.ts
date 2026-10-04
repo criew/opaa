@@ -38,11 +38,11 @@ interface MockConnectorType {
   profileSupport: ConnectionProfileSupport
 }
 
-// As the delivered connectors declare it: every remote one admits profiles but Google Drive.
+// As the delivered connectors declare it: every remote one admits profiles.
 const CONNECTOR_TYPES: MockConnectorType[] = [
   { sourceType: 'CONFLUENCE', displayName: 'Confluence', profileSupport: 'OPTIONAL' },
   { sourceType: 'FILESYSTEM', displayName: 'Dateisystem', profileSupport: 'FORBIDDEN' },
-  { sourceType: 'GOOGLE_DRIVE', displayName: 'Google Drive', profileSupport: 'FORBIDDEN' },
+  { sourceType: 'GOOGLE_DRIVE', displayName: 'Google Drive', profileSupport: 'OPTIONAL' },
   { sourceType: 'HTTP_DIRECTORY', displayName: 'Webverzeichnis', profileSupport: 'OPTIONAL' },
   { sourceType: 'NEXTCLOUD', displayName: 'Nextcloud', profileSupport: 'OPTIONAL' },
   { sourceType: 'RSS_FEED', displayName: 'RSS-Feed', profileSupport: 'OPTIONAL' },
@@ -145,6 +145,7 @@ export const connectionProfileHandlers = [
       clientSecretSet: Boolean(body.clientSecret),
       clientSecretExpiresOn: body.clientSecretExpiresOn ?? null,
       clientSecretExpiresSoon: false,
+      signInRejected: false,
       tenant: body.tenant ?? null,
       scopes: body.scopes ?? null,
       connectorSettings: body.connectorSettings ?? null,
@@ -268,6 +269,19 @@ export const connectionProfileHandlers = [
       rejections: [],
       lastForProfileRequirement: false,
     })
+  }),
+
+  http.post(`${ADMIN}/:profileId/test-sign-in`, ({ params }) => {
+    const profile = mockConnectionProfiles.find((p) => p.id === params.profileId)
+    if (!profile) return notFound()
+    if (!profile.clientSecretSet) {
+      return HttpResponse.json({
+        success: false,
+        message: 'Für den Zugang ist kein Client-Secret bzw. Dienstkonto-Schlüssel hinterlegt.',
+      })
+    }
+    profile.signInRejected = false
+    return HttpResponse.json({ success: true, message: 'Anmeldung erfolgreich.' })
   }),
 
   http.put(`${ADMIN}/:profileId/lock`, async ({ params, request }) => {

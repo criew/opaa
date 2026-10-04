@@ -269,9 +269,20 @@ Modul connections.
   Bibliothekseinstellungen (`readSettings`) gilt für Vorgaben nicht mehr.
 - **Registry beim Start:** Profile verboten bei `uploads` oder ohne `remote`; Pflicht genau dann,
   wenn OAuth oder Client-Credentials angeboten werden; jeder Vorgaben-Schlüssel steht in
-  `SourceConnector#settingsKeys`; ein Konnektor mit Dienstkonto-Schlüssel lässt noch kein Profil
-  zu. Seit die mitgelieferten entfernten Konnektoren Profile zulassen (#2219), prüft die Registry
-  auch die Umkehrung: Ein Konnektor mit entferntem Ziel und ohne Uploads muss Profile zulassen;
-  ausgenommen bleibt nur einer mit Dienstkonto-Schlüssel (Google Drive, bis #2220).
+  `SourceConnector#settingsKeys`. Seit die mitgelieferten entfernten Konnektoren Profile zulassen
+  (#2219), prüft die Registry auch die Umkehrung: Ein Konnektor mit entferntem Ziel und ohne
+  Uploads muss Profile zulassen, ohne Ausnahme (Google Drive seit #2220, Nachtrag unten).
 - `GET /source-types` meldet `signIns`, `profileDefaults` und `serverAddress`; die Auswahl der
   Profile (`GET /connection-profiles`) meldet die Vorgaben eines Profils als `connectorDefaults`.
+
+## Nachtrag: Anmeldung des Zugangs (04.10.2026, #2220)
+
+- **Client-Credentials** nennen ihre Angaben als `ClientCredentialsAuth(token, defaultScope,
+  clientAuth)`: Der Token-Endpunkt ist ein `Endpoint` – fest (`Fixed`) oder eine Vorlage mit dem
+  Mandanten des Profils (`WithTenant`, der Mandant nur aus Buchstaben, Ziffern, Punkt und
+  Bindestrich). Endpunkte vom Profil folgen mit dem OAuth-Kern. Besitzerin ist nur die Bibliothek.
+- **Eine Vorgabe nur des Profils** (`DefaultKey#profileOnly`) ist unter einem Profil immer
+  gebunden, auch wenn das Profil sie leer lässt; `ProfileDefaults#boundKeys` nimmt sie auf. Erster
+  Nutzer ist `subject` von Google Drive.
+- **Registry beim Start:** Ein Konnektor mit Dienstkonto-Schlüssel darf Profile zulassen; der
+  Schlüssel liegt dann am Profil, signiert wird weiter im Kern (ADR-0040, Nachtrag #2220).

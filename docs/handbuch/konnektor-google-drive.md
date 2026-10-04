@@ -17,8 +17,9 @@
    außer ihr Bibliotheken anlegen soll, bekommt das Anlegerecht „Konnektorbibliotheken anlegen"
    für die Quellart Google Drive ([Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md),
    Abschnitt 9).
-4. Bibliothek anlegen: Schlüsseldatei hochladen, Bereiche aus der Auflistung wählen, „Verbindung
-   testen". Alles aus allen Bereichen ist für **alle** Leseberechtigten der Bibliothek sichtbar.
+4. Bibliothek anlegen: Schlüsseldatei hochladen oder einen Zugang wählen (Abschnitt 2.5), Bereiche
+   aus der Auflistung wählen, „Verbindung testen". Alles aus allen Bereichen ist für **alle**
+   Leseberechtigten der Bibliothek sichtbar.
 5. Zeitplan setzen. Der erste Lauf ist ein Vollabgleich, danach liest jeder Lauf nur das
    Änderungsprotokoll; im eingestellten Rhythmus folgt wieder ein Vollabgleich.
 6. Im Laufprotokoll auf „nicht sichtbar", „Als Text exportiert" und „Tageskontingent" achten.
@@ -96,17 +97,59 @@ Ein Schlüssel mit Delegation kann **jedes** Konto der Domäne lesen. Deshalb gi
   nicht. Das Konto steht in den Bibliotheksdetails und im Audit.
 - Ändert sich das imitierte Konto, verlangt OPAA den Schlüssel neu. So lässt sich ein
   gespeicherter Schlüssel nicht ohne ihn auf ein anderes Konto umlenken.
+- Für Delegation empfiehlt sich ein Zugang (Abschnitt 2.5): Dort legt nur die Systemverwaltung das
+  imitierte Konto fest.
+
+### 2.5 Über einen Zugang
+
+Ein Zugang (Verbindungsprofil, [Indexierung](indexierung.md), Abschnitt „Zugänge") trägt den
+Schlüssel und das imitierte Konto für alle Bibliotheken darauf. Die Bibliothek trägt dann weder
+Schlüssel noch imitiertes Konto, nur ihre Bereiche.
+
+| Feld am Zugang | Bedeutung |
+|---|---|
+| Server-Adresse | fest `https://www.googleapis.com`; das Formular fragt sie nicht ab |
+| Anmeldeart | Dienstkonto-Schlüssel |
+| Dienstkonto-Schlüssel | die JSON-Schlüsseldatei; die Client-ID übernimmt OPAA aus `client_email` |
+| Imitiertes Konto (Vorgabe `subject`) | optional; ohne Angabe imitiert keine Bibliothek ein Konto |
+| Proxy | optional, `host:port`; gilt für Anmeldung und Abrufe aller Bibliotheken darauf |
+
+- Ein imitiertes Konto an der Bibliothek weist OPAA unter einem Zugang ab.
+- **Imitiertes Konto ändern:** Vor dem Speichern nennt OPAA die Zahl der Bibliotheken auf dem
+  Zugang und verlangt eine Bestätigung. Danach verwirft es ihren Abgleichsstand, der nächste Lauf
+  jeder Bibliothek ist ein Vollabgleich, und ihre Verwaltenden erhalten eine Benachrichtigung.
+  Dokumente des bisherigen Kontos bleiben bis zu diesem Vollabgleich durchsuchbar. Läuft gerade
+  eine Bibliothek des Zugangs, lehnt OPAA die Änderung ab; nach dem Ende des Laufs erneut speichern.
+  Bei einem lange laufenden Abgleich den Zugang sperren, das Ende der Läufe abwarten, ändern und
+  den Zugang wieder entsperren.
+- **Imitiertes Konto entfernen:** Danach imitiert keine Bibliothek des Zugangs mehr ein Konto; keine
+  übernimmt das bisherige als eigenes.
+- **Neuer Schlüssel desselben Dienstkontos:** Die Bibliotheken laufen weiter. Ein Schlüssel eines
+  anderen Dienstkontos ändert die Registrierung; auch das bestätigt die Systemverwaltung vorher.
+- **Abgelehnter Schlüssel:** Weist Google den Schlüssel ab, zeigen alle Bibliotheken des Zugangs
+  „Abgelaufen" mit der Systemverwaltung als zuständig, und kein Lauf fragt Google erneut. Ein neuer
+  Schlüssel oder „Anmeldung testen" am Zugang hebt das auf. Eine falsch gehende Uhr des Servers
+  meldet Google wie einen ungültigen Schlüssel; nennt Google die Zeitangaben als Grund, sperrt OPAA
+  den Zugang nicht und verweist auf die Uhrzeit, sonst nennt die Meldung beide Ursachen.
+- **Fehlende Delegation oder unbekanntes imitiertes Konto** unter einem Zugang behebt die
+  Systemverwaltung (am Zugang bzw. in der Google-Admin-Konsole), nicht die Verwaltenden der
+  Bibliothek; die Meldung des Laufs sagt das.
+- **„Alle Verbindungen trennen"** löscht den Schlüssel am Zugang unwiderruflich; nur die
+  Systemverwaltung kann ihn neu hinterlegen. Bei Google bleibt er gültig: Widerrufen wird er in der
+  Cloud Console beim Dienstkonto („Schlüssel" → löschen).
+- **Profilpflicht:** Die Systemverwaltung kann für Google Drive einschalten, dass Bibliotheken nur
+  noch über Zugänge entstehen ([Indexierung](indexierung.md), Abschnitt „Zugänge").
 
 ## 3. Quellkonfiguration
 
 | Feld | Bedeutung |
 |---|---|
 | Adresse (`sourceUrl`) | fest `https://www.googleapis.com`; das Formular zeigt sie nicht, jede andere wird abgewiesen |
-| Dienstkonto-Schlüssel (`sourceCredentials`) | Pflicht, die JSON-Schlüsseldatei. Beim Bearbeiten bleibt der gespeicherte Schlüssel, solange das imitierte Konto gleich bleibt |
-| Imitiertes Konto (`sourceSettings.subject`) | optional, die E-Mail-Adresse eines Kontos der Domäne; nur mit domänenweiter Delegation |
+| Dienstkonto-Schlüssel (`sourceCredentials`) | ohne Zugang Pflicht, die JSON-Schlüsseldatei. Beim Bearbeiten bleibt der gespeicherte Schlüssel, solange das imitierte Konto gleich bleibt. Unter einem Zugang entfällt das Feld |
+| Imitiertes Konto (`sourceSettings.subject`) | optional, die E-Mail-Adresse eines Kontos der Domäne; nur mit domänenweiter Delegation. Unter einem Zugang entfällt das Feld |
 | Bereiche (`sourceSettings.scopes`) | Pflicht, ein bis fünfzig Einträge `{"drive": "<ID>"}`, `{"folder": "<ID>"}` oder `{"myDrive": true}`; „Meine Ablage" nur mit imitiertem Konto |
 | Eigener Vollabgleichsrhythmus (`sourceSettings.fullSyncIntervalDays`) | optional, ganze Tage; ohne Angabe gilt der Rhythmus der Installation |
-| Proxy (`sourceProxy`) | optional, `host:port`; gilt für Anmeldung und Abrufe |
+| Proxy (`sourceProxy`) | optional, `host:port`; gilt für Anmeldung und Abrufe. Unter einem Zugang gilt dessen Proxy |
 | Zertifikatsprüfung aussetzen (`sourceInsecureSsl`) | nicht möglich, wird abgewiesen |
 
 Überlappende Bereiche werden nicht abgewiesen. Eine Datei bleibt ein Dokument; ihr Ordner kommt
@@ -262,14 +305,11 @@ Die Obergrenze von fünfzig Bereichen ist eine feste Konstante.
 - Viele Ordnerbereiche kosten je Ordner eine Auflistung.
 - Eine Ordneränderung im Änderungsstrom löst immer einen Vollabgleich aus, auch wenn der Ordner
   außerhalb der Bereiche liegt.
-- Delegation hängt an der Sorgfalt der Verwaltenden (Funktionskonto), solange Google Drive keine
-  Zugänge kennt.
+- Ohne Zugang hängt Delegation an der Sorgfalt der Verwaltenden der Bibliothek (Funktionskonto).
 
 ## 14. Nicht gebaut
 
 - **Push-Benachrichtigungen** (`changes.watch`); der Änderungslauf im Zeitplan ersetzt sie
-- **Zugänge** (Verbindungsprofile) für Google Drive, an denen die Systemverwaltung Schlüssel und
-  imitiertes Konto festlegt; heute liegt der Schlüssel an der Bibliothek
 - **Persönliche Ablagen** über verbundene Konten (#2147)
 - **Großer Export** über die Exportgrenze hinaus
 - **Rechteübernahme** aus Drive

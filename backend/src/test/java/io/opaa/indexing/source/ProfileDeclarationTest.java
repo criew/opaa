@@ -56,6 +56,58 @@ class ProfileDeclarationTest {
   }
 
   @Test
+  void clientCredentialsCarryTheirEndpointAndBelongToALibrary() {
+    ClientCredentialsAuth auth =
+        new ClientCredentialsAuth(
+            new Endpoint.Fixed(URI.create("https://login.example.org/token")),
+            " ",
+            ClientAuthentication.CLIENT_SECRET_BASIC);
+
+    assertThat(SignIn.clientCredentials(auth).owners()).containsExactly(LIBRARY);
+    assertThat(auth.defaultScope()).isNull();
+    assertThatThrownBy(() -> SignIn.of(ConnectionAuthMethod.CLIENT_CREDENTIALS, LIBRARY))
+        .isInstanceOf(IllegalArgumentException.class);
+    assertThatThrownBy(() -> new SignIn(ConnectionAuthMethod.OAUTH, Set.of(LIBRARY), auth))
+        .isInstanceOf(IllegalArgumentException.class);
+    assertThatThrownBy(
+            () ->
+                new SignIn(ConnectionAuthMethod.CLIENT_CREDENTIALS, Set.of(LIBRARY, PERSON), auth))
+        .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  @Test
+  void anEndpointTemplateTakesOnlyAPlainTenant() {
+    Endpoint template =
+        new Endpoint.WithTenant("https://login.example.org/{tenant}/oauth2/v2.0/token");
+
+    assertThat(template.needsTenant()).isTrue();
+    assertThat(template.resolve("rheinfurt.onmicrosoft.com"))
+        .isEqualTo(
+            URI.create("https://login.example.org/rheinfurt.onmicrosoft.com/oauth2/v2.0/token"));
+    assertThatThrownBy(() -> template.resolve(null)).isInstanceOf(IllegalArgumentException.class);
+    assertThatThrownBy(() -> template.resolve("evil.example.org/x?"))
+        .isInstanceOf(IllegalArgumentException.class);
+    assertThatThrownBy(() -> new Endpoint.WithTenant("https://login.example.org/token"))
+        .isInstanceOf(IllegalArgumentException.class);
+    assertThat(new Endpoint.Fixed(URI.create("https://a.example.org/t")).resolve(null))
+        .isEqualTo(URI.create("https://a.example.org/t"));
+  }
+
+  /** A key only the profile sets is bound under every profile, also one that leaves it empty. */
+  @Test
+  void aKeyOnlyTheProfileSetsIsAlwaysBound() {
+    ProfileDefaults defaults =
+        ProfileDefaults.of(
+            DefaultKey.text("region", "Region"),
+            DefaultKey.text("subject", "Imitiertes Konto").onlyOnProfile());
+
+    assertThat(defaults.boundKeys(null)).containsExactly("subject");
+    assertThat(defaults.boundKeys(ConnectorData.of(Map.of("region", "eu"))))
+        .containsExactly("region", "subject");
+    assertThat(DefaultKey.text("region", "Region").profileOnly()).isFalse();
+  }
+
+  @Test
   void aPersonalSecretAndOnlyThatNamesTheFormOfItsSecret() {
     assertThat(
             SignIn.personalSecret(PersonalSecretForm.USERNAME_AND_PASSWORD, LIBRARY).secretForm())

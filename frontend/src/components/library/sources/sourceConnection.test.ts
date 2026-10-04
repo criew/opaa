@@ -67,7 +67,7 @@ describe('connectionFields', () => {
   it.each<[ConnectionAuthMethod, boolean]>([
     ['NONE', false],
     ['PERSONAL_SECRET', true],
-    ['SERVICE_ACCOUNT_KEY', true],
+    ['SERVICE_ACCOUNT_KEY', false],
     ['OAUTH', false],
     ['CLIENT_CREDENTIALS', false],
   ])('asks for a secret of its own under %s: %s', (authMethod, asks) => {

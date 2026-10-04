@@ -17,8 +17,9 @@ import java.util.UUID;
 /**
  * A connection profile ("Zugang"): the frame the administration sets for one connector - server
  * address, proxy and TLS switch, sign-in method, app registration, scopes and connector defaults.
- * The client secret is held only as {@code CredentialsEncryptor} ciphertext and never leaves {@link
- * ConnectionProfileService}.
+ * The client secret - for a service account key the key file - is held only as {@code
+ * CredentialsEncryptor} ciphertext; only {@link ConnectionProfileService} and {@link
+ * ProfileRegistrations} read it.
  */
 @Entity
 @Table(name = "connection_profiles")
@@ -46,7 +47,7 @@ public class ConnectionProfile {
   @Column(name = "client_id")
   private String clientId;
 
-  @Column(name = "client_secret_ciphertext", length = 3000)
+  @Column(name = "client_secret_ciphertext")
   private String clientSecretCiphertext;
 
   @Column(name = "client_secret_expires_on")
@@ -69,6 +70,9 @@ public class ConnectionProfile {
 
   @Column(name = "locked_at")
   private Instant lockedAt;
+
+  @Column(name = "sign_in_rejected_at")
+  private Instant signInRejectedAt;
 
   @Column(name = "created_at", nullable = false)
   private Instant createdAt;
@@ -112,6 +116,7 @@ public class ConnectionProfile {
     copy.id = id;
     copy.sourceType = sourceType;
     copy.lockedAt = lockedAt;
+    copy.signInRejectedAt = signInRejectedAt;
     copy.createdAt = createdAt;
     copy.replace(values, clientSecretCiphertext, updatedAt);
     return copy;
@@ -192,6 +197,29 @@ public class ConnectionProfile {
 
   void lockedSince(Instant at, Instant now) {
     this.lockedAt = at;
+    this.updatedAt = now;
+  }
+
+  /**
+   * Since when the provider rejects the profile's own sign-in, {@code null} while it does not; a
+   * new secret or a successful sign-in test lifts it.
+   */
+  public Instant getSignInRejectedAt() {
+    return signInRejectedAt;
+  }
+
+  public boolean isSignInRejected() {
+    return signInRejectedAt != null;
+  }
+
+  void signInRejectedSince(Instant at) {
+    this.signInRejectedAt = at;
+  }
+
+  /** Drops the client secret or key; a rejection of it goes with it. */
+  void dropClientSecret(Instant now) {
+    this.clientSecretCiphertext = null;
+    this.signInRejectedAt = null;
     this.updatedAt = now;
   }
 

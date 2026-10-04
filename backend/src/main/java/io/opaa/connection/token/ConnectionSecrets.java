@@ -7,6 +7,7 @@ import io.opaa.auth.UserRepository;
 import io.opaa.connection.token.PersonAccounts.AccountKey;
 import io.opaa.connection.token.SecretOwner.LibraryOwned;
 import io.opaa.connection.token.SecretOwner.PersonOwned;
+import io.opaa.connection.token.SecretOwner.ProfileOwned;
 import io.opaa.indexing.source.Secret;
 import io.opaa.indexing.source.SecretKind;
 import io.opaa.indexing.source.SourceBlock.Reason;
@@ -42,7 +43,9 @@ import org.springframework.transaction.support.TransactionTemplate;
  * goes to the stored row. A person's secret is handed out only while their account is usable
  * ({@link AccountUsability} with the configured inactivity threshold) and only to the target it was
  * issued for; resting and deactivated are derived here at every use, never stored. A hand-out
- * records the account's use at most once per {@link #USE_RESOLUTION}.
+ * records the account's use at most once per {@link #USE_RESOLUTION}. A profile's own sign-in holds
+ * no row: its token comes from {@link SecretIssuer#mint}, and whether it is refused the profile row
+ * says.
  */
 @Component
 public class ConnectionSecrets {
@@ -107,7 +110,21 @@ public class ConnectionSecrets {
         yield secret;
       }
       case PersonOwned person -> personSecret(person, target);
+      case ProfileOwned(UUID profileId) -> issuer().mint(profileId);
     };
+  }
+
+  /**
+   * The secret to retry with after the source rejected one {@code owner} handed out: a profile's
+   * token is obtained anew, every other owner answers as {@link #current}.
+   *
+   * @throws SecretRefusedException with the reason none is handed out
+   */
+  public Secret afterRejection(SecretOwner owner, String target) {
+    if (owner instanceof ProfileOwned(UUID profileId)) {
+      issuer().forgetMinted(profileId);
+    }
+    return current(owner, target);
   }
 
   /**
@@ -120,7 +137,8 @@ public class ConnectionSecrets {
   /**
    * {@link #stateOf} for many owners with one query per kind of owner, absent for an owner that can
    * hand one out. It decrypts and renews nothing and does not compare targets, so an unreadable
-   * secret or one issued for another target is refused by {@link #current} only.
+   * secret or one issued for another target is refused by {@link #current} only. A profile's own
+   * sign-in gets no reason here: its state is the profile's, read with the profile row.
    */
   public Map<SecretOwner, Reason> statesAmong(Collection<SecretOwner> owners) {
     List<UUID> libraryIds = new ArrayList<>();
@@ -129,6 +147,7 @@ public class ConnectionSecrets {
       switch (owner) {
         case LibraryOwned(UUID libraryId) -> libraryIds.add(libraryId);
         case PersonOwned person -> persons.add(person);
+        case ProfileOwned ignored -> {}
       }
     }
     Set<UUID> holding =
@@ -148,6 +167,7 @@ public class ConnectionSecrets {
             states.put(owner, reason);
           }
         }
+        case ProfileOwned ignored -> {}
       }
     }
     return states;
@@ -155,21 +175,26 @@ public class ConnectionSecrets {
 
   /**
    * The secret {@code owner} stores for the library itself, as a change keeps it on the same
-   * origin; {@code null} for none or an unreadable one, and always for a person's secret, which no
-   * change of a library carries over.
+   * origin; {@code null} for none or an unreadable one, and always for a person's or a profile's
+   * secret, which no change of a library carries over.
    */
   public String stored(SecretOwner owner) {
     return switch (owner) {
       case LibraryOwned(UUID libraryId) -> columnOf(libraryId);
       case PersonOwned ignored -> null;
+      case ProfileOwned ignored -> null;
     };
   }
 
-  /** Whether {@code owner} holds a secret at all, regardless of whether it may be used now. */
+  /**
+   * Whether {@code owner} holds a secret at all, regardless of whether it may be used now; a
+   * profile's registration is no secret of the library and counts as none.
+   */
   public boolean holds(SecretOwner owner) {
     return switch (owner) {
       case LibraryOwned ignored -> stored(owner) != null;
       case PersonOwned person -> tokenOf(person).isPresent();
+      case ProfileOwned ignored -> false;
     };
   }
 
@@ -177,7 +202,8 @@ public class ConnectionSecrets {
    * Stores {@code secret} for {@code owner}, issued for {@code target}; it replaces a held one.
    *
    * @throws IllegalStateException for a library, whose own secret the library administration
-   *     writes, and for a person without a connected account on the profile
+   *     writes, for a profile, whose registration the profile administration writes, and for a
+   *     person without a connected account on the profile
    */
   public void store(SecretOwner owner, NewSecret secret, String target) {
     switch (owner) {
@@ -193,12 +219,16 @@ public class ConnectionSecrets {
           case NewSecret.Personal personal -> storePersonal(person, accountId, personal, target);
         }
       }
+      case ProfileOwned ignored ->
+          throw new IllegalStateException(
+              "a profile's registration is written by the profile administration");
     }
   }
 
   /**
-   * Discards the secret of {@code owner}; for a library in the loaded entity and the column.
-   * Returns how many stored secrets of a person went, always 0 for a library.
+   * Discards the secret of {@code owner}; for a library in the loaded entity and the column, for a
+   * profile the token held in the process - its registration stays with the profile. Returns how
+   * many stored secrets of a person went, always 0 for a library and a profile.
    */
   public int discard(SecretOwner owner) {
     return switch (owner) {
@@ -208,6 +238,10 @@ public class ConnectionSecrets {
         yield 0;
       }
       case PersonOwned person -> accountIdOf(person).map(tokens::deleteByAccount).orElse(0);
+      case ProfileOwned(UUID profileId) -> {
+        forgetMinted(profileId);
+        yield 0;
+      }
     };
   }
 
@@ -217,14 +251,16 @@ public class ConnectionSecrets {
   }
 
   /**
-   * Discards every secret held under {@code profileId} - of its libraries and of persons - for
-   * {@code cause}. Ending the persons' connections is left to their accounts.
+   * Discards every secret held under {@code profileId} - of its libraries, of persons and the token
+   * of its own sign-in - for {@code cause}. Ending the persons' connections is left to their
+   * accounts, the profile's registration to the profile administration.
    */
   public Discarded discardAllUnder(UUID profileId, ConnectionEndCause cause) {
     List<UUID> under = librariesOnProfile.libraryIdsOnProfile(profileId);
     for (UUID libraryId : under) {
       libraries.eraseSourceCredentials(libraryId);
     }
+    forgetMinted(profileId);
     int persons = tokens.deletePersonsUnder(profileId);
     log.info(
         "Discarded the secrets of {} libraries and {} persons under profile {} ({})",
@@ -237,11 +273,13 @@ public class ConnectionSecrets {
 
   /**
    * The provider rejected the secret of {@code owner}: a person's secret ends now and is refused as
-   * {@link Reason#EXPIRED} until it is replaced. A library's own secret carries no such state.
+   * {@link Reason#EXPIRED} until it is replaced; a profile's token is obtained anew at the next
+   * ask. A library's own secret carries no such state.
    */
   public void rejected(SecretOwner owner) {
     switch (owner) {
       case LibraryOwned ignored -> {}
+      case ProfileOwned(UUID profileId) -> forgetMinted(profileId);
       case PersonOwned person ->
           tokenOf(person)
               .ifPresent(
@@ -301,11 +339,18 @@ public class ConnectionSecrets {
     }
   }
 
+  private void forgetMinted(UUID profileId) {
+    SecretIssuer issuer = issuers.getIfAvailable();
+    if (issuer != null) {
+      issuer.forgetMinted(profileId);
+    }
+  }
+
   private SecretIssuer issuer() {
     SecretIssuer issuer = issuers.getIfAvailable();
     if (issuer == null) {
       throw new IllegalStateException(
-          "An OAuth token is handed out through a SecretIssuer, and none is registered");
+          "An OAuth or profile token is handed out through a SecretIssuer, and none is registered");
     }
     return issuer;
   }

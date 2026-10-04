@@ -18,7 +18,8 @@ import java.util.regex.Pattern;
 record GoogleDriveSettings(
     List<GoogleDriveScope> scopes, String subject, Integer fullSyncIntervalDays) {
 
-  static final Set<String> KEYS = Set.of("scopes", "subject", "fullSyncIntervalDays");
+  static final String SUBJECT = "subject";
+  static final Set<String> KEYS = Set.of("scopes", SUBJECT, "fullSyncIntervalDays");
   static final int MAX_SCOPES = 50;
   static final int MAX_FULL_SYNC_INTERVAL_DAYS = 365;
 

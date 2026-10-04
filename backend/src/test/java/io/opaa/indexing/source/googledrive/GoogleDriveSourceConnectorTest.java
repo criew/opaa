@@ -64,7 +64,21 @@ class GoogleDriveSourceConnectorTest {
         .isEqualTo(URI.create("https://oauth2.example.org/token"));
     assertThat(descriptor.profileDeclaration().serviceAccountKey().scope())
         .isEqualTo(GoogleDriveSourceConnector.SCOPE);
-    assertThat(descriptor.profileDeclaration().admitsProfiles()).isFalse();
+    assertThat(descriptor.profileDeclaration().support())
+        .isEqualTo(io.opaa.api.types.ConnectionProfileSupport.OPTIONAL);
+    assertThat(descriptor.profileDeclaration().signIns())
+        .singleElement()
+        .satisfies(
+            signIn ->
+                assertThat(signIn.method())
+                    .isEqualTo(io.opaa.api.types.ConnectionAuthMethod.SERVICE_ACCOUNT_KEY));
+    assertThat(descriptor.profileDeclaration().defaults().keys())
+        .singleElement()
+        .satisfies(
+            key -> {
+              assertThat(key.key()).isEqualTo("subject");
+              assertThat(key.profileOnly()).isTrue();
+            });
     assertThat(descriptor.profileDeclaration().address().fixed())
         .isEqualTo(server.base().toString());
     assertThat(descriptor.fullSyncInterval()).isEqualTo(java.time.Duration.ofDays(7));
