@@ -314,11 +314,16 @@ Grenze.
 Eine **private Bibliothek** speist sich aus dem verbundenen Konto ihrer Besitzerin auf einem Zugang
 für Personen (Kapitel [Indexierung](indexierung.md), „Zugänge“). Ihr Inhalt ist, was die Person
 beim Anbieter selbst sieht, und außer ihr liest ihn niemand. Anlegen lässt sie sich erst, wenn ein
-Konnektor die Besitzart „Person“ anbietet; die mitgelieferten Konnektoren tun das noch nicht, und
-die Oberfläche dafür folgt.
+Konnektor die Besitzart „Person“ anbietet; die mitgelieferten Konnektoren tun das noch nicht.
 
 **Anlegen.** Die Person wählt beim Anlegen ausdrücklich „privat“; bei einem Zugang, der Bibliotheken
-und Personen zulässt, entscheidet allein diese Wahl, und sie bleibt für immer. Vorausgesetzt sind:
+und Personen zulässt, entscheidet allein diese Wahl, und sie bleibt für immer. Im Assistenten steht
+dafür im Schritt „Quelle“ unter den Zugängen die Gruppe **„Über mein verbundenes Konto“** mit dem
+Hinweis „Nur Sie sehen diese Bibliothek“. Sie erscheint nur für Zugänge, auf denen die Person
+bereits ein verbundenes Konto hat; ohne ein solches Konto gibt es weder die Gruppe noch einen
+Hinweis darauf. Ein Zugang, der Bibliotheken und Personen zulässt, steht dort zweimal: in den
+Zugängen als teilbare Bibliothek, in der Gruppe als private. Für die private gibt es kein Feld für
+Zugangsdaten, und der Schritt „Freigaben“ entfällt. Vorausgesetzt sind:
 
 - ein verbundenes Konto der Person auf dem Zugang und das Anlegerecht für den Zugang (Abschnitt 9);
 - keine eigenen Zugangsdaten — die Bibliothek meldet sich mit dem verbundenen Konto an;
@@ -326,6 +331,13 @@ und Personen zulässt, entscheidet allein diese Wahl, und sie bleibt für immer.
   Bindung, etwa eine andere Freigabe eines Dateiservers. Eine abweichende wird abgewiesen.
 
 Verbindungstest und Auflistung vor dem Anlegen laufen ebenso über das verbundene Konto.
+
+**Erkennbar** ist eine private Bibliothek an der Marke **„Privat“** (Schloss und Wort) auf ihrer
+Kachel im Katalog und im Kopf ihrer Detailseite. Im Reiter „Freigaben“ stehen nur Eigentümerin,
+Diagnosesperre und ein Hinweis, warum es nicht mehr gibt; Berechtigungen, Externer Zugang,
+Obergrenze, Herleitung und „Eigentum übergeben“ fehlen. Im Reiter „Quelle“ fehlt „Zugang lösen“,
+und „Zugang wechseln“ bietet nur Zugänge an, auf denen die Besitzerin ein verbundenes Konto hat.
+Im Chat sind Quellen aus privaten Bibliotheken noch nicht gekennzeichnet (#2164).
 
 **Was nicht geht — auch nicht für die Systemverwaltung:** Rechte an Personen, Gruppen oder „Alle
 Konten“, Übertragung, Fremdzugangsfreigabe, eine Freigabe-Obergrenze, Nachfolge und „Sicht als“. Die
@@ -346,7 +358,10 @@ durchsuchbar:
 | „Ziel weicht ab“ | Die Bibliothek erreicht ein anderes Ziel als das, für das das Konto gilt | Besitzerin: neu verbinden, sonst neu anlegen |
 | „Zugang nicht mehr nutzbar“ | Der Zugang wurde gelöscht, lässt keine Personen mehr zu oder sein Konnektor lehnte eine Änderung für die Bibliothek ab | Besitzerin: anderem Zugang zuordnen; gibt es keinen, die Systemverwaltung |
 
-Ein Lauf, der daran scheitert, speichert den Grund als Kategorie ohne Inhaltsbezug.
+Der Hinweis steht im Reiter „Quelle“. Bei „Verbindung getrennt“ und „Abgelaufen“ führt er die
+Besitzerin mit „Konto verbinden“ bzw. „Konto neu verbinden“ zu „Verbundene Konten“, bei „Zugang
+nicht mehr nutzbar“ bietet er „Zugang zuordnen“ an. Ein Lauf, der daran scheitert, speichert den
+Grund als Kategorie ohne Inhaltsbezug.
 
 **Was die Verwaltung sieht:** nur Zusammenfassungen. Indexstatus und Pipeline-Stand zeigen private
 Bibliotheken als eine Zeile ohne Namen und Kennung; jede Zahl über sie richtet sich nach der Zahl
