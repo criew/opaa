@@ -110,6 +110,11 @@ class ModularArchitectureTest {
   }
 
   @Test
+  void theForeignContextNeverUsesTheOwnFormula() {
+    ARCHITECTURE.theForeignContextNeverUsesTheOwnFormula().check(mainClasses);
+  }
+
+  @Test
   void theSecretPortStaysWithTheCore() {
     ARCHITECTURE.theSecretPortStaysWithTheCore().check(mainClasses);
   }

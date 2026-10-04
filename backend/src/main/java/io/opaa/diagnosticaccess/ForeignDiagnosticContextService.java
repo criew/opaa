@@ -33,6 +33,9 @@ import org.springframework.stereotype.Service;
  * calling transaction cannot take the entry with it. "Ein Protokolleintrag je Ausfuehrung" is
  * therefore structural, not a rule a future call site could forget.
  *
+ * <p>A foreign context reads {@link LibraryAccessService#readableLibraryIdsInForeignContext}, never
+ * the own formula: an owner-only library never enters it.
+ *
  * <p>Not covered here on purpose: a diagnosis in the caller's own rights context. It is not a
  * foreign context, needs no befugnis and produces no protocol entry (Leitplanke (c), last bullet) -
  * a caller running one must not route it through this class.
@@ -119,7 +122,8 @@ public class ForeignDiagnosticContextService {
         .orElseThrow(() -> new NotFoundException("Nutzer nicht gefunden"));
 
     Set<UUID> candidates =
-        libraryAccessService.readableLibraryIds(targetUserId, actor.organizationId());
+        libraryAccessService.readableLibraryIdsInForeignContext(
+            targetUserId, actor.organizationId());
     return run(
         actor,
         DiagnosticTargetKind.USER,
@@ -168,8 +172,10 @@ public class ForeignDiagnosticContextService {
     Set<UUID> candidates =
         libraryAccessService.readableLibraryIdsForGroup(profile.getId(), actor.organizationId());
     if (!actor.isSystemAdmin()) {
+      // A profile is a group and reaches no owner-only library, so the narrower set suffices.
       Set<UUID> ownReadable =
-          libraryAccessService.readableLibraryIds(actor.id(), actor.organizationId());
+          libraryAccessService.readableLibraryIdsInForeignContext(
+              actor.id(), actor.organizationId());
       if (!ownReadable.containsAll(candidates)) {
         throw new AccessDeniedException(
             "Ein Rechteprofil darf nur Bibliotheken umfassen, die Sie selbst einsehen dürfen");

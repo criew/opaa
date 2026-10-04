@@ -10,6 +10,7 @@ import {
 import { confluenceEditionLabel } from '../../../utils/labels'
 import ConfluenceSourceForm from '../ConfluenceSourceForm'
 import { ConfluenceScope, ConfluenceStoredView } from './ConfluenceSourceViews'
+import { connectionFields } from './sourceConnection'
 import type { SourceRegistration } from './types'
 
 export const confluenceSource: SourceRegistration = {
@@ -57,6 +58,7 @@ export const confluenceSource: SourceRegistration = {
         libraryId={context.libraryId}
         credentialsStored={context.credentialsStored}
         originalSourceUrl={context.originalSourceUrl}
+        connection={connectionFields(context)}
         values={values}
         onChange={onChange}
       />

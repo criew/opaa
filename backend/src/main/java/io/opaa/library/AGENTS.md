@@ -15,6 +15,10 @@ Zugang, Prüfung ihrer Adresse) und besitzt keine eigene Tabelle.
 - **Das Recht zu löschen und zu übertragen liegt immer bei einer Person.** Beim Anlegen erhält der
   Ersteller ausdrücklich `OWNER`; bei einer Gruppenbibliothek bekommt die Gruppe `MANAGER`, nie
   `OWNER`.
+- **Eine private Bibliothek** (`KnowledgeLibrary#isOwnerOnly`, Merkmal der Asset-Schale) hat nur
+  ihre Besitzerin. Fremdzugang und Freigabe-Obergrenze fragen `OwnerOnlyRule#requireShareable`;
+  die Systemverwaltung erreicht sie nicht (`404`). Ein zweites Merkmal an `knowledge_libraries`
+  gibt es nicht.
 - **Die Freigabegrenze einer Konnektorbibliothek:** Eine Anfrage über der Grenze ist `409`, nicht
   `403` — die Rolle steht nicht in Frage. Eine Upload-Bibliothek trägt nie eine engere Grenze
   (`KnowledgeLibraryAssetType`).

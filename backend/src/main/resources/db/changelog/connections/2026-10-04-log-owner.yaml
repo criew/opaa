@@ -1,0 +1,45 @@
+databaseChangeLog:
+  - changeSet:
+      id: connections-2026-10-04-log-owner
+      author: opaa
+      comment: "Whose connection a connection-log entry is about (#2163): a person, a library (source connection with its service account) or a profile. Existing entries are a person's. A person's entry still names neither a library nor an account - the CHECK keeps that promise in the database. Two end causes for a library's connection join the cause list."
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              -- connection_log belongs to opaa_audit_owner (ADR-0015): the membership is taken briefly and
+              -- given back; the ADMIN OPTION residual that cannot be revoked is documented as open there.
+              DO $$
+              BEGIN
+                EXECUTE format('GRANT opaa_audit_owner TO %I WITH SET TRUE', current_user);
+              END $$;
+
+              ALTER TABLE connection_log
+                  ADD COLUMN owner_kind character varying(10) NOT NULL DEFAULT 'PERSON';
+              -- The default only fills the existing entries; every writer names the owner.
+              ALTER TABLE connection_log ALTER COLUMN owner_kind DROP DEFAULT;
+              ALTER TABLE connection_log ALTER COLUMN person_ref DROP NOT NULL;
+              -- No foreign key: an entry outlives its library, like profile_id outlives its profile.
+              ALTER TABLE connection_log ADD COLUMN library_id uuid;
+              ALTER TABLE connection_log ADD COLUMN account_label character varying(500);
+
+              -- A library's connection also ends with its library or with a move to another profile.
+              ALTER TABLE connection_log DROP CONSTRAINT chk_connection_log_cause;
+              ALTER TABLE connection_log
+                  ADD CONSTRAINT chk_connection_log_cause CHECK (cause IS NULL OR cause IN
+                      ('SELF', 'EMERGENCY', 'ADDRESS_CHANGED', 'REGISTRATION_CHANGED',
+                       'ACCOUNT_DEACTIVATED', 'PROFILE_DELETED', 'PROVIDER_REJECTED',
+                       'SECRET_EXPIRED', 'LIBRARY_DELETED', 'PROFILE_CHANGED'));
+              -- Also rejects an unknown owner_kind: no branch matches it.
+              ALTER TABLE connection_log
+                  ADD CONSTRAINT chk_connection_log_owner CHECK (
+                      (owner_kind = 'PERSON' AND person_ref IS NOT NULL
+                          AND library_id IS NULL AND account_label IS NULL)
+                      OR (owner_kind = 'LIBRARY' AND library_id IS NOT NULL AND person_ref IS NULL)
+                      OR (owner_kind = 'PROFILE' AND person_ref IS NULL
+                          AND library_id IS NULL AND account_label IS NULL));
+
+              DO $$
+              BEGIN
+                EXECUTE format('REVOKE opaa_audit_owner FROM %I', current_user);
+              END $$;

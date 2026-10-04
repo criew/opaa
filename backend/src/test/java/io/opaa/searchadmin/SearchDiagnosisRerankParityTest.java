@@ -89,6 +89,7 @@ class SearchDiagnosisRerankParityTest {
             mock(io.opaa.space.SpaceService.class),
             mock(io.opaa.audit.AuditEventRecorder.class),
             new io.opaa.permission.GroupSizeProperties(null),
+            mock(io.opaa.asset.OwnerOnlyRule.class),
             java.time.Clock.systemUTC());
 
     return service.diagnose(

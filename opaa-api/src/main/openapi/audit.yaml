@@ -817,8 +817,19 @@ components:
           PROFILE_DELETED,
           PROVIDER_REJECTED,
           SECRET_EXPIRED,
+          LIBRARY_DELETED,
+          PROFILE_CHANGED,
         ]
       example: SELF
+
+    ConnectionLogOwnerKind:
+      type: string
+      description: >
+        Mirrors io.opaa.api.types.ConnectionLogOwnerKind - whose connection the entry is about.
+        PERSON names the person as personRef and never a library or account; LIBRARY names the
+        library and, if any, the service account's address; PROFILE names neither.
+      enum: [PERSON, LIBRARY, PROFILE]
+      example: PERSON
 
     ConnectionLogEntryResponse:
       type: object
@@ -828,7 +839,7 @@ components:
         literal "SYSTEM" as actorRef, which is never a pseudonym.
         profileName is the name the profile carried at the time, so an entry outlives its profile.
       required:
-        [eventId, recordedAt, organizationId, eventType, actorRef, personRef, profileId, profileName]
+        [eventId, recordedAt, organizationId, eventType, actorRef, ownerKind, profileId, profileName]
       properties:
         eventId:
           type: string
@@ -844,8 +855,23 @@ components:
         actorRef:
           type: string
           description: A pseudonym, or the literal "SYSTEM" for an event no person caused.
+        ownerKind:
+          $ref: "#/components/schemas/ConnectionLogOwnerKind"
         personRef:
           type: string
+          nullable: true
+          description: The person's pseudonym; set exactly for ownerKind PERSON.
+        libraryId:
+          type: string
+          format: uuid
+          nullable: true
+          description: The library; set exactly for ownerKind LIBRARY. It may no longer exist.
+        accountLabel:
+          type: string
+          nullable: true
+          description: >
+            The service account's address at the provider, only for ownerKind LIBRARY; at most
+            500 characters.
         profileId:
           type: string
           format: uuid

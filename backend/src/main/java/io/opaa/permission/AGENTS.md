@@ -22,9 +22,11 @@ hängt nur von foundation und identity ab.
 - **Grants sind typunabhängig:** Ein Grant nennt sein Asset über `AssetType` plus ID; `permission`
   zählt die Typen nie auf. `asset_grants` verweist mit der Organisation im Schlüssel und
   `ON DELETE CASCADE` auf `assets` — kein Grant überlebt sein Asset.
-- **Die Formel ist hier vollständig:** direkter Grant, Gruppengrant und organisationsweite Freigabe
-  (`assets.visibility`). Der einzige Boden außerhalb ist die Asset-Verwaltung, in der die
-  Systemverwaltung als Eigentümer zählt — nie für die Suche.
+- **Die Formel ist hier vollständig:** direkter Grant, Gruppengrant und Grant an „Alle Konten“.
+  Einziger Boden außerhalb: In der Asset-Verwaltung zählt die Systemverwaltung als Eigentümer — nie
+  für die Suche und nie bei einem Nur-Besitzerin-Asset.
+- **Nur-Besitzerin-Merkmal** (`assets.owner_only`): beim Anlegen gesetzt, samt Eigentümer
+  unveränderlich, nur der Grant der Besitzerin (Trigger); Regeln in `asset.OwnerOnlyRule`.
 - **Jede Mechanik der Asset-Schale gibt es genau einmal.** Ein neuer Asset-Typ bringt eine Tabelle,
   eine Entity, die `Asset` erweitert, und eine `AssetTypeDefinition` mit — keine eigene
   Grant-Logik, keine eigene Historie, keine eigene Fundquelle.
@@ -38,8 +40,7 @@ hängt nur von foundation und identity ab.
 - **Web-Schicht:** `permission.web`, `asset.web` (Katalog, Grants, Herleitung, Eigentum), `group.web`
   (auch `/api/v1/me`), `directory.web` (Anbieter, Verzeichnis-Konnektor, Synchronisation),
   `succession.web`. Die Raumzuordnungen eines Assets bedient `space.web` (workspace).
-- **Gruppenrechte enden mit der Mitgliedschaft:** Aufgelöst wird über `GroupMembershipResolver`,
-  dessen Cache nach dem Commit der schreibenden Transaktion invalidiert wird.
+- **Gruppenrechte enden mit der Mitgliedschaft** (`GroupMembershipResolver`, Cache nach Commit).
 
 ## Verweise
 

@@ -26,24 +26,25 @@ public class ConnectionLog {
   }
 
   /**
-   * Appends one entry. {@code personUserId} is whose connection it is, {@code profileName} the
-   * profile's name now; {@code cause} is null exactly for {@code CONNECTED} and {@code
-   * RECONNECTED}, every other event ends a connection and names why.
+   * Appends one entry. {@code owner} is whose connection it is, {@code profileName} the profile's
+   * name now; {@code cause} is null exactly for {@code CONNECTED} and {@code RECONNECTED}, every
+   * other event ends a connection and names why.
    *
-   * @throws IllegalArgumentException if the cause does not fit the event
+   * @throws IllegalArgumentException if the cause does not fit the event or a library's account
+   *     label exceeds the column
    */
   @Transactional
   public void record(
       UUID organizationId,
       ConnectionLogEventType eventType,
       ConnectionLogActor actor,
-      UUID personUserId,
+      ConnectionLogOwner owner,
       UUID profileId,
       String profileName,
       ConnectionEndCause cause) {
     Objects.requireNonNull(organizationId, "organizationId");
     Objects.requireNonNull(eventType, "eventType");
-    Objects.requireNonNull(personUserId, "personUserId");
+    Objects.requireNonNull(owner, "owner");
     Objects.requireNonNull(profileId, "profileId");
     Objects.requireNonNull(profileName, "profileName");
     boolean start =
@@ -58,16 +59,37 @@ public class ConnectionLog {
           case ConnectionLogActor.Person person -> pseudonymOf(person.userId(), organizationId);
           case ConnectionLogActor.SystemProcess ignored -> ConnectionLogActor.SYSTEM_LABEL;
         };
+    String personRef =
+        owner instanceof ConnectionLogOwner.Person person
+            ? pseudonymOf(person.userId(), organizationId)
+            : null;
+    ConnectionLogOwner.Library library =
+        owner instanceof ConnectionLogOwner.Library ofLibrary ? ofLibrary : null;
+    requireAccountLabelFits(library);
     repository.save(
         new ConnectionLogEntry(
             organizationId,
             Instant.now(),
             eventType,
             actorRef,
-            pseudonymOf(personUserId, organizationId),
+            owner.kind(),
+            personRef,
+            library == null ? null : library.libraryId(),
+            library == null ? null : library.accountLabel(),
             profileId,
             profileName,
             cause));
+  }
+
+  /** Refuses rather than cuts: a shortened account address would name a different account. */
+  private static void requireAccountLabelFits(ConnectionLogOwner.Library library) {
+    String label = library == null ? null : library.accountLabel();
+    if (label != null && label.length() > ConnectionLogOwner.Library.MAX_ACCOUNT_LABEL_LENGTH) {
+      throw new IllegalArgumentException(
+          "accountLabel exceeds "
+              + ConnectionLogOwner.Library.MAX_ACCOUNT_LABEL_LENGTH
+              + " characters");
+    }
   }
 
   private String pseudonymOf(UUID userId, UUID organizationId) {

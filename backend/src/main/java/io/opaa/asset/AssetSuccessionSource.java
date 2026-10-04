@@ -27,7 +27,8 @@ import org.springframework.stereotype.Component;
  * An asset without a capable owner (#1819, ADR-0036 Entscheidung 6), for every asset type in one
  * query: a person whose account is no longer active, or a group that is dissolved, switched off or
  * has lost its last active account. Every type of the shell is reported, as {@link
- * SuccessionObjectType#ASSET} with its own asset type - there is no type this source skips.
+ * SuccessionObjectType#ASSET} with its own asset type - there is no type this source skips. An
+ * owner-only asset has no succession and is never reported.
  *
  * <p>The addressee follows the object, not the finder: an asset of an internal group is the
  * business of that group's stewards, everything else of the system administration.
@@ -90,6 +91,9 @@ public class AssetSuccessionSource implements SuccessionFindingSource {
                 .toList());
     Map<UUID, SuccessionFinding> findings = new LinkedHashMap<>();
     for (OwnedAsset asset : candidates) {
+      if (asset.isOwnerOnly()) {
+        continue;
+      }
       if (asset.getOwnerType() == AssetOwnerType.USER) {
         if (!activeOwners.contains(asset.getOwnerUserId())) {
           findings.put(asset.getId(), findingFor(asset, null, withMembershipHints));
@@ -120,6 +124,9 @@ public class AssetSuccessionSource implements SuccessionFindingSource {
   }
 
   private boolean withoutCapableOwner(Asset asset) {
+    if (asset.isOwnerOnly()) {
+      return false;
+    }
     if (asset.getOwnerType() == AssetOwnerType.USER) {
       return accountActivity.activeAmong(List.of(asset.getOwnerUserId())).isEmpty();
     }

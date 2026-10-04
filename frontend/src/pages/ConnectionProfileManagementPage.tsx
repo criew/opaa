@@ -350,6 +350,7 @@ export default function ConnectionProfileManagementPage() {
           open={form.open}
           profile={form.profile}
           sourceTypes={sourceTypes}
+          sourceTypesLoaded={sourceTypesLoaded}
           onClose={() => setForm({ open: false, profile: null })}
           onSaved={(saved) => {
             notify(`„${saved.name}“ wurde gespeichert.`, 'success')

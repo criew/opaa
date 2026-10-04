@@ -476,7 +476,8 @@ class DocumentIndexingServiceTest {
   @Test
   void getRecentRunsWithManageAccessReturnsTheLibrarysRuns() {
     when(libraryRepository.findById(library.getId())).thenReturn(Optional.of(library));
-    when(libraryAccessService.canManage(library, caller.id(), false)).thenReturn(true);
+    when(libraryAccessService.requireRole(library, caller.id(), false, AssetRole.MANAGER))
+        .thenReturn(AssetRole.MANAGER);
     var job = new IndexingJob(JobStatus.COMPLETED);
     when(indexingJobService.getRecentJobs(library.getId(), organizationId))
         .thenReturn(List.of(job));
@@ -501,7 +502,8 @@ class DocumentIndexingServiceTest {
   @Test
   void getRecentRunsWithOnlyReadAccessFailsWithForbidden() {
     when(libraryRepository.findById(library.getId())).thenReturn(Optional.of(library));
-    when(libraryAccessService.canManage(library, caller.id(), false)).thenReturn(false);
+    when(libraryAccessService.requireRole(library, caller.id(), false, AssetRole.MANAGER))
+        .thenThrow(new AccessDeniedException("Kein Zugriff auf diese Bibliothek"));
 
     assertThatThrownBy(() -> service.getRecentRuns(library.getId(), caller))
         .isInstanceOf(AccessDeniedException.class);

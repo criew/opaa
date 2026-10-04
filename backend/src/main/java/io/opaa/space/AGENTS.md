@@ -24,7 +24,9 @@ foundation, identity, rights und knowledge ab.
 - **„Sicht als" hat genau einen Ausführungsweg:** `ForeignDiagnosticContextService` prüft Befugnis,
   Begründung und Diagnosesperre, schreibt den Protokolleintrag im selben Aufruf und speichert nie
   ein Ergebnis. Die Befugnis leitet sich aus keiner Rolle ab
-  (`DiagnosticImpersonationGrantService`); die Sperre ist standardmäßig gesetzt.
+  (`DiagnosticImpersonationGrantService`); die Sperre ist standardmäßig gesetzt. Der fremde Kontext
+  liest `readableLibraryIdsInForeignContext` (ohne private Bibliotheken), nie die eigene Formel
+  (`ModularArchitecture#theForeignContextNeverUsesTheOwnFormula`).
 - **Web-Schicht:** `space.web` (Räume und `AssetSpaceController` für die Raumzuordnungen jedes
   Asset-Typs), `revision.web` (`PointInTimeAccessController`, `/api/v1/audit/access-as-of`),
   `diagnosticaccess.web` (Befugnisse, Protokoll, Diagnosesperre einer Bibliothek).

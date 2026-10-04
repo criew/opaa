@@ -14,6 +14,7 @@ import { browseSource, testLibrarySource } from '../../services/libraryApi'
 import { confluenceEditionLabel } from '../../utils/labels'
 import { sameLibrarySourceOrigin } from '../../utils/librarySourceConfig'
 import FieldLabel from '../wizard/FieldLabel'
+import { connectionFields, type ConnectionFields } from './sources/sourceConnection'
 
 import {
   confluenceCredentialsOf,
@@ -42,6 +43,8 @@ interface ConfluenceSourceFormProps {
   /** Edit mode: the address the stored credentials belong to - they do not survive a host change. */
   originalSourceUrl?: string | null
   idPrefix: string
+  /** What the connection profile decides for the fields; nothing without one. */
+  connection?: ConnectionFields
 }
 
 function spaceLabel(space: ConfluenceSpaceRef): string {
@@ -67,6 +70,13 @@ export default function ConfluenceSourceForm({
   credentialsStored = false,
   originalSourceUrl,
   idPrefix,
+  connection = connectionFields({
+    mode,
+    sourceType: 'CONFLUENCE',
+    idPrefix,
+    libraryId,
+    credentialsStored,
+  }),
 }: ConfluenceSourceFormProps) {
   const [detecting, setDetecting] = useState(false)
   const [detectMessage, setDetectMessage] = useState<Message | null>(null)
@@ -78,7 +88,8 @@ export default function ConfluenceSourceForm({
   const spacesRequested = useRef(false)
   const generation = useRef(0)
 
-  const editionFixed = mode === 'edit' && values.edition !== null
+  const editionFromProfile = connection.isFixed('edition')
+  const editionFixed = (mode === 'edit' && values.edition !== null) || editionFromProfile
   // #542 review finding 1, mirrored for Confluence: the backend carries the stored token forward
   // only while the address still names the same origin; a host change drops it.
   const originChanged =
@@ -98,6 +109,7 @@ export default function ConfluenceSourceForm({
     values.token.trim() !== '' &&
     values.email.trim() === ''
 
+  const { libraryId: probeLibraryId, connectionProfileId } = connection.probe
   const connectionPayload = useCallback(
     () => ({
       sourceUrl: values.sourceUrl.trim(),
@@ -117,10 +129,11 @@ export default function ConfluenceSourceForm({
         ...connectionPayload(),
         query: { edition: values.edition },
         sourceCredentials: confluenceCredentialsOf(values),
-        // #1856 review: sent whenever this instance edits an existing library, not only while the
-        // stored-credentials fallback applies - without libraryId, the listing needs
+        // #1856 review: the library is named whenever this instance edits one, not only while
+        // the stored-credentials fallback applies - without it, the listing needs
         // CREATE_CONNECTOR_LIBRARY (ADR-0036, Entscheidung 5), a right a MANAGER need not hold.
-        libraryId: mode === 'edit' ? libraryId : undefined,
+        libraryId: probeLibraryId,
+        connectionProfileId,
       })
       if (generation.current !== mine) return
       setAvailableSpaces(result.entries.map((entry) => ({ key: entry.key, name: entry.name })))
@@ -131,7 +144,7 @@ export default function ConfluenceSourceForm({
     } finally {
       if (generation.current === mine) setLoadingSpaces(false)
     }
-  }, [connectionPayload, libraryId, mode, values])
+  }, [connectionPayload, probeLibraryId, connectionProfileId, values])
 
   // Verified credentials without a listing yet - the stored ones in edit mode, or the wizard
   // remounting this step after "Zurück" - load the spaces right away, once.
@@ -179,6 +192,7 @@ export default function ConfluenceSourceForm({
       const result = await testLibrarySource({
         sourceType: 'CONFLUENCE',
         ...connectionPayload(),
+        ...connection.probe,
       })
       if (generation.current !== mine) return
       const detected = detectedConfluenceEdition(result.details)
@@ -212,7 +226,8 @@ export default function ConfluenceSourceForm({
         sourceSettings: { edition: values.edition },
         sourceCredentials: confluenceCredentialsOf(values),
         // #1856 review: same reasoning as loadSpaces above.
-        libraryId: mode === 'edit' ? libraryId : undefined,
+        libraryId: probeLibraryId,
+        connectionProfileId,
       })
       if (generation.current !== mine) return
       if (result.credentialsVerified) {
@@ -235,10 +250,11 @@ export default function ConfluenceSourceForm({
     }
   }
 
-  const credentialsComplete =
+  const enteredCredentialsComplete =
     values.edition === 'CLOUD'
       ? (values.email.trim() !== '' && values.token.trim() !== '') || usesStoredCredentials
       : values.token.trim() !== '' || usesStoredCredentials
+  const credentialsComplete = !connection.asksSecret || enteredCredentialsComplete
 
   // Selected spaces the current listing does not contain stay selected and visibly marked; they
   // are offered as options too so the picker never carries a value it cannot name.
@@ -281,7 +297,10 @@ export default function ConfluenceSourceForm({
               value={values.sourceUrl}
               onChange={(e) => changeAddress({ sourceUrl: e.target.value })}
               placeholder="https://wiki.behoerde.example/confluence"
-              helperText="Cloud: die Adresse Ihrer Site, mit oder ohne /wiki. Data Center: die Adresse samt Kontextpfad."
+              helperText={
+                connection.addressHint ??
+                'Cloud: die Adresse Ihrer Site, mit oder ohne /wiki. Data Center: die Adresse samt Kontextpfad.'
+              }
               fullWidth
               slotProps={{ htmlInput: { maxLength: 2000, sx: { fontFamily: 'monospace' } } }}
             />
@@ -337,9 +356,11 @@ export default function ConfluenceSourceForm({
               data-testid={`${idPrefix}-edition`}
             />
             <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-              {editionFixed
-                ? 'nach der Anlage nicht änderbar'
-                : 'erkannt aus der Antwort der Instanz — nach der Anlage nicht änderbar'}
+              {editionFromProfile
+                ? connection.fixedHint
+                : editionFixed
+                  ? 'nach der Anlage nicht änderbar'
+                  : 'erkannt aus der Antwort der Instanz — nach der Anlage nicht änderbar'}
             </Typography>
           </Stack>
         )}
@@ -349,61 +370,63 @@ export default function ConfluenceSourceForm({
       {values.edition && (
         <Box>
           <Typography component="h3" sx={{ fontSize: 16, fontWeight: 600, mb: 1.75 }}>
-            Zugangsdaten des Dienstkontos
+            {connection.asksSecret ? 'Zugangsdaten des Dienstkontos' : 'Verbindung prüfen'}
           </Typography>
-          <Box
-            sx={{
-              display: 'grid',
-              gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
-              gap: '14px',
-            }}
-          >
-            {values.edition === 'CLOUD' && (
+          {connection.asksSecret && (
+            <Box
+              sx={{
+                display: 'grid',
+                gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+                gap: '14px',
+              }}
+            >
+              {values.edition === 'CLOUD' && (
+                <Box>
+                  <FieldLabel htmlFor={`${idPrefix}-email`}>E-Mail-Adresse</FieldLabel>
+                  <TextField
+                    id={`${idPrefix}-email`}
+                    size="small"
+                    type="email"
+                    value={values.email}
+                    onChange={(e) => changeCredentials({ email: e.target.value })}
+                    placeholder="dienstkonto@behoerde.example"
+                    error={emailMissingForNewToken}
+                    helperText={
+                      emailMissingForNewToken
+                        ? 'Bei einem neuen API-Token bitte auch die E-Mail-Adresse des Dienstkontos erneut eingeben.'
+                        : 'Das Atlassian-Konto, zu dem das API-Token gehört.'
+                    }
+                    autoComplete="off"
+                    fullWidth
+                    slotProps={{ htmlInput: { maxLength: 320 } }}
+                  />
+                </Box>
+              )}
               <Box>
-                <FieldLabel htmlFor={`${idPrefix}-email`}>E-Mail-Adresse</FieldLabel>
+                <FieldLabel htmlFor={`${idPrefix}-token`}>
+                  {values.edition === 'CLOUD'
+                    ? mode === 'edit'
+                      ? 'Neues API-Token'
+                      : 'API-Token'
+                    : mode === 'edit'
+                      ? 'Neues Personal Access Token'
+                      : 'Personal Access Token'}
+                </FieldLabel>
                 <TextField
-                  id={`${idPrefix}-email`}
+                  id={`${idPrefix}-token`}
                   size="small"
-                  type="email"
-                  value={values.email}
-                  onChange={(e) => changeCredentials({ email: e.target.value })}
-                  placeholder="dienstkonto@behoerde.example"
-                  error={emailMissingForNewToken}
-                  helperText={
-                    emailMissingForNewToken
-                      ? 'Bei einem neuen API-Token bitte auch die E-Mail-Adresse des Dienstkontos erneut eingeben.'
-                      : 'Das Atlassian-Konto, zu dem das API-Token gehört.'
-                  }
-                  autoComplete="off"
+                  type="password"
+                  value={values.token}
+                  onChange={(e) => changeCredentials({ token: e.target.value })}
+                  error={originChanged && values.token.trim() === ''}
+                  helperText={tokenHelperText}
+                  autoComplete="new-password"
                   fullWidth
-                  slotProps={{ htmlInput: { maxLength: 320 } }}
+                  slotProps={{ htmlInput: { maxLength: 500 } }}
                 />
               </Box>
-            )}
-            <Box>
-              <FieldLabel htmlFor={`${idPrefix}-token`}>
-                {values.edition === 'CLOUD'
-                  ? mode === 'edit'
-                    ? 'Neues API-Token'
-                    : 'API-Token'
-                  : mode === 'edit'
-                    ? 'Neues Personal Access Token'
-                    : 'Personal Access Token'}
-              </FieldLabel>
-              <TextField
-                id={`${idPrefix}-token`}
-                size="small"
-                type="password"
-                value={values.token}
-                onChange={(e) => changeCredentials({ token: e.target.value })}
-                error={originChanged && values.token.trim() === ''}
-                helperText={tokenHelperText}
-                autoComplete="new-password"
-                fullWidth
-                slotProps={{ htmlInput: { maxLength: 500 } }}
-              />
             </Box>
-          </Box>
+          )}
           <Box sx={{ mt: 1.5 }}>
             <Button
               onClick={() => void testConnection()}

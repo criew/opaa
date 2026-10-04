@@ -1,6 +1,8 @@
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { http, HttpResponse } from 'msw'
+import { server } from '../mocks/server'
 import { renderWithProviders } from '../test/test-utils'
 import EditLibrarySourceDialog from './EditLibrarySourceDialog'
 import { useLibraryStore } from '../stores/libraryStore'
@@ -775,5 +777,98 @@ describe('EditLibrarySourceDialog', () => {
       expect(screen.queryByLabelText(/Spaces suchen und auswählen/)).not.toBeInTheDocument()
       expect(screen.getByText(/Die bisherige Auswahl \(BAU\) bleibt bestehen/)).toBeInTheDocument()
     }, 15000)
+  })
+
+  describe('library on a connection profile (#2162)', () => {
+    const profiledS3Library = {
+      name: 'Protokolle',
+      description: null,
+      sourceType: 'S3' as const,
+      sourcePath: null,
+      sourceUrl: 'https://s3.rz.example',
+      sourceProxy: null,
+      sourceInsecureSsl: false,
+      sourceCredentialsSet: true,
+      sourceSettings: { scopes: [{ bucket: 'protokolle', prefix: null }] },
+      connectionProfile: { id: 'profile-s3', name: 'Speicher Rechenzentrum' },
+    }
+    const option = {
+      id: 'profile-s3',
+      name: 'Speicher Rechenzentrum',
+      sourceType: 'S3',
+      serverUrl: 'https://s3.rz.example',
+      authMethod: 'PERSONAL_SECRET',
+      creatable: true,
+      connectorDefaults: { region: 'eu-rz-1', pathStyle: true },
+    }
+
+    it('saves nothing while the profile is loading, then edits under it with its fixed values', async () => {
+      let answer: () => void = () => {}
+      server.use(
+        http.get(
+          '/api/v1/connection-profiles',
+          () =>
+            new Promise<Response>((resolve) => {
+              answer = () => resolve(HttpResponse.json([option]))
+            }),
+        ),
+      )
+      const user = userEvent.setup()
+      renderWithProviders(
+        <EditLibrarySourceDialog
+          open
+          onClose={() => {}}
+          libraryId="lib-s3"
+          library={profiledS3Library}
+        />,
+      )
+
+      expect(
+        await screen.findByText(
+          'Die Angaben des Zugangs „Speicher Rechenzentrum“ werden geladen …',
+        ),
+      ).toBeVisible()
+      expect(screen.getByRole('button', { name: 'Speichern' })).toBeDisabled()
+      expect(screen.queryByLabelText('Endpoint')).not.toBeInTheDocument()
+
+      answer()
+      const region = await screen.findByLabelText(/^Region/)
+      expect(region).toHaveValue('eu-rz-1')
+      expect(region).toHaveAttribute('readonly')
+      await user.click(screen.getByRole('button', { name: 'Speichern' }))
+
+      await waitFor(() => expect(mockUpdateLibrary).toHaveBeenCalledTimes(1))
+      const [, request] = mockUpdateLibrary.mock.calls[0]
+      expect(request.sourceSettings).toMatchObject({ region: 'eu-rz-1', pathStyle: true })
+    }, 15000)
+
+    it('keeps the stored values and refuses to save when the profile cannot be read', async () => {
+      server.use(
+        http.get('/api/v1/connection-profiles', () =>
+          HttpResponse.json({ error: 'Keine Berechtigung' }, { status: 403 }),
+        ),
+      )
+      renderWithProviders(
+        <EditLibrarySourceDialog
+          open
+          onClose={() => {}}
+          libraryId="lib-s3"
+          library={profiledS3Library}
+        />,
+      )
+
+      expect(await screen.findByTestId('edit-source-connection-missing')).toHaveTextContent(
+        /Zugangs „Speicher Rechenzentrum“ liegen nicht vor/,
+      )
+      // a missing right is no passing fault: the notice names it and who grants it
+      expect(screen.getByTestId('edit-source-connection-missing')).toHaveTextContent(
+        /Anlegerecht erteilt die Systemverwaltung/,
+      )
+      expect(screen.getByTestId('edit-source-connection-missing')).not.toHaveTextContent(
+        /später erneut/,
+      )
+      expect(screen.getByRole('button', { name: 'Speichern' })).toBeDisabled()
+      expect(mockUpdateLibrary).not.toHaveBeenCalled()
+    })
   })
 })

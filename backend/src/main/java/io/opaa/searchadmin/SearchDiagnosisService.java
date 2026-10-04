@@ -4,6 +4,7 @@ import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.AuditObjectType;
 import io.opaa.api.types.AuditOutcome;
 import io.opaa.api.types.AuditSubjectKind;
+import io.opaa.asset.OwnerOnlyRule;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.CurrentUser;
@@ -87,6 +88,7 @@ public class SearchDiagnosisService {
   private final SpaceService spaceService;
   private final AuditEventRecorder auditEventRecorder;
   private final GroupSizeProperties groupSizeProperties;
+  private final OwnerOnlyRule ownerOnlyRule;
   private final Clock clock;
 
   public SearchDiagnosisService(
@@ -102,7 +104,9 @@ public class SearchDiagnosisService {
       SpaceService spaceService,
       AuditEventRecorder auditEventRecorder,
       GroupSizeProperties groupSizeProperties,
+      OwnerOnlyRule ownerOnlyRule,
       Clock clock) {
+    this.ownerOnlyRule = ownerOnlyRule;
     this.retrievalPipeline = retrievalPipeline;
     this.retrievalContextFactory = retrievalContextFactory;
     this.libraryAccessService = libraryAccessService;
@@ -435,6 +439,7 @@ public class SearchDiagnosisService {
         documentRepository
             .findById(documentId)
             .filter(candidate -> caller.organizationId().equals(candidate.getOrganizationId()))
+            .filter(candidate -> !inAPrivateLibraryOfSomebodyElse(candidate, caller))
             .orElseThrow(() -> new io.opaa.common.NotFoundException("Dokument nicht gefunden"));
     UUID libraryId = document.getLibraryId();
     Set<String> keys = documentKeysOf(document);
@@ -508,6 +513,18 @@ public class SearchDiagnosisService {
       keys.add("file:" + document.getFileName());
     }
     return keys;
+  }
+
+  /**
+   * A document of another person's private library does not exist for the executing person - in
+   * every context, so its id cannot be probed for a name or a library.
+   */
+  private boolean inAPrivateLibraryOfSomebodyElse(Document document, CurrentUser caller) {
+    return document.getLibraryId() != null
+        && libraryRepository
+            .findById(document.getLibraryId())
+            .map(library -> ownerOnlyRule.hiddenFrom(library, caller.id()))
+            .orElse(false);
   }
 
   private String libraryName(UUID libraryId) {

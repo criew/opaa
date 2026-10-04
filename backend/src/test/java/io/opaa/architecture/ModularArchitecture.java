@@ -22,6 +22,7 @@ import com.tngtech.archunit.base.DescribedPredicate;
 import com.tngtech.archunit.core.domain.AccessTarget.CodeUnitAccessTarget;
 import com.tngtech.archunit.core.domain.Dependency;
 import com.tngtech.archunit.core.domain.JavaClass;
+import com.tngtech.archunit.core.domain.JavaCodeUnit;
 import com.tngtech.archunit.lang.ArchCondition;
 import com.tngtech.archunit.lang.ArchRule;
 import com.tngtech.archunit.lang.ConditionEvents;
@@ -239,6 +240,23 @@ public final class ModularArchitecture {
    * SourceStateLookup}.
    */
   static final String SECRET_PORT = "indexing.source.SourceConnectionResolver";
+
+  /** Where "Sicht als" runs, relative to the root: the one foreign rights context. */
+  static final String FOREIGN_CONTEXT = "diagnosticaccess";
+
+  /** The vetted foreign context, relative to the root; a code unit holding it runs in it. */
+  static final String FOREIGN_CONTEXT_TYPE = "diagnosticaccess.ForeignDiagnosticContext";
+
+  /**
+   * A person's own rights formula, relative to the root, in every shape. It includes their
+   * owner-only libraries, so a foreign context asks {@code readableLibraryIdsInForeignContext}.
+   */
+  static final Set<String> OWN_FORMULA =
+      Set.of(
+          "knowledge.LibraryAccessService#readableLibraryIds",
+          "permission.AssetAccessService#readableAssetIds",
+          "permission.AssetAccessService#readableAssets",
+          "permission.AssetAccessService#effectiveRoles");
 
   /** The modules that may hold {@link #SECRET_PORT}. */
   static final Set<Module> SECRET_PORT_HOLDERS = EnumSet.of(KNOWLEDGE, LIBRARY, CONNECTIONS);
@@ -886,6 +904,53 @@ public final class ModularArchitecture {
   }
 
   /**
+   * Reaches of {@link #OWN_FORMULA} from a foreign context: any code unit of {@link
+   * #FOREIGN_CONTEXT} or below it, and any code unit elsewhere that takes or reads a {@link
+   * #FOREIGN_CONTEXT_TYPE}. ArchUnit counts a lambda's accesses to its enclosing method.
+   */
+  ArchRule theForeignContextNeverUsesTheOwnFormula() {
+    return classes()
+        .should(
+            new ArchCondition<JavaClass>("not reach the own rights formula in a foreign context") {
+              @Override
+              public void check(JavaClass javaClass, ConditionEvents events) {
+                String relative = relative(javaClass.getBaseComponentType().getPackageName());
+                if (relative == null) {
+                  return;
+                }
+                boolean foreignPackage =
+                    relative.equals(FOREIGN_CONTEXT) || relative.startsWith(FOREIGN_CONTEXT + ".");
+                for (JavaCodeUnit codeUnit : javaClass.getCodeUnits()) {
+                  boolean foreign =
+                      foreignPackage
+                          || codeUnit.getRawParameterTypes().stream()
+                              .anyMatch(type -> FOREIGN_CONTEXT_TYPE.equals(relativeName(type)))
+                          || codeUnit.getAccessesFromSelf().stream()
+                              .anyMatch(
+                                  access ->
+                                      FOREIGN_CONTEXT_TYPE.equals(
+                                          relativeName(access.getTargetOwner())));
+                  if (!foreign) {
+                    continue;
+                  }
+                  codeUnit.getAccessesFromSelf().stream()
+                      .filter(
+                          access ->
+                              OWN_FORMULA.contains(
+                                  relativeName(access.getTargetOwner()) + "#" + access.getName()))
+                      .forEach(
+                          access ->
+                              events.add(
+                                  SimpleConditionEvent.violated(access, access.getDescription())));
+                }
+              }
+            })
+        .because(
+            "an owner-only library never enters a foreign rights context (ADR-0036, Nachtrag 4)")
+        .allowEmptyShould(true);
+  }
+
+  /**
    * Calls of {@link #CHANGE_HOOKS} on {@link #SOURCE_CONNECTOR} or an implementation, outside
    * {@link #CHANGE_GATE}.
    */
@@ -992,6 +1057,7 @@ public final class ModularArchitecture {
         onlyTheChangeGateCallsTheConnectorChangeHooks(),
         theLibrarySecretIsReadInOnePlace(),
         theSecretStoreIsUsedOnlyInConnections(),
+        theForeignContextNeverUsesTheOwnFormula(),
         theProfileSupportIsReadInOnePlace(),
         theSecretPortStaysWithTheCore(),
         theConnectorReleaseIsDecidedInConnections(),

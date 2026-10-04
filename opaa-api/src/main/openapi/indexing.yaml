@@ -133,7 +133,7 @@ paths:
         Bestandslauf")
       description: >
         Processes at most batchSize INDEXED documents of libraryId (which must belong to the
-        caller's own organization, otherwise 404) whose metadata_extraction_version is missing or
+        caller's own organization and be no private library, otherwise 404) whose metadata_extraction_version is missing or
         below the current CoreMetadataExtractor version: the original file is re-read for its
         declared properties, the core fields are stored at the document and the filterable keys are
         rewritten on its existing chunks - no re-chunking, no re-embedding, no model call. The
@@ -172,7 +172,7 @@ paths:
         only, #1072, metadata-schema.md "Nachlauf im Betrieb")
       description: >
         Processes at most batchSize INDEXED documents of libraryId (which must belong to the
-        caller's own organization, otherwise 404) whose context-prefix stamp was cleared - the
+        caller's own organization and be no private library, otherwise 404) whose context-prefix stamp was cleared - the
         marking every prefix-effective schema change and every manual correction of a
         prefix-effective value applies to exactly the documents whose prefix it alters, so the
         number the Folgekosten preview shows and the number this run processes are the same set. The existing chunks are kept and re-embedded in place under

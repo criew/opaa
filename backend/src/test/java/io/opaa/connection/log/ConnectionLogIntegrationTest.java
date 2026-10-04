@@ -11,6 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.jayway.jsonpath.JsonPath;
 import io.opaa.api.types.ConnectionEndCause;
 import io.opaa.api.types.ConnectionLogEventType;
+import io.opaa.api.types.ConnectionLogOwnerKind;
 import io.opaa.api.types.SystemRole;
 import io.opaa.audit.AuditActorPseudonymService;
 import io.opaa.auth.CurrentUser;
@@ -94,7 +95,7 @@ class ConnectionLogIntegrationTest {
         organizationId,
         ConnectionLogEventType.CONNECTED,
         ConnectionLogActor.person(personId),
-        personId,
+        ConnectionLogOwner.person(personId),
         profileId,
         "Nextcloud Rathaus",
         null);
@@ -102,7 +103,7 @@ class ConnectionLogIntegrationTest {
         organizationId,
         ConnectionLogEventType.EMERGENCY_DISCONNECTED,
         ConnectionLogActor.person(adminId),
-        personId,
+        ConnectionLogOwner.person(personId),
         profileId,
         "Nextcloud Rathaus",
         ConnectionEndCause.EMERGENCY);
@@ -110,7 +111,7 @@ class ConnectionLogIntegrationTest {
         organizationId,
         ConnectionLogEventType.DELETED,
         ConnectionLogActor.system(),
-        personId,
+        ConnectionLogOwner.person(personId),
         profileId,
         "Nextcloud Rathaus",
         ConnectionEndCause.ACCOUNT_DEACTIVATED);
@@ -205,6 +206,78 @@ class ConnectionLogIntegrationTest {
     assertThat(accessEntries(auditorId, "DENIED")).isEqualTo(2);
   }
 
+  /**
+   * A library's source connection names its library and service account and no person; a profile's
+   * own connection names neither.
+   */
+  @Test
+  void aLibrarysAndAProfilesConnectionAreLoggedWithoutAPerson() {
+    UUID libraryId = UUID.randomUUID();
+    connectionLog.record(
+        organizationId,
+        ConnectionLogEventType.CONNECTED,
+        ConnectionLogActor.person(adminId),
+        ConnectionLogOwner.library(libraryId, "svc-opaa@rathaus.de"),
+        profileId,
+        "Nextcloud Rathaus",
+        null);
+    connectionLog.record(
+        organizationId,
+        ConnectionLogEventType.EXPIRED,
+        ConnectionLogActor.system(),
+        ConnectionLogOwner.profile(),
+        profileId,
+        "Nextcloud Rathaus",
+        ConnectionEndCause.SECRET_EXPIRED);
+
+    Page<ConnectionLogEntry> page =
+        queryService.find(organizationId, auditorId, REASON, query(null, profileId));
+
+    assertThat(page.getContent())
+        .extracting(
+            ConnectionLogEntry::getOwnerKind,
+            ConnectionLogEntry::getPersonRef,
+            ConnectionLogEntry::getLibraryId,
+            ConnectionLogEntry::getAccountLabel)
+        .containsExactlyInAnyOrder(
+            tuple(ConnectionLogOwnerKind.LIBRARY, null, libraryId, "svc-opaa@rathaus.de"),
+            tuple(ConnectionLogOwnerKind.PROFILE, null, null, null));
+    assertThat(pseudonyms.findExistingPseudonym(personId)).isEmpty();
+  }
+
+  /** An over-long service account address is refused, never cut to a different account. */
+  @Test
+  void anAccountLabelLongerThanItsColumnIsRefused() {
+    UUID libraryId = UUID.randomUUID();
+
+    assertThatThrownBy(
+            () ->
+                connectionLog.record(
+                    organizationId,
+                    ConnectionLogEventType.CONNECTED,
+                    ConnectionLogActor.person(adminId),
+                    ConnectionLogOwner.library(libraryId, "a".repeat(501)),
+                    profileId,
+                    "Nextcloud Rathaus",
+                    null))
+        .isInstanceOf(IllegalArgumentException.class);
+    connectionLog.record(
+        organizationId,
+        ConnectionLogEventType.CONNECTED,
+        ConnectionLogActor.person(adminId),
+        ConnectionLogOwner.library(libraryId, "a".repeat(500)),
+        profileId,
+        "Nextcloud Rathaus",
+        null);
+
+    assertThat(
+            jdbc.queryForList(
+                "SELECT length(account_label) FROM connection_log WHERE library_id = ?",
+                Integer.class,
+                libraryId))
+        .containsExactly(500);
+  }
+
   /** An entry of another organization never reaches this organization's auditor. */
   @Test
   void theReadPathStaysInsideTheCallersOrganization() {
@@ -215,7 +288,7 @@ class ConnectionLogIntegrationTest {
         otherOrganization,
         ConnectionLogEventType.DISCONNECTED,
         ConnectionLogActor.system(),
-        personId,
+        ConnectionLogOwner.person(personId),
         profileId,
         "Nextcloud Nachbarhaus",
         ConnectionEndCause.ACCOUNT_DEACTIVATED);
@@ -236,7 +309,7 @@ class ConnectionLogIntegrationTest {
                     organizationId,
                     ConnectionLogEventType.DISCONNECTED,
                     ConnectionLogActor.person(personId),
-                    personId,
+                    ConnectionLogOwner.person(personId),
                     profileId,
                     "Nextcloud Rathaus",
                     null))
@@ -247,7 +320,7 @@ class ConnectionLogIntegrationTest {
                     organizationId,
                     ConnectionLogEventType.CONNECTED,
                     ConnectionLogActor.person(personId),
-                    personId,
+                    ConnectionLogOwner.person(personId),
                     profileId,
                     "Nextcloud Rathaus",
                     ConnectionEndCause.SELF))
@@ -327,7 +400,7 @@ class ConnectionLogIntegrationTest {
         devOrganization,
         ConnectionLogEventType.DISCONNECTED,
         ConnectionLogActor.person(devUser),
-        devUser,
+        ConnectionLogOwner.person(devUser),
         profileId,
         "Nextcloud Rathaus",
         ConnectionEndCause.SELF);
@@ -350,16 +423,25 @@ class ConnectionLogIntegrationTest {
             .getContentAsString();
     Map<String, Object> entry = JsonPath.read(body, "$.entries[0]");
     assertThat(entry)
-        .containsOnlyKeys(
+        .containsKeys("eventId", "recordedAt", "organizationId", "eventType", "actorRef")
+        .containsKeys("ownerKind", "personRef", "profileId", "profileName", "cause");
+    assertThat(entry.keySet())
+        .isSubsetOf(
             "eventId",
             "recordedAt",
             "organizationId",
             "eventType",
             "actorRef",
+            "ownerKind",
             "personRef",
+            "libraryId",
+            "accountLabel",
             "profileId",
             "profileName",
             "cause");
+    assertThat(entry.get("ownerKind")).isEqualTo("PERSON");
+    assertThat(entry.get("libraryId")).isNull();
+    assertThat(entry.get("accountLabel")).isNull();
     assertThat(body).doesNotContain(devUser.toString());
   }
 
@@ -380,9 +462,9 @@ class ConnectionLogIntegrationTest {
     jdbc.execute("ALTER TABLE " + expired + " OWNER TO opaa_audit_owner");
     jdbc.update(
         "INSERT INTO connection_log (event_id, organization_id, recorded_at, event_type,"
-            + " actor_ref, person_ref, profile_id, profile_name) VALUES (gen_random_uuid(), ?,"
+            + " actor_ref, owner_kind, person_ref, profile_id, profile_name) VALUES (gen_random_uuid(), ?,"
             + " date_trunc('month', now()) - interval '30 months' + interval '1 day', 'CONNECTED',"
-            + " 'a', 'p', ?, 'Alt')",
+            + " 'a', 'PERSON', 'p', ?, 'Alt')",
         organizationId,
         profileId);
     record(ConnectionLogEventType.CONNECTED);
@@ -413,7 +495,7 @@ class ConnectionLogIntegrationTest {
         organizationId,
         eventType,
         ConnectionLogActor.person(personId),
-        personId,
+        ConnectionLogOwner.person(personId),
         profileId,
         "Nextcloud Rathaus",
         eventType == ConnectionLogEventType.DISCONNECTED ? ConnectionEndCause.SELF : null);

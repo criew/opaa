@@ -189,6 +189,14 @@ export type SourceFreeze = components['schemas']['SourceFreeze']
 export type SourceBlock = components['schemas']['SourceBlock']
 export type SourceBlockReason = components['schemas']['SourceBlockReason']
 export type ConnectorTypeStateResponse = components['schemas']['ConnectorTypeStateResponse']
+export type OwnAddressStock = components['schemas']['OwnAddressStock']
+export type OwnAddressLibrary = components['schemas']['OwnAddressLibrary']
+export type ConnectorProfileRequirementRequest =
+  components['schemas']['ConnectorProfileRequirementRequest']
+export type ConnectorProfileRequirementResponse =
+  components['schemas']['ConnectorProfileRequirementResponse']
+export type LibraryConnectionProfileRequest =
+  components['schemas']['LibraryConnectionProfileRequest']
 export type SourceBrowseRequest = components['schemas']['SourceBrowseRequest']
 export type SourceBrowseResponse = components['schemas']['SourceBrowseResponse']
 export type SourceBrowseEntry = components['schemas']['SourceBrowseEntry']

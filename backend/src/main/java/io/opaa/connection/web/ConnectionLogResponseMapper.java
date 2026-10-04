@@ -27,9 +27,12 @@ final class ConnectionLogResponseMapper {
             entry.getOrganizationId(),
             entry.getEventType(),
             entry.getActorRef(),
-            entry.getPersonRef(),
+            entry.getOwnerKind(),
             entry.getProfileId(),
             entry.getProfileName())
+        .personRef(entry.getPersonRef())
+        .libraryId(entry.getLibraryId())
+        .accountLabel(entry.getAccountLabel())
         .cause(entry.getCause());
   }
 

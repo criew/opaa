@@ -10,6 +10,7 @@ import {
 } from '../../../utils/smbSource'
 import SmbSourceForm from '../SmbSourceForm'
 import { SmbScope, SmbStoredView } from './SmbSourceViews'
+import { connectionFields } from './sourceConnection'
 import type { SourceRegistration } from './types'
 
 export const smbSource: SourceRegistration = {
@@ -34,7 +35,8 @@ export const smbSource: SourceRegistration = {
     validate: (values: SmbSourceValues, context) =>
       validateSmbValues(
         values,
-        context.credentialsStored && sameSmbShare(context.originalSourceUrl, values.sourceUrl),
+        !connectionFields(context).asksSecret ||
+          (context.credentialsStored && sameSmbShare(context.originalSourceUrl, values.sourceUrl)),
       ),
     toPayload: (values: SmbSourceValues) => {
       const folders = smbFoldersOf(values)
@@ -66,6 +68,7 @@ export const smbSource: SourceRegistration = {
         libraryId={context.libraryId}
         credentialsStored={context.credentialsStored}
         originalSourceUrl={context.originalSourceUrl}
+        connection={connectionFields(context)}
         values={values}
         onChange={onChange}
       />

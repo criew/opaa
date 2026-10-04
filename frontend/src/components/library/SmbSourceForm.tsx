@@ -15,6 +15,7 @@ import {
   type SmbSourceValues,
 } from '../../utils/smbSource'
 import FieldLabel from '../wizard/FieldLabel'
+import { connectionFields, type ConnectionFields } from './sources/sourceConnection'
 
 interface SmbSourceFormProps {
   mode: 'create' | 'edit'
@@ -25,6 +26,8 @@ interface SmbSourceFormProps {
   originalSourceUrl?: string | null
   values: SmbSourceValues
   onChange: (patch: Partial<SmbSourceValues>) => void
+  /** What the connection profile decides for the fields; nothing without one. */
+  connection?: ConnectionFields
 }
 
 interface Message {
@@ -47,6 +50,13 @@ export default function SmbSourceForm({
   originalSourceUrl,
   values,
   onChange,
+  connection = connectionFields({
+    mode,
+    sourceType: 'SMB',
+    idPrefix,
+    libraryId,
+    credentialsStored,
+  }),
 }: SmbSourceFormProps) {
   const isCreate = mode === 'create'
   const [test, setTest] = useState<{ token: string; message: Message } | null>(null)
@@ -59,7 +69,7 @@ export default function SmbSourceForm({
   const [loading, setLoading] = useState(false)
 
   const connectionToken = JSON.stringify({
-    libraryId,
+    probe: connection.probe,
     sourceUrl: values.sourceUrl,
     account: values.account,
     password: values.password,
@@ -85,7 +95,7 @@ export default function SmbSourceForm({
       sourceUrl: values.sourceUrl.trim(),
       sourceInsecureSsl: false,
       sourceCredentials: smbCredentialsOf(values),
-      libraryId: mode === 'edit' ? libraryId : undefined,
+      ...connection.probe,
     }
   }
 
@@ -173,38 +183,45 @@ export default function SmbSourceForm({
             value={values.sourceUrl}
             onChange={(e) => onChange({ sourceUrl: e.target.value })}
             placeholder="smb://dateiserver.example.org/Freigabe"
-            helperText="Server und Freigabe; auch ein UNC-Pfad wie \\dateiserver\Freigabe wird angenommen."
+            helperText={
+              connection.addressHint ??
+              'Server und Freigabe; auch ein UNC-Pfad wie \\\\dateiserver\\Freigabe wird angenommen.'
+            }
             slotProps={{ htmlInput: { maxLength: 2000, sx: { fontFamily: 'monospace' } } }}
           />
         </Box>
-        <Box>
-          <FieldLabel htmlFor={`${idPrefix}-account`}>Dienstkonto</FieldLabel>
-          <TextField
-            id={`${idPrefix}-account`}
-            size="small"
-            fullWidth
-            value={values.account}
-            onChange={(e) => onChange({ account: e.target.value })}
-            placeholder="DOMÄNE\svc-opaa"
-            helperText="DOMÄNE\Benutzer, Benutzer@domäne oder ein lokales Konto."
-            autoComplete="off"
-            slotProps={{ htmlInput: { maxLength: 255 } }}
-          />
-        </Box>
-        <Box>
-          <FieldLabel htmlFor={`${idPrefix}-password`}>Passwort</FieldLabel>
-          <TextField
-            id={`${idPrefix}-password`}
-            size="small"
-            type="password"
-            fullWidth
-            value={values.password}
-            onChange={(e) => onChange({ password: e.target.value })}
-            helperText={credentialsHint}
-            autoComplete="new-password"
-            slotProps={{ htmlInput: { maxLength: 3800 } }}
-          />
-        </Box>
+        {connection.asksSecret && (
+          <>
+            <Box>
+              <FieldLabel htmlFor={`${idPrefix}-account`}>Dienstkonto</FieldLabel>
+              <TextField
+                id={`${idPrefix}-account`}
+                size="small"
+                fullWidth
+                value={values.account}
+                onChange={(e) => onChange({ account: e.target.value })}
+                placeholder="DOMÄNE\svc-opaa"
+                helperText="DOMÄNE\Benutzer, Benutzer@domäne oder ein lokales Konto."
+                autoComplete="off"
+                slotProps={{ htmlInput: { maxLength: 255 } }}
+              />
+            </Box>
+            <Box>
+              <FieldLabel htmlFor={`${idPrefix}-password`}>Passwort</FieldLabel>
+              <TextField
+                id={`${idPrefix}-password`}
+                size="small"
+                type="password"
+                fullWidth
+                value={values.password}
+                onChange={(e) => onChange({ password: e.target.value })}
+                helperText={credentialsHint}
+                autoComplete="new-password"
+                slotProps={{ htmlInput: { maxLength: 3800 } }}
+              />
+            </Box>
+          </>
+        )}
         <Box sx={{ gridColumn: '1 / -1' }}>
           <FieldLabel htmlFor={`${idPrefix}-folders`}>Ordner</FieldLabel>
           <TextField

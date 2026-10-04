@@ -20,5 +20,9 @@ public enum ConnectionEndCause {
   /** The provider rejected the secret. */
   PROVIDER_REJECTED,
   /** The secret passed the expiry the provider named. */
-  SECRET_EXPIRED
+  SECRET_EXPIRED,
+  /** The library owning the connection was deleted. */
+  LIBRARY_DELETED,
+  /** The library owning the connection was moved to another profile. */
+  PROFILE_CHANGED
 }

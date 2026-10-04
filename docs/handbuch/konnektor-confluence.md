@@ -78,6 +78,11 @@ Format der erkannten Edition, „Verbindung testen", Spaces auswählen. Die Ausw
 lesen darf. Über der Auswahl steht der Hinweis, den auch dieses Kapitel wiederholt: Alles, was aus
 den gewählten Spaces indiziert wird, sehen alle Leseberechtigten der Bibliothek.
 
+**Über einen Zugang** (sobald Confluence Zugänge meldet, siehe
+[Indexierung, Zugänge](indexierung.md#zugänge)): Die Adresse ist mit der Server-Adresse des Zugangs
+vorbelegt. Gibt der Zugang die Edition vor, steht sie nur lesbar da, und „Edition erkennen“
+entfällt.
+
 **Sichtbarkeit.** Jede Leseberechtigung sieht Edition und ausgewählte Spaces. Adresse, Proxy und
 Webhook-Zustand sehen nur Verwaltende (Rolle MANAGER oder Eigentümer), ebenso das Laufprotokoll.
 

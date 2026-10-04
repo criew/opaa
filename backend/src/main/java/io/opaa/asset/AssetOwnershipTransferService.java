@@ -32,13 +32,16 @@ public class AssetOwnershipTransferService {
   private final AssetGrantService grantService;
   private final UserRepository userRepository;
   private final SuccessionCaseCloser successionCases;
+  private final OwnerOnlyRule ownerOnlyRule;
 
   AssetOwnershipTransferService(
       AssetAuthorization authorization,
       AssetShellOwnershipDirectory ownershipDirectory,
       AssetGrantService grantService,
       UserRepository userRepository,
-      SuccessionCaseCloser successionCases) {
+      SuccessionCaseCloser successionCases,
+      OwnerOnlyRule ownerOnlyRule) {
+    this.ownerOnlyRule = ownerOnlyRule;
     this.authorization = authorization;
     this.ownershipDirectory = ownershipDirectory;
     this.grantService = grantService;
@@ -62,6 +65,7 @@ public class AssetOwnershipTransferService {
     }
     Asset asset = authorization.load(assetType, assetId, caller.organizationId());
     authorization.requireRole(asset, caller.id(), caller.isSystemAdmin(), AssetRole.OWNER);
+    ownerOnlyRule.requireShareable(asset);
 
     PermissionSubject newOwner;
     if (newOwnerType == AssetOwnerType.GROUP) {

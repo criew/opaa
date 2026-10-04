@@ -170,6 +170,11 @@ class CatalogResponseMapperTest {
       }
 
       @Override
+      public boolean isOwnerOnly() {
+        return false;
+      }
+
+      @Override
       public String getDescription() {
         return "Hausstandard";
       }
