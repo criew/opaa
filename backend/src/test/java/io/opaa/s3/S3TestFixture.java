@@ -50,7 +50,7 @@ public final class S3TestFixture {
    * comment below.
    */
   // renovate: datasource=docker depName=rustfs/rustfs
-  public static final String IMAGE = "rustfs/rustfs:1.0.0";
+  public static final String IMAGE = "rustfs/rustfs:1.0.1";
 
   public static final String REGION = "us-east-1";
 
