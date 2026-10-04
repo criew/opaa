@@ -922,8 +922,9 @@ components:
             profile's server address) and must otherwise lie under it. The connector validates
             the settings with the profile's defaults, proxy and TLS switch, so none of them needs
             to be sent; a value that differs from what the profile sets is a 400, as are
-            sourceCredentials on a profile that signs in without them. The library stores only
-            its own part.
+            sourceCredentials on a profile whose sign-in is not a personal secret. The library stores only
+            its own part. Connecting an existing library adopts the profile's values the same
+            way, without a 400.
         sourcePath:
           type: string
           maxLength: 2000
