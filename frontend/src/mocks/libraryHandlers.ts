@@ -6,7 +6,7 @@ import {
   mockSourceTypes,
 } from './libraryFixtures'
 import { mockMyGroups } from './groupFixtures'
-import { mockConnectionProfiles } from './connectionProfileFixtures'
+import { mockConnectionProfiles, mockProfileRef } from './connectionProfileFixtures'
 import type {
   SourceTypeKey,
   AssetOwnerType,
@@ -225,7 +225,7 @@ export const libraryHandlers = [
         body.sourceType === 'SMB'
           ? (body.sourceUrl ?? profile?.serverUrl ?? null)
           : null,
-      connectionProfile: profile ? { id: profile.id, name: profile.name } : null,
+      connectionProfile: profile ? mockProfileRef(profile) : null,
       sourceProxy:
         body.sourceType === 'HTTP_DIRECTORY' ||
         body.sourceType === 'RSS_FEED' ||
@@ -636,7 +636,7 @@ export const libraryHandlers = [
     if (!library) {
       return HttpResponse.json({ error: 'Bibliothek nicht gefunden' }, { status: 404 })
     }
-    const { profileId } = (await request.json()) as LibraryConnectionProfileRequest
+    const { profileId, sourceUrl } = (await request.json()) as LibraryConnectionProfileRequest
     const profile = mockConnectionProfiles.find((p) => p.id === profileId)
     if (!profile) return HttpResponse.json({ error: 'Zugang nicht gefunden' }, { status: 404 })
     if (profile.sourceType !== library.sourceType) {
@@ -645,12 +645,20 @@ export const libraryHandlers = [
         { status: 400 },
       )
     }
+    const root = profile.serverUrl.replace(/\/+$/, '')
+    if (sourceUrl && sourceUrl !== root && !sourceUrl.startsWith(`${root}/`)) {
+      return HttpResponse.json(
+        { error: `Die Adresse muss unter der Server-Adresse des Zugangs liegen: ${root}` },
+        { status: 400 },
+      )
+    }
     const lifted =
       library.sourceBlock?.reason === 'PROFILE_REQUIRED' ||
       library.sourceBlock?.reason === 'ACCESS_REMOVED'
     const connected = {
       ...library,
-      connectionProfile: { id: profile.id, name: profile.name },
+      sourceUrl: sourceUrl ?? library.sourceUrl,
+      connectionProfile: mockProfileRef(profile),
       connectionProfileRemoved: false,
       sourceBlock: lifted ? null : library.sourceBlock,
     }

@@ -99,9 +99,12 @@ export default function UrlSourceForm({
             fullWidth
             value={values.sourceProxy}
             onChange={(e) => onChange({ sourceProxy: e.target.value })}
-            placeholder="proxy.example.com:8080"
+            placeholder={connection.isFixed('sourceProxy') ? undefined : 'proxy.example.com:8080'}
+            helperText={connection.isFixed('sourceProxy') ? connection.transportHint : undefined}
             autoComplete="off"
-            slotProps={{ htmlInput: { maxLength: 255 } }}
+            slotProps={{
+              htmlInput: { maxLength: 255, readOnly: connection.isFixed('sourceProxy') },
+            }}
           />
         </Box>
         {connection.asksSecret && (
@@ -128,6 +131,7 @@ export default function UrlSourceForm({
           control={
             <Switch
               checked={values.sourceInsecureSsl}
+              disabled={connection.isFixed('sourceInsecureSsl')}
               onChange={(e) => onChange({ sourceInsecureSsl: e.target.checked })}
             />
           }

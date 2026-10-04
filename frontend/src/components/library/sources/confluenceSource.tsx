@@ -22,6 +22,7 @@ export const confluenceSource: SourceRegistration = {
   opensAtSource: true,
   configuration: {
     empty: EMPTY_CONFLUENCE_VALUES,
+    addressDerived: ['edition', 'credentialsVerified'],
     // ADR-0023: the edition is fixed, the stored credentials stand until new ones are typed, and
     // the current selection is the starting point.
     fromLibrary: (library): ConfluenceSourceValues => ({

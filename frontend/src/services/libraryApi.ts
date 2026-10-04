@@ -1,5 +1,6 @@
 import { AxiosError } from 'axios'
 import type {
+  LibraryConnectionProfileRequest,
   LibraryDocumentPageResponse,
   LibraryDocumentResponse,
   LibraryFolderRenameRequest,
@@ -130,11 +131,15 @@ export async function updateLibraryShareCap(
 export async function connectLibraryProfile(
   libraryId: string,
   profileId: string,
+  sourceUrl?: string,
 ): Promise<LibraryResponse> {
   try {
+    const request: LibraryConnectionProfileRequest = sourceUrl
+      ? { profileId, sourceUrl }
+      : { profileId }
     const { data } = await client.put<LibraryResponse>(
       `/v1/libraries/${libraryId}/connection-profile`,
-      { profileId },
+      request,
     )
     return data
   } catch (err) {

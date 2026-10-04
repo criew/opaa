@@ -95,7 +95,6 @@ export default function SmbSourceForm({
       sourceUrl: values.sourceUrl.trim(),
       sourceInsecureSsl: false,
       sourceCredentials: smbCredentialsOf(values),
-      ...connection.probe,
     }
   }
 
@@ -103,11 +102,13 @@ export default function SmbSourceForm({
     const token = testToken
     setTesting(true)
     try {
-      const result = await testLibrarySource({
-        sourceType: 'SMB',
-        ...connectionPayload(),
-        sourceSettings: { folders: smbFoldersOf(values) },
-      })
+      const result = await testLibrarySource(
+        connection.probeRequest({
+          sourceType: 'SMB',
+          ...connectionPayload(),
+          sourceSettings: { folders: smbFoldersOf(values) },
+        }),
+      )
       setTest({
         token,
         message: { severity: result.reachable ? 'success' : 'warning', text: result.message },
@@ -129,7 +130,7 @@ export default function SmbSourceForm({
     const token = connectionToken
     setLoading(true)
     try {
-      const result = await browseSource('SMB', connectionPayload())
+      const result = await browseSource('SMB', connection.probeRequest(connectionPayload()))
       setListing({
         token,
         options: result.entries,

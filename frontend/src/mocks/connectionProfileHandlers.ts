@@ -108,6 +108,24 @@ function notFound() {
   return HttpResponse.json({ error: 'Zugang nicht gefunden', status: 404 }, { status: 404 })
 }
 
+/** The libraries on a profile, as the impact counts them. */
+function librariesOn(profile: ConnectionProfileResponse) {
+  return Math.ceil(profile.connectionCount / 2)
+}
+
+/**
+ * The connector's refusals of a proposed change: in the mocks, a proxy on an `.invalid` host is
+ * out of reach for every library on the profile.
+ */
+function refusalsOf(profile: ConnectionProfileResponse, body: ConnectionProfileUpdateRequest) {
+  if (!body.sourceProxy?.split(':')[0].endsWith('.invalid')) return []
+  return Array.from({ length: librariesOn(profile) }, (_, index) => ({
+    libraryId: `library-on-${profile.id}-${index + 1}`,
+    category: 'CONNECTION' as const,
+    message: `Der Proxy ${body.sourceProxy} ist nicht erreichbar.`,
+  }))
+}
+
 // Connection profiles (#2160). Like the backend, an answer never carries the client secret, and a
 // change of address or registration on a profile with connections needs confirmDiscard.
 export const connectionProfileHandlers = [
@@ -162,6 +180,17 @@ export const connectionProfileHandlers = [
       current.serverUrl !== body.serverUrl.replace(/\/+$/, '') ||
       current.authMethod !== body.authMethod ||
       (current.clientId ?? null) !== (body.clientId ?? null)
+    const refusals = refusalsOf(current, body)
+    if (refusals.length > 0) {
+      return HttpResponse.json(
+        {
+          error: `Der Konnektor lehnt die Änderung für ${refusals.length} Bibliotheken ab (Verbindung).`,
+          status: 400,
+          code: 'CONNECTION_PROFILE_CHANGE_REJECTED',
+        },
+        { status: 400 },
+      )
+    }
     if (discards && current.connectionCount > 0 && !body.confirmDiscard) {
       return HttpResponse.json(
         {
@@ -205,8 +234,25 @@ export const connectionProfileHandlers = [
     if (!profile) return notFound()
     return HttpResponse.json({
       connections: profile.connectionCount,
-      libraries: Math.ceil(profile.connectionCount / 2),
+      libraries: librariesOn(profile),
       connectedAccounts: profile.connectedAccountCount,
+      rejectedLibraries: 0,
+      rejections: [],
+      lastForProfileRequirement: false,
+    })
+  }),
+
+  // The preview of an update: the counts plus every library whose connector refuses it.
+  http.post(`${ADMIN}/:profileId/impact`, async ({ params, request }) => {
+    const profile = mockConnectionProfiles.find((p) => p.id === params.profileId)
+    if (!profile) return notFound()
+    const refusals = refusalsOf(profile, (await request.json()) as ConnectionProfileUpdateRequest)
+    return HttpResponse.json({
+      connections: profile.connectionCount,
+      libraries: librariesOn(profile),
+      connectedAccounts: profile.connectedAccountCount,
+      rejectedLibraries: refusals.length,
+      rejections: refusals,
       lastForProfileRequirement: false,
     })
   }),
@@ -218,6 +264,8 @@ export const connectionProfileHandlers = [
       connections: profile.connectionCount,
       libraries: profile.connectionCount,
       connectedAccounts: profile.connectedAccountCount,
+      rejectedLibraries: 0,
+      rejections: [],
       lastForProfileRequirement: false,
     })
   }),
@@ -290,7 +338,8 @@ export const connectionProfileHandlers = [
   ),
 
   // The profiles a library may be connected through - every one admitting libraries, the ones the
-  // caller may not use with the notice naming who releases them.
+  // caller may not use with the notice naming who releases them. With libraryId the managers of
+  // that library ask; the mocks answer them alike.
   http.get('/api/v1/connection-profiles', ({ request }) => {
     const sourceType = new URL(request.url).searchParams.get('sourceType')
     const options: ConnectionProfileOption[] = mockConnectionProfiles
