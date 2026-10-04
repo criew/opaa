@@ -59,6 +59,7 @@ public class SourceBlocks {
   private final ConnectorTypePolicyRepository policies;
   private final LibraryConnectionRepository connections;
   private final ConnectionProfileRepository profiles;
+  private final ConnectionSecrets secrets;
 
   /**
    * Looked up per call: the core's port depends on this class, and the registry's connectors depend
@@ -70,11 +71,26 @@ public class SourceBlocks {
       ConnectorTypePolicyRepository policies,
       LibraryConnectionRepository connections,
       ConnectionProfileRepository profiles,
+      ConnectionSecrets secrets,
       ObjectProvider<SourceConnectorRegistry> connectors) {
     this.policies = policies;
     this.connections = connections;
     this.profiles = profiles;
+    this.secrets = secrets;
     this.connectors = connectors;
+  }
+
+  /**
+   * The block of a secret found missing when it is read, after this class let the library pass -
+   * the store does not know the profile to name.
+   */
+  static SourceBlock secretMissing() {
+    return new SourceBlock(
+        Reason.NOT_CONNECTED,
+        LIBRARY_MANAGERS,
+        "Verbindung getrennt: Für diese Bibliothek sind keine Zugangsdaten hinterlegt. Die"
+            + " Verwaltenden der Bibliothek tragen sie neu ein."
+            + CONTENT_STAYS);
   }
 
   /** The first of the {@code considered} reasons that blocks {@code library}, empty if none. */
@@ -157,7 +173,10 @@ public class SourceBlocks {
               library,
               lockedTypes.contains(type.key()) ? typeLock(type) : null,
               connection != null,
-              profile));
+              profile,
+              profile != null
+                  && profile.getAuthMethod() == ConnectionAuthMethod.PERSONAL_SECRET
+                  && secrets.stateOf(SecretOwner.of(library)).isPresent()));
     }
     return facts;
   }
@@ -179,12 +198,13 @@ public class SourceBlocks {
             + LOCK_CONTENT_STAYS);
   }
 
-  /** What decides the block of one library: its type lock, its connection and its profile. */
+  /** What decides the block of one library: its type lock, connection, profile and secret. */
   private record Facts(
       KnowledgeLibrary library,
       SourceBlock typeLock,
       boolean connected,
-      ConnectionProfile profile) {
+      ConnectionProfile profile,
+      boolean secretMissing) {
 
     /** Tries the considered reasons in their order of declaration, which is the precedence. */
     private Optional<SourceBlock> firstBlock(Set<Reason> considered) {
@@ -246,7 +266,7 @@ public class SourceBlocks {
         return Optional.empty();
       }
       if (method == ConnectionAuthMethod.PERSONAL_SECRET) {
-        return library.getSourceCredentials() != null
+        return !secretMissing
             ? Optional.empty()
             : Optional.of(
                 new SourceBlock(

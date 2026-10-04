@@ -30,6 +30,7 @@ import io.opaa.indexing.source.IndexingRun;
 import io.opaa.indexing.source.IndexingRunProgress;
 import io.opaa.indexing.source.IndexingRunTemplate;
 import io.opaa.indexing.source.LibrarySourceConnectionResolver;
+import io.opaa.indexing.source.Secret;
 import io.opaa.indexing.source.SourceSyncStateRepository;
 import io.opaa.indexing.source.confluence.ConfluenceIndexingExecutor.PageVisitPolicy;
 import io.opaa.knowledge.Document;
@@ -124,7 +125,7 @@ class ConfluenceIndexingExecutorVisitPageTest {
             jobId,
             library,
             new LibrarySourceConnectionResolver().resolve(library),
-            library::getSourceCredentials,
+            () -> Secret.personal(library.getSourceCredentials()),
             IndexingRunMode.FULL,
             SourceTypes.CONFLUENCE,
             new IndexingRunProgress(indexingJobService, jobId),

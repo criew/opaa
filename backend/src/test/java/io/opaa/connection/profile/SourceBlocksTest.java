@@ -16,6 +16,7 @@ import io.opaa.indexing.source.SourceConnectionBlockedException;
 import io.opaa.indexing.source.SourceConnectorRegistry;
 import io.opaa.indexing.source.TestSourceConnectors;
 import io.opaa.knowledge.KnowledgeLibrary;
+import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.test.SourceTypes;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -78,7 +79,13 @@ class SourceBlocksTest {
             });
     ObjectProvider<SourceConnectorRegistry> registry = mock(ObjectProvider.class);
     when(registry.getObject()).thenReturn(TestSourceConnectors.connectors().registry());
-    blocks = new SourceBlocks(policies, connections, profiles, registry);
+    blocks =
+        new SourceBlocks(
+            policies,
+            connections,
+            profiles,
+            new ConnectionSecrets(connections, mock(KnowledgeLibraryRepository.class)),
+            registry);
   }
 
   static Stream<Arguments> precedence() {

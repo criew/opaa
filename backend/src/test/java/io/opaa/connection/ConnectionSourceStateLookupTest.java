@@ -13,20 +13,14 @@ import io.opaa.connection.profile.ConnectorTypePolicyRepository;
 import io.opaa.connection.profile.LibraryConnection;
 import io.opaa.connection.profile.LibraryConnectionRepository;
 import io.opaa.connection.profile.SourceBlocks;
-import io.opaa.indexing.source.ServiceAccountTokens;
 import io.opaa.indexing.source.SourceBlock;
 import io.opaa.indexing.source.SourceConnectionBlockedException;
-import io.opaa.indexing.source.SourceConnectorRegistry;
-import io.opaa.indexing.source.TestSourceConnectors;
 import io.opaa.knowledge.KnowledgeLibrary;
-import io.opaa.security.TargetAddressValidator;
 import io.opaa.test.SourceTypes;
-import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.ObjectProvider;
 
 /**
  * A library whose address left its profile and which holds no secret: a run is refused for the
@@ -37,15 +31,7 @@ class ConnectionSourceStateLookupTest {
   private final LibraryConnectionRepository connections = mock(LibraryConnectionRepository.class);
   private final ConnectionProfileRepository profiles = mock(ConnectionProfileRepository.class);
   private final SourceBlocks blocks =
-      new SourceBlocks(
-          mock(ConnectorTypePolicyRepository.class), connections, profiles, registry());
-
-  @SuppressWarnings("unchecked")
-  private static ObjectProvider<SourceConnectorRegistry> registry() {
-    ObjectProvider<SourceConnectorRegistry> provider = mock(ObjectProvider.class);
-    when(provider.getObject()).thenReturn(TestSourceConnectors.connectors().registry());
-    return provider;
-  }
+      TestProfileResolvers.blocks(mock(ConnectorTypePolicyRepository.class), connections, profiles);
 
   @Test
   void aRunNamesTheAddressAndAnAnswerTheMissingSecret() {
@@ -64,12 +50,7 @@ class ConnectionSourceStateLookupTest {
                 new LibraryConnection(inside.getId(), profileId, Instant.EPOCH)));
     when(profiles.findAllById(any())).thenReturn(List.of(profile));
     ProfileSourceConnectionResolver resolver =
-        new ProfileSourceConnectionResolver(
-            connections,
-            profiles,
-            registry(),
-            new ServiceAccountTokens(TargetAddressValidator.disabled(), Clock.systemUTC()),
-            blocks);
+        TestProfileResolvers.resolver(connections, profiles, blocks);
 
     assertThatThrownBy(() -> resolver.resolve(outside))
         .isInstanceOf(SourceConnectionBlockedException.class)

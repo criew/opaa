@@ -53,7 +53,7 @@ public final class IndexingRun {
   private final UUID jobId;
   private final KnowledgeLibrary library;
   private final SourceSettings settings;
-  private final Supplier<String> credentials;
+  private final Supplier<Secret> credentials;
   private final IndexingRunMode runMode;
   private final SourceType sourceType;
   private final IndexingRunProgress progress;
@@ -71,7 +71,7 @@ public final class IndexingRun {
       UUID jobId,
       KnowledgeLibrary library,
       SourceSettings settings,
-      Supplier<String> credentials,
+      Supplier<Secret> credentials,
       IndexingRunMode runMode,
       SourceType sourceType,
       IndexingRunProgress progress,
@@ -115,6 +115,11 @@ public final class IndexingRun {
    * expires during a long run is renewed by the core.
    */
   public String currentCredentials() {
+    return Secret.valueOf(currentSecret());
+  }
+
+  /** {@link #currentCredentials()} with its kind, {@code null} for none. */
+  public Secret currentSecret() {
     return credentials.get();
   }
 
