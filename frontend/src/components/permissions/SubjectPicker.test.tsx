@@ -95,6 +95,20 @@ async function pastTheDebounce(): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, 400))
 }
 
+/**
+ * Persons and groups are searched by two independent requests, so the list fills in two steps;
+ * waiting for any option is not waiting for this one.
+ */
+function findOptionContaining(text: string): Promise<HTMLElement> {
+  return waitFor(() => {
+    const option = screen
+      .getAllByRole('option')
+      .find((candidate) => candidate.textContent?.includes(text))
+    if (!option) throw new Error('No option containing "' + text + '" yet')
+    return option
+  })
+}
+
 function Harness({
   initial = emptySubjectSelection,
   allowAllAccounts = false,
@@ -116,7 +130,11 @@ const SEARCH = 'Person oder Gruppe suchen'
 describe('SubjectPicker (#1820, #2131, ADR-0036 Entscheidung 9)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockSearchSelectableGroups.mockResolvedValue([fromDirectory, fromPartner, smallInternal])
+    // Groups answer after persons, as they can in production: tests must wait for their own option.
+    mockSearchSelectableGroups.mockImplementation(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 150))
+      return [fromDirectory, fromPartner, smallInternal]
+    })
     mockGetUserSummaries.mockResolvedValue([
       { id: 'user-alice', email: 'alice@opaa.local', displayName: 'Alice' },
     ])
@@ -171,11 +189,8 @@ describe('SubjectPicker (#1820, #2131, ADR-0036 Entscheidung 9)', () => {
 
     await user.type(screen.getByRole('combobox', { name: SEARCH }), 'Referat 5')
 
-    const options = await screen.findAllByRole('option')
-    const fromHausA = options.find((option) => option.textContent?.includes('Verzeichnis Haus A'))
-    const fromPartnerOption = options.find((option) =>
-      option.textContent?.includes('Verzeichnis Partner'),
-    )
+    const fromHausA = await findOptionContaining('Verzeichnis Haus A')
+    const fromPartnerOption = await findOptionContaining('Verzeichnis Partner')
     expect(fromHausA).toHaveTextContent('/Haus/Abteilung 5/Referat 50')
     expect(fromHausA).toHaveTextContent('23 Mitglieder')
     expect(fromPartnerOption).toHaveTextContent('extern')
@@ -188,11 +203,8 @@ describe('SubjectPicker (#1820, #2131, ADR-0036 Entscheidung 9)', () => {
 
     await user.type(screen.getByRole('combobox', { name: SEARCH }), 'Referat 5')
 
-    const options = await screen.findAllByRole('option')
-    const external = options.find((option) => option.textContent?.includes('Verzeichnis Partner'))
-    expect(
-      within(external as HTMLElement).getByTitle('Gruppe eines externen Anbieters'),
-    ).toBeInTheDocument()
+    const external = await findOptionContaining('Verzeichnis Partner')
+    expect(within(external).getByTitle('Gruppe eines externen Anbieters')).toBeInTheDocument()
   })
 
   it('says "kleine Gruppe" instead of a number below the minimum group size', async () => {
@@ -201,8 +213,7 @@ describe('SubjectPicker (#1820, #2131, ADR-0036 Entscheidung 9)', () => {
 
     await user.type(screen.getByRole('combobox', { name: SEARCH }), 'Referat 5')
 
-    const options = await screen.findAllByRole('option')
-    const internal = options.find((option) => option.textContent?.includes('Projektteam'))
+    const internal = await findOptionContaining('Projektteam')
     expect(internal).toHaveTextContent('kleine Gruppe')
     expect(internal?.textContent).not.toMatch(/\d+ Mitglieder/)
   })
