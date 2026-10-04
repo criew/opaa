@@ -255,7 +255,7 @@ describe('ConnectionProfileManagementPage', () => {
     expect(sent[0].connectorSettings).toEqual({ edition: 'EXTERN', pathStyle: false })
   }, 20000)
 
-  it('sends proxy and certificate switch of the profile, and keeps them on an edit', async () => {
+  it('sends proxy and certificate switch of the profile', async () => {
     const user = userEvent.setup()
     const sent = capturePosts()
     renderWithProviders(<ConnectionProfileManagementPage />)

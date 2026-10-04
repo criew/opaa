@@ -245,12 +245,24 @@ public class KnowledgeLibraryService {
       connectorRelease.requireCreatable(caller, library.getSourceType(), profileId);
     }
     String previousUrl = library.getSourceUrl();
+    String previousProxy = library.getSourceProxy();
+    boolean previousInsecureSsl = library.isSourceInsecureSsl();
+    String previousSettings = library.getSourceSettings();
     boolean hadCredentials = connectionResolver.holdsCredentials(library);
     libraryConnections.connect(library, profileId);
     KnowledgeLibrary updated = libraryRepository.findById(libraryId).orElseThrow();
     List<String> changed = new ArrayList<>(List.of("connectionProfile"));
     if (!Objects.equals(previousUrl, updated.getSourceUrl())) {
       changed.add("sourceUrl");
+    }
+    if (!Objects.equals(previousProxy, updated.getSourceProxy())) {
+      changed.add("sourceProxy");
+    }
+    if (previousInsecureSsl != updated.isSourceInsecureSsl()) {
+      changed.add("sourceInsecureSsl");
+    }
+    if (!Objects.equals(previousSettings, updated.getSourceSettings())) {
+      changed.add("sourceSettings");
     }
     if (hadCredentials && !connectionResolver.holdsCredentials(updated)) {
       changed.add("sourceCredentials");

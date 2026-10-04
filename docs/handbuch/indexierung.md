@@ -389,8 +389,8 @@ sichtbar. Das Formular richtet sich nach der Quellart:
 - **Server-Adresse** verlangt eines der Schemata, die die Quellart meldet; der Hinweis unter dem
   Feld nennt sie. Hat die Quellart eine feste Adresse, entfällt das Feld, und das Formular nennt die
   Adresse.
-- **Proxy** (`host:port`, optional) und **Zertifikatsprüfung aussetzen** gelten für jede
-  Bibliothek auf dem Zugang.
+- **Proxy** (`host:port`, ohne Zugangsdaten, optional) und **Zertifikatsprüfung aussetzen**
+  gelten für jede Bibliothek auf dem Zugang, und zwar nur für Anfragen an dessen Server-Adresse.
 - **Vorgaben für jede Bibliothek** zeigt je Einstellung, die ein Zugang vorgeben darf, ein Feld:
   Text, Ja/Nein oder eine Auswahl, jeweils mit „Keine Vorgabe“. Meldet die Quellart keine solche
   Einstellung, fehlt der Abschnitt. Eine Vorgabe, die die Quellart nicht meldet, weist OPAA ab.
@@ -419,16 +419,21 @@ die App-Registrierung nur am Zugang steht. Die mitgelieferten Konnektoren melden
   mitgeschickt werden. Ein abweichender Wert wird abgewiesen, ein gleicher angenommen. Die
   Bibliothek speichert nur, was der Zugang ihr überlässt.
 - Ihr persönliches Geheimnis (etwa Benutzername und Passwort) tragen die Verwaltenden der
-  Bibliothek ein wie bisher. Bei einem Zugang ohne Anmeldung geht keines an die Quelle und keines
-  wird gespeichert.
+  Bibliothek ein wie bisher. Meldet sich der Zugang anders an (ohne Anmeldung, OAuth,
+  Client-Credentials, Dienstkonto-Schlüssel), weist OPAA mitgeschickte Zugangsdaten ab, und die
+  Bibliothek speichert keine.
 - Die Verwaltenden der Bibliothek ordnen sie einem anderen Zugang desselben Konnektors zu oder
-  lösen sie vom Zugang. Eine Adresse unter dem bisherigen Zugang wandert dabei unter den neuen. Das
+  lösen sie vom Zugang. **Zuordnen übernimmt die Vorgaben des Zugangs:** Eigener Proxy, ausgesetzte
+  Zertifikatsprüfung und eigene Werte für vorgegebene Einstellungen entfallen ohne Rückfrage, bei
+  einer Anmeldeart ohne persönliches Geheimnis auch die Zugangsdaten. Eine Adresse unter dem
+  bisherigen Zugang wandert dabei unter den neuen. Das
   Geheimnis bleibt nur, solange Schema, Host und Port gleich bleiben (ohne Portangabe zählt nur bei
   `http` und `https` der Standardport) und der Konnektor es weiter gelten lässt, etwa dieselbe
   Freigabe eines Dateiservers; sonst wird es verworfen.
 - Einen anderen Zugang können die Verwaltenden vor dem Speichern testen. Der Test nutzt dann dessen
   Rahmen und braucht dessen Anlegerecht. Eine Sperre oder ein entfernter Zugang der Bibliothek
-  steht ihm nicht im Weg, so lässt sich eine solche Bibliothek reparieren.
+  steht ihm nicht im Weg, so lässt sich eine solche Bibliothek reparieren; ist der gewählte Zugang
+  oder die Quellart gesperrt, wird auch der Test abgewiesen.
 
 **Was die Systemverwaltung am Zugang auslöst:**
 

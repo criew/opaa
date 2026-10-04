@@ -272,6 +272,126 @@ class ProfileDraftIntegrationTest {
         .andExpect(jsonPath("$.reachable").value(true));
   }
 
+  /** Connecting adopts the profile's frame: own values give way, and the form still saves as is. */
+  @Test
+  void connectingAdoptsTheProfileFrameAndTheUnchangedFormStillSaves() throws Exception {
+    UUID profile = createProfile("NONE", "{\"edition\": \"DC\"}", PROXY, false);
+    String body =
+        mockMvc
+            .perform(
+                as("dev-admin", post("/api/v1/libraries"))
+                    .content(
+                        """
+                        {"name": "Eigen %s", "sourceType": "PROFILE_PROBE",
+                         "sourceUrl": "https://probe.example.org/x",
+                         "sourceProxy": "eigen.example.org:8080", "sourceInsecureSsl": true,
+                         "sourceCredentials": "nutzer:geheim",
+                         "sourceSettings": {"edition": "CLOUD", "topic": "t"}}
+                        """
+                            .formatted(UUID.randomUUID())))
+            .andExpect(status().isCreated())
+            .andReturn()
+            .getResponse()
+            .getContentAsString(StandardCharsets.UTF_8);
+    UUID library = UUID.fromString(JsonPath.read(body, "$.id"));
+    libraries.add(library);
+
+    mockMvc
+        .perform(
+            as("dev-admin", put("/api/v1/libraries/" + library + "/connection-profile"))
+                .content("{\"profileId\": \"" + profile + "\"}"))
+        .andExpect(status().isOk());
+
+    assertThat(stored(library, "source_proxy")).isNull();
+    assertThat(stored(library, "source_insecure_ssl")).isEqualTo("false");
+    assertThat(stored(library, "source_settings")).doesNotContain("edition").contains("topic");
+    assertThat(stored(library, "source_credentials")).isNull();
+    String form =
+        """
+        {"name": "Ablage", "sourceType": "PROFILE_PROBE", "sourceUrl": "https://probe.example.org/x",
+         "sourceInsecureSsl": false, "sourceSettings": {"topic": "t"}}
+        """;
+    mockMvc
+        .perform(as("dev-admin", put("/api/v1/libraries/" + library)).content(form))
+        .andExpect(status().isOk());
+    mockMvc
+        .perform(
+            as("dev-admin", post("/api/v1/libraries/source-test"))
+                .content(
+                    """
+                    {"sourceType": "PROFILE_PROBE", "libraryId": "%s",
+                     "sourceUrl": "https://probe.example.org/x", "sourceInsecureSsl": false,
+                     "sourceSettings": {"topic": "t"}}
+                    """
+                        .formatted(library)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.reachable").value(true));
+  }
+
+  /** The draft escapes the library's own lock, never one of the target profile or its type. */
+  @Test
+  void aTestOnALockedOrUnreleasedTargetProfileIsRefused() throws Exception {
+    UUID current = createProfile("NONE", null, null, false);
+    UUID library = createLibrary(current, "");
+    mockMvc
+        .perform(
+            as("dev-admin", put(ADMIN + "/" + current + "/lock")).content("{\"locked\": true}"))
+        .andExpect(status().isOk());
+    UUID lockedTarget = createProfile("NONE", null, null, false);
+    mockMvc
+        .perform(
+            as("dev-admin", put(ADMIN + "/" + lockedTarget + "/lock"))
+                .content("{\"locked\": true}"))
+        .andExpect(status().isOk());
+    String unreleasedBody =
+        mockMvc
+            .perform(
+                as("dev-admin", post(ADMIN))
+                    .content(
+                        profileJson(
+                            "Zugang ohne Freigabe " + UUID.randomUUID(),
+                            "NONE",
+                            null,
+                            null,
+                            false)))
+            .andExpect(status().isCreated())
+            .andReturn()
+            .getResponse()
+            .getContentAsString(StandardCharsets.UTF_8);
+    UUID unreleased = UUID.fromString(JsonPath.read(unreleasedBody, "$.id"));
+    profiles.add(unreleased);
+    UUID free = createProfile("NONE", null, null, false);
+
+    mockMvc
+        .perform(sourceTestOn(library, lockedTarget))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.code").value("CONNECTOR_LOCKED"));
+    mockMvc
+        .perform(sourceTestOn(library, unreleased))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.code").value("CAPABILITY_REQUIRED"));
+    mockMvc.perform(sourceTestOn(library, free)).andExpect(status().isOk());
+    mockMvc
+        .perform(
+            as("dev-admin", put("/api/v1/admin/connector-types/PROFILE_PROBE/lock"))
+                .content("{\"locked\": true}"))
+        .andExpect(status().isOk());
+    mockMvc
+        .perform(sourceTestOn(library, free))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.code").value("CONNECTOR_LOCKED"));
+  }
+
+  private MockHttpServletRequestBuilder sourceTestOn(UUID library, UUID profile) {
+    return as("dev-user", post("/api/v1/libraries/source-test"))
+        .content(
+            """
+            {"sourceType": "PROFILE_PROBE", "libraryId": "%s", "connectionProfileId": "%s",
+             "sourceUrl": "https://probe.example.org/x"}
+            """
+                .formatted(library, profile));
+  }
+
   @Test
   void aProfileProxyIsHostAndPort() throws Exception {
     mockMvc
@@ -287,6 +407,43 @@ class ProfileDraftIntegrationTest {
         .perform(as("dev-admin", get(ADMIN + "/" + profile)))
         .andExpect(jsonPath("$.sourceProxy").value(PROXY))
         .andExpect(jsonPath("$.sourceInsecureSsl").value(true));
+    mockMvc
+        .perform(
+            as("dev-admin", post(ADMIN))
+                .content(
+                    profileJson(
+                        "Zugang Proxy " + UUID.randomUUID(),
+                        "NONE",
+                        null,
+                        "nutzer:pw@proxy.example.org:3128",
+                        false)))
+        .andExpect(status().isBadRequest());
+
+    String name =
+        JsonPath.read(
+            mockMvc
+                .perform(as("dev-admin", get(ADMIN + "/" + profile)))
+                .andReturn()
+                .getResponse()
+                .getContentAsString(StandardCharsets.UTF_8),
+            "$.name");
+    mockMvc
+        .perform(
+            as("dev-admin", put(ADMIN + "/" + profile))
+                .content(
+                    """
+                    {"name": "%s", "serverUrl": "https://probe.example.org", "authMethod": "NONE",
+                     "ownership": "LIBRARY", "sourceProxy": "neu.example.org:8080"}
+                    """
+                        .formatted(name)))
+        .andExpect(status().isOk());
+    String change =
+        jdbc.queryForObject(
+            "SELECT before::text || after::text FROM audit_log WHERE object_id = ?"
+                + " AND event_type = 'CONNECTION_PROFILE_CHANGED'",
+            String.class,
+            profile.toString());
+    assertThat(change).contains(PROXY).contains("neu.example.org:8080");
   }
 
   private UUID createProfile(String method, String defaults, String proxy, boolean insecureSsl)

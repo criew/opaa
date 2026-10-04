@@ -33,8 +33,8 @@ seine Ports `SourceConnectionResolver` (`ProfileSourceConnectionResolver`) und `
   Mengen der Aufrufer leiten sich aus dessen Eigenschaften ab: Ein neuer Grund steht an einer Stelle.
 - **Eine Zusammenführung:** `EffectiveSourceSettings` setzt Lauf, Änderung und Entwurf
   (`ofDraft`: Anlegen, Test, Auflistung) in einem `compose` zusammen. Der Rahmen des Zugangs
-  (`ProfileFrame`: Proxy, TLS-Schalter, Vorgaben) überschreibt die Bibliothek; ein abweichender
-  Wert ist `400`, gespeichert wird nur der eigene Teil (`ownPart`).
+  (`ProfileFrame`: `TransportRules` der Server-Adresse, `boundKeys`) überschreibt die Bibliothek;
+  abweichend ist `400`, gespeichert nur der eigene Teil (`ownPart`, auch beim Zuordnen).
 - **Freigabe nur hier:** `ConnectorReleaseService` entscheidet eine Neuanlage aus
   `CREATE_CONNECTOR_LIBRARY` im Geltungsbereich `TYPE:`/`PROFILE:` und den Sperren;
   `ConnectorScopeCatalog` nennt rights die Geltungsbereiche. Kein anderes Modul außer rights nennt
@@ -42,7 +42,7 @@ seine Ports `SourceConnectionResolver` (`ProfileSourceConnectionResolver`) und `
 - **Profilangabe nur über `ProfileRequirements`:** deklariert `OPTIONAL` plus Schalter ergibt
   `REQUIRED`; nur dort liest connections `support` (`theProfileSupportIsReadInOnePlace`).
 - **Sperre:** blockiert `resolve` (Laufstart, Original), nicht `currentCredentials`; ein Entwurf auf
-  einem anderen Zugang ist nie gesperrt. Registry je Aufruf (Bean-Zyklus).
+  einem anderen Zugang prüft nur dessen Sperren. Registry je Aufruf (Bean-Zyklus).
 - **Web-Schicht:** `connection.web` (Profile, Protokoll, Frist); Bibliothekszuordnung in `library.web`.
 
 ## Verweise

@@ -2,7 +2,7 @@ databaseChangeLog:
   - changeSet:
       id: connections-2026-10-04-profile-transport
       author: opaa
-      comment: "Proxy and TLS switch of a connection profile (#2218): on a profile they decide how every library's secret travels, not the library. Existing profiles keep no proxy and certificate checks on."
+      comment: "Proxy and TLS switch of a connection profile: on a profile they decide how every library's secret travels, not the library. Existing profiles keep no proxy and certificate checks on."
       changes:
         - sql:
             sql: |

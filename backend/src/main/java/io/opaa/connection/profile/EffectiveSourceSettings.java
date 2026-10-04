@@ -85,8 +85,7 @@ public class EffectiveSourceSettings {
    */
   public SourceSettings of(KnowledgeLibrary library, Purpose purpose) {
     Optional<ConnectionProfile> profile = profileFor(library, purpose);
-    return compose(
-        Own.of(library), profile.map(ProfileFrame::of), secretFor(library, profile, purpose));
+    return compose(Own.of(library), profile.map(this::frame), secretFor(library, profile, purpose));
   }
 
   /**
@@ -109,7 +108,11 @@ public class EffectiveSourceSettings {
                 || draft.requested().sourceCredentials().isBlank()
             ? draft.requested().withoutCredentials()
             : draft.requested();
-    frame.ifPresent(found -> found.requireFits(requested));
+    frame.ifPresent(
+        found -> {
+          found.requireFits(requested);
+          found.requireNoForeignSecret(requested);
+        });
     String url = addressOf(requested, frame);
     SourceConnector connector = registry.getObject().connector(draft.type());
     Own own = Own.of(requested.withSourceUrl(url));
@@ -118,7 +121,7 @@ public class EffectiveSourceSettings {
             && requested.sourceCredentials() == null
             && keepsStoredSecret(connector, library, url, requested.connectorSettings());
     if (frame.isEmpty() && keepsStored) {
-      own = own.withTransport(library.getSourceProxy(), library.isSourceInsecureSsl());
+      own = own.withTransport(Own.of(library).transport());
     }
     Secret secret;
     if (frame.isPresent()) {
@@ -146,15 +149,43 @@ public class EffectiveSourceSettings {
   }
 
   /**
-   * {@code draft}'s requested change of its library as the library's profile frames it: proxy, TLS
-   * switch and defaults of the profile over the requested fields.
+   * {@code draft}'s requested change of its library as the library's profile frames it, composed
+   * like {@link #of}; absent connector settings stay absent, so the stored ones stand.
    *
-   * @throws ValidationException (German 400) for a value the profile sets otherwise
+   * @throws ValidationException (German 400) for a value the profile sets otherwise, or a new
+   *     secret the profile's sign-in does not take
    */
   public SourceSettings ofChange(SourceDraft draft) {
     Optional<ProfileFrame> frame = frameOf(draft);
-    frame.ifPresent(found -> found.requireFits(draft.requested()));
-    return frame.map(found -> found.over(draft.requested())).orElse(draft.requested());
+    SourceSettings requested = draft.requested();
+    frame.ifPresent(
+        found -> {
+          found.requireFits(requested);
+          if (draft.libraryId() != null
+              && requested.sourceCredentials() != null
+              && !requested
+                  .sourceCredentials()
+                  .equals(
+                      secrets.stored(SecretOwner.of(found.profile().getId(), libraryOf(draft))))) {
+            found.requireNoForeignSecret(requested);
+          }
+        });
+    SourceSettings composed = compose(Own.of(requested), frame, requested.credentials());
+    return requested.connectorSettings() == null ? composed.withConnectorSettings(null) : composed;
+  }
+
+  /**
+   * Connecting {@code library} through {@code profile} adopts the profile's frame: its own proxy,
+   * TLS switch and values under bound keys go, and so does its secret where the profile takes none.
+   */
+  public void adoptFrame(KnowledgeLibrary library, ConnectionProfile profile) {
+    ProfileFrame frame = frame(profile);
+    ConnectorData own = frame.ownSettings(ConnectorData.storedIn(library));
+    library.updateSourceSettings(own == null ? null : own.toJson());
+    library.dropTransport();
+    if (!frame.takesSecret()) {
+      secrets.discard(SecretOwner.of(profile.getId(), library));
+    }
   }
 
   /**
@@ -215,8 +246,9 @@ public class EffectiveSourceSettings {
   }
 
   /**
-   * A draft's secret under a profile: none without sign-in, else the sent one or, for a personal
-   * secret, the stored one of {@code keeping}. No library signs in by app registration yet.
+   * A draft's secret under a profile, with its kind: for a personal secret the sent one, else the
+   * stored one of {@code keeping}; none for any other sign-in, which takes no secret of the
+   * library.
    */
   private Secret draftSecretUnder(
       ProfileFrame frame, SourceSettings requested, KnowledgeLibrary keeping) {
@@ -227,12 +259,26 @@ public class EffectiveSourceSettings {
         if (requested.sourceCredentials() != null) {
           yield requested.credentials();
         }
-        yield keeping == null
-            ? null
-            : Secret.personal(secrets.stored(SecretOwner.of(profile.getId(), keeping)));
+        yield keeping == null ? null : storedSecretFor(profile, keeping);
       }
-      case OAUTH, CLIENT_CREDENTIALS, SERVICE_ACCOUNT_KEY -> requested.credentials();
+      case OAUTH, CLIENT_CREDENTIALS, SERVICE_ACCOUNT_KEY -> null;
     };
+  }
+
+  /**
+   * The secret {@code library} holds under {@code profile}, as a run would get it; a missing one is
+   * {@code null}, so the probe reports the failed sign-in instead of a refusal.
+   */
+  private Secret storedSecretFor(ConnectionProfile profile, KnowledgeLibrary library) {
+    try {
+      return secrets.current(
+          SecretOwner.of(profile.getId(), library), library.getSourceUrl(), profile.getName());
+    } catch (SourceConnectionBlockedException e) {
+      if (e.block().reason() == Reason.NOT_CONNECTED) {
+        return null;
+      }
+      throw e;
+    }
   }
 
   /** The library's stored secret stands for {@code url}: same origin, binding and subject. */
@@ -281,7 +327,7 @@ public class EffectiveSourceSettings {
   private Optional<ProfileFrame> frameOf(SourceDraft draft) {
     if (draft.profileId() != null) {
       return Optional.of(
-          ProfileFrame.of(
+          frame(
               ProfileAdmission.require(
                   profiles.findById(draft.profileId()),
                   draft.type(),
@@ -292,7 +338,14 @@ public class EffectiveSourceSettings {
     }
     UUID current =
         connections.findById(draft.libraryId()).map(LibraryConnection::getProfileId).orElse(null);
-    return current == null ? Optional.empty() : profiles.findById(current).map(ProfileFrame::of);
+    return current == null ? Optional.empty() : profiles.findById(current).map(this::frame);
+  }
+
+  /** The frame of {@code profile}, its bound keys as its connector declares them. */
+  private ProfileFrame frame(ConnectionProfile profile) {
+    return ProfileFrame.of(
+        profile,
+        registry.getObject().descriptor(profile.getSourceType()).profileDeclaration().defaults());
   }
 
   /** The requested address, under a profile its server address when omitted, and lying under it. */
@@ -309,28 +362,30 @@ public class EffectiveSourceSettings {
     return url;
   }
 
-  /** Own fields, the profile's frame over them and {@code secret}: the one composition. */
+  /**
+   * Own fields, the profile's frame over them and {@code secret}: the one composition. Under a
+   * profile only its transport reaches the address; it is the address's, not any other target's.
+   */
   private static SourceSettings compose(Own own, Optional<ProfileFrame> frame, Secret secret) {
+    TransportRules toAddress = frame.map(ProfileFrame::serverTransport).orElse(own.transport());
     return new SourceSettings(
             own.path(),
             own.url(),
-            frame.map(ProfileFrame::proxy).orElse(own.proxy()),
+            toAddress.proxy(),
             null,
-            frame.map(ProfileFrame::insecureSsl).orElse(own.insecureSsl()),
+            toAddress.insecureSsl(),
             frame.map(found -> found.over(own.settings())).orElse(own.settings()))
         .withCredentials(secret);
   }
 
   /** The fields a library or a draft brings itself, before a profile frames them. */
-  private record Own(
-      String path, String url, String proxy, boolean insecureSsl, ConnectorData settings) {
+  private record Own(String path, String url, TransportRules transport, ConnectorData settings) {
 
     static Own of(KnowledgeLibrary library) {
       return new Own(
           library.getSourcePath(),
           library.getSourceUrl(),
-          library.getSourceProxy(),
-          library.isSourceInsecureSsl(),
+          new TransportRules(library.getSourceProxy(), library.isSourceInsecureSsl()),
           ConnectorData.storedIn(library));
     }
 
@@ -338,13 +393,12 @@ public class EffectiveSourceSettings {
       return new Own(
           requested.sourcePath(),
           requested.sourceUrl(),
-          requested.sourceProxy(),
-          requested.sourceInsecureSsl(),
+          new TransportRules(requested.sourceProxy(), requested.sourceInsecureSsl()),
           requested.connectorSettings());
     }
 
-    Own withTransport(String proxy, boolean insecureSsl) {
-      return new Own(path, url, proxy, insecureSsl, settings);
+    Own withTransport(TransportRules rules) {
+      return new Own(path, url, rules, settings);
     }
   }
 }

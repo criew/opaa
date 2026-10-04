@@ -13,6 +13,7 @@ import io.opaa.connection.profile.ConnectionProfile;
 import io.opaa.connection.profile.ConnectionProfileRepository;
 import io.opaa.connection.profile.ConnectionSecrets;
 import io.opaa.connection.profile.ConnectorLockService;
+import io.opaa.connection.profile.EffectiveSourceSettings;
 import io.opaa.connection.profile.LibraryConnection;
 import io.opaa.connection.profile.LibraryConnectionRepository;
 import io.opaa.connection.profile.ProfileRequirementService;
@@ -108,6 +109,7 @@ class LibraryConnectionServiceConnectTest {
         mock(ProfileRequirements.class),
         mock(ProfileRequirementService.class),
         secrets,
+        mock(EffectiveSourceSettings.class),
         Clock.fixed(NOW, ZoneOffset.UTC));
   }
 

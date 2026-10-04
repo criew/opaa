@@ -3,59 +3,66 @@ package io.opaa.connection.profile;
 import io.opaa.api.types.ConnectionAuthMethod;
 import io.opaa.common.ValidationException;
 import io.opaa.indexing.source.ConnectorData;
+import io.opaa.indexing.source.ProfileDefaults;
 import io.opaa.indexing.source.SourceSettings;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 /**
- * What a profile sets for every library on it: proxy, TLS switch and the connector defaults it
- * names. They override the library's own values; a library may repeat them but never differ, and it
- * stores only what the frame leaves to it.
+ * What a profile sets for every library on it: the transport to its server address and the
+ * connector settings its declaration binds ({@link ProfileDefaults#boundKeys}). They override the
+ * library's own values; a library may repeat a bound value but never differ, and it stores only
+ * what the frame leaves to it - a secret only where the profile signs in with a personal secret.
  */
 final class ProfileFrame {
 
   private final ConnectionProfile profile;
   private final Map<String, Object> defaults;
+  private final Set<String> bound;
 
-  private ProfileFrame(ConnectionProfile profile) {
+  private ProfileFrame(ConnectionProfile profile, ProfileDefaults declared) {
     this.profile = profile;
     ConnectorData data = ConnectorData.fromJson(profile.getConnectorSettings());
     this.defaults = data == null ? Map.of() : data.asMap();
+    this.bound = declared.boundKeys(data);
   }
 
-  static ProfileFrame of(ConnectionProfile profile) {
-    return new ProfileFrame(profile);
+  static ProfileFrame of(ConnectionProfile profile, ProfileDefaults declared) {
+    return new ProfileFrame(profile, declared);
   }
 
   ConnectionProfile profile() {
     return profile;
   }
 
-  String proxy() {
-    return profile.getSourceProxy();
+  /** Proxy and certificate check for the profile's server address, and for no other target. */
+  TransportRules serverTransport() {
+    return new TransportRules(profile.getSourceProxy(), profile.isSourceInsecureSsl());
   }
 
-  boolean insecureSsl() {
-    return profile.isSourceInsecureSsl();
+  /** Whether a library on the profile holds its own personal secret. */
+  boolean takesSecret() {
+    return profile.getAuthMethod() == ConnectionAuthMethod.PERSONAL_SECRET;
   }
 
   /**
    * Refuses {@code requested} where it differs from the frame: a proxy, a skipped certificate check
-   * or a connector setting other than the profile's. An absent value always fits.
+   * or a bound connector setting other than the profile's. An absent value always fits.
    *
    * @throws ValidationException (German 400) naming the field
    */
   void requireFits(SourceSettings requested) {
     String proxy = blankToNull(requested.sourceProxy());
-    if (proxy != null && !proxy.equals(proxy())) {
+    TransportRules transport = serverTransport();
+    if (proxy != null && !proxy.equals(transport.proxy())) {
       throw new ValidationException(
           "sourceProxy gibt der Zugang „"
               + profile.getName()
-              + "“ vor; die Bibliothek setzt ihn"
-              + " nicht selbst");
+              + "“ vor; die Bibliothek setzt ihn nicht selbst");
     }
-    if (requested.sourceInsecureSsl() && !insecureSsl()) {
+    if (requested.sourceInsecureSsl() && !transport.insecureSsl()) {
       throw new ValidationException(
           "Die Zertifikatsprüfung gibt der Zugang „"
               + profile.getName()
@@ -65,65 +72,76 @@ final class ProfileFrame {
     if (own == null) {
       return;
     }
-    for (Map.Entry<String, Object> entry : defaults.entrySet()) {
-      if (own.has(entry.getKey()) && !Objects.equals(own.get(entry.getKey()), entry.getValue())) {
+    for (String key : bound) {
+      if (own.has(key) && !Objects.equals(own.get(key), defaults.get(key))) {
         throw new ValidationException(
             "sourceSettings."
-                + entry.getKey()
+                + key
                 + " gibt der Zugang „"
                 + profile.getName()
-                + "“ mit "
-                + entry.getValue()
+                + "“"
+                + (defaults.containsKey(key) ? " mit " + defaults.get(key) : "")
                 + " vor; ein anderer Wert ist nicht zulässig");
       }
     }
   }
 
-  /** {@code own} with every key the profile sets replaced by its value; {@code null} for none. */
+  /**
+   * Refuses a secret sent for a library on a profile that does not sign in with a personal secret.
+   *
+   * @throws ValidationException (German 400)
+   */
+  void requireNoForeignSecret(SourceSettings requested) {
+    if (requested.sourceCredentials() != null && !takesSecret()) {
+      throw new ValidationException(
+          "Der Zugang „"
+              + profile.getName()
+              + "“ meldet sich nicht mit Zugangsdaten der Bibliothek an; sourceCredentials"
+              + " entfallen");
+    }
+  }
+
+  /** {@code own} with every bound key replaced by the profile's value; {@code null} for none. */
   ConnectorData over(ConnectorData own) {
-    if (defaults.isEmpty()) {
+    if (bound.isEmpty()) {
       return own;
     }
     Map<String, Object> values = new LinkedHashMap<>();
     if (own != null) {
       values.putAll(own.asMap());
     }
-    values.putAll(defaults);
-    return ConnectorData.of(values);
-  }
-
-  /** {@code settings} with proxy, TLS switch and connector settings of the frame applied. */
-  SourceSettings over(SourceSettings settings) {
-    return new SourceSettings(
-        settings.sourcePath(),
-        settings.sourceUrl(),
-        proxy(),
-        settings.sourceCredentials(),
-        insecureSsl(),
-        settings.connectorSettings() == null ? null : over(settings.connectorSettings()),
-        settings.credentialsKind());
+    values.keySet().removeAll(bound);
+    for (String key : bound) {
+      if (defaults.containsKey(key)) {
+        values.put(key, defaults.get(key));
+      }
+    }
+    return values.isEmpty() ? null : ConnectorData.of(values);
   }
 
   /**
-   * What of {@code validated} the library stores itself: no proxy, no skipped check, its connector
-   * settings without the keys the profile sets, and no secret on a profile without sign-in.
+   * What of {@code validated} the library stores itself: no transport of its own, its connector
+   * settings without the bound keys, and a secret only where the profile takes one.
    */
   SourceSettings ownPart(SourceSettings validated) {
-    ConnectorData settings = validated.connectorSettings();
-    if (settings != null && !defaults.isEmpty()) {
-      Map<String, Object> own = new LinkedHashMap<>(settings.asMap());
-      own.keySet().removeAll(defaults.keySet());
-      settings = own.isEmpty() ? null : ConnectorData.of(own);
-    }
-    boolean signsIn = profile.getAuthMethod() != ConnectionAuthMethod.NONE;
     return new SourceSettings(
         validated.sourcePath(),
         validated.sourceUrl(),
         null,
-        signsIn ? validated.sourceCredentials() : null,
+        takesSecret() ? validated.sourceCredentials() : null,
         false,
-        settings,
-        signsIn ? validated.credentialsKind() : null);
+        ownSettings(validated.connectorSettings()),
+        takesSecret() ? validated.credentialsKind() : null);
+  }
+
+  /** {@code settings} without the bound keys; {@code null} when nothing is left. */
+  ConnectorData ownSettings(ConnectorData settings) {
+    if (settings == null || bound.isEmpty()) {
+      return settings;
+    }
+    Map<String, Object> own = new LinkedHashMap<>(settings.asMap());
+    own.keySet().removeAll(bound);
+    return own.isEmpty() ? null : ConnectorData.of(own);
   }
 
   private static String blankToNull(String value) {

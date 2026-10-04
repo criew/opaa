@@ -370,6 +370,13 @@ public class KnowledgeLibrary extends Asset {
     touch();
   }
 
+  /** Drops its own proxy and skipped certificate check: a connection profile decides them. */
+  public void dropTransport() {
+    this.sourceProxy = null;
+    this.sourceInsecureSsl = false;
+    touch();
+  }
+
   /** Drops the secret from the attribute; erasing the column is the caller's part. */
   public void dropSourceCredentials() {
     this.sourceCredentials = null;

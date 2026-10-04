@@ -3,6 +3,7 @@ package io.opaa.indexing.source;
 import io.opaa.common.ValidationException;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -41,6 +42,21 @@ public record ProfileDefaults(List<DefaultKey> keys) {
 
   public boolean isEmpty() {
     return keys.isEmpty();
+  }
+
+  /**
+   * The declared keys a library under a profile with {@code profileDefaults} never sets itself: it
+   * may repeat the profile's value, and stores none of them. Today exactly the keys the profile
+   * sets.
+   */
+  public Set<String> boundKeys(ConnectorData profileDefaults) {
+    Set<String> bound = new LinkedHashSet<>();
+    for (DefaultKey key : keys) {
+      if (profileDefaults != null && profileDefaults.has(key.key())) {
+        bound.add(key.key());
+      }
+    }
+    return bound;
   }
 
   /**

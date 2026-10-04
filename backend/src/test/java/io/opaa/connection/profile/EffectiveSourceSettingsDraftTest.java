@@ -107,6 +107,7 @@ class EffectiveSourceSettingsDraftTest {
     SourceSettings onItsProfile = effective.ofDraft(draft(null, library, ownOf(library)));
     SourceSettings onNamedProfile =
         effective.ofDraft(draft(profile.getId(), library, ownOf(library)));
+    SourceSettings asChange = effective.ofChange(draft(null, library, ownOf(library)));
 
     assertThat(run.connectorSettings().asMap())
         .isEqualTo(Map.of("edition", "DC", "topic", "Wetter"));
@@ -116,6 +117,7 @@ class EffectiveSourceSettingsDraftTest {
     assertThat(change).isEqualTo(run);
     assertThat(onItsProfile).isEqualTo(run);
     assertThat(onNamedProfile).isEqualTo(run);
+    assertThat(asChange).isEqualTo(run.withoutCredentials());
     assertThat(effective.storedOf(draft(null, library, ownOf(library))))
         .isEqualTo(run.connectorSettings());
   }
@@ -217,7 +219,9 @@ class EffectiveSourceSettingsDraftTest {
     UUID profileId = profile(ConnectionAuthMethod.NONE, null, null, false).getId();
     SourceSettings sent = new SourceSettings(null, null, null, "a:b", false, null);
 
-    assertThat(effective.ofDraft(draft(profileId, null, sent)).sourceCredentials()).isNull();
+    assertThatThrownBy(() -> effective.ofDraft(draft(profileId, null, sent)))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("sourceCredentials");
     assertThat(effective.ownPart(draft(profileId, null, sent), sent).sourceCredentials()).isNull();
   }
 

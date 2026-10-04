@@ -358,7 +358,7 @@ public class ConnectionProfileService {
     }
     try {
       ProxyAndCredentials parsed = ProxyAndCredentials.parse(proxy, null);
-      if (parsed.proxyHost() == null) {
+      if (parsed.proxyHost() == null || proxy.contains("@")) {
         throw new ValidationException(ProxyAndCredentials.INVALID_PROXY_MESSAGE);
       }
     } catch (ProxyAndCredentials.InvalidProxyConfigurationException e) {
@@ -387,7 +387,7 @@ public class ConnectionProfileService {
     state.put("tenantSet", profile.getTenant() != null);
     state.put("scopesSet", profile.getScopes() != null);
     state.put("connectorSettingsSet", profile.getConnectorSettings() != null);
-    state.put("sourceProxySet", profile.getSourceProxy() != null);
+    state.put("sourceProxy", profile.getSourceProxy() == null ? "" : profile.getSourceProxy());
     state.put("sourceInsecureSsl", profile.isSourceInsecureSsl());
     return state;
   }

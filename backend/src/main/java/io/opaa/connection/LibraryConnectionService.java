@@ -5,6 +5,7 @@ import io.opaa.connection.profile.ConnectionProfile;
 import io.opaa.connection.profile.ConnectionProfileRepository;
 import io.opaa.connection.profile.ConnectionSecrets;
 import io.opaa.connection.profile.ConnectorLockService;
+import io.opaa.connection.profile.EffectiveSourceSettings;
 import io.opaa.connection.profile.LibraryConnection;
 import io.opaa.connection.profile.LibraryConnectionRepository;
 import io.opaa.connection.profile.ProfileAdmission;
@@ -43,6 +44,7 @@ public class LibraryConnectionService {
   private final ProfileRequirements requirements;
   private final ProfileRequirementService requirementService;
   private final ConnectionSecrets secrets;
+  private final EffectiveSourceSettings effective;
   private final SourceChangeGate changeGate;
   private final Clock clock;
 
@@ -55,6 +57,7 @@ public class LibraryConnectionService {
       ProfileRequirements requirements,
       ProfileRequirementService requirementService,
       ConnectionSecrets secrets,
+      EffectiveSourceSettings effective,
       Clock clock) {
     this.connections = connections;
     this.profiles = profiles;
@@ -64,6 +67,7 @@ public class LibraryConnectionService {
     this.requirements = requirements;
     this.requirementService = requirementService;
     this.secrets = secrets;
+    this.effective = effective;
     this.changeGate = new SourceChangeGate(connectors);
     this.clock = clock;
   }
@@ -116,7 +120,8 @@ public class LibraryConnectionService {
   }
 
   /**
-   * Connects a saved library through {@code profileId}. An address under the previous profile moves
+   * Connects a saved library through {@code profileId}, adopting its frame (proxy, TLS switch,
+   * bound defaults - own values give way, no 400). An address under the previous profile moves
    * under the new one; a secret is kept only while the origin and the connector's binding stay.
    */
   @Transactional
@@ -149,6 +154,8 @@ public class LibraryConnectionService {
       }
       changeGate.addressMoved(library);
     }
+    effective.adoptFrame(library, profile);
+    libraries.save(library);
     if (connection == null) {
       connections.save(new LibraryConnection(library.getId(), profile.getId(), clock.instant()));
     } else {
