@@ -26,9 +26,9 @@ public class ConnectionLog {
   }
 
   /**
-   * Appends one entry. {@code personUserId} is whose connection it is, {@code profileName} the
-   * profile's name now; {@code cause} is null exactly for {@code CONNECTED} and {@code
-   * RECONNECTED}, every other event ends a connection and names why.
+   * Appends one entry. {@code owner} is whose connection it is, {@code profileName} the profile's
+   * name now; {@code cause} is null exactly for {@code CONNECTED} and {@code RECONNECTED}, every
+   * other event ends a connection and names why.
    *
    * @throws IllegalArgumentException if the cause does not fit the event
    */
@@ -37,13 +37,13 @@ public class ConnectionLog {
       UUID organizationId,
       ConnectionLogEventType eventType,
       ConnectionLogActor actor,
-      UUID personUserId,
+      ConnectionLogOwner owner,
       UUID profileId,
       String profileName,
       ConnectionEndCause cause) {
     Objects.requireNonNull(organizationId, "organizationId");
     Objects.requireNonNull(eventType, "eventType");
-    Objects.requireNonNull(personUserId, "personUserId");
+    Objects.requireNonNull(owner, "owner");
     Objects.requireNonNull(profileId, "profileId");
     Objects.requireNonNull(profileName, "profileName");
     boolean start =
@@ -58,13 +58,22 @@ public class ConnectionLog {
           case ConnectionLogActor.Person person -> pseudonymOf(person.userId(), organizationId);
           case ConnectionLogActor.SystemProcess ignored -> ConnectionLogActor.SYSTEM_LABEL;
         };
+    String personRef =
+        owner instanceof ConnectionLogOwner.Person person
+            ? pseudonymOf(person.userId(), organizationId)
+            : null;
+    ConnectionLogOwner.Library library =
+        owner instanceof ConnectionLogOwner.Library ofLibrary ? ofLibrary : null;
     repository.save(
         new ConnectionLogEntry(
             organizationId,
             Instant.now(),
             eventType,
             actorRef,
-            pseudonymOf(personUserId, organizationId),
+            owner.kind(),
+            personRef,
+            library == null ? null : library.libraryId(),
+            library == null ? null : library.accountLabel(),
             profileId,
             profileName,
             cause));
