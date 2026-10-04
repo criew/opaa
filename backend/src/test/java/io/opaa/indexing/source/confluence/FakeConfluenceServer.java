@@ -99,6 +99,7 @@ public final class FakeConfluenceServer implements AutoCloseable {
 
   private final Map<String, String> cloudEmailByToken = new LinkedHashMap<>();
   private final List<String> requests = new CopyOnWriteArrayList<>();
+  private final List<String> authorizations = new CopyOnWriteArrayList<>();
   private final AtomicInteger throttleRemaining = new AtomicInteger();
   private volatile String throttleRetryAfter = "1";
   private volatile int throttleStatus = 429;
@@ -125,6 +126,11 @@ public final class FakeConfluenceServer implements AutoCloseable {
 
   public List<String> requests() {
     return requests;
+  }
+
+  /** The {@code Authorization} header of every request so far, {@code "null"} for none. */
+  public List<String> authorizations() {
+    return authorizations;
   }
 
   // ---- model -----------------------------------------------------------------------------------
@@ -227,6 +233,7 @@ public final class FakeConfluenceServer implements AutoCloseable {
   private void handle(HttpExchange exchange) throws IOException {
     URI uri = exchange.getRequestURI();
     requests.add(uri.toString());
+    authorizations.add(String.valueOf(exchange.getRequestHeaders().getFirst("Authorization")));
     try {
       if (throttleRemaining.get() > 0 && throttleRemaining.decrementAndGet() >= 0) {
         exchange.getResponseHeaders().add("Retry-After", throttleRetryAfter);

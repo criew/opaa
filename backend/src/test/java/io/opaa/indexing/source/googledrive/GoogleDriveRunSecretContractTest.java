@@ -27,13 +27,15 @@ import org.junit.jupiter.api.BeforeEach;
  */
 class GoogleDriveRunSecretContractTest extends RunSecretContract {
 
-  private static final int FILES = 6;
+  private static final int FILES = 10;
+  private static final String RENEWED = "ya29.erneuertes-token";
 
   private FakeDriveServer server;
 
   @BeforeEach
   void serve() {
     server = new FakeDriveServer();
+    server.alsoAccept(RENEWED);
     server.addDrive("drive0", "Ablage");
     server.folder("akten", "Akten", "drive0", "drive0");
     for (int i = 1; i <= FILES; i++) {
@@ -55,6 +57,16 @@ class GoogleDriveRunSecretContractTest extends RunSecretContract {
         FakeDriveServer.TOKEN,
         false,
         ConnectorData.of(Map.of("scopes", List.of(Map.of("drive", "drive0")))));
+  }
+
+  @Override
+  protected String renewedSecret() {
+    return RENEWED;
+  }
+
+  @Override
+  protected boolean sawRenewedSecret() {
+    return server.tokens().contains(RENEWED);
   }
 
   @Override

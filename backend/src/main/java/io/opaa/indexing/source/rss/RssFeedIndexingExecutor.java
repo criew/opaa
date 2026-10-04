@@ -332,7 +332,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
                             candidate.url(),
                             candidate.suggestedFileName(),
                             ctx.httpClientFor(candidate.url()),
-                            ctx.authHeaderFor(candidate.url()),
+                            () -> ctx.authHeaderFor(candidate.url()),
                             properties.requestDelayMs()))
             .toList();
     attachmentIndexer.indexAll(

@@ -8,12 +8,12 @@ import io.opaa.indexing.document.DocumentIngestResult;
 import io.opaa.indexing.document.DocumentIngestService;
 import io.opaa.indexing.job.IndexingEventCategory;
 import io.opaa.indexing.job.RequestBudgetExhaustedException;
+import io.opaa.indexing.job.RunEndingFailures;
 import io.opaa.indexing.maintenance.StaleDocumentCleanupService;
 import io.opaa.indexing.source.IndexingRun;
 import io.opaa.indexing.source.IndexingRunFailedException;
 import io.opaa.indexing.source.ListingOutcome;
 import io.opaa.indexing.source.ReconcilingAttachmentAccess;
-import io.opaa.indexing.source.SourceConnectionBlockedException;
 import io.opaa.indexing.source.SourceFolderMirror;
 import io.opaa.indexing.source.SourceFolderPath;
 import io.opaa.indexing.source.SourceSyncState;
@@ -914,8 +914,9 @@ public final class FileSync implements AutoCloseable {
       if (e.getCause() instanceof RequestBudgetExhaustedException exhausted) {
         throw exhausted;
       }
-      if (e.getCause() instanceof SourceConnectionBlockedException blocked) {
-        throw blocked;
+      RuntimeException ending = RunEndingFailures.endingCause(e.getCause());
+      if (ending != null) {
+        throw ending;
       }
       unsettle(item.entry());
       if (e.getCause() instanceof FileAccessException failure) {

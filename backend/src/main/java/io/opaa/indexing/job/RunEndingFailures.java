@@ -24,9 +24,23 @@ public final class RunEndingFailures {
       if (t instanceof RequestBudgetExhaustedException exhausted) {
         throw exhausted;
       }
+    }
+    RuntimeException ending = endingCause(failure);
+    if (ending != null) {
+      throw ending;
+    }
+  }
+
+  /**
+   * The unchecked {@link EndsRun} {@code failure} is or carries as a cause, {@code null} for none -
+   * for a wrapper (an SDK, a future) that must let it through unchanged.
+   */
+  public static RuntimeException endingCause(Throwable failure) {
+    for (Throwable t = failure; t != null; t = t.getCause()) {
       if (t instanceof EndsRun && t instanceof RuntimeException ending) {
-        throw ending;
+        return ending;
       }
     }
+    return null;
   }
 }

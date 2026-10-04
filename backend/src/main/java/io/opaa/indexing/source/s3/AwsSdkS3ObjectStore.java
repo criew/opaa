@@ -1,6 +1,7 @@
 package io.opaa.indexing.source.s3;
 
 import io.opaa.indexing.job.RequestBudgetExhaustedException;
+import io.opaa.indexing.job.RunEndingFailures;
 import io.opaa.s3.S3AccessException;
 import io.opaa.s3.S3ClientSettings;
 import io.opaa.s3.S3Connection;
@@ -79,7 +80,8 @@ final class AwsSdkS3ObjectStore implements S3ObjectStore {
             properties.requestTimeout(),
             properties.maxRetries(),
             TargetAddressValidator.ALLOWLIST_HINT,
-            RequestBudgetExhaustedException::requests);
+            RequestBudgetExhaustedException::requests,
+            RunEndingFailures::endingCause);
     S3ClientSettings settings =
         S3ClientSettings.of(
             connection,

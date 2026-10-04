@@ -52,8 +52,7 @@ public class LibrarySourceConnectionResolver implements SourceConnectionResolver
 
   /** The access token the core signs with the stored key, {@code null} without a key. */
   private Secret signed(SourceConnector connector, SourceSettings stored) {
-    String token = tokens.forConnector(connector, stored, stored.connectorSettings());
-    return token == null ? null : new Secret(SecretKind.ACCESS_TOKEN, token);
+    return tokens.secretFor(connector, stored, stored.connectorSettings());
   }
 
   private Optional<SourceConnector> signing(KnowledgeLibrary library) {

@@ -530,7 +530,7 @@ final class SmbShareClient implements AutoCloseable {
    * Drops the connection; the next request signs in again. A request of another thread that fails
    * on the dropped connection is repeated once ({@link #download}) or ends only its own folder.
    */
-  private synchronized void reset() {
+  synchronized void reset() {
     connections.incrementAndGet();
     DiskShare current = share;
     share = null;

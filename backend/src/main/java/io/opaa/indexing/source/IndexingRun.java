@@ -14,7 +14,7 @@ import io.opaa.knowledge.LibraryStorageQuotaService;
 import io.opaa.knowledge.SourceDocumentContext;
 import io.opaa.knowledge.SourceType;
 import io.opaa.sourceaccess.SourceRequestMeter;
-import java.time.Duration;
+import java.time.Clock;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
@@ -54,8 +54,7 @@ public final class IndexingRun {
   private final UUID jobId;
   private final KnowledgeLibrary library;
   private final SourceSettings settings;
-  private final Supplier<Secret> credentials;
-  private final RunCredentials runCredentials;
+  private final RunCredentials credentials;
   private final IndexingRunMode runMode;
   private final SourceType sourceType;
   private final IndexingRunProgress progress;
@@ -91,7 +90,7 @@ public final class IndexingRun {
         events,
         documentRepository,
         storageQuotaService,
-        RunCredentials.VALIDITY);
+        Clock.systemUTC());
   }
 
   IndexingRun(
@@ -105,12 +104,11 @@ public final class IndexingRun {
       IndexingRunEventRecorder events,
       DocumentRepository documentRepository,
       LibraryStorageQuotaService storageQuotaService,
-      Duration secretValidity) {
+      Clock clock) {
     this.jobId = jobId;
     this.library = library;
     this.settings = settings.withoutCredentials();
-    this.credentials = credentials;
-    this.runCredentials = new RunCredentials(credentials, secretValidity, System::nanoTime);
+    this.credentials = new RunCredentials(credentials, RunCredentials.VALIDITY, clock);
     this.runMode = runMode;
     this.sourceType = sourceType;
     this.progress = progress;
@@ -144,20 +142,7 @@ public final class IndexingRun {
    * refused once the source is blocked, at most {@link RunCredentials#VALIDITY} old.
    */
   public RunCredentials credentials() {
-    return runCredentials;
-  }
-
-  /**
-   * The secret valid now, {@code null} for none - asked from the core on every call, without the
-   * reuse {@link #credentials()} adds.
-   */
-  public String currentCredentials() {
-    return Secret.valueOf(currentSecret());
-  }
-
-  /** {@link #currentCredentials()} with its kind, {@code null} for none. */
-  public Secret currentSecret() {
-    return credentials.get();
+    return credentials;
   }
 
   public IndexingRunMode runMode() {

@@ -24,13 +24,14 @@ import org.junit.jupiter.api.BeforeEach;
 /** The Nextcloud run against {@link FakeNextcloudServer} with the technical user's app password. */
 class NextcloudRunSecretContractTest extends RunSecretContract {
 
-  private static final int FILES = 6;
+  private static final int FILES = 10;
+  private static final String RENEWED_PASSWORD = "erneuertes-app-passwort";
 
   private FakeNextcloudServer server;
 
   @BeforeEach
   void serve() throws Exception {
-    server = new FakeNextcloudServer("");
+    server = new FakeNextcloudServer("").alsoAccept(RENEWED_PASSWORD);
     for (int i = 1; i <= FILES; i++) {
       server.put("Akten/akte-" + i + ".txt", "Akte " + i + ".");
     }
@@ -44,6 +45,16 @@ class NextcloudRunSecretContractTest extends RunSecretContract {
   @Override
   protected SourceSettings settings() {
     return NextcloudTestStores.settings(server.baseUrl(), server.credentials(), List.of("/Akten"));
+  }
+
+  @Override
+  protected String renewedSecret() {
+    return FakeNextcloudServer.LOGIN + ":" + RENEWED_PASSWORD;
+  }
+
+  @Override
+  protected boolean sawRenewedSecret() {
+    return server.passwords().contains(RENEWED_PASSWORD);
   }
 
   @Override

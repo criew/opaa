@@ -2,6 +2,7 @@ package io.opaa.indexing.attachment;
 
 import java.net.http.HttpClient;
 import java.nio.file.Path;
+import java.util.function.Supplier;
 
 /**
  * A source-agnostic description of one attachment for {@code AttachmentIndexer} to index (ADR-0022,
@@ -17,13 +18,15 @@ public sealed interface AttachmentSource {
    * relaxation is a decision only the caller's own run context can make - see {@code
    * RssFeedRunContext#httpClientFor}, not something this package re-derives).
    *
+   * @param authHeader asked right before the download is sent, so it carries the secret valid then;
+   *     answers {@code null} for none
    * @param requestDelayMs the politeness delay applied before this download; {@code 0} for none
    */
   record Download(
       String url,
       String suggestedFileName,
       HttpClient httpClient,
-      String authHeader,
+      Supplier<String> authHeader,
       long requestDelayMs)
       implements AttachmentSource {}
 

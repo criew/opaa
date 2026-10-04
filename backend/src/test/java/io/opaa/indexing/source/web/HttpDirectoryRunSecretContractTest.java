@@ -16,7 +16,10 @@ import io.opaa.test.ProductionDocumentFormats;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.util.Base64;
+import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CopyOnWriteArrayList;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 
@@ -28,6 +31,7 @@ class HttpDirectoryRunSecretContractTest extends RunSecretContract {
       "%PDF-1.4\n%mock-pdf-body-for-magic-byte-detection".getBytes(StandardCharsets.UTF_8);
 
   private HttpServer server;
+  private final List<String> authorizations = new CopyOnWriteArrayList<>();
 
   @BeforeEach
   void serve() throws IOException {
@@ -52,6 +56,8 @@ class HttpDirectoryRunSecretContractTest extends RunSecretContract {
     server.createContext(
         path,
         exchange -> {
+          authorizations.add(
+              String.valueOf(exchange.getRequestHeaders().getFirst("Authorization")));
           exchange.getResponseHeaders().set("Content-Type", contentType);
           exchange.sendResponseHeaders(200, body.length);
           exchange.getResponseBody().write(body);
@@ -68,6 +74,18 @@ class HttpDirectoryRunSecretContractTest extends RunSecretContract {
         "leser:geheim",
         false,
         null);
+  }
+
+  @Override
+  protected String renewedSecret() {
+    return "leser:erneuert";
+  }
+
+  @Override
+  protected boolean sawRenewedSecret() {
+    return authorizations.contains(
+        "Basic "
+            + Base64.getEncoder().encodeToString(renewedSecret().getBytes(StandardCharsets.UTF_8)));
   }
 
   @Override

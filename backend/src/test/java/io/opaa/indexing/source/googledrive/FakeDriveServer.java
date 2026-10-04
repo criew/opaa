@@ -66,6 +66,8 @@ final class FakeDriveServer implements AutoCloseable {
   private final List<Failure> failures = new CopyOnWriteArrayList<>();
   private final List<String> requests = new CopyOnWriteArrayList<>();
   private volatile String acceptedToken = TOKEN;
+  private volatile String alsoAcceptedToken = TOKEN;
+  private final List<String> tokens = new CopyOnWriteArrayList<>();
   private volatile boolean cursorsExpired;
 
   FakeDriveServer() {
@@ -137,6 +139,17 @@ final class FakeDriveServer implements AutoCloseable {
 
   void rejectToken() {
     acceptedToken = "none";
+    alsoAcceptedToken = "none";
+  }
+
+  /** From now on {@code token} is accepted as well. */
+  void alsoAccept(String token) {
+    alsoAcceptedToken = token;
+  }
+
+  /** The bearer token of every request so far. */
+  List<String> tokens() {
+    return List.copyOf(tokens);
   }
 
   void expireCursors() {
@@ -161,8 +174,10 @@ final class FakeDriveServer implements AutoCloseable {
     Map<String, String> query = query(exchange.getRequestURI().getRawQuery());
     requests.add(path + (query.containsKey("alt") ? "?alt=" + query.get("alt") : ""));
     try {
-      if (!("Bearer " + acceptedToken)
-          .equals(exchange.getRequestHeaders().getFirst("Authorization"))) {
+      String sent = exchange.getRequestHeaders().getFirst("Authorization");
+      tokens.add(String.valueOf(sent).replaceFirst("^Bearer ", ""));
+      if (!("Bearer " + acceptedToken).equals(sent)
+          && !("Bearer " + alsoAcceptedToken).equals(sent)) {
         error(exchange, 401, "authError");
         return;
       }

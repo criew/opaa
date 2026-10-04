@@ -31,6 +31,7 @@ class ConfluenceRunSecretContractTest extends RunSecretContract {
 
   private static final int PAGES = 5;
   private static final String TOKEN = "geheimes-token";
+  private static final String RENEWED = "erneuertes-token";
   private static final Instant NOW = Instant.parse("2026-10-04T10:00:00Z");
 
   private FakeConfluenceServer server;
@@ -49,6 +50,7 @@ class ConfluenceRunSecretContractTest extends RunSecretContract {
           NOW.minus(Duration.ofDays(3)));
     }
     server.addToken("dienst@behoerde.example", TOKEN, null);
+    server.addToken("dienst@behoerde.example", RENEWED, null);
   }
 
   @AfterEach
@@ -65,6 +67,16 @@ class ConfluenceRunSecretContractTest extends RunSecretContract {
             null);
     ConnectorData settings = confluence.sortedByKey().toData();
     return new SourceSettings(null, server.baseUrl(), null, TOKEN, false, settings);
+  }
+
+  @Override
+  protected String renewedSecret() {
+    return RENEWED;
+  }
+
+  @Override
+  protected boolean sawRenewedSecret() {
+    return server.authorizations().contains("Bearer " + RENEWED);
   }
 
   @Override

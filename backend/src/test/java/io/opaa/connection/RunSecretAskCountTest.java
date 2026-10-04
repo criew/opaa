@@ -14,6 +14,7 @@ import io.opaa.connection.profile.LibraryConnectionRepository;
 import io.opaa.indexing.source.RunCredentials;
 import io.opaa.indexing.source.Secret;
 import io.opaa.knowledge.KnowledgeLibrary;
+import io.opaa.test.MutableClock;
 import io.opaa.test.SourceTypes;
 import java.time.Duration;
 import java.time.Instant;
@@ -23,7 +24,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Supplier;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -58,7 +58,9 @@ class RunSecretAskCountTest {
               mock(ConnectorTypePolicyRepository.class), connections, profiles, rows),
           rows);
   private final AtomicInteger asks = new AtomicInteger();
-  private final AtomicLong now = new AtomicLong();
+  private static final Instant START = Instant.parse("2026-10-04T12:00:00Z");
+
+  private final MutableClock clock = new MutableClock(START);
 
   private KnowledgeLibrary library;
   private Supplier<Secret> port;
@@ -118,7 +120,7 @@ class RunSecretAskCountTest {
   /** Asking the port before every access, without reuse, would decrypt twice per access. */
   @Test
   void askingThePortBeforeEveryAccessWouldDecryptPerDocument() {
-    RunCredentials credentials = new RunCredentials(port, Duration.ZERO, now::get);
+    RunCredentials credentials = new RunCredentials(port, Duration.ZERO, clock);
 
     accessAll(credentials);
 
@@ -129,11 +131,11 @@ class RunSecretAskCountTest {
   /** After: one ask per validity, 500 seconds at ten seconds each. */
   @Test
   void theRunCredentialsAskOncePerValidityAndDecryptTwiceEachTime() {
-    RunCredentials credentials = new RunCredentials(port, RunCredentials.VALIDITY, now::get);
+    RunCredentials credentials = new RunCredentials(port, RunCredentials.VALIDITY, clock);
 
     accessAll(credentials);
 
-    assertThat(Duration.ofNanos(now.get())).isEqualTo(Duration.ofSeconds(500));
+    assertThat(Duration.between(START, clock.instant())).isEqualTo(Duration.ofSeconds(500));
     assertThat(asks).hasValue(50);
     assertThat(decryptions).hasValue(100);
   }
@@ -141,7 +143,7 @@ class RunSecretAskCountTest {
   private void accessAll(RunCredentials credentials) {
     for (int access = 0; access < DOCUMENTS * ACCESSES_PER_DOCUMENT; access++) {
       credentials.check();
-      now.addAndGet(PER_ACCESS.toNanos());
+      clock.advance(PER_ACCESS);
     }
   }
 }

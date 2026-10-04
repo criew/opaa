@@ -29,8 +29,10 @@ import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.LibraryStorageQuotaService;
 import io.opaa.knowledge.SourceType;
 import io.opaa.sourceaccess.SourceRequestMeter;
+import io.opaa.test.MutableClock;
 import io.opaa.test.SourceTypes;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -118,9 +120,10 @@ class IndexingRunTemplateTest {
 
   // --- the resolved source -----------------------------------------------------------------
 
-  /** The secret is asked again on every read, never fixed at the start of the run. */
+  /** The secret is asked again once its reuse is over, never fixed at the start of the run. */
   @Test
   void theBodySeesTheResolvedSettingsWithoutTheSecretAndAsksForTheSecretOnDemand() {
+    MutableClock clock = new MutableClock(Instant.parse("2026-10-04T12:00:00Z"));
     SourceConnectionResolver resolver = mock(SourceConnectionResolver.class);
     when(resolver.resolve(library))
         .thenReturn(new SourceSettings(null, "https://quelle.example", null, "alt", false, null));
@@ -129,7 +132,14 @@ class IndexingRunTemplateTest {
     AtomicReference<SourceSettings> settings = new AtomicReference<>();
     List<String> secrets = new ArrayList<>();
 
-    templateWith(resolver)
+    new IndexingRunTemplate(
+            jobService,
+            eventRepository,
+            cleanupService,
+            documentRepository,
+            quotaService,
+            resolver,
+            clock)
         .run(
             jobId,
             library,
@@ -137,8 +147,9 @@ class IndexingRunTemplateTest {
             windowExecutor,
             run -> {
               settings.set(run.settings());
-              secrets.add(run.currentCredentials());
-              secrets.add(run.currentCredentials());
+              secrets.add(run.credentials().value());
+              clock.advance(RunCredentials.VALIDITY);
+              secrets.add(run.credentials().value());
               return ListingOutcome.partial();
             });
 
@@ -322,7 +333,7 @@ class IndexingRunTemplateTest {
             IndexingRunMode.FULL,
             fullListingExecutor,
             run -> {
-              run.currentCredentials();
+              run.credentials().check();
               return ListingOutcome.complete();
             });
 

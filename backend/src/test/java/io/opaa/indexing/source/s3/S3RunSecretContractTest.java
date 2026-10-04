@@ -12,6 +12,7 @@ import io.opaa.indexing.source.SourceSyncStateRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.LibraryFolderService;
 import io.opaa.knowledge.SourceType;
+import io.opaa.s3.S3Credentials;
 import io.opaa.s3.S3TestFixture;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.test.ProductionDocumentFormats;
@@ -19,6 +20,7 @@ import java.time.Clock;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CopyOnWriteArrayList;
 import org.junit.jupiter.api.BeforeEach;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
@@ -29,10 +31,12 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @Testcontainers(disabledWithoutDocker = true)
 class S3RunSecretContractTest extends RunSecretContract {
 
-  private static final int OBJECTS = 6;
+  private static final int OBJECTS = 10;
 
   private S3TestFixture fixture;
   private String bucket;
+  private S3Credentials renewed;
+  private final List<String> authorizations = new CopyOnWriteArrayList<>();
 
   @BeforeEach
   void fill() {
@@ -41,6 +45,8 @@ class S3RunSecretContractTest extends RunSecretContract {
     for (int i = 1; i <= OBJECTS; i++) {
       fixture.putObject(bucket, "akte-" + i + ".txt", "Akte " + i, "text/plain");
     }
+    renewed =
+        fixture.createUser(S3TestFixture.policyAllowing(bucket, "s3:ListBucket", "s3:GetObject"));
   }
 
   @Override
@@ -55,6 +61,17 @@ class S3RunSecretContractTest extends RunSecretContract {
         fixture.rootCredentials().stored(),
         false,
         ConnectorData.fromJson(S3SourceSettingsJson.write(s3)));
+  }
+
+  @Override
+  protected String renewedSecret() {
+    return renewed.stored();
+  }
+
+  @Override
+  protected boolean sawRenewedSecret() {
+    return authorizations.stream()
+        .anyMatch(header -> header.contains("Credential=" + renewed.accessKey() + "/"));
   }
 
   @Override
@@ -74,7 +91,12 @@ class S3RunSecretContractTest extends RunSecretContract {
     when(syncState.save(any())).thenAnswer(call -> call.getArgument(0));
     S3Properties properties = S3Properties.defaults();
     new S3IndexingExecutor(
-            new S3ClientFactory(properties, TargetAddressValidator.disabled()),
+            new S3ClientFactory(
+                properties,
+                TargetAddressValidator.disabled(),
+                request ->
+                    authorizations.add(
+                        request.firstMatchingHeader("Authorization").orElse("none"))),
             properties,
             ingestService,
             documentRepository,

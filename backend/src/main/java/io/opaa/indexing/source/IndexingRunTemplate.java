@@ -11,7 +11,7 @@ import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.LibraryStorageQuotaService;
 import io.opaa.sourceaccess.SourceRequestMeter;
-import java.time.Duration;
+import java.time.Clock;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -58,7 +58,7 @@ public class IndexingRunTemplate {
   private final DocumentRepository documentRepository;
   private final LibraryStorageQuotaService storageQuotaService;
   private final SourceConnectionResolver connectionResolver;
-  private final Duration secretValidity;
+  private final Clock clock;
 
   public IndexingRunTemplate(
       IndexingJobService indexingJobService,
@@ -74,10 +74,10 @@ public class IndexingRunTemplate {
         documentRepository,
         storageQuotaService,
         connectionResolver,
-        RunCredentials.VALIDITY);
+        Clock.systemUTC());
   }
 
-  /** {@code secretValidity} replaces {@link RunCredentials#VALIDITY} - for tests. */
+  /** {@code clock} measures how long a run reuses its secret - for tests. */
   public IndexingRunTemplate(
       IndexingJobService indexingJobService,
       IndexingRunEventRepository eventRepository,
@@ -85,8 +85,8 @@ public class IndexingRunTemplate {
       DocumentRepository documentRepository,
       LibraryStorageQuotaService storageQuotaService,
       SourceConnectionResolver connectionResolver,
-      Duration secretValidity) {
-    this.secretValidity = secretValidity;
+      Clock clock) {
+    this.clock = clock;
     this.indexingJobService = indexingJobService;
     this.eventRepository = eventRepository;
     this.staleDocumentCleanupService = staleDocumentCleanupService;
@@ -138,7 +138,7 @@ public class IndexingRunTemplate {
             events,
             documentRepository,
             storageQuotaService,
-            secretValidity);
+            clock);
     boolean failed = false;
     String failure = null;
     boolean incomplete = false;
