@@ -1,5 +1,6 @@
 package io.opaa.indexing.filesync;
 
+import io.opaa.indexing.job.RequestBudgetExhaustedException;
 import io.opaa.indexing.source.SourceFolderPath;
 import io.opaa.knowledge.SourceDocumentContext;
 import io.opaa.sourceaccess.SourceRequestMeter;
@@ -20,9 +21,10 @@ import java.util.TreeMap;
 
 /**
  * A {@link FileStore} over files held in memory - the reference implementation of the port. Files
- * are named by a slash-separated path within their container; {@code file_path} is {@code
- * mem://<container>/<name>}, the change feature a hash of the bytes. A store is reusable across
- * runs; its state is shared with the test that fills it.
+ * are named by a slash-separated path within their container and listed in name order; {@code
+ * file_path} is {@code mem://<container>/<name>}, the change feature a hash of the bytes. A store
+ * is reusable across runs; its state is shared with the test that fills it. With checkpoints, a
+ * page's checkpoint is the last name it delivered.
  */
 public final class InMemoryFileStore implements FileStore {
 
@@ -53,6 +55,10 @@ public final class InMemoryFileStore implements FileStore {
   private final Set<String> textExports = new HashSet<>();
   private boolean credentialsRejected;
   private boolean endAfterFirstPage;
+  private boolean checkpoints;
+  private int checkpointGeneration;
+  private int budget;
+  private AbsenceProof absenceProof = AbsenceProof.SINGLE_RUN;
 
   public InMemoryFileStore container(String key) {
     containers.computeIfAbsent(key, k -> new TreeMap<>());
@@ -96,6 +102,34 @@ public final class InMemoryFileStore implements FileStore {
     return this;
   }
 
+  public InMemoryFileStore acceptCredentials() {
+    credentialsRejected = false;
+    return this;
+  }
+
+  /** Every page carries a checkpoint, the last name it delivered, which a later run resumes. */
+  public InMemoryFileStore withCheckpoints() {
+    checkpoints = true;
+    return this;
+  }
+
+  /** From now on no checkpoint given so far is accepted. */
+  public InMemoryFileStore expireCheckpoints() {
+    checkpointGeneration++;
+    return this;
+  }
+
+  /** From now on a run refuses its requests beyond {@code budget}; {@code 0} for no bound. */
+  public InMemoryFileStore budget(int budget) {
+    this.budget = budget;
+    return this;
+  }
+
+  public InMemoryFileStore absenceProof(AbsenceProof absenceProof) {
+    this.absenceProof = absenceProof;
+    return this;
+  }
+
   /** {@code name} lies outside the library's patterns, in listing and single check alike. */
   public InMemoryFileStore deselect(String name) {
     deselected.add(name);
@@ -121,6 +155,11 @@ public final class InMemoryFileStore implements FileStore {
   public InMemoryFileStore withFolderMarkers() {
     folderMarkers = true;
     return this;
+  }
+
+  /** Whether the store reports folders and skips unchanged ones. */
+  public boolean reportsFolders() {
+    return folderMarkers;
   }
 
   /**
@@ -337,6 +376,65 @@ public final class InMemoryFileStore implements FileStore {
   @Override
   public FilePage list(FileContainer container, String continuation) throws FileAccessException {
     call("list " + container.key() + (continuation == null ? "" : " @" + continuation));
+    return continuation == null
+        ? page(container, 0, true)
+        : page(container, Integer.parseInt(continuation), false);
+  }
+
+  @Override
+  public FilePage resume(FileContainer container, String checkpoint) throws FileAccessException {
+    call("resume " + container.key() + " @" + checkpoint);
+    if (!checkpoints) {
+      throw new FileAccessException.CheckpointExpired("Ohne Fortsetzungspunkte.");
+    }
+    int colon = checkpoint.indexOf(':');
+    if (Integer.parseInt(checkpoint.substring(1, colon)) != checkpointGeneration) {
+      throw new FileAccessException.CheckpointExpired("Der Fortsetzungspunkt ist verfallen.");
+    }
+    String last = checkpoint.substring(colon + 1);
+    List<String> names = names(container);
+    int start = 0;
+    while (start < names.size() && names.get(start).compareTo(last) <= 0) {
+      start++;
+    }
+    return page(container, start, true);
+  }
+
+  @Override
+  public AbsenceProof absenceProof() {
+    return absenceProof;
+  }
+
+  /** The names a listing of {@code container} delivers, without those in unchanged folders. */
+  private List<String> names(FileContainer container) {
+    TreeMap<String, StoredFile> files = containers.get(container.key());
+    List<String> skipped = unchangedFolders(container, files);
+    return files.keySet().stream()
+        .filter(name -> skipped.stream().noneMatch(folder -> FileSync.covers(folder, of(name))))
+        .toList();
+  }
+
+  private List<String> unchangedFolders(
+      FileContainer container, TreeMap<String, StoredFile> files) {
+    Map<String, String> markers = folderMarkers ? folderMarkers(files) : Map.of();
+    Map<String, String> previous = recalled.getOrDefault(container.key(), Map.of());
+    List<String> skipped = new ArrayList<>();
+    markers.forEach(
+        (folder, marker) -> {
+          if (skipped.stream().noneMatch(outer -> FileSync.covers(outer, folder))
+              && marker.equals(previous.get(folder))) {
+            skipped.add(folder);
+          }
+        });
+    return skipped;
+  }
+
+  /**
+   * The page from {@code start} on; the first one of a listing or a resumption also names the
+   * unchanged and the listed folders.
+   */
+  private FilePage page(FileContainer container, int start, boolean reportFolders)
+      throws FileAccessException {
     if (unlistable.contains(container.key())) {
       throw new FileAccessException.ContainerUnlistable(
           "Der Bereich „" + container.key() + "“ darf nicht aufgelistet werden.");
@@ -361,14 +459,19 @@ public final class InMemoryFileStore implements FileStore {
         files.keySet().stream()
             .filter(name -> skipped.stream().noneMatch(folder -> FileSync.covers(folder, of(name))))
             .toList();
-    int start = continuation == null ? 0 : Integer.parseInt(continuation);
     int end = Math.min(start + pageSize, names.size());
     List<FileEntry> entries = new ArrayList<>();
     for (String name : names.subList(start, end)) {
       entries.add(entry(container, name));
     }
     String next = end < names.size() && !endAfterFirstPage ? Integer.toString(end) : null;
-    return start == 0 ? new FilePage(entries, next, skipped, listed) : new FilePage(entries, next);
+    String checkpoint =
+        checkpoints
+            ? "g" + checkpointGeneration + ":" + (end == 0 ? "" : names.get(end - 1))
+            : null;
+    return reportFolders
+        ? new FilePage(entries, next, checkpoint, skipped, listed)
+        : new FilePage(entries, next, checkpoint);
   }
 
   @Override
@@ -473,6 +576,9 @@ public final class InMemoryFileStore implements FileStore {
   public void close() {}
 
   private void call(String call) throws FileAccessException.RunEnding {
+    if (budget > 0 && meter.requests() >= budget) {
+      throw RequestBudgetExhaustedException.requests(budget);
+    }
     calls.add(call);
     meter.recordRequest();
     if (credentialsRejected) {

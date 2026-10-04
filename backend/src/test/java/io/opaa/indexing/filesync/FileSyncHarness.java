@@ -48,8 +48,8 @@ import java.util.UUID;
 
 /**
  * Runs {@link FileSync} over a {@link FileStore} inside the real run frame, with the document
- * bestand, the protocol and the resumption state held in memory across runs: what a connector's
- * store must satisfy is observable without a database.
+ * bestand, the protocol, the resumption state and the round's presence held in memory across runs:
+ * what a connector's store must satisfy is observable without a database.
  */
 public final class FileSyncHarness {
 
@@ -76,11 +76,17 @@ public final class FileSyncHarness {
 
   private final List<Document> stored = new ArrayList<>();
   private final List<StoredRevisit> revisits = new ArrayList<>();
+
+  /** The round each stored document was seen in; a removed document drops out with its row. */
+  private final Map<Document, UUID> presence = new java.util.IdentityHashMap<>();
+
   private final List<IndexingRunEvent> events = new ArrayList<>();
   private final List<String> ingested = new ArrayList<>();
   private final Set<String> failingIngests = new HashSet<>();
   private final Set<String> rejectedIngests = new HashSet<>();
   private Duration subtreeMemoryMaxAge;
+  private long maxEntriesPerRun = 1_000;
+  private int downloadConcurrency = 1;
   private Instant now = Instant.parse("2026-10-03T12:00:00Z");
   private final IndexingJobService jobService = mock(IndexingJobService.class);
   private final IndexingRunEventRepository eventRepository = mock(IndexingRunEventRepository.class);
@@ -152,7 +158,11 @@ public final class FileSyncHarness {
                               && FileSync.covers(path, d.getSourceHierarchyPath()))
                   .toList();
             });
-    doAnswer(invocation -> stored.remove((Document) invocation.getArgument(0)))
+    doAnswer(
+            invocation -> {
+              presence.remove((Document) invocation.getArgument(0));
+              return stored.remove((Document) invocation.getArgument(0));
+            })
         .when(documentRepository)
         .delete(any(Document.class));
     when(ingestService.ingest(any(), any()))
@@ -229,6 +239,48 @@ public final class FileSyncHarness {
             invocation -> {
               state = invocation.getArgument(0);
               return state;
+            });
+    when(syncStateRepository.recordPresence(any(), any(), any(), any()))
+        .thenAnswer(
+            invocation -> {
+              UUID scanId = invocation.getArgument(1);
+              java.util.Collection<String> paths = invocation.getArgument(3);
+              int written = 0;
+              for (Document document : stored) {
+                if (paths.contains(document.getFilePath())) {
+                  presence.put(document, scanId);
+                  written++;
+                }
+              }
+              return written;
+            });
+    when(syncStateRepository.findPresentPaths(any(), any()))
+        .thenAnswer(
+            invocation ->
+                stored.stream()
+                    .filter(d -> invocation.getArgument(1).equals(presence.get(d)))
+                    .map(Document::getFilePath)
+                    .toList());
+    when(syncStateRepository.findUnseen(any(), any(), any()))
+        .thenAnswer(
+            invocation ->
+                stored.stream()
+                    .filter(d -> d.getParentDocumentId() == null)
+                    .filter(d -> d.getSourceContainerKey() != null)
+                    .filter(d -> !invocation.getArgument(2).equals(presence.get(d)))
+                    .map(
+                        d ->
+                            (SourceSyncStateRepository.Place)
+                                new StoredPlace(
+                                    d.getSourceContainerKey(), d.getSourceHierarchyPath()))
+                    .distinct()
+                    .toList());
+    when(syncStateRepository.clearPresence(any()))
+        .thenAnswer(
+            invocation -> {
+              int cleared = presence.size();
+              presence.clear();
+              return cleared;
             });
     cleanupService =
         spy(
@@ -327,6 +379,7 @@ public final class FileSyncHarness {
   public FileSyncHarness deleteStored(String filePath) {
     Document document = stored(filePath).orElseThrow();
     stored.remove(document);
+    presence.remove(document);
     if (document.getSourceContainerKey() != null) {
       revisits.add(
           new StoredRevisit(
@@ -340,6 +393,20 @@ public final class FileSyncHarness {
   /** The revisits not yet consumed by a full sync. */
   public List<SourceSyncStateRepository.Revisit> revisits() {
     return List.copyOf(revisits);
+  }
+
+  private record StoredPlace(String containerKey, String hierarchyPath)
+      implements SourceSyncStateRepository.Place {
+
+    @Override
+    public String getContainerKey() {
+      return containerKey;
+    }
+
+    @Override
+    public String getHierarchyPath() {
+      return hierarchyPath;
+    }
   }
 
   private record StoredRevisit(UUID id, String containerKey, String hierarchyPath)
@@ -376,6 +443,23 @@ public final class FileSyncHarness {
   public FileSyncHarness healIngests() {
     failingIngests.clear();
     return this;
+  }
+
+  /** The entries a round may list before its run fails. */
+  public FileSyncHarness maxEntriesPerRun(long maxEntries) {
+    maxEntriesPerRun = maxEntries;
+    return this;
+  }
+
+  /** Downloads in flight while the listing goes on; {@code 1} is serial. */
+  public FileSyncHarness downloadConcurrency(int concurrency) {
+    downloadConcurrency = concurrency;
+    return this;
+  }
+
+  /** The paths of the stored documents the open round has seen. */
+  public List<String> presentPaths() {
+    return stored.stream().filter(presence::containsKey).map(Document::getFilePath).toList();
   }
 
   public FileSyncHarness subtreeMemoryMaxAge(Duration maxAge) {
@@ -423,14 +507,18 @@ public final class FileSyncHarness {
                       frame,
                       store,
                       new FileSyncSettings(
-                          MAX_FILE_SIZE, 1_000, 1, "test-download-", subtreeMemoryMaxAge),
+                          MAX_FILE_SIZE,
+                          maxEntriesPerRun,
+                          downloadConcurrency,
+                          "test-download-",
+                          subtreeMemoryMaxAge),
                       WORDING,
                       ingestService,
                       documentRepository,
                       folderService,
                       cleanupService,
                       state,
-                      syncStateRepository,
+                      new ScanJournal(syncStateRepository),
                       Clock.fixed(now, ZoneOffset.UTC),
                       ProductionDocumentFormats.supportedFormats())) {
             return body.run(sync);

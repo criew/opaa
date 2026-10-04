@@ -4,6 +4,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import io.opaa.indexing.filesync.ScanJournal;
 import io.opaa.indexing.source.ConnectorData;
 import io.opaa.indexing.source.IndexingRunTemplate;
 import io.opaa.indexing.source.RunSecretContract;
@@ -112,7 +113,7 @@ class S3RunSecretContractTest extends RunSecretContract {
             documentRepository,
             mock(LibraryFolderService.class),
             cleanupService,
-            syncState,
+            new ScanJournal(syncState),
             Clock.systemUTC(),
             template,
             ProductionDocumentFormats.supportedFormats())

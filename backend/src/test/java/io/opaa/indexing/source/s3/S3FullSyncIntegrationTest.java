@@ -7,6 +7,7 @@ import io.opaa.api.types.IndexingRunMode;
 import io.opaa.api.types.SystemRole;
 import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.indexing.document.DocumentIngestService;
+import io.opaa.indexing.filesync.ScanJournal;
 import io.opaa.indexing.job.IndexingEventCategory;
 import io.opaa.indexing.job.IndexingJob;
 import io.opaa.indexing.job.IndexingJobRepository;
@@ -192,7 +193,7 @@ class S3FullSyncIntegrationTest {
         documentRepository,
         folderService,
         cleanupService,
-        syncStateRepository,
+        new ScanJournal(syncStateRepository),
         Clock.systemUTC(),
         indexingRunTemplate,
         ProductionDocumentFormats.supportedFormats());

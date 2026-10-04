@@ -1,18 +1,22 @@
 package io.opaa.indexing.source.smb;
 
+import io.opaa.indexing.filesync.ExpiringCheckpoints;
 import io.opaa.indexing.filesync.FileStore;
-import io.opaa.indexing.filesync.FileStoreContract;
+import io.opaa.indexing.filesync.FileStoreResumptionContract;
+import io.opaa.indexing.source.RequestBudget;
+import io.opaa.sourceaccess.SourceRequestMeter;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
- * The file store contract against a real Samba ({@link SambaFixture}): each container is a folder
- * of the share, a denied listing is a folder the service account may not enter, a denied read files
- * it may not open, refused credentials a wrong password.
+ * The file store contract with resumption against a real Samba ({@link SambaFixture}): each
+ * container is a folder of the share, a denied listing is a folder the service account may not
+ * enter, a denied read files it may not open, refused credentials a wrong password, and every SMB
+ * message counts against a run's budget.
  */
 @Testcontainers(disabledWithoutDocker = true)
-class SmbFileStoreContractTest extends FileStoreContract {
+class SmbFileStoreContractTest extends FileStoreResumptionContract {
 
   private static final AtomicInteger SCENARIOS = new AtomicInteger();
 
@@ -25,6 +29,7 @@ class SmbFileStoreContractTest extends FileStoreContract {
     folders.forEach(folder -> samba.mkdirs(folder.substring(1)));
     return new Fixture() {
       private String credentials = samba.credentials();
+      private final ExpiringCheckpoints checkpoints = new ExpiringCheckpoints();
 
       @Override
       public void put(int container, String name, String text) {
@@ -67,8 +72,32 @@ class SmbFileStoreContractTest extends FileStoreContract {
       }
 
       @Override
+      public void move(int container, String from, String to) {
+        samba.move(path(container, from), path(container, to));
+      }
+
+      @Override
       public FileStore open(int pageSize) {
-        return SmbTestStores.open(samba.settings(credentials, folders), pageSize);
+        return checkpoints.wrap(SmbTestStores.open(samba.settings(credentials, folders), pageSize));
+      }
+
+      @Override
+      public FileStore open(int pageSize, int budget) {
+        return checkpoints.wrap(
+            SmbTestStores.open(
+                samba.settings(credentials, folders),
+                pageSize,
+                new RequestBudget(new SourceRequestMeter(), budget, null)));
+      }
+
+      @Override
+      public void expireCheckpoints() {
+        checkpoints.expire();
+      }
+
+      @Override
+      public int minimumBudget() {
+        return 40;
       }
 
       private String path(int container, String name) {

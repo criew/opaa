@@ -68,6 +68,7 @@ class FileSyncLongHierarchyPathIntegrationTest {
   @Autowired private VectorChunkStore vectorChunkStore;
   @Autowired private StaleDocumentCleanupService cleanupService;
   @Autowired private SourceSyncStateRepository syncStateRepository;
+  @Autowired private ScanJournal scanJournal;
   @Autowired private JdbcTemplate jdbcTemplate;
 
   private UUID userId;
@@ -210,7 +211,7 @@ class FileSyncLongHierarchyPathIntegrationTest {
                   folderService,
                   cleanupService,
                   state,
-                  syncStateRepository,
+                  scanJournal,
                   Clock.systemUTC(),
                   ProductionDocumentFormats.supportedFormats())) {
             return sync.run();

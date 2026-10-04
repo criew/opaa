@@ -17,6 +17,7 @@ import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.indexing.document.DocumentIngest;
 import io.opaa.indexing.document.DocumentIngestResult;
 import io.opaa.indexing.document.DocumentIngestService;
+import io.opaa.indexing.filesync.ScanJournal;
 import io.opaa.indexing.job.IndexingEventCategory;
 import io.opaa.indexing.job.IndexingJobService;
 import io.opaa.indexing.job.IndexingRunEventRepository;
@@ -122,7 +123,7 @@ class S3IndexingExecutorIntegrationTest {
         documentRepository,
         folderService,
         cleanupService,
-        syncStateRepository,
+        new ScanJournal(syncStateRepository),
         Clock.fixed(Instant.parse("2026-09-06T20:00:00Z"), ZoneOffset.UTC),
         new IndexingRunTemplate(
             indexingJobService,

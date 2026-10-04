@@ -1,7 +1,10 @@
 package io.opaa.indexing.source.nextcloud;
 
+import io.opaa.indexing.filesync.ExpiringCheckpoints;
 import io.opaa.indexing.filesync.FileStore;
 import io.opaa.indexing.filesync.FileStoreFolderContract;
+import io.opaa.indexing.source.RequestBudget;
+import io.opaa.sourceaccess.SourceRequestMeter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -14,7 +17,7 @@ import org.junit.jupiter.api.AfterEach;
  */
 class NextcloudFileStoreContractTest extends FileStoreFolderContract {
 
-  private static final List<String> FOLDERS = List.of("/Vertrag Eins", "/Vertrag Zwei");
+  static final List<String> FOLDERS = List.of("/Vertrag Eins", "/Vertrag Zwei");
 
   private FakeNextcloudServer server;
 
@@ -28,12 +31,19 @@ class NextcloudFileStoreContractTest extends FileStoreFolderContract {
   @Override
   protected Fixture fixture() throws Exception {
     server = new FakeNextcloudServer("/nextcloud");
+    return fixtureOver(server);
+  }
+
+  /** The fixture over {@code server}, with {@link #FOLDERS} as containers. */
+  static Fixture fixtureOver(FakeNextcloudServer server) {
     for (String folder : FOLDERS) {
       server.mkdir(folder.substring(1));
     }
     return new Fixture() {
       /** File ids by path, kept after a removal so a removed file can still be named. */
       private final Map<String, Long> fileIds = new HashMap<>();
+
+      private final ExpiringCheckpoints checkpoints = new ExpiringCheckpoints();
 
       @Override
       public void put(int container, String name, String text) {
@@ -85,8 +95,27 @@ class NextcloudFileStoreContractTest extends FileStoreFolderContract {
 
       @Override
       public FileStore open(int pageSize) {
-        return NextcloudTestStores.open(
-            NextcloudTestStores.settings(server.baseUrl(), server.credentials(), FOLDERS));
+        return checkpoints.wrap(
+            NextcloudTestStores.open(
+                NextcloudTestStores.settings(server.baseUrl(), server.credentials(), FOLDERS)));
+      }
+
+      @Override
+      public FileStore open(int pageSize, int budget) {
+        return checkpoints.wrap(
+            NextcloudTestStores.open(
+                NextcloudTestStores.settings(server.baseUrl(), server.credentials(), FOLDERS),
+                new RequestBudget(new SourceRequestMeter(), budget, null)));
+      }
+
+      @Override
+      public void expireCheckpoints() {
+        checkpoints.expire();
+      }
+
+      @Override
+      public boolean reportsFolders() {
+        return true;
       }
 
       private String path(int container, String name) {

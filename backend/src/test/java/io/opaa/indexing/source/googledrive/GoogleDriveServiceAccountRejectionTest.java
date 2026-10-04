@@ -13,6 +13,7 @@ import static org.mockito.Mockito.when;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.indexing.document.DocumentIngestResult;
 import io.opaa.indexing.document.DocumentIngestService;
+import io.opaa.indexing.filesync.ScanJournal;
 import io.opaa.indexing.job.IndexingJobService;
 import io.opaa.indexing.job.IndexingRunEventRepository;
 import io.opaa.indexing.maintenance.StaleDocumentCleanupService;
@@ -108,7 +109,7 @@ class GoogleDriveServiceAccountRejectionTest {
             documentRepository,
             mock(LibraryFolderService.class),
             mock(StaleDocumentCleanupService.class),
-            syncState,
+            new ScanJournal(syncState),
             Clock.systemUTC(),
             template,
             ProductionDocumentFormats.supportedFormats())

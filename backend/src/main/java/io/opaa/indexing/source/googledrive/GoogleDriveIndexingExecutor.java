@@ -5,6 +5,7 @@ import io.opaa.format.SupportedDocumentFormats;
 import io.opaa.indexing.document.DocumentIngestService;
 import io.opaa.indexing.filesync.FileSync;
 import io.opaa.indexing.filesync.FileSyncSettings;
+import io.opaa.indexing.filesync.ScanJournal;
 import io.opaa.indexing.maintenance.StaleDocumentCleanupService;
 import io.opaa.indexing.source.ConnectorData;
 import io.opaa.indexing.source.IndexingRun;
@@ -14,7 +15,6 @@ import io.opaa.indexing.source.ListingOutcome;
 import io.opaa.indexing.source.RequestBudget;
 import io.opaa.indexing.source.SourceIndexingExecutor;
 import io.opaa.indexing.source.SourceSyncState;
-import io.opaa.indexing.source.SourceSyncStateRepository;
 import io.opaa.indexing.source.VanishedDocumentPolicy;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
@@ -43,7 +43,7 @@ public class GoogleDriveIndexingExecutor implements SourceIndexingExecutor {
   private final DocumentRepository documentRepository;
   private final LibraryFolderService folderService;
   private final StaleDocumentCleanupService cleanupService;
-  private final SourceSyncStateRepository syncStateRepository;
+  private final ScanJournal journal;
   private final Clock clock;
   private final IndexingRunTemplate runTemplate;
   private final SupportedDocumentFormats supportedFormats;
@@ -54,7 +54,7 @@ public class GoogleDriveIndexingExecutor implements SourceIndexingExecutor {
       DocumentRepository documentRepository,
       LibraryFolderService folderService,
       StaleDocumentCleanupService cleanupService,
-      SourceSyncStateRepository syncStateRepository,
+      ScanJournal journal,
       Clock clock,
       IndexingRunTemplate runTemplate,
       SupportedDocumentFormats supportedFormats) {
@@ -63,7 +63,7 @@ public class GoogleDriveIndexingExecutor implements SourceIndexingExecutor {
     this.documentRepository = documentRepository;
     this.folderService = folderService;
     this.cleanupService = cleanupService;
-    this.syncStateRepository = syncStateRepository;
+    this.journal = journal;
     this.clock = clock;
     this.runTemplate = runTemplate;
     this.supportedFormats = supportedFormats;
@@ -96,8 +96,8 @@ public class GoogleDriveIndexingExecutor implements SourceIndexingExecutor {
     }
     Set<String> streams = streams(driveSettings);
     Duration interval = interval(driveSettings);
-    return syncStateRepository
-        .findByLibraryId(library.getId())
+    return journal
+        .find(library.getId())
         .filter(state -> state.canReadChanges(streams, interval, clock.instant()))
         .map(state -> IndexingRunMode.INCREMENTAL)
         .orElse(IndexingRunMode.FULL);
@@ -130,10 +130,7 @@ public class GoogleDriveIndexingExecutor implements SourceIndexingExecutor {
     }
     run.recordRequestCost(budget.meter());
     UUID libraryId = run.library().getId();
-    SourceSyncState state =
-        syncStateRepository
-            .findByLibraryId(libraryId)
-            .orElseGet(() -> new SourceSyncState(libraryId));
+    SourceSyncState state = journal.load(libraryId);
     try (DriveFileStore store = new DriveFileStore(api, settings, properties.pageSize());
         FileSync sync =
             new FileSync(
@@ -150,7 +147,7 @@ public class GoogleDriveIndexingExecutor implements SourceIndexingExecutor {
                 folderService,
                 cleanupService,
                 state,
-                syncStateRepository,
+                journal,
                 clock,
                 supportedFormats)) {
       return runMode == IndexingRunMode.INCREMENTAL ? sync.runChanges() : sync.run();
