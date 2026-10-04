@@ -170,6 +170,8 @@ val typeMappingsConfig = mapOf(
     "ConnectionOwnership" to "ConnectionOwnership",
     "ProfileDefaultKind" to "ProfileDefaultKind",
     "PersonalSecretForm" to "PersonalSecretForm",
+    "ConnectionLogEventType" to "ConnectionLogEventType",
+    "ConnectionEndCause" to "ConnectionEndCause",
 )
 
 tasks.withType<Test> {
@@ -277,6 +279,8 @@ tasks.named<org.openapitools.generator.gradle.plugin.tasks.GenerateTask>("openAp
         "ConnectionOwnership" to "io.opaa.api.types.ConnectionOwnership",
         "ProfileDefaultKind" to "io.opaa.api.types.ProfileDefaultKind",
         "PersonalSecretForm" to "io.opaa.api.types.PersonalSecretForm",
+        "ConnectionLogEventType" to "io.opaa.api.types.ConnectionLogEventType",
+        "ConnectionEndCause" to "io.opaa.api.types.ConnectionEndCause",
     ))
 }
 
