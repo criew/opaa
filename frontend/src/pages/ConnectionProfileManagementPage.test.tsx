@@ -2,6 +2,7 @@ import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { http, HttpResponse } from 'msw'
+import { mockSourceTypes } from '../mocks/libraryFixtures'
 import { server } from '../mocks/server'
 
 import {
@@ -53,12 +54,12 @@ const NEXTCLOUD: SourceTypeDescriptor = {
 /** Source types without profiles - set by the tests themselves, not taken from the global mock. */
 const WITHOUT_PROFILES: SourceTypeDescriptor[] = [
   {
-    type: 'CONFLUENCE',
-    displayName: 'Confluence',
+    type: 'FILESYSTEM',
+    displayName: 'Dateisystem',
     indexingRun: true,
     uploads: false,
-    pushIntake: true,
-    browsable: true,
+    pushIntake: false,
+    browsable: false,
     profileSupport: 'FORBIDDEN',
     profileRequired: false,
     signIns: [],
@@ -69,11 +70,11 @@ const WITHOUT_PROFILES: SourceTypeDescriptor[] = [
     locked: false,
   },
   {
-    type: 'S3',
-    displayName: 'S3-Objektspeicher',
+    type: 'GOOGLE_DRIVE',
+    displayName: 'Google Drive',
     indexingRun: true,
     uploads: false,
-    pushIntake: true,
+    pushIntake: false,
     browsable: true,
     profileSupport: 'FORBIDDEN',
     profileRequired: false,
@@ -215,7 +216,7 @@ describe('ConnectionProfileManagementPage', () => {
     const dialog = await screen.findByRole('dialog', { name: 'Zugang anlegen' })
     const create = within(dialog).getByRole('button', { name: 'Anlegen' })
     expect(create).toBeDisabled()
-    expect(within(dialog).getByRole('radio', { name: /Confluence/ })).toBeDisabled()
+    expect(within(dialog).getByRole('radio', { name: /Dateisystem/ })).toBeDisabled()
     await user.click(within(dialog).getByRole('radio', { name: /Nextcloud/ }))
     await user.type(within(dialog).getByLabelText(/^Name/), 'Zugang Nextcloud Partner')
     await user.type(within(dialog).getByLabelText(/^Server-Adresse/), 'https://partner.example.org')
@@ -279,6 +280,28 @@ describe('ConnectionProfileManagementPage', () => {
       sourceProxy: 'proxy.example.org:3128',
       sourceInsecureSsl: true,
     })
+  }, 20000)
+
+  it('offers neither proxy nor certificate switch for a file server and sends neither', async () => {
+    const smb = mockSourceTypes.find((type) => type.type === 'SMB')!
+    server.use(http.get('/api/v1/source-types', () => HttpResponse.json([NEXTCLOUD, smb])))
+    const user = userEvent.setup()
+    const sent = capturePosts()
+    renderWithProviders(<ConnectionProfileManagementPage />)
+
+    await user.click(await screen.findByRole('button', { name: 'Neuer Zugang' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Zugang anlegen' })
+    await user.click(within(dialog).getByRole('radio', { name: /Windows-Dateifreigabe/ }))
+    expect(within(dialog).queryByLabelText(/^Proxy/)).not.toBeInTheDocument()
+    expect(within(dialog).queryByLabelText('Zertifikatsprüfung aussetzen')).not.toBeInTheDocument()
+    await user.type(within(dialog).getByLabelText(/^Name/), 'Zugang Dateiserver')
+    await user.type(within(dialog).getByLabelText(/^Server-Adresse/), 'smb://dateiserver.example')
+    await user.click(within(dialog).getByLabelText(/^Anmeldeart/))
+    await user.click(await screen.findByRole('option', { name: 'Persönliches Geheimnis' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Anlegen' }))
+
+    await screen.findByRole('row', { name: /Zugang Dateiserver/ })
+    expect(sent[0]).toMatchObject({ sourceProxy: null, sourceInsecureSsl: false })
   }, 20000)
 
   it('offers only the ownerships the chosen sign-in admits', async () => {

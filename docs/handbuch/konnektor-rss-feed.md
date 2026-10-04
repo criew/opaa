@@ -55,10 +55,11 @@ Detailseiten abruft und dass der Betreiber des Feeds bestimmt, welche Adressen d
 **Über einen Zugang** (siehe [Indexierung, Zugänge](indexierung.md#zugänge)): wie beim
 [Webverzeichnis](konnektor-http-directory.md#2-quellkonfiguration) **ohne Anmeldung** oder mit
 einem **persönlichen Geheimnis** der Bibliothek; die Feed-Adresse liegt unter der Server-Adresse
-des Zugangs. Zugangsdaten und Proxy des Zugangs gelten nur für dessen Server-Adresse: Eine
-Detailseite oder Anlage auf einem anderen Server ruft OPAA weiter ab, aber ohne Zugangsdaten
-(Abschnitt 3). Deshalb nennt die Profilpflicht für Feeds diese Einschränkung, bevor sie
-eingeschaltet wird.
+des Zugangs. Der Proxy des Zugangs gilt für jeden Abruf des Laufs, auch für Detailseiten und
+Anlagen auf anderen Servern. Zugangsdaten und eine ausgesetzte Zertifikatsprüfung gelten dagegen
+nur für den Ursprung des Feeds: Eine Detailseite oder Anlage auf einem anderen Server ruft OPAA
+weiter ab, aber ohne Zugangsdaten und mit Zertifikatsprüfung (Abschnitt 3). Deshalb nennt die
+Profilpflicht für Feeds diese Einschränkung, bevor sie eingeschaltet wird.
 
 ## 3. Zugriff
 
@@ -66,6 +67,7 @@ eingeschaltet wird.
 |---|---|
 | User-Agent | gemeinsam für alle Netzkonnektoren konfigurierbar (`opaa.indexing.http.user-agent`), Standard `OPAA-Indexer/1.0`. Bewusst wahrheitsgemäß, keine Browser-Imitation. |
 | Zugangsdaten und ausgesetzte Zertifikatsprüfung | wirken **nur auf dem Ursprung des Feeds**. Eine Detailseite oder Anlage auf einem anderen Host bekommt weder Zugangsdaten noch gelockerte Prüfung. |
+| Proxy | gilt für jeden Abruf des Laufs: Feed, Detailseiten und Anlagen, auch auf anderen Hosts. |
 | Wartezeit | konfigurierbar, Standard eine Sekunde vor jeder Detailseite und vor jedem Anlagen-Download. Nicht vor dem Feed selbst. |
 | Timeouts | 30 s Verbindungsaufbau, 60 s Feed, 30 s Detailseite, 120 s Anlage |
 | Wiederholung | nur bei HTTP 429: Feed, Detailseite und Anlage warten die in `Retry-After` genannte Zeit (gedeckelt auf `opaa.indexing.http.max-retry-after`, ohne Header fünf Sekunden) und wiederholen bis zu `opaa.indexing.http.max-rate-limit-retries`-mal; erst danach greift die Zurückstellung (Abschnitt 6). Jeder andere Fehlschlag wird nicht wiederholt, sondern zurückgestellt |

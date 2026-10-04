@@ -553,8 +553,10 @@ dazu die Anmeldearten, die er anbietet (ohne Anmeldung, persönliches Geheimnis,
 Client-Credentials, Dienstkonto-Schlüssel), je mit den zulässigen Besitzarten, die zulässige
 Server-Adresse und die Einstellungen, die ein Zugang vorgeben darf. Ein Zugang wählt eine
 Anmeldeart. Pflicht sind Zugänge genau bei einer Quellart mit OAuth oder Client-Credentials, weil
-die App-Registrierung nur am Zugang steht. Verboten sind sie genau bei einer Quellart, die nichts
-Entferntes liest oder Uploads annimmt. Die mitgelieferten Konnektoren melden:
+die App-Registrierung nur am Zugang steht. Verboten sind sie bei einer Quellart, die nichts
+Entferntes liest oder Uploads annimmt, und bei einer, die sich mit dem Dienstkonto-Schlüssel der
+Bibliothek anmeldet (heute Google Drive); jede andere entfernte Quellart lässt sie zu. Die
+mitgelieferten Konnektoren melden:
 
 | Quellart | Zugänge | Anmeldearten (Besitz: Bibliothek) | Vorgaben des Zugangs | Server-Adresse |
 |---|---|---|---|---|
@@ -588,7 +590,8 @@ steht in ihren Kapiteln.
   lösen sie vom Zugang. **Zuordnen übernimmt die Vorgaben des Zugangs:** Eigener Proxy, ausgesetzte
   Zertifikatsprüfung und eigene Werte für vorgegebene Einstellungen entfallen ohne Rückfrage, bei
   einer Anmeldeart ohne persönliches Geheimnis auch die Zugangsdaten. Eine Adresse unter dem
-  bisherigen Zugang wandert dabei unter den neuen. **Lösen schreibt die Vorgaben in die
+  bisherigen Zugang wandert dabei unter den neuen; was der bisherige Zugang vorgab und der neue
+  nicht vorgibt, behält sie als eigene Einstellung. **Lösen schreibt die Vorgaben in die
   Bibliothek:** Vorgegebene Einstellungen, Proxy und Zertifikatsprüfung des Zugangs werden ihre
   eigenen, sie läuft also unverändert weiter.
 - **Der Konnektor prüft jeden Übergang.** Ändert Zuordnen, Wechseln oder Lösen, womit die Bibliothek
@@ -613,7 +616,7 @@ steht in ihren Kapiteln.
 |---|---|
 | Server-Adresse ändern | Nach Bestätigung werden alle Geheimnisse der Bibliotheken auf dem Zugang verworfen; ihre Adressen wandern unter die neue Server-Adresse. Vorher nennt OPAA die Zahl der betroffenen Verbindungen und Bibliotheken |
 | Client-ID, Mandant, Scopes oder Anmeldeart ändern | wie oben, ohne Adresswechsel: alle Verbindungen müssen neu verbunden werden |
-| Vorgaben, Proxy oder Zertifikatsprüfung ändern | Die Bibliotheken behalten ihre Geheimnisse, es sei denn, eine Vorgabe ändert, woran der Konnektor sie bindet; dann gilt die Bestätigung wie oben für die Betroffenen |
+| Vorgaben, Proxy oder Zertifikatsprüfung ändern | Die Bibliotheken behalten ihre Geheimnisse, es sei denn, eine Vorgabe ändert, woran der Konnektor sie bindet; dann gilt die Bestätigung wie oben für die Betroffenen. Entfällt eine Vorgabe, wird ihr bisheriger Wert zur eigenen Einstellung jeder Bibliothek auf dem Zugang; sie laufen unverändert weiter |
 | nur ein neues Client-Secret zur selben Client-ID | keine; die Verbindungen bleiben |
 | „Alle Verbindungen trennen“ (Notabschaltung) | alle Geheimnisse sofort verworfen, der Zugang bleibt |
 | Zugang löschen | alle Geheimnisse verworfen; die Bibliotheken bleiben mit Bestand und dem Hinweis „Zugang entfernt“ stehen |

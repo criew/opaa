@@ -253,11 +253,7 @@ public class S3SourceConnector
     }
     S3SourceSettings settings = settingsOf(requested.connectorSettings());
     requireReachableTargets(
-        normalizedUrl,
-        requested.sourceProxy(),
-        requested.sourceInsecureSsl(),
-        requested.sourceCredentials(),
-        settings);
+        normalizedUrl, requested.sourceProxy(), requested.sourceCredentials(), settings);
     return requested
         .withSourceUrl(normalizedUrl)
         .withConnectorSettings(S3SourceSettingsJson.toData(settings));
@@ -284,11 +280,7 @@ public class S3SourceConnector
     if (requested.connectorSettings() != null) {
       S3SourceSettings settings = settingsOf(requested.connectorSettings());
       requireReachableTargets(
-          stored.sourceUrl(),
-          stored.sourceProxy(),
-          stored.sourceInsecureSsl(),
-          stored.sourceCredentials(),
-          settings);
+          stored.sourceUrl(), stored.sourceProxy(), stored.sourceCredentials(), settings);
       return requested.withConnectorSettings(S3SourceSettingsJson.toData(settings));
     }
     return requested;
@@ -297,19 +289,20 @@ public class S3SourceConnector
   /**
    * The hosts a library will contact pass the target validation when its configuration is saved; a
    * refusal or an unresolvable host is a 400 with the validator's own German message, reported as a
-   * refused target, not as a setting.
+   * refused target, not as a setting. The check needs no credentials and runs without them (as
+   * after a profile's new server address); given ones must still parse.
    */
   private void requireReachableTargets(
       String normalizedUrl,
       String sourceProxy,
-      boolean sourceInsecureSsl,
       String sourceCredentials,
       S3SourceSettings s3Settings) {
-    S3Credentials credentials;
-    try {
-      credentials = S3Credentials.parse(sourceCredentials);
-    } catch (S3Credentials.InvalidCredentialsFormatException e) {
-      throw new ValidationException(e.getMessage());
+    if (sourceCredentials != null) {
+      try {
+        S3Credentials.parse(sourceCredentials);
+      } catch (S3Credentials.InvalidCredentialsFormatException e) {
+        throw new ValidationException(e.getMessage());
+      }
     }
     ProxyAndCredentials proxy;
     try {
@@ -317,17 +310,12 @@ public class S3SourceConnector
     } catch (ProxyAndCredentials.InvalidProxyConfigurationException e) {
       throw new ValidationException(e.getMessage());
     }
-    S3Connection connection =
-        new S3Connection(
-            URI.create(normalizedUrl),
-            s3Settings.effectiveRegion(),
-            s3Settings.pathStyle(),
-            credentials,
-            proxy.proxyHost(),
-            proxy.proxyPort(),
-            sourceInsecureSsl);
     try {
-      clientFactory.validateTargets(connection, s3Settings.scopes());
+      clientFactory.validateTargets(
+          URI.create(normalizedUrl),
+          proxy.proxyHost(),
+          s3Settings.pathStyle(),
+          s3Settings.scopes());
     } catch (S3AccessException e) {
       throw new SourceTargetRefusedException(e.getMessage());
     }
@@ -347,15 +335,20 @@ public class S3SourceConnector
   }
 
   /**
-   * The scopes are the scope every reader sees, and the record carries no credential. A stored
-   * document the record no longer accepts is left out rather than failing the whole read.
+   * A manager sees the whole record, every reader only the scopes - region, addressing style and
+   * patterns are administration detail; the record carries no credential. A stored document the
+   * record no longer accepts is left out rather than failing the whole read.
    */
   @Override
   public ConnectorData settingsView(
       KnowledgeLibrary library, ConnectorData stored, boolean manager) {
     try {
       S3SourceSettings settings = S3SourceSettingsJson.of(stored);
-      return settings == null ? null : S3SourceSettingsJson.toData(settings);
+      if (settings == null) {
+        return null;
+      }
+      ConnectorData whole = S3SourceSettingsJson.toData(settings);
+      return manager ? whole : ConnectorData.of(Map.of("scopes", whole.get("scopes")));
     } catch (S3Scope.InvalidS3ScopeException
         | S3SourceSettings.InvalidS3SourceSettingsException e) {
       log.warn(

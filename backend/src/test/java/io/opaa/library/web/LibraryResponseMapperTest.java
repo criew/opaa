@@ -571,8 +571,9 @@ class LibraryResponseMapperTest {
                 null,
                 s3Connector.settingsView(s3, ConnectorData.storedIn(s3), false)));
 
-    assertThat(response.getSourceSettings()).containsEntry("region", "eu-central-1");
-    assertThat(response.toString()).doesNotContain("hochgeheim");
+    assertThat(response.getSourceSettings()).containsOnlyKeys("scopes");
+    assertThat(response.getSourceSettings().toString()).contains("protokolle");
+    assertThat(response.toString()).doesNotContain("hochgeheim").doesNotContain("eu-central-1");
 
     KnowledgeLibrary upload =
         KnowledgeLibrary.ownedByUser(UUID.randomUUID(), "Upload", null, UUID.randomUUID());

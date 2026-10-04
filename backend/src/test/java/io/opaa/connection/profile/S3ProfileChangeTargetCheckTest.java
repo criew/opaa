@@ -2,6 +2,10 @@ package io.opaa.connection.profile;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -20,9 +24,9 @@ import io.opaa.indexing.source.s3.S3ClientFactory;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.permission.CapabilityService;
-import io.opaa.s3.S3Connection;
 import io.opaa.security.CredentialsEncryptor;
 import io.opaa.test.SourceTypes;
+import java.net.URI;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -34,7 +38,6 @@ import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
 import org.springframework.test.util.ReflectionTestUtils;
 
 /**
@@ -107,21 +110,32 @@ class S3ProfileChangeTargetCheckTest {
 
     Answers answers = service.check(profile.getId(), region("eu-west-1"), false);
 
-    ArgumentCaptor<S3Connection> checked = ArgumentCaptor.forClass(S3Connection.class);
-    verify(clientFactory, times(2)).validateTargets(checked.capture(), any());
-    assertThat(checked.getAllValues())
-        .allSatisfy(
-            connection -> {
-              assertThat(connection.region()).isEqualTo("eu-west-1");
-              assertThat(connection.pathStyle()).isTrue();
-            });
+    verify(clientFactory, times(2))
+        .validateTargets(eq(URI.create(SERVER)), isNull(), eq(true), any());
 
     service.update(ADMIN, profile.getId(), region("eu-west-1"), null, false, answers);
 
-    verify(clientFactory, times(2)).validateTargets(any(), any());
+    verify(clientFactory, times(2)).validateTargets(any(URI.class), any(), anyBoolean(), any());
     for (KnowledgeLibrary library : List.of(first, second, third)) {
       verify(syncStates).deleteByLibraryId(library.getId());
     }
+    assertThat(profile.getConnectorSettings()).contains("eu-west-1");
+  }
+
+  /**
+   * A library without a secret - as after a new server address - still passes the target check: it
+   * needs no credentials, so the change is not refused as a setting.
+   */
+  @Test
+  void aLibraryWithoutASecretPassesTheTargetCheck() throws Exception {
+    KnowledgeLibrary library = library("akten");
+    library.dropSourceCredentials();
+
+    assertThat(service.preview(profile.getId(), region("eu-west-1")).rejections()).isEmpty();
+    service.update(ADMIN, profile.getId(), region("eu-west-1"), null, false);
+
+    verify(clientFactory, atLeastOnce())
+        .validateTargets(eq(URI.create(SERVER)), isNull(), eq(true), any());
     assertThat(profile.getConnectorSettings()).contains("eu-west-1");
   }
 

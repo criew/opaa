@@ -127,6 +127,43 @@ class ConfluenceProfileIntegrationTest {
         .andExpect(jsonPath("$.code").value("CONNECTION_PROFILE_CHANGE_REJECTED"));
   }
 
+  /**
+   * Regression guard: a profile dropping its edition default leaves its libraries the edition as
+   * their own - they run, show their spaces and stay editable.
+   */
+  @Test
+  void aDroppedEditionDefaultStaysWithTheLibraries() throws Exception {
+    UUID profile = api.createProfile(profileJson("DATA_CENTER"));
+    UUID library = api.createLibrary(libraryJson(profile, ""));
+
+    mockMvc
+        .perform(
+            as(ADMIN, put(PROFILES + "/" + profile))
+                .content(
+                    """
+                    {"name": "Zugang Wiki ohne Vorgabe", "serverUrl": "%s",
+                     "authMethod": "PERSONAL_SECRET", "ownership": "LIBRARY"}
+                    """
+                        .formatted(dataCenter.baseUrl())))
+        .andExpect(status().isOk());
+
+    assertThat(api.stored(library, "source_settings")).contains("DATA_CENTER");
+    mockMvc
+        .perform(as(ADMIN, get("/api/v1/libraries/" + library)))
+        .andExpect(jsonPath("$.sourceSettings.edition").value("DATA_CENTER"))
+        .andExpect(jsonPath("$.sourceSettings.spaces[0].key").value("HR"));
+    mockMvc
+        .perform(
+            as(ADMIN, put("/api/v1/libraries/" + library))
+                .content(
+                    """
+                    {"name": "Wiki", "sourceSettings": {"spaces": [{"key": "HR", "name": "Personal"}]}}
+                    """))
+        .andExpect(status().isOk());
+    String status = api.run(library);
+    assertThat(JsonPath.<String>read(status, "$.status")).as(status).isEqualTo("COMPLETED");
+  }
+
   @Test
   void aLibraryOfAnotherEditionIsNotConnectedAndReleasingKeepsTheEdition() throws Exception {
     UUID profile = api.createProfile(profileJson("DATA_CENTER"));

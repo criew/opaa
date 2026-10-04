@@ -261,6 +261,7 @@ public class ConnectionProfileService {
           secrets.discard(new LibraryOwned(library.getId()));
         }
       }
+      transitions.keepDefaults(move);
       libraries.save(library);
     }
     if (change.discardsAll()) {
