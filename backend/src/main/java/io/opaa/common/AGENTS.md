@@ -1,13 +1,15 @@
 # Modul foundation
 
-Pakete (`io.opaa.*`): common, observability, organization, security, ratelimit, sourceaccess, s3.
+Pakete (`io.opaa.*`): common, observability, organization, security, ratelimit, sourceaccess, s3,
+msgraph.
 Ergänzt `backend/AGENTS.md`.
 
 ## Zweck und Grenze
 
 Die unterste Schicht: gemeinsame Ausnahmen und Hilfen, die Organisation als Mandantengrenze,
 Verschlüsselung und Schlüsselableitung, Ratenbegrenzung, Metriken, der Zugriff auf konfigurierte
-Quellen (HTTP) und die S3-Clientschicht. foundation hängt von keinem anderen Modul ab.
+Quellen (HTTP), die S3-Clientschicht und der Microsoft-Graph-Client. foundation hängt von keinem
+anderen Modul ab.
 
 ## Invarianten und Stolpersteine
 
@@ -20,6 +22,10 @@ Quellen (HTTP) und die S3-Clientschicht. foundation hängt von keinem anderen Mo
   Zieladressprüfung, Timeouts, Proxy, gelockertes TLS und Wiederholungen sind dort bewusst
   nachgebaut, mit einem Test je Stück. Fehler werden zu deutschen `S3AccessException`s ohne
   Zugangsdaten. Seine Nutzer (S3-Konnektor, Originalablage) kennt das Paket nicht.
+- **`io.opaa.msgraph` folgt keiner Adresse von Graph:** Folgeseiten nur als Token von Graphs eigenem
+  Ursprung, die Adresse baut der Client selbst; Downloads auf den vorab signierten Host nur über
+  https und ohne `Authorization`. Diese Adresse trägt ein Kurzzeit-Token und erscheint in keinem
+  Log und keiner Meldung.
 - **Zwei getrennte Schlüssel für Geheimnisse:** `CredentialsEncryptor` für Quell-Zugangsdaten
   (`OPAA_CREDENTIALS_ENCRYPTION_KEY`), `SettingsEncryptor` für Geheimnisse verwalteter Einstellungen
   (`OPAA_SETTINGS_ENCRYPTION_KEY`). Beide prüfen den Schlüssel erst beim ersten Gebrauch.
@@ -44,7 +50,7 @@ Quellen (HTTP) und die S3-Clientschicht. foundation hängt von keinem anderen Mo
 ```bash
 ./gradlew test --tests 'io.opaa.common.*' --tests 'io.opaa.security.*' \
   --tests 'io.opaa.sourceaccess.*' --tests 'io.opaa.ratelimit.*' --tests 'io.opaa.s3.*' \
-  --tests 'io.opaa.observability.*' --tests 'io.opaa.architecture.*'
+  --tests 'io.opaa.msgraph.*' --tests 'io.opaa.observability.*' --tests 'io.opaa.architecture.*'
 ```
 
 Die S3-Tests brauchen Docker und werden ohne Docker übersprungen. Bei Schemaänderungen: neue Datei
