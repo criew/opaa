@@ -80,7 +80,22 @@ class InMemoryFileStoreContractTest extends FileStoreContract {
 
       @Override
       public FileStore open(int pageSize) {
-        return store.pageSize(pageSize);
+        return store.pageSize(pageSize).budget(0).reset();
+      }
+
+      @Override
+      public FileStore open(int pageSize, int budget) {
+        return store.pageSize(pageSize).budget(budget).reset();
+      }
+
+      @Override
+      public void expireCheckpoints() {
+        store.expireCheckpoints();
+      }
+
+      @Override
+      public boolean reportsFolders() {
+        return store.reportsFolders();
       }
     };
   }

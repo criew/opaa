@@ -35,6 +35,7 @@ import io.opaa.indexing.source.ConnectorData;
 import io.opaa.indexing.source.IndexingRunTemplate;
 import io.opaa.indexing.source.LibrarySourceConnectionResolver;
 import io.opaa.indexing.source.RunFailureCategory;
+import io.opaa.indexing.source.ScanJournal;
 import io.opaa.indexing.source.SourceSyncState;
 import io.opaa.indexing.source.SourceSyncStateRepository;
 import io.opaa.indexing.source.VanishedDocumentPolicy;
@@ -142,7 +143,7 @@ class S3IndexingExecutorTest {
         documentRepository,
         folderService,
         cleanupService,
-        syncStateRepository,
+        new ScanJournal(syncStateRepository),
         Clock.fixed(Instant.parse("2026-09-06T20:00:00Z"), ZoneOffset.UTC),
         new IndexingRunTemplate(
             indexingJobService,

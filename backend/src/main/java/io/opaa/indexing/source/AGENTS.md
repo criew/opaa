@@ -37,7 +37,7 @@ von foundation, format und knowledge ab.
 - **Der Laufrahmen ist `IndexingRunTemplate`:** Der Körper zählt nur die Quelle auf und meldet
   einen `ListingOutcome`; Fortschritt, Protokoll und Abgleich durch Abwesenheit besitzt der Rahmen.
 - **Dateiablagen** implementieren `FileStore` (mit Änderungsprotokoll auch `ChangeFeed`) aus
-  `indexing.filesync`; Abgleich und Änderungslauf besitzt `FileSync`. Tests: `FileStoreContract`.
+  `indexing.filesync`; Abgleich über Läufe besitzt `FileSync`. Tests: `FileStore(Resumption)Contract`.
 - **Push-Adapter** (`confluence.webhook`, `s3.events`) über ihrem Konnektor, eigener Port.
 - **Netzzugriff:** HTTP (auch WebDAV) über `io.opaa.sourceaccess`, S3 über `io.opaa.s3`, SMB nur
   über `smb.SmbShareClient`. Testdoppel: `S3TestFixture`, `FakeNextcloudServer`, `SambaFixture`.

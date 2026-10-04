@@ -14,6 +14,7 @@ import static org.mockito.Mockito.when;
 import io.opaa.indexing.document.DocumentIngestResult;
 import io.opaa.indexing.source.IndexingRunTemplate;
 import io.opaa.indexing.source.RunSecretContract;
+import io.opaa.indexing.source.ScanJournal;
 import io.opaa.indexing.source.SourceSettings;
 import io.opaa.indexing.source.SourceSyncStateRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
@@ -130,7 +131,7 @@ class NextcloudRunSecretContractTest extends RunSecretContract {
             documentRepository,
             mock(LibraryFolderService.class),
             cleanupService,
-            syncState,
+            new ScanJournal(syncState),
             Clock.systemUTC(),
             template,
             ProductionDocumentFormats.supportedFormats())

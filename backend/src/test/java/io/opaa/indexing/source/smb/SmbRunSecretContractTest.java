@@ -10,6 +10,7 @@ import io.opaa.indexing.source.IndexingRunTemplate;
 import io.opaa.indexing.source.RequestBudget;
 import io.opaa.indexing.source.RunCredentials;
 import io.opaa.indexing.source.RunSecretContract;
+import io.opaa.indexing.source.ScanJournal;
 import io.opaa.indexing.source.Secret;
 import io.opaa.indexing.source.SourceSettings;
 import io.opaa.indexing.source.SourceSyncStateRepository;
@@ -130,7 +131,7 @@ class SmbRunSecretContractTest extends RunSecretContract {
             documentRepository,
             mock(LibraryFolderService.class),
             cleanupService,
-            syncState,
+            new ScanJournal(syncState),
             Clock.systemUTC(),
             template,
             ProductionDocumentFormats.supportedFormats())

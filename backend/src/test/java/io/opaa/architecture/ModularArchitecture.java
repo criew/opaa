@@ -378,8 +378,9 @@ public final class ModularArchitecture {
 
   /**
    * The repository of the document rows, relative to the root. Only {@link #DOCUMENT_DELETERS} call
-   * one of its {@code delete…} methods, so every deletion outside a run passes the one place that
-   * notes the revisit for the folder memory of the file sync (ADR-0040).
+   * one of its {@code delete…} methods or a modifying query that deletes, so every deletion outside
+   * a run passes the one place that notes the revisit for the folder memory of the file sync
+   * (ADR-0040).
    */
   static final String DOCUMENT_REPOSITORY = "knowledge.DocumentRepository";
 
@@ -392,6 +393,23 @@ public final class ModularArchitecture {
           "library.LibraryDocumentService",
           "library.KnowledgeLibraryService",
           "indexing.maintenance.StaleDocumentCleanupService");
+
+  /** The cleanup service, relative to the root, whose public methods remove documents in a run. */
+  static final String CLEANUP_SERVICE = "indexing.maintenance.StaleDocumentCleanupService";
+
+  /** The port the run frame reconciles through, relative to the root. */
+  static final String RECONCILER = "indexing.source.VanishedDocumentReconciler";
+
+  /** The methods of {@link #CLEANUP_SERVICE} and {@link #RECONCILER} that remove documents. */
+  static final Set<String> CLEANUP_METHODS =
+      Set.of("reconcile", "cleanupVanished", "removeWithAttachments");
+
+  /** The run frame and the run bodies that remove through the cleanup service. */
+  static final Set<String> RUN_REMOVERS =
+      Set.of(
+          "indexing.source.IndexingRunTemplate",
+          "indexing.filesync.FileSync",
+          "indexing.source.confluence.ConfluenceIndexingExecutor");
 
   /** Every direct subpackage of this one, relative to the root, is a connector. */
   static final String CONNECTOR_PARENT = "indexing.source";
@@ -1366,8 +1384,9 @@ public final class ModularArchitecture {
   }
 
   /**
-   * Calls of a {@code delete…} method of {@link #DOCUMENT_REPOSITORY}, also by method reference,
-   * outside {@link #DOCUMENT_DELETERS} and the classes nested in them.
+   * Calls of a {@code delete…} method of {@link #DOCUMENT_REPOSITORY}, or of one whose modifying
+   * query deletes, also by method reference, outside {@link #DOCUMENT_DELETERS} and the classes
+   * nested in them.
    */
   ArchRule onlyTheKnownClassesDeleteDocuments() {
     return noClasses()
@@ -1380,11 +1399,53 @@ public final class ModularArchitecture {
             DescribedPredicate.describe(
                 "call a delete method of " + DOCUMENT_REPOSITORY,
                 access ->
-                    access.getName().startsWith("delete")
-                        && DOCUMENT_REPOSITORY.equals(relativeName(access.getTargetOwner()))))
+                    DOCUMENT_REPOSITORY.equals(relativeName(access.getTargetOwner()))
+                        && (access.getName().startsWith("delete")
+                            || (access.getTarget() instanceof CodeUnitAccessTarget target
+                                && target.resolveMember().filter(this::deletesRows).isPresent()))))
         .because(
             "a document deleted outside a run leaves a revisit, or the folder memory keeps the"
                 + " folder that would bring it back")
+        .allowEmptyShould(true);
+  }
+
+  /** A repository method annotated as modifying whose query deletes. */
+  private boolean deletesRows(JavaCodeUnit method) {
+    return method.isAnnotatedWith("org.springframework.data.jpa.repository.Modifying")
+        && method
+            .tryGetAnnotationOfType("org.springframework.data.jpa.repository.Query")
+            .flatMap(query -> query.get("value"))
+            .map(value -> value.toString().stripLeading().toLowerCase(java.util.Locale.ROOT))
+            .filter(query -> query.startsWith("delete"))
+            .isPresent();
+  }
+
+  /**
+   * Calls of a removing method of {@link #CLEANUP_SERVICE} or {@link #RECONCILER}, also by method
+   * reference, outside {@link #RUN_REMOVERS}, the classes nested in them and the service itself.
+   */
+  ArchRule onlyTheRunRemovesThroughTheCleanupService() {
+    return noClasses()
+        .that(
+            DescribedPredicate.describe(
+                "are not one of " + RUN_REMOVERS,
+                javaClass -> {
+                  String name = relativeName(topLevel(javaClass));
+                  return !RUN_REMOVERS.contains(name) && !CLEANUP_SERVICE.equals(name);
+                }))
+        .should()
+        .accessTargetWhere(
+            DescribedPredicate.describe(
+                "call a removing method of " + CLEANUP_SERVICE,
+                access -> {
+                  String owner = relativeName(access.getTargetOwner());
+                  return (CLEANUP_SERVICE.equals(owner) || RECONCILER.equals(owner))
+                      && CLEANUP_METHODS.contains(access.getName());
+                }))
+        .because(
+            "only a run carries the invariants of a removal - a complete listing for the"
+                + " reconciliation, a positive finding for a single document - and a deletion"
+                + " outside it leaves no revisit")
         .allowEmptyShould(true);
   }
 
@@ -1416,6 +1477,7 @@ public final class ModularArchitecture {
         privateAssetsAreAuditedNeutrally(),
         theProfileSupportIsReadInOnePlace(),
         onlyTheKnownClassesDeleteDocuments(),
+        onlyTheRunRemovesThroughTheCleanupService(),
         theSecretPortStaysWithTheCore(),
         theConnectorReleaseIsDecidedInConnections(),
         everyPackageIsAssigned(),

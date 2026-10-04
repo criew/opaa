@@ -40,6 +40,18 @@ final class SecretCheckedStore implements FileStore {
   }
 
   @Override
+  public FilePage resume(FileContainer container, String checkpoint)
+      throws FileAccessException, InterruptedException {
+    credentials.check();
+    return store.resume(container, checkpoint);
+  }
+
+  @Override
+  public AbsenceProof absenceProof() {
+    return store.absenceProof();
+  }
+
+  @Override
   public FileEntry head(FileContainer container, String id)
       throws FileAccessException, InterruptedException {
     credentials.check();

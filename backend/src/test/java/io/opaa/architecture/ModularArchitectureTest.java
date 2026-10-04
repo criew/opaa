@@ -140,6 +140,11 @@ class ModularArchitectureTest {
   }
 
   @Test
+  void onlyTheRunRemovesThroughTheCleanupService() {
+    ARCHITECTURE.onlyTheRunRemovesThroughTheCleanupService().check(mainClasses);
+  }
+
+  @Test
   void onlyTheChangeGateCallsTheConnectorChangeHooks() {
     ARCHITECTURE.onlyTheChangeGateCallsTheConnectorChangeHooks().check(mainClasses);
   }

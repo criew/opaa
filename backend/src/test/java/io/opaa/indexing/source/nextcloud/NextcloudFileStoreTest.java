@@ -6,12 +6,14 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import io.opaa.indexing.filesync.FileAccessException;
 import io.opaa.indexing.filesync.FileContainer;
 import io.opaa.indexing.filesync.FileEntry;
+import io.opaa.indexing.filesync.FilePage;
 import io.opaa.indexing.filesync.FileStore;
 import io.opaa.indexing.filesync.FileSyncHarness;
 import io.opaa.indexing.job.IndexingEventCategory;
 import io.opaa.indexing.job.IndexingRunEvent;
 import io.opaa.knowledge.Document;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -48,6 +50,71 @@ class NextcloudFileStoreTest {
     return harness.fullSync(
         NextcloudTestStores.open(
             NextcloudTestStores.settings(server.baseUrl(), server.credentials(), FOLDERS)));
+  }
+
+  @Test
+  void theWalkGoesDepthFirstInNameOrderAndAResumptionListsOnlyThePathAgain() throws Exception {
+    FileContainer projekte = new FileContainer("/Projekte");
+    FileStore store = openStore();
+    store.recall(projekte, Map.of());
+    List<String> checkpoints = new java.util.ArrayList<>();
+    String continuation = null;
+    do {
+      FilePage page = store.list(projekte, continuation);
+      checkpoints.add(page.checkpoint());
+      continuation = page.next();
+    } while (continuation != null);
+    assertThat(server.requests())
+        .containsExactly(
+            "PROPFIND principal",
+            "PROPFIND 1 Projekte",
+            "PROPFIND 1 Projekte/Akten",
+            "PROPFIND 1 Projekte/Akten/2025",
+            "PROPFIND 1 Projekte/Akten/2026");
+    server.clearRequests();
+
+    FileStore resumed = openStore();
+    resumed.recall(projekte, Map.of());
+    FilePage page = resumed.resume(projekte, checkpoints.get(2));
+
+    assertThat(server.requests())
+        .as("the path to the checkpoint's folder once more, then what follows it")
+        .containsExactly(
+            "PROPFIND principal",
+            "PROPFIND 1 Projekte",
+            "PROPFIND 1 Projekte/Akten",
+            "PROPFIND 1 Projekte/Akten/2025",
+            "PROPFIND 1 Projekte/Akten/2026");
+    assertThat(page.entries()).extracting(FileEntry::fileName).containsExactly("b.txt");
+    assertThat(page.next()).isNull();
+  }
+
+  @Test
+  void aFolderOnTheResumedPathThatVanishedIsPassedAndWhatFollowsItIsListed() throws Exception {
+    FileContainer projekte = new FileContainer("/Projekte");
+    FileStore store = openStore();
+    store.recall(projekte, Map.of());
+    FilePage first = store.list(projekte, null);
+    FilePage akten = store.list(projekte, first.next());
+    FilePage older = store.list(projekte, akten.next());
+    server.remove("Projekte/Akten/2025").put("Projekte/Akten/2027/e.txt", "E.");
+
+    FileStore resumed = openStore();
+    resumed.recall(projekte, Map.of());
+    List<String> names = new java.util.ArrayList<>();
+    FilePage page = resumed.resume(projekte, older.checkpoint());
+    page.entries().forEach(entry -> names.add(entry.fileName()));
+    while (page.next() != null) {
+      page = resumed.list(projekte, page.next());
+      page.entries().forEach(entry -> names.add(entry.fileName()));
+    }
+
+    assertThat(names).containsExactly("b.txt", "e.txt");
+  }
+
+  private FileStore openStore() {
+    return NextcloudTestStores.open(
+        NextcloudTestStores.settings(server.baseUrl(), server.credentials(), FOLDERS));
   }
 
   @Test

@@ -15,9 +15,9 @@ import io.opaa.indexing.source.IndexingRunFailedException;
 import io.opaa.indexing.source.IndexingRunTemplate;
 import io.opaa.indexing.source.ListingOutcome;
 import io.opaa.indexing.source.RequestBudget;
+import io.opaa.indexing.source.ScanJournal;
 import io.opaa.indexing.source.SourceIndexingExecutor;
 import io.opaa.indexing.source.SourceSyncState;
-import io.opaa.indexing.source.SourceSyncStateRepository;
 import io.opaa.indexing.source.VanishedDocumentPolicy;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
@@ -46,7 +46,7 @@ public class SmbIndexingExecutor implements SourceIndexingExecutor, FileSyncWord
   private final DocumentRepository documentRepository;
   private final LibraryFolderService folderService;
   private final StaleDocumentCleanupService cleanupService;
-  private final SourceSyncStateRepository syncStateRepository;
+  private final ScanJournal journal;
   private final Clock clock;
   private final IndexingRunTemplate runTemplate;
   private final SupportedDocumentFormats supportedFormats;
@@ -59,7 +59,7 @@ public class SmbIndexingExecutor implements SourceIndexingExecutor, FileSyncWord
       DocumentRepository documentRepository,
       LibraryFolderService folderService,
       StaleDocumentCleanupService cleanupService,
-      SourceSyncStateRepository syncStateRepository,
+      ScanJournal journal,
       Clock clock,
       IndexingRunTemplate runTemplate,
       SupportedDocumentFormats supportedFormats) {
@@ -70,7 +70,7 @@ public class SmbIndexingExecutor implements SourceIndexingExecutor, FileSyncWord
     this.documentRepository = documentRepository;
     this.folderService = folderService;
     this.cleanupService = cleanupService;
-    this.syncStateRepository = syncStateRepository;
+    this.journal = journal;
     this.clock = clock;
     this.runTemplate = runTemplate;
     this.supportedFormats = supportedFormats;
@@ -119,10 +119,7 @@ public class SmbIndexingExecutor implements SourceIndexingExecutor, FileSyncWord
             requestPolicy.maxRateLimitWaitPerRun());
     run.recordRequestCost(budget.meter());
     UUID libraryId = run.library().getId();
-    SourceSyncState state =
-        syncStateRepository
-            .findByLibraryId(libraryId)
-            .orElseGet(() -> new SourceSyncState(libraryId));
+    SourceSyncState state = journal.load(libraryId);
     SmbShareClient smb =
         SmbShareClient.of(
             address,
@@ -146,7 +143,7 @@ public class SmbIndexingExecutor implements SourceIndexingExecutor, FileSyncWord
                 folderService,
                 cleanupService,
                 state,
-                syncStateRepository,
+                journal,
                 clock,
                 supportedFormats)) {
       return sync.run();
