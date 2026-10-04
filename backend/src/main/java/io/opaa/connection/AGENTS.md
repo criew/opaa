@@ -5,19 +5,20 @@ Pakete (`io.opaa.*`): connection. Ergänzt `backend/AGENTS.md`.
 ## Zweck und Grenze
 
 Verbindungsprofile („Zugänge“), die Zuordnung einer Bibliothek zu einem Profil, die
-Konnektor-Freigabe und die Sperre von Quellart und Zugang (ADR-0041, Spezifikation
-`docs/features/connector-connections.md`). Später kommen Token-Speicher, verbundene
-Konten, OAuth und das Verbindungsprotokoll dazu. connections hängt nur von foundation, identity,
-rights und knowledge ab; nur library hängt von connections ab. Kein Konnektor und nichts in
-knowledge kennt connections: Der Kern erreicht es über seine Ports `SourceConnectionResolver`
-(`ProfileSourceConnectionResolver`) und `SourceStateLookup` (`ConnectionSourceStateLookup`).
+Konnektor-Freigabe, die Sperre von Quellart und Zugang und das Verbindungsprotokoll (ADR-0041,
+`docs/features/connector-connections.md`); Token-Speicher, verbundene Konten und OAuth folgen.
+connections hängt nur von foundation, identity, rights und knowledge ab; nur library hängt von
+connections ab. Kein Konnektor und nichts in knowledge kennt connections: Der Kern erreicht es über
+seine Ports `SourceConnectionResolver` (`ProfileSourceConnectionResolver`) und `SourceStateLookup`.
 
 ## Invarianten und Stolpersteine
 
-- **Unterpakete, unten zuerst:** `connection.profile` (Profile, Zuordnung, `ServerAddress`,
-  Sperren, Profilpflicht, `ConnectorScope`). Das Wurzelpaket verdrahtet und implementiert den Port,
-  `connection.web` liegt darüber. Kein Unterpaket nennt das Wurzelpaket
+- **Unterpakete, unten zuerst:** `connection.log`, `connection.profile` (Profile, Zuordnung,
+  `ServerAddress`, Sperren, Profilpflicht, `ConnectorScope`). Das Wurzelpaket verdrahtet und
+  implementiert den Port, `connection.web` liegt darüber. Kein Unterpaket nennt das Wurzelpaket
   (`ModularArchitecture.CONNECTION_PACKAGES`).
+- **Verbindungsprotokoll** wie `audit_log`: schreibt nur `ConnectionLog` (in der Transaktion des
+  Aufrufers), liest nur `ConnectionLogQueryService` (`AUDITOR`), löscht nur die Datenbankfunktion.
 - **Das Client-Secret ist schreibgeschützt.** `ConnectionProfileService` verschlüsselt es mit
   `CredentialsEncryptor`; Antworten tragen nur `clientSecretSet`, das Audit nur Feldnamen und
   Ja/Nein. Kein Code gibt es heraus, bis ein Konsument es braucht (OAuth, #2168).
@@ -42,14 +43,13 @@ knowledge kennt connections: Der Kern erreicht es über seine Ports `SourceConne
   `REQUIRED`; nur dort liest connections `support` (`theProfileSupportIsReadInOnePlace`).
 - **Sperre:** blockiert `resolve` (Laufstart, Original), nicht `currentCredentials`. Die Registry
   wird je Aufruf geholt, weil der Port im Kern hängt und die Konnektoren am Kern.
-- **Web-Schicht:** `connection.web` (Verwaltung unter `/api/v1/admin/connection-profiles`, Auswahl
-  unter `/api/v1/connection-profiles`). Die Zuordnung einer Bibliothek liegt in `library.web`.
+- **Web-Schicht:** `connection.web` (Profile, Protokoll, Frist); Bibliothekszuordnung in `library.web`.
 
 ## Verweise
 
 - ADRs (`docs/decisions/`): 0025, 0036, 0038, 0041
-- Handbuch: `docs/handbuch/indexierung.md`, Abschnitt „Zugänge“
-- Strukturtests: `ModularArchitectureTest` (`theConnectionPackagesDependOnlyDownward`)
+- Handbuch: `docs/handbuch/indexierung.md`, „Zugänge“; `bibliotheken-und-berechtigungen.md`, 12
+- Strukturtests: `ModularArchitectureTest`, `ConnectionLogStructureTest`
 
 ## Tests bei Änderungen
 

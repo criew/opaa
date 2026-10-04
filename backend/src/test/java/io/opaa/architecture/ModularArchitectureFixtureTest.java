@@ -127,15 +127,20 @@ class ModularArchitectureFixtureTest {
   }
 
   /**
-   * {@code connection.profile -> connection} names the root package, {@code connection.misc} is not
-   * ordered; the web package may use both.
+   * {@code connection.profile -> connection} names the root package, {@code connection.log ->
+   * connection.profile} points upward, {@code connection.misc} is not ordered; the web package may
+   * use all of them.
    */
   @Test
   void aConnectionSubpackageThatNamesItsRootOrIsUnorderedIsReported() {
     Scenario scenario = new Scenario("connectionorder");
 
     assertThat(scenario.violations(ModularArchitecture::theConnectionPackagesDependOnlyDownward))
-        .hasSize(2)
+        .hasSize(3)
+        .anySatisfy(
+            violation ->
+                assertThat(violation)
+                    .contains("connection.log -> connection.profile points upward", "log.Entry"))
         .anySatisfy(
             violation ->
                 assertThat(violation)

@@ -193,6 +193,92 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
 
+  /api/v1/audit/connection-log:
+    get:
+      operationId: listConnectionLog
+      tags: [audit]
+      summary: >
+        The connection log (AUDITOR role required, ADR-0041 Entscheidung 7): who connected,
+        reconnected or disconnected which profile, and when a connection expired, was cut off by the
+        emergency shutdown or deleted.
+      description: >
+        Bounded exactly like every other audit access path: a mandatory reason and time range of
+        at most 92 days, a capped page size and page depth. The system administration does not read
+        it. Optional filters narrow by event type and profile; there is deliberately no filter by
+        person. An entry carries no token, no account name at the provider and no library. Every
+        call writes a CONNECTION_LOG_ACCESSED entry into the audit log, the rejected attempt
+        included.
+      parameters:
+        - $ref: "#/components/parameters/AuditFrom"
+        - $ref: "#/components/parameters/AuditTo"
+        - $ref: "#/components/parameters/AuditPage"
+        - $ref: "#/components/parameters/AuditSize"
+        - $ref: "#/components/parameters/AuditReason"
+        - name: eventType
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/ConnectionLogEventType"
+        - name: profileId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Bounded page of connection log entries, oldest first
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConnectionLogPage"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/admin/connection-log/retention:
+    get:
+      operationId: getConnectionLogRetention
+      tags: [audit]
+      summary: >
+        Reads the retention period of the connection log (system admin only). Twelve months by
+        default, configurable between 6 and 24; there is no field to switch the deletion off.
+      responses:
+        "200":
+          description: Current retention configuration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConnectionLogRetentionResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    put:
+      operationId: updateConnectionLogRetention
+      tags: [audit]
+      summary: >
+        Changes the retention period of the connection log (system admin only). The change is a
+        governance event (CONNECTION_LOG_RETENTION_CHANGED) with the old and the new value. A
+        shortening takes effect with the next daily pass, in full; a lengthening takes effect at
+        once and takes nothing back.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConnectionLogRetentionRequest"
+      responses:
+        "200":
+          description: Retention configuration updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConnectionLogRetentionResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
   /api/v1/audit/incident-scopes:
     post:
       operationId: requestAuditIncidentScope
@@ -463,6 +549,8 @@ components:
           SEARCH_DIAGNOSIS_PROFILE_RUN,
           AUDIT_LOG_ACCESSED,
           PERMISSION_HISTORY_ACCESSED,
+          CONNECTION_LOG_ACCESSED,
+          CONNECTION_LOG_RETENTION_CHANGED,
           LOCAL_SESSION_REVOKED,
           LOCAL_PASSWORD_CHANGED,
           LOCAL_ADMIN_SEEDED,
@@ -707,6 +795,106 @@ components:
         hasMore:
           type: boolean
           description: True if further, older-page results exist beyond this bounded page.
+
+    ConnectionLogEventType:
+      type: string
+      description: Mirrors io.opaa.api.types.ConnectionLogEventType.
+      enum: [CONNECTED, RECONNECTED, DISCONNECTED, EXPIRED, EMERGENCY_DISCONNECTED, DELETED]
+      example: CONNECTED
+
+    ConnectionEndCause:
+      type: string
+      description: >
+        Mirrors io.opaa.api.types.ConnectionEndCause - why a connection ended. Set on every event
+        but CONNECTED and RECONNECTED, never on those two.
+      enum:
+        [
+          SELF,
+          EMERGENCY,
+          ADDRESS_CHANGED,
+          REGISTRATION_CHANGED,
+          ACCOUNT_DEACTIVATED,
+          PROFILE_DELETED,
+          PROVIDER_REJECTED,
+          SECRET_EXPIRED,
+        ]
+      example: SELF
+
+    ConnectionLogEntryResponse:
+      type: object
+      description: >
+        One entry of the connection log. actorRef and personRef are pseudonyms in the same scheme
+        as the audit log's actorRef. An event no person caused (expiry, deactivation) carries the
+        literal "SYSTEM" as actorRef, which is never a pseudonym.
+        profileName is the name the profile carried at the time, so an entry outlives its profile.
+      required:
+        [eventId, recordedAt, organizationId, eventType, actorRef, personRef, profileId, profileName]
+      properties:
+        eventId:
+          type: string
+          format: uuid
+        recordedAt:
+          type: string
+          format: date-time
+        organizationId:
+          type: string
+          format: uuid
+        eventType:
+          $ref: "#/components/schemas/ConnectionLogEventType"
+        actorRef:
+          type: string
+          description: A pseudonym, or the literal "SYSTEM" for an event no person caused.
+        personRef:
+          type: string
+        profileId:
+          type: string
+          format: uuid
+        profileName:
+          type: string
+        cause:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/ConnectionEndCause"
+
+    ConnectionLogPage:
+      type: object
+      description: A bounded page, never a full extract.
+      required: [entries, page, size, hasMore]
+      properties:
+        entries:
+          type: array
+          items:
+            $ref: "#/components/schemas/ConnectionLogEntryResponse"
+        page:
+          type: integer
+        size:
+          type: integer
+        hasMore:
+          type: boolean
+
+    ConnectionLogRetentionRequest:
+      type: object
+      required: [retentionMonths]
+      properties:
+        retentionMonths:
+          type: integer
+          minimum: 6
+          maximum: 24
+
+    ConnectionLogRetentionResponse:
+      type: object
+      required: [retentionMonths, updatedAt]
+      properties:
+        retentionMonths:
+          type: integer
+        lastCutoff:
+          type: string
+          format: date-time
+          nullable: true
+          description: How far the deletion has got; only ever moves forward.
+        updatedAt:
+          type: string
+          format: date-time
 
     PermissionHistoryRetentionRequest:
       type: object

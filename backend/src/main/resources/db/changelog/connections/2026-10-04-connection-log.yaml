@@ -1,0 +1,172 @@
+databaseChangeLog:
+  - changeSet:
+      id: connections-2026-10-04-connection-log
+      author: opaa
+      comment: "The connection log (#2163, ADR-0041 Entscheidung 7): append-only, partitioned by month and owned by opaa_audit_owner like audit_log (ADR-0015); the application account keeps INSERT and SELECT. Its retention (6-24 months, 12 by default) is a singleton row, and the SECURITY DEFINER function below is the only deletion path."
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              -- No token, no account name at the provider and no library: who, which profile, which
+              -- event, when, and why it ended. profile_id carries no foreign key - an entry outlives
+              -- its profile, which is why the name is kept as it was at the time.
+              CREATE TABLE connection_log (
+                  event_id uuid NOT NULL,
+                  organization_id uuid NOT NULL,
+                  recorded_at timestamp with time zone NOT NULL,
+                  event_type character varying(30) NOT NULL,
+                  actor_ref character varying(255) NOT NULL,
+                  person_ref character varying(255) NOT NULL,
+                  profile_id uuid NOT NULL,
+                  profile_name character varying(255) NOT NULL,
+                  cause character varying(30),
+                  CONSTRAINT chk_connection_log_event_type CHECK (event_type IN
+                      ('CONNECTED', 'RECONNECTED', 'DISCONNECTED', 'EXPIRED',
+                       'EMERGENCY_DISCONNECTED', 'DELETED')),
+                  CONSTRAINT chk_connection_log_cause CHECK (cause IS NULL OR cause IN
+                      ('SELF', 'EMERGENCY', 'ADDRESS_CHANGED', 'REGISTRATION_CHANGED',
+                       'ACCOUNT_DEACTIVATED', 'PROFILE_DELETED', 'PROVIDER_REJECTED',
+                       'SECRET_EXPIRED')),
+                  -- Every ending event names its cause, a start never does.
+                  CONSTRAINT chk_connection_log_cause_of_end CHECK
+                      ((event_type IN ('CONNECTED', 'RECONNECTED')) = (cause IS NULL))
+              )
+              PARTITION BY RANGE (recorded_at);
+
+              ALTER TABLE ONLY connection_log
+                  ADD CONSTRAINT connection_log_pkey PRIMARY KEY (event_id, recorded_at);
+
+              ALTER TABLE connection_log
+                  ADD CONSTRAINT fk_connection_log_organization
+                  FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE RESTRICT;
+
+              CREATE INDEX idx_connection_log_time_range
+                  ON connection_log USING btree (organization_id, recorded_at);
+
+              CREATE INDEX idx_connection_log_profile
+                  ON connection_log USING btree (organization_id, profile_id, recorded_at);
+
+              -- The fixed horizon of audit_log: three months back through 16 years forward, no DEFAULT
+              -- partition, so a write outside it fails loudly instead of escaping the deletion.
+              DO $$
+              DECLARE
+                start_month date := date_trunc('month', now() - interval '3 months');
+                i integer;
+                partition_start date;
+                partition_end date;
+              BEGIN
+                FOR i IN 0..194 LOOP
+                  partition_start := (start_month + (i || ' months')::interval)::date;
+                  partition_end := (start_month + ((i + 1) || ' months')::interval)::date;
+                  EXECUTE format(
+                    'CREATE TABLE IF NOT EXISTS %I PARTITION OF connection_log FOR VALUES FROM (%L) TO (%L)',
+                    'connection_log_' || to_char(partition_start, 'YYYY_MM'), partition_start, partition_end
+                  );
+                END LOOP;
+              END $$;
+
+              CREATE TABLE connection_log_retention_settings (
+                  id integer DEFAULT 1 NOT NULL,
+                  retention_months integer NOT NULL,
+                  last_cutoff timestamp with time zone,
+                  last_run_month date,
+                  updated_at timestamp with time zone NOT NULL,
+                  CONSTRAINT connection_log_retention_settings_pkey PRIMARY KEY (id),
+                  CONSTRAINT chk_connection_log_retention_months
+                      CHECK (retention_months BETWEEN 6 AND 24),
+                  CONSTRAINT chk_connection_log_retention_singleton CHECK (id = 1)
+              );
+
+              INSERT INTO connection_log_retention_settings
+                (id, retention_months, last_cutoff, last_run_month, updated_at)
+              VALUES (
+                1, 12,
+                date_trunc('month', now()) - interval '12 months',
+                date_trunc('month', now())::date,
+                now()
+              );
+
+              -- Ownership separation per ADR-0015: the objects move to opaa_audit_owner, the application
+              -- account keeps only the narrow grants below. The membership is taken briefly and given back;
+              -- the ADMIN OPTION residual that cannot be revoked is documented as open in ADR-0015.
+              DO $$
+              BEGIN
+                EXECUTE format('GRANT opaa_audit_owner TO %I WITH SET TRUE', current_user);
+              END $$;
+
+              ALTER TABLE connection_log OWNER TO opaa_audit_owner;
+              ALTER TABLE connection_log_retention_settings OWNER TO opaa_audit_owner;
+
+              DO $$
+              DECLARE
+                partition regclass;
+              BEGIN
+                FOR partition IN
+                  SELECT inhrelid::regclass FROM pg_inherits
+                  WHERE inhparent = 'connection_log'::regclass
+                LOOP
+                  EXECUTE format('ALTER TABLE %s OWNER TO opaa_audit_owner', partition);
+                END LOOP;
+              END $$;
+
+              REVOKE ALL ON TABLE connection_log, connection_log_retention_settings FROM PUBLIC;
+              DO $$
+              BEGIN
+                EXECUTE format('GRANT INSERT, SELECT ON TABLE connection_log TO %I', current_user);
+                EXECUTE format('GRANT SELECT ON TABLE connection_log_retention_settings TO %I', current_user);
+                EXECUTE format('GRANT UPDATE (retention_months, updated_at) ON TABLE connection_log_retention_settings TO %I', current_user);
+              END $$;
+
+              -- The only way anything disappears from connection_log: whole monthly partitions past the
+              -- configured period, never single rows. last_cutoff is a high-water mark that never moves
+              -- back, so a lengthening protects at once and takes nothing back.
+              CREATE FUNCTION opaa_connection_log_delete_expired_partitions() RETURNS SETOF text
+                  LANGUAGE plpgsql SECURITY DEFINER
+                  SET search_path TO 'pg_catalog', '${database.defaultSchemaName}', 'pg_temp'
+                  AS $_$ DECLARE
+                cfg RECORD;
+                current_month date := date_trunc('month', now())::date;
+                new_cutoff timestamptz;
+                rec RECORD;
+                partition_month date;
+              BEGIN
+                SELECT retention_months, last_cutoff INTO cfg
+                FROM connection_log_retention_settings WHERE id = 1 FOR UPDATE;
+
+                IF NOT FOUND THEN
+                  RAISE EXCEPTION 'connection_log_retention_settings has no row with id=1 - refusing to silently skip retention deletion';
+                END IF;
+
+                new_cutoff := current_month - (cfg.retention_months::text || ' months')::interval;
+
+                FOR rec IN
+                  SELECT inhrelid::regclass AS partition_rel,
+                         inhrelid::regclass::text AS partition_name
+                  FROM pg_catalog.pg_inherits
+                  WHERE inhparent = 'connection_log'::regclass
+                LOOP
+                  partition_month := to_date(
+                    substring(rec.partition_name from 'connection_log_(\d{4}_\d{2})$'), 'YYYY_MM');
+                  IF partition_month IS NOT NULL
+                     AND (partition_month + interval '1 month') <= new_cutoff THEN
+                    EXECUTE format('DROP TABLE %s', rec.partition_rel);
+                    RETURN NEXT rec.partition_name;
+                  END IF;
+                END LOOP;
+
+                UPDATE connection_log_retention_settings
+                SET last_cutoff = GREATEST(cfg.last_cutoff, new_cutoff),
+                    last_run_month = current_month
+                WHERE id = 1;
+
+                RETURN;
+              END; $_$;
+
+              ALTER FUNCTION opaa_connection_log_delete_expired_partitions() OWNER TO opaa_audit_owner;
+              GRANT EXECUTE ON FUNCTION opaa_connection_log_delete_expired_partitions() TO CURRENT_USER;
+              REVOKE EXECUTE ON FUNCTION opaa_connection_log_delete_expired_partitions() FROM PUBLIC;
+
+              DO $$
+              BEGIN
+                EXECUTE format('REVOKE opaa_audit_owner FROM %I', current_user);
+              END $$;
