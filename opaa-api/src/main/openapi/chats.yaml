@@ -742,6 +742,12 @@ components:
           items:
             $ref: "#/components/schemas/SourceReference"
           description: Present on ASSISTANT messages that used document context; absent otherwise.
+        privateSourcesInContext:
+          type: boolean
+          nullable: true
+          description: >
+            On an ASSISTANT message: whether any of its sources - cited or not - is a private
+            source (SourceReference.privateSource); absent on a USER message.
         usedPromptId:
           type: string
           format: uuid

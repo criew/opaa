@@ -237,6 +237,29 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
 
+  /api/v1/audit/connection-log/profiles:
+    get:
+      operationId: listConnectionLogProfiles
+      tags: [audit]
+      summary: The profiles the connection log has entries for (AUDITOR role required)
+      description: >
+        Every profile with at least one entry in the connection log of the caller's
+        organization, by its last name the log recorded, and whether it has been deleted since -
+        the choices of the profile filter of listConnectionLog, read from the log itself so the
+        revision needs no read access to the administration. Names no person, so the call is not
+        recorded in the audit log.
+      responses:
+        "200":
+          description: The logged profiles, by name
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ConnectionLogProfile"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
   /api/v1/admin/connection-log/retention:
     get:
       operationId: getConnectionLogRetention
@@ -884,6 +907,21 @@ components:
           nullable: true
           allOf:
             - $ref: "#/components/schemas/ConnectionEndCause"
+
+    ConnectionLogProfile:
+      type: object
+      required: [profileId, name, deleted]
+      properties:
+        profileId:
+          type: string
+          format: uuid
+        name:
+          type: string
+          description: The profile's name in its newest log entry.
+          example: Zugang Nextcloud intern
+        deleted:
+          type: boolean
+          description: Whether the profile no longer exists.
 
     ConnectionLogPage:
       type: object
