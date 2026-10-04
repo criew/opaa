@@ -215,12 +215,10 @@ class EffectiveSourceSettingsDraftTest {
   @Test
   void theSignInOfTheProfileDecidesTheSecret() {
     UUID profileId = profile(ConnectionAuthMethod.NONE, null, null, false).getId();
+    SourceSettings sent = new SourceSettings(null, null, null, "a:b", false, null);
 
-    SourceSettings draft =
-        effective.ofDraft(
-            draft(profileId, null, new SourceSettings(null, null, null, "a:b", false, null)));
-
-    assertThat(draft.sourceCredentials()).isNull();
+    assertThat(effective.ofDraft(draft(profileId, null, sent)).sourceCredentials()).isNull();
+    assertThat(effective.ownPart(draft(profileId, null, sent), sent).sourceCredentials()).isNull();
   }
 
   @Test

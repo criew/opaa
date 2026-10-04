@@ -1,5 +1,6 @@
 package io.opaa.connection.profile;
 
+import io.opaa.api.types.ConnectionAuthMethod;
 import io.opaa.common.ValidationException;
 import io.opaa.indexing.source.ConnectorData;
 import io.opaa.indexing.source.SourceSettings;
@@ -104,8 +105,8 @@ final class ProfileFrame {
   }
 
   /**
-   * What of {@code validated} the library stores itself: no proxy, no skipped check and its
-   * connector settings without the keys the profile sets.
+   * What of {@code validated} the library stores itself: no proxy, no skipped check, its connector
+   * settings without the keys the profile sets, and no secret on a profile without sign-in.
    */
   SourceSettings ownPart(SourceSettings validated) {
     ConnectorData settings = validated.connectorSettings();
@@ -114,14 +115,15 @@ final class ProfileFrame {
       own.keySet().removeAll(defaults.keySet());
       settings = own.isEmpty() ? null : ConnectorData.of(own);
     }
+    boolean signsIn = profile.getAuthMethod() != ConnectionAuthMethod.NONE;
     return new SourceSettings(
         validated.sourcePath(),
         validated.sourceUrl(),
         null,
-        validated.sourceCredentials(),
+        signsIn ? validated.sourceCredentials() : null,
         false,
         settings,
-        validated.credentialsKind());
+        signsIn ? validated.credentialsKind() : null);
   }
 
   private static String blankToNull(String value) {
