@@ -70,6 +70,7 @@ class ProfileChangeUnreadableSecretTest {
               wiring.transitions,
               mock(io.opaa.notification.NotificationService.class),
               Clock.fixed(NOW, ZoneOffset.UTC)),
+          mock(ProfileFullSync.class),
           Clock.fixed(NOW, ZoneOffset.UTC));
 
   @Test

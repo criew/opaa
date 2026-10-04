@@ -224,8 +224,10 @@ paths:
           $ref: "#/components/responses/NotFound"
         "409":
           description: >
-            The name is taken, or the change would discard secrets of existing connections and
-            confirmDiscard is not set (code CONNECTION_PROFILE_CONFIRMATION_REQUIRED).
+            The name is taken, or the change would discard secrets of existing connections or
+            the run state of their libraries and confirmDiscard is not set (code
+            CONNECTION_PROFILE_CONFIRMATION_REQUIRED), or it would discard the run state of a
+            library while it runs (code CONNECTION_PROFILE_RUN_IN_PROGRESS).
           content:
             application/json:
               schema:
@@ -318,7 +320,9 @@ paths:
       summary: Emergency shutdown "Alle Verbindungen trennen" (system admin only)
       description: >
         Discards every secret held under the profile at once and keeps the profile. Its libraries
-        stop running until their secret is entered again.
+        stop running until their secret is entered again. For CLIENT_CREDENTIALS and
+        SERVICE_ACCOUNT_KEY that is the profile's own client secret or key, deleted for good and
+        noted in the audit entry; it is not revoked at the provider.
       parameters:
         - name: profileId
           in: path
@@ -333,6 +337,40 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ConnectionProfileImpactResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/admin/connection-profiles/{profileId}/test-sign-in:
+    post:
+      operationId: testConnectionProfileSignIn
+      tags: [connection-profile]
+      summary: Sign in with the profile's own registration once (system admin only)
+      description: >
+        For CLIENT_CREDENTIALS and SERVICE_ACCOUNT_KEY: obtains an access token at the token
+        endpoint the connector declares, past any token held. Success lifts signInRejected; a
+        rejection of the registration sets it. The message never carries secret, key or token.
+      parameters:
+        - name: profileId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: The outcome of the sign-in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConnectionProfileSignInTestResponse"
+        "400":
+          description: The profile does not sign in itself.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "403":
           $ref: "#/components/responses/Forbidden"
         "404":
@@ -758,6 +796,12 @@ components:
           description: The values a CHOICE takes, in display order; empty for any other kind.
           items:
             type: string
+        profileOnly:
+          type: boolean
+          description: >
+            Whether only the profile sets this key: a library on a profile never carries it, also
+            where the profile leaves it empty (then a value of the library is a 400). Google
+            Drive's imitated account (subject) is one.
 
     ServerAddressRule:
       type: object
@@ -803,11 +847,16 @@ components:
           type: string
           maxLength: 255
           nullable: true
+          description: >
+            Not taken for SERVICE_ACCOUNT_KEY: there the client id is the client_email of the key.
         clientSecret:
           type: string
-          maxLength: 2000
+          maxLength: 4096
           nullable: true
-          description: Write-only; never returned (see clientSecretSet).
+          description: >
+            Write-only; never returned (see clientSecretSet). For SERVICE_ACCOUNT_KEY the JSON key
+            file of the service account; only client_email, private_key_id and private_key are
+            kept, and a key naming another client_email is a change of the registration.
         clientSecretExpiresOn:
           type: string
           pattern: "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
@@ -883,11 +932,16 @@ components:
           type: string
           maxLength: 255
           nullable: true
+          description: >
+            Not taken for SERVICE_ACCOUNT_KEY: there the client id is the client_email of the key.
         clientSecret:
           type: string
-          maxLength: 2000
+          maxLength: 4096
           nullable: true
-          description: Write-only; never returned (see clientSecretSet).
+          description: >
+            Write-only; never returned (see clientSecretSet). For SERVICE_ACCOUNT_KEY the JSON key
+            file of the service account; only client_email, private_key_id and private_key are
+            kept, and a key naming another client_email is a change of the registration.
         clientSecretExpiresOn:
           type: string
           pattern: "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
@@ -932,7 +986,8 @@ components:
           type: boolean
           description: >
             Confirms that a change of serverUrl, clientId, tenant, scopes or authMethod discards
-            the secrets of the existing connections.
+            the secrets of the existing connections, and that a changed default only the profile
+            sets (ProfileDefaultKey.profileOnly) discards the run state of every library on it.
 
     ConnectionProfileResponse:
       type: object
@@ -946,6 +1001,7 @@ components:
           ownership,
           clientSecretSet,
           clientSecretExpiresSoon,
+          signInRejected,
           sourceInsecureSsl,
           connectionCount,
           connectedAccountCount,
@@ -980,6 +1036,12 @@ components:
         clientSecretExpiresSoon:
           type: boolean
           description: Whether the client secret expires within 14 days or has expired.
+        signInRejected:
+          type: boolean
+          description: >
+            Whether the provider rejected the profile's own sign-in (CLIENT_CREDENTIALS,
+            SERVICE_ACCOUNT_KEY): every library on it is blocked as EXPIRED, and no run asks the
+            provider again until a new clientSecret or testConnectionProfileSignIn lifts it.
         tenant:
           type: string
           nullable: true
@@ -1026,6 +1088,17 @@ components:
           type: string
           format: date-time
 
+    ConnectionProfileSignInTestResponse:
+      type: object
+      required: [success, message]
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+          description: German outcome, naming the cause of a failure.
+          example: Anmeldung erfolgreich.
+
     ConnectionProfileImpactResponse:
       type: object
       required:
@@ -1041,6 +1114,12 @@ components:
           description: The libraries behind them, private libraries not counted.
         connectedAccounts:
           $ref: "#/components/schemas/PersonCount"
+        fullSyncLibraries:
+          type: integer
+          format: int64
+          description: >
+            How many libraries the proposed change makes read their source anew, because a default
+            only the profile sets changes; 0 without a proposal.
         rejectedLibraries:
           type: integer
           format: int64

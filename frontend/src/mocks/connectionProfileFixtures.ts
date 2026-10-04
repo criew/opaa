@@ -15,6 +15,7 @@ function initialProfiles(): ConnectionProfileResponse[] {
       ownership: 'LIBRARY',
       clientSecretSet: false,
       clientSecretExpiresSoon: false,
+      signInRejected: false,
       connectorSettings: { edition: 'INTERN' },
       sourceProxy: null,
       sourceInsecureSsl: false,

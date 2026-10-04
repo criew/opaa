@@ -50,6 +50,9 @@ describe('the source registry (ADR-0038)', () => {
     expect(smb?.serverAddress.schemes).toEqual(['smb'])
     expect(
       mockSourceTypes.find((descriptor) => descriptor.type === 'GOOGLE_DRIVE')?.profileSupport,
+    ).toBe('OPTIONAL')
+    expect(
+      mockSourceTypes.find((descriptor) => descriptor.type === 'FILESYSTEM')?.profileSupport,
     ).toBe('FORBIDDEN')
   })
 

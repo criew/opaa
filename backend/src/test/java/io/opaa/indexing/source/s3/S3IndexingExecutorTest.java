@@ -34,6 +34,7 @@ import io.opaa.indexing.maintenance.StaleDocumentCleanupService;
 import io.opaa.indexing.source.ConnectorData;
 import io.opaa.indexing.source.IndexingRunTemplate;
 import io.opaa.indexing.source.LibrarySourceConnectionResolver;
+import io.opaa.indexing.source.RunFailureCategory;
 import io.opaa.indexing.source.SourceSyncState;
 import io.opaa.indexing.source.SourceSyncStateRepository;
 import io.opaa.indexing.source.VanishedDocumentPolicy;
@@ -805,7 +806,8 @@ class S3IndexingExecutorTest {
                     message.contains("Zugangsdaten abgelehnt")
                         && message.contains("InvalidAccessKeyId")
                         && !message.contains("AKIAEXAMPLE")
-                        && !message.contains("geheim")));
+                        && !message.contains("geheim")),
+            eq(RunFailureCategory.CREDENTIALS_REJECTED.name()));
     verifyNoReconciliation();
     assertThat(store.isClosed()).isTrue();
   }

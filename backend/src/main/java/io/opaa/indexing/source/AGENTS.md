@@ -25,13 +25,13 @@ von foundation, format und knowledge ab.
   `IndexingRun#settings()` (ohne Geheimnis) und `#credentials()`, vor jeder Anfrage bzw. Anmeldung
   gefragt (`RunCredentials`; `FileSync` vor jedem Store-Zugriff; nach `401` einmal neu, `renewableAfterRejection`,
   sonst `SourceCredentialsRejectedException` - nur für das Geheimnis selbst, nie für `403` oder ein Einzelobjekt); sonst im Aufruf. Kein Konnektor hält oder erzeugt einen `SourceConnectionResolver` oder liest aus `KnowledgeLibrary` mehr als `getSourcePath`/`getWebhookSecret`.
-- **Dienstkonto-Schlüssel signiert der Kern** (ADR-0040): Der Konnektor bekommt nur das Token aus
-  `ServiceAccountTokens` und meldet imitiertes Konto und feste Adresse (`assertionSubject`).
+- **Dienstkonto-Schlüssel signiert der Kern** (ADR-0040), auch den des Zugangs: Der Konnektor bekommt
+  nur das Token aus `ServiceAccountTokens` und meldet imitiertes Konto (`assertionSubject`).
 - **Geheimnisse stehen nie in `source_settings`** (unverschlüsselt, in Antworten), nur verschlüsselt
   in `source_credentials`, `source_webhook_secret`, am Zugang, im Token-Speicher; Antworten Ja/Nein.
 - **Jedes Ziel von Zugangsdaten leitet sich aus `sourceUrl` ab**, bei einem Zugang aus dessen
   Server-Adresse; was sie enger bindet (Freigabe, imitiertes Konto), meldet nur `credentialBinding`.
-  Ändert sich Ursprung oder Bindung, verwirft der Kern sie. Profilangabe: `ProfileDeclaration`, „verboten“ genau ohne entferntes Ziel oder bei Uploads (Ausnahme: Dienstkonto-Schlüssel).
+  Ändert sich Ursprung oder Bindung, verwirft der Kern sie. Profilangabe: `ProfileDeclaration`, „verboten“ genau ohne entferntes Ziel oder bei Uploads.
 - **Änderungen nur über `SourceChangeGate`**, auch Profiländerung, Zuordnen und Lösen; `stored` =
   effektiv, `applyChange` = eigener Teil. `validateChange` hängt nur von seinen Argumenten ab; Ziel nicht erreichbar oder Anmeldung abgelehnt lehnt er mit `SourceTargetRefusedException` ab.
 - **Der Laufrahmen ist `IndexingRunTemplate`:** Der Körper zählt nur die Quelle auf und meldet

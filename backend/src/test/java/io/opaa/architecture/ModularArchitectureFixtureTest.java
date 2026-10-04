@@ -128,16 +128,18 @@ class ModularArchitectureFixtureTest {
 
   /**
    * {@code connection.profile -> connection} names the root package, {@code connection.log ->
-   * connection.profile} and {@code connection.token -> connection.profile} point upward, {@code
-   * connection.misc} is not ordered; {@code connection.account} may use profile and token, the web
-   * package all of them.
+   * connection.profile}, {@code connection.token -> connection.profile} and {@code
+   * connection.profile -> connection.oauth} point upward, {@code connection.misc} is not ordered;
+   * {@code connection.account} may use profile and token, {@code connection.oauth} everything below
+   * it, the web package all of them.
    */
   @Test
   void aConnectionSubpackageThatNamesItsRootOrIsUnorderedIsReported() {
     Scenario scenario = new Scenario("connectionorder");
+    String oauth = FIXTURES + ".connectionorder.connection.oauth.SignIn";
 
     assertThat(scenario.violations(ModularArchitecture::theConnectionPackagesDependOnlyDownward))
-        .hasSize(4)
+        .hasSize(5)
         .anySatisfy(
             violation ->
                 assertThat(violation)
@@ -158,8 +160,37 @@ class ModularArchitectureFixtureTest {
                 assertThat(violation)
                     .contains(
                         "connectionorder.connection.misc is not ordered", "CONNECTION_PACKAGES"))
+        .anySatisfy(
+            violation ->
+                assertThat(violation)
+                    .contains(
+                        "connection.profile -> connection.oauth points upward",
+                        "profile.Registrations"))
         .noneSatisfy(violation -> assertThat(violation).contains("ProfileApi"))
-        .noneSatisfy(violation -> assertThat(violation).contains("account.Account"));
+        .noneSatisfy(violation -> assertThat(violation).contains("account.Account"))
+        .noneSatisfy(violation -> assertThat(violation).contains("Field <" + oauth + "."));
+  }
+
+  /**
+   * The web layer and library read a profile's registration, and a profile class holds the value;
+   * the sign-in and the two classes that build the value pass.
+   */
+  @Test
+  void aProfileRegistrationOutsideTheSignInIsReported() {
+    Scenario scenario = new Scenario("profileregistration");
+
+    assertThat(
+            scenario.violations(ModularArchitecture::theProfileRegistrationLeavesOnlyToTheSignIn))
+        .hasSize(3)
+        .anySatisfy(
+            violation -> assertThat(violation).contains("web.ProfileApi.read", "registrationOf"))
+        .anySatisfy(
+            violation ->
+                assertThat(violation).contains("library.KeyShortcut.sign", "registrationOf"))
+        .anySatisfy(
+            violation -> assertThat(violation).contains("profile.Holder", "ClientRegistration"))
+        .noneSatisfy(violation -> assertThat(violation).contains("oauth.SignIn"))
+        .noneSatisfy(violation -> assertThat(violation).contains("ClientRegistration.<init>"));
   }
 
   /**

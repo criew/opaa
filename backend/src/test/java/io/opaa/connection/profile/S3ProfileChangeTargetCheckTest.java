@@ -85,6 +85,7 @@ class S3ProfileChangeTargetCheckTest {
               wiring.transitions,
               mock(io.opaa.notification.NotificationService.class),
               Clock.fixed(NOW, ZoneOffset.UTC)),
+          mock(ProfileFullSync.class),
           Clock.fixed(NOW, ZoneOffset.UTC));
 
   private ConnectionProfile profile;
@@ -114,7 +115,7 @@ class S3ProfileChangeTargetCheckTest {
     KnowledgeLibrary second = library("akten");
     KnowledgeLibrary third = library("protokolle");
 
-    Answers answers = service.check(profile.getId(), region("eu-west-1"), false);
+    Answers answers = service.check(profile.getId(), region("eu-west-1"), null, false);
 
     verify(clientFactory, times(2))
         .validateTargets(eq(URI.create(SERVER)), isNull(), eq(true), any());
@@ -137,7 +138,7 @@ class S3ProfileChangeTargetCheckTest {
     KnowledgeLibrary library = library("akten");
     library.dropSourceCredentials();
 
-    assertThat(service.preview(profile.getId(), region("eu-west-1")).rejections()).isEmpty();
+    assertThat(service.preview(profile.getId(), region("eu-west-1"), null).rejections()).isEmpty();
     service.update(ADMIN, profile.getId(), region("eu-west-1"), null, false);
 
     verify(clientFactory, atLeastOnce())

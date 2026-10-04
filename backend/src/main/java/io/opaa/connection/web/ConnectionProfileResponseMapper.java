@@ -5,6 +5,7 @@ import io.opaa.api.dto.ConnectionProfileCreateRequest;
 import io.opaa.api.dto.ConnectionProfileImpactResponse;
 import io.opaa.api.dto.ConnectionProfileOption;
 import io.opaa.api.dto.ConnectionProfileResponse;
+import io.opaa.api.dto.ConnectionProfileSignInTestResponse;
 import io.opaa.api.dto.ConnectionProfileUpdateRequest;
 import io.opaa.api.dto.ConnectorProfileRequirementResponse;
 import io.opaa.api.dto.ConnectorTypeStateResponse;
@@ -13,6 +14,7 @@ import io.opaa.api.dto.PersonCount;
 import io.opaa.api.dto.SourceChangeRejectionCategory;
 import io.opaa.common.ValidationException;
 import io.opaa.connection.ConnectorReleaseService.ProfileOption;
+import io.opaa.connection.oauth.ProfileSignIn.SignInTest;
 import io.opaa.connection.profile.ConnectionProfile;
 import io.opaa.connection.profile.ConnectionProfileService.ProfileImpact;
 import io.opaa.connection.profile.ConnectionProfileValues;
@@ -89,6 +91,7 @@ public final class ConnectionProfileResponseMapper {
                 ? null
                 : profile.getClientSecretExpiresOn().toString())
         .clientSecretExpiresSoon(secretExpiresSoon)
+        .signInRejected(profile.isSignInRejected())
         .tenant(profile.getTenant())
         .scopes(profile.getScopes())
         .connectorSettings(settings == null ? null : settings.asMap())
@@ -119,6 +122,10 @@ public final class ConnectionProfileResponseMapper {
         .sourceInsecureSsl(profile.isSourceInsecureSsl());
   }
 
+  static ConnectionProfileSignInTestResponse toResponse(SignInTest test) {
+    return new ConnectionProfileSignInTestResponse(test.success(), test.message());
+  }
+
   static ConnectorTypeStateResponse toResponse(TypeState state) {
     return new ConnectorTypeStateResponse()
         .sourceType(state.type().key())
@@ -141,6 +148,7 @@ public final class ConnectionProfileResponseMapper {
         .libraries(impact.libraries())
         .connectedAccounts(toCount(impact.connectedAccounts()))
         .lastForProfileRequirement(lastForProfileRequirement)
+        .fullSyncLibraries(impact.fullSyncLibraries())
         .rejectedLibraries((long) impact.rejections().size())
         .rejectedPrivateLibraries(
             impact.rejectedPrivateLibraries() == null

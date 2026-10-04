@@ -3,9 +3,11 @@ package io.opaa.indexing.source.googledrive;
 import static io.opaa.indexing.source.ConnectorChecks.blankToNull;
 import static io.opaa.indexing.source.ConnectorChecks.unreachable;
 
+import io.opaa.api.types.ConnectionProfileSupport;
 import io.opaa.common.ValidationException;
 import io.opaa.indexing.filesync.FileAccessException;
 import io.opaa.indexing.source.ConnectorData;
+import io.opaa.indexing.source.DefaultKey;
 import io.opaa.indexing.source.OriginalAccess;
 import io.opaa.indexing.source.OriginalUnavailableException;
 import io.opaa.indexing.source.ProfileDeclaration;
@@ -13,6 +15,7 @@ import io.opaa.indexing.source.RequestBudget;
 import io.opaa.indexing.source.ServedOriginals;
 import io.opaa.indexing.source.ServerAddressRule;
 import io.opaa.indexing.source.ServiceAccountKeyAuth;
+import io.opaa.indexing.source.SignIn;
 import io.opaa.indexing.source.SourceBrowser;
 import io.opaa.indexing.source.SourceConnectionTestResult;
 import io.opaa.indexing.source.SourceConnector;
@@ -44,10 +47,11 @@ import tools.jackson.databind.JsonNode;
 
 /**
  * Google Drive as the source of a library (ADR-0040). The address is fixed ({@code apiBase}); the
- * core signs in with the service account key and hands over an access token only; the scopes, the
- * imitated account and the full-sync rhythm are the connector settings ({@link
- * GoogleDriveSettings}). A changed address, scope or account discards the run state, so the next
- * run is a full sync.
+ * core signs in with the service account key - the library's own or its profile's - and hands over
+ * an access token only; the scopes, the imitated account and the full-sync rhythm are the connector
+ * settings ({@link GoogleDriveSettings}). Under a profile only the profile names the imitated
+ * account. A changed address, scope or account discards the run state, so the next run is a full
+ * sync.
  */
 public class GoogleDriveSourceConnector implements SourceConnector, SourceBrowser, OriginalAccess {
 
@@ -88,9 +92,14 @@ public class GoogleDriveSourceConnector implements SourceConnector, SourceBrowse
         SourceConnectorDescriptor.remoteRun(TYPE, "Google Drive")
             .withFullSyncInterval(apis.properties().fullSyncInterval())
             .withProfiles(
-                ProfileDeclaration.forbiddenWithServiceAccountKey(
-                        new ServiceAccountKeyAuth(tokenEndpoint, SCOPE))
-                    .withAddress(ServerAddressRule.fixed(apiBase.toString())));
+                ProfileDeclaration.of(
+                        ConnectionProfileSupport.OPTIONAL,
+                        SignIn.serviceAccountKey(new ServiceAccountKeyAuth(tokenEndpoint, SCOPE)))
+                    .withAddress(ServerAddressRule.fixed(apiBase.toString()))
+                    .withDefaults(
+                        DefaultKey.text(
+                                GoogleDriveSettings.SUBJECT, "Imitiertes Konto (Delegation)")
+                            .onlyOnProfile()));
   }
 
   @Override

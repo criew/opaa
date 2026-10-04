@@ -97,7 +97,8 @@ public class ServiceAccountTokens {
   /**
    * An access token valid now for {@code storedKey}, imitating {@code subject} when given.
    *
-   * @param sourceProxy the library's proxy, {@code host:port} or {@code null}
+   * @param sourceProxy the proxy of the library or of its profile, {@code host:port} or {@code
+   *     null}
    * @throws SourceCredentialsException with a German cause when the key cannot be used
    */
   public String accessToken(
@@ -188,7 +189,10 @@ public class ServiceAccountTokens {
     }
     JsonNode body = readBody(response);
     if (!response.isSuccess()) {
-      throw new SourceCredentialsException(refusal(response.statusCode(), body, key, subject));
+      String finding = refusal(response.statusCode(), body, key, subject);
+      throw keyRefused(body, subject)
+          ? new SignInRejectedException(finding)
+          : new SourceCredentialsException(finding);
     }
     JsonNode accessToken = body == null ? null : body.get("access_token");
     if (accessToken == null || !accessToken.isString() || accessToken.asString().isBlank()) {
@@ -266,13 +270,45 @@ public class ServiceAccountTokens {
     if ("invalid_grant".equals(error) && subject != null && description.contains("email")) {
       return "Das imitierte Konto " + subject + " ist in der Domäne nicht bekannt.";
     }
-    if ("invalid_grant".equals(error) || "invalid_client".equals(error)) {
+    if (clockRefused(error, description)) {
+      return "Google weist die Anmeldung wegen ihrer Zeitangaben ab. Bitte die Uhrzeit des Servers"
+          + " prüfen (Zeitsynchronisation).";
+    }
+    if ("invalid_client".equals(error)) {
       return "Der Dienstkonto-Schlüssel von "
           + key.clientEmail()
           + " wird nicht angenommen: Er ist ungültig, widerrufen, oder das Dienstkonto existiert"
           + " nicht mehr.";
     }
+    if ("invalid_grant".equals(error)) {
+      return "Der Dienstkonto-Schlüssel von "
+          + key.clientEmail()
+          + " wird nicht angenommen: Er ist ungültig, widerrufen, oder das Dienstkonto existiert"
+          + " nicht mehr. Dieselbe Antwort gibt Google, wenn die Uhrzeit des Servers abweicht;"
+          + " dann die Uhrzeit prüfen.";
+    }
     return "Der Token-Endpunkt hat den Dienstkonto-Schlüssel abgewiesen (HTTP " + status + ").";
+  }
+
+  /**
+   * Whether the answer refuses the key itself, not the scope, the imitated account or the time of
+   * the assertion (a server clock off by more than the token endpoint allows).
+   */
+  static boolean keyRefused(JsonNode body, String subject) {
+    String error = field(body, "error");
+    String description = field(body, "error_description").toLowerCase(java.util.Locale.ROOT);
+    return "invalid_client".equals(error)
+        || "invalid_grant".equals(error)
+            && !(subject != null && description.contains("email"))
+            && !clockRefused(error, description);
+  }
+
+  /** Google words a refused {@code iat}/{@code exp} as an invalid grant; its description tells. */
+  private static boolean clockRefused(String error, String description) {
+    return "invalid_grant".equals(error)
+        && (description.contains(" iat ")
+            || description.contains("timeframe")
+            || description.contains("short-lived"));
   }
 
   private static String field(JsonNode body, String name) {

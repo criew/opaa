@@ -14,6 +14,7 @@ export function notificationTarget(type: NotificationType): string | null {
     case 'CONNECTION_PROFILE_REQUESTED':
     case 'CONNECTION_PROFILE_REQUEST_RESOLVED':
     case 'PRIVATE_LIBRARY_RELEASED':
+    case 'SOURCE_FULL_SYNC_FORCED':
       return null
     default: {
       const unknown: never = type

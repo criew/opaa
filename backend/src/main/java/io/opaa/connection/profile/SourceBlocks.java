@@ -4,6 +4,7 @@ import io.opaa.api.types.ConnectionAuthMethod;
 import io.opaa.connection.token.ConnectionSecrets;
 import io.opaa.connection.token.SecretOwner;
 import io.opaa.connection.token.SecretOwner.PersonOwned;
+import io.opaa.connection.token.SecretOwner.ProfileOwned;
 import io.opaa.indexing.source.SourceBlock;
 import io.opaa.indexing.source.SourceBlock.Reason;
 import io.opaa.indexing.source.SourceConnectionBlockedException;
@@ -97,12 +98,16 @@ public class SourceBlocks {
 
   /**
    * The block for {@code reason}, one the secret store answers for {@code owner} on {@code
-   * profile}: its notice names who acts - the owner of a private library, else its managers.
+   * profile}: its notice names who acts - the owner of a private library, the system administration
+   * for the profile's own sign-in, else the library's managers.
    */
   public static SourceBlock secretBlock(
       Reason reason, ConnectionProfile profile, SecretOwner owner) {
     boolean person = owner instanceof PersonOwned;
     String access = "„" + profile.getName() + "“";
+    if (owner instanceof ProfileOwned) {
+      return profileSignInBlock(reason, access);
+    }
     return switch (reason) {
       case OWNER_DEACTIVATED ->
           new SourceBlock(
@@ -180,6 +185,38 @@ public class SourceBlocks {
                   + CONTENT_STAYS);
       case TYPE_LOCKED, PROFILE_LOCKED, PROFILE_REQUIRED, ACCESS_REMOVED ->
           throw new IllegalArgumentException(reason + " is no answer of the secret store");
+    };
+  }
+
+  /** The block of a profile's own sign-in: only the system administration can lift it. */
+  private static SourceBlock profileSignInBlock(Reason reason, String access) {
+    return switch (reason) {
+      case EXPIRED ->
+          new SourceBlock(
+              reason,
+              ADMINISTRATION,
+              "Abgelaufen: Der Anbieter hat die Anmeldung des Zugangs "
+                  + access
+                  + " abgelehnt. Die Systemverwaltung trägt ein neues Client-Secret bzw. einen"
+                  + " neuen Schlüssel ein oder testet die Anmeldung am Zugang."
+                  + CONTENT_STAYS);
+      case NOT_CONNECTED ->
+          new SourceBlock(
+              reason,
+              ADMINISTRATION,
+              "Verbindung getrennt: Für den Zugang "
+                  + access
+                  + " ist kein Client-Secret bzw. Dienstkonto-Schlüssel hinterlegt. Zuständig ist"
+                  + " die Systemverwaltung."
+                  + CONTENT_STAYS);
+      case OWNER_DEACTIVATED,
+          DORMANT,
+          TYPE_LOCKED,
+          PROFILE_LOCKED,
+          PROFILE_REQUIRED,
+          ACCESS_REMOVED,
+          TARGET_OUTSIDE_PROFILE ->
+          throw new IllegalArgumentException(reason + " is no state of a profile's own sign-in");
     };
   }
 
@@ -273,13 +310,23 @@ public class SourceBlocks {
       if (profile != null) {
         profileOfLibrary.put(library.getId(), profile);
         SecretOwner owner = SecretOwner.of(profile.getId(), profile.getAuthMethod(), library);
-        if (secretConsidered && asksTheStore(profile, owner)) {
+        if (secretConsidered && (asksTheStore(profile, owner) || owner instanceof ProfileOwned)) {
           ownerOfLibrary.put(library.getId(), owner);
         }
       }
     }
     Map<SecretOwner, Reason> secretStates =
         ownerOfLibrary.isEmpty() ? Map.of() : secrets.statesAmong(ownerOfLibrary.values());
+    Map<SecretOwner, Reason> states = new HashMap<>(secretStates);
+    profileOfLibrary.forEach(
+        (libraryId, profile) -> {
+          if (ownerOfLibrary.get(libraryId) instanceof ProfileOwned owner) {
+            Reason reason = profileSignInState(profile);
+            if (reason != null) {
+              states.put(owner, reason);
+            }
+          }
+        });
     List<Facts> facts = new ArrayList<>();
     for (KnowledgeLibrary library : libraries) {
       SourceType type = library.getSourceType();
@@ -300,9 +347,20 @@ public class SourceBlocks {
                   ? null
                   : withoutPersons(profileOfLibrary.get(library.getId()), owner)
                       ? Reason.NOT_CONNECTED
-                      : secretStates.get(owner)));
+                      : states.get(owner)));
     }
     return facts;
+  }
+
+  /**
+   * Why the profile's own sign-in hands out nothing, read from its row without asking the provider:
+   * no secret stored, or a registration the provider rejected; {@code null} while it signs in.
+   */
+  private static Reason profileSignInState(ConnectionProfile profile) {
+    if (!profile.isClientSecretSet()) {
+      return Reason.NOT_CONNECTED;
+    }
+    return profile.isSignInRejected() ? Reason.EXPIRED : null;
   }
 
   /** A person's secret on a profile that admits no persons (any more) is never handed out. */
@@ -312,7 +370,8 @@ public class SourceBlocks {
 
   /**
    * Whether the store holds the secret of {@code owner} on {@code profile}: a personal secret of a
-   * library, and any secret of a person; a library's other sign-ins are not supported yet.
+   * library, and any secret of a person; the profile's own sign-in is read from its row, OAuth for
+   * a library is not supported yet.
    */
   private static boolean asksTheStore(ConnectionProfile profile, SecretOwner owner) {
     ConnectionAuthMethod method = profile.getAuthMethod();
@@ -451,7 +510,7 @@ public class SourceBlocks {
       if (secretOwner != null) {
         return fromTheStore(Reason.NOT_CONNECTED);
       }
-      // OAUTH, CLIENT_CREDENTIALS, SERVICE_ACCOUNT_KEY: no library can be connected with them yet
+      // OAUTH for a library: no library can be connected with it yet
       return Optional.of(
           new SourceBlock(
               Reason.NOT_CONNECTED,

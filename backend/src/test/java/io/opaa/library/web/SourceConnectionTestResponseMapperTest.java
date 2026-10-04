@@ -187,7 +187,7 @@ class SourceConnectionTestResponseMapperTest {
                                 PersonalSecretForm.TOKEN, ConnectionOwnership.LIBRARY))
                         .withAddress(ServerAddressRule.schemes("https", "smb"))
                         .withDefaults(
-                            DefaultKey.text("region", "Region"),
+                            DefaultKey.text("region", "Region").onlyOnProfile(),
                             DefaultKey.choice("edition", "Edition", "CLOUD", "DC"))),
             false,
             new TypeCreation(true, true, false, false, null));
@@ -212,10 +212,11 @@ class SourceConnectionTestResponseMapperTest {
             ProfileDefaultKey::getKey,
             ProfileDefaultKey::getLabel,
             ProfileDefaultKey::getKind,
-            ProfileDefaultKey::getChoices)
+            ProfileDefaultKey::getChoices,
+            ProfileDefaultKey::getProfileOnly)
         .containsExactly(
-            tuple("region", "Region", ProfileDefaultKind.TEXT, List.of()),
-            tuple("edition", "Edition", ProfileDefaultKind.CHOICE, List.of("CLOUD", "DC")));
+            tuple("region", "Region", ProfileDefaultKind.TEXT, List.of(), true),
+            tuple("edition", "Edition", ProfileDefaultKind.CHOICE, List.of("CLOUD", "DC"), false));
     assertThat(descriptor.getServerAddress().getSchemes()).containsExactly("https", "smb");
     assertThat(descriptor.getServerAddress().getFixed()).isNull();
 

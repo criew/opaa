@@ -170,6 +170,11 @@ class ModularArchitectureTest {
   }
 
   @Test
+  void theProfileRegistrationLeavesOnlyToTheSignIn() {
+    ARCHITECTURE.theProfileRegistrationLeavesOnlyToTheSignIn().check(mainClasses);
+  }
+
+  @Test
   void theConnectorReleaseIsDecidedInConnections() {
     ARCHITECTURE.theConnectorReleaseIsDecidedInConnections().check(mainClasses);
   }
