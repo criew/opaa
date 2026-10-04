@@ -9,7 +9,7 @@ import { blue } from '../../theme/tokens'
 import { catalogStatusLabel } from '../../utils/labels'
 import { assetTypeDefinition } from './assetTypeRegistry'
 import type { AssetTileData, AssetTileStatus } from './assetTileData'
-import { FavoriteToggle, PublicMark, ResponsibleLine, TypeBadge } from './assetMarks'
+import { FavoriteToggle, PrivateMark, PublicMark, ResponsibleLine, TypeBadge } from './assetMarks'
 
 /** The tile opens the asset: its title is a link whose click area covers the tile. */
 interface LinkMode {
@@ -156,6 +156,7 @@ export default function AssetTile({ tile, mode, onFavoriteChange, actions }: Ass
             <RadioButtonUncheckedIcon aria-hidden sx={{ fontSize: 18, color: 'text.disabled' }} />
           ))}
         {definition && <TypeBadge definition={definition} />}
+        {tile.privateLibrary && <PrivateMark />}
         {tile.isPublic && <PublicMark />}
         {onFavoriteChange && tile.favorite !== undefined ? (
           <FavoriteToggle
