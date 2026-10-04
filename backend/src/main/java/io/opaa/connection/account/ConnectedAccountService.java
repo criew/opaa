@@ -315,6 +315,7 @@ public class ConnectedAccountService implements PersonConnections, GrantRejectio
             new AccountOverview.Connectable(
                 profile.getId(),
                 profile.getName(),
+                profile.getSourceType(),
                 profile.getAuthMethod(),
                 secretFormOf(profile, descriptor.get())));
       }
@@ -486,6 +487,7 @@ public class ConnectedAccountService implements PersonConnections, GrantRejectio
     return new AccountOverview.Account(
         profile.getId(),
         profile.getName(),
+        profile.getSourceType(),
         profile.getAuthMethod(),
         findDescriptor(profile).map(found -> secretFormOf(profile, found)).orElse(null),
         account.getState(),

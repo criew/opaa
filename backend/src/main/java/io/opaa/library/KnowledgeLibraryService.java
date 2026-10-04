@@ -248,7 +248,7 @@ public class KnowledgeLibraryService {
       throw new ValidationException(
           "sourceType muss die Quellart der Bibliothek sein: " + library.getSourceType().key());
     }
-    return connectorRelease.profileOptions(caller, sourceType);
+    return connectorRelease.profileOptions(caller, sourceType, library.isOwnerOnly());
   }
 
   /**

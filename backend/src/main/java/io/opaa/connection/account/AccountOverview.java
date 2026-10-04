@@ -3,6 +3,7 @@ package io.opaa.connection.account;
 import io.opaa.api.types.ConnectedAccountState;
 import io.opaa.api.types.ConnectionAuthMethod;
 import io.opaa.api.types.PersonalSecretForm;
+import io.opaa.knowledge.SourceType;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -26,6 +27,7 @@ public record AccountOverview(
   public record Account(
       UUID profileId,
       String profileName,
+      SourceType sourceType,
       ConnectionAuthMethod authMethod,
       PersonalSecretForm secretForm,
       ConnectedAccountState state,
@@ -52,6 +54,7 @@ public record AccountOverview(
   public record Connectable(
       UUID profileId,
       String name,
+      SourceType sourceType,
       ConnectionAuthMethod authMethod,
       PersonalSecretForm secretForm) {}
 
