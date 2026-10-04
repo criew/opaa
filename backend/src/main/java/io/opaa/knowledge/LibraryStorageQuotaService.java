@@ -2,6 +2,7 @@ package io.opaa.knowledge;
 
 import io.opaa.common.ByteSizes;
 import java.util.UUID;
+import java.util.concurrent.locks.ReentrantLock;
 import org.springframework.stereotype.Service;
 
 /**
@@ -26,17 +27,32 @@ import org.springframework.stereotype.Service;
  * (the 50 MiB single-file limit {@link UploadProperties#maxFileSize}) of permanent overshoot -
  * narrow enough in practice that serializing every write behind a lock for it was not judged
  * worthwhile.
+ *
+ * <p>A private library is held to the {@link PersonalStorageQuota} of its owner as well ({@link
+ * #verdictFor}). That check runs under {@link #holdIntake}, which serializes the intake of one
+ * owner's private libraries inside this single instance (ADR-0021): what is admitted is stored
+ * before the next check, so concurrent runs of several libraries of one person never overshoot it.
  */
 @Service
 public class LibraryStorageQuotaService {
 
+  private static final int OWNER_STRIPES = 64;
+
   private final DocumentRepository documentRepository;
   private final LibraryProperties libraryProperties;
+  private final PersonalStorageQuota personalQuota;
+  private final ReentrantLock[] ownerLocks = new ReentrantLock[OWNER_STRIPES];
 
   public LibraryStorageQuotaService(
-      DocumentRepository documentRepository, LibraryProperties libraryProperties) {
+      DocumentRepository documentRepository,
+      LibraryProperties libraryProperties,
+      PersonalStorageQuota personalQuota) {
     this.documentRepository = documentRepository;
     this.libraryProperties = libraryProperties;
+    this.personalQuota = personalQuota;
+    for (int i = 0; i < OWNER_STRIPES; i++) {
+      ownerLocks[i] = new ReentrantLock();
+    }
   }
 
   /**
@@ -80,6 +96,60 @@ public class LibraryStorageQuotaService {
       return false;
     }
     return usedBytes(libraryId) + additionalBytes > quota;
+  }
+
+  /**
+   * Whether {@code library} may take in {@code additionalBytes} more: {@link
+   * QuotaVerdict#LIBRARY_EXHAUSTED} as {@link #wouldExceedQuota(UUID, long)} says, else for a
+   * private library {@link QuotaVerdict#PERSON_EXHAUSTED} when the use of all private libraries of
+   * its owner would pass the {@link PersonalStorageQuota}. Call it under {@link #holdIntake} and
+   * store what it admits before letting go.
+   */
+  public QuotaVerdict verdictFor(KnowledgeLibrary library, long additionalBytes) {
+    if (wouldExceedQuota(library.getId(), additionalBytes)) {
+      return QuotaVerdict.LIBRARY_EXHAUSTED;
+    }
+    if (!library.isOwnerOnly()) {
+      return QuotaVerdict.WITHIN;
+    }
+    long quota = personalQuota.quotaBytes();
+    if (quota > 0 && personalQuota.usageOf(library.getOwnerUserId()) + additionalBytes > quota) {
+      return QuotaVerdict.PERSON_EXHAUSTED;
+    }
+    return QuotaVerdict.WITHIN;
+  }
+
+  /**
+   * Serializes the intake of all private libraries of {@code library}'s owner until closed; for a
+   * shared library it holds nothing.
+   */
+  public IntakeHold holdIntake(KnowledgeLibrary library) {
+    if (!library.isOwnerOnly()) {
+      return () -> {};
+    }
+    ReentrantLock lock =
+        ownerLocks[Math.floorMod(library.getOwnerUserId().hashCode(), OWNER_STRIPES)];
+    lock.lock();
+    return lock::unlock;
+  }
+
+  /**
+   * The German message for the owner of {@code library} once {@link #verdictFor} said {@link
+   * QuotaVerdict#PERSON_EXHAUSTED}; it names her own use and the limit.
+   */
+  public String personalQuotaExceededMessage(KnowledgeLibrary library) {
+    return "Speicherkontingent Ihrer privaten Bibliotheken erschöpft ("
+        + ByteSizes.format(personalQuota.usageOf(library.getOwnerUserId()))
+        + " von "
+        + ByteSizes.format(personalQuota.quotaBytes())
+        + " belegt)";
+  }
+
+  /** A held intake; closing it lets the next intake of the same owner in. */
+  @FunctionalInterface
+  public interface IntakeHold extends AutoCloseable {
+    @Override
+    void close();
   }
 
   /**

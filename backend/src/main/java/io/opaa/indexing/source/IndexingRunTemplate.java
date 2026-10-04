@@ -5,6 +5,7 @@ import io.opaa.indexing.job.IndexingEventCategory;
 import io.opaa.indexing.job.IndexingJobService;
 import io.opaa.indexing.job.IndexingRunEventRecorder;
 import io.opaa.indexing.job.IndexingRunEventRepository;
+import io.opaa.indexing.job.PersonalQuotaExhaustedException;
 import io.opaa.indexing.job.RequestBudgetExhaustedException;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
@@ -31,11 +32,12 @@ import org.springframework.dao.DataIntegrityViolationException;
  *
  * <p>A body ends its run early by throwing {@link IndexingRunFailedException} with the message the
  * job should carry. A {@link RequestBudgetExhaustedException} ends the run as truncated - noted
- * with the body's {@link IndexingRun#budgetContinuation continuation}, never failed. An {@link
- * InterruptedException} fails the run as interrupted, a {@link SourceConnectionBlockedException}
- * from {@link IndexingRun#credentials} with the block's notice, a {@link
- * SourceCredentialsRejectedException} with its message after telling the port, a {@link
- * LibraryErasureRequestedException} once the library is being erased, a {@link
+ * with the body's {@link IndexingRun#budgetContinuation continuation}, never failed; a {@link
+ * PersonalQuotaExhaustedException} likewise, with its message and the category {@link
+ * RunFailureCategory#QUOTA_EXHAUSTED}. An {@link InterruptedException} fails the run as
+ * interrupted, a {@link SourceConnectionBlockedException} from {@link IndexingRun#credentials} with
+ * the block's notice, a {@link SourceCredentialsRejectedException} with its message after telling
+ * the port, a {@link LibraryErasureRequestedException} once the library is being erased, a {@link
  * DataIntegrityViolationException} as "library deleted during the run" (the only way a foreign key
  * to the library can break mid-run), any other exception with its own message.
  */
@@ -229,6 +231,11 @@ public class IndexingRunTemplate {
           e.getMessage());
       recordBudgetExhausted(run, e);
       incomplete = true;
+    } catch (PersonalQuotaExhaustedException e) {
+      log.info("Indexing run {} for library {} ended at its owner's quota", jobId, library.getId());
+      run.events().recordRunNote(IndexingEventCategory.REJECTED, e.getMessage());
+      incomplete = true;
+      category = RunFailureCategory.QUOTA_EXHAUSTED;
     } catch (SourceCredentialsRejectedException e) {
       log.warn(
           "Indexing run {} for library {} ended with category {}: {}",
@@ -303,6 +310,8 @@ public class IndexingRunTemplate {
         progress.fail(failure, category);
       } else if (failed) {
         progress.fail(failure);
+      } else if (category != null) {
+        progress.complete(category);
       } else {
         progress.complete();
       }

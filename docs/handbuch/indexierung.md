@@ -911,6 +911,14 @@ Jede Bibliothek hat ein Kontingent. Geprüft wird das **Delta**: Bei einer geän
 zählt nur die Größendifferenz, nicht die volle Größe. Überschreitet das Element das Kontingent,
 wird es mit dem Ergebnis „Kontingent überschritten" abgelehnt.
 
+Eine private Bibliothek unterliegt zusätzlich dem **Kontingent ihrer Besitzerin** über alle ihre
+privaten Bibliotheken zusammen (Kapitel [Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md),
+„Private Bibliotheken"). Überschreitet das Element dieses Kontingent, endet der Lauf an dieser
+Stelle geordnet als unvollständig: Bereits Aufgenommenes bleibt, nichts wird als entfernt
+abgeglichen, auch keine Löschung in der Quelle, und das Laufprotokoll nennt den Grund. Prüfung und Speichern der Dokumentzeile laufen
+für alle privaten Bibliotheken einer Person nacheinander, sodass auch gleichzeitige Läufe das
+Kontingent nicht überschreiten.
+
 ### Schritt 3: Format erkennen und Pipeline wählen
 
 Die Formaterkennung schaut in den **Inhalt** (Magic Bytes), nicht auf die Dateiendung. Eine als

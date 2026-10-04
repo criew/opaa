@@ -165,6 +165,12 @@ public class IndexingJobService {
     failJob(jobId, errorMessage, null);
   }
 
+  /** Records why a still running run ends early, before it is completed. */
+  @Transactional(propagation = Propagation.REQUIRES_NEW)
+  public void recordEndCategory(UUID jobId, String category) {
+    indexingJobRepository.recordEndCategoryIfRunning(jobId, category);
+  }
+
   /** {@link #failJob(UUID, String)} recording why, as {@code failureCategory} names it. */
   @Transactional(propagation = Propagation.REQUIRES_NEW)
   public void failJob(UUID jobId, String errorMessage, String failureCategory) {

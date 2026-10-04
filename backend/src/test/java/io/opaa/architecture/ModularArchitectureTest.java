@@ -120,6 +120,11 @@ class ModularArchitectureTest {
   }
 
   @Test
+  void personalUsageIsReadOnlyByItsOwner() {
+    ARCHITECTURE.personalUsageIsReadOnlyByItsOwner().check(mainClasses);
+  }
+
+  @Test
   void privateLibrariesAreNotEnumeratedOutsideListedClasses() {
     ARCHITECTURE.privateLibrariesAreNotEnumeratedOutsideListedClasses().check(mainClasses);
   }
