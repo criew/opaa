@@ -43,19 +43,30 @@ class PersonNumbersTest {
 
   static Stream<Arguments> privateLibraries() {
     return Stream.of(
-        // libraries, owners, shown
-        Arguments.of(0, 0, "<5"),
-        Arguments.of(1, 1, "<5"),
-        Arguments.of(9, 4, "<5"),
-        Arguments.of(5, 5, "5"),
-        Arguments.of(12, 5, "12"));
+        // libraries, owners, owners in the organization, shown ("-" for not told)
+        Arguments.of(0, 0, 0, "<5"),
+        Arguments.of(1, 1, 1, "<5"),
+        Arguments.of(9, 4, 4, "<5"),
+        Arguments.of(5, 5, 5, "5"),
+        Arguments.of(12, 5, 5, "12"),
+        Arguments.of(3, 3, 9, "<5"),
+        Arguments.of(5, 5, 10, "5"),
+        Arguments.of(5, 5, 6, "-"),
+        Arguments.of(8, 6, 9, "-"));
   }
 
-  /** A number of private libraries rests on their owners, not on the libraries themselves. */
-  @ParameterizedTest(name = "{0} libraries of {1} owners -> {2}")
+  /**
+   * A number of private libraries rests on their owners, not on the libraries themselves; a part of
+   * the organization's is exact only where the owners outside it are none or at least five, so its
+   * difference to the organization's number points at no person either.
+   */
+  @ParameterizedTest(name = "{0} libraries of {1} of {2} owners -> {3}")
   @MethodSource("privateLibraries")
-  void aNumberOfPrivateLibrariesIsMaskedByItsOwners(long libraries, long owners, String shown) {
-    assertThat(TestPersonCounts.numbers().privateLibraries(libraries, owners).toString())
-        .isEqualTo(shown);
+  void aNumberOfPrivateLibrariesIsMaskedByItsOwners(
+      long libraries, long owners, long organizationOwners, String shown) {
+    PersonCount count =
+        TestPersonCounts.numbers().privateLibraries(libraries, owners, organizationOwners);
+
+    assertThat(count == null ? "-" : count.toString()).isEqualTo(shown);
   }
 }

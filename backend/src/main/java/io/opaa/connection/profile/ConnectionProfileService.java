@@ -345,16 +345,22 @@ public class ConnectionProfileService {
     return profile;
   }
 
-  /** How many private libraries the connector refuses, masked by their owners. */
+  /**
+   * How many private libraries the connector refuses, masked by their owners as a part of the
+   * private libraries of their organization.
+   */
   private PersonCount privateRejections(ProfileChange change, Set<UUID> released) {
-    long owners =
+    List<KnowledgeLibrary> refused =
         change.moves().stream()
             .map(Move::library)
             .filter(library -> released.contains(library.getId()))
-            .map(KnowledgeLibrary::getOwnerUserId)
-            .distinct()
-            .count();
-    return personNumbers.privateLibraries(released.size(), owners);
+            .toList();
+    long owners = refused.stream().map(KnowledgeLibrary::getOwnerUserId).distinct().count();
+    long organizationOwners =
+        refused.isEmpty()
+            ? 0
+            : libraries.countPrivateLibraryOwners(refused.getFirst().getOrganizationId());
+    return personNumbers.privateLibraries(released.size(), owners, organizationOwners);
   }
 
   /**

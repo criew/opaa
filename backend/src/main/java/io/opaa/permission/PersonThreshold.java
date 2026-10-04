@@ -26,4 +26,14 @@ public class PersonThreshold {
   public boolean discloses(long persons) {
     return persons >= minimum;
   }
+
+  /**
+   * Whether a part of a number may be told exactly: it rests on {@code part} of the {@code whole}
+   * persons, and both the part and the persons outside it are none or at least N, so its difference
+   * to the whole points at no person either.
+   */
+  public boolean disclosesPart(long part, long whole) {
+    long rest = whole - part;
+    return discloses(part) && (rest == 0 || discloses(rest));
+  }
 }

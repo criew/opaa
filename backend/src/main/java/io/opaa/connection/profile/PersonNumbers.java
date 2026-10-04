@@ -50,13 +50,16 @@ public class PersonNumbers {
   }
 
   /**
-   * A number of private libraries as the administration may see it: it rests on their {@code
-   * owners}, so it is exact only from N owners on, else "fewer than N" - zero included.
+   * A number of private libraries as the administration may see it, a part of the organization's:
+   * it rests on their {@code owners} out of the {@code organizationOwners}, so it is exact only
+   * where {@link PersonThreshold#disclosesPart} allows; else "fewer than N" below N owners - zero
+   * included - and not told ({@code null}) from N on.
    */
-  public PersonCount privateLibraries(long libraries, long owners) {
-    return threshold.discloses(owners)
-        ? PersonCount.exact(libraries)
-        : PersonCount.fewerThan(minimum);
+  public PersonCount privateLibraries(long libraries, long owners, long organizationOwners) {
+    if (threshold.disclosesPart(owners, organizationOwners)) {
+      return PersonCount.exact(libraries);
+    }
+    return owners < minimum ? PersonCount.fewerThan(minimum) : null;
   }
 
   ProfileCounts mask(StateCounts counts) {
