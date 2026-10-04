@@ -38,6 +38,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -441,6 +442,48 @@ class PipelineReindexServiceIntegrationTest {
                     Organization.DEFAULT_ID, htmlPipeline.id(), htmlPipeline.version(), 10)
                 .isEmpty())
         .isTrue();
+  }
+
+  /**
+   * Every stale remote document of a private library is marked in one call, whatever the batch
+   * size, an attachment with its parent chain; the result counts none of them, so it tells the
+   * administration nothing about how many there are.
+   */
+  @Test
+  void everyStaleRemoteDocumentOfAPrivateLibraryIsMarkedInOneCallAndCountedNowhere() {
+    UUID privateLibrary = UUID.randomUUID();
+    jdbcTemplate.update(
+        "WITH shell AS (INSERT INTO assets (id, asset_type, organization_id, name, owner_type,"
+            + " owner_user_id, owner_only) VALUES (?, 'KNOWLEDGE_LIBRARY', ?, 'Privat', 'USER', ?,"
+            + " true) RETURNING id, organization_id) INSERT INTO knowledge_libraries (id,"
+            + " organization_id, source_type) SELECT id, organization_id, ? FROM shell",
+        privateLibrary,
+        Organization.DEFAULT_ID,
+        userId,
+        SourceTypes.HTTP_DIRECTORY.key());
+    List<UUID> marked = new ArrayList<>();
+    for (int index = 0; index < 3; index++) {
+      Document document =
+          persistedRemoteDocumentIn(privateLibrary, "https://example.test/privat/" + index, null);
+      seedChunk(document.getId(), privateLibrary, "alter chunk " + index, null, null);
+      marked.add(document.getId());
+    }
+    Document mail =
+        persistedRemoteDocumentIn(privateLibrary, "https://example.test/privat/mail", null);
+    Document attachment =
+        persistedRemoteDocumentIn(privateLibrary, "https://example.test/privat/anhang", mail);
+    seedChunk(attachment.getId(), privateLibrary, "alter anhang", null, null);
+    marked.add(mail.getId());
+    marked.add(attachment.getId());
+
+    PipelineReindexResult result = reindexBatch(1);
+
+    assertThat(result.isEmpty()).isTrue();
+    for (UUID id : marked) {
+      Document document = documentRepository.findById(id).orElseThrow();
+      assertThat(document.getChecksum()).as("checksum of %s", id).isNull();
+      assertThat(document.getLastModifiedRemote()).as("change marker of %s", id).isNull();
+    }
   }
 
   @Test
@@ -1378,6 +1421,22 @@ class PipelineReindexServiceIntegrationTest {
     document.setLibraryId(library.getId());
     document.setOrganizationId(Organization.DEFAULT_ID);
     document.setChecksum("checksum-remote");
+    return documentRepository.save(document);
+  }
+
+  /**
+   * A remote row of {@code libraryId} with both change markers set, under {@code parent} or none.
+   */
+  private Document persistedRemoteDocumentIn(UUID libraryId, String url, Document parent) {
+    Document document =
+        new Document("notiz.pdf", url, "application/pdf", 1024L, SourceTypes.HTTP_DIRECTORY);
+    document.setLibraryId(libraryId);
+    document.setOrganizationId(Organization.DEFAULT_ID);
+    document.setChecksum("checksum-" + url);
+    document.setLastModifiedRemote("7");
+    if (parent != null) {
+      document.setParentDocumentId(parent.getId());
+    }
     return documentRepository.save(document);
   }
 
