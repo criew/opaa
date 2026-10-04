@@ -38,7 +38,10 @@ final class ProfileFrame {
     return profile;
   }
 
-  /** Proxy and certificate check for the profile's server address, and for no other target. */
+  /**
+   * Proxy and certificate check the profile sets in place of its libraries' own; where they apply
+   * beyond the server address, the connector decides as for an own address.
+   */
   TransportRules serverTransport() {
     return new TransportRules(profile.getSourceProxy(), profile.isSourceInsecureSsl());
   }
