@@ -77,15 +77,15 @@ class SmbAddressTest {
 
   @Test
   void storedCredentialsStandOnlyForTheSameShareOnTheSameServer() {
-    String stored = "smb://fileserver/Daten";
+    String stored = SmbAddress.shareBinding("smb://fileserver/Daten");
 
-    assertThat(SmbAddress.sameShare(stored, "\\\\FileServer\\daten")).isTrue();
-    assertThat(SmbAddress.sameShare(stored, "smb://fileserver:445/Daten/")).isTrue();
-    assertThat(SmbAddress.sameShare(stored, "smb://fileserver/Personal")).isFalse();
-    assertThat(SmbAddress.sameShare(stored, "smb://fileserver:1445/Daten")).isFalse();
-    assertThat(SmbAddress.sameShare(stored, "smb://anderer/Daten")).isFalse();
-    assertThat(SmbAddress.sameShare(stored, "smb://fileserver/C$")).isFalse();
-    assertThat(SmbAddress.sameShare(null, stored)).isFalse();
+    assertThat(SmbAddress.shareBinding("\\\\FileServer\\daten")).isEqualTo(stored);
+    assertThat(SmbAddress.shareBinding("smb://fileserver:445/Daten/")).isEqualTo(stored);
+    assertThat(SmbAddress.shareBinding("smb://fileserver/Personal")).isNotEqualTo(stored);
+    assertThat(SmbAddress.shareBinding("smb://fileserver:1445/Daten")).isNotEqualTo(stored);
+    assertThat(SmbAddress.shareBinding("smb://anderer/Daten")).isNotEqualTo(stored);
+    assertThat(SmbAddress.shareBinding("smb://fileserver/C$")).isNotEqualTo(stored).isNotNull();
+    assertThat(SmbAddress.shareBinding(null)).isNull();
   }
 
   @Test

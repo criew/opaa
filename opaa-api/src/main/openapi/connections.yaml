@@ -183,6 +183,14 @@ paths:
         under the new one. While connections exist this needs confirmDiscard (otherwise 409 with
         code CONNECTION_PROFILE_CONFIRMATION_REQUIRED); getConnectionProfileImpact names the
         number beforehand. The connector of a profile never changes.
+        Every library whose effective configuration the change alters (address, proxy, TLS
+        switch, defaults) passes its connector's check first; when the connector refuses one,
+        nothing is changed - neither the profile nor any library - and the answer is 400 with
+        code CONNECTION_PROFILE_CHANGE_REJECTED, whose message names only how many libraries
+        and of which category; the reasons come only from previewConnectionProfileChange. A
+        change still needing confirmDiscard is refused with 409 before any connector is asked.
+        An accepted change leaves the same audit entries and discards the
+        same run state as a direct change of each library.
       requestBody:
         required: true
         content:
@@ -230,17 +238,19 @@ paths:
           $ref: "#/components/responses/NotFound"
 
   /api/v1/admin/connection-profiles/{profileId}/impact:
+    parameters:
+      - name: profileId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
     get:
       operationId: getConnectionProfileImpact
       tags: [connection-profile]
       summary: What a change, a shutdown or a deletion of the profile would cut off (system admin only)
-      parameters:
-        - name: profileId
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
+      description: Without a proposed change no connector is asked, so rejections stay empty.
       responses:
         "200":
           description: The connections and libraries on the profile
@@ -252,6 +262,42 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+
+    post:
+      operationId: previewConnectionProfileChange
+      tags: [connection-profile]
+      summary: What a proposed change of the profile would affect and which connector refuses it (system admin only)
+      description: >
+        Takes the body of updateConnectionProfile and changes nothing. Besides the counts of
+        getConnectionProfileImpact it names every library whose connector refuses the
+        configuration the change would give it - the refusals that make
+        updateConnectionProfile answer 400 CONNECTION_PROFILE_CHANGE_REJECTED. clientSecret and
+        confirmDiscard are ignored.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConnectionProfileUpdateRequest"
+      responses:
+        "200":
+          description: The connections and libraries on the profile and the refusals
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConnectionProfileImpactResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Another profile already carries the proposed name.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   /api/v1/admin/connection-profiles/{profileId}/disconnect-all:
     post:
@@ -442,13 +488,23 @@ paths:
         Every profile whose ownership admits libraries, by name, without anything of the app
         registration - each with whether the caller may create a library through it and, where
         not, a notice naming who can change that, so a profile the caller may not use is shown
-        rather than hidden. Needs the capability CREATE_CONNECTOR_LIBRARY in at least one scope.
+        rather than hidden. Without libraryId it needs the capability CREATE_CONNECTOR_LIBRARY in
+        at least one scope. With libraryId it needs AssetRole.MANAGER on that library instead
+        (403 without it, 404 for a library the caller cannot see), and sourceType must be the
+        library's (400): its managers choose the profile to connect it through, and the profiles
+        not released to them are listed with creatable false and the notice.
       parameters:
         - name: sourceType
           in: query
           required: true
           schema:
             $ref: "#/components/schemas/SourceTypeKey"
+        - name: libraryId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
       responses:
         "200":
           description: The selectable profiles
@@ -458,8 +514,12 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/ConnectionProfileOption"
+        "400":
+          $ref: "#/components/responses/ValidationError"
         "403":
           $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
 
 components:
   schemas:
@@ -792,7 +852,8 @@ components:
 
     ConnectionProfileImpactResponse:
       type: object
-      required: [connections, libraries, connectedAccounts, lastForProfileRequirement]
+      required:
+        [connections, libraries, connectedAccounts, lastForProfileRequirement, rejectedLibraries, rejections]
       properties:
         connections:
           type: integer
@@ -802,6 +863,19 @@ components:
           format: int64
         connectedAccounts:
           $ref: "#/components/schemas/PersonCount"
+        rejectedLibraries:
+          type: integer
+          format: int64
+          description: >
+            How many libraries the connector refuses the proposed change for; 0 without a
+            proposal (getConnectionProfileImpact).
+        rejections:
+          type: array
+          description: >
+            Why, one entry per refused library; empty without a proposal. May hold fewer entries
+            than rejectedLibraries where a library may not be named.
+          items:
+            $ref: "#/components/schemas/ConnectionProfileChangeRejection"
         lastForProfileRequirement:
           type: boolean
           description: >
@@ -813,8 +887,8 @@ components:
       type: object
       description: >
         A number of persons' connections as the administration sees it: exact from the minimum
-        group size on and at zero, below it only "fewer than" (fewerThan); a part is exact only
-        where neither it nor its complement lies below that size. Every answer of the
+        group size on, below it - zero included - only "fewer than" (fewerThan); a part is exact
+        only where the total is and neither it nor its complement lies below that size. Every answer of the
         administration counts the same way, so no difference of two answers points at a person.
         Exactly one of the two is set.
       properties:
@@ -967,6 +1041,28 @@ components:
           minLength: 1
           maxLength: 4096
           description: Write-only app password or token; never returned.
+
+    ConnectionProfileChangeRejection:
+      type: object
+      required: [libraryId, category, message]
+      description: The connector of one library refuses the configuration a change would give it.
+      properties:
+        libraryId:
+          type: string
+          format: uuid
+        category:
+          $ref: "#/components/schemas/SourceChangeRejectionCategory"
+        message:
+          type: string
+          description: The connector's reason, in German.
+
+    SourceChangeRejectionCategory:
+      type: string
+      description: >
+        Why the connector refuses a library's effective configuration, as it reports it:
+        CONNECTION (the target is out of reach or refuses the sign-in) or SETTINGS (a setting is
+        inadmissible, such as a profile default; every other refusal).
+      enum: [CONNECTION, SETTINGS]
 
     ConnectionProfileOption:
       type: object
@@ -1127,13 +1223,42 @@ components:
     ConnectionProfileRef:
       type: object
       required: [id, name]
-      description: The profile a library is connected through.
+      description: >
+        The profile a library is connected through. From AssetRole.MANAGER on the library it also
+        names what the profile sets for it, so its managers can edit the source without the
+        release to create one; never anything of the app registration and never a secret.
       properties:
         id:
           type: string
           format: uuid
         name:
           type: string
+        serverUrl:
+          type: string
+          nullable: true
+          description: The profile's server address; from MANAGER on.
+        authMethod:
+          nullable: true
+          description: The profile's sign-in method; from MANAGER on.
+          allOf:
+            - $ref: "#/components/schemas/ConnectionAuthMethod"
+        connectorDefaults:
+          type: object
+          additionalProperties: true
+          nullable: true
+          description: >
+            The connector settings the profile sets for every library on it; from MANAGER on,
+            absent for none.
+        sourceProxy:
+          type: string
+          nullable: true
+          description: The proxy every library on the profile is reached through; from MANAGER on.
+        sourceInsecureSsl:
+          type: boolean
+          nullable: true
+          description: >
+            Whether the certificate check is skipped for every library on the profile; from
+            MANAGER on.
 
     LibraryConnectionProfileRequest:
       type: object
@@ -1142,3 +1267,11 @@ components:
         profileId:
           type: string
           format: uuid
+        sourceUrl:
+          type: string
+          format: uri
+          nullable: true
+          description: >
+            The library's new address; it must lie under the profile's server address (400).
+            Absent, an address under the previous profile moves under the new one and any other
+            stays. Repairs a library whose own address lies under no profile.

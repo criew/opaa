@@ -164,7 +164,8 @@ public class ConnectedAccountService implements PersonConnections {
             () -> new ConnectedAccount(caller.organizationId(), caller.id(), profile.getId(), now));
     account.connected(label == null ? null : encryptor.encrypt(label), now, existing.isPresent());
     accounts.saveAndFlush(account);
-    secrets.store(new PersonOwned(profile.getId(), caller.id()), secret, profile.secretTarget());
+    secrets.store(
+        new PersonOwned(profile.getId(), caller.id()), secret, effective.personTarget(profile));
     log.record(
         caller.organizationId(),
         existing.isPresent()

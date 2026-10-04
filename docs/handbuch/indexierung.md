@@ -433,9 +433,9 @@ Verwaltenden mit diesen Aktionen:
 
 | Aktion | Wann | Wirkung |
 |---|---|---|
-| „Zugang zuordnen“ | Bibliothek mit eigener Adresse, auch nach „Zugang entfernt“ | verbindet sie über einen gewählten Zugang; die Adresse muss unter dessen Server-Adresse liegen |
+| „Zugang zuordnen“ | Bibliothek mit eigener Adresse, auch nach „Zugang entfernt“ | verbindet sie über einen gewählten Zugang; die Adresse muss unter dessen Server-Adresse liegen. Die Schnittstelle nimmt dabei auch eine neue Adresse unter dem Zugang an; so lässt sich eine wegen der Profilpflicht gesperrte Bibliothek reparieren, deren Adresse unter keinem Zugang liegt |
 | „Zugang wechseln“ | Bibliothek auf einem Zugang | verbindet sie über einen anderen Zugang derselben Quellart; der bisherige steht nicht zur Wahl. Eine Adresse unter dem bisherigen Zugang wandert unter den neuen. Ändert sich dabei der Server, werden die hinterlegten Zugangsdaten verworfen; die Meldung danach sagt das und führt zu „Quelle bearbeiten“, wo sie neu eingetragen werden |
-| „Zugang lösen“ | Bibliothek auf einem Zugang, ohne Profilpflicht der Quellart | fragt nach; die Bibliothek behält Adresse und Zugangsdaten als eigene |
+| „Zugang lösen“ | Bibliothek auf einem Zugang, ohne Profilpflicht der Quellart | fragt nach; die Bibliothek behält Adresse und Zugangsdaten als eigene, und was der Zugang vorgab (Vorgaben, Proxy, Zertifikatsprüfung), wird zu ihrer eigenen Einstellung. Sie läuft unverändert weiter |
 
 Zur Wahl stehen beim Zuordnen und Wechseln nur Zugänge, die die Person nutzen darf; die übrigen
 bleiben mit ihrem Hinweis sichtbar. Die Hinweise „Zugang entfernt“ und die Sperre wegen der
@@ -444,11 +444,14 @@ Profilpflicht stehen im Reiter „Quelle“ für alle Leseberechtigten; den Verw
 dieselben Regeln wie im Assistenten; solange die Angaben des Zugangs fehlen, lässt sich nichts
 speichern, und der Hinweis sagt das.
 
-Die Zugänge abrufen darf nur, wer das Anlegerecht „Konnektorbibliotheken anlegen“ in irgendeinem
-Geltungsbereich hat. Verwaltenden einer Bibliothek ohne dieses Recht bleiben deshalb „Zugang
-zuordnen“, „Zugang wechseln“ und das Bearbeiten der Quelle einer Bibliothek auf einem Zugang
-verschlossen, bis die Systemverwaltung ihnen das Recht erteilt; der Hinweis an diesen Stellen sagt
-das.
+Die Oberfläche ruft die Zugänge nur für Personen mit dem Anlegerecht „Konnektorbibliotheken
+anlegen“ in irgendeinem Geltungsbereich ab. Verwaltenden einer Bibliothek ohne dieses Recht bleiben
+deshalb „Zugang zuordnen“, „Zugang wechseln“ und das Bearbeiten der Quelle einer Bibliothek auf
+einem Zugang verschlossen, bis die Systemverwaltung ihnen das Recht erteilt; der Hinweis an diesen
+Stellen sagt das. Die Schnittstelle liefert Verwaltenden einer Bibliothek schon ohne dieses Recht die
+Zugänge ihrer Quellart (nicht freigegebene mit dem Hinweis, wer sie freischaltet) und die Angaben
+ihres Zugangs: Server-Adresse, Anmeldeart, Vorgaben, Proxy und Zertifikatsprüfung, nie ein
+Geheimnis.
 
 **Welcher Konnektor Zugänge kennt**, meldet er selbst: Zugänge verboten, möglich oder Pflicht,
 dazu die Anmeldearten, die er anbietet (ohne Anmeldung, persönliches Geheimnis, OAuth,
@@ -473,10 +476,20 @@ die App-Registrierung nur am Zugang steht. Die mitgelieferten Konnektoren melden
   lösen sie vom Zugang. **Zuordnen übernimmt die Vorgaben des Zugangs:** Eigener Proxy, ausgesetzte
   Zertifikatsprüfung und eigene Werte für vorgegebene Einstellungen entfallen ohne Rückfrage, bei
   einer Anmeldeart ohne persönliches Geheimnis auch die Zugangsdaten. Eine Adresse unter dem
-  bisherigen Zugang wandert dabei unter den neuen. Das
-  Geheimnis bleibt nur, solange Schema, Host und Port gleich bleiben (ohne Portangabe zählt nur bei
-  `http` und `https` der Standardport) und der Konnektor es weiter gelten lässt, etwa dieselbe
-  Freigabe eines Dateiservers; sonst wird es verworfen.
+  bisherigen Zugang wandert dabei unter den neuen. **Lösen schreibt die Vorgaben in die
+  Bibliothek:** Vorgegebene Einstellungen, Proxy und Zertifikatsprüfung des Zugangs werden ihre
+  eigenen, sie läuft also unverändert weiter.
+- **Der Konnektor prüft jeden Übergang.** Ändert Zuordnen, Wechseln oder Lösen, womit die Bibliothek
+  ihre Quelle erreicht, prüft ihr Konnektor das Ergebnis wie eine direkte Änderung, bevor etwas
+  gespeichert wird. Passt eine eigene Einstellung nicht zu einer Vorgabe des neuen Zugangs, weist
+  er das Zuordnen mit seinem Grund ab, und alles bleibt, wie es war. Ein gespeicherter Übergang
+  steht wie eine direkte Änderung im Revisionsprotokoll, und der Konnektor verwirft den
+  Abgleichstand, den er ungültig macht.
+- Das Geheimnis bleibt nur, solange sein Ziel gleich bleibt: Schema, Host und Port (ohne
+  Portangabe zählt nur bei `http` und `https` der Standardport) und das, woran der Konnektor es
+  zusätzlich bindet, etwa dieselbe Freigabe eines Dateiservers oder dasselbe imitierte Konto;
+  sonst wird es verworfen. Ändert eine Bearbeitung der Quelle bei gleichem Server nur diese
+  Bindung, verlangt OPAA neue Zugangsdaten, statt die alten weiterzureichen.
 - Einen anderen Zugang können die Verwaltenden vor dem Speichern testen. Der Test nutzt dann dessen
   Rahmen und braucht dessen Anlegerecht. Eine Sperre oder ein entfernter Zugang der Bibliothek
   steht ihm nicht im Weg, so lässt sich eine solche Bibliothek reparieren; ist der gewählte Zugang
@@ -488,9 +501,20 @@ die App-Registrierung nur am Zugang steht. Die mitgelieferten Konnektoren melden
 |---|---|
 | Server-Adresse ändern | Nach Bestätigung werden alle Geheimnisse der Bibliotheken auf dem Zugang verworfen; ihre Adressen wandern unter die neue Server-Adresse. Vorher nennt OPAA die Zahl der betroffenen Verbindungen und Bibliotheken |
 | Client-ID, Mandant, Scopes oder Anmeldeart ändern | wie oben, ohne Adresswechsel: alle Verbindungen müssen neu verbunden werden |
+| Vorgaben, Proxy oder Zertifikatsprüfung ändern | Die Bibliotheken behalten ihre Geheimnisse, es sei denn, eine Vorgabe ändert, woran der Konnektor sie bindet; dann gilt die Bestätigung wie oben für die Betroffenen |
 | nur ein neues Client-Secret zur selben Client-ID | keine; die Verbindungen bleiben |
 | „Alle Verbindungen trennen“ (Notabschaltung) | alle Geheimnisse sofort verworfen, der Zugang bleibt |
 | Zugang löschen | alle Geheimnisse verworfen; die Bibliotheken bleiben mit Bestand und dem Hinweis „Zugang entfernt“ stehen |
+
+Jede Änderung, die die Konfiguration einer Bibliothek auf dem Zugang verändert (Server-Adresse,
+Proxy, Zertifikatsprüfung, Vorgaben), prüft zuerst der Konnektor jeder betroffenen Bibliothek, und
+zwar bevor etwas gespeichert wird; Bibliotheken mit gleicher Konfiguration prüft er nur einmal.
+Lehnt er die Änderung für eine Bibliothek ab, wird nichts geändert, weder am Zugang noch an einer
+Bibliothek, und die Meldung nennt die Zahl der Bibliotheken je Kategorie (Verbindung, Einstellungen).
+Die Gründe nennt die Vorschau der Auswirkungen, auch schon vor dem Speichern. Wird die Änderung gespeichert, steht sie
+für jede betroffene Bibliothek im Revisionsprotokoll wie eine direkte Änderung ihrer Quelle, und
+der Konnektor verwirft den Abgleichstand, den sie ungültig macht; der nächste Lauf gleicht dann
+neu ab. Ein reines Umbenennen fragt keinen Konnektor.
 
 Das Client-Secret liegt verschlüsselt mit demselben Schlüssel wie die Zugangsdaten der
 Bibliotheken. Keine Antwort, kein Protokoll und kein Revisionseintrag enthält es; angezeigt wird

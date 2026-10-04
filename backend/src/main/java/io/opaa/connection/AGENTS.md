@@ -19,29 +19,29 @@ seine Ports `SourceConnectionResolver` (`ProfileSourceConnectionResolver`) und `
 - **Verbindungsprotokoll** wie `audit_log`: schreibt nur `ConnectionLog` (in der Transaktion des
   Aufrufers), liest nur `ConnectionLogQueryService` (`AUDITOR`), löscht nur die Datenbankfunktion.
   Die Verbindung einer privaten Bibliothek ist immer die der Person (`ConnectionLogOwner.Person`).
-- **Geheimnisse liest, speichert und verwirft nur `ConnectionSecrets`** (token), adressiert über
-  `SecretOwner.of` (die eine Wahl); library nur über den Port. Entschlüsselt wird nur dort, Antworten
-  tragen nur Zustände. Das Geheimnis einer Person geht nur heraus, solange ihr Konto nutzbar ist
-  (`AccountUsability` mit Schwelle) und nur an `ConnectionProfile#secretTarget`.
-- **„Ruhend“ und „deaktiviert“ werden abgeleitet, nie gespeichert;** gespeichert sind nur
-  `CONNECTED`, `EXPIRED`, `DISCONNECTED`. Ein verbundenes Konto endet nur über
-  `ConnectedAccountService#end`; die Zeile bleibt `DISCONNECTED`, solange eine private Bibliothek
-  daran hängt (Trigger: private Bibliothek nur auf Personen-Zugang mit verbundenem Konto).
-- **Die Verwaltung sieht verbundene Konten nur als Zahlen, und nur über `PersonNumbers`** („weniger
-  als N“, auch für Teilzahlen und ihr Komplement); Kontoname verschlüsselt, nur für die Person.
-- **Das Client-Secret ist schreibgeschützt;** Antworten tragen nur `clientSecretSet`.
+- **Geheimnisse liest, speichert und verwirft nur `ConnectionSecrets`** (token) über
+  `SecretOwner.of`; library nur über den Port. Das Geheimnis einer Person geht nur heraus, solange
+  ihr Konto nutzbar ist (`AccountUsability` mit Schwelle), und nur an das Ziel, für das es ausgestellt
+  ist: `SecretTarget#key` (`sameOrigin` plus `credentialBinding`) ist die eine Zielfunktion.
+  Verwerfen je Bibliothek trifft nur deren eigenes Geheimnis (`LibraryOwned`), nie das geteilte
+  einer Person; das endet nur mit dem Konto (`ConnectedAccountService#end`).
+- **„Ruhend“ und „deaktiviert“ werden abgeleitet, nie gespeichert** (gespeichert: `CONNECTED`,
+  `EXPIRED`, `DISCONNECTED`). Eine getrennte Zeile bleibt, solange eine private Bibliothek daran
+  hängt (Trigger: private Bibliothek nur auf Personen-Zugang mit verbundenem Konto).
+- **Die Verwaltung sieht verbundene Konten nur über `PersonNumbers`** („weniger als N“, auch bei 0
+  und für Teilzahlen); Kontoname verschlüsselt, nur für die Person.
+- **Das Client-Secret ist schreibgeschützt;** Antworten und Audit sagen nur Ja/Nein.
 - **Ursprungsbindung:** Die Adresse einer zugeordneten Bibliothek liegt unter der Server-Adresse
-  ihres Profils (`ServerAddress#covers`), sonst sperrt der Port. Ein Geheimnis folgt nur bei
-  `ServerAddress#sameOrigin` und `keepsCredentials`. Neue Server-Adresse oder Registrierung
-  verwirft alle Geheimnisse des Profils (`discardAllUnder`) und beendet die verbundenen Konten. Ein
-  gelöschtes Profil lässt die Zuordnung mit `profile_id NULL` stehen („Zugang entfernt“).
-- **Sperrgründe nur in `SourceBlocks`:** Vorrang ist die Deklarationsreihenfolge von
-  `SourceBlock.Reason`, die Mengen der Aufrufer leiten sich aus dessen Eigenschaften ab. Die Gründe
-  des Speichers (`SecretRefusedException`) formuliert `SourceBlocks#secretBlock`.
+  ihres Profils, sonst sperrt der Port. Eine neue Server-Adresse oder Registrierung verwirft alle
+  Geheimnisse und beendet die verbundenen Konten; ein gelöschtes Profil lässt `profile_id NULL`.
+- **Übergänge** (Profiländerung, Zuordnen, Lösen) sind je Bibliothek ein `SourceTransitions.Move`
+  durch `SourceChangeGate`: erst Bestätigung, dann alle prüfen (`Answers`), dann schreiben.
+- **Sperrgründe nur in `SourceBlocks`** (ob, warum, Text); Vorrang ist die Enum-Reihenfolge.
 - **Eine Zusammenführung:** `EffectiveSourceSettings` setzt Lauf, Änderung und Entwurf (`ofDraft`,
-  auch `DraftOwner.PERSON` vor dem Verbinden) in einem `compose` zusammen; abweichend ist `400`.
+  auch `DraftOwner.PERSON`) zusammen; der Rahmen des Zugangs (`ProfileFrame`) überschreibt die
+  Bibliothek, abweichend ist `400`; Lösen schreibt den Rahmen ein.
 - **Freigabe nur hier:** `ConnectorReleaseService` (Bibliothek) und `requireConnectable` (neues
-  Konto) entscheiden aus `CREATE_CONNECTOR_LIBRARY` und Sperren; ein Entzug stoppt nichts.
+  Konto) aus `CREATE_CONNECTOR_LIBRARY` und Sperren; ein Entzug stoppt nichts.
 - **Profilangabe nur über `ProfileRequirements`.** Eine Sperre blockiert `resolve`, nicht
   `currentCredentials`. Registry je Aufruf (Bean-Zyklus). Web-Schicht: `connection.web`.
 

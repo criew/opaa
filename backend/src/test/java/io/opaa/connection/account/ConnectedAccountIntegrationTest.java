@@ -15,7 +15,10 @@ import com.jayway.jsonpath.JsonPath;
 import io.opaa.asset.AssetShellService;
 import io.opaa.auth.DevAuthFilter;
 import io.opaa.auth.UserRepository;
+import io.opaa.connection.profile.SecretTarget;
+import io.opaa.connection.profile.SourceTransitions;
 import io.opaa.connection.token.ConnectionSecrets;
+import io.opaa.connection.token.SecretOwner.LibraryOwned;
 import io.opaa.connection.token.SecretOwner.PersonOwned;
 import io.opaa.connection.token.SecretRefusedException;
 import io.opaa.indexing.source.SourceBlock;
@@ -61,6 +64,7 @@ class ConnectedAccountIntegrationTest {
   private static final String SERVER = "https://person.example.org";
   private static final String PASSWORD = PersonProbeSourceConnector.ACCEPTED_PASSWORD;
   private static final String CREDENTIALS = "{\"username\": \"avogt\", \"secret\": \"%s\"}";
+  private static final String TARGET = new SecretTarget(SERVER, null).key();
 
   @Autowired private MockMvc mockMvc;
   @Autowired private JdbcTemplate jdbc;
@@ -72,6 +76,7 @@ class ConnectedAccountIntegrationTest {
   @Autowired private TransactionTemplate transactions;
   @Autowired private OwnLibraryFixtures libraryFixtures;
   @Autowired private PersonProbeIndexingExecutor probe;
+  @Autowired private SourceTransitions transitions;
 
   private final List<UUID> libraries = new ArrayList<>();
   private UUID profile;
@@ -251,22 +256,22 @@ class ConnectedAccountIntegrationTest {
     connect("dev-user", PASSWORD).andExpect(status().isOk());
     PersonOwned owner = new PersonOwned(profile, person);
 
-    assertThat(secrets.current(owner, SERVER).value()).isEqualTo("avogt:" + PASSWORD);
+    assertThat(secrets.current(owner, TARGET).value()).isEqualTo("avogt:" + PASSWORD);
     assertRefused(() -> secrets.current(owner, "https://andere.example.org"), Reason.NOT_CONNECTED);
 
     jdbc.update("UPDATE users SET directory_locked_at = now() WHERE id = ?", person);
-    assertRefused(() -> secrets.current(owner, SERVER), Reason.OWNER_DEACTIVATED);
+    assertRefused(() -> secrets.current(owner, TARGET), Reason.OWNER_DEACTIVATED);
     assertThat(secrets.stateOf(owner)).contains(Reason.OWNER_DEACTIVATED);
     jdbc.update("UPDATE users SET directory_locked_at = NULL WHERE id = ?", person);
 
     jdbc.update(
         "UPDATE users SET last_login_at = now() - interval '200 days' WHERE id = ?", person);
-    assertRefused(() -> secrets.current(owner, SERVER), Reason.DORMANT);
+    assertRefused(() -> secrets.current(owner, TARGET), Reason.DORMANT);
     assertThat(secrets.stateOf(owner)).contains(Reason.DORMANT);
 
     // the next sign-in lifts it without connecting anew
     jdbc.update("UPDATE users SET last_login_at = now() WHERE id = ?", person);
-    assertThat(secrets.current(owner, SERVER).value()).isEqualTo("avogt:" + PASSWORD);
+    assertThat(secrets.current(owner, TARGET).value()).isEqualTo("avogt:" + PASSWORD);
     assertThat(secrets.stateOf(owner)).isEmpty();
   }
 
@@ -399,7 +404,7 @@ class ConnectedAccountIntegrationTest {
     secrets.store(
         new PersonOwned(profile, person),
         io.opaa.connection.token.NewSecret.personal("avogt:" + PASSWORD),
-        SERVER);
+        TARGET);
     assertThat(blockOf(library).reason()).isEqualTo(Reason.NOT_CONNECTED);
     connect("dev-user", PASSWORD).andExpect(status().isBadRequest());
   }
@@ -449,6 +454,55 @@ class ConnectedAccountIntegrationTest {
         .andReturn()
         .getResponse()
         .getContentAsString(StandardCharsets.UTF_8);
+  }
+
+  /** The target is the one function of #2244: a library binding its secret elsewhere gets none. */
+  @Test
+  void aPrivateLibraryWithAnotherBindingGetsNoSecret() throws Exception {
+    connect("dev-user", PASSWORD).andExpect(status().isOk());
+    UUID same = privateLibraryOnTheProfile();
+    UUID bound = privateLibraryOnTheProfile();
+    transactions.executeWithoutResult(
+        status ->
+            libraryRepository
+                .findById(bound)
+                .orElseThrow()
+                .updateSourceSettings("{\"share\": \"andere\"}"));
+
+    assertThat(resolver.currentSecret(libraryRepository.findById(same).orElseThrow()).value())
+        .isEqualTo("avogt:" + PASSWORD);
+    assertThat(blockOf(bound).reason()).isEqualTo(Reason.NOT_CONNECTED);
+  }
+
+  /**
+   * A discard for one library takes that library's own secret only: the person's secret, shared by
+   * every private library on the account, ends only with the account.
+   */
+  @Test
+  void aDiscardForOneLibraryLeavesTheSharedSecretOfThePerson() throws Exception {
+    connect("dev-user", PASSWORD).andExpect(status().isOk());
+    UUID first = privateLibraryOnTheProfile();
+    UUID second = privateLibraryOnTheProfile();
+    List<KnowledgeLibrary> both =
+        List.of(
+            libraryRepository.findById(first).orElseThrow(),
+            libraryRepository.findById(second).orElseThrow());
+
+    assertThat(transitions.holdingSecrets(both, profile)).isEmpty();
+    transactions.executeWithoutResult(status -> secrets.discard(new LibraryOwned(first)));
+
+    assertThat(tokenRows()).isEqualTo(1);
+    for (KnowledgeLibrary library : both) {
+      assertThat(resolver.currentSecret(library).value()).isEqualTo("avogt:" + PASSWORD);
+    }
+    assertThat(
+            jdbc.queryForObject(
+                "SELECT count(*) FROM knowledge_libraries WHERE id IN (?, ?)"
+                    + " AND source_credentials IS NOT NULL",
+                Integer.class,
+                first,
+                second))
+        .isZero();
   }
 
   @Test

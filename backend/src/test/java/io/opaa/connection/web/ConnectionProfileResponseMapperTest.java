@@ -13,6 +13,7 @@ import io.opaa.connection.profile.ConnectionProfileService.ProfileImpact;
 import io.opaa.connection.profile.TestPersonCounts;
 import io.opaa.knowledge.SourceType;
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -67,7 +68,7 @@ class ConnectionProfileResponseMapperTest {
         ConnectionProfileResponseMapper.toResponse(profile, false, 2, TestPersonCounts.of(3, 0));
     ConnectionProfileImpactResponse impact =
         ConnectionProfileResponseMapper.toResponse(
-            new ProfileImpact(2, 2, TestPersonCounts.of(0, 0).total()), false);
+            new ProfileImpact(2, 2, TestPersonCounts.of(0, 0).total(), List.of()), false);
 
     assertThat(response.getConnectionCount()).isEqualTo(2);
     assertThat(response.getConnectedAccountCount().getCount()).isEqualTo(6);

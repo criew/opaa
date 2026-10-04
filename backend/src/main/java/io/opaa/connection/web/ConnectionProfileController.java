@@ -15,10 +15,12 @@ import io.opaa.connection.ConnectorReleaseService;
 import io.opaa.connection.profile.ConnectionProfile;
 import io.opaa.connection.profile.ConnectionProfileService;
 import io.opaa.connection.profile.ConnectionProfileService.ProfileImpact;
+import io.opaa.connection.profile.ConnectionProfileValues;
 import io.opaa.connection.profile.ConnectorLockService;
 import io.opaa.connection.profile.PersonNumbers;
 import io.opaa.connection.profile.PersonNumbers.ProfileCounts;
 import io.opaa.connection.profile.ProfileRequirementService;
+import io.opaa.indexing.source.SourceChangeGate.Answers;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.Map;
@@ -107,13 +109,21 @@ public class ConnectionProfileController {
       @PathVariable UUID profileId,
       @Valid @RequestBody ConnectionProfileUpdateRequest request,
       @Caller CurrentUser caller) {
+    ConnectionProfileValues values = ConnectionProfileResponseMapper.toValues(request);
+    boolean confirmed = Boolean.TRUE.equals(request.getConfirmDiscard());
+    // the connectors are asked before the write transaction, which then reuses their answers
+    Answers answers = profiles.check(profileId, values, confirmed);
     return toResponse(
-        profiles.update(
-            caller,
-            profileId,
-            ConnectionProfileResponseMapper.toValues(request),
-            request.getClientSecret(),
-            Boolean.TRUE.equals(request.getConfirmDiscard())));
+        profiles.update(caller, profileId, values, request.getClientSecret(), confirmed, answers));
+  }
+
+  @PreAuthorize("hasRole('SYSTEM_ADMIN')")
+  @PostMapping(ADMIN + "/{profileId}/impact")
+  public ConnectionProfileImpactResponse previewConnectionProfileChange(
+      @PathVariable UUID profileId, @Valid @RequestBody ConnectionProfileUpdateRequest request) {
+    return ConnectionProfileResponseMapper.toResponse(
+        profiles.preview(profileId, ConnectionProfileResponseMapper.toValues(request)),
+        requirements.lastForRequirement(profiles.get(profileId)));
   }
 
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
@@ -189,7 +199,8 @@ public class ConnectionProfileController {
             ConnectionProfileResponseMapper.toStock(request.getOwnAddressStock())));
   }
 
-  @GetMapping("/api/v1/connection-profiles")
+  /** Without a library; the variant for its managers lives with the library administration. */
+  @GetMapping(value = "/api/v1/connection-profiles", params = "!libraryId")
   public List<ConnectionProfileOption> listConnectionProfileOptions(
       @RequestParam String sourceType, @Caller CurrentUser caller) {
     release.requireAnyRelease(caller);

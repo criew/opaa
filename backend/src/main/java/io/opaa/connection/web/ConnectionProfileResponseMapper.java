@@ -1,5 +1,6 @@
 package io.opaa.connection.web;
 
+import io.opaa.api.dto.ConnectionProfileChangeRejection;
 import io.opaa.api.dto.ConnectionProfileCreateRequest;
 import io.opaa.api.dto.ConnectionProfileImpactResponse;
 import io.opaa.api.dto.ConnectionProfileOption;
@@ -9,6 +10,7 @@ import io.opaa.api.dto.ConnectorProfileRequirementResponse;
 import io.opaa.api.dto.ConnectorTypeStateResponse;
 import io.opaa.api.dto.OwnAddressLibrary;
 import io.opaa.api.dto.PersonCount;
+import io.opaa.api.dto.SourceChangeRejectionCategory;
 import io.opaa.common.ValidationException;
 import io.opaa.connection.ConnectorReleaseService.ProfileOption;
 import io.opaa.connection.profile.ConnectionProfile;
@@ -25,7 +27,7 @@ import java.time.format.DateTimeParseException;
 import java.util.Map;
 
 /** Maps connection profiles onto their generated responses; the secret has no field in any. */
-final class ConnectionProfileResponseMapper {
+public final class ConnectionProfileResponseMapper {
 
   private ConnectionProfileResponseMapper() {}
 
@@ -101,7 +103,7 @@ final class ConnectionProfileResponseMapper {
         .updatedAt(profile.getUpdatedAt());
   }
 
-  static ConnectionProfileOption toOption(ProfileOption option) {
+  public static ConnectionProfileOption toOption(ProfileOption option) {
     ConnectionProfile profile = option.profile();
     ConnectorData defaults = ConnectorData.fromJson(profile.getConnectorSettings());
     return new ConnectionProfileOption()
@@ -138,7 +140,18 @@ final class ConnectionProfileResponseMapper {
         .connections(impact.connections())
         .libraries(impact.libraries())
         .connectedAccounts(toCount(impact.connectedAccounts()))
-        .lastForProfileRequirement(lastForProfileRequirement);
+        .lastForProfileRequirement(lastForProfileRequirement)
+        .rejectedLibraries((long) impact.rejections().size())
+        .rejections(
+            impact.rejections().stream()
+                .map(
+                    rejection ->
+                        new ConnectionProfileChangeRejection()
+                            .libraryId(rejection.libraryId())
+                            .category(
+                                SourceChangeRejectionCategory.valueOf(rejection.category().name()))
+                            .message(rejection.message()))
+                .toList());
   }
 
   /** A number of persons' connections, as masked for the administration. */

@@ -161,7 +161,11 @@ public class LibraryController {
       @Valid @RequestBody LibraryConnectionProfileRequest request,
       @Caller CurrentUser caller) {
     return LibraryResponseMapper.toResponse(
-        libraryService.connectProfile(libraryId, request.getProfileId(), caller));
+        libraryService.connectProfile(
+            libraryId,
+            request.getProfileId(),
+            request.getSourceUrl() == null ? null : request.getSourceUrl().toString(),
+            caller));
   }
 
   /** Releases the library from its connection profile. */

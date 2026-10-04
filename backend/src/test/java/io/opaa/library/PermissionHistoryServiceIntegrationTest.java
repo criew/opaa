@@ -1165,6 +1165,7 @@ class PermissionHistoryServiceIntegrationTest {
           // #2160: the profile a library is connected through changes no grant
           "KnowledgeLibraryService#connectProfile",
           "KnowledgeLibraryService#disconnectProfile",
+          "KnowledgeLibraryService#profileOptions",
           "KnowledgeLibraryService#getLibrary",
           "KnowledgeLibraryService#listLibraries",
           "KnowledgeLibraryService#listDocuments",

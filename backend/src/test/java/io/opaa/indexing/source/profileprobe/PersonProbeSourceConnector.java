@@ -17,7 +17,8 @@ import org.springframework.stereotype.Component;
 /**
  * A connector that exists only in test code and lets persons connect their own account: its
  * personal secret is a user name and a password, owned by a library or a person. Its sign-in takes
- * only the password {@link #ACCEPTED_PASSWORD}; any other is rejected as a provider would.
+ * only the password {@link #ACCEPTED_PASSWORD}; any other is rejected as a provider would. A {@code
+ * share} setting binds its secret, as a file server does.
  */
 @Component
 public class PersonProbeSourceConnector implements SourceConnector {
@@ -38,6 +39,25 @@ public class PersonProbeSourceConnector implements SourceConnector {
                         ConnectionOwnership.LIBRARY,
                         ConnectionOwnership.PERSON))
                 .withAddress(ServerAddressRule.schemes("https")));
+  }
+
+  @Override
+  public java.util.Set<String> settingsKeys() {
+    return java.util.Set.of("share");
+  }
+
+  @Override
+  public ConnectorData readSettings(ConnectorData requested) {
+    requested.requireOnly(settingsKeys());
+    return requested.isEmpty() ? null : requested;
+  }
+
+  /** The probe binds a secret to its {@code share}, as a file server does. */
+  @Override
+  public String credentialBinding(SourceSettings settings) {
+    Object share =
+        settings.connectorSettings() == null ? null : settings.connectorSettings().get("share");
+    return share == null ? null : share.toString();
   }
 
   @Override

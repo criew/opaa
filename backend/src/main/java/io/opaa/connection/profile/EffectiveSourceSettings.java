@@ -1,5 +1,6 @@
 package io.opaa.connection.profile;
 
+import io.opaa.api.types.ConnectionAuthMethod;
 import io.opaa.common.ValidationException;
 import io.opaa.connection.token.ConnectionSecrets;
 import io.opaa.connection.token.SecretOwner;
@@ -20,7 +21,6 @@ import io.opaa.indexing.source.SourceCredentialsException;
 import io.opaa.indexing.source.SourceSettings;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -95,11 +95,10 @@ public class EffectiveSourceSettings {
 
   /**
    * The configuration a probe or a new library reaches the source with, before anything is saved.
-   * The stored secret of the draft's library stands in for an omitted one only while the address
-   * keeps its origin and the connector its binding ({@link ServerAddress#sameOrigin}, {@link
-   * SourceConnector#keepsCredentials}); without a profile the library's own proxy and TLS switch
-   * then travel with it. An uploaded service account key reaches the connector as its access token.
-   * A stored library's blocks do not refuse a draft.
+   * The stored secret of the draft's library stands in for an omitted one only while its {@link
+   * SecretTarget} stays the same; without a profile the library's own proxy and TLS switch then
+   * travel with it. An uploaded service account key reaches the connector as its access token. A
+   * stored library's blocks do not refuse a draft.
    *
    * @throws ValidationException (German 400) for a value the draft's profile sets otherwise or an
    *     address outside it
@@ -124,7 +123,7 @@ public class EffectiveSourceSettings {
     boolean keepsStored =
         library != null
             && requested.sourceCredentials() == null
-            && keepsStoredSecret(connector, library, url, requested.connectorSettings());
+            && keepsStoredSecret(connector, library, frame, url, requested.connectorSettings());
     if (frame.isEmpty() && keepsStored) {
       own = own.withTransport(Own.of(library).transport());
     }
@@ -193,6 +192,19 @@ public class EffectiveSourceSettings {
   }
 
   /**
+   * Releasing {@code library} from {@code profile} makes the profile's frame its own: the defaults
+   * join its connector settings, and proxy and TLS switch become the library's, so the
+   * configuration it runs with stays the same.
+   */
+  public void releaseFrame(KnowledgeLibrary library, ConnectionProfile profile) {
+    ProfileFrame frame = frame(profile);
+    ConnectorData settings = frame.over(ConnectorData.storedIn(library));
+    library.updateSourceSettings(settings == null ? null : settings.toJson());
+    TransportRules transport = frame.serverTransport();
+    library.replaceTransport(transport.proxy(), transport.insecureSsl());
+  }
+
+  /**
    * What of {@code validated}, the connector's answer to {@code draft}, the library stores itself:
    * without what the draft's profile sets.
    */
@@ -225,10 +237,7 @@ public class EffectiveSourceSettings {
 
   private Optional<ConnectionProfile> profileFor(KnowledgeLibrary library, Purpose purpose) {
     if (purpose == Purpose.SETTINGS_ONLY) {
-      return connections
-          .findById(library.getId())
-          .map(LibraryConnection::getProfileId)
-          .flatMap(profiles::findById);
+      return currentProfile(library);
     }
     return blocks.requireUnblocked(library, purpose.refusedBy);
   }
@@ -247,10 +256,10 @@ public class EffectiveSourceSettings {
     SecretOwner owner = ownerOn(found, library);
     return switch (found.getAuthMethod()) {
       case NONE -> null;
-      case PERSONAL_SECRET -> secretOf(owner, found);
+      case PERSONAL_SECRET -> secretOf(owner, found, library);
       case OAUTH, CLIENT_CREDENTIALS, SERVICE_ACCOUNT_KEY -> {
         if (owner instanceof PersonOwned) {
-          yield secretOf(owner, found);
+          yield secretOf(owner, found, library);
         }
         throw new IllegalStateException(
             "Sign-in method " + found.getAuthMethod() + " passed the source blocks");
@@ -264,13 +273,13 @@ public class EffectiveSourceSettings {
    * @throws SourceConnectionBlockedException with the store's reason, worded by {@link
    *     SourceBlocks}
    */
-  private Secret secretOf(SecretOwner owner, ConnectionProfile profile) {
+  private Secret secretOf(SecretOwner owner, ConnectionProfile profile, KnowledgeLibrary library) {
     if (SourceBlocks.withoutPersons(profile, owner)) {
       throw new SourceConnectionBlockedException(
           SourceBlocks.secretBlock(Reason.NOT_CONNECTED, profile, owner));
     }
     try {
-      return secrets.current(owner, profile.secretTarget());
+      return secrets.current(owner, targetOf(library, profile).key());
     } catch (SecretRefusedException e) {
       throw new SourceConnectionBlockedException(
           SourceBlocks.secretBlock(e.reason(), profile, owner));
@@ -303,7 +312,7 @@ public class EffectiveSourceSettings {
    */
   private Secret storedSecretFor(ConnectionProfile profile, KnowledgeLibrary library) {
     try {
-      return secretOf(ownerOn(profile, library), profile);
+      return secretOf(ownerOn(profile, library), profile, library);
     } catch (SourceConnectionBlockedException e) {
       if (e.block().reason() == Reason.NOT_CONNECTED) {
         return null;
@@ -312,15 +321,93 @@ public class EffectiveSourceSettings {
     }
   }
 
-  /** The library's stored secret stands for {@code url}: same origin, binding and subject. */
+  /**
+   * The library's stored secret stands for {@code url} with {@code requested} connector settings
+   * under {@code frame}: the target, as {@link SecretTarget} reads it, stays the same.
+   */
   private boolean keepsStoredSecret(
-      SourceConnector connector, KnowledgeLibrary library, String url, ConnectorData requested) {
-    ConnectorData stored = ConnectorData.storedIn(library);
-    return ServerAddress.sameOrigin(library.getSourceUrl(), url)
-        && connector.keepsCredentials(library.getSourceUrl(), url)
-        && Objects.equals(
-            ServiceAccountTokens.subjectOf(connector, stored),
-            ServiceAccountTokens.subjectOf(connector, requested != null ? requested : stored));
+      SourceConnector connector,
+      KnowledgeLibrary library,
+      Optional<ProfileFrame> frame,
+      String url,
+      ConnectorData requested) {
+    Own stored = Own.of(library);
+    SourceSettings before = compose(stored, currentFrame(library), null);
+    SourceSettings after =
+        compose(
+            new Own(
+                stored.path(),
+                url,
+                stored.transport(),
+                requested != null ? requested : stored.settings()),
+            frame,
+            null);
+    return SecretTarget.of(connector, before).admits(SecretTarget.of(connector, after));
+  }
+
+  /**
+   * The key of the target a person's secret on {@code profile} is issued for: the profile's server
+   * address under its frame, as {@link SecretTarget} reads it - the same key a private library on
+   * the profile asks with while its address keeps the origin and its connector the binding.
+   */
+  public String personTarget(ConnectionProfile profile) {
+    return SecretTarget.of(
+            registry.getObject().connector(profile.getSourceType()),
+            compose(
+                new Own(null, profile.getServerUrl(), new TransportRules(null, false), null),
+                Optional.of(frame(profile)),
+                null))
+        .key();
+  }
+
+  /** The target of the secret {@code library} holds under {@code profile}. */
+  private SecretTarget targetOf(KnowledgeLibrary library, ConnectionProfile profile) {
+    return SecretTarget.of(
+        registry.getObject().connector(library.getSourceType()),
+        compose(Own.of(library), Optional.of(frame(profile)), null));
+  }
+
+  private Optional<ProfileFrame> currentFrame(KnowledgeLibrary library) {
+    return currentProfile(library).map(this::frame);
+  }
+
+  /** The profile {@code library} is connected through now, empty for its own address. */
+  Optional<ConnectionProfile> currentProfile(KnowledgeLibrary library) {
+    return connections
+        .findById(library.getId())
+        .map(LibraryConnection::getProfileId)
+        .flatMap(profiles::findById);
+  }
+
+  /**
+   * {@code library}'s effective configuration at {@code address} under {@code profile} - empty for
+   * its own address, also one not saved yet - with {@code secret}; no block refuses it. The one
+   * composition, for a transition between frames.
+   */
+  SourceSettings framed(
+      KnowledgeLibrary library,
+      Optional<ConnectionProfile> profile,
+      String address,
+      Secret secret) {
+    Own own = Own.of(library);
+    return compose(
+        new Own(own.path(), address, own.transport(), own.settings()),
+        profile.map(this::frame),
+        secret);
+  }
+
+  /**
+   * The secret {@code library} holds under {@code profile} - empty for its own address - as a
+   * change sees it, {@code null} for none or a missing one; no block refuses it and no key is
+   * signed.
+   */
+  Secret heldSecret(KnowledgeLibrary library, Optional<ConnectionProfile> profile) {
+    if (profile.isEmpty()) {
+      return ownFields.resolveForChange(library).credentials();
+    }
+    return profile.get().getAuthMethod() == ConnectionAuthMethod.PERSONAL_SECRET
+        ? storedSecretFor(profile.get(), library)
+        : null;
   }
 
   /** The access token an uploaded service account key is exchanged for, {@code null} for none. */

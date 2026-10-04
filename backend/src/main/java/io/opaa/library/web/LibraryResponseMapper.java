@@ -128,10 +128,7 @@ final class LibraryResponseMapper {
     LibraryProfileState profile = detail.connectionProfile();
     if (profile != null) {
       response
-          .connectionProfile(
-              profile.removed()
-                  ? null
-                  : new ConnectionProfileRef().id(profile.id()).name(profile.name()))
+          .connectionProfile(profile.removed() ? null : toProfileRef(profile))
           .connectionProfileRemoved(profile.removed());
     }
     LibraryManagementDetail managementDetail = detail.managementDetail();
@@ -170,6 +167,21 @@ final class LibraryResponseMapper {
           .lastScheduledRunsFailed(managementDetail.lastScheduledRunsFailed());
     }
     return response;
+  }
+
+  /** The profile reference; what the profile sets only where the detail carries it (a manager). */
+  static ConnectionProfileRef toProfileRef(LibraryProfileState profile) {
+    ConnectionProfileRef ref = new ConnectionProfileRef().id(profile.id()).name(profile.name());
+    LibraryProfileState.Frame frame = profile.frame();
+    if (frame != null) {
+      ref.serverUrl(frame.serverUrl())
+          .authMethod(frame.authMethod())
+          .connectorDefaults(
+              frame.connectorDefaults() == null ? null : frame.connectorDefaults().asMap())
+          .sourceProxy(frame.sourceProxy())
+          .sourceInsecureSsl(frame.sourceInsecureSsl());
+    }
+    return ref;
   }
 
   static LibraryListResponse toListResponse(LibrarySummary summary) {

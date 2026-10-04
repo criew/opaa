@@ -106,6 +106,17 @@ public class ConnectionProfile {
     this.updatedAt = now;
   }
 
+  /** A copy of this profile carrying {@code values}, to see what a change would do; never saved. */
+  ConnectionProfile candidate(ConnectionProfileValues values) {
+    ConnectionProfile copy = new ConnectionProfile();
+    copy.id = id;
+    copy.sourceType = sourceType;
+    copy.lockedAt = lockedAt;
+    copy.createdAt = createdAt;
+    copy.replace(values, clientSecretCiphertext, updatedAt);
+    return copy;
+  }
+
   public UUID getId() {
     return id;
   }
@@ -119,14 +130,6 @@ public class ConnectionProfile {
   }
 
   public String getServerUrl() {
-    return serverUrl;
-  }
-
-  /**
-   * What a secret held on this profile is issued for and handed out to only: an opaque value, today
-   * the server address. A token store compares it, never parses it.
-   */
-  public String secretTarget() {
     return serverUrl;
   }
 

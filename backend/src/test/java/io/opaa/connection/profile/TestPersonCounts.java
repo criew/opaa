@@ -8,10 +8,18 @@ import java.util.Map;
 /** Masked person counts for tests of the web layer, under the delivered minimum group size 5. */
 public final class TestPersonCounts {
 
+  /** A profile no person is connected on. */
+  public static final PersonConnections NO_PERSONS = new FixedCounts();
+
   private static final PersonNumbers NUMBERS =
-      new PersonNumbers(new FixedCounts(), new GroupSizeProperties(5));
+      new PersonNumbers(NO_PERSONS, new GroupSizeProperties(5));
 
   private TestPersonCounts() {}
+
+  /** The masking over {@link #NO_PERSONS}. */
+  public static PersonNumbers numbers() {
+    return NUMBERS;
+  }
 
   public static ProfileCounts of(long connected, long expired) {
     return NUMBERS.mask(new StateCounts(connected, expired));
