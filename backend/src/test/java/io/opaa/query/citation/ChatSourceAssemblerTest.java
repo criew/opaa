@@ -5,10 +5,12 @@ import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import io.opaa.api.dto.SourceFreezeReason;
 import io.opaa.api.types.MetadataFilterMatch;
 import io.opaa.chat.ChatSource;
 import io.opaa.chat.ChatSourceLocation;
 import io.opaa.indexing.job.IndexingJobRepository;
+import io.opaa.indexing.source.SourceBlock;
 import io.opaa.indexing.source.SourceConnectorStubs;
 import io.opaa.indexing.source.SourceStateLookup;
 import io.opaa.knowledge.DocumentRepository;
@@ -301,8 +303,10 @@ class ChatSourceAssemblerTest {
                   Collectors.toMap(
                       KnowledgeLibrary::getId,
                       library ->
-                          new SourceStateLookup.SourceState(
-                              SourceStateLookup.Reason.LOCKED, "Systemverwaltung")));
+                          new SourceBlock(
+                              SourceBlock.Reason.TYPE_LOCKED,
+                              "Systemverwaltung",
+                              "Gesperrt – Inhalt wird nicht mehr aktualisiert.")));
         };
     IndexingJobRepository jobs = mock(IndexingJobRepository.class);
     when(jobs.findLastCompletedByLibraryIdIn(Set.of(lockedLibrary.getId())))
@@ -549,5 +553,15 @@ class ChatSourceAssemblerTest {
     sourceReference.setIndexedAt(indexedAt);
     sourceReference.setSourceEntryUrl(sourceEntryUrl);
     return sourceReference;
+  }
+
+  @Test
+  void everyReasonShownInAnAnswerIsAFreezeReasonOfTheApi() {
+    for (SourceBlock.Reason reason : SourceBlock.Reason.values()) {
+      if (reason.shownInAnswer()) {
+        assertThat(SourceFreezeReason.fromValue(ChatSourceAssembler.freezeReason(reason)))
+            .isNotNull();
+      }
+    }
   }
 }

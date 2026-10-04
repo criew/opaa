@@ -12,24 +12,10 @@ import java.util.UUID;
  */
 public interface SourceStateLookup {
 
-  /** The libraries among {@code libraries} whose source is not updated now; the others absent. */
-  Map<UUID, SourceState> frozenAmong(Collection<KnowledgeLibrary> libraries);
-
   /**
-   * Why a source is not updated, and who can change that.
-   *
-   * @param responsible the German name of who is in charge ("Systemverwaltung", "Verwaltende der
-   *     Bibliothek")
+   * The libraries among {@code libraries} whose source is not updated now, each with its block; the
+   * others absent. Reports a lock, a removed profile and a missing secret, but no address outside
+   * the profile.
    */
-  record SourceState(Reason reason, String responsible) {}
-
-  /** Why a source is not updated. */
-  enum Reason {
-    /** The system administration locked the connector type or the profile. */
-    LOCKED,
-    /** The connection holds no usable secret, e.g. after "Alle Verbindungen trennen". */
-    NOT_CONNECTED,
-    /** The library's profile was deleted ("Zugang entfernt"). */
-    ACCESS_REMOVED
-  }
+  Map<UUID, SourceBlock> frozenAmong(Collection<KnowledgeLibrary> libraries);
 }

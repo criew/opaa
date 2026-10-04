@@ -6,9 +6,12 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import io.opaa.connection.profile.ConnectionProfileRepository;
-import io.opaa.connection.profile.ConnectorLockService;
+import io.opaa.connection.profile.ConnectorTypePolicy;
+import io.opaa.connection.profile.ConnectorTypePolicyRepository;
 import io.opaa.connection.profile.LibraryConnectionRepository;
+import io.opaa.connection.profile.SourceBlocks;
 import io.opaa.indexing.source.ServiceAccountTokens;
+import io.opaa.indexing.source.SourceBlock;
 import io.opaa.indexing.source.SourceConnectionBlockedException;
 import io.opaa.indexing.source.SourceConnectorRegistry;
 import io.opaa.indexing.source.TestSourceConnectors;
@@ -16,7 +19,7 @@ import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.test.SourceTypes;
 import java.time.Clock;
-import java.util.Optional;
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.ObjectProvider;
@@ -29,14 +32,15 @@ import org.springframework.beans.factory.ObjectProvider;
 class ProfileSourceConnectionResolverLockTest {
 
   private final LibraryConnectionRepository connections = mock(LibraryConnectionRepository.class);
-  private final ConnectorLockService locks = mock(ConnectorLockService.class);
+  private final ConnectionProfileRepository profiles = mock(ConnectionProfileRepository.class);
+  private final ConnectorTypePolicyRepository policies = mock(ConnectorTypePolicyRepository.class);
   private final ProfileSourceConnectionResolver resolver =
       new ProfileSourceConnectionResolver(
           connections,
-          mock(ConnectionProfileRepository.class),
+          profiles,
           registry(),
           new ServiceAccountTokens(TargetAddressValidator.disabled(), Clock.systemUTC()),
-          locks);
+          new SourceBlocks(policies, connections, profiles, registry()));
 
   @SuppressWarnings("unchecked")
   private static ObjectProvider<SourceConnectorRegistry> registry() {
@@ -60,24 +64,24 @@ class ProfileSourceConnectionResolverLockTest {
 
   @Test
   void aLockBlocksTheStartButNotTheRunAlreadyGoing() {
-    when(connections.findById(library.getId())).thenReturn(Optional.empty());
-    when(locks.lockNotice(library))
-        .thenReturn(Optional.of("Gesperrt – Inhalt wird nicht mehr aktualisiert."));
+    ConnectorTypePolicy lockedType = mock(ConnectorTypePolicy.class);
+    when(lockedType.getSourceType()).thenReturn(SourceTypes.RSS_FEED);
+    when(lockedType.isLocked()).thenReturn(true);
+    when(policies.findAll()).thenReturn(List.of(lockedType));
 
     assertThatThrownBy(() -> resolver.resolve(library))
         .isInstanceOf(SourceConnectionBlockedException.class)
         .satisfies(
             blocked ->
-                assertThat(((SourceConnectionBlockedException) blocked).category())
-                    .isEqualTo(SourceConnectionBlockedException.Category.LOCKED))
+                assertThat(((SourceConnectionBlockedException) blocked).block().reason())
+                    .isEqualTo(SourceBlock.Reason.TYPE_LOCKED))
         .hasMessageStartingWith("Gesperrt");
     assertThat(resolver.currentCredentials(library)).isEqualTo("nutzer:geheim");
   }
 
   @Test
   void withoutALockALibraryWithItsOwnAddressResolvesAsBefore() {
-    when(connections.findById(library.getId())).thenReturn(Optional.empty());
-    when(locks.lockNotice(library)).thenReturn(Optional.empty());
+    when(policies.findAll()).thenReturn(List.of());
 
     assertThat(resolver.resolve(library).sourceUrl()).isEqualTo("https://feeds.example.org/a.xml");
   }

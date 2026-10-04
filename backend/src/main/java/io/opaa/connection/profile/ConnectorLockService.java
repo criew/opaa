@@ -9,6 +9,7 @@ import io.opaa.auth.CurrentUser;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
+import io.opaa.indexing.source.SourceBlock;
 import io.opaa.indexing.source.SourceConnectorDescriptor;
 import io.opaa.indexing.source.SourceConnectorRegistry;
 import io.opaa.knowledge.KnowledgeLibrary;
@@ -22,7 +23,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.springframework.beans.factory.ObjectProvider;
@@ -45,12 +45,9 @@ public class ConnectorLockService {
   /** The {@code code} of the {@code 409} when an existing library's locked source is reached. */
   public static final String SOURCE_LOCKED = "SOURCE_LOCKED";
 
-  private static final String CONTENT_STAYS =
-      "; der vorhandene Inhalt bleibt durchsuchbar. Zuständig ist die Systemverwaltung.";
-
   private final ConnectorTypePolicyRepository policies;
   private final ConnectionProfileRepository profiles;
-  private final LibraryConnectionRepository connections;
+  private final SourceBlocks blocks;
 
   /**
    * Looked up per call: the core's port depends on this service, and the registry's connectors
@@ -64,13 +61,13 @@ public class ConnectorLockService {
   public ConnectorLockService(
       ConnectorTypePolicyRepository policies,
       ConnectionProfileRepository profiles,
-      LibraryConnectionRepository connections,
+      SourceBlocks blocks,
       ObjectProvider<SourceConnectorRegistry> connectors,
       AuditEventRecorder audit,
       Clock clock) {
     this.policies = policies;
     this.profiles = profiles;
-    this.connections = connections;
+    this.blocks = blocks;
     this.connectors = connectors;
     this.audit = audit;
     this.clock = clock;
@@ -173,50 +170,15 @@ public class ConnectorLockService {
 
   /** The note a locked library carries, empty while neither its type nor its profile is locked. */
   public Optional<String> lockNotice(KnowledgeLibrary library) {
-    return Optional.ofNullable(lockNotices(List.of(library)).get(library.getId()));
+    return blocks.blockOf(library, SourceBlocks.LOCKS).map(SourceBlock::notice);
   }
 
   /** {@link #lockNotice} for many libraries with three queries; a free library is absent. */
   public Map<UUID, String> lockNotices(Collection<KnowledgeLibrary> libraries) {
     Map<UUID, String> notices = new HashMap<>();
-    if (libraries.isEmpty()) {
-      return notices;
-    }
-    Map<String, Instant> lockedTypes = lockedTypes();
-    Map<UUID, UUID> profileOf =
-        connections.findAllById(libraries.stream().map(KnowledgeLibrary::getId).toList()).stream()
-            .filter(connection -> connection.getProfileId() != null)
-            .collect(
-                Collectors.toMap(LibraryConnection::getLibraryId, LibraryConnection::getProfileId));
-    Set<UUID> profileIds = Set.copyOf(profileOf.values());
-    Map<UUID, ConnectionProfile> lockedProfiles = new HashMap<>();
-    if (!profileIds.isEmpty()) {
-      profiles.findAllById(profileIds).stream()
-          .filter(ConnectionProfile::isLocked)
-          .forEach(profile -> lockedProfiles.put(profile.getId(), profile));
-    }
-    for (KnowledgeLibrary library : libraries) {
-      SourceType type = library.getSourceType();
-      UUID profileId = profileOf.get(library.getId());
-      ConnectionProfile profile = profileId == null ? null : lockedProfiles.get(profileId);
-      if (lockedTypes.containsKey(type.key())) {
-        notices.put(
-            library.getId(),
-            "Gesperrt – Inhalt wird nicht mehr aktualisiert. Die Systemverwaltung hat die"
-                + " Quellart „"
-                + displayName(type)
-                + "“ gesperrt"
-                + CONTENT_STAYS);
-      } else if (profile != null) {
-        notices.put(
-            library.getId(),
-            "Gesperrt – Inhalt wird nicht mehr aktualisiert. Die Systemverwaltung hat den"
-                + " Zugang „"
-                + profile.getName()
-                + "“ gesperrt"
-                + CONTENT_STAYS);
-      }
-    }
+    blocks
+        .blocksAmong(libraries, SourceBlocks.LOCKS)
+        .forEach((library, block) -> notices.put(library, block.notice()));
     return notices;
   }
 
