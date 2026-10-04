@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
+import BusyButton from '../a11y/BusyButton'
 import Chip from '@mui/material/Chip'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
@@ -241,6 +241,7 @@ export default function SmbSourceForm({
               spacing={0.5}
               useFlexGap
               sx={{ flexWrap: 'wrap', mt: 1 }}
+              role="group"
               aria-label="Gefundene Ordner"
             >
               {folderOptions.map((entry) => (
@@ -261,12 +262,22 @@ export default function SmbSourceForm({
           )}
         </Box>
         <Stack direction="row" spacing={1} sx={{ gridColumn: '1 / -1' }}>
-          <Button variant="outlined" onClick={() => void handleLoadFolders()} disabled={loading}>
+          <BusyButton
+            variant="outlined"
+            onClick={() => void handleLoadFolders()}
+            busy={loading}
+            busyAnnouncement="Ordner werden geladen"
+          >
             {loading ? 'Ordner werden geladen …' : 'Ordner laden'}
-          </Button>
-          <Button variant="outlined" onClick={() => void handleTest()} disabled={testing}>
+          </BusyButton>
+          <BusyButton
+            variant="outlined"
+            onClick={() => void handleTest()}
+            busy={testing}
+            busyAnnouncement="Verbindung wird geprüft"
+          >
             {testing ? 'Wird geprüft …' : 'Verbindung testen'}
-          </Button>
+          </BusyButton>
         </Stack>
         {visibleTest && (
           <Alert severity={visibleTest.severity} sx={{ gridColumn: '1 / -1' }}>

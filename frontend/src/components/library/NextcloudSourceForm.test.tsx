@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { screen, waitFor } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderWithProviders } from '../../test/test-utils'
@@ -170,5 +170,44 @@ describe('NextcloudSourceForm', () => {
 
     await userEvent.type(address, 'https://andere.example.org')
     expect(screen.getByText(/anderen Server/)).toBeInTheDocument()
+  })
+
+  it('names the offered folders as a group', async () => {
+    mockBrowseSource.mockResolvedValue({
+      complete: true,
+      entries: [{ key: '/Projekte', name: 'Projekte' }],
+    })
+    renderWithProviders(<Harness />)
+
+    await userEvent.click(screen.getByRole('button', { name: 'Ordner laden' }))
+
+    const group = await screen.findByRole('group', { name: 'Gefundene Ordner' })
+    expect(
+      within(group).getByRole('button', { name: 'Ordner /Projekte übernehmen' }),
+    ).toBeInTheDocument()
+  })
+
+  it('keeps the keyboard focus on the pressed button while the request runs', async () => {
+    mockBrowseSource.mockReturnValue(new Promise(() => {}))
+    mockTestLibrarySource.mockReturnValue(new Promise(() => {}))
+    renderWithProviders(<Harness />)
+
+    const load = screen.getByRole('button', { name: 'Ordner laden' })
+    await userEvent.click(load)
+    const loading = screen.getByRole('button', { name: 'Ordner werden geladen …' })
+    expect(loading).toHaveFocus()
+    expect(loading).toHaveAttribute('aria-disabled', 'true')
+    expect(loading).toBeEnabled()
+    expect(screen.getByText('Ordner werden geladen', { selector: '[aria-live]' })).toBeVisible()
+    await userEvent.keyboard('{Enter}')
+    expect(mockBrowseSource).toHaveBeenCalledTimes(1)
+
+    const test = screen.getByRole('button', { name: 'Verbindung testen' })
+    test.focus()
+    await userEvent.keyboard('{Enter}')
+    const testing = screen.getByRole('button', { name: 'Wird geprüft …' })
+    expect(testing).toHaveFocus()
+    await userEvent.click(testing)
+    expect(mockTestLibrarySource).toHaveBeenCalledTimes(1)
   })
 })
