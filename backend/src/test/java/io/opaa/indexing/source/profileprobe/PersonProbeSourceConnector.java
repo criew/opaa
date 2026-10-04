@@ -5,6 +5,7 @@ import io.opaa.api.types.ConnectionProfileSupport;
 import io.opaa.api.types.PersonalSecretForm;
 import io.opaa.common.ValidationException;
 import io.opaa.indexing.source.ConnectorData;
+import io.opaa.indexing.source.DefaultKey;
 import io.opaa.indexing.source.ProfileDeclaration;
 import io.opaa.indexing.source.ServerAddressRule;
 import io.opaa.indexing.source.SignIn;
@@ -23,9 +24,9 @@ import org.springframework.stereotype.Component;
  * A connector that exists only in test code and lets persons connect their own account: its
  * personal secret is a user name and a password, owned by a library or a person. Its sign-in takes
  * only the password {@link #ACCEPTED_PASSWORD}; any other is rejected as a provider would. A {@code
- * share} setting binds its secret, as a file server does. Its listing names one folder for the
- * accepted password, and it refuses a change onto {@link #REFUSED_HOST} with a reason naming a
- * folder.
+ * share} setting, of the library or as the profile's default, binds its secret, as a file server
+ * does. Its listing names one folder for the accepted password, and it refuses a change onto {@link
+ * #REFUSED_HOST} with a reason naming a folder.
  */
 @Component
 public class PersonProbeSourceConnector implements SourceConnector, SourceBrowser {
@@ -54,7 +55,8 @@ public class PersonProbeSourceConnector implements SourceConnector, SourceBrowse
                         PersonalSecretForm.USERNAME_AND_PASSWORD,
                         ConnectionOwnership.LIBRARY,
                         ConnectionOwnership.PERSON))
-                .withAddress(ServerAddressRule.schemes("https")));
+                .withAddress(ServerAddressRule.schemes("https"))
+                .withDefaults(DefaultKey.text("share", "Freigabe")));
   }
 
   @Override

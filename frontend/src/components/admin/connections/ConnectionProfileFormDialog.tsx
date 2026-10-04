@@ -14,22 +14,30 @@ import Typography from '@mui/material/Typography'
 import type {
   ConnectionAuthMethod,
   ConnectionOwnership,
+  ConnectionProfileImpactResponse,
+  ConnectionProfileRequestResponse,
   ConnectionProfileResponse,
+  ConnectionProfileUpdateRequest,
   ProfileDefaultKey,
   ProfileDefaultKind,
   SourceTypeDescriptor,
   SourceTypeSignIn,
 } from '../../../types/api'
+import BusyButton from '../../a11y/BusyButton'
 import ChoiceTileGroup from '../../choice/ChoiceTileGroup'
 import SourceTypeIcon from '../../library/sourceTypeIcon'
 import {
+  changeRejected,
   createConnectionProfile,
   getConnectionProfileImpact,
   needsConfirmation,
+  previewConnectionProfileChange,
   updateConnectionProfile,
 } from '../../../services/connectionProfileApi'
 import { confirmAction } from '../../../stores/confirmStore'
 import { AUTH_METHOD_LABELS, OWNERSHIP_LABELS } from './connectionProfileLabels'
+import ProfileChangePreview from './ProfileChangePreview'
+import { reachesLibraries as changeReachesLibraries } from './profileChange'
 
 const WITH_REGISTRATION: ConnectionAuthMethod[] = [
   'OAUTH',
@@ -113,6 +121,8 @@ interface ConnectionProfileFormDialogProps {
   open: boolean
   /** The profile being edited; `null` creates a new one. */
   profile: ConnectionProfileResponse | null
+  /** A request the new profile serves: presets type and address, resolved on saving. */
+  fromRequest?: ConnectionProfileRequestResponse | null
   sourceTypes: SourceTypeDescriptor[]
   /** Whether the answer for `sourceTypes` is in, successful or not. */
   sourceTypesLoaded: boolean
@@ -125,21 +135,35 @@ interface ConnectionProfileFormDialogProps {
  * without profiles stay visible with their reason. Sign-ins, ownerships, the address field and one
  * field per declared default follow the type's description; a fixed address asks for nothing. An
  * edit sends every field back, so it waits for that description - without it the defaults would be
- * lost. A change that discards secrets asks first, naming the connections and libraries affected.
+ * lost. Created for a request, type and address start from it and saving resolves the request; a
+ * new profile is created without a preview. An edit that may reach the libraries on the profile
+ * shows its preview first - how many, which ones their connector refuses - and saves only on a
+ * second click; a change that discards secrets asks once more, as the server decides.
  */
 export default function ConnectionProfileFormDialog({
   open,
   profile,
+  fromRequest = null,
   sourceTypes,
   sourceTypesLoaded,
   onClose,
   onSaved,
 }: ConnectionProfileFormDialogProps) {
-  const [sourceType, setSourceType] = useState<string | null>(profile?.sourceType ?? null)
-  const [draft, setDraft] = useState<Draft>(() => draftFrom(profile))
+  const [sourceType, setSourceType] = useState<string | null>(
+    profile?.sourceType ?? fromRequest?.sourceType ?? null,
+  )
+  const [draft, setDraft] = useState<Draft>(() =>
+    fromRequest && !profile
+      ? { ...draftFrom(null), serverUrl: fromRequest.serverUrl }
+      : draftFrom(profile),
+  )
   const [secret, setSecret] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [preview, setPreview] = useState<{
+    token: string
+    impact: ConnectionProfileImpactResponse
+  } | null>(null)
 
   const isEdit = profile !== null
   const descriptor = sourceTypes.find((type) => type.type === sourceType) ?? null
@@ -190,7 +214,28 @@ export default function ConnectionProfileFormDialog({
     if (profile) {
       return updateConnectionProfile(profile.id, { ...fields(), confirmDiscard })
     }
-    return createConnectionProfile({ ...fields(), sourceType: sourceType as string })
+    return createConnectionProfile({
+      ...fields(),
+      sourceType: sourceType as string,
+      ...(fromRequest ? { fulfillsRequestId: fromRequest.id } : {}),
+    })
+  }
+
+  const update: ConnectionProfileUpdateRequest | null = complete && profile ? fields() : null
+  const reachesLibraries =
+    profile !== null &&
+    update !== null &&
+    profile.connectionCount > 0 &&
+    changeReachesLibraries(profile, update)
+  const token = JSON.stringify(update)
+  const shownPreview = preview?.token === token ? preview.impact : null
+  const refused = shownPreview !== null && shownPreview.rejectedLibraries > 0
+
+  async function loadPreview(): Promise<ConnectionProfileImpactResponse | null> {
+    if (!profile || !update) return null
+    const impact = await previewConnectionProfileChange(profile.id, update)
+    setPreview({ token, impact })
+    return impact
   }
 
   async function handleSubmit() {
@@ -198,6 +243,10 @@ export default function ConnectionProfileFormDialog({
     setError(null)
     setSubmitting(true)
     try {
+      if (reachesLibraries && shownPreview === null) {
+        await loadPreview()
+        return
+      }
       let saved: ConnectionProfileResponse
       try {
         saved = await save(false)
@@ -216,7 +265,14 @@ export default function ConnectionProfileFormDialog({
       onSaved(saved)
       onClose()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Der Zugang konnte nicht gespeichert werden.')
+      if (changeRejected(err)) {
+        setError(
+          `Nichts wurde gespeichert: ${err instanceof Error ? err.message : 'Der Konnektor lehnt die Änderung ab.'} Die Gründe je Bibliothek stehen in der Vorschau.`,
+        )
+        await loadPreview().catch(() => null)
+      } else {
+        setError(err instanceof Error ? err.message : 'Der Zugang konnte nicht gespeichert werden.')
+      }
     } finally {
       setSubmitting(false)
     }
@@ -242,6 +298,12 @@ export default function ConnectionProfileFormDialog({
             Speichern verloren. Bitte die Seite neu laden und erneut bearbeiten.
           </Alert>
         )}
+        {fromRequest && !isEdit && (
+          <Alert severity="info" sx={{ mb: 2 }} data-testid="connection-profile-from-request">
+            Für den Zugangswunsch von {fromRequest.requestedByName}. Beim Speichern wird der Wunsch
+            erledigt und {fromRequest.requestedByName} benachrichtigt.
+          </Alert>
+        )}
         <Stack spacing={2} sx={{ mt: 1 }}>
           {!isEdit && (
             <>
@@ -262,7 +324,9 @@ export default function ConnectionProfileFormDialog({
                   disabledReason:
                     type.profileSupport === 'FORBIDDEN'
                       ? 'Für diese Quellart sind in dieser Version keine Zugänge möglich.'
-                      : null,
+                      : fromRequest && fromRequest.sourceType !== type.type
+                        ? 'Der Zugangswunsch gilt für eine andere Quellart.'
+                        : null,
                 }))}
               />
             </>
@@ -422,19 +486,28 @@ export default function ConnectionProfileFormDialog({
               )}
             </>
           )}
+          {shownPreview && profile && (
+            <ProfileChangePreview impact={shownPreview} ownership={profile.ownership} />
+          )}
         </Stack>
       </DialogContent>
       <DialogActions>
         <Button onClick={close} disabled={submitting}>
           Abbrechen
         </Button>
-        <Button
+        <BusyButton
           variant="contained"
           onClick={() => void handleSubmit()}
-          disabled={submitting || !complete}
+          disabled={!complete || refused}
+          busy={submitting}
+          busyAnnouncement={
+            reachesLibraries && shownPreview === null
+              ? 'Auswirkungen werden ermittelt'
+              : 'Zugang wird gespeichert'
+          }
         >
-          {isEdit ? 'Speichern' : 'Anlegen'}
-        </Button>
+          {!isEdit ? 'Anlegen' : reachesLibraries && shownPreview === null ? 'Weiter' : 'Speichern'}
+        </BusyButton>
       </DialogActions>
     </Dialog>
   )

@@ -220,7 +220,12 @@ public final class ModularArchitecture {
    * only on itself and on the ones before it; the root package and its web package sit above all.
    */
   static final List<String> CONNECTION_PACKAGES =
-      List.of("connection.log", "connection.token", "connection.profile", "connection.account");
+      List.of(
+          "connection.log",
+          "connection.token",
+          "connection.profile",
+          "connection.request",
+          "connection.account");
 
   /**
    * The capability granted per connector type or profile, relative to the root (ADR-0036, Nachtrag
@@ -285,10 +290,13 @@ public final class ModularArchitecture {
   static final String CONNECTED_ACCOUNTS = "connection.account";
 
   /**
-   * The exact counts of persons' connections, relative to the root, as a method of the port and its
-   * implementations: only {@link #PERSON_NUMBERS} asks it, and hands out masked numbers.
+   * The port of the exact counts of persons' connections, relative to the root, and its methods
+   * that answer them: only {@link #PERSON_NUMBERS} asks them, on the port or an implementation, and
+   * hands out masked numbers.
    */
-  static final String RAW_PERSON_COUNTS = "connection.profile.PersonConnections#countsAmong";
+  static final String RAW_PERSON_COUNTS_PORT = "connection.profile.PersonConnections";
+
+  static final Set<String> RAW_PERSON_COUNTS = Set.of("countsAmong", "totalsOf");
 
   static final String PERSON_NUMBERS = "connection.profile.PersonNumbers";
 
@@ -321,6 +329,15 @@ public final class ModularArchitecture {
           "library.LibraryExternalAccessService",
           "library.LibraryExternalAccessExpiryService",
           "library.LibraryExternalAccessReminderService");
+
+  /**
+   * Exact counts about persons that only go to the log, relative to the root, each with the one
+   * class that may call it.
+   */
+  static final Map<String, String> LOG_ONLY_PERSON_COUNTS =
+      Map.of(
+          "connection.token.ConnectionSecrets#countExpiredPersonSecrets",
+          "connection.account.ConnectionLifecycleReconciler");
 
   /**
    * The step that stores a person's connection, relative to the root: it trusts that the secret
@@ -1128,26 +1145,36 @@ public final class ModularArchitecture {
 
   /**
    * Calls of {@link #RAW_PERSON_COUNTS}, on the port or an implementation, outside {@link
-   * #PERSON_NUMBERS}: an exact count passed through any other class could reach an answer unmasked.
+   * #PERSON_NUMBERS}, and of a {@link #LOG_ONLY_PERSON_COUNTS} method outside its one logging
+   * caller: an exact count passed through any other class could reach an answer unmasked.
    */
   ArchRule personNumbersLeaveOnlyMasked() {
-    String port = RAW_PERSON_COUNTS.substring(0, RAW_PERSON_COUNTS.indexOf('#'));
-    String method = RAW_PERSON_COUNTS.substring(RAW_PERSON_COUNTS.indexOf('#') + 1);
+    String port = RAW_PERSON_COUNTS_PORT;
     return noClasses()
-        .that(
-            DescribedPredicate.describe(
-                "are not " + PERSON_NUMBERS,
-                javaClass ->
-                    !PERSON_NUMBERS.equals(relativeName(javaClass.getBaseComponentType()))))
         .should()
         .accessTargetWhere(
             DescribedPredicate.describe(
-                "call " + RAW_PERSON_COUNTS,
-                access ->
-                    access.getName().equals(method)
-                        && (port.equals(relativeName(access.getTargetOwner()))
-                            || access.getTargetOwner().getAllRawInterfaces().stream()
-                                .anyMatch(type -> port.equals(relativeName(type))))))
+                "call "
+                    + port
+                    + RAW_PERSON_COUNTS
+                    + " outside "
+                    + PERSON_NUMBERS
+                    + " or one of "
+                    + LOG_ONLY_PERSON_COUNTS.keySet()
+                    + " outside its logging caller",
+                access -> {
+                  String origin = relativeName(access.getOriginOwner().getBaseComponentType());
+                  boolean raw =
+                      RAW_PERSON_COUNTS.contains(access.getName())
+                          && (port.equals(relativeName(access.getTargetOwner()))
+                              || access.getTargetOwner().getAllRawInterfaces().stream()
+                                  .anyMatch(type -> port.equals(relativeName(type))));
+                  String logOnlyCaller =
+                      LOG_ONLY_PERSON_COUNTS.get(
+                          relativeName(access.getTargetOwner()) + "#" + access.getName());
+                  return raw && !PERSON_NUMBERS.equals(origin)
+                      || logOnlyCaller != null && !logOnlyCaller.equals(origin);
+                }))
         .because(
             "a number about persons reaches the administration only masked below the minimum group"
                 + " size (ADR-0036)")

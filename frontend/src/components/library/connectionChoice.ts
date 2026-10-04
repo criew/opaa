@@ -49,3 +49,24 @@ export function liftedByConnecting(reason: SourceBlockReason): boolean {
     }
   }
 }
+
+/** Whether the owner lifts this block on the page "Verbundene Konten" - for a private library. */
+export function liftedByOwnAccount(reason: SourceBlockReason): boolean {
+  switch (reason) {
+    case 'NOT_CONNECTED':
+    case 'EXPIRED':
+      return true
+    case 'TYPE_LOCKED':
+    case 'PROFILE_LOCKED':
+    case 'PROFILE_REQUIRED':
+    case 'ACCESS_REMOVED':
+    case 'OWNER_DEACTIVATED':
+    case 'DORMANT':
+    case 'TARGET_OUTSIDE_PROFILE':
+      return false
+    default: {
+      const unknown: never = reason
+      throw new Error(`Unknown source block reason ${String(unknown)}`)
+    }
+  }
+}

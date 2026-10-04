@@ -119,7 +119,8 @@ paths:
         ownership (see SourceTypeDescriptor.signIns). clientId, tenant and clientSecretExpiresOn belong only to a
         sign-in method with an app registration, scopes only to OAUTH and CLIENT_CREDENTIALS.
         A clientSecret given here is stored encrypted and needs the credentials encryption key
-        (OPAA_CREDENTIALS_ENCRYPTION_KEY); without it the answer is 503.
+        (OPAA_CREDENTIALS_ENCRYPTION_KEY); without it the answer is 503. With fulfillsRequestId
+        the named connection profile request is resolved as DONE with the new profile.
       requestBody:
         required: true
         content:
@@ -137,8 +138,16 @@ paths:
           $ref: "#/components/responses/ValidationError"
         "403":
           $ref: "#/components/responses/Forbidden"
+        "404":
+          description: The request named by fulfillsRequestId does not exist in the organization.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "409":
-          description: Another profile already carries this name.
+          description: >
+            Another profile already carries this name, or the request named by fulfillsRequestId
+            is no longer open (code CONNECTION_PROFILE_REQUEST_NOT_OPEN).
           content:
             application/json:
               schema:
@@ -524,6 +533,156 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /api/v1/connection-profile-requests:
+    post:
+      operationId: submitConnectionProfileRequest
+      tags: [connection-profile]
+      summary: Ask the system administration for a connection profile ("Zugangswunsch")
+      description: >
+        For a person who finds no suitable profile in the wizard: names the source type and the
+        server address the profile should carry, with an optional short reason. The address is
+        checked against the address rule of the type (SourceTypeDescriptor.serverAddress) but
+        never called. Needs the capability CREATE_CONNECTOR_LIBRARY in at least one scope, like
+        listConnectionProfileOptions. The same open request of the same person (type and
+        address) answers 200 with that request instead of a second one. Each person has a budget
+        of new requests per hour (429 with Retry-After) and a ceiling of open requests (409 with
+        code CONNECTION_PROFILE_REQUESTS_OPEN_LIMIT). The system administrators of the
+        organization are notified.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConnectionProfileRequestCreateRequest"
+      responses:
+        "200":
+          description: The same request was already open; it is returned unchanged
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConnectionProfileRequestResponse"
+        "201":
+          description: Request submitted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConnectionProfileRequestResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          description: >
+            The person has reached the ceiling of open requests (code
+            CONNECTION_PROFILE_REQUESTS_OPEN_LIMIT).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/me/connection-profile-requests:
+    get:
+      operationId: listMyConnectionProfileRequests
+      tags: [connection-profile]
+      summary: The caller's own connection profile requests and what became of them
+      description: Newest first, at most the 50 newest.
+      responses:
+        "200":
+          description: The caller's requests
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ConnectionProfileRequestResponse"
+
+  /api/v1/admin/connection-profile-requests:
+    get:
+      operationId: listConnectionProfileRequests
+      tags: [connection-profile]
+      summary: The connection profile requests of the organization (system admin only)
+      description: Oldest first within the requested state, so the longest-waiting comes first.
+      parameters:
+        - name: state
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/ConnectionProfileRequestState"
+          description: Only requests in this state; every state when absent.
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: size
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 25
+      responses:
+        "200":
+          description: One page of requests
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConnectionProfileRequestPageResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/admin/connection-profile-requests/{requestId}:
+    put:
+      operationId: resolveConnectionProfileRequest
+      tags: [connection-profile]
+      summary: Mark a connection profile request as done or declined (system admin only)
+      description: >
+        Only an open request of the caller's organization can be resolved. DONE may name the
+        profile that serves it (a profile of the same source type); DECLINED never does. The
+        optional answer reaches the requesting person with the notification. A governance event
+        (CONNECTION_PROFILE_REQUEST_RESOLVED). Creating a profile with fulfillsRequestId resolves
+        the request in the same step.
+      parameters:
+        - name: requestId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConnectionProfileRequestResolveRequest"
+      responses:
+        "200":
+          description: The resolved request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConnectionProfileRequestResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: >
+            The request is no longer open (code CONNECTION_PROFILE_REQUEST_NOT_OPEN).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
 components:
   schemas:
     ConnectionProfileSupport:
@@ -687,6 +846,14 @@ components:
           description: >
             Skip the certificate check for every library on the profile. A library on the profile
             cannot set its own.
+        fulfillsRequestId:
+          type: string
+          format: uuid
+          nullable: true
+          description: >
+            An open connection profile request of the caller's organization this profile serves;
+            it is resolved as DONE with this profile in the same step. Its source type must be
+            sourceType (otherwise 400); an unknown request is a 404, one no longer open a 409.
 
     ConnectionProfileUpdateRequest:
       type: object
@@ -1285,3 +1452,105 @@ components:
             The library's new address; it must lie under the profile's server address (400).
             Absent, an address under the previous profile moves under the new one and any other
             stays. Repairs a library whose own address lies under no profile.
+
+    ConnectionProfileRequestState:
+      type: string
+      description: >
+        Where a connection profile request stands: OPEN (waiting for the system administration),
+        DONE (a profile was set up or named), DECLINED.
+      enum: [OPEN, DONE, DECLINED]
+
+    ConnectionProfileRequestCreateRequest:
+      type: object
+      required: [sourceType, serverUrl]
+      properties:
+        sourceType:
+          $ref: "#/components/schemas/SourceTypeKey"
+        serverUrl:
+          type: string
+          maxLength: 300
+          description: >
+            The server the profile should carry, by the address rule of the source type; stored
+            in the form of a profile's serverUrl, at most 300 characters. Never called.
+          example: https://cloud.example.org
+        reason:
+          type: string
+          maxLength: 500
+          nullable: true
+          description: A short reason for the system administration; plain text.
+
+    ConnectionProfileRequestResolveRequest:
+      type: object
+      required: [state]
+      properties:
+        state:
+          description: DONE or DECLINED; OPEN is a 400.
+          allOf:
+            - $ref: "#/components/schemas/ConnectionProfileRequestState"
+        profileId:
+          type: string
+          format: uuid
+          nullable: true
+          description: >
+            Only with DONE: the profile that serves the request, of the same source type.
+        answer:
+          type: string
+          maxLength: 500
+          nullable: true
+          description: A short answer for the requesting person; plain text.
+
+    ConnectionProfileRequestResponse:
+      type: object
+      required: [id, sourceType, serverUrl, state, requestedByName, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        sourceType:
+          $ref: "#/components/schemas/SourceTypeKey"
+        serverUrl:
+          type: string
+        reason:
+          type: string
+          nullable: true
+          description: The requesting person's reason, plain text; never interpreted as markup.
+        state:
+          $ref: "#/components/schemas/ConnectionProfileRequestState"
+        requestedByName:
+          type: string
+          description: Display name of the requesting person.
+        createdAt:
+          type: string
+          format: date-time
+        resolvedAt:
+          type: string
+          format: date-time
+          nullable: true
+        profile:
+          nullable: true
+          description: >
+            The profile that serves the request; absent while open, when declined, when none was
+            named or after the profile was deleted.
+          allOf:
+            - $ref: "#/components/schemas/ConnectionProfileRef"
+        answer:
+          type: string
+          nullable: true
+          description: The system administration's answer, plain text.
+
+    ConnectionProfileRequestPageResponse:
+      type: object
+      required: [items, total, page, size]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ConnectionProfileRequestResponse"
+        total:
+          type: integer
+          format: int64
+          description: Matching requests over all pages.
+        page:
+          type: integer
+        size:
+          type: integer

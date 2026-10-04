@@ -4,7 +4,7 @@ import Box from '@mui/material/Box'
 import BusyButton from '../a11y/BusyButton'
 import type { SourceTypeKey, SourceConnectionTestResponse } from '../../types/api'
 import { testLibrarySource } from '../../services/libraryApi'
-import type { ProbeScope } from './sources/sourceConnection'
+import type { ConnectionFields } from './sources/sourceConnection'
 import {
   genericSourcePayload,
   validateGenericSource,
@@ -18,10 +18,10 @@ interface SourceConnectionTestProps {
   kind: GenericSourceKind
   values: GenericSourceValues
   /**
-   * With a library: falls back to its stored credentials and checks the MANAGER bar on it instead
-   * of the Anlegerecht (#1856). With a profile: the release of that profile.
+   * Scopes and frames the probe. With a library: falls back to its stored credentials and checks
+   * the MANAGER bar on it instead of the Anlegerecht. With a profile: the release of that profile.
    */
-  probe: ProbeScope
+  fields: Pick<ConnectionFields, 'probe' | 'probeRequest'>
   size?: 'small' | 'medium'
 }
 
@@ -46,12 +46,12 @@ export default function SourceConnectionTest({
   sourceType,
   kind,
   values,
-  probe,
+  fields,
   size = 'medium',
 }: SourceConnectionTestProps) {
   const [outcome, setOutcome] = useState<Outcome | null>(null)
   const [testing, setTesting] = useState(false)
-  const token = JSON.stringify({ sourceType, probe, values })
+  const token = JSON.stringify({ sourceType, probe: fields.probe, values })
   const visible = outcome?.token === token ? outcome : null
 
   async function handleTest() {
@@ -63,11 +63,9 @@ export default function SourceConnectionTest({
     setOutcome(null)
     setTesting(true)
     try {
-      const result = await testLibrarySource({
-        sourceType,
-        ...genericSourcePayload(kind, values),
-        ...probe,
-      })
+      const result = await testLibrarySource(
+        fields.probeRequest({ sourceType, ...genericSourcePayload(kind, values) }),
+      )
       setOutcome({ token, result })
     } catch (err) {
       setOutcome({

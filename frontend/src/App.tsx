@@ -37,9 +37,11 @@ import CatalogPage from './pages/CatalogPage'
 import CatalogNewPage from './pages/CatalogNewPage'
 import { catalogRoute } from './components/assets/assetTypeRegistry'
 import {
+  CONNECTION_LOG_ROUTE,
   FORGOT_PASSWORD_ROUTE,
   HANDOVER_ROUTE,
   REGISTER_ROUTE,
+  RIGHTS_HISTORY_ROUTE,
   SET_PASSWORD_ROUTE,
   spaceSettingsRoute,
   VERIFY_EMAIL_ROUTE,
@@ -53,6 +55,7 @@ import LlmModelManagementPage from './pages/LlmModelManagementPage'
 import ConnectionProfileManagementPage from './pages/ConnectionProfileManagementPage'
 import OidcProviderManagementPage from './pages/OidcProviderManagementPage'
 import RightsHistoryPage from './pages/RightsHistoryPage'
+import ConnectionLogPage from './pages/ConnectionLogPage'
 import SearchIndexingAdminPage from './pages/SearchIndexingAdminPage'
 import MailSettingsPage from './pages/MailSettingsPage'
 import ExternalAccessLibrariesPage from './pages/ExternalAccessLibrariesPage'
@@ -86,6 +89,21 @@ function AdminAreaLayout() {
   const isSystemAdmin = useAuthStore((s) => s.user?.systemRole === 'SYSTEM_ADMIN')
   return isSystemAdmin ? (
     <GlobalAreaLayout title="Administration" sections={ADMIN_SECTIONS} />
+  ) : (
+    <GlobalAreaLayout />
+  )
+}
+
+const REVISION_SECTIONS = [
+  { label: 'Stichtagsauskunft', to: RIGHTS_HISTORY_ROUTE },
+  { label: 'Verbindungsprotokoll', to: CONNECTION_LOG_ROUTE },
+]
+
+/** The audit's pages share a section column; other roles get the bare frame and the page's gate. */
+function RevisionAreaLayout() {
+  const isAuditor = useAuthStore((s) => s.user?.systemRole === 'AUDITOR')
+  return isAuditor ? (
+    <GlobalAreaLayout title="Revision" sections={REVISION_SECTIONS} />
   ) : (
     <GlobalAreaLayout />
   )
@@ -242,8 +260,9 @@ export default function App() {
                   no space column, no secondary column. */}
               {/* Die Stichtagsauskunft der Revision (#1822): eigener Bereich, nicht unter
                   /admin - sie gehoert der AUDITOR-Rolle, nicht der Systemverwaltung. */}
-              <Route element={<GlobalAreaLayout />}>
+              <Route element={<RevisionAreaLayout />}>
                 <Route path="revision/rechtehistorie" element={<RightsHistoryPage />} />
+                <Route path="revision/verbindungsprotokoll" element={<ConnectionLogPage />} />
               </Route>
               <Route element={<GlobalAreaLayout />}>
                 <Route path="settings" element={<SettingsPage />} />

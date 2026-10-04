@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeEach, vi } from 'vitest'
-import { act, screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { answerConfirm, renderWithProviders } from '../test/test-utils'
 import LibraryCreatePage from './LibraryCreatePage'
@@ -7,6 +7,7 @@ import { useLibraryStore } from '../stores/libraryStore'
 import { useIndexingStore } from '../stores/indexingStore'
 import { capabilityMissingMessage } from '../utils/labels'
 import { mockSourceTypes } from '../mocks/libraryFixtures'
+import { mockConnectionProfileRequests } from '../mocks/connectionProfileFixtures'
 
 const mockNavigate = vi.fn()
 
@@ -1204,6 +1205,82 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       expect(address()).toHaveValue('')
     }, 25000)
 
+    it('drops the edition detected for an own address once a profile clears that address', async () => {
+      mockListSourceTypes.mockResolvedValue(
+        mockSourceTypes.map((descriptor) =>
+          descriptor.type === 'CONFLUENCE'
+            ? { ...descriptor, profileSupport: 'OPTIONAL' as const }
+            : descriptor,
+        ),
+      )
+      mockListConnectionProfileOptions.mockResolvedValue([
+        {
+          ...profile,
+          id: 'profile-wiki',
+          name: 'Wiki intern',
+          sourceType: 'CONFLUENCE',
+          serverUrl: 'https://wiki.intern.example',
+        },
+      ])
+      mockTestLibrarySource.mockResolvedValueOnce({
+        reachable: true,
+        details: { edition: 'CLOUD' },
+        credentialsVerified: false,
+        message: 'Confluence Cloud erkannt.',
+      })
+      const user = userEvent.setup()
+      await renderPage()
+      await chooseType(user, /Confluence/)
+      await screen.findByRole('radio', { name: /Wiki intern/ })
+
+      await user.type(
+        screen.getByLabelText(/Adresse der Confluence-Instanz/),
+        'https://site.atlassian.net/wiki',
+      )
+      await user.click(screen.getByRole('button', { name: 'Edition erkennen' }))
+      expect(await screen.findByTestId('library-create-confluence-edition')).toHaveTextContent(
+        'Confluence Cloud',
+      )
+
+      await user.click(screen.getByRole('radio', { name: /Wiki intern/ }))
+      expect(screen.getByLabelText(/Adresse der Confluence-Instanz/)).toHaveValue(
+        'https://wiki.intern.example',
+      )
+      expect(screen.queryByTestId('library-create-confluence-edition')).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Edition erkennen' })).toBeEnabled()
+    }, 25000)
+
+    it('shows proxy and certificate check of the chosen profile read-only and sends neither', async () => {
+      mockListConnectionProfileOptions.mockResolvedValue([
+        {
+          ...profile,
+          sourceProxy: 'proxy.intern.example:3128',
+          sourceInsecureSsl: true,
+        },
+      ])
+      const user = userEvent.setup()
+      await renderPage()
+      await chooseType(user, /Nextcloud/)
+      await user.click(await screen.findByRole('radio', { name: /Nextcloud intern/ }))
+
+      const proxy = screen.getByLabelText(/^Proxy/)
+      expect(proxy).toHaveValue('proxy.intern.example:3128')
+      expect(proxy).toHaveAttribute('readonly')
+      expect(screen.getByRole('switch', { name: /Zertifikatsprüfung/ })).toBeChecked()
+      expect(screen.getByRole('switch', { name: /Zertifikatsprüfung/ })).toBeDisabled()
+      await user.type(screen.getByLabelText(/Technischer Nutzer/), 'svc-opaa')
+      await user.type(screen.getByLabelText(/App-Passwort/), 'geheim')
+      await next(user)
+      await nameItAndContinue(user, 'Projektablage')
+      await user.click(screen.getByRole('button', { name: 'Bibliothek anlegen' }))
+
+      await waitFor(() => expect(mockCreateNewLibrary).toHaveBeenCalled())
+      const request = mockCreateNewLibrary.mock.calls[0][0]
+      expect(request.connectionProfileId).toBe('profile-intern')
+      expect(request.sourceProxy).toBeUndefined()
+      expect(request.sourceInsecureSsl).toBe(false)
+    }, 30000)
+
     it('sends no profile for the own address', async () => {
       mockListConnectionProfileOptions.mockResolvedValue([profile])
       const user = userEvent.setup()
@@ -1239,7 +1316,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       expect(screen.queryByRole('radio', { name: /Eigene Adresse/ })).not.toBeInTheDocument()
     }, 15000)
 
-    it('names who sets up profiles and does not go on when no way is left', async () => {
+    it('offers to suggest a profile and does not go on when no way is left', async () => {
       mockListSourceTypes.mockResolvedValue(
         withNextcloud({ profileRequired: true, creatable: true, creatableWithOwnAddress: false }),
       )
@@ -1249,13 +1326,71 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       await chooseType(user, /Nextcloud/)
 
       expect(await screen.findByTestId('library-create-connection-none')).toHaveTextContent(
-        /Zugänge legt die Systemverwaltung an/,
+        /Schlagen Sie der Systemverwaltung einen vor/,
       )
+      expect(screen.getByRole('button', { name: 'Zugang für Nextcloud vorschlagen' })).toBeVisible()
       expect(screen.queryByLabelText(/Adresse der Nextcloud/)).not.toBeInTheDocument()
       await next(user)
       expect(
         screen.getByText('Für diese Quellart steht Ihnen kein Zugang zur Verfügung.'),
       ).toBeInTheDocument()
+    }, 15000)
+
+    it('offers to suggest a profile already where the type is locked for want of one', async () => {
+      mockListSourceTypes.mockResolvedValue(
+        withNextcloud({
+          profileRequired: true,
+          creatable: false,
+          creatableWithOwnAddress: false,
+          creationNotice:
+            'Die Quellart „Nextcloud“ ist nur über einen Zugang nutzbar, und es gibt noch keinen. Zugänge legt die Systemverwaltung an.',
+        }),
+      )
+      const user = userEvent.setup()
+      await renderPage()
+
+      expect(screen.getByRole('radio', { name: /Nextcloud/ })).toBeDisabled()
+      const action = await screen.findByTestId('library-create-NEXTCLOUD-connection-request')
+      expect(action).toHaveTextContent(
+        'Für „Nextcloud“ steht Ihnen noch kein nutzbarer Zugang zur Verfügung.',
+      )
+      await user.click(screen.getByRole('button', { name: 'Zugang für Nextcloud vorschlagen' }))
+      const dialog = await screen.findByRole('dialog', { name: 'Zugang vorschlagen' })
+      expect(dialog).toHaveTextContent('Quellart: Nextcloud')
+      await user.type(within(dialog).getByLabelText(/Server-Adresse/), 'https://cloud.neu.example')
+      await user.click(within(dialog).getByRole('button', { name: 'Vorschlagen' }))
+
+      await waitFor(() =>
+        expect(mockConnectionProfileRequests.at(-1)).toMatchObject({
+          sourceType: 'NEXTCLOUD',
+          serverUrl: 'https://cloud.neu.example',
+        }),
+      )
+    }, 15000)
+
+    it('offers no suggestion in the first step without any connector right', async () => {
+      mockGetMyCapabilities.mockResolvedValue(['CREATE_LIBRARY'])
+      mockListSourceTypes.mockResolvedValue(
+        withNextcloud({ profileRequired: true, creatable: false, creatableWithOwnAddress: false }),
+      )
+      await renderPage()
+
+      expect(screen.getByRole('radio', { name: /Nextcloud/ })).toBeDisabled()
+      expect(
+        screen.queryByRole('button', { name: 'Zugang für Nextcloud vorschlagen' }),
+      ).not.toBeInTheDocument()
+    }, 15000)
+
+    it('offers the suggestion beside the own address while no profile exists yet', async () => {
+      const user = userEvent.setup()
+      await renderPage()
+      await chooseType(user, /Nextcloud/)
+
+      await screen.findByLabelText(/Adresse der Nextcloud/)
+      expect(screen.queryByTestId('library-create-connection')).not.toBeInTheDocument()
+      expect(
+        await screen.findByRole('button', { name: 'Zugang für Nextcloud vorschlagen' }),
+      ).toBeVisible()
     }, 15000)
 
     it('asks for no profile for a type that admits none', async () => {

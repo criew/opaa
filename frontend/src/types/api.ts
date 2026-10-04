@@ -183,7 +183,21 @@ export type ConnectionProfileCreateRequest = components['schemas']['ConnectionPr
 export type ConnectionProfileUpdateRequest = components['schemas']['ConnectionProfileUpdateRequest']
 export type ConnectionProfileImpactResponse =
   components['schemas']['ConnectionProfileImpactResponse']
+export type ConnectionProfileChangeRejection =
+  components['schemas']['ConnectionProfileChangeRejection']
+export type SourceChangeRejectionCategory = components['schemas']['SourceChangeRejectionCategory']
 export type ConnectionProfileOption = components['schemas']['ConnectionProfileOption']
+export type ConnectionProfileRef = components['schemas']['ConnectionProfileRef']
+export type PersonCount = components['schemas']['PersonCount']
+export type ConnectionProfileRequestState = components['schemas']['ConnectionProfileRequestState']
+export type ConnectionProfileRequestCreateRequest =
+  components['schemas']['ConnectionProfileRequestCreateRequest']
+export type ConnectionProfileRequestResolveRequest =
+  components['schemas']['ConnectionProfileRequestResolveRequest']
+export type ConnectionProfileRequestResponse =
+  components['schemas']['ConnectionProfileRequestResponse']
+export type ConnectionProfileRequestPageResponse =
+  components['schemas']['ConnectionProfileRequestPageResponse']
 export type ConnectorLockRequest = components['schemas']['ConnectorLockRequest']
 export type SourceFreeze = components['schemas']['SourceFreeze']
 export type SourceBlock = components['schemas']['SourceBlock']
@@ -197,6 +211,20 @@ export type ConnectorProfileRequirementResponse =
   components['schemas']['ConnectorProfileRequirementResponse']
 export type LibraryConnectionProfileRequest =
   components['schemas']['LibraryConnectionProfileRequest']
+export type ConnectedAccountState = components['schemas']['ConnectedAccountState']
+export type ConnectedAccount = components['schemas']['ConnectedAccount']
+export type ConnectedAccountLibrary = components['schemas']['ConnectedAccountLibrary']
+export type ConnectableProfile = components['schemas']['ConnectableProfile']
+export type MissingAccess = components['schemas']['MissingAccess']
+export type ConnectedAccountsOverview = components['schemas']['ConnectedAccountsOverview']
+export type ConnectedAccountConnectRequest = components['schemas']['ConnectedAccountConnectRequest']
+export type ConnectionLogEventType = components['schemas']['ConnectionLogEventType']
+export type ConnectionLogOwnerKind = components['schemas']['ConnectionLogOwnerKind']
+export type ConnectionEndCause = components['schemas']['ConnectionEndCause']
+export type ConnectionLogEntryResponse = components['schemas']['ConnectionLogEntryResponse']
+export type ConnectionLogPage = components['schemas']['ConnectionLogPage']
+export type ConnectionLogRetentionRequest = components['schemas']['ConnectionLogRetentionRequest']
+export type ConnectionLogRetentionResponse = components['schemas']['ConnectionLogRetentionResponse']
 export type SourceBrowseRequest = components['schemas']['SourceBrowseRequest']
 export type SourceBrowseResponse = components['schemas']['SourceBrowseResponse']
 export type SourceBrowseEntry = components['schemas']['SourceBrowseEntry']

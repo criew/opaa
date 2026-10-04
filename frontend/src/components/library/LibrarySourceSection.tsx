@@ -10,6 +10,7 @@ import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import type {
+  ConnectionProfileRef,
   SourceTypeKey,
   IndexingRunResponse,
   LibrarySchedule,
@@ -27,7 +28,10 @@ import EditLibrarySourceDialog from '../EditLibrarySourceDialog'
 import EditLibraryScheduleDialog from '../EditLibraryScheduleDialog'
 import PageSection from '../PageSection'
 import LibraryConnectionPanel from './LibraryConnectionPanel'
-import { liftedByConnecting } from './connectionChoice'
+import { Link as RouterLink } from 'react-router'
+import { liftedByConnecting, liftedByOwnAccount } from './connectionChoice'
+import { useRunsOnOwnAccount } from '../../hooks/useRunsOnOwnAccount'
+import { CONNECTED_ACCOUNTS_ROUTE } from '../../routes'
 import { sourceRegistration } from './sources/registry'
 
 export interface LibrarySourceSectionProps {
@@ -46,7 +50,7 @@ export interface LibrarySourceSectionProps {
     fullSyncIntervalDefaultDays?: number | null
     schedule?: LibrarySchedule | null
     lastScheduledRunsFailed?: boolean | null
-    connectionProfile?: { id: string; name: string } | null
+    connectionProfile?: ConnectionProfileRef | null
     connectionProfileRemoved?: boolean
     sourceBlock?: SourceBlock | null
   }
@@ -72,6 +76,16 @@ export default function LibrarySourceSection({
       Zugang zuordnen
     </Button>
   )
+  const block = library.sourceBlock ?? null
+  const ownAccount = useRunsOnOwnAccount(
+    libraryId,
+    canEditSource && block !== null && liftedByOwnAccount(block.reason),
+  )
+  const accountAction = (
+    <Button color="inherit" size="small" component={RouterLink} to={CONNECTED_ACCOUNTS_ROUTE}>
+      {block?.reason === 'EXPIRED' ? 'Konto neu verbinden' : 'Konto verbinden'}
+    </Button>
+  )
   const configuration = sourceRegistration(library.sourceType)?.configuration ?? null
   const Scope = configuration?.Scope
   const StoredView = configuration?.StoredView
@@ -89,7 +103,9 @@ export default function LibrarySourceSection({
           action={
             canEditSource && liftedByConnecting(library.sourceBlock.reason)
               ? connectAction
-              : undefined
+              : ownAccount
+                ? accountAction
+                : undefined
           }
         >
           {library.sourceBlock.notice}
@@ -152,9 +168,9 @@ export default function LibrarySourceSection({
               <LibraryConnectionPanel
                 libraryId={libraryId}
                 sourceType={library.sourceType}
+                library={library}
                 connectionProfile={library.connectionProfile}
                 connectionProfileRemoved={library.connectionProfileRemoved}
-                credentialsStored={Boolean(library.sourceCredentialsSet)}
                 onEditSource={() => setEditSourceOpen(true)}
                 dialogOpen={connectOpen}
                 onDialogOpenChange={setConnectOpen}

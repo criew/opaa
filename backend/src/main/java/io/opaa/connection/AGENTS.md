@@ -5,7 +5,7 @@ Pakete (`io.opaa.*`): connection. Ergänzt `backend/AGENTS.md`.
 ## Zweck und Grenze
 
 Verbindungsprofile („Zugänge“), Zuordnung einer Bibliothek, Konnektor-Freigabe, Sperren,
-Verbindungsprotokoll, Token-Speicher und verbundene Konten (ADR-0041,
+Verbindungsprotokoll, Token-Speicher, verbundene Konten und Zugangswünsche (ADR-0041,
 `docs/features/connector-connections.md`); OAuth folgt. connections hängt nur von foundation,
 identity, rights und knowledge ab; nur library hängt von connections ab. Der Kern erreicht es über
 seine Ports `SourceConnectionResolver` (`ProfileSourceConnectionResolver`) und `SourceStateLookup`.
@@ -13,9 +13,9 @@ seine Ports `SourceConnectionResolver` (`ProfileSourceConnectionResolver`) und `
 ## Invarianten und Stolpersteine
 
 - **Unterpakete, unten zuerst:** `connection.log`, `connection.token`, `connection.profile`,
-  `connection.account`; das Wurzelpaket verdrahtet und implementiert den Port, `connection.web`
-  darüber. Kein Unterpaket nennt das Wurzelpaket. Nach oben nur über Ports: `LibrariesOnProfile`,
-  `PersonAccounts`, `SecretIssuer` (token), `PersonConnections` (profile).
+  `connection.request` (Zugangswünsche, Lock je Person), `connection.account`; das Wurzelpaket
+  verdrahtet den Port, `connection.web` darüber; keines nennt es. Nach oben nur über Ports:
+  `LibrariesOnProfile`, `PersonAccounts`, `SecretIssuer` (token), `PersonConnections` (profile).
 - **Verbindungsprotokoll** wie `audit_log`: schreibt nur `ConnectionLog` (in der Transaktion des
   Aufrufers), liest nur `ConnectionLogQueryService` (`AUDITOR`), löscht nur die Datenbankfunktion.
   Die Verbindung einer privaten Bibliothek ist immer die der Person (`ConnectionLogOwner.Person`).
@@ -25,9 +25,9 @@ seine Ports `SourceConnectionResolver` (`ProfileSourceConnectionResolver`) und `
   ist: `SecretTarget#key` (`sameOrigin` plus `credentialBinding`) ist die eine Zielfunktion.
   Verwerfen je Bibliothek trifft nur deren eigenes Geheimnis (`LibraryOwned`), nie das geteilte
   einer Person; das endet nur mit dem Konto (`ConnectedAccountService#end`).
-- **„Ruhend“ und „deaktiviert“ werden abgeleitet, nie gespeichert** (gespeichert: `CONNECTED`,
-  `EXPIRED`, `DISCONNECTED`). Eine getrennte Zeile bleibt, solange eine private Bibliothek daran
-  hängt (Trigger: private Bibliothek nur auf Personen-Zugang mit Konto, auch nach Besitzartwechsel).
+- **„Ruhend“/„deaktiviert“ werden abgeleitet;** `ConnectionLifecycleReconciler` hält nur den Beginn
+  fest und beendet nur bei `DEACTIVATED`, je Person in eigener Transaktion (auch nach Commit). Eine
+  getrennte Zeile bleibt für eine private Bibliothek daran (Trigger, auch nach Besitzartwechsel).
 - **Die Verwaltung sieht Konten nur über `PersonNumbers`** („weniger als N“), Bibliothekszahlen ohne
   private, Kontoname und Client-Secret nie. Eine private vetiert keine Profiländerung, sie wird
   gelöst (`PrivateLibraryRelease`); Konto, Ziel, Entwurf prüft `PrivateLibraryConnections`.

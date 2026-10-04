@@ -29,20 +29,26 @@ import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.TransactionException;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * The one place that reads, checks, stores and discards the secret a source is reached with,
  * addressed by its {@link SecretOwner}, and the only place that decrypts a stored token. Every read
  * goes to the stored row. A person's secret is handed out only while their account is usable
- * ({@link AccountUsability} with {@link #INACTIVITY_THRESHOLD}) and only to the target it was
- * issued for; resting and deactivated are derived here at every use, never stored.
+ * ({@link AccountUsability} with the configured inactivity threshold) and only to the target it was
+ * issued for; resting and deactivated are derived here at every use, never stored. A hand-out
+ * records the account's use at most once per {@link #USE_RESOLUTION}.
  */
 @Component
 public class ConnectionSecrets {
 
-  /** Without a sign-in for this long, a person's connections rest (ADR-0041, Beschluss 15). */
-  public static final Duration INACTIVITY_THRESHOLD = Duration.ofDays(90);
+  /** How finely the last use of a connected account is kept. */
+  static final Duration USE_RESOLUTION = Duration.ofDays(1);
 
   private static final Logger log = LoggerFactory.getLogger(ConnectionSecrets.class);
   private static final String ENCRYPTED_MARKER = "enc:";
@@ -55,6 +61,8 @@ public class ConnectionSecrets {
   private final AccountUsability usability;
   private final CredentialsEncryptor encryptor;
   private final ObjectProvider<SecretIssuer> issuers;
+  private final Duration inactivityThreshold;
+  private final TransactionTemplate usage;
   private final Clock clock;
 
   ConnectionSecrets(
@@ -66,6 +74,8 @@ public class ConnectionSecrets {
       AccountUsability usability,
       CredentialsEncryptor encryptor,
       ObjectProvider<SecretIssuer> issuers,
+      ConnectionLifecycleProperties lifecycle,
+      PlatformTransactionManager transactionManager,
       Clock clock) {
     this.librariesOnProfile = librariesOnProfile;
     this.libraries = libraries;
@@ -75,6 +85,9 @@ public class ConnectionSecrets {
     this.usability = usability;
     this.encryptor = encryptor;
     this.issuers = issuers;
+    this.inactivityThreshold = lifecycle.inactivityThreshold();
+    this.usage = new TransactionTemplate(transactionManager);
+    this.usage.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
     this.clock = clock;
   }
 
@@ -183,15 +196,24 @@ public class ConnectionSecrets {
     }
   }
 
-  /** Discards the secret of {@code owner}; for a library in the loaded entity and the column. */
-  public void discard(SecretOwner owner) {
-    switch (owner) {
+  /**
+   * Discards the secret of {@code owner}; for a library in the loaded entity and the column.
+   * Returns how many stored secrets of a person went, always 0 for a library.
+   */
+  public int discard(SecretOwner owner) {
+    return switch (owner) {
       case LibraryOwned(UUID libraryId) -> {
         libraries.findById(libraryId).ifPresent(KnowledgeLibrary::dropSourceCredentials);
         libraries.eraseSourceCredentials(libraryId);
+        yield 0;
       }
-      case PersonOwned person -> accountIdOf(person).ifPresent(tokens::deleteByAccount);
-    }
+      case PersonOwned person -> accountIdOf(person).map(tokens::deleteByAccount).orElse(0);
+    };
+  }
+
+  /** How many stored secrets of persons are past their end now, counted without decrypting. */
+  public long countExpiredPersonSecrets() {
+    return tokens.countPersonsEndedBy(clock.instant());
   }
 
   /**
@@ -235,8 +257,12 @@ public class ConnectionSecrets {
     if (accountState != null) {
       throw new SecretRefusedException(accountState);
     }
+    AccountKey account =
+        accountOf(person).orElseThrow(() -> new SecretRefusedException(Reason.NOT_CONNECTED));
     ConnectionToken token =
-        tokenOf(person).orElseThrow(() -> new SecretRefusedException(Reason.NOT_CONNECTED));
+        tokens
+            .findByConnectedAccountId(account.getId())
+            .orElseThrow(() -> new SecretRefusedException(Reason.NOT_CONNECTED));
     if (!token.getIssuedFor().equals(target)) {
       throw new SecretRefusedException(Reason.TARGET_OUTSIDE_PROFILE);
     }
@@ -244,10 +270,35 @@ public class ConnectionSecrets {
       throw new SecretRefusedException(Reason.EXPIRED);
     }
     String value = decrypt(token);
-    return switch (token.getKind()) {
-      case PERSONAL_SECRET -> new Secret(SecretKind.PERSONAL_SECRET, value);
-      case OAUTH -> issuer().renew(person.profileId(), value, token.getIssuedFor());
-    };
+    Secret secret =
+        switch (token.getKind()) {
+          case PERSONAL_SECRET -> new Secret(SecretKind.PERSONAL_SECRET, value);
+          case OAUTH -> issuer().renew(person.profileId(), value, token.getIssuedFor());
+        };
+    markUsed(account);
+    return secret;
+  }
+
+  /**
+   * Records the hand-out in a transaction of its own, since a hand-out may run inside a read-only
+   * one, and only once {@link #USE_RESOLUTION} has passed: the hand-out path writes at most once a
+   * day per account. A failed record costs the record only, never the hand-out.
+   */
+  private void markUsed(AccountKey account) {
+    Instant now = clock.instant();
+    Instant notBefore = now.minus(USE_RESOLUTION);
+    Instant last = account.getLastUsedAt();
+    if (last != null && !last.isBefore(notBefore)) {
+      return;
+    }
+    try {
+      usage.executeWithoutResult(status -> accounts.markUsed(account.getId(), now, notBefore));
+    } catch (DataAccessException | TransactionException e) {
+      log.warn(
+          "The use of a connected account could not be recorded ({}); the next hand-out tries"
+              + " again",
+          e.getClass().getSimpleName());
+    }
   }
 
   private SecretIssuer issuer() {
@@ -343,7 +394,7 @@ public class ConnectionSecrets {
   private Map<UUID, Reason> accountStates(Collection<UUID> userIds) {
     List<User> found = users.findAllById(userIds);
     Map<UUID, AccountUsability.State> states =
-        usability.snapshot().withInactivityThreshold(INACTIVITY_THRESHOLD).statesOf(found);
+        usability.snapshot().withInactivityThreshold(inactivityThreshold).statesOf(found);
     Map<UUID, Reason> reasons = new HashMap<>();
     for (UUID userId : userIds) {
       AccountUsability.State state = states.get(userId);
@@ -356,12 +407,15 @@ public class ConnectionSecrets {
     return reasons;
   }
 
-  private Optional<UUID> accountIdOf(PersonOwned person) {
+  private Optional<AccountKey> accountOf(PersonOwned person) {
     return accounts.accountsAmong(Set.of(person.userId()), Set.of(person.profileId())).stream()
         .filter(key -> key.getUserId().equals(person.userId()))
         .filter(key -> key.getProfileId().equals(person.profileId()))
-        .map(AccountKey::getId)
         .findFirst();
+  }
+
+  private Optional<UUID> accountIdOf(PersonOwned person) {
+    return accountOf(person).map(AccountKey::getId);
   }
 
   private Optional<ConnectionToken> tokenOf(PersonOwned person) {

@@ -782,6 +782,15 @@ describe('EditLibrarySourceDialog', () => {
   })
 
   describe('library on a connection profile (#2162)', () => {
+    const profileRef = {
+      id: 'profile-s3',
+      name: 'Speicher Rechenzentrum',
+      serverUrl: 'https://s3.rz.example',
+      authMethod: 'PERSONAL_SECRET' as const,
+      connectorDefaults: { region: 'eu-rz-1', pathStyle: true },
+      sourceProxy: 'proxy.rz.example:3128',
+      sourceInsecureSsl: true,
+    }
     const profiledS3Library = {
       name: 'Protokolle',
       description: null,
@@ -792,27 +801,18 @@ describe('EditLibrarySourceDialog', () => {
       sourceInsecureSsl: false,
       sourceCredentialsSet: true,
       sourceSettings: { scopes: [{ bucket: 'protokolle', prefix: null }] },
-      connectionProfile: { id: 'profile-s3', name: 'Speicher Rechenzentrum' },
-    }
-    const option = {
-      id: 'profile-s3',
-      name: 'Speicher Rechenzentrum',
-      sourceType: 'S3',
-      serverUrl: 'https://s3.rz.example',
-      authMethod: 'PERSONAL_SECRET',
-      creatable: true,
-      connectorDefaults: { region: 'eu-rz-1', pathStyle: true },
+      connectionProfile: profileRef,
     }
 
-    it('saves nothing while the profile is loading, then edits under it with its fixed values', async () => {
-      let answer: () => void = () => {}
+    it('edits under what the library names of its profile, also without the right to create one', async () => {
+      // a manager without CREATE_CONNECTOR_LIBRARY gets 403 here; the dialog must not need it
+      const asked: string[] = []
+      server.events.on('request:start', ({ request }) => {
+        if (request.url.includes('/connection-profiles')) asked.push(request.url)
+      })
       server.use(
-        http.get(
-          '/api/v1/connection-profiles',
-          () =>
-            new Promise<Response>((resolve) => {
-              answer = () => resolve(HttpResponse.json([option]))
-            }),
+        http.get('/api/v1/connection-profiles', () =>
+          HttpResponse.json({ error: 'Keine Berechtigung' }, { status: 403 }),
         ),
       )
       const user = userEvent.setup()
@@ -825,51 +825,45 @@ describe('EditLibrarySourceDialog', () => {
         />,
       )
 
-      expect(
-        await screen.findByText(
-          'Die Angaben des Zugangs „Speicher Rechenzentrum“ werden geladen …',
-        ),
-      ).toBeVisible()
-      expect(screen.getByRole('button', { name: 'Speichern' })).toBeDisabled()
-      expect(screen.queryByLabelText('Endpoint')).not.toBeInTheDocument()
-
-      answer()
       const region = await screen.findByLabelText(/^Region/)
       expect(region).toHaveValue('eu-rz-1')
       expect(region).toHaveAttribute('readonly')
+      const proxy = screen.getByLabelText(/^Proxy/)
+      expect(proxy).toHaveValue('proxy.rz.example:3128')
+      expect(proxy).toHaveAttribute('readonly')
+      expect(screen.getByRole('switch', { name: /TLS-Prüfung aussetzen/ })).toBeDisabled()
       await user.click(screen.getByRole('button', { name: 'Speichern' }))
 
       await waitFor(() => expect(mockUpdateLibrary).toHaveBeenCalledTimes(1))
       const [, request] = mockUpdateLibrary.mock.calls[0]
-      expect(request.sourceSettings).toMatchObject({ region: 'eu-rz-1', pathStyle: true })
+      // nothing the profile sets travels: a value changed there meanwhile cannot make it differ
+      expect(request.sourceSettings).not.toHaveProperty('region')
+      expect(request.sourceSettings).not.toHaveProperty('pathStyle')
+      expect(request.sourceSettings).toMatchObject({ scopes: [{ bucket: 'protokolle' }] })
+      expect(request.sourceProxy).toBeUndefined()
+      expect(request.sourceInsecureSsl).toBe(false)
+      expect(asked).toHaveLength(0)
+      server.events.removeAllListeners()
     }, 15000)
 
-    it('keeps the stored values and refuses to save when the profile cannot be read', async () => {
-      server.use(
-        http.get('/api/v1/connection-profiles', () =>
-          HttpResponse.json({ error: 'Keine Berechtigung' }, { status: 403 }),
-        ),
-      )
+    it('keeps the stored values and refuses to save when the library names too little of its profile', async () => {
       renderWithProviders(
         <EditLibrarySourceDialog
           open
           onClose={() => {}}
           libraryId="lib-s3"
-          library={profiledS3Library}
+          library={{
+            ...profiledS3Library,
+            connectionProfile: { id: 'profile-s3', name: 'Speicher Rechenzentrum' },
+          }}
         />,
       )
 
       expect(await screen.findByTestId('edit-source-connection-missing')).toHaveTextContent(
         /Zugangs „Speicher Rechenzentrum“ liegen nicht vor/,
       )
-      // a missing right is no passing fault: the notice names it and who grants it
-      expect(screen.getByTestId('edit-source-connection-missing')).toHaveTextContent(
-        /Anlegerecht erteilt die Systemverwaltung/,
-      )
-      expect(screen.getByTestId('edit-source-connection-missing')).not.toHaveTextContent(
-        /später erneut/,
-      )
       expect(screen.getByRole('button', { name: 'Speichern' })).toBeDisabled()
+      expect(screen.queryByLabelText('Endpoint')).not.toBeInTheDocument()
       expect(mockUpdateLibrary).not.toHaveBeenCalled()
     })
   })

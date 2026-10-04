@@ -7,7 +7,9 @@ import Menu from '@mui/material/Menu'
 import MenuItem from '@mui/material/MenuItem'
 import Typography from '@mui/material/Typography'
 import NotificationsIcon from '@mui/icons-material/Notifications'
+import { useNavigate } from 'react-router'
 import type { NotificationResponse } from '../../types/api'
+import { notificationTarget } from './notificationTarget'
 import { getNotifications, markNotificationRead } from '../../services/notificationApi'
 import { useAuthStore } from '../../stores/authStore'
 
@@ -25,6 +27,7 @@ export default function NotificationBell() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   const [notifications, setNotifications] = useState<NotificationResponse[]>([])
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null)
+  const navigate = useNavigate()
 
   useEffect(() => {
     if (!isAuthenticated) return
@@ -48,6 +51,11 @@ export default function NotificationBell() {
   }
 
   async function handleItemClick(notification: NotificationResponse) {
+    const target = notificationTarget(notification.type)
+    if (target) {
+      setAnchorEl(null)
+      void navigate(target)
+    }
     if (!notification.readAt) {
       try {
         await markNotificationRead(notification.id)

@@ -110,7 +110,6 @@ export default function GoogleDriveSourceForm({
     sourceProxy: values.sourceProxy.trim() || undefined,
     sourceCredentials: values.keyFile || undefined,
     sourceInsecureSsl: false,
-    ...connection.probe,
   })
 
   const onKeyFile = async (file: File | undefined) => {
@@ -143,10 +142,13 @@ export default function GoogleDriveSourceForm({
     setListing(true)
     setListingMessage(null)
     try {
-      const result = await browseSource('GOOGLE_DRIVE', {
-        ...connectionRequest(),
-        query: { subject: values.subject.trim() || undefined },
-      })
+      const result = await browseSource(
+        'GOOGLE_DRIVE',
+        connection.probeRequest({
+          ...connectionRequest(),
+          query: { subject: values.subject.trim() || undefined },
+        }),
+      )
       if (listingGeneration.current !== mine) return
       if (result.complete) {
         const found = result.entries
@@ -195,11 +197,13 @@ export default function GoogleDriveSourceForm({
     setTestMessage(null)
     setChecks(null)
     try {
-      const result = await testLibrarySource({
-        sourceType: 'GOOGLE_DRIVE',
-        ...connectionRequest(),
-        sourceSettings: googleDriveSettingsOf(values),
-      })
+      const result = await testLibrarySource(
+        connection.probeRequest({
+          sourceType: 'GOOGLE_DRIVE',
+          ...connectionRequest(),
+          sourceSettings: googleDriveSettingsOf(values),
+        }),
+      )
       if (testGeneration.current !== mine) return
       setTestMessage({ severity: result.reachable ? 'success' : 'warning', text: result.message })
       setChecks(googleDriveScopeChecksOf(result.details))
@@ -379,7 +383,9 @@ export default function GoogleDriveSourceForm({
           fullWidth
           value={values.sourceProxy}
           onChange={(e) => change({ sourceProxy: e.target.value })}
-          placeholder="proxy.example.org:8080"
+          placeholder={connection.isFixed('sourceProxy') ? undefined : 'proxy.example.org:8080'}
+          helperText={connection.isFixed('sourceProxy') ? connection.transportHint : undefined}
+          slotProps={{ htmlInput: { readOnly: connection.isFixed('sourceProxy') } }}
         />
       </Box>
 
