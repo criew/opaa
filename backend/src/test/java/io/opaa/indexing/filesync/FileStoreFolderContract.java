@@ -10,8 +10,9 @@ import org.junit.jupiter.api.Test;
  * The contract of a store that reports folders and skips unchanged ones ({@link FileStore#recall}):
  * on top of {@link FileStoreContract}, a change or deletion deep down reaches the run, a sibling
  * sharing a name prefix is not mistaken for the folder, a renamed folder keeps its bestand over the
- * following runs, and a document marked for a run or removed outside one is visited again although
- * its folder did not change. Every file connector whose store reports folders extends this instead.
+ * following runs, and a document marked for a run or removed by hand, also while a run is under way,
+ * is visited again although its folder did not change. Every file connector whose store reports
+ * folders extends this instead.
  */
 public abstract class FileStoreFolderContract extends FileStoreContract {
 

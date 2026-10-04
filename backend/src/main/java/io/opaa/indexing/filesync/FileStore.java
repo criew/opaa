@@ -26,9 +26,8 @@ public interface FileStore extends AutoCloseable {
    * anything in or below it changes - content, a name, a file or folder added, removed, renamed or
    * moved. A folder may be reported unchanged only when its marker equals the one handed over for
    * exactly its path; a renamed or moved folder has no marker at its new path and is listed. {@link
-   * FileSync} hands over no marker for a folder holding a document awaiting a visit or after a
-   * document was removed outside a run, and remembers none for a folder whose path a row cannot
-   * carry uncut.
+   * FileSync} hands over no marker for a folder in or above a document awaiting a visit or one
+   * removed outside a run since a full sync last listed its folder.
    */
   default void recall(FileContainer container, Map<String, String> subtreeMarkers) {}
 

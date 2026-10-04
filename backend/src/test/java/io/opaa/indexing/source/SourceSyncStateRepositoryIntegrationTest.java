@@ -126,10 +126,9 @@ class SourceSyncStateRepositoryIntegrationTest {
     SourceSyncState state = new SourceSyncState(library.getId());
     SourceSyncState.SubtreeMemory memory =
         new SourceSyncState.SubtreeMemory(
-            "v1|1024|pdf,txt",
+            "v2|1024|pdf,txt",
             Instant.parse("2026-10-03T10:00:00Z"),
-            Map.of("/Projekte", Map.of("", "\"6ac1\"", "Akten / 2026", "\"6ac2\"")),
-            Map.of("/Projekte", 42L));
+            Map.of("/Projekte", Map.of("", "\"6ac1\"", "Akten / 2026", "\"6ac2\"")));
     state.rememberSubtrees(memory);
     repository.save(state);
 
@@ -160,7 +159,7 @@ class SourceSyncStateRepositoryIntegrationTest {
   }
 
   @Test
-  void documentsAwaitingAVisitAreFoundByTheirFolderAndCounted() {
+  void documentsAwaitingAVisitAreFoundByTheirFolder() {
     saveDocument("1", "Projekte", "alt");
     saveDocument("2", "Projekte", "neu");
     saveDocument("3", "Projekte", null);
@@ -178,9 +177,6 @@ class SourceSyncStateRepositoryIntegrationTest {
     assertThat(documentRepository.findHierarchyPathsAwaitingAVisit(library.getId(), "Projekte"))
         .as("1 is marked for the next run, 2 was never indexed, 3 is settled")
         .containsExactlyInAnyOrder("alt", "neu");
-    assertThat(
-            documentRepository.countByLibraryIdAndSourceContainerKey(library.getId(), "Projekte"))
-        .isEqualTo(3);
   }
 
   @Test

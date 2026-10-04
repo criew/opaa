@@ -486,6 +486,52 @@ Verworfen:
 - **Merkmale im Konnektor speichern:** Ein Konnektor hat keinen Zustand, und nur `FileSync` weiß,
   welcher Eintrag ungeklärt blieb.
 
+## Nachtrag: Lange Hierarchiepfade und Löschvermerk (#2201, 04.10.2026)
+
+Zwei Annahmen des Nachtrags „Unveränderte Ordner“ hielten nicht:
+
+- **Punkt 5, gekürzter Pfad:** `source_hierarchy_path` war `varchar(2000)`. Ein längerer Pfad wurde
+  beim Anlegen gekürzt, beim Nachführen über `refreshConnectorTitleAndContext` aber ungekürzt
+  geschrieben. Bei gleicher Prüfsumme scheiterte deshalb jeder Lauf mit einem Fehler und einem
+  Download; der Ordner kam nie ins Gedächtnis.
+- **Punkt 6, Zeilenzähler:** Der Vergleich „weniger Zeilen als beim Merken“ übersah eine Löschung,
+  die ein Ereignislauf mit einem neuen Dokument im selben Container ausglich. Auch eine Löschung
+  während des Laufs übersah er, weil er die Zeilen erst beim Speichern zählte. Der Ordner blieb
+  gemerkt, und das gelöschte Dokument kam nicht zurück.
+
+Entscheidung:
+
+1. **`source_hierarchy_path` ist `text`.** Die Kürzung und ihr Sonderfall im Abgleich entfallen.
+   Eine früher gekürzte Zeile stellt der nächste Lauf einmal richtig (Abruf, gleiche Prüfsumme,
+   Nachführen ohne neuen Schnitt). Ein Backfill ist dafür nicht nötig. Identität bleibt
+   `file_path` in seiner bisherigen Breite.
+2. **Löschvermerk statt Zähler.** Die neue Tabelle `source_sync_revisits` hängt am
+   Abgleichszustand und fällt mit ihm (`ON DELETE CASCADE`). `LibraryDocumentService.deleteDocument`
+   schreibt in derselben Transaktion eine Zeile mit Container und Hierarchiepfad, wenn die
+   Bibliothek einen Abgleichszustand hat und das Dokument einen Container trägt. Das ist der
+   einzige Löschweg außerhalb eines Laufs; Ordner werden über ihn geleert. Eine ArchUnit-Regel
+   (`onlyTheKnownClassesDeleteDocuments`) hält die Aufrufer von `DocumentRepository#delete…` fest:
+   `LibraryDocumentService`, `KnowledgeLibraryService` (Bibliothek samt Zustand) und
+   `StaleDocumentCleanupService` (im Lauf).
+3. **Wirkung im Lauf.** Ein Vollabgleich liest die Vermerke zu Beginn. Für keinen Ordner in oder
+   über einem davon übergibt er ein Merkmal. Beim Speichern des Gedächtnisses liest er sie erneut;
+   ein Ordner über einem Vermerk, der während des Laufs kam, wird nicht gemerkt. Verbraucht werden
+   nach dem Speichern nur Vermerke vom Laufbeginn, deren Container bis zur letzten Seite gelistet
+   wurde. Ein Änderungs- oder Ereignislauf lässt die Vermerke stehen.
+4. **Grundlage `v2`.** Das Gedächtnis trägt keine Zeilenzahlen mehr. Ein unter `v1` gemerktes
+   Gedächtnis gilt nicht; jede Bibliothek mit Ordnergedächtnis listet nach dem Update einmal alle
+   Ordner.
+
+Nebenwirkung: Auch eine Bibliothek, deren Store keine Ordner meldet, bekommt je manueller Löschung
+einen Vermerk. Ihr nächster vollständiger Vollabgleich verbraucht ihn.
+
+Grenze, gemessen an PostgreSQL 18: Der eindeutige Index `(library_id, file_path)` nimmt höchstens
+2676 Byte eines nicht komprimierbaren Pfads auf. Ein `file_path` mit 2000 Zeichen passt deshalb
+nur, solange er fast nur aus Ein-Byte-Zeichen besteht; zufällige Zwei-Byte-Zeichen enden bei 1338,
+Drei-Byte-Zeichen bei 892 Zeichen. Ein längerer Pfad scheitert beim Speichern mit „index row size
+… exceeds btree version 4 maximum 2704“. Das betrifft Stores mit Pfad-Identität (SMB) und ist hier
+nicht gelöst (`DocumentFilePathIndexLimitTest`).
+
 ## Nachtrag: SMB (#2155, 03.10.2026)
 
 Windows-Dateifreigaben sind der Vollscan-Fall des Ports: kein Änderungsprotokoll, kein

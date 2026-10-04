@@ -196,7 +196,7 @@ class FileSyncTest {
         .state()
         .rememberSubtrees(
             new SourceSyncState.SubtreeMemory(
-                "v1|1|txt", memory.establishedAt(), memory.containers(), memory.documentCounts()));
+                "v2|1|txt", memory.establishedAt(), memory.containers()));
 
     harness.fullSync(store.reset());
 
@@ -258,8 +258,7 @@ class FileSyncTest {
   }
 
   @Test
-  void aNewFileThatIsNotAvailableAndAPathTooLongForTheRowKeepTheirFoldersOutOfTheMemory()
-      throws Exception {
+  void aFolderUnderAPathBeyond2000CharactersIsRememberedLikeAnyOther() throws Exception {
     String longFolder = "x".repeat(2100);
     InMemoryFileStore store =
         new InMemoryFileStore()
@@ -269,10 +268,11 @@ class FileSyncTest {
             .put("A", longFolder + "/b.txt", "B.");
 
     harness.fullSync(store);
+    FileSyncHarness.Run next = harness.fullSync(store.reset());
 
     assertThat(harness.state().subtreeMemory().containers().get("A"))
-        .as("the cut path keeps its folder and the root out")
-        .containsOnlyKeys("gut");
+        .containsOnlyKeys("", "gut", longFolder);
+    assertThat(next.skipped() + next.processed()).isZero();
   }
 
   @Test

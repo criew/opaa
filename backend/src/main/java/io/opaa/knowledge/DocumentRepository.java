@@ -28,9 +28,6 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
   /** Every row of {@code libraryId} from the source container {@code containerKey}. */
   List<Document> findByLibraryIdAndSourceContainerKey(UUID libraryId, String containerKey);
 
-  /** How many rows, attachments included, {@code libraryId} holds from {@code containerKey}. */
-  long countByLibraryIdAndSourceContainerKey(UUID libraryId, String containerKey);
-
   /**
    * The hierarchy paths of the documents (no attachments) of {@code containerKey} that the next run
    * must visit: marked for reprocessing ({@link #markForReindexOnNextRun}) or not indexed.

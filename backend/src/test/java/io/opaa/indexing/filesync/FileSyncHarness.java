@@ -128,12 +128,6 @@ public final class FileSyncHarness {
                 stored.stream()
                     .filter(d -> invocation.getArgument(1).equals(d.getSourceContainerKey()))
                     .toList());
-    when(documentRepository.countByLibraryIdAndSourceContainerKey(any(), any()))
-        .thenAnswer(
-            invocation ->
-                stored.stream()
-                    .filter(d -> invocation.getArgument(1).equals(d.getSourceContainerKey()))
-                    .count());
     when(documentRepository.findHierarchyPathsAwaitingAVisit(any(), any()))
         .thenAnswer(
             invocation ->
