@@ -5,13 +5,14 @@ import io.opaa.indexing.source.SignInDetails;
 import java.util.UUID;
 
 /**
- * What a profile's own sign-in needs, read for {@code connection.oauth} only: the registration with
- * its decrypted secret (for a service account key the key file), the sign-in its connector
- * declares, the imitated account and the profile's proxy. The TLS switch is the server address's
- * and has no field here. {@link #toString} never shows the secret.
+ * What a profile's sign-in needs, read for {@code connection.oauth} only: the registration with its
+ * decrypted secret (for a service account key the key file), the sign-in its connector declares,
+ * the endpoints the profile names, the imitated account and the profile's proxy. The TLS switch is
+ * the server address's and has no field here. {@link #toString} never shows the secret.
  *
  * @param secret {@code null} when none is stored or it cannot be decrypted
  * @param scopes the profile's scopes, {@code null} for the declared default
+ * @param version the profile's row version the values were read at
  */
 public record ClientRegistration(
     UUID profileId,
@@ -23,7 +24,9 @@ public record ClientRegistration(
     SignInDetails signIn,
     String subject,
     String proxy,
-    boolean signInRejected) {
+    boolean signInRejected,
+    ProfileEndpoints endpoints,
+    long version) {
 
   @Override
   public String toString() {

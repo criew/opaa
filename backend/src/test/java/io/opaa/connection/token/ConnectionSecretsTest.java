@@ -145,7 +145,7 @@ class ConnectionSecretsTest {
     assertThat(SecretOwner.of(profileId, ConnectionAuthMethod.CLIENT_CREDENTIALS, library))
         .isEqualTo(owner);
     assertThat(withIssuer.current(owner, null)).isEqualTo(token);
-    assertThat(withIssuer.afterRejection(owner, null)).isEqualTo(token);
+    assertThat(withIssuer.afterRejection(owner, null, token)).isEqualTo(token);
     assertThat(withIssuer.stateOf(owner)).isEmpty();
     assertThat(withIssuer.stored(owner)).isNull();
     assertThat(withIssuer.holds(owner)).isFalse();

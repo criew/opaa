@@ -2,6 +2,7 @@ package io.opaa.integration.keycloak;
 
 import java.io.IOException;
 import java.net.URI;
+import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -9,7 +10,11 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.GenericContainer;
@@ -22,7 +27,8 @@ import tools.jackson.databind.json.JsonMapper;
  * One real Keycloak per JVM for {@code ./gradlew keycloakIntegrationTest}, started lazily on first
  * use and stopped by Ryuk/JVM exit. Seeds one realm with a group tree, users and the service
  * account {@code opaa-directory} that holds exactly the two realm-management roles ADR-0036,
- * Entscheidung 3 names: {@code view-users} and {@code query-groups}.
+ * Entscheidung 3 names: {@code view-users} and {@code query-groups}; and the client {@code
+ * opaa-quellen} a person consents to by the authorization code flow, with rotating refresh tokens.
  *
  * <p>Deliberately a plain {@link GenericContainer} rather than a third-party Keycloak module: the
  * three endpoints this suite needs are HTTP, and one more dependency to keep in step with the
@@ -50,6 +56,18 @@ final class KeycloakFixture {
   static final String POWERLESS_CLIENT_ID = "opaa-ohne-rechte";
 
   static final String POWERLESS_CLIENT_SECRET = "auch-geheim";
+
+  /** A confidential client for the authorization code flow with PKCE (S256 enforced). */
+  static final String SOURCE_CLIENT_ID = "opaa-quellen";
+
+  static final String SOURCE_CLIENT_SECRET = "quellen-geheim";
+  static final String SOURCE_REDIRECT = "https://opaa.example.org/connections/callback";
+
+  /** The password of {@code anna.beispiel}, the one person who signs in at the login page. */
+  static final String USER_PASSWORD = "Anmelden-2168!";
+
+  private static final Pattern LOGIN_ACTION =
+      Pattern.compile("action=\"([^\"]*login-actions/authenticate[^\"]*)\"");
 
   private static KeycloakFixture instance;
 
@@ -175,6 +193,84 @@ final class KeycloakFixture {
     join(user3Id, referat51GroupId);
     createDirectoryClient(DIRECTORY_CLIENT_ID, DIRECTORY_CLIENT_SECRET, true);
     createDirectoryClient(POWERLESS_CLIENT_ID, POWERLESS_CLIENT_SECRET, false);
+    createSourceClient();
+    adminPut(
+        "/admin/realms/" + REALM + "/users/" + user1Id + "/reset-password",
+        "{\"type\":\"password\",\"value\":\"" + USER_PASSWORD + "\",\"temporary\":false}");
+    // every refresh hands out a new refresh token and the used one ends at once
+    adminPut("/admin/realms/" + REALM, "{\"revokeRefreshToken\":true,\"refreshTokenMaxReuse\":0}");
+  }
+
+  private void createSourceClient() {
+    adminPost(
+        "/admin/realms/" + REALM + "/clients",
+        "{\"clientId\":\""
+            + SOURCE_CLIENT_ID
+            + "\",\"enabled\":true,\"publicClient\":false,\"standardFlowEnabled\":true,"
+            + "\"directAccessGrantsEnabled\":false,\"serviceAccountsEnabled\":false,"
+            + "\"consentRequired\":false,\"secret\":\""
+            + SOURCE_CLIENT_SECRET
+            + "\",\"redirectUris\":[\""
+            + SOURCE_REDIRECT
+            + "\"],\"attributes\":{\"pkce.code.challenge.method\":\"S256\"}}");
+  }
+
+  /**
+   * A person signing in at the login page {@code authorizationUrl} leads to, as a browser would
+   * (cookies, no redirect followed): the query of the redirect back, with {@code code} and {@code
+   * state}.
+   */
+  Map<String, String> signIn(URI authorizationUrl, String username, String password) {
+    HttpClient browser = HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NEVER).build();
+    try {
+      HttpResponse<String> page =
+          browser.send(
+              HttpRequest.newBuilder(authorizationUrl).GET().build(),
+              HttpResponse.BodyHandlers.ofString());
+      Matcher action = LOGIN_ACTION.matcher(page.body());
+      if (page.statusCode() != 200 || !action.find()) {
+        throw new IllegalStateException(
+            "no login page at " + authorizationUrl + " (" + page.statusCode() + ")");
+      }
+      String form =
+          "username="
+              + URLEncoder.encode(username, StandardCharsets.UTF_8)
+              + "&password="
+              + URLEncoder.encode(password, StandardCharsets.UTF_8)
+              + "&credentialId=";
+      // Keycloak marks its cookies Secure; over plain http they are sent back by hand
+      String cookies =
+          String.join(
+              "; ",
+              page.headers().allValues("Set-Cookie").stream()
+                  .map(cookie -> cookie.substring(0, cookie.indexOf(';')))
+                  .toList());
+      HttpResponse<String> back =
+          browser.send(
+              HttpRequest.newBuilder(URI.create(action.group(1).replace("&amp;", "&")))
+                  .header("Content-Type", "application/x-www-form-urlencoded")
+                  .header("Cookie", cookies)
+                  .POST(HttpRequest.BodyPublishers.ofString(form, StandardCharsets.UTF_8))
+                  .build(),
+              HttpResponse.BodyHandlers.ofString());
+      String location = back.headers().firstValue("Location").orElse("");
+      if (back.statusCode() != 302 || !location.startsWith(SOURCE_REDIRECT)) {
+        throw new IllegalStateException("the sign-in did not return (" + back.statusCode() + ")");
+      }
+      Map<String, String> query = new LinkedHashMap<>();
+      for (String pair : URI.create(location).getRawQuery().split("&")) {
+        int equals = pair.indexOf('=');
+        query.put(
+            pair.substring(0, equals),
+            URLDecoder.decode(pair.substring(equals + 1), StandardCharsets.UTF_8));
+      }
+      return query;
+    } catch (IOException e) {
+      throw new IllegalStateException("the sign-in failed", e);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new IllegalStateException("interrupted", e);
+    }
   }
 
   private String createGroup(String parentId, String name) {

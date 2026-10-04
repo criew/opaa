@@ -170,6 +170,16 @@ class ModularArchitectureTest {
   }
 
   @Test
+  void theAuthorizationServerIsReachedOnlyThroughTheOAuthClient() {
+    ARCHITECTURE.theAuthorizationServerIsReachedOnlyThroughTheOAuthClient().check(mainClasses);
+  }
+
+  @Test
+  void refreshTokensStayInTheTokenStore() {
+    ARCHITECTURE.refreshTokensStayInTheTokenStore().check(mainClasses);
+  }
+
+  @Test
   void theConnectorReleaseIsDecidedInConnections() {
     ARCHITECTURE.theConnectorReleaseIsDecidedInConnections().check(mainClasses);
   }

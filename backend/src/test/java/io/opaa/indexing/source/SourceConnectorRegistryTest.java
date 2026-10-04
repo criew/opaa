@@ -4,7 +4,6 @@ import static io.opaa.api.types.ConnectionAuthMethod.NONE;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import io.opaa.api.types.ConnectionAuthMethod;
 import io.opaa.api.types.ConnectionOwnership;
 import io.opaa.api.types.ConnectionProfileSupport;
 import io.opaa.common.ValidationException;
@@ -223,7 +222,15 @@ class SourceConnectorRegistryTest {
                 ProfileDeclaration.of(
                     ConnectionProfileSupport.OPTIONAL,
                     SignIn.of(NONE, ConnectionOwnership.LIBRARY),
-                    SignIn.of(ConnectionAuthMethod.OAUTH, ConnectionOwnership.LIBRARY))));
+                    SignIn.oauth(
+                        new OAuthAuth(
+                            new Endpoint.Fixed(URI.create("https://login.example.org/authorize")),
+                            new Endpoint.Fixed(URI.create("https://login.example.org/token")),
+                            new Revocation.None(),
+                            null,
+                            Map.of(),
+                            ClientAuthentication.CLIENT_SECRET_BASIC),
+                        ConnectionOwnership.LIBRARY))));
     List<SourceConnector> requiredWithoutRegistration =
         replacingRss(
             remoteRss(

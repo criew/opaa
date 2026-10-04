@@ -1,17 +1,13 @@
 package io.opaa.connection.oauth;
 
 import io.opaa.connection.profile.ClientRegistration;
+import io.opaa.connection.profile.ProfileEndpoints;
 import io.opaa.indexing.source.ClientCredentialsAuth;
 import io.opaa.indexing.source.Secret;
 import io.opaa.indexing.source.SecretKind;
 import io.opaa.indexing.source.SignInRejectedException;
 import io.opaa.indexing.source.SourceCredentialsException;
-import io.opaa.security.TargetAddressValidator;
-import io.opaa.sourceaccess.BoundedStreams;
-import io.opaa.sourceaccess.ProxyAndCredentials;
 import io.opaa.sourceaccess.SourceFormPost;
-import io.opaa.sourceaccess.SourceHttpClientFactory;
-import java.io.IOException;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -29,7 +25,7 @@ import tools.jackson.databind.json.JsonMapper;
 /**
  * The client credentials grant (RFC 6749, 4.4) of a profile: client id and secret, as the connector
  * declares ({@code client_secret_basic} or {@code _post}), go to the declared token endpoint
- * through {@link SourceFormPost} and the profile's proxy, always with the certificate check. Id,
+ * through {@link OAuthClient} and the profile's proxy, always with the certificate check. Id,
  * secret and token reach no log and no message.
  */
 final class ClientCredentialsGrant {
@@ -38,13 +34,12 @@ final class ClientCredentialsGrant {
 
   static final Duration DEFAULT_LIFETIME = Duration.ofHours(1);
   private static final Duration TIMEOUT = Duration.ofSeconds(30);
-  private static final long MAX_RESPONSE_BYTES = 64 * 1024;
   private static final JsonMapper JSON = JsonMapper.builder().build();
 
-  private final TargetAddressValidator targetAddressValidator;
+  private final OAuthClient client;
 
-  ClientCredentialsGrant(TargetAddressValidator targetAddressValidator) {
-    this.targetAddressValidator = targetAddressValidator;
+  ClientCredentialsGrant(OAuthClient client) {
+    this.client = client;
   }
 
   /**
@@ -54,12 +49,7 @@ final class ClientCredentialsGrant {
    * @throws SourceCredentialsException with a German cause for every other failure
    */
   Secret token(ClientRegistration registration, ClientCredentialsAuth auth, Instant now) {
-    URI endpoint;
-    try {
-      endpoint = auth.token().resolve(registration.tenant());
-    } catch (IllegalArgumentException e) {
-      throw new SourceCredentialsException("Der Mandant des Zugangs fehlt oder ist ungültig.");
-    }
+    URI endpoint = OAuthClient.resolve(auth.token(), registration, ProfileEndpoints::token);
     Map<String, String> form = new LinkedHashMap<>();
     form.put("grant_type", "client_credentials");
     String scope = registration.scopes() != null ? registration.scopes() : auth.defaultScope();
@@ -81,7 +71,8 @@ final class ClientCredentialsGrant {
         form.put("client_secret", registration.secret());
       }
     }
-    SourceFormPost.Response response = post(registration, endpoint, form, headers);
+    SourceFormPost.Response response =
+        client.post(registration, endpoint, form, headers, TIMEOUT, OAuthClient.TOKEN_ENDPOINT);
     JsonNode body = readBody(response);
     if (!response.isSuccess()) {
       String error = field(body, "error");
@@ -118,38 +109,6 @@ final class ClientCredentialsGrant {
             ? expiresIn.asLong()
             : DEFAULT_LIFETIME.toSeconds();
     return new Secret(SecretKind.ACCESS_TOKEN, accessToken.asString(), now.plusSeconds(seconds));
-  }
-
-  private SourceFormPost.Response post(
-      ClientRegistration registration,
-      URI endpoint,
-      Map<String, String> form,
-      Map<String, String> headers) {
-    try {
-      ProxyAndCredentials proxy = ProxyAndCredentials.parse(registration.proxy(), null);
-      return SourceFormPost.post(
-          SourceHttpClientFactory.buildHttpClient(proxy.proxyHost(), proxy.proxyPort(), false),
-          endpoint,
-          form,
-          headers,
-          TIMEOUT,
-          MAX_RESPONSE_BYTES,
-          targetAddressValidator);
-    } catch (ProxyAndCredentials.InvalidProxyConfigurationException e) {
-      throw new SourceCredentialsException(e.getMessage());
-    } catch (TargetAddressValidator.TargetAddressBlockedException e) {
-      throw new SourceCredentialsException(e.getMessage());
-    } catch (BoundedStreams.LimitExceededException e) {
-      throw new SourceCredentialsException(
-          "Der Token-Endpunkt " + endpoint + " hat eine zu große Antwort geliefert.");
-    } catch (IOException e) {
-      log.warn("Token endpoint {} not reachable: {}", endpoint, e.getClass().getSimpleName());
-      throw new SourceCredentialsException(
-          "Der Token-Endpunkt " + endpoint + " ist nicht erreichbar.");
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      throw new SourceCredentialsException("Der Abruf des Zugriffstokens wurde unterbrochen.");
-    }
   }
 
   /** {@code application/x-www-form-urlencoded} of id and secret, as RFC 6749, 2.3.1 asks. */

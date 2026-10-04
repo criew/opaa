@@ -10,7 +10,9 @@ import io.opaa.connection.token.SecretOwner.PersonOwned;
 import io.opaa.connection.token.SecretOwner.ProfileOwned;
 import io.opaa.indexing.source.Secret;
 import io.opaa.indexing.source.SecretKind;
+import io.opaa.indexing.source.SignInRejectedException;
 import io.opaa.indexing.source.SourceBlock.Reason;
+import io.opaa.indexing.source.SourceCredentialsException;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.security.CredentialsEncryptionKeyMissingException;
@@ -35,6 +37,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.TransactionException;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
@@ -43,8 +47,9 @@ import org.springframework.transaction.support.TransactionTemplate;
  * goes to the stored row. A person's secret is handed out only while their account is usable
  * ({@link AccountUsability} with the configured inactivity threshold) and only to the target it was
  * issued for; resting and deactivated are derived here at every use, never stored. A hand-out
- * records the account's use at most once per {@link #USE_RESOLUTION}. A profile's own sign-in holds
- * no row: its token comes from {@link SecretIssuer#mint}, and whether it is refused the profile row
+ * records the account's use at most once per {@link #USE_RESOLUTION}. An OAuth grant is renewed
+ * here under its row lock and revoked after a discard commits. A profile's own sign-in holds no
+ * row: its token comes from {@link SecretIssuer#mint}, and whether it is refused the profile row
  * says.
  */
 @Component
@@ -52,6 +57,9 @@ public class ConnectionSecrets {
 
   /** How finely the last use of a connected account is kept. */
   static final Duration USE_RESOLUTION = Duration.ofDays(1);
+
+  /** How long before its end an access token is renewed, at most half its lifetime. */
+  static final Duration RENEWAL_MARGIN = Duration.ofMinutes(5);
 
   private static final Logger log = LoggerFactory.getLogger(ConnectionSecrets.class);
   private static final String ENCRYPTED_MARKER = "enc:";
@@ -64,8 +72,10 @@ public class ConnectionSecrets {
   private final AccountUsability usability;
   private final CredentialsEncryptor encryptor;
   private final ObjectProvider<SecretIssuer> issuers;
+  private final ObjectProvider<GrantRejections> grantRejections;
   private final Duration inactivityThreshold;
   private final TransactionTemplate usage;
+  private final TransactionTemplate renewal;
   private final Clock clock;
 
   ConnectionSecrets(
@@ -77,6 +87,7 @@ public class ConnectionSecrets {
       AccountUsability usability,
       CredentialsEncryptor encryptor,
       ObjectProvider<SecretIssuer> issuers,
+      ObjectProvider<GrantRejections> grantRejections,
       ConnectionLifecycleProperties lifecycle,
       PlatformTransactionManager transactionManager,
       Clock clock) {
@@ -88,9 +99,12 @@ public class ConnectionSecrets {
     this.usability = usability;
     this.encryptor = encryptor;
     this.issuers = issuers;
+    this.grantRejections = grantRejections;
     this.inactivityThreshold = lifecycle.inactivityThreshold();
     this.usage = new TransactionTemplate(transactionManager);
     this.usage.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+    this.renewal = new TransactionTemplate(transactionManager);
+    this.renewal.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
     this.clock = clock;
   }
 
@@ -109,22 +123,27 @@ public class ConnectionSecrets {
         }
         yield secret;
       }
-      case PersonOwned person -> personSecret(person, target);
+      case PersonOwned person -> personSecret(person, target, null);
       case ProfileOwned(UUID profileId) -> issuer().mint(profileId);
     };
   }
 
   /**
-   * The secret to retry with after the source rejected one {@code owner} handed out: a profile's
-   * token is obtained anew, every other owner answers as {@link #current}.
+   * The secret to retry with after the source rejected {@code rejected}, which {@code owner} handed
+   * out: a profile's token is obtained anew, a person's OAuth token is renewed unless a renewal
+   * replaced it meanwhile, every other owner answers as {@link #current}.
    *
    * @throws SecretRefusedException with the reason none is handed out
    */
-  public Secret afterRejection(SecretOwner owner, String target) {
-    if (owner instanceof ProfileOwned(UUID profileId)) {
-      issuer().forgetMinted(profileId);
-    }
-    return current(owner, target);
+  public Secret afterRejection(SecretOwner owner, String target, Secret rejected) {
+    return switch (owner) {
+      case ProfileOwned(UUID profileId) -> {
+        issuer().forgetMinted(profileId);
+        yield current(owner, target);
+      }
+      case PersonOwned person -> personSecret(person, target, rejected);
+      case LibraryOwned ignored -> current(owner, target);
+    };
   }
 
   /**
@@ -217,6 +236,7 @@ public class ConnectionSecrets {
                     () -> new IllegalStateException("no connected account holds the secret"));
         switch (secret) {
           case NewSecret.Personal personal -> storePersonal(person, accountId, personal, target);
+          case NewSecret.OAuthGrant grant -> storeGrant(person, accountId, grant, target);
         }
       }
       case ProfileOwned ignored ->
@@ -237,7 +257,16 @@ public class ConnectionSecrets {
         libraries.eraseSourceCredentials(libraryId);
         yield 0;
       }
-      case PersonOwned person -> accountIdOf(person).map(tokens::deleteByAccount).orElse(0);
+      case PersonOwned person ->
+          accountIdOf(person)
+              .map(
+                  accountId -> {
+                    tokens
+                        .findByConnectedAccountId(accountId)
+                        .ifPresent(token -> revokeAfterCommit(List.of(token)));
+                    return tokens.deleteByAccount(accountId);
+                  })
+              .orElse(0);
       case ProfileOwned(UUID profileId) -> {
         forgetMinted(profileId);
         yield 0;
@@ -261,6 +290,7 @@ public class ConnectionSecrets {
       libraries.eraseSourceCredentials(libraryId);
     }
     forgetMinted(profileId);
+    revokeAfterCommit(tokens.findPersonGrantsUnder(profileId));
     int persons = tokens.deletePersonsUnder(profileId);
     log.info(
         "Discarded the secrets of {} libraries and {} persons under profile {} ({})",
@@ -290,7 +320,7 @@ public class ConnectionSecrets {
     }
   }
 
-  private Secret personSecret(PersonOwned person, String target) {
+  private Secret personSecret(PersonOwned person, String target, Secret rejected) {
     Reason accountState = accountStates(List.of(person.userId())).get(person.userId());
     if (accountState != null) {
       throw new SecretRefusedException(accountState);
@@ -307,14 +337,158 @@ public class ConnectionSecrets {
     if (token.expiredAt(clock.instant())) {
       throw new SecretRefusedException(Reason.EXPIRED);
     }
-    String value = decrypt(token);
     Secret secret =
         switch (token.getKind()) {
-          case PERSONAL_SECRET -> new Secret(SecretKind.PERSONAL_SECRET, value);
-          case OAUTH -> issuer().renew(person.profileId(), value, token.getIssuedFor());
+          case PERSONAL_SECRET -> new Secret(SecretKind.PERSONAL_SECRET, decrypt(token));
+          case OAUTH -> accessToken(person, token, rejected == null ? null : rejected.value());
         };
     markUsed(account);
     return secret;
+  }
+
+  /**
+   * The access token of the OAuth grant {@code token}: as stored while it lasts beyond the margin
+   * and was not {@code rejected}, else renewed in a transaction of its own that holds the row, so
+   * one renewal runs per grant and a rotated refresh token is stored in the same transaction. The
+   * provider refusing the grant ends the connection; a provider out of reach leaves the stored
+   * token in use until it really ends.
+   */
+  private Secret accessToken(PersonOwned person, ConnectionToken token, String rejected) {
+    if (rejected == null && lasts(token, clock.instant())) {
+      return storedAccess(token);
+    }
+    Renewal renewed = renewal.execute(status -> renewLocked(person, token.getId(), rejected));
+    if (renewed.secret() != null) {
+      return renewed.secret();
+    }
+    if (renewed.failure() != null) {
+      throw renewed.failure();
+    }
+    throw new SecretRefusedException(renewed.refused());
+  }
+
+  private Renewal renewLocked(PersonOwned person, UUID tokenId, String rejected) {
+    Instant now = clock.instant();
+    ConnectionToken token = tokens.findLockedById(tokenId).orElse(null);
+    if (token == null) {
+      return Renewal.refused(Reason.NOT_CONNECTED);
+    }
+    if (token.expiredAt(now)) {
+      return Renewal.refused(Reason.EXPIRED);
+    }
+    String access = decryptAccess(token);
+    boolean replacedMeanwhile = rejected != null && access != null && !access.equals(rejected);
+    if (access != null && (replacedMeanwhile || rejected == null && lasts(token, now))) {
+      return Renewal.of(accessSecret(token, access));
+    }
+    SecretIssuer.Issued issued;
+    try {
+      issued = issuer().renew(person.profileId(), decrypt(token), token.getIssuedFor());
+    } catch (SignInRejectedException e) {
+      log.info(
+          "The provider no longer takes an OAuth grant under profile {}", token.getProfileId());
+      grantRejections.getObject().grantRejected(person);
+      return Renewal.refused(Reason.EXPIRED);
+    } catch (SourceCredentialsException e) {
+      boolean usable =
+          access != null
+              && rejected == null
+              && token.getAccessTokenExpiresAt() != null
+              && now.isBefore(token.getAccessTokenExpiresAt());
+      return usable ? Renewal.of(accessSecret(token, access)) : Renewal.failed(e);
+    }
+    token.renewed(
+        encryptor.encrypt(issued.accessToken()),
+        issued.accessTokenExpiresAt(),
+        issued.refreshToken() == null ? null : encryptor.encrypt(issued.refreshToken()),
+        issued.refreshTokenExpiresAt(),
+        now);
+    tokens.save(token);
+    return Renewal.of(
+        new Secret(SecretKind.ACCESS_TOKEN, issued.accessToken(), issued.accessTokenExpiresAt()));
+  }
+
+  /**
+   * Whether the access token of {@code token} lasts beyond the renewal margin at {@code now}: five
+   * minutes, or half its lifetime where that is shorter.
+   */
+  private static boolean lasts(ConnectionToken token, Instant now) {
+    Instant end = token.getAccessTokenExpiresAt();
+    if (end == null || token.getAccessTokenCiphertext() == null) {
+      return false;
+    }
+    Duration half = Duration.between(token.getUpdatedAt(), end).dividedBy(2);
+    Duration margin = half.compareTo(RENEWAL_MARGIN) < 0 ? half : RENEWAL_MARGIN;
+    return now.isBefore(end.minus(margin));
+  }
+
+  private Secret storedAccess(ConnectionToken token) {
+    String access = decryptAccess(token);
+    if (access == null) {
+      throw new SecretRefusedException(Reason.NOT_CONNECTED);
+    }
+    return accessSecret(token, access);
+  }
+
+  private static Secret accessSecret(ConnectionToken token, String access) {
+    return new Secret(SecretKind.ACCESS_TOKEN, access, token.getAccessTokenExpiresAt());
+  }
+
+  /** The access token of {@code token}, {@code null} for none or an unreadable one. */
+  private String decryptAccess(ConnectionToken token) {
+    String ciphertext = token.getAccessTokenCiphertext();
+    if (ciphertext == null || !ciphertext.startsWith(ENCRYPTED_MARKER)) {
+      return null;
+    }
+    try {
+      return encryptor.decrypt(ciphertext);
+    } catch (CredentialsEncryptionKeyMissingException e) {
+      return null;
+    }
+  }
+
+  /**
+   * Revokes the OAuth grants among {@code held} at their provider once the caller's transaction
+   * committed - with the registration as it stands now, so a caller discards before it changes the
+   * registration -, at once without a transaction. A rolled back discard revokes nothing.
+   */
+  private void revokeAfterCommit(List<ConnectionToken> held) {
+    List<Runnable> revocations = new ArrayList<>();
+    for (ConnectionToken token : held) {
+      if (token.getKind() != ConnectionToken.Kind.OAUTH) {
+        continue;
+      }
+      SecretIssuer.StoredTokens stored =
+          new SecretIssuer.StoredTokens(decryptQuietly(token), decryptAccess(token));
+      Runnable revocation = issuer().revocation(token.getProfileId(), stored);
+      if (revocation != null) {
+        revocations.add(revocation);
+      }
+    }
+    if (revocations.isEmpty()) {
+      return;
+    }
+    Runnable all = () -> revocations.forEach(Runnable::run);
+    if (TransactionSynchronizationManager.isSynchronizationActive()) {
+      TransactionSynchronizationManager.registerSynchronization(
+          new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+              all.run();
+            }
+          });
+    } else {
+      all.run();
+    }
+  }
+
+  /** The stored secret of {@code token}, {@code null} for an unreadable one. */
+  private String decryptQuietly(ConnectionToken token) {
+    try {
+      return decrypt(token);
+    } catch (SecretRefusedException e) {
+      return null;
+    }
   }
 
   /**
@@ -376,6 +550,30 @@ public class ConnectionSecrets {
                         secret.expiresAt(),
                         target,
                         now));
+    tokens.save(token);
+  }
+
+  private void storeGrant(
+      PersonOwned person, UUID accountId, NewSecret.OAuthGrant grant, String target) {
+    ConnectionToken.Ciphered ciphered =
+        new ConnectionToken.Ciphered(
+            encryptor.encrypt(grant.refreshToken()),
+            encryptor.encrypt(grant.accessToken()),
+            grant.accessTokenExpiresAt(),
+            grant.expiresAt());
+    Instant now = clock.instant();
+    Optional<ConnectionToken> held = tokens.findByConnectedAccountId(accountId);
+    held.ifPresent(replaced -> revokeAfterCommit(List.of(replaced)));
+    ConnectionToken token =
+        held.map(
+                found -> {
+                  found.replaceGrant(ciphered, target, now);
+                  return found;
+                })
+            .orElseGet(
+                () ->
+                    ConnectionToken.ofAccountGrant(
+                        person.profileId(), accountId, ciphered, target, now));
     tokens.save(token);
   }
 
@@ -470,6 +668,22 @@ public class ConnectionSecrets {
   /** The library's secret as stored now; inside a transaction its managed entity. */
   private String columnOf(UUID libraryId) {
     return libraries.findById(libraryId).map(KnowledgeLibrary::getSourceCredentials).orElse(null);
+  }
+
+  /** What a renewal under the row lock came to: a token, a refusal or a failure to throw. */
+  private record Renewal(Secret secret, Reason refused, RuntimeException failure) {
+
+    static Renewal of(Secret secret) {
+      return new Renewal(secret, null, null);
+    }
+
+    static Renewal refused(Reason reason) {
+      return new Renewal(null, reason, null);
+    }
+
+    static Renewal failed(RuntimeException failure) {
+      return new Renewal(null, null, failure);
+    }
   }
 
   /** How many libraries and persons lost their secret under a profile. */
