@@ -20,6 +20,17 @@ function responseData(err: unknown): Record<string, unknown> | null {
   return typeof data === 'object' && data !== null ? (data as Record<string, unknown>) : null
 }
 
+/** The HTTP status of the failed response, or `null` for an error without one. */
+export function apiErrorStatus(err: unknown): number | null {
+  const axiosError =
+    err instanceof AxiosError
+      ? err
+      : err instanceof Error && err.cause instanceof AxiosError
+        ? err.cause
+        : null
+  return axiosError?.response?.status ?? null
+}
+
 /** The `code` of the failed response, or `null` for an error that carries only a message. */
 export function apiErrorCode(err: unknown): string | null {
   const code = responseData(err)?.code

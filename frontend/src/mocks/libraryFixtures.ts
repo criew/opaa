@@ -351,7 +351,8 @@ export function resetMockLibraryFolders() {
 
 /**
  * The connectors the mock backend has (GET /api/v1/source-types, ADR-0038) - every delivered one
- * once, with its production abilities, ordered by key like the backend answers.
+ * once, with its production abilities (Nextcloud's profile support aside), ordered by key like the
+ * backend answers.
  */
 export const mockSourceTypes: SourceTypeDescriptor[] = [
   {
@@ -427,9 +428,11 @@ export const mockSourceTypes: SourceTypeDescriptor[] = [
     uploads: false,
     pushIntake: false,
     browsable: true,
-    profileSupport: 'FORBIDDEN',
+    // No delivered connector admits profiles yet; Nextcloud stands in with "optional" so the
+    // profile choice can be tried against the mocks (see connectionProfileHandlers).
+    profileSupport: 'OPTIONAL',
     profileRequired: false,
-    signIns: [],
+    signIns: [{ method: 'PERSONAL_SECRET', ownerships: ['LIBRARY'], secretForm: 'TOKEN' }],
     profileDefaults: [],
     serverAddress: { schemes: ['https', 'http'] },
     creatable: true,

@@ -99,6 +99,11 @@ erreichbar (`HeadBucket`), Auflisten erlaubt (`ListObjectsV2` mit Präfix), Lese
 falschen Adressstil, abgelehnte Zugangsdaten oder ein gesperrtes Ziel. Weil der Endpoint vor dem
 Speichern geprüft wird, ist die Anlage netzabhängig wie bei Confluence.
 
+**Über einen Zugang** (sobald S3 Zugänge meldet, siehe
+[Indexierung, Zugänge](indexierung.md#zugänge)): Der Endpoint ist mit der Server-Adresse des
+Zugangs vorbelegt, und die Anbieter-Vorlage entfällt. Gibt der Zugang Region oder Adressstil vor,
+stehen sie nur lesbar mit seinem Wert da.
+
 **Sichtbarkeit.** Jede Leseberechtigung sieht die Geltungsbereiche — im Kopf der Bibliothek, mit
 dem Hinweis, dass dieser Umfang für alle Leseberechtigten gilt. Endpoint, Region, Adressstil,
 Muster, Proxy, TLS-Schalter und der Zustand des Ereignis-Tokens stehen in der Quellkonfiguration,

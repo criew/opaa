@@ -6,9 +6,11 @@ import {
   mockSourceTypes,
 } from './libraryFixtures'
 import { mockMyGroups } from './groupFixtures'
+import { mockConnectionProfiles } from './connectionProfileFixtures'
 import type {
   SourceTypeKey,
   AssetOwnerType,
+  LibraryConnectionProfileRequest,
   LibraryScheduleRequest,
   SourceBrowseResponse,
 } from '../types/api'
@@ -45,6 +47,13 @@ export const libraryHandlers = [
       sourceCredentials?: string | null
       sourceInsecureSsl?: boolean | null
       sourceSettings?: Record<string, unknown> | null
+      connectionProfileId?: string | null
+    }
+    const profile = body.connectionProfileId
+      ? mockConnectionProfiles.find((p) => p.id === body.connectionProfileId)
+      : undefined
+    if (body.connectionProfileId && !profile) {
+      return HttpResponse.json({ error: 'Zugang nicht gefunden' }, { status: 404 })
     }
     const confluenceSettings = (body.sourceSettings ?? {}) as ConfluenceSettings
     const s3Settings = body.sourceSettings as S3Settings | null | undefined
@@ -214,8 +223,9 @@ export const libraryHandlers = [
         body.sourceType === 'GOOGLE_DRIVE' ||
         body.sourceType === 'NEXTCLOUD' ||
         body.sourceType === 'SMB'
-          ? (body.sourceUrl ?? null)
+          ? (body.sourceUrl ?? profile?.serverUrl ?? null)
           : null,
+      connectionProfile: profile ? { id: profile.id, name: profile.name } : null,
       sourceProxy:
         body.sourceType === 'HTTP_DIRECTORY' ||
         body.sourceType === 'RSS_FEED' ||
@@ -617,5 +627,45 @@ export const libraryHandlers = [
       mockLibraries.splice(idx, 1)
     }
     return new HttpResponse(null, { status: 204 })
+  }),
+
+  // Connecting lifts "Zugang entfernt" and a lock for the own address, as in the backend.
+  http.put('/api/v1/libraries/:libraryId/connection-profile', async ({ params, request }) => {
+    const libraryId = String(params.libraryId)
+    const library = mockLibraryDetails[libraryId]
+    if (!library) {
+      return HttpResponse.json({ error: 'Bibliothek nicht gefunden' }, { status: 404 })
+    }
+    const { profileId } = (await request.json()) as LibraryConnectionProfileRequest
+    const profile = mockConnectionProfiles.find((p) => p.id === profileId)
+    if (!profile) return HttpResponse.json({ error: 'Zugang nicht gefunden' }, { status: 404 })
+    if (profile.sourceType !== library.sourceType) {
+      return HttpResponse.json(
+        { error: 'Der Zugang gehört zu einer anderen Quellart' },
+        { status: 400 },
+      )
+    }
+    const lifted =
+      library.sourceBlock?.reason === 'PROFILE_REQUIRED' ||
+      library.sourceBlock?.reason === 'ACCESS_REMOVED'
+    const connected = {
+      ...library,
+      connectionProfile: { id: profile.id, name: profile.name },
+      connectionProfileRemoved: false,
+      sourceBlock: lifted ? null : library.sourceBlock,
+    }
+    mockLibraryDetails[libraryId] = connected
+    return HttpResponse.json(connected)
+  }),
+
+  http.delete('/api/v1/libraries/:libraryId/connection-profile', ({ params }) => {
+    const libraryId = String(params.libraryId)
+    const library = mockLibraryDetails[libraryId]
+    if (!library) {
+      return HttpResponse.json({ error: 'Bibliothek nicht gefunden' }, { status: 404 })
+    }
+    const released = { ...library, connectionProfile: null }
+    mockLibraryDetails[libraryId] = released
+    return HttpResponse.json(released)
   }),
 ]

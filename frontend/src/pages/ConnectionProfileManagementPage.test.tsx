@@ -464,7 +464,14 @@ describe('ConnectionProfileManagementPage', () => {
       ),
       http.get('/api/v1/admin/connector-types', () =>
         HttpResponse.json([
-          { sourceType: 'NEXTCLOUD', displayName: 'Nextcloud', locked: true, lockedAt: null },
+          {
+            sourceType: 'NEXTCLOUD',
+            displayName: 'Nextcloud',
+            locked: true,
+            lockedAt: null,
+            profileSupport: 'OPTIONAL',
+            profileRequired: false,
+          },
         ]),
       ),
     )
@@ -478,5 +485,202 @@ describe('ConnectionProfileManagementPage', () => {
     expect(question).toHaveTextContent('Die Quellart „Nextcloud“ bleibt gesperrt')
     expect(question).not.toHaveTextContent('ohne Neueinrichtung weiter')
     await answerConfirm(user, /aufheben\?/, 'Abbrechen')
+  })
+
+  // „Zugang bearbeiten“ wartet auf die Beschreibung der Quellart: solange sie lädt, ist das kein
+  // Fehler, aber gespeichert wird erst danach.
+  it('shows the description of the source type as loading rather than missing', async () => {
+    server.use(http.get('/api/v1/source-types', () => new Promise<never>(() => {})))
+    const user = userEvent.setup()
+    renderWithProviders(<ConnectionProfileManagementPage />)
+
+    const dialog = await openEdit(user)
+    expect(within(dialog).getByText('Die Angaben der Quellart werden geladen …')).toBeVisible()
+    expect(within(dialog).queryByText(/liegen nicht vor/)).not.toBeInTheDocument()
+    expect(within(dialog).getByRole('button', { name: 'Speichern' })).toBeDisabled()
+  })
+})
+
+describe('ConnectionProfileManagementPage - „Nur über Zugänge“ (#2162)', () => {
+  const NEXTCLOUD_STATE = {
+    sourceType: 'NEXTCLOUD',
+    displayName: 'Nextcloud',
+    locked: false,
+    lockedAt: null,
+    profileSupport: 'OPTIONAL',
+    profileRequired: false,
+  }
+
+  beforeEach(() => {
+    signInAs('SYSTEM_ADMIN')
+  })
+
+  afterEach(() => {
+    server.events.removeAllListeners()
+  })
+
+  /** Captures the body of every PUT to a profile requirement. */
+  function captureRequirementPuts(): Array<Record<string, unknown>> {
+    const sent: Array<Record<string, unknown>> = []
+    server.events.on('request:start', async ({ request }) => {
+      if (request.method === 'PUT' && request.url.endsWith('/profile-requirement')) {
+        sent.push((await request.clone().json()) as Record<string, unknown>)
+      }
+    })
+    return sent
+  }
+
+  async function typesTable() {
+    return screen.findByRole('table', { name: 'Quellarten' })
+  }
+
+  it('offers the switch only for a type that admits profiles as optional', async () => {
+    renderWithProviders(<ConnectionProfileManagementPage />)
+
+    const types = await typesTable()
+    expect(
+      within(types).getByRole('switch', { name: 'Nur über Zugänge für Nextcloud' }),
+    ).not.toBeChecked()
+    expect(within(types).queryByRole('switch', { name: /für Confluence/ })).not.toBeInTheDocument()
+    expect(within(types).getAllByText('Keine Zugänge möglich').length).toBeGreaterThan(0)
+  })
+
+  it('says why the requirement cannot be switched on, and sends nothing', async () => {
+    const sent = captureRequirementPuts()
+    server.use(
+      http.get('/api/v1/admin/connector-types/:sourceType/profile-requirement', () =>
+        HttpResponse.json({
+          state: NEXTCLOUD_STATE,
+          switchable: false,
+          notSwitchableReason:
+            'Für Nextcloud gibt es keinen nicht gesperrten Zugang, der Bibliotheken zulässt.',
+          ownAddressLibraries: [],
+        }),
+      ),
+    )
+    const user = userEvent.setup()
+    renderWithProviders(<ConnectionProfileManagementPage />)
+
+    await user.click(
+      within(await typesTable()).getByRole('switch', { name: 'Nur über Zugänge für Nextcloud' }),
+    )
+    const dialog = await screen.findByRole('dialog', { name: /Nur über Zugänge/ })
+    expect(
+      await within(dialog).findByTestId('profile-requirement-not-switchable'),
+    ).toHaveTextContent('keinen nicht gesperrten Zugang')
+    expect(within(dialog).queryByRole('button', { name: 'Einschalten' })).not.toBeInTheDocument()
+    await user.click(within(dialog).getByRole('button', { name: 'Schließen' }))
+    expect(sent).toEqual([])
+  })
+
+  it.each([
+    ['RUNS', /Weiterlaufen lassen/],
+    ['LOCKED', /Sperren – sie laufen nicht mehr/],
+  ])(
+    'switches the requirement on with the choice %s for the libraries it lists',
+    async (stock, choice) => {
+      const sent = captureRequirementPuts()
+      const user = userEvent.setup()
+      renderWithProviders(<ConnectionProfileManagementPage />)
+
+      await user.click(
+        within(await typesTable()).getByRole('switch', { name: 'Nur über Zugänge für Nextcloud' }),
+      )
+      const dialog = await screen.findByRole('dialog', { name: /Nur über Zugänge/ })
+      const list = await within(dialog).findByRole('list', {
+        name: 'Bibliotheken mit eigener Adresse',
+      })
+      expect(list).toHaveTextContent('Projektablage · Gruppe Referat 50')
+      await user.click(within(dialog).getByRole('radio', { name: choice }))
+      await user.click(within(dialog).getByRole('button', { name: 'Einschalten' }))
+
+      await waitFor(() => expect(sent).toEqual([{ required: true, ownAddressStock: stock }]))
+      expect(
+        await screen.findByText('Die Quellart „Nextcloud“ ist jetzt nur über Zugänge nutzbar.'),
+      ).toBeVisible()
+      expect(
+        within(await typesTable()).getByRole('switch', { name: 'Nur über Zugänge für Nextcloud' }),
+      ).toBeChecked()
+    },
+    20000,
+  )
+
+  it('names what the requirement does not cover for an RSS feed', async () => {
+    const coverage =
+      'Die Pflicht legt nur die Feed-Adresse fest. Detailseiten auf anderen Servern werden weiter abgerufen, aber ohne Zugangsdaten.'
+    server.use(
+      http.get('/api/v1/admin/connector-types', () =>
+        HttpResponse.json([
+          { ...NEXTCLOUD_STATE, sourceType: 'RSS_FEED', displayName: 'RSS-Feed' },
+        ]),
+      ),
+      http.get('/api/v1/admin/connector-types/:sourceType/profile-requirement', () =>
+        HttpResponse.json({
+          state: { ...NEXTCLOUD_STATE, sourceType: 'RSS_FEED', displayName: 'RSS-Feed' },
+          switchable: true,
+          ownAddressLibraries: [],
+          coverageNotice: coverage,
+        }),
+      ),
+    )
+    const user = userEvent.setup()
+    renderWithProviders(<ConnectionProfileManagementPage />)
+
+    await user.click(
+      within(await typesTable()).getByRole('switch', { name: 'Nur über Zugänge für RSS-Feed' }),
+    )
+    const dialog = await screen.findByRole('dialog', { name: /Nur über Zugänge/ })
+    expect(await within(dialog).findByTestId('profile-requirement-coverage')).toHaveTextContent(
+      coverage,
+    )
+    expect(
+      within(dialog).getByText('Keine Bibliothek dieser Quellart nutzt eine eigene Adresse.'),
+    ).toBeVisible()
+  })
+
+  it('changes the choice for the stock while the requirement holds', async () => {
+    const required = { ...NEXTCLOUD_STATE, profileRequired: true, ownAddressStock: 'RUNS' }
+    server.use(http.get('/api/v1/admin/connector-types', () => HttpResponse.json([required])))
+    const sent = captureRequirementPuts()
+    const user = userEvent.setup()
+    renderWithProviders(<ConnectionProfileManagementPage />)
+
+    const types = await typesTable()
+    expect(within(types).getByText(/laufen weiter, ihre Adresse ist eingefroren/)).toBeVisible()
+    await user.click(
+      within(types).getByRole('button', { name: 'Bestandswahl für Nextcloud ändern' }),
+    )
+    const dialog = await screen.findByRole('dialog', { name: /Bestand von Nextcloud/ })
+    expect(await within(dialog).findByRole('radio', { name: /Weiterlaufen lassen/ })).toBeChecked()
+    await user.click(within(dialog).getByRole('radio', { name: /Sperren – sie laufen nicht mehr/ }))
+    await user.click(within(dialog).getByRole('button', { name: 'Wahl speichern' }))
+
+    await waitFor(() => expect(sent).toEqual([{ required: true, ownAddressStock: 'LOCKED' }]))
+  })
+
+  it('switches the requirement off only after a confirmation', async () => {
+    const required = { ...NEXTCLOUD_STATE, profileRequired: true, ownAddressStock: 'LOCKED' }
+    server.use(http.get('/api/v1/admin/connector-types', () => HttpResponse.json([required])))
+    const sent = captureRequirementPuts()
+    const user = userEvent.setup()
+    renderWithProviders(<ConnectionProfileManagementPage />)
+
+    const toggle = within(await typesTable()).getByRole('switch', {
+      name: 'Nur über Zugänge für Nextcloud',
+    })
+    expect(toggle).toBeChecked()
+    await user.click(toggle)
+    await answerConfirm(
+      user,
+      /„Nur über Zugänge“ für die Quellart „Nextcloud“ ausschalten\?/,
+      'Abbrechen',
+    )
+    expect(sent).toEqual([])
+
+    await user.click(toggle)
+    const question = await screen.findByRole('dialog', { name: /ausschalten\?/ })
+    expect(question).toHaveTextContent('ohne Neueinrichtung weiter')
+    await answerConfirm(user, /ausschalten\?/, 'Ausschalten')
+    await waitFor(() => expect(sent).toEqual([{ required: false }]))
   })
 })

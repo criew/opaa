@@ -1,8 +1,11 @@
 import type {
   ConnectionProfileCreateRequest,
   ConnectionProfileImpactResponse,
+  ConnectionProfileOption,
   ConnectionProfileResponse,
   ConnectionProfileUpdateRequest,
+  ConnectorProfileRequirementRequest,
+  ConnectorProfileRequirementResponse,
   ConnectorTypeStateResponse,
 } from '../types/api'
 import { apiClient as client, normalizeError } from './api'
@@ -120,6 +123,56 @@ export async function lockConnectorType(
     const { data } = await client.put<ConnectorTypeStateResponse>(
       `/v1/admin/connector-types/${sourceType}/lock`,
       { locked },
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/**
+ * The profiles a library of `sourceType` may be connected through - also the ones the caller may
+ * not use, each with `creatable` and, where not, a notice naming who can change that.
+ */
+export async function listConnectionProfileOptions(
+  sourceType: string,
+): Promise<ConnectionProfileOption[]> {
+  try {
+    const { data } = await client.get<ConnectionProfileOption[]>('/v1/connection-profiles', {
+      params: { sourceType },
+    })
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/** Whether the type may be made usable only through profiles, and whom switching it on affects. */
+export async function getConnectorProfileRequirement(
+  sourceType: string,
+): Promise<ConnectorProfileRequirementResponse> {
+  try {
+    const { data } = await client.get<ConnectorProfileRequirementResponse>(
+      `/v1/admin/connector-types/${sourceType}/profile-requirement`,
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/**
+ * Switches "Nur über Zugänge" on (with the choice for the libraries with their own address) or
+ * off (without one); sent again while on, it changes that choice.
+ */
+export async function setConnectorProfileRequirement(
+  sourceType: string,
+  request: ConnectorProfileRequirementRequest,
+): Promise<ConnectorTypeStateResponse> {
+  try {
+    const { data } = await client.put<ConnectorTypeStateResponse>(
+      `/v1/admin/connector-types/${sourceType}/profile-requirement`,
+      request,
     )
     return data
   } catch (err) {

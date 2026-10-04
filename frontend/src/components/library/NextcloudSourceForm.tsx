@@ -17,6 +17,7 @@ import {
   type NextcloudSourceValues,
 } from '../../utils/nextcloudSource'
 import FieldLabel from '../wizard/FieldLabel'
+import { connectionFields, type ConnectionFields } from './sources/sourceConnection'
 
 interface NextcloudSourceFormProps {
   mode: 'create' | 'edit'
@@ -27,6 +28,8 @@ interface NextcloudSourceFormProps {
   originalSourceUrl?: string | null
   values: NextcloudSourceValues
   onChange: (patch: Partial<NextcloudSourceValues>) => void
+  /** What the connection profile decides for the fields; nothing without one. */
+  connection?: ConnectionFields
 }
 
 interface Message {
@@ -50,6 +53,13 @@ export default function NextcloudSourceForm({
   originalSourceUrl,
   values,
   onChange,
+  connection = connectionFields({
+    mode,
+    sourceType: 'NEXTCLOUD',
+    idPrefix,
+    libraryId,
+    credentialsStored,
+  }),
 }: NextcloudSourceFormProps) {
   const isCreate = mode === 'create'
   const [test, setTest] = useState<{ token: string; message: Message } | null>(null)
@@ -62,7 +72,7 @@ export default function NextcloudSourceForm({
   const [loading, setLoading] = useState(false)
 
   const connectionToken = JSON.stringify({
-    libraryId,
+    probe: connection.probe,
     sourceUrl: values.sourceUrl,
     username: values.username,
     appPassword: values.appPassword,
@@ -92,7 +102,7 @@ export default function NextcloudSourceForm({
       sourceProxy: values.sourceProxy.trim() || undefined,
       sourceInsecureSsl: values.sourceInsecureSsl,
       sourceCredentials: nextcloudCredentialsOf(values),
-      libraryId: mode === 'edit' ? libraryId : undefined,
+      ...connection.probe,
     }
   }
 
@@ -179,36 +189,42 @@ export default function NextcloudSourceForm({
             value={values.sourceUrl}
             onChange={(e) => onChange({ sourceUrl: e.target.value })}
             placeholder="https://cloud.example.org"
-            helperText="Auch die WebDAV-Adresse aus der Nextcloud wird angenommen."
+            helperText={
+              connection.addressHint ?? 'Auch die WebDAV-Adresse aus der Nextcloud wird angenommen.'
+            }
             slotProps={{ htmlInput: { maxLength: 2000, sx: { fontFamily: 'monospace' } } }}
           />
         </Box>
-        <Box>
-          <FieldLabel htmlFor={`${idPrefix}-username`}>Technischer Nutzer</FieldLabel>
-          <TextField
-            id={`${idPrefix}-username`}
-            size="small"
-            fullWidth
-            value={values.username}
-            onChange={(e) => onChange({ username: e.target.value })}
-            autoComplete="off"
-            slotProps={{ htmlInput: { maxLength: 255 } }}
-          />
-        </Box>
-        <Box>
-          <FieldLabel htmlFor={`${idPrefix}-app-password`}>App-Passwort</FieldLabel>
-          <TextField
-            id={`${idPrefix}-app-password`}
-            size="small"
-            type="password"
-            fullWidth
-            value={values.appPassword}
-            onChange={(e) => onChange({ appPassword: e.target.value })}
-            helperText={credentialsHint}
-            autoComplete="new-password"
-            slotProps={{ htmlInput: { maxLength: 3800 } }}
-          />
-        </Box>
+        {connection.asksSecret && (
+          <>
+            <Box>
+              <FieldLabel htmlFor={`${idPrefix}-username`}>Technischer Nutzer</FieldLabel>
+              <TextField
+                id={`${idPrefix}-username`}
+                size="small"
+                fullWidth
+                value={values.username}
+                onChange={(e) => onChange({ username: e.target.value })}
+                autoComplete="off"
+                slotProps={{ htmlInput: { maxLength: 255 } }}
+              />
+            </Box>
+            <Box>
+              <FieldLabel htmlFor={`${idPrefix}-app-password`}>App-Passwort</FieldLabel>
+              <TextField
+                id={`${idPrefix}-app-password`}
+                size="small"
+                type="password"
+                fullWidth
+                value={values.appPassword}
+                onChange={(e) => onChange({ appPassword: e.target.value })}
+                helperText={credentialsHint}
+                autoComplete="new-password"
+                slotProps={{ htmlInput: { maxLength: 3800 } }}
+              />
+            </Box>
+          </>
+        )}
         <Box>
           <FieldLabel htmlFor={`${idPrefix}-proxy`}>Proxy (optional)</FieldLabel>
           <TextField

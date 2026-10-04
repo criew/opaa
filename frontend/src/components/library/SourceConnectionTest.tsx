@@ -4,6 +4,7 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import type { SourceTypeKey, SourceConnectionTestResponse } from '../../types/api'
 import { testLibrarySource } from '../../services/libraryApi'
+import type { ProbeScope } from './sources/sourceConnection'
 import {
   genericSourcePayload,
   validateGenericSource,
@@ -17,10 +18,10 @@ interface SourceConnectionTestProps {
   kind: GenericSourceKind
   values: GenericSourceValues
   /**
-   * Edit mode: lets the probe fall back to the library's stored credentials and checks the MANAGER
-   * bar on that library instead of the Anlegerecht (#1856).
+   * With a library: falls back to its stored credentials and checks the MANAGER bar on it instead
+   * of the Anlegerecht (#1856). With a profile: the release of that profile.
    */
-  libraryId?: string
+  probe: ProbeScope
   size?: 'small' | 'medium'
 }
 
@@ -45,12 +46,12 @@ export default function SourceConnectionTest({
   sourceType,
   kind,
   values,
-  libraryId,
+  probe,
   size = 'medium',
 }: SourceConnectionTestProps) {
   const [outcome, setOutcome] = useState<Outcome | null>(null)
   const [testing, setTesting] = useState(false)
-  const token = JSON.stringify({ sourceType, libraryId, values })
+  const token = JSON.stringify({ sourceType, probe, values })
   const visible = outcome?.token === token ? outcome : null
 
   async function handleTest() {
@@ -65,7 +66,7 @@ export default function SourceConnectionTest({
       const result = await testLibrarySource({
         sourceType,
         ...genericSourcePayload(kind, values),
-        ...(libraryId ? { libraryId } : {}),
+        ...probe,
       })
       setOutcome({ token, result })
     } catch (err) {
