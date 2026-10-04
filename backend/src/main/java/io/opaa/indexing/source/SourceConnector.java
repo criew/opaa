@@ -57,6 +57,15 @@ public interface SourceConnector {
   }
 
   /**
+   * What a connection profile does not bind for this type, in German, once the type is usable only
+   * through one - a target reached besides the profile's server address. {@code null} when the
+   * profile covers every target.
+   */
+  default String profileRequirementGap() {
+    return null;
+  }
+
+  /**
    * Validates the complete configuration of a new library and returns its normalised form - the
    * connection fields as they are stored, the connector settings as {@link #configureNew} applies
    * them.

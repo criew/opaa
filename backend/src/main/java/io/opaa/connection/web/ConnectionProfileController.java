@@ -6,6 +6,8 @@ import io.opaa.api.dto.ConnectionProfileOption;
 import io.opaa.api.dto.ConnectionProfileResponse;
 import io.opaa.api.dto.ConnectionProfileUpdateRequest;
 import io.opaa.api.dto.ConnectorLockRequest;
+import io.opaa.api.dto.ConnectorProfileRequirementRequest;
+import io.opaa.api.dto.ConnectorProfileRequirementResponse;
 import io.opaa.api.dto.ConnectorTypeStateResponse;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
@@ -13,6 +15,7 @@ import io.opaa.connection.ConnectorReleaseService;
 import io.opaa.connection.profile.ConnectionProfile;
 import io.opaa.connection.profile.ConnectionProfileService;
 import io.opaa.connection.profile.ConnectorLockService;
+import io.opaa.connection.profile.ProfileRequirementService;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.Map;
@@ -30,8 +33,9 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * The administration of connection profiles and connector locks ({@code SYSTEM_ADMIN} only) and the
- * selection a library is connected from. No answer carries the client secret.
+ * The administration of connection profiles, connector locks and the profile requirement ({@code
+ * SYSTEM_ADMIN} only) and the selection a library is connected from. No answer carries the client
+ * secret.
  */
 @RestController
 public class ConnectionProfileController {
@@ -41,14 +45,17 @@ public class ConnectionProfileController {
   private final ConnectionProfileService profiles;
   private final ConnectorReleaseService release;
   private final ConnectorLockService locks;
+  private final ProfileRequirementService requirements;
 
   public ConnectionProfileController(
       ConnectionProfileService profiles,
       ConnectorReleaseService release,
-      ConnectorLockService locks) {
+      ConnectorLockService locks,
+      ProfileRequirementService requirements) {
     this.profiles = profiles;
     this.release = release;
     this.locks = locks;
+    this.requirements = requirements;
   }
 
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
@@ -110,14 +117,17 @@ public class ConnectionProfileController {
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
   @GetMapping(ADMIN + "/{profileId}/impact")
   public ConnectionProfileImpactResponse getConnectionProfileImpact(@PathVariable UUID profileId) {
-    return ConnectionProfileResponseMapper.toResponse(profiles.impact(profileId));
+    return ConnectionProfileResponseMapper.toResponse(
+        profiles.impact(profileId), requirements.lastForRequirement(profiles.get(profileId)));
   }
 
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
   @PostMapping(ADMIN + "/{profileId}/disconnect-all")
   public ConnectionProfileImpactResponse disconnectAllConnectionProfileConnections(
       @PathVariable UUID profileId, @Caller CurrentUser caller) {
-    return ConnectionProfileResponseMapper.toResponse(profiles.disconnectAll(caller, profileId));
+    return ConnectionProfileResponseMapper.toResponse(
+        profiles.disconnectAll(caller, profileId),
+        requirements.lastForRequirement(profiles.get(profileId)));
   }
 
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
@@ -144,6 +154,28 @@ public class ConnectionProfileController {
     return ConnectionProfileResponseMapper.toResponse(
         locks.lockType(
             caller, ConnectionProfileResponseMapper.toSourceType(sourceType), request.getLocked()));
+  }
+
+  @PreAuthorize("hasRole('SYSTEM_ADMIN')")
+  @GetMapping("/api/v1/admin/connector-types/{sourceType}/profile-requirement")
+  public ConnectorProfileRequirementResponse getConnectorProfileRequirement(
+      @PathVariable String sourceType) {
+    return ConnectionProfileResponseMapper.toResponse(
+        requirements.overview(ConnectionProfileResponseMapper.toSourceType(sourceType)));
+  }
+
+  @PreAuthorize("hasRole('SYSTEM_ADMIN')")
+  @PutMapping("/api/v1/admin/connector-types/{sourceType}/profile-requirement")
+  public ConnectorTypeStateResponse setConnectorProfileRequirement(
+      @PathVariable String sourceType,
+      @Valid @RequestBody ConnectorProfileRequirementRequest request,
+      @Caller CurrentUser caller) {
+    return ConnectionProfileResponseMapper.toResponse(
+        requirements.require(
+            caller,
+            ConnectionProfileResponseMapper.toSourceType(sourceType),
+            request.getRequired(),
+            ConnectionProfileResponseMapper.toStock(request.getOwnAddressStock())));
   }
 
   @GetMapping("/api/v1/connection-profiles")

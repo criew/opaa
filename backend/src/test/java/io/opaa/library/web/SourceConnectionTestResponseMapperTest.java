@@ -143,11 +143,12 @@ class SourceConnectionTestResponseMapperTest {
                 .withPushIntake(new PushIntake("confluenceWebhookSecret"))
                 .withFullSyncInterval(Duration.ofHours(36)),
             true,
-            new TypeCreation(false, false, true, "Die Quellart ist gesperrt."));
+            new TypeCreation(false, false, true, true, "Die Quellart ist gesperrt."));
 
     assertThat(descriptor.getCreatable()).isFalse();
     assertThat(descriptor.getCreatableWithOwnAddress()).isFalse();
     assertThat(descriptor.getLocked()).isTrue();
+    assertThat(descriptor.getProfileRequired()).isTrue();
     assertThat(descriptor.getCreationNotice()).isEqualTo("Die Quellart ist gesperrt.");
     assertThat(descriptor.getType()).isEqualTo("CONFLUENCE");
     assertThat(descriptor.getDisplayName()).isEqualTo("Confluence");

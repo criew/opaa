@@ -6,7 +6,7 @@ import io.opaa.api.dto.ChatDetail;
 import io.opaa.api.dto.ChatMessageResponse;
 import io.opaa.api.dto.ChatSummary;
 import io.opaa.api.dto.ChatSummaryPage;
-import io.opaa.api.dto.SourceFreezeReason;
+import io.opaa.api.dto.SourceBlockReason;
 import io.opaa.api.dto.SourceMetadataEntry;
 import io.opaa.api.dto.SourceReference;
 import io.opaa.api.types.ChatNoteItemKind;
@@ -86,13 +86,26 @@ class ChatResponseMapperTest {
             new ChatSource("alt.md", 1.0, 1, true)
                 .freeze("NOT_CONNECTED", "Verwaltende der Bibliothek", lastRun));
 
-    assertThat(frozen.getFreeze().getReason()).isEqualTo(SourceFreezeReason.NOT_CONNECTED);
-    assertThat(frozen.getFreeze().getResponsible()).isEqualTo("Verwaltende der Bibliothek");
+    assertThat(frozen.getFreeze().getBlock().getReason())
+        .isEqualTo(SourceBlockReason.NOT_CONNECTED);
+    assertThat(frozen.getFreeze().getBlock().getResponsible())
+        .isEqualTo("Verwaltende der Bibliothek");
+    assertThat(frozen.getFreeze().getBlock().getNotice()).isNull();
     assertThat(frozen.getFreeze().getAsOf()).isEqualTo(lastRun);
     assertThat(
             ChatResponseMapper.toSourceReference(new ChatSource("neu.md", 1.0, 1, true))
                 .getFreeze())
         .isNull();
+  }
+
+  /** An answer stored before the two locks were told apart reads its LOCKED as a type lock. */
+  @Test
+  void aStoredReasonIsReadByNameAndTheFormerLockedAsATypeLock() {
+    assertThat(ChatResponseMapper.freezeReason("PROFILE_REQUIRED"))
+        .isEqualTo(SourceBlockReason.PROFILE_REQUIRED);
+    assertThat(ChatResponseMapper.freezeReason("PROFILE_LOCKED"))
+        .isEqualTo(SourceBlockReason.PROFILE_LOCKED);
+    assertThat(ChatResponseMapper.freezeReason("LOCKED")).isEqualTo(SourceBlockReason.TYPE_LOCKED);
   }
 
   @Test

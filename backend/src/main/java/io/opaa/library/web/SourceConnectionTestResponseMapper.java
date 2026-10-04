@@ -77,6 +77,7 @@ final class SourceConnectionTestResponseMapper {
         .pushIntake(descriptor.pushIntake() != null)
         .browsable(browsable)
         .profileSupport(descriptor.profileSupport())
+        .profileRequired(creation.profileRequired())
         .authMethods(descriptor.authMethods().stream().sorted().toList())
         .fullSyncIntervalDefaultDays(
             descriptor.fullSyncInterval() == null

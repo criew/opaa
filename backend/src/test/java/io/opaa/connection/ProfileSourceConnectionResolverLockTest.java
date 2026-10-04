@@ -9,6 +9,7 @@ import io.opaa.connection.profile.ConnectionProfileRepository;
 import io.opaa.connection.profile.ConnectorTypePolicy;
 import io.opaa.connection.profile.ConnectorTypePolicyRepository;
 import io.opaa.connection.profile.LibraryConnectionRepository;
+import io.opaa.connection.profile.ProfileRequirements;
 import io.opaa.connection.profile.SourceBlocks;
 import io.opaa.indexing.source.ServiceAccountTokens;
 import io.opaa.indexing.source.SourceBlock;
@@ -40,7 +41,12 @@ class ProfileSourceConnectionResolverLockTest {
           profiles,
           registry(),
           new ServiceAccountTokens(TargetAddressValidator.disabled(), Clock.systemUTC()),
-          new SourceBlocks(policies, connections, profiles, registry()));
+          new SourceBlocks(
+              policies,
+              connections,
+              profiles,
+              new ProfileRequirements(policies, registry()),
+              registry()));
 
   @SuppressWarnings("unchecked")
   private static ObjectProvider<SourceConnectorRegistry> registry() {

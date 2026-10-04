@@ -1,6 +1,5 @@
 package io.opaa.connection;
 
-import io.opaa.api.types.ConnectionProfileSupport;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
 import io.opaa.connection.profile.ConnectionProfile;
@@ -8,7 +7,10 @@ import io.opaa.connection.profile.ConnectionProfileRepository;
 import io.opaa.connection.profile.ConnectorLockService;
 import io.opaa.connection.profile.LibraryConnection;
 import io.opaa.connection.profile.LibraryConnectionRepository;
+import io.opaa.connection.profile.ProfileRequirementService;
+import io.opaa.connection.profile.ProfileRequirements;
 import io.opaa.connection.profile.ServerAddress;
+import io.opaa.indexing.source.SourceBlock;
 import io.opaa.indexing.source.SourceConnectorRegistry;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
@@ -36,6 +38,8 @@ public class LibraryConnectionService {
   private final KnowledgeLibraryRepository libraries;
   private final SourceConnectorRegistry connectors;
   private final ConnectorLockService locks;
+  private final ProfileRequirements requirements;
+  private final ProfileRequirementService requirementService;
   private final Clock clock;
 
   public LibraryConnectionService(
@@ -44,23 +48,27 @@ public class LibraryConnectionService {
       KnowledgeLibraryRepository libraries,
       SourceConnectorRegistry connectors,
       ConnectorLockService locks,
+      ProfileRequirements requirements,
+      ProfileRequirementService requirementService,
       Clock clock) {
     this.connections = connections;
     this.profiles = profiles;
     this.libraries = libraries;
     this.connectors = connectors;
     this.locks = locks;
+    this.requirements = requirements;
+    this.requirementService = requirementService;
     this.clock = clock;
   }
 
-  /** The note of a locked type or profile the library carries, empty while it is not locked. */
-  public Optional<String> lockNotice(KnowledgeLibrary library) {
-    return locks.lockNotice(library);
+  /** The lock the library carries, empty while none of the system administration's holds it. */
+  public Optional<SourceBlock> lockOf(KnowledgeLibrary library) {
+    return locks.lockOf(library);
   }
 
-  /** {@link #lockNotice} for a whole page of libraries; a library that is not locked is absent. */
-  public Map<UUID, String> lockNotices(Collection<KnowledgeLibrary> libraries) {
-    return locks.lockNotices(libraries);
+  /** {@link #lockOf} for a whole page of libraries; a library that is not locked is absent. */
+  public Map<UUID, SourceBlock> locksOf(Collection<KnowledgeLibrary> libraries) {
+    return locks.locksOf(libraries);
   }
 
   /** The connection of {@code libraryId}, empty for a library with its own address. */
@@ -86,12 +94,16 @@ public class LibraryConnectionService {
 
   /**
    * Refuses {@code requestedUrl} for {@code library} when the library is connected and the address
-   * leaves its profile; a library without a connection is free.
+   * leaves its profile; a library without a connection keeps its address while its type is usable
+   * only through a profile, and is free otherwise.
    */
   public void requireAddressAllowed(KnowledgeLibrary library, String requestedUrl) {
-    connections
-        .findById(library.getId())
-        .map(LibraryConnection::getProfileId)
+    Optional<LibraryConnection> connection = connections.findById(library.getId());
+    if (connection.isEmpty()) {
+      requirementService.requireOwnAddressKept(library, requestedUrl);
+      return;
+    }
+    Optional.ofNullable(connection.get().getProfileId())
         .flatMap(profiles::findById)
         .ifPresent(profile -> requireUnder(profile, requestedUrl));
   }
@@ -141,14 +153,13 @@ public class LibraryConnectionService {
   }
 
   /**
-   * Releases the library from its profile; it keeps address and secret. Refused for a connector
-   * that requires a profile.
+   * Releases the library from its profile; it keeps address and secret. Refused while its type is
+   * usable only through a profile.
    */
   @Transactional
   public void disconnect(KnowledgeLibrary library) {
-    if (connectors.descriptor(library.getSourceType()).profileSupport()
-        == ConnectionProfileSupport.REQUIRED) {
-      throw new ValidationException("Diese Quellart ist nur über einen Zugang nutzbar");
+    if (requirements.profileRequired(library.getSourceType())) {
+      throw requirementService.ownAddressRefused(library.getSourceType());
     }
     connections.findById(library.getId()).ifPresent(connections::delete);
   }

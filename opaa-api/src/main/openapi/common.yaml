@@ -61,6 +61,47 @@ components:
           type: string
           description: The user-facing message, in German.
 
+    SourceBlockReason:
+      type: string
+      description: >
+        Why a library's source is not reached, in order of precedence: TYPE_LOCKED and
+        PROFILE_LOCKED (the system administration locked the connector type or the connection
+        profile), PROFILE_REQUIRED (the connector type is usable only through a connection
+        profile, and the library still has its own address), ACCESS_REMOVED (the library's
+        profile was deleted), TARGET_OUTSIDE_PROFILE (the library's address left its profile),
+        NOT_CONNECTED (the connection holds no usable secret). A client offers "Zugang zuordnen"
+        for PROFILE_REQUIRED and ACCESS_REMOVED.
+      enum:
+        [
+          TYPE_LOCKED,
+          PROFILE_LOCKED,
+          PROFILE_REQUIRED,
+          ACCESS_REMOVED,
+          TARGET_OUTSIDE_PROFILE,
+          NOT_CONNECTED,
+        ]
+
+    SourceBlock:
+      type: object
+      required: [reason, responsible]
+      description: >
+        Why a library's source is not reached now and who can change that. The content stays
+        searchable and is not updated.
+      properties:
+        reason:
+          $ref: "#/components/schemas/SourceBlockReason"
+        responsible:
+          type: string
+          description: Who can change it, in German.
+          example: Systemverwaltung
+        notice:
+          type: string
+          description: >
+            The German note the library carries, naming the cause, who is in charge and what
+            happens to the content. Always present on a library; the source of an answer carries
+            reason and responsible only.
+          example: Gesperrt – Inhalt wird nicht mehr aktualisiert.
+
     PermissionSubjectType:
       type: string
       description: >

@@ -15,7 +15,9 @@ import io.opaa.indexing.source.SourceBlock.Reason;
 import io.opaa.indexing.source.SourceConnectionBlockedException;
 import io.opaa.indexing.source.SourceConnectorRegistry;
 import io.opaa.indexing.source.TestSourceConnectors;
+import io.opaa.indexing.source.profileprobe.ProfileProbeSourceConnector;
 import io.opaa.knowledge.KnowledgeLibrary;
+import io.opaa.knowledge.SourceType;
 import io.opaa.test.SourceTypes;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -42,6 +44,8 @@ class SourceBlocksTest {
   /** One fact about a library that can block it. */
   enum Fact {
     TYPE_LOCK,
+    PROFILES_ONLY_LOCKED,
+    PROFILES_ONLY_RUNS,
     CONNECTED,
     PROFILE_REMOVED,
     PROFILE_LOCK,
@@ -77,8 +81,12 @@ class SourceBlocksTest {
               return profileRows.stream().filter(p -> ids.contains(p.getId())).toList();
             });
     ObjectProvider<SourceConnectorRegistry> registry = mock(ObjectProvider.class);
-    when(registry.getObject()).thenReturn(TestSourceConnectors.connectors().registry());
-    blocks = new SourceBlocks(policies, connections, profiles, registry);
+    when(registry.getObject())
+        .thenReturn(
+            TestSourceConnectors.connectors().with(new ProfileProbeSourceConnector()).registry());
+    blocks =
+        new SourceBlocks(
+            policies, connections, profiles, new ProfileRequirements(policies, registry), registry);
   }
 
   static Stream<Arguments> precedence() {
@@ -90,6 +98,20 @@ class SourceBlocksTest {
         Arguments.of(
             EnumSet.of(Fact.TYPE_LOCK, Fact.CONNECTED, Fact.PROFILE_REMOVED), Reason.TYPE_LOCKED),
         Arguments.of(EnumSet.of(Fact.TYPE_LOCK, Fact.NO_SECRET), Reason.TYPE_LOCKED),
+        Arguments.of(EnumSet.of(Fact.TYPE_LOCK, Fact.PROFILES_ONLY_LOCKED), Reason.TYPE_LOCKED),
+        Arguments.of(
+            EnumSet.of(Fact.PROFILES_ONLY_LOCKED, Fact.CONNECTED, Fact.PROFILE_LOCK),
+            Reason.PROFILE_LOCKED),
+        Arguments.of(
+            EnumSet.of(Fact.PROFILES_ONLY_LOCKED, Fact.NO_SECRET), Reason.PROFILE_REQUIRED),
+        Arguments.of(
+            EnumSet.of(Fact.PROFILES_ONLY_LOCKED, Fact.CONNECTED, Fact.PROFILE_REMOVED),
+            Reason.ACCESS_REMOVED),
+        Arguments.of(
+            EnumSet.of(Fact.PROFILES_ONLY_LOCKED, Fact.CONNECTED, Fact.NO_SECRET),
+            Reason.NOT_CONNECTED),
+        Arguments.of(EnumSet.of(Fact.PROFILES_ONLY_LOCKED, Fact.CONNECTED), null),
+        Arguments.of(EnumSet.of(Fact.PROFILES_ONLY_RUNS), null),
         Arguments.of(
             EnumSet.of(Fact.CONNECTED, Fact.PROFILE_LOCK, Fact.OUTSIDE, Fact.NO_SECRET),
             Reason.PROFILE_LOCKED),
@@ -133,6 +155,7 @@ class SourceBlocksTest {
         .containsExactly(
             Reason.TYPE_LOCKED,
             Reason.PROFILE_LOCKED,
+            Reason.PROFILE_REQUIRED,
             Reason.ACCESS_REMOVED,
             Reason.TARGET_OUTSIDE_PROFILE,
             Reason.NOT_CONNECTED);
@@ -142,13 +165,18 @@ class SourceBlocksTest {
   void theSetsFollowFromThePropertiesOfTheReasons() {
     assertThat(SourceBlocks.ALL).containsExactlyInAnyOrder(Reason.values());
     assertThat(SourceBlocks.LOCKS)
-        .containsExactlyInAnyOrder(Reason.TYPE_LOCKED, Reason.PROFILE_LOCKED);
+        .containsExactlyInAnyOrder(
+            Reason.TYPE_LOCKED, Reason.PROFILE_LOCKED, Reason.PROFILE_REQUIRED);
     assertThat(SourceBlocks.ENDING_A_RUNNING_RUN)
         .containsExactlyInAnyOrder(
             Reason.ACCESS_REMOVED, Reason.TARGET_OUTSIDE_PROFILE, Reason.NOT_CONNECTED);
     assertThat(SourceBlocks.SHOWN_IN_ANSWER)
         .containsExactlyInAnyOrder(
-            Reason.TYPE_LOCKED, Reason.PROFILE_LOCKED, Reason.ACCESS_REMOVED, Reason.NOT_CONNECTED);
+            Reason.TYPE_LOCKED,
+            Reason.PROFILE_LOCKED,
+            Reason.PROFILE_REQUIRED,
+            Reason.ACCESS_REMOVED,
+            Reason.NOT_CONNECTED);
     for (Reason reason : Reason.values()) {
       assertThat(new SourceBlock(reason, "x", "y").locked())
           .isEqualTo(SourceBlocks.LOCKS.contains(reason));
@@ -184,8 +212,38 @@ class SourceBlocksTest {
     verify(policies, never()).findAll();
   }
 
+  /**
+   * A switched row of a type that does not declare profiles as optional blocks nothing, and the
+   * profile requirement is read only when it is considered.
+   */
+  @Test
+  void theProfileRequirementHoldsOnlyForATypeWithOptionalProfiles() {
+    KnowledgeLibrary feed = arrange(EnumSet.noneOf(Fact.class), ConnectionAuthMethod.NONE);
+    ConnectorTypePolicy stale = new ConnectorTypePolicy(SourceTypes.RSS_FEED, NOW);
+    stale.requireProfiles(OwnAddressStock.LOCKED, NOW);
+    policyRows.add(stale);
+
+    assertThat(blocks.blockOf(feed, SourceBlocks.ALL)).isEmpty();
+
+    KnowledgeLibrary probe =
+        arrange(EnumSet.of(Fact.PROFILES_ONLY_LOCKED), ConnectionAuthMethod.NONE);
+    assertThat(blocks.blockOf(probe, EnumSet.of(Reason.PROFILE_REQUIRED))).isPresent();
+    assertThat(blocks.blockOf(probe, EnumSet.of(Reason.TYPE_LOCKED))).isEmpty();
+    assertThat(blocks.blockOf(probe, SourceBlocks.ENDING_A_RUNNING_RUN)).isEmpty();
+  }
+
   static Stream<Arguments> notices() {
     return Stream.of(
+        Arguments.of(
+            EnumSet.of(Fact.PROFILES_ONLY_LOCKED),
+            ConnectionAuthMethod.PERSONAL_SECRET,
+            new SourceBlock(
+                Reason.PROFILE_REQUIRED,
+                "Verwaltende der Bibliothek",
+                "Gesperrt – Inhalt wird nicht mehr aktualisiert. Die Quellart „Testquelle mit"
+                    + " Zugang“ ist nur noch über Zugänge nutzbar, und diese Bibliothek hat eine"
+                    + " eigene Adresse; der vorhandene Inhalt bleibt durchsuchbar. Die Verwaltenden"
+                    + " der Bibliothek ordnen sie einem Zugang zu.")),
         Arguments.of(
             EnumSet.of(Fact.TYPE_LOCK),
             ConnectionAuthMethod.PERSONAL_SECRET,
@@ -281,9 +339,16 @@ class SourceBlocksTest {
   @Test
   void manyLibrariesAreJudgedAsEachOnItsOwn() {
     List<KnowledgeLibrary> libraries = new ArrayList<>();
-    // a type lock holds for every library of the type, so it is left out here
+    // a type lock and a profile requirement hold for every library of the type, so they are left
+    // out here
     precedence()
-        .filter(arguments -> !((Set<?>) arguments.get()[0]).contains(Fact.TYPE_LOCK))
+        .filter(
+            arguments -> {
+              Set<?> facts = (Set<?>) arguments.get()[0];
+              return !facts.contains(Fact.TYPE_LOCK)
+                  && !facts.contains(Fact.PROFILES_ONLY_LOCKED)
+                  && !facts.contains(Fact.PROFILES_ONLY_RUNS);
+            })
         .forEach(
             arguments -> {
               @SuppressWarnings("unchecked")
@@ -321,16 +386,21 @@ class SourceBlocksTest {
     assertThat(blocks.requireUnblocked(own, SourceBlocks.ALL)).isEmpty();
   }
 
-  /** A library of its own type with the given facts, and the rows that state them. */
+  /**
+   * A library with the given facts, and the rows that state them: of the test type with optional
+   * profiles when the facts name its profile requirement, else an RSS feed.
+   */
   private KnowledgeLibrary arrange(Set<Fact> facts, ConnectionAuthMethod method) {
-    var type = SourceTypes.RSS_FEED;
+    boolean profilesOnly =
+        facts.contains(Fact.PROFILES_ONLY_LOCKED) || facts.contains(Fact.PROFILES_ONLY_RUNS);
+    SourceType type = profilesOnly ? ProfileProbeSourceConnector.TYPE : SourceTypes.RSS_FEED;
     KnowledgeLibrary library =
         KnowledgeLibrary.ownedByUser(
             UUID.randomUUID(),
             "Feed",
             null,
             UUID.randomUUID(),
-            SourceTypes.RSS_FEED,
+            type,
             null,
             facts.contains(Fact.OUTSIDE)
                 ? "https://elsewhere.example.org/a.xml"
@@ -338,10 +408,16 @@ class SourceBlocksTest {
             null,
             facts.contains(Fact.NO_SECRET) ? null : "nutzer:geheim",
             false);
-    if (facts.contains(Fact.TYPE_LOCK) && policyRows.isEmpty()) {
-      ConnectorTypePolicy policy = new ConnectorTypePolicy(type, NOW);
-      policy.lockedSince(NOW, NOW);
-      policyRows.add(policy);
+    if (facts.contains(Fact.TYPE_LOCK)) {
+      policyOf(type).lockedSince(NOW, NOW);
+    }
+    if (profilesOnly) {
+      policyOf(type)
+          .requireProfiles(
+              facts.contains(Fact.PROFILES_ONLY_LOCKED)
+                  ? OwnAddressStock.LOCKED
+                  : OwnAddressStock.RUNS,
+              NOW);
     }
     if (facts.contains(Fact.CONNECTED)) {
       ConnectionProfile profile = new ConnectionProfile(type, NOW);
@@ -361,6 +437,18 @@ class SourceBlocksTest {
               library.getId(), facts.contains(Fact.PROFILE_REMOVED) ? null : profile.getId(), NOW));
     }
     return library;
+  }
+
+  private ConnectorTypePolicy policyOf(SourceType type) {
+    return policyRows.stream()
+        .filter(policy -> policy.getSourceType().equals(type))
+        .findFirst()
+        .orElseGet(
+            () -> {
+              ConnectorTypePolicy policy = new ConnectorTypePolicy(type, NOW);
+              policyRows.add(policy);
+              return policy;
+            });
   }
 
   private static Set<UUID> idsOf(Iterable<UUID> ids) {

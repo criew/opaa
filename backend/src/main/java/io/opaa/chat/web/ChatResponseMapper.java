@@ -6,8 +6,9 @@ import io.opaa.api.dto.ChatNoteItem;
 import io.opaa.api.dto.ChatSummary;
 import io.opaa.api.dto.ChatSummaryPage;
 import io.opaa.api.dto.ChunkLocation;
+import io.opaa.api.dto.SourceBlock;
+import io.opaa.api.dto.SourceBlockReason;
 import io.opaa.api.dto.SourceFreeze;
-import io.opaa.api.dto.SourceFreezeReason;
 import io.opaa.api.dto.SourceMetadataEntry;
 import io.opaa.api.dto.SourceReference;
 import io.opaa.chat.Chat;
@@ -142,8 +143,18 @@ public final class ChatResponseMapper {
       return null;
     }
     return new SourceFreeze(
-            SourceFreezeReason.fromValue(source.getFreezeReason()), source.getFreezeResponsible())
+            new SourceBlock(freezeReason(source.getFreezeReason()), source.getFreezeResponsible()))
         .asOf(source.getFreezeAsOf());
+  }
+
+  /**
+   * A stored reason is the name of a {@code SourceBlock.Reason}; an answer stored before the two
+   * locks were told apart carries {@code LOCKED} for either and reads as a type lock.
+   */
+  static SourceBlockReason freezeReason(String stored) {
+    return "LOCKED".equals(stored)
+        ? SourceBlockReason.TYPE_LOCKED
+        : SourceBlockReason.fromValue(stored);
   }
 
   /**

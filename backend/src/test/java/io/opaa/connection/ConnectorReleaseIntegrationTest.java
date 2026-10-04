@@ -202,11 +202,14 @@ class ConnectorReleaseIntegrationTest {
     mockMvc
         .perform(as("dev-user", get("/api/v1/libraries/" + library)))
         .andExpect(
-            jsonPath("$.sourceLockNotice").value(Matchers.containsString("Zugang „Zugang Lauf")));
+            jsonPath("$.sourceBlock.notice")
+                .value(Matchers.containsString("Zugang „Zugang Lauf")))
+        .andExpect(jsonPath("$.sourceBlock.reason").value("PROFILE_LOCKED"))
+        .andExpect(jsonPath("$.sourceBlock.responsible").value("Systemverwaltung"));
     mockMvc
         .perform(as("dev-user", get("/api/v1/libraries")))
         .andExpect(
-            jsonPath("$[?(@.id == '" + library + "')].sourceLockNotice")
+            jsonPath("$[?(@.id == '" + library + "')].sourceBlock.notice")
                 .value(Matchers.hasItem(Matchers.startsWith("Gesperrt"))));
     mockMvc
         .perform(as("dev-user", get("/api/v1/catalog")))
@@ -214,7 +217,7 @@ class ConnectorReleaseIntegrationTest {
             jsonPath(
                     "$.entries[?(@.assetId == '"
                         + library
-                        + "')].knowledgeLibrary.sourceLockNotice")
+                        + "')].knowledgeLibrary.sourceBlock.notice")
                 .value(Matchers.hasItem(Matchers.startsWith("Gesperrt"))));
     mockMvc
         .perform(as("dev-admin", post("/api/v1/libraries")).content(libraryJson(profile)))
@@ -225,7 +228,7 @@ class ConnectorReleaseIntegrationTest {
     run(library, "COMPLETED");
     mockMvc
         .perform(as("dev-user", get("/api/v1/libraries/" + library)))
-        .andExpect(jsonPath("$.sourceLockNotice").doesNotExist());
+        .andExpect(jsonPath("$.sourceBlock").doesNotExist());
 
     mockMvc
         .perform(
@@ -404,7 +407,7 @@ class ConnectorReleaseIntegrationTest {
             ChatSource::getFreezeReason,
             ChatSource::getFreezeResponsible,
             ChatSource::getFreezeAsOf)
-        .containsExactly("LOCKED", "Systemverwaltung", lastRun);
+        .containsExactly("PROFILE_LOCKED", "Systemverwaltung", lastRun);
     assertThat(freezeOf(disconnectedDocument))
         .extracting(ChatSource::getFreezeReason, ChatSource::getFreezeResponsible)
         .containsExactly("NOT_CONNECTED", "Verwaltende der Bibliothek");

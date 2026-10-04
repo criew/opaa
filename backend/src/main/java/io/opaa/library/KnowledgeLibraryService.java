@@ -29,6 +29,7 @@ import io.opaa.indexing.job.LibraryScheduleCodec;
 import io.opaa.indexing.source.ConnectorData;
 import io.opaa.indexing.source.ServiceAccountKey;
 import io.opaa.indexing.source.ServiceAccountTokens;
+import io.opaa.indexing.source.SourceBlock;
 import io.opaa.indexing.source.SourceConnectionBlockedException;
 import io.opaa.indexing.source.SourceConnectionResolver;
 import io.opaa.indexing.source.SourceConnector;
@@ -463,7 +464,7 @@ public class KnowledgeLibraryService {
     Map<UUID, SuccessionFinding> succession = successionSource.findingsAmong(libraries, false);
     // #1931: the reach badge, one grouped query for the whole page like the counts above.
     Map<UUID, AssetReach> reach = accessService.reachOf(libraries);
-    Map<UUID, String> lockNotices = libraryConnections.lockNotices(libraries);
+    Map<UUID, SourceBlock> locks = libraryConnections.locksOf(libraries);
 
     return libraries.stream()
         .map(
@@ -477,7 +478,7 @@ public class KnowledgeLibraryService {
                     lastRunStatus.get(library.getId()),
                     succession.get(library.getId()),
                     reach.getOrDefault(library.getId(), AssetReach.NONE),
-                    lockNotices.get(library.getId())))
+                    locks.get(library.getId())))
         .toList();
   }
 
@@ -1459,7 +1460,7 @@ public class KnowledgeLibraryService {
                         : new LibraryProfileState(
                             connection.profile().getId(), connection.profile().getName(), false))
             .orElse(null),
-        libraryConnections.lockNotice(library).orElse(null));
+        libraryConnections.lockOf(library).orElse(null));
   }
 
   private LibraryManagementDetail toManagementDetail(

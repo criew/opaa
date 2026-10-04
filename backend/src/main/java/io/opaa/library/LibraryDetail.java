@@ -2,6 +2,7 @@ package io.opaa.library;
 
 import io.opaa.api.types.AssetRole;
 import io.opaa.indexing.source.ConnectorData;
+import io.opaa.indexing.source.SourceBlock;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.permission.AssetReach;
 import io.opaa.permission.SuccessionFinding;
@@ -28,8 +29,8 @@ import io.opaa.permission.SuccessionFinding;
  *     {@link KnowledgeLibraryService#getLibrary}; {@code null} for none and for every other result
  * @param connectionProfile the connection profile of the library, {@code null} for a library with
  *     its own address
- * @param sourceLockNotice the note of a locked connector type or profile, {@code null} while the
- *     library is not locked
+ * @param sourceBlock the lock the library carries - its connector type or profile locked, or an own
+ *     address where only a profile is admitted - {@code null} while it is not locked
  */
 public record LibraryDetail(
     KnowledgeLibrary library,
@@ -42,7 +43,7 @@ public record LibraryDetail(
     ConnectorData connectorSettings,
     SuccessionFinding succession,
     LibraryProfileState connectionProfile,
-    String sourceLockNotice) {
+    SourceBlock sourceBlock) {
 
   /** A detail of a library that is not locked. */
   public LibraryDetail(
@@ -129,6 +130,6 @@ public record LibraryDetail(
         connectorSettings,
         succession,
         connectionProfile,
-        sourceLockNotice);
+        sourceBlock);
   }
 }

@@ -12,6 +12,7 @@ import io.opaa.connection.profile.ConnectionProfileRepository;
 import io.opaa.connection.profile.ConnectorTypePolicyRepository;
 import io.opaa.connection.profile.LibraryConnection;
 import io.opaa.connection.profile.LibraryConnectionRepository;
+import io.opaa.connection.profile.ProfileRequirements;
 import io.opaa.connection.profile.SourceBlocks;
 import io.opaa.indexing.source.ServiceAccountTokens;
 import io.opaa.indexing.source.SourceBlock;
@@ -38,7 +39,11 @@ class ConnectionSourceStateLookupTest {
   private final ConnectionProfileRepository profiles = mock(ConnectionProfileRepository.class);
   private final SourceBlocks blocks =
       new SourceBlocks(
-          mock(ConnectorTypePolicyRepository.class), connections, profiles, registry());
+          mock(ConnectorTypePolicyRepository.class),
+          connections,
+          profiles,
+          new ProfileRequirements(mock(ConnectorTypePolicyRepository.class), registry()),
+          registry());
 
   @SuppressWarnings("unchecked")
   private static ObjectProvider<SourceConnectorRegistry> registry() {

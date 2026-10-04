@@ -1,10 +1,10 @@
 package io.opaa.connection;
 
 import io.opaa.api.types.Capability;
-import io.opaa.api.types.ConnectionProfileSupport;
 import io.opaa.connection.profile.ConnectionProfile;
 import io.opaa.connection.profile.ConnectionProfileRepository;
 import io.opaa.connection.profile.ConnectorScope;
+import io.opaa.connection.profile.ProfileRequirements;
 import io.opaa.indexing.source.SourceConnectorRegistry;
 import io.opaa.permission.CapabilityScopeCatalog;
 import java.util.ArrayList;
@@ -21,11 +21,15 @@ public class ConnectorScopeCatalog implements CapabilityScopeCatalog {
 
   private final SourceConnectorRegistry connectors;
   private final ConnectionProfileRepository profiles;
+  private final ProfileRequirements requirements;
 
   public ConnectorScopeCatalog(
-      SourceConnectorRegistry connectors, ConnectionProfileRepository profiles) {
+      SourceConnectorRegistry connectors,
+      ConnectionProfileRepository profiles,
+      ProfileRequirements requirements) {
     this.connectors = connectors;
     this.profiles = profiles;
+    this.requirements = requirements;
   }
 
   @Override
@@ -37,7 +41,7 @@ public class ConnectorScopeCatalog implements CapabilityScopeCatalog {
     List<CapabilityScope> scopes = new ArrayList<>();
     connectors.descriptors().stream()
         .filter(descriptor -> !descriptor.uploads())
-        .filter(descriptor -> descriptor.profileSupport() != ConnectionProfileSupport.REQUIRED)
+        .filter(descriptor -> !requirements.profileRequired(descriptor.type()))
         .forEach(
             descriptor ->
                 scopes.add(
