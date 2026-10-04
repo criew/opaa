@@ -5,12 +5,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import io.opaa.indexing.chunk.FullTextChunkStore;
 import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.metadata.MetadataFilter;
+import io.opaa.test.BareLibraries;
 import io.opaa.test.OpaaIntegrationTest;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.document.Document;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,10 +41,18 @@ class FullTextChunkSearchIntegrationTest {
   private final UUID forbiddenLibrary = UUID.randomUUID();
   private final UUID documentId = UUID.randomUUID();
 
+  @BeforeEach
+  void theLibrariesExist() {
+    BareLibraries.create(jdbcTemplate, readableLibrary);
+    BareLibraries.create(jdbcTemplate, forbiddenLibrary);
+  }
+
   @AfterEach
   void tearDown() {
     vectorChunkStore.deleteByLibraryId(readableLibrary);
     vectorChunkStore.deleteByLibraryId(forbiddenLibrary);
+    BareLibraries.remove(jdbcTemplate, readableLibrary);
+    BareLibraries.remove(jdbcTemplate, forbiddenLibrary);
   }
 
   /**

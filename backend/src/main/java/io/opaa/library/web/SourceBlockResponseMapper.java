@@ -13,6 +13,8 @@ final class SourceBlockResponseMapper {
       return null;
     }
     return new SourceBlock(SourceBlockReason.valueOf(block.reason().name()), block.responsible())
-        .notice(block.notice());
+        .notice(block.notice())
+        .contentDeletedOn(
+            block.contentDeletedOn() == null ? null : block.contentDeletedOn().toString());
   }
 }

@@ -4,6 +4,7 @@ import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
+import io.opaa.library.PrivateLibraryErased;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Executor;
@@ -14,6 +15,8 @@ import org.springframework.ai.chat.memory.ChatMemoryRepository;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
 
 /**
  * A {@link ChatMemoryRepository} backed by a Caffeine cache with LRU eviction and TTL, bounding the
@@ -113,6 +116,16 @@ public class CaffeineChatMemoryRepository implements ChatMemoryRepository {
   @Override
   public void deleteByConversationId(String conversationId) {
     cache.invalidate(conversationId);
+  }
+
+  /**
+   * A private library was erased: every conversation its owner holds here goes, since only she
+   * could have been answered from it; the next turn reads her chat anew.
+   */
+  @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+  public void onPrivateLibraryErased(PrivateLibraryErased event) {
+    String prefix = event.ownerUserId() + ":";
+    cache.asMap().keySet().removeIf(key -> key.startsWith(prefix));
   }
 
   /** Returns the number of active conversations in the cache. */

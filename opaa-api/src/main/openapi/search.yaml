@@ -1793,6 +1793,21 @@ components:
           type: integer
           format: int64
           nullable: true
+        scheduledErasureCount:
+          type: integer
+          format: int64
+          nullable: true
+          description: >
+            How many of them are due to be erased - their owner's account is recorded as
+            deactivated, or their erasure is under way (#2165). A part of libraryCount, so masked
+            as a part: exact only where both its owners and the owners of every other private
+            library reach the minimum group size; where its owners fall short, only
+            scheduledErasureCountFewerThan; otherwise neither.
+        scheduledErasureCountFewerThan:
+          type: integer
+          format: int32
+          nullable: true
+          example: 5
 
     SearchPermissionProfileResponse:
       type: object

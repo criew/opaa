@@ -534,6 +534,10 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
             .filter(lib -> !lib.isOwnerOnly() || caller.id().equals(lib.getOwnerUserId()))
             .orElseThrow(() -> new NotFoundException("Dokument nicht gefunden"));
     accessService.requireContentRead(library, caller.id(), caller.isSystemAdmin());
+    if (library.isErasureRequested()) {
+      // its originals may already be gone while the erasure waits or resumes
+      throw new NotFoundException("Die Bibliothek wird gelöscht");
+    }
 
     if (isReExtractableAttachment(document)) {
       return loadAttachmentContent(document, library);

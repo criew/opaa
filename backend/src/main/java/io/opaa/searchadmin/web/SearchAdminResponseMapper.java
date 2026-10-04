@@ -80,7 +80,9 @@ final class SearchAdminResponseMapper {
         .libraryCountFewerThan(summary.libraryCountFewerThan())
         .documentCount(summary.documentCount())
         .failedDocumentCount(summary.failedDocumentCount())
-        .chunkCount(summary.chunkCount());
+        .chunkCount(summary.chunkCount())
+        .scheduledErasureCount(summary.scheduledErasureCount())
+        .scheduledErasureCountFewerThan(summary.scheduledErasureCountFewerThan());
   }
 
   static SearchDiagnosisContextResponse toDiagnosisContextResponse(

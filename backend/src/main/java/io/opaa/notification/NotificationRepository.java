@@ -6,6 +6,9 @@ import java.util.List;
 import java.util.UUID;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 public interface NotificationRepository extends JpaRepository<Notification, UUID> {
 
@@ -26,4 +29,10 @@ public interface NotificationRepository extends JpaRepository<Notification, UUID
    * only a type that declares one is cleaned up.
    */
   int deleteByTypeAndCreatedAtBefore(NotificationType type, Instant cutoff);
+
+  @Modifying
+  @Query("delete from Notification n where n.objectId = :objectId")
+  int deleteByObjectId(@Param("objectId") UUID objectId);
+
+  long countByObjectId(UUID objectId);
 }

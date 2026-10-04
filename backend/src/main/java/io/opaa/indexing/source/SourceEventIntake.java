@@ -110,6 +110,13 @@ public class SourceEventIntake {
         return;
       }
       library = loaded.get();
+      if (library.isErasureRequested()) {
+        log.info(
+            "Dropping {} event batch for library {}: it is being erased",
+            target.sourceType(),
+            libraryId);
+        return;
+      }
       if (connectionResolver.isLocked(library)) {
         log.info(
             "Dropping {} event batch for library {}: its source is locked",
