@@ -244,7 +244,8 @@ public class IndexingConfiguration {
       DocumentRepository documentRepository,
       LibraryStorageQuotaService libraryStorageQuotaService,
       SourceConnectionResolver sourceConnectionResolver,
-      ServiceAccountTokens serviceAccountTokens) {
+      ServiceAccountTokens serviceAccountTokens,
+      KnowledgeLibraryRepository knowledgeLibraryRepository) {
     return new IndexingRunTemplate(
         indexingJobService,
         indexingRunEventRepository,
@@ -253,7 +254,8 @@ public class IndexingConfiguration {
         libraryStorageQuotaService,
         sourceConnectionResolver,
         Clock.systemUTC(),
-        serviceAccountTokens);
+        serviceAccountTokens,
+        knowledgeLibraryRepository);
   }
 
   /** Signs service account assertions for the connectors that sign in with a key (ADR-0040). */

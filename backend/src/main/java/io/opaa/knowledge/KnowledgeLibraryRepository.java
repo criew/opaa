@@ -1,12 +1,15 @@
 package io.opaa.knowledge;
 
 import io.opaa.api.types.ExternalAccessState;
+import jakarta.persistence.LockModeType;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -188,6 +191,82 @@ public interface KnowledgeLibraryRepository extends JpaRepository<KnowledgeLibra
   @Query(
       "select l.id from KnowledgeLibrary l where l.id in :ids and l.sourceCredentials is not null")
   Set<UUID> findIdsHoldingSourceCredentials(@Param("ids") Collection<UUID> ids);
+
+  /**
+   * Marks a private library for erasure at {@code at} for {@code cause}, unless it already is: the
+   * first time and cause stay. The column is read fresh, never from a managed entity.
+   *
+   * @return whether this call set the marker
+   */
+  @Modifying(flushAutomatically = true, clearAutomatically = true)
+  @Query(
+      value =
+          "update knowledge_libraries set erasure_requested_at = :at, erasure_cause = :cause"
+              + " where id = :id and erasure_requested_at is null",
+      nativeQuery = true)
+  int requestErasure(@Param("id") UUID id, @Param("at") Instant at, @Param("cause") String cause);
+
+  /** The library to erase, its row locked until the caller's transaction ends. */
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query("select l from KnowledgeLibrary l where l.id = :id")
+  Optional<KnowledgeLibrary> findForErasure(@Param("id") UUID id);
+
+  /** Whether {@code id} is being erased, read from the row rather than a managed entity. */
+  @Query(
+      value =
+          "select count(*) > 0 from knowledge_libraries where id = :id"
+              + " and erasure_requested_at is not null",
+      nativeQuery = true)
+  boolean isErasureRequested(@Param("id") UUID id);
+
+  /**
+   * The ids of every library being erased, across all organizations - for the erasure run only
+   * ({@code ModularArchitecture#privateLibrariesAreNotEnumeratedOutsideListedClasses}).
+   */
+  @Query(
+      value =
+          "select id from knowledge_libraries where erasure_requested_at is not null"
+              + " order by erasure_requested_at",
+      nativeQuery = true)
+  List<UUID> findIdsByErasureRequested();
+
+  /**
+   * The ids of the private libraries owned by any of {@code ownerUserIds}, across all organizations
+   * - for the erasure run only.
+   */
+  @Query(
+      "select l.id from KnowledgeLibrary l where l.ownerOnly = true"
+          + " and l.ownerUserId in :ownerUserIds")
+  List<UUID> findPrivateIdsByOwnerUserIdIn(@Param("ownerUserIds") Collection<UUID> ownerUserIds);
+
+  /**
+   * How many private libraries of one organization are due to be erased - marked, or owned by one
+   * of {@code deactivatedOwners} - and how many persons own them; numbers, never a list.
+   */
+  @Query(
+      "select count(l) as libraries, count(distinct l.ownerUserId) as owners"
+          + " from KnowledgeLibrary l where l.organizationId = :organizationId"
+          + " and l.ownerOnly = true"
+          + " and (l.erasureRequestedAt is not null or l.ownerUserId in :deactivatedOwners)")
+  PrivateLibraryFigures countScheduledForErasure(
+      @Param("organizationId") UUID organizationId,
+      @Param("deactivatedOwners") Collection<UUID> deactivatedOwners);
+
+  /** How many persons own a private library of one organization that is not due to be erased. */
+  @Query(
+      "select count(distinct l.ownerUserId) from KnowledgeLibrary l"
+          + " where l.organizationId = :organizationId and l.ownerOnly = true"
+          + " and l.erasureRequestedAt is null and l.ownerUserId not in :deactivatedOwners")
+  long countOwnersNotScheduledForErasure(
+      @Param("organizationId") UUID organizationId,
+      @Param("deactivatedOwners") Collection<UUID> deactivatedOwners);
+
+  /** Numbers about private libraries; see {@link #countScheduledForErasure}. */
+  interface PrivateLibraryFigures {
+    long getLibraries();
+
+    long getOwners();
+  }
 
   /** The push secret's counterpart of {@link #eraseSourceCredentials} - same reasoning (#1806). */
   @Modifying(flushAutomatically = true)

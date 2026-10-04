@@ -1,0 +1,13 @@
+databaseChangeLog:
+  - changeSet:
+      id: knowledge-2026-10-04-library-erasure-marker
+      author: opaa
+      comment: "Since when and why a private library is being erased (#2165): set before anything is deleted, it keeps runs and intake away and makes an interrupted erasure resumable. NULL for every other library."
+      changes:
+        - sql:
+            sql: |
+              ALTER TABLE knowledge_libraries ADD COLUMN erasure_requested_at timestamp with time zone;
+              ALTER TABLE knowledge_libraries ADD COLUMN erasure_cause character varying(40);
+              ALTER TABLE knowledge_libraries ADD CONSTRAINT chk_knowledge_libraries_erasure
+                  CHECK ((erasure_requested_at IS NULL) = (erasure_cause IS NULL)
+                      AND (erasure_cause IS NULL OR erasure_cause ~ '^[A-Z][A-Z_]*$'));
