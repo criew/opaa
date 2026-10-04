@@ -296,4 +296,29 @@ describe('ConnectionProfileManagementPage', () => {
     expect(await screen.findByText('Die Quellart „Nextcloud“ ist gesperrt.')).toBeVisible()
     expect(sent).toEqual([{ type: 'NEXTCLOUD', locked: true }])
   })
+
+  // Eine Sperre der Quellart hat Vorrang: Wer nur den Zugang entsperrt, bekommt keinen Weiterlauf
+  // versprochen, und die Zeile zeigt die Sperre der Quellart.
+  it('does not promise a restart when the profile is unlocked while its source type stays locked', async () => {
+    server.use(
+      http.get('/api/v1/admin/connection-profiles', () =>
+        HttpResponse.json(mockConnectionProfiles.map((profile) => ({ ...profile, locked: true }))),
+      ),
+      http.get('/api/v1/admin/connector-types', () =>
+        HttpResponse.json([
+          { sourceType: 'NEXTCLOUD', displayName: 'Nextcloud', locked: true, lockedAt: null },
+        ]),
+      ),
+    )
+    const user = userEvent.setup()
+    renderWithProviders(<ConnectionProfileManagementPage />)
+
+    const row = await screen.findByRole('row', { name: new RegExp(PROFILE) })
+    expect(await within(row).findByText('Quellart gesperrt')).toBeVisible()
+    await user.click(within(row).getByRole('button', { name: `Sperre von ${PROFILE} aufheben` }))
+    const question = await screen.findByRole('dialog', { name: /aufheben\?/ })
+    expect(question).toHaveTextContent('Die Quellart „Nextcloud“ bleibt gesperrt')
+    expect(question).not.toHaveTextContent('ohne Neueinrichtung weiter')
+    await answerConfirm(user, /aufheben\?/, 'Abbrechen')
+  })
 })

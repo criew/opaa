@@ -12,9 +12,9 @@ identity und rights ab.
 
 ## Invarianten und Stolpersteine
 
-- **`knowledge` liegt unter `indexing` und `library` und nennt keines von beiden.** Was es von oben
-  braucht, deklariert es als Schnittstelle, die das obere Paket implementiert
-  (`FolderDocumentDeleter`; `SourceConnectionResolver` für Ziel und Geheimnis, implementiert in connections).
+- **`knowledge` liegt unter `indexing` und `library` und nennt keines davon.** Ports nach oben:
+  `FolderDocumentDeleter`; in connections implementiert `SourceConnectionResolver` (Ziel, Geheimnis;
+  nur knowledge, library, connections, `theSecretPortStaysWithTheCore`) und `SourceStateLookup`.
 - **`metadata` liegt zwischen `knowledge` und `indexing`** (Schema, Kernfelder, Vokabular,
   Extraktion, Korrektur, Filter, Kontextpräfix) und kennt keine Pipeline-Klasse. Den Chunk-Store und
   den Nachlauf erreicht es über `ChunkMetadataStore` und `ContextPrefixBacklog`. Bestandslauf und

@@ -6,6 +6,8 @@ import io.opaa.api.dto.ChatNoteItem;
 import io.opaa.api.dto.ChatSummary;
 import io.opaa.api.dto.ChatSummaryPage;
 import io.opaa.api.dto.ChunkLocation;
+import io.opaa.api.dto.SourceFreeze;
+import io.opaa.api.dto.SourceFreezeReason;
 import io.opaa.api.dto.SourceMetadataEntry;
 import io.opaa.api.dto.SourceReference;
 import io.opaa.chat.Chat;
@@ -131,7 +133,17 @@ public final class ChatResponseMapper {
         .chunkLocations(toChunkLocations(source.getChunkLocations()))
         .metadata(toMetadataEntries(source.getMetadata()))
         .metadataFilterMatch(source.getMetadataFilterMatch())
-        .frozen(source.getFrozen());
+        .freeze(toFreeze(source));
+  }
+
+  /** The "Stand vom" of a source, {@code null} while it was updated when the answer was given. */
+  static SourceFreeze toFreeze(ChatSource source) {
+    if (source.getFreezeReason() == null) {
+      return null;
+    }
+    return new SourceFreeze(
+            SourceFreezeReason.fromValue(source.getFreezeReason()), source.getFreezeResponsible())
+        .asOf(source.getFreezeAsOf());
   }
 
   /**

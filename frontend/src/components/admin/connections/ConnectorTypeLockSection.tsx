@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
@@ -10,7 +9,7 @@ import TableRow from '@mui/material/TableRow'
 import Typography from '@mui/material/Typography'
 import type { ConnectorTypeStateResponse } from '../../../types/api'
 import { notify } from '../../../stores/notificationStore'
-import { listConnectorTypeStates, lockConnectorType } from '../../../services/connectionProfileApi'
+import { lockConnectorType } from '../../../services/connectionProfileApi'
 import PageSection from '../../PageSection'
 import { confirmLock } from './connectorLock'
 
@@ -18,33 +17,26 @@ import { confirmLock } from './connectorLock'
  * Die Sperre je Quellart (Spezifikation „Konnektor-Freigabe und Sperre“): Sie gilt für alle
  * Bibliotheken der Quellart, mit und ohne Zugang, und wird mit Rückfrage gesetzt und aufgehoben.
  */
-export default function ConnectorTypeLockSection() {
-  const [states, setStates] = useState<ConnectorTypeStateResponse[]>([])
-  const [error, setError] = useState<string | null>(null)
-  const [reloadKey, setReloadKey] = useState(0)
-
-  useEffect(() => {
-    let cancelled = false
-    void listConnectorTypeStates()
-      .then((loaded) => {
-        if (!cancelled) {
-          setStates(loaded)
-          setError(null)
-        }
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          setError(err instanceof Error ? err.message : 'Quellarten konnten nicht geladen werden.')
-        }
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [reloadKey])
-
+export default function ConnectorTypeLockSection({
+  states,
+  error,
+  lockedProfileCount,
+  onChanged,
+}: {
+  states: ConnectorTypeStateResponse[]
+  error: string | null
+  /** How many locked profiles a type has - they stay locked when the type is unlocked. */
+  lockedProfileCount: (sourceType: string) => number
+  onChanged: () => void
+}) {
   async function toggle(state: ConnectorTypeStateResponse) {
     const lock = !state.locked
-    if (!(await confirmLock(`die Quellart „${state.displayName}“`, lock))) return
+    const stillLocked = lockedProfileCount(state.sourceType)
+    const remaining =
+      !lock && stillLocked > 0
+        ? `${stillLocked === 1 ? 'Ein Zugang' : `${stillLocked} Zugänge`} dieser Quellart ${stillLocked === 1 ? 'ist' : 'sind'} selbst gesperrt und ${stillLocked === 1 ? 'bleibt' : 'bleiben'} es; ${stillLocked === 1 ? 'seine' : 'ihre'} Bibliotheken laufen erst nach dem Entsperren ${stillLocked === 1 ? 'des Zugangs' : 'der Zugänge'} weiter. Die übrigen laufen ohne Neueinrichtung weiter.`
+        : undefined
+    if (!(await confirmLock(`die Quellart „${state.displayName}“`, lock, remaining))) return
     try {
       await lockConnectorType(state.sourceType, lock)
       notify(
@@ -53,7 +45,7 @@ export default function ConnectorTypeLockSection() {
           : `Die Sperre der Quellart „${state.displayName}“ ist aufgehoben.`,
         'success',
       )
-      setReloadKey((key) => key + 1)
+      onChanged()
     } catch (err) {
       notify(err instanceof Error ? err.message : 'Die Sperre ließ sich nicht ändern.', 'error')
     }

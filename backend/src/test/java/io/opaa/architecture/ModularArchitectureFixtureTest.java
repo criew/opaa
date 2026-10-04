@@ -199,6 +199,16 @@ class ModularArchitectureFixtureTest {
         .anySatisfy(violation -> assertThat(violation).contains("CapabilityService.scopesOf("));
   }
 
+  /** The answer path holds the secret port; the core and the library administration may. */
+  @Test
+  void theSecretPortHeldOutsideTheCoreIsReported() {
+    Scenario scenario = new Scenario("secretport");
+
+    assertThat(scenario.violations(ModularArchitecture::theSecretPortStaysWithTheCore))
+        .singleElement(STRING)
+        .contains("query.SourceAnswers", "SourceConnectionResolver");
+  }
+
   @Test
   void anUnassignedTopLevelPackageIsNamedWithWhereToAssignIt() {
     Scenario scenario = new Scenario("unassigned");

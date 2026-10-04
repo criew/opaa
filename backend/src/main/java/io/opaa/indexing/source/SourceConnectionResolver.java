@@ -1,9 +1,6 @@
 package io.opaa.indexing.source;
 
 import io.opaa.knowledge.KnowledgeLibrary;
-import java.util.Collection;
-import java.util.Set;
-import java.util.UUID;
 
 /**
  * The only way a connector reaches a library's target and secret (ADR-0041, Entscheidung 3): the
@@ -45,11 +42,6 @@ public interface SourceConnectionResolver {
    */
   default boolean isLocked(KnowledgeLibrary library) {
     return false;
-  }
-
-  /** The ids among {@code libraries} whose source is locked, for many libraries at once. */
-  default Set<UUID> lockedAmong(Collection<KnowledgeLibrary> libraries) {
-    return Set.of();
   }
 
   /**

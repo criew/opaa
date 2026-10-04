@@ -20,7 +20,7 @@ import {
   formatMetadataLine,
   metadataFilterMatchLabel,
 } from './citations'
-import type { SourceTypeKey } from '../../types/api'
+import type { SourceFreeze, SourceFreezeReason, SourceTypeKey } from '../../types/api'
 import type { OpenableDocument } from '../../hooks/useDocumentPreview'
 import { fontFamily } from '../../theme/tokens'
 
@@ -64,8 +64,8 @@ interface EvidenceDoc {
    *  gap-free. */
   rank?: number
   indexedAt?: string | null
-  /** The source was locked when the answer was given: its content is as of {@link indexedAt}. */
-  frozen?: boolean
+  /** Present when the source's library was not updated when the answer was given. */
+  freeze?: SourceFreeze | null
   sourceEntryUrl?: string | null
   /** #739/#747: the original's document id - openable via GET /documents/{id}/content for every
    *  sourceType (that endpoint proxies HTTP_DIRECTORY/RSS_FEED server-side since #747). Undefined
@@ -90,6 +90,25 @@ function formatAnsweredAt(answeredAt: Date): string {
   return `${answeredAt.toLocaleDateString('de-DE', { dateStyle: 'medium' })}, ${answeredAt.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}`
 }
 
+/** What happens to a source that is not updated, by the reason the backend reports. */
+const FREEZE_REASONS: Record<SourceFreezeReason, string> = {
+  LOCKED: 'die Quelle ist gesperrt und wird nicht mehr aktualisiert',
+  NOT_CONNECTED: 'die Verbindung zur Quelle ist getrennt, der Inhalt wird nicht aktualisiert',
+  ACCESS_REMOVED: 'der Zugang der Quelle wurde entfernt, der Inhalt wird nicht aktualisiert',
+}
+
+/**
+ * „Stand vom …“ for a source whose library was not updated when the answer was given (spec
+ * „Konnektor-Freigabe und Sperre“): the library's last successful run, what happens to the content
+ * and who is in charge - all three from the backend.
+ */
+function freezeNotice(freeze: SourceFreeze): string {
+  const date = freeze.asOf
+    ? new Date(freeze.asOf).toLocaleDateString('de-DE', { dateStyle: 'medium' })
+    : 'unbekannt'
+  return `Stand vom ${date} – ${FREEZE_REASONS[freeze.reason]} (zuständig: ${freeze.responsible})`
+}
+
 /**
  * Mockup 1i's Belegfenster (#592): the side panel with every source of one answer - searchable,
  * filterable to cited ones, cited documents first in citation-number order, then the checked but
@@ -97,17 +116,6 @@ function formatAnsweredAt(answeredAt: Date): string {
  * per-passage verbatim quotes and locations the mockup shows wait on the backend's chunk metadata
  * (#667); until then each document row carries what the API can already vouch for.
  */
-/**
- * „Stand vom …“ for a source whose library is locked (spec „Konnektor-Freigabe und Sperre“): the
- * date of its content, what happens to it and who is in charge.
- */
-function frozenNotice(indexedAt: string | null | undefined): string {
-  const date = indexedAt
-    ? new Date(indexedAt).toLocaleDateString('de-DE', { dateStyle: 'medium' })
-    : 'unbekannt'
-  return `Stand vom ${date} – die Quelle ist gesperrt und wird nicht mehr aktualisiert (zuständig: Systemverwaltung)`
-}
-
 export default function SourceEvidenceDrawer({
   open,
   onClose,
@@ -171,7 +179,7 @@ export default function SourceEvidenceDrawer({
       relevanceScore: doc.source?.relevanceScore,
       sourceIndex: doc.sourceIndex,
       indexedAt: doc.source?.indexedAt,
-      frozen: doc.source?.frozen === true,
+      freeze: doc.source?.freeze ?? null,
       sourceEntryUrl: doc.source?.sourceEntryUrl,
       documentId: doc.source?.documentId,
       sourceType: doc.source?.sourceType,
@@ -190,7 +198,7 @@ export default function SourceEvidenceDrawer({
       relevanceScore: source.relevanceScore,
       sourceIndex: citations.sourceIndexByReference.get(source) ?? Number.MAX_SAFE_INTEGER,
       indexedAt: source.indexedAt,
-      frozen: source.frozen === true,
+      freeze: source.freeze ?? null,
       sourceEntryUrl: source.sourceEntryUrl,
       documentId: source.documentId,
       sourceType: source.sourceType,
@@ -443,13 +451,13 @@ export default function SourceEvidenceDrawer({
                     mt: 0.25,
                   }}
                 >
-                  {doc.frozen && (
+                  {doc.freeze && (
                     <Typography
                       component="span"
                       data-testid="source-frozen"
                       sx={{ fontSize: 11.5, color: 'warning.main', fontWeight: 600 }}
                     >
-                      {frozenNotice(doc.indexedAt)}
+                      {freezeNotice(doc.freeze)}
                     </Typography>
                   )}
                   <Typography component="span" sx={{ fontSize: 11.5, color: 'text.secondary' }}>

@@ -33,7 +33,9 @@ public final class ChatSource {
   private List<ChatSourceLocation> chunkLocations;
   private List<ChatSourceMetadataEntry> metadata;
   private MetadataFilterMatch metadataFilterMatch;
-  private Boolean frozen;
+  private String freezeReason;
+  private String freezeResponsible;
+  private Instant freezeAsOf;
 
   public ChatSource() {}
 
@@ -97,18 +99,39 @@ public final class ChatSource {
     return this;
   }
 
-  /** Marks the source as not updated any more when the answer was given ("Stand vom"). */
-  public ChatSource frozen(Boolean frozen) {
-    this.frozen = frozen;
+  /**
+   * Marks the source as not updated when the answer was given ("Stand vom"): why, who can change
+   * that, and the library's newest successful run.
+   */
+  public ChatSource freeze(String reason, String responsible, Instant asOf) {
+    this.freezeReason = reason;
+    this.freezeResponsible = responsible;
+    this.freezeAsOf = asOf;
     return this;
   }
 
-  public Boolean getFrozen() {
-    return frozen;
+  public String getFreezeReason() {
+    return freezeReason;
   }
 
-  public void setFrozen(Boolean frozen) {
-    this.frozen = frozen;
+  public void setFreezeReason(String freezeReason) {
+    this.freezeReason = freezeReason;
+  }
+
+  public String getFreezeResponsible() {
+    return freezeResponsible;
+  }
+
+  public void setFreezeResponsible(String freezeResponsible) {
+    this.freezeResponsible = freezeResponsible;
+  }
+
+  public Instant getFreezeAsOf() {
+    return freezeAsOf;
+  }
+
+  public void setFreezeAsOf(Instant freezeAsOf) {
+    this.freezeAsOf = freezeAsOf;
   }
 
   public String getFileName() {

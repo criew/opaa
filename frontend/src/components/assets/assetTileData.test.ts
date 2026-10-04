@@ -24,7 +24,7 @@ describe('tileFromCatalogEntry', () => {
   // Spezifikation „Konnektor-Freigabe und Sperre“: die Bibliotheksliste trägt den Sperrhinweis.
   it('carries the lock of a library as a line of the tile', () => {
     expect(tileFromCatalogEntry(libraryEntry('Gesperrt – Inhalt wird nicht mehr …')).note).toBe(
-      'Gesperrt – Inhalt wird nicht mehr aktualisiert',
+      'Gesperrt – Inhalt wird nicht mehr aktualisiert (zuständig: Systemverwaltung)',
     )
     expect(tileFromCatalogEntry(libraryEntry(null)).note).toBeNull()
   })

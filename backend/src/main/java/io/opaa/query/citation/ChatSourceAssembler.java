@@ -8,8 +8,9 @@ import io.opaa.chat.ChatSourceLocation;
 import io.opaa.chat.ChatSourceMetadataEntry;
 import io.opaa.chat.SearchedLibraryRef;
 import io.opaa.format.chunk.ChunkMetadataKeys;
-import io.opaa.indexing.source.SourceConnectionResolver;
+import io.opaa.indexing.job.IndexingJobRepository;
 import io.opaa.indexing.source.SourceConnectorRegistry;
+import io.opaa.indexing.source.SourceStateLookup;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.metadata.CitationFieldValue;
@@ -60,7 +61,8 @@ public class ChatSourceAssembler {
   private final CitationMetadataReader citationMetadataReader;
   private final KnowledgeLibraryRepository knowledgeLibraryRepository;
   private final SourceConnectorRegistry connectors;
-  private final SourceConnectionResolver connectionResolver;
+  private final SourceStateLookup sourceStates;
+  private final IndexingJobRepository indexingJobRepository;
 
   public ChatSourceAssembler(
       DocumentRepository documentRepository,
@@ -68,9 +70,11 @@ public class ChatSourceAssembler {
       CitationMetadataReader citationMetadataReader,
       KnowledgeLibraryRepository knowledgeLibraryRepository,
       SourceConnectorRegistry connectors,
-      SourceConnectionResolver connectionResolver) {
+      SourceStateLookup sourceStates,
+      IndexingJobRepository indexingJobRepository) {
     this.connectors = connectors;
-    this.connectionResolver = connectionResolver;
+    this.sourceStates = sourceStates;
+    this.indexingJobRepository = indexingJobRepository;
     this.documentRepository = documentRepository;
     this.documentMetadataService = documentMetadataService;
     this.citationMetadataReader = citationMetadataReader;
@@ -106,8 +110,10 @@ public class ChatSourceAssembler {
   }
 
   /**
-   * Marks the sources whose library is locked: their content is as of {@code indexedAt} and is not
-   * updated any more, which the answer shows as "Stand vom" (spec "Konnektor-Freigabe und Sperre").
+   * Marks the sources whose library is not updated - locked, disconnected or without its profile -
+   * with the reason, who is in charge and the library's newest successful run, which the answer
+   * shows as "Stand vom" (spec "Konnektor-Freigabe und Sperre"). The run, not the document's own
+   * {@code indexedAt}: an unchanged document was still checked by every later run.
    */
   private void markFrozen(
       List<ChatSource> sources, Map<String, io.opaa.knowledge.Document> sourceDocumentsByDocId) {
@@ -121,13 +127,21 @@ public class ChatSourceAssembler {
     if (libraryByDocument.isEmpty()) {
       return;
     }
-    Set<UUID> locked =
-        connectionResolver.lockedAmong(
-            knowledgeLibraryRepository.findAllById(Set.copyOf(libraryByDocument.values())));
+    Set<UUID> libraryIds = Set.copyOf(libraryByDocument.values());
+    Map<UUID, SourceStateLookup.SourceState> frozen =
+        sourceStates.frozenAmong(knowledgeLibraryRepository.findAllById(libraryIds));
+    if (frozen.isEmpty()) {
+      return;
+    }
+    Map<UUID, Instant> lastRun = new HashMap<>();
+    indexingJobRepository
+        .findLastCompletedByLibraryIdIn(frozen.keySet())
+        .forEach(row -> lastRun.put(row.getLibraryId(), row.getLastCompletedAt()));
     for (ChatSource source : sources) {
       UUID library = libraryByDocument.get(source.getDocumentId());
-      if (library != null && locked.contains(library)) {
-        source.setFrozen(true);
+      SourceStateLookup.SourceState state = library == null ? null : frozen.get(library);
+      if (state != null) {
+        source.freeze(state.reason().name(), state.responsible(), lastRun.get(library));
       }
     }
   }

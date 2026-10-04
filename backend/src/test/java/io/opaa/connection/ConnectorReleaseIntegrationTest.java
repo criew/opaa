@@ -11,16 +11,25 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.jayway.jsonpath.JsonPath;
 import io.opaa.auth.DevAuthFilter;
+import io.opaa.chat.ChatSource;
+import io.opaa.indexing.job.IndexingJobRepository;
 import io.opaa.indexing.source.DocumentIndexingService;
+import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
+import io.opaa.knowledge.SourceType;
+import io.opaa.metadata.MetadataFilter;
 import io.opaa.organization.Organization;
+import io.opaa.query.citation.ChatSourceAssembler;
 import io.opaa.test.ConnectorReleases;
 import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.OwnLibraryFixtures;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.hamcrest.Matchers;
@@ -49,6 +58,9 @@ class ConnectorReleaseIntegrationTest {
   @Autowired private OwnLibraryFixtures libraryFixtures;
   @Autowired private DocumentIndexingService indexingService;
   @Autowired private KnowledgeLibraryRepository libraryRepository;
+  @Autowired private ChatSourceAssembler sourceAssembler;
+  @Autowired private DocumentRepository documentRepository;
+  @Autowired private IndexingJobRepository indexingJobRepository;
 
   private final List<UUID> profiles = new ArrayList<>();
   private final List<UUID> libraries = new ArrayList<>();
@@ -358,6 +370,83 @@ class ConnectorReleaseIntegrationTest {
         .isZero();
   }
 
+  /**
+   * The sources of an answer carry why their library is not updated, who is in charge and the
+   * library's newest successful run - locked, disconnected and without its profile.
+   */
+  @Test
+  void anAnswerNamesWhyASourceIsNotUpdatedWhoActsAndItsLastRun() throws Exception {
+    UUID locking = createProfile("Zugang Beleg " + UUID.randomUUID());
+    grantToAllAccounts("PROFILE:" + locking);
+    UUID locked = createLibrary("dev-user", locking);
+    run(locked, "COMPLETED");
+    UUID secret = createProfile("Zugang Geheimnis " + UUID.randomUUID(), "PERSONAL_SECRET");
+    grantToAllAccounts("PROFILE:" + secret);
+    UUID disconnected =
+        createLibrary("dev-user", secret, "\"sourceCredentials\": \"nutzer:geheim\",");
+    Instant changed = Instant.parse("2025-01-10T08:00:00Z");
+    UUID lockedDocument = document(locked, changed);
+    UUID disconnectedDocument = document(disconnected, changed);
+    Instant lastRun =
+        indexingJobRepository
+            .findLastCompletedByLibraryIdIn(Set.of(locked))
+            .getFirst()
+            .getLastCompletedAt();
+
+    assertThat(freezeOf(lockedDocument)).isNull();
+
+    lockProfile(locking, true);
+    mockMvc
+        .perform(as("dev-admin", post(PROFILES + "/" + secret + "/disconnect-all")))
+        .andExpect(status().isOk());
+    assertThat(freezeOf(lockedDocument))
+        .extracting(
+            ChatSource::getFreezeReason,
+            ChatSource::getFreezeResponsible,
+            ChatSource::getFreezeAsOf)
+        .containsExactly("LOCKED", "Systemverwaltung", lastRun);
+    assertThat(freezeOf(disconnectedDocument))
+        .extracting(ChatSource::getFreezeReason, ChatSource::getFreezeResponsible)
+        .containsExactly("NOT_CONNECTED", "Verwaltende der Bibliothek");
+
+    lockProfile(locking, false);
+    mockMvc
+        .perform(as("dev-admin", delete(PROFILES + "/" + locking)))
+        .andExpect(status().isNoContent());
+    profiles.remove(locking);
+    assertThat(freezeOf(lockedDocument))
+        .extracting(ChatSource::getFreezeReason, ChatSource::getFreezeResponsible)
+        .containsExactly("ACCESS_REMOVED", "Verwaltende der Bibliothek");
+  }
+
+  private UUID document(UUID library, Instant indexedAt) {
+    io.opaa.knowledge.Document document =
+        new io.opaa.knowledge.Document(
+            "beleg.md", "/beleg.md", "text/markdown", 1L, SourceType.of("PROFILE_PROBE"));
+    document.setLibraryId(library);
+    document.setOrganizationId(Organization.DEFAULT_ID);
+    document.setIndexedAt(indexedAt);
+    return documentRepository.save(document).getId();
+  }
+
+  /** The source row an answer citing {@code documentId} carries. */
+  private ChatSource freezeOf(UUID documentId) {
+    ChatSource source =
+        sourceAssembler
+            .assemble(
+                List.of(
+                    org.springframework.ai.document.Document.builder()
+                        .text("Beleg")
+                        .metadata(
+                            Map.of("file_name", "beleg.md", "document_id", documentId.toString()))
+                        .score(0.9)
+                        .build()),
+                List.of(),
+                MetadataFilter.NONE)
+            .getFirst();
+    return source.getFreezeReason() == null ? null : source;
+  }
+
   /** Deleting a profile withdraws its releases, so a later profile starts off. */
   @Test
   void deletingAProfileWithdrawsItsReleases() throws Exception {
@@ -420,6 +509,10 @@ class ConnectorReleaseIntegrationTest {
   }
 
   private UUID createProfile(String name) throws Exception {
+    return createProfile(name, "NONE");
+  }
+
+  private UUID createProfile(String name, String authMethod) throws Exception {
     String body =
         mockMvc
             .perform(
@@ -427,10 +520,10 @@ class ConnectorReleaseIntegrationTest {
                     .content(
                         """
                         {"name": "%s", "sourceType": "PROFILE_PROBE",
-                         "serverUrl": "https://probe.example.org", "authMethod": "NONE",
+                         "serverUrl": "https://probe.example.org", "authMethod": "%s",
                          "ownership": "LIBRARY"}
                         """
-                            .formatted(name)))
+                            .formatted(name, authMethod)))
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.locked").value(false))
             .andReturn()
@@ -478,9 +571,13 @@ class ConnectorReleaseIntegrationTest {
   }
 
   private UUID createLibrary(String user, UUID profile) throws Exception {
+    return createLibrary(user, profile, "");
+  }
+
+  private UUID createLibrary(String user, UUID profile, String extra) throws Exception {
     String body =
         mockMvc
-            .perform(as(user, post("/api/v1/libraries")).content(libraryJson(profile)))
+            .perform(as(user, post("/api/v1/libraries")).content(libraryJson(profile, extra)))
             .andExpect(status().isCreated())
             .andReturn()
             .getResponse()
@@ -524,9 +621,15 @@ class ConnectorReleaseIntegrationTest {
   }
 
   private static String libraryJson(UUID profile) {
+    return libraryJson(profile, "");
+  }
+
+  private static String libraryJson(UUID profile, String extra) {
     return "{\"name\": \"Bibliothek "
         + UUID.randomUUID()
-        + "\", \"sourceType\": \"PROFILE_PROBE\", \"connectionProfileId\": \""
+        + "\", \"sourceType\": \"PROFILE_PROBE\", "
+        + extra
+        + "\"connectionProfileId\": \""
         + profile
         + "\"}";
   }

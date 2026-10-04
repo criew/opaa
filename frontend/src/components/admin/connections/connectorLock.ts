@@ -3,8 +3,14 @@ import { confirmAction } from '../../../stores/confirmStore'
 /**
  * Die Rückfrage vor dem Sperren oder Entsperren einer Quellart oder eines Zugangs; `target` ist
  * der Gegenstand im Akkusativ („die Quellart „Nextcloud““, „den Zugang „Nextcloud intern““).
+ * `remainingLock` nennt beim Entsperren eine Sperre, die bestehen bleibt - dann verspricht die
+ * Rückfrage keinen Weiterlauf.
  */
-export function confirmLock(target: string, lock: boolean): Promise<boolean> {
+export function confirmLock(
+  target: string,
+  lock: boolean,
+  remainingLock?: string,
+): Promise<boolean> {
   return lock
     ? confirmAction({
         question: `${capitalize(target)} sperren?`,
@@ -15,8 +21,9 @@ export function confirmLock(target: string, lock: boolean): Promise<boolean> {
       })
     : confirmAction({
         question: `Sperre für ${target} aufheben?`,
-        consequence:
-          'Die Bibliotheken laufen ohne Neueinrichtung weiter, und neue sind wieder nach Freigabe möglich. Das Aufheben wird als Governance-Ereignis protokolliert.',
+        consequence: remainingLock
+          ? `${remainingLock} Das Aufheben wird als Governance-Ereignis protokolliert.`
+          : 'Die Bibliotheken laufen ohne Neueinrichtung weiter, und neue sind wieder nach Freigabe möglich. Das Aufheben wird als Governance-Ereignis protokolliert.',
         confirmLabel: 'Entsperren',
       })
 }

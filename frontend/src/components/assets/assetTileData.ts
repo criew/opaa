@@ -81,7 +81,7 @@ export function tileFromCatalogEntry(entry: CatalogEntryResponse): AssetTileData
     successionOpen: Boolean(entry.succession),
     // the short form of the notice; the library's source tab carries the whole of it
     note: entry.knowledgeLibrary?.sourceLockNotice
-      ? 'Gesperrt – Inhalt wird nicht mehr aktualisiert'
+      ? 'Gesperrt – Inhalt wird nicht mehr aktualisiert (zuständig: Systemverwaltung)'
       : null,
   }
 }
