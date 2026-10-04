@@ -29,7 +29,7 @@ seine Ports `SourceConnectionResolver` (`ProfileSourceConnectionResolver`) und `
   fest und beendet nur bei `DEACTIVATED`, je Person in eigener Transaktion (auch nach Commit). Eine
   getrennte Zeile bleibt, solange eine private Bibliothek daran hängt (Trigger).
 - **Die Verwaltung sieht verbundene Konten nur über `PersonNumbers`** („weniger als N“, auch bei 0,
-  Teilzahlen; je Anbieter nur „≥ N“, wenn jede Gruppe N hat); Kontoname verschlüsselt, nur Person.
+  für Teilzahlen; je Anbieter keine Zahl); Kontoname verschlüsselt, nur für die Person.
 - **Das Client-Secret ist schreibgeschützt;** Antworten und Audit sagen nur Ja/Nein.
 - **Ursprungsbindung:** Die Adresse einer zugeordneten Bibliothek liegt unter der Server-Adresse
   ihres Profils, sonst sperrt der Port. Eine neue Server-Adresse oder Registrierung verwirft alle

@@ -402,35 +402,24 @@ Begründung:
 
 ## Nachtrag vom 04.10.2026: Folgen in der Anbieterverwaltung (#2251)
 
-- **API:** `GET /api/v1/admin/oidc-providers/{id}/impact` nennt die Zahlen, wie die Folgenabschätzung
-  eines Zugangs (`getConnectionProfileImpact`). Deaktivieren und Löschen verlangen
-  `confirmConnections=true`, sonst `409 PROVIDER_CONNECTIONS_CONFIRMATION_REQUIRED` mit deutscher
-  Meldung: Deaktivieren lässt ruhen und löscht nichts; Löschen löscht die Geheimnisse sofort und
-  unumkehrbar und startet die Löschfrist. Das gilt auch für den Schalter der Zeile `LOCAL` über die
-  Anbieter-API.
-- **Bestätigung ohne Zahl:** Verlangt wird sie, sobald irgendein Zugang Personen zulässt, nicht erst
-  bei vorhandenen Verbindungen; sonst verriete schon ihr Ausbleiben, dass niemand verbunden ist
-  (0-Rundung).
-- **Regel gegen das Verrechnen** (`PersonNumbers#ofGroups`): Die Anbieter teilen dieselben
-  Verbindungen, die die Zugänge zählen. Genaue oder „weniger als N“-Zahlen je Anbieter ließen sich
-  gegen die genaue Zahl eines Zugangs verrechnen (Zugang 8, Anbieter A und B je „weniger als 5“ ⇒
-  beide genau 4). Deshalb nennt ein Anbieter nur „mindestens N“, und nur, wenn **jede** Gruppe mit
-  Personen mindestens N hat: jeder Anbieter mit Konten und die übrigen Personen (lokale
-  Systemverwalter, deaktivierte Konten) als eigene, nie genannte Gruppe. Sonst nennt kein Anbieter
-  eine Zahl. Eine Regel, die nur „genug für den Rest“ verlangt, ist undicht: Bei drei Anbietern ohne
-  Angabe und Summe 10 war „genau 1“ ausgeschlossen, bei sechs Anbietern und Summe 25 die Null
-  ableitbar. Mit der strengeren Regel kann ein Anbieter ohne Zahl jede Zahl unter N haben, weil er
-  selbst die Bedingung brechen kann, was die Summen auch zeigen.
-- **Belegt** über alle Verteilungen in `PersonNumbersTest`, je Beobachtung und Anbieter: Unter N
-  ist entweder kein Wert oder jeder möglich. Die Fälle sind zwei Anbieter und ein Zugang mit
-  unbekannter Restgruppe sowie drei Anbieter und zwei Zugänge und sechs Anbieter und ein Zugang,
-  jeweils mit leerer und bekannter Restgruppe.
-- **Annahmen und Restlücken:** Die Verwaltung kennt höchstens die Zahlen der Zugänge und der
-  Anbieter und weiß, welche Gruppen Konten haben. Beobachtet sie über die Zeit, kann ein neues
-  Konto die Anzeige aller Anbieter kippen und damit einen früheren Stand verraten, etwa „vorher
-  hatte jeder Anbieter mindestens N“. Wie bei den Zugängen bleibt das eine dokumentierte Restlücke.
-  Praktisch nennt der Dialog selten eine Zahl, solange die Systemverwaltung selbst weniger als N
-  Verbindungen hält.
+- **Wirkung statt Zahlen:** `GET /api/v1/admin/oidc-providers/{id}/impact` nennt vor dem
+  Deaktivieren oder Löschen nur, **ob** eine Bestätigung nötig ist, und **was** die Handlung
+  bewirkt (`CONNECTIONS_REST` bzw. `CONNECTIONS_END`). Eine Zahl je Anbieter nennt sie nicht.
+  Zahlen je Anbieter und je Zugang zählen dieselben Verbindungen und lassen sich deshalb
+  gegeneinander verrechnen. Selbst ein bloßes „mindestens N“ je Anbieter hebt die 0-Rundung der
+  Zugänge auf: Ein Anbieter mit „mindestens 5“ und zwei Zugänge mit je „weniger als 5“ zeigen, dass
+  jeder Zugang mindestens eine Verbindung hat. Damit weicht der Nachtrag von Entscheidung 4 („nennt
+  die Zahl der ruhenden Verbindungen“) bewusst ab. Der Port `auth.ProviderConnectionsImpact` sagt nur
+  noch, ob ein Zugang Personen zulässt.
+- **Bestätigung:** Deaktivieren und Löschen verlangen `confirmConnections=true`, sobald irgendein
+  Zugang Personen zulässt, unabhängig davon, ob jemand verbunden ist. Sonst antworten sie mit
+  `409 PROVIDER_CONNECTIONS_CONFIRMATION_REQUIRED` und einer neutralen deutschen Meldung über
+  „etwaige verbundene Konten“. Deaktivieren lässt ruhen und löscht nichts. Löschen löscht die
+  Geheimnisse sofort und unumkehrbar und startet die Löschfrist. Das gilt auch für den Schalter der
+  Zeile `LOCAL` über die Anbieter-API.
+- **Belegt** in `ProviderShutdownIntegrationTest` mit zwei Anbietern und zwei Zugängen:
+  Zugangsliste, Folgenabschätzung beider Zugänge und beider Anbieter lauten vor jeder Verbindung,
+  nach einer und nach zwei gleich.
 - **Offen:** Der Schalter der lokalen Kontenverwaltung unter Administration → Benutzer
   (`updateLocalAuthSettings`) fragt nicht nach; dort ruhen die Verbindungen nur.
 

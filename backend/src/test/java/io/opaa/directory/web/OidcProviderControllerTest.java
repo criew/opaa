@@ -18,8 +18,6 @@ import io.opaa.auth.OidcClaimMapping;
 import io.opaa.auth.OidcProvider;
 import io.opaa.auth.OidcProviderConnectionTester;
 import io.opaa.auth.OidcProviderRegistry;
-import io.opaa.auth.ProviderConnectionsImpact.Impact;
-import io.opaa.auth.ProviderConnectionsImpact.MaskedCount;
 import io.opaa.auth.User;
 import io.opaa.auth.UserService;
 import io.opaa.common.ConflictException;
@@ -335,22 +333,22 @@ class OidcProviderControllerTest {
   }
 
   /**
-   * ADR-0041, Entscheidung 4: the impact names only masked numbers, and the confirmation of what
-   * disabling or deleting does to persons' connections is handed through as a query parameter.
+   * ADR-0041, Entscheidung 4: the impact names the effects and no number, and the confirmation of
+   * what disabling or deleting does to persons' connections is handed through as a query parameter.
    */
   @Test
-  void theImpactIsMaskedAndTheConfirmationOfTheConnectionsIsHandedThrough() throws Exception {
+  void theImpactNamesTheEffectsAndTheConfirmationOfTheConnectionsIsHandedThrough()
+      throws Exception {
     UUID id = UUID.randomUUID();
-    when(providerService.connectionsImpact(id))
-        .thenReturn(new Impact(true, new MaskedCount(null, null, 5), null));
+    when(providerService.connectionsConfirmationRequired(id)).thenReturn(true);
 
     mockMvc
         .perform(get("/api/v1/admin/oidc-providers/" + id + "/impact").with(asAdmin()))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.confirmationRequired").value(true))
-        .andExpect(jsonPath("$.connections.atLeast").value(5))
-        .andExpect(jsonPath("$.connections.count").doesNotExist())
-        .andExpect(jsonPath("$.privateLibraries").doesNotExist());
+        .andExpect(jsonPath("$.disableEffect").value("CONNECTIONS_REST"))
+        .andExpect(jsonPath("$.deleteEffect").value("CONNECTIONS_END"))
+        .andExpect(jsonPath("$.connections").doesNotExist());
 
     OidcProvider disabled = provider("Partner", "https://idp.example");
     disabled.disable();

@@ -140,7 +140,7 @@ public class OidcProviderController {
   @GetMapping("/{providerId}/impact")
   public OidcProviderImpactResponse getProviderImpact(@PathVariable UUID providerId) {
     return OidcProviderResponseMapper.toImpactResponse(
-        providerService.connectionsImpact(providerId));
+        providerService.connectionsConfirmationRequired(providerId));
   }
 
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")

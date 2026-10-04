@@ -181,8 +181,8 @@ export const identityProviderHandlers = [
     return HttpResponse.json(
       mockOidcProviderImpacts[providerId] ?? {
         confirmationRequired: false,
-        connections: null,
-        privateLibraries: null,
+        disableEffect: 'CONNECTIONS_REST',
+        deleteEffect: 'CONNECTIONS_END',
       },
     )
   }),

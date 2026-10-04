@@ -38,6 +38,13 @@ function desktopMatchMedia(query: string): MediaQueryList {
   } as unknown as MediaQueryList
 }
 
+/** Ein Zugang lässt Personen zu: Die Rückfrage nennt die Wirkung, nie eine Zahl. */
+const PERSONS_ADMITTED = {
+  confirmationRequired: true,
+  disableEffect: 'CONNECTIONS_REST',
+  deleteEffect: 'CONNECTIONS_END',
+} as const
+
 const findProviderTable = () => screen.findByRole('table', { name: 'Identitätsanbieter' })
 
 /** Die Anbieterzeilen in ihrer Reihenfolge - der Tabellenkörper, ohne die Kopfzeile. */
@@ -584,13 +591,9 @@ describe('OidcProviderManagementPage', () => {
     )
   })
 
-  /** ADR-0041, Entscheidung 4: Deaktivieren lässt ruhen - umkehrbar, mit den Zahlen wie geliefert. */
+  /** ADR-0041, Entscheidung 4: Deaktivieren lässt ruhen - umkehrbar, und ohne Zahl je Anbieter. */
   it('names what disabling does to connected accounts and sends the confirmation', async () => {
-    mockOidcProviderImpacts['oidc-provider-partner'] = {
-      confirmationRequired: true,
-      connections: { atLeast: 5 },
-      privateLibraries: null,
-    }
+    mockOidcProviderImpacts['oidc-provider-partner'] = PERSONS_ADMITTED
     const sent = recordParams('/disable', 'POST')
     signInAs('SYSTEM_ADMIN')
     const user = userEvent.setup()
@@ -599,10 +602,10 @@ describe('OidcProviderManagementPage', () => {
     await clickRowAction(user, 'Partnerportal', 'Deaktivieren')
     const frage = await screen.findByRole('dialog', { name: /deaktivieren\?/ })
     const konten = await within(frage).findByRole('region', { name: 'Verbundene Konten' })
+    expect(konten).toHaveTextContent(/Etwaige verbundene Konten/)
     expect(konten).toHaveTextContent(/ruhen: Es wird nichts gelöscht/)
     expect(konten).toHaveTextContent(/ohne neues Verbinden weiter/)
-    expect(konten).toHaveTextContent('Verbundene Konten:mindestens 5')
-    expect(konten).toHaveTextContent('Private Bibliotheken:keine Angabe')
+    expect(konten.textContent).not.toMatch(/\d/)
     await confirmShutdown(user, /deaktivieren\?/, 'Deaktivieren')
 
     expect(sent.map((params) => params.get('confirmConnections'))).toEqual(['true'])
@@ -612,11 +615,7 @@ describe('OidcProviderManagementPage', () => {
   })
 
   it('names that deleting deletes the access data irreversibly and starts the deletion period', async () => {
-    mockOidcProviderImpacts['oidc-provider-partner'] = {
-      confirmationRequired: true,
-      connections: null,
-      privateLibraries: null,
-    }
+    mockOidcProviderImpacts['oidc-provider-partner'] = PERSONS_ADMITTED
     const sent = recordParams('/oidc-provider-partner', 'DELETE')
     signInAs('SYSTEM_ADMIN')
     const user = userEvent.setup()
@@ -625,11 +624,10 @@ describe('OidcProviderManagementPage', () => {
     await clickRowAction(user, 'Partnerportal', 'Löschen')
     const frage = await screen.findByRole('dialog', { name: /löschen\?/ })
     const konten = await within(frage).findByRole('region', { name: 'Verbundene Konten' })
-    expect(konten).toHaveTextContent(/sofort gelöscht – das lässt sich nicht rückgängig machen/)
+    expect(konten).toHaveTextContent(/etwaiger verbundener Konten/)
+    expect(konten).toHaveTextContent(/sofort\s+gelöscht – das lässt sich nicht rückgängig machen/)
     expect(konten).toHaveTextContent(/Löschfrist/)
-    // ohne Zahl bleibt es neutral: „keine Angabe“ ist nicht „keine“
-    expect(konten).toHaveTextContent('Verbundene Konten:keine Angabe')
-    expect(konten).toHaveTextContent(/heißt nicht „keine“/)
+    expect(konten.textContent).not.toMatch(/\d/)
     await confirmShutdown(user, /löschen\?/, 'Löschen')
 
     expect(sent.map((params) => params.get('confirmConnections'))).toEqual(['true'])
@@ -649,8 +647,8 @@ describe('OidcProviderManagementPage', () => {
     expect(sent.map((params) => params.get('confirmConnections'))).toEqual([null])
   })
 
-  /** A provider that has to go off goes off, even when the numbers cannot be loaded. */
-  it('still disables when the impact cannot be loaded, but does not delete', async () => {
+  /** Neither action hangs on the impact: unknown, it names the effect as a precaution. */
+  it('names the effect and confirms it when the impact cannot be loaded', async () => {
     server.use(
       http.get('/api/v1/admin/oidc-providers/:providerId/impact', () =>
         HttpResponse.json({ error: 'Dienst nicht erreichbar' }, { status: 500 }),
@@ -661,18 +659,7 @@ describe('OidcProviderManagementPage', () => {
     const user = userEvent.setup()
     renderWithProviders(<OidcProviderManagementPage />, { withRouter: true })
 
-    await clickRowAction(user, 'Partnerportal', 'Löschen')
-    const loeschfrage = await screen.findByRole('dialog', { name: /löschen\?/ })
-    expect(await within(loeschfrage).findByRole('alert')).toHaveTextContent(
-      /Löschen ist erst möglich, wenn die Folgen geladen sind/,
-    )
-    expect(within(loeschfrage).getByRole('button', { name: 'Löschen' })).toBeDisabled()
-    await user.click(within(loeschfrage).getByRole('button', { name: 'Abbrechen' }))
-    await waitForDialogClosed()
-
     await clickRowAction(user, 'Partnerportal', 'Deaktivieren')
-    const frage = await screen.findByRole('dialog', { name: /deaktivieren\?/ })
-    expect(await within(frage).findByRole('alert')).toHaveTextContent(/Deaktivieren bleibt möglich/)
     const text = await confirmShutdown(user, /deaktivieren\?/, 'Deaktivieren')
 
     expect(text).toMatch(/ruhen: Es wird nichts gelöscht/)

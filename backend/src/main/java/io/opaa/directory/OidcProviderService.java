@@ -25,8 +25,6 @@ import io.opaa.auth.OidcProviderRegistry;
 import io.opaa.auth.OidcProviderRepository;
 import io.opaa.auth.OidcProvidersChangedEvent;
 import io.opaa.auth.ProviderConnectionsImpact;
-import io.opaa.auth.ProviderConnectionsImpact.Impact;
-import io.opaa.auth.ProviderConnectionsImpact.MaskedCount;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.common.ConflictException;
@@ -159,11 +157,14 @@ public class OidcProviderService implements LocalAccountsSwitch {
     return repository.findById(id).orElseThrow(() -> notFound(id));
   }
 
-  /** What switching the provider off or deleting it does to persons' connections, masked. */
+  /**
+   * Whether switching the provider off or deleting it needs {@code confirmConnections}: wherever a
+   * profile admits persons, the same for every provider and every number of connected accounts.
+   */
   @Transactional(readOnly = true)
-  public Impact connectionsImpact(UUID id) {
+  public boolean connectionsConfirmationRequired(UUID id) {
     repository.findById(id).orElseThrow(() -> notFound(id));
-    return connectionsImpact.of(id);
+    return connectionsImpact.personsAdmitted();
   }
 
   @Transactional
@@ -641,41 +642,20 @@ public class OidcProviderService implements LocalAccountsSwitch {
 
   private void requireConnectionsConfirmed(
       OidcProvider provider, boolean confirmed, boolean deletion) {
-    if (confirmed) {
-      return;
-    }
-    Impact impact = connectionsImpact.of(provider.getId());
-    if (!impact.confirmationRequired()) {
+    if (confirmed || !connectionsImpact.personsAdmitted()) {
       return;
     }
     String effect =
         deletion
-            ? "Wird der Anbieter gelöscht, werden die Zugangsdaten der verbundenen Konten seiner"
-                + " Personen sofort und unumkehrbar gelöscht, und für ihre privaten Bibliotheken"
-                + " beginnt die Löschfrist."
-            : "Wird der Anbieter deaktiviert, ruhen die verbundenen Konten seiner Personen: Es"
+            ? "Wird der Anbieter gelöscht, werden die Zugangsdaten etwaiger verbundener Konten"
+                + " seiner Personen sofort und unumkehrbar gelöscht, und für ihre privaten"
+                + " Bibliotheken beginnt die Löschfrist."
+            : "Wird der Anbieter deaktiviert, ruhen etwaige verbundene Konten seiner Personen: Es"
                 + " wird nichts gelöscht, und nach dem Aktivieren geht es ohne neues Verbinden"
                 + " weiter.";
     throw new ConflictException(
-        effect
-            + " Betroffen: "
-            + described(impact.connections(), "verbundene Konten")
-            + " und "
-            + described(impact.privateLibraries(), "private Bibliotheken")
-            + ". Bestätigen Sie das ausdrücklich (confirmConnections).",
+        effect + " Bestätigen Sie das ausdrücklich (confirmConnections).",
         PROVIDER_CONNECTIONS_CONFIRMATION_REQUIRED);
-  }
-
-  private static String described(MaskedCount count, String noun) {
-    if (count == null) {
-      return "etwaige " + noun;
-    }
-    if (count.exact() != null) {
-      return count.exact() + " " + noun;
-    }
-    return count.fewerThan() != null
-        ? "weniger als " + count.fewerThan() + " " + noun
-        : "mindestens " + count.atLeast() + " " + noun;
   }
 
   /**

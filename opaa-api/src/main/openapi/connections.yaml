@@ -1061,20 +1061,13 @@ components:
         group size on, below it - zero included - only "fewer than" (fewerThan); a part is exact
         only where the total is and neither it nor its complement lies below that size. Every answer of the
         administration counts the same way, so no difference of two answers points at a person.
-        A number per group of persons (per sign-in provider) is only ever "at least" (atLeast),
-        and only while every group reaches that size.
-        Exactly one of the three is set.
+        Exactly one of the two is set.
       properties:
         count:
           type: integer
           format: int64
           nullable: true
         fewerThan:
-          type: integer
-          format: int32
-          nullable: true
-          example: 5
-        atLeast:
           type: integer
           format: int32
           nullable: true

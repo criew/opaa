@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.jayway.jsonpath.JsonPath;
+import io.opaa.auth.AuthProperties;
 import io.opaa.auth.DevAuthFilter;
 import io.opaa.auth.OidcProviderRegistry;
 import io.opaa.directory.OidcProviderService;
@@ -17,6 +18,7 @@ import io.opaa.test.ConnectorReleases;
 import io.opaa.test.OpaaIntegrationTest;
 import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -32,108 +34,101 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
  * Switching a sign-in provider off or deleting it against the Liquibase schema (ADR-0041,
  * Entscheidung 4): without the confirmation both are refused with 409 while a profile admits
  * persons; confirmed, switching off lets the connections of its persons rest and deletes nothing,
- * deleting ends them, deletes their secrets and starts the deletion period.
+ * deleting ends them, deletes their secrets and starts the deletion period. No answer of the
+ * administration, alone or together, tells 0 connected persons from 1.
  */
 @OpaaIntegrationTest
 class ProviderShutdownIntegrationTest {
 
   private static final String PROVIDERS = "/api/v1/admin/oidc-providers";
+  private static final String PROFILES = "/api/v1/admin/connection-profiles";
   private static final String SERVER = "https://provider-shutdown.example.org";
 
   @Autowired private MockMvc mockMvc;
   @Autowired private JdbcTemplate jdbc;
   @Autowired private OidcProviderRegistry registry;
+  @Autowired private AuthProperties authProperties;
 
+  private final List<UUID> profiles = new ArrayList<>();
+  private final List<UUID> providers = new ArrayList<>();
+  private final List<UUID> persons = new ArrayList<>();
+  private final List<String> personIssuers = new ArrayList<>();
   private UUID profile;
-  private UUID person;
-  private String personIssuer;
   private UUID provider;
   private String issuer;
 
   @BeforeEach
-  void aConnectedPersonAndAProvider() throws Exception {
-    mockMvc.perform(as("dev-user", get("/api/v1/spaces"))).andExpect(status().isOk());
-    person =
-        jdbc.queryForObject(
-            "SELECT id FROM users WHERE email = ?", UUID.class, "dev-user@opaa.local");
-    personIssuer =
-        jdbc.queryForObject("SELECT issuer FROM users WHERE id = ?", String.class, person);
-    jdbc.update("UPDATE users SET last_login_at = now() WHERE id = ?", person);
-    String body =
-        mockMvc
-            .perform(
-                as("dev-admin", post("/api/v1/admin/connection-profiles"))
-                    .content(
-                        """
-                        {"name": "Anbieter %s", "sourceType": "PERSON_PROBE",
-                         "serverUrl": "%s", "authMethod": "PERSONAL_SECRET", "ownership": "PERSON"}
-                        """
-                            .formatted(UUID.randomUUID(), SERVER)))
-            .andExpect(status().isCreated())
-            .andReturn()
-            .getResponse()
-            .getContentAsString(StandardCharsets.UTF_8);
-    profile = UUID.fromString(JsonPath.read(body, "$.id"));
-    ConnectorReleases.releaseToAllAccounts(jdbc, "PROFILE:" + profile);
-    mockMvc
-        .perform(
-            as("dev-user", put("/api/v1/me/connected-accounts/" + profile))
-                .content(
-                    "{\"username\": \"avogt\", \"secret\": \"%s\"}"
-                        .formatted(PersonProbeSourceConnector.ACCEPTED_PASSWORD)))
-        .andExpect(status().isOk());
-
+  void aProfileForPersonsAndAProvider() throws Exception {
+    profile = profileForPersons();
     issuer = "https://idp.example/provider-shutdown-it/" + UUID.randomUUID();
-    String created =
-        mockMvc
-            .perform(
-                as("dev-admin", post(PROVIDERS))
-                    .content(
-                        """
-                        {"displayName": "Abschaltung", "issuerUri": "%s",
-                         "clientId": "opaa-frontend", "jwkSetUri": "http://127.0.0.1:9/certs"}
-                        """
-                            .formatted(issuer)))
-            .andExpect(status().isCreated())
-            .andReturn()
-            .getResponse()
-            .getContentAsString(StandardCharsets.UTF_8);
-    provider = UUID.fromString(JsonPath.read(created, "$.id"));
+    provider = provider(issuer);
   }
 
   @AfterEach
   void removeOwnRows() {
-    jdbc.update(
-        "UPDATE users SET issuer = ?, last_login_at = now() WHERE id = ?", personIssuer, person);
-    jdbc.update("DELETE FROM connected_accounts WHERE profile_id = ?", profile);
-    jdbc.update("DELETE FROM connection_log WHERE profile_id = ?", profile);
-    jdbc.update("DELETE FROM connection_person_states WHERE user_id = ?", person);
-    ConnectorReleases.withdraw(jdbc, "PROFILE:" + profile);
-    jdbc.update(
-        "DELETE FROM audit_log WHERE object_id IN (?, ?)", profile.toString(), provider.toString());
-    jdbc.update("DELETE FROM connection_profiles WHERE id = ?", profile);
-    jdbc.update("DELETE FROM oidc_providers WHERE id = ?", provider);
+    for (int i = 0; i < persons.size(); i++) {
+      jdbc.update(
+          "UPDATE users SET issuer = ?, last_login_at = now() WHERE id = ?",
+          personIssuers.get(i),
+          persons.get(i));
+      jdbc.update("DELETE FROM connection_person_states WHERE user_id = ?", persons.get(i));
+    }
+    for (UUID each : profiles) {
+      jdbc.update("DELETE FROM connected_accounts WHERE profile_id = ?", each);
+      jdbc.update("DELETE FROM connection_log WHERE profile_id = ?", each);
+      ConnectorReleases.withdraw(jdbc, "PROFILE:" + each);
+      jdbc.update("DELETE FROM audit_log WHERE object_id = ?", each.toString());
+      jdbc.update("DELETE FROM connection_profiles WHERE id = ?", each);
+    }
+    for (UUID each : providers) {
+      jdbc.update("DELETE FROM audit_log WHERE object_id = ?", each.toString());
+      jdbc.update("DELETE FROM oidc_providers WHERE id = ?", each);
+    }
     registry.refresh();
   }
 
   @Test
-  void onlyTheSystemAdministrationSeesTheImpactAndItNamesNoSinglePerson() throws Exception {
+  void onlyTheSystemAdministrationSeesTheImpactAndItNamesTheEffectNoNumber() throws Exception {
     mockMvc
         .perform(as("dev-user", get(PROVIDERS + "/" + provider + "/impact")))
         .andExpect(status().isForbidden());
-    personSignsInThroughTheProvider();
 
     mockMvc
         .perform(as("dev-admin", get(PROVIDERS + "/" + provider + "/impact")))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.confirmationRequired").value(true))
-        .andExpect(jsonPath("$.connections").doesNotExist())
-        .andExpect(jsonPath("$.privateLibraries").doesNotExist());
+        .andExpect(jsonPath("$.disableEffect").value("CONNECTIONS_REST"))
+        .andExpect(jsonPath("$.deleteEffect").value("CONNECTIONS_END"))
+        .andExpect(jsonPath("$.connections").doesNotExist());
+  }
+
+  /**
+   * Two providers, two profiles: the profile list, the impact of both profiles and the impact of
+   * both providers read the same before anyone connects, after one person of the first provider
+   * connects and after a second person connects on the other profile.
+   */
+  @Test
+  void noAnswerOfTheAdministrationTellsNoConnectedPersonFromOne() throws Exception {
+    UUID otherProfile = profileForPersons();
+    UUID partner = provider("https://idp.example/provider-shutdown-it/" + UUID.randomUUID());
+    List<UUID> both = List.of(profile, otherProfile);
+    List<UUID> bothProviders = List.of(provider, partner);
+
+    String nobody = observation(both, bothProviders);
+    connect("dev-user", profile);
+    personSignsInThroughTheProvider();
+    String one = observation(both, bothProviders);
+    connect("dev-admin", otherProfile);
+    String two = observation(both, bothProviders);
+
+    assertThat(one).isEqualTo(nobody);
+    assertThat(two).isEqualTo(nobody);
   }
 
   @Test
   void switchedOffOnlyAfterTheConfirmationAndThenTheConnectionsRestWithNothingDeleted()
       throws Exception {
+    connect("dev-user", profile);
     personSignsInThroughTheProvider();
 
     mockMvc
@@ -163,6 +158,7 @@ class ProviderShutdownIntegrationTest {
   @Test
   void deletedOnlyAfterTheConfirmationAndThenTheSecretsAreGoneAndTheDeletionPeriodRuns()
       throws Exception {
+    connect("dev-user", profile);
     personSignsInThroughTheProvider();
 
     mockMvc
@@ -186,9 +182,99 @@ class ProviderShutdownIntegrationTest {
     assertThat(personState("deactivated_since")).isNotNull();
   }
 
+  private UUID profileForPersons() throws Exception {
+    String body =
+        mockMvc
+            .perform(
+                as("dev-admin", post(PROFILES))
+                    .content(
+                        """
+                        {"name": "Anbieter %s", "sourceType": "PERSON_PROBE",
+                         "serverUrl": "%s", "authMethod": "PERSONAL_SECRET", "ownership": "PERSON"}
+                        """
+                            .formatted(UUID.randomUUID(), SERVER)))
+            .andExpect(status().isCreated())
+            .andReturn()
+            .getResponse()
+            .getContentAsString(StandardCharsets.UTF_8);
+    UUID created = UUID.fromString(JsonPath.read(body, "$.id"));
+    profiles.add(created);
+    ConnectorReleases.releaseToAllAccounts(jdbc, "PROFILE:" + created);
+    return created;
+  }
+
+  private UUID provider(String issuerUri) throws Exception {
+    String body =
+        mockMvc
+            .perform(
+                as("dev-admin", post(PROVIDERS))
+                    .content(
+                        """
+                        {"displayName": "Abschaltung", "issuerUri": "%s",
+                         "clientId": "opaa-frontend", "jwkSetUri": "http://127.0.0.1:9/certs"}
+                        """
+                            .formatted(issuerUri)))
+            .andExpect(status().isCreated())
+            .andReturn()
+            .getResponse()
+            .getContentAsString(StandardCharsets.UTF_8);
+    UUID created = UUID.fromString(JsonPath.read(body, "$.id"));
+    providers.add(created);
+    return created;
+  }
+
+  private void connect(String user, UUID onProfile) throws Exception {
+    mockMvc.perform(as(user, get("/api/v1/spaces"))).andExpect(status().isOk());
+    UUID id =
+        jdbc.queryForObject(
+            "SELECT id FROM users WHERE subject = ? AND issuer = ?",
+            UUID.class,
+            user,
+            authProperties.dev().issuer());
+    if (!persons.contains(id)) {
+      persons.add(id);
+      personIssuers.add(
+          jdbc.queryForObject("SELECT issuer FROM users WHERE id = ?", String.class, id));
+      jdbc.update("UPDATE users SET last_login_at = now() WHERE id = ?", id);
+    }
+    mockMvc
+        .perform(
+            as(user, put("/api/v1/me/connected-accounts/" + onProfile))
+                .content(
+                    "{\"username\": \"avogt\", \"secret\": \"%s\"}"
+                        .formatted(PersonProbeSourceConnector.ACCEPTED_PASSWORD)))
+        .andExpect(status().isOk());
+  }
+
+  /** Everything the administration is told about the profiles and providers, as one string. */
+  private String observation(List<UUID> onProfiles, List<UUID> ofProviders) throws Exception {
+    String list = read(get(PROFILES));
+    StringBuilder seen = new StringBuilder();
+    for (UUID each : onProfiles) {
+      String entry = "$[?(@.id == '" + each + "')]";
+      seen.append(JsonPath.read(list, entry + ".connectedAccountCount").toString())
+          .append(JsonPath.read(list, entry + ".expiredConnectionCount").toString())
+          .append(JsonPath.read(list, entry + ".connectionCount").toString())
+          .append(read(get(PROFILES + "/" + each + "/impact")));
+    }
+    for (UUID each : ofProviders) {
+      seen.append(read(get(PROVIDERS + "/" + each + "/impact")));
+    }
+    return seen.toString();
+  }
+
+  private String read(MockHttpServletRequestBuilder request) throws Exception {
+    return mockMvc
+        .perform(as("dev-admin", request))
+        .andExpect(status().isOk())
+        .andReturn()
+        .getResponse()
+        .getContentAsString(StandardCharsets.UTF_8);
+  }
+
   /** The person's account now belongs to the provider under test. */
   private void personSignsInThroughTheProvider() {
-    jdbc.update("UPDATE users SET issuer = ? WHERE id = ?", issuer, person);
+    jdbc.update("UPDATE users SET issuer = ? WHERE id = ?", issuer, persons.getFirst());
   }
 
   private boolean providerEnabled() {
@@ -212,7 +298,7 @@ class ProviderShutdownIntegrationTest {
         jdbc.queryForList(
             "SELECT " + column + " FROM connection_person_states WHERE user_id = ?",
             Timestamp.class,
-            person);
+            persons.getFirst());
     return rows.isEmpty() ? null : rows.getFirst();
   }
 

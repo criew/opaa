@@ -5,12 +5,10 @@ import io.opaa.api.dto.OidcProviderImpactResponse;
 import io.opaa.api.dto.OidcProviderRegistryState;
 import io.opaa.api.dto.OidcProviderRequest;
 import io.opaa.api.dto.OidcProviderResponse;
-import io.opaa.api.dto.PersonCount;
+import io.opaa.api.dto.ProviderConnectionsEffect;
 import io.opaa.auth.OidcClaimMapping;
 import io.opaa.auth.OidcProvider;
 import io.opaa.auth.OidcProviderRegistry;
-import io.opaa.auth.ProviderConnectionsImpact.Impact;
-import io.opaa.auth.ProviderConnectionsImpact.MaskedCount;
 import io.opaa.directory.OidcProviderDraft;
 import io.opaa.directory.sync.connector.DirectoryConnectorView;
 
@@ -85,19 +83,11 @@ final class OidcProviderResponseMapper {
         domainMapping);
   }
 
-  static OidcProviderImpactResponse toImpactResponse(Impact impact) {
+  /** The effects are fixed; only whether a confirmation is needed varies, never per account. */
+  static OidcProviderImpactResponse toImpactResponse(boolean confirmationRequired) {
     return new OidcProviderImpactResponse()
-        .confirmationRequired(impact.confirmationRequired())
-        .connections(toPersonCount(impact.connections()))
-        .privateLibraries(toPersonCount(impact.privateLibraries()));
-  }
-
-  private static PersonCount toPersonCount(MaskedCount count) {
-    return count == null
-        ? null
-        : new PersonCount()
-            .count(count.exact())
-            .fewerThan(count.fewerThan())
-            .atLeast(count.atLeast());
+        .confirmationRequired(confirmationRequired)
+        .disableEffect(ProviderConnectionsEffect.CONNECTIONS_REST)
+        .deleteEffect(ProviderConnectionsEffect.CONNECTIONS_END);
   }
 }

@@ -194,7 +194,7 @@ paths:
         Its accounts count as deactivated afterwards: the secrets of their connected accounts are
         deleted at once and irreversibly, and the deletion period of their private libraries
         begins (ADR-0041, Entscheidung 4). Wherever a connection profile admits persons this
-        needs confirmConnections, whatever the numbers of getOidcProviderImpact say.
+        needs confirmConnections, whether or not anyone is connected.
       parameters:
         - name: acknowledgeLastProvider
           in: query
@@ -232,9 +232,10 @@ paths:
       tags: [identity-provider]
       summary: What disabling or deleting the provider does to persons' connections (system admin only)
       description: >
-        Disabled, the connections of its persons rest; deleted, their secrets are deleted at once
-        and irreversibly and the deletion period of their private libraries begins. Counted are
-        the accounts that are not deactivated already - for the LOCAL row the regular ones.
+        Names the effect, never a number per provider: numbers per provider and per connection
+        profile could be offset against each other. Disabled, any connections of its persons rest;
+        deleted, their secrets are deleted at once and irreversibly and the deletion period of
+        their private libraries begins.
       parameters:
         - name: providerId
           in: path
@@ -244,7 +245,7 @@ paths:
             format: uuid
       responses:
         "200":
-          description: The connected accounts and private libraries concerned
+          description: Whether a confirmation is needed and what each action does
           content:
             application/json:
               schema:
@@ -641,27 +642,26 @@ components:
 
     OidcProviderImpactResponse:
       type: object
-      required: [confirmationRequired]
+      required: [confirmationRequired, disableEffect, deleteEffect]
       description: >
-        Numbers per provider split the totals the connection profiles tell, so they are never
-        exact: atLeast only while every provider with accounts and the persons outside any
-        provider each reach the minimum group size, else absent for every provider. Whatever the
-        profiles tell, a provider without a number may then hold any number below that size, zero
-        included. Left open: watching the answers over time - a new account can tip every
-        provider's answer and so tell an earlier state.
+        The same for every provider and for any number of connected accounts, so it tells nothing
+        about a single person.
       properties:
         confirmationRequired:
           type: boolean
           description: >
             Whether disabling and deleting need confirmConnections: true wherever a connection
-            profile admits persons or a number is told, so it tells nothing about a single person.
-        connections:
-          description: The connected accounts of its persons.
-          nullable: true
-          allOf:
-            - $ref: "#/components/schemas/PersonCount"
-        privateLibraries:
-          description: The private libraries of its persons.
-          nullable: true
-          allOf:
-            - $ref: "#/components/schemas/PersonCount"
+            profile admits persons, whether or not anyone is connected.
+        disableEffect:
+          $ref: "#/components/schemas/ProviderConnectionsEffect"
+        deleteEffect:
+          $ref: "#/components/schemas/ProviderConnectionsEffect"
+
+    ProviderConnectionsEffect:
+      type: string
+      description: >
+        What an action does to any connected accounts of the provider's persons: CONNECTIONS_REST
+        (nothing is deleted; once enabled again they go on without connecting anew),
+        CONNECTIONS_END (their secrets are deleted at once and irreversibly, the deletion period
+        of their private libraries begins).
+      enum: [CONNECTIONS_REST, CONNECTIONS_END]
