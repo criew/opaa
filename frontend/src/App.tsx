@@ -19,6 +19,7 @@ import RegisterPage from './pages/RegisterPage'
 import VerifyEmailPage from './pages/VerifyEmailPage'
 import HandoverPage from './pages/HandoverPage'
 import AuthCallbackPage from './pages/AuthCallbackPage'
+import ConnectionCallbackPage from './pages/ConnectionCallbackPage'
 import SpacePage from './pages/SpacePage'
 import SpacesOverviewPage from './pages/SpacesOverviewPage'
 import SpaceCreatePage from './pages/SpaceCreatePage'
@@ -37,6 +38,7 @@ import CatalogPage from './pages/CatalogPage'
 import CatalogNewPage from './pages/CatalogNewPage'
 import { catalogRoute } from './components/assets/assetTypeRegistry'
 import {
+  CONNECTION_CALLBACK_ROUTE,
   CONNECTION_LOG_ROUTE,
   FORGOT_PASSWORD_ROUTE,
   HANDOVER_ROUTE,
@@ -168,6 +170,9 @@ export default function App() {
                 no OPAA session at that moment and must not get one before the redemption. */}
             <Route path={HANDOVER_ROUTE} element={<HandoverPage />} />
             <Route path="/auth/callback" element={<AuthCallbackPage />} />
+            {/* ADR-0025: the provider of an OAuth consent returns here. Outside the protected
+                routes, so code and state never ride along into a sign-in redirect. */}
+            <Route path={CONNECTION_CALLBACK_ROUTE} element={<ConnectionCallbackPage />} />
             <Route
               element={
                 <ProtectedRoute>

@@ -18,8 +18,12 @@ import ConnectionProfileRequestAction from '../components/library/ConnectionProf
 import {
   OWN_ADDRESS,
   effectiveConnection,
+  privateProfileOf,
+  profileOfChoice,
   selectableConnections,
 } from '../components/library/connectionChoice'
+import { PRIVATE_LIBRARY_NOTE } from '../components/library/privateLibrary'
+import { useOwnAccountProfileIds } from '../hooks/useOwnAccountProfileIds'
 import {
   connectionFields,
   ownAddressAllowed,
@@ -73,9 +77,11 @@ const STEP_SOURCE = 'Quelle'
 const STEP_NAME = 'Name & Beschreibung'
 const STEP_SHARING = 'Freigaben'
 
-function stepsFor(acceptsUploads: boolean): string[] {
-  return acceptsUploads
-    ? [STEP_ART, STEP_NAME, STEP_SHARING]
+/** A private library has no sharing step: only its owner ever reads it. */
+function stepsFor(acceptsUploads: boolean, privateLibrary: boolean): string[] {
+  if (acceptsUploads) return [STEP_ART, STEP_NAME, STEP_SHARING]
+  return privateLibrary
+    ? [STEP_ART, STEP_SOURCE, STEP_NAME]
     : [STEP_ART, STEP_SOURCE, STEP_NAME, STEP_SHARING]
 }
 
@@ -212,8 +218,6 @@ export default function LibraryCreatePage() {
       : chosenType
 
   const uploadLibrary = acceptsUploads(sourceType)
-  const steps = stepsFor(uploadLibrary)
-  const currentStep = steps[Math.min(activeStep, steps.length - 1)]
   const configuration = uploadLibrary
     ? null
     : (sourceRegistration(sourceType)?.configuration ?? null)
@@ -225,15 +229,23 @@ export default function LibraryCreatePage() {
   const admitsProfiles =
     configuration !== null && descriptor !== undefined && descriptor.profileSupport !== 'FORBIDDEN'
   const profileOptions = useConnectionProfileOptions(admitsProfiles ? sourceType : null)
+  // Freiwilligkeit: the private way exists only on a profile the person already connected an
+  // account on; without one nothing hints at it.
+  const ownAccountProfileIds = useOwnAccountProfileIds(admitsProfiles) ?? []
   const connectionChoice =
     admitsProfiles && descriptor
       ? effectiveConnection(
           chosenConnections[sourceType] ?? null,
-          selectableConnections(descriptor, profileOptions.options, true),
+          selectableConnections(descriptor, profileOptions.options, true, ownAccountProfileIds),
         )
       : OWN_ADDRESS
-  const chosenProfile = profileOptions.options.find((option) => option.id === connectionChoice)
+  const privateLibrary = privateProfileOf(connectionChoice) !== null
+  const chosenProfile = profileOptions.options.find(
+    (option) => option.id === profileOfChoice(connectionChoice),
+  )
   const connection = chosenProfile ? sourceConnectionOf(chosenProfile) : undefined
+  const steps = stepsFor(uploadLibrary, privateLibrary)
+  const currentStep = steps[Math.min(activeStep, steps.length - 1)]
   const showConnectionSelect =
     admitsProfiles &&
     descriptor !== undefined &&
@@ -254,14 +266,16 @@ export default function LibraryCreatePage() {
     idPrefix: 'library-create',
     credentialsStored: false,
     connection,
+    privateLibrary,
   }
 
   /** A new choice of way; address and fixed fields of the previous one do not carry over. */
   function chooseConnection(next: string) {
     if (next === connectionChoice) return
     setChosenConnections((prev) => ({ ...prev, [sourceType]: next }))
-    const nextOption = profileOptions.options.find((option) => option.id === next)
-    if (configuration) {
+    const nextOption = profileOptions.options.find((option) => option.id === profileOfChoice(next))
+    // private and shared on the same profile share its address and fixed fields
+    if (configuration && profileOfChoice(next) !== profileOfChoice(connectionChoice)) {
       setSourceValues((prev) => ({
         ...prev,
         [valuesKey]: switchConnection(
@@ -310,7 +324,7 @@ export default function LibraryCreatePage() {
     Object.entries(sourceValues).some(([key, entered]) =>
       Boolean(configurationForValues(key)?.isDirty(entered)),
     ) ||
-    pendingGrants.length > 0
+    (!privateLibrary && pendingGrants.length > 0)
 
   const handleCancel = async () => {
     if (isDirty) {
@@ -366,7 +380,7 @@ export default function LibraryCreatePage() {
   }
 
   const handleCreate = async () => {
-    if (ownerType === 'GROUP' && !selectedGroup) {
+    if (!privateLibrary && ownerType === 'GROUP' && !selectedGroup) {
       setError('Bitte eine Gruppe auswählen')
       return
     }
@@ -390,18 +404,23 @@ export default function LibraryCreatePage() {
         source.sourceSettings || scheduled?.sourceSettings
           ? { ...source.sourceSettings, ...scheduled?.sourceSettings }
           : undefined
+      // A private library belongs to the caller alone and carries no grant but hers.
+      const owner = privateLibrary ? 'USER' : ownerType
       const libraryId = await createNewLibrary({
         name: name.trim(),
         description: description.trim() || undefined,
-        ownerType,
-        ownerId: ownerType === 'GROUP' ? (selectedGroup?.id ?? undefined) : undefined,
+        ownerType: owner,
+        ownerId: owner === 'GROUP' ? (selectedGroup?.id ?? undefined) : undefined,
         sourceType,
         ...(connection ? { connectionProfileId: connection.profileId } : {}),
+        ...(privateLibrary ? { privateLibrary: true } : {}),
         ...source,
         sourceSettings,
         ...(scheduled ? { schedule: scheduled.schedule } : {}),
       })
-      await applyPendingGrantsAfterCreation('KNOWLEDGE_LIBRARY', libraryId, pendingGrants)
+      if (!privateLibrary) {
+        await applyPendingGrantsAfterCreation('KNOWLEDGE_LIBRARY', libraryId, pendingGrants)
+      }
       if (!uploadLibrary && startFirstRun) {
         // Awaited so the run is already in the indexing store when the detail page mounts and its
         // progress strip picks it up. triggerIndexing never throws - a failure surfaces through
@@ -504,6 +523,7 @@ export default function LibraryCreatePage() {
                 onChange={chooseConnection}
                 offerOwnAddress
                 offerRequest
+                ownAccountProfileIds={ownAccountProfileIds}
                 idPrefix="library-create"
               />
             )}
@@ -571,6 +591,12 @@ export default function LibraryCreatePage() {
                 Dokumente laden Sie nach dem Anlegen auf der Detailseite hoch — einzeln oder
                 gebündelt.
               </Typography>
+            )}
+            {privateLibrary && (
+              <Alert severity="info" data-testid="library-create-private-note">
+                {PRIVATE_LIBRARY_NOTE} Sie läuft über Ihr verbundenes Konto auf dem Zugang „
+                {connection?.name}“ und lässt sich weder freigeben noch übertragen.
+              </Alert>
             )}
             <AssetNameFields
               idPrefix="library-create"

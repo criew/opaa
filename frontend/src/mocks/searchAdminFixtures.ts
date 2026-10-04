@@ -283,6 +283,14 @@ export const mockSearchStatus: SearchStatusResponse = {
       },
     },
   ],
+  // below the minimum group size of owners: only "fewer than", no sums
+  privateLibraries: {
+    libraryCount: null,
+    libraryCountFewerThan: 5,
+    documentCount: null,
+    failedDocumentCount: null,
+    chunkCount: null,
+  },
 }
 
 export const mockSearchPermissionProfiles: SearchPermissionProfileResponse[] = [

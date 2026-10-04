@@ -20,6 +20,8 @@ export interface AssetTileData {
   description?: string | null
   /** Released to all accounts: the tile carries the globe beside its type badge. */
   isPublic?: boolean
+  /** A private library: the tile carries „Privat“ beside its type badge. */
+  privateLibrary?: boolean
   /** The caller's own favorite mark; absent where the source does not know it. */
   favorite?: boolean
   /** The figures line, e.g. "12 Dokumente · in 2 Spaces". */
@@ -94,8 +96,14 @@ export function sourceBlockNote(block: SourceBlock): string {
   return `${short} (zuständig: ${block.responsible})`
 }
 
-/** The tile of a catalog entry - the fullest a tile gets. */
-export function tileFromCatalogEntry(entry: CatalogEntryResponse): AssetTileData {
+/**
+ * The tile of a catalog entry - the fullest a tile gets. The catalog does not say which library
+ * is private; `privateLibraryIds` names them from the caller's library list.
+ */
+export function tileFromCatalogEntry(
+  entry: CatalogEntryResponse,
+  privateLibraryIds: ReadonlySet<string> = new Set(),
+): AssetTileData {
   const status = ownStatus(entry)
   const definition = assetTypeDefinition(entry.assetType)
   return {
@@ -104,6 +112,9 @@ export function tileFromCatalogEntry(entry: CatalogEntryResponse): AssetTileData
     name: entry.name,
     description: entry.description ?? null,
     isPublic: entry.visibility === 'PUBLIC',
+    ...(entry.assetType === 'KNOWLEDGE_LIBRARY' && privateLibraryIds.has(entry.assetId)
+      ? { privateLibrary: true }
+      : {}),
     favorite: entry.favorite,
     figures: definition
       ? `${definition.extentLabel(entry.itemCount)} · ${spreadLabel(entry.spaceCount)}`

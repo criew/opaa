@@ -473,6 +473,10 @@ opaa:
     # Without a sign-in for this many days a person's connections rest (ADR-0041); 30-365, a value
     # outside fails the start - see ConnectionLifecycleProperties.
     inactivity-threshold-days: ${OPAA_CONNECTION_INACTIVITY_THRESHOLD_DAYS:90}
+    expired-connections:
+      # From how many expired connected accounts on a profile the administration's overview warns;
+      # at least 1, shown only where the masked numbers reach it - see PersonNumbers.
+      warning-threshold: ${OPAA_CONNECTION_EXPIRED_WARNING_THRESHOLD:10}
   external-access:
     # #1731: longest admissible Befristung of a library's release for Fremdzugaenge, and how many
     # days before it ends the responsible person is reminded by mail. 0 reminder days switches the

@@ -3,6 +3,7 @@ package io.opaa.connection.profile;
 import io.opaa.api.types.ConnectionOwnership;
 import io.opaa.knowledge.SourceType;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
@@ -41,6 +42,23 @@ public interface ConnectionProfileRepository extends JpaRepository<ConnectionPro
       value = "SELECT version FROM connection_profiles WHERE id = :id FOR SHARE",
       nativeQuery = true)
   Long lockedVersion(@Param("id") UUID id);
+
+  /**
+   * The profiles holding a client secret whose expiry date is {@code lastDay} or earlier and not
+   * warned of yet, locked so that a parallel run waits and then skips them.
+   */
+  @Query(
+      value =
+          "SELECT id FROM connection_profiles WHERE client_secret_ciphertext IS NOT NULL"
+              + " AND client_secret_expires_on <= :lastDay"
+              + " AND client_secret_expiry_warned_at IS NULL FOR UPDATE",
+      nativeQuery = true)
+  List<UUID> lockSecretsExpiringUnwarned(@Param("lastDay") LocalDate lastDay);
+
+  /** Marks the expiry of the client secret of {@code ids} as warned of, without a new version. */
+  @Modifying
+  @Query("update ConnectionProfile p set p.clientSecretExpiryWarnedAt = :at where p.id in :ids")
+  int markSecretExpiryWarned(@Param("ids") Collection<UUID> ids, @Param("at") Instant at);
 
   /** Sets or ({@code at} {@code null}) lifts the rejection of the profile's own sign-in. */
   @Modifying

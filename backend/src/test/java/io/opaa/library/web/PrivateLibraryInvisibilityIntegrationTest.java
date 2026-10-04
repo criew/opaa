@@ -198,6 +198,7 @@ class PrivateLibraryInvisibilityIntegrationTest {
             "listConnectionProfiles",
             "getConnectionProfile",
             "getConnectionProfileImpact",
+            "getConnectionRedirect",
             "listConnectorTypeStates",
             "getConnectorProfileRequirement",
             "getDiagnosticContextRetention",

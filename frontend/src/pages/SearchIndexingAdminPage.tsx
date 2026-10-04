@@ -39,6 +39,7 @@ import DocumentChunkSection, {
   type DocumentChunkSectionHandle,
 } from '../components/searchadmin/DocumentChunkSection'
 import LibraryStatusTable from '../components/searchadmin/LibraryStatusTable'
+import PrivateLibrariesSummary from '../components/searchadmin/PrivateLibrariesSummary'
 import { isUuid, plural } from '../components/searchadmin/format'
 
 import type {
@@ -656,6 +657,7 @@ function IndexStatusSection() {
           onStartContextPrefixRerun={(libraryId) => void startContextPrefixRerun(libraryId)}
           onPauseContextPrefixRerun={pauseContextPrefixRerun}
         />
+        {status?.privateLibraries && <PrivateLibrariesSummary summary={status.privateLibraries} />}
       </Box>
     </>
   )

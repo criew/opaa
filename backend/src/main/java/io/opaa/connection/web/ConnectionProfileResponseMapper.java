@@ -112,6 +112,7 @@ public final class ConnectionProfileResponseMapper {
         .connectionCount(connectionCount)
         .connectedAccountCount(toCount(accounts.total()))
         .expiredConnectionCount(accounts.expired() == null ? null : toCount(accounts.expired()))
+        .expiredConnectionWarning(accounts.expiredWarning())
         .locked(profile.isLocked())
         .lockedAt(profile.getLockedAt())
         .createdAt(profile.getCreatedAt())

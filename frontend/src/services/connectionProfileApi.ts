@@ -10,6 +10,7 @@ import type {
   ConnectionProfileResponse,
   ConnectionProfileSignInTestResponse,
   ConnectionProfileUpdateRequest,
+  ConnectionRedirectResponse,
   ConnectorProfileRequirementRequest,
   ConnectorProfileRequirementResponse,
   ConnectorTypeStateResponse,
@@ -126,6 +127,16 @@ export async function disconnectAllConnections(
  * Signs in once with the profile's own registration (client credentials, service account key);
  * success lifts a rejection of the provider, a rejection sets it.
  */
+/** The redirect URI the server names to every OAuth provider; `null` without a public address. */
+export async function getConnectionRedirectUri(): Promise<string | null> {
+  try {
+    const { data } = await client.get<ConnectionRedirectResponse>(`${ADMIN}/oauth-redirect`)
+    return data.redirectUri ?? null
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
 export async function testConnectionProfileSignIn(
   profileId: string,
 ): Promise<ConnectionProfileSignInTestResponse> {

@@ -53,6 +53,7 @@ export interface LibrarySourceSectionProps {
     connectionProfile?: ConnectionProfileRef | null
     connectionProfileRemoved?: boolean
     sourceBlock?: SourceBlock | null
+    privateLibrary?: boolean
   }
   canEditSource: boolean
 }
@@ -77,10 +78,9 @@ export default function LibrarySourceSection({
     </Button>
   )
   const block = library.sourceBlock ?? null
-  const ownAccount = useRunsOnOwnAccount(
-    libraryId,
-    canEditSource && block !== null && liftedByOwnAccount(block.reason),
-  )
+  const liftedByOwner = canEditSource && block !== null && liftedByOwnAccount(block.reason)
+  const runsOnOwnAccount = useRunsOnOwnAccount(libraryId, liftedByOwner && !library.privateLibrary)
+  const ownAccount = liftedByOwner && (Boolean(library.privateLibrary) || runsOnOwnAccount)
   const accountAction = (
     <Button color="inherit" size="small" component={RouterLink} to={CONNECTED_ACCOUNTS_ROUTE}>
       {block?.reason === 'EXPIRED' ? 'Konto neu verbinden' : 'Konto verbinden'}
@@ -171,6 +171,7 @@ export default function LibrarySourceSection({
                 library={library}
                 connectionProfile={library.connectionProfile}
                 connectionProfileRemoved={library.connectionProfileRemoved}
+                privateLibrary={Boolean(library.privateLibrary)}
                 onEditSource={() => setEditSourceOpen(true)}
                 dialogOpen={connectOpen}
                 onDialogOpenChange={setConnectOpen}

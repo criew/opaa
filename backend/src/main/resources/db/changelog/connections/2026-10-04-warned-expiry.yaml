@@ -1,0 +1,17 @@
+databaseChangeLog:
+  - changeSet:
+      id: connections-2026-10-04-warned-expiry
+      author: opaa
+      comment: "When the owner of an OAuth grant was warned of the end the provider named; cleared when that end changes, so each end is warned of once."
+      changes:
+        - sql:
+            sql: |
+              ALTER TABLE connection_tokens ADD COLUMN expiry_warned_at timestamp with time zone;
+  - changeSet:
+      id: connections-2026-10-04-warned-expiry--profile-secret
+      author: opaa
+      comment: "When the system administration was warned of the client secret's expiry date; cleared when the date changes, so each date is warned of once."
+      changes:
+        - sql:
+            sql: |
+              ALTER TABLE connection_profiles ADD COLUMN client_secret_expiry_warned_at timestamp with time zone;

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -10,6 +10,7 @@ import MoreHorizIcon from '@mui/icons-material/MoreHoriz'
 import WorkspacesOutlinedIcon from '@mui/icons-material/WorkspacesOutlined'
 import type { CatalogEntryResponse } from '../types/api'
 import { CATALOG_QUERY_MAX_LENGTH, useCatalogStore } from '../stores/catalogStore'
+import { useLibraryStore } from '../stores/libraryStore'
 import { useMyCapabilities } from '../hooks/useMyCapabilities'
 import {
   ASSET_TYPES,
@@ -79,11 +80,19 @@ function MoreActions({ entry }: { entry: CatalogEntryResponse }) {
   )
 }
 
-function CatalogCard({ entry, to }: { entry: CatalogEntryResponse; to: string }) {
+function CatalogCard({
+  entry,
+  to,
+  privateLibraryIds,
+}: {
+  entry: CatalogEntryResponse
+  to: string
+  privateLibraryIds: ReadonlySet<string>
+}) {
   const setFavorite = useCatalogStore((s) => s.setFavorite)
   return (
     <AssetTile
-      tile={tileFromCatalogEntry(entry)}
+      tile={tileFromCatalogEntry(entry, privateLibraryIds)}
       mode={{ kind: 'link', to }}
       onFavoriteChange={(favorite) => setFavorite(entry, favorite)}
       actions={<MoreActions entry={entry} />}
@@ -115,6 +124,16 @@ export default function CatalogPage() {
   const loadMore = useCatalogStore((s) => s.loadMore)
   const { isMissing } = useMyCapabilities()
   const canCreate = creatableAssetTypes(isMissing).length > 0
+  // The catalog entry does not say which library is private; the caller's library list does.
+  const libraries = useLibraryStore((s) => s.libraries)
+  const loadLibraries = useLibraryStore((s) => s.loadLibraries)
+  useEffect(() => {
+    void loadLibraries()
+  }, [loadLibraries])
+  const privateLibraryIds = useMemo(
+    () => new Set(libraries.filter((l) => l.privateLibrary).map((l) => l.id)),
+    [libraries],
+  )
 
   useEffect(() => {
     const timer = window.setTimeout(() => setAppliedQuery(query), SEARCH_DELAY_MS)
@@ -177,7 +196,11 @@ export default function CatalogPage() {
       renderCard={(entry) => {
         const definition = assetTypeDefinition(entry.assetType)
         return definition ? (
-          <CatalogCard entry={entry} to={definition.detailRoute(entry.assetId)} />
+          <CatalogCard
+            entry={entry}
+            to={definition.detailRoute(entry.assetId)}
+            privateLibraryIds={privateLibraryIds}
+          />
         ) : null
       }}
       emptyState={
