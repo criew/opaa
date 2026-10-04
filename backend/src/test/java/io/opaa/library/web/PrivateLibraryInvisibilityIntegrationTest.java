@@ -244,7 +244,9 @@ class PrivateLibraryInvisibilityIntegrationTest {
             "getMailSettings",
             "listMailTemplates",
             "getMailTemplate",
-            "listUsersForSelection")) {
+            "listUsersForSelection",
+            "listConnectionProfileRequests",
+            "listMyConnectionProfileRequests")) {
       probes.put(read, same());
     }
     probes.put("getHealth", volatileAnswer());
