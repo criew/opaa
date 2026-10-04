@@ -277,7 +277,6 @@ class PrivateLibraryInvisibilityIntegrationTest {
             "listAvailablePrompts",
             "fetchSearchHit",
             "listSearchableLibraries",
-            "getMetadataFilterOptions",
             "listSourceTypes",
             "listSpaces",
             "getChatAutoCleanupPeriods",
@@ -299,6 +298,7 @@ class PrivateLibraryInvisibilityIntegrationTest {
       probes.put(read, same());
     }
     probes.put("getHealth", volatileAnswer());
+    probes.put("getMetadataFilterOptions", same().withQuery("spaceId", "{space}"));
     probes.put("getSearchStatus", same());
     probes.put(
         "getMetadataChangeImpact",
@@ -415,17 +415,21 @@ class PrivateLibraryInvisibilityIntegrationTest {
     probes.put(
         "reindexPipelineBatch",
         same("{\"pipelineId\": \"tika-fallback\", \"belowVersion\": 1, \"batchSize\": 10}"));
+    // both change the default only the profile sets, each to a value of its own, while her
+    // private library runs
     probes.put(
         "previewConnectionProfileChange",
         same(
             "{\"name\": \"Zugang Personen {profile}\", \"serverUrl\": \"https://anders.example.org\","
-                + " \"authMethod\": \"PERSONAL_SECRET\", \"ownership\": \"PERSON\"}"));
+                + " \"authMethod\": \"PERSONAL_SECRET\", \"ownership\": \"BOTH\","
+                + " \"connectorSettings\": {\"realm\": \"drei\"}}"));
     probes.put(
         "updateConnectionProfile",
         same(
             "{\"name\": \"Zugang Personen {profile}\", \"serverUrl\": \""
                 + SERVER
-                + "\", \"authMethod\": \"PERSONAL_SECRET\", \"ownership\": \"PERSON\"}"));
+                + "\", \"authMethod\": \"PERSONAL_SECRET\", \"ownership\": \"BOTH\","
+                + " \"connectorSettings\": {\"realm\": \"zwei\"}, \"confirmDiscard\": true}"));
     probes.put("disconnectAllConnectionProfileConnections", same());
     probes.put(
         "previewPermissionTransfer",
@@ -460,6 +464,8 @@ class PrivateLibraryInvisibilityIntegrationTest {
   private UUID devUser;
   private UUID admin;
   private UUID profile;
+  private String profileDefaults;
+  private boolean devUserOwns;
   private UUID space;
   private UUID chat;
   private UUID provider;
@@ -498,6 +504,8 @@ class PrivateLibraryInvisibilityIntegrationTest {
     for (UUID library : libraries) {
       jdbc.update("DELETE FROM audit_log WHERE object_id = ?", library.toString());
       jdbc.update("DELETE FROM asset_grant_history WHERE asset_id = ?", library);
+      jdbc.update("DELETE FROM asset_ownership_history WHERE asset_id = ?", library);
+      jdbc.update("DELETE FROM notifications WHERE object_id = ?", library);
     }
     libraryFixtures.removeLibraries(libraries.toArray(UUID[]::new));
     libraries.clear();
@@ -517,7 +525,7 @@ class PrivateLibraryInvisibilityIntegrationTest {
       jdbc.update("DELETE FROM users WHERE id = ?", extra);
     }
     extraUsers.clear();
-    if (owner != null) {
+    if (owner != null && !owner.equals(devUser)) {
       jdbc.update("DELETE FROM audit_log WHERE object_id = ?", owner.toString());
       jdbc.update("DELETE FROM asset_ownership_history WHERE owner_user_id = ?", owner);
       jdbc.update("DELETE FROM notifications WHERE recipient_user_id = ?", owner);
@@ -604,6 +612,114 @@ class PrivateLibraryInvisibilityIntegrationTest {
     }
     if (observer == Observer.PERSON_CONTEXT) {
       theDiagnosticProtocolNamesNothingOfHers(own);
+    }
+  }
+
+  /**
+   * The ways the owner herself takes to her private library, with the probes' own requests, and
+   * which of its markers each must answer: {@code null} for any of them.
+   */
+  private static final Map<String, Integer> OWNER_WAYS = ownerWays();
+
+  private static Map<String, Integer> ownerWays() {
+    Map<String, Integer> ways = new LinkedHashMap<>();
+    ways.put("searchKnowledge", Ids.CONTENT);
+    ways.put("fetchSearchHit", Ids.CONTENT);
+    ways.put("getMetadataFilterOptions", Ids.VALUE);
+    ways.put("listLibraryDocuments", Ids.FILE_NAME);
+    ways.put("getDocumentMetadata", Ids.VALUE);
+    ways.put("getLibrary", Ids.NAME);
+    ways.put("listLibraries", Ids.NAME);
+    ways.put("listSearchableLibraries", Ids.NAME);
+    ways.put("getLibraryFolder", Ids.FOLDER);
+    ways.put("listLibraryIndexingRuns", Ids.FILE_NAME);
+    ways.put("listSpaceAssetAssociations", Ids.NAME);
+    ways.put("getChat", Ids.CONTENT);
+    return ways;
+  }
+
+  /**
+   * The positive control of the observers' phases: with the same requests, the owner finds her
+   * private library on every way they are refused, and the administration's summaries name its
+   * figures exactly once enough persons keep a private library.
+   */
+  @Test
+  void theOwnerFindsHerPrivateLibraryOnTheProbedWays() throws Exception {
+    devUserOwns = true;
+    aSpaceWithTheObserverAndAPersonWithAConnectedAccount(Observer.SPACE_MEMBER);
+    Ids own = herPrivateLibraries();
+    Spare spare = aSpareSpace(Observer.SPACE_MEMBER, null);
+    Map<String, Operation> operations = new LinkedHashMap<>();
+    for (Operation operation : relevantOperations()) {
+      operations.put(operation.id(), operation);
+    }
+
+    List<String> misses = new ArrayList<>();
+    for (Map.Entry<String, Integer> way : OWNER_WAYS.entrySet()) {
+      Operation operation = operations.get(way.getKey());
+      Answer answer = call(operation, PROBES.get(way.getKey()), own, Observer.SPACE_MEMBER, spare);
+      String marker = own.names().get(way.getValue());
+      if (answer.status() >= 300 || !answer.raw().contains(marker)) {
+        misses.add(
+            way.getKey()
+                + " answers "
+                + answer.status()
+                + " without "
+                + marker
+                + ": "
+                + abbreviated(answer.raw()));
+      }
+    }
+    assertThat(misses).as("ways on which the owner misses her private library").isEmpty();
+
+    enoughOwnersForExactFigures();
+    for (String summary :
+        List.of("/api/v1/admin/search/status", "/api/v1/admin/indexing/pipeline-versions")) {
+      String body = body(as("dev-admin", get(summary)));
+      assertThat(JsonPath.<Object>read(body, "$.privateLibraries.libraryCount"))
+          .as(summary)
+          .isNotNull();
+      assertThat(JsonPath.<Object>read(body, "$.privateLibraries.libraryCountFewerThan"))
+          .as(summary)
+          .isNull();
+    }
+  }
+
+  /** As many persons keep a private library on the profile as the minimum group size asks. */
+  private void enoughOwnersForExactFigures() {
+    for (int index = 1; index < groupSize.minimumGroupSize(); index++) {
+      UUID person = UUID.randomUUID();
+      jdbc.update(
+          "INSERT INTO users (id, subject, issuer, email, display_name, organization_id,"
+              + " last_login_at) VALUES (?, ?, 'opaa-dev', ?, 'Kollegin', ?, now())",
+          person,
+          "kollegin-" + person,
+          "kollegin-" + person + "@example.com",
+          Organization.DEFAULT_ID);
+      extraUsers.add(person);
+      CurrentUser caller =
+          CurrentUser.of(person, Organization.DEFAULT_ID, SystemRole.USER, "Kollegin");
+      accounts.connect(caller, profile, "kollegin" + index, PASSWORD);
+      UUID library = createPrivate("Ablage " + UUID.randomUUID(), caller);
+      Map<String, Object> metadata = new LinkedHashMap<>();
+      UUID document = UUID.randomUUID();
+      jdbc.update(
+          "INSERT INTO documents (id, file_name, file_path, content_type, file_size, chunk_count,"
+              + " indexed_at, checksum, status, source_type, library_id, organization_id,"
+              + " created_at) VALUES (?, 'notiz.pdf', 'notiz.pdf', 'application/pdf', 1, 1, now(),"
+              + " ?, 'INDEXED', 'PERSON_PROBE', ?, ?, now())",
+          document,
+          "checksum-" + document,
+          library,
+          Organization.DEFAULT_ID);
+      metadata.put(VectorChunkStore.DOCUMENT_ID_METADATA_KEY, document.toString());
+      metadata.put(VectorChunkStore.LIBRARY_ID_METADATA_KEY, library.toString());
+      metadata.put("organization_id", Organization.DEFAULT_ID.toString());
+      metadata.put(
+          ChunkFormatMetadata.PIPELINE_ID_METADATA_KEY, ChunkFormatMetadata.LEGACY_PIPELINE_ID);
+      metadata.put(ChunkFormatMetadata.PIPELINE_VERSION_METADATA_KEY, 0);
+      chunks.addChunks(
+          List.of(new org.springframework.ai.document.Document("Notiz " + index, metadata)));
     }
   }
 
@@ -720,22 +836,28 @@ class PrivateLibraryInvisibilityIntegrationTest {
   private void aSpaceWithTheObserverAndAPersonWithAConnectedAccount(Observer observer)
       throws Exception {
     jdbc.update("UPDATE users SET system_role = ? WHERE id = ?", observer.devUserRole, devUser);
-    owner = UUID.randomUUID();
-    jdbc.update(
-        "INSERT INTO users (id, subject, issuer, email, display_name, organization_id,"
-            + " last_login_at) VALUES (?, ?, 'opaa-dev', ?, 'Ilse Eigen', ?, now())",
-        owner,
-        "eigen-" + owner,
-        "eigen-" + owner + "@example.com",
-        Organization.DEFAULT_ID);
-    ownerCaller = CurrentUser.of(owner, Organization.DEFAULT_ID, SystemRole.USER, "Ilse Eigen");
+    if (devUserOwns) {
+      owner = devUser;
+      ownerCaller = devCaller;
+    } else {
+      owner = UUID.randomUUID();
+      jdbc.update(
+          "INSERT INTO users (id, subject, issuer, email, display_name, organization_id,"
+              + " last_login_at) VALUES (?, ?, 'opaa-dev', ?, 'Ilse Eigen', ?, now())",
+          owner,
+          "eigen-" + owner,
+          "eigen-" + owner + "@example.com",
+          Organization.DEFAULT_ID);
+      ownerCaller = CurrentUser.of(owner, Organization.DEFAULT_ID, SystemRole.USER, "Ilse Eigen");
+    }
     String profileBody =
         body(
             as("dev-admin", post("/api/v1/admin/connection-profiles"))
                 .content(
                     """
                     {"name": "Zugang Personen %s", "sourceType": "PERSON_PROBE",
-                     "serverUrl": "%s", "authMethod": "PERSONAL_SECRET", "ownership": "PERSON"}
+                     "serverUrl": "%s", "authMethod": "PERSONAL_SECRET", "ownership": "BOTH",
+                     "connectorSettings": {"realm": "eins"}}
                     """
                         .formatted(UUID.randomUUID(), SERVER)));
     profile = UUID.fromString(JsonPath.read(profileBody, "$.id"));
@@ -744,6 +866,12 @@ class PrivateLibraryInvisibilityIntegrationTest {
         "Zugang Personen " + profile,
         profile);
     ConnectorReleases.releaseToAllAccounts(jdbc, "PROFILE:" + profile);
+    profileDefaults =
+        jdbc.queryForObject(
+            "SELECT connector_settings FROM connection_profiles WHERE id = ?",
+            String.class,
+            profile);
+    aSharedLibraryOfAColleague();
     accounts.connect(ownerCaller, profile, "ieigen", PASSWORD);
     space = aSpace("Raum " + UUID.randomUUID(), observer);
     chat = UUID.randomUUID();
@@ -757,17 +885,59 @@ class PrivateLibraryInvisibilityIntegrationTest {
     turn(1, "Was gilt für Urlaub?", "Dazu steht nichts in den Quellen.", null);
   }
 
+  /**
+   * A shared library of a colleague on the profile, without a secret of its own, so that a change
+   * of the profile's default counts and waits for it in both phases alike.
+   */
+  private void aSharedLibraryOfAColleague() {
+    UUID colleague = UUID.randomUUID();
+    jdbc.update(
+        "INSERT INTO users (id, subject, issuer, email, display_name, organization_id)"
+            + " VALUES (?, ?, 'opaa-dev', ?, 'Kollegin', ?)",
+        colleague,
+        "kollegin-" + colleague,
+        "kollegin-" + colleague + "@example.com",
+        Organization.DEFAULT_ID);
+    extraUsers.add(colleague);
+    UUID shared =
+        libraryService
+            .createLibrary(
+                new LibraryCreation(
+                    "Geteilte Ablage",
+                    null,
+                    null,
+                    null,
+                    PersonProbeSourceConnector.TYPE,
+                    null,
+                    URI.create(SERVER + "/geteilt"),
+                    null,
+                    "geteilt:" + PASSWORD,
+                    null,
+                    null,
+                    null,
+                    profile),
+                CurrentUser.of(colleague, Organization.DEFAULT_ID, SystemRole.USER, "Kollegin"))
+            .library()
+            .getId();
+    libraries.add(shared);
+    jdbc.update("UPDATE knowledge_libraries SET source_credentials = NULL WHERE id = ?", shared);
+  }
+
   private UUID aSpace(String name, Observer observer) throws Exception {
+    String observerMember =
+        owner.equals(devUser)
+            ? ""
+            : "{\"subjectType\": \"USER\", \"subjectId\": \"%s\", \"role\": \"%s\"},"
+                .formatted(devUser, observer.devUserSpaceRole);
     String spaceBody =
         body(
             as("dev-admin", post("/api/v1/spaces"))
                 .content(
                     """
-                    {"name": "%s", "ownerId": "%s", "initialMembers": [
-                      {"subjectType": "USER", "subjectId": "%s", "role": "%s"},
+                    {"name": "%s", "ownerId": "%s", "initialMembers": [%s
                       {"subjectType": "USER", "subjectId": "%s", "role": "MEMBER"}]}
                     """
-                        .formatted(name, owner, devUser, observer.devUserSpaceRole, admin)));
+                        .formatted(name, owner, observerMember, admin)));
     UUID created = UUID.fromString(JsonPath.read(spaceBody, "$.id"));
     spaces.add(created);
     return created;
@@ -789,6 +959,10 @@ class PrivateLibraryInvisibilityIntegrationTest {
    */
   private void theConnectionsAreBackAndTheSpareIsGone(Observer observer, Spare spare)
       throws Exception {
+    jdbc.update(
+        "UPDATE connection_profiles SET connector_settings = ? WHERE id = ?",
+        profileDefaults,
+        profile);
     if (observer == Observer.SYSTEM_ADMIN || observer == Observer.PERSON_CONTEXT) {
       accounts.connect(ownerCaller, profile, "ieigen", PASSWORD);
     } else {
@@ -993,6 +1167,12 @@ class PrivateLibraryInvisibilityIntegrationTest {
         job,
         "Nicht lesbar: " + fileName,
         path);
+    jdbc.update(
+        "INSERT INTO indexing_jobs (id, status, last_progress_at, organization_id, library_id)"
+            + " VALUES (?, 'RUNNING', now(), ?, ?)",
+        UUID.randomUUID(),
+        Organization.DEFAULT_ID,
+        library);
     associations.associate(space, KnowledgeLibrary.ASSET_TYPE, library, ownerCaller);
     turn(
         3,
@@ -1094,6 +1274,14 @@ class PrivateLibraryInvisibilityIntegrationTest {
   /** The ids a probe names, and what of the private libraries no answer may carry. */
   record Ids(
       UUID library, UUID detached, UUID document, UUID chunk, UUID folder, List<String> names) {
+
+    /** Positions in {@code names}, as {@link #herPrivateLibraries} lists them. */
+    static final int NAME = 0;
+
+    static final int FILE_NAME = 4;
+    static final int CONTENT = 6;
+    static final int FOLDER = 7;
+    static final int VALUE = 9;
 
     static Ids random() {
       return new Ids(
@@ -1228,9 +1416,10 @@ class PrivateLibraryInvisibilityIntegrationTest {
     return switch (name) {
       case "libraryId", "assetId", "libraryIds", "objectId" -> ids.library().toString();
       case "documentId" -> ids.document().toString();
-      case "chunkId" -> ids.chunk().toString();
+      case "chunkId", "hitId" -> ids.chunk().toString();
       case "folderId" -> ids.folder().toString();
       case "spaceId" -> space.toString();
+      case "chatId" -> chat.toString();
       case "profileId" -> profile.toString();
       case "assetType" -> KnowledgeLibrary.ASSET_TYPE.value();
       case "sourceType" -> PersonProbeSourceConnector.TYPE.key();
