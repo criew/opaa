@@ -131,6 +131,10 @@ function refusalsOf(profile: ConnectionProfileResponse, body: ConnectionProfileU
 export const connectionProfileHandlers = [
   http.get(ADMIN, () => HttpResponse.json(mockConnectionProfiles)),
 
+  http.get(`${ADMIN}/oauth-redirect`, () =>
+    HttpResponse.json({ redirectUri: `${window.location.origin}/connections/callback` }),
+  ),
+
   http.post(ADMIN, async ({ request }) => {
     const body = (await request.json()) as ConnectionProfileCreateRequest
     const now = new Date().toISOString()

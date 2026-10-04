@@ -230,6 +230,7 @@ export type ConnectionAuthorizationCompleteRequest =
 export type ConnectionAuthorizationCompleteResponse =
   components['schemas']['ConnectionAuthorizationCompleteResponse']
 export type SignInProfileEndpoints = components['schemas']['SignInProfileEndpoints']
+export type ConnectionRedirectResponse = components['schemas']['ConnectionRedirectResponse']
 export type ConnectionLogEventType = components['schemas']['ConnectionLogEventType']
 export type ConnectionLogOwnerKind = components['schemas']['ConnectionLogOwnerKind']
 export type ConnectionEndCause = components['schemas']['ConnectionEndCause']

@@ -269,6 +269,25 @@ paths:
         "503":
           $ref: "#/components/responses/ServiceUnavailable"
 
+  /api/v1/admin/connection-profiles/oauth-redirect:
+    get:
+      operationId: getConnectionRedirect
+      tags: [connection-profile]
+      summary: The redirect URI an OAuth app registration names (system admin only)
+      description: >
+        Exactly the address OPAA sends every provider back to after a consent,
+        {OPAA_PUBLIC_BASE_URL}/connections/callback; absent while no public address is configured,
+        and then no consent can start.
+      responses:
+        "200":
+          description: The redirect URI, or none
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConnectionRedirectResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
   /api/v1/admin/connection-profiles/{profileId}:
     parameters:
       - name: profileId
@@ -1280,6 +1299,15 @@ components:
         updatedAt:
           type: string
           format: date-time
+
+    ConnectionRedirectResponse:
+      type: object
+      properties:
+        redirectUri:
+          type: string
+          nullable: true
+          description: Absent while OPAA_PUBLIC_BASE_URL is not set.
+          example: https://opaa.example.org/connections/callback
 
     ConnectionProfileSignInTestResponse:
       type: object

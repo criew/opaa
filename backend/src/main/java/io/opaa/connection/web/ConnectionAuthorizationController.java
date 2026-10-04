@@ -4,19 +4,23 @@ import io.opaa.api.dto.ConnectionAuthorizationCompleteRequest;
 import io.opaa.api.dto.ConnectionAuthorizationCompleteResponse;
 import io.opaa.api.dto.ConnectionAuthorizationStartRequest;
 import io.opaa.api.dto.ConnectionAuthorizationStartResponse;
+import io.opaa.api.dto.ConnectionRedirectResponse;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
 import io.opaa.connection.oauth.ConnectionAuthorizationService;
 import io.opaa.connection.oauth.ConnectionAuthorizationService.Completed;
 import io.opaa.connection.oauth.ConnectionAuthorizationService.Started;
 import jakarta.validation.Valid;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
  * The OAuth consent of the caller, started and completed through the application: every signed-in
- * person, only their own. No answer carries a token, a code or a verifier.
+ * person, only their own, and the redirect URI for the system administration. No answer carries a
+ * token, a code or a verifier.
  */
 @RestController
 public class ConnectionAuthorizationController {
@@ -27,6 +31,12 @@ public class ConnectionAuthorizationController {
 
   public ConnectionAuthorizationController(ConnectionAuthorizationService authorizations) {
     this.authorizations = authorizations;
+  }
+
+  @PreAuthorize("hasRole('SYSTEM_ADMIN')")
+  @GetMapping("/api/v1/admin/connection-profiles/oauth-redirect")
+  public ConnectionRedirectResponse getConnectionRedirect() {
+    return new ConnectionRedirectResponse().redirectUri(authorizations.redirectUri().orElse(null));
   }
 
   @PostMapping(PATH)

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Button from '@mui/material/Button'
 import Dialog from '@mui/material/Dialog'
@@ -30,6 +30,7 @@ import {
   changeRejected,
   createConnectionProfile,
   getConnectionProfileImpact,
+  getConnectionRedirectUri,
   needsConfirmation,
   previewConnectionProfileChange,
   updateConnectionProfile,
@@ -39,7 +40,6 @@ import { AUTH_METHOD_LABELS, OWNERSHIP_LABELS } from './connectionProfileLabels'
 import ProfileChangePreview from './ProfileChangePreview'
 import ServiceAccountKeyField from './ServiceAccountKeyField'
 import { reachesLibraries as changeReachesLibraries } from './profileChange'
-import { CONNECTION_CALLBACK_ROUTE } from '../../../routes'
 
 const WITH_REGISTRATION: ConnectionAuthMethod[] = [
   'OAUTH',
@@ -195,6 +195,9 @@ export default function ConnectionProfileFormDialog({
     impact: ConnectionProfileImpactResponse
   } | null>(null)
 
+  // undefined while asked, null where the server has no public address
+  const [redirect, setRedirect] = useState<{ uri: string | null } | 'failed' | undefined>()
+
   const isEdit = profile !== null
   const descriptor = sourceTypes.find((type) => type.type === sourceType) ?? null
   // While editing, the profile's own method stays offered even if the list has not loaded yet.
@@ -229,6 +232,22 @@ export default function ConnectionProfileFormDialog({
     ownerships.includes(draft.ownership) &&
     (!usesRegistration || usesKey || draft.clientId.trim() !== '') &&
     endpointFields.every((field) => draft[field.key].trim() !== '')
+
+  const asksRedirect = method === 'OAUTH' && redirect === undefined
+  useEffect(() => {
+    if (!asksRedirect) return
+    let active = true
+    getConnectionRedirectUri()
+      .then((uri) => {
+        if (active) setRedirect({ uri })
+      })
+      .catch(() => {
+        if (active) setRedirect('failed')
+      })
+    return () => {
+      active = false
+    }
+  }, [asksRedirect])
 
   function close() {
     if (!submitting) onClose()
@@ -533,16 +552,31 @@ export default function ConnectionProfileFormDialog({
                   slotProps={{ htmlInput: { maxLength: 2000 } }}
                 />
               ))}
-              {method === 'OAUTH' && (
-                <Typography
-                  variant="body2"
-                  sx={{ color: 'text.secondary', wordBreak: 'break-all' }}
-                  data-testid="connection-profile-redirect-uri"
-                >
-                  Rücksprungadresse für die App-Registrierung beim Anbieter:{' '}
-                  {`${window.location.origin}${CONNECTION_CALLBACK_ROUTE}`}. OPAA nennt dem Anbieter
-                  diese Adresse unter seiner öffentlichen Adresse (OPAA_PUBLIC_BASE_URL).
-                </Typography>
+              {method === 'OAUTH' && redirect === 'failed' && (
+                <Alert severity="warning" data-testid="connection-profile-redirect-uri">
+                  Die Rücksprungadresse ließ sich nicht laden. Sie lautet
+                  {' {OPAA_PUBLIC_BASE_URL}/connections/callback'}.
+                </Alert>
+              )}
+              {method === 'OAUTH' && redirect !== undefined && redirect !== 'failed' && (
+                <>
+                  {redirect.uri ? (
+                    <Typography
+                      variant="body2"
+                      sx={{ color: 'text.secondary', wordBreak: 'break-all' }}
+                      data-testid="connection-profile-redirect-uri"
+                    >
+                      Rücksprungadresse für die App-Registrierung beim Anbieter: {redirect.uri}
+                    </Typography>
+                  ) : (
+                    <Alert severity="warning" data-testid="connection-profile-redirect-uri">
+                      Die öffentliche Adresse von OPAA (OPAA_PUBLIC_BASE_URL) ist nicht gesetzt.
+                      Ohne sie gibt es keine Rücksprungadresse, und über diesen Zugang lässt sich
+                      kein Konto beim Anbieter verbinden. Zuständig ist der Betrieb der
+                      Installation.
+                    </Alert>
+                  )}
+                </>
               )}
               {takesTransport && (
                 <>

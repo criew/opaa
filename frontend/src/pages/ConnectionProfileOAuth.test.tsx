@@ -79,7 +79,7 @@ describe('ConnectionProfileManagementPage, OAuth', () => {
 
     expect(within(dialog).queryByLabelText(/^Widerrufs-Endpunkt/)).not.toBeInTheDocument()
     expect(within(dialog).getByText(/Vorgabe der Quellart: „openid offline_access“/)).toBeVisible()
-    expect(within(dialog).getByTestId('connection-profile-redirect-uri')).toHaveTextContent(
+    expect(await within(dialog).findByTestId('connection-profile-redirect-uri')).toHaveTextContent(
       `${window.location.origin}/connections/callback`,
     )
     const create = within(dialog).getByRole('button', { name: 'Anlegen' })
@@ -101,6 +101,27 @@ describe('ConnectionProfileManagementPage, OAuth', () => {
       tokenEndpoint: 'https://idp.example.org/realms/r/protocol/openid-connect/token',
       revocationEndpoint: null,
     })
+  })
+
+  it('says that no consent is possible where the server has no public address', async () => {
+    server.use(
+      http.get('/api/v1/admin/connection-profiles/oauth-redirect', () =>
+        HttpResponse.json({ redirectUri: null }),
+      ),
+    )
+    const user = userEvent.setup()
+    renderWithProviders(<ConnectionProfileManagementPage />)
+
+    await user.click(await screen.findByRole('button', { name: 'Neuer Zugang' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Zugang anlegen' })
+    await user.click(within(dialog).getByRole('radio', { name: /Nextcloud/ }))
+    await user.click(within(dialog).getByLabelText(/^Anmeldeart/))
+    await user.click(await screen.findByRole('option', { name: 'OAuth' }))
+
+    const notice = await within(dialog).findByTestId('connection-profile-redirect-uri')
+    expect(notice).toHaveTextContent('OPAA_PUBLIC_BASE_URL')
+    expect(notice).toHaveTextContent('lässt sich kein Konto beim Anbieter verbinden')
+    expect(notice).not.toHaveTextContent('/connections/callback')
   })
 
   it('warns at a profile whose expired connections reach the threshold', async () => {
