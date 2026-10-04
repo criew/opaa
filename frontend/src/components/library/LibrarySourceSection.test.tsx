@@ -242,4 +242,43 @@ describe('LibrarySourceSection - Zugang zuordnen, wechseln, lösen (#2162)', () 
       'Zugang: keiner, eigene Adresse',
     )
   })
+
+  it('names a deleted profile as removed, not as an own address', async () => {
+    renderWithProviders(
+      <LibrarySourceSection
+        libraryId="library-1"
+        library={{ ...nextcloud, connectionProfileRemoved: true }}
+        canEditSource
+      />,
+    )
+
+    expect(await screen.findByTestId('connection-profile')).toHaveTextContent('Zugang: entfernt')
+  })
+
+  it('says when a switch to another server discarded the secret and offers to edit the source', async () => {
+    connect.mockResolvedValue({ sourceCredentialsSet: false })
+    const user = userEvent.setup()
+    renderWithProviders(
+      <LibrarySourceSection
+        libraryId="library-1"
+        library={{
+          ...nextcloud,
+          sourceCredentialsSet: true,
+          connectionProfile: { id: intern.id, name: intern.name },
+        }}
+        canEditSource
+      />,
+    )
+
+    await user.click(await screen.findByRole('button', { name: 'Zugang wechseln' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Zugang wechseln' })
+    await within(dialog).findByRole('radio', { name: /Nextcloud neu/ })
+    await user.click(within(dialog).getByRole('button', { name: 'Zuordnen' }))
+
+    expect(await screen.findByText(/hinterlegten Zugangsdaten verworfen/)).toBeVisible()
+    await user.click(screen.getByRole('button', { name: 'Quelle bearbeiten' }))
+    expect(
+      await screen.findByRole('dialog', { name: 'Quellkonfiguration bearbeiten' }),
+    ).toBeVisible()
+  })
 })

@@ -8,7 +8,10 @@ import DialogTitle from '@mui/material/DialogTitle'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import type { SourceTypeKey } from '../types/api'
-import { useConnectionProfileOptions } from '../hooks/useConnectionProfileOptions'
+import {
+  PROFILES_FORBIDDEN_NOTICE,
+  useConnectionProfileOptions,
+} from '../hooks/useConnectionProfileOptions'
 import { useLibraryStore } from '../stores/libraryStore'
 import { sourceRegistration } from './library/sources/registry'
 import {
@@ -140,10 +143,11 @@ export default function EditLibrarySourceDialog({
           )}
           {connectionMissing && profileOptions.loaded && (
             <Alert severity="warning" data-testid="edit-source-connection-missing">
-              Die Angaben des Zugangs „{library.connectionProfile?.name}“ liegen nicht vor
-              {profileOptions.error ? ` (${profileOptions.error})` : ''}. Ohne sie lässt sich die
-              Quelle nicht speichern, weil der Zugang Felder vorgeben kann. Bitte später erneut
-              versuchen; besteht das Problem weiter, hilft die Systemverwaltung.
+              Die Angaben des Zugangs „{library.connectionProfile?.name}“ liegen nicht vor. Ohne sie
+              lässt sich die Quelle nicht speichern, weil der Zugang Felder vorgeben kann.{' '}
+              {profileOptions.forbidden
+                ? PROFILES_FORBIDDEN_NOTICE
+                : `${profileOptions.error ? `(${profileOptions.error}) ` : ''}Bitte später erneut versuchen; besteht das Problem weiter, hilft die Systemverwaltung.`}
             </Alert>
           )}
           {Form && !connectionMissing && (

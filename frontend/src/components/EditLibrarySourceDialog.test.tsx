@@ -860,6 +860,13 @@ describe('EditLibrarySourceDialog', () => {
       expect(await screen.findByTestId('edit-source-connection-missing')).toHaveTextContent(
         /Zugangs „Speicher Rechenzentrum“ liegen nicht vor/,
       )
+      // a missing right is no passing fault: the notice names it and who grants it
+      expect(screen.getByTestId('edit-source-connection-missing')).toHaveTextContent(
+        /Anlegerecht erteilt die Systemverwaltung/,
+      )
+      expect(screen.getByTestId('edit-source-connection-missing')).not.toHaveTextContent(
+        /später erneut/,
+      )
       expect(screen.getByRole('button', { name: 'Speichern' })).toBeDisabled()
       expect(mockUpdateLibrary).not.toHaveBeenCalled()
     })

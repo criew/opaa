@@ -99,6 +99,41 @@ export function withConnection<V>(values: V, connection: SourceConnection | null
   return shown as V
 }
 
+/** Whether `address` is `base` or lies below it (path segments, same scheme and host). */
+export function addressUnder(address: string, base: string): boolean {
+  const target = address.trim().toLowerCase()
+  const root = base.trim().replace(/\/+$/, '').toLowerCase()
+  return target === root || target.startsWith(`${root}/`)
+}
+
+/**
+ * `values` as they stand once the choice moves from `previous` to `next` (either `null` for the
+ * own address): the fields the previous profile fixed fall back to `empty`, and an address that
+ * does not lie under the next profile - or came from the previous one - is cleared.
+ */
+export function switchConnection<V>(
+  values: V,
+  empty: V,
+  previous: SourceConnection | null | undefined,
+  next: SourceConnection | null | undefined,
+): V {
+  if (values === null || typeof values !== 'object') return values
+  const reset: Record<string, unknown> = { ...(values as Record<string, unknown>) }
+  const blank = empty as Record<string, unknown>
+  if (previous) {
+    for (const key of Object.keys(previous.defaults)) {
+      if (key in reset) reset[key] = blank[key]
+    }
+  }
+  const address = reset.sourceUrl
+  if (typeof address === 'string' && address !== '') {
+    const fromPrevious = previous ? addressUnder(address, previous.serverUrl) : false
+    const outsideNext = next ? !addressUnder(address, next.serverUrl) : false
+    if (fromPrevious || outsideNext) reset.sourceUrl = ''
+  }
+  return reset as V
+}
+
 /** `patch` without the fields a profile fixes - those keep the profile's value. */
 export function withoutFixed<P extends object>(
   patch: P,

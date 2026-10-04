@@ -13,6 +13,12 @@ interface LibraryConnectionPanelProps {
   libraryId: string
   sourceType: SourceTypeKey
   connectionProfile?: { id: string; name: string } | null
+  /** The library's profile was deleted ("Zugang entfernt") - not the same as an own address. */
+  connectionProfileRemoved?: boolean
+  /** Whether the library holds a secret now. */
+  credentialsStored?: boolean
+  /** Opens „Quelle bearbeiten“ - after a switch that discarded the secret. */
+  onEditSource: () => void
   /** Whether the dialog to connect or switch is open - also opened from the notices above. */
   dialogOpen: boolean
   onDialogOpenChange: (open: boolean) => void
@@ -27,6 +33,9 @@ export default function LibraryConnectionPanel({
   libraryId,
   sourceType,
   connectionProfile,
+  connectionProfileRemoved = false,
+  credentialsStored = false,
+  onEditSource,
   dialogOpen,
   onDialogOpenChange,
 }: LibraryConnectionPanelProps) {
@@ -58,7 +67,7 @@ export default function LibraryConnectionPanel({
     }
   }
 
-  if (!current && !admitsProfiles) return null
+  if (!current && !connectionProfileRemoved && !admitsProfiles) return null
 
   return (
     <Stack
@@ -69,7 +78,11 @@ export default function LibraryConnectionPanel({
       data-testid="connection-profile-panel"
     >
       <Typography variant="body2" data-testid="connection-profile">
-        {current ? `Zugang: ${current.name}` : 'Zugang: keiner, eigene Adresse'}
+        {current
+          ? `Zugang: ${current.name}`
+          : connectionProfileRemoved
+            ? 'Zugang: entfernt'
+            : 'Zugang: keiner, eigene Adresse'}
       </Typography>
       {admitsProfiles && (
         <Button size="small" variant="outlined" onClick={() => onDialogOpenChange(true)}>
@@ -95,6 +108,8 @@ export default function LibraryConnectionPanel({
           libraryId={libraryId}
           descriptor={descriptor}
           current={current}
+          credentialsStored={credentialsStored}
+          onEditSource={onEditSource}
         />
       )}
     </Stack>

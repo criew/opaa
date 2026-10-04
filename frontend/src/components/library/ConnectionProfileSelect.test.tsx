@@ -56,7 +56,7 @@ function renderSelect(
   renderWithProviders(
     <ConnectionProfileSelect
       descriptor={descriptor}
-      state={{ options, error: null, loaded: true }}
+      state={{ options, error: null, forbidden: false, loaded: true }}
       value={value}
       onChange={onChange}
       offerOwnAddress={offerOwnAddress}
@@ -126,5 +126,24 @@ describe('ConnectionProfileSelect', () => {
 
     expect(screen.queryByRole('radio', { name: /Eigene Adresse/ })).not.toBeInTheDocument()
     expect(screen.getByRole('radio', { name: /Nextcloud intern/ })).toBeChecked()
+  })
+
+  it('names the missing right once, instead of an error beside a „no profile“ notice', () => {
+    renderWithProviders(
+      <ConnectionProfileSelect
+        descriptor={NEXTCLOUD}
+        state={{ options: [], error: 'Keine Berechtigung', forbidden: true, loaded: true }}
+        value={null}
+        onChange={vi.fn()}
+        offerOwnAddress={false}
+        idPrefix="test"
+      />,
+    )
+
+    expect(screen.getByTestId('test-connection-error')).toHaveTextContent(
+      'Dieses Anlegerecht erteilt die Systemverwaltung',
+    )
+    expect(screen.queryByTestId('test-connection-none')).not.toBeInTheDocument()
+    expect(screen.queryByText('Keine Berechtigung')).not.toBeInTheDocument()
   })
 })

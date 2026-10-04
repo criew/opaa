@@ -250,10 +250,11 @@ export default function ConfluenceSourceForm({
     }
   }
 
-  const credentialsComplete =
-    !connection.asksSecret || values.edition === 'CLOUD'
+  const enteredCredentialsComplete =
+    values.edition === 'CLOUD'
       ? (values.email.trim() !== '' && values.token.trim() !== '') || usesStoredCredentials
       : values.token.trim() !== '' || usesStoredCredentials
+  const credentialsComplete = !connection.asksSecret || enteredCredentialsComplete
 
   // Selected spaces the current listing does not contain stay selected and visibly marked; they
   // are offered as options too so the picker never carries a value it cannot name.

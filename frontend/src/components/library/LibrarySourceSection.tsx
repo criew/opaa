@@ -153,6 +153,9 @@ export default function LibrarySourceSection({
                 libraryId={libraryId}
                 sourceType={library.sourceType}
                 connectionProfile={library.connectionProfile}
+                connectionProfileRemoved={library.connectionProfileRemoved}
+                credentialsStored={Boolean(library.sourceCredentialsSet)}
+                onEditSource={() => setEditSourceOpen(true)}
                 dialogOpen={connectOpen}
                 onDialogOpenChange={setConnectOpen}
               />

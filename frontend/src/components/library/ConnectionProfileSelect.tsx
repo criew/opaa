@@ -8,7 +8,10 @@ import type {
   ProfileDefaultKey,
   SourceTypeDescriptor,
 } from '../../types/api'
-import type { ConnectionProfileOptionsState } from '../../hooks/useConnectionProfileOptions'
+import {
+  PROFILES_FORBIDDEN_NOTICE,
+  type ConnectionProfileOptionsState,
+} from '../../hooks/useConnectionProfileOptions'
 import ChoiceTileGroup, { type ChoiceTile } from '../choice/ChoiceTileGroup'
 import { AUTH_METHOD_LABELS } from '../admin/connections/connectionProfileLabels'
 import { OWN_ADDRESS, selectableConnections } from './connectionChoice'
@@ -121,8 +124,12 @@ export default function ConnectionProfileSelect({
         </Typography>
       )}
       {state.error && (
-        <Alert severity="error" sx={{ mb: 1.5 }}>
-          {state.error}
+        <Alert
+          severity={state.forbidden ? 'info' : 'error'}
+          sx={{ mb: 1.5 }}
+          data-testid={`${idPrefix}-connection-error`}
+        >
+          {state.forbidden ? PROFILES_FORBIDDEN_NOTICE : state.error}
         </Alert>
       )}
       {tiles.length > 0 && (
@@ -133,7 +140,7 @@ export default function ConnectionProfileSelect({
           tiles={tiles}
         />
       )}
-      {state.loaded && selectable.length === 0 ? (
+      {state.error ? null : state.loaded && selectable.length === 0 ? (
         <Alert severity="info" sx={{ mt: 1.5 }} data-testid={`${idPrefix}-connection-none`}>
           Für die Quellart „{descriptor.displayName}“ steht Ihnen kein Zugang zur Verfügung. Zugänge
           legt die Systemverwaltung an und gibt sie frei; bitte wenden Sie sich an sie.

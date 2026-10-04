@@ -403,8 +403,8 @@ werden, sagt das Formular das und lässt noch nicht speichern.
 #### Einen Zugang wählen, zuordnen, wechseln, lösen
 
 Die Auswahl, die Aktionen an der Bibliothek und der Schalter „Nur über Zugänge“ erscheinen nur bei
-einer Quellart, die Zugänge meldet; bis die mitgelieferten Konnektoren das tun
-([#2219](https://github.com/criew/opaa/issues/2219)), gilt das für keine von ihnen.
+einer Quellart, die Zugänge meldet; bis die mitgelieferten Konnektoren das tun (#2219), gilt das
+für keine von ihnen.
 
 **Im Wissens-Assistenten** steht bei einer solchen Quellart im Schritt „Quelle“ über dem
 Formular die Wahl **„Zugang“**, sobald es für die Quellart einen Zugang gibt oder eine eigene
@@ -431,7 +431,7 @@ Verwaltenden mit diesen Aktionen:
 | Aktion | Wann | Wirkung |
 |---|---|---|
 | „Zugang zuordnen“ | Bibliothek mit eigener Adresse, auch nach „Zugang entfernt“ | verbindet sie über einen gewählten Zugang; die Adresse muss unter dessen Server-Adresse liegen |
-| „Zugang wechseln“ | Bibliothek auf einem Zugang | verbindet sie über einen anderen Zugang derselben Quellart; der bisherige steht nicht zur Wahl |
+| „Zugang wechseln“ | Bibliothek auf einem Zugang | verbindet sie über einen anderen Zugang derselben Quellart; der bisherige steht nicht zur Wahl. Eine Adresse unter dem bisherigen Zugang wandert unter den neuen. Ändert sich dabei der Server, werden die hinterlegten Zugangsdaten verworfen; die Meldung danach sagt das und führt zu „Quelle bearbeiten“, wo sie neu eingetragen werden |
 | „Zugang lösen“ | Bibliothek auf einem Zugang, ohne Profilpflicht der Quellart | fragt nach; die Bibliothek behält Adresse und Zugangsdaten als eigene |
 
 Zur Wahl stehen beim Zuordnen und Wechseln nur Zugänge, die die Person nutzen darf; die übrigen
@@ -440,6 +440,12 @@ Profilpflicht stehen im Reiter „Quelle“ für alle Leseberechtigten; den Verw
 „Zugang zuordnen“ direkt an. Beim Bearbeiten der Quelle einer Bibliothek auf einem Zugang gelten
 dieselben Regeln wie im Assistenten; solange die Angaben des Zugangs fehlen, lässt sich nichts
 speichern, und der Hinweis sagt das.
+
+Die Zugänge abrufen darf nur, wer das Anlegerecht „Konnektorbibliotheken anlegen“ in irgendeinem
+Geltungsbereich hat. Verwaltenden einer Bibliothek ohne dieses Recht bleiben deshalb „Zugang
+zuordnen“, „Zugang wechseln“ und das Bearbeiten der Quelle einer Bibliothek auf einem Zugang
+verschlossen, bis die Systemverwaltung ihnen das Recht erteilt; der Hinweis an diesen Stellen sagt
+das.
 
 **Welcher Konnektor Zugänge kennt**, meldet er selbst: Zugänge verboten, möglich oder Pflicht,
 dazu die Anmeldearten, die er anbietet (ohne Anmeldung, persönliches Geheimnis, OAuth,

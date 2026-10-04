@@ -21,6 +21,10 @@ interface LibraryConnectionDialogProps {
   descriptor: SourceTypeDescriptor
   /** The profile the library is connected through now; `null` for its own address. */
   current: { id: string; name: string } | null
+  /** Whether the library holds a secret now - a change of server discards it. */
+  credentialsStored: boolean
+  /** Opens „Quelle bearbeiten“, where a discarded secret is entered anew. */
+  onEditSource: () => void
 }
 
 /**
@@ -34,6 +38,8 @@ export default function LibraryConnectionDialog({
   libraryId,
   descriptor,
   current,
+  credentialsStored,
+  onEditSource,
 }: LibraryConnectionDialogProps) {
   const connectLibraryToProfile = useLibraryStore((s) => s.connectLibraryToProfile)
   const state = useConnectionProfileOptions(open ? descriptor.type : null)
@@ -50,12 +56,21 @@ export default function LibraryConnectionDialog({
   }
 
   async function handleConnect() {
-    if (choice === null) return
+    if (choice === null || chosenName === undefined) return
+    const name = chosenName
     setSubmitting(true)
     setError(null)
     try {
-      await connectLibraryToProfile(libraryId, choice)
-      notify(`Die Bibliothek ist jetzt über den Zugang „${chosenName ?? ''}“ verbunden.`, 'success')
+      const connected = await connectLibraryToProfile(libraryId, choice)
+      if (credentialsStored && connected && !connected.sourceCredentialsSet) {
+        notify(
+          `Die Bibliothek ist jetzt über den Zugang „${name}“ verbunden. Weil sich dabei der Server geändert hat, wurden die hinterlegten Zugangsdaten verworfen; bis sie neu eingetragen sind, läuft die Bibliothek nicht.`,
+          'warning',
+          { label: 'Quelle bearbeiten', onClick: onEditSource },
+        )
+      } else {
+        notify(`Die Bibliothek ist jetzt über den Zugang „${name}“ verbunden.`, 'success')
+      }
       onClose()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Der Zugang ließ sich nicht zuordnen.')

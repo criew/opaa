@@ -32,7 +32,8 @@ interface LibraryState {
   deleteExistingLibrary: (libraryId: string) => Promise<void>
   setLibraryDiagnosticsLock: (libraryId: string, locked: boolean) => Promise<void>
   setLibraryShareCap: (libraryId: string, request: LibraryShareCapRequest) => Promise<void>
-  connectLibraryToProfile: (libraryId: string, profileId: string) => Promise<void>
+  /** Answers the connected library, `null` after a logout in between. */
+  connectLibraryToProfile: (libraryId: string, profileId: string) => Promise<LibraryResponse | null>
   releaseLibraryFromProfile: (libraryId: string) => Promise<void>
 }
 
@@ -138,9 +139,10 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
   connectLibraryToProfile: async (libraryId, profileId) => {
     const sessionEpoch = currentSessionEpoch()
     const library = await connectLibraryProfile(libraryId, profileId)
-    if (isStaleSessionEpoch(sessionEpoch)) return
+    if (isStaleSessionEpoch(sessionEpoch)) return null
     set({ libraryDetails: { ...get().libraryDetails, [libraryId]: library } })
     await get().loadLibraries()
+    return library
   },
 
   releaseLibraryFromProfile: async (libraryId) => {

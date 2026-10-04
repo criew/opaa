@@ -168,7 +168,9 @@ export default function S3SourceForm({
   }
 
   function changeRegion(region: string) {
-    const derived = derivedS3Endpoint(values.provider, region)
+    // under a profile the endpoint is the profile's; a region never moves it elsewhere
+    const derived =
+      connection.connection === null ? derivedS3Endpoint(values.provider, region) : null
     changeConnection(derived === null ? { region } : { region, sourceUrl: derived })
   }
 
@@ -344,7 +346,8 @@ export default function S3SourceForm({
                   helperText={
                     connection.isFixed('region')
                       ? connection.fixedHint
-                      : values.provider === 'AWS' || values.provider === 'HETZNER'
+                      : connection.connection === null &&
+                          (values.provider === 'AWS' || values.provider === 'HETZNER')
                         ? 'Der Endpoint wird aus der Region abgeleitet.'
                         : 'Wird zum Signieren verwendet; MinIO und Ceph akzeptieren us-east-1.'
                   }

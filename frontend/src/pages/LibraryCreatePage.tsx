@@ -24,6 +24,7 @@ import {
   ownAddressAllowed,
   payloadUnder,
   sourceConnectionOf,
+  switchConnection,
   withConnection,
   withoutFixed,
 } from '../components/library/sources/sourceConnection'
@@ -228,12 +229,21 @@ export default function LibraryCreatePage() {
     connection,
   }
 
-  /** A new choice of profile; an address still at the former profile's server address follows it. */
+  /** A new choice of way; address and fixed fields of the previous one do not carry over. */
   function chooseConnection(next: string) {
+    if (next === connectionChoice) return
     setChosenConnections((prev) => ({ ...prev, [sourceType]: next }))
-    const shown = values as { sourceUrl?: unknown } | undefined
-    if (connection && shown?.sourceUrl === connection.serverUrl) {
-      setSourceValues((prev) => ({ ...prev, [valuesKey]: { ...shown, sourceUrl: '' } }))
+    const nextOption = profileOptions.options.find((option) => option.id === next)
+    if (configuration) {
+      setSourceValues((prev) => ({
+        ...prev,
+        [valuesKey]: switchConnection(
+          values,
+          configuration.empty,
+          connection,
+          nextOption ? sourceConnectionOf(nextOption) : null,
+        ),
+      }))
     }
     setError(null)
   }

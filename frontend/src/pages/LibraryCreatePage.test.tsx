@@ -1173,6 +1173,34 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       )
     }, 30000)
 
+    it('does not carry address or fixed values of the previous way over to the next', async () => {
+      const other = {
+        ...profile,
+        id: 'profile-neu',
+        name: 'Nextcloud neu',
+        serverUrl: 'https://cloud.neu.example',
+      }
+      mockListConnectionProfileOptions.mockResolvedValue([profile, other])
+      const user = userEvent.setup()
+      await renderPage()
+      await chooseType(user, /Nextcloud/)
+      const address = () => screen.getByLabelText(/Adresse der Nextcloud/)
+
+      // an own address outside the profile chosen next does not stay
+      await user.type(address(), 'https://nc.extern.example')
+      await user.click(await screen.findByRole('radio', { name: /Nextcloud intern/ }))
+      expect(address()).toHaveValue('https://cloud.intern.example')
+
+      // an address under the previous profile does not follow to the next one
+      await user.type(address(), '/remote.php/dav')
+      await user.click(screen.getByRole('radio', { name: /Nextcloud neu/ }))
+      expect(address()).toHaveValue('https://cloud.neu.example')
+
+      // nor to the own address
+      await user.click(screen.getByRole('radio', { name: /Eigene Adresse/ }))
+      expect(address()).toHaveValue('')
+    }, 25000)
+
     it('sends no profile for the own address', async () => {
       mockListConnectionProfileOptions.mockResolvedValue([profile])
       const user = userEvent.setup()

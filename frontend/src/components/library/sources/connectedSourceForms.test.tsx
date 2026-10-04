@@ -28,12 +28,17 @@ vi.mock('../../../services/libraryApi', async () => {
 function Connected({
   sourceType,
   connection,
+  initial,
 }: {
   sourceType: SourceTypeKey
   connection: SourceConnection
+  initial?: Record<string, unknown>
 }) {
   const configuration = sourceRegistration(sourceType)!.configuration!
-  const [values, setValues] = useState<unknown>(configuration.empty)
+  const [values, setValues] = useState<unknown>({
+    ...(configuration.empty as object),
+    ...initial,
+  })
   const shown = withConnection(values, connection)
   const context: SourceFormContext = {
     mode: 'create',
@@ -158,5 +163,52 @@ describe('source forms under a connection profile', () => {
     expect(screen.getByTestId('test-confluence-edition')).toHaveTextContent('Data Center')
     expect(screen.getByText('Vom Zugang „Wiki intern“ vorgegeben.')).toBeInTheDocument()
     expect(screen.getByLabelText(/^Personal Access Token/)).toBeInTheDocument()
+  })
+
+  it('keeps „Verbindung testen“ usable for a profile without a secret of the library', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(
+      <Connected
+        sourceType="CONFLUENCE"
+        connection={{
+          profileId: 'profile-wiki',
+          name: 'Wiki öffentlich',
+          serverUrl: 'https://wiki.example',
+          authMethod: 'NONE',
+          defaults: { edition: 'DATA_CENTER' },
+        }}
+      />,
+    )
+
+    expect(screen.queryByLabelText(/Personal Access Token/)).not.toBeInTheDocument()
+    const test = screen.getByRole('button', { name: 'Verbindung testen' })
+    expect(test).toBeEnabled()
+    await user.click(test)
+    await waitFor(() =>
+      expect(mockTestLibrarySource).toHaveBeenCalledWith(
+        expect.objectContaining({ connectionProfileId: 'profile-wiki' }),
+      ),
+    )
+  })
+
+  it('derives no endpoint from the region under a profile, even with a provider template behind it', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(
+      <Connected
+        sourceType="S3"
+        initial={{ provider: 'AWS', region: '' }}
+        connection={{
+          profileId: 'profile-s3',
+          name: 'Speicher Rechenzentrum',
+          serverUrl: 'https://s3.rz.example',
+          authMethod: 'PERSONAL_SECRET',
+          defaults: {},
+        }}
+      />,
+    )
+
+    await user.type(screen.getByLabelText(/^Region/), 'eu-central-1')
+    expect(screen.getByLabelText(/^Region/)).toHaveValue('eu-central-1')
+    expect(screen.getByLabelText('Endpoint')).toHaveValue('https://s3.rz.example')
   })
 })
