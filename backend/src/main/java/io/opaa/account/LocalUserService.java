@@ -546,6 +546,9 @@ public class LocalUserService {
     if (counts.getAccountStateHistory() > 0) {
       blockers.add("account_state_history");
     }
+    if (counts.getConnectedAccounts() > 0) {
+      blockers.add("connected_accounts");
+    }
     return blockers;
   }
 

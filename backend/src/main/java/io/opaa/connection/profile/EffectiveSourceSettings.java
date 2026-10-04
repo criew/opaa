@@ -2,6 +2,11 @@ package io.opaa.connection.profile;
 
 import io.opaa.api.types.ConnectionAuthMethod;
 import io.opaa.common.ValidationException;
+import io.opaa.connection.token.ConnectionSecrets;
+import io.opaa.connection.token.SecretOwner;
+import io.opaa.connection.token.SecretOwner.LibraryOwned;
+import io.opaa.connection.token.SecretOwner.PersonOwned;
+import io.opaa.connection.token.SecretRefusedException;
 import io.opaa.indexing.source.ConnectorData;
 import io.opaa.indexing.source.LibrarySourceConnectionResolver;
 import io.opaa.indexing.source.Secret;
@@ -164,8 +169,7 @@ public class EffectiveSourceSettings {
               && requested.sourceCredentials() != null
               && !requested
                   .sourceCredentials()
-                  .equals(
-                      secrets.stored(SecretOwner.of(found.profile().getId(), libraryOf(draft))))) {
+                  .equals(secrets.stored(ownerOn(found.profile(), libraryOf(draft))))) {
             found.requireNoForeignSecret(requested);
           }
         });
@@ -183,7 +187,7 @@ public class EffectiveSourceSettings {
     library.updateSourceSettings(own == null ? null : own.toJson());
     library.dropTransport();
     if (!frame.takesSecret()) {
-      secrets.discard(SecretOwner.of(profile.getId(), library));
+      secrets.discard(new LibraryOwned(library.getId()));
     }
   }
 
@@ -219,9 +223,16 @@ public class EffectiveSourceSettings {
 
   /** The owner of the secret {@code library} is reached with, as its connection names it. */
   public SecretOwner secretOwnerOf(KnowledgeLibrary library) {
-    return SecretOwner.of(
-        connections.findById(library.getId()).map(LibraryConnection::getProfileId).orElse(null),
-        library);
+    return connections
+        .findById(library.getId())
+        .map(LibraryConnection::getProfileId)
+        .flatMap(profiles::findById)
+        .map(profile -> ownerOn(profile, library))
+        .orElseGet(() -> SecretOwner.of(null, null, library));
+  }
+
+  private static SecretOwner ownerOn(ConnectionProfile profile, KnowledgeLibrary library) {
+    return SecretOwner.of(profile.getId(), profile.getAuthMethod(), library);
   }
 
   private Optional<ConnectionProfile> profileFor(KnowledgeLibrary library, Purpose purpose) {
@@ -241,17 +252,38 @@ public class EffectiveSourceSettings {
           ? ownFields.currentSecret(library)
           : ownFields.resolveForChange(library).credentials();
     }
-    return switch (profile.get().getAuthMethod()) {
+    ConnectionProfile found = profile.get();
+    SecretOwner owner = ownerOn(found, library);
+    return switch (found.getAuthMethod()) {
       case NONE -> null;
-      case PERSONAL_SECRET ->
-          secrets.current(
-              SecretOwner.of(profile.get().getId(), library),
-              targetOf(library, profile.get()).key(),
-              profile.get().getName());
-      case OAUTH, CLIENT_CREDENTIALS, SERVICE_ACCOUNT_KEY ->
-          throw new IllegalStateException(
-              "Sign-in method " + profile.get().getAuthMethod() + " passed the source blocks");
+      case PERSONAL_SECRET -> secretOf(owner, found, library);
+      case OAUTH, CLIENT_CREDENTIALS, SERVICE_ACCOUNT_KEY -> {
+        if (owner instanceof PersonOwned) {
+          yield secretOf(owner, found, library);
+        }
+        throw new IllegalStateException(
+            "Sign-in method " + found.getAuthMethod() + " passed the source blocks");
+      }
     };
+  }
+
+  /**
+   * The secret {@code owner} holds on {@code profile} now.
+   *
+   * @throws SourceConnectionBlockedException with the store's reason, worded by {@link
+   *     SourceBlocks}
+   */
+  private Secret secretOf(SecretOwner owner, ConnectionProfile profile, KnowledgeLibrary library) {
+    if (SourceBlocks.withoutPersons(profile, owner)) {
+      throw new SourceConnectionBlockedException(
+          SourceBlocks.secretBlock(Reason.NOT_CONNECTED, profile, owner));
+    }
+    try {
+      return secrets.current(owner, targetOf(library, profile).key());
+    } catch (SecretRefusedException e) {
+      throw new SourceConnectionBlockedException(
+          SourceBlocks.secretBlock(e.reason(), profile, owner));
+    }
   }
 
   /**
@@ -280,10 +312,7 @@ public class EffectiveSourceSettings {
    */
   private Secret storedSecretFor(ConnectionProfile profile, KnowledgeLibrary library) {
     try {
-      return secrets.current(
-          SecretOwner.of(profile.getId(), library),
-          targetOf(library, profile).key(),
-          profile.getName());
+      return secretOf(ownerOn(profile, library), profile, library);
     } catch (SourceConnectionBlockedException e) {
       if (e.block().reason() == Reason.NOT_CONNECTED) {
         return null;
@@ -314,6 +343,21 @@ public class EffectiveSourceSettings {
             frame,
             null);
     return SecretTarget.of(connector, before).admits(SecretTarget.of(connector, after));
+  }
+
+  /**
+   * The key of the target a person's secret on {@code profile} is issued for: the profile's server
+   * address under its frame, as {@link SecretTarget} reads it - the same key a private library on
+   * the profile asks with while its address keeps the origin and its connector the binding.
+   */
+  public String personTarget(ConnectionProfile profile) {
+    return SecretTarget.of(
+            registry.getObject().connector(profile.getSourceType()),
+            compose(
+                new Own(null, profile.getServerUrl(), new TransportRules(null, false), null),
+                Optional.of(frame(profile)),
+                null))
+        .key();
   }
 
   /** The target of the secret {@code library} holds under {@code profile}. */
@@ -405,7 +449,8 @@ public class EffectiveSourceSettings {
               ProfileAdmission.require(
                   profiles.findById(draft.profileId()),
                   draft.type(),
-                  registry.getObject().descriptor(draft.type()))));
+                  registry.getObject().descriptor(draft.type()),
+                  draft.owner())));
     }
     if (draft.libraryId() == null) {
       return Optional.empty();

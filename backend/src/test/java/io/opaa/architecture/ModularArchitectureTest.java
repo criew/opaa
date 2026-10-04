@@ -145,6 +145,21 @@ class ModularArchitectureTest {
   }
 
   @Test
+  void theAdministrationNeverSeesAConnectedPerson() {
+    ARCHITECTURE.theAdministrationNeverSeesAConnectedPerson().check(mainClasses);
+  }
+
+  @Test
+  void personNumbersLeaveOnlyMasked() {
+    ARCHITECTURE.personNumbersLeaveOnlyMasked().check(mainClasses);
+  }
+
+  @Test
+  void aConnectionIsEstablishedOnlyAfterItsSignIn() {
+    ARCHITECTURE.aConnectionIsEstablishedOnlyAfterItsSignIn().check(mainClasses);
+  }
+
+  @Test
   void theConnectorReleaseIsDecidedInConnections() {
     ARCHITECTURE.theConnectorReleaseIsDecidedInConnections().check(mainClasses);
   }

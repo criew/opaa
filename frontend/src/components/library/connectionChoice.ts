@@ -37,8 +37,11 @@ export function liftedByConnecting(reason: SourceBlockReason): boolean {
       return true
     case 'TYPE_LOCKED':
     case 'PROFILE_LOCKED':
+    case 'OWNER_DEACTIVATED':
+    case 'DORMANT':
     case 'TARGET_OUTSIDE_PROFILE':
     case 'NOT_CONNECTED':
+    case 'EXPIRED':
       return false
     default: {
       const unknown: never = reason

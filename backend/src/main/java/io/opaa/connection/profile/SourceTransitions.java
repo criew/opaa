@@ -9,6 +9,9 @@ import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.ValidationException;
 import io.opaa.connection.profile.ChangeRejection.Category;
+import io.opaa.connection.token.ConnectionSecrets;
+import io.opaa.connection.token.SecretOwner;
+import io.opaa.connection.token.SecretOwner.LibraryOwned;
 import io.opaa.indexing.source.Secret;
 import io.opaa.indexing.source.SourceChangeGate;
 import io.opaa.indexing.source.SourceChangeGate.Answers;
@@ -59,13 +62,14 @@ public class SourceTransitions {
   }
 
   /**
-   * The libraries among {@code libraries} that hold a stored secret under {@code profileId}, by the
-   * column and with one query - never by whether it can be decrypted now.
+   * The libraries among {@code libraries} that hold a stored secret of their own (the column), with
+   * one query - never by whether it can be decrypted now, and never a person's shared secret, which
+   * no move of a single library discards.
    */
   public Set<UUID> holdingSecrets(Collection<KnowledgeLibrary> libraries, UUID profileId) {
     Map<SecretOwner, UUID> owners = new HashMap<>();
     for (KnowledgeLibrary library : libraries) {
-      owners.put(SecretOwner.of(profileId, library), library.getId());
+      owners.put(new LibraryOwned(library.getId()), library.getId());
     }
     Set<SecretOwner> notHolding = secrets.statesAmong(owners.keySet()).keySet();
     Set<UUID> holding = new HashSet<>();

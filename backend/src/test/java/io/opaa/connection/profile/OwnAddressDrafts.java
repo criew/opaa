@@ -3,6 +3,8 @@ package io.opaa.connection.profile;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import io.opaa.connection.token.ConnectionSecrets;
+import io.opaa.connection.token.TestSecrets;
 import io.opaa.indexing.source.ServiceAccountTokens;
 import io.opaa.indexing.source.SourceConnectorRegistry;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
@@ -35,7 +37,7 @@ public final class OwnAddressDrafts {
     when(provider.getObject()).thenReturn(registry);
     LibraryConnectionRepository connections = mock(LibraryConnectionRepository.class);
     ConnectionProfileRepository profiles = mock(ConnectionProfileRepository.class);
-    ConnectionSecrets secrets = new ConnectionSecrets(connections, libraries);
+    ConnectionSecrets secrets = TestSecrets.overLibraries(connections, libraries);
     ConnectorTypePolicyRepository policies = mock(ConnectorTypePolicyRepository.class);
     return new EffectiveSourceSettings(
         connections,

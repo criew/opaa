@@ -3,7 +3,6 @@ package io.opaa.connection;
 import io.opaa.common.ValidationException;
 import io.opaa.connection.profile.ConnectionProfile;
 import io.opaa.connection.profile.ConnectionProfileRepository;
-import io.opaa.connection.profile.ConnectionSecrets;
 import io.opaa.connection.profile.ConnectorLockService;
 import io.opaa.connection.profile.EffectiveSourceSettings;
 import io.opaa.connection.profile.LibraryConnection;
@@ -11,10 +10,11 @@ import io.opaa.connection.profile.LibraryConnectionRepository;
 import io.opaa.connection.profile.ProfileAdmission;
 import io.opaa.connection.profile.ProfileRequirementService;
 import io.opaa.connection.profile.ProfileRequirements;
-import io.opaa.connection.profile.SecretOwner;
 import io.opaa.connection.profile.ServerAddress;
 import io.opaa.connection.profile.SourceTransitions;
 import io.opaa.connection.profile.SourceTransitions.Move;
+import io.opaa.connection.token.ConnectionSecrets;
+import io.opaa.connection.token.SecretOwner.LibraryOwned;
 import io.opaa.indexing.source.SourceBlock;
 import io.opaa.indexing.source.SourceConnectorRegistry;
 import io.opaa.knowledge.KnowledgeLibrary;
@@ -178,7 +178,8 @@ public class LibraryConnectionService {
       library.moveSourceUrl(address);
     }
     if (move.discardsSecret()) {
-      secrets.discard(SecretOwner.of(profile.getId(), library));
+      // only the library's own secret: a person's is shared by every library on the account
+      secrets.discard(new LibraryOwned(library.getId()));
     }
     effective.adoptFrame(library, profile);
     libraries.save(library);

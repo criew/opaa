@@ -246,8 +246,19 @@ describe('a switch of profile', () => {
   })
 
   it('clears what the source read from an address it clears, and the transport of the previous profile', () => {
-    const empty = { sourceUrl: '', edition: null, credentialsVerified: false, sourceProxy: '' }
-    const values = {
+    type Values = {
+      sourceUrl: string
+      edition: string | null
+      credentialsVerified: boolean
+      sourceProxy: string
+    }
+    const empty: Values = {
+      sourceUrl: '',
+      edition: null,
+      credentialsVerified: false,
+      sourceProxy: '',
+    }
+    const values: Values = {
       sourceUrl: 'https://site.atlassian.net/wiki',
       edition: 'CLOUD',
       credentialsVerified: true,

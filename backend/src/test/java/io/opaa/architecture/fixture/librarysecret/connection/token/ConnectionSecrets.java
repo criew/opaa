@@ -1,4 +1,4 @@
-package io.opaa.architecture.fixture.librarysecret.connection.profile;
+package io.opaa.architecture.fixture.librarysecret.connection.token;
 
 import io.opaa.architecture.fixture.librarysecret.knowledge.KnowledgeLibrary;
 

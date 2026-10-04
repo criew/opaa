@@ -98,8 +98,12 @@ const FREEZE_REASONS: Record<SourceBlockReason, string> = {
     'die Quelle ist gesperrt, bis sie einem Zugang zugeordnet ist, und wird nicht mehr aktualisiert',
   NOT_CONNECTED: 'die Verbindung zur Quelle ist getrennt, der Inhalt wird nicht aktualisiert',
   ACCESS_REMOVED: 'der Zugang der Quelle wurde entfernt, der Inhalt wird nicht aktualisiert',
+  OWNER_DEACTIVATED:
+    'das Konto der Besitzerin ist deaktiviert, der Inhalt wird nicht aktualisiert und nach Ablauf der Löschfrist gelöscht',
+  DORMANT: 'die Verbindung der Quelle ruht, der Inhalt wird nicht aktualisiert',
   TARGET_OUTSIDE_PROFILE:
     'die Adresse der Quelle liegt außerhalb ihres Zugangs, der Inhalt wird nicht aktualisiert',
+  EXPIRED: 'die Anmeldung an der Quelle ist abgelaufen, der Inhalt wird nicht aktualisiert',
 }
 
 /**

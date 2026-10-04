@@ -118,7 +118,8 @@ class SpecEnumParityTest {
         Arguments.of("PersonalSecretForm", PersonalSecretForm.values()),
         Arguments.of("ConnectionLogEventType", ConnectionLogEventType.values()),
         Arguments.of("ConnectionEndCause", ConnectionEndCause.values()),
-        Arguments.of("ConnectionLogOwnerKind", ConnectionLogOwnerKind.values()));
+        Arguments.of("ConnectionLogOwnerKind", ConnectionLogOwnerKind.values()),
+        Arguments.of("ConnectedAccountState", ConnectedAccountState.values()));
   }
 
   @ParameterizedTest(name = "{0}")

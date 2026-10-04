@@ -178,7 +178,9 @@ public interface UserRepository extends JpaRepository<User, UUID> {
               + " (SELECT count(*) FROM asset_ownership_history WHERE owner_user_id = :id)"
               + "   AS asset_ownership_history,"
               + " (SELECT count(*) FROM account_state_history WHERE user_id = :id)"
-              + "   AS account_state_history",
+              + "   AS account_state_history,"
+              + " (SELECT count(*) FROM connected_accounts WHERE user_id = :id)"
+              + "   AS connected_accounts",
       nativeQuery = true)
   DeletionBlockers countDeletionBlockers(@Param("id") UUID userId);
 
@@ -211,6 +213,8 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     long getAssetOwnershipHistory();
 
     long getAccountStateHistory();
+
+    long getConnectedAccounts();
   }
 
   /** Writes {@code role} only while the stored role is still {@code expected}. */

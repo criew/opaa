@@ -12,6 +12,9 @@ import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.ConnectionAuthMethod;
 import io.opaa.api.types.ConnectionOwnership;
+import io.opaa.connection.token.ConnectionSecrets;
+import io.opaa.connection.token.SecretOwner;
+import io.opaa.connection.token.TestSecrets;
 import io.opaa.indexing.source.SourceBlock;
 import io.opaa.indexing.source.SourceBlock.Reason;
 import io.opaa.indexing.source.SourceConnectionBlockedException;
@@ -96,7 +99,7 @@ class SourceBlocksTest {
             connections,
             profiles,
             new ProfileRequirements(policies, registry),
-            new ConnectionSecrets(connections, libraryRepository),
+            TestSecrets.overLibraries(connections, libraryRepository),
             registry);
   }
 
@@ -190,8 +193,11 @@ class SourceBlocksTest {
             Reason.PROFILE_LOCKED,
             Reason.PROFILE_REQUIRED,
             Reason.ACCESS_REMOVED,
+            Reason.OWNER_DEACTIVATED,
+            Reason.DORMANT,
             Reason.TARGET_OUTSIDE_PROFILE,
-            Reason.NOT_CONNECTED);
+            Reason.NOT_CONNECTED,
+            Reason.EXPIRED);
   }
 
   @Test
@@ -202,14 +208,22 @@ class SourceBlocksTest {
             Reason.TYPE_LOCKED, Reason.PROFILE_LOCKED, Reason.PROFILE_REQUIRED);
     assertThat(SourceBlocks.ENDING_A_RUNNING_RUN)
         .containsExactlyInAnyOrder(
-            Reason.ACCESS_REMOVED, Reason.TARGET_OUTSIDE_PROFILE, Reason.NOT_CONNECTED);
+            Reason.ACCESS_REMOVED,
+            Reason.OWNER_DEACTIVATED,
+            Reason.DORMANT,
+            Reason.TARGET_OUTSIDE_PROFILE,
+            Reason.NOT_CONNECTED,
+            Reason.EXPIRED);
     assertThat(SourceBlocks.SHOWN_IN_ANSWER)
         .containsExactlyInAnyOrder(
             Reason.TYPE_LOCKED,
             Reason.PROFILE_LOCKED,
             Reason.PROFILE_REQUIRED,
             Reason.ACCESS_REMOVED,
-            Reason.NOT_CONNECTED);
+            Reason.OWNER_DEACTIVATED,
+            Reason.DORMANT,
+            Reason.NOT_CONNECTED,
+            Reason.EXPIRED);
     for (Reason reason : Reason.values()) {
       assertThat(new SourceBlock(reason, "x", "y").locked())
           .isEqualTo(SourceBlocks.LOCKS.contains(reason));
@@ -417,6 +431,171 @@ class SourceBlocksTest {
     assertThat(blocks.requireUnblocked(free, SourceBlocks.ALL).map(ConnectionProfile::getName))
         .contains("Feeds");
     assertThat(blocks.requireUnblocked(own, SourceBlocks.ALL)).isEmpty();
+  }
+
+  static Stream<Arguments> precedenceOfAPrivateLibrary() {
+    return Stream.of(
+        Arguments.of(
+            EnumSet.noneOf(Fact.class), Reason.OWNER_DEACTIVATED, Reason.OWNER_DEACTIVATED),
+        Arguments.of(EnumSet.noneOf(Fact.class), Reason.DORMANT, Reason.DORMANT),
+        Arguments.of(EnumSet.noneOf(Fact.class), Reason.NOT_CONNECTED, Reason.NOT_CONNECTED),
+        Arguments.of(EnumSet.noneOf(Fact.class), Reason.EXPIRED, Reason.EXPIRED),
+        Arguments.of(EnumSet.noneOf(Fact.class), null, null),
+        Arguments.of(
+            EnumSet.of(Fact.PROFILE_LOCK), Reason.OWNER_DEACTIVATED, Reason.PROFILE_LOCKED),
+        Arguments.of(EnumSet.of(Fact.TYPE_LOCK), Reason.DORMANT, Reason.TYPE_LOCKED),
+        Arguments.of(EnumSet.of(Fact.PROFILE_REMOVED), Reason.EXPIRED, Reason.ACCESS_REMOVED),
+        Arguments.of(EnumSet.of(Fact.OUTSIDE), Reason.OWNER_DEACTIVATED, Reason.OWNER_DEACTIVATED),
+        Arguments.of(EnumSet.of(Fact.OUTSIDE), Reason.DORMANT, Reason.DORMANT),
+        Arguments.of(EnumSet.of(Fact.OUTSIDE), Reason.NOT_CONNECTED, Reason.TARGET_OUTSIDE_PROFILE),
+        Arguments.of(EnumSet.of(Fact.OUTSIDE), Reason.EXPIRED, Reason.TARGET_OUTSIDE_PROFILE));
+  }
+
+  /**
+   * A private library on a profile: the store answers for its owner's account, and its reasons take
+   * their place in the declared order - a deactivated or resting account before the address, the
+   * address before a missing or expired secret.
+   */
+  @ParameterizedTest(name = "{0} + store {1} -> {2}")
+  @MethodSource("precedenceOfAPrivateLibrary")
+  void theStoresReasonsForAPrivateLibraryTakeTheirPlace(
+      Set<Fact> facts, Reason stored, Reason expected) {
+    ConnectionSecrets store = mock(ConnectionSecrets.class);
+    when(store.statesAmong(any()))
+        .thenAnswer(
+            call -> {
+              Map<SecretOwner, Reason> states = new HashMap<>();
+              if (stored != null) {
+                for (SecretOwner owner : call.<java.util.Collection<SecretOwner>>getArgument(0)) {
+                  states.put(owner, stored);
+                }
+              }
+              return states;
+            });
+    SourceBlocks personal = blocksOver(store);
+    KnowledgeLibrary library = arrangePrivate(facts);
+
+    Optional<SourceBlock> block = personal.blockOf(library, SourceBlocks.ALL);
+    assertThat(block.map(SourceBlock::reason)).isEqualTo(Optional.ofNullable(expected));
+    Optional<Reason> firstDeclared =
+        Arrays.stream(Reason.values())
+            .filter(reason -> personal.blockOf(library, EnumSet.of(reason)).isPresent())
+            .min(Comparator.naturalOrder());
+    assertThat(block.map(SourceBlock::reason)).isEqualTo(firstDeclared);
+  }
+
+  static Stream<Arguments> noticesOfAPrivateLibrary() {
+    return Stream.of(
+        Arguments.of(Reason.OWNER_DEACTIVATED, "Systemverwaltung", "nach Ablauf der Löschfrist"),
+        Arguments.of(
+            Reason.DORMANT,
+            "Besitzerin der Bibliothek bzw. Systemverwaltung",
+            "ohne Neuverbinden weiter"),
+        Arguments.of(
+            Reason.NOT_CONNECTED, "Besitzerin der Bibliothek", "auf der Seite „Verbundene Konten“"),
+        Arguments.of(Reason.EXPIRED, "Besitzerin der Bibliothek", "„Verbundene Konten“ neu"));
+  }
+
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("noticesOfAPrivateLibrary")
+  void aPrivateLibrarysBlockNamesItsOwnerOrTheAdministration(
+      Reason reason, String responsible, String noticePart) {
+    ConnectionSecrets store = mock(ConnectionSecrets.class);
+    when(store.statesAmong(any()))
+        .thenAnswer(
+            call -> {
+              Map<SecretOwner, Reason> states = new HashMap<>();
+              for (SecretOwner owner : call.<java.util.Collection<SecretOwner>>getArgument(0)) {
+                states.put(owner, reason);
+              }
+              return states;
+            });
+
+    SourceBlock block =
+        blocksOver(store)
+            .blockOf(arrangePrivate(EnumSet.noneOf(Fact.class)), SourceBlocks.ALL)
+            .orElseThrow();
+
+    assertThat(block.reason()).isEqualTo(reason);
+    assertThat(block.responsible()).isEqualTo(responsible);
+    assertThat(block.notice()).contains("„Personen“", noticePart);
+  }
+
+  @SuppressWarnings("unchecked")
+  private SourceBlocks blocksOver(ConnectionSecrets store) {
+    LibraryConnectionRepository connections = mock(LibraryConnectionRepository.class);
+    ConnectionProfileRepository profiles = mock(ConnectionProfileRepository.class);
+    when(connections.findAllById(any()))
+        .thenAnswer(
+            call -> {
+              Set<UUID> ids = idsOf(call.getArgument(0));
+              return connectionRows.stream().filter(c -> ids.contains(c.getLibraryId())).toList();
+            });
+    when(profiles.findAllById(any()))
+        .thenAnswer(
+            call -> {
+              Set<UUID> ids = idsOf(call.getArgument(0));
+              return profileRows.stream().filter(p -> ids.contains(p.getId())).toList();
+            });
+    ObjectProvider<SourceConnectorRegistry> registry = mock(ObjectProvider.class);
+    when(registry.getObject())
+        .thenReturn(
+            TestSourceConnectors.connectors().with(new ProfileProbeSourceConnector()).registry());
+    return new SourceBlocks(
+        policies,
+        connections,
+        profiles,
+        new ProfileRequirements(policies, registry),
+        store,
+        registry);
+  }
+
+  /** A private library of an RSS feed on a profile for persons, with the rows of {@code facts}. */
+  private KnowledgeLibrary arrangePrivate(Set<Fact> facts) {
+    KnowledgeLibrary library =
+        KnowledgeLibrary.ownerOnly(
+            UUID.randomUUID(),
+            "Meine Ablage",
+            null,
+            UUID.randomUUID(),
+            SourceTypes.RSS_FEED,
+            null,
+            facts.contains(Fact.OUTSIDE)
+                ? "https://elsewhere.example.org/a.xml"
+                : SERVER + "/a.xml",
+            null,
+            null,
+            false);
+    rows.put(library.getId(), library);
+    if (facts.contains(Fact.TYPE_LOCK)) {
+      policyOf(SourceTypes.RSS_FEED).lockedSince(NOW, NOW);
+    }
+    ConnectionProfile profile = new ConnectionProfile(SourceTypes.RSS_FEED, NOW);
+    profile.replace(
+        new ConnectionProfileValues(
+            "Personen",
+            SERVER,
+            ConnectionAuthMethod.PERSONAL_SECRET,
+            ConnectionOwnership.PERSON,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            false),
+        null,
+        NOW);
+    if (facts.contains(Fact.PROFILE_LOCK)) {
+      profile.lockedSince(NOW, NOW);
+    }
+    if (!facts.contains(Fact.PROFILE_REMOVED)) {
+      profileRows.add(profile);
+    }
+    connectionRows.add(
+        new LibraryConnection(
+            library.getId(), facts.contains(Fact.PROFILE_REMOVED) ? null : profile.getId(), NOW));
+    return library;
   }
 
   /**

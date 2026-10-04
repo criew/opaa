@@ -58,6 +58,8 @@ class ProfileChangeUnreadableSecretTest {
           libraries,
           registry,
           wiring.secrets,
+          TestPersonCounts.NO_PERSONS,
+          TestPersonCounts.numbers(),
           wiring.transitions,
           mock(CredentialsEncryptor.class),
           wiring.audit,
