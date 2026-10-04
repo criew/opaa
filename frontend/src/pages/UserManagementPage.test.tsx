@@ -14,7 +14,7 @@ import {
 } from '../mocks/localUserFixtures'
 import { resetMockProviderAccounts } from '../mocks/accountFixtures'
 import type { LocalAuthSettingsUpdateRequest, LocalUserUpdateRequest } from '../types/api'
-import { answerConfirm, renderWithProviders } from '../test/test-utils'
+import { answerConfirm, renderWithProviders, waitForDialogClosed } from '../test/test-utils'
 import { useAuthStore } from '../stores/authStore'
 import { useMailStore } from '../stores/mailStore'
 import { useUserAdminStore } from '../stores/userAdminStore'
@@ -277,7 +277,7 @@ describe('UserManagementPage', () => {
     await user.click(within(dialog).getByRole('combobox', { name: 'Rolle' }))
     await user.click(await screen.findByRole('option', { name: 'Systemverwaltung' }))
     await user.click(within(dialog).getByRole('button', { name: 'Abbrechen' }))
-    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    await waitForDialogClosed()
 
     const second = await openRowMenu(user, 'Thomas Klein')
     await user.click(within(second).getByRole('menuitem', { name: /Rolle ändern/ }))
