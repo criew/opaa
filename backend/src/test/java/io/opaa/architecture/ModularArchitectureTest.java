@@ -140,6 +140,11 @@ class ModularArchitectureTest {
   }
 
   @Test
+  void theAdministrationNeverSeesAConnectedPerson() {
+    ARCHITECTURE.theAdministrationNeverSeesAConnectedPerson().check(mainClasses);
+  }
+
+  @Test
   void theConnectorReleaseIsDecidedInConnections() {
     ARCHITECTURE.theConnectorReleaseIsDecidedInConnections().check(mainClasses);
   }

@@ -5,13 +5,15 @@ import io.opaa.api.types.AuditObjectType;
 import io.opaa.api.types.AuditOutcome;
 import io.opaa.api.types.Capability;
 import io.opaa.api.types.ConnectionAuthMethod;
+import io.opaa.api.types.ConnectionEndCause;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
-import io.opaa.connection.profile.ConnectionSecrets.DiscardCause;
+import io.opaa.connection.token.ConnectionSecrets;
+import io.opaa.connection.token.ConnectionSecrets.Discarded;
 import io.opaa.indexing.source.ConnectorData;
 import io.opaa.indexing.source.ProfileDeclaration;
 import io.opaa.indexing.source.SignIn;
@@ -40,9 +42,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Creates, changes and deletes connection profiles - system administration only, enforced by the
- * caller. A changed server address or app registration discards every secret held under the
- * profile, after a confirmation once connections exist; a new client secret alone discards nothing.
- * The client secret is encrypted here and never returned; the audit names fields only.
+ * caller. A changed server address or app registration discards every secret held under the profile
+ * - of libraries and of persons, whose connections end through {@link PersonConnections} - after a
+ * confirmation once connections exist; a new client secret alone discards nothing. The client
+ * secret is encrypted here and never returned; the audit names fields and library counts.
  */
 @Service
 @Transactional(readOnly = true)
@@ -64,6 +67,7 @@ public class ConnectionProfileService {
   private final KnowledgeLibraryRepository libraries;
   private final SourceConnectorRegistry connectors;
   private final ConnectionSecrets secrets;
+  private final PersonConnections persons;
   private final SourceChangeGate changeGate;
   private final CredentialsEncryptor encryptor;
   private final AuditEventRecorder audit;
@@ -76,6 +80,7 @@ public class ConnectionProfileService {
       KnowledgeLibraryRepository libraries,
       SourceConnectorRegistry connectors,
       ConnectionSecrets secrets,
+      PersonConnections persons,
       CredentialsEncryptor encryptor,
       AuditEventRecorder audit,
       CapabilityService capabilities,
@@ -85,6 +90,7 @@ public class ConnectionProfileService {
     this.libraries = libraries;
     this.connectors = connectors;
     this.secrets = secrets;
+    this.persons = persons;
     this.changeGate = new SourceChangeGate(connectors);
     this.encryptor = encryptor;
     this.audit = audit;
@@ -111,7 +117,7 @@ public class ConnectionProfileService {
   public ProfileImpact impact(UUID id) {
     get(id);
     long libraryConnections = connections.countByProfileId(id);
-    return new ProfileImpact(libraryConnections, libraryConnections);
+    return new ProfileImpact(libraryConnections, libraryConnections, persons.countUnder(id));
   }
 
   /** The connections of each of {@code profiles}, with one query for all of them. */
@@ -180,13 +186,21 @@ public class ConnectionProfileService {
             || !Objects.equals(profile.getClientId(), validated.clientId())
             || !Objects.equals(profile.getTenant(), validated.tenant())
             || !Objects.equals(profile.getScopes(), validated.scopes());
-    List<LibraryConnection> affected =
-        addressChanged || registrationChanged ? connections.findByProfileId(id) : List.of();
-    if (!affected.isEmpty() && !confirmed) {
+    boolean discards = addressChanged || registrationChanged;
+    List<LibraryConnection> affected = discards ? connections.findByProfileId(id) : List.of();
+    long personConnections = discards ? persons.countUnder(id) : 0;
+    long concerned = affected.size() + personConnections;
+    if (concerned > 0 && !confirmed) {
+      // persons are not counted here: the administration sees their number only masked
       throw new ConflictException(
-          "Die Änderung verwirft die Zugangsdaten von "
-              + affected.size()
-              + (affected.size() == 1 ? " Verbindung" : " Verbindungen")
+          "Die Änderung verwirft die Zugangsdaten "
+              + (affected.isEmpty()
+                  ? ""
+                  : "von "
+                      + affected.size()
+                      + (affected.size() == 1 ? " Bibliothek" : " Bibliotheken")
+                      + (personConnections > 0 ? " und " : ""))
+              + (personConnections > 0 ? "der verbundenen Konten" : "")
               + " dieses Zugangs. Bitte bestätigen.",
           CONFIRMATION_REQUIRED);
     }
@@ -194,15 +208,19 @@ public class ConnectionProfileService {
     String previousAddress = profile.getServerUrl();
     profile.replace(validated, ciphertext, clock.instant());
     profiles.save(profile);
-    if (!affected.isEmpty()) {
+    if (concerned > 0) {
       if (addressChanged) {
         moveAddresses(affected, previousAddress, validated.serverUrl());
       }
-      secrets.discardAllUnder(
-          id, addressChanged ? DiscardCause.ADDRESS_CHANGED : DiscardCause.REGISTRATION_CHANGED);
+      ConnectionEndCause cause =
+          addressChanged
+              ? ConnectionEndCause.ADDRESS_CHANGED
+              : ConnectionEndCause.REGISTRATION_CHANGED;
+      secrets.discardAllUnder(id, cause);
+      persons.endAllUnder(id, cause, caller.id());
     }
     Map<String, Object> after = auditState(profile);
-    if (!affected.isEmpty()) {
+    if (concerned > 0) {
       after.put("connectionsDiscarded", affected.size());
     }
     record(caller, AuditEventType.CONNECTION_PROFILE_CHANGED, profile, before, after);
@@ -215,14 +233,15 @@ public class ConnectionProfileService {
   @Transactional
   public ProfileImpact disconnectAll(CurrentUser caller, UUID id) {
     ConnectionProfile profile = get(id);
-    int disconnected = secrets.discardAllUnder(id, DiscardCause.EMERGENCY);
+    Discarded discarded = secrets.discardAllUnder(id, ConnectionEndCause.EMERGENCY);
+    int ended = persons.endAllUnder(id, ConnectionEndCause.EMERGENCY, caller.id());
     record(
         caller,
         AuditEventType.CONNECTION_PROFILE_DISCONNECTED,
         profile,
         null,
-        Map.of("connectionsDisconnected", disconnected));
-    return new ProfileImpact(disconnected, disconnected);
+        Map.of("connectionsDisconnected", discarded.libraries()));
+    return new ProfileImpact(discarded.libraries(), discarded.libraries(), ended);
   }
 
   /**
@@ -234,7 +253,8 @@ public class ConnectionProfileService {
   public void delete(CurrentUser caller, UUID id) {
     ConnectionProfile profile = get(id);
     List<LibraryConnection> affected = connections.findByProfileId(id);
-    secrets.discardAllUnder(id, DiscardCause.PROFILE_DELETED);
+    secrets.discardAllUnder(id, ConnectionEndCause.PROFILE_DELETED);
+    persons.endAllUnder(id, ConnectionEndCause.PROFILE_DELETED, caller.id());
     Instant now = clock.instant();
     for (LibraryConnection connection : affected) {
       connection.moveTo(null, now);
@@ -438,6 +458,9 @@ public class ConnectionProfileService {
     return new NotFoundException("Zugang nicht gefunden");
   }
 
-  /** Connections a change would cut off, and the libraries behind them. */
-  public record ProfileImpact(long connections, long libraries) {}
+  /**
+   * Connections of libraries a change would cut off, the libraries behind them, and the persons'
+   * connected accounts - an exact number the administration sees only masked.
+   */
+  public record ProfileImpact(long connections, long libraries, long connectedAccounts) {}
 }

@@ -68,17 +68,24 @@ components:
         PROFILE_LOCKED (the system administration locked the connector type or the connection
         profile), PROFILE_REQUIRED (the connector type is usable only through a connection
         profile, and the library still has its own address), ACCESS_REMOVED (the library's
-        profile was deleted), TARGET_OUTSIDE_PROFILE (the library's address left its profile),
-        NOT_CONNECTED (the connection holds no usable secret). A client offers "Zugang zuordnen"
-        for PROFILE_REQUIRED and ACCESS_REMOVED.
+        profile was deleted), OWNER_DEACTIVATED (the account of the person whose connected
+        account a private library runs on is deactivated), DORMANT (that account rests - no
+        sign-in for long, or its sign-in is switched off; it goes on with the next sign-in),
+        TARGET_OUTSIDE_PROFILE (the library's address left its profile), NOT_CONNECTED (the
+        connection holds no usable secret), EXPIRED (the provider rejected the secret or it ran
+        out; connect anew). A client offers "Zugang zuordnen" for PROFILE_REQUIRED and
+        ACCESS_REMOVED.
       enum:
         [
           TYPE_LOCKED,
           PROFILE_LOCKED,
           PROFILE_REQUIRED,
           ACCESS_REMOVED,
+          OWNER_DEACTIVATED,
+          DORMANT,
           TARGET_OUTSIDE_PROFILE,
           NOT_CONNECTED,
+          EXPIRED,
         ]
 
     SourceBlock:

@@ -122,6 +122,14 @@ public class ConnectionProfile {
     return serverUrl;
   }
 
+  /**
+   * What a secret held on this profile is issued for and handed out to only: an opaque value, today
+   * the server address. A token store compares it, never parses it.
+   */
+  public String secretTarget() {
+    return serverUrl;
+  }
+
   public ConnectionAuthMethod getAuthMethod() {
     return authMethod;
   }

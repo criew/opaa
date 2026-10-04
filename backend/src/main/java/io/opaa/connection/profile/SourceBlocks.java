@@ -1,6 +1,9 @@
 package io.opaa.connection.profile;
 
 import io.opaa.api.types.ConnectionAuthMethod;
+import io.opaa.connection.token.ConnectionSecrets;
+import io.opaa.connection.token.SecretOwner;
+import io.opaa.connection.token.SecretOwner.PersonOwned;
 import io.opaa.indexing.source.SourceBlock;
 import io.opaa.indexing.source.SourceBlock.Reason;
 import io.opaa.indexing.source.SourceConnectionBlockedException;
@@ -50,6 +53,14 @@ public class SourceBlocks {
 
   static final String ADMINISTRATION = "Systemverwaltung";
   static final String LIBRARY_MANAGERS = "Verwaltende der Bibliothek";
+  static final String OWNER = "Besitzerin der Bibliothek";
+  static final String OWNER_OR_ADMINISTRATION = "Besitzerin der Bibliothek bzw. Systemverwaltung";
+
+  /** The reasons the secret store answers; the others follow from rows of this package. */
+  private static final Set<Reason> SECRET_REASONS =
+      EnumSet.of(Reason.OWNER_DEACTIVATED, Reason.DORMANT, Reason.NOT_CONNECTED, Reason.EXPIRED);
+
+  private static final String ACCOUNTS_PAGE = "auf der Seite „Verbundene Konten“";
 
   private static final String LOCKED = "Gesperrt – Inhalt wird nicht mehr aktualisiert.";
   private static final String LOCK_CONTENT_STAYS =
@@ -84,16 +95,77 @@ public class SourceBlocks {
     this.connectors = connectors;
   }
 
-  /** The block of a library whose own secret for the profile {@code accessName} is missing. */
-  static SourceBlock secretMissing(String accessName) {
-    return new SourceBlock(
-        Reason.NOT_CONNECTED,
-        LIBRARY_MANAGERS,
-        "Verbindung getrennt: Für den Zugang \""
-            + accessName
-            + "\" sind keine Zugangsdaten hinterlegt. Die Verwaltenden der"
-            + " Bibliothek tragen sie neu ein."
-            + CONTENT_STAYS);
+  /**
+   * The block for {@code reason}, one the secret store answers for {@code owner} on {@code
+   * profile}: its notice names who acts - the owner of a private library, else its managers.
+   */
+  public static SourceBlock secretBlock(
+      Reason reason, ConnectionProfile profile, SecretOwner owner) {
+    boolean person = owner instanceof PersonOwned;
+    String access = "„" + profile.getName() + "“";
+    return switch (reason) {
+      case OWNER_DEACTIVATED ->
+          new SourceBlock(
+              reason,
+              ADMINISTRATION,
+              "Konto deaktiviert: Das Konto der Besitzerin ist deaktiviert, die Verbindung zum"
+                  + " Zugang "
+                  + access
+                  + " ruht. Der Inhalt wird nicht mehr aktualisiert und nach Ablauf der"
+                  + " Löschfrist gelöscht. Zuständig ist die Systemverwaltung.");
+      case DORMANT ->
+          new SourceBlock(
+              reason,
+              OWNER_OR_ADMINISTRATION,
+              "Ruhend: Das Konto der Besitzerin wird derzeit nicht genutzt, die Verbindung zum"
+                  + " Zugang "
+                  + access
+                  + " ruht. Mit ihrer nächsten Anmeldung geht es ohne Neuverbinden weiter; ist"
+                  + " ihr Anmeldeweg abgeschaltet, ist die Systemverwaltung zuständig."
+                  + CONTENT_STAYS);
+      case EXPIRED ->
+          person
+              ? new SourceBlock(
+                  reason,
+                  OWNER,
+                  "Abgelaufen: Die Anmeldung beim Zugang "
+                      + access
+                      + " ist abgelaufen oder wurde vom Anbieter abgelehnt. Die Besitzerin"
+                      + " verbindet ihr Konto "
+                      + ACCOUNTS_PAGE
+                      + " neu."
+                      + CONTENT_STAYS)
+              : new SourceBlock(
+                  reason,
+                  LIBRARY_MANAGERS,
+                  "Abgelaufen: Die Zugangsdaten für den Zugang "
+                      + access
+                      + " sind abgelaufen oder wurden vom Anbieter abgelehnt. Die Verwaltenden der"
+                      + " Bibliothek tragen sie neu ein."
+                      + CONTENT_STAYS);
+      case NOT_CONNECTED ->
+          person
+              ? new SourceBlock(
+                  reason,
+                  OWNER,
+                  "Verbindung getrennt: Für den Zugang "
+                      + access
+                      + " ist kein verbundenes Konto hinterlegt. Die Besitzerin verbindet ihr"
+                      + " Konto "
+                      + ACCOUNTS_PAGE
+                      + "."
+                      + CONTENT_STAYS)
+              : new SourceBlock(
+                  reason,
+                  LIBRARY_MANAGERS,
+                  "Verbindung getrennt: Für den Zugang \""
+                      + profile.getName()
+                      + "\" sind keine Zugangsdaten hinterlegt. Die Verwaltenden der"
+                      + " Bibliothek tragen sie neu ein."
+                      + CONTENT_STAYS);
+      case TYPE_LOCKED, PROFILE_LOCKED, PROFILE_REQUIRED, ACCESS_REMOVED, TARGET_OUTSIDE_PROFILE ->
+          throw new IllegalArgumentException(reason + " is no answer of the secret store");
+    };
   }
 
   /** The first of the {@code considered} reasons that blocks {@code library}, empty if none. */
@@ -174,6 +246,7 @@ public class SourceBlocks {
             ? Map.of()
             : profiles.findAllById(profileIds).stream()
                 .collect(Collectors.toMap(ConnectionProfile::getId, Function.identity()));
+    boolean secretConsidered = considered.stream().anyMatch(SECRET_REASONS::contains);
     Map<UUID, ConnectionProfile> profileOfLibrary = new HashMap<>();
     Map<UUID, SecretOwner> ownerOfLibrary = new HashMap<>();
     for (KnowledgeLibrary library : libraries) {
@@ -184,9 +257,9 @@ public class SourceBlocks {
               : profileOf.get(connection.getProfileId());
       if (profile != null) {
         profileOfLibrary.put(library.getId(), profile);
-        if (profile.getAuthMethod() == ConnectionAuthMethod.PERSONAL_SECRET
-            && considered.contains(Reason.NOT_CONNECTED)) {
-          ownerOfLibrary.put(library.getId(), SecretOwner.of(profile.getId(), library));
+        SecretOwner owner = SecretOwner.of(profile.getId(), profile.getAuthMethod(), library);
+        if (secretConsidered && asksTheStore(profile, owner)) {
+          ownerOfLibrary.put(library.getId(), owner);
         }
       }
     }
@@ -207,9 +280,20 @@ public class SourceBlocks {
                   : null,
               connection != null,
               profileOfLibrary.get(library.getId()),
-              owner != null && secretStates.containsKey(owner)));
+              owner,
+              owner == null ? null : secretStates.get(owner)));
     }
     return facts;
+  }
+
+  /**
+   * Whether the store holds the secret of {@code owner} on {@code profile}: a personal secret of a
+   * library, and any secret of a person; a library's other sign-ins are not supported yet.
+   */
+  private static boolean asksTheStore(ConnectionProfile profile, SecretOwner owner) {
+    ConnectionAuthMethod method = profile.getAuthMethod();
+    return method != ConnectionAuthMethod.NONE
+        && (method == ConnectionAuthMethod.PERSONAL_SECRET || owner instanceof PersonOwned);
   }
 
   private SourceBlock typeLock(SourceType type) {
@@ -245,7 +329,7 @@ public class SourceBlocks {
 
   /**
    * What decides the block of one library: its type lock, the profile requirement of its type, its
-   * connection, profile and secret.
+   * connection, profile, the owner of its secret where the store holds it and the store's answer.
    */
   private record Facts(
       KnowledgeLibrary library,
@@ -253,7 +337,8 @@ public class SourceBlocks {
       SourceBlock profileRequiredLock,
       boolean connected,
       ConnectionProfile profile,
-      boolean secretAbsent) {
+      SecretOwner secretOwner,
+      Reason secretState) {
 
     /** Tries the considered reasons in their order of declaration, which is the precedence. */
     private Optional<SourceBlock> firstBlock(Set<Reason> considered) {
@@ -306,8 +391,15 @@ public class SourceBlocks {
                             + "\". Die Verwaltenden der Bibliothek passen die Adresse an."
                             + CONTENT_STAYS))
                 : Optional.empty();
+        case OWNER_DEACTIVATED, DORMANT, EXPIRED -> fromTheStore(reason);
         case NOT_CONNECTED -> profile == null ? Optional.empty() : notConnected();
       };
+    }
+
+    private Optional<SourceBlock> fromTheStore(Reason reason) {
+      return secretState == reason
+          ? Optional.of(secretBlock(reason, profile, secretOwner))
+          : Optional.empty();
     }
 
     private Optional<SourceBlock> notConnected() {
@@ -315,8 +407,8 @@ public class SourceBlocks {
       if (method == ConnectionAuthMethod.NONE) {
         return Optional.empty();
       }
-      if (method == ConnectionAuthMethod.PERSONAL_SECRET) {
-        return secretAbsent ? Optional.of(secretMissing(profile.getName())) : Optional.empty();
+      if (secretOwner != null) {
+        return fromTheStore(Reason.NOT_CONNECTED);
       }
       // OAUTH, CLIENT_CREDENTIALS, SERVICE_ACCOUNT_KEY: no library can be connected with them yet
       return Optional.of(

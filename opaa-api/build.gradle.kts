@@ -173,6 +173,7 @@ val typeMappingsConfig = mapOf(
     "ConnectionLogEventType" to "ConnectionLogEventType",
     "ConnectionEndCause" to "ConnectionEndCause",
     "ConnectionLogOwnerKind" to "ConnectionLogOwnerKind",
+    "ConnectedAccountState" to "ConnectedAccountState",
 )
 
 tasks.withType<Test> {
@@ -283,6 +284,7 @@ tasks.named<org.openapitools.generator.gradle.plugin.tasks.GenerateTask>("openAp
         "ConnectionLogEventType" to "io.opaa.api.types.ConnectionLogEventType",
         "ConnectionEndCause" to "io.opaa.api.types.ConnectionEndCause",
         "ConnectionLogOwnerKind" to "io.opaa.api.types.ConnectionLogOwnerKind",
+        "ConnectedAccountState" to "io.opaa.api.types.ConnectedAccountState",
     ))
 }
 

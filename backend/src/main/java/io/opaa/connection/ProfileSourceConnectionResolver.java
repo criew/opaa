@@ -1,9 +1,12 @@
 package io.opaa.connection;
 
-import io.opaa.connection.profile.ConnectionSecrets;
+import io.opaa.connection.account.ConnectedAccountService;
 import io.opaa.connection.profile.EffectiveSourceSettings;
 import io.opaa.connection.profile.EffectiveSourceSettings.Purpose;
 import io.opaa.connection.profile.SourceBlocks;
+import io.opaa.connection.token.ConnectionSecrets;
+import io.opaa.connection.token.SecretOwner;
+import io.opaa.connection.token.SecretOwner.PersonOwned;
 import io.opaa.indexing.source.ConnectorData;
 import io.opaa.indexing.source.Secret;
 import io.opaa.indexing.source.SourceConnectionResolver;
@@ -17,7 +20,8 @@ import org.springframework.stereotype.Component;
  *
  * <p>A lock of the type or the profile blocks {@link #resolve}, which starts a run or fetches an
  * original; {@link #currentCredentials} and {@link #resolveForChange} do not, so a run already
- * going ends regularly and a locked library can still be repaired.
+ * going ends regularly and a locked library can still be repaired. A rejected person's secret
+ * expires their connected account.
  */
 @Component
 public class ProfileSourceConnectionResolver implements SourceConnectionResolver {
@@ -25,12 +29,17 @@ public class ProfileSourceConnectionResolver implements SourceConnectionResolver
   private final EffectiveSourceSettings effective;
   private final SourceBlocks blocks;
   private final ConnectionSecrets secrets;
+  private final ConnectedAccountService accounts;
 
   public ProfileSourceConnectionResolver(
-      EffectiveSourceSettings effective, SourceBlocks blocks, ConnectionSecrets secrets) {
+      EffectiveSourceSettings effective,
+      SourceBlocks blocks,
+      ConnectionSecrets secrets,
+      ConnectedAccountService accounts) {
     this.effective = effective;
     this.blocks = blocks;
     this.secrets = secrets;
+    this.accounts = accounts;
   }
 
   @Override
@@ -51,6 +60,16 @@ public class ProfileSourceConnectionResolver implements SourceConnectionResolver
   @Override
   public Secret currentSecret(KnowledgeLibrary library) {
     return effective.currentSecret(library);
+  }
+
+  @Override
+  public void credentialsRejected(KnowledgeLibrary library) {
+    SecretOwner owner = effective.secretOwnerOf(library);
+    if (owner instanceof PersonOwned person) {
+      accounts.rejected(library, person);
+    } else {
+      secrets.rejected(owner);
+    }
   }
 
   @Override

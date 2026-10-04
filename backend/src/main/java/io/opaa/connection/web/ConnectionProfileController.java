@@ -12,8 +12,11 @@ import io.opaa.api.dto.ConnectorTypeStateResponse;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
 import io.opaa.connection.ConnectorReleaseService;
+import io.opaa.connection.account.ConnectedAccountCounts;
+import io.opaa.connection.account.ConnectedAccountCounts.ProfileCounts;
 import io.opaa.connection.profile.ConnectionProfile;
 import io.opaa.connection.profile.ConnectionProfileService;
+import io.opaa.connection.profile.ConnectionProfileService.ProfileImpact;
 import io.opaa.connection.profile.ConnectorLockService;
 import io.opaa.connection.profile.ProfileRequirementService;
 import jakarta.validation.Valid;
@@ -46,16 +49,19 @@ public class ConnectionProfileController {
   private final ConnectorReleaseService release;
   private final ConnectorLockService locks;
   private final ProfileRequirementService requirements;
+  private final ConnectedAccountCounts accountCounts;
 
   public ConnectionProfileController(
       ConnectionProfileService profiles,
       ConnectorReleaseService release,
       ConnectorLockService locks,
-      ProfileRequirementService requirements) {
+      ProfileRequirementService requirements,
+      ConnectedAccountCounts accountCounts) {
     this.profiles = profiles;
     this.release = release;
     this.locks = locks;
     this.requirements = requirements;
+    this.accountCounts = accountCounts;
   }
 
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
@@ -63,13 +69,16 @@ public class ConnectionProfileController {
   public List<ConnectionProfileResponse> listConnectionProfiles() {
     List<ConnectionProfile> all = profiles.list();
     Map<UUID, Long> counts = profiles.connectionCounts(all);
+    Map<UUID, ProfileCounts> persons =
+        accountCounts.countsOf(all.stream().map(ConnectionProfile::getId).toList());
     return all.stream()
         .map(
             profile ->
                 ConnectionProfileResponseMapper.toResponse(
                     profile,
                     profiles.secretExpiresSoon(profile),
-                    counts.getOrDefault(profile.getId(), 0L)))
+                    counts.getOrDefault(profile.getId(), 0L),
+                    persons.get(profile.getId())))
         .toList();
   }
 
@@ -117,16 +126,21 @@ public class ConnectionProfileController {
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
   @GetMapping(ADMIN + "/{profileId}/impact")
   public ConnectionProfileImpactResponse getConnectionProfileImpact(@PathVariable UUID profileId) {
+    ProfileImpact impact = profiles.impact(profileId);
     return ConnectionProfileResponseMapper.toResponse(
-        profiles.impact(profileId), requirements.lastForRequirement(profiles.get(profileId)));
+        impact,
+        accountCounts.masked(impact.connectedAccounts()),
+        requirements.lastForRequirement(profiles.get(profileId)));
   }
 
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
   @PostMapping(ADMIN + "/{profileId}/disconnect-all")
   public ConnectionProfileImpactResponse disconnectAllConnectionProfileConnections(
       @PathVariable UUID profileId, @Caller CurrentUser caller) {
+    ProfileImpact impact = profiles.disconnectAll(caller, profileId);
     return ConnectionProfileResponseMapper.toResponse(
-        profiles.disconnectAll(caller, profileId),
+        impact,
+        accountCounts.masked(impact.connectedAccounts()),
         requirements.lastForRequirement(profiles.get(profileId)));
   }
 
@@ -194,6 +208,7 @@ public class ConnectionProfileController {
     return ConnectionProfileResponseMapper.toResponse(
         profile,
         profiles.secretExpiresSoon(profile),
-        profiles.impact(profile.getId()).connections());
+        profiles.impact(profile.getId()).connections(),
+        accountCounts.countsOf(List.of(profile.getId())).get(profile.getId()));
   }
 }

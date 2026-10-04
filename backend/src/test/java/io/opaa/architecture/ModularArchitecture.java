@@ -219,7 +219,8 @@ public final class ModularArchitecture {
    * The subpackages of {@link #CONNECTION}, lowest first (ADR-0041, Entscheidung 8). One depends
    * only on itself and on the ones before it; the root package and its web package sit above all.
    */
-  static final List<String> CONNECTION_PACKAGES = List.of("connection.log", "connection.profile");
+  static final List<String> CONNECTION_PACKAGES =
+      List.of("connection.log", "connection.token", "connection.profile", "connection.account");
 
   /**
    * The capability granted per connector type or profile, relative to the root (ADR-0036, Nachtrag
@@ -278,7 +279,26 @@ public final class ModularArchitecture {
    */
   static final String LIBRARY_SECRET = "knowledge.KnowledgeLibrary#getSourceCredentials";
 
-  static final String SECRET_STORE = "connection.profile.ConnectionSecrets";
+  static final String SECRET_STORE = "connection.token.ConnectionSecrets";
+
+  /** The package of persons' connected accounts, relative to the root. */
+  static final String CONNECTED_ACCOUNTS = "connection.account";
+
+  /**
+   * What of {@link #CONNECTED_ACCOUNTS} the administration may use: numbers, each masked below the
+   * minimum group size, never a person or an account.
+   */
+  static final Set<String> ACCOUNT_NUMBERS =
+      Set.of(
+          "connection.account.ConnectedAccountCounts",
+          "connection.account.ConnectedAccountCounts$ProfileCounts",
+          "connection.account.PersonCount");
+
+  /** The web classes that serve a person their own connected accounts, relative to the root. */
+  static final Set<String> OWN_ACCOUNT_WEB =
+      Set.of(
+          "connection.web.ConnectedAccountController",
+          "connection.web.ConnectedAccountResponseMapper");
 
   /**
    * What a connector declares about profiles, relative to the root. In module connections only
@@ -1023,6 +1043,43 @@ public final class ModularArchitecture {
   }
 
   /**
+   * Dependencies of a web class - a controller, a response mapper or a web helper of any module -
+   * on {@link #CONNECTED_ACCOUNTS} beyond {@link #ACCOUNT_NUMBERS}; only {@link #OWN_ACCOUNT_WEB},
+   * which serves a person their own accounts, may reach further.
+   */
+  ArchRule theAdministrationNeverSeesAConnectedPerson() {
+    return noClasses()
+        .that(
+            DescribedPredicate.describe(
+                "are web classes outside ModularArchitecture.OWN_ACCOUNT_WEB",
+                javaClass -> {
+                  String relative = relative(javaClass.getBaseComponentType().getPackageName());
+                  if (relative == null || !isWebPackage(relative)) {
+                    return false;
+                  }
+                  return !OWN_ACCOUNT_WEB.contains(
+                      relative + "." + outermostSimpleName(javaClass.getBaseComponentType()));
+                }))
+        .should()
+        .dependOnClassesThat(
+            DescribedPredicate.describe(
+                "are in " + CONNECTED_ACCOUNTS + " and not ModularArchitecture.ACCOUNT_NUMBERS",
+                target -> {
+                  JavaClass base = target.getBaseComponentType();
+                  String relative = relative(base.getPackageName());
+                  if (relative == null || !relative.equals(CONNECTED_ACCOUNTS)) {
+                    return false;
+                  }
+                  String name = base.getName().substring(root.length() + 1);
+                  return !ACCOUNT_NUMBERS.contains(name);
+                }))
+        .because(
+            "the administration sees connected accounts only as masked numbers, never a person"
+                + " or an account (ADR-0041, Beschluss 8)")
+        .allowEmptyShould(true);
+  }
+
+  /**
    * Reads of {@link #PROFILE_SUPPORT} in module CONNECTIONS outside {@link #PROFILE_REQUIREMENTS}.
    */
   ArchRule theProfileSupportIsReadInOnePlace() {
@@ -1057,6 +1114,7 @@ public final class ModularArchitecture {
         onlyTheChangeGateCallsTheConnectorChangeHooks(),
         theLibrarySecretIsReadInOnePlace(),
         theSecretStoreIsUsedOnlyInConnections(),
+        theAdministrationNeverSeesAConnectedPerson(),
         theForeignContextNeverUsesTheOwnFormula(),
         theProfileSupportIsReadInOnePlace(),
         theSecretPortStaysWithTheCore(),

@@ -3,7 +3,94 @@
 tags:
   - name: connection-profile
     description: Connection profiles ("Zugänge") the system administration sets per connector.
+  - name: connected-account
+    description: >
+      A person's own connected accounts ("Verbundene Konten"): their own app password or token on
+      a profile with the ownership PERSON. Only the person sees them; the administration sees
+      numbers only.
 paths:
+  /api/v1/me/connected-accounts:
+    get:
+      operationId: listMyConnectedAccounts
+      tags: [connected-account]
+      summary: The caller's connected accounts and the profiles they may connect
+      description: >
+        Every existing connection of the caller, also on a profile no longer released to them
+        (then with a notice naming who is in charge); the profiles with the ownership PERSON
+        released to the caller and not locked, to connect anew; and who to ask when a profile is
+        missing. Never carries a secret.
+      responses:
+        "200":
+          description: The caller's connected accounts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConnectedAccountsOverview"
+
+  /api/v1/me/connected-accounts/{profileId}:
+    parameters:
+      - name: profileId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    put:
+      operationId: connectMyAccount
+      tags: [connected-account]
+      summary: Connect or reconnect the caller's account on a profile
+      description: >
+        Signs in at the profile's server with the given secret before storing it, encrypted (needs
+        OPAA_CREDENTIALS_ENCRYPTION_KEY, else 503). A first connection needs the profile released
+        to the caller; reconnecting an existing one does not, but neither goes on a locked profile.
+        username belongs to the secret form USERNAME_AND_PASSWORD only.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConnectedAccountConnectRequest"
+      responses:
+        "200":
+          description: The connection as it stands now
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConnectedAccount"
+        "400":
+          description: >
+            The request does not fit the profile's secret form, or the provider rejected the
+            sign-in or could not be reached (the message says which).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: >
+            A first connection on a profile not released to the caller (code
+            CAPABILITY_REQUIRED), or the profile or its connector is locked (code
+            CONNECTOR_LOCKED).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+    delete:
+      operationId: disconnectMyAccount
+      tags: [connected-account]
+      summary: Disconnect the caller's account on a profile
+      description: >
+        Always possible, also without release and on a locked profile; the secret is deleted at
+        once. A private library on the connection rests until the account is connected again.
+      responses:
+        "204":
+          description: Disconnected
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /api/v1/admin/connection-profiles:
     get:
       operationId: listConnectionProfiles
@@ -627,6 +714,8 @@ components:
           clientSecretExpiresSoon,
           sourceInsecureSsl,
           connectionCount,
+          connectedAccountCount,
+          expiredConnectionCount,
           locked,
           createdAt,
           updatedAt,
@@ -676,7 +765,11 @@ components:
         connectionCount:
           type: integer
           format: int64
-          description: The connections on this profile.
+          description: The connections of libraries on this profile.
+        connectedAccountCount:
+          $ref: "#/components/schemas/PersonCount"
+        expiredConnectionCount:
+          $ref: "#/components/schemas/PersonCount"
         locked:
           type: boolean
           description: Whether the profile is locked (see lockConnectionProfile).
@@ -693,7 +786,7 @@ components:
 
     ConnectionProfileImpactResponse:
       type: object
-      required: [connections, libraries, lastForProfileRequirement]
+      required: [connections, libraries, connectedAccounts, lastForProfileRequirement]
       properties:
         connections:
           type: integer
@@ -701,12 +794,171 @@ components:
         libraries:
           type: integer
           format: int64
+        connectedAccounts:
+          $ref: "#/components/schemas/PersonCount"
         lastForProfileRequirement:
           type: boolean
           description: >
             Whether the profile is the last unlocked one admitting libraries of a connector type
             that is usable only through profiles: without it, no new library of the type can be
             created until another profile exists. Deleting or locking it stays possible.
+
+    PersonCount:
+      type: object
+      description: >
+        A number of persons' connections as the administration sees it: exact from the minimum
+        group size on and at zero, below it only "fewer than" (fewerThan), so a count never points
+        at a person. Exactly one of the two is set.
+      properties:
+        count:
+          type: integer
+          format: int64
+          nullable: true
+        fewerThan:
+          type: integer
+          format: int32
+          nullable: true
+          example: 5
+
+    ConnectedAccountState:
+      type: string
+      description: >
+        CONNECTED (the secret is stored), EXPIRED (the provider rejected it or it ran out; connect
+        anew), DISCONNECTED (disconnected, kept only while a private library is on it).
+      enum: [CONNECTED, EXPIRED, DISCONNECTED]
+
+    ConnectedAccountLibrary:
+      type: object
+      required: [id, name]
+      description: A private library of the caller that runs on the connection.
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+
+    ConnectedAccount:
+      type: object
+      required: [profileId, profileName, authMethod, state, released, reconnectable, connectedAt, usedBy]
+      properties:
+        profileId:
+          type: string
+          format: uuid
+        profileName:
+          type: string
+          example: Zugang Nextcloud intern
+        authMethod:
+          $ref: "#/components/schemas/ConnectionAuthMethod"
+        secretForm:
+          description: The form a reconnection takes; absent for a sign-in without one (OAuth).
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/PersonalSecretForm"
+        state:
+          $ref: "#/components/schemas/ConnectedAccountState"
+        accountLabel:
+          type: string
+          nullable: true
+          description: >
+            The caller's own account name at the provider, as entered; shown to the caller only,
+            never to the administration.
+          example: avogt
+        released:
+          type: boolean
+          description: >
+            Whether the profile is still released to the caller. A connection that is not runs
+            on and can be disconnected and reconnected; only a new one needs the release.
+        reconnectable:
+          type: boolean
+          description: Whether a reconnection goes now - not while the profile is locked.
+        notice:
+          type: string
+          nullable: true
+          description: >
+            German note on the state or the release, naming what happens to the content; absent
+            when there is nothing to say.
+        responsible:
+          type: string
+          nullable: true
+          description: Who can change what the notice says, in German.
+          example: Systemverwaltung
+        connectedAt:
+          type: string
+          format: date-time
+        reconnectedAt:
+          type: string
+          format: date-time
+          nullable: true
+        usedBy:
+          type: array
+          items:
+            $ref: "#/components/schemas/ConnectedAccountLibrary"
+
+    ConnectableProfile:
+      type: object
+      required: [profileId, name, authMethod]
+      description: A profile the caller may connect an account on now.
+      properties:
+        profileId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        authMethod:
+          $ref: "#/components/schemas/ConnectionAuthMethod"
+        secretForm:
+          description: >
+            The form of the personal secret to enter; absent for a sign-in without one (OAuth),
+            which this version cannot connect yet.
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/PersonalSecretForm"
+
+    MissingAccess:
+      type: object
+      required: [responsible, text]
+      description: The answer to "Warum fehlt mein Zugang?".
+      properties:
+        responsible:
+          type: string
+          example: Systemverwaltung
+        text:
+          type: string
+
+    ConnectedAccountsOverview:
+      type: object
+      required: [accounts, connectable, missingAccess]
+      properties:
+        accounts:
+          type: array
+          items:
+            $ref: "#/components/schemas/ConnectedAccount"
+        connectable:
+          type: array
+          description: Profiles the caller has no connection on yet and may connect now.
+          items:
+            $ref: "#/components/schemas/ConnectableProfile"
+        missingAccess:
+          $ref: "#/components/schemas/MissingAccess"
+
+    ConnectedAccountConnectRequest:
+      type: object
+      required: [secret]
+      properties:
+        username:
+          type: string
+          maxLength: 255
+          nullable: true
+          description: >
+            The account name at the provider - required for the secret form
+            USERNAME_AND_PASSWORD, refused for TOKEN. It is stored encrypted and shown to the
+            caller only.
+        secret:
+          type: string
+          minLength: 1
+          maxLength: 4096
+          description: Write-only app password or token; never returned.
 
     ConnectionProfileOption:
       type: object

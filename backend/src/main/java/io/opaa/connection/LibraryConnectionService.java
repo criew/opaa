@@ -3,7 +3,6 @@ package io.opaa.connection;
 import io.opaa.common.ValidationException;
 import io.opaa.connection.profile.ConnectionProfile;
 import io.opaa.connection.profile.ConnectionProfileRepository;
-import io.opaa.connection.profile.ConnectionSecrets;
 import io.opaa.connection.profile.ConnectorLockService;
 import io.opaa.connection.profile.EffectiveSourceSettings;
 import io.opaa.connection.profile.LibraryConnection;
@@ -11,8 +10,9 @@ import io.opaa.connection.profile.LibraryConnectionRepository;
 import io.opaa.connection.profile.ProfileAdmission;
 import io.opaa.connection.profile.ProfileRequirementService;
 import io.opaa.connection.profile.ProfileRequirements;
-import io.opaa.connection.profile.SecretOwner;
 import io.opaa.connection.profile.ServerAddress;
+import io.opaa.connection.token.ConnectionSecrets;
+import io.opaa.connection.token.SecretOwner.LibraryOwned;
 import io.opaa.indexing.source.SourceBlock;
 import io.opaa.indexing.source.SourceChangeGate;
 import io.opaa.indexing.source.SourceConnectorRegistry;
@@ -150,7 +150,7 @@ public class LibraryConnectionService {
       library.moveSourceUrl(address);
       libraries.save(library);
       if (!keepsSecret) {
-        secrets.discard(SecretOwner.of(profile.getId(), library));
+        secrets.discard(new LibraryOwned(library.getId()));
       }
       changeGate.addressMoved(library);
     }

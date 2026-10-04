@@ -11,14 +11,14 @@ import io.opaa.api.types.ConnectionAuthMethod;
 import io.opaa.api.types.ConnectionOwnership;
 import io.opaa.connection.profile.ConnectionProfile;
 import io.opaa.connection.profile.ConnectionProfileRepository;
-import io.opaa.connection.profile.ConnectionSecrets;
 import io.opaa.connection.profile.ConnectorLockService;
 import io.opaa.connection.profile.EffectiveSourceSettings;
 import io.opaa.connection.profile.LibraryConnection;
 import io.opaa.connection.profile.LibraryConnectionRepository;
 import io.opaa.connection.profile.ProfileRequirementService;
 import io.opaa.connection.profile.ProfileRequirements;
-import io.opaa.connection.profile.SecretOwner;
+import io.opaa.connection.token.ConnectionSecrets;
+import io.opaa.connection.token.SecretOwner.LibraryOwned;
 import io.opaa.indexing.source.SourceConnectorRegistry;
 import io.opaa.indexing.source.profileprobe.ProfileProbeSourceConnector;
 import io.opaa.indexing.source.upload.UploadSourceConnector;
@@ -54,7 +54,7 @@ class LibraryConnectionServiceConnectTest {
     service(new ShareBoundProbe()).connect(library, profile("https://probe.example.org/b").getId());
 
     assertThat(library.getSourceUrl()).isEqualTo("https://probe.example.org/b/x");
-    verify(secrets).discard(SecretOwner.of(null, library));
+    verify(secrets).discard(new LibraryOwned(library.getId()));
   }
 
   @Test

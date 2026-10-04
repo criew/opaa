@@ -10,6 +10,8 @@ import io.opaa.api.types.ConnectionAuthMethod;
 import io.opaa.api.types.ConnectionOwnership;
 import io.opaa.common.ValidationException;
 import io.opaa.connection.profile.EffectiveSourceSettings.Purpose;
+import io.opaa.connection.token.ConnectionSecrets;
+import io.opaa.connection.token.TestSecrets;
 import io.opaa.indexing.source.ConnectorData;
 import io.opaa.indexing.source.ServiceAccountTokens;
 import io.opaa.indexing.source.SourceConnectorRegistry;
@@ -75,7 +77,7 @@ class EffectiveSourceSettingsDraftTest {
                     new ProfileProbeSourceConnector(),
                     new UploadSourceConnector(mock(UploadedOriginalStore.class)))));
     ConnectorTypePolicyRepository policies = mock(ConnectorTypePolicyRepository.class);
-    ConnectionSecrets secrets = new ConnectionSecrets(connections, LibraryRows.over(rows));
+    ConnectionSecrets secrets = TestSecrets.overLibraries(connections, LibraryRows.over(rows));
     effective =
         new EffectiveSourceSettings(
             connections,
