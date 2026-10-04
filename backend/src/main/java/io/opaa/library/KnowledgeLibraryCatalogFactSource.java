@@ -7,6 +7,7 @@ import io.opaa.asset.AssetCatalogFacts;
 import io.opaa.connection.LibraryConnectionService;
 import io.opaa.indexing.job.IndexingJobRepository;
 import io.opaa.indexing.job.JobStatus;
+import io.opaa.indexing.source.SourceBlock;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
@@ -78,7 +79,7 @@ class KnowledgeLibraryCatalogFactSource implements AssetCatalogFactSource {
     Set<UUID> pending = librariesWith(uploadIds, DocumentStatus.PENDING);
     Set<UUID> failed = librariesWith(uploadIds, DocumentStatus.FAILED);
     Set<UUID> indexed = librariesWith(uploadIds, DocumentStatus.INDEXED);
-    Map<UUID, String> lockNotices = libraryConnections.lockNotices(libraries);
+    Map<UUID, SourceBlock> locks = libraryConnections.locksOf(libraries);
 
     Map<UUID, AssetCatalogFacts> facts = new HashMap<>();
     for (KnowledgeLibrary library : libraries) {
@@ -90,7 +91,7 @@ class KnowledgeLibraryCatalogFactSource implements AssetCatalogFactSource {
       facts.put(
           id,
           new KnowledgeLibraryCatalogFacts(
-              library.getSourceType().key(), lastIndexedAt.get(id), status, lockNotices.get(id)));
+              library.getSourceType().key(), lastIndexedAt.get(id), status, locks.get(id)));
     }
     return facts;
   }

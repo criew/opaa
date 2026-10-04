@@ -83,6 +83,7 @@ final class SourceConnectionTestResponseMapper {
         .pushIntake(descriptor.pushIntake() != null)
         .browsable(browsable)
         .profileSupport(declaration.support())
+        .profileRequired(creation.profileRequired())
         .signIns(
             declaration.signIns().stream()
                 .map(SourceConnectionTestResponseMapper::toResponse)

@@ -35,6 +35,15 @@ public class LibraryConnection {
 
   protected LibraryConnection() {}
 
+  /**
+   * Whether {@code connection} - {@code null} for a library without a row - reaches its source
+   * through a profile. A library for which this is false has its own address, also after its
+   * profile was deleted.
+   */
+  public static boolean throughProfile(LibraryConnection connection) {
+    return connection != null && connection.getProfileId() != null;
+  }
+
   public LibraryConnection(UUID libraryId, UUID profileId, Instant now) {
     this.libraryId = libraryId;
     this.profileId = profileId;

@@ -52,7 +52,7 @@ function readableEntries(): CatalogEntryResponse[] {
       sourceType: library.sourceType,
       lastIndexedAt: library.lastIndexedAt,
       indexingStatus: indexingStatus(library),
-      sourceLockNotice: library.sourceLockNotice ?? null,
+      sourceBlock: library.sourceBlock ?? null,
     },
     itemCount: library.documentCount,
     spaceCount: 0,

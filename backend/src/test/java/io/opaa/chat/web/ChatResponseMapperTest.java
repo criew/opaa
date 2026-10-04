@@ -6,7 +6,7 @@ import io.opaa.api.dto.ChatDetail;
 import io.opaa.api.dto.ChatMessageResponse;
 import io.opaa.api.dto.ChatSummary;
 import io.opaa.api.dto.ChatSummaryPage;
-import io.opaa.api.dto.SourceFreezeReason;
+import io.opaa.api.dto.SourceBlockReason;
 import io.opaa.api.dto.SourceMetadataEntry;
 import io.opaa.api.dto.SourceReference;
 import io.opaa.api.types.ChatNoteItemKind;
@@ -34,6 +34,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.test.util.ReflectionTestUtils;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.json.JsonMapper;
 
 /**
  * Pure JUnit tests (no Spring context) against directly constructed entities/domain objects - #860
@@ -86,13 +88,44 @@ class ChatResponseMapperTest {
             new ChatSource("alt.md", 1.0, 1, true)
                 .freeze("NOT_CONNECTED", "Verwaltende der Bibliothek", lastRun));
 
-    assertThat(frozen.getFreeze().getReason()).isEqualTo(SourceFreezeReason.NOT_CONNECTED);
-    assertThat(frozen.getFreeze().getResponsible()).isEqualTo("Verwaltende der Bibliothek");
+    assertThat(frozen.getFreeze().getBlock().getReason())
+        .isEqualTo(SourceBlockReason.NOT_CONNECTED);
+    assertThat(frozen.getFreeze().getBlock().getResponsible())
+        .isEqualTo("Verwaltende der Bibliothek");
+    assertThat(frozen.getFreeze().getBlock().getNotice()).isNull();
     assertThat(frozen.getFreeze().getAsOf()).isEqualTo(lastRun);
     assertThat(
             ChatResponseMapper.toSourceReference(new ChatSource("neu.md", 1.0, 1, true))
                 .getFreeze())
         .isNull();
+  }
+
+  /** An answer stored before the two locks were told apart reads its LOCKED as a type lock. */
+  @Test
+  void aStoredReasonIsReadByNameAndTheFormerLockedAsATypeLock() {
+    assertThat(ChatResponseMapper.freezeReason("PROFILE_REQUIRED"))
+        .isEqualTo(SourceBlockReason.PROFILE_REQUIRED);
+    assertThat(ChatResponseMapper.freezeReason("PROFILE_LOCKED"))
+        .isEqualTo(SourceBlockReason.PROFILE_LOCKED);
+    assertThat(ChatResponseMapper.freezeReason("LOCKED")).isEqualTo(SourceBlockReason.TYPE_LOCKED);
+  }
+
+  /** A stored source with a reason this version does not know keeps the chat readable. */
+  @Test
+  void aStoredSourceWithAnUnknownReasonIsShownWithoutItsFreeze() {
+    List<ChatSource> stored =
+        JsonMapper.builder()
+            .build()
+            .readValue(
+                "[{\"fileName\": \"alt.md\", \"relevanceScore\": 1.0, \"matchCount\": 1,"
+                    + " \"cited\": true, \"freezeReason\": \"DORMANT\","
+                    + " \"freezeResponsible\": \"Besitzerin\"}]",
+                new TypeReference<List<ChatSource>>() {});
+
+    SourceReference reference = ChatResponseMapper.toSourceReference(stored.getFirst());
+
+    assertThat(reference.getFileName()).isEqualTo("alt.md");
+    assertThat(reference.getFreeze()).isNull();
   }
 
   @Test

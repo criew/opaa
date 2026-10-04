@@ -26,8 +26,9 @@ import org.springframework.stereotype.Component;
 /**
  * The only place that decides whether and why a library's source is blocked. The reasons are tried
  * in their order of declaration in {@link Reason}, and the first that applies is the block; a
- * library without a connection is blocked only by a type lock. Callers name the reasons they
- * consider, as one of the sets derived here from the properties of {@link Reason}.
+ * library without a connection is blocked only by a type lock and by the profile requirement of its
+ * type. Callers name the reasons they consider, as one of the sets derived here from the properties
+ * of {@link Reason}.
  *
  * <p>Holds no transaction of its own, so a refusal does not mark a caller's transaction for
  * rollback.
@@ -59,6 +60,7 @@ public class SourceBlocks {
   private final ConnectorTypePolicyRepository policies;
   private final LibraryConnectionRepository connections;
   private final ConnectionProfileRepository profiles;
+  private final ProfileRequirements requirements;
   private final ConnectionSecrets secrets;
 
   /**
@@ -71,11 +73,13 @@ public class SourceBlocks {
       ConnectorTypePolicyRepository policies,
       LibraryConnectionRepository connections,
       ConnectionProfileRepository profiles,
+      ProfileRequirements requirements,
       ConnectionSecrets secrets,
       ObjectProvider<SourceConnectorRegistry> connectors) {
     this.policies = policies;
     this.connections = connections;
     this.profiles = profiles;
+    this.requirements = requirements;
     this.secrets = secrets;
     this.connectors = connectors;
   }
@@ -139,12 +143,20 @@ public class SourceBlocks {
     if (libraries.isEmpty()) {
       return List.of();
     }
+    List<ConnectorTypePolicy> policyRows =
+        considered.contains(Reason.TYPE_LOCKED) || considered.contains(Reason.PROFILE_REQUIRED)
+            ? policies.findAll()
+            : List.of();
     Set<String> lockedTypes =
         considered.contains(Reason.TYPE_LOCKED)
-            ? policies.findAll().stream()
+            ? policyRows.stream()
                 .filter(ConnectorTypePolicy::isLocked)
                 .map(policy -> policy.getSourceType().key())
                 .collect(Collectors.toSet())
+            : Set.of();
+    Set<String> profilesOnlyTypes =
+        considered.contains(Reason.PROFILE_REQUIRED)
+            ? requirements.lockingOwnAddresses(policyRows)
             : Set.of();
     Map<UUID, LibraryConnection> connectionOf =
         connections.findAllById(libraries.stream().map(KnowledgeLibrary::getId).toList()).stream()
@@ -163,7 +175,7 @@ public class SourceBlocks {
     for (KnowledgeLibrary library : libraries) {
       LibraryConnection connection = connectionOf.get(library.getId());
       ConnectionProfile profile =
-          connection == null || connection.getProfileId() == null
+          !LibraryConnection.throughProfile(connection)
               ? null
               : profileOf.get(connection.getProfileId());
       SourceType type = library.getSourceType();
@@ -171,6 +183,10 @@ public class SourceBlocks {
           new Facts(
               library,
               lockedTypes.contains(type.key()) ? typeLock(type) : null,
+              !LibraryConnection.throughProfile(connection)
+                      && profilesOnlyTypes.contains(type.key())
+                  ? profileRequiredLock(type)
+                  : null,
               connection != null,
               profile,
               profile != null
@@ -181,26 +197,44 @@ public class SourceBlocks {
   }
 
   private SourceBlock typeLock(SourceType type) {
-    String displayName =
-        connectors
-            .getObject()
-            .find(type)
-            .map(connector -> connector.descriptor().displayName())
-            .orElse(type.key());
     return new SourceBlock(
         Reason.TYPE_LOCKED,
         ADMINISTRATION,
         LOCKED
             + " Die Systemverwaltung hat die Quellart „"
-            + displayName
+            + displayName(type)
             + "“ gesperrt"
             + LOCK_CONTENT_STAYS);
   }
 
-  /** What decides the block of one library: its type lock, connection, profile and secret. */
+  private SourceBlock profileRequiredLock(SourceType type) {
+    return new SourceBlock(
+        Reason.PROFILE_REQUIRED,
+        LIBRARY_MANAGERS,
+        LOCKED
+            + " Die Quellart „"
+            + displayName(type)
+            + "“ ist nur noch über Zugänge nutzbar, und diese Bibliothek hat eine eigene"
+            + " Adresse; der vorhandene Inhalt bleibt durchsuchbar. Die Verwaltenden der"
+            + " Bibliothek ordnen sie einem Zugang zu.");
+  }
+
+  private String displayName(SourceType type) {
+    return connectors
+        .getObject()
+        .find(type)
+        .map(connector -> connector.descriptor().displayName())
+        .orElse(type.key());
+  }
+
+  /**
+   * What decides the block of one library: its type lock, the profile requirement of its type, its
+   * connection, profile and secret.
+   */
   private record Facts(
       KnowledgeLibrary library,
       SourceBlock typeLock,
+      SourceBlock profileRequiredLock,
       boolean connected,
       ConnectionProfile profile,
       boolean secretAbsent) {
@@ -221,6 +255,7 @@ public class SourceBlocks {
     private Optional<SourceBlock> blockFor(Reason reason) {
       return switch (reason) {
         case TYPE_LOCKED -> Optional.ofNullable(typeLock);
+        case PROFILE_REQUIRED -> Optional.ofNullable(profileRequiredLock);
         case PROFILE_LOCKED ->
             profile != null && profile.isLocked()
                 ? Optional.of(

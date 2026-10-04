@@ -9,6 +9,7 @@ import io.opaa.connection.profile.ConnectorTypePolicyRepository;
 import io.opaa.connection.profile.EffectiveSourceSettings;
 import io.opaa.connection.profile.LibraryConnectionRepository;
 import io.opaa.connection.profile.LibraryRows;
+import io.opaa.connection.profile.ProfileRequirements;
 import io.opaa.connection.profile.SourceBlocks;
 import io.opaa.indexing.source.ServiceAccountTokens;
 import io.opaa.indexing.source.SourceConnectorRegistry;
@@ -34,7 +35,12 @@ final class TestProfileResolvers {
       ConnectionProfileRepository profiles,
       Map<UUID, KnowledgeLibrary> rows) {
     return new SourceBlocks(
-        policies, connections, profiles, secrets(connections, rows), registry());
+        policies,
+        connections,
+        profiles,
+        new ProfileRequirements(policies, registry()),
+        secrets(connections, rows),
+        registry());
   }
 
   static ProfileSourceConnectionResolver resolver(
