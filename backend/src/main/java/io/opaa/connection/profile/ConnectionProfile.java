@@ -16,8 +16,8 @@ import java.util.UUID;
 
 /**
  * A connection profile ("Zugang"): the frame the administration sets for one connector - server
- * address, sign-in method, app registration, scopes and connector defaults. The client secret is
- * held only as {@code CredentialsEncryptor} ciphertext and never leaves {@link
+ * address, proxy and TLS switch, sign-in method, app registration, scopes and connector defaults.
+ * The client secret is held only as {@code CredentialsEncryptor} ciphertext and never leaves {@link
  * ConnectionProfileService}.
  */
 @Entity
@@ -61,6 +61,12 @@ public class ConnectionProfile {
   @Column(name = "connector_settings")
   private String connectorSettings;
 
+  @Column(name = "source_proxy")
+  private String sourceProxy;
+
+  @Column(name = "source_insecure_ssl", nullable = false)
+  private boolean sourceInsecureSsl;
+
   @Column(name = "locked_at")
   private Instant lockedAt;
 
@@ -95,6 +101,8 @@ public class ConnectionProfile {
     this.scopes = values.scopes();
     this.connectorSettings =
         values.connectorSettings() == null ? null : values.connectorSettings().toJson();
+    this.sourceProxy = values.sourceProxy();
+    this.sourceInsecureSsl = values.sourceInsecureSsl();
     this.updatedAt = now;
   }
 
@@ -150,6 +158,16 @@ public class ConnectionProfile {
   /** The connector defaults as stored JSON, {@code null} for none. */
   public String getConnectorSettings() {
     return connectorSettings;
+  }
+
+  /** The proxy every library on the profile is reached through, {@code null} for none. */
+  public String getSourceProxy() {
+    return sourceProxy;
+  }
+
+  /** Whether the certificate check is skipped for every library on the profile. */
+  public boolean isSourceInsecureSsl() {
+    return sourceInsecureSsl;
   }
 
   /** Since when the profile is locked, {@code null} while it is not. */

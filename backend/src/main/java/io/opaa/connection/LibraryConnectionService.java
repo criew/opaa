@@ -1,13 +1,14 @@
 package io.opaa.connection;
 
-import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
 import io.opaa.connection.profile.ConnectionProfile;
 import io.opaa.connection.profile.ConnectionProfileRepository;
 import io.opaa.connection.profile.ConnectionSecrets;
 import io.opaa.connection.profile.ConnectorLockService;
+import io.opaa.connection.profile.EffectiveSourceSettings;
 import io.opaa.connection.profile.LibraryConnection;
 import io.opaa.connection.profile.LibraryConnectionRepository;
+import io.opaa.connection.profile.ProfileAdmission;
 import io.opaa.connection.profile.ProfileRequirementService;
 import io.opaa.connection.profile.ProfileRequirements;
 import io.opaa.connection.profile.SecretOwner;
@@ -43,6 +44,7 @@ public class LibraryConnectionService {
   private final ProfileRequirements requirements;
   private final ProfileRequirementService requirementService;
   private final ConnectionSecrets secrets;
+  private final EffectiveSourceSettings effective;
   private final SourceChangeGate changeGate;
   private final Clock clock;
 
@@ -55,6 +57,7 @@ public class LibraryConnectionService {
       ProfileRequirements requirements,
       ProfileRequirementService requirementService,
       ConnectionSecrets secrets,
+      EffectiveSourceSettings effective,
       Clock clock) {
     this.connections = connections;
     this.profiles = profiles;
@@ -64,6 +67,7 @@ public class LibraryConnectionService {
     this.requirements = requirements;
     this.requirementService = requirementService;
     this.secrets = secrets;
+    this.effective = effective;
     this.changeGate = new SourceChangeGate(connectors);
     this.clock = clock;
   }
@@ -116,8 +120,9 @@ public class LibraryConnectionService {
   }
 
   /**
-   * Connects a saved library through {@code profileId}. An address under the previous profile moves
-   * under the new one; a secret is kept only while the origin stays the same.
+   * Connects a saved library through {@code profileId}, adopting its frame (proxy, TLS switch,
+   * bound defaults - own values give way, no 400). An address under the previous profile moves
+   * under the new one; a secret is kept only while the origin and the connector's binding stay.
    */
   @Transactional
   public ConnectionProfile connect(KnowledgeLibrary library, UUID profileId) {
@@ -137,14 +142,20 @@ public class LibraryConnectionService {
     }
     requireUnder(profile, address);
     if (!address.equals(library.getSourceUrl())) {
-      boolean sameOrigin = ServerAddress.sameOrigin(library.getSourceUrl(), address);
+      boolean keepsSecret =
+          ServerAddress.sameOrigin(library.getSourceUrl(), address)
+              && connectors
+                  .connector(library.getSourceType())
+                  .keepsCredentials(library.getSourceUrl(), address);
       library.moveSourceUrl(address);
       libraries.save(library);
-      if (!sameOrigin) {
+      if (!keepsSecret) {
         secrets.discard(SecretOwner.of(profile.getId(), library));
       }
       changeGate.addressMoved(library);
     }
+    effective.adoptFrame(library, profile);
+    libraries.save(library);
     if (connection == null) {
       connections.save(new LibraryConnection(library.getId(), profile.getId(), clock.instant()));
     } else {
@@ -167,20 +178,8 @@ public class LibraryConnectionService {
   }
 
   private ConnectionProfile requireAdmitting(UUID profileId, SourceType sourceType) {
-    ConnectionProfile profile =
-        profiles
-            .findById(profileId)
-            .orElseThrow(() -> new NotFoundException("Zugang nicht gefunden"));
-    if (!profile.getSourceType().equals(sourceType)) {
-      throw new ValidationException("Der Zugang gehört zu einer anderen Quellart");
-    }
-    if (!connectors.descriptor(sourceType).admitsProfiles()) {
-      throw new ValidationException("Diese Quellart wird nicht über Zugänge verbunden");
-    }
-    if (!profile.getOwnership().admitsLibraries()) {
-      throw new ValidationException("Der Zugang ist nur für verbundene Konten von Personen");
-    }
-    return profile;
+    return ProfileAdmission.require(
+        profiles.findById(profileId), sourceType, connectors.descriptor(sourceType));
   }
 
   private static String requireUnder(ConnectionProfile profile, String address) {

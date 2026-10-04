@@ -8,10 +8,8 @@ import static org.mockito.Mockito.when;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.connection.ConnectorReleaseService;
-import io.opaa.connection.LibraryConnectionService;
 import io.opaa.indexing.source.ConnectorData;
 import io.opaa.indexing.source.FakeTokenEndpoint;
-import io.opaa.indexing.source.LibrarySourceConnectionResolver;
 import io.opaa.indexing.source.ServiceAccountKey;
 import io.opaa.indexing.source.ServiceAccountKeyFixture;
 import io.opaa.indexing.source.ServiceAccountTokens;
@@ -62,14 +60,11 @@ class SourceConnectionTestServiceKeyTest {
         new SourceConnectorRegistry(
             List.of(connector, new UploadSourceConnector(mock(UploadedOriginalStore.class))));
     service =
-        new SourceConnectionTestService(
+        SourceConnectionTestServices.over(
             libraryRepository,
             mock(LibraryAccessService.class),
             registry,
             mock(ConnectorReleaseService.class),
-            new LibrarySourceConnectionResolver(
-                type -> Optional.ofNullable(registry.find(type).orElse(null)), tokens),
-            mock(LibraryConnectionService.class),
             tokens);
   }
 

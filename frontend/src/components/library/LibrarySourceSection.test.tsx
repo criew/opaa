@@ -73,6 +73,7 @@ describe('LibrarySourceSection - Zugang zuordnen, wechseln, lösen (#2162)', () 
     sourceType: 'NEXTCLOUD',
     serverUrl: 'https://cloud.intern.example',
     authMethod: 'PERSONAL_SECRET',
+    sourceInsecureSsl: false,
     creatable: true,
   }
   const neu: ConnectionProfileOption = {

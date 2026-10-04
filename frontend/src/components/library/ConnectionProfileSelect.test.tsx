@@ -29,6 +29,7 @@ const RELEASED: ConnectionProfileOption = {
   sourceType: 'NEXTCLOUD',
   serverUrl: 'https://cloud.intern.example',
   authMethod: 'PERSONAL_SECRET',
+  sourceInsecureSsl: false,
   creatable: true,
   connectorDefaults: { shared: false },
 }
@@ -39,6 +40,7 @@ const NOT_RELEASED: ConnectionProfileOption = {
   sourceType: 'NEXTCLOUD',
   serverUrl: 'https://cloud.partner.example',
   authMethod: 'PERSONAL_SECRET',
+  sourceInsecureSsl: false,
   creatable: false,
   creationNotice:
     'Der Zugang „Nextcloud Partner“ ist für Sie nicht freigegeben. Freigaben erteilt die Systemverwaltung.',

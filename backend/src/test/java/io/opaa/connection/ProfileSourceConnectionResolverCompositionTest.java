@@ -18,7 +18,9 @@ import io.opaa.indexing.source.SecretKind;
 import io.opaa.indexing.source.SourceBlock;
 import io.opaa.indexing.source.SourceConnectionBlockedException;
 import io.opaa.indexing.source.SourceSettings;
+import io.opaa.indexing.source.profileprobe.ProfileProbeSourceConnector;
 import io.opaa.knowledge.KnowledgeLibrary;
+import io.opaa.knowledge.SourceType;
 import io.opaa.test.SourceTypes;
 import java.time.Instant;
 import java.util.HashMap;
@@ -44,16 +46,17 @@ class ProfileSourceConnectionResolverCompositionTest {
 
   @Test
   void runChangeAndSettingsShareTheMergedConfigurationOfTheProfile() {
-    KnowledgeLibrary library = library("nutzer:geheim");
-    library.updateSourceSettings("{\"region\":\"us\",\"bucket\":\"akten\"}");
-    connectThroughProfile(library.getId(), "{\"region\":\"eu\",\"pathStyle\":true}");
+    KnowledgeLibrary library = library("nutzer:geheim", ProfileProbeSourceConnector.TYPE);
+    library.updateSourceSettings("{\"edition\":\"CLOUD\",\"topic\":\"Wetter\"}");
+    connectThroughProfile(
+        library.getId(), ProfileProbeSourceConnector.TYPE, "{\"edition\":\"DC\"}");
 
     SourceSettings run = resolver.resolve(library);
     SourceSettings change = resolver.resolveForChange(library);
     ConnectorData settings = resolver.effectiveSettings(library);
 
     assertThat(run.connectorSettings())
-        .isEqualTo(ConnectorData.of(Map.of("region", "eu", "bucket", "akten", "pathStyle", true)))
+        .isEqualTo(ConnectorData.of(Map.of("edition", "DC", "topic", "Wetter")))
         .isEqualTo(change.connectorSettings())
         .isEqualTo(settings);
     assertThat(change).isEqualTo(run);
@@ -76,7 +79,7 @@ class ProfileSourceConnectionResolverCompositionTest {
     when(atRunStart.getSourceType()).thenReturn(SourceTypes.RSS_FEED);
     when(atRunStart.getSourceUrl()).thenReturn(row.getSourceUrl());
     when(atRunStart.getSourceCredentials()).thenReturn("nutzer:geheim");
-    connectThroughProfile(row.getId(), null);
+    connectThroughProfile(row.getId(), SourceTypes.RSS_FEED, null);
 
     assertThat(resolver.currentCredentials(atRunStart)).isEqualTo("nutzer:geheim");
     row.dropSourceCredentials();
@@ -111,10 +114,11 @@ class ProfileSourceConnectionResolverCompositionTest {
     assertThat(resolver.holdsCredentials(library)).isFalse();
   }
 
-  private void connectThroughProfile(UUID libraryId, String defaults) {
+  private void connectThroughProfile(UUID libraryId, SourceType type, String defaults) {
     ConnectionProfile profile = mock(ConnectionProfile.class);
     UUID profileId = UUID.randomUUID();
     when(profile.getId()).thenReturn(profileId);
+    when(profile.getSourceType()).thenReturn(type);
     when(profile.getName()).thenReturn("Ablage");
     when(profile.getServerUrl()).thenReturn("https://ablage.example.org");
     when(profile.getAuthMethod()).thenReturn(ConnectionAuthMethod.PERSONAL_SECRET);
@@ -127,13 +131,17 @@ class ProfileSourceConnectionResolverCompositionTest {
   }
 
   private KnowledgeLibrary library(String secret) {
+    return library(secret, SourceTypes.RSS_FEED);
+  }
+
+  private KnowledgeLibrary library(String secret, SourceType type) {
     KnowledgeLibrary library =
         KnowledgeLibrary.ownedByUser(
             UUID.randomUUID(),
             "Akten",
             null,
             UUID.randomUUID(),
-            SourceTypes.RSS_FEED,
+            type,
             null,
             "https://ablage.example.org/akten",
             null,

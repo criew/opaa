@@ -18,7 +18,9 @@ public record ConnectionProfileValues(
     LocalDate clientSecretExpiresOn,
     String tenant,
     String scopes,
-    ConnectorData connectorSettings) {
+    ConnectorData connectorSettings,
+    String sourceProxy,
+    boolean sourceInsecureSsl) {
 
   public ConnectionProfileValues withConnectorSettings(ConnectorData settings) {
     return new ConnectionProfileValues(
@@ -30,6 +32,8 @@ public record ConnectionProfileValues(
         clientSecretExpiresOn,
         tenant,
         scopes,
-        settings);
+        settings,
+        sourceProxy,
+        sourceInsecureSsl);
   }
 }

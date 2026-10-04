@@ -120,6 +120,8 @@ export const connectionProfileHandlers = [
       tenant: body.tenant ?? null,
       scopes: body.scopes ?? null,
       connectorSettings: body.connectorSettings ?? null,
+      sourceProxy: body.sourceProxy ?? null,
+      sourceInsecureSsl: body.sourceInsecureSsl ?? false,
       connectionCount: 0,
       locked: false,
       createdAt: now,
@@ -161,6 +163,8 @@ export const connectionProfileHandlers = [
       tenant: body.tenant ?? null,
       scopes: body.scopes ?? null,
       connectorSettings: body.connectorSettings ?? null,
+      sourceProxy: body.sourceProxy ?? null,
+      sourceInsecureSsl: body.sourceInsecureSsl ?? false,
       updatedAt: new Date().toISOString(),
     }
     mockConnectionProfiles[index] = updated
@@ -275,6 +279,8 @@ export const connectionProfileHandlers = [
           sourceType: p.sourceType,
           serverUrl: p.serverUrl,
           authMethod: p.authMethod,
+          sourceProxy: p.sourceProxy ?? null,
+          sourceInsecureSsl: p.sourceInsecureSsl,
           creatable,
           creationNotice: creatable
             ? null
