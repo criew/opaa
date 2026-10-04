@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { screen, waitFor, within } from '@testing-library/react'
+import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { renderWithProviders } from '../../test/test-utils'
+import { renderWithProviders, waitForDialogClosed } from '../../test/test-utils'
 import MessageBubble from './MessageBubble'
 import type { ChatMessage } from '../../types/chat'
 import type { SourceReference } from '../../types/api'
@@ -322,11 +322,7 @@ describe('SourceEvidenceDrawer (#592, Mockup 1i)', () => {
     await user.type(within(drawer).getByPlaceholderText('In Belegen suchen …'), 'zweiter')
     await user.click(within(drawer).getByRole('button', { name: 'Nur zitierte' }))
     await user.keyboard('{Escape}')
-    await waitFor(() =>
-      expect(
-        screen.queryByRole('dialog', { name: 'Belege dieser Antwort' }),
-      ).not.toBeInTheDocument(),
-    )
+    await waitForDialogClosed()
 
     await user.click(screen.getByRole('button', { name: 'Fundstelle 3: dritter.md' }))
 
@@ -444,11 +440,7 @@ describe('SourceEvidenceDrawer (#592, Mockup 1i)', () => {
     await user.keyboard('{Escape}')
 
     // The drawer leaves with a transition - wait for the unmount instead of asserting mid-exit.
-    await waitFor(() =>
-      expect(
-        screen.queryByRole('dialog', { name: 'Belege dieser Antwort' }),
-      ).not.toBeInTheDocument(),
-    )
+    await waitForDialogClosed()
     expect(screen.getByRole('button', { name: 'Belege anzeigen' })).toHaveFocus()
   })
 
