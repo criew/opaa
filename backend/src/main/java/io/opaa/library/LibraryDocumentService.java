@@ -593,7 +593,9 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
       log.warn(
           "Original of document {} is not readable right now: {}",
           document.getId(),
-          e.getCause() == null ? e.getMessage() : e.getCause().getMessage());
+          library
+              .loggedNames()
+              .of(e.getCause() == null ? e.getMessage() : e.getCause().getMessage()));
       throw new ServiceUnavailableException(e.userMessage());
     } catch (SourceConnectionBlockedException e) {
       if (e.block().locked()) {
@@ -603,7 +605,9 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
       throw new ServiceUnavailableException(e.getMessage());
     } catch (SourceCredentialsException e) {
       log.warn(
-          "Original of document {} has no usable secret: {}", document.getId(), e.getMessage());
+          "Original of document {} has no usable secret: {}",
+          document.getId(),
+          library.loggedNames().of(e.getMessage()));
       throw new ServiceUnavailableException(ORIGINAL_SIGN_IN_FAILED);
     }
   }
@@ -683,7 +687,7 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
         log.warn(
             "Attachment document {} has a file_path that does not embed its parent's path {}",
             document.getId(),
-            parentPath);
+            library.loggedNames().of(parentPath));
         throw noOriginalAvailable();
       }
       indices.add(index);
@@ -721,13 +725,14 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
       for (int i = 0; i < indices.size(); i++) {
         Document expected = chain.get(chain.size() - 1 - i);
         AttachmentExtractor.Extracted extracted =
-            attachmentExtractor.extract(currentFile, currentName, indices.get(i));
+            attachmentExtractor.extract(
+                currentFile, currentName, indices.get(i), library.loggedNames());
         if (extracted == null) {
           log.info(
               "Attachment document {}: no attachment at index {} of {} anymore",
               document.getId(),
               indices.get(i),
-              currentName);
+              library.loggedNames().of(currentName));
           throw noOriginalAvailable();
         }
         tempFiles.add(extracted.file());
@@ -736,8 +741,8 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
               "Attachment document {}: index {} of {} now holds a different attachment ({})",
               document.getId(),
               indices.get(i),
-              currentName,
-              extracted.fileName());
+              library.loggedNames().of(currentName),
+              library.loggedNames().of(extracted.fileName()));
           throw noOriginalAvailable();
         }
         currentFile = extracted.file();
@@ -752,7 +757,10 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
           document.getFileName(),
           ServedContentTypes.forFile(document.getContentType(), currentFile));
     } catch (IOException e) {
-      log.warn("Attachment document {} could not be re-extracted", document.getId(), e);
+      log.warn(
+          "Attachment document {} could not be re-extracted",
+          document.getId(),
+          library.loggedNames().of(e));
       throw noOriginalAvailable();
     } finally {
       closeQuietly(rootContent);

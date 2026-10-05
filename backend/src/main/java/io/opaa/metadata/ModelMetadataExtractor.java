@@ -5,6 +5,7 @@ import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.llm.ActiveChatModelResolver;
+import io.opaa.sourceaccess.LoggedName;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -153,7 +154,11 @@ public class ModelMetadataExtractor {
 
     ModelExtractionTally tally = new ModelExtractionTally();
     ModelExtractionAnswer answer =
-        askModel(ModelExtractionPrompt.build(title, text, fields, wantsKeywords), document, tally);
+        askModel(
+            ModelExtractionPrompt.build(title, text, fields, wantsKeywords),
+            document,
+            library.loggedNames(),
+            tally);
     ModelExtractionOutcome outcome =
         answer == null
             ? ModelExtractionOutcome.UNCHANGED
@@ -185,7 +190,7 @@ public class ModelMetadataExtractor {
    * indexed regularly and the call is counted as a failure.
    */
   private ModelExtractionAnswer askModel(
-      String prompt, Document document, ModelExtractionTally tally) {
+      String prompt, Document document, LoggedName names, ModelExtractionTally tally) {
     try {
       var chatClient = chatModelResolver.resolveChatClient(callTimeout);
       CompletableFuture<String> call =
@@ -222,7 +227,7 @@ public class ModelMetadataExtractor {
       return null;
     } catch (ExecutionException | RuntimeException e) {
       tally.countFailure();
-      log.warn("Model metadata extraction failed for document {}", document.getId(), e);
+      log.warn("Model metadata extraction failed for document {}", document.getId(), names.of(e));
       return null;
     }
   }

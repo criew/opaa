@@ -1,5 +1,6 @@
 package io.opaa.format;
 
+import io.opaa.sourceaccess.LoggedName;
 import java.nio.file.Path;
 import java.util.Locale;
 
@@ -32,15 +33,18 @@ import java.util.Locale;
  *     <b>only</b> discovered attachment (an empty list when there is none at that position). Bounds
  *     the temporary disk a single re-extraction costs to one attachment instead of a whole
  *     message's worth.
+ * @param loggedName how log lines name this document and its parts (see {@link #logName()})
  */
 public record DocumentFormatSource(
     String fileName,
     Path file,
     String extractedText,
     String detectedExtension,
-    Integer attachmentIndex) {
+    Integer attachmentIndex,
+    LoggedName loggedName) {
 
   public DocumentFormatSource {
+    loggedName = loggedName == null ? LoggedName.OPEN : loggedName;
     if ((file == null) == (extractedText == null)) {
       throw new IllegalArgumentException(
           "Exactly one of file and extractedText must be set for " + fileName);
@@ -51,11 +55,32 @@ public record DocumentFormatSource(
     }
   }
 
+  public DocumentFormatSource(
+      String fileName,
+      Path file,
+      String extractedText,
+      String detectedExtension,
+      Integer attachmentIndex) {
+    this(fileName, file, extractedText, detectedExtension, attachmentIndex, LoggedName.OPEN);
+  }
+
   /**
    * This source, restricted to the attachment at {@code index} (see {@link #attachmentIndex()}).
    */
   public DocumentFormatSource withAttachmentIndex(int index) {
-    return new DocumentFormatSource(fileName, file, extractedText, detectedExtension, index);
+    return new DocumentFormatSource(
+        fileName, file, extractedText, detectedExtension, index, loggedName);
+  }
+
+  /** This source, its names logged as {@code names} decides. */
+  public DocumentFormatSource withLoggedName(LoggedName names) {
+    return new DocumentFormatSource(
+        fileName, file, extractedText, detectedExtension, attachmentIndex, names);
+  }
+
+  /** The name a log line gives this document: {@link #fileName()} or a reference. */
+  public String logName() {
+    return loggedName.of(fileName);
   }
 
   /**

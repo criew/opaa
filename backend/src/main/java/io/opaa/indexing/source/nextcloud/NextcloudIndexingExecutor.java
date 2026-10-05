@@ -120,15 +120,17 @@ public class NextcloudIndexingExecutor implements SourceIndexingExecutor, FileSy
     SourceSyncState state = journal.load(libraryId);
     NextcloudDav dav =
         new NextcloudDav(
-            connection,
-            run.credentials()
-                .renewableAfterRejection(
-                    secret -> NextcloudConnection.of(run.settings(), secret).authorizationHeader()),
-            targetAddressValidator,
-            requestPolicy,
-            budget,
-            properties.requestTimeout(),
-            properties.maxResponseBytes());
+                connection,
+                run.credentials()
+                    .renewableAfterRejection(
+                        secret ->
+                            NextcloudConnection.of(run.settings(), secret).authorizationHeader()),
+                targetAddressValidator,
+                requestPolicy,
+                budget,
+                properties.requestTimeout(),
+                properties.maxResponseBytes())
+            .loggingNamesAs(run.library().loggedNames());
     try (NextcloudFileStore store = new NextcloudFileStore(dav, settings);
         FileSync sync =
             new FileSync(

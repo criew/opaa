@@ -592,7 +592,9 @@ Begründung:
   weiter, und der Index bleibt bis zum nächsten Vollabgleich auf dem alten Stand. Dasselbe Fenster
   besteht für geteilte Bibliotheken. Heute in Produktion nicht erreichbar, weil nur Google Drive
   eine Vorgabe allein des Zugangs deklariert und nur Bibliotheken zulässt; die neustartfeste Lösung
-  (Abgleichstand mit Fingerabdruck seiner Einstellungen) ist #2268, spätestens mit #2167 nötig.
+  (Abgleichstand mit Fingerabdruck seiner Einstellungen) ist #2268. Nötig wird sie mit dem ersten
+  Konnektor für Personen, der eine Vorgabe allein des Zugangs deklariert; Nextcloud (#2167)
+  deklariert keine und erreicht das Fenster nicht.
 - **Protokolle neutral:** Eine private Bibliothek heißt dort „Private Bibliothek“
   (`Asset#auditName`), ihre Nutzlasten behalten nur neutrale Schlüssel ohne Namen, Pfade und Werte
   (`Asset#auditPayload`); `ModularArchitecture#privateAssetsAreAuditedNeutrally` hält das fest.
@@ -889,6 +891,35 @@ Beide nach Maintainer-Entscheidung vom 05.10.2026 ohne Gegenmaßnahme:
   `scheduledErasureCount` sind je Abfrage maskiert, nicht über Abfragen hinweg. Wer die Zahlen vor
   und nach einer eigenen Handlung vergleicht, etwa der Sperre einer Person, kann aus einer
   Änderung um eins auf diese Person schließen, sobald beide Zahlen genannt werden.
+
+## Nachtrag vom 05.10.2026: Nextcloud mit verbundenem Konto, Betriebslogs (#2167)
+
+- **Erster Konnektor für Personen:** Nextcloud meldet sein persönliches Geheimnis (App-Passwort)
+  für die Besitzarten Bibliothek und Person. Damit entsteht in Produktion erstmals eine private
+  Bibliothek.
+- **Betriebslogs nennen keine Inhalte privater Bibliotheken.** Die Logs liest der Betrieb, also in
+  der Regel die Verwaltung. Wie eine Logzeile Pfade, Adressen, Datei-, Anhangs- und
+  Tabellenblattnamen nennt, entscheidet `sourceaccess.LoggedName`; die eine Stelle der
+  Entscheidung ist `KnowledgeLibrary#loggedNames`: bei einer privaten Bibliothek nur
+  `<private library <id>>`, ggf. mit Dokumentkennung, sonst unverändert. Lauf
+  (`IndexingRunTemplate`, `IndexingRun`, `FileSync`), Aufnahme (`DocumentIngestService`),
+  Formate (über `DocumentFormatSource#loggedName`), Anhänge, Nextcloud-Zugriff (auch
+  `BoundedDownloader`) und Originalabruf folgen ihr. Weitergereichte Exceptions werden dort auf
+  Typ und Stack ohne Meldung reduziert. `NextcloudPrivateLibraryLogLeakIntegrationTest` belegt es
+  für einen Lauf samt Parse-Fehler, unveränderter und entfernter Datei, Mail mit Anhang und die
+  Löschung, mit allen Anwendungsloggern auf DEBUG.
+- **Restrisiko:** Bibliotheken Dritter (Tika, PDFBox, POI, der JDK-HTTP-Client) loggen unterhalb
+  von OPAA; sie sehen nur Temp-Dateien ohne Namen, ihre Meldungen auf DEBUG oder TRACE sind aber
+  nicht geprüft. Ebenso nicht geprüft sind Fehlermeldungen der Datenbank, die Zeilenwerte nennen
+  können (etwa `Failing row contains …`), auf Schreibwegen ohne Bibliotheksbezug wie dem
+  Laufprotokoll. Die globale Fehlerbehandlung (`GlobalExceptionHandler`, „Unexpected error“) loggt
+  eine unerwartete Exception einer Anfrage mit Meldung; sie kennt die Bibliothek nicht. Die bekannten
+  Wege einer privaten Bibliothek (Originalabruf, Löschung) fangen ihre Fehler vorher ab und
+  reduzieren sie; die Modell-Metadatenextraktion (`ModelMetadataExtractor`) folgt der Regel.
+  `NextcloudPrivateLibraryLogLeakIntegrationTest` deckt außerdem das Personenkontingent, eine
+  geänderte Fassung, ein nicht unterstütztes Format und den Originalabruf samt Anhang ab; eine zu
+  große Datei nicht, weil die Grenze eine Start-Einstellung ist, die einen eigenen Testkontext
+  verlangte.
 
 ## Referenzen
 

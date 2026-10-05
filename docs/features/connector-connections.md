@@ -217,8 +217,8 @@ Stand der Umsetzung (#2219): Webverzeichnis, RSS, Confluence, S3, Nextcloud und 
 ohne Anmeldung. Vorgaben am Profil: Confluence `edition`, S3 `region` und `pathStyle`. Ein
 SMB-Profil hat eine `smb://`-Adresse und weder Proxy noch ausgesetzte Zertifikatsprüfung; beides
 gibt es nur bei einer `http(s)`-Adresse. Google Drive meldet „optional“ mit dem Dienstkonto-Schlüssel
-am Profil und dem imitierten Konto als Vorgabe nur des Profils; die Besitzart Person folgt mit
-#2167. Die Registry prüft die Regel in beiden Richtungen: „verboten“ genau ohne entferntes Ziel oder
+am Profil und dem imitierten Konto als Vorgabe nur des Profils. Nextcloud meldet sein persönliches
+Geheimnis seit #2167 für Bibliothek und Person. Die Registry prüft die Regel in beiden Richtungen: „verboten“ genau ohne entferntes Ziel oder
 bei Uploads.
 
 **Google Drive** ([ADR-0040](../decisions/0040-google-drive-konnektor.md)) meldet sich mit einem

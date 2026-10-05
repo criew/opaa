@@ -120,7 +120,7 @@ public class MailDocumentFormat implements DocumentFormat {
         log.warn(
             "Skipping {}: {} bytes exceeds the configured limit of {} bytes"
                 + " (opaa.indexing.mail.max-message-bytes)",
-            source.fileName(),
+            source.logName(),
             Files.size(source.file()),
             properties.maxMessageBytes());
         return DocumentFormatResult.parseFailed();
@@ -133,14 +133,16 @@ public class MailDocumentFormat implements DocumentFormat {
     try {
       message =
           ".msg".equals(source.effectiveExtension())
-              ? MsgReader.read(source.file(), properties, source.attachmentIndex())
-              : EmlReader.read(source.file(), properties, source.attachmentIndex());
+              ? MsgReader.read(
+                  source.file(), properties, source.attachmentIndex(), source.loggedName())
+              : EmlReader.read(
+                  source.file(), properties, source.attachmentIndex(), source.loggedName());
     } catch (IOException e) {
       throw new UncheckedIOException("Could not read mail document " + source.fileName(), e);
     }
 
     try {
-      return resultOf(message, source.fileName());
+      return resultOf(message, source.logName());
     } catch (RuntimeException e) {
       // The readers have already written every attachment to a temp file; a failure from here on
       // never reaches a result that could carry them, and DocumentFormatRunner only deletes what
@@ -150,9 +152,9 @@ public class MailDocumentFormat implements DocumentFormat {
     }
   }
 
-  private DocumentFormatResult resultOf(ParsedMailMessage message, String fileName) {
+  private DocumentFormatResult resultOf(ParsedMailMessage message, String logName) {
     String headerContext = headerContextText(message);
-    List<Document> chunks = bodyChunks(message, fileName, headerContext);
+    List<Document> chunks = bodyChunks(message, logName, headerContext);
     List<DiscoveredAttachment> discovered = discoveredAttachments(message.attachments());
 
     if (chunks.isEmpty()) {
@@ -193,11 +195,13 @@ public class MailDocumentFormat implements DocumentFormat {
       }
       ParsedMailMessage message =
           ".msg".equals(source.effectiveExtension())
-              ? MsgReader.read(source.file(), properties, MATERIALIZE_NO_ATTACHMENT)
-              : EmlReader.read(source.file(), properties, MATERIALIZE_NO_ATTACHMENT);
+              ? MsgReader.read(
+                  source.file(), properties, MATERIALIZE_NO_ATTACHMENT, source.loggedName())
+              : EmlReader.read(
+                  source.file(), properties, MATERIALIZE_NO_ATTACHMENT, source.loggedName());
       return properties(message);
     } catch (IOException | RuntimeException e) {
-      log.warn("Could not read mail properties of {}", source.fileName(), e);
+      log.warn("Could not read mail properties of {}", source.logName(), source.loggedName().of(e));
       return DocumentProperties.EMPTY;
     }
   }
@@ -258,7 +262,7 @@ public class MailDocumentFormat implements DocumentFormat {
    * to the token splitter. A blank body yields a header-only chunk only if an attachment exists.
    */
   private List<Document> bodyChunks(
-      ParsedMailMessage message, String fileName, String headerContext) {
+      ParsedMailMessage message, String logName, String headerContext) {
     boolean headerPending = !headerContext.isEmpty();
     List<String> segments = MailThreadSplitter.split(message.bodyText());
     List<Document> chunks = new ArrayList<>(segments.size());
@@ -271,7 +275,7 @@ public class MailDocumentFormat implements DocumentFormat {
         text = headerContext + "\n\n" + text;
         headerPending = false;
       }
-      List<Document> parts = chunkingService.chunkDocuments(fileName, List.of(new Document(text)));
+      List<Document> parts = chunkingService.chunkDocuments(logName, List.of(new Document(text)));
       for (int j = 0; j < parts.size(); j++) {
         Map<String, Object> metadata = new HashMap<>();
         String location = locationFor(i, segments.size(), j, parts.size());
@@ -283,7 +287,7 @@ public class MailDocumentFormat implements DocumentFormat {
     }
     if (headerPending && !message.attachments().isEmpty()) {
       List<Document> headerParts =
-          chunkingService.chunkDocuments(fileName, List.of(new Document(headerContext)));
+          chunkingService.chunkDocuments(logName, List.of(new Document(headerContext)));
       for (int j = 0; j < headerParts.size(); j++) {
         Map<String, Object> metadata = new HashMap<>();
         String location = locationFor(0, 1, j, headerParts.size());

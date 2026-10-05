@@ -185,7 +185,10 @@ public class IndexingRunTemplate {
       return;
     } catch (RuntimeException e) {
       log.error(
-          "Indexing run {} could not resolve the source of library {}", jobId, library.getId(), e);
+          "Indexing run {} could not resolve the source of library {}",
+          jobId,
+          library.getId(),
+          library.loggedNames().of(e));
       progress.fail(failureMessage(e));
       return;
     }
@@ -228,7 +231,7 @@ public class IndexingRunTemplate {
           "Indexing run {} for library {} ended at its bound: {}",
           jobId,
           library.getId(),
-          e.getMessage());
+          library.loggedNames().of(e.getMessage()));
       recordBudgetExhausted(run, e);
       incomplete = true;
     } catch (SourceCredentialsRejectedException e) {
@@ -237,13 +240,17 @@ public class IndexingRunTemplate {
           jobId,
           library.getId(),
           e.category(),
-          e.getMessage());
+          library.loggedNames().of(e.getMessage()));
       tellCredentialsRejected(library);
       failed = true;
       failure = e.getMessage();
       category = e.category();
     } catch (IndexingRunFailedException e) {
-      log.warn("Indexing run {} for library {} failed: {}", jobId, library.getId(), e.getMessage());
+      log.warn(
+          "Indexing run {} for library {} failed: {}",
+          jobId,
+          library.getId(),
+          library.loggedNames().of(e.getMessage()));
       failed = true;
       failure = e.getMessage();
     } catch (InterruptedException e) {
@@ -269,11 +276,18 @@ public class IndexingRunTemplate {
       category = RunFailureCategory.of(e.block().reason());
     } catch (DataIntegrityViolationException e) {
       log.error(
-          "Indexing run {} failed - target library {} no longer exists", jobId, library.getId(), e);
+          "Indexing run {} failed - target library {} no longer exists",
+          jobId,
+          library.getId(),
+          library.loggedNames().of(e));
       failed = true;
       failure = LIBRARY_DELETED_MESSAGE;
     } catch (Exception e) {
-      log.error("Indexing run {} for library {} failed unexpectedly", jobId, library.getId(), e);
+      log.error(
+          "Indexing run {} for library {} failed unexpectedly",
+          jobId,
+          library.getId(),
+          library.loggedNames().of(e));
       failed = true;
       failure = failureMessage(e);
     }
@@ -299,7 +313,7 @@ public class IndexingRunTemplate {
         incomplete,
         failed,
         category,
-        failure);
+        library.loggedNames().of(failure));
     tellRunEnded(library);
     // The interrupt flag is restored only after the job row is written: a pending interrupt makes
     // the connection acquisition for that write fail and would leave the job RUNNING forever.
@@ -332,7 +346,10 @@ public class IndexingRunTemplate {
     try {
       connectionResolver.credentialsRejected(library);
     } catch (RuntimeException e) {
-      log.warn("Failed to report the rejected credentials of library {}", library.getId(), e);
+      log.warn(
+          "Failed to report the rejected credentials of library {}",
+          library.getId(),
+          library.loggedNames().of(e));
     }
   }
 
@@ -341,7 +358,10 @@ public class IndexingRunTemplate {
     try {
       connectionResolver.runEnded(library);
     } catch (RuntimeException e) {
-      log.warn("Failed to report the end of a run of library {}", library.getId(), e);
+      log.warn(
+          "Failed to report the end of a run of library {}",
+          library.getId(),
+          library.loggedNames().of(e));
     }
   }
 
@@ -408,7 +428,7 @@ public class IndexingRunTemplate {
           "Failed to load the retained {} documents of library {}, skipping the reconciliation",
           run.sourceType(),
           run.library().getId(),
-          e);
+          run.library().loggedNames().of(e));
       return false;
     }
   }
@@ -433,7 +453,7 @@ public class IndexingRunTemplate {
           "Failed to clean up vanished {} documents for library {}",
           run.sourceType(),
           run.library().getId(),
-          e);
+          run.library().loggedNames().of(e));
       return false;
     }
   }
@@ -477,7 +497,10 @@ public class IndexingRunTemplate {
     try {
       indexingJobService.recordRunMetrics(run.jobId(), run.cost(incomplete));
     } catch (Exception e) {
-      log.warn("Failed to record run metrics for job {}, continuing the run", run.jobId(), e);
+      log.warn(
+          "Failed to record run metrics for job {}, continuing the run",
+          run.jobId(),
+          run.library().loggedNames().of(e));
     }
   }
 }

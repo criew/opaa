@@ -4,6 +4,7 @@ import io.opaa.format.DiscoveredAttachment;
 import io.opaa.format.DocumentFormatRegistry;
 import io.opaa.format.DocumentFormatRunner;
 import io.opaa.format.DocumentFormatSource;
+import io.opaa.sourceaccess.LoggedName;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -41,6 +42,11 @@ public class AttachmentExtractor {
    * parent could not be parsed at all.
    */
   public Extracted extract(Path parentFile, String parentFileName, int index) {
+    return extract(parentFile, parentFileName, index, LoggedName.OPEN);
+  }
+
+  /** {@link #extract(Path, String, int)}, its log lines naming files as {@code names} decides. */
+  public Extracted extract(Path parentFile, String parentFileName, int index, LoggedName names) {
     Extracted[] extracted = new Extracted[1];
     DocumentFormatRegistry.Routed routed;
     try {
@@ -49,13 +55,18 @@ public class AttachmentExtractor {
       // Routing reads the parent's own bytes; a parent that has since been removed or truncated
       // must cost only this one extraction. A parse failure of the routed pipeline itself needs no
       // handling here - DocumentFormatRunner reports it as a result without attachments.
-      log.warn("Failed to route parent {} for attachment {}", parentFileName, index, e);
+      log.warn(
+          "Failed to route parent {} for attachment {}",
+          names.of(parentFileName),
+          index,
+          names.of(e));
       return null;
     }
     DocumentFormatRunner.run(
         routed.pipeline(),
         DocumentFormatSource.ofFile(parentFile, parentFileName, routed.detectedExtension())
-            .withAttachmentIndex(index),
+            .withAttachmentIndex(index)
+            .withLoggedName(names),
         result -> {
           List<DiscoveredAttachment> attachments = result.discoveredAttachments();
           if (attachments.isEmpty()) {
@@ -69,7 +80,10 @@ public class AttachmentExtractor {
             Files.copy(attachment.tempFile(), copy, StandardCopyOption.REPLACE_EXISTING);
             extracted[0] = new Extracted(copy, attachment.fileName());
           } catch (IOException e) {
-            log.warn("Failed to copy re-extracted attachment {}", attachment.fileName(), e);
+            log.warn(
+                "Failed to copy re-extracted attachment {}",
+                names.of(attachment.fileName()),
+                names.of(e));
           }
         });
     return extracted[0];

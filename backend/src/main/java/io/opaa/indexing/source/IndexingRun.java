@@ -13,6 +13,7 @@ import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.LibraryStorageQuotaService;
 import io.opaa.knowledge.SourceDocumentContext;
 import io.opaa.knowledge.SourceType;
+import io.opaa.sourceaccess.LoggedName;
 import io.opaa.sourceaccess.SourceRequestMeter;
 import java.time.Clock;
 import java.util.Collections;
@@ -193,7 +194,8 @@ public final class IndexingRun {
 
   /** An item whose processing threw: logged, an {@code ERROR} entry, counted as failed. */
   public void recordFailure(String reference, Throwable failure) {
-    log.error("Failed to process {} ({})", reference, sourceType, failure);
+    LoggedName names = library.loggedNames();
+    log.error("Failed to process {} ({})", names.of(reference), sourceType, names.of(failure));
     events.record(IndexingEventCategory.ERROR, DocumentIngestOutcomes.FAILED_MESSAGE, reference);
     progress.recordFailed();
   }

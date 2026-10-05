@@ -46,10 +46,11 @@ import org.slf4j.LoggerFactory;
 
 /**
  * A Nextcloud (ADR-0040, Nachtrag Nextcloud): {@code sourceUrl} is the instance address, stored
- * normalised; the credentials are the technical user's {@code Benutzername:App-Passwort} (Basic
- * Auth), sent only to that address; the folders are the connector settings. A changed address or
- * changed folders discard the sync state with its folder ETags, so the next run lists everything.
- * Rights at Nextcloud are not taken over; the library decides who reads.
+ * normalised; the credentials are an account's {@code Benutzername:App-Passwort} (Basic Auth) - a
+ * technical user's for a library, a person's own for her private library - sent only to that
+ * address; the folders are the connector settings. A changed address or changed folders discard the
+ * sync state with its folder ETags, so the next run lists everything. Rights at Nextcloud are not
+ * taken over; the library decides who reads.
  */
 public class NextcloudSourceConnector implements SourceConnector, SourceBrowser, OriginalAccess {
 
@@ -70,7 +71,9 @@ public class NextcloudSourceConnector implements SourceConnector, SourceBrowser,
               ProfileDeclaration.of(
                   ConnectionProfileSupport.OPTIONAL,
                   SignIn.personalSecret(
-                      PersonalSecretForm.USERNAME_AND_PASSWORD, ConnectionOwnership.LIBRARY)));
+                      PersonalSecretForm.USERNAME_AND_PASSWORD,
+                      ConnectionOwnership.LIBRARY,
+                      ConnectionOwnership.PERSON)));
 
   private final NextcloudProperties properties;
   private final TargetAddressValidator targetAddressValidator;
@@ -173,8 +176,8 @@ public class NextcloudSourceConnector implements SourceConnector, SourceBrowser,
   }
 
   /**
-   * Signs in as the technical user and lists each requested folder, or the stored library's, or the
-   * user's root when neither names one; the count is the entries directly in them.
+   * Signs in with the given account and lists each requested folder, or the stored library's, or
+   * the account's root when neither names one; the count is the entries directly in them.
    */
   @Override
   public SourceConnectionTestResult testConnection(SourceSettings settings, ConnectorData stored) {
@@ -210,7 +213,7 @@ public class NextcloudSourceConnector implements SourceConnector, SourceBrowser,
       if (!missing.isEmpty()) {
         return new SourceConnectionTestResult(
             false,
-            "Angemeldet, aber diese Ordner sind für den technischen Nutzer nicht lesbar: "
+            "Angemeldet, aber diese Ordner sind für dieses Konto nicht lesbar: "
                 + String.join(", ", missing),
             null,
             true,
@@ -238,7 +241,7 @@ public class NextcloudSourceConnector implements SourceConnector, SourceBrowser,
   }
 
   /**
-   * The folders directly in the technical user's root - own ones, shares and group folders - as
+   * The folders directly in the signed-in account's root - own ones, shares and group folders - as
    * candidates for the folder selection.
    */
   @Override
@@ -290,7 +293,7 @@ public class NextcloudSourceConnector implements SourceConnector, SourceBrowser,
       log.warn(
           "Library {} has an unusable Nextcloud configuration: {}",
           library.getId(),
-          e.getMessage());
+          library.loggedNames().of(e.getMessage()));
       return Optional.empty();
     }
     String prefix = connection.baseUrl() + "/index.php/f/";
@@ -299,7 +302,7 @@ public class NextcloudSourceConnector implements SourceConnector, SourceBrowser,
       return Optional.empty();
     }
     String fileId = document.getFilePath().substring(prefix.length());
-    try (NextcloudDav dav = probe(connection)) {
+    try (NextcloudDav dav = probe(connection).loggingNamesAs(library.loggedNames())) {
       String path = originalPath(dav.filesRoot(), folder, document);
       List<DavResource> found = dav.propfind(path, 0, "die Datei „" + document.getFileName() + "“");
       if (found.isEmpty() || !fileId.equals(found.getFirst().fileId())) {
@@ -417,7 +420,7 @@ public class NextcloudSourceConnector implements SourceConnector, SourceBrowser,
       log.warn(
           "Library {} carries Nextcloud settings the record rejects; left out: {}",
           library.getId(),
-          e.getMessage());
+          library.loggedNames().of(e.getMessage()));
       return null;
     }
   }

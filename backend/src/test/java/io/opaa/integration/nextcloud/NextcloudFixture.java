@@ -98,6 +98,39 @@ final class NextcloudFixture {
     return TECH_USER + ":" + appPassword;
   }
 
+  /**
+   * A further Nextcloud user {@code user} with a new app password of her own, as a person connects
+   * it; {@code <app password>}.
+   */
+  synchronized String appPasswordOf(String user) {
+    occ("user:add", "--password-from-env", user);
+    return lastLine(occ("user:auth-tokens:add", "--password-from-env", user));
+  }
+
+  /**
+   * Revokes every app password of {@code user} through her own settings, as she would; through the
+   * web server, so its token cache forgets them too, which {@code occ} would not reach.
+   */
+  synchronized void revokeAppPasswords(String user) {
+    String listed = occ("user:auth-tokens:list", "--output=json", user);
+    Matcher ids = Pattern.compile("\"id\":\\s*\"?(\\d+)").matcher(listed);
+    int revoked = 0;
+    while (ids.find()) {
+      HttpRequest request =
+          authorized(
+                  user,
+                  URI.create(baseUrl() + "/index.php/settings/personal/authtokens/" + ids.group(1)))
+              .header("OCS-APIRequest", "true")
+              .DELETE()
+              .build();
+      require(send(request), 200);
+      revoked++;
+    }
+    if (revoked == 0) {
+      throw new IllegalStateException("no app password of " + user + " listed: " + listed);
+    }
+  }
+
   boolean groupFoldersAvailable() {
     return groupFolders;
   }

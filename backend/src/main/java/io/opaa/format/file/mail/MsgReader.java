@@ -1,5 +1,6 @@
 package io.opaa.format.file.mail;
 
+import io.opaa.sourceaccess.LoggedName;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -33,14 +34,16 @@ final class MsgReader {
   private MsgReader() {}
 
   static ParsedMailMessage read(Path file, MailProperties properties) throws IOException {
-    return read(file, properties, null);
+    return read(file, properties, null, LoggedName.OPEN);
   }
 
   /**
    * {@code wantedIndex} restricts what is materialized: {@code null} means every attachment, a
-   * negative value none at all - see this class' own Javadoc.
+   * negative value none at all - see this class' own Javadoc. Log lines name attachments as {@code
+   * names} decides.
    */
-  static ParsedMailMessage read(Path file, MailProperties properties, Integer wantedIndex)
+  static ParsedMailMessage read(
+      Path file, MailProperties properties, Integer wantedIndex, LoggedName names)
       throws IOException {
     try (InputStream in = Files.newInputStream(file);
         MAPIMessage message = new MAPIMessage(in)) {
@@ -50,7 +53,7 @@ final class MsgReader {
       Instant date = safeDate(message);
       String body = extractBody(message);
       List<ParsedMailAttachment> attachments =
-          extractAttachments(message, file, properties, wantedIndex);
+          extractAttachments(message, file, properties, wantedIndex, names);
       return new ParsedMailMessage(subject, from, to, date, body, attachments);
     }
   }
@@ -65,7 +68,11 @@ final class MsgReader {
   }
 
   private static List<ParsedMailAttachment> extractAttachments(
-      MAPIMessage message, Path file, MailProperties properties, Integer wantedIndex)
+      MAPIMessage message,
+      Path file,
+      MailProperties properties,
+      Integer wantedIndex,
+      LoggedName names)
       throws IOException {
     AttachmentChunks[] chunks = message.getAttachmentFiles();
     List<ParsedMailAttachment> attachments = new ArrayList<>(chunks.length);
@@ -82,7 +89,7 @@ final class MsgReader {
         }
         budget.reserve();
         boolean materialize = wantedIndex == null || wantedIndex == position;
-        ParsedMailAttachment attachment = extractAttachment(chunk, properties, materialize);
+        ParsedMailAttachment attachment = extractAttachment(chunk, properties, materialize, names);
         if (attachment == null) {
           continue;
         }
@@ -116,14 +123,15 @@ final class MsgReader {
    * ParsedMailAttachment#tempFile()}, which the caller counts and drops.
    */
   private static ParsedMailAttachment extractAttachment(
-      AttachmentChunks chunk, MailProperties properties, boolean materialize) throws IOException {
+      AttachmentChunks chunk, MailProperties properties, boolean materialize, LoggedName names)
+      throws IOException {
     byte[] data;
     String fileName;
     try {
       data = chunk.getAttachData() != null ? chunk.getAttachData().getValue() : null;
       fileName = resolveFilename(chunk);
     } catch (RuntimeException e) {
-      log.warn("Skipping a mail attachment that could not be read", e);
+      log.warn("Skipping a mail attachment that could not be read", names.of(e));
       return null;
     }
     if (data == null) {
@@ -134,7 +142,7 @@ final class MsgReader {
     if (data.length > properties.maxAttachmentBytes()) {
       log.warn(
           "Skipping mail attachment {} exceeding the size limit of {} bytes",
-          fileName,
+          names.of(fileName),
           properties.maxAttachmentBytes());
       return null;
     }

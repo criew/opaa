@@ -107,7 +107,8 @@ public class BoundedDownloader {
             authHeader,
             RedirectFollowingFetcher.RedirectPolicy.DROP_AUTHORIZATION_OFF_ORIGIN,
             rateLimitListener,
-            authorizationScope)
+            authorizationScope,
+            LoggedName.OPEN)
         .path();
   }
 
@@ -228,7 +229,29 @@ public class BoundedDownloader {
       RedirectFollowingFetcher.RedirectPolicy redirectPolicy,
       RateLimitListener rateLimitListener)
       throws IOException, InterruptedException {
-    log.debug("Downloading (bounded to {} bytes): {}", maxBytes, fileUrl);
+    return downloadBounded(
+        httpClient,
+        fileUrl,
+        fileName,
+        maxBytes,
+        authHeader,
+        redirectPolicy,
+        rateLimitListener,
+        LoggedName.OPEN);
+  }
+
+  /** The same, its log lines naming {@code fileUrl} as {@code names} decides. */
+  public DownloadedFile downloadBounded(
+      HttpClient httpClient,
+      String fileUrl,
+      String fileName,
+      long maxBytes,
+      String authHeader,
+      RedirectFollowingFetcher.RedirectPolicy redirectPolicy,
+      RateLimitListener rateLimitListener,
+      LoggedName names)
+      throws IOException, InterruptedException {
+    log.debug("Downloading (bounded to {} bytes): {}", maxBytes, names.of(fileUrl));
     return downloadToTempFile(
         httpClient,
         fileUrl,
@@ -237,7 +260,8 @@ public class BoundedDownloader {
         authHeader,
         redirectPolicy,
         rateLimitListener,
-        RedirectFollowingFetcher.ANY_TARGET);
+        RedirectFollowingFetcher.ANY_TARGET,
+        names);
   }
 
   /**
@@ -295,7 +319,8 @@ public class BoundedDownloader {
       String authHeader,
       RedirectFollowingFetcher.RedirectPolicy redirectPolicy,
       RateLimitListener rateLimitListener,
-      Predicate<URI> authorizationScope)
+      Predicate<URI> authorizationScope,
+      LoggedName names)
       throws IOException, InterruptedException {
     Map<String, String> headers = requestPolicy.headers(authHeader);
     HttpResponse<InputStream> response =
@@ -330,7 +355,7 @@ public class BoundedDownloader {
         throw e;
       }
       String contentType = response.headers().firstValue("Content-Type").orElse(null);
-      log.debug("Downloaded {} to {}", fileUrl, tempFile);
+      log.debug("Downloaded {} to {}", names.of(fileUrl), tempFile);
       return new DownloadedFile(tempFile, contentType);
     }
   }

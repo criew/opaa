@@ -1,6 +1,7 @@
 package io.opaa.format.file.mail;
 
 import io.opaa.sourceaccess.BoundedStreams;
+import io.opaa.sourceaccess.LoggedName;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -45,14 +46,16 @@ final class EmlReader {
   private EmlReader() {}
 
   static ParsedMailMessage read(Path file, MailProperties properties) throws IOException {
-    return read(file, properties, null);
+    return read(file, properties, null, LoggedName.OPEN);
   }
 
   /**
    * {@code wantedIndex} restricts what is materialized: {@code null} means every attachment, a
-   * negative value none at all - see this class' own Javadoc.
+   * negative value none at all - see this class' own Javadoc. Log lines name attachments as {@code
+   * names} decides.
    */
-  static ParsedMailMessage read(Path file, MailProperties properties, Integer wantedIndex)
+  static ParsedMailMessage read(
+      Path file, MailProperties properties, Integer wantedIndex, LoggedName names)
       throws IOException {
     MimeConfig config = MimeConfig.custom().setMaxLineLen(-1).setMaxHeaderLen(-1).build();
     Message.Builder builder = Message.Builder.of();
@@ -67,7 +70,7 @@ final class EmlReader {
     AttachmentBudget budget = new AttachmentBudget(properties.maxAttachmentsPerMessage());
     ExtractionPosition position = new ExtractionPosition(wantedIndex);
     try {
-      walk(message, collector, attachments, properties, budget, position);
+      walk(message, collector, attachments, properties, budget, position, names);
     } catch (IOException | RuntimeException e) {
       // Whatever this pass already extracted must not leak as an orphaned temp file just because a
       // later part in the same message failed to read - the caller never
@@ -132,7 +135,8 @@ final class EmlReader {
       List<ParsedMailAttachment> attachments,
       MailProperties properties,
       AttachmentBudget budget,
-      ExtractionPosition position)
+      ExtractionPosition position,
+      LoggedName names)
       throws IOException {
     Body body = entity.getBody();
     if (body instanceof Multipart multipart) {
@@ -146,7 +150,7 @@ final class EmlReader {
         return;
       }
       for (Entity child : multipart.getBodyParts()) {
-        walk(child, collector, attachments, properties, budget, position);
+        walk(child, collector, attachments, properties, budget, position, names);
       }
       return;
     }
@@ -157,7 +161,8 @@ final class EmlReader {
         return;
       }
       budget.reserve();
-      ReadAttachment attachment = extractAttachment(entity, properties, position.materializeNext());
+      ReadAttachment attachment =
+          extractAttachment(entity, properties, position.materializeNext(), names);
       if (attachment != null) {
         position.advance();
         if (attachment.tempFile() != null) {
@@ -227,13 +232,14 @@ final class EmlReader {
    * extraction position, exactly as it did before selective extraction.
    */
   private static ReadAttachment extractAttachment(
-      Entity entity, MailProperties properties, boolean materialize) throws IOException {
+      Entity entity, MailProperties properties, boolean materialize, LoggedName names)
+      throws IOException {
     String fileName = resolveFilename(entity);
     Body body;
     try {
       body = entity.getBody();
     } catch (RuntimeException e) {
-      log.warn("Skipping a mail attachment that could not be read", e);
+      log.warn("Skipping a mail attachment that could not be read", names.of(e));
       return null;
     }
     boolean nestedMessage = body instanceof Message;
@@ -260,7 +266,7 @@ final class EmlReader {
     } catch (BoundedStreams.LimitExceededException e) {
       log.warn(
           "Skipping mail attachment {} exceeding the size limit of {} bytes",
-          fileName,
+          names.of(fileName),
           properties.maxAttachmentBytes());
       deleteIfCreated(tempFile);
       return null;
@@ -270,7 +276,8 @@ final class EmlReader {
     } catch (RuntimeException e) {
       // A malformed part (e.g. mime4j failing mid-decode on a truncated or corrupt attachment)
       // costs only this attachment, not the whole message.
-      log.warn("Skipping mail attachment {} that could not be read", fileName, e);
+      log.warn(
+          "Skipping mail attachment {} that could not be read", names.of(fileName), names.of(e));
       deleteIfCreated(tempFile);
       return null;
     }
