@@ -12,6 +12,7 @@ import io.opaa.common.ValidationException;
 import io.opaa.test.OpaaIntegrationTest;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.assertj.core.api.SoftAssertions;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -65,12 +66,15 @@ class SourceConnectorProfileContractTest {
   }
 
   /**
-   * The shipped remote connectors admit profiles as optional, owned by the library: web and feed
-   * with or without sign-in, the others with the library's own secret; Confluence leaves the
-   * edition to a profile, S3 region and addressing style, SMB takes an {@code smb://} server, and
-   * the feed names what a requirement leaves open. Google Drive signs in with the profile's service
-   * account key, the imitated account set by the profile alone. Upload and file system admit none.
+   * The shipped remote connectors admit profiles as optional, owned by the library - Nextcloud also
+   * by a person, the one shipped connector listed in {@code PERSONS} for that: web and feed with or
+   * without sign-in, the others with the library's own secret; Confluence leaves the edition to a
+   * profile, S3 region and addressing style, SMB takes an {@code smb://} server, and the feed names
+   * what a requirement leaves open. Google Drive signs in with the profile's service account key,
+   * the imitated account set by the profile alone. Upload and file system admit none.
    */
+  private static final Set<String> PERSONS = Set.of("NEXTCLOUD");
+
   @Test
   void theShippedRemoteConnectorsDeclareTheirProfiles() {
     Map<String, ProfileDeclaration> declared = new java.util.HashMap<>();
@@ -96,7 +100,11 @@ class SourceConnectorProfileContractTest {
               .as(type)
               .allSatisfy(
                   signIn ->
-                      assertThat(signIn.owners()).containsExactly(ConnectionOwnership.LIBRARY));
+                      assertThat(signIn.owners())
+                          .containsExactlyInAnyOrderElementsOf(
+                              PERSONS.contains(type)
+                                  ? List.of(ConnectionOwnership.LIBRARY, ConnectionOwnership.PERSON)
+                                  : List.of(ConnectionOwnership.LIBRARY)));
           softly
               .assertThat(declaration.signIns().stream().map(SignIn::method).toList())
               .as(type)
