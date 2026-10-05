@@ -773,6 +773,75 @@ Zugang; eine Bibliothek mit eigener Adresse braucht es für ihre Quellart (Kapit
 [Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), Abschnitt 9). Ein neu
 angelegter Zugang ist für niemanden außer der Systemverwaltung freigegeben.
 
+#### Quelle verbinden
+
+Meldet sich ein Zugang über OAuth an und lässt er die Besitzart Bibliothek zu, verbindet eine
+Bibliothek ihre Quelle mit einer **eigenen Zustimmung beim Anbieter**: Eine verwaltende Person
+meldet sich dort einmal mit einem **Dienstkonto** an und stimmt zu; die Zustimmung gehört danach der
+Bibliothek, nicht der Person, und die Läufe erneuern das Zugriffstoken selbst. Heute meldet noch
+kein mitgelieferter Konnektor diese Anmeldeart für Bibliotheken (siehe die Tabelle unter „Welcher
+Konnektor Zugänge kennt“); ohne einen solchen Zugang erscheint nichts von diesem Abschnitt in der
+Oberfläche. Der erste Konnektor dafür ist Dropbox (#2154).
+
+**Im Wissens-Assistenten** steht nach der Wahl eines solchen Zugangs im Schritt „Quelle“ über dem
+Formular der Abschnitt **„Quelle verbinden“**:
+
+1. Pflicht ist die Bestätigung **„Ich verbinde ein Dienstkonto, kein persönliches Konto“**. Ohne sie
+   startet keine Weiterleitung; der Assistent nennt den Grund, und auch OPAA selbst gibt ohne
+   Bestätigung keine Adresse des Anbieters heraus.
+2. „Quelle verbinden“ führt im selben Tab zum Anbieter. Die bisherigen Eingaben des Assistenten
+   bleiben in diesem Tab erhalten, ohne Passwort, Token oder andere Geheimnisse, und werden nach der
+   Rückkehr sofort gelöscht, ebenso beim Abbrechen und nach dem Anlegen.
+3. Nach der Zustimmung kehrt der Assistent auf den Schritt „Quelle“ zurück, mit dem Fokus auf dessen
+   Überschrift, und nennt das Konto beim Anbieter („Verbunden als …“). Erst jetzt erscheinen
+   Ordnerauswahl und Verbindungstest; beide laufen über die eben erteilte Zustimmung.
+4. Die Zustimmung wartet 60 Minuten auf das Anlegen der Bibliothek und gilt nur für die Person, die
+   sie erteilt hat, und nur auf diesem Zugang. Ist sie beim Anlegen abgelaufen oder schon verwendet,
+   legt OPAA nichts an; der Assistent kehrt auf „Quelle“ zurück und bittet, die Quelle erneut zu
+   verbinden. Eine nicht verwendete Zustimmung räumt OPAA ab und widerruft sie beim Anbieter.
+
+Bricht die Person beim Anbieter ab oder scheitert der Abschluss, führt die Rücksprungseite mit
+„Zurück zum Assistenten“ zu den bisherigen Eingaben zurück.
+
+**Verantwortlich** für die Verbindung ist eine Person oder Gruppe, die die Bibliothek verwaltet. Der
+Schritt „Freigaben“ fragt das ab, wenn eine Gruppe die Bibliothek besitzt („Ich“ oder die Gruppe);
+sonst ist es die anlegende Person. Die Verantwortlichen erhalten die Benachrichtigungen zur
+Verbindung und können sie neu verbinden; ein Klick auf die Benachrichtigung öffnet den Reiter
+„Quelle“ der Bibliothek:
+
+| Benachrichtigung | Wann |
+|---|---|
+| „Verbindung der Quelle läuft ab“ | Der Anbieter nennt ein Ende der Zustimmung; einmal 14 Tage vorher |
+| „Quelle nicht mehr verbunden“ | Der Anbieter nimmt die Zustimmung nicht mehr an; die Quelle gilt als abgelaufen |
+| „Quelle getrennt“ | Die Systemverwaltung hat die Verbindung beendet: Server-Adresse oder Registrierung des Zugangs geändert, Notabschaltung oder Zugang gelöscht |
+
+Scheidet die Person aus, die zugestimmt hat, oder wird ihr Konto deaktiviert, bleibt die Verbindung
+bestehen.
+
+**An der fertigen Bibliothek** steht im Reiter „Quelle“ unter „Anbindung“ für die Verwaltenden der
+Abschnitt **„Quellverbindung“**: das Konto beim Anbieter, wann verbunden wurde, wer verantwortlich
+ist, das vom Anbieter genannte Ende der Zustimmung und, wenn sie beendet ist, warum und wann.
+Leseberechtigte ohne Verwaltungsrecht sehen davon nichts, nur den Sperrhinweis, solange die Quelle
+nicht erreicht wird.
+
+| Aktion | Wirkung |
+|---|---|
+| „Neu verbinden“ | fragt die Bestätigung des Dienstkontos ab und führt zum Anbieter; danach kehrt die Seite zum Reiter „Quelle“ zurück. Meldet der Anbieter ein **anderes Konto** als bisher, verbindet OPAA zunächst nicht und widerruft die frische Zustimmung; die Rücksprungseite fragt nach, ob mit dem anderen Konto verbunden werden soll. Erst „Mit diesem Konto verbinden“ und die Bestätigung, dass der Abgleichstand der Bibliothek verworfen wird, führen erneut zum Anbieter; der nächste Lauf liest die Quelle dann vollständig neu |
+| „Trennen“ | fragt nach, löscht die Zustimmung sofort und widerruft sie beim Anbieter, wo er das anbietet. Der Inhalt bleibt durchsuchbar und wird nicht mehr aktualisiert, bis die Quelle neu verbunden ist. Trennen ist immer möglich, auch an einem gesperrten Zugang |
+
+Ist die Quelle nicht verbunden, getrennt oder abgelaufen, trägt der Sperrhinweis für die
+Verwaltenden die Aktion „Quelle verbinden“ bzw. „Quelle neu verbinden“. Zuordnen an einen anderen
+Zugang, Adress- oder Registrierungswechsel, Notabschaltung und Löschen des Zugangs oder der
+Bibliothek beenden die Zustimmung und widerrufen sie beim Anbieter. Eine private Bibliothek
+verbindet ihre Quelle nie so; sie läuft über das verbundene Konto ihrer Besitzerin.
+
+**Ruhende Quellverbindungen.** Unter **Administration → Zugänge** listet die Systemverwaltung im
+Abschnitt **„Ruhende Quellverbindungen“** die geteilten Bibliotheken, deren eigene Quellverbindung
+gerade nicht erreicht wird (abgelaufen, getrennt, gesperrt oder ohne Zugang), mit Zugang, Konto,
+Zustand, Grund und Zeitpunkt des Endes und den Verantwortlichen; der Name führt zum Reiter „Quelle“
+der Bibliothek. Private Bibliotheken stehen nie darin. Ruht keine Quellverbindung, entfällt der
+Abschnitt.
+
 #### Sperre einer Quellart oder eines Zugangs
 
 Die Systemverwaltung kann eine **Quellart** (für alle ihre Bibliotheken, mit und ohne Zugang) oder
