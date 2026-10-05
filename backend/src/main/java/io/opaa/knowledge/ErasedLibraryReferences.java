@@ -10,8 +10,16 @@ import java.util.UUID;
  */
 public interface ErasedLibraryReferences {
 
-  /** The neutral key the erasure proof counts this holder under, such as "chatSourcesRedacted". */
+  /** The neutral key this holder's references are counted under, such as "chatSourcesRedacted". */
   String countKey();
+
+  /**
+   * Whether the erasure proof names this holder at all. A holder whose mere presence tells how the
+   * owner used the library answers {@code false}; its references are removed and checked alike.
+   */
+  default boolean inProof() {
+    return true;
+  }
 
   /**
    * Removes or neutralizes every reference to {@code erased}, so that none names it any more.

@@ -687,16 +687,22 @@ Entscheidungen des Maintainers vom 05.10.2026 zu M2 aus #2275 und zur Schwellenw
 
 - **Löschnachweis:** `PRIVATE_LIBRARY_ERASED` nennt weiter Anlass, Zeitpunkt der Vormerkung und
   die Handelnde (Besitzerin oder Löschlauf), dazu `erasedCompletely`. Exakte Zähler entfallen: Je
-  Art des Inhalts (Dokumente, Abschnitte, Ordner, Läufe, Originale, Raumzuordnungen, geschwärzte
-  Chat-Belege) steht nur `NONE` oder `PRESENT`. Wie oft die Besitzerin aus der Bibliothek zitiert
-  bekam, steht damit nicht mehr im Nachweis. Die Nachzählung der Löschung bleibt intern exakt;
-  bleibt etwas übrig, rollt sie zurück, und es entsteht kein Nachweis.
+  Art des Inhalts (Dokumente, Abschnitte, Ordner, Läufe, Originale, Raumzuordnungen) steht nur
+  `NONE` oder `PRESENT`. Die geschwärzten Chat-Belege nennt der Nachweis gar nicht
+  (`ErasedLibraryReferences#inProof`): Schon `PRESENT` belegte, dass die Besitzerin die Bibliothek
+  im Chat genutzt hat, und für den Nachweis der Löschung ist das unnötig (Entscheidung des
+  Koordinators im Sinne der Vorgabe „vergröbern“). Geschwärzt und nachgezählt werden sie weiter.
+  Die Nachzählung der Löschung bleibt intern exakt; bleibt etwas übrig, rollt sie zurück, und es
+  entsteht kein Nachweis.
 - **Schwellenwarnung abgelaufener Konten:** `PersonNumbers` warnt, sobald die maskierte Antwort den
   Schwellenwert zulässt, also nach der größten zulässigen Zahl Abgelaufener: der genauen Zahl, N−1
   bei „weniger als N“, der Gesamtzahl bei nicht ausgewiesenem Teil. Gleiche Antwort heißt weiter
   gleiche Warnung, und die Warnung verrät nichts über die Antwort hinaus. Dafür gibt es mehr
-  Fehlalarme; ein Schwellenwert unter N warnt schon bei „weniger als N“. Die Oberfläche nennt die
-  Warnung „Möglicherweise viele abgelaufen“, wo der Teil nicht genau ausgewiesen ist.
+  Fehlalarme. Ein Zugang, der keine Personen zulässt (Besitzart `LIBRARY`), warnt nie; seine
+  Besitzart ist öffentlich. Ein Schwellenwert unter N wird nicht abgewiesen, aber beim Start als
+  Warnung geloggt: Dann warnt jeder Zugang für Personen schon bei „weniger als N“, auch ein leerer.
+  Die Oberfläche nennt die Warnung „Möglicherweise viele abgelaufen“, wo der Teil nicht genau
+  ausgewiesen ist.
 
 ## Nachtrag vom 05.10.2026: Schreibende Wege je Zugang serialisiert (#2246)
 

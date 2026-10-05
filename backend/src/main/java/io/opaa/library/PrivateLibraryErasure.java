@@ -233,7 +233,10 @@ public class PrivateLibraryErasure {
     Map<String, Object> counts = new LinkedHashMap<>();
     counts.put("chunksRemoved", chunks.eraseAllOf(libraryId, documentIds));
     for (ErasedLibraryReferences holder : references) {
-      counts.put(holder.countKey(), holder.remove(erased));
+      int removed = holder.remove(erased);
+      if (holder.inProof()) {
+        counts.put(holder.countKey(), removed);
+      }
     }
     counts.put("documentsRemoved", documents.deleteByLibraryId(libraryId));
     counts.put("foldersRemoved", folders.countByLibraryId(libraryId));

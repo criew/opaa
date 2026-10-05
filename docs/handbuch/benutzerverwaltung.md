@@ -566,7 +566,7 @@ entfernt: Bis zum Abschluss lässt sich kein Dokument der vorgemerkten Bibliothe
 (`PRIVATE_LIBRARY_ERASED`) mit Zeitpunkt, Anlass (Besitzerin oder Löschfrist), der Handelnden
 (Besitzerin oder Löschlauf) und dem Vermerk „vollständig gelöscht“. Für Dokumente, Abschnitte,
 Läufe und die weiteren Einträge nennt er nur „keine“ oder „vorhanden“, keine genauen Zahlen, und
-keine Namen, Pfade oder Inhalte.
+keine Namen, Pfade oder Inhalte. Ob aus der Bibliothek in Chats zitiert wurde, nennt er nicht.
 Die Verwaltung sieht in der Indexübersicht nur, wie viele private Bibliotheken zur Löschung
 anstehen, und kleine Zahlen nur als „weniger als N“. Sicherungen der Datenbank erfasst die Löschung
 nicht; eine vorher gezogene Sicherung enthält die Bibliothek weiterhin.

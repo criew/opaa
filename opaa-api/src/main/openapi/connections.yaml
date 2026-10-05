@@ -1334,6 +1334,7 @@ components:
             true as soon as expiredConnectionCount and connectedAccountCount as returned admit it,
             so it tells nothing they do not. Certain only where expiredConnectionCount is exact;
             otherwise the threshold is possibly reached (more false alarms, no disclosure).
+            Always false on a profile whose ownership admits no persons.
         locked:
           type: boolean
           description: Whether the profile is locked (see lockConnectionProfile).

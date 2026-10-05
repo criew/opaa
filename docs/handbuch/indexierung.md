@@ -475,7 +475,8 @@ Der Schwellenwert wird nur gegen das geprüft, was die Liste ohnehin zeigt: gege
 oder, wo sie nicht genau ausgewiesen ist, gegen die größte Zahl, die Gesamtzahl und Rundungsregel
 noch zulassen. Bei „nicht ausgewiesen“ ist das die Gesamtzahl, bei „weniger als N“ die Zahl N−1. Die
 Warnung verrät so nichts, was die Zahlen nicht schon sagen, und gleiche Zahlen tragen immer dieselbe
-Warnung. Dafür warnt die Liste auch dort, wo tatsächlich weniger Konten abgelaufen sind.
+Warnung. Dafür warnt die Liste auch dort, wo tatsächlich weniger Konten abgelaufen sind. Ein Zugang,
+der keine Personen zulässt, warnt nie.
 
 | Schlüssel | Standard | Wirkung |
 |---|---|---|

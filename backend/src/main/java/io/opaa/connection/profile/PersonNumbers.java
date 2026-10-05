@@ -8,6 +8,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 /**
@@ -23,6 +25,8 @@ import org.springframework.stereotype.Component;
 @Component
 public class PersonNumbers {
 
+  private static final Logger log = LoggerFactory.getLogger(PersonNumbers.class);
+
   private final PersonConnections persons;
   private final PersonThreshold threshold;
   private final int minimum;
@@ -36,6 +40,13 @@ public class PersonNumbers {
     this.threshold = new PersonThreshold(groupSize);
     this.minimum = threshold.minimum();
     this.warningThreshold = warning.warningThreshold();
+    if (warningThreshold < minimum) {
+      log.warn(
+          "Expired-connections warning threshold {} is below the minimum group size {}: every"
+              + " connection profile for persons will show the warning",
+          warningThreshold,
+          minimum);
+    }
   }
 
   /** The masked numbers of each of {@code profileIds}, with one query for all. */

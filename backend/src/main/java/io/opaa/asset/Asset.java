@@ -56,7 +56,6 @@ public class Asset implements OwnedAsset {
           "allAccountsGrantAllowed",
           "cause",
           "changedFields",
-          "chatSourcesRedacted",
           "chunksRemoved",
           "confidence",
           "datePrecision",
