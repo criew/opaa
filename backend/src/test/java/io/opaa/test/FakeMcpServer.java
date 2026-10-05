@@ -53,6 +53,7 @@ public final class FakeMcpServer implements AutoCloseable {
   private final AtomicInteger issued = new AtomicInteger();
   private volatile String announcedResource;
   private volatile String announcedIssuer;
+  private volatile FakeMcpServer authorizationServer;
   private volatile boolean offersS256 = true;
 
   public FakeMcpServer() {
@@ -104,6 +105,14 @@ public final class FakeMcpServer implements AutoCloseable {
   /** From now on the server metadata names {@code issuer}; {@code null} for the true one. */
   public void announceIssuer(String issuer) {
     this.announcedIssuer = issuer;
+  }
+
+  /**
+   * From now on the resource metadata names the authorization server of {@code other}, as a server
+   * that moved to another one; {@code null} for its own.
+   */
+  public void useAuthorizationServerOf(FakeMcpServer other) {
+    this.authorizationServer = other;
   }
 
   /** Whether the server metadata offers PKCE with S256 (default). */
@@ -178,7 +187,7 @@ public final class FakeMcpServer implements AutoCloseable {
         "{\"resource\": \""
             + resource
             + "\", \"authorization_servers\": [\""
-            + issuer()
+            + (authorizationServer == null ? issuer() : authorizationServer.issuer())
             + "\"], \"scopes_supported\": [\"tools.read\", \"offline_access\"],"
             + " \"bearer_methods_supported\": [\"header\"]}");
   }

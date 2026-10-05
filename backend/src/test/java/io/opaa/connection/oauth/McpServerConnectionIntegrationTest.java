@@ -263,6 +263,75 @@ class McpServerConnectionIntegrationTest {
     assertThat(serverA.audienceOf(held)).isEqualTo(serverA.resource());
   }
 
+  /**
+   * Regression guard: the client secret registered at one authorization server never reaches the
+   * token endpoint of another; a new address needs a new secret, or none for a public client.
+   */
+  @Test
+  void aNewAddressNeedsANewClientSecret() throws Exception {
+    UUID profile = idOf(createServer("MCP-Server A", serverA, CLIENT_SECRET));
+    connect(serverA, profile);
+
+    mockMvc
+        .perform(
+            as("dev-admin", put(ADMIN + "/" + profile))
+                .content(request("MCP-Server A", serverB, null, true)))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("MCP_SERVER_CLIENT_SECRET_REQUIRED"))
+        .andExpect(
+            jsonPath("$.error").value(org.hamcrest.Matchers.containsString(serverA.issuer())))
+        .andExpect(
+            jsonPath("$.error").value(org.hamcrest.Matchers.containsString(serverB.issuer())));
+    assertThat(mcpTokens.accessFor(admin, profile).resource()).isEqualTo(serverA.resource());
+
+    String changed =
+        call("dev-admin", put(ADMIN + "/" + profile), request("MCP-Server A", serverB, "", true));
+    assertThat((Boolean) JsonPath.read(changed, "$.clientSecretSet")).isFalse();
+    connect(serverB, profile);
+
+    FakeMcpServer.Request exchange = serverB.requests("authorization_code").getFirst();
+    assertThat(exchange.authorization()).isNull();
+    assertThat(exchange.form())
+        .containsEntry("client_id", CLIENT_ID)
+        .doesNotContainKey("client_secret");
+    assertThat(serverB.requests())
+        .noneSatisfy(request -> assertThat(request.authorization()).isNotNull());
+  }
+
+  /**
+   * Regression guard: a server naming another authorization server at the same address keeps no
+   * secret either, and the question names the old and the new one.
+   */
+  @Test
+  void aNewAuthorizationServerAtTheSameAddressNeedsANewClientSecret() throws Exception {
+    UUID profile = idOf(createServer("MCP-Server A", serverA, CLIENT_SECRET));
+    serverA.useAuthorizationServerOf(serverB);
+
+    mockMvc
+        .perform(
+            as("dev-admin", put(ADMIN + "/" + profile))
+                .content(request("MCP-Server A", serverA, null, true)))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("MCP_SERVER_CLIENT_SECRET_REQUIRED"));
+    mockMvc
+        .perform(
+            as("dev-admin", put(ADMIN + "/" + profile))
+                .content(request("MCP-Server A", serverA, "neues-geheimnis-bei-b", false)))
+        .andExpect(status().isConflict())
+        .andExpect(
+            jsonPath("$.error").value(org.hamcrest.Matchers.containsString(serverA.issuer())))
+        .andExpect(
+            jsonPath("$.error").value(org.hamcrest.Matchers.containsString(serverB.issuer())));
+
+    String changed =
+        call(
+            "dev-admin",
+            put(ADMIN + "/" + profile),
+            request("MCP-Server A", serverA, "neues-geheimnis-bei-b", true));
+    assertThat((String) JsonPath.read(changed, "$.issuer")).isEqualTo(serverB.issuer());
+    assertThat((Boolean) JsonPath.read(changed, "$.clientSecretSet")).isTrue();
+  }
+
   @Test
   void aChangeOfTheServerIsConfirmedFirst() throws Exception {
     UUID profile = idOf(createServer("MCP-Server A", serverA, null));
