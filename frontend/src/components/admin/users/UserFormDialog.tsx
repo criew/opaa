@@ -104,6 +104,11 @@ function draftOf(user: LocalUserResponse | undefined, defaultExpiryDays: number)
   }
 }
 
+/** Neutral on purpose: no number, no hint whether the person connected anything (#2260). */
+export const EXPIRY_CONSEQUENCE =
+  'Mit dem Ablaufdatum enden etwaige verbundene Konten der Person, und für etwaige private ' +
+  'Bibliotheken beginnt die Löschfrist.'
+
 export const SELF_EXPIRY_HINT =
   'Das eigene Konto kann nicht rückwirkend ablaufen – sonst wäre die Verwaltung nach einem ' +
   'Fehlgriff nicht mehr erreichbar.'
@@ -315,11 +320,13 @@ export default function UserFormDialog({
               }
               label="Kein Ablaufdatum"
             />
-            {draft.noExpiry && (
-              <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
-                {isBootstrap ? NO_EXPIRY_HELP_BOOTSTRAP : NO_EXPIRY_HELP}
-              </Typography>
-            )}
+            <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+              {draft.noExpiry
+                ? isBootstrap
+                  ? NO_EXPIRY_HELP_BOOTSTRAP
+                  : NO_EXPIRY_HELP
+                : EXPIRY_CONSEQUENCE}
+            </Typography>
           </Box>
           <Box>
             <FieldLabel htmlFor="user-form-created-reason">Anlagegrund</FieldLabel>
