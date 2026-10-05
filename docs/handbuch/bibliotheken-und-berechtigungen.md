@@ -392,7 +392,8 @@ zusammen (`GET /api/v1/me/private-storage`); im Einzelnen sieht sie niemand sons
 Die Grenze ist ein **hausweiter Wert**, den nur die Systemverwaltung setzt: unter **Administration →
 Zugänge**, Abschnitt „Private Bibliotheken“, im Feld „Grenze je Person (GB)“ oder mit „Unbegrenzt“
 und „Grenze speichern“ (`PUT /api/v1/admin/private-libraries/quota`). Der Abschnitt nennt, ob die
-Vorgabe der Installation oder eine eigene Grenze gilt; „Vorgabe wiederherstellen“ führt zur Vorgabe
+Vorgabe der Installation oder eine eigene Grenze gilt. Das Feld nimmt Komma und Punkt als
+Dezimaltrenner an und weist eine Grenze unter 1 MB ab; unbegrenzt wird sie nur über „Unbegrenzt“; „Vorgabe wiederherstellen“ führt zur Vorgabe
 `OPAA_LIBRARY_PRIVATE_STORAGE_QUOTA_BYTES` zurück (Variablentabelle im Kapitel
 [Deployment](deployment.md)). `0` bedeutet unbegrenzt. Vor dem Speichern fragt OPAA nach. Eine
 Änderung wirkt ab dem nächsten aufgenommenen Dokument und löscht nichts. Jede Änderung steht im
@@ -441,10 +442,12 @@ Regeln wie jede Teilzahl.
 
 In der Oberfläche heißt die Aktion **„Sofort löschen“** und steht im Menü „⋯“ im Kopf der
 Detailseite. Die Rückfrage nennt, was gelöscht wird (Dokumente, Index, Originale, Ordner, Metadaten,
-Läufe), dass Belege in ihren Chats danach „Quelle entfernt“ heißen, der Text der Antworten aber
+Läufe und die Zuordnungen zu Spaces), dass Belege in ihren Chats danach „Quelle entfernt“ heißen, der Text der Antworten aber
 stehen bleibt, dass die Dateien beim Anbieter unverändert bleiben und dass sich das nicht rückgängig
 machen lässt; der Fokus liegt zunächst auf „Abbrechen“. Ist die Bibliothek gelöscht, führt die Seite
-zurück in den Katalog und bestätigt es. Läuft gerade eine Indexierung, bleibt die Seite stehen: Die
+zurück in den Katalog und bestätigt es. Solange die Anfrage läuft, ist „Sofort löschen“ gesperrt.
+Läuft gerade eine Indexierung, meldet OPAA, dass die Bibliothek zur Löschung vorgemerkt ist, und die
+Seite bleibt stehen: Die
 Bibliothek trägt im Kopf die Marke **„Wird gelöscht“** und den Hinweis „Wird gelöscht – vorgemerkt
 am …“, ohne einen Zeitpunkt für den Abschluss zu versprechen. Bis dahin bietet die Seite weder
 „Jetzt indizieren“ noch ein erneutes Löschen, kein Bearbeiten von Name, Quelle, Zugang, Zeitplan,

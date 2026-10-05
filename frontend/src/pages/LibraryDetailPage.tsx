@@ -278,6 +278,7 @@ export default function LibraryDetailPage() {
   const erasureNoticeRef = useRef<HTMLDivElement>(null)
   // Set by a 202: the menu that held „Sofort löschen" is gone, so the focus moves to the notice.
   const focusErasureNoticeRef = useRef(false)
+  const [eraseBusy, setEraseBusy] = useState(false)
   const runHistory = useIndexingStore((s) =>
     libraryId ? s.runHistoryByLibrary[libraryId] : undefined,
   )
@@ -398,7 +399,7 @@ export default function LibraryDetailPage() {
    * the page then stays and shows the state, without promising when the erasure completes.
    */
   async function handleErase() {
-    if (!libraryId || !library) return
+    if (!libraryId || !library || eraseBusy) return
     const confirmed = await confirmAction({
       question: `„${library.name}“ sofort löschen?`,
       consequence: PRIVATE_LIBRARY_ERASURE_CONSEQUENCE,
@@ -407,17 +408,27 @@ export default function LibraryDetailPage() {
     })
     if (!confirmed) return
     setLocalError(null)
+    setEraseBusy(true)
     // armed before the request: the store reloads the marked library before it answers
     focusErasureNoticeRef.current = true
     try {
       const outcome = await deleteExistingLibrary(libraryId)
-      if (outcome === 'ERASURE_PENDING') return
+      if (outcome === 'ERASURE_PENDING') {
+        // also when reloading the marked library failed and the page cannot show its state
+        notify(
+          `„${library.name}“ ist zur Löschung vorgemerkt. Die Löschung schließt ab, sobald die laufende Indexierung beendet ist.`,
+          'info',
+        )
+        return
+      }
       focusErasureNoticeRef.current = false
       notify(`„${library.name}“ ist gelöscht.`, 'success')
       navigate(CATALOG_ROUTE)
     } catch (err) {
       focusErasureNoticeRef.current = false
       setLocalError(err instanceof Error ? err.message : 'Löschen fehlgeschlagen')
+    } finally {
+      setEraseBusy(false)
     }
   }
 
@@ -592,6 +603,7 @@ export default function LibraryDetailPage() {
               : () => void handleDelete()
         }
         deleteLabel={privateLibrary ? 'Sofort löschen' : undefined}
+        deleteDisabled={eraseBusy}
         actions={
           connectorSourceType &&
           mayManageDocuments && (

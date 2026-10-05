@@ -68,7 +68,7 @@ describe('PrivateStorageSection – Grenze (#2276)', () => {
     expect(await screen.findByTestId('private-storage-quota-current')).toHaveTextContent(
       'Es gilt die Vorgabe der Installation: 10 GB je Person.',
     )
-    expect(screen.getByLabelText('Grenze je Person (GB)')).toHaveValue(10)
+    expect(screen.getByLabelText('Grenze je Person (GB)')).toHaveValue('10')
     expect(
       screen.queryByRole('button', { name: 'Vorgabe wiederherstellen' }),
     ).not.toBeInTheDocument()
@@ -108,10 +108,56 @@ describe('PrivateStorageSection – Grenze (#2276)', () => {
     await user.click(await screen.findByRole('checkbox', { name: 'Unbegrenzt' }))
     expect(screen.getByLabelText('Grenze je Person (GB)')).toBeDisabled()
     await user.click(screen.getByRole('button', { name: 'Grenze speichern' }))
-    await answerConfirm(user, /unbegrenzt/, 'Grenze ändern')
+    const question = 'Speicherkontingent privater Bibliotheken auf unbegrenzt ändern?'
+    const dialog = await screen.findByRole('dialog', { name: question })
+    expect(dialog).toHaveTextContent(/ohne Grenze/)
+    expect(dialog).not.toHaveTextContent(/über der Grenze/)
+    await answerConfirm(user, question, 'Grenze ändern')
 
     await waitFor(() => expect(sent).toEqual([{ quotaBytes: 0 }]))
   })
+
+  it('accepts a decimal comma as well as a point', async () => {
+    quota()
+    summary(exactSummary)
+    const sent = await saveCapture()
+    const user = userEvent.setup()
+    renderWithProviders(<PrivateStorageSection />)
+
+    const field = await screen.findByLabelText('Grenze je Person (GB)')
+    await user.clear(field)
+    await user.type(field, '2,5')
+    await user.click(screen.getByRole('button', { name: 'Grenze speichern' }))
+    await answerConfirm(user, /auf 2,5 GB je Person ändern\?/, 'Grenze ändern')
+
+    await waitFor(() => expect(sent).toEqual([{ quotaBytes: 2.5 * GIB }]))
+  })
+
+  it.each([
+    ['0', 'Bitte eine Zahl größer als 0 eingeben.'],
+    ['0,0000000001', 'Die Grenze muss mindestens 1 MB betragen.'],
+    ['0.0005', 'Die Grenze muss mindestens 1 MB betragen.'],
+    ['99999999999', 'Diese Grenze ist zu groß.'],
+    ['1e3', 'Bitte eine Zahl größer als 0 eingeben.'],
+  ])(
+    'refuses %s before sending anything – „unbegrenzt“ comes only from the box',
+    async (value, message) => {
+      quota()
+      summary(exactSummary)
+      const sent = await saveCapture()
+      const user = userEvent.setup()
+      renderWithProviders(<PrivateStorageSection />)
+
+      const field = await screen.findByLabelText('Grenze je Person (GB)')
+      await user.clear(field)
+      await user.type(field, value)
+
+      expect(screen.getByText(message)).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Grenze speichern' })).toBeDisabled()
+      await user.type(field, '{Enter}')
+      expect(sent).toEqual([])
+    },
+  )
 
   it('returns to the default with null', async () => {
     quota({ quotaBytes: 20 * GIB, overridden: true })

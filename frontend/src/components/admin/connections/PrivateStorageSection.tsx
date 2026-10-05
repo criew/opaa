@@ -30,6 +30,27 @@ import PageSection from '../../PageSection'
 
 const BYTES_PER_GB = 1024 * 1024 * 1024
 
+const MIN_LIMIT_BYTES = 1024 * 1024
+
+/**
+ * A typed limit in GB, with comma or point as decimal separator. A positive value below 1 MB or
+ * beyond the safe integer range is refused, so „unbegrenzt" (0) only ever comes from its box.
+ */
+function parseLimit(draft: string): { bytes: number; error: string | null } {
+  const text = draft.trim()
+  if (!/^\d+([.,]\d+)?$/.test(text)) {
+    return { bytes: 0, error: 'Bitte eine Zahl größer als 0 eingeben.' }
+  }
+  const gigabytes = Number(text.replace(',', '.'))
+  if (gigabytes <= 0) return { bytes: 0, error: 'Bitte eine Zahl größer als 0 eingeben.' }
+  const bytes = Math.round(gigabytes * BYTES_PER_GB)
+  if (bytes < MIN_LIMIT_BYTES) {
+    return { bytes: 0, error: 'Die Grenze muss mindestens 1 MB betragen.' }
+  }
+  if (!Number.isSafeInteger(bytes)) return { bytes: 0, error: 'Diese Grenze ist zu groß.' }
+  return { bytes, error: null }
+}
+
 /** A size in words; 0 is unlimited. */
 function sizeOrUnlimited(bytes: number): string {
   return bytes === 0 ? 'unbegrenzt' : formatFileSize(bytes)
@@ -83,14 +104,19 @@ function QuotaForm({
 }) {
   const [unlimited, setUnlimited] = useState(current.quotaBytes === 0)
   const [draft, setDraft] = useState(
-    current.quotaBytes === 0 ? '' : String(current.quotaBytes / BYTES_PER_GB),
+    current.quotaBytes === 0
+      ? ''
+      : (current.quotaBytes / BYTES_PER_GB).toLocaleString('de-DE', {
+          maximumFractionDigits: 6,
+          useGrouping: false,
+        }),
   )
   const [busy, setBusy] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
 
-  const gigabytes = Number(draft.replace(',', '.'))
-  const valid = unlimited || (draft.trim() !== '' && Number.isFinite(gigabytes) && gigabytes > 0)
-  const quotaBytes = unlimited ? 0 : Math.round(gigabytes * BYTES_PER_GB)
+  const parsed = unlimited ? { bytes: 0, error: null } : parseLimit(draft)
+  const valid = parsed.error === null
+  const quotaBytes = parsed.bytes
   const changed = valid && quotaBytes !== current.quotaBytes
 
   async function save(next: number | null) {
@@ -118,7 +144,9 @@ function QuotaForm({
     const confirmed = await confirmAction({
       question: `Speicherkontingent privater Bibliotheken auf ${limitLabel(quotaBytes)} ändern?`,
       consequence:
-        'Die Grenze gilt für alle privaten Bibliotheken einer Person zusammen, ab dem nächsten aufgenommenen Dokument. Bereits Gespeichertes bleibt; wer über der Grenze liegt, nimmt nichts mehr auf. Die Änderung steht im Revisionsprotokoll.',
+        quotaBytes === 0
+          ? 'Private Bibliotheken nehmen dann ohne Grenze auf, ab dem nächsten aufgenommenen Dokument; nur das Kontingent je Bibliothek gilt weiter. Die Änderung steht im Revisionsprotokoll.'
+          : 'Die Grenze gilt für alle privaten Bibliotheken einer Person zusammen, ab dem nächsten aufgenommenen Dokument. Bereits Gespeichertes bleibt; wer über der Grenze liegt, nimmt nichts mehr auf. Die Änderung steht im Revisionsprotokoll.',
       confirmLabel: 'Grenze ändern',
       tone: 'caution',
     })
@@ -148,7 +176,6 @@ function QuotaForm({
       >
         <TextField
           label="Grenze je Person (GB)"
-          type="number"
           size="small"
           value={draft}
           disabled={unlimited}
@@ -157,12 +184,8 @@ function QuotaForm({
             setSaveError(null)
           }}
           error={!valid}
-          helperText={
-            valid
-              ? 'Gilt über alle privaten Bibliotheken einer Person.'
-              : 'Bitte eine Zahl größer als 0 eingeben.'
-          }
-          slotProps={{ htmlInput: { min: 0, step: 'any' } }}
+          helperText={parsed.error ?? 'Gilt über alle privaten Bibliotheken einer Person.'}
+          slotProps={{ htmlInput: { inputMode: 'decimal' } }}
           sx={{ maxWidth: 240 }}
         />
         <FormControlLabel

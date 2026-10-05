@@ -3,7 +3,8 @@ export const PRIVATE_LIBRARY_NOTE = 'Nur Sie sehen diese Bibliothek.'
 
 /** What „Sofort löschen“ removes and what stays - the consequence in its confirmation. */
 export const PRIVATE_LIBRARY_ERASURE_CONSEQUENCE =
-  'Gelöscht werden alle Dokumente, ihr Index, die abgelegten Originale, Ordner, Metadaten und Läufe. ' +
+  'Gelöscht werden alle Dokumente, ihr Index, die abgelegten Originale, Ordner, Metadaten, Läufe ' +
+  'und die Zuordnungen zu Spaces. ' +
   'In Ihren Chats heißen Belege aus dieser Bibliothek danach „Quelle entfernt“; der Text der Antworten bleibt stehen. ' +
   'Beim Anbieter bleiben Ihre Dateien unverändert.\n\n' +
   'Das lässt sich nicht rückgängig machen – auch nicht durch die Systemverwaltung.'

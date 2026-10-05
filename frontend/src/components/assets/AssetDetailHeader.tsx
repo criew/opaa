@@ -50,6 +50,8 @@ export interface AssetDetailHeaderProps {
   onDelete?: () => void
   /** The menu entry's wording where deleting means more, e.g. „Sofort löschen"; default „Löschen". */
   deleteLabel?: string
+  /** Keeps the entry visible but unavailable, e.g. while a deletion is under way. */
+  deleteDisabled?: boolean
   /** Further controls left of the star, e.g. starting an indexing run. */
   actions?: ReactNode
   /** Right under name and description, e.g. the succession state. */
@@ -105,9 +107,17 @@ function MoreActions({
   onAssociated,
   onDelete,
   deleteLabel = 'Löschen',
+  deleteDisabled = false,
 }: Pick<
   AssetDetailHeaderProps,
-  'assetType' | 'assetId' | 'name' | 'mayUseInSpace' | 'onAssociated' | 'onDelete' | 'deleteLabel'
+  | 'assetType'
+  | 'assetId'
+  | 'name'
+  | 'mayUseInSpace'
+  | 'onAssociated'
+  | 'onDelete'
+  | 'deleteLabel'
+  | 'deleteDisabled'
 >) {
   const [anchor, setAnchor] = useState<HTMLElement | null>(null)
   const [useInSpace, setUseInSpace] = useState(false)
@@ -155,6 +165,7 @@ function MoreActions({
               setAnchor(null)
               onDelete()
             }}
+            disabled={deleteDisabled}
             sx={{ color: 'error.main' }}
           >
             <DeleteOutlinedIcon aria-hidden sx={{ fontSize: 18, mr: 1.5 }} />
@@ -202,6 +213,7 @@ export default function AssetDetailHeader({
   onAssociated,
   onDelete,
   deleteLabel,
+  deleteDisabled,
   actions,
   note,
   children,
@@ -276,6 +288,7 @@ export default function AssetDetailHeader({
             onAssociated={onAssociated}
             onDelete={onDelete}
             deleteLabel={deleteLabel}
+            deleteDisabled={deleteDisabled}
           />
         </Stack>
       </Stack>

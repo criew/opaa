@@ -111,6 +111,7 @@ describe('LibraryDetailPage – private Bibliothek: Sofort löschen (#2165)', ()
     const dialog = await screen.findByRole('dialog', { name: '„Meine Ablage“ sofort löschen?' })
     expect(dialog).toHaveTextContent(/alle Dokumente, ihr Index, die abgelegten Originale/)
     expect(dialog).toHaveTextContent(/„Quelle entfernt“/)
+    expect(dialog).toHaveTextContent(/Zuordnungen zu Spaces/)
     expect(dialog).toHaveTextContent(/der Text der Antworten bleibt stehen/)
     expect(dialog).toHaveTextContent(/nicht rückgängig/)
     expect(within(dialog).getByRole('button', { name: 'Abbrechen' })).toHaveFocus()
@@ -170,6 +171,60 @@ describe('LibraryDetailPage – private Bibliothek: Sofort löschen (#2165)', ()
     expect(notice).toHaveTextContent(/schließt die Löschung von selbst ab/)
     await waitFor(() => expect(notice).toHaveFocus())
     expect(navigate).not.toHaveBeenCalled()
+  })
+
+  it('says that the library is marked even when reloading it fails after a 202', async () => {
+    showLibrary(privateEntry, detailsOf(privateEntry))
+    server.use(
+      http.delete('/api/v1/libraries/:libraryId', () => {
+        server.use(
+          http.get(`/api/v1/libraries/${privateEntry.id}`, () =>
+            HttpResponse.json({ error: 'Serverfehler' }, { status: 500 }),
+          ),
+        )
+        return new HttpResponse(null, { status: 202 })
+      }),
+    )
+    const user = userEvent.setup()
+    renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+
+    await openDeleteAction(user, 'Sofort löschen')
+    await answerConfirm(user, '„Meine Ablage“ sofort löschen?', 'Endgültig löschen')
+
+    expect(
+      await screen.findByText(/„Meine Ablage“ ist zur Löschung vorgemerkt/),
+    ).toBeInTheDocument()
+    expect(navigate).not.toHaveBeenCalled()
+  })
+
+  it('sends „Sofort löschen“ only once while the request is under way', async () => {
+    let requests = 0
+    let answer: () => void = () => undefined
+    server.use(
+      http.delete('/api/v1/libraries/:libraryId', async () => {
+        requests += 1
+        await new Promise<void>((resolve) => {
+          answer = resolve
+        })
+        return new HttpResponse(null, { status: 204 })
+      }),
+    )
+    showLibrary(privateEntry, detailsOf(privateEntry))
+    const user = userEvent.setup()
+    renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+
+    await openDeleteAction(user, 'Sofort löschen')
+    await answerConfirm(user, '„Meine Ablage“ sofort löschen?', 'Endgültig löschen')
+    await waitForDialogClosed()
+    await waitFor(() => expect(requests).toBe(1))
+
+    await user.click(screen.getByRole('button', { name: 'Weitere Aktionen' }))
+    const entry = await screen.findByRole('menuitem', { name: 'Sofort löschen' })
+    expect(entry).toHaveAttribute('aria-disabled', 'true')
+
+    answer()
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith(CATALOG_ROUTE))
+    expect(requests).toBe(1)
   })
 
   it('locks run, deletion and editing while the library is being erased', async () => {
