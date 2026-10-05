@@ -23,7 +23,6 @@ import {
   selectableConnections,
 } from '../components/library/connectionChoice'
 import { PRIVATE_LIBRARY_NOTE } from '../components/library/privateLibrary'
-import { useOwnAccountProfileIds } from '../hooks/useOwnAccountProfileIds'
 import {
   connectionFields,
   ownAddressAllowed,
@@ -230,14 +229,14 @@ export default function LibraryCreatePage() {
     configuration !== null && descriptor !== undefined && descriptor.profileSupport !== 'FORBIDDEN'
   const profileOptions = useConnectionProfileOptions(admitsProfiles ? sourceType : null)
   // Freiwilligkeit: the private way exists only on a profile the person already connected an
-  // account on; without one nothing hints at it.
-  const ownAccountProfileIds = useOwnAccountProfileIds(admitsProfiles) ?? []
+  // account on (ConnectionProfileOption.ownAccount); without one nothing hints at it.
+  const selectable =
+    admitsProfiles && descriptor
+      ? selectableConnections(descriptor, profileOptions.options, true)
+      : []
   const connectionChoice =
     admitsProfiles && descriptor
-      ? effectiveConnection(
-          chosenConnections[sourceType] ?? null,
-          selectableConnections(descriptor, profileOptions.options, true, ownAccountProfileIds),
-        )
+      ? effectiveConnection(chosenConnections[sourceType] ?? null, selectable)
       : OWN_ADDRESS
   const privateLibrary = privateProfileOf(connectionChoice) !== null
   const chosenProfile = profileOptions.options.find(
@@ -346,9 +345,11 @@ export default function LibraryCreatePage() {
     if (currentStep === STEP_SOURCE && configuration) {
       if (connectionChoice === null) {
         setError(
-          profileOptions.loaded
-            ? 'Für diese Quellart steht Ihnen kein Zugang zur Verfügung.'
-            : 'Die Zugänge werden noch geladen',
+          !profileOptions.loaded
+            ? 'Die Zugänge werden noch geladen'
+            : selectable.length > 0
+              ? 'Bitte wählen Sie einen Zugang.'
+              : 'Für diese Quellart steht Ihnen kein Zugang zur Verfügung.',
         )
         return
       }
@@ -523,7 +524,7 @@ export default function LibraryCreatePage() {
                 onChange={chooseConnection}
                 offerOwnAddress
                 offerRequest
-                ownAccountProfileIds={ownAccountProfileIds}
+                offerPrivate
                 idPrefix="library-create"
               />
             )}

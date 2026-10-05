@@ -60,6 +60,7 @@ class QueryResponseMapperTest {
     assertThat(response.getNoteItems().getFirst().getCreatedAt()).isEqualTo(noteCreatedAt);
     assertThat(response.getSources()).hasSize(1);
     assertThat(response.getSources().getFirst().getFileName()).isEqualTo("readme.md");
+    assertThat(response.getPrivateSourcesInContext()).isFalse();
     assertThat(response.getMetadata().getModel()).isEqualTo("gpt-4o");
     assertThat(response.getMetadata().getTokenCount()).isEqualTo(500);
     assertThat(response.getMetadata().getDurationMs()).isEqualTo(1200L);
@@ -71,6 +72,25 @@ class QueryResponseMapperTest {
         .isEqualTo(libraryId);
     assertThat(response.getMetadata().getSearchedLibraries().getFirst().getName())
         .isEqualTo("Dienstanweisungen");
+  }
+
+  @Test
+  void anUncitedPrivateSourceMarksTheAnswer() {
+    QueryResult result =
+        new QueryResult(
+            "Die Antwort",
+            List.of(
+                new ChatSource("readme.md", 1.0, 1, true),
+                new ChatSource("privat.md", 0.5, 1, false).privateSource(true)),
+            new QueryOutcome("gpt-4o", 1, 1L, false, false, false, false, List.of()),
+            UUID.randomUUID(),
+            null,
+            null);
+
+    QueryResponse response = QueryResponseMapper.toResponse(result);
+
+    assertThat(response.getPrivateSourcesInContext()).isTrue();
+    assertThat(response.getSources().get(1).getPrivateSource()).isTrue();
   }
 
   @Test

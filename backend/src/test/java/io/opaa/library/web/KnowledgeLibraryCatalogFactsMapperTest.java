@@ -3,6 +3,7 @@ package io.opaa.library.web;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.api.dto.CatalogEntryResponse;
+import io.opaa.api.dto.SourceBlockAction;
 import io.opaa.api.dto.SourceBlockReason;
 import io.opaa.api.types.CatalogEntryStatus;
 import io.opaa.indexing.source.SourceBlock;
@@ -28,6 +29,19 @@ class KnowledgeLibraryCatalogFactsMapperTest {
     assertThat(mapper.assetType()).isEqualTo(KnowledgeLibrary.ASSET_TYPE);
     assertThat(response.getKnowledgeLibrary().getSourceType()).isEqualTo("CONFLUENCE");
     assertThat(response.getKnowledgeLibrary().getLastIndexedAt()).isEqualTo(indexedAt);
+    assertThat(response.getKnowledgeLibrary().getPrivateLibrary()).isFalse();
+  }
+
+  @Test
+  void aPrivateLibraryIsMarkedSo() {
+    CatalogEntryResponse response = new CatalogEntryResponse();
+
+    mapper.apply(
+        new KnowledgeLibraryCatalogFacts(
+            "PERSON_PROBE", null, CatalogEntryStatus.READY, null, true),
+        response);
+
+    assertThat(response.getKnowledgeLibrary().getPrivateLibrary()).isTrue();
   }
 
   @Test
@@ -52,7 +66,8 @@ class KnowledgeLibraryCatalogFactsMapperTest {
             new SourceBlock(
                 SourceBlock.Reason.PROFILE_REQUIRED,
                 "Verwaltende der Bibliothek",
-                "Gesperrt – Inhalt wird nicht mehr …")),
+                "Gesperrt – Inhalt wird nicht mehr …",
+                SourceBlock.Action.ASSIGN_PROFILE)),
         response);
 
     assertThat(response.getKnowledgeLibrary().getSourceBlock().getReason())
@@ -61,5 +76,7 @@ class KnowledgeLibraryCatalogFactsMapperTest {
         .isEqualTo("Verwaltende der Bibliothek");
     assertThat(response.getKnowledgeLibrary().getSourceBlock().getNotice())
         .isEqualTo("Gesperrt – Inhalt wird nicht mehr …");
+    assertThat(response.getKnowledgeLibrary().getSourceBlock().getAction())
+        .isEqualTo(SourceBlockAction.ASSIGN_PROFILE);
   }
 }

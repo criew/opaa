@@ -17,6 +17,7 @@ const SOURCES: SourceReference[] = [
     cited: true,
     indexedAt: null,
     citationValid: true,
+    privateSource: false,
   },
   {
     fileName: '016_familie.md',
@@ -26,6 +27,7 @@ const SOURCES: SourceReference[] = [
     cited: true,
     indexedAt: null,
     citationValid: true,
+    privateSource: false,
     chunkLocations: [{ chunkIndex: 2, location: 'Abschn. Unterlagen' }],
   },
 ]

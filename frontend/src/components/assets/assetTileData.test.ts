@@ -56,5 +56,17 @@ describe('tileFromCatalogEntry', () => {
     expect(note('OWNER_DEACTIVATED', 'Systemverwaltung')).toBe(
       'Konto deaktiviert – Inhalt wird nach Ablauf der Löschfrist gelöscht (zuständig: Systemverwaltung)',
     )
+    expect(
+      tileFromCatalogEntry(
+        libraryEntry({
+          reason: 'OWNER_DEACTIVATED',
+          responsible: 'Systemverwaltung',
+          notice: '…',
+          contentDeletedOn: '2026-11-03',
+        }),
+      ).note,
+    ).toBe(
+      'Konto deaktiviert – Inhalt wird ab dem 03.11.2026 gelöscht (zuständig: Systemverwaltung)',
+    )
   })
 })

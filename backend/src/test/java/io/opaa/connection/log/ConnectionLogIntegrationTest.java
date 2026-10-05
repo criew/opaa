@@ -445,6 +445,107 @@ class ConnectionLogIntegrationTest {
     assertThat(body).doesNotContain(devUser.toString());
   }
 
+  /**
+   * The profile filter offers every profile the caller's organization logged, by its newest name, a
+   * deleted one included; only the auditor reads it, and reading it is not logged.
+   */
+  @Test
+  void theProfileFilterNamesEveryLoggedProfileByItsNewestNameDeletedOnesIncluded()
+      throws Exception {
+    mockMvc.perform(get("/api/v1/me").header(DevAuthFilter.DEV_USER_HEADER, "dev-user"));
+    UUID devUser =
+        jdbc.queryForObject("SELECT id FROM users WHERE email = 'dev-user@opaa.local'", UUID.class);
+    UUID devOrganization =
+        jdbc.queryForObject("SELECT organization_id FROM users WHERE id = ?", UUID.class, devUser);
+    String created =
+        mockMvc
+            .perform(
+                org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+                        "/api/v1/admin/connection-profiles")
+                    .header(DevAuthFilter.DEV_USER_HEADER, "dev-admin")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(
+                        """
+                        {"name": "Zugang Protokoll %s", "sourceType": "PERSON_PROBE",
+                         "serverUrl": "https://person.example.org",
+                         "authMethod": "PERSONAL_SECRET", "ownership": "PERSON"}
+                        """
+                            .formatted(UUID.randomUUID())))
+            .andExpect(status().isCreated())
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+    UUID existing = UUID.fromString(JsonPath.read(created, "$.id"));
+    UUID elsewhere = UUID.randomUUID();
+    try {
+      jdbc.update(
+          "INSERT INTO connection_log (event_id, organization_id, recorded_at, event_type,"
+              + " actor_ref, owner_kind, person_ref, profile_id, profile_name) VALUES"
+              + " (gen_random_uuid(), ?, now() - interval '1 minute', 'CONNECTED', 'a', 'PERSON',"
+              + " 'p', ?, 'Nextcloud vorher')",
+          devOrganization,
+          profileId);
+      connectionLog.record(
+          devOrganization,
+          ConnectionLogEventType.DISCONNECTED,
+          ConnectionLogActor.person(devUser),
+          ConnectionLogOwner.person(devUser),
+          profileId,
+          "Nextcloud Rathaus",
+          ConnectionEndCause.SELF);
+      connectionLog.record(
+          devOrganization,
+          ConnectionLogEventType.CONNECTED,
+          ConnectionLogActor.person(devUser),
+          ConnectionLogOwner.person(devUser),
+          existing,
+          "Zugang Protokoll",
+          null);
+      connectionLog.record(
+          organizationId,
+          ConnectionLogEventType.CONNECTED,
+          ConnectionLogActor.person(personId),
+          ConnectionLogOwner.person(personId),
+          elsewhere,
+          "Andere Organisation",
+          null);
+      String profiles = ENDPOINT + "/profiles";
+
+      for (String subject : List.of("dev-user", "dev-admin")) {
+        mockMvc
+            .perform(get(profiles).header(DevAuthFilter.DEV_USER_HEADER, subject))
+            .andExpect(status().isForbidden());
+      }
+      jdbc.update("UPDATE users SET system_role = 'AUDITOR' WHERE id = ?", devUser);
+      long accessesBefore = logAccessesOf(devUser, devOrganization);
+
+      String body =
+          mockMvc
+              .perform(get(profiles).header(DevAuthFilter.DEV_USER_HEADER, "dev-user"))
+              .andExpect(status().isOk())
+              .andReturn()
+              .getResponse()
+              .getContentAsString();
+
+      assertThat(JsonPath.<List<String>>read(body, "$[?(@.profileId == '" + profileId + "')].name"))
+          .containsExactly("Nextcloud Rathaus");
+      assertThat(
+              JsonPath.<List<Boolean>>read(
+                  body, "$[?(@.profileId == '" + profileId + "')].deleted"))
+          .containsExactly(true);
+      assertThat(
+              JsonPath.<List<Boolean>>read(body, "$[?(@.profileId == '" + existing + "')].deleted"))
+          .containsExactly(false);
+      assertThat(body).doesNotContain(elsewhere.toString(), devUser.toString());
+      assertThat(logAccessesOf(devUser, devOrganization)).isEqualTo(accessesBefore);
+    } finally {
+      jdbc.update("DELETE FROM connection_log WHERE profile_id = ?", elsewhere);
+      jdbc.update("DELETE FROM connection_log WHERE profile_id = ?", existing);
+      jdbc.update("DELETE FROM audit_log WHERE object_id = ?", existing.toString());
+      jdbc.update("DELETE FROM connection_profiles WHERE id = ?", existing);
+    }
+  }
+
   /** The daily run drops a partition past the period with its rows and leaves the current one. */
   @Test
   void theRetentionDropsAnExpiredPartitionAndKeepsTheCurrentOne() {
@@ -514,6 +615,20 @@ class ConnectionLogIntegrationTest {
         organizationId,
         actorRef,
         outcome);
+  }
+
+  private long logAccessesOf(UUID actorId, UUID organization) {
+    return pseudonyms
+        .findExistingPseudonym(actorId)
+        .map(
+            actorRef ->
+                jdbc.queryForObject(
+                    "SELECT count(*) FROM audit_log WHERE organization_id = ? AND actor_ref = ?"
+                        + " AND event_type = 'CONNECTION_LOG_ACCESSED'",
+                    Long.class,
+                    organization,
+                    actorRef.toString()))
+        .orElse(0L);
   }
 
   private UUID persistUser(String subject, SystemRole role) {

@@ -33,6 +33,7 @@ function source(
     cited,
     indexedAt: null,
     citationValid,
+    privateSource: false,
     ...extra,
   }
 }
@@ -192,6 +193,30 @@ describe('SourceEvidenceDrawer (#592, Mockup 1i)', () => {
       .getAllByTestId('evidence-doc')
       .find((el) => el.getAttribute('data-file') === 'erster.md')
     expect(row).toContainElement(notices[0])
+  })
+
+  it('marks a private source as such, an uncited one too, and no other source', async () => {
+    const user = userEvent.setup()
+    const withPrivate: ChatMessage = {
+      ...message(),
+      sources: [
+        source('erster.md', true, 1),
+        source('zweiter.md', true, 0.5),
+        source('dritter.md', true, 1 / 3),
+        source('ungenutzt.md', false, 0.25, true, { privateSource: true }),
+      ],
+    }
+    renderWithProviders(<MessageBubble message={withPrivate} />)
+    await user.click(screen.getByRole('button', { name: 'Belege anzeigen' }))
+    const drawer = await screen.findByRole('dialog', { name: 'Belege dieser Antwort' })
+
+    const marks = within(drawer).getAllByTestId('source-private')
+    expect(marks).toHaveLength(1)
+    expect(marks[0]).toHaveTextContent('Private Quelle')
+    const row = within(drawer)
+      .getAllByTestId('evidence-doc')
+      .find((el) => el.getAttribute('data-file') === 'ungenutzt.md')
+    expect(row).toContainElement(marks[0])
   })
 
   it('labels a source with its rank in the answer, not a percentage weight (#1102)', async () => {

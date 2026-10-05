@@ -163,6 +163,14 @@ class PrivateLibraryErasureIntegrationTest {
 
     assertThat(leftOf(fixture)).isEmpty();
     assertThat(redactedSources(fixture.chat())).containsExactly("Quelle entfernt");
+    assertThat(
+            jdbc.queryForList(
+                "SELECT s->>'privateSource' FROM chat_messages m, json_array_elements(m.sources) s"
+                    + " WHERE m.chat_id = ? AND m.sources IS NOT NULL",
+                String.class,
+                fixture.chat()))
+        .as("the answer still says it was given with a private source")
+        .containsExactly("true");
     assertThat(accountRows()).as("the orphaned disconnected account went with it").isZero();
     theProofNamesNothing(fixture, "OWNER_REQUEST");
     assertThat(output.getAll()).doesNotContain(fixture.names());
@@ -602,7 +610,7 @@ class PrivateLibraryErasureIntegrationTest {
         "Laut Abrechnung: " + content + " [1].",
         ("[{\"fileName\": \"%s\", \"documentId\": \"%s\", \"relevanceScore\": 1.0,"
                 + " \"matchCount\": 1, \"cited\": true, \"sourceType\": \"PERSON_PROBE\","
-                + " \"sourceUrl\": \"%s/%s\"}]")
+                + " \"sourceUrl\": \"%s/%s\", \"privateSource\": true}]")
             .formatted(fileName, document, SERVER, path));
     return new Fixture(
         library,

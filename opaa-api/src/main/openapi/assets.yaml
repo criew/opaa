@@ -643,13 +643,18 @@ components:
 
     CatalogKnowledgeLibraryFacts:
       type: object
-      required: [sourceType, indexingStatus]
+      required: [sourceType, indexingStatus, privateLibrary]
       description: >
         What only a knowledge library shows on its tile - the same values the library list
         (LibraryListResponse) carries.
       properties:
         sourceType:
           $ref: "#/components/schemas/SourceTypeKey"
+        privateLibrary:
+          type: boolean
+          description: >
+            Whether this is a private library - only its owner reads it, so only she finds it in
+            the catalog.
         indexingStatus:
           description: >
             The library's own state by its indexing, as CatalogEntryStatus describes it - never

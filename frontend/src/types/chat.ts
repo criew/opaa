@@ -29,6 +29,11 @@ export interface ChatMessage {
    */
   searchedLibraries?: SearchedLibrary[]
   /**
+   * True when any source the answer was given with - cited or not - came from one of the
+   * caller's private libraries (QueryResponse/ChatMessageResponse#privateSourcesInContext).
+   */
+  privateSourcesInContext?: boolean
+  /**
    * On a question: the title of the prompt it was built from, as it stood when it was sent - a
    * snapshot shown as "Prompt: <title>", never a link.
    */

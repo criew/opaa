@@ -76,8 +76,7 @@ components:
         for a private library also: its target, such as a share, differs from the one its
         owner's connected account is issued for), NOT_CONNECTED (the
         connection holds no usable secret), EXPIRED (the provider rejected the secret or it ran
-        out; connect anew). A client offers "Zugang zuordnen" for PROFILE_REQUIRED and
-        ACCESS_REMOVED.
+        out; connect anew). The action that lifts it is SourceBlock.action.
       enum:
         [
           TYPE_LOCKED,
@@ -90,6 +89,17 @@ components:
           NOT_CONNECTED,
           EXPIRED,
         ]
+
+    SourceBlockAction:
+      type: string
+      description: >
+        What lifts a block, for whoever the block names as responsible: CONNECT_OWN_ACCOUNT (the
+        owner of a private library connects her account anew on the page "Verbundene Konten" -
+        NOT_CONNECTED, EXPIRED and TARGET_OUTSIDE_PROFILE of a private library), EDIT_SOURCE (the
+        library's managers enter its secret anew or correct its address - NOT_CONNECTED, EXPIRED
+        and TARGET_OUTSIDE_PROFILE of a library with its own secret), ASSIGN_PROFILE (assign the
+        library to a profile - PROFILE_REQUIRED and ACCESS_REMOVED).
+      enum: [CONNECT_OWN_ACCOUNT, EDIT_SOURCE, ASSIGN_PROFILE]
 
     SourceBlock:
       type: object
@@ -111,6 +121,13 @@ components:
             happens to the content. Always present on a library; the source of an answer carries
             reason and responsible only.
           example: Gesperrt – Inhalt wird nicht mehr aktualisiert.
+        action:
+          description: >
+            What lifts the block, on a library like the notice; absent where only the system
+            administration lifts it (a lock, a deactivated or resting owner account, the profile's
+            own sign-in) and on the source of an answer.
+          allOf:
+            - $ref: "#/components/schemas/SourceBlockAction"
         contentDeletedOn:
           type: string
           pattern: "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"

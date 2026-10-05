@@ -30,6 +30,22 @@ interface ConnectionLogRepository extends JpaRepository<ConnectionLogEntry, UUID
       @Param("profileId") UUID profileId,
       Pageable pageable);
 
+  /** Every profile the organization's log names, with the name of its newest entry. */
+  @Query(
+      value =
+          "SELECT DISTINCT ON (profile_id) profile_id AS \"profileId\", profile_name AS \"name\""
+              + " FROM connection_log WHERE organization_id = :organizationId"
+              + " ORDER BY profile_id, recorded_at DESC",
+      nativeQuery = true)
+  List<LoggedProfile> findLoggedProfiles(@Param("organizationId") UUID organizationId);
+
+  /** One profile of the log, by its last logged name. */
+  interface LoggedProfile {
+    UUID getProfileId();
+
+    String getName();
+  }
+
   /** Drops every fully expired monthly partition and returns their names, possibly none. */
   @Query(
       value = "SELECT * FROM opaa_connection_log_delete_expired_partitions()",

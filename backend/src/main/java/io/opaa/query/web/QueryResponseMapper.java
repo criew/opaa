@@ -3,6 +3,7 @@ package io.opaa.query.web;
 import io.opaa.api.dto.QueryMetadata;
 import io.opaa.api.dto.QueryResponse;
 import io.opaa.api.dto.SearchedLibrary;
+import io.opaa.chat.ChatSource;
 import io.opaa.chat.SearchedLibraryRef;
 import io.opaa.chat.web.ChatResponseMapper;
 import io.opaa.query.QueryOutcome;
@@ -23,6 +24,7 @@ final class QueryResponseMapper {
     return new QueryResponse(
             result.answer(),
             ChatResponseMapper.toSourceReferences(result.sources()),
+            ChatSource.anyPrivate(result.sources()),
             toMetadata(result.metadata()),
             result.chatId())
         .chatTitle(result.chatTitle())

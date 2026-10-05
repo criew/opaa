@@ -342,6 +342,8 @@ describe('sourceConnectionOf', () => {
         sourceType: 'S3',
         serverUrl: 'https://s3.example',
         authMethod: 'NONE',
+        ownership: 'LIBRARY',
+        ownAccount: false,
         sourceInsecureSsl: false,
         creatable: true,
       }),

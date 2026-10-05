@@ -20,6 +20,7 @@ import {
   resetMockConnectionProfileRequests,
   resetMockConnectionProfiles,
 } from './connectionProfileFixtures'
+import { mockOwnAccountProfileIds } from './connectedAccountHandlers'
 
 let lockedTypes = new Set<string>()
 // The types switched to "Nur über Zugänge", with the choice for their own-address libraries.
@@ -370,12 +371,17 @@ export const connectionProfileHandlers = [
   ),
 
   // The profiles a library may be connected through - every one admitting libraries, the ones the
-  // caller may not use with the notice naming who releases them. With libraryId the managers of
-  // that library ask; the mocks answer them alike.
+  // caller may not use with the notice naming who releases them, and one for persons only where
+  // the caller has an account on it. With libraryId the managers of that library ask; the mocks
+  // answer them alike.
   http.get('/api/v1/connection-profiles', ({ request }) => {
     const sourceType = new URL(request.url).searchParams.get('sourceType')
+    const ownAccounts = mockOwnAccountProfileIds()
     const options: ConnectionProfileOption[] = mockConnectionProfiles
-      .filter((p) => p.sourceType === sourceType && p.ownership !== 'PERSON')
+      .filter(
+        (p) =>
+          p.sourceType === sourceType && (p.ownership !== 'PERSON' || ownAccounts.includes(p.id)),
+      )
       .map((p) => {
         const creatable = !p.locked && !lockedTypes.has(p.sourceType)
         return {
@@ -384,6 +390,8 @@ export const connectionProfileHandlers = [
           sourceType: p.sourceType,
           serverUrl: p.serverUrl,
           authMethod: p.authMethod,
+          ownership: p.ownership,
+          ownAccount: ownAccounts.includes(p.id),
           sourceProxy: p.sourceProxy ?? null,
           sourceInsecureSsl: p.sourceInsecureSsl,
           creatable,

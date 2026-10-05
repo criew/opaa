@@ -29,6 +29,8 @@ const RELEASED: ConnectionProfileOption = {
   sourceType: 'NEXTCLOUD',
   serverUrl: 'https://cloud.intern.example',
   authMethod: 'PERSONAL_SECRET',
+  ownership: 'LIBRARY',
+  ownAccount: false,
   sourceInsecureSsl: false,
   creatable: true,
   connectorDefaults: { shared: false },
@@ -40,6 +42,8 @@ const NOT_RELEASED: ConnectionProfileOption = {
   sourceType: 'NEXTCLOUD',
   serverUrl: 'https://cloud.partner.example',
   authMethod: 'PERSONAL_SECRET',
+  ownership: 'LIBRARY',
+  ownAccount: false,
   sourceInsecureSsl: false,
   creatable: false,
   creationNotice:

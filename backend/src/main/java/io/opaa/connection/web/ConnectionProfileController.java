@@ -245,7 +245,7 @@ public class ConnectionProfileController {
       @RequestParam String sourceType, @Caller CurrentUser caller) {
     release.requireAnyRelease(caller);
     return release
-        .profileOptions(caller, ConnectionProfileResponseMapper.toSourceType(sourceType))
+        .profileOptions(caller, ConnectionProfileResponseMapper.toSourceType(sourceType), true)
         .stream()
         .map(ConnectionProfileResponseMapper::toOption)
         .toList();

@@ -19,6 +19,7 @@ function initialOverview(): ConnectedAccountsOverview {
       {
         profileId: 'connection-profile-nextcloud-person',
         profileName: 'Zugang Nextcloud intern',
+        sourceType: 'NEXTCLOUD',
         authMethod: 'PERSONAL_SECRET',
         secretForm: 'USERNAME_AND_PASSWORD',
         state: 'CONNECTED',
@@ -34,6 +35,7 @@ function initialOverview(): ConnectedAccountsOverview {
       {
         profileId: 'connection-profile-nextcloud-partner',
         profileName: 'Zugang Nextcloud Partner',
+        sourceType: 'NEXTCLOUD',
         authMethod: 'PERSONAL_SECRET',
         secretForm: 'TOKEN',
         state: 'EXPIRED',
@@ -52,12 +54,14 @@ function initialOverview(): ConnectedAccountsOverview {
       {
         profileId: 'connection-profile-opendesk',
         name: 'Zugang openDesk',
+        sourceType: 'NEXTCLOUD',
         authMethod: 'PERSONAL_SECRET',
         secretForm: 'TOKEN',
       },
       {
         profileId: 'connection-profile-dropbox',
         name: 'Zugang Dropbox',
+        sourceType: 'DROPBOX',
         authMethod: 'OAUTH',
         secretForm: null,
       },
@@ -72,6 +76,11 @@ function initialOverview(): ConnectedAccountsOverview {
 let overview: ConnectedAccountsOverview = initialOverview()
 /** The states the mock provider handed out and not yet redeemed, with their profile. */
 let pendingStates = new Map<string, string>()
+
+/** The profiles the mock caller holds an account on, whatever its state. */
+export function mockOwnAccountProfileIds(): string[] {
+  return overview.accounts.map((account) => account.profileId)
+}
 
 export function resetConnectedAccountMockState() {
   overview = initialOverview()
@@ -101,6 +110,7 @@ function connected(
     : {
         profileId,
         profileName: connectable!.name,
+        sourceType: connectable!.sourceType,
         authMethod: connectable!.authMethod,
         secretForm: connectable!.secretForm,
         state: 'CONNECTED',

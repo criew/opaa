@@ -1,6 +1,7 @@
 import type {
   ConnectionLogEventType,
   ConnectionLogPage,
+  ConnectionLogProfile,
   ConnectionLogRetentionResponse,
 } from '../types/api'
 import { apiClient as client, normalizeError } from './api'
@@ -31,6 +32,19 @@ export async function listConnectionLog(query: ConnectionLogQuery): Promise<Conn
         page: query.page ?? 0,
       },
     })
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/**
+ * The profiles the connection log has entries for, by their last logged name, deleted ones
+ * included (AUDITOR only) - the choices of the profile filter. Names no person and is not recorded.
+ */
+export async function listConnectionLogProfiles(): Promise<ConnectionLogProfile[]> {
+  try {
+    const { data } = await client.get<ConnectionLogProfile[]>('/v1/audit/connection-log/profiles')
     return data
   } catch (err) {
     normalizeError(err)

@@ -57,6 +57,7 @@ class QueryIntegrationTest {
   @Autowired private VectorStore vectorStore;
   @Autowired private VectorChunkStore vectorChunkStore;
   @Autowired private QueryService queryService;
+  @Autowired private io.opaa.chat.ChatService chatService;
   @Autowired private JdbcTemplate jdbcTemplate;
   @Autowired private ChatMemory chatMemory;
   @Autowired private ChunkEmbeddingLookup chunkEmbeddingLookup;
@@ -182,6 +183,91 @@ class QueryIntegrationTest {
     assertThat(response.metadata().model()).isEqualTo("gpt-4o");
     assertThat(response.metadata().tokenCount()).isEqualTo(250);
     assertThat(response.metadata().durationMs()).isGreaterThan(0);
+  }
+
+  /**
+   * The real answer path marks a source of the asker's private library and stores the mark with the
+   * turn: the answer, the persisted sources and the chat read back all carry it.
+   */
+  @Test
+  void anAnswerFromAPrivateLibraryIsMarkedAndTheMarkIsStoredWithTheTurn() throws Exception {
+    UUID privateLibraryId = UUID.randomUUID();
+    UUID documentId = UUID.randomUUID();
+    jdbcTemplate.update(
+        "WITH shell AS (INSERT INTO assets (id, asset_type, organization_id, name, owner_type,"
+            + " owner_user_id, owner_only) VALUES (?, 'KNOWLEDGE_LIBRARY', ?, 'Meine Ablage',"
+            + " 'USER', ?, true) RETURNING id, organization_id) INSERT INTO knowledge_libraries"
+            + " (id, organization_id, source_type) SELECT id, organization_id, 'UPLOAD' FROM shell",
+        privateLibraryId,
+        DEFAULT_ORGANIZATION_ID,
+        userId);
+    jdbcTemplate.update(
+        "INSERT INTO asset_grants (id, asset_type, asset_id, organization_id, subject_type,"
+            + " subject_user_id, role, created_at, updated_at) VALUES (?, 'KNOWLEDGE_LIBRARY', ?,"
+            + " ?, 'USER', ?, 'OWNER', now(), now())",
+        UUID.randomUUID(),
+        privateLibraryId,
+        DEFAULT_ORGANIZATION_ID,
+        userId);
+    jdbcTemplate.update(
+        "INSERT INTO documents (id, file_name, file_path, content_type, file_size, chunk_count,"
+            + " indexed_at, checksum, status, source_type, library_id, organization_id, created_at)"
+            + " VALUES (?, 'gehalt.md', 'gehalt.md', 'text/markdown', 1, 1, now(), ?, 'INDEXED',"
+            + " 'UPLOAD', ?, ?, now())",
+        documentId,
+        "checksum-" + documentId,
+        privateLibraryId,
+        DEFAULT_ORGANIZATION_ID);
+    try {
+      vectorStore.add(
+          List.of(
+              new Document(
+                  "OPAA is an AI-powered project assistant built with Spring Boot.",
+                  Map.of(
+                      "file_name",
+                      "gehalt.md",
+                      "document_id",
+                      documentId.toString(),
+                      "chunk_index",
+                      0,
+                      "library_id",
+                      privateLibraryId.toString()))));
+      when(chatModel.call(any(Prompt.class)))
+          .thenReturn(new ChatResponse(List.of(new Generation(new AssistantMessage("Antwort")))));
+      UUID chatId = chatOf(userId, privateLibraryId);
+
+      QueryResult response =
+          queryService.query("What is OPAA?", chatId, asCaller(userId), true, List.of());
+
+      assertThat(response.sources())
+          .filteredOn(source -> documentId.equals(source.getDocumentId()))
+          .singleElement()
+          .satisfies(
+              source -> {
+                assertThat(source.getCited()).isFalse();
+                assertThat(source.getPrivateSource()).isTrue();
+              });
+      assertThat(
+              jdbcTemplate.queryForList(
+                  "SELECT s->>'privateSource' FROM chat_messages m,"
+                      + " json_array_elements(m.sources) s WHERE m.chat_id = ?"
+                      + " AND m.role = 'ASSISTANT' AND s->>'documentId' = ?",
+                  String.class,
+                  chatId,
+                  documentId.toString()))
+          .containsExactly("true");
+      assertThat(
+              chatService.getChat(chatId, userId).getMessages().stream()
+                  .filter(turn -> turn.getSources() != null)
+                  .anyMatch(turn -> ChatSource.anyPrivate(turn.getSources())))
+          .isTrue();
+    } finally {
+      removeChatsAndSpacesOf(userId);
+      vectorChunkStore.deleteByLibraryId(privateLibraryId);
+      jdbcTemplate.update("DELETE FROM documents WHERE id = ?", documentId);
+      jdbcTemplate.update("DELETE FROM asset_grants WHERE asset_id = ?", privateLibraryId);
+      jdbcTemplate.update("DELETE FROM assets WHERE id = ?", privateLibraryId);
+    }
   }
 
   @Test

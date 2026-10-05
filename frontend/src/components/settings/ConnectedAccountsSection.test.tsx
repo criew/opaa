@@ -20,6 +20,7 @@ const AUTHORIZATIONS = '/api/v1/connections/authorizations'
 const OAUTH_PROFILE = {
   profileId: 'dropbox',
   name: 'Zugang Dropbox',
+  sourceType: 'DROPBOX',
   authMethod: 'OAUTH' as const,
   secretForm: null,
 }
@@ -32,6 +33,7 @@ function account(overrides: Partial<ConnectedAccount>): ConnectedAccount {
   return {
     profileId: 'profile-1',
     profileName: 'Zugang Nextcloud intern',
+    sourceType: 'NEXTCLOUD',
     authMethod: 'PERSONAL_SECRET',
     secretForm: 'USERNAME_AND_PASSWORD',
     state: 'CONNECTED',
@@ -194,6 +196,42 @@ describe('ConnectedAccountsSection', () => {
     expect(screen.queryByText(/noch keine Quellart/)).not.toBeInTheDocument()
   })
 
+  it('names the source type of every account and of every profile to connect', async () => {
+    serve({
+      accounts: [account({})],
+      connectable: [{ ...OAUTH_PROFILE }],
+      missingAccess: MISSING,
+    })
+    server.use(
+      http.get('/api/v1/source-types', () =>
+        HttpResponse.json([
+          {
+            type: 'NEXTCLOUD',
+            displayName: 'Nextcloud',
+            indexingRun: true,
+            uploads: false,
+            pushIntake: false,
+            browsable: false,
+            profileSupport: 'OPTIONAL',
+            profileRequired: false,
+            signIns: [],
+            profileDefaults: [],
+            serverAddress: { schemes: ['https'] },
+            creatable: true,
+            creatableWithOwnAddress: true,
+            locked: false,
+          },
+        ]),
+      ),
+    )
+    renderSection()
+
+    const item = await screen.findByTestId('connected-account-profile-1')
+    await waitFor(() => expect(item).toHaveTextContent('Quellart: Nextcloud'))
+    // a type this installation does not describe is named by its key
+    expect(screen.getByText(/Quellart: DROPBOX/)).toBeInTheDocument()
+  })
+
   it('connects a new account with the generic token form and clears the secret', async () => {
     let sent: ConnectedAccountConnectRequest | null = null
     serve({
@@ -202,6 +240,7 @@ describe('ConnectedAccountsSection', () => {
         {
           profileId: 'opendesk',
           name: 'Zugang openDesk',
+          sourceType: 'NEXTCLOUD',
           authMethod: 'PERSONAL_SECRET',
           secretForm: 'TOKEN',
         },
@@ -253,6 +292,7 @@ describe('ConnectedAccountsSection', () => {
         {
           profileId: 'nextcloud',
           name: 'Zugang Nextcloud intern',
+          sourceType: 'NEXTCLOUD',
           authMethod: 'PERSONAL_SECRET',
           secretForm: 'USERNAME_AND_PASSWORD',
         },
@@ -296,6 +336,7 @@ describe('ConnectedAccountsSection', () => {
         {
           profileId: 'opendesk',
           name: 'Zugang openDesk',
+          sourceType: 'NEXTCLOUD',
           authMethod: 'PERSONAL_SECRET',
           secretForm: 'TOKEN',
         },

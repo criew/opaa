@@ -14,13 +14,17 @@ import type {
   SourceTypeDescriptor,
 } from '../../types/api'
 import { useConnectionProfileOptions } from '../../hooks/useConnectionProfileOptions'
-import { useOwnAccountProfileIds } from '../../hooks/useOwnAccountProfileIds'
 import { testLibrarySource } from '../../services/libraryApi'
 import { useLibraryStore } from '../../stores/libraryStore'
 import { notify } from '../../stores/notificationStore'
 import BusyButton from '../a11y/BusyButton'
 import ConnectionProfileSelect from './ConnectionProfileSelect'
-import { effectiveConnection, selectableConnections } from './connectionChoice'
+import {
+  admitsLibraries,
+  effectiveConnection,
+  onOwnAccount,
+  profileChoices,
+} from './connectionChoice'
 import {
   addressAfterSwitch,
   addressUnder,
@@ -80,15 +84,12 @@ export default function LibraryConnectionDialog({
 }: LibraryConnectionDialogProps) {
   const connectLibraryToProfile = useLibraryStore((s) => s.connectLibraryToProfile)
   const listed = useConnectionProfileOptions(open ? descriptor.type : null, libraryId)
-  // A private library moves only to a profile its owner has a connected account on.
-  const ownAccountProfileIds = useOwnAccountProfileIds(open && privateLibrary)
-  const state = privateLibrary
-    ? {
-        ...listed,
-        loaded: listed.loaded && ownAccountProfileIds !== null,
-        options: listed.options.filter((option) => ownAccountProfileIds?.includes(option.id)),
-      }
-    : listed
+  // A private library moves only to a profile its owner has a connected account on, a shared one
+  // only to a profile admitting libraries.
+  const state = {
+    ...listed,
+    options: listed.options.filter(privateLibrary ? onOwnAccount : admitsLibraries),
+  }
   const [chosen, setChosen] = useState<string | null>(null)
   const [enteredAddress, setEnteredAddress] = useState<Record<string, string>>({})
   const [probe, setProbe] = useState<Probe | null>(null)
@@ -97,7 +98,7 @@ export default function LibraryConnectionDialog({
   const [submitting, setSubmitting] = useState(false)
 
   const others = state.options.filter((option) => option.id !== current?.id)
-  const choice = effectiveConnection(chosen, selectableConnections(descriptor, others, false))
+  const choice = effectiveConnection(chosen, profileChoices(others))
   const chosenOption = others.find((option) => option.id === choice)
   const next = chosenOption ? sourceConnectionOf(chosenOption) : null
   const proposed = next ? addressAfterSwitch(library.sourceUrl, current?.serverUrl, next) : null

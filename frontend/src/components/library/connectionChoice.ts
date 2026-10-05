@@ -1,8 +1,4 @@
-import type {
-  ConnectionProfileOption,
-  SourceBlockReason,
-  SourceTypeDescriptor,
-} from '../../types/api'
+import type { ConnectionProfileOption, SourceTypeDescriptor } from '../../types/api'
 import { ownAddressAllowed } from './sources/sourceConnection'
 
 /** The choice of a library with its own address instead of a profile. */
@@ -26,74 +22,47 @@ export function profileOfChoice(choice: string | null): string | null {
   return privateProfileOf(choice) ?? choice
 }
 
+/** Whether a shared library may run on the profile: its ownership admits libraries. */
+export function admitsLibraries(option: ConnectionProfileOption): boolean {
+  return option.ownership !== 'PERSON'
+}
+
 /**
- * The keys that may be chosen: the own address where offered and admitted, every usable profile,
- * and - last, so never the default - a private library on every usable profile the caller has a
- * connected account on (`ownAccountProfileIds`).
+ * Whether a private library of the caller may run on the profile: it admits persons and she has a
+ * connected account of her own on it.
+ */
+export function onOwnAccount(option: ConnectionProfileOption): boolean {
+  return option.ownAccount && option.ownership !== 'LIBRARY'
+}
+
+/** The profiles of `options` that may be chosen now, by id. */
+export function profileChoices(options: ConnectionProfileOption[]): string[] {
+  return options.filter((option) => option.creatable).map((option) => option.id)
+}
+
+/**
+ * The keys that may be chosen: the own address where offered and admitted, every usable profile
+ * admitting libraries, and - last, so never the default - a private library on every usable
+ * profile the caller has a connected account of her own on, a profile only for persons included.
  */
 export function selectableConnections(
   descriptor: SourceTypeDescriptor,
   options: ConnectionProfileOption[],
   offerOwnAddress: boolean,
-  ownAccountProfileIds: readonly string[] = [],
 ): string[] {
-  const usable = options.filter((option) => option.creatable)
   return [
     ...(offerOwnAddress && ownAddressAllowed(descriptor) ? [OWN_ADDRESS] : []),
-    ...usable.map((option) => option.id),
-    ...usable
-      .filter((option) => ownAccountProfileIds.includes(option.id))
-      .map((option) => privateConnection(option.id)),
+    ...profileChoices(options.filter(admitsLibraries)),
+    ...profileChoices(options.filter(onOwnAccount)).map(privateConnection),
   ]
 }
 
 /**
- * The choice in effect: `chosen` while it may be chosen, otherwise the first that may - so a
- * choice the answer turned unusable never stays selected. `null` when there is none at all.
+ * The choice in effect: `chosen` while it may be chosen, otherwise the first shared way that may -
+ * so a choice the answer turned unusable never stays selected, and a private library is only ever
+ * chosen explicitly. `null` when no shared way is left.
  */
 export function effectiveConnection(chosen: string | null, selectable: string[]): string | null {
   if (chosen !== null && selectable.includes(chosen)) return chosen
-  return selectable[0] ?? null
-}
-
-/** Whether connecting the library through a profile lifts this block - then it is offered there. */
-export function liftedByConnecting(reason: SourceBlockReason): boolean {
-  switch (reason) {
-    case 'PROFILE_REQUIRED':
-    case 'ACCESS_REMOVED':
-      return true
-    case 'TYPE_LOCKED':
-    case 'PROFILE_LOCKED':
-    case 'OWNER_DEACTIVATED':
-    case 'DORMANT':
-    case 'TARGET_OUTSIDE_PROFILE':
-    case 'NOT_CONNECTED':
-    case 'EXPIRED':
-      return false
-    default: {
-      const unknown: never = reason
-      throw new Error(`Unknown source block reason ${String(unknown)}`)
-    }
-  }
-}
-
-/** Whether the owner lifts this block on the page "Verbundene Konten" - for a private library. */
-export function liftedByOwnAccount(reason: SourceBlockReason): boolean {
-  switch (reason) {
-    case 'NOT_CONNECTED':
-    case 'EXPIRED':
-      return true
-    case 'TYPE_LOCKED':
-    case 'PROFILE_LOCKED':
-    case 'PROFILE_REQUIRED':
-    case 'ACCESS_REMOVED':
-    case 'OWNER_DEACTIVATED':
-    case 'DORMANT':
-    case 'TARGET_OUTSIDE_PROFILE':
-      return false
-    default: {
-      const unknown: never = reason
-      throw new Error(`Unknown source block reason ${String(unknown)}`)
-    }
-  }
+  return selectable.find((key) => privateProfileOf(key) === null) ?? null
 }
