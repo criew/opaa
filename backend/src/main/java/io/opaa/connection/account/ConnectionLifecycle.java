@@ -19,8 +19,8 @@ import org.springframework.transaction.annotation.Transactional;
  * Reads the lifecycle of persons' connections as {@link ConnectionLifecycleReconciler} last
  * recorded it. Only deactivation starts the deletion period of private libraries, and only one by
  * an act that ends the account, as it holds now: its period runs from the later of the recorded
- * start and that act, so a lock renewed after a reactivation starts it anew. A resting person and a
- * local account locked for inactivity (#2260) have none.
+ * start and that act, so a lock renewed after a reactivation starts it anew. A resting person - a
+ * local account locked for inactivity among them - has none.
  */
 @Service
 @Transactional(readOnly = true)
