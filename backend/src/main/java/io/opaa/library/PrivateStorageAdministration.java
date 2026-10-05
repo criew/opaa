@@ -131,7 +131,7 @@ public class PrivateStorageAdministration {
             profileIds -> ownersOutside(organizationId, owners, profileIds, librariesOn));
 
     List<ProfileSum> profiles = new ArrayList<>();
-    for (ConnectionProfile profile : profileRepository.findAllByOrderByNameAsc()) {
+    for (ConnectionProfile profile : profileRepository.findConnectorsByName()) {
       if (!profile.getOwnership().admitsPersons()) {
         continue;
       }

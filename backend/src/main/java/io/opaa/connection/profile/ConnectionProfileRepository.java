@@ -12,9 +12,18 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+/**
+ * The profiles. A list is always of one {@link ProfileKind}: the connector paths list only {@code
+ * CONNECTOR} profiles, so an MCP server never reaches a path that expects a source type.
+ */
 public interface ConnectionProfileRepository extends JpaRepository<ConnectionProfile, UUID> {
 
-  List<ConnectionProfile> findAllByOrderByNameAsc();
+  List<ConnectionProfile> findByKindOrderByNameAsc(ProfileKind kind);
+
+  /** The connector profiles by name - the list every connector path starts from. */
+  default List<ConnectionProfile> findConnectorsByName() {
+    return findByKindOrderByNameAsc(ProfileKind.CONNECTOR);
+  }
 
   List<ConnectionProfile> findBySourceTypeOrderByNameAsc(SourceType sourceType);
 

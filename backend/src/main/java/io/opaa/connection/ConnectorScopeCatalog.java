@@ -48,7 +48,7 @@ public class ConnectorScopeCatalog implements CapabilityScopeCatalog {
                     new CapabilityScope(
                         ConnectorScope.ofType(descriptor.type()),
                         "Quellart " + descriptor.displayName())));
-    for (ConnectionProfile profile : profiles.findAllByOrderByNameAsc()) {
+    for (ConnectionProfile profile : profiles.findConnectorsByName()) {
       scopes.add(
           new CapabilityScope(
               ConnectorScope.ofProfile(profile.getId()), "Zugang " + profile.getName()));

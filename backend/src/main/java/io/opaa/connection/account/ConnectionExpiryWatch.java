@@ -120,8 +120,11 @@ public class ConnectionExpiryWatch {
           "Verbindung läuft ab: Zugang „" + profile.getName() + "“",
           "Der Anbieter beendet die Zustimmung Ihres verbundenen Kontos am "
               + DATE.format(grant.endsAt().atZone(zone))
-              + ". Verbinden Sie es vorher auf der Seite „Verbundene Konten“ neu; sonst wird"
-              + " danach nichts aus diesem Zugang aktualisiert.");
+              + (profile.isMcpServer()
+                  // MCP connections are not shown on the accounts page yet
+                  ? ". Danach muss die Verbindung zum MCP-Server neu hergestellt werden."
+                  : ". Verbinden Sie es vorher auf der Seite „Verbundene Konten“ neu; sonst wird"
+                      + " danach nichts aus diesem Zugang aktualisiert."));
       warned++;
     }
     return warned;

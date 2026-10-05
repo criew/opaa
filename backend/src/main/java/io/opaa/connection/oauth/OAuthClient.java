@@ -34,7 +34,9 @@ import tools.jackson.databind.json.JsonMapper;
  * The one way to an authorization server for OAuth (RFC 6749, 7636, 7009): the authorization
  * request, the code exchange, the renewal and the revocation. Every request goes through {@link
  * SourceFormPost} - target check first, no redirect, bounded answer - and the profile's proxy,
- * always with the certificate check. Client secret, code, verifier and tokens reach no log and no
+ * always with the certificate check. Where the registration names a resource (RFC 8707, an MCP
+ * server), the authorization request, the code exchange and every renewal name it, so the tokens
+ * are issued for that server alone. Client secret, code, verifier and tokens reach no log and no
  * message.
  */
 public final class OAuthClient {
@@ -99,6 +101,7 @@ public final class OAuthClient {
     query.put("state", state);
     query.put("code_challenge", challenge);
     query.put("code_challenge_method", "S256");
+    putResource(registration, query);
     query.putAll(auth.authorizationParams());
     String base = endpoint.toString();
     return URI.create(base + (endpoint.getRawQuery() == null ? "?" : "&") + encode(query));
@@ -121,6 +124,7 @@ public final class OAuthClient {
     form.put("code", code);
     form.put("redirect_uri", redirectUri.toString());
     form.put("code_verifier", verifier);
+    putResource(registration, form);
     return tokenRequest(registration, auth, form, now, false);
   }
 
@@ -137,7 +141,15 @@ public final class OAuthClient {
     Map<String, String> form = new LinkedHashMap<>();
     form.put("grant_type", "refresh_token");
     form.put("refresh_token", refreshToken);
+    putResource(registration, form);
     return tokenRequest(registration, auth, form, now, true);
+  }
+
+  /** The {@code resource} parameter (RFC 8707, 2) of a registration that names one. */
+  private static void putResource(ClientRegistration registration, Map<String, String> parameters) {
+    if (registration.resource() != null) {
+      parameters.put("resource", registration.resource());
+    }
   }
 
   /**

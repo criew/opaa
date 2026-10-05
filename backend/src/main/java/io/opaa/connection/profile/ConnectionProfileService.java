@@ -130,7 +130,7 @@ public class ConnectionProfileService {
   }
 
   public List<ConnectionProfile> list() {
-    return profiles.findAllByOrderByNameAsc();
+    return profiles.findConnectorsByName();
   }
 
   /** The profiles a library of {@code sourceType} may be connected through. */
@@ -147,12 +147,17 @@ public class ConnectionProfileService {
       return Set.of();
     }
     return profiles.findAllById(ids).stream()
+        .filter(profile -> !profile.isMcpServer())
         .map(ConnectionProfile::getId)
         .collect(Collectors.toSet());
   }
 
+  /** The connector profile {@code id}; an MCP server is not found here. */
   public ConnectionProfile get(UUID id) {
-    return profiles.findById(id).orElseThrow(ConnectionProfileService::notFound);
+    return profiles
+        .findById(id)
+        .filter(found -> !found.isMcpServer())
+        .orElseThrow(ConnectionProfileService::notFound);
   }
 
   /** What a change of address or registration, a shutdown or a deletion would cut off. */
@@ -535,7 +540,13 @@ public class ConnectionProfileService {
   @Transactional
   public ProfileImpact disconnectAll(CurrentUser caller, UUID id) {
     profiles.lockForChange(id);
-    ConnectionProfile profile = get(id);
+    return disconnectAll(caller, get(id));
+  }
+
+  /** {@link #disconnectAll(CurrentUser, UUID)} of a profile of any kind its caller locked. */
+  @Transactional
+  ProfileImpact disconnectAll(CurrentUser caller, ConnectionProfile profile) {
+    UUID id = profile.getId();
     PersonCount ended = personNumbers.totalOf(id);
     boolean dropsOwnSecret = signsInItself(profile.getAuthMethod()) && profile.isClientSecretSet();
     // before the secret goes: a token is revoked with the registration it was issued to
@@ -569,7 +580,13 @@ public class ConnectionProfileService {
   @Transactional
   public void delete(CurrentUser caller, UUID id) {
     profiles.lockForDeletion(id);
-    ConnectionProfile profile = get(id);
+    delete(caller, get(id));
+  }
+
+  /** {@link #delete(CurrentUser, UUID)} of a profile of any kind its caller locked for deletion. */
+  @Transactional
+  void delete(CurrentUser caller, ConnectionProfile profile) {
+    UUID id = profile.getId();
     List<LibraryConnection> affected = connections.findByProfileId(id);
     long shared = connections.countSharedByProfileId(id);
     secrets.discardAllUnder(id, ConnectionEndCause.PROFILE_DELETED);
@@ -771,10 +788,16 @@ public class ConnectionProfileService {
   }
 
   /** Field names and non-secret values only; the secret appears as whether one is set. */
-  private static Map<String, Object> auditState(ConnectionProfile profile) {
+  static Map<String, Object> auditState(ConnectionProfile profile) {
     Map<String, Object> state = new LinkedHashMap<>();
     state.put("name", profile.getName());
-    state.put("sourceType", profile.getSourceType().key());
+    if (profile.isMcpServer()) {
+      state.put("kind", profile.getKind().name());
+      state.put("responsibleGroupId", Objects.toString(profile.getResponsibleGroupId(), ""));
+      state.put("issuer", Objects.toString(profile.getIssuer(), ""));
+    } else {
+      state.put("sourceType", profile.getSourceType().key());
+    }
     state.put("serverUrl", profile.getServerUrl());
     state.put("authMethod", profile.getAuthMethod().name());
     state.put("ownership", profile.getOwnership().name());
@@ -809,7 +832,8 @@ public class ConnectionProfileService {
         success ? AuditOutcome.SUCCESS : AuditOutcome.FAILURE);
   }
 
-  private void record(
+  @Transactional
+  void record(
       CurrentUser caller,
       AuditEventType type,
       ConnectionProfile profile,

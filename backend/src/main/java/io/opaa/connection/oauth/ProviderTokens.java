@@ -5,6 +5,7 @@ import io.opaa.connection.profile.ProfileRegistrations;
 import io.opaa.connection.token.SecretIssuer;
 import io.opaa.indexing.source.OAuthAuth;
 import io.opaa.indexing.source.Secret;
+import io.opaa.indexing.source.SignInRejectedException;
 import io.opaa.indexing.source.SourceCredentialsException;
 import io.opaa.security.TargetAddressValidator;
 import java.time.Clock;
@@ -39,9 +40,17 @@ public class ProviderTokens implements SecretIssuer {
     this.clock = clock;
   }
 
+  /**
+   * {@inheritDoc} A grant issued for another resource than the profile names now is refused as no
+   * longer taken: renewing it would carry a token of one server to another.
+   */
   @Override
   public Issued renew(UUID profileId, String refreshToken, String issuedFor) {
     ClientRegistration registration = registrations.registrationOf(profileId);
+    if (registration.resource() != null && !registration.resource().equals(issuedFor)) {
+      throw new SignInRejectedException(
+          "Die Zustimmung gilt für einen anderen MCP-Server; das Konto muss neu verbunden werden.");
+    }
     OAuthClient.Grant grant =
         client.refresh(registration, oauthOf(registration), refreshToken, clock.instant());
     return new Issued(

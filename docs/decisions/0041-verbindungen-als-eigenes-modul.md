@@ -858,6 +858,72 @@ Entscheidungen des Maintainers vom 05.10.2026 zu M2 aus #2275 und zur Schwellenw
   Zustimmung, weil sie `MANAGER` an der erst entstehenden Bibliothek halten muss. Beim Neuverbinden
   kommt sie mit dem Start.
 
+## Nachtrag vom 05.10.2026: MCP-Grundlage (#2173, Schnitt M1)
+
+- **Profilart statt zweiter Tabelle:** `connection_profiles.kind` (`CONNECTOR`, `MCP_SERVER`).
+  `source_type` ist genau bei `CONNECTOR` gesetzt (`CHECK`). Dazu kommen
+  `responsible_group_id` (→ `groups`, `ON DELETE SET NULL`) und `issuer`. Verbundene Konten,
+  Token-Speicher, Verbindungsprotokoll, Notabschaltung, Löschen, Sperre und Widerruf nach dem
+  Commit sind dieselben wie bei jedem Zugang. Ein Konto auf einem MCP-Server ist ein
+  `ConnectedAccount` mit `PersonOwned` im selben Speicher.
+- **Konnektor-Pfade sehen keinen MCP-Server:** Listen laufen über
+  `ConnectionProfileRepository#findConnectorsByName`. Eine Liste über alle Arten ruft nur
+  `McpServerProfileService` (ArchUnit `connectorPathsSeeOnlyConnectorProfiles` mit Fixture).
+  Lookups nach ID weisen ab: `ProfileAdmission` mit `400` für Bibliothek und Entwurf, die
+  Zustimmung einer Bibliothek mit `400`, die Zugangsverwaltung, ihre Sperre und
+  `ConnectionProfileService#get` mit `404`.
+- **Verwaltung nur über die API** (`/api/v1/admin/mcp-servers`, `SYSTEM_ADMIN`), ohne Oberfläche,
+  solange es keinen MCP-Client gibt. Anmeldeart ist fest OAuth, Besitzart fest Person. Die Adresse
+  ist der Streamable-HTTP-Endpunkt in kanonischer Form (`McpServerResource`): nur `https`, ohne
+  Benutzerangabe, Abfrage und Fragment. `http` ist nur auf Loopback zugelassen, das die
+  Zielprüfung in Produktion sperrt.
+- **Erkennung beim Speichern, nie zur Laufzeit** (`McpServerDiscovery`; die Endpunkte liegen wie
+  bei `Endpoint.FromProfile` aus dem Nachtrag zum OAuth-Kern am Zugang):
+  - zuerst Protected Resource Metadata (RFC 9728): die Well-known-Adresse mit eingefügtem Pfad,
+    dann an der Wurzel;
+  - dann die Metadaten des Autorisierungsservers (RFC 8414, dann OpenID-Discovery eingefügt und
+    angehängt).
+  - Keine Antwort wird blind übernommen: `resource` muss die Server-Adresse sein, `issuer` die
+    Adresse, aus der die Metadaten gebildet wurden; `S256` muss angeboten sein, alle Endpunkte
+    `https`. Jede Adresse geht durch `TargetAddressValidator`, eine Weiterleitung verlässt den
+    Ursprung nicht, die Antwort ist begrenzt.
+  - Jedes Speichern erkennt neu. Weichen Adresse, Client-ID, Scopes, Issuer oder ein Endpunkt
+    ab, ist das ein Adress- bzw. Registrierungswechsel: Er wird bestätigt, verwirft vorher alle
+    Token mit Widerruf und beendet die Konten.
+  - Ein gespeichertes Client-Secret folgt keinem neuen Server: Ändern sich Adresse, Issuer oder
+    Token-Endpunkt, verlangt die Änderung ein neues Secret, oder ein leeres für einen
+    öffentlichen Client (`400 MCP_SERVER_CLIENT_SECRET_REQUIRED`). Die Rückfrage nennt alten und
+    neuen Autorisierungsserver. Die Endpunkte kommen hier vom Server selbst, nicht aus einer
+    Deklaration; sonst ginge das Secret an einen Token-Endpunkt, den der Server benennt.
+  - Nicht gebaut ist die Erkennung über `WWW-Authenticate` einer `401`. Dafür müsste OPAA den
+    MCP-Endpunkt selbst ansprechen, und das ist Transport des Clients.
+- **Bindung an den Server (RFC 8707):** `ClientRegistration#resource` ist für einen MCP-Server
+  seine Adresse. `OAuthClient` setzt `resource` in Autorisierungsanfrage, Code-Tausch und
+  Erneuerung, `OAuthAuth.RESERVED_PARAMS` schützt den Parameter vor Konnektoren. `issued_for`
+  ist der Ressourcen-Indikator samt Pfad, nicht nur der Ursprung: Ein zweiter MCP-Server unter
+  demselben Host ist ein anderes Ziel. `ProviderTokens#renew` verweigert einen Grant, dessen
+  `issued_for` nicht mehr der Adresse des Zugangs entspricht.
+- **Herausgabe nur mit Ziel:** `McpServerTokens#accessFor(person, zugang)` liefert das Token
+  zusammen mit der einzigen Adresse, an die es darf. Der spätere Client wählt das Ziel also nicht
+  selbst. Verweigert wird bei gesperrtem Zugang (`PROFILE_LOCKED`), bei fehlendem MCP-Server
+  (`ACCESS_REMOVED`) und sonst wie im Speicher: Konto nicht nutzbar, nicht verbunden, abgelaufen.
+- **Nutzungsfreigabe offen:** Bis das Folge-Epic zu #1747 ihre Form festlegt, verbindet nur
+  `SYSTEM_ADMIN` (`ConnectedAccountService#requireConnectable`). Die Sperre gilt wie bei jedem
+  Zugang. Konten auf MCP-Servern erscheinen nicht auf der Kontoseite, und der Abschluss der
+  Zustimmung liefert für sie kein `account`.
+- **Keine dynamische Client-Registrierung** (Entscheidung 7 des Phase-3-Plans). Die
+  Client-Authentisierung ist `client_secret_basic`, ohne Secret ein öffentlicher Client.
+- **Belegt** in `McpServerConnectionIntegrationTest` mit zwei `FakeMcpServer` (nur `src/test`):
+  Erkennung, Zustimmung, `resource` in beiden Anfragen und in der Erneuerung, ein Token von A
+  nie für B, Bestätigung und Widerruf bei Adresswechsel, Trennen, Notabschaltung, Sperre,
+  Löschen, Konnektor-Pfade blind und Leak-Test. `McpServerDiscoveryTest` belegt die
+  Negativfälle der Erkennung.
+- **Offen:**
+  - Die `iss`-Prüfung im Rücksprung (RFC 9207) verlangt die MCP-Autorisierung nicht; sie folgt
+    mit #2266. Der gespeicherte `issuer` ist dafür die Vergleichsgröße.
+  - Ein Proxy für MCP-Zugänge.
+  - Die Modulkante von assistant bzw. external zu connections kommt mit dem MCP-Client.
+
 ## Nachtrag vom 05.10.2026: Inaktivitätssperre lokaler Konten ruht (#2260)
 
 - **Entscheidung (Maintainer):** Die Sperre eines lokalen Kontos wegen Inaktivität

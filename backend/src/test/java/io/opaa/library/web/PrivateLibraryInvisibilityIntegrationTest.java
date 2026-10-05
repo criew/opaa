@@ -305,7 +305,9 @@ class PrivateLibraryInvisibilityIntegrationTest {
             "listConnectionProfileRequests",
             "listMyConnectionProfileRequests",
             "listConnectionLogProfiles",
-            "listDormantSourceConnections")) {
+            "listDormantSourceConnections",
+            "listMcpServers",
+            "getMcpServer")) {
       probes.put(read, same());
     }
     probes.put("getHealth", volatileAnswer());

@@ -120,10 +120,15 @@ public class ConnectedAccountService implements PersonConnections, GrantRejectio
    * Refuses connecting the caller's account on {@code profile}: {@code 400} where neither the
    * profile nor its connector admits persons, {@code 403 CONNECTOR_LOCKED} on a lock, and {@code
    * 403 CAPABILITY_REQUIRED} for a new account without the profile's release. Reconnecting an
-   * existing account needs no release.
+   * existing account needs no release. An MCP server has no release yet: until its use is released
+   * ({@code #1747}), only the system administration connects to it.
    */
   @Transactional(readOnly = true)
   public void requireConnectable(CurrentUser caller, ConnectionProfile profile) {
+    if (profile.isMcpServer()) {
+      requireConnectableMcpServer(caller, profile);
+      return;
+    }
     ProfileAdmission.require(
         Optional.of(profile),
         profile.getSourceType(),
@@ -147,12 +152,30 @@ public class ConnectedAccountService implements PersonConnections, GrantRejectio
     }
   }
 
+  private static void requireConnectableMcpServer(CurrentUser caller, ConnectionProfile profile) {
+    if (profile.isLocked()) {
+      throw new AccessDeniedException(
+          "Der MCP-Server „"
+              + profile.getName()
+              + "“ ist gesperrt. Verbinden ist erst wieder möglich, wenn die Systemverwaltung die"
+              + " Sperre aufhebt.",
+          ConnectorLockService.CONNECTOR_LOCKED);
+    }
+    if (!caller.isSystemAdmin()) {
+      throw new AccessDeniedException(
+          "Mit dem MCP-Server „"
+              + profile.getName()
+              + "“ verbindet bis zur Freigabe seiner Nutzung nur die Systemverwaltung.");
+    }
+  }
+
   /**
    * Stores {@code secret} as the caller's connected account on {@code profile}, after {@link
    * #requireConnectable}: a new account is connected, an existing one reconnected. {@code label} is
    * the caller's account name at the provider, {@code null} for none; only the caller sees it. It
    * trusts that the secret signed in already, so only this package and the OAuth flow call it
-   * ({@code aConnectionIsEstablishedOnlyAfterItsSignIn}).
+   * ({@code aConnectionIsEstablishedOnlyAfterItsSignIn}). Returns the connection as the overview
+   * shows it, {@code null} for an MCP server, which it does not show.
    */
   @Transactional
   public AccountOverview.Account established(
@@ -178,7 +201,9 @@ public class ConnectedAccountService implements PersonConnections, GrantRejectio
         profile.getId(),
         profile.getName(),
         null);
-    return viewOf(account, profile, capabilities.scopesOf(caller, RELEASE));
+    return profile.isMcpServer()
+        ? null
+        : viewOf(account, profile, capabilities.scopesOf(caller, RELEASE));
   }
 
   /**
@@ -193,6 +218,10 @@ public class ConnectedAccountService implements PersonConnections, GrantRejectio
             .findById(profileId)
             .orElseThrow(() -> new NotFoundException("Zugang nicht gefunden"));
     requireConnectable(caller, profile);
+    if (profile.isMcpServer()) {
+      throw new ValidationException(
+          "Mit einem MCP-Server verbindet nur die Zustimmung beim Anbieter, kein Geheimnis.");
+    }
     PersonalSecretForm form =
         descriptorOf(profile)
             .profileDeclaration()
@@ -248,13 +277,18 @@ public class ConnectedAccountService implements PersonConnections, GrantRejectio
   @Override
   @Transactional
   public void grantRejected(PersonOwned owner) {
+    boolean mcpServer =
+        profiles.findById(owner.profileId()).map(ConnectionProfile::isMcpServer).orElse(false);
     expire(
         owner,
         AuditObjectType.SYSTEM_SETTING,
         owner.profileId(),
-        "Der Anbieter nimmt die Zustimmung Ihres verbundenen Kontos nicht mehr an. Verbinden Sie"
-            + " es auf der Seite „Verbundene Konten“ neu; bis dahin wird nichts aus diesem Zugang"
-            + " aktualisiert.");
+        mcpServer
+            ? "Der Anbieter nimmt die Zustimmung zum MCP-Server nicht mehr an; die Verbindung muss"
+                + " neu hergestellt werden."
+            : "Der Anbieter nimmt die Zustimmung Ihres verbundenen Kontos nicht mehr an. Verbinden"
+                + " Sie es auf der Seite „Verbundene Konten“ neu; bis dahin wird nichts aus diesem"
+                + " Zugang aktualisiert.");
   }
 
   /**
@@ -290,7 +324,10 @@ public class ConnectedAccountService implements PersonConnections, GrantRejectio
         body);
   }
 
-  /** The caller's connections, what they may connect now, and who to ask for a missing one. */
+  /**
+   * The caller's connections, what they may connect now, and who to ask for a missing one; a
+   * connection to an MCP server is not shown while its kind stays hidden.
+   */
   @Transactional(readOnly = true)
   public AccountOverview overview(CurrentUser caller) {
     HeldScopes held = capabilities.scopesOf(caller, RELEASE);
@@ -300,10 +337,11 @@ public class ConnectedAccountService implements PersonConnections, GrantRejectio
       connected.add(account.getProfileId());
       profiles
           .findById(account.getProfileId())
+          .filter(found -> !found.isMcpServer())
           .ifPresent(profile -> views.add(viewOf(account, profile, held)));
     }
     List<AccountOverview.Connectable> connectable = new ArrayList<>();
-    for (ConnectionProfile profile : profiles.findAllByOrderByNameAsc()) {
+    for (ConnectionProfile profile : profiles.findConnectorsByName()) {
       Optional<SourceConnectorDescriptor> descriptor = findDescriptor(profile);
       if (!connected.contains(profile.getId())
           && descriptor.isPresent()
@@ -455,10 +493,12 @@ public class ConnectedAccountService implements PersonConnections, GrantRejectio
   private static Optional<String> endNotice(
       ConnectionEndCause cause, ConnectionProfile profile, boolean feedsPrivateLibrary) {
     String reconnect =
-        feedsPrivateLibrary
-            ? " Verbinden Sie Ihr Konto auf der Seite „Verbundene Konten“ neu; bis dahin wird Ihre"
-                + " private Bibliothek nicht aktualisiert."
-            : " Sie können Ihr Konto auf der Seite „Verbundene Konten“ neu verbinden.";
+        profile.isMcpServer()
+            ? " Die Verbindung zum MCP-Server muss neu hergestellt werden."
+            : feedsPrivateLibrary
+                ? " Verbinden Sie Ihr Konto auf der Seite „Verbundene Konten“ neu; bis dahin wird Ihre"
+                    + " private Bibliothek nicht aktualisiert."
+                : " Sie können Ihr Konto auf der Seite „Verbundene Konten“ neu verbinden.";
     String gone =
         feedsPrivateLibrary ? " Ihre private Bibliothek wird nicht mehr aktualisiert." : "";
     return switch (cause) {

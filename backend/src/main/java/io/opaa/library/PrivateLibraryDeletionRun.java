@@ -14,7 +14,6 @@ import java.util.Set;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 /**
@@ -23,7 +22,8 @@ import org.springframework.stereotype.Service;
  * ends the account ({@link ConnectionLifecycle#deletionPeriodStartedBefore}) - and every few
  * minutes the erasures a running run held up. A resting account, a local inactivity lock and a
  * person reactivated within the period keep their libraries. Each library is erased on its own; a
- * failure leaves its marker for the next run. The log names counts only.
+ * failure leaves its marker for the next run. The log names counts only. The ticks are {@link
+ * PrivateLibraryDeletionSchedule}'s.
  */
 @Service
 public class PrivateLibraryDeletionRun {
@@ -53,13 +53,11 @@ public class PrivateLibraryDeletionRun {
   }
 
   /** After the daily reconciliation of the connections, which records the deactivations. */
-  @Scheduled(cron = "0 45 4 * * *")
   public void daily() {
     logged("daily", runOnce());
   }
 
   /** Completes the erasures a running indexing run held up, once that run has ended. */
-  @Scheduled(fixedDelayString = "PT5M", initialDelayString = "PT2M")
   public void continuePending() {
     Result result = erase(libraries.findIdsByErasureRequested(), null);
     if (result.touched()) {

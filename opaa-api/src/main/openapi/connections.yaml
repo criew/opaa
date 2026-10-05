@@ -586,6 +586,215 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /api/v1/admin/mcp-servers:
+    get:
+      operationId: listMcpServers
+      tags: [connection-profile]
+      summary: List every MCP server profile (system admin only)
+      description: >
+        Profiles of the kind MCP server (ADR-0041, Entscheidung 5): no connector, an address of a
+        Streamable HTTP endpoint, OAuth with a resource indicator per server. The kind stays hidden
+        in the user interface until the MCP client exists; the connection-profile operations do not
+        show these profiles. Never carries a client secret or a token.
+      responses:
+        "200":
+          description: Every MCP server profile, by name
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/McpServerResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+    post:
+      operationId: createMcpServer
+      tags: [connection-profile]
+      summary: Create an MCP server profile (system admin only)
+      description: >
+        OPAA discovers the authorization server first: the Protected Resource Metadata (RFC 9728)
+        of serverUrl, then the authorization server's metadata (RFC 8414, else OpenID discovery).
+        The resource there must be serverUrl, the issuer the address the metadata was read from,
+        PKCE must offer S256, every endpoint must be https; anything else is 400. The discovered
+        endpoints are stored and never discovered again at run time. Without scopes the scopes the
+        server names as supported are taken. A clientSecret is stored encrypted and needs the
+        credentials encryption key (OPAA_CREDENTIALS_ENCRYPTION_KEY); without it the answer is 503.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/McpServerRequest"
+      responses:
+        "201":
+          description: MCP server profile created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/McpServerResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          description: Another profile already carries this name.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+  /api/v1/admin/mcp-servers/{profileId}:
+    parameters:
+      - name: profileId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      operationId: getMcpServer
+      tags: [connection-profile]
+      summary: One MCP server profile (system admin only)
+      responses:
+        "200":
+          description: The MCP server profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/McpServerResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    put:
+      operationId: updateMcpServer
+      tags: [connection-profile]
+      summary: Change an MCP server profile (system admin only)
+      description: >
+        Replaces every field; the authorization server is discovered anew as on creation. A
+        clientSecret omitted keeps the stored one, an empty one clears it. A new serverUrl,
+        clientId, scope list, issuer or endpoint discards every token of the profile - revoked
+        with the registration before the change - and ends the persons' connections; that is
+        refused with 409 CONNECTION_PROFILE_CONFIRMATION_REQUIRED unless confirmDiscard is true.
+        The question names persons without a number, and the old and the new authorization server
+        where it changes. A stored client secret never follows a new serverUrl, issuer or token
+        endpoint: such a change without clientSecret is 400 MCP_SERVER_CLIENT_SECRET_REQUIRED;
+        an empty clientSecret makes the profile a public client.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/McpServerRequest"
+      responses:
+        "200":
+          description: The changed MCP server profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/McpServerResponse"
+        "400":
+          description: >
+            Invalid values, a discovery refused, or a change to another server or authorization
+            server without a new client secret (code MCP_SERVER_CLIENT_SECRET_REQUIRED).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: >
+            Another profile already carries this name, or the change discards tokens and was not
+            confirmed (code CONNECTION_PROFILE_CONFIRMATION_REQUIRED).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+    delete:
+      operationId: deleteMcpServer
+      tags: [connection-profile]
+      summary: Delete an MCP server profile (system admin only)
+      description: >
+        Every token on the profile is discarded and revoked, every connection ends and is logged.
+      responses:
+        "204":
+          description: MCP server profile deleted
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/admin/mcp-servers/{profileId}/disconnect-all:
+    post:
+      operationId: disconnectAllMcpServerConnections
+      tags: [connection-profile]
+      summary: Emergency shutdown of an MCP server profile (system admin only)
+      description: >
+        Discards and revokes every token of the profile at once and keeps the profile; every
+        connection ends and is logged.
+      parameters:
+        - name: profileId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: The persons' connections that were ended, masked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/McpServerShutdownResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/admin/mcp-servers/{profileId}/lock:
+    put:
+      operationId: lockMcpServer
+      tags: [connection-profile]
+      summary: Lock or unlock an MCP server profile (system admin only)
+      description: >
+        A locked MCP server admits no new connection and hands out no token; the connections stay.
+        A governance event either way (CONNECTOR_LOCKED, CONNECTOR_UNLOCKED).
+      parameters:
+        - name: profileId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConnectorLockRequest"
+      responses:
+        "200":
+          description: The MCP server profile with its new lock state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/McpServerResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /api/v1/admin/connector-types:
     get:
       operationId: listConnectorTypeStates
@@ -1470,6 +1679,111 @@ components:
             that is usable only through profiles: without it, no new library of the type can be
             created until another profile exists. Deleting or locking it stays possible.
 
+    McpServerRequest:
+      type: object
+      required: [name, serverUrl, clientId, responsibleGroupId]
+      properties:
+        name:
+          type: string
+          maxLength: 255
+          example: MCP-Server Fachverfahren
+        serverUrl:
+          type: string
+          maxLength: 2000
+          description: >
+            The Streamable HTTP endpoint of the MCP server, https only; stored in canonical form
+            and the resource every token of the profile is issued for (RFC 8707).
+          example: https://mcp.example.org/mcp
+        clientId:
+          type: string
+          maxLength: 255
+          description: The client id OPAA is registered with at the server's authorization server.
+        clientSecret:
+          type: string
+          maxLength: 4096
+          nullable: true
+          description: >
+            Write-only; omitted for a public client, and on a change omitted to keep the stored
+            one, empty to clear it.
+        scopes:
+          type: string
+          maxLength: 2000
+          nullable: true
+          description: Space-separated; omitted for the scopes the server names as supported.
+        responsibleGroupId:
+          type: string
+          format: uuid
+          description: The group of the organization that answers for the MCP server.
+        confirmDiscard:
+          type: boolean
+          nullable: true
+          description: On a change, confirms that it discards every token of the profile.
+
+    McpServerResponse:
+      type: object
+      required:
+        [id, name, serverUrl, authMethod, clientId, clientSecretSet, issuer, authorizationEndpoint,
+         tokenEndpoint, locked, connectedAccounts, createdAt, updatedAt]
+      description: An MCP server profile; never a client secret or a token.
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        serverUrl:
+          type: string
+          description: The canonical address, the resource indicator of its tokens.
+        authMethod:
+          $ref: "#/components/schemas/ConnectionAuthMethod"
+        clientId:
+          type: string
+        clientSecretSet:
+          type: boolean
+        scopes:
+          type: string
+          nullable: true
+        responsibleGroupId:
+          type: string
+          format: uuid
+          nullable: true
+          description: Absent once the group was deleted.
+        issuer:
+          type: string
+          description: The authorization server as discovered on the last save.
+        authorizationEndpoint:
+          type: string
+        tokenEndpoint:
+          type: string
+        revocationEndpoint:
+          type: string
+          nullable: true
+        locked:
+          type: boolean
+        lockedAt:
+          type: string
+          format: date-time
+          nullable: true
+        connectedAccounts:
+          description: The persons' connections to the server, masked.
+          allOf:
+            - $ref: "#/components/schemas/PersonCount"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    McpServerShutdownResponse:
+      type: object
+      required: [connectedAccounts]
+      properties:
+        connectedAccounts:
+          description: The persons' connections that were ended, masked.
+          allOf:
+            - $ref: "#/components/schemas/PersonCount"
+
     PersonCount:
       type: object
       description: >
@@ -1663,7 +1977,9 @@ components:
           description: The page of the application the caller goes on to, derived from purpose.
           example: /settings/accounts
         account:
-          description: For the purpose ACCOUNT, the connection as it stands now.
+          description: >
+            For the purpose ACCOUNT, the connection as it stands now; absent for an MCP server,
+            whose connections are not shown yet.
           nullable: true
           allOf:
             - $ref: "#/components/schemas/ConnectedAccount"

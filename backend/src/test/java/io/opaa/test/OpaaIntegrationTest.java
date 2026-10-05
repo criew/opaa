@@ -70,6 +70,10 @@ import org.testcontainers.junit.jupiter.Testcontainers;
       // provider would otherwise race a tick that applies a plan behind its back. The tick itself
       // is exercised by calling it (DirectorySyncSchedulerIntegrationTest).
       "opaa.directory-sync.schedule-enabled=false",
+      // The ticks of the private libraries' erasure are off here: a class that marks a library for
+      // erasure would otherwise race a tick that erases it behind its back. The run itself is
+      // exercised by calling it (PrivateLibraryDeletionRunIntegrationTest).
+      "opaa.library.private-deletion.schedule-enabled=false",
       // Exact search instead of the production HNSW index (which no test asserts on): every
       // embedding of a test is FakeEmbeddingModel's one constant vector, so the graph degenerates
       // into one cluster of ties and a library-filtered scan can walk hundreds of foreign chunks

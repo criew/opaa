@@ -190,6 +190,11 @@ class ModularArchitectureTest {
   }
 
   @Test
+  void connectorPathsSeeOnlyConnectorProfiles() {
+    ARCHITECTURE.connectorPathsSeeOnlyConnectorProfiles().check(mainClasses);
+  }
+
+  @Test
   void refreshTokensStayInTheTokenStore() {
     ARCHITECTURE.refreshTokensStayInTheTokenStore().check(mainClasses);
   }

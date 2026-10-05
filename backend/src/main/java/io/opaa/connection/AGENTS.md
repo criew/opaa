@@ -43,12 +43,12 @@ seine Ports `SourceConnectionResolver` (`ProfileSourceConnectionResolver`) und `
   auch `DraftOwner.PERSON`) zusammen; der Rahmen des Zugangs (`ProfileFrame`) überschreibt die
   Bibliothek, abweichend ist `400`; Lösen schreibt den Rahmen ein, eine entfallende Vorgabe geht in den eigenen Teil (`Move#keptDefaults`).
 - **Freigabe nur hier:** `ConnectorReleaseService` (Bibliothek) und `requireConnectable` (neues Konto) aus `CREATE_CONNECTOR_LIBRARY` und Sperren; ein Entzug stoppt nichts.
+- **MCP-Server** (`ProfileKind.MCP_SERVER`, ohne Quellart): Konnektor-Pfade listen nur `findConnectorsByName` (ArchUnit); Token nur über `McpServerTokens`, gebunden an den Ressourcen-Indikator (`issued_for`).
 - **Sperrgründe nur in `SourceBlocks`** (Vorrang: Enum-Reihenfolge), Profilangabe nur über `ProfileRequirements`. Eine Sperre blockiert `resolve`, nicht `currentCredentials`.
 
 ## Verweise
 
-- ADRs (`docs/decisions/`): 0025, 0036, 0038, 0041
-- Handbuch: `docs/handbuch/indexierung.md`, „Zugänge“; `bibliotheken-und-berechtigungen.md`, 12
+- ADRs (`docs/decisions/`): 0025, 0036, 0038, 0041; Handbuch: `docs/handbuch/indexierung.md`, „Zugänge“; `bibliotheken-und-berechtigungen.md`, 12
 - Strukturtests: `ModularArchitectureTest`, `ConnectionLogStructureTest`
 
 ## Tests bei Änderungen
