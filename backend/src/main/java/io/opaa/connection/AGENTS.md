@@ -37,7 +37,7 @@ seine Ports `SourceConnectionResolver` (`ProfileSourceConnectionResolver`) und `
   token/oauth nie; Erneuerung unter Zeilensperre, Widerruf erst nach Commit (alles ArchUnit/ADR-0041).
 - **Ursprungsbindung:** Bibliotheksadresse unter der Server-Adresse des Profils, sonst sperrt der Port.
   Neue Adresse/Registrierung verwirft vorher alle Geheimnisse, beendet die Konten; gelöscht: `NULL`.
-- **Übergänge** (Profiländerung, Zuordnen, Lösen) sind je Bibliothek ein `SourceTransitions.Move` durch `SourceChangeGate`: erst Bestätigung, dann alle prüfen (`Answers`), dann schreiben.
+- **Übergänge** (Profiländerung, Zuordnen, Lösen) sind je Bibliothek ein `SourceTransitions.Move` durch `SourceChangeGate`: erst Bestätigung, dann alle prüfen (`Answers`), dann schreiben. Je Zugang serialisiert über die Profilzeile, immer vor jeder anderen Zeile (ADR-0041, Nachtrag #2246).
 - **Eine Zusammenführung:** `EffectiveSourceSettings` setzt Lauf, Änderung und Entwurf (`ofDraft`,
   auch `DraftOwner.PERSON`) zusammen; der Rahmen des Zugangs (`ProfileFrame`) überschreibt die
   Bibliothek, abweichend ist `400`; Lösen schreibt den Rahmen ein, eine entfallende Vorgabe geht in den eigenen Teil (`Move#keptDefaults`).

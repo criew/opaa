@@ -24,6 +24,8 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import org.springframework.stereotype.Component;
 
@@ -53,9 +55,11 @@ public class ProfileProbeSourceConnector implements SourceConnector {
 
   private final List<ChangeCheck> changeChecks = new CopyOnWriteArrayList<>();
   private final List<SourceChange> sourceChanges = new CopyOnWriteArrayList<>();
+  private final List<SourceSettings> validations = new CopyOnWriteArrayList<>();
 
   private final AtomicReference<SourceSettings> lastValidated = new AtomicReference<>();
   private final AtomicReference<SourceSettings> lastTested = new AtomicReference<>();
+  private final AtomicReference<Pause> pause = new AtomicReference<>();
 
   /** What the last {@link #validate} received, then forgotten; empty when none ran since. */
   public Optional<SourceSettings> lastValidated() {
@@ -74,11 +78,36 @@ public class ProfileProbeSourceConnector implements SourceConnector {
     return seen;
   }
 
+  /** Every {@link #validate} since the last call, then forgotten. */
+  public List<SourceSettings> validations() {
+    List<SourceSettings> seen = List.copyOf(validations);
+    validations.clear();
+    return seen;
+  }
+
   /** Every {@link #onSourceChanged} since the last call, then forgotten. */
   public List<SourceChange> sourceChanges() {
     List<SourceChange> seen = List.copyOf(sourceChanges);
     sourceChanges.clear();
     return seen;
+  }
+
+  /**
+   * Holds the next {@link #onSourceChanged} of {@code libraryId} - within the writing transaction -
+   * until the returned pause is released, at most 30 seconds; one pause at a time.
+   */
+  public Pause pauseSourceChange(UUID libraryId) {
+    Pause next = new Pause(libraryId, new CountDownLatch(1), new CountDownLatch(1));
+    pause.set(next);
+    return next;
+  }
+
+  /** Releases a pause not taken yet, so no later test finds it. */
+  public void clearPause() {
+    Pause left = pause.getAndSet(null);
+    if (left != null) {
+      left.release();
+    }
   }
 
   @Override
@@ -117,6 +146,7 @@ public class ProfileProbeSourceConnector implements SourceConnector {
   @Override
   public SourceSettings validate(SourceSettings requested) {
     lastValidated.set(requested);
+    validations.add(requested);
     if (requested.sourceUrl() == null) {
       throw new ValidationException("sourceUrl ist erforderlich");
     }
@@ -177,6 +207,13 @@ public class ProfileProbeSourceConnector implements SourceConnector {
       KnowledgeLibrary library, boolean addressChanged, Set<String> changedSettings) {
     sourceChanges.add(
         new SourceChange(library.getId(), addressChanged, Set.copyOf(changedSettings)));
+    Pause current = pause.get();
+    if (current != null
+        && current.libraryId().equals(library.getId())
+        && pause.compareAndSet(current, null)) {
+      current.reached().countDown();
+      current.await(current.released());
+    }
   }
 
   @Override
@@ -188,6 +225,30 @@ public class ProfileProbeSourceConnector implements SourceConnector {
   /** One {@link #validateChange} as the core asked it. */
   public record ChangeCheck(
       SourceSettings stored, SourceSettings requested, boolean replacesConnection) {}
+
+  /** A held {@link #onSourceChanged}: {@code reached} once it holds, {@code released} to go on. */
+  public record Pause(UUID libraryId, CountDownLatch reached, CountDownLatch released) {
+
+    /** Waits until the source change of the library is held. */
+    public void awaitReached() {
+      await(reached);
+    }
+
+    public void release() {
+      released.countDown();
+    }
+
+    private void await(CountDownLatch latch) {
+      try {
+        if (!latch.await(30, TimeUnit.SECONDS)) {
+          throw new IllegalStateException("the pause of " + libraryId + " timed out");
+        }
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        throw new IllegalStateException(e);
+      }
+    }
+  }
 
   /** One {@link #onSourceChanged} as the core reported it. */
   public record SourceChange(UUID libraryId, boolean addressChanged, Set<String> changedSettings) {}
