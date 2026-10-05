@@ -788,6 +788,14 @@ class PrivateLibraryInvisibilityIntegrationTest {
                 "listConnectionProfiles")) {
           assertThat(answers.get(counting).status()).as(counting).isEqualTo(200);
         }
+        // what the preview says saving discards is compared like every other number, and the new
+        // address of the probe makes it count: every connection, the configuration, the accounts
+        String preview = answers.get("previewConnectionProfileChange").raw();
+        assertThat(preview).contains("\"secretsDiscarded\"", "\"fullSyncLibraries\"");
+        assertThat(JsonPath.<Integer>read(preview, "$.connectionsDiscarded")).isPositive();
+        assertThat(JsonPath.<Integer>read(preview, "$.configurationsChanged")).isPositive();
+        assertThat(JsonPath.<Object>read(preview, "$.connectedAccountsEnded")).isNotNull();
+        assertThat(JsonPath.<String>read(preview, "$.confirmation")).contains("Personen");
         assertThat(answers.get("deleteSpace").status()).isEqualTo(204);
       }
       case PERSON_CONTEXT ->

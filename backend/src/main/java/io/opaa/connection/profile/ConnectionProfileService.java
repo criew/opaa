@@ -50,6 +50,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -57,13 +58,12 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Creates, changes and deletes connection profiles - system administration only, enforced by the
  * caller. A changed server address or app registration discards every secret held under the profile
- * - of libraries and of persons, whose connections end through {@link PersonConnections} - after a
- * confirmation once connections exist; a new client secret alone discards nothing. A changed
- * default only the profile sets (Google Drive's imitated account) discards the run state of every
- * library on it, after a confirmation naming the number of shared ones, and notifies their
- * managers; private libraries are neither counted nor waited for. The client secret - a service
- * account key is checked here and names the client id - is encrypted here and never returned; the
- * audit names fields and library counts.
+ * - of libraries and of persons, whose connections end through {@link PersonConnections}; a new
+ * client secret alone discards nothing. A changed default only the profile sets (Google Drive's
+ * imitated account) discards the run state of every library on it and notifies their managers. What
+ * a change discards ({@link Discards}) is confirmed first; private libraries are neither counted
+ * nor waited for. The client secret - a service account key is checked here and names the client id
+ * - is encrypted here and never returned; the audit names fields and library counts.
  */
 @Service
 @Transactional(readOnly = true)
@@ -157,7 +157,12 @@ public class ConnectionProfileService {
     get(id);
     long libraryConnections = connections.countSharedByProfileId(id);
     return new ProfileImpact(
-        libraryConnections, libraryConnections, personNumbers.totalOf(id), List.of(), null, 0);
+        libraryConnections,
+        libraryConnections,
+        personNumbers.totalOf(id),
+        List.of(),
+        null,
+        Discards.NONE);
   }
 
   /** The connections of each of {@code profiles}, with one query for all of them. */
@@ -213,8 +218,8 @@ public class ConnectionProfileService {
         change.connections(),
         personNumbers.totalOf(id),
         verdict.vetoes(),
-        change.forPersons() ? privateRejections(change, verdict.released()) : null,
-        change.fullSyncs());
+        change.forPersons() ? privateReleases(change, change.released(verdict)) : null,
+        discardsOf(change, id));
   }
 
   /**
@@ -228,7 +233,7 @@ public class ConnectionProfileService {
     ConnectionProfile profile = get(id);
     ProfileChange change = plan(profile, keyed(values, secret, profile).values());
     if (!confirmed) {
-      requireConfirmed(change);
+      requireConfirmed(discardsOf(change, id));
     }
     requireNoneRunning(change);
     Answers answers = new Answers();
@@ -287,7 +292,7 @@ public class ConnectionProfileService {
       ciphertext = encryptor.encrypt(newSecret);
     }
     if (!confirmed) {
-      requireConfirmed(change);
+      requireConfirmed(discardsOf(change, id));
     }
     requireNoneRunning(change);
     Set<UUID> discarding = change.discarding();
@@ -298,7 +303,7 @@ public class ConnectionProfileService {
     if (!verdict.vetoes().isEmpty()) {
       throw ChangeRejection.refusingProfileChange(verdict.vetoes());
     }
-    Set<UUID> released = change.dropsPersons() ? change.privateLibraries() : verdict.released();
+    Set<UUID> released = change.released(verdict);
     privateRelease.release(caller, profile, released);
     Map<String, Object> before = auditState(profile);
     ConnectionEndCause cause =
@@ -367,57 +372,44 @@ public class ConnectionProfileService {
   }
 
   /**
-   * How many private libraries the connector refuses, masked by their owners as a part of the
-   * private libraries of their organization.
+   * How many private libraries the change releases from the profile, masked by their owners as a
+   * part of the private libraries of their organization.
    */
-  private PersonCount privateRejections(ProfileChange change, Set<UUID> released) {
-    List<KnowledgeLibrary> refused =
+  private PersonCount privateReleases(ProfileChange change, Set<UUID> released) {
+    List<KnowledgeLibrary> leaving =
         change.moves().stream()
             .map(Move::library)
             .filter(library -> released.contains(library.getId()))
             .toList();
-    long owners = refused.stream().map(KnowledgeLibrary::getOwnerUserId).distinct().count();
+    long owners = leaving.stream().map(KnowledgeLibrary::getOwnerUserId).distinct().count();
     long otherOwners =
-        refused.isEmpty()
+        leaving.isEmpty()
             ? 0
             : libraries.countPrivateLibraryOwnersOutside(
-                refused.getFirst().getOrganizationId(), released);
+                leaving.getFirst().getOrganizationId(), released);
     return personNumbers.privateLibraries(released.size(), owners, otherOwners);
   }
 
   /**
-   * Refuses {@code change} with 409 while it discards stored secrets or the run state of libraries.
+   * What saving {@code change} of profile {@code id} discards; the persons' connected accounts are
+   * named on every profile for persons whose change ends them, whether or not one is connected.
    */
-  private static void requireConfirmed(ProfileChange change) {
-    long affected = change.affected();
-    // asked on every profile for persons, whether or not one is connected: the text tells nothing
-    boolean persons = change.personsConcerned();
-    long fullSyncs = change.fullSyncs();
-    if (affected == 0 && !persons && fullSyncs == 0) {
-      return;
+  private Discards discardsOf(ProfileChange change, UUID id) {
+    return new Discards(
+        change.discardsAll() ? change.connections() : 0,
+        change.secretsDiscarded(),
+        change.configurationsChanged(),
+        change.personsConcerned() ? personNumbers.totalOf(id) : null,
+        change.fullSyncLabels(),
+        change.fullSyncs());
+  }
+
+  /** Refuses with 409 a change that discards anything without the caller's confirmation. */
+  private static void requireConfirmed(Discards discards) {
+    String question = discards.confirmation();
+    if (question != null) {
+      throw new ConflictException(question, CONFIRMATION_REQUIRED);
     }
-    StringBuilder text = new StringBuilder();
-    if (affected > 0 || persons) {
-      text.append("Die Änderung verwirft die Zugangsdaten ")
-          .append(
-              affected == 0
-                  ? ""
-                  : "von "
-                      + affected
-                      + (affected == 1 ? " Verbindung" : " Verbindungen")
-                      + (persons ? " sowie " : ""))
-          .append(persons ? "etwaiger verbundener Konten von Personen" : "")
-          .append(" dieses Zugangs. ");
-    }
-    if (fullSyncs > 0) {
-      text.append("Die Vorgabe „")
-          .append(String.join("“, „", change.fullSyncLabels()))
-          .append("“ ändert sich: Der Abgleichsstand von ")
-          .append(fullSyncs)
-          .append(fullSyncs == 1 ? " Bibliothek" : " Bibliotheken")
-          .append(" wird verworfen, der nächste Lauf liest die Quelle vollständig neu. ");
-    }
-    throw new ConflictException(text.append("Bitte bestätigen.").toString(), CONFIRMATION_REQUIRED);
   }
 
   /**
@@ -562,7 +554,7 @@ public class ConnectionProfileService {
         profile,
         null,
         Map.of("connectionsDisconnected", shared, "clientSecretDeleted", dropsOwnSecret));
-    return new ProfileImpact(shared, shared, ended, List.of(), null, 0);
+    return new ProfileImpact(shared, shared, ended, List.of(), null, Discards.NONE);
   }
 
   private static boolean signsInItself(ConnectionAuthMethod method) {
@@ -880,7 +872,7 @@ public class ConnectionProfileService {
    * Connections of libraries a change would cut off, the libraries behind them, the persons'
    * connected accounts (masked), the connectors' refusals of shared libraries in a proposed change
    * - empty without one - the refused private libraries (masked, {@code null} on a profile without
-   * persons) and the libraries whose run state it discards.
+   * persons) and what saving it discards ({@link Discards#NONE} without one).
    */
   public record ProfileImpact(
       long connections,
@@ -888,7 +880,83 @@ public class ConnectionProfileService {
       PersonCount connectedAccounts,
       List<ChangeRejection> rejections,
       PersonCount rejectedPrivateLibraries,
-      long fullSyncLibraries) {}
+      Discards discards) {
+
+    /** The shared libraries whose run state a changed default only the profile sets discards. */
+    public long fullSyncLibraries() {
+      return discards.fullSyncs();
+    }
+  }
+
+  /**
+   * What saving a change discards, from the plan the save carries out; private libraries count
+   * nowhere, and persons only through {@link PersonNumbers}.
+   *
+   * @param connections the shared connections that lose every secret and token held under the
+   *     profile - a new address or registration - and must be signed in anew; 0 for any other
+   *     change
+   * @param secrets the shared libraries whose stored secret goes, to be entered anew
+   * @param configurations the shared libraries whose effective configuration changes
+   * @param connectedAccounts all connected accounts of the profile, masked, where the change ends
+   *     them; {@code null} where it ends none
+   * @param fullSyncLabels the changed defaults only the profile sets
+   * @param fullSyncs the shared libraries whose run state they discard
+   */
+  public record Discards(
+      long connections,
+      long secrets,
+      long configurations,
+      PersonCount connectedAccounts,
+      List<String> fullSyncLabels,
+      long fullSyncs) {
+
+    public static final Discards NONE = new Discards(0, 0, 0, null, List.of(), 0);
+
+    /**
+     * The question saving asks first - the message of the 409 {@value #CONFIRMATION_REQUIRED} -
+     * {@code null} where it asks none. It names persons without a number.
+     */
+    public String confirmation() {
+      boolean persons = connectedAccounts != null;
+      if (connections == 0 && secrets == 0 && !persons && fullSyncs == 0) {
+        return null;
+      }
+      StringBuilder text = new StringBuilder();
+      if (connections > 0) {
+        text.append("Die Änderung verwirft alle Zugangsdaten und Token dieses Zugangs; ")
+            .append(libraries(connections, "Verbindung muss", "Verbindungen müssen"))
+            .append(" neu angemeldet werden");
+        if (secrets > 0) {
+          text.append(", die gespeicherten Zugangsdaten von ")
+              .append(libraries(secrets, "Bibliothek", "Bibliotheken"))
+              .append(" sind neu einzutragen");
+        }
+        text.append(persons ? ", etwaige verbundene Konten von Personen enden. " : ". ");
+      } else if (secrets > 0 || persons) {
+        text.append("Die Änderung verwirft die Zugangsdaten ")
+            .append(
+                secrets == 0
+                    ? ""
+                    : "von "
+                        + libraries(secrets, "Bibliothek", "Bibliotheken")
+                        + (persons ? " sowie " : ""))
+            .append(persons ? "etwaiger verbundener Konten von Personen" : "")
+            .append(" dieses Zugangs. ");
+      }
+      if (fullSyncs > 0) {
+        text.append("Die Vorgabe „")
+            .append(String.join("“, „", fullSyncLabels))
+            .append("“ ändert sich: Der Abgleichsstand von ")
+            .append(libraries(fullSyncs, "Bibliothek", "Bibliotheken"))
+            .append(" wird verworfen, der nächste Lauf liest die Quelle vollständig neu. ");
+      }
+      return text.append("Bitte bestätigen.").toString();
+    }
+
+    private static String libraries(long count, String one, String many) {
+      return count + " " + (count == 1 ? one : many);
+    }
+  }
 
   /**
    * @param dropsPersons whether the new ownership no longer admits persons
@@ -909,6 +977,14 @@ public class ConnectionProfileService {
       Set<UUID> privateLibraries,
       List<String> fullSyncLabels) {
 
+    /**
+     * The private libraries saving releases from the profile: every one where the ownership no
+     * longer admits persons, else those the connector refuses.
+     */
+    Set<UUID> released(PrivateLibraryRelease.Verdict verdict) {
+      return dropsPersons ? privateLibraries : verdict.released();
+    }
+
     /** Whether a changed default only the profile sets discards the run state on the profile. */
     boolean resetsRunState() {
       return !fullSyncLabels.isEmpty();
@@ -923,10 +999,21 @@ public class ConnectionProfileService {
     }
 
     List<KnowledgeLibrary> sharedLibraries() {
-      return moves.stream()
-          .map(Move::library)
-          .filter(library -> !privateLibraries.contains(library.getId()))
-          .toList();
+      return sharedMoves().map(Move::library).toList();
+    }
+
+    /** The shared libraries whose stored secret the change discards. */
+    long secretsDiscarded() {
+      return sharedMoves().filter(Move::discardsSecret).count();
+    }
+
+    /** The shared libraries whose effective configuration the change alters. */
+    long configurationsChanged() {
+      return sharedMoves().filter(Move::changesConfiguration).count();
+    }
+
+    private Stream<Move> sharedMoves() {
+      return moves.stream().filter(move -> !privateLibraries.contains(move.library().getId()));
     }
 
     /** Whether persons' connections end - told without saying whether there are any. */
@@ -946,7 +1033,7 @@ public class ConnectionProfileService {
           .collect(Collectors.toSet());
     }
 
-    /** The connections the confirmation counts. */
+    /** The connections the audit names as discarded. */
     long affected() {
       return discardsAll() ? connections : moves.stream().filter(Move::discardsSecret).count();
     }

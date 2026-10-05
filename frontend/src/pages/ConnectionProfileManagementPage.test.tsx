@@ -432,7 +432,7 @@ describe('ConnectionProfileManagementPage', () => {
     expect(mockConnectionProfiles[0].clientSecretSet).toBe(true)
   }, 20000)
 
-  it('asks with connections and libraries before a change that discards secrets', async () => {
+  it('asks with the question of the server before a change that discards secrets', async () => {
     const user = userEvent.setup()
     const sent = capturePuts()
     renderWithProviders(<ConnectionProfileManagementPage />)
@@ -445,9 +445,12 @@ describe('ConnectionProfileManagementPage', () => {
     await within(dialog).findByTestId('profile-change-preview')
     await user.click(within(dialog).getByRole('button', { name: 'Speichern' }))
 
-    const question = await screen.findByRole('dialog', { name: /Zugangsdaten von/ })
-    expect(question).toHaveTextContent('2 Verbindungen und 1 Bibliothek')
-    await answerConfirm(user, /Zugangsdaten von/, 'Verwerfen und speichern')
+    const question = await screen.findByRole('dialog', { name: /Änderung an/ })
+    // word for word what the preview quoted: one text, from the server
+    expect(question).toHaveTextContent(
+      'Die Änderung verwirft alle Zugangsdaten und Token dieses Zugangs; 2 Verbindungen müssen neu angemeldet werden, die gespeicherten Zugangsdaten von 1 Bibliothek sind neu einzutragen. Bitte bestätigen.',
+    )
+    await answerConfirm(user, /Änderung an/, 'Bestätigen und speichern')
 
     expect(await screen.findByText('https://cloud-neu.rheinfurt.example')).toBeVisible()
     expect(sent.at(-1)).toMatchObject({ confirmDiscard: true })
@@ -475,9 +478,17 @@ describe('ConnectionProfileManagementPage', () => {
     // a profile for libraries only names no accounts of persons
     expect(preview).not.toHaveTextContent(/Konten von Personen/)
     expect(preview).toHaveTextContent(/nimmt die Änderung für alle Bibliotheken an/)
-    // what is discarded is a possibility here; the server confirms it with its own question
-    expect(preview).toHaveTextContent(
-      /Zugangsdaten und Abgleichstand der verbundenen Bibliotheken können beim Speichern verworfen werden/,
+    // what saving discards, as the server plans it, and the question it will ask
+    const discards = within(preview).getByTestId('profile-change-discards')
+    expect(discards).toHaveTextContent(
+      'Alle Zugangsdaten und Token des Zugangs werden verworfen; 2 Verbindungen müssen neu angemeldet werden.',
+    )
+    expect(discards).toHaveTextContent(
+      'Die gespeicherten Zugangsdaten von 1 Bibliothek werden verworfen und sind neu einzutragen.',
+    )
+    expect(discards).toHaveTextContent(/Für 1 Bibliothek ändert sich die Konfiguration/)
+    expect(within(preview).getByTestId('profile-change-confirmation')).toHaveTextContent(
+      'Vor dem Speichern fragt OPAA noch einmal nach: „Die Änderung verwirft alle Zugangsdaten',
     )
     expect(previews).toHaveLength(1)
     expect(previews[0]).toMatchObject({ serverUrl: 'https://cloud-neu.rheinfurt.example' })
@@ -518,6 +529,32 @@ describe('ConnectionProfileManagementPage', () => {
     expect(preview).toHaveTextContent(
       'Betroffen: 2 Bibliotheken. Verbundene Konten von Personen: weniger als 5.',
     )
+  }, 20000)
+
+  it('previews a change of ownership first: without persons every private library is released', async () => {
+    mockConnectionProfiles[0] = {
+      ...mockConnectionProfiles[0],
+      authMethod: 'NONE',
+      ownership: 'BOTH',
+    }
+    const user = userEvent.setup()
+    const sent = capturePuts()
+    renderWithProviders(<ConnectionProfileManagementPage />, { withRouter: true })
+
+    const dialog = await openEdit(user)
+    await user.click(within(dialog).getByLabelText(/^Besitzart/))
+    await user.click(await screen.findByRole('option', { name: 'Bibliothek' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Weiter' }))
+
+    const preview = await within(dialog).findByTestId('profile-change-preview')
+    expect(sent).toHaveLength(0)
+    expect(within(preview).getByTestId('profile-change-private-rejections')).toHaveTextContent(
+      'Alle privaten Bibliotheken werden vom Zugang gelöst',
+    )
+    expect(within(preview).getByTestId('profile-change-discards')).toHaveTextContent(
+      'der Zugang nimmt danach keine Konten mehr an',
+    )
+    expect(preview).not.toHaveTextContent(/verbindet sein Konto neu|für die der Konnektor ablehnt/)
   }, 20000)
 
   it('names every library whose connector refuses the change and saves nothing', async () => {

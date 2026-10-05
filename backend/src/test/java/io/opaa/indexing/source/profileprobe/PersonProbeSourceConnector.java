@@ -20,6 +20,8 @@ import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.SourceType;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.CopyOnWriteArrayList;
 import org.springframework.stereotype.Component;
 
 /**
@@ -53,6 +55,7 @@ public class PersonProbeSourceConnector implements SourceConnector, SourceBrowse
   public static final String REALM = "realm";
 
   private final SourceSyncStateRepository states;
+  private final List<UUID> sourceChanges = new CopyOnWriteArrayList<>();
 
   public PersonProbeSourceConnector(SourceSyncStateRepository states) {
     this.states = states;
@@ -99,10 +102,18 @@ public class PersonProbeSourceConnector implements SourceConnector, SourceBrowse
     return realm == null ? Map.of() : Map.of(REALM, realm);
   }
 
+  /** The libraries of every {@link #onSourceChanged} since the last call, then forgotten. */
+  public List<UUID> sourceChanges() {
+    List<UUID> seen = List.copyOf(sourceChanges);
+    sourceChanges.clear();
+    return seen;
+  }
+
   /** A changed realm makes the next run a full one, as a changed imitated account does. */
   @Override
   public void onSourceChanged(
       KnowledgeLibrary library, boolean addressChanged, java.util.Set<String> changedSettings) {
+    sourceChanges.add(library.getId());
     if (addressChanged || changedSettings.contains(REALM)) {
       states.deleteByLibraryId(library.getId());
     }

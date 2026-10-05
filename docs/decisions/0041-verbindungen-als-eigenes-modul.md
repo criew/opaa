@@ -698,8 +698,10 @@ Begründung:
   und lässt sie vom Konnektor prüfen. Diese Wege warten nicht aufeinander.
 - **Optimistisch statt von Beginn an gesperrt:** Die Sperre fällt nach der Prüfung durch den
   Konnektor, die Netzzugriffe enthalten kann (Edition einer Confluence-Instanz, Zieladressen), und
-  vor dem ersten Schreiben. So läuft kein Netzzugriff unter der Sperre, und ein Schreibweg hält
-  beim Warten auf die Profilzeile noch keine andere Zeile.
+  vor dem ersten Schreiben. So läuft auf diesen Wegen kein Netzzugriff unter der Sperre, und ein
+  Schreibweg hält beim Warten auf die Profilzeile noch keine andere Zeile. Ausnahme, korrekt und
+  selten: Wartet eine Profiländerung auf ein Zuordnen oder Anlegen, findet sie danach die neue
+  Bibliothek und fragt deren Konnektor innerhalb ihrer gesperrten Transaktion.
 - **Sperrreihenfolge:** Profilzeile vor allen Zeilen, die der Weg schreibt (Token, Konten,
   Bibliotheken, Zuordnungen). Die Aufnahme von Chunks hält `FOR KEY SHARE` auf der
   Bibliothekszeile und kollidiert mit keiner dieser Sperren. Verbinden eines Kontos mit
