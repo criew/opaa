@@ -758,6 +758,14 @@ class PrivateLibraryInvisibilityIntegrationTest {
                 "listConnectionProfiles")) {
           assertThat(answers.get(counting).status()).as(counting).isEqualTo(200);
         }
+        // what the preview says saving discards is compared like every other number
+        assertThat(answers.get("previewConnectionProfileChange").raw())
+            .contains(
+                "\"secretsDiscarded\"",
+                "\"configurationsChanged\"",
+                "\"connectedAccountsEnded\"",
+                "\"fullSyncLibraries\"",
+                "\"confirmation\"");
         assertThat(answers.get("deleteSpace").status()).isEqualTo(204);
       }
       case PERSON_CONTEXT ->
