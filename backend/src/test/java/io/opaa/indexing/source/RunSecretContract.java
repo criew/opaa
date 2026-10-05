@@ -98,6 +98,11 @@ public abstract class RunSecretContract {
     return null;
   }
 
+  /** Whether the library is a private one, run on its owner's connected account. */
+  protected boolean ownerOnly() {
+    return false;
+  }
+
   /** The run mode that lists the whole source. */
   protected IndexingRunMode runMode() {
     return IndexingRunMode.FULL;
@@ -249,17 +254,29 @@ public abstract class RunSecretContract {
   protected final KnowledgeLibrary library() {
     SourceSettings settings = settings();
     KnowledgeLibrary library =
-        KnowledgeLibrary.ownedByUser(
-            UUID.randomUUID(),
-            "Ablage",
-            null,
-            UUID.randomUUID(),
-            type(),
-            settings.sourcePath(),
-            settings.sourceUrl(),
-            settings.sourceProxy(),
-            settings.sourceCredentials(),
-            settings.sourceInsecureSsl());
+        ownerOnly()
+            ? KnowledgeLibrary.ownerOnly(
+                UUID.randomUUID(),
+                "Ablage",
+                null,
+                UUID.randomUUID(),
+                type(),
+                settings.sourcePath(),
+                settings.sourceUrl(),
+                settings.sourceProxy(),
+                null,
+                settings.sourceInsecureSsl())
+            : KnowledgeLibrary.ownedByUser(
+                UUID.randomUUID(),
+                "Ablage",
+                null,
+                UUID.randomUUID(),
+                type(),
+                settings.sourcePath(),
+                settings.sourceUrl(),
+                settings.sourceProxy(),
+                settings.sourceCredentials(),
+                settings.sourceInsecureSsl());
     if (settings.connectorSettings() != null) {
       library.updateSourceSettings(settings.connectorSettings().toJson());
     }

@@ -6,8 +6,12 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
+import io.opaa.api.types.ConnectionAuthMethod;
+import io.opaa.api.types.ConnectionOwnership;
+import io.opaa.api.types.PersonalSecretForm;
 import io.opaa.common.ValidationException;
 import io.opaa.indexing.source.ConnectorData;
+import io.opaa.indexing.source.SignIn;
 import io.opaa.indexing.source.SourceBrowser;
 import io.opaa.indexing.source.SourceConnectionTestResult;
 import io.opaa.indexing.source.SourceListing;
@@ -120,13 +124,31 @@ class NextcloudSourceConnectorTest {
     SourceConnectionTestResult missing =
         connector.testConnection(settings(List.of("/Projekte", "/Fehlt")), null);
     assertThat(missing.reachable()).isFalse();
-    assertThat(missing.message()).contains("/Fehlt").doesNotContain("/Projekte,");
+    assertThat(missing.message())
+        .contains("/Fehlt")
+        .doesNotContain("/Projekte,")
+        .doesNotContain("technischen Nutzer");
 
     server.rejectCredentials();
     SourceConnectionTestResult refused = connector.testConnection(settings(List.of("/")), null);
     assertThat(refused.reachable()).isFalse();
     assertThat(refused.credentialsVerified()).isFalse();
     assertThat(refused.message()).contains("401");
+  }
+
+  /** One sign-in for both owners: a library's app password and a person's own (#2167). */
+  @Test
+  void anAppPasswordSignsInForALibraryAndForAPerson() {
+    SignIn signIn =
+        connector
+            .descriptor()
+            .profileDeclaration()
+            .signIn(ConnectionAuthMethod.PERSONAL_SECRET)
+            .orElseThrow();
+
+    assertThat(signIn.owners())
+        .containsExactlyInAnyOrder(ConnectionOwnership.LIBRARY, ConnectionOwnership.PERSON);
+    assertThat(signIn.secretForm()).isEqualTo(PersonalSecretForm.USERNAME_AND_PASSWORD);
   }
 
   @Test

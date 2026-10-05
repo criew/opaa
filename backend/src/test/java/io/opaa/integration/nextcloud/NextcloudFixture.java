@@ -98,6 +98,25 @@ final class NextcloudFixture {
     return TECH_USER + ":" + appPassword;
   }
 
+  /**
+   * A further Nextcloud user {@code user} with a new app password of her own, as a person connects
+   * it; {@code <app password>}.
+   */
+  synchronized String appPasswordOf(String user) {
+    occ("user:add", "--password-from-env", user);
+    return lastLine(occ("user:auth-tokens:add", "--password-from-env", user));
+  }
+
+  /** Revokes every app password of {@code user}, as she would in her Nextcloud settings. */
+  synchronized void revokeAppPasswords(String user) {
+    Matcher ids =
+        Pattern.compile("\"id\":(\\d+)")
+            .matcher(occ("user:auth-tokens:list", "--output=json", user));
+    while (ids.find()) {
+      occ("user:auth-tokens:delete", user, ids.group(1));
+    }
+  }
+
   boolean groupFoldersAvailable() {
     return groupFolders;
   }
