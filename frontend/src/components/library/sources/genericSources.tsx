@@ -25,6 +25,7 @@ function urlConfiguration(): SourceConfiguration<GenericSourceValues> {
   return {
     empty: EMPTY_GENERIC_SOURCE_VALUES,
     valuesKey: 'generic',
+    draftFields: ['sourcePath', 'sourceUrl', 'sourceProxy', 'sourceInsecureSsl'],
     fromLibrary: storedGenericSourceValues,
     isDirty: (values) => values.sourcePath !== '' || values.sourceUrl !== '',
     validate: (values) => validateGenericSource('url', values),
@@ -48,6 +49,7 @@ function urlConfiguration(): SourceConfiguration<GenericSourceValues> {
 function filesystemConfiguration(): SourceConfiguration<FilesystemSourceValues> {
   return {
     empty: EMPTY_FILESYSTEM_VALUES,
+    draftFields: ['sourcePath', 'sourceUrl', 'sourceProxy', 'sourceInsecureSsl', 'excludePatterns'],
     fromLibrary: storedFilesystemValues,
     isDirty: (values) => values.sourcePath !== '' || values.excludePatterns.trim() !== '',
     validate: (values) => validateFilesystemValues(values),

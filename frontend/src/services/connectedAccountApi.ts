@@ -5,6 +5,7 @@ import type {
   ConnectedAccountsOverview,
   ConnectionAuthorizationCompleteRequest,
   ConnectionAuthorizationCompleteResponse,
+  ConnectionAuthorizationStartRequest,
   ConnectionAuthorizationStartResponse,
 } from '../types/api'
 import { apiClient as client, normalizeError } from './api'
@@ -72,6 +73,21 @@ export async function startAccountAuthorization(
       profileId,
       purpose: 'ACCOUNT',
     })
+    return data
+  } catch (err) {
+    throw refusal(err)
+  }
+}
+
+/** Starts the provider's consent for a library's source ("Quelle verbinden"). */
+export async function startSourceAuthorization(
+  request: ConnectionAuthorizationStartRequest,
+): Promise<ConnectionAuthorizationStartResponse> {
+  try {
+    const { data } = await client.post<ConnectionAuthorizationStartResponse>(
+      AUTHORIZATIONS,
+      request,
+    )
     return data
   } catch (err) {
     throw refusal(err)

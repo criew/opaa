@@ -37,6 +37,7 @@ import ConnectorTypeLockSection from '../components/admin/connections/ConnectorT
 import ConnectionProfileRequestSection from '../components/admin/connections/ConnectionProfileRequestSection'
 import ConnectionLogRetentionSection from '../components/admin/connections/ConnectionLogRetentionSection'
 import PrivateStorageSection from '../components/admin/connections/PrivateStorageSection'
+import DormantSourceConnectionsSection from '../components/admin/connections/DormantSourceConnectionsSection'
 import { confirmLock } from '../components/admin/connections/connectorLock'
 import {
   AUTH_METHOD_LABELS,
@@ -446,6 +447,8 @@ export default function ConnectionProfileManagementPage() {
         <Box sx={{ mt: 4 }}>
           <PrivateStorageSection />
         </Box>
+
+        <DormantSourceConnectionsSection />
 
         <Box sx={{ mt: 4 }}>
           <ConnectionLogRetentionSection />

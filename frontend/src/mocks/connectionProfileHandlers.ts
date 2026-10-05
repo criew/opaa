@@ -183,6 +183,9 @@ function discardsOf(profile: ConnectionProfileResponse, body: ConnectionProfileU
 export const connectionProfileHandlers = [
   http.get(ADMIN, () => HttpResponse.json(mockConnectionProfiles)),
 
+  // No connector of this installation lets a library consent at the provider itself yet.
+  http.get('/api/v1/admin/source-connections/dormant', () => HttpResponse.json([])),
+
   http.get(`${ADMIN}/oauth-redirect`, () =>
     HttpResponse.json({ redirectUri: `${window.location.origin}/connections/callback` }),
   ),
