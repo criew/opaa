@@ -742,8 +742,10 @@ Begründung:
   Bibliothek gebunden; das Rücksprungziel folgt aus dem Zweck (`/libraries/new` bzw.
   `/libraries/{id}`).
 - **Kontoadresse:** `SourceConnector#connectedAccount(SourceSettings)` mit dem frischen
-  Zugriffstoken, Vorgabe leer, nach dem Code-Tausch und außerhalb jeder Transaktion. Auch verbundene
-  Konten von Personen tragen sie jetzt. Weicht sie beim Neuverbinden von der gespeicherten ab, ist
+  Zugriffstoken, Vorgabe leer, nach dem Code-Tausch und außerhalb jeder Transaktion. Scheitert der
+  Abruf anders als mit `SourceCredentialsException`, wird der frische Grant widerrufen und der
+  Abschluss mit `400` beendet; jeder Schritt nach dem Code-Tausch liegt im Widerrufsblock. Auch
+  verbundene Konten von Personen tragen sie jetzt. Weicht sie beim Neuverbinden von der gespeicherten ab, ist
   das ohne `confirmAccountChange` beim Start ein `409 ACCOUNT_CHANGED`; der frische Grant wird mit
   der Registrierung widerrufen, die ihn getauscht hat. Mit Bestätigung verwirft
   `SourceChangeGate#accountChanged` den Laufzustand.
@@ -755,11 +757,22 @@ Begründung:
   `SOURCE_CONNECTION_EXPIRED` (`invalid_grant`), `SOURCE_CONNECTION_ENDED` (Änderung durch die
   Systemverwaltung).
 - **Ein Endweg:** Trennen (`DELETE /api/v1/libraries/{id}/source-connection`, `SELF`), Zuordnen zu
-  einem anderen Zugang und Lösen (`SELF`), Löschen der Bibliothek (`LIBRARY_DELETED`), Adress- und
+  einem anderen Zugang (`SELF`), Löschen der Bibliothek (`LIBRARY_DELETED`), Adress- und
   Registrierungswechsel, Notabschaltung und Löschen des Zugangs verwerfen den Grant und widerrufen
   ihn nach dem Commit; das Verbindungsprotokoll nennt die Bibliothek mit Kontoadresse
   (`ConnectionLogOwner.Library`). Ein beendeter Grant (`invalid_grant`) bleibt als abgelaufen
-  stehen, bis neu verbunden wird.
+  stehen, bis neu verbunden wird. Lösen auf eine eigene Adresse gibt es für eine solche Bibliothek
+  nicht: Ein Konnektor mit OAuth verlangt Zugänge, das Lösen wird abgewiesen und die Zustimmung
+  bleibt. Je Endweg belegt `SourceConsentIntegrationTest`, dass mit der alten Registrierung
+  widerrufen wird.
+- **Ausstehende Zustimmung nur unter ihrem Zugang:** Test und Ordnerauswahl nutzen sie nur im
+  Entwurf desselben Zugangs, auch wenn ein anderer Zugang dieselbe Server-Adresse hat. Eine
+  Zugangsversion trägt die Zeile nicht: Jede Adress- oder Registrierungsänderung verwirft sie
+  ohnehin (`findConsentsUnder`), andere Änderungen berühren den Grant nicht.
+- **Sichtbarkeit:** `LibraryResponse.sourceConnection` (Kontoadresse, Verantwortliche, Endgrund)
+  erhalten nur Personen mit `MANAGER` an der Bibliothek; Lesende erfahren über den Sperrhinweis
+  nur, dass die Quelle nicht erreicht wird. Vom Koordinator konservativ entschieden, die
+  Entscheidung liegt beim Maintainer (PR #2286).
 - **Sperrgrund und Anzeige:** Für `SourceConsent` antwortet der Speicher mit `NOT_CONNECTED`,
   `EXPIRED` oder `TARGET_OUTSIDE_PROFILE`; der Hinweis nennt die Verwaltenden, die Aktion ist
   `CONNECT_SOURCE`. Eine geteilte Bibliothek zeigt außer den Sperren auch diese Gründe, weil ihre

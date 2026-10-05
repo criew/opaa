@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.springframework.stereotype.Component;
 
 /**
@@ -45,6 +46,7 @@ public class ConsentProbeSourceConnector implements SourceConnector, SourceBrows
   public static final String LISTED_FOLDER = "bauamt";
 
   private final SourceSyncStateRepository states;
+  private final AtomicBoolean failAccountLookup = new AtomicBoolean();
 
   public ConsentProbeSourceConnector(SourceSyncStateRepository states) {
     this.states = states;
@@ -76,7 +78,15 @@ public class ConsentProbeSourceConnector implements SourceConnector, SourceBrows
 
   @Override
   public Optional<String> connectedAccount(SourceSettings settings) {
+    if (failAccountLookup.getAndSet(false)) {
+      throw new IllegalStateException("the provider answered the account lookup unreadably");
+    }
     return Optional.ofNullable(FakeAuthorizationServer.shared().accountOf(tokenOf(settings)));
+  }
+
+  /** The next account lookup fails with an exception no provider error stands for. */
+  public void failNextAccountLookup() {
+    failAccountLookup.set(true);
   }
 
   @Override

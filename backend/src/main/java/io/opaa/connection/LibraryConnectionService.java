@@ -100,7 +100,7 @@ public class LibraryConnectionService {
     this.clock = clock;
   }
 
-  /** The own source consent of {@code library} as its readers see it, empty for none. */
+  /** The own source consent of {@code library} as its managers see it, empty for none. */
   public Optional<ConsentView> consentOf(KnowledgeLibrary library) {
     return consents.viewOf(library);
   }

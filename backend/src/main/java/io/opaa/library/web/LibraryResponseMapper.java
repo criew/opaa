@@ -77,7 +77,7 @@ final class LibraryResponseMapper {
     return new Responsible(ResponsibleType.valueOf(ref.getType().name()), ref.getId());
   }
 
-  /** A library's own source connection as its readers see it, {@code null} for none. */
+  /** A library's own source connection as its managers see it, {@code null} for none. */
   static LibrarySourceConnection toResponse(SourceConsentService.ConsentView view) {
     if (view == null) {
       return null;

@@ -33,7 +33,7 @@ import io.opaa.permission.SuccessionFinding;
  * @param sourceBlock the lock the library carries - its connector type or profile locked, or an own
  *     address where only a profile is admitted - {@code null} while it is not locked
  * @param sourceConnection the library's own source consent ("Quelle verbinden"), {@code null} for
- *     none
+ *     none and below {@code MANAGER}
  */
 public record LibraryDetail(
     KnowledgeLibrary library,

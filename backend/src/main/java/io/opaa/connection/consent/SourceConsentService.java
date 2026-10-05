@@ -410,7 +410,7 @@ public class SourceConsentService implements SourceConsentRejections, SourceCons
     }
   }
 
-  /** The consent of {@code library} as its readers see it, empty for a library without one. */
+  /** The consent of {@code library} as its managers see it, empty for a library without one. */
   @Transactional(readOnly = true)
   public Optional<ConsentView> viewOf(KnowledgeLibrary library) {
     return connections

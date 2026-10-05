@@ -1996,7 +1996,8 @@ components:
           description: >
             The library's own source connection ("Quelle verbinden") once it was connected: the
             account at the provider, who answers for it and whether and why it ended. Absent for
-            every other library.
+            every other library and for every caller below MANAGER - readers learn only from
+            sourceBlock that the source is not reached.
           allOf:
             - $ref: "#/components/schemas/LibrarySourceConnection"
         sourceBlock:

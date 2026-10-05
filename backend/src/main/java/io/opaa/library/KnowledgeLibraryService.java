@@ -1578,7 +1578,10 @@ public class KnowledgeLibraryService {
                             connection.profile(), myRole.atLeast(AssetRole.MANAGER)))
             .orElse(null),
         libraryConnections.shownBlockOf(library).orElse(null),
-        libraryConnections.consentOf(library).orElse(null));
+        // account, responsible and end of the own consent are for those who manage the source
+        myRole.atLeast(AssetRole.MANAGER)
+            ? libraryConnections.consentOf(library).orElse(null)
+            : null);
   }
 
   private LibraryManagementDetail toManagementDetail(

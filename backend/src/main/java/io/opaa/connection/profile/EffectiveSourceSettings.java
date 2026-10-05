@@ -377,12 +377,22 @@ public class EffectiveSourceSettings {
   }
 
   /**
-   * The access token of the {@code pending} consent for a probe of a library not created yet.
+   * The access token of the {@code pending} consent for a probe of a library not created yet, only
+   * under the profile it was given on; a changed address or registration discarded it already.
    *
    * @throws SourceCredentialsException with the notice why none is handed out
    */
   private Secret pendingToken(ConnectionProfile profile, PendingConsent pending, String target) {
     try {
+      // given on another profile, possibly at the same address: never under this one's frame
+      boolean onThisProfile =
+          secrets
+              .pendingView(pending)
+              .filter(view -> view.profileId().equals(profile.getId()))
+              .isPresent();
+      if (!onThisProfile) {
+        throw new SecretRefusedException(Reason.NOT_CONNECTED);
+      }
       return secrets.current(pending, target);
     } catch (SecretRefusedException e) {
       throw new SourceCredentialsException(

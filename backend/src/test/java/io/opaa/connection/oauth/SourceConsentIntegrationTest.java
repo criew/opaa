@@ -111,10 +111,12 @@ class SourceConsentIntegrationTest {
   @Autowired private ConnectionLifecycleReconciler reconciler;
   @Autowired private ConnectionExpiryWatch expiryWatch;
   @Autowired private PendingConsentSweep sweep;
+  @Autowired private ConsentProbeSourceConnector probeConnector;
   @Autowired private KnowledgeLibraryRepository libraryRepository;
   @Autowired private AssetShellService shellService;
 
   private final List<UUID> libraries = new ArrayList<>();
+  private final List<UUID> extraProfiles = new ArrayList<>();
   private final List<String> answers = new ArrayList<>();
   private final List<String> sensitive = new ArrayList<>();
   private final ListAppender<ILoggingEvent> appender = new ListAppender<>();
@@ -166,6 +168,14 @@ class SourceConsentIntegrationTest {
       jdbc.update("DELETE FROM source_sync_state WHERE library_id = ?", library);
     }
     libraryFixtures.removeLibraries(libraries.toArray(UUID[]::new));
+    for (UUID other : extraProfiles) {
+      jdbc.update("DELETE FROM connection_tokens WHERE profile_id = ?", other);
+      jdbc.update("DELETE FROM connection_authorizations WHERE profile_id = ?", other);
+      jdbc.update("DELETE FROM connection_log WHERE profile_id = ?", other);
+      ConnectorReleases.withdraw(jdbc, "PROFILE:" + other);
+      jdbc.update("DELETE FROM audit_log WHERE object_id = ?", other.toString());
+      jdbc.update("DELETE FROM connection_profiles WHERE id = ?", other);
+    }
     jdbc.update("DELETE FROM connection_tokens WHERE profile_id = ?", profile);
     jdbc.update("DELETE FROM connection_authorizations WHERE profile_id = ?", profile);
     jdbc.update("DELETE FROM connection_log WHERE profile_id = ?", profile);
@@ -638,6 +648,204 @@ class SourceConsentIntegrationTest {
         id,
         personProfile);
     return id;
+  }
+
+  /**
+   * Regression guard: a fresh grant goes back to the provider whatever fails after the exchange.
+   */
+  @Test
+  void aFailingAccountLookupRevokesTheFreshGrantAndAnswersWithoutAnInternalError()
+      throws Exception {
+    probeConnector.failNextAccountLookup();
+    Started started =
+        service.start(
+            caller,
+            profile,
+            ConnectionAuthorizationPurpose.LIBRARY_NEW,
+            new LibraryConsent(null, true, null, false));
+
+    complete("dev-user", started).andExpect(status().isBadRequest());
+
+    String refresh = PROVIDER.lastRefreshToken();
+    assertThat(PROVIDER.revocations())
+        .singleElement()
+        .satisfies(request -> assertThat(request.form()).containsEntry("token", refresh));
+    assertThat(
+            jdbc.queryForObject(
+                "SELECT count(*) FROM connection_tokens WHERE profile_id = ?",
+                Integer.class,
+                profile))
+        .isZero();
+  }
+
+  @Test
+  void aPendingConsentProbesOnlyThroughTheProfileItWasGivenOn() throws Exception {
+    UUID other = secondProfile();
+    UUID pending =
+        UUID.fromString(JsonPath.read(completeNew("dev-user"), "$.pendingConnection.id"));
+    String browse =
+        """
+        {"sourceUrl": "%s", "connectionProfileId": "%s", "pendingConnectionId": "%s"}
+        """;
+
+    String foreign = call("dev-user", post(browseUrl()), browse.formatted(SERVER, other, pending));
+    String own = call("dev-user", post(browseUrl()), browse.formatted(SERVER, profile, pending));
+
+    assertThat((List<?>) JsonPath.read(foreign, "$.entries")).as("another profile").isEmpty();
+    assertThat((String) JsonPath.read(own, "$.entries[0].key"))
+        .isEqualTo(ConsentProbeSourceConnector.LISTED_FOLDER);
+  }
+
+  @Test
+  void movingTheLibraryToAnotherProfileRevokesItsConsentWithTheOldRegistration() throws Exception {
+    UUID library = connectedLibrary();
+    String refresh = PROVIDER.lastRefreshToken();
+    UUID other = secondProfile();
+
+    call(
+        "dev-user",
+        put("/api/v1/libraries/" + library + "/connection-profile"),
+        "{\"profileId\": \"%s\"}".formatted(other));
+
+    assertRevokedWithTheOldRegistration(refresh);
+    assertThat(consentRows(library)).isZero();
+    assertThat(logEntries(library)).contains("DISCONNECTED:SELF:" + accountLabel());
+    assertThat(accountLabelOf(library)).as("the connection forgets the consent").isNull();
+  }
+
+  /**
+   * A connector signing in by OAuth requires profiles, so a library on it is never released to an
+   * address of its own: the release is refused and the consent stays.
+   */
+  @Test
+  void aLibraryWithItsOwnConsentIsNotReleasedFromItsProfile() throws Exception {
+    UUID library = connectedLibrary();
+    ConnectorReleases.releaseToAllAccounts(jdbc, "TYPE:" + ConsentProbeSourceConnector.TYPE.key());
+    try {
+      mockMvc
+          .perform(as("dev-user", delete("/api/v1/libraries/" + library + "/connection-profile")))
+          .andExpect(status().isBadRequest());
+    } finally {
+      ConnectorReleases.withdraw(jdbc, "TYPE:" + ConsentProbeSourceConnector.TYPE.key());
+    }
+
+    assertThat(PROVIDER.revocations()).isEmpty();
+    assertThat(consentRows(library)).isEqualTo(1);
+  }
+
+  @Test
+  void theEmergencyShutdownRevokesTheConsentAndTellsWhoIsResponsible() throws Exception {
+    UUID library = connectedLibrary();
+    String refresh = PROVIDER.lastRefreshToken();
+
+    call("dev-admin", post(ADMIN + "/" + profile + "/disconnect-all"), null);
+
+    assertRevokedWithTheOldRegistration(refresh);
+    assertThat(consentRows(library)).isZero();
+    assertThat(logEntries(library)).contains("EMERGENCY_DISCONNECTED:EMERGENCY:" + accountLabel());
+    mockMvc
+        .perform(as("dev-user", get("/api/v1/libraries/" + library)))
+        .andExpect(jsonPath("$.sourceBlock.reason").value("NOT_CONNECTED"))
+        .andExpect(jsonPath("$.sourceConnection.endedCause").value("EMERGENCY"));
+    assertThat(
+            jdbc.queryForObject(
+                "SELECT count(*) FROM notifications WHERE type = 'SOURCE_CONNECTION_ENDED'"
+                    + " AND recipient_user_id = ? AND object_id = ?",
+                Integer.class,
+                person,
+                library))
+        .isEqualTo(1);
+  }
+
+  @Test
+  void deletingTheProfileRevokesTheConsentWithTheRegistrationItWasIssuedTo() throws Exception {
+    UUID library = connectedLibrary();
+    String refresh = PROVIDER.lastRefreshToken();
+
+    mockMvc
+        .perform(as("dev-admin", delete(ADMIN + "/" + profile)))
+        .andExpect(status().isNoContent());
+
+    assertRevokedWithTheOldRegistration(refresh);
+    assertThat(consentRows(library)).isZero();
+    assertThat(logEntries(library)).contains("DELETED:PROFILE_DELETED:" + accountLabel());
+    mockMvc
+        .perform(as("dev-user", get("/api/v1/libraries/" + library)))
+        .andExpect(jsonPath("$.connectionProfileRemoved").value(true))
+        .andExpect(jsonPath("$.sourceConnection.endedCause").value("PROFILE_DELETED"));
+  }
+
+  /** Account, responsible and end of a library's consent are for those who manage it. */
+  @Test
+  void aReaderOfTheLibrarySeesNeitherTheAccountNorWhoIsResponsible() throws Exception {
+    UUID admin = userIdOf("admin@opaa.local");
+    CurrentUser adminCaller =
+        CurrentUser.of(admin, Organization.DEFAULT_ID, SystemRole.SYSTEM_ADMIN, "Dev Admin");
+    Started started =
+        service.start(
+            adminCaller,
+            profile,
+            ConnectionAuthorizationPurpose.LIBRARY_NEW,
+            new LibraryConsent(null, true, null, false));
+    UUID pending =
+        UUID.fromString(
+            JsonPath.read(
+                complete("dev-admin", started)
+                    .andExpect(status().isOk())
+                    .andReturn()
+                    .getResponse()
+                    .getContentAsString(StandardCharsets.UTF_8),
+                "$.pendingConnection.id"));
+    UUID library = createLibrary("dev-admin", pending);
+    call(
+        "dev-admin",
+        post("/api/v1/assets/KNOWLEDGE_LIBRARY/" + library + "/grants"),
+        "{\"subjectType\": \"USER\", \"subjectId\": \"%s\", \"role\": \"VIEWER\"}"
+            .formatted(person));
+
+    String read = call("dev-user", get("/api/v1/libraries/" + library), null);
+    String managed = call("dev-admin", get("/api/v1/libraries/" + library), null);
+
+    assertThat((Object) JsonPath.read(read, "$.sourceConnection")).isNull();
+    assertThat(read).doesNotContain(accountLabel());
+    assertThat((String) JsonPath.read(managed, "$.sourceConnection.accountLabel"))
+        .isEqualTo(accountLabel());
+  }
+
+  /** A second profile of the probe at the same server address, released to all accounts. */
+  private UUID secondProfile() throws Exception {
+    UUID other =
+        UUID.fromString(
+            JsonPath.read(
+                call(
+                    "dev-admin",
+                    post(ADMIN),
+                    """
+                    {"name": "Zugang Dienstkonto zwei %s", "sourceType": "CONSENT_PROBE",
+                     "serverUrl": "%s", "authMethod": "OAUTH", "ownership": "LIBRARY",
+                     "clientId": "zweite-app-2169", "clientSecret": "zweites-geheimnis"}
+                    """
+                        .formatted(UUID.randomUUID(), SERVER)),
+                "$.id"));
+    ConnectorReleases.releaseToAllAccounts(jdbc, "PROFILE:" + other);
+    extraProfiles.add(other);
+    return other;
+  }
+
+  /** The consent's refresh token went back once, proven with the registration it came from. */
+  private void assertRevokedWithTheOldRegistration(String refresh) {
+    assertThat(PROVIDER.revocations())
+        .singleElement()
+        .satisfies(
+            request -> {
+              assertThat(request.form()).containsEntry("token", refresh);
+              assertThat(request.authorization()).isEqualTo(basic(CLIENT_ID, CLIENT_SECRET));
+            });
+  }
+
+  private int consentRows(UUID library) {
+    return jdbc.queryForObject(
+        "SELECT count(*) FROM connection_tokens WHERE library_id = ?", Integer.class, library);
   }
 
   /** A shared library on the profile, its source connected in the wizard by the person. */

@@ -277,9 +277,9 @@ public class ConnectionAuthorizationService {
               + " braucht dafür den passenden Scope, etwa offline_access. Zuständig ist die"
               + " Systemverwaltung.");
     }
-    String accountLabel = connectedAccount(profile, library, grant);
     Completed completed;
     try {
+      String accountLabel = connectedAccount(profile, library, grant);
       completed =
           transactions.execute(
               status ->
@@ -325,6 +325,9 @@ public class ConnectionAuthorizationService {
   /**
    * The account the provider names for {@code grant}, asked through the connector with its access
    * token outside any transaction; {@code null} where it names none or cannot be asked.
+   *
+   * @throws ValidationException (German 400) for any other failure of the lookup; the caller
+   *     revokes the grant
    */
   private String connectedAccount(
       ConnectionProfile profile, KnowledgeLibrary library, OAuthClient.Grant grant) {
@@ -347,6 +350,14 @@ public class ConnectionAuthorizationService {
           profile.getId(),
           e.getClass().getSimpleName());
       return null;
+    } catch (RuntimeException e) {
+      log.warn(
+          "The account lookup for a consent under profile {} failed ({})",
+          profile.getId(),
+          e.getClass().getSimpleName());
+      throw new ValidationException(
+          "Das Konto beim Anbieter ließ sich nicht ermitteln; die Zustimmung wurde zurückgenommen"
+              + " und es wurde nichts verbunden. Bitte versuchen Sie es erneut.");
     }
   }
 
