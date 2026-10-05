@@ -35,6 +35,8 @@ import io.opaa.format.stream.confluencestorage.ConfluenceStorageFormat;
 import io.opaa.indexing.IndexingProperties;
 import io.opaa.indexing.attachment.AttachmentAccess;
 import io.opaa.indexing.attachment.AttachmentLimits;
+import io.opaa.indexing.attachment.AttachmentOutcome;
+import io.opaa.indexing.attachment.AttachmentProgressSink;
 import io.opaa.indexing.attachment.AttachmentSource;
 import io.opaa.indexing.chunk.FullTextChunkStore;
 import io.opaa.indexing.chunk.SourceChunkMetadataKeys;
@@ -1579,6 +1581,67 @@ class DocumentIngestServiceTest {
       verify(documentRepository, times(1)).save(any(Document.class));
       assertThat(savedDocument().getFileSize()).isEqualTo(Files.size(file));
       assertThat(Files.exists(attachmentTempFile)).isFalse();
+    }
+
+    /**
+     * An attachment rejected at the owner's quota leaves its parent without checksum and change
+     * marker, so the next run reads the parent - and the attachment - again.
+     */
+    @Test
+    void aParentWhoseAttachmentHitTheOwnersQuotaKeepsNoChangeMarker()
+        throws IOException, InterruptedException {
+      Path attachmentTempFile = fileNamed("over-quota-attachment.tmp", "attachment bytes");
+      var attachment =
+          new DiscoveredAttachment("anlage.pdf", attachmentTempFile, "application/pdf");
+      var fakePipeline =
+          new FakeDiscoveringPipeline(chunks("chunk1"), List.of(attachment), Optional.empty());
+      AttachmentIndexer attachmentIndexer = Mockito.mock(AttachmentIndexer.class);
+      @SuppressWarnings("unchecked")
+      ObjectProvider<AttachmentIndexer> provider = Mockito.mock(ObjectProvider.class);
+      when(provider.getObject()).thenReturn(attachmentIndexer);
+      DocumentIngestService serviceWithFakePipeline =
+          serviceWith(
+              new DocumentFormatRegistry(List.of(fakePipeline), fakePipeline),
+              storageQuotaService,
+              provider);
+      when(checksumService.computeSha256(any(byte[].class))).thenReturn("sha256-of-archive");
+      when(documentRepository.findByLibraryIdAndFilePath(eq(targetLibrary.getId()), anyString()))
+          .thenReturn(Optional.empty());
+      when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
+      CountingSink sink = new CountingSink();
+      AttachmentAccess access = Mockito.mock(AttachmentAccess.class);
+      when(access.progress()).thenReturn(sink);
+      when(attachmentIndexer.indexAll(eq(access), any(), any(), any(), any(), any()))
+          .thenAnswer(
+              invocation -> {
+                sink.recordPersonalQuotaReached();
+                return List.of();
+              });
+
+      serviceWithFakePipeline.ingest(
+          DocumentIngests.extractedText(
+              targetLibrary, "archive text", "Archiv", ENTRY_URL, PUBLISHED_AT),
+          access);
+
+      verify(documentRepository).markIndexedFromSource(any(), eq(1), any(), eq(null), eq(null));
+    }
+
+    /** Counts the attachments rejected at the owner's quota, as a run's progress does. */
+    private static final class CountingSink implements AttachmentProgressSink {
+      private int rejections;
+
+      @Override
+      public void recordAttachment(AttachmentOutcome outcome) {}
+
+      @Override
+      public void recordPersonalQuotaReached() {
+        rejections++;
+      }
+
+      @Override
+      public int personalQuotaRejections() {
+        return rejections;
+      }
     }
 
     @Test

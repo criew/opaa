@@ -1,5 +1,6 @@
 package io.opaa.architecture.fixture.personalusage.library;
 
+import io.opaa.architecture.fixture.personalusage.indexing.document.DocumentIngestOutcomes;
 import io.opaa.architecture.fixture.personalusage.knowledge.LibraryStorageQuotaService;
 import io.opaa.architecture.fixture.personalusage.knowledge.PersonalStorageQuota;
 
@@ -10,6 +11,10 @@ public class StorageOverview {
 
   public String messageOfOwner(String ownerUserId) {
     return enforcement.personalQuotaExceededMessage(ownerUserId);
+  }
+
+  public String messageThroughTheFactory(String ownerUserId) {
+    return DocumentIngestOutcomes.QuotaMessages.of(enforcement, ownerUserId).person().get();
   }
 
   public long usageOfOwner(String ownerUserId) {

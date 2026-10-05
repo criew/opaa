@@ -354,7 +354,9 @@ public final class ModularArchitecture {
           "knowledge.LibraryStorageQuotaService#verdictFor",
           Set.of("indexing.document.DocumentIngestService"),
           "knowledge.LibraryStorageQuotaService#personalQuotaExceededMessage",
-          Set.of("indexing.document.DocumentIngestOutcomes"));
+          Set.of("indexing.document.DocumentIngestOutcomes"),
+          "indexing.document.QuotaMessages#of",
+          Set.of("indexing.source.IndexingRun", "indexing.document.AttachmentIndexer"));
 
   /**
    * Exact counts about persons that only go to the log, relative to the root, each with the one
