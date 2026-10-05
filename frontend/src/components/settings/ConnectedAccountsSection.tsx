@@ -20,6 +20,7 @@ import {
 } from '../../services/connectedAccountApi'
 import { apiErrorStatus } from '../../services/apiErrorDetails'
 import { leaveFor } from '../../services/leaveApp'
+import { forgetConsentIntent } from '../library/sourceConsent'
 import { useSourceTypes } from '../../hooks/useSourceTypes'
 import BusyButton from '../a11y/BusyButton'
 import { confirmAction } from '../../stores/confirmStore'
@@ -341,6 +342,8 @@ export default function ConnectedAccountsSection() {
     })
     if (!confirmed) return
     setAuthorizing(profileId)
+    // the callback page then returns to the accounts, not to a library consent left behind
+    forgetConsentIntent()
     try {
       const started = await startAccountAuthorization(profileId)
       leaveFor(started.authorizationUrl)

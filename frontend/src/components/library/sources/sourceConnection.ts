@@ -83,6 +83,8 @@ export interface ProbeScope {
   connectionProfileId?: string
   /** A new private library, probed through the caller's connected account. */
   privateLibrary?: boolean
+  /** A new library whose source was connected at the provider, probed through that consent. */
+  pendingConnectionId?: string
 }
 
 /** The fields of a create, update, test or listing request that a profile may set. */
@@ -126,6 +128,9 @@ export function connectionFields(context: SourceFormContext): ConnectionFields {
         ? {
             connectionProfileId: connection.profileId,
             ...(privateLibrary ? { privateLibrary: true } : {}),
+            ...(context.pendingConnectionId
+              ? { pendingConnectionId: context.pendingConnectionId }
+              : {}),
           }
         : {}
   const asksSecret =
