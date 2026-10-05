@@ -812,7 +812,7 @@ Begründung:
   die Verzeichnissperre und der gelöschte Anbieter. Sperrdialog und Ablaufdatum der
   Benutzerverwaltung nennen die Folge neutral, ohne Zahl und ohne Aussage, ob die Person ein Konto
   verbunden hat.
-- **Offen (Nachtrag H6 aus #2275):** Für einen gelöschten Anbieter trägt das Konto keinen
+- **Offen (Nachtrag H6 aus #2275, #2289):** Für einen gelöschten Anbieter trägt das Konto keinen
   Zeitstempel; die Frist läuft ab dem festgehaltenen Beginn. Die Neuanlage des Anbieters löst nach
   dem Commit einen Abgleich aus, der diesen Beginn verwirft. Nur wenn dieser Abgleich scheitert und
   der Anbieter vor dem täglichen Abgleich erneut gelöscht wird, zählt der alte Beginn.
