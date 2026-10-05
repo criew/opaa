@@ -323,10 +323,12 @@ paths:
         connection. A new serverUrl, clientId, tenant, scope list or authMethod discards every
         secret held under the profile; a library address under the old server address moves
         under the new one. While the change discards a stored secret of a library, ends
-        connected accounts of persons or the sync state of libraries, it needs confirmDiscard
+        connected accounts of persons or the whole sync state of libraries (a changed default
+        only the profile sets), it needs confirmDiscard
         (otherwise 409 with code CONNECTION_PROFILE_CONFIRMATION_REQUIRED, whose error is the
-        confirmation previewConnectionProfileChange names beforehand). The connector of a profile
-        never changes.
+        confirmation previewConnectionProfileChange names beforehand). The part of a library's
+        sync state a new configuration makes invalid - also of a new proxy or TLS switch - its
+        connector discards without that confirmation. The connector of a profile never changes.
         Every library whose effective configuration the change alters (address, proxy, TLS
         switch, defaults) passes its connector's check first; when the connector refuses one,
         nothing is changed - neither the profile nor any library - and the answer is 400 with
@@ -1356,8 +1358,8 @@ components:
           description: >
             How many connections of shared libraries lose every secret and token held under the
             profile when the proposed change is saved - a new address or registration revokes them
-            with the old registration - and sign in anew; 0 for any other change and without a
-            proposal. Private libraries are not counted.
+            with the old registration - and must be signed in anew; 0 for any other change and
+            without a proposal. Private libraries are not counted.
         secretsDiscarded:
           type: integer
           format: int64
@@ -1372,9 +1374,10 @@ components:
           format: int64
           description: >
             How many shared libraries the proposed change gives another effective configuration
-            (address, proxy, certificate check, defaults); each one's connector discards the sync
-            state the old configuration made invalid. 0 without a proposal; private libraries are
-            not counted.
+            (address, proxy, certificate check, defaults); each one's connector discards the part
+            of its sync state the new configuration makes invalid. That alone asks no
+            confirmation; the whole sync state goes only with fullSyncLibraries. 0 without a
+            proposal; private libraries are not counted.
         connectedAccountsEnded:
           description: >
             The connected accounts of persons the proposed change ends - all of the profile's,
@@ -1400,7 +1403,9 @@ components:
             rejectedPrivateLibraries only.
         rejectedPrivateLibraries:
           description: >
-            How many private libraries the connector refuses the proposed change for, masked by
+            How many private libraries the proposed change releases from the profile - those the
+            connector refuses it for, or every one where the new ownership admits no persons -
+            masked by
             their owners like every number about persons: below the minimum group size of owners
             - zero included - only "fewer than". As a part of the organization's private libraries
             it is exact only where the owners of the organization's other private libraries reach

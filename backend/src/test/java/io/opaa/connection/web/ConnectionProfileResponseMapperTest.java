@@ -120,7 +120,7 @@ class ConnectionProfileResponseMapperTest {
     assertThat(address.getConfirmation())
         .isEqualTo(
             "Die Änderung verwirft alle Zugangsdaten und Token dieses Zugangs; 3 Verbindungen"
-                + " melden sich neu an, die gespeicherten Zugangsdaten von 2 Bibliotheken sind"
+                + " müssen neu angemeldet werden, die gespeicherten Zugangsdaten von 2 Bibliotheken sind"
                 + " neu einzutragen, etwaige verbundene Konten von Personen enden. Bitte"
                 + " bestätigen.");
     assertThat(none.getConnectionsDiscarded()).isZero();

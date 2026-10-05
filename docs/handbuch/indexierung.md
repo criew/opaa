@@ -500,18 +500,21 @@ Auswirkungen:
 - jede Bibliothek, deren Konnektor die Änderung ablehnt, mit der Art der Ablehnung (Verbindung oder
   Einstellungen), dem Grund und einem Verweis auf die Bibliothek,
 - was das Speichern verwirft, so wie OPAA es beim Speichern ausführt: ob alle Zugangsdaten und Token
-  des Zugangs verworfen werden und wie viele Verbindungen sich danach neu anmelden, von wie vielen
-  Bibliotheken die gespeicherten Zugangsdaten neu einzutragen sind, ob die verbundenen Konten von
-  Personen enden (gerundet wie oben), für wie viele Bibliotheken sich die Konfiguration ändert und
-  ihr Konnektor den Abgleichstand verwirft, den die alte Konfiguration ungültig macht, und für wie
-  viele der Abgleichstand ganz verworfen wird; verwirft sie nichts davon, sagt die Vorschau das,
+  des Zugangs verworfen werden und wie viele Verbindungen danach neu angemeldet werden müssen, von
+  wie vielen Bibliotheken die gespeicherten Zugangsdaten neu einzutragen sind, ob die verbundenen
+  Konten von Personen enden (gerundet wie oben), für wie viele Bibliotheken sich die Konfiguration
+  ändert und für wie viele der Abgleichstand ganz verworfen wird; verwirft sie nichts davon, sagt
+  die Vorschau das,
+- bei einer Besitzart ohne Personen, dass alle privaten Bibliotheken vom Zugang gelöst werden,
 - die Rückfrage, die OPAA vor dem Speichern stellt, im Wortlaut.
 
 Lehnt der Konnektor die Änderung für eine Bibliothek ab, lässt sie sich so nicht speichern. Sonst
 speichert ein zweiter Klick auf „Speichern“; eine Änderung, die etwas davon verwirft, fragt dann mit
-genau dem Text aus der Vorschau noch einmal nach. Die Rückfrage nennt Personen ohne Zahl; eine
-Änderung, die keine gespeicherten Zugangsdaten, kein Konto und keinen Abgleichstand verwirft (etwa
-nur Proxy oder Zertifikatsprüfung), speichert ohne Rückfrage. Ändert sich ein Feld, gilt die
+genau dem Text aus der Vorschau noch einmal nach. Die Rückfrage nennt Personen ohne Zahl. Eine
+Änderung, die keine gespeicherten Zugangsdaten und kein Konto verwirft und den Abgleichstand nicht
+ganz verwirft (etwa nur Proxy oder Zertifikatsprüfung), speichert ohne Rückfrage; den Teil des
+Abgleichstands, den die neue Konfiguration ungültig macht, verwirft der Konnektor dabei trotzdem.
+Ändert sich ein Feld, gilt die
 Vorschau nicht mehr, und der Knopf heißt
 wieder „Weiter“. Lehnt der Konnektor die Änderung erst beim Speichern ab (etwa weil sich eine
 Bibliothek inzwischen geändert hat), sagt die Meldung, dass nichts gespeichert wurde, und die

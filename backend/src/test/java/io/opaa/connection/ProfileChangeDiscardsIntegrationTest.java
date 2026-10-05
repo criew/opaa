@@ -86,6 +86,8 @@ class ProfileChangeDiscardsIntegrationTest {
     for (UUID library : privateLibraries) {
       jdbc.update("DELETE FROM audit_log WHERE object_id = ?", library.toString());
       jdbc.update("DELETE FROM notifications WHERE object_id = ?", library);
+      jdbc.update("DELETE FROM asset_grant_history WHERE asset_id = ?", library);
+      jdbc.update("DELETE FROM asset_ownership_history WHERE asset_id = ?", library);
     }
     libraryFixtures.removeLibraries(libraries.toArray(UUID[]::new));
     libraryFixtures.removeLibraries(privateLibraries.toArray(UUID[]::new));
@@ -99,6 +101,7 @@ class ProfileChangeDiscardsIntegrationTest {
     }
     for (UUID owner : owners) {
       jdbc.update("DELETE FROM notifications WHERE recipient_user_id = ?", owner);
+      jdbc.update("DELETE FROM audit_log WHERE object_id = ?", owner.toString());
       jdbc.update("DELETE FROM users WHERE id = ?", owner);
     }
   }

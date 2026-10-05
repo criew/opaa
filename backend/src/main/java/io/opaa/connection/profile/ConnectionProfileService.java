@@ -218,7 +218,7 @@ public class ConnectionProfileService {
         change.connections(),
         personNumbers.totalOf(id),
         verdict.vetoes(),
-        change.forPersons() ? privateRejections(change, verdict.released()) : null,
+        change.forPersons() ? privateReleases(change, change.released(verdict)) : null,
         discardsOf(change, id));
   }
 
@@ -303,7 +303,7 @@ public class ConnectionProfileService {
     if (!verdict.vetoes().isEmpty()) {
       throw ChangeRejection.refusingProfileChange(verdict.vetoes());
     }
-    Set<UUID> released = change.dropsPersons() ? change.privateLibraries() : verdict.released();
+    Set<UUID> released = change.released(verdict);
     privateRelease.release(caller, profile, released);
     Map<String, Object> before = auditState(profile);
     ConnectionEndCause cause =
@@ -372,21 +372,21 @@ public class ConnectionProfileService {
   }
 
   /**
-   * How many private libraries the connector refuses, masked by their owners as a part of the
-   * private libraries of their organization.
+   * How many private libraries the change releases from the profile, masked by their owners as a
+   * part of the private libraries of their organization.
    */
-  private PersonCount privateRejections(ProfileChange change, Set<UUID> released) {
-    List<KnowledgeLibrary> refused =
+  private PersonCount privateReleases(ProfileChange change, Set<UUID> released) {
+    List<KnowledgeLibrary> leaving =
         change.moves().stream()
             .map(Move::library)
             .filter(library -> released.contains(library.getId()))
             .toList();
-    long owners = refused.stream().map(KnowledgeLibrary::getOwnerUserId).distinct().count();
+    long owners = leaving.stream().map(KnowledgeLibrary::getOwnerUserId).distinct().count();
     long otherOwners =
-        refused.isEmpty()
+        leaving.isEmpty()
             ? 0
             : libraries.countPrivateLibraryOwnersOutside(
-                refused.getFirst().getOrganizationId(), released);
+                leaving.getFirst().getOrganizationId(), released);
     return personNumbers.privateLibraries(released.size(), owners, otherOwners);
   }
 
@@ -893,7 +893,8 @@ public class ConnectionProfileService {
    * nowhere, and persons only through {@link PersonNumbers}.
    *
    * @param connections the shared connections that lose every secret and token held under the
-   *     profile - a new address or registration - and sign in anew; 0 for any other change
+   *     profile - a new address or registration - and must be signed in anew; 0 for any other
+   *     change
    * @param secrets the shared libraries whose stored secret goes, to be entered anew
    * @param configurations the shared libraries whose effective configuration changes
    * @param connectedAccounts all connected accounts of the profile, masked, where the change ends
@@ -923,8 +924,8 @@ public class ConnectionProfileService {
       StringBuilder text = new StringBuilder();
       if (connections > 0) {
         text.append("Die Änderung verwirft alle Zugangsdaten und Token dieses Zugangs; ")
-            .append(libraries(connections, "Verbindung meldet", "Verbindungen melden"))
-            .append(" sich neu an");
+            .append(libraries(connections, "Verbindung muss", "Verbindungen müssen"))
+            .append(" neu angemeldet werden");
         if (secrets > 0) {
           text.append(", die gespeicherten Zugangsdaten von ")
               .append(libraries(secrets, "Bibliothek", "Bibliotheken"))
@@ -975,6 +976,14 @@ public class ConnectionProfileService {
       List<Move> moves,
       Set<UUID> privateLibraries,
       List<String> fullSyncLabels) {
+
+    /**
+     * The private libraries saving releases from the profile: every one where the ownership no
+     * longer admits persons, else those the connector refuses.
+     */
+    Set<UUID> released(PrivateLibraryRelease.Verdict verdict) {
+      return dropsPersons ? privateLibraries : verdict.released();
+    }
 
     /** Whether a changed default only the profile sets discards the run state on the profile. */
     boolean resetsRunState() {
