@@ -58,14 +58,22 @@ class PrivateLibraryReleaseCountTest {
     assertThat(release.count(released, TestPersonCounts.numbers()).count()).isEqualTo(10);
   }
 
+  /**
+   * Either organization lacking other owners withholds the number, so no single organization -
+   * whichever the grouping visits first or last - decides it.
+   */
   @Test
-  void noOtherOwnerInOneOrganizationCountsAsFew() {
-    otherOwners(X, 5);
-    otherOwners(Y, 0);
+  void noOtherOwnerInEitherOrganizationCountsAsFew() {
     List<KnowledgeLibrary> released = new ArrayList<>(owned(X, 5));
     released.addAll(owned(Y, 5));
 
-    assertThat(release.count(released, TestPersonCounts.numbers())).isNull();
+    otherOwners(X, 5);
+    otherOwners(Y, 0);
+    assertThat(release.count(released, TestPersonCounts.numbers())).as("Y without").isNull();
+
+    otherOwners(X, 0);
+    otherOwners(Y, 5);
+    assertThat(release.count(released, TestPersonCounts.numbers())).as("X without").isNull();
   }
 
   private void otherOwners(UUID organization, long count) {
