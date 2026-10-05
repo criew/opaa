@@ -633,7 +633,8 @@ Begründung:
   ihre Dokumente lassen sich nicht mehr öffnen, und die Fortsetzung vollendet die Löschung. Am Ende zählt sie jede Ablage nach. Bleibt etwas übrig, rollt
   sie zurück; der Marker bleibt, und die nächste Fortsetzung beginnt von vorn.
 - **Nachweis** `PRIVATE_LIBRARY_ERASED` im Revisionsprotokoll mit Zeitpunkt der Vormerkung, Anlass
-  (`OWNER_REQUEST`, `DELETION_PERIOD_EXPIRED`) und Zählern, nur über `Asset#auditPayload`. Die
+  (`OWNER_REQUEST`, `DELETION_PERIOD_EXPIRED`) und Zählern, nur über `Asset#auditPayload` (Zähler
+  vergröbert, siehe Nachtrag „Löschnachweis vergröbert und Schwellenwarnung“). Die
   Historientabellen der Rechte, das Verbindungs- und das Diagnoseprotokoll behalten die Kennung der
   Bibliothek, nie einen Namen; sie haben ihre eigenen Fristen.
 - **Löschlauf** `library.PrivateLibraryDeletionRun`: täglich um 04:45 nach dem Abgleich der
@@ -714,6 +715,29 @@ wird das Element übersprungen, der Lauf läuft weiter – wie beim Kontingent j
 - **Kosten:** Wie beim Kontingent je Bibliothek wird eine abgelehnte Datei erst heruntergeladen;
   keiner der Konnektorpfade prüft das Kontingent vor dem Download. Eine beratende Vorprüfung über
   die Größe aus dem Listing ist Folge-Issue #2294.
+
+## Nachtrag vom 05.10.2026: Löschnachweis vergröbert und Schwellenwarnung (#2270, #2165)
+
+Entscheidungen des Maintainers vom 05.10.2026 zu M2 aus #2275 und zur Schwellenwarnung aus #2270.
+
+- **Löschnachweis:** `PRIVATE_LIBRARY_ERASED` nennt weiter Anlass, Zeitpunkt der Vormerkung und
+  die Handelnde (Besitzerin oder Löschlauf), dazu `erasedCompletely`. Exakte Zähler entfallen: Je
+  Art des Inhalts (Dokumente, Abschnitte, Ordner, Läufe, Originale, Raumzuordnungen) steht nur
+  `NONE` oder `PRESENT`. Die geschwärzten Chat-Belege nennt der Nachweis gar nicht
+  (`ErasedLibraryReferences#inProof`): Schon `PRESENT` belegte, dass die Besitzerin die Bibliothek
+  im Chat genutzt hat, und für den Nachweis der Löschung ist das unnötig (Entscheidung des
+  Koordinators im Sinne der Vorgabe „vergröbern“). Geschwärzt und nachgezählt werden sie weiter.
+  Die Nachzählung der Löschung bleibt intern exakt; bleibt etwas übrig, rollt sie zurück, und es
+  entsteht kein Nachweis.
+- **Schwellenwarnung abgelaufener Konten:** `PersonNumbers` warnt, sobald die maskierte Antwort den
+  Schwellenwert zulässt, also nach der größten zulässigen Zahl Abgelaufener: der genauen Zahl, N−1
+  bei „weniger als N“, der Gesamtzahl bei nicht ausgewiesenem Teil. Gleiche Antwort heißt weiter
+  gleiche Warnung, und die Warnung verrät nichts über die Antwort hinaus. Dafür gibt es mehr
+  Fehlalarme. Ein Zugang, der keine Personen zulässt (Besitzart `LIBRARY`), warnt nie; seine
+  Besitzart ist öffentlich. Ein Schwellenwert unter N wird nicht abgewiesen, aber beim Start als
+  Warnung geloggt: Dann warnt jeder Zugang für Personen schon bei „weniger als N“, auch ein leerer.
+  Die Oberfläche nennt die Warnung „Möglicherweise viele abgelaufen“, wo der Teil nicht genau
+  ausgewiesen ist.
 
 ## Nachtrag vom 05.10.2026: Schreibende Wege je Zugang serialisiert (#2246)
 

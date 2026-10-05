@@ -10,9 +10,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 
 /**
  * Under the minimum group size 5 no answer, and no difference of two answers, points at fewer than
@@ -87,21 +91,94 @@ class PersonNumbersTest {
         // connected, expired, warning at the threshold 10
         Arguments.of(6, 9, false),
         Arguments.of(6, 10, true),
-        // untold expired: 12 in all with 0 to 4 connected admits 8 expired
-        Arguments.of(0, 12, false),
-        Arguments.of(0, 14, true),
-        // 13 in all with 0 to 4 connected admits 9 expired
-        Arguments.of(1, 12, false),
-        // 15 in all with 0 to 4 connected admits no fewer than 11
-        Arguments.of(1, 14, true),
+        // untold expired: 12 in all with 0 to 4 connected admits up to 12 expired
+        Arguments.of(0, 12, true),
+        Arguments.of(4, 8, true),
+        Arguments.of(1, 12, true),
+        // untold on a total below 2N-1: any split of 8 admits at most 8
+        Arguments.of(0, 8, false),
+        // untold at exactly the threshold: 10 in all admits 10 expired
+        Arguments.of(4, 6, true),
+        Arguments.of(0, 9, false),
+        // "fewer than 5" expired admits at most 4
+        Arguments.of(12, 3, false),
         Arguments.of(0, 4, false));
   }
 
   @ParameterizedTest(name = "{0} connected + {1} expired -> warning {2}")
   @MethodSource("warnings")
-  void theWarningFollowsTheLeastNumberOfExpiredTheAnswerAdmits(
+  void theWarningFollowsTheGreatestNumberOfExpiredTheAnswerAdmits(
       long connected, long expired, boolean warning) {
     assertThat(TestPersonCounts.of(connected, expired).expiredWarning()).isEqualTo(warning);
+  }
+
+  /** Below the minimum group size the answer admits N-1 expired, so a threshold up to it warns. */
+  @Test
+  void aThresholdBelowTheMinimumWarnsOnEveryAnswerThatAdmitsIt() {
+    PersonNumbers lowThreshold =
+        new PersonNumbers(
+            TestPersonCounts.NO_PERSONS,
+            new GroupSizeProperties(5),
+            new ExpiredConnectionWarningProperties(4));
+
+    assertThat(lowThreshold.mask(new PersonConnections.StateCounts(0, 0)).expiredWarning())
+        .isTrue();
+    assertThat(lowThreshold.mask(new PersonConnections.StateCounts(4, 0)).expiredWarning())
+        .isTrue();
+    assertThat(lowThreshold.mask(new PersonConnections.StateCounts(10, 0)).expiredWarning())
+        .isTrue();
+    assertThat(lowThreshold.mask(new PersonConnections.StateCounts(5, 3)).expiredWarning())
+        .as("8 in all, untold, admits 8")
+        .isTrue();
+  }
+
+  /**
+   * A warning is exactly whether the greatest admitted number reaches the threshold - below N, at
+   * N, at 2N-1 and at the default.
+   */
+  @ParameterizedTest(name = "threshold {0}")
+  @ValueSource(ints = {4, 5, 9, 10})
+  void theWarningSaysNothingTheAnswerDoesNot(int warningThreshold) {
+    PersonNumbers numbers =
+        new PersonNumbers(
+            TestPersonCounts.NO_PERSONS,
+            new GroupSizeProperties(5),
+            new ExpiredConnectionWarningProperties(warningThreshold));
+    for (long connected = 0; connected <= 30; connected++) {
+      for (long expired = 0; expired <= 30; expired++) {
+        ProfileCounts counts = numbers.mask(new PersonConnections.StateCounts(connected, expired));
+        long admitted = mostExpiredAdmittedBy(counts);
+        assertThat(counts.expiredWarning())
+            .as("%d connected and %d expired, at most %d admitted", connected, expired, admitted)
+            .isEqualTo(admitted >= warningThreshold);
+      }
+    }
+  }
+
+  /** A threshold below N is kept, but said at start: every profile for persons then warns. */
+  @Test
+  @ExtendWith(OutputCaptureExtension.class)
+  void aThresholdBelowTheMinimumIsLoggedAtStart(CapturedOutput output) {
+    new PersonNumbers(
+        TestPersonCounts.NO_PERSONS,
+        new GroupSizeProperties(5),
+        new ExpiredConnectionWarningProperties(4));
+    assertThat(output.getAll()).contains("WARN").contains("below the minimum group size");
+
+    int before = output.getAll().length();
+    TestPersonCounts.numbersOver(TestPersonCounts.NO_PERSONS);
+    assertThat(output.getAll().substring(before)).doesNotContain("below the minimum group size");
+  }
+
+  /** What the shown numbers alone admit: an exact part, else N-1 below N, else the total. */
+  private static long mostExpiredAdmittedBy(ProfileCounts counts) {
+    if (counts.expired() != null && counts.expired().count() != null) {
+      return counts.expired().count();
+    }
+    if (counts.expired() != null) {
+      return counts.expired().fewerThan() - 1;
+    }
+    return counts.total().count();
   }
 
   @Test

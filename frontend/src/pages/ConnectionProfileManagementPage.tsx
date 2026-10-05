@@ -344,7 +344,16 @@ export default function ConnectionProfileManagementPage() {
                     <Stack spacing={0.5} sx={{ alignItems: 'flex-start' }}>
                       <span>{personCountLabel(profile.expiredConnectionCount)}</span>
                       {profile.expiredConnectionWarning && (
-                        <Chip size="small" color="warning" label="Viele abgelaufen" />
+                        <Chip
+                          size="small"
+                          color="warning"
+                          label={
+                            // Only an exact count shows the threshold reached; a masked one admits it.
+                            profile.expiredConnectionCount?.count != null
+                              ? 'Viele abgelaufen'
+                              : 'Möglicherweise viele abgelaufen'
+                          }
+                        />
                       )}
                     </Stack>
                   </TableCell>

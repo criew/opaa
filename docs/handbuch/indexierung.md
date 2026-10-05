@@ -469,16 +469,18 @@ Spalten zählen die **verbundenen Konten** von Personen auf dem Zugang
 | Spalte | Zählt | Darstellung |
 |---|---|---|
 | **Verbundene Konten** | die Konten von Personen auf dem Zugang, verbundene und abgelaufene | genau ab der Mindestgruppengröße, darunter — auch bei null — nur „weniger als N“ |
-| **Davon abgelaufen** | die abgelaufenen unter ihnen | genau nur, wenn abgelaufene und aktive Konten je mindestens N sind — „niemand aktiv“ gilt wie „wenige aktiv“ —; sonst unter N „weniger als N“, ab N „nicht ausgewiesen“; bei einer Gesamtzahl unter 2N−1 immer „nicht ausgewiesen“. „Viele abgelaufen“ erscheint, sobald die ausgewiesenen Zahlen mindestens den Schwellenwert abgelaufener Konten belegen |
+| **Davon abgelaufen** | die abgelaufenen unter ihnen | genau nur, wenn abgelaufene und aktive Konten je mindestens N sind — „niemand aktiv“ gilt wie „wenige aktiv“ —; sonst unter N „weniger als N“, ab N „nicht ausgewiesen“; bei einer Gesamtzahl unter 2N−1 immer „nicht ausgewiesen“. „Viele abgelaufen“ erscheint, sobald die ausgewiesenen Zahlen den Schwellenwert abgelaufener Konten zulassen; ist die Zahl nicht genau ausgewiesen, heißt die Warnung „Möglicherweise viele abgelaufen“ |
 
 Der Schwellenwert wird nur gegen das geprüft, was die Liste ohnehin zeigt: gegen die genaue Zahl
-oder, wo sie nicht ausgewiesen ist, gegen die kleinste Zahl, die Gesamtzahl und Rundungsregel noch
-zulassen. Die Warnung verrät so nichts, was die Zahlen nicht schon sagen, und erscheint nie bei
-„weniger als N“.
+oder, wo sie nicht genau ausgewiesen ist, gegen die größte Zahl, die Gesamtzahl und Rundungsregel
+noch zulassen. Bei „nicht ausgewiesen“ ist das die Gesamtzahl, bei „weniger als N“ die Zahl N−1. Die
+Warnung verrät so nichts, was die Zahlen nicht schon sagen, und gleiche Zahlen tragen immer dieselbe
+Warnung. Dafür warnt die Liste auch dort, wo tatsächlich weniger Konten abgelaufen sind. Ein Zugang,
+der keine Personen zulässt, warnt nie.
 
 | Schlüssel | Standard | Wirkung |
 |---|---|---|
-| `opaa.connection.expired-connections.warning-threshold` | 10 | ab so vielen abgelaufenen verbundenen Konten je Zugang zeigt die Liste „Viele abgelaufen“; mindestens 1 |
+| `opaa.connection.expired-connections.warning-threshold` | 10 | sobald die ausgewiesenen Zahlen so viele abgelaufene verbundene Konten je Zugang zulassen, zeigt die Liste „Viele abgelaufen“ bzw. „Möglicherweise viele abgelaufen“; mindestens 1 |
 
 Die Seite zeigt die Zahlen genau so, wie OPAA sie liefert, und rechnet nichts daraus: „weniger als N“
 unterscheidet null nicht von einer kleinen Zahl, und keine Anzeige, kein Hinweistext und keine

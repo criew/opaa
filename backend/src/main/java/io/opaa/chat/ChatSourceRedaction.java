@@ -43,6 +43,12 @@ class ChatSourceRedaction implements ErasedLibraryReferences {
     return "chatSourcesRedacted";
   }
 
+  /** Whether the owner was ever cited from the library is usage, not proof of its erasure. */
+  @Override
+  public boolean inProof() {
+    return false;
+  }
+
   @Override
   public int remove(ErasedLibrary erased) {
     if (erased.documentIds().isEmpty()) {
