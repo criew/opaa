@@ -36,8 +36,6 @@ class LoggedNameTest {
 
     assertThat(logged.getMessage()).contains("UncheckedIOException").doesNotContain("Geheim");
     assertThat(logged.getStackTrace()).isEqualTo(thrown.getStackTrace());
-    assertThat(logged.getCause().getMessage())
-        .contains("IOException")
-        .doesNotContain("Geheim");
+    assertThat(logged.getCause().getMessage()).contains("IOException").doesNotContain("Geheim");
   }
 }
