@@ -681,7 +681,10 @@ paths:
         clientId, scope list, issuer or endpoint discards every token of the profile - revoked
         with the registration before the change - and ends the persons' connections; that is
         refused with 409 CONNECTION_PROFILE_CONFIRMATION_REQUIRED unless confirmDiscard is true.
-        The question names persons without a number.
+        The question names persons without a number, and the old and the new authorization server
+        where it changes. A stored client secret never follows a new serverUrl, issuer or token
+        endpoint: such a change without clientSecret is 400 MCP_SERVER_CLIENT_SECRET_REQUIRED;
+        an empty clientSecret makes the profile a public client.
       requestBody:
         required: true
         content:
@@ -696,7 +699,13 @@ paths:
               schema:
                 $ref: "#/components/schemas/McpServerResponse"
         "400":
-          $ref: "#/components/responses/ValidationError"
+          description: >
+            Invalid values, a discovery refused, or a change to another server or authorization
+            server without a new client secret (code MCP_SERVER_CLIENT_SECRET_REQUIRED).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "403":
           $ref: "#/components/responses/Forbidden"
         "404":

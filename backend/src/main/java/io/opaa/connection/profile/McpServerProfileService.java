@@ -27,11 +27,15 @@ import org.springframework.transaction.support.TransactionTemplate;
  * endpoint, OAuth with the endpoints discovered on every save, persons as owners, a responsible
  * group. Discovery runs outside any transaction. A new address or registration - client id, scopes,
  * issuer or an endpoint - discards every token under the profile before the change and ends the
- * persons' connections, always confirmed first; a new client secret alone discards nothing.
- * Deletion, shutdown and lock are those of every profile.
+ * persons' connections, always confirmed first; a new client secret alone discards nothing. A
+ * stored client secret never follows a new address, issuer or token endpoint. Deletion, shutdown
+ * and lock are those of every profile.
  */
 @Service
 public class McpServerProfileService {
+
+  /** Refusal of a change to another server keeping the client secret of the former one. */
+  public static final String CLIENT_SECRET_REQUIRED = "MCP_SERVER_CLIENT_SECRET_REQUIRED";
 
   private static final int MAX_NAME_LENGTH = 255;
   private static final int MAX_FIELD_LENGTH = 255;
@@ -141,10 +145,34 @@ public class McpServerProfileService {
                   || !Objects.equals(profile.getIssuer(), metadata.issuer())
                   || !profile.getEndpoints().equals(metadata.endpoints());
           boolean discards = addressChanged || registrationChanged;
+          boolean issuerChanged = !Objects.equals(profile.getIssuer(), metadata.issuer());
+          boolean serverMoved =
+              addressChanged
+                  || issuerChanged
+                  || !Objects.equals(profile.getEndpoints().token(), metadata.tokenEndpoint());
+          if (serverMoved && secret == null && profile.isClientSecretSet()) {
+            throw new ValidationException(
+                "Der MCP-Server meldet sich künftig bei "
+                    + metadata.issuer()
+                    + " an, bisher bei "
+                    + profile.getIssuer()
+                    + ". Das hinterlegte Client-Secret gilt dort nicht: Bitte geben Sie das"
+                    + " Client-Secret der App-Registrierung beim neuen Autorisierungsserver an,"
+                    + " oder ein leeres für einen öffentlichen Client.",
+                CLIENT_SECRET_REQUIRED);
+          }
           if (discards && !confirmed) {
             throw new ConflictException(
                 "Die Änderung verwirft alle Token dieses MCP-Servers; etwaige verbundene Konten"
-                    + " von Personen enden. Bitte bestätigen.",
+                    + " von Personen enden."
+                    + (issuerChanged
+                        ? " Der Autorisierungsserver wechselt von "
+                            + profile.getIssuer()
+                            + " zu "
+                            + metadata.issuer()
+                            + "."
+                        : "")
+                    + " Bitte bestätigen.",
                 ConnectionProfileService.CONFIRMATION_REQUIRED);
           }
           Map<String, Object> before = ConnectionProfileService.auditState(profile);
