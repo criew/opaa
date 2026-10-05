@@ -85,5 +85,23 @@ public enum NotificationType {
    * The client secret of a connection profile reaches its expiry date within 14 days. Sent once per
    * date to every system administrator; its object is the profile.
    */
-  CONNECTION_PROFILE_SECRET_EXPIRING
+  CONNECTION_PROFILE_SECRET_EXPIRING,
+
+  /**
+   * The provider named an end of a library's own OAuth consent ("Quelle verbinden"), 14 days away
+   * or less. Sent once per end to those responsible for it; its object is the library.
+   */
+  SOURCE_CONNECTION_EXPIRING,
+
+  /**
+   * The provider no longer takes a library's own OAuth consent; the library is not updated until
+   * its source is connected anew. Sent to those responsible; its object is the library.
+   */
+  SOURCE_CONNECTION_EXPIRED,
+
+  /**
+   * The system administration ended a library's own OAuth consent - a changed, shut down or deleted
+   * profile. Sent to those responsible; its object is the library.
+   */
+  SOURCE_CONNECTION_ENDED
 }

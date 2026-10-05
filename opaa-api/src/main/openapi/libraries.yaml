@@ -30,6 +30,9 @@ paths:
         silently drops a credential. Reading a library never fails this way: an undecryptable
         stored credential is reported as absent. A library created through a connection profile
         that was changed meanwhile is not created: 409 (code LIBRARY_CONNECTION_PROFILE_CHANGED).
+        A library on a profile whose sign-in is OAuth for libraries takes over the caller's
+        pendingConnectionId; one expired, another person's, on another profile or for another
+        target is a 409 (code PENDING_CONNECTION_UNUSABLE) and nothing is created.
       requestBody:
         required: true
         content:
@@ -341,6 +344,35 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/LibraryResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/libraries/{libraryId}/source-connection:
+    parameters:
+      - name: libraryId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    delete:
+      operationId: disconnectLibrarySource
+      tags: [library]
+      summary: Disconnect a library's own source connection ("Quelle trennen")
+      description: >
+        Needs AssetRole.MANAGER on the library. The library's own OAuth connection
+        ("Quelle verbinden") is deleted at once and revoked at the provider where it offers that;
+        the library keeps its content and rests until its source is connected anew. Always
+        possible, also on a locked profile. 400 for a library without such a connection and for a
+        private library.
+      responses:
+        "204":
+          description: Disconnected
         "400":
           $ref: "#/components/responses/ValidationError"
         "403":
@@ -1158,6 +1190,24 @@ components:
             sourceCredentials on a profile whose sign-in is not a personal secret. The library stores only
             its own part. Connecting an existing library adopts the profile's values the same
             way, without a 400.
+        pendingConnectionId:
+          type: string
+          format: uuid
+          nullable: true
+          description: >
+            Required on a connection profile whose sign-in is OAuth for libraries ("Quelle
+            verbinden"): the caller's pending connection from the consent with purpose
+            LIBRARY_NEW (ConnectionAuthorizationCompleteResponse.pendingConnection), which becomes
+            the library's own. 409 PENDING_CONNECTION_UNUSABLE when it expired or belongs to
+            another person, profile or target.
+        sourceConnectionResponsible:
+          nullable: true
+          description: >
+            With pendingConnectionId: who answers for the library's source connection, a person or
+            group managing the new library (the creator or the owning group); absent names the
+            creator.
+          allOf:
+            - $ref: "#/components/schemas/SourceConnectionResponsibleRef"
         privateLibrary:
           type: boolean
           nullable: true
@@ -1273,6 +1323,13 @@ components:
             the library's current profile; another one tests a switch before it is saved - its
             release counts, and the library's stored lock does not, so a locked library can be
             repaired. The stored credentials stand in only while sourceUrl keeps their origin.
+        pendingConnectionId:
+          type: string
+          format: uuid
+          nullable: true
+          description: >
+            Without libraryId, on a profile whose sign-in is OAuth for libraries: the caller's
+            pending connection (LibraryRequest.pendingConnectionId) the probe signs in with.
         privateLibrary:
           type: boolean
           nullable: true
@@ -1424,6 +1481,11 @@ components:
           description: >
             The connection profile the listing runs through, exactly as
             SourceConnectionTestRequest.connectionProfileId - with libraryId too.
+        pendingConnectionId:
+          type: string
+          format: uuid
+          nullable: true
+          description: As SourceConnectionTestRequest.pendingConnectionId.
         privateLibrary:
           type: boolean
           nullable: true
@@ -1860,6 +1922,37 @@ components:
           type: string
           format: date-time
 
+    LibrarySourceConnection:
+      type: object
+      required: [connectedAt]
+      properties:
+        accountLabel:
+          type: string
+          nullable: true
+          description: The account at the provider the source is connected as, where named.
+        connectedAt:
+          type: string
+          format: date-time
+          description: When the source was last connected.
+        responsible:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/SourceConnectionResponsible"
+        endedCause:
+          nullable: true
+          description: Why the connection ended; null while it stands.
+          allOf:
+            - $ref: "#/components/schemas/ConnectionEndCause"
+        endedAt:
+          type: string
+          format: date-time
+          nullable: true
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: The end the provider named for the consent, where it named one.
+
     LibraryResponse:
       type: object
       required:
@@ -1885,6 +1978,14 @@ components:
           description: >
             The library's profile was deleted ("Zugang entfernt"): it keeps its content, runs no
             more, and its managers connect it through another profile or delete it.
+        sourceConnection:
+          nullable: true
+          description: >
+            The library's own source connection ("Quelle verbinden") once it was connected: the
+            account at the provider, who answers for it and whether and why it ended. Absent for
+            every other library.
+          allOf:
+            - $ref: "#/components/schemas/LibrarySourceConnection"
         sourceBlock:
           nullable: true
           description: >

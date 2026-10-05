@@ -100,9 +100,13 @@ paths:
         Returns the address the browser is sent to in the same tab: the authorization request of
         the profile's provider with a fresh state and a PKCE challenge (S256), returning to
         {OPAA_PUBLIC_BASE_URL}/connections/callback. State and verifier stay with the server, bound
-        to the caller and the profile as it stands now, for 10 minutes and one completion. Only
-        the purpose ACCOUNT is served yet; it needs what connecting an account needs. A person
-        starts at most 10 consents in 10 minutes.
+        to the caller, the profile as it stands now and - for LIBRARY_RECONNECT - the library, for
+        10 minutes and one completion. ACCOUNT needs what connecting an account needs;
+        LIBRARY_NEW ("Quelle verbinden" before the library exists) the profile's release, as
+        creating the library would; LIBRARY_RECONNECT MANAGER on the shared library connected
+        through the profile and no lock, no release. Both library purposes need a profile and
+        connector that let a library own an OAuth connection and serviceAccountConfirmed; without
+        it no authorization request is made. A person starts at most 10 consents in 10 minutes.
       requestBody:
         required: true
         content:
@@ -118,17 +122,19 @@ paths:
                 $ref: "#/components/schemas/ConnectionAuthorizationStartResponse"
         "400":
           description: >
-            The profile does not sign in by OAuth, does not admit the caller's ownership, or the
-            purpose is not served yet (code CONNECTION_AUTHORIZATION_PURPOSE_UNAVAILABLE).
+            The profile does not sign in by OAuth or does not admit the purpose's owner, the
+            library is private or not on the profile, libraryId is missing for LIBRARY_RECONNECT,
+            the responsible does not manage the library, or a library purpose comes without
+            serviceAccountConfirmed (code SERVICE_ACCOUNT_CONFIRMATION_REQUIRED).
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
         "403":
           description: >
-            A first connection on a profile not released to the caller (code
-            CAPABILITY_REQUIRED), or the profile or its connector is locked (code
-            CONNECTOR_LOCKED).
+            A first connection or a new library on a profile not released to the caller (code
+            CAPABILITY_REQUIRED), the profile or its connector is locked (code CONNECTOR_LOCKED),
+            or the caller does not manage the library.
           content:
             application/json:
               schema:
@@ -156,9 +162,14 @@ paths:
       description: >
         Called by the page /connections/callback with state and code, or state and error, as the
         provider returned them. The state must be the caller's own, unused and not expired; it is
-        used up by this call whatever its outcome. The server exchanges the code with the profile's
-        client secret and the PKCE verifier and stores the tokens encrypted; where the caller goes
-        next it derives from the purpose. No answer carries a token.
+        used up by this call whatever its outcome. Whoever may connect is checked again as at the
+        start. The server exchanges the code with the profile's client secret and the PKCE
+        verifier, asks the connector for the account's address where it names one, and stores the
+        tokens encrypted: for ACCOUNT as the caller's connected account, for LIBRARY_RECONNECT as
+        the library's own connection, for LIBRARY_NEW as a pending connection only the caller can
+        use for 60 minutes - for the folder selection and to create the library with
+        (LibraryRequest.pendingConnectionId). Where the caller goes next it derives from the
+        purpose. No answer carries a token.
       requestBody:
         required: true
         content:
@@ -182,8 +193,8 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
         "403":
           description: >
-            The profile or its connector was locked, or its release withdrawn, meanwhile (codes
-            CONNECTOR_LOCKED, CAPABILITY_REQUIRED).
+            The profile or its connector was locked, its release withdrawn, or the caller no longer
+            manages the library, meanwhile (codes CONNECTOR_LOCKED, CAPABILITY_REQUIRED).
           content:
             application/json:
               schema:
@@ -197,13 +208,36 @@ paths:
         "409":
           description: >
             The profile changed since the consent started (code
-            CONNECTION_AUTHORIZATION_PROFILE_CHANGED); start anew.
+            CONNECTION_AUTHORIZATION_PROFILE_CHANGED); the library left the profile; or the
+            provider named another account than the library was connected as and the start did
+            not confirm the change (code ACCOUNT_CHANGED) - the fresh grant is revoked, start anew
+            with confirmAccountChange.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
         "503":
           $ref: "#/components/responses/ServiceUnavailable"
+
+  /api/v1/admin/source-connections/dormant:
+    get:
+      operationId: listDormantSourceConnections
+      tags: [connection-profile]
+      summary: The shared libraries whose own source connection rests (system admin only)
+      description: >
+        Every shared library of the caller's organization connected through a profile that signs
+        in by OAuth ("Quelle verbinden"), or whose such connection lost its profile, while its
+        source is not reached: expired, disconnected, locked or without profile. Private libraries
+        never appear. No entry carries a token.
+      responses:
+        "200":
+          description: The resting source connections, by library name
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DormantSourceConnection"
 
   /api/v1/admin/connection-profiles:
     get:
@@ -1401,8 +1435,9 @@ components:
     ConnectionAuthorizationPurpose:
       type: string
       description: >
-        What an OAuth consent is for: ACCOUNT (the caller's own connected account); LIBRARY_NEW
-        and LIBRARY_RECONNECT (the source of a library) are not served yet.
+        What an OAuth consent is for: ACCOUNT (the caller's own connected account), LIBRARY_NEW
+        (the source of a library not created yet, "Quelle verbinden" in the wizard) and
+        LIBRARY_RECONNECT (the source of an existing library, "Neu verbinden").
       enum: [LIBRARY_NEW, LIBRARY_RECONNECT, ACCOUNT]
 
     ConnectionAuthorizationStartRequest:
@@ -1414,6 +1449,117 @@ components:
           format: uuid
         purpose:
           $ref: "#/components/schemas/ConnectionAuthorizationPurpose"
+        libraryId:
+          type: string
+          format: uuid
+          nullable: true
+          description: The library to connect anew; required for LIBRARY_RECONNECT, read only there.
+        serviceAccountConfirmed:
+          type: boolean
+          nullable: true
+          description: >
+            "Ich verbinde ein Dienstkonto, kein persönliches Konto" - required to be true for
+            LIBRARY_NEW and LIBRARY_RECONNECT.
+        responsible:
+          nullable: true
+          description: >
+            Only for LIBRARY_RECONNECT: who answers for the connection from now on, a person or
+            group managing the library; absent keeps the one named so far. A new library names it
+            with LibraryRequest.sourceConnectionResponsible.
+          allOf:
+            - $ref: "#/components/schemas/SourceConnectionResponsibleRef"
+        confirmAccountChange:
+          type: boolean
+          nullable: true
+          description: >
+            Only for LIBRARY_RECONNECT: the caller accepts that the provider names another account
+            than the library was connected as; its run state is then discarded.
+
+    SourceConnectionResponsibleType:
+      type: string
+      description: Whether a person (USER) or a group (GROUP) answers for a library's connection.
+      enum: [USER, GROUP]
+
+    SourceConnectionResponsibleRef:
+      type: object
+      required: [type, id]
+      description: >
+        Who answers for a library's own source connection: warned before it ends, told when it
+        ended, and able to connect it anew - a person or group managing the library.
+      properties:
+        type:
+          $ref: "#/components/schemas/SourceConnectionResponsibleType"
+        id:
+          type: string
+          format: uuid
+
+    SourceConnectionResponsible:
+      type: object
+      required: [type, id]
+      properties:
+        type:
+          $ref: "#/components/schemas/SourceConnectionResponsibleType"
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          nullable: true
+          description: Display name of the person or group; null where it cannot be named.
+
+    PendingSourceConnection:
+      type: object
+      required: [id, expiresAt]
+      description: >
+        A source connection given before its library exists: only the caller can use it, for
+        the folder selection and to create the library with, until expiresAt.
+      properties:
+        id:
+          type: string
+          format: uuid
+        accountLabel:
+          type: string
+          nullable: true
+          description: The account at the provider, where the connector names it.
+        expiresAt:
+          type: string
+          format: date-time
+
+    DormantSourceConnection:
+      type: object
+      required: [libraryId, libraryName, reason]
+      properties:
+        libraryId:
+          type: string
+          format: uuid
+        libraryName:
+          type: string
+        profileId:
+          type: string
+          format: uuid
+          nullable: true
+          description: Null once the profile was deleted.
+        profileName:
+          type: string
+          nullable: true
+        accountLabel:
+          type: string
+          nullable: true
+        reason:
+          $ref: "#/components/schemas/SourceBlockReason"
+        endedCause:
+          nullable: true
+          description: Why the connection ended, where it ended; null for a lock alone.
+          allOf:
+            - $ref: "#/components/schemas/ConnectionEndCause"
+        endedAt:
+          type: string
+          format: date-time
+          nullable: true
+        responsible:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/SourceConnectionResponsible"
 
     ConnectionAuthorizationStartResponse:
       type: object
@@ -1464,6 +1610,16 @@ components:
           nullable: true
           allOf:
             - $ref: "#/components/schemas/ConnectedAccount"
+        libraryId:
+          type: string
+          format: uuid
+          nullable: true
+          description: For the purpose LIBRARY_RECONNECT, the library connected anew.
+        pendingConnection:
+          nullable: true
+          description: For the purpose LIBRARY_NEW, the connection the new library takes over.
+          allOf:
+            - $ref: "#/components/schemas/PendingSourceConnection"
 
     ConnectedAccountState:
       type: string
