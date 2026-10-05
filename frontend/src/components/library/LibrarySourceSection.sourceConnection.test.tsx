@@ -114,6 +114,31 @@ describe('LibrarySourceSection - Quelle verbinden (#2169)', () => {
     expect(within(block).getByRole('button', { name: 'Neu verbinden' })).toBeInTheDocument()
   })
 
+  it('offers no reconnect once the profile is gone, and points to „Zugang zuordnen“', () => {
+    renderWithProviders(
+      <LibrarySourceSection
+        libraryId="library-1"
+        library={{
+          ...library,
+          connectionProfile: null,
+          connectionProfileRemoved: true,
+          sourceConnection: {
+            ...consent,
+            endedCause: 'PROFILE_DELETED',
+            endedAt: '2026-10-03T08:00:00Z',
+          },
+        }}
+        canEditSource
+      />,
+      { withRouter: true },
+    )
+
+    const block = screen.getByTestId('source-connection')
+    expect(block).toHaveTextContent('Zugang gelöscht')
+    expect(block).toHaveTextContent('über „Zugang zuordnen“ einem anderen Zugang zu')
+    expect(within(block).queryByRole('button')).not.toBeInTheDocument()
+  })
+
   it('shows nothing of the connection where the server names none, as for a reader', () => {
     renderWithProviders(
       <LibrarySourceSection

@@ -234,7 +234,7 @@ export default function LibrarySourceSection({
                 <LibrarySourceConsent
                   libraryId={libraryId}
                   consent={consent}
-                  onReconnect={() => setReconnectOpen(true)}
+                  onReconnect={consentProfile ? () => setReconnectOpen(true) : undefined}
                 />
               )}
               {StoredView ? (

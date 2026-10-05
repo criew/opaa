@@ -18,7 +18,8 @@ import {
 interface LibrarySourceConsentProps {
   libraryId: string
   consent: LibrarySourceConnection
-  onReconnect: () => void
+  /** Absent once the library's profile is gone: it is reconnected after „Zugang zuordnen“. */
+  onReconnect?: () => void
 }
 
 /**
@@ -85,10 +86,18 @@ export default function LibrarySourceConsent({
           },
         ]}
       />
+      {!onReconnect && (
+        <Typography variant="body2" sx={{ color: 'text.secondary', mt: 1 }}>
+          Der Zugang dieser Bibliothek wurde entfernt. Ordnen Sie sie über „Zugang zuordnen“ einem
+          anderen Zugang zu; danach lässt sich die Quelle dort neu verbinden.
+        </Typography>
+      )}
       <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
-        <Button size="small" variant="outlined" onClick={onReconnect}>
-          Neu verbinden
-        </Button>
+        {onReconnect && (
+          <Button size="small" variant="outlined" onClick={onReconnect}>
+            Neu verbinden
+          </Button>
+        )}
         {!ended && (
           <Button
             size="small"
