@@ -922,9 +922,11 @@ wird es mit dem Ergebnis „Kontingent überschritten" abgelehnt.
 
 Eine private Bibliothek unterliegt zusätzlich dem **Kontingent ihrer Besitzerin** über alle ihre
 privaten Bibliotheken zusammen (Kapitel [Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md),
-„Private Bibliotheken"). Überschreitet das Element dieses Kontingent, endet der Lauf an dieser
-Stelle geordnet als unvollständig: Bereits Aufgenommenes bleibt, nichts wird als entfernt
-abgeglichen, auch keine Löschung in der Quelle, und das Laufprotokoll nennt den Grund. Prüfung und Speichern der Dokumentzeile laufen
+„Private Bibliotheken"). Überschreitet das Element dieses Kontingent, wird es wie am Kontingent
+der Bibliothek abgelehnt, und das Laufprotokoll nennt am Element den Grund. Der Lauf geht weiter,
+gleicht ab und endet als unvollständig mit der Kategorie `QUOTA_EXHAUSTED`. Das abgelehnte Element
+gilt als vorhanden: Eine bereits aufgenommene Fassung bleibt stehen. Die Datei wird dafür wie am
+Kontingent der Bibliothek erst heruntergeladen und dann abgelehnt. Prüfung und Speichern der Dokumentzeile laufen
 für alle privaten Bibliotheken einer Person nacheinander, sodass auch gleichzeitige Läufe das
 Kontingent nicht überschreiten.
 

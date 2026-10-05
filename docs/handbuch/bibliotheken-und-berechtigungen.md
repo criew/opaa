@@ -373,16 +373,19 @@ Grund als Kategorie ohne Inhaltsbezug.
 
 **Speicherkontingent der Person.** Alle privaten Bibliotheken einer Person teilen sich ein
 Kontingent; eine weitere private Bibliothek schafft keinen zusätzlichen Platz. Das Kontingent je
-Bibliothek gilt daneben unverändert. Gezählt wird, was tatsächlich gespeichert ist. Ist das
-Kontingent erschöpft, endet der laufende Lauf geordnet als unvollständig mit der Kategorie
-`QUOTA_EXHAUSTED`. Im Reiter „Quelle“ trägt dieser Lauf unter „Läufe“ die Marke „unvollständig:
-Speicherkontingent Ihrer privaten Bibliotheken erschöpft“ und aufgeklappt den Hinweis, was Platz
-schafft; das Laufprotokoll nennt ihren Verbrauch und die Grenze. Endete der letzte Lauf so, steht
-derselbe Hinweis auch im Kopf der Detailseite. Bereits Aufgenommenes bleibt durchsuchbar. Weil der
-Lauf vor dem Abgleich endet, übernimmt er auch Löschungen in der Quelle nicht mehr: Dateien beim
-Anbieter zu löschen oder die Quelle einzugrenzen schafft deshalb keinen Platz, solange noch ein nicht
-aufgenommenes Element vor dem Ende steht. Platz schafft das Löschen einer ganzen privaten
-Bibliothek; sonst hilft nur eine höhere Grenze der Systemverwaltung. So sagt es auch der Hinweis.
+Bibliothek gilt daneben unverändert. Gezählt wird, was tatsächlich gespeichert ist. Passt eine
+Datei nicht mehr in das Kontingent, wird sie wie am Kontingent der Bibliothek übersprungen: Der Lauf
+nimmt sie nicht auf, läuft aber weiter, übernimmt Löschungen in der Quelle und endet als
+unvollständig mit der Kategorie `QUOTA_EXHAUSTED`. Eine übersprungene Datei gilt nicht als gelöscht;
+war sie schon aufgenommen und passt nur ihre neue Fassung nicht, bleibt die bisherige Fassung
+durchsuchbar. Im Reiter „Quelle“ trägt dieser Lauf unter „Läufe“ die Marke „unvollständig:
+Speicherkontingent Ihrer privaten Bibliotheken erschöpft, Dateien übersprungen“ und aufgeklappt den Hinweis, was Platz
+schafft; das Laufprotokoll nennt an jeder übersprungenen Datei ihren Verbrauch und die Grenze. Endete
+der letzte Lauf so, steht derselbe Hinweis auch im Kopf der Detailseite. Platz schaffen Dateien, die
+in der Quelle gelöscht werden oder durch eine eingegrenzte Quelle herausfallen, das Löschen einer
+ganzen privaten Bibliothek oder eine höhere Grenze der Systemverwaltung. Der Lauf, der eine Löschung
+bemerkt, gibt den Platz an seinem Ende frei; die übersprungenen Dateien nimmt der folgende Lauf auf.
+So sagt es auch der Hinweis.
 
 Ihren **eigenen Verbrauch** sieht die Besitzerin im Kopf der Detailseite jeder ihrer privaten
 Bibliotheken: „… von … in Ihren privaten Bibliotheken belegt“, bei unbegrenzter Grenze „… in Ihren

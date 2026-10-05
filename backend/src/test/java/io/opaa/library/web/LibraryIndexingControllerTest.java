@@ -145,7 +145,7 @@ class LibraryIndexingControllerTest {
                 .value(
                     "Indizierung abgeschlossen: 7 verarbeitet, 0 übersprungen, 0 fehlgeschlagen"
                         + " — unvollständig: Speicherkontingent Ihrer privaten Bibliotheken"
-                        + " erschöpft"));
+                        + " erschöpft, Dateien übersprungen"));
   }
 
   @Test

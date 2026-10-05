@@ -326,5 +326,8 @@ describe('LibraryDetailPage – private Bibliothek: Speicherkontingent (#2276)',
       'unvollständig: Speicherkontingent Ihrer privaten Bibliotheken erschöpft',
     )
     expect(notice).toHaveTextContent(/eine ganze private Bibliothek löschen/)
+    expect(notice).toHaveTextContent('Dateien übersprungen')
+    expect(notice).toHaveTextContent(/Dateien beim Anbieter löschen, die Quelle eingrenzen/)
+    expect(notice).not.toHaveTextContent(/keinen Platz/)
   })
 })

@@ -16,14 +16,14 @@ export const PRIVATE_LIBRARY_ERASING_NOTE =
 
 /** The run end QUOTA_EXHAUSTED in a few words, as the run list shows it. */
 export const QUOTA_EXHAUSTED_LABEL =
-  'unvollständig: Speicherkontingent Ihrer privaten Bibliotheken erschöpft'
+  'unvollständig: Speicherkontingent Ihrer privaten Bibliotheken erschöpft, Dateien übersprungen'
 
 /**
- * What frees space once the personal quota is exhausted. A run ends before its reconciliation
- * there, so deleting at the provider or narrowing the source frees nothing; only erasing a whole
- * private library or a higher limit does.
+ * What frees space once the personal quota is exhausted. The run skips what does not fit and still
+ * reconciles, so deleting at the provider or narrowing the source frees space with the next runs.
  */
 export const QUOTA_EXHAUSTED_REMEDY =
-  'Platz schaffen Sie, indem Sie eine ganze private Bibliothek löschen („Sofort löschen“). ' +
-  'Sonst hilft nur eine höhere Grenze – darum bitten Sie die Systemverwaltung. ' +
-  'Dateien beim Anbieter zu löschen oder die Quelle einzugrenzen schafft derzeit keinen Platz.'
+  'Dateien, die nicht mehr passten, hat der Lauf übersprungen. ' +
+  'Platz schaffen Sie, indem Sie Dateien beim Anbieter löschen, die Quelle eingrenzen oder eine ' +
+  'ganze private Bibliothek löschen („Sofort löschen“). Die übersprungenen Dateien nimmt einer der ' +
+  'nächsten Läufe auf. Sonst hilft eine höhere Grenze – darum bitten Sie die Systemverwaltung.'

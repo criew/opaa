@@ -410,7 +410,9 @@ public class LibraryController {
       return base;
     }
     return RunFailureCategory.QUOTA_EXHAUSTED.name().equals(job.getFailureCategory())
-        ? base + " — unvollständig: Speicherkontingent Ihrer privaten Bibliotheken erschöpft"
+        ? base
+            + " — unvollständig: Speicherkontingent Ihrer privaten Bibliotheken erschöpft,"
+            + " Dateien übersprungen"
         : base + " — unvollständig (Anfragebudget erschöpft), der nächste Lauf setzt fort";
   }
 
