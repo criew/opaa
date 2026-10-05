@@ -200,6 +200,7 @@ final class LibraryResponseMapper {
             library.getUpdatedAt())
         .description(library.getDescription())
         .privateLibrary(library.isOwnerOnly())
+        .erasureRequestedAt(library.getErasureRequestedAt())
         .ownerName(summary.ownerName())
         .lastIndexedAt(summary.lastIndexedAt())
         .lastRunStatus(toIndexingStatus(summary.lastRunStatus()))

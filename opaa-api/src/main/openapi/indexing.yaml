@@ -498,6 +498,11 @@ components:
             internal-infrastructure leak #507 already closes for the source configuration display
             itself. A caller below MANAGER gets a generic German message instead.
           example: Indexing completed successfully
+        failureCategory:
+          type: string
+          nullable: true
+          description: As IndexingRunResponse.failureCategory, of the newest run.
+          example: QUOTA_EXHAUSTED
         libraryId:
           type: string
           format: uuid

@@ -95,7 +95,8 @@ class KnowledgeLibraryCatalogFactSource implements AssetCatalogFactSource {
               lastIndexedAt.get(id),
               status,
               locks.get(id),
-              library.isOwnerOnly()));
+              library.isOwnerOnly(),
+              library.getErasureRequestedAt()));
     }
     return facts;
   }

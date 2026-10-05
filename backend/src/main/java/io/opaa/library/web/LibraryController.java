@@ -486,6 +486,7 @@ public class LibraryController {
             job.getCompletedAt() != null ? job.getCompletedAt() : job.getStartedAt())
         .message(message)
         .libraryId(job.getLibraryId())
+        .failureCategory(job.getFailureCategory())
         .incomplete(job.isIncomplete());
   }
 

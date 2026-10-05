@@ -655,6 +655,13 @@ components:
           description: >
             Whether this is a private library - only its owner reads it, so only she finds it in
             the catalog.
+        erasureRequestedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: >
+            As LibraryResponse.erasureRequestedAt: only for a private library being erased, since
+            when. Only its owner sees the entry at all.
         indexingStatus:
           description: >
             The library's own state by its indexing, as CatalogEntryStatus describes it - never
