@@ -85,6 +85,7 @@ public final class FileSyncHarness {
   private final List<String> ingested = new ArrayList<>();
   private final Set<String> failingIngests = new HashSet<>();
   private final Set<String> rejectedIngests = new HashSet<>();
+  private final Set<String> overQuotaIngests = new HashSet<>();
   private Duration subtreeMemoryMaxAge;
   private long maxEntriesPerRun = 1_000;
   private long maxFileSize = MAX_FILE_SIZE;
@@ -176,6 +177,9 @@ public final class FileSyncHarness {
               }
               if (rejectedIngests.contains(ingest.filePath())) {
                 return DocumentIngestResult.FAILED;
+              }
+              if (overQuotaIngests.contains(ingest.filePath())) {
+                return DocumentIngestResult.PERSONAL_QUOTA_EXCEEDED;
               }
               ingested.add(ingest.filePath());
               Document document =
@@ -448,6 +452,18 @@ public final class FileSyncHarness {
   /** From now on the ingest of {@code filePath} rejects the content, as a broken file would. */
   public FileSyncHarness rejectContentOf(String filePath) {
     rejectedIngests.add(filePath);
+    return this;
+  }
+
+  /** From now on {@code filePath} does not fit into its owner's private storage quota. */
+  public FileSyncHarness rejectAtQuotaOf(String filePath) {
+    overQuotaIngests.add(filePath);
+    return this;
+  }
+
+  /** Room again in the owner's private storage quota. */
+  public FileSyncHarness freeQuota() {
+    overQuotaIngests.clear();
     return this;
   }
 

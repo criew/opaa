@@ -16,12 +16,12 @@ import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.indexing.attachment.AttachmentOutcome;
+import io.opaa.indexing.document.DocumentIngestResult;
 import io.opaa.indexing.job.IndexingEventCategory;
 import io.opaa.indexing.job.IndexingJobService;
 import io.opaa.indexing.job.IndexingRunCost;
 import io.opaa.indexing.job.IndexingRunEvent;
 import io.opaa.indexing.job.IndexingRunEventRepository;
-import io.opaa.indexing.job.PersonalQuotaExhaustedException;
 import io.opaa.indexing.job.RequestBudgetExhaustedException;
 import io.opaa.indexing.maintenance.StaleDocumentCleanupService;
 import io.opaa.knowledge.Document;
@@ -693,36 +693,53 @@ class IndexingRunTemplateTest {
   }
 
   /**
-   * The owner's quota across her private libraries ends the run like a spent budget: completed and
-   * incomplete, never failed, nothing reconciled, with the owner's message in the protocol and
+   * An item rejected at the owner's quota across her private libraries does not end the run: it
+   * reconciles as usual, with the owner's message at the item, and is completed as incomplete with
    * QUOTA_EXHAUSTED as the job's category - recorded before the job is completed.
    */
   @Test
-  void anExhaustedPersonalQuotaEndsTheRunIncompleteWithItsOwnCategory() {
+  void anItemAtTheExhaustedPersonalQuotaLetsTheRunReconcileAndMarksIt() throws Exception {
+    when(quotaService.personalQuotaExceededMessage(library))
+        .thenReturn(
+            "Speicherkontingent Ihrer privaten Bibliotheken erschöpft (10 GB von 10 GB belegt)");
+
     template.run(
         jobId,
         library,
         IndexingRunMode.FULL,
         fullListingExecutor,
         run -> {
-          run.progress().recordProcessed();
           run.markPresent("/srv/dokumente/a.txt");
-          throw new PersonalQuotaExhaustedException(
-              "Speicherkontingent Ihrer privaten Bibliotheken erschöpft (10 GB von 10 GB belegt)");
+          run.recordOutcome(DocumentIngestResult.PROCESSED, "/srv/dokumente/a.txt");
+          run.markPresent("/srv/dokumente/b.txt");
+          run.recordOutcome(DocumentIngestResult.PERSONAL_QUOTA_EXCEEDED, "/srv/dokumente/b.txt");
+          return ListingOutcome.complete();
         });
 
     verify(eventRepository)
         .save(
             argThat(
-                note(
-                    IndexingEventCategory.REJECTED,
-                    "Speicherkontingent Ihrer privaten Bibliotheken erschöpft")));
-    verify(cleanupService, never()).reconcile(any(), any(), any(), any(), any(), any(), any());
-    verify(jobService, never()).recordListingAssessment(any(), anyBoolean(), any());
+                event ->
+                    event.getCategory() == IndexingEventCategory.REJECTED
+                        && "/srv/dokumente/b.txt".equals(event.getReference())
+                        && event
+                            .getMessage()
+                            .startsWith(
+                                "Speicherkontingent Ihrer privaten Bibliotheken erschöpft")));
+    verify(cleanupService)
+        .reconcile(
+            eq(library),
+            any(),
+            eq(Set.of("/srv/dokumente/a.txt", "/srv/dokumente/b.txt")),
+            any(),
+            any(),
+            any(),
+            any());
+    verify(jobService).recordListingAssessment(jobId, true, List.of());
     verify(jobService).recordRunMetrics(jobId, new IndexingRunCost(0, 0, 0L, 0, 0, 0, true, 0L));
     InOrder order = inOrder(jobService);
     order.verify(jobService).recordEndCategory(jobId, "QUOTA_EXHAUSTED");
-    order.verify(jobService).completeJob(jobId, 1, 0, 0, 1);
+    order.verify(jobService).completeJob(jobId, 1, 0, 1, 1);
     verify(jobService, never()).failJob(any(), any());
     verify(jobService, never()).failJob(any(), any(), any());
   }

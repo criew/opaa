@@ -207,8 +207,8 @@ class PrivateLibraryDeletionRunIntegrationTest {
   }
 
   /**
-   * A local account locked for inactivity is an absence, not a deactivation, until #2260 decides
-   * otherwise: it starts no deletion period, names no day and erases nothing.
+   * A local account locked for inactivity is an absence, not a deactivation: it starts no deletion
+   * period, names no day and erases nothing, even with a deactivation start left recorded.
    */
   @Test
   void anInactivityLockOfALocalAccountStartsNoDeletionPeriod() {
@@ -220,8 +220,8 @@ class PrivateLibraryDeletionRunIntegrationTest {
         person);
     reconciler.reconcile(List.of(person));
     jdbc.update(
-        "UPDATE connection_person_states SET deactivated_since = now() - interval '40 days'"
-            + " WHERE user_id = ?",
+        "UPDATE connection_person_states SET dormant_since = NULL,"
+            + " deactivated_since = now() - interval '40 days' WHERE user_id = ?",
         person);
 
     assertThat(deletionRun.runOnce().erased()).isZero();

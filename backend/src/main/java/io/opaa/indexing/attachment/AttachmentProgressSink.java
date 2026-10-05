@@ -10,4 +10,12 @@ public interface AttachmentProgressSink {
 
   /** Counts one attachment by its outcome; only {@code PROCESSED} adds a document to the run. */
   void recordAttachment(AttachmentOutcome outcome);
+
+  /** Notes that an attachment was rejected at the owner's private storage quota. */
+  default void recordPersonalQuotaReached() {}
+
+  /** How many items and attachments were rejected at the owner's private storage quota so far. */
+  default int personalQuotaRejections() {
+    return 0;
+  }
 }

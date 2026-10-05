@@ -24,7 +24,9 @@ import { localUserErrorMessage } from './localUserLabels'
 
 export const LOCK_CONSEQUENCE =
   'Das Konto kann sich nicht mehr anmelden, und alle laufenden Sitzungen enden sofort. Die Person ' +
-  'wird per E-Mail darüber unterrichtet. Die Inhalte und Rechte des Kontos bleiben erhalten.'
+  'wird per E-Mail darüber unterrichtet. Etwaige verbundene Konten enden, ihre Zugangsdaten werden ' +
+  'gelöscht, und für etwaige private Bibliotheken beginnt die Löschfrist. Die übrigen Inhalte und ' +
+  'Rechte des Kontos bleiben erhalten.'
 
 export const RESET_CONSEQUENCE =
   'Alle Sitzungen des Kontos enden, und die Person erhält einen einmaligen Rücksetzlink per ' +

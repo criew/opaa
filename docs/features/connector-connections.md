@@ -525,12 +525,13 @@ Versetzung oder Gruppenwechsel. Für lange Abwesenheit oder Versetzung gibt das 
    neu verbinden.
 
 **Wann ein Konto deaktiviert ist,** beantwortet eine zentrale Abfrage für alle Kontoarten: lokal
-gesperrt, befristet abgelaufen, Verzeichnissperre, Anbieter gelöscht. OPAA prüft die Abfrage vor
+gesperrt (außer nach Fehlversuchen oder wegen Inaktivität), befristet abgelaufen, Verzeichnissperre, Anbieter gelöscht. OPAA prüft die Abfrage vor
 jeder Nutzung eines Tokens und gleicht täglich ab; Ereignisse lösen den Abgleich sofort aus
 ([ADR-0041](../decisions/0041-verbindungen-als-eigenes-modul.md), Entscheidung 4).
 
 **Ruhen ist keine Deaktivierung.** Die Verbindungen einer Person ruhen, wenn ihr Anbieter
-deaktiviert ist oder wenn sie sich seit 90 Tagen nicht angemeldet hat (einstellbar 30–365). Ruhen
+deaktiviert ist, wenn sie sich seit 90 Tagen nicht angemeldet hat (einstellbar 30–365) oder wenn ihr
+lokales Konto wegen Inaktivität gesperrt ist. Ruhen
 stoppt Läufe, löscht aber nichts und startet keine Löschfrist. Vor dem Deaktivieren und Löschen
 eines Anbieters nennt die Verwaltung die Zahl der betroffenen Verbindungen und privaten
 Bibliotheken.

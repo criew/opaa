@@ -129,6 +129,11 @@ Drei Dinge sperren ein Konto:
 In der Spalte „Zustand" der Kontenliste steht in allen drei Fällen nur „Gesperrt"; den Anlass nennt
 das Info-Symbol dahinter, wenn die Maus darüber steht oder es per Tastatur angesteuert wird.
 
+Für verbundene Konten und private Bibliotheken (Abschnitt 12) zählt nur die Sperre durch die
+Verwaltung als Deaktivierung: Sie beendet etwaige verbundene Konten und startet die Löschfrist. Die
+Sperre wegen Inaktivität ist eine Abwesenheit; die Verbindungen ruhen nur. Die Fehlversuch-Sperre
+berührt sie nicht.
+
 Die Fehlversuch-Sperre schickt **bewusst keine** Nachricht: Sie wäre sonst ein Belästigungskanal für
 jeden, der eine Adresse kennt. Sie schneidet die Selbsthilfe auch nicht ab — „Passwort vergessen"
 bleibt wirksam, und wer den Link aus seinem Postfach einlöst, ist damit wieder drin. Der Besitz des
@@ -511,15 +516,16 @@ Der Dialog zum Verbinden sagt das vor dem Absenden.
 - **Abwesenheit** beendet nichts. Nach der Inaktivitätsschwelle ohne Anmeldung
   (`OPAA_CONNECTION_INACTIVITY_THRESHOLD_DAYS`, [Deployment](deployment.md)) ruhen die Verbindungen
   einer Person; es wird nichts gelöscht, und mit der nächsten Anmeldung geht es ohne Neuverbinden
-  weiter.
+  weiter. Das gilt auch für ein lokales Konto, das wegen Inaktivität gesperrt ist (Abschnitt 4):
+  Zugangsdaten und Inhalte bleiben, die privaten Bibliotheken ruhen ohne Löschfrist. Nach dem
+  Entsperren geht es mit der nächsten Anmeldung ohne Neuverbinden weiter.
 - **Deaktivierung** dagegen beendet alle Verbindungen des Kontos und löscht ihre Zugangsdaten:
-  gesperrt, abgelaufen, im Verzeichnis gesperrt oder der Anbieter gelöscht. Die privaten
-  Bibliotheken der Person ruhen sofort. Eine **Löschfrist**
-  (`OPAA_CONNECTION_PRIVATE_LIBRARY_DELETION_DAYS`, [Deployment](deployment.md)) beginnt nur mit
-  einer ausdrücklichen Deaktivierung: Sperre durch die Verwaltung oder das Verzeichnis, Ablauf
-  eines befristeten Kontos, gelöschter Anbieter. Die Sperre eines lokalen Kontos wegen
-  Inaktivität zählt als Abwesenheit und startet keine Frist. Die Frist läuft ab der aktuellen
-  Sperre; wird ein Konto entsperrt und erneut gesperrt, beginnt sie neu. Der Hinweis an der
+  von der Verwaltung gesperrt, abgelaufen, im Verzeichnis gesperrt oder der Anbieter gelöscht. Die
+  privaten Bibliotheken der Person ruhen sofort, und eine **Löschfrist**
+  (`OPAA_CONNECTION_PRIVATE_LIBRARY_DELETION_DAYS`, [Deployment](deployment.md)) beginnt. Der
+  Sperrdialog und das Feld „Ablaufdatum“ nennen diese Folge, ohne zu sagen, ob die Person
+  überhaupt ein Konto verbunden hat. Die Frist läuft ab der aktuellen Sperre; wird ein Konto
+  entsperrt und erneut gesperrt, beginnt sie neu. Der Hinweis an der
   Bibliothek nennt den Tag, ab dem gelöscht wird. Ist das Konto dann noch deaktiviert, löscht der
   tägliche Löschlauf sie vollständig (siehe „Private Bibliotheken löschen“). Wird es vorher wieder
   nutzbar, wird nichts gelöscht; die Person verbindet ihr Konto neu.
@@ -539,9 +545,9 @@ Eine private Bibliothek wird auf zwei Wegen gelöscht, beide gleich vollständig
   Bibliotheken“). Niemand sonst kann es, auch nicht die Systemverwaltung; für alle anderen gibt es
   die Bibliothek nicht.
 - **Nach Ablauf der Löschfrist** durch den täglichen Löschlauf, wenn das Konto der Besitzerin so
-  lange ausdrücklich deaktiviert war und es noch ist. Ein ruhendes Konto, eine Abwesenheit – auch
-  die Sperre eines lokalen Kontos wegen Inaktivität –, eine Versetzung oder ein Gruppenwechsel lösen
-  keine Löschung aus.
+  lange deaktiviert war und es noch ist. Ein ruhendes Konto, eine Abwesenheit – auch die Sperre
+  eines lokalen Kontos wegen Inaktivität –, eine Versetzung oder ein Gruppenwechsel lösen keine
+  Löschung aus.
 
 Gelöscht werden die Dokumente, ihre Abschnitte im Vektor- und im Volltextindex, abgelegte
 Originale, Ordner, Metadatenwerte und -felder, die Läufe samt Laufprotokoll, der Abgleichstand, die

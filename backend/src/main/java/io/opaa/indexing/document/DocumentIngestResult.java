@@ -13,6 +13,12 @@ public enum DocumentIngestResult {
   QUOTA_EXCEEDED,
 
   /**
+   * As {@link #QUOTA_EXCEEDED}, but for the storage quota across all private libraries of the
+   * library's owner: nothing was persisted, a stored version stays as it is, and the run goes on.
+   */
+  PERSONAL_QUOTA_EXCEEDED,
+
+  /**
    * The document carried no extractable text - very likely a scan PDF without a text layer
    * (ingestion-pipelines.md, Teil 3, Punkt 1). The document row was already created and is marked
    * {@code FAILED} with a German, user-facing message instead of being indexed with zero chunks; a
