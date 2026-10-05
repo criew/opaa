@@ -582,7 +582,9 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
       // A page whose row exists - stored now, unchanged, or rejected as text-free - carries its
       // attachments; one the quota or the pipeline refused has no row to hang them on.
       pageStored =
-          result != DocumentIngestResult.QUOTA_EXCEEDED && result != DocumentIngestResult.FAILED;
+          result != DocumentIngestResult.QUOTA_EXCEEDED
+              && result != DocumentIngestResult.PERSONAL_QUOTA_EXCEEDED
+              && result != DocumentIngestResult.FAILED;
     } catch (Exception e) {
       IndexingRun.rethrowRunEnding(e);
       run.frame.recordFailure(pagePath, e);

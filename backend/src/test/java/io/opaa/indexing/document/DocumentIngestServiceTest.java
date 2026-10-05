@@ -40,7 +40,6 @@ import io.opaa.indexing.chunk.FullTextChunkStore;
 import io.opaa.indexing.chunk.SourceChunkMetadataKeys;
 import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.indexing.chunk.VectorStoreWriter;
-import io.opaa.indexing.job.PersonalQuotaExhaustedException;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
@@ -1089,11 +1088,11 @@ class DocumentIngestServiceTest {
   class Quota {
 
     /**
-     * The owner's quota across her private libraries ends the run instead of skipping the item:
-     * nothing of the document is stored, and the message names her quota.
+     * The owner's quota across her private libraries rejects the item like the library's quota:
+     * nothing of the document is stored, and the run goes on.
      */
     @Test
-    void aDocumentPastTheOwnersPersonalQuotaEndsTheIntakeWithoutPersistingAnything()
+    void aDocumentPastTheOwnersPersonalQuotaIsRejectedWithoutPersistingAnything()
         throws IOException {
       Path file = fileNamed("over-personal-quota.txt", "some content");
       when(checksumService.computeSha256(file)).thenReturn("abc123");
@@ -1102,16 +1101,14 @@ class DocumentIngestServiceTest {
           .thenReturn(Optional.empty());
       when(storageQuotaService.verdictFor(eq(targetLibrary), anyLong()))
           .thenReturn(QuotaVerdict.PERSON_EXHAUSTED);
-      when(storageQuotaService.personalQuotaExceededMessage(targetLibrary))
-          .thenReturn(
-              "Speicherkontingent Ihrer privaten Bibliotheken erschöpft (1 KB von 1 KB belegt)");
 
-      assertThatThrownBy(() -> service.ingest(localFile(file), null))
-          .isInstanceOf(PersonalQuotaExhaustedException.class)
-          .hasMessage(
-              "Speicherkontingent Ihrer privaten Bibliotheken erschöpft (1 KB von 1 KB belegt)");
+      DocumentIngestResult result = service.ingest(localFile(file), null);
+
+      assertThat(result).isEqualTo(DocumentIngestResult.PERSONAL_QUOTA_EXCEEDED);
       verify(documentRepository, never()).save(any(Document.class));
       verify(documentService, never()).parseDocument(any());
+      verify(vectorStoreWriter, never()).writeEmbeddedChunks(any(), any());
+      assertThat(counter("skipped")).isEqualTo(1.0);
     }
 
     /** The check and the save of the row it admits happen under one hold, released after it. */

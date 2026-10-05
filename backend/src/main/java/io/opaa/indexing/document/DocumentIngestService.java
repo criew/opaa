@@ -14,7 +14,6 @@ import io.opaa.indexing.attachment.AttachmentLimits;
 import io.opaa.indexing.attachment.AttachmentSource;
 import io.opaa.indexing.chunk.SourceChunkMetadataKeys;
 import io.opaa.indexing.chunk.VectorChunkStore;
-import io.opaa.indexing.job.PersonalQuotaExhaustedException;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
@@ -157,7 +156,6 @@ public class DocumentIngestService {
    *     failure {@link DocumentIngestResult} names
    * @throws IOException when the content cannot be read; an exception out of parsing, embedding or
    *     the final update is rethrown after the row was marked {@code FAILED}
-   * @throws PersonalQuotaExhaustedException when the owner of a private library has no room left
    */
   public DocumentIngestResult ingest(DocumentIngest ingest, AttachmentAccess attachmentAccess)
       throws IOException {
@@ -430,8 +428,8 @@ public class DocumentIngestService {
   }
 
   /**
-   * {@code null} when {@code library} may take in {@code delta} more bytes; the rejection of the
-   * item when its library is full; an end of the run when its owner's private storage is.
+   * {@code null} when {@code library} may take in {@code delta} more bytes; otherwise the rejection
+   * of the item for the quota that is full - its library's or its owner's private storage.
    */
   private DocumentIngestResult admit(KnowledgeLibrary library, long delta, String filePath) {
     QuotaVerdict verdict = storageQuotaService.verdictFor(library, delta);
@@ -440,10 +438,11 @@ public class DocumentIngestService {
     }
     if (verdict == QuotaVerdict.PERSON_EXHAUSTED) {
       log.warn(
-          "Ending intake into private library {}: its owner's storage quota would be exceeded",
+          "Skipping {}: the owner's storage quota of private library {} would be exceeded",
+          filePath,
           library.getId());
-      throw new PersonalQuotaExhaustedException(
-          storageQuotaService.personalQuotaExceededMessage(library));
+      metrics.recordSkipped();
+      return DocumentIngestResult.PERSONAL_QUOTA_EXCEEDED;
     }
     return null;
   }
