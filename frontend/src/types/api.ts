@@ -234,6 +234,11 @@ export type ConnectionAuthorizationCompleteRequest =
   components['schemas']['ConnectionAuthorizationCompleteRequest']
 export type ConnectionAuthorizationCompleteResponse =
   components['schemas']['ConnectionAuthorizationCompleteResponse']
+export type PendingSourceConnection = components['schemas']['PendingSourceConnection']
+export type SourceConnectionResponsible = components['schemas']['SourceConnectionResponsible']
+export type SourceConnectionResponsibleRef = components['schemas']['SourceConnectionResponsibleRef']
+export type LibrarySourceConnection = components['schemas']['LibrarySourceConnection']
+export type DormantSourceConnection = components['schemas']['DormantSourceConnection']
 export type SignInProfileEndpoints = components['schemas']['SignInProfileEndpoints']
 export type ConnectionRedirectResponse = components['schemas']['ConnectionRedirectResponse']
 export type ConnectionLogEventType = components['schemas']['ConnectionLogEventType']
