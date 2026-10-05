@@ -28,7 +28,8 @@ paths:
         credentials encryption key (OPAA_CREDENTIALS_ENCRYPTION_KEY). Without a usable key the
         library is not created and the answer is 503 naming the missing key - a write never
         silently drops a credential. Reading a library never fails this way: an undecryptable
-        stored credential is reported as absent.
+        stored credential is reported as absent. A library created through a connection profile
+        that was changed meanwhile is not created: 409 (code LIBRARY_CONNECTION_PROFILE_CHANGED).
       requestBody:
         required: true
         content:
@@ -58,6 +59,8 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
         "404":
           $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
         "503":
           $ref: "#/components/responses/ServiceUnavailable"
 
@@ -238,7 +241,9 @@ paths:
         credentials encryption key (OPAA_CREDENTIALS_ENCRYPTION_KEY). Without a usable key
         nothing is changed and the answer is 503 naming the missing key - a write never silently
         drops a credential. A request that carries no new credential keeps the stored one and is
-        unaffected.
+        unaffected. A change of the source configuration of a library on a connection profile
+        that was changed meanwhile is refused with 409 (code LIBRARY_CONNECTION_PROFILE_CHANGED);
+        repeating it validates against the profile as it is now.
       requestBody:
         required: true
         content:
@@ -368,7 +373,8 @@ paths:
         entfernt") and for one locked because its type is usable only through a profile.
         A private library moves only onto a profile admitting persons on which its owner has a
         connected account (400 otherwise), and only its owner moves it - for everyone else it
-        does not exist (404).
+        does not exist (404). When the new or the previous profile was changed meanwhile, nothing
+        is changed: 409 (code LIBRARY_CONNECTION_PROFILE_CHANGED).
       requestBody:
         required: true
         content:
@@ -388,6 +394,8 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
 
     delete:
       operationId: disconnectLibraryProfile
@@ -398,7 +406,8 @@ paths:
         runs with them as its own; what the profile set for it - its defaults, proxy and TLS
         switch - becomes the library's own, so the configuration it runs with stays the same.
         Refused with 400 for a source type that requires a profile and for a private library,
-        which runs on its owner's connected account only.
+        which runs on its owner's connected account only. When the profile was changed
+        meanwhile, nothing is changed: 409 (code LIBRARY_CONNECTION_PROFILE_CHANGED).
       responses:
         "200":
           description: The library, without a profile
@@ -412,6 +421,8 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
 
   /api/v1/libraries/{libraryId}/documents:
     parameters:

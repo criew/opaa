@@ -623,6 +623,10 @@ public class KnowledgeLibraryService {
     if (replacesSourceConfiguration) {
       libraryConnections.requireAddressAllowed(library, validatedSettings.sourceUrl());
     }
+    if (replacesSourceConfiguration || replacesOwnSettings) {
+      // validated against the profile's frame: it must still stand when the change is written
+      libraryConnections.holdProfileOf(library);
+    }
     // #485: schedule follows the same replace-as-a-whole rule as the source configuration above -
     // only present when the caller actually intends to change it (LibraryUpdate.schedule), so a
     // request that only renames the library leaves an already-configured schedule untouched.

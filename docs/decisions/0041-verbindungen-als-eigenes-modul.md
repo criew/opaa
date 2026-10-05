@@ -678,6 +678,33 @@ Begründung:
   `PersonThreshold#disclosesPart`; mehrere exakte Teilsummen erscheinen nur, solange ihr
   gemeinsamer Rest auf mindestens N Personen ruht; ein leerer Rest gilt als wenige.
 
+## Nachtrag vom 05.10.2026: Schreibende Wege je Zugang serialisiert (#2246)
+
+- **Wettlauf:** Eine Profiländerung plant aus den Bibliotheken, die gerade am Zugang hängen. Ohne
+  Sperre konnte eine Bibliothek, die währenddessen zugeordnet, über den Zugang angelegt, gelöst oder
+  in ihren Quelleinstellungen geändert wurde, die Prüfung durch den Konnektor verpassen oder mit dem
+  alten Rahmen des Zugangs weiterlaufen.
+- **Profiländerung und Notabschaltung** sperren die Profilzeile als erste Anweisung mit
+  `FOR NO KEY UPDATE`, nicht mehr mit `FOR UPDATE`: Sie schließen einander und jedes `FOR SHARE`
+  aus, lassen aber Zeilen mit Fremdschlüssel auf das Profil durch, etwa den Start einer
+  Zustimmung (deren Abschluss vergleicht die Version weiterhin unter `FOR SHARE`). Nur das
+  **Löschen** sperrt mit `FOR UPDATE`, weil es die Zeile entfernt.
+- **Zuordnen, Anlegen über einen Zugang, Lösen und die Änderung der Quelleinstellungen** einer
+  Bibliothek am Zugang halten die Profilzeile mit `FOR SHARE` und vergleichen die Version mit der,
+  aus der sie den Rahmen gelesen haben (`LibraryConnectionService#holdUnchanged`); beim
+  Zugangswechsel beide Zugänge, in der Reihenfolge ihrer IDs. Weicht sie ab oder fehlt die Zeile,
+  ändert sich nichts: `409 LIBRARY_CONNECTION_PROFILE_CHANGED`, ein erneuter Versuch liest den
+  neuen Rahmen. Kam der Schreibweg zuerst, wartet die Profiländerung, sieht danach die Bibliothek
+  und lässt sie vom Konnektor prüfen. Diese Wege warten nicht aufeinander.
+- **Optimistisch statt von Beginn an gesperrt:** Die Sperre fällt nach der Prüfung durch den
+  Konnektor, die Netzzugriffe enthalten kann (Edition einer Confluence-Instanz, Zieladressen), und
+  vor dem ersten Schreiben. So läuft kein Netzzugriff unter der Sperre, und ein Schreibweg hält
+  beim Warten auf die Profilzeile noch keine andere Zeile.
+- **Sperrreihenfolge:** Profilzeile vor allen Zeilen, die der Weg schreibt (Token, Konten,
+  Bibliotheken, Zuordnungen). Die Aufnahme von Chunks hält `FOR KEY SHARE` auf der
+  Bibliothekszeile und kollidiert mit keiner dieser Sperren. Verbinden eines Kontos mit
+  persönlichem Geheimnis nimmt die Profilzeile bisher nicht und ist nicht Teil dieses Nachtrags.
+
 ## Referenzen
 
 - [connector-connections.md](../features/connector-connections.md)
