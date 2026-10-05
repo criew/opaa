@@ -534,8 +534,10 @@ Der Dialog zum Verbinden sagt das vor dem Absenden.
 
 Eine private Bibliothek wird auf zwei Wegen gelöscht, beide gleich vollständig:
 
-- **Sofort löschen** durch die Besitzerin selbst, jederzeit. Niemand sonst kann es, auch nicht die
-  Systemverwaltung; für alle anderen gibt es die Bibliothek nicht.
+- **Sofort löschen** durch die Besitzerin selbst, jederzeit, im Menü „⋯“ der Detailseite
+  ([Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), „Private
+  Bibliotheken“). Niemand sonst kann es, auch nicht die Systemverwaltung; für alle anderen gibt es
+  die Bibliothek nicht.
 - **Nach Ablauf der Löschfrist** durch den täglichen Löschlauf, wenn das Konto der Besitzerin so
   lange ausdrücklich deaktiviert war und es noch ist. Ein ruhendes Konto, eine Abwesenheit – auch
   die Sperre eines lokalen Kontos wegen Inaktivität –, eine Versetzung oder ein Gruppenwechsel lösen
