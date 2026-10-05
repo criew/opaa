@@ -1,6 +1,5 @@
 package io.opaa.auth;
 
-import io.opaa.api.types.LockReason;
 import io.opaa.api.types.ProviderType;
 import java.time.Clock;
 import java.time.Duration;
@@ -17,8 +16,9 @@ import org.springframework.stereotype.Component;
 /**
  * The one rule whether an account may be used right now (ADR-0041, Entscheidung 4), for every kind
  * of account: the directory lock first, a local account by {@link LocalAccountAccess} and the
- * switch of the local management, every other one by the provider of its issuer. Inactivity counts
- * only where a caller asks for it with a threshold.
+ * switch of the local management, every other one by the provider of its issuer. Absence never
+ * deactivates: a local lock for inactivity rests, and inactivity without a lock counts only where a
+ * caller asks for it with a threshold.
  */
 @Component
 public class AccountUsability {
@@ -35,8 +35,9 @@ public class AccountUsability {
     DORMANT_PROVIDER_DISABLED,
     /** A regular local account while the local account management is switched off. */
     DORMANT_LOCAL_ACCOUNTS_DISABLED,
+    /** No sign-in beyond the asked threshold, or a local account locked for inactivity. */
     DORMANT_INACTIVE,
-    /** Locked, expired, locked by the directory, or its provider is gone. */
+    /** Locked other than for inactivity, expired, locked by the directory, or provider gone. */
     DEACTIVATED;
 
     public boolean isUsable() {
@@ -158,9 +159,8 @@ public class AccountUsability {
     }
 
     /**
-     * For each of {@code users} deactivated by an act that ends the account - a directory lock, an
-     * expiry, a local lock other than for inactivity, a provider gone - since when; absent for one
-     * not deactivated or only by the local inactivity lock, which is an absence (#2260).
+     * For each of {@code users} that is {@link State#DEACTIVATED} - a directory lock, an expiry, a
+     * local lock, a provider gone - since when; absent for one not deactivated.
      */
     public Map<UUID, Deactivation> deactivationsOf(Collection<User> users) {
       Map<UUID, LocalCredentials> rows = localRowsOf(users);
@@ -191,9 +191,7 @@ public class AccountUsability {
       if (expiresAt != null && !expiresAt.isAfter(now)) {
         return new Deactivation(expiresAt);
       }
-      return row.getLockedReason() == LockReason.INACTIVITY
-          ? null
-          : new Deactivation(row.getLockedAt());
+      return new Deactivation(row.getLockedAt());
     }
 
     private Map<UUID, LocalCredentials> localRowsOf(Collection<User> users) {

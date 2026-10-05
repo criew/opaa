@@ -52,7 +52,8 @@ public final class LocalAccountAccess {
 
   /**
    * The local half of {@link AccountUsability}: an expiry is read before the lock, which would
-   * otherwise hide it; a failed-login lockout ends by itself and is no deactivation.
+   * otherwise hide it; a failed-login lockout ends by itself, and a lock for inactivity is an
+   * absence that rests - neither is a deactivation.
    */
   public static State usability(LocalCredentials credentials, Instant now) {
     Instant expiresAt = credentials.getExpiresAt();
@@ -65,9 +66,11 @@ public final class LocalAccountAccess {
     if (credentials.state(now) == LocalAccountState.INVITED) {
       return State.INVITED;
     }
-    return credentials.getLockedReason() == LockReason.FAILED_LOGINS
-        ? State.LOCKED_OUT
-        : State.DEACTIVATED;
+    LockReason reason = credentials.getLockedReason();
+    if (reason == LockReason.FAILED_LOGINS) {
+      return State.LOCKED_OUT;
+    }
+    return reason == LockReason.INACTIVITY ? State.DORMANT_INACTIVE : State.DEACTIVATED;
   }
 
   /**
