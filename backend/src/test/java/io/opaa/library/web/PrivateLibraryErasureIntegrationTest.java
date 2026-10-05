@@ -424,7 +424,10 @@ class PrivateLibraryErasureIntegrationTest {
     return left;
   }
 
-  /** The proof names the library neutrally and carries cause and counts, no name or path. */
+  /**
+   * The proof names the library neutrally and carries cause, time and a complete erasure, each kind
+   * of content only as none or present - no exact count, no name or path.
+   */
   private void theProofNamesNothing(Fixture fixture, String cause) {
     List<Map<String, Object>> entries =
         jdbc.queryForList(
@@ -435,7 +438,12 @@ class PrivateLibraryErasureIntegrationTest {
     assertThat(entries.getFirst().get("object_label")).isEqualTo(PRIVATE_NAME);
     String before = (String) entries.getFirst().get("before");
     assertThat(before)
-        .contains("\"cause\"", cause, "\"documentsRemoved\"", "\"chunksRemoved\"")
+        .contains("\"cause\"", cause, "\"requestedAt\"")
+        .containsPattern("\"erasedCompletely\"\\s*:\\s*true")
+        .containsPattern("\"documentsRemoved\"\\s*:\\s*\"PRESENT\"")
+        .containsPattern("\"chunksRemoved\"\\s*:\\s*\"PRESENT\"")
+        .containsPattern("\"chatSourcesRedacted\"\\s*:\\s*\"PRESENT\"")
+        .doesNotContainPattern("\"\\w+(Removed|Redacted)\"\\s*:\\s*\\d")
         .doesNotContain(fixture.names());
     for (String label :
         jdbc.queryForList(
