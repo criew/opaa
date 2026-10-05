@@ -16,7 +16,8 @@ import org.junit.jupiter.params.provider.MethodSource;
 /**
  * Under the minimum group size 5 no answer, and no difference of two answers, points at fewer than
  * five persons: the total is masked below 5, zero included, and the expired part is exact only
- * where the total is and neither it nor the connected rest lies between 1 and 4.
+ * where it and the connected rest are each at least 5 - a rest of none answers like a rest of a
+ * few.
  */
 class PersonNumbersTest {
 
@@ -24,15 +25,26 @@ class PersonNumbersTest {
     return Stream.of(
         // connected, expired, total shown, expired shown ("-" for not told)
         Arguments.of(0, 0, "<5", "<5"),
+        Arguments.of(0, 1, "<5", "<5"),
         Arguments.of(1, 0, "<5", "<5"),
+        Arguments.of(1, 1, "<5", "<5"),
         Arguments.of(4, 0, "<5", "<5"),
-        Arguments.of(5, 0, "5", "0"),
-        Arguments.of(5, 1, "6", "<5"),
-        Arguments.of(1, 5, "6", "-"),
-        Arguments.of(6, 5, "11", "5"),
+        Arguments.of(2, 2, "<5", "<5"),
         Arguments.of(0, 3, "<5", "<5"),
-        Arguments.of(0, 7, "7", "7"),
-        Arguments.of(2, 2, "<5", "<5"));
+        // below 2N-1 a few connected and a few expired overlap: the part is never told
+        Arguments.of(0, 5, "5", "-"),
+        Arguments.of(5, 0, "5", "-"),
+        Arguments.of(1, 5, "6", "-"),
+        Arguments.of(5, 1, "6", "-"),
+        Arguments.of(0, 7, "7", "-"),
+        Arguments.of(4, 5, "9", "-"),
+        Arguments.of(0, 9, "9", "-"),
+        Arguments.of(5, 4, "9", "<5"),
+        Arguments.of(9, 0, "9", "<5"),
+        Arguments.of(5, 5, "10", "5"),
+        Arguments.of(6, 5, "11", "5"),
+        Arguments.of(0, 10, "10", "-"),
+        Arguments.of(10, 0, "10", "<5"));
   }
 
   @ParameterizedTest(name = "{0} connected + {1} expired -> {2} / {3}")
@@ -46,15 +58,40 @@ class PersonNumbersTest {
         .isEqualTo(expiredShown);
   }
 
+  /**
+   * Regression guard for #2270: on the same total, none connected answers like one to four
+   * connected, and none expired like one to four expired - the part, the total and the warning.
+   */
+  @Test
+  void noneAnswersLikeAFewOnEitherSide() {
+    for (long total = 0; total <= 30; total++) {
+      for (long few = 1; few <= Math.min(4, total); few++) {
+        assertThat(answer(few, total - few))
+            .as("%d in all, %d connected", total, few)
+            .isEqualTo(answer(0, total));
+        assertThat(answer(total - few, few))
+            .as("%d in all, %d expired", total, few)
+            .isEqualTo(answer(total, 0));
+      }
+    }
+  }
+
+  private static String answer(long connected, long expired) {
+    ProfileCounts counts = TestPersonCounts.of(connected, expired);
+    return counts.total() + "/" + counts.expired() + "/" + counts.expiredWarning();
+  }
+
   static Stream<Arguments> warnings() {
     return Stream.of(
         // connected, expired, warning at the threshold 10
         Arguments.of(6, 9, false),
         Arguments.of(6, 10, true),
-        Arguments.of(0, 12, true),
-        // untold expired: 13 in all with 1 to 4 connected admits 9 expired
+        // untold expired: 12 in all with 0 to 4 connected admits 8 expired
+        Arguments.of(0, 12, false),
+        Arguments.of(0, 14, true),
+        // 13 in all with 0 to 4 connected admits 9 expired
         Arguments.of(1, 12, false),
-        // 15 in all with 1 to 4 connected admits no fewer than 11
+        // 15 in all with 0 to 4 connected admits no fewer than 11
         Arguments.of(1, 14, true),
         Arguments.of(0, 4, false));
   }

@@ -13,11 +13,11 @@ import org.springframework.stereotype.Component;
 /**
  * The one way a number about persons' connections reaches the administration (ADR-0036,
  * Mindestgruppengröße N): the total of a profile is exact from N on, else "fewer than N" - zero
- * included, so no answer tells whether anyone is connected; a part (the expired) is exact only
- * where the total is and neither it nor its complement lies between 1 and N-1 - else "fewer than N"
- * if it is below N, else not told - so no subtraction of two answers points at a person. The
- * warning on the expired follows only from what is told: the least number of expired the masked
- * answer admits reaches the threshold.
+ * included, so no answer tells whether anyone is connected; the expired part is exact only where
+ * {@link PersonThreshold#disclosesPart} allows against the connected, else "fewer than N" if it is
+ * below N and not told from N on - and not told at all on a total below 2N-1 - so on one total none
+ * answers like a few on either side. The warning on the expired follows only from what is told: the
+ * least number of expired the masked answer admits reaches the threshold.
  */
 @Component
 public class PersonNumbers {
@@ -71,30 +71,26 @@ public class PersonNumbers {
   }
 
   ProfileCounts mask(StateCounts counts) {
-    long total = counts.connected() + counts.expired();
-    boolean totalMasked = total < minimum;
-    PersonCount masked = totalMasked ? PersonCount.fewerThan(minimum) : PersonCount.exact(total);
-    boolean partReveals =
-        totalMasked || revealing(counts.connected()) || revealing(counts.expired());
-    PersonCount expired;
-    long leastExpired;
-    if (!partReveals) {
-      expired = PersonCount.exact(counts.expired());
-      leastExpired = counts.expired();
-    } else if (counts.expired() < minimum) {
-      expired = PersonCount.fewerThan(minimum);
-      leastExpired = 0;
-    } else {
-      // untold: the total is exact and the connected lie between 1 and N-1, so the expired are at
-      // least N and at least total - (N-1) - both known from the answer and the rule
-      expired = null;
-      leastExpired = Math.max(minimum, total - (minimum - 1));
+    long connected = counts.connected();
+    long expired = counts.expired();
+    long total = connected + expired;
+    if (!threshold.discloses(total)) {
+      return new ProfileCounts(
+          PersonCount.fewerThan(minimum), PersonCount.fewerThan(minimum), false);
     }
-    return new ProfileCounts(masked, expired, leastExpired >= warningThreshold);
-  }
-
-  private boolean revealing(long count) {
-    return count > 0 && count < minimum;
+    PersonCount told = PersonCount.exact(total);
+    if (threshold.disclosesPart(expired, connected)) {
+      return new ProfileCounts(told, PersonCount.exact(expired), expired >= warningThreshold);
+    }
+    if (total < 2L * minimum - 1) {
+      // a few expired and a few connected overlap on this total, so any answer would split them
+      return new ProfileCounts(told, null, false);
+    }
+    if (expired < minimum) {
+      return new ProfileCounts(told, PersonCount.fewerThan(minimum), false);
+    }
+    // untold: the connected are 0 to N-1, so the expired are at least total - (N-1)
+    return new ProfileCounts(told, null, total - (minimum - 1) >= warningThreshold);
   }
 
   /**
