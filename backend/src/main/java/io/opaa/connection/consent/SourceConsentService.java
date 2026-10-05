@@ -542,6 +542,10 @@ public class SourceConsentService implements SourceConsentRejections, SourceCons
    * OAuth, admit libraries, and its connector's OAuth sign-in must admit a library as owner.
    */
   private void requireLibraryConsent(ConnectionProfile profile) {
+    if (profile.isMcpServer()) {
+      throw new ValidationException(
+          "Über den MCP-Server „" + profile.getName() + "“ wird keine Bibliothek verbunden.");
+    }
     SourceConnectorDescriptor descriptor =
         connectors.getObject().descriptor(profile.getSourceType());
     ProfileAdmission.require(

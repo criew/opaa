@@ -118,19 +118,31 @@ public class ConnectorLockService {
     return typeState(descriptor, policy);
   }
 
+  /** Locks or unlocks the connector profile {@code profileId}; an MCP server is not found here. */
   @Transactional
   public ConnectionProfile lockProfile(CurrentUser caller, UUID profileId, boolean locked) {
-    ConnectionProfile profile =
+    return lockProfile(
+        caller,
         profiles
-            .findById(profileId)
-            .orElseThrow(() -> new NotFoundException("Zugang nicht gefunden"));
+            .findByIdAndKind(profileId, ProfileKind.CONNECTOR)
+            .orElseThrow(() -> new NotFoundException("Zugang nicht gefunden")),
+        locked);
+  }
+
+  /** {@link #lockProfile(CurrentUser, UUID, boolean)} of a profile of any kind. */
+  @Transactional
+  ConnectionProfile lockProfile(CurrentUser caller, ConnectionProfile profile, boolean locked) {
     if (profile.isLocked() != locked) {
       Instant now = clock.instant();
       profile.lockedSince(locked ? now : null, now);
       profiles.save(profile);
       Map<String, Object> after = new LinkedHashMap<>();
       after.put("profile", profile.getName());
-      after.put("sourceType", profile.getSourceType().key());
+      if (profile.isMcpServer()) {
+        after.put("kind", profile.getKind().name());
+      } else {
+        after.put("sourceType", profile.getSourceType().key());
+      }
       record(caller, locked, profile.getId(), "Zugang " + profile.getName(), after);
     }
     return profile;
@@ -148,9 +160,12 @@ public class ConnectorLockService {
             });
   }
 
-  /** Why no new library of {@code type} through {@code profile} is possible, empty if it is. */
+  /**
+   * Why no new library of {@code type} through {@code profile} is possible, empty if it is; an MCP
+   * server ({@code type} {@code null}) has only its own lock.
+   */
   public Optional<String> creationLock(SourceType type, ConnectionProfile profile) {
-    if (isTypeLocked(type)) {
+    if (type != null && isTypeLocked(type)) {
       return Optional.of(
           "Die Quellart „"
               + displayName(type)

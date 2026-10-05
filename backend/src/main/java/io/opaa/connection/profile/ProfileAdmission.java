@@ -41,7 +41,7 @@ public final class ProfileAdmission {
       DraftOwner owner) {
     ConnectionProfile found =
         profile.orElseThrow(() -> new NotFoundException("Zugang nicht gefunden"));
-    if (!found.getSourceType().equals(type)) {
+    if (found.isMcpServer() || !found.getSourceType().equals(type)) {
       throw new ValidationException("Der Zugang gehört zu einer anderen Quellart");
     }
     if (!descriptor.admitsProfiles()) {

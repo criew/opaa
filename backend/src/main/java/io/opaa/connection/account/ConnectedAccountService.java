@@ -23,6 +23,7 @@ import io.opaa.connection.profile.LibraryConnectionRepository;
 import io.opaa.connection.profile.PersonConnections;
 import io.opaa.connection.profile.PersonConnections.StateCounts;
 import io.opaa.connection.profile.ProfileAdmission;
+import io.opaa.connection.profile.ProfileKind;
 import io.opaa.connection.profile.SourceDraft;
 import io.opaa.connection.token.ConnectionSecrets;
 import io.opaa.connection.token.GrantRejections;
@@ -120,10 +121,15 @@ public class ConnectedAccountService implements PersonConnections, GrantRejectio
    * Refuses connecting the caller's account on {@code profile}: {@code 400} where neither the
    * profile nor its connector admits persons, {@code 403 CONNECTOR_LOCKED} on a lock, and {@code
    * 403 CAPABILITY_REQUIRED} for a new account without the profile's release. Reconnecting an
-   * existing account needs no release.
+   * existing account needs no release. An MCP server has no release yet: until its use is released
+   * ({@code #1747}), only the system administration connects to it.
    */
   @Transactional(readOnly = true)
   public void requireConnectable(CurrentUser caller, ConnectionProfile profile) {
+    if (profile.isMcpServer()) {
+      requireConnectableMcpServer(caller, profile);
+      return;
+    }
     ProfileAdmission.require(
         Optional.of(profile),
         profile.getSourceType(),
@@ -147,12 +153,30 @@ public class ConnectedAccountService implements PersonConnections, GrantRejectio
     }
   }
 
+  private static void requireConnectableMcpServer(CurrentUser caller, ConnectionProfile profile) {
+    if (profile.isLocked()) {
+      throw new AccessDeniedException(
+          "Der MCP-Server „"
+              + profile.getName()
+              + "“ ist gesperrt. Verbinden ist erst wieder möglich, wenn die Systemverwaltung die"
+              + " Sperre aufhebt.",
+          ConnectorLockService.CONNECTOR_LOCKED);
+    }
+    if (!caller.isSystemAdmin()) {
+      throw new AccessDeniedException(
+          "Mit dem MCP-Server „"
+              + profile.getName()
+              + "“ verbindet bis zur Freigabe seiner Nutzung nur die Systemverwaltung.");
+    }
+  }
+
   /**
    * Stores {@code secret} as the caller's connected account on {@code profile}, after {@link
    * #requireConnectable}: a new account is connected, an existing one reconnected. {@code label} is
    * the caller's account name at the provider, {@code null} for none; only the caller sees it. It
    * trusts that the secret signed in already, so only this package and the OAuth flow call it
-   * ({@code aConnectionIsEstablishedOnlyAfterItsSignIn}).
+   * ({@code aConnectionIsEstablishedOnlyAfterItsSignIn}). Returns the connection as the overview
+   * shows it, {@code null} for an MCP server, which it does not show.
    */
   @Transactional
   public AccountOverview.Account established(
@@ -178,7 +202,9 @@ public class ConnectedAccountService implements PersonConnections, GrantRejectio
         profile.getId(),
         profile.getName(),
         null);
-    return viewOf(account, profile, capabilities.scopesOf(caller, RELEASE));
+    return profile.isMcpServer()
+        ? null
+        : viewOf(account, profile, capabilities.scopesOf(caller, RELEASE));
   }
 
   /**
@@ -193,6 +219,10 @@ public class ConnectedAccountService implements PersonConnections, GrantRejectio
             .findById(profileId)
             .orElseThrow(() -> new NotFoundException("Zugang nicht gefunden"));
     requireConnectable(caller, profile);
+    if (profile.isMcpServer()) {
+      throw new ValidationException(
+          "Mit einem MCP-Server verbindet nur die Zustimmung beim Anbieter, kein Geheimnis.");
+    }
     PersonalSecretForm form =
         descriptorOf(profile)
             .profileDeclaration()
@@ -290,7 +320,10 @@ public class ConnectedAccountService implements PersonConnections, GrantRejectio
         body);
   }
 
-  /** The caller's connections, what they may connect now, and who to ask for a missing one. */
+  /**
+   * The caller's connections, what they may connect now, and who to ask for a missing one; a
+   * connection to an MCP server is not shown while its kind stays hidden.
+   */
   @Transactional(readOnly = true)
   public AccountOverview overview(CurrentUser caller) {
     HeldScopes held = capabilities.scopesOf(caller, RELEASE);
@@ -299,11 +332,11 @@ public class ConnectedAccountService implements PersonConnections, GrantRejectio
     for (ConnectedAccount account : accounts.findByUserIdOrderByConnectedAtAsc(caller.id())) {
       connected.add(account.getProfileId());
       profiles
-          .findById(account.getProfileId())
+          .findByIdAndKind(account.getProfileId(), ProfileKind.CONNECTOR)
           .ifPresent(profile -> views.add(viewOf(account, profile, held)));
     }
     List<AccountOverview.Connectable> connectable = new ArrayList<>();
-    for (ConnectionProfile profile : profiles.findAllByOrderByNameAsc()) {
+    for (ConnectionProfile profile : profiles.findConnectorsByName()) {
       Optional<SourceConnectorDescriptor> descriptor = findDescriptor(profile);
       if (!connected.contains(profile.getId())
           && descriptor.isPresent()

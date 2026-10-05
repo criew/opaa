@@ -393,6 +393,18 @@ public final class ModularArchitecture {
   static final String FORM_POST = "sourceaccess.SourceFormPost";
 
   /**
+   * The profiles' repository, relative to the root, and its lists across every kind of profile: an
+   * MCP server has no source type, so the connector paths list only through {@code
+   * findConnectorsByName} and only {@link #MCP_SERVER_ADMINISTRATION} lists MCP servers.
+   */
+  static final String PROFILE_REPOSITORY = "connection.profile.ConnectionProfileRepository";
+
+  static final Set<String> PROFILE_LISTS_OF_ANY_KIND =
+      Set.of("findAll", "findByKindOrderByNameAsc");
+
+  static final String MCP_SERVER_ADMINISTRATION = "connection.profile.McpServerProfileService";
+
+  /**
    * The values that carry a refresh token, relative to the root as {@code package.Outer$Inner}:
    * their {@code refreshToken()} is read only in {@link #TOKEN_STORE_PACKAGES}, so a refresh token
    * travels only between the provider and the store.
@@ -1401,6 +1413,35 @@ public final class ModularArchitecture {
         .because(
             "it carries the profile's client secret or key; only the sign-in uses it, and hands out"
                 + " the access token alone")
+        .allowEmptyShould(true);
+  }
+
+  /**
+   * Calls of {@link #PROFILE_LISTS_OF_ANY_KIND} on {@link #PROFILE_REPOSITORY} outside the
+   * repository itself and {@link #MCP_SERVER_ADMINISTRATION}.
+   */
+  ArchRule connectorPathsSeeOnlyConnectorProfiles() {
+    return noClasses()
+        .that(
+            DescribedPredicate.describe(
+                "are not " + PROFILE_REPOSITORY + " or " + MCP_SERVER_ADMINISTRATION,
+                javaClass -> {
+                  String name = relativeName(topLevel(javaClass.getBaseComponentType()));
+                  return name != null
+                      && !PROFILE_REPOSITORY.equals(name)
+                      && !MCP_SERVER_ADMINISTRATION.equals(name);
+                }))
+        .should()
+        .accessTargetWhere(
+            DescribedPredicate.describe(
+                "list " + PROFILE_REPOSITORY + " across every kind",
+                access ->
+                    PROFILE_LISTS_OF_ANY_KIND.contains(access.getName())
+                        && PROFILE_REPOSITORY.equals(relativeName(access.getTargetOwner()))))
+        .because(
+            "an MCP server profile has no source type and no connector; a connector path that"
+                + " listed it would fail on it or show it while the kind stays hidden (ADR-0041,"
+                + " Entscheidung 5)")
         .allowEmptyShould(true);
   }
 

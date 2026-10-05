@@ -1,0 +1,23 @@
+databaseChangeLog:
+  - changeSet:
+      id: connections-2026-10-05-mcp-server-profiles
+      author: opaa
+      comment: "The profile kind MCP_SERVER (#2173, ADR-0041 Entscheidung 5): a profile without a connector, so source_type is set exactly for a CONNECTOR profile; the group answering for an MCP server and the issuer of its authorization server as discovered when the profile was saved."
+      changes:
+        - sql:
+            sql: |
+              ALTER TABLE connection_profiles
+                  ADD COLUMN kind character varying(16) NOT NULL DEFAULT 'CONNECTOR';
+              ALTER TABLE connection_profiles
+                  ADD CONSTRAINT chk_connection_profiles_kind CHECK (kind IN ('CONNECTOR', 'MCP_SERVER'));
+              ALTER TABLE connection_profiles ALTER COLUMN source_type DROP NOT NULL;
+              ALTER TABLE connection_profiles
+                  ADD CONSTRAINT chk_connection_profiles_kind_source_type
+                  CHECK ((kind = 'CONNECTOR') = (source_type IS NOT NULL));
+              ALTER TABLE connection_profiles ADD COLUMN responsible_group_id uuid;
+              ALTER TABLE connection_profiles
+                  ADD CONSTRAINT fk_connection_profiles_responsible_group
+                  FOREIGN KEY (responsible_group_id) REFERENCES groups(id) ON DELETE SET NULL;
+              CREATE INDEX ix_connection_profiles_responsible_group
+                  ON connection_profiles (responsible_group_id);
+              ALTER TABLE connection_profiles ADD COLUMN issuer character varying(2000);

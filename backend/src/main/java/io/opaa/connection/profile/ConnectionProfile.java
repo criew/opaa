@@ -17,10 +17,10 @@ import java.util.UUID;
 
 /**
  * A connection profile ("Zugang"): the frame the administration sets for one connector - server
- * address, proxy and TLS switch, sign-in method, app registration, scopes and connector defaults.
- * The client secret - for a service account key the key file - is held only as {@code
- * CredentialsEncryptor} ciphertext; only {@link ConnectionProfileService} and {@link
- * ProfileRegistrations} read it.
+ * address, proxy and TLS switch, sign-in method, app registration, scopes and connector defaults -
+ * or, of kind {@link ProfileKind#MCP_SERVER}, for an MCP server without a connector. The client
+ * secret - for a service account key the key file - is held only as {@code CredentialsEncryptor}
+ * ciphertext; only the profile administration and {@link ProfileRegistrations} read it.
  */
 @Entity
 @Table(name = "connection_profiles")
@@ -31,7 +31,11 @@ public class ConnectionProfile {
   @Column(name = "name", nullable = false)
   private String name;
 
-  @Column(name = "source_type", nullable = false, length = SourceType.MAX_LENGTH)
+  @Enumerated(EnumType.STRING)
+  @Column(name = "kind", nullable = false, length = 16)
+  private ProfileKind kind;
+
+  @Column(name = "source_type", length = SourceType.MAX_LENGTH)
   private SourceType sourceType;
 
   @Column(name = "server_url", nullable = false, length = 2000)
@@ -81,6 +85,12 @@ public class ConnectionProfile {
   @Column(name = "source_insecure_ssl", nullable = false)
   private boolean sourceInsecureSsl;
 
+  @Column(name = "responsible_group_id")
+  private UUID responsibleGroupId;
+
+  @Column(name = "issuer", length = 2000)
+  private String issuer;
+
   @Column(name = "locked_at")
   private Instant lockedAt;
 
@@ -101,9 +111,20 @@ public class ConnectionProfile {
 
   public ConnectionProfile(SourceType sourceType, Instant now) {
     this.id = UUID.randomUUID();
-    this.sourceType = sourceType;
+    this.kind = ProfileKind.CONNECTOR;
+    this.sourceType = Objects.requireNonNull(sourceType, "sourceType");
     this.createdAt = now;
     this.updatedAt = now;
+  }
+
+  /** A new profile of kind {@link ProfileKind#MCP_SERVER}, without a source type. */
+  static ConnectionProfile mcpServer(Instant now) {
+    ConnectionProfile profile = new ConnectionProfile();
+    profile.id = UUID.randomUUID();
+    profile.kind = ProfileKind.MCP_SERVER;
+    profile.createdAt = now;
+    profile.updatedAt = now;
+    return profile;
   }
 
   void replace(ConnectionProfileValues values, String clientSecretCiphertext, Instant now) {
@@ -135,6 +156,7 @@ public class ConnectionProfile {
   ConnectionProfile candidate(ConnectionProfileValues values) {
     ConnectionProfile copy = new ConnectionProfile();
     copy.id = id;
+    copy.kind = kind;
     copy.sourceType = sourceType;
     copy.lockedAt = lockedAt;
     copy.signInRejectedAt = signInRejectedAt;
@@ -151,8 +173,32 @@ public class ConnectionProfile {
     return name;
   }
 
+  public ProfileKind getKind() {
+    return kind == null ? ProfileKind.CONNECTOR : kind;
+  }
+
+  public boolean isMcpServer() {
+    return getKind() == ProfileKind.MCP_SERVER;
+  }
+
+  /** The connector's type; {@code null} exactly for an MCP server. */
   public SourceType getSourceType() {
     return sourceType;
+  }
+
+  /** The group answering for an MCP server, {@code null} for none or a connector profile. */
+  public UUID getResponsibleGroupId() {
+    return responsibleGroupId;
+  }
+
+  /** The issuer of an MCP server's authorization server as discovered when it was saved. */
+  public String getIssuer() {
+    return issuer;
+  }
+
+  void mcpServerFrame(UUID responsibleGroupId, String issuer) {
+    this.responsibleGroupId = responsibleGroupId;
+    this.issuer = issuer;
   }
 
   public String getServerUrl() {

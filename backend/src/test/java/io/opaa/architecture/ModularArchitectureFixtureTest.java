@@ -209,6 +209,24 @@ class ModularArchitectureFixtureTest {
   }
 
   /**
+   * A connector path and library list profiles of every kind; the repository's own connector list,
+   * the MCP server administration and a lookup by id pass.
+   */
+  @Test
+  void aProfileListAcrossEveryKindIsReported() {
+    Scenario scenario = new Scenario("connectorprofiles");
+
+    assertThat(scenario.violations(ModularArchitecture::connectorPathsSeeOnlyConnectorProfiles))
+        .hasSize(2)
+        .anySatisfy(violation -> assertThat(violation).contains("connection.Catalog", "findAll"))
+        .anySatisfy(
+            violation ->
+                assertThat(violation).contains("library.StorageView", "findByKindOrderByNameAsc"))
+        .noneSatisfy(violation -> assertThat(violation).contains("McpServerProfileService"))
+        .noneSatisfy(violation -> assertThat(violation).contains("Overview"));
+  }
+
+  /**
    * The account package and the web layer read a refresh token; the store and the OAuth package,
    * and a read of the access token, pass.
    */
