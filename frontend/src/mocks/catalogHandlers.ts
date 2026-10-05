@@ -51,6 +51,7 @@ function readableEntries(): CatalogEntryResponse[] {
     knowledgeLibrary: {
       sourceType: library.sourceType,
       privateLibrary: library.privateLibrary ?? false,
+      erasureRequestedAt: library.erasureRequestedAt ?? null,
       lastIndexedAt: library.lastIndexedAt,
       indexingStatus: indexingStatus(library),
       sourceBlock: library.sourceBlock ?? null,

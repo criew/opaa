@@ -9,7 +9,14 @@ import { blue } from '../../theme/tokens'
 import { catalogStatusLabel } from '../../utils/labels'
 import { assetTypeDefinition } from './assetTypeRegistry'
 import type { AssetTileData, AssetTileStatus } from './assetTileData'
-import { FavoriteToggle, PrivateMark, PublicMark, ResponsibleLine, TypeBadge } from './assetMarks'
+import {
+  ErasingMark,
+  FavoriteToggle,
+  PrivateMark,
+  PublicMark,
+  ResponsibleLine,
+  TypeBadge,
+} from './assetMarks'
 
 /** The tile opens the asset: its title is a link whose click area covers the tile. */
 interface LinkMode {
@@ -157,6 +164,7 @@ export default function AssetTile({ tile, mode, onFavoriteChange, actions }: Ass
           ))}
         {definition && <TypeBadge definition={definition} />}
         {tile.privateLibrary && <PrivateMark />}
+        {tile.erasing && <ErasingMark />}
         {tile.isPublic && <PublicMark />}
         {onFavoriteChange && tile.favorite !== undefined ? (
           <FavoriteToggle

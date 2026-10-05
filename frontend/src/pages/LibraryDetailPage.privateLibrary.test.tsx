@@ -303,28 +303,18 @@ describe('LibraryDetailPage – private Bibliothek: Speicherkontingent (#2276)',
   it('says in the head when the last run ended at the personal quota, and what frees space', async () => {
     storage(10 * GIB, 10 * GIB)
     server.use(
-      http.get('/api/v1/libraries/:libraryId/indexing/runs', () =>
+      http.get('/api/v1/libraries/:libraryId/indexing/status', () =>
         HttpResponse.json({
-          runs: [
-            {
-              id: 'run-quota',
-              status: 'COMPLETED',
-              triggeredBy: 'MANUAL',
-              runMode: 'FULL',
-              documentCount: 3,
-              totalDocuments: 40,
-              documentsSkipped: 0,
-              documentsFailed: 0,
-              documentsIndexedTotal: 3,
-              message: 'Indizierung abgeschlossen — unvollständig',
-              failureCategory: 'QUOTA_EXHAUSTED',
-              incomplete: true,
-              startedAt: '2026-10-04T10:00:00Z',
-              completedAt: '2026-10-04T10:05:00Z',
-              events: [],
-              eventsTruncatedCount: 0,
-            },
-          ],
+          status: 'COMPLETED',
+          documentCount: 3,
+          totalDocuments: 40,
+          documentsSkipped: 0,
+          documentsFailed: 0,
+          documentsIndexedTotal: 3,
+          message: 'Indizierung abgeschlossen — unvollständig',
+          failureCategory: 'QUOTA_EXHAUSTED',
+          incomplete: true,
+          timestamp: '2026-10-04T10:05:00Z',
         }),
       ),
     )

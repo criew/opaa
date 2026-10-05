@@ -465,7 +465,10 @@ export const libraryDocumentHandlers = [
       documents.includes(document),
     )?.[0]
     if (libraryId && mockLibraryDetails[libraryId]?.erasureRequestedAt) {
-      return HttpResponse.json({ error: 'Die Bibliothek wird gelöscht' }, { status: 404 })
+      return HttpResponse.json(
+        { error: 'Die Bibliothek wird gelöscht', code: 'LIBRARY_BEING_ERASED' },
+        { status: 404 },
+      )
     }
     const contentType = document.contentType ?? 'application/octet-stream'
     return new HttpResponse(new Blob(['mock file content'], { type: contentType }), {

@@ -208,6 +208,7 @@ describe('authStore', () => {
           isPolling: true,
           sourceType: 'FILESYSTEM',
           unlistedScopeKeys: [],
+          failureCategory: null,
         },
       },
     })

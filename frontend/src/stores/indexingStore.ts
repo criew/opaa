@@ -55,6 +55,8 @@ interface IndexingRunState {
   // could not list completely - carried by the status response independently of which run is the
   // latest one, so the warning at the library survives incremental, webhook and event runs.
   unlistedScopeKeys: string[]
+  // The category the newest run ended under, e.g. QUOTA_EXHAUSTED; null while it has none.
+  failureCategory: string | null
 }
 
 export const IDLE_RUN_STATE: IndexingRunState = {
@@ -69,6 +71,7 @@ export const IDLE_RUN_STATE: IndexingRunState = {
   isPolling: false,
   sourceType: null,
   unlistedScopeKeys: [],
+  failureCategory: null,
 }
 
 interface IndexingState {
@@ -184,6 +187,7 @@ export const useIndexingStore = create<IndexingState>((set, get) => ({
           message: response.message,
           timestamp: response.timestamp,
           sourceType,
+          failureCategory: response.failureCategory ?? null,
         },
         set,
         get,
@@ -229,6 +233,7 @@ export const useIndexingStore = create<IndexingState>((set, get) => ({
           timestamp: response.timestamp,
           sourceType,
           unlistedScopeKeys: response.unlistedScopeKeys ?? [],
+          failureCategory: response.failureCategory ?? null,
         },
         set,
         get,
@@ -303,6 +308,7 @@ function startPolling(
           message: response.message,
           timestamp: response.timestamp,
           unlistedScopeKeys: response.unlistedScopeKeys ?? [],
+          failureCategory: response.failureCategory ?? null,
         },
         set,
         get,

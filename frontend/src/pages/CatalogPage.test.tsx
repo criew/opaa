@@ -505,6 +505,32 @@ describe('CatalogPage (ADR-0039)', () => {
       expect(libraryList).not.toHaveBeenCalled()
     })
 
+    it('marks a private library being erased with „Wird gelöscht“, and only that one', async () => {
+      const knowledge = {
+        sourceType: 'NEXTCLOUD' as const,
+        indexingStatus: 'READY' as const,
+        privateLibrary: true,
+      }
+      serve([
+        entry('Alte Ablage', {
+          assetType: 'KNOWLEDGE_LIBRARY',
+          assetId: 'library-erasing',
+          knowledgeLibrary: { ...knowledge, erasureRequestedAt: '2026-10-04T08:00:00Z' },
+        }),
+        entry('Neue Ablage', {
+          assetType: 'KNOWLEDGE_LIBRARY',
+          assetId: 'library-kept',
+          knowledgeLibrary: { ...knowledge, erasureRequestedAt: null },
+        }),
+      ])
+      renderCatalog()
+
+      const erasing = cardOf(await screen.findByRole('link', { name: /Alte Ablage/ }))
+      expect(within(erasing).getByRole('img', { name: 'Wird gelöscht' })).toBeInTheDocument()
+      const kept = cardOf(screen.getByRole('link', { name: /Neue Ablage/ }))
+      expect(within(kept).queryByRole('img', { name: 'Wird gelöscht' })).not.toBeInTheDocument()
+    })
+
     // An upload library has no runs and so no lastIndexedAt; its date is its last change.
     it('gives a ready upload library its last change as date', async () => {
       serve([
