@@ -313,8 +313,9 @@ Grenze.
 
 Eine **private Bibliothek** speist sich aus dem verbundenen Konto ihrer Besitzerin auf einem Zugang
 für Personen (Kapitel [Indexierung](indexierung.md), „Zugänge“). Ihr Inhalt ist, was die Person
-beim Anbieter selbst sieht, und außer ihr liest ihn niemand. Anlegen lässt sie sich erst, wenn ein
-Konnektor die Besitzart „Person“ anbietet; die mitgelieferten Konnektoren tun das noch nicht.
+beim Anbieter selbst sieht, und außer ihr liest ihn niemand. Anlegen lässt sie sich mit einem Konnektor,
+der die Besitzart „Person“ anbietet; von den mitgelieferten ist das Nextcloud
+([Konnektor Nextcloud](konnektor-nextcloud.md), „Verbundenes Konto“).
 
 **Anlegen.** Die Person wählt beim Anlegen ausdrücklich „privat“; bei einem Zugang, der Bibliotheken
 und Personen zulässt, entscheidet allein diese Wahl, und sie bleibt für immer. Im Assistenten steht

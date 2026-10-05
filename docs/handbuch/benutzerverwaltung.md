@@ -410,9 +410,9 @@ einen Zugang, etwa ein App-Passwort für eine Nextcloud. Das gilt für jedes Kon
 einem Identitätsanbieter. OPAA nutzt ein verbundenes Konto nur für die privaten Bibliotheken der
 Person; deren Inhalt ist, was sie beim Anbieter selbst sehen darf. Einen Zugang, auf dem Personen
 Konten verbinden können, legt die Systemverwaltung mit der Besitzart „Person“ oder „Bibliothek und
-Person“ an und gibt ihn frei ([Indexierung](indexierung.md), „Zugänge“). **Heute lässt noch kein
-mitgelieferter Konnektor die Besitzart „Person“ zu; die Seite bietet in einer Installation deshalb
-noch keinen Zugang zum Verbinden an (#2167).**
+Person“ an und gibt ihn frei ([Indexierung](indexierung.md), „Zugänge“). Von den mitgelieferten
+Konnektoren lässt **Nextcloud** die Besitzart „Person“ zu; die Person verbindet dort ein eigenes
+App-Passwort ([Konnektor Nextcloud](konnektor-nextcloud.md), „Verbundenes Konto“).
 
 **Das Verbinden ist freiwillig.** Niemand muss ein Konto verbinden, und ein Verzicht hat keine
 Nachteile: Nichts in OPAA setzt ein verbundenes Konto voraus oder fordert dazu auf. Auch diese Seite
@@ -590,9 +590,9 @@ nicht ermitteln, ob Zugänge Personen zulassen, nennt der Dialog die Wirkung vor
 Wer einen Anbieter nur vorübergehend außer Betrieb nimmt, etwa für eine Umstellung,
 **deaktiviert** ihn und löscht ihn nicht. Auch das Abschalten der lokalen Kontenverwaltung
 (Abschnitt 1) lässt die Verbindungen regulärer lokaler Konten nur ruhen; der Schalter unter
-Administration → Benutzer → Einstellungen fragt deshalb nicht nach. Solange kein mitgelieferter
-Konnektor die Besitzart „Person“ zulässt (#2167), hat keine dieser Handlungen Folgen für verbundene
-Konten, und der Dialog fragt nicht danach.
+Administration → Benutzer → Einstellungen fragt deshalb nicht nach. Solange kein Zugang Personen
+zulässt, hat keine dieser Handlungen Folgen für verbundene Konten, und der Dialog fragt nicht
+danach.
 
 ## 13. Regeln und Fristen
 

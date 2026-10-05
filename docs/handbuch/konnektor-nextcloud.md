@@ -22,6 +22,8 @@
    eine Anfrage (Abschnitt 4).
 6. Im Laufprotokoll auf „Geltungsbereich … nicht auflistbar“, „unvollständig, wird fortgesetzt“
    und „nicht lesbar“ achten.
+7. Sollen Personen ihre eigene Nextcloud als private Bibliothek anbinden, legt die Systemverwaltung
+   einen Zugang mit der Besitzart „Person“ an und gibt ihn frei (Abschnitt 2.2).
 
 ## 1. Wofür er gedacht ist
 
@@ -75,8 +77,10 @@ Zugangsdaten abgelehnt wurden.
 
 **Über einen Zugang** (siehe [Indexierung, Zugänge](indexierung.md#zugänge)): Ein Zugang für
 Nextcloud gibt Server-Adresse, Proxy und Zertifikatsprüfung vor und meldet sich mit einem
-persönlichen Geheimnis an, das der Bibliothek gehört: Benutzername und App-Passwort des technischen
-Nutzers tragen ihre Verwaltenden wie oben ein. Die Adresse ist mit der Server-Adresse vorbelegt;
+persönlichen Geheimnis an. Bei der Besitzart „Bibliothek“ gehört es der Bibliothek: Benutzername
+und App-Passwort des technischen Nutzers tragen ihre Verwaltenden wie oben ein. Bei der Besitzart
+„Person“ verbindet jede Person ihr eigenes Konto (Abschnitt 2.2); „Bibliothek und Person“ lässt
+beides zu. Die Adresse ist mit der Server-Adresse vorbelegt;
 ohne eigene Angabe übernimmt die Bibliothek sie. Vorgaben für Einstellungen gibt es nicht, die
 Ordner wählt jede Bibliothek selbst.
 
@@ -90,6 +94,42 @@ Ordner wählt jede Bibliothek selbst.
   Nutzers zu ihm. Eine Freigabe mit gesperrtem Herunterladen hält OPAA nicht zuverlässig ab und
   ist kein Mittel, Inhalte auszuschließen.
 - Unter LDAP dürfen Anmeldename und Nutzer-ID abweichen; OPAA fragt die ID bei der Anmeldung ab.
+
+### 2.2 Verbundenes Konto
+
+Über einen Zugang mit der Besitzart „Person“ (oder „Bibliothek und Person“) bindet eine Person ihre
+**eigene** Nextcloud an, ohne technischen Nutzer. Daraus entsteht eine **private Bibliothek**: Sie
+liest, was das Konto der Person in der Nextcloud sieht, und außer ihr liest sie niemand
+([Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), „Private Bibliotheken“).
+
+1. **App-Passwort anlegen.** In der eigenen Nextcloud unter *Persönliche Einstellungen › Sicherheit
+   › Geräte & Sitzungen* einen Namen wie „OPAA“ eingeben und „Neues App-Passwort erstellen“ wählen.
+   Angezeigt werden Benutzername und App-Passwort, das App-Passwort nur dieses eine Mal. Das
+   Kontopasswort selbst gehört nicht in OPAA; mit einem App-Passwort lässt sich der Zugang einzeln
+   widerrufen.
+2. **Konto verbinden.** In OPAA unter *Einstellungen › Verbundene Konten* beim Zugang „Verbinden“
+   wählen, Benutzername und App-Passwort eintragen. OPAA meldet sich damit an und speichert es nur,
+   wenn die Anmeldung gelingt ([Benutzerverwaltung](benutzerverwaltung.md), „Verbundene Konten“).
+3. **Private Bibliothek anlegen.** Im Assistenten im Schritt „Quelle“ unter **„Über mein
+   verbundenes Konto“** den Zugang wählen, dann die Ordner wie oben; „Ordner laden“ zeigt die
+   Ordner im Stamm des eigenen Kontos. Ein Feld für Zugangsdaten gibt es nicht.
+
+**Umfang:** die gewählten Ordner des eigenen Kontos, mit Freigaben an die Person und Gruppenordnern,
+wie sie in ihrem Dateibaum erscheinen. **Aktualität:** wie bei jeder Nextcloud-Bibliothek; ein Lauf
+startet nach dem Zeitplan der Bibliothek oder von Hand. Eine neue oder geänderte Datei ist nach dem
+nächsten Lauf auffindbar, der ihren Ordner erreicht; die Verzögerung ist also höchstens der Abstand
+der Läufe plus deren Dauer.
+
+**Widerrufenes App-Passwort:** Lehnt die Nextcloud das App-Passwort ab, scheitert der Lauf mit der
+Meldung aus Abschnitt 7, die Verbindung gilt als **abgelaufen**, und die Person erhält die
+Benachrichtigung „Verbindung abgelaufen“. Die Bibliothek trägt den Hinweis „Abgelaufen“ mit
+„Konto neu verbinden“; ihr Bestand bleibt durchsuchbar. Abhilfe: ein neues App-Passwort anlegen und
+neu verbinden.
+
+**Was die Verwaltung sieht:** keine Namen, keine Bibliotheken, keine Inhalte. Am Zugang steht nur
+die Zahl der verbundenen und der abgelaufenen Konten, kleine Zahlen nur als „weniger als N“. Dass
+eine Person verbunden, neu verbunden oder getrennt hat, steht pseudonym im Verbindungsprotokoll, das
+die Revision liest.
 
 ## 3. Betriebsart
 
@@ -169,7 +209,7 @@ entlang gefundener Dokumente und sind nicht bearbeitbar; die Quelle ist führend
 
 - Der **Beleg-Link** öffnet die Datei in der Nextcloud-Oberfläche. Wer dort keine Rechte hat,
   sieht sie nicht; die Antwort in OPAA bleibt trotzdem belegt.
-- **„Original öffnen“** lädt die Datei durch OPAA, mit dem technischen Nutzer, nach der
+- **„Original öffnen“** lädt die Datei durch OPAA, mit dem Konto der Bibliothek, nach der
   Größengrenze. OPAA sucht sie an dem Ort, den der letzte Lauf gespeichert hat, und prüft die
   Datei-ID. Eine seither verschobene Datei liefert bis zum nächsten Lauf kein Original. Eine
   Datei außerhalb der konfigurierten Ordner liefert keines.
@@ -178,7 +218,7 @@ entlang gefundener Dokumente und sind nicht bearbeitbar; die Quelle ist führend
 
 | Protokoll oder Testmeldung | Bedeutung | Abhilfe |
 |---|---|---|
-| „Nextcloud hat Benutzername oder App-Passwort abgelehnt (HTTP 401).“ | Zugangsdaten falsch oder widerrufen; der Lauf endet ohne Änderung am Bestand. | Neues App-Passwort erzeugen und eintragen. |
+| „Nextcloud hat Benutzername oder App-Passwort abgelehnt (HTTP 401).“ | Zugangsdaten falsch oder widerrufen; der Lauf endet ohne Änderung am Bestand. Bei einer privaten Bibliothek gilt die Verbindung danach als abgelaufen (Abschnitt 2.2). | Neues App-Passwort erzeugen und eintragen bzw. neu verbinden. |
 | „Geltungsbereich „/…“: Nextcloud kennt den Ordner „/…“ nicht (HTTP 404).“ | Ordner gelöscht, umbenannt oder Freigabe entzogen, auch ein Unterordner, der während des Laufs verschwand; der Bestand des Geltungsbereichs bleibt, es wird nichts entfernt. Ein umbenannter Unterordner ist im nächsten Lauf unter seinem neuen Namen da. | Bei einem konfigurierten Ordner: in der Bibliothek anpassen oder Freigabe wiederherstellen. |
 | „Nextcloud nannte für … eine Adresse außerhalb der Instanz“ | Die Nextcloud antwortete mit einer Adresse, die nicht unter ihren eigenen Dateien liegt. OPAA schickt dorthin keine Zugangsdaten; eine Datei wird übersprungen und behält ihre Fassung, ein Ordner macht seinen Geltungsbereich unvollständig. | Vorgeschalteten Proxy oder Umschreibregeln der Nextcloud prüfen. |
 | „Keine Leseberechtigung für … (HTTP 403).“ | Der Nutzer darf den Ordner oder die Datei nicht lesen; eine Datei behält ihre gespeicherte Fassung. | Freigabe prüfen. |
@@ -222,6 +262,6 @@ Instanzweit unter `opaa.indexing.nextcloud.*`, als Umgebungsvariablen `OPAA_INDE
 
 - **Ein- und Ausschlussmuster** wie beim S3-Konnektor. Heute schränken nur die Ordner ein.
 - **Benachrichtigungen** der Nextcloud an OPAA. Änderungen kommen mit dem nächsten geplanten Lauf.
-- **Persönliche Ablagen** einzelner Personen über ihr eigenes Konto. Vorgesehen mit den
-  Verbindungsprofilen (Epic #2147).
+- **Anmeldung per OAuth** oder Token-Austausch über den Identitätsanbieter für verbundene Konten;
+  heute nur App-Passwort.
 - **Rechte aus der Nextcloud.** Die Bibliothek bestimmt, wer liest.
