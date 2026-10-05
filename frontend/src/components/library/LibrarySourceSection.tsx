@@ -15,6 +15,7 @@ import type {
   SourceTypeKey,
   IndexingRunResponse,
   LibrarySchedule,
+  LibrarySourceConnection,
   SourceBlock,
 } from '../../types/api'
 import { useIndexingStore } from '../../stores/indexingStore'
@@ -30,6 +31,8 @@ import EditLibrarySourceDialog from '../EditLibrarySourceDialog'
 import EditLibraryScheduleDialog from '../EditLibraryScheduleDialog'
 import PageSection from '../PageSection'
 import LibraryConnectionPanel from './LibraryConnectionPanel'
+import LibrarySourceConsent from './LibrarySourceConsent'
+import ReconnectSourceDialog from './ReconnectSourceDialog'
 import { Link as RouterLink } from 'react-router'
 import { CONNECTED_ACCOUNTS_ROUTE } from '../../routes'
 import { sourceRegistration } from './sources/registry'
@@ -54,6 +57,8 @@ export interface LibrarySourceSectionProps {
     connectionProfile?: ConnectionProfileRef | null
     connectionProfileRemoved?: boolean
     sourceBlock?: SourceBlock | null
+    /** The library's own source connection; only its managers receive it. */
+    sourceConnection?: LibrarySourceConnection | null
     privateLibrary?: boolean
   }
   canEditSource: boolean
@@ -76,6 +81,7 @@ export default function LibrarySourceSection({
   const [editSourceOpen, setEditSourceOpen] = useState(false)
   const [editScheduleOpen, setEditScheduleOpen] = useState(false)
   const [connectOpen, setConnectOpen] = useState(false)
+  const [reconnectOpen, setReconnectOpen] = useState(false)
   const connectAction = (
     <Button color="inherit" size="small" onClick={() => setConnectOpen(true)}>
       Zugang zuordnen
@@ -87,6 +93,15 @@ export default function LibrarySourceSection({
       {block?.reason === 'NOT_CONNECTED' ? 'Konto verbinden' : 'Konto neu verbinden'}
     </Button>
   )
+  const consent = library.sourceConnection ?? null
+  const consentProfile = library.connectionProfile ?? null
+  const reconnectLabel =
+    block?.reason === 'NOT_CONNECTED' && !consent ? 'Quelle verbinden' : 'Quelle neu verbinden'
+  const reconnectAction = consentProfile ? (
+    <Button color="inherit" size="small" onClick={() => setReconnectOpen(true)}>
+      {reconnectLabel}
+    </Button>
+  ) : undefined
   const configuration = sourceRegistration(library.sourceType)?.configuration ?? null
   const editAction = (
     <Button color="inherit" size="small" onClick={() => setEditSourceOpen(true)}>
@@ -105,7 +120,7 @@ export default function LibrarySourceSection({
       case 'EDIT_SOURCE':
         return configuration ? editAction : undefined
       case 'CONNECT_SOURCE':
-        return undefined
+        return reconnectAction
       default: {
         const unknown: never = action
         throw new Error(`Unknown source block action ${String(unknown)}`)
@@ -135,6 +150,21 @@ export default function LibrarySourceSection({
           {library.sourceBlock.notice}
         </Alert>
       )}
+      {canEditSource &&
+        !erasing &&
+        consentProfile &&
+        (consent || block?.action === 'CONNECT_SOURCE') && (
+          <ReconnectSourceDialog
+            // a fresh instance on every opening starts unconfirmed
+            key={reconnectOpen ? 'reconnect-open' : 'reconnect-closed'}
+            open={reconnectOpen}
+            onClose={() => setReconnectOpen(false)}
+            title={consent ? 'Quelle neu verbinden' : reconnectLabel}
+            libraryId={libraryId}
+            profileId={consentProfile.id}
+            profileName={consentProfile.name}
+          />
+        )}
       {library.connectionProfileRemoved && (
         <Alert
           severity="warning"
@@ -200,6 +230,13 @@ export default function LibrarySourceSection({
                 dialogOpen={connectOpen}
                 onDialogOpenChange={setConnectOpen}
               />
+              {consent && (
+                <LibrarySourceConsent
+                  libraryId={libraryId}
+                  consent={consent}
+                  onReconnect={() => setReconnectOpen(true)}
+                />
+              )}
               {StoredView ? (
                 <StoredView library={library} libraryId={libraryId} />
               ) : (
