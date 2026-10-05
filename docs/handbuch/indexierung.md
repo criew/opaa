@@ -790,8 +790,10 @@ Formular der Abschnitt **„Quelle verbinden“**:
    startet keine Weiterleitung; der Assistent nennt den Grund, und auch OPAA selbst gibt ohne
    Bestätigung keine Adresse des Anbieters heraus.
 2. „Quelle verbinden“ führt im selben Tab zum Anbieter. Die bisherigen Eingaben des Assistenten
-   bleiben in diesem Tab erhalten, ohne Passwort, Token oder andere Geheimnisse, und werden nach der
-   Rückkehr sofort gelöscht, ebenso beim Abbrechen und nach dem Anlegen.
+   bleiben in diesem Tab erhalten, und zwar nur die Felder, die das Quellformular dafür ausdrücklich
+   vorsieht, nie ein Passwort, Token oder anderes Geheimnis. Sie werden nach der Rückkehr sofort
+   gelöscht, ebenso beim Abbrechen und nach dem Anlegen; wer den Assistenten danach neu lädt,
+   beginnt leer und verbindet die Quelle erneut.
 3. Nach der Zustimmung kehrt der Assistent auf den Schritt „Quelle“ zurück, mit dem Fokus auf dessen
    Überschrift, und nennt das Konto beim Anbieter („Verbunden als …“). Erst jetzt erscheinen
    Ordnerauswahl und Verbindungstest; beide laufen über die eben erteilte Zustimmung.
@@ -801,7 +803,9 @@ Formular der Abschnitt **„Quelle verbinden“**:
    verbinden. Eine nicht verwendete Zustimmung räumt OPAA ab und widerruft sie beim Anbieter.
 
 Bricht die Person beim Anbieter ab oder scheitert der Abschluss, führt die Rücksprungseite mit
-„Zurück zum Assistenten“ zu den bisherigen Eingaben zurück.
+„Zurück zum Assistenten“ zu den bisherigen Eingaben zurück. Findet sie in diesem Fenster keinen
+begonnenen Assistenten (etwa weil die Zustimmung in einem anderen Tab begann), sagt sie das und
+bittet, die Quelle im Assistenten erneut zu verbinden; die nicht verwendete Zustimmung verfällt.
 
 **Verantwortlich** für die Verbindung ist eine Person oder Gruppe, die die Bibliothek verwaltet. Der
 Schritt „Freigaben“ fragt das ab, wenn eine Gruppe die Bibliothek besitzt („Ich“ oder die Gruppe);
@@ -826,8 +830,11 @@ nicht erreicht wird.
 
 | Aktion | Wirkung |
 |---|---|
-| „Neu verbinden“ | fragt die Bestätigung des Dienstkontos ab und führt zum Anbieter; danach kehrt die Seite zum Reiter „Quelle“ zurück. Meldet der Anbieter ein **anderes Konto** als bisher, verbindet OPAA zunächst nicht und widerruft die frische Zustimmung; die Rücksprungseite fragt nach, ob mit dem anderen Konto verbunden werden soll. Erst „Mit diesem Konto verbinden“ und die Bestätigung, dass der Abgleichstand der Bibliothek verworfen wird, führen erneut zum Anbieter; der nächste Lauf liest die Quelle dann vollständig neu |
+| „Neu verbinden“ | fragt die Bestätigung des Dienstkontos ab und führt zum Anbieter; danach kehrt die Seite zum Reiter „Quelle“ zurück. Meldet der Anbieter ein **anderes Konto** als bisher, verbindet OPAA zunächst nicht und widerruft die frische Zustimmung; die Rücksprungseite fragt nach, ob mit dem anderen Konto verbunden werden soll. Erst „Mit diesem Konto verbinden“, die erneute Bestätigung des Dienstkontos und das Wissen, dass der Abgleichstand der Bibliothek verworfen wird, führen erneut zum Anbieter; der nächste Lauf liest die Quelle dann vollständig neu |
 | „Trennen“ | fragt nach, löscht die Zustimmung sofort und widerruft sie beim Anbieter, wo er das anbietet. Der Inhalt bleibt durchsuchbar und wird nicht mehr aktualisiert, bis die Quelle neu verbunden ist. Trennen ist immer möglich, auch an einem gesperrten Zugang |
+
+Ist der Zugang der Bibliothek gelöscht, fehlt „Neu verbinden“; der Abschnitt verweist auf „Zugang
+zuordnen“, danach lässt sich die Quelle über den neuen Zugang verbinden.
 
 Ist die Quelle nicht verbunden, getrennt oder abgelaufen, trägt der Sperrhinweis für die
 Verwaltenden die Aktion „Quelle verbinden“ bzw. „Quelle neu verbinden“. Zuordnen an einen anderen
