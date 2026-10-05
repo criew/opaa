@@ -19,6 +19,8 @@ import java.util.UUID;
  *     current one, or without {@code libraryId} for its own address
  * @param privateLibrary without {@code libraryId}: probe the private library the caller would
  *     create through her connected account on {@code connectionProfileId}
+ * @param pendingConnectionId without {@code libraryId}: the caller's pending source consent on
+ *     {@code connectionProfileId} the probe signs in with, {@code null} for none
  */
 public record SourceConnectionTest(
     SourceType sourceType,
@@ -30,7 +32,34 @@ public record SourceConnectionTest(
     UUID libraryId,
     ConnectorData connectorSettings,
     UUID connectionProfileId,
-    boolean privateLibrary) {
+    boolean privateLibrary,
+    UUID pendingConnectionId) {
+
+  /** A test without a pending source consent. */
+  public SourceConnectionTest(
+      SourceType sourceType,
+      String sourcePath,
+      URI sourceUrl,
+      String sourceProxy,
+      String sourceCredentials,
+      Boolean sourceInsecureSsl,
+      UUID libraryId,
+      ConnectorData connectorSettings,
+      UUID connectionProfileId,
+      boolean privateLibrary) {
+    this(
+        sourceType,
+        sourcePath,
+        sourceUrl,
+        sourceProxy,
+        sourceCredentials,
+        sourceInsecureSsl,
+        libraryId,
+        connectorSettings,
+        connectionProfileId,
+        privateLibrary,
+        null);
+  }
 
   /** A test of a shared library. */
   public SourceConnectionTest(

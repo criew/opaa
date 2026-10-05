@@ -8,8 +8,15 @@ import io.opaa.api.dto.LibraryRequest;
 import io.opaa.api.dto.LibraryResponse;
 import io.opaa.api.dto.LibrarySchedule;
 import io.opaa.api.dto.LibraryScheduleRequest;
+import io.opaa.api.dto.LibrarySourceConnection;
 import io.opaa.api.dto.LibraryUpdateRequest;
+import io.opaa.api.dto.SourceConnectionResponsible;
+import io.opaa.api.dto.SourceConnectionResponsibleRef;
+import io.opaa.api.dto.SourceConnectionResponsibleType;
 import io.opaa.common.ValidationException;
+import io.opaa.connection.consent.SourceConsentService;
+import io.opaa.connection.profile.LibraryConnection.Responsible;
+import io.opaa.connection.profile.LibraryConnection.ResponsibleType;
 import io.opaa.indexing.job.JobStatus;
 import io.opaa.indexing.source.ConnectorData;
 import io.opaa.knowledge.KnowledgeLibrary;
@@ -54,7 +61,40 @@ final class LibraryResponseMapper {
         request.getSourceInsecureSsl(),
         toSettings(request.getSourceSettings()),
         toScheduleUpdate(request.getSchedule()),
-        request.getConnectionProfileId());
+        request.getConnectionProfileId(),
+        request.getPendingConnectionId() == null
+            ? null
+            : new LibraryCreation.NewSourceConsent(
+                request.getPendingConnectionId(),
+                toResponsible(request.getSourceConnectionResponsible())));
+  }
+
+  /** The person or group named as responsible for a source connection, {@code null} for none. */
+  static Responsible toResponsible(SourceConnectionResponsibleRef ref) {
+    if (ref == null) {
+      return null;
+    }
+    return new Responsible(ResponsibleType.valueOf(ref.getType().name()), ref.getId());
+  }
+
+  /** A library's own source connection as its managers see it, {@code null} for none. */
+  static LibrarySourceConnection toResponse(SourceConsentService.ConsentView view) {
+    if (view == null) {
+      return null;
+    }
+    return new LibrarySourceConnection()
+        .accountLabel(view.accountLabel())
+        .connectedAt(view.connectedAt())
+        .responsible(
+            view.responsible() == null
+                ? null
+                : new SourceConnectionResponsible()
+                    .type(SourceConnectionResponsibleType.valueOf(view.responsible().type().name()))
+                    .id(view.responsible().id())
+                    .name(view.responsibleName()))
+        .endedCause(view.endedCause())
+        .endedAt(view.endedAt())
+        .expiresAt(view.grantEndsAt());
   }
 
   static LibraryUpdate toUpdate(LibraryUpdateRequest request) {
@@ -125,6 +165,7 @@ final class LibraryResponseMapper {
             .lastTransfer(PermissionTransferResponseMapper.toResponse(lastTransfer))
             .succession(SuccessionStateResponseMapper.toStateResponse(detail.succession()))
             .sourceBlock(SourceBlockResponseMapper.toResponse(detail.sourceBlock()))
+            .sourceConnection(toResponse(detail.sourceConnection()))
             .privateLibrary(library.isOwnerOnly())
             .erasureRequestedAt(library.getErasureRequestedAt());
     LibraryProfileState profile = detail.connectionProfile();

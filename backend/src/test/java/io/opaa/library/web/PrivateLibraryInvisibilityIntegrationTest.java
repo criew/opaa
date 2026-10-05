@@ -299,7 +299,8 @@ class PrivateLibraryInvisibilityIntegrationTest {
             "listUsersForSelection",
             "listConnectionProfileRequests",
             "listMyConnectionProfileRequests",
-            "listConnectionLogProfiles")) {
+            "listConnectionLogProfiles",
+            "listDormantSourceConnections")) {
       probes.put(read, same());
     }
     probes.put("getHealth", volatileAnswer());
@@ -348,6 +349,12 @@ class PrivateLibraryInvisibilityIntegrationTest {
     probes.put("deleteLibrary", same());
     probes.put("connectLibraryProfile", same("{\"profileId\": \"{profile}\"}"));
     probes.put("disconnectLibraryProfile", same());
+    probes.put("disconnectLibrarySource", same());
+    probes.put(
+        "startConnectionAuthorization",
+        same(
+            "{\"profileId\": \"{profile}\", \"purpose\": \"LIBRARY_RECONNECT\","
+                + " \"libraryId\": \"{library}\", \"serviceAccountConfirmed\": true}"));
     probes.put("setLibraryDiagnosticsLock", same("{\"locked\": false}"));
     probes.put("uploadLibraryDocument", new Probe(Kind.SAME, null, Map.of(), true));
     probes.put("bulkDeleteLibraryDocuments", same("{\"documentIds\": [\"{document}\"]}"));

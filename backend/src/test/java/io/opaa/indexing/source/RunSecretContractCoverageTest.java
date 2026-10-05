@@ -30,7 +30,8 @@ class RunSecretContractCoverageTest {
       Set.of(
           "io.opaa.indexing.source.probe",
           "io.opaa.indexing.source.profileprobe",
-          "io.opaa.indexing.source.oauthprobe");
+          "io.opaa.indexing.source.oauthprobe",
+          "io.opaa.indexing.source.consentprobe");
 
   @Autowired private List<SourceConnector> connectors;
 

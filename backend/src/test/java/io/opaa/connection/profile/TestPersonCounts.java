@@ -11,6 +11,9 @@ public final class TestPersonCounts {
   /** A profile no person is connected on. */
   public static final PersonConnections NO_PERSONS = new FixedCounts();
 
+  /** A profile no library's own consent is on. */
+  public static final SourceConsentEnds NO_CONSENTS = (profileId, cause, actorUserId) -> {};
+
   private static final PersonNumbers NUMBERS =
       new PersonNumbers(
           NO_PERSONS, new GroupSizeProperties(5), ExpiredConnectionWarningProperties.defaults());

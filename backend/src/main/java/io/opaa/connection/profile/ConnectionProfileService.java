@@ -86,6 +86,7 @@ public class ConnectionProfileService {
   private final SourceConnectorRegistry connectors;
   private final ConnectionSecrets secrets;
   private final PersonConnections persons;
+  private final SourceConsentEnds consents;
   private final PersonNumbers personNumbers;
   private final SourceTransitions transitions;
   private final CredentialsEncryptor encryptor;
@@ -102,6 +103,7 @@ public class ConnectionProfileService {
       SourceConnectorRegistry connectors,
       ConnectionSecrets secrets,
       PersonConnections persons,
+      SourceConsentEnds consents,
       PersonNumbers personNumbers,
       SourceTransitions transitions,
       CredentialsEncryptor encryptor,
@@ -117,6 +119,7 @@ public class ConnectionProfileService {
     this.connectors = connectors;
     this.secrets = secrets;
     this.persons = persons;
+    this.consents = consents;
     this.personNumbers = personNumbers;
     this.transitions = transitions;
     this.encryptor = encryptor;
@@ -339,6 +342,7 @@ public class ConnectionProfileService {
     }
     if (change.discardsAll()) {
       persons.endAllUnder(id, cause, caller.id());
+      consents.endAllUnder(id, cause, caller.id());
     } else if (change.dropsPersons() || change.rebindsPersons()) {
       persons.endAllUnder(id, ConnectionEndCause.PROFILE_CHANGED, caller.id());
     }
@@ -548,6 +552,7 @@ public class ConnectionProfileService {
       profiles.save(profile);
     }
     persons.endAllUnder(id, ConnectionEndCause.EMERGENCY, caller.id());
+    consents.endAllUnder(id, ConnectionEndCause.EMERGENCY, caller.id());
     record(
         caller,
         AuditEventType.CONNECTION_PROFILE_DISCONNECTED,
@@ -575,6 +580,7 @@ public class ConnectionProfileService {
     long shared = connections.countSharedByProfileId(id);
     secrets.discardAllUnder(id, ConnectionEndCause.PROFILE_DELETED);
     persons.endAllUnder(id, ConnectionEndCause.PROFILE_DELETED, caller.id());
+    consents.endAllUnder(id, ConnectionEndCause.PROFILE_DELETED, caller.id());
     Instant now = clock.instant();
     for (LibraryConnection connection : affected) {
       connection.moveTo(null, now);

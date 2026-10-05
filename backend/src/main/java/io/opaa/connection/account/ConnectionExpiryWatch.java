@@ -5,10 +5,12 @@ import io.opaa.api.types.NotificationType;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.connection.consent.SourceConsentService;
 import io.opaa.connection.profile.ConnectionProfile;
 import io.opaa.connection.profile.ConnectionProfileRepository;
 import io.opaa.connection.profile.ConnectionProfileService;
 import io.opaa.connection.token.ConnectionSecrets;
+import io.opaa.connection.token.ConnectionSecrets.EndingConsent;
 import io.opaa.connection.token.ConnectionSecrets.EndingGrant;
 import io.opaa.notification.NotificationService;
 import java.time.Clock;
@@ -28,10 +30,11 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * Warns once of every end ahead (ADR-0041): the end a provider named for a person's OAuth consent
- * goes to that person, the expiry date of a profile's client secret to every system administrator,
- * {@value ConnectionProfileService#SECRET_EXPIRY_WARNING_DAYS} days before. The marker and the
- * notifications commit together, so a failed run warns on the next one and no end twice. Both kinds
- * of date are read and written in the server's zone.
+ * goes to that person, for a library's own consent to those responsible for it ({@link
+ * SourceConsentService}), the expiry date of a profile's client secret to every system
+ * administrator, {@value ConnectionProfileService#SECRET_EXPIRY_WARNING_DAYS} days before. The
+ * marker and the notifications commit together, so a failed run warns on the next one and no end
+ * twice. Both kinds of date are read and written in the server's zone.
  */
 @Component
 public class ConnectionExpiryWatch {
@@ -41,6 +44,7 @@ public class ConnectionExpiryWatch {
       DateTimeFormatter.ofPattern("dd.MM.yyyy", Locale.GERMANY);
 
   private final ConnectionSecrets secrets;
+  private final SourceConsentService consents;
   private final ConnectedAccountRepository accounts;
   private final ConnectionProfileRepository profiles;
   private final UserRepository users;
@@ -51,6 +55,7 @@ public class ConnectionExpiryWatch {
 
   ConnectionExpiryWatch(
       ConnectionSecrets secrets,
+      SourceConsentService consents,
       ConnectedAccountRepository accounts,
       ConnectionProfileRepository profiles,
       UserRepository users,
@@ -58,6 +63,7 @@ public class ConnectionExpiryWatch {
       PlatformTransactionManager transactionManager,
       Clock clock) {
     this.secrets = secrets;
+    this.consents = consents;
     this.accounts = accounts;
     this.profiles = profiles;
     this.users = users;
@@ -71,8 +77,10 @@ public class ConnectionExpiryWatch {
     try {
       Warned warned = warn();
       log.info(
-          "Expiry watch warned of {} OAuth consents and {} client secrets",
+          "Expiry watch warned of {} OAuth consents of persons, {} of libraries and {} client"
+              + " secrets",
           warned.grants(),
+          warned.libraryConsents(),
           warned.secrets());
     } catch (RuntimeException e) {
       log.warn("Expiry watch failed; the next run warns of what this one missed", e);
@@ -81,7 +89,18 @@ public class ConnectionExpiryWatch {
 
   /** Sends every warning now due, in one transaction; returns how many ends were warned of. */
   public Warned warn() {
-    return transactions.execute(status -> new Warned(warnOfGrants(), warnOfSecrets()));
+    return transactions.execute(
+        status -> new Warned(warnOfGrants(), warnOfConsents(), warnOfSecrets()));
+  }
+
+  private int warnOfConsents() {
+    int warned = 0;
+    for (EndingConsent consent : secrets.claimEndingConsents()) {
+      consents.warnOfEnd(
+          consent.libraryId(), consent.profileId(), DATE.format(consent.endsAt().atZone(zone)));
+      warned++;
+    }
+    return warned;
   }
 
   private int warnOfGrants() {
@@ -143,6 +162,6 @@ public class ConnectionExpiryWatch {
     return due.size();
   }
 
-  /** How many OAuth consents and client secrets a run warned of. */
-  public record Warned(int grants, int secrets) {}
+  /** How many OAuth consents of persons and of libraries and client secrets a run warned of. */
+  public record Warned(int grants, int libraryConsents, int secrets) {}
 }

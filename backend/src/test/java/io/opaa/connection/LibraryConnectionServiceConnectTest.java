@@ -11,6 +11,7 @@ import static org.mockito.Mockito.when;
 import io.opaa.api.types.ConnectionAuthMethod;
 import io.opaa.api.types.ConnectionOwnership;
 import io.opaa.common.ValidationException;
+import io.opaa.connection.consent.SourceConsentService;
 import io.opaa.connection.profile.ConnectionProfile;
 import io.opaa.connection.profile.ConnectionProfileRepository;
 import io.opaa.connection.profile.ConnectorLockService;
@@ -221,6 +222,7 @@ class LibraryConnectionServiceConnectTest {
         wiring.secrets,
         wiring.effective,
         wiring.transitions,
+        mock(SourceConsentService.class),
         Clock.fixed(NOW, ZoneOffset.UTC));
   }
 

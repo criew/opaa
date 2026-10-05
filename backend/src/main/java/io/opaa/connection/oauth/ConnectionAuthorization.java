@@ -1,6 +1,8 @@
 package io.opaa.connection.oauth;
 
 import io.opaa.api.types.ConnectionAuthorizationPurpose;
+import io.opaa.connection.profile.LibraryConnection.Responsible;
+import io.opaa.connection.profile.LibraryConnection.ResponsibleType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -13,7 +15,9 @@ import java.util.UUID;
 /**
  * An OAuth consent a person started: the hash of its state, its PKCE verifier as {@code
  * CredentialsEncryptor} ciphertext and the profile version it is bound to, for one completion
- * before {@link #getExpiresAt}. {@link #toString} shows neither.
+ * before {@link #getExpiresAt}. A consent for a library's source records when the caller confirmed
+ * a service account and, for a reconnection, the library, who answers for it and whether a changed
+ * account is confirmed. {@link #toString} shows neither secret.
  */
 @Entity
 @Table(name = "connection_authorizations")
@@ -54,6 +58,19 @@ class ConnectionAuthorization {
 
   @Column(name = "consumed_at")
   private Instant consumedAt;
+
+  @Column(name = "service_account_confirmed_at")
+  private Instant serviceAccountConfirmedAt;
+
+  @Enumerated(EnumType.STRING)
+  @Column(name = "responsible_type", length = 10)
+  private ResponsibleType responsibleType;
+
+  @Column(name = "responsible_id")
+  private UUID responsibleId;
+
+  @Column(name = "account_change_confirmed_at")
+  private Instant accountChangeConfirmedAt;
 
   protected ConnectionAuthorization() {}
 
@@ -117,6 +134,39 @@ class ConnectionAuthorization {
 
   Instant getConsumedAt() {
     return consumedAt;
+  }
+
+  /**
+   * Binds a consent for a library's source: the caller confirmed a service account at {@code
+   * confirmedAt}; a reconnection names {@code libraryId}, {@code responsible} where it changes and
+   * whether a changed account at the provider is accepted.
+   */
+  void forLibrary(
+      Instant confirmedAt, UUID libraryId, Responsible responsible, boolean acceptsAccountChange) {
+    this.serviceAccountConfirmedAt = confirmedAt;
+    this.libraryId = libraryId;
+    if (responsible != null) {
+      this.responsibleType = responsible.type();
+      this.responsibleId = responsible.id();
+    }
+    this.accountChangeConfirmedAt = acceptsAccountChange ? confirmedAt : null;
+  }
+
+  UUID getLibraryId() {
+    return libraryId;
+  }
+
+  Instant getServiceAccountConfirmedAt() {
+    return serviceAccountConfirmedAt;
+  }
+
+  /** Who answers for the library's consent after a reconnection, {@code null} to keep it. */
+  Responsible getResponsible() {
+    return responsibleType == null ? null : new Responsible(responsibleType, responsibleId);
+  }
+
+  boolean acceptsAccountChange() {
+    return accountChangeConfirmedAt != null;
   }
 
   @Override

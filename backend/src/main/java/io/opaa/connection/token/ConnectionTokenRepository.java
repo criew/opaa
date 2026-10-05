@@ -53,6 +53,43 @@ interface ConnectionTokenRepository extends JpaRepository<ConnectionToken, UUID>
           + " and t.expiresAt <= :now")
   long countPersonsEndedBy(@Param("now") Instant now);
 
+  Optional<ConnectionToken> findByLibraryId(UUID libraryId);
+
+  List<ConnectionToken> findByLibraryIdIn(Collection<UUID> libraryIds);
+
+  /**
+   * The rows of libraries' own consents and pending consents under {@code profileId}, read before
+   * they are deleted.
+   */
+  @Query(
+      "select t from ConnectionToken t where t.profileId = :profileId"
+          + " and (t.libraryId is not null or t.pendingUserId is not null)")
+  List<ConnectionToken> findConsentsUnder(@Param("profileId") UUID profileId);
+
+  /** Deletes every library's own consent and every pending consent under {@code profileId}. */
+  @Modifying(flushAutomatically = true)
+  @Query(
+      "delete from ConnectionToken t where t.profileId = :profileId"
+          + " and (t.libraryId is not null or t.pendingUserId is not null)")
+  int deleteConsentsUnder(@Param("profileId") UUID profileId);
+
+  /** The pending consents expired by {@code now}, locked so a parallel sweep skips them. */
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query("select t from ConnectionToken t where t.pendingExpiresAt <= :now")
+  List<ConnectionToken> findPendingExpiredBy(@Param("now") Instant now);
+
+  /**
+   * The libraries' OAuth grants whose named end lies after {@code now} and not after {@code
+   * horizon} and was not warned of yet, locked as {@link #findGrantsEndingUnwarned}.
+   */
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query(
+      "select t from ConnectionToken t where t.libraryId is not null"
+          + " and t.kind = io.opaa.connection.token.ConnectionToken.Kind.OAUTH"
+          + " and t.expiresAt > :now and t.expiresAt <= :horizon and t.expiryWarnedAt is null")
+  List<ConnectionToken> findLibraryGrantsEndingUnwarned(
+      @Param("now") Instant now, @Param("horizon") Instant horizon);
+
   /** Deletes every person's secret under {@code profileId} in one statement. */
   @Modifying(flushAutomatically = true)
   @Query(

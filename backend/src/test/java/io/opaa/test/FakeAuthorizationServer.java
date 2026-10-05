@@ -28,12 +28,17 @@ import java.util.concurrent.atomic.AtomicInteger;
  * authorization code (with PKCE, S256 only) and the refresh token grant, with token revocation by
  * RFC 7009 ({@code /revoke}) and by bearer ({@code /revoke-bearer}). It records every request
  * (target, {@code Authorization}, form) and answers with new tokens, or with the OAuth error set by
- * {@link #rejectWith}. {@link #approve} stands for the person consenting in the browser. It also
- * answers a request sent to it as a proxy. {@link #shared()} serves the Spring contexts.
+ * {@link #rejectWith}. {@link #approve} stands for the person consenting in the browser, as the
+ * account {@link #account} names; {@link #accountOf} tells which account an access token was issued
+ * to. It also answers a request sent to it as a proxy. {@link #shared()} serves the Spring
+ * contexts.
  */
 public final class FakeAuthorizationServer implements AutoCloseable {
 
   private static FakeAuthorizationServer shared;
+
+  /** The account every consent is given as until {@link #account} names another. */
+  public static final String DEFAULT_ACCOUNT = "dienstkonto@example.org";
 
   /** One request as it arrived. */
   public record Request(URI target, String authorization, Map<String, String> form) {
@@ -53,6 +58,8 @@ public final class FakeAuthorizationServer implements AutoCloseable {
   private final AtomicInteger refreshIssued = new AtomicInteger();
   private final Map<String, Consent> codes = new ConcurrentHashMap<>();
   private final Set<String> liveRefreshTokens = ConcurrentHashMap.newKeySet();
+  private final Map<String, String> accountOfToken = new ConcurrentHashMap<>();
+  private volatile String account = DEFAULT_ACCOUNT;
   private volatile String error;
   private volatile int errorStatus;
   private volatile boolean rotateRefreshTokens = true;
@@ -112,6 +119,16 @@ public final class FakeAuthorizationServer implements AutoCloseable {
   public void rejectWith(int status, String error) {
     this.errorStatus = status;
     this.error = error;
+  }
+
+  /** From now on every consent and renewal is given as the account {@code name}. */
+  public void account(String name) {
+    this.account = name;
+  }
+
+  /** The account the access token {@code accessToken} was issued to, {@code null} for unknown. */
+  public String accountOf(String accessToken) {
+    return accessToken == null ? null : accountOfToken.get(accessToken);
   }
 
   /** From now on every request gets a token again. */
@@ -224,6 +241,7 @@ public final class FakeAuthorizationServer implements AutoCloseable {
     delay = Duration.ZERO;
     unreachable = false;
     beforeCodeAnswer = null;
+    account = DEFAULT_ACCOUNT;
   }
 
   private void handleToken(HttpExchange exchange) throws IOException {
@@ -284,9 +302,11 @@ public final class FakeAuthorizationServer implements AutoCloseable {
   }
 
   private String tokens(boolean withRefresh) {
+    String access = issuedToken(issued.incrementAndGet());
+    accountOfToken.put(access, account);
     StringBuilder json =
         new StringBuilder("{\"access_token\": \"")
-            .append(issuedToken(issued.incrementAndGet()))
+            .append(access)
             .append("\", \"token_type\": \"Bearer\", \"expires_in\": ")
             .append(accessLifetimeSeconds);
     if (withRefresh) {

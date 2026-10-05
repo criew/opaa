@@ -104,6 +104,8 @@ export default function LibrarySourceSection({
         return accountAction
       case 'EDIT_SOURCE':
         return configuration ? editAction : undefined
+      case 'CONNECT_SOURCE':
+        return undefined
       default: {
         const unknown: never = action
         throw new Error(`Unknown source block action ${String(unknown)}`)

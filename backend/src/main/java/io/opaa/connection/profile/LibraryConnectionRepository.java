@@ -36,6 +36,18 @@ public interface LibraryConnectionRepository
   List<ProfileConnectionCount> countSharedByProfileIdIn(
       @Param("profileIds") Collection<UUID> profileIds);
 
+  /**
+   * The connections of shared libraries in {@code organizationId} with an own source consent - one
+   * given once, or a profile signing in by OAuth -, never a private library's.
+   */
+  @Query(
+      "select c from LibraryConnection c, KnowledgeLibrary l where l.id = c.libraryId"
+          + " and l.ownerOnly = false and l.organizationId = :organizationId"
+          + " and (c.connectedAt is not null or exists (select p from ConnectionProfile p"
+          + " where p.id = c.profileId"
+          + " and p.authMethod = io.opaa.api.types.ConnectionAuthMethod.OAUTH))")
+  List<LibraryConnection> findSharedSourceConsentsIn(@Param("organizationId") UUID organizationId);
+
   /** The private libraries connected through {@code profileId}, of every owner. */
   @Query(
       "select c from LibraryConnection c, KnowledgeLibrary l where l.id = c.libraryId"

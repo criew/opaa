@@ -227,6 +227,7 @@ public final class ModularArchitecture {
           "connection.token",
           "connection.profile",
           "connection.request",
+          "connection.consent",
           "connection.account",
           "connection.oauth");
 

@@ -41,7 +41,8 @@ final class SourceConnectionTestResponseMapper {
         request.getLibraryId(),
         LibraryResponseMapper.toSettings(request.getSourceSettings()),
         request.getConnectionProfileId(),
-        Boolean.TRUE.equals(request.getPrivateLibrary()));
+        Boolean.TRUE.equals(request.getPrivateLibrary()),
+        request.getPendingConnectionId());
   }
 
   static SourceConnectionTestResponse toResponse(SourceConnectionTestResult result) {
@@ -62,7 +63,8 @@ final class SourceConnectionTestResponseMapper {
         LibraryResponseMapper.toSettings(request.getQuery()),
         request.getLibraryId(),
         request.getConnectionProfileId(),
-        Boolean.TRUE.equals(request.getPrivateLibrary()));
+        Boolean.TRUE.equals(request.getPrivateLibrary()),
+        request.getPendingConnectionId());
   }
 
   static SourceBrowseResponse toResponse(SourceListing listing) {

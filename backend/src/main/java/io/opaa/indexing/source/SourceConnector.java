@@ -2,6 +2,7 @@ package io.opaa.indexing.source;
 
 import io.opaa.knowledge.KnowledgeLibrary;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 /**
@@ -130,6 +131,17 @@ public interface SourceConnector {
    */
   default void onSourceChanged(
       KnowledgeLibrary library, boolean addressChanged, Set<String> changedSettings) {}
+
+  /**
+   * The address of the account at the provider an OAuth consent was just given as, read with the
+   * access token in {@code settings}; empty where the connector names none (the default). Shown to
+   * whoever manages the connection, never a secret.
+   *
+   * @throws SourceCredentialsException when the provider cannot be asked
+   */
+  default Optional<String> connectedAccount(SourceSettings settings) {
+    return Optional.empty();
+  }
 
   /**
    * Probes {@code settings} the way a run would reach the source. A source problem is the result,
