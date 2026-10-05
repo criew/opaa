@@ -773,10 +773,14 @@ eine Shell benutzt wurde. Für alles Weitere lässt sich ein Werkzeug-Container 
 oder PID-Namensraum hängen (`--network container:…`, `--pid container:…`), ohne dass das
 Laufzeitimage selbst Werkzeuge mitbringen muss.
 
-**Private Bibliotheken im Log:** Das Anwendungslog nennt Ordner, Dateien, Anhänge und Titel einer
-privaten Bibliothek nicht, auch nicht auf `DEBUG`; an ihrer Stelle steht `<private library …>` mit
-der Kennung der Bibliothek, wo nötig mit der Kennung des Dokuments. Fehlermeldungen solcher Läufe
-erscheinen dort nur mit Typ und Stack, ohne Meldungstext. Was die Besitzerin wissen muss, steht im
+**Private Bibliotheken im Log:** OPAA selbst schreibt Ordner, Dateien, Anhänge und Titel einer
+privaten Bibliothek nicht ins Anwendungslog, auch nicht auf `DEBUG`; an ihrer Stelle steht
+`<private library …>` mit der Kennung der Bibliothek, wo nötig mit der Kennung des Dokuments.
+Fehlermeldungen ihrer Läufe, ihrer Aufnahme und ihres Originalabrufs erscheinen dort nur mit Typ und
+Stack, ohne Meldungstext. Nicht abgedeckt sind die Protokollausgaben eingebundener Bibliotheken
+(etwa Tika, PDFBox, HTTP-Client) auf `DEBUG` oder `TRACE`, Fehlermeldungen der Datenbank, die
+Zeilenwerte nennen können, und der Eintrag „Unexpected error“ für einen unerwarteten Fehler einer
+Anfrage. Wer das Log über `INFO` hinaus öffnet, sollte es deshalb wie Inhalte behandeln. Was die Besitzerin wissen muss, steht im
 Laufprotokoll ihrer Bibliothek ([Benutzerverwaltung](benutzerverwaltung.md), „Verbundene Konten“).
 
 ## Bereitschaft und Lebendigkeit

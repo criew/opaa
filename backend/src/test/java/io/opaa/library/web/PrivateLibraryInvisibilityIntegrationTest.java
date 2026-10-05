@@ -32,6 +32,7 @@ import io.opaa.library.PrivateLibraryCreation;
 import io.opaa.organization.Organization;
 import io.opaa.permission.GroupMembershipResolver;
 import io.opaa.permission.GroupSizeProperties;
+import io.opaa.searchadmin.SearchStatusProbes;
 import io.opaa.searchadmin.SearchStatusService;
 import io.opaa.space.SpaceAssetAssociationService;
 import io.opaa.test.ConnectorReleases;
@@ -63,8 +64,6 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockMultipartFile;
-import org.springframework.test.util.AopTestUtils;
-import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.AbstractMockHttpServletRequestBuilder;
@@ -521,16 +520,14 @@ class PrivateLibraryInvisibilityIntegrationTest {
             .findFirst()
             .orElse(null);
     jdbc.update("UPDATE llm_models SET base_url = ? WHERE active", UNREACHABLE_MODEL);
-    ReflectionTestUtils.setField(
-        (Object) AopTestUtils.getUltimateTargetObject(searchStatus), "probedRoles", null);
+    SearchStatusProbes.forget(searchStatus);
   }
 
   private void restoreChatModel() {
     if (activeModelBaseUrl != null) {
       jdbc.update("UPDATE llm_models SET base_url = ? WHERE active", activeModelBaseUrl);
     }
-    ReflectionTestUtils.setField(
-        (Object) AopTestUtils.getUltimateTargetObject(searchStatus), "probedRoles", null);
+    SearchStatusProbes.forget(searchStatus);
   }
 
   @AfterEach

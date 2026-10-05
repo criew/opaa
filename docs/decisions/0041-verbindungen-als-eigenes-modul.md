@@ -912,7 +912,14 @@ Beide nach Maintainer-Entscheidung vom 05.10.2026 ohne Gegenmaßnahme:
   von OPAA; sie sehen nur Temp-Dateien ohne Namen, ihre Meldungen auf DEBUG oder TRACE sind aber
   nicht geprüft. Ebenso nicht geprüft sind Fehlermeldungen der Datenbank, die Zeilenwerte nennen
   können (etwa `Failing row contains …`), auf Schreibwegen ohne Bibliotheksbezug wie dem
-  Laufprotokoll.
+  Laufprotokoll. Die globale Fehlerbehandlung (`GlobalExceptionHandler`, „Unexpected error“) loggt
+  eine unerwartete Exception einer Anfrage mit Meldung; sie kennt die Bibliothek nicht. Die bekannten
+  Wege einer privaten Bibliothek (Originalabruf, Löschung) fangen ihre Fehler vorher ab und
+  reduzieren sie; die Modell-Metadatenextraktion (`ModelMetadataExtractor`) folgt der Regel.
+  `NextcloudPrivateLibraryLogLeakIntegrationTest` deckt außerdem das Personenkontingent, eine
+  geänderte Fassung, ein nicht unterstütztes Format und den Originalabruf samt Anhang ab; eine zu
+  große Datei nicht, weil die Grenze eine Start-Einstellung ist, die einen eigenen Testkontext
+  verlangte.
 
 ## Referenzen
 
