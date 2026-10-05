@@ -15,6 +15,11 @@ import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.classic.spi.ThrowableProxyUtil;
 import ch.qos.logback.core.read.ListAppender;
 import com.jayway.jsonpath.JsonPath;
+import io.opaa.indexing.document.DocumentIngest;
+import io.opaa.indexing.document.DocumentIngestResult;
+import io.opaa.indexing.document.DocumentIngestService;
+import io.opaa.knowledge.KnowledgeLibraryRepository;
+import io.opaa.knowledge.PersonalStorageQuota;
 import io.opaa.test.ConnectorReleases;
 import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.OwnLibraryFixtures;
@@ -50,6 +55,9 @@ class NextcloudPrivateLibraryLogLeakIntegrationTest {
   @Autowired private MockMvc mockMvc;
   @Autowired private JdbcTemplate jdbc;
   @Autowired private OwnLibraryFixtures fixtures;
+  @Autowired private PersonalStorageQuota personalQuota;
+  @Autowired private DocumentIngestService ingestService;
+  @Autowired private KnowledgeLibraryRepository libraryRepository;
 
   private FakeNextcloudServer nextcloud;
   private UUID profile;
@@ -133,7 +141,58 @@ class NextcloudPrivateLibraryLogLeakIntegrationTest {
         .isGreaterThanOrEqualTo(5);
     assertThat(run()).isEqualTo("COMPLETED");
     nextcloud.remove(FOLDER + "/Kuendigung-Geheimakte.txt");
+    nextcloud.put(
+        FOLDER + "/Unterordner-Geheim/Protokoll-Geheim.md", "# Protokoll\n\nNeue Fassung.");
+    nextcloud.put(FOLDER + "/Notiz-Geheim.xyz", "Kein unterstütztes Format.");
     assertThat(run()).isEqualTo("COMPLETED");
+    for (String name : List.of("Protokoll-Geheim.md", "Anlage-Geheim.txt", "Mail-Geheim.eml")) {
+      mockMvc
+          .perform(as(OWNER, get("/api/v1/documents/" + documentNamed(name) + "/content")))
+          .andExpect(status().isOk());
+    }
+    erase();
+
+    assertThat(appender.list).isNotEmpty();
+    assertThat(leaking()).isEmpty();
+  }
+
+  /**
+   * At the owner's exhausted storage quota a file is rejected; the rejection names it only in her
+   * own run protocol. An attachment is admitted with its parent's raw bytes and so rejected, if at
+   * all, through the same line.
+   */
+  @Test
+  void aRunAtTheOwnersQuotaLogsNoNameOfWhatItRejects() throws Exception {
+    library = createPrivateLibrary();
+    personalQuota.setQuotaBytes(personalQuota.usageOf(ownerId()) + 10);
+
+    run();
+
+    assertThat(
+            jdbc.queryForObject(
+                "SELECT count(*) FROM indexing_run_events e JOIN indexing_jobs j ON j.id = e.job_id"
+                    + " WHERE j.library_id = ? AND e.category = 'REJECTED'",
+                Integer.class,
+                library))
+        .as("the quota rejected files")
+        .isPositive();
+    // an attachment path names its file; the run cannot reach it deterministically, the intake can
+    assertThat(
+            ingestService.ingest(
+                DocumentIngest.text(
+                        libraryRepository.findById(library).orElseThrow(),
+                        nextcloud.baseUrl() + "/index.php/f/1/0/Anlage-Geheim.txt",
+                        "Eine Anlage, die nicht mehr in das Kontingent passt.")
+                    .sourceType(NextcloudSourceConnector.TYPE)
+                    .build(),
+                null))
+        .isEqualTo(DocumentIngestResult.PERSONAL_QUOTA_EXCEEDED);
+    erase();
+
+    assertThat(leaking()).isEmpty();
+  }
+
+  private void erase() throws Exception {
     mockMvc
         .perform(as(OWNER, delete(LIBRARIES + "/" + library)))
         .andExpect(result -> assertThat(result.getResponse().getStatus()).isLessThan(300));
@@ -146,7 +205,9 @@ class NextcloudPrivateLibraryLogLeakIntegrationTest {
                         Integer.class,
                         library)
                     == 0);
+  }
 
+  private List<String> leaking() {
     List<String> leaking = new ArrayList<>();
     for (ILoggingEvent event : List.copyOf(appender.list)) {
       String text =
@@ -158,8 +219,20 @@ class NextcloudPrivateLibraryLogLeakIntegrationTest {
         leaking.add(event.getLoggerName() + ": " + text.lines().findFirst().orElse(""));
       }
     }
-    assertThat(appender.list).isNotEmpty();
-    assertThat(leaking).isEmpty();
+    return leaking;
+  }
+
+  private UUID documentNamed(String fileName) {
+    return jdbc.queryForObject(
+        "SELECT id FROM documents WHERE library_id = ? AND file_name = ?",
+        UUID.class,
+        library,
+        fileName);
+  }
+
+  private UUID ownerId() {
+    return jdbc.queryForObject(
+        "SELECT id FROM users WHERE email = ?", UUID.class, "dev-user@opaa.local");
   }
 
   private UUID createPrivateLibrary() throws Exception {
