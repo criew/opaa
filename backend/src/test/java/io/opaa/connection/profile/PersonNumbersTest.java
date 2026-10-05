@@ -10,9 +10,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 
 /**
  * Under the minimum group size 5 no answer, and no difference of two answers, points at fewer than
@@ -128,18 +132,42 @@ class PersonNumbersTest {
         .isTrue();
   }
 
-  /** A warning is exactly whether the greatest admitted number reaches the threshold. */
-  @Test
-  void theWarningSaysNothingTheAnswerDoesNot() {
+  /**
+   * A warning is exactly whether the greatest admitted number reaches the threshold - below N, at
+   * N, at 2N-1 and at the default.
+   */
+  @ParameterizedTest(name = "threshold {0}")
+  @ValueSource(ints = {4, 5, 9, 10})
+  void theWarningSaysNothingTheAnswerDoesNot(int warningThreshold) {
+    PersonNumbers numbers =
+        new PersonNumbers(
+            TestPersonCounts.NO_PERSONS,
+            new GroupSizeProperties(5),
+            new ExpiredConnectionWarningProperties(warningThreshold));
     for (long connected = 0; connected <= 30; connected++) {
       for (long expired = 0; expired <= 30; expired++) {
-        ProfileCounts counts = TestPersonCounts.of(connected, expired);
+        ProfileCounts counts = numbers.mask(new PersonConnections.StateCounts(connected, expired));
         long admitted = mostExpiredAdmittedBy(counts);
         assertThat(counts.expiredWarning())
             .as("%d connected and %d expired, at most %d admitted", connected, expired, admitted)
-            .isEqualTo(admitted >= ExpiredConnectionWarningProperties.DEFAULT_THRESHOLD);
+            .isEqualTo(admitted >= warningThreshold);
       }
     }
+  }
+
+  /** A threshold below N is kept, but said at start: every profile for persons then warns. */
+  @Test
+  @ExtendWith(OutputCaptureExtension.class)
+  void aThresholdBelowTheMinimumIsLoggedAtStart(CapturedOutput output) {
+    new PersonNumbers(
+        TestPersonCounts.NO_PERSONS,
+        new GroupSizeProperties(5),
+        new ExpiredConnectionWarningProperties(4));
+    assertThat(output.getAll()).contains("WARN").contains("below the minimum group size");
+
+    int before = output.getAll().length();
+    TestPersonCounts.numbersOver(TestPersonCounts.NO_PERSONS);
+    assertThat(output.getAll().substring(before)).doesNotContain("below the minimum group size");
   }
 
   /** What the shown numbers alone admit: an exact part, else N-1 below N, else the total. */

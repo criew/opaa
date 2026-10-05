@@ -426,7 +426,8 @@ class PrivateLibraryErasureIntegrationTest {
 
   /**
    * The proof names the library neutrally and carries cause, time and a complete erasure, each kind
-   * of content only as none or present - no exact count, no name or path.
+   * of content only as none or present - no exact count, no name or path, and nothing of how its
+   * owner used it in chats.
    */
   private void theProofNamesNothing(Fixture fixture, String cause) {
     List<Map<String, Object>> entries =
@@ -442,7 +443,7 @@ class PrivateLibraryErasureIntegrationTest {
         .containsPattern("\"erasedCompletely\"\\s*:\\s*true")
         .containsPattern("\"documentsRemoved\"\\s*:\\s*\"PRESENT\"")
         .containsPattern("\"chunksRemoved\"\\s*:\\s*\"PRESENT\"")
-        .containsPattern("\"chatSourcesRedacted\"\\s*:\\s*\"PRESENT\"")
+        .doesNotContain("chatSourcesRedacted")
         .doesNotContainPattern("\"\\w+(Removed|Redacted)\"\\s*:\\s*\\d")
         .doesNotContain(fixture.names());
     for (String label :
