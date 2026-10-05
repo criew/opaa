@@ -322,9 +322,13 @@ paths:
         secret, an empty string clears it, any other value replaces it - without touching any
         connection. A new serverUrl, clientId, tenant, scope list or authMethod discards every
         secret held under the profile; a library address under the old server address moves
-        under the new one. While connections exist this needs confirmDiscard (otherwise 409 with
-        code CONNECTION_PROFILE_CONFIRMATION_REQUIRED); getConnectionProfileImpact names the
-        number beforehand. The connector of a profile never changes.
+        under the new one. While the change discards a stored secret of a library, ends
+        connected accounts of persons or the whole sync state of libraries (a changed default
+        only the profile sets), it needs confirmDiscard
+        (otherwise 409 with code CONNECTION_PROFILE_CONFIRMATION_REQUIRED, whose error is the
+        confirmation previewConnectionProfileChange names beforehand). The part of a library's
+        sync state a new configuration makes invalid - also of a new proxy or TLS switch - its
+        connector discards without that confirmation. The connector of a profile never changes.
         Every library whose effective configuration the change alters (address, proxy, TLS
         switch, defaults) passes its connector's check first; when the connector refuses one,
         nothing is changed - neither the profile nor any library - and the answer is 400 with
@@ -418,8 +422,11 @@ paths:
         Takes the body of updateConnectionProfile and changes nothing. Besides the counts of
         getConnectionProfileImpact it names every library whose connector refuses the
         configuration the change would give it - the refusals that make
-        updateConnectionProfile answer 400 CONNECTION_PROFILE_CHANGE_REJECTED. clientSecret and
-        confirmDiscard are ignored.
+        updateConnectionProfile answer 400 CONNECTION_PROFILE_CHANGE_REJECTED - and what saving
+        discards, from the same plan the save carries out: secretsDiscarded,
+        configurationsChanged, connectedAccountsEnded, fullSyncLibraries and the confirmation it
+        asks for. clientSecret is ignored but for a service account key naming another account;
+        confirmDiscard is ignored.
       requestBody:
         required: true
         content:
@@ -1345,6 +1352,48 @@ components:
             How many shared libraries the proposed change makes read their source anew, because a
             default only the profile sets changes; 0 without a proposal. Private libraries are
             reset alike but not counted.
+        connectionsDiscarded:
+          type: integer
+          format: int64
+          description: >
+            How many connections of shared libraries lose every secret and token held under the
+            profile when the proposed change is saved - a new address or registration revokes them
+            with the old registration - and must be signed in anew; 0 for any other change and
+            without a proposal. Private libraries are not counted.
+        secretsDiscarded:
+          type: integer
+          format: int64
+          description: >
+            How many shared libraries lose the secret stored for them when the proposed change is
+            saved - a new address or registration, or a default that binds the secret anew - and
+            need it entered anew; 0 without a proposal. Libraries without a stored secret and
+            private libraries are not counted; the persons' secrets end with their connected
+            accounts (connectedAccountsEnded).
+        configurationsChanged:
+          type: integer
+          format: int64
+          description: >
+            How many shared libraries the proposed change gives another effective configuration
+            (address, proxy, certificate check, defaults); each one's connector discards the part
+            of its sync state the new configuration makes invalid. That alone asks no
+            confirmation; the whole sync state goes only with fullSyncLibraries. 0 without a
+            proposal; private libraries are not counted.
+        connectedAccountsEnded:
+          description: >
+            The connected accounts of persons the proposed change ends - all of the profile's,
+            masked like connectedAccounts and never a different number - or absent where it ends
+            none: a new address or registration, a default that binds the secret anew, or an
+            ownership no longer admitting persons. Absent without a proposal.
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/PersonCount"
+        confirmation:
+          type: string
+          nullable: true
+          description: >
+            The question saving the proposed change asks before it discards anything, word for
+            word the error of the 409 CONNECTION_PROFILE_CONFIRMATION_REQUIRED of updateConnectionProfile;
+            absent where saving asks none. It names persons without a number.
         rejectedLibraries:
           type: integer
           format: int64
@@ -1354,7 +1403,9 @@ components:
             rejectedPrivateLibraries only.
         rejectedPrivateLibraries:
           description: >
-            How many private libraries the connector refuses the proposed change for, masked by
+            How many private libraries the proposed change releases from the profile - those the
+            connector refuses it for, or every one where the new ownership admits no persons -
+            masked by
             their owners like every number about persons: below the minimum group size of owners
             - zero included - only "fewer than". As a part of the organization's private libraries
             it is exact only where the owners of the organization's other private libraries reach

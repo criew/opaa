@@ -127,8 +127,59 @@ function refusalsOf(profile: ConnectionProfileResponse, body: ConnectionProfileU
   }))
 }
 
+function count(n: number, one: string, many: string) {
+  return `${n} ${n === 1 ? one : many}`
+}
+
+/**
+ * What saving `body` discards, as the backend plans it: in the mocks a new address or registration
+ * discards every secret of the profile - one stored secret per library - and ends the accounts of
+ * persons, as does an ownership without persons; address, proxy, TLS switch and defaults change
+ * every library's configuration. The confirmation is the 409's text.
+ */
+function discardsOf(profile: ConnectionProfileResponse, body: ConnectionProfileUpdateRequest) {
+  const all =
+    profile.serverUrl !== body.serverUrl.replace(/\/+$/, '') ||
+    profile.authMethod !== body.authMethod ||
+    (profile.clientId ?? null) !== (body.clientId ?? null) ||
+    (profile.authorizationEndpoint ?? null) !== (body.authorizationEndpoint ?? null) ||
+    (profile.tokenEndpoint ?? null) !== (body.tokenEndpoint ?? null) ||
+    (profile.revocationEndpoint ?? null) !== (body.revocationEndpoint ?? null)
+  const reconfigured =
+    profile.serverUrl !== body.serverUrl.replace(/\/+$/, '') ||
+    (profile.sourceProxy ?? null) !== (body.sourceProxy ?? null) ||
+    profile.sourceInsecureSsl !== Boolean(body.sourceInsecureSsl) ||
+    JSON.stringify(profile.connectorSettings ?? null) !==
+      JSON.stringify(body.connectorSettings ?? null)
+  const forPersons = profile.ownership !== 'LIBRARY'
+  const persons = forPersons && (all || body.ownership === 'LIBRARY')
+  const libraries = librariesOn(profile)
+  const connectionsDiscarded = all ? profile.connectionCount : 0
+  const secretsDiscarded = all ? libraries : 0
+  let confirmation: string | null = null
+  if (connectionsDiscarded > 0) {
+    confirmation =
+      `Die Änderung verwirft alle Zugangsdaten und Token dieses Zugangs; ${count(connectionsDiscarded, 'Verbindung muss', 'Verbindungen müssen')} neu angemeldet werden` +
+      (secretsDiscarded > 0
+        ? `, die gespeicherten Zugangsdaten von ${count(secretsDiscarded, 'Bibliothek', 'Bibliotheken')} sind neu einzutragen`
+        : '') +
+      (persons ? ', etwaige verbundene Konten von Personen enden. ' : '. ') +
+      'Bitte bestätigen.'
+  } else if (persons) {
+    confirmation =
+      'Die Änderung verwirft die Zugangsdaten etwaiger verbundener Konten von Personen dieses Zugangs. Bitte bestätigen.'
+  }
+  return {
+    connectionsDiscarded,
+    secretsDiscarded,
+    configurationsChanged: reconfigured ? libraries : 0,
+    connectedAccountsEnded: persons ? profile.connectedAccountCount : null,
+    confirmation,
+  }
+}
+
 // Connection profiles (#2160). Like the backend, an answer never carries the client secret, and a
-// change of address or registration on a profile with connections needs confirmDiscard.
+// change that discards anything needs confirmDiscard.
 export const connectionProfileHandlers = [
   http.get(ADMIN, () => HttpResponse.json(mockConnectionProfiles)),
 
@@ -186,13 +237,7 @@ export const connectionProfileHandlers = [
     if (index < 0) return notFound()
     const current = mockConnectionProfiles[index]
     const body = (await request.json()) as ConnectionProfileUpdateRequest
-    const discards =
-      current.serverUrl !== body.serverUrl.replace(/\/+$/, '') ||
-      current.authMethod !== body.authMethod ||
-      (current.clientId ?? null) !== (body.clientId ?? null) ||
-      (current.authorizationEndpoint ?? null) !== (body.authorizationEndpoint ?? null) ||
-      (current.tokenEndpoint ?? null) !== (body.tokenEndpoint ?? null) ||
-      (current.revocationEndpoint ?? null) !== (body.revocationEndpoint ?? null)
+    const { confirmation } = discardsOf(current, body)
     const refusals = refusalsOf(current, body)
     if (refusals.length > 0) {
       return HttpResponse.json(
@@ -204,11 +249,10 @@ export const connectionProfileHandlers = [
         { status: 400 },
       )
     }
-    if (discards && current.connectionCount > 0 && !body.confirmDiscard) {
+    if (confirmation && !body.confirmDiscard) {
       return HttpResponse.json(
         {
-          error:
-            'Die Änderung verwirft die Zugangsdaten bestehender Verbindungen. Bitte bestätigen.',
+          error: confirmation,
           status: 409,
           code: 'CONNECTION_PROFILE_CONFIRMATION_REQUIRED',
         },
@@ -262,11 +306,13 @@ export const connectionProfileHandlers = [
   http.post(`${ADMIN}/:profileId/impact`, async ({ params, request }) => {
     const profile = mockConnectionProfiles.find((p) => p.id === params.profileId)
     if (!profile) return notFound()
-    const refusals = refusalsOf(profile, (await request.json()) as ConnectionProfileUpdateRequest)
+    const body = (await request.json()) as ConnectionProfileUpdateRequest
+    const refusals = refusalsOf(profile, body)
     return HttpResponse.json({
       connections: profile.connectionCount,
       libraries: librariesOn(profile),
       connectedAccounts: profile.connectedAccountCount,
+      ...discardsOf(profile, body),
       rejectedLibraries: refusals.length,
       rejections: refusals,
       // private libraries only as the masked count of their owners, on a profile admitting persons

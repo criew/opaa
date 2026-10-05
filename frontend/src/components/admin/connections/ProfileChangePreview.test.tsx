@@ -68,3 +68,86 @@ describe('ProfileChangePreview - private Bibliotheken (#2164)', () => {
     expect(screen.queryByTestId('profile-change-private-rejections')).not.toBeInTheDocument()
   })
 })
+
+describe('ProfileChangePreview - was beim Speichern verworfen wird (#2249)', () => {
+  it('names every discard as the server counts it and quotes its question', () => {
+    renderWithProviders(
+      <ProfileChangePreview
+        impact={{
+          ...impact,
+          connectionsDiscarded: 0,
+          secretsDiscarded: 1,
+          configurationsChanged: 2,
+          connectedAccountsEnded: { count: null, fewerThan: 5 },
+          confirmation:
+            'Die Änderung verwirft die Zugangsdaten von 1 Bibliothek sowie etwaiger verbundener Konten von Personen dieses Zugangs. Bitte bestätigen.',
+        }}
+        ownership="BOTH"
+      />,
+      { withRouter: true },
+    )
+
+    const discards = screen.getByTestId('profile-change-discards')
+    expect(discards).toHaveTextContent(
+      'Die gespeicherten Zugangsdaten von 1 Bibliothek werden verworfen und sind neu einzutragen.',
+    )
+    expect(discards).toHaveTextContent('Die verbundenen Konten von Personen enden (weniger als 5)')
+    expect(discards).toHaveTextContent('Für 2 Bibliotheken ändert sich die Konfiguration')
+    expect(discards).not.toHaveTextContent(/Token des Zugangs/)
+    expect(screen.getByTestId('profile-change-confirmation')).toHaveTextContent(
+      'Vor dem Speichern fragt OPAA noch einmal nach: „Die Änderung verwirft die Zugangsdaten von 1 Bibliothek',
+    )
+  })
+
+  it('says that every private library is released where persons are no longer admitted', () => {
+    renderWithProviders(
+      <ProfileChangePreview
+        impact={{
+          ...impact,
+          rejectedPrivateLibraries: null,
+          connectedAccountsEnded: { count: null, fewerThan: 5 },
+          confirmation:
+            'Die Änderung verwirft die Zugangsdaten etwaiger verbundener Konten von Personen dieses Zugangs. Bitte bestätigen.',
+        }}
+        ownership="BOTH"
+        ownershipAfter="LIBRARY"
+      />,
+      { withRouter: true },
+    )
+
+    expect(screen.getByTestId('profile-change-private-rejections')).toHaveTextContent(
+      'Alle privaten Bibliotheken werden vom Zugang gelöst und ruhen',
+    )
+    expect(screen.getByTestId('profile-change-private-rejections')).not.toHaveTextContent(
+      /ablehnt|nicht ausgewiesen/,
+    )
+    expect(screen.getByTestId('profile-change-discards')).toHaveTextContent(
+      'Die verbundenen Konten von Personen enden (weniger als 5); der Zugang nimmt danach keine Konten mehr an.',
+    )
+    expect(screen.getByTestId('profile-change-discards')).not.toHaveTextContent(
+      /verbindet sein Konto neu/,
+    )
+  })
+
+  it('says that nothing is discarded where the server plans no discard', () => {
+    renderWithProviders(
+      <ProfileChangePreview
+        impact={{
+          ...impact,
+          connectionsDiscarded: 0,
+          secretsDiscarded: 0,
+          configurationsChanged: 0,
+          connectedAccountsEnded: null,
+          confirmation: null,
+        }}
+        ownership="LIBRARY"
+      />,
+      { withRouter: true },
+    )
+
+    expect(screen.getByTestId('profile-change-discards')).toHaveTextContent(
+      'Die Änderung verwirft keine Zugangsdaten, kein verbundenes Konto und keinen Abgleichstand.',
+    )
+    expect(screen.queryByTestId('profile-change-confirmation')).not.toBeInTheDocument()
+  })
+})
